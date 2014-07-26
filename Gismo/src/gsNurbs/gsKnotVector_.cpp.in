@@ -1,0 +1,11 @@
+#include <gsUtils/gsTemplateTools.h>
+
+#include <gsNurbs/gsKnotVector.h>
+#include <gsNurbs/gsKnotVector.hpp>
+
+namespace gismo
+{
+
+CLASS_TEMPLATE_INST gsKnotVector<GISMO_COEFF_TYPE>;
+
+}

@@ -531,6 +531,8 @@ static gsNurbs<T> *NurbsCurve2 (T const & r=1, T const & x=0)
         ,-2, -2 ,  0, 0 , 0.5 ,0.5
         ,-2 , 0 , -0.5, 0.5 , 0 ,-2 ;
 
+    C *= r;
+
     gsMatrix<T> ww( 9, 1 ) ;
     ww(0)= 1;
     ww(1)= 0.20 ;
@@ -929,6 +931,8 @@ static gsTensorNurbs<2,T> *NurbsDisk(T const & r=1, T const & x=0)
     C << 0, -2 ,  2,-2 , 2, 0
             ,-2, -2 ,  0, 0 , 2 ,2
             ,-2 , 0 , -2, 2 , 0 ,2 ;
+
+    C *= r;
 
     gsMatrix<T> ww(9, 1 ) ;
     ww(0)= 1;

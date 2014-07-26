@@ -4,6 +4,9 @@
 #include <gsNurbs/gsBSpline.h>
 #include <gsUtils/gsDeboor.hpp>
 #include <gsUtils/gsBoehm.h>
+
+#include <gsDataStructures/gsMesh/gsMesh.h>
+
 #include <gsUtils/gsSparseRows.hpp>
 
 namespace gismo

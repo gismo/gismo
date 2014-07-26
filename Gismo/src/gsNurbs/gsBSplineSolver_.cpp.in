@@ -1,0 +1,15 @@
+
+#include <gsUtils/gsTemplateTools.h>
+
+#include <gsNurbs/gsBSplineSolver.h>
+#include <gsNurbs/gsBSplineSolver.hpp>
+
+#include <gsNurbs/gsKnotVector.h>
+#include <gsNurbs/gsCompactKnotVector.h>
+
+namespace gismo
+{
+
+  CLASS_TEMPLATE_INST gsBSplineSolver<GISMO_COEFF_TYPE>;
+
+}

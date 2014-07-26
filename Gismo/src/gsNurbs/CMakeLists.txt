@@ -24,3 +24,10 @@ set(gismo_TMPL_HEADERS ${gismo_TMPL_HEADERS}
     ${HPPFILES}
    CACHE INTERNAL "${PROJECT_NAME} template header files"
 )
+
+
+## #################################################################
+## Generate instance files
+## #################################################################
+
+aux_generate_instance( ${CMAKE_CURRENT_SOURCE_DIR} )
