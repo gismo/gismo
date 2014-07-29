@@ -142,7 +142,7 @@ bool gsBSplineSolver<T>::nextRoot()
         if (diff<eps) 
         {
             x = m_t[m_k];// root found
-            //gsLog<<"diff converged: Root found at "<< m_k<<", val="<< x <<"m_n="<<m_n <<"\n";
+            //gsInfo <<"diff converged: Root found at "<< m_k<<", val="<< x <<"m_n="<<m_n <<"\n";
             break;
         }
 
@@ -166,7 +166,7 @@ bool gsBSplineSolver<T>::nextRoot()
         const T e = math::max(x, m_t[m_k+m_d-1]) - math::min(x, m_t[m_k+1] );
         if (e < eps)
         {
-            //gsLog<<"eps: Root found after knot "<< m_k <<" is "<<m_t[m_k]<<", val="<< x <<"\n";
+            //gsInfo <<"eps: Root found after knot "<< m_k <<" is "<<m_t[m_k]<<", val="<< x <<"\n";
             break;
         }
 
@@ -188,9 +188,9 @@ bool gsBSplineSolver<T>::nextRoot()
 
     m_k++; // next root
 
-    while ( m_k<m_n && math::fabs( m_t[m_k]-x)<eps ) m_k++; 
+    // buggy:   while ( m_k<m_n && math::fabs( m_t[m_k]-x)<eps ) m_k++; 
 
-    //gsLog<<"next m_k="<< m_k <<" is "<< m_t[m_k]<<"\n";
+    //gsInfo<<"next m_k="<< m_k <<" is "<< m_t[m_k]<<"\n";
     return true;
 }
 
