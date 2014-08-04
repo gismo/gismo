@@ -320,7 +320,7 @@ public:
   void uniformRefine(int numKnots = 1);
 
   /// Compute the new knots needed for uniform refinement with the given number of knots per span and return them in \a result.
-  void getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result);
+  void getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result) const;
 
   /// Elevate the degree
   void degreeElevate(int const & i = 1);

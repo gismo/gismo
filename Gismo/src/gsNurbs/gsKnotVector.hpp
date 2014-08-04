@@ -684,7 +684,7 @@ void gsKnotVector<T>::uniformRefine(int numKnots)
 
 
 template <class T>
-void gsKnotVector<T>::getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result)
+void gsKnotVector<T>::getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result) const
 {
     std::vector<T> u = this->unique();
     result.clear();
