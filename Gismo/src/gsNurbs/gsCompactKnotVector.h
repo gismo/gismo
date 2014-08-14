@@ -858,10 +858,49 @@ void gsCompactKnotVector<T>::greville_into(gsMatrix<T> & result) const
 template <class T>
 T gsCompactKnotVector<T>::greville(int i) const
 {
-    const_iterator itr = begin();
-    return ( m_p!=0 ? 
-             std::accumulate( itr+1+i, itr+m_p+i+1, T(0.0) ) / m_p :
-             std::accumulate( itr+1+i, itr+m_p+i+1, T(0.0) )      );
+    int multiplicities = 0;
+    T sum = 0;
+    int j = 0;
+    if (m_mult_sum[j] < static_cast<unsigned>(i))
+    {
+        while (m_mult_sum[j] < static_cast<unsigned>(i))
+        {
+            j++;
+        }
+    }
+
+    multiplicities = m_mult_sum[j] - i;
+    sum += multiplicities * m_knots[j];
+
+    const int m_p_1 = m_p + 2;
+    for (std::size_t jj = j + 1; jj != m_mult_sum.size(); ++jj)
+    {
+        int mult = static_cast<int>(m_mult_sum[jj] - m_mult_sum[jj - 1]);
+
+        if (m_p_1 < multiplicities + mult)
+        {
+            mult = m_p_1 - multiplicities;
+        }
+
+        sum += mult * m_knots[jj];
+        multiplicities += mult;
+
+        if (multiplicities == m_p_1)
+        {
+            break;
+        }
+    }
+
+
+    return (m_p != 0 ? sum / m_p_1 : sum);
+
+//    OLD CODE does not work, because minus is not implemented in
+//    gsCompactKnotVectorIter
+//
+//    const_iterator itr = begin();
+//    return ( m_p!=0 ?
+//             std::accumulate( itr+1+i, itr+m_p+i+1, T(0.0) ) / m_p :
+//             std::accumulate( itr+1+i, itr+m_p+i+1, T(0.0) )      );
 }
 
 template <class T>
