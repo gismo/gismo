@@ -6,6 +6,61 @@
 #include <gismo.h>
 
 
+/*
+
+------------------------------------------
+
+    // We solve the equation
+    // -u''= f on [0,2.5]
+    // with boundary condition
+    // u(0)=g(0), u(2.5)=g(2.5)=8.09..
+    // where f = -g''
+    // and g(x)=(7*x+2*x^2-3*x^3)*cos(x)*sin(x)
+
+
+    // Exact solution
+    gsFunctionExpr<> g("(7*x+2*x^2-3*x^3)*cos(x)*sin(x)") ;
+    //gsFunctionExpr<> g("x") ;
+    cout<<"Exact function "<< g <<".\n" << endl;
+
+    // Source function
+    gsFunctionExpr<> f("(6*x^3-4*x^2-23*x+2)*cos(2*x)-(18*x^2-8*x-14)*sin(2*x)") ;
+    //gsFunctionExpr<> f("0") ;
+    cout<<"Source function "<< f <<".\n" << endl;
+    // Geometry
+    // We have a parametrization F:[0,1]->[0, 2.5]
+    // that describe the geometry using BSpline of degree
+    // p=6
+    // on the open grid of step 0.05
+    int p = 6;
+    gsMatrix<> C(11,1) ;
+    C<< 0, .5, 1.1, 1.01, 1.5, 1.6, 1.7, 1.9, 2.2, 2.3,  2.5 ;
+    gsKnotVector<> KV (0,1,4,p+1) ;
+    gsBSpline<> * bsp = new gsBSpline<>(KV, give(C));
+
+------------------------------------------
+
+    // Source function
+    gsFunctionExpr<> f("2*pi^2*sin(pi*x)*sin(pi*y)") ; 
+    // Exact solution
+    gsFunctionExpr<> g    ("sin(pi*x) * sin(pi*y)"); 
+
+    cout<<"Source function "<< f <<".\n" << endl;
+    cout<<"Exact solution "<< g <<".\n" << endl;
+
+    // Define Geometry
+    gsGeometry<> * geo = gsNurbsCreator<>::BSplineSquare(2);
+    //gsGeometry<> * geo = gsNurbsCreator<>::BSplineFatQuarterAnnulus();
+    //gsGeometry<> * geo = gsNurbsCreator<>::BSplineQuarterAnnulus();
+    //gsGeometry<> * geo = gsNurbsCreator<>::NurbsQuarterAnnulus();
+
+
+------------------------------------------
+
+
+
+*/
+
 
 using namespace gismo;
 using std::cout;
@@ -13,9 +68,8 @@ using  std::endl;
 
 // Getting the input (defined after the main function)
 bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,  
-                  int & Dirichlet, int & DG, bool & plot, int & plot_pts, 
-                  gsMultiPatch<> * & geo, gsPoissonPde<> * & ppde, 
-                  std::vector< gsBasis<>* > & bases );
+                  int & Dirichlet, bool & plot, int & plot_pts, 
+                  gsMultiPatch<> * & geo, gsPoissonPde<> * & ppde);
 
 
 int main(int argc, char *argv[])
@@ -25,15 +79,13 @@ int main(int argc, char *argv[])
   int numRefine;  // defaults to 2
   int numElevate; // defaults to -1
   int Dirichlet;  // defaults to 0
-  int DG;         // defaults to 0
   bool plot;      // defaults to false
   int plot_pts;   // defaults to 1000
   gsMultiPatch<> * geo ; // defaults to BSplineCube
   gsPoissonPde<> * ppde ;
-  std::vector< gsBasis<>* > bases;// not yet given by input
   
   bool success = parse_input(argc, argv, numRefine, numElevate, Dirichlet, 
-                             DG, plot, plot_pts, geo, ppde, bases);
+                             plot, plot_pts, geo, ppde);
   if ( ! success )
   {
       cout<<"Input failed, quitting.\n";
@@ -48,64 +100,51 @@ int main(int argc, char *argv[])
   cout<< * ppde <<"\n"; 
 
   /////////////////// Setup boundary value problem ///////////////////  
-  gsBVProblem<> bvp( *geo, ppde ) ;
+  // Boundary conditions
+  gsBoundaryConditions<> BCs;
   // Create Dirichlet boundary conditions for all boundaries
-  for (gsMultiPatch<>::const_biterator 
-       bit = geo->bBegin(); bit != geo->bEnd(); ++bit)
-  {
-      bvp.addCondition( *bit, boundary::dirichlet, ppde->solution() );
-  }
-
-  cout<< bvp <<"\n"; 
+    for (gsMultiPatch<>::const_biterator 
+             bit = geo->bBegin(); bit != geo->bEnd(); ++bit)
+    {
+        BCs.addCondition( *bit, boundary::dirichlet, ppde->solution() );
+    }
   
-  if ( bases.size() == 0 )
-      bases = geo->basesCopy();
+    gsMultiBasis<> bases(*geo);
   
   // Elevate and refine the solution space
   if ( numElevate > -1 )
   {
       // get maximun degree
-      int tmp = bases[0]->degree(0);
-      for (int j = 0; j < geo->parDim(); ++j )
-          if ( tmp < bases[0]->degree(j) )
-              tmp = bases[0]->degree(j);
+      int tmp = bases.maxDegree(0);
       
       // Elevate all degrees uniformly
       tmp += numElevate;
-      for (size_t j = 0; j < bases.size(); ++j )
-              bases[j]->setDegree(tmp);
+      for (size_t j = 0; j < bases.nBases(); ++j )
+              bases[j].setDegree(tmp);
   }
 
-  for (size_t j = 0; j < bases.size(); ++j )
+  for (size_t j = 0; j < bases.nBases(); ++j )
       for (int i = 0; i < numRefine; ++i)
-          bases[j]->uniformRefine();
+          bases[j].uniformRefine();
   
-  cout << "Discret. Space 0: "<< *bases[0] << endl;
+  cout << "Discret. Space 0: "<< bases[0] << endl;
 
   
   /////////////////// Setup solver ///////////////////
-  gsGalerkinMethod<> poisson( bvp, bases);
-  if ( Dirichlet == 1)
-  { 
-      cout<<"Using Nitsche's method for Dirichlet boundaries.\n";  
-      poisson.setDirichletStrategy(dirichlet::nitsche);
-  }
+  gsPoissonAssembler<real_t> poisson(*geo,bases,BCs,*ppde->rhs(),
+                                     ( Dirichlet==1 ? dirichlet::nitsche 
+                                       : dirichlet::elimination) );
 
-  if ( DG == 1)
-  { 
-      cout<<"Using DG method for patch interfaces.\n";  
-      poisson.setInterfaceStrategy(iFace::dg);
-  }
-
-  cout<<"Dofs: "<< poisson.dofs() << "\n";  
-  cout<<"System size: "<< poisson.freeDofs() << endl;
+  cout<<"System size: "<< poisson.numDofs() << endl;
   
   // Assemble and solve
   gsStopwatch time;
   poisson.assemble();
   const double assmTime = time.stop();
-  gsField<>* x = poisson.solve();
+  Eigen::ConjugateGradient< gsSparseMatrix<> > solver( poisson.matrix() );
+  gsMatrix<> solVector = solver.solve( poisson.rhs() );
   const double solveTime = time.stop();
+  gsField<>* x = poisson.constructSolution(solVector);
 
   //cout <<  poisson.linearSystem() <<"\n";
 
@@ -126,32 +165,18 @@ int main(int argc, char *argv[])
       //Plot exact solution in paraview
       gsField<> exact( *geo , *ppde->solution() , false ) ;
       gsWriteParaview<>( exact, "poisson_sol_exact", plot_pts) ;
-      
-      char cmd[100];
-      if (geo->nPatches() == 1)
-	  strcpy(cmd,"paraview poisson_sol.vts\0");
-      else
-	  strcpy(cmd,"paraview poisson_sol.pvd\0");
-      strcat(cmd," &");
-
-      delete x;
-      delete geo;
-      freeAll(bases);
-      return system(cmd); 
   }
 
   delete x;
   delete geo;
-  freeAll(bases);
 
-  return 0; 
+  return ( plot ? system("paraview poisson_sol.pvd&") : 0 ); 
 }
 
 
 bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,  
-                  int & Dirichlet, int & DG, bool & plot, int & plot_pts, 
-                  gsMultiPatch<> *& geo, gsPoissonPde<> *& ppde, 
-                  std::vector< gsBasis<>* > &  bases )
+                  int & Dirichlet, bool & plot, int & plot_pts, 
+                  gsMultiPatch<> *& geo, gsPoissonPde<> *& ppde)
 {
   try 
   {
@@ -160,7 +185,6 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     gsArgVal<std::string> a6("p","pde","File containing a poisson PDE (.xml)", 
 			     false,"", "PDE file", cmd );
     gsArgSwitch arg_dirich("n", "nitsche", "Use the Nitsche's method for Dirichlet sides", cmd);
-    gsArgSwitch arg_dg("d", "discGalerkin", "Use Discontiouous Galerkin method for patch interfaces", cmd);
     gsArgSwitch a4("", "plot", "Plot result in ParaView format", cmd);
     gsArgVal<int> arg_plot_pts("s","plotSamples", 
 		     "Number of sample points to use for plotting", 
@@ -189,23 +213,12 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     else
         Dirichlet  = 0;
 
-    if ( arg_dg.getValue() )
-    {
-        DG  = 1;
-        Dirichlet  = 1;// use Nitsche for boundary
-    }
-    else
-        DG  = 0;
-
     plot       = a4.getValue();
     plot_pts   = arg_plot_pts.getValue();
 
     if ( ! fn_basis.empty() )
 	{
-    gsBasis<> * bb = gsReadFile<>( fn_basis );
-    cout << "Got basis: "<< * bb<<"\n"; 
-    bases.push_back(bb);
-    //cout << "Warning: basis ignored.\n"; 
+        cout << "basis reading not implemented.\n"; 
 	}
 
     if (numRefine<0)

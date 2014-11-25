@@ -86,7 +86,7 @@ namespace gismo
 // Assembler
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsAssemblerBase.h>
-#include <gsAssembler/gsPoissonAssembler2.h>
+#include <gsAssembler/gsPoissonAssembler.h>
 
 // Solver
 #include <gsCore/gsField.h>

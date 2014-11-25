@@ -98,7 +98,7 @@ public:
                         gsBoundaryConditions<T> const & bconditions,
                         const gsFunction<T>           & rhs,
                         dirichlet::strategy           dirStrategy,
-                        iFace::strategy               intStrategy)
+                        iFace::strategy               intStrategy = iFace::glue)
     :  Base(patches), 
        m_rhsFun(&rhs),
        m_bConditions(bconditions),

@@ -9,7 +9,6 @@
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsConstantFunction.h>
 #include <gsPde/gsPde.h>
-#include <gsAssembler/gsAssembler.h>
 #include <gsCore/gsDomain.h>
 #include <gsCore/gsDofMapper.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
