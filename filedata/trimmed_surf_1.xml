@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<TrimSurface id="0">
+	<Geometry type="TensorBSpline2">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="3">0 0 0 0 1 1 1 1</KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="3">0 0 0 0 1 1 1 1</KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3">
+  -0.914214     1.99184 -0.00896775
+  -0.914214     1.23188    0.557734
+  -0.914214    0.557734     1.23188
+  -0.914214 -0.00896775     1.99184
+  0.0285955     2.00428  0.00469739
+  0.0285955     1.22318    0.530895
+  0.0285955    0.530895     1.22318
+  0.0285955  0.00469739     2.00428
+   0.971405     2.00428  0.00469739
+   0.971405     1.22318    0.530895
+   0.971405    0.530895     1.22318
+   0.971405  0.00469739     2.00428
+    1.91421     1.99184 -0.00896775
+    1.91421     1.23188    0.557734
+    1.91421    0.557734     1.23188
+    1.91421 -0.00896775     1.99184
+  </coefs>
+</Geometry>
+
+<PlanarDomain nLoops="1">
+<CurveLoop index="0">
+ <Geometry type="BSpline" index="0">
+  <Basis type="BSplineBasis">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+  </Basis>
+  <coefs geoDim="2">
+    1 0.323223
+    1 0.676777
+  </coefs>
+</Geometry>
+ <Geometry type="BSpline" index="1">
+  <Basis type="BSplineBasis">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+  </Basis>
+  <coefs geoDim="2">
+       1 0.676777
+       0 0.676777
+  </coefs>
+</Geometry>
+ <Geometry type="BSpline" index="2">
+  <Basis type="BSplineBasis">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+  </Basis>
+  <coefs geoDim="2">
+       0 0.676777
+       0 0.323223
+  </coefs>
+</Geometry>
+ <Geometry type="BSpline" index="3">
+  <Basis type="BSplineBasis">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+  </Basis>
+  <coefs geoDim="2">
+       0 0.323223
+       1 0.323223
+  </coefs>
+</Geometry>
+
+</CurveLoop>
+</PlanarDomain>
+
+</Geometry>
+</xml>

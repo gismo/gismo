@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="TensorNurbs2" id="1">
+<!--
+NURBS representation of the curved L-shaped domain
+This domain appears in Monique Dauge's benchmark for Maxwell problem
+http://perso.univ-rennes1.fr/monique.dauge/core/index.html
+The parametrization is only C^0 along the line joining the two corners
+-->
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   0.50000   0.50000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1 0.98078528040323 1 1 1 1 1 1 1 0.98078528040323 0.965925826289068 0.923879532511287 1 1 1 </weights>
+  </Basis>
+  <coefs geoDim="2">0.923879532511287 0.38268343236509 0.8477590650225737 0.5664544973505216 0.707106781186548 0.707106781186547 1.38581929876693 0.574025148547635 1.400016430570012 0.994119355460365 1.414213562373095 1.414213562373095 1.847759065022573 0.76536686473018 1.984539704291108 1.443343604144911 2.121320343559643 2.121320343559642 2.000000000000001 0.3978247347593156 2.500000000000001 0.669872981077807 2.999999999999999 1.242640687119285 2 0 2.5 0 3 0 </coefs>
+ </Geometry>
+</xml>
+

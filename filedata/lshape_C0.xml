@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="TensorBSpline2" id="1">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0.00000   0.00000   0.50000   1.00000   1.00000</KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="2">-1 -1 0 -1 -1 1 0 0 1 1 1 0 </coefs>
+ </Geometry>
+
+<BVProblem domain="1">
+<Pde type="Poisson" dim="2">
+<rhs>2*pi^2*sin(pi*x)*sin(pi*y</rhs>
+<solution>sin(pi*x) * sin(pi*y)</solution>
+</Pde>
+<bc type="dirichlet" function="sin(pi*x) * sin(pi*y)">1 2 3 4</bc>
+</BVProblem>
+
+</xml>
+

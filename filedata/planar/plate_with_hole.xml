@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<!-- One quarter of the Hemker model -->
+ <Geometry type="TensorNurbs2" id="1">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   0.50000   0.50000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1 0.853553390593274 0.853553390593274 0.853553390593274 1 1 1 1 1 1 </weights>
+  </Basis>
+  <coefs geoDim="2">-1 0 -1 0.4142135623730953 -0.7071067811865477 0.7071067811865477 -0.4142135623730953 1 0 1 -4 0 -4 2 -4 4 -2 4 0 4 </coefs>
+ </Geometry>
+</xml>
+

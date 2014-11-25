@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<Pde type="PoissonPde" dim="2" targetDim="2">
+
+<rhs dim="2">
+<component index="0">
+v:=0.6;-(v-1.0)*v*x^(v-2.0)
+</component>
+<component index="1">
+v:=0.6;-(v-1.0)*v*y^(v-2.0)
+</component>
+</rhs>
+
+<solution dim="2">
+<component index="0">
+v:=0.6;x^(v) - x
+</component>
+<component index="1">
+v:=0.6;x^(v) - x
+</component>
+</solution>
+
+</Pde>
+</xml>

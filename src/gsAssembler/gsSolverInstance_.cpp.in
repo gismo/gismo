@@ -1,0 +1,23 @@
+#include <gsCore/gsTemplateTools.h>
+
+#include <gsAssembler/gsGalerkinMethod.h>
+#include <gsAssembler/gsGalerkinMethod.hpp>
+#include <gsSolver/gsBemLaplace.h>
+#include <gsSolver/gsBemLaplace.hpp>
+
+namespace gismo
+{
+
+#define T real_t
+#define uZ unsigned
+#define Z int
+
+CLASS_TEMPLATE_INST gsGalerkinMethod<T>;
+CLASS_TEMPLATE_INST gsBemLaplace<T>;
+CLASS_TEMPLATE_INST gsGreenFunction2d<T>;
+
+#undef T
+#undef uZ
+#undef Z
+
+}; // namespace gismo

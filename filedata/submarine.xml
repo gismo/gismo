@@ -1,0 +1,508 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 49000 5500 8200 51000 5500 7900 52000 5500 7900 53000 5500 8000 53000 5500 8200 49000 5500 8200 51000 5500 8400 52000 5500 8500 53000 5500 8400 53000 5500 8200</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 49000 -5500 8200 51000 -5500 7900 52000 -5500 7900 53000 -5500 8000 53000 -5500 8200 49000 -5500 8200 51000 -5500 8400 52000 -5500 8500 53000 -5500 8400 53000 -5500 8200</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 50000 0 12000 53000 0 12000 56000 0 12000 59000 0 12000 59000 0 12000 50000 0 12000 53000 790 12000 56000 1000 12000 59000 450 12000 59000 0 12000</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 50000 0 12000 53000 0 12000 56000 0 12000 59000 0 12000 59000 0 12000 50000 0 12000 53000 -790 12000 56000 -1000 12000 59000 -450 12000 59000 0 12000</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 5500 0 -2700 5500 -320 -1600 5500 -390 -680 5500 -160 -680 5500 0 -4000 5500 0 -2700 5500 340 -1600 5500 410 -680 5500 170 -680 5500 0</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 -5500 0 -2700 -5500 -320 -1600 -5500 -390 -680 -5500 -160 -680 -5500 0 -4000 -5500 0 -2700 -5500 340 -1600 -5500 410 -680 -5500 170 -680 -5500 0</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 0 -4100 -2800 0 -4100 -1600 0 -4100 -670 0 -4100 -670 0 -4100 -4000 0 -4100 -2800 300 -4100 -1600 390 -4100 -670 170 -4100 -670 0 -4100</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 0 -4100 -2800 0 -4100 -1600 0 -4100 -670 0 -4100 -670 0 -4100 -4000 0 -4100 -2800 -300 -4100 -1600 -390 -4100 -670 -170 -4100 -670 0 -4100</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 0 4100 -2800 0 4100 -1600 0 4100 -670 0 4100 -670 0 4100 -4000 0 4100 -2800 300 4100 -1600 390 4100 -670 170 4100 -670 0 4100</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 0 4100 -2800 0 4100 -1600 0 4100 -670 0 4100 -670 0 4100 -4000 0 4100 -2800 -300 4100 -1600 -390 4100 -670 -170 4100 -670 0 4100</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 49000 5500 8200 51000 5500 7900 52000 5500 7900 53000 5500 8000 53000 5500 8200 49000 0 8200 52000 450 7800 54000 740 7700 55000 750 8000 55000 730 8300</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 49000 -5500 8200 51000 -5500 7900 52000 -5500 7900 53000 -5500 8000 53000 -5500 8200 49000 0 8200 52000 -450 7800 54000 -740 7700 55000 -750 8000 55000 -730 8300</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 49000 5500 8200 51000 5500 8400 52000 5500 8500 53000 5500 8400 53000 5500 8200 49000 0 8200 52000 450 8600 54000 740 8700 55000 750 8500 55000 730 8300</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 49000 -5500 8200 51000 -5500 8400 52000 -5500 8500 53000 -5500 8400 53000 -5500 8200 49000 0 8200 52000 -450 8600 54000 -740 8700 55000 -750 8500 55000 -730 8300</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 50000 0 12000 53000 790 12000 56000 1000 12000 59000 450 12000 59000 0 12000 48000 0 4900 52000 960 4900 55000 1200 4900 59000 570 4900 59000 0 4900</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 50000 0 12000 53000 -790 12000 56000 -1000 12000 59000 -450 12000 59000 0 12000 48000 0 4900 52000 -960 4900 55000 -1200 4900 59000 -570 4900 59000 0 4900</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.7071 1 0.7071068 0.5 0.7071 1 0.7071 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 64000 5000 0 76000 5000 0 76000 0 -2.3 64000 5000 5000 76000 5000 5000 76000 0 2.3 64000 0 5000 76000 0 5000 76000 0 2.3</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.7071 1 0.7071068 0.5 0.7071 1 0.7071 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 64000 -5000 0 76000 -5000 0 76000 0 -2.3 64000 -5000 5000 76000 -5000 5000 76000 0 2.3 64000 0 5000 76000 0 5000 76000 0 2.3</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.7071 1 0.7071 0.5 0.7071 1 0.7071 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 64000 5000 0 76000 5000 0 76000 0 -2.3 64000 5000 -5000 76000 5000 -5000 76000 0 -2.3 64000 0 -5000 76000 0 -5000 76000 0 -2.3</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.7071 1 0.7071 0.5 0.7071 1 0.7071 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 64000 -5000 0 76000 -5000 0 76000 0 -2.3 64000 -5000 -5000 76000 -5000 -5000 76000 0 -2.3 64000 0 -5000 76000 0 -5000 76000 0 -2.3</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 0.7071068 0.7071068 0.7071068 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 18000 5000 -0.00013 41000 5000 0 64000 5000 0 18000 5000 5000 41000 5000 5000 64000 5000 5000 18000 0 5000 41000 0 5000 64000 0 5000</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 0.7071068 0.7071068 0.7071068 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 18000 -5000 -0.00013 41000 -5000 0 64000 -5000 0 18000 -5000 5000 41000 -5000 5000 64000 -5000 5000 18000 0 5000 41000 0 5000 64000 0 5000</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 0.7071068 0.7071068 0.7071068 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 18000 5000 -0.00013 41000 5000 0 64000 5000 0 18000 5000 -5000 41000 5000 -5000 64000 5000 -5000 18000 0 -5000 41000 0 -5000 64000 0 -5000</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 0.7071068 0.7071068 0.7071068 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 18000 -5000 -0.00013 41000 -5000 0 64000 -5000 0 18000 -5000 -5000 41000 -5000 -5000 64000 -5000 -5000 18000 0 -5000 41000 0 -5000 64000 0 -5000</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.7071 1 0.7071068 0.5 0.7071 1 0.7071 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 18000 5000 -0.00013 6000 5000 -0.00013 -4000 0 -0.00013 18000 5000 5000 6000 5000 5000 -4000 0 -0.00013 18000 0 5000 6000 0 5000 -4000 0 -0.00013</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.7071 1 0.7071068 0.5 0.7071 1 0.7071 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 18000 -5000 -0.00013 6000 -5000 -0.00013 -4000 0 -0.00013 18000 -5000 5000 6000 -5000 5000 -4000 0 -0.00013 18000 0 5000 6000 0 5000 -4000 0 -0.00013</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.7071 1 0.7071068 0.5 0.7071 1 0.7071 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 18000 5000 -0.00013 6000 5000 -0.00013 -4000 0 -0.00013 18000 5000 -5000 6000 5000 -5000 -4000 0 -0.00013 18000 0 -5000 6000 0 -5000 -4000 0 -0.00013</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.7071 1 0.7071068 0.5 0.7071 1 0.7071 1</weights>
+  </Basis>
+  <coefs geoDim="3"> 18000 -5000 -0.00013 6000 -5000 -0.00013 -4000 0 -0.00013 18000 -5000 -5000 6000 -5000 -5000 -4000 0 -0.00013 18000 0 -5000 6000 0 -5000 -4000 0 -0.00013</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 5500 0 -2700 5500 -320 -1600 5500 -390 -680 5500 -160 -680 5500 0 -4000 0 0 -2600 0 -390 -1300 0 -490 -350 0 -230 -350 0 0</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 -5500 0 -2700 -5500 -320 -1600 -5500 -390 -680 -5500 -160 -680 -5500 0 -4000 0 0 -2600 0 -390 -1300 0 -490 -350 0 -230 -350 0 0</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 5500 0 -2700 5500 340 -1600 5500 410 -680 5500 170 -680 5500 0 -4000 0 0 -2600 0 410 -1300 0 480 -350 0 240 -350 0 0</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 -5500 0 -2700 -5500 340 -1600 -5500 410 -680 -5500 170 -680 -5500 0 -4000 0 0 -2600 0 410 -1300 0 480 -350 0 240 -350 0 0</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 0 -4100 -2800 300 -4100 -1600 390 -4100 -670 170 -4100 -670 0 -4100 -4000 0 0 -2600 370 0 -1300 470 0 -350 220 0 -350 0 0</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 0 -4100 -2800 -300 -4100 -1600 -390 -4100 -670 -170 -4100 -670 0 -4100 -4000 0 0 -2600 -370 0 -1300 -470 0 -350 -220 0 -350 0 0</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 0 4100 -2800 300 4100 -1600 390 4100 -670 170 4100 -670 0 4100 -4000 0 0 -2600 370 0 -1300 470 0 -350 220 0 -350 0 0</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="4">0 0 0 0 0 1 1 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 1 1 1 1 1 1 1 1 1</weights>
+  </Basis>
+  <coefs geoDim="3"> -4000 0 4100 -2800 -300 4100 -1600 -390 4100 -670 -170 4100 -670 0 4100 -4000 0 0 -2600 -370 0 -1300 -470 0 -350 -220 0 -350 0 0</coefs>
+ </Geometry>
+</xml>
+

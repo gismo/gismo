@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <PlanarDomain id="0">
+  <CurveLoop index="0">
+   <Geometry type="BSpline" index="0">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="2">0 0 0 0.25 0.25 0.5 0.5 0.75 0.75 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">1 0 
+1 1 
+0 1 
+-1 1 
+-1 0 
+-1 -1 
+0 -1 
+1 -1 
+1 0 
+</coefs>
+   </Geometry>
+  </CurveLoop>
+  <CurveLoop index="1">
+   <Geometry type="BSpline" index="0">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="2">0 0 0 0.25 0.25 0.5 0.5 0.75 0.75 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">0.3 0 
+0.3 -0.3 
+0 -0.3 
+-0.3 -0.3 
+-0.3 0 
+-0.3 0.3 
+0 0.3 
+0.3 0.3 
+0.3 0 
+</coefs>
+   </Geometry>
+  </CurveLoop>
+ </PlanarDomain>
+</xml>
+

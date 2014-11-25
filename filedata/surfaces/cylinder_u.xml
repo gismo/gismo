@@ -1,0 +1,40 @@
+<!-- A unit cylinder (-1,1) of height 4 with 18 control points -->
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="TensorNurbs2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0  0.25 0.25 0.5 0.5 0.75 0.75 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <weights> 1 0.7071067811865476 1 0.7071067811865476 1 0.7071067811865476 1 0.7071067811865476 1 
+             1 0.7071067811865476 1 0.7071067811865476 1 0.7071067811865476 1 0.7071067811865476 1
+   </weights>
+  </Basis>
+  <coefs geoDim="3">
+     0 -1   0
+     1 -1   0
+     1  0   0
+     1  1   0
+     0  1   0
+    -1  1   0
+    -1  0   0
+    -1 -1   0
+     0 -1   0
+     0 -1   4
+     1 -1   4
+     1  0   4
+     1  1   4
+     0  1   4
+    -1  1   4
+    -1  0   4
+    -1 -1   4
+     0 -1   4
+  </coefs>
+ </Geometry>
+</xml>
+

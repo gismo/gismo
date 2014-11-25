@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Unknown exact solution: value is used only for BCs-->
+<xml>
+<Pde type="SurfacePoissonPde" dim="3">
+<rhs> (x+y+z-1) / 1000 </rhs>
+<solution>0</solution>
+</Pde>
+</xml>

@@ -1,0 +1,138 @@
+namespace gismo {
+
+/** \page PoissonSolver Solving the Poisson problem
+
+
+\section PoissonTutorial A Tutorial on solving the vector Poisson equation with G+Smo (also valid for scalar Poisson equation).
+
+
+The Poisson equation: \f{eqnarray*}{
+              	      -\Delta\mathbf{u} &=&\mathbf{f} \quad \text{in} \quad \Omega,\\
+               	      \mathbf{u} &=& \mathbf{g} \quad \text{on} \quad \Gamma_D,\\
+	       	      \mathbf{n} \cdot \nabla \mathbf{u} &=& \mathbf{h} \quad \text{on} \quad \Gamma_N.
+               	      \f}
+Where \f$\mathbf{n}\f$ is the outward pointing normal, \f$\Gamma_D\f$ and \f$\Gamma_N\f$ are the Dirichlet (essential) and Neumann (natural) boundary, respectfully.    
+
+\note
+For a simple solving of the  Poisson equation with Dirichlet boundary condition and known solution we can use the poissonVector.cpp file. Execute the file as:
+> ./poissonVector -\-help
+to get up a list of solver options. To specify the source term and analytic solution, we have to write it in an \c .xml file. See examples in the \c filedata/pde directory.
+
+\n
+
+We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial we explain how to do this. As an example we will use the \c Tutorial_PoissonSolver.cpp file in the example folder. We will go through essentials of the code in details (For more detail of the solver see the documentation for \ref gsPoissonSolver and \ref gsPdeSolver.) 
+
+
+First we include the correct libraries and use some useful name space.
+
+~~~~~
+# include <gismo.h>
+# include <gsSolver/gsPoissonSolver.h>
+# include <gsSolver/gsPdeSolver.h>
+
+
+using std::cout;
+using std::endl;
+using namespace gismo;
+~~~~~
+
+We could also include the \ref gsSolverUtils file which contains some use full functions.
+
+\subsection Geometry Geometry
+ 
+Inside the main function we would like to declare the geometry as
+~~~~~
+gsMultiPatch<> * patches;
+~~~~~
+We use this even if we only have a single patch geometry. The \ref gsNurbsCreator class creates several simple geometries, example:
+~~~~~
+patches = new gsMultiPatch<> bcInfo;
+~~~~~
+
+I the 2D case, each patch has 4 boundary sides; \a west, \a east, \a south and \a north (in addition there is \a front and \a back for 3D geometries. The boundary conditions must be specified for each patch. In this example we have 4 patches forming a unit square, hence we need to specify 8 boundary conditions:
+ ~~~~~
+// Dirichlet Boundary conditions
+bcInfo.addCondition(0, boundary::west,  boundary::dirichlet, &g);
+bcInfo.addCondition(1, boundary::west,  boundary::dirichlet, &g);
+bcInfo.addCondition(1, boundary::north, boundary::dirichlet, &g);
+bcInfo.addCondition(3, boundary::north, boundary::dirichlet, &g);
+
+// Neumann Boundary conditions
+bcInfo.addCondition(3, boundary::east,  boundary::neumann, &hEast);
+bcInfo.addCondition(2, boundary::east,  boundary::neumann, &hEast);
+bcInfo.addCondition(0, boundary::south, boundary::neumann, &hSouth);
+bcInfo.addCondition(2, boundary::south, boundary::neumann, &hSouth);
+~~~~~
+the first arguments in the \c addCondition is the patch number. 
+
+\subsection basis Discretization basis
+
+We now need a discretization basis. We use the basis from the patches:
+~~~~~
+gsMultiBasis<> * refine_bases = new gsMultiBasis<>( *patches );
+~~~~~
+Now we can h or/and p refine this basis (note that h refinement should be done before p refinement).
+~~~~~
+// Number for h-refinement of the computational (trail/test) basis.
+int numRefine  = 2;
+// Number for p-refinement of the computational (trail/test) basis.
+int numElevate = 2;
+
+// h-refine each basis numRefine times
+for (int i = 0; i < numRefine; ++i)
+    refine_bases->uniformRefine();
+
+// Elevate and p-refine the basis to order k + numElevate
+// where k is the highest degree in the bases
+    if ( numElevate > -1 )
+    {
+        // get maximum degree
+        int max_tmp = refine_bases->degree(0);
+        for (int j = 0; j < patches->parDim(); ++j )
+            if ( max_tmp < refine_bases->degree(j) )
+                max_tmp = refine_bases->degree(j);
+
+        // Elevate all degrees uniformly
+        max_tmp += numElevate;
+        refine_bases->setDegree(max_tmp);
+    }
+~~~~~
+
+\subsection solver Setting up the solver (assembler + solver) and options 
+
+We use \ref gsPoissonSolver class to assemble and solve the Poisson equation. First we initialize the class object by giving the geometry (patches), boundary condition, discretization basis and source function: 
+~~~~~
+gsPoissonSolver<> PoissonSolver(*patches, bcInfo, *refine_bases, f);
+~~~~~
+We have some option which we can set; example how we which to handle the Dirichlet boundary condition and interface condition on the neighboring patches. We will weakly impose the Dirichlet boundary condition  with the Nitsche method and use discontinues Galerkin methods for the interface (see \ref gsPoissonSolver and \ref gsPdeSolver for more options):
+~~~~~
+PoissonSolver.setDirichletStrategy(nitsche);
+PoissonSolver.setInterfaceStrategy(dg);
+~~~~~
+Now we which to initialize, assemble, solve the linear system and reconstruct the solution. This can be done separately i four lines:
+~~~~~
+PoissonSolver.initialize();
+PoissonSolver.assemble();
+PoissonSolver.solveSystem();
+PoissonSolver.reconstructSolution();
+~~~~~
+or in one single command:
+~~~~~
+PoissonSolver.solve();
+~~~~~
+
+\subsection postprocess Post processing the solution
+
+We obtain the discrete solution and the analytic solution  as \ref gsField objects:
+~~~~~
+const gsField<> & sol = PoissonSolver.solution();
+const gsField<> exact( PoissonSolver.patches(), g, false );
+~~~~~
+Finally we want evaluate the solutions and write write to a file:
+~~~~~
+gsWriteParaview<>( sol, "poisson2d", 1000);
+gsWriteParaview<>( exact, "poisson2d_exact", 1000);  
+~~~~~
+the solutions can now opened and viewed in paraview.
+*/
+}

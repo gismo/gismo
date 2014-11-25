@@ -1,0 +1,199 @@
+namespace gismo {
+
+/** 
+
+\page GettingStarted Getting Started
+
+\section Installing Obtaining the sources and compiling
+
+-# Checkout the SVN files (and create a local folder on your  computer by)
+> svn checkout https://ricamsvn.ricam.oeaw.ac.at/gismo/trunk gismo
+-# Compile the code for the first time. In your home folder type
+> mkdir gismo/build
+to create a folder for the binaries (these are machine-specific) and get there by
+> cd gismo/build
+Now generate the makefiles by
+> cmake ../
+and compile by
+> make
+This searches in the current folder for \c Makefile . You can read more about compiling in the following sections.
+More about installing instructions can be found on https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/Compiling.
+
+\b Tipp: Also you might be interested in reading about \c ccmake script and the \c cmake-gui application.
+
+\section Working Working cycle on Linux
+
+In this section you are going to learn how to update, compile, modify and commit the source code. We assume that \gismo is already successfully installed on your system and that you are on a computer with Linux and you have at least a brief idea, how to live with a terminal ;). Furthermore, we expect some literacy with C++.
+
+\subsection Updating Updating your version
+
+There are many people working in \gismo and several changes are made almost every day. Thus it is good to update your copy before you start your work.
+ -# Open the terminal.
+ -# Get to
+ > ~/gismo 
+ directory.
+ -# Update your copy through SVN.
+ > svn up
+ Either your copy is already uptodate (terminal says  \c at \c revision \c 1234. ) or some files are copied to your computer. SVN gives you a list of them and marks each with 
+ \c A (added) or \c U (updated).
+ -# Get to your 
+ > ~/gismo/build directory.
+ -# If there have been some new files (marked with \c A while updating), configure your \c make by
+ > cmake ../
+ in your 
+ \c gismo/build directory.
+ -# Compile (see below) to make sure that everything works.
+
+\b Tipp: Further information about SVN server of \gismo can be found at https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/SvnStructure.
+
+\subsection Compiling
+
+Now you are ready to compile.
+ -# In terminal get to 
+ > ~/gismo/build
+ directory. This is because the compiled stuff is machine--dependent.
+ -# Compile.
+ > make -j3
+ Optional parameter \c -j3 indicates three threads in the processor. If you use just
+ > make
+ without any parameter, the default number is one.
+ -# After the compilation (typically takes a few minutes), you can try to run several tests to see that everything works smoothly.
+ > ./bin/gsThbs_test
+ runs a test that will be described closer later on. You can also see some pictures.
+ > ./bin/gsView ./filedata/face.xml
+ starts Paraview; press ``Apply" and appreciate the picture.
+
+\b Tipps: In Paraview \c Alt+A is the same as pressing the "Apply" button. If you asked for a curve and it does not display, change "Surface" to "Outline" in one of the offers in the menubar ("Surface" is default and it is used for displaying surfaces (surprisingly =)). You can quit Paraview by \c Ctrl+Q.
+
+\subsection Modifying Modifying the source code
+
+You can use your favourite editor for improving the source code. We recommend you IDE named Qt Creator; if you are using something different, adapt the following steps accordingly.
+
+You can load the whole project by
+> File \> Open File or Project \> ~/gismo/CMakeLists.txt
+Next time you can find it in
+> File \> Recent Projects
+or you can save some energy by ticking ``Restore last session on startup'' in
+> File \> Session Manager
+
+Example files are in located in the folder
+> ~/gismo/stable/examples
+, the rest is sorted according to topics; we will be mainly interested in the content of 
+> ~/gismo/stable/src/gsThbs
+folder. Qt Creator lets you browse these files comfortably using the sidebar on the left. You can turn it off and on by 
+> Alt + 0
+or through
+> Window \> Show Sidebar
+
+Typically you don't want to begin with the big changes but to learn about the source code first. So to start, go to
+> ~/gismo/stable/examples
+and type
+> cp gsThbs_test.cpp sandbox.cpp
+to create your own copy of 
+> gsThbs_test.cpp
+named \c sandbox.cpp, which you can modify as you wish. Closer description of the \c gsThbs_test.cpp is in the chapter on Hierarchical basis.
+
+You can find several suggestions and hints about coding practices on https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/CodingPractices .
+
+\subsection Documentation
+
+\gismo uses automatically generated Doxygen documentation. This keeps track of all the functions and allows browsing and searching of functions. To be efficient, it needs just a little effort of you that will greatly pay off not only to you but also to the other users. Declaration of any untrivial function in the header file should look roughly like this.
+\verbatim
+/** @brief Brief discription of the following function.
+    \param a An integer denoting the first argument..
+    \param b A double integer denoting the first argument..
+    \return returns An integer ..    
+*/
+int foo( int a, double b );
+\endverbatim
+(note the double star in the begining of the comment line)
+
+This gives a brief description of the function and its parameter; all these information appear in the automatically generated documentation. Instead of 
+\verbatim
+/** Your comment */
+\endverbatim
+you can equivalently put 
+\c /// (three slashes) on the beginning of each line of the comment. Note the difference from the usual comments in C++, which will not be interpreted by Doxygen.
+
+Depending on your settings it may be necessary to compile the documentation separately (of course, only if there have been some changes in it).
+> make doc
+\b Tipp: If you are new to Doxygen and/or you are hunting for some errors, you may ask for a creating a \c log file (you may name it in some fancy way; e.g., \c log.txt); then only the errors and warnings are displayed in the console.
+> make doc \> log.txt
+After the compilation you can access the help from your \c gismo/build directory.
+> firefox ./doc/html/index.html
+Search window on the top right works quite neatly and offers you functions of a similar name.
+
+\subsection Committing Committing your changes
+
+After you have made your changes and you are pretty sure that they are correct, submit your work to the server (this does not apply for your sandbox file).
+ -# In terminal change to \c ~/gismo directory (not \c gismo/build).
+ -# Check the status.
+ > svn st
+ will show you the list of modified files (marked \c M) and files not under version control (marked \c ?). In the beginning you typically want to submit only the modifications, adding the files is more advanced.
+ -# You can check the changes in each of the files.
+ > svn diff nameofyourfile
+ Tipp: double--click on the name of the desired file shown by
+ > svn st
+ and paste it as \c nameofyourfile by pressing the scroll wheel. You avoid hand--transcription that is prone to mistakes.
+ The lines indicated with \c + are added by you, lines with \c - are those you've deleted. Don't get scared -- the changes often look more dramatic than they are: if you have changed some line of code, the old version is marked with \c - and the new one with \c +.
+ -# When you are happy with the changes commit them to the server by
+ > svn commit file0 file1 -m "description of the change"
+ The changes in the source code can be viewed under https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/timeline . Clicking on each change shows you the difference in the files in a similar manner as \c svn \c diff. If you then click on a particular changed file you can also track the history of its changes by the \c Previous \c Revision button top right.
+
+\b Tipp: Don't wait too long with the commit. Otherwise someone else could be making changes in the same file. SVN provides tools to resolve such a situation but it is (as in the real life) usually safer to prevent the conflicts.
+
+ 
+Each night the whole source code is compiled using the CDash server. If some of the tests fails, all the people in modifying it get an email alert. This applies also for warnings during compilation, e.g., variables that were initialised but not used. In order of preventing unpleasant surprises make sure that you are compiling with the warnings on.
+
+\subsection CompilerOptions Compiler Options
+
+C++ compilers offer compilation both in Debug and Release mode.
+
+In the \b debug \b mode the compiler adds a lot of test code into the executables in order to make debugging easier. It resulting in a much slower program but if an error occurs, it can be traced (an error message is displayed). Also the line numbers of the source code are stored.
+
+On the other hand, in the \b release \b mode, compiler uses optimisation to speed up the resulting program; the compilation itself is slower.
+
+The differences are summarised in the following Table.
+
+Action		| Debug mode				| Release mode
+----------------|---------------------------------------|-------------------
+filesize	| big					| small
+compilation time| depends				| slower
+source data	| yes (source lines, names of variables)| pure assembly code
+running time	| slow					| FAST
+
+Thus, the debug mode is used during the program production. After sufficient testing, the release mode is the right one for distribution of your code.
+
+You can directly ask for your desired mode during the compilation by
+> cmake ../ -DCMAKE_BUILD_TYPE=Release
+or
+> cmake ../ -DCMAKE_BUILD_TYPE=Debug
+However, this is a little uncomfortable, when you need to pass many options. A handier way is to use \c ccmake (do not confuse with \c cmake and \c make). This is a script to pass the options to your \c cmake. In your \c gismo/build directory you launch it by
+> ccmake ../
+This opens you a screen with several compiler options. Move up/down by arrows, change whatever you wish by pressing \c enter in that line and writing the desired new option. After changing press \c c to review the current options.
+Even better you can use a graphical interface to set options:
+> cmake-gui ../
+The above tool (cmake-gui) might need to be installed separately (on linux) to your computer from your package repository.
+
+\b Tipp: Have you seen this already? Of course! These options are printed whenever you launch your \c cmake. Check it. And make sure, that you have the \c GISMO_WARNINGS ON.
+
+You leave \c ccmake screen by successively pressing \c e and \c q. These instructions are also printed in the bottom of the screen.
+
+<!---\b Tipp: In debug mode, you can still turn on the optimisation of the resulting code by option \c -O2 in \c make (it's capital "o", not zero). Similarly, option \c -g gets rid of the debug data.--->
+
+Another important difference is between static and dynamic linking. During \b static \b linking, the source code from all your included files is merged into one huge file. On the other hand, with \b dynamic \b linking each of the files is compiled separately into a dynamically linked library (these are those magical *.dll files you know from Windows; they are called object files on Linux, *.o). The executable file then expects them on the runtime together with their header files (to know, what kinds of functions are inside -- this is, why you \c #inlude the heades and not the \c *.cpp files). This is particularly useful e.g. for commercial software production, because it allows you to distribute your program without giving users access to the actual source code (they obtain only the dynamically linked libraries, header files and documentation).
+
+Executable files are stored in
+> gismo/build/bin
+whereas the libraries belong to
+> gismo/build/lib
+
+You can asked explicitely ask for dynamic linking in your \c gismo/build folder by
+> cmake ../ -DBUILD_SHARED_LIB=ON
+and for static linking by
+> cmake ../ -DBUILD_STATIC_LIB=ON
+More comfortable way is to change these options using \c ccmake.
+
+\todo How is it with the link to filedata?
+*/
+}

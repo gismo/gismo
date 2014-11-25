@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<Pde type="SurfacePoissonPde" dim="3">
+<rhs>-2*y^2*z^2 + 42*x^2*y^2*z^2</rhs>
+<solution>x^2*y^2*z^2</solution>
+</Pde>
+</xml>

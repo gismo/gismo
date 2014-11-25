@@ -1,0 +1,43 @@
+<ServerManagerConfiguration>
+
+  <ProxyGroup name="sources">
+   <SourceProxy name="GismoGeometrySource" 
+                class="GismoGeometrySource" 
+                label="Gismo geometry source">
+   </SourceProxy>
+  </ProxyGroup>
+
+ <ProxyGroup name="sources">
+   <SourceProxy name="GismoReader" 
+                class="vtkStructuredGridReader"
+                label="Gismo Reader">
+     <Documentation
+       short_help="Read a Gismo file."
+       long_help="Read a Gismo file into an image data.">
+       The Gismo reader reads Gimso XML files, and the output is a uniform rectilinear (image/volume) dataset. The default file extension is .png.
+     </Documentation>
+     <StringVectorProperty
+        name="FileName"
+        animateable="0"
+        command="SetFileName"
+        number_of_elements="1"
+        panel_visibility="never">
+        <FileListDomain name="files"/>
+        <Documentation>
+          This property specifies the file name for the PNG reader.
+        </Documentation>
+     </StringVectorProperty>
+
+     <Hints>
+      <ReaderFactory extensions="axl" file_description="My Gismo Files" />
+     </Hints>
+   <!-- End MyPNGReader -->
+   </SourceProxy>
+  </ProxyGroup>
+
+
+<ParaViewReaders>
+  <Reader name="GismoReader" />
+</ParaViewReaders>
+
+</ServerManagerConfiguration>

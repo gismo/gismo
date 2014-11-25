@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+  <Basis type="THBSplineBasis" levels="10">
+   <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 0.33 0.67 1 1 1 1</KnotVector>
+   </Basis>
+   <box level="1">0 1</box>
+    </Basis>
+</xml>

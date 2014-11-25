@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<Solid vertices="8" edges="12" faces="6" volumes="1" id="0">
+
+<Vertex>
+  0 0 0 
+  1 0 0
+  1.2 .125 0
+  0 1 0    
+  0 0 1
+  1 0 1
+  .125 .5 1
+  0 1 1
+</Vertex>
+
+<Face>
+  4 0 3 2 1 -1
+  4 0 1 5 4 -1
+  4 2 6 5 1 -1
+  4 3 7 6 2 -1
+  4 0 4 7 3 -1
+  4 5 6 7 4 -1
+</Face>
+
+</Solid>
+
+</xml>

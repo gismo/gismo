@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="TensorBSpline2" id="0">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="3">-3 -2 -1 0 1 2 3 4 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="3">-3 -2 -1 0 1 2 3 4 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3">5 -5 -7.80833 
+5 -1.66667 -7.80833 
+5 1.66667 -7.80833 
+5 5 -7.80833 
+1.66667 -5 -7.80833 
+1.66667 -1.66667 11.9778 
+1.66667 1.66667 11.9778 
+1.66667 5 -7.80833 
+-1.66667 -5 -7.80833 
+-1.66667 -1.66667 11.9778 
+-1.66667 1.66667 11.9778 
+-1.66667 5 -7.80833 
+-5 -5 -7.80833 
+-5 -1.66667 -7.80833 
+-5 1.66667 -7.80833 
+-5 5 -7.80833 
+</coefs>
+ </Geometry>
+</xml>
+

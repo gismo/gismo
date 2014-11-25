@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<Pde type="PoissonPde" dim="1">
+<rhs>v:=0.6;-(v-1.0)*v*x^(v-2.0)</rhs>
+<solution>v:=0.6;x^(v) - x</solution>
+</Pde>
+</xml>
+<!--
+L( x^(a) - x ) = (a-1.0)*a*x^(a-2.0)
+L2 cv =  v
+H1 cv =  v - 0.5
+-->

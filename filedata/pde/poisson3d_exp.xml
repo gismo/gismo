@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<Pde type="PoissonPde" dim="3">
+<rhs>-exp(x+z)*sin(y)-2*exp(x+z)*cos(y)</rhs>
+<solution>exp(x+z)*sin(y)</solution>
+</Pde>
+</xml>

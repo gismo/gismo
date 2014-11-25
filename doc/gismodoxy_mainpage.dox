@@ -1,0 +1,39 @@
+namespace gismo {
+
+/**
+  \mainpage notitle
+ 
+
+  \section sec_intro Introduction
+ 
+  \gismo is a template library for isogeometric analysis.
+ 
+  See the \subpage UsersManual for a detailed presentation.
+ 
+ 
+  \section sec_exam Example
+  Here is an example of how to create a geometry.
+ 
+  \code{.cpp}
+    gsKnotVector<double> kv (-1, 0, 3,3, 1 );
+    gsBSplineBasis<double> bsp(kv);
+
+    cout << kv << endl;
+    cout << bs << endl;
+  \endcode
+ 
+  And here is an example of how to evaluate it at the Greville abscissae, and refine uniformly.
+ 
+  \code{.cpp}
+    gsMatrix<double> greville  = bsp.anchors();
+    gsMatrix<double> evaluate  = bsp.eval( greville );
+  
+    cout << greville << endl;
+    cout << evaluate << endl;
+ 
+    bsp.uniformRefine();
+    cout << bsp << endl;
+  \endcode
+
+*/
+}

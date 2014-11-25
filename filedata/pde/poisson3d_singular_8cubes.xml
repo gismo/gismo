@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<!--
+    A Poisson problem
+    
+    \Delta u = f
+
+    with exact solution
+
+    u = r^v 
+
+    Note that the regularity of the solution is v + 1.5 and expected
+    convergence is v+0.5 in H^1.
+
+    Mesh grading may be applied around (0,0,0) with grading parameter
+
+    \mu = (v+0.5)/p
+
+    when using degree p splines to recover full convergence rate.
+
+-->
+
+<Pde type="PoissonPde" dim="3">
+<rhs>v:=0.85; w:=pow(x-0.0,2.)+pow(y-0.0,2.)+pow(z-0.0,2.); 
+         -( v/2.*(v/2.-1.)*pow( w,v/2.-2.)*4.*(w-0.000)   +  
+	   3.*v*(pow(w,v/2.-1.)))</rhs>
+<solution>v:=0.85; w:=pow(x-0.0,2.)+pow(y-0.0,2.)+pow(z-0.0,2.); 
+          pow( w,v/2.)</solution>
+</Pde>
+</xml>

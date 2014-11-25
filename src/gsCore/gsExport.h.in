@@ -1,0 +1,12 @@
+#pragma once
+
+#if defined(WIN32) && defined(GISMO_BUILD_SHARED_LIB)
+#  ifdef @PROJECT_NAME@_EXPORTS		// building shared library?
+#    define GISMO_EXPORT __declspec(dllexport)
+#  else						// using shared library?
+#    define GISMO_EXPORT __declspec(dllimport)
+#  endif
+#else
+#  define GISMO_EXPORT
+#endif
+

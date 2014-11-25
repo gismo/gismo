@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="THBSpline2" id = "0">
+  <Basis type="THBSplineBasis2" levels="3">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 0.1667 0.3333 0.5 0.6667 0.8333 1 1 1</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 0.1667 0.3333 0.5 0.6667 0.8333 1 1 1</KnotVector>
+    </Basis>
+   </Basis>
+   <box level="1">4 2 8 4</box>
+   <box level="1">2 4 12 6</box>
+   <box level="1">2 6 8 8</box>
+   <box level="1">4 8 8 10</box>
+   <box level="2">8 12 12 16</box>
+   <box level="2">12 8 16 12</box>
+  </Basis>
+  <coefs geoDim="3">
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0  
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  0 0 0
+  </coefs>
+ </Geometry>
+</xml>

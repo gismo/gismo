@@ -1,0 +1,73 @@
+<!--A circle made of 4 patches -->
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="Nurbs" id="0">
+  <Basis type="NurbsBasis">
+   <Basis type="BSplineBasis">
+    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+   </Basis>
+   <weights>1 
+0.7071067811865476 
+1 
+</weights>
+  </Basis>
+  <coefs geoDim="2">1 0 
+1 1 
+0 1 
+</coefs>
+ </Geometry>
+ <Geometry type="Nurbs" id="1">
+  <Basis type="NurbsBasis">
+   <Basis type="BSplineBasis">
+    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+   </Basis>
+   <weights>1 
+0.7071067811865476 
+1 
+</weights>
+  </Basis>
+  <coefs geoDim="2">0 1 
+-1 1 
+-1 0 
+</coefs>
+ </Geometry>
+ <Geometry type="Nurbs" id="2">
+  <Basis type="NurbsBasis">
+   <Basis type="BSplineBasis">
+    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+   </Basis>
+   <weights>1 
+0.7071067811865476 
+1 
+</weights>
+  </Basis>
+  <coefs geoDim="2">-1 0 
+-1 -1 
+0 -1 
+</coefs>
+ </Geometry>
+ <Geometry type="Nurbs" id="3">
+  <Basis type="NurbsBasis">
+   <Basis type="BSplineBasis">
+    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+   </Basis>
+   <weights>1 
+0.7071067811865476 
+1 
+</weights>
+  </Basis>
+  <coefs geoDim="2">0 -1 
+1 -1 
+1 0 
+</coefs>
+ </Geometry>
+ <MultiPatch parDim="1" id="0">
+  <patches type="id_range">0 3</patches>
+  <interfaces>3 2 0 1 1
+2 2 3 1 1
+1 2 2 1 1
+0 2 1 1 1
+</interfaces>
+ </MultiPatch>
+</xml>
+

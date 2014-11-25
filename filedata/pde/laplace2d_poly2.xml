@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+<Pde type="PoissonPde" dim="2">
+<rhs>0</rhs>
+<solution>x+y</solution>
+</Pde>
+</xml>

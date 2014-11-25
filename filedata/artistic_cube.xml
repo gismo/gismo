@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="TensorBSpline2">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3"> 0 0 0 10 0 0 0 6 0 10 8 -1</coefs>
+ </Geometry>
+ <Geometry type="TensorBSpline2">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3"> 10 0 0 10 8 -1 10 0 12 10 7 13</coefs>
+ </Geometry>
+ <Geometry type="TensorBSpline2">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3"> 10 8 -1 0 6 0 10 7 13 0 6 12</coefs>
+ </Geometry>
+ <Geometry type="TensorBSpline2">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3"> 0 0 0 0 6 0 1 2 11 0 6 12</coefs>
+ </Geometry>
+ <Geometry type="TensorBSpline2">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3"> 0 0 0 10 0 0 1 2 11 10 0 12</coefs>
+ </Geometry>
+ <Geometry type="TensorBSpline2">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1</KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3"> 1 2 11 10 0 12 0 6 12 10 7 13</coefs>
+ </Geometry>
+</xml>
+

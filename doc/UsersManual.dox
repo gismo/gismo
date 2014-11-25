@@ -1,0 +1,60 @@
+namespace gismo {
+
+/**
+ \page UsersManual User's manual
+  - \subpage GettingStarted
+  - \subpage BSplines
+  - \subpage Nurbs
+  - \subpage HBSplines
+  - \subpage PoissonSolver
+*/
+
+
+/**
+  \defgroup basis Basis types
+
+  Among the most important classes in G+Smo are those representing bases, for instance,
+  a B-spline basis, a tensor product NURBS basis, and so on.
+
+  A basis can be viewed as a collection of scalar basis functions defined over
+  a common parameter domain of dimension *d*. For the bases that G+Smo deals
+  with, parameter domains are usually of tensor product type and therefore
+  just *d*-dimensional boxes.
+
+  The number of basis functions in a basis is called its *size*.
+
+  Bases provide many member functions to evaluate their basis functions as
+  well as their derivatives at sets of points in the parameter domain.
+
+  All bases in G+Smo derive from the abstract base class gsBasis.
+*/
+
+
+/**
+  \defgroup geometry Geometry types
+
+  The combination of a basis with a coefficient matrix of the proper size
+  describes a function. In G+Smo, such objects are called geometries.
+
+  All geometry classes in G+Smo derive from the abstract base class gsGeometry.
+  In general, there is a statically known one-to-one mapping between basis types
+  and their associated geometry types. For instance, when you ask a gsBSplineBasis
+  to create a geometry using some given coefficient matrix, you will get back
+  an instance of gsBSpline. In turn, the basis that the gsBSpline object stores
+  internally is of type gsBSplineBasis.
+
+  Note that geometries are, essentially, functions mapping from the parameter domain
+  to the physical space, and therefore they derive from gsFunction.
+*/
+
+
+
+/**
+  \defgroup combinatorics Combinatorics Utilities
+
+  Some usefull combinatorial functionalities.
+
+*/
+
+
+}
