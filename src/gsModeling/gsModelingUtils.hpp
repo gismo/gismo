@@ -1,11 +1,112 @@
 #pragma once
 #include <iostream>
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsAssembler/gsGaussAssembler.h>
 #include <gsNurbs/gsTensorBSpline.h>
+
+#include <gsUtils/gsQuadrature.h> // to be replaced by the next line
+//#include <gsAssembler/gsGaussRule.h>
+
 
 namespace gismo
 {
+
+
+template<class T>
+gsMatrix<T> * innerProduct( const gsBasis<T>& B1, const gsBasis<T>& B2)
+{
+  unsigned b1= B1.size();
+  unsigned b2= B2.size();
+  
+  gsMatrix<T> * K = new gsMatrix<T>(b1,b2) ;
+  K->setZero();
+
+  std::vector<T> breaks = B1.domain()->breaks() ;
+  gsMatrix<T> ngrid;          // tensor Gauss nodes
+  gsVector<T> wgrid;          // tensor Gauss weights
+  // Quadrature points
+  int nGauss = int( ceil( double(B1.degree() + B2.degree() + 1)/2 ) );
+  if (nGauss<1) nGauss=1;
+  iteratedGaussRule(ngrid, wgrid, nGauss, breaks ) ;
+    
+  gsMatrix<T>   ev1  = B1.eval(ngrid); // Evaluate over the grid
+  gsMatrix<unsigned> act1 = B1.active(ngrid);
+  gsMatrix<T>   ev2  = B2.eval(ngrid); // Evaluate over the grid
+  gsMatrix<unsigned> act2 = B2.active(ngrid);
+  
+  for (index_t k=0; k!= ngrid.cols(); ++k)
+  {
+    for (index_t i=0; i!=act1.rows(); ++i)
+      for (index_t j=0; j!=act2.rows(); ++j)
+        (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;
+  }
+
+  return K;
+}
+
+template<class T>
+gsMatrix<T> * innerProduct1( const gsBasis<T>& B1, const gsBasis<T>& B2)
+{
+  unsigned b1= B1.size();
+  unsigned b2= B2.size();
+  
+  gsMatrix<T> * K = new gsMatrix<T>(b1,b2) ;
+  K->setZero();
+
+  std::vector<T> breaks = B1.domain()->breaks() ;
+  gsMatrix<T> ngrid;          // tensor Gauss nodes
+  gsVector<T> wgrid;          // tensor Gauss weights
+  // Quadrature points
+  int nGauss = int( ceil( double(B1.degree()-1 + B2.degree()-1 + 1)/2 ) );
+  if (nGauss<1) nGauss=1;
+  iteratedGaussRule(ngrid, wgrid, nGauss, breaks ) ;
+    
+  gsMatrix<T>   ev1  = B1.deriv(ngrid); // Evaluate over the grid
+  gsMatrix<unsigned> act1 = B1.active(ngrid);
+  gsMatrix<T>   ev2  = B2.deriv(ngrid); // Evaluate over the grid
+  gsMatrix<unsigned> act2 = B2.active(ngrid);
+  
+  for (index_t k=0; k!= ngrid.cols(); ++k)
+  {
+    for (index_t i=0; i!=act1.rows(); ++i)
+      for (index_t j=0; j!=act2.rows(); ++j)
+        (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;
+  }
+
+  return K;
+}
+
+template<class T>
+gsMatrix<T> * innerProduct2( const gsBasis<T>& B1, const gsBasis<T>& B2)
+{
+  unsigned b1= B1.size();
+  unsigned b2= B2.size();
+  
+  gsMatrix<T> * K = new gsMatrix<T>(b1,b2) ;
+  K->setZero();
+
+  std::vector<T> breaks = B1.domain()->breaks() ;
+  gsMatrix<T> ngrid;          // tensor Gauss nodes
+  gsVector<T> wgrid;          // tensor Gauss weights
+  // Quadrature points
+  int nGauss = int( ceil( double(B1.degree()-2 + B2.degree()-2 + 1)/2 ) );
+  if (nGauss<1) nGauss=1;
+  iteratedGaussRule(ngrid, wgrid, nGauss, breaks ) ;
+    
+  gsMatrix<T>   ev1  = B1.deriv2(ngrid); // Evaluate over the grid
+  gsMatrix<unsigned> act1 = B1.active(ngrid);
+  gsMatrix<T>   ev2  = B2.deriv2(ngrid); // Evaluate over the grid
+  gsMatrix<unsigned>  act2 = B2.active(ngrid);
+  
+  for (index_t k=0; k!= ngrid.cols(); ++k)
+  {
+    for (index_t i=0; i!=act1.rows(); ++i)
+      for (index_t j=0; j!=act2.rows(); ++j)
+        (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;
+  }
+
+  return K;
+}
+
 
 /// intersection of two vectors
 template <class T>
@@ -324,7 +425,7 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
 
   // Quadratic forms which (approximately) constitute the beam strain energy
   gsBSplineBasis< T,gsKnotVector<T> > bs(kv);
-  gsMatrix<T> *Q = gsGaussAssembler<T>::innerProduct2(bs, bs);
+  gsMatrix<T> *Q = innerProduct2(bs, bs);
 
   // Exact constraints: point interpolation
   int dimPI = 1; // dimension of space of preImage, TODO: put dimPI, dimI to template<dimPI,...
@@ -555,16 +656,15 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     Anor.block(nnor,2*n1*n2,nnor,n1*n2) = rowProduct<T>(Nz,dRdv);  // sigma_v . normal=0, z part
 
     // Quadratic forms which constitute the plate bending energy
-    typedef gsGaussAssembler<T> G;
-    gsMatrix<T> * M = G::innerProduct(bs1, bs1);
-    gsMatrix<T> * M1 = G::innerProduct1(bs1, bs1);
-    gsMatrix<T> * M2 = G::innerProduct2(bs1, bs1);
+    gsMatrix<T> * M = innerProduct(bs1, bs1);
+    gsMatrix<T> * M1 = innerProduct1(bs1, bs1);
+    gsMatrix<T> * M2 = innerProduct2(bs1, bs1);
     gsMatrix<T> *N, *N1, *N2;
     if (kv1==kv2) { N = M; N1 = M1; N2 = M2; } else
     {
-      N  = G::innerProduct(bs2, bs2);
-      N1 = G::innerProduct1(bs2, bs2);
-      N2 = G::innerProduct2(bs2, bs2);
+      N  = innerProduct(bs2, bs2);
+      N1 = innerProduct1(bs2, bs2);
+      N2 = innerProduct2(bs2, bs2);
     };
     gsMatrix<T> Q1D = kroneckerProduct<T>(*N,*M2) + 2*kroneckerProduct<T>(*N1,*M1)+kroneckerProduct<T>(*N2,*M);
     gsMatrix<T> Q(3*n1*n2,3*n1*n2);

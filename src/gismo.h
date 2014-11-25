@@ -75,22 +75,18 @@ namespace gismo
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
 #include <gsPde/gsBVProblem.h>
-#include <gsAssembler/gsGalerkinMethod.h>
-#include <gsAssembler/gsPoissonAssembler2.h>
-#include <gsAssembler/gsGenericAssembler.h>
 // Norms
 #include <gsAssembler/gsNormL2.h>
 #include <gsAssembler/gsNormH1.h>
-
-#include <gsSolver/gsBemLaplace.h>
 
 // Quadrature
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsGaussRule.h>
 
 // Assembler
-#include <gsAssembler/gsGaussAssembler.h>
-#include <gsAssembler/gsInterpolationAssembler.h>
+#include <gsAssembler/gsGenericAssembler.h>
+#include <gsAssembler/gsAssemblerBase.h>
+#include <gsAssembler/gsPoissonAssembler2.h>
 
 // Solver
 #include <gsCore/gsField.h>
