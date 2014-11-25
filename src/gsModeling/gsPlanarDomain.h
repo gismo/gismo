@@ -180,9 +180,6 @@ public:
             (*it)->translate(v);
     }
 
-
-    void segment( int n_points, T tolerance, bool circle, gsMesh<T> &segmetnation);
-
     /// @name getLamdas 
     /// gives as output \param lambadas coordinates of points where inner components of a 
     /// planar domain should be mapped into a given template. 
@@ -190,8 +187,6 @@ public:
     /// \param lambadas stores the x-coordinates of points. In order to get y-coordinates,
     /// call \getLamdas with \param f == to second component of your map. 
     void getLamdas(gsBemSolution<T> &f, gsVector<T> &lambdas);
-
-    std::pair<gsFunction<T>* , gsFunction<T>* > mapto( gsTemplate<T> & my_template, int numRefine = 2  );
 
     gsMatrix<T> averageValue( std::vector<gsFunction<T>*> const &f, std::vector<T> const & breaks);
 
