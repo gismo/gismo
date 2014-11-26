@@ -6,62 +6,6 @@
 #include <gismo.h>
 
 
-/*
-
-------------------------------------------
-
-    // We solve the equation
-    // -u''= f on [0,2.5]
-    // with boundary condition
-    // u(0)=g(0), u(2.5)=g(2.5)=8.09..
-    // where f = -g''
-    // and g(x)=(7*x+2*x^2-3*x^3)*cos(x)*sin(x)
-
-
-    // Exact solution
-    gsFunctionExpr<> g("(7*x+2*x^2-3*x^3)*cos(x)*sin(x)") ;
-    //gsFunctionExpr<> g("x") ;
-    cout<<"Exact function "<< g <<".\n" << endl;
-
-    // Source function
-    gsFunctionExpr<> f("(6*x^3-4*x^2-23*x+2)*cos(2*x)-(18*x^2-8*x-14)*sin(2*x)") ;
-    //gsFunctionExpr<> f("0") ;
-    cout<<"Source function "<< f <<".\n" << endl;
-    // Geometry
-    // We have a parametrization F:[0,1]->[0, 2.5]
-    // that describe the geometry using BSpline of degree
-    // p=6
-    // on the open grid of step 0.05
-    int p = 6;
-    gsMatrix<> C(11,1) ;
-    C<< 0, .5, 1.1, 1.01, 1.5, 1.6, 1.7, 1.9, 2.2, 2.3,  2.5 ;
-    gsKnotVector<> KV (0,1,4,p+1) ;
-    gsBSpline<> * bsp = new gsBSpline<>(KV, give(C));
-
-------------------------------------------
-
-    // Source function
-    gsFunctionExpr<> f("2*pi^2*sin(pi*x)*sin(pi*y)") ; 
-    // Exact solution
-    gsFunctionExpr<> g    ("sin(pi*x) * sin(pi*y)"); 
-
-    cout<<"Source function "<< f <<".\n" << endl;
-    cout<<"Exact solution "<< g <<".\n" << endl;
-
-    // Define Geometry
-    gsGeometry<> * geo = gsNurbsCreator<>::BSplineSquare(2);
-    //gsGeometry<> * geo = gsNurbsCreator<>::BSplineFatQuarterAnnulus();
-    //gsGeometry<> * geo = gsNurbsCreator<>::BSplineQuarterAnnulus();
-    //gsGeometry<> * geo = gsNurbsCreator<>::NurbsQuarterAnnulus();
-
-
-------------------------------------------
-
-
-
-*/
-
-
 using namespace gismo;
 using std::cout;
 using  std::endl;
@@ -169,6 +113,7 @@ int main(int argc, char *argv[])
 
   delete x;
   delete geo;
+  delete ppde;
 
   return ( plot ? system("paraview poisson_sol.pvd&") : 0 ); 
 }
