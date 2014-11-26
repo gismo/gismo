@@ -402,6 +402,7 @@ public:
     /// Multiply all coordinates by two
     void multiplyByTwo()
     {
+        m_upperIndex *= 2;
         nodeSearch< liftCoordsOneLevel_visitor >(); 
     }
 
