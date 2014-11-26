@@ -324,13 +324,13 @@ public:
     { return boxSearch< query2_visitor >(lower,upper,level,_node); }
 
     /** \brief Returns true if the box defined by \em lower and \em upper
-     * is contained in a domain with a higher level than \em level.
+     * is completely contained in a domain with a level different to \em level.
      *
      * \param lower the lower left corner of the box
      * \param upper the upper right corner of the box
      * \param level the level \f$ \ell_0 \f$ to be checked against
-     * \returns True, if there exists a level \f$\ell > \ell_0 \f$, such that
-     * \f$\omega \subseteq \Omega^\ell \f$,
+     * \returns True, if there exists a level \f$\ell \neq \ell_0 \f$, such that
+     * \f$\omega \subseteq \Omega^\ell \land \omega \cap \Omega^{\ell+1} = \emptyset\f$,
      * where \f$\omega\f$ is the box defined by \em lower and \em upper.
      */
     bool query2 (point const & lower, point const & upper,
