@@ -19,7 +19,7 @@
 #include <gismo.h>
 
 #include <gsIO/gsIOUtils.h>
-
+#include <gsAssembler/gsAdaptiveRefUtils.h>
 
 using namespace std;
 using namespace gismo;
@@ -35,19 +35,19 @@ using namespace gismo;
 int main()
 {
   // Number of initial uniform mesh refinements
-  int initUnifRef = 1;
+  int initUnifRef = 2;
   // Number of adaptive refinement loops
-  const int RefineLoopMax = 6;
+  const int RefineLoopMax = 4;
 
   // Flag for refinemet criterion
   // (see doxygen documentation for explanation)
-  const int Ref_Crit = 2;
+  const int refCriterion = 2;
   // Parameter for computing adaptive refinement threshold
   // (see doxygen documentation for explanation)
-  const real_t Ref_Alpha = 0.85;
+  const real_t refParameter = 0.85;
 
   // Flag whether final mesh should be plotted in ParaView
-  const bool plot = false;
+  const bool plot = true;
 
   int result = 0;
 
@@ -66,13 +66,12 @@ int main()
   cout<<"Exact solution "<< g <<".\n" << endl;
 
 
-
   // *** Create geometry
   //gsMultiPatch<> * patches;
 
   // L-shaped domain with C1-continuous discretization
-  //patches = new gsMultiPatch<>(gsNurbsCreator<>::BSplineLShape_p2C1());
   gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p2C1()) );
+//  gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineRectangle(0.0,0.0,1.0,1.0) ));
   // L-shaped domain with C0-continuous discretization (C0 at diagonal)
   // patches = new gsMultiPatch<>(gsNurbsCreator<>::BSplineLShape_p2C0());
 
@@ -92,7 +91,8 @@ int main()
   gsTHBSplineBasis<2,real_t> THB( geo->basis() );
 
   // Finally, create a vector (of length one) of this gsTHBSplineBasis
-  gsMultiBasis<> bases(THB);
+  gsMultiBasis<real_t> bases(THB);
+  
   for (int i = 0; i < initUnifRef; ++i)
       bases.uniformRefine();
   cout << endl << " --- Initial basis of discretization space is: " << endl << bases << endl << endl;
@@ -122,12 +122,10 @@ int main()
       const std::vector<real_t> & elError = norm.elementNorms();
       std::cout<<"Error per element: "<< gsAsConstMatrix<>(elError) <<"\n";
 
-      // Compute error indicator (at the moment (06.May 2014) only computation via bubble functions)
-      //gsVector< gsMatrix<> > EIv = PoissonSolver.errorIndicator();
+      std::vector<bool> elMarked( elError.size() );
+      gsMarkCells( elError, refCriterion, refParameter, elMarked);
 
-      // Refine cells based on the error estimation
-      //PoissonSolver.adaptiveRefine( EIv, Ref_Crit, Ref_Alpha );
-
+      gsRefineMarkedCells( bases, elMarked);
 
       if ( (RefineLoop == RefineLoopMax) && plot)
       {
