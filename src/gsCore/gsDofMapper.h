@@ -105,6 +105,13 @@ public:
         initSingle(basis);
     }
 
+    /// Construct a dof mapper from the sizes of the patch space
+    gsDofMapper(const gsVector<index_t> & patchDofSizes)
+    : m_shift(0)
+    {
+        initPatchDofs(patchDofSizes);
+    }
+
     /// Initialize by a gsMultiBasis
     template <typename T>
     void init( const gsMultiBasis<T> & bases);
