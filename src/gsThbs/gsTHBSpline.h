@@ -61,10 +61,10 @@ public:
 
     /// Copy constructor
     gsTHBSpline( const gsTHBSpline & other )
-        {
-            this->m_basis = other.basis().clone();
-            this->m_coefs = other.coefs();
-        }
+    {
+        this->m_basis = other.basis().clone();
+        this->m_coefs = other.coefs();
+    }
 
     /// Clone the gsHBspline
     virtual gsTHBSpline * clone() const
@@ -91,7 +91,7 @@ public:
     void refineElements( std::vector<unsigned> const & boxes )
     {
         gsMatrix<> & coefs = this->m_coefs;
-        this->m_basis->refineElements_withCoefs( coefs, boxes );
+        this->basis().refineElements_withCoefs( coefs, boxes );
     }
 
 

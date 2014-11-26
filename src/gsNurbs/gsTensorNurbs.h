@@ -141,8 +141,8 @@ public:
       " --> R^"<< this->geoDim()<< ", #control pnts= "<< this->coefsSize() <<": "
        << this->coef(0) <<" ... "<< this->coef(this->coefsSize()-1); 
     os << "\nweights: "
-       << this->m_basis->weights().at(0,0) <<" ... "
-       << this->m_basis->weights().at(this->coefsSize()-1,0)
+       << this->basis().weights().at(0,0) <<" ... "
+       << this->basis().weights().at(this->coefsSize()-1,0)
        <<"\n" ;
     return os; }  
 

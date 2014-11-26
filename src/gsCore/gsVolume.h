@@ -46,8 +46,8 @@ public:
     
     /// Constructor which copies the given coefficient matrix \a
     /// coefs.
-    gsVolume( const gsMatrix<T> & coefs ) :
-        gsGeometry<T>( coefs )
+    gsVolume(const gsBasis<T> & basis, const gsMatrix<T> & coefs ) :
+    gsGeometry<T>(basis, coefs )
     { 
         GISMO_ASSERT( this->m_coefs.size() >= 1,
         "Coefficient matrix cannot be empty.\n");
@@ -57,8 +57,8 @@ public:
 
     /// Constructor which takes ownership of the given coefficient
     /// matrix \a coefs.
-    gsVolume( gsMovable< gsMatrix<T> > coefs ) :
-        gsGeometry<T>( coefs )
+    gsVolume(const gsBasis<T> & basis, gsMovable< gsMatrix<T> > coefs ) :
+    gsGeometry<T>(basis, coefs )
     { 
         GISMO_ASSERT( this->m_coefs.size() >= 1,
         "Coefficient matrix cannot be empty.\n");

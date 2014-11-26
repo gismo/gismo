@@ -45,16 +45,16 @@ public:
     gsBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
         Base( basis, coefs )
     {
-        if( this->m_basis->isPeriodic() )
-            this->m_basis->expandCoefs(m_coefs);
+        if( this->basis().isPeriodic() )
+            this->basis().expandCoefs(m_coefs);
     }
         
     /// Construct B-Spline by basis and coefficient matrix.
     gsBSpline( const Basis & basis, gsMovable< gsMatrix<T> >  coefs ) :
         Base( basis, coefs )
     {
-        if( this->m_basis->isPeriodic() )
-            this->m_basis->expandCoefs(m_coefs);
+        if( this->basis().isPeriodic() )
+            this->basis().expandCoefs(m_coefs);
     }
         
     /// Construct B-Spline by a knot vector and coefficient matrix.
@@ -65,17 +65,17 @@ public:
             
         if( periodic )
         {
-            const index_t sz = this->m_basis->size();
+            const index_t sz = this->basis().size();
 
-            this->m_basis->setPeriodic();
+            this->basis().setPeriodic();
 
             if ( m_coefs.rows() == sz )
             {
-                this->m_basis->trimCoefs(m_coefs);
+                this->basis().trimCoefs(m_coefs);
             }
-            else if  ( m_coefs.rows() == this->m_basis->size() )
+            else if  ( m_coefs.rows() == this->basis().size() )
             {
-                this->m_basis->expandCoefs(m_coefs);
+                this->basis().expandCoefs(m_coefs);
             }
             else
             {
@@ -97,17 +97,17 @@ public:
 
         if( periodic )
         {
-            const index_t sz = this->m_basis->size();
+            const index_t sz = this->basis().size();
 
-            this->m_basis->setPeriodic();
+            this->basis().setPeriodic();
 
             if ( m_coefs.rows() == sz )
             {
-                this->m_basis->trimCoefs(m_coefs);
+                this->basis().trimCoefs(m_coefs);
             }
-            else if  ( m_coefs.rows() == this->m_basis->size() )
+            else if  ( m_coefs.rows() == this->basis().size() )
             {
-                this->m_basis->expandCoefs(m_coefs);
+                this->basis().expandCoefs(m_coefs);
             }
             else
             {
@@ -206,7 +206,7 @@ public:
     /// Merge other B-spline into this one.
     void merge( gsGeometry<T> * other )
     {
-        GISMO_ASSERT( this->m_basis->isPeriodic() == false, "Cannot merge a closed curve with anything." );
+        GISMO_ASSERT( this->basis().isPeriodic() == false, "Cannot merge a closed curve with anything." );
         //check for BSpline
         gsBSpline *  bother = static_cast<gsBSpline *>( other );
 

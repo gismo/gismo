@@ -1,3 +1,15 @@
+/** @file gsBulk.h
+
+    @brief Provides declaration of a 4D bulk.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
 
 #pragma once
 
@@ -9,7 +21,7 @@ namespace gismo
 
 /** 
     \brief
-    Abstract base class representing a surface.
+    Abstract base class representing a 4D bulk.
 
     \ingroup geometry
 */
@@ -34,8 +46,8 @@ public:
     
     /// Constructor which copies the given coefficient matrix \a
     /// coefs.
-    gsBulk( const gsMatrix<T> & coefs ) :
-        gsGeometry<T>( coefs )
+    gsBulk(const gsBasis<T> & basis, const gsMatrix<T> & coefs ) :
+    gsGeometry<T>(basis, coefs)
     { 
         GISMO_ASSERT( this->m_coefs.size() >= 1,
         "Coefficient matrix cannot be empty.\n");
@@ -45,8 +57,8 @@ public:
 
     /// Constructor which takes ownership of the given coefficient
     /// matrix \a coefs.
-    gsBulk( gsMovable< gsMatrix<T> > coefs ) :
-        gsGeometry<T>( coefs )
+    gsBulk(const gsBasis<T> & basis, gsMovable< gsMatrix<T> > coefs ) :
+    gsGeometry<T>(basis, coefs)
     { 
         GISMO_ASSERT( this->m_coefs.size() >= 1,
         "Coefficient matrix cannot be empty.\n");

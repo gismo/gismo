@@ -81,4 +81,59 @@ std::vector<gsGeometry<T> *> gsGeometry<T>:: boundary() const
 }
 
 
+template<class T>
+void gsGeometry<T>::degreeElevate(int const i) 
+{
+    gsBasis<T> * b = m_basis->clone();
+    b->degreeElevate(i);
+    
+    gsMatrix<T> iVals, iPts = b->anchors();
+    this->eval_into(iPts, iVals);
+    gsGeometry<T> * g = b->interpolate(iVals, iPts);
+
+    std::swap(m_basis, g->m_basis);
+    g->coefs().swap(this->coefs());
+
+    delete g;
+    delete b;
+}
+
+
+template<class T>
+typename gsMatrix<T>::uPtr
+gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
+{  
+    static const unsigned d = this->m_basis->dim();
+
+    gsMatrix<T> B, *DD = new gsMatrix<T>(d,d);
+    gsMatrix<T> tmp(d,d);
+    gsMatrix<unsigned> ind;
+
+    // coefficient matrix row k = coef. of basis function k
+    const gsMatrix<T>& C = this->m_coefs; 
+    // col j = nonzero second derivatives at column point u(..,j)
+    m_basis->deriv2_into(u, B) ; 
+    // col j = indices of active functions at column point u(..,j)
+    m_basis->active_into(u, ind);  
+  
+    DD->setZero();
+    unsigned j=0;// just one column
+    //for ( unsigned j=0; j< u.cols(); j++ ) // for all points (columns of u)
+    for ( index_t i=0; i< ind.rows() ; i++ ) // for all non-zero basis functions)
+    {
+        unsigned m=i*d;
+        unsigned r= ind.rows()*d + i*d*(d-1)/2;
+        //construct the Hessian of basis function ind(i,0)
+        for (unsigned k=0; k<d; ++k ) // for all rows
+        {
+            tmp(k,k) = B(m+k,j);
+            for (unsigned l=k+1; l<d; ++l ) // for all cols
+                tmp(k,l) = tmp(l,k) = B(r++,0);
+        }
+        *DD += C(ind(i,j), coord) * tmp;
+    }
+  
+    return typename gsMatrix<T>::uPtr(DD); 
+}
+
 }; // namespace gismo

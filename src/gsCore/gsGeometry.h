@@ -24,7 +24,6 @@
 namespace gismo
 {
 
-
 template <unsigned d, typename T>
 struct gsGeoTraits
 {
@@ -128,21 +127,47 @@ public:
 
     /// @name Constructors
     /// @{
-
-    /// Default empty constructor
-    gsGeometry() { }
-
-    /// Constructor which copies the given coefficient matrix \a coefs.
-    gsGeometry( const gsMatrix<T> & coefs ) :
-    m_coefs( coefs )
+    
+    /// Default constructor.
+    /// Note: Derived constructor should assign \a m_basis to a valid pointer
+    gsGeometry() :m_basis( NULL )
     { }
 
-    /// Constructor which takes ownership of the given coefficient matrix \a coefs.
-    gsGeometry( gsMovable< gsMatrix<T> > coefs ) :
-    m_coefs( coefs )
+    gsGeometry( const gsBasis<T> & basis, gsMovable< gsMatrix<Scalar_t> > coefs) :
+    m_coefs(coefs), m_basis( basis.clone() )
     { }
+
+    gsGeometry( const gsBasis<T> & basis, const gsMatrix<Scalar_t> & coefs ) :
+    m_coefs(coefs), m_basis( basis.clone() )
+    { }
+
+    /// Copy Constructor
+    gsGeometry(const gsGeometry & o)
+    {
+        m_coefs = o.m_coefs;
+        m_basis = o.basis().clone();
+    }
 
     /// @}
+
+    /// Assignment operator
+    gsGeometry& operator=( const gsGeometry & o)
+    {
+        if ( this != &o )
+        {
+            m_coefs = o.m_coefs;
+            delete m_basis;
+            m_basis = o.basis().clone() ;
+        }
+        return *this;
+    }
+    
+    /// Destructor
+    virtual ~gsGeometry() 
+    {
+        delete m_basis;
+    }
+
 
 public:
 
@@ -203,13 +228,14 @@ public:
     /// @name Accessors
     /// @{
 
-    /// \brief Returns the basis of the geometry.
-    ///
-    /// In the derived class, substitute the return type by the actual basis type.
-    virtual gsBasis<T> & basis() const = 0;
+    /// \brief Returns a const reference to the basis of the geometry.
+    virtual const gsBasis<T> & basis() const = 0;
+
+    /// \brief Returns a reference to the basis of the geometry.
+    virtual       gsBasis<T> & basis()       = 0;
 
     /// Dimension \em n of the absent physical space
-    virtual int geoDim() const = 0;
+    virtual int geoDim() const { return this->m_coefs.cols(); }
 
     /// Dimension \em n of the coefficients (control points)
     int coefDim() const { return m_coefs.cols(); }
@@ -256,8 +282,9 @@ public:
     */
 
     /// Returns the coefficient matrix of  the geometry
-    /// Coefficient matrix of size coefsSize() x geoDim(), or coefsSize() x (geoDim() + 1) if projective
-    gsMatrix<T> & coefs()       { return this->m_coefs; }
+    /// Coefficient matrix of size coefsSize() x geoDim()
+    // todo: coefsSize() x (geoDim() + 1) if projective
+          gsMatrix<T> & coefs()       { return this->m_coefs; }
     /// Returns the coefficient matrix of  the geometry
     const gsMatrix<T> & coefs() const { return this->m_coefs; }
 
@@ -386,7 +413,11 @@ public:
     }
 
     /// Elevate the degree by the given amount.
-    virtual void degreeElevate(int const i = 1) = 0;
+    virtual void degreeElevate(int const i = 1);
+
+    /// Compute the Hessian matrix of the coordinate \a coord
+    /// evaluated at points \a u
+    virtual typename gsMatrix<T>::uPtr hessian(const gsMatrix<T>& u, unsigned coord) const;
     
     /// Return the control net of the geometry
     void controlNet( gsMesh<T> & mesh) const
@@ -437,8 +468,12 @@ public:
 
 protected:
 
-    // Coefficient matrix of size coefsSize() x geoDim(), or coefsSize() x (geoDim() + 1) if projective
+    /// Coefficient matrix of size coefsSize() x geoDim()
+    //todo: coefsSize() x (geoDim() + 1) if projective
     gsMatrix<T> m_coefs;
+
+    /// Pointer to the basis of this geometry
+    gsBasis<T> * m_basis;
 
 }; // class gsGeometry
 
@@ -459,206 +494,57 @@ std::ostream &operator<<(std::ostream &os, const gsGeometry<T>& b)
  *
  * This is an internal implementation class which all concrete geometries
  * derive from. It allows the compile-time specification of the associated
- * basis type, as well as some optimizations which are possible due to
- * the statically known basis dimension.
+ * basis type. Note that the basis dimension is also statically known.
  *
  * \tparam Basis_t  type of the basis for this geometry
  *
  * \ingroup geometry
  */
-template<class Basis_t> // change to template<unsigned d, class T>  ?
+template<class Basis_t>
 class gsGenericGeometry : 
         public gsGeoTraits<Basis_t::Dim, 
                            typename Basis_t::Scalar_t>::GeometryBase
 {
 
 public: 
-    // obtain the dimension of the parameter domain from the basis
-    static const int ParDim = Basis_t::Dim;
-
-    /// Shared pointer for gsGenericGeometry
-    typedef memory::shared_ptr< gsGenericGeometry > Ptr;
-
     typedef typename Basis_t::Scalar_t Scalar_t;
-    typedef typename Basis_t::Scalar_t T;
 
-    typedef typename gsGeoTraits<ParDim,Scalar_t>::GeometryBase Base;
-
-    typedef typename gsGeometry<Scalar_t>::Evaluator Evaluator;
-
-    // for rational bases, we WILL store the coefficients in projective form later
-    static const bool IsProjective = Basis_t::IsRational;
+    typedef typename gsGeoTraits<Basis_t::Dim,Scalar_t>::GeometryBase Base;
 
 public:
 
-    /// Default empty constructor
-    gsGenericGeometry() : Base(), m_basis(NULL) { }
+    gsGenericGeometry() : Base() { }
 
-    gsGenericGeometry( const Basis_t & basis, const gsMatrix<Scalar_t> & coefs )
-    : Base (coefs), m_basis( basis.clone() ) 
-    { 
+    gsGenericGeometry(const Basis_t & basis, const gsMatrix<Scalar_t> & coefs )
+    : Base (basis,coefs)
+    {
+        //todo: gsBasis as constructor argument, dynamic cast in assertion
+
         GISMO_ASSERT( basis.size() == coefs.rows(), 
                       "The coefficient matrix of the geometry (rows="<<coefs.rows()<<") does not match the number of basis functions in its basis("<< basis.size() <<").");
     }
     
-    gsGenericGeometry( const Basis_t & basis, gsMovable< gsMatrix<Scalar_t> > coefs )
-    : Base (coefs), m_basis( basis.clone() ) 
+    gsGenericGeometry(const Basis_t & basis, gsMovable< gsMatrix<Scalar_t> > coefs )
+    : Base (basis,coefs)
     { 
         GISMO_ASSERT( basis.size() == this->m_coefs.rows(), 
                       "The coefficient matrix of the geometry (rows="<<this->m_coefs.rows()<<") does not match the number of basis functions in its basis("<< basis.size() <<").");
     }
-    
-    gsGenericGeometry( const gsMatrix<Scalar_t> & coefs )
-    : Base (coefs), m_basis( 0 ) 
-    { }
-
-    gsGenericGeometry( gsMovable< gsMatrix<Scalar_t> > coefs )
-    : Base (coefs), m_basis( 0 ) 
-    { }
-
-    /// Copy Constructor
-    gsGenericGeometry( const gsGenericGeometry & o)
-    : Base (o)
-    {
-        m_basis = o.basis().clone() ;
-    }
-    
-    /// Assignment operator
-    gsGenericGeometry& operator=( const gsGenericGeometry & o)
-    {
-        if ( this == &o )
-            return *this;
-        gsGeometry<Scalar_t>::operator= (o);
-        if (m_basis) delete m_basis;
-        m_basis = o.basis().clone() ;
-        return *this;
-    }
-    
-    /// Destructor
-    virtual ~gsGenericGeometry() 
-    {
-        if (m_basis) delete m_basis; // NULL is the default initializer, need to check
-    }
-    
-    
+        
 public:
     
-    virtual bool isProjective() const
-    { return IsProjective; }
+    // for rational bases, we WILL store the coefficients in projective form later
+    bool isProjective() const
+    { return Basis_t::IsRational; }
     
-    virtual int geoDim() const
-    { 
-        // TODO
-        //return ( isProjective ? this->m_coefs.cols() - 1 : this->m_coefs.cols() )
-        return this->m_coefs.cols();
-    }
-    
-    virtual int parDim() const { return ParDim; }
-
-    static void computeJacobians(const gsMatrix<Scalar_t>& coefs, const gsMatrix<unsigned>& active, typename gsMatrix<Scalar_t>::Block derivs, gsMatrix<Scalar_t>& J);
-
-    virtual void deriv_into(const gsMatrix<Scalar_t>& u, gsMatrix<Scalar_t>& result) const;
-
-    virtual typename gsMatrix<T>::uPtr hess(const gsMatrix<Scalar_t>& u, 
-                                            unsigned coord = 0) const;
+    /// Returns the basis, as a concrete type, of the geometry.
+          Basis_t & basis()       { return static_cast<Basis_t&>(*this->m_basis); }
 
     /// Returns the basis, as a concrete type, of the geometry.
-    virtual Basis_t & basis() const { return *this->m_basis; }
-
-    /// Elevate the degree by the given amount.
-    virtual void degreeElevate(int const i = 1);
-
-// Data members
-protected:
- 
-    // Basis of the geometry
-    Basis_t  * m_basis ;
+    const Basis_t & basis() const { return static_cast<const Basis_t&>(*this->m_basis); }
 
 }; // class gsGenericGeometry
 
-template<class Basis_t>
-void gsGenericGeometry<Basis_t>::computeJacobians(const gsMatrix<Scalar_t>& coefs, const gsMatrix<unsigned>& active, typename gsMatrix<Scalar_t>::Block derivs, gsMatrix<Scalar_t>& J)
-{
-    unsigned n = coefs.cols();
-    unsigned numPts = derivs.cols();       // at how many points to evaluate the gradients
-
-    J.setZero(n, numPts * ParDim);
-
-    for (unsigned j = 0; j < numPts; ++j)
-        for (unsigned k=0; k<n; ++k ) // for all rows of the jacobian
-            for ( index_t i=0; i< active.rows() ; i++ ) // for all non-zero basis functions)
-            {
-                J.template block<1,ParDim>(k,j*ParDim) +=  coefs(active(i,j),k ) * derivs.template block<ParDim,1>(i*ParDim, j).transpose(); 
-            }
-}
-
-
-template<class Basis_t>
-void gsGenericGeometry<Basis_t>::deriv_into(const gsMatrix<typename Basis_t::Scalar_t>& u, gsMatrix<Scalar_t>& result) const 
-{  
-    gsMatrix<Scalar_t> B;
-    this->basis().deriv_into(u,B);     // col j = nonzero derivatives at column point u(..,j)
-    gsMatrix<unsigned> ind;
-    this->basis().active_into(u,ind);    // col j = indices of active functions at column point u(..,j)
-  
-    this->computeJacobians(this->m_coefs, ind, B.topRows( B.rows() ), result);
-}
-
-template<class Basis_t>
-typename gsMatrix<typename Basis_t::Scalar_t> ::uPtr 
-gsGenericGeometry<Basis_t>::hess(const gsMatrix<typename gsGenericGeometry<Basis_t>::Scalar_t>& u, unsigned coord) const 
-{  
-    static const unsigned d = ParDim;
-
-    gsMatrix<Scalar_t> B, *DD = new gsMatrix<Scalar_t>(d,d);
-    gsMatrix<Scalar_t,d,d> tmp;
-    gsMatrix<unsigned> ind;
-
-    // coefficient matrix row k = coef. of basis function k
-    const gsMatrix<Scalar_t>& C = this->m_coefs; 
-    // col j = nonzero second derivatives at column point u(..,j)
-    this->basis().deriv2_into(u, B) ; 
-    // col j = indices of active functions at column point u(..,j)
-    this->basis().active_into(u, ind);  
-  
-    DD->setZero();
-    unsigned j=0;// just one column
-    //for ( unsigned j=0; j< u.cols(); j++ ) // for all points (columns of u)
-    for ( index_t i=0; i< ind.rows() ; i++ ) // for all non-zero basis functions)
-    {
-        unsigned m=i*d;
-        unsigned r= ind.rows()*d + i*d*(d-1)/2;
-        //construct the Hessian of basis function ind(i,0)
-        for (unsigned k=0; k<d; ++k ) // for all rows
-        {
-            tmp(k,k) = B(m+k,j);
-            for (unsigned l=k+1; l<d; ++l ) // for all cols
-                tmp(k,l) = tmp(l,k) = B(r++,0);
-        }
-        *DD += C(ind(i,j), coord) * tmp;
-    }
-  
-    return typename gsMatrix<T>::uPtr(DD); 
-}
-
-
-template<class Basis_t>
-void gsGenericGeometry<Basis_t>::degreeElevate(int const i) 
-{
-    gsBasis<T> * b = basis().clone();
-    b->degreeElevate(i);
-    
-    gsMatrix<T> iVals, iPts = b->anchors();
-    this->eval_into(iPts, iVals);
-    gsGenericGeometry<Basis_t> * g = static_cast< gsGenericGeometry<Basis_t>*>(
-        b->interpolate(iVals, iPts) );
-
-    std::swap(m_basis, g->m_basis);
-    g->coefs().swap(this->coefs());
-
-    delete g;
-    delete b;
-}
 
 } // namespace gismo
 

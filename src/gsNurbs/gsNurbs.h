@@ -48,23 +48,23 @@ public:
     
     /// Construct NURBS by NURBS basis functions and coefficient matrix
     gsNurbs( const Basis & basis, const gsMatrix<T> & coefs ) :
-        Base( basis, coefs) { }
+    Base(basis, coefs) { }
 
     /// Construct NURBS by NURBS basis functions and coefficient matrix
     gsNurbs( const Basis & basis, gsMovable< gsMatrix<T> > coefs ) :
-        Base( basis, coefs) { }
+    Base( basis, coefs) { }
 
     /// Construct B-Spline by a knot vector, degree, weights and coefficient matrix
-    gsNurbs( const gsKnotVector<T>& KV, const gsMatrix<T> & w, const gsMatrix<T> & coefs ) :
-        Base(coefs)
+    gsNurbs( const gsKnotVector<T>& KV, const gsMatrix<T> & w, const gsMatrix<T> & coefs )
     {
+        this->m_coefs = coefs;
         this->m_basis = new Basis(KV, w);
     }
     
     /// Construct B-Spline by a knot vector, degree, weights and coefficient matrix
-    gsNurbs( const gsKnotVector<T>& KV, gsMovable< gsMatrix<T> > w, gsMovable< gsMatrix<T> > coefs ) :
-        Base(coefs)
+    gsNurbs( const gsKnotVector<T>& KV, gsMovable< gsMatrix<T> > w, gsMovable< gsMatrix<T> > coefs )
     {
+        this->m_coefs = coefs;
         this->m_basis = new Basis(KV, w);
     }
     
