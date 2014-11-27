@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsAffineFunction.h>
 
 namespace gismo
 {
@@ -647,6 +648,116 @@ inline std::ostream &operator<<(std::ostream &os, const boundary::type& o)
         gsInfo<<"boundary type not known.\n";
     };        
     return os;    
+}
+
+/// Returns the face of the box corresponding to the side
+template <typename T>
+gsMatrix<T> getFace (const boundary::side side, const gsMatrix<T> box)
+{
+    GISMO_ASSERT(direction(side)< box.rows(), "the specified side is not appropriate for the domain dimension");
+    gsMatrix<T> temp=box;
+    const index_t dir=direction(side);
+    if (side%2) // bottom face
+        temp(dir,1)=box(dir,0);
+    else    // top face
+        temp(dir,0)=box(dir,1);
+    return temp;
+}
+
+/// construct an affine function mapping face s1 of domain1 to another face s2 of domain2 corresponding to orientation
+/// orient is a 0-vector if domain* are 1D
+///           a 1-vector if domain* are 2D
+///           a 3-vector if domain* are 3D
+///           ---cannot be generalized and we are forced to use orient this way because it is so defined
+///           ---in boundaryInterface
+/// the returned function must be deleted by the user
+template <typename T>
+gsFunction<T>* makeInterfaceMap ( const boundary::side s1, const boundary::side s2, const gsVector<bool> &orient, const  gsMatrix<T> &domain1, const  gsMatrix<T> &domain2)
+{
+    GISMO_ASSERT(domain1.rows()==domain2.rows(), "Impossible to map faces of diffeerent size");
+
+    const index_t dir1=direction(s1);
+    const index_t dir2=direction(s2);
+
+    gsVector<T> shift1 = domain1.col(0);
+    gsVector<T> shift2 = domain2.col(0);
+    gsMatrix<T> map;
+    gsVector<T> tran;
+    switch (orient.rows())
+    {
+    case 0: // interfaces of a 1D domain
+        GISMO_ASSERT(domain1.rows()==1, "Incompatible orientation and domains." );
+        if( s2%2)
+            return new gsConstantFunction<T>( domain2(0,0) );
+        else
+            return new gsConstantFunction<T>( domain2(0,1) );
+        break;
+    case 1: // interfaces of a 2D domain
+        GISMO_ASSERT(domain1.rows()==2, "Incompatible orientation and domains." );
+        map.setZero(2,2);
+        tran.setZero(2);
+        if (dir1==dir2)
+        {
+            map(0,0) = (domain2(0,1)-domain2(0,0))/(domain1(0,1)-domain1(0,0));
+            map(1,1) = (domain2(1,1)-domain2(1,0))/(domain1(1,1)-domain1(1,0));
+            if(orient(0))
+            {
+                map.col(1-dir1)*=-1;
+                shift2(1-dir1)=domain2(1-dir1,1);
+            }
+        }
+        else
+        {
+            map(1,0) = (domain2(1,1)-domain2(1,0))/(domain1(0,1)-domain1(0,0));
+            map(0,1) = (domain2(0,1)-domain2(0,0))/(domain1(1,1)-domain1(1,0));
+            if(orient(0))
+            {
+                map.col(1-dir1)*=-1;
+                shift2(dir1)=domain2(dir1,1);
+            }
+        }
+        break;
+    case 2:
+        GISMO_ERROR("can not associate an orientation to a vector of 2 bools!!!!! bad request.");
+        break;
+    case 3: // interfaces of a 3D domain
+    {
+        GISMO_ASSERT(domain1.rows()==3, "Incompatible orientation and domains." );
+        map.setZero(3,3);
+        tran.setZero(3);
+
+        index_t dest[3]={0,1,2};
+        if(orient(0))
+        {
+            dest[1]=2;
+            dest[2]=1;
+        }
+
+        map(dir2,dir1) = (domain2(dir2,1)-domain2(dir2,0))/(domain1(dir1,1)-domain1(dir1,0));
+        for (int i=1; i<3; ++i)
+        {
+            index_t io=(dir1+i)%3;
+            index_t id=(dir2+dest[i])%3;
+            if(!orient(i))
+                map(id,io) = (domain2(id,1)-domain2(id,0))/(domain1(io,1)-domain1(io,0));
+            else
+            {
+                map(id,io) = -(domain2(id,1)-domain2(id,0))/(domain1(io,1)-domain1(io,0));
+                shift2(id) = domain2(id,1);
+            }
+        }
+    }
+        break;
+    default:
+        GISMO_ERROR("can not associate an orientation to a vector of more then 3 bools!!!!! bad request.");
+        break;
+    }
+    if (!(s1%2))
+        shift1(dir1)+=domain1(dir1,1)-domain1(dir1,0);
+    if (!(s2%2))
+        shift2(dir2)+=domain2(dir2,1)-domain2(dir2,0);
+    tran += shift2-map*shift1;
+    return new gsAffineFunction<T>(map,tran);
 }
 
 
