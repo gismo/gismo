@@ -13,6 +13,9 @@
 
 #pragma once
 
+namespace gismo
+{
+
 /** 
     @brief Simple wrapper class for a vector of objects.
 
@@ -24,7 +27,7 @@ class gsStdVectorRef
 public:
 
     /// Constructor from a vector of objs
-    inline gsStdVectorRef(std::vector<obj> & mappers) : 
+    inline gsStdVectorRef(const std::vector<obj> & mappers) : 
     m_ref(mappers)
     { }
 
@@ -43,3 +46,6 @@ private:
     gsStdVectorRef();
     gsStdVectorRef(const gsStdVectorRef &);
 };
+
+
+} // namespace gismo

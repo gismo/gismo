@@ -33,7 +33,7 @@ public:
         : m_val(val), m_domainDim(domainDim)
     { }
 
-    gsConstantFunction(T x, int domainDim  = 1)
+    explicit gsConstantFunction(T x, int domainDim  = 1)
         : m_domainDim(domainDim)
     {
         m_val.resize(1);
@@ -61,22 +61,26 @@ public:
 
     virtual int domainDim() const   { return m_domainDim ; }
     virtual int targetDim() const   { return m_val.rows(); }
-    virtual int       dim() const   { return m_domainDim ; }
         
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
+        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
+                                              << ", expected "<< m_domainDim);
         result = m_val.rowwise().replicate( u.cols() );
     }
 
     virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
+        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
+                                              << ", expected "<< m_domainDim);
         result = gsMatrix<T>::Zero( this->targetDim(), this->domainDim() * u.cols() );
     }
 
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
-        os << m_val; return os; 
+        os << m_val; 
+        return os; 
     }
   
 private:

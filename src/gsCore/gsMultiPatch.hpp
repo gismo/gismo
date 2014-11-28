@@ -118,6 +118,17 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boundary::side s1,
     orient.setConstant( true );
     gsBoxTopology::addInterface( p1, s1, p2, s2, orient );
 }
+
+template<class T>
+void gsMultiPatch<T>::uniformRefine(int numKnots)
+{
+    for ( typename Base::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it ) 
+    {
+        ( *it )->uniformRefine(numKnots);
+    }
+}
+
   
 template<class T>
 bool gsMultiPatch<T>::computeTopology( T tol )

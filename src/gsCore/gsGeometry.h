@@ -128,15 +128,19 @@ public:
     /// @name Constructors
     /// @{
     
-    /// Default constructor.
-    /// Note: Derived constructor should assign \a m_basis to a valid pointer
+    /// Default constructor.  Note: Derived constructors (except for
+    /// the default) should assign \a m_basis to a valid pointer
     gsGeometry() :m_basis( NULL )
     { }
 
+    /// Constructor by a basis and coefficient vector (note:
+    /// coefficients are given by \em{give(coefs) and they are
+    /// consumed, i.e. the \coefs variable will be empty after the call)
     gsGeometry( const gsBasis<T> & basis, gsMovable< gsMatrix<Scalar_t> > coefs) :
     m_coefs(coefs), m_basis( basis.clone() )
     { }
 
+    /// Constructor by a basis and coefficient vector
     gsGeometry( const gsBasis<T> & basis, const gsMatrix<Scalar_t> & coefs ) :
     m_coefs(coefs), m_basis( basis.clone() )
     { }
@@ -505,7 +509,6 @@ class gsGenericGeometry :
         public gsGeoTraits<Basis_t::Dim, 
                            typename Basis_t::Scalar_t>::GeometryBase
 {
-
 public: 
     typedef typename Basis_t::Scalar_t Scalar_t;
 
@@ -515,6 +518,7 @@ public:
 
     gsGenericGeometry() : Base() { }
 
+    // Look at gsGeometry base constructor for a brief description
     gsGenericGeometry(const Basis_t & basis, const gsMatrix<Scalar_t> & coefs )
     : Base (basis,coefs)
     {
@@ -524,6 +528,7 @@ public:
                       "The coefficient matrix of the geometry (rows="<<coefs.rows()<<") does not match the number of basis functions in its basis("<< basis.size() <<").");
     }
     
+    // Look at gsGeometry base constructor for a brief description
     gsGenericGeometry(const Basis_t & basis, gsMovable< gsMatrix<Scalar_t> > coefs )
     : Base (basis,coefs)
     { 
