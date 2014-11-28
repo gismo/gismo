@@ -75,6 +75,7 @@ if(GISMO_BUILD_SHARED_LIB)
     add_custom_command(
     TARGET gismo
     POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLLFILE} ${CMAKE_BINARY_DIR}/bin
     COMMAND ${CMAKE_COMMAND} -E echo "The file ${DLLFILE} is copied in the executables(bin) folder for conveniece."
     )
