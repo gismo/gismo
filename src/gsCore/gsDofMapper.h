@@ -90,6 +90,21 @@ public:
         init(bases);
     }
 
+    /**
+     * @brief construct a dof mapper that identifies the degrees
+     * of freedom for a vector of multibasis
+     *
+     * @param bases
+     * @param dirichlet
+     */
+    template<class T>
+    gsDofMapper(
+        std::vector<const gsMultiBasis<T> *> const & bases
+        ) : m_shift(0)
+    {
+        init(bases);
+    }
+
 
     /**
      * @brief construct a dof mapper that manages the the degrees
@@ -105,16 +120,14 @@ public:
         initSingle(basis);
     }
 
-    /// Construct a dof mapper from the sizes of the patch space
-    gsDofMapper(const gsVector<index_t> & patchDofSizes)
-    : m_shift(0)
-    {
-        initPatchDofs(patchDofSizes);
-    }
 
     /// Initialize by a gsMultiBasis
     template <typename T>
     void init( const gsMultiBasis<T> & bases);
+
+    /// Initialize by a vector of gsMultiBasis.
+    template <typename T>
+    void init( std::vector<const gsMultiBasis<T> *> const & bases);
 
     /// Initialize by gsMultiBasis andboundary conditions
     template<class T>

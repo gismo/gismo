@@ -22,6 +22,9 @@ namespace gismo {
     TEMPLATE_INST void gsDofMapper::init(
          const gsMultiBasis<real_t> & bases);
 
+    TEMPLATE_INST void gsDofMapper::init(
+            std::vector<const gsMultiBasis<real_t> *> const & bases);
+
       TEMPLATE_INST void gsDofMapper::init(
         const gsMultiBasis<real_t>         &basis,
         const gsBoundaryConditions<real_t> &bc

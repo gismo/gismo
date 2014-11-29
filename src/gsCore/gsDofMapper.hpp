@@ -39,6 +39,39 @@ void gsDofMapper::init( const gsMultiBasis<T> & bases)
 }
 
 template<class T>
+void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
+{
+    m_curElimId     = -1;
+    m_curCouplingId =  1;
+    m_offset.clear();
+
+    const size_t nPatches = bases[0]->nBases();
+    const index_t numComp = bases.size();
+
+    // Initialize offsets and dof holder
+    m_offset.reserve( nPatches );
+    m_offset.push_back(0);
+    for (size_t k = 1; k < nPatches; ++k)
+    {
+        index_t dofsPatches = 0;
+        for (index_t comp = 0; comp < numComp; ++comp)
+        {
+            dofsPatches += bases[comp]->basis(k-1).size();
+        }
+        m_offset.push_back( m_offset.back() + dofsPatches );
+    }
+
+    index_t dofsPatches = 0;
+    for (index_t comp = 0; comp < numComp; ++comp)
+    {
+        dofsPatches += bases[comp]->back().size();
+    }
+    m_numFreeDofs = m_offset.back() + dofsPatches;
+
+    m_dofs.resize( m_numFreeDofs, 0);
+}
+
+template<class T>
 void gsDofMapper::init(
         const gsMultiBasis<T>         &basis,
         const gsBoundaryConditions<T> &bc
