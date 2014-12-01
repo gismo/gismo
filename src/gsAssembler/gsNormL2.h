@@ -10,7 +10,7 @@ namespace gismo
 template <class T>
 class gsNormL2 : public gsNorm<T>
 {
-    friend gsNorm<T>;
+    friend class gsNorm<T>;
 
 public:
 
