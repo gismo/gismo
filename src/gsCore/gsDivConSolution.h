@@ -40,7 +40,12 @@ public:
     gsDivConSolution(const gsMatrix<T> & solutionCoefs, const gsGeometry<T> & geo, std::vector< gsBasis<T> *> const & basis) :
         m_solutionCoeff(solutionCoefs), m_geometry(geo), m_basis(basis)
     {
-
+        componentShifts.resize(targetDim());
+        componentShifts[0] = 0;
+        for (index_t k = 1; k < targetDim(); ++k)
+        {
+            componentShifts[k] = componentShifts[k-1] + m_basis[k-1]->size();
+        }
     }
 
 
@@ -61,6 +66,8 @@ public:
 
         @{
     */
+
+
 
     /// Evaluates the solution into result
 
@@ -91,7 +98,7 @@ public:
                 for ( index_t i = 0; i < ind.rows(); ++i ) // for all non-zero basis functions
                 {
                     result.col(j) += jacobi.block(0, comp+j*TarDim, TarDim, 1)
-                            * m_solutionCoeff(ind(i,j), comp) * B(i,j)/det;//geoEval.measure(j);
+                            * m_solutionCoeff(ind(i,j) + componentShifts[comp], 0) * B(i,j)/det;//geoEval.measure(j);
                 }
             }
         }
@@ -113,7 +120,7 @@ public:
     int coefDim() const { return m_geometry.coefDim(); }
 
     /// Dimension of the absent physical space (overriding gsFunction::targetDim())
-    int targetDim() const { return m_solutionCoeff.cols();}
+    int targetDim() const { return m_basis.size();}
 
     /// Dimension \em d of the parameter domain.
     virtual int parDim() const { return m_basis[0]->dim(); }
@@ -135,6 +142,9 @@ protected:
 
     // The basis
     std::vector< gsBasis<T> * >m_basis;
+
+    // shift index for components in m_solutionCoeff;
+    std::vector<index_t> componentShifts;
 
 
 }; // class gsDivConSolution

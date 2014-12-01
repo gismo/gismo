@@ -43,6 +43,11 @@ struct dirichlet
         /// Not compatible/ignores eliminate==true 
         penalize     = 12,
         
+
+        /// Compute Dirichlet dofs in the normal direction (for a vector valued function),
+        /// The tangential component are handled with the nitche method.
+        eliminatNormal = 17,
+
         /// Do absolutely nothing for Dirichlet boundary conditions.
         none         = 0
 	};
