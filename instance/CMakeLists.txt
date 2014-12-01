@@ -64,24 +64,26 @@ if(GISMO_BUILD_SHARED_LIB)
  set_target_properties(gismo 
  PROPERTIES LINKER_LANGUAGE CXX)
 
- if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
+if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
 
     #Find the dll
     set(DLLFILE "DLLFILE-NOTFOUND")
     FIND_FILE(DLLFILE "gismo.dll" ${CMAKE_BINARY_DIR}/lib ${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE}
+    #FIND_FILE(DLLFILE "libgismo.so" ${CMAKE_BINARY_DIR}/lib ${CMAKE_BINARY_DIR}/lib/${CMAKE_BUILD_TYPE}
               NO_DEFAULT_PATH )
 
+    #message("DLLFILE: ${DLLFILE}")	
     if(NOT ${DLLFILE} MATCHES "DLLFILE-NOTFOUND") 
     add_custom_command(
     TARGET gismo
     POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLLFILE} ${CMAKE_BINARY_DIR}/bin
-    COMMAND ${CMAKE_COMMAND} -E echo "The file ${DLLFILE} is copied in the executables(bin) folder for conveniece."
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin # create bin if it does not exist
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLLFILE}" "${CMAKE_BINARY_DIR}/bin"
+    COMMAND ${CMAKE_COMMAND} -E echo 'The file ${DLLFILE} is copied in the executables (bin) folder for convenience.'
     )
     endif()
 
- endif( WIN32 )
+endif( WIN32 )
 
 endif(GISMO_BUILD_SHARED_LIB)
 
