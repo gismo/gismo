@@ -136,6 +136,9 @@ public:
 struct boundaryInterface
 {
 public:
+    typedef std::pair<index_t,bool> dirInfo;
+
+public:
 
     boundaryInterface() { }
 
@@ -192,9 +195,6 @@ public:
                       gsVector<bool> const & orient_flags)
     : ps1(psps[0], psps[1]), ps2(psps[2], psps[3]), orient(orient_flags) { }
     
-    patch_side ps1; ///< The first patch side.
-    patch_side ps2; ///< The second patch side.
-
     bool operator== (const boundaryInterface& other) const
     {
         return ( ps1 == other.ps1 && ps2 == other.ps2 && orient == other.orient ) ||
@@ -221,14 +221,25 @@ public:
             GISMO_ERROR("Invalid index "<<i<<": Interface has 2 elements(sides).");
     }
 
+public:
+
+    patch_side ps1; ///< The first patch side.
+    patch_side ps2; ///< The second patch side.
+
+    /// dirInfo: m_iFaceInfo[i] is the pair (direction,bool) that
+    /// denotes that direction \a i on \a ps1 is mapped to direction
+    /// \a m_iFaceInfo[i].first with orientation m_iFaceInfo[i].second
+    /// Orientation is a boolean that decides if the orientation is
+    /// the same (1) or opposite (0).
+    /// The entry \a m_iFaceInfo[ direction(ps1.side)] is included for
+    /// compatibility.
+    std::vector<dirInfo> m_iFaceInfo;
+
     // orient[i] is True iff ps1 and ps2 have the same orientation
     // with respect to parameter direction i
+    // To be removed
     gsVector<bool> orient;
-    
-    // Reflect is true iff the 2D interface direction 0 on ps1
-    // matches dir. 1 on ps2 and similarly dir. 1 matches 0.
-    // TO DO: not needed-- side defines & matches the directions
-    //bool reflect;
+
 };
 
 /// Returns the side corresponding to \a dir and \a par
