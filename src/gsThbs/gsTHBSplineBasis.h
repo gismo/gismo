@@ -576,12 +576,12 @@ private:
      */
     void return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const;
 
-    gsMatrix<T> coarsening(std::vector<gsSortedVector<unsigned> > old,
-                           std::vector<gsSortedVector<unsigned> > n,
+    gsMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old,
+                           const std::vector<gsSortedVector<unsigned> >& n,
                            const gsSparseMatrix<T,RowMajor> & transfer);
 
-    gsMatrix<T> coarsening_direct( std::vector<gsSortedVector<unsigned> > old,
-                                   std::vector<gsSortedVector<unsigned> > n, 
+    gsMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
+                                   const std::vector<gsSortedVector<unsigned> >& n, 
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
 
 private:

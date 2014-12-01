@@ -118,8 +118,8 @@ private:
     /// internal bspline representations
     void initialize();
 
-    gsMatrix<T> coarsening(std::vector<gsSortedVector<unsigned> > old,  std::vector<gsSortedVector<unsigned> > n, const gsSparseMatrix<T,RowMajor> & transfer);
-    gsMatrix<T> coarsening_direct( std::vector<gsSortedVector<unsigned> > old, std::vector<gsSortedVector<unsigned> > n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
+    gsMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer);
+    gsMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
     
 }; // class gsHBSplineBasis
 

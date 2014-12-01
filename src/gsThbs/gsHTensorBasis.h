@@ -834,13 +834,13 @@ private:
 
 
     ///returns a transfer matrix using the characteristic matrix of the old and new basis
-    virtual gsMatrix<T> coarsening(std::vector<gsSortedVector<unsigned> > old,  std::vector<gsSortedVector<unsigned> > n, const gsSparseMatrix<T,RowMajor> & transfer) = 0;
-    virtual gsMatrix<T> coarsening_direct(std::vector<gsSortedVector<unsigned> > old,std::vector<gsSortedVector<unsigned> > n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
+    virtual gsMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) = 0;
+    virtual gsMatrix<T> coarsening_direct(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
 
  //D
 public:
     ///returns transfer matrix betweend the hirarchycal spline given by the characteristic matrix  "old" and this
-    void transfer (std::vector<gsSortedVector<unsigned> > &old, gsMatrix<T>& result);
+    void transfer (const std::vector<gsSortedVector<unsigned> > &old, gsMatrix<T>& result);
     /// create characteristic matrices for basis where "level" is the maximum level i.e. ignoring higher level refinements
     void setActiveToLvl(int level, std::vector<gsSortedVector<unsigned> >& x_matrix_lvl);
 

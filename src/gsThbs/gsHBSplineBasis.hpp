@@ -176,7 +176,7 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){
 
 
 template<unsigned d, class T>
-gsMatrix<T> gsHBSplineBasis<d,T>::coarsening( std::vector<gsSortedVector<unsigned> > old,  std::vector<gsSortedVector<unsigned> > n, const gsSparseMatrix<T,RowMajor> & transfer){
+gsMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer){
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
     for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis
@@ -238,7 +238,7 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening( std::vector<gsSortedVector<unsigne
 }
 
 template<unsigned d, class T>
-gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( std::vector<gsSortedVector<unsigned> > old,std::vector<gsSortedVector<unsigned> > n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer){
+gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer){
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
     for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis

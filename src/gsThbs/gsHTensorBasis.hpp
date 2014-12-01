@@ -930,7 +930,7 @@ std::vector<std::vector< std::vector<unsigned int> > > gsHTensorBasis<d,T>::doma
 
 
 template<unsigned d, class T>
-void  gsHTensorBasis<d,T>::transfer(std::vector<gsSortedVector<unsigned> >& old, gsMatrix<T>& result){
+void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >& old, gsMatrix<T>& result){
     //gsMatrix<T> > result;
     gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
