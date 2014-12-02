@@ -41,6 +41,15 @@ public:
         field1 = &_field1;
     }
 
+    /** \brief Main function for norm-computation.
+     *
+     * The computed value can be accessed by value().
+     *
+     * \param[in] visitor The Norm-visitor to be used.
+     * \param[in] storeEltWise Flag indicating whether the
+     * element-wise norms should be stored. See also
+     * elementNorms().
+     */
     template <class NormVisitor>
     void apply(NormVisitor & visitor, bool storeElWise = false)
     {
@@ -95,7 +104,22 @@ public:
     /// Return the multipatch
     const gsMultiPatch<T> & patches() const { return *patchesPtr; }
 
-    /// @brief Returns the computed norm values element-wise
+    /** @brief Returns the computed norm values element-wise
+     *
+     *
+     * \returns The SQUARED element-norms in a gsVector.\n
+     * It is assumed that they were actually computed by providing
+     * the proper flag \em storeEltWise in the call of apply().
+     *
+     * \remarks The order of the element-norms is "defined"
+     * firstly by the numbering of the patches, and secondly
+     * by the order in which the gsDomainIterator iterates
+     * over the elements of the mesh! As of now (02.Dec.2014),
+     * there is no way to access a particularly numbered element
+     * on a mesh directly; you have to run the corresponding
+     * gsDomainIterator again to reach the respective element.
+     *
+     */
     const std::vector<T> & elementNorms() const { return m_elWise; }
 
     /// @brief Returns the computed norm value

@@ -20,8 +20,7 @@
 namespace gismo
 {
 
-/** @brief
-    Maintains a mapping from patch-local dofs to global dof indices
+/** @brief Maintains a mapping from patch-local dofs to global dof indices
     and allows the elimination of individual dofs.
 
     A \em dof (degree of freedom) is, roughly speaking, an unknown in a
