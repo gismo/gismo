@@ -24,8 +24,6 @@
 
 #include <gsPde/gsPoissonPde.h>
 
-using namespace std;
-
 //#include <gsAssembler/gsAssemblerUtils.h>
 
 namespace gismo
