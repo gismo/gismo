@@ -51,6 +51,8 @@ public:
         */
     }
 
+    virtual bool isSymmetric () const { gsWarn<<"Function is gsPde::isSymmetric should not be used!!"; return !(conv==NULL);}
+
     const gsFunction<T>* diffusion() const          { return m_diff; }
     const gsFunction<T>* convection() const         { return m_conv; }
     const gsFunction<T>* reaction() const           { return m_reac; }

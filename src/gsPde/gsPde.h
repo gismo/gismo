@@ -73,7 +73,7 @@ public:
 
     /// Is the associated linear system symmetric?
     /// TODO: remove because we cannot know, it depends on the method
-    virtual bool isSymmetric() const {return false;}
+    virtual bool isSymmetric() const {gsWarn<<"Function is gsPde::isSymmetric should not be used!!"; return false;}
 
     /// Print a short description of the PDE
     virtual std::ostream &print(std::ostream &os) const = 0;

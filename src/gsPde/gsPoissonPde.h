@@ -102,6 +102,7 @@ public:
 
     virtual int numUnknowns() const     {return 1;}
 
+    virtual bool isSymmetric () const { gsWarn<<"Function is gsPde::isSymmetric should not be used!!"; return true;}
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
