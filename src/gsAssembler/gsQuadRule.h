@@ -142,6 +142,11 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
     const index_t d = lower.size();
     GISMO_ASSERT( d == m_nodes.rows(), "Inconsistent quadrature mapping");
     
+    nodes.resize( m_nodes.rows(), m_nodes.cols() );
+    weights.resize( m_weights.size() );
+    nodes.setZero();
+    weights.setZero();
+
     gsVector<T> h(d);
     T hprod(1.0); // for the computation of the size of the cube.
 
@@ -154,7 +159,7 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
   
     // Linear map from [-1,1]^d to [lower,upper]
     nodes.noalias()   = ( h.asDiagonal() * m_nodes ).colwise() + 0.5*(lower+upper);
-    
+
     // Adjust the weights (multiply by the Jacobian of the linear map)
     weights.noalias() = hprod * m_weights;
 }

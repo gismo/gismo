@@ -24,6 +24,8 @@
 
 #include <gsPde/gsPoissonPde.h>
 
+using namespace std;
+
 //#include <gsAssembler/gsAssemblerUtils.h>
 
 namespace gismo
@@ -145,8 +147,9 @@ public:
         // If the Dirichlet strategy is elimination then precompute
         // Dirichlet dofs (m_dofMapper excludes these from the system)
         if ( m_dirStrategy == dirichlet::elimination)
-            computeDirichletDofs();
+            computeDirichletDofsL2Proj(); // replacing computeDirichletDofs();
         
+
         if (m_dofs == 0 ) // Are there any interior dofs ?
         {
             gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
@@ -232,45 +235,45 @@ public:
         }
     }
     
-    void estimateResidue(const gsField<T> & sol, std::vector<gsMatrix<T> > & errors )
-    {
-        errors.resize( m_patches.nPatches() );
-
-        for (unsigned np=0; np < m_patches.nPatches(); ++np )
-        {
-            gsVisitorResidual<T> resEst(*m_rhsFun, sol);// can move out if not in parallel
-
-            int numEl = m_bases[0][np].numElements();
-
-            m_rhs.resize(numEl); // (!) element index, otherwise coords here !
-            // or the centerpoint of the element
-            
-            //Assemble stiffness matrix and rhs for the local patch
-            // with index np and add to m_matrix and m_rhs
-            this->apply(resEst, np);
-
-            std::swap(errors[np], m_rhs);
-        }
-        
-        /*
-          // Accumulate Neumann contribution
-        for ( typename gsBoundaryConditions<T>::const_iterator
-              it = m_bConditions.neumannBegin();
-              it != m_bConditions.neumannEnd(); ++it )
-        {
-            gsVisitorNeuResidual<T> neuResEst(*it->function(), sol, it->side() );
-
-            int numEl = m_bases[0][np].numElements();
-            m_rhs.setZero(numEl); // (!) element index, otherwise coords here !
-
-            // Note: it->unknown()
-            this->apply(neuResEst, it->patch(), it->side() );
-
-            errors[np] += m_rhs;
-        }
-        //*/
-
-    }
+//    void estimateResidue(const gsField<T> & sol, std::vector<gsMatrix<T> > & errors )
+//    {
+//        errors.resize( m_patches.nPatches() );
+//
+//        for (unsigned np=0; np < m_patches.nPatches(); ++np )
+//        {
+//            gsVisitorResidual<T> resEst(*m_rhsFun, sol);// can move out if not in parallel
+//
+//            int numEl = m_bases[0][np].numElements();
+//
+//            m_rhs.resize(numEl); // (!) element index, otherwise coords here !
+//            // or the centerpoint of the element
+//
+//            //Assemble stiffness matrix and rhs for the local patch
+//            // with index np and add to m_matrix and m_rhs
+//            this->apply(resEst, np);
+//
+//            std::swap(errors[np], m_rhs);
+//        }
+//
+//        /*
+//          // Accumulate Neumann contribution
+//        for ( typename gsBoundaryConditions<T>::const_iterator
+//              it = m_bConditions.neumannBegin();
+//              it != m_bConditions.neumannEnd(); ++it )
+//        {
+//            gsVisitorNeuResidual<T> neuResEst(*it->function(), sol, it->side() );
+//
+//            int numEl = m_bases[0][np].numElements();
+//            m_rhs.setZero(numEl); // (!) element index, otherwise coords here !
+//
+//            // Note: it->unknown()
+//            this->apply(neuResEst, it->patch(), it->side() );
+//
+//            errors[np] += m_rhs;
+//        }
+//        //*/
+//
+//    }
 
 
     /// Penalty constant for patch \a k, used for Nitsche and
@@ -284,6 +287,8 @@ public:
 
     /// Computes the Dirichlet DoF values by interpolation
     void computeDirichletDofs();
+
+    void computeDirichletDofsL2Proj();
 
     /// Reconstruct solution field from computed solution vector
     gsField<T> * constructSolution(const gsMatrix<T> & solVector) const;
@@ -403,6 +408,147 @@ void gsPoissonAssembler<T>::computeDirichletDofs()
         delete boundary;
     }
 }
+
+
+// S.Kleiss
+/** \brief Incorporates Dirichlet-boundary conditions by L2-projection.
+ *
+ * ...if the Dirichlet-strategy \em elimination is chosen.\n
+ * A global \f$L_2\f$-projection is applied to the given Dirichlet data
+ * and the eliminated coefficients are set to the corresponding values.
+ * The projection is global in the sense that all Dirichlet-DOFs are
+ * computed at once.
+ */
+template<class T>
+void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
+{
+    const gsDofMapper & mapper = m_dofMappers.front();
+
+    m_ddof.resize( mapper.boundarySize(), m_rhsFun->targetDim() );
+
+    // Set up matrix, right-hand-side and solution vector/matrix for
+    // the L2-projection
+    gsSparseMatrix<T> globProjMat( mapper.boundarySize(), mapper.boundarySize() );
+    gsMatrix<T> globProjRhs( mapper.boundarySize(), m_rhsFun->targetDim() );
+    gsMatrix<T> globProjCoeffs( mapper.boundarySize(), m_rhsFun->targetDim() );
+
+    globProjMat.setZero();
+    globProjRhs.setZero();
+    globProjCoeffs.setZero();
+
+    // Iterate over all patch-sides with Dirichlet-boundary conditions
+    for ( typename gsBoundaryConditions<T>::const_iterator
+              iter = m_bConditions.dirichletBegin();
+          iter != m_bConditions.dirichletEnd(); ++iter )
+    {
+        const int unk = iter->unknown();
+        const int patchIdx   = iter->patch();
+        const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
+
+        // Set up quadrature. The number of integration points in the direction
+        // that is NOT along the element has to be set to 1.
+        gsVector<index_t> numQuNodes( basis.dim() );
+        for( int i=0; i < basis.dim(); i++)
+            numQuNodes[i] = (basis.degree(i)+2);
+        numQuNodes[ direction( iter->side() )] = 1;
+
+        gsGaussRule<T> QuRule;
+        QuRule.setNodes( numQuNodes);
+        gsMatrix<T> quNodes;
+        gsVector<T> quWeights;
+
+        // Create the iterator along the given part boundary.
+        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
+
+        for(; bdryIter->good(); bdryIter->next() )
+        {
+            //bdryIter->computeQuadratureRule( numQuNodes );
+            QuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),\
+                             quNodes, quWeights);
+
+            gsMatrix<T> rhsVals = iter->function()->eval( m_patches[patchIdx].eval( quNodes ) );
+
+            gsMatrix<unsigned> locIdxAct;
+            basis.active_into( quNodes, locIdxAct );
+
+            gsMatrix<T> basisVals;
+            basis.eval_into( quNodes, basisVals);
+
+            // Indices involved here:
+            // --- Local index:
+            // Index of the basis function/DOF on the patch.
+            // Does not take into account any boundary or interface conditions.
+            // --- Global Index:
+            // Each DOF has a unique global index that runs over all patches.
+            // This global index includes a re-ordering such that all eliminated
+            // DOFs come at the end.
+            // The global index also takes care of glued interface, i.e., corresponding
+            // DOFs on different patches will have the same global index, if they are
+            // glued together.
+            // --- Boundary Index (actually, it's a "Dirichlet Boundary Index"):
+            // The eliminated DOFs, which come last in the global indexing,
+            // have their own numbering starting from zero.
+
+
+            // Get the global indices of the local active basis functions/DOFs:
+            gsMatrix<unsigned> globIdxAct;
+            mapper.localToGlobal( locIdxAct, patchIdx, globIdxAct);
+
+            // Out of the active functions/DOFs on this element, collect all those
+            // which correspond to a boundary DOF.
+            // This is checked by calling mapper::is_boundary_index( global Index )
+
+            // eltBdryFcts stores the row in basisVals/locIdxAct, i.e.,
+            // something like a "element-wise index"
+            std::vector<index_t> eltBdryFcts;
+            for( int i=0; i < globIdxAct.rows(); i++)
+                if( mapper.is_boundary_index( globIdxAct(i,0)) )
+                    eltBdryFcts.push_back( i );
+
+            // Do the actual assembly:
+            for( unsigned k=0; k < quNodes.cols(); k++ )
+            {
+                T weight_k = quWeights[k];
+
+                // Only run through the active boundary functions on the element:
+                for( unsigned i0=0; i0 < eltBdryFcts.size(); i0++ )
+                {
+                    // Each active boundary function/DOF in eltBdryFcts has...
+                    // ...the above-mentioned "element-wise index"
+                    unsigned i = eltBdryFcts[i0];
+                    // ...the boundary index.
+                    unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
+                    for( unsigned j0=0; j0 < eltBdryFcts.size(); j0++ )
+                    {
+                        unsigned j = eltBdryFcts[j0];
+                        unsigned jj = mapper.global_to_bindex( globIdxAct( j ));
+
+                        // Use the "element-wise index" to get the needed
+                        // function value.
+                        // Use the boundary index to put the value in the proper
+                        // place in the global projection matrix.
+                        globProjMat.coeffRef(ii,jj) += weight_k * basisVals(i,k) * basisVals(j,k);
+                    } // for j
+
+                    globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
+
+                } // for i
+            } // for k
+        } // bdryIter
+    } // boundaryConditions-Iterator
+
+    globProjMat.makeCompressed();
+
+    // Solve the linear system
+    Eigen::ConjugateGradient< gsSparseMatrix<T> > solver;
+    globProjCoeffs = solver.compute( globProjMat ).solve ( globProjRhs );
+
+    // The position in globProjCoeffs already corresponds to the
+    // numbering by the boundary index. Hence, we can simply take them
+    // for the values of the eliminated Dirichlet DOFs.
+    m_ddof = globProjCoeffs;
+
+} // computeDirichletDofsL2Proj
 
 
 template<class T>

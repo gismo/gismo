@@ -75,6 +75,9 @@ namespace gismo
 template <class T>
 void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked)
 {
+
+    GISMO_ASSERT( 1 <= refCriterion && refCriterion <= 3, "Used wrong/undefined refCriterion");
+
     T Thr = T(0);
 
     if( refCriterion == 1 )
