@@ -1319,16 +1319,14 @@ private:
 
             for (index_t k = 0; k != pDomIt->numQuNodes(); ++k)
             {
-                index_t x = pDomIt->quNodes(0,k);
-                index_t y = pDomIt->quNodes(1,k);
-
+                const gsVector<T> pt = pDomIt->quNodes.col(k);
                 int col = 0;
 
                 for (index_t i = 0; i < mBasis.degree(0) + 1; ++i)
                 {
                     for (index_t j = 0; j < mBasis.degree(1) + 1; ++j)
                     {
-                        F( k,col ) = pow(x,i) * pow(y,j);
+                        F( k,col ) = pow(pt[0],i) * pow(pt[1],j);
                         col++;
                     }
                 }
