@@ -20,6 +20,8 @@
 
 #include <gsAssembler/gsAdaptiveRefUtils.h>
 
+#include <gsAssembler/gsErrEstPoissonResidual.h>
+
 using namespace std;
 using namespace gismo;
 
@@ -66,7 +68,7 @@ int main()
   // --- Unit square, with a spike of the source function at (0.25, 0.6)
   gsMFunctionExpr<>  f("if( (x-0.25)^2 + (y-0.6)^2 < 0.2^2, 1, 0 )", 2);
   gsMFunctionExpr<>  g("0", 2);
-  gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineRectangle(0.0,0.0,1.0,1.0) ));
+  gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineRectangle(0.0,0.0,2.0,1.0) ));
 
   RefineLoopMax = 6;
   refParameter = 0.6;
@@ -123,7 +125,7 @@ int main()
       // Create solver... maybe not the smartest thing to set up a new solver
       // in each iteration loop, but good enough for now.
       gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f,
-                                    dirichlet::nitsche,iFace::glue);
+                                    dirichlet::elimination,iFace::glue);
 
       // Assemble matrix and rhs
       pa.assemble();
@@ -136,21 +138,27 @@ int main()
 
       // Set up and compute the L2-error to the known exact solution
       gsNormL2<real_t> norm(*sol,g);
+      gsErrEstPoissonResidual<real_t> errEst(*sol,g);
+
       norm.compute(1);
+      errEst.compute(1);
 
-      // Get the vector with element-wise local errors
+      // Get the vector with element-wise local errors...
       const std::vector<real_t> & elError = norm.elementNorms();
-
-      // Print the vector, if you want:
-      // std::cout<<"Error per element: "<< gsAsConstMatrix<>(elError) <<"\n";
+      // ...or the vector with element-wise local error estimates.
+      const std::vector<real_t> & elErrEst = errEst.elementNorms();
 
       // Mark elements for refinement, based on the computed local errors and
       // refCriterion and refParameter.
       std::vector<bool> elMarked( elError.size() );
-      gsMarkElementsForRef( elError, refCriterion, refParameter, elMarked);
+      // Use the (in this case known) exact error...
+      //gsMarkElementsForRef( elError, refCriterion, refParameter, elMarked);
+      // ...or the error estimate.
+      gsMarkElementsForRef( elErrEst, refCriterion, refParameter, elMarked);
 
       // Refine the elements of the mesh, based on elMarked.
       gsRefineMarkedElements( bases, elMarked);
+
 
       if ( (RefineLoop == RefineLoopMax) && plot)
       {
@@ -163,6 +171,7 @@ int main()
 
       delete sol;
   }
+
   cout << "Test is done: Exiting" << endl;
   return  result;
 }
