@@ -20,6 +20,8 @@
 namespace gismo
 {
 
+#define MAPPER_PATCH_DOF(a,b) m_dofs[m_offset[b]+a]
+
 /** @brief Maintains a mapping from patch-local dofs to global dof indices
     and allows the elimination of individual dofs.
 
@@ -47,9 +49,6 @@ namespace gismo
     i.e. gsDofMapper::finalize() has to be called once before use.
 
 */
-
-#define MAPPER_PATCH_DOF(a,b) m_dofs[m_offset[b]+a]
-
 class GISMO_EXPORT gsDofMapper
 {
 public:
