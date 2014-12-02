@@ -276,3 +276,14 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 
 // Next line closes the DEBUG_GROUP of Doxygen
 /** @} */
+
+
+
+#ifdef __GNUC__
+#define GS_DEPRECATED __attribute__((deprecated))
+#elif defined(_MSC_VER)
+#define GS_DEPRECATED __declspec(deprecated)
+#else
+#pragma message("WARNING: you will not be warned about deprecated functions with this compiler")
+#define GS_DEPRECATED
+#endif
