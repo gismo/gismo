@@ -1184,7 +1184,7 @@ private:
         // ---------------------------------------------------------------------
 
 
-        writeNodalDifferentialValues(out);
+        writeNodalDifferentialValues2(out);
     }
                                                           
     
@@ -1297,6 +1297,164 @@ private:
         }
     }
 
+    void writeNodalDifferentialValues2(std::ostream& out)
+    {
+        const index_t numAct = pDomIt->computeActiveFunctions().rows();
+
+        const gsMatrix<T>& A = pDomIt->basisValues().transpose();
+        // A -- rows = quadrature points
+        //   -- cols = active functions
+
+        const gsMatrix<T>& B = pDomIt->basisDerivs(1).transpose();
+        // B -- rows = quadrature points
+        //   -- cols = 2 * active functions
+
+        gsMatrix<T> nodalValues(numAct, 2 * numAct);
+
+        const int dimension = (mBasis.degree(0) + 1) * (mBasis.degree(1) + 1);
+        if (numAct > dimension) // too many functions active, do the extrapolation
+        {
+            // 1. construct the polynomial (find the coefficients)
+            gsMatrix<T> F(pDomIt->numQuNodes(),dimension); // evaluation of the monomials in the Gauss points (rows = Gauss points, cols = monomials)
+
+            for (index_t k = 0; k != pDomIt->numQuNodes(); ++k)
+            {
+                index_t x = pDomIt->quNodes(0,k);
+                index_t y = pDomIt->quNodes(1,k);
+
+                int col = 0;
+
+                for (index_t i = 0; i < mBasis.degree(0) + 1; ++i)
+                {
+                    for (index_t j = 0; j < mBasis.degree(1) + 1; ++j)
+                    {
+                        F( k,col ) = pow(x,i) * pow(y,j);
+                        col++;
+                    }
+                }
+            }
+
+            const gsMatrix<T> polyCoefs = F.fullPivHouseholderQr().solve(B);
+            // polyCoeffs -- rows = monomials
+            //            -- cols = 2 * active functions
+
+
+            // 2. fit the polynomial with THB splines
+
+            // get missing uniformly distributed points in the domain
+
+            const gsMatrix<T> supp = mBasis.support();
+            // supp.col(0) = left bottom corner
+            // supp.col(1) = right upper corner
+
+            const int size = mBasis.size();
+            const int weneed = size - dimension;
+            const gsVector<T>& lower = supp.col(0);
+            const gsVector<T>& upper = supp.col(1);
+            const gsMatrix<T> points = uniformPointGrid(lower, upper, weneed);
+
+            // evaluate the polynomial and the THB basis in the new points
+
+            gsMatrix<T> value;
+
+            gsMatrix<T> FFup(dimension,size);
+            gsMatrix<T> FFlo(weneed,size);
+
+            FFup.setZero();
+
+            const gsVector<unsigned>& actFunctions = pDomIt->computeActiveFunctions();
+
+            for (index_t i = 0; i != numAct; ++i)
+            {
+                FFup.col(actFunctions[i]) = A.col(i);
+            }
+
+            for (index_t i = 0; i != size;++i)
+            {
+                for (index_t pt = 0; pt != weneed; ++pt)
+                {
+                    // evaluate each basis function in the uniform points
+                    mBasis.evalSingle_into( i, points.col(pt) ,value );
+                    FFlo(pt,i) = value(0,0);
+                }
+            }
+
+            // right hand-side: upper part is B, lower part is evaluations of monomials in the new points
+            gsMatrix<T> Qlo(weneed,B.cols());
+            gsMatrix<T> Frhs(weneed, dimension);
+
+            for (index_t k = 0; k < weneed; ++k)
+            {
+                double x = points(0,k);
+                double y = points(1,k);
+
+                int col = 0;
+                for (index_t i = 0; i < mBasis.degree(0) + 1; ++i)
+                {
+                    for (index_t j = 0; j < mBasis.degree(1) + 1; ++j)
+                    {
+                        Frhs( k, col ) = pow(x,i) * pow(y,j);
+                        col++;
+                    }
+                }
+            }
+            Qlo = Frhs * polyCoefs;
+
+
+            // set the system with the old (Gauss) and the new points
+
+            gsMatrix<T> FF(size,size);
+            FF.block(0,0,dimension, size) = FFup;
+            FF.block(dimension,0,weneed, size) = FFlo;
+
+            gsMatrix<T> Q(size, B.cols());
+            Q.block(0,0,dimension,B.cols()) = B;
+            Q.block(dimension,0,weneed,B.cols()) = Qlo;
+
+            const gsMatrix<T> thbCoefs = FF.fullPivHouseholderQr().solve(Q);
+
+            // extract the coefficients of the active THB splines
+
+            for (index_t i = 0; i != numAct; ++i)
+            {
+                nodalValues.row(i) = thbCoefs.row(actFunctions[i]);
+            }
+
+        }
+        else
+        {
+            nodalValues = A.fullPivHouseholderQr().solve(B);
+        }
+
+        // 3. write coefficients for node k (they correspond to N_k in the expression of the derivatives dN_l)
+        for (index_t k = 0; k < numAct; ++k)
+        {
+            gsMatrix<T> derivs = nodalValues.row(k);
+            derivs.resize(2, numAct);
+
+            for (index_t row = 0; row != derivs.rows(); ++row)
+            {
+                if (1e-9 < derivs.row(row).sum())
+                {
+                    gsWarn << "$ ** Warning \n"
+                           << "$    at gauss point: " << k + 1 << "\n"
+                           << "$    sum of derivatives of basis functions is not "
+                        "equal to 0 in direction " << row << "\n"
+                           << "$   sum is: " << derivs.row(row).sum() << "\n";
+                }
+            }
+
+            out << "$ node: " << k + 1 <<"\n";
+            for (index_t col = 0; col != derivs.cols(); ++col)
+            {
+                for (index_t row = 0; row != derivs.rows(); ++row)
+                {
+                    out << std::setw(20) << derivs(row, col);
+                }
+                out << "\n";
+            }
+        }
+    }
 
 
     void writeCurve(std::ostream& out)
@@ -1522,7 +1680,7 @@ private:
                      const std::string& name)
     {
         // keyword for allocating the memory (default was "100M")
-        std::string keyword = "1000M"; 
+        std::string keyword = "1000M";
 
         // number of eigenvalues
         unsigned nEigenvalues = 200;
