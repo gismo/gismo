@@ -173,10 +173,8 @@ public:
         : boxSide(s), patch(p) { }
 
     // getters
-    boxSide& side() {return *this;}
+          boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
-
-    operator boxSide() const {return boxSide(this->direction(), this->parameter());}
 };
 
 /// Print (as string) a patch side

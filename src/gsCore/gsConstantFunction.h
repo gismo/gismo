@@ -61,7 +61,11 @@ public:
 
     virtual int domainDim() const   { return m_domainDim ; }
     virtual int targetDim() const   { return m_val.rows(); }
-        
+
+    const gsVector<T> & value() const { return m_val;}
+
+    T value(size_t i = 0) const { return m_val[i];}
+
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
