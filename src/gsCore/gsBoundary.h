@@ -110,7 +110,7 @@ public:
      *  Since the side with index \em 3 corresponds to "south", i.e. to \f$ \{ (u,v):\ v = 0 \} \f$,
      *  calling parameter(3) will return <em>0=false</em>.
     **/
-    bool    parameter () const {return (m_index-1)%2;}
+    bool    parameter () const {return (m_index-1)%2 != 0;}
 
     /**
      * @brief helper for iterating on sides of an n-dimensional box
@@ -222,6 +222,7 @@ public:
         for (index_t i=0; i<dim; ++i)
             param(i)=((m_index-1)>>i)&1;
     }
+
     gsVector<bool> parameters(int dim) const
     {
         gsVector<bool> r;
@@ -251,28 +252,33 @@ public:
      * @return the first valid corners in an dim-dimensional box
     **/
     static  boxCorner    getFirst     (int dim) {return boxCorner(1);}
+
     /**
      * @brief helper for iterating on corners of an n-dimensional box
      * @param dim
      * @return the last valid corners in an dim-dimensional box
     **/
+
     static  boxCorner    getLast      (int dim) {return boxCorner((2<<dim));}
     /**
      * @brief helper for iterating on corners of an n-dimensional box
      * @param dim
      * @return the (invalid) corners after the last one in dim-dimensional box
     **/
+
     static  boxCorner    getEnd       (int dim) {return boxCorner((2<<dim)+1);}
     /**
      * @brief set to next boxCorner
      */
     boxCorner& operator++ () { ++m_index; return *this;} //prefix
     boxCorner operator++ (int ) { boxCorner temp(*this); ++m_index; return temp;} //postfix
+
     /**
      * @brief set to previous boxCorner
      */
     boxCorner& operator-- () { --m_index; return *this;} //prefix
     boxCorner operator-- (int ) { boxCorner temp(*this); --m_index; return temp;} //postfix
+
     /**
      * @brief comparisons between boxCorner are allowed
      * @param other
