@@ -114,7 +114,7 @@ public:
 
     }
 
-    virtual void setOptions(const gsAssemblerOptions  & options)
+    void setOptions(const gsAssemblerOptions  & options)
     {
         if ( m_dirStrategy != options.dirStrategy ||
              m_intStrategy != options.intStrategy )
@@ -135,7 +135,7 @@ public:
     }
 
     /// Main assembly routine
-    virtual void assemble()
+    void assemble()
     {
         // If we have a homogeneous Dirichlet problem fill boundary
         // DoFs with zeros
@@ -193,7 +193,7 @@ public:
     }
     
     
-    virtual void assembleNitsche()
+    void assembleNitsche()
     {
         for ( typename gsBoundaryConditions<T>::const_iterator
                   it = m_bConditions.dirichletBegin();
@@ -206,7 +206,7 @@ public:
         }
     }
     
-    virtual void assembleNeumann()
+    void assembleNeumann()
     {
         for ( typename gsBoundaryConditions<T>::const_iterator
               it = m_bConditions.neumannBegin();
@@ -219,7 +219,7 @@ public:
         }
     }
     
-    virtual void assembleDg()
+    void assembleDg()
     {
         for ( typename gsMultiPatch<T>::iiterator it =
                   m_patches.iBegin(); it != m_patches.iEnd(); ++it )
@@ -290,6 +290,15 @@ public:
 
     /// Reconstruct solution field from computed solution vector
     gsField<T> * constructSolution(const gsMatrix<T> & solVector) const;
+
+
+    // special member function for anyone who actually wants to do something
+    // with the system matrix other than feeding it into the Eigen-CG-solver.
+    Eigen::SparseSelfAdjointView< typename gsSparseMatrix<T>::Base, Lower> fullMatrix()
+    {
+        return m_matrix.template selfadjointView<Lower>();
+    }
+
 
 protected:
 
