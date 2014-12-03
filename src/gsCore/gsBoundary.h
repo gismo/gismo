@@ -123,13 +123,13 @@ public:
      * @param dim
      * @return the last valid side in an dim-dimensional box
     **/
-    static  boxSide    getLast      (int dim) {return boxSide(2*dim+1);}
+    static  boxSide    getLast      (int dim) {return boxSide(2*dim);}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the (invalid) side after the last one in dim-dimensional box
     **/
-    static  boxSide    getEnd       (int dim) {return boxSide(2*dim+2);}
+    static  boxSide    getEnd       (int dim) {return boxSide(2*dim+1);}
     /**
      * @brief set to next boxSide
      */
@@ -147,7 +147,7 @@ public:
     **/
     bool operator!= (const boxSide& other) const {return m_index!=other.m_index;}
     bool operator>  (const boxSide& other) const {return m_index>other.m_index;}
-    bool operator<  (const boxSide& other) const {return m_index>other.m_index;}
+    bool operator<  (const boxSide& other) const {return m_index<other.m_index;}
     bool operator<= (const boxSide& other) const {return m_index<=other.m_index;}
     bool operator>= (const boxSide& other) const {return m_index>=other.m_index;}
 };
@@ -246,35 +246,35 @@ public:
     }
 
     /**
-     * @brief helper for iterating on sides of an n-dimensional box
+     * @brief helper for iterating on corners of an n-dimensional box
      * @param dim
-     * @return the first valid side in an dim-dimensional box
+     * @return the first valid corners in an dim-dimensional box
     **/
     static  boxCorner    getFirst     (int dim) {return boxCorner(1);}
     /**
-     * @brief helper for iterating on sides of an n-dimensional box
+     * @brief helper for iterating on corners of an n-dimensional box
      * @param dim
-     * @return the last valid side in an dim-dimensional box
+     * @return the last valid corners in an dim-dimensional box
     **/
-    static  boxCorner    getLast      (int dim) {return boxCorner((2<<dim)+1);}
+    static  boxCorner    getLast      (int dim) {return boxCorner((2<<dim));}
     /**
-     * @brief helper for iterating on sides of an n-dimensional box
+     * @brief helper for iterating on corners of an n-dimensional box
      * @param dim
-     * @return the (invalid) side after the last one in dim-dimensional box
+     * @return the (invalid) corners after the last one in dim-dimensional box
     **/
-    static  boxCorner    getEnd       (int dim) {return boxCorner((2<<dim)+2);}
+    static  boxCorner    getEnd       (int dim) {return boxCorner((2<<dim)+1);}
     /**
-     * @brief set to next boxSide
+     * @brief set to next boxCorner
      */
     boxCorner& operator++ () { ++m_index; return *this;} //prefix
     boxCorner operator++ (int ) { boxCorner temp(*this); ++m_index; return temp;} //postfix
     /**
-     * @brief set to previous boxSide
+     * @brief set to previous boxCorner
      */
     boxCorner& operator-- () { --m_index; return *this;} //prefix
     boxCorner operator-- (int ) { boxCorner temp(*this); --m_index; return temp;} //postfix
     /**
-     * @brief comparisons between boxSides are allowed
+     * @brief comparisons between boxCorner are allowed
      * @param other
      * @return
     **/
