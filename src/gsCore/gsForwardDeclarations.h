@@ -100,7 +100,7 @@ template< class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsNurbs
 template< class T = real_t>  class gsBernsteinBasis;
 //template< class T = real_t>  class gsRatBernsteinBasis;
 
-template<unsigned d, class T = real_t>  class gsCompositeBasis;
+template<unsigned d, class T = real_t>  class gsCompositeIncrSmoothnessBasis;
 template<unsigned d, class T = real_t>  class gsCompositeGeom;
 
 //template<unsigned d, class basis_t > class gsTensorBasis;
