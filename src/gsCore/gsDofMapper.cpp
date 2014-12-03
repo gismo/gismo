@@ -36,7 +36,8 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
         globals(i,0) = MAPPER_PATCH_DOF(locals(i,0), patchIndex)+m_shift;
 }
 
-
+// This function can not have enough information to do its job if dim>2
+// GS_DEPRECATED
 void gsDofMapper::matchInterface( index_t k1, index_t k2,
                                      const gsMatrix<unsigned> & b1,
                                      const gsMatrix<unsigned> & b2,

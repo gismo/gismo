@@ -99,10 +99,10 @@ int main()
   // Define Boundary conditions
   gsBoundaryConditions<> bcInfo;
   // Dirichlet BCs
-  bcInfo.addCondition( boundary::west,  boundary::dirichlet, &g );
-  bcInfo.addCondition( boundary::east,  boundary::dirichlet, &g );
-  bcInfo.addCondition( boundary::north, boundary::dirichlet, &g );
-  bcInfo.addCondition( boundary::south, boundary::dirichlet, &g );
+  bcInfo.addCondition( boundary::west,  condition_type::dirichlet, &g );
+  bcInfo.addCondition( boundary::east,  condition_type::dirichlet, &g );
+  bcInfo.addCondition( boundary::north, condition_type::dirichlet, &g );
+  bcInfo.addCondition( boundary::south, condition_type::dirichlet, &g );
 
   gsTensorBSpline<2,real_t> * geo = dynamic_cast< gsTensorBSpline<2,real_t> * >( & patches.patch(0) );
   cout << " --- Geometry:\n" << *geo << endl;

@@ -10,13 +10,12 @@ namespace gismo
     if ( nboxes == 0 ) {
       return;
     }
-    patch_side ps;
-    firstPatchSide( ps );
-    do {
+    for (patch_side ps=patch_side::getFirst(m_dim,nboxes); ps.good(m_dim,nboxes); ps.next(m_dim) )
+    {
       if ( !isBoundary( ps ) && !isInterface( ps ) ) {
         addBoundary( ps );
       }
-    } while ( nextPatchSide( ps ) );
+    }
   }
 
   bool gsBoxTopology::isInterface( const patch_side& ps ) const
@@ -58,31 +57,26 @@ namespace gismo
     if ( nboxes == 0 ) {
       throw std::runtime_error( "cannot iterate, no patches" );
     }
-    boundary::side firstside;
-    firstSide( firstside );
-    result = patch_side( 0, firstside );
+    result = patch_side::getFirst(m_dim,nboxes);
   }
 
   bool gsBoxTopology::nextPatchSide( patch_side& result )
   {
-    if ( nextSide( m_dim, result.side ) ) {
-      return true;  // current patch has more sides
-    } else {
-      result.patch++;                          // go to next patch
-      firstSide( result.side );                // go to first side of next patch
-      return ( result.patch < ( int )nboxes ); // return true if patch is still valid
-    }
+    result.next(m_dim);
+    return result.good(m_dim,nboxes);
   }
 
-  bool gsBoxTopology::getNeighbour(const patch_side& ps ,patch_side& result) const
+  bool gsBoxTopology::getNeighbour(const patch_side& ps ,patch_side& result, boundaryInterface* iface) const
   {
       for ( unsigned i = 0; i < m_interfaces.size(); ++i ) {
         if ( m_interfaces[i].ps1 == ps ) {
             result = m_interfaces[i].ps2;
+            if(iface) *iface=m_interfaces[i];
             return true;
         }
         else if ( m_interfaces[i].ps2 == ps ) {
             result = m_interfaces[i].ps1;
+            if(iface) *iface=m_interfaces[i];
             return true;
         }
       }
@@ -94,11 +88,12 @@ namespace gismo
       GISMO_ASSERT(m_dim==2,"works only for 2D");
       cornerList.resize(0);
       std::vector<patch_side> psides;
-      getPatchSides(start,m_dim,psides);
-      GISMO_ASSERT(psides.size()==2,"there should always be two patchsides on each patch_corner");
+      start.getContainingSides(m_dim,psides);
+      GISMO_ASSERT(psides.size()==m_dim,"there should always be two patchsides on each patch_corner");
       patch_side curSide = psides[0];
       patch_side endSide = psides[1];
       patch_side neighbour;
+      boundaryInterface interface;
       patch_corner curCorner = start;
       gsVector<bool> orient;
       gsVector<bool> pars(1);
@@ -106,7 +101,7 @@ namespace gismo
       do
       {
           cornerList.push_back(curCorner);
-          if(!getNeighbour(curSide,neighbour))
+          if(!getNeighbour(curSide,neighbour, &interface))
           {
               if(firstTurn)
               {
@@ -115,19 +110,14 @@ namespace gismo
                   endSide=tempSide;
                   curCorner = start;
                   firstTurn = false;
-                  if(!getNeighbour(curSide,neighbour))
+                  if(!getNeighbour(curSide,neighbour, &interface))
                       break;
               }
               else
                   break;
           }
-          gsVector<bool> parsOnSide;
-          getParsOnSide(curCorner,curSide,m_dim,parsOnSide);
-          GISMO_ASSERT(parsOnSide.rows()==1,"at the moment this is only for 2D");
-          getOrientationOfInterface(curSide,orient);
-          pars(0)=orient(0) ? parsOnSide[0] : !parsOnSide[0];
-          curCorner = getPatchCorner(neighbour,pars);
-          getPatchSides(curCorner,m_dim,psides);
+          curCorner = interface.mapCorner(curCorner);
+          curCorner.getContainingSides(m_dim,psides);
           if(neighbour == psides[0])
               curSide = psides[1];
           else if(neighbour == psides[1])

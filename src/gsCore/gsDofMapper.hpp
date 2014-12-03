@@ -82,7 +82,7 @@ void gsDofMapper::init(
     for (typename gsBoundaryConditions<T>::const_iterator
          it = bc.dirichletBegin() ; it != bc.dirichletEnd(); ++it )
     {
-        gsMatrix<unsigned> * bnd = basis[it->ps.patch].boundary( it->ps.side );
+        gsMatrix<unsigned> * bnd = basis[it->ps.patch].boundary( it->ps.side() );
         markBoundary(it->ps.patch, *bnd);
         delete bnd;
     }

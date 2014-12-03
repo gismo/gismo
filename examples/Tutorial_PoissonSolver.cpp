@@ -78,21 +78,21 @@ int main(int argc, char *argv[])
 
     // Dirichlet Boundary conditions
     // First argument is the patch number
-    bcInfo.addCondition(0, boundary::west,  boundary::dirichlet, &g);
-    bcInfo.addCondition(1, boundary::west,  boundary::dirichlet, &g);
+    bcInfo.addCondition(0, boundary::west,  condition_type::dirichlet, &g);
+    bcInfo.addCondition(1, boundary::west,  condition_type::dirichlet, &g);
 
-    bcInfo.addCondition(1, boundary::north, boundary::dirichlet, &g);
-    bcInfo.addCondition(3, boundary::north, boundary::dirichlet, &g);
+    bcInfo.addCondition(1, boundary::north, condition_type::dirichlet, &g);
+    bcInfo.addCondition(3, boundary::north, condition_type::dirichlet, &g);
 
     // Neumann Boundary conditions
     gsMFunctionExpr<> hEast ("1*pi*cos(pi*1)*sin(pi*2*y)", "3*pi*cos(pi*3)*sin(pi*4*y)");
     gsMFunctionExpr<> hSouth("-pi*2*sin(pi*x*1)","-pi*4*sin(pi*x*3)");
 
-    bcInfo.addCondition(3, boundary::east,  boundary::neumann, &hEast);
-    bcInfo.addCondition(2, boundary::east,  boundary::neumann, &hEast);
+    bcInfo.addCondition(3, boundary::east,  condition_type::neumann, &hEast);
+    bcInfo.addCondition(2, boundary::east,  condition_type::neumann, &hEast);
 
-    bcInfo.addCondition(0, boundary::south, boundary::neumann, &hSouth);
-    bcInfo.addCondition(2, boundary::south, boundary::neumann, &hSouth);
+    bcInfo.addCondition(0, boundary::south, condition_type::neumann, &hSouth);
+    bcInfo.addCondition(2, boundary::south, condition_type::neumann, &hSouth);
 
 
 

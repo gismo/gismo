@@ -128,10 +128,10 @@ void gsMultiBasis<T>::getMapper(bool conforming, gsDofMapper & mapper) const
               it != m_topology.iEnd(); ++it )
         {
             gsMatrix<unsigned>
-                * b1= m_bases[it->ps1.patch]->boundary( it->ps1.side ),
-                * b2= m_bases[it->ps2.patch]->boundary( it->ps2.side );
+                * b1= m_bases[it->ps1.patch]->boundary( it->ps1.side() ),
+                * b2= m_bases[it->ps2.patch]->boundary( it->ps2.side() );
             
-            mapper.matchInterface( it->ps1.patch, it->ps2.patch, *b1, *b2, it->orient);
+            mapper.matchInterface( it->ps1.patch, it->ps2.patch, *b1, *b2, it->orient());
             
             delete b1;
             delete b2;
@@ -155,10 +155,10 @@ void gsMultiBasis<T>::getMapper(bool conforming,
               it != m_topology.iEnd(); ++it )
         {
             gsMatrix<unsigned>
-                * b1= m_bases[it->ps1.patch]->boundary( it->ps1.side ),
-                * b2= m_bases[it->ps2.patch]->boundary( it->ps2.side );
+                * b1= m_bases[it->ps1.patch]->boundary( it->ps1.side() ),
+                * b2= m_bases[it->ps2.patch]->boundary( it->ps2.side() );
             
-            mapper.matchInterface( it->ps1.patch, it->ps2.patch, *b1, *b2, it->orient);
+            mapper.matchInterface( it->ps1.patch, it->ps2.patch, *b1, *b2, it->orient());
             
             delete b1;
             delete b2;

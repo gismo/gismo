@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     for (gsMultiPatch<>::const_biterator 
              bit = geo->bBegin(); bit != geo->bEnd(); ++bit)
     {
-        BCs.addCondition( *bit, boundary::dirichlet, ppde->solution() );
+        BCs.addCondition( *bit, condition_type::dirichlet, ppde->solution() );
     }
   
     gsMultiBasis<> bases(*geo);

@@ -148,17 +148,17 @@ public:
 	{ return m_BCs.robinEnd(); }
 
     // Returns the type of condition for the boundary side s of patch p
-    boundary::type typeOf(boundary::side const &s, const int& p = 0) const
+    condition_type::type typeOf(boundary::side const &s, const int& p = 0) const
     {
         return m_BCs.typeOf(s,p);
     }
   
-    void addCondition(int p, boundary::side s, boundary::type t, gsFunction<T> * f)
+    void addCondition(int p, boundary::side s, condition_type::type t, gsFunction<T> * f)
     {
         m_BCs.addCondition(p,s,t,f);
     }
 
-    void addCondition( boundary::side s, boundary::type t, gsFunction<T> * f)
+    void addCondition( boundary::side s, condition_type::type t, gsFunction<T> * f)
     {
         // for single-patch only
         GISMO_ASSERT( m_patches.size() == 1, 
@@ -166,9 +166,9 @@ public:
         addCondition(0,s,t,f);
     }
 
-    void addCondition(const patch_side& ps, boundary::type t, gsFunction<T> * f)
+    void addCondition(const patch_side& ps, condition_type::type t, gsFunction<T> * f)
     {
-        addCondition(ps.patch, ps.side, t, f);
+        addCondition(ps.patch, ps.side(), t, f);
     }
 
     /// Prints the object as a string.

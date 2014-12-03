@@ -102,8 +102,8 @@ public:
         const int bSize2      = B2.numElements();
         GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
                      "DG assumes nested interfaces.");
-        const boundary::side & side1 = bi[0].side;
-        const boundary::side & side2 = bi[1].side;
+        const boundary::side & side1 = bi[0].side();
+        const boundary::side & side2 = bi[1].side();
         
         gsQuadRule<T> QuRule;         // Reference Quadrature rule
         gsMatrix<T> quNodes1, quNodes2;// Mapped nodes

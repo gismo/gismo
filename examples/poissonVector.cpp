@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     for (gsMultiPatch<>::const_biterator
          bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
     {
-        bcInfo.addCondition( *bit, boundary::dirichlet, ppde->solution() );
+        bcInfo.addCondition( *bit, condition_type::dirichlet, ppde->solution() );
     }
     // Put Boundary conditions in a vector
     std::vector<gsBoundaryConditions<>* > vecBcInfo;

@@ -189,16 +189,14 @@ public:
     void addInterface( int p1, boundary::side s1,
                        int p2, boundary::side s2)
     {
-        gsVector<bool> orient(m_dim-1);
-        orient.setConstant(true);
-        addInterface(  boundaryInterface(p1,s1,p2,s2, orient ) );
+        addInterface(  boundaryInterface( patch_side(p1,s1),patch_side(p2,s2), m_dim ));
     }
 
     /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2 with the given orientation.
     void addInterface( int p1, boundary::side s1,
                        int p2, boundary::side s2, const gsVector<bool>& orient)
     {
-        addInterface(  boundaryInterface(p1,s1,p2,s2, orient ) );
+        addInterface(  boundaryInterface(patch_side(p1,s1),patch_side(p2,s2), orient ));
     }
 
     /// Add an interface described by \a bi.
@@ -256,7 +254,7 @@ public:
     const boundaryInterface & bInterface(int i) const {return m_interfaces[i];}
 
     /// set \a result to the associated patchside of \a ps, returns false if it is a boundary patch_side
-    bool getNeighbour(const patch_side& ps ,patch_side& result) const;
+    bool getNeighbour(const patch_side& ps ,patch_side& result, boundaryInterface* iface=NULL) const;
 
     /// set \a result to the associated interface of \a ps, returns false if it is a boundary patch_side
     bool getInterface(const patch_side& ps,boundaryInterface & result) const
@@ -276,7 +274,7 @@ public:
         for ( unsigned i = 0; i < m_interfaces.size(); ++i )
             if ( m_interfaces[i].ps1 == ps || m_interfaces[i].ps2 == ps )
             {
-                result = m_interfaces[i].orient;
+                result = m_interfaces[i].orient();
                 return true;
             }
         return false;

@@ -165,7 +165,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
         for ( int i = 0; i != m_dim; ++i ) 
         {
             pts( i, r ) = para( i, v[i] );
-            cverts[ sideOf( i, v[i] ) ].push_back( r );
+            cverts[ box_side( i, v[i] ) ].push_back( r );
         }
         r++;
     } while ( nextLexicographic( v, ones ) );
@@ -189,16 +189,16 @@ bool gsMultiPatch<T>::computeTopology( T tol )
 
         // Get vertices of side1
         for ( std::size_t r = 0; r != nver; ++r )
-            vm1.col( r ) = all_verts[side1.patch].col( cverts[side1.side][r] );
+            vm1.col( r ) = all_verts[side1.patch].col( cverts[side1.side()][r] );
 
         // For all remaining non-matched sides
         for ( typename std::vector<patch_side>::iterator side2 = all_sides.begin();
               side2 != all_sides.end(); ++side2 )
         {
             // Initialize data for of side2
-            std::vector<int> verts2(cverts[side2->side]);
+            std::vector<int> verts2(cverts[side2->side()]);
             for ( std::size_t r = 0; r != nver; ++r )
-                vm2.col( r ) = all_verts[side2->patch].col( cverts[side2->side][r] );
+                vm2.col( r ) = all_verts[side2->patch].col( cverts[side2->side()][r] );
 
             // Try to match side1 and side2 vertex by vertex
             std::size_t r1(0);

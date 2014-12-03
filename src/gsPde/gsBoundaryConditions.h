@@ -21,6 +21,31 @@ namespace gismo
 
     template <class T> class gsFunction;
 
+struct condition_type
+{
+ enum type {dirichlet=0, neumann=1, robin=2 };
+    //mixed BD means: there are both dirichlet and neumann sides
+    //robin: a linear combination of value and derivative
+    //cauchy: there are 2 conditions (value+deriv) defined on the same side
+};
+
+///Print (as string) a boundary type
+inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
+{
+    switch (o)
+    {
+    case condition_type::dirichlet:
+        os<< "Dirichlet";
+    case condition_type::neumann:
+        os<< "Neumann";
+    case condition_type::robin:
+        os<< "Mixed";
+    default:
+        gsInfo<<"condition type not known.\n";
+    };
+    return os;
+}
+
 /** 
     Class that defines a Boundary single condition for a side of a
     patch for some unknown Pde variable.
@@ -28,10 +53,10 @@ namespace gismo
 template<class T>
 struct boundary_condition
 {
-    boundary_condition( int p, boundary::side s, gsFunction<T> * f, boundary::type t, int unknown = 0)
+    boundary_condition( int p, boundary::side s, gsFunction<T> * f, condition_type::type t, int unknown = 0)
 	: ps(p, s), m_function(f), m_type(t), m_unknown(unknown) { }
       
-    boundary_condition( int p, boundary::side s, boundary::type t, int unknown = 0)
+    boundary_condition( int p, boundary::side s, condition_type::type t, int unknown = 0)
 	: ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown)  { }
       
     /// homogeneous boundary condition ?
@@ -41,13 +66,13 @@ struct boundary_condition
     gsFunction<T> * function() const { return m_function; }
 
     /// Returns the type of the boundary condition
-    boundary::type  type()     const { return m_type; }
+    condition_type::type  type()     const { return m_type; }
 
     /// Returns the patch to which this boundary condition refers to
     int             patch()    const { return ps.patch; }
 
     /// Returns the side to which this boundary condition refers to
-    boundary::side  side()     const { return ps.side; }
+    boundary::side  side()     const { return ps.side(); }
 
     /// Returns the unknown to which this boundary condition refers to
     int             unknown()  const { return m_unknown; }
@@ -55,7 +80,7 @@ struct boundary_condition
 
     patch_side ps;
     gsFunction<T> * m_function;
-    boundary::type m_type;// TO DO : robin coefficients?
+    condition_type::type m_type;// TO DO : robin coefficients?
     int m_unknown;
 };
     
@@ -165,16 +190,16 @@ public:
     iterator robinEnd()
 	{ return robin_sides.end(); }
     
-    void addCondition(int p, boundary::side s, boundary::type t, gsFunction<T> * f, int unknown = 0)
+    void addCondition(int p, boundary::side s, condition_type::type t, gsFunction<T> * f, int unknown = 0)
     {
         switch (t) {
-        case boundary::dirichlet :
+        case condition_type::dirichlet :
             drchlt_sides.push_back( boundary_condition<T>(p,s,f,t,unknown) );
             break;
-        case boundary::neumann :
+        case condition_type::neumann :
             nmnn_sides.push_back( boundary_condition<T>(p,s,f,t,unknown) );
             break;
-        case boundary::robin :
+        case condition_type::robin :
             robin_sides.push_back( boundary_condition<T>(p,s,f,t,unknown) );
             break;
         default:
@@ -182,15 +207,15 @@ public:
         }
     }
 
-    void addCondition( boundary::side s, boundary::type t, gsFunction<T> * f, int unknown = 0)
+    void addCondition( boundary::side s, condition_type::type t, gsFunction<T> * f, int unknown = 0)
         {
             // for single-patch only
             addCondition(0,s,t,f,unknown);
         }
 
-    void addCondition(const patch_side& ps, boundary::type t, gsFunction<T> * f, int unknown = 0)
+    void addCondition(const patch_side& ps, condition_type::type t, gsFunction<T> * f, int unknown = 0)
         {
-            addCondition(ps.patch, ps.side, t, f, unknown);
+            addCondition(ps.patch, ps.side(), t, f, unknown);
         }
 
   /// Prints the object as a string.
@@ -218,6 +243,6 @@ private:
 /// Print (as string)
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsBoundaryConditions<T>& bvp)
-{return bvp.print(os); };
+{return bvp.print(os); }
     
-}; // namespace gismo
+} // namespace gismo

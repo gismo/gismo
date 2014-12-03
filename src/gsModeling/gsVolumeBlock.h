@@ -90,7 +90,7 @@ public:
             gsWarn << "Didn't transform face with id = " << faceId << "\n";
         }
 
-        return getSide(sideIndex + 1);
+        return box_side(sideIndex + 1);
     }
 
 
@@ -299,7 +299,7 @@ public:
     }
 
 
-    /// Returns points that are uniformly spread on the boundary. For each endge
+    /// Returns points that are uniformly spread on the boundary. For each edge
     /// we get double points (from each curve)
     ///
     /// \param n number of points in one curve (boundary)
@@ -323,10 +323,8 @@ public:
         }
 
         int column = 0;
-        boundary::side side;
-        firstSide(side);
 
-        do
+        for (box_side side = box_side::getFirst(3); side.good(3); side.next() )
         {
 
             // this variable is true if we must turn around a curve loop in
@@ -477,7 +475,7 @@ public:
                 }
             }
 
-        } while (nextSide(3, side));
+        }
     }
 
 

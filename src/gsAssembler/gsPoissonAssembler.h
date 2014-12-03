@@ -228,7 +228,7 @@ public:
                  m_bases[0][(*it)[1].patch].numElements() )
                 std::swap( (*it)[0], (*it)[1] );
             
-            gsVisitorDg<T> dg(penalty(it->ps1.patch), it->ps1.side);
+            gsVisitorDg<T> dg(penalty(it->ps1.patch), it->ps1.side());
             this->apply(dg, *it);
         }
     }

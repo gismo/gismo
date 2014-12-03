@@ -1646,9 +1646,9 @@ public:
             for ( typename gsMultiPatch<T>::const_iiterator it = obj.iBegin();
                   it != obj.iEnd(); ++it )
             {
-                str<< it->ps1.patch <<" "<< int(it->ps1.side)<<" "
-                   << it->ps2.patch <<" "<< int(it->ps2.side)<<" "
-                   << it->orient.transpose() <<"\n";
+                str<< it->ps1.patch <<" "<< int(it->ps1.side())<<" "
+                   << it->ps2.patch <<" "<< int(it->ps2.side())<<" "
+                   << it->orient().transpose() <<"\n";
             }
             tmp = internal::makeNode("interfaces", str.str(),  data);
             mp_node->append_node(tmp);
@@ -1660,7 +1660,7 @@ public:
             for ( typename gsMultiPatch<T>::const_biterator it = obj.bBegin();
                   it != obj.bEnd(); ++it )
             {
-                str<< it->patch <<" "<< int(it->side)<<"\n";
+                str<< it->patch <<" "<< int(it->side())<<"\n";
             }
             tmp = internal::makeNode("boundary", str.str(), data);
             mp_node->append_node(tmp);
@@ -1992,13 +1992,13 @@ public:
             {		       
                 for (int side; str >> side;) 
                     bvp->addCondition( static_cast<boundary::side>(side), 
-                                       boundary::dirichlet, ff);
+                                       condition_type::dirichlet, ff);
             }
             else if ( !strcmp(child->first_attribute("type")->value(), "neumann") )
             {		       
                 for (int side; str >> side;) 
                     bvp->addCondition( static_cast<boundary::side>(side), 
-                                       boundary::neumann, ff);
+                                       condition_type::neumann, ff);
             }		
         }
     

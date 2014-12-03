@@ -523,15 +523,15 @@ T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
     
     std::auto_ptr< gsGeometryEvaluator<T> > funcEval2 ( func2.evaluator(NEED_VALUE) );
     
-    const boundary::side side1 = bi[0].side;
-    const boundary::side side2 = bi[1].side;
+    const boundary::side side1 = bi[0].side();
+    const boundary::side side2 = bi[1].side();
 
     // "DG method not implemented yet for non-matching interfaces");
     
     // assumes matching orientation
     // degree of the underlying Gauss rule to use
     gsVector<int> intNodes1 ( func1.basis().dim() );
-    const int dir1 = direction( bi.ps1.side ) ;
+    const int dir1 = bi.first().direction();
        for (int i = 0; i < dir1; ++i)
            intNodes1[i] = ( func1.basis().degree(i) + func2.basis().degree(i) + 2 )/ 2 ;
            intNodes1[dir1] = 1;
@@ -539,7 +539,7 @@ T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
            intNodes1[i] = ( func1.basis().degree(i) + func2.basis().degree(i) + 2 )/ 2 ;    
 	 
     gsVector<int> intNodes2 ( func2.basis().dim() );
-    const int dir2 = direction( bi.ps2.side ) ;
+    const int dir2 = bi.second().direction();
        for (int i = 0; i < dir2; ++i)
            intNodes2[i] = ( func1.basis().degree(i) + func2.basis().degree(i) + 2 )/ 2 ;
            intNodes2[dir2] = 1;
