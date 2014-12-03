@@ -392,7 +392,7 @@ public:
             const index_t d = (ps2.direction()+i)%dim;
 
             directionMap(o)=d;
-            directionOrientation=true;
+            directionOrientation(o)=true;
             /// TODO: discuss and define default orientation
         }
     }
