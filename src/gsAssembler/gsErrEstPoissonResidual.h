@@ -127,6 +127,10 @@ protected:
                      gsGeometryEvaluator<T> & geoEval,
                      gsVector<T> const      & quWeights)
     {
+        T hh = T(1.0);
+        for( index_t i=0; i < element.upperCorner().size(); i++)
+            hh *= ( element.upperCorner()[i] - element.lowerCorner()[i] );
+
         T sum(0.0);
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
@@ -187,7 +191,7 @@ protected:
 
         }
 
-        return sum;
+        return hh * sum;
     }
 
 private:
