@@ -130,19 +130,16 @@ public:
      * @return the (invalid) side after the last one in dim-dimensional box
     **/
     static  boxSide    getEnd       (int dim) {return boxSide(2*dim+2);}
-
     /**
      * @brief set to next boxSide
      */
     boxSide& operator++ () { ++m_index; return *this;} //prefix
     boxSide operator++ (int ) { boxSide temp(*this); ++m_index; return temp;} //postfix
-
     /**
      * @brief set to previous boxSide
      */
     boxSide& operator-- () { --m_index; return *this;} //prefix
     boxSide operator-- (int ) { boxSide temp(*this); --m_index; return temp;} //postfix
-
     /**
      * @brief comparisons between boxSides are allowed
      * @param other
@@ -175,6 +172,8 @@ public:
     // getters
           boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
+
+    bool operator== (const patchSide & other) const {return patch==other.patch && m_index==other.m_index; }
 };
 
 /// Print (as string) a patch side
@@ -261,29 +260,29 @@ public:
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
-     * @return the first valid side in an dim-dimensional box
+     * @return the (invalid) side after the last one in dim-dimensional box
     **/
-    void    first     (int dim) {*this=getFirst(dim);}
-    /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the last valid side in an dim-dimensional box
-    **/
-    void    last      (int dim) {*this=getLast(dim);}
+    static  boxCorner    getEnd       (int dim) {return boxCorner((2<<dim)+2);}
     /**
      * @brief set to next boxSide
      */
-    void    next      () { ++m_index;}
+    boxCorner& operator++ () { ++m_index; return *this;} //prefix
+    boxCorner operator++ (int ) { boxCorner temp(*this); ++m_index; return temp;} //postfix
     /**
      * @brief set to previous boxSide
      */
-    void    previous  () { --m_index;}
+    boxCorner& operator-- () { --m_index; return *this;} //prefix
+    boxCorner operator-- (int ) { boxCorner temp(*this); --m_index; return temp;} //postfix
     /**
-     * @brief good
-     * @param dim
-     * @return true if the side is appropriate in dim dimensional boxes
-     */
-    bool good(int dim){return m_index>0 && m_index<((2<<dim)+2);}
+     * @brief comparisons between boxSides are allowed
+     * @param other
+     * @return
+    **/
+    bool operator!= (const boxCorner& other) const {return m_index!=other.m_index;}
+    bool operator>  (const boxCorner& other) const {return m_index>other.m_index;}
+    bool operator<  (const boxCorner& other) const {return m_index>other.m_index;}
+    bool operator<= (const boxCorner& other) const {return m_index<=other.m_index;}
+    bool operator>= (const boxCorner& other) const {return m_index>=other.m_index;}
 };
 
 
@@ -320,46 +319,6 @@ public:
         for (index_t i=0;i<dim;++i)
             sides[i]=patchSide(patch, boxSide(i, param(i)));
     }
-
-    // iteration
-    /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the first valid side in an dim-dimensional box
-    **/
-    static  patchCorner    getFirst     (int dim, index_t num_patches) { return patchCorner(0,boxCorner::getFirst(dim));}
-    /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the last valid side in an dim-dimensional box
-    **/
-    static  patchCorner    getLast      (int dim, index_t num_patches) { return patchCorner(num_patches-1,boxCorner::getLast(dim));}
-    /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the first valid side in an dim-dimensional box
-    **/
-    void    first     (int dim, index_t num_patches) {*this=getFirst(dim,num_patches);}
-    /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the last valid side in an dim-dimensional box
-    **/
-    void    last      (int dim, index_t num_patches) {*this=getLast(dim,num_patches);}
-    /**
-     * @brief set to next boxSide
-     */
-    void    next      (int dim) { boxCorner::next(); if (!boxCorner::good(dim)) {++patch; boxCorner::first(dim);} }
-    /**
-     * @brief set to previous boxSide
-     */
-    void    previous  (int dim) { boxCorner::previous(); if (!boxCorner::good(dim)) {--patch; boxCorner::last(dim);} }
-    /**
-     * @brief good
-     * @param dim
-     * @return true if the patch side is appropriate dim dimensional boxes
-     */
-    bool good (int dim, index_t num_patches) {return boxCorner::good(dim) && 0<=patch && patch< num_patches;}
 };
 
 
