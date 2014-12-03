@@ -48,25 +48,44 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
     const size_t nPatches = bases[0]->nBases();
     const index_t numComp = bases.size();
 
+    //Checking if bases are same size in for components.
+    std::vector<index_t> offsets(nPatches);
+    for (index_t comp = 0; comp < numComp; ++comp)
+    {
+        for (size_t k = 0; k < nPatches; ++k)
+        {
+            if (comp != 0)
+            {
+                GISMO_ASSERT(offsets[k] == bases[comp]->basis(k).size(),
+                         "The sizes of the bases are not the same for every component. Dofmapper requries this!");
+            }
+            offsets[k] =  bases[comp]->basis(k).size();
+        }
+    }
     // Initialize offsets and dof holder
     m_offset.reserve( nPatches );
     m_offset.push_back(0);
     for (size_t k = 1; k < nPatches; ++k)
     {
+        m_offset.push_back( m_offset.back() + bases[0]->basis(k-1).size() );
+    }
+
+
+    if (nPatches == 1)
+    {
         index_t dofsPatches = 0;
         for (index_t comp = 0; comp < numComp; ++comp)
         {
-            dofsPatches += bases[comp]->basis(k-1).size();
+            dofsPatches += bases[comp]->back().size();
         }
-        m_offset.push_back( m_offset.back() + dofsPatches );
+        m_numFreeDofs = m_offset.back() + dofsPatches;
     }
-
-    index_t dofsPatches = 0;
-    for (index_t comp = 0; comp < numComp; ++comp)
+    //Assuming each component are of same size;
+    //i.e. bases[comp]->back().size() are equal for all comp
+    else
     {
-        dofsPatches += bases[comp]->back().size();
+        m_numFreeDofs = (m_offset.back() + bases[0]->back().size())*nPatches;
     }
-    m_numFreeDofs = m_offset.back() + dofsPatches;
 
     m_dofs.resize( m_numFreeDofs, 0);
 }
