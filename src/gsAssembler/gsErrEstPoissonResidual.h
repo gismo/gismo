@@ -26,8 +26,8 @@ namespace gismo
  * \f[ -\Delta u = f,\quad u = u_D \mathrm{\ on\ } \partial \Omega. \f]
  * The error estimate \f$\eta\f$ for a computed discrete solution
  * \f$ u_h \f$ is then given by
- * \f[ \eta^2 = \sum_K \eta_K^2 = \sum_K \| \Delta u_h + f\|_{L_2(K)}^2, \f]
- * where \f$K\f$ denotes a element/cell of the mesh
+ * \f[ \eta^2 = \sum_K \eta_K^2 = \sum_K h^d \| \Delta u_h + f\|_{L_2(K)}^2, \f]
+ * where \f$K\f$ denotes a element/cell of the mesh with size \f$h^d\f$
  * (and, naturally, \f$ \sum_K\f$ is a sum over all cells).
  *
  * \warning Note that the terms regarding Neumann boundary conditions
