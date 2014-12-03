@@ -114,7 +114,7 @@ public:
 
     }
 
-    void setOptions(const gsAssemblerOptions  & options)
+    virtual void setOptions(const gsAssemblerOptions  & options)
     {
         if ( m_dirStrategy != options.dirStrategy ||
              m_intStrategy != options.intStrategy )
@@ -135,7 +135,7 @@ public:
     }
 
     /// Main assembly routine
-    void assemble()
+    virtual void assemble()
     {
         // If we have a homogeneous Dirichlet problem fill boundary
         // DoFs with zeros
@@ -193,7 +193,7 @@ public:
     }
     
     
-    void assembleNitsche()
+    virtual void assembleNitsche()
     {
         for ( typename gsBoundaryConditions<T>::const_iterator
                   it = m_bConditions.dirichletBegin();
@@ -206,7 +206,7 @@ public:
         }
     }
     
-    void assembleNeumann()
+    virtual void assembleNeumann()
     {
         for ( typename gsBoundaryConditions<T>::const_iterator
               it = m_bConditions.neumannBegin();
@@ -219,7 +219,7 @@ public:
         }
     }
     
-    void assembleDg()
+    virtual void assembleDg()
     {
         for ( typename gsMultiPatch<T>::iiterator it =
                   m_patches.iBegin(); it != m_patches.iEnd(); ++it )
@@ -499,24 +499,24 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
             // eltBdryFcts stores the row in basisVals/locIdxAct, i.e.,
             // something like a "element-wise index"
             std::vector<index_t> eltBdryFcts;
-            for( int i=0; i < globIdxAct.rows(); i++)
+            for( index_t i=0; i < globIdxAct.rows(); i++)
                 if( mapper.is_boundary_index( globIdxAct(i,0)) )
                     eltBdryFcts.push_back( i );
 
             // Do the actual assembly:
-            for( unsigned k=0; k < quNodes.cols(); k++ )
+            for( index_t k=0; k < quNodes.cols(); k++ )
             {
                 T weight_k = quWeights[k];
 
                 // Only run through the active boundary functions on the element:
-                for( unsigned i0=0; i0 < eltBdryFcts.size(); i0++ )
+                for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
                 {
                     // Each active boundary function/DOF in eltBdryFcts has...
                     // ...the above-mentioned "element-wise index"
                     unsigned i = eltBdryFcts[i0];
                     // ...the boundary index.
                     unsigned ii = mapper.global_to_bindex( globIdxAct( i ));
-                    for( unsigned j0=0; j0 < eltBdryFcts.size(); j0++ )
+                    for( size_t j0=0; j0 < eltBdryFcts.size(); j0++ )
                     {
                         unsigned j = eltBdryFcts[j0];
                         unsigned jj = mapper.global_to_bindex( globIdxAct( j ));

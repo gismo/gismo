@@ -224,7 +224,7 @@ void gsRefineMarkedElements( gsMultiBasis<T> & basis, std::vector<bool> & elMark
                 // the function uniqueFindSpan is used. This causes problems,
                 // if some of the corners concide with knot lines.
                 gsMatrix<T> refBox( low.size(), 2 );
-                for( unsigned i=0; i < low.size(); ++i )
+                for( index_t i=0; i < low.size(); ++i )
                 {
                 refBox(i,0) = 0.75 * low[i] + 0.25 * upp[i];
                 refBox(i,1) = 0.25 * low[i] + 0.75 * upp[i];
@@ -237,7 +237,7 @@ void gsRefineMarkedElements( gsMultiBasis<T> & basis, std::vector<bool> & elMark
         //std::cout << "Refining " << refBoxes.size() << " elements" << std::endl;
 
         // Refine all of the found refBoxes.
-        for( unsigned i = 0; i < refBoxes.size(); i++ )
+        for( size_t i = 0; i < refBoxes.size(); i++ )
             basis.refine( pn, refBoxes[i] );
     }
 }
