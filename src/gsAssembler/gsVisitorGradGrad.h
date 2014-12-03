@@ -64,7 +64,8 @@ public:
         geoEval.evaluateAt(quNodes);
 
         // Initialize local matrix/rhs
-        localMat.setZero(numActive, numActive);
+        localMat.resize(numActive, numActive);
+        localMat.setZero();
     }
 
     inline void assemble(gsDomainIterator<T>    & element, 
@@ -73,17 +74,16 @@ public:
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[k] * geoEval.measure(k);
         
             // Compute physical gradients at k as a Dim x NumActive matrix
             geoEval.transformGradients(k, basisGrads, basisPhGrads);
 
-            localMat.noalias() += weight * ( basisGrads.transpose() * basisGrads );
+            localMat.noalias() += weight * ( basisPhGrads.transpose() * basisPhGrads );
         }
     }
-    
+
     void localToGlobal(const gsDofMapper     & mapper,
                        const gsMatrix<T>     & eliminatedDofs,
                        const int patchIndex,
@@ -93,7 +93,7 @@ public:
         // Translate local Dofs to global dofs in place
         mapper.localToGlobal(actives, patchIndex, actives);
         const index_t numActive = actives.rows();
-        
+
         for (index_t i = 0; i < numActive; ++i)
         {
             const int ii = actives(i,0); // N_i
@@ -102,7 +102,7 @@ public:
                 const int jj = actives(j,0); // N_j
 
                 // store lower triangular part only
-                if ( jj <= ii ) 
+                if ( jj <= ii )
                     sysMatrix.coeffRef(ii, jj) += localMat(i, j); // N_i*N_j
             }
         }
