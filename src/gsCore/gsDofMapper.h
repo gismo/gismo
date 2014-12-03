@@ -171,7 +171,7 @@ public:
      * \a i psList. Thus, the whole side colapses to a single global dof
      *
      */
-    void colapseSides( std::vector<patch_side> const & psList );
+    void colapseSides( std::vector<patchSide> const & psList );
 
   
 

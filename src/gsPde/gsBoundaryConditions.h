@@ -78,7 +78,7 @@ struct boundary_condition
     int             unknown()  const { return m_unknown; }
 
 
-    patch_side ps;
+    patchSide ps;
     gsFunction<T> * m_function;
     condition_type::type m_type;// TO DO : robin coefficients?
     int m_unknown;
@@ -213,7 +213,7 @@ public:
             addCondition(0,s,t,f,unknown);
         }
 
-    void addCondition(const patch_side& ps, condition_type::type t, gsFunction<T> * f, int unknown = 0)
+    void addCondition(const patchSide& ps, condition_type::type t, gsFunction<T> * f, int unknown = 0)
         {
             addCondition(ps.patch, ps.side(), t, f, unknown);
         }

@@ -89,7 +89,7 @@ public:
 
     /// Create from patches and boundary/interface information
     gsMultiPatch( const PatchContainer& patches,
-            const std::vector<patch_side>& boundary,
+            const std::vector<patchSide>& boundary,
                   const std::vector<boundaryInterface>& interfaces );
 
     /// Destructor
@@ -184,7 +184,7 @@ public:
     /// Add side s of patch g to the outer boundary of the domain
     void addPatchBoundary( gsGeometry<T>* g, boundary::side s ) {
         int p = findPatchIndex( g );
-        gsBoxTopology::addBoundary( patch_side( p, s ) );
+        gsBoxTopology::addBoundary( patchSide( p, s ) );
     }
 
     void uniformRefine(int numKnots = 1);

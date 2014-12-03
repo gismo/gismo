@@ -61,25 +61,29 @@ struct boundary
 
 
 // forward declarations of types
-struct box_corner;
-struct box_side;
+struct boxCorner;
+struct boxSide;
 
 
 /**
  * Struct side represent a side of a box
 **/
-struct box_side
+struct boxSide
 {
 public:
+    enum side { none = 0,
+                west = 1, east = 2, south = 3, north= 4, front=5, back=6 ,
+                left = 1, right= 2, down  = 3, up   = 4   };
+
     index_t m_index;
 public:
-    box_side (index_t dir, bool par) : m_index(par?2*dir+2:2*dir+1) { GISMO_ASSERT(dir>=0,"invalid side");}
-    box_side (index_t a=0) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
-    box_side (boundary::side a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
+    boxSide (): m_index(0) {}
+    boxSide (index_t dir, bool par) : m_index(par?2*dir+2:2*dir+1) { GISMO_ASSERT(dir>=0,"invalid side");}
+    boxSide (index_t a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
+    boxSide (boundary::side a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
 
     // conversions
     operator boundary::side() const {return static_cast<boundary::side>(m_index);}
-    box_side& operator= (boundary::side a) {m_index= a; return *this;}
 
     /**
      *\brief Returns the parametric direction orthogonal to this side.
@@ -113,120 +117,73 @@ public:
      * @param dim
      * @return the first valid side in an dim-dimensional box
     **/
-    static  box_side    getFirst     (int dim) {return box_side(1);}
+    static  boxSide    getFirst     (int dim) {return boxSide(1);}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the last valid side in an dim-dimensional box
     **/
-    static  box_side    getLast      (int dim) {return box_side(2*dim+1);}
+    static  boxSide    getLast      (int dim) {return boxSide(2*dim+1);}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
-     * @return the first valid side in an dim-dimensional box
+     * @return the (invalid) side after the last one in dim-dimensional box
     **/
-    void    first     (int dim) {*this=getFirst(dim);}
+    static  boxSide    getEnd       (int dim) {return boxSide(2*dim+2);}
+
     /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the last valid side in an dim-dimensional box
+     * @brief set to next boxSide
+     */
+    boxSide& operator++ () { ++m_index; return *this;} //prefix
+    boxSide operator++ (int ) { boxSide temp(*this); ++m_index; return temp;} //postfix
+
+    /**
+     * @brief set to previous boxSide
+     */
+    boxSide& operator-- () { --m_index; return *this;} //prefix
+    boxSide operator-- (int ) { boxSide temp(*this); --m_index; return temp;} //postfix
+
+    /**
+     * @brief comparisons between boxSides are allowed
+     * @param other
+     * @return
     **/
-    void    last      (int dim) {*this=getLast(dim);}
-    /**
-     * @brief set to next box_side
-     */
-    void    next      () { ++m_index;}
-    /**
-     * @brief set to previous box_side
-     */
-    void    previous  () { --m_index;}
-    /**
-     * @brief good
-     * @param dim
-     * @return true if the side is appropriate in dim dimensional boxes
-     */
-    bool good(int dim){return m_index>0 && m_index<(2*dim+1);}
+    bool operator!= (const boxSide& other) const {return m_index!=other.m_index;}
+    bool operator>  (const boxSide& other) const {return m_index>other.m_index;}
+    bool operator<  (const boxSide& other) const {return m_index>other.m_index;}
+    bool operator<= (const boxSide& other) const {return m_index<=other.m_index;}
+    bool operator>= (const boxSide& other) const {return m_index>=other.m_index;}
 };
 
 /** 
-    Struct patch_side represents a side of a patch
+    Struct patchSide represents a side of a patch
 */  
-struct patch_side : public box_side
+struct patchSide: public boxSide
 {
 public:
     index_t patch;              ///< The index of the patch.
 public:
 
-    patch_side() : box_side(), patch(0) { }
+    patchSide() : boxSide(), patch(0) { }
 
-    patch_side(int p, boundary::side s)
-        : box_side(s), patch(p) { }
+    patchSide(index_t p, boundary::side s)
+        : boxSide(s), patch(p) { }
 
-    patch_side(index_t p, box_side s)
-        : box_side(s), patch(p) { }
+    patchSide(index_t p, boxSide s)
+        : boxSide(s), patch(p) { }
 
     // getters
-    box_side& side() {return *this;}
-    const box_side& side() const {return *this;}
+    boxSide& side() {return *this;}
+    const boxSide& side() const {return *this;}
 
-    operator box_side() const {return box_side(this->direction(), this->parameter());}
-
-    //comparison
-    // comparison
-    bool operator== (const patch_side & other) const
-    {
-        return patch==other.patch && m_index == other.m_index;
-    }
-
-
-    // iteration
-    /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the first valid side in an dim-dimensional box
-    **/
-    static  patch_side    getFirst     (int dim, index_t num_patches) { return patch_side(0,box_side::getFirst(dim));}
-    /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the last valid side in an dim-dimensional box
-    **/
-    static  patch_side    getLast      (int dim, index_t num_patches) { return patch_side(num_patches-1,box_side::getLast(dim));}
-    /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the first valid side in an dim-dimensional box
-    **/
-    void    first     (int dim, index_t num_patches) {*this=getFirst(dim,num_patches);}
-    /**
-     * @brief helper for iterating on sides of an n-dimensional box
-     * @param dim
-     * @return the last valid side in an dim-dimensional box
-    **/
-    void    last      (int dim, index_t num_patches) {*this=getLast(dim,num_patches);}
-    /**
-     * @brief set to next box_side
-     */
-    void    next      (int dim) { box_side::next(); if (!box_side::good(dim)) {++patch; box_side::first(dim);} }
-    /**
-     * @brief set to previous box_side
-     */
-    void    previous  (int dim) { box_side::previous(); if (!box_side::good(dim)) {--patch; box_side::last(dim);} }
-    /**
-     * @brief good
-     * @param dim
-     * @return true if the patch side is appropriate dim dimensional boxes
-     */
-    bool good (int dim, index_t num_patches) {return box_side::good(dim) && 0<=patch && patch< num_patches;}
-
-
+    operator boxSide() const {return boxSide(this->direction(), this->parameter());}
 };
 
 /// Print (as string) a patch side
-inline std::ostream &operator<<(std::ostream &os, patch_side const & i)
+inline std::ostream &operator<<(std::ostream &os, patchSide const & i)
 {
     //os<<"Side: patch="<< i.patch<<", side="<< int(i.side)<<", ie. "<< i.side << ".\n";
-    os<<i.patch<<" "<< int(i.side()) ;
+    os<<i.patch<<" "<< i.side();
     return os;
 }
 
@@ -235,14 +192,14 @@ inline std::ostream &operator<<(std::ostream &os, patch_side const & i)
 /**
  * Struct side represent a side of a box
 **/
-struct box_corner
+struct boxCorner
 {
 public:
     index_t m_index;
 public:
-    box_corner (index_t a=0) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
-    box_corner (boundary::corner a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
-    box_corner (gsVector<bool>  v) : m_index(1)
+    boxCorner (index_t a=0) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
+    boxCorner (boundary::corner a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
+    boxCorner (gsVector<bool>  v) : m_index(1)
     {
         for (index_t p=0;p<v.rows();++p)
         {
@@ -253,7 +210,7 @@ public:
 
     // conversions
     operator boundary::corner() const {return static_cast<boundary::corner>(m_index);}
-    box_corner& operator= (boundary::corner a) {m_index= a; return *this;}
+    boxCorner& operator= (boundary::corner a) {m_index= a; return *this;}
 
     /**
      * @brief returns a vector of parameters describing the position
@@ -281,14 +238,14 @@ public:
      * @param dim is the ambient dimension
      * @param sides
      */
-    void getContainingSides (int dim, std::vector<box_side> &sides) const
+    void getContainingSides (int dim, std::vector<boxSide> &sides) const
     {
         GISMO_ASSERT(dim>=0, "Dimension must be non negative");
         sides.resize(dim);
         gsVector<bool> param;
         parameters_into(dim,param);
         for (index_t i=0;i<dim;++i)
-            sides[i]=box_side(i,param(i));
+            sides[i]=boxSide(i,param(i));
     }
 
     /**
@@ -296,13 +253,13 @@ public:
      * @param dim
      * @return the first valid side in an dim-dimensional box
     **/
-    static  box_corner    getFirst     (int dim) {return box_corner(1);}
+    static  boxCorner    getFirst     (int dim) {return boxCorner(1);}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the last valid side in an dim-dimensional box
     **/
-    static  box_corner    getLast      (int dim) {return box_corner((2<<dim)+1);}
+    static  boxCorner    getLast      (int dim) {return boxCorner((2<<dim)+1);}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
@@ -316,11 +273,11 @@ public:
     **/
     void    last      (int dim) {*this=getLast(dim);}
     /**
-     * @brief set to next box_side
+     * @brief set to next boxSide
      */
     void    next      () { ++m_index;}
     /**
-     * @brief set to previous box_side
+     * @brief set to previous boxSide
      */
     void    previous  () { --m_index;}
     /**
@@ -333,37 +290,37 @@ public:
 
 
 /**
-    Struct patch_corner represents a corner of a patch
+    Struct patchCorner represents a corner of a patch
 */
-struct patch_corner : public box_corner
+struct patchCorner : public boxCorner
 {
 public:
     index_t patch;
 public:
-    patch_corner() : box_corner(0) { }
-    patch_corner(int p,boundary::corner c)
-        : box_corner(c), patch (p) { }
+    patchCorner() : boxCorner(0) { }
+    patchCorner(int p,boundary::corner c)
+        : boxCorner(c), patch (p) { }
 
-    patch_corner(int p, int c)
-        : box_corner(c), patch (p) { }
+    patchCorner(int p, int c)
+        : boxCorner(c), patch (p) { }
 
-    patch_corner(int p, box_corner c)
-        : box_corner(c), patch (p) { }
+    patchCorner(int p, boxCorner c)
+        : boxCorner(c), patch (p) { }
 
 
     /**
-     * @brief returns a vector of patch_sides that contain this corner
+     * @brief returns a vector of patchSides that contain this corner
      * @param dim is the ambient dimension
      * @param sides
      */
-    void getContainingSides (int dim, std::vector<patch_side> &sides) const
+    void getContainingSides (int dim, std::vector<patchSide> &sides) const
     {
         GISMO_ASSERT(dim>=0, "Dimension must be non negative");
         sides.resize(dim);
         gsVector<bool> param;
         parameters_into(dim,param);
         for (index_t i=0;i<dim;++i)
-            sides[i]=patch_side(patch, box_side(i, param(i)));
+            sides[i]=patchSide(patch, boxSide(i, param(i)));
     }
 
     // iteration
@@ -372,13 +329,13 @@ public:
      * @param dim
      * @return the first valid side in an dim-dimensional box
     **/
-    static  patch_corner    getFirst     (int dim, index_t num_patches) { return patch_corner(0,box_corner::getFirst(dim));}
+    static  patchCorner    getFirst     (int dim, index_t num_patches) { return patchCorner(0,boxCorner::getFirst(dim));}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the last valid side in an dim-dimensional box
     **/
-    static  patch_corner    getLast      (int dim, index_t num_patches) { return patch_corner(num_patches-1,box_corner::getLast(dim));}
+    static  patchCorner    getLast      (int dim, index_t num_patches) { return patchCorner(num_patches-1,boxCorner::getLast(dim));}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
@@ -392,24 +349,24 @@ public:
     **/
     void    last      (int dim, index_t num_patches) {*this=getLast(dim,num_patches);}
     /**
-     * @brief set to next box_side
+     * @brief set to next boxSide
      */
-    void    next      (int dim) { box_corner::next(); if (!box_corner::good(dim)) {++patch; box_corner::first(dim);} }
+    void    next      (int dim) { boxCorner::next(); if (!boxCorner::good(dim)) {++patch; boxCorner::first(dim);} }
     /**
-     * @brief set to previous box_side
+     * @brief set to previous boxSide
      */
-    void    previous  (int dim) { box_corner::previous(); if (!box_corner::good(dim)) {--patch; box_corner::last(dim);} }
+    void    previous  (int dim) { boxCorner::previous(); if (!boxCorner::good(dim)) {--patch; boxCorner::last(dim);} }
     /**
      * @brief good
      * @param dim
      * @return true if the patch side is appropriate dim dimensional boxes
      */
-    bool good (int dim, index_t num_patches) {return box_corner::good(dim) && 0<=patch && patch< num_patches;}
+    bool good (int dim, index_t num_patches) {return boxCorner::good(dim) && 0<=patch && patch< num_patches;}
 };
 
 
-/// temporary compatibility fix (to be removed): use patch_corner(ps.patch, box_corner(totParam)) instead
-inline patch_corner getPatchCorner (const patch_side ps, const gsVector<bool> locParams)
+/// temporary compatibility fix (to be removed): use patchCorner(ps.patch, box_corner(totParam)) instead
+inline patchCorner getPatchCorner (const patchSide ps, const gsVector<bool> locParams)
 {
     GISMO_ASSERT(ps.direction()<=locParams.cols(), "incompatible side and parameters, the dimension must agree");
     gsVector<bool> totParam;
@@ -420,10 +377,10 @@ inline patch_corner getPatchCorner (const patch_side ps, const gsVector<bool> lo
     totParam(i)=ps.parameter();
     for (++i; i<locParams.cols();++i)
         totParam(i+1)=locParams(i);
-    return patch_corner(ps.patch, box_corner(totParam));
+    return patchCorner(ps.patch, boxCorner(totParam));
 }
 /// temporary compatibility fix (to be removed): use pc.getParameters(dim,result) instead
-inline void getParsOnSide (const patch_corner pc, const patch_side ps, const int dim, gsVector<bool> &locParam)
+inline void getParsOnSide (const patchCorner pc, const patchSide ps, const int dim, gsVector<bool> &locParam)
 {
     gsVector<bool> totParam;
     pc.parameters_into(dim,totParam);
@@ -446,8 +403,8 @@ public:
     boundaryInterface() { }
 
     // special constructor for the 2d case
-    boundaryInterface(patch_side const & _ps1,
-                      patch_side const & _ps2,
+    boundaryInterface(patchSide const & _ps1,
+                      patchSide const & _ps2,
                       bool o1)
         : ps1(_ps1), ps2(_ps2)
     {
@@ -461,8 +418,8 @@ public:
 
 
     //
-    boundaryInterface(patch_side const & _ps1,
-                      patch_side const & _ps2,
+    boundaryInterface(patchSide const & _ps1,
+                      patchSide const & _ps2,
                       int dim)
         : ps1(_ps1), ps2(_ps2)
     {
@@ -483,15 +440,15 @@ public:
         }
     }
 
-    boundaryInterface(patch_side const & _ps1,
-                      patch_side const & _ps2,
+    boundaryInterface(patchSide const & _ps1,
+                      patchSide const & _ps2,
                       gsVector<index_t> const & map_info,
                       gsVector<bool>    const & orient_flags)
         : ps1(_ps1), ps2(_ps2), directionMap(map_info), directionOrientation(orient_flags)
     {  }
 
-    boundaryInterface(patch_side const & _ps1,
-                      patch_side const & _ps2,
+    boundaryInterface(patchSide const & _ps1,
+                      patchSide const & _ps2,
                       gsVector<bool>    const & orient_flags)
         : ps1(_ps1), ps2(_ps2)
     {
@@ -515,7 +472,7 @@ public:
     // DEPRECATED
     boundaryInterface(gsVector<int>     const & p,
                       gsVector<bool>    const & orient_flags)
-        : ps1(patch_side(p(0),p(1))), ps2(patch_side(p(2),p(3)))
+        : ps1(patchSide(p(0),boxSide(p(1)))), ps2(patchSide(p(2),boxSide(p(3))))
     {
         const index_t dim = orient_flags.cols()+1;
         directionMap.resize(dim);
@@ -542,20 +499,20 @@ public:
     }
 
     /**
-     * @brief first, returns the first patch_side of this interface
+     * @brief first, returns the first patchSide of this interface
     **/
-    patch_side & first  ()        {return ps1;}
-    patch_side first    () const  {return ps1;}
+    patchSide & first  ()        {return ps1;}
+    patchSide first    () const  {return ps1;}
 
     /**
-     * @brief second, returns the second patch_side of this interface
+     * @brief second, returns the second patchSide of this interface
     **/
-    patch_side & second ()        {return ps2;}
-    patch_side second   () const  {return ps2;}
+    patchSide & second ()        {return ps2;}
+    patchSide second   () const  {return ps2;}
 
     // use boundaryInterface.first() and boundaryInterface.second()
     // DEPRECATED
-    patch_side  operator [] (size_t i) const
+    patchSide  operator [] (size_t i) const
     {
         if (i==0)
             return ps1;
@@ -566,7 +523,7 @@ public:
     }
     // use boundaryInterface.first() and boundaryInterface.second()
     //DEPRECATED
-    patch_side & operator [] (size_t i)
+    patchSide & operator [] (size_t i)
     {
         if (i==0)
             return ps1;
@@ -603,7 +560,7 @@ public:
         return result;
     }
 
-    patch_corner mapCorner ( const patch_corner c) const
+    patchCorner mapCorner ( const patchCorner c) const
     {
         gsVector<bool> par=c.parameters(directionMap.rows());
         const index_t dim=par.rows();
@@ -616,13 +573,13 @@ public:
             new_par(directionMap(i)) = directionOrientation(i) ?
                 par(i) : !par(i);
           }
-          new_par(i) = ps2.parameter();
+          new_par(directionMap(i)) = ps2.parameter();
           for (++i; i<dim;++i)
           {
             new_par(directionMap(i)) = directionOrientation(i) ?
                 par(i) : !par(i);
           }
-          return patch_corner(ps2.patch, box_corner(new_par));
+          return patchCorner(ps2.patch, boxCorner(new_par));
         }
         else if (c.patch == ps2.patch && par(ps2.direction()) == ps2.parameter() )
         {
@@ -638,7 +595,7 @@ public:
             new_par(i) = directionOrientation(directionMap(i)) ?
                 par(directionMap(i)) : !par(directionMap(i));
           }
-          return patch_corner(ps1.patch, box_corner(new_par));
+          return patchCorner(ps1.patch, boxCorner(new_par));
         }
         else
         {
@@ -649,8 +606,8 @@ public:
 
 public:
 
-    patch_side ps1; ///< The first patch side.
-    patch_side ps2; ///< The second patch side.
+    patchSide ps1; ///< The first patch side.
+    patchSide ps2; ///< The second patch side.
 
 
     /// We describe a permutation of the coordinates by storing
@@ -680,10 +637,6 @@ inline std::ostream &operator<<(std::ostream &os, const boundaryInterface i)
 }
 
 
-
-
-
-
 /// Computes the orientation of the boundary side \a s with respect
 /// to the interior of the parameter domain. The result is either +1
 /// (counter-clockwise) or -1 (clock-wise).
@@ -707,7 +660,7 @@ inline int sideOrientation(int s)
 /// Since the side with index \em 3 corresponds to "south", i.e. to \f$ \{ (u,v):\ v = 0 \} \f$,
 /// calling parameter(3) will return <em>1</em>, because \em v (i.e., parameter direction with index \em 1) is fixed/set to zero.\n
 ///
-// use box_side struct instead of enumerated values
+// use boxSide struct instead of enumerated values
 //GS_DEPRECATED
 inline int direction (int s)
 {
@@ -729,7 +682,7 @@ inline int direction (int s)
 /// Since the side with index \em 3 corresponds to "south", i.e. to \f$ \{ (u,v):\ v = 0 \} \f$,
 /// calling parameter(3) will return <em>0=false</em>.
 ///
-// use box_side struct instead of enumerated values
+// use boxSide struct instead of enumerated values
 // GS_DEPRECATED
 inline bool parameter (int s)
 {
@@ -740,7 +693,7 @@ inline bool parameter (int s)
 
 
 /// Print (as string) a boundary side
-inline std::ostream &operator<<(std::ostream &os, const boundary::side& o)
+inline std::ostream &operator<<(std::ostream &os, const boxSide& o)
 {
     switch (o)
     {
@@ -775,9 +728,12 @@ inline std::ostream &operator<<(std::ostream &os, const boundary::side& o)
 
 
 
-/// Returns the face of the box corresponding to the side
+/**
+ *  \brief get the matrix containing the lower and upper corner of
+ *  the specified side of the given box
+ */
 template <typename T>
-gsMatrix<T> getFace (const box_side side, const gsMatrix<T> box)
+gsMatrix<T> getFace (const boxSide side, const gsMatrix<T> &box)
 {
     GISMO_ASSERT(side.direction()< box.rows(), "the specified side is not appropriate for the domain dimension");
     gsMatrix<T> temp=box;
@@ -789,101 +745,6 @@ gsMatrix<T> getFace (const box_side side, const gsMatrix<T> box)
     return temp;
 }
 
-/// construct an affine function mapping face s1 of domain1 to another face s2 of domain2 corresponding to orientation
-/// orient is a 0-vector if domain* are 1D
-///           a 1-vector if domain* are 2D
-///           a 3-vector if domain* are 3D
-///           ---cannot be generalized and we are forced to use orient this way because it is so defined
-///           ---in boundaryInterface
-/// the returned function must be deleted by the user
-template <typename T>
-GS_DEPRECATED gsFunction<T>* makeInterfaceMap ( const boundary::side s1, const boundary::side s2, const gsVector<bool> &orient, const  gsMatrix<T> &domain1, const  gsMatrix<T> &domain2)
-{
-    GISMO_ASSERT(domain1.rows()==domain2.rows(), "Impossible to map faces of diffeerent size");
-
-    const index_t dir1=direction(s1);
-    const index_t dir2=direction(s2);
-
-    gsVector<T> shift1 = domain1.col(0);
-    gsVector<T> shift2 = domain2.col(0);
-    gsMatrix<T> map;
-    gsVector<T> tran;
-    switch (orient.rows())
-    {
-    case 0: // interfaces of a 1D domain
-        GISMO_ASSERT(domain1.rows()==1, "Incompatible orientation and domains." );
-        if( s2%2)
-            return new gsConstantFunction<T>( domain2(0,0) );
-        else
-            return new gsConstantFunction<T>( domain2(0,1) );
-        break;
-    case 1: // interfaces of a 2D domain
-        GISMO_ASSERT(domain1.rows()==2, "Incompatible orientation and domains." );
-        map.setZero(2,2);
-        tran.setZero(2);
-        if (dir1==dir2)
-        {
-            map(0,0) = (domain2(0,1)-domain2(0,0))/(domain1(0,1)-domain1(0,0));
-            map(1,1) = (domain2(1,1)-domain2(1,0))/(domain1(1,1)-domain1(1,0));
-            if(orient(0))
-            {
-                map.col(1-dir1)*=-1;
-                shift2(1-dir1)=domain2(1-dir1,1);
-            }
-        }
-        else
-        {
-            map(1,0) = (domain2(1,1)-domain2(1,0))/(domain1(0,1)-domain1(0,0));
-            map(0,1) = (domain2(0,1)-domain2(0,0))/(domain1(1,1)-domain1(1,0));
-            if(orient(0))
-            {
-                map.col(1-dir1)*=-1;
-                shift2(dir1)=domain2(dir1,1);
-            }
-        }
-        break;
-    case 2:
-        GISMO_ERROR("can not associate an orientation to a vector of 2 bools!!!!! bad request.");
-        break;
-    case 3: // interfaces of a 3D domain
-    {
-        GISMO_ASSERT(domain1.rows()==3, "Incompatible orientation and domains." );
-        map.setZero(3,3);
-        tran.setZero(3);
-
-        index_t dest[3]={0,1,2};
-        if(orient(0))
-        {
-            dest[1]=2;
-            dest[2]=1;
-        }
-
-        map(dir2,dir1) = (domain2(dir2,1)-domain2(dir2,0))/(domain1(dir1,1)-domain1(dir1,0));
-        for (int i=1; i<3; ++i)
-        {
-            index_t io=(dir1+i)%3;
-            index_t id=(dir2+dest[i])%3;
-            if(!orient(i))
-                map(id,io) = (domain2(id,1)-domain2(id,0))/(domain1(io,1)-domain1(io,0));
-            else
-            {
-                map(id,io) = -(domain2(id,1)-domain2(id,0))/(domain1(io,1)-domain1(io,0));
-                shift2(id) = domain2(id,1);
-            }
-        }
-    }
-        break;
-    default:
-        GISMO_ERROR("can not associate an orientation to a vector of more then 3 bools!!!!! bad request.");
-        break;
-    }
-    if (!(s1%2))
-        shift1(dir1)+=domain1(dir1,1)-domain1(dir1,0);
-    if (!(s2%2))
-        shift2(dir2)+=domain2(dir2,1)-domain2(dir2,0);
-    tran += shift2-map*shift1;
-    return new gsAffineFunction<T>(map,tran);
-}
 
 
 } // namespace gismo

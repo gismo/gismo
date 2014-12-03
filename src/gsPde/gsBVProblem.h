@@ -166,7 +166,7 @@ public:
         addCondition(0,s,t,f);
     }
 
-    void addCondition(const patch_side& ps, condition_type::type t, gsFunction<T> * f)
+    void addCondition(const patchSide& ps, condition_type::type t, gsFunction<T> * f)
     {
         addCondition(ps.patch, ps.side(), t, f);
     }

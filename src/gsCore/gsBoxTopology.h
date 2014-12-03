@@ -25,7 +25,7 @@ namespace gismo
     Defines a topological arrangement of a collection of "boxes"
     (e.g., parameter domains that map to physical-domain patches).
 
-    The information on outer boundaries is stored as a list of patch_side structs,
+    The information on outer boundaries is stored as a list of patchSide structs,
     each one defining the corresponding patch side to lie on the boundary.
 
     The topological arrangement is stored as a list of
@@ -40,8 +40,8 @@ public:
     typedef memory::shared_ptr< gsBoxTopology > Ptr;
     //typedef memory::unique_ptr< gsBoxTopology > LocalPtr;
 
-    typedef std::vector< patch_side >::iterator biterator;
-    typedef std::vector< patch_side >::const_iterator const_biterator;
+    typedef std::vector< patchSide >::iterator biterator;
+    typedef std::vector< patchSide >::const_iterator const_biterator;
 
     typedef std::vector< gismo::boundaryInterface >::iterator iiterator;
     typedef std::vector< gismo::boundaryInterface >::const_iterator const_iiterator;
@@ -52,7 +52,7 @@ public:
     gsBoxTopology(int d = -1, int n = 0) : m_dim(d), nboxes(n) { }
 
     gsBoxTopology( int d, unsigned boxes,
-            const std::vector< patch_side > & boundary,
+            const std::vector< patchSide > & boundary,
             const std::vector< boundaryInterface > & interfaces )
         : m_dim(d), nboxes(boxes), m_boundary(boundary), m_interfaces(interfaces) { }
 
@@ -84,7 +84,7 @@ public:
 
         if ( m_boundary.size() )
             os << "Boundaries:\n";
-        for( std::vector< patch_side >::const_iterator bit =
+        for( std::vector< patchSide >::const_iterator bit =
                 m_boundary.begin(); bit != m_boundary.end(); ++bit )
         {
             os <<"("<< *bit <<") ";
@@ -186,17 +186,17 @@ public:
     }
 
     /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2.
-    void addInterface( int p1, boundary::side s1,
-                       int p2, boundary::side s2)
+    void addInterface( int p1, boxSide s1,
+                       int p2, boxSide s2)
     {
-        addInterface(  boundaryInterface( patch_side(p1,s1),patch_side(p2,s2), m_dim ));
+        addInterface(  boundaryInterface( patchSide(p1,s1),patchSide(p2,s2), m_dim ));
     }
 
     /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2 with the given orientation.
-    void addInterface( int p1, boundary::side s1,
-                       int p2, boundary::side s2, const gsVector<bool>& orient)
+    void addInterface( int p1, boxSide s1,
+                       int p2, boxSide s2, const gsVector<bool>& orient)
     {
-        addInterface(  boundaryInterface(patch_side(p1,s1),patch_side(p2,s2), orient ));
+        addInterface(  boundaryInterface(patchSide(p1,s1),patchSide(p2,s2), orient ));
     }
 
     /// Add an interface described by \a bi.
@@ -212,13 +212,13 @@ public:
     }
 
     /// Set side \a s of box \a p to a boundary.
-    void addBoundary( int p, boundary::side s )
+    void addBoundary( int p, boxSide s )
     {
-        addBoundary( patch_side(p,s) );
+        addBoundary( patchSide(p,s) );
     }
 
     /// Set patch side \a ps to a boundary.
-    void addBoundary(const patch_side& ps)
+    void addBoundary(const patchSide& ps)
     {
         m_boundary.push_back( ps );
     }
@@ -227,16 +227,16 @@ public:
     void addAutoBoundaries();
 
     /// Is the given patch side \a ps set to a boundary?
-    bool isBoundary(const patch_side& ps) const
+    bool isBoundary(const patchSide& ps) const
     {
         return std::find(m_boundary.begin(), m_boundary.end(), ps) != m_boundary.end();
     }
 
     /// Is the given patch side \a ps set to an interface?
-    bool isInterface(const patch_side& ps) const;
+    bool isInterface(const patchSide& ps) const;
 
     /// Return the vector of boundaries.
-    std::vector< patch_side >        boundaries() const { return m_boundary;   }
+    std::vector< patchSide >        boundaries() const { return m_boundary;   }
 
     /// Return the vector of interfaces.
     std::vector< boundaryInterface > interfaces() const { return m_interfaces; }
@@ -245,19 +245,19 @@ public:
     void checkConsistency() const;
 
     /// Iteration: set \a result to the first patch side of the first box.
-    void firstPatchSide(patch_side& result);
+    void firstPatchSide(patchSide& result);
 
     /// Iteration: increment \a result to the next patch side, iterating over all sides of all boxes.
-    bool nextPatchSide(patch_side& result);
+    bool nextPatchSide(patchSide& result);
 
     /// Access i-th boundary interface
     const boundaryInterface & bInterface(int i) const {return m_interfaces[i];}
 
-    /// set \a result to the associated patchside of \a ps, returns false if it is a boundary patch_side
-    bool getNeighbour(const patch_side& ps ,patch_side& result, boundaryInterface* iface=NULL) const;
+    /// set \a result to the associated patchside of \a ps, returns false if it is a boundary patchSide
+    bool getNeighbour(const patchSide& ps ,patchSide& result, boundaryInterface* iface=NULL) const;
 
-    /// set \a result to the associated interface of \a ps, returns false if it is a boundary patch_side
-    bool getInterface(const patch_side& ps,boundaryInterface & result) const
+    /// set \a result to the associated interface of \a ps, returns false if it is a boundary patchSide
+    bool getInterface(const patchSide& ps,boundaryInterface & result) const
     {
         for ( unsigned i = 0; i < m_interfaces.size(); ++i )
             if ( m_interfaces[i].ps1 == ps || m_interfaces[i].ps2 == ps )
@@ -268,8 +268,8 @@ public:
         return false;
     }
 
-    /// set \a result to the orientation vector of the interface, returns false if it is a boundary patch_side
-    bool getOrientationOfInterface(const patch_side& ps, gsVector<bool> & result) const
+    /// set \a result to the orientation vector of the interface, returns false if it is a boundary patchSide
+    bool getOrientationOfInterface(const patchSide& ps, gsVector<bool> & result) const
     {
         for ( unsigned i = 0; i < m_interfaces.size(); ++i )
             if ( m_interfaces[i].ps1 == ps || m_interfaces[i].ps2 == ps )
@@ -280,29 +280,29 @@ public:
         return false;
     }
 
-    /// takes a patch_corner \a start and gives back all other patch_corners,
+    /// takes a patchCorner \a start and gives back all other patchCorners,
     /// that represent the same point in the vector \a cornerList
     /// CAREFUL: works for 2D only
-    bool getCornerList(const patch_corner& start,std::vector<patch_corner> & cornerList) const;
+    bool getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const;
 
     /// gives back all the extraordinary vertices (3 faces or more than 4) of the topology
-    /// each EV is represented by a vector of patch_corners, which represent the same vertex
+    /// each EV is represented by a vector of patchCorners, which represent the same vertex
     /// all the vectors are put in the vector \a cornerLists
     /// CAREFUL: works for 2D only
-    void getEVs(std::vector<std::vector<patch_corner> > & cornerLists) const;
+    void getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const;
 
     /// gives back all the ordinary vertices (4 faces) of the topology
-    /// each OV is represented by a vector of patch_corners, which represent the same vertex
+    /// each OV is represented by a vector of patchCorners, which represent the same vertex
     /// all the vectors are put in the vector \a cornerLists
     /// CAREFUL: works for 2D only
-    void getOVs(std::vector<std::vector<patch_corner> > & cornerLists) const;
+    void getOVs(std::vector<std::vector<patchCorner> > & cornerLists) const;
 
 protected:
     // Data members
 
     int m_dim;
     int nboxes;
-    std::vector< patch_side > m_boundary;
+    std::vector< patchSide > m_boundary;
     std::vector< boundaryInterface > m_interfaces ;
 
 }; // class gsBoxTopology

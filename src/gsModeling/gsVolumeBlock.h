@@ -90,7 +90,7 @@ public:
             gsWarn << "Didn't transform face with id = " << faceId << "\n";
         }
 
-        return box_side(sideIndex + 1);
+        return boxSide(sideIndex + 1);
     }
 
 
@@ -324,7 +324,7 @@ public:
 
         int column = 0;
 
-        for (box_side side = box_side::getFirst(3); side.good(3); side.next() )
+        for (boxSide side = boxSide::getFirst(3); side<boxSide::getLast(3); ++side )
         {
 
             // this variable is true if we must turn around a curve loop in

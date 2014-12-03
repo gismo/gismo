@@ -69,7 +69,7 @@ public:
 
     /// Create from bases and boundary/interface information
     gsMultiBasis( const BasisContainer& bases,
-                  const std::vector<patch_side>& boundary,
+                  const std::vector<patchSide>& boundary,
                   const std::vector<boundaryInterface>& interfaces )
     : m_topology( bases[0]->dim(), bases.size(), boundary, interfaces )      
     { 
@@ -238,7 +238,7 @@ public:
     void addPatchBoundary( gsBasis<T>* g, boundary::side s ) 
     {
         const int p =findBasisIndex( g );
-        m_topology.addBoundary( patch_side( p, s ) );
+        m_topology.addBoundary( patchSide( p, s ) );
     }
     
     /// Refine every basis uniformly by inserting \a numKnots new knots on each knot span

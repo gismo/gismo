@@ -1595,7 +1595,7 @@ public:
         }
         
         // Read boundary
-        std::vector< patch_side > boundaries;
+        std::vector< patchSide > boundaries;
         tmp = node->first_node("boundary");
         if (tmp)
         {
@@ -1605,7 +1605,7 @@ public:
             {
                 p[0] = ids[ p[0] ];
                 str >> std::ws >> p[1] ;
-                boundaries.push_back( patch_side(p[0], p[1]) );
+                boundaries.push_back( patchSide(p[0], p[1]) );
             }
         }
         

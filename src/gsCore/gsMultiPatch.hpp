@@ -37,7 +37,7 @@ gsMultiPatch<T>::gsMultiPatch( const std::vector<gsGeometry<T> *>& patches )
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch( const PatchContainer& patches,
-            const std::vector<patch_side>& boundary,
+            const std::vector<patchSide>& boundary,
             const std::vector<boundaryInterface>& interfaces )
         : gsBoxTopology( patches[0]->parDim(), patches.size(), boundary, interfaces ),
           m_patches( patches ) 
@@ -142,7 +142,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
     const std::size_t nver = 1 << ( m_dim - 1 );
     bool match(0);
 
-    std::vector<patch_side> all_sides;    // All sides
+    std::vector<patchSide> all_sides;    // All sides
     std::vector<gsMatrix<T> > all_verts;  // All vertices in the multipatch
     std::vector<std::vector<int> > cverts;// indices of vertices of a hypercube
 
@@ -165,7 +165,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
         for ( int i = 0; i != m_dim; ++i ) 
         {
             pts( i, r ) = para( i, v[i] );
-            cverts[ box_side( i, v[i] ) ].push_back( r );
+            cverts[ boxSide( i, v[i] ) ].push_back( r );
         }
         r++;
     } while ( nextLexicographic( v, ones ) );
@@ -178,13 +178,13 @@ bool gsMultiPatch<T>::computeTopology( T tol )
         all_verts.push_back( m_patches[patch]->eval( pts ) );
         for ( int i = 1; i <= 2 * m_dim; ++i ) 
         {
-            all_sides.push_back( patch_side( patch, i ) );
+            all_sides.push_back( patchSide( patch, i ) );
         }
     }
 
     while ( all_sides.size() ) // For all remaining sides
     {
-        const patch_side side1 = all_sides.back();
+        const patchSide side1 = all_sides.back();
         all_sides.pop_back();
 
         // Get vertices of side1
@@ -192,7 +192,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
             vm1.col( r ) = all_verts[side1.patch].col( cverts[side1.side()][r] );
 
         // For all remaining non-matched sides
-        for ( typename std::vector<patch_side>::iterator side2 = all_sides.begin();
+        for ( typename std::vector<patchSide>::iterator side2 = all_sides.begin();
               side2 != all_sides.end(); ++side2 )
         {
             // Initialize data for of side2
