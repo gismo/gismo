@@ -268,18 +268,6 @@ public:
         return false;
     }
 
-    /// set \a result to the orientation vector of the interface, returns false if it is a boundary patchSide
-    bool getOrientationOfInterface(const patchSide& ps, gsVector<bool> & result) const
-    {
-        for ( unsigned i = 0; i < m_interfaces.size(); ++i )
-            if ( m_interfaces[i].ps1 == ps || m_interfaces[i].ps2 == ps )
-            {
-                result = m_interfaces[i].orient();
-                return true;
-            }
-        return false;
-    }
-
     /// takes a patchCorner \a start and gives back all other patchCorners,
     /// that represent the same point in the vector \a cornerList
     /// CAREFUL: works for 2D only

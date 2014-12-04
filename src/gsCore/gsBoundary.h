@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): F. Buchegger, A. Mantzaflaris
+    Author(s): A. Bressan, F. Buchegger, A. Mantzaflaris
 */
 
 #pragma once
@@ -328,34 +328,6 @@ public:
 };
 
 
-/// temporary compatibility fix (to be removed): use patchCorner(ps.patch, box_corner(totParam)) instead
-inline patchCorner getPatchCorner (const patchSide ps, const gsVector<bool> locParams)
-{
-    GISMO_ASSERT(ps.direction()<=locParams.cols(), "incompatible side and parameters, the dimension must agree");
-    gsVector<bool> totParam;
-    totParam.resize(locParams.cols()+1);
-    index_t i=0;
-    for (; i<ps.direction();++i)
-        totParam(i)=locParams(i);
-    totParam(i)=ps.parameter();
-    for (++i; i<locParams.cols();++i)
-        totParam(i+1)=locParams(i);
-    return patchCorner(ps.patch, boxCorner(totParam));
-}
-/// temporary compatibility fix (to be removed): use pc.getParameters(dim,result) instead
-inline void getParsOnSide (const patchCorner pc, const patchSide ps, const int dim, gsVector<bool> &locParam)
-{
-    gsVector<bool> totParam;
-    pc.parameters_into(dim,totParam);
-    locParam.resize(dim-1);
-    index_t i=0;
-    for (; i<ps.direction();++i)
-        locParam(i)=totParam(i);
-    for (++i; i<locParam.cols();++i)
-        locParam(i)=totParam(i+1);
-}
-
-
 /** 
     Struct boundaryInterface represents an interface between two patches
     by storing the two sides which are joined.
@@ -567,12 +539,32 @@ public:
         }
     }
 
-public:
+    bool dirOrientation(index_t dir) const
+    {
+        return directionOrientation(dir);
+    }
+
+    bool & dirOrientation(index_t dir)
+    {
+        return directionOrientation(dir);
+    }
+
+    index_t dirMap(index_t dir) const
+    {
+        return directionMap(dir);
+    }
+
+    index_t & dirMap(index_t dir)
+    {
+        return directionMap(dir);
+    }
+
+public: ///todo: make them private
 
     patchSide ps1; ///< The first patch side.
     patchSide ps2; ///< The second patch side.
 
-
+private:
     /// We describe a permutation of the coordinates by storing
     /// a vector of integers:
     ///    - directionMap[i] stores the destination of coordinate i
