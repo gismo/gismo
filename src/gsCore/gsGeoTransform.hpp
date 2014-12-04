@@ -419,6 +419,7 @@ struct gsGeoDivPreservingTransform
 
 
         const gsVector<T> & det = g_Eval->measures();
+        const gsVector<T> & detSigned = g_Eval->orientation()*det;
         const gsMatrix<T> & jacs = g_Eval->jacobians(); //TarDim X TarDim*numP
         //NB The jacobian might need to be transpoes
 
@@ -430,7 +431,7 @@ struct gsGeoDivPreservingTransform
                 for( int p=0; p< numP ; ++p)
                 {
                     result.template block<TarDim,1>(start+TarDim*j, p) +=
-                            jacs.template block<TarDim,1>(0,TarDim*p+comp)*b_values[comp](j,p)/det(p);
+                            jacs.template block<TarDim,1>(0,TarDim*p+comp)*b_values[comp](j,p)/detSigned(p);
                 }
             }
             start+=TarDim*activeNum[comp];
