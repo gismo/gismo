@@ -52,7 +52,7 @@ int main()
   real_t refParameter;  // ...specified below with the examples
 
   // Flag whether final mesh should be plotted in ParaView
-  const bool plot = true;
+  const bool plot = false;
 
   // ****** Prepared test examples ******
   //
