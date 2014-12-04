@@ -247,16 +247,23 @@ public:
     /// Iteration: set \a result to the first patch side of the first box.
     void firstPatchSide(patchSide& result);
 
-    /// Iteration: increment \a result to the next patch side, iterating over all sides of all boxes.
+    /// Iteration: increment \a result to the next patch side,
+    /// iterating over all sides of all boxes.
     bool nextPatchSide(patchSide& result);
 
     /// Access i-th boundary interface
     const boundaryInterface & bInterface(int i) const {return m_interfaces[i];}
 
-    /// set \a result to the associated patchside of \a ps, returns false if it is a boundary patchSide
-    bool getNeighbour(const patchSide& ps ,patchSide& result, boundaryInterface* iface=NULL) const;
+    /// set \a result to the associated patchside of \a ps, returns
+    /// false if it is a boundary patchSide
+    bool getNeighbour(const patchSide& ps ,patchSide& result, int & ii) const;
 
-    /// set \a result to the associated interface of \a ps, returns false if it is a boundary patchSide
+    /// set \a result to the associated patchside of \a ps, returns
+    /// false if it is a boundary patchSide
+    bool getNeighbour(const patchSide& ps ,patchSide& result) const;
+
+    /// set \a result to the associated interface of \a ps, returns
+    /// false if it is a boundary patchSide
     bool getInterface(const patchSide& ps,boundaryInterface & result) const
     {
         for ( unsigned i = 0; i < m_interfaces.size(); ++i )

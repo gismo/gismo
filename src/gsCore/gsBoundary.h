@@ -78,7 +78,8 @@ public:
     index_t m_index;
 public:
     boxSide (): m_index(0) {}
-    boxSide (index_t dir, bool par) : m_index(par?2*dir+2:2*dir+1) { GISMO_ASSERT(dir>=0,"invalid side");}
+    boxSide (index_t dir, bool par) : m_index(index(dir,par))
+    { GISMO_ASSERT(dir>=0,"invalid side");}
     boxSide (index_t a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
     boxSide (boundary::side a) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
 
@@ -113,33 +114,49 @@ public:
     bool    parameter () const {return (m_index-1)%2 != 0;}
 
     /**
+     *  \brief Returns the index of the box side
+    **/
+    int    index () const {return m_index;}
+
+    /**
+     *  \brief Returns the index of the box side implied by input
+     *  direction \a dir and parameter \a par
+    **/
+    static inline int index (index_t dir, bool par) {return par?2*dir+2:2*dir+1;}
+
+    /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the first valid side in an dim-dimensional box
     **/
     static  boxSide    getFirst     (int dim) {return boxSide(1);}
+
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the last valid side in an dim-dimensional box
     **/
+
     static  boxSide    getLast      (int dim) {return boxSide(2*dim);}
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
      * @return the (invalid) side after the last one in dim-dimensional box
     **/
+
     static  boxSide    getEnd       (int dim) {return boxSide(2*dim+1);}
     /**
      * @brief set to next boxSide
      */
     boxSide& operator++ () { ++m_index; return *this;} //prefix
     boxSide operator++ (int ) { boxSide temp(*this); ++m_index; return temp;} //postfix
+
     /**
      * @brief set to previous boxSide
      */
     boxSide& operator-- () { --m_index; return *this;} //prefix
     boxSide operator-- (int ) { boxSide temp(*this); --m_index; return temp;} //postfix
+
     /**
      * @brief comparisons between boxSides are allowed
      * @param other
@@ -456,6 +473,13 @@ public:
     patchSide & second ()        {return ps2;}
     patchSide second   () const  {return ps2;}
 
+    /**
+     * @brief Returns the second side if ps is the first side,
+     * otherwise returns the second side
+    **/
+    patchSide & other   (const patchSide & ps)        {return ps==ps1 ? ps2 : ps1;}
+    patchSide   other   (const patchSide & ps) const  {return ps==ps1 ? ps2 : ps1;}
+
     // use boundaryInterface.first() and boundaryInterface.second()
     // DEPRECATED
     patchSide  operator [] (size_t i) const
@@ -583,18 +607,19 @@ private:
      * \a directionOrientation stores the corresponding orientation.
      */
     gsVector<index_t> directionMap;
-    /// For each coordinate direction we save if the original coordinate and the destination one have the same orientation
+    /// For each coordinate direction we save if the original
+    /// coordinate and the destination one have the same orientation
     gsVector<bool>    directionOrientation;
 
     /// TODO: the information could be stored in a single vector of signed integers: the sign gives the orientation
     /// the problem is that it is necessary to shift the indeces as there is no -0
 protected:
-    friend std::ostream &operator<<(std::ostream &os, const boundaryInterface i);
+    friend std::ostream &operator<<(std::ostream &os, const boundaryInterface & i);
 };
 
 
 /// Print (as string) an interface
-inline std::ostream &operator<<(std::ostream &os, const boundaryInterface i)
+inline std::ostream &operator<<(std::ostream &os, const boundaryInterface & i)
 {
     os<<"interface between: "<<i.ps1.patch<<":"<< i.ps1.side()<<" and "<<i.ps2.patch<<":"<<i.ps2.side()<<" [ ";
     index_t j = 0;

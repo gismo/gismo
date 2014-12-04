@@ -55,21 +55,29 @@ void gsBoxTopology::checkConsistency() const
         }
 }
 
-bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result, boundaryInterface* iface) const
+bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result, int & ii) const
 {
-    for ( unsigned i = 0; i < m_interfaces.size(); ++i ) {
-        if ( m_interfaces[i].ps1 == ps ) {
-            result = m_interfaces[i].ps2;
-            if(iface) *iface=m_interfaces[i];
-            return true;
-        }
-        else if ( m_interfaces[i].ps2 == ps ) {
-            result = m_interfaces[i].ps1;
-            if(iface) *iface=m_interfaces[i];
-            return true;
-        }
+    for ( unsigned i = 0; i < m_interfaces.size(); ++i ) 
+    {
+       if ( m_interfaces[i].ps1 == ps ) 
+       {
+           ii = i;
+           return true;
+       }
+       else if ( m_interfaces[i].ps2 == ps ) 
+       {
+           result = m_interfaces[i].ps1;
+           ii = i;
+           return true;
+       }
     }
     return false;
+}
+
+bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result) const
+{
+    int a;
+    return getNeighbour(ps, result, a);
 }
 
 bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const
