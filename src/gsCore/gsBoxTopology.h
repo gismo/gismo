@@ -270,19 +270,20 @@ public:
 
     /// takes a patchCorner \a start and gives back all other patchCorners,
     /// that represent the same point in the vector \a cornerList
-    /// CAREFUL: works for 2D only
     bool getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const;
 
     /// gives back all the extraordinary vertices (3 faces or more than 4) of the topology
     /// each EV is represented by a vector of patchCorners, which represent the same vertex
-    /// all the vectors are put in the vector \a cornerLists
-    /// CAREFUL: works for 2D only
+    /// all the vectors are put in the vector \a cornerLists. It will only find vertices on
+    /// the inside.
+    /// CAREFUL: works only for 2D
     void getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const;
 
     /// gives back all the ordinary vertices (4 faces) of the topology
     /// each OV is represented by a vector of patchCorners, which represent the same vertex
-    /// all the vectors are put in the vector \a cornerLists
-    /// CAREFUL: works for 2D only
+    /// all the vectors are put in the vector \a cornerLists It will only find vertices on
+    /// the inside.
+    /// CAREFUL: works only for 2D
     void getOVs(std::vector<std::vector<patchCorner> > & cornerLists) const;
 
 protected:

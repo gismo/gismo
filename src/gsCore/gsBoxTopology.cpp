@@ -74,47 +74,50 @@ bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result, boundar
 
 bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const
 {
-    GISMO_ASSERT(m_dim==2,"works only for 2D");
+    bool innerVertex=true;
     cornerList.resize(0);
-    std::vector<patchSide> psides;
+    cornerList.push_back(start);
+    std::vector<patchSide> visitedSides;
+    std::vector<patchSide> psides;     // psides and vertices relate to each other
+    std::vector<patchCorner> vertices;
     start.getContainingSides(m_dim,psides);
-    GISMO_ASSERT(psides.size()==static_cast<size_t>(m_dim),"there should always be two patchsides on each patchCorner");
-    patchSide curSide = psides[0];
-    patchSide endSide = psides[1];
-    patchSide neighbour;
-    boundaryInterface interface;
-    patchCorner curCorner = start;
-    patchCorner newCorner;
-    bool firstTurn = true;
+    for(unsigned i = 0;i<psides.size();i++)
+        vertices.push_back(start);
+    patchSide ps,psNeighbour;
+    patchCorner pc,pcNeighbour;
+    boundaryInterface boundIf;
     do
     {
-        cornerList.push_back(curCorner);
-        if(!getNeighbour(curSide,neighbour, &interface))
+        ps = psides.back();
+        pc = vertices.back();
+        psides.pop_back();
+        vertices.pop_back();
+        if(std::find(visitedSides.begin(), visitedSides.end(), ps)==visitedSides.end())
+            visitedSides.push_back(ps);
+        if(!getNeighbour(ps,psNeighbour))
         {
-            if(firstTurn)
-            {
-                patchSide tempSide=curSide;
-                curSide=endSide;
-                endSide=tempSide;
-                curCorner = start;
-                firstTurn = false;
-                if(!getNeighbour(curSide,neighbour, &interface))
-                    break;
-            }
-            else
-                break;
+            innerVertex=false;
+            continue;
         }
-        newCorner = interface.mapCorner(curCorner);
-        newCorner.getContainingSides(m_dim,psides);
-        if(neighbour == psides[0])
-            curSide = psides[1];
-        else if(neighbour == psides[1])
-            curSide = psides[0];
-        else
-            GISMO_ERROR("one of the two sides has to be the neighbour.");
-        curCorner=newCorner;
-    }while(!(curCorner==start));
-    return firstTurn;
+        if(std::find(visitedSides.begin(), visitedSides.end(), psNeighbour)!=visitedSides.end())
+            continue;
+        if(std::find(visitedSides.begin(), visitedSides.end(), psNeighbour)==visitedSides.end())
+            visitedSides.push_back(psNeighbour);
+        getInterface(ps,boundIf);
+        pcNeighbour = boundIf.mapCorner(pc);
+        if(pcNeighbour==pc)
+            continue;
+        std::vector<patchSide> neighbourSides;
+        pcNeighbour.getContainingSides(m_dim,neighbourSides);
+        for(unsigned i=0;i<neighbourSides.size();++i)
+        {
+            psides.push_back(neighbourSides[i]);
+            vertices.push_back(pcNeighbour);
+        }
+        if(std::find(cornerList.begin(), cornerList.end(), pcNeighbour)==cornerList.end())
+            cornerList.push_back(pcNeighbour);
+    }while(!psides.empty());
+    return innerVertex;
 }
 
 void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const
