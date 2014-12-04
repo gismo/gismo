@@ -501,7 +501,7 @@ public:
         for (index_t i=0;i<directionMap.rows();++i)
         {
             result.directionMap(directionMap(i))=i;
-            result.directionOrientation(i)=directionOrientation(i);
+            result.directionOrientation(directionMap(i))=directionOrientation(i);
         }
         return result;
     }
@@ -529,19 +529,20 @@ public:
         }
         else if (c.patch == ps2.patch && par(ps2.direction()) == ps2.parameter() )
         {
-            index_t i=0;
-            for (; i<ps1.direction();++i)
-            {
-                new_par(i) = directionOrientation(directionMap(i)) ?
-                            par(directionMap(i)) : !par(directionMap(i));
-            }
-            new_par(i) = ps1.parameter();
-            for (++i; i<dim;++i)
-            {
-                new_par(i) = directionOrientation(directionMap(i)) ?
-                            par(directionMap(i)) : !par(directionMap(i));
-            }
-            return patchCorner(ps1.patch, boxCorner(new_par));
+            return getInverse().mapCorner(c);
+//            index_t i=0;
+//            for (; i<ps1.direction();++i)
+//            {
+//                new_par(i) = directionOrientation(directionMap(i)) ?
+//                            par(directionMap(i)) : !par(directionMap(i));
+//            }
+//            new_par(i) = ps1.parameter();
+//            for (++i; i<dim;++i)
+//            {
+//                new_par(i) = directionOrientation(directionMap(i)) ?
+//                            par(directionMap(i)) : !par(directionMap(i));
+//            }
+//            return patchCorner(ps1.patch, boxCorner(new_par));
         }
         else
         {
@@ -550,24 +551,20 @@ public:
         }
     }
 
-    bool dirOrientation(index_t dir) const
+    bool dirOrientation(const patchSide & ps,index_t dir) const
     {
-        return directionOrientation(dir);
+        if(ps==ps1)
+            return directionOrientation(dir);
+        else
+            return getInverse().dirOrientation(ps,dir);
     }
 
-    bool & dirOrientation(index_t dir)
+    index_t dirMap(const patchSide & ps,index_t dir) const
     {
-        return directionOrientation(dir);
-    }
-
-    index_t dirMap(index_t dir) const
-    {
-        return directionMap(dir);
-    }
-
-    index_t & dirMap(index_t dir)
-    {
-        return directionMap(dir);
+        if(ps==ps1)
+            return directionMap(dir);
+        else
+            return getInverse().dirMap(ps,dir);
     }
 
 public: ///todo: make them private
