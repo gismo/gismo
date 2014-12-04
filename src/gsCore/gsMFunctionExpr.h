@@ -93,7 +93,24 @@ public:
     /// Evaluate the expression for component \a comp in the target dimention (overrided from gsFunction)
     virtual void eval_component_into(const gsMatrix<T>& u, const index_t comp, gsMatrix<T>& result) const;
 
-    /// Evalute the gradient
+    /** \brief Evalute the gradient
+     *
+     * \param[in] u gsMatrix of evaluation points.
+     * Each column of \em u corresponds to one evaluation point.
+     * \param[out] result gsMatrix of size
+     * \em targetDim x <em>domainDim * u.cols()</em>, where\n
+     * one row of \em results corresponds to one component of the function.
+     * Within this row, the transposed gradients for the respective points
+     * "lie next to each other".
+     *
+     * Note:\n
+     * \em targetDim is the dimension of the result of the function,\n
+     * \em domainDim is the dimension of the parameter space.
+     *
+     * \warning The gradients are computed
+     * NUMERICALLY with a default stepsize!!!
+     *
+     */
     virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
   
     /// returns the last value computed

@@ -269,15 +269,16 @@ void gsMFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
     int n = my->domainDim;
     GISMO_ASSERT ( u.rows() == n, "Wrong point dimension " );
     
-    result.resize(my->targetDim, u.cols());
+    result.resize(my->targetDim, n * u.cols());
+
     for ( int i = 0; i<u.cols(); i++ )
     {
         for ( int j = 0; j<n; j++ )
             my->vars[j] =u(j,i);
         for ( int j = 0; j<n; j++ )
             for (int k = 0; k!= my->targetDim; ++k)
-                result(k,n*i+j) = exprtk::derivative<T>( 
-                    my->expression[k], my->vars[j], 0.00001 ) ;
+                result(k,n*i+j) = exprtk::derivative<T>(
+                            my->expression[k], my->vars[j], 0.00001 ) ;
     }
 }
 
