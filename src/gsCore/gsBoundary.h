@@ -157,6 +157,11 @@ public:
 */  
 struct patchSide: public boxSide
 {
+private:
+    using boxSide::operator <;
+    using boxSide::operator <=;
+    using boxSide::operator >;
+    using boxSide::operator >=;
 public:
     index_t patch;              ///< The index of the patch.
 public:
@@ -170,10 +175,13 @@ public:
         : boxSide(s), patch(p) { }
 
     // getters
-          boxSide& side()       {return *this;}
+    boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
 
-    bool operator== (const patchSide & other) const {return patch==other.patch && m_index==other.m_index; }
+    bool operator== (const patchSide & other) const
+    {
+        return patch==other.patch && m_index==other.m_index;
+    }
 };
 
 /// Print (as string) a patch side
@@ -297,6 +305,11 @@ public:
 */
 struct patchCorner : public boxCorner
 {
+private:
+    using boxCorner::operator <;
+    using boxCorner::operator <=;
+    using boxCorner::operator >;
+    using boxCorner::operator >=;
 public:
     index_t patch;
 public:
@@ -309,6 +322,12 @@ public:
 
     patchCorner(int p, boxCorner c)
         : boxCorner(c), patch (p) { }
+
+
+    bool operator== (const patchCorner& other) const
+    {
+        return patch==other.patch && m_index==other.m_index;
+    }
 
 
     /**
@@ -382,33 +401,29 @@ public:
         : ps1(_ps1), ps2(_ps2), directionMap(map_info), directionOrientation(orient_flags)
     {  }
 
+    // DEPRECATED
     boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
                       gsVector<bool>    const & orient_flags)
-        : ps1(_ps1), ps2(_ps2)
     {
-        const index_t dim = orient_flags.cols()+1;
-        directionMap.resize(dim);
-        directionOrientation.resize(dim);
-
-        directionMap(ps1.direction())=ps2.direction();
-        directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
-
-        for (index_t i=1 ;i<dim;++i)
-        {
-            const index_t o = (ps1.direction()+i)%dim;
-            const index_t d = (ps2.direction()+i)%dim;
-
-            directionMap(o)=d;
-            directionOrientation(o)=orient_flags(i-1);
-        }
+        init(_ps1,_ps2,orient_flags);
     }
 
     // DEPRECATED
     boundaryInterface(gsVector<int>     const & p,
                       gsVector<bool>    const & orient_flags)
-        : ps1(patchSide(p(0),boxSide(p(1)))), ps2(patchSide(p(2),boxSide(p(3))))
     {
+        init(patchSide(p(0),boxSide(p(1))),patchSide(p(2),boxSide(p(3))) ,orient_flags);
+    }
+
+    //DEPRECATED
+    void init (patchSide const & _ps1,
+                      patchSide const & _ps2,
+                      gsVector<bool>    const & orient_flags)
+    {
+        ps1=_ps1;
+        ps2=_ps2;
+
         const index_t dim = orient_flags.cols()+1;
         directionMap.resize(dim);
         directionOrientation.resize(dim);
@@ -416,15 +431,11 @@ public:
         directionMap(ps1.direction())=ps2.direction();
         directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
 
-        for (index_t i=1 ;i<dim;++i)
-        {
-            const index_t o = (ps1.direction()+i)%dim;
-            const index_t d = (ps2.direction()+i)%dim;
+        directionMap(1-ps1.direction())=1-ps2.direction();
+        directionOrientation(1-ps1.direction())= orient_flags(0);
 
-            directionMap(o)=d;
-            directionOrientation(o)=orient_flags(i-1);
-        }
     }
+
 
     bool operator== (const boundaryInterface & other) const
     {
@@ -502,39 +513,39 @@ public:
         gsVector<bool> new_par(dim);
         if (c.patch == ps1.patch && par(ps1.direction()) == ps1.parameter() )
         {
-           index_t i=0;
-          for (; i<ps1.direction();++i)
-          {
-            new_par(directionMap(i)) = directionOrientation(i) ?
-                par(i) : !par(i);
-          }
-          new_par(directionMap(i)) = ps2.parameter();
-          for (++i; i<dim;++i)
-          {
-            new_par(directionMap(i)) = directionOrientation(i) ?
-                par(i) : !par(i);
-          }
-          return patchCorner(ps2.patch, boxCorner(new_par));
+            index_t i=0;
+            for (; i<ps1.direction();++i)
+            {
+                new_par(directionMap(i)) = directionOrientation(i) ?
+                            par(i) : !par(i);
+            }
+            new_par(directionMap(i)) = ps2.parameter();
+            for (++i; i<dim;++i)
+            {
+                new_par(directionMap(i)) = directionOrientation(i) ?
+                            par(i) : !par(i);
+            }
+            return patchCorner(ps2.patch, boxCorner(new_par));
         }
         else if (c.patch == ps2.patch && par(ps2.direction()) == ps2.parameter() )
         {
-           index_t i=0;
-          for (; i<ps1.direction();++i)
-          {
-            new_par(i) = directionOrientation(directionMap(i)) ?
-                par(directionMap(i)) : !par(directionMap(i));
-          }
-          new_par(i) = ps1.parameter();
-          for (++i; i<dim;++i)
-          {
-            new_par(i) = directionOrientation(directionMap(i)) ?
-                par(directionMap(i)) : !par(directionMap(i));
-          }
-          return patchCorner(ps1.patch, boxCorner(new_par));
+            index_t i=0;
+            for (; i<ps1.direction();++i)
+            {
+                new_par(i) = directionOrientation(directionMap(i)) ?
+                            par(directionMap(i)) : !par(directionMap(i));
+            }
+            new_par(i) = ps1.parameter();
+            for (++i; i<dim;++i)
+            {
+                new_par(i) = directionOrientation(directionMap(i)) ?
+                            par(directionMap(i)) : !par(directionMap(i));
+            }
+            return patchCorner(ps1.patch, boxCorner(new_par));
         }
         else
         {
-           gsWarn<<"cannot map corners that are not in the interface";
+            gsWarn<<"cannot map corners that are not in the interface";
             return c;
         }
     }
@@ -565,14 +576,21 @@ public: ///todo: make them private
     patchSide ps2; ///< The second patch side.
 
 private:
-    /// We describe a permutation of the coordinates by storing
-    /// a vector of integers:
-    ///    - directionMap[i] stores the destination of coordinate i
+    /**
+     * @brief store the combinatorial data about the interface:
+     * we describe the permutation and orientation of the coordinate directions
+     * through an affine map that puts ps1.patch next to ps2.patch in such a way that
+     * ps1 coincide to ps2.
+     *
+     * \a directionMap stores the permutation of the coordinate directions, i.e. the rotation of the map
+     * \a directionOrientation stores the corresponding orientation.
+     */
     gsVector<index_t> directionMap;
     /// For each coordinate direction we save if the original coordinate and the destination one have the same orientation
     gsVector<bool>    directionOrientation;
 
     /// TODO: the information could be stored in a single vector of signed integers: the sign gives the orientation
+    /// the problem is that it is necessary to shift the indeces as there is no -0
 protected:
     friend std::ostream &operator<<(std::ostream &os, const boundaryInterface i);
 };
