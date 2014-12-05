@@ -47,7 +47,7 @@ struct gsGeoTransform
                     jacobians.template block<GeoDim,ParDim>(0, i * ParDim);
             
             result.template block<GeoDim,ParDim>(0, i*ParDim) =
-                    Ji *  ( Ji.transpose() * Ji ).inverse();
+                Ji *  ( Ji.transpose() * Ji ).inverse().eval(); // temporary here
         }
     }
 
