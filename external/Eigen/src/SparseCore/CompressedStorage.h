@@ -152,7 +152,7 @@ class CompressedStorage
       // ^^  optimization: let's first check if it is the last coefficient
       // (very common in high level algorithms)
       const size_t id = searchLowerIndex(start,end-1,key);
-      // G+Smo
+      // G+Smo 
       if ((id<end) && (m_indices[id]==key))
           return m_values[id];
       else
