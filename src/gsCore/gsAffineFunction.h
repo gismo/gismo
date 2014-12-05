@@ -29,7 +29,25 @@ protected:
     gsMatrix<T> m_mat;
     gsVector<T> m_trans;
 public:
+    /**
+     * @brief all fine maps are the composition of a linear map with a translation
+     *        this constructor takes the two components explicitly
+     * @param \a mat the matrix corresponding to the linear map
+     * @param \a trans the vector corresponding to the translation
+     */
     gsAffineFunction(const gsMatrix<T> mat, const gsVector<T> trans);
+
+    /**
+     * @brief construct the affine map that maps \a box1 to \a box2 by
+     *        mapping coordinate \a i of \a box1 to coordinate \a directions(i) of \a box2
+     * @param \a directions specifies the permutation of the coordinate directions, i.e. the rotation
+     * @param \a orientation specifies the sign of the destination
+     * @param \a box1 description of the domain box: lower corner in the first column, upper corner in the second
+     * @param \a box2 description of the target box
+     */
+    gsAffineFunction(const gsVector<index_t> &directions, const gsVector<bool> &orientation, const gsMatrix<T> &box1, const gsMatrix<T> &box2);
+
+
     virtual int domainDim() const;
     virtual int targetDim() const;
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;

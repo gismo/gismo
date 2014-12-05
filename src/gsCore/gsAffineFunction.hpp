@@ -16,6 +16,36 @@
 
 namespace gismo {
 
+template <typename T>
+gsAffineFunction<T>::gsAffineFunction(const gsVector<index_t> &dir, const gsVector<bool> &o, const gsMatrix<T> &box1, const gsMatrix<T> &box2)
+{
+    GISMO_ASSERT(box1.rows()==box2.rows(), "the two boxes must be subset of Rn for the same n (same number of rows)");
+    GISMO_ASSERT(box1.cols()==2 && 2==box2.cols(), "the two boxes must be described by the lower and upper corner, the matrices must have two columns");
+
+    const index_t dim = box1.rows();
+    #define low1 box1.col(0)
+    #define upp1 box1.col(1)
+    #define low2 box2.col(0)
+    #define upp2 box2.col(1)
+
+    const gsVector<T> size1= upp1 - low1;
+    const gsVector<T> size2= upp2 - low2;
+    m_mat.setZero(dim,dim);
+    m_trans.resize(dim);
+    for (index_t i=0; i<dim; ++i)
+    {
+        const T ratio = size2(dir(i))/size1(i);
+        m_mat(dir(i),i) = o(i) ? ratio : -ratio;
+        m_trans(dir(i)) = o(i) ? low2(dir(i)) : upp2(dir(i));
+    }
+    m_trans-=m_mat*low1;
+
+    #undef low1
+    #undef upp1
+    #undef low2
+    #undef upp2
+
+}
 
 
 template <typename T>

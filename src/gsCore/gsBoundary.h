@@ -554,19 +554,6 @@ public:
         else if (c.patch == ps2.patch && par(ps2.direction()) == ps2.parameter() )
         {
             return getInverse().mapCorner(c);
-//            index_t i=0;
-//            for (; i<ps1.direction();++i)
-//            {
-//                new_par(i) = directionOrientation(directionMap(i)) ?
-//                            par(directionMap(i)) : !par(directionMap(i));
-//            }
-//            new_par(i) = ps1.parameter();
-//            for (++i; i<dim;++i)
-//            {
-//                new_par(i) = directionOrientation(directionMap(i)) ?
-//                            par(directionMap(i)) : !par(directionMap(i));
-//            }
-//            return patchCorner(ps1.patch, boxCorner(new_par));
         }
         else
         {

@@ -201,34 +201,6 @@ public:
     return binomial(n_,r_);
   }
   
-  /// Construct first permutation of {0,..,n-1}
-  void first_permutation ( unsigned const& n_ ,Vect & res)
-  {
-    n= n_;
-    res=Vect::LinSpaced(n,0,n-1);
-  } 
-  
-  /// Construct NEXT permutation of {0,..,n-1}
-  /// first_permutation should have been called before this
-  bool next_permutation ( Vect & v)
-  {
-    if  (v == Vect::LinSpaced(n,n-1,0)) return false;
-    int j=n-2;
-    int k=n-1;
-    while (v[j] > v[j+1]) --j;
-    while (v[j] > v[k]  ) --k;
-    std::swap( v[k], v[j] );
-    
-    k=n;
-    j++;
-    while ( k>j)
-      {
-	std::swap( v[k], v[j] );
-	k--;
-	j++;
-      }
-    return true;
-  }
 
   /// Number of permutations (binomial coefficient)
   /// first_permutation should have been called before this
@@ -331,6 +303,29 @@ private:
   unsigned n;
 
 }; // class gsCombinat
+
+
+/**
+ * \brief changes current to the first permutation of 0 ... size(current)-1
+ * note that you must resize the vector to specify the number of elements
+ */
+template<class Vec>
+void firstPermutation (Vec &current)
+{
+    const index_t n=current.size();
+    current=Vec::LinSpaced(n,0,n-1);
+}
+
+/**
+ * \brief changes current to the next lexicographically ordered permutation
+ * \return false when the lexicographically last permutation is given
+ */
+template<class Vec>
+bool nextPermutation (Vec &current)
+{
+    const index_t n=current.size();
+    return std::next_permutation(current.data(), current.data()+n);
+}
 
 
 /// iterate through a tensor lattice with the given size. Updates cur
