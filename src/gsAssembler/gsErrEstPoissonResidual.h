@@ -113,7 +113,6 @@ protected:
     {
         // Evaluate discrete solution
         discSolution.deriv2_into(quNodes, m_discSol2ndDer);
-        discSolution.eval_into(quNodes, m_discSolVals);
 
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
@@ -133,7 +132,7 @@ protected:
 
         T sum(0.0);
 
-        for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
+        for (index_t k = 0; k < quWeights.size(); ++k) // loop over quadrature nodes
         {
             const T weight = quWeights[k] * geoEval.measure(k);
 
@@ -151,7 +150,6 @@ protected:
             // because of the special ordering of the second derivatives,
             // and because it should be easier to extend this to the
             // convection-diffusion-reaction-equation starting from this.
-
 
             T sol_Lap(0.0);
 
@@ -196,7 +194,7 @@ protected:
 
 private:
 
-    gsMatrix<T> m_discSol2ndDer, m_discSolVals, m_rhsFctVals;
+    gsMatrix<T> m_discSol2ndDer, m_rhsFctVals; // m_discSolVals
 
     unsigned m_parDim;
 
