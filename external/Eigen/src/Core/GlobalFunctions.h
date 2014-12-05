@@ -15,7 +15,7 @@
   template<typename Derived> \
   inline const Eigen::CwiseUnaryOp<Eigen::internal::FUNCTOR<typename Derived::Scalar>, const Derived> \
   NAME(const Eigen::ArrayBase<Derived>& x) { \
-    return x.derived(); \
+    return Eigen::CwiseUnaryOp<Eigen::internal::FUNCTOR<typename Derived::Scalar>, const Derived>(x.derived()); \
   }
 
 #define EIGEN_ARRAY_DECLARE_GLOBAL_EIGEN_UNARY(NAME,FUNCTOR) \
@@ -30,7 +30,7 @@
   { \
     static inline typename NAME##_retval<ArrayBase<Derived> >::type run(const Eigen::ArrayBase<Derived>& x) \
     { \
-      return x.derived(); \
+      return typename NAME##_retval<ArrayBase<Derived> >::type(x.derived()); \
     } \
   };
 
@@ -45,6 +45,7 @@ namespace Eigen
   EIGEN_ARRAY_DECLARE_GLOBAL_UNARY(asin,scalar_asin_op)
   EIGEN_ARRAY_DECLARE_GLOBAL_UNARY(acos,scalar_acos_op)
   EIGEN_ARRAY_DECLARE_GLOBAL_UNARY(tan,scalar_tan_op)
+  EIGEN_ARRAY_DECLARE_GLOBAL_UNARY(atan,scalar_atan_op)
   EIGEN_ARRAY_DECLARE_GLOBAL_UNARY(exp,scalar_exp_op)
   EIGEN_ARRAY_DECLARE_GLOBAL_UNARY(log,scalar_log_op)
   EIGEN_ARRAY_DECLARE_GLOBAL_UNARY(abs,scalar_abs_op)

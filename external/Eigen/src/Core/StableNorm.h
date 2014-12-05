@@ -17,10 +17,9 @@ namespace internal {
 template<typename ExpressionType, typename Scalar>
 inline void stable_norm_kernel(const ExpressionType& bl, Scalar& ssq, Scalar& scale, Scalar& invScale)
 {
-  using std::max;
   Scalar maxCoeff = bl.cwiseAbs().maxCoeff();
   
-  if (maxCoeff>scale)
+  if(maxCoeff>scale)
   {
     ssq = ssq * numext::abs2(scale/maxCoeff);
     Scalar tmp = Scalar(1)/maxCoeff;
@@ -29,11 +28,20 @@ inline void stable_norm_kernel(const ExpressionType& bl, Scalar& ssq, Scalar& sc
       invScale = NumTraits<Scalar>::highest();
       scale = Scalar(1)/invScale;
     }
+    else if(maxCoeff>NumTraits<Scalar>::highest()) // we got a INF
+    {
+      invScale = Scalar(1);
+      scale = maxCoeff;
+    }
     else
     {
       scale = maxCoeff;
       invScale = tmp;
     }
+  }
+  else if(maxCoeff!=maxCoeff) // we got a NaN
+  {
+    scale = maxCoeff;
   }
   
   // TODO if the maxCoeff is much much smaller than the current scale,
@@ -49,13 +57,11 @@ blueNorm_impl(const EigenBase<Derived>& _vec)
   typedef typename Derived::RealScalar RealScalar;  
   typedef typename Derived::Index Index;
   using std::pow;
-  EIGEN_USING_STD_MATH(min);
-  EIGEN_USING_STD_MATH(max);
   using std::sqrt;
   using std::abs;
   const Derived& vec(_vec.derived());
   static bool initialized = false;
-  static RealScalar b1, b2, s1m, s2m, overfl, rbig, relerr;
+  static RealScalar b1, b2, s1m, s2m, rbig, relerr;
   if(!initialized)
   {
     int ibeta, it, iemin, iemax, iexp;
@@ -84,7 +90,6 @@ blueNorm_impl(const EigenBase<Derived>& _vec)
     iexp  = - ((iemax+it)/2);
     s2m   = RealScalar(pow(RealScalar(ibeta),RealScalar(iexp)));    // scaling factor for upper range
 
-    overfl  = rbig*s2m;                                             // overflow boundary for abig
     eps     = RealScalar(pow(double(ibeta), 1-it));
     relerr  = sqrt(eps);                                            // tolerance for neglecting asml
     initialized = true;
@@ -101,13 +106,13 @@ blueNorm_impl(const EigenBase<Derived>& _vec)
     else if(ax < b1) asml += numext::abs2(ax*s1m);
     else             amed += numext::abs2(ax);
   }
+  if(amed!=amed)
+    return amed;  // we got a NaN
   if(abig > RealScalar(0))
   {
     abig = sqrt(abig);
-    if(abig > overfl)
-    {
-      return rbig;
-    }
+    if(abig > rbig) // overflow, or *this contains INF values
+      return abig;  // return INF
     if(amed > RealScalar(0))
     {
       abig = abig/s2m;
@@ -128,8 +133,8 @@ blueNorm_impl(const EigenBase<Derived>& _vec)
   }
   else
     return sqrt(amed);
-  asml = (min)(abig, amed);
-  abig = (max)(abig, amed);
+  asml = numext::mini(abig, amed);
+  abig = numext::maxi(abig, amed);
   if(asml <= abig*relerr)
     return abig;
   else
@@ -152,7 +157,6 @@ template<typename Derived>
 inline typename NumTraits<typename internal::traits<Derived>::Scalar>::Real
 MatrixBase<Derived>::stableNorm() const
 {
-  EIGEN_USING_STD_MATH(min);
   using std::sqrt;
   const Index blockSize = 4096;
   RealScalar scale(0);
@@ -166,7 +170,7 @@ MatrixBase<Derived>::stableNorm() const
   if (bi>0)
     internal::stable_norm_kernel(this->head(bi), ssq, scale, invScale);
   for (; bi<n; bi+=blockSize)
-    internal::stable_norm_kernel(this->segment(bi,(min)(blockSize, n - bi)).template forceAlignedAccessIf<Alignment>(), ssq, scale, invScale);
+    internal::stable_norm_kernel(this->segment(bi,numext::mini(blockSize, n - bi)).template forceAlignedAccessIf<Alignment>(), ssq, scale, invScale);
   return scale * sqrt(ssq);
 }
 

@@ -135,23 +135,23 @@ template<> EIGEN_STRONG_INLINE Packet8i pdiv<Packet8i>(const Packet8i& /*a*/, co
 
 #ifdef EIGEN_VECTORIZE_FMA
 template<> EIGEN_STRONG_INLINE Packet8f pmadd(const Packet8f& a, const Packet8f& b, const Packet8f& c) {
-#if defined(__clang__) || defined(__GNUC__)
+#if EIGEN_COMP_GNUC || EIGEN_COMP_CLANG
   // clang stupidly generates a vfmadd213ps instruction plus some vmovaps on registers,
   // and gcc stupidly generates a vfmadd132ps instruction,
   // so let's enforce it to generate a vfmadd231ps instruction since the most common use case is to accumulate
   // the result of the product.
   Packet8f res = c;
-  asm("vfmadd231ps %[a], %[b], %[c]" : [c] "+x" (res) : [a] "x" (a), [b] "x" (b));
+  __asm__("vfmadd231ps %[a], %[b], %[c]" : [c] "+x" (res) : [a] "x" (a), [b] "x" (b));
   return res;
 #else
   return _mm256_fmadd_ps(a,b,c);
 #endif
 }
 template<> EIGEN_STRONG_INLINE Packet4d pmadd(const Packet4d& a, const Packet4d& b, const Packet4d& c) {
-#if defined(__clang__) || defined(__GNUC__)
+#if EIGEN_COMP_GNUC || EIGEN_COMP_CLANG
   // see above
   Packet4d res = c;
-  asm("vfmadd231pd %[a], %[b], %[c]" : [c] "+x" (res) : [a] "x" (a), [b] "x" (b));
+  __asm__("vfmadd231pd %[a], %[b], %[c]" : [c] "+x" (res) : [a] "x" (a), [b] "x" (b));
   return res;
 #else
   return _mm256_fmadd_pd(a,b,c);
@@ -224,17 +224,17 @@ template<> EIGEN_STRONG_INLINE void pstoreu<int>(int*       to, const Packet8i& 
 
 // NOTE: leverage _mm256_i32gather_ps and _mm256_i32gather_pd if AVX2 instructions are available
 // NOTE: for the record the following seems to be slower: return _mm256_i32gather_ps(from, _mm256_set1_epi32(stride), 4);
-template<> EIGEN_DEVICE_FUNC inline Packet8f pgather<float, Packet8f>(const float* from, int stride)
+template<> EIGEN_DEVICE_FUNC inline Packet8f pgather<float, Packet8f>(const float* from, DenseIndex stride)
 {
   return _mm256_set_ps(from[7*stride], from[6*stride], from[5*stride], from[4*stride],
                        from[3*stride], from[2*stride], from[1*stride], from[0*stride]);
 }
-template<> EIGEN_DEVICE_FUNC inline Packet4d pgather<double, Packet4d>(const double* from, int stride)
+template<> EIGEN_DEVICE_FUNC inline Packet4d pgather<double, Packet4d>(const double* from, DenseIndex stride)
 {
   return _mm256_set_pd(from[3*stride], from[2*stride], from[1*stride], from[0*stride]);
 }
 
-template<> EIGEN_DEVICE_FUNC inline void pscatter<float, Packet8f>(float* to, const Packet8f& from, int stride)
+template<> EIGEN_DEVICE_FUNC inline void pscatter<float, Packet8f>(float* to, const Packet8f& from, DenseIndex stride)
 {
   __m128 low = _mm256_extractf128_ps(from, 0);
   to[stride*0] = _mm_cvtss_f32(low);
@@ -248,7 +248,7 @@ template<> EIGEN_DEVICE_FUNC inline void pscatter<float, Packet8f>(float* to, co
   to[stride*6] = _mm_cvtss_f32(_mm_shuffle_ps(high, high, 2));
   to[stride*7] = _mm_cvtss_f32(_mm_shuffle_ps(high, high, 3));
 }
-template<> EIGEN_DEVICE_FUNC inline void pscatter<double, Packet4d>(double* to, const Packet4d& from, int stride)
+template<> EIGEN_DEVICE_FUNC inline void pscatter<double, Packet4d>(double* to, const Packet4d& from, DenseIndex stride)
 {
   __m128d low = _mm256_extractf128_pd(from, 0);
   to[stride*0] = _mm_cvtsd_f64(low);

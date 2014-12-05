@@ -80,6 +80,34 @@ template<typename T> struct add_const_on_value_type<T*>        { typedef T const
 template<typename T> struct add_const_on_value_type<T* const>  { typedef T const* const type; };
 template<typename T> struct add_const_on_value_type<T const* const>  { typedef T const* const type; };
 
+
+template<typename From, typename To>
+struct is_convertible_impl
+{
+private:
+  struct any_conversion
+  {
+    template <typename T> any_conversion(const volatile T&);
+    template <typename T> any_conversion(T&);
+  };
+  struct yes {int a[1];};
+  struct no  {int a[2];};
+
+  static yes test(const To&, int);
+  static no  test(any_conversion, ...);
+
+public:
+  static From ms_from;
+  enum { value = sizeof(test(ms_from, 0))==sizeof(yes) };
+};
+
+template<typename From, typename To>
+struct is_convertible
+{
+  enum { value = is_convertible_impl<typename remove_all<From>::type,
+                                     typename remove_all<To  >::type>::value };
+};
+
 /** \internal Allows to enable/disable an overload
   * according to a compile time condition.
   */
@@ -245,18 +273,6 @@ template<typename T> struct scalar_product_traits<std::complex<T>, T>
 // struct result_of<scalar_product_op<Scalar>(ArgType0,ArgType1)> {
 // typedef typename scalar_product_traits<typename remove_all<ArgType0>::type, typename remove_all<ArgType1>::type>::ReturnType type;
 // };
-
-template<typename T> struct is_diagonal
-{ enum { ret = false }; };
-
-template<typename T> struct is_diagonal<DiagonalBase<T> >
-{ enum { ret = true }; };
-
-template<typename T> struct is_diagonal<DiagonalWrapper<T> >
-{ enum { ret = true }; };
-
-template<typename T, int S> struct is_diagonal<DiagonalMatrix<T,S> >
-{ enum { ret = true }; };
 
 } // end namespace internal
 
