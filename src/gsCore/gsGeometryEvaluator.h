@@ -530,6 +530,7 @@ public:
         }
     }
 
+    const gsGeometry<T> & geometry() const {return m_geo;}
 
 private:
     void computeValues();
