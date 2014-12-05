@@ -61,13 +61,14 @@ bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result, int & i
     {
        if ( m_interfaces[i].ps1 == ps ) 
        {
-           ii = i;
+           result = m_interfaces[i].ps2;
+           ii     = i;
            return true;
        }
        else if ( m_interfaces[i].ps2 == ps ) 
        {
            result = m_interfaces[i].ps1;
-           ii = i;
+           ii     = i;
            return true;
        }
     }
