@@ -51,7 +51,7 @@ gsGeometry<T> * gsInterpolate( const gsBasis<T>& g, const gsFunction<T>& f )
 
 
 template <class T>
-void gsInterpolateBoundary( const gsBasis<T> & basis,
+void gsL2ProjectOnBoundary( const gsBasis<T> & basis,
                            const gsFunction<T> & f,
                            const gsGeometry<T> & geo,
                            const gsVector<int> & Sides,
@@ -258,7 +258,7 @@ void gsInterpolateBoundary( const gsBasis<T> & basis,
                 vecIdx[ Map_GlobToSys[ i ] ] = i;
     }
 
-} // gsInterpolateBoundary
+} // gsL2ProjectOnBoundary
 
 
 
