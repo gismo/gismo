@@ -452,11 +452,13 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
 
+        typename gsGeometry<T>::Evaluator geoEval( m_patches[patchIdx].evaluator(NEED_MEASURE));
+
         // Set up quadrature. The number of integration points in the direction
         // that is NOT along the element has to be set to 1.
         gsVector<index_t> numQuNodes( basis.dim() );
         for( int i=0; i < basis.dim(); i++)
-            numQuNodes[i] = (basis.degree(i)+2);
+            numQuNodes[i] = (basis.degree(i)+1);
         numQuNodes[ direction( iter->side() )] = 1;
 
         gsGaussRule<T> QuRule;
@@ -472,6 +474,8 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
             //bdryIter->computeQuadratureRule( numQuNodes );
             QuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),\
                              quNodes, quWeights);
+
+            geoEval->evaluateAt( quNodes );
 
             gsMatrix<T> rhsVals = iter->function()->eval( m_patches[patchIdx].eval( quNodes ) );
 
@@ -515,7 +519,7 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
             // Do the actual assembly:
             for( index_t k=0; k < quNodes.cols(); k++ )
             {
-                T weight_k = quWeights[k];
+                T weight_k = quWeights[k] * geoEval->measure(k);
 
                 // Only run through the active boundary functions on the element:
                 for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
