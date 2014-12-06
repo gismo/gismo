@@ -143,8 +143,9 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 // 4717 - 'function' : recursive on all control paths, function will cause runtime stack overflow
 // 4789 - destination of memory copy is too small (for Eigen)
 // 4996 - 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead.
+// 4510 - default constructor could not be generated
   #pragma warning( push )
-  #pragma warning( disable : 4100 4127 4146 4251 4428 4275 4503 4505 4512 4566 4661 4714 4789 4996 )
+  #pragma warning( disable : 4100 4127 4146 4251 4428 4275 4503 4505 4512 4566 4661 4714 4789 4996 4510)
 
 #elif defined __INTEL_COMPILER
 // 2196 - routine is both "inline" and "noinline" ("noinline" assumed)

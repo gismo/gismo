@@ -491,9 +491,10 @@ struct product_evaluator<Product<Lhs, Rhs, LazyProduct>, ProductTag, DenseShape,
     return res;
   }
 
-protected:
-  const LhsNested m_lhs;
-  const RhsNested m_rhs;
+protected:  
+  // G+Smo 
+  LhsNested m_lhs;
+  RhsNested m_rhs;
   
   LhsEtorType m_lhsImpl;
   RhsEtorType m_rhsImpl;
