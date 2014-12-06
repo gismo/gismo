@@ -81,14 +81,6 @@ include_directories(${PROJECT_BINARY_DIR})
 #       if only one of the two is build, targets are linked using that one
 #       if none of the two is build, targets are not linked against anything, only templated code is used.
 
-if (GISMO_LOGGING_WARN)
-   add_definitions(-DGISMO_LOGGING_WARN)
-endif (GISMO_LOGGING_WARN)
-
-if (GISMO_LOGGING_INFO)
-   add_definitions(-DGISMO_LOGGING_INFO)
-endif (GISMO_LOGGING_INFO)
-
 ## #################################################################
 ## Collect headers and sources
 ## #################################################################

@@ -311,7 +311,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 #elif defined(_MSC_VER)
 #define GISMO_DEPRECATED __declspec(deprecated)
 #else
-#pragma message("WARNING: you will not be warned about deprecated functions with this compiler")
+//#pragma message("WARNING: you will not be warned about deprecated functions with this compiler")
 #define GISMO_DEPRECATED
 #endif
 
