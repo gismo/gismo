@@ -1,3 +1,15 @@
+/** @file gsGenericAssembler.h
+
+    @brief Provides an assembler for common IGA matrices
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): S. Kleiss, A. Mantzaflaris
+*/
 
 #pragma once
 
@@ -7,7 +19,6 @@
 
 namespace gismo
 {
-
 
 /**
    @brief Assembles the mass, stiffness matrix on a given domain
@@ -29,10 +40,10 @@ public:
     {
         m_bases.push_back(bases);
 
+        // Init mapper
         m_dofMappers.resize(1);
         bases.getMapper(conforming, m_dofMappers.front() );
         m_dofs = m_dofMappers.front().freeSize();
-        m_matrix.resize(m_dofs, m_dofs);
     }
 
     /// Mass assembly routine
@@ -61,7 +72,7 @@ public:
         return m_matrix;
     }
 
-    /// Mass assembly routine
+    /// Stiffness assembly routine
     const gsSparseMatrix<T> & assembleStiffness()
     {
         // Pre-allocate non-zero elements for each column of the
@@ -81,6 +92,54 @@ public:
             // with index np and add to m_matrix
             this->apply(stiffness, np);
         }
+
+        // Assembly is done, compress the matrix
+        m_matrix.makeCompressed();   
+        return m_matrix;
+    }
+
+    /// Stiffness assembly routine on patch \a patchIndex
+    const gsSparseMatrix<T> & assembleMass(int patchIndex)
+    {
+        const int sz = m_bases.front()[patchIndex].size();
+
+        // Pre-allocate non-zero elements for each column of the
+        // sparse matrix
+        int nonZerosPerCol = 1;
+        for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
+            nonZerosPerCol *= 2 * m_bases.front()[patchIndex].degree(i) + 1;
+        m_matrix = gsSparseMatrix<T>(sz, sz); // Clean matrix
+        m_matrix.reserve( gsVector<int>::Constant(sz, nonZerosPerCol) );
+
+        // Mass visitor (without mapper)
+        gsVisitorMass<T> mass(false);
+        
+        //Assemble stiffness matrix for this patch
+        this->apply(mass, patchIndex);
+
+        // Assembly is done, compress the matrix
+        m_matrix.makeCompressed();   
+        return m_matrix;
+    }
+
+    /// Stiffness assembly routine on patch \a patchIndex
+    const gsSparseMatrix<T> & assembleStiffness(int patchIndex)
+    {
+        const int sz = m_bases.front()[patchIndex].size();
+
+        // Pre-allocate non-zero elements for each column of the
+        // sparse matrix
+        int nonZerosPerCol = 1;
+        for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
+            nonZerosPerCol *= 2 * m_bases.front()[patchIndex].degree(i) + 1;
+        m_matrix = gsSparseMatrix<T>(sz, sz); // Clean matrix
+        m_matrix.reserve( gsVector<int>::Constant(sz, nonZerosPerCol) );
+
+        // Stiffness visitor (without mapper)
+        gsVisitorGradGrad<T> stiffness(false);
+
+        //Assemble stiffness matrix for this patch
+        this->apply(stiffness, patchIndex);
 
         // Assembly is done, compress the matrix
         m_matrix.makeCompressed();   

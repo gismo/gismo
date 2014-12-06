@@ -1,3 +1,15 @@
+/** @file gsVisitorMass.h
+
+    @brief Mass visitor for assmbling element mass matrix
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris
+*/
 
 #pragma once
 
@@ -5,12 +17,16 @@ namespace gismo
 {
 
 
+/** 
+    @brief The visitor computes element mass integrals
+*/
 template <class T>
 class gsVisitorMass
 {
 public:
 
-    gsVisitorMass() 
+    gsVisitorMass(bool _useMapper = true)
+    : useMapper(_useMapper)
     { }
 
     static void initialize(const gsBasis<T> & basis, 
@@ -69,8 +85,9 @@ public:
                        gsSparseMatrix<T>     & sysMatrix,
                        gsMatrix<T>           & rhsMatrix )
     {
-        // Translate local Dofs to global dofs in place
-        mapper.localToGlobal(actives, patchIndex, actives);
+        if ( useMapper ) // Translate local Dofs to global dofs ?
+            mapper.localToGlobal(actives, patchIndex, actives);
+
         const index_t numActive = actives.rows();
         
         for (index_t i = 0; i < numActive; ++i)
@@ -87,10 +104,10 @@ public:
         }
     }
 
-private:
-    const gsFunction<T> * rhs_ptr;
+protected:
 
-private:
+    bool useMapper;
+
     // Basis values
     gsMatrix<T>      basisData;
     gsMatrix<unsigned> actives;

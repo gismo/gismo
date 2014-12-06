@@ -79,7 +79,7 @@ public:
             // Assemble on element
             visitor.assemble(*domIt, *geoEval, quWeights);
             
-            // Push to global patch matrix
+            // Push to global matrix
             // Note: m_rhs is filled in place
             visitor.localToGlobal(mappers, m_ddof, patchIndex, patchMatrix, m_rhs);
         }
