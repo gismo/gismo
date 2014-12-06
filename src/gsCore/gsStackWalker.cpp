@@ -1,9 +1,20 @@
+/** @file gsStackWalker.cpp
 
+    @brief Provides implementation of gsStackwalker.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
+
+#include <gsCore/gsDebug.h>
 #include <gsCore/gsStackWalker.h>
-#include <gsCore/gsLogging.h>
 
 #include <stdio.h>
- #include <vector>
 #include <stdlib.h>
 
 #ifdef _WIN32

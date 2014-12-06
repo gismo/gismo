@@ -60,11 +60,6 @@ struct boundary
 };
 
 
-// forward declarations of types
-struct boxCorner;
-struct boxSide;
-
-
 /**
  * Struct side represent a side of a box
 **/

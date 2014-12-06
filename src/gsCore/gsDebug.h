@@ -1,11 +1,23 @@
 /** @file gsDebug.h
- * This file contains the debugging and messaging system of G+Smo. 
- *
- * @{
- */
+
+    @brief This file contains the debugging and messaging system of G+Smo. 
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
+
+
+// Start DEBUG_GROUP of Doxygen
+/** @{ */
 
 #pragma once
 
+#include <iostream>
 #include <iomanip>
 #include <stdexcept>
 #include <typeinfo>
@@ -17,12 +29,33 @@
 //#include <errno.h>
 #endif
 
-#include <gsCore/gsLogging.h>
-
 #ifdef GISMO_EXTRA_DEBUG
   #include <gsCore/gsStackWalker.h>
 #endif
 
+
+/** Logging messages:
+ *  gsInfo is ment to display informationlog messages, 
+ */
+#define gsInfo std::cout  //<< "Info: "
+
+/** Logging messages:
+    gsWarn is for warnings, eg, for missing functionality or problem in the input
+ */
+#define gsWarn std::cout<<"Warning: "
+//#define gsWarn if (0) std::cerr
+
+/** Logging messages:
+ *  gsDebug and gsDebugVar(.) are for debugging messages and are enabled in debug mode only
+ */
+#ifndef  NDEBUG 
+//#ifdef GISMO_LOGGING_DEBUG
+  #define gsDebug std::cout<<"GISMO_DEBUG: "
+  #define gsDebugVar(variable) gsDebug <<"L"<<__LINE__<< ", "#variable": "<<(variable)<<"\n"
+#else
+  #define gsDebug if (0) std::cerr
+  #define gsDebugVar(variable)
+#endif
 
 /** 
  *  Used for optional inclusion of .hpp header files in the .h files.
@@ -37,7 +70,6 @@
  *  Runtine assertions which display a message  
  *
  */
-
 #ifndef NDEBUG
 
 #   define GISMO_ASSERT(condition, message) \
@@ -57,7 +89,6 @@
  *  GISMO_ASSERT but it is executed in release builds as well.
  *
  */
-
 #   define GISMO_ENSURE(condition, message) \
         if (! (condition) ) {                                           \
             gsWarn  << "Condition `" #condition "` failed in " << __FILE__ \
@@ -70,14 +101,12 @@
  *  mode builds.
  *
  */
-
 #   define GISMO_UNUSED(x)  static_cast<void>(x)
 
 /**  
  *  Runtine error message
  *
  */
-
 #   define GISMO_ERROR(message)                 \
     {                                                                \
         gsInfo  << "Error in " << __FILE__                      \
@@ -144,8 +173,9 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 // 4789 - destination of memory copy is too small (for Eigen)
 // 4996 - 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead.
 // 4510 - default constructor could not be generated
+// 4610 - user defined constructor required
   #pragma warning( push )
-  #pragma warning( disable : 4100 4127 4146 4251 4428 4275 4503 4505 4512 4566 4661 4714 4789 4996 4510)
+  #pragma warning( disable : 4100 4127 4146 4251 4428 4275 4503 4505 4512 4566 4661 4714 4789 4996 4510 4610)
 
 #elif defined __INTEL_COMPILER
 // 2196 - routine is both "inline" and "noinline" ("noinline" assumed)
@@ -275,16 +305,17 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
      GISMO_PREDICATE_SAME_MATRIX_SIZE(TYPE0,TYPE1),\
     YOU_MIXED_MATRICES_OF_DIFFERENT_SIZES)
 
-// Next line closes the DEBUG_GROUP of Doxygen
-/** @} */
-
-
 
 #ifdef __GNUC__
-#define GS_DEPRECATED __attribute__((deprecated))
+#define GISMO_DEPRECATED __attribute__((deprecated))
 #elif defined(_MSC_VER)
-#define GS_DEPRECATED __declspec(deprecated)
+#define GISMO_DEPRECATED __declspec(deprecated)
 #else
 #pragma message("WARNING: you will not be warned about deprecated functions with this compiler")
-#define GS_DEPRECATED
+#define GISMO_DEPRECATED
 #endif
+
+
+
+// Next line closes the DEBUG_GROUP of Doxygen
+/** @} */
