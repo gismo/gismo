@@ -80,7 +80,7 @@ public:
         void * unused
         )
     {
-        m_rhs=new gsPiecewiseFunction<T>;
+        m_rhs=new gsPiecewiseFunction<T>(gsConstantFunction<T>(0));
         m_unknownDim.push_back(1);
     }
 

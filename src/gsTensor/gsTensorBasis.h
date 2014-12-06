@@ -547,9 +547,10 @@ public:
     gsTensorBasis() : Basis_t()
     { m_address = this;}
 
-    explicit gsTensorBasis( Basis_t* x) : Basis_t(*x)
+    explicit gsTensorBasis(Basis_t * x) : Basis_t(*x)
     { 
         m_address = this;
+        delete x;
     }
     
     gsTensorBasis( Basis_t* x,  Basis_t*  y)
@@ -561,11 +562,13 @@ public:
     gsTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w )
     { gsWarn<<"Invalid constructor.\n"; }
     
+    // Constructor by basis pointers (takes ownership of the passed bases)
     gsTensorBasis( std::vector<Basis_t* > const & bb ) 
     : Basis_t(*bb[0])
     { 
         GISMO_ASSERT(bb.size() == 1, "Invalid number of bases in 1D constructor");
         m_address = this; 
+        delete bb.front();
     }
     
     
