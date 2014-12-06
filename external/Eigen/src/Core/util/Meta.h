@@ -98,7 +98,8 @@ private:
 
 public:
   static From ms_from;
-  enum { value = sizeof(test(ms_from, 0))==sizeof(yes) };
+    //G+Smo
+    enum { value = ( sizeof(test(ms_from, 0))==sizeof(yes) ? 1 : 0) };
 };
 
 template<typename From, typename To>
