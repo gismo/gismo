@@ -30,6 +30,7 @@ MARK_AS_ADVANCED(
     CMAKE_C_FLAGS_MAINTAINER
     CMAKE_EXE_LINKER_FLAGS_MAINTAINER
     CMAKE_SHARED_LINKER_FLAGS_MAINTAINER )
+
 # Update the documentation string of CMAKE_BUILD_TYPE for GUIs
 SET( CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
     "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Maintainer."
@@ -38,6 +39,7 @@ SET( CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+   #set(CMAKE_BUILD_TYPE Debug CACHE STRING 
    set(CMAKE_BUILD_TYPE Debug CACHE STRING 
    "Type of build (Debug, Release, RelWithDebInfo, MinSizeRel)" FORCE)
    # Set the possible values of build type for cmake-gui
@@ -76,9 +78,6 @@ option(GISMO_WITH_PSOLID         "With Parasolid"         false  )
 option(GISMO_WITH_MPFR           "With MPFR"              false  )
 option(GISMO_WITH_ONURBS         "With OpenNurbs"         false  )
 option(GISMO_WITH_IPOPT          "With IpOpt"             false  )
-option(GISMO_WARNINGS            "Compiler Warnings"      true   )
-option(GISMO_LOGGING_WARN        "Display warning messages (gsWarn)"     true)
-option(GISMO_LOGGING_INFO        "Display information messages (gsInfo)" true)
 option(GISMO_BUILD_CPP11         "Compile using C++11 flags" false)
 
 message ("Configuration:")
@@ -102,9 +101,6 @@ message ("  GISMO_WITH_PSOLID       ${GISMO_WITH_PSOLID}")
 message ("  GISMO_WITH_MPFR         ${GISMO_WITH_MPFR}")
 message ("  GISMO_WITH_ONURBS       ${GISMO_WITH_ONURBS}")
 message ("  GISMO_WITH_IPOPT        ${GISMO_WITH_IPOPT}")
-#message ("  GISMO_WARNINGS          ${GISMO_WARNINGS}")
-message ("  GISMO_LOGGING_WARN      ${GISMO_LOGGING_WARN}")
-message ("  GISMO_LOGGING_INFO      ${GISMO_LOGGING_INFO}")
 
 #https://www.threadingbuildingblocks.org/documentation
 #message ("  GISMO_WITH_ITBB          ${GISMO_WITH_ITBB}")

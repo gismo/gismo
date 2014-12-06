@@ -76,7 +76,6 @@ if(GISMO_EXTRA_DEBUG)
   include(gsDebugExtra)
 endif(GISMO_EXTRA_DEBUG)
 
-if (GISMO_WARNINGS)
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   # Force to always compile with W4
   if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
@@ -90,4 +89,3 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Update if necessary
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long") # -Wconversion -Wextra -pedantic
 endif()
-endif (GISMO_WARNINGS)

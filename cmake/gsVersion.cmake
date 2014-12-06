@@ -4,6 +4,18 @@
 ######################################################################
 
 # G+Smo version configuration
+# Versioning scheme:
+#  
+#  M.m.b (major.minor.build)
+#
+#  0.8 will be used for the first alpha release
+#      Subsequent updates will be denoted 0.8.1, 0.8.2, ..
+#
+#  0.9 will be used for the first beta release
+#      Subsequent updates will be denoted 0.9.1, 0.9.2, ..
+#
+#  1.0 will be used for the first milestone (stable) release
+#
 
 IF (EXISTS ${PROJECT_SOURCE_DIR}/.svn) 
     #Determine revision level 
@@ -28,12 +40,16 @@ ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/../.svn)
 ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/.svn) 
 
 # Set version data
-set(${PROJECT_NAME}_MAJOR_VERSION "1" CACHE STRING "gismo major version number.")
-set(${PROJECT_NAME}_MINOR_VERSION "0" CACHE STRING "gismo minor version number.")
-set(${PROJECT_NAME}_VERSION
-  "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}alpha"
-     CACHE STRING "${PROJECT_NAME} version number")
+set(${PROJECT_NAME}_MAJOR_VERSION "0" CACHE INTERNAL "gismo major version number.")
+set(${PROJECT_NAME}_MINOR_VERSION "8" CACHE INTERNAL "gismo minor version number.")
+set(${PROJECT_NAME}_MINOR_BUILD   "0" CACHE INTERNAL "gismo build version number.")
 
-#mark_as_advanced(${PROJECT_NAME}_MAJOR_VERSION)
-#mark_as_advanced(${PROJECT_NAME}_MINOR_VERSION)
-mark_as_advanced(${PROJECT_NAME}_VERSION)
+if( "${PROJECT_NAME}_MINOR_BUILD" STREQUAL "0")
+    set(${PROJECT_NAME}_VERSION
+        "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}alpha"
+        CACHE INTERNAL "${PROJECT_NAME} version number")
+else()
+    set(${PROJECT_NAME}_VERSION
+        "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${${PROJECT_NAME}_MINOR_BUILD}alpha"
+        CACHE INTERNAL "${PROJECT_NAME} version number")
+endif()
