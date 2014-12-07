@@ -98,8 +98,15 @@ private:
 
 public:
   static From ms_from;
-    //G+Smo
-    enum { value = ( sizeof(test(ms_from, 0))==sizeof(yes) ? 1 : 0) };
+//G+Smo
+#if _MSC_VER && !__INTEL_COMPILER
+#pragma warning(push)
+#pragma warning(disable:4800)
+  enum { value = ( sizeof(test(ms_from, 0))==sizeof(yes) ) };
+#pragma warning(pop)
+#else
+  enum { value = ( sizeof(test(ms_from, 0))==sizeof(yes) ) };
+#endif
 };
 
 template<typename From, typename To>
