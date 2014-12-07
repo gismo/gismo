@@ -139,45 +139,14 @@ public:
      
 protected:
 
-    void assembleNitsche()
-    {
-        for ( typename gsBoundaryConditions<T>::const_iterator
-                  it = m_bConditions.dirichletBegin();
-              it != m_bConditions.dirichletEnd(); ++it )
-        {
-            gsVisitorNitsche<T> nitsche(*it->function(), penalty(it->patch()), it->side());
-            
-            // Note: it->unknown()
-            this->apply(nitsche, it->patch(), it->side() );
-        }
-    }
+    // Nitsche Dirichle contributions
+    void assembleNitsche();
     
-    void assembleNeumann()
-    {
-        for ( typename gsBoundaryConditions<T>::const_iterator
-              it = m_bConditions.neumannBegin();
-              it != m_bConditions.neumannEnd(); ++it )
-        {
-            gsVisitorNeumann<T> neumann(*it->function(), it->side());
+    // Neumann contributions
+    void assembleNeumann();
 
-            // Note: it->unknown()
-            this->apply(neumann, it->patch(), it->side() );
-        }
-    }
-    
-    void assembleDg()
-    {
-        for ( typename gsMultiPatch<T>::iiterator it =
-                  m_patches.iBegin(); it != m_patches.iEnd(); ++it )
-        {
-            if ( m_bases[0][(*it)[0].patch].numElements() < 
-                 m_bases[0][(*it)[1].patch].numElements() )
-                std::swap( (*it)[0], (*it)[1] );
-            
-            gsVisitorDg<T> dg(penalty(it->ps1.patch), it->ps1.side());
-            this->apply(dg, *it);
-        }
-    }
+    // Dg contributions    
+    void assembleDg();
     
     // Computes the Dirichlet DoF values by interpolation
     void computeDirichletDofs();

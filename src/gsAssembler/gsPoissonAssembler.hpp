@@ -45,65 +45,108 @@ void gsPoissonAssembler<T>::setOptions(const gsAssemblerOptions  & options)
     }
 }
 
+template<class T>
+void gsPoissonAssembler<T>::assembleNitsche()
+{
+    for ( typename gsBoundaryConditions<T>::const_iterator
+              it = m_bConditions.dirichletBegin();
+          it != m_bConditions.dirichletEnd(); ++it )
+    {
+        gsVisitorNitsche<T> nitsche(*it->function(), penalty(it->patch()), it->side());
+            
+        // Note: it->unknown()
+        this->apply(nitsche, it->patch(), it->side() );
+    }
+}
+
+template<class T>
+void gsPoissonAssembler<T>::assembleNeumann()
+{
+    for ( typename gsBoundaryConditions<T>::const_iterator
+              it = m_bConditions.neumannBegin();
+          it != m_bConditions.neumannEnd(); ++it )
+    {
+        gsVisitorNeumann<T> neumann(*it->function(), it->side());
+
+        // Note: it->unknown()
+        this->apply(neumann, it->patch(), it->side() );
+    }
+}
+
+template<class T>
+void gsPoissonAssembler<T>::assembleDg()
+{
+    for ( typename gsMultiPatch<T>::iiterator it =
+              m_patches.iBegin(); it != m_patches.iEnd(); ++it )
+    {
+        if ( m_bases[0][(*it)[0].patch].numElements() < 
+             m_bases[0][(*it)[1].patch].numElements() )
+            std::swap( (*it)[0], (*it)[1] );
+            
+        gsVisitorDg<T> dg(penalty(it->ps1.patch), it->ps1.side());
+        this->apply(dg, *it);
+    }
+}
+
 
 template<class T>
 void gsPoissonAssembler<T>::assemble()
 {
-        // If we have a homogeneous Dirichlet problem fill boundary
-        // DoFs with zeros
-        if ( m_dirStrategy == dirichlet::homogeneous)
-            m_ddof.setZero( m_dofMappers[0].boundarySize(), m_rhsFun->targetDim() );
+    // If we have a homogeneous Dirichlet problem fill boundary
+    // DoFs with zeros
+    if ( m_dirStrategy == dirichlet::homogeneous)
+        m_ddof.setZero( m_dofMappers[0].boundarySize(), m_rhsFun->targetDim() );
 
-        // If the Dirichlet strategy is elimination then precompute
-        // Dirichlet dofs (m_dofMapper excludes these from the system)
-        if ( m_dirStrategy == dirichlet::elimination)
-        {
-            // replacing computeDirichletDofs();
-            computeDirichletDofsL2Proj();
-        }
+    // If the Dirichlet strategy is elimination then precompute
+    // Dirichlet dofs (m_dofMapper excludes these from the system)
+    if ( m_dirStrategy == dirichlet::elimination)
+    {
+        // replacing computeDirichletDofs();
+        computeDirichletDofsL2Proj();
+    }
 
-        if (m_dofs == 0 ) // Are there any interior dofs ?
-        {
-            gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
-            return;
-        }
+    if (m_dofs == 0 ) // Are there any interior dofs ?
+    {
+        gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
+        return;
+    }
 
-        // Pre-allocate non-zero elements for each column of the
-        // sparse matrix
-        int nonZerosPerCol = 1;
-        for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
-            nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1;
+    // Pre-allocate non-zero elements for each column of the
+    // sparse matrix
+    int nonZerosPerCol = 1;
+    for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
+        nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1;
 
-        m_matrix = gsSparseMatrix<T>(m_dofs, m_dofs); // Clean matrices
-        m_matrix.reserve( gsVector<int>::Constant(m_dofs, nonZerosPerCol) );
+    m_matrix = gsSparseMatrix<T>(m_dofs, m_dofs); // Clean matrices
+    m_matrix.reserve( gsVector<int>::Constant(m_dofs, nonZerosPerCol) );
         
-        // Resize the load vector
-        m_rhs.setZero(m_dofs, m_rhsFun->targetDim() );
+    // Resize the load vector
+    m_rhs.setZero(m_dofs, m_rhsFun->targetDim() );
 
 
-        // Assemble volume stiffness and load vector integrals
-        gsVisitorPoisson<T> poisson(*m_rhsFun);
-        for (unsigned np=0; np < m_patches.nPatches(); ++np )
-        {
-            //Assemble stiffness matrix and rhs for the local patch
-            // with index np and add to m_matrix and m_rhs
-            this->apply(poisson, np);
-        }
+    // Assemble volume stiffness and load vector integrals
+    gsVisitorPoisson<T> poisson(*m_rhsFun);
+    for (unsigned np=0; np < m_patches.nPatches(); ++np )
+    {
+        //Assemble stiffness matrix and rhs for the local patch
+        // with index np and add to m_matrix and m_rhs
+        this->apply(poisson, np);
+    }
 
-        // If requested, force Dirichlet boundary conditions by Nitsche's method
-        if ( m_dirStrategy == dirichlet::nitsche )
-            assembleNitsche();
+    // If requested, force Dirichlet boundary conditions by Nitsche's method
+    if ( m_dirStrategy == dirichlet::nitsche )
+        assembleNitsche();
 
-        // Enforce Neumann boundary conditions
-        assembleNeumann();
+    // Enforce Neumann boundary conditions
+    assembleNeumann();
 
-        // If we are in in dg (Discontinuous Galerkin) mode: add
-        // interface contributions
-        if ( m_intStrategy == iFace::dg )
-            assembleDg();
+    // If we are in in dg (Discontinuous Galerkin) mode: add
+    // interface contributions
+    if ( m_intStrategy == iFace::dg )
+        assembleDg();
         
-        // Assembly is done, compress the matrix
-        m_matrix.makeCompressed();   
+    // Assembly is done, compress the matrix
+    m_matrix.makeCompressed();   
 }
     
 

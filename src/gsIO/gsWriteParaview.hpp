@@ -46,6 +46,7 @@ template<class T>
 void writeSingleControlNet(const gsGeometry<T> & Geo, 
                            std::string const & fn)
 {
+    const int d = Geo.parDim();
     gsMesh<T> msh;
     Geo.controlNet(msh);
     const unsigned n = Geo.geoDim();
@@ -55,8 +56,8 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
         // Lift vertices at anchor positions
         for ( int i = 0; i!= msh.numVertices; ++i)
         {
-            msh.vertex[i]->y() = anch(0,i);
-            std::swap( msh.vertex[i]->x(),  msh.vertex[i]->y() );
+            msh.vertex[i]->coords[d] = msh.vertex[i]->coords[0];
+            msh.vertex[i]->coords.topRows(d) = anch.col(i);
         }
     }
 
@@ -166,8 +167,9 @@ void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsi
 
         if ( n == 1 )
         {
-            eval_geo.row(1) = eval_geo.row(0);
-            eval_geo.row(0) = pts;
+            //std::swap( eval_geo.row(d),  eval_geo.row(0) );
+            eval_geo.row(d) = eval_geo.row(0);
+            eval_geo.topRows(d) = pts;
         }            
     }
 

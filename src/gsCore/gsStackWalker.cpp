@@ -14,6 +14,7 @@
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsStackWalker.h>
 
+#include <vector>
 #include <stdio.h>
 #include <stdlib.h>
 

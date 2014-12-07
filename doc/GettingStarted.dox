@@ -175,7 +175,7 @@ Even better you can use a graphical interface to set options:
 > cmake-gui ../
 The above tool (cmake-gui) might need to be installed separately (on linux) to your computer from your package repository.
 
-\b Tipp: Have you seen this already? Of course! These options are printed whenever you launch your \c cmake. Check it. And make sure, that you have the \c GISMO_WARNINGS ON.
+\b Tipp: Have you seen this already? Of course! These options are printed whenever you launch your \c cmake.
 
 You leave \c ccmake screen by successively pressing \c e and \c q. These instructions are also printed in the bottom of the screen.
 

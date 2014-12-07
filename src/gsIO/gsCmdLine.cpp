@@ -71,7 +71,7 @@ void gsCmdLine::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
     gsInfo << "                   G+Smo \n";
     gsInfo << "      Geometry plus Simulation modules\n";
     gsInfo << "             version "<< GISMO_VERSION <<"\n";
-    gsInfo << "   Copyright (C) RICAM-Linz, 2012 - 2014\n";
+    gsInfo << "   Copyright (C) JKU-RICAM-Linz, 2012 - 2015\n";
 }
 
 

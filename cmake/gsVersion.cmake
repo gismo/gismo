@@ -3,7 +3,10 @@
 ## Author: Angelos Mantzaflaris 
 ######################################################################
 
+
+##########################################
 # G+Smo version configuration
+#
 # Versioning scheme:
 #  
 #  M.m.b (major.minor.build)
@@ -15,7 +18,28 @@
 #      Subsequent updates will be denoted 0.9.1, 0.9.2, ..
 #
 #  1.0 will be used for the first milestone (stable) release
-#
+##########################################
+
+set(${PROJECT_NAME}_MAJOR_VERSION "0")
+set(${PROJECT_NAME}_MINOR_VERSION "8")
+set(${PROJECT_NAME}_BUILD_VERSION "0")
+set(${PROJECT_NAME}_VERSION_TYPE  "alpha")
+
+# Constuct version info
+if( "${PROJECT_NAME}_MINOR_BUILD" STREQUAL "0")
+    set(${PROJECT_NAME}_VERSION
+        "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}${${PROJECT_NAME}_VERSION_TYPE}"
+        CACHE INTERNAL "${PROJECT_NAME} version number")
+else()
+    set(${PROJECT_NAME}_VERSION
+        "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${${PROJECT_NAME}BUILD_VERSION}${${PROJECT_NAME}_VERSION_TYPE}"
+        CACHE INTERNAL "${PROJECT_NAME} version number")
+endif()
+
+
+##########################################
+# Try to detect SVN revision
+##########################################
 
 IF (EXISTS ${PROJECT_SOURCE_DIR}/.svn) 
     #Determine revision level 
@@ -38,18 +62,3 @@ ELSE (EXISTS ${PROJECT_SOURCE_DIR}/../.svn)
      set(GISMO_WC_REVISION "??")
 ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/../.svn) 
 ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/.svn) 
-
-# Set version data
-set(${PROJECT_NAME}_MAJOR_VERSION "0" CACHE INTERNAL "gismo major version number.")
-set(${PROJECT_NAME}_MINOR_VERSION "8" CACHE INTERNAL "gismo minor version number.")
-set(${PROJECT_NAME}_MINOR_BUILD   "0" CACHE INTERNAL "gismo build version number.")
-
-if( "${PROJECT_NAME}_MINOR_BUILD" STREQUAL "0")
-    set(${PROJECT_NAME}_VERSION
-        "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}alpha"
-        CACHE INTERNAL "${PROJECT_NAME} version number")
-else()
-    set(${PROJECT_NAME}_VERSION
-        "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${${PROJECT_NAME}_MINOR_BUILD}alpha"
-        CACHE INTERNAL "${PROJECT_NAME} version number")
-endif()
