@@ -61,7 +61,7 @@ template <typename T>
 inline T binomial(T n, T r)
 {
     GISMO_ASSERT(r>=0, "binomial coefficient (n,r) exists only for n,r positive");
-    GISMO_ASSERT(n>=r, "binomial coefficient (n,r) exists only for n,r such that n>=r");
+    //GISMO_ASSERT(n>=r, "binomial coefficient (n,r) exists only for n,r such that n>=r");
 
     const T diff = math::min( n-r, r );
     int result = 1;
