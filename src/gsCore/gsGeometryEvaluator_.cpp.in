@@ -1,6 +1,6 @@
+
 #include <gsCore/gsTemplateTools.h>
 
-//#include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometryEvaluator.h>
