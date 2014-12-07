@@ -13,8 +13,11 @@
 
 #pragma once
 
+#include <gsCore/gsForwardDeclarations.h>
+
 #include <gsCore/gsBasisRefs.h>
 #include <gsCore/gsStdVectorRef.h>
+#include <gsCore/gsDofMapper.h>
 
 namespace gismo
 {

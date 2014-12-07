@@ -81,6 +81,8 @@ public:
                               gsSparseMatrix<T>     & sysMatrix,
                               gsMatrix<T>           & rhsMatrix )
     {
+        //Assert eliminatedDofs.rows() == mapper.boundarySize()
+
         // Local Dofs to global dofs
         mapper.localToGlobal(actives, patchIndex, actives);
         //const int numActive = actives.rows();

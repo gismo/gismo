@@ -54,7 +54,7 @@ public:
         int nonZerosPerCol = 1;
         for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
             nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1;
-        m_matrix = gsSparseMatrix<T>(m_dofs, m_dofs); // Clean matrices
+        m_matrix.resize(m_dofs, m_dofs); // Clean matrices
         m_matrix.reserve( gsVector<int>::Constant(m_dofs, nonZerosPerCol) );
 
         // Mass visitor
@@ -80,7 +80,7 @@ public:
         int nonZerosPerCol = 1;
         for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
             nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1;
-        m_matrix = gsSparseMatrix<T>(m_dofs, m_dofs); // Clean matrices
+        m_matrix.resize(m_dofs, m_dofs); // Clean matrices
         m_matrix.reserve( gsVector<int>::Constant(m_dofs, nonZerosPerCol) );
 
         // Stiffness visitor
@@ -108,7 +108,7 @@ public:
         int nonZerosPerCol = 1;
         for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
             nonZerosPerCol *= 2 * m_bases.front()[patchIndex].degree(i) + 1;
-        m_matrix = gsSparseMatrix<T>(sz, sz); // Clean matrix
+        m_matrix.resize(sz, sz); // Clean matrix
         m_matrix.reserve( gsVector<int>::Constant(sz, nonZerosPerCol) );
 
         // Mass visitor (without mapper)
@@ -132,7 +132,7 @@ public:
         int nonZerosPerCol = 1;
         for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
             nonZerosPerCol *= 2 * m_bases.front()[patchIndex].degree(i) + 1;
-        m_matrix = gsSparseMatrix<T>(sz, sz); // Clean matrix
+        m_matrix.resize(sz, sz); // Clean matrix
         m_matrix.reserve( gsVector<int>::Constant(sz, nonZerosPerCol) );
 
         // Stiffness visitor (without mapper)
