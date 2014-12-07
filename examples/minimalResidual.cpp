@@ -13,8 +13,6 @@
 
 #include <iostream>
 #include <gismo.h>
-#include <gsSolver/gsMinimalResidual.hpp>
-#include <gsSolver/gsPreconditioner.h>
 
 using std::cout;
 using std::endl;

@@ -32,6 +32,7 @@ namespace gismo
 #include <gsCore/gsMFunctionExpr.h>
 #include <gsCore/gsConstantFunction.h>
 #include <gsCore/gsMultiPatch.h>
+#include <gsCore/gsField.h>
 
 // Domain iterators
 #include <gsCore/gsDomainIterator.h>
@@ -84,13 +85,13 @@ namespace gismo
 #include <gsAssembler/gsGaussRule.h>
 
 // Assembler
-#include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsAssemblerBase.h>
+#include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
 
 // Solver
-#include <gsCore/gsField.h>
-//#include <gsSolver/gsConjugateGradient.hpp>
+#include <gsSolver/gsMinimalResidual.h>
+#include <gsSolver/gsPreconditioner.h>
 
 // IO
 #include <gsIO/gsCmdLine.h>

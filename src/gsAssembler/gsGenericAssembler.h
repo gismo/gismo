@@ -146,7 +146,9 @@ public:
         return m_matrix;
     }
     
-    // special member function for anyone who hates lower triangular matrices
+    /// Returns an expression of the "full" assembled sparse
+    /// matrix. Note that matrix() returns a lower diagonal matrix,
+    /// since we exploit symmetry during assembly (whenever possible).
     Eigen::SparseSelfAdjointView< typename gsSparseMatrix<T>::Base, Lower> fullMatrix()
     {
         return m_matrix.template selfadjointView<Lower>();
