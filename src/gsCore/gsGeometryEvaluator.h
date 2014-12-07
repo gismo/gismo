@@ -40,26 +40,28 @@ class gsGeometryEvaluator
 public:
 
     /**
-       \brief Constructor using flags that define what should be evaluated.
-
+       \brief Constructor using flags that define what should be
+       evaluated, the parametric dimension, and geometric dimension.
+       
        See gismo::gsNeedEnum for available flags.
-     */
-    gsGeometryEvaluator(unsigned flags)
-        : m_flags(flags)
-    {}
+    */
     gsGeometryEvaluator(unsigned flags, unsigned parDim, unsigned geoDim)
-        : m_flags(flags), m_parDim(parDim), m_geoDim(geoDim)
+    : m_flags(flags), m_parDim(parDim), m_geoDim(geoDim)
     {}
-
+    
     virtual ~gsGeometryEvaluator() {}
 
+public:
+    
     /**
-        \brief change the values to compute
+       \brief change the values to compute
 
         This interface is provided in such a way that it is possible
-        split the logic ot the inizialization of the evaluator.
+        split the logic of the inizialization of the evaluator.
+        (?)
     **/
     void addFlags (unsigned newFlags) {this->setFlags(m_flags|newFlags);}
+
     /**
         \brief set the values to compute
 
@@ -67,31 +69,38 @@ public:
         split the logic ot the inizialization of the evaluator.
     **/
     virtual void setFlags (unsigned newFlags) {m_flags = newFlags;}
+
     /**
         \brief returns which values are computed
     **/
     unsigned getFlags () {return m_flags;}
 
-    /// \brief Evaluate the geometry's quantities (specified by flags) at points \em u.
-    ///
-    /// The flags which are passed with the constructor specify which quantities
-    /// should be computed (e.g., Jacobian, determinant of Jacobian, ...).\n
-    /// By calling <em>evaluateAt(u)</em>, these quantities are computed at points \em u and stored. They
-    /// can then be accessed by the corresponding accessors.
-    ///
-    /// \param[in] u gsMatrix of size <em>d</em> x \em N, where\n
-    /// \em d is the dimension of the parameter domain, and\n
-    /// \em N is the number of evaluation points.\n
-    /// Each column of \em u corresponds to one evaluation point.
+public:
+
+    /**
+       \brief Evaluate the geometry's quantities (specified by flags) at points \em u.
+       
+        The flags which are passed with the constructor specify which quantities
+        should be computed (e.g., Jacobian, determinant of Jacobian, ...).\n
+        By calling <em>evaluateAt(u)</em>, these quantities are computed at points \em u and stored. They
+        can then be accessed by the corresponding accessors.
+       
+        \param[in] u gsMatrix of size <em>d</em> x \em N, where\n
+        \em d is the dimension of the parameter domain, and\n
+        \em N is the number of evaluation points.\n
+        Each column of \em u corresponds to one evaluation point.
+    **/
     virtual void evaluateAt(const gsMatrix<T>& u) = 0;
 
-    /// Get the physical coordinates (i.e., the image of the evaluation points in the physical space).
+    /// Get the physical coordinates (i.e., the image of the
+    /// evaluation points in the physical space).
     const gsMatrix<T>& values() const
-    { GISMO_ASSERT(this->m_flags & NEED_VALUE, "Geometry values not computed"); return m_values; }
-    /// Get the physical coordinates (i.e., the image of the evaluation points in the physical space).
-    const typename gsMatrix<T>::constColumn  value(index_t k) const
-    { GISMO_ASSERT(this->m_flags & NEED_VALUE, "Geometry values not computed"); return m_values.col(k); }
+    { GISMO_ASSERT(m_flags & NEED_VALUE, "Geometry values not computed"); return m_values; }
 
+    /// Get the physical coordinates (i.e., the image of the
+    /// evaluation points in the physical space).
+    const typename gsMatrix<T>::constColumn  value(index_t k) const
+    { GISMO_ASSERT(m_flags & NEED_VALUE, "Geometry values not computed"); return m_values.col(k); }
 
     /**
       \brief Get the geometry Jacobians.
@@ -119,11 +128,13 @@ public:
       \em N is the number of evaluation points.
     */
     const gsMatrix<T>& jacobians() const
-    { GISMO_ASSERT(this->m_flags & NEED_JACOBIAN, "Jacobians not computed"); return m_jacobians; }
+    { GISMO_ASSERT(m_flags & NEED_JACOBIAN, "Jacobians not computed"); return m_jacobians; }
+
+    /// Returns the Jacobian at point \a k
     const typename gsMatrix<T>::constColumns  jacobian(index_t k) const
     {
-        GISMO_ASSERT(this->m_flags & NEED_JACOBIAN, "Jacobians not computed");
-        return m_jacobians.middleCols(k*this->m_parDim, this->m_parDim);
+        GISMO_ASSERT(m_flags & NEED_JACOBIAN, "Jacobians not computed");
+        return m_jacobians.middleCols(k*m_parDim, m_parDim);
     }
 
     /**
@@ -139,11 +150,73 @@ public:
         In general it can always be computed as f$\det(J^t J)^{1/2}f$
     **/
     const gsVector<T>&  measures() const
-    { GISMO_ASSERT(this->m_flags & NEED_MEASURE, "det(J) not computed"); return m_measures; }
-    inline T  measure(index_t k) const
-    { GISMO_ASSERT(this->m_flags & NEED_MEASURE, "det(J) not computed"); return m_measures(k); }
+    { GISMO_ASSERT(m_flags & NEED_MEASURE, "det(J) not computed"); return m_measures; }
 
-    /** \brief Computes the transformation of a gradient through this geometry mapping.
+    /// Returns the measure at point \a k
+    inline T  measure(index_t k) const
+    { GISMO_ASSERT(m_flags & NEED_MEASURE, "det(J) not computed"); return m_measures(k); }
+
+    /// Returns the (signed) Jacobian determinant at point \a k
+    inline T  jacDet(index_t k) const
+    { 
+        GISMO_ASSERT(m_flags & NEED_MEASURE, "det(J) not computed"); 
+        return m_orientation * m_measures(k); 
+    }
+
+    /**
+        \brief Returns the orientation of the geometry.
+
+        This is always 1 if the codimension is not 0.
+        This returns garbage if the geometry is not oriented.
+
+        The orientation is equal to the sign of the Jacobian
+        determinant. It is assumed that this sign is the same for the
+        whole of the domain. It is computed on a generic point inside
+        the parameter domaim.
+
+        For instance, the Jacobian determinant at point \a k can be
+        retrieved as
+        
+        this->orientation() * this->measure(k);
+
+        since this->measure(k) returns the absolute value of the
+        Jacobian determinant in the co-dimension zero case.
+
+    **/
+    int orientation() const
+    { 
+        return m_orientation;
+    }
+
+    /** \brief Returns the second derivaties.
+       
+       Example for 2D case: Column k contains all the second
+       derivatives at point \ k, stored as one big column:
+
+       f1_uu
+       f1_vv
+       f1_uv
+       f2_uu
+       f2_vv
+       f2_uv
+       
+       Note that the segment of the vector that refers to f1 has length (ParDim + (ParDim*(ParDim-1))/2).
+
+    */
+    const gsMatrix<T>& derivs2() const
+    { 
+        GISMO_ASSERT(m_flags & NEED_2ND_DER, "2nd derivatives not computed");
+        return m_2ndDers; 
+    }
+
+    /// Returns the second derivatives (1D only)
+    const typename gsMatrix<T>::constColumn  deriv2(index_t k) const
+    {
+        GISMO_ASSERT(m_flags & NEED_2ND_DER, "2nd derivatives not computed");
+        return m_2ndDers.col(k);
+    }
+
+    /** \brief Returns the transformation of a gradient through this geometry mapping.
     *
     * In the case that the parameter domain and the physical domain have the same dimension,
     * this function returns a matrix which contains the transposed inverse of the Jacobians
@@ -177,9 +250,10 @@ public:
     */
     const gsMatrix<T>& gradTransforms() const
     { 
-        GISMO_ASSERT(this->m_flags & NEED_GRAD_TRANSFORM, "J^-1 not computed");
+        GISMO_ASSERT(m_flags & NEED_GRAD_TRANSFORM, "J^-1 not computed");
         return m_jacInvs; 
     }
+
     /**
     * \brief Returns the transform matrix (from parameter to physical
     * domain) of the gradient at point \a k
@@ -189,65 +263,12 @@ public:
     */
     const typename gsMatrix<T>::constColumns gradTransform(index_t k) const
     { 
-        GISMO_ASSERT(this->m_flags & NEED_GRAD_TRANSFORM, "J^-1 not computed");
-        return m_jacInvs.middleCols( k*this->m_parDim, this->m_parDim);
+        GISMO_ASSERT(m_flags & NEED_GRAD_TRANSFORM, "J^-1 not computed");
+        return m_jacInvs.middleCols( k*m_parDim, m_parDim);
     }
 
+public:
 
-    /**
-        \brief Returns the orientation of the geometry.
-
-        This is always 1 if the codimension is not 0.
-        This returns garbage if the geometry is not oriented.
-
-        The orientation is equal to the sign of the Jacobian
-        determinant. It is assumed that this sign is the same for the
-        whole of the domain. It is computed on a generic point inside
-        the parameter domaim.
-
-        For instance, the Jacobian determinant at point \a k can be
-        retrieved as
-        
-        this->orientation() * this->measure(k);
-
-        since this->measure(k) returns the absolute value of the
-        Jacobian determinant in the co-dimension zero case.
-
-    **/
-    int orientation() const
-    { 
-        return m_orientation;
-    }
-
-    /* \brief Returns the second derivaties.
-       
-       Example for 2D case: Column k contains all the second
-       derivatives at point \ k, stored as one big column:
-
-       f1_uu
-       f1_vv
-       f1_uv
-       f2_uu
-       f2_vv
-       f2_uv
-       
-       Note that the segment of the vector that refers to f1 has length (ParDim + (ParDim*(ParDim-1))/2).
-
-    */
-    const gsMatrix<T>& derivs2() const
-    { 
-        GISMO_ASSERT(this->m_flags & NEED_2ND_DER, "2nd derivatives not computed");
-        return m_2ndDers; 
-    }
-    /// Returns the second derivatives (1D only)
-    const typename gsMatrix<T>::constColumn  deriv2(index_t k) const
-    {
-        GISMO_ASSERT(this->m_flags & NEED_2ND_DER, "2nd derivatives not computed");
-        return m_2ndDers.col(k);
-    }
-
-    // transform the k-th vector of parametric gradients into a ParDim
-    // x numActive matrix of physical gradients
 
     /**
       \brief Transforms parametric gradients to a gradients on the physical domain.
@@ -289,14 +310,16 @@ public:
       \param[out] trfGradsK gsMatrix with the corresponding gradients on the
       physical domain in the format as described above.
     */
+    // rename to transformGradsHgrad
     virtual void transformGradients(index_t k, const gsMatrix<T>& allGrads, gsMatrix<T>& trfGradsK)  const = 0;
 
     /**
       \brief Transforms parametric basis values at point \a k of a vector field, while perserving the divergence (Piola Transformation).
       NOT TESTED
     */
-    virtual void transformBasisValueDivergencePreserving(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
-                                                         gsMatrix<T>  & trfValues) const = 0;
+    // allValues: NumAct X TargetDim
+    virtual void transformValuesHdiv(index_t k, const gsMatrix<T>& allValues, 
+                                    gsMatrix<T>  & trfValues) const = 0;
 
     /**
       \brief Transforms parametric gradients to a gradients on the physical domain of a vector field while perserving the divergence.
@@ -339,12 +362,12 @@ public:
       \param[out] trfGradsK_vec std::vector of gsMatrix with the corresponding gradients on the
       physical domain in the format as described above for each component of the vector field.
     */
-    virtual void transformGradientsDivergencePreserving(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
-                                                        std::vector<gsMatrix<T> > const & allGrads_vec,
-                                                        std::vector<gsMatrix<T> > & trfGradsK_vec) const = 0;
+    virtual void transformGradsHdiv(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
+                                    std::vector<gsMatrix<T> > const & allGrads_vec,
+                                    std::vector<gsMatrix<T> > & trfGradsK_vec) const = 0;
 
 
-    /// \brief Transforms parametric gradients to a gradients on the physical domain.
+    /// \brief Transforms parametric gradients to gradients on the physical domain.
     ///
     /// See the other transformGradients() for documentation.
     virtual void transformGradients(index_t k, const typename gsMatrix<T>::Block allGrads, gsMatrix<T>& trfGradsK) const = 0;
@@ -359,24 +382,27 @@ public:
     /// Computes the normal vector of a co-dimension one geometry at evaluation point \a k
     virtual void normal(index_t k, gsVector<T> & result)  const = 0;
 
-    /// Computes the divergence of a vector field at evaluation point \k
+    /// Computes the divergence of the geometry at evaluation point \k
     virtual void divergence(gsVector<T> & result)  const = 0;
 
-
-                   T                          div         (index_t k) const {return m_div(k);}
-    const typename gsMatrix<T>::constColumn   curl        (index_t k) const {return m_curl.col(k);}
-    const typename gsMatrix<T>::constColumn   laplacian   (index_t k) const {return m_lap.col(k);}
-    const typename gsMatrix<T>::constColumn   normal      (index_t k) const {return m_normal.col(k);}
-
+/*
     const          gsVector<T>              & divs        ()          const {return m_div;}
+                   T                          div         (index_t k) const {return m_div(k);}
+
     const          gsMatrix<T>              & curls       ()          const {return m_curl;}
+    const typename gsMatrix<T>::constColumn   curl        (index_t k) const {return m_curl.col(k);}
+
     const          gsMatrix<T>              & laplacians  ()          const {return m_lap;}
+    const typename gsMatrix<T>::constColumn   laplacian   (index_t k) const {return m_lap.col(k);}
+
     const          gsMatrix<T>              & normals     ()          const {return m_normal;}
+    const typename gsMatrix<T>::constColumn   normal      (index_t k) const {return m_normal.col(k);}
+*/
 
 protected:
     unsigned           m_flags;
     unsigned           m_parDim;
-    unsigned           m_geoDim;
+    unsigned           m_geoDim;// unused
     int                m_orientation;
 
     gsMatrix<T>        m_values;
@@ -385,10 +411,12 @@ protected:
     gsVector<T>        m_measures;
     gsMatrix<T>        m_2ndDers;
 
+/*
     gsVector<T>        m_div;
     gsMatrix<T>        m_curl;
     gsMatrix<T>        m_lap;
     gsMatrix<T>        m_normal;
+*/
 private:
     // disable copying
     gsGeometryEvaluator(const gsGeometryEvaluator& other);
@@ -406,6 +434,7 @@ public:
     typedef T Scalar_t;
     static const int GeoDim = ParDim + codim;
 
+public:
     gsGenericGeometryEvaluator(const gsGeometry<T> & geo, unsigned flags)
         : gsGeometryEvaluator<T>(flags,ParDim,GeoDim), m_geo(geo), m_maxDeriv(-1)
     {
@@ -416,7 +445,8 @@ public:
     void setFlags (unsigned newFlags)
     {
         m_flags=newFlags;
-        if (m_flags & (NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_DIV | NEED_CURL | NEED_NORMAL | NEED_OUTER_NORMAL ))
+        if (m_flags & (NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_DIV 
+                       | NEED_CURL | NEED_NORMAL | NEED_OUTER_NORMAL ))
             m_flags |= NEED_JACOBIAN;
         if (m_flags & NEED_LAPLACIAN)
             m_flags |= NEED_2ND_DER;
@@ -428,9 +458,12 @@ public:
             m_maxDeriv=2;
     }
 
+    // Documentation at gsGeometryEvaluator::evaluateAt
     void evaluateAt(const gsMatrix<T>& u);
 
-    // output: d x numAct matrix of transformed gradients at point k
+public:
+
+    // Documentation at gsGeometryEvaluator::transformGradients
     void transformGradients(index_t k, const gsMatrix<T>& allGrads, gsMatrix<T>& trfGradsK) const
     {
         GISMO_ASSERT(this->m_flags & NEED_GRAD_TRANSFORM, "J^-1 not computed");
@@ -442,13 +475,13 @@ public:
     }
 
     // output: NumAct X TargetDim of basis values transform with the Piola transformation
-    void transformBasisValueDivergencePreserving(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
-                                                 gsMatrix<T>  & trfValues) const;
+    void transformValuesHdiv(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
+                             gsMatrix<T>  & trfValues) const;
 
     // output: d x numAct matrix of divergence preserving transformed gradients at point k
-    void transformGradientsDivergencePreserving(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
-                                                std::vector<gsMatrix<T> > const & allGrads_vec,
-                                                std::vector<gsMatrix<T> > & trfGradsK_vec) const;
+    void transformGradsHdiv(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
+                           std::vector<gsMatrix<T> > const & allGrads_vec,
+                           std::vector<gsMatrix<T> > & trfGradsK_vec) const;
 
     // output: d x numAct matrix of transformed gradients at point k
     void transformGradients(index_t k, const typename gsMatrix<T>::Block allGrads, 
@@ -547,6 +580,7 @@ private:
     gsGenericGeometryEvaluator& operator=(const gsGenericGeometryEvaluator& other);
 
 protected:
+
     using gsGeometryEvaluator<T>::m_orientation;
     using gsGeometryEvaluator<T>::m_values;
     using gsGeometryEvaluator<T>::m_jacobians;
@@ -555,10 +589,12 @@ protected:
     using gsGeometryEvaluator<T>::m_2ndDers;
     using gsGeometryEvaluator<T>::m_flags;
 
+/*
     using gsGeometryEvaluator<T>::m_lap;
     using gsGeometryEvaluator<T>::m_div;
     using gsGeometryEvaluator<T>::m_curl;
     using gsGeometryEvaluator<T>::m_normal;
+*/
 
     gsMatrix<T>           m_basisVals;
     gsMatrix<unsigned>    m_active;

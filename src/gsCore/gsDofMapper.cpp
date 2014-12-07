@@ -28,6 +28,7 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
                                 index_t patchIndex,
                                 gsMatrix<unsigned>& globals) const
 {
+    GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals");
     const index_t numActive = locals.rows();
     
     globals.resize(numActive,1);
@@ -37,7 +38,7 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
 }
 
 // This function can not have enough information to do its job if dim>2
-// GS_DEPRECATED
+// GISMO_DEPRECATED
 void gsDofMapper::matchInterface( index_t k1, index_t k2,
                                      const gsMatrix<unsigned> & b1,
                                      const gsMatrix<unsigned> & b2,
