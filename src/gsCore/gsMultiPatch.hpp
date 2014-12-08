@@ -165,7 +165,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
         for ( int i = 0; i != m_dim; ++i ) 
         {
             pts( i, r ) = para( i, v[i] );
-            cverts[ boxSide::index( i, v[i] ) ].push_back( r );
+            cverts[ boxSide::index( i, v[i]!=0 ) ].push_back( r );
         }
         r++;
     } while ( nextLexicographic( v, ones ) );
