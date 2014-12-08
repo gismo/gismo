@@ -84,7 +84,7 @@ public:
 
         //Compute eigenvalues
         //gsMatrix<T> eigen_values = A.eigenvalues().real();
-        Eigen::EigenSolver<Eigen::MatrixXd > eigen_values;
+        Eigen::EigenSolver<typename gsMatrix<T>::Base > eigen_values;
         eigen_values.compute(matrix, false);
 
         T tmp = eigen_values.eigenvalues()(0,0).real();
