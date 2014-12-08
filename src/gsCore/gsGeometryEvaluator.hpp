@@ -202,6 +202,8 @@ gsGenericGeometryEvaluator<T,ParDim,codim>::evaluateAt(const gsMatrix<T>& u)
 
     m_numPts = u.cols();
     m_geo.basis().evalAllDers_into(u, m_maxDeriv, m_basisVals);
+    // todo: If we assume all points (u) lie on the same element we may
+    // store the actives only once
     m_geo.basis().active_into(u, m_active);
     
     if (this->m_flags & NEED_VALUE)
@@ -234,9 +236,10 @@ void gsGenericGeometryEvaluator<T,ParDim,codim>::computeValues()
 
     m_values.resize(coefs.cols(), m_numPts);
 
-    for (index_t j=0; j < m_numPts; ++j)                  // for all evaluation points
+    for (index_t j=0; j < m_numPts; ++j) // for all evaluation points
     {
         m_values.col(j) =  coefs.row( m_active(0,j) ) * m_basisVals(0,j);
+
         for ( index_t i=1; i< m_active.rows() ; i++ )   // for all non-zero basis functions
             m_values.col(j)  +=   coefs.row( m_active(i,j) ) * m_basisVals(i,j);
     }

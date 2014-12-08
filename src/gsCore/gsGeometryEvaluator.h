@@ -23,7 +23,7 @@ namespace gismo
 /**
     \brief interface to compute a geometry on sets of points
 
-    the idea of greometry evaluators is that they act as a local
+    the idea of geometry evaluators is that they act as a local
     cache for computed values. In this way it is possible to pass
     a unique argument to functions containing all the required values.
 
@@ -40,13 +40,13 @@ class gsGeometryEvaluator
 public:
 
     /**
-       \brief Constructor using flags that define what should be
-       evaluated, the parametric dimension, and geometric dimension.
+       \brief Constructor using the geometry and the flags that define
+       what should be evaluated.
        
        See gismo::gsNeedEnum for available flags.
     */
-    gsGeometryEvaluator(unsigned flags, unsigned parDim, unsigned geoDim)
-    : m_flags(flags), m_parDim(parDim), m_geoDim(geoDim)
+    gsGeometryEvaluator(const gsGeometry<T> & geo, unsigned flags)
+    : m_geo(geo), m_flags(flags), m_parDim(geo.parDim())
     {}
     
     virtual ~gsGeometryEvaluator() {}
@@ -57,7 +57,7 @@ public:
        \brief change the values to compute
 
         This interface is provided in such a way that it is possible
-        split the logic of the inizialization of the evaluator.
+        split the logic of the initialization of the evaluator.
         (?)
     **/
     void addFlags (unsigned newFlags) {this->setFlags(m_flags|newFlags);}
@@ -66,14 +66,28 @@ public:
         \brief set the values to compute
 
         This interface is provided in such a way that it is possible
-        split the logic ot the inizialization of the evaluator.
+        split the logic ot the initialization of the evaluator.
     **/
     virtual void setFlags (unsigned newFlags) {m_flags = newFlags;}
 
     /**
         \brief returns which values are computed
     **/
-    unsigned getFlags () {return m_flags;}
+    unsigned getFlags () const {return m_flags;}
+
+    /**
+        \brief Returns the number of evaluation points that the
+        evaluator currently holds.
+    **/
+    index_t numPoints () const {return m_numPts;}
+
+    /**
+        \brief Returns the number of evaluation points that the
+        evaluator currently holds.
+    **/
+    index_t parDim () const {return m_geo.parDim();}
+
+    const gsGeometry<T> & geometry() const {return m_geo;}
 
 public:
 
@@ -239,7 +253,7 @@ public:
     * dimension, the result is a non-square matrix taking parameter
     * gradients to physical gradient.
     *
-    * \return gsMatrix of size <em>d</em> x <em>d*N</em>, where\n    * 
+    * \return gsMatrix of size <em>d</em> x <em>d*N</em>, where\n
     * \em d is the dimension of the parameter domain, and\n
     * \em N is the number of evaluation points.\n
     *
@@ -400,9 +414,12 @@ public:
 */
 
 protected:
+
+    const gsGeometry<T> & m_geo;
     unsigned           m_flags;
+
+    index_t            m_numPts;
     unsigned           m_parDim;
-    unsigned           m_geoDim;// unused
     int                m_orientation;
 
     gsMatrix<T>        m_values;
@@ -431,12 +448,13 @@ template <class T, int ParDim, int codim>
 class gsGenericGeometryEvaluator : public gsGeometryEvaluator<T>
 {
 public:
+    typedef gsGeometryEvaluator<T> Base;
     typedef T Scalar_t;
     static const int GeoDim = ParDim + codim;
 
 public:
     gsGenericGeometryEvaluator(const gsGeometry<T> & geo, unsigned flags)
-        : gsGeometryEvaluator<T>(flags,ParDim,GeoDim), m_geo(geo), m_maxDeriv(-1)
+    : gsGeometryEvaluator<T>(geo,flags), m_maxDeriv(-1)
     {
         m_orientation = m_geo.orientation();
         setFlags(flags);
@@ -563,8 +581,6 @@ public:
         }
     }
 
-    const gsGeometry<T> & geometry() const {return m_geo;}
-
 private:
     void computeValues();
     void computeJacobians();
@@ -599,9 +615,10 @@ protected:
     gsMatrix<T>           m_basisVals;
     gsMatrix<unsigned>    m_active;
 private:
-    const gsGeometry<T> & m_geo;
-    index_t m_numPts;
     int m_maxDeriv;
+
+    using Base::m_geo;
+    using Base::m_numPts;
 };
 
 
