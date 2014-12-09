@@ -17,21 +17,8 @@
 
 namespace gismo
 {
-//in case of MatrixType is a child of gsPreconditioner, it must have the typedefs Scalar and RealScalar
-
-
-// if MatrixType is a gsPreconditioner, then do its apply method
-void applyMatrix(const gsPreconditioner& mat,const gsMatrix<real_t>& x, gsMatrix<real_t>& res)
-{
-    mat.apply(x,res);
-}
-
-//general case for matrix multiplication
-template< typename MatrixType, int UpLo>
-void applyMatrix(const MatrixType& mat, const gsMatrix<real_t>& x, gsMatrix<real_t>& res)
-{
-     res.noalias() = mat.template selfadjointView<UpLo>() * x;
-}
+//in case of MatrixType is a child of gsPreconditioner,
+//it must contain the typedefs Scalar and RealScalar
 
 
 template <typename MatrixType, int UpLo = Eigen::Lower>
@@ -44,6 +31,19 @@ public:
     gsMinimalResidual(const MatrixType& _mat, int _maxIt=1000, RealScalar _tol=1e-10)
         : mat(_mat), tol(_tol), maxIters(_maxIt), numIter(0)
     {
+    }
+
+
+    // if MatrixType is a gsPreconditioner, then do its apply method
+    void inline applyMatrix(const gsPreconditioner& mat,const gsMatrix<real_t>& x, gsMatrix<real_t>& res)
+    {
+        mat.apply(x,res);
+    }
+
+    //general case for matrix multiplication
+    void inline applyMatrix(const MatrixType& mat, const gsMatrix<real_t>& x, gsMatrix<real_t>& res)
+    {
+         res.noalias() = mat.template selfadjointView<UpLo>() * x;
     }
 
     template<typename Rhs, typename Dest, typename Preconditioner>
