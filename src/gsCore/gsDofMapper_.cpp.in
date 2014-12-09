@@ -27,7 +27,7 @@ namespace gismo {
 
       TEMPLATE_INST void gsDofMapper::init(
         const gsMultiBasis<real_t>         &basis,
-        const gsBoundaryConditions<real_t> &bc
+        const gsBoundaryConditions<real_t> &bc, int unk
         );
 
     TEMPLATE_INST void gsDofMapper::initSingle(

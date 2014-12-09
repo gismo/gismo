@@ -305,8 +305,14 @@ public:
 
 
     void getMapper(bool conforming, 
-                   const gsBoundaryConditions<T> & bc, 
+                   const gsBoundaryConditions<T> & bc,
+                   int unk,
                    gsDofMapper & mapper) const;
+
+    void getMapper(bool conforming, 
+                   const gsBoundaryConditions<T> & bc,
+                   gsDofMapper & mapper) const
+    { getMapper(conforming, bc, -1, mapper); }
 
 
     void getMapper(bool conforming, gsDofMapper & mapper) const;
@@ -324,7 +330,7 @@ public:
                              const gsBoundaryConditions<T> & bc) const
     {
         gsDofMapper * mapper = new gsDofMapper;
-        getMapper(conforming, bc, *mapper);
+        getMapper(conforming, bc, 0, *mapper);// using unknown 0
         return mapper;
     }
 

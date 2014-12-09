@@ -93,7 +93,7 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
 template<class T>
 void gsDofMapper::init(
         const gsMultiBasis<T>         &basis,
-        const gsBoundaryConditions<T> &bc
+        const gsBoundaryConditions<T> &bc, int unk
         )
 {
     init(basis);
@@ -101,9 +101,12 @@ void gsDofMapper::init(
     for (typename gsBoundaryConditions<T>::const_iterator
          it = bc.dirichletBegin() ; it != bc.dirichletEnd(); ++it )
     {
-        gsMatrix<unsigned> * bnd = basis[it->ps.patch].boundary( it->ps.side() );
-        markBoundary(it->ps.patch, *bnd);
-        delete bnd;
+        if ( unk == -1 || it->unknown() == unk ) // special value -1 eliminates all BCs found
+        {
+            gsMatrix<unsigned> * bnd = basis[it->ps.patch].boundary( it->ps.side() );
+            markBoundary(it->ps.patch, *bnd);
+            delete bnd;
+        }
     }
 }
 

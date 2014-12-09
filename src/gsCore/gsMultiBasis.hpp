@@ -145,9 +145,10 @@ void gsMultiBasis<T>::getMapper(bool conforming, gsDofMapper & mapper) const
 template<class T>
 void gsMultiBasis<T>::getMapper(bool conforming, 
                                 const gsBoundaryConditions<T> & bc, 
+                                int unk,
                                 gsDofMapper & mapper) const
 {
-    mapper.init(*this, bc);
+    mapper.init(*this, bc, unk);
     
     if ( conforming ) // Conforming boundaries ?
     {

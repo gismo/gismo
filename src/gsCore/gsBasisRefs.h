@@ -44,6 +44,18 @@ public:
     inline operator const gsBasis<T> &() const 
     { return *m_refs.front(); }
 
+    /// Front
+    inline const gsBasis<T> & front() const 
+    { return *m_refs.front(); }
+
+    /// Back
+    inline const gsBasis<T> & back () const 
+    { return *m_refs.back(); }
+
+    /// Size
+    inline std::size_t size () const 
+    { return m_refs.size(); }
+
     /// Return the parametric dimension of the bases (assumed to be the same
     inline int dim() const { return m_refs.front()->dim();}
 

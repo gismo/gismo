@@ -27,8 +27,8 @@ class gsStdVectorRef
 public:
 
     /// Constructor from a vector of objs
-    inline gsStdVectorRef(const std::vector<obj> & mappers) : 
-    m_ref(mappers)
+    inline gsStdVectorRef(const std::vector<obj> & refVec) : 
+    m_ref(refVec)
     { }
 
     /// Accessor
@@ -38,6 +38,18 @@ public:
     /// Cast to obj by returning the first element
     inline operator const obj &() const 
     { return m_ref.front(); }
+
+    /// Front
+    inline const obj & front() const 
+    { return *m_ref.front(); }
+
+    /// Back
+    inline const obj & back () const 
+    { return m_ref.back(); }
+
+    /// Size
+    inline std::size_t size () const 
+    { return m_ref.size(); }
 
 private:
     const std::vector<obj> & m_ref;

@@ -67,10 +67,11 @@ public:
     template<class T>
     gsDofMapper(
         const gsMultiBasis<T>         &bases,
-        const gsBoundaryConditions<T> &dirichlet
+        const gsBoundaryConditions<T> &dirichlet,
+        int unk = 0 
          ) : m_shift(0)
     {
-        init(bases,dirichlet);
+        init(bases, dirichlet, unk);
     }
 
     /**
@@ -127,11 +128,12 @@ public:
     template <typename T>
     void init( std::vector<const gsMultiBasis<T> *> const & bases);
 
-    /// Initialize by gsMultiBasis andboundary conditions
+    /// Initialize by gsMultiBasis, boundary conditions and the index
+    /// of the unknown to be eliminated
     template<class T>
     void init(
         const gsMultiBasis<T>         &basis,
-        const gsBoundaryConditions<T> &dirichlet );
+        const gsBoundaryConditions<T> &dirichlet, int unk = 0 );
 
 private:
 
