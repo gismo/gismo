@@ -17,7 +17,7 @@
 
 #include <gsCore/gsBasisRefs.h>
 #include <gsCore/gsStdVectorRef.h>
-#include <gsCore/gsDofMapper.h>
+#include <gsCore/gsAffineFunction.h> // needed by DG
 
 namespace gismo
 {
@@ -46,7 +46,7 @@ public:
     template<class ElementVisitor>
     void apply(ElementVisitor & visitor, 
                int patchIndex = 0, 
-               boundary::side side = boundary::none)
+               boxSide side = boundary::none)
     {
         //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
 
@@ -97,6 +97,8 @@ public:
         //gsDebug<<"Apply DG on "<< bi <<".\n";
 
         const gsDofMappers mappers(m_dofMappers);
+        const gsAffineFunction<T> map(m_patches.getMapForInterface(bi));
+
         const int patch1      = bi[0].patch;
         const int patch2      = bi[1].patch;
         const gsBasis<T> & B1 = m_bases[0][patch1];// (!) unknown 0
@@ -105,8 +107,8 @@ public:
         const int bSize2      = B2.numElements();
         GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
                      "DG assumes nested interfaces.");
-        const boundary::side & side1 = bi[0].side();
-        const boundary::side & side2 = bi[1].side();
+        const boxSide & side1 = bi[0].side();
+        const boxSide & side2 = bi[1].side();
         
         gsQuadRule<T> QuRule;         // Reference Quadrature rule
         gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
@@ -147,7 +149,7 @@ public:
             
             // Compute the quadrature rule on both sides
             QuRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
-            mapGaussNodes( quNodes1, side1, side2, ( par2 ? 1.0 : 0.0 ), quNodes2 );// todo: move to visitor!
+            map.eval_into(quNodes1,quNodes2);
 
             // Perform required evaluations on the quadrature nodes            
             visitor.evaluate(B1, *geoEval1, B2, *geoEval2, quNodes1, quNodes2);
@@ -188,8 +190,8 @@ public:
 protected:
     
     static void mapGaussNodes(const gsMatrix<T> & nodes1, 
-                              const  boundary::side & side1,
-                              const  boundary::side & side2,
+                              const  boxSide & side1,
+                              const  boxSide & side2,
                               T fixedParam,
                               gsMatrix<T> & nodes2 );    
 protected:
@@ -229,8 +231,8 @@ protected:
 
 template <class T>
 void gsAssemblerBase<T>::mapGaussNodes(const gsMatrix<T> & nodes1, 
-                                    const  boundary::side & side1,
-                                    const  boundary::side & side2,
+                                    const  boxSide & side1,
+                                    const  boxSide & side2,
                                     T fixedParam,
                                     gsMatrix<T> & nodes2 )
 {

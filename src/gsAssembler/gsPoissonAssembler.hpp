@@ -79,15 +79,15 @@ void gsPoissonAssembler<T>::assembleDg()
     for ( typename gsMultiPatch<T>::iiterator it =
               m_patches.iBegin(); it != m_patches.iEnd(); ++it )
     {
-        boundaryInterface interface;
+        boundaryInterface iFace;
         if ( m_bases[0][(*it)[0].patch].numElements() <
              m_bases[0][(*it)[1].patch].numElements() )
-            interface=it->getInverse();
+            iFace=it->getInverse();
         else
-            interface=*it;
+            iFace=*it;
 
         gsVisitorDg<T> dg(penalty(it->ps1.patch), it->ps1.side());
-        this->apply(dg, interface);
+        this->apply(dg, iFace);
     }
 }
 
