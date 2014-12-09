@@ -13,9 +13,26 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsSolver/gsMatrixPreconditioner.h>
 
 namespace gismo
 {
+//in case of MatrixType is a child of gsPreconditioner, it must have the typedefs Scalar and RealScalar
+
+
+// if MatrixType is a gsPreconditioner, then do its apply method
+void applyMatrix(const gsPreconditioner& mat,const gsMatrix<real_t>& x, gsMatrix<real_t>& res)
+{
+    mat.apply(x,res);
+}
+
+//general case for matrix multiplication
+template< typename MatrixType, int UpLo>
+void applyMatrix(const MatrixType& mat, const gsMatrix<real_t>& x, gsMatrix<real_t>& res)
+{
+     res.noalias() = mat.template selfadjointView<UpLo>() * x;
+}
+
 
 template <typename MatrixType, int UpLo = Eigen::Lower>
 class gsMinimalResidual
@@ -40,7 +57,10 @@ public:
         xPrew = x0;
         vPrew.setZero(n,m); vNew.setZero(n,m);
         wPrew.setZero(n,m); w.setZero(n,m); wNew.setZero(n,m);
-        v = m_rhs - mat.template selfadjointView<UpLo>() * x0;
+        tmp2.setZero(n,1);
+
+        applyMatrix(mat,x0,tmp2);
+        v = m_rhs - tmp2;
 
         precond.apply(v, z);
 
@@ -72,7 +92,8 @@ public:
     bool step( Dest& x, const Preconditioner& precond )
         {
             z /= gamma;
-            tmp.noalias() = mat.template selfadjointView<UpLo>() * z;
+            applyMatrix(mat,z,tmp);
+
             RealScalar delta = z.col(0).dot(tmp.col(0));
             vNew = tmp - (delta/gamma)*v - (gamma/gammaPrew)*vPrew;
             precond.apply(vNew, zNew);
@@ -88,7 +109,8 @@ public:
             eta = -sNew*eta;
 
             //Test for convergence
-            residual = m_rhs - mat.template selfadjointView<UpLo>() * x;
+             applyMatrix(mat,x,tmp2);
+            residual = m_rhs - tmp2;
             residualNorm2 = residual.squaredNorm();
             if(residualNorm2 < threshold)
                 return true;
@@ -113,7 +135,7 @@ private:
     RealScalar tol;
     int maxIters;
     int numIter;
-    gsMatrix<real_t> vPrew, v, vNew, wPrew, w, wNew,zNew, z,xPrew, m_rhs, residual, tmp;
+    gsMatrix<real_t> vPrew, v, vNew, wPrew, w, wNew,zNew, z,xPrew, m_rhs, residual, tmp, tmp2;
     RealScalar residualNorm2, threshold, rhsNorm2, m_error;
     RealScalar eta,gammaPrew,gamma,gammaNew,sPrew,s,sNew,cPrew,c,cNew;
 };
