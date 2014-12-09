@@ -10,7 +10,7 @@ class gsVisitorDg
 {
 public:
 
-    gsVisitorDg(T _penalty, boundary::side s) : 
+    gsVisitorDg(T _penalty, boxSide s) :
     penalty(_penalty), side1(s), d(0)
     { }
 
@@ -179,7 +179,7 @@ private:
     T penalty;
 
     // Side
-    boundary::side side1;
+    boxSide side1;
 
     // dimension of the problem
     unsigned d;

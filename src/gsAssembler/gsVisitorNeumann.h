@@ -10,7 +10,7 @@ class gsVisitorNeumann
 {
 public:
 
-    gsVisitorNeumann(const gsFunction<T> & neudata, boundary::side s) : 
+    gsVisitorNeumann(const gsFunction<T> & neudata, boxSide s) : 
     neudata_ptr(&neudata), side(s)
     { }
 
@@ -96,7 +96,7 @@ private:
     
     // Neumann function
     const gsFunction<T> * neudata_ptr;
-    boundary::side side;
+    boxSide side;
 
     // Basis values
     gsMatrix<T>      basisData;

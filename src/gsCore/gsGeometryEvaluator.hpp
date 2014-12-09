@@ -63,7 +63,7 @@ struct gsGeoTransform
     // Outer (co-)normal vector at point k
     static void getOuterNormal(index_t k,
                                gsMatrix<T> const & jacobians,
-                               boundary::side s,
+                               boxSide s,
                                gsMatrix<T> & result)
     {
         // Assumes points k on boundary "s"
@@ -104,7 +104,7 @@ struct gsGeoTransform
 
     static void getNormal(index_t k,
                           gsMatrix<T> const & jacobians,
-                          boundary::side s,
+                          boxSide s,
                           gsMatrix<T> & result)
     {
         //
@@ -155,7 +155,7 @@ struct gsGeoTransform<T,ParDim,ParDim>
     // Outer (co-)normal vector at point k
     static void getOuterNormal(index_t k,
                                gsMatrix<T> const & jacobians,
-                               boundary::side s,
+                               boxSide s,
                                gsMatrix<T> & result)
     {
         // Assumes points k on boundary "s"
@@ -181,7 +181,7 @@ struct gsGeoTransform<T,ParDim,ParDim>
 
     static void getNormal(index_t k,
                           gsMatrix<T> const & jacobians,
-                          boundary::side s,
+                          boxSide s,
                           gsMatrix<T> & result)
     {
         //

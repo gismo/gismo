@@ -10,7 +10,7 @@ class gsVisitorNitsche
 {
 public:
 
-    gsVisitorNitsche(const gsFunction<T> & dirdata, T _penalty, boundary::side s) : 
+    gsVisitorNitsche(const gsFunction<T> & dirdata, T _penalty, boxSide s) : 
     dirdata_ptr(&dirdata),penalty(_penalty), side(s)
     { }
 
@@ -127,7 +127,7 @@ private:
     T penalty;
 
     // Side
-    boundary::side side;
+    boxSide side;
 
 private:
     // Basis values

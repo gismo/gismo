@@ -110,7 +110,7 @@ gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary() const
 
 
 template <class T, class KnotVectorType> 
-gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary(boundary::side const & s ) const
+gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary(boxSide const & s ) const
 {
     if( m_periodic )
     {

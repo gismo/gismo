@@ -22,7 +22,7 @@ namespace gismo
 
 template<class T>
 gsGeometry<T> * 
-gsGeometry<T>::boundary(boundary::side const& s) const
+gsGeometry<T>::boundary(boxSide const& s) const
 {
     gsMatrix<unsigned> *ind = this->basis().boundary(s); // get indices of the boundary DOF
     gsMatrix<T> coeffs (ind->size(), geoDim()); // create matrix for boundary coefficients

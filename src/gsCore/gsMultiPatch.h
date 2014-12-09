@@ -101,6 +101,17 @@ public:
     }
 
 public:
+    /**
+     * @brief construct the affine map that places bi.ps1 next to bi.ps2 and
+     *        identifies the two matching sides.
+     *        The optional scaling specifies the scaling of ps1 in the direction
+     *        orthogonal to the interface.
+     *        By default it preserves the size of bi.ps1 in that direction
+     * @param bi
+     * @param scaling
+     * @return
+     */
+    gsAffineFunction<T> getMapForInterface(const boundaryInterface &bi, T scaling=0) const;
 
     /// Swap with another gsMultiPatch.
     void swap(gsMultiPatch& other)
@@ -178,11 +189,11 @@ public:
     /// \a g1 side \a s2 of geometry \a g2.
     ///
     /// \todo add orientation information
-    void addInterface( gsGeometry<T>* g1, boundary::side s1,
-            gsGeometry<T>* g2, boundary::side s2 );
+    void addInterface( gsGeometry<T>* g1, boxSide s1,
+            gsGeometry<T>* g2, boxSide s2 );
 
     /// Add side s of patch g to the outer boundary of the domain
-    void addPatchBoundary( gsGeometry<T>* g, boundary::side s ) {
+    void addPatchBoundary( gsGeometry<T>* g, boxSide s ) {
         int p = findPatchIndex( g );
         gsBoxTopology::addBoundary( patchSide( p, s ) );
     }

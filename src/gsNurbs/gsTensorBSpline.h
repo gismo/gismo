@@ -250,7 +250,7 @@ public:
  *
  * this function is commented in case someone needs this version
  * with additional orientation
-gsGeometry<T> * boundary( boundary::side const& s ) const
+gsGeometry<T> * boundary( boxSide const& s ) const
 {
     // this sould be a vector
     gsMatrix<unsigned> * ind = this->m_basis->boundary(s);

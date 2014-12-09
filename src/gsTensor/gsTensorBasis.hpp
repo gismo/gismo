@@ -369,7 +369,7 @@ gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary() const
 
 
 template<unsigned d, class Basis_t >
-gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary(boundary::side const& s) const
+gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary(boxSide const& s) const
 {
     //get m_bases index and start or end case
     int k = direction(s);
@@ -398,7 +398,7 @@ struct MakeBoundaryBasis<2, BB, B>
 
 template<unsigned d, class Basis_t >
 typename gsTensorBasis<d,Basis_t>::BoundaryBasisType * 
-gsTensorBasis<d,Basis_t>::boundaryBasis(boundary::side const& s) const
+gsTensorBasis<d,Basis_t>::boundaryBasis(boxSide const& s) const
 {   
     unsigned dir = direction( s );
 
@@ -824,7 +824,7 @@ template<unsigned d, class Basis_t >
 std::auto_ptr<gsDomainIterator<T> >
 //typename memory::auto_ptr<gsDomainIterator<typename gsTensorBasis<d,Basis_t>::T> >
 //typename gsBasis<typename gsTensorBasis<d,Basis_t>::T>::domainIter
-gsTensorBasis<d,Basis_t>::makeDomainIterator(const boundary::side & s) const
+gsTensorBasis<d,Basis_t>::makeDomainIterator(const boxSide & s) const
 {
     return typename gsBasis<T>::domainIter(new gsTensorDomainBoundaryIterator<T, d>(*this,s));
 }

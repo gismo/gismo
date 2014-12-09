@@ -506,7 +506,7 @@ int gsHTensorBasis<d,T>::flatTensorIndexToHierachicalIndex(unsigned index,const 
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,const boundary::side & s,std::vector<bool>& actives) const
+void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,const boxSide & s,std::vector<bool>& actives) const
 {
     const gsMatrix<unsigned> * bound = m_bases[level]->boundary(s);
     const index_t sz = bound->rows();
@@ -708,7 +708,7 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary( ) const
 }
 
 template<unsigned d, class T>
-gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary(boundary::side const & s ) const
+gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary(boxSide const & s ) const
 { 
     //get information on the side
     int k   = direction(s);

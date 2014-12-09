@@ -29,6 +29,14 @@ protected:
     gsMatrix<T> m_mat;
     gsVector<T> m_trans;
 public:
+
+    /**
+     * @brief copy constructor
+     */
+    gsAffineFunction(const gsAffineFunction &other)
+        : m_mat(other.m_mat), m_trans(other.m_trans)
+    {}
+
     /**
      * @brief all fine maps are the composition of a linear map with a translation
      *        this constructor takes the two components explicitly

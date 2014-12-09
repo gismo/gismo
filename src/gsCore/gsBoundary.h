@@ -180,10 +180,10 @@ public:
 
     patchSide() : boxSide(), patch(0) { }
 
-    patchSide(index_t p, boundary::side s)
+    patchSide(index_t p, boxSide s)
         : boxSide(s), patch(p) { }
 
-    patchSide(index_t p, boxSide s)
+    patchSide(index_t p, boundary::side s)
         : boxSide(s), patch(p) { }
 
     // getters
@@ -459,21 +459,21 @@ public:
     /**
      * @brief first, returns the first patchSide of this interface
     **/
-    patchSide & first  ()        {return ps1;}
-    patchSide first    () const  {return ps1;}
+          patchSide& first ()        {return ps1;}
+    const patchSide& first () const  {return ps1;}
 
     /**
      * @brief second, returns the second patchSide of this interface
     **/
-    patchSide & second ()        {return ps2;}
-    patchSide second   () const  {return ps2;}
+          patchSide& second ()        {return ps2;}
+    const patchSide& second () const  {return ps2;}
 
     /**
      * @brief Returns the second side if ps is the first side,
      * otherwise returns the second side
     **/
-    patchSide & other   (const patchSide & ps)        {return ps==ps1 ? ps2 : ps1;}
-    patchSide   other   (const patchSide & ps) const  {return ps==ps1 ? ps2 : ps1;}
+          patchSide&   other (const patchSide & ps)        {return ps==ps1 ? ps2 : ps1;}
+    const patchSide&   other (const patchSide & ps) const  {return ps==ps1 ? ps2 : ps1;}
 
     // use boundaryInterface.first() and boundaryInterface.second()
     // DEPRECATED
@@ -571,6 +571,22 @@ public:
             return directionMap(dir);
         else
             return getInverse().dirMap(ps,dir);
+    }
+
+    gsVector<bool> dirOrientation(const patchSide & ps) const
+    {
+        if(ps==ps1)
+            return directionOrientation;
+        else
+            return getInverse().dirOrientation(ps);
+    }
+
+    gsVector<index_t>  dirMap(const patchSide & ps) const
+    {
+        if(ps==ps1)
+            return directionMap;
+        else
+            return getInverse().dirMap(ps);
     }
 
 public: ///todo: make them private

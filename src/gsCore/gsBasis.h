@@ -486,13 +486,13 @@ public:
     virtual gsMatrix<unsigned> * boundary( ) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
-    virtual gsMatrix<unsigned> * boundary(boundary::side const & s ) const;
+    virtual gsMatrix<unsigned> * boundary(boxSide const & s ) const;
 
     /// Returns the boundary basis for side s.
-    virtual gsBasis<T> * boundaryBasis(boundary::side const & s) const;
+    virtual gsBasis<T> * boundaryBasis(boxSide const & s) const;
 
     /// Returns the value of the constant parameter on the boundary side s
-    // virtual T parameterValue(boundary::side const & s) const { 
+    // virtual T parameterValue(boxSide const & s) const { 
     //     gsMatrix<T> * rr= this->component( direction(s) ).parameterRange();
     //     T res;
     //     if ( parameter(s) )
@@ -679,7 +679,7 @@ public:
     /// Create a boundary domain iterator for the computational mesh
     /// this basis, that points to the first element on the boundary of
     /// the domain
-    virtual domainIter makeDomainIterator(const boundary::side & s) const;
+    virtual domainIter makeDomainIterator(const boxSide & s) const;
 
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const = 0;

@@ -23,7 +23,7 @@ class gsTensorDomainBoundaryIterator : public gsDomainIterator<T>
 {
 public:
 
-    gsTensorDomainBoundaryIterator( const gsBasis<T>& b, const boundary::side & s )
+    gsTensorDomainBoundaryIterator( const gsBasis<T>& b, const boxSide & s )
         : gsDomainIterator<T>( b ),
           d( m_basis.dim() ),
           lower ( gsVector<T, D>::Zero(d) ),

@@ -78,7 +78,7 @@ void gsL2ProjectOnBoundary( const gsBasis<T> & basis,
     for( int side_idx = 0; side_idx < Sides.size(); side_idx++)
     {
         int side = Sides[ side_idx ];
-        bdIt = basis.makeDomainIterator(static_cast<boundary::side>(side));
+        bdIt = basis.makeDomainIterator(static_cast<boxSide>(side));
 
         gsVector<int> numIntNodes( basis.dim() );
         numIntNodes.setOnes();
@@ -141,7 +141,7 @@ void gsL2ProjectOnBoundary( const gsBasis<T> & basis,
     for( int side_idx = 0; side_idx < Sides.size(); side_idx++)
     {
         int side = Sides[ side_idx ];
-        bdIt = basis.makeDomainIterator(static_cast<boundary::side>(side));
+        bdIt = basis.makeDomainIterator(static_cast<boxSide>(side));
 
         // Manually set up the quadrature rule for the boundary domain iterator.
         gsVector<int> numIntNodes( basis.dim() );

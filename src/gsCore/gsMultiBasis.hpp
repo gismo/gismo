@@ -84,8 +84,8 @@ int gsMultiBasis<T>::findBasisIndex( gsBasis<T>* g ) const {
 }
   
 template<class T>
-void gsMultiBasis<T>::addInterface( gsBasis<T>* g1, boundary::side s1,
-                                    gsBasis<T>* g2, boundary::side s2 ) 
+void gsMultiBasis<T>::addInterface( gsBasis<T>* g1, boxSide s1,
+                                    gsBasis<T>* g2, boxSide s2 ) 
 {
     int p1 = findBasisIndex( g1 );
     int p2 = findBasisIndex( g2 );

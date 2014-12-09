@@ -182,11 +182,11 @@ gsBasis<T>::boundary( ) const
 
 template<class T>
 gsMatrix<unsigned> *
-gsBasis<T>::boundary(boundary::side const & s ) const
+gsBasis<T>::boundary(boxSide const & s ) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsBasis<T> * gsBasis<T>::boundaryBasis(boundary::side const & s) const
+gsBasis<T> * gsBasis<T>::boundaryBasis(boxSide const & s) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -261,7 +261,7 @@ gsBasis<T>::makeDomainIterator() const
 
 template<class T>
 typename gsBasis<T>::domainIter
-gsBasis<T>::makeDomainIterator(const boundary::side & s) const
+gsBasis<T>::makeDomainIterator(const boxSide & s) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

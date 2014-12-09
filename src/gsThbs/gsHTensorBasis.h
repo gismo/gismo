@@ -445,7 +445,7 @@ public:
     gsMatrix<unsigned> * boundary( ) const;
 
     // Look at gsBasis.h for the documentation of this function
-    virtual gsMatrix<unsigned> * boundary(boundary::side const & s ) const;
+    virtual gsMatrix<unsigned> * boundary(boxSide const & s ) const;
 
     // Look at gsBasis.h for the documentation of this function
     void evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const;
@@ -459,7 +459,7 @@ public:
 
 
   /// Returns the boundary basis for side s
-  // virtual gsHTensorBasis<d,T> * boundaryBasis(boundary::side const & s ) const 
+  // virtual gsHTensorBasis<d,T> * boundaryBasis(boxSide const & s ) const 
 
   /// Returns a bounding box for the basis' domain
   gsMatrix<T> support() const;
@@ -630,7 +630,7 @@ public:
         return typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this));
     }
 
-    typename gsBasis<T>::domainIter makeDomainIterator(const boundary::side & s) const
+    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         return ( s == boundary::none ? 
                  typename gsBasis<T>::domainIter(new gsHDomainIterator<T, d>(*this)) :
@@ -731,7 +731,7 @@ public:
     /// \param[in] level : level of the boundary functions
     /// \param[in] s : boundary side
     /// \param[out] actives : the result, true if its active, false if not
-    void activeBoundaryFunctionsOfLevel(const unsigned level,const boundary::side & s,std::vector<bool>& actives) const;
+    void activeBoundaryFunctionsOfLevel(const unsigned level,const boxSide & s,std::vector<bool>& actives) const;
 
     /// Increases the multiplicity of a knot with the value \a knotValue in level \a lvl
     /// in direction \a dir by \a mult.

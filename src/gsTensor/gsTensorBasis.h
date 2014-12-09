@@ -198,10 +198,10 @@ public:
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> * boundary(boundary::side const & s ) const ;
+    gsMatrix<unsigned> * boundary(boxSide const & s ) const ;
 
     /// Returns a basis for the face s gsTensorBasis<T,d-1,Basis_t>
-    BoundaryBasisType * boundaryBasis(boundary::side const & s ) const ;
+    BoundaryBasisType * boundaryBasis(boxSide const & s ) const ;
 
     /// Returns a bounding box for the basis' domain
     gsMatrix<T> support() const ;
@@ -245,7 +245,7 @@ public:
     }
 
     // Look at gsBasis class for documentation 
-    typename gsBasis<T>::domainIter makeDomainIterator(const boundary::side & s) const
+    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         return ( s == boundary::none ? 
                  typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,d>(*this)) :

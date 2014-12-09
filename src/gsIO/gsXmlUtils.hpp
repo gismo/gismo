@@ -1991,13 +1991,13 @@ public:
             if ( !strcmp(child->first_attribute("type")->value(), "dirichlet") )
             {		       
                 for (int side; str >> side;) 
-                    bvp->addCondition( static_cast<boundary::side>(side), 
+                    bvp->addCondition( static_cast<boxSide>(side),
                                        condition_type::dirichlet, ff);
             }
             else if ( !strcmp(child->first_attribute("type")->value(), "neumann") )
             {		       
                 for (int side; str >> side;) 
-                    bvp->addCondition( static_cast<boundary::side>(side), 
+                    bvp->addCondition( static_cast<boxSide>(side),
                                        condition_type::neumann, ff);
             }		
         }

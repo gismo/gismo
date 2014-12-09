@@ -436,7 +436,7 @@ public:
     std::vector<gsGeometry *> boundary() const;
 
     /// Get parametrization of boundary side \a s as a new gsGeometry
-    gsGeometry * boundary(boundary::side const& s) const;
+    gsGeometry * boundary(boxSide const& s) const;
 
     /// Clone function. Makes a deep copy of the geometry object.
     virtual gsGeometry * clone() const = 0;

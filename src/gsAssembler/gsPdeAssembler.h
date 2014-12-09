@@ -367,7 +367,7 @@ protected:
     void boundaryNeumann( const gsBasis<T> & B,
                           const int patchIndex,
                           const gsFunction<T> & f,
-                          const boundary::side s,
+                          const boxSide s,
                           const gsDofMapper& mapper,
                           gsVector<index_t> blockMapper = gsVector<index_t>::Zero(1));
 
@@ -375,7 +375,7 @@ protected:
     void boundaryNeumann( std::vector< gsBasis<T> *>  const & B,
                           const int patchIndex,
                           const gsFunction<T> & f,
-                          const boundary::side s,
+                          const boxSide s,
                           std::vector< gsDofMapper *> const & mapper,
                           gsVector<index_t> blockMapper = gsVector<index_t>::Zero(1));
 
@@ -404,7 +404,7 @@ protected:
     void boundaryNitsche( const gsBasis<T> & B,
                           const int patchIndex,
                           const gsFunction<T> & f,
-                          const boundary::side s,
+                          const boxSide s,
                           const gsDofMapper& mapper,
                           gsMatrix<index_t> blockMapper = gsMatrix<index_t>::Zero(1,2),
                           const T kappa = 1);
@@ -413,7 +413,7 @@ protected:
     void boundaryNitsche( std::vector< gsBasis<T> *>  const & B,
                           const int patchIndex,
                           const gsFunction<T> & f,
-                          const boundary::side s,
+                          const boxSide s,
                           std::vector< gsDofMapper *> const & mapper,
                           gsMatrix<index_t> blockMapper = gsMatrix<index_t>::Zero(1,2),
                           const T kappa = 1);

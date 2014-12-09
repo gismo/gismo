@@ -49,7 +49,7 @@ public:
 public:
 
     gsHDomainBoundaryIterator(const gsHTensorBasis<d, T> & hbs, 
-                              const boundary::side & s )
+                              const boxSide & s )
         : gsDomainIterator<T>(hbs)
     {
         // Initialize mesh data

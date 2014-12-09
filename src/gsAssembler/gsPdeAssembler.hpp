@@ -405,7 +405,7 @@ template<class T> void
 gsPdeAssembler<T>::boundaryNeumann( const gsBasis<T> & B,
                                  const int patchIndex,
                                  const gsFunction<T> & f,
-                                 const boundary::side s,
+                                 const boxSide s,
                                  const gsDofMapper& mapper,
                                  gsVector<index_t> blockMapper)
 {
@@ -427,7 +427,7 @@ template<class T> void
 gsPdeAssembler<T>::boundaryNeumann( std::vector< gsBasis<T> *>  const & B,
                                  const int patchIndex,
                                  const gsFunction<T> & f,
-                                 const boundary::side s,
+                                 const boxSide s,
                                  std::vector< gsDofMapper *> const & mapper,
                                  gsVector<index_t> blockMapper)
 {
@@ -528,7 +528,7 @@ template<class T> void
 gsPdeAssembler<T>::boundaryNitsche( const gsBasis<T> & B,
                                  const int patchIndex,
                                  const gsFunction<T> & f,
-                                 const boundary::side s,
+                                 const boxSide s,
                                  const gsDofMapper& mapper,
                                  gsMatrix<index_t> blockMapper,
                                  const T kappa)
@@ -551,7 +551,7 @@ template<class T> void
 gsPdeAssembler<T>::boundaryNitsche( std::vector< gsBasis<T> *>  const & B,
                                  const int patchIndex,
                                  const gsFunction<T> & f,
-                                 const boundary::side s,
+                                 const boxSide s,
                                  std::vector< gsDofMapper *> const & mapper,
                                  gsMatrix<index_t> blockMapper,
                                  const T kappa)

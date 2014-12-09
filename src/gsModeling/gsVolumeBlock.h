@@ -47,13 +47,13 @@ public:
 
 public:
 
-    /// Function returns the boundary::side that corresponds to given face
+    /// Function returns the boxSide that corresponds to given face
     ///
     /// This function only works if the VolumeBlock is hexahedron
     ///
     /// \param faceId id of the face
     /// \return side of the hexahedron
-    boundary::side getSideOfHexahedron(const unsigned faceId)
+    boxSide getSideOfHexahedron(const unsigned faceId)
     {
         if (!isHexahedron())
         {
@@ -634,7 +634,7 @@ private:
     ///
     /// \param side boundary side
     static
-    bool turnCurveLoopAround(boundary::side side)
+    bool turnCurveLoopAround(boxSide side)
     {
         if (side == boundary::west ||
             side == boundary::south ||

@@ -53,10 +53,10 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
 template<class T>
 struct boundary_condition
 {
-    boundary_condition( int p, boundary::side s, gsFunction<T> * f, condition_type::type t, int unknown = 0)
+    boundary_condition( int p, boxSide s, gsFunction<T> * f, condition_type::type t, int unknown = 0)
 	: ps(p, s), m_function(f), m_type(t), m_unknown(unknown) { }
       
-    boundary_condition( int p, boundary::side s, condition_type::type t, int unknown = 0)
+    boundary_condition( int p, boxSide s, condition_type::type t, int unknown = 0)
 	: ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown)  { }
       
     /// homogeneous boundary condition ?
@@ -72,7 +72,7 @@ struct boundary_condition
     int             patch()    const { return ps.patch; }
 
     /// Returns the side to which this boundary condition refers to
-    boundary::side  side()     const { return ps.side(); }
+    boxSide  side()     const { return ps.side(); }
 
     /// Returns the unknown to which this boundary condition refers to
     int             unknown()  const { return m_unknown; }
@@ -190,7 +190,7 @@ public:
     iterator robinEnd()
 	{ return robin_sides.end(); }
     
-    void addCondition(int p, boundary::side s, condition_type::type t, gsFunction<T> * f, int unknown = 0)
+    void addCondition(int p, boxSide s, condition_type::type t, gsFunction<T> * f, int unknown = 0)
     {
         switch (t) {
         case condition_type::dirichlet :
@@ -207,7 +207,7 @@ public:
         }
     }
 
-    void addCondition( boundary::side s, condition_type::type t, gsFunction<T> * f, int unknown = 0)
+    void addCondition( boxSide s, condition_type::type t, gsFunction<T> * f, int unknown = 0)
         {
             // for single-patch only
             addCondition(0,s,t,f,unknown);

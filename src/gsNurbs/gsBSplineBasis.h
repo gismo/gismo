@@ -200,10 +200,10 @@ public:
     gsMatrix<unsigned> * boundary( ) const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> * boundary(boundary::side const & s ) const;
+    gsMatrix<unsigned> * boundary(boxSide const & s ) const;
 
     // Look at gsBasis class for a description
-    gsBSplineBasis * boundaryBasis(boundary::side const & s ) const 
+    gsBSplineBasis * boundaryBasis(boxSide const & s ) const 
     { 
         return new gsBSplineBasis(KnotVectorType(0,1,0,1));
     }
@@ -453,7 +453,7 @@ public:
         return typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,1>(*this));
     }
 
-    typename gsBasis<T>::domainIter makeDomainIterator(const boundary::side & s) const
+    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         return ( s == boundary::none ? 
                  typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,1>(*this)) :

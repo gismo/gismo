@@ -231,11 +231,11 @@ public:
     /// \a g1 side \a s2 of geometry \a g2.
     ///
     /// \todo add orientation information
-    void addInterface( gsBasis<T>* g1, boundary::side s1,
-                       gsBasis<T>* g2, boundary::side s2 );
+    void addInterface( gsBasis<T>* g1, boxSide s1,
+                       gsBasis<T>* g2, boxSide s2 );
 
     /// Add side s of patch g to the outer boundary of the domain
-    void addPatchBoundary( gsBasis<T>* g, boundary::side s ) 
+    void addPatchBoundary( gsBasis<T>* g, boxSide s ) 
     {
         const int p =findBasisIndex( g );
         m_topology.addBoundary( patchSide( p, s ) );

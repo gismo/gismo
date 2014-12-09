@@ -391,7 +391,7 @@ public:
     /// result is a vector containing the normal vector
     /// NB! Contrary to usual calculus, the normal vector does not have norm 1, but
     /// its norm represent the local surface area.
-    virtual void outerNormal(index_t k, boundary::side s, gsVector<T> & result)  const = 0;
+    virtual void outerNormal(index_t k, boxSide s, gsVector<T> & result)  const = 0;
 
     /// Computes the normal vector of a co-dimension one geometry at evaluation point \a k
     virtual void normal(index_t k, gsVector<T> & result)  const = 0;
@@ -525,7 +525,7 @@ public:
     }
 
     /// \note This implementation silently assumes a tensor domain
-    void outerNormal(index_t k, boundary::side s, gsVector<T> & result) const
+    void outerNormal(index_t k, boxSide s, gsVector<T> & result) const
     {
         GISMO_ASSERT(this->m_flags & NEED_JACOBIAN, "Jacobians not computed");
 

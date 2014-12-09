@@ -150,7 +150,7 @@ public:
     
     gsMatrix<unsigned> * boundary( ) const {return m_src->boundary(); }
     
-    gsMatrix<unsigned> * boundary(boundary::side const & s ) const 
+    gsMatrix<unsigned> * boundary(boxSide const & s ) const 
     {return m_src->boundary(s); };
     
     // Look at gsBasis class for a description
@@ -230,7 +230,7 @@ public:
     
     virtual gsBasis<T>& component(unsigned i) const        { return m_src->component(i); }
     
-    gsBasis<T> * boundaryBasis(boundary::side const & s ) const   
+    gsBasis<T> * boundaryBasis(boxSide const & s ) const   
     { 
         typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
         gsMatrix<unsigned> * ind = m_src->boundary(s);
@@ -301,7 +301,7 @@ public:
         return m_src->makeDomainIterator();
     }
 
-    typename gsBasis<T>::domainIter makeDomainIterator(const boundary::side & s) const
+    typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
         gsWarn<< "rational domain boundary iterator with evaluate the source.\n";
         return m_src->makeDomainIterator(s);
