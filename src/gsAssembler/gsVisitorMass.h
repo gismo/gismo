@@ -63,7 +63,8 @@ public:
         geoEval.evaluateAt(quNodes);
 
         // Initialize local matrix/rhs
-        localMat.setZero(numActive, numActive);
+        localMat.resize(numActive, numActive);
+        localMat.setZero();
     }
 
     inline void assemble(gsDomainIterator<T>    & element, 
@@ -89,7 +90,7 @@ public:
             mapper.localToGlobal(actives, patchIndex, actives);
 
         const index_t numActive = actives.rows();
-        
+
         for (index_t i = 0; i < numActive; ++i)
         {
             const int ii = actives(i,0); // N_i
@@ -98,7 +99,7 @@ public:
                 const int jj = actives(j,0); // N_j
 
                 // store lower triangular part only
-                if ( jj <= ii ) 
+                if ( jj <= ii )
                     sysMatrix.coeffRef(ii, jj) += localMat(i, j); // N_i*N_j
             }
         }
