@@ -16,6 +16,7 @@
 #include <gsCore/gsForwardDeclarations.h>
 
 #include <gsCore/gsBasisRefs.h>
+#include <gsCore/gsDofMapper.h>
 #include <gsCore/gsStdVectorRef.h>
 #include <gsCore/gsAffineFunction.h> // needed by DG
 
@@ -97,7 +98,7 @@ public:
         //gsDebug<<"Apply DG on "<< bi <<".\n";
 
         const gsDofMappers mappers(m_dofMappers);
-        const gsAffineFunction<T> map(m_patches.getMapForInterface(bi));
+        const gsAffineFunction<T> interfaceMap(m_patches.getMapForInterface(bi));
 
         const int patch1      = bi[0].patch;
         const int patch2      = bi[1].patch;
@@ -107,8 +108,8 @@ public:
         const int bSize2      = B2.numElements();
         GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
                      "DG assumes nested interfaces.");
-        const boxSide & side1 = bi[0].side();
-        const boxSide & side2 = bi[1].side();
+        const boxSide & side1 = bi.first().side();
+        const boxSide & side2 = bi.second().side();
         
         gsQuadRule<T> QuRule;         // Reference Quadrature rule
         gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
@@ -135,7 +136,6 @@ public:
     
         // const int dir1             = direction(side1);
         // const int dir2             = direction(side2);
-        const bool par2               = parameter(side2);
         //GISMO_ASSERT( B1.component(!dir1).size() == B2.component(!dir2).size(), 
         //              "DG method not implemented yet for non matching interfaces");
 
@@ -149,7 +149,7 @@ public:
             
             // Compute the quadrature rule on both sides
             QuRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
-            map.eval_into(quNodes1,quNodes2);
+            interfaceMap.eval_into(quNodes1,quNodes2);
 
             // Perform required evaluations on the quadrature nodes            
             visitor.evaluate(B1, *geoEval1, B2, *geoEval2, quNodes1, quNodes2);
@@ -188,13 +188,6 @@ public:
     int numDofs() const { return m_dofs; }
     
 protected:
-    
-    static void mapGaussNodes(const gsMatrix<T> & nodes1, 
-                              const  boxSide & side1,
-                              const  boxSide & side2,
-                              T fixedParam,
-                              gsMatrix<T> & nodes2 );    
-protected:
 
     /// The multipatch domain
     gsMultiPatch<T> m_patches;
@@ -226,35 +219,6 @@ protected:
     int m_dofs;
 
 };
-
-
-
-template <class T>
-void gsAssemblerBase<T>::mapGaussNodes(const gsMatrix<T> & nodes1, 
-                                    const  boxSide & side1,
-                                    const  boxSide & side2,
-                                    T fixedParam,
-                                    gsMatrix<T> & nodes2 )
-{
-    const int dir1 = direction(side1);
-    const int dir2 = direction(side2);
-    const int d    = nodes1.rows();
-    nodes2.resize( d, nodes1.cols() );
-    
-    if ( dir1 == dir2 )
-    {
-        nodes2.row(dir2).setConstant(fixedParam);
-        nodes2.topRows(dir2)        = nodes1.topRows( dir2 );
-        nodes2.bottomRows(d-dir2-1) = nodes1.bottomRows( d-dir2-1 );
-    }
-    else
-    {
-        GISMO_ASSERT( nodes1.rows() == 2, "Implemented for 2D");
-            nodes2.row(dir2).setConstant(fixedParam);
-            nodes2.row( !dir2 )  = nodes1.row( dir2 );
-    }
-}
-
 
 
 } // namespace gismo
