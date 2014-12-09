@@ -35,7 +35,9 @@ int main(int argc, char* argv[])
         gsCmdLine cmd("Tutorial Input Output");
         
         gsArgValPlain<std::string> inArg("input", "G+Smo input geometry file.", 
-                                         false, "", "file", cmd);
+                                         false, GISMO_SOURCE_DIR
+                                         "/filedata/curves3d/bspline3d_curve_01.xml", 
+                                         "file", cmd);
         
         gsArgVal<std::string> outArg("o", "output", "Name of the output file.",
                                      false, "out", "string", cmd);
