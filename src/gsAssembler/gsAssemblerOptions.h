@@ -81,7 +81,30 @@ struct iFace
 	};
 };
 
-// To do: add more options 
+struct transform
+{	
+	enum type
+	{
+	    Hgrad = 1, // covariant, inverse_composition
+	    Hdiv  = 2, // Piola 
+	    Hcurl = 3
+	};
+};
+
+// for mixed formulations
+struct space
+{	
+	enum type
+	{
+	    taylorHood    = 1,
+	    raviartThomas = 2,
+
+	    none          = 0
+	};
+};
+
+
+
 struct gsAssemblerOptions
 {
 public:
@@ -99,6 +122,11 @@ public:
     dirichlet::strategy  dirStrategy;
 
     iFace::strategy      intStrategy;
+
+    transform::type      transformType;
+    
+    space::type          spaceType;
+
 };
 
 } // namespace gismo
