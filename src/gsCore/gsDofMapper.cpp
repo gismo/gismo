@@ -261,6 +261,25 @@ void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2)
 }
 
 
+index_t gsDofMapper::coupledSize() const
+{ 
+    // Property: coupled (eliminated or not )DoFs appear more than once in the mapping.
+    GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+
+    index_t count = 0;
+    std::map<index_t,index_t> CountMap;
+
+    for (std::vector<index_t>::const_iterator it = m_dofs.begin(); it != m_dofs.end(); ++it)
+        CountMap[*it]++;
+
+    for (std::map<index_t,index_t>::const_iterator it = CountMap.begin(); it != CountMap.end(); ++it)
+        if ( it->first > m_numFreeDofs && it->second > 1 )
+            count++;
+
+    return count; 
+}
+
+
 void gsDofMapper::setShift (index_t shift)
 {
     m_shift=shift;
