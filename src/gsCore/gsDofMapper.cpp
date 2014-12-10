@@ -265,21 +265,23 @@ index_t gsDofMapper::coupledSize() const
 { 
     // Property: coupled (eliminated or not) DoFs appear more than once in the mapping.
     GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
-
+    
     std::vector<index_t> CountMap(m_numFreeDofs,0);
     
     // Count number of appearances of each free DoF
     for (std::vector<index_t>::const_iterator it = m_dofs.begin(); it != m_dofs.end(); ++it)
         if ( *it < m_numFreeDofs )
             CountMap[*it]++;
-
+    
     // Count the number of freeDoFs that appear more than once
+    return std::count_if( CountMap.begin(), CountMap.end(), std::bind1st(std::greater<index_t>(), 1) );
+    /* // Equivalent implementation
     index_t count = 0;
     for (std::vector<index_t>::const_iterator it = CountMap.begin(); it != CountMap.end(); ++it)
         if ( *it > 1 )
             count++;
-
     return count; 
+    */
 }
 
 
