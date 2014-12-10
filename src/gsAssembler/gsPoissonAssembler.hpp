@@ -392,15 +392,16 @@ gsField<T> *  gsPoissonAssembler<T>::constructSolution(const gsMatrix<T>& solVec
     const gsDofMapper & mapper = m_dofMappers.front();
 
     std::vector<gsFunction<T> * > sols ;
+
+    const index_t dim = m_rhsFun->targetDim();
     gsMatrix<T> coeffs;
     
     for (size_t p=0; p < m_patches.nPatches(); ++p )
     {    
         // Reconstruct solution coefficients on patch p
         const int sz  = m_bases[0][p].size();
-        const index_t dim = m_rhsFun->targetDim();
-        
-        coeffs.resize( sz, dim );
+        coeffs.resize( sz, dim);
+
         for (index_t i = 0; i < sz; ++i)
         {
             if ( mapper.is_free(i, p) ) // DoF value is in the solVector

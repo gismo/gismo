@@ -105,7 +105,9 @@ public:
     {
         m_bases.push_back(bases);
 
-        gsAssemblerOptions options(dirStrategy, intStrategy);
+        gsAssemblerOptions options;
+        options.dirStrategy = dirStrategy;
+        options.intStrategy = intStrategy;
         setOptions(options);
         
         m_dofs = m_dofMappers.front().freeSize();
