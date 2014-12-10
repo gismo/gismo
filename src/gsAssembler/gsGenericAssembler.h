@@ -44,6 +44,7 @@ public:
         m_dofMappers.resize(1);
         bases.getMapper(conforming, m_dofMappers.front() );
         m_dofs = m_dofMappers.front().freeSize();
+        m_matrix.setZero();
     }
 
     /// Mass assembly routine
