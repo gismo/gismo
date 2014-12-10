@@ -274,7 +274,7 @@ index_t gsDofMapper::coupledSize() const
             CountMap[*it]++;
     
     // Count the number of freeDoFs that appear more than once
-    return std::count_if( CountMap.begin(), CountMap.end(), std::bind1st(std::greater<index_t>(), 1) );
+    return std::count_if( CountMap.begin(), CountMap.end(), std::bind2nd(std::greater<index_t>(), 1) );
     /* // Equivalent implementation
     index_t count = 0;
     for (std::vector<index_t>::const_iterator it = CountMap.begin(); it != CountMap.end(); ++it)
