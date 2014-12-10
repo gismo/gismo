@@ -280,6 +280,14 @@ public:
         return m_numFreeDofs; 
     }
 
+    /// Returns the number of coupled (not eliminated) dofs.
+    inline index_t coupledSize() const 
+    { 
+        GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        gsWarn<<"Not implemented.\n";
+        return m_numFreeDofs; 
+    }
+
     /// Returns the number of eliminated dofs.
     inline index_t boundarySize() const 
     { 

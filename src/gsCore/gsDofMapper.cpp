@@ -127,8 +127,6 @@ void gsDofMapper::matchDof( index_t u, index_t i, index_t v, index_t j )
 }
 
 
-
-
 void gsDofMapper::markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs )
 {
     for (index_t i = 0; i < boundaryDofs.rows(); ++i)
@@ -164,6 +162,9 @@ void gsDofMapper::finalize()
     std::vector<index_t> couplingDofs(m_curCouplingId - 1, -1);
     std::vector<index_t> elimDofs(-m_curElimId - 1, -1);
 
+    // Coupled dofs start after standard dofs
+    index_t curCplDof = m_numFreeDofs - couplingDofs.size();
+
     for (std::size_t k = 0; k < m_dofs.size(); ++k)
     {
         const index_t dofType = m_dofs[k];
@@ -181,12 +182,17 @@ void gsDofMapper::finalize()
         {
             const index_t id = dofType - 1;
             if (couplingDofs[id] < 0)
-                couplingDofs[id] = curFreeDof++;
+                //couplingDofs[id] = curFreeDof++;
+                couplingDofs[id] =   curCplDof++;
             m_dofs[k] = couplingDofs[id];
         }
     }
     m_numElimDofs = curElimDof - m_numFreeDofs;
-    GISMO_ASSERT(curFreeDof == m_numFreeDofs, "gsDofMapper::finalize() - computed number of free dofs does not match allocated number");
+
+    GISMO_ASSERT(curCplDof == m_numFreeDofs,
+                 "gsDofMapper::finalize() - computed number of coupling dofs does not match allocated number");
+    GISMO_ASSERT(curFreeDof + static_cast<index_t>(couplingDofs.size()) == m_numFreeDofs,
+                 "gsDofMapper::finalize() - computed number of free dofs does not match allocated number");
 
     m_curElimId = 0;// Only equal to zero after finalize is called.
 
