@@ -274,6 +274,8 @@ public:
     /// ( multiple columns are possible ).
     const gsMatrix<T> &  systemSolution() const { return m_sysSolution; }
 
+    /// @brief Gives the solution. Usefull when solving is done outside of this class
+    void setSolution(const gsMatrix<T> &solution) {m_sysSolution = solution;}
 
 //    /// @brief Accessor for left-hand side global matrix.
 //    ///

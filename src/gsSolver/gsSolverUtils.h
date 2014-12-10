@@ -87,28 +87,25 @@ public:
         Eigen::EigenSolver<typename gsMatrix<T>::Base > eigen_values;
         eigen_values.compute(matrix, false);
 
-        T tmp = eigen_values.eigenvalues()(0,0).real();
+        T tmp = std::abs(eigen_values.eigenvalues()(0,0).real());
 
-        if (tmp < 0) {tmp *= -1;}
         T eigen_low = tmp;
         T eigen_high= tmp;
 
         //Find lowest and highest eigenvalue
         for (unsigned k=0; k< N_size; ++k)
         {
-            tmp = eigen_values.eigenvalues()(k,0).real();
-            // Make number positive
-            if (tmp < 0) {tmp *= -1;}
+            tmp = std::abs(eigen_values.eigenvalues()(k,0).real());
 
             // Remove the one zero eigenvalue from not using pressure avg.
-            if(tmp < 1e-14 && removeSingularity)
+            if(tmp < 1e-13 && removeSingularity)
             {
                 removeSingularity = false;
+                std::cout << "Removed the eigen value: " << tmp << std::endl;
                 //In case the first eigenvalue has value zero, we use the second eigenvalue.
                 if (k == 0)
                 {
-                    tmp = eigen_values.eigenvalues()(k+1,0).real();
-                    if (tmp < 0) {tmp *= -1;}
+                    tmp = std::abs(eigen_values.eigenvalues()(k+1,0).real());
                     eigen_low = tmp;
                     eigen_high= tmp;
                 }
