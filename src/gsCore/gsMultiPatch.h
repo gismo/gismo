@@ -102,11 +102,11 @@ public:
 
 public:
     /**
-     * @brief construct the affine map that places bi.ps1 next to bi.ps2 and
+     * @brief construct the affine map that places bi.first() next to bi.second() and
      *        identifies the two matching sides.
-     *        The optional scaling specifies the scaling of ps1 in the direction
+     *        The optional scaling specifies the scaling of first() in the direction
      *        orthogonal to the interface.
-     *        By default it preserves the size of bi.ps1 in that direction
+     *        By default it preserves the size of bi.first() in that direction
      * @param bi
      * @param scaling
      * @return

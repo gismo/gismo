@@ -49,8 +49,8 @@ void gsDofMapper::matchInterface( index_t k1, index_t k2,
     if ( sz != b2.size() )
     {
         gsWarn<<"gsDofMapper: Problem: non-conforming interface "<<
-                "("    <<k1<<","<< //i.ps1.side<<
-                ")<->("<<k2<<","<< //i.ps2.side<<
+                "("    <<k1<<","<< //i.first().side<<
+                ")<->("<<k2<<","<< //i.second().side<<
                 ") ~ ("<<sz<<","<<b2.size() <<").\n";
 
         gsWarn<< b1.transpose() << "\n";

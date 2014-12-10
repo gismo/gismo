@@ -267,7 +267,7 @@ public:
     bool getInterface(const patchSide& ps,boundaryInterface & result) const
     {
         for ( unsigned i = 0; i < m_interfaces.size(); ++i )
-            if ( m_interfaces[i].ps1 == ps || m_interfaces[i].ps2 == ps )
+            if ( m_interfaces[i].first() == ps || m_interfaces[i].second() == ps )
             {
                 result = m_interfaces[i];
                 return true;

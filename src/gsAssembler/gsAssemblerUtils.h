@@ -67,7 +67,7 @@ public:
     {
         // assumes matching orientation
         gsVector<int> numNodes ( b1.dim() );
-        const int dir = ( left ? direction( bi.ps1.side() ) : direction( bi.ps2.side() ) );
+        const int dir = ( left ? direction( bi.first().side() ) : direction( bi.second().side() ) );
         for (int i = 0; i < dir; ++i)
             numNodes[i] = ( b1.degree(i) + b2.degree(i) + 2 )/ 2 ;
         numNodes[dir] = 1;

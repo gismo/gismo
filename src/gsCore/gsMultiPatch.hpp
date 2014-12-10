@@ -266,12 +266,12 @@ gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface 
 {
     if (scaling==0)
         scaling=1;
-    gsMatrix<T> box1=m_patches[bi.ps1.patch]->support();
-    gsMatrix<T> box2=m_patches[bi.ps2.patch]->support();
-    const index_t oDir1 = bi.ps1.direction();
-    const index_t oDir2 = bi.ps2.direction();
+    gsMatrix<T> box1=m_patches[bi.first().patch]->support();
+    gsMatrix<T> box2=m_patches[bi.second().patch]->support();
+    const index_t oDir1 = bi.first().direction();
+    const index_t oDir2 = bi.second().direction();
     const T len1=box1(oDir1,1)-box1(oDir1,0);
-    if (bi.ps2.parameter())
+    if (bi.second().parameter())
     {
         box2(oDir2,0)=box2(oDir2,1);
         box2(oDir2,1)+=scaling*len1;
@@ -281,7 +281,7 @@ gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface 
         box2(oDir2,1)=box2(oDir2,0);
         box2(oDir2,0)-=scaling*len1;
     }
-    return gsAffineFunction<T>(bi.dirMap(bi.ps1),bi.dirOrientation(bi.ps1) ,box1,box2);
+    return gsAffineFunction<T>(bi.dirMap(bi.first()),bi.dirOrientation(bi.first()) ,box1,box2);
 }
 
 }

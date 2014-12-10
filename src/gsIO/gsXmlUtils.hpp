@@ -1646,8 +1646,9 @@ public:
             for ( typename gsMultiPatch<T>::const_iiterator it = obj.iBegin();
                   it != obj.iEnd(); ++it )
             {
-                str<< it->ps1.patch <<" "<< int(it->ps1.side())<<" "
-                   << it->ps2.patch <<" "<< int(it->ps2.side())<<" "
+                gsWarn<<"writing interface in old format, it does not work for 3D\n";
+                str<< it->first().patch <<" "<< int(it->first().side())<<" "
+                   << it->second().patch <<" "<< int(it->second().side())<<" "
                    << it->orient().transpose() <<"\n";
             }
             tmp = internal::makeNode("interfaces", str.str(),  data);

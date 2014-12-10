@@ -86,7 +86,7 @@ void gsPoissonAssembler<T>::assembleDg()
         else
             iFace=*it;
 
-        gsVisitorDg<T> dg(penalty(it->ps1.patch), it->ps1.side());
+        gsVisitorDg<T> dg(penalty(it->first().patch), it->first().side());
         this->apply(dg, iFace);
     }
 }

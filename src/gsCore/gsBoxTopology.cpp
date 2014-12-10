@@ -25,7 +25,7 @@ void gsBoxTopology::addAutoBoundaries()
 bool gsBoxTopology::isInterface( const patchSide& ps ) const
 {
     for ( unsigned i = 0; i < m_interfaces.size(); ++i )
-        if ( m_interfaces[i].ps1 == ps || m_interfaces[i].ps2 == ps ) {
+        if ( m_interfaces[i].first() == ps || m_interfaces[i].second() == ps ) {
             return true;
         }
     return false;
@@ -49,8 +49,8 @@ void gsBoxTopology::checkConsistency() const
                       << std::endl;
         }
     for ( const_iiterator i = iBegin(); i != iEnd(); ++i )
-        if ( i->ps1.patch >= nboxes || i->ps2.patch >= nboxes ) {
-            std::cerr << "*** WARNING *** gsBoxTopology: box index " << i->ps1.patch << " or " << i->ps2.patch
+        if ( i->first().patch >= nboxes || i->second().patch >= nboxes ) {
+            std::cerr << "*** WARNING *** gsBoxTopology: box index " << i->first().patch << " or " << i->second().patch
                       << " in interface out of range." << std::endl;
         }
 }
@@ -59,15 +59,15 @@ bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result, int & i
 {
     for ( unsigned i = 0; i < m_interfaces.size(); ++i ) 
     {
-       if ( m_interfaces[i].ps1 == ps ) 
+       if ( m_interfaces[i].first() == ps )
        {
-           result = m_interfaces[i].ps2;
+           result = m_interfaces[i].second();
            ii     = i;
            return true;
        }
-       else if ( m_interfaces[i].ps2 == ps ) 
+       else if ( m_interfaces[i].second() == ps )
        {
-           result = m_interfaces[i].ps1;
+           result = m_interfaces[i].first();
            ii     = i;
            return true;
        }

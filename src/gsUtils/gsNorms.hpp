@@ -613,15 +613,15 @@ T igaFieldDGDistance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
         {
 	  
 	  
-	  const gsGeometry<T> & func1  = static_cast<gsGeometry<T> &>( u.function(it->ps1.patch) );
-          const gsGeometry<T> & func2  = static_cast<gsGeometry<T> &>( u.function(it->ps2.patch) );
+      const gsGeometry<T> & func1  = static_cast<gsGeometry<T> &>( u.function(it->first().patch) );
+      const gsGeometry<T> & func2  = static_cast<gsGeometry<T> &>( u.function(it->second().patch) );
 
 	  // get penalty parametr
 	  const T h = math::pow( (T) func1.basis().size(), -1.0 / func1.basis().dim() );
 	  const T bdeg = (T)func1.basis().degree(0);
 	  T mu = ( (bdeg+func1.basis().dim())* (bdeg+1) * 2.0 / h );
-          const T curDist = igaDGDistanceJump( mp.patch(it->ps1.patch),
-						     mp.patch(it->ps2.patch),
+      const T curDist = igaDGDistanceJump( mp.patch(it->first().patch),
+                             mp.patch(it->second().patch),
 						     func1,
 						     func2,
 						     v, v,

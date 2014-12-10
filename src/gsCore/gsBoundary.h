@@ -589,12 +589,11 @@ public:
             return getInverse().dirMap(ps);
     }
 
-public: ///todo: make them private
+private:
 
     patchSide ps1; ///< The first patch side.
     patchSide ps2; ///< The second patch side.
 
-private:
     /**
      * @brief store the combinatorial data about the interface:
      * we describe the permutation and orientation of the coordinate directions
