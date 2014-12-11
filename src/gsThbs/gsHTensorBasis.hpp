@@ -242,21 +242,19 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     gsVector<unsigned,d> k1;
     gsVector<unsigned,d> k2;
 
-    for(int i = 0; i < boxes.cols()/2; i++)
+    for(index_t i = 0; i < boxes.cols()/2; i++)
     {
-        for(int j = 0; j < k1.size();j++){
-            k1[j] = m_bases[m_bases.size()-1]->component(j).knots().Uniquefindspan(boxes(j,2*i));
-        }
-        for(int j = 0; j < k2.size();j++){
-            k2[j] = m_bases[m_bases.size()-1]->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
+        for(int j = 0; j < k1.size();j++)
+        {
+            k1[j] = m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i));
+            k2[j] = m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
         }
 
         int level = m_tree.query3(k1,k2,m_bases.size()-1);
-        for(int j = 0; j < k1.size();j++){
-            k1[j] = m_bases[level+1]->component(j).knots().Uniquefindspan(boxes(j,2*i));
-        }
-        for(int j = 0; j < k2.size();j++){
-            k2[j] = m_bases[level+1]->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
+        for(int j = 0; j < k1.size();j++)
+        {
+            k1[j] = k1[j] << 1;
+            k2[j] = k2[j] << 1;
         }
 
         insert_box(k1, k2, level+1);
