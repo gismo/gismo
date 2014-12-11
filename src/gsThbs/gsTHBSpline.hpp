@@ -37,7 +37,6 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVecto
     delete newGeo;
 }
 
-
 /// Return the list of B-spline patches to represent a THB-spline geometry
 /// \returns b1 bottom left corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
 /// \returns b2 top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
