@@ -35,7 +35,9 @@ private:
 
 public:
 
-    /// Constructor using a multipatch domain
+    /// @brief Constructor using a multipatch domain
+    /// \note Rest of the data fields should be initialized in a
+    /// derived constructor
     gsAssemblerBase(const gsMultiPatch<T> & patches) :
     m_patches(patches)
     { }
@@ -43,7 +45,7 @@ public:
     ~gsAssemblerBase()
     { }
 
-    /// Generic assembly routine for volume or boundary integrals
+    /// @brief Generic assembly routine for volume or boundary integrals
     template<class ElementVisitor>
     void apply(ElementVisitor & visitor, 
                int patchIndex = 0, 
@@ -51,8 +53,6 @@ public:
     {
         //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
 
-        gsSparseMatrix<T> & patchMatrix = m_matrix;// put as argument?
-        
         const gsBasisRefs<T> bases(m_bases, patchIndex);
         const gsDofMappers mappers(m_dofMappers);
         
@@ -78,19 +78,18 @@ public:
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor.evaluate(bases, /* *domIt,*/ *geoEval, quNodes);//
+            visitor.evaluate(bases, /* *domIt,*/ *geoEval, quNodes);
             
             // Assemble on element
             visitor.assemble(*domIt, *geoEval, quWeights);
             
-            // Push to global matrix
-            // Note: m_rhs is filled in place
-            visitor.localToGlobal(mappers, m_ddof, patchIndex, patchMatrix, m_rhs);
+            // Push to global matrix and right-hand side vector
+            visitor.localToGlobal(mappers, m_ddof, patchIndex, m_matrix, m_rhs);
         }
     }
 
 
-    /// Generic assembly routine for patch-interface integrals
+    /// @brief Generic assembly routine for patch-interface integrals
     template<class InterfaceVisitor>
     void apply(InterfaceVisitor & visitor, 
                const boundaryInterface & bi)
@@ -104,12 +103,12 @@ public:
         const int patch2      = bi[1].patch;
         const gsBasis<T> & B1 = m_bases[0][patch1];// (!) unknown 0
         const gsBasis<T> & B2 = m_bases[0][patch2];
+
         const int bSize1      = B1.numElements();
         const int bSize2      = B2.numElements();
+        const int ratio = bSize1 / bSize2;
         GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
                      "DG assumes nested interfaces.");
-        const boxSide & side1 = bi.first().side();
-        const boxSide & side2 = bi.second().side();
         
         gsQuadRule<T> QuRule;         // Reference Quadrature rule
         gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
@@ -127,18 +126,9 @@ public:
             m_patches[patch2].evaluator(evFlags));
 
         // Initialize domain element iterators
-        typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator(side1);
-        typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator(side2);
+        typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
+        typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( bi.second().side() );
         
-        //const index_t numNodes = QuRule.numNodes();
-
-        const int ratio = bSize1 / bSize2;
-    
-        // const int dir1             = direction(side1);
-        // const int dir2             = direction(side2);
-        //GISMO_ASSERT( B1.component(!dir1).size() == B2.component(!dir2).size(), 
-        //              "DG method not implemented yet for non matching interfaces");
-
         int count = 0;
         // iterate over all boundary grid cells on the "left"
         for (; domIt1->good(); domIt1->next() )
@@ -168,13 +158,13 @@ public:
 
 public:
 
-    /// Return the multipatch.
+    /// @brief Return the multipatch.
     const gsMultiPatch<T> & patches() const { return m_patches; }
 
-    /// Return the multi-basis
+    /// @brief Return the multi-basis
     const gsMultiBasis<T> & multiBasis(index_t k) const { return m_bases[k]; }
 
-    /// Return the DOF mapper for unknown \em i.
+    /// @brief Return the DOF mapper for unknown \em i.
     const gsDofMapper& dofMapper(unsigned i = 0) const     { return m_dofMappers[i]; }
 
     /// @brief Returns the left-hand global matrix
@@ -216,6 +206,7 @@ protected:
     // *** Information *** 
 
     /// number of degrees of freedom (excluding eliminated etc)
+    // to do: is this the system size instead ?
     int m_dofs;
 
 };
