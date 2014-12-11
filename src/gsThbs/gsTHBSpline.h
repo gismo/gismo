@@ -106,6 +106,9 @@ public:
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
     void convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result );
 
+    /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
+    void convertToBSpline( gsTensorBSpline<d,T>& result );
+
 private:
     ///get B-spline control points on a given box of a certain level by refining eveywhere
     void getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned l, gsTensorBSpline<2> geo) const;

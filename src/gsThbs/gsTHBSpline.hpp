@@ -37,6 +37,30 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVecto
     delete newGeo;
 }
 
+template<unsigned d, class T>
+void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
+{
+    // Construct a box covering the whole parameter domain.
+    const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
+    std::vector<unsigned> wholeDomainAsBox(2*d+1,0);
+
+    wholeDomainAsBox[0] = this->basis().tree().getMaxInsLevel();
+
+    std::copy(uCorner.data(), uCorner.data()+d, wholeDomainAsBox.begin()+d+1);
+
+    // Refine the whole domain to the finest level present there.
+    refineElements( wholeDomainAsBox );
+
+    // The & avoids copying of the basis.
+    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > &tpBasis = this->basis().tensorLevel(this->basis().tree().getMaxInsLevel());
+    // makeGeometry returns an abstract class, so we need to cast to the particular.
+    gsTensorBSpline<d,T> *newGeo = static_cast< gsTensorBSpline<d,T> *>(tpBasis.makeGeometry(this->coefs()));
+
+    result = *newGeo;
+    // Don't forget:
+    delete newGeo;
+}
+
 /// Return the list of B-spline patches to represent a THB-spline geometry
 /// \returns b1 bottom left corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
 /// \returns b2 top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
