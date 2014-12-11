@@ -101,7 +101,7 @@ public:
     gsHTensorBasis( gsBasis<T> const&  tbasis, int nlevels)
     {      
         GISMO_ASSERT( nlevels > 0, "Invalid number of levels." );
-        initialize_class(tbasis, nlevels);
+        initialize_class(tbasis);
         // Build the characteristic matrices
         update_structure();
     }
@@ -110,7 +110,7 @@ public:
                     int nlevels, std::vector<unsigned> boxes)
     {
         GISMO_ASSERT( nlevels > 0, "Invalid number of levels." );
-        initialize_class(tbasis, nlevels);
+        initialize_class(tbasis);
         gsVector<unsigned int> i1;
         gsVector<unsigned int> i2;
         i1.resize(d);
@@ -131,7 +131,6 @@ public:
 
         // Build the characteristic matrices
         update_structure();
-
     }
 
 /**
@@ -151,7 +150,7 @@ public:
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
         GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");
         GISMO_ASSERT( nlevels > 0, "Invalid number of levels." );
-        initialize_class(tbasis, nlevels);
+        initialize_class(tbasis);
         
         gsVector<unsigned int,d> k1;
         gsVector<unsigned int,d> k2;
@@ -192,15 +191,16 @@ public:
     {
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
         GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");
-        for(std::size_t i = 0; i < levels.size(); i++){// no level should me bigger then maxlevel
-            GISMO_ASSERT(levels[i]< unsigned(nlevels), "All the variables levels[i] needs to be smaller than nlevels.");
-        }
         GISMO_ASSERT(unsigned (boxes.cols()/2) <= levels.size(), "We don't have enough levels for the boxes.");
-        GISMO_ASSERT( nlevels > 0, "Invalid number of levels." );
-        initialize_class(tbasis, nlevels);
-        // Set all functions to active
+
+        initialize_class(tbasis);
+
         gsVector<unsigned,d> k1;
         gsVector<unsigned,d> k2;
+
+        const size_t mLevel = *std::max_element(levels.begin(), levels.end() );
+        if ( mLevel + 1 > m_bases.size() )
+          createMoreLevels( mLevel + 1 - m_bases.size() );
         
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
@@ -490,15 +490,18 @@ public:
   /// The number of active basis functions at points \a u
   void numActive(const gsMatrix<T> & u, gsVector<unsigned>& result) const;
 
-  /// The 1-d basis for the i-th parameter component
+  /// The 1-d basis for the i-th parameter component at the highest level
   virtual gsBSplineBasis<T,gsCompactKnotVector<T> > & component(unsigned i) const
   {
-      return m_bases[ this->get_max_inserted_level() ]->component(i);
+      return m_bases[ this->maxLevel() ]->component(i);
   }
 
   /// Returns the tensor basis member of level i 
   gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > & tensorLevel(unsigned i) const
   {
+      //GISMO_ASSERT( i < maxLevel(), "Requested tensor level does not exist, max level = "<< maxLevel() <<".\n");
+      if ( i + 1 > m_bases.size() )
+          createMoreLevels( i + 1 - m_bases.size() );
       return *this->m_bases[i];
   }
 
@@ -570,9 +573,9 @@ public:
   gsMatrix<int> getLevelAtPoint( gsMatrix<T> Pts ) const;
 
   /// Returns the level in which the indices are stored internally
-  int maxAllowdLevel() const
+  unsigned maxLevel() const
   {
-      return m_tree.getIndexLevel();
+      return m_tree.getMaxInsLevel();
   }
 
   /// Returns the level of \a function, which is a hier. Id index
@@ -823,7 +826,7 @@ private:
     void insert_box(gsVector<unsigned,d> const & k1, 
                     gsVector<unsigned,d> const & k2, int lvl);
     
-    void initialize_class(gsBasis<T> const&  tbasis, int nlevels);
+    void initialize_class(gsBasis<T> const&  tbasis);
 
     /// set all functions to active or passive- one by one
     void set_activ1(int level);

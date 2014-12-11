@@ -299,7 +299,7 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
     static const int d = Object::Dim;
     
     // Read max level
-    unsigned lvl = atoi( node->first_attribute("levels")->value() );
+    //unsigned lvl = atoi( node->first_attribute("levels")->value() );
     gsXmlNode * tmp = node->first_node("Basis");
     GISMO_ASSERT( tmp , "Expected to find a basis node.");
     
@@ -325,7 +325,7 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
             all_boxes.push_back(c);
         }
     }
-    Object * hbs = new Object(*tp, all_boxes, lvl);
+    Object * hbs = new Object(*tp, all_boxes);
     delete tp;
     return hbs;
 }
@@ -342,10 +342,8 @@ gsXmlNode * putHTensorBasisToXml ( Object const & obj, gsXmlTree & data)
     tp_node->append_attribute( makeAttribute("type",
                                              internal::gsXml<Object>::type().c_str(), data) );
 
-    tp_node->append_attribute( makeAttribute( "levels", 
-                                              to_string(obj.maxAllowdLevel()+1),
-                                              data ));
-    
+    //tp_node->append_attribute( makeAttribute( "levels",2 ,data )); // deprecated
+  
     // Write the component bases
     gsXmlNode * tmp = putTensorBasisToXml(obj.tensorLevel(0), data);
     tp_node->append_node(tmp);

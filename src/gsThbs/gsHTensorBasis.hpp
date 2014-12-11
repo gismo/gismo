@@ -419,26 +419,7 @@ void gsHTensorBasis<d,T>::insert_box(gsVector<unsigned,d> const & k1,
 
     m_tree.insertBox(k1,k2, lvl);
 
-    // updateTensorLevels();
-
-/*
-// Note: We allow insertion boxes not to be fully in the domain
-for (unsigned dim = 0; dim < d; dim++)
-{
-const gsCompactKnotVector<T>& kv =
-this->m_bases[lvl]->component(dim).knots();
-
-if (kv.uSize() <= k2(dim) || kv.uSize() <= k1(dim))
-{
-gsWarn << "You want insert a box outside the domain. "
-<< "Box [" << k1.transpose()
-<< "] x [" << k2.transpose() << "] is not inserted."
-<< std::endl;
-return;
-}
-}
-*/
-
+    updateTensorLevels();
 }
 
 template<unsigned d, class T>
@@ -461,6 +442,8 @@ void gsHTensorBasis<d,T>::makeCompressed()
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::flatTensorIndexesToHierachicalIndexes(gsSortedVector< int > & indexes,const int level) const
 {
+    GISMO_ASSERT( static_cast<size_t>(level) < m_xmatrix.size(), "Requested level does not exist.\n");
+
     CMatrix::const_iterator xmat_pointer = m_xmatrix[level].begin();
     CMatrix::const_iterator xmat_end = m_xmatrix[level].end();
     gsSortedVector< int >::iterator ind_pointer = indexes.begin();
@@ -508,6 +491,9 @@ int gsHTensorBasis<d,T>::flatTensorIndexToHierachicalIndex(unsigned index,const 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,const boxSide & s,std::vector<bool>& actives) const
 {
+    if ( level + 1 > m_bases.size() )
+        createMoreLevels( level + 1 - m_bases.size() );
+
     const gsMatrix<unsigned> * bound = m_bases[level]->boundary(s);
     const index_t sz = bound->rows();
     //gsSortedVector< int > indexes(bound->data(),bound->data()+sz);
@@ -532,7 +518,7 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateCharMatri
 {
     // Setup the characteristic matrices
     m_xmatrix.clear();
-    m_xmatrix.resize(m_tree.getMaxInsLevel()+1);
+    m_xmatrix.resize( m_bases.size() );
 
     // Compress the tree
     m_tree.makeCompressed();
@@ -555,6 +541,7 @@ template<unsigned d, class T>
 void gsHTensorBasis<d,T>::createMoreLevels(int numLevels) const
 {
     // to do: check for overflow
+    //gsDebug<<"Adding "<< numLevels<<" levels.\n";
 
     for ( int i = 0; i < numLevels; ++i )
     {
@@ -568,13 +555,15 @@ void gsHTensorBasis<d,T>::createMoreLevels(int numLevels) const
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::updateTensorLevels()
 {
+    // +1 for the initial basis in m_bases
     const int extraLevels = get_max_inserted_level() + 1 - m_bases.size();
 
-    createMoreLevels(extraLevels);
+    if ( extraLevels > 0 )
+        createMoreLevels(extraLevels);
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis, int nlevels)
+void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 {
     // Degrees
     m_deg.resize(d);
@@ -613,19 +602,17 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis, int nlevel
     for ( unsigned i = 0; i!=d; ++i )
         upp[i] = m_bases[0]->knots(i).uSize()-1;
 
-    m_tree.init(upp, nlevels-1);
+    m_tree.init(upp);
 
-// /*
-    // Produce tensor-product spaces by dyadic refinement for all levels
-    m_bases.reserve(nlevels);
-    for(unsigned int i = 1; i <=m_tree.getIndexLevel(); i++)
+    // Produce a couple of tensor-product spaces by dyadic refinement
+    m_bases.reserve(3);
+    for(unsigned int i = 1; i <= 2; i++)
     {
         gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > 
             * next_basis = m_bases[i-1]->clone();
         next_basis->uniformRefine(1);
         m_bases.push_back( next_basis );
     }
-// */
 
     undefined_value =unsigned (std::numeric_limits<int>::max());
 
@@ -774,8 +761,9 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots)
 {
     GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1"); 
 
-    GISMO_ASSERT( m_tree.getMaxInsLevel() < static_cast<unsigned>(m_bases.size()-1),
-                  "Problem with max level, increase number of levels (to do).");
+    GISMO_ASSERT( m_tree.getMaxInsLevel() < static_cast<unsigned>(m_bases.size()),
+                  "Problem with max inserted levels: "<< m_tree.getMaxInsLevel() 
+                  <<"<" << m_bases.size() <<"\n");
 
     // Delete the first level
     delete m_bases.front();
@@ -913,14 +901,16 @@ std::vector<std::vector< std::vector<unsigned int> > > gsHTensorBasis<d,T>::doma
     }
 
     res_aabb_unsigned.resize(res_aabb.size());
-    for (unsigned int i = 0; i < res_aabb.size(); i++){
+    for (unsigned int i = 0; i < res_aabb.size(); i++)
+    {
         res_aabb_unsigned[i].resize(res_aabb[i].size());
-        for (unsigned int j = 0; j < res_aabb[i].size(); j++){
+        for (unsigned int j = 0; j < res_aabb[i].size(); j++)
+        {
             res_aabb_unsigned[i][j].resize(res_aabb[i][j].size());
-            for (unsigned int k = 0; k < res_aabb[i][j].size(); k++){
-                if(res_aabb[i][j][k]<0){
-                    gsWarn << "conversion form signed to unsigned"<< std::endl;
-                }
+            for (unsigned int k = 0; k < res_aabb[i][j].size(); k++)
+            {
+                if(res_aabb[i][j][k]<0)
+                    gsWarn << "conversion form signed to unsigned\n";
                 res_aabb_unsigned[i][j][k] = res_aabb[i][j][k];
             }
         }
@@ -930,19 +920,23 @@ std::vector<std::vector< std::vector<unsigned int> > > gsHTensorBasis<d,T>::doma
 
 
 template<unsigned d, class T>
-void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >& old, gsMatrix<T>& result){
-    //gsMatrix<T> > result;
+void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >& old, gsMatrix<T>& result)
+{
+    // Note: implementation assumes old.size() + 1 m_bases exists in this basis
+    if ( old.size() + 1 > m_bases.size() )
+        createMoreLevels( old.size() + 1 - m_bases.size() );
+
     gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
-    transfer.resize(this->get_max_inserted_level() );
-    for(int i = 0; i < this->get_max_inserted_level();i++)
+    transfer.resize( m_bases.size()-1 );
+    for(size_t i = 0; i < m_bases.size()-1; i++)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
         std::vector<std::vector<T> > knots;
-        for(unsigned int dim = 0l; dim < d;dim++)
+        for(unsigned int dim = 0; dim < d; dim++)
         {
-            gsCompactKnotVector<T> & ckv = m_bases[i]->component(dim).knots();
-            gsCompactKnotVector<T> & fkv = m_bases[i + 1]->component(dim).knots();
+            const gsCompactKnotVector<T> & ckv = m_bases[i]->component(dim).knots();
+            const gsCompactKnotVector<T> & fkv = m_bases[i + 1]->component(dim).knots();
 
             std::vector<T> dirKnots;
             _differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
