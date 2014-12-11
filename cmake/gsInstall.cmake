@@ -121,12 +121,6 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig.h
         DESTINATION include/${PROJECT_NAME}/gsCore/)
 
-# move
-if(GISMO_WITH_PSOLID)
-install(FILES   ${PROJECT_SOURCE_DIR}/extensions/gsParasolid/gsReadParasolid.h
-        DESTINATION include/${PROJECT_NAME}/gsParasolid/)
-endif(GISMO_WITH_PSOLID)
-
 # Install cmake files
 install(FILES
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
