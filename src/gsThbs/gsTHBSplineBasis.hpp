@@ -562,8 +562,10 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
 {
     //identify the outer polylines- conected components
     int first_level = 0;
-    for(unsigned int i = 0; i < this->m_xmatrix.size(); i++){
-        if(this->m_xmatrix[i].size()>0){
+    for(unsigned int i = 0; i < this->m_xmatrix.size(); i++)
+    {
+        if(this->m_xmatrix[i].size()>0)
+	{
             first_level = i;
             break;
         }
@@ -847,8 +849,10 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     gsMultiPatch<T> result;
     //identify the outer polylines- conected components
     int first_level = 0;
-    for(unsigned int i = 0; i < this->m_xmatrix.size(); i++){
-        if(this->m_xmatrix[i].size()>0){
+    for(unsigned int i = 0; i < this->m_xmatrix.size(); i++)
+    {
+        if(this->m_xmatrix[i].size()>0)
+	{
             first_level = i;
             break;
         }
@@ -890,8 +894,10 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     b1.resize(boxes.size(),d);
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
-    for(std::size_t i = 0; i < boxes.size(); i++){
-        for(unsigned j = 0; j < d; j++){
+    for(std::size_t i = 0; i < boxes.size(); i++)
+    {
+        for(unsigned j = 0; j < d; j++)
+	{
             //convert from param spece to index space in highest level
             // (!) next lines: Conversion form double to int, possible loss of data
             b1(i,j) = boxes[i][j];
@@ -987,7 +993,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
 
 // convert the coefficient matrix mat in the given direction to a column of the control points matrix
 template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const{
+void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const
+{
     GISMO_ASSERT((mat.cols()*mat.rows() == cp.rows()), "Wrong matrix dimension.");
     int counter = 0;
     for(int j = 0; j < mat.rows(); j++){
@@ -1025,10 +1032,12 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs,
         k2 = this->m_bases[l-1]->component(1).knots();
         std::vector<T> knots_x;
         std::vector<T> knots_y;
-        for(unsigned int i = 1; i < this->m_bases[l]->component(0).knots().unique().size(); i = i+2){
+        for(unsigned int i = 1; i < this->m_bases[l]->component(0).knots().unique().size(); i = i+2)
+	{
             knots_x.push_back(this->m_bases[l]->component(0).knots().unique()[i]);
         }
-        for(unsigned int i = 1; i < this->m_bases[l]->component(1).knots().unique().size(); i = i+2){
+        for(unsigned int i = 1; i < this->m_bases[l]->component(1).knots().unique().size(); i = i+2)
+	{
             knots_y.push_back(this->m_bases[l]->component(1).knots().unique()[i]);
         }
 
@@ -1039,10 +1048,13 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs,
         coeffs.transposeInPlace();
 
         //overwrite the whole matrix
-        for(int j = 0; j < coeffs.rows(); j++){
-            for(int k = 0; k < coeffs.cols(); k++){
+        for(int j = 0; j < coeffs.rows(); j++)
+	{
+            for(int k = 0; k < coeffs.cols(); k++)
+	    {
                 unsigned s  = this->m_bases[l]->index(k,j);
-                if(this->m_xmatrix[l].bContains(s) ){
+                if(this->m_xmatrix[l].bContains(s) )
+		{
                     coeffs(j,k) = m_cmatrix[l].find( s )->second;
                 }
             }
@@ -1216,7 +1228,8 @@ void gsTHBSplineBasis<d,T>::update_cmatrix(std::vector< std::map<unsigned,T> > &
     m_cmatrix.clear();
     //initializing coefficient matrices to 0 for all active basis
     //functions
-    for(size_t i = 0; i < this->m_xmatrix.size();i++){
+    for(size_t i = 0; i < this->m_xmatrix.size();i++)
+    {
         m_cmatrix.push_back( std::map< unsigned, T>());
         for(typename CMatrix::const_iterator it = this->m_xmatrix[i].begin(); 
             it != this->m_xmatrix[i].end(); it++)
@@ -1280,10 +1293,12 @@ template<unsigned d, class T>
 gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer){
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
-    for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis
+    for(unsigned int i =0; i< old.size();i++)
+    {//count the number of basis functions in old basis
         size1 += old[i].size();
     }
-    for(unsigned int i =0; i< n.size();i++){//count the number of basis functions in new basis
+    for(unsigned int i =0; i< n.size();i++)
+    {//count the number of basis functions in new basis
         size2 += n[i].size();
     }
     gsMatrix<T> result(size2,size1);
@@ -1346,10 +1361,12 @@ template<unsigned d, class T>
 gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer){
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
-    for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis
+    for(unsigned int i =0; i< old.size();i++)
+    {//count the number of basis functions in old basis
         size1 += old[i].size();
     }
-    for(unsigned int i =0; i< n.size();i++){//count the number of basis functions in new basis
+    for(unsigned int i =0; i< n.size();i++)
+    {//count the number of basis functions in new basis
         size2 += n[i].size();
     }
     gsMatrix<T> result(size2,size1);
@@ -1364,7 +1381,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
 //    }
     std::vector<gsSparseMatrix<T,ColMajor> > temptransfer;// = transfer;
     temptransfer.resize(transfer.size());
-    for (unsigned int i = 0; i < transfer.size();i++){
+    for (unsigned int i = 0; i < transfer.size();i++)
+    {
         temptransfer[i] = transfer[i];
     }
 
@@ -1481,7 +1499,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                         }else
                         {
                             //TODO test if level would not be higher than the q4 for this function- or max inserted level
-                            if(p){
+                            if(p)
+			    {
                                 if( coeffs[0].lvl + 1< max_lvl)
                                 {
                                     temp.pos = k.row();
@@ -1513,7 +1532,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                 temp.coef = 1;
                 temp.lvl = i;
                 coeffs.push_back(temp);
-                while(!coeffs.empty()){
+                while(!coeffs.empty())
+		{
                     start_lv_i = 0;
                     for(unsigned int l =0; l < coeffs[0].lvl; l++)
                     {
@@ -1586,7 +1606,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                                     coeffs.push_back(temp);
                                 }
                             }
-                        }else{
+                        }else
+			{
                             if(p)
                             {
                                 if(coeffs[0].lvl < max_lvl-1)
