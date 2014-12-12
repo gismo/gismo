@@ -59,6 +59,8 @@ struct boundary
                   southwest      = 1, southeast      = 2, northwest      = 3, northeast      = 4 };
 };
 
+struct boxCorner;
+
 
 /**
  * Struct side represent a side of a box
@@ -118,6 +120,14 @@ public:
      *  direction \a dir and parameter \a par
     **/
     static inline int index (index_t dir, bool par) {return par?2*dir+2:2*dir+1;}
+
+
+    /**
+     * @brief returns the vector of the corners contained in the side
+     * @param dim is the ambient dimension
+     * @param corners
+     */
+    void getContainedCorners (int dim, std::vector<boxCorner> &corners) const;
 
     /**
      * @brief helper for iterating on sides of an n-dimensional box
@@ -736,7 +746,6 @@ gsMatrix<T> getFace (const boxSide side, const gsMatrix<T> &box)
         temp(dir,1)=box(dir,0);
     return temp;
 }
-
 
 
 } // namespace gismo
