@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsAffineFunction.h>
 
 namespace gismo
 {

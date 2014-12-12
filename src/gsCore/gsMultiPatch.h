@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBoxTopology.h>
+#include <gsCore/gsAffineFunction.h>
 
 namespace gismo
 {
