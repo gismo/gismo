@@ -129,6 +129,6 @@ private:
 
 } // namespace gismo
 
-#ifndef GISMO_HEADERS_ONLY
+#ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsHBSplineBasis.hpp)
 #endif

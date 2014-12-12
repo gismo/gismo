@@ -313,8 +313,8 @@ if(MSVC)
 endif(MSVC)
 
 # Do not re-compile G+Smo in this unit
-if ( NOT GISMO_HEADERS_ONLY)
-   add_definitions(-DGISMO_HEADERS_ONLY)
+if ( NOT GISMO_BUILD_LIB)
+   add_definitions(-DGISMO_BUILD_LIB)
 endif()
 
 IF(BUILD_STATIC_LIBS)

@@ -306,7 +306,7 @@ Object * getById(gsXmlNode * node, const int & id)
 
 }// end namespace gismo
 
-#ifndef GISMO_HEADERS_ONLY
+#ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsXmlUtils.hpp)
 #include GISMO_HPP_HEADER(gsXmlUtils.cpp)
 #endif

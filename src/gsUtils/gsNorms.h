@@ -256,7 +256,7 @@ T igaFieldDGDistance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
 
 
 
-#ifndef GISMO_HEADERS_ONLY
+#ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsNorms.hpp)
 #endif
 

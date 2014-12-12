@@ -1093,6 +1093,6 @@ gsMatrix<unsigned> gsCompactKnotVector<T>::supportIndex(const size_t& i) const
 
 
 
-#ifndef GISMO_HEADERS_ONLY
+#ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsCompactKnotVector.hpp)
 #endif

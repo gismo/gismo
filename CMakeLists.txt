@@ -53,7 +53,7 @@ include( gsConfig )
 ## #################################################################
 
 if(GISMO_BUILD_SHARED_LIB OR GISMO_BUILD_STATIC_LIB )
-set (GISMO_HEADERS_ONLY ON)
+set (GISMO_BUILD_LIB ON)
 #rename to GISMO_BUILD_LIB
 endif(GISMO_BUILD_SHARED_LIB  OR GISMO_BUILD_STATIC_LIB)
 

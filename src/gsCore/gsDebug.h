@@ -60,7 +60,7 @@
 /** 
  *  Used for optional inclusion of .hpp header files in the .h files.
  *  Allows to drop dependencies on the .hpp files when using
- *  GISMO_HEADERS_ONLY for compiling a library instance.  
+ *  GISMO_BUILD_LIB for compiling a library instance.  
  *  When compiling as a pure template library CMake will detect
  *  dependency on .hpp files.
  */

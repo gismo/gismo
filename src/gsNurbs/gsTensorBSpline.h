@@ -421,6 +421,6 @@ gsTensorBSpline<d,T,KnotVectorType>::gsTensorBSpline(gsMatrix<T> const & corner,
 //////////////////////////////////////////////////
 //////////////////////////////////////////////////
 
-#ifndef GISMO_HEADERS_ONLY
+#ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSpline.hpp)
 #endif

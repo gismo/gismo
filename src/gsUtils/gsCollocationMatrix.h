@@ -32,6 +32,6 @@ gsSparseMatrix<T> * gsCollocationMatrix (gsBasis<T> const& basis, gsMatrix<T> co
 } // namespace gismo
 
 
-#ifndef GISMO_HEADERS_ONLY
+#ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsCollocationMatrix.hpp)
 #endif

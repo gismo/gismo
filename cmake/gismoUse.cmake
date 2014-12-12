@@ -21,7 +21,7 @@ macro(add_gismo_pure_executable FILE)
     # Allow CMake to follow dependencies on hpp files
     set_property( TARGET ${FNAME} PROPERTY 
     IMPLICIT_DEPENDS_INCLUDE_TRANSFORM "GISMO_HPP_HEADER(%)=\"%\"")
-    SET_TARGET_PROPERTIES(${FNAME} PROPERTIES COMPILE_FLAGS -UGISMO_HEADERS_ONLY)
+    SET_TARGET_PROPERTIES(${FNAME} PROPERTIES COMPILE_FLAGS -UGISMO_BUILD_LIB)
     target_link_libraries(${FNAME} ${gismo_EXTENSIONS})
 endmacro(add_gismo_pure_executable)
 

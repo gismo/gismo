@@ -43,7 +43,7 @@
 
 
 /* Determine if only header files should be used. */
-#cmakedefine GISMO_HEADERS_ONLY
+#cmakedefine GISMO_BUILD_LIB
 
 /* Determine wheather gismo warnings (eg. deprecated) should be emitted. */
 #cmakedefine GISMO_WARNINGS

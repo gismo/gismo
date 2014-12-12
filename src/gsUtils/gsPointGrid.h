@@ -80,6 +80,6 @@ void uniformIntervals(const gsVector<T>& lower, const gsVector<T>& upper,
 } // namespace gismo
 
 
-#ifndef GISMO_HEADERS_ONLY
+#ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsPointGrid.hpp)
 #endif

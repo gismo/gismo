@@ -124,6 +124,6 @@ void gsPeriodicRule (unsigned const& n, gsVector<T>& x, gsVector<T>& w,
 } // namespace gismo
 
 
-#ifndef GISMO_HEADERS_ONLY
+#ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsQuadrature.hpp)
 #endif
