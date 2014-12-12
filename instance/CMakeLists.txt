@@ -19,35 +19,19 @@ aux_generate_instance( ${CMAKE_CURRENT_SOURCE_DIR})
 ## Add library targets
 ## #################################################################
 
-#TO DO: The signature
-#
-#    add_library(<name> OBJECT <src>...)
-#
-#  creates a special "object library" target.  An object library compiles
-#  source files but does not archive or link their object files into a
-#  library.  Instead other targets created by add_library or
-#  add_executable may reference the objects using an expression of the
-#  form $<TARGET_OBJECTS:objlib> as a source, where "objlib" is the
-#  object library name.  For example:
-#
-#    add_library(... $<TARGET_OBJECTS:objlib> ...)
-#    add_executable(... $<TARGET_OBJECTS:objlib> ...)
-#
-#  will include objlib's object files in a library and an executable
-#  along with those compiled from their own sources.  Object libraries
-#  may contain only sources (and headers) that compile to object files.
-#  They may contain custom commands generating such sources, but not
-#  PRE_BUILD, PRE_LINK, or POST_BUILD commands.  Object libraries cannot
-#  be imported, exported, installed, or linked.
-
+#message("Using ${gismo_SOURCES}")
+#message("Using ${gismo_HEADERS}")
+#message("Using ${gismo_TMPL_HEADERS}")
+#message("Using ${gismo_EXTENSIONS}")
 
 if(GISMO_BUILD_SHARED_LIB)
 
- add_library(gismo SHARED
+  add_library(gismo SHARED 
   ${gismo_SOURCES}
   ${INSTANCE_SOURCES}
   ${gismo_HEADERS}
-  ${gismo_TMPL_HEADERS}
+  #${gismo_TMPL_HEADERS}
+  ${gismo_EXTENSIONS}
  )
 
   set_target_properties(gismo PROPERTIES 
@@ -55,7 +39,9 @@ if(GISMO_BUILD_SHARED_LIB)
   COMPILE_DEFINITIONS GISMO_BUILD_SHARED_LIB # Used for DLL exporting on windows
 )
 
-  target_link_libraries(gismo ${gismo_EXTENSIONS})
+  if (GISMO_WITH_PSOLID)
+    target_link_libraries(gismo ${PARASOLID_LIBRARY})
+  endif()
 
   IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
     TARGET_LINK_LIBRARIES(gismo ${DBGHELP_LIBRARY}) 	
