@@ -116,13 +116,13 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
     // Ensure that the box is within the valid limits
     if ( ( iBox.first.array() >= m_upperIndex.array() ).any() )
     {
-        //gsWarn<<" Invalid box coordinate "<<  iBox.first.transpose() <<"\n";
+        gsWarn<<" Invalid box coordinate "<<  k1.transpose() <<" at level" <<lvl<<".\n";
         return;
     }
     
     // Initialize stack
     std::stack<node*> stack;
-    stack.push(_node); 
+    stack.push(_node); //start from root
     
     node * curNode;
     while ( ! stack.empty() )
@@ -194,6 +194,76 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
     // Update maximum inserted level
     if ( static_cast<unsigned>(lvl) > m_maxInsLevel)
         m_maxInsLevel = lvl;
+}
+
+template<unsigned d, class T > void
+gsHDomain<d,T>::sinkBox ( point const & k1, 
+                          point const & k2, int lvl)
+{
+    GISMO_ENSURE( m_maxInsLevel+1 <= static_cast<int>(m_indexLevel), 
+                  "Max index level might be reached..");
+
+    // Make a box
+    box iBox(k1,k2);
+    if( isDegenerate(iBox) )
+        return;
+
+    // Represent box in the index level
+    local2globalIndex( iBox.first , static_cast<unsigned>(lvl), iBox.first );
+    local2globalIndex( iBox.second, static_cast<unsigned>(lvl), iBox.second);
+
+    // Ensure that the box is within the valid limits
+    if ( ( iBox.first.array() >= m_upperIndex.array() ).any() )
+    {
+        //gsWarn<<" Invalid box coordinate "<<  k1.transpose() <<" at level" <<lvl<<".\n";
+        return;
+    }
+    
+    // Initialize stack
+    std::stack<node*> stack;
+    stack.push(m_root); 
+    
+    node * curNode;
+    while ( ! stack.empty() )
+    {
+        curNode = stack.top();
+        stack.pop();
+
+        if ( curNode->isLeaf() ) // reached a leaf
+        {
+            // Since we reached a leaf, it should overlap with iBox.
+            // Split the leaf (if possible)
+            node * newLeaf = curNode->adaptiveAlignedSplit(iBox, m_indexLevel);
+            
+            // If curNode is still a leaf, its domain is almost
+            // contained in iBox
+            if ( !newLeaf ) //  implies curNode->isLeaf()
+            {
+                // Increase level
+                if ( ++curNode->level > m_maxInsLevel)
+                    m_maxInsLevel = curNode->level;
+            }
+            else // treat new child
+            {
+                stack.push(newLeaf);
+            }
+        }
+        else // walk down the tree
+        {
+            if ( iBox.second[curNode->axis] <= curNode->pos)
+                // iBox overlaps only left child of this split-node
+                stack.push(curNode->left);
+            else if  ( iBox.first[curNode->axis] >= curNode->pos)
+                // iBox overlaps only right child of this split-node
+                stack.push(curNode->right);
+            else
+            {   
+                // iBox overlaps both children of this split-node 
+                stack.push(curNode->left );
+                stack.push(curNode->right);
+            }
+        }
+    }
 }
 
 template<unsigned d, class T > void
