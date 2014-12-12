@@ -18,7 +18,7 @@ public:
                     gsQuadRule<T>    & rule, 
                     unsigned         & evFlags )
     {
-        const int dir = direction(side);
+        const int dir = side.direction();
         gsVector<int> numQuadNodes ( basis.dim() );
         for (int i = 0; i < basis.dim(); ++i)
             numQuadNodes[i] = basis.degree(i) + 1;

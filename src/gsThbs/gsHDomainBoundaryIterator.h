@@ -68,8 +68,8 @@ public:
         m_quadrature.setNodes( gsVector<int>::Ones(d) );
 
         // Get the side information
-        par = parameter(s);
-        dir = direction(s);
+        par = s.parameter();
+        dir = s.direction();
 
         initLeaf(hbs.tree());
     }

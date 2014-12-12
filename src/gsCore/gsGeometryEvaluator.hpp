@@ -70,7 +70,7 @@ struct gsGeoTransform
         // Assumes codim = 0 or 1
 
         const T   sgn = sideOrientation(s); // (!) * m_jacSign;
-        const int dir = direction(s);
+        const int dir = s.direction();
 
         result.resize(GeoDim);
 
@@ -162,7 +162,7 @@ struct gsGeoTransform<T,ParDim,ParDim>
         // Assumes codim = 0 or 1
 
         const T   sgn = sideOrientation(s); // (!) * m_jacSign;
-        const int dir = direction(s);
+        const int dir = s.direction();
 
         result.resize(ParDim);
 

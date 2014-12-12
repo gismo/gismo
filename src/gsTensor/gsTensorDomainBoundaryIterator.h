@@ -30,8 +30,8 @@ public:
           upper ( gsVector<T, D>::Zero(d) )
     {
         center =  gsVector<T, D>::Zero(d);
-        par= parameter(s);
-        dir = direction(s);
+        par= s.parameter();
+        dir = s.direction();
         meshBegin.resize(d);
         meshEnd.resize(d);
         curElement.resize(d);

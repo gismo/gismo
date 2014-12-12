@@ -530,7 +530,7 @@ public:
         GISMO_ASSERT(this->m_flags & NEED_JACOBIAN, "Jacobians not computed");
 
         const T   sgn = sideOrientation(s) * m_orientation;
-        const int dir = direction(s);
+        const int dir = s.direction();
 
         // assumes points u on boundary "s"
         //GISMO_ASSERT( ParDim == GeoDim, "Codim different than one");

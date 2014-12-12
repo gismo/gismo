@@ -95,7 +95,7 @@ void gsL2ProjectOnBoundary(const gsBasis<T> & basis,
                            bool getGlobalData = false);
 
 
-};// namespace gismo
+}// namespace gismo
 
 
 #ifndef GISMO_HEADERS_ONLY

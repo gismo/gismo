@@ -110,6 +110,13 @@ public:
     bool    parameter () const {return (m_index-1)%2 != 0;}
 
     /**
+     * @brief returns the parallel opposite side
+     * @return
+     */
+    boxSide opposite() const {return boxSide(((m_index-1)^1)+1);}
+
+
+    /**
      *  \brief Returns the index of the box side
     **/
     int    index () const {return m_index;}
@@ -661,9 +668,8 @@ inline int sideOrientation(int s)
 /// Since the side with index \em 3 corresponds to "south", i.e. to \f$ \{ (u,v):\ v = 0 \} \f$,
 /// calling parameter(3) will return <em>1</em>, because \em v (i.e., parameter direction with index \em 1) is fixed/set to zero.\n
 ///
-// use boxSide struct instead of enumerated values
-//GS_DEPRECATED
-inline int direction (int s)
+/// use boxSide struct instead of enumerated values
+GISMO_DEPRECATED inline int direction (int s)
 {
     GISMO_ASSERT( s>0, "Requested direction of none boundary.\n");
     return (s-1) / 2 ;
@@ -683,9 +689,8 @@ inline int direction (int s)
 /// Since the side with index \em 3 corresponds to "south", i.e. to \f$ \{ (u,v):\ v = 0 \} \f$,
 /// calling parameter(3) will return <em>0=false</em>.
 ///
-// use boxSide struct instead of enumerated values
-// GS_DEPRECATED
-inline bool parameter (int s)
+/// use boxSide struct instead of enumerated values
+GISMO_DEPRECATED inline bool parameter (int s)
 {
     GISMO_ASSERT( s>0, "Requested parameter of none boundary.\n");
     return ( (s+1) % 2 == 0 ? false : true ) ;

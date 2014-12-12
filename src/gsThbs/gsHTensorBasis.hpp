@@ -696,8 +696,8 @@ template<unsigned d, class T>
 gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary(boxSide const & s ) const
 { 
     //get information on the side
-    int k   = direction(s);
-    int par = parameter(s);
+    int k   = s.direction();
+    int par = s.parameter();
     
     std::vector<unsigned> temp;
     gsVector<unsigned,d>  ind;

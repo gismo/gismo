@@ -365,17 +365,17 @@ gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary() const
 
        return res;
     */
-};
+}
 
 
 template<unsigned d, class Basis_t >
 gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary(boxSide const& s) const
 {
     //get m_bases index and start or end case
-    int k = direction(s);
-    int r = parameter(s);
+    int k = s.direction();
+    int r = s.parameter();
     return this->slice(k, (r ? size(k) - 1 : 0) ).release();
-};
+}
 
 template <unsigned d, class BB, class B>
 struct MakeBoundaryBasis
@@ -400,7 +400,7 @@ template<unsigned d, class Basis_t >
 typename gsTensorBasis<d,Basis_t>::BoundaryBasisType * 
 gsTensorBasis<d,Basis_t>::boundaryBasis(boxSide const& s) const
 {   
-    unsigned dir = direction( s );
+    unsigned dir = s.direction( );
 
     std::vector<Basis_t*> rr;
     rr.reserve( d - 1 );

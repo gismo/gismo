@@ -281,8 +281,8 @@ void gsPdeAssembler<T>::computeDirichletDofs(dirichlet::strategy dirStrategy)
                 }
 
                 // Get the side information
-                int dir = direction( it->side() );
-                index_t param = (parameter( it->side() ) ? 1 : 0);
+                int dir = it->side().direction();
+                index_t param = ( it->side().parameter() ? 1 : 0);
 
                 // Compute grid of points on the face ("face anchors")
                 std::vector< gsVector<T> > rr;
@@ -346,8 +346,8 @@ void gsPdeAssembler<T>::computeDirichletDofs(dirichlet::strategy dirStrategy)
                         continue;
                     }
                     // Get the side information
-                    int dir = direction( it->side() );
-                    index_t param = (parameter( it->side() ) ? 1 : 0);
+                    int dir =  it->side().direction();
+                    index_t param = ( it->side().parameter() ? 1 : 0);
 
                     // Compute grid of points on the face ("face anchors")
                     std::vector< gsVector<T> > rr;
@@ -444,7 +444,7 @@ gsPdeAssembler<T>::boundaryNeumann( std::vector< gsBasis<T> *>  const & B,
         //gsVector<index_t>;
         // Quadrature for boundary integral: we fix coordinates for
         // direction = dir to be the fixed coordinate on the edge/face
-        gsVector<int> bd_intNodes = gsAssemblerUtils<T>::getNumIntNodesForSide( *B[comp], direction(s) );
+        gsVector<int> bd_intNodes = gsAssemblerUtils<T>::getNumIntNodesForSide( *B[comp], s.direction() );
 
         std::auto_ptr< gsGeometryEvaluator<T> > geoEval ( m_patches.patch(patchIndex).evaluator(NEED_VALUE |NEED_JACOBIAN) );
 
@@ -567,7 +567,7 @@ gsPdeAssembler<T>::boundaryNitsche( std::vector< gsBasis<T> *>  const & B,
 
         // Quadrature for boundary integral: we fix coordinates for
         // direction = dir to be the fixed coordinate on the edge/face
-        gsVector<int> bd_intNodes = gsAssemblerUtils<T>::getNumIntNodesForSide( *B[comp], direction(s) );
+        gsVector<int> bd_intNodes = gsAssemblerUtils<T>::getNumIntNodesForSide( *B[comp], s.direction() );
         std::auto_ptr< gsGeometryEvaluator<T> >
             geoEval ( m_patches.patch(patchIndex).evaluator(NEED_VALUE |
                                     NEED_JACOBIAN | NEED_GRAD_TRANSFORM) );

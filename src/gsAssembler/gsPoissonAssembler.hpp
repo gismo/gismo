@@ -199,8 +199,8 @@ void gsPoissonAssembler<T>::computeDirichletDofs()
         }
 
         // Get the side information
-        int dir = direction( it->side() );
-        index_t param = (parameter( it->side() ) ? 1 : 0);
+        int dir = it->side().direction( );
+        index_t param = (it->side().parameter() ? 1 : 0);
 
         // Compute grid of points on the face ("face anchors")
         std::vector< gsVector<T> > rr;
@@ -288,7 +288,7 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
         gsVector<index_t> numQuNodes( basis.dim() );
         for( int i=0; i < basis.dim(); i++)
             numQuNodes[i] = (basis.degree(i)+1);
-        numQuNodes[ direction( iter->side() )] = 1;
+        numQuNodes[ iter->side().direction()] = 1;
 
         gsGaussRule<T> QuRule(numQuNodes);
 

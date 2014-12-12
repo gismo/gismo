@@ -21,7 +21,7 @@ public:
         )
     {
         d = basis1.dim();
-        const int dir = direction(side1);
+        const int dir = side1.direction();
         gsVector<int> numQuadNodes ( d );
         for (int i = 0; i < basis1.dim(); ++i)
             numQuadNodes[i] = basis1.degree(i) + 1;

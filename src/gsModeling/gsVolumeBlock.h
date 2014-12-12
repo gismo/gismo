@@ -330,7 +330,7 @@ public:
             // this variable is true if we must turn around a curve loop in
             // this side
             bool turnAround = turnCurveLoopAround(side);
-            T fixedConstant = parameter(side) ? 1.0 : 0.0;
+            T fixedConstant = side.parameter() ? 1.0 : 0.0;
 
             // fixed - index of coordinate where parameter for this side has
             //         fixedConstant value
@@ -338,7 +338,7 @@ public:
             //         its range
             // second - index of cooridnate where first curve in hexahedron is
             //         constant
-            int fixed = direction(side);
+            int fixed = side.direction();
             int first = (fixed == 0) ? 1 : 0;
             int second = (fixed == 2) ? 1 : 2;
 

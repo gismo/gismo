@@ -51,7 +51,7 @@ gsGeometry<T> * gsInterpolate( const gsBasis<T>& g, const gsFunction<T>& f )
 
 
 template <class T>
-void gsL2ProjectOnBoundary( const gsBasis<T> & basis,
+GISMO_DEPRECATED void gsL2ProjectOnBoundary( const gsBasis<T> & basis,
                            const gsFunction<T> & f,
                            const gsGeometry<T> & geo,
                            const gsVector<int> & Sides,
@@ -147,7 +147,7 @@ void gsL2ProjectOnBoundary( const gsBasis<T> & basis,
         gsVector<int> numIntNodes( basis.dim() );
         for (int i = 0; i < basis.dim(); ++i)
             numIntNodes[i] = basis.degree(i) + 1;
-        int dir = direction(side);
+        int dir = boxSide(side).direction();
         numIntNodes[dir] = 1;
         bdIt->computeQuadratureRule(numIntNodes);
 
