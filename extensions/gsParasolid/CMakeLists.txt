@@ -21,15 +21,13 @@ include_directories(${PARASOLID_INCLUDE_DIR})
 add_definitions(-DGISMO_P_SCHEMA="${PARASOLID_INCLUDE_DIR}/schema")
 
 # Compile statically the extension
-add_library(${PROJECT_NAME} STATIC 
+add_library(${PROJECT_NAME} OBJECT
 ${${PROJECT_NAME}_SOURCES}
 ${${PROJECT_NAME}_HEADERS}
 ${${PROJECT_NAME}_HPPFILES}
 )
 
-target_link_libraries(${PROJECT_NAME} ${PARASOLID_LIBRARY})
-
-set(gismo_EXTENSIONS ${gismo_EXTENSIONS} gsParasolidExtension
+set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:gsParasolidExtension>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
 
 IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
