@@ -79,6 +79,7 @@ option(GISMO_WITH_MPFR           "With MPFR"              false  )
 option(GISMO_WITH_ONURBS         "With OpenNurbs"         false  )
 option(GISMO_WITH_IPOPT          "With IpOpt"             false  )
 option(GISMO_BUILD_CPP11         "Compile using C++11 flags" false)
+option(GISMO_WARNINGS            "Enable G+Smo related warnings" false  )
 
 message ("Configuration:")
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")

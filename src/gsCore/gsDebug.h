@@ -305,16 +305,18 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
      GISMO_PREDICATE_SAME_MATRIX_SIZE(TYPE0,TYPE1),\
     YOU_MIXED_MATRICES_OF_DIFFERENT_SIZES)
 
-
-#ifdef __GNUC__
-#define GISMO_DEPRECATED __attribute__((deprecated))
-#elif defined(_MSC_VER)
-#define GISMO_DEPRECATED __declspec(deprecated)
+#ifdef GISMO_WARNINGS
+    //#pragma message("G+Smo Warnings ON")
+  #ifdef __GNUC__
+    #define GISMO_DEPRECATED __attribute__((deprecated))
+  #elif defined(_MSC_VER)
+    #define GISMO_DEPRECATED __declspec(deprecated)
+  #else
+    #define GISMO_DEPRECATED
+  #endif
 #else
-//#pragma message("WARNING: you will not be warned about deprecated functions with this compiler")
-#define GISMO_DEPRECATED
+  #define GISMO_DEPRECATED
 #endif
-
 
 
 // Next line closes the DEBUG_GROUP of Doxygen
