@@ -56,7 +56,7 @@ public:
     inline std::size_t size () const 
     { return m_refs.size(); }
 
-    /// Return the parametric dimension of the bases (assumed to be the same
+    /// Return the parametric dimension of the bases (assumed to be the same for all the bases)
     inline int dim() const { return m_refs.front()->dim();}
 
 private:
