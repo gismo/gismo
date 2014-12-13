@@ -1,3 +1,10 @@
+######################################################################
+## CMakeLists.txt ---
+## This file is part of the G+Smo library. 
+##
+## Author: Angelos Mantzaflaris 
+## Copyright (C) 2012 - 2015 RICAM-Linz.
+######################################################################
 
 #macro to add an executable
 macro(add_gismo_executable FILE)
@@ -123,3 +130,8 @@ macro(aux_generate_instance DIR)
   endforeach(file ${IFILES})
 
 endmacro(aux_generate_instance)
+
+#macro for collecting instance files
+macro(aux_instance_directory DIR VAR)
+	FILE(GLOB ${ARGV1} ${DIR}/*_.cpp)
+endmacro(aux_instance_directory)

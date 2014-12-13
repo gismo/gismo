@@ -54,7 +54,6 @@ include( gsConfig )
 
 if(GISMO_BUILD_SHARED_LIB OR GISMO_BUILD_STATIC_LIB )
 set (GISMO_BUILD_LIB ON)
-#rename to GISMO_BUILD_LIB
 endif(GISMO_BUILD_SHARED_LIB  OR GISMO_BUILD_STATIC_LIB)
 
 #index type
@@ -86,38 +85,30 @@ include_directories(${PROJECT_BINARY_DIR})
 ## #################################################################
 
 # Clean previously set variables in the cache
-set (${PROJECT_NAME}_HEADERS ""
-     CACHE INTERNAL "${PROJECT_NAME} header files")
-set (${PROJECT_NAME}_SOURCES ""	     
-     CACHE INTERNAL "${PROJECT_NAME} source files")
-set (${PROJECT_NAME}_TMPL_HEADERS ""
-     CACHE INTERNAL "${PROJECT_NAME} template header files")
 set (${PROJECT_NAME}_EXTENSIONS ""
      CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
-set (INSTANCE_SOURCES ""
-     CACHE INTERNAL "${PROJECT_NAME} instance files to be compiled")
-
+set (${PROJECT_NAME}_MODULES ""
+     CACHE INTERNAL "G+Smo modules")
 set (${PROJECT_NAME}_examples ""
      CACHE INTERNAL "${PROJECT_NAME} list of examples")
-set (${PROJECT_NAME}_tests ""
-     CACHE INTERNAL "${PROJECT_NAME} list of tests")
 set (${PROJECT_NAME}_optionals ""
      CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src;${PROJECT_SOURCE_DIR}/external;${PROJECT_SOURCE_DIR}/extensions"
+     CACHE INTERNAL "${PROJECT_NAME} include directories")
+
 # Add main sources directory
 add_subdirectory(src)
-include_directories(${PROJECT_SOURCE_DIR}/src)
 
 # Add externals directory
 add_subdirectory(external)
-include_directories(${PROJECT_SOURCE_DIR}/external)
 
+# Inclusion paths
+include_directories(${GISMO_INCLUDE_DIRS})
 
 ## #################################################################
 ## Extensions
 ## #################################################################
-
-include_directories(${PROJECT_SOURCE_DIR}/extensions)
 
 if(GISMO_WITH_MPFR)
   add_definitions(-DGISMO_WITH_MPFR="${GISMO_WITH_MPFR}")
@@ -195,7 +186,7 @@ endif(GISMO_WITH_IPOPT)
 ## Build gismo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################
 
-if(GISMO_BUILD_SHARED_LIB OR GISMO_BUILD_STATIC_LIB )
+if(GISMO_BUILD_LIB)
   add_subdirectory(instance)
 #else()
 #  add_custom_target( gismo SOURCES ${gismo_HEADERS} )

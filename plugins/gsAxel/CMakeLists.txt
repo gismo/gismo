@@ -137,11 +137,7 @@ target_link_libraries(${PROJECT_NAME}
   axlCore
   axlGui)
 
-if( GISMO_BUILD_STATIC_LIB )
   target_link_libraries(${PROJECT_NAME} gismo_static)
-elseif( GISMO_BUILD_SHARED_LIB )
-  target_link_libraries(${PROJECT_NAME} gismo)
-endif(GISMO_BUILD_STATIC_LIB )
 
 get_property(gsAxelPlugin_location TARGET ${PROJECT_NAME} PROPERTY LOCATION)
 ADD_CUSTOM_COMMAND(
