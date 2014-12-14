@@ -85,14 +85,12 @@ include_directories(${PROJECT_BINARY_DIR})
 ## #################################################################
 
 # Clean previously set variables in the cache
-set (${PROJECT_NAME}_EXTENSIONS ""
-     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
-set (${PROJECT_NAME}_MODULES ""
-     CACHE INTERNAL "G+Smo modules")
-set (${PROJECT_NAME}_examples ""
-     CACHE INTERNAL "${PROJECT_NAME} list of examples")
-set (${PROJECT_NAME}_optionals ""
-     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
+unset(gismo_HEADERS    CACHE)
+unset(gismo_SOURCES    CACHE)
+unset(gismo_EXTENSIONS CACHE)
+unset(gismo_MODULES    CACHE)
+unset(gismo_examples   CACHE)
+unset(gismo_optionals  CACHE)
 
 set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src;${PROJECT_SOURCE_DIR}/external;${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories")

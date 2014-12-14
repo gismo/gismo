@@ -6,6 +6,8 @@
 ## Copyright (C) 2012 - 2015 RICAM-Linz.
 ######################################################################
 
+#include (GenerateExportHeader)
+
 ## #################################################################
 ## Collect sources
 ## #################################################################
@@ -21,17 +23,30 @@ aux_generate_instance( ${CMAKE_CURRENT_SOURCE_DIR})
 
 #message("Using ${gismo_EXTENSIONS}")
 #message("Using ${gismo_MODULES}")
+#message("Using ${gismo_SOURCES}")
 
 if(GISMO_BUILD_LIB)
 
+#add_library(gismo ${LIB_TYPE}
+#           ${gismo_MODULES}
+#           ${gismo_EXTENSIONS}
+#           GENERATE_EXPORT_HEADER( gismo
+#           BASE_NAME gismo
+#           EXPORT_MACRO_NAME gismo_EXPORT
+#           EXPORT_FILE_NAME gsExport.h
+#           STATIC_DEFINE GISMO_BUILT_AS_STATIC
+#	   )
+
   add_library(gismo SHARED
-    ${gismo_MODULES}
+    #${gismo_MODULES}
+    ${gismo_SOURCES}
     ${gismo_EXTENSIONS}
     )
 
   set_target_properties(gismo PROPERTIES 
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/gismo.h" 
-  COMPILE_DEFINITIONS GISMO_BUILD_SHARED_LIB # Used for DLL exporting on windows
+  POSITION_INDEPENDENT_CODE ON
+  #COMPILE_DEFINITIONS GISMO_BUILD_SHARED_LIB # Used for DLL exporting on windows
 )
 
   if (GISMO_WITH_PSOLID)
