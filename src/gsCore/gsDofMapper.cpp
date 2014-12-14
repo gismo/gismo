@@ -86,10 +86,6 @@ void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b )
     }
 }
 
-
-
-
-
 void gsDofMapper::matchDof( index_t u, index_t i, index_t v, index_t j )
 {
     index_t d1 = MAPPER_PATCH_DOF(i,u);
@@ -182,8 +178,7 @@ void gsDofMapper::finalize()
         {
             const index_t id = dofType - 1;
             if (couplingDofs[id] < 0)
-                //couplingDofs[id] = curFreeDof++;
-                couplingDofs[id] =   curCplDof++;
+                couplingDofs[id] = curCplDof++;
             m_dofs[k] = couplingDofs[id];
         }
     }
@@ -195,7 +190,6 @@ void gsDofMapper::finalize()
                  "gsDofMapper::finalize() - computed number of free dofs does not match allocated number");
 
     m_curElimId = 0;// Only equal to zero after finalize is called.
-
 }
 
 void gsDofMapper::print() const
@@ -241,8 +235,6 @@ void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes)
     m_dofs.resize( m_numFreeDofs, 0);
 }
 
-
-
 void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx)
 {
     std::replace( m_dofs.begin(), m_dofs.end(), oldIdx, newIdx );
@@ -259,7 +251,6 @@ void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2)
         replaceDofGlobally(dof1, dof2);
     }
 }
-
 
 index_t gsDofMapper::coupledSize() const
 { 
