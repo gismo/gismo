@@ -160,6 +160,8 @@ public:
 
         gsTensorBSplineBasis<3, T> basis(kv1, kv2, kv3);
 
+        gsDebugVar(kv1.detail());
+        gsDebugVar(basis);
         gsFitting<T> fitting(params, points, basis);
         fitting.compute(lambda);
 
