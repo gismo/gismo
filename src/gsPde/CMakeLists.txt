@@ -26,14 +26,10 @@ if(GISMO_BUILD_LIB)
 
   #include_directories(${GISMO_INCLUDE_DIRS})
 
-  aux_generate_instance( ${CMAKE_CURRENT_SOURCE_DIR})
-  aux_instance_directory   (${PROJECT_BINARY_DIR}/instance ${GM_NAME}_INS)
-
   add_library(${GM_NAME} OBJECT
   ${${GM_NAME}_H}
   ${${GM_NAME}_HPP}
   #${${GM_NAME}_CPP}
-  #${${GM_NAME}_INS}
   )
 
   set_target_properties(${GM_NAME} PROPERTIES
@@ -43,7 +39,7 @@ if(GISMO_BUILD_LIB)
 
 set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}>
     CACHE INTERNAL "G+Smo modules" )
-set (gismo_SOURCES ${gismo_SOURCES} ${${GM_NAME}_CPP} ${${GM_NAME}_INS}
+set (gismo_SOURCES ${gismo_SOURCES} ${${GM_NAME}_CPP}
      CACHE INTERNAL "gismo source files")
 
 endif()
