@@ -1579,6 +1579,20 @@ public:
                 p[0] = ids[ p[0] ];
                 p[2] = ids[ p[2] ];
                 
+/*
+                // orientation information
+                std::vector<boundaryInterface::dirInfo> iFaceInfo(d);
+                boundaryInterface::dirInfo tmp;
+                int k;
+                for ( int i=0; i!=d; ++i)
+                {
+                    if ( !(str >> std::ws >> tmp.first >> std::ws >> k >> std::ws) )
+                        gsWarn<<"Error reading interface orientation.\n";
+                    tmp.second = (k>0);
+                    iFaceInfo.push_back(tmp);
+                }
+*/
+
                 gsVector<bool> orient(d-1);// orientation flags
                 int k;
                 for ( int i=0; i!=d-1; ++i)

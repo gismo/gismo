@@ -36,7 +36,6 @@ SET( CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
     "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Maintainer."
     FORCE )
 
-
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    #set(CMAKE_BUILD_TYPE Debug CACHE STRING 
@@ -45,6 +44,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    # Set the possible values of build type for cmake-gui
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
      "MinSizeRel" "RelWithDebInfo")
+endif()
+
+#Remove NDEBUG flag from RelWithDebInfo builds
+if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    STRING(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 endif()
 
 ## #################################################################
@@ -60,26 +64,29 @@ if(NOT GISMO_COEFF_TYPE)
    )
 endif()
 
+#Standard options
 option(GISMO_EXTRA_DEBUG         "Extra debug features"   false  )
 option(GISMO_BUILD_STATIC_LIB    "Build static library"   false  )
 option(GISMO_BUILD_SHARED_LIB    "Build shared library"   true   )
-if(CMAKE_COMPILER_IS_GNUCXX)
-option(GISMO_BUILD_COVERAGE      "Build with coverage"    false  )
-endif(CMAKE_COMPILER_IS_GNUCXX)
 option(GISMO_BUILD_EXAMPLES      "Build examples"         true   )
-option(GISMO_BUILD_CPPLOT        "Build cpplot"           false  )
 option(GISMO_BUILD_AXL           "Build Axel Plugin"      false  )
 option(GISMO_BUILD_PVIEW         "Build Paraview Plugin"  false  )
 option(GISMO_BUILD_MEX           "Build Mex files"        false  )
-option(GISMO_BUILD_QT_APP        "Build Qt application"   false  )
 option(GISMO_WITH_OPENMP         "With OpenMP"            false  )
-option(GISMO_WITH_VTK            "With VTK"               false  )
 option(GISMO_WITH_PSOLID         "With Parasolid"         false  )
 option(GISMO_WITH_MPFR           "With MPFR"              false  )
 option(GISMO_WITH_ONURBS         "With OpenNurbs"         false  )
 option(GISMO_WITH_IPOPT          "With IpOpt"             false  )
+
+#Extra options
+option(GISMO_BUILD_QT_APP        "Build Qt application"   false  )
 option(GISMO_BUILD_CPP11         "Compile using C++11 flags" false)
 option(GISMO_WARNINGS            "Enable G+Smo related warnings" false  )
+option(GISMO_WITH_VTK            "With VTK"               false  )
+option(GISMO_BUILD_CPPLOT        "Build cpplot"           false  )
+if(CMAKE_COMPILER_IS_GNUCXX)
+option(GISMO_BUILD_COVERAGE      "Build with coverage"    false  )
+endif(CMAKE_COMPILER_IS_GNUCXX)
 
 message ("Configuration:")
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")
@@ -87,17 +94,11 @@ message ("  GISMO_COEFF_TYPE        ${GISMO_COEFF_TYPE}")
 message ("  GISMO_EXTRA_DEBUG       ${GISMO_EXTRA_DEBUG}")
 message ("  GISMO_BUILD_STATIC_LIB  ${GISMO_BUILD_STATIC_LIB}")
 message ("  GISMO_BUILD_SHARED_LIB  ${GISMO_BUILD_SHARED_LIB}")
-if(CMAKE_COMPILER_IS_GNUCXX)
-message ("  GISMO_BUILD_COVERAGE    ${GISMO_BUILD_COVERAGE}")
-endif(CMAKE_COMPILER_IS_GNUCXX)
 message ("  GISMO_BUILD_EXAMPLES    ${GISMO_BUILD_EXAMPLES}")
-message ("  GISMO_BUILD_CPPLOT      ${GISMO_BUILD_CPPLOT}")
 message ("  GISMO_BUILD_AXL         ${GISMO_BUILD_AXL}")
 message ("  GISMO_BUILD_PVIEW       ${GISMO_BUILD_PVIEW}")
 message ("  GISMO_BUILD_MEX         ${GISMO_BUILD_MEX}")
-message ("  GISMO_BUILD_QT_APP      ${GISMO_BUILD_QT_APP}")
 message ("  GISMO_WITH_OPENMP       ${GISMO_WITH_OPENMP}")
-message ("  GISMO_WITH_VTK          ${GISMO_WITH_VTK}")
 message ("  GISMO_WITH_PSOLID       ${GISMO_WITH_PSOLID}")
 message ("  GISMO_WITH_MPFR         ${GISMO_WITH_MPFR}")
 message ("  GISMO_WITH_ONURBS       ${GISMO_WITH_ONURBS}")
