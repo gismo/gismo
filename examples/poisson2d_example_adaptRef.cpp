@@ -87,7 +87,7 @@ int main()
 
   gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p2C1()) );
 
-  RefineLoopMax = 4;
+  RefineLoopMax = 2;
   refParameter = 0.85;
 
   // ^^^^^^ Example 2 ^^^^^^
@@ -121,6 +121,8 @@ int main()
   for( int RefineLoop = 0; RefineLoop <= RefineLoopMax ; RefineLoop++ )
   {
       cout << "\n\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << endl << endl;
+
+      cout <<"Basis: "<< bases[0] <<"\n";
 
       // Create solver... maybe not the smartest thing to set up a new solver
       // in each iteration loop, but good enough for now.

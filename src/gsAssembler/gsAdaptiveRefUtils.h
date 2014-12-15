@@ -198,48 +198,51 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
  *
  */
 template <class T>
-void gsRefineMarkedElements( gsMultiBasis<T> & basis, std::vector<bool> & elMarked)
+void gsRefineMarkedElements(gsMultiBasis<T> & basis, const std::vector<bool> & elMarked)
 {
-    int globalCount = 0;
+    const int dim = basis.dim();
+    // numMarked: Number of marked cells on current patch, also currently marked cell
+    // poffset  : offset index for the first element on a patch
+    // globalCount: counter for the current global eleement index
+    int numMarked, poffset = 0, globalCount = 0;
 
-    // refBoxes will contain a gsMatrix for each of the marked elements.
-    std::vector< gsMatrix<T> > refBoxes;
+    // refBoxes: contains marked boxes on a given patch
+    gsMatrix<T> refBoxes;
 
-    // Collect the coordinates of all elements of the gsMultiBasis which are marked.
     for (unsigned pn=0; pn < basis.nBases(); ++pn )// for all patches
     {
+        // Get number of elements to be refined on this patch
+        const int numEl = basis[pn].numElements();
+        numMarked = std::count_if(elMarked.begin() + poffset, 
+                                  elMarked.begin() + poffset + numEl,
+                                  std::bind2nd(std::equal_to<bool>(), true) );
+        poffset += numEl;
+        refBoxes.resize(dim, 2*numMarked);
+        //gsDebugVar(numMarked);
+        numMarked = 0;// counting current patch element to be refined
+
+        // for all elements in patch pn
         typename gsBasis<T>::domainIter domIt = basis.basis(pn).makeDomainIterator();
         for (; domIt->good(); domIt->next())
         {
-            if( elMarked[ globalCount ] )
+            if( elMarked[ globalCount++ ] ) // refine this element ?
             {
-                //gsVector<T> ctr = domIt->centerPoint();
-                gsVector<T> low = domIt->lowerCorner();
-                gsVector<T> upp = domIt->upperCorner();
+                const gsVector<T> & ctr = domIt->centerPoint();
+                
+                // Construct degenerate box by settting both
+                // corners equal to the center
+                refBoxes.col(2*numMarked  ) = 
+                refBoxes.col(2*numMarked+1) = ctr;
 
-                // The refBox is not given by the actual corners of the
-                // marked cells, but in the following form due to
-                // implementational reasons.
-                // In the refinement using the function gsBasis::refine(gsMatrix),
-                // the function uniqueFindSpan is used. This causes problems,
-                // if some of the corners concide with knot lines.
-                gsMatrix<T> refBox( low.size(), 2 );
-                for( index_t i=0; i < low.size(); ++i )
-                {
-                refBox(i,0) = 0.75 * low[i] + 0.25 * upp[i];
-                refBox(i,1) = 0.25 * low[i] + 0.75 * upp[i];
-                }
-                refBoxes.push_back( refBox );
+                // Advance marked cells counter
+                numMarked++;
             }
-            globalCount += 1;
         }
-
-        //std::cout << "Refining " << refBoxes.size() << " elements" << std::endl;
-
-        // Refine all of the found refBoxes.
-        for( size_t i = 0; i < refBoxes.size(); i++ )
-            basis.refine( pn, refBoxes[i] );
+        // Refine all of the found refBoxes in this patch
+        basis.refine( pn, refBoxes );
     }
 }
 
-}
+
+
+} // namespace gismo
