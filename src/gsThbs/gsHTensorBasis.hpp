@@ -34,12 +34,6 @@ gsMatrix<T> gsHTensorBasis<d,T>::support(const unsigned & i) const
     return m_bases[lvl]->support( m_xmatrix[lvl][ i - m_xmatrix_offset[lvl] ] );
 }
 
-template<unsigned d, class T> inline
-int gsHTensorBasis<d,T>::get_max_inserted_level() const
-{
-    return m_tree.getMaxInsLevel();
-}
-
 // S.K.
 template<unsigned d, class T> inline
 gsMatrix<int> gsHTensorBasis<d,T>::getLevelAtPoint( gsMatrix<T> Pts ) const
@@ -114,7 +108,7 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
     const gsVector<unsigned,d> & low = gsVector<unsigned,d>::Zero();    
 
     // For all levels
-    for(int lvl = 0; lvl <= get_max_inserted_level(); lvl++)
+    for(unsigned lvl = 0; lvl <= maxLevel(); lvl++)
     {
         const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > & bb = *m_bases[lvl];
         const CMatrix & cmat = m_xmatrix[lvl];
@@ -238,58 +232,41 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
         }
     }
 
-    //enlarge for boxes of maxlevel
-    gsVector<unsigned,d> k1;
-    gsVector<unsigned,d> k2;
-
+    gsVector<unsigned,d> k1, k2;
     for(index_t i = 0; i < boxes.cols()/2; i++)
     {
-        for(int j = 0; j < k1.size();j++)
+        // 1. Get a small cell containing the box
+        const int fLevel = m_bases.size()-1;
+        for(index_t j = 0; j < k1.size();j++)
         {
-            k1[j] = m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i));
+            k1[j] = m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i  ))  ;
             k2[j] = m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
         }
 
-        int level = m_tree.query3(k1,k2,m_bases.size()-1);
-        for(int j = 0; j < k1.size();j++)
-        {
-            k1[j] = k1[j] << 1;
-            k2[j] = k2[j] << 1;
-        }
+        // 2. Find the smallest level in which the box is completely contained
+        //const int level = m_tree.query3(k1,k2,fLevel) + 1;
+        // make sure that the grid is computed ( needLevel(level) )
+        //const tensorBasis & tb = tensorLevel(level);
+        //GISMO_UNUSED(tb);
 
-        insert_box(k1, k2, level+1);
+        // Sink box
+        m_tree.sinkBox(k1, k2, fLevel);
+        // Make sure we have enough levels
+        needLevel( m_tree.getMaxInsLevel() );
     }
 
-/*
-// to do
-for(index_t i = 0; i < boxes.cols()/2; i++)
-{
-// Locate box in finest level
-for(unsigned j = 0; j < d ;j++)
-{
-k1[j] = m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i));
-k2[j] = m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
-}
-
-// Get the actual level of the box
-const int level = m_tree.query3(k1, k2, m_bases.size()-1 );
-
-// Sink coordinates one level higher
-for(unsigned j = 0; j < d ;j++)
-{
-k1[j] = ( k1[j] << 1 );
-// equiv: = m_bases[level+1]->component(j).knots().Uniquefindspan(boxes(j,2*i));
-k2[j] = ( k2[j] << 1 );
-// equiv: = m_bases[level+1]->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
-}
-
-// Insert the box to the next level
-insert_box(k1, k2, level+1);
-}
-*/
-
+    // Update the basis
     update_structure();
 }
+
+
+/*
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::refine(gsDomainIterator<T> const & boxes) 
+{
+
+}
+*/
 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
@@ -410,14 +387,17 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
 ///private functions
 template<unsigned d, class T> inline
 void gsHTensorBasis<d,T>::insert_box(gsVector<unsigned,d> const & k1,
-                                     gsVector<unsigned,d> const & k2, int lvl)
+                                     gsVector<unsigned,d> const & k2,
+                                     int lvl )
 {
     // Remember box in History (for debugging)
     // m_boxHistory.push_back( box(k1,k2,lvl) );
 
+    
     m_tree.insertBox(k1,k2, lvl);
 
-    updateTensorLevels();
+    needLevel( m_tree.getMaxInsLevel() );
+
 }
 
 template<unsigned d, class T>
@@ -489,15 +469,14 @@ int gsHTensorBasis<d,T>::flatTensorIndexToHierachicalIndex(unsigned index,const 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,const boxSide & s,std::vector<bool>& actives) const
 {
-    if ( level + 1 > m_bases.size() )
-        createMoreLevels( level + 1 - m_bases.size() );
+    needLevel( level );
 
     const gsMatrix<unsigned> * bound = m_bases[level]->boundary(s);
     const index_t sz = bound->rows();
     //gsSortedVector< int > indexes(bound->data(),bound->data()+sz);
     gsSortedVector< int > indexes;
     indexes.resize(sz,-1);
-    if(static_cast<int>(level)<=get_max_inserted_level())
+    if(level<=maxLevel())
     {
         for(index_t i = 0;i<sz;++i)
             indexes[i]=(*bound)(i,0);
@@ -514,6 +493,9 @@ void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,co
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateCharMatrices
 {
+    // Make sure we have computed enough levels
+    needLevel( m_tree.getMaxInsLevel() );
+
     // Setup the characteristic matrices
     m_xmatrix.clear();
     m_xmatrix.resize( m_bases.size() );
@@ -536,28 +518,18 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateCharMatri
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::createMoreLevels(int numLevels) const
+void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 {
-    // to do: check for overflow
-    //gsDebug<<"Adding "<< numLevels<<" levels.\n";
+    // +1 for the initial basis in m_bases
+    const int extraLevels = maxLevel + 1 - m_bases.size();
 
-    for ( int i = 0; i < numLevels; ++i )
+    for ( int i = 0; i < extraLevels; ++i )
     {
         gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > 
             * next_basis = m_bases.back()->clone();
         next_basis->uniformRefine(1);
-        m_bases.push_back (next_basis);
+        m_bases.push_back (next_basis); //note: m_bases is mutable
     }   
-}
-
-template<unsigned d, class T>
-void gsHTensorBasis<d,T>::updateTensorLevels()
-{
-    // +1 for the initial basis in m_bases
-    const int extraLevels = get_max_inserted_level() + 1 - m_bases.size();
-
-    if ( extraLevels > 0 )
-        createMoreLevels(extraLevels);
 }
 
 template<unsigned d, class T>
@@ -611,8 +583,6 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
         next_basis->uniformRefine(1);
         m_bases.push_back( next_basis );
     }
-
-    undefined_value =unsigned (std::numeric_limits<int>::max());
 
 }
 
@@ -677,7 +647,7 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary( ) const
 {
     std::vector<unsigned> temp;
     gsVector<unsigned,d>  ind;
-    for(int i = 0; i <= this->get_max_inserted_level(); i++)
+    for(unsigned i = 0; i <= this->maxLevel(); i++)
         for (CMatrix::const_iterator it = m_xmatrix[i].begin(); 
              it != m_xmatrix[i].end(); it++)
         {
@@ -702,7 +672,7 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary(boxSide const & s ) const
     std::vector<unsigned> temp;
     gsVector<unsigned,d>  ind;
     // i goes through all levels of the hierarchical basis
-    for(int i = 0; i <= this->get_max_inserted_level(); i++)
+    for(unsigned i = 0; i <= this->maxLevel(); i++)
     {
         unsigned r = ( par ? this->m_bases[i]->size(k) - 1 : 0);
         for (CMatrix::const_iterator it = m_xmatrix[i].begin(); 
@@ -921,8 +891,7 @@ template<unsigned d, class T>
 void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >& old, gsMatrix<T>& result)
 {
     // Note: implementation assumes old.size() + 1 m_bases exists in this basis
-    if ( old.size() + 1 > m_bases.size() )
-        createMoreLevels( old.size() + 1 - m_bases.size() );
+    needLevel( old.size() );
 
     gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;

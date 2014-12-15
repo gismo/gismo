@@ -144,8 +144,8 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){
     this->m_tree.getBoxesInLevelIndex(b1,b2,level);//return boxes in level indices
     gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
-    transfer.resize(this->get_max_inserted_level() );
-    for(int i = 0; i < this->get_max_inserted_level();i++){
+    transfer.resize(this->maxLevel() );
+    for(unsigned i = 0; i < this->maxLevel();i++){
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
         std::vector<std::vector<T> > knots;
         for(unsigned int dim = 0l; dim < d;dim++)
@@ -162,7 +162,7 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){
         T_0_copy.refine_withTransfer(transfer[i], knots);
     }
 
-    for(int j = 0; j < this->get_max_inserted_level();j++){
+    for(unsigned j = 0; j < this->maxLevel();j++){
         std::vector<gsSortedVector<unsigned> >x_mat_old_0;
         this->setActiveToLvl(j,x_mat_old_0);
         std::vector<gsSortedVector<unsigned> > x_matrix_lvl;

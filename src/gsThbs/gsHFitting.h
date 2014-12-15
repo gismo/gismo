@@ -264,7 +264,7 @@ std::vector<int> gsHFitting<T>::get_levels(const std::vector<int> & cells)
 {
     gsHTensorBasis<2,T>  * h_basis = static_cast<gsHTensorBasis<2,T> *> (this->m_basis);
 
-    const int level = h_basis->get_max_inserted_level();
+    const int level = h_basis->maxLevel();
     //const int level = h_basis->maxAllowdLevel();
 
     std::vector<int> result;
@@ -287,7 +287,7 @@ std::vector<unsigned> gsHFitting<T>::get_boxes(const std::vector<int> & cells,
 {
     gsHTensorBasis<2,T>  * h_basis = static_cast<gsHTensorBasis<2,T> *> (this->m_basis);
 
-    const int maxLevel = h_basis->get_max_inserted_level(); 
+    const int maxLevel = h_basis->maxLevel(); 
     //const int level = h_basis->maxAllowdLevel();
 
     std::vector<unsigned> result;
@@ -339,7 +339,7 @@ std::vector<int> gsHFitting<T>::select_cells(std::vector<T> & errors,
     std::vector<int> result;
     std::vector<int> temp;
 
-    const int level = h_basis->get_max_inserted_level();
+    const int level = h_basis->maxLevel();
     //const int level = h_basis->maxAllowedLevel();
 
     const gsCompactKnotVector<T> & lKnot0  = 

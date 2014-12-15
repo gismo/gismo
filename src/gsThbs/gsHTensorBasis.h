@@ -31,7 +31,8 @@
 namespace gismo
 {
 
-struct lvl_coef{
+struct lvl_coef
+{
     int pos;
     int unsigned lvl;
     double coef;
@@ -90,6 +91,8 @@ public:
     typedef std::vector< box > boxHistory;
 
     typedef gsSortedVector< unsigned > CMatrix; // charMatrix_
+
+    typedef gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > tensorBasis;
 
     /// Dimension of the parameter domain
     static const int Dim = d;
@@ -199,8 +202,7 @@ public:
         gsVector<unsigned,d> k2;
 
         const size_t mLevel = *std::max_element(levels.begin(), levels.end() );
-        if ( mLevel + 1 > m_bases.size() )
-          createMoreLevels( mLevel + 1 - m_bases.size() );
+        needLevel( mLevel );
         
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
@@ -223,7 +225,6 @@ public:
     {
         //max_size         = o.max_size;
         m_xmatrix_offset = o.m_xmatrix_offset;
-        undefined_value  = o.undefined_value;
         m_deg            = o.m_deg;
         m_tree           = o.m_tree;
         m_xmatrix        = o.m_xmatrix;
@@ -246,8 +247,6 @@ protected:
 
     // Members that will be changed/removed
     // TO DO: remove these members after they are not used anymore
-
-    unsigned int undefined_value; // to do: make static..
 
     std::vector<int> m_deg;
     hdomain_type m_tree;
@@ -336,8 +335,7 @@ public:
     /// Returns the number of knots in direction \a k of level \a lvl
     int numKnots(int lvl, int k) const
     {
-        if ( lvl - m_bases.size() + 1 > 0 )
-            createMoreLevels( lvl - m_bases.size() + 1);
+        needLevel(lvl);
 
         return m_bases[lvl]->component(k).knots().size();
     }
@@ -345,8 +343,7 @@ public:
     /// Returns the \a i-th knot in direction \a k at level \a lvl
     T knot(int lvl, int k, int i)
     {
-        if ( lvl - m_bases.size() + 1 > 0 )
-            createMoreLevels( lvl - m_bases.size() + 1);
+        needLevel(lvl);
 
         return m_bases[lvl]->component(k).knot(i);
     }
@@ -382,7 +379,7 @@ public:
   void printCharMatrix(std::ostream &os = gsInfo) const
     {  
       os<<"Characteristic matrix:\n";
-      for(int i = 0; i<= get_max_inserted_level(); i++)
+      for(unsigned i = 0; i<= maxLevel(); i++)
       {
           if ( m_xmatrix[i].size() )
           {
@@ -407,7 +404,7 @@ public:
   void printSpaces(std::ostream &os = gsInfo) const
     {  
       os<<"Spline-space hierarchy:\n";
-      for(int i = 0; i<= get_max_inserted_level(); i++)
+      for(unsigned i = 0; i<= maxLevel(); i++)
       {
           if ( m_xmatrix[i].size() )
           {
@@ -499,9 +496,7 @@ public:
   /// Returns the tensor basis member of level i 
   gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > & tensorLevel(unsigned i) const
   {
-      //GISMO_ASSERT( i < maxLevel(), "Requested tensor level does not exist, max level = "<< maxLevel() <<".\n");
-      if ( i + 1 > m_bases.size() )
-          createMoreLevels( i + 1 - m_bases.size() );
+      needLevel( i );
       return *this->m_bases[i];
   }
 
@@ -557,9 +552,6 @@ public:
   /// degree of the \a i-th component.
   virtual inline int degree(int i) const
     { return m_bases[0]->degree(i);}
-
-  /// return maximum of inserted level. has to be smaller or equal to m_tree.m_index_level
-  int get_max_inserted_level()const;
 
   // S.K.
   /// @brief Returns the level(s) at point(s) in the parameter domain
@@ -753,12 +745,11 @@ protected:
     /// be called after any modifications.
     void update_structure(); // to do: rename as updateCharMatrices
     
-    /// @brief Makes sure that there are enough refinement levels to compute
-    /// with the basis
-    void updateTensorLevels();
+    /// @brief Makes sure that there are \a numLevels grids computed
+    /// in the hierarachy
+    void needLevel(int maxLevel) const;
 
-    /// @brief Makes sure that there are enough refinement levels to compute
-    /// with the basis
+    /// @brief Creates \a numLevels extra grids in the hierarchy
     void createMoreLevels(int numLevels) const;
 
     /// Computes difference between coarser knot vector (ckv) and finer knot
