@@ -190,7 +190,7 @@ public:
     /// \a g1 side \a s2 of geometry \a g2.
     ///
     /// \todo add orientation information
-    void addInterface( gsGeometry<T>* g1, boxSide s1,
+    GISMO_DEPRECATED void addInterface( gsGeometry<T>* g1, boxSide s1,
             gsGeometry<T>* g2, boxSide s2 );
 
     /// Add side s of patch g to the outer boundary of the domain

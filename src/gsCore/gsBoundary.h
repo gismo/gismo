@@ -295,14 +295,14 @@ public:
      * @return the last valid corners in an dim-dimensional box
     **/
 
-    static  boxCorner    getLast      (int dim) {return boxCorner((2<<dim));}
+    static  boxCorner    getLast      (int dim) {return boxCorner((1<<dim));}
     /**
      * @brief helper for iterating on corners of an n-dimensional box
      * @param dim
      * @return the (invalid) corners after the last one in dim-dimensional box
     **/
 
-    static  boxCorner    getEnd       (int dim) {return boxCorner((2<<dim)+1);}
+    static  boxCorner    getEnd       (int dim) {return boxCorner((1<<dim)+1);}
     /**
      * @brief set to next boxCorner
      */
@@ -322,7 +322,7 @@ public:
     **/
     bool operator!= (const boxCorner& other) const {return m_index!=other.m_index;}
     bool operator>  (const boxCorner& other) const {return m_index>other.m_index;}
-    bool operator<  (const boxCorner& other) const {return m_index>other.m_index;}
+    bool operator<  (const boxCorner& other) const {return m_index<other.m_index;}
     bool operator<= (const boxCorner& other) const {return m_index<=other.m_index;}
     bool operator>= (const boxCorner& other) const {return m_index>=other.m_index;}
 };
@@ -429,16 +429,14 @@ public:
         : ps1(_ps1), ps2(_ps2), directionMap(map_info), directionOrientation(orient_flags)
     {  }
 
-    // DEPRECATED
-    boundaryInterface(patchSide const & _ps1,
+    GISMO_DEPRECATED boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
                       gsVector<bool>    const & orient_flags)
     {
         init(_ps1,_ps2,orient_flags);
     }
 
-    // DEPRECATED
-    boundaryInterface(gsVector<int>     const & p,
+    GISMO_DEPRECATED boundaryInterface(gsVector<int>     const & p,
                       gsVector<bool>    const & orient_flags)
     {
         init(patchSide(p(0),boxSide(p(1))),patchSide(p(2),boxSide(p(3))) ,orient_flags);
@@ -516,8 +514,7 @@ public:
 
 
     // this is a work in progress, the old code was 2D specific, look at mapInfo and mapOrientation
-    //DEPRECATED
-    gsVector<bool> orient () const
+    GISMO_DEPRECATED gsVector<bool> orient () const
     {
         GISMO_ASSERT(directionOrientation.size()==2, "This is deprecated and does not work if dim>2");
         gsVector<bool> result(1);

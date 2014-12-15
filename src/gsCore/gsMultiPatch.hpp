@@ -12,16 +12,16 @@ namespace gismo
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
-: gsBoxTopology( geo.parDim() )
+    : gsBoxTopology( geo.parDim() )
 {
     m_patches.push_back( geo.clone() );
     addBox();
     this->addAutoBoundaries();
 }
-  
+
 template<class T>
 gsMultiPatch<T>::gsMultiPatch( const gsMultiPatch& other )
-: gsBoxTopology( other ), m_patches( other.m_patches.size() )
+    : gsBoxTopology( other ), m_patches( other.m_patches.size() )
 {
     // clone all geometries
     cloneAll( other.m_patches.begin(), other.m_patches.end(),
@@ -30,17 +30,17 @@ gsMultiPatch<T>::gsMultiPatch( const gsMultiPatch& other )
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch( const std::vector<gsGeometry<T> *>& patches )
-        : gsBoxTopology( patches[0]->parDim(), patches.size() ) , m_patches( patches )
+    : gsBoxTopology( patches[0]->parDim(), patches.size() ) , m_patches( patches )
 {
     this->addAutoBoundaries();
 }
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch( const PatchContainer& patches,
-            const std::vector<patchSide>& boundary,
-            const std::vector<boundaryInterface>& interfaces )
-        : gsBoxTopology( patches[0]->parDim(), patches.size(), boundary, interfaces ),
-          m_patches( patches ) 
+                               const std::vector<patchSide>& boundary,
+                               const std::vector<boundaryInterface>& interfaces )
+    : gsBoxTopology( patches[0]->parDim(), patches.size(), boundary, interfaces ),
+      m_patches( patches )
 { }
 
 template<class T>
@@ -88,7 +88,7 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy() const
     }
     return bb ;
 }
-  
+
 template<class T>
 void gsMultiPatch<T>::addPatch( gsGeometry<T>* g ) 
 {
@@ -100,15 +100,15 @@ void gsMultiPatch<T>::addPatch( gsGeometry<T>* g )
     m_patches.push_back( g ) ;
     addBox();
 }
-  
+
 template<class T>
 int gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const {
     typename PatchContainer::const_iterator it
-        = std::find( m_patches.begin(), m_patches.end(), g );
+            = std::find( m_patches.begin(), m_patches.end(), g );
     assert( it != m_patches.end() );
     return it - m_patches.begin();
 }
-  
+
 template<class T>
 void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
                                     gsGeometry<T>* g2, boxSide s2 ) {
@@ -119,146 +119,173 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
     gsBoxTopology::addInterface( p1, s1, p2, s2, orient );
 }
 
+
 template<class T>
 void gsMultiPatch<T>::uniformRefine(int numKnots)
 {
     for ( typename Base::const_iterator it = m_patches.begin();
-          it != m_patches.end(); ++it ) 
+          it != m_patches.end(); ++it )
     {
         ( *it )->uniformRefine(numKnots);
     }
 }
 
-  
+template <class T>
+bool matchSides (
+    const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
+    const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
+    gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
+    T tol,
+    index_t reference=0);
+
+/**
+ * This is based on comparing the corners of the patch side and thus it implicitly assumes that that the patch faces match
+ */
 template<class T>
 bool gsMultiPatch<T>::computeTopology( T tol )
 {
-    // Clear boundary and interface containers
     gsBoxTopology::clear();
-    const std::size_t np   = m_patches.size();
-    const int         n    = this->geoDim();
-    const index_t     sz   = 1 << m_dim;
-    // number of vertices on one patch side
-    const std::size_t nver = 1 << ( m_dim - 1 );
-    bool match(0);
 
-    std::vector<patchSide> all_sides;    // All sides
-    std::vector<gsMatrix<T> > all_verts;  // All vertices in the multipatch
-    std::vector<std::vector<int> > cverts;// indices of vertices of a hypercube
+    const size_t   np      = m_patches.size();
+    const index_t  nCorP    = 1 << m_dim;     // corners per patch
+    const index_t  nCorS    = 1 << (m_dim-1); // corners per side
 
-    gsVector<bool> orient(m_dim-1);     
-    gsMatrix<T>    vm1( n, nver ), vm2( n, nver );
 
-    // assumes all patches have the same parameter domain
-    gsBasis<T> & basis = m_patches[0]->basis();
-    gsMatrix<T>  para  = basis.support();
-    gsMatrix<T>  pts( m_dim, sz );
-
-    // Produce all corners of the 01-cube in lex-order
-    gsVector<unsigned> v( m_dim ), ones( m_dim );
-    ones.setConstant( 2 );
-    v.setZero();
-    cverts.resize( 2 * m_dim + 1 ); // ignore cverts[0]
-    unsigned r = 0;
-    do 
-    { // Generate vertices of hypercube
-        for ( int i = 0; i != m_dim; ++i ) 
-        {
-            pts( i, r ) = para( i, v[i] );
-            cverts[ boxSide::index( i, v[i]!=0 ) ].push_back( r );
-        }
-        r++;
-    } while ( nextLexicographic( v, ones ) );
-
-    // Compute all sides and vertices
-    all_verts.reserve( np );
-    all_sides.reserve( np * 2 * m_dim );
-    for ( std::size_t patch = 0; patch != np; ++patch ) 
+    std::vector<gsMatrix<T> >  pCorners(np); // each matrix contains the physical coordinates of the vertexes of a patch
+    std::vector<patchSide>     pSide;        // list of all patchSides to compare
+    pSide.reserve(np * 2 * m_dim);
+    for (size_t p=0; p<np; ++p)
     {
-        all_verts.push_back( m_patches[patch]->eval( pts ) );
-        for ( int i = 1; i <= 2 * m_dim; ++i ) 
+        // init the corners coordinated
+        gsMatrix<T> supp  = m_patches[p]->parameterRange(); // the parameter domain of patch i
+        gsMatrix<T> coor(m_dim,nCorP);                      // coordinates of the corners in parameter domain
+        for (boxCorner c=boxCorner::getFirst(m_dim); c<boxCorner::getEnd(m_dim); ++c)
         {
-            all_sides.push_back( patchSide( patch, i ) );
+            gsVector<bool> par   = c.parameters(m_dim);
+            for (index_t i=0; i<m_dim;++i)
+            {
+                coor(i,c-1) = par(i) ? supp(i,1) : supp(i,0);
+            }
+        }
+        m_patches[p]->eval_into(coor,pCorners[p]);
+        // init the list of patchSides
+        for (boxSide bs=boxSide::getFirst(m_dim); bs<boxSide::getEnd(m_dim); ++bs)
+        {
+            pSide.push_back(patchSide(p,bs));
         }
     }
 
-    while ( all_sides.size() ) // For all remaining sides
+    gsVector<index_t>      dirMap(m_dim);
+    gsVector<bool>         dirO(m_dim);
+    std::vector<boxCorner> cId1;
+    std::vector<boxCorner> cId2;
+    cId1.reserve(nCorS);
+    cId2.reserve(nCorS);
+    gsVector<bool>         matched;
+    size_t other=0;
+    while (pSide.size()>1)
     {
-        const patchSide side1 = all_sides.back();
-        all_sides.pop_back();
-
-        // Get vertices of side1
-        for ( std::size_t r = 0; r != nver; ++r )
-            vm1.col( r ) = all_verts[side1.patch].col( cverts[side1.side()][r] );
-
-        // For all remaining non-matched sides
-        for ( typename std::vector<patchSide>::iterator side2 = all_sides.begin();
-              side2 != all_sides.end(); ++side2 )
+        bool done=false;
+        const patchSide side = pSide.back();
+        pSide.pop_back();
+        for (other=0;other<pSide.size();++other)
         {
-            // Initialize data for of side2
-            std::vector<int> verts2(cverts[side2->side()]);
-            for ( std::size_t r = 0; r != nver; ++r )
-                vm2.col( r ) = all_verts[side2->patch].col( cverts[side2->side()][r] );
+            side.getContainedCorners(m_dim,cId1);
+            pSide[other].getContainedCorners(m_dim,cId2);
 
-            // Try to match side1 and side2 vertex by vertex
-            std::size_t r1(0);
-            do
+            matched.setConstant(cId2.size(),false);
+
+            if ( matchSides( pCorners[side.patch], cId1, 0, pCorners[pSide[other].patch], cId2, matched, dirMap, dirO, tol ) )
             {
-                match = false;
-                for ( std::size_t r2 = r1; r2 != nver; ++r2 )
-                    if ( ( vm1.col(r1) - vm2.col(r2) ).norm() < tol )
-                    {
-                        vm2.col(r1).swap(vm2.col(r2));
-                        std::swap(verts2[r1], verts2[r2]);
-                        match = true ;
-                        break;
-                    }
-            }
-            while ( (++r1 < nver) && match);
-
-            if (match) // Did we get an interface ?
-            {
-                // Compute orientation
-                int c(0);
-                for ( int i = 0; i<m_dim-1; ++i )
-                {
-                    orient[i] = ( verts2[0] < verts2[(1<<i)] );
-
-                    if ( ( vm1.col( 0 ) - vm1.col( (1<<i) ) ).norm() < tol ) 
-                        c++;
-
-                    if ( ( vm1.col(nver-1) - vm1.col(nver-1-(1<<i) ) ).norm() < tol ) 
-                        c++;                      
-                }
-
-                if (c) // Check for collapsing edge/face
-                {
-                    gsWarn << "Detected "<< (c==2*m_dim-2 ? 1 : c ) <<" collapsing "
-                           << (c==2*m_dim-2 ? "face" : "edges ") 
-                           <<" on the side, topology might be incorrect: "
-                           << side1 << " "<< *side2<<  "\n";
-                }
-
-                // Add interface
-                gsBoxTopology::addInterface( boundaryInterface( side1, *side2, orient ) );
-                  
-                // remove this side and  break loop
-                std::swap( *side2, all_sides.back() );
-                all_sides.pop_back();
+                dirMap(side.direction()) = pSide[other].direction();
+                dirO(side.direction())   = !( side.parameter() == pSide[other].parameter() );
+                gsBoxTopology::addInterface( boundaryInterface(side, pSide[other], dirMap, dirO));
+                std::swap( pSide[other], pSide.back() );
+                pSide.pop_back();
+                done=true;
                 break;
             }
         }
-
-        // Side not matched, so it is a boundary side
-        if ( !match ) 
-        {
-            gsBoxTopology::addBoundary( side1 );
-            //gsDebug<<"Added boundary "<< m_boundary.back() <<"\n";
-        }
+        if (!done)
+            gsBoxTopology::addBoundary( side );
     }
     return true;
 }
 
+
+template <class T>
+bool matchSides (
+    const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
+    const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
+    gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
+    T tol,
+    index_t reference)
+{
+    const bool computeOrientation = !(start&(start-1)) && (start != 0); // true if start is a power of 2
+    const bool setReference       = start==0;          // if we search for the first point then we set the reference
+
+    const int dim = cc1.rows();
+
+    index_t o_dir=0;
+    index_t d_dir=0;
+
+    gsVector<bool> refPar;
+    gsVector<bool> newPar;
+    gsVector<bool> newMatched;
+
+    if (computeOrientation)
+    {
+        // o_dir is the only direction in which the parameters differ between start and 0
+        const gsVector<bool> parStart = ci1[start].parameters(dim);
+        const gsVector<bool> parRef   = ci1[0].parameters(dim);
+        for (; o_dir<dim && parStart(o_dir)==parRef(o_dir)  ;) ++o_dir;
+    }
+    if (!setReference)
+    {
+        refPar = ci2[reference].parameters(dim);
+    }
+
+    for (size_t j=0;j<ci2.size();++j)
+    {
+        if( !matched(j) && (cc1.col(ci1[start]-1)-cc2.col(ci2[j]-1)).norm() < tol )
+        {
+            index_t newRef =   (setReference) ? j : reference;
+            if (computeOrientation)
+            {
+                index_t count=0;
+                d_dir = 0;
+                newPar =  ci2[j].parameters(dim);
+                for (size_t i=0; i< newPar.rows();++i)
+                {
+                    if ( newPar(i)!=refPar(i) )
+                    {
+                        d_dir=i;
+                        ++count;
+                    }
+                }
+                if (count != 1)
+                {
+                    // the match is wrong: we are mapping an edge to a diagonal
+                    continue;
+                }
+                dirMap(o_dir) = d_dir;
+                dirO(o_dir) = j>reference;
+            }
+            if (start==ci1.size()-1)
+            {
+                // we matched the last vertex, we are done
+                return true;
+            }
+            newMatched = matched;
+            newMatched(j) = true;
+            if (!matchSides( cc1,ci1,start+1,cc2,ci2,newMatched,dirMap,dirO, tol,newRef))
+                continue;
+            else
+                return true;
+        }
+    }
+    return false;
+}
 
 
 template<class T>
