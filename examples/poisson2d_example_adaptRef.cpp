@@ -138,9 +138,10 @@ int main()
       // Construct the solution for plotting the mesh later
       gsField<> * sol = pa.constructSolution(solVector);
 
-      // Set up and compute the L2-error to the known exact solution
+      // Set up and compute the L2-error to the known exact solution...
       gsNormL2<real_t> norm(*sol,g);
-      gsErrEstPoissonResidual<real_t> errEst(*sol,g);
+      // ...and the error estimate, which needs the right-hand-side.
+      gsErrEstPoissonResidual<real_t> errEst(*sol,f);
 
       norm.compute(1);
       errEst.compute(1);
