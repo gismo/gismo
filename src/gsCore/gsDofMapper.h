@@ -290,6 +290,10 @@ public:
         return m_numElimDofs; 
     }
 
+    /// Returns the offset corresponding to patch \a k
+    std::size_t offset(int k) const
+    {return m_offset[k];}
+
 private:
 
     // replace all references to oldIdx by newIdx
@@ -310,24 +314,24 @@ private:
     // group of the dof. Dofs with the same id will get the same dof index in the
     // final numbering stage in finalize().
 
-    // Representation as vector of vectors, m_patchDofs[k][i]
-    // corresponds to patch k patch-local basis index i 
-    // std::vector< std::vector<index_t> > m_patchDofs;
-
     // Representation as a single vector plus offsets for patch-local
     // indices
     std::vector<index_t>     m_dofs;
     std::vector<std::size_t> m_offset;
+    // Representation as vector of vectors, m_patchDofs[k][i]
+    // corresponds to patch k patch-local basis index i 
+    // std::vector< std::vector<index_t> > m_patchDofs;
 
+    // Shifting of the global index (zero by default)
     index_t m_shift;
 
     index_t m_numFreeDofs;
     index_t m_numElimDofs;
+    index_t m_numCpldDofs;
 
-    // used during setup: running id for current eliminated/coupling dof
+    // used during setup: running id for current eliminated dof
     // After finalize() is called m_curElimId takes the value zero.
     index_t m_curElimId;
-    index_t m_curCouplingId;
 
 }; // class gsDofMapper
 

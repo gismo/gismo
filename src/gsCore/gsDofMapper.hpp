@@ -19,8 +19,8 @@ namespace gismo
 template<class T>
 void gsDofMapper::init( const gsMultiBasis<T> & bases)
 {
-    m_curElimId     = -1;
-    m_curCouplingId =  1;
+    m_curElimId   = -1;
+    m_numCpldDofs =  1;
     m_offset.clear();
 
     const size_t nPatches = bases.nBases();
@@ -41,8 +41,8 @@ void gsDofMapper::init( const gsMultiBasis<T> & bases)
 template<class T>
 void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
 {
-    m_curElimId     = -1;
-    m_curCouplingId =  1;
+    m_curElimId   = -1;
+    m_numCpldDofs =  1;
     m_offset.clear();
 
     const size_t nPatches = bases[0]->nBases();
@@ -69,7 +69,6 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
     {
         m_offset.push_back( m_offset.back() + bases[0]->basis(k-1).size() );
     }
-
 
     if (nPatches == 1)
     {
@@ -113,8 +112,8 @@ void gsDofMapper::init(
 template<class T>
 void gsDofMapper::initSingle( const gsBasis<T> & basis)
 {
-    m_curElimId     = -1;
-    m_curCouplingId =  1;
+    m_curElimId   = -1;
+    m_numCpldDofs =  1;
 
     m_offset.resize(1,0);
     m_numFreeDofs = basis.size();

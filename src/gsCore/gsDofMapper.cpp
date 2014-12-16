@@ -18,7 +18,7 @@ namespace gismo
 {
 
 gsDofMapper::gsDofMapper() : 
-m_shift(0), m_numFreeDofs(0), m_curElimId(-1), m_curCouplingId(1)
+m_shift(0), m_numFreeDofs(0), m_numCpldDofs(1), m_curElimId(-1)
 { 
     m_offset.resize(1,0);
 }
@@ -101,13 +101,13 @@ void gsDofMapper::matchDof( index_t u, index_t i, index_t v, index_t j )
 
     if (d1 < 0)         // first dof is eliminated
     {
-        if (d2 < 0)         mergeDofsGlobally( d1, d2 );        // both are eliminated, merge their indices
-        else if (d2 == 0)   MAPPER_PATCH_DOF(j,v) = d1;             // second is free, eliminate it along with first
-        else /* d2 > 0*/    replaceDofGlobally( d2, d1 );       // second is coupling, eliminate all instances of it
+        if (d2 < 0)         mergeDofsGlobally( d1, d2 );  // both are eliminated, merge their indices
+        else if (d2 == 0)   MAPPER_PATCH_DOF(j,v) = d1;   // second is free, eliminate it along with first
+        else /* d2 > 0*/    replaceDofGlobally( d2, d1 ); // second is coupling, eliminate all instances of it
     }
     else if (d1 == 0)   // first dof is a free dof
     {
-        if (d2 == 0)        MAPPER_PATCH_DOF(i,u) = MAPPER_PATCH_DOF(j,v) = m_curCouplingId++;  // both are free, assign them a new coupling id
+        if (d2 == 0)        MAPPER_PATCH_DOF(i,u) = MAPPER_PATCH_DOF(j,v) = m_numCpldDofs++;  // both are free, assign them a new coupling id
         else if (d2 > 0)    MAPPER_PATCH_DOF(i,u) = d2;             // second is coupling, add first to the same coupling group
         else                GISMO_ERROR("Something went terribly wrong");
     }
@@ -154,12 +154,12 @@ void gsDofMapper::finalize()
     GISMO_ASSERT(m_curElimId!=0, "Error in gsDofMapper::finalize() called twince.");
     
     index_t curFreeDof = 0;                 // free dofs start at 0
+    m_numCpldDofs -= 1;                     // Coupled dofs start after standard dofs
+    index_t curCplDof = m_numFreeDofs - m_numCpldDofs;
     index_t curElimDof = m_numFreeDofs;     // eliminated dofs start after free dofs
-    std::vector<index_t> couplingDofs(m_curCouplingId - 1, -1);
-    std::vector<index_t> elimDofs(-m_curElimId - 1, -1);
 
-    // Coupled dofs start after standard dofs
-    index_t curCplDof = m_numFreeDofs - couplingDofs.size();
+    std::vector<index_t> couplingDofs(m_numCpldDofs, -1);
+    std::vector<index_t> elimDofs(-m_curElimId - 1, -1);
 
     for (std::size_t k = 0; k < m_dofs.size(); ++k)
     {
@@ -182,11 +182,13 @@ void gsDofMapper::finalize()
             m_dofs[k] = couplingDofs[id];
         }
     }
+
+    // Devise number of eliminated dofs
     m_numElimDofs = curElimDof - m_numFreeDofs;
 
     GISMO_ASSERT(curCplDof == m_numFreeDofs,
                  "gsDofMapper::finalize() - computed number of coupling dofs does not match allocated number");
-    GISMO_ASSERT(curFreeDof + static_cast<index_t>(couplingDofs.size()) == m_numFreeDofs,
+    GISMO_ASSERT(curFreeDof + m_numCpldDofs == m_numFreeDofs,
                  "gsDofMapper::finalize() - computed number of free dofs does not match allocated number");
 
     m_curElimId = 0;// Only equal to zero after finalize is called.
@@ -194,17 +196,15 @@ void gsDofMapper::finalize()
 
 void gsDofMapper::print() const
 {
-    gsInfo<<"Dofs: "<< this->size() <<"\n";
+    gsInfo<<" Dofs: "<< this->size() <<"\n";
     gsInfo<<" free: "<< this->freeSize() <<"\n";
     gsInfo<<" elim: "<< this->boundarySize() <<"\n";
 }
 
-
-
 void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs)
 {
-    m_curElimId     = -1;
-    m_curCouplingId =  1;
+    m_curElimId   = -1;
+    m_numCpldDofs =  1;
     m_numFreeDofs = nDofs;
 
     // Initialize all offsets to zero
@@ -217,8 +217,8 @@ void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs)
 
 void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes)
 {
-    m_curElimId     = -1;
-    m_curCouplingId =  1;
+    m_curElimId   = -1;
+    m_numCpldDofs =  1;
 
     const size_t nPatches = patchDofSizes.size();
 
@@ -254,6 +254,9 @@ void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2)
 
 index_t gsDofMapper::coupledSize() const
 { 
+    GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    return m_numCpldDofs;
+/*// Implementation without saving this number:
     // Property: coupled (eliminated or not) DoFs appear more than once in the mapping.
     GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
     
@@ -265,14 +268,9 @@ index_t gsDofMapper::coupledSize() const
             CountMap[*it]++;
     
     // Count the number of freeDoFs that appear more than once
-    return std::count_if( CountMap.begin(), CountMap.end(), std::bind2nd(std::greater<index_t>(), 1) );
-    /* // Equivalent implementation
-    index_t count = 0;
-    for (std::vector<index_t>::const_iterator it = CountMap.begin(); it != CountMap.end(); ++it)
-        if ( *it > 1 )
-            count++;
-    return count; 
-    */
+    return std::count_if( CountMap.begin(), CountMap.end(),
+                          std::bind2nd(std::greater<index_t>(), 1) );
+*/
 }
 
 
