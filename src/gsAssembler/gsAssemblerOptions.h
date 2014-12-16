@@ -108,13 +108,12 @@ struct space
 struct gsAssemblerOptions
 {
 public:
+    // Default constructor
     gsAssemblerOptions()
-    : dirStrategy(dirichlet::nitsche), intStrategy(iFace::glue)
-    { }
-
-    gsAssemblerOptions(dirichlet::strategy _dirStrategy,
-                       iFace::strategy     _intStrategy)
-    : dirStrategy(_dirStrategy), intStrategy(_intStrategy)
+    : dirStrategy  (dirichlet::nitsche    ), 
+      intStrategy  (iFace    ::glue       ),
+      transformType(transform::Hgrad      ),
+      spaceType    (space    ::taylorHood )
     { }
 
 public:

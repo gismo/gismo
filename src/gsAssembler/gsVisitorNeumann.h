@@ -65,7 +65,7 @@ public:
             geoEval.outerNormal(k, side, unormal);
             
             // Multiply quadrature weight by the measure of normal
-            const T weight = quWeights[k] * unormal.norm();   
+            const T weight = quWeights[k] * unormal.norm();
             
             localRhs.noalias() += weight * basisData.col(k) * neuData.col(k).transpose() ;
         }
@@ -91,7 +91,7 @@ public:
         }
     }
 
-private:
+protected:
 
     
     // Neumann function

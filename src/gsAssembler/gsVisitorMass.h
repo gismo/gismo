@@ -25,8 +25,7 @@ class gsVisitorMass
 {
 public:
 
-    gsVisitorMass(bool _useMapper = true)
-    : useMapper(_useMapper)
+    gsVisitorMass()
     { }
 
     static void initialize(const gsBasis<T> & basis, 
@@ -86,28 +85,28 @@ public:
                        gsSparseMatrix<T>     & sysMatrix,
                        gsMatrix<T>           & rhsMatrix )
     {
-        if ( useMapper ) // Translate local Dofs to global dofs ?
-            mapper.localToGlobal(actives, patchIndex, actives);
+        mapper.localToGlobal(actives, patchIndex, actives);
 
         const index_t numActive = actives.rows();
 
         for (index_t i = 0; i < numActive; ++i)
         {
             const int ii = actives(i,0); // N_i
-            for (index_t j = 0; j < numActive; ++j)
+            
+            if ( mapper.is_free_index(ii) )
             {
-                const int jj = actives(j,0); // N_j
-
-                // store lower triangular part only
-                if ( jj <= ii )
-                    sysMatrix.coeffRef(ii, jj) += localMat(i, j); // N_i*N_j
+                for (index_t j = 0; j < numActive; ++j)
+                {
+                    const int jj = actives(j,0); // N_j
+                    if ( mapper.is_free_index(jj) )
+                        if ( jj <= ii ) // only store lower triangular part
+                            sysMatrix.coeffRef(ii, jj) += localMat(i, j); // N_i*N_j
+                }
             }
         }
     }
 
 protected:
-
-    bool useMapper;
 
     // Basis values
     gsMatrix<T>      basisData;

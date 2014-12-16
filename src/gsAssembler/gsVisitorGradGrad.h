@@ -31,7 +31,7 @@ public:
 
 public:
 
-    gsVisitorGradGrad(bool _useMapper = true) : Base(_useMapper)
+    gsVisitorGradGrad()
     { }
 
     static void initialize(const gsBasis<T> & basis, 
@@ -89,22 +89,16 @@ public:
         }
     }
 
-    // Inherited from gsVisitorMass
-    //void localToGlobal(const gsDofMapper     & mapper,
-    //                   const gsMatrix<T>     & eliminatedDofs,
-    //                   const int patchIndex,
-    //                   gsSparseMatrix<T>     & sysMatrix,
-    //                   gsMatrix<T>           & rhsMatrix )
+    //Inherited from gsVisitorMass
+    //void localToGlobal( ... )
 
 private:
-
-    using Base::useMapper;
 
     // Gradient values
     gsMatrix<T>  basisPhGrads;
     using Base:: basisData;
     using Base::actives;
-
+    
     // Local matrix
     using Base::localMat;
 };

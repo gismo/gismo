@@ -118,7 +118,7 @@ void gsPoissonAssembler<T>::assemble()
     // sparse matrix
     int nonZerosPerCol = 1;
     for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
-        nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1; // need more for DG !
+        nonZerosPerCol *= 3 * m_bases.front().maxDegree(i) + 1; // need more for DG !
 
     m_matrix = gsSparseMatrix<T>(m_dofs, m_dofs); // Clean matrices
     m_matrix.reserve( gsVector<int>::Constant(m_dofs, nonZerosPerCol) );

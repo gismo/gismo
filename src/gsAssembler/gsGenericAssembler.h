@@ -112,11 +112,17 @@ public:
         m_matrix.resize(sz, sz); // Clean matrix
         m_matrix.reserve( gsVector<int>::Constant(sz, nonZerosPerCol) );
 
-        // Mass visitor (without mapper)
-        gsVisitorMass<T> mass(false);
-        
+        // Mass visitor
+        gsVisitorMass<T> mass;
+
+        // Set shift such that "global" indices correspond to patch-local numbering
+        // (!) assumes a conforming dof mapper
+        m_dofMappers.front().setShift(-m_dofMappers.front().offset(patchIndex) );
+   
         //Assemble stiffness matrix for this patch
         this->apply(mass, patchIndex);
+
+        m_dofMappers.front().setShift(0);
 
         // Assembly is done, compress the matrix
         m_matrix.makeCompressed();   
@@ -136,11 +142,17 @@ public:
         m_matrix.resize(sz, sz); // Clean matrix
         m_matrix.reserve( gsVector<int>::Constant(sz, nonZerosPerCol) );
 
-        // Stiffness visitor (without mapper)
-        gsVisitorGradGrad<T> stiffness(false);
+        // Stiffness visitor
+        gsVisitorGradGrad<T> stiffness;
+
+        // Set shift such that "global" indices correspond to patch-local numbering
+        // (!) assumes a non-conforming dof mapper
+        m_dofMappers.front().setShift(-m_dofMappers.front().offset(patchIndex) );
 
         //Assemble stiffness matrix for this patch
         this->apply(stiffness, patchIndex);
+
+        m_dofMappers.front().setShift(0);
 
         // Assembly is done, compress the matrix
         m_matrix.makeCompressed();   

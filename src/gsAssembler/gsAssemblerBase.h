@@ -110,7 +110,6 @@ public:
         GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
                      "DG assumes nested interfaces.");
         
-        gsQuadRule<T> QuRule;         // Reference Quadrature rule
         gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
         gsVector<T> quWeights;         // Mapped weights
         // Evaluation flags for the Geometry map
@@ -195,6 +194,9 @@ protected:
     // Dirichlet DoF fixed values (if applicable)
     gsMatrix<T> m_ddof;
 
+    // Reference Quadrature rule
+    gsQuadRule<T> QuRule;
+
     // *** Outputs *** 
     
     /// Global matrix
@@ -206,7 +208,7 @@ protected:
     // *** Information *** 
 
     /// number of degrees of freedom (excluding eliminated etc)
-    // to do: is this the system size instead ?
+    // to do: rename to m_matSize
     int m_dofs;
 
 };
