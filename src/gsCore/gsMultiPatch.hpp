@@ -130,13 +130,7 @@ void gsMultiPatch<T>::uniformRefine(int numKnots)
     }
 }
 
-template <class T>
-bool matchSides (
-    const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
-    const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
-    gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
-    T tol,
-    index_t reference=0);
+
 
 /**
  * This is based on comparing the corners of the patch side and thus it implicitly assumes that that the patch faces match
@@ -183,7 +177,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
     cId2.reserve(nCorS);
     gsVector<bool>         matched;
     size_t other=0;
-    while (pSide.size()>1)
+    while (pSide.size()>0)
     {
         bool done=false;
         const patchSide side = pSide.back();
@@ -195,7 +189,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
 
             matched.setConstant(cId2.size(),false);
 
-            if ( matchSides( pCorners[side.patch], cId1, 0, pCorners[pSide[other].patch], cId2, matched, dirMap, dirO, tol ) )
+            if ( matchVertecesOnSide( pCorners[side.patch], cId1, 0, pCorners[pSide[other].patch], cId2, matched, dirMap, dirO, tol ) )
             {
                 dirMap(side.direction()) = pSide[other].direction();
                 dirO(side.direction())   = !( side.parameter() == pSide[other].parameter() );
@@ -214,7 +208,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
 
 
 template <class T>
-bool matchSides (
+bool gsMultiPatch<T>::matchVertecesOnSide (
     const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
     const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
     gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
@@ -278,7 +272,7 @@ bool matchSides (
             }
             newMatched = matched;
             newMatched(j) = true;
-            if (!matchSides( cc1,ci1,start+1,cc2,ci2,newMatched,dirMap,dirO, tol,newRef))
+            if (!matchVertecesOnSide( cc1,ci1,start+1,cc2,ci2,newMatched,dirMap,dirO, tol,newRef))
                 continue;
             else
                 return true;

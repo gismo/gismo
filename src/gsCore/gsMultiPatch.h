@@ -209,6 +209,26 @@ private:
 
     PatchContainer m_patches;
 
+private:
+    // implementation functions
+
+    // match the vertexes in ci1 starting from start to the end with the vertexes
+    // in ci2 that are still non matched
+    // cc1 and cc2 are the physical coordinates of the verteces
+    // ci1 and ci2 are the indeces corner indices
+    // start is the index in ci1 of the vertex to match
+    // reference is the image of the vertex ci1(0) and it is used to compute orientation
+    // tol is the allowed distance between two vertexes in physical domain
+    // matched keeps track of the already matched verteces
+    // dirMap and dirO are the output orientation of the match
+    // return true if all the vertexes starting from start are matched
+static  bool matchVertecesOnSide (
+            const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
+            const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
+            gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
+            T tol,
+            index_t reference=0);
+
 }; // class gsMultiPatch
 
 
