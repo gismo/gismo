@@ -1,6 +1,6 @@
 /** @file gsBoundary.cpp
 
-    @brief DESCRIPTION
+    @brief Provides implementation of functions related to interfaces and boundaries.
 
     This file is part of the G+Smo library.
 
