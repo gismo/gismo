@@ -1525,7 +1525,11 @@ public:
         gsXmlNode * toplevel = node->parent();// the geometry patches should be siblings of node
         
         const int d = atoi( node->first_attribute("parDim")->value() );
-        
+
+        // temporaries for interface reading
+        gsVector<index_t> dirMap(d);
+        gsVector<bool>    dirOrient(d);
+
         gsXmlNode * tmp = node->first_node("patches");
         std::istringstream str ;
         str.str( tmp->value() );
@@ -1566,11 +1570,10 @@ public:
             str.clear();
             str.str( tmp->value() );
             
-            // Read interface (groups or size 4+d-1)
+            // Read interface (groups or size 4 + 2*d)
             
             while ( str>>std::ws >> p[0] ) // While there are more ints (groups or size 4+d-1)
             {
-
                 for ( int i=1; i<4; ++i)
                     if ( ! (str >> std::ws >> p[i] >> std::ws) )
                         gsWarn<<"Error reading interface.\n";
@@ -1578,21 +1581,22 @@ public:
                 // Get ids
                 p[0] = ids[ p[0] ];
                 p[2] = ids[ p[2] ];
-                
-/*
-                // orientation information
-                std::vector<boundaryInterface::dirInfo> iFaceInfo(d);
-                boundaryInterface::dirInfo tmp;
-                int k;
-                for ( int i=0; i!=d; ++i)
-                {
-                    if ( !(str >> std::ws >> tmp.first >> std::ws >> k >> std::ws) )
-                        gsWarn<<"Error reading interface orientation.\n";
-                    tmp.second = (k>0);
-                    iFaceInfo.push_back(tmp);
-                }
-*/
 
+/*
+                // Read the matching direction permutation
+                for ( int i=0; i!=d; ++i)
+                    if ( !(str >> std::ws >> dirMap[i]) )
+                        gsWarn<<"Error reading interface direction map.\n";
+
+                // Read the interface orientation
+                for ( int i=0; i!=d; ++i)
+                    if ( !(str >> std::ws >> dirOrient[i]) )
+                        gsWarn<<"Error reading interface orientation.\n";
+
+                interfaces.push_back( boundaryInterface(p, dirMap, dirOrient) );
+//*/
+
+// /*           // OLD format: read in Orientation flags
                 gsVector<bool> orient(d-1);// orientation flags
                 int k;
                 for ( int i=0; i!=d-1; ++i)
@@ -1601,8 +1605,8 @@ public:
                         gsWarn<<"Error reading interface orientation.\n";
                     orient[i]= (k>0);
                 }
-                
                 interfaces.push_back( boundaryInterface(p,orient) ) ;
+//*/
             }
         }
         
@@ -1649,19 +1653,19 @@ public:
         str.clear(); str.str("");
         
         // Make MultiPatch node
-        gsXmlNode* mp_node = internal::makeNode("MultiPatch" , data);
+        gsXmlNode * mp_node = internal::makeNode("MultiPatch" , data);
         mp_node->append_attribute( internal::makeAttribute("parDim", obj.parDim() , data) );
         mp_node->append_node(tmp);
       
-        if ( obj.nInterfaces() )
+        if ( obj.nInterfaces() != 0 )
         {      
             for ( typename gsMultiPatch<T>::const_iiterator it = obj.iBegin();
                   it != obj.iEnd(); ++it )
             {
-                gsWarn<<"writing interface in old format, it does not work for 3D\n";
-                str<< it->first().patch <<" "<< int(it->first().side())<<" "
-                   << it->second().patch <<" "<< int(it->second().side())<<" "
-                   << it->orient().transpose() <<"\n";
+                str<< it->first().patch  <<" " << int(it->first().side())<<" "
+                   << it->second().patch <<" " << int(it->second().side())<<" "
+                   << it->dirMap().transpose()         <<" "
+                   << it->dirOrientation().transpose() <<"\n";
             }
             tmp = internal::makeNode("interfaces", str.str(),  data);
             mp_node->append_node(tmp);
