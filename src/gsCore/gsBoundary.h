@@ -15,6 +15,8 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 
+#include <gsCore/gsExport.h>
+
 namespace gismo
 {
 /** 
