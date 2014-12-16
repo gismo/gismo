@@ -18,8 +18,6 @@
 #include <gsNurbs/gsBoehm.h>
 #include <gsNurbs/gsDeboor.hpp>
 
-#include <gsThbs/gsQuadIndex.h>
-
 namespace gismo
 {
 
@@ -418,18 +416,14 @@ void gsTHBSplineBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned level, const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsCompactKnotVector<T>& k1, gsCompactKnotVector<T>& k2) const
 {
-    std::vector< std::map<unsigned,T> > m_cmatrix;
-    update_cmatrix(m_cmatrix);
+    std::vector< std::map<unsigned,T> > cmatrix;
+    update_cmatrix(cmatrix);
     
     // check if the indices in b1, and b2 are correct with respect to the given level
     
-    // The following should be equivalent to the scary Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) that was here before.
-    gsVector<unsigned,d> one(1);
-    one(0) = 1; // =)
-    gsVector<unsigned,d> glob_one(1);
-    this->m_tree.local2globalIndex( one, level, glob_one );
-
-    unsigned loc2glob =  glob_one(0);
+    // The following should be equivalent to the scary 
+    //Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) that was here before.
+    const unsigned loc2glob = ( 1<< (this->m_tree.getIndexLevel() - level) );
     if( b1[0]%loc2glob != 0 )
     {
         b1[0] -= b1[0]%loc2glob;
@@ -450,16 +444,10 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
     // select the indices of all B-splines of the given level acting on the given box
 
     // The following should be equivalent to the commented Qglobal2locals.
-    gsVector<unsigned,d> b1_inputs(2);
-    gsVector<unsigned,d> b1_outputs(2);
-    gsVector<unsigned,d> b2_inputs(2);
-    gsVector<unsigned,d> b2_outputs(2);
+    gsVector<unsigned,d> b1_outputs, b2_outputs;
 
-    b1_inputs = b1;
-    b2_inputs = b2;
-
-    this->m_tree.global2localIndex( b1_inputs, level, b1_outputs );
-    this->m_tree.global2localIndex( b2_inputs, level, b2_outputs );
+    this->m_tree.global2localIndex( b1, level, b1_outputs );
+    this->m_tree.global2localIndex( b2, level, b2_outputs );
 
     int i0 = b1_outputs(0); //Qglobal2local(b1[0],level,this->m_tree.getIndexLevel());
     int i1 = b2_outputs(0); //Qglobal2local(b2[0],level,this->m_tree.getIndexLevel());
@@ -474,9 +462,9 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
     // It would also be nice to rename b0, b1, i0, i1, j0 and j1 to something more intuitive.
     for(int i = 0; i < geom_coef.cols(); i++)
     {
-        update_cmatrix(geom_coef, i, level, m_cmatrix);
-        gsMatrix<T> temp(1,1);
-        globalRefinement(level, temp, m_cmatrix);
+        update_cmatrix(geom_coef, i, level, cmatrix);
+        gsMatrix<T> temp(1,1); // ? (!) ?
+        globalRefinement(level, temp, cmatrix);
 
         for(int k = i0; k <= i1; k++)
         {
@@ -1030,7 +1018,7 @@ void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction,
 // called by getBsplinePatchGlobal
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs, 
-                                             std::vector< std::map<unsigned,T> > & m_cmatrix) const
+                                             std::vector< std::map<unsigned,T> > & cmatrix) const
 {    
     //coeffs.resize(this->m_bases[0]->component(1).knots().size()-this->m_deg[1]-1,this->m_bases[0]->component(0).knots().size()-this->m_deg[0]-1);
     coeffs.resize(this->m_bases[0]->size(1),this->m_bases[0]->size(0));
@@ -1038,7 +1026,7 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs,
         for(int k = 0; k < coeffs.cols(); k++){
             unsigned s  = this->m_bases[0]->index(k,j);//this->fromPair(k,j, 0);
             if(this->m_xmatrix[0].bContains(s) ){
-                coeffs(j,k) = m_cmatrix[0].find( s )->second;
+                coeffs(j,k) = cmatrix[0].find( s )->second;
             }else{
                 coeffs(j,k) = 0;
             }
@@ -1077,7 +1065,7 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs,
                 unsigned s  = this->m_bases[l]->index(k,j);
                 if(this->m_xmatrix[l].bContains(s) )
 		{
-                    coeffs(j,k) = m_cmatrix[l].find( s )->second;
+                    coeffs(j,k) = cmatrix[l].find( s )->second;
                 }
             }
         }
@@ -1244,36 +1232,36 @@ void gsTHBSplineBasis<d,T>::derivSingle_into(unsigned i,
 
 
 template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::update_cmatrix(std::vector< std::map<unsigned,T> > & m_cmatrix) const
+void gsTHBSplineBasis<d,T>::update_cmatrix(std::vector< std::map<unsigned,T> > & cmatrix) const
 {
     //srand((unsigned)time(NULL));//seed the random alg.
-    m_cmatrix.clear();
+    cmatrix.clear();
     //initializing coefficient matrices to 0 for all active basis
     //functions
     for(size_t i = 0; i < this->m_xmatrix.size();i++)
     {
-        m_cmatrix.push_back( std::map< unsigned, T>());
+        cmatrix.push_back( std::map< unsigned, T>());
         for(typename CMatrix::const_iterator it = this->m_xmatrix[i].begin(); 
             it != this->m_xmatrix[i].end(); it++)
         {
-            m_cmatrix[i][*it] = T(0.0);
-            //m_cmatrix[i][*it] = 1.0/((rand()%100)+0.01);
+            cmatrix[i][*it] = T(0.0);
+            //cmatrix[i][*it] = 1.0/((rand()%100)+0.01);
         }
     }
 }
 
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::update_cmatrix(const gsMatrix<T>&geom_coeff, int col, int c_level,
-                                           std::vector< std::map<unsigned,T> > & m_cmatrix) const
+                                           std::vector< std::map<unsigned,T> > & cmatrix) const
 {
     int counter = 0;
     for(int i = 0; i <= c_level; i++)
     {
-        m_cmatrix.push_back( std::map <unsigned, T>() );
+        cmatrix.push_back( std::map <unsigned, T>() );
         for(typename CMatrix::const_iterator it = this->m_xmatrix[i].begin();
             it != this->m_xmatrix[i].end(); it++)
         {
-            m_cmatrix[i][ *it ] = geom_coeff(counter,col);
+            cmatrix[i][ *it ] = geom_coeff(counter,col);
             counter++;
         }
     }

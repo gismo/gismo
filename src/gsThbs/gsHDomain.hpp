@@ -11,6 +11,26 @@
     Author(s): G. Kiss, A. Mantzaflaris
 */
 
+
+/*
+// Note 1: stride(lvl): 1 << (m_index_level-lvl);
+// Note 2:Translate index from lvl1 to lvl2
+inline unsigned translateIndex( unsigned const & i, 
+                                unsigned const & lvl1,
+                                unsigned const & lvl2)
+{
+    if ( lvl1< lvl2 )
+        return i << (lvl2-lvl1);
+    else // lvl1 >= lvl2
+      {
+	if ( lvl1< lvl2 )
+	  return i >> (lvl1-lvl2);
+	else
+	  return i;
+      }
+}
+*/
+
 #include <gsThbs/gsAAPolyline.h>
 #include <gsCore/gsLinearAlgebra.h>
 

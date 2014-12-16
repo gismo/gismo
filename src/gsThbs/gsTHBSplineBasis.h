@@ -533,12 +533,12 @@ public:
   void uniformRefine(int numKnots = 1);
 
   /**
-   * @brief Initializes the \a m_cmatrix with 0 for evaluation of basis functions.
+   * @brief Initializes the \a cmatrix with 0 for evaluation of basis functions.
    */
-  void update_cmatrix(std::vector< std::map<unsigned,T> > & m_cmatrix) const;
+  void update_cmatrix(std::vector< std::map<unsigned,T> > & cmatrix) const;
 
   /**
-   * @brief Initialize the m_cmatrix up to \a c_level
+   * @brief Initialize the cmatrix up to \a c_level
    * with the \a geom_coeff of the geometry in the
    * direction specified by \a col.
    *
@@ -547,7 +547,7 @@ public:
    * @param c_level the maximum level of interest
    */
    void update_cmatrix(const gsMatrix<T>& geom_coeff, int col, int c_level, 
-                       std::vector< std::map<unsigned,T> > & m_cmatrix) const;
+                       std::vector< std::map<unsigned,T> > & cmatrix) const;
 
    ///returns transfer matrices betweend the levels of the given hierarchical spline
    void transferbyLvl (std::vector<gsMatrix<T> >& result);
@@ -566,7 +566,7 @@ private:
      * @param[out] coeffs coefficients obtained by knot insertion
      */
     void globalRefinement(int level, gsMatrix<T>& coeffs,
-                          std::vector< std::map<unsigned,T> > & m_cmatrix ) const;
+                          std::vector< std::map<unsigned,T> > & cmatrix ) const;
 
     /**
      * @brief return_cp_1D converts the coefficient matrix mat in the given direction to a column of the control points matrix
