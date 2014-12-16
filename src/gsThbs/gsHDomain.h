@@ -476,24 +476,9 @@ public:
 
     ///return a list of polylines- boundaries of each connected
     ///component for all levels in the parameter space
-    std::vector< std::vector<std::vector< std::vector<  unsigned int > > > > getPolylines() const;
+    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > getPolylines() const;
 
-    ///return a list of polylines- boundaries of each connected
-    //component of the domain of level \param lvl in the parameter
-    //space to make private after tests
-    std::vector<std::vector< std::vector< int > > > 
-    getPoly(std::vector<gsVSegment<T> >& seg) const;
-
-    /*
-    void prepare_segments( std::vector< gsSegment<T> >& seg, std::vector< std::vector< gsSegment< T > > >& pos ) const;
-
-    void connect_colinear_segments( std::vector< std::vector< gsSegment< T > > >& pos ) const;
-
-    void sweepline_connect_segments( std::vector< std::vector< std::vector< int > > >& result, std::vector< std::vector< gsSegment< T > > >& pos ) const;
-
-    void merge_polylines( std::vector<gsSegment<T> >& active_spans, std::vector< std::list< gsSegment<T> > >& temp_output ) const;
-*/
-    std::vector<std::vector< std::vector<unsigned int > > > getPolylinesSingleLevel(std::vector<gsVSegment<T> >& seg) const;
+    std::vector< std::vector< std::vector< unsigned int > > > getPolylinesSingleLevel(std::vector<gsVSegment<T> >& seg) const;
 
 
     inline unsigned getIndexLevel() const
@@ -550,6 +535,11 @@ private:
         GISMO_NO_IMPLEMENTATION
     }
 
+    /// Represents boxes of the tree in a big vector.
+    /// \param[out] boxes each item corresponds to a box and is
+    /// represented by a vector of unsigned ints: first the
+    /// coordinates of the lower left and then the coordinates of
+    /// upper right corner. Everything in terms of their level.
     void getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) const;
 
     ///connect the boxes returned from quadtree

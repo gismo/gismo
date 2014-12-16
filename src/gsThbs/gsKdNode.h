@@ -69,11 +69,11 @@ struct kdnode
     /// special value -1 denotes a leaf node
     int axis ; 
 
-    /// Split coordinate (meaninfull only for split-nodes)
+    /// Split coordinate (meaningfull only for split nodes)
     T pos;
 
     /// level in which the box in the node is completely contained
-    /// special value -1 denotes unknown level (in case of split node)
+    /// special value -1 denotes unknown level (in case of a split node)
     int level ;
 
     /// The box held in this leaf node (if leaf)

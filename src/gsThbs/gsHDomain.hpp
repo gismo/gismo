@@ -506,53 +506,8 @@ void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gs
         }
         level[i] = boxes[i][2*d];
     }
-
-    /*ad hoc example- no oscillation fillet- keep for some time
-     *int nboxes = 36;
-    level.resize(nboxes);
-    //gsMatrix<unsigned> b1, b2;
-    b1.resize(nboxes,2);
-    b2.resize(nboxes,2);
-
-    level[0] = 1; b1(0,0) =  0; b1(0,1) =  24; b2(0,0) = 2; b2(0,1) = 28;
-    level[1] = 1; b1(1,0) =  0; b1(1,1) =  10; b2(1,0) = 10; b2(1,1) = 24;
-    level[2] = 1; b1(2,0) =  0; b1(2,1) =  6; b2(2,0) = 14; b2(2,1) = 10;
-    level[3] = 1; b1(3,0) =  0; b1(3,1) =  0; b2(3,0) = 40; b2(3,1) = 6;
-    level[4] = 1; b1(4,0) =  24; b1(4,1) =  6; b2(4,0) = 40; b2(4,1) = 14;
-    level[5] = 1; b1(5,0) =  28; b1(5,1) =  14; b2(5,0) = 40; b2(5,1) = 20;
-    level[6] = 1; b1(6,0) =  30; b1(6,1) =  20; b2(6,0) = 40; b2(6,1) = 22;
-    level[7] = 1; b1(7,0) =  38; b1(7,1) =  22; b2(7,0) = 40; b2(7,1) = 26;
-    //level 2
-    level[8] = 2; b1(8,0) =  0; b1(8,1) =  35; b2(8,0) = 17; b2(8,1) = 40;
-    level[9] = 2; b1(9,0) =  0; b1(9,1) =  33; b2(9,0) = 14; b2(9,1) = 35;
-    level[10] = 2; b1(10,0) =  0; b1(10,1) =  28; b2(10,0) = 13; b2(10,1) = 33;
-    level[11] = 2; b1(11,0) =  2; b1(11,1) =  25; b2(11,0) = 13; b2(11,1) = 28;
-    level[12] = 2; b1(12,0) =  2; b1(12,1) =  24; b2(12,0) = 15; b2(12,1) = 25;
-    level[13] = 2; b1(13,0) =  10; b1(13,1) =  22; b2(13,0) = 15; b2(13,1) = 24;
-    level[14] = 2; b1(14,0) =  10; b1(14,1) =  20; b2(14,0) = 30; b2(14,1) = 22;
-    level[15] = 2; b1(15,0) =  10; b1(15,1) =  14; b2(15,0) = 28; b2(15,1) = 20;
-    level[16] = 2; b1(16,0) =  10; b1(16,1) =  10; b2(16,0) = 24; b2(16,1) = 14;
-    level[17] = 2; b1(17,0) =  14; b1(17,1) =  6; b2(17,0) = 24; b2(17,1) = 10;
-    level[18] = 2; b1(18,0) =  23; b1(18,1) =  22; b2(18,0) = 38; b2(18,1) = 26;
-    level[19] = 2; b1(19,0) =  25; b1(19,1) =  26; b2(19,0) = 40; b2(19,1) = 30;
-    level[20] = 2; b1(20,0) =  26; b1(20,1) =  30; b2(20,0) = 40; b2(20,1) = 35;
-    level[21] = 2; b1(21,0) =  26; b1(21,1) =  35; b2(21,0) = 32; b2(21,1) = 36;
-    level[22] = 2; b1(22,0) =  25; b1(22,1) =  36; b2(22,0) = 32; b2(22,1) = 37;
-    level[23] = 2; b1(23,0) =  25; b1(23,1) =  37; b2(23,0) = 28; b2(23,1) = 39;
-    level[24] = 2; b1(24,0) =  24; b1(24,1) =  39; b2(24,0) = 28; b2(24,1) = 40;
-    level[25] = 2; b1(25,0) =  37; b1(25,1) =  35; b2(25,0) = 40; b2(25,1) = 40;
-    //level 3
-    level[26] = 3; b1(26,0) =  17; b1(26,1) =  39; b2(26,0) = 24; b2(26,1) = 40;
-    level[27] = 3; b1(27,0) =  17; b1(27,1) =  36; b2(27,0) = 25; b2(27,1) = 39;
-    level[28] = 3; b1(28,0) =  17; b1(28,1) =  35; b2(28,0) = 26; b2(28,1) = 36;
-    level[29] = 3; b1(29,0) =  14; b1(29,1) =  33; b2(29,0) = 26; b2(29,1) = 35;
-    level[30] = 3; b1(30,0) =  13; b1(30,1) =  30; b2(30,0) = 26; b2(30,1) = 33;
-    level[31] = 3; b1(31,0) =  13; b1(31,1) =  26; b2(31,0) = 25; b2(31,1) = 30;
-    level[32] = 3; b1(32,0) =  13; b1(32,1) =  25; b2(32,0) = 23; b2(32,1) = 30;
-    level[33] = 3; b1(33,0) =  15; b1(33,1) =  22; b2(33,0) = 23; b2(33,1) = 25;
-    level[34] = 3; b1(34,0) =  28; b1(34,1) =  37; b2(34,0) = 37; b2(34,1) = 40;
-    level[35] = 3; b1(35,0) =  32; b1(35,1) =  35; b2(35,0) = 37; b2(35,1) = 37;*/
 }
+
 template<unsigned d, class T>
 void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
               gsMatrix<unsigned>& b2,
@@ -735,8 +690,16 @@ gsHDomain<d,T>::getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) con
         
         if ( curNode->isLeaf() )
         {
-            const point & lower = curNode->lowCorner();
-            const point & upper = curNode->uppCorner();
+	  // We need to convert the indices to those of m_maxInsLevel
+	  // to be able to reconstruct the earlier results.
+            const point & lowerGlob = curNode->lowCorner();
+            const point & upperGlob = curNode->uppCorner();
+	    unsigned int level = this->m_maxInsLevel;
+	    point lower;
+	    point upper;
+	    
+	    global2localIndex(lowerGlob,level,lower);
+	    global2localIndex(upperGlob,level,upper);
 
             boxes.push_back(std::vector<unsigned int>());
             for(unsigned i = 0; i < d; i++)
@@ -773,12 +736,6 @@ gsHDomain<d,T>::getPolylines() const
 */
     std::vector<std::vector<unsigned int> > boxes;
     getBoxes_vec(boxes);//boxes are in the highest level indices, returns all leaves
-    /*for(unsigned int i = 0; i < boxes.size(); i++){
-        if ((boxes[i][0]==boxes[i][2]) || (boxes[i][1]==boxes[i][3])){
-            boxes.erase(boxes.begin()+i);
-            i--;
-        }
-    }*/
 
     // Get rid of boxes that are not of full dimension.
     for( std::vector< std::vector< unsigned int> >::iterator it = boxes.begin(); it != boxes.end(); ++it )
@@ -808,48 +765,6 @@ gsHDomain<d,T>::getPolylines() const
 
     return result;
 }
-
-
-
-/*
-template<unsigned d, class T>
-int gsHDomain<d,T>::closes(gsSegment<T>& seg,
-                            std::vector<gsSegment<T>  >& active_spans)const
-{
-    // Tells, whether the segment seg closes a polyline represented by an active span (the difference between y coordinates of its endpoints).
-    // If so, returns its index.
-    for(unsigned int i = 0; i < active_spans.size();i++){
-        if(active_spans[i].m_y==seg.m_y){
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-template<unsigned d, class T>
-int gsHDomain<d,T>::appends(gsSegment<T>& seg,
-                            std::vector<gsSegment<T>  >& active_spans, bool& front)const
-{
-  ///find index
-    for(unsigned int i = 0; i < active_spans.size();i++){
-        if( (seg.m_y.first==active_spans[i].m_y.second) || (seg.m_y.second==active_spans[i].m_y.second)){
-            front = false;
-            return i;
-        }
-        if( (seg.m_y.first==active_spans[i].m_y.first) || (seg.m_y.second==active_spans[i].m_y.first) ){
-            front = true;
-            return i;
-        }
-    }
-
-    return -1;
-
-}
-*/
-
-
-
 
 
 template<unsigned d, class T>
