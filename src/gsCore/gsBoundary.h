@@ -60,7 +60,6 @@ struct boundary
 
 struct boxCorner;
 
-
 /**
  * Struct side represent a side of a box
 **/
@@ -422,6 +421,16 @@ public:
         }
     }
 
+    boundaryInterface(gsVector<int>     const & p,
+                      gsVector<index_t> const & map_info,
+                      gsVector<bool>    const & orient_flags)
+    : ps1(p(0),p(1)), ps2(p(2),p(3)),
+      directionMap(map_info), 
+      directionOrientation(orient_flags)
+    {  
+        GISMO_ASSERT(p.size() == 4, "Expecting four integers");
+    }
+
     boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
                       gsVector<index_t> const & map_info,
@@ -585,7 +594,7 @@ public:
         else
             return getInverse().dirMap(ps,dir);
     }
-
+    
     gsVector<bool> dirOrientation(const patchSide & ps) const
     {
         if(ps==ps1)
@@ -601,6 +610,12 @@ public:
         else
             return getInverse().dirMap(ps);
     }
+
+    const gsVector<index_t> & dirMap() const
+    { return directionMap; }
+
+    const gsVector<bool> & dirOrientation()  const
+    { return directionOrientation; }
 
 private:
 
