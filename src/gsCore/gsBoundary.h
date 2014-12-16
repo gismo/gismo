@@ -126,14 +126,6 @@ public:
     **/
     static inline int index (index_t dir, bool par) {return par?2*dir+2:2*dir+1;}
 
-
-    /**
-     * @brief returns the vector of the corners contained in the side
-     * @param dim is the ambient dimension
-     * @param corners
-     */
-    void getContainedCorners (int dim, std::vector<boxCorner> &corners) const;
-
     /**
      * @brief helper for iterating on sides of an n-dimensional box
      * @param dim
