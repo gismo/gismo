@@ -266,6 +266,18 @@ public:
     inline bool is_boundary( index_t i, index_t k = 0 ) const 
     {return is_boundary_index( index(i, k) );}
 
+
+    /// Returns true if \a gl is a coupled dof.
+    inline bool is_coupled( index_t i, index_t k = 0 ) const 
+    { return  is_coupled_index( index(i, k) ); }
+
+    /// Returns true if \a gl is a coupled dof.
+    inline bool is_coupled_index( index_t gl) const 
+    {           
+        return  (gl < m_numFreeDofs + m_shift                    ) && // is a free dof
+                (gl > m_numFreeDofs - m_numElimDofs - 1 + m_shift);   // is not standard
+    }
+
     /// Returns the total number of dofs (free and eliminated).
     inline index_t size() const 
     { 
