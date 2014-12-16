@@ -420,36 +420,58 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
 {
     std::vector< std::map<unsigned,T> > m_cmatrix;
     update_cmatrix(m_cmatrix);
+    
     // check if the indices in b1, and b2 are correct with respect to the given level
-    if(b1[0]%Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) != 0 )
+    
+    // The following should be equivalent to the scary Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) that was here before.
+    gsVector<unsigned,d> one(1);
+    one(0) = 1; // =)
+    gsVector<unsigned,d> glob_one(1);
+    this->m_tree.local2globalIndex( one, level, glob_one );
+
+    unsigned loc2glob =  glob_one(0);
+    if( b1[0]%loc2glob != 0 )
     {
-        b1[0] -= b1[0]%Qlocal2global(1,0, this->m_tree.getIndexLevel()-level);
+        b1[0] -= b1[0]%loc2glob;
     }
-    if(b1[1]%Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) != 0 )
+    if( b1[1]%loc2glob != 0 )
     {
-        b1[1] -= (b1[1]%Qlocal2global(1,0, this->m_tree.getIndexLevel()-level));
+        b1[1] -= (b1[1]%loc2glob);
     }
-    if(b2[0]%Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) != 0)
+    if( b2[0]%loc2glob != 0 )
     {
-        b2[0] += Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) -(b2[0]%Qlocal2global(1,0, this->m_tree.getIndexLevel()-level));
+        b2[0] += loc2glob -(b2[0]%loc2glob);
     }
-    if(b2[1]%Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) != 0)
+    if( b2[1]%loc2glob != 0 )
     {
-        b2[1] += Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) -(b2[1]%Qlocal2global(1,0, this->m_tree.getIndexLevel()-level));
+        b2[1] += loc2glob -(b2[1]%loc2glob);
     }
 
     // select the indices of all B-splines of the given level acting on the given box
-    int i0 = Qglobal2local(b1[0],level,this->m_tree.getIndexLevel());
-    i0 = this->m_bases[level]->component(0).knots().lastKnotIndex(i0) - this->m_deg[0];
-    int i1 = Qglobal2local(b2[0],level,this->m_tree.getIndexLevel());
-    i1 = this->m_bases[level]->component(0).knots().firstKnotIndex(i1) - 1;
 
-    int j0 = Qglobal2local(b1[1],level,this->m_tree.getIndexLevel());
+    // The following should be equivalent to the commented Qglobal2locals.
+    gsVector<unsigned,d> b1_inputs(2);
+    gsVector<unsigned,d> b1_outputs(2);
+    gsVector<unsigned,d> b2_inputs(2);
+    gsVector<unsigned,d> b2_outputs(2);
+
+    b1_inputs = b1;
+    b2_inputs = b2;
+
+    this->m_tree.global2localIndex( b1_inputs, level, b1_outputs );
+    this->m_tree.global2localIndex( b2_inputs, level, b2_outputs );
+
+    int i0 = b1_outputs(0); //Qglobal2local(b1[0],level,this->m_tree.getIndexLevel());
+    int i1 = b2_outputs(0); //Qglobal2local(b2[0],level,this->m_tree.getIndexLevel());
+    int j0 = b1_outputs(1); //Qglobal2local(b1[1],level,this->m_tree.getIndexLevel());
+    int j1 = b2_outputs(1); //Qglobal2local(b2[1],level,this->m_tree.getIndexLevel());
+
+    i0 = this->m_bases[level]->component(0).knots().lastKnotIndex(i0) - this->m_deg[0];
+    i1 = this->m_bases[level]->component(0).knots().firstKnotIndex(i1) - 1;
     j0 = this->m_bases[level]->component(1).knots().lastKnotIndex(j0) - this->m_deg[1];
-    int j1 = Qglobal2local(b2[1],level,this->m_tree.getIndexLevel());
     j1 = this->m_bases[level]->component(1).knots().firstKnotIndex(j1) - 1;
 
-
+    // It would also be nice to rename b0, b1, i0, i1, j0 and j1 to something more intuitive.
     for(int i = 0; i < geom_coef.cols(); i++)
     {
         update_cmatrix(geom_coef, i, level, m_cmatrix);
