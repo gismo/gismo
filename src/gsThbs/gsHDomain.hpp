@@ -167,7 +167,7 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
             {
                 // Increase level and reccurse
                 if ( ++curNode->level != lvl)
-                    stack.push(curNode);                    
+                    stack.push(curNode);
             }
             else // treat new child
             {
@@ -200,7 +200,7 @@ template<unsigned d, class T > void
 gsHDomain<d,T>::sinkBox ( point const & k1, 
                           point const & k2, int lvl)
 {
-    GISMO_ENSURE( m_maxInsLevel+1 <= static_cast<int>(m_indexLevel), 
+    GISMO_ENSURE( m_maxInsLevel+1 <= m_indexLevel, 
                   "Max index level might be reached..");
 
     // Make a box
@@ -237,10 +237,10 @@ gsHDomain<d,T>::sinkBox ( point const & k1,
             
             // If curNode is still a leaf, its domain is almost
             // contained in iBox
-            if ( !newLeaf ) //  implies curNode->isLeaf()
+            if ( !newLeaf ) //  implies curNode was a leaf
             {
                 // Increase level
-                if ( ++curNode->level > m_maxInsLevel)
+                if ( ++curNode->level > static_cast<int>(m_maxInsLevel) )
                     m_maxInsLevel = curNode->level;
             }
             else // treat new child
