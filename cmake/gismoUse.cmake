@@ -24,12 +24,11 @@ macro(add_gismo_pure_executable FILE)
     get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME} )
     #message(STATUS "exec (pure template): ${FNAME}")
-    add_executable(${FNAME} ${FNAME} ${gismo_SOURCES} )
+    add_executable(${FNAME} ${FNAME} ${gismo_SOURCES} ${gismo_EXTENSIONS})
     # Allow CMake to follow dependencies on hpp files
     set_property( TARGET ${FNAME} PROPERTY 
     IMPLICIT_DEPENDS_INCLUDE_TRANSFORM "GISMO_HPP_HEADER(%)=\"%\"")
     SET_TARGET_PROPERTIES(${FNAME} PROPERTIES COMPILE_FLAGS -UGISMO_BUILD_LIB)
-    target_link_libraries(${FNAME} ${gismo_EXTENSIONS})
 endmacro(add_gismo_pure_executable)
 
 #macro to add an executable compiled with the shared library

@@ -74,5 +74,5 @@ static const bool gismoExceptionHandler = gsExceptionHandler();
 
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsStackWalker.hpp)
+#include GISMO_HPP_HEADER(gsStackWalker.cpp)
 #endif

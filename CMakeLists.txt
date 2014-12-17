@@ -183,12 +183,14 @@ endif(GISMO_WITH_IPOPT)
 ## Build gismo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################
 
-if (GISMO_EXTRA_DEBUG)
-  set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
-endif()
-
 if(GISMO_BUILD_LIB)
+
+  if (GISMO_EXTRA_DEBUG)
+    set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
+  endif()
+
   include(gsLibrary)
+
 endif()
 
 ## #################################################################
