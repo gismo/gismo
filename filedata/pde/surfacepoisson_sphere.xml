@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<xml>
-<Pde type="SurfacePoissonPde" dim="3">
-<rhs> ( ( sin(3*atan2(x/y)) * sin(4*acos(x/y)) )* 
-  ( ( (3^2)/(sin(acos(z/(sqrt(x^2+y^2))) ))^2 ) 
-  + 4^2 -  (( 4*cos(acos(z/(sqrt(x^2+y^2))))*cos(4*acos(z/(sqrt(x^2+y^2))) ))/(4*sin(acos(z/(sqrt(x^2+y^2))))*sin(4*acos(z/(sqrt(x^2+y^2))) ) ) )  ) )</rhs>
-<solution>( sin(3*atan2(x/y)) * sin(4*acos(x/y)) ) </solution>
-</Pde>
-</xml>

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<xml>
-<Pde type="SurfacePoissonPde" dim="3">
-<rhs> sin( z*3.0*pi/4.0) * (1.0/((3.0/2.0)-sqrt(2)))*( ((3.0*pi/4.0)^2)* (1-cos( atan(x/y) ))*(1-sin( atan(x/y) ))   - ( cos(atan(x/y)) + sin(atan(x/y)) - 4*sin(atan(x/y))* cos(atan(x/y)) )  ) 
-+sin( z*3.0*pi/4.0) * (1.0/((3.0/2.0)-sqrt(2))) * (1-cos( atan(x/y) ))*(1-sin( atan(x/y) ))
-</rhs>
-<solution>sin( z*3.0*pi/4.0) * (1.0/((3.0/2.0)-sqrt(2))) * (1-cos( atan(x/y) ))*(1-sin( atan(x/y) ))</solution>
-</Pde>
-</xml>

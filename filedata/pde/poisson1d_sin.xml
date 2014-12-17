@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<xml>
-<Pde type="PoissonPde" dim="1">
-<rhs>pi^2*sin(pi*x)</rhs>
-<solution>sin(pi*x)</solution>
-</Pde>
-</xml>

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<xml>
-<Pde type="SurfacePoissonPde" dim="3">
-<rhs>72*sqrt(7/pi)*z*(1-6*x^2 - 6*y^2 +4*z^2)</rhs>
-<solution>sqrt(7/pi)*z*(2*z^2 -3*x^2-3*y^2)</solution>
-</Pde>
-</xml>

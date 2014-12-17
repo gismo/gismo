@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<xml>
-<Pde type="PoissonPde" dim="2">
-<rhs>0</rhs>
-<solution>((x^2+y^2)^(1.0/3.0))*sin((2*atan2(y,x) + pi)/3.0)</solution>
-</Pde>
-</xml>

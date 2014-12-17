@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<xml>
-<Pde type="PoissonPde" dim="2">
-<rhs>0</rhs>
-<solution>(x^2+y^2)^(1/2)/(1+y^2/x^2)^(1/2)+(x^2+y^2)*sin(2*atan(y/x))</solution>
-</Pde>
-</xml>

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<xml>
-<Pde type="PoissonPde" dim="2">
-<rhs>0</rhs>
-<solution>2*x*y + 3*x + 4*y +5</solution>
-</Pde>
-</xml>
