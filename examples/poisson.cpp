@@ -219,13 +219,13 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
       switch ( ppde->m_compat_dim )
 	    {
 	    case 1:
-	      fn+= "/bspline1d.xml";
+	      fn+= "domain1d/bspline1d_01.xml";
 	      break;
 	    case 2:
-	      fn+= "/square.xml";
+	      fn+= "domain2d/square.xml";
 	      break;
 	    case 3:
-	      fn+= "/cube.xml";
+	      fn+= "domain3d/cube.xml";
 	      break;
 	    default:
 	      return false;

@@ -271,19 +271,19 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     {
       fn = GISMO_DATA_DIR;
       switch ( ppde->m_compat_dim )
-        {
-        case 1:
-          fn+= "/bspline1d.xml";
-          break;
-        case 2:
-          fn+= "/square.xml";
-          break;
-        case 3:
-          fn+= "/cube.xml";
-          break;
-        default:
-          return false;
-        }
+	    {
+	    case 1:
+	      fn+= "domain1d/bspline1d_01.xml";
+	      break;
+	    case 2:
+	      fn+= "domain2d/square.xml";
+	      break;
+	    case 3:
+	      fn+= "domain3d/cube.xml";
+	      break;
+	    default:
+	      return false;
+	    }
     }
     geo = gsReadFile<>( fn );
     if ( !geo )
