@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     double tolerance = 1e-02;
     int extension = 2;
     double refPercent = 0.1;
-    std::string fn = GISMO_SOURCE_DIR "/filedata/fitting/deepdrawingC.xml";
+    std::string fn = GISMO_DATA_DIR "/fitting/deepdrawingC.xml";
 
     try
     {   // Reading options from the command line

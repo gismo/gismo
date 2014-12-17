@@ -18,10 +18,6 @@ aux_header_directory     (${CMAKE_CURRENT_SOURCE_DIR} ${GM_NAME}_H  )
 aux_source_directory     (${CMAKE_CURRENT_SOURCE_DIR} ${GM_NAME}_CPP)
 aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${GM_NAME}_HPP)
 
-if (NOT GISMO_EXTRA_DEBUG)
-  list(REMOVE_ITEM ${GM_NAME}_CPP ${CMAKE_CURRENT_SOURCE_DIR}/gsStackWalker.cpp)
-endif()
-
 ## #################################################################
 ## Add module
 ## #################################################################

@@ -18,8 +18,8 @@ int main(int argc, char *argv[])
     bool noSmooth = false;
     bool writePatchNumbers = false;
     std::string filename;
-    filename= GISMO_SOURCE_DIR;
-    filename += "/filedata/off/mushroom_triangulated.off";
+    filename= GISMO_DATA_DIR;
+    filename += "/off/mushroom_triangulated.off";
     double cutoffAngle = 40.0;
     double innerAngle = 15.0;
     double patchAreaWeight = 0.2;

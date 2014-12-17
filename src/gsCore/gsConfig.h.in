@@ -28,9 +28,6 @@
 /* Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
 
-/* Define source directory (to be replaced with the "data" directory later. */
-#define GISMO_SOURCE_DIR "@GISMO_SOURCE_DIR@"
-
 /* Define the shared_ptr to that was found on the system. */
 #cmakedefine STD_SHARED_PTR_FOUND
 #cmakedefine TR1_SHARED_PTR_FOUND

@@ -179,7 +179,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
 
     if ( fn_pde.empty() )
 	{
-	    fn_pde = GISMO_SOURCE_DIR;
+	    fn_pde = GISMO_DATA_DIR;
 	    if ( !fn.empty() )
 		{
 		    geo = gsReadFile<>( fn );
@@ -191,20 +191,20 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
 		    switch ( geo->geoDim() )
 			{
 			case 1:
-			    fn_pde+="/filedata/pde/poisson1d_sin.xml";
+			    fn_pde+="/pde/poisson1d_sin.xml";
 			    break;
 			case 2:
-			    fn_pde+="/filedata/pde/poisson2d_sin.xml";
+			    fn_pde+="/pde/poisson2d_sin.xml";
 			    break;
 			case 3:
-			    fn_pde+="/filedata/pde/poisson3d_sin.xml";
+			    fn_pde+="/pde/poisson3d_sin.xml";
 			    break;
 			default:
 			    return false;
 			}
 		}
 	    else
-		fn_pde+="/filedata/pde/poisson2d_sin.xml";
+            fn_pde+="/pde/poisson2d_sin.xml";
 	}
     ppde = gsReadFile<>(fn_pde);
     if ( !ppde )
@@ -215,17 +215,17 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     
     if ( fn.empty() )
 	{
-	  fn = GISMO_SOURCE_DIR;
+	  fn = GISMO_DATA_DIR;
       switch ( ppde->m_compat_dim )
 	    {
 	    case 1:
-	      fn+= "/filedata/bspline1d.xml";
+	      fn+= "/bspline1d.xml";
 	      break;
 	    case 2:
-	      fn+= "/filedata/square.xml";
+	      fn+= "/square.xml";
 	      break;
 	    case 3:
-	      fn+= "/filedata/cube.xml";
+	      fn+= "/cube.xml";
 	      break;
 	    default:
 	      return false;

@@ -59,11 +59,10 @@ endif(GISMO_BUILD_SHARED_LIB  OR GISMO_BUILD_STATIC_LIB)
 #index type
 set (GISMO_INDEX_TYPE "int")
 
-# Shared pointer
+# Shared pointe
 find_package (TR1 QUIET)
 
-# Source directory
-set (GISMO_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
+# Data directory
 set (GISMO_DATA_DIR   "${PROJECT_SOURCE_DIR}/filedata/")
 
 # Configure
@@ -184,18 +183,13 @@ endif(GISMO_WITH_IPOPT)
 ## Build gismo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################
 
-if(GISMO_BUILD_LIB)
-  add_subdirectory(instance)
-#else()
-#  add_custom_target( gismo SOURCES ${gismo_HEADERS} )
-#  add_library(gismo STATIC  ${gismo_HEADERS})
-#  set_target_properties(gismo PROPERTIES LINKER_LANGUAGE CXX)
+if (GISMO_EXTRA_DEBUG)
+  set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
 endif()
 
-#message ("*** Headers:  ${${PROJECT_NAME}_HEADERS}")
-#message ("*** Sources:  ${${PROJECT_NAME}_SOURCES}")
-#message ("*** Template headers:  ${${PROJECT_NAME}_TMPL_HEADERS}")
-
+if(GISMO_BUILD_LIB)
+  include(gsLibrary)
+endif()
 
 ## #################################################################
 ## Plugins
