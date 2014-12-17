@@ -1,14 +1,16 @@
-/*
-* gsMultiIndexIterarors.h created on 09.07.2014
-*
-* This file contains iterators over discrete set of points in Z^n.
-* In particular it contains a tensorGrid and a simplexGrid iterators.
-*
-* The content was in gsCombinatorics
-*
-* Author: Andrea Bressan
-*
-* This file is part of the G+SMO library
+/** @file gsMultiIndexIterarors.h
+
+    @brief This file contains iterators over discrete set of points in
+ Z^n.  In particular it contains a tensorGrid and a simplexGrid
+ iterators.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Bressan
 */
 
 #pragma once
@@ -341,8 +343,8 @@ class gsTensorGridVertexIterator
         : public gsTensorGridIterator<Flat,dim>
 {
 public:
-    using typename gsMultiIndexIterator<Flat,dim>::MIndexT;
-    using typename gsMultiIndexIterator<Flat,dim>::FIndexT;
+    typedef typename gsMultiIndexIterator<Flat,dim>::MIndexT MIndexT;
+    typedef typename gsMultiIndexIterator<Flat,dim>::FIndexT FIndexT;
     using gsMultiIndexIterator<Flat,dim>::good;
 public:
     gsTensorGridVertexIterator( gsTensorGridIterator<Flat,dim> &area);

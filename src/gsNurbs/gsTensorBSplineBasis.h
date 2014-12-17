@@ -1,3 +1,16 @@
+/** @file gsTensorBSplineBasis.h
+
+    @brief Provides declaration of TensorBSplineBasis abstract interface.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
+
 
 #pragma once
 
@@ -58,10 +71,10 @@ public:
     typedef gsTensorBSpline<d, T, KnotVectorType> GeometryType;
 
     /// Associated Boundary basis type
-    //using typename Base::BoundaryBasisType;
+    //typedef typename Base::BoundaryBasisType BoundaryBasisType;
 
-    using typename Base::iterator;
-    using typename Base::const_iterator;
+    typedef typename Base::iterator        iterator;
+    typedef typename Base::const_iterator  const_iterator;
 
     /// Shared pointer for gsTensorBasis
     typedef memory::shared_ptr< gsTensorBSplineBasis > Ptr;

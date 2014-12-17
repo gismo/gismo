@@ -1,3 +1,16 @@
+/** @file gsPointIterator.h
+
+    @brief Provides declaration of point iterators.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Bressan
+*/
+
 #pragma once
 
 #include <gsUtils/gsMultiIndexIterators.h>
@@ -173,7 +186,7 @@ class gsSimplexPointGridIterator
     : public gsPointIterator<T, gsCompositionIterator<Flat,dim+1>, PPSimplexAveraging<T,gsCompositionIterator<Flat,dim+1>,dim > >
 {
     public:
-        using typename gsCompositionIterator<Flat,dim+1>::MIndexT;
+        typedef typename gsCompositionIterator<Flat,dim+1>::MIndexT MIndexT;
         typedef typename PPSimplexAveraging<T,gsCompositionIterator<Flat,dim+1>,dim >::PointT PointT;
     public:
         gsSimplexPointGridIterator( Flat pointPerSide, const gsMatrix<T,dim,dim+1> & vertex)
@@ -192,7 +205,7 @@ class gsSimplexPointGridIterator<T,-1,Flat>
     : public gsPointIterator<T, gsCompositionIterator<Flat>, PPSimplexAveraging<T,gsCompositionIterator<Flat> > >
 {
     public:
-        using typename gsCompositionIterator<Flat,-1>::MIndexT;
+        typedef typename gsCompositionIterator<Flat,-1>::MIndexT MIndexT;
         typedef typename PPSimplexAveraging<T,gsCompositionIterator<Flat> >::PointT PointT;
     public:
         gsSimplexPointGridIterator( Flat pointPerSide, const gsMatrix<T> & vertex)
