@@ -43,7 +43,6 @@ public:
         evFlags = NEED_VALUE|NEED_MEASURE;
     }
 
-
     // Evaluate on element.
     inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
                          gsGeometryEvaluator<T> & geoEval,
@@ -62,8 +61,7 @@ public:
         geoEval.evaluateAt(quNodes);
 
         // Initialize local matrix/rhs
-        localMat.resize(numActive, numActive);
-        localMat.setZero();
+        localMat.setZero(numActive, numActive);
     }
 
     inline void assemble(gsDomainIterator<T>    & element, 
