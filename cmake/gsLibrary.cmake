@@ -40,7 +40,7 @@ endif()
 
   set_target_properties(gismo PROPERTIES 
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/gismo.h" 
-  #POSITION_INDEPENDENT_CODE ON
+  POSITION_INDEPENDENT_CODE ON
   COMPILE_DEFINITIONS GISMO_BUILD_SHARED_LIB # Used for DLL exporting on windows
 )
 
@@ -65,12 +65,14 @@ if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
 endif( WIN32 )
 
   add_library(gismo_static STATIC
-  ${gismo_MODULES}
+  #${gismo_MODULES}
+  ${gismo_SOURCES}
   ${gismo_EXTENSIONS}
   )
 
   set_target_properties(gismo_static PROPERTIES 
   COMPILE_DEFINITIONS GISMO_BUILD_STATIC_LIB
+  POSITION_INDEPENDENT_CODE ON
   EXCLUDE_FROM_ALL 1
   EXCLUDE_FROM_DEFAULT_BUILD 1
   )

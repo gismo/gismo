@@ -119,10 +119,10 @@ qt4_wrap_cpp(${PROJECT_NAME}_SOURCES_MOC ${${PROJECT_NAME}_HEADERS_MOC})
 
 
 #to do: replace by macro
-if( (NOT GISMO_BUILD_LIB) )
-    set(${PROJECT_NAME}_SOURCES
-        ${${PROJECT_NAME}_SOURCES} ${gismo_MODULES} ${gismo_EXTENSIONS} )
-endif()
+#if( (NOT GISMO_BUILD_LIB) )
+#    set(${PROJECT_NAME}_SOURCES
+#        ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCES} ${gismo_EXTENSIONS} )
+#endif()
 
 add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_SOURCES_MOC} 
@@ -137,17 +137,25 @@ target_link_libraries(${PROJECT_NAME}
   axlCore
   axlGui)
 
+  #set_target_properties(${PROJECT_NAME} PROPERTIES 
+  #POSITION_INDEPENDENT_CODE ON
+  #)
+
 if( GISMO_BUILD_LIB )
   target_link_libraries(${PROJECT_NAME} gismo_static)
+#  target_link_libraries(${PROJECT_NAME} gismo)
+
+  #COMPILE_DEFINITIONS GISMO_BUILD_SHARED_LIB # Used for DLL exporting on windows
+
 endif()
 
 get_property(gsAxelPlugin_location TARGET ${PROJECT_NAME} PROPERTY LOCATION)
 ADD_CUSTOM_COMMAND(
     TARGET ${PROJECT_NAME}
     POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${gsAxelPlugin_location}
-    ${Axel_DIR}/plugins
-)
+    COMMAND ${CMAKE_COMMAND} -E copy ${gsAxelPlugin_location} ${Axel_DIR}/plugins
+    COMMAND ${CMAKE_COMMAND} -E echo 'The plugin has been copied to ${Axel_DIR}/plugins.'
+    )
 
 ## #################################################################
 ## Install rules
