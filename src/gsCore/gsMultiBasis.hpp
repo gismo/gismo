@@ -107,6 +107,26 @@ int gsMultiBasis<T>::maxDegree(int k) const
 }
 
 template<class T>
+int gsMultiBasis<T>::maxCwiseDegree() const
+{
+    GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
+    int result = m_bases[0]->maxDegree();
+    for (size_t i = 0; i < m_bases.size(); ++i)
+        result = math::max(m_bases[i]->maxDegree(), result);
+    return result;
+}
+
+template<class T>
+int gsMultiBasis<T>::minCwiseDegree() const
+{
+    GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
+    int result = m_bases[0]->minDegree();
+    for (size_t i = 0; i < m_bases.size(); ++i)
+        result = math::min(m_bases[i]->minDegree(), result);
+    return result;
+}
+
+template<class T>
 int gsMultiBasis<T>::minDegree(int k) const
 {
     GISMO_ASSERT(m_bases.size(), "Empty multibasis.");
@@ -148,7 +168,7 @@ void gsMultiBasis<T>::getMapper(bool conforming,
                                 int unk,
                                 gsDofMapper & mapper) const
 {
-    mapper.init(*this, bc, unk);
+    mapper = gsDofMapper(*this, bc, unk); //.init(*this, bc, unk);
     
     if ( conforming ) // Conforming boundaries ?
     {

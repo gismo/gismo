@@ -177,17 +177,23 @@ public:
     int degree(int i = 0, int comp = 0) const
     { return m_bases[i]->degree(comp);}
 
-    /// Maximum degree with respect to variable \a k.
+    /// @brief Maximum degree with respect to variable \a k.
     int maxDegree(int k) const;
 
-    /// Minimum degree with respect to variable \a k.
+    /// @brief Minimum degree with respect to variable \a k.
     int minDegree(int k) const;
 
-    /// The number of basis functions in basis \a i.
+    /// @brief Maximum degree with respect to all variables
+    int maxCwiseDegree() const;
+
+    /// @brief Minimum degree with respect to all variables
+    int minCwiseDegree() const;
+
+    /// @brief The number of basis functions in basis \a i.
     int size(int i) const
     { return m_bases[i]->size();}
 
-    /// The total number of basis functions in all bases
+    /// @brief The total number of basis functions in all bases
     size_t totalSize() const
     {
         size_t sum = 0;
@@ -196,7 +202,7 @@ public:
         return sum;
     }
 
-    /// The total number of elements in all patches
+    /// @brief The total number of elements in all patches
     size_t totalElements() const
     {
         size_t sum = 0;
@@ -205,14 +211,8 @@ public:
         return sum;
     }
 
-    /// Number of bases
+    /// @brief Number of patch-wise bases
     size_t nBases() const          { return m_bases.size(); }
-
-    /// Returns a vector of paches // to do : replace by copies
-    BasisContainer const& bases() const { return m_bases; }
-
-    /// Makes a deep copy of all bases and puts them in a vector
-    std::vector<gsBasis<T> *> basesCopy() const;
 
     /// Return the \a i-th basis block.
     const gsBasis<T> & basis( std::size_t i ) const
@@ -221,10 +221,10 @@ public:
         return *m_bases[i];
     }
 
-    /// Add a basis
+    /// @brief Add a basis (ownership of the pointer is also aquired)
     void addBasis( gsBasis<T>* g );
 
-    /// Search for the given basis and return its index.
+    /// @brief Search for the given basis and return its index.
     int findBasisIndex( gsBasis<T>* g ) const;
     
     /// @brief Add an interface joint betweeen side \a s1 of geometry
@@ -234,14 +234,15 @@ public:
     void addInterface( gsBasis<T>* g1, boxSide s1,
                        gsBasis<T>* g2, boxSide s2 );
 
-    /// Add side s of patch g to the outer boundary of the domain
+    /// @brief Add side s of patch g to the outer boundary of the domain
     void addPatchBoundary( gsBasis<T>* g, boxSide s ) 
     {
         const int p =findBasisIndex( g );
         m_topology.addBoundary( patchSide( p, s ) );
     }
     
-    /// Refine every basis uniformly by inserting \a numKnots new knots on each knot span
+    /// @brief Refine every basis uniformly by inserting \a numKnots
+    /// new knots on each knot span
     void uniformRefine(int numKnots = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
@@ -250,14 +251,14 @@ public:
         }
     }
 
-    //add to the domain structure the boxes defined in "boxes"
+    // @brief Refine the boxes defined by "boxes"
     void refine(int k, gsMatrix<T> const & boxes)
     {
         m_bases[k]->refine(boxes);
     }
 
 
-    /// Elevate the degree of every basis by the given amount.
+    /// @brief Elevate the degree of every basis by the given amount.
     void degreeElevate(int const& i = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
@@ -266,7 +267,7 @@ public:
         }
     }
 
-    /// Elevate the degree of every basis by the given amount.
+    /// @brief Elevate the degree of every basis by the given amount.
     void degreeElevateComponent(unsigned dir, int const& i = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
