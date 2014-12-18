@@ -233,9 +233,6 @@ void gsHTensorBasis<d,T>::refineWithExtension(gsMatrix<T> const & boxes, int ref
          }
      }
 
-
-     std::cout << " here w eare, ext = " << refExt << std::endl;
-
     if( refExt == 0 )
     {
         // If there is no refinement-extension, just use the
