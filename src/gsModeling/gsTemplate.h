@@ -1,6 +1,6 @@
-/** @file gsHTemplate.h
+/** @file gsTemplate.h
 
-    @brief Provides definition of Template class.
+    @brief Provides definition of gsTemplate class.
 
     This file is part of the G+Smo library.
     

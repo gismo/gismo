@@ -1,6 +1,7 @@
 /** @file gsTriMeshToSolid.h
 
-    @brief Provides declaration of a triangle mesh -> gsSolid convertor class
+    @brief Provides declaration of gsTriMeshToSolid: a triangle mesh to
+    gsSolid convertor class
 
     This file is part of the G+Smo library.
     

@@ -1,6 +1,6 @@
 /** @file gsTriMeshToSolid.hpp
 
-    @brief Provides implementation of a triangle mesh -> gsSolid convertor class
+    @brief Provides implementation gsTriMeshToSolid class
 
     This file is part of the G+Smo library.
     

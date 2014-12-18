@@ -1,6 +1,19 @@
+/** @file gsPlanarDomain.h
 
-// a loop of curves, CCW order.
-// Can have holes...
+    @brief Provides declaration of gsPlanarDomain class. The outer boundary
+    (m_loops[0]) is a loop of curves, listed in anticlockwise order. Inner
+    boundaries (m_loops[i], i > 0) are loops of curves, listed in clockwise
+    order.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Falini, C. Hofreither, A. Mantzaflaris, D. Mayer,
+            D.-M. Nguyen, M. Pauley
+*/
 
 #pragma once
 
@@ -64,19 +77,6 @@ public:
         freeAll( m_loops );
     }
 
-// <<<<<<< .mine
-//   virtual ~gsPlanarDomain() 
-//   { 
-// //       while( m_loops.size() )
-// //       {
-// //           delete m_loops.back();
-// //           m_loops.pop_back();
-// //       }
-// 
-//        //freeAll( m_loops );
-// 
-//   }
-// =======
     /// Copy constructor
     gsPlanarDomain( const gsPlanarDomain & other)
         : m_loops( other.m_loops.size() )
