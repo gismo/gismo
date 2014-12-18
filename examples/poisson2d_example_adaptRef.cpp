@@ -25,6 +25,16 @@
 using namespace std;
 using namespace gismo;
 
+
+template <typename T>
+void gsSave(const T& obj, const std::string& fname)
+{
+    gsFileData<> fd;
+    fd << obj;
+    fd.dump(fname);
+}
+
+
 //S.Kleiss
 //
 //This is a test example for a illustrating the adaptive
@@ -33,26 +43,59 @@ using namespace gismo;
 //Flags, parameters, geometry and prescribed exact solution
 //are specified within the main() function
 
-int main()
+int main(int argc, char *argv[])
 {
   int result = 0;
 
   // Number of initial uniform mesh refinements
-  int initUnifRef = 2;
+  int initUnifRef;
   // Number of adaptive refinement loops
-  int RefineLoopMax; // ...specified below with the examples
+  int RefineLoopMax;
 
   // Flag for refinemet criterion
   // (see doxygen documentation of the free function
   // gsMarkElementsForRef explanation)
-  const int refCriterion = 2;
+  int refCriterion;
   // Parameter for computing adaptive refinement threshold
   // (see doxygen documentation of the free function
   // gsMarkElementsForRef explanation)
   real_t refParameter;  // ...specified below with the examples
 
   // Flag whether final mesh should be plotted in ParaView
-  const bool plot = false;
+  bool plot;
+  bool dump;
+
+  try 
+  {
+      gsCmdLine cmd("Solving a PDE with adaptive refinement using THB-splines.");
+      gsArgSwitch arg_plot("", "plot", "Plot resulting mesh in ParaView", cmd);
+      gsArgVal<int> arg_ref("r", "refine", 
+              "Maximum number of adaptive refinement steps to perform", 
+              false, 2, "int", cmd);
+      gsArgVal<int> arg_initref("i", "initial-ref", 
+              "Initial number of uniform refinement steps to perform", 
+              false, 2, "int", cmd);
+      gsArgVal<int> arg_crit("c", "criterion", 
+              "Criterion to be used for adaptive refinement (1-3, see documentation)", 
+              false, 2, "int", cmd);
+      gsArgVal<real_t> arg_parameter("p", "parameter", 
+              "Parameter for adaptive refinement", 
+              false, 0.85, "float", cmd);
+      gsArgSwitch arg_dump("", "dump", "Write geometry and sequence of bases into XML files", cmd);
+
+      cmd.parse(argc,argv);
+
+      plot          = arg_plot.getValue();
+      RefineLoopMax = arg_ref.getValue();
+      initUnifRef   = arg_initref.getValue();
+      refCriterion  = arg_crit.getValue();
+      refParameter  = arg_parameter.getValue();
+      dump          = arg_dump.getValue();
+
+  } catch ( gsArgException& e )
+  { cerr << "Error: " << e.error() << " " << e.argId() << endl; return -1; }
+
+
 
   // ****** Prepared test examples ******
   //
@@ -70,8 +113,8 @@ int main()
   gsMFunctionExpr<>  g("0", 2);
   gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineRectangle(0.0,0.0,2.0,1.0) ));
 
-  RefineLoopMax = 6;
-  refParameter = 0.6;
+  //RefineLoopMax = 6;
+  //refParameter = 0.6;
 
   // ^^^^^^ Example 1 ^^^^^^
   //*/
@@ -87,8 +130,8 @@ int main()
 
   gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p2C1()) );
 
-  RefineLoopMax = 2;
-  refParameter = 0.85;
+  //RefineLoopMax = 8;
+  //refParameter = 0.85;
 
   // ^^^^^^ Example 2 ^^^^^^
   //*/
@@ -108,6 +151,9 @@ int main()
   cout << " --- Geometry:\n" << *geo << endl;
   cout << "Number of patches: " << patches.nPatches() << endl;
 
+  if (dump)
+      gsSave(*geo, "adapt_geo.xml");
+
   // With this gsTensorBSplineBasis, it's possible to call the THB-Spline constructor
   gsTHBSplineBasis<2,real_t> THB( geo->basis() );
 
@@ -117,10 +163,13 @@ int main()
   for (int i = 0; i < initUnifRef; ++i)
       bases.uniformRefine();
 
+  if (dump)
+      gsSave(bases[0], "adapt_basis_0.xml");
+
   // So, ready to start the adaptive refinement loop:
-  for( int RefineLoop = 0; RefineLoop <= RefineLoopMax ; RefineLoop++ )
+  for( int RefineLoop = 1; RefineLoop <= RefineLoopMax ; RefineLoop++ )
   {
-      cout << "\n\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << endl << endl;
+      cout << "\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << endl << endl;
 
       cout <<"Basis: "<< bases[0] <<"\n";
 
@@ -162,6 +211,12 @@ int main()
       // Refine the elements of the mesh, based on elMarked.
       gsRefineMarkedElements( bases, elMarked);
 
+      if (dump)
+      {
+          stringstream ss;
+          ss << "adapt_basis_" << RefineLoop << ".xml";
+          gsSave(bases[0], ss.str());
+      }
 
       if ( (RefineLoop == RefineLoopMax) && plot)
       {
@@ -175,6 +230,7 @@ int main()
       delete sol;
   }
 
-  cout << "Test is done: Exiting" << endl;
-  return  result;
+  cout << "\nFinal basis: " << bases[0] << "\n";
+
+  return result;
 }
