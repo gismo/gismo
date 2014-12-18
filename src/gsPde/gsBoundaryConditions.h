@@ -203,7 +203,7 @@ public:
             robin_sides.push_back( boundary_condition<T>(p,s,f,t,unknown) );
             break;
         default:
-            std::cout<<"gsBoundaryConditions: Unknown boundary condtion.\n";
+            std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
         }
     }
 
