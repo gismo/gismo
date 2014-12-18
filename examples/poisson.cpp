@@ -225,7 +225,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
 	      fn+= "domain2d/square.xml";
 	      break;
 	    case 3:
-	      fn+= "domain3d/cube.xml";
+	      fn+= "volumes/cube.xml";
 	      break;
 	    default:
 	      return false;
