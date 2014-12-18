@@ -751,6 +751,7 @@ public:
 
     virtual void increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult = 1);
 
+
 protected:
 
     /// @brief Updates the basis structure (eg. charact. matrices, etc), to
