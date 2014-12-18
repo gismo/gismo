@@ -588,6 +588,18 @@ public:
     }
 */
 
+    /** @brief Refine the basis to levels and in the areas defined by \a boxes with an extension.
+    *
+    * \param[in] boxes gsMatrix of size \em d x \em n, where\n
+    * \em n is the number of refinement boxes.\n
+    * Every two consecutive columns specify the lower and upper corner of one refinement box
+    * (See also documentation of refine() for the format of \em box)
+    * \param[in] refExt is an integer specifying how many cells should also be
+    * refined around the respective boxes.
+    *
+    */
+    virtual void refineWithExtension(gsMatrix<T> const & boxes, int refExt = 0);
+
     virtual void refine(gsMatrix<T> const & boxes);
 
     /**

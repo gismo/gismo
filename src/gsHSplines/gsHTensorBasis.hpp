@@ -215,6 +215,86 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
 }
 
 template<unsigned d, class T>
+void gsHTensorBasis<d,T>::refineWithExtension(gsMatrix<T> const & boxes, int refExt)
+{
+     GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
+     GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied refine() with them.");
+
+
+     gsMatrix<T> para = support();
+     for(int i = 0; i < boxes.cols()/2; i++)
+     {
+         for( unsigned j = 0; j < d; j++ )
+         {
+        GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
+                      "In refine() the first corner is outside the computational domain.");
+        GISMO_ASSERT( para(j,1) >= boxes(j, 2*i+1),
+                      "In refine() the second corner is outside the computational domain." );
+         }
+     }
+
+    if( refExt == 0 )
+    {
+        // If there is no refinement-extension, just use the
+        // "regular" refinement function refine( gsMatrix )
+        this->refine( boxes );
+    }
+    else
+    {
+        // If there is a refinement-extension, we will have to use
+        // refineElements( std::vector )
+        //
+        // Each box will be represented by 2*d+1 entries specifying
+        // <level to be refined to>,<lower corner>,<upper corner>
+        int offset = 2*d+1;
+
+        // Initialize vector of size
+        // "entries per box" times "number of boxes":
+        std::vector<unsigned> refVector( offset * boxes.cols()/2 );
+
+        // Loop over all boxes:
+        for(index_t i = 0; i < boxes.cols()/2; i++)
+        {
+            gsMatrix<T> ctr(d,1);
+            ctr = ( boxes.col( 2*i ) + boxes.col( 2*i+1) )*0.5;
+
+            // Compute the level we want to refine to.
+            // Note that, if the box extends over several elements,
+            // the level at the centerpoint will be taken for reference
+            int refLevel = getLevelAtPoint( ctr )(0,0) + 1;
+
+            for(index_t j = 0; j < boxes.rows();j++)
+            {
+                // Convert the parameter coordinates to (unique) knot indices
+                int k1 = m_bases[refLevel]->component(j).knots().Uniquefindspan(boxes(j,2*i ));
+                int k2 = m_bases[refLevel]->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
+
+                // If applicable, add the refinement extension.
+                // Note that extending by one cell on level L means
+                // extending by two cells in level L+1
+                ( k1 - 2*refExt < 0 ? k1=0 : k1-=2*refExt );
+
+                index_t maxKtIndex = m_bases[refLevel]->component(j).knots().size();
+
+                ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
+
+                // Store the data...
+                refVector[i*offset]     = refLevel;
+                refVector[i*offset+1+j]   = k1;
+                refVector[i*offset+1+j+d] = k2;
+            }
+        }
+
+        // ...and refine
+        this->refineElements( refVector );
+        needLevel( m_tree.getMaxInsLevel() );
+    }
+
+// Update the basis
+update_structure();
+}
+
+template<unsigned d, class T>
 void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes) 
 {
     GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
