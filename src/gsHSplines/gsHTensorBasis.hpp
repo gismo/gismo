@@ -233,11 +233,17 @@ void gsHTensorBasis<d,T>::refineWithExtension(gsMatrix<T> const & boxes, int ref
          }
      }
 
+
+     std::cout << " here w eare, ext = " << refExt << std::endl;
+
     if( refExt == 0 )
     {
         // If there is no refinement-extension, just use the
         // "regular" refinement function refine( gsMatrix )
         this->refine( boxes );
+
+        // Make sure there are enough levels
+        needLevel( m_tree.getMaxInsLevel() );
     }
     else
     {
@@ -263,6 +269,9 @@ void gsHTensorBasis<d,T>::refineWithExtension(gsMatrix<T> const & boxes, int ref
             // the level at the centerpoint will be taken for reference
             int refLevel = getLevelAtPoint( ctr )(0,0) + 1;
 
+            // Make sure there are enough levels
+            needLevel( refLevel );
+
             for(index_t j = 0; j < boxes.rows();j++)
             {
                 // Convert the parameter coordinates to (unique) knot indices
@@ -287,7 +296,6 @@ void gsHTensorBasis<d,T>::refineWithExtension(gsMatrix<T> const & boxes, int ref
 
         // ...and refine
         this->refineElements( refVector );
-        needLevel( m_tree.getMaxInsLevel() );
     }
 
 // Update the basis
