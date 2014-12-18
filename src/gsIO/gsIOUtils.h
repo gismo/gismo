@@ -18,8 +18,8 @@
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsUtils/gsCombinatorics.h>
 
-#include <gsThbs/gsHTensorBasis.h>
-#include <gsThbs/gsHDomainIterator.h>
+#include <gsHSplines/gsHTensorBasis.h>
+#include <gsHSplines/gsHDomainIterator.h>
 
 #include <gsIO/gsFileData.h>
 

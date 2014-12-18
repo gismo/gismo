@@ -2,7 +2,7 @@
 
 #include <gsIO/gsParaviewCollection.h>
 
-#include <gsThbs/gsTHBSpline.h>
+#include <gsHSplines/gsTHBSpline.h>
 
 namespace gismo
 {

@@ -53,11 +53,11 @@ namespace gismo
 #include <gsNurbs/gsNurbsCreator.h>
 
 // Thbs
-#include <gsThbs/gsHBSplineBasis.h>
-#include <gsThbs/gsHBSpline.h>
-#include <gsThbs/gsTHBSplineBasis.h>
-#include <gsThbs/gsTHBSpline.h>
-#include <gsThbs/gsHFitting.h>
+#include <gsHSplines/gsHBSplineBasis.h>
+#include <gsHSplines/gsHBSpline.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsHSplines/gsTHBSpline.h>
+#include <gsHSplines/gsHFitting.h>
 
 // Modeling
 #include <gsModeling/gsTrimSurface.h>

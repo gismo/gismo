@@ -32,10 +32,10 @@
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsPde/gsBVProblem.h>
 #include <gsModeling/gsCurveFitting.h>
-#include <gsThbs/gsHBSplineBasis.h>
-#include <gsThbs/gsTHBSplineBasis.h>
-#include <gsThbs/gsTHBSpline.h>
-#include <gsThbs/gsHBSpline.h>
+#include <gsHSplines/gsHBSplineBasis.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsHSplines/gsTHBSpline.h>
+#include <gsHSplines/gsHBSpline.h>
 //#include <gsTrBezier/gsTriangularBezierBasis.h>
 //#include <gsTrBezier/gsTriangularBezier.h>
 #include <gsPde/gsPoissonPde.h>
