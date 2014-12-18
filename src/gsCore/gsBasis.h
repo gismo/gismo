@@ -735,6 +735,13 @@ public:
      */
     virtual void refineElements(std::vector<unsigned> const & boxes);
 
+    /** @brief Refine the basis to levels and in the areas defined by \a boxes with an extension.
+     *
+     * As of now (03.Oct.2014), only used for hierarchichal
+     * tensor basis. See gsHTensorBasis for detailed documentation.
+     */
+    virtual void refineWithExtension(gsMatrix<T> const & boxes, int refExt = 0);
+
     /// Refine the basis uniformly by inserting \a numKnots new knots on each knot span
     virtual void uniformRefine(int numKnots = 1);
 

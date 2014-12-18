@@ -194,13 +194,15 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
  * \param basis gsMultiBasis to be refined adaptively.
  * \param elMarked std::vector of Booleans indicating
  * for each element of the mesh underlying \em basis, whether it should be refined or not.
- *
- *
+ * \param refExtension DOCUMENTATION WILL FOLLOW
  */
 template <class T>
-void gsRefineMarkedElements(gsMultiBasis<T> & basis, const std::vector<bool> & elMarked)
+void gsRefineMarkedElements(gsMultiBasis<T> & basis,
+                            const std::vector<bool> & elMarked,
+                            int refExtension = 0)
 {
     const int dim = basis.dim();
+
     // numMarked: Number of marked cells on current patch, also currently marked cell
     // poffset  : offset index for the first element on a patch
     // globalCount: counter for the current global eleement index
@@ -228,10 +230,10 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis, const std::vector<bool> & e
             if( elMarked[ globalCount++ ] ) // refine this element ?
             {
                 const gsVector<T> & ctr = domIt->centerPoint();
-                
+
                 // Construct degenerate box by settting both
                 // corners equal to the center
-                refBoxes.col(2*numMarked  ) = 
+                refBoxes.col(2*numMarked  ) =
                 refBoxes.col(2*numMarked+1) = ctr;
 
                 // Advance marked cells counter
@@ -239,7 +241,7 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis, const std::vector<bool> & e
             }
         }
         // Refine all of the found refBoxes in this patch
-        basis.refine( pn, refBoxes );
+        basis.refineWithExtension( pn, refBoxes, refExtension );
     }
 }
 

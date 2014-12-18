@@ -281,6 +281,10 @@ void gsBasis<T>::refine(gsMatrix<T> const & boxes)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::refineWithExtension(gsMatrix<T> const & boxes, int refExt )
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refineElements(std::vector<unsigned> const & boxes)
 { GISMO_NO_IMPLEMENTATION }
 

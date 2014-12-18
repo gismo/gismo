@@ -257,6 +257,14 @@ public:
         m_bases[k]->refine(boxes);
     }
 
+    /// @brief Refine the are defined by \em boxes
+    /// on patch \em k with extension \em refExt.
+    ///
+    /// See gsHTensorBasis::refineWithExtension() for further documentation.
+    void refineWithExtension(int k, gsMatrix<T> const & boxes, int refExt = 0)
+    {
+        m_bases[k]->refineWithExtension( boxes, refExt);
+    }
 
     /// @brief Elevate the degree of every basis by the given amount.
     void degreeElevate(int const& i = 1)
