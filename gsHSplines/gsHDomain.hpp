@@ -31,7 +31,7 @@ inline unsigned translateIndex( unsigned const & i,
 }
 */
 
-#include <gsThbs/gsAAPolyline.h>
+#include <gsHSplines/gsAAPolyline.h>
 #include <gsCore/gsLinearAlgebra.h>
 
 #include <queue>

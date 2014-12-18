@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsThbs/gsHDomain.h>
-#include <gsThbs/gsHDomain.hpp>
+#include <gsHSplines/gsHDomain.h>
+#include <gsHSplines/gsHDomain.hpp>
 
 namespace gismo
 {

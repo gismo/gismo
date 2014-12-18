@@ -1,6 +1,6 @@
-/** @file gsHDomainBoundaryIterator.h
+/** @file gsHDomainIterator.h
 
-    @brief Provides declaration of iterator on boundary of hierarchical basis.
+    @brief Provides declaration of iterator of hierarchical domain.
 
     This file is part of the G+Smo library. 
 
@@ -8,12 +8,12 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): A. Mantzaflaris
+    Author(s): J. Speh
 */
 
 #pragma once
 
-#include <gsThbs/gsHDomain.h>
+#include <gsHSplines/gsHDomain.h>
 
 #include <gsNurbs/gsCompactKnotVector.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -32,7 +32,7 @@ namespace gismo
   */
 
 template<typename T, unsigned d>
-class gsHDomainBoundaryIterator: public gsDomainIterator<T>
+class gsHDomainIterator: public gsDomainIterator<T>
 {
 public:
 
@@ -48,14 +48,13 @@ public:
 
 public:
 
-    gsHDomainBoundaryIterator(const gsHTensorBasis<d, T> & hbs, 
-                              const boxSide & s )
-        : gsDomainIterator<T>(hbs)
+    gsHDomainIterator(const gsHTensorBasis<d, T> & hbs)
+    : gsDomainIterator<T>(hbs)
     {
         // Initialize mesh data
         m_meshStart.resize(d);
         m_meshEnd  .resize(d);
-
+        
         // Initialize cell data
         m_curElement.resize(d);
         m_lower     .resize(d);
@@ -67,11 +66,8 @@ public:
         // Set to one quadrature point by default
         m_quadrature.setNodes( gsVector<int>::Ones(d) );
 
-        // Get the side information
-        par = s.parameter();
-        dir = s.direction();
-
-        initLeaf(hbs.tree());
+        m_leaf = hbs.tree().beginLeafIterator();
+        updateLeaf();
     }
 
     // ---> Documentation in gsDomainIterator.h
@@ -98,9 +94,6 @@ public:
     // quadrature rule of the given order for the current element
     void computeQuadratureRule(const gsVector<int>& numIntNodes)
     {
-        GISMO_ASSERT( numIntNodes[dir]==1, 
-                      "Can only use one point in the fixed direction." );
-
         m_quadrature.setNodes(numIntNodes);
         m_quadrature.mapTo(m_lower, m_upper, this->quNodes, this->quWeights);
     }
@@ -112,7 +105,6 @@ public:
         for (int i = 0; i < m_basis.dim(); ++i)
             numIntNodes[i] = m_basis.degree(i) + 1;
 
-        numIntNodes[dir] = 1;
         computeQuadratureRule( numIntNodes );
     }
     
@@ -140,58 +132,17 @@ public:
 
 private:
 
-    gsHDomainBoundaryIterator();
-
-    /// Navigates to the first leaf on our side
-    void initLeaf(const hDomain & tree_domain)
-    {
-        // Get the first leaf
-        m_leaf = tree_domain.beginLeafIterator();
-
-        for (; m_leaf.good(); m_leaf.next() )
-        {
-            // Check if this leaf is on our side
-            if ( leafOnBoundary() )
-            {
-                updateLeaf();
-                return;
-            }
-        }
-        GISMO_ERROR("No leaves.\n");
-    }
-
+    gsHDomainIterator();
 
     /// returns true if there is a another leaf with a boundary element
     bool nextLeaf()
     {
-        for (m_leaf.next(); m_leaf.good(); m_leaf.next() )
-        {
-            // Check if this leaf is on our side
-            if ( leafOnBoundary() )
-            {
-                updateLeaf();
-                return true;
-            }
-        }
-        return false;
-    }
+        this->m_isGood = m_leaf.next();
 
-    /// returns true if the current leaf is on our side
-    bool leafOnBoundary() const
-    {
-        if ( par )
-        {
-            // AM: a little ugly for now, to be improved
-            return 
-                static_cast<int>(m_leaf.upperCorner().at(dir) )
-                == 
-                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)
-                ->tensorLevel(m_leaf.level()).knots(dir).numKnotSpans();// todo: more efficient
-        }
-        else
-        {
-            return m_leaf.lowerCorner().at(dir) == 0;
-        }
+        if ( m_leaf.good() )
+            updateLeaf();
+
+        return this->m_isGood;
     }
 
     /// Computes lower, upper and center point of the current element, maps the reference
@@ -219,31 +170,11 @@ private:
             // knotVals = kv.unique()
 
             m_breaks[dim].clear();
-            if ( dim == dir )
-            {
-                if ( par )
-                {
-                    m_breaks[dim].push_back(kv.uValue(end-1));
-                    m_breaks[dim].push_back(kv.uValue(end  ));
-
-                    //  = knotValues.begin() + end -1;
-                    //  = knotValues.begin() + end   ;
-                }
-                else
-                {
-                    m_breaks[dim].push_back(kv.uValue(start));
-                    m_breaks[dim].push_back(kv.uValue(start+1));
-                }
-            }
-            else
-            {
-                for (unsigned index = start; index <= end; ++index)
-                    m_breaks[dim].push_back(kv.uValue(index));
-            }
+            for (unsigned index = start; index <= end; ++index)
+                m_breaks[dim].push_back(kv.uValue(index));
 
             m_curElement(dim) = 
             m_meshStart(dim)  = m_breaks[dim].begin();
-
 
             // for n breaks, we have n - 1 elements (spans)
             m_meshEnd(dim) =  m_breaks[dim].end() - 1;
@@ -259,20 +190,11 @@ private:
     void updateElement()
     {
         // Update cell data
-        for (unsigned i = 0; i < dir ; ++i)
+        for (unsigned i = 0; i < d ; ++i)
         {
             m_lower[i]  = *m_curElement[i];
             m_upper[i]  = *(m_curElement[i]+1);
             center[i] = T(0.5) * (m_lower[i] + m_upper[i]);
-        }
-        m_lower[dir] = 
-        m_upper[dir] =
-        center [dir] = (par ? *(m_curElement[dir]+1) : *m_curElement[dir] );
-        for (unsigned i = dir+1; i < d; ++i)
-        {
-            m_lower[i] = *m_curElement[i];
-            m_upper[i] = *(m_curElement[i]+1);
-            center [i] = T(0.5) * (m_lower[i] + m_upper[i]);
         }
 
         // Update quadrature rule
@@ -294,10 +216,6 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:
-
-    // Boundary parameters
-    unsigned dir; // direction normal to the boundary
-    bool par;     // parameter value
 
     // The current leaf node of the tree
     leafIterator m_leaf;

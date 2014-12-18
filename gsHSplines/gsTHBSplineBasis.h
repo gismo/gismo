@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsThbs/gsHTensorBasis.h>
-#include <gsThbs/gsTHBSpline.h>
+#include <gsHSplines/gsHTensorBasis.h>
+#include <gsHSplines/gsTHBSpline.h>
 
 
 namespace gismo

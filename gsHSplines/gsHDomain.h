@@ -14,8 +14,8 @@
 # pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsThbs/gsHDomainLeafIter.h>
-#include <gsThbs/gsAAPolyline.h>
+#include <gsHSplines/gsHDomainLeafIter.h>
+#include <gsHSplines/gsAAPolyline.h>
 
 #include <list>
 

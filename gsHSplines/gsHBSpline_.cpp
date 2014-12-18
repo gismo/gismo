@@ -1,13 +1,13 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsThbs/gsHTensorBasis.h>
-#include <gsThbs/gsHTensorBasis.hpp>
+#include <gsHSplines/gsHTensorBasis.h>
+#include <gsHSplines/gsHTensorBasis.hpp>
 
-#include <gsThbs/gsHBSplineBasis.h>
-#include <gsThbs/gsHBSplineBasis.hpp>
+#include <gsHSplines/gsHBSplineBasis.h>
+#include <gsHSplines/gsHBSplineBasis.hpp>
 
-//#include <gsThbs/gsHBSpline.h>
-//#include <gsThbs/gsHBSpline.hpp>
+//#include <gsHSplines/gsHBSpline.h>
+//#include <gsHSplines/gsHBSpline.hpp>
 
 namespace gismo
 {

@@ -13,7 +13,7 @@
 
 #pragma once
 
-//#include <gsThbs/gsSegment.h>
+//#include <gsHSplines/gsSegment.h>
 #include <utility> // std::pair
 #include <list>
 #include <vector>

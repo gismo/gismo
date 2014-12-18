@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <gsThbs/gsHTensorBasis.h>
-#include <gsThbs/gsHBSpline.h>
+#include <gsHSplines/gsHTensorBasis.h>
+#include <gsHSplines/gsHBSpline.h>
 
 namespace gismo
 {

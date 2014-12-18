@@ -5,7 +5,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsGeometry.h>
-#include <gsThbs/gsHBSplineBasis.h>
+#include <gsHSplines/gsHBSplineBasis.h>
 
 namespace gismo
 {

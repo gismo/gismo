@@ -2,7 +2,7 @@
 #pragma once
 
 #include <gsModeling/gsFitting.h>
-#include <gsThbs/gsHTensorBasis.h>
+#include <gsHSplines/gsHTensorBasis.h>
 
 namespace gismo {
 
