@@ -13,7 +13,8 @@
 
 // Gismo includes
 #include <gsCore/gsGeometry.h>
-#include <gsThbs/gsHTensorBasis.h>
+//#include <gsThbs/gsHTensorBasis.h>
+#include <gsHSplines/gsHTensorBasis.h>
 //#include <gsNurbs/gsTensorBSpline.h>
 //#include <gsNurbs/gsTensorNurbs.h>
 #include <gsModeling/gsTrimSurface.h>

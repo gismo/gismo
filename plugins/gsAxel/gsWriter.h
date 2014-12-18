@@ -8,7 +8,7 @@
 #include "gsAxelPluginExport.h"
 
 #include <dtkCore/dtkAbstractDataWriter.h>
-#include "axlCoreExport.h"
+#include <axlCore/axlCoreExport.h>
 
 
 class dtkAbstractData;
