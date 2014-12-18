@@ -1,6 +1,6 @@
 /** @file gsMatrixPreconditioner.h
 
-    @brief Simple class to give a matrix preconditior properties
+    @brief Simple class to give a matrix preconditioner properties
 
     This file is part of the G+Smo library.
 
@@ -18,7 +18,7 @@
 namespace gismo
 {
 
-///Simple class to give a matrix (or sparse matrix) preconditior properties which is needed for the interative method classes.
+///Simple class to give a matrix (or sparse matrix) preconditioner properties which is needed for the iterative method classes.
 
 template <typename MatrixType, int UpLo = Eigen::Lower>
 class gsMatrixPreconditioner : public gsPreconditioner

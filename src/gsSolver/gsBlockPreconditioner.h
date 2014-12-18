@@ -21,7 +21,7 @@ namespace gismo
 /** \brief Simple class create a block preconditioner structure.
  *
  * Let \f$C\f$ be a preconditioner for the system of equations \f$ A\mathbf{x} =  \mathbf{f}\f$.
- * We instead wish to solve the preconditinoned system \f$ CA\mathbf{x} =  C\mathbf{f}\f$.
+ * We instead wish to solve the preconditioned system \f$ CA\mathbf{x} =  C\mathbf{f}\f$.
  *
  * This class allows \f$C\f$ to be a block structure of preconditioners i.e \f$C\f$:
  * \f[
@@ -52,9 +52,9 @@ public:
 
     /**
      * @brief Add a preconditioner \f$C_{ij}\f$ to the block structure
-     * @param prec Pointer the precondioner
+     * @param prec Pointer the preconditioner
      * @param row row position in the block preconditioner
-     * @param col collum position in the block preconditioner
+     * @param col column position in the block preconditioner
      */
     void addPreconditioner(gsPreconditioner * prec, index_t row, index_t col)
     {
@@ -62,7 +62,7 @@ public:
         blockTargetPositions[row] = prec->rows();
         blockInputPositions[col] = prec->cols();
         if (!ConsistencyCheck())
-            GISMO_ERROR("Block preconditioners do not have correct dimention");
+            GISMO_ERROR("Block preconditioners do not have correct dimension");
     }
 
     /**
@@ -102,7 +102,7 @@ public:
 private:
 
     /**
-     * @brief Loops through every preconditioner and checks that the dimentions are correct
+     * @brief Loops through every preconditioner and checks that the dimensions are correct
      */
     bool ConsistencyCheck()
     {
@@ -120,7 +120,7 @@ private:
 
                 if (blockPrec(i,j)->rows() != r)
                 {
-                    gsWarn << "Block preconditioners do not have correct dimention" << std::endl;
+                    gsWarn << "Block preconditioners do not have correct dimension" << std::endl;
                     return false;
                 }
             }
@@ -139,7 +139,7 @@ private:
 
                 if (blockPrec(i,j)->rows() != c)
                 {
-                    gsWarn << "Block preconditioners do not have correct dimention" << std::endl;
+                    gsWarn << "Block preconditioners do not have correct dimension" << std::endl;
                     return false;
                 }
             }

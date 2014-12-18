@@ -1,6 +1,6 @@
 /** @file gsVisitorMass.h
 
-    @brief Mass visitor for assmbling element mass matrix
+    @brief Mass visitor for assembling element mass matrix
 
     This file is part of the G+Smo library.
 

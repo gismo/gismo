@@ -43,7 +43,7 @@ public:
                   gsMatrix<T>            & quNodes, 
                   gsVector<T>            & quWeights)
     {
-        // Evaluate the rhs on the quadreature nodes
+        // Evaluate the rhs on the quadrature nodes
         rhs_ptr->eval_into(quNodes, rhsVals);
 
         // Evaluate the Hessian of the discrete solution // (!) TO DO

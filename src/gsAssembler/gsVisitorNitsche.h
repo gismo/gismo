@@ -100,7 +100,7 @@ public:
                        gsSparseMatrix<T>     & sysMatrix,
                        gsMatrix<T>           & rhsMatrix )
     {
-        // Local Dofs to global dofs
+        // Local DoFs to global DoFs
         mapper.localToGlobal(actives, patchIndex, actives);
         const index_t numActive = actives.rows();
 

@@ -19,17 +19,17 @@ struct dirichlet
 {	
 	enum strategy
 	{
-        /// Apply homogeneous dirichlet conditions
+        /// Apply homogeneous Dirichlet conditions
         homogeneous  = 1,
 
-        /// Compute Dirichlet dofs by using interpolation on the boundary
+        /// Compute Dirichlet DoFs by using interpolation on the boundary
         interpolation  = 2,
         elimination  = 2,
 
-        /// Compute Dirichlet dofs by using least-squares fitting on the boundary
+        /// Compute Dirichlet DoFs by using least-squares fitting on the boundary
         leastSquares = 3,
 
-        /// Compute Dirichlet dofs by using least-squares fitting on the boundary
+        /// Compute Dirichlet DoFs by using least-squares fitting on the boundary
         l2Projection = 4,
 
         /// Fixed values provided by the user.
@@ -39,20 +39,20 @@ struct dirichlet
         /// term. Not compatible/ignores eliminate==true
         nitsche      = 11,
 	
-        /// Penalize the diagonal at the position of Dirichlet dofs,
+        /// Penalize the diagonal at the position of Dirichlet DoFs,
         /// Not compatible/ignores eliminate==true 
         penalize     = 12,
         
 
-        /// Compute Dirichlet dofs in the normal direction (for a vector valued function),
-        /// The tangential component are handled with the nitche method.
+        /// Compute Dirichlet DoFs in the normal direction (for a vector valued function),
+        /// The tangential component are handled with the Nitsche method.
         eliminatNormal = 17,
 
         /// Do absolutely nothing for Dirichlet boundary conditions.
         none         = 0
 	};
 
-	/* ///If true, the dirichet dofs are part of the system Dofs,
+	/* ///If true, the Dirichlet DoFs are part of the system DoFs,
 	   /// else they are eliminated a priori from the system
 	enum eliminate
 	{
@@ -66,7 +66,7 @@ struct iFace
 {	
 	enum strategy
 	{
-        /// Glue patches together by merging dofs across an
+        /// Glue patches together by merging DoFs across an
         /// interface into one. This only works for conforming
 	    /// interfaces.
 	    conforming = 1,

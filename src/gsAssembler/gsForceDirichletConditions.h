@@ -18,11 +18,11 @@ namespace gismo {
 
     \param[in,out] M                the system matrix
     \param[in,out] Rhs              the right-hand-side matrix
-    \param[in]     dirichletDofs    the indexes of the DirichletDofs
+    \param[in]     dirichletDofs    the indexes of the Dirichlet DoFs
     \param[in]     dirichletValues  the coefficients for the fixed degrees of freedom
 
     \tparam        T                the type of the coefficients
-    \tparam        Major            the storage class of the matrixes
+    \tparam        Major            the storage class of the matrices
     \tparam        RhsM             the type of the right-hand-side matrix
     \tparam        IndexM           the type of the Dirichlet indexes parameter
 */
@@ -39,7 +39,7 @@ void gsForceDirichletConditions (
     }
     if (dirichletDofs.cols()!=1)
     {
-        GISMO_ERROR("the list of dirichlet dofs must be a column vector");
+        GISMO_ERROR("the list of Dirichlet DoFs must be a column vector");
     }
 
     int max_d_idx = dirichletDofs.size ();
@@ -59,7 +59,7 @@ void gsForceDirichletConditions (
                 it.valueRef()           = 0;
             }
         }
-        else                              // remove entries corresponding to dirichlet dofs
+        else                              // remove entries corresponding to Dirichlet dofs
         {
             inner_idx=0;
             for (typename gsSparseMatrix<T,Major>::InnerIterator it(M,k); it; ++it)
@@ -75,7 +75,7 @@ void gsForceDirichletConditions (
             }
         }
     }
-    // set the rhs on the fixed dofs, and the unit diagonal of the matrix
+    // set the rhs on the fixed DoFs, and the unit diagonal of the matrix
     // we can not set the diagonal in the previous loop because it only loop
     // over non zero coefficients
     for (int k=0; k<dirichletDofs.size (); ++k)
@@ -104,10 +104,10 @@ void gsForceDirichletConditions (
 
     \param[in,out] M                the system matrix
     \param[out]    valueToRhs       the matrix that maps Dirichlet coef to Rhs modifications
-    \param[in]     dirichletDofs    the indexes of the DirichletDofs
+    \param[in]     dirichletDofs    the indexes of the Dirichlet DoFs
 
     \tparam        T                the type of the coefficients
-    \tparam        Major            the storage class of the matrixes
+    \tparam        Major            the storage class of the matrices
     \tparam        IndexM           the type of the Dirichlet indexes parameter
 */
 template<typename T, int Major, typename RhsM, typename IndexM >
@@ -118,7 +118,7 @@ void gsForceDirichletConditions (
 {
     if (dirichletDofs.cols()!=1)
     {
-        GISMO_ERROR("the list of dirichlet dofs must be a column vector");
+        GISMO_ERROR("the list of Dirichlet DoFs must be a column vector");
     }
 
     int max_d_idx = dirichletDofs.size ();
@@ -138,7 +138,7 @@ void gsForceDirichletConditions (
                 it.valueRef()           = 0;
             }
         }
-        else                              // remove entries corresponding to dirichlet dofs
+        else                              // remove entries corresponding to Dirichlet DoFs
         {
             inner_idx=0;
             for (typename gsSparseMatrix<T,Major>::InnerIterator it(M,k); it; ++it)
@@ -154,7 +154,7 @@ void gsForceDirichletConditions (
             }
         }
     }
-    // set the rhs on the fixed dofs, and the unit diagonal of the matrix
+    // set the rhs on the fixed DoFs, and the unit diagonal of the matrix
     // we can not set the diagonal in the previous loop because it only loop
     // over non zero coefficients
     for (int k=0; k<dirichletDofs.size (); ++k)

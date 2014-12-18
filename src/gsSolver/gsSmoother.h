@@ -1,4 +1,4 @@
-/** @file gsBasis.h
+/** @file gsSmoother.h
 
     @brief Provides Multigrid smoothers.
 

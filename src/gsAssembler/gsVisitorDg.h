@@ -78,7 +78,7 @@ public:
             // Compute the outer normal vector from patch1
             geoEval1.outerNormal(k, side1, unormal);
         
-            // Integral transformation and quadarature weight (patch1)
+            // Integral transformation and quadrature weight (patch1)
             // assumed the same on both sides
             const T weight = quWeights[k] * unormal.norm();
         
@@ -122,7 +122,7 @@ public:
                        gsSparseMatrix<T>     & sysMatrix,
                        gsMatrix<T>           & rhsMatrix )
     {
-        // Local Dofs to global dofs
+        // Local DoFs to global DoFs
         mapper.localToGlobal(actives1, patch1, actives1);
         mapper.localToGlobal(actives2, patch2, actives2);
         const index_t numActive1 = actives1.rows();

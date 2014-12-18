@@ -31,7 +31,7 @@ public:
     }
 
     /**
-     * @brief apply the operator on the input vectoer and store the result in x
+     * @brief apply the operator on the input vector and store the result in x
      * @param input Input vector
      * @param x     result vector
      */
@@ -40,7 +40,7 @@ public:
     ///Returns the number of rows in the preconditioner
     virtual index_t rows() const = 0;
 
-    ///Returns the number of collums in the preconditioner
+    ///Returns the number of columns in the preconditioner
     virtual index_t cols() const = 0;
 
 }; // gsPreconditioner
@@ -49,9 +49,9 @@ public:
 
 /// @brief Symmetric Gauss-Seidel preconditioner
 ///
-/// Requries a positive definit matrix. Does first
+/// Requires a positive definite matrix. Does first
 /// one forward Gauss-Seidel sweep then one backward
-/// Gauss-Seidle sweep.
+/// Gauss-Seidel sweep.
 template <typename MatrixType, int UpLo = Eigen::Lower>
 class gsSymmetricGaussSeidelPreconditioner : public gsPreconditioner
 {

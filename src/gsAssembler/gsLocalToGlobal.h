@@ -47,7 +47,7 @@ namespace gismo {
     The sub-classes come usually in pairs:
         -one for the main matrix
         -one for the right-hand-side
-    The name of sub-classes for the righ-hand-side ends in Rhs and
+    The name of sub-classes for the right-hand-side ends in Rhs and
     they adopt a one to one correspondence of the columns.
 
     \tparam T type of the scalar coefficients for the local matrix
@@ -260,7 +260,7 @@ public:
 };
 
 /**
- \brief This writer is intended to add Lagrance multipliers to a system matrix:
+ \brief This writer is intended to add Lagrange multipliers to a system matrix:
  it writes both B and B^t.
 **/
 template <typename Writer1, typename Writer2=Writer1>
@@ -567,16 +567,16 @@ public:
 
         This L2G supports elimination of Dirichlet degrees of freedom and gluing
         of the common degrees of freedom on patch interfaces.
-        Because of this it needs two destination matrixes:
+        Because of this it needs two destination matrices:
             -a global matrix M for the operator
             -a global matrix RHS_MOD that stores the linear mapping from the
              Dirichlet values to the RHS
 
-        Given a position (i,j) in the local matrix the transmormed indexes s, and t
+        Given a position (i,j) in the local matrix the transformed indexes s, and t
         are obtained by the tSpaceDMap and uSpaceDMap respectively.
 
         Then the coefficient (i,j) can be either be:
-            - ignored if s is a fixed degre of freedom
+            - ignored if s is a fixed degree of freedom
             - multiplied by the provided coefficient for the Dirichlet degrees of freedom
               and added to the s row of RHS, if s if a not fixed and t is fixed
             - added to M in position (s,t), if both s and t are not fixed degrees of freedom
@@ -627,7 +627,7 @@ public:
         The coefficient (i,j) of the local matrix is either
             -ignored
             -added to the coefficient (s,j) of the global destination matrix
-        depending on wheather the index s obtained by the provided gsDofMapper
+        depending on whether the index s obtained by the provided gsDofMapper
         corresponds to a Dirichlet degree of freedom or to not.
 
         \tparam T          type of the scalar coefficients for the local matrix

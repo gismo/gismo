@@ -10,7 +10,7 @@ class gsVisitorPoisson
 {
 public:
 
-    /// Constructor with the right hand side function of the poisson equation
+    /// Constructor with the right hand side function of the Poisson equation
     gsVisitorPoisson(const gsFunction<T> & rhs) : 
     rhs_ptr(&rhs)
     { }
@@ -83,7 +83,7 @@ public:
     {
         //Assert eliminatedDofs.rows() == mapper.boundarySize()
 
-        // Local Dofs to global dofs
+        // Local DoFs to global DoFs
         mapper.localToGlobal(actives, patchIndex, actives);
         //const int numActive = actives.rows();
         

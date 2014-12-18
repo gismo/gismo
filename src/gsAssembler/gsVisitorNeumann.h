@@ -77,14 +77,14 @@ public:
                        gsSparseMatrix<T>     & sysMatrix,
                        gsMatrix<T>           & rhsMatrix )
     {
-        // Local Dofs to global dofs
+        // Local DoFs to global DoFs
         mapper.localToGlobal(actives, patchIndex, actives);
         const index_t numActive = actives.rows();
 
         // Push element contribution to the global load vector
         for (index_t j=0; j!=numActive; ++j)
         {
-            // convert local dof index to global dof index
+            // convert local DoF index to global DoF index
             const unsigned jj = actives(j);
             if (mapper.is_free_index(jj))
                 rhsMatrix.row(jj) += localRhs.row(j);

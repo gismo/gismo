@@ -71,11 +71,11 @@ private:
                                  unsigned digits =  std::numeric_limits<T>::digits10);
 
     /** 
-     *@brief  Lookup function for the Gauss quadrature rule in the interval [-1,1].
+     *@brief  Look up function for the Gauss quadrature rule in the interval [-1,1].
      *
      * When the member function setNodes() is called, it will first try to look up
-     *the corresponding Gauss rule. If this lookup was not successful, the function computeReference() will be called.
-     *\return \a true if the lookup was successful
+     *the corresponding Gauss rule. If this look up was not successful, the function computeReference() will be called.
+     *\return \a true if the look up was successful
      */
     static bool lookupReference (index_t n, gsVector<T> & x, gsVector<T> & w);
 

@@ -22,7 +22,7 @@ namespace gismo
 /** \brief Provides a Residual-type and element-wise error estimator
  * for the Poisson problem.
  *
- * Let the Poission problem on the domain \f$ \Omega \f$ be given by
+ * Let the Poisson problem on the domain \f$ \Omega \f$ be given by
  * \f[ -\Delta u = f,\quad u = u_D \mathrm{\ on\ } \partial \Omega. \f]
  * The error estimate \f$\eta\f$ for a computed discrete solution
  * \f$ u_h \f$ is then given by
@@ -142,11 +142,11 @@ protected:
             // Compute the APPROXIMATION of the
             // transformation of the
             // Laplacian to the physical domain.
-            // Note that the term involing the second
+            // Note that the term involving the second
             // derivative of the inverse geometry mapping is
             // neglected!
             //
-            // The transformation is written here exlicitly,
+            // The transformation is written here explicitly,
             // because of the special ordering of the second derivatives,
             // and because it should be easier to extend this to the
             // convection-diffusion-reaction-equation starting from this.

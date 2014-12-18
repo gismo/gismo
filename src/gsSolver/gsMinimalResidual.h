@@ -1,6 +1,6 @@
 /** @file gsMinimalResidual.h
 
-    @brief Preconditioned interative solver using the minimal residual method.
+    @brief Preconditioned iterative solver using the minimal residual method.
 
     This file is part of the G+Smo library.
 
@@ -49,7 +49,7 @@ public:
     template<typename Rhs, typename Dest, typename Preconditioner>
     void initIteration( const Rhs& rhs, const Dest& x0, const Preconditioner& precond)
     {
-        GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single collum right hand side matrix");
+        GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
 
         int n = mat.cols();
         int m = 1;//rhs.cols();

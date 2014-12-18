@@ -116,7 +116,7 @@ public:
         gsVisitorMass<T> mass;
 
         // Set shift such that "global" indices correspond to patch-local numbering
-        // (!) assumes a conforming dof mapper
+        // (!) assumes a conforming DoF mapper
         m_dofMappers.front().setShift(-m_dofMappers.front().offset(patchIndex) );
    
         //Assemble stiffness matrix for this patch
@@ -146,7 +146,7 @@ public:
         gsVisitorGradGrad<T> stiffness;
 
         // Set shift such that "global" indices correspond to patch-local numbering
-        // (!) assumes a non-conforming dof mapper
+        // (!) assumes a non-conforming DoF mapper
         m_dofMappers.front().setShift(-m_dofMappers.front().offset(patchIndex) );
 
         //Assemble stiffness matrix for this patch

@@ -205,7 +205,7 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
 
     // numMarked: Number of marked cells on current patch, also currently marked cell
     // poffset  : offset index for the first element on a patch
-    // globalCount: counter for the current global eleement index
+    // globalCount: counter for the current global element index
     int numMarked, poffset = 0, globalCount = 0;
 
     // refBoxes: contains marked boxes on a given patch
@@ -231,7 +231,7 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
             {
                 const gsVector<T> & ctr = domIt->centerPoint();
 
-                // Construct degenerate box by settting both
+                // Construct degenerate box by setting both
                 // corners equal to the center
                 refBoxes.col(2*numMarked  ) =
                 refBoxes.col(2*numMarked+1) = ctr;

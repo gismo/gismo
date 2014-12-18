@@ -115,7 +115,7 @@ public:
             if( tmp < eigen_low ) {eigen_low  = tmp;}
             if( tmp > eigen_high) {eigen_high = tmp;}
         }
-        //gsInfo << "Highst eigen value: " << eigen_high << " Lowest eigen value: " << eigen_low<< "\n";
+        //gsInfo << "Highest eigen value: " << eigen_high << " Lowest eigen value: " << eigen_low<< "\n";
         //Return condition number
         return eigen_high/eigen_low;
     }

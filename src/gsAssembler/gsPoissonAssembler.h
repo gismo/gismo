@@ -28,7 +28,7 @@ namespace gismo
 {
 
 /** @brief
-    Implementation of an (multiple righ-hand side) Poisson solver.
+    Implementation of an (multiple right-hand side) Poisson solver.
 
     The Poisson equation: \f$-\Delta\mathbf{u}=\mathbf{f} \f$
 
@@ -48,7 +48,7 @@ public:
 /** @brief
     Main Constructor of the assembler object.
 
-    \param[in] pde A boundary value poisson problem
+    \param[in] pde A boundary value Poisson problem
     \param[in] bases a multi-basis that contains patch-wise bases
     \param[in] dirStrategy option for the treatment of Dirichlet boundary
     \param[in] intStrategy option for the treatment of patch interfaces
@@ -141,13 +141,13 @@ public:
      
 protected:
 
-    // Nitsche Dirichle contributions
+    // Nitsche Dirichlet contributions
     void assembleNitsche();
     
     // Neumann contributions
     void assembleNeumann();
 
-    // Dg contributions    
+    // DG contributions    
     void assembleDg();
     
     // Computes the Dirichlet DoF values by interpolation
@@ -164,7 +164,7 @@ protected:
     /// Boundary conditions
     gsBoundaryConditions<T> m_bConditions;
 
-    // Strategy for dealing with Dirichlet dofs
+    // Strategy for dealing with Dirichlet DoFs
     dirichlet::strategy m_dirStrategy;
 
     // Strategy for dealing with patch interface
