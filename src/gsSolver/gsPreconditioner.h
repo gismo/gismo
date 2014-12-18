@@ -83,11 +83,12 @@ public:
     MatrixType matrix() const { return m_mat; }
 
 private:
-    const MatrixType& m_mat; index_t m_numOfSweeps;
+    const MatrixType& m_mat; 
+    index_t m_numOfSweeps;
 };
 
 /// @brief Identity preconditioner ("do nothing"), must be square!
-class GISMO_EXPORT gsIdentityPreconditioner : public gsPreconditioner
+class gsIdentityPreconditioner : public gsPreconditioner
 {
 public:
 

@@ -72,6 +72,14 @@ public:
     /// Shared pointer for gsSparseMatrix
     typedef memory::shared_ptr< gsSparseMatrix > Ptr;
 
+    /// Type of the full view of the matrix, for the case when only
+    /// the lower diagonal part is stored
+    typedef typename Eigen::SparseSelfAdjointView<Base, Lower> fullView;
+
+    /// Type of the full view of the matrix, for the case when only
+    /// the lower diagonal part is stored
+    typedef typename Eigen::SparseSelfAdjointView<const Base, Lower> constFullView;
+
 public:
     gsSparseMatrix() ;
 

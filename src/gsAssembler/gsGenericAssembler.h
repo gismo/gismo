@@ -162,7 +162,15 @@ public:
     /// Returns an expression of the "full" assembled sparse
     /// matrix. Note that matrix() returns a lower diagonal matrix,
     /// since we exploit symmetry during assembly (whenever possible).
-    Eigen::SparseSelfAdjointView< typename gsSparseMatrix<T>::Base, Lower> fullMatrix()
+    typename gsSparseMatrix<T>::fullView fullMatrix()
+    {
+        return m_matrix.template selfadjointView<Lower>();
+    }
+
+    /// Returns an expression of the "full" assembled sparse
+    /// matrix. Note that matrix() returns a lower diagonal matrix,
+    /// since we exploit symmetry during assembly (whenever possible).
+    const typename gsSparseMatrix<T>::constFullView fullMatrix() const
     {
         return m_matrix.template selfadjointView<Lower>();
     }
