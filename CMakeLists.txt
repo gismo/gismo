@@ -90,6 +90,8 @@ unset(gismo_EXTENSIONS CACHE)
 unset(gismo_MODULES    CACHE)
 unset(gismo_examples   CACHE)
 unset(gismo_optionals  CACHE)
+#
+unset(gismo_TMPL_HEADERS CACHE)
 
 set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src;${PROJECT_SOURCE_DIR}/external;${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories")
