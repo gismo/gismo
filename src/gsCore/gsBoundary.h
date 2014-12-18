@@ -767,3 +767,8 @@ gsMatrix<T> getFace (const boxSide side, const gsMatrix<T> &box)
 
 
 } // namespace gismo
+
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsBoundary.cpp)
+#endif

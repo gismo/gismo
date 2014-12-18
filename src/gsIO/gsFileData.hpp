@@ -147,7 +147,7 @@ bool gsFileData<T>::readXmlFile( String const & fn )
 {
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
-    if ( file.fail() ) {std::cout<<"gsFileData: Input file Problem!\n"; return false; } 
+    if ( file.fail() ) {std::cout<<"gsFileData: Input file Problem: "<<fn<<"\n"; return false; } 
     
     std::vector<char> buffer(
         std::istreambuf_iterator<char>(file.rdbuf() ), 
