@@ -33,6 +33,7 @@ namespace gismo
     - the boundary conditions,
     - coefficients
     - rhs functions
+
     The description of the discretization: methods to impose conditions
     or discrete spaces must be provided separately.
 
@@ -46,10 +47,13 @@ protected:
     gsPde()
     {
     }
-public:  
+public:
+    /// @brief Constructor without given exact solution.
     gsPde(const gsMultiPatch<T> &domain, const gsBoundaryConditions<T> &bc)
         : m_domain(domain), m_boundary_conditions(bc)
     {}
+
+    /// @brief Constructor with given exact solution.
     gsPde(const gsMultiPatch<T>         &domain,
           const gsBoundaryConditions<T> &bc,
           const std::vector<gsPiecewiseFunction<T> *>  &solutions
@@ -63,32 +67,40 @@ public:
     }
     
     /**
-     * @brief returns a reference to the Pde domain
-     *        there is also a const variant returning a const reference
-     * @return
+     * @brief Returns a reference to the Pde domain.
+     *
+     * There is also a const version returning a const reference.
      */
     gsMultiPatch<T> &domain() {return m_domain;}
     const gsMultiPatch<T> &domain() const {return m_domain;}
 
     /**
-     * @brief returns a reference to the Pde boundary conditions
-     *        there is also a const variant returning a const reference
-     * @return
+     * @brief Returns a reference to the Pde boundary conditions.
+     *
+     * There is also a const version returning a const reference.
      */
     gsBoundaryConditions<T> &boundaryConditions() {return m_boundary_conditions;}
     const gsBoundaryConditions<T> &boundaryConditions() const {return m_boundary_conditions;}
 
-    /// Is the associated linear system symmetric?
-    /// TODO: remove because we cannot know, it depends on the method
+    // Is the associated linear system symmetric?
+    // TODO: Remove, because it depends on the method and the used
+    // discretization and test spaces whether the resulting linear system
+    // is symmetric or not. Hence, the isSymmetric()-Flag does not
+    // make too much sense in the specification of the PDE.
+    //
+    // As of now, the function still remains, because it is called
+    // by some other functions.
     virtual bool isSymmetric() const {gsWarn<<"Function is gsPde::isSymmetric should not be used!!"; return false;}
 
-    /// Print a short description of the PDE
+    /// @brief Print a short description of the PDE
     virtual std::ostream &print(std::ostream &os) const = 0;
 
     /**
-     * @brief solutionGiven
+     * @brief Indicates whether an exact solution is stored.
+     *
      * @param field_id
-     * @return
+     * @return true, if an exact solution
+     * for the field with index \em field_id was provided.
      */
     bool solutionGiven(index_t field_id = 0) const
     {
@@ -96,7 +108,8 @@ public:
         return m_solution[field_id] != NULL;
     }
     /**
-     * @brief gives the exact solution for the \em field_id-th field on the \em patch_id-th patch
+     * @brief Gives the exact solution for the <em>field_id</em>-th field on the <em>patch_id</em>-th patch.
+     *
      * @param field_id
      * @param patch_id
      * @return a pointer to the function or NULL depending if the exact solution is provided
@@ -107,7 +120,8 @@ public:
         return &(m_solution[field_id]->operator[](patch_id));
     }
     /**
-     * @brief gives the exact solution for the \em field_id-th field
+     * @brief Gives the exact solution for the \em field_id-th field.
+     *
      * @param field_id
      * @return a pointer to the function or NULL depending if the exact solution is provided
      */
@@ -117,7 +131,7 @@ public:
         return m_solution[field_id];
     }
     /**
-     * @brief gives the number of unknown fields of the PDEs
+     * @brief Gives the number of unknown fields of the PDEs.
      */
     int numUnknowns() const
     {
@@ -151,13 +165,14 @@ public:
 
 
 protected:
-    // description of the unknown fields:
-    // for each one the target dimension.
+    /// @brief Description of the unknown fields:
+    /// for each one the target dimension.
     std::vector<unsigned>                 m_unknownDim;
-    // exact solution
+    /// @brief Exact solution(s)
     std::vector<gsPiecewiseFunction<T> *> m_solution;
-    // description of the problem
+    /// @brief Computational domain
     gsMultiPatch<T>                       m_domain;
+    /// @brief Boundary conditions
     gsBoundaryConditions<T>               m_boundary_conditions;
 }; // class gsPde
 
