@@ -1,4 +1,4 @@
-/** @file gsVertex.hpp
+/** @file gsVertex.h
 
     @brief Provides gsVertex class for a vertex of a gsMesh
 
