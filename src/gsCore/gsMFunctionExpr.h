@@ -1,3 +1,16 @@
+/** @file gsMFunctionExpr.h
+
+    @brief Provides declaration of FunctionExpr class.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): Mantzaflaris, J. Sogn
+*/
+
 #pragma once
 
 # include <gsCore/gsFunction.h>
@@ -9,7 +22,8 @@ namespace gismo
 template<typename T> class gsMFunctionExprPrivate;
 
 /** 
-    Class defining a multivariate function given by string mathematical expressions
+    Class defining a multivariate function given by string
+    mathematical expressions
 */
     
 template<typename T>

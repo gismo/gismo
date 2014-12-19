@@ -1,4 +1,4 @@
-/** @file gsTensorDomainIterator.h
+/** @file gsTensorDomainBoundaryIterator.h
 
     @brief Iterator over the boundary elements of a tensor-structured grid
 
