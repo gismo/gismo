@@ -89,10 +89,18 @@ public:
     
     bool isInterior ( gsVector<T> const & p, const T& tol);
 
+    ///@name isOn
+    /// returns true if the points in \param u are ON the curve
+    /// ideally it should store in \param paramResult the parametric values
+    /// associated to those points.
     bool isOn(gsMatrix<T> const &u,T & paramResult, T tol = 1e-3);
     
+    ///@name is_ccw
+    ///returns true if the curve is oriented counterclockwise
     bool is_ccw();
     
+    ///@name reverse
+    ///changes the orientation of the curve
     void reverse();
       
     void translate(gsVector<T> const & v);

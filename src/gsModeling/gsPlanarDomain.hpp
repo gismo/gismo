@@ -2,7 +2,7 @@
 
     @brief Provides implementation of the gsPlanarDomain class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -48,102 +48,6 @@ gsPlanarDomain<T>::gsPlanarDomain( std::vector< gsCurveLoop<T> *> const & loops)
     }
     updateBoundingBox();
 }
-
-
-
-/*
-template<class T>
-void gsPlanarDomain<T>::getLamdas(gsBemSolution<T> & f, gsVector<T> &lambdas)
-{
-    std::vector<gsCurve<T>*> all_loops ;
-    std::vector<gsBSplineBasis<T> > base;
-    std::vector<gsMatrix<T> *> all_ngrid, quad;
-    std::vector<gsVector<T>*> all_wgrid;
-    gsMatrix<T> unormal_inter, gr_points, quad1, u, xev,val, gamma,p;
-    gsVector<T> aux,unormal;
-    gsBSpline<T> *component = NULL;
-    T temp1, aiuto1,aiuto2, help1, help2;   
-    for(int i=1; i<=this->numHoles(); ++i)
-    {
-        component = dynamic_cast<gsBSpline<T> * >(this->loop(i).singleCurve() );
-        all_loops.push_back(component);
-             
-         base.push_back( component->basis() );
-
-         base[i-1].anchors_into(gr_points) ;
-// gsInfo<<"\n in pdomain checking : "<<"\n";
-// this->check();
-        
-        std::vector<T> breaks;
-        breaks = base[i-1].domain()->breaks();   
-        
-        //computing quadrature points :
-        for ( int v= 1; v<gr_points.size()-1; ++v )
-            breaks.push_back( gr_points(0,v) );
-        std::sort(breaks.begin(), breaks.end() ) ;
-        typename std::vector<T>::iterator itr =
-        unique( breaks.begin(), breaks.end(), math::template almostEqual<T> );
-        breaks.resize( itr - breaks.begin() ) ;
-        
-        gsMatrix<T> * ngrid = new gsMatrix<T>;
-        gsVector<T> * wgrid = new gsVector<T>;
-        iteratedGaussRule(*ngrid, *wgrid,3* base[i-1].degree(), breaks ) ;
-        all_ngrid.push_back(ngrid);
-        all_wgrid.push_back(wgrid);
-        
-        base[i-1].eval_into(*ngrid,quad1);
-        quad.push_back(&quad1);
-        
-    }
-    aux.resize(2);
-    aux.setZero();
-    unormal.resize(2);
-    unormal.setZero();
-    lambdas.resize(this->numHoles());
-    lambdas.setZero();
-    gamma.resize(this->numHoles(),1);
-    gamma.setZero();
-    
-    for(int k=1; k<=this->numHoles(); ++k)
-    {
-        for(int q=0; q!=quad[k-1]->cols();++q)
-        {
-           u= all_ngrid[k-1]->col(q); 
-           all_loops[k-1]->eval_into(u,xev);
-           all_loops[k-1]->deriv_into(u,unormal_inter);
-           temp1= unormal_inter.norm();
-           
-           std::swap(unormal_inter(0), unormal_inter(1) );
-           unormal_inter(1,0) *= -1.0;
-           unormal_inter.normalize();
-           help1 = unormal_inter.at(0,0);
-           help2 = unormal_inter.at(1,0);
-           unormal[0]= help1;
-           unormal[1]= help2;
-           
-           f.deriv_into(xev, val);
-        
-           aiuto1 = val(0,0);
-           aux[0] = aiuto1;
-           aiuto2 = val(0,1);
-           aux[1] = aiuto2;
-         
-           gamma(k-1, 0) += all_wgrid[k-1]->at(q)*temp1*(unormal.dot(aux)) ;
-        }
-        
-    }
-    gamma *= -1.0; 
-    
-    const gsGreenFunction2d<T> & Gr = f.getGreen();
-    harmonicConjugate(*this,Gr,p);
-    
-    lambdas = p.transpose().colPivHouseholderQr().solve(gamma);
-    gsInfo<<"\n matrix p : \n "<< p <<"\n gamma :\n "<<gamma<<"\n lambadas : "<<lambdas<<"\n";
-
- delete component;
-}
-*/
-
 
 template<class T>
 gsMatrix<T> gsPlanarDomain<T>::averageValue( std::vector<gsFunction<T>*> const &f,
@@ -196,21 +100,18 @@ bool gsPlanarDomain<T>::inDomain( gsMatrix<T> const & u, int direction)
     //checking if abscissae of intersection are greater then point's abscissa
     for(index_t i=0; i!=e.cols(); i++)
     {
-        //gsInfo<<" matrix e (1,i): "<< e(1,i) <<"\n";
         if( (e( !direction, i )> u(!direction,0))  )
-            count++; //gsInfo<< "count "<< count <<"\n";
+            count++;
     }
     if ( (count % 2) == 0 ) //this means point is outside the outer loop
         return false;
 
     for(index_t v = 1; v<this->numLoops(); v++)
     {
-        //gsInfo<<"m_loops [v] : "<< m_loops[v] <<"\n";
-        //gsInfo<<"m_loops[v]->lineIntersections(0,u(0,0)) "<<m_loops[v]->lineIntersections(0,u(0,0)) <<"\n";
+
         count=0;
         tmp= m_loops[v]->lineIntersections( direction, u(direction,0) );
 
-        //gsInfo<<"tmp size is : "<< tmp.size() <<"\n";
         if(tmp.size()!=0) // intersections detected with hole loop
         {
             gsAsMatrix<T> Ev(tmp);
@@ -221,7 +122,7 @@ bool gsPlanarDomain<T>::inDomain( gsMatrix<T> const & u, int direction)
                 // gsInfo<<"e(1,i) "<< e(1,i)<<"\n";
                 if( e(!direction,i) > u(!direction,0) )
                     count++;
-                //gsInfo<<"count_holes : "<<count_holes<<"\n";
+
             }
         }
         if( (count % 2) != 0 ) //this means point is inside hole v
@@ -240,9 +141,8 @@ bool gsPlanarDomain<T>::onBoundary(gsMatrix<T> const & u)
         // true iff point u on boundary
         T parValue;
         if( m_loops[v]->isOn(u, parValue,1e-5 ) )
-        { //v=this->numLoops();
+        {
             return true;
-            //gsInfo<<"\n in loop "<<v<< "\n";
         }
     }
     return false;
@@ -257,11 +157,11 @@ std::ostream& gsPlanarDomain<T>::print(std::ostream &os) const
     {
         os << "Holes: ";
         for ( typename std::vector< gsCurveLoop<T> *>::const_iterator it =
-                m_loops.begin()+1;  it != m_loops.end(); ++it)
+              m_loops.begin()+1;  it != m_loops.end(); ++it)
             os << **it;
     }
     os << "Bounding box: ["<< m_bbox.col(0).transpose()<< ", "
-        << m_bbox.col(1).transpose() << "]";
+       << m_bbox.col(1).transpose() << "]";
     return os;
 }
 
@@ -359,7 +259,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
 
 #if FALSE
     T h_x = (m_bbox(0,1) - m_bbox(0,0) ) / (npoints-1) ,
-      h_y = (m_bbox(1,1) - m_bbox(1,0) ) / (npoints-1) ;
+            h_y = (m_bbox(1,1) - m_bbox(1,0) ) / (npoints-1) ;
 
     //========== 1. Compute y-parallel segments
     VertexList x_seg_begin; // Starting points of y-parallel segments
@@ -432,7 +332,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     VertexList line0; // x-sorted
 
     VertexListIter ss = x_seg_begin.begin(),
-                   es = x_seg_end.begin();
+            es = x_seg_end.begin();
     T yi = m_bbox(1,0);
     VertexList Yprev;
 
@@ -583,12 +483,12 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     std::vector<std::vector< VertexHandle > >samples;
     std::vector<std::vector< VertexHandle > >intersections;
 
-//    std::map<int,
-//            std::pair<
-//            std::vector< VertexHandle >,
-//            std::vector<T>
-//            >
-//            > x_samples;
+    //    std::map<int,
+    //            std::pair<
+    //            std::vector< VertexHandle >,
+    //            std::vector<T>
+    //            >
+    //            > x_samples;
     for ( int i = 0; i!= yPoints; ++i )
     {
         std::vector<T> x_all;
@@ -705,61 +605,61 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     }
 
 
-//            // generate the Mesh vertices.
-//            k = npoints - x.size(); // points to distribute to the (interior of) the segments
-//            std::vector< VertexHandle > x_line;
-//            x_line.reserve(npoints);
-//            for (size_t v=0; v< x.size(); v+=2 )
-//            {
-//                x_line.push_back( m->addVertex(x[v], y_samples(0,i)) );
-//                // TO DO
-//                // ( ll[v/2] / ltotal )*k samples here
-//                for( int j = 1; j!= k+1; ++j)
-//                    x_line.push_back( m->addVertex(x[v] + T(j) * ll[v/2] / T(k+1), y_samples(0,i)) );
+    //            // generate the Mesh vertices.
+    //            k = npoints - x.size(); // points to distribute to the (interior of) the segments
+    //            std::vector< VertexHandle > x_line;
+    //            x_line.reserve(npoints);
+    //            for (size_t v=0; v< x.size(); v+=2 )
+    //            {
+    //                x_line.push_back( m->addVertex(x[v], y_samples(0,i)) );
+    //                // TO DO
+    //                // ( ll[v/2] / ltotal )*k samples here
+    //                for( int j = 1; j!= k+1; ++j)
+    //                    x_line.push_back( m->addVertex(x[v] + T(j) * ll[v/2] / T(k+1), y_samples(0,i)) );
 
-//                x_line.push_back( m->addVertex(x[v+1], y_samples(0,i) ) );
-//            }
-//            //std::cout<<"i: "<< i<< ", sz="<< x_line.size() <<", ints="<< x.size() <<"\n";
-//            //std::cout<<"x= "<< x[0] <<", "<< x[1] <<"(y="<< y_samples(0,i) <<"\n";
+    //                x_line.push_back( m->addVertex(x[v+1], y_samples(0,i) ) );
+    //            }
+    //            //std::cout<<"i: "<< i<< ", sz="<< x_line.size() <<", ints="<< x.size() <<"\n";
+    //            //std::cout<<"x= "<< x[0] <<", "<< x[1] <<"(y="<< y_samples(0,i) <<"\n";
 
-//            x_samples.insert( make_pair(i,make_pair( x_line, x ) ) ); // i-th sample line
+    //            x_samples.insert( make_pair(i,make_pair( x_line, x ) ) ); // i-th sample line
 
 
-//    }
+    //    }
 
     //std::cout<<" --- mesh DONE  "<< *m  <<"\n";
     // for ( int i = 0; i!= 25; ++i )
     // 	std::cout<<"--"<<* m->vertex[i] ;
 
     // Zig-zag connection
-//    for ( int i = 0; i!= npoints-1; ++i )
-//    {
-//        typename std::map<int,std::pair<std::vector<VertexHandle>, std::vector<T> > >::const_iterator
-//            it0 = x_samples.find(i);
+    //    for ( int i = 0; i!= npoints-1; ++i )
+    //    {
+    //        typename std::map<int,std::pair<std::vector<VertexHandle>, std::vector<T> > >::const_iterator
+    //            it0 = x_samples.find(i);
 
-//        if ( it0 != x_samples.end() ) // Check whether intersection with line 0 exists
-//        {
-//            typename std::map<int,std::pair<std::vector<VertexHandle>, std::vector<T> > >:: const_iterator
-//                it1 = x_samples.find(i+1);
-//            if ( it1 != x_samples.end() ) // Check whether intersection with line 1 exists
-//            {
-//                //typename std::vector<T>::const_iterator s0 = it0->second.second.begin();
-//                //typename std::vector<T>::const_iterator s1 = it1->second.second.begin();
-//                typename std::vector<VertexHandle>::const_iterator f1 = it1->second.first.begin();
-//                // Run through the sample points at line 0
-//                for ( typename std::vector<VertexHandle>::const_iterator f0 =
-//                        it0->second.first.begin();
-//                        f0 != it0->second.first.end()-1 ; ++f0 )
-//                {
-//                    // TO DO
-//                    //if ( *f0 == *s0 )// start segment level 0
-//                    // if ( *f1 == *s1 )// start segment level 1
-//                    m->addFace( *f0    , *f1    , *(f1+1), *(f0+1) ) ;
-//                    f1++;
-//                }
-//            }
-//        }
-//    }
+    //        if ( it0 != x_samples.end() ) // Check whether intersection with line 0 exists
+    //        {
+    //            typename std::map<int,std::pair<std::vector<VertexHandle>, std::vector<T> > >:: const_iterator
+    //                it1 = x_samples.find(i+1);
+    //            if ( it1 != x_samples.end() ) // Check whether intersection with line 1 exists
+    //            {
+    //                //typename std::vector<T>::const_iterator s0 = it0->second.second.begin();
+    //                //typename std::vector<T>::const_iterator s1 = it1->second.second.begin();
+    //                typename std::vector<VertexHandle>::const_iterator f1 = it1->second.first.begin();
+    //                // Run through the sample points at line 0
+    //                for ( typename std::vector<VertexHandle>::const_iterator f0 =
+    //                        it0->second.first.begin();
+    //                        f0 != it0->second.first.end()-1 ; ++f0 )
+    //                {
+    //                    // TO DO
+    //                    //if ( *f0 == *s0 )// start segment level 0
+    //                    // if ( *f1 == *s1 )// start segment level 1
+    //                    m->addFace( *f0    , *f1    , *(f1+1), *(f0+1) ) ;
+    //                    f1++;
+    //                }
+    //            }
+    //        }
+    //    }
     //gsInfo<<*m;
     return m;
 
