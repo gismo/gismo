@@ -46,7 +46,7 @@ template <typename T>
 T max(T a, T b) {return  (a < b ? b : a); }
 
 // functions to check for floating point errors
-// Note: Some dublication in gsUtils/gsDebug.h
+// Note: Some duplication in gsUtils/gsDebug.h
 // Get isnan/isinf working on different compilers
 #ifdef _MSC_VER
 #include <float.h>
@@ -152,38 +152,38 @@ inline bool gsClose (const T &a, const T &b, const T &tol)
 }
 
 /**
-    \brief tests if the difference between two matrixes is bounded by tol in L^\infty norm
+    \brief tests if the difference between two matrices is bounded by tol in L^\infty norm
 
-    The tolerance is relative to maximum absolute values of the entries of the matrixes.
+    The tolerance is relative to maximum absolute values of the entries of the matrices.
     **/
 template <typename matrix_t1, typename matrix_t2>
 inline bool gsAllCloseRelativeToMax (const matrix_t1 &a, const matrix_t2 &b, const typename matrix_t1::Scalar &tol )
 {
-    GISMO_ASSERT( a.cols()==b.cols() && a.rows()==b.rows(), "Only matrixes of the same size can be compared" );
+    GISMO_ASSERT( a.cols()==b.cols() && a.rows()==b.rows(), "Only matrices of the same size can be compared" );
     return (a-b).array().abs().maxCoeff() <= tol*math::max(a.array().abs().maxCoeff(), b.array().abs().maxCoeff());
 }
 
 /**
-    \brief tests if the difference between two matrixes is bounded by tol in L^\infty norm
+    \brief tests if the difference between two matrices is bounded by tol in L^\infty norm
 
     The tolerance is absolute, therefore independent of the matrix entries.
     **/
 template <typename matrix_t1, typename matrix_t2>
 inline bool gsAllCloseAbsolute (const matrix_t1 &a, const matrix_t2 &b, const typename matrix_t1::Scalar &tol )
 {
-    GISMO_ASSERT( a.cols()==b.cols() && a.rows()==b.rows(), "Only matrixes of the same size can be compared" );
+    GISMO_ASSERT( a.cols()==b.cols() && a.rows()==b.rows(), "Only matrices of the same size can be compared" );
     return (a-b).array().abs().maxCoeff() <= tol;
 }
 
 /**
-    \brief tests if the difference between two matrixes is bounded by tol in L^\infty norm
+    \brief tests if the difference between two matrices is bounded by tol in L^\infty norm
 
     The tolerance is absolute below the reference, but relative for bigger numbers.
     **/
 template <typename matrix_t1, typename matrix_t2>
 inline bool gsAllCloseRelAndAbsWithRef (const matrix_t1 &a, const matrix_t2 &b, const typename matrix_t1::Scalar &tol, const typename matrix_t1::Scalar &ref )
 {
-    GISMO_ASSERT( a.cols()==b.cols() && a.rows()==b.rows(), "Only matrixes of the same size can be compared" );
+    GISMO_ASSERT( a.cols()==b.cols() && a.rows()==b.rows(), "Only matrices of the same size can be compared" );
     return (a-b).array().abs().maxCoeff() <= tol*math::max(ref,a.array().abs().maxCoeff(), b.array().abs().maxCoeff());
 }
 
@@ -206,7 +206,7 @@ struct CompileTimeLog2<1>
 template <>
 struct CompileTimeLog2<0>
 {
-    // empty because the logarith of 0 is -infinity
+    // empty because the logarithm of 0 is -infinity
 };
 template <unsigned arg>
 unsigned CTLog2 (void) {return CompileTimeLog2<arg>::result;}

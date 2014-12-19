@@ -39,7 +39,7 @@ struct gsTraits
 
 /** 
     \brief
-    Abtract base class for all basis types in Gismo.
+    Abstract base class for all basis types in Gismo.
     A basis represents a family of \em scalar basis functions defined over
     a common parameter domain.
 
@@ -209,8 +209,8 @@ public:
     /** \brief Number of active basis functions at an arbitrary parameter value.
      *
      *  Usually, this is used for getting the active functions on one
-     *  element, assumng that this number doesn't change for different
-     *  parameters inside the elemet.
+     *  element, assuming that this number doesn't change for different
+     *  parameters inside the element.
      */
     typename gsVector<unsigned>::uPtr numActive(const gsMatrix<T> & u) const
     {
@@ -381,7 +381,7 @@ public:
      * \f[ f = ( f_1, f_2, f_3)^T = \sum_{i=1}^N c_i B_i(x,y,z), \f]
      * where \f$ B_i(x,y,z)\f$ are scalar basis functions and \f$c_i\f$ are the
      * corresponding (<em>PhysDim</em>-dimensional) control points.
-     * Then, for each column in \em u, the corrsponding column in <b>\em result</b> represents
+     * Then, for each column in \em u, the corresponding column in <b>\em result</b> represents
      * \f[ (
      * \partial_{xx}\ f_1, \partial_{yy}\ f_1, \partial_{zz}\ f_1,
      * \partial_{xy}\ f_1, \partial_{xz}\ f_1, \partial_{yz}\ f_1,
@@ -449,7 +449,7 @@ public:
     virtual void connectivity(gsMesh<T> & mesh) const;
 
     /// Returns the connectivity structure of the basis
-    /// The returned mesh has vertices the rows of mmatrix \a nodes
+    /// The returned mesh has vertices the rows of matrix \a nodes
     virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const;
 
     /// @name Evaluation functions
@@ -538,7 +538,7 @@ public:
     /// Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
     /// The column contains the values of all active functions "above" each other.\n
     ///
-    /// For example, for scalar basis functions \a Bi : (x,y,z)-> R, a colum represents\n
+    /// For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
     /// (B1, B2, ... , Bn)^T,\n
     /// where the order the basis functions \a Bi is as returned by active() and active_into().
     ///
@@ -566,7 +566,7 @@ public:
     /// Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
     /// The column contains the gradients of all active functions "above" each other.\n
     ///
-    /// For example, for scalar basis functions \a Bi : (x,y,z)-> R, a colum represents\n
+    /// For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
     /// (dx B1, dy B1, dz B1, dx B2, dy B2, dz B2, ... , dx Bn, dy Bn, dz Bn)^T,\n
     /// where the order the basis functions \a Bi is as returned by active() and active_into().
     ///
@@ -703,7 +703,7 @@ public:
     /// The number of elements.
     virtual int numElements() const;
 
-    /// Retruns an index for the element which contains point \a u
+    /// Returns an index for the element which contains point \a u
     virtual int elementIndex(const gsVector<T> & u ) const;
 
     /// For a tensor product basis, return the 1-d basis for the \a i-th parameter component.
@@ -730,14 +730,14 @@ public:
 
     /** @brief Refine the basis to levels and in the areas defined by \a boxes.
      *
-     * As of now (03.Oct.2014), only used for hierarchichal
+     * As of now (03.Oct.2014), only used for hierarchical
      * tensor basis. See gsHTensorBasis for detailed documentation.
      */
     virtual void refineElements(std::vector<unsigned> const & boxes);
 
     /** @brief Refine the basis to levels and in the areas defined by \a boxes with an extension.
      *
-     * As of now (03.Oct.2014), only used for hierarchichal
+     * As of now (03.Oct.2014), only used for hierarchical
      * tensor basis. See gsHTensorBasis for detailed documentation.
      */
     virtual void refineWithExtension(gsMatrix<T> const & boxes, int refExt = 0);

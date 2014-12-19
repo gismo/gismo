@@ -202,7 +202,7 @@ public:
 
         if (numDerivs > 0)
         {
-            // curently only 1 implemented
+            // currently only 1 implemented
             const int numDerivs = numActive * m_basis.dim();
             basisEvals.push_back( allValues.middleRows( curRow, numDerivs ) );
             curRow += numDerivs;
@@ -286,10 +286,10 @@ public:
         GISMO_NO_IMPLEMENTATION
     }
 
-    /// \brief Returns the perdicular cell size of boundary iterator.
+    /// \brief Returns the perpendicular cell size of boundary iterator.
     ///
-    /// Only works for boundary iterators. Returns the lenght from
-    /// the boundary side to the parallell side not on the boudary.
+    /// Only works for boundary iterators. Returns the length from
+    /// the boundary side to the parallel side not on the boundary.
     virtual const T getPerpendicularCellSize() const
     {
         GISMO_NO_IMPLEMENTATION

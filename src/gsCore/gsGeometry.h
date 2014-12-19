@@ -95,7 +95,7 @@ struct gsGeoTraits<4,T>
     \c evalAllDersSingle(i, u, k)| basis function i       | value and all derivatives up to order k
     \c evalDerSingle(i, u, k)    | basis function i       | k-th derivative (k=0, ... , p-1)
 
-    ALl evaluation functions also provide a version suffixed with \c _into
+    All evaluation functions also provide a version suffixed with \c _into
     which takes a matrix reference as an additional output parameter into which
     the result will be stored.
 
@@ -256,7 +256,7 @@ public:
     /// Dimension \em d of the parameter domain (overriding gsFunction::domainDim()).
     int domainDim() const { return this->basis().dim(); }
 
-    /// Returns the range of parameters as a matrix with two colums, [lower upper]
+    /// Returns the range of parameters as a matrix with two columns, [lower upper]
     virtual gsMatrix<T> parameterRange() const
     { return this->basis().support(); }
 

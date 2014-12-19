@@ -75,10 +75,10 @@ public:
   /// Evaluate the expression (overrided from gsFunction)
   virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
-  /// Evaluate the expression for component \a comp in the target dimention (overrided from gsFunction)
+  /// Evaluate the expression for component \a comp in the target dimension (overrided from gsFunction)
   virtual void eval_component_into(const gsMatrix<T>& u, const index_t comp, gsMatrix<T>& result) const;
 
-  /// Evalute the gradient
+  /// Evaluate the gradient
   virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
   
   /// Evaluate the HESSIAN matrix

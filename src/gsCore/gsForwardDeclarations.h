@@ -44,7 +44,7 @@ enum gsNeedEnum
     NEED_JACOBIAN          = 1U << 2, /// Jacobian of the object
 
     NEED_MEASURE           = 1U << 3, /// The density of the measure pull back
-    NEED_GRAD_TRANSFORM    = 1U << 4, /// Gradient transformatin matrix
+    NEED_GRAD_TRANSFORM    = 1U << 4, /// Gradient transformation matrix
     NEED_DIV               = 1U << 5, /// Div operator
     NEED_CURL              = 1U << 6, /// Curl operator 
 

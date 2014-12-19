@@ -99,7 +99,7 @@ public:
     /// Evaluate the function at points \a u into \a result.
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const = 0;
 
-    /// Evaluate the function for component \a comp in the target dimention at points \a u into \a result.
+    /// Evaluate the function for component \a comp in the target dimension at points \a u into \a result.
     virtual void eval_component_into(const gsMatrix<T>& u, 
                                      const index_t comp, 
                                      gsMatrix<T>& result) const;

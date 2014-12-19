@@ -43,7 +43,7 @@ namespace gismo
    * Remark: The collection of patch-wise gsFunction is stored in the
    * private member gsField::m_fields.
    *
-   * Note that the geometry reprepresentation of a single patch can be
+   * Note that the geometry representation of a single patch can be
    * extracted by calling the member function gsField::patch.
    *
    * The "local field" on a single patch can be extracted by calling gsField::function.
@@ -285,7 +285,7 @@ private:
      * If \a parametrized is \a false, then the evaluation points are in the \a physical domain.
      * This applies to, e.g., given exact solutions which are defined on the physical domain.
      */
-    bool parametrized;// True iff this is an Isogemetic field, living on parameter domain
+    bool parametrized;// True iff this is an Isogeometric field, living on parameter domain
 
     bool m_owning;      // whether this field owns its function and should destroy it
 

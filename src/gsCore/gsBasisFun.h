@@ -21,7 +21,7 @@ namespace gismo
   template<class T> class gsBasis;
 
   /** 
-      Class gsBasisFun represents an indivisual basis function of a
+      Class gsBasisFun represents an individual basis function of a
       gsBasis. It is constructed using the basis and the index of the
       function.
 

@@ -20,7 +20,7 @@ namespace gismo
 
 template <class T> class gsFunction;
 
-/** @brief A function depending on an index \a i, typically refering
+/** @brief A function depending on an index \a i, typically referring
     to a patch/sub-domain.
 
     \tparam T argument and value type

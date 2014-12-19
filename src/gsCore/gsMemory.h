@@ -84,7 +84,7 @@ private:
     T & m_value;
 };
 
-/** Wrap a T& in a gsMovable<T> to indicate to the callee that the
+/** Wrap a T& in a gsMovable<T> to indicate to the call that the
  *  value is not needed anymore.
  */
 template <typename T> 

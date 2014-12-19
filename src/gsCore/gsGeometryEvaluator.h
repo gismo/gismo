@@ -30,7 +30,7 @@ namespace gismo
     All accessors to the stored values come in two versions: plural and
     singular. The plural returns a matrix with the computed values on all
     points, the singular takes as additional parameter that represent the
-    point index and returns the associated subblock.
+    point index and returns the associated sub-block.
 
     \tparam T the coefficient type
 **/
@@ -66,7 +66,7 @@ public:
         \brief set the values to compute
 
         This interface is provided in such a way that it is possible
-        split the logic ot the initialization of the evaluator.
+        split the logic of the initialization of the evaluator.
     **/
     virtual void setFlags (unsigned newFlags) {m_flags = newFlags;}
 
@@ -157,7 +157,7 @@ public:
         this is the weight in the integral on the parametric domain
         that is caused by the change of variables.
 
-        if the dimension ot the parametric domain equals that of the target
+        if the dimension of the parametric domain equals that of the target
         space this is the determinant of the jacobian f$\det J^f$.
         If the geometry is a curve it is the modulus of the normal.
         If it is a surface in R^3 it is the length of the normal.
@@ -186,7 +186,7 @@ public:
         The orientation is equal to the sign of the Jacobian
         determinant. It is assumed that this sign is the same for the
         whole of the domain. It is computed on a generic point inside
-        the parameter domaim.
+        the parameter domain.
 
         For instance, the Jacobian determinant at point \a k can be
         retrieved as
@@ -202,7 +202,7 @@ public:
         return m_orientation;
     }
 
-    /** \brief Returns the second derivaties.
+    /** \brief Returns the second derivatives.
        
        Example for 2D case: Column k contains all the second
        derivatives at point \ k, stored as one big column:
@@ -308,7 +308,7 @@ public:
       \em trfGradsK is of size <em>ParDim</em> x <em>n</em>. The <em>i</em>-th column
       of \em trfGradsK corresponds to the transformed gradient of the <em>i</em>-th function.\n
       \n
-      Example: Let \f$x\f$ and \f$y\f$ be the coordinates in the phyiscal domain. Then,
+      Example: Let \f$x\f$ and \f$y\f$ be the coordinates in the physical domain. Then,
       in the above example, \em <b>trfGradsK</b> is given by\n
       \f[
       \left(\begin{array}{cccc}
@@ -328,7 +328,7 @@ public:
     virtual void transformGradients(index_t k, const gsMatrix<T>& allGrads, gsMatrix<T>& trfGradsK)  const = 0;
 
     /**
-      \brief Transforms parametric basis values at point \a k of a vector field, while perserving the divergence (Piola Transformation).
+      \brief Transforms parametric basis values at point \a k of a vector field, while preserving the divergence (Piola Transformation).
       NOT TESTED
     */
     // allValues: NumAct X TargetDim
@@ -336,7 +336,7 @@ public:
                                     gsMatrix<T>  & trfValues) const = 0;
 
     /**
-      \brief Transforms parametric gradients to a gradients on the physical domain of a vector field while perserving the divergence.
+      \brief Transforms parametric gradients to a gradients on the physical domain of a vector field while preserving the divergence.
 
       The transformation is sometimes called the contravariant Piola transform:
       \f[
@@ -348,7 +348,7 @@ public:
       The gradient information on the parameter domain at a certain points for a
       vector field is given in \em <b>allGrads_vec</b> in the following format:\n
 
-      Each component of the vector \em allGrads_vec correspods to a component
+      Each component of the vector \em allGrads_vec corresponds to a component
       of the vector field.
 
       Each column of a matrix component in \em allGrads_vec corresponds to one
@@ -370,7 +370,7 @@ public:
       \f]
 
 
-      \param k Indicates which column of the matries in \em allGrads_vec should be transformed.
+      \param k Indicates which column of the matrices in \em allegros_vec should be transformed.
       \param[in] allGrads_vec std::vector of gsMatrix containing computed gradients in the format
       described above for each component of the vector field.
       \param[out] trfGradsK_vec std::vector of gsMatrix with the corresponding gradients on the

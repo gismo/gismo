@@ -203,7 +203,7 @@ public:
     patchSide(index_t p, boundary::side s)
         : boxSide(s), patch(p) { }
 
-    // getters
+    // Accessors
     boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
 
@@ -639,7 +639,7 @@ private:
     gsVector<bool>    directionOrientation;
 
     /// TODO: the information could be stored in a single vector of signed integers: the sign gives the orientation
-    /// the problem is that it is necessary to shift the indeces as there is no -0
+    /// the problem is that it is necessary to shift the indices as there is no -0
 protected:
     friend std::ostream &operator<<(std::ostream &os, const boundaryInterface & i);
 };

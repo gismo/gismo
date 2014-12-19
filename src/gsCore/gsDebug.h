@@ -35,7 +35,7 @@
 
 
 /** Logging messages:
- *  gsInfo is ment to display informationlog messages, 
+ *  gsInfo is ment to display information log messages, 
  */
 #define gsInfo std::cout  //<< "Info: "
 
@@ -67,7 +67,7 @@
 #define GISMO_HPP_HEADER(x) #x
 
 /**  
- *  Runtine assertions which display a message  
+ *  Runtime assertions which display a message  
  *
  */
 #ifndef NDEBUG
@@ -85,7 +85,7 @@
 #endif
 
 /**  
- *  Runtine check and display error message. This command is the same as
+ *  Runtime check and display error message. This command is the same as
  *  GISMO_ASSERT but it is executed in release builds as well.
  *
  */
@@ -104,7 +104,7 @@
 #   define GISMO_UNUSED(x)  static_cast<void>(x)
 
 /**  
- *  Runtine error message
+ *  Runtime error message
  *
  */
 #   define GISMO_ERROR(message)                 \
@@ -115,8 +115,8 @@
     }
 
 /**  
- *  Runtine "no implementation" error happens when the user calls a
- *  virtual member function without a default implementetion.
+ *  Runtime "no implementation" error happens when the user calls a
+ *  virtual member function without a default implementation.
  */
  
 // TO DO: for GCC __PRETTY_FUNC__ is better
@@ -280,7 +280,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 
 #endif // GISMO_NO_STATIC_ASSERT
 
-// static assertion failing if a function is that is not implemeted is called
+// static assertion failing if a function is that is not implemented is called
 #define GISMO_STATIC_NO_IMPLEMENTATION \
   GISMO_STATIC_ASSERT(false                      , \
                       YOU_CALLED_A_FUNCTION_THAT_IS_NOT_IMPLEMENTED)

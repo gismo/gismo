@@ -254,11 +254,11 @@ public:
     /// Access i-th boundary interface
     const boundaryInterface & bInterface(int i) const {return m_interfaces[i];}
 
-    /// set \a result to the associated patchside of \a ps, returns
+    /// set \a result to the associated patchSide of \a ps, returns
     /// false if it is a boundary patchSide
     bool getNeighbour(const patchSide& ps ,patchSide& result, int & ii) const;
 
-    /// set \a result to the associated patchside of \a ps, returns
+    /// set \a result to the associated patchSide of \a ps, returns
     /// false if it is a boundary patchSide
     bool getNeighbour(const patchSide& ps ,patchSide& result) const;
 

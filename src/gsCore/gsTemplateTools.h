@@ -38,7 +38,7 @@ struct choose<false, IsTrue, IsFalse> {
 
 
 /*
-  Macros for instantization
+  Macros for instantiating
 */
 
 #define STRUCT_TEMPLATE_INST template struct GISMO_EXPORT

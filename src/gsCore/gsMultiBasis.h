@@ -52,7 +52,7 @@ public:
     /// Default empty constructor
     gsMultiBasis() { }
 
-    /// Create a multi-basis instance grom a gsMultiPatch
+    /// Create a multi-basis instance from a gsMultiPatch
     explicit gsMultiBasis( const gsMultiPatch<T> & mpatch );
 
     /// Create from a vector of bases and topology
@@ -221,13 +221,13 @@ public:
         return *m_bases[i];
     }
 
-    /// @brief Add a basis (ownership of the pointer is also aquired)
+    /// @brief Add a basis (ownership of the pointer is also acquired)
     void addBasis( gsBasis<T>* g );
 
     /// @brief Search for the given basis and return its index.
     int findBasisIndex( gsBasis<T>* g ) const;
     
-    /// @brief Add an interface joint betweeen side \a s1 of geometry
+    /// @brief Add an interface joint between side \a s1 of geometry
     /// \a g1 side \a s2 of geometry \a g2.
     ///
     /// \todo add orientation information

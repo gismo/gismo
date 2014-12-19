@@ -59,7 +59,7 @@ public:
     /**
      * @brief construct a dof mapper that identifies the degrees
      * of freedom in the multibasis
-     * and eliminates the degrees of freedom on the dirichlet boundary
+     * and eliminates the degrees of freedom on the Dirichlet boundary
      *
      * @param bases
      * @param dirichlet
@@ -164,13 +164,13 @@ public:
                          const gsVector<bool> &orient );
 
     /** \brief Calls matchDof() for all dofs on the given patch side
-     * \a i ps. Thus, the whole set of dofs colapses to a single global dof
+     * \a i ps. Thus, the whole set of dofs collapses to a single global dof
      *
      */
     void colapseDofs(index_t k, const gsMatrix<unsigned> & b );
 
     /** \brief Calls matchDof() for all dofs on the given patch sides
-     * \a i psList. Thus, the whole side colapses to a single global dof
+     * \a i psList. Thus, the whole side collapses to a single global dof
      *
      */
     void colapseSides( std::vector<patchSide> const & psList );

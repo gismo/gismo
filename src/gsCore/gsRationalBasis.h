@@ -176,7 +176,7 @@ public:
         gsSparseMatrix<T, RowMajor> transfer;
         m_src->uniformRefine_withTransfer(transfer, numKnots);
       
-        for (int i = 0; i < coefs.rows(); ++i) // transofrm to projective 
+        for (int i = 0; i < coefs.rows(); ++i) // transform to projective 
             coefs.row(i) *= m_weights(i);
         
         coefs      = transfer * coefs;
@@ -196,7 +196,7 @@ public:
     {
         assert( m_weights.rows() == this->size() );
         
-        // 1. Get source trasfer matrix (while refining m_src)
+        // 1. Get source transfer matrix (while refining m_src)
         m_src->uniformRefine_withTransfer(transfer, numKnots);
         
         // 2. Compute rational basis transfer matrix

@@ -158,7 +158,7 @@ public:
     /// Number of patches
     std::size_t nPatches() const          { return m_patches.size(); }
 
-    /// Returns a vector of paches // to do : replace by copies
+    /// Returns a vector of patches // to do : replace by copies
     PatchContainer const& patches() const { return m_patches; }
 
     /// Return the \a i-th patch.
@@ -181,12 +181,12 @@ public:
     void addPatch( gsGeometry<T>* g );
 
     // TO DO Add a patch by copying the argument.
-    //void addPatch( cosnt gsGeometry<T> & geo );
+    //void addPatch( const gsGeometry<T> & geo );
 
     /// Search for the given geometry and return its patch index.
     int findPatchIndex( gsGeometry<T>* g ) const;
 
-    /// @brief Add an interface joint betweeen side \a s1 of geometry
+    /// @brief Add an interface joint between side \a s1 of geometry
     /// \a g1 side \a s2 of geometry \a g2.
     ///
     /// \todo add orientation information
@@ -214,12 +214,12 @@ private:
 
     // match the vertexes in ci1 starting from start to the end with the vertexes
     // in ci2 that are still non matched
-    // cc1 and cc2 are the physical coordinates of the verteces
-    // ci1 and ci2 are the indeces corner indices
+    // cc1 and cc2 are the physical coordinates of the vertices
+    // ci1 and ci2 are the indices corner indices
     // start is the index in ci1 of the vertex to match
     // reference is the image of the vertex ci1(0) and it is used to compute orientation
     // tol is the allowed distance between two vertexes in physical domain
-    // matched keeps track of the already matched verteces
+    // matched keeps track of the already matched vertices
     // dirMap and dirO are the output orientation of the match
     // return true if all the vertexes starting from start are matched
 static  bool matchVertecesOnSide (
