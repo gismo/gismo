@@ -1,6 +1,6 @@
 /** @file gsCmdLineArgs.h
 
-    @brief Provides declaration of THBSplineBasis class.
+    @brief Provides inpute command line arguments.
 
     This file is part of the G+Smo library.
     
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): C. Giannelli, G. Kiss
+    Author(s): A. Mantzaflaris
 */
 
 #pragma once
