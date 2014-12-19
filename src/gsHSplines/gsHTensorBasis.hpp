@@ -835,95 +835,65 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots)
 }
 
 template<unsigned d, class T>
-std::vector<std::vector< std::vector<unsigned int> > > gsHTensorBasis<d,T>::domain_boundariesInKnotIndices(std::vector< std::vector<std::vector< std::vector<unsigned int> > > >& result)const{
-    result.clear();
-    std::vector<std::vector< std::vector<int> > > res_aabb;
-    std::vector<std::vector< std::vector<unsigned int> > > res_aabb_unsigned;
+std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const
+{
+  std::vector< std::vector< std::vector< std::vector< unsigned int > > > > dummy; 
+  return domainBoundariesGeneric( dummy, result, false );
+}
 
-
-    //std::vector< std::vector<std::vector< std::vector<unsigned int> > > > temp;
-    result =  this->m_tree.getPolylines();
-    res_aabb.resize( result.size() );
-
-    for(unsigned int i0 = 0; i0 < result.size(); i0++)
-    {
-
-        res_aabb[i0].resize( result[i0].size() );
-        for(unsigned int i1 = 0; i1 < result[i0].size(); i1++)
-        {
-
-            res_aabb[i0][i1].resize( 4 );
-            res_aabb[i0][i1][0] = 1000000;
-            res_aabb[i0][i1][1] = 1000000;
-            res_aabb[i0][i1][2] = -10000000;
-            res_aabb[i0][i1][3] = -10000000;
-            for(unsigned int i2 = 0; i2 < result[i0][i1].size(); i2++)
-            {
-
-                if(res_aabb[i0][i1][0]>signed(result[i0][i1][i2][0])){
-                    //res_aabb[i0][i1][0] = result[i0][i1][i2][0];
-                    res_aabb[i0][i1][0] = result[i0][i1][i2][0];
-                }
-                if(res_aabb[i0][i1][1]>signed(result[i0][i1][i2][1])){
-                    res_aabb[i0][i1][1] = result[i0][i1][i2][1];
-                }
-                if(res_aabb[i0][i1][2]<signed(result[i0][i1][i2][2])){
-                    res_aabb[i0][i1][2] = result[i0][i1][i2][2];
-                }
-                if(res_aabb[i0][i1][3]<signed(result[i0][i1][i2][3])){
-                    res_aabb[i0][i1][3] = result[i0][i1][i2][3];
-                }
-            }
-        }
-    }
-
-    res_aabb_unsigned.resize(res_aabb.size());
-    for (unsigned int i = 0; i < res_aabb.size(); i++){
-        res_aabb_unsigned[i].resize(res_aabb[i].size());
-        for (unsigned int j = 0; j < res_aabb[i].size(); j++){
-            res_aabb_unsigned[i][j].resize(res_aabb[i][j].size());
-            for (unsigned int k = 0; k < res_aabb[i][j].size(); k++){
-                if(res_aabb[i][j][k]<0){
-                    gsWarn << "conversion form signed to unsigned"<< std::endl;
-                }
-                res_aabb_unsigned[i][j][k] = res_aabb[i][j][k];
-            }
-        }
-    }
-    return res_aabb_unsigned;
+template<unsigned d, class T>
+std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& result ) const
+{
+  std::vector< std::vector< std::vector< std::vector< T > > > > dummy; 
+  return domainBoundariesGeneric( result, dummy, true );
 }
 
 
-
 template<unsigned d, class T>
-std::vector<std::vector< std::vector<unsigned int> > > gsHTensorBasis<d,T>::domain_boundaries(std::vector< std::vector<std::vector< std::vector<T> > > >& result)const{
-    result.clear();
+std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& indices,
+												       std::vector< std::vector< std::vector< std::vector< T > > > >& params,
+												       bool indicesFlag ) const
+{
+    indices.clear();
+    params.clear();
     std::vector< std::vector< std::vector< int > > > res_aabb;
     std::vector< std::vector< std::vector< unsigned int > > > res_aabb_unsigned;
-
-
     std::vector< std::vector< std::vector< std::vector< unsigned int > > > > polylines;
+
     polylines =  this->m_tree.getPolylines();
     res_aabb.resize( polylines.size() );
     // We cannot simply say
     // result = this->m_tree.getPolylines();
     // because the return value of getPolylines() are vectors of ints and we have no implicit conversion of int to T.
 
-    // We want result to be of the same size as polylines. We achieve this here and in the for cycles.
-    result.resize(polylines.size());
+    // We want indices/params to be of the same size as polylines. We achieve this here and in the for cycles.
+    if( indicesFlag )
+      indices.resize( polylines.size() );
+    
+    else
+      params.resize(polylines.size());
 
     int maxLevel = static_cast<int>( this->maxLevel() );
-    // We precompute the parameter values corresponding to indices of m_maxInsLevel.
+    // We precompute the parameter values corresponding to indices of m_maxInsLevel
+    // although we don't need them if indicesFlag == true.
     std::vector<T> x_dir(m_bases[maxLevel]->component(0).knots().unique());
     std::vector<T> y_dir(m_bases[maxLevel]->component(1).knots().unique());
     
     for(unsigned int i0 = 0; i0 < polylines.size(); i0++)
     {
-        result[i0].resize( polylines[i0].size() );
+        if( indicesFlag )
+	  indices[i0].resize( polylines[i0].size() );
+        else
+	  params[i0].resize( polylines[i0].size() );
+
         res_aabb[i0].resize( polylines[i0].size() );
         for(unsigned int i1 = 0; i1 < polylines[i0].size(); i1++)
         {
-            result[i0][i1].resize( polylines[i0][i1].size() );
+	    if( indicesFlag )
+	      indices[i0][i1].resize( polylines[i0][i1].size() );
+	    else
+	      params[i0][i1].resize( polylines[i0][i1].size() );
+
             res_aabb[i0][i1].resize( 4 );
             res_aabb[i0][i1][0] = 1000000;
             res_aabb[i0][i1][1] = 1000000;
@@ -931,12 +901,24 @@ std::vector<std::vector< std::vector<unsigned int> > > gsHTensorBasis<d,T>::doma
             res_aabb[i0][i1][3] = -10000000;
             for(unsigned int i2 = 0; i2 < polylines[i0][i1].size(); i2++)
             {
-                result[i0][i1][i2].resize(4);
-                // We could as well successively push_back() them but this should be slightly more efficient.
-                result[i0][i1][i2][0] = (x_dir[polylines[i0][i1][i2][0]]);
-                result[i0][i1][i2][1] = (y_dir[polylines[i0][i1][i2][1]]);
-                result[i0][i1][i2][2] = (x_dir[polylines[i0][i1][i2][2]]);
-                result[i0][i1][i2][3] = (y_dir[polylines[i0][i1][i2][3]]);
+	        if( indicesFlag )
+		{
+		  indices[i0][i1][i2].resize(4);
+		  indices[i0][i1][i2][0] = polylines[i0][i1][i2][0];
+		  indices[i0][i1][i2][1] = polylines[i0][i1][i2][1];
+		  indices[i0][i1][i2][2] = polylines[i0][i1][i2][2];
+		  indices[i0][i1][i2][3] = polylines[i0][i1][i2][3];
+        
+		}
+		else
+		{
+		  params[i0][i1][i2].resize(4);
+		  // We could as well successively push_back() them but this should be slightly more efficient.
+		  params[i0][i1][i2][0] = (x_dir[polylines[i0][i1][i2][0]]);
+		  params[i0][i1][i2][1] = (y_dir[polylines[i0][i1][i2][1]]);
+		  params[i0][i1][i2][2] = (x_dir[polylines[i0][i1][i2][2]]);
+		  params[i0][i1][i2][3] = (y_dir[polylines[i0][i1][i2][3]]);
+		}
                 if(res_aabb[i0][i1][0]>signed(polylines[i0][i1][i2][0]))
 		{
                     res_aabb[i0][i1][0] = polylines[i0][i1][i2][0];

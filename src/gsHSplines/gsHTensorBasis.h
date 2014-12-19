@@ -688,18 +688,20 @@ public:
     /// @brief Gives polylines on the boundaries between different levels of the mesh.
     /// @param result variable where to write the polylines in the form
     /// < levels < polylines_in_one_level < one_polyline < one_segment (x1, y1, x2, y2) > > > > ,
-    /// where <x1, y1, x2, y2 > are so that (x1, y1) <=LEX  (x2, y2).
+    /// where <x1, y1, x2, y2 > are so that (x1, y1) <=LEX  (x2, y2)
+    /// and where x1, y1, x2 and y2 are parameters (knots).
     /// @return bounding boxes of the polylines in the form
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
-    std::vector<std::vector< std::vector<unsigned int> > > domain_boundaries(std::vector< std::vector<std::vector< std::vector<T> > > >& result)const;
+    std::vector< std::vector< std::vector< unsigned int > > > domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const;
 
     /// @brief Gives polylines on the boundaries between different levels of the mesh.
     /// @param result variable where to write the polylines in the form
-    /// < levels < polylines_in_one_level < one_polyline < one_segment (x1, y1, x2, y2) > > > > -kin knot vector indices!!!!!!!!
-    /// where <x1, y1, x2, y2 > are so that (x1, y1) <=LEX  (x2, y2).
+    /// < levels < polylines_in_one_level < one_polyline < one_segment (x1, y1, x2, y2) > > > >
+    /// where <x1, y1, x2, y2 > are so that (x1, y1) <=LEX  (x2, y2)
+    /// and where x1, y1, x2 and y2 are indices of the knots with respect to m_maxInsLevel.
     /// @return bounding boxes of the polylines in the form
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
-    std::vector<std::vector< std::vector<unsigned int> > > domain_boundariesInKnotIndices(std::vector< std::vector<std::vector< std::vector<unsigned int> > > >& result)const;
+    std::vector< std::vector< std::vector< unsigned int > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& result) const;
     // TO DO: use gsHDomainLeafIterator for a better implementation
     int numElements() const
     {
@@ -842,6 +844,12 @@ private:
     ///returns a transfer matrix using the characteristic matrix of the old and new basis
     virtual gsMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) = 0;
     virtual gsMatrix<T> coarsening_direct(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
+
+    /// Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
+    /// @param indices and @param params but fills in only one depending on @param indicesFlag (if true, then it returns indices).
+    std::vector< std::vector< std::vector< unsigned int > > > domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& indices,
+										      std::vector< std::vector< std::vector< std::vector< T > > > >& params,
+										      bool indicesFlag ) const;
 
  //D
 public:

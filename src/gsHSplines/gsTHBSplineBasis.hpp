@@ -584,7 +584,7 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
     std::vector< std::vector< std::vector< std::vector< unsigned int > > > > res; //things to assign to trim_curves
     std::vector< std::vector< std::vector< unsigned int > > > aabb;//axis aligned bounding box
     std::vector< std::vector< unsigned int > > boxes;
-    aabb = this->domain_boundariesInKnotIndices(res);
+    aabb = this->domainBoundariesIndices(res);
     for(unsigned int i = 0; i < aabb.size(); i++)//level
     {
         //compare every aabb with the others
@@ -701,7 +701,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
     std::vector< std::vector< std::vector< std::vector< T > > > > res; //things to assign to trim_curves
     std::vector< std::vector< std::vector< unsigned int > > > aabb;//axis aligned bounding box
     std::vector< std::vector< unsigned int > > boxes;
-    aabb = this->domain_boundaries(res);
+    aabb = this->domainBoundariesParams(res);
     for(unsigned int i = 0; i < aabb.size(); i++)//level
     {
         //compare every aabb with the others
@@ -871,7 +871,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     std::vector< std::vector< std::vector< std::vector< T > > > > res; //things to assign to trim_curves
     std::vector< std::vector< std::vector< unsigned int > > > aabb;//axis aligned bounding box
     std::vector< std::vector< unsigned int > > boxes;
-    aabb = this->domain_boundaries(res);
+    aabb = this->domainBoundariesParams(res);
     for(unsigned int i = 0; i < aabb.size(); i++)//level
     {
         //compare every aabb with the others
