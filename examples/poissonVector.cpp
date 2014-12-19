@@ -11,8 +11,8 @@
     Author(s): A. Mantzaflaris, J. Sogn
 */
 
-// This example solving the poisson equation with gismo
-// for the gsPdeAssembler.h structure
+// This example solving the Poisson equation using gismo
+// for the gsAssemblerBase.h structure
 
 # include <gismo.h>
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     // Elevate and refine the solution space
     if ( numElevate > -1 )
     {
-        // get maximun degree
+        // get maximum degree
         int tmp = bases.maxDegree(0);
 
         // Elevate all degrees uniformly
@@ -96,11 +96,11 @@ int main(int argc, char *argv[])
         for (int i = 0; i < numRefine; ++i)
             bases[j].uniformRefine();
 
-    cout << "Discret. Space 0: "<< bases[0] << endl;
+    cout << "Discrete. Space 0: "<< bases[0] << endl;
 
 
     /////////////////// Setup solver ///////////////////
-    //Initilize Solver
+    //Initialize Solver
     gsPoissonAssembler<real_t> PoissonAssembler(*patches,bases,bcInfo,*ppde->rhs(),
                                                 dirichlet::nitsche, iFace::dg);
 
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     std::cout<<"Assembling...\n";
     PoissonAssembler.assemble();
 
-    // Initialize the congugate gradient solver
+    // Initialize the conjugate gradient solver
     std::cout<<"Solving...\n";
     Eigen::ConjugateGradient< gsSparseMatrix<> > solver( PoissonAssembler.matrix() );
     gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );

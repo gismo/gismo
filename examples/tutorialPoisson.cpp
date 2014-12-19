@@ -1,6 +1,6 @@
-/** @file Tutorial_PoissonSolver.cpp
+/** @file tutorialPoissonSolver.cpp
 
-    @brief Tutorial example on how the use one of the poisson assemblers
+    @brief Tutorial example on how the use one of the Poisson assemblers
 
     This file is part of the G+Smo library.
 
@@ -12,7 +12,7 @@
 */
 
 // Tutorial on how to use gismo to solve the Poisson equation
-// using the classes gsPoissonAssembler and gsPdeAssembler.
+// using the classes gsPoissonAssembler and gsAssemblerBase.
 //
 // Try also running ./bin/poissonvector.cpp -h to see
 // command line options and how to load problem from
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 {
 
 
-    //////// Right-hand side and analytical solution ////////
+    //////// Right-hand side and analytic solution ////////
     // Define source function
     gsMFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
                               "((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)");
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
     std::cout<<"Assembling...\n";
     PoissonAssembler.assemble();
 
-    // Initialize the congugate gradient solver
+    // Initialize the conjugate gradient solver
     std::cout<<"Solving...\n";
     Eigen::ConjugateGradient< gsSparseMatrix<> > solver( PoissonAssembler.matrix() );
     gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
@@ -181,4 +181,3 @@ int main(int argc, char *argv[])
 
     return  result;
 }
-

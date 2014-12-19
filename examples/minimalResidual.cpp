@@ -1,6 +1,6 @@
 /** @file minimalResidual.cpp
 
-    @brief Example on how the solve a system og linear equation with the min. res. method.
+    @brief Example on how the solve a system of linear equation with the min. res. method.
 
     This file is part of the G+Smo library.
 
@@ -43,10 +43,11 @@ int main(int argc, char *argv[])
         mat(k,k+1) = -1;
     }
 
-    //Initialize an Identity preconditioner
+    //The minimal residual implementation requires a preconditioner.
+    //We initialize an Identity preconditioner (does nothing).
     gsIdentityPreconditioner preConMat(N);
 
-    //Set maximun number of iterations
+    //Set maximum number of iterations
     index_t maxIters = 1000;
     //Set tolerance
     real_t tol = 1e-08;
