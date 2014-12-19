@@ -265,7 +265,7 @@ bool gsMultiPatch<T>::matchVertecesOnSide (
                 dirMap(o_dir) = d_dir;
                 dirO  (o_dir) = (static_cast<index_t>(j)>reference);
             }
-            if ( start + 1 == ci1.size() )
+            if ( start + 1 == index_t( ci1.size() ) )
             {
                 // we matched the last vertex, we are done
                 return true;
