@@ -44,7 +44,7 @@ public:
 
 public:
 
-/** @brief
+/* @brief
     Main Constructor of the assembler object.
 
     \param[in] pde A boundary value Poisson problem
