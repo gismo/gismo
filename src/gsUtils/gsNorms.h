@@ -18,7 +18,6 @@
 #include <gsCore/gsConstantFunction.h>
 #include <gsCore/gsField.h>
 #include <gsCore/gsGeometry.h>
-#include <gsUtils/gsQuadrature.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsCore/gsMultiBasis.h>
 

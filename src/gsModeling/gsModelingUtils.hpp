@@ -16,8 +16,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsNurbs/gsTensorBSpline.h>
 
-#include <gsUtils/gsQuadrature.h> // to be replaced by the next line
-//#include <gsAssembler/gsGaussRule.h>
+#include <gsAssembler/gsGaussRule.h>
 
 
 namespace gismo
@@ -27,30 +26,32 @@ namespace gismo
 template<class T>
 gsMatrix<T> * innerProduct( const gsBasis<T>& B1, const gsBasis<T>& B2)
 {
-  unsigned b1= B1.size();
-  unsigned b2= B2.size();
-  
-  gsMatrix<T> * K = new gsMatrix<T>(b1,b2) ;
-  K->setZero();
+    gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
 
-  std::vector<T> breaks = B1.domain()->breaks() ;
-  gsMatrix<T> ngrid;          // tensor Gauss nodes
-  gsVector<T> wgrid;          // tensor Gauss weights
-  // Quadrature points
   int nGauss = int( ceil( double(B1.degree() + B2.degree() + 1)/2 ) );
   if (nGauss<1) nGauss=1;
-  iteratedGaussRule(ngrid, wgrid, nGauss, breaks ) ;
-    
-  gsMatrix<T>   ev1  = B1.eval(ngrid); // Evaluate over the grid
-  gsMatrix<unsigned> act1 = B1.active(ngrid);
-  gsMatrix<T>   ev2  = B2.eval(ngrid); // Evaluate over the grid
-  gsMatrix<unsigned> act2 = B2.active(ngrid);
-  
-  for (index_t k=0; k!= ngrid.cols(); ++k)
+
+  gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
+  gsMatrix<T> ngrid;          // tensor Gauss nodes
+  gsVector<T> wgrid;          // tensor Gauss weights
+  gsMatrix<unsigned> act1, act2;
+  gsMatrix<T>        ev1 , ev2;
+
+  typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
+  for (; domIt->good(); domIt->next())
   {
-    for (index_t i=0; i!=act1.rows(); ++i)
-      for (index_t j=0; j!=act2.rows(); ++j)
-        (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;
+      // Map the Quadrature rule to the element
+      QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), ngrid, wgrid );
+  
+      B1.eval_into(ngrid,ev1);
+      B2.eval_into(ngrid,ev2);
+      B1.active_into(ngrid,act1);
+      B2.active_into(ngrid,act2);
+
+      for (index_t k=0; k!= ngrid.cols(); ++k)
+          for (index_t i=0; i!=act1.rows(); ++i)
+              for (index_t j=0; j!=act2.rows(); ++j)
+                  (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;      
   }
 
   return K;
@@ -59,30 +60,33 @@ gsMatrix<T> * innerProduct( const gsBasis<T>& B1, const gsBasis<T>& B2)
 template<class T>
 gsMatrix<T> * innerProduct1( const gsBasis<T>& B1, const gsBasis<T>& B2)
 {
-  unsigned b1= B1.size();
-  unsigned b2= B2.size();
-  
-  gsMatrix<T> * K = new gsMatrix<T>(b1,b2) ;
-  K->setZero();
+    gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
 
-  std::vector<T> breaks = B1.domain()->breaks() ;
-  gsMatrix<T> ngrid;          // tensor Gauss nodes
-  gsVector<T> wgrid;          // tensor Gauss weights
-  // Quadrature points
   int nGauss = int( ceil( double(B1.degree()-1 + B2.degree()-1 + 1)/2 ) );
   if (nGauss<1) nGauss=1;
-  iteratedGaussRule(ngrid, wgrid, nGauss, breaks ) ;
-    
-  gsMatrix<T>   ev1  = B1.deriv(ngrid); // Evaluate over the grid
-  gsMatrix<unsigned> act1 = B1.active(ngrid);
-  gsMatrix<T>   ev2  = B2.deriv(ngrid); // Evaluate over the grid
-  gsMatrix<unsigned> act2 = B2.active(ngrid);
-  
-  for (index_t k=0; k!= ngrid.cols(); ++k)
+
+  gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
+  gsMatrix<T> ngrid;          // tensor Gauss nodes
+  gsVector<T> wgrid;          // tensor Gauss weights
+  gsMatrix<unsigned> act1, act2;
+  gsMatrix<T>        ev1 , ev2;
+
+  typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
+  for (; domIt->good(); domIt->next())
   {
-    for (index_t i=0; i!=act1.rows(); ++i)
-      for (index_t j=0; j!=act2.rows(); ++j)
-        (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;
+      // Map the Quadrature rule to the element
+      QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), ngrid, wgrid );
+  
+      B1.deriv_into(ngrid,ev1);
+      B2.deriv_into(ngrid,ev2);
+      B1.active_into(ngrid,act1);
+      B2.active_into(ngrid,act2);
+
+      for (index_t k=0; k!= ngrid.cols(); ++k)
+          for (index_t i=0; i!=act1.rows(); ++i)
+              for (index_t j=0; j!=act2.rows(); ++j)
+                  (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;
+      
   }
 
   return K;
@@ -91,30 +95,32 @@ gsMatrix<T> * innerProduct1( const gsBasis<T>& B1, const gsBasis<T>& B2)
 template<class T>
 gsMatrix<T> * innerProduct2( const gsBasis<T>& B1, const gsBasis<T>& B2)
 {
-  unsigned b1= B1.size();
-  unsigned b2= B2.size();
-  
-  gsMatrix<T> * K = new gsMatrix<T>(b1,b2) ;
-  K->setZero();
+    gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
 
-  std::vector<T> breaks = B1.domain()->breaks() ;
-  gsMatrix<T> ngrid;          // tensor Gauss nodes
-  gsVector<T> wgrid;          // tensor Gauss weights
-  // Quadrature points
   int nGauss = int( ceil( double(B1.degree()-2 + B2.degree()-2 + 1)/2 ) );
   if (nGauss<1) nGauss=1;
-  iteratedGaussRule(ngrid, wgrid, nGauss, breaks ) ;
-    
-  gsMatrix<T>   ev1  = B1.deriv2(ngrid); // Evaluate over the grid
-  gsMatrix<unsigned> act1 = B1.active(ngrid);
-  gsMatrix<T>   ev2  = B2.deriv2(ngrid); // Evaluate over the grid
-  gsMatrix<unsigned>  act2 = B2.active(ngrid);
-  
-  for (index_t k=0; k!= ngrid.cols(); ++k)
+
+  gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
+  gsMatrix<T> ngrid;          // tensor Gauss nodes
+  gsVector<T> wgrid;          // tensor Gauss weights
+  gsMatrix<unsigned> act1, act2;
+  gsMatrix<T>        ev1 , ev2;
+
+  typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
+  for (; domIt->good(); domIt->next())
   {
-    for (index_t i=0; i!=act1.rows(); ++i)
-      for (index_t j=0; j!=act2.rows(); ++j)
-        (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;
+      // Map the Quadrature rule to the element
+      QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), ngrid, wgrid );
+  
+      B1.deriv2_into(ngrid,ev1);
+      B2.deriv2_into(ngrid,ev2);
+      B1.active_into(ngrid,act1);
+      B2.active_into(ngrid,act2);
+
+      for (index_t k=0; k!= ngrid.cols(); ++k)
+          for (index_t i=0; i!=act1.rows(); ++i)
+              for (index_t j=0; j!=act2.rows(); ++j)
+                  (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;      
   }
 
   return K;

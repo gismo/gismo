@@ -179,7 +179,7 @@ public:
             (*it)->translate(v);
     }
 
-    gsMatrix<T> averageValue( std::vector<gsFunction<T>*> const &f, std::vector<T> const & breaks);
+    //gsMatrix<T> averageValue( std::vector<gsFunction<T>*> const &f, std::vector<T> const & breaks);
 
     /// @name inDomain
     /// given a matrix of points \param u, returns true if they are inside the planar domain

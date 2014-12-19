@@ -21,7 +21,6 @@
 
 #include <gsUtils/gsMesh/gsMesh.h>
 
-#include <gsUtils/gsQuadrature.h>
 #include <gsModeling/gsTraceCurve.hpp>
 #include <gsModeling/gsTemplate.h>
 
@@ -49,6 +48,7 @@ gsPlanarDomain<T>::gsPlanarDomain( std::vector< gsCurveLoop<T> *> const & loops)
     updateBoundingBox();
 }
 
+/*
 template<class T>
 gsMatrix<T> gsPlanarDomain<T>::averageValue( std::vector<gsFunction<T>*> const &f,
                                              std::vector<T> const & breaks)
@@ -71,9 +71,7 @@ gsMatrix<T> gsPlanarDomain<T>::averageValue( std::vector<gsFunction<T>*> const &
     gsDebugVar( B.transpose() );
     return B;
 }
-
-
-
+*/
 
 template<class T>
 bool gsPlanarDomain<T>::inDomain( gsMatrix<T> const & u, int direction)
