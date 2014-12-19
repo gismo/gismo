@@ -94,7 +94,7 @@ public:
                         gsMultiBasis<T> const         & bases,
                         gsBoundaryConditions<T> const & bconditions,
                         const gsFunction<T>           & rhs,
-                        dirichlet::strategy           dirStrategy,
+                        dirichlet::strategy           dirStrategy = dirichlet::elimination,
                         iFace::strategy               intStrategy = iFace::glue)
     :  Base(patches), 
        m_rhsFun(&rhs),
