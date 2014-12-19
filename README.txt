@@ -67,8 +67,8 @@ folder (in-source builds are disabled).
   project.
 
 After successful compilation a dynamic library is created in ./lib and
-executable example programs are output at ./bin subdirectory of the
-build folder.
+executable example programs are output at the ./bin subdirectory of
+the build folder.
 
 Additionally, if Doxygen is available on the system one can execute
 (eg. on Linux):
@@ -139,11 +139,11 @@ Linux systems.
 =====                   Directory structure                      ===== 
 ======================================================================
 
-The sources are found at:
+The source tree consists of the following sub-folders:
 
 * src
 
-Contains all sources. Code is partitioned into modules. Currently
+Contains all source files. Code is partitioned into modules. Currently
 eleven modules are present as sub-folders:
        
    - gsCore
@@ -186,11 +186,19 @@ Files related to doxygen documentation.
 =====                    Contact and support                     ===== 
 ======================================================================
 
-Mailing list: gismo@ricam.oeaw.ac.at
+* Wiki pages:
 
-Subscribe at
+  https://ricamsvn.ricam.oeaw.ac.at/trac/gismo
 
-Bug reports: https://ricamsvn.ricam.oeaw.ac.at/trac/gismo
+* Mailing list: gismo@ricam.oeaw.ac.at
+
+* Subscribe to the mailing list at: 
+
+  https://list.ricam.oeaw.ac.at/lists/listinfo/gismo
+
+* Bug reports: 
+
+  https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/newticket
 
 
 ======================================================================
@@ -201,26 +209,26 @@ Bug reports: https://ricamsvn.ricam.oeaw.ac.at/trac/gismo
 
 * Developers:
 
-Andrea Bressan
-Florian Buchegger
-Antonella Falini
-Carlotta Giannelli
-Clemens Hofreither
-Mario Kapl
-Gabor Kiss
-Stefan Kleiss
-Angelos Mantzaflaris
-David Mayer
-Dominik Mokris
-Jarle Sogn
-Jaka Speh
-Stephen Moore
-Manh Dang Nguyen
-Michael Pauley
-Harald Weiner
+  Andrea Bressan
+  Florian Buchegger
+  Antonella Falini
+  Carlotta Giannelli
+  Clemens Hofreither
+  Mario Kapl
+  Gabor Kiss
+  Stefan Kleiss
+  Angelos Mantzaflaris
+  David Mayer
+  Dominik Mokris
+  Jarle Sogn
+  Jaka Speh
+  Stephen Moore
+  Manh Dang Nguyen
+  Michael Pauley
+  Harald Weiner
 
 * Scientific board:
 
-Bert Juettler
-Ulrich Langer
-Walter Zulehner
+  Bert Juettler
+  Ulrich Langer
+  Walter Zulehner

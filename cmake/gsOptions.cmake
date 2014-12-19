@@ -39,7 +39,7 @@ SET( CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    #set(CMAKE_BUILD_TYPE Debug CACHE STRING 
-   set(CMAKE_BUILD_TYPE Debug CACHE STRING 
+   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING 
    "Type of build (Debug, Release, RelWithDebInfo, MinSizeRel)" FORCE)
    # Set the possible values of build type for cmake-gui
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
@@ -66,7 +66,6 @@ endif()
 
 #Standard options
 option(GISMO_EXTRA_DEBUG         "Extra debug features"   false  )
-option(GISMO_BUILD_STATIC_LIB    "Build static library"   false  )
 option(GISMO_BUILD_SHARED_LIB    "Build shared library"   true   )
 option(GISMO_BUILD_EXAMPLES      "Build examples"         true   )
 option(GISMO_BUILD_AXL           "Build Axel Plugin"      false  )
@@ -92,17 +91,16 @@ message ("Configuration:")
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")
 message ("  GISMO_COEFF_TYPE        ${GISMO_COEFF_TYPE}")
 message ("  GISMO_EXTRA_DEBUG       ${GISMO_EXTRA_DEBUG}")
-message ("  GISMO_BUILD_STATIC_LIB  ${GISMO_BUILD_STATIC_LIB}")
 message ("  GISMO_BUILD_SHARED_LIB  ${GISMO_BUILD_SHARED_LIB}")
 message ("  GISMO_BUILD_EXAMPLES    ${GISMO_BUILD_EXAMPLES}")
 message ("  GISMO_BUILD_AXL         ${GISMO_BUILD_AXL}")
-message ("  GISMO_BUILD_PVIEW       ${GISMO_BUILD_PVIEW}")
-message ("  GISMO_BUILD_MEX         ${GISMO_BUILD_MEX}")
-message ("  GISMO_WITH_OPENMP       ${GISMO_WITH_OPENMP}")
+#message ("  GISMO_BUILD_PVIEW       ${GISMO_BUILD_PVIEW}")
+#message ("  GISMO_BUILD_MEX         ${GISMO_BUILD_MEX}")
+#message ("  GISMO_WITH_OPENMP       ${GISMO_WITH_OPENMP}")
 message ("  GISMO_WITH_PSOLID       ${GISMO_WITH_PSOLID}")
-message ("  GISMO_WITH_MPFR         ${GISMO_WITH_MPFR}")
+#message ("  GISMO_WITH_MPFR         ${GISMO_WITH_MPFR}")
 message ("  GISMO_WITH_ONURBS       ${GISMO_WITH_ONURBS}")
-message ("  GISMO_WITH_IPOPT        ${GISMO_WITH_IPOPT}")
+#message ("  GISMO_WITH_IPOPT        ${GISMO_WITH_IPOPT}")
 
 #https://www.threadingbuildingblocks.org/documentation
 #message ("  GISMO_WITH_ITBB          ${GISMO_WITH_ITBB}")

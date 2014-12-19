@@ -91,6 +91,8 @@ unset(gismo_EXTENSIONS CACHE)
 unset(gismo_MODULES    CACHE)
 unset(gismo_examples   CACHE)
 unset(gismo_optionals  CACHE)
+set(gismo_optionals ""
+    CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 #
 unset(gismo_TMPL_HEADERS CACHE)
 
