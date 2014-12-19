@@ -1,12 +1,17 @@
+======================================================================
+=====                                                            ===== 
+=====                          G+Smo                             =====
+=====             Geometry plus Simulation modules               =====
+=====                     version 0.8alpha                       =====
+=====          Copyright (C) JKU-RICAM-Linz, 2012 - 2015         =====
+=====                                                            ===== 
+=====                      version 0.8alpha                      ===== 
+=====                                                            ===== 
+======================================================================
 
-                 G + S mo 
-
-      Geometry plus Simulation modules
-
-   Copyright (C) RICAM-Linz, 2012 - 2014
-
-
-NFN project Geometry+Simulation
+G+Smo is supported by the Research Network ``Geometry + Simulation''
+(NFN S117), funded by the Austrian Science Fund, www.gs.jku.at.
+It is distributed under the Mozilla Public License v2.0.
 
 
 Mozilla Public License Version 2.0
