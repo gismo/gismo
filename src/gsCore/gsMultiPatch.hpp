@@ -249,7 +249,7 @@ bool gsMultiPatch<T>::matchVertecesOnSide (
                 index_t count=0;
                 d_dir = 0;
                 newPar =  ci2[j].parameters(dim);
-                for (size_t i=0; i< newPar.rows();++i)
+                for (index_t i=0; i< newPar.rows();++i)
                 {
                     if ( newPar(i)!=refPar(i) )
                     {
@@ -263,9 +263,9 @@ bool gsMultiPatch<T>::matchVertecesOnSide (
                     continue;
                 }
                 dirMap(o_dir) = d_dir;
-                dirO(o_dir) = j>reference;
+                dirO  (o_dir) = (static_cast<index_t>(j)>reference);
             }
-            if (start==ci1.size()-1)
+            if ( start + 1 == ci1.size() )
             {
                 // we matched the last vertex, we are done
                 return true;
