@@ -1,9 +1,16 @@
-/** \file gsPde.h
- *
- *  \brief base class of descriptions of a PDE problem.
- *  Due to the huge difference in data required to describe a Pde it only contains
- *  the domain and the definition of a common interface.
-**/
+/** @file gsPde.h
+
+    @brief Base class of descriptions of a PDE problem.
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris
+*/
+
 
 #pragma once
 
