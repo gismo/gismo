@@ -111,7 +111,7 @@ public:
     
 protected:
 
-    /// The multipatch domain
+    /// @brief The multipatch domain
     gsMultiPatch<T> m_patches;
 
     /// The discretization bases corresponding to \a m_patches and to
@@ -124,23 +124,23 @@ protected:
     /// m_dofMappers[i]: DoF Mapper for unknown i
     std::vector<gsDofMapper>  m_dofMappers;
     
-    // Dirichlet DoF fixed values (if applicable)
+    /// @brief Dirichlet DoF fixed values (if applicable)
     gsMatrix<T> m_ddof;
 
-    // Reference Quadrature rule
+    /// @brief Reference Quadrature rule
     gsQuadRule<T> QuRule;
 
     // *** Outputs *** 
     
-    /// Global matrix
+    /// @brief Global system matrix
     gsSparseMatrix<T> m_matrix;
 
-    /// Right-hand side ( multiple right hand sides possible )
+    /// @brief Right-hand side ( multiple right hand sides possible )
     gsMatrix<T>       m_rhs;
 
     // *** Information *** 
 
-    /// number of degrees of freedom (excluding eliminated etc)
+    /// @brief Number of degrees of freedom (excluding eliminated, counting glued dofs only once, etc.)
     // to do: rename to m_matSize
     int m_dofs;
 
