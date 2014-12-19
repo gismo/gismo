@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/MyConePanel" >
-        <file>GismoGeometryPanel.ui</file>
-    </qresource>
-</RCC>
