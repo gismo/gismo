@@ -22,6 +22,7 @@ protected:
     gsPoissonPde( ) { }
     using gsPde<T>::m_domain;
 public:
+    /// Constructor
     gsPoissonPde(
         const gsMultiPatch<T>         &domain,
         const gsBoundaryConditions<T> &bc,
@@ -32,6 +33,8 @@ public:
         m_rhs=new gsPiecewiseFunction<T>(rhs,m_domain.size());
         m_unknownDim.push_back(1);
     }
+
+    /// Constructor
     gsPoissonPde(
         const gsMultiPatch<T>         &domain,
         const gsBoundaryConditions<T> &bc,
@@ -41,6 +44,8 @@ public:
     {
         m_unknownDim.push_back(1);
     }
+
+    /// Constructor
     gsPoissonPde(
         const gsMultiPatch<T>         &domain,
         const gsBoundaryConditions<T> &bc,
@@ -52,7 +57,8 @@ public:
         m_solution.push_back(sol.clone());
         m_unknownDim.push_back(1);
     }
-    /// FOR COMPATIBILITY WITH OLD STRUCTURE: DO NOT USE
+
+    // FOR COMPATIBILITY WITH OLD STRUCTURE: DO NOT USE
     int m_compat_dim;
     gsPoissonPde(
         const gsFunction<T>  &rhs,
