@@ -1,6 +1,6 @@
 /** @file gsVisitorNitsche.h
 
-    @brief Wea (Nitsche-type) BC imposition visitor for elliptic problems.
+    @brief Weak (Nitsche-type) BC imposition visitor for elliptic problems.
 
     This file is part of the G+Smo library. 
 

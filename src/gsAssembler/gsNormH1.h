@@ -1,4 +1,4 @@
-/** @file gsNorlL2.h
+/** @file gsNormH1.h
 
     @brief Computes the H1 norm.
 

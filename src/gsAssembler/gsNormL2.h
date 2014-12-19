@@ -1,4 +1,4 @@
-/** @file gsNorlL2.h
+/** @file gsNormL2.h
 
     @brief Computes the L2 norm.
 
