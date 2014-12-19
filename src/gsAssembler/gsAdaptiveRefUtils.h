@@ -22,12 +22,6 @@
 using namespace std;
 using namespace gismo;
 
-
-// DOCUMENTATION WILL FOLLOW SHORTLY
-
-/** @file Contains some auxiliary functions for cell marking
- */
-
 namespace gismo
 {
 
@@ -58,7 +52,7 @@ namespace gismo
  * For example, if \f$\rho = 0.8\f$, those 20% of all elements which have the
  * largest local errors are marked for refinement.
  *
- * <b>refCriterion = 3</b>:\n
+ * <b>refCriterion = 3</b> ("Doerfler-marking"):\n
  * The threshold is chosen in such a manner that the local
  * errors on the marked cells sum up to a certain fraction of the
  * global error:
@@ -183,18 +177,26 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
 
 /** \brief Refine a gsMultiBasis, based on a vector of element-markings.
  *
- * Given the vector of element-markings, the corresponding element
+ * Given the vector of element-markings (see gsRefineMarkedElements()),
+ * the corresponding element
  * in the mesh underlying \em basis is refined.
  *
+ * It is possible to extend the refinement to the
+ * neighbouring elements of the marked area by setting
+ * the parameter \a refExtension.\n
+ * This parameter is given as number of cells at the level
+ * of the marked element \em before refinement.
+ *
  * \remarks
- * The order/numbering of the elements is implicitly defined by
+ * The ordering/numbering of the elements is implicitly defined by
  * the numbering of the patches in gsMultiBasis, and
  * by the gsDomainIterator of the respective patch-wise basis!
  *
  * \param basis gsMultiBasis to be refined adaptively.
  * \param elMarked std::vector of Booleans indicating
  * for each element of the mesh underlying \em basis, whether it should be refined or not.
- * \param refExtension DOCUMENTATION WILL FOLLOW
+ * \param refExtension Specifies how large the refinement extension
+ * should be. Given as number of cells at the level \em before refinement.
  */
 template <class T>
 void gsRefineMarkedElements(gsMultiBasis<T> & basis,
