@@ -898,56 +898,60 @@ std::vector<std::vector< std::vector<unsigned int> > > gsHTensorBasis<d,T>::doma
 template<unsigned d, class T>
 std::vector<std::vector< std::vector<unsigned int> > > gsHTensorBasis<d,T>::domain_boundaries(std::vector< std::vector<std::vector< std::vector<T> > > >& result)const{
     result.clear();
-    std::vector<std::vector< std::vector<int> > > res_aabb;
-    std::vector<std::vector< std::vector<unsigned int> > > res_aabb_unsigned;
+    std::vector< std::vector< std::vector< int > > > res_aabb;
+    std::vector< std::vector< std::vector< unsigned int > > > res_aabb_unsigned;
 
 
-    std::vector< std::vector<std::vector< std::vector<unsigned int> > > > temp;
-    temp =  this->m_tree.getPolylines();
-    res_aabb.resize( temp.size() );
+    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > polylines;
+    polylines =  this->m_tree.getPolylines();
+    res_aabb.resize( polylines.size() );
     // We cannot simply say
     // result = this->m_tree.getPolylines();
     // because the return value of getPolylines() are vectors of ints and we have no implicit conversion of int to T.
 
-    // We want result to be of the same size as temp. We achieve this here and in the for cycles.
-    result.resize(temp.size());
+    // We want result to be of the same size as polylines. We achieve this here and in the for cycles.
+    result.resize(polylines.size());
 
-    // Gabor understands these two lines, Dominik doesn't yet =).
-    std::vector<T> x_dir(m_bases[m_bases.size()-1]->component(0).knots().unique());
-    std::vector<T> y_dir(m_bases[m_bases.size()-1]->component(1).knots().unique());
-
-    for(unsigned int i0 = 0; i0 < temp.size(); i0++)
+    int maxLevel = static_cast<int>( this->maxLevel() );
+    // We precompute the parameter values corresponding to indices of m_maxInsLevel.
+    std::vector<T> x_dir(m_bases[maxLevel]->component(0).knots().unique());
+    std::vector<T> y_dir(m_bases[maxLevel]->component(1).knots().unique());
+    
+    for(unsigned int i0 = 0; i0 < polylines.size(); i0++)
     {
-        result[i0].resize( temp[i0].size() );
-        res_aabb[i0].resize( temp[i0].size() );
-        for(unsigned int i1 = 0; i1 < temp[i0].size(); i1++)
+        result[i0].resize( polylines[i0].size() );
+        res_aabb[i0].resize( polylines[i0].size() );
+        for(unsigned int i1 = 0; i1 < polylines[i0].size(); i1++)
         {
-            result[i0][i1].resize( temp[i0][i1].size() );
+            result[i0][i1].resize( polylines[i0][i1].size() );
             res_aabb[i0][i1].resize( 4 );
             res_aabb[i0][i1][0] = 1000000;
             res_aabb[i0][i1][1] = 1000000;
             res_aabb[i0][i1][2] = -10000000;
             res_aabb[i0][i1][3] = -10000000;
-            for(unsigned int i2 = 0; i2 < temp[i0][i1].size(); i2++)
+            for(unsigned int i2 = 0; i2 < polylines[i0][i1].size(); i2++)
             {
                 result[i0][i1][i2].resize(4);
                 // We could as well successively push_back() them but this should be slightly more efficient.
-                result[i0][i1][i2][0] = (x_dir[temp[i0][i1][i2][0]]);
-                result[i0][i1][i2][1] = (y_dir[temp[i0][i1][i2][1]]);
-                result[i0][i1][i2][2] = (x_dir[temp[i0][i1][i2][2]]);
-                result[i0][i1][i2][3] = (y_dir[temp[i0][i1][i2][3]]);
-                if(res_aabb[i0][i1][0]>signed(temp[i0][i1][i2][0])){
-                    //res_aabb[i0][i1][0] = result[i0][i1][i2][0];
-                    res_aabb[i0][i1][0] = temp[i0][i1][i2][0];
+                result[i0][i1][i2][0] = (x_dir[polylines[i0][i1][i2][0]]);
+                result[i0][i1][i2][1] = (y_dir[polylines[i0][i1][i2][1]]);
+                result[i0][i1][i2][2] = (x_dir[polylines[i0][i1][i2][2]]);
+                result[i0][i1][i2][3] = (y_dir[polylines[i0][i1][i2][3]]);
+                if(res_aabb[i0][i1][0]>signed(polylines[i0][i1][i2][0]))
+		{
+                    res_aabb[i0][i1][0] = polylines[i0][i1][i2][0];
                 }
-                if(res_aabb[i0][i1][1]>signed(temp[i0][i1][i2][1])){
-                    res_aabb[i0][i1][1] = temp[i0][i1][i2][1];
+                if(res_aabb[i0][i1][1]>signed(polylines[i0][i1][i2][1]))
+		{
+                    res_aabb[i0][i1][1] = polylines[i0][i1][i2][1];
                 }
-                if(res_aabb[i0][i1][2]<signed(temp[i0][i1][i2][2])){
-                    res_aabb[i0][i1][2] = temp[i0][i1][i2][2];
+                if(res_aabb[i0][i1][2]<signed(polylines[i0][i1][i2][2]))
+		{
+                    res_aabb[i0][i1][2] = polylines[i0][i1][i2][2];
                 }
-                if(res_aabb[i0][i1][3]<signed(temp[i0][i1][i2][3])){
-                    res_aabb[i0][i1][3] = temp[i0][i1][i2][3];
+                if(res_aabb[i0][i1][3]<signed(polylines[i0][i1][i2][3]))
+		{
+                    res_aabb[i0][i1][3] = polylines[i0][i1][i2][3];
                 }
             }
         }

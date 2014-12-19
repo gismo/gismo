@@ -755,7 +755,7 @@ gsHDomain<d,T>::getPolylines() const
  note that <x1, y1, x2, y2 > are so that (x1, y1) <=LEX  (x2, y2)
 */
     std::vector<std::vector<unsigned int> > boxes;
-    getBoxes_vec(boxes);//boxes are in the highest level indices, returns all leaves
+    getBoxes_vec(boxes);// Returns all leaves.
 
     // Get rid of boxes that are not of full dimension.
     for( std::vector< std::vector< unsigned int> >::iterator it = boxes.begin(); it != boxes.end(); ++it )

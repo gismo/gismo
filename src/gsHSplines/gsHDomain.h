@@ -539,7 +539,7 @@ private:
     /// \param[out] boxes each item corresponds to a box and is
     /// represented by a vector of unsigned ints: first the
     /// coordinates of the lower left and then the coordinates of
-    /// upper right corner. Everything in terms of their level.
+    /// upper right corner. All indexing is in terms of m_maxInsLevel.
     void getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) const;
 
     ///connect the boxes returned from quadtree

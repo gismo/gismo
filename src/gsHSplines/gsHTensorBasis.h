@@ -341,7 +341,7 @@ public:
     }
 
     /// Returns the \a i-th knot in direction \a k at level \a lvl
-    T knot(int lvl, int k, int i)
+    T knot(int lvl, int k, int i) const
     {
         needLevel(lvl);
 
