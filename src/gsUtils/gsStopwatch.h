@@ -1,6 +1,6 @@
-/** @file gsBasis.h
+/** @file gsStopWatch.h
 
-    @brief Provides declaration of Basis abstract interface.
+    @brief Timing functions.
 
     This file is part of the G+Smo library. 
 
