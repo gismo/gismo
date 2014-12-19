@@ -1,10 +1,15 @@
-//
-// gsTensorTools.h
-//
-// Tools for tensor product computations.
-//
-// Clemens Hofreither
-//
+/** @file gsTensorTools.h
+
+    @brief Utility functions related to tensor-structured objects
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): C. Hofreither, A. Mantzaflaris
+*/
 
 #pragma once
 

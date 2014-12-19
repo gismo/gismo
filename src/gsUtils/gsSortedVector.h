@@ -1,19 +1,16 @@
-//-------------------------------------------------------------------//
-//	Copyright © 2001-2011 A better Software.
-//
-// Use at your own risk.  :>
-//
-// History
-// -------
-// v0.1 1999? A long time ago in a compiler far far away...
-// .
-// v0.9 12/1/2010   Added predicate function support
-// v1.0 1/23/2010   Class first archived and documented on wiki
-//                   https://www.thedigitalmachine.com/wiki/index.php/C%2B%2B_gsSortedVector
-// v1.1 1/24/2010   Fixed predicate version of find_it_or_fail to actually use predicate
-// v1.2 2/04/2011   Added find_ptr_or_fail
-//-------------------------------------------------------------------//
+/** @file gsSortedVector.h
 
+    @brief An std::vector with sorting capabilities
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris, based on 
+    https://www.thedigitalmachine.com/wiki/C%2B%2B_sorted_vector
+*/
 
 #pragma once
 
