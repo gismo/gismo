@@ -9,13 +9,13 @@
 #macro to add an executable
 macro(add_gismo_executable FILE)
 
-    if( GISMO_BUILD_SHARED_LIB )
+    if( GISMO_BUILD_LIB )
         add_gismo_shared_executable(${FILE})
-    elseif ( GISMO_BUILD_STATIC_LIB )
-        add_gismo_static_executable(${FILE})
-    else ( GISMO_BUILD_STATIC_LIB )
+    #elseif ( GISMO_BUILD_STATIC_LIB )
+    #    add_gismo_static_executable(${FILE})
+    else ( GISMO_BUILD_LIB )
     	add_gismo_pure_executable(${FILE})
-    endif( GISMO_BUILD_SHARED_LIB )
+    endif( GISMO_BUILD_LIB )
 
 endmacro(add_gismo_executable)
 
@@ -56,13 +56,6 @@ macro(add_gismo_static_executable FILE)
     add_executable(${FNAME} ${FNAME})
     target_link_libraries(${FNAME} gismo_static)
 endmacro(add_gismo_static_executable)
-
-#macro to add source files when needed
-macro(add_gismo_sources VAR)
-  if( (NOT GISMO_BUILD_STATIC_LIB) AND  (NOT GISMO_BUILD_SHARED_LIB) )
-    set(${VAR} ${VAR} ${gismo_SOURCES} )
-  endif( (NOT GISMO_BUILD_STATIC_LIB) AND  (NOT GISMO_BUILD_SHARED_LIB) )
-endmacro(add_gismo_sources)
 
 #macro for h
 macro(aux_header_directory DIR VAR)

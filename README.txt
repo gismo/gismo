@@ -105,10 +105,11 @@ compilation. These include checked iterators for GCC and MSVC
 compilers and call stack back-trace printout when a runtime exception
 occurs.
 
-* GISMO_BUILD_SHARED_LIB  ON
+* GISMO_BUILD_LIB         ON
 
 If enabled a dynamic library is created using GISMO_COEFF_TYPE
-arithmetic.
+arithmetic. A target for a static library named gismo_static is also
+created but not compiled by default.
 
 * GISMO_BUILD_EXAMPLES    ON
 

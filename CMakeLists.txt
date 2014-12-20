@@ -53,10 +53,6 @@ include( gsConfig )
 ## Preprocessor definitions
 ## #################################################################
 
-if(GISMO_BUILD_SHARED_LIB OR GISMO_BUILD_STATIC_LIB )
-set (GISMO_BUILD_LIB ON)
-endif(GISMO_BUILD_SHARED_LIB  OR GISMO_BUILD_STATIC_LIB)
-
 #index type
 set (GISMO_INDEX_TYPE "int")
 

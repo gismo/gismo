@@ -30,7 +30,7 @@ foreach(p LIB BIN INCLUDE CMAKE)
 endforeach()
 
 # Add all targets to the build-tree export set
-if(GISMO_BUILD_SHARED_LIB)
+if(GISMO_BUILD_LIB)
 export(TARGETS gismo
   FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake" APPEND)
 endif()
@@ -74,7 +74,7 @@ configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfigVersion.cmake.in
   "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake" @ONLY)
 
-if(GISMO_BUILD_SHARED_LIB)
+if(GISMO_BUILD_LIB)
 
 set_target_properties(gismo PROPERTIES
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/Gismo/gismo.h"
@@ -132,6 +132,6 @@ install(FILES
 #install(EXPORT gismoTargets DESTINATION
 #  "${INSTALL_CMAKE_DIR}" COMPONENT dev)
 
-else(GISMO_BUILD_SHARED_LIB)
-   message ("Configure with -DGISMO_BUILD_SHARED_LIB=ON to compile the library")
-endif(GISMO_BUILD_SHARED_LIB)
+else(GISMO_BUILD_LIB)
+   message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
+endif(GISMO_BUILD_LIB)
