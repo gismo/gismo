@@ -56,15 +56,18 @@ If(GISMO_PLAINDOX)
  configure_file(
    ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_header_empty.html.in
    ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_header.html )
+ configure_file(
+   ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_footer.html_empty.in
+   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_footer.html )
 else()
  configure_file(
    ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_header.html.in
    ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_header.html )
+ configure_file(
+   ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_footer.html.in
+   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_footer.html )
 endif()
 
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_footer.html.in
-  ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_footer.html )
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_layout.xml.in
