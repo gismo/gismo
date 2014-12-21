@@ -15,7 +15,6 @@ if(DOXYGEN_FOUND)
 
 project(GismoDoc)
 
-
 # Detect GraphViz dot
 find_program(DOT_EXECUTABLE dot)
 if (DOT_EXECUTABLE)
@@ -53,9 +52,15 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 )
 
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_header.html.in
-  ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_header.html )
+If(GISMO_PLAINDOX)
+ configure_file(
+   ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_header_empty.html.in
+   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_header.html )
+else()
+ configure_file(
+   ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_header.html.in
+   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_header.html )
+endif()
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_footer.html.in

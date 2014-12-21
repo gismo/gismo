@@ -34,8 +34,8 @@ message( " GGGG GGGGGG GGGGGGGGGGGGG GGGGGGGGGG GG GGGG GG GGGG GGGG   GGGGG" )
 message( "GGGGG  GGGGG GGGGGGGGGGGG  GGGGGGGGG  GG GGGGGG GGGG  GGGG   GGGG " )
 message( "GGGG   GGGG      GGGG           GGGG  GG  GGGG  GGGG  GGGG   GGGG " )
 message( " GGGGGGGGGG      GGGG     GGGGGGGGG  GG   GGG   GGGG  GGGGGGGGGG  " )
-message( "                          version ${${PROJECT_NAME}_VERSION}" )
-#message( "                  version ${${PROJECT_NAME}_VERSION} (revision ${GISMO_WC_REVISION})" )
+#message( "                          version ${${PROJECT_NAME}_VERSION}" )
+message( "                  version ${${PROJECT_NAME}_VERSION} (revision ${GISMO_WC_REVISION})" )
 
 ## #################################################################
 ## Project options

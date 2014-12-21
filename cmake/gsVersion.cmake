@@ -48,7 +48,7 @@ IF (EXISTS ${PROJECT_SOURCE_DIR}/.svn)
     #Determine revision level 
     FIND_PACKAGE(Subversion 1.6) 
     IF(Subversion_FOUND)
-    #   Subversion_WC_INFO(${PROJECT_SOURCE_DIR} GISMO) 
+      Subversion_WC_INFO(${PROJECT_SOURCE_DIR} GISMO) #
     ELSE(Subversion_FOUND) 
       set(GISMO_WC_REVISION "??")
     ENDIF(Subversion_FOUND)

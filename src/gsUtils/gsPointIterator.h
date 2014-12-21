@@ -38,8 +38,8 @@ class gsPointIterator
     : public  IntegerIterator
 {
 public:
-    using   typename IntegerIterator::MIndexT;
-    using   typename IntegerIterator::FIndexT;
+    typedef typename IntegerIterator::MIndexT MIndexT;
+    typedef typename IntegerIterator::FIndexT FIndexT;
     typedef typename PointProducer::PointT PointT;
     using IntegerIterator::good;
 public:
@@ -149,7 +149,7 @@ class gsTensorPointGridIterator
         typedef gsTensorGridIterator<Flat,dim>          subGridItT;
         typedef PPTensorAveraging<T,subGridItT,dim>     subGridPMT;
     public:
-        using   typename gsTensorGridIterator<Flat,dim>::MIndexT;
+        typedef typename gsTensorGridIterator<Flat,dim>::MIndexT MIndexT;
         typedef typename PPTensorAveraging<T,gsTensorGridIterator<Flat,dim>,dim>::PointT PointT;
         typedef gsPointIterator<T,boundaryItT, boundaryPMT>                          BoundaryPointIt;
         typedef gsPointIterator<T,subGridItT, subGridPMT>                            SubGridPointIt;
