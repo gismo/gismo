@@ -35,14 +35,18 @@ public:
     /// Constructor with gsMultiBasis
     gsGenericAssembler( gsMultiPatch<T> const         & patches,
                         gsMultiBasis<T> const         & bases,
-                        bool conforming = false)
+                        bool conforming = false,
+                        const gsBoundaryConditions<T> * bc = NULL)
     : Base(patches)
     {
         m_bases.push_back(bases);
 
         // Init mapper
         m_dofMappers.resize(1);
-        bases.getMapper(conforming, m_dofMappers.front() );
+        if (bc)
+            bases.getMapper(conforming, *bc, m_dofMappers.front() );
+        else
+            bases.getMapper(conforming, m_dofMappers.front() );
         m_dofs = m_dofMappers.front().freeSize();
         m_matrix.setZero();
     }
