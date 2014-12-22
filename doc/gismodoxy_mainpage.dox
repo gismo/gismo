@@ -1,23 +1,42 @@
 namespace gismo {
 
 /**
-  \mainpage Geometry + Simulation Modules
+  \mainpage Geometry + Simulation
   
-   Geometry + Simulation Modules (abbreviated G+Smo and pronounced
+   <em>Geometry + Simulation Modules</em> (abbreviated G+Smo and pronounced
    "gismo") is a C++ library which aims at providing a unified
    development framework for isogeometric analysis.
+
+   \section Wiki
    
+   <a
+   href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla
+   Public License Version 2.0</a>
+
+   \section Licence
+
+   The library is licenced under the <a
+   href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla
+   Public License Version 2.0</a>.
+
+   The MPL is a simple copyleft license. The MPL's "file-level"
+   copyleft is designed to encourage contributors to share their
+   modifications with the library, while still allowing them to
+   combine the library with code under other licenses (open or
+   proprietary) with minimal restrictions.
+
+   See <a href="https://www.mozilla.org/MPL/2.0/FAQ.html"
+   target="_blank">Frequently Asked Questions</a> regarding MPL2.
+
   \subpage General General information about \gismo
- 
+
+  \subpage Modules the modules
 
   This is the \ref basis group.
 
   This is the \ref geometry group.
 
   This is the \ref combinatorics group.
-
-  \subpage Modules for available modules.
-
 
 */
 }
