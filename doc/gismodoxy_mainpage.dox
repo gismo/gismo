@@ -32,6 +32,8 @@ namespace gismo {
 
   \subpage Modules the modules
 
+  \subpage Tutorials tutorials
+
   This is the \ref basis group.
 
   This is the \ref geometry group.

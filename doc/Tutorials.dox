@@ -1,13 +1,11 @@
 namespace gismo {
 
 /**
- \page Modules
+ \page Tutorials
 
  The library is partitioned into smaller entities called modules.
 
-  - \subpage Nurbs
-  - \subpage HSplines
-  - \subpage Assembler
+  - \subpage PoissonTutorial
 
 */
 
