@@ -4,11 +4,19 @@ namespace gismo {
  \page Modules
 
  The library is partitioned into smaller entities called modules.
+ Here is the list of the available modules:
 
+  - \subpage Core
   - \subpage Nurbs
   - \subpage HSplines
   - \subpage Assembler
-
+  - \subpage Solver
+  - \subpage IO
+  - \subpage Matrix
+  - \subpage Modeling
+  - \subpage Pde
+  - \subpage Tensor
+  - \subpage Utils
 */
 
 

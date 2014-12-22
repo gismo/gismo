@@ -1,0 +1,22 @@
+namespace gismo {
+
+/** \page Matrix Matrix module
+
+    \section Overview 
+
+    This module provides dense and sparse matrix data structures. It
+    is based on the <a href="http://eigen.tuxfamily.org"
+    target="_blank">Eigen</a> library and prots all the linear algebra
+    related infrastructure to \gismo. The main objects are gsMatrix
+    for dense matrices, gsVector for dense vectors, gsSparseMatrix for
+    sparse matrices and gsSparseVector for sparse vectors. Typical
+    matrix decompositions such as LU, QR, SVD, and so on, are
+    available.  Furthermore, the user has also access to iterative
+    solvers like conjugate gradient methods with different
+    preconditioners. Finally, one can use popular high-end linear
+    solver packages like PARADISO and SuperLU through a common
+    interface.
+
+*/
+
+}

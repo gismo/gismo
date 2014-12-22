@@ -1,0 +1,12 @@
+namespace gismo {
+
+/** \page Modeling Modeling module
+
+    \section Overview
+
+    This module implements geometric and modeling operations for
+    solids and point-clouds.
+
+*/
+
+}

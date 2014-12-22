@@ -1,0 +1,12 @@
+namespace gismo {
+
+/** \page Pde PDE module
+
+    \section Overview
+
+    This module contains definitions of PDEs and related structures,
+    for instance boundary conditions.
+
+*/
+
+}

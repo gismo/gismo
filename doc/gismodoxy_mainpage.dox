@@ -8,10 +8,10 @@ namespace gismo {
    development framework for isogeometric analysis.
 
    \section Wiki
-   
+ 
+   More information about \gismo are available on the   
    <a
-   href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla
-   Public License Version 2.0</a>
+   href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo" target="_blank">Wiki pages</a>.
 
    \section Licence
 
@@ -28,17 +28,17 @@ namespace gismo {
    See <a href="https://www.mozilla.org/MPL/2.0/FAQ.html"
    target="_blank">Frequently Asked Questions</a> regarding MPL2.
 
-  \subpage General General information about \gismo
+   \section Documentation pages
 
-  \subpage Modules the modules
+   \subpage Modules the modules
 
-  \subpage Tutorials tutorials
+   \subpage Tutorials tutorials
 
-  This is the \ref basis group.
+   This is the \ref basis group.
 
-  This is the \ref geometry group.
+   This is the \ref geometry group.
 
-  This is the \ref combinatorics group.
+   This is the \ref combinatorics group.
 
 */
 }

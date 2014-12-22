@@ -1,0 +1,12 @@
+namespace gismo {
+
+/** \page Tensor Tensor module
+
+    \section Overview
+
+    This module is responsible for dimension-independent operations on
+    tensor structures and tensor-product bases.
+
+*/
+
+}

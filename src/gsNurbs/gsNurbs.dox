@@ -3,7 +3,7 @@ namespace gismo {
 /** 
   \page Nurbs NURBS module
 
-\section Introduction
+\section Overview
 
 This module contains the B-spline and NURBS basis functions.
 
