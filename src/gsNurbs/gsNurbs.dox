@@ -1,15 +1,17 @@
 namespace gismo {
 
 /** 
-
-\page BSplines The BSpline class
+  \page Nurbs NURBS module
 
 \section Introduction
+
+This module contains the B-spline and NURBS basis functions.
+
 \gismo is very powerful in dealing with tensor-product B-splines:
 
-\image html tb1.png "A tensor basis"
+\image html tb1.png "A tensor B-spline basis."
 
-\section Evaluations
+\section BSeval Evaluation of B-splines
 
 There are several functions with similar names. The following table
 should help you in find the proper one for you. 

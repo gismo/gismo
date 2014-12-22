@@ -1,9 +1,9 @@
 namespace gismo {
 
-/** \page PoissonSolver Solving the Poisson problem
+/** \page Assembler Assembler module
 
 
-\section PoissonTutorial A Tutorial on solving the vector Poisson equation with G+Smo (also valid for scalar Poisson equation).
+\section PoissonTutorial A Tutorial on solving the Poisson equation with G+Smo.
 
 
 The Poisson equation: \f{eqnarray*}{

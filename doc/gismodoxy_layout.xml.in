@@ -5,8 +5,8 @@
 <!--    <tab type="user" url="index.html" title="Home page" /> -->
 <!--    <tab type="user" url="@ref GettingStarted" title="Getting started" /> -->
 <!--    <tab type="user" url="@ref UsersManual" title="User's manual" /> -->
-    <tab type="modules" visible="yes" title="Object Families" intro="Here is a list of basic object families:"/> 
     <tab type="mainpage" visible="yes" title=""/>
+    <tab type="modules" visible="yes" title="Object Families" intro="Here is a list of basic object families:"/> 
     <tab type="classlist" visible="yes" title="" intro=""/>
 <!--     <tab type="classmembers" visible="yes" title="" intro=""/> -->
   </navindex>

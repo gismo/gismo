@@ -34,7 +34,7 @@ $mathjax
   <!--END PROJECT_LOGO-->
   <!--BEGIN PROJECT_NAME-->
   <td style="padding-left: 0.5em;">
-   <div id="projectname"><a href="http://gs.jku.at/gs_gismo.shtml"><font style="font-variant:small-caps;">G+S</font><font style="font-variant:small-caps;"
+   <div id="projectname"><a href="index.html"><font style="font-variant:small-caps;">G+S</font><font style="font-variant:small-caps;"
 															    color="#000000">mo</font></a>
    <!--BEGIN PROJECT_NUMBER-->&#160;<span id="projectnumber">$projectnumber</span><!--END PROJECT_NUMBER-->
    </div>

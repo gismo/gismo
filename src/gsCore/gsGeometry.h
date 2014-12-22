@@ -233,9 +233,11 @@ public:
     /// @{
 
     /// \brief Returns a const reference to the basis of the geometry.
+    /// \note This function will return the derived concrete type of the basis.
     virtual const gsBasis<T> & basis() const = 0;
 
     /// \brief Returns a reference to the basis of the geometry.
+    /// \note This function will return the derived concrete type of the basis.
     virtual       gsBasis<T> & basis()       = 0;
 
     /// Dimension \em n of the absent physical space
@@ -502,7 +504,6 @@ std::ostream &operator<<(std::ostream &os, const gsGeometry<T>& b)
  *
  * \tparam Basis_t  type of the basis for this geometry
  *
- * \ingroup geometry
  */
 template<class Basis_t>
 class gsGenericGeometry : 
@@ -516,6 +517,7 @@ public:
 
 public:
 
+    // Look at gsGeometry base constructor for a brief description
     gsGenericGeometry() : Base() { }
 
     // Look at gsGeometry base constructor for a brief description
@@ -542,10 +544,10 @@ public:
     bool isProjective() const
     { return Basis_t::IsRational; }
     
-    /// Returns the basis, as a concrete type, of the geometry.
+    // Look at gsGeometry base constructor for a brief description
           Basis_t & basis()       { return static_cast<Basis_t&>(*this->m_basis); }
 
-    /// Returns the basis, as a concrete type, of the geometry.
+    // Look at gsGeometry base constructor for a brief description
     const Basis_t & basis() const { return static_cast<const Basis_t&>(*this->m_basis); }
 
 }; // class gsGenericGeometry

@@ -1,6 +1,6 @@
 namespace gismo {
 
-/** \page HBSplines Hierarchical splines
+/** \page HSplines Hierarchical splines module
 
 \section THBSTutorial
 
