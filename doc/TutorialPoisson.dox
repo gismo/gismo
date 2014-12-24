@@ -1,7 +1,7 @@
 namespace gismo {
 
 /**
-\page PoissonTutorial A Tutorial on solving the Poisson equation with G+Smo.
+\page PoissonTutorial Solving the Poisson equation.
 
 
 The Poisson equation: \f{eqnarray*}{
