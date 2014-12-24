@@ -1,44 +1,42 @@
 namespace gismo {
 
 /**
-  \mainpage Geometry + Simulation
-  
-   <em>Geometry + Simulation Modules</em> (abbreviated G+Smo and pronounced
-   "gismo") is a C++ library which aims at providing a unified
-   development framework for isogeometric analysis.
+  \mainpage Documentation
 
-   \section Wiki
- 
-   More information about \gismo are available on the   
-   <a
-   href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo" target="_blank">Wiki pages</a>.
+\subpage Modules \gismo \subpage Modules
 
-   \section Licence
+\gismo is partitioned into smaller entities called modules.  Here is
+ the list of the available modules:
+
+  - \ref Core
+  - \ref Nurbs
+  - \ref HSplines
+  - \ref Assembler
+  - \ref Solver
+  - \ref IO
+  - \ref Matrix
+  - \ref Modeling
+  - \ref Pde
+  - \ref Tensor
+  - \ref Utils
+
+\subpage Tutorials Tutorials  
+
+\ref PoissonTutorial
+
+\section sec_topics Topics
+
+This is the \ref basis group.
+
+This is the \ref geometry group.
+
+This is the \ref combinatorics group.
+
+<HR> 
 
    The library is licenced under the <a
    href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla
-   Public License Version 2.0</a>.
-
-   The MPL is a simple copyleft license. The MPL's "file-level"
-   copyleft is designed to encourage contributors to share their
-   modifications with the library, while still allowing them to
-   combine the library with code under other licenses (open or
-   proprietary) with minimal restrictions.
-
-   See <a href="https://www.mozilla.org/MPL/2.0/FAQ.html"
-   target="_blank">Frequently Asked Questions</a> regarding MPL2.
-
-   \section Documentation pages
-
-   \subpage Modules the modules
-
-   \subpage Tutorials tutorials
-
-   This is the \ref basis group.
-
-   This is the \ref geometry group.
-
-   This is the \ref combinatorics group.
-
+   Public License Version 2.0</a>. More information at the 
+   <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki">wiki pages</a>.
 */
 }

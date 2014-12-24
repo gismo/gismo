@@ -75,7 +75,7 @@ bcInfo.addCondition(2, boundary::south, boundary::neumann, &hSouth);
 ~~~~~
 the first arguments in the \c addCondition is the patch number. 
 
-\subsection basis Discretization Basis
+\subsection tp_dbasis Discretization Basis
 
 We now need a discretization basis. We use the basis from the patches:
 ~~~~~

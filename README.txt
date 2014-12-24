@@ -17,7 +17,7 @@ Public License v2.0.  (see LICENCE.txt).
 This README file contains brief information. More details are found in
 the Wiki page: 
 
-https://ricamsvn.ricam.oeaw.ac.at/trac/gismo
+https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki
 
 The latest revision of the code can be obtained via SVN (subversion) at:
 
@@ -189,7 +189,7 @@ Files related to doxygen documentation.
 
 * Wiki pages:
 
-  https://ricamsvn.ricam.oeaw.ac.at/trac/gismo
+  https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki
 
 * Mailing list: gismo@ricam.oeaw.ac.at
 
