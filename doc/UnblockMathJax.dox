@@ -1,0 +1,11 @@
+/**
+ \page UnblockMath Math formulas in your browser
+
+
+If \f$\LaTeX\f$ formulas do not appear, proceed as follows:
+
+\image html firefox-unblock.png "Mozilla Firefox."
+
+\image html chrome-unblock.png "Google Chrome."
+
+*/

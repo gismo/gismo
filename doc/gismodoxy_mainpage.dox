@@ -3,10 +3,14 @@ namespace gismo {
 /**
   \mainpage Documentation
 
-\subpage Modules \gismo \subpage Modules
+Note: Make sure that you can see \f$\LaTeX\f$ formulas, eg.  \f$
+e^{i \pi} + 1 = 0\f$ in your browser. If not, allow for \ref UnblockMath.
 
-\gismo is partitioned into smaller entities called modules.  Here is
- the list of the available modules:
+
+<h2>\gismo Modules</h2>
+
+\gismo is partitioned into smaller entities called \subpage Modules.
+ Here is the list of the available \ref Modules:
 
   - \ref Core
   - \ref Nurbs
@@ -20,17 +24,17 @@ namespace gismo {
   - \ref Tensor
   - \ref Utils
 
-\subpage Tutorials Tutorials  
+<h2>\subpage Tutorials</h2>
 
 \ref PoissonTutorial
 
-\section sec_topics Topics
+<h2>Groups</h2>
 
-This is the \ref basis group.
+\ref basis group.
 
-This is the \ref geometry group.
+\ref geometry group.
 
-This is the \ref combinatorics group.
+\ref combinatorics group.
 
 <HR> 
 
