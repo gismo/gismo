@@ -1,7 +1,9 @@
-### CMakeLists.txt ---
+######################################################################
+## CMakeLists.txt ---
+## This file is part of the G+Smo library.
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2015 - RICAM-Linz.
+## Copyright (C) 2012-2015 - RICAM-Linz.
 ######################################################################
 
 cmake_minimum_required(VERSION 2.8.8)
@@ -53,10 +55,7 @@ include( gsConfig )
 ## Preprocessor definitions
 ## #################################################################
 
-#index type
-set (GISMO_INDEX_TYPE "int")
-
-# Shared pointe
+# Shared pointer
 find_package (TR1 QUIET)
 
 # Data directory
@@ -72,22 +71,18 @@ configure_file ("${PROJECT_SOURCE_DIR}/cmake/CTestConfig.cmake.in"
 
 include_directories(${PROJECT_BINARY_DIR})
 
-# Note: if both shared and static libs are created, targets are linked against the shared lib.
-#       if only one of the two is build, targets are linked using that one
-#       if none of the two is build, targets are not linked against anything, only templated code is used.
-
 ## #################################################################
 ## Collect headers and sources
 ## #################################################################
 
 # Clean previously set variables in the cache
-unset(gismo_HEADERS    CACHE)
-unset(gismo_SOURCES    CACHE)
-unset(gismo_EXTENSIONS CACHE)
-unset(gismo_MODULES    CACHE)
-unset(gismo_examples   CACHE)
-unset(gismo_optionals  CACHE)
-set(gismo_optionals ""
+unset(${PROJECT_NAME}_HEADERS    CACHE)
+unset(${PROJECT_NAME}_SOURCES    CACHE)
+unset(${PROJECT_NAME}_EXTENSIONS CACHE)
+unset(${PROJECT_NAME}_MODULES    CACHE)
+unset(${PROJECT_NAME}_examples   CACHE)
+unset(${PROJECT_NAME}_optionals  CACHE)
+set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 #
 unset(gismo_TMPL_HEADERS CACHE)
@@ -229,6 +224,9 @@ include(CTest)
 ## Executables
 ## #################################################################
 
+# Note: if the shared libs are created, examples are linked against the
+#  shared lib, otherwise targets are not linked against anything, only
+#  templated code is used.
 if(GISMO_BUILD_EXAMPLES)
   add_subdirectory(examples)
   list(LENGTH gismo_examples len)

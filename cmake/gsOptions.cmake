@@ -55,13 +55,20 @@ endif()
 ## Options list
 ## #################################################################
 
-# Set a default coefficient type if none was specified
+# Set a default coefficient numeric types if not specified
 if(NOT GISMO_COEFF_TYPE)
   set (GISMO_COEFF_TYPE "double" CACHE STRING
    "Coefficient type(float, double, long double, mpfr::mpreal)" FORCE)
    set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
    "float" "double" "long double" "mpfr::mpreal"
    )
+
+  set (GISMO_INDEX_TYPE "int" CACHE STRING
+   "Index type(int, unsigned, size_t)" FORCE)
+   set_property(CACHE GISMO_INDEX_TYPE PROPERTY STRINGS
+   "int" "unsigned" "size_t"
+   )
+
 endif()
 
 #Standard options
