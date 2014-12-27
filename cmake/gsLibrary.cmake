@@ -19,7 +19,8 @@
 if(GISMO_BUILD_LIB)
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
- set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} "${PROJECT_SOURCE_DIR}/src/misc/gsLibInit.cpp")
+ set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} 
+     "${gismo_SOURCE_DIR}/src/misc/gsLibInit.cpp")
 endif()
 
 #add_library(${PROJECT_NAME} ${LIB_TYPE}
