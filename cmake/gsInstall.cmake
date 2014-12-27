@@ -15,7 +15,6 @@ set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header fi
 if(WIN32 AND NOT CYGWIN)
   set(DEF_INSTALL_CMAKE_DIR ${INSTALL_LIB_DIR}/cmake)
 else()
-  #set(DEF_INSTALL_CMAKE_DIR ${INSTALL_LIB_DIR}/cmake/gismo)
    set(DEF_INSTALL_CMAKE_DIR ${INSTALL_LIB_DIR})
 endif()
 set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
@@ -31,25 +30,18 @@ endforeach()
 
 # Add all targets to the build-tree export set
 if(GISMO_BUILD_LIB)
-export(TARGETS gismo
+export(TARGETS ${PROJECT_NAME}
   FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake" APPEND)
 endif()
 
-#if(GISMO_WITH_ONURBS)
-#  export(TARGETS gsOpennurbsExtension
+#if(GISMO_WITH_other)
+#  export(TARGETS other
 #    FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake" APPEND)
-#endif(GISMO_WITH_ONURBS)
+#endif()
 
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)
 export(PACKAGE gismo)
-
-# Get relative paths
-#file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
-#   "${INSTALL_INCLUDE_DIR}/${PROJECT_NAME}")
-#file(RELATIVE_PATH REL_LIB_DIR "${INSTALL_CMAKE_DIR}"
-#   "${INSTALL_LIB_DIR}")
-
 
 # Create the gismoConfig.cmake and gismoConfigVersion.cmake files
 
@@ -99,7 +91,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
         PATTERN "*.h"
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
-# For gsTemplate.h
+# For eiquadprog.hpp
 install(FILES ${PROJECT_SOURCE_DIR}/external/eiquadprog.hpp
         DESTINATION include/${PROJECT_NAME}/ )
 
