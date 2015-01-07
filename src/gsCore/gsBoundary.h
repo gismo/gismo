@@ -501,8 +501,7 @@ public:
     const patchSide&   other (const patchSide & ps) const  {return ps==ps1 ? ps2 : ps1;}
 
     // use boundaryInterface.first() and boundaryInterface.second()
-    // DEPRECATED
-    patchSide  operator [] (size_t i) const
+    GISMO_DEPRECATED patchSide  operator [] (size_t i) const
     {
         if (i==0)
             return ps1;
@@ -512,8 +511,7 @@ public:
             GISMO_ERROR("Invalid index "<<i<<": Interface has 2 elements(sides).");
     }
     // use boundaryInterface.first() and boundaryInterface.second()
-    //DEPRECATED
-    patchSide & operator [] (size_t i)
+    GISMO_DEPRECATED patchSide & operator [] (size_t i)
     {
         if (i==0)
             return ps1;

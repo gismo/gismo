@@ -89,9 +89,7 @@ void gsMultiBasis<T>::addInterface( gsBasis<T>* g1, boxSide s1,
 {
     int p1 = findBasisIndex( g1 );
     int p2 = findBasisIndex( g2 );
-    gsVector<bool> orient( m_topology.dim() - 1 );
-    orient.setConstant( true );
-    m_topology.addInterface( p1, s1, p2, s2, orient );
+    m_topology.addInterface( p1, s1, p2, s2);
 }
   
 

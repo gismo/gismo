@@ -114,9 +114,7 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
                                     gsGeometry<T>* g2, boxSide s2 ) {
     int p1 = findPatchIndex( g1 );
     int p2 = findPatchIndex( g2 );
-    gsVector<bool> orient( m_dim - 1 );
-    orient.setConstant( true );
-    gsBoxTopology::addInterface( p1, s1, p2, s2, orient );
+    gsBoxTopology::addInterface( p1, s1, p2, s2 );
 }
 
 

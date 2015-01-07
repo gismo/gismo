@@ -192,13 +192,6 @@ public:
         addInterface(  boundaryInterface( patchSide(p1,s1),patchSide(p2,s2), m_dim ));
     }
 
-    /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2 with the given orientation.
-    GISMO_DEPRECATED void addInterface( int p1, boxSide s1,
-                       int p2, boxSide s2, const gsVector<bool>& orient)
-    {
-        addInterface(  boundaryInterface(patchSide(p1,s1),patchSide(p2,s2), orient ));
-    }
-
     /// Add an interface described by \a bi.
     void addInterface( const boundaryInterface& bi )
     {

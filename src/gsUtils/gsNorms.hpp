@@ -523,8 +523,8 @@ T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
     
     std::auto_ptr< gsGeometryEvaluator<T> > funcEval2 ( func2.evaluator(NEED_VALUE) );
     
-    const boxSide side1 = bi[0].side();
-    const boxSide side2 = bi[1].side();
+    const boxSide side1 = bi.first();
+    const boxSide side2 = bi.second();
 
     // "DG method not implemented yet for non-matching interfaces");
     
