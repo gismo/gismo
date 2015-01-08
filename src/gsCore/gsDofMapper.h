@@ -119,6 +119,18 @@ public:
         initSingle(basis);
     }
 
+    /**
+     * @brief construct a dof mapper with a given number of dofs per patch
+     *
+     * @param basis
+     */
+    gsDofMapper(
+        const gsVector<index_t>        &patchDofSizes
+         ) : m_shift(0)
+    {
+        initPatchDofs(patchDofSizes);
+    }
+
 
     /// Initialize by a gsMultiBasis
     template <typename T>
