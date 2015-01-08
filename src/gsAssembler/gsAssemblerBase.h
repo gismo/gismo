@@ -106,6 +106,9 @@ public:
     /// ( multiple right hand sides possible )
     const gsMatrix<T> & rhs() const { return m_rhs; }
 
+    /// @brief Returns the Dirichlet values (if applicable)
+    const gsMatrix<T> & dirValues() const { return m_ddof; }
+
     /// @brief Returns the number of (free) degrees of freedom
     int numDofs() const { return m_dofs; }
     
