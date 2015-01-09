@@ -1,6 +1,6 @@
 /** @file gsCmdLineArgs.h
 
-    @brief Provides inpute command line arguments.
+    @brief Provides input command line arguments.
 
     This file is part of the G+Smo library.
     

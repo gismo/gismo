@@ -17,6 +17,26 @@ namespace gismo {
     solver packages like PARADISO and SuperLU through a common
     interface.
 
+
+    \section Classes
+    
+    - gsMatrix
+
+    - gsAsMatrix
+
+    - gsVector
+
+    - gsVector3d
+
+    - gsAsConstMatrix
+
+    - gsSparseMatrix
+
+    - gsSparseVector
+
+    - gsMatrixBlockView
+
+    - gsSparseRows
 */
 
 }

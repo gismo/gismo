@@ -1,4 +1,6 @@
-/**  gsAffineFunction.hpp
+/**  @file gsAffineFunction.hpp
+
+    @brief Implements an affine function.
 
     This file is part of the G+Smo library.
 
@@ -9,10 +11,6 @@
     Author(s): A. Bressan
     Created on:  2014-11-27
 */
-
-
-#include  <gsCore/gsAffineFunction.h>
-
 
 namespace gismo {
 

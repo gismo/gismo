@@ -23,6 +23,8 @@ namespace gismo
     @brief Class defining a constant function
 
     \tparam T value type
+
+    \ingroup function
 */
 
 template <class T>

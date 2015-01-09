@@ -1,7 +1,6 @@
 /** @file gsAffineFunction.h
 
-    @brief
-
+    @brief Implements an affine function.
 
     This file is part of the G+Smo library.
 
@@ -20,7 +19,9 @@
 namespace gismo {
 
 /**
- * representation of an affine function
+   Representation of an affine function
+
+    \ingroup function
  */
 template <typename T>
 class gsAffineFunction : public gsFunction<T>

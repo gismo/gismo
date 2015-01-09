@@ -188,11 +188,10 @@ inline bool gsAllCloseRelAndAbsWithRef (const matrix_t1 &a, const matrix_t2 &b, 
 }
 
 
-/**
-   * CompileTimeLog2 computes the logarithm base 2 of the argument
-   * using template recursion.
-   *
-   */
+/*
+  CompileTimeLog2 computes the logarithm base 2 of the argument
+  using template recursion.  
+*/
 template <unsigned arg>
 struct CompileTimeLog2
 {
@@ -211,14 +210,13 @@ struct CompileTimeLog2<0>
 template <unsigned arg>
 unsigned CTLog2 (void) {return CompileTimeLog2<arg>::result;}
 
-/**
-   * Template to get the minimum of two numbers at compile time
-   *
-   */
+/*
+//Template to get the minimum of two numbers at compile time
 template <unsigned a, unsigned b>
 struct min
 {
     enum { result = a<b ? a:b};
 };
+*/
 
 }

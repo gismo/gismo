@@ -47,8 +47,10 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
 }
 
 /** 
-    Class that defines a Boundary single condition for a side of a
-    patch for some unknown Pde variable.
+    @brief Class that defines a boundary condition for a side of a
+    patch for some unknown variable of a PDE.
+    
+    \todo rename to boundaryCondition
 */
 template<class T>
 struct boundary_condition

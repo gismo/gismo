@@ -17,13 +17,12 @@ namespace gismo {
 
 
 /**
-    Struct of for an Axis-aligned bounding box
+    @brief Struct of for an Axis-aligned bounding box
 
     Template parameters
     \param d is the dimension
     \param T is the box-coordinate index type
 */
-
 template<unsigned d, class T = unsigned>
 struct gsAabb
 {
@@ -51,13 +50,12 @@ public:
 };
 
 /**
-    Struct with a kd-tree node
+    @brief Struct representing a kd-tree node
 
     Template parameters
     \param d is the dimension
     \param T is the box-coordinate index type
 */
-
 template<unsigned d, class T = unsigned>
 struct kdnode
 {

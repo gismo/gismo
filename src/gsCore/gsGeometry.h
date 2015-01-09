@@ -111,6 +111,7 @@ struct gsGeoTraits<4,T>
 
     \tparam T coefficient type
 
+    \ingroup function
 */
 
 template<class T>

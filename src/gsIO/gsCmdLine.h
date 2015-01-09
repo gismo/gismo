@@ -1,3 +1,15 @@
+/** @file gsCmdLine.h
+
+    @brief Provides input command line arguments.
+
+    This file is part of the G+Smo library.
+    
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris
+*/
 
 #pragma once
 
@@ -11,15 +23,18 @@
 namespace gismo
 {
 
-  /** 
-      Class for command-line argument parsing
-      add(..) and parse(..) are the main functions
+/** 
+    @brief Type used for exceptions while reading command-line arguments
+*/
+typedef TCLAP::ArgException gsArgException;
 
-      For arguments, getValue() is the main member
-  */
+/** 
+    @brief Class for command-line argument parsing
 
-typedef TCLAP::ArgException gsArgException; // For catching exceptions
-  
+    The members add(..) and parse(..) are the main functions.
+    
+    For arguments, getValue() is the main member.
+*/
 class GISMO_EXPORT gsCmdLine :  public TCLAP::CmdLine
 {
 public:

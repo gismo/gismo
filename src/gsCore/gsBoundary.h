@@ -20,7 +20,8 @@
 namespace gismo
 {
 /** 
-    Struct that defines the boundary sides and types.
+    @brief Struct that defines the boundary sides and types of a geometric object.
+
     The sides are numbered as follows:
 
     2D CASE                              |    3D CASE
@@ -60,11 +61,11 @@ struct boundary
                   southwest      = 1, southeast      = 2, northwest      = 3, northeast      = 4 };
 };
 
-struct boxCorner;
+struct boxCorner;// defined later
 
 /**
- * Struct side represent a side of a box
-**/
+   @brief Struct which represents a certain side of a box.
+*/
 class GISMO_EXPORT boxSide
 {
 public:
@@ -182,7 +183,7 @@ public:
 };
 
 /** 
-    Struct patchSide represents a side of a patch
+    @brief  Struct which represents a certain side of a patch.
 */  
 struct patchSide: public boxSide
 {
@@ -224,7 +225,7 @@ inline std::ostream &operator<<(std::ostream &os, patchSide const & i)
 
 
 /**
- * Struct side represent a side of a box
+   @brief Struct which represents a certain corner of a hyper-cube.
 **/
 struct boxCorner
 {
@@ -330,7 +331,7 @@ public:
 
 
 /**
-    Struct patchCorner represents a corner of a patch
+    @brief Struct which represents a certain corner of a patch.
 */
 struct patchCorner : public boxCorner
 {
@@ -377,8 +378,8 @@ public:
 
 
 /** 
-    Struct boundaryInterface represents an interface between two patches
-    by storing the two sides which are joined.
+    @brief Struct which represents an interface between two patches.
+
 */  
 struct boundaryInterface
 {

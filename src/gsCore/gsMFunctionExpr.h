@@ -23,7 +23,9 @@ template<typename T> class gsMFunctionExprPrivate;
 
 /** 
     Class defining a multivariate function given by string
-    mathematical expressions
+    mathematical expressions.
+
+    \ingroup function
 */
     
 template<typename T>

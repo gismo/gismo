@@ -21,12 +21,12 @@ namespace gismo
 
 template<typename T> class gsFunctionExprPrivate;
 
-    /** 
-        Class defining a function given by a string mathematical expression
-    */
+/** 
+    @brief Class defining a real function given by a string
+    mathematical expression.
 
-// TO DO
-//template<typename T> class gsFunctionExprPrivate;  
+    \ingroup function
+*/
 
 template<typename T>
 class gsFunctionExpr : public gsFunction<T>
@@ -34,20 +34,20 @@ class gsFunctionExpr : public gsFunction<T>
     
 public:
     
-  /// Default empty constructor
-  gsFunctionExpr(); 
+    /// Default empty constructor
+    gsFunctionExpr(); 
   
-  /// Constructor by an expression string
-  gsFunctionExpr(std::string expression_string);
+    /// Constructor by an expression string
+    gsFunctionExpr(std::string expression_string);
   
-  ~gsFunctionExpr();
+    ~gsFunctionExpr();
   
-  gsFunctionExpr(const gsFunctionExpr& other);
+    gsFunctionExpr(const gsFunctionExpr& other);
   
-  gsFunctionExpr& operator=(const gsFunctionExpr& other);
+    gsFunctionExpr& operator=(const gsFunctionExpr& other);
   
     gsFunctionExpr * clone() const
-      { return new gsFunctionExpr(*this); }
+    { return new gsFunctionExpr(*this); }
 
 private:
 
@@ -55,67 +55,71 @@ private:
     void init();
     
 public:
-    
-  virtual int domainDim() const;
 
-  virtual int targetDim() const             { return 1; }
-  
-  //set "constants"
-  void set_x (T const & v) const;
-  void set_y (T const & v) const;
-  void set_z (T const & v) const;
-  void set_w (T const & v) const;
-  void set_u (T const & v) const;
-  void set_v (T const & v) const;
-  
-  void set_x_der (std::string expression_string);
-  
-  void set_y_der (std::string expression_string);
-  
-  /// Evaluate the expression (overrided from gsFunction)
-  virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    // Documented in gsFunction class
+    virtual int domainDim() const;
 
-  /// Evaluate the expression for component \a comp in the target dimension (overrided from gsFunction)
-  virtual void eval_component_into(const gsMatrix<T>& u, const index_t comp, gsMatrix<T>& result) const;
+    // Documented in gsFunction class
+    virtual int targetDim() const             { return 1; }
+  
+    //set "constants"
+    void set_x (T const & v) const;
+    void set_y (T const & v) const;
+    void set_z (T const & v) const;
+    void set_w (T const & v) const;
+    void set_u (T const & v) const;
+    void set_v (T const & v) const;
+  
+    void set_x_der (std::string expression_string);
+  
+    void set_y_der (std::string expression_string);
+  
+    /// Evaluate the expression (overrided from gsFunction)
+    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
-  /// Evaluate the gradient
-  virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    /// Evaluate the expression for component \a comp in the target
+    /// dimension (overrided from gsFunction)
+    virtual void eval_component_into(const gsMatrix<T>& u, 
+                                     const index_t comp, 
+                                     gsMatrix<T>& result) const;
+
+    /// Evaluate the gradient
+    virtual void deriv_into(const gsMatrix<T>& u, 
+                            gsMatrix<T>& result) const;
   
-  /// Evaluate the HESSIAN matrix
-  typename gsFunction<T>::uMatrixPtr hess(const gsMatrix<T>& u, unsigned coord = 0) const;
+    /// Evaluate the HESSIAN matrix
+    typename gsFunction<T>::uMatrixPtr hess(const gsMatrix<T>& u, unsigned coord = 0) const;
   
-  /// Evaluate the LAPLACIAN
-  /// By default uses central finite differences with h=0.00001
-  gsMatrix<T> * laplacian(const gsMatrix<T>& u) const;
+    /// Evaluate the LAPLACIAN
+    /// By default uses central finite differences with h=0.00001
+    gsMatrix<T> * laplacian(const gsMatrix<T>& u) const;
   
-  ///Mixed derivative wrt variables k and j
-  gsMatrix<T> * mderiv(const gsMatrix<T>& u, const index_t &k, const index_t &j ) const;
+    ///Mixed derivative wrt variables k and j
+    gsMatrix<T> * mderiv(const gsMatrix<T>& u, const index_t &k, const index_t &j ) const;
   
   
-  /// returns the last value computed
-  T value() const;
+    /// returns the last value computed
+    T value() const;
   
-  /// Prints the object as a string.
-  std::ostream &print(std::ostream &os) const;
+    /// Prints the object as a string.
+    std::ostream &print(std::ostream &os) const;
   
-  /// returns the last value computed
-  //T varList() const
+    /// returns the last value computed
+    //T varList() const
   
 // Data members
 private:
 
-  gsFunctionExprPrivate<T> * my;
+    gsFunctionExprPrivate<T> * my;
 
 }; // class gsFunctionExpr
 
 
+} // namespace gismo
+
+
 //////////////////////////////////////////////////
 //////////////////////////////////////////////////
-
-
-
-
-}; // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsFunctionExpr.hpp)
