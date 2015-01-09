@@ -54,33 +54,6 @@ public:
 
 public:
 
-    /*
-      Member functions with non-virtual implementations
-      (override the _into versions in derived classes).
-    */
-
-    /// @name Evaluation functions
-    /// @{
-
-    /// Evaluate the function
-    uMatrixPtr eval(const gsMatrix<T>& u) const;
-
-    /// Evaluate the derivatives. Returns a matrix of size targetDim() x (domainDim() * u.cols()), gradients are stored as row vectors
-    uMatrixPtr deriv(const gsMatrix<T>& u) const;
-
-    // Evaluate the gradient
-    //uMatrixPtr grad(const gsMatrix<T>& u) const        { return deriv(u); /* should return gradients as column vectors for 1D functions */ }
-  
-    /// Evaluate the second derivatives
-    uMatrixPtr deriv2(const gsMatrix<T>& u) const;
-
-    /// @}
-
-
-    /*
-      Virtual member functions
-    */
-
     /// The dimension of the function domain, i.e., the source space.
     virtual int domainDim() const;
 
@@ -93,8 +66,33 @@ public:
     /// corners of a hypercube.
     virtual gsMatrix<T> support() const;
 
-    /// @name Evaluation functions
-    /// @{
+
+    /**
+        @name Evaluation functions
+        @anchor Evaluation_functions
+
+        These functions allow to evaluate the function as well as its derivatives
+        at one or more points in the parameter space. See also \ref func_eval_members.
+
+        @{
+    */
+
+    /*
+      Member functions with non-virtual implementations
+      (override the _into versions in derived classes).
+    */
+
+    /// Evaluate the function
+    uMatrixPtr eval(const gsMatrix<T>& u) const;
+
+    /// Evaluate the derivatives. Returns a matrix of size targetDim() x (domainDim() * u.cols()), gradients are stored as row vectors
+    uMatrixPtr deriv(const gsMatrix<T>& u) const;
+
+    // Evaluate the gradient
+    //uMatrixPtr grad(const gsMatrix<T>& u) const        { return deriv(u); /* should return gradients as column vectors for 1D functions */ }
+  
+    /// Evaluate the second derivatives
+    uMatrixPtr deriv2(const gsMatrix<T>& u) const;
 
     /// Evaluate the function at points \a u into \a result.
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const = 0;

@@ -6,7 +6,7 @@ namespace gismo {
 
 This module implements hierarchical and truncated hierarchical tensor-product B-splines.
 
-\section THBSTutorial
+\section THB-splines Tutorial
 
 We will now have a closer look at the \c gsThbs_test.cpp file. After parsing the command line arguments it either reads the hierarchical basis from the file given by the user or runs a default example. To understand how the hierarchical basis is specified you can look into the file with the default example. This you do by
 > cat ./filedata/basis_thbs.xml

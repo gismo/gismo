@@ -1,8 +1,14 @@
+/*
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
 namespace gismo {
 
 /** \page Core Core module
-
-    \section Overview
 
 The \b Core module is the backbone of the library. Here an abstract
 interface is defined for a gsBasis, that is, a set of real-valued
@@ -31,11 +37,62 @@ class (inherited by gsMultiPatch) captures topological information
 between the patches, that is, the adjacency graph between patch
 boundaries, degenerate points, and so on. Let us also mention the
 gsField class, which is the object that typically represents the
-solution of a PDE. A gsFfield is a mathematical scalar or vector
+solution of a PDE. A gsField is a mathematical scalar or vector
 field which is defined on a parametric patch, or multipatch object. It
 may be evaluated either on the parameter or physical space, as the
 isogeometric paradigm suggests.
 
 */
+
+
+/**
+  \defgroup geometry Geometries hierarchy
+
+  @brief This group collects all concrete geometry types deriving from gsGeometry.
+*/
+
+
+/**
+  \defgroup basis Bases hierarchy
+
+  @brief This group collects all concrete basis types deriving from gsBasis.
+
+  Among the most important classes in \gismo are those representing bases, for instance,
+  a B-spline basis, a tensor product NURBS basis, and so on.
+
+  A basis can be viewed as a collection of scalar basis functions defined over
+  a common parameter domain of dimension *d*. For the bases that G+Smo deals
+  with, parameter domains are usually of tensor product type and therefore
+  just *d*-dimensional boxes.
+
+  The number of basis functions in a basis is called its *size*.
+
+  Bases provide many member functions to evaluate their basis functions as
+  well as their derivatives at sets of points in the parameter domain.
+
+  All bases derive from the abstract base class gsBasis.
+*/
+
+/**
+  \defgroup function Functions group
+
+  @brief This group collects all function types directly based on gsFunction.
+
+  \section func_eval_members Evaluation members
+
+  Here is an overview over the different evaluation procedures available:
+        
+  Name of procedure            | Evaluate what
+  -----------------------------|-------------------------------
+  \c eval(u)                   | value
+  \c deriv(u)                  | first derivative(s)
+  \c deriv2(u)                 | second derivative(s)
+     
+  All evaluation functions also provide a version suffixed with \c _into
+  which takes a matrix reference as an additional output parameter into which
+  the result will be stored.
+
+*/
+
 
 }

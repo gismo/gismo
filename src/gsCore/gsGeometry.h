@@ -60,6 +60,30 @@ struct gsGeoTraits<4,T>
     Abstract base class representing a geometry map, that is,
     a basis together with coefficients for that basis.
 
+    The combination of a basis with a coefficient matrix of the proper
+    size describes a function. Such objects are called geometries.
+    
+    Note that geometries are, essentially, functions mapping from the
+    parameter domain to the physical space,
+
+    \f[ G \ :\ \mathbb R^d \to \mathbb R^n \f]
+
+    so that 
+
+    \f[ G(\hat x) = x \qquad \hat x \in \mathbb R^d, \ x \in \mathbb R^n \f]
+
+    and therefore they derive from gsFunction. A gsGeometry can thus be
+    used wherever a gsFunction is expected.
+    
+    All geometry classes derive from the abstract base class
+    gsGeometry, see the \ref geometry.  In general, there is a
+    statically known one-to-one mapping between basis types and their
+    associated geometry types. For instance, when you ask a
+    gsBSplineBasis to create a geometry using some given coefficient
+    matrix, you will get back an instance of gsBSpline. In turn, the
+    basis that the gsBSpline object stores internally is of type
+    gsBSplineBasis.
+
     The parameter domain of the basis is also the parameter domain
     of the geometry map, and has a certain source dimension \em d
     (see gsGeometry::parDim()).
@@ -81,33 +105,12 @@ struct gsGeoTraits<4,T>
     point, i.e., the vector-valued coefficient for the associated
     basis function.
 
-    Here is an overview over the different evaluation procedures provided by gsGeometry:
-
-    Name of procedure            | Which basis function   | Evaluate what
-    -----------------------------|------------------------|-------------------------------
-    \c eval(u)                   | all active at u        | value
-    \c evalSingle(i, u)          | basis function i       | value
-    \c deriv(u)                  | all active at u        | first derivative(s)
-    \c derivSingle(i, u)         | basis function i       | first derivative(s)
-    \c deriv2(u)                 | all active at u        | second derivative(s)
-    \c deriv2Single(i, u)        | basis function i       | second derivative(s)
-    \c evalAllDers(u, k)         | all active at u        | value and all derivatives up to order k
-    \c evalAllDersSingle(i, u, k)| basis function i       | value and all derivatives up to order k
-    \c evalDerSingle(i, u, k)    | basis function i       | k-th derivative (k=0, ... , p-1)
-
-    All evaluation functions also provide a version suffixed with \c _into
-    which takes a matrix reference as an additional output parameter into which
-    the result will be stored.
-
-    Note that gsGeometry derives from gsFunction and supports all its
-    evaluation functions. A gsGeometry can thus be used wherever a
-    gsFunction is expected.
-    
-    \f[ G(u) = x \qquad u \in \mathbb R^d, x \in \mathbb R^n \f]
+    Evaluation at parameter values is done with
+    \ref func_eval_members "the Evaluation member functions" derived 
+    from gsFunction.
 
     \tparam T coefficient type
 
-    \ingroup geometry
 */
 
 template<class T>
@@ -175,31 +178,26 @@ public:
 
 public:
 
-    /** @name Evaluation functions
+    /**
+        @name Evaluation functions
 
-        These functions allow to evaluate the geometry as well as its derivatives
-        at one or multiple points of the parameter space.
-        All evaluation functions of gsFunction, from which gsGeometry derives,
-        are also supported.
-
-        \note
-        These functions generally do not have to be overridden in
-        derived classes since the basis type will provide the proper implementation.
-
+        re-implemented from gsFunction, see also \ref func_eval_members
         @{
     */
 
-    /// Evaluates the geometry into result
+    // Look at gsFunction class for documentation
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().eval_into(u, m_coefs, result); }
 
-    /// Evaluates the derivative matrix into result
+    // Look at gsFunction class for documentation
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().deriv_into(u, m_coefs, result); }
 
-    /// Evaluates the second derivatives into result
+    // Look at gsFunction class for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().deriv2_into(u, m_coefs, result); }
+
+    /// @}
 
     /// \brief Evaluates the Jacobian (matrix of first partial derivatives).
     ///

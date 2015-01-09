@@ -28,13 +28,13 @@ e^{i \pi} + 1 = 0\f$ in your browser. If not, allow for \ref UnblockMath.
 
 \ref PoissonTutorial
 
-<h2>Groups</h2>
+<h2>Groups and hiararchies</h2>
 
-\ref basis group.
+\ref basis
 
-\ref geometry group.
+\ref geometry
 
-\ref combinatorics group.
+\ref combinatorics
 
 <HR> 
 

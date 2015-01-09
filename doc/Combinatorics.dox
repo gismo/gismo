@@ -1,7 +1,7 @@
 
 /**
-  \defgroup combinatorics Combinatorics Utilities
+  \defgroup combinatorics Combinatorics group
 
-  Some usefull combinatorial functionalities.
+  @brief Some usefull combinatorial functionalities.
 
 */
