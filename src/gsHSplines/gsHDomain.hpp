@@ -534,30 +534,34 @@ void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
               gsVector<unsigned>& level) const{
     std::vector<std::vector<unsigned int> > boxes;
     getBoxes_vec(boxes);
+    GISMO_ASSERT(d==2,"this part only words for 2D");
+    //is this test really necessary? florian b.
     for(unsigned int i = 0; i < boxes.size(); i++){
         if ((boxes[i][0]==boxes[i][2]) || (boxes[i][1]==boxes[i][3])){
             boxes.erase(boxes.begin()+i);
             i--;
         }
     }
-    gsVector<unsigned,d>temp;
-    gsVector<unsigned,d>temp1;
+    gsVector<unsigned,d>lowerCorner;
+    gsVector<unsigned,d>upperCorner;
     connect_Boxes(boxes);
     b1.resize(boxes.size(),d);
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
-    for(std::size_t i = 0; i < boxes.size(); i++){
-        for(unsigned j = 0; j < d; j++){
+    for(std::size_t i = 0; i < boxes.size(); i++)
+    {
+        for(unsigned j = 0; j < d; j++)
+        {
 //            b1(i,j) = boxes[i][j];
 //            b2(i,j) = boxes[i][j+d];
-            temp[j] = boxes[i][j];
-            temp1[j] = boxes[i][j+d];
+            lowerCorner[j] = boxes[i][j];
+            upperCorner[j] = boxes[i][j+d];
         }
         level[i] = boxes[i][2*d];
-        global2localIndex( temp , level[i], temp );
-        global2localIndex( temp1 , level[i], temp1 );
-        b1.row(i) = temp;
-        b2.row(i) = temp1;
+        computeLevelIndex( lowerCorner , level[i], lowerCorner );
+        computeLevelIndex( upperCorner , level[i], upperCorner );
+        b1.row(i) = lowerCorner;
+        b2.row(i) = upperCorner;
     }
 }
 
