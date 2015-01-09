@@ -80,7 +80,6 @@ unset(${PROJECT_NAME}_HEADERS    CACHE)
 unset(${PROJECT_NAME}_SOURCES    CACHE)
 unset(${PROJECT_NAME}_EXTENSIONS CACHE)
 unset(${PROJECT_NAME}_MODULES    CACHE)
-unset(${PROJECT_NAME}_examples   CACHE)
 unset(${PROJECT_NAME}_optionals  CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
@@ -229,8 +228,6 @@ include(CTest)
 #  templated code is used.
 if(GISMO_BUILD_EXAMPLES)
   add_subdirectory(examples)
-  list(LENGTH gismo_examples len)
-  message(STATUS "Number of examples to compile:      ${len}")
 endif(GISMO_BUILD_EXAMPLES)
 
 add_subdirectory(optional)

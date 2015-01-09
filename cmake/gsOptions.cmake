@@ -95,6 +95,7 @@ option(GISMO_BUILD_COVERAGE      "Build with coverage"    false  )
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 message ("Configuration:")
+message ("  Source:                 ${CMAKE_SOURCE_DIR}")
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")
 message ("  GISMO_COEFF_TYPE        ${GISMO_COEFF_TYPE}")
 message ("  GISMO_EXTRA_DEBUG       ${GISMO_EXTRA_DEBUG}")
