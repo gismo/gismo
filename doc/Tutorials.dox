@@ -1,7 +1,7 @@
 namespace gismo {
 
 /**
- \page Tutorials
+ \page Tutorials Tutorials
 
  The library is partitioned into smaller entities called modules.
 

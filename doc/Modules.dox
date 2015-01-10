@@ -18,10 +18,6 @@ namespace gismo {
   - \subpage Tensor
   - \subpage Utils
 
-
-
-See \subpage #geometry .
-
 */
 
 

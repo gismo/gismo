@@ -5,7 +5,7 @@
     <!--    <tab type="user" url="index.html" title="Home page" /> -->
     <tab type="mainpage" visible="yes" title=""/> 
     
-    <tab type="usergroup" title="Groups and hierarchies" url="@ref Groups" >    
+    <tab type="usergroup" title="Groups and hierarchies">    
       <tab type="user" url="@ref geometry" title="Geometries"/>
       <tab type="user" url="@ref basis" title="Bases hierarchy"/>
       <tab type="user" url="@ref function" title="Functions hierarchy"/>
