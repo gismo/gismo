@@ -19,7 +19,7 @@
 namespace gismo {
 
 /**
-   Representation of an affine function
+   @brief Representation of an affine function
 
     \ingroup function
  */

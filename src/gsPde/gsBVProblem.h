@@ -14,7 +14,7 @@ namespace gismo
 
     template <class T> class gsFunction;
     
-/** @brief
+/* @brief
     Full specification of a boundary value problem including the PDE,
     computational domain, and boundary conditions.
     

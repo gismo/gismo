@@ -1,7 +1,7 @@
 namespace gismo {
 
 /**
- \page Modules
+ \page Modules Modules
 
  The library is partitioned into smaller entities called modules.
  Here is the list of the available modules:
@@ -17,6 +17,11 @@ namespace gismo {
   - \subpage Pde
   - \subpage Tensor
   - \subpage Utils
+
+
+
+See \subpage #geometry .
+
 */
 
 

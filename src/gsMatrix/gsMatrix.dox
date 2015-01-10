@@ -17,6 +17,7 @@ namespace gismo {
     solver packages like PARADISO and SuperLU through a common
     interface.
 
+    <a href="http://eigen.tuxfamily.org/dox" target="_blank">Eigen Documentation</a>
 
     \section Classes
     

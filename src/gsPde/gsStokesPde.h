@@ -19,6 +19,8 @@ template <class T> class gsFunction;
 
     This class describes a stationary Stokes PDE, with an arbitrary right-hand side
     function and optionally a known solution.
+
+    \ingroup pde
  */
 
 template<class T>

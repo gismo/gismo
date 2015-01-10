@@ -20,7 +20,7 @@ namespace gismo
 
 
 /**
-   @brief Class that creates standard fields on a given parametric (multipatch) geometry
+   @brief AbsError
 
 */
 
@@ -177,7 +177,10 @@ private:
 
 
 
-
+/**
+   @brief Class that creates standard fields on a given parametric
+   (multipatch) geometry.
+*/
 template<class T>
 struct gsFieldCreator
 {

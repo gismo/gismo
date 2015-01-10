@@ -9,4 +9,14 @@ namespace gismo {
 
 */
 
+
+
+
+/**
+  \defgroup pde PDEs group
+
+  @brief This group collects PDE objects, deriving from gsPde.
+*/
+
+
 }

@@ -21,6 +21,7 @@ namespace gismo
     \brief This class provides a tensor function represented by
     component functions with certain rank per component.
 
+    \ingroup function
 */
 template<class T>
 class gsTensorFunction : public gsFunction<T>

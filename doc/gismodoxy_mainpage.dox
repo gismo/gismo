@@ -7,9 +7,9 @@ Note: Make sure that you can see \f$\LaTeX\f$ formulas, eg.  \f$
 e^{i \pi} + 1 = 0\f$ in your browser. If not, allow for \ref UnblockMath.
 
 
-<h2>\gismo Modules</h2>
+<h2>\subpage Modules</h2>
 
-\gismo is partitioned into smaller entities called \subpage Modules.
+\gismo is partitioned into smaller entities called Modules.
  Here is the list of the available \ref Modules:
 
   - \ref Core
@@ -35,6 +35,8 @@ e^{i \pi} + 1 = 0\f$ in your browser. If not, allow for \ref UnblockMath.
 \ref geometry
 
 \ref combinatorics
+
+\subpage citelist.
 
 <HR> 
 

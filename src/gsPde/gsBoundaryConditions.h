@@ -19,17 +19,24 @@
 namespace gismo
 {
 
-    template <class T> class gsFunction;
+template <class T> class gsFunction;
 
+/// @brief Specifies the type of boundary condition
 struct condition_type
 {
- enum type {dirichlet=0, neumann=1, robin=2 };
+ enum type 
+ {
+     dirichlet = 0, ///< Dirichlet type
+     neumann   = 1, ///< Neumann type
+     robin     = 2  ///< Robin type
     //mixed BD means: there are both dirichlet and neumann sides
     //robin: a linear combination of value and derivative
     //cauchy: there are 2 conditions (value+deriv) defined on the same side
+ };
+
 };
 
-///Print (as string) a boundary type
+// Print (as string) a boundary type
 inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
 {
     switch (o)
@@ -80,10 +87,11 @@ struct boundary_condition
     int             unknown()  const { return m_unknown; }
 
 
-    patchSide ps;
-    gsFunction<T> * m_function;
-    condition_type::type m_type;// TO DO : robin coefficients?
-    int m_unknown;
+    patchSide ps;                ///< Side of a patch for this boundary condition
+    gsFunction<T> * m_function;  ///< Function data for this boundary condition
+    // TO DO : robin coefficients?
+    condition_type::type m_type; ///< Type of the boundary condition
+    int m_unknown;               ///< Unknown to which this boundary condition refers to 
 };
     
 /** @brief
@@ -92,7 +100,6 @@ struct boundary_condition
     The boundary conditions are stored in the form of a list of boundary_condition
     instances.
 */
-
 template<class T>
 class gsBoundaryConditions 
 {
@@ -232,9 +239,9 @@ public:
 // Data members
 private:
 
-    std::vector<boundary_condition<T> > drchlt_sides;
-    std::vector<boundary_condition<T> > nmnn_sides;
-    std::vector<boundary_condition<T> > robin_sides;
+    std::vector<boundary_condition<T> > drchlt_sides; ///< List of Dirichlet sides
+    std::vector<boundary_condition<T> > nmnn_sides;   ///< List of Neumann sides
+    std::vector<boundary_condition<T> > robin_sides;  ///< List of Robin sides
 
 }; // class gsBoundaryConditions
 

@@ -13,6 +13,8 @@ class gsFunction;
     A convection-diffusion-reaction PDE, including source term on the right-hand side.
 
     Any of the coefficients may be a NULL pointer, meaning that it is zero.
+
+    \ingroup pde
  */
 
 template <class T>

@@ -42,6 +42,10 @@ field which is defined on a parametric patch, or multipatch object. It
 may be evaluated either on the parameter or physical space, as the
 isogeometric paradigm suggests.
 
+
+See \subpage #geometry .
+
+
 */
 
 
@@ -49,6 +53,21 @@ isogeometric paradigm suggests.
   \defgroup geometry Geometries hierarchy
 
   @brief This group collects all concrete geometry types deriving from gsGeometry.
+
+
+  
+  gsCurve
+  -------
+  
+  gsSurface
+  ---------
+
+  gsVolume
+  --------
+
+  gsBulk
+  ------
+  
 */
 
 
