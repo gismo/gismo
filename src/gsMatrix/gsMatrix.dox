@@ -1,12 +1,10 @@
 namespace gismo {
 
-/** \page Matrix Matrix module
-
-    \section Overview 
+/** \defgroup Matrix Matrix module
 
     This module provides dense and sparse matrix data structures. It
     is based on the <a href="http://eigen.tuxfamily.org"
-    target="_blank">Eigen</a> library and prots all the linear algebra
+    target="_blank">Eigen</a> library and ports all the linear algebra
     related infrastructure to \gismo. The main objects are gsMatrix
     for dense matrices, gsVector for dense vectors, gsSparseMatrix for
     sparse matrices and gsSparseVector for sparse vectors. Typical
@@ -18,26 +16,7 @@ namespace gismo {
     interface.
 
     <a href="http://eigen.tuxfamily.org/dox" target="_blank">Eigen Documentation</a>
-
-    \section Classes
     
-    - gsMatrix
-
-    - gsAsMatrix
-
-    - gsVector
-
-    - gsVector3d
-
-    - gsAsConstMatrix
-
-    - gsSparseMatrix
-
-    - gsSparseVector
-
-    - gsMatrixBlockView
-
-    - gsSparseRows
 */
 
 }

@@ -5,8 +5,26 @@
     <!--    <tab type="user" url="index.html" title="Home page" /> -->
     <tab type="mainpage" visible="yes" title=""/> 
     
+    <tab type="user" url="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/FreqAsked" title="About"/>
+    
+    <tab type="user" url="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/About" title="Frequently Asked Questions"/>
+
+    <tab type="usergroup" title="Modules" intro="The library is partitioned into smaller entities called modules. Here is the list of the available modules:">    
+      <tab type="user" url="@ref Core" title="Core"/>
+      <tab type="user" url="@ref Nurbs" title="Nurbs"/>
+      <tab type="user" url="@ref HSplines" title="HSplines"/>
+      <tab type="user" url="@ref Assembler" title="Assembler"/>
+      <tab type="user" url="@ref Solver" title="Solver"/>
+      <tab type="user" url="@ref IO" title="IO"/>
+      <tab type="user" url="@ref Matrix" title="Matrix"/>
+      <tab type="user" url="@ref Modeling" title="Modeling"/>
+      <tab type="user" url="@ref Pde" title="Pde"/>
+      <tab type="user" url="@ref Tensor" title="Tensor"/>
+      <tab type="user" url="@ref Utils" title="Utils"/>
+    </tab>
+    
     <tab type="usergroup" title="Groups and hierarchies">    
-      <tab type="user" url="@ref geometry" title="Geometries"/>
+      <tab type="user" url="@ref geometry" title="Geometries hierarchy"/>
       <tab type="user" url="@ref basis" title="Bases hierarchy"/>
       <tab type="user" url="@ref function" title="Functions hierarchy"/>
       <tab type="user" url="@ref pde" title="PDE group"/>

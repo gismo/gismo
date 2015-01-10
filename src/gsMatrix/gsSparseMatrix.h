@@ -8,11 +8,15 @@ namespace gismo
 
 
 /**
-   Class that provides a container for triplets (i,j,value) to be
-   filled in a sparse matrix.  Constructing a sparse matrix from
-   triplets is much faster than inserting directly.  Use
-   gsSparseMatrix().setFrom(gsSparseEntries) to pass the triplets to
-   the matrix.
+   @brief Class that provides a container for triplets (i,j,value) to be
+   filled in a sparse matrix.  
+
+   Constructing a sparse matrix from triplets is much faster than
+   inserting directly.  Use gsSparseMatrix().setFrom(gsSparseEntries)
+   to pass the triplets to the matrix.
+
+   \tparam T coefficient type
+   \ingroup Matrix
 */
 template<class T>
 class gsSparseEntries : public std::vector<Eigen::Triplet<T,index_t> >
@@ -33,15 +37,12 @@ public:
 
 
 
-/** @brief
- *    Sparse matrix class, based on Eigen::SparseMatrix.
+/** @brief Sparse matrix class, based on Eigen::SparseMatrix.
  *
- *   \tparam T coefficient type
- *   \tparam _Option zero is ColMajor order.
- *   \tparam _Index index type
- *
- * See http://eigen.tuxfamily.org/dox/classEigen_1_1SparseMatrix.html
- * for documentation of the Eigen::SparseMatrix class.
+ * See http://eigen.tuxfamily.org/dox/group__SparseQuickRefPage.html
+ * for Eigen's sparse matrix manipulations and
+ * http://eigen.tuxfamily.org/dox/classEigen_1_1SparseMatrix.html for
+ * documentation of the Eigen::SparseMatrix class.
  *
  * Remarks:
  *
@@ -50,6 +51,10 @@ public:
  * An entry can be changed with either
  * <b>coeffRef( index row, index col)</b> or operator <b>( index row, index col )</b>.\n
  *
+ *   \tparam T coefficient type
+ *   \tparam _Option zero is ColMajor order.
+ *   \tparam _Index index type
+ *  \ingroup Matrix
  */
 
 // Export the result to a file: saveAsBitmap(...);

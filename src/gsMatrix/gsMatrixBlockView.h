@@ -17,14 +17,13 @@
 
 namespace gismo {
 
-/** \brief Creates a block-view of the given matrix
+/** \brief Represents a block-view of the given matrix
  *
  * The blocks are references to the matrix segments. Each block
  * can be seen a a standalone matrix.
  * 
- * \param[in] matrix   the matrix to be "partitioned" into blocks
- * \param[in] rowSizes the sizes of the row blocks, must sum up to matrix.rows()
- * \param[in] colSizes the sizes of the column blocks, must sum up to matrix.cols()
+ * \tparam T coefficient type
+ * \ingroup Matrix
  */
     
 // isConst .. to do

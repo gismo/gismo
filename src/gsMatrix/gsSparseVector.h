@@ -26,6 +26,8 @@ namespace gismo
     \tparam T coefficient type
     \tparam _Option zero is ColMajor order.
     \tparam _Index index type
+
+    \ingroup Matrix
 */
 
 template<typename T, int _Options, typename _Index>

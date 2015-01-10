@@ -8,7 +8,7 @@
 
 namespace gismo {
 
-/** \page Core Core module
+/** \defgroup Core Core module
 
 The \b Core module is the backbone of the library. Here an abstract
 interface is defined for a gsBasis, that is, a set of real-valued
@@ -43,7 +43,7 @@ may be evaluated either on the parameter or physical space, as the
 isogeometric paradigm suggests.
 
 
-See \subpage #geometry .
+See \ref geometry and \ref basis.
 
 
 */

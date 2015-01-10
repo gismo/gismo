@@ -25,13 +25,17 @@ namespace gismo
 
     This class provides an interface to Eigen::Matrix from the Eigen
     linear algebra library. Most operations from Eigen are supported
-    on a gsMatrix. See therefore also the Eigen documentation,
-    http://eigen.tuxfamily.org/dox/.
+    on a gsMatrix. 
+
+    See therefore also the Eigen documentation for dense matrices,
+    http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
 
     \tparam T coefficient type
     \tparam _Rows number of rows: an integer or \c Dynamic
     \tparam _Cols number of rows: an integer or \c Dynamic
     \tparam _Options further options; see Eigen documentation
+
+    \ingroup Matrix
 */
 template<class T, int _Rows, int _Cols, int _Options>
 class gsMatrix : public Eigen::Matrix<T,_Rows, _Cols, _Options>

@@ -7,40 +7,28 @@ Note: Make sure that you can see \f$\LaTeX\f$ formulas, eg.  \f$
 e^{i \pi} + 1 = 0\f$ in your browser. If not, allow for \ref UnblockMath.
 
 
-<h2>\subpage Modules</h2>
+This manual and more info are at    <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki">wiki pages</a>.
+
+<h2><a href="usergroup0.html">\gismo modules</a></h2>
 
 \gismo is partitioned into smaller entities called Modules.
- Here is the list of the available \ref Modules:
+ See <a href="usergroup0.html">\gismo modules</a> for a list of all modules.
 
-  - \ref Core
-  - \ref Nurbs
-  - \ref HSplines
-  - \ref Assembler
-  - \ref Solver
-  - \ref IO
-  - \ref Matrix
-  - \ref Modeling
-  - \ref Pde
-  - \ref Tensor
-  - \ref Utils
+<h2>Tutorials</h2>
 
-<h2>\subpage Tutorials</h2>
+\subpage PoissonTutorial
 
-\ref PoissonTutorial
 
-<h2>Groups and hiararchies</h2>
+<h2><a href="usergroup1.html">Groups and hierarchies</a></h2>
 
-\ref basis
+Object hierarchies and groups of classes that are relevant or implement the same concept are 
+<a href="usergroup1.html">listed here.</a>
 
-\ref geometry
-
-\ref combinatorics
-
-<HR> 
+<h2><a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki" target="_top">More information</a></h2>
 
    The library is licenced under the <a
    href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla
    Public License Version 2.0</a>. More information at the 
-   <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki">wiki pages</a>.
+   <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki" target="_top">wiki pages</a>.
 */
 }

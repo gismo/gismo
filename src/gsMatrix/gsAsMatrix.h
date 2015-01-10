@@ -18,7 +18,15 @@
 namespace gismo
 {
 
-/// Creates a mapped object to an eigen matrix without copying data.
+/** \brief Creates a mapped object or data pointer to a matrix without
+    copying data.
+    
+   This allows for re-indexing the matrix. No copying is taking place
+   and the original matrix remains untached.
+
+   \tparam T coefficient type
+   \ingroup Matrix
+*/
 template<class T, int _Rows, int _Cols>
 class gsAsMatrix : public Eigen::Map< Eigen::Matrix<T,_Rows,_Cols> >
 {
@@ -46,7 +54,15 @@ private:
     gsAsMatrix() { }
 };
 
-/// Creates a mapped object to an eigen matrix without copying data.
+/** \brief Creates a mapped object or data pointer to a const matrix without
+    copying data.
+    
+   This allows for re-indexing the matrix. No copying is taking place
+   and the original matrix remains untached.
+
+   \tparam T coefficient type
+   \ingroup Matrix
+*/
 template<class T, int _Rows, int _Cols>
 class gsAsConstMatrix : public Eigen::Map< const Eigen::Matrix<T,_Rows,_Cols> >
 {
@@ -75,8 +91,15 @@ private:
     gsAsConstMatrix() { }
 };
 
+/** \brief Creates a mapped object or data pointer to a vector without
+    copying data.
+    
+   This allows for re-indexing the matrix. No copying is taking place
+   and the original matrix remains untached.
 
-/// Creates a mapped object to an eigen matrix without copying data.
+   \tparam T coefficient type
+   \ingroup Matrix
+ */
 template<class T, int _Rows=Dynamic>
 class gsAsVector : public Eigen::Map< Eigen::Matrix<T,_Rows,1> >
 {
@@ -97,7 +120,15 @@ private:
     gsAsVector() { }
 };
 
-/// Creates a mapped object to an eigen matrix without copying data.
+/** \brief Creates a mapped object or data pointer to a const vector without
+    copying data.
+    
+   This allows for re-indexing the matrix. No copying is taking place
+   and the original matrix remains untached.
+
+   \tparam T coefficient type
+   \ingroup Matrix
+ */
 template<class T, int _Rows=Dynamic>
 class gsAsConstVector : public Eigen::Map< const Eigen::Matrix<T,_Rows,1> >
 {
@@ -120,7 +151,7 @@ private:
 };
 
 
-/// Utility to make a matrix out of an iterator tp values
+/// Utility to make a matrix out of an iterator to values
 template<class T, class iterator>
 typename gsMatrix<T>::uPtr makeMatrix(iterator it, index_t n, index_t m)
 {

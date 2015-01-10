@@ -28,6 +28,8 @@ namespace gismo
 
     \tparam T coefficient type
     \tparam _Rows number of rows: an integer or \c Dynamic
+
+    \ingroup Matrix
 */
 template<class T, int _Rows>
 class gsVector : public gsMatrix<T,_Rows,1,ColMajor>
@@ -146,8 +148,11 @@ public:
 
 
 
-/** @brief
-    A fixed-size, statically allocated 3D vector based on Eigen::Matrix from Eigen linear algebra library.
+/** @brief A fixed-size, statically allocated 3D vector.
+
+    \tparam T coefficient type
+
+    \ingroup Matrix
 */
 template<class T>
 class gsVector3d : public Eigen::Matrix<T,3,1>
