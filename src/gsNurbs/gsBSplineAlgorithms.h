@@ -17,6 +17,11 @@
 namespace gismo
 {
 
+/** @namespace gismo::bspline
+
+    @brief
+    This namespace contains implementation of B-spline related algorithms.
+*/
 namespace bspline
 {
     /// Input: an iterator pointing to the the biggest knot less than \a u,

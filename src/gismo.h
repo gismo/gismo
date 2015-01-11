@@ -24,7 +24,17 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 namespace gismo
+{ 
+
+/** @namespace gismo::internal
+
+    @brief
+    This namespace contains functionalities that is internal to the library.
+*/
+namespace internal 
 { }
+
+}
 
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>

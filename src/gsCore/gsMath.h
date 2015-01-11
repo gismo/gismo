@@ -22,6 +22,11 @@
 
 namespace gismo {
 
+/** @namespace gismo::math
+
+    @brief
+    This namespace contains common mathematical functions.
+*/
 namespace math {
 
 using std::numeric_limits;

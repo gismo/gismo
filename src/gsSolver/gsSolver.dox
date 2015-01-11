@@ -1,8 +1,6 @@
 namespace gismo {
 
-/** \page Solver Solver module
-
-    \section Overview
+/** \defgroup Solver Solver module
 
     This module is responsible for treating a system of linear
     equations arizing from a discretized a PDE.

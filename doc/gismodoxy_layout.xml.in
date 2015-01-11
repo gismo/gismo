@@ -5,9 +5,9 @@
     <!--    <tab type="user" url="index.html" title="Home page" /> -->
     <tab type="mainpage" visible="yes" title=""/> 
     
-    <tab type="user" url="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/FreqAsked" title="About"/>
+    <tab type="user" url="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/About" title="About"/>
     
-    <tab type="user" url="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/About" title="Frequently Asked Questions"/>
+    <tab type="user" url="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/FreqAsked" title="Frequently Asked Questions"/>
 
     <tab type="usergroup" title="Modules" intro="The library is partitioned into smaller entities called modules. Here is the list of the available modules:">    
       <tab type="user" url="@ref Core" title="Core"/>
@@ -34,8 +34,10 @@
     <tab type="user" url="@ref citelist" title="Bibliographic references" /> 
     
     <tab type="classlist" visible="yes" title="" intro=""/>
+
     <!--
-	<tab type="modules" visible="yes" title="Groups and hierarchies" intro="Groups and hierarchies:"/>-->
+	<tab type="modules" visible="yes" title="All groups" intro="All defined groups:"/>
+    -->
   </navindex>
 
   <!-- Layout definition for a class page -->

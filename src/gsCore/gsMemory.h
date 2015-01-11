@@ -25,7 +25,11 @@
 
 namespace gismo {
 
+/** @namespace gismo::memory
 
+    @brief
+    This namespace contains functions related to memory management.
+*/
 namespace memory {
 
 // Use the correct shared_ptr

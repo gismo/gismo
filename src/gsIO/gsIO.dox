@@ -1,8 +1,6 @@
 namespace gismo {
 
-/** \page IO Input/Output module
-
-    \section Overview
+/** \defgroup IO Input/Output module
 
     This module is responsible for input and output of \gismo objects to files.
 

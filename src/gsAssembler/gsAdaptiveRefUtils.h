@@ -19,9 +19,6 @@
 #include <gsIO/gsIOUtils.h>
 #include <gismo.h>
 
-using namespace std;
-using namespace gismo;
-
 namespace gismo
 {
 
