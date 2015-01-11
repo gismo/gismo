@@ -18,9 +18,8 @@
 namespace gismo
 {
 
-/** \brief
-    Abstract class representing an arbitrary function from a <em>d</em>-dimensional
-    domain to an <em>m</em>-dimensional image.
+/** \brief A function from a <em>d</em>-dimensional domain to an
+    <em>m</em>-dimensional image.
 
     Implementations of gsFunction must at the very least implement the evaluation
     function gsFunction::eval_into(). It is also recommended to specify the
@@ -30,11 +29,28 @@ namespace gismo
     The functions for the derivatives may either be overridden or left
     as the default implementations, which use finite differences.
 
-    All evaluation functions take a
-    matrix \em u as an argument which specifies where the function
-    should be evaluated. This matrix should have \em d rows, and every
-    column specifies one point of the domain at which the
-    function should be evaluated.
+    \section func_eval_members Evaluation members
+    
+    All evaluation functions take a matrix \em u as an argument which
+    specifies where the function should be evaluated. This matrix
+    should have \em d rows, and every column specifies one point of
+    the domain at which the function should be evaluated.
+    
+    Here is an overview over the different evaluation procedures available:
+    
+    Name of procedure            | Evaluate what
+    -----------------------------|-------------------------------
+    \c eval(u)                   | value
+    \c deriv(u)                  | first derivative(s)
+    \c deriv2(u)                 | second derivative(s)
+    
+    All evaluation functions also provide a version suffixed with \c _into
+    which takes a matrix reference as an additional output parameter into which
+    the result will be stored.
+
+    \tparam T arithmetic type
+
+    \ingroup function
 */
 
 template<class T>

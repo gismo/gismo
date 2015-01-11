@@ -52,21 +52,9 @@ See \ref geometry and \ref basis.
 /**
   \defgroup geometry Geometries hierarchy
 
-  @brief This group collects all concrete geometry types deriving from gsGeometry.
+  @brief This group collects geometry types deriving from gsGeometry.
 
-
-  
-  gsCurve
-  -------
-  
-  gsSurface
-  ---------
-
-  gsVolume
-  --------
-
-  gsBulk
-  ------
+  \copydoc gsGeometry
   
 */
 
@@ -74,42 +62,18 @@ See \ref geometry and \ref basis.
 /**
   \defgroup basis Bases hierarchy
 
-  @brief This group collects all concrete basis types deriving from gsBasis.
+  @brief This group collects basis types deriving from gsBasis.
 
-  Among the most important classes in \gismo are those representing bases, for instance,
-  a B-spline basis, a tensor product NURBS basis, and so on.
+  \copydoc gsBasis
 
-  A basis can be viewed as a collection of scalar basis functions defined over
-  a common parameter domain of dimension *d*. For the bases that G+Smo deals
-  with, parameter domains are usually of tensor product type and therefore
-  just *d*-dimensional boxes.
-
-  The number of basis functions in a basis is called its *size*.
-
-  Bases provide many member functions to evaluate their basis functions as
-  well as their derivatives at sets of points in the parameter domain.
-
-  All bases derive from the abstract base class gsBasis.
 */
 
 /**
   \defgroup function Functions group
 
-  @brief This group collects all function types directly based on gsFunction.
+  @brief This group collects function types directly based on gsFunction.
 
-  \section func_eval_members Evaluation members
-
-  Here is an overview over the different evaluation procedures available:
-        
-  Name of procedure            | Evaluate what
-  -----------------------------|-------------------------------
-  \c eval(u)                   | value
-  \c deriv(u)                  | first derivative(s)
-  \c deriv2(u)                 | second derivative(s)
-     
-  All evaluation functions also provide a version suffixed with \c _into
-  which takes a matrix reference as an additional output parameter into which
-  the result will be stored.
+  \copydoc gsFunction
 
 */
 

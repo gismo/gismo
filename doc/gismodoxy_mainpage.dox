@@ -3,32 +3,33 @@ namespace gismo {
 /**
   \mainpage Documentation
 
-Note: Make sure that you can see \f$\LaTeX\f$ formulas, eg.  \f$
-e^{i \pi} + 1 = 0\f$ in your browser. If not, allow for \ref UnblockMath.
+The latest revision of this manual is <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/Doxygen" target="_parent">available online</a>.
 
+The library is licenced under the <a href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla Public License Version 2.0</a>.
 
-This manual and more info are at    <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki">wiki pages</a>.
+<h2><a href="Wiki.html">\subpage Wiki</a></h2>
+
+\copydoc Wiki
 
 <h2><a href="usergroup0.html">\gismo modules</a></h2>
 
-\gismo is partitioned into smaller entities called Modules.
- See <a href="usergroup0.html">\gismo modules</a> for a list of all modules.
+The library is partitioned into smaller entities called Modules.
+See section <a href="usergroup0.html">\gismo modules</a> for an overview of available modules.
+
+<h2><a href="Snippets.html">\subpage Snippets</a></h2>
+
+A collection of code snippets demonstrating the use of the library.
 
 <h2>Tutorials</h2>
 
 \subpage PoissonTutorial
 
-
 <h2><a href="usergroup1.html">Groups and hierarchies</a></h2>
 
-Object hierarchies and groups of classes that are relevant or implement the same concept are 
-<a href="usergroup1.html">listed here.</a>
+Object hierarchies and groups of classes that are relevant or
+implement the same concept are <a href="usergroup1.html">listed
+here.</a>
 
-<h2><a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki" target="_top">More information</a></h2>
 
-   The library is licenced under the <a
-   href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla
-   Public License Version 2.0</a>. More information at the 
-   <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki" target="_top">wiki pages</a>.
 */
 }

@@ -242,7 +242,7 @@ TAB_SIZE               = 8
 
 ALIASES                = "gismo_no_inplementation=This method is not implemented by default. Derived classes that need this functionality should provide an implementation, otherwise a runtime error will occur." \
                          "nonstableyet=\warning This functionality is not stable yet, use with caution." \
-			 "gismo=<span style="font-variant:small-caps;">G+Smo</span>"
+			 "gismo=G+Smo"
 			 #"gismo=<font style="font-variant:small-caps;">G+Smo</font>"
 
 # This tag can be used to specify a number of word-keyword mappings (TCL only).

@@ -5,11 +5,7 @@
     <!--    <tab type="user" url="index.html" title="Home page" /> -->
     <tab type="mainpage" visible="yes" title=""/> 
     
-    <tab type="user" url="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/About" title="About"/>
-    
-    <tab type="user" url="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/FreqAsked" title="Frequently Asked Questions"/>
-
-    <tab type="usergroup" title="Modules" intro="The library is partitioned into smaller entities called modules. Here is the list of the available modules:">    
+    <tab type="usergroup" title="Modules" intro="The library is partitioned into smaller entities called modules. Here is the list of the available modules:">
       <tab type="user" url="@ref Core" title="Core"/>
       <tab type="user" url="@ref Nurbs" title="Nurbs"/>
       <tab type="user" url="@ref HSplines" title="HSplines"/>
@@ -30,12 +26,13 @@
       <tab type="user" url="@ref pde" title="PDE group"/>
       <tab type="user" url="@ref combinatorics" title="Combinatorics group"/>
     </tab>
-        
-    <tab type="user" url="@ref citelist" title="Bibliographic references" /> 
     
     <tab type="classlist" visible="yes" title="" intro=""/>
 
+    <tab type="user" url="@ref citelist" title="Bibliographic references" /> 
+
     <!--
+        <tab type="pages" visible="yes" title=""/>
 	<tab type="modules" visible="yes" title="All groups" intro="All defined groups:"/>
     -->
   </navindex>

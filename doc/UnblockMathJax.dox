@@ -1,11 +1,12 @@
 /**
- \page UnblockMath Math formulas in your browser
-
+ \page UnblockMath Unblock Math formulas
 
 If \f$\LaTeX\f$ formulas do not appear, proceed as follows:
 
 \image html firefox-unblock.png "Mozilla Firefox."
 
 \image html chrome-unblock.png "Google Chrome."
+
+Test:  \f$ e^{i \pi} + 1 = 0\f$.
 
 */

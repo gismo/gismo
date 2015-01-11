@@ -57,8 +57,7 @@ struct gsGeoTraits<4,T>
 
 /** 
     \brief
-    Abstract base class representing a geometry map, that is,
-    a basis together with coefficients for that basis.
+    Abstract base class representing a geometry map.
 
     The combination of a basis with a coefficient matrix of the proper
     size describes a function. Such objects are called geometries.
@@ -84,9 +83,12 @@ struct gsGeoTraits<4,T>
     basis that the gsBSpline object stores internally is of type
     gsBSplineBasis.
 
-    The parameter domain of the basis is also the parameter domain
-    of the geometry map, and has a certain source dimension \em d
-    (see gsGeometry::parDim()).
+    The parameter domain of the basis is also the parameter domain of
+    the geometry map, and has a certain source dimension \em d (see
+    gsGeometry::parDim()). Depending on the parameter domain
+    dimension, derived geometries inherit gsCurve, gsSurface, gsVolume
+    or gsBulk, for dimension 1,2,3 or 4, respectively.
+
     The dimension \em n of the resulting geometry,
     i.e., of the image of the geometry map, is defined by the
     size of the given coefficients, and may be larger than \em d
@@ -112,6 +114,7 @@ struct gsGeoTraits<4,T>
     \tparam T coefficient type
 
     \ingroup function
+    \ingroup geometry
 */
 
 template<class T>

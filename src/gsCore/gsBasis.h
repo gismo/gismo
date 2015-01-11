@@ -38,10 +38,24 @@ struct gsTraits
 };
 
 /** 
-    \brief
-    Abstract base class for all basis types in Gismo.
-    A basis represents a family of \em scalar basis functions defined over
-    a common parameter domain.
+    \brief A basis represents a family of \em scalar basis functions
+    defined over a common parameter domain.
+
+    Among the most important classes in \gismo are those representing
+    bases, for instance, a B-spline basis, a tensor product NURBS
+    basis, and so on.
+
+    A basis can be viewed as a collection of scalar basis functions
+
+    \f[ B :\ \mathbb R^d \to \mathbb R \f]
+
+    defined over a common parameter domain of dimension *d*. For the
+    bases that G+Smo deals with, parameter domains are usually of
+    tensor product type and therefore just *d*-dimensional boxes.
+        
+    Ths gsBasis inteface provides many member functions to evaluate
+    their basis functions as well as their derivatives at sets of
+    points in the parameter domain.
 
     The parameter domain has dimension \em d, which can be queried
     at runtime using gsBasis::dim().
@@ -68,8 +82,6 @@ struct gsTraits
     basis functions at one or more points can be found by calling
     gsBasis::active().
 
-    \f[  \mathbb R^d   \rightarrow  \mathbb R  \f]
-    
     \tparam T coefficient type
 
     \ingroup basis
