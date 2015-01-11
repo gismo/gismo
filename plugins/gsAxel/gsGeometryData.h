@@ -48,7 +48,7 @@ gsGeometryPointer getGeometryPointer( axlAbstractData * axlData);
 axlAbstractData * newGeometryData   ( gsGeometryPointer gsData );
 
 
-/// Diversing the Id name of instances if needed (not needed upto now)
+// Diversing the Id name of instances if needed (not needed upto now)
 template<class axlObj>
 struct idLookup
 {

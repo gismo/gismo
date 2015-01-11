@@ -76,7 +76,7 @@ configure_file(
 #add_definitions("-DGISMO_MAKING_DOCS")
 
 set(snippets_targets "")
-#add_subdirectory(snippets)
+add_subdirectory(snippets)
 
 add_custom_target(
   doc-gismo-prerequisites
@@ -85,7 +85,7 @@ add_custom_target(
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-#add_dependencies(doc-gismo-prerequisites all_snippets)
+add_dependencies(doc-gismo-prerequisites all_snippets)
 
 add_custom_target(doc #ALL
   COMMAND doxygen

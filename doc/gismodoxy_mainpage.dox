@@ -16,9 +16,9 @@ The library is licenced under the <a href="https://www.mozilla.org/MPL/2.0" targ
 The library is partitioned into smaller entities called Modules.
 See section <a href="usergroup0.html">\gismo modules</a> for an overview of available modules.
 
-<h2><a href="Snippets.html">\subpage Snippets</a></h2>
+<h2><a href="GettingStarted.html">\subpage GettingStarted with \gismo</a></h2>
 
-A collection of code snippets demonstrating the use of the library.
+A quick-start guide to using the library.
 
 <h2>Tutorials</h2>
 
