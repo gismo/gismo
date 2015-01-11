@@ -54,7 +54,7 @@ See \ref geometry and \ref basis.
 
   @brief This group collects geometry types deriving from gsGeometry.
 
-  \copydoc gsGeometry
+  \copydetails gsGeometry
   
 */
 
@@ -64,7 +64,7 @@ See \ref geometry and \ref basis.
 
   @brief This group collects basis types deriving from gsBasis.
 
-  \copydoc gsBasis
+  \copydetails gsBasis
 
 */
 
@@ -73,9 +73,10 @@ See \ref geometry and \ref basis.
 
   @brief This group collects function types directly based on gsFunction.
 
-  \copydoc gsFunction
+  \copydetails gsFunction
 
 */
 
 
 }
+

@@ -68,7 +68,6 @@ else()
    ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_footer.html )
 endif()
 
-
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_layout.xml.in
   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_layout.xml )
@@ -85,7 +84,9 @@ add_custom_target(
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+if ( NOT NOSNIPPETS) # drop dependancy on snippets
 add_dependencies(doc-gismo-prerequisites all_snippets)
+endif()
 
 add_custom_target(doc #ALL
   COMMAND doxygen

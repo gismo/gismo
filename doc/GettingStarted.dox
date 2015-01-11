@@ -2,9 +2,9 @@ namespace gismo {
 
 /**
   \page GettingStarted Getting Started
- 
-  \section gs_bspline Working with B-splines
 
+  <h2>Working with NURBS</a></h2> 
+  	      
   Here is an example of how to create a knot
   vector and a b-spline basis, followed by uniform refinement.
 
