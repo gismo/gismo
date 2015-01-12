@@ -13,7 +13,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsSolver/gsPreconditioner.h>
+#include <gsSolver/gsLinearOperator.h>
 
 namespace gismo
 {
@@ -21,12 +21,18 @@ namespace gismo
 ///Simple class to give a matrix (or sparse matrix) preconditioner properties which is needed for the iterative method classes.
 
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsMatrixPreconditioner : public gsPreconditioner
+class gsMatrixPreconditioner : public gsLinearOperator
 {
 public:
 
     gsMatrixPreconditioner(const MatrixType& _matPre) : matPre(_matPre)
     {
+    }
+
+    /// Destructor
+    ~gsMatrixPreconditioner()
+    {
+        std::cout <<"Why did I enter destuctor?!" << std::endl;
     }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const

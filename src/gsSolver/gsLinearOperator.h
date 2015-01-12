@@ -1,6 +1,6 @@
-/** @file gsPreconditioner.h
+/** @file gsLinearOperator.h
 
-    @brief Simple abstract class for (preconditioner) operators.
+    @brief Simple abstract class for (discrete) linear operators.
 
     This file is part of the G+Smo library.
 
@@ -22,13 +22,11 @@ namespace gismo
 ///
 /// Simple abstract class for (preconditioner) operators.
 /// The derived classes have to contain the functions: apply(), cols(), and rows().
-class gsPreconditioner
+class gsLinearOperator
 {
 public:
 
-    gsPreconditioner()
-    {
-    }
+    virtual ~gsLinearOperator() {}
 
     /**
      * @brief apply the operator on the input vector and store the result in x
@@ -43,7 +41,7 @@ public:
     ///Returns the number of columns in the preconditioner
     virtual index_t cols() const = 0;
 
-}; // gsPreconditioner
+}; // gsLinearOperator
 
 
 
@@ -53,7 +51,7 @@ public:
 /// one forward Gauss-Seidel sweep then one backward
 /// Gauss-Seidel sweep.
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsSymmetricGaussSeidelPreconditioner : public gsPreconditioner
+class gsSymmetricGaussSeidelPreconditioner : public gsLinearOperator
 {
 public:
 
@@ -88,7 +86,7 @@ private:
 };
 
 /// @brief Identity preconditioner ("do nothing"), must be square!
-class gsIdentityPreconditioner : public gsPreconditioner
+class gsIdentityPreconditioner : public gsLinearOperator
 {
 public:
 

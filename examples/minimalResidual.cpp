@@ -53,14 +53,18 @@ int main(int argc, char *argv[])
     real_t tol = 1e-08;
 
     //Initialize the solver
-    gsMinimalResidual<gsMatrix<> > MinRes(mat,maxIters,tol);
+    gsMinimalResidual MinRes(mat,maxIters,tol);
 
     //Create the initial guess
-    gsVector<> x0;
-    x0.setZero(N);
+    gsMatrix<> x0;
+    x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
+    //test
+    gsInfo << "before solve"  << std::endl;
     MinRes.solve(rhs,x0,preConMat);
+    gsInfo << "After solve"  << std::endl;
+    gsInfo << "After solve" << MinRes.size() << std::endl;
 
     gsInfo << "Solved a system of size " << N << "\n";
     gsInfo << "Tolerance: " << tol << "\n";

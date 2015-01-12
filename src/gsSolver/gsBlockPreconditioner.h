@@ -13,7 +13,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsSolver/gsPreconditioner.h>
+#include <gsSolver/gsLinearOperator.h>
 
 namespace gismo
 {
@@ -35,7 +35,7 @@ namespace gismo
      \f]
  * Where \f$C_{ij}\f$ are pre-defined preconditioners which all have the apply(input, dest) function defined.
  */
-class gsBlockPreconditioner : public gsPreconditioner
+class gsBlockPreconditioner : public gsLinearOperator
 {
 public:
     gsBlockPreconditioner(index_t nRows, index_t nCols)
@@ -43,7 +43,7 @@ public:
         blockPrec.resize(nRows, nCols);
         blockTargetPositions.setZero(nCols);
         blockInputPositions.setZero(nRows);
-        gsPreconditioner * null_ptr = NULL;
+        gsLinearOperator * null_ptr = NULL;
         // Fill up all block entries with null pointers.
         for (index_t i = 0; i< nRows; ++i)
             for (index_t j = 0; j< nCols; ++j)
@@ -56,7 +56,7 @@ public:
      * @param row row position in the block preconditioner
      * @param col column position in the block preconditioner
      */
-    void addPreconditioner(gsPreconditioner * prec, index_t row, index_t col)
+    void addPreconditioner(gsLinearOperator * prec, index_t row, index_t col)
     {
         blockPrec(row, col) = prec;
         blockTargetPositions[row] = prec->rows();
@@ -148,7 +148,7 @@ private:
         return true;
     }
 
-    Eigen::Array<gsPreconditioner *, Dynamic, Dynamic> blockPrec;
+    Eigen::Array<gsLinearOperator *, Dynamic, Dynamic> blockPrec;
 
     //Contains the size of the target vector for each block
     gsVector<index_t> blockTargetPositions;
