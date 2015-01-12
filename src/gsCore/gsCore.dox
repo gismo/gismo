@@ -55,7 +55,8 @@ See \ref geometry and \ref basis.
   @brief This group collects geometry types deriving from gsGeometry.
 
   \copydetails gsGeometry
-  
+
+  \anchor geometry_classes  
 */
 
 
@@ -66,6 +67,7 @@ See \ref geometry and \ref basis.
 
   \copydetails gsBasis
 
+  \anchor basis_classes  
 */
 
 /**
@@ -75,6 +77,7 @@ See \ref geometry and \ref basis.
 
   \copydetails gsFunction
 
+  \anchor function_classes  
 */
 
 

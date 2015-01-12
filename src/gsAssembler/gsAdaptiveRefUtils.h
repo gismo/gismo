@@ -17,7 +17,6 @@
 #include <iostream>
 
 #include <gsIO/gsIOUtils.h>
-#include <gismo.h>
 
 namespace gismo
 {
@@ -228,12 +227,10 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
         {
             if( elMarked[ globalCount++ ] ) // refine this element ?
             {
-                const gsVector<T> & ctr = domIt->centerPoint();
-
                 // Construct degenerate box by setting both
                 // corners equal to the center
                 refBoxes.col(2*numMarked  ) =
-                refBoxes.col(2*numMarked+1) = ctr;
+                refBoxes.col(2*numMarked+1) = domIt->centerPoint();
 
                 // Advance marked cells counter
                 numMarked++;
