@@ -796,6 +796,14 @@ void gsKnotVector<T>::degreeDecrease(int const & i)
 }
 
 template <class T>
+void gsKnotVector<T>::degreeIncrease(int const & i)
+{
+    my->p += i;
+    increaseMultFirst(i);
+    increaseMultLast (i);
+}
+
+template <class T>
 void gsKnotVector<T>::increaseMultiplicity(int const & i)
 {
   const std::vector<T> u = this->unique();

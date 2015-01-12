@@ -346,6 +346,9 @@ public:
   /// Reduce the degree keeping interior knots intact
   void degreeDecrease(int const & i = 1);
 
+  /// Increase the degree keeping interior knots intact (add clamped knots only)
+  void degreeIncrease(int const & i = 1);
+
   /// Trim the knot vector from left and right by \a i knots
   void trim(int i = 1);
 

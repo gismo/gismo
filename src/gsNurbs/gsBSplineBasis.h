@@ -393,18 +393,19 @@ public:
     /// Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots);
 
-    /// Apply k-refinement to the basis i times
-    void uniform_k_refine(int const & i = 1) 
+    /// Perform k-refinement to the basis i times
+    void k_refine(int const & i = 1) 
     { 
         m_p += i; 
-        m_knots.degreeElevate(i);
-        m_knots.uniformRefine();
+        m_knots.degreeIncrease(i);
     }
   
+    /// Elevate the degree of the basis and preserve the smoothness
     void degreeElevate(int const & i = 1) { m_p+=i; m_knots.degreeElevate(i); }
 
     void setDegree(int const & i);
 
+    /// Reduce the degree of the basis and preserve the smoothness
     void degreeReduce (int const & i = 1) 
     { 
         GISMO_ASSERT( i<=m_p, "Cannot reduce degree to negative");

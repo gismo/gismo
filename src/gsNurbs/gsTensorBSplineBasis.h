@@ -166,6 +166,17 @@ public:
     }
 
     /**
+     * \brief Perform k-refinement coordinate-wise
+     *
+     * \param[in] i number of k-refinement steps to perform
+     */
+    void k_refine(int const & i = 1) 
+    { 
+        for (unsigned j = 0; j < d; ++j)
+            this->m_bases[j]->k_refine(i);
+    }
+
+    /**
      * \brief
      * Takes a vector of coordinate wise knot values and inserts these values to the basis.
      * Also constructs and returns the transfer matrix that transfers coefficients to the new basis.

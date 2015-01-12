@@ -476,10 +476,17 @@ public:
     void degreeElevate(int const & i = 1) ;
 
     /// Elevate the degree
-    void degreeReduce(int const & i = 1) { 
+    void degreeReduce(int const & i = 1) 
+    { 
         GISMO_NO_IMPLEMENTATION
-            }
+    }
 
+    /// Reduce the degree keeping interior knots intact
+    void degreeDecrease(int const & i = 1);
+    
+    /// Increase the degree keeping interior knots intact (add clamped knots only)
+    void degreeIncrease(int const & i = 1);
+    
     /// Remove a knot from the knot vector.
     /// \param knot parameter value of the knot.
     void remove(T const& knot);
@@ -515,6 +522,18 @@ public:
 
     /// Increase the multiplicity of all interior knots by i
     void increaseMultiplicity(int const & i = 1)
+    {
+        GISMO_NO_IMPLEMENTATION
+    }
+
+    /// Increase the multiplicity of the first knot by \a i.
+    void increaseMultFirst(int i = 1)
+    {
+        GISMO_NO_IMPLEMENTATION
+    }
+    
+    /// Increase the multiplicity of the last knot by \a i.
+    void increaseMultLast(int i = 1)
     {
         GISMO_NO_IMPLEMENTATION
     }
@@ -845,6 +864,13 @@ void gsCompactKnotVector<T>::degreeElevate(int const & i )
     m_p += i;
 }
 
+template <class T>
+void gsCompactKnotVector<T>::degreeIncrease(int const & i)
+{
+    m_p += i;
+    increaseMultFirst(i);
+    increaseMultLast (i);
+}
 
 template <class T>
 void gsCompactKnotVector<T>::remove(T const& knot)
