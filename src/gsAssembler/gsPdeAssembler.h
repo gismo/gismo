@@ -332,6 +332,9 @@ public:
     /// Return the boundary condition of the i-th unknown
     const gsBoundaryConditions<T> & boundaryConditions(unsigned i = 0) const  {return *m_bconditions[i];}
 
+    const std::vector<gsMultiBasis<T> > & bases() const {return m_bases;}
+
+    const gsMultiBasis<T> & basis(unsigned i = 0) const {return m_bases[i];}
 
 // Helpers
 protected:
