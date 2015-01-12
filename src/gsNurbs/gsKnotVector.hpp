@@ -983,7 +983,7 @@ void gsKnotVector<T>::trim(int i)
 template <class T>
 void gsKnotVector<T>::increaseMultLast(int i)
 {   
-    my->knots.insert( my->knots.end()-1 , i, my->knots.front() );
+    my->knots.insert( my->knots.end()-1 , i, my->knots.back() );
     // Equivalent implementation
     // for (int k = 0; k!=i; ++k)
     //     my->knots.push_back( my->knots.back() );
