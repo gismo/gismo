@@ -7,8 +7,6 @@ The latest revision of this manual is <a href="https://ricamsvn.ricam.oeaw.ac.at
 
 The library is licenced under the <a href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla Public License Version 2.0</a>.
 
-\ref geometry_classes "List of classes in the hierarchy"
-
 <h2><a href="Wiki.html">\subpage Wiki</a></h2>
 
 \copydoc Wiki
