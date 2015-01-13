@@ -88,6 +88,10 @@ void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b )
 
 void gsDofMapper::matchDof( index_t u, index_t i, index_t v, index_t j )
 {
+    //GISMO_ASSERT(u < m_offset.size() && i< m_offset[u+1] - m_offset[u] ,"Invalid patch-local dof "<<i<<" in matchDof.");
+    //GISMO_ASSERT(v < m_offset.size() && j< m_offset[v+1] - m_offset[v] ,"Invalid patch-local dof "<<i<<" in matchDof.");
+    //TODO: add check for correct range [by adding a last offset = number of total dofs]
+
     index_t d1 = MAPPER_PATCH_DOF(i,u);
     index_t d2 = MAPPER_PATCH_DOF(j,v);
 
