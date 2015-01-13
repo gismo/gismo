@@ -38,9 +38,11 @@ public:
 
     gsTensorDomainIterator(const std::vector< std::vector<T> > & breaks_)
     : d( breaks_.size() ),
-      lower ( gsVector<T, D>::Zero(d) ),
-      upper ( gsVector<T, D>::Zero(d) )
+      lower  ( gsVector<T, D>::Zero(d) ),
+      upper  ( gsVector<T, D>::Zero(d) )
     {
+        center  = gsVector<T, D>::Zero(d);
+
         // compute breaks and mesh size
         meshStart.resize(d);
         meshEnd.resize(d);
@@ -132,12 +134,15 @@ public:
     // get the basis function indices which are active in the current element
     void getActiveFunctions(gsMatrix<unsigned>& act)
     {
-        m_basis->active_into(center, act);
+        if ( m_basis != NULL )
+            m_basis->active_into(center, act);
     }
 
     const gsMatrix<unsigned>& computeActiveFunctions()
     {
-        m_basis->active_into(center, this->activeFuncs);
+        if ( m_basis != NULL )
+            m_basis->active_into(center, this->activeFuncs);
+
         return this->activeFuncs;
     }
 

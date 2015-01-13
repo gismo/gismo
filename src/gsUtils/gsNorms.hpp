@@ -8,7 +8,6 @@
 #include <gsCore/gsConstantFunction.h>
 #include <gsCore/gsField.h>
 #include <gsCore/gsGeometry.h>
-#include <gsUtils/gsQuadrature.h>
 #include <gsUtils/gsPointGrid.h>
 
 #include <gsCore/gsDomainIterator.h>
@@ -44,35 +43,46 @@ T computeL2Distance(const gsGeometry<T>& geo, const gsFunction<T>& u, bool isPar
     const int d = geo.parDim();
     assert( d == geo.geoDim() );
 
-    // degree of the underlying Gauss rule to use
-    const int Degree = 1;
-
     // compute the tensor Gauss rule
     gsMatrix<T> nodes;
     gsVector<T> weights;
     gsMatrix<T> range = geo.basis().support();
-    uniformGaussRule<T>(nodes, weights, numEvals, Degree, range.col(0), range.col(1));
 
-    const int numPts = nodes.cols();
-
-    // only compute the geometry points if either function is not parametrized
-    gsMatrix<T> geo_pts =  (!isParametrized_u || !isParametrized_v) ? 
-                            geo.eval(nodes) : gsMatrix<T>();
-    gsMatrix<T> geo_jac = geo.jac(nodes);
-
-    // evaluate u and v
-    gsMatrix<T> u_val = isParametrized_u ? u.eval(nodes) : u.eval(geo_pts), 
-                v_val = isParametrized_v ? v.eval(nodes) : v.eval(geo_pts);
-
-    //nodes.clear();
+    // Number of nodes of the underlying Gauss rule to use
+    const index_t nodesPerInterval = 1;
+    const int nodesPerElement  = math::ipow(nodesPerInterval, d);
+    const int numElements      = (numEvals + nodesPerElement - 1) / nodesPerElement;
+    std::vector< std::vector<T> > intervals;
+    uniformIntervals<T>(range.col(0), range.col(1), intervals, numElements);
 
     // perform the quadrature
+    gsGaussRule<T> QuRule( gsVector<index_t>::Constant(d,nodesPerInterval) );
+    const int numPts = QuRule.numNodes();
+
+    gsTensorDomainIterator<T> domIt(intervals);
+    gsMatrix<T> geo_pts, geo_jac, u_val, v_val;
     T sum = 0.0;
-    for (index_t k = 0; k < numPts; ++k)
+
+    for (; domIt.good(); domIt.next() )
     {
-        const T funcDet = fabs( geo_jac.block(0, k*d, d,d).determinant() ) ;
-        const gsVector<T> diff = u_val.col(k) - v_val.col(k);
-        sum += weights[k] * funcDet * diff.dot(diff);
+        // Map the Quadrature rule to the element
+        QuRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(), nodes, weights );
+
+        // only compute the geometry points if either function is not parametrized
+        geo_pts =  (!isParametrized_u || !isParametrized_v) ? 
+            geo.eval(nodes) : gsMatrix<T>();
+        geo_jac = geo.jac(nodes);
+        
+        // evaluate u and v
+        u_val = isParametrized_u ? u.eval(nodes) : u.eval(geo_pts);
+        v_val = isParametrized_v ? v.eval(nodes) : v.eval(geo_pts);
+        
+        for (index_t k = 0; k < numPts; ++k)
+        {
+            const T funcDet = fabs( geo_jac.block(0, k*d, d,d).determinant() ) ;
+            const gsVector<T> diff = u_val.col(k) - v_val.col(k);
+            sum += weights[k] * funcDet * diff.dot(diff);
+        }
     }
 
     return math::sqrt(sum);

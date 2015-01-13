@@ -115,8 +115,9 @@ struct gsGeoTraits<4,T>
 
     \ingroup function
     \ingroup geometry
-*/
 
+    \example tutorialGeometry.cpp
+*/
 template<class T>
 class gsGeometry : public gsFunction<T>
 {
@@ -135,24 +136,25 @@ public:
     /// @name Constructors
     /// @{
     
-    /// Default constructor.  Note: Derived constructors (except for
+    /// @brief Default constructor.  Note: Derived constructors (except for
     /// the default) should assign \a m_basis to a valid pointer
     gsGeometry() :m_basis( NULL )
     { }
 
-    /// Constructor by a basis and coefficient vector (note:
-    /// coefficients are given by \em{give(coefs) and they are
-    /// consumed, i.e. the \coefs variable will be empty after the call)
+    /// @brief Constructor by a basis and coefficient vector
+    ///
+    /// Coefficients are given by \em{give(coefs) and they are
+    /// consumed, i.e. the \coefs variable will be empty after the call
     gsGeometry( const gsBasis<T> & basis, gsMovable< gsMatrix<Scalar_t> > coefs) :
     m_coefs(coefs), m_basis( basis.clone() )
     { }
 
-    /// Constructor by a basis and coefficient vector
+    /// @brief Constructor by a basis and coefficient vector
     gsGeometry( const gsBasis<T> & basis, const gsMatrix<Scalar_t> & coefs ) :
     m_coefs(coefs), m_basis( basis.clone() )
     { }
 
-    /// Copy Constructor
+    /// @brief Copy Constructor
     gsGeometry(const gsGeometry & o)
     {
         m_coefs = o.m_coefs;
@@ -161,7 +163,6 @@ public:
 
     /// @}
 
-    /// Assignment operator
     gsGeometry& operator=( const gsGeometry & o)
     {
         if ( this != &o )
@@ -173,7 +174,6 @@ public:
         return *this;
     }
     
-    /// Destructor
     virtual ~gsGeometry() 
     {
         delete m_basis;

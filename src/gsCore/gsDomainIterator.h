@@ -79,7 +79,10 @@ public:
     typedef std::auto_ptr< gsDomainIterator > uPtr;
 
 public:
-    /// Constructor
+
+    gsDomainIterator( ) : m_basis(NULL), m_isGood( true ) { }
+
+    /// \brief Constructor using a basis 
     gsDomainIterator( const gsBasis<T>& basis )
         : center( gsVector<T>::Zero(basis.dim()) ), m_basis( &basis ), m_isGood( true )
     { }
