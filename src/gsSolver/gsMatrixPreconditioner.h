@@ -32,7 +32,6 @@ public:
     /// Destructor
     ~gsMatrixPreconditioner()
     {
-        std::cout <<"Why did I enter destuctor?!" << std::endl;
     }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const

@@ -30,10 +30,20 @@ public:
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implememtation require this!");
     }
 
-    ///Contructor for templated matrix
-    template<class M>
-    gsIterativeSolver(const M& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : m_mat_ptr(new gsMatrixPreconditioner<M>(_mat)), m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
+    ///Contructor for sparse matrix
+    template<class T, int _Options, typename _Index>
+    gsIterativeSolver(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
+        : m_mat_ptr(new gsMatrixPreconditioner< gsSparseMatrix<T, _Options, _Index > >(_mat)),
+          m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
+    {
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implememtation require this!");
+    }
+
+    ///Contructor for dense matrix
+    template<class T, int _Rows, int _Cols, int _Options>
+    gsIterativeSolver(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
+        : m_mat_ptr(new gsMatrixPreconditioner< gsMatrix<T, _Rows, _Cols, _Options> >(_mat)),
+          m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
     {
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implememtation require this!");
     }
