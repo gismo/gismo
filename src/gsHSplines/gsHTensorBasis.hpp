@@ -982,9 +982,9 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
                                           dirKnots);
             knots.push_back(dirKnots);
 
-            gsDebug << "level: " << i << "\n"
-                    << "direction: " << dim << "\n";
-            gsDebugVar(gsAsMatrix<T>(dirKnots));
+            //gsDebug << "level: " << i << "\n"
+            //        << "direction: " << dim << "\n";
+            //gsDebugVar(gsAsMatrix<T>(dirKnots));
         }
         T_0_copy.refine_withTransfer(transfer[i], knots);
     }
