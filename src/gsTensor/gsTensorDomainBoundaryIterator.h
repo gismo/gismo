@@ -37,7 +37,7 @@ public:
 
     gsTensorDomainBoundaryIterator( const gsBasis<T>& b, const boxSide & s )
         : gsDomainIterator<T>( b ),
-          d( m_basis.dim() ),
+          d( m_basis->dim() ),
           lower ( gsVector<T, D>::Zero(d) ),
           upper ( gsVector<T, D>::Zero(d) )
     {
@@ -51,40 +51,40 @@ public:
 
         for (int i=0; i < dir; ++i) 
         {
-            breaks.push_back( m_basis.component(i).domain()->breaks() );
+            breaks.push_back( m_basis->component(i).domain()->breaks() );
             meshEnd[i]   = breaks[i].end() - 1;
             meshBegin[i] = curElement[i] = breaks[i].begin();
-            //meshEnd[i]    = m_basis.component(i).domain()->uend() - 1;
+            //meshEnd[i]    = m_basis->component(i).domain()->uend() - 1;
             //meshBegin[i]  = 
-            //curElement[i] = m_basis.component(i).knots().ubegin();
+            //curElement[i] = m_basis->component(i).knots().ubegin();
 
             if (meshEnd[i] == curElement[i])
                 m_isGood = false;
         }
 
         // Fixed direction
-        breaks.push_back( m_basis.component(dir).domain()->breaks() );
+        breaks.push_back( m_basis->component(dir).domain()->breaks() );
 
         meshEnd[dir]    = ( par ? breaks[dir].end() - 1 : breaks[dir].begin() + 1 );
         curElement[dir] =
         meshBegin[dir]  = ( par ? breaks[dir].end() - 2 : breaks[dir].begin()     );
         tindex = curElement[dir] - breaks[dir].begin();
-        //meshEnd[dir]    = ( par ? m_basis.component(dir).knots().uend() - 1   : 
-        //                          m_basis.component(dir).knots().ubegin() + 1 );
+        //meshEnd[dir]    = ( par ? m_basis->component(dir).knots().uend() - 1   : 
+        //                          m_basis->component(dir).knots().ubegin() + 1 );
         //curElement[dir] =
         //meshBegin[dir]  = ( par ? 
-        //                    m_basis.component(dir).knots().uend() - 2 : 
-        //                    m_basis.component(dir).knots().ubegin()   );
-        //tindex = curElement[dir] - m_basis.component(i).knots().ubegin();
+        //                    m_basis->component(dir).knots().uend() - 2 : 
+        //                    m_basis->component(dir).knots().ubegin()   );
+        //tindex = curElement[dir] - m_basis->component(i).knots().ubegin();
 
         for (int i=dir+1; i < d; ++i) 
         {
-            breaks.push_back( m_basis.component(i).domain()->breaks() );
+            breaks.push_back( m_basis->component(i).domain()->breaks() );
             meshEnd[i]   = breaks[i].end() - 1;
             meshBegin[i] = curElement[i] = breaks[i].begin();
-            //meshEnd[i]    = m_basis.component(i).knots().uend() - 1;
+            //meshEnd[i]    = m_basis->component(i).knots().uend() - 1;
             //meshBegin[i]  = 
-            //curElement[i] = m_basis.component(i).knots().ubegin();
+            //curElement[i] = m_basis->component(i).knots().ubegin();
 
             if (meshEnd[i] == curElement[i])
                 m_isGood = false;
@@ -149,12 +149,12 @@ public:
     // get the basis function indices which are active in the current element
     void getActiveFunctions(gsMatrix<unsigned>& act)
     {
-        m_basis.active_into(center, act);
+        m_basis->active_into(center, act);
     }
 
     const gsMatrix<unsigned>& computeActiveFunctions()
     {
-        m_basis.active_into(center, this->activeFuncs);
+        m_basis->active_into(center, this->activeFuncs);
         return this->activeFuncs;
     }
 

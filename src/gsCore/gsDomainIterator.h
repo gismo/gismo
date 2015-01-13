@@ -81,7 +81,7 @@ public:
 public:
     /// Constructor
     gsDomainIterator( const gsBasis<T>& basis )
-        : center( gsVector<T>::Zero(basis.dim()) ), m_basis( basis ), m_isGood( true )
+        : center( gsVector<T>::Zero(basis.dim()) ), m_basis( &basis ), m_isGood( true )
     { }
 
     virtual ~gsDomainIterator() { }
@@ -118,9 +118,9 @@ public:
     {
 
         // uses same formula as gsGaussAssembler::getNumIntNodesFor( gsBasis )
-        gsVector<int> numIntNodes( m_basis.dim() );
-        for (int i = 0; i < m_basis.dim(); ++i)
-            numIntNodes[i] = m_basis.degree(i) + 1;
+        gsVector<int> numIntNodes( m_basis->dim() );
+        for (int i = 0; i < m_basis->dim(); ++i)
+            numIntNodes[i] = m_basis->degree(i) + 1;
 
         computeQuadratureRule( numIntNodes );
     }
@@ -192,10 +192,10 @@ public:
         // computeActiveFunctions() thus has to be called when next() is called!
         const index_t numActive = activeFuncs.rows();
 
-        m_basis.evalAllDers_into(quNodes, numDerivs, allValues);
+        m_basis->evalAllDers_into(quNodes, numDerivs, allValues);
 
         basisEvals.clear();
-        //gsDebug << "numActive " << numActive <<" m_basis.dim(): " << m_basis.dim() << " allValues.rows(): " << allValues.rows() << "\n";
+        //gsDebug << "numActive " << numActive <<" m_basis->dim(): " << m_basis->dim() << " allValues.rows(): " << allValues.rows() << "\n";
         index_t curRow = 0;
         basisEvals.push_back( allValues.topRows(numActive) );
         curRow += numActive;
@@ -203,13 +203,13 @@ public:
         if (numDerivs > 0)
         {
             // currently only 1 implemented
-            const int numDerivs = numActive * m_basis.dim();
+            const int numDerivs = numActive * m_basis->dim();
             basisEvals.push_back( allValues.middleRows( curRow, numDerivs ) );
             curRow += numDerivs;
         }
         if (numDerivs > 1)
         {
-            const int num2Der = numActive * (m_basis.dim() +(m_basis.dim()*(m_basis.dim()-1))/2);
+            const int num2Der = numActive * (m_basis->dim() +(m_basis->dim()*(m_basis->dim()-1))/2);
             basisEvals.push_back( allValues.middleRows( curRow, num2Der ) );
             curRow += num2Der;
         }
@@ -315,7 +315,7 @@ public:
         // Buggy, and probably a terrible implementation,
         // but needed and therefore can be useful
         // sometimes.
-        typename gsBasis<T>::domainIter domIter = m_basis.makeDomainIterator();
+        typename gsBasis<T>::domainIter domIter = m_basis->makeDomainIterator();
 
         index_t numEl = 0;
         for (; domIter->good(); domIter->next(), numEl++){}
@@ -373,7 +373,7 @@ public:
 
 protected:
     /// The basis on which the domain iterator is defined.
-    const gsBasis<T> & m_basis;
+    const gsBasis<T> * m_basis;
 
     /// Flag indicating whether the domain iterator is "good". If it is "good", the iterator can continue to the next element.
     bool m_isGood;

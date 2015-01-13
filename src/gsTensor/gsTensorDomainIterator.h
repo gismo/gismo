@@ -36,10 +36,37 @@ private:
 
 public:
 
+    gsTensorDomainIterator(const std::vector< std::vector<T> > & breaks_)
+    : d( breaks_.size() ),
+      lower ( gsVector<T, D>::Zero(d) ),
+      upper ( gsVector<T, D>::Zero(d) )
+    {
+        // compute breaks and mesh size
+        meshStart.resize(d);
+        meshEnd.resize(d);
+        curElement.resize(d);
+        breaks = breaks_;
+        for (int i=0; i < d; ++i) 
+        {
+            meshEnd[i]   = breaks[i].end() - 1;
+            curElement[i] = meshStart[i] = breaks[i].begin();
+
+            if (meshEnd[i] == meshStart[i])
+                m_isGood = false;
+        }
+        
+        // Set to one quadrature point by default
+        m_quadrature.setNodes( gsVector<int>::Ones(d) );
+
+        if (m_isGood)
+            update();
+    }
+
+
     // note: this assumes that b is a tensor product basis
     gsTensorDomainIterator(const gsBasis<T>& b)
         : gsDomainIterator<T>( b ),
-          d( m_basis.dim() ),
+          d( m_basis->dim() ),
           lower ( gsVector<T, D>::Zero(d) ),
           upper ( gsVector<T, D>::Zero(d) ) 
     {
@@ -50,7 +77,7 @@ public:
         breaks.reserve(d);
         for (int i=0; i < d; ++i) 
         {
-            breaks.push_back( m_basis.component(i).domain()->breaks() );
+            breaks.push_back( m_basis->component(i).domain()->breaks() );
             // for n breaks, we have n-1 elements (spans)
             meshEnd[i]   = breaks[i].end() - 1;
             curElement[i] = meshStart[i] = breaks[i].begin();
@@ -105,12 +132,12 @@ public:
     // get the basis function indices which are active in the current element
     void getActiveFunctions(gsMatrix<unsigned>& act)
     {
-        m_basis.active_into(center, act);
+        m_basis->active_into(center, act);
     }
 
     const gsMatrix<unsigned>& computeActiveFunctions()
     {
-        m_basis.active_into(center, this->activeFuncs);
+        m_basis->active_into(center, this->activeFuncs);
         return this->activeFuncs;
     }
 

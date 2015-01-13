@@ -101,9 +101,9 @@ public:
     void computeQuadratureRuleDefault()
     {
         // uses same formula as gsGaussAssembler::getNumIntNodesFor( gsBasis )
-        gsVector<int> numIntNodes( m_basis.dim() );
-        for (int i = 0; i < m_basis.dim(); ++i)
-            numIntNodes[i] = m_basis.degree(i) + 1;
+        gsVector<int> numIntNodes( m_basis->dim() );
+        for (int i = 0; i < m_basis->dim(); ++i)
+            numIntNodes[i] = m_basis->degree(i) + 1;
 
         computeQuadratureRule( numIntNodes );
     }
@@ -112,12 +112,12 @@ public:
     // element
     void getActiveFunctions(gsMatrix<unsigned>& act)
     {
-        this->m_basis.active_into(center, act);
+        this->m_basis->active_into(center, act);
     }
     
     const gsMatrix<unsigned>& computeActiveFunctions()
     {
-        this->m_basis.active_into(center, this->activeFuncs);
+        this->m_basis->active_into(center, this->activeFuncs);
         return this->activeFuncs;
     }
 
@@ -164,7 +164,7 @@ private:
             const unsigned end  = upper(dim) ;
 
             const gsCompactKnotVector<T> & kv =
-                static_cast<const gsHTensorBasis<d,T>*>(&m_basis)
+                static_cast<const gsHTensorBasis<d,T>*>(m_basis)
                 ->tensorLevel(level).component(dim).knots();
 
             // knotVals = kv.unique()
