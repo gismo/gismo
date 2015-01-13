@@ -4,12 +4,14 @@ namespace gismo {
   \page Wiki \gismo Wiki
 
   The <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki" target="_parent">online wiki pages</a> provide more information, including:
- 
+
   - <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/About#AboutGSmo" target="_parent">About \gismo</a>
 
   - <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/FreqAsked#GSmoFAQ" target="_parent">Frequently Asked Questions</a>
  
   - <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/Compiling#Compiling" target="_parent">Compiling the library</a>
+
+  - <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/Compiling#Configurationoptions" target="_parent">CMake configuration options</a>
 
   - <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/Contributing#Contributing" target="_parent">Contributing to \gismo</a>
 

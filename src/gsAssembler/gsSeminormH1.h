@@ -19,13 +19,13 @@ namespace gismo
 
 
 template <class T>
-class gsNormH1 : public gsNorm<T>
+class gsSeminormH1 : public gsNorm<T>
 {
     friend  class gsNorm<T>;
 
 public:
 
-    gsNormH1(const gsField<T> & _field1,
+    gsSeminormH1(const gsField<T> & _field1,
              const gsFunction<T> & _func2,
              bool _f2param = false) 
     : gsNorm<T>(_field1,_func2), f2param(_f2param)
@@ -33,7 +33,7 @@ public:
         
     }
 
-    gsNormH1(const gsField<T> & _field1) 
+    gsSeminormH1(const gsField<T> & _field1) 
     : gsNorm<T>(_field1,gsConstantFunction<T>(T(0.0), 1)), f2param(false)
     { }
 

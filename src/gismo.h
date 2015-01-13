@@ -92,7 +92,7 @@ namespace internal
 #include <gsPde/gsBVProblem.h>
 // Norms
 #include <gsAssembler/gsNormL2.h>
-#include <gsAssembler/gsNormH1.h>
+#include <gsAssembler/gsSeminormH1.h>
 
 // Quadrature
 #include <gsAssembler/gsQuadRule.h>
