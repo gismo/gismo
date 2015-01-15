@@ -33,6 +33,8 @@ namespace gismo {
     This allows us to generate many variations avoiding code duplications.
     The most common required methods correspond to explicit instantiations
     of gsL2GBase.
+    
+    \ingroup Assembler
 **/
 
 
@@ -51,6 +53,8 @@ namespace gismo {
     they adopt a one to one correspondence of the columns.
 
     \tparam T type of the scalar coefficients for the local matrix
+    
+    \ingroup Assembler
 **/
 
 template < typename T = real_t >
@@ -103,6 +107,8 @@ public:
     Writer classes are templated on the destination so that they can be chained.
 
     See gsDW, gsSimmetricWriter, gsSimmetricWriter and gsMultiplierWriter.
+    
+    \ingroup Assembler
 **/
 
 template <typename TransT, typename TransU, typename Writer>
@@ -164,6 +170,8 @@ public:
     This class switches between the writer interface and the
     matrix interface and is only used as a building block for
     other classes.
+    
+    \ingroup Assembler
 **/
 template <typename MatrixT>
 class gsBaseWriter
@@ -237,6 +245,8 @@ gsNullWriter<ScalarT>  gsNullWriter<ScalarT>::unique_instance;
 /**
  \brief By using this writer the upper triangular part of
  the destination matrix  is unaffected.
+ 
+ \ingroup Assembler
 **/
 template <typename Writer>
 class gsSymmetricWriter
@@ -262,6 +272,8 @@ public:
 /**
  \brief This writer is intended to add Lagrange multipliers to a system matrix:
  it writes both B and B^t.
+ 
+ \ingroup Assembler
 **/
 template <typename Writer1, typename Writer2=Writer1>
 class gsMultiplierWriter

@@ -21,6 +21,7 @@ namespace gismo
  * computing function norms and distances as well as error estimates
  * element-wise or globally
  *
+ * \ingroup Assembler
 */
 template <class T>
 class gsNorm

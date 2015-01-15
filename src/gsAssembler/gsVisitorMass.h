@@ -19,6 +19,8 @@ namespace gismo
 
 /** 
     @brief The visitor computes element mass integrals
+    
+    \ingroup Assembler
 */
 template <class T>
 class gsVisitorMass

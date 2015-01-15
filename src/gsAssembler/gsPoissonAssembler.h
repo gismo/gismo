@@ -35,6 +35,8 @@ namespace gismo
     the patch-local stiffness matrices into a global system by various methods
     (see gismo::gsInterfaceStrategy). It can also enforce Dirichlet boundary
     conditions in various ways (see gismo::gsDirichletStrategy).
+    
+    \ingroup Assembler
 */
 template <class T>
 class gsPoissonAssembler : public gsAssemblerBase<T>
@@ -89,6 +91,8 @@ public:
     \param[in] rhs is the right-hand side of the Poisson equation, \f$\mathbf{f}\f$.
     \param[in] dirStrategy option for the treatment of Dirichlet boundary
     \param[in] intStrategy option for the treatment of patch interfaces
+    
+    \ingroup Assembler
 */
     gsPoissonAssembler( gsMultiPatch<T> const         & patches,
                         gsMultiBasis<T> const         & bases,

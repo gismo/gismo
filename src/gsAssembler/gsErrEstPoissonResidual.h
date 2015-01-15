@@ -33,6 +33,8 @@ namespace gismo
  * \warning Note that the terms regarding Neumann boundary conditions
  * and jumps of the normal derivative across element interfaces are
  * NEGLECTED in the current version (02.Dec.2014).
+ *
+ * \ingroup Assembler
  */
 template <class T>
 class gsErrEstPoissonResidual : public gsNorm<T>

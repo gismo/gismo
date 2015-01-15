@@ -22,6 +22,8 @@ namespace gismo
 
 /** 
     @brief The visitor computes element grad-grad integrals
+    
+    \ingroup Assembler
 */
 template <class T>
 class gsVisitorGradGrad : public gsVisitorMass<T> // inherit to reuse functionality

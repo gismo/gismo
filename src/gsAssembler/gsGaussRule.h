@@ -20,6 +20,8 @@ namespace gismo
 
 /** 
     Class that represents the (tensor) Gauss-Legendre quadrature rule
+    
+    \ingroup Assembler
 */ 
  
 template<class T>

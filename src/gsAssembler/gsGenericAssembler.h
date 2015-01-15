@@ -23,6 +23,8 @@ namespace gismo
 /**
    @brief Assembles the mass, stiffness matrix on a given domain
 
+   
+   \ingroup Assembler
  */
 template <class T>
 class gsGenericAssembler : public gsAssemblerBase<T>

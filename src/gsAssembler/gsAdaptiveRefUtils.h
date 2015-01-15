@@ -61,6 +61,7 @@ namespace gismo
  * \f$ \rho=1\f$ corresponds to (almost) no refinement.
  * \param[out] elMarked std::vector of Booleans indicating whether the corresponding element is marked or not.
  *
+ * \ingroup Assembler
  */
 template <class T>
 void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked)
@@ -193,6 +194,8 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
  * for each element of the mesh underlying \em basis, whether it should be refined or not.
  * \param refExtension Specifies how large the refinement extension
  * should be. Given as number of cells at the level \em before refinement.
+ *
+ * \ingroup Assembler
  */
 template <class T>
 void gsRefineMarkedElements(gsMultiBasis<T> & basis,

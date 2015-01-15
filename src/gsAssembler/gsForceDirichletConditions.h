@@ -25,6 +25,8 @@ namespace gismo {
     \tparam        Major            the storage class of the matrices
     \tparam        RhsM             the type of the right-hand-side matrix
     \tparam        IndexM           the type of the Dirichlet indexes parameter
+    
+    \ingroup Assembler
 */
 template<typename T, int Major, typename RhsM, typename IndexM, typename DirichletM >
 void gsForceDirichletConditions (
@@ -109,6 +111,8 @@ void gsForceDirichletConditions (
     \tparam        T                the type of the coefficients
     \tparam        Major            the storage class of the matrices
     \tparam        IndexM           the type of the Dirichlet indexes parameter
+    
+    \ingroup Assembler
 */
 template<typename T, int Major, typename RhsM, typename IndexM >
 void gsForceDirichletConditions (
@@ -176,6 +180,8 @@ void gsForceDirichletConditions (
     \param[in,out] destination       the matrix to modify
     \param[in]     dirichletDofs     the indexes to set
     \param[in]     dirichletValues   the values
+    
+    \ingroup Assembler
  */
 template <typename destM, typename coefM, typename indexM>
 void gsSetDirichletValues (

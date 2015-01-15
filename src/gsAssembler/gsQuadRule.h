@@ -20,6 +20,8 @@ namespace gismo
 
 /** 
     Class for a reference quadrature rule
+    
+    \ingroup Assembler
 */
   
 template<class T>

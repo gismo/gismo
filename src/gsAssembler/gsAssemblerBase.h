@@ -25,6 +25,8 @@ namespace gismo
 /** @brief The assembler class provides to generic routines for volume
  * and boundary integrals that are used for for matrix and rhs
  * generation
+ *
+ * \ingroup Assembler
 */
 template <class T>
 class gsAssemblerBase

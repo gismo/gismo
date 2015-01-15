@@ -226,6 +226,8 @@ void gsPoissonAssembler<T>::computeDirichletDofs()
  * and the eliminated coefficients are set to the corresponding values.
  * The projection is global in the sense that all Dirichlet-DOFs are
  * computed at once.
+ *
+ * \ingroup Assembler
  */
 template<class T>
 void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()

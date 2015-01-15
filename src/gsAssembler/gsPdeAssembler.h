@@ -40,6 +40,7 @@ namespace gismo
     By calling solve(), the linear system is assembled and solved, and a
     gsField containing the computed solution is returned.
 
+    \ingroup Assembler
 */
 
 
