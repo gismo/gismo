@@ -28,6 +28,7 @@ namespace gismo
      * \tparam T coefficient type
      *
      * \ingroup basis
+     * \ingroup HSplines
     */ 
     
 template<unsigned d, class T>

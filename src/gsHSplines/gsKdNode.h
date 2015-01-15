@@ -22,6 +22,8 @@ namespace gismo {
     Template parameters
     \param d is the dimension
     \param T is the box-coordinate index type
+    
+    \ingroup HSplines
 */
 template<unsigned d, class T = unsigned>
 struct gsAabb
@@ -55,6 +57,8 @@ public:
     Template parameters
     \param d is the dimension
     \param T is the box-coordinate index type
+    
+    \ingroup HSplines
 */
 template<unsigned d, class T = unsigned>
 struct kdnode

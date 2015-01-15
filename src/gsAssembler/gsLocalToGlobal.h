@@ -171,7 +171,6 @@ public:
     matrix interface and is only used as a building block for
     other classes.
     
-    \ingroup Assembler
 **/
 template <typename MatrixT>
 class gsBaseWriter
@@ -246,7 +245,6 @@ gsNullWriter<ScalarT>  gsNullWriter<ScalarT>::unique_instance;
  \brief By using this writer the upper triangular part of
  the destination matrix  is unaffected.
  
- \ingroup Assembler
 **/
 template <typename Writer>
 class gsSymmetricWriter
@@ -273,7 +271,6 @@ public:
  \brief This writer is intended to add Lagrange multipliers to a system matrix:
  it writes both B and B^t.
  
- \ingroup Assembler
 **/
 template <typename Writer1, typename Writer2=Writer1>
 class gsMultiplierWriter
@@ -376,6 +373,7 @@ public:
 
 /**
  \brief This writer shift the position written to by a fixed amount.
+ 
 **/
 template <typename Writer>
 class gsShiftWriter

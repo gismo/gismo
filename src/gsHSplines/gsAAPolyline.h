@@ -22,6 +22,8 @@ namespace gismo
 {
 /** \brief
  *  Class for representing a vertical line segment in 2D. Helper for the class Polyline below.
+ *
+ *  \ingroup HSplines
 */
 
 template<class T>

@@ -60,6 +60,8 @@ Regarding the mentioned technical differences: A binary tree is used instead of 
 Template parameters
 \param d is the dimension
 \param T is the box-index type
+
+\ingroup HSplines
 */
 
 template<unsigned d, class T = unsigned>

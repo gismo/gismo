@@ -70,6 +70,7 @@ struct lvl_coef
 *    \param T is the coefficient type
 *
 *    \ingroup basis
+*    \ingroup HSplines
 */
 
 template<unsigned d, class T>

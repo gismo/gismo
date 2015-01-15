@@ -29,6 +29,8 @@ namespace gismo
   * gsDomainIterator for more detailed documentation and an example of
   * the typical use!!!</em>\n Used, e.g., for basis of classes
   * gsHTensorBasis or gsTHBSplineBasis.
+  *
+  * \ingroup HSplines
   */
 
 template<typename T, unsigned d>

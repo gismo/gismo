@@ -23,7 +23,8 @@ namespace gismo {
     This class applies hierarchical fitting of parametrized point clouds.
 
     \tparam T coefficient type
-
+    
+    \ingroup HSplines
 */
 
 template <class T>

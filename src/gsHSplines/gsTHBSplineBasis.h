@@ -28,6 +28,7 @@ namespace gismo
  * \param T the coefficient type
  *
  * \ingroup basis
+ * \ingroup HSplines
  */
 template<unsigned d, class T>
 class gsTHBSplineBasis : public gsHTensorBasis<d,T>

@@ -33,6 +33,7 @@ namespace gismo
     \tparam T is the coefficient type
 
     \ingroup geometry
+    \ingroup HSplines
 */
 
 template<unsigned d, class T>

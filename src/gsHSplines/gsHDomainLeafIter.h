@@ -21,6 +21,8 @@ namespace gismo
 
 /** 
     Iterates over the leaves of an gsHDomain (tree).
+    
+    \ingroup HSplines
 */
 
 template<typename node, bool isconst = false>
