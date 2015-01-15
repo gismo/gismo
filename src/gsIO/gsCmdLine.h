@@ -34,6 +34,8 @@ typedef TCLAP::ArgException gsArgException;
     The members add(..) and parse(..) are the main functions.
     
     For arguments, getValue() is the main member.
+    
+    \ingroup IO
 */
 class GISMO_EXPORT gsCmdLine :  public TCLAP::CmdLine
 {

@@ -35,6 +35,8 @@ namespace gismo {
 /// \param npts number of points used for sampling each patch
 /// \param mesh if true, the parameter mesh is plotted as well
 /// \param ctrlNet if true, the control net is plotted as well
+///
+/// \ingroup IO
 template<class T>
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn, 
                      unsigned npts=NS, bool mesh = false, bool ctrlNet = false);

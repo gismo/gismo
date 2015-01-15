@@ -30,6 +30,8 @@ namespace gismo {
 ///
 /// \param bspl tensor B-Spline
 /// \param out file stream
+///
+/// \ingroup IO
 template <unsigned d, typename T>
 void gsWriteGoToolsBodySpline(const gsTensorBSpline<d, T>& bspl,
                               std::ofstream& out)

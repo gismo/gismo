@@ -28,7 +28,8 @@ namespace gismo {
     The above creates a file with extension pvd. When opening this
     file with Paraview, the containts of all parts in the list are
     loaded.
-        
+    
+    \ingroup IO
 */
 class gsParaviewCollection
 {
