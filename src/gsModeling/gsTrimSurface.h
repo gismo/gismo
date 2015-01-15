@@ -27,6 +27,8 @@ namespace gismo
 
   /** 
       Class for a trim surface
+      
+      \ingroup Modeling
   */
 
   

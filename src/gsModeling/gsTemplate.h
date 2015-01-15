@@ -70,6 +70,8 @@ namespace gismo
     
     Triangles 0-1-3 and 0-3-2
     Quad 0-1-3-2
+    
+    \ingroup Modeling
 */    
 template<class T>
 class gsTemplate  : public gsBoxTopology

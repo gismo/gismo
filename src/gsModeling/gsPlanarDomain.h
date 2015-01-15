@@ -34,6 +34,8 @@ class gsBemSolution;
       Class representing a Planar domain with an outer boundary and a number of holes.
 
       The outer boundary is oriented CCW and the holes are CW.
+      
+      \ingroup Modeling
   */
 
 // TODO Add gsWriteParaview using PolygonalData....

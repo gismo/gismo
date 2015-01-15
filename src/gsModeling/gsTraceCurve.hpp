@@ -30,6 +30,8 @@ namespace gismo
 /// \param x is a 2x1 matrix storing a starting point in our computational domain
 /// \param result is a 2xn matrix containing points on the pre-image
 /// curve
+///
+/// \ingroup Modeling
 template<class T>
 void gsTraceLine( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
                        gsMatrix<T> const & x,gsMatrix<T> const & p, gsMatrix<T> & result)

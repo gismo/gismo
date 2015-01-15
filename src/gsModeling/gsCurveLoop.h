@@ -28,6 +28,8 @@ namespace gismo
     The loop may be oriented clockwise (CW) or counterclockwise (CCW).
 
     \tparam T coefficient type
+    
+    \ingroup Modeling
 */
   
 template<class T> class gsCurveLoop

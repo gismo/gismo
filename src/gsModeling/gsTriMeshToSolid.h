@@ -24,6 +24,8 @@ namespace gismo
 
     Construct an instance of this class from a gsMesh, and then use it
     to perform "CAD model reconstruction" to produce a gsSolid.
+    
+    \ingroup Modeling
 */
 template<class T>
 class gsTriMeshToSolid
@@ -112,6 +114,8 @@ public:
      * \param useFeatures - if set to 1 the text file is used to add
      *                      the features from the text file. If set to 2 these features are
      *                      used exclusively.
+     *
+     * \ingroup Modeling
      */
     void getPatchData(T angle, T innerAngle, T patchAreaWeight, T mergeSmallPatches,
                       std::vector<std::vector<VertexHandle> > & iPoints,
@@ -199,6 +203,8 @@ public:
      * \param wI - weights for interior points during fitting the B-spline surfaces.
      * \param closeBoundary - if additional points on the edges shall be added, to reduce the possible gaps between two patches.
      * \param noSmooth - if the trimming curves shall not be smoothed out.
+     *
+     * \ingroup Modeling
      */
     void toSolid(gsSolid<T> & sl, std::vector<std::vector<VertexHandle> > & iPoints,
                  std::vector<std::vector<VertexHandle> > & oPoints,

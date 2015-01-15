@@ -26,6 +26,8 @@
 namespace gismo {
 
 /// Class for representing a solid made up of vertices, edges, faces, and volumes.
+///
+/// \ingroup Modeling
 template <class T>
 class gsSolid : public gsSolidElement<T>
 {
