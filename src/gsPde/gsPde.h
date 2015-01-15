@@ -39,6 +39,8 @@ namespace gismo
 
     When available, an exact solution is kept as well.
     PDEs can be read and written to xml files.
+    
+    \ingroup Pde
 **/
 template<class T>
 class gsPde

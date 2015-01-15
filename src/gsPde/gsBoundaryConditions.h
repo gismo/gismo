@@ -22,6 +22,8 @@ namespace gismo
 template <class T> class gsFunction;
 
 /// @brief Specifies the type of boundary condition
+///
+/// \ingroup Pde
 struct condition_type
 {
  enum type 
@@ -58,6 +60,8 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
     patch for some unknown variable of a PDE.
     
     \todo rename to boundaryCondition
+    
+    \ingroup Pde
 */
 template<class T>
 struct boundary_condition
@@ -99,6 +103,8 @@ struct boundary_condition
     
     The boundary conditions are stored in the form of a list of boundary_condition
     instances.
+    
+    \ingroup Pde
 */
 template<class T>
 class gsBoundaryConditions 

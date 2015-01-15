@@ -14,7 +14,7 @@ class gsFunction;
 
     Any of the coefficients may be a NULL pointer, meaning that it is zero.
 
-    \ingroup pde
+    \ingroup Pde
  */
 
 template <class T>

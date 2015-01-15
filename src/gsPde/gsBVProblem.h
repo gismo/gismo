@@ -24,6 +24,8 @@ namespace gismo
     (Internally, it is always a gsMultiPatch that is stored.)
     The boundary conditions are stored in the form of a list of boundary_condition
     instances.
+    
+    \ingroup Pde
 */
 
 template<class T>
