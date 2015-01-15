@@ -8,6 +8,8 @@ namespace internal
 {
 
 /// Get a KnotVector from XML data
+///
+/// \ingroup Nurbs
 template<class T>
 class gsXml< gsCompactKnotVector<T> >
 {

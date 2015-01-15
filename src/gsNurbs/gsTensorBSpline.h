@@ -56,6 +56,7 @@ struct gsTenBSplTraits<3,T>
     \tparam KnotVectorType the type of knot vector the B-spline bases use
 
     \ingroup geometry
+    \ingroup Nurbs
 */
 
 template<unsigned d, class T, class KnotVectorType>

@@ -50,6 +50,7 @@ struct gsTraits< gsTensorBSplineBasis<d,T,KnotVectorType>, d>
     \param d dimension of the parameter domain
 
     \ingroup basis
+    \ingroup Nurbs
 */
 
   
@@ -271,6 +272,8 @@ public:
      * See above for details and format.
      * \param NOTE This function directly modifies the basis (by inserting
      * knots in the underlying univariate B-spline bases).
+     *
+     * \ingroup Nurbs
      */
     void refine( gsMatrix<T> const & boxes )
     {

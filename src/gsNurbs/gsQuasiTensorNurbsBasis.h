@@ -37,6 +37,8 @@ class gsQuasiTensorNurbsBasis;
 
     \param T coefficient type
     \param d dimension of the parameter domain
+    
+    \ingroup Nurbs
 */
 template<unsigned d, class T, class KnotVectorType = gsKnotVector<T> >
 class gsQuasiTensorNurbsBasis : public gsTensorBasis< d, gsNurbsBasis<T> >  

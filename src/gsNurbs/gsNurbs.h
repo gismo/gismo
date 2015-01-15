@@ -36,6 +36,7 @@ template <class T, class KnotVectorType> class gsNurbsBasis;
     \tparam T coefficient type
 
     \ingroup geometry
+    \ingroup Nurbs
 */
 
 template<class T, class KnotVectorType>

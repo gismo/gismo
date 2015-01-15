@@ -93,6 +93,8 @@ struct Root
     If necessary this special case must be handled outside of this function, for
     instance when used to determine if a point is inside a 2D area bounded by a
     closed curve.
+    
+    \ingroup Nurbs
 **/
 template <typename T>
 unsigned findHyperPlaneIntersections (

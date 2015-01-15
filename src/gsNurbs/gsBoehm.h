@@ -88,6 +88,7 @@ void gsBoehmRefine( KnotVectorType & knots,
 /// \parameter r - how many times we will insert knot
 /// \parameter update_knots - if we update knots or not
 ///
+/// \ingroup Nurbs
 //  Algorithm is based on gsBoehm and THE NURBS BOOK.
 //
 //  Some tests (for 2D and 3D) are written in gsTensorBoehm_test.
@@ -117,6 +118,8 @@ void gsTensorBoehm(
 /// \param valEnd - iterator pointing to the end of the vector of the knots
 ///                     we want to insert
 /// \param update_knots - if we should update "knots" or not
+///
+/// \ingroup Nurbs
 //
 // Algorithm is based on gsBoehmRefine and THE NURBS BOOK
 //
@@ -150,6 +153,8 @@ void gsTensorBoehmRefine(
 /// that coefs matrix represents in 3D.) Size_of_coefs is size of the
 /// coefficients we will populate in this function call. Nmb_of_coefs presents
 /// number of nonzero coefficients in coefs matrix.
+/// 
+/// \ingroup Nurbs
 template <unsigned d, typename KnotVectorType, typename Mat, typename ValIt>
 void gsTensorBoehmRefineLocal(
         KnotVectorType& knots,
@@ -175,6 +180,8 @@ void gsTensorBoehmRefineLocal(
 /// insertion. Sometimes we dont need to insert a knots at all rows at
 /// @a direction. With variables @a start and @a end, we can set
 /// subcube of the @a coefs where we will perform a knot insertion.
+/// 
+/// \ingroup Nurbs
 template <unsigned d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorInsertKnotDegreeTimes(
         const KnotVectorType& knots,

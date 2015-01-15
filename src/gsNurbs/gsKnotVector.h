@@ -26,6 +26,8 @@ template<class T> class gsKnotVectorPrivate;
       together with a degree.
       
       \tparam T coefficient type
+      
+      \ingroup Nurbs
   */  
 template<class T>
 class gsKnotVector : public gsDomain<T>

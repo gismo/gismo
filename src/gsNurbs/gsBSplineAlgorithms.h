@@ -21,6 +21,8 @@ namespace gismo
 
     @brief
     This namespace contains implementation of B-spline related algorithms.
+    
+    \ingroup Nurbs
 */
 namespace bspline
 {

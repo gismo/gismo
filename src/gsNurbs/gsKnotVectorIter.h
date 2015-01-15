@@ -26,6 +26,7 @@ class gsKnotVector;
   /** 
       Iterator over the unique knot-values of a gsKnotVector.
       
+      \ingroup Nurbs
   */
 template <class T, bool isconst = false> 
 class gsKnotVectorIter {

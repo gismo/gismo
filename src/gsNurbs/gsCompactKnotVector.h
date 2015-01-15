@@ -34,6 +34,8 @@ namespace gismo
 
     Template parameter
     \param T is the coefficient type
+    
+    \ingroup Nurbs
 */
     
 template<class T>

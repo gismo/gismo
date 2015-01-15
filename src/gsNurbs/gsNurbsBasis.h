@@ -32,6 +32,7 @@ namespace gismo
     \tparam KnotVectorType the type of knot vector to use
 
     \ingroup basis
+    \ingroup Nurbs
 */
 
 template<class T, class KnotVectorType >

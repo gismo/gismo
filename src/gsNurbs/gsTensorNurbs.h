@@ -36,6 +36,7 @@ template<unsigned d, class T, class KnotVectorType> class gsTensorNurbs;
     \tparam KnotVectorType the type of knot vector the NURBS bases use
 
     \ingroup geometry
+    \ingroup Nurbs
 */
 
 template<unsigned d, class T, class KnotVectorType>

@@ -28,6 +28,8 @@ namespace gismo
 
 /**
    Class gsNurbsCreator provides some simple examples of Nurbs Geometries
+   
+   \ingroup Nurbs
 */
 
 template<class T>

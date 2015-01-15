@@ -30,6 +30,8 @@ class gsCompactKnotVector;
       Beware of non-const version: changing one knot value does not
       insert a new simple knot, but just changes the value of all
       instances of the multiple knot.
+      
+      \ingroup Nurbs
   */
 template <class T, bool isconst = false> 
 class gsCompactKnotVectorIter {

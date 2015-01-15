@@ -34,6 +34,7 @@ namespace gismo
     \tparam T coefficient type
 
     \ingroup geometry
+    \ingroup Nurbs
 */
     
     
@@ -140,6 +141,8 @@ public:
     /// \param degree degree of the spline space
     /// \param coefs coefficients of the spline space
     /// \param mult_interior multiplicity at the interior knots
+    ///
+    /// \ingroup Nurbs
     gsBSpline(T u0, T u1, unsigned interior, int degree, gsMovable< gsMatrix<T> > coefs, unsigned mult_interior=1, bool periodic = false)
     {
         this->m_basis = new Basis(u0, u1, interior, degree, mult_interior, periodic );
