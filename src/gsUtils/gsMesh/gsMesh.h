@@ -24,6 +24,8 @@ namespace gismo {
 
 /**
    Class Representing a triangle mesh with 3D vertices.
+   
+   \ingroup Utils
 */
 template <class T>
 class gsMesh : public gsMeshElement<T>

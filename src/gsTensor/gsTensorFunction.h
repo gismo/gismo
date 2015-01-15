@@ -22,6 +22,7 @@ namespace gismo
     component functions with certain rank per component.
 
     \ingroup function
+    \ingroup Tensor
 */
 template<class T>
 class gsTensorFunction : public gsFunction<T>

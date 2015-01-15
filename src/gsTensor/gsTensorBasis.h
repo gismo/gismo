@@ -29,6 +29,7 @@ template<unsigned d, class Basis_t > class gsTensorBasis;
  *   \param Basis_t type of the coordinate-wise bases
  *
  *   \ingroup basis
+ *   \ingroup Tensor
  */
 
 template<unsigned d, class Basis_t >
@@ -179,6 +180,7 @@ public:
      * \param[out]  result For every column \a i of \a u, a column containing the
      *   active basis functions at evaluation point <em>u</em>.col(<em>i</em>)
      *
+     * \ingroup Tensor
      */
     void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
 
@@ -384,6 +386,8 @@ public:
     /// Bivariate tensor-product basis functions have tensor numbering (a,b).
     /// Calling dir=0, k=1 gives all functions with tensor-numbering (1,b).
     /// Calling dir=1, k=3 gives all functions with tensor-numbering (a,3).
+    /// 
+    /// \ingroup Tensor
     typename gsMatrix<unsigned>::uPtr slice(int dir, int k) const;
 
     /// Returns the degree of the basis wrt variable \a i 
@@ -519,6 +523,8 @@ protected:
  *
  *   \param T coefficient type
  *   \param Basis_t type of the (single) coordinate-wise bases
+ *
+ *  \ingroup Tensor
  */
     
 template<class Basis_t>

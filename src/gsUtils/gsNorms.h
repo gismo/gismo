@@ -28,6 +28,7 @@
 #include <gsCore/gsGeometryEvaluator.h>
 
 /** @file Global functions for norm computations.
+ * \ingroup Utils
  */
 
 namespace gismo
@@ -72,6 +73,8 @@ T computeL2Distance(const gsField<T>& u, const gsField<T>& v, int numEvals=1000)
 ///
 /// \param[out] return Scalar, L2-norm of the difference.
 ///
+/// \ingroup Utils
+///
 template <typename T>
 T igaL2Distance(const gsGeometry<T>& patch, 
                 const gsGeometry<T>& func, 
@@ -111,6 +114,8 @@ T igaL2Distance(const gsGeometry<T>& patch,
 /// \em d is the dimension of the parameter domain.\n
 /// See above for format of entries.
 ///
+/// \ingroup Utils
+///
 template <typename T>
 gsMatrix<T> igaL2DistanceEltWiseSq(const gsGeometry<T>& patch,
                 const gsGeometry<T>& func,
@@ -144,6 +149,8 @@ gsMatrix<T> igaL2DistanceEltWiseSq(const gsGeometry<T>& patch,
 /// \em d is the dimension of the parameter domain.\n
 /// See above for format of entries.
 ///
+/// \ingroup Utils
+///
 template <typename T>
 gsVector< gsMatrix<T> > igaFieldL2DistanceEltWiseSq(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam);
 
@@ -159,6 +166,8 @@ gsVector< gsMatrix<T> > igaFieldL2DistanceEltWiseSq(const gsField<T>& u, const g
 /// physical domain (<em>v_isParam = false</em>).
 ///
 /// \param[out] return L2-norm of the difference.
+///
+/// \ingroup Utils
 ///
 template <typename T>
 T igaFieldL2Distance(const gsField<T>& u, 

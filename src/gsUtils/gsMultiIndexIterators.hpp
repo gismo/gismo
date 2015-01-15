@@ -16,7 +16,8 @@ namespace gismo {
 
 ///////////////////////////////////////////
 /// TENSOR GRID ITERATOR FUNCTIONS
-///
+/// 
+/// \ingroup Utils
 
 template<typename Flat, int dim>
 gsTensorGridIterator<Flat,dim>::gsTensorGridIterator (MIndexT const & M)

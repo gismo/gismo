@@ -41,6 +41,8 @@ int fromTensorIndex(const gsVector<unsigned, d>& idx, const gsVector<unsigned, d
     transfer on the whole tensor product basis.
 
     The component transformations are allowed to change the size of the basis.
+    
+    \ingroup Tensor
  */
 template <unsigned d, typename T>
 void tensorCombineTransferMatrices(

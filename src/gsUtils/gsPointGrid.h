@@ -21,6 +21,8 @@ namespace gismo {
 /// \param a
 /// \param b
 /// \param np
+///
+/// \ingroup Utils
 template<class T>
 typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, gsVector<T> const & b, 
                                         gsVector<unsigned> const & np );
@@ -57,6 +59,8 @@ void gsPointGrid( std::vector< gsVector<T> > const & cwise, gsMatrix<T>& res);
 /// Compute the tensor product of the vectors in \a cwise and store it
 /// in lexicographic order into the vector \a res
 /// \todo move to gsTensorTools
+///
+/// 
 template<class T>
 void tensorProduct( std::vector< gsVector<T>* > const & cwise, gsVector<T>& res);
 

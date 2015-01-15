@@ -19,6 +19,8 @@ namespace gismo
 
 /** @brief
 Utility class for PDE's solver related utils.
+
+ \ingroup Solver
  */
 template<class T> class gsSolverUtils
 {

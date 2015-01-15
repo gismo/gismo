@@ -19,6 +19,8 @@ namespace gismo
 {
 
 ///Simple class to give a matrix (or sparse matrix) preconditioner properties which is needed for the iterative method classes.
+///
+/// \ingroup Solver
 
 template <typename MatrixType, int UpLo = Eigen::Lower>
 class gsMatrixPreconditioner : public gsLinearOperator

@@ -18,6 +18,8 @@
 namespace gismo
 {
 /// @brief Abstract class for iterative solvers.
+///
+/// \ingroup Solver
 class gsIterativeSolver
 {
 public:
@@ -59,6 +61,8 @@ public:
     /// \param[in] rhs the right hand side of the linear system
     /// \param[in] x the solution is stored in here
     /// \param[in] precond the preconditioner used (default: Idendity predonditioner)
+    ///
+    /// \ingroup Solver
     virtual void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator & precond) = 0;//{GISMO_NO_IMPLEMENTATION}
 
     //gsIdentityPreconditioner preConMat(N);

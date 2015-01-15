@@ -22,6 +22,8 @@ namespace gismo
 ///
 /// Simple abstract class for (preconditioner) operators.
 /// The derived classes have to contain the functions: apply(), cols(), and rows().
+///
+/// \ingroup Solver
 class gsLinearOperator
 {
 public:

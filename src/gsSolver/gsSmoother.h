@@ -23,6 +23,8 @@ namespace gismo
 
 
 /// A struct containing an enumeration of smoothing algorithms and functions to apply them for use in gsMultiGrid. (OBSOLETE, see gsSmoother below)
+/// 
+/// \ingroup Solver
 struct Smoother
 {
     /// List of implemented smoothers

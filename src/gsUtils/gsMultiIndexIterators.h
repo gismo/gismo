@@ -52,6 +52,7 @@ namespace gismo {
     \tparam dim  is the dimension of the multi-index
 
     \ingroup combinatorics
+    \ingroup Utils
 **/
 
 template<typename Flat=index_t, int dim=-1>
@@ -233,6 +234,7 @@ template<typename Flat, int d> class gsTensorGridBoundaryIterator;
     flat index is the position during iteration.
 
   \ingroup combinatorics
+  \ingroup Utils
 **/
 template<typename Flat=index_t, int dim=-1>
 class gsTensorGridIterator : public gsMultiIndexIterator<Flat,dim>
@@ -429,6 +431,7 @@ protected:
     dimension argument in the constructor is ignored.
 
     \ingroup combinatorics
+    \ingroup Utils
 **/
 template<typename Flat=index_t, int dim=-1>
 class gsCompositionIterator
@@ -485,6 +488,7 @@ protected:
     f$\sum_{i=0}^{n-1}a_i \leq k f$
 
   \ingroup combinatorics
+  \ingroup Utils
 **/
 
 template<typename Flat=index_t, int dim=-1>

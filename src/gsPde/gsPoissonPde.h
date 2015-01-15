@@ -14,7 +14,7 @@ template <class T> class gsFunction;
     This class describes a Poisson PDE, with an arbitrary right-hand side
     function and optionally a known solution.
 
-    \ingroup pde
+    \ingroup Pde
  */
 
 template<class T>

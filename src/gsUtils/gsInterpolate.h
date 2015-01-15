@@ -27,6 +27,8 @@ namespace gismo {
     \param pts  The interpolation nodes in parameter space.
     \param vals The values to be interpolated.
     \return     A new geometry object defined over \a g which interpolates the given values.
+    
+    \ingroup Utils
 */
 template<class T>
 gsGeometry<T> * gsInterpolate( gsBasis<T> const& g, gsMatrix<T> 
@@ -40,6 +42,8 @@ gsGeometry<T> * gsInterpolate( gsBasis<T> const& g, gsMatrix<T>
     \param  g   The basis in which to interpolate the function.
     \param  f   The function to be interpolated.
     \return     A new geometry object defined over \a g which interpolates \a f
+    
+    \ingroup Utils
 */
 template<class T>
 gsGeometry<T> * gsInterpolate( const gsBasis<T>& g, const gsFunction<T>& f );
@@ -97,6 +101,8 @@ gsGeometry<T> * gsInterpolate( const gsBasis<T>& g, const gsFunction<T>& f );
  * the interpolation are set to zero (useful when you want to create a
  * gsGeometry with \em basis and \em vecCoeff).
  *
+ *
+ * \ingroup Utils
  */
 template <class T>
 void gsL2ProjectOnBoundary(const gsBasis<T> & basis,

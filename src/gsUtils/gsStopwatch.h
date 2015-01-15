@@ -63,6 +63,8 @@ inline std::ostream& formatTime(std::ostream& os, double sec)
     - For CPU time use the \ref gsCPUStopwatch typedef.
 
     \tparam Clock clock (eg. system specific) to use for measuring the time.
+    
+    \ingroup Utils
 */
 template <typename Clock>
 class gsGenericStopwatch

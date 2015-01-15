@@ -32,6 +32,8 @@ namespace gismo
     target space are the same.
     In this case makeSubGridIterator, makeBoundaryIterator and makeVertexIterator
     are supported.
+    
+    \ingroup Utils
 **/
 template <typename T, typename IntegerIterator, typename PointProducer>
 class gsPointIterator

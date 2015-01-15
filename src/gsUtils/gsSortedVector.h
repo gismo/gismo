@@ -88,6 +88,7 @@
 // you have unsorted the array without marking it as such.  Make sure
 // you call SetSorted(false) where appropriate.
 //
+// \ingroup Utils
 //-------------------------------------------------------------------//
 
 namespace gismo {

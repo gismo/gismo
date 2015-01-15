@@ -26,6 +26,8 @@ namespace gismo
 
 /** Re-implements gsDomainIterator for iteration over all elements of a <b>tensor product</b> parameter domain.\n
  * <em>See gsDomainIterator for more detailed documentation and an example of the typical use!!!</em>
+ *
+ * \ingroup Tensor
  */
 
 template<class T, int D>

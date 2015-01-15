@@ -34,6 +34,8 @@ namespace gismo
      \right)
      \f]
  * Where \f$C_{ij}\f$ are pre-defined preconditioners which all have the apply(input, dest) function defined.
+ *
+ * \ingroup Solver
  */
 class gsBlockPreconditioner : public gsLinearOperator
 {
