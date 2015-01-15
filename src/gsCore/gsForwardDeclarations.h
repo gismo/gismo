@@ -32,6 +32,8 @@ namespace gismo
     \brief Enumeration flags which define the needs of an evaluation object.
 
     \enum gsNeedEnum
+    
+    \ingroup Core
 */
 enum gsNeedEnum
 {

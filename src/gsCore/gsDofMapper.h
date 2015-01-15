@@ -47,6 +47,8 @@ namespace gismo
 
     The object must be finalized before it is used,
     i.e. gsDofMapper::finalize() has to be called once before use.
+    
+    \ingroup Core
 
 */
 class GISMO_EXPORT gsDofMapper

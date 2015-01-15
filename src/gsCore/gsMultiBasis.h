@@ -27,6 +27,8 @@ namespace gismo
     topology information.
 
     \tparam T coefficient type
+    
+    \ingroup Core
 */
 template<class T>
 class gsMultiBasis

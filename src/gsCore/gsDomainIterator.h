@@ -65,6 +65,8 @@ namespace gismo
 
      }
      \endverbatim
+     
+     \ingroup Core
  *
  *
  *

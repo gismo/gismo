@@ -29,6 +29,8 @@ namespace gismo {
 
     @brief
     This namespace contains functions related to memory management.
+    
+    \ingroup Core
 */
 namespace memory {
 

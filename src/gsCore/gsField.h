@@ -47,6 +47,8 @@ namespace gismo
    * extracted by calling the member function gsField::patch.
    *
    * The "local field" on a single patch can be extracted by calling gsField::function.
+   *
+   * \ingroup Core
    */
 
 

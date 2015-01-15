@@ -26,6 +26,8 @@ template<typename T> class gsMFunctionExprPrivate;
     mathematical expressions.
 
     \ingroup function
+    
+    \ingroup Core
 */
     
 template<typename T>

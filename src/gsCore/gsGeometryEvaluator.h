@@ -33,6 +33,8 @@ namespace gismo
     point index and returns the associated sub-block.
 
     \tparam T the coefficient type
+    
+    \ingroup Core
 **/
 template <typename T>
 class gsGeometryEvaluator

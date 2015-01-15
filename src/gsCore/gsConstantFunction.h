@@ -25,6 +25,7 @@ namespace gismo
     \tparam T value type
 
     \ingroup function
+    \ingroup Core
 */
 
 template <class T>

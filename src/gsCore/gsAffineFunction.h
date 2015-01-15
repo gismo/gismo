@@ -22,6 +22,7 @@ namespace gismo {
    @brief Representation of an affine function
 
     \ingroup function
+    \ingroup Core
  */
 template <typename T>
 class gsAffineFunction : public gsFunction<T>

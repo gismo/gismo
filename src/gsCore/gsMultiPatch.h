@@ -24,6 +24,8 @@ namespace gismo
     interface/outer boundary information.
 
     \tparam T coefficient type
+    
+    \ingroup Core
 */
 template<class T>
 class gsMultiPatch : public gsBoxTopology

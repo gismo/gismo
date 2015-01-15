@@ -22,6 +22,7 @@ namespace gismo
 /**
    @brief AbsError
 
+   \ingroup Core
 */
 
 template<class T>
@@ -180,6 +181,8 @@ private:
 /**
    @brief Class that creates standard fields on a given parametric
    (multipatch) geometry.
+   
+   \ingroup Core
 */
 template<class T>
 struct gsFieldCreator

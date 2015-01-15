@@ -47,6 +47,8 @@ namespace gismo
     &nbsp;                |    Corner 6, {(u,v,w) : u = 1, v = 0, w = 1}:  \c southeastback
     &nbsp;                |    Corner 7, {(u,v,w) : u = 0, v = 1, w = 1}:  \c northwestback
     &nbsp;                |    Corner 8, {(u,v,w) : u = 1, v = 1, w = 1}:  \c northeastback
+    
+    \ingroup Core
 */
 struct boundary
 {
@@ -65,6 +67,7 @@ struct boxCorner;// defined later
 
 /**
    @brief Struct which represents a certain side of a box.
+   
 */
 class GISMO_EXPORT boxSide
 {
@@ -184,6 +187,7 @@ public:
 
 /** 
     @brief  Struct which represents a certain side of a patch.
+    
 */  
 struct patchSide: public boxSide
 {
@@ -332,6 +336,8 @@ public:
 
 /**
     @brief Struct which represents a certain corner of a patch.
+    
+    
 */
 struct patchCorner : public boxCorner
 {
@@ -379,7 +385,8 @@ public:
 
 /** 
     @brief Struct which represents an interface between two patches.
-
+    
+    
 */  
 struct boundaryInterface
 {

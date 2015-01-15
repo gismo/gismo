@@ -26,6 +26,8 @@ namespace gismo {
 
     @brief
     This namespace contains common mathematical functions.
+    
+    \ingroup Core
 */
 namespace math {
 

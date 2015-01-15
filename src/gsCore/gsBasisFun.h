@@ -30,6 +30,7 @@ template<class T> class gsBasis;
     of gsBasisFun.
     
     \ingroup function
+    \ingroup Core
 */  
 template<class T>
 class gsBasisFun : public gsFunction<T>

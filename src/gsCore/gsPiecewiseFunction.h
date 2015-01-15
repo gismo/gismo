@@ -24,6 +24,8 @@ template <class T> class gsFunction;
     to a patch/sub-domain.
 
     \tparam T argument and value type
+    
+    \ingroup Core
 */
 
 template <class T>

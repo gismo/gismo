@@ -24,6 +24,7 @@ namespace gismo
     Abstract base class representing a 4D bulk.
 
     \ingroup geometry
+    \ingroup Core
 */
 
 template<class T>

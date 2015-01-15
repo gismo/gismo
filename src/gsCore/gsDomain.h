@@ -24,6 +24,8 @@ namespace gismo
     elements (triangles, rectangles, cubes, simplices.
 
     \warning  This interface is under development and is not used yet...
+    
+    \ingroup Core
 */
 template<class T>
 class gsDomain

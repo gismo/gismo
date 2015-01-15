@@ -18,6 +18,8 @@ namespace gismo
 
 /** @brief Simple class to hold a list of gsBasis which discretize a
  * PDE system on a given patch.
+ *
+ * \ingroup Core
 */
 template <class T>
 class gsBasisRefs

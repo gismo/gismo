@@ -24,6 +24,7 @@ namespace gismo
     Abstract base class representing a curve.
 
     \ingroup geometry
+    \ingroup Core
 */
 
 template<class T>

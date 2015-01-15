@@ -38,6 +38,7 @@ namespace gismo
       \tparam SrcT the basis of which to create a rational version
 
       \ingroup basis
+      \ingroup Core
   */
 
 template<class SrcT>

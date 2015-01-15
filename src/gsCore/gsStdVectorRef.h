@@ -20,6 +20,8 @@ namespace gismo
     @brief Simple wrapper class for a vector of objects.
 
     The list casts to object by returning the first object in the list
+    
+    \ingroup Core
 */
 template<class obj>
 class gsStdVectorRef

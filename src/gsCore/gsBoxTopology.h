@@ -31,6 +31,8 @@ namespace gismo
     The topological arrangement is stored as a list of
     boundaryInterface structs, each one defining an interface between
     two patch sides.
+    
+    \ingroup Core
 */
 class GISMO_EXPORT gsBoxTopology
 {

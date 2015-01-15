@@ -24,6 +24,7 @@ namespace gismo
     Abstract base class representing a surface.
 
     \ingroup geometry
+    \ingroup Core
 */
 
 template<class T>

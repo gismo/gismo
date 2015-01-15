@@ -51,6 +51,7 @@ namespace gismo
     \tparam T arithmetic type
 
     \ingroup function
+    \ingroup Core
 */
 
 template<class T>

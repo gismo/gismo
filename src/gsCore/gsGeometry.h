@@ -115,6 +115,7 @@ struct gsGeoTraits<4,T>
 
     \ingroup function
     \ingroup geometry
+    \ingroup Core
 
     \example tutorialGeometry.cpp
 */
@@ -506,6 +507,8 @@ std::ostream &operator<<(std::ostream &os, const gsGeometry<T>& b)
  *
  * \tparam Basis_t  type of the basis for this geometry
  *
+ *
+ * \ingroup Core
  */
 template<class Basis_t>
 class gsGenericGeometry : 

@@ -85,6 +85,7 @@ struct gsTraits
     \tparam T coefficient type
 
     \ingroup basis
+    \ingroup Core
 */
 
 template<class T>
