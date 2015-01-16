@@ -14,6 +14,8 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsSolver/gsSmoother.h>
+//Needed for assembling mass matrix in GS preconditioner
+#include <gsAssembler/gsGenericAssembler.h>
 
 namespace gismo
 {
@@ -57,8 +59,22 @@ class gsSymmetricGaussSeidelPreconditioner : public gsLinearOperator
 {
 public:
 
+    /// @brief Contructor with given matrix
     gsSymmetricGaussSeidelPreconditioner(const MatrixType& _mat, index_t numOfSweeps = 1)
         : m_mat(_mat), m_numOfSweeps(numOfSweeps) {}
+
+    /// @brief Contructor with build the mass matrix from \a patches and \a basis
+    gsSymmetricGaussSeidelPreconditioner(const gsMultiPatch<real_t> patches, gsMultiBasis<real_t> basis, index_t numOfSweeps = 1)
+        : m_numOfSweeps(numOfSweeps)
+    {
+        //Assemble the mass matrix for the pressure space
+        gsGenericAssembler<real_t> massConst(patches, basis);
+        const gsSparseMatrix<> & massMatrixBtmp = massConst.assembleMass();
+
+        //Get full matrix (not just lower triangular)
+        massMatrixBtmp.cols();
+        m_mat = massConst.fullMatrix();
+    }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -83,7 +99,7 @@ public:
     MatrixType matrix() const { return m_mat; }
 
 private:
-    const MatrixType& m_mat; 
+    MatrixType m_mat;
     index_t m_numOfSweeps;
 };
 
