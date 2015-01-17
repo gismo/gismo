@@ -53,9 +53,8 @@ struct traits<Replicate<MatrixType,RowFactor,ColFactor> >
     IsRowMajor = MaxRowsAtCompileTime==1 && MaxColsAtCompileTime!=1 ? 1
                : MaxColsAtCompileTime==1 && MaxRowsAtCompileTime!=1 ? 0
                : (MatrixType::Flags & RowMajorBit) ? 1 : 0,
-    
-    // FIXME enable DirectAccess with negative strides?
-    Flags = IsRowMajor ? RowMajorBit : 0
+    Flags = (_MatrixTypeNested::Flags & HereditaryBits & ~RowMajorBit) | (IsRowMajor ? RowMajorBit : 0),
+    CoeffReadCost = _MatrixTypeNested::CoeffReadCost
   };
 };
 }
@@ -69,7 +68,6 @@ template<typename MatrixType,int RowFactor,int ColFactor> class Replicate
 
     typedef typename internal::dense_xpr_base<Replicate>::type Base;
     EIGEN_DENSE_PUBLIC_INTERFACE(Replicate)
-    typedef typename internal::remove_all<MatrixType>::type NestedExpression;
 
     template<typename OriginalMatrixType>
     inline explicit Replicate(const OriginalMatrixType& a_matrix)
@@ -137,7 +135,7 @@ template<typename MatrixType,int RowFactor,int ColFactor> class Replicate
   */
 template<typename Derived>
 template<int RowFactor, int ColFactor>
-inline const Replicate<Derived,RowFactor,ColFactor>
+const Replicate<Derived,RowFactor,ColFactor>
 DenseBase<Derived>::replicate() const
 {
   return Replicate<Derived,RowFactor,ColFactor>(derived());
@@ -152,7 +150,7 @@ DenseBase<Derived>::replicate() const
   * \sa VectorwiseOp::replicate(), DenseBase::replicate<int,int>(), class Replicate
   */
 template<typename Derived>
-inline const Replicate<Derived,Dynamic,Dynamic>
+const typename DenseBase<Derived>::ReplicateReturnType
 DenseBase<Derived>::replicate(Index rowFactor,Index colFactor) const
 {
   return Replicate<Derived,Dynamic,Dynamic>(derived(),rowFactor,colFactor);

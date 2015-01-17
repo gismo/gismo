@@ -53,13 +53,14 @@ const int Infinity = -1;
 const unsigned int RowMajorBit = 0x1;
 
 /** \ingroup flags
+  *
   * means the expression should be evaluated by the calling expression */
 const unsigned int EvalBeforeNestingBit = 0x2;
 
 /** \ingroup flags
-  * \deprecated
+  *
   * means the expression should be evaluated before any assignment */
-const unsigned int EvalBeforeAssigningBit = 0x4; // FIXME deprecated
+const unsigned int EvalBeforeAssigningBit = 0x4;
 
 /** \ingroup flags
   *
@@ -142,27 +143,10 @@ const unsigned int DirectAccessBit = 0x40;
 
 /** \ingroup flags
   *
-  * means the first coefficient packet is guaranteed to be aligned.
-  * An expression cannot has the AlignedBit without the PacketAccessBit flag.
-  * In other words, this means we are allow to perform an aligned packet access to the first element regardless
-  * of the expression kind:
-  * \code
-  * expression.packet<Aligned>(0);
-  * \endcode
-  */
+  * means the first coefficient packet is guaranteed to be aligned */
 const unsigned int AlignedBit = 0x80;
 
 const unsigned int NestByRefBit = 0x100;
-
-/** \ingroup flags
-  *
-  * for an expression, this means that the storage order
-  * can be either row-major or column-major.
-  * The precise choice will be decided at evaluation time or when
-  * combined with other expressions.
-  * \sa \ref RowMajorBit, \ref TopicStorageOrders */
-const unsigned int NoPreferredStorageOrderBit = 0x200;
-
 
 // list of flags that are inherited by default
 const unsigned int HereditaryBits = RowMajorBit
@@ -422,16 +406,10 @@ namespace Architecture
     Generic = 0x0,
     SSE = 0x1,
     AltiVec = 0x2,
-    VSX = 0x3,
-    NEON = 0x4,
 #if defined EIGEN_VECTORIZE_SSE
     Target = SSE
 #elif defined EIGEN_VECTORIZE_ALTIVEC
     Target = AltiVec
-#elif defined EIGEN_VECTORIZE_VSX
-    Target = VSX
-#elif defined EIGEN_VECTORIZE_NEON
-    Target = NEON
 #else
     Target = Generic
 #endif
@@ -440,7 +418,7 @@ namespace Architecture
 
 /** \internal \ingroup enums
   * Enum used as template parameter in GeneralProduct. */
-enum { DefaultProduct=0, CoeffBasedProductMode, LazyCoeffBasedProductMode, LazyProduct, OuterProduct, InnerProduct, GemvProduct, GemmProduct };
+enum { CoeffBasedProductMode, LazyCoeffBasedProductMode, OuterProduct, InnerProduct, GemvProduct, GemmProduct };
 
 /** \internal \ingroup enums
   * Enum used in experimental parallel implementation. */
@@ -449,34 +427,11 @@ enum Action {GetAction, SetAction};
 /** The type used to identify a dense storage. */
 struct Dense {};
 
-/** The type used to identify a permutation storage. */
-struct PermutationStorage {};
-
 /** The type used to identify a matrix expression */
 struct MatrixXpr {};
 
 /** The type used to identify an array expression */
 struct ArrayXpr {};
-
-// An evaluator must define its shape. By default, it can be one of the following:
-struct DenseShape             { static std::string debugName() { return "DenseShape"; } };
-struct HomogeneousShape       { static std::string debugName() { return "HomogeneousShape"; } };
-struct DiagonalShape          { static std::string debugName() { return "DiagonalShape"; } };
-struct BandShape              { static std::string debugName() { return "BandShape"; } };
-struct TriangularShape        { static std::string debugName() { return "TriangularShape"; } };
-struct SelfAdjointShape       { static std::string debugName() { return "SelfAdjointShape"; } };
-struct PermutationShape       { static std::string debugName() { return "PermutationShape"; } };
-struct SparseShape            { static std::string debugName() { return "SparseShape"; } };
-
-namespace internal {
-
-  // random access iterators based on coeff*() accessors.
-struct IndexBased {};
-
-// evaluator based on iterators to access coefficients. 
-struct IteratorBased {};
-
-} // end namespace internal
 
 } // end namespace Eigen
 

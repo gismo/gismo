@@ -20,7 +20,7 @@ namespace internal {
 /**********************************************************************
 * This file implements a general A * B product while
 * evaluating only one triangular part of the product.
-* This is a more general version of self adjoint product (C += A A^T)
+* This is more general version of self adjoint product (C += A A^T)
 * as the level 3 SYRK Blas routine.
 **********************************************************************/
 
@@ -73,8 +73,11 @@ struct general_matrix_matrix_triangular_product<Index,LhsScalar,LhsStorageOrder,
     if(mc > Traits::nr)
       mc = (mc/Traits::nr)*Traits::nr;
 
+    std::size_t sizeW = kc*Traits::WorkSpaceFactor;
+    std::size_t sizeB = sizeW + kc*size;
     ei_declare_aligned_stack_constructed_variable(LhsScalar, blockA, kc*mc, 0);
-    ei_declare_aligned_stack_constructed_variable(RhsScalar, blockB, kc*size, 0);
+    ei_declare_aligned_stack_constructed_variable(RhsScalar, allocatedBlockB, sizeB, 0);
+    RhsScalar* blockB = allocatedBlockB + sizeW;
     
     gemm_pack_lhs<LhsScalar, Index, Traits::mr, Traits::LhsProgress, LhsStorageOrder> pack_lhs;
     gemm_pack_rhs<RhsScalar, Index, Traits::nr, RhsStorageOrder> pack_rhs;
@@ -100,15 +103,15 @@ struct general_matrix_matrix_triangular_product<Index,LhsScalar,LhsStorageOrder,
         //  3 - after the diagonal => processed with gebp or skipped
         if (UpLo==Lower)
           gebp(res+i2, resStride, blockA, blockB, actual_mc, actual_kc, (std::min)(size,i2), alpha,
-               -1, -1, 0, 0);
+               -1, -1, 0, 0, allocatedBlockB);
 
-        sybb(res+resStride*i2 + i2, resStride, blockA, blockB + actual_kc*i2, actual_mc, actual_kc, alpha);
+        sybb(res+resStride*i2 + i2, resStride, blockA, blockB + actual_kc*i2, actual_mc, actual_kc, alpha, allocatedBlockB);
 
         if (UpLo==Upper)
         {
           Index j2 = i2+actual_mc;
           gebp(res+resStride*j2+i2, resStride, blockA, blockB+actual_kc*j2, actual_mc, actual_kc, (std::max)(Index(0), size-j2), alpha,
-               -1, -1, 0, 0);
+               -1, -1, 0, 0, allocatedBlockB);
         }
       }
     }
@@ -133,7 +136,7 @@ struct tribb_kernel
   enum {
     BlockSize  = EIGEN_PLAIN_ENUM_MAX(mr,nr)
   };
-  void operator()(ResScalar* res, Index resStride, const LhsScalar* blockA, const RhsScalar* blockB, Index size, Index depth, const ResScalar& alpha)
+  void operator()(ResScalar* res, Index resStride, const LhsScalar* blockA, const RhsScalar* blockB, Index size, Index depth, const ResScalar& alpha, RhsScalar* workspace)
   {
     gebp_kernel<LhsScalar, RhsScalar, Index, mr, nr, ConjLhs, ConjRhs> gebp_kernel;
     Matrix<ResScalar,BlockSize,BlockSize,ColMajor> buffer;
@@ -147,7 +150,7 @@ struct tribb_kernel
 
       if(UpLo==Upper)
         gebp_kernel(res+j*resStride, resStride, blockA, actual_b, j, depth, actualBlockSize, alpha,
-                    -1, -1, 0, 0);
+                    -1, -1, 0, 0, workspace);
 
       // selfadjoint micro block
       {
@@ -155,7 +158,7 @@ struct tribb_kernel
         buffer.setZero();
         // 1 - apply the kernel on the temporary buffer
         gebp_kernel(buffer.data(), BlockSize, blockA+depth*i, actual_b, actualBlockSize, depth, actualBlockSize, alpha,
-                    -1, -1, 0, 0);
+                    -1, -1, 0, 0, workspace);
         // 2 - triangular accumulation
         for(Index j1=0; j1<actualBlockSize; ++j1)
         {
@@ -170,7 +173,7 @@ struct tribb_kernel
       {
         Index i = j+actualBlockSize;
         gebp_kernel(res+j*resStride+i, resStride, blockA+depth*i, actual_b, size-i, depth, actualBlockSize, alpha,
-                    -1, -1, 0, 0);
+                    -1, -1, 0, 0, workspace);
       }
     }
   }
@@ -262,14 +265,12 @@ struct general_product_to_triangular_selector<MatrixType,ProductType,UpLo,false>
 };
 
 template<typename MatrixType, unsigned int UpLo>
-template<typename ProductType>
-TriangularView<MatrixType,UpLo>& TriangularViewImpl<MatrixType,UpLo,Dense>::_assignProduct(const ProductType& prod, const Scalar& alpha)
+template<typename ProductDerived, typename _Lhs, typename _Rhs>
+TriangularView<MatrixType,UpLo>& TriangularView<MatrixType,UpLo>::assignProduct(const ProductBase<ProductDerived, _Lhs,_Rhs>& prod, const Scalar& alpha)
 {
-  eigen_assert(derived().nestedExpression().rows() == prod.rows() && derived().cols() == prod.cols());
+  general_product_to_triangular_selector<MatrixType, ProductDerived, UpLo, (_Lhs::ColsAtCompileTime==1) || (_Rhs::RowsAtCompileTime==1)>::run(m_matrix.const_cast_derived(), prod.derived(), alpha);
   
-  general_product_to_triangular_selector<MatrixType, ProductType, UpLo, internal::traits<ProductType>::InnerSize==1>::run(derived().nestedExpression().const_cast_derived(), prod, alpha);
-  
-  return derived();
+  return *this;
 }
 
 } // end namespace Eigen

@@ -44,7 +44,14 @@ struct traits<Reverse<MatrixType, Direction> >
     ColsAtCompileTime = MatrixType::ColsAtCompileTime,
     MaxRowsAtCompileTime = MatrixType::MaxRowsAtCompileTime,
     MaxColsAtCompileTime = MatrixType::MaxColsAtCompileTime,
-    Flags = _MatrixTypeNested::Flags & (RowMajorBit | LvalueBit)
+
+    // let's enable LinearAccess only with vectorization because of the product overhead
+    LinearAccess = ( (Direction==BothDirections) && (int(_MatrixTypeNested::Flags)&PacketAccessBit) )
+                 ? LinearAccessBit : 0,
+
+    Flags = int(_MatrixTypeNested::Flags) & (HereditaryBits | LvalueBit | PacketAccessBit | LinearAccess),
+
+    CoeffReadCost = _MatrixTypeNested::CoeffReadCost
   };
 };
 
@@ -67,7 +74,6 @@ template<typename MatrixType, int Direction> class Reverse
 
     typedef typename internal::dense_xpr_base<Reverse>::type Base;
     EIGEN_DENSE_PUBLIC_INTERFACE(Reverse)
-    typedef typename internal::remove_all<MatrixType>::type NestedExpression;
     using Base::IsRowMajor;
 
     // next line is necessary because otherwise const version of operator()
@@ -89,47 +95,47 @@ template<typename MatrixType, int Direction> class Reverse
     typedef internal::reverse_packet_cond<PacketScalar,ReversePacket> reverse_packet;
   public:
 
-    EIGEN_DEVICE_FUNC explicit inline Reverse(const MatrixType& matrix) : m_matrix(matrix) { }
+    inline Reverse(const MatrixType& matrix) : m_matrix(matrix) { }
 
     EIGEN_INHERIT_ASSIGNMENT_OPERATORS(Reverse)
 
-    EIGEN_DEVICE_FUNC inline Index rows() const { return m_matrix.rows(); }
-    EIGEN_DEVICE_FUNC inline Index cols() const { return m_matrix.cols(); }
+    inline Index rows() const { return m_matrix.rows(); }
+    inline Index cols() const { return m_matrix.cols(); }
 
-    EIGEN_DEVICE_FUNC inline Index innerStride() const
+    inline Index innerStride() const
     {
       return -m_matrix.innerStride();
     }
 
-    EIGEN_DEVICE_FUNC inline Scalar& operator()(Index row, Index col)
+    inline Scalar& operator()(Index row, Index col)
     {
       eigen_assert(row >= 0 && row < rows() && col >= 0 && col < cols());
       return coeffRef(row, col);
     }
 
-    EIGEN_DEVICE_FUNC inline Scalar& coeffRef(Index row, Index col)
+    inline Scalar& coeffRef(Index row, Index col)
     {
       return m_matrix.const_cast_derived().coeffRef(ReverseRow ? m_matrix.rows() - row - 1 : row,
                                                     ReverseCol ? m_matrix.cols() - col - 1 : col);
     }
 
-    EIGEN_DEVICE_FUNC inline CoeffReturnType coeff(Index row, Index col) const
+    inline CoeffReturnType coeff(Index row, Index col) const
     {
       return m_matrix.coeff(ReverseRow ? m_matrix.rows() - row - 1 : row,
                             ReverseCol ? m_matrix.cols() - col - 1 : col);
     }
 
-    EIGEN_DEVICE_FUNC inline CoeffReturnType coeff(Index index) const
+    inline CoeffReturnType coeff(Index index) const
     {
       return m_matrix.coeff(m_matrix.size() - index - 1);
     }
 
-    EIGEN_DEVICE_FUNC inline Scalar& coeffRef(Index index)
+    inline Scalar& coeffRef(Index index)
     {
       return m_matrix.const_cast_derived().coeffRef(m_matrix.size() - index - 1);
     }
 
-    EIGEN_DEVICE_FUNC inline Scalar& operator()(Index index)
+    inline Scalar& operator()(Index index)
     {
       eigen_assert(index >= 0 && index < m_matrix.size());
       return coeffRef(index);
@@ -164,7 +170,7 @@ template<typename MatrixType, int Direction> class Reverse
       m_matrix.const_cast_derived().template writePacket<LoadMode>(m_matrix.size() - index - PacketSize, internal::preverse(x));
     }
 
-    EIGEN_DEVICE_FUNC const typename internal::remove_all<typename MatrixType::Nested>::type&
+    const typename internal::remove_all<typename MatrixType::Nested>::type& 
     nestedExpression() const 
     {
       return m_matrix;
@@ -184,7 +190,7 @@ template<typename Derived>
 inline typename DenseBase<Derived>::ReverseReturnType
 DenseBase<Derived>::reverse()
 {
-  return ReverseReturnType(derived());
+  return derived();
 }
 
 /** This is the const version of reverse(). */
@@ -192,7 +198,7 @@ template<typename Derived>
 inline const typename DenseBase<Derived>::ConstReverseReturnType
 DenseBase<Derived>::reverse() const
 {
-  return ConstReverseReturnType(derived());
+  return derived();
 }
 
 /** This is the "in place" version of reverse: it reverses \c *this.

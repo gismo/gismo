@@ -1,22 +1,5 @@
 
 
-typedef CwiseUnaryOp<internal::scalar_abs_op<Scalar>, const Derived> AbsReturnType;
-typedef CwiseUnaryOp<internal::scalar_abs2_op<Scalar>, const Derived> Abs2ReturnType;
-typedef CwiseUnaryOp<internal::scalar_sqrt_op<Scalar>, const Derived> SqrtReturnType;
-typedef CwiseUnaryOp<internal::scalar_inverse_op<Scalar>, const Derived> InverseReturnType;
-
-typedef CwiseUnaryOp<internal::scalar_exp_op<Scalar>, const Derived> ExpReturnType;
-typedef CwiseUnaryOp<internal::scalar_log_op<Scalar>, const Derived> LogReturnType;
-typedef CwiseUnaryOp<internal::scalar_cos_op<Scalar>, const Derived> CosReturnType;
-typedef CwiseUnaryOp<internal::scalar_sin_op<Scalar>, const Derived> SinReturnType;
-typedef CwiseUnaryOp<internal::scalar_acos_op<Scalar>, const Derived> AcosReturnType;
-typedef CwiseUnaryOp<internal::scalar_asin_op<Scalar>, const Derived> AsinReturnType;
-typedef CwiseUnaryOp<internal::scalar_tan_op<Scalar>, const Derived> TanReturnType;
-typedef CwiseUnaryOp<internal::scalar_atan_op<Scalar>, const Derived> AtanReturnType;
-typedef CwiseUnaryOp<internal::scalar_pow_op<Scalar>, const Derived> PowReturnType;
-typedef CwiseUnaryOp<internal::scalar_square_op<Scalar>, const Derived> SquareReturnType;
-typedef CwiseUnaryOp<internal::scalar_cube_op<Scalar>, const Derived> CubeReturnType;
-
 /** \returns an expression of the coefficient-wise absolute value of \c *this
   *
   * Example: \include Cwise_abs.cpp
@@ -24,11 +7,10 @@ typedef CwiseUnaryOp<internal::scalar_cube_op<Scalar>, const Derived> CubeReturn
   *
   * \sa abs2()
   */
-EIGEN_DEVICE_FUNC
-EIGEN_STRONG_INLINE const AbsReturnType
+EIGEN_STRONG_INLINE const CwiseUnaryOp<internal::scalar_abs_op<Scalar>, const Derived>
 abs() const
 {
-  return AbsReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise squared absolute value of \c *this
@@ -38,97 +20,76 @@ abs() const
   *
   * \sa abs(), square()
   */
-EIGEN_DEVICE_FUNC
-EIGEN_STRONG_INLINE const Abs2ReturnType
+EIGEN_STRONG_INLINE const CwiseUnaryOp<internal::scalar_abs2_op<Scalar>, const Derived>
 abs2() const
 {
-  return Abs2ReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise exponential of *this.
-  *
-  * This function computes the coefficient-wise exponential. The function MatrixBase::exp() in the
-  * unsupported module MatrixFunctions computes the matrix exponential.
   *
   * Example: \include Cwise_exp.cpp
   * Output: \verbinclude Cwise_exp.out
   *
   * \sa pow(), log(), sin(), cos()
   */
-EIGEN_DEVICE_FUNC
-inline const ExpReturnType
+inline const CwiseUnaryOp<internal::scalar_exp_op<Scalar>, const Derived>
 exp() const
 {
-  return ExpReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise logarithm of *this.
-  *
-  * This function computes the coefficient-wise logarithm. The function MatrixBase::log() in the
-  * unsupported module MatrixFunctions computes the matrix logarithm.
   *
   * Example: \include Cwise_log.cpp
   * Output: \verbinclude Cwise_log.out
   *
   * \sa exp()
   */
-EIGEN_DEVICE_FUNC
-inline const LogReturnType
+inline const CwiseUnaryOp<internal::scalar_log_op<Scalar>, const Derived>
 log() const
 {
-  return LogReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise square root of *this.
-  *
-  * This function computes the coefficient-wise square root. The function MatrixBase::sqrt() in the
-  * unsupported module MatrixFunctions computes the matrix square root.
   *
   * Example: \include Cwise_sqrt.cpp
   * Output: \verbinclude Cwise_sqrt.out
   *
   * \sa pow(), square()
   */
-EIGEN_DEVICE_FUNC
-inline const SqrtReturnType
+inline const CwiseUnaryOp<internal::scalar_sqrt_op<Scalar>, const Derived>
 sqrt() const
 {
-  return SqrtReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise cosine of *this.
-  *
-  * This function computes the coefficient-wise cosine. The function MatrixBase::cos() in the
-  * unsupported module MatrixFunctions computes the matrix cosine.
   *
   * Example: \include Cwise_cos.cpp
   * Output: \verbinclude Cwise_cos.out
   *
   * \sa sin(), acos()
   */
-EIGEN_DEVICE_FUNC
-inline const CosReturnType
+inline const CwiseUnaryOp<internal::scalar_cos_op<Scalar>, const Derived>
 cos() const
 {
-  return CosReturnType(derived());
+  return derived();
 }
 
 
 /** \returns an expression of the coefficient-wise sine of *this.
-  *
-  * This function computes the coefficient-wise sine. The function MatrixBase::sin() in the
-  * unsupported module MatrixFunctions computes the matrix sine.
   *
   * Example: \include Cwise_sin.cpp
   * Output: \verbinclude Cwise_sin.out
   *
   * \sa cos(), asin()
   */
-EIGEN_DEVICE_FUNC
-inline const SinReturnType
+inline const CwiseUnaryOp<internal::scalar_sin_op<Scalar>, const Derived>
 sin() const
 {
-  return SinReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise arc cosine of *this.
@@ -138,11 +99,10 @@ sin() const
   *
   * \sa cos(), asin()
   */
-EIGEN_DEVICE_FUNC
-inline const AcosReturnType
+inline const CwiseUnaryOp<internal::scalar_acos_op<Scalar>, const Derived>
 acos() const
 {
-  return AcosReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise arc sine of *this.
@@ -152,11 +112,10 @@ acos() const
   *
   * \sa sin(), acos()
   */
-EIGEN_DEVICE_FUNC
-inline const AsinReturnType
+inline const CwiseUnaryOp<internal::scalar_asin_op<Scalar>, const Derived>
 asin() const
 {
-  return AsinReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise tan of *this.
@@ -166,41 +125,25 @@ asin() const
   *
   * \sa cos(), sin()
   */
-EIGEN_DEVICE_FUNC
-inline const TanReturnType
+inline const CwiseUnaryOp<internal::scalar_tan_op<Scalar>, Derived>
 tan() const
 {
-  return TanReturnType(derived());
+  return derived();
 }
 
-/** \returns an expression of the coefficient-wise arc tan of *this.
-  *
-  * Example: \include Cwise_atan.cpp
-  * Output: \verbinclude Cwise_atan.out
-  *
-  * \sa cos(), sin(), tan()
-  */
-inline const AtanReturnType
-atan() const
-{
-  return AtanReturnType(derived());
-}
 
 /** \returns an expression of the coefficient-wise power of *this to the given exponent.
-  *
-  * This function computes the coefficient-wise power. The function MatrixBase::pow() in the
-  * unsupported module MatrixFunctions computes the matrix power.
   *
   * Example: \include Cwise_pow.cpp
   * Output: \verbinclude Cwise_pow.out
   *
   * \sa exp(), log()
   */
-EIGEN_DEVICE_FUNC
-inline const PowReturnType
+inline const CwiseUnaryOp<internal::scalar_pow_op<Scalar>, const Derived>
 pow(const Scalar& exponent) const
 {
-  return PowReturnType(derived(), internal::scalar_pow_op<Scalar>(exponent));
+  return CwiseUnaryOp<internal::scalar_pow_op<Scalar>, const Derived>
+          (derived(), internal::scalar_pow_op<Scalar>(exponent));
 }
 
 
@@ -211,11 +154,10 @@ pow(const Scalar& exponent) const
   *
   * \sa operator/(), operator*()
   */
-EIGEN_DEVICE_FUNC
-inline const InverseReturnType
+inline const CwiseUnaryOp<internal::scalar_inverse_op<Scalar>, const Derived>
 inverse() const
 {
-  return InverseReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise square of *this.
@@ -225,11 +167,10 @@ inverse() const
   *
   * \sa operator/(), operator*(), abs2()
   */
-EIGEN_DEVICE_FUNC
-inline const SquareReturnType
+inline const CwiseUnaryOp<internal::scalar_square_op<Scalar>, const Derived>
 square() const
 {
-  return SquareReturnType(derived());
+  return derived();
 }
 
 /** \returns an expression of the coefficient-wise cube of *this.
@@ -239,24 +180,17 @@ square() const
   *
   * \sa square(), pow()
   */
-EIGEN_DEVICE_FUNC
-inline const CubeReturnType
+inline const CwiseUnaryOp<internal::scalar_cube_op<Scalar>, const Derived>
 cube() const
 {
-  return CubeReturnType(derived());
+  return derived();
 }
 
 #define EIGEN_MAKE_SCALAR_CWISE_UNARY_OP(METHOD_NAME,FUNCTOR) \
-  EIGEN_DEVICE_FUNC \
   inline const CwiseUnaryOp<std::binder2nd<FUNCTOR<Scalar> >, const Derived> \
   METHOD_NAME(const Scalar& s) const { \
     return CwiseUnaryOp<std::binder2nd<FUNCTOR<Scalar> >, const Derived> \
             (derived(), std::bind2nd(FUNCTOR<Scalar>(), s)); \
-  } \
-  friend inline const CwiseUnaryOp<std::binder1st<FUNCTOR<Scalar> >, const Derived> \
-  METHOD_NAME(const Scalar& s, const Derived& d) { \
-	  return CwiseUnaryOp<std::binder1st<FUNCTOR<Scalar> >, const Derived> \
-			  (d, std::bind1st(FUNCTOR<Scalar>(), s)); \
   }
 
 EIGEN_MAKE_SCALAR_CWISE_UNARY_OP(operator==,  std::equal_to)

@@ -63,7 +63,7 @@ Packet4f plog<Packet4f>(const Packet4f& _x)
   x = _mm_or_ps(x, p4f_half);
 
   emm0 = _mm_sub_epi32(emm0, p4i_0x7f);
-  Packet4f e = padd(Packet4f(_mm_cvtepi32_ps(emm0)), p4f_1);
+  Packet4f e = padd(_mm_cvtepi32_ps(emm0), p4f_1);
 
   /* part2:
      if( x < SQRTHF ) {
@@ -72,9 +72,9 @@ Packet4f plog<Packet4f>(const Packet4f& _x)
      } else { x = x - 1.0; }
   */
   Packet4f mask = _mm_cmplt_ps(x, p4f_cephes_SQRTHF);
-  Packet4f tmp = pand(x, mask);
+  Packet4f tmp = _mm_and_ps(x, mask);
   x = psub(x, p4f_1);
-  e = psub(e, pand(p4f_1, mask));
+  e = psub(e, _mm_and_ps(p4f_1, mask));
   x = padd(x, tmp);
 
   Packet4f x2 = pmul(x,x);
@@ -126,7 +126,7 @@ Packet4f pexp<Packet4f>(const Packet4f& _x)
   _EIGEN_DECLARE_CONST_Packet4f(cephes_exp_p4, 1.6666665459E-1f);
   _EIGEN_DECLARE_CONST_Packet4f(cephes_exp_p5, 5.0000001201E-1f);
 
-  Packet4f tmp, fx;
+  Packet4f tmp = _mm_setzero_ps(), fx;
   Packet4i emm0;
 
   // clamp x
@@ -138,7 +138,6 @@ Packet4f pexp<Packet4f>(const Packet4f& _x)
 #ifdef EIGEN_VECTORIZE_SSE4_1
   fx = _mm_floor_ps(fx);
 #else
-  tmp = _mm_setzero_ps();
   emm0 = _mm_cvttps_epi32(fx);
   tmp  = _mm_cvtepi32_ps(emm0);
   /* if greater, substract 1 */
@@ -196,7 +195,7 @@ Packet2d pexp<Packet2d>(const Packet2d& _x)
   _EIGEN_DECLARE_CONST_Packet2d(cephes_exp_C2, 1.42860682030941723212e-6);
   static const __m128i p4i_1023_0 = _mm_setr_epi32(1023, 1023, 0, 0);
 
-  Packet2d tmp, fx;
+  Packet2d tmp = _mm_setzero_pd(), fx;
   Packet4i emm0;
 
   // clamp x
@@ -207,7 +206,6 @@ Packet2d pexp<Packet2d>(const Packet2d& _x)
 #ifdef EIGEN_VECTORIZE_SSE4_1
   fx = _mm_floor_pd(fx);
 #else
-  tmp = _mm_setzero_pd();
   emm0 = _mm_cvttpd_epi32(fx);
   tmp  = _mm_cvtepi32_pd(emm0);
   /* if greater, substract 1 */
@@ -281,7 +279,7 @@ Packet4f psin<Packet4f>(const Packet4f& _x)
   _EIGEN_DECLARE_CONST_Packet4f(coscof_p2,  4.166664568298827E-002f);
   _EIGEN_DECLARE_CONST_Packet4f(cephes_FOPI, 1.27323954473516f); // 4 / M_PI
 
-  Packet4f xmm1, xmm2, xmm3, sign_bit, y;
+  Packet4f xmm1, xmm2 = _mm_setzero_ps(), xmm3, sign_bit, y;
 
   Packet4i emm0, emm2;
   sign_bit = x;
@@ -380,7 +378,7 @@ Packet4f pcos<Packet4f>(const Packet4f& _x)
   _EIGEN_DECLARE_CONST_Packet4f(coscof_p2,  4.166664568298827E-002f);
   _EIGEN_DECLARE_CONST_Packet4f(cephes_FOPI, 1.27323954473516f); // 4 / M_PI
 
-  Packet4f xmm1, xmm2, xmm3, y;
+  Packet4f xmm1, xmm2 = _mm_setzero_ps(), xmm3, y;
   Packet4i emm0, emm2;
 
   x = pabs(x);

@@ -53,14 +53,12 @@ template<int Size> struct ConstFixedSegmentReturnType { typedef const VectorBloc
   *
   * \sa class Block, block(Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline Block<Derived> block(Index startRow, Index startCol, Index blockRows, Index blockCols)
 {
   return Block<Derived>(derived(), startRow, startCol, blockRows, blockCols);
 }
 
 /** This is the const version of block(Index,Index,Index,Index). */
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived> block(Index startRow, Index startCol, Index blockRows, Index blockCols) const
 {
   return Block<const Derived>(derived(), startRow, startCol, blockRows, blockCols);
@@ -79,14 +77,12 @@ inline const Block<const Derived> block(Index startRow, Index startCol, Index bl
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline Block<Derived> topRightCorner(Index cRows, Index cCols)
 {
   return Block<Derived>(derived(), 0, cols() - cCols, cRows, cCols);
 }
 
 /** This is the const version of topRightCorner(Index, Index).*/
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived> topRightCorner(Index cRows, Index cCols) const
 {
   return Block<const Derived>(derived(), 0, cols() - cCols, cRows, cCols);
@@ -103,7 +99,6 @@ inline const Block<const Derived> topRightCorner(Index cRows, Index cCols) const
   * \sa class Block, block<int,int>(Index,Index)
   */
 template<int CRows, int CCols>
-EIGEN_DEVICE_FUNC
 inline Block<Derived, CRows, CCols> topRightCorner()
 {
   return Block<Derived, CRows, CCols>(derived(), 0, cols() - CCols);
@@ -111,7 +106,6 @@ inline Block<Derived, CRows, CCols> topRightCorner()
 
 /** This is the const version of topRightCorner<int, int>().*/
 template<int CRows, int CCols>
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived, CRows, CCols> topRightCorner() const
 {
   return Block<const Derived, CRows, CCols>(derived(), 0, cols() - CCols);
@@ -159,14 +153,12 @@ inline const Block<const Derived, CRows, CCols> topRightCorner(Index cRows, Inde
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline Block<Derived> topLeftCorner(Index cRows, Index cCols)
 {
   return Block<Derived>(derived(), 0, 0, cRows, cCols);
 }
 
 /** This is the const version of topLeftCorner(Index, Index).*/
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived> topLeftCorner(Index cRows, Index cCols) const
 {
   return Block<const Derived>(derived(), 0, 0, cRows, cCols);
@@ -182,7 +174,6 @@ inline const Block<const Derived> topLeftCorner(Index cRows, Index cCols) const
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int CRows, int CCols>
-EIGEN_DEVICE_FUNC
 inline Block<Derived, CRows, CCols> topLeftCorner()
 {
   return Block<Derived, CRows, CCols>(derived(), 0, 0);
@@ -190,7 +181,6 @@ inline Block<Derived, CRows, CCols> topLeftCorner()
 
 /** This is the const version of topLeftCorner<int, int>().*/
 template<int CRows, int CCols>
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived, CRows, CCols> topLeftCorner() const
 {
   return Block<const Derived, CRows, CCols>(derived(), 0, 0);
@@ -238,14 +228,12 @@ inline const Block<const Derived, CRows, CCols> topLeftCorner(Index cRows, Index
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline Block<Derived> bottomRightCorner(Index cRows, Index cCols)
 {
   return Block<Derived>(derived(), rows() - cRows, cols() - cCols, cRows, cCols);
 }
 
 /** This is the const version of bottomRightCorner(Index, Index).*/
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived> bottomRightCorner(Index cRows, Index cCols) const
 {
   return Block<const Derived>(derived(), rows() - cRows, cols() - cCols, cRows, cCols);
@@ -261,7 +249,6 @@ inline const Block<const Derived> bottomRightCorner(Index cRows, Index cCols) co
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int CRows, int CCols>
-EIGEN_DEVICE_FUNC
 inline Block<Derived, CRows, CCols> bottomRightCorner()
 {
   return Block<Derived, CRows, CCols>(derived(), rows() - CRows, cols() - CCols);
@@ -269,7 +256,6 @@ inline Block<Derived, CRows, CCols> bottomRightCorner()
 
 /** This is the const version of bottomRightCorner<int, int>().*/
 template<int CRows, int CCols>
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived, CRows, CCols> bottomRightCorner() const
 {
   return Block<const Derived, CRows, CCols>(derived(), rows() - CRows, cols() - CCols);
@@ -317,14 +303,12 @@ inline const Block<const Derived, CRows, CCols> bottomRightCorner(Index cRows, I
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline Block<Derived> bottomLeftCorner(Index cRows, Index cCols)
 {
   return Block<Derived>(derived(), rows() - cRows, 0, cRows, cCols);
 }
 
 /** This is the const version of bottomLeftCorner(Index, Index).*/
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived> bottomLeftCorner(Index cRows, Index cCols) const
 {
   return Block<const Derived>(derived(), rows() - cRows, 0, cRows, cCols);
@@ -340,7 +324,6 @@ inline const Block<const Derived> bottomLeftCorner(Index cRows, Index cCols) con
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int CRows, int CCols>
-EIGEN_DEVICE_FUNC
 inline Block<Derived, CRows, CCols> bottomLeftCorner()
 {
   return Block<Derived, CRows, CCols>(derived(), rows() - CRows, 0);
@@ -348,7 +331,6 @@ inline Block<Derived, CRows, CCols> bottomLeftCorner()
 
 /** This is the const version of bottomLeftCorner<int, int>().*/
 template<int CRows, int CCols>
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived, CRows, CCols> bottomLeftCorner() const
 {
   return Block<const Derived, CRows, CCols>(derived(), rows() - CRows, 0);
@@ -395,14 +377,12 @@ inline const Block<const Derived, CRows, CCols> bottomLeftCorner(Index cRows, In
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline RowsBlockXpr topRows(Index n)
 {
   return RowsBlockXpr(derived(), 0, 0, n, cols());
 }
 
 /** This is the const version of topRows(Index).*/
-EIGEN_DEVICE_FUNC
 inline ConstRowsBlockXpr topRows(Index n) const
 {
   return ConstRowsBlockXpr(derived(), 0, 0, n, cols());
@@ -422,7 +402,6 @@ inline ConstRowsBlockXpr topRows(Index n) const
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename NRowsBlockXpr<N>::Type topRows(Index n = N)
 {
   return typename NRowsBlockXpr<N>::Type(derived(), 0, 0, n, cols());
@@ -430,7 +409,6 @@ inline typename NRowsBlockXpr<N>::Type topRows(Index n = N)
 
 /** This is the const version of topRows<int>().*/
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename ConstNRowsBlockXpr<N>::Type topRows(Index n = N) const
 {
   return typename ConstNRowsBlockXpr<N>::Type(derived(), 0, 0, n, cols());
@@ -447,14 +425,12 @@ inline typename ConstNRowsBlockXpr<N>::Type topRows(Index n = N) const
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline RowsBlockXpr bottomRows(Index n)
 {
   return RowsBlockXpr(derived(), rows() - n, 0, n, cols());
 }
 
 /** This is the const version of bottomRows(Index).*/
-EIGEN_DEVICE_FUNC
 inline ConstRowsBlockXpr bottomRows(Index n) const
 {
   return ConstRowsBlockXpr(derived(), rows() - n, 0, n, cols());
@@ -474,7 +450,6 @@ inline ConstRowsBlockXpr bottomRows(Index n) const
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename NRowsBlockXpr<N>::Type bottomRows(Index n = N)
 {
   return typename NRowsBlockXpr<N>::Type(derived(), rows() - n, 0, n, cols());
@@ -482,7 +457,6 @@ inline typename NRowsBlockXpr<N>::Type bottomRows(Index n = N)
 
 /** This is the const version of bottomRows<int>().*/
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename ConstNRowsBlockXpr<N>::Type bottomRows(Index n = N) const
 {
   return typename ConstNRowsBlockXpr<N>::Type(derived(), rows() - n, 0, n, cols());
@@ -500,14 +474,12 @@ inline typename ConstNRowsBlockXpr<N>::Type bottomRows(Index n = N) const
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline RowsBlockXpr middleRows(Index startRow, Index n)
 {
   return RowsBlockXpr(derived(), startRow, 0, n, cols());
 }
 
 /** This is the const version of middleRows(Index,Index).*/
-EIGEN_DEVICE_FUNC
 inline ConstRowsBlockXpr middleRows(Index startRow, Index n) const
 {
   return ConstRowsBlockXpr(derived(), startRow, 0, n, cols());
@@ -528,7 +500,6 @@ inline ConstRowsBlockXpr middleRows(Index startRow, Index n) const
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename NRowsBlockXpr<N>::Type middleRows(Index startRow, Index n = N)
 {
   return typename NRowsBlockXpr<N>::Type(derived(), startRow, 0, n, cols());
@@ -536,7 +507,6 @@ inline typename NRowsBlockXpr<N>::Type middleRows(Index startRow, Index n = N)
 
 /** This is the const version of middleRows<int>().*/
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename ConstNRowsBlockXpr<N>::Type middleRows(Index startRow, Index n = N) const
 {
   return typename ConstNRowsBlockXpr<N>::Type(derived(), startRow, 0, n, cols());
@@ -553,14 +523,12 @@ inline typename ConstNRowsBlockXpr<N>::Type middleRows(Index startRow, Index n =
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline ColsBlockXpr leftCols(Index n)
 {
   return ColsBlockXpr(derived(), 0, 0, rows(), n);
 }
 
 /** This is the const version of leftCols(Index).*/
-EIGEN_DEVICE_FUNC
 inline ConstColsBlockXpr leftCols(Index n) const
 {
   return ConstColsBlockXpr(derived(), 0, 0, rows(), n);
@@ -580,7 +548,6 @@ inline ConstColsBlockXpr leftCols(Index n) const
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename NColsBlockXpr<N>::Type leftCols(Index n = N)
 {
   return typename NColsBlockXpr<N>::Type(derived(), 0, 0, rows(), n);
@@ -588,7 +555,6 @@ inline typename NColsBlockXpr<N>::Type leftCols(Index n = N)
 
 /** This is the const version of leftCols<int>().*/
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename ConstNColsBlockXpr<N>::Type leftCols(Index n = N) const
 {
   return typename ConstNColsBlockXpr<N>::Type(derived(), 0, 0, rows(), n);
@@ -605,14 +571,12 @@ inline typename ConstNColsBlockXpr<N>::Type leftCols(Index n = N) const
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline ColsBlockXpr rightCols(Index n)
 {
   return ColsBlockXpr(derived(), 0, cols() - n, rows(), n);
 }
 
 /** This is the const version of rightCols(Index).*/
-EIGEN_DEVICE_FUNC
 inline ConstColsBlockXpr rightCols(Index n) const
 {
   return ConstColsBlockXpr(derived(), 0, cols() - n, rows(), n);
@@ -632,7 +596,6 @@ inline ConstColsBlockXpr rightCols(Index n) const
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename NColsBlockXpr<N>::Type rightCols(Index n = N)
 {
   return typename NColsBlockXpr<N>::Type(derived(), 0, cols() - n, rows(), n);
@@ -640,7 +603,6 @@ inline typename NColsBlockXpr<N>::Type rightCols(Index n = N)
 
 /** This is the const version of rightCols<int>().*/
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename ConstNColsBlockXpr<N>::Type rightCols(Index n = N) const
 {
   return typename ConstNColsBlockXpr<N>::Type(derived(), 0, cols() - n, rows(), n);
@@ -658,14 +620,12 @@ inline typename ConstNColsBlockXpr<N>::Type rightCols(Index n = N) const
   *
   * \sa class Block, block(Index,Index,Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline ColsBlockXpr middleCols(Index startCol, Index numCols)
 {
   return ColsBlockXpr(derived(), 0, startCol, rows(), numCols);
 }
 
 /** This is the const version of middleCols(Index,Index).*/
-EIGEN_DEVICE_FUNC
 inline ConstColsBlockXpr middleCols(Index startCol, Index numCols) const
 {
   return ConstColsBlockXpr(derived(), 0, startCol, rows(), numCols);
@@ -686,7 +646,6 @@ inline ConstColsBlockXpr middleCols(Index startCol, Index numCols) const
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename NColsBlockXpr<N>::Type middleCols(Index startCol, Index n = N)
 {
   return typename NColsBlockXpr<N>::Type(derived(), 0, startCol, rows(), n);
@@ -694,7 +653,6 @@ inline typename NColsBlockXpr<N>::Type middleCols(Index startCol, Index n = N)
 
 /** This is the const version of middleCols<int>().*/
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename ConstNColsBlockXpr<N>::Type middleCols(Index startCol, Index n = N) const
 {
   return typename ConstNColsBlockXpr<N>::Type(derived(), 0, startCol, rows(), n);
@@ -719,7 +677,6 @@ inline typename ConstNColsBlockXpr<N>::Type middleCols(Index startCol, Index n =
   * \sa class Block, block(Index,Index,Index,Index)
   */
 template<int BlockRows, int BlockCols>
-EIGEN_DEVICE_FUNC
 inline Block<Derived, BlockRows, BlockCols> block(Index startRow, Index startCol)
 {
   return Block<Derived, BlockRows, BlockCols>(derived(), startRow, startCol);
@@ -727,7 +684,6 @@ inline Block<Derived, BlockRows, BlockCols> block(Index startRow, Index startCol
 
 /** This is the const version of block<>(Index, Index). */
 template<int BlockRows, int BlockCols>
-EIGEN_DEVICE_FUNC
 inline const Block<const Derived, BlockRows, BlockCols> block(Index startRow, Index startCol) const
 {
   return Block<const Derived, BlockRows, BlockCols>(derived(), startRow, startCol);
@@ -773,14 +729,12 @@ inline const Block<const Derived, BlockRows, BlockCols> block(Index startRow, In
   * Output: \verbinclude MatrixBase_col.out
   *
   * \sa row(), class Block */
-EIGEN_DEVICE_FUNC
 inline ColXpr col(Index i)
 {
   return ColXpr(derived(), i);
 }
 
 /** This is the const version of col(). */
-EIGEN_DEVICE_FUNC
 inline ConstColXpr col(Index i) const
 {
   return ConstColXpr(derived(), i);
@@ -792,14 +746,12 @@ inline ConstColXpr col(Index i) const
   * Output: \verbinclude MatrixBase_row.out
   *
   * \sa col(), class Block */
-EIGEN_DEVICE_FUNC
 inline RowXpr row(Index i)
 {
   return RowXpr(derived(), i);
 }
 
 /** This is the const version of row(). */
-EIGEN_DEVICE_FUNC
 inline ConstRowXpr row(Index i) const
 {
   return ConstRowXpr(derived(), i);
@@ -821,7 +773,6 @@ inline ConstRowXpr row(Index i) const
   *
   * \sa class Block, segment(Index)
   */
-EIGEN_DEVICE_FUNC
 inline SegmentReturnType segment(Index start, Index n)
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -830,7 +781,6 @@ inline SegmentReturnType segment(Index start, Index n)
 
 
 /** This is the const version of segment(Index,Index).*/
-EIGEN_DEVICE_FUNC
 inline ConstSegmentReturnType segment(Index start, Index n) const
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -852,7 +802,6 @@ inline ConstSegmentReturnType segment(Index start, Index n) const
   *
   * \sa class Block, block(Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline SegmentReturnType head(Index n)
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -860,7 +809,6 @@ inline SegmentReturnType head(Index n)
 }
 
 /** This is the const version of head(Index).*/
-EIGEN_DEVICE_FUNC
 inline ConstSegmentReturnType head(Index n) const
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -882,7 +830,6 @@ inline ConstSegmentReturnType head(Index n) const
   *
   * \sa class Block, block(Index,Index)
   */
-EIGEN_DEVICE_FUNC
 inline SegmentReturnType tail(Index n)
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -890,7 +837,6 @@ inline SegmentReturnType tail(Index n)
 }
 
 /** This is the const version of tail(Index).*/
-EIGEN_DEVICE_FUNC
 inline ConstSegmentReturnType tail(Index n) const
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -914,7 +860,6 @@ inline ConstSegmentReturnType tail(Index n) const
   * \sa class Block
   */
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename FixedSegmentReturnType<N>::Type segment(Index start, Index n = N)
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -923,7 +868,6 @@ inline typename FixedSegmentReturnType<N>::Type segment(Index start, Index n = N
 
 /** This is the const version of segment<int>(Index).*/
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename ConstFixedSegmentReturnType<N>::Type segment(Index start, Index n = N) const
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -946,7 +890,6 @@ inline typename ConstFixedSegmentReturnType<N>::Type segment(Index start, Index 
   * \sa class Block
   */
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename FixedSegmentReturnType<N>::Type head(Index n = N)
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -955,7 +898,6 @@ inline typename FixedSegmentReturnType<N>::Type head(Index n = N)
 
 /** This is the const version of head<int>().*/
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename ConstFixedSegmentReturnType<N>::Type head(Index n = N) const
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -978,7 +920,6 @@ inline typename ConstFixedSegmentReturnType<N>::Type head(Index n = N) const
   * \sa class Block
   */
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename FixedSegmentReturnType<N>::Type tail(Index n = N)
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -987,7 +928,6 @@ inline typename FixedSegmentReturnType<N>::Type tail(Index n = N)
 
 /** This is the const version of tail<int>.*/
 template<int N>
-EIGEN_DEVICE_FUNC
 inline typename ConstFixedSegmentReturnType<N>::Type tail(Index n = N) const
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)

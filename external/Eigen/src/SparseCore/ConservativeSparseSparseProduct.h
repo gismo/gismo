@@ -1,7 +1,7 @@
 // This file is part of Eigen, a lightweight C++ template library
 // for linear algebra.
 //
-// Copyright (C) 2008-2014 Gael Guennebaud <gael.guennebaud@inria.fr>
+// Copyright (C) 2008-2011 Gael Guennebaud <gael.guennebaud@inria.fr>
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -15,7 +15,7 @@ namespace Eigen {
 namespace internal {
 
 template<typename Lhs, typename Rhs, typename ResultType>
-static void conservative_sparse_sparse_product_impl(const Lhs& lhs, const Rhs& rhs, ResultType& res, bool sortedInsertion = false)
+static void conservative_sparse_sparse_product_impl(const Lhs& lhs, const Rhs& rhs, ResultType& res)
 {
   typedef typename remove_all<Lhs>::type::Scalar Scalar;
   typedef typename remove_all<Lhs>::type::Index Index;
@@ -24,12 +24,10 @@ static void conservative_sparse_sparse_product_impl(const Lhs& lhs, const Rhs& r
   Index rows = lhs.innerSize();
   Index cols = rhs.outerSize();
   eigen_assert(lhs.outerSize() == rhs.innerSize());
-  
-  ei_declare_aligned_stack_constructed_variable(bool,   mask,     rows, 0);
-  ei_declare_aligned_stack_constructed_variable(Scalar, values,   rows, 0);
-  ei_declare_aligned_stack_constructed_variable(Index,  indices,  rows, 0);
-  
-  std::memset(mask,0,sizeof(bool)*rows);
+
+  std::vector<bool> mask(rows,false);
+  Matrix<Scalar,Dynamic,1> values(rows);
+  Matrix<Index,Dynamic,1>  indices(rows);
 
   // estimate the number of non zero entries
   // given a rhs column containing Y non zeros, we assume that the respective Y columns
@@ -38,9 +36,6 @@ static void conservative_sparse_sparse_product_impl(const Lhs& lhs, const Rhs& r
   // per column of the lhs.
   // Therefore, we have nnz(lhs*rhs) = nnz(lhs) + nnz(rhs)
   Index estimated_nnz_prod = lhs.nonZeros() + rhs.nonZeros();
-  
-  typename evaluator<Lhs>::type lhsEval(lhs);
-  typename evaluator<Rhs>::type rhsEval(rhs);
 
   res.setZero();
   res.reserve(Index(estimated_nnz_prod));
@@ -50,11 +45,11 @@ static void conservative_sparse_sparse_product_impl(const Lhs& lhs, const Rhs& r
 
     res.startVec(j);
     Index nnz = 0;
-    for (typename evaluator<Rhs>::InnerIterator rhsIt(rhsEval, j); rhsIt; ++rhsIt)
+    for (typename Rhs::InnerIterator rhsIt(rhs, j); rhsIt; ++rhsIt)
     {
       Scalar y = rhsIt.value();
       Index k = rhsIt.index();
-      for (typename evaluator<Lhs>::InnerIterator lhsIt(lhsEval, k); lhsIt; ++lhsIt)
+      for (typename Lhs::InnerIterator lhsIt(lhs, k); lhsIt; ++lhsIt)
       {
         Index i = lhsIt.index();
         Scalar x = lhsIt.value();
@@ -69,51 +64,53 @@ static void conservative_sparse_sparse_product_impl(const Lhs& lhs, const Rhs& r
           values[i] += x * y;
       }
     }
-    if(!sortedInsertion)
+
+    // unordered insertion
+    for(Index k=0; k<nnz; ++k)
     {
-      // unordered insertion
+      Index i = indices[k];
+      res.insertBackByOuterInnerUnordered(j,i) = values[i];
+      mask[i] = false;
+    }
+
+#if 0
+    // alternative ordered insertion code:
+
+    Index t200 = rows/(log2(200)*1.39);
+    Index t = (rows*100)/139;
+
+    // FIXME reserve nnz non zeros
+    // FIXME implement fast sort algorithms for very small nnz
+    // if the result is sparse enough => use a quick sort
+    // otherwise => loop through the entire vector
+    // In order to avoid to perform an expensive log2 when the
+    // result is clearly very sparse we use a linear bound up to 200.
+    //if((nnz<200 && nnz<t200) || nnz * log2(nnz) < t)
+    //res.startVec(j);
+    if(true)
+    {
+      if(nnz>1) std::sort(indices.data(),indices.data()+nnz);
       for(Index k=0; k<nnz; ++k)
       {
         Index i = indices[k];
-        res.insertBackByOuterInnerUnordered(j,i) = values[i];
+        res.insertBackByOuterInner(j,i) = values[i];
         mask[i] = false;
       }
     }
     else
     {
-      // alternative ordered insertion code:
-      const Index t200 = rows/11; // 11 == (log2(200)*1.39)
-      const Index t = (rows*100)/139;
-
-      // FIXME reserve nnz non zeros
-      // FIXME implement faster sorting algorithms for very small nnz
-      // if the result is sparse enough => use a quick sort
-      // otherwise => loop through the entire vector
-      // In order to avoid to perform an expensive log2 when the
-      // result is clearly very sparse we use a linear bound up to 200.
-      if((nnz<200 && nnz<t200) || nnz * numext::log2(int(nnz)) < t)
+      // dense path
+      for(Index i=0; i<rows; ++i)
       {
-        if(nnz>1) std::sort(indices,indices+nnz);
-        for(Index k=0; k<nnz; ++k)
+        if(mask[i])
         {
-          Index i = indices[k];
-          res.insertBackByOuterInner(j,i) = values[i];
           mask[i] = false;
-        }
-      }
-      else
-      {
-        // dense path
-        for(Index i=0; i<rows; ++i)
-        {
-          if(mask[i])
-          {
-            mask[i] = false;
-            res.insertBackByOuterInner(j,i) = values[i];
-          }
+          res.insertBackByOuterInner(j,i) = values[i];
         }
       }
     }
+#endif
+
   }
   res.finalize();
 }
@@ -138,27 +135,12 @@ struct conservative_sparse_sparse_product_selector<Lhs,Rhs,ResultType,ColMajor,C
   static void run(const Lhs& lhs, const Rhs& rhs, ResultType& res)
   {
     typedef SparseMatrix<typename ResultType::Scalar,RowMajor,typename ResultType::Index> RowMajorMatrix;
-    typedef SparseMatrix<typename ResultType::Scalar,ColMajor,typename ResultType::Index> ColMajorMatrixAux;
-    typedef typename sparse_eval<ColMajorMatrixAux,ResultType::RowsAtCompileTime,ResultType::ColsAtCompileTime>::type ColMajorMatrix;
-    
-    // If the result is tall and thin (in the extreme case a column vector)
-    // then it is faster to sort the coefficients inplace instead of transposing twice.
-    // FIXME, the following heuristic is probably not very good.
-    if(lhs.rows()>=rhs.cols())
-    {
-      ColMajorMatrix resCol(lhs.rows(),rhs.cols());
-      // perform sorted insertion
-      internal::conservative_sparse_sparse_product_impl<Lhs,Rhs,ColMajorMatrix>(lhs, rhs, resCol, true);
-      res = resCol.markAsRValue();
-    }
-    else
-    {
-      ColMajorMatrixAux resCol(lhs.rows(),rhs.cols());
-      // ressort to transpose to sort the entries
-      internal::conservative_sparse_sparse_product_impl<Lhs,Rhs,ColMajorMatrixAux>(lhs, rhs, resCol, false);
-      RowMajorMatrix resRow(resCol);
-      res = resRow.markAsRValue();
-    }
+    typedef SparseMatrix<typename ResultType::Scalar,ColMajor,typename ResultType::Index> ColMajorMatrix;
+    ColMajorMatrix resCol(lhs.rows(),rhs.cols());
+    internal::conservative_sparse_sparse_product_impl<Lhs,Rhs,ColMajorMatrix>(lhs, rhs, resCol);
+    // sort the non zeros:
+    RowMajorMatrix resRow(resCol);
+    res = resRow;
   }
 };
 

@@ -74,7 +74,7 @@ class GeneralizedSelfAdjointEigenSolver : public SelfAdjointEigenSolver<_MatrixT
       *
       * \sa compute() for an example
       */
-    explicit GeneralizedSelfAdjointEigenSolver(Index size)
+    GeneralizedSelfAdjointEigenSolver(Index size)
         : Base(size)
     {}
 

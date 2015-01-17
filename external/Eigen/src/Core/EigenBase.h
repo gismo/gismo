@@ -31,40 +31,29 @@ template<typename Derived> struct EigenBase
   typedef typename internal::traits<Derived>::Index Index;
 
   /** \returns a reference to the derived object */
-  EIGEN_DEVICE_FUNC
   Derived& derived() { return *static_cast<Derived*>(this); }
   /** \returns a const reference to the derived object */
-  EIGEN_DEVICE_FUNC
   const Derived& derived() const { return *static_cast<const Derived*>(this); }
 
-  EIGEN_DEVICE_FUNC
   inline Derived& const_cast_derived() const
   { return *static_cast<Derived*>(const_cast<EigenBase*>(this)); }
-  EIGEN_DEVICE_FUNC
   inline const Derived& const_derived() const
   { return *static_cast<const Derived*>(this); }
 
   /** \returns the number of rows. \sa cols(), RowsAtCompileTime */
-  EIGEN_DEVICE_FUNC
   inline Index rows() const { return derived().rows(); }
   /** \returns the number of columns. \sa rows(), ColsAtCompileTime*/
-  EIGEN_DEVICE_FUNC
   inline Index cols() const { return derived().cols(); }
   /** \returns the number of coefficients, which is rows()*cols().
     * \sa rows(), cols(), SizeAtCompileTime. */
-  EIGEN_DEVICE_FUNC
   inline Index size() const { return rows() * cols(); }
 
   /** \internal Don't use it, but do the equivalent: \code dst = *this; \endcode */
-  template<typename Dest>
-  EIGEN_DEVICE_FUNC
-  inline void evalTo(Dest& dst) const
+  template<typename Dest> inline void evalTo(Dest& dst) const
   { derived().evalTo(dst); }
 
   /** \internal Don't use it, but do the equivalent: \code dst += *this; \endcode */
-  template<typename Dest>
-  EIGEN_DEVICE_FUNC
-  inline void addTo(Dest& dst) const
+  template<typename Dest> inline void addTo(Dest& dst) const
   {
     // This is the default implementation,
     // derived class can reimplement it in a more optimized way.
@@ -74,9 +63,7 @@ template<typename Derived> struct EigenBase
   }
 
   /** \internal Don't use it, but do the equivalent: \code dst -= *this; \endcode */
-  template<typename Dest>
-  EIGEN_DEVICE_FUNC
-  inline void subTo(Dest& dst) const
+  template<typename Dest> inline void subTo(Dest& dst) const
   {
     // This is the default implementation,
     // derived class can reimplement it in a more optimized way.
@@ -86,8 +73,7 @@ template<typename Derived> struct EigenBase
   }
 
   /** \internal Don't use it, but do the equivalent: \code dst.applyOnTheRight(*this); \endcode */
-  template<typename Dest>
-  EIGEN_DEVICE_FUNC inline void applyThisOnTheRight(Dest& dst) const
+  template<typename Dest> inline void applyThisOnTheRight(Dest& dst) const
   {
     // This is the default implementation,
     // derived class can reimplement it in a more optimized way.
@@ -95,8 +81,7 @@ template<typename Derived> struct EigenBase
   }
 
   /** \internal Don't use it, but do the equivalent: \code dst.applyOnTheLeft(*this); \endcode */
-  template<typename Dest>
-  EIGEN_DEVICE_FUNC inline void applyThisOnTheLeft(Dest& dst) const
+  template<typename Dest> inline void applyThisOnTheLeft(Dest& dst) const
   {
     // This is the default implementation,
     // derived class can reimplement it in a more optimized way.
@@ -121,7 +106,7 @@ template<typename Derived>
 template<typename OtherDerived>
 Derived& DenseBase<Derived>::operator=(const EigenBase<OtherDerived> &other)
 {
-  call_assignment(derived(), other.derived());
+  other.derived().evalTo(derived());
   return derived();
 }
 
@@ -129,7 +114,7 @@ template<typename Derived>
 template<typename OtherDerived>
 Derived& DenseBase<Derived>::operator+=(const EigenBase<OtherDerived> &other)
 {
-  call_assignment(derived(), other.derived(), internal::add_assign_op<Scalar>());
+  other.derived().addTo(derived());
   return derived();
 }
 
@@ -137,7 +122,7 @@ template<typename Derived>
 template<typename OtherDerived>
 Derived& DenseBase<Derived>::operator-=(const EigenBase<OtherDerived> &other)
 {
-  call_assignment(derived(), other.derived(), internal::sub_assign_op<Scalar>());
+  other.derived().subTo(derived());
   return derived();
 }
 

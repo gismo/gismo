@@ -30,36 +30,62 @@ namespace Eigen {
 template<typename ExpressionType, template <typename> class StorageBase>
 class NoAlias
 {
-  public:
     typedef typename ExpressionType::Scalar Scalar;
-    
-    explicit NoAlias(ExpressionType& expression) : m_expression(expression) {}
-    
+  public:
+    NoAlias(ExpressionType& expression) : m_expression(expression) {}
+
+    /** Behaves like MatrixBase::lazyAssign(other)
+      * \sa MatrixBase::lazyAssign() */
     template<typename OtherDerived>
-    EIGEN_DEVICE_FUNC
     EIGEN_STRONG_INLINE ExpressionType& operator=(const StorageBase<OtherDerived>& other)
-    {
-      call_assignment_no_alias(m_expression, other.derived(), internal::assign_op<Scalar>());
-      return m_expression;
-    }
-    
+    { return internal::assign_selector<ExpressionType,OtherDerived,false>::run(m_expression,other.derived()); }
+
+    /** \sa MatrixBase::operator+= */
     template<typename OtherDerived>
-    EIGEN_DEVICE_FUNC
     EIGEN_STRONG_INLINE ExpressionType& operator+=(const StorageBase<OtherDerived>& other)
     {
-      call_assignment_no_alias(m_expression, other.derived(), internal::add_assign_op<Scalar>());
-      return m_expression;
-    }
-    
-    template<typename OtherDerived>
-    EIGEN_DEVICE_FUNC
-    EIGEN_STRONG_INLINE ExpressionType& operator-=(const StorageBase<OtherDerived>& other)
-    {
-      call_assignment_no_alias(m_expression, other.derived(), internal::sub_assign_op<Scalar>());
+      typedef SelfCwiseBinaryOp<internal::scalar_sum_op<Scalar>, ExpressionType, OtherDerived> SelfAdder;
+      SelfAdder tmp(m_expression);
+      typedef typename internal::nested<OtherDerived>::type OtherDerivedNested;
+      typedef typename internal::remove_all<OtherDerivedNested>::type _OtherDerivedNested;
+      internal::assign_selector<SelfAdder,_OtherDerivedNested,false>::run(tmp,OtherDerivedNested(other.derived()));
       return m_expression;
     }
 
-    EIGEN_DEVICE_FUNC
+    /** \sa MatrixBase::operator-= */
+    template<typename OtherDerived>
+    EIGEN_STRONG_INLINE ExpressionType& operator-=(const StorageBase<OtherDerived>& other)
+    {
+      typedef SelfCwiseBinaryOp<internal::scalar_difference_op<Scalar>, ExpressionType, OtherDerived> SelfAdder;
+      SelfAdder tmp(m_expression);
+      typedef typename internal::nested<OtherDerived>::type OtherDerivedNested;
+      typedef typename internal::remove_all<OtherDerivedNested>::type _OtherDerivedNested;
+      internal::assign_selector<SelfAdder,_OtherDerivedNested,false>::run(tmp,OtherDerivedNested(other.derived()));
+      return m_expression;
+    }
+
+#ifndef EIGEN_PARSED_BY_DOXYGEN
+    template<typename ProductDerived, typename Lhs, typename Rhs>
+    EIGEN_STRONG_INLINE ExpressionType& operator+=(const ProductBase<ProductDerived, Lhs,Rhs>& other)
+    { other.derived().addTo(m_expression); return m_expression; }
+
+    template<typename ProductDerived, typename Lhs, typename Rhs>
+    EIGEN_STRONG_INLINE ExpressionType& operator-=(const ProductBase<ProductDerived, Lhs,Rhs>& other)
+    { other.derived().subTo(m_expression); return m_expression; }
+
+    template<typename Lhs, typename Rhs, int NestingFlags>
+    EIGEN_STRONG_INLINE ExpressionType& operator+=(const CoeffBasedProduct<Lhs,Rhs,NestingFlags>& other)
+    { return m_expression.derived() += CoeffBasedProduct<Lhs,Rhs,NestByRefBit>(other.lhs(), other.rhs()); }
+
+    template<typename Lhs, typename Rhs, int NestingFlags>
+    EIGEN_STRONG_INLINE ExpressionType& operator-=(const CoeffBasedProduct<Lhs,Rhs,NestingFlags>& other)
+    { return m_expression.derived() -= CoeffBasedProduct<Lhs,Rhs,NestByRefBit>(other.lhs(), other.rhs()); }
+    
+    template<typename OtherDerived>
+    ExpressionType& operator=(const ReturnByValue<OtherDerived>& func)
+    { return m_expression = func; }
+#endif
+
     ExpressionType& expression() const
     {
       return m_expression;
@@ -100,7 +126,7 @@ class NoAlias
 template<typename Derived>
 NoAlias<Derived,MatrixBase> MatrixBase<Derived>::noalias()
 {
-  return NoAlias<Derived, Eigen::MatrixBase >(derived());
+  return derived();
 }
 
 } // end namespace Eigen

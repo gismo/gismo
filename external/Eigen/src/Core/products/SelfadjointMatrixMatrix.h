@@ -15,7 +15,7 @@ namespace Eigen {
 namespace internal {
 
 // pack a selfadjoint block diagonal for use with the gebp_kernel
-template<typename Scalar, typename Index, int Pack1, int Pack2_dummy, int StorageOrder>
+template<typename Scalar, typename Index, int Pack1, int Pack2, int StorageOrder>
 struct symm_pack_lhs
 {
   template<int BlockRows> inline
@@ -45,32 +45,25 @@ struct symm_pack_lhs
   }
   void operator()(Scalar* blockA, const Scalar* _lhs, Index lhsStride, Index cols, Index rows)
   {
-    enum { PacketSize = packet_traits<Scalar>::size };
     const_blas_data_mapper<Scalar,Index,StorageOrder> lhs(_lhs,lhsStride);
     Index count = 0;
-    //Index peeled_mc3 = (rows/Pack1)*Pack1;
-    
-    const Index peeled_mc3 = Pack1>=3*PacketSize ? (rows/(3*PacketSize))*(3*PacketSize) : 0;
-    const Index peeled_mc2 = Pack1>=2*PacketSize ? peeled_mc3+((rows-peeled_mc3)/(2*PacketSize))*(2*PacketSize) : 0;
-    const Index peeled_mc1 = Pack1>=1*PacketSize ? (rows/(1*PacketSize))*(1*PacketSize) : 0;
-    
-    if(Pack1>=3*PacketSize)
-      for(Index i=0; i<peeled_mc3; i+=3*PacketSize)
-        pack<3*PacketSize>(blockA, lhs, cols, i, count);
-    
-    if(Pack1>=2*PacketSize)
-      for(Index i=peeled_mc3; i<peeled_mc2; i+=2*PacketSize)
-        pack<2*PacketSize>(blockA, lhs, cols, i, count);
-    
-    if(Pack1>=1*PacketSize)
-      for(Index i=peeled_mc2; i<peeled_mc1; i+=1*PacketSize)
-        pack<1*PacketSize>(blockA, lhs, cols, i, count);
+    Index peeled_mc = (rows/Pack1)*Pack1;
+    for(Index i=0; i<peeled_mc; i+=Pack1)
+    {
+      pack<Pack1>(blockA, lhs, cols, i, count);
+    }
+
+    if(rows-peeled_mc>=Pack2)
+    {
+      pack<Pack2>(blockA, lhs, cols, peeled_mc, count);
+      peeled_mc += Pack2;
+    }
 
     // do the same with mr==1
-    for(Index i=peeled_mc1; i<rows; i++)
+    for(Index i=peeled_mc; i<rows; i++)
     {
       for(Index k=0; k<i; k++)
-        blockA[count++] = lhs(i, k);                   // normal
+        blockA[count++] = lhs(i, k);              // normal
 
       blockA[count++] = numext::real(lhs(i, i));       // real (diagonal)
 
@@ -89,8 +82,7 @@ struct symm_pack_rhs
     Index end_k = k2 + rows;
     Index count = 0;
     const_blas_data_mapper<Scalar,Index,StorageOrder> rhs(_rhs,rhsStride);
-    Index packet_cols8 = nr>=8 ? (cols/8) * 8 : 0;
-    Index packet_cols4 = nr>=4 ? (cols/4) * 4 : 0;
+    Index packet_cols = (cols/nr)*nr;
 
     // first part: normal case
     for(Index j2=0; j2<k2; j2+=nr)
@@ -99,151 +91,79 @@ struct symm_pack_rhs
       {
         blockB[count+0] = rhs(k,j2+0);
         blockB[count+1] = rhs(k,j2+1);
-        if (nr>=4)
+        if (nr==4)
         {
           blockB[count+2] = rhs(k,j2+2);
           blockB[count+3] = rhs(k,j2+3);
-        }
-        if (nr>=8)
-        {
-          blockB[count+4] = rhs(k,j2+4);
-          blockB[count+5] = rhs(k,j2+5);
-          blockB[count+6] = rhs(k,j2+6);
-          blockB[count+7] = rhs(k,j2+7);
         }
         count += nr;
       }
     }
 
     // second part: diagonal block
-    Index end8 = nr>=8 ? (std::min)(k2+rows,packet_cols8) : k2;
-    if(nr>=8)
+    for(Index j2=k2; j2<(std::min)(k2+rows,packet_cols); j2+=nr)
     {
-      for(Index j2=k2; j2<end8; j2+=8)
+      // again we can split vertically in three different parts (transpose, symmetric, normal)
+      // transpose
+      for(Index k=k2; k<j2; k++)
       {
-        // again we can split vertically in three different parts (transpose, symmetric, normal)
-        // transpose
-        for(Index k=k2; k<j2; k++)
+        blockB[count+0] = numext::conj(rhs(j2+0,k));
+        blockB[count+1] = numext::conj(rhs(j2+1,k));
+        if (nr==4)
         {
-          blockB[count+0] = numext::conj(rhs(j2+0,k));
-          blockB[count+1] = numext::conj(rhs(j2+1,k));
           blockB[count+2] = numext::conj(rhs(j2+2,k));
           blockB[count+3] = numext::conj(rhs(j2+3,k));
-          blockB[count+4] = numext::conj(rhs(j2+4,k));
-          blockB[count+5] = numext::conj(rhs(j2+5,k));
-          blockB[count+6] = numext::conj(rhs(j2+6,k));
-          blockB[count+7] = numext::conj(rhs(j2+7,k));
-          count += 8;
         }
-        // symmetric
-        Index h = 0;
-        for(Index k=j2; k<j2+8; k++)
-        {
-          // normal
-          for (Index w=0 ; w<h; ++w)
-            blockB[count+w] = rhs(k,j2+w);
-
-          blockB[count+h] = numext::real(rhs(k,k));
-
-          // transpose
-          for (Index w=h+1 ; w<8; ++w)
-            blockB[count+w] = numext::conj(rhs(j2+w,k));
-          count += 8;
-          ++h;
-        }
-        // normal
-        for(Index k=j2+8; k<end_k; k++)
-        {
-          blockB[count+0] = rhs(k,j2+0);
-          blockB[count+1] = rhs(k,j2+1);
-          blockB[count+2] = rhs(k,j2+2);
-          blockB[count+3] = rhs(k,j2+3);
-          blockB[count+4] = rhs(k,j2+4);
-          blockB[count+5] = rhs(k,j2+5);
-          blockB[count+6] = rhs(k,j2+6);
-          blockB[count+7] = rhs(k,j2+7);
-          count += 8;
-        }
+        count += nr;
       }
-    }
-    if(nr>=4)
-    {
-      for(Index j2=end8; j2<(std::min)(k2+rows,packet_cols4); j2+=4)
+      // symmetric
+      Index h = 0;
+      for(Index k=j2; k<j2+nr; k++)
       {
-        // again we can split vertically in three different parts (transpose, symmetric, normal)
-        // transpose
-        for(Index k=k2; k<j2; k++)
-        {
-          blockB[count+0] = numext::conj(rhs(j2+0,k));
-          blockB[count+1] = numext::conj(rhs(j2+1,k));
-          blockB[count+2] = numext::conj(rhs(j2+2,k));
-          blockB[count+3] = numext::conj(rhs(j2+3,k));
-          count += 4;
-        }
-        // symmetric
-        Index h = 0;
-        for(Index k=j2; k<j2+4; k++)
-        {
-          // normal
-          for (Index w=0 ; w<h; ++w)
-            blockB[count+w] = rhs(k,j2+w);
-
-          blockB[count+h] = numext::real(rhs(k,k));
-
-          // transpose
-          for (Index w=h+1 ; w<4; ++w)
-            blockB[count+w] = numext::conj(rhs(j2+w,k));
-          count += 4;
-          ++h;
-        }
         // normal
-        for(Index k=j2+4; k<end_k; k++)
+        for (Index w=0 ; w<h; ++w)
+          blockB[count+w] = rhs(k,j2+w);
+
+        blockB[count+h] = numext::real(rhs(k,k));
+
+        // transpose
+        for (Index w=h+1 ; w<nr; ++w)
+          blockB[count+w] = numext::conj(rhs(j2+w,k));
+        count += nr;
+        ++h;
+      }
+      // normal
+      for(Index k=j2+nr; k<end_k; k++)
+      {
+        blockB[count+0] = rhs(k,j2+0);
+        blockB[count+1] = rhs(k,j2+1);
+        if (nr==4)
         {
-          blockB[count+0] = rhs(k,j2+0);
-          blockB[count+1] = rhs(k,j2+1);
           blockB[count+2] = rhs(k,j2+2);
           blockB[count+3] = rhs(k,j2+3);
-          count += 4;
         }
+        count += nr;
       }
     }
 
     // third part: transposed
-    if(nr>=8)
+    for(Index j2=k2+rows; j2<packet_cols; j2+=nr)
     {
-      for(Index j2=k2+rows; j2<packet_cols8; j2+=8)
+      for(Index k=k2; k<end_k; k++)
       {
-        for(Index k=k2; k<end_k; k++)
+        blockB[count+0] = numext::conj(rhs(j2+0,k));
+        blockB[count+1] = numext::conj(rhs(j2+1,k));
+        if (nr==4)
         {
-          blockB[count+0] = numext::conj(rhs(j2+0,k));
-          blockB[count+1] = numext::conj(rhs(j2+1,k));
           blockB[count+2] = numext::conj(rhs(j2+2,k));
           blockB[count+3] = numext::conj(rhs(j2+3,k));
-          blockB[count+4] = numext::conj(rhs(j2+4,k));
-          blockB[count+5] = numext::conj(rhs(j2+5,k));
-          blockB[count+6] = numext::conj(rhs(j2+6,k));
-          blockB[count+7] = numext::conj(rhs(j2+7,k));
-          count += 8;
         }
-      }
-    }
-    if(nr>=4)
-    {
-      for(Index j2=(std::max)(packet_cols8,k2+rows); j2<packet_cols4; j2+=4)
-      {
-        for(Index k=k2; k<end_k; k++)
-        {
-          blockB[count+0] = numext::conj(rhs(j2+0,k));
-          blockB[count+1] = numext::conj(rhs(j2+1,k));
-          blockB[count+2] = numext::conj(rhs(j2+2,k));
-          blockB[count+3] = numext::conj(rhs(j2+3,k));
-          count += 4;
-        }
+        count += nr;
       }
     }
 
     // copy the remaining columns one at a time (=> the same with nr==1)
-    for(Index j2=packet_cols4; j2<cols; ++j2)
+    for(Index j2=packet_cols; j2<cols; ++j2)
     {
       // transpose
       Index half = (std::min)(end_k,j2);
@@ -341,10 +261,11 @@ EIGEN_DONT_INLINE void product_selfadjoint_matrix<Scalar,Index,LhsStorageOrder,t
     // kc must smaller than mc
     kc = (std::min)(kc,mc);
 
-    std::size_t sizeB = kc*cols;
+    std::size_t sizeW = kc*Traits::WorkSpaceFactor;
+    std::size_t sizeB = sizeW + kc*cols;
     ei_declare_aligned_stack_constructed_variable(Scalar, blockA, kc*mc, 0);
     ei_declare_aligned_stack_constructed_variable(Scalar, allocatedBlockB, sizeB, 0);
-    Scalar* blockB = allocatedBlockB;
+    Scalar* blockB = allocatedBlockB + sizeW;
 
     gebp_kernel<Scalar, Scalar, Index, Traits::mr, Traits::nr, ConjugateLhs, ConjugateRhs> gebp_kernel;
     symm_pack_lhs<Scalar, Index, Traits::mr, Traits::LhsProgress, LhsStorageOrder> pack_lhs;
@@ -427,10 +348,11 @@ EIGEN_DONT_INLINE void product_selfadjoint_matrix<Scalar,Index,LhsStorageOrder,f
     Index mc = rows;  // cache block size along the M direction
     Index nc = cols;  // cache block size along the N direction
     computeProductBlockingSizes<Scalar,Scalar>(kc, mc, nc);
-    std::size_t sizeB = kc*cols;
+    std::size_t sizeW = kc*Traits::WorkSpaceFactor;
+    std::size_t sizeB = sizeW + kc*cols;
     ei_declare_aligned_stack_constructed_variable(Scalar, blockA, kc*mc, 0);
     ei_declare_aligned_stack_constructed_variable(Scalar, allocatedBlockB, sizeB, 0);
-    Scalar* blockB = allocatedBlockB;
+    Scalar* blockB = allocatedBlockB + sizeW;
 
     gebp_kernel<Scalar, Scalar, Index, Traits::mr, Traits::nr, ConjugateLhs, ConjugateRhs> gebp_kernel;
     gemm_pack_lhs<Scalar, Index, Traits::mr, Traits::LhsProgress, LhsStorageOrder> pack_lhs;
@@ -460,53 +382,54 @@ EIGEN_DONT_INLINE void product_selfadjoint_matrix<Scalar,Index,LhsStorageOrder,f
 ***************************************************************************/
 
 namespace internal {
-  
 template<typename Lhs, int LhsMode, typename Rhs, int RhsMode>
-struct selfadjoint_product_impl<Lhs,LhsMode,false,Rhs,RhsMode,false>
+struct traits<SelfadjointProductMatrix<Lhs,LhsMode,false,Rhs,RhsMode,false> >
+  : traits<ProductBase<SelfadjointProductMatrix<Lhs,LhsMode,false,Rhs,RhsMode,false>, Lhs, Rhs> >
+{};
+}
+
+template<typename Lhs, int LhsMode, typename Rhs, int RhsMode>
+struct SelfadjointProductMatrix<Lhs,LhsMode,false,Rhs,RhsMode,false>
+  : public ProductBase<SelfadjointProductMatrix<Lhs,LhsMode,false,Rhs,RhsMode,false>, Lhs, Rhs >
 {
-  typedef typename Product<Lhs,Rhs>::Scalar Scalar;
-  typedef typename Product<Lhs,Rhs>::Index  Index;
-  
-  typedef internal::blas_traits<Lhs> LhsBlasTraits;
-  typedef typename LhsBlasTraits::DirectLinearAccessType ActualLhsType;
-  typedef internal::blas_traits<Rhs> RhsBlasTraits;
-  typedef typename RhsBlasTraits::DirectLinearAccessType ActualRhsType;
-  
+  EIGEN_PRODUCT_PUBLIC_INTERFACE(SelfadjointProductMatrix)
+
+  SelfadjointProductMatrix(const Lhs& lhs, const Rhs& rhs) : Base(lhs,rhs) {}
+
   enum {
     LhsIsUpper = (LhsMode&(Upper|Lower))==Upper,
     LhsIsSelfAdjoint = (LhsMode&SelfAdjoint)==SelfAdjoint,
     RhsIsUpper = (RhsMode&(Upper|Lower))==Upper,
     RhsIsSelfAdjoint = (RhsMode&SelfAdjoint)==SelfAdjoint
   };
-  
-  template<typename Dest>
-  static void run(Dest &dst, const Lhs &a_lhs, const Rhs &a_rhs, const Scalar& alpha)
+
+  template<typename Dest> void scaleAndAddTo(Dest& dst, const Scalar& alpha) const
   {
-    eigen_assert(dst.rows()==a_lhs.rows() && dst.cols()==a_rhs.cols());
+    eigen_assert(dst.rows()==m_lhs.rows() && dst.cols()==m_rhs.cols());
 
-    typename internal::add_const_on_value_type<ActualLhsType>::type lhs = LhsBlasTraits::extract(a_lhs);
-    typename internal::add_const_on_value_type<ActualRhsType>::type rhs = RhsBlasTraits::extract(a_rhs);
+    typename internal::add_const_on_value_type<ActualLhsType>::type lhs = LhsBlasTraits::extract(m_lhs);
+    typename internal::add_const_on_value_type<ActualRhsType>::type rhs = RhsBlasTraits::extract(m_rhs);
 
-    Scalar actualAlpha = alpha * LhsBlasTraits::extractScalarFactor(a_lhs)
-                               * RhsBlasTraits::extractScalarFactor(a_rhs);
+    Scalar actualAlpha = alpha * LhsBlasTraits::extractScalarFactor(m_lhs)
+                               * RhsBlasTraits::extractScalarFactor(m_rhs);
 
     internal::product_selfadjoint_matrix<Scalar, Index,
-      EIGEN_LOGICAL_XOR(LhsIsUpper,internal::traits<Lhs>::Flags &RowMajorBit) ? RowMajor : ColMajor, LhsIsSelfAdjoint,
+      EIGEN_LOGICAL_XOR(LhsIsUpper,
+                        internal::traits<Lhs>::Flags &RowMajorBit) ? RowMajor : ColMajor, LhsIsSelfAdjoint,
       NumTraits<Scalar>::IsComplex && EIGEN_LOGICAL_XOR(LhsIsUpper,bool(LhsBlasTraits::NeedToConjugate)),
-      EIGEN_LOGICAL_XOR(RhsIsUpper,internal::traits<Rhs>::Flags &RowMajorBit) ? RowMajor : ColMajor, RhsIsSelfAdjoint,
+      EIGEN_LOGICAL_XOR(RhsIsUpper,
+                        internal::traits<Rhs>::Flags &RowMajorBit) ? RowMajor : ColMajor, RhsIsSelfAdjoint,
       NumTraits<Scalar>::IsComplex && EIGEN_LOGICAL_XOR(RhsIsUpper,bool(RhsBlasTraits::NeedToConjugate)),
       internal::traits<Dest>::Flags&RowMajorBit  ? RowMajor : ColMajor>
       ::run(
         lhs.rows(), rhs.cols(),                 // sizes
-        &lhs.coeffRef(0,0), lhs.outerStride(),  // lhs info
-        &rhs.coeffRef(0,0), rhs.outerStride(),  // rhs info
+        &lhs.coeffRef(0,0),    lhs.outerStride(),  // lhs info
+        &rhs.coeffRef(0,0),    rhs.outerStride(),  // rhs info
         &dst.coeffRef(0,0), dst.outerStride(),  // result info
         actualAlpha                             // alpha
       );
   }
 };
-
-} // end namespace internal
 
 } // end namespace Eigen
 

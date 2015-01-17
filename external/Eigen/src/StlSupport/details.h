@@ -46,7 +46,7 @@ namespace Eigen {
     ~aligned_allocator_indirection() {}
   };
 
-#if EIGEN_COMP_MSVC
+#ifdef _MSC_VER
 
   // sometimes, MSVC detects, at compile time, that the argument x
   // in std::vector::resize(size_t s,T x) won't be aligned and generate an error

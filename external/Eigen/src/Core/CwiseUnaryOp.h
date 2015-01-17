@@ -1,7 +1,7 @@
 // This file is part of Eigen, a lightweight C++ template library
 // for linear algebra.
 //
-// Copyright (C) 2008-2014 Gael Guennebaud <gael.guennebaud@inria.fr>
+// Copyright (C) 2008-2010 Gael Guennebaud <gael.guennebaud@inria.fr>
 // Copyright (C) 2006-2008 Benoit Jacob <jacob.benoit.1@gmail.com>
 //
 // This Source Code Form is subject to the terms of the Mozilla
@@ -44,7 +44,10 @@ struct traits<CwiseUnaryOp<UnaryOp, XprType> >
   typedef typename XprType::Nested XprTypeNested;
   typedef typename remove_reference<XprTypeNested>::type _XprTypeNested;
   enum {
-    Flags = _XprTypeNested::Flags & RowMajorBit 
+    Flags = _XprTypeNested::Flags & (
+      HereditaryBits | LinearAccessBit | AlignedBit
+      | (functor_traits<UnaryOp>::PacketAccess ? PacketAccessBit : 0)),
+    CoeffReadCost = _XprTypeNested::CoeffReadCost + functor_traits<UnaryOp>::Cost
   };
 };
 }
@@ -53,34 +56,28 @@ template<typename UnaryOp, typename XprType, typename StorageKind>
 class CwiseUnaryOpImpl;
 
 template<typename UnaryOp, typename XprType>
-class CwiseUnaryOp : public CwiseUnaryOpImpl<UnaryOp, XprType, typename internal::traits<XprType>::StorageKind>, internal::no_assignment_operator
+class CwiseUnaryOp : internal::no_assignment_operator,
+  public CwiseUnaryOpImpl<UnaryOp, XprType, typename internal::traits<XprType>::StorageKind>
 {
   public:
 
     typedef typename CwiseUnaryOpImpl<UnaryOp, XprType,typename internal::traits<XprType>::StorageKind>::Base Base;
     EIGEN_GENERIC_PUBLIC_INTERFACE(CwiseUnaryOp)
-    typedef typename internal::remove_all<XprType>::type NestedExpression;
 
-    EIGEN_DEVICE_FUNC
-    explicit inline CwiseUnaryOp(const XprType& xpr, const UnaryOp& func = UnaryOp())
+    inline CwiseUnaryOp(const XprType& xpr, const UnaryOp& func = UnaryOp())
       : m_xpr(xpr), m_functor(func) {}
 
-    EIGEN_DEVICE_FUNC
     EIGEN_STRONG_INLINE Index rows() const { return m_xpr.rows(); }
-    EIGEN_DEVICE_FUNC
     EIGEN_STRONG_INLINE Index cols() const { return m_xpr.cols(); }
 
     /** \returns the functor representing the unary operation */
-    EIGEN_DEVICE_FUNC
     const UnaryOp& functor() const { return m_functor; }
 
     /** \returns the nested expression */
-    EIGEN_DEVICE_FUNC
     const typename internal::remove_all<typename XprType::Nested>::type&
     nestedExpression() const { return m_xpr; }
 
     /** \returns the nested expression */
-    EIGEN_DEVICE_FUNC
     typename internal::remove_all<typename XprType::Nested>::type&
     nestedExpression() { return m_xpr.const_cast_derived(); }
 
@@ -89,13 +86,39 @@ class CwiseUnaryOp : public CwiseUnaryOpImpl<UnaryOp, XprType, typename internal
     const UnaryOp m_functor;
 };
 
-// Generic API dispatcher
-template<typename UnaryOp, typename XprType, typename StorageKind>
-class CwiseUnaryOpImpl
-  : public internal::generic_xpr_base<CwiseUnaryOp<UnaryOp, XprType> >::type
+// This is the generic implementation for dense storage.
+// It can be used for any expression types implementing the dense concept.
+template<typename UnaryOp, typename XprType>
+class CwiseUnaryOpImpl<UnaryOp,XprType,Dense>
+  : public internal::dense_xpr_base<CwiseUnaryOp<UnaryOp, XprType> >::type
 {
-public:
-  typedef typename internal::generic_xpr_base<CwiseUnaryOp<UnaryOp, XprType> >::type Base;
+  public:
+
+    typedef CwiseUnaryOp<UnaryOp, XprType> Derived;
+    typedef typename internal::dense_xpr_base<CwiseUnaryOp<UnaryOp, XprType> >::type Base;
+    EIGEN_DENSE_PUBLIC_INTERFACE(Derived)
+
+    EIGEN_STRONG_INLINE const Scalar coeff(Index rowId, Index colId) const
+    {
+      return derived().functor()(derived().nestedExpression().coeff(rowId, colId));
+    }
+
+    template<int LoadMode>
+    EIGEN_STRONG_INLINE PacketScalar packet(Index rowId, Index colId) const
+    {
+      return derived().functor().packetOp(derived().nestedExpression().template packet<LoadMode>(rowId, colId));
+    }
+
+    EIGEN_STRONG_INLINE const Scalar coeff(Index index) const
+    {
+      return derived().functor()(derived().nestedExpression().coeff(index));
+    }
+
+    template<int LoadMode>
+    EIGEN_STRONG_INLINE PacketScalar packet(Index index) const
+    {
+      return derived().functor().packetOp(derived().nestedExpression().template packet<LoadMode>(index));
+    }
 };
 
 } // end namespace Eigen

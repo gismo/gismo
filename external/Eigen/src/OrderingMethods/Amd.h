@@ -106,8 +106,7 @@ void minimum_degree_ordering(SparseMatrix<Scalar,ColMajor,Index>& C, Permutation
   t = cnz + cnz/5 + 2*n;                 /* add elbow room to C */
   C.resizeNonZeros(t);
   
-  // get workspace
-  ei_declare_aligned_stack_constructed_variable(Index,W,8*(n+1),0);
+  Index* W       = new Index[8*(n+1)]; /* get workspace */
   Index* len     = W;
   Index* nv      = W +   (n+1);
   Index* next    = W + 2*(n+1);
@@ -425,6 +424,8 @@ void minimum_degree_ordering(SparseMatrix<Scalar,ColMajor,Index>& C, Permutation
   }
   
   perm.indices().conservativeResize(n);
+
+  delete[] W;
 }
 
 } // namespace internal

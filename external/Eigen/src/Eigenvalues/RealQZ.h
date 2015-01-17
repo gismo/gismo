@@ -83,7 +83,7 @@ namespace Eigen {
        *
        * \sa compute() for an example.
        */
-      explicit RealQZ(Index size = RowsAtCompileTime==Dynamic ? 1 : RowsAtCompileTime) :
+      RealQZ(Index size = RowsAtCompileTime==Dynamic ? 1 : RowsAtCompileTime) : 
         m_S(size, size),
         m_T(size, size),
         m_Q(size, size),
@@ -101,7 +101,7 @@ namespace Eigen {
        *
        * This constructor calls compute() to compute the QZ decomposition.
        */
-      explicit RealQZ(const MatrixType& A, const MatrixType& B, bool computeQZ = true) :
+      RealQZ(const MatrixType& A, const MatrixType& B, bool computeQZ = true) :
         m_S(A.rows(),A.cols()),
         m_T(A.rows(),A.cols()),
         m_Q(A.rows(),A.cols()),

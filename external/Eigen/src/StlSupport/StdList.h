@@ -13,7 +13,7 @@
 #include "details.h"
 
 // Define the explicit instantiation (e.g. necessary for the Intel compiler)
-#if EIGEN_COMP_GNUC || EIGEN_COMP_ICC
+#if defined(__INTEL_COMPILER) || defined(__GNUC__)
   #define EIGEN_EXPLICIT_STL_LIST_INSTANTIATION(...) template class std::list<__VA_ARGS__, EIGEN_ALIGNED_ALLOCATOR<__VA_ARGS__> >;
 #else
   #define EIGEN_EXPLICIT_STL_LIST_INSTANTIATION(...)

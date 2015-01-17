@@ -13,15 +13,6 @@
 
 namespace Eigen { 
 
-namespace internal {
-template<typename _MatrixType> struct traits<ColPivHouseholderQR<_MatrixType> >
- : traits<_MatrixType>
-{
-  enum { Flags = 0 };
-};
-
-} // end namespace internal
-
 /** \ingroup QR_Module
   *
   * \class ColPivHouseholderQR
@@ -65,7 +56,6 @@ template<typename _MatrixType> class ColPivHouseholderQR
     typedef typename internal::plain_row_type<MatrixType>::type RowVectorType;
     typedef typename internal::plain_row_type<MatrixType, RealScalar>::type RealRowVectorType;
     typedef HouseholderSequence<MatrixType,typename internal::remove_all<typename HCoeffsType::ConjugateReturnType>::type> HouseholderSequenceType;
-    typedef typename MatrixType::PlainObject PlainObject;
     
   private:
     
@@ -117,7 +107,7 @@ template<typename _MatrixType> class ColPivHouseholderQR
       * 
       * \sa compute()
       */
-    explicit ColPivHouseholderQR(const MatrixType& matrix)
+    ColPivHouseholderQR(const MatrixType& matrix)
       : m_qr(matrix.rows(), matrix.cols()),
         m_hCoeffs((std::min)(matrix.rows(),matrix.cols())),
         m_colsPermutation(PermIndexType(matrix.cols())),
@@ -148,15 +138,15 @@ template<typename _MatrixType> class ColPivHouseholderQR
       * Output: \verbinclude ColPivHouseholderQR_solve.out
       */
     template<typename Rhs>
-    inline const Solve<ColPivHouseholderQR, Rhs>
+    inline const internal::solve_retval<ColPivHouseholderQR, Rhs>
     solve(const MatrixBase<Rhs>& b) const
     {
       eigen_assert(m_isInitialized && "ColPivHouseholderQR is not initialized.");
-      return Solve<ColPivHouseholderQR, Rhs>(*this, b.derived());
+      return internal::solve_retval<ColPivHouseholderQR, Rhs>(*this, b.derived());
     }
 
-    HouseholderSequenceType householderQ() const;
-    HouseholderSequenceType matrixQ() const
+    HouseholderSequenceType householderQ(void) const;
+    HouseholderSequenceType matrixQ(void) const
     {
       return householderQ(); 
     }
@@ -294,10 +284,13 @@ template<typename _MatrixType> class ColPivHouseholderQR
       * \note If this matrix is not invertible, the returned matrix has undefined coefficients.
       *       Use isInvertible() to first determine whether this matrix is invertible.
       */
-    inline const Inverse<ColPivHouseholderQR> inverse() const
+    inline const
+    internal::solve_retval<ColPivHouseholderQR, typename MatrixType::IdentityReturnType>
+    inverse() const
     {
       eigen_assert(m_isInitialized && "ColPivHouseholderQR is not initialized.");
-      return Inverse<ColPivHouseholderQR>(*this);
+      return internal::solve_retval<ColPivHouseholderQR,typename MatrixType::IdentityReturnType>
+               (*this, MatrixType::Identity(m_qr.rows(), m_qr.cols()));
     }
 
     inline Index rows() const { return m_qr.rows(); }
@@ -389,12 +382,6 @@ template<typename _MatrixType> class ColPivHouseholderQR
       eigen_assert(m_isInitialized && "Decomposition is not initialized.");
       return Success;
     }
-    
-    #ifndef EIGEN_PARSED_BY_DOXYGEN
-    template<typename RhsType, typename DstType>
-    EIGEN_DEVICE_FUNC
-    void _solve_impl(const RhsType &rhs, DstType &dst) const;
-    #endif
 
   protected:
     MatrixType m_qr;
@@ -527,48 +514,42 @@ ColPivHouseholderQR<MatrixType>& ColPivHouseholderQR<MatrixType>::compute(const 
   return *this;
 }
 
-#ifndef EIGEN_PARSED_BY_DOXYGEN
-template<typename _MatrixType>
-template<typename RhsType, typename DstType>
-void ColPivHouseholderQR<_MatrixType>::_solve_impl(const RhsType &rhs, DstType &dst) const
-{
-  eigen_assert(rhs.rows() == rows());
-
-  const Index nonzero_pivots = nonzeroPivots();
-
-  if(nonzero_pivots == 0)
-  {
-    dst.setZero();
-    return;
-  }
-
-  typename RhsType::PlainObject c(rhs);
-
-  // Note that the matrix Q = H_0^* H_1^*... so its inverse is Q^* = (H_0 H_1 ...)^T
-  c.applyOnTheLeft(householderSequence(m_qr, m_hCoeffs)
-                    .setLength(nonzero_pivots)
-                    .transpose()
-    );
-
-  m_qr.topLeftCorner(nonzero_pivots, nonzero_pivots)
-      .template triangularView<Upper>()
-      .solveInPlace(c.topRows(nonzero_pivots));
-
-  for(Index i = 0; i < nonzero_pivots; ++i) dst.row(m_colsPermutation.indices().coeff(i)) = c.row(i);
-  for(Index i = nonzero_pivots; i < cols(); ++i) dst.row(m_colsPermutation.indices().coeff(i)).setZero();
-}
-#endif
-
 namespace internal {
 
-template<typename DstXprType, typename MatrixType, typename Scalar>
-struct Assignment<DstXprType, Inverse<ColPivHouseholderQR<MatrixType> >, internal::assign_op<Scalar>, Dense2Dense, Scalar>
+template<typename _MatrixType, typename Rhs>
+struct solve_retval<ColPivHouseholderQR<_MatrixType>, Rhs>
+  : solve_retval_base<ColPivHouseholderQR<_MatrixType>, Rhs>
 {
-  typedef ColPivHouseholderQR<MatrixType> QrType;
-  typedef Inverse<QrType> SrcXprType;
-  static void run(DstXprType &dst, const SrcXprType &src, const internal::assign_op<Scalar> &)
-  {    
-    dst = src.nestedExpression().solve(MatrixType::Identity(src.rows(), src.cols()));
+  EIGEN_MAKE_SOLVE_HELPERS(ColPivHouseholderQR<_MatrixType>,Rhs)
+
+  template<typename Dest> void evalTo(Dest& dst) const
+  {
+    eigen_assert(rhs().rows() == dec().rows());
+
+    const Index cols = dec().cols(),
+				nonzero_pivots = dec().nonzeroPivots();
+
+    if(nonzero_pivots == 0)
+    {
+      dst.setZero();
+      return;
+    }
+
+    typename Rhs::PlainObject c(rhs());
+
+    // Note that the matrix Q = H_0^* H_1^*... so its inverse is Q^* = (H_0 H_1 ...)^T
+    c.applyOnTheLeft(householderSequence(dec().matrixQR(), dec().hCoeffs())
+                     .setLength(dec().nonzeroPivots())
+		     .transpose()
+      );
+
+    dec().matrixR()
+       .topLeftCorner(nonzero_pivots, nonzero_pivots)
+       .template triangularView<Upper>()
+       .solveInPlace(c.topRows(nonzero_pivots));
+
+    for(Index i = 0; i < nonzero_pivots; ++i) dst.row(dec().colsPermutation().indices().coeff(i)) = c.row(i);
+    for(Index i = nonzero_pivots; i < cols; ++i) dst.row(dec().colsPermutation().indices().coeff(i)).setZero();
   }
 };
 
@@ -583,7 +564,6 @@ typename ColPivHouseholderQR<MatrixType>::HouseholderSequenceType ColPivHousehol
   return HouseholderSequenceType(m_qr, m_hCoeffs.conjugate()).setLength(m_nonzero_pivots);
 }
 
-#ifndef __CUDACC__
 /** \return the column-pivoting Householder QR decomposition of \c *this.
   *
   * \sa class ColPivHouseholderQR
@@ -594,7 +574,6 @@ MatrixBase<Derived>::colPivHouseholderQr() const
 {
   return ColPivHouseholderQR<PlainObject>(eval());
 }
-#endif // __CUDACC__
 
 } // end namespace Eigen
 

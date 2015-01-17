@@ -71,7 +71,7 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF_VECTORIZABLE_FIXED_SIZE(_Scalar,_AmbientDim)
   template<typename Derived>
   inline explicit AlignedBox(const MatrixBase<Derived>& a_p)
   {
-    typename internal::nested_eval<Derived,2>::type p(a_p.derived());
+    typename internal::nested<Derived,2>::type p(a_p.derived());
     m_min = p;
     m_max = p;
   }
@@ -184,10 +184,6 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF_VECTORIZABLE_FIXED_SIZE(_Scalar,_AmbientDim)
   /** \returns true if the box \a b is entirely inside the box \c *this. */
   inline bool contains(const AlignedBox& b) const
   { return (m_min.array()<=(b.min)().array()).all() && ((b.max)().array()<=m_max.array()).all(); }
-
-  /** \returns true if the box \a b is intersecting the box \c *this. */
-  inline bool intersects(const AlignedBox& b) const
-  { return (m_min.array()<=(b.max)().array()).all() && ((b.min)().array()<=m_max.array()).all(); }
 
   /** Extends \c *this such that it contains the point \a p and returns a reference to \c *this. */
   template<typename Derived>

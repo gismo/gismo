@@ -118,7 +118,7 @@ template<typename _MatrixType> class EigenSolver
       * according to the specified problem \a size.
       * \sa EigenSolver()
       */
-    explicit EigenSolver(Index size)
+    EigenSolver(Index size)
       : m_eivec(size, size),
         m_eivalues(size),
         m_isInitialized(false),
@@ -143,7 +143,7 @@ template<typename _MatrixType> class EigenSolver
       *
       * \sa compute()
       */
-    explicit EigenSolver(const MatrixType& matrix, bool computeEigenvectors = true)
+    EigenSolver(const MatrixType& matrix, bool computeEigenvectors = true)
       : m_eivec(matrix.rows(), matrix.cols()),
         m_eivalues(matrix.cols()),
         m_isInitialized(false),
@@ -275,11 +275,10 @@ template<typename _MatrixType> class EigenSolver
       */
     EigenSolver& compute(const MatrixType& matrix, bool computeEigenvectors = true);
 
-    /** \returns NumericalIssue if the input contains INF or NaN values or overflow occured. Returns Success otherwise. */
     ComputationInfo info() const
     {
       eigen_assert(m_isInitialized && "EigenSolver is not initialized.");
-      return m_info;
+      return m_realSchur.info();
     }
 
     /** \brief Sets the maximum number of iterations allowed. */
@@ -303,7 +302,6 @@ template<typename _MatrixType> class EigenSolver
     EigenvalueType m_eivalues;
     bool m_isInitialized;
     bool m_eigenvectorsOk;
-    ComputationInfo m_info;
     RealSchur<MatrixType> m_realSchur;
     MatrixType m_matT;
 
@@ -368,15 +366,12 @@ EigenSolver<MatrixType>::compute(const MatrixType& matrix, bool computeEigenvect
 {
   using std::sqrt;
   using std::abs;
-  using numext::isfinite;
   eigen_assert(matrix.cols() == matrix.rows());
 
   // Reduce to real Schur form.
   m_realSchur.compute(matrix, computeEigenvectors);
-  
-  m_info = m_realSchur.info();
 
-  if (m_info == Success)
+  if (m_realSchur.info() == Success)
   {
     m_matT = m_realSchur.matrixT();
     if (computeEigenvectors)
@@ -390,40 +385,14 @@ EigenSolver<MatrixType>::compute(const MatrixType& matrix, bool computeEigenvect
       if (i == matrix.cols() - 1 || m_matT.coeff(i+1, i) == Scalar(0)) 
       {
         m_eivalues.coeffRef(i) = m_matT.coeff(i, i);
-        if(!isfinite(m_eivalues.coeffRef(i)))
-        {
-          m_isInitialized = true;
-          m_eigenvectorsOk = false;
-          m_info = NumericalIssue;
-          return *this;
-        }
         ++i;
       }
       else
       {
         Scalar p = Scalar(0.5) * (m_matT.coeff(i, i) - m_matT.coeff(i+1, i+1));
-        Scalar z;
-        // Compute z = sqrt(abs(p * p + m_matT.coeff(i+1, i) * m_matT.coeff(i, i+1)));
-        // without overflow
-        {
-          Scalar t0 = m_matT.coeff(i+1, i);
-          Scalar t1 = m_matT.coeff(i, i+1);
-          Scalar maxval = numext::maxi(abs(p),numext::maxi(abs(t0),abs(t1)));
-          t0 /= maxval;
-          t1 /= maxval;
-          Scalar p0 = p/maxval;
-          z = maxval * sqrt(abs(p0 * p0 + t0 * t1));
-        }
-        
+        Scalar z = sqrt(abs(p * p + m_matT.coeff(i+1, i) * m_matT.coeff(i, i+1)));
         m_eivalues.coeffRef(i)   = ComplexScalar(m_matT.coeff(i+1, i+1) + p, z);
         m_eivalues.coeffRef(i+1) = ComplexScalar(m_matT.coeff(i+1, i+1) + p, -z);
-        if(!(isfinite(m_eivalues.coeffRef(i)) && isfinite(m_eivalues.coeffRef(i+1))))
-        {
-          m_isInitialized = true;
-          m_eigenvectorsOk = false;
-          m_info = NumericalIssue;
-          return *this;
-        }
         i += 2;
       }
     }
@@ -599,7 +568,8 @@ void EigenSolver<MatrixType>::doComputeEigenvectors()
           }
 
           // Overflow control
-          Scalar t = numext::maxi(abs(m_matT.coeff(i,n-1)),abs(m_matT.coeff(i,n)));
+          using std::max;
+          Scalar t = (max)(abs(m_matT.coeff(i,n-1)),abs(m_matT.coeff(i,n)));
           if ((eps * t) * t > Scalar(1))
             m_matT.block(i, n-1, size-i, 2) /= t;
 
@@ -611,7 +581,7 @@ void EigenSolver<MatrixType>::doComputeEigenvectors()
     }
     else
     {
-      eigen_assert(0 && "Internal bug in EigenSolver (INF or NaN has not been detected)"); // this should not happen
+      eigen_assert(0 && "Internal bug in EigenSolver"); // this should not happen
     }
   }
 

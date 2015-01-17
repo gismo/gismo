@@ -26,34 +26,6 @@ namespace internal {
  *  |real |cplx |real | alpha is converted to a cplx when calling the run function, no vectorization
  *  |cplx |real |cplx | invalid, the caller has to do tmp: = A * B; C += alpha*tmp
  *  |cplx |real |real | optimal case, vectorization possible via real-cplx mul
- *
- * Accesses to the matrix coefficients follow the following logic:
- *
- * - if all columns have the same alignment then
- *   - if the columns have the same alignment as the result vector, then easy! (-> AllAligned case)
- *   - otherwise perform unaligned loads only (-> NoneAligned case)
- * - otherwise
- *   - if even columns have the same alignment then
- *     // odd columns are guaranteed to have the same alignment too
- *     - if even or odd columns have the same alignment as the result, then
- *       // for a register size of 2 scalars, this is guarantee to be the case (e.g., SSE with double)
- *       - perform half aligned and half unaligned loads (-> EvenAligned case)
- *     - otherwise perform unaligned loads only (-> NoneAligned case)
- *   - otherwise, if the register size is 4 scalars (e.g., SSE with float) then
- *     - one over 4 consecutive columns is guaranteed to be aligned with the result vector,
- *       perform simple aligned loads for this column and aligned loads plus re-alignment for the other. (-> FirstAligned case)
- *       // this re-alignment is done by the palign function implemented for SSE in Eigen/src/Core/arch/SSE/PacketMath.h
- *   - otherwise,
- *     // if we get here, this means the register size is greater than 4 (e.g., AVX with floats),
- *     // we currently fall back to the NoneAligned case
- *
- * The same reasoning apply for the transposed case.
- * 
- * The last case (PacketSize>4) could probably be improved by generalizing the FirstAligned case, but since we do not support AVX yet...
- * One might also wonder why in the EvenAligned case we perform unaligned loads instead of using the aligned-loads plus re-alignment
- * strategy as in the FirstAligned case. The reason is that we observed that unaligned loads on a 8 byte boundary are not too slow
- * compared to unaligned loads on a 4 byte boundary.
- *
  */
 template<typename Index, typename LhsScalar, bool ConjugateLhs, typename RhsScalar, bool ConjugateRhs, int Version>
 struct general_matrix_vector_product<Index,LhsScalar,ColMajor,ConjugateLhs,RhsScalar,ConjugateRhs,Version>
@@ -80,8 +52,7 @@ EIGEN_DONT_INLINE static void run(
   Index rows, Index cols,
   const LhsScalar* lhs, Index lhsStride,
   const RhsScalar* rhs, Index rhsIncr,
-        ResScalar* res, Index resIncr,
-  RhsScalar alpha);
+  ResScalar* res, Index resIncr, RhsScalar alpha);
 };
 
 template<typename Index, typename LhsScalar, bool ConjugateLhs, typename RhsScalar, bool ConjugateRhs, int Version>
@@ -89,10 +60,9 @@ EIGEN_DONT_INLINE void general_matrix_vector_product<Index,LhsScalar,ColMajor,Co
   Index rows, Index cols,
   const LhsScalar* lhs, Index lhsStride,
   const RhsScalar* rhs, Index rhsIncr,
-        ResScalar* res, Index resIncr,
-  RhsScalar alpha)
+  ResScalar* res, Index resIncr, RhsScalar alpha)
 {
-  EIGEN_UNUSED_VARIABLE(resIncr);
+  EIGEN_UNUSED_VARIABLE(resIncr)
   eigen_internal_assert(resIncr==1);
   #ifdef _EIGEN_ACCUMULATE_PACKETS
   #error _EIGEN_ACCUMULATE_PACKETS has already been defined
@@ -140,12 +110,6 @@ EIGEN_DONT_INLINE void general_matrix_vector_product<Index,LhsScalar,ColMajor,Co
   {
     alignedSize = 0;
     alignedStart = 0;
-  }
-  else if(LhsPacketSize > 4)
-  {
-    // TODO: extend the code to support aligned loads whenever possible when LhsPacketSize > 4.
-    // Currently, it seems to be better to perform unaligned loads anyway
-    alignmentPattern = NoneAligned;
   }
   else if (LhsPacketSize>1)
   {
@@ -351,7 +315,7 @@ EIGEN_DONT_INLINE static void run(
   Index rows, Index cols,
   const LhsScalar* lhs, Index lhsStride,
   const RhsScalar* rhs, Index rhsIncr,
-        ResScalar* res, Index resIncr,
+  ResScalar* res, Index resIncr,
   ResScalar alpha);
 };
 
@@ -365,7 +329,6 @@ EIGEN_DONT_INLINE void general_matrix_vector_product<Index,LhsScalar,RowMajor,Co
 {
   EIGEN_UNUSED_VARIABLE(rhsIncr);
   eigen_internal_assert(rhsIncr==1);
-  
   #ifdef _EIGEN_ACCUMULATE_PACKETS
   #error _EIGEN_ACCUMULATE_PACKETS has already been defined
   #endif
@@ -411,11 +374,6 @@ EIGEN_DONT_INLINE void general_matrix_vector_product<Index,LhsScalar,RowMajor,Co
     alignedSize = 0;
     alignedStart = 0;
   }
-  else if(LhsPacketSize > 4)
-  {
-    // TODO: extend the code to support aligned loads whenever possible when LhsPacketSize > 4.
-    alignmentPattern = NoneAligned;
-  }
   else if (LhsPacketSize>1)
   {
     eigen_internal_assert(size_t(lhs+lhsAlignmentOffset)%sizeof(LhsPacket)==0  || depth<LhsPacketSize);
@@ -453,7 +411,7 @@ EIGEN_DONT_INLINE void general_matrix_vector_product<Index,LhsScalar,RowMajor,Co
   Index rowBound = ((rows-skipRows)/rowsAtOnce)*rowsAtOnce + skipRows;
   for (Index i=skipRows; i<rowBound; i+=rowsAtOnce)
   {
-    EIGEN_ALIGN_DEFAULT ResScalar tmp0 = ResScalar(0);
+    EIGEN_ALIGN16 ResScalar tmp0 = ResScalar(0);
     ResScalar tmp1 = ResScalar(0), tmp2 = ResScalar(0), tmp3 = ResScalar(0);
 
     // this helps the compiler generating good binary code
@@ -562,7 +520,7 @@ EIGEN_DONT_INLINE void general_matrix_vector_product<Index,LhsScalar,RowMajor,Co
   {
     for (Index i=start; i<end; ++i)
     {
-      EIGEN_ALIGN_DEFAULT ResScalar tmp0 = ResScalar(0);
+      EIGEN_ALIGN16 ResScalar tmp0 = ResScalar(0);
       ResPacket ptmp0 = pset1<ResPacket>(tmp0);
       const LhsScalar* lhs0 = lhs + i*lhsStride;
       // process first unaligned result's coeffs

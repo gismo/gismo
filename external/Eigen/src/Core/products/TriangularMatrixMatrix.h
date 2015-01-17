@@ -125,9 +125,11 @@ EIGEN_DONT_INLINE void product_triangular_matrix_matrix<Scalar,Index,Mode,true,
 
     std::size_t sizeA = kc*mc;
     std::size_t sizeB = kc*cols;
+    std::size_t sizeW = kc*Traits::WorkSpaceFactor;
 
     ei_declare_aligned_stack_constructed_variable(Scalar, blockA, sizeA, blocking.blockA());
     ei_declare_aligned_stack_constructed_variable(Scalar, blockB, sizeB, blocking.blockB());
+    ei_declare_aligned_stack_constructed_variable(Scalar, blockW, sizeW, blocking.blockW());
 
     Matrix<Scalar,SmallPanelWidth,SmallPanelWidth,LhsStorageOrder> triangularBuffer;
     triangularBuffer.setZero();
@@ -185,7 +187,7 @@ EIGEN_DONT_INLINE void product_triangular_matrix_matrix<Scalar,Index,Mode,true,
           pack_lhs(blockA, triangularBuffer.data(), triangularBuffer.outerStride(), actualPanelWidth, actualPanelWidth);
 
           gebp_kernel(res+startBlock, resStride, blockA, blockB, actualPanelWidth, actualPanelWidth, cols, alpha,
-                      actualPanelWidth, actual_kc, 0, blockBOffset);
+                      actualPanelWidth, actual_kc, 0, blockBOffset, blockW);
 
           // GEBP with remaining micro panel
           if (lengthTarget>0)
@@ -195,7 +197,7 @@ EIGEN_DONT_INLINE void product_triangular_matrix_matrix<Scalar,Index,Mode,true,
             pack_lhs(blockA, &lhs(startTarget,startBlock), lhsStride, actualPanelWidth, lengthTarget);
 
             gebp_kernel(res+startTarget, resStride, blockA, blockB, lengthTarget, actualPanelWidth, cols, alpha,
-                        actualPanelWidth, actual_kc, 0, blockBOffset);
+                        actualPanelWidth, actual_kc, 0, blockBOffset, blockW);
           }
         }
       }
@@ -209,7 +211,7 @@ EIGEN_DONT_INLINE void product_triangular_matrix_matrix<Scalar,Index,Mode,true,
           gemm_pack_lhs<Scalar, Index, Traits::mr,Traits::LhsProgress, LhsStorageOrder,false>()
             (blockA, &lhs(i2, actual_k2), lhsStride, actual_kc, actual_mc);
 
-          gebp_kernel(res+i2, resStride, blockA, blockB, actual_mc, actual_kc, cols, alpha, -1, -1, 0, 0);
+          gebp_kernel(res+i2, resStride, blockA, blockB, actual_mc, actual_kc, cols, alpha, -1, -1, 0, 0, blockW);
         }
       }
     }
@@ -263,10 +265,12 @@ EIGEN_DONT_INLINE void product_triangular_matrix_matrix<Scalar,Index,Mode,false,
     Index mc = (std::min)(rows,blocking.mc());  // cache block size along the M direction
 
     std::size_t sizeA = kc*mc;
-    std::size_t sizeB = kc*cols+EIGEN_ALIGN_BYTES/sizeof(Scalar);
+    std::size_t sizeB = kc*cols;
+    std::size_t sizeW = kc*Traits::WorkSpaceFactor;
 
     ei_declare_aligned_stack_constructed_variable(Scalar, blockA, sizeA, blocking.blockA());
     ei_declare_aligned_stack_constructed_variable(Scalar, blockB, sizeB, blocking.blockB());
+    ei_declare_aligned_stack_constructed_variable(Scalar, blockW, sizeW, blocking.blockW());
 
     Matrix<Scalar,SmallPanelWidth,SmallPanelWidth,RhsStorageOrder> triangularBuffer;
     triangularBuffer.setZero();
@@ -300,7 +304,6 @@ EIGEN_DONT_INLINE void product_triangular_matrix_matrix<Scalar,Index,Mode,false,
       Index ts = (IsLower && actual_k2>=cols) ? 0 : actual_kc;
 
       Scalar* geb = blockB+ts*ts;
-      geb = geb + internal::first_aligned(geb,EIGEN_ALIGN_BYTES/sizeof(Scalar));
 
       pack_rhs(geb, &rhs(actual_k2,IsLower ? 0 : k2), rhsStride, actual_kc, rs);
 
@@ -354,13 +357,14 @@ EIGEN_DONT_INLINE void product_triangular_matrix_matrix<Scalar,Index,Mode,false,
                         actual_mc, panelLength, actualPanelWidth,
                         alpha,
                         actual_kc, actual_kc,  // strides
-                        blockOffset, blockOffset);// offsets
+                        blockOffset, blockOffset,// offsets
+                        blockW); // workspace
           }
         }
         gebp_kernel(res+i2+(IsLower ? 0 : k2)*resStride, resStride,
                     blockA, geb, actual_mc, actual_kc, rs,
                     alpha,
-                    -1, -1, 0, 0);
+                    -1, -1, 0, 0, blockW);
       }
     }
   }
@@ -369,29 +373,28 @@ EIGEN_DONT_INLINE void product_triangular_matrix_matrix<Scalar,Index,Mode,false,
 * Wrapper to product_triangular_matrix_matrix
 ***************************************************************************/
 
+template<int Mode, bool LhsIsTriangular, typename Lhs, typename Rhs>
+struct traits<TriangularProduct<Mode,LhsIsTriangular,Lhs,false,Rhs,false> >
+  : traits<ProductBase<TriangularProduct<Mode,LhsIsTriangular,Lhs,false,Rhs,false>, Lhs, Rhs> >
+{};
+
 } // end namespace internal
 
-namespace internal {
 template<int Mode, bool LhsIsTriangular, typename Lhs, typename Rhs>
-struct triangular_product_impl<Mode,LhsIsTriangular,Lhs,false,Rhs,false>
+struct TriangularProduct<Mode,LhsIsTriangular,Lhs,false,Rhs,false>
+  : public ProductBase<TriangularProduct<Mode,LhsIsTriangular,Lhs,false,Rhs,false>, Lhs, Rhs >
 {
-  template<typename Dest> static void run(Dest& dst, const Lhs &a_lhs, const Rhs &a_rhs, const typename Dest::Scalar& alpha)
-  {
-    typedef typename Dest::Index      Index;
-    typedef typename Dest::Scalar     Scalar;
-    
-    typedef internal::blas_traits<Lhs> LhsBlasTraits;
-    typedef typename LhsBlasTraits::DirectLinearAccessType ActualLhsType;
-    typedef typename internal::remove_all<ActualLhsType>::type ActualLhsTypeCleaned;
-    typedef internal::blas_traits<Rhs> RhsBlasTraits;
-    typedef typename RhsBlasTraits::DirectLinearAccessType ActualRhsType;
-    typedef typename internal::remove_all<ActualRhsType>::type ActualRhsTypeCleaned;
-    
-    typename internal::add_const_on_value_type<ActualLhsType>::type lhs = LhsBlasTraits::extract(a_lhs);
-    typename internal::add_const_on_value_type<ActualRhsType>::type rhs = RhsBlasTraits::extract(a_rhs);
+  EIGEN_PRODUCT_PUBLIC_INTERFACE(TriangularProduct)
 
-    Scalar actualAlpha = alpha * LhsBlasTraits::extractScalarFactor(a_lhs)
-                               * RhsBlasTraits::extractScalarFactor(a_rhs);
+  TriangularProduct(const Lhs& lhs, const Rhs& rhs) : Base(lhs,rhs) {}
+
+  template<typename Dest> void scaleAndAddTo(Dest& dst, const Scalar& alpha) const
+  {
+    typename internal::add_const_on_value_type<ActualLhsType>::type lhs = LhsBlasTraits::extract(m_lhs);
+    typename internal::add_const_on_value_type<ActualRhsType>::type rhs = RhsBlasTraits::extract(m_rhs);
+
+    Scalar actualAlpha = alpha * LhsBlasTraits::extractScalarFactor(m_lhs)
+                               * RhsBlasTraits::extractScalarFactor(m_rhs);
 
     typedef internal::gemm_blocking_space<(Dest::Flags&RowMajorBit) ? RowMajor : ColMajor,Scalar,Scalar,
               Lhs::MaxRowsAtCompileTime, Rhs::MaxColsAtCompileTime, Lhs::MaxColsAtCompileTime,4> BlockingType;
@@ -406,20 +409,18 @@ struct triangular_product_impl<Mode,LhsIsTriangular,Lhs,false,Rhs,false>
 
     internal::product_triangular_matrix_matrix<Scalar, Index,
       Mode, LhsIsTriangular,
-      (internal::traits<ActualLhsTypeCleaned>::Flags&RowMajorBit) ? RowMajor : ColMajor, LhsBlasTraits::NeedToConjugate,
-      (internal::traits<ActualRhsTypeCleaned>::Flags&RowMajorBit) ? RowMajor : ColMajor, RhsBlasTraits::NeedToConjugate,
+      (internal::traits<_ActualLhsType>::Flags&RowMajorBit) ? RowMajor : ColMajor, LhsBlasTraits::NeedToConjugate,
+      (internal::traits<_ActualRhsType>::Flags&RowMajorBit) ? RowMajor : ColMajor, RhsBlasTraits::NeedToConjugate,
       (internal::traits<Dest          >::Flags&RowMajorBit) ? RowMajor : ColMajor>
       ::run(
         stripedRows, stripedCols, stripedDepth,   // sizes
-        &lhs.coeffRef(0,0), lhs.outerStride(),    // lhs info
-        &rhs.coeffRef(0,0), rhs.outerStride(),    // rhs info
+        &lhs.coeffRef(0,0),    lhs.outerStride(), // lhs info
+        &rhs.coeffRef(0,0),    rhs.outerStride(), // rhs info
         &dst.coeffRef(0,0), dst.outerStride(),    // result info
         actualAlpha, blocking
       );
   }
 };
-
-} // end namespace internal
 
 } // end namespace Eigen
 

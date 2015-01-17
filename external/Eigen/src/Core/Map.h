@@ -79,9 +79,22 @@ struct traits<Map<PlainObjectType, MapOptions, StrideType> >
     OuterStrideAtCompileTime = StrideType::OuterStrideAtCompileTime == 0
                              ? int(PlainObjectType::OuterStrideAtCompileTime)
                              : int(StrideType::OuterStrideAtCompileTime),
+    HasNoInnerStride = InnerStrideAtCompileTime == 1,
+    HasNoOuterStride = StrideType::OuterStrideAtCompileTime == 0,
+    HasNoStride = HasNoInnerStride && HasNoOuterStride,
     IsAligned = bool(EIGEN_ALIGN) && ((int(MapOptions)&Aligned)==Aligned),
+    IsDynamicSize = PlainObjectType::SizeAtCompileTime==Dynamic,
+    KeepsPacketAccess = bool(HasNoInnerStride)
+                        && ( bool(IsDynamicSize)
+                           || HasNoOuterStride
+                           || ( OuterStrideAtCompileTime!=Dynamic
+                           && ((static_cast<int>(sizeof(Scalar))*OuterStrideAtCompileTime)%16)==0 ) ),
     Flags0 = TraitsBase::Flags & (~NestByRefBit),
-    Flags = is_lvalue<PlainObjectType>::value ? int(Flags0) : (int(Flags0) & ~LvalueBit)
+    Flags1 = IsAligned ? (int(Flags0) | AlignedBit) : (int(Flags0) & ~AlignedBit),
+    Flags2 = (bool(HasNoStride) || bool(PlainObjectType::IsVectorAtCompileTime))
+           ? int(Flags1) : int(Flags1 & ~LinearAccessBit),
+    Flags3 = is_lvalue<PlainObjectType>::value ? int(Flags2) : (int(Flags2) & ~LvalueBit),
+    Flags = KeepsPacketAccess ? int(Flags3) : (int(Flags3) & ~PacketAccessBit)
   };
 private:
   enum { Options }; // Expressions don't have Options
@@ -97,17 +110,19 @@ template<typename PlainObjectType, int MapOptions, typename StrideType> class Ma
     EIGEN_DENSE_PUBLIC_INTERFACE(Map)
 
     typedef typename Base::PointerType PointerType;
+#if EIGEN2_SUPPORT_STAGE <= STAGE30_FULL_EIGEN3_API
+    typedef const Scalar* PointerArgType;
+    inline PointerType cast_to_pointer_type(PointerArgType ptr) { return const_cast<PointerType>(ptr); }
+#else
     typedef PointerType PointerArgType;
-    EIGEN_DEVICE_FUNC
     inline PointerType cast_to_pointer_type(PointerArgType ptr) { return ptr; }
+#endif
 
-    EIGEN_DEVICE_FUNC
     inline Index innerStride() const
     {
       return StrideType::InnerStrideAtCompileTime != 0 ? m_stride.inner() : 1;
     }
 
-    EIGEN_DEVICE_FUNC
     inline Index outerStride() const
     {
       return StrideType::OuterStrideAtCompileTime != 0 ? m_stride.outer()
@@ -121,8 +136,7 @@ template<typename PlainObjectType, int MapOptions, typename StrideType> class Ma
       * \param dataPtr pointer to the array to map
       * \param a_stride optional Stride object, passing the strides.
       */
-    EIGEN_DEVICE_FUNC
-    explicit inline Map(PointerArgType dataPtr, const StrideType& a_stride = StrideType())
+    inline Map(PointerArgType dataPtr, const StrideType& a_stride = StrideType())
       : Base(cast_to_pointer_type(dataPtr)), m_stride(a_stride)
     {
       PlainObjectType::Base::_check_template_params();
@@ -134,7 +148,6 @@ template<typename PlainObjectType, int MapOptions, typename StrideType> class Ma
       * \param a_size the size of the vector expression
       * \param a_stride optional Stride object, passing the strides.
       */
-    EIGEN_DEVICE_FUNC
     inline Map(PointerArgType dataPtr, Index a_size, const StrideType& a_stride = StrideType())
       : Base(cast_to_pointer_type(dataPtr), a_size), m_stride(a_stride)
     {
@@ -148,7 +161,6 @@ template<typename PlainObjectType, int MapOptions, typename StrideType> class Ma
       * \param nbCols the number of columns of the matrix expression
       * \param a_stride optional Stride object, passing the strides.
       */
-    EIGEN_DEVICE_FUNC
     inline Map(PointerArgType dataPtr, Index nbRows, Index nbCols, const StrideType& a_stride = StrideType())
       : Base(cast_to_pointer_type(dataPtr), nbRows, nbCols), m_stride(a_stride)
     {
@@ -161,6 +173,19 @@ template<typename PlainObjectType, int MapOptions, typename StrideType> class Ma
     StrideType m_stride;
 };
 
+template<typename _Scalar, int _Rows, int _Cols, int _Options, int _MaxRows, int _MaxCols>
+inline Array<_Scalar, _Rows, _Cols, _Options, _MaxRows, _MaxCols>
+  ::Array(const Scalar *data)
+{
+  this->_set_noalias(Eigen::Map<const Array>(data));
+}
+
+template<typename _Scalar, int _Rows, int _Cols, int _Options, int _MaxRows, int _MaxCols>
+inline Matrix<_Scalar, _Rows, _Cols, _Options, _MaxRows, _MaxCols>
+  ::Matrix(const Scalar *data)
+{
+  this->_set_noalias(Eigen::Map<const Matrix>(data));
+}
 
 } // end namespace Eigen
 

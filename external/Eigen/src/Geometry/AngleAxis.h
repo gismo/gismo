@@ -77,9 +77,7 @@ public:
     *          represents an invalid rotation. */
   template<typename Derived>
   inline AngleAxis(const Scalar& angle, const MatrixBase<Derived>& axis) : m_axis(axis), m_angle(angle) {}
-  /** Constructs and initialize the angle-axis rotation from a quaternion \a q.
-    * This function implicitly normalizes the quaternion \a q.
-    */
+  /** Constructs and initialize the angle-axis rotation from a quaternion \a q. */
   template<typename QuatDerived> inline explicit AngleAxis(const QuaternionBase<QuatDerived>& q) { *this = q; }
   /** Constructs and initialize the angle-axis rotation from a 3x3 rotation matrix. */
   template<typename Derived>
@@ -151,27 +149,29 @@ typedef AngleAxis<float> AngleAxisf;
 typedef AngleAxis<double> AngleAxisd;
 
 /** Set \c *this from a \b unit quaternion.
-  * The resulting axis is normalized.
+  * The axis is normalized.
   * 
-  * This function implicitly normalizes the quaternion \a q.
+  * \warning As any other method dealing with quaternion, if the input quaternion
+  *          is not normalized then the result is undefined.
   */
 template<typename Scalar>
 template<typename QuatDerived>
 AngleAxis<Scalar>& AngleAxis<Scalar>::operator=(const QuaternionBase<QuatDerived>& q)
 {
-  using std::atan2;
-  Scalar n = q.vec().norm();
-  if(n<NumTraits<Scalar>::epsilon())
-    n = q.vec().stableNorm();
-  if (n > Scalar(0))
-  {
-    m_angle = Scalar(2)*atan2(n, q.w());
-    m_axis  = q.vec() / n;
-  }
-  else
+  using std::acos;
+  using std::min;
+  using std::max;
+  using std::sqrt;
+  Scalar n2 = q.vec().squaredNorm();
+  if (n2 < NumTraits<Scalar>::dummy_precision()*NumTraits<Scalar>::dummy_precision())
   {
     m_angle = 0;
     m_axis << 1, 0, 0;
+  }
+  else
+  {
+    m_angle = Scalar(2)*acos((min)((max)(Scalar(-1),q.w()),Scalar(1)));
+    m_axis = q.vec() / sqrt(n2);
   }
   return *this;
 }

@@ -171,10 +171,10 @@ struct triangular_solver_selector<Lhs,Rhs,OnTheRight,Mode,CompleteUnrolling,1> {
   */
 template<typename MatrixType, unsigned int Mode>
 template<int Side, typename OtherDerived>
-void TriangularViewImpl<MatrixType,Mode,Dense>::solveInPlace(const MatrixBase<OtherDerived>& _other) const
+void TriangularView<MatrixType,Mode>::solveInPlace(const MatrixBase<OtherDerived>& _other) const
 {
   OtherDerived& other = _other.const_cast_derived();
-  eigen_assert( derived().cols() == derived().rows() && ((Side==OnTheLeft && derived().cols() == other.rows()) || (Side==OnTheRight && derived().cols() == other.cols())) );
+  eigen_assert( cols() == rows() && ((Side==OnTheLeft && cols() == other.rows()) || (Side==OnTheRight && cols() == other.cols())) );
   eigen_assert((!(Mode & ZeroDiag)) && bool(Mode & (Upper|Lower)));
 
   enum { copy = internal::traits<OtherDerived>::Flags & RowMajorBit  && OtherDerived::IsVectorAtCompileTime };
@@ -183,7 +183,7 @@ void TriangularViewImpl<MatrixType,Mode,Dense>::solveInPlace(const MatrixBase<Ot
   OtherCopy otherCopy(other);
 
   internal::triangular_solver_selector<MatrixType, typename internal::remove_reference<OtherCopy>::type,
-    Side, Mode>::run(derived().nestedExpression(), otherCopy);
+    Side, Mode>::run(nestedExpression(), otherCopy);
 
   if (copy)
     other = otherCopy;
@@ -213,9 +213,9 @@ void TriangularViewImpl<MatrixType,Mode,Dense>::solveInPlace(const MatrixBase<Ot
 template<typename Derived, unsigned int Mode>
 template<int Side, typename Other>
 const internal::triangular_solve_retval<Side,TriangularView<Derived,Mode>,Other>
-TriangularViewImpl<Derived,Mode,Dense>::solve(const MatrixBase<Other>& other) const
+TriangularView<Derived,Mode>::solve(const MatrixBase<Other>& other) const
 {
-  return internal::triangular_solve_retval<Side,TriangularViewType,Other>(derived(), other.derived());
+  return internal::triangular_solve_retval<Side,TriangularView,Other>(*this, other.derived());
 }
 
 namespace internal {

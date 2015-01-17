@@ -1,7 +1,7 @@
 // This file is part of Eigen, a lightweight C++ template library
 // for linear algebra.
 //
-// Copyright (C) 2011-2014 Gael Guennebaud <gael.guennebaud@inria.fr>
+// Copyright (C) 2011 Gael Guennebaud <gael.guennebaud@inria.fr>
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -107,12 +107,12 @@ struct traits<ConjugateGradient<_MatrixType,_UpLo,_Preconditioner> >
 }
 
 /** \ingroup IterativeLinearSolvers_Module
-  * \brief A conjugate gradient solver for sparse (or dense) self-adjoint problems
+  * \brief A conjugate gradient solver for sparse self-adjoint problems
   *
-  * This class allows to solve for A.x = b linear problems using an iterative conjugate gradient algorithm.
-  * The matrix A must be selfadjoint. The matrix A and the vectors x and b can be either dense or sparse.
+  * This class allows to solve for A.x = b sparse linear problems using a conjugate gradient algorithm.
+  * The sparse matrix A must be selfadjoint. The vectors x and b can be either dense or sparse.
   *
-  * \tparam _MatrixType the type of the matrix A, can be a dense or a sparse matrix.
+  * \tparam _MatrixType the type of the sparse matrix A, can be a dense or a sparse matrix.
   * \tparam _UpLo the triangular part that will be used for the computations. It can be Lower
   *               or Upper. Default is Lower.
   * \tparam _Preconditioner the type of the preconditioner. Default is DiagonalPreconditioner
@@ -189,13 +189,29 @@ public:
     * this class becomes invalid. Call compute() to update it with the new
     * matrix A, or modify a copy of A.
     */
-  explicit ConjugateGradient(const MatrixType& A) : Base(A) {}
+  ConjugateGradient(const MatrixType& A) : Base(A) {}
 
   ~ConjugateGradient() {}
+  
+  /** \returns the solution x of \f$ A x = b \f$ using the current decomposition of A
+    * \a x0 as an initial solution.
+    *
+    * \sa compute()
+    */
+  template<typename Rhs,typename Guess>
+  inline const internal::solve_retval_with_guess<ConjugateGradient, Rhs, Guess>
+  solveWithGuess(const MatrixBase<Rhs>& b, const Guess& x0) const
+  {
+    eigen_assert(m_isInitialized && "ConjugateGradient is not initialized.");
+    eigen_assert(Base::rows()==b.rows()
+              && "ConjugateGradient::solve(): invalid number of rows of the right hand side matrix b");
+    return internal::solve_retval_with_guess
+            <ConjugateGradient, Rhs, Guess>(*this, b.derived(), x0);
+  }
 
   /** \internal */
   template<typename Rhs,typename Dest>
-  void _solve_with_guess_impl(const Rhs& b, Dest& x) const
+  void _solveWithGuess(const Rhs& b, Dest& x) const
   {
     m_iterations = Base::maxIterations();
     m_error = Base::m_tolerance;
@@ -215,17 +231,34 @@ public:
   }
   
   /** \internal */
-  using Base::_solve_impl;
   template<typename Rhs,typename Dest>
-  void _solve_impl(const MatrixBase<Rhs>& b, Dest& x) const
+  void _solve(const Rhs& b, Dest& x) const
   {
     x.setOnes();
-    _solve_with_guess_impl(b.derived(),x);
+    _solveWithGuess(b,x);
   }
 
 protected:
 
 };
+
+
+namespace internal {
+
+template<typename _MatrixType, int _UpLo, typename _Preconditioner, typename Rhs>
+struct solve_retval<ConjugateGradient<_MatrixType,_UpLo,_Preconditioner>, Rhs>
+  : solve_retval_base<ConjugateGradient<_MatrixType,_UpLo,_Preconditioner>, Rhs>
+{
+  typedef ConjugateGradient<_MatrixType,_UpLo,_Preconditioner> Dec;
+  EIGEN_MAKE_SOLVE_HELPERS(Dec,Rhs)
+
+  template<typename Dest> void evalTo(Dest& dst) const
+  {
+    dec()._solve(rhs(),dst);
+  }
+};
+
+} // end namespace internal
 
 } // end namespace Eigen
 

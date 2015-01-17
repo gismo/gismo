@@ -35,20 +35,25 @@ template<typename NullaryOp, typename PlainObjectType>
 struct traits<CwiseNullaryOp<NullaryOp, PlainObjectType> > : traits<PlainObjectType>
 {
   enum {
-    Flags = traits<PlainObjectType>::Flags & RowMajorBit
+    Flags = (traits<PlainObjectType>::Flags
+      & (  HereditaryBits
+         | (functor_has_linear_access<NullaryOp>::ret ? LinearAccessBit : 0)
+         | (functor_traits<NullaryOp>::PacketAccess ? PacketAccessBit : 0)))
+      | (functor_traits<NullaryOp>::IsRepeatable ? 0 : EvalBeforeNestingBit),
+    CoeffReadCost = functor_traits<NullaryOp>::Cost
   };
 };
 }
 
 template<typename NullaryOp, typename PlainObjectType>
-class CwiseNullaryOp : public internal::dense_xpr_base< CwiseNullaryOp<NullaryOp, PlainObjectType> >::type, internal::no_assignment_operator
+class CwiseNullaryOp : internal::no_assignment_operator,
+  public internal::dense_xpr_base< CwiseNullaryOp<NullaryOp, PlainObjectType> >::type
 {
   public:
 
     typedef typename internal::dense_xpr_base<CwiseNullaryOp>::type Base;
     EIGEN_DENSE_PUBLIC_INTERFACE(CwiseNullaryOp)
 
-    EIGEN_DEVICE_FUNC
     CwiseNullaryOp(Index nbRows, Index nbCols, const NullaryOp& func = NullaryOp())
       : m_rows(nbRows), m_cols(nbCols), m_functor(func)
     {
@@ -58,12 +63,9 @@ class CwiseNullaryOp : public internal::dense_xpr_base< CwiseNullaryOp<NullaryOp
             && (ColsAtCompileTime == Dynamic || ColsAtCompileTime == nbCols));
     }
 
-    EIGEN_DEVICE_FUNC
     EIGEN_STRONG_INLINE Index rows() const { return m_rows.value(); }
-    EIGEN_DEVICE_FUNC
     EIGEN_STRONG_INLINE Index cols() const { return m_cols.value(); }
 
-    EIGEN_DEVICE_FUNC
     EIGEN_STRONG_INLINE const Scalar coeff(Index rowId, Index colId) const
     {
       return m_functor(rowId, colId);
@@ -75,7 +77,6 @@ class CwiseNullaryOp : public internal::dense_xpr_base< CwiseNullaryOp<NullaryOp
       return m_functor.packetOp(rowId, colId);
     }
 
-    EIGEN_DEVICE_FUNC
     EIGEN_STRONG_INLINE const Scalar coeff(Index index) const
     {
       return m_functor(index);
@@ -88,7 +89,6 @@ class CwiseNullaryOp : public internal::dense_xpr_base< CwiseNullaryOp<NullaryOp
     }
 
     /** \returns the functor representing the nullary operation */
-    EIGEN_DEVICE_FUNC
     const NullaryOp& functor() const { return m_functor; }
 
   protected:
@@ -132,9 +132,6 @@ DenseBase<Derived>::NullaryExpr(Index rows, Index cols, const CustomNullaryOp& f
   *
   * The template parameter \a CustomNullaryOp is the type of the functor.
   *
-  * Here is an example with C++11 random generators: \include random_cpp11.cpp
-  * Output: \verbinclude random_cpp11.out
-  * 
   * \sa class CwiseNullaryOp
   */
 template<typename Derived>
@@ -743,7 +740,6 @@ namespace internal {
 template<typename Derived, bool Big = (Derived::SizeAtCompileTime>=16)>
 struct setIdentity_impl
 {
-  EIGEN_DEVICE_FUNC
   static EIGEN_STRONG_INLINE Derived& run(Derived& m)
   {
     return m = Derived::Identity(m.rows(), m.cols());
@@ -754,7 +750,6 @@ template<typename Derived>
 struct setIdentity_impl<Derived, true>
 {
   typedef typename Derived::Index Index;
-  EIGEN_DEVICE_FUNC
   static EIGEN_STRONG_INLINE Derived& run(Derived& m)
   {
     m.setZero();

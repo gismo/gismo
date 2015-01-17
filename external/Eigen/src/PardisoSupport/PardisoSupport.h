@@ -96,17 +96,10 @@ namespace internal
 }
 
 template<class Derived>
-class PardisoImpl : public SparseSolveBase<PardisoImpl<Derived>
+class PardisoImpl
 {
-  protected:
-    typedef SparseSolveBase<PardisoImpl<Derived> Base;
-    using Base::derived;
-    using Base::m_isInitialized;
-    
     typedef internal::pardiso_traits<Derived> Traits;
   public:
-    using base::_solve_impl;
-    
     typedef typename Traits::MatrixType MatrixType;
     typedef typename Traits::Scalar Scalar;
     typedef typename Traits::RealScalar RealScalar;
@@ -125,7 +118,7 @@ class PardisoImpl : public SparseSolveBase<PardisoImpl<Derived>
       eigen_assert((sizeof(Index) >= sizeof(_INTEGER_t) && sizeof(Index) <= 8) && "Non-supported index type");
       m_iparm.setZero();
       m_msglvl = 0; // No output
-      m_isInitialized = false;
+      m_initialized = false;
     }
 
     ~PardisoImpl()
@@ -143,7 +136,7 @@ class PardisoImpl : public SparseSolveBase<PardisoImpl<Derived>
       */
     ComputationInfo info() const
     {
-      eigen_assert(m_isInitialized && "Decomposition is not initialized.");
+      eigen_assert(m_initialized && "Decomposition is not initialized.");
       return m_info;
     }
 
@@ -172,14 +165,51 @@ class PardisoImpl : public SparseSolveBase<PardisoImpl<Derived>
     Derived& factorize(const MatrixType& matrix);
 
     Derived& compute(const MatrixType& matrix);
+    
+    /** \returns the solution x of \f$ A x = b \f$ using the current decomposition of A.
+      *
+      * \sa compute()
+      */
+    template<typename Rhs>
+    inline const internal::solve_retval<PardisoImpl, Rhs>
+    solve(const MatrixBase<Rhs>& b) const
+    {
+      eigen_assert(m_initialized && "Pardiso solver is not initialized.");
+      eigen_assert(rows()==b.rows()
+                && "PardisoImpl::solve(): invalid number of rows of the right hand side matrix b");
+      return internal::solve_retval<PardisoImpl, Rhs>(*this, b.derived());
+    }
+
+    /** \returns the solution x of \f$ A x = b \f$ using the current decomposition of A.
+      *
+      * \sa compute()
+      */
+    template<typename Rhs>
+    inline const internal::sparse_solve_retval<PardisoImpl, Rhs>
+    solve(const SparseMatrixBase<Rhs>& b) const
+    {
+      eigen_assert(m_initialized && "Pardiso solver is not initialized.");
+      eigen_assert(rows()==b.rows()
+                && "PardisoImpl::solve(): invalid number of rows of the right hand side matrix b");
+      return internal::sparse_solve_retval<PardisoImpl, Rhs>(*this, b.derived());
+    }
+
+    Derived& derived()
+    {
+      return *static_cast<Derived*>(this);
+    }
+    const Derived& derived() const
+    {
+      return *static_cast<const Derived*>(this);
+    }
 
     template<typename BDerived, typename XDerived>
-    bool _solve_impl(const MatrixBase<BDerived> &b, MatrixBase<XDerived>& x) const;
+    bool _solve(const MatrixBase<BDerived> &b, MatrixBase<XDerived>& x) const;
 
   protected:
     void pardisoRelease()
     {
-      if(m_isInitialized) // Factorization ran at least once
+      if(m_initialized) // Factorization ran at least once
       {
         internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, -1, m_size, 0, 0, 0, m_perm.data(), 0,
                                                    m_iparm.data(), m_msglvl, 0, 0);
@@ -240,13 +270,15 @@ class PardisoImpl : public SparseSolveBase<PardisoImpl<Derived>
 
     mutable SparseMatrixType m_matrix;
     ComputationInfo m_info;
-    bool m_analysisIsOk, m_factorizationIsOk;
+    bool m_initialized, m_analysisIsOk, m_factorizationIsOk;
     Index m_type, m_msglvl;
     mutable void *m_pt[64];
     mutable ParameterType m_iparm;
     mutable IntColVectorType m_perm;
     Index m_size;
     
+  private:
+    PardisoImpl(PardisoImpl &) {}
 };
 
 template<class Derived>
@@ -268,7 +300,7 @@ Derived& PardisoImpl<Derived>::compute(const MatrixType& a)
   manageErrorCode(error);
   m_analysisIsOk = true;
   m_factorizationIsOk = true;
-  m_isInitialized = true;
+  m_initialized = true;
   return derived();
 }
 
@@ -291,7 +323,7 @@ Derived& PardisoImpl<Derived>::analyzePattern(const MatrixType& a)
   manageErrorCode(error);
   m_analysisIsOk = true;
   m_factorizationIsOk = false;
-  m_isInitialized = true;
+  m_initialized = true;
   return derived();
 }
 
@@ -315,7 +347,7 @@ Derived& PardisoImpl<Derived>::factorize(const MatrixType& a)
 
 template<class Base>
 template<typename BDerived,typename XDerived>
-bool PardisoImpl<Base>::_solve_impl(const MatrixBase<BDerived> &b, MatrixBase<XDerived>& x) const
+bool PardisoImpl<Base>::_solve(const MatrixBase<BDerived> &b, MatrixBase<XDerived>& x) const
 {
   if(m_iparm[0] == 0) // Factorization was not computed
     return false;
@@ -391,7 +423,7 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
       pardisoInit(Base::ScalarIsComplex ? 13 : 11);
     }
 
-    explicit PardisoLU(const MatrixType& matrix)
+    PardisoLU(const MatrixType& matrix)
       : Base()
     {
       pardisoInit(Base::ScalarIsComplex ? 13 : 11);
@@ -402,6 +434,9 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
     {
       m_matrix = matrix;
     }
+    
+  private:
+    PardisoLU(PardisoLU& ) {}
 };
 
 /** \ingroup PardisoSupport_Module
@@ -442,7 +477,7 @@ class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,_UpLo> >
       pardisoInit(Base::ScalarIsComplex ? 4 : 2);
     }
 
-    explicit PardisoLLT(const MatrixType& matrix)
+    PardisoLLT(const MatrixType& matrix)
       : Base()
     {
       pardisoInit(Base::ScalarIsComplex ? 4 : 2);
@@ -458,6 +493,9 @@ class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,_UpLo> >
       m_matrix.resize(matrix.rows(), matrix.cols());
       m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>().twistedBy(p_null);
     }
+    
+  private:
+    PardisoLLT(PardisoLLT& ) {}
 };
 
 /** \ingroup PardisoSupport_Module
@@ -500,7 +538,7 @@ class PardisoLDLT : public PardisoImpl< PardisoLDLT<MatrixType,Options> >
       pardisoInit(Base::ScalarIsComplex ? ( bool(Options&Symmetric) ? 6 : -4 ) : -2);
     }
 
-    explicit PardisoLDLT(const MatrixType& matrix)
+    PardisoLDLT(const MatrixType& matrix)
       : Base()
     {
       pardisoInit(Base::ScalarIsComplex ? ( bool(Options&Symmetric) ? 6 : -4 ) : -2);
@@ -514,7 +552,40 @@ class PardisoLDLT : public PardisoImpl< PardisoLDLT<MatrixType,Options> >
       m_matrix.resize(matrix.rows(), matrix.cols());
       m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>().twistedBy(p_null);
     }
+    
+  private:
+    PardisoLDLT(PardisoLDLT& ) {}
 };
+
+namespace internal {
+  
+template<typename _Derived, typename Rhs>
+struct solve_retval<PardisoImpl<_Derived>, Rhs>
+  : solve_retval_base<PardisoImpl<_Derived>, Rhs>
+{
+  typedef PardisoImpl<_Derived> Dec;
+  EIGEN_MAKE_SOLVE_HELPERS(Dec,Rhs)
+
+  template<typename Dest> void evalTo(Dest& dst) const
+  {
+    dec()._solve(rhs(),dst);
+  }
+};
+
+template<typename Derived, typename Rhs>
+struct sparse_solve_retval<PardisoImpl<Derived>, Rhs>
+  : sparse_solve_retval_base<PardisoImpl<Derived>, Rhs>
+{
+  typedef PardisoImpl<Derived> Dec;
+  EIGEN_MAKE_SPARSE_SOLVE_HELPERS(Dec,Rhs)
+
+  template<typename Dest> void evalTo(Dest& dst) const
+  {
+    this->defaultEvalTo(dst);
+  }
+};
+
+} // end namespace internal
 
 } // end namespace Eigen
 

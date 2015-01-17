@@ -42,8 +42,6 @@ namespace internal {
 struct default_packet_traits
 {
   enum {
-    HasHalfPacket = 0,
-    
     HasAdd    = 1,
     HasSub    = 1,
     HasMul    = 1,
@@ -73,12 +71,10 @@ struct default_packet_traits
 template<typename T> struct packet_traits : default_packet_traits
 {
   typedef T type;
-  typedef T half;
   enum {
     Vectorizable = 0,
     size = 1,
-    AlignedOnScalar = 0,
-    HasHalfPacket = 0
+    AlignedOnScalar = 0
   };
   enum {
     HasAdd    = 0,
@@ -95,198 +91,134 @@ template<typename T> struct packet_traits : default_packet_traits
 };
 
 /** \internal \returns a + b (coeff-wise) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 padd(const Packet& a,
         const Packet& b) { return a+b; }
 
 /** \internal \returns a - b (coeff-wise) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 psub(const Packet& a,
         const Packet& b) { return a-b; }
 
 /** \internal \returns -a (coeff-wise) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pnegate(const Packet& a) { return -a; }
 
 /** \internal \returns conj(a) (coeff-wise) */
-
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pconj(const Packet& a) { return numext::conj(a); }
 
 /** \internal \returns a * b (coeff-wise) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pmul(const Packet& a,
         const Packet& b) { return a*b; }
 
 /** \internal \returns a / b (coeff-wise) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pdiv(const Packet& a,
         const Packet& b) { return a/b; }
 
 /** \internal \returns the min of \a a and \a b  (coeff-wise) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pmin(const Packet& a,
-        const Packet& b) { return numext::mini(a, b); }
+        const Packet& b) { using std::min; return (min)(a, b); }
 
 /** \internal \returns the max of \a a and \a b  (coeff-wise) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pmax(const Packet& a,
-        const Packet& b) { return numext::maxi(a, b); }
+        const Packet& b) { using std::max; return (max)(a, b); }
 
 /** \internal \returns the absolute value of \a a */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pabs(const Packet& a) { using std::abs; return abs(a); }
 
 /** \internal \returns the bitwise and of \a a and \a b */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pand(const Packet& a, const Packet& b) { return a & b; }
 
 /** \internal \returns the bitwise or of \a a and \a b */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 por(const Packet& a, const Packet& b) { return a | b; }
 
 /** \internal \returns the bitwise xor of \a a and \a b */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pxor(const Packet& a, const Packet& b) { return a ^ b; }
 
 /** \internal \returns the bitwise andnot of \a a and \a b */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pandnot(const Packet& a, const Packet& b) { return a & (!b); }
 
 /** \internal \returns a packet version of \a *from, from must be 16 bytes aligned */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pload(const typename unpacket_traits<Packet>::type* from) { return *from; }
 
 /** \internal \returns a packet version of \a *from, (un-aligned load) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 ploadu(const typename unpacket_traits<Packet>::type* from) { return *from; }
 
-/** \internal \returns a packet with constant coefficients \a a, e.g.: (a,a,a,a) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
-pset1(const typename unpacket_traits<Packet>::type& a) { return a; }
-
-/** \internal \returns a packet with constant coefficients \a a[0], e.g.: (a[0],a[0],a[0],a[0]) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
-pload1(const typename unpacket_traits<Packet>::type  *a) { return pset1<Packet>(*a); }
-
 /** \internal \returns a packet with elements of \a *from duplicated.
-  * For instance, for a packet of 8 elements, 4 scalars will be read from \a *from and
-  * duplicated to form: {from[0],from[0],from[1],from[1],from[2],from[2],from[3],from[3]}
+  * For instance, for a packet of 8 elements, 4 scalar will be read from \a *from and
+  * duplicated to form: {from[0],from[0],from[1],from[1],,from[2],from[2],,from[3],from[3]}
   * Currently, this function is only used for scalar * complex products.
-  */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+ */
+template<typename Packet> inline Packet
 ploaddup(const typename unpacket_traits<Packet>::type* from) { return *from; }
 
-/** \internal \returns a packet with elements of \a *from quadrupled.
-  * For instance, for a packet of 8 elements, 2 scalars will be read from \a *from and
-  * replicated to form: {from[0],from[0],from[0],from[0],from[1],from[1],from[1],from[1]}
-  * Currently, this function is only used in matrix products.
-  * For packet-size smaller or equal to 4, this function is equivalent to pload1 
-  */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
-ploadquad(const typename unpacket_traits<Packet>::type* from)
-{ return pload1<Packet>(from); }
-
-/** \internal equivalent to
-  * \code
-  * a0 = pload1(a+0);
-  * a1 = pload1(a+1);
-  * a2 = pload1(a+2);
-  * a3 = pload1(a+3);
-  * \endcode
-  * \sa pset1, pload1, ploaddup, pbroadcast2
-  */
-template<typename Packet> EIGEN_DEVICE_FUNC
-inline void pbroadcast4(const typename unpacket_traits<Packet>::type *a,
-                        Packet& a0, Packet& a1, Packet& a2, Packet& a3)
-{
-  a0 = pload1<Packet>(a+0);
-  a1 = pload1<Packet>(a+1);
-  a2 = pload1<Packet>(a+2);
-  a3 = pload1<Packet>(a+3);
-}
-
-/** \internal equivalent to
-  * \code
-  * a0 = pload1(a+0);
-  * a1 = pload1(a+1);
-  * \endcode
-  * \sa pset1, pload1, ploaddup, pbroadcast4
-  */
-template<typename Packet> EIGEN_DEVICE_FUNC
-inline void pbroadcast2(const typename unpacket_traits<Packet>::type *a,
-                        Packet& a0, Packet& a1)
-{
-  a0 = pload1<Packet>(a+0);
-  a1 = pload1<Packet>(a+1);
-}
+/** \internal \returns a packet with constant coefficients \a a, e.g.: (a,a,a,a) */
+template<typename Packet> inline Packet
+pset1(const typename unpacket_traits<Packet>::type& a) { return a; }
 
 /** \internal \brief Returns a packet with coefficients (a,a+1,...,a+packet_size-1). */
 template<typename Scalar> inline typename packet_traits<Scalar>::type
 plset(const Scalar& a) { return a; }
 
 /** \internal copy the packet \a from to \a *to, \a to must be 16 bytes aligned */
-template<typename Scalar, typename Packet> EIGEN_DEVICE_FUNC inline void pstore(Scalar* to, const Packet& from)
+template<typename Scalar, typename Packet> inline void pstore(Scalar* to, const Packet& from)
 { (*to) = from; }
 
 /** \internal copy the packet \a from to \a *to, (un-aligned store) */
-template<typename Scalar, typename Packet> EIGEN_DEVICE_FUNC inline void pstoreu(Scalar* to, const Packet& from)
-{  (*to) = from; }
-
- template<typename Scalar, typename Packet> EIGEN_DEVICE_FUNC inline Packet pgather(const Scalar* from, DenseIndex /*stride*/)
- { return ploadu<Packet>(from); }
-
- template<typename Scalar, typename Packet> EIGEN_DEVICE_FUNC inline void pscatter(Scalar* to, const Packet& from, DenseIndex /*stride*/)
- { pstore(to, from); }
+template<typename Scalar, typename Packet> inline void pstoreu(Scalar* to, const Packet& from)
+{ (*to) = from; }
 
 /** \internal tries to do cache prefetching of \a addr */
 template<typename Scalar> inline void prefetch(const Scalar* addr)
 {
-#if !EIGEN_COMP_MSVC
-  __builtin_prefetch(addr);
+#if !defined(_MSC_VER)
+__builtin_prefetch(addr);
 #endif
 }
 
 /** \internal \returns the first element of a packet */
-template<typename Packet> EIGEN_DEVICE_FUNC inline typename unpacket_traits<Packet>::type pfirst(const Packet& a)
+template<typename Packet> inline typename unpacket_traits<Packet>::type pfirst(const Packet& a)
 { return a; }
 
 /** \internal \returns a packet where the element i contains the sum of the packet of \a vec[i] */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 preduxp(const Packet* vecs) { return vecs[0]; }
 
 /** \internal \returns the sum of the elements of \a a*/
-template<typename Packet> EIGEN_DEVICE_FUNC inline typename unpacket_traits<Packet>::type predux(const Packet& a)
-{ return a; }
-
-/** \internal \returns the sum of the elements of \a a by block of 4 elements.
-  * For a packet {a0, a1, a2, a3, a4, a5, a6, a7}, it returns a half packet {a0+a4, a1+a5, a2+a6, a3+a7}
-  * For packet-size smaller or equal to 4, this boils down to a noop.
-  */
-template<typename Packet> EIGEN_DEVICE_FUNC inline
-typename conditional<(unpacket_traits<Packet>::size%8)==0,typename unpacket_traits<Packet>::half,Packet>::type
-predux4(const Packet& a)
+template<typename Packet> inline typename unpacket_traits<Packet>::type predux(const Packet& a)
 { return a; }
 
 /** \internal \returns the product of the elements of \a a*/
-template<typename Packet> EIGEN_DEVICE_FUNC inline typename unpacket_traits<Packet>::type predux_mul(const Packet& a)
+template<typename Packet> inline typename unpacket_traits<Packet>::type predux_mul(const Packet& a)
 { return a; }
 
 /** \internal \returns the min of the elements of \a a*/
-template<typename Packet> EIGEN_DEVICE_FUNC inline typename unpacket_traits<Packet>::type predux_min(const Packet& a)
+template<typename Packet> inline typename unpacket_traits<Packet>::type predux_min(const Packet& a)
 { return a; }
 
 /** \internal \returns the max of the elements of \a a*/
-template<typename Packet> EIGEN_DEVICE_FUNC inline typename unpacket_traits<Packet>::type predux_max(const Packet& a)
+template<typename Packet> inline typename unpacket_traits<Packet>::type predux_max(const Packet& a)
 { return a; }
 
 /** \internal \returns the reversed elements of \a a*/
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet preverse(const Packet& a)
+template<typename Packet> inline Packet preverse(const Packet& a)
 { return a; }
 
 
 /** \internal \returns \a a with real and imaginary part flipped (for complex type only) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet pcplxflip(const Packet& a)
+template<typename Packet> inline Packet pcplxflip(const Packet& a)
 {
   // FIXME: uncomment the following in case we drop the internal imag and real functions.
 //   using std::imag;
@@ -318,10 +250,6 @@ Packet pasin(const Packet& a) { using std::asin; return asin(a); }
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
 Packet pacos(const Packet& a) { using std::acos; return acos(a); }
 
-/** \internal \returns the atan of \a a (coeff-wise) */
-template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet patan(const Packet& a) { using std::atan; return atan(a); }
-
 /** \internal \returns the exp of \a a (coeff-wise) */
 template<typename Packet> EIGEN_DECLARE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
 Packet pexp(const Packet& a) { using std::exp; return exp(a); }
@@ -347,7 +275,7 @@ inline void pstore1(typename unpacket_traits<Packet>::type* to, const typename u
 }
 
 /** \internal \returns a * b + c (coeff-wise) */
-template<typename Packet> EIGEN_DEVICE_FUNC inline Packet
+template<typename Packet> inline Packet
 pmadd(const Packet&  a,
          const Packet&  b,
          const Packet&  c)
@@ -408,33 +336,15 @@ inline void palign(PacketType& first, const PacketType& second)
 * Fast complex products (GCC generates a function call which is very slow)
 ***************************************************************************/
 
-// Eigen+CUDA does not support complexes.
-#ifndef __CUDACC__
-
 template<> inline std::complex<float> pmul(const std::complex<float>& a, const std::complex<float>& b)
 { return std::complex<float>(real(a)*real(b) - imag(a)*imag(b), imag(a)*real(b) + real(a)*imag(b)); }
 
 template<> inline std::complex<double> pmul(const std::complex<double>& a, const std::complex<double>& b)
 { return std::complex<double>(real(a)*real(b) - imag(a)*imag(b), imag(a)*real(b) + real(a)*imag(b)); }
 
-#endif
-
-
-/***************************************************************************
- * PacketBlock, that is a collection of N packets where the number of words
- * in the packet is a multiple of N.
-***************************************************************************/
-template <typename Packet,int N=unpacket_traits<Packet>::size> struct PacketBlock {
-  Packet packet[N];
-};
-
-template<typename Packet> EIGEN_DEVICE_FUNC inline void
-ptranspose(PacketBlock<Packet,1>& /*kernel*/) {
-  // Nothing to do in the scalar case, i.e. a 1x1 matrix.
-}
-
 } // end namespace internal
 
 } // end namespace Eigen
 
 #endif // EIGEN_GENERIC_PACKET_MATH_H
+
