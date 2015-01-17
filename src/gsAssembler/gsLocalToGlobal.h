@@ -2,6 +2,20 @@
 
     @brief General local to global mapper for PDE assembling
 
+    Here there is an interface and some implementations that represent
+    the act of adding the element-wise contribution of a matrix to
+    the global object.
+
+    In order to reduce code duplication the base implementation
+    gsL2GBase is templated over 3 policy classes: the conversion of
+    local active indexes to global active indexes for the unknown
+    and the test space and the write method.
+
+    This allows us to generate many variations avoiding code duplications.
+    The most common required methods correspond to explicit instantiations
+    of gsL2GBase.
+
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -17,27 +31,6 @@
 #include <gsCore/gsDofMapper.h>
 
 namespace gismo {
-
-/**
-    \file gsLocalToGlobal.h
-
-    Here there is an interface and some implementations that represent
-    the act of adding the element-wise contribution of a matrix to
-    the global object.
-
-    In order to reduce code duplication the base implementation
-    gsL2GBase is templated over 3 policy classes: the conversion of
-    local active indexes to global active indexes for the unknown
-    and the test space and the write method.
-
-    This allows us to generate many variations avoiding code duplications.
-    The most common required methods correspond to explicit instantiations
-    of gsL2GBase.
-    
-    \ingroup Assembler
-**/
-
-
 
 /**
     \brief Interface to add a local contribution to the global matrix
