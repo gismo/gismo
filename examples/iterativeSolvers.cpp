@@ -1,6 +1,6 @@
-/** @file minimalResidual.cpp
+/** @file interativeSolvers.cpp
 
-    @brief Example on how the solve a system of linear equation with the min. res. method.
+    @brief Example on how the solve a system of linear equation with the MINRES and CG method.
 
     This file is part of the G+Smo library.
 
@@ -32,6 +32,8 @@ int main(int argc, char *argv[])
     rhs.setRandom(N,1);
 
     //Create a tri-diagonal matrix with -1 of the off diagonals and 2 in the diagonal.
+    //This matrix is equivalent to discretizing the 1D Poisson equation with homogenius
+    //Dirichlet boundary condition using a finit difference schema. It is a SPD matrix.
     mat(0,0) = 2;
     mat(0,1) = -1;
     mat(N-1, N-1) = 2;
@@ -52,7 +54,7 @@ int main(int argc, char *argv[])
     //Set tolerance
     real_t tol = 1e-08;
 
-    //Initialize the solver
+    //Initialize the MinRes solver
     gsMinimalResidual MinRes(mat,maxIters,tol);
 
     //Create the initial guess
@@ -60,16 +62,33 @@ int main(int argc, char *argv[])
     x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
-    //test
-    gsInfo << "before solve"  << std::endl;
+    gsInfo << "MinRes: Before solve"  << std::endl;
     MinRes.solve(rhs,x0,preConMat);
-    gsInfo << "After solve"  << std::endl;
-    gsInfo << "After solve" << MinRes.size() << std::endl;
+    gsInfo << "MinRes: After solve"  << std::endl;
 
-    gsInfo << "Solved a system of size " << N << "\n";
-    gsInfo << "Tolerance: " << tol << "\n";
-    gsInfo << "Residual error: " << MinRes.error() << "\n";
-    gsInfo << "Number of iterations: " << MinRes.iterations() << "\n";
+    gsInfo << "MinRes: Solved a system of size " << N << "\n";
+    gsInfo << "MinRes: Tolerance: " << tol << "\n";
+    gsInfo << "MinRes: Residual error: " << MinRes.error() << "\n";
+    gsInfo << "MinRes: Number of iterations: " << MinRes.iterations() << "\n";
 
-    return (MinRes.error()<tol)?0:1;
+
+    //Initialize the CG solver
+    gsConjugateGradient CGSolver(mat,maxIters,tol);
+
+    //Set the initial guess to zero
+    x0.setZero(N,1);
+
+    //Solve system with given preconditioner (solution is stored in x0)
+    gsInfo << "\nCG: Before solve"  << std::endl;
+    CGSolver.solve(rhs,x0,preConMat);
+    gsInfo << "CG: After solve"  << std::endl;
+
+    gsInfo << "CG: Solved a system of size " << N << "\n";
+    gsInfo << "CG: Tolerance: " << tol << "\n";
+    gsInfo << "CG: Residual error: " << CGSolver.error() << "\n";
+    gsInfo << "CG: Number of iterations: " << CGSolver.iterations() << "\n";
+
+    int result = (MinRes.error()<tol)?0:1;
+    result += (CGSolver.error()<tol)?0:1;
+    return result;
 }

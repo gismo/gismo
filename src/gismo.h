@@ -105,6 +105,7 @@ namespace internal
 
 // Solver
 #include <gsSolver/gsMinimalResidual.h>
+#include <gsSolver/gsConjugateGradient.h>
 #include <gsSolver/gsLinearOperator.h>
 
 // IO
