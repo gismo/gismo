@@ -27,103 +27,106 @@ template<class T>
 gsMatrix<T> * innerProduct( const gsBasis<T>& B1, const gsBasis<T>& B2)
 {
     gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
+    K->setZero();
+    
+    int nGauss = int( ceil( double(B1.degree() + B2.degree() + 1)/2 ) );
+    if (nGauss<1) nGauss=1;
+    
+    gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
+    gsMatrix<T> ngrid;          // tensor Gauss nodes
+    gsVector<T> wgrid;          // tensor Gauss weights
+    gsMatrix<unsigned> act1, act2;
+    gsMatrix<T>        ev1 , ev2;
 
-  int nGauss = int( ceil( double(B1.degree() + B2.degree() + 1)/2 ) );
-  if (nGauss<1) nGauss=1;
-
-  gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
-  gsMatrix<T> ngrid;          // tensor Gauss nodes
-  gsVector<T> wgrid;          // tensor Gauss weights
-  gsMatrix<unsigned> act1, act2;
-  gsMatrix<T>        ev1 , ev2;
-
-  typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
-  for (; domIt->good(); domIt->next())
-  {
-      // Map the Quadrature rule to the element
-      QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), ngrid, wgrid );
+    typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
+    for (; domIt->good(); domIt->next())
+    {
+        // Map the Quadrature rule to the element
+        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), ngrid, wgrid );
   
-      B1.eval_into(ngrid,ev1);
-      B2.eval_into(ngrid,ev2);
-      B1.active_into(ngrid,act1);
-      B2.active_into(ngrid,act2);
+        B1.eval_into(ngrid,ev1);
+        B2.eval_into(ngrid,ev2);
+        B1.active_into(ngrid,act1);
+        B2.active_into(ngrid,act2);
 
-      for (index_t k=0; k!= ngrid.cols(); ++k)
-          for (index_t i=0; i!=act1.rows(); ++i)
-              for (index_t j=0; j!=act2.rows(); ++j)
-                  (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;      
-  }
+        for (index_t k=0; k!= ngrid.cols(); ++k)
+            for (index_t i=0; i!=act1.rows(); ++i)
+                for (index_t j=0; j!=act2.rows(); ++j)
+                    (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;      
+    }
 
-  return K;
+    return K;
 }
 
 template<class T>
 gsMatrix<T> * innerProduct1( const gsBasis<T>& B1, const gsBasis<T>& B2)
 {
     gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
+    K->setZero();
 
-  int nGauss = int( ceil( double(B1.degree()-1 + B2.degree()-1 + 1)/2 ) );
-  if (nGauss<1) nGauss=1;
-
-  gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
-  gsMatrix<T> ngrid;          // tensor Gauss nodes
-  gsVector<T> wgrid;          // tensor Gauss weights
-  gsMatrix<unsigned> act1, act2;
-  gsMatrix<T>        ev1 , ev2;
-
-  typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
-  for (; domIt->good(); domIt->next())
-  {
-      // Map the Quadrature rule to the element
-      QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), ngrid, wgrid );
-  
-      B1.deriv_into(ngrid,ev1);
-      B2.deriv_into(ngrid,ev2);
-      B1.active_into(ngrid,act1);
-      B2.active_into(ngrid,act2);
-
-      for (index_t k=0; k!= ngrid.cols(); ++k)
-          for (index_t i=0; i!=act1.rows(); ++i)
-              for (index_t j=0; j!=act2.rows(); ++j)
-                  (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;
-      
-  }
-
-  return K;
+    int nGauss = int( ceil( double(B1.degree()-1 + B2.degree()-1 + 1)/2 ) );
+    if (nGauss<1) nGauss=1;
+    
+    gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
+    gsMatrix<T> ngrid;          // tensor Gauss nodes
+    gsVector<T> wgrid;          // tensor Gauss weights
+    gsMatrix<unsigned> act1, act2;
+    gsMatrix<T>        ev1 , ev2;
+    
+    typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
+    for (; domIt->good(); domIt->next())
+    {
+        // Map the Quadrature rule to the element
+        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), ngrid, wgrid );
+        
+        B1.deriv_into(ngrid,ev1);
+        B2.deriv_into(ngrid,ev2);
+        B1.active_into(ngrid,act1);
+        B2.active_into(ngrid,act2);
+        
+        for (index_t k=0; k!= ngrid.cols(); ++k)
+            for (index_t i=0; i!=act1.rows(); ++i)
+                for (index_t j=0; j!=act2.rows(); ++j)
+                    (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;
+        
+    }
+    
+    return K;
 }
 
 template<class T>
 gsMatrix<T> * innerProduct2( const gsBasis<T>& B1, const gsBasis<T>& B2)
 {
     gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
+    K->setZero();
 
-  int nGauss = int( ceil( double(B1.degree()-2 + B2.degree()-2 + 1)/2 ) );
-  if (nGauss<1) nGauss=1;
+    int nGauss = int( ceil( double(B1.degree()-2 + B2.degree()-2 + 1)/2 ) );
+    if (nGauss<1) nGauss=1;
 
-  gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
-  gsMatrix<T> ngrid;          // tensor Gauss nodes
-  gsVector<T> wgrid;          // tensor Gauss weights
-  gsMatrix<unsigned> act1, act2;
-  gsMatrix<T>        ev1 , ev2;
-
-  typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
-  for (; domIt->good(); domIt->next())
-  {
-      // Map the Quadrature rule to the element
-      QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), ngrid, wgrid );
-  
-      B1.deriv2_into(ngrid,ev1);
-      B2.deriv2_into(ngrid,ev2);
-      B1.active_into(ngrid,act1);
-      B2.active_into(ngrid,act2);
-
-      for (index_t k=0; k!= ngrid.cols(); ++k)
-          for (index_t i=0; i!=act1.rows(); ++i)
-              for (index_t j=0; j!=act2.rows(); ++j)
-                  (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;      
-  }
-
-  return K;
+    gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
+    gsMatrix<T> ngrid;          // tensor Gauss nodes
+    gsVector<T> wgrid;          // tensor Gauss weights
+    gsMatrix<unsigned> act1, act2;
+    gsMatrix<T>        ev1 , ev2;
+    
+    typename gsBasis<T>::domainIter domIt = B1.makeDomainIterator();
+    for (; domIt->good(); domIt->next())
+    {
+        // Map the Quadrature rule to the element
+        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), ngrid, wgrid );
+        
+        B1.deriv2_into(ngrid,ev1);
+        B2.deriv2_into(ngrid,ev2);
+        B1.active_into(ngrid,act1);
+        B2.active_into(ngrid,act2);
+        
+        for (index_t k=0; k!= ngrid.cols(); ++k)
+            for (index_t i=0; i!=act1.rows(); ++i)
+                for (index_t j=0; j!=act2.rows(); ++j)
+                    (*K)( act1(i,k) , act2(j,k) ) +=  wgrid(k) * ev1(i,k) * ev2(j,k) ;      
+    }
+    
+    return K;
 }
 
 
@@ -134,27 +137,27 @@ gsVector<T> vectorIntersect(gsVector<T> const & tangent1,
                             gsMatrix<T> const & Vert1,
                             gsMatrix<T> const & Vert2)
 {
-  gsVector3d<T> abc1;
-  gsVector3d<T> abc2;
-  abc1(0) = tangent1(1);
-  abc1(1) = -tangent1(0);
-  abc1(2) = -( abc1(0)*Vert1(0,0) + abc1(1)*Vert1(0,1) );
-  abc2(0) = tangent2(1);
-  abc2(1) = -tangent2(0);
-  abc2(2) = -( abc2(0)*Vert2(0,0) + abc2(1)*Vert2(0,1) );      
-  gsVector<T> unknown(2);
-  T detMatrixab = abc1(0)*abc2(1)-abc1(1)*abc2(0);
-  if (detMatrixab!=0)
-  {
-  unknown(0) = -(1/detMatrixab)*(  abc2(1)*abc1(2)-abc1(1)*abc2(2) );
-  unknown(1) = -(1/detMatrixab)*( -abc2(0)*abc1(2)+abc1(0)*abc2(2) );
-  }
-  else
-  {
-    unknown(0) = .5*Vert1(0) + .5*Vert2(0);
-    unknown(1) = .5*Vert1(1) + .5*Vert2(1);
-  };
-  return unknown;
+    gsVector3d<T> abc1;
+    gsVector3d<T> abc2;
+    abc1(0) = tangent1(1);
+    abc1(1) = -tangent1(0);
+    abc1(2) = -( abc1(0)*Vert1(0,0) + abc1(1)*Vert1(0,1) );
+    abc2(0) = tangent2(1);
+    abc2(1) = -tangent2(0);
+    abc2(2) = -( abc2(0)*Vert2(0,0) + abc2(1)*Vert2(0,1) );      
+    gsVector<T> unknown(2);
+    T detMatrixab = abc1(0)*abc2(1)-abc1(1)*abc2(0);
+    if (detMatrixab!=0)
+    {
+        unknown(0) = -(1/detMatrixab)*(  abc2(1)*abc1(2)-abc1(1)*abc2(2) );
+        unknown(1) = -(1/detMatrixab)*( -abc2(0)*abc1(2)+abc1(0)*abc2(2) );
+    }
+    else
+    {
+        unknown(0) = .5*Vert1(0) + .5*Vert2(0);
+        unknown(1) = .5*Vert1(1) + .5*Vert2(1);
+    };
+    return unknown;
 }
 
 /// Angle between two vector: 0 <= angle <= pi
@@ -178,9 +181,9 @@ T conditionedAngle(gsVector3d<T> vec1, gsVector3d<T> vec2)
 template <class T>
 T conditionedAngle(gsVector3d<T> vec1, gsVector3d<T> vec2, gsVector3d<T> normal)
 {
-  T ag = conditionedAngle<T>(vec1,vec2);
-  T cag = ( normal.dot( vec1.cross( vec2 ) ) >= 0 ) ? ag: 2*M_PI-ag;
-  return cag;
+    T ag = conditionedAngle<T>(vec1,vec2);
+    T cag = ( normal.dot( vec1.cross( vec2 ) ) >= 0 ) ? ag: 2*M_PI-ag;
+    return cag;
 }
 
 
@@ -189,21 +192,21 @@ T conditionedAngle(gsVector3d<T> vec1, gsVector3d<T> vec2, gsVector3d<T> normal)
 template<class T>
 gsVector<T> criticalPointOfQuadratic(gsMatrix<T> & A, gsMatrix<T> & C, gsVector<T> & d)
 {
-  index_t n = A.rows();
-  index_t m = d.rows();
+    index_t n = A.rows();
+    index_t m = d.rows();
   
-  gsMatrix<T> combined(n + m, n + m);
-  combined.block(0, 0, n, n) = 2*A;
-  combined.block(0, n, n, m) = C.transpose();
-  combined.block(n, 0, m, n) = C;
-  combined.block(n, n, m, m).setZero();
+    gsMatrix<T> combined(n + m, n + m);
+    combined.block(0, 0, n, n) = 2*A;
+    combined.block(0, n, n, m) = C.transpose();
+    combined.block(n, 0, m, n) = C;
+    combined.block(n, n, m, m).setZero();
   
-  gsVector<T> longD(n + m);
-  longD.head(n).setZero();
-  longD.tail(m) = d;
+    gsVector<T> longD(n + m);
+    longD.head(n).setZero();
+    longD.tail(m) = d;
   
-  gsMatrix<T> result = combined.fullPivLu().solve(longD);
-  return result.block(0, 0, n, 1);
+    gsMatrix<T> result = combined.fullPivLu().solve(longD);
+    return result.block(0, 0, n, 1);
 }
 
 /// Find a critical point of a quadratic X^T A X + bX + c subject to a
@@ -212,27 +215,27 @@ template<class T>
 gsMatrix<T> criticalPointOfQuadratic(gsMatrix<T> const & A, gsMatrix<T> const & b, 
                                      gsMatrix<T> const & C, gsMatrix<T> const & d)
 {
-  index_t n = A.rows(); // dimension of X
-  index_t m = d.rows(); // number of exact constraints
-  assert(m<=n); // if not, the problem is ill defined
-  assert(A.cols()==n); // A must be a square matrix
-  assert(C.cols()==n);
-  assert(d.cols()==1 && C.rows()==d.rows());
-  gsMatrix<T> bt;
-  if (b.rows()!=1) bt=b.transpose(); else bt=b;
+    index_t n = A.rows(); // dimension of X
+    index_t m = d.rows(); // number of exact constraints
+    assert(m<=n); // if not, the problem is ill defined
+    assert(A.cols()==n); // A must be a square matrix
+    assert(C.cols()==n);
+    assert(d.cols()==1 && C.rows()==d.rows());
+    gsMatrix<T> bt;
+    if (b.rows()!=1) bt=b.transpose(); else bt=b;
   
-  gsMatrix<T> combined(n + m, n + m);
-  combined.block(0, 0, n, n) = 2*A;
-  combined.block(0, n, n, m) = C.transpose();
-  combined.block(n, 0, m, n) = C;
-  combined.block(n, n, m, m).setZero();
+    gsMatrix<T> combined(n + m, n + m);
+    combined.block(0, 0, n, n) = 2*A;
+    combined.block(0, n, n, m) = C.transpose();
+    combined.block(n, 0, m, n) = C;
+    combined.block(n, n, m, m).setZero();
   
-  gsVector<T> longD(n + m);  
-  longD.head(n) = -bt.transpose();
-  longD.tail(m) = d;
+    gsVector<T> longD(n + m);  
+    longD.head(n) = -bt.transpose();
+    longD.tail(m) = d;
   
-  gsMatrix<T> result = combined.fullPivLu().solve(longD);
-  return result.block(0, 0, n, 1);
+    gsMatrix<T> result = combined.fullPivLu().solve(longD);
+    return result.block(0, 0, n, 1);
 }
 
 /// Find a critical point of a quadratic X^T A X subject to a linear
@@ -261,7 +264,7 @@ gsMatrix<T> optQuadratic(gsMatrix<T> const & A1, gsMatrix<T> const & b1,
                          gsMatrix<T> const & C, gsMatrix<T> const & d)
 { 
     return criticalPointOfQuadratic<T>( w1*(A1.transpose())*A1 + w2*(A2.transpose())*A2, 
-           (-2)*w1*( A1.transpose() )*b1 + (-2)*w2*( A2.transpose() )*b2, C, d);
+                                        (-2)*w1*( A1.transpose() )*b1 + (-2)*w2*( A2.transpose() )*b2, C, d);
 }
 				      
 /// Find X which solves: min w_1 (A_1 X-b_1)^T (A_1 X-b_1) + w_2 (A_2
@@ -274,7 +277,7 @@ gsMatrix<T> optQuadratic(gsMatrix<T> const & A1, gsMatrix<T> const & b1,
                          T const & w3, gsMatrix<T> const & Q)
 { 
     return criticalPointOfQuadratic<T>( w1*(A1.transpose())*A1 + w2*(A2.transpose())*A2 + w3*Q, 
-				      (-2)*w1*( A1.transpose() )*b1 + (-2)*w2*( A2.transpose() )*b2, C, d);
+                                        (-2)*w1*( A1.transpose() )*b1 + (-2)*w2*( A2.transpose() )*b2, C, d);
 }
 
 /// Flip columes from left to right and vice versa
@@ -283,13 +286,13 @@ gsMatrix<T> flipLR(const gsMatrix<T> & mat)
 {
     return mat.rowwise().reverse();
         
-  // size_t const ncol = mat.cols();
-  // gsMatrix<T> nMat(mat.rows(),ncol);  
-  // for (size_t i=0; i<= ncol-1;  i++)
-  // {
-  //   nMat.col(i) = mat.col(ncol-1-i);
-  // };
-  // return nMat;
+    // size_t const ncol = mat.cols();
+    // gsMatrix<T> nMat(mat.rows(),ncol);  
+    // for (size_t i=0; i<= ncol-1;  i++)
+    // {
+    //   nMat.col(i) = mat.col(ncol-1-i);
+    // };
+    // return nMat;
 }
 
 /// cross product of each pair of columes of two matrices and
@@ -317,19 +320,19 @@ void addConstraints(gsMatrix<T> const & C1, gsMatrix<T> const & d1,
                     gsMatrix<T> const & C2, gsMatrix<T> const & d2, 
                     gsMatrix<T> & C, gsMatrix<T> & d)
 {
-  int nr1 = C1.rows();
-  int nc1 = C1.cols();  
-  int nr2 = C2.rows();
+    int nr1 = C1.rows();
+    int nc1 = C1.cols();  
+    int nr2 = C2.rows();
 
-  assert(nc1== C2.cols() );
-  assert(nr1==d1.rows());
-  assert(nr2==d2.rows());
-  C.resize(nr1+nr2,nc1);
-  C.block(0,0,nr1,nc1) = C1;
-  C.block(nr1,0,nr2,nc1) = C2;
-  d.resize(nr1+nr2,1);
-  d.block(0,0,nr1,1) = d1;
-  d.block(nr1,0,nr2,1) = d2;  
+    assert(nc1== C2.cols() );
+    assert(nr1==d1.rows());
+    assert(nr2==d2.rows());
+    C.resize(nr1+nr2,nc1);
+    C.block(0,0,nr1,nc1) = C1;
+    C.block(nr1,0,nr2,nc1) = C2;
+    d.resize(nr1+nr2,1);
+    d.block(0,0,nr1,1) = d1;
+    d.block(nr1,0,nr2,1) = d2;  
 }
 
 /// convert a with abs(a) < eps=2.220446049250313e-16 into 0
@@ -426,11 +429,11 @@ gsMatrix<T> rowProduct(gsMatrix<T> const & col, gsMatrix<T> const & mat)
 }
 
 /**
-    Interpolation with standard smoothing.
-    TODO1: make the output as gsGeometry, gsBSpline for now; also use gsBasis as input
-    TODO2: there should a different weight for approximating normal: w_nor
-    Size of input matrices: each colummn represents a geometry point.
- */
+   Interpolation with standard smoothing.
+   TODO1: make the output as gsGeometry, gsBSpline for now; also use gsBasis as input
+   TODO2: there should a different weight for approximating normal: w_nor
+   Size of input matrices: each colummn represents a geometry point.
+*/
 template <class T>
 gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
                            const gsMatrix<T> & image,
@@ -439,67 +442,67 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
                            T const & w_reg,T const & w_app,
                            gsMatrix<T> &outPointResiduals, gsMatrix<T> &outNormalResiduals)
 {
-  const int ntcp = kv.size()-kv.degree()-1;
-  gsMatrix<T> tcp (ntcp, 2);
+    const int ntcp = kv.size()-kv.degree()-1;
+    gsMatrix<T> tcp (ntcp, 2);
 
-  // Quadratic forms which (approximately) constitute the beam strain energy
-  gsBSplineBasis< T,gsKnotVector<T> > bs(kv);
-  gsMatrix<T> *Q = innerProduct2(bs, bs);
+    // Quadratic forms which (approximately) constitute the beam strain energy
+    gsBSplineBasis< T,gsKnotVector<T> > bs(kv);
+    gsMatrix<T> *Q = innerProduct2(bs, bs);
 
-  // Exact constraints: point interpolation
-  int dimPI = 1; // dimension of space of preImage, TODO: put dimPI, dimI to template<dimPI,...
-  int dimI = 2;  // dimension of space of image
-  GISMO_UNUSED(dimPI);
-  GISMO_UNUSED(dimI);
-  int nip = image.cols(); // number of interpolating points
-  int nn=normal.cols(); // number of prescribed normals
-  gsMatrix<T> Nu, dNu, dNu_nm, NuApp;
-  //--
-  GISMO_ASSERT(dimPI==1 && dimI==2," "); // can be easily extended for other dimensions
-  Nu   = bs.eval(preImage.row(0)); // u-BSplines
-  dNu  = bs.deriv(preImage.row(0)); // u-BSplines
-  Nu.transposeInPlace();
-  dNu.transposeInPlace();
-  dNu_nm  = bs.deriv(preNormal.row(0)); // u-BSplines for normals
-  dNu_nm.transposeInPlace();
-  gsMatrix<T> AdN = rowProduct<T>((normal.row(0)).transpose(), dNu_nm);
-  gsMatrix<T> BdN = rowProduct<T>((normal.row(1)).transpose(), dNu_nm);
+    // Exact constraints: point interpolation
+    int dimPI = 1; // dimension of space of preImage, TODO: put dimPI, dimI to template<dimPI,...
+    int dimI = 2;  // dimension of space of image
+    GISMO_UNUSED(dimPI);
+    GISMO_UNUSED(dimI);
+    int nip = image.cols(); // number of interpolating points
+    int nn=normal.cols(); // number of prescribed normals
+    gsMatrix<T> Nu, dNu, dNu_nm, NuApp;
+    //--
+    GISMO_ASSERT(dimPI==1 && dimI==2," "); // can be easily extended for other dimensions
+    Nu   = bs.eval(preImage.row(0)); // u-BSplines
+    dNu  = bs.deriv(preImage.row(0)); // u-BSplines
+    Nu.transposeInPlace();
+    dNu.transposeInPlace();
+    dNu_nm  = bs.deriv(preNormal.row(0)); // u-BSplines for normals
+    dNu_nm.transposeInPlace();
+    gsMatrix<T> AdN = rowProduct<T>((normal.row(0)).transpose(), dNu_nm);
+    gsMatrix<T> BdN = rowProduct<T>((normal.row(1)).transpose(), dNu_nm);
 
-  // Approximate constraints
-  NuApp = bs.eval(preImageApp.row(0));
-  NuApp.transposeInPlace();
-  gsMatrix<T> X0 = imageApp.row(0);
-  gsMatrix<T> Y0 = imageApp.row(1);
+    // Approximate constraints
+    NuApp = bs.eval(preImageApp.row(0));
+    NuApp.transposeInPlace();
+    gsMatrix<T> X0 = imageApp.row(0);
+    gsMatrix<T> Y0 = imageApp.row(1);
 
-  //-- resulting Saddle point linear System
-  int nss = dimI*ntcp + dimI*nip + nn;
-  gsMatrix<T> Ass(nss,nss);
-  gsMatrix<T> bss(nss,1);
-  Ass.setZero(); bss.setZero();
-  gsMatrix<T> Hess = w_reg*2*(*Q) + w_app*2*(NuApp.transpose())* NuApp;
-  //--- row 0
-  Ass.block(0,0,ntcp,ntcp) = Hess;
-  Ass.block(0,2*ntcp,ntcp,nip) = Nu.transpose();
-  Ass.block(0,2*ntcp+2*nip,ntcp,nn) = AdN.transpose();
-  bss.block(0,0,ntcp,1) = w_app*2*NuApp.transpose()*X0.transpose();
-  //--- row 1
-  Ass.block(ntcp,ntcp,ntcp,ntcp) = Hess;
-  Ass.block(ntcp,2*ntcp+nip,ntcp,nip) = Nu.transpose();
-  Ass.block(ntcp,2*ntcp+2*nip,ntcp,nn) = BdN.transpose();
-  bss.block(ntcp,0,ntcp,1) = w_app*2*NuApp.transpose()*Y0.transpose();
-  //--- row 2
-  Ass.block(2*ntcp,0,nip,ntcp) = Nu;
-  bss.block(2*ntcp,0,nip,1) = (image.row(0)).transpose();
-  //--- row 3
-  Ass.block(2*ntcp+nip,ntcp,nip,ntcp) = Nu;
-  bss.block(2*ntcp+nip,0,nip,1) = (image.row(1)).transpose();
-  //--- row 4
-  Ass.block(2*ntcp+2*nip,0,nn,ntcp) = AdN;
-  Ass.block(2*ntcp+2*nip,ntcp,nn,ntcp) = BdN;
+    //-- resulting Saddle point linear System
+    int nss = dimI*ntcp + dimI*nip + nn;
+    gsMatrix<T> Ass(nss,nss);
+    gsMatrix<T> bss(nss,1);
+    Ass.setZero(); bss.setZero();
+    gsMatrix<T> Hess = w_reg*2*(*Q) + w_app*2*(NuApp.transpose())* NuApp;
+    //--- row 0
+    Ass.block(0,0,ntcp,ntcp) = Hess;
+    Ass.block(0,2*ntcp,ntcp,nip) = Nu.transpose();
+    Ass.block(0,2*ntcp+2*nip,ntcp,nn) = AdN.transpose();
+    bss.block(0,0,ntcp,1) = w_app*2*NuApp.transpose()*X0.transpose();
+    //--- row 1
+    Ass.block(ntcp,ntcp,ntcp,ntcp) = Hess;
+    Ass.block(ntcp,2*ntcp+nip,ntcp,nip) = Nu.transpose();
+    Ass.block(ntcp,2*ntcp+2*nip,ntcp,nn) = BdN.transpose();
+    bss.block(ntcp,0,ntcp,1) = w_app*2*NuApp.transpose()*Y0.transpose();
+    //--- row 2
+    Ass.block(2*ntcp,0,nip,ntcp) = Nu;
+    bss.block(2*ntcp,0,nip,1) = (image.row(0)).transpose();
+    //--- row 3
+    Ass.block(2*ntcp+nip,ntcp,nip,ntcp) = Nu;
+    bss.block(2*ntcp+nip,0,nip,1) = (image.row(1)).transpose();
+    //--- row 4
+    Ass.block(2*ntcp+2*nip,0,nn,ntcp) = AdN;
+    Ass.block(2*ntcp+2*nip,ntcp,nn,ntcp) = BdN;
 
-  gsMatrix<T> result = Ass.fullPivLu().solve(bss);
-  tcp.col(0) = result.block(0   , 0, ntcp, 1);
-  tcp.col(1) = result.block(ntcp, 0, ntcp, 1);
+    gsMatrix<T> result = Ass.fullPivLu().solve(bss);
+    tcp.col(0) = result.block(0   , 0, ntcp, 1);
+    tcp.col(1) = result.block(ntcp, 0, ntcp, 1);
 
 //  gsInfo<<"\n";
 ////   gsInfo<<"\n"<< " parameterRange: \n"<< *trimLoop[sourceID]->basis().parameterRange();
@@ -518,24 +521,24 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
 //  gsInfo<<"\n"<<" tcp: \n"<< tcp;
 ////   gsInfo<<"\n"<<" preimageApp: \n"<< preImageApp;
 ////   gsInfo<<"\n"<<" imageApp: \n"<< imageApp;
-    #ifdef debug
-    #if (debug==2)
-  gsInfo<<"\n"<<" residual of app x constraints: \n"<< *NuApp*tcp.col(0)-imageApp.row(0).transpose();
-  gsInfo<<"\n"<<" residual of app y constraints: \n"<< *NuApp*tcp.col(1)-imageApp.row(1).transpose();
-  gsInfo<<"\n"<<" residual of normal constraints: \n"<< AdN*tcp.col(0)+BdN*tcp.col(1);
-    #endif
-    #endif
+#ifdef debug
+#if (debug==2)
+    gsInfo<<"\n"<<" residual of app x constraints: \n"<< *NuApp*tcp.col(0)-imageApp.row(0).transpose();
+    gsInfo<<"\n"<<" residual of app y constraints: \n"<< *NuApp*tcp.col(1)-imageApp.row(1).transpose();
+    gsInfo<<"\n"<<" residual of normal constraints: \n"<< AdN*tcp.col(0)+BdN*tcp.col(1);
+#endif
+#endif
 
-  outPointResiduals = (NuApp * tcp).transpose() - imageApp;
-  outNormalResiduals = AdN * tcp.col(0) + BdN * tcp.col(1);
-  gsInfo << std::flush;
+    outPointResiduals = (NuApp * tcp).transpose() - imageApp;
+    outNormalResiduals = AdN * tcp.col(0) + BdN * tcp.col(1);
+    gsInfo << std::flush;
 //  gsInfo<<"\n";
 
-  delete Q; 
+    delete Q; 
 
-  gsBSpline<T> tcurve(kv, give(tcp));
+    gsBSpline<T> tcurve(kv, give(tcp));
 
-  return tcurve;
+    return tcurve;
 }
 
 
@@ -552,14 +555,14 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
 /// typically it should be set to false.
 template<class T>
 typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
-        const gsMatrix<T> &exactPoints, const gsMatrix<T> &exactValues,
-        const gsMatrix<T> &appxPointsEdges, const gsMatrix<T> &appxValuesEdges,
-        const gsMatrix<T> &appxPointsInt, const gsMatrix<T> &appxValuesInt,
-        const gsMatrix<T> &appxNormalPoints, const gsMatrix<T> &appxNormals,
-        T wEdge, T wInt, T wNormal, T wReg,
-        const gsKnotVector<T> &kv1, const gsKnotVector<T> &kv2,
-        bool force_normal
-        )
+    const gsMatrix<T> &exactPoints, const gsMatrix<T> &exactValues,
+    const gsMatrix<T> &appxPointsEdges, const gsMatrix<T> &appxValuesEdges,
+    const gsMatrix<T> &appxPointsInt, const gsMatrix<T> &appxValuesInt,
+    const gsMatrix<T> &appxNormalPoints, const gsMatrix<T> &appxNormals,
+    T wEdge, T wInt, T wNormal, T wReg,
+    const gsKnotVector<T> &kv1, const gsKnotVector<T> &kv2,
+    bool force_normal
+    )
 {
     GISMO_ASSERT(exactPoints.rows() == 2 && exactValues.rows() == 3, "Matrix input has incorrect dimension");
     GISMO_ASSERT(exactPoints.cols() == exactValues.cols(), "Matrix input has incorrect dimension");
@@ -681,9 +684,9 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     gsMatrix<T> *N, *N1, *N2;
     if (kv1==kv2) { N = M; N1 = M1; N2 = M2; } else
     {
-      N  = innerProduct(bs2, bs2);
-      N1 = innerProduct1(bs2, bs2);
-      N2 = innerProduct2(bs2, bs2);
+        N  = innerProduct(bs2, bs2);
+        N1 = innerProduct1(bs2, bs2);
+        N2 = innerProduct2(bs2, bs2);
     };
     gsMatrix<T> Q1D = kroneckerProduct<T>(*N,*M2) + 2*kroneckerProduct<T>(*N1,*M1)+kroneckerProduct<T>(*N2,*M);
     gsMatrix<T> Q(3*n1*n2,3*n1*n2);
@@ -697,10 +700,10 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     gsMatrix<T> coefb = (-2)*wEdge*(AappEdge.transpose())*bappEdge + (-2)*wInt*(AappInt.transpose())*bappInt + (-2)*wNormal*(Anor.transpose())*bnor;
 
     gsMatrix<T> cp = criticalPointOfQuadratic(
-                     coefA,
-                     coefb,
-                     Ecor,
-                     ecor);
+        coefA,
+        coefb,
+        Ecor,
+        ecor);
 
     cp.resize( cp.rows() / 3, 3);
 
