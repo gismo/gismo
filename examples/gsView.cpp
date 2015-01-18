@@ -1,13 +1,20 @@
-// Visualize gismo objects
+/** @file gsView.cpp
 
-#include <gismo.h>
+    @brief Produce Paraview file output from XML input, fo Visualizing  G+Smo objects
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris
+*/
 
 #include <iostream>
 
+#include <gismo.h>
 
-
-
-using namespace std;
 using namespace gismo;
 
 int main(int argc, char *argv[])
@@ -39,8 +46,8 @@ int main(int argc, char *argv[])
 
         if (fn.empty() )
         {
-            std::cout<< cmd.getMessage();
-            std::cout<<"\nType "<< argv[0]<< " -h, to get the list of command line options.\n";
+            gsInfo<< cmd.getMessage();
+            gsInfo<<"\nType "<< argv[0]<< " -h, to get the list of command line options.\n";
             return 0;
         }
 
@@ -52,7 +59,7 @@ int main(int argc, char *argv[])
             choice= 5;
         
     } catch ( gsArgException& e )
-    { cout << "Error: " << e.error() << " " << e.argId() << endl; }
+    { gsInfo << "Error: " << e.error() << " " << e.argId() << "\n"; }
     
     gsFileData<>  filedata(fn);
     
@@ -62,10 +69,10 @@ int main(int argc, char *argv[])
     {
         gsBasis<> * bb = filedata.getAnyFirst< gsBasis<> >();
         if (bb)
-            cout<< "Got "<< *bb <<endl;
+            gsInfo<< "Got "<< *bb <<"\n";
         else
         {
-            cout<< "Did not find any basis to plot in "<<fn<<", quitting."<<endl;
+            gsInfo<< "Did not find any basis to plot in "<<fn<<", quitting."<<"\n";
             return 0;
         }
         
@@ -79,10 +86,10 @@ int main(int argc, char *argv[])
     {
         gsMesh<> * msh = filedata.getAnyFirst< gsMesh<> >();
         if (msh)
-            cout<< "Got "<< *msh <<endl;
+            gsInfo<< "Got "<< *msh <<"\n";
         else
         {
-            cout<< "Did not find any mesh to plot in "<<fn<<", quitting."<<endl;
+            gsInfo<< "Did not find any mesh to plot in "<<fn<<", quitting."<<"\n";
             return 0;
         }
         gsWriteParaview( *msh, "gsview");
@@ -93,10 +100,10 @@ int main(int argc, char *argv[])
     case 5:{
         gsGeometry<> * geo = filedata.getAnyFirst< gsGeometry<> >();
         if (geo)
-            cout<< "Got "<< *geo <<endl;
+            gsInfo<< "Got "<< *geo <<"\n";
         else
         {
-            cout<< "Did not find any geometry to plot in "<<fn<<", quitting."<<endl;
+            gsInfo<< "Did not find any geometry to plot in "<<fn<<", quitting."<<"\n";
             return 0;
         }
 
@@ -110,10 +117,10 @@ int main(int argc, char *argv[])
         {
             std::vector<gsGeometry<>* > geo = filedata.getAll< gsGeometry<> >();
             if ( ! geo.empty() )
-                cout<< "Got "<< geo.size() <<" patch"<<(geo.size() == 1 ? "." : "es.") <<endl;
+                gsInfo<< "Got "<< geo.size() <<" patch"<<(geo.size() == 1 ? "." : "es.") <<"\n";
             else
             {
-                cout<< "Problem encountered in file "<<fn<<", quitting." <<endl;
+                gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
                 return 0;
             }
             
@@ -128,10 +135,10 @@ int main(int argc, char *argv[])
         {
             gsMesh<> * msh = filedata.getFirst< gsMesh<> >();
             if (msh)
-                cout<< "Got "<< *msh <<endl;
+                gsInfo<< "Got "<< *msh <<"\n";
             else
             {
-                cout<< "Problem encountered in file "<<fn<<", quitting." <<endl;
+                gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
                 return 0;
             }
             
@@ -147,10 +154,10 @@ int main(int argc, char *argv[])
         //bb->uniformRefine(3);
         
         if (bb)
-            cout<< "Got "<< *bb <<endl;
+            gsInfo<< "Got "<< *bb <<"\n";
         else
         {
-            cout<< "Problem encountered in file "<<fn<<", quitting." <<endl;
+            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
             return 0;
         }
         
@@ -166,10 +173,10 @@ int main(int argc, char *argv[])
         gsSolid<> * bb = filedata.getFirst< gsSolid<> >();
 
         if (bb)
-            cout<< "Got "<< *bb <<endl;
+            gsInfo<< "Got "<< *bb <<"\n";
         else
         {
-            cout<< "Problem encountered in file "<<fn<<", quitting." <<endl;
+            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
             return 0;
         }
         
@@ -187,10 +194,10 @@ int main(int argc, char *argv[])
         //bb->uniformRefine(3);
 
         if (bb)
-            cout<< "Got "<< *bb <<endl;
+            gsInfo<< "Got "<< *bb <<"\n";
         else
         {
-            cout<< "Problem encountered in file "<<fn<<", quitting." <<endl;
+            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
             return 0;
         }
 
@@ -207,10 +214,10 @@ int main(int argc, char *argv[])
         //bb->uniformRefine(3);
 
         if (bb)
-            cout<< "Got "<< *bb <<endl;
+            gsInfo<< "Got "<< *bb <<"\n";
         else
         {
-            cout<< "Problem encountered in file "<<fn<<", quitting." <<endl;
+            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
             return 0;
         }
         
@@ -230,14 +237,14 @@ int main(int argc, char *argv[])
         //bb->uniformRefine(3);
         
         if (bb)
-            cout<< "Got Matrix with "<< bb->cols() <<" points.\n";
+            gsInfo<< "Got Matrix with "<< bb->cols() <<" points.\n";
         else
         {
-            cout<< "Problem encountered in file "<<fn<<", quitting." <<endl;
+            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
             return 0;
         }
 
-        cout<< "Plot "<< bb->rows() <<"D points.\n";
+        gsInfo<< "Plot "<< bb->rows() <<"D points.\n";
         if (bb->rows() == 2 )    
         {         
             gsWriteParaviewPoints<real_t>( bb->row(0),
@@ -248,14 +255,14 @@ int main(int argc, char *argv[])
                              bb->row(1).eval() , 
                              bb->row(2).eval(), "gsview");
         else
-            cout<< "In trouble...\n";
+            gsInfo<< "In trouble...\n";
 
         delete bb;
 
         return system("paraview gsview.pvd &");
     }
 
-    cout<< "Did not find anything to plot in "<<fn<<", quitting."<<endl;
+    gsInfo<< "Did not find anything to plot in "<<fn<<", quitting."<<"\n";
     }
 
     return 0;
