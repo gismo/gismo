@@ -324,7 +324,7 @@ public:
         getHexEdges(hex, edge);
 
         int nmbOfPts = 6 * (n * n + 4); // 6 faces * number of points on faces
-        points.resize(3, nmbOfPts);
+        points  .resize(3, nmbOfPts);
         params3D.resize(3, nmbOfPts);
 
         gsVector<T> params1D(n);
@@ -335,7 +335,7 @@ public:
 
         int column = 0;
 
-        for (boxSide side = boxSide::getFirst(3); side<boxSide::getLast(3); ++side )
+        for (boxSide side = boxSide::getFirst(3); side<boxSide::getEnd(3); ++side )
         {
 
             // this variable is true if we must turn around a curve loop in
