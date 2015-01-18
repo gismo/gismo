@@ -17,7 +17,7 @@
 
 #include <gsIO/gsXmlUtils.h>
 
-#include <gsOpennurbs/onurbs/opennurbs.h>
+#include <onurbs/opennurbs.h>
 
 
 #include <string>
@@ -35,10 +35,12 @@ namespace gismo {
 
 namespace extensions {
 
+/// \todo Complete writing to onurbs
+/*
 template <typename T>
 void gsWriteOpenNurbs(const gsGeometry<T>& geom,
                       const std::string& fileName);
-
+*/
 
 /// Writes a planar domain to OpenNurbs file
 template<class T>
