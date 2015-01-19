@@ -93,7 +93,8 @@ public:
     /// iteration through all boundary elements.
     void reset()
     {
-        GISMO_NO_IMPLEMENTATION
+        const gsHTensorBasis<d, T>* hbs =  dynamic_cast<const gsHTensorBasis<d, T> *>(m_basis);
+        initLeaf(hbs->tree());
     }
     
     // ---> Documentation in gsDomainIterator.h Compute a suitable
