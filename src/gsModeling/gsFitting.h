@@ -22,77 +22,112 @@ namespace gismo
 {
 
 /**
-    Class for performing a least squares fit to get a open/closed
-    B-Spline curve for some given data
+   Class for performing a least squares fit to get a open/closed
+   B-Spline curve for some given data
     
-    \ingroup Modeling
+   \ingroup Modeling
 **/
 template<class T>
 class gsFitting
 {
 public:
-  /// default constructor
-  gsFitting()
-  {
-      m_basis = NULL;
-      m_result= NULL ;
-  }
+    /// default constructor
+    gsFitting()
+    {
+        m_basis = NULL;
+        m_result= NULL ;
+    }
 
-  /// constructor
-  gsFitting(gsMatrix<T> const & param_values, 
-            gsMatrix<T> const & points, 
-            gsBasis<T>  & basis);
+    /// constructor
+    gsFitting(gsMatrix<T> const & param_values, 
+              gsMatrix<T> const & points, 
+              gsBasis<T>  & basis);
 
-  /// Destructor
-  virtual ~gsFitting();
-
-public:
-
-  /// Computes the least squares fit for a gsBasis
-  void compute(T lambda = 0);
-
-  /// Computes the approximation error of the fitted curve to the original point cloud
-  void computeApproxError(T & error, int type = 0) const;
-
-  ///return the errors for each point
-  void get_Error(std::vector<T>& errors, int type = 0) const;
-
-
-  /// Computes the least squares fit for a gsBasis
-  void iterativeCompute( T const & tolerance, unsigned const & num_iters = 10);
-
+    /// Destructor
+    virtual ~gsFitting();
 
 public:
 
-  /// gives back the computed approximation
-  gsGeometry<T> * result() const { return m_result; }
+    /// Computes the least squares fit for a gsBasis
+    void compute(T lambda = 0);
 
-  /// Returns the basis of the approximation
-  const gsBasis<T> & getBasis() const {return *m_basis;}
+    /// Computes the euclidean error for each point
+    void computeErrors();
 
-  void setBasis(gsBasis<T> & basis) {m_basis=&basis;}
+    /// Computes the approximation error of the fitted curve to the original point cloud
+    void computeApproxError(T & error, int type = 0) const;
 
-  /// returns the parameter values
-  gsMatrix<T> & getreturnParamValues() {return m_param_values;}
-  gsMatrix<T> & returnParamValues() {return m_param_values;}
+    ///return the errors for each point
+    void get_Error(std::vector<T>& errors, int type = 0) const;
 
-  /// returns the points
-  gsMatrix<T> returnPoints() const {return m_points;}
+    /// Returns the minimum point-wise error from the pount cloud (or zero if not fitted)
+    T minPointError() const { return m_min_error; }
+
+    /// Returns the maximum point-wise error from the pount cloud (or zero if not fitted)
+    T maxPointError() const { return m_max_error; }
+
+    /// Return the errors for each point
+    const std::vector<T> & pointWiseErrors() const
+    {
+        return m_pointErrors;
+    }
+
+    /// Computes the number of points below the error threshold (or zero if not fitted)
+    std::size_t numPointsBelow(T threshold) const 
+    { 
+        const std::size_t result= 
+            std::count_if(m_pointErrors.begin(), m_pointErrors.end(), 
+                          std::bind2nd(std::less<T>(), threshold));
+        return result; 
+    }
+
+    /// Computes the least squares fit for a gsBasis
+    void iterativeCompute( T const & tolerance, unsigned const & num_iters = 10);
+
+
+public:
+
+    /// gives back the computed approximation
+    gsGeometry<T> * result() const { return m_result; }
+
+    /// Returns the basis of the approximation
+    const gsBasis<T> & getBasis() const {return *m_basis;}
+
+    void setBasis(gsBasis<T> & basis) {m_basis=&basis;}
+
+    /// returns the parameter values
+    gsMatrix<T> & getreturnParamValues() {return m_param_values;}
+    gsMatrix<T> & returnParamValues() {return m_param_values;}
+
+    /// returns the points
+    gsMatrix<T> returnPoints() const {return m_points;}
 
 
 protected:
 
-  /// the parameter values of the point cloud
-  gsMatrix<T> m_param_values;
-  /// the points of the point cloud
-  gsMatrix<T> m_points;
-  /// Pointer keeping the basis
-  gsBasis<T> * m_basis;
-  /// Pointer keeping the resulting geometry
-  gsGeometry<T> * m_result;
+    /// the parameter values of the point cloud
+    gsMatrix<T> m_param_values;
+
+    /// the points of the point cloud
+    gsMatrix<T> m_points;
+
+    /// Pointer keeping the basis
+    gsBasis<T> * m_basis;
+
+    /// Pointer keeping the resulting geometry
+    gsGeometry<T> * m_result;
+
+    // All point-wise errors
+    std::vector<T> m_pointErrors;
+
+    /// Maximum point-wise error
+    T m_max_error;
+
+    /// Minimum point-wise error
+    T m_min_error;
 
 private:
-  void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
+    void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
     //void applySmoothing(T lambda, gsMatrix<T> & A_mat);
 }; // class gsFitting
 

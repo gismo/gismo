@@ -103,13 +103,6 @@ public:
      */
     void nextIteration(T tolerance, T err_threshold);
 
-    /// Return the errors for each point
-    const std::vector<T> & pointWiseErrors() const
-    {
-        return m_pointErrors;
-    }
-
-
     /// Return the refinement percentage
     T get_refinement() const
     {
@@ -140,21 +133,6 @@ public:
         m_ext = extension;
     }
 
-    /// Returns the minimum point-wise error from the pount cloud (or zero if not fitted)
-    T minPointError() const { return m_min_error; }
-
-    /// Returns the maximum point-wise error from the pount cloud (or zero if not fitted)
-    T maxPointError() const { return m_max_error; }
-
-    /// Computes the number of points below the error threshold (or zero if not fitted)
-    std::size_t numPointsBelow(T threshold) const 
-    { 
-        const std::size_t result= 
-            std::count_if(m_pointErrors.begin(), m_pointErrors.end(), 
-                          std::bind2nd(std::less<T>(), threshold));
-        return result; 
-    }
-
 private:
 
     /// Identifies the threshold from where we should refine
@@ -170,9 +148,6 @@ private:
     std::vector<unsigned> get_boxes(const std::vector<int> & cells, 
                                     const std::vector<int> & levels);
 
-    /// Computes the euclidean error for each point
-    void computeErrors();
-
 private:
 
     /// How many % to refine - 0-1 interval
@@ -184,19 +159,14 @@ private:
     /// Size of the extension
     std::vector<unsigned> m_ext;
 
-    // All point-wise errors
-    std::vector<T> m_pointErrors;
-
-    /// Maximum point-wise error
-    T m_max_error;
-
-    /// Minimum point-wise error
-    T m_min_error;
-
     using gsFitting<T>::m_param_values;
     using gsFitting<T>::m_points;
     using gsFitting<T>::m_basis;
     using gsFitting<T>::m_result;
+
+    using gsFitting<T>::m_pointErrors;
+    using gsFitting<T>::m_max_error;
+    using gsFitting<T>::m_min_error;
 };
 
 
@@ -234,9 +204,9 @@ void gsHFitting<T>::nextIteration(T tolerance, T err_threshold)
         }
     }
 
-    // We run one fitting step and cpmpute the errors
+    // We run one fitting step and compute the errors
     this->compute(m_lambda);
-    computeErrors();
+    this->computeErrors();
 }
 
 template<class T>
@@ -245,7 +215,7 @@ void gsHFitting<T>::iterative_refine(int numIterations, T tolerance, T err_thres
     if ( m_pointErrors.size() == 0 )
     {
         this->compute(m_lambda);
-        computeErrors();
+        this->computeErrors();
     }
 
     for( int i = 0; i < numIterations; i++ )
@@ -408,29 +378,6 @@ std::vector<int> gsHFitting<T>::select_cells(std::vector<T> & errors,
 }
 
 
-template<class T>
-void gsHFitting<T>::computeErrors()
-{
-    m_pointErrors.clear();
-
-    gsMatrix<T> val_i;
-    //m_result->eval_into(m_param_values.col(0), val_i);
-    m_result->eval_into(m_param_values, val_i);
-    m_pointErrors.push_back( (m_points.row(0) - val_i.col(0).transpose()).norm() );
-    m_max_error = m_min_error = m_pointErrors.back();
-    
-    for (index_t i = 1; i < m_points.rows(); i++)
-    {
-        //m_result->eval_into(m_param_values.col(i), val_i);
-
-        const T err = (m_points.row(i) - val_i.col(i).transpose()).norm() ;
-
-        m_pointErrors.push_back(err);
-
-        if ( err > m_max_error ) m_max_error = err;
-        if ( err < m_min_error ) m_min_error = err;
-    }
-}
 
 
 };// namespace gismo

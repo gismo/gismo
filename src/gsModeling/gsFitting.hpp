@@ -186,6 +186,31 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
         }
     }
 }
+
+template<class T>
+void gsFitting<T>::computeErrors()
+{
+    m_pointErrors.clear();
+
+    gsMatrix<T> val_i;
+    //m_result->eval_into(m_param_values.col(0), val_i);
+    m_result->eval_into(m_param_values, val_i);
+    m_pointErrors.push_back( (m_points.row(0) - val_i.col(0).transpose()).norm() );
+    m_max_error = m_min_error = m_pointErrors.back();
+    
+    for (index_t i = 1; i < m_points.rows(); i++)
+    {
+        //m_result->eval_into(m_param_values.col(i), val_i);
+
+        const T err = (m_points.row(i) - val_i.col(i).transpose()).norm() ;
+
+        m_pointErrors.push_back(err);
+
+        if ( err > m_max_error ) m_max_error = err;
+        if ( err < m_min_error ) m_min_error = err;
+    }
+}
+
   
 template<class T>
 void gsFitting<T>::computeApproxError(T& error, int type) const
@@ -195,15 +220,11 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
     results.transposeInPlace();
     error = 0;
 
-    //computing the approximation error = sum_i ||x(u_i)-p_i||^2
+    //computing the approximation error = sum_i ||x(u_i)-p_i||
 
-    for (index_t row = 0; row != m_points.rows(); row++)
+    for (index_t i = 0; i != m_points.rows(); ++i)
     {
-        T err = 0;
-        for (index_t col = 0; col != m_points.cols(); col++)
-        {
-            err += pow(m_points(row, col) - results(row, col), 2);
-        }
+        const T err = (m_points.row(i) - results.col(i).transpose()).norm();
 
         switch (type) {
         case 0:
@@ -251,102 +272,3 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 }
 
 } // namespace gismo
-
-/* from svn version 1230-
-template<class T>
-void gsFitting<T>::compute(T lambda)
-{
-    //number of basis functions
-    int num_basis=m_basis->size();
-
-    gsDebug << "num_basis: "<< num_basis  <<"\n";
-    int num_points=m_points.rows();
-    //for computing the value of the basis function
-
-    gsMatrix<T> values;
-    gsMatrix<unsigned> actives;
-
-    //computing the values of the basis functions at some position
-    m_basis->eval_into(m_param_values,values);
-    // which functions have been computed i.e. which are active
-    m_basis->active_into(m_param_values,actives);
-    // dimension of points will be also later dimension of coefficients
-    int m_dimension=m_points.cols();
-    //left side matrix
-    gsMatrix<T> m_A(num_basis,num_basis); // TO DO: change to sparse matrix
-
-    //gsSparseMatrix<T> m_A(num_basis,num_basis);
-    // m_A.reserve(...); //to opotimiye sparse matrix an estimation of nonyero elements per column can be given here
-    m_A.setZero(); // ensure that all entries are zero in the beginning
-    //right side vector (more dimensional!)
-    gsMatrix<T> m_B(num_basis,m_dimension);
-    m_B.setZero(); // enusure that all entris are zero in the beginning
-    for(index_t k=0;k<num_points;k++){
-        for(index_t i=0;i<actives.rows();i++){
-            m_B.row(actives(i,k)) += values(i,k)*m_points.row(k);
-            for(index_t j=0;j<actives.rows();j++){
-                m_A(actives(i,k), actives(j,k) ) += values(i,k)*values(j,k);
-            }
-        }
-    }
-
-    if(lambda > 0){
-     //test degree >=3
-            int dim = m_basis->dim();
-            std::vector<std::vector<T> > breaks;
-            gsVector<unsigned> meshSize(dim);
-            for (int i=0; i!=dim; ++i)
-              {
-            breaks.push_back( m_basis->component(i).domain()->breaks() ) ;
-            meshSize[i] = breaks[i].size() - 1;   // for n breaks, we have n-1 elements (spans)
-              }
-            gsMatrix<T> ngrid1;          // tensor Gauss nodes
-            gsVector<T> wgrid1;          // tensor Gauss weights
-            gsVector<T> lower(dim);
-            gsVector<T> upper(dim);
-            int stride = dim*(dim+1)/2;
-            gsVector<int> num_nodes(dim);
-            for ( index_t i = 0; i!= num_nodes.size(); ++i )
-                num_nodes[i] = 2; // this should be  ceil( (degree in dir i) / 2 )
-            gsVector<unsigned> curElement = gsVector<unsigned>::Zero(dim);
-            do
-              {
-            for (int i = 0; i < dim; ++i)
-              {
-                lower[i] = breaks[i][curElement[i]];
-                upper[i] = breaks[i][curElement[i]+1];
-              }
-            tensorGaussRule<T>(ngrid1, wgrid1, num_nodes, lower, upper);
-            gsMatrix<T> der2;
-            m_basis->deriv2_into(ngrid1, der2);
-            gsMatrix<unsigned> act;
-            m_basis->active_into(ngrid1, act);
-            for (index_t k=0; k!= der2.cols(); ++k)
-              {
-                for (index_t i=0; i!=act.rows(); ++i)
-                  for (index_t j=0; j!=act.rows(); ++j)
-                {
-                  m_A( act(i,k) , act(j,k) ) += wgrid1[k] * lambda *
-                    (
-                        der2(i*stride  , k) * der2(j*stride  , k) +  // d^2u N_i * d^2u N_j
-                        der2(i*stride+1, k) * der2(j*stride+1, k) +  // d^2v N_i * d^2v N_j
-                    2 * der2(i*stride+2, k) * der2(j*stride+2, k)   // dudv N_i * dudv N_j
-                     );
-                      }
-            }
-          }
-          while (nextLexicographic(curElement, meshSize));
-    gsDebug << "m_A size: "<< m_A.rows() <<" x "<< m_A.cols() <<"\n";
-     }
-
-    gsMatrix<T> x (m_B.rows(), m_B.cols());
-    x=m_A.fullPivHouseholderQr().solve( m_B);
-    //Eigen::BiCGSTAB< gsSparseMatrix<T>,  Eigen::IncompleteLUT<T> > solver( m_A );
-
-    // Solves for many right hand side  columns
-    //x =  solver.solve( m_B); //toDense()
-    // finally generate the B-spline curve
-    m_result = m_basis->makeGeometry(&x);
-}
-
-*/
