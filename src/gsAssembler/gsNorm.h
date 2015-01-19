@@ -85,10 +85,6 @@ public:
                 // Evaluate on quadrature points
                 visitor.evaluate(*geoEval, func1, *func2, quNodes);
                 
-                // ** Evaluate function v
-                //gsMatrix<T> f2val = func2Param ? func2.eval(quNodes)
-                //: func2.eval( geoEval->values() );
-
                 // Accumulate value from the current element (squared)
                 const T result = visitor.compute(*domIt, *geoEval, quWeights);
                 m_value += result;
@@ -133,7 +129,7 @@ protected:
     const gsField<T>    * field1;
 
     const gsFunction<T> * func2;
-
+  
 protected:
 
     std::vector<T> m_elWise;

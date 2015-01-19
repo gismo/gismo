@@ -80,6 +80,11 @@ protected:
         // Evaluate second function (defined of physical domain)
         geoEval.evaluateAt(quNodes);
         func2.deriv_into(geoEval.values(), f2ders);
+
+        // ** Evaluate function v
+        //gsMatrix<T> f2val = func2Param ? func2.deriv(quNodes)
+        //: func2.eval( geoEval->values() );
+
         // get the gradients to columns
         f2ders.transposeInPlace();
         f2ders.resize(quNodes.rows(), quNodes.cols() );

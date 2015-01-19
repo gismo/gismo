@@ -14,12 +14,14 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsUtils/gsPointGrid.h>
+#include <gsUtils/gsCombinatorics.h>
 
 namespace gismo
 {
 
 /** 
-    Class for a reference quadrature rule
+    \brief Class representing a reference quadrature rule
     
     \ingroup Assembler
 */
@@ -123,6 +125,12 @@ public:
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const;
     
 protected:
+    
+    /// Computes the tensor product rule from coordinate-wise 1D \a nodes and \a weights.
+    void computeTensorProductRule(const std::vector<gsVector<T> > & nodes, 
+                                  const std::vector<gsVector<T> > & weights);
+
+protected:
 
     /// Reference quadrature nodes (on the interval [-1,1]).
     gsMatrix<T> m_nodes;
@@ -137,6 +145,7 @@ protected:
 //////////////////////////////////////////////////
 
 
+// Note: left here for inlining
 template<class T> void
 gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                       gsMatrix<T> & nodes, gsVector<T> & weights ) const
@@ -166,21 +175,11 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
     weights.noalias() = hprod * m_weights;
 }
 
-template<class T> void
-gsQuadRule<T>::mapTo( T startVal, T endVal,
-                      gsMatrix<T> & nodes, gsVector<T> & weights ) const
-{
-    GISMO_ASSERT( 1 == m_nodes.rows(), "Inconsistent quadrature mapping");
-    
-    // the factor 0.5 is due to the fact that the one-dimensional reference interval is [-1,1].
-    const T h = ( startVal != endVal ? 0.5 * (endVal-startVal) : T(0.5) );
-  
-    // Linear map from [-1,1]^d to [lower,upper]
-    nodes  = (h * m_nodes).array() + 0.5*(startVal+endVal);
-    
-    // Adjust the weights (multiply by the Jacobian of the linear map)
-    weights.noalias() = h * m_weights;
-}
-
-
 } // namespace gismo
+
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsQuadRule.hpp)
+#endif

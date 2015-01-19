@@ -13,10 +13,6 @@
 
 #pragma once
 
-#include <gsAssembler/gsQuadRule.h>
-#include <gsUtils/gsPointGrid.h>
-
-#include <gsUtils/gsCombinatorics.h>
 
 namespace gismo
 {
@@ -46,20 +42,7 @@ gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes,
             computeReference(numNodes[i], nodes[i], weights[i], digits);
     }
     
-    // compute the tensor quadrature rule
-    gsPointGrid  ( nodes, this->m_nodes );
-
-    // Compute weight products
-    this->m_weights.resize( numNodes.prod() );
-    unsigned r = 0;
-    gsVector<index_t> v(d);
-    v.setZero();
-    do {
-        this->m_weights[r] = weights[0][v[0]];
-        for (int i=1; i<d; ++i)
-            this->m_weights[r] *= weights[i][v[i]];
-        ++r;
-    } while (nextLexicographic(v, numNodes));
+    this->computeTensorProductRule(nodes, weights);
 }
 
 template<class T> void

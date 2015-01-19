@@ -76,6 +76,10 @@ protected:
         
         // Evaluate second function (defined of physical domain)
         func2.eval_into(geoEval.values(), f2vals);
+        
+        // ** Evaluate function v
+        //gsMatrix<T> f2val = func2Param ? func2.eval(quNodes)
+        //: func2.eval( geoEval->values() );
     }
     
     // assemble on element
