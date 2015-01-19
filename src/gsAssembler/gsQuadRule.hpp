@@ -13,6 +13,8 @@
  
 #pragma once
 
+#include <gsUtils/gsPointGrid.h>
+#include <gsUtils/gsCombinatorics.h>
 
 namespace gismo
 {
