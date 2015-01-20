@@ -1007,6 +1007,25 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, T knotValue
 }
 
 
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::increaseMultiplicity2(index_t lvl, int dir, std::vector<T> knotValue, int mult)
+{
+    for(unsigned int i =0; i < knotValue.size();i++){
+        if (m_bases[lvl]->component(dir).knots().has(knotValue[i]))
+        {
+            for(unsigned int i =lvl;i < m_bases.size();i++)
+                m_bases[i]->component(dir).insertKnot(knotValue[i],mult);
+        }
+        else
+        {
+            gsWarn<<"Knot value not in the given knot vector."<<std::endl;
+        }
+    }
+    update_structure();
+}
+
+
+
 } // namespace gismo
 
 

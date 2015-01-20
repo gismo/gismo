@@ -754,6 +754,16 @@ public:
 
     virtual void increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult = 1);
 
+    /// Increases the multiplicity of several knots with the value \a knotValue in level \a lvl
+    /// in direction \a dir by \a mult.
+    /// If knotValue is not currently in the given knot vector its not added.
+    ///
+    /// \param[in] lvl : level
+    /// \param[in] dir : direction
+    /// \param[in] knotValue : value of the knot
+    /// \param[in] mult : multiplicity
+    virtual void increaseMultiplicity2(index_t lvl, int dir, std::vector<T> knotValue, int mult = 1);
+
 protected:
 
     /// @brief Updates the basis structure (eg. charact. matrices, etc), to
