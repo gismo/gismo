@@ -217,7 +217,6 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
 {
     gsMatrix<T> results;
     m_result->eval_into(m_param_values, results);
-    results.transposeInPlace();
     error = 0;
 
     //computing the approximation error = sum_i ||x(u_i)-p_i||
