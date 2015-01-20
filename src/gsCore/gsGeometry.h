@@ -116,8 +116,6 @@ struct gsGeoTraits<4,T>
     \ingroup function
     \ingroup geometry
     \ingroup Core
-
-    \example tutorialGeometry.cpp
 */
 template<class T>
 class gsGeometry : public gsFunction<T>
@@ -485,6 +483,10 @@ protected:
     gsBasis<T> * m_basis;
 
 }; // class gsGeometry
+
+/** \example tutorialGeometry.cpp
+ * This is an example of how to use the gsGeometry interface.
+ */
 
 //////////////////////////////////////////////////
 //////////////////////////////////////////////////
