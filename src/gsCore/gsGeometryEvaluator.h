@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Bressan, C. Hofreither, J. Sogn, A. Mantzaflaris
+    Author(s): A. Bressan, C. Hofreither, A. Mantzaflaris, J. Sogn
 */
 
 #pragma once
@@ -334,8 +334,9 @@ public:
       NOT TESTED
     */
     // allValues: NumAct X TargetDim
-    virtual void transformValuesHdiv(index_t k, const gsMatrix<T>& allValues, 
-                                    gsMatrix<T>  & trfValues) const = 0;
+    virtual void transformValuesHdiv(index_t k, 
+                                     const std::vector<gsMatrix<T> >& allValues, 
+                                     gsMatrix<T>  & result) const = 0;
 
     /**
       \brief Transforms parametric gradients to a gradients on the physical domain of a vector field while preserving the divergence.
@@ -348,12 +349,12 @@ public:
       is the jacobian.
 
       The gradient information on the parameter domain at a certain points for a
-      vector field is given in \em <b>allGrads_vec</b> in the following format:\n
+      vector field is given in \em <b>allGrads</b> in the following format:\n
 
-      Each component of the vector \em allGrads_vec corresponds to a component
+      Each component of the vector \em allGrads corresponds to a component
       of the vector field.
 
-      Each column of a matrix component in \em allGrads_vec corresponds to one
+      Each column of a matrix component in \em allGrads corresponds to one
       evaluation point. In this column, the gradients of all active (i.e., non-zero)
       basis functions are stored "one above the other".\n
 
@@ -366,21 +367,22 @@ public:
       basis functions are stored "one above the other".\n
 
       Example: Let \f$B_i(s,t), i = 1,...,9\f$ be a set of bivariate basis functions.
-      Then, a column of a matrix component in \em allGrads_vec reads\n
+      Then, a column of a matrix component in \em allGrads reads\n
       \f[
       ( \partial_s B_1, \partial_t B_1, \partial_s B_2, \partial_t B_2, \ldots, \partial_t B_9 )^T.
       \f]
 
 
       \param k Indicates which column of the matrices in \em allegros_vec should be transformed.
-      \param[in] allGrads_vec std::vector of gsMatrix containing computed gradients in the format
+      \param[in] allGrads std::vector of gsMatrix containing computed gradients in the format
       described above for each component of the vector field.
       \param[out] trfGradsK_vec std::vector of gsMatrix with the corresponding gradients on the
       physical domain in the format as described above for each component of the vector field.
     */
-    virtual void transformGradsHdiv(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
-                                    std::vector<gsMatrix<T> > const & allGrads_vec,
-                                    std::vector<gsMatrix<T> > & trfGradsK_vec) const = 0;
+    virtual void transformGradsHdiv(index_t k, 
+                                    const std::vector<gsMatrix<T> >& allValues,
+                                    std::vector<gsMatrix<T> > const & allGrads,
+                                    gsMatrix<T> & result) const = 0;
 
 
     /// \brief Transforms parametric gradients to gradients on the physical domain.
@@ -495,13 +497,15 @@ public:
     }
 
     // output: NumAct X TargetDim of basis values transform with the Piola transformation
-    void transformValuesHdiv(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
-                             gsMatrix<T>  & trfValues) const;
+    void transformValuesHdiv(index_t k, 
+                             const std::vector<gsMatrix<T> >& allValues, // NumAct X TargetDim
+                             gsMatrix<T>  & result) const;
 
     // output: d x numAct matrix of divergence preserving transformed gradients at point k
-    void transformGradsHdiv(index_t k, const gsMatrix<T>& allValues, // NumAct X TargetDim
-                           std::vector<gsMatrix<T> > const & allGrads_vec,
-                           std::vector<gsMatrix<T> > & trfGradsK_vec) const;
+    void transformGradsHdiv(index_t k, 
+                            const std::vector<gsMatrix<T> >& allValues,
+                            std::vector<gsMatrix<T> > const & allGrads,
+                            gsMatrix<T> & result) const;
 
     // output: d x numAct matrix of transformed gradients at point k
     void transformGradients(index_t k, const typename gsMatrix<T>::Block allGrads, 

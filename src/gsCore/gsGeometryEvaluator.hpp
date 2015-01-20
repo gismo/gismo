@@ -297,27 +297,101 @@ void gsGenericGeometryEvaluator<T,ParDim,codim>::compute2ndDerivs()
 }
 
 
-template <class T, int ParDim, int codim>
+template <class T, int ParDim, int codim> // AM: Not yet tested
 void gsGenericGeometryEvaluator<T,ParDim,codim>::
-     transformValuesHdiv(
-        index_t k,
-        const gsMatrix<T>& allValues, // NumAct X TargetDim
-        gsMatrix<T>  & trfValues) const
+transformValuesHdiv( index_t k,
+                     const std::vector<gsMatrix<T> >& allValues,
+                     gsMatrix<T>  & result) const
 {
-
-
+    GISMO_ASSERT( static_cast<size_t>(GeoDim) == allValues.size(), "Expecting TarDim==GeoDim.");
+    int numA = 0;
+    for(int comp = 0; comp < GeoDim; ++comp)
+        numA += allValues[comp].rows();
+    result.setZero(GeoDim,numA); // GeoDim x numA
+    
+    const T det = this->jacDet(k);
+    const typename gsMatrix<T>::constColumns & jac = this->jacobian(k);    
+    index_t c = 0;
+    for(int comp = 0; comp < GeoDim; ++comp)  // component
+    {
+        const typename gsMatrix<T>::constColumn & bvals = allValues[comp].col(k);
+        for( index_t j=0; j< allValues[comp].rows() ; ++j) // active of component
+        {
+            result.col(c++) = ( bvals[j] / det ) * jac.col(comp);
+        }
+    }
 }
 
-template <class T, int ParDim, int codim>
+template <class T, int ParDim, int codim>  // AM: Not yet tested
 void gsGenericGeometryEvaluator<T,ParDim,codim>::
-    transformGradsHdiv(
-        index_t k,
-        const gsMatrix<T>& allValues, // NumAct X TargetDim
-        std::vector<gsMatrix<T> > const & allGrads_vec,
-        std::vector<gsMatrix<T> > & trfGradsK_vec) const
+transformGradsHdiv( index_t k,
+                    const std::vector<gsMatrix<T> >& allValues,
+                    std::vector<gsMatrix<T> > const & allGrads,
+                    gsMatrix<T> & result) const
 {
+/*
+    //Assumptions: GeoDim = ParDim = TargetDim
+    
+    index_t c = 0;
+    for(size_t comp = 0; comp < allValues.size(); ++comp)
+        c += allValues[c].rows();
+    result.setZero(GeoDim*ParDim,c);
+    
+    const T det = this->jacDet(k);
+    const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
+    const typename gsMatrix<T>::constColumns & Jac    = this->jacobian(k);
+    const Eigen::Transpose< const typename gsMatrix<T>::constColumns > & 
+        invJac = this->gradTransform(k).transpose();
 
+    if(GeoDim==2)
+    {
+        std::vector<gsMatrix<T> > DJac(GeoDim, gsMatrix<T>(GeoDim, GeoDim) );
+        // Number of second derivatives
+        const index_t k2 = (ParDim + (ParDim*(ParDim-1))/2);
+        //d1
+        DJac[0](0,0) = secDer(0     );
+        DJac[0](1,0) = secDer(0+1*k2);
+        DJac[0](0,1) = secDer(2     );
+        DJac[0](1,1) = secDer(2+1*k2);
+        //d2
+        DJac[1](0,0) = secDer(2     );
+        DJac[1](1,0) = secDer(2+1*k2);
+        DJac[1](0,1) = secDer(1     );
+        DJac[1](1,1) = secDer(1+1*k2);
 
+        gsVector<T> gradDetJrec(ParDim);        
+        for (int i=0; i<ParDim; ++i)
+            gradDetJrec[i] = - ( invJac * DJac[i] ).trace() / det;
+        
+        c = 0;        
+        for(int comp = 0; comp < GeoDim; ++comp) // component
+        {
+            const typename gsMatrix<T>::constColumn & bvals = allValues[comp].col(k);
+            const typename gsMatrix<T>::constColumn & bder  = allGrads [comp].col(k);
+
+            for( index_t j=0; j< bvals.rows() ; ++j) // active of component
+            {
+                gsAsMatrix<T> tGrad(result.col(c).data(), GeoDim, GeoDim);
+
+                tGrad.noalias() = Jac.col(comp) * bder.segment(j*ParDim,ParDim).transpose() * invJac / det;
+
+                // tGrad.colwise() += gradDetJrec[i];
+                for (int i=0; i<ParDim; ++i) // result column
+                {
+                    tGrad.col(i).array()   += gradDetJrec[i];
+
+                    tGrad.col(i) += ( allValues[comp](j,k) / det ) * DJac[i].col(j);
+                }
+
+                ++c;// next basis function
+            }
+        }
+    }
+    else
+    {
+        GISMO_ERROR("Geometric dimention not valid");
+    }
+//*/
 }
 
 
