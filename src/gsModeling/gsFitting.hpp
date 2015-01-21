@@ -219,11 +219,11 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
     m_result->eval_into(m_param_values, results);
     error = 0;
 
-    //computing the approximation error = sum_i ||x(u_i)-p_i||
+    //computing the approximation error = sum_i ||x(u_i)-p_i||^2
 
     for (index_t i = 0; i != m_points.rows(); ++i)
     {
-        const T err = (m_points.row(i) - results.col(i).transpose()).norm();
+        const T err = (m_points.row(i) - results.col(i).transpose()).squaredNorm();
 
         switch (type) {
         case 0:
