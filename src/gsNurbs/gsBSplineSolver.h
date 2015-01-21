@@ -68,13 +68,12 @@ struct Root
 
     This function tries to be robust and to report correctly intersections
     of the curve with the given hyperplane of thickness 2*tolerance.
-    Intersections are roots of a B-Spline curve and as such they can be of
-    four types:
+    Intersections are roots of a B-Spline curve and they can be of four types:
 
-    -odd points, i.e. the position with respect of the hyperplane changes
+    -odd points, i.e. the position with respect to the hyperplane changes
      at the intersection
 
-    -even points, i.e. the position with respect of the hyperplane is the same
+    -even points, i.e. the position with respect to the hyperplane is the same
      before and after the intersection
 
     -odd intervals, i.e. the curve stays for a full parametric interval in the
@@ -89,10 +88,9 @@ struct Root
     This function assumes an open knot vector: the first and last control points
     are in the curve.
     If the start or the end of the the curve is on the hyperplane it is reported
-    as an odd intersection.
-    If necessary this special case must be handled outside of this function, for
-    instance when used to determine if a point is inside a 2D area bounded by a
-    closed curve.
+    as an odd intersection. This means that this special case must be handled
+    outside of this function when used to determine if a point is inside a 2D area
+    bounded by a closed curve.
     
     \ingroup Nurbs
 **/

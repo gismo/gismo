@@ -318,6 +318,9 @@ public:
         return m_xmatrix;
     }
 
+    /// \brief Returns the tensor B-spline space of all levels.
+    /// \return
+    ///
     const std::vector<gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >* >& getBases() const
     {
         return m_bases;
