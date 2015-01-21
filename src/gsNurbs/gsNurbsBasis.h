@@ -161,12 +161,12 @@ public:
     }
   
   /// Refine the basis uniformly by inserting \a numKnots new knots per knot span.
-  void uniformRefine(int numKnots = 1) 
+  void uniformRefine(int numKnots = 1, int mul=1)
     { 
       // TO DO ; replace this with global refinemnt by
       // Lane-Riesenfeld-like  Algorithm
       std::vector<T> newKnots;
-      this->knots().getUniformRefinementKnots(numKnots, newKnots);
+      this->knots().getUniformRefinementKnots(numKnots, newKnots,mul);
       this->insertKnots( newKnots.begin(), newKnots.end() );
     }
   

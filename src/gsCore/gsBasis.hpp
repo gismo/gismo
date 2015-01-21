@@ -289,16 +289,16 @@ void gsBasis<T>::refineElements(std::vector<unsigned> const & boxes)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine(int numKnots)
+void gsBasis<T>::uniformRefine(int numKnots, int mul)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots)
+void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
 void gsBasis<T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
-                                            int numKnots)
+                                            int numKnots, int mul)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

@@ -1001,21 +1001,21 @@ void gsBSplineBasis<T,KnotVectorType>::refine_withTransfer(gsSparseMatrix<T,RowM
 
 
 template <class T, class KnotVectorType>
-void gsBSplineBasis<T,KnotVectorType>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots)
+void gsBSplineBasis<T,KnotVectorType>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
 {
     // See remark about periodic basis in refine_withCoefs, please.
     std::vector<T> newKnots;
-    this->knots().getUniformRefinementKnots(numKnots, newKnots);
+    this->knots().getUniformRefinementKnots(numKnots, newKnots,mul);
     this->refine_withCoefs(coefs, newKnots);
 }
 
 
 template <class T, class KnotVectorType>
-void gsBSplineBasis<T,KnotVectorType>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots)
+void gsBSplineBasis<T,KnotVectorType>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, int mul)
 {
     // See remark about periodic basis in refine_withCoefs, please.
     std::vector<T> newKnots;
-    this->knots().getUniformRefinementKnots(numKnots, newKnots);
+    this->knots().getUniformRefinementKnots(numKnots, newKnots,mul);
     this->refine_withTransfer(transfer, newKnots);
 }
 

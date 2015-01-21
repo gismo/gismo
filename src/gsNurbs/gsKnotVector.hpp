@@ -709,7 +709,7 @@ void gsKnotVector<T>::uniformRefine(gsMatrix<T> const & interval, int numKnots)
 }
 
 template <class T>
-void gsKnotVector<T>::uniformRefine(int numKnots)
+void gsKnotVector<T>::uniformRefine(int numKnots, int mul)
 {
     T k0 = my->knots[my->p],
       k1 = *(my->knots.end()-my->p-1);
@@ -718,7 +718,7 @@ void gsKnotVector<T>::uniformRefine(int numKnots)
 
     for (std::size_t i = 0; i < u.size() - 1; ++i)
         for (int k = 1; k <= numKnots; ++k)
-            this->insert(((numKnots+1-k) * u[i] + k * u[i+1]) / (numKnots + 1));
+            this->insert(((numKnots+1-k) * u[i] + k * u[i+1]) / (numKnots + 1),mul);
 
     // trim extra knots
     typename  std::vector<T>::iterator it =
@@ -742,15 +742,15 @@ void gsKnotVector<T>::refineSpans(const std::vector<unsigned> & spanIndices, int
 
 
 template <class T>
-void gsKnotVector<T>::getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result) const
+void gsKnotVector<T>::getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result, int mul) const
 {
     std::vector<T> u = this->unique();
     result.clear();
-    result.reserve((u.size() - 1) * knotsPerSpan);
+    result.reserve((u.size() - 1) * knotsPerSpan*mul);
 
     for (std::size_t i = 0; i < u.size() - 1; ++i)
         for (int k = 1; k <= knotsPerSpan; ++k)
-            result.push_back(((knotsPerSpan+1-k) * u[i] + k * u[i+1]) / (knotsPerSpan + 1));
+            result.insert(result.end(),mul,((knotsPerSpan+1-k) * u[i] + k * u[i+1]) / (knotsPerSpan + 1));
 }
 
 

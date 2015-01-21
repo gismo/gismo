@@ -505,17 +505,17 @@ public:
   }
 
   // Refine the basis uniformly by inserting \a numKnots new knots on each knot span
-  //virtual void uniformRefine(int numKnots = 1)
+  virtual void uniformRefine(int numKnots = 1, int mul=1);
 
   // Refine the basis uniformly and adjust the given matrix of coefficients accordingly
-  //virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1)
+  //virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1)
 
   // Refine the basis uniformly and produce a sparse matrix which
   // maps coarse coefficient vectors to refined ones
-  //virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1)
+  //virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul = 1)
 
   // Refine the basis uniformly and adjust the given matrix of coefficients accordingly
-  void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
+  void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1);
 
   // Refine the basis and adjust the given matrix of coefficients accordingly
   void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
@@ -634,7 +634,7 @@ public:
     virtual void refineElements(std::vector<unsigned> const & boxes);
 
     // Look at gsBasis.h for the documentation of this function
-    virtual void uniformRefine(int numKnots = 1);
+    //virtual void uniformRefine(int numKnots = 1);
 
     typename gsBasis<T>::domainIter makeDomainIterator() const 
     { 

@@ -329,15 +329,15 @@ public:
   /// numKnots knot every two distinct knots
   void uniformRefine(gsMatrix<T> const & interval, int numKnots = 1);
 
-  /// Refine uniformly the knot vector
-  /// by adding \a numKnots knot every two distinct knots );
-  void uniformRefine(int numKnots = 1);
+  /// Refine the knot vector by adding \a numKnots equally spaced knots of
+  /// multiplicity \a mul in between every two distinct knots
+  void uniformRefine(int numKnots = 1, int mul =1);
     
   /// Refine elements pointed by the indices in \a spanIndices
   void refineSpans(const std::vector<unsigned> & spanIndices, int numKnots = 1);
 
   /// Compute the new knots needed for uniform refinement with the given number of knots per span and return them in \a result.
-  void getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result) const;
+  void getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result, int mul=1) const;
 
   /// Elevate the degree
   void degreeElevate(int const & i = 1);

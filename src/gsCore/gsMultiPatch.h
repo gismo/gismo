@@ -201,7 +201,7 @@ public:
         gsBoxTopology::addBoundary( patchSide( p, s ) );
     }
 
-    void uniformRefine(int numKnots = 1);
+    void uniformRefine(int numKnots = 1, int mul = 1);
 
     /// Attempt to compute interfaces and boundaries automatically.
     bool computeTopology( T tol = 1e-4 );

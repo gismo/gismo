@@ -245,11 +245,11 @@ public:
     
     /// @brief Refine every basis uniformly by inserting \a numKnots
     /// new knots on each knot span
-    void uniformRefine(int numKnots = 1)
+    void uniformRefine(int numKnots = 1, int mul=1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
         {
-            m_bases[k]->uniformRefine(numKnots);
+            m_bases[k]->uniformRefine(numKnots,mul);
         }
     }
 

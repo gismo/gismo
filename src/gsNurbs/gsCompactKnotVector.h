@@ -458,10 +458,9 @@ public:
     /// Returns the number of knot spans in the knot-vector
     int numKnotSpans() const { return m_knots.size() - 1; }
 
-    /** Refine uniformly the knot vector by adding \a numKnots
-     *  knots between every two distinct knots.
-     */
-    void uniformRefine(int numKnots = 1) ;
+    /// Refine the knot vector by adding \a numKnots equally spaced knots of
+    /// multiplicity \a mul in between every two distinct knots
+    void uniformRefine(int numKnots = 1, int mul=1) ;
 
     /// Refine elements pointed by the indices in \a spanIndices
     void refineSpans(const std::vector<unsigned> & spanIndices, int numKnots = 1)
@@ -472,7 +471,7 @@ public:
 
     /// Compute the new knots needed for uniform refinement with the
     /// given number of knots per span and return them in \a result.
-    void getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result) const;
+    void getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result, int mul=1) const;
 
     /// Elevate the degree
     void degreeElevate(int const & i = 1) ;
@@ -797,7 +796,7 @@ void gsCompactKnotVector<T>::insert(std::vector<T> const & knots, int const & mu
 
 
 template <class T>
-void gsCompactKnotVector<T>::uniformRefine(int numKnots)
+void gsCompactKnotVector<T>::uniformRefine(int numKnots, int mul)
 {
     const unsigned s0 = elementIndex(m_p),
         s1 = elementIndex(size()-m_p-1);
@@ -809,7 +808,7 @@ void gsCompactKnotVector<T>::uniformRefine(int numKnots)
 
     for ( unsigned i = s0*numKnots; i < (s1+1)*numKnots; ++i )
     {
-        this->insert(newKnots[i]);// to do: more efficient
+        this->insert(newKnots[i],mul);// to do: more efficient
     }
 
 /*
@@ -845,15 +844,15 @@ void gsCompactKnotVector<T>::uniformRefine(int numKnots)
 
 
 template <class T>
-void gsCompactKnotVector<T>::getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result) const
+void gsCompactKnotVector<T>::getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result, int mul) const
 {
     const std::vector<T> & u = m_knots;
     result.clear();
-    result.reserve((u.size() - 1) * knotsPerSpan);
+    result.reserve((u.size() - 1) * knotsPerSpan*mul);
 
     for (std::size_t i = 0; i < u.size() - 1; ++i)
         for (int k = 1; k <= knotsPerSpan; ++k)
-            result.push_back(((knotsPerSpan+1-k) * u[i] + k * u[i+1]) / (knotsPerSpan + 1));
+            result.insert(result.end(),mul,((knotsPerSpan+1-k) * u[i] + k * u[i+1]) / (knotsPerSpan + 1));
 }
 
 

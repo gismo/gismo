@@ -268,10 +268,10 @@ public:
     virtual std::ostream &print(std::ostream &os) const = 0;
 
     // Look at gsBasis class for documentation 
-    virtual void uniformRefine(int numKnots = 1)
+    virtual void uniformRefine(int numKnots = 1, int mul=1)
     {
         for (unsigned j = 0; j < d; ++j)
-            m_bases[j]->uniformRefine(numKnots);
+            m_bases[j]->uniformRefine(numKnots,mul);
     }
 
     // Look at gsBasis class for documentation 
@@ -304,11 +304,11 @@ public:
 
     /// Refine the basis uniformly and perform knot refinement for the
     /// given coefficient vector
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots=1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots=1, int mul=1);
 
     /// Refine the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
-    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1);
+    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1, int mul=1);
 
     // Look at gsBasis class for documentation 
     virtual void degreeElevate(int const & i = 1)

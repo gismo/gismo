@@ -755,15 +755,15 @@ public:
      */
     virtual void refineWithExtension(gsMatrix<T> const & boxes, int refExt = 0);
 
-    /// Refine the basis uniformly by inserting \a numKnots new knots on each knot span
-    virtual void uniformRefine(int numKnots = 1);
+    /// Refine the basis uniformly by inserting \a numKnots new knots with multiplicity \a mul on each knot span
+    virtual void uniformRefine(int numKnots = 1, int mul=1);
 
     /// Refine the basis uniformly and adjust the given matrix of coefficients accordingly
-    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
+    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul=1);
 
     /// Refine the basis uniformly and produce a sparse matrix which maps coarse coefficient vectors to refined ones
     virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
-                                            int numKnots = 1);
+                                            int numKnots = 1, int mul=1);
 
     /// Elevate the degree of the basis by the given amount.
     virtual void degreeElevate(int const & i = 1);

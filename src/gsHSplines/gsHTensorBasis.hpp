@@ -179,7 +179,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vect
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots){
+void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul){
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     //uniformRefine(numKnots);
     //gsMatrix<> transf;
@@ -209,7 +209,7 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
     }
 
     safe(this->clone())->refineElements_withCoefs(coefs, boxes);
-    this->uniformRefine(numKnots);
+    this->uniformRefine(numKnots, mul);
     //this->m_xmatrix.erase(this->m_xmatrix.begin(),this->m_xmatrix.begin()+1);
     //coefs = transf*coefs;
 }
@@ -810,7 +810,7 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::uniformRefine(int numKnots)
+void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
 {
     GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1"); 
 
@@ -825,7 +825,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots)
     // Keep consistency of finest level
     gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * last_basis 
         = m_bases.back()->clone();
-    last_basis->uniformRefine(1);
+    last_basis->uniformRefine(1,mul);
     m_bases.push_back( last_basis );
 
     // Lift all indices in the tree by one level

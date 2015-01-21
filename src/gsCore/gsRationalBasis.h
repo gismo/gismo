@@ -166,16 +166,16 @@ public:
     // Look at gsBasis class for a description
     int totalDegree() const     {return m_src->totalDegree(); }
 
-    void uniformRefine(int numKnots = 1)
+    void uniformRefine(int numKnots = 1, int mul=1)
     {
-        m_src->uniformRefine_withCoefs(m_weights, numKnots);
+        m_src->uniformRefine_withCoefs(m_weights, numKnots, mul);
     }
     
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1)
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1)
     {
         assert( coefs.rows() == this->size() && m_weights.rows() == this->size() );
         gsSparseMatrix<T, RowMajor> transfer;
-        m_src->uniformRefine_withTransfer(transfer, numKnots);
+        m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
       
         for (int i = 0; i < coefs.rows(); ++i) // transform to projective 
             coefs.row(i) *= m_weights(i);
@@ -193,12 +193,12 @@ public:
     }
     
     
-    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1)
+    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1)
     {
         assert( m_weights.rows() == this->size() );
         
         // 1. Get source transfer matrix (while refining m_src)
-        m_src->uniformRefine_withTransfer(transfer, numKnots);
+        m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
         
         // 2. Compute rational basis transfer matrix
         // To be applied on affine coefficients, as usual.

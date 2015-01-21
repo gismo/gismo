@@ -386,9 +386,9 @@ void gsTHBSplineBasis<d,T>::initialize()
 
 
 template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::uniformRefine(int numKnots)
+void gsTHBSplineBasis<d,T>::uniformRefine(int numKnots, int mul)
 {
-    gsHTensorBasis<d,T>::uniformRefine(numKnots);
+    gsHTensorBasis<d,T>::uniformRefine(numKnots,mul);
     this->initialize();
 }
 

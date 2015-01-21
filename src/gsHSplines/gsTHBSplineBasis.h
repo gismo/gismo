@@ -531,7 +531,7 @@ public:
   void refineElements(std::vector<unsigned> const & boxes);
 
   // see gsBasis.h for documentation
-  void uniformRefine(int numKnots = 1);
+  void uniformRefine(int numKnots = 1, int mul=1);
 
   /**
    * @brief Initializes the \a cmatrix with 0 for evaluation of basis functions.

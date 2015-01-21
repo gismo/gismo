@@ -119,12 +119,12 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
 
 
 template<class T>
-void gsMultiPatch<T>::uniformRefine(int numKnots)
+void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
 {
     for ( typename Base::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
-        ( *it )->uniformRefine(numKnots);
+        ( *it )->uniformRefine(numKnots, mul);
     }
 }
 

@@ -378,14 +378,14 @@ public:
     { m_knots.refineSpans(elements); }
 
     // Look at gsBasis class for a description
-    void uniformRefine(int numKnots = 1)
-    { m_knots.uniformRefine(numKnots); }
+    void uniformRefine(int numKnots = 1, int mul=1)
+    { m_knots.uniformRefine(numKnots,mul); }
 
     // Look at gsBasis class for a description
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul=1);
 
     // Look at gsBasis class for a description
-    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1);
+    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
 
     /// Refine the basis by inserting the given knots and perform knot refinement for the given coefficient matrix.
     void refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots);
