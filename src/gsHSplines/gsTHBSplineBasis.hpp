@@ -191,7 +191,7 @@ void gsTHBSplineBasis<d,T>::_saveNewBasisFunPresentation(
         gsSparseVector<T>(this->m_bases[pres_level]->size());
 
     gsSparseVector<T>& presentation = this->m_presentation[j];
-    presentation.reserve(coefs.rows());
+    presentation.reserve(coefs.rows()); // (!) reserved memory
 
     do
     {
@@ -202,7 +202,6 @@ void gsTHBSplineBasis<d,T>::_saveNewBasisFunPresentation(
         unsigned ten_index = f_ten_index;
         for (unsigned dim = 0; dim < d; dim++)
         {
-
             ten_index += position(dim) *
                 this->m_bases[pres_level]->stride(static_cast<int>(dim));
         }
