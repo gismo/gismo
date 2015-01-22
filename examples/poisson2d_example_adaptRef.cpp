@@ -192,8 +192,8 @@ int main(int argc, char *argv[])
       // ...and the error estimate, which needs the right-hand-side.
       gsErrEstPoissonResidual<real_t> errEst(*sol,f);
 
-      norm.compute(1);
-      errEst.compute(1);
+      norm  .compute(true); // "true" stores element-wise errors
+      errEst.compute(true);
 
       // Get the vector with element-wise local errors...
       const std::vector<real_t> & elError = norm.elementNorms();

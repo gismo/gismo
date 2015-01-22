@@ -1,4 +1,4 @@
-/** @file interativeSolvers.cpp
+/** @file iterativeSolvers.cpp
 
     @brief Example on how the solve a system of linear equation with the MINRES and CG method.
 
