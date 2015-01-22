@@ -24,7 +24,9 @@ namespace gismo
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::representBasis()
 {
-    this->m_is_truncated = gsVector<int>(this->size());
+    // Cleanup previous basis
+    this->m_is_truncated.resize(this->size());
+    m_presentation.clear();
 
     for (unsigned j = 0; j < static_cast<unsigned>(this->size()); ++j)
     {
@@ -191,7 +193,7 @@ void gsTHBSplineBasis<d,T>::_saveNewBasisFunPresentation(
         gsSparseVector<T>(this->m_bases[pres_level]->size());
 
     gsSparseVector<T>& presentation = this->m_presentation[j];
-    presentation.reserve(coefs.rows()); // (!) reserved memory
+    //presentation.reserve(coefs.rows()); // reserve memory ?
 
     do
     {
