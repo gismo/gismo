@@ -17,49 +17,33 @@ namespace gismo
 {
 struct dirichlet
 {	
+	enum values
+	{
+        homogeneous   = 1, ///< Assume homogeneous Dirichlet conditions
+
+        interpolation = 2, ///< Compute Dirichlet DoFs by using interpolation on the boundary
+        
+        l2Projection  = 3, ///< Compute Dirichlet DoFs by using L2 projection on the boundary
+        
+        user          = 10 ///< User will provide values of the Dirichlet dofs
+    };
+
 	enum strategy
 	{
-        /// Apply homogeneous Dirichlet conditions
-        homogeneous  = 1,
+        elimination  = 11, ///< Compute Dirichlet DoFs by using interpolation on the boundary
 
-        /// Compute Dirichlet DoFs by using interpolation on the boundary
-        interpolation  = 2,
-        elimination  = 2,
-
-        /// Compute Dirichlet DoFs by using least-squares fitting on the boundary
-        leastSquares = 3,
-
-        /// Compute Dirichlet DoFs by using least-squares fitting on the boundary
-        l2Projection = 4,
-
-        /// Fixed values provided by the user.
-        fixed        = 5,
-
-        /// Enforce the boundary condition weakly by a penalty
-        /// term. Not compatible/ignores eliminate==true
-        nitsche      = 11,
+        nitsche      = 12, ///< Enforce the boundary condition weakly by a penalty term
 	
-        /// Penalize the diagonal at the position of Dirichlet DoFs,
-        /// Not compatible/ignores eliminate==true 
-        penalize     = 12,
-        
+        penalize     = 13, ///< Penalize the diagonal at the position of Dirichlet DoFs,
 
+        //nullifyrow    = 14,
+        
         /// Compute Dirichlet DoFs in the normal direction (for a vector valued function),
         /// The tangential component are handled with the Nitsche method.
-        eliminatNormal = 17,
+        eliminatNormal = 14,
 
-        /// Do absolutely nothing for Dirichlet boundary conditions.
-        none         = 0
+        none         = 0 ///<< Do absolutely nothing for Dirichlet boundary conditions.
 	};
-
-	/* ///If true, the Dirichlet DoFs are part of the system DoFs,
-	   /// else they are eliminated a priori from the system
-	enum eliminate
-	{
-	    no  = 0,
-	    yes = 1
-	};
-    */
 };
 
 struct iFace
@@ -110,13 +94,16 @@ struct gsAssemblerOptions
 public:
     // Default constructor
     gsAssemblerOptions()
-    : dirStrategy  (dirichlet::nitsche    ), 
-      intStrategy  (iFace    ::glue       ),
-      transformType(transform::Hgrad      ),
-      spaceType    (space    ::taylorHood )
+    : dirValues    (dirichlet::l2Projection ), 
+      dirStrategy  (dirichlet::nitsche      ), 
+      intStrategy  (iFace    ::glue         ),
+      transformType(transform::Hgrad        ),
+      spaceType    (space    ::taylorHood   )
     { }
 
 public:
+
+    dirichlet::values  dirValues;
 
     dirichlet::strategy  dirStrategy;
 

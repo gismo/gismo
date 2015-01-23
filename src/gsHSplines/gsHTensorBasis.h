@@ -566,7 +566,7 @@ public:
   /// Each column of \em Pts represents one evaluation point.
   /// \return levels gsMatrix of size <em>1</em> x <em>n</em>.\n
   /// <em>levels(0,i)</em> is the level of the point defined by the <em>i</em>-th column in \em Pts.
-  gsMatrix<int> getLevelAtPoint( gsMatrix<T> Pts ) const;
+  int getLevelAtPoint(const  gsMatrix<T> & Pt ) const;
 
   /// Returns the level in which the indices are stored internally
   unsigned maxLevel() const
@@ -592,7 +592,8 @@ public:
     }
 */
 
-    /** @brief Refine the basis to levels and in the areas defined by \a boxes with an extension.
+    /** @brief Refine the basis to levels and in the areas defined by
+     * \a boxes with an extension.
     *
     * \param[in] boxes gsMatrix of size \em d x \em n, where\n
     * \em n is the number of refinement boxes.\n
@@ -602,8 +603,15 @@ public:
     * refined around the respective boxes.
     *
     */
-    virtual void refineWithExtension(gsMatrix<T> const & boxes, int refExt = 0);
+    virtual void refine(gsMatrix<T> const & boxes, int refExt);
 
+    /** @brief Refine the basis to levels and in the areas defined by \a boxes.
+    *
+    * \param[in] boxes gsMatrix of size \em d x \em n, where\n
+    * \em n is the number of refinement boxes.\n
+    * Every two consecutive columns specify the lower and upper corner of one refinement box
+    * (See also documentation of refine() for the format of \em box)
+    */
     virtual void refine(gsMatrix<T> const & boxes);
 
     /**

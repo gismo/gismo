@@ -196,6 +196,8 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
  * should be. Given as number of cells at the level \em before refinement.
  *
  * \ingroup Assembler
+ *
+ * \todo Make gsRefineMarkedElements a member of gsMultiBasis and propagate to gsBasis
  */
 template <class T>
 void gsRefineMarkedElements(gsMultiBasis<T> & basis,
@@ -239,8 +241,8 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
                 numMarked++;
             }
         }
-        // Refine all of the found refBoxes in this patch
-        basis.refineWithExtension( pn, refBoxes, refExtension );
+        // Refine all of the found refBoxes in this patchx
+        basis.refine( pn, refBoxes, refExtension );
     }
 }
 

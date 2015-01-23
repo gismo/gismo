@@ -91,7 +91,7 @@ private:
 
 // SYSTEM-SPECIFIC WALL CLOCKS /////////////////////////////////////////////////
 
-#if defined(__linux__) || defined(TARGET_OS_MAC)                     // LINUX //
+#if defined(__linux__) // || defined(TARGET_OS_MAC)                     // LINUX //
 
 // higher resolution wall clock time
 struct LinuxWallClock
@@ -135,7 +135,7 @@ typedef gsGenericStopwatch<WallClock> gsStopwatch;
 
 // SYSTEM-SPECIFIC CPU CLOCKS //////////////////////////////////////////////////
 
-#if defined(__linux__) || defined(TARGET_OS_MAC)                     // LINUX //
+#if defined(__linux__) // || defined(TARGET_OS_MAC)                     // LINUX //
 
 // A non-portable, more expensive, but higher resolution CPU clock
 // which also does not suffer from the short wrap-around time of

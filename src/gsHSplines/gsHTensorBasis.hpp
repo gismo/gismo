@@ -36,26 +36,21 @@ gsMatrix<T> gsHTensorBasis<d,T>::support(const unsigned & i) const
 
 // S.K.
 template<unsigned d, class T> inline
-gsMatrix<int> gsHTensorBasis<d,T>::getLevelAtPoint( gsMatrix<T> Pts ) const
+int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 {
-    gsMatrix<int> ret( 1, Pts.cols() );
+    GISMO_ASSERT(Pt.cols() == 1, "Waiting for single point");
     gsVector<unsigned int> loIdx( Dim );
     gsVector<unsigned int> upIdx( Dim );
 
-    int maxLevel = m_tree.getMaxInsLevel();
+    const int maxLevel = m_tree.getMaxInsLevel();
 
-    for( int j = 0; j < Pts.cols(); j++ )
+    for( int i =0; i < Dim; i++)
     {
-        loIdx.setZero();
-        upIdx.setZero();
-        for( int i =0; i < Dim; i++)
-        {
-            loIdx[i] = m_bases[maxLevel]->component(i).knots().Uniquefindspan( Pts(i,j) );
-            upIdx[i] = loIdx[i] + 1;
-        }
-        ret(0,j) = m_tree.query3( loIdx, upIdx, maxLevel);
+        loIdx[i] = m_bases[maxLevel]->component(i).knots().Uniquefindspan( Pt(i,0) );
+        upIdx[i] = loIdx[i] + 1;
     }
-    return ret;
+
+    return m_tree.query3( loIdx, upIdx, maxLevel);
 }
 
 template<unsigned d, class T> inline
@@ -215,7 +210,7 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::refineWithExtension(gsMatrix<T> const & boxes, int refExt)
+void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
 {
      GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
      GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied refine() with them.");
@@ -249,22 +244,22 @@ void gsHTensorBasis<d,T>::refineWithExtension(gsMatrix<T> const & boxes, int ref
         //
         // Each box will be represented by 2*d+1 entries specifying
         // <level to be refined to>,<lower corner>,<upper corner>
-        int offset = 2*d+1;
+        const int offset = 2*d+1;
 
         // Initialize vector of size
         // "entries per box" times "number of boxes":
         std::vector<unsigned> refVector( offset * boxes.cols()/2 );
+        gsMatrix<T> ctr(d,1);
 
         // Loop over all boxes:
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
-            gsMatrix<T> ctr(d,1);
             ctr = ( boxes.col( 2*i ) + boxes.col( 2*i+1) )*0.5;
 
             // Compute the level we want to refine to.
             // Note that, if the box extends over several elements,
             // the level at the centerpoint will be taken for reference
-            int refLevel = getLevelAtPoint( ctr )(0,0) + 1;
+            const int refLevel = getLevelAtPoint( ctr ) + 1;
 
             // Make sure there are enough levels
             needLevel( refLevel );
@@ -278,14 +273,14 @@ void gsHTensorBasis<d,T>::refineWithExtension(gsMatrix<T> const & boxes, int ref
                 // If applicable, add the refinement extension.
                 // Note that extending by one cell on level L means
                 // extending by two cells in level L+1
-                ( k1 - 2*refExt < 0 ? k1=0 : k1-=2*refExt );
+                ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
 
-                index_t maxKtIndex = m_bases[refLevel]->component(j).knots().size();
+                const index_t maxKtIndex = m_bases[refLevel]->component(j).knots().size();
 
                 ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
 
                 // Store the data...
-                refVector[i*offset]     = refLevel;
+                refVector[i*offset]       = refLevel;
                 refVector[i*offset+1+j]   = k1;
                 refVector[i*offset+1+j+d] = k2;
             }
@@ -295,8 +290,8 @@ void gsHTensorBasis<d,T>::refineWithExtension(gsMatrix<T> const & boxes, int ref
         this->refineElements( refVector );
     }
 
-// Update the basis
-update_structure();
+    // Update the basis
+    update_structure();
 }
 
 template<unsigned d, class T>

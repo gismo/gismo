@@ -18,85 +18,84 @@
 //#include <algorithm>			// For lower_bound
 
 
-//-------------------------------------------------------------------//
-// gsSortedVector																		//
-//-------------------------------------------------------------------//
-// This class is derived from std::vector, and adds sort tracking.
-// There are two basic ways to use a sorted vector:
-//
-//		METHOD 1
-//			Always maintain sort order by inserting with push_sorted() -
-//			the location of new items is determined before inserting;
-//			since the vector remains sorted, this doesn't take too long
-//			(although for large batch insertions METHOD 2 is definitely
-//			faster);
-//
-//		METHOD 2
-//			Allow batch insertion without sorting with push_unsorted(); then
-//			provide an additional call to sort the vector;  before
-//			searching for an item, the vector is always sorted if needed;
-//
-//  Of course you need to provide an operator()< for the type of object
-//  you're sorting, if it doesn't have one.  Example:
-    /*
-        class MyClass
-        {
-        public:
-            bool operator< (const MyClass left) const
-            {
-                if ( left.m_nMostImportant == m_nMostImportant )
-                    return left.m_nLeastImportant < m_nLeastImportant;
-
-                return left.m_nMostImportant < m_nMostImportant;
-            }
-
-            int m_nMostImportant;
-            int m_nLeastImportant;
-        }
-    */
-//
-//  NOTE: C++ doesn't let you use an operator()< for POINTERS.  This
-//  breaks down when creating the template code, as you end up with
-//  a ref to a ref which is not allowed (or something :P).
-//  So if you have a vector of pointers, here's what you have to do:
-//
-//      FOR NOW, with straight C++, create a less-than functor, then
-//      pass that in to the functor versions of the class methods below.
-//      Create a functor, aka function object, as follows:
-//
-//          struct my_class_lessthan
-//          {
-//              bool operator()(const MyClass* left, const MyClass* right)
-//              {
-//                  return left->get_timestamp() < right->get_timestamp();
-//              }
-//          };
-//
-//      Usage example:
-//
-//          gsSortedVector<MyClass*> svpMC;
-//          svpMC.push_unsorted(new MyClass(blah, blah);
-//          svpMC.push_unsorted(new MyClass(blah, blah);
-//          vpMC.sort( my_class_lessthan() );
-//
-//      Once C++0x is available, I need to update this class to use
-//      a function object wrapper, and allow the user to set it
-//      in the constructor, then always use it automatically.
-//      http://en.wikipedia.org/wiki/C%2B%2B0x#Polymorphic_wrappers_for_function_objects
-//
-// WARNING: if you change the key value of any object in the vector,
-// you have unsorted the array without marking it as such.  Make sure
-// you call SetSorted(false) where appropriate.
-//
-// \ingroup Utils
-//-------------------------------------------------------------------//
-
 namespace gismo {
+
+
+/** \brief This class is derived from std::vector, and adds sort tracking.
+
+    There are two basic ways to use a sorted vector:
+    
+    METHOD 1
+    Always maintain sort order by inserting with push_sorted() -
+    the location of new items is determined before inserting;
+    since the vector remains sorted, this doesn't take too long
+    (although for large batch insertions METHOD 2 is definitely
+    faster);
+    
+    METHOD 2
+    Allow batch insertion without sorting with push_unsorted(); then
+    provide an additional call to sort the vector;  before
+    searching for an item, the vector is always sorted if needed;
+
+    Of course you need to provide an operator()< for the type of object
+    you're sorting, if it doesn't have one.  Example:
+    \code{.cpp}
+    class MyClass
+    {
+    public:
+    bool operator< (const MyClass left) const
+    {
+    if ( left.m_nMostImportant == m_nMostImportant )
+    return left.m_nLeastImportant < m_nLeastImportant;
+    
+    return left.m_nMostImportant < m_nMostImportant;
+    }
+    
+    int m_nMostImportant;
+    int m_nLeastImportant;
+    }
+    \endcode
+    
+    NOTE: C++ doesn't let you use an operator()< for POINTERS.  This
+    breaks down when creating the template code, as you end up with
+    a ref to a ref which is not allowed.
+    So if you have a vector of pointers, here's what you have to do:
+    
+    FOR NOW, with straight C++, create a less-than functor, then
+    pass that in to the functor versions of the class methods below.
+    Create a functor, aka function object, as follows:
+    \code{.cpp}
+    struct my_class_lessthan
+    {
+    bool operator()(const MyClass* left, const MyClass* right)
+    {
+    return left->get_timestamp() < right->get_timestamp();
+    }
+    };
+    \endcode
+    Usage example:
+    \code{.cpp}
+    gsSortedVector<MyClass*> svpMC;
+    svpMC.push_unsorted(new MyClass(blah, blah);
+    svpMC.push_unsorted(new MyClass(blah, blah);
+    vpMC.sort( my_class_lessthan() );
+    \endcode
+    Once C++0x is available, I need to update this class to use
+    a function object wrapper, and allow the user to set it
+    in the constructor, then always use it automatically.
+    http:en.wikipedia.org/wiki/C%2B%2B0x#Polymorphic_wrappers_for_function_objects
+    
+    \warning if you change the key value of any object in the vector,
+    you have unsorted the array without marking it as such.  Make sure
+    you call SetSorted(false) where appropriate.
+    
+    \ingroup Utils
+*/
 
 template<class T, class _A = std::allocator<T> >
 class gsSortedVector : public std::vector<T, _A>
 {
-    typedef std::vector<T> inherited;
+    typedef std::vector<T,_A> inherited;
 
 public:
     typedef typename std::vector<T>::const_iterator const_iterator;
@@ -106,7 +105,7 @@ public:
 
 //
     gsSortedVector( )
-        : std::vector<T, _A>( ), m_bSorted(0) {  }
+        : std::vector<T, _A>( ), m_bSorted(true) {  }
 
     gsSortedVector( typename std::vector<T>::const_iterator start
                    , typename std::vector<T>::const_iterator end)
@@ -145,7 +144,8 @@ public:
     bool bContains( const T& t ) const
     {
       if ( !m_bSorted )
-        gsWarn<<"gsSortedVector is not sorted, bContains("<<t<<")"<< "is not guarranteed to be correct.\n";
+        gsWarn<<"gsSortedVector is not sorted, bContains("<<t<<")"
+              << "is not guarranteed to be correct.\n";
 
         return std::binary_search( inherited::begin(), inherited::end(), t );
     }
@@ -290,16 +290,31 @@ public:
         this->push_back(t);
     }
 
+    size_t uniqueSize() const
+    {
+        if ( inherited::begin() ==  inherited::end() ) 
+            return 0;
+
+        if ( !m_bSorted )
+            gsWarn<<"gsSortedVector is not sorted, uniqueSize()"
+                  << "is not guarranteed to be correct.\n";
+
+        std::size_t cnt = 1;
+        for (const_iterator it = inherited::begin()+1; it != inherited::end(); ++it)
+            if ( *(it-1) != *(it) ) ++cnt;
+
+        return cnt;
+    }
+
     //-------------------------------------------------------------------//
     // operator=()																	//
     //-------------------------------------------------------------------//
     // This allows us to set the gsSortedVector from a std::vector.
     //-------------------------------------------------------------------//
-    gsSortedVector<T>& operator=(std::vector<T>& v)
+    gsSortedVector<T>& operator=(std::vector<T> v)
     {
-        typename std::vector<T>::iterator it;
-        for (it= v.begin(); it != v.end(); ++it)
-            push_unsorted((*it));
+        v.swap(*this);
+        sort();
         return *this;
     }
 
@@ -312,7 +327,7 @@ public:
     {
         if ( !m_bSorted )
         {
-                  std::sort( inherited::begin(), inherited::end(), pr );
+            std::sort( inherited::begin(), inherited::end(), pr );
             SetSorted();
         }
     }
@@ -327,6 +342,7 @@ public:
          typename std::vector<T>::iterator it = std::lower_bound( inherited::begin(), inherited::end(), key, pr );
          return it;
      }
+    
     template<class _Pr> inline
     /*const*/ T* lower_bound_ptr( const T& key, _Pr pr )
     {
@@ -338,6 +354,7 @@ public:
         /*const*/ T* t = &(*it);
         return t;
     }
+
      template<class _Pr> inline
      void push_sorted( const T& t, _Pr pr )
      {
@@ -350,6 +367,7 @@ public:
          // Insert at "lower_bound" (the proper sorted location).
          insert( std::lower_bound( inherited::begin(), inherited::end(), t, pr ), t );
      }
+
      template<class _Pr> inline
       typename std::vector<T>::iterator find_it_or_fail( const T& key, _Pr pr )
       {
@@ -362,6 +380,7 @@ public:
 
           return inherited::end();
       }
+
       template<class _Pr> inline
       T* find_ptr_or_fail( const T& key, _Pr pr )
       {

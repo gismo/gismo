@@ -34,16 +34,24 @@ namespace gismo
     local dofs to an enumeration of global dofs.
     Furthermore, dofs can also be marked as eliminated.
 
-    Every global dof gets a unique number, forming
-    a contiguous range starting from 0. This range has length gsDofMapper::size().
-    The dofs are numbered in the following order:
-      - first the \em free (non-eliminated) dofs
-        (number: gsDofMapper::freeSize()),
-      - then the eliminated dofs
-        (number: gsDofMapper::boundarySize()).
+    Every global dof gets a unique number, forming a continuous range
+    starting from 0. This range has length gsDofMapper::size().  The
+    dofs are numbered in the following order:
 
-    The eliminated dofs have their own 0-based numbering. The index of an eliminated
-    global dof in this numbering can be queried with gsDofMapper::bindex().
+    - first the standard \em free (non-eliminated) dofs, ie. dofs that are not coupled on the boundary.
+    
+    - then the \em free dofs which are coupled with other dofs (in a
+      1-1 coupling) (number: gsDofMapper::coupleSize()).
+    
+    Upto here we get all the dofs which are \em free (number:
+    gsDofMapper::freeSize() ). Then a final group follows:
+    
+    - then the dofs that are on Dirichlet boundaries
+      (number: gsDofMapper::boundarySize()).
+    
+    The boundary (eg. eliminated) dofs have their own 0-based
+    numbering. The index of an boundary global dof in this numbering
+    can be queried with gsDofMapper::bindex().
 
     The object must be finalized before it is used,
     i.e. gsDofMapper::finalize() has to be called once before use.

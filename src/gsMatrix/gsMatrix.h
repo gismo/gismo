@@ -80,6 +80,12 @@ public:
     // Type pointing to a set of successive (const) columns of the matrix
     typedef Eigen::Block<const Base, Dynamic, Dynamic, true > constColumns;
 
+    // Type pointing to the transpose of the matrix
+    typedef Eigen::Transpose<Base> Tr;
+
+    // Type pointing to the (const) transpose of the matrix
+    typedef const Eigen::Transpose<const Base> constTr;
+
     // Type refering to any possible Eigen type that can be copied
     // into a gsMatrix
     typedef Eigen::Ref<Base> Ref;

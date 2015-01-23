@@ -35,8 +35,7 @@ void gsPoissonAssembler<T>::setOptions(const gsAssemblerOptions  & options)
         
         const bool conforming = ( m_intStrategy == iFace::glue );
         m_dofMappers.resize(1);
-        if ( m_dirStrategy == dirichlet::elimination || 
-             m_dirStrategy == dirichlet::homogeneous)
+        if ( m_dirStrategy == dirichlet::elimination )
             m_bases.front().getMapper(conforming, m_bConditions, m_dofMappers.front() );
         else
             m_bases.front().getMapper(conforming, m_dofMappers.front() );
@@ -76,19 +75,8 @@ void gsPoissonAssembler<T>::assembleNeumann()
 template<class T>
 void gsPoissonAssembler<T>::assemble()
 {
-    // If we have a homogeneous Dirichlet problem fill boundary
-    // DoFs with zeros
-    if ( m_dirStrategy == dirichlet::homogeneous)
-        m_ddof.setZero( m_dofMappers[0].boundarySize(), m_rhsFun->targetDim() );
-
-    // If the Dirichlet strategy is elimination then precompute
-    // Dirichlet dofs (m_dofMapper excludes these from the system)
-    if ( m_dirStrategy == dirichlet::elimination)
-    {
-        // replacing computeDirichletDofs();
-        computeDirichletDofsL2Proj();
-    }
-
+    computeDirichletDofs();
+        
     if (m_dofs == 0 ) // Are there any interior dofs ?
     {
         gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
@@ -127,6 +115,30 @@ void gsPoissonAssembler<T>::assemble()
     // Assembly is done, compress the matrix
     m_matrix.makeCompressed();   
 }
+
+template<class T>
+void gsPoissonAssembler<T>::computeDirichletDofs()
+{
+    switch (m_dirValues)
+    {
+    case dirichlet::homogeneous:
+        // If we have a homogeneous Dirichlet problem fill boundary
+        // DoFs with zeros
+        m_ddof.setZero( m_dofMappers[0].boundarySize(), m_rhsFun->targetDim() );
+        break;
+    case dirichlet::interpolation:        
+        computeDirichletDofsIntpl();
+        break;
+    case dirichlet::l2Projection:
+        computeDirichletDofsL2Proj();
+        break;
+    case dirichlet::user:
+        // 
+        break;
+    default:
+        GISMO_ERROR("Something went wrong with Dirichlet values.");
+    }
+}    
     
 
 // SKleiss: Note that this implementation is not useable for (T)HB-Splines!
@@ -144,7 +156,7 @@ void gsPoissonAssembler<T>::assemble()
 // With truncated hierarchical B-splines, the use of classical anchors does
 // not work, because functions might be truncated to zero at these points.
 template<class T> // 
-void gsPoissonAssembler<T>::computeDirichletDofs()
+void gsPoissonAssembler<T>::computeDirichletDofsIntpl()
 {
     const gsDofMapper & mapper = m_dofMappers.front();
     
@@ -165,9 +177,9 @@ void gsPoissonAssembler<T>::computeDirichletDofs()
         // If the condition is homogeneous then fill with zeros
         if ( it->isHomogeneous() )
         {
-            for (index_t k=0; k!= boundary->size(); ++k)
+            for (index_t i=0; i!= boundary->size(); ++i)
             {
-                const int ii= mapper.bindex( (*boundary)(k) , it->patch() );
+                const int ii= mapper.bindex( (*boundary)(i) , k );
                 m_ddof.row(ii).setZero();
             }
             delete boundary;

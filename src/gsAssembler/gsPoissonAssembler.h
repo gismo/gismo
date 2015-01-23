@@ -103,6 +103,7 @@ public:
     :  Base(patches), 
        m_rhsFun(&rhs),
        m_bConditions(bconditions),
+       m_dirValues  (dirichlet::l2Projection), 
        m_dirStrategy(dirichlet::none), 
        m_intStrategy(iFace::none)
     {
@@ -149,24 +150,30 @@ protected:
     // Neumann contributions
     void assembleNeumann();
 
-    // Computes the Dirichlet DoF values by interpolation
+    // Computes the Dirichlet DoF values
     void computeDirichletDofs();
+
+    // Computes the Dirichlet DoF values by interpolation
+    void computeDirichletDofsIntpl();
 
     // Computes the Dirichlet DoF values by L2 projection
     void computeDirichletDofsL2Proj();
 
 protected:
 
-    // Right hand side function
+    /// Right hand side function
     const gsFunction<T> * m_rhsFun;
-
+    
     /// Boundary conditions
     gsBoundaryConditions<T> m_bConditions;
 
-    // Strategy for dealing with Dirichlet DoFs
+    /// Determines how the (fixed) Dirichlet values should be computed
+    dirichlet::values  m_dirValues;
+
+    /// Strategy for enforcing Dirichlet DoFs
     dirichlet::strategy m_dirStrategy;
 
-    // Strategy for dealing with patch interface
+    /// Strategy for dealing with patch interface
     iFace::strategy m_intStrategy;
 
 protected:

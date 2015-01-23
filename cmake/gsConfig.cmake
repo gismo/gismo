@@ -1,6 +1,59 @@
+######################################################################
+## CMakeLists.txt ---
+## This file is part of the G+Smo library. 
+##
+## Author: Angelos Mantzaflaris 
+## Copyright (C) 2012 - 2015 RICAM-Linz.
+######################################################################
+
 ## #################################################################
 ## Configuration
 ## #################################################################
+
+## #################################################################
+## Setup build types
+## #################################################################
+
+SET( CMAKE_CXX_FLAGS_MAINTAINER "-Wall -Wabi -DUSE_GISMO_STACK_WALKER"
+     CACHE STRING
+    "Flags used by the C++ compiler during maintainer builds."
+    FORCE )
+SET( CMAKE_C_FLAGS_MAINTAINER "-Wall -pedantic" CACHE STRING
+    "Flags used by the C compiler during maintainer builds."
+    FORCE )
+SET( CMAKE_EXE_LINKER_FLAGS_MAINTAINER
+    "-Wl,--warn-unresolved-symbols,--warn-once" CACHE STRING
+    "Flags used for linking binaries during maintainer builds."
+    FORCE )
+SET( CMAKE_SHARED_LINKER_FLAGS_MAINTAINER
+    "-Wl,--warn-unresolved-symbols,--warn-once" CACHE STRING
+    "Flags used by the shared libraries linker during maintainer builds."
+    FORCE )
+MARK_AS_ADVANCED(
+    CMAKE_CXX_FLAGS_MAINTAINER
+    CMAKE_C_FLAGS_MAINTAINER
+    CMAKE_EXE_LINKER_FLAGS_MAINTAINER
+    CMAKE_SHARED_LINKER_FLAGS_MAINTAINER )
+
+# Update the documentation string of CMAKE_BUILD_TYPE for GUIs
+SET( CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
+    "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Maintainer."
+    FORCE )
+
+# Set a default build type if none was specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+   #set(CMAKE_BUILD_TYPE Debug CACHE STRING 
+   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING 
+   "Type of build (Debug, Release, RelWithDebInfo, MinSizeRel)" FORCE)
+   # Set the possible values of build type for cmake-gui
+   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+     "MinSizeRel" "RelWithDebInfo")
+endif()
+
+#Remove NDEBUG flag from RelWithDebInfo builds
+if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    STRING(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+endif()
 
 set(${PROJECT_NAME}_ARCHIVE_OUTPUT_DIRECTORY lib)
 set(${PROJECT_NAME}_RUNTIME_OUTPUT_DIRECTORY bin)

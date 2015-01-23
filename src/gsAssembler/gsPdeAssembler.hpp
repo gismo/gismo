@@ -40,8 +40,7 @@ void gsPdeAssembler<T>::initDofMapper(iFace::strategy interfaceStrategy,
 
     // For each unknown initialize dofMapper with correct basis
     const bool match     = (interfaceStrategy == iFace::glue);
-    const bool eliminate = ( dirStrategy == dirichlet::elimination || 
-                             dirStrategy == dirichlet::homogeneous );
+    const bool eliminate = ( dirStrategy == dirichlet::elimination );
     int counter_tmp ;
 
     // If one basis for each unknown (and not for each component)
@@ -268,7 +267,7 @@ void gsPdeAssembler<T>::computeDirichletDofs(dirichlet::strategy dirStrategy)
                 gsMatrix<unsigned> * boundary = m_bases[k][it->patch()].boundary(it->side()) ;
 
                 // If the condition is homogeneous then fill with zeros
-                if ( it->isHomogeneous() || dirStrategy == dirichlet::homogeneous)
+                if ( it->isHomogeneous())
                 {//JS2: I think this can be removed: Start
                     for (index_t j=0; j!= boundary->size(); ++j)
                     {
@@ -333,7 +332,7 @@ void gsPdeAssembler<T>::computeDirichletDofs(dirichlet::strategy dirStrategy)
                     gsMatrix<unsigned> * boundary = m_bases[comp+component_count][it->patch()].boundary(it->side()) ;
 
                     // If the condition is homogeneous then fill with zeros
-                    if ( it->isHomogeneous() || dirStrategy == dirichlet::homogeneous)
+                    if ( it->isHomogeneous() )
                     {//JS2: I think this can be removed: Start
                         for (index_t j=0; j!= boundary->size(); ++j)
                         {

@@ -28,10 +28,12 @@ template <class T>
 class gsKnotVectorPrivate
 {
 public:
-  /// The knot values
-  std::vector<T> knots;
-  /// The degree (offset) of the knot vector
-  int p;
+
+    /// The sorted knot values
+    gsSortedVector<T> knots;
+
+    /// The degree (offset) of the knot vector
+    int p;
 };
 
 template <class T>
@@ -50,14 +52,14 @@ gsKnotVector<T>::gsKnotVector( gsKnotVector const & other)
 
 template <class T>
 gsKnotVector<T>::gsKnotVector(int p) 
-    : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
+: gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 { 
     my->p = p;
 }
 
 template <class T>
 gsKnotVector<T>::gsKnotVector(int p, unsigned sz ) 
-    : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
+: gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 { 
     my->p = p;
     my->knots.resize(sz); 
@@ -66,7 +68,7 @@ gsKnotVector<T>::gsKnotVector(int p, unsigned sz )
 template <class T>
 gsKnotVector<T>::gsKnotVector(T u0, T u1, unsigned interior, 
                               unsigned mult_ends, unsigned mult_interior, int degree)
-    : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
+: gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 {
     initUniform( u0, u1, interior, mult_ends, mult_interior, degree );
 }
@@ -74,68 +76,72 @@ gsKnotVector<T>::gsKnotVector(T u0, T u1, unsigned interior,
 
 template <class T>
 gsKnotVector<T>::gsKnotVector(std::vector<T> const& knots, int degree, int regularity)
-    : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
+: gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 {
   
-  typename std::vector<T>::const_iterator itr;
-  int mult= degree - regularity ;
+    typename std::vector<T>::const_iterator itr;
+    int mult= degree - regularity ;
   
-  for ( int j=0; j<degree-1; j++ )
-    my->knots.push_back( knots.front() );
+    for ( int j=0; j<degree-1; j++ )
+        my->knots.push_unsorted( knots.front() );
   
-  for ( itr= knots.begin(); itr != knots.end(); ++itr )
-    for ( int j=0; j< mult; j++ )
-      my->knots.push_back( *itr );
+    for ( itr= knots.begin(); itr != knots.end(); ++itr )
+        for ( int j=0; j< mult; j++ )
+            my->knots.push_unsorted( *itr );
   
-  for ( int j=0; j<degree-1; j++ )
-    my->knots.push_back( knots.back() );
+    for ( int j=0; j<degree-1; j++ )
+        my->knots.push_unsorted( knots.back() );
   
-  my->p=degree;
+    my->p=degree;
+    my->knots.SetSorted();
 }
 
 
 template <class T>
 gsKnotVector<T>::gsKnotVector(int degree, std::vector<T> const& knots)
-    : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
+: gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 {
-  my->p = degree;
-  my->knots = knots;
+    my->p = degree;
+    my->knots = knots;
 }
 
 template <class T>
 gsKnotVector<T>::gsKnotVector(gsCompactKnotVector<T> ckv)
-    : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
+: gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 {
-  my->p = ckv.degree();
-  for(gsCompactKnotVectorIter<T, true > it = ckv.begin();it!=ckv.end();it++)
-  {
-      my->knots.push_back(*it);
-  }
+    my->p = ckv.degree();
+    for(gsCompactKnotVectorIter<T, true > it = ckv.begin();it!=ckv.end();it++)
+    {
+        my->knots.push_unsorted(*it);
+    }
+    my->knots.SetSorted();
 }
 
 template <class T>
 gsKnotVector<T>::gsKnotVector(int deg, const_iterator start, const_iterator end)
-    : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
+: gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 {
-  my->p = deg;
-  my->knots.assign(start, end) ;
+    my->p = deg;
+    my->knots.assign(start, end) ;
 }
 
 
 template <class T>
 gsKnotVector<T>::~gsKnotVector() 
 { 
-  delete my; 
-  my = NULL;
+    delete my; 
+    my = NULL;
 }
 
 template <class T> void 
 gsKnotVector<T>::initUniform( T u0, T u1, unsigned interior, unsigned mult_ends, 
-                             unsigned mult_interior, int degree)
-{    
+                              unsigned mult_interior, int degree)
+{
+    GISMO_ASSERT(u0<u1,"Knot vector must be an interval.");
+
     my->knots.clear();
     my->knots.reserve( 2 * mult_ends + interior*mult_interior);
- 
+    
     const T h = (u1-u0) / (interior+1);
 
     my->knots.insert(my->knots.begin(), mult_ends, u0);
@@ -145,6 +151,7 @@ gsKnotVector<T>::initUniform( T u0, T u1, unsigned interior, unsigned mult_ends,
                          u0 + i*h );
 
     my->knots.insert(my->knots.end(), mult_ends, u1);
+    my->knots.SetSorted();
 
     if (degree == -1)   
         my->p = mult_ends-1;
@@ -161,9 +168,11 @@ gsKnotVector<T>::initUniform(unsigned numKnots, unsigned mult_ends,
 
 template <class T> void 
 gsKnotVector<T>::initGraded(T u0, T u1, unsigned interior, int degree, 
-                           T grading, unsigned mult_interior )
+                            T grading, unsigned mult_interior )
 {
 // \todo: add grading target
+    GISMO_ASSERT(u0<u1,"Knot vector must be an interval.");
+
     my->p = degree;
     my->knots.clear();
     my->knots.reserve( 2 *  (degree+1) + interior*mult_interior );
@@ -177,12 +186,13 @@ gsKnotVector<T>::initGraded(T u0, T u1, unsigned interior, int degree,
                          math::pow(i*h, 1.0/grading) );
 
     my->knots.insert(my->knots.end(), degree+1, u1);
+    my->knots.SetSorted();
 }
 
 
 template <class T> void 
 gsKnotVector<T>::initGraded(unsigned numKnots, int degree, 
-                           T grading, unsigned mult_interior )
+                            T grading, unsigned mult_interior )
 {
     initGraded( 0.0, 1.0, numKnots - 2, degree, grading, mult_interior);
 }
@@ -319,8 +329,8 @@ gsKnotVector<T>::urend() const
 template <class T>
 void gsKnotVector<T>::swap(gsKnotVector &other)
 {
-  std::swap(my->p, other.my->p);
-  my->knots.swap(other.my->knots);
+    std::swap(my->p, other.my->p);
+    my->knots.swap(other.my->knots);
 }
 
 template <class T>
@@ -345,20 +355,20 @@ T& gsKnotVector<T>::operator [] (size_t i) { return my->knots[i]; }
 template <class T>
 bool gsKnotVector<T>::operator==(const gsKnotVector<T> &other) const
 {
-  // TODO: use tolerance?
-  return (this->degree() == other.degree())
-      && (this->size() == other.size())
-      && std::equal( this->begin(), this->end(), other.begin() );
+    // TODO: use tolerance?
+    return (this->degree() == other.degree())
+        && (this->size() == other.size())
+        && std::equal( this->begin(), this->end(), other.begin() );
 }
 
 template <class T>
 bool gsKnotVector<T>::operator!=(const gsKnotVector<T> &other) const
 {
-  return !(*this==other);
+    return !(*this==other);
 }
 
 template <class T>
-  T  gsKnotVector<T>::at (size_t i) const { return my->knots.at(i); }
+T  gsKnotVector<T>::at (size_t i) const { return my->knots.at(i); }
 template <class T>
 T& gsKnotVector<T>::at (size_t i) { return my->knots.at(i); }
   
@@ -417,7 +427,10 @@ gsVector<T>* gsKnotVector<T>::getVector() const
 
 template <class T> // AM: we can do this more efficiently..
 int gsKnotVector<T>::numKnotSpans() const
-{ return this->unique().size()-1; }
+{ 
+    //equivalent: this->unique().size()-1; 
+    return my->knots.uniqueSize()-1; 
+}
 
 // template <class T> // TO DO
 // int gsKnotVector<T>::numDomainSpans() const
@@ -460,7 +473,7 @@ std::vector<T> gsKnotVector<T>::knotSpanLengths() const
 
 
     for ( typename  std::vector<T>::const_iterator
-          it= u.begin()+1; it != u.end(); ++it )
+              it= u.begin()+1; it != u.end(); ++it )
         spans.push_back( *it - *(it-1) );
 
     return spans;
@@ -506,7 +519,7 @@ void gsKnotVector<T>::transform(T c, T d)
 template <class T>
 void gsKnotVector<T>::merge(gsKnotVector<T> other)
 { 
-        // check for degree
+    // check for degree
     if ( this->degree() != other.degree() )
     {std::cout<<"gsKnotVector: Cannot merge KnotVectors of different degree"<<"\n"; return;}
 
@@ -521,18 +534,18 @@ void gsKnotVector<T>::merge(gsKnotVector<T> other)
 template <class T>
 std::vector<T> gsKnotVector<T>::unique() const 
 {
-  std::vector<T> result = my->knots;
-  result.erase( std::unique( result.begin(), result.end() ),
-                result.end() );
-  return result;
+    std::vector<T> result = my->knots;
+    result.erase( std::unique( result.begin(), result.end() ),
+                  result.end() );
+    return result;
 }
 
 template <class T>
 std::vector<T> gsKnotVector<T>::unique(size_t const i, size_t const & j) const 
 {
-  typename std::vector<T>::const_iterator first = my->knots.begin() + i;
-  typename std::vector<T>::const_iterator last  = my->knots.begin() + j;
-  return std::vector<T>(first,last);
+    typename std::vector<T>::const_iterator first = my->knots.begin() + i;
+    typename std::vector<T>::const_iterator last  = my->knots.begin() + j;
+    return std::vector<T>(first,last);
 }
 
 
@@ -574,7 +587,7 @@ inline unsigned gsKnotVector<T>::findspan (T u) const
     unsigned low = my->p, high = m - my->p;
 
     GISMO_ASSERT( (u >= my->knots[low]) && ( u  <= my->knots[high]), 
-		  "The requested abscissae u="<<u<<" is not in the knot vector." );
+                  "The requested abscissae u="<<u<<" is not in the knot vector." );
 
     if (u == my->knots[high])
         return high - 1;
@@ -675,7 +688,7 @@ bool gsKnotVector<T>::isUniform() const
     const std::vector<T> u = this->unique();
     T df = u[1]-u[0];
     for ( typename  std::vector<T>::const_iterator 
-          it= u.begin()+2; it != u.end(); ++it )
+              it= u.begin()+2; it != u.end(); ++it )
         if ( *it - *(it-1) != df )
             return false;
     return true;
@@ -701,18 +714,18 @@ T gsKnotVector<T>::firstInterval() const
 template <class T>
 void gsKnotVector<T>::uniformRefine(gsMatrix<T> const & interval, int numKnots)
 {
-  std::vector<T> u = this->unique( this->findspan(interval(0,0)), 
-				   findspan( interval(0,1)) + 1 );
+    std::vector<T> u = this->unique( this->findspan(interval(0,0)), 
+                                     findspan( interval(0,1)) + 1 );
 
-  for ( typename  std::vector<T>::iterator it= u.begin(); it != u.end(); ++it )
-    this->insert ( *it, numKnots) ;
+    for ( typename  std::vector<T>::iterator it= u.begin(); it != u.end(); ++it )
+        this->insert ( *it, numKnots) ;
 }
 
 template <class T>
 void gsKnotVector<T>::uniformRefine(int numKnots, int mul)
 {
     T k0 = my->knots[my->p],
-      k1 = *(my->knots.end()-my->p-1);
+        k1 = *(my->knots.end()-my->p-1);
 
     std::vector<T> u = this->unique();
 
@@ -763,7 +776,7 @@ void gsKnotVector<T>::degreeElevate(int const & i)
         return;
 
     T k0 = my->knots[my->p],
-      k1 = *(my->knots.end()-my->p-1);
+        k1 = *(my->knots.end()-my->p-1);
 
     std::vector<T> u = this->unique() ; 
 
@@ -806,11 +819,11 @@ void gsKnotVector<T>::degreeIncrease(int const & i)
 template <class T>
 void gsKnotVector<T>::increaseMultiplicity(int const & i)
 {
-  const std::vector<T> u = this->unique();
+    const std::vector<T> u = this->unique();
   
-  for (typename std::vector<T>::const_iterator itr = u.begin()+1;
-       itr != u.end()-1; ++itr)
-    this->insert( *itr, i);
+    for (typename std::vector<T>::const_iterator itr = u.begin()+1;
+         itr != u.end()-1; ++itr)
+        this->insert( *itr, i);
 }
 
 template <class T>
@@ -841,32 +854,32 @@ void gsKnotVector<T>::remove(T knot, int m)
 template <class T>
 gsMatrix<T> * gsKnotVector<T>::greville() const
 {
-  gsMatrix<T> * gr; 
-  gr = new gsMatrix<T>( 1,this->size() - my->p - 1 );
-  this->greville_into(*gr);
-  return gr;
+    gsMatrix<T> * gr; 
+    gr = new gsMatrix<T>( 1,this->size() - my->p - 1 );
+    this->greville_into(*gr);
+    return gr;
 }
 
 template <class T>
 void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
 {
-  typename std::vector<T>::const_iterator itr = my->knots.begin() + 1;
-  const int p = my->p;
-  result.resize(1, this->size() -p-1 ) ; 
-  unsigned i(1);
+    typename std::vector<T>::const_iterator itr = my->knots.begin() + 1;
+    const int p = my->p;
+    result.resize(1, this->size() -p-1 ) ; 
+    unsigned i(1);
   
-  if ( my->p!=0)
-  {
-      result(0,0)=  std::accumulate(itr, itr+p, T(0) ) / my->p;
-      for (++itr; itr != my->knots.end()-p; ++itr, ++i )
-      {
-          result(0,i)=  std::accumulate( itr, itr+p, T(0) ) / my->p ;
-          if ( result(0,i) == result(0,i-1) )
-              result(0,i-1) -= 1e-10;// perturbe point to remain inside the needed support
-      }
-  }
-  else
-      std::copy(my->knots.begin(), my->knots.end()-1, result.data() );
+    if ( my->p!=0)
+    {
+        result(0,0)=  std::accumulate(itr, itr+p, T(0) ) / my->p;
+        for (++itr; itr != my->knots.end()-p; ++itr, ++i )
+        {
+            result(0,i)=  std::accumulate( itr, itr+p, T(0) ) / my->p ;
+            if ( result(0,i) == result(0,i-1) )
+                result(0,i-1) -= 1e-10;// perturbe point to remain inside the needed support
+        }
+    }
+    else
+        std::copy(my->knots.begin(), my->knots.end()-1, result.data() );
 }
 
 template <class T>
@@ -875,8 +888,8 @@ T gsKnotVector<T>::greville(int i) const
     // TO DO: check special case as in greville_into
     typename std::vector<T>::const_iterator itr = my->knots.begin();
     return ( my->p!=0 ? 
-	     std::accumulate( itr+1+i, itr+my->p+i+1, T(0.0) ) / my->p :
-	     std::accumulate( itr+1+i, itr+my->p+i+1, T(0.0) )      );
+             std::accumulate( itr+1+i, itr+my->p+i+1, T(0.0) ) / my->p :
+             std::accumulate( itr+1+i, itr+my->p+i+1, T(0.0) )      );
 }
 
 template <class T>
