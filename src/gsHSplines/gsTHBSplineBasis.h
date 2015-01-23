@@ -560,7 +560,7 @@ private:
      * matrices and the internal bspline representations.
     **/
     void initialize();
-
+    void update_structure() {gsHTensorBasis<d,T>::update_structure(); initialize();}
     /**
      * @brief Returns the coefficients computed by Boehm algorithm (called by \ref getBsplinePatchGlobal).
      * @param level maximum refinement level

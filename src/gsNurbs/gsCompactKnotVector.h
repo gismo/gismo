@@ -992,7 +992,12 @@ inline int gsCompactKnotVector<T>::multiplicity(T const& knot) const
         return m_mult_sum[0];
     else
     {
-        int j =  Uniquefindspan(knot);
+        typedef typename gsSortedVector<T>::const_iterator iter_t;
+        typedef std::pair<iter_t,iter_t> result_t;
+        result_t result=std::equal_range(m_knots.begin(),m_knots.end(),knot);
+        if ( result.first==result.second )
+            return 0;
+        size_t j=result.first-m_knots.begin();
         return m_mult_sum[j] - m_mult_sum[j-1];
     }
 }

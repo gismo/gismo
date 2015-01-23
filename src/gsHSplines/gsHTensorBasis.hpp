@@ -1005,12 +1005,12 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, T knotValue
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, const std::vector<T> & knotValue, int mult)
 {
-    for(unsigned int i =0; i < knotValue.size();i++)
+    for(unsigned int k =0; k < knotValue.size(); ++k)
     {
-        if (m_bases[lvl]->component(dir).knots().has(knotValue[i]))
+        if (m_bases[lvl]->component(dir).knots().has(knotValue[k]))
         {
-            for(unsigned int i =lvl;i < m_bases.size();i++)
-                m_bases[i]->component(dir).insertKnot(knotValue[i],mult);
+            for(unsigned int i =lvl;i < m_bases.size(); ++i)
+                m_bases[i]->component(dir).insertKnot(knotValue[k],mult);
         }
         else
         {

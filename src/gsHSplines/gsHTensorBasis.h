@@ -779,7 +779,7 @@ protected:
 
     /// @brief Updates the basis structure (eg. charact. matrices, etc), to
     /// be called after any modifications.
-    void update_structure(); // to do: rename as updateCharMatrices
+    virtual void update_structure(); // to do: rename as updateCharMatrices
     
     /// @brief Makes sure that there are \a numLevels grids computed
     /// in the hierarachy
