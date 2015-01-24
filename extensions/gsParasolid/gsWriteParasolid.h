@@ -18,6 +18,8 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 
+#include <gsParasolid/gsPKSession.h>
+
 typedef int PK_GEOM_t;
 typedef int PK_BSURF_t;
 struct PK_UVBOX_s;

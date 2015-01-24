@@ -13,6 +13,8 @@
 
 #include <gsIO/gsXmlUtils.h>
 
+#include <gsParasolid/gsPKSession.h>
+
 typedef int PK_BSURF_t;
 typedef int PK_SURF_t;
 typedef int PK_PART_t;

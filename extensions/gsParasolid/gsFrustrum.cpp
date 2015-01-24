@@ -1,27 +1,18 @@
+/** @file gsFrustrum.cpp
+
+    @brief Defines the Parasolud frustrim
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+    Based on SIEMENS' Parasolid templates
+*/
+
 /*=============================================================================
-
-  Copyright 2009 Siemens Product Lifecycle Management Software Inc.
-  All rights reserved.
-  This software and related documentation are proprietary to
-  Siemens Product Lifecycle Management Software Inc.
-
-Code last modified : 12 October  1994 (integrated Vax/Unix example frustrum)
-                      9 June     1995 (add NT code for filesystem detection)
-                      7 April    1997 (change function prototypes)
-                     10 April    1997 (add code for Partition xmt/rcv )
-                     11 April    1997 (first attempt to support the Mac)
-                     12 August   1999 (allow spaces in P_SCHEMA)
-                     25 October  2001 (Use %p for printing a FILE*)
-                     20 November 2001 (Add support for debug report
-                                       functionality)
-                     12 March    2004 Remove old Macintosh support.
-                     22 October  2009 no plat-specific newline in g_preamble
-
-Siemens Product Lifecycle Management Software assumes no responsibility for
-the use or reliability of this software; the example frustrum is provided in
-order to run the Parasolid Acceptance Tests and to give application writers
-access to a simple example of a working Frustrum which will run on all
-Parasolid platforms.
 
 The example code has been written to contain a minimal amount of machine
 specific code. Where necessary, such code is delimited by  #if <macro>  #endif
@@ -54,15 +45,7 @@ Notes:
 
 =============================================================================*/
 
-/*=============================================================================
-                 #INCLUDES
-=============================================================================*/
-
 #include "gsFrustrum.h"
-
-/*=============================================================================
-                 #DEFINES
-=============================================================================*/
 
 
 /* determines whether information messages are printed */
@@ -106,18 +89,13 @@ Notes:
 #define dir_separator_s     "/"
 #endif
 
-/*=============================================================================
-                 MACROS
-=============================================================================*/
-
 #define trace_print \
     if (!trace_flag) /* skip */; else printf
 
 
-/*=============================================================================
-                 STRUCTS
-=============================================================================*/
+namespace gismo {
 
+namespace extensions {
 
 /* one structure per open file containing info such as filename and
    the C stream id. the structures are chained together, accessed via
@@ -2668,8 +2646,6 @@ extern void GOSGMT( const int* segtyp, const int* ntags, const int* tags,
     *ifail = CONTIN;
 }
 
-
-
 int register_frustrum ()
 {
     extern void FSTART( int *);
@@ -2743,3 +2719,7 @@ int register_frustrum ()
     //fru.fgprsu = FGPRSU;
     return(PK_SESSION_register_frustrum( &fru ));
 }
+
+}//extensions
+
+}//gismo

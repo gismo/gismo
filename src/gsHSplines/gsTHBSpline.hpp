@@ -12,6 +12,7 @@ namespace gismo{
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result )
 {
+    gsInfo<<"CONVERT compact\n";
     // Construct a box covering the whole parameter domain.
     const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
     std::vector<unsigned> wholeDomainAsBox(2*d+1,0);
@@ -24,9 +25,11 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVecto
     refineElements( wholeDomainAsBox );
 
     // The & avoids copying of the basis.
-    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > &tpBasis = this->basis().tensorLevel(this->basis().tree().getMaxInsLevel());
+    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > &tpBasis = 
+        this->basis().tensorLevel(this->basis().maxLevel());
     // makeGeometry returns an abstract class, so we need to cast to the particular.
-    gsTensorBSpline<d,T,gsCompactKnotVector<T> > *newGeo = static_cast< gsTensorBSpline<d,T,gsCompactKnotVector<T> > *>(tpBasis.makeGeometry(this->coefs()));
+    gsTensorBSpline<d,T,gsCompactKnotVector<T> > *newGeo = 
+        static_cast< gsTensorBSpline<d,T,gsCompactKnotVector<T> > *>(tpBasis.makeGeometry(this->coefs()));
 
     // Should work but crashes:
     //std::swap (*newGeo, result );
@@ -40,6 +43,7 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVecto
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {
+    gsInfo<<"CONVERT normal \n";
     // Construct a box covering the whole parameter domain.
     const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
     std::vector<unsigned> wholeDomainAsBox(2*d+1,0);
@@ -51,10 +55,13 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
     // Refine the whole domain to the finest level present there.
     refineElements( wholeDomainAsBox );
 
-    // The & avoids copying of the basis.
-    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > &tpBasis = this->basis().tensorLevel(this->basis().tree().getMaxInsLevel());
+    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > &tpBasis = 
+        this->basis().tensorLevel(this->basis().maxLevel());
+
+    gsTensorBSplineBasis<d,T> newtpBasis(tpBasis.knots(0), tpBasis.knots(0)); 
     // makeGeometry returns an abstract class, so we need to cast to the particular.
-    gsTensorBSpline<d,T> *newGeo = static_cast< gsTensorBSpline<d,T> *>(tpBasis.makeGeometry(this->coefs()));
+    gsTensorBSpline<d,T> *newGeo = 
+        static_cast< gsTensorBSpline<d,T> *>(newtpBasis.makeGeometry(this->coefs()));
 
     result = *newGeo;
     // Don't forget:

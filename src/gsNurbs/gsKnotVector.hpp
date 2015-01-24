@@ -106,7 +106,7 @@ gsKnotVector<T>::gsKnotVector(int degree, std::vector<T> const& knots)
 }
 
 template <class T>
-gsKnotVector<T>::gsKnotVector(gsCompactKnotVector<T> ckv)
+gsKnotVector<T>::gsKnotVector(const gsCompactKnotVector<T> & ckv)
 : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 {
     my->p = ckv.degree();
@@ -909,22 +909,16 @@ std::vector<int> gsKnotVector<T>::multiplicities() const
 {
     std::vector<int> mult;
 
-    typename std::vector<T>::const_iterator itr = my->knots.begin();
-    T last = *itr - 1;
+    typename std::vector<T>::const_iterator it = my->knots.begin();
+    if ( it ==  my->knots.end() ) 
+        return mult;
 
-    for (; itr != my->knots.end(); itr++)
-    {
-        if (last != *itr)
-        {
-            mult.push_back(1);
-        }
-        else
-        {
+    mult.push_back(1);
+    for (++it; it != my->knots.end(); ++it)
+        if ( *(it-1) == *(it) )
             mult.back()++;
-        }
-        last = *itr;
-    }
-
+        else
+            mult.push_back(1);
     return mult;
 }
 

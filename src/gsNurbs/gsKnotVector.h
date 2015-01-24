@@ -98,7 +98,7 @@ public:
   /// \param end iterator pointing the last knot value
   gsKnotVector(int deg, const_iterator start, const_iterator end);
 
-  gsKnotVector(gsCompactKnotVector<T> ckv);
+  gsKnotVector(const gsCompactKnotVector<T> & ckv);
 
   /// Destructor
   ~gsKnotVector();

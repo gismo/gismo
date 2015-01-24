@@ -11,6 +11,8 @@
     Author(s): A. Mantzaflaris
 */
 
+#include <gsParasolid/gsFrustrum.h>
+
 #include <gsParasolid/gsReadParasolid.h>
 #include <gsParasolid/gsPKSession.h>
 

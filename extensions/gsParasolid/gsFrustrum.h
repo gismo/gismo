@@ -1,3 +1,16 @@
+/** @file gsFrustrum.h
+
+    @brief Defines the Parasolud frustrim
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+    Based on Parasolid templates
+*/
 
 #pragma once
 
@@ -23,7 +36,15 @@
 #include <parasolid_kernel.h>
 // #include <kernel_interface.h>
 
+namespace gismo {
+
+namespace extensions {
+
 int register_frustrum ();
+
+}//extensions
+
+}//gismo
 
 #define PARASOLID_ERROR(name, err) \
     if (err) gsWarn<< "Parasolid " #name ": "<<err<<".\n" ;
