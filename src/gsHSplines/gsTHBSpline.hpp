@@ -12,7 +12,6 @@ namespace gismo{
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result )
 {
-    gsInfo<<"CONVERT compact\n";
     // Construct a box covering the whole parameter domain.
     const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
     std::vector<unsigned> wholeDomainAsBox(2*d+1,0);
@@ -43,7 +42,6 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVecto
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {
-    gsInfo<<"CONVERT normal \n";
     // Construct a box covering the whole parameter domain.
     const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
     std::vector<unsigned> wholeDomainAsBox(2*d+1,0);
