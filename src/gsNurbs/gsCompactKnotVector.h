@@ -994,10 +994,10 @@ inline int gsCompactKnotVector<T>::multiplicity(T const& knot) const
     {
         typedef typename gsSortedVector<T>::const_iterator iter_t;
         typedef std::pair<iter_t,iter_t> result_t;
-        result_t result=std::equal_range(m_knots.begin(),m_knots.end(),knot);
-        if ( result.first==result.second )
+        result_t result = std::equal_range(m_knots.begin(), m_knots.end(), knot);
+        if ( result.first == result.second )
             return 0;
-        size_t j=result.first-m_knots.begin();
+        const size_t j = result.first-m_knots.begin();
         return m_mult_sum[j] - m_mult_sum[j-1];
     }
 }

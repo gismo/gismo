@@ -17,26 +17,15 @@ namespace gismo
 {
 struct dirichlet
 {	
-	enum values
-	{
-        homogeneous   = 1, ///< Assume homogeneous Dirichlet conditions
-
-        interpolation = 2, ///< Compute Dirichlet DoFs by using interpolation on the boundary
-        
-        l2Projection  = 3, ///< Compute Dirichlet DoFs by using L2 projection on the boundary
-        
-        user          = 10 ///< User will provide values of the Dirichlet dofs
-    };
-
 	enum strategy
 	{
         elimination  = 11, ///< Compute Dirichlet DoFs by using interpolation on the boundary
 
-        nitsche      = 12, ///< Enforce the boundary condition weakly by a penalty term
-	
         penalize     = 13, ///< Penalize the diagonal at the position of Dirichlet DoFs,
 
         //nullifyrow    = 14,
+
+        nitsche      = 12, ///< Enforce the boundary condition weakly by a penalty term
         
         /// Compute Dirichlet DoFs in the normal direction (for a vector valued function),
         /// The tangential component are handled with the Nitsche method.
@@ -44,6 +33,17 @@ struct dirichlet
 
         none         = 0 ///<< Do absolutely nothing for Dirichlet boundary conditions.
 	};
+
+	enum values
+	{
+        homogeneous   = 100, ///< Assume homogeneous Dirichlet conditions
+
+        interpolation = 101, ///< Compute Dirichlet DoFs by using interpolation on the boundary
+        
+        l2Projection  = 102, ///< Compute Dirichlet DoFs by using L2 projection on the boundary
+        
+        user          = 103 ///< User will provide values of the Dirichlet dofs
+    };
 };
 
 struct iFace

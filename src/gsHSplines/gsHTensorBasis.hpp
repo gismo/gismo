@@ -391,8 +391,8 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
 
     for(unsigned i = 0; i != d; ++i)
     {
-        curr[i] = m_bases[level]->component(i).knots().begin();         // beginning of the iteration in i-th direction
-        ends[i] = m_bases[level]->component(i).knots().end()-(m_deg[i]+2);// end of the iteration in i-th direction
+        curr[i] = m_bases[level]->component(i).knots().begin() ; // beginning of the iteration in i-th direction
+        ends[i] = curr[i]+m_bases[level]->component(i).size()-1; // end of the iteration in i-th direction
     }
 
     it.first_lattice_point(curr, ends, curr); // This is crucial, since it sets the ends to be the ends of iteration.
@@ -432,8 +432,8 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
 
         for(unsigned i = 0; i != d; ++i)
         {
-            curr[i] = m_bases[j]->component(i).knots().begin();         // beginning of the iteration in i-th direction
-            ends[i] = m_bases[j]->component(i).knots().end()-(m_deg[i]+2);// end of the iteration in i-th direction
+            curr[i] = m_bases[j]->component(i).knots().begin() ; // beginning of the iteration in i-th direction
+            ends[i] = curr[i]+m_bases[j]->component(i).size()-1; // end of the iteration in i-th direction
         }
 
         it.first_lattice_point(curr, ends, curr); // This is crucial, since it sets the ends to be the ends of iteration.
@@ -616,8 +616,8 @@ template<unsigned d, class T>
 void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 {
     // Degrees
+    //m_deg = tbasis.cwiseDegree();
     m_deg.resize(d);
-
     for( unsigned i = 0; i < d; i++)
         m_deg[i] = tbasis.degree(i);
 

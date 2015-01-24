@@ -14,6 +14,62 @@
 namespace gismo
 {
 
+template <unsigned d, typename T>
+struct jacobianPartials 
+{ 
+    static void 
+    compute(const typename gsMatrix<T>::constColumn  & secDer,
+            std::vector<gsMatrix<T> > & DJac)
+    {
+        // Number of second derivatives
+        //const index_t n2d = (ParDim + (ParDim*(ParDim-1))/2);
+        GISMO_ERROR("Not implemented.");
+    }
+};
+
+template <typename T>
+struct jacobianPartials<2,T>
+{
+    static void 
+    compute(const typename gsMatrix<T>::constColumn  & secDer,
+            std::vector<gsMatrix<T> > & DJac)
+    {
+        DJac.resize(2, gsMatrix<T>(2,2) );
+        // Note: stride is 3
+        //dx
+        DJac[0](0,0) = secDer(0);//G1xx
+        DJac[0](0,1) = secDer(2);//G1xy
+        DJac[0](1,0) = secDer(3);//G2xx
+        DJac[0](1,1) = secDer(5);//G2xy
+        //dy
+        DJac[1](0,0) = secDer(2);//G1yx
+        DJac[1](0,1) = secDer(1);//G1yy
+        DJac[1](1,0) = secDer(5);//G2yx
+        DJac[1](1,1) = secDer(4);//G2yy
+    }
+};
+
+template <typename T>
+struct jacobianPartials<3,T>
+{
+    static void 
+    compute(const typename gsMatrix<T>::constColumn  & secDer,
+            std::vector<gsMatrix<T> > & DJac)
+    {
+        DJac.resize(3, gsMatrix<T>(3,3) );
+        // Note: stride is 6
+        //dx
+        DJac[0](0,0) = secDer(0);//G1xx
+        //dy
+        DJac[1](0,0) = secDer(3);//G1yx
+        //dz
+        DJac[2](0,0) = secDer(4);//G1zx
+
+        GISMO_ERROR("Not implemented.");
+    }
+};
+
+
 // Geometry transformation 
 template <class T, int ParDim, int GeoDim>
 struct gsGeoTransform
@@ -307,7 +363,7 @@ transformValuesHdiv( index_t k,
     int numA = 0;
     for(int comp = 0; comp < GeoDim; ++comp)
         numA += allValues[comp].rows();
-    result.setZero(GeoDim,numA); // GeoDim x numA
+    result.resize(GeoDim,numA); // GeoDim x numA
     
     const T det = this->jacDet(k);
     const typename gsMatrix<T>::constColumns & jac = this->jacobian(k);    
@@ -335,61 +391,43 @@ transformGradsHdiv( index_t k,
     index_t c = 0;
     for(size_t comp = 0; comp < allValues.size(); ++comp)
         c += allValues[c].rows();
-    result.setZero(GeoDim*ParDim,c);
+    result.resize(GeoDim*ParDim,c);
     
     const T det = this->jacDet(k);
     const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
     const typename gsMatrix<T>::constColumns & Jac    = this->jacobian(k);
     const Eigen::Transpose< const typename gsMatrix<T>::constColumns > & 
         invJac = this->gradTransform(k).transpose();
-
-    if(GeoDim==2)
+    
+    std::vector<gsMatrix<T> > DJac;
+    jacobianPartials<ParDim,T>::compute(secDer,DJac);
+    
+    gsVector<T> gradDetJrec(ParDim);        
+    for (int i=0; i<ParDim; ++i)
+        gradDetJrec[i] = - ( invJac * DJac[i] ).trace() / det;
+    
+    c = 0;        
+    for(int comp = 0; comp < GeoDim; ++comp) // component
     {
-        std::vector<gsMatrix<T> > DJac(GeoDim, gsMatrix<T>(GeoDim, GeoDim) );
-        // Number of second derivatives
-        const index_t k2 = (ParDim + (ParDim*(ParDim-1))/2);
-        //d1
-        DJac[0](0,0) = secDer(0     );
-        DJac[0](1,0) = secDer(0+1*k2);
-        DJac[0](0,1) = secDer(2     );
-        DJac[0](1,1) = secDer(2+1*k2);
-        //d2
-        DJac[1](0,0) = secDer(2     );
-        DJac[1](1,0) = secDer(2+1*k2);
-        DJac[1](0,1) = secDer(1     );
-        DJac[1](1,1) = secDer(1+1*k2);
-
-        gsVector<T> gradDetJrec(ParDim);        
-        for (int i=0; i<ParDim; ++i)
-            gradDetJrec[i] = - ( invJac * DJac[i] ).trace() / det;
+        const typename gsMatrix<T>::constColumn & bvals = allValues[comp].col(k);
+        const typename gsMatrix<T>::constColumn & bder  = allGrads [comp].col(k);
         
-        c = 0;        
-        for(int comp = 0; comp < GeoDim; ++comp) // component
+        for( index_t j=0; j< bvals.rows() ; ++j) // active of component
         {
-            const typename gsMatrix<T>::constColumn & bvals = allValues[comp].col(k);
-            const typename gsMatrix<T>::constColumn & bder  = allGrads [comp].col(k);
-
-            for( index_t j=0; j< bvals.rows() ; ++j) // active of component
+            gsAsMatrix<T> tGrad(result.col(c).data(), GeoDim, GeoDim);
+            
+            tGrad.noalias() = Jac.col(comp) * bder.segment(j*ParDim,ParDim).transpose() * invJac / det;
+            
+            // tGrad.colwise() += gradDetJrec[i];
+            for (int i=0; i<ParDim; ++i) // result column
             {
-                gsAsMatrix<T> tGrad(result.col(c).data(), GeoDim, GeoDim);
-
-                tGrad.noalias() = Jac.col(comp) * bder.segment(j*ParDim,ParDim).transpose() * invJac / det;
-
-                // tGrad.colwise() += gradDetJrec[i];
-                for (int i=0; i<ParDim; ++i) // result column
-                {
-                    tGrad.col(i).array()   += gradDetJrec[i];
-
-                    tGrad.col(i) += ( allValues[comp](j,k) / det ) * DJac[i].col(j);
+                tGrad.col(i).array()   += gradDetJrec[i];
+                
+                tGrad.col(i) += ( allValues[comp](j,k) / det ) * DJac[i].col(j);
                 }
-
-                ++c;// next basis function
-            }
+            
+            ++c;// next basis function
         }
-    }
-    else
-    {
-        GISMO_ERROR("Geometric dimention not valid");
     }
 //*/
 }
