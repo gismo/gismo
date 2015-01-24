@@ -571,7 +571,7 @@ void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,co
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateCharMatrices
+void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
 {
     // Make sure we have computed enough levels
     needLevel( m_tree.getMaxInsLevel() );
@@ -993,12 +993,13 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, T knotValue
     {
         for(unsigned int i =lvl;i < m_bases.size();i++)
             m_bases[i]->component(dir).insertKnot(knotValue,mult);
-        update_structure();
     }
     else
     {
         gsWarn<<"Knot value not in the given knot vector."<<std::endl;
     }
+
+    update_structure();
 }
 
 

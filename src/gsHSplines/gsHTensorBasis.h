@@ -133,7 +133,7 @@ public:
             insert_box(i1,i2,boxes[i*(2*d+1)]);
         }
 
-        // Build the characteristic matrices
+        // Build the characteristic matrices (note: call is non-vritual)
         update_structure();
     }
 
@@ -175,7 +175,7 @@ public:
 
             insert_box(k1,k2,level+1);
 
-            // Build the characteristic matrices
+            // Build the characteristic matrices (note: call is non-vritual)
             update_structure();
 
         }
@@ -216,7 +216,7 @@ public:
             /* m_boxHistory.push_back( box(k1,k2,levels[i]) );  */                      
             this->m_tree.insertBox(k1,k2, levels[i]);
             
-            // Build the characteristic matrices
+            // Build the characteristic matrices (note: call is non-vritual)
             update_structure();
         }
     }
@@ -235,7 +235,7 @@ public:
                  ::const_iterator it = 
                  o.m_bases.begin(); it != o.m_bases.end(); ++it )
             m_bases.push_back( (*it)->clone() );
-        }
+    }
     
     /// Destructor
     virtual ~gsHTensorBasis() 
@@ -246,15 +246,10 @@ public:
 
 protected:
 
-    // Members that will be changed/removed
     // TO DO: remove these members after they are not used anymore
-
     std::vector<int> m_deg;
-    hdomain_type m_tree;
 
 protected:
-
-    // The good members that will stay
 
     /// \brief The list of nestes spaces.
     ///
@@ -286,7 +281,7 @@ protected:
     std::vector< CMatrix > m_xmatrix;
 
     /// The tree structure of the index space
-
+    hdomain_type m_tree;
 
     // // Stores the coordinates of all inserted boxes
     // (for debugging purposes)

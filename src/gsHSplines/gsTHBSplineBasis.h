@@ -46,32 +46,37 @@ public:
 public:
 
     /// Constructor out of a 2D Tensor BSpline Basis
-    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, int nlevels = 10) : gsHTensorBasis<d,T>(tbasis, nlevels) {
-        initialize();
-    }
+    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
+                     int nlevels = 10) 
+    : gsHTensorBasis<d,T>(tbasis, nlevels) 
+    { representBasis(); }
 
-    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, std::vector<unsigned> boxes, int nlevels = 10) : gsHTensorBasis<d,T>(tbasis, nlevels, boxes) {
-        initialize();
-    }
+    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
+                     const std::vector<unsigned> & boxes, 
+                     int nlevels = 10) 
+    : gsHTensorBasis<d,T>(tbasis, nlevels, boxes)
+    { representBasis(); }
 
-    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, gsMatrix<T> const & boxes, int nlevels = 10) : gsHTensorBasis<d,T>(tbasis, nlevels, boxes) {
-        initialize();
-    }
+    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
+                     gsMatrix<T> const & boxes, 
+                     int nlevels = 10) 
+    : gsHTensorBasis<d,T>(tbasis, nlevels, boxes) 
+    {  representBasis(); }
 
-    gsTHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis, gsMatrix<T> const & boxes, std::vector<unsigned int> levels, int nlevels = 10): gsHTensorBasis<d,T>(tbasis, nlevels, boxes, levels){
-        initialize();
-    }
+    gsTHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
+                      gsMatrix<T> const & boxes, 
+                      std::vector<unsigned int> levels, 
+                      int nlevels = 10)
+    : gsHTensorBasis<d,T>(tbasis, nlevels, boxes, levels)
+    {  representBasis(); }
+
     /// Constructor out of a tensor BSpline Basis
     gsTHBSplineBasis(gsBasis<T> const&  tbasis, int nlevels = 10)
         : gsHTensorBasis<d,T>(tbasis, nlevels)
-    {
-        // initialize(); // is done in the base constructor
-    }
+    {  representBasis(); }
 
     ~gsTHBSplineBasis()
-    {
-
-    }
+    { }
 
 public:
 
@@ -309,6 +314,17 @@ public:
     // eval_into from the base class.
     using gsBasis<T>::eval_into;
 
+    /// \brief Returns the number of truncated basis functions
+    unsigned numTruncated() const
+    { return m_presentation.size(); }
+
+    /// \brief Returns an iterator to the representation of the first truncated basis function
+    typename std::map<unsigned, gsSparseVector<T> >::const_iterator truncatedBegin() const
+    { return m_presentation.begin(); }
+
+    /// \brief Returns an iterator past the last truncated basis function
+    typename std::map<unsigned, gsSparseVector<T> >::const_iterator truncatedEnd() const
+    { return m_presentation.end(); }
 
     /// Returns sparse representation of the i-th basis function.
     const gsSparseVector<T>& getCoefs(unsigned i) const
@@ -329,9 +345,6 @@ public:
                          const gsMatrix<T>& u,
                          gsMatrix<T>& result) const;
 
-    ///look into gsHTensorBasis
-    void increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult = 1);
-
 private:
 
     unsigned getPresLevelOfBasisFun(const unsigned index) const
@@ -347,7 +360,7 @@ private:
     }
 
     /// @brief Computes and saves representation of all basis functions.
-    void representBasis();
+    void representBasis(); // rename: precompute coeffs
 
 
     /// Computes representation of j-th basis function on pres_level and
@@ -519,20 +532,6 @@ public:
     void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const;
 
 
-
-  // see gsBasis.h for documentation
-  /*
-   * @brief Insert the given boxes into the quadtree.
-   * @param boxes matrix of size (dim x (num(boxes) * 2)) - subsequent columns in the matrix define a box in the parameter space
-   */
-  void refine(gsMatrix<T> const & boxes);
-
-  // see gsHTensorBasis.h for documentation
-  void refineElements(std::vector<unsigned> const & boxes);
-
-  // see gsBasis.h for documentation
-  void uniformRefine(int numKnots = 1, int mul=1);
-
   /**
    * @brief Initializes the \a cmatrix with 0 for evaluation of basis functions.
    */
@@ -559,8 +558,12 @@ private:
      * @brief Initialize the characteristic and coefficient
      * matrices and the internal bspline representations.
     **/
-    void initialize();
-    void update_structure() {gsHTensorBasis<d,T>::update_structure(); initialize();}
+    void update_structure() 
+    {
+        gsHTensorBasis<d,T>::update_structure(); 
+        representBasis();
+    }
+
     /**
      * @brief Returns the coefficients computed by Boehm algorithm (called by \ref getBsplinePatchGlobal).
      * @param level maximum refinement level
@@ -588,10 +591,8 @@ private:
 private:
 
     // m_is_truncated(j)
-    // if -1: j-th basis function is not truncated,
-    // if  1: j-th basis function is truncated and its representation is in 1 level
-    // if  2: j-th basis function is truncated and its representation is in 2 level
-    // ...
+    // if -1   : j-th basis function is not truncated,
+    // if  \em k>0 : j-th basis function is truncated and its representation level is \em k
     gsVector<int> m_is_truncated;
 
 

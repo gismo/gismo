@@ -378,41 +378,6 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
     return nmb_of_coefs;
 }
 
-
-template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::initialize()
-{
-    this->representBasis();
-}
-
-
-template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::uniformRefine(int numKnots, int mul)
-{
-    gsHTensorBasis<d,T>::uniformRefine(numKnots,mul);
-    this->initialize();
-}
-
-
-//add to the domain structure the boxes defined in "boxes"
-template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes)
-{
-    gsHTensorBasis<d,T>::refine(boxes);
-    this->initialize();
-}
-
-
-//add to the domain structure the boxes defined in "boxes"
-template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
-{
-    gsHTensorBasis<d,T>::refineElements(boxes);
-    this->initialize();
-}
-
-
-
 // return the B-spline representation of a THB-spline subpatch
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned level, const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsCompactKnotVector<T>& k1, gsCompactKnotVector<T>& k2) const
@@ -1644,12 +1609,6 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
         }
     }
     return result;
-}
-
-template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult){
-    gsHTensorBasis<d,T>::increaseMultiplicity(lvl,dir,knotValue,mult);
-    this->initialize();
 }
 
 
