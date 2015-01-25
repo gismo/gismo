@@ -395,6 +395,7 @@ public:
         return m_bases[i]->degree(); 
     }
 
+    // to remove
     int degree() const 
     { 
         int td = 0;
@@ -430,6 +431,13 @@ public:
         return td;
     }
 
+    gsVector<int> cwiseDegree() const
+    {
+        gsVector<int> deg(d);
+        for (unsigned k=0; k!=d; ++k)
+            deg[k] = m_bases[k]->degree();
+        return deg;
+    }
 
     /// Returns the global index of the basis function created by
     /// components of indices i,j,k (for 2d or 3d only)
@@ -642,6 +650,13 @@ public:
     /// The number of basis functions in the direction of the k-th parameter component
     void size_cwise(gsVector<unsigned,1> & result) const 
     { result[0] = Basis_t::size(); }
+
+    gsVector<int> cwiseDegree() const
+    {
+        gsVector<int> deg(1);
+        deg[0] = this->degree();
+        return deg;
+    }
     
     /// Returns all the basis functions with tensor-numbering \a k in direction \a dir 
     typename gsMatrix<unsigned>::uPtr slice(int dir, int k) const

@@ -56,7 +56,7 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
     gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > &tpBasis = 
         this->basis().tensorLevel(this->basis().maxLevel());
 
-    gsTensorBSplineBasis<d,T> newtpBasis(tpBasis.knots(0), tpBasis.knots(0)); 
+    gsTensorBSplineBasis<d,T> newtpBasis(tpBasis.knots(0), tpBasis.knots(1)); 
     // makeGeometry returns an abstract class, so we need to cast to the particular.
     gsTensorBSpline<d,T> *newGeo = 
         static_cast< gsTensorBSpline<d,T> *>(newtpBasis.makeGeometry(this->coefs()));
