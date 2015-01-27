@@ -1381,9 +1381,9 @@ public:
 
         if ( s == "TensorBSplineBasis2" )
             return gsXml< gsTensorBSplineBasis<2, T, gsKnotVector<T> > >::get(node);
-        if ( s == "TensorNurbsBasis3" )
+        if ( s == "TensorBSplineBasis3" )
             return gsXml< gsTensorBSplineBasis<3, T, gsKnotVector<T> > >::get(node);
-        if ( s == "TensorNurbsBasis4" )
+        if ( s == "TensorBSplineBasis4" )
             return gsXml< gsTensorBSplineBasis<4, T, gsKnotVector<T> > >::get(node);
 
         if ( s == "TensorNurbsBasis2" )

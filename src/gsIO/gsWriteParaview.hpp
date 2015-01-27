@@ -1,3 +1,16 @@
+/** @file gsWriteParaview.h
+
+    @brief Provides implementation of functions writing Paraview files.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
+
  
 #pragma once
 
@@ -19,6 +32,92 @@
 
 namespace gismo
 {
+
+// Export a 3D parametric mesh
+template<class T>
+void writeSingleBasisMesh3D(const gsMesh<T> & sl,
+                            std::string const & fn)
+{
+    const unsigned numVer = sl.numVertices;
+    const unsigned numEl  = numVer / 8;
+    std::string mfn(fn);
+    mfn.append(".vtu");
+    std::ofstream file(mfn.c_str());
+    if ( ! file.is_open() )
+        std::cout<<"Problem opening "<<fn<<std::endl;
+    file << std::fixed; // no exponents
+    file << std::setprecision (PLOT_PRECISION);
+    
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    file <<"<UnstructuredGrid>\n";
+    
+    // Number of vertices and number of cells
+    file <<"<Piece NumberOfPoints=\""<< numVer <<"\" NumberOfCells=\""<<numEl<<"\">\n";
+    
+    // Coordinates of vertices
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
+    {
+        file << ((*it)->coords)[0] << " " << ((*it)->coords)[1] << " " << ((*it)->coords)[2] << " \n";
+    }
+    file << "\n";
+    file <<"</DataArray>\n";
+    file <<"</Points>\n";
+
+    // Point data
+    file <<"<PointData Scalars=\"CellVolume\">\n";
+    file <<"<DataArray type=\"Float32\" Name=\"CellVolume\" format=\"ascii\" NumberOfComponents=\"1\">\n";
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
+    {
+        file << (*it)->data <<" ";
+    }
+    file << "\n";
+    file <<"</DataArray>\n";
+    file <<"</PointData>\n";
+
+    // Cells
+    file <<"<Cells>\n";
+
+    // Connectivity
+    file <<"<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    for (unsigned i = 0; i!= numVer;++i)
+    {
+        file << i << " ";
+    }
+    file << "\n";
+    file <<"</DataArray>\n";
+
+    // Offsets
+    file << "<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    for (unsigned i = 1; i<= numEl;++i)
+    {
+        file << 8*i << " ";
+    }
+    file << "\n";
+    file << "</DataArray>\n";
+
+    // Type
+    file << "<DataArray type=\"Int32\" Name=\"types\" format=\"ascii\">\n";
+    for (unsigned i = 1; i<= numEl;++i)
+    {
+        file << "11 ";
+    }
+    file << "\n";
+    file << "</DataArray>\n";
+
+    file <<"</Cells>\n";
+    file << "</Piece>\n";
+    file <<"</UnstructuredGrid>\n";
+    file <<"</VTKFile>\n";
+    file.close();
+    
+    //if( pvd ) // make a pvd file
+    //    makeCollection(fn, ".vtp");
+}
+
+
   
 /// Export a parametric mesh
 template<class T>
@@ -27,7 +126,10 @@ void writeSingleBasisMesh(const gsBasis<T> & basis,
 {
     gsMesh<T> msh;
     makeMesh<T>(basis, msh);
-    gsWriteParaview(msh, fn, false);
+    if ( basis.dim() == 3)
+        writeSingleBasisMesh3D(msh,fn);
+    else
+        gsWriteParaview(msh, fn, false);
 }
 
 /// Export a computational mesh
@@ -340,8 +442,8 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
 
     if ( d > 2 )
     {
-        gsWarn<<"Info: The dimension is to big, projecting into first 2 coordinatess..\n";
-    d=2;
+//        gsWarn<<"Info: The dimension is to big, projecting into first 2 coordinatess..\n";
+        d=2;
         pts.conservativeResize(2,eval_geo.cols());
     }
 

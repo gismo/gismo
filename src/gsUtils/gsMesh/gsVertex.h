@@ -88,6 +88,7 @@ public:
     std::vector<gsFaceHandle> faces;
     int numEdges;
     
+    T data;
 };
   
   template<class T>

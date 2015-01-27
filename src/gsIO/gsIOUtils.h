@@ -297,6 +297,7 @@ void makeMesh(const gsBasis<T>& basis, gsMesh<T> & mesh, int n = 0)
     {
         const gsVector<T>& low = domIter->lowerCorner();
         const gsVector<T>& upp = domIter->upperCorner();
+        const T vol = domIter->volume();
 
         vertex.setZero();
         cur.setZero();
@@ -311,8 +312,9 @@ void makeMesh(const gsBasis<T>& basis, gsMesh<T> & mesh, int n = 0)
                 vertex(dim) = ( cur(dim) ?  upp(dim) : low(dim) );
             }
 
-            mesh.addVertex(vertex);
-            map[counter++] = mesh.vertex.back();
+            Vertex v = mesh.addVertex(vertex);
+            v->data  = vol;
+            map[counter++] = v;
 
         } while (nextCubePoint<gsVector<unsigned> >(cur, zeros, ones));
 
