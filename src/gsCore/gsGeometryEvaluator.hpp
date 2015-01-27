@@ -60,12 +60,34 @@ struct jacobianPartials<3,T>
         // Note: stride is 6
         //dx
         DJac[0](0,0) = secDer(0);//G1xx
+        DJac[0](0,1) = secDer(3);//G1xy
+        DJac[0](0,2) = secDer(4);//G1xz
+        DJac[0](1,0) = secDer(6);//G2xx
+        DJac[0](1,1) = secDer(9);//G2xy
+        DJac[0](1,2) = secDer(10);//G2xz
+        DJac[0](2,0) = secDer(12);//G3xx
+        DJac[0](2,1) = secDer(15);//G3xy
+        DJac[0](2,2) = secDer(16);//G3xz
         //dy
         DJac[1](0,0) = secDer(3);//G1yx
+        DJac[1](0,1) = secDer(1);//G1yy
+        DJac[1](0,2) = secDer(5);//G1yz
+        DJac[1](1,0) = secDer(9);//G2yx
+        DJac[1](1,1) = secDer(7);//G2yy
+        DJac[1](1,2) = secDer(11);//G2yz
+        DJac[1](2,0) = secDer(15);//G3yx
+        DJac[1](2,1) = secDer(13);//G3yy
+        DJac[1](2,2) = secDer(17);//G3yz
         //dz
         DJac[2](0,0) = secDer(4);//G1zx
-
-        GISMO_ERROR("Not implemented.");
+        DJac[2](0,1) = secDer(5);//G1zy
+        DJac[2](0,2) = secDer(2);//G1zz
+        DJac[2](1,0) = secDer(10);//G2zx
+        DJac[2](1,1) = secDer(11);//G2zy
+        DJac[2](1,2) = secDer(8);//G2zz
+        DJac[2](2,0) = secDer(16);//G3zx
+        DJac[2](2,1) = secDer(17);//G3zy
+        DJac[2](2,2) = secDer(14);//G3zz
     }
 };
 
