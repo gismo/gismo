@@ -58,36 +58,36 @@ struct jacobianPartials<3,T>
     {
         DJac.resize(3, gsMatrix<T>(3,3) );
         // Note: stride is 6
-        //dx
-        DJac[0](0,0) = secDer(0);//G1xx
-        DJac[0](0,1) = secDer(3);//G1xy
-        DJac[0](0,2) = secDer(4);//G1xz
-        DJac[0](1,0) = secDer(6);//G2xx
-        DJac[0](1,1) = secDer(9);//G2xy
-        DJac[0](1,2) = secDer(10);//G2xz
-        DJac[0](2,0) = secDer(12);//G3xx
-        DJac[0](2,1) = secDer(15);//G3xy
-        DJac[0](2,2) = secDer(16);//G3xz
-        //dy
-        DJac[1](0,0) = secDer(3);//G1yx
-        DJac[1](0,1) = secDer(1);//G1yy
-        DJac[1](0,2) = secDer(5);//G1yz
-        DJac[1](1,0) = secDer(9);//G2yx
-        DJac[1](1,1) = secDer(7);//G2yy
-        DJac[1](1,2) = secDer(11);//G2yz
-        DJac[1](2,0) = secDer(15);//G3yx
-        DJac[1](2,1) = secDer(13);//G3yy
-        DJac[1](2,2) = secDer(17);//G3yz
-        //dz
-        DJac[2](0,0) = secDer(4);//G1zx
-        DJac[2](0,1) = secDer(5);//G1zy
-        DJac[2](0,2) = secDer(2);//G1zz
-        DJac[2](1,0) = secDer(10);//G2zx
-        DJac[2](1,1) = secDer(11);//G2zy
-        DJac[2](1,2) = secDer(8);//G2zz
-        DJac[2](2,0) = secDer(16);//G3zx
-        DJac[2](2,1) = secDer(17);//G3zy
-        DJac[2](2,2) = secDer(14);//G3zz
+        //du
+        DJac[0](0,0) = secDer(0 );//G1uu
+        DJac[0](0,1) = secDer(3 );//G1uv
+        DJac[0](0,2) = secDer(4 );//G1uw
+        DJac[0](1,0) = secDer(6 );//G2uu
+        DJac[0](1,1) = secDer(9 );//G2uv
+        DJac[0](1,2) = secDer(10);//G2uw
+        DJac[0](2,0) = secDer(12);//G3uu
+        DJac[0](2,1) = secDer(15);//G3uv
+        DJac[0](2,2) = secDer(16);//G3uw
+        //dv
+        DJac[1](0,0) = secDer(3 );//G1vu
+        DJac[1](0,1) = secDer(1 );//G1vv
+        DJac[1](0,2) = secDer(5 );//G1vw
+        DJac[1](1,0) = secDer(9 );//G2vu
+        DJac[1](1,1) = secDer(7 );//G2vv
+        DJac[1](1,2) = secDer(11);//G2vw
+        DJac[1](2,0) = secDer(15);//G3vu
+        DJac[1](2,1) = secDer(13);//G3vv
+        DJac[1](2,2) = secDer(17);//G3vw
+        //dw
+        DJac[2](0,0) = secDer(4 );//G1wu
+        DJac[2](0,1) = secDer(5 );//G1wv
+        DJac[2](0,2) = secDer(2 );//G1ww
+        DJac[2](1,0) = secDer(10);//G2wu
+        DJac[2](1,1) = secDer(11);//G2wv
+        DJac[2](1,2) = secDer(8 );//G2ww
+        DJac[2](2,0) = secDer(16);//G3wu
+        DJac[2](2,1) = secDer(17);//G3wv
+        DJac[2](2,2) = secDer(14);//G3ww
     }
 };
 
@@ -452,6 +452,92 @@ transformGradsHdiv( index_t k,
         }
     }
 //*/
+}
+
+
+template <class T, int ParDim, int codim>  // JS2: Not yet tested
+void gsGenericGeometryEvaluator<T,ParDim,codim>::
+transformLaplaceH(  index_t k,
+                    const gsMatrix<T> & allGrads,
+                    const gsMatrix<T> & allHessians,
+                    gsMatrix<T> & result) const
+{
+    //allgrads
+    const index_t numGrads = allGrads.rows() / ParDim;// we want col(k) of all grads and allHessians.
+    // result: 1 X numGrads
+    const index_t n2d = (ParDim + (ParDim*(ParDim-1))/2);
+
+    const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
+    std::vector<gsMatrix<T> > DJac; // [0]: J_t   [1]: J_s etc...
+    std::vector<gsMatrix<T> > DJacPhys; // [0]: J_x   [1]: J_y etc...
+    jacobianPartials<ParDim,T>::compute(secDer,DJac);
+
+    //Find the partial derivative wrt the physical cordinates c.
+    for(index_t c = 0; c < GeoDim; ++c)
+    {
+        DJacPhys[c] = DJac[0]*m_jacInvs(c,k*ParDim);
+        for(index_t j = 1; j < GeoDim; ++j)
+        {
+            DJacPhys[c] += DJac[j]*m_jacInvs(c,j+k*ParDim);
+        }
+    }
+    //t_xx s_xx
+    //t_yy s_yy
+    gsMatrix<T> jac2inv(GeoDim, GeoDim);
+    for(index_t c = 0; c < GeoDim; ++c)
+    {
+        // - J⁻¹ dJ/dx_c J⁻¹ = dJ⁻¹/dx
+        gsMatrix<T> DJacInvPhys = -m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose()
+                * DJacPhys[c]*m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
+        jac2inv.row(c) = DJacInvPhys.col(c).transpose();
+    }
+
+
+    //Dim GeoDim X numGrads
+    const gsAsConstMatrix<T,ParDim> grads_k(allGrads.col(k).data(), ParDim, numGrads);
+    gsMatrix<T> collaps;
+    collaps.setOnes(1,ParDim);
+    result.noalias() = collaps*(jac2inv * grads_k);
+
+    //result dim: geodim X numGrads
+
+    //J⁻¹J⁻T
+    gsMatrix<T> tmp = m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose()
+                    * m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
+
+    gsMatrix<T> hessian(ParDim, ParDim);
+    for (index_t i = 0; i < numGrads ; ++i)
+    {
+        //2D specific case
+        if (ParDim == 2)
+        {
+            hessian(0,0) = allHessians(0+i*n2d,k);
+            hessian(1,1) = allHessians(1+i*n2d,k);
+            hessian(0,1) = allHessians(2+i*n2d,k);
+            hessian(1,0) = allHessians(2+i*n2d,k);
+        }
+        //3D specific case
+        if (ParDim == 3)
+        {
+            hessian(0,0) = allHessians(0+i*n2d,k);
+            hessian(1,1) = allHessians(1+i*n2d,k);
+            hessian(2,2) = allHessians(2+i*n2d,k);
+            hessian(0,1) = allHessians(3+i*n2d,k);
+            hessian(1,0) = allHessians(3+i*n2d,k);
+            hessian(0,2) = allHessians(4+i*n2d,k);
+            hessian(2,0) = allHessians(4+i*n2d,k);
+            hessian(1,2) = allHessians(5+i*n2d,k);
+            hessian(2,1) = allHessians(5+i*n2d,k);
+        }
+        //Frobenius mutiplication of tmp and hessian
+        //Exployting symmetry
+        for(index_t c = 0; c < GeoDim; ++c)
+        {
+            result(1,i) += tmp.row(c)*hessian.col(c);
+        }
+
+    }
+
 }
 
 

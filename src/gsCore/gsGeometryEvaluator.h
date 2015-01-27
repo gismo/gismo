@@ -390,6 +390,14 @@ public:
     /// See the other transformGradients() for documentation.
     virtual void transformGradients(index_t k, const typename gsMatrix<T>::Block allGrads, gsMatrix<T>& trfGradsK) const = 0;
 
+    /// \brief Transforms paramatric 1st and 2ed derivatives to Laplacians on the physical domain.
+    ///
+    /// \todo test and document!
+    virtual void transformLaplaceH(index_t k,
+                                   const gsMatrix<T> & allgrads,
+                                   const gsMatrix<T> & allHessians,
+                                   gsMatrix<T> & result) const = 0;
+
     /// Computes the outer normal on side \a s
     /// Assumes that points \a u are on the side 
     /// result is a vector containing the normal vector
@@ -529,6 +537,12 @@ public:
           }
           // */
     }
+
+    void transformLaplaceH(index_t k,
+                           const gsMatrix<T> & allgrads,
+                           const gsMatrix<T> & allHessians,
+                           gsMatrix<T> & result) const;
+
 
     /// \note This implementation silently assumes a tensor domain
     void outerNormal(index_t k, boxSide s, gsVector<T> & result) const
