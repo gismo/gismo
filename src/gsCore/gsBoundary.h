@@ -625,6 +625,11 @@ public:
     const gsVector<bool> & dirOrientation()  const
     { return directionOrientation; }
 
+    
+    void matchDofs(gsVector<int>    bSize, 
+                   gsMatrix<unsigned> & b1, 
+                   gsMatrix<unsigned> & b2) const;
+
 private:
 
     patchSide ps1; ///< The first patch side.

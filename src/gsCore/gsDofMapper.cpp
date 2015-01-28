@@ -90,7 +90,7 @@ void gsDofMapper::matchDofs(index_t u, const gsMatrix<unsigned> & b1,
                             index_t v,const gsMatrix<unsigned> & b2)
 {
     const index_t sz = b1.size();
-    GISMO_ASSERT( sz == b1.size(), "Waiting for same number of DoFs");
+    GISMO_ASSERT( sz == b2.size(), "Waiting for same number of DoFs");
     for ( index_t k=0; k<sz; ++k)
         this->matchDof( u, b1(k,0), v, b2(k,0) );
 }

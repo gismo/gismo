@@ -13,6 +13,7 @@
 
 
 #include <gsCore/gsBoundary.h>
+#include <gsTensor/gsTensorTools.h>
 
 namespace gismo {
 
@@ -31,6 +32,40 @@ void boxSide::getContainedCorners (int dim, std::vector<boxCorner> &corners) con
     }
 }
 
+
+void boundaryInterface::matchDofs(gsVector<int>    bSize,
+                                  gsMatrix<unsigned> & b1,
+                                  gsMatrix<unsigned> & b2) const
+{
+    // Get structure of the interface dofs
+    const index_t s1 = first() .direction();
+    const index_t s2 = second().direction();
+    const index_t p1 = first() .patch;
+    const index_t p2 = second().patch;
+    const gsVector<bool>    & dirOr = dirOrientation();
+    const gsVector<index_t> & bMap  = dirMap();
+    const index_t  d = bMap.size();
+    gsVector<int>  bPerm(d-1);
+    gsVector<bool> bOrnt(d-1);
+    index_t c = 0;
+    for (index_t k = 0; k<d; ++k )
+    {
+        if ( k == s1 ) continue;
+        bOrnt[c] = dirOr[k];
+        bPerm[c] = ( bMap[k] < s2 ? bMap[k] : bMap[k]-1 );
+        c++;
+    }
+    
+    // Permute
+    permuteTensorVector<unsigned,-1>(bPerm, bSize, b1);
+    
+    // Flip
+    for (c = 0; c+1<d; ++c )
+        if ( ! bOrnt[c] )
+            flipTensorVector(c,bSize, b1);
 }
+
+
+} //namespace gismo
 
 
