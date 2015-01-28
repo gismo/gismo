@@ -132,7 +132,7 @@ void permuteTensorVector( const gsVector<int,d> & perm,
                           gsMatrix<T> & coefs)
 {
     const int dd = sz.size();
-
+    GISMO_ASSERT( sz.prod()  == coefs.size(), "Input error, sizes do not match.");
     GISMO_ASSERT( perm.sum() == dd*(dd-1)/2, "Error in the permutation: "<< perm.transpose());
 
     Eigen::PermutationMatrix<d> P(perm);
@@ -151,10 +151,41 @@ void permuteTensorVector( const gsVector<int,d> & perm,
     do 
     {
         tmp.row( perstr.dot(P*v) ) = coefs.row( r++ );
-    } while (nextLexicographic(v, sz));
+    } 
+    while (nextLexicographic(v, sz));
 
     coefs.swap(tmp);
     sz = P * sz;
 }
+
+
+// in place
+template <typename T, int d>
+void flipTensorVector( const int dir, 
+                       gsVector<int,d> & sz, 
+                       gsMatrix<T> & coefs)
+{
+    GISMO_ASSERT( sz.prod()  == coefs.size(), "Input error, sizes do not match.");
+    const int dd = sz.size();
+
+    gsVector<int,d> perstr(dd);
+    tensorStrides<d>(sz, perstr);
+
+    gsDebugVar(perstr.transpose() );
+
+    gsVector<int,d> v(dd);
+    v.setZero();
+    const int cc = sz[dir] - 1; 
+    sz[dir] /= 2;
+    gsVector<int,d> vfl(dd);
+    do
+    {
+        vfl = v; // to do, use stride 
+        vfl[dir]=cc-v[dir];
+        coefs.row( perstr.dot(v) ).swap( coefs.row( perstr.dot(vfl)) );
+    } 
+    while (nextLexicographic(v, sz));
+}
+
 
 } // namespace gismo
