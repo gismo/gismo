@@ -318,6 +318,11 @@ public:
     unsigned numTruncated() const
     { return m_presentation.size(); }
 
+    bool isTruncated(unsigned i) const
+    {
+        return (this->m_is_truncated[i] != -1);
+    }
+
     /// \brief Returns an iterator to the representation of the first truncated basis function
     typename std::map<unsigned, gsSparseVector<T> >::const_iterator truncatedBegin() const
     { return m_presentation.begin(); }
