@@ -172,33 +172,20 @@ public:
     /// after m_bases have already been set
     void setMatchingInterfaces(const gsBoxTopology & mp);
 
-
-    /** \brief Calls matchDof() for all pairs of dofs on the given interface \a i between two patches.
-     *
-     * \warning Orientation is currently not implemented for 3D.
-     */
-    // 
-    void matchInterface( boundaryInterface const & i );
-
-    void matchInterface( index_t k1, index_t k2,
-                         const gsMatrix<unsigned> & b1, 
-                         const gsMatrix<unsigned> & b2, 
-                         const gsVector<bool> &orient );
-
     /** \brief Calls matchDof() for all dofs on the given patch side
      * \a i ps. Thus, the whole set of dofs collapses to a single global dof
      *
      */
     void colapseDofs(index_t k, const gsMatrix<unsigned> & b );
 
-    /** \brief Calls matchDof() for all dofs on the given patch sides
-     * \a i psList. Thus, the whole side collapses to a single global dof
-     *
-     */
-    void colapseSides( std::vector<patchSide> const & psList );
-
-    /// Couples dof \a i of patch \a u with dof \a j of patch \a v such that they refer to the same global dof.
+    /// \brief Couples dof \a i of patch \a u with dof \a j of patch
+    /// \a v such that they refer to the same global dof.
     void matchDof( index_t u, index_t i, index_t v, index_t j );
+
+    /// \brief Couples dofs \a b1 of patch \a u with dofs \a b2 of patch
+    /// \a v one by one such that they refer to the same global dof.
+    void matchDofs(index_t u, const gsMatrix<unsigned> & b1,
+                   index_t v, const gsMatrix<unsigned> & b2);
 
     // to do: put k at the end
     void markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs );

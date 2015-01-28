@@ -358,7 +358,10 @@ public:
     }
 
 
-    
+//private: // to do
+
+    void matchInterface(const boundaryInterface & bi,
+                        gsDofMapper & mapper) const;
 
     // Data members
 private:

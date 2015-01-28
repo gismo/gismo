@@ -377,6 +377,28 @@ gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary(boxSide const& s) const
     return this->slice(k, (r ? size(k) - 1 : 0) ).release();
 }
 
+/*
+template<unsigned d, class Basis_t >
+void gsTensorBasis<d,Basis_t>::boundary_into(boxSide const & s, gsMatrix<int> & bstruct, gsMatrix<unsigned>& result) const
+{
+    //get m_bases index and start or end case
+    index_t k = s.direction();
+    index_t r = s.parameter();
+
+    // Compute the structure of the boundary dofs
+    bstruct.resize(d-1);
+    index_t c = 0;
+    for (index_t k = 0; k<d; ++k )
+    {
+        if ( k == s ) continue;
+        bSize[c] = m_bases[k]->size();
+        c++;
+    }
+
+    return this->slice(k, (r ? size(k) - 1 : 0) ).release();
+}
+//*/
+
 template <unsigned d, class BB, class B>
 struct MakeBoundaryBasis
 {

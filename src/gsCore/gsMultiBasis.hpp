@@ -15,8 +15,8 @@
 
 #include <iterator>
 
-#include <gsUtils/gsCombinatorics.h>
 #include <gsCore/gsMultiPatch.h>
+#include <gsUtils/gsCombinatorics.h>
 
 namespace gismo
 {
@@ -43,7 +43,7 @@ gsMultiBasis<T>::gsMultiBasis( const gsMultiBasis& other )
   m_topology      ( other.m_topology     )
 {
     cloneAll( other.m_bases.begin(), other.m_bases.end(),
-               this->m_bases.begin() );
+              this->m_bases.begin() );
 }
 
 template<class T>
@@ -145,14 +145,7 @@ void gsMultiBasis<T>::getMapper(bool conforming, gsDofMapper & mapper) const
         for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
               it != m_topology.iEnd(); ++it )
         {
-            gsMatrix<unsigned>
-                * b1= m_bases[it->first().patch]->boundary( it->first().side() ),
-                * b2= m_bases[it->second().patch]->boundary( it->second().side() );
-            
-            mapper.matchInterface( it->first().patch, it->second().patch, *b1, *b2, it->orient());
-            
-            delete b1;
-            delete b2;
+            matchInterface(*it,mapper);
         }
     }
     
@@ -173,18 +166,45 @@ void gsMultiBasis<T>::getMapper(bool conforming,
         for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
               it != m_topology.iEnd(); ++it )
         {
-            gsMatrix<unsigned>
-                * b1= m_bases[it->first().patch]->boundary( it->first().side() ),
-                * b2= m_bases[it->second().patch]->boundary( it->second().side() );
-            
-            mapper.matchInterface( it->first().patch, it->second().patch, *b1, *b2, it->orient());
-            
-            delete b1;
-            delete b2;
+            matchInterface(*it,mapper);
         }
     }
 
     mapper.finalize();
 }
     
+template<class T>
+void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper & mapper) const
+{
+    // Grab the indices to be matched
+    gsMatrix<unsigned>
+        * b1= m_bases[bi.first() .patch]->boundary( bi.first() .side() ),
+        * b2= m_bases[bi.second().patch]->boundary( bi.second().side() );
+
+    // Compute tensor structure of b1 -- to do move to tensor basis
+    const index_t d = dim();
+    const index_t p1 = bi.first().patch;
+    const index_t s1 = bi.first().direction();
+    gsVector<int>  bSize(d-1);
+    index_t c = 0;
+    for (index_t k = 0; k<d; ++k )
+    {
+        if ( k == s1 ) continue;
+        bSize[c] = m_bases[p1]->component(k).size();
+        c++;
+    }
+
+    // Reorder the indices so that they match on the interface
+    bi.matchDofs(bSize, *b1, *b2);
+
+    // All set, match interface dofs
+    for (index_t c = 0; c<b1->size(); ++c)
+        mapper.matchDof(bi.first().patch, (*b1)(c,0), bi.second().patch, (*b2)(c,0) );
+
+    delete b1;
+    delete b2;
+}
+
+
+
 } // namespace gismo

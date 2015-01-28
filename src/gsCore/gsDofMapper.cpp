@@ -37,46 +37,6 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
         globals(i,0) = MAPPER_PATCH_DOF(locals(i,0), patchIndex)+m_shift;
 }
 
-// This function can not have enough information to do its job if dim>2
-// GISMO_DEPRECATED
-void gsDofMapper::matchInterface( index_t k1, index_t k2,
-                                     const gsMatrix<unsigned> & b1,
-                                     const gsMatrix<unsigned> & b2,
-                                     const gsVector<bool> &orient )
-{
-    // Boundaries must be conforming (matching)
-    const index_t sz = b1.size();
-    if ( sz != b2.size() )
-    {
-        gsWarn<<"gsDofMapper: Problem: non-conforming interface "<<
-                "("    <<k1<<","<< //i.first().side<<
-                ")<->("<<k2<<","<< //i.second().side<<
-                ") ~ ("<<sz<<","<<b2.size() <<").\n";
-
-        gsWarn<< b1.transpose() << "\n";
-        gsWarn<< b2.transpose() << "\n";
-
-        GISMO_ERROR( "Non-conforming boundaries.\n" );
-    }
-
-    if( orient.size() )
-    {
-        if ( orient[0] == true ) // assumes 1D side
-        {
-            for ( index_t k=0; k<sz; ++k)
-                this->matchDof( k1, b1(k,0), k2, b2(k,0) );
-        }
-        else
-        {
-            for ( index_t k=0; k<sz; ++k)
-                this->matchDof( k1, b1(k,0), k2, b2(sz-k-1,0) );
-        }
-    }
-    else
-        for ( index_t k=0; k<sz; ++k)
-            this->matchDof( k1, b1(k,0), k2, b2(k,0) );
-}
-
 void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b )
 {
     const index_t last = b.size()-1;
@@ -126,6 +86,14 @@ void gsDofMapper::matchDof( index_t u, index_t i, index_t v, index_t j )
         --m_numFreeDofs;
 }
 
+void gsDofMapper::matchDofs(index_t u, const gsMatrix<unsigned> & b1,
+                            index_t v,const gsMatrix<unsigned> & b2)
+{
+    const index_t sz = b1.size();
+    GISMO_ASSERT( sz == b1.size(), "Waiting for same number of DoFs");
+    for ( index_t k=0; k<sz; ++k)
+        this->matchDof( u, b1(k,0), v, b2(k,0) );
+}
 
 void gsDofMapper::markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs )
 {
