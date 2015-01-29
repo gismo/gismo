@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
     printKnotVector(kv6);
     
     std::cout << "For other capabilites of gsKnotVector look at "
-        "src/gsCore/gsKnotVector.h\n" << std::endl;
+        "src/gsNurbs/gsKnotVector.h\n" << std::endl;
 
     return 0;
 }
