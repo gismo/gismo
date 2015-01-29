@@ -24,7 +24,7 @@ template<class T>
 class gsKnotVector;
 
   /** 
-      Iterator over the unique knot-values of a gsKnotVector.
+      @brief Iterator over the unique knot-values of a gsKnotVector.
       
       \ingroup Nurbs
   */

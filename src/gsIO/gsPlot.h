@@ -22,7 +22,7 @@
 namespace gismo
 {
   /** 
-      Class for scientific plotting
+      @brief Class for scientific plotting
       
       \ingroup IO
   */

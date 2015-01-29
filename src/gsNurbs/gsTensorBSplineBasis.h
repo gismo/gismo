@@ -44,7 +44,7 @@ struct gsTraits< gsTensorBSplineBasis<d,T,KnotVectorType>, d>
 };
 
 /** 
-    A tensor product B-spline basis.
+    @brief A tensor product B-spline basis.
 
     \param T coefficient type
     \param d dimension of the parameter domain

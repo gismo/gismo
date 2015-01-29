@@ -11,7 +11,7 @@ namespace gismo
 namespace internal
 {
 
-/// Get a Tensor BSpline from XML data
+/// @brief Get a Tensor BSpline from XML data
 ///
 /// \ingroup Nurbs
 template<unsigned d, class T, class KnotVectorType>

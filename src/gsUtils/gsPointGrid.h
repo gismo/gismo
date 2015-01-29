@@ -17,7 +17,7 @@
 
 namespace gismo {
 
-/// Construct a grid of points in the rectangle [a,b] using np[i] points in direction i
+/// @brief Construct a grid of points in the rectangle [a,b] using np[i] points in direction i
 /// \param a
 /// \param b
 /// \param np

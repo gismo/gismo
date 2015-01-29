@@ -24,7 +24,8 @@ namespace gismo
 // Documentation in gsDomainIterator.h
 // Class which enables iteration over all elements of a tensor product parameter domain
 
-/** Re-implements gsDomainIterator for iteration over all elements of a <b>tensor product</b> parameter domain.\n
+/** 
+ * @brief Re-implements gsDomainIterator for iteration over all elements of a <b>tensor product</b> parameter domain.\n
  * <em>See gsDomainIterator for more detailed documentation and an example of the typical use!!!</em>
  *
  * \ingroup Tensor

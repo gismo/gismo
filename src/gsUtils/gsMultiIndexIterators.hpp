@@ -15,7 +15,7 @@ namespace gismo {
 
 
 ///////////////////////////////////////////
-/// TENSOR GRID ITERATOR FUNCTIONS
+/// @brief TENSOR GRID ITERATOR FUNCTIONS
 /// 
 /// \ingroup Utils
 

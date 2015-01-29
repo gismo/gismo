@@ -22,7 +22,7 @@ namespace gismo
 template<typename T> class gsMFunctionExprPrivate;
 
 /** 
-    Class defining a multivariate function given by string
+    \brief Class defining a multivariate function given by string
     mathematical expressions.
 
     \ingroup function

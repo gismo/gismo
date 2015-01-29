@@ -6,7 +6,7 @@
 
 namespace gismo {
 
-/// Newton-Raphson method find a solution of the equation f(x) = y with starting vector x
+/// @brief Newton-Raphson method find a solution of the equation f(x) = y with starting vector x
 ///
 /// \ingroup Utils
 // function result: number of iterations >= 0 if root found, -1 if max_loop exceeded  

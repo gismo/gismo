@@ -23,7 +23,7 @@
 namespace gismo {
 
 /**
-   Class Representing a triangle mesh with 3D vertices.
+   \brief Class Representing a triangle mesh with 3D vertices.
    
    \ingroup Utils
 */

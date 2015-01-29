@@ -22,6 +22,7 @@ namespace gismo
 {
 
 /**
+  @brief 
    Class for performing a least squares fit to get a open/closed
    B-Spline curve for some given data
     

@@ -16,7 +16,7 @@ namespace gismo
 namespace internal
 {
 
-/// Get a TensorBSplineBasis from XML data
+/// @brief Get a TensorBSplineBasis from XML data
 template<unsigned d, class T, class KnotVectorType>
 class gsXml< gsTensorBSplineBasis<d,T,KnotVectorType> >
 {

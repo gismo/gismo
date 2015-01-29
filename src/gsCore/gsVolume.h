@@ -21,7 +21,7 @@ namespace gismo
 
 /** 
     \brief
-    Abstract base class representing a surface.
+    Provides declaration of Volume abstract interface.
 
     \ingroup geometry
     \ingroup Core

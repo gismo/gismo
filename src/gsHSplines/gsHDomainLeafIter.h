@@ -20,7 +20,7 @@ namespace gismo
 {
 
 /** 
-    Iterates over the leaves of an gsHDomain (tree).
+    @brief Iterates over the leaves of an gsHDomain (tree).
     
     \ingroup HSplines
 */

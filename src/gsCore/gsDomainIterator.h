@@ -21,7 +21,9 @@ namespace gismo
 {
 
 /** The gsDomainIterator \n
- * Class which enables iteration over all elements of a parameter domain.
+ * \brief Class which enables iteration over all elements of a parameter domain.
+ *
+ *
  * It also includes some additional functionality which is typically used
  * when assembling the system matrix for numerically solving a PDE.
  *

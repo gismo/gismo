@@ -152,7 +152,7 @@ inline void binomial_into( unsigned n, gsVector<unsigned>& v)
 
 
   /** 
-      Class for combinatorics. Generates ...
+      @brief Class for combinatorics. Generates ...
       
       \ingroup Utils
   */

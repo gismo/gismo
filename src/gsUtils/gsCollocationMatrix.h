@@ -18,7 +18,7 @@
 namespace gismo
 {
 
-///  Computes the collocation matrix of basis on the points u
+/// @brief Computes the collocation matrix of basis on the points u
 template<class T>
 void gsCollocationMatrix_into (gsBasis<T> const& basis, gsMatrix<T> const& u, 
                        gsSparseMatrix<T> & res);

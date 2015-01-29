@@ -40,7 +40,7 @@ struct lvl_coef
 
 
 /**
-* Class representing a (scalar) hierarchical tensor
+* @brief Class representing a (scalar) hierarchical tensor
 * basis of functions \f$ \mathbb R^d \to \mathbb R \f$.
 *
 *

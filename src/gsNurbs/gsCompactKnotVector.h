@@ -25,7 +25,8 @@ namespace gismo
 {
 
 /** 
-    Class representing a knot vector of a B-Spline space.
+    \brief Class representing a knot vector of a B-Spline space.
+    
     Representation is based on unique knots plus multiplicity information.
 
     Instead of saving eg. [0 0 0 0.5 1 1 1] we implement it as the value

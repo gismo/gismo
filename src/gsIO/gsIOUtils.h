@@ -26,6 +26,7 @@
 namespace gismo {
 
 
+/// @brief
 /// Writes body part of GoTools (.g2) format to a file.
 ///
 /// \param bspl tensor B-Spline

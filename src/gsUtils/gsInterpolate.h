@@ -19,7 +19,7 @@
 namespace gismo {
 
 /** 
-    Compute an interpolating function in basis \a g which has the given values \a vals
+    @brief Compute an interpolating function in basis \a g which has the given values \a vals
     at the given interpolation points \a pts in the parameter space.
 
     \tparam T   coefficient type
@@ -36,7 +36,7 @@ gsGeometry<T> * gsInterpolate( gsBasis<T> const& g, gsMatrix<T>
 
 
 /** 
-    Perform Lagrangian interpolation for the function \a f using the basis' anchors as interpolation points.
+    @brief Perform Lagrangian interpolation for the function \a f using the basis' anchors as interpolation points.
 
     \tparam T   coefficient type
     \param  g   The basis in which to interpolate the function.

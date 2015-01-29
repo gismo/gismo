@@ -24,8 +24,12 @@ namespace gismo
 {
 
 // Documentation in gsDomainIterator
-/** Re-implements gsDomainIterator for iteration over all boundary
-  * elements of a <b>hierarchical</b> parameter domain.\n <em>See
+/**
+  * @brief 
+  * Re-implements gsDomainIterator for iteration over all boundary
+  * elements of a <b>hierarchical</b> parameter domain.
+  * 
+  * <em>See
   * gsDomainIterator for more detailed documentation and an example of
   * the typical use!!!</em>\n Used, e.g., for basis of classes
   * gsHTensorBasis or gsTHBSplineBasis.

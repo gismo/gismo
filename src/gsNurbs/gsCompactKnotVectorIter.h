@@ -25,7 +25,7 @@ template<class T>
 class gsCompactKnotVector;
 
   /** 
-      Iterator for gsCompactKnotVector.
+      @brief Iterator for gsCompactKnotVector.
       
       Beware of non-const version: changing one knot value does not
       insert a new simple knot, but just changes the value of all

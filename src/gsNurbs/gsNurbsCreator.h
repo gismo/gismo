@@ -27,7 +27,7 @@ namespace gismo
 {
 
 /**
-   Class gsNurbsCreator provides some simple examples of Nurbs Geometries
+   @brief Class gsNurbsCreator provides some simple examples of Nurbs Geometries
    
    \ingroup Nurbs
 */

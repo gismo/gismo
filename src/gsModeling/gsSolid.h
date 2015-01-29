@@ -25,7 +25,7 @@
 
 namespace gismo {
 
-/// Class for representing a solid made up of vertices, edges, faces, and volumes.
+/// @brief Class for representing a solid made up of vertices, edges, faces, and volumes.
 ///
 /// \ingroup Modeling
 template <class T>

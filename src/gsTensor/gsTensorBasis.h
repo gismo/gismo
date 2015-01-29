@@ -23,7 +23,7 @@ namespace gismo
 template<unsigned d, class Basis_t > class gsTensorBasis;
 
 /** 
- *  Abstract base class for tensor product bases.
+ *  @brief Abstract base class for tensor product bases.
  *
  *   \param d dimension of the parameter domain
  *   \param Basis_t type of the coordinate-wise bases
@@ -526,6 +526,7 @@ protected:
 
 
 /** 
+ *  @brief 
  *  Class for a Tensor product spline space of dimension 1.
  *  This specialization is mainly for compatibility.
  *

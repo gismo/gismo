@@ -28,7 +28,7 @@ namespace gismo
 {
     
 /** 
-    Class gsTemplate object.
+    @brief Class gsTemplate object.
 
     A template is a structure defining a topological arrangement of a
     collection of parameter domains (that map to physical-domain

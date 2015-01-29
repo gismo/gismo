@@ -20,7 +20,8 @@
 namespace gismo
 {
 
-/// Helper function to compute a lexicographically numbered index from tensor indices.
+///
+/// @brief Helper function to compute a lexicographically numbered index from tensor indices.
 template <unsigned d>
 int fromTensorIndex(const gsVector<unsigned, d>& idx, const gsVector<unsigned, d>& sz)
 {

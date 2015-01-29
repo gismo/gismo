@@ -28,7 +28,9 @@
 namespace gismo
 {
 /**
-    Class for computing a closed B-spline curve with a smaller number of curvature extrema compared to a given closed B-spline curve  i.e. some
+    @brief Class for computing a closed B-spline curve with a smaller number of curvature extrema compared to a given closed B-spline curve
+
+    i.e. some
     kind of smoothing the curvature of the curve with the help of two different methods
     
     \ingroup Modeling

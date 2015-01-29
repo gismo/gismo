@@ -20,7 +20,7 @@ namespace gismo
 {
     
 /** 
-    Class gsTriMeshToSolid object.
+    @brief Class gsTriMeshToSolid object.
 
     Construct an instance of this class from a gsMesh, and then use it
     to perform "CAD model reconstruction" to produce a gsSolid.
