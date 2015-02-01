@@ -454,60 +454,21 @@ transformGradsHdiv( index_t k,
 //*/
 }
 
-
-template <class T, int ParDim, int codim>  // JS2: Not yet tested
+//JS2: Verified for the 2D case ("quarte Annulus")
+template <class T, int ParDim, int codim>
 void gsGenericGeometryEvaluator<T,ParDim,codim>::
-transformLaplaceH(  index_t k,
-                    const gsMatrix<T> & allGrads,
-                    const gsMatrix<T> & allHessians,
-                    gsMatrix<T> & result) const
+transformLaplaceHgrad(  index_t k,
+                        const gsMatrix<T> & allGrads,
+                        const gsMatrix<T> & allHessians,
+                        gsMatrix<T> & result) const
 {
-    //allgrads
-    const index_t numGrads = allGrads.rows() / ParDim;// we want col(k) of all grads and allHessians.
+    // allgrads
+    const index_t numGrads = allGrads.rows() / ParDim;
     // result: 1 X numGrads
     const index_t n2d = (ParDim + (ParDim*(ParDim-1))/2);
 
     const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
 
-    //Debug, spesical case for 2D!
-    //CHECKED WITH SYMPY THIS ARE WRONG AND THE MARIX EVALS ARE CORRECT
-    //For Txx Tyy Sxx Syy
-
-    //J⁻T = (Tx Sx)
-    //      (Ty Sy)
-    T Xtt = secDer(0);//Xtt
-    T Xts = secDer(2);//Xts
-    T Ytt = secDer(3);//Ytt
-    T Yts = secDer(5);//Yts
-
-    T Xst = secDer(2);//Xts
-    T Xss = secDer(1);//Xss
-    T Yst = secDer(5);//Yts
-    T Yss = secDer(4);//Yss
-
-    T Xt = m_jacobians(0,0+k*ParDim);
-    T Xs = m_jacobians(0,1+k*ParDim);
-    T Yt = m_jacobians(1,0+k*ParDim);
-    T Ys = m_jacobians(1,1+k*ParDim);
-
-    T Tx = m_jacInvs(0,0+k*ParDim);
-    T Ty = m_jacInvs(1,0+k*ParDim);
-    T Sx = m_jacInvs(0,1+k*ParDim);
-    T Sy = m_jacInvs(1,1+k*ParDim);
-
-    T det   = Xt*Ys - Xs*Yt;
-    T detdt = Xtt*Ys + Xt*Yst - Xst*Yt - Xs*Ytt;
-    T detds = Xts*Ys + Xt*Yss - Xss*Yt - Xs*Yts;
-
-    //This are wrong
-    T Txx = ((Yst*det-Ys*detdt)*Tx + (Yss*det-Ys*detds)*Sx)/det*det;
-    T Tyy = ((Yt*detdt-Ytt*det)*Ty + (Yt*detds-Yts*det)*Sy)/det*det;
-    T Sxx = ((Xs*detdt-Xst*det)*Tx + (Xs*detds-Xss*det)*Sx)/det*det;
-    T Syy = ((Xtt*det-Xt*detdt)*Ty + (Xts*det-Xt*detds)*Sy)/det*det;
-    if (Txx+Tyy+Sxx+Syy== 0)
-        Txx = 1;
-
-    //End debug
     std::vector<gsMatrix<T> > DJac; // [0]: J_t   [1]: J_s etc...
     std::vector<gsMatrix<T> > DJacPhys(GeoDim); // [0]: J_x   [1]: J_y etc...
     jacobianPartials<ParDim,T>::compute(secDer,DJac);
@@ -521,8 +482,7 @@ transformLaplaceH(  index_t k,
             DJacPhys[c] += DJac[j]*m_jacInvs(c,j+k*ParDim);
         }
     }
-    //t_xx s_xx
-    //t_yy s_yy
+
     gsMatrix<T> jac2inv(GeoDim, GeoDim);
     for(index_t c = 0; c < GeoDim; ++c)
     {
@@ -535,16 +495,11 @@ transformLaplaceH(  index_t k,
     //jac2inv contains:
     //(Txx,   Sxx)
     //(Tyy,   Syy)
-    //These are varified for the "Annulus" with SymPy.
-    //gsInfo << k <<"th evaluation point, Syy: " << Syy << " jac2inv(0,1): " <<  jac2inv(1,1) << " Physical values "<< m_values.col(k).transpose() << std::endl;
 
-    //Dim GeoDim X numGrads
     const gsAsConstMatrix<T,ParDim> grads_k(allGrads.col(k).data(), ParDim, numGrads);
     gsMatrix<T> collaps;
     collaps.setOnes(1,ParDim);
     result.noalias() = collaps*(jac2inv * grads_k);
-
-    //result dim: geodim X numGrads
 
     //J⁻¹J⁻T
     gsMatrix<T> tmp = m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose()
@@ -552,9 +507,6 @@ transformLaplaceH(  index_t k,
 
     gsMatrix<T> hessian(ParDim, ParDim);
 
-
-
-    //result.setZero(1,numGrads); //Manualy for 2D case (gives some results and matrix formulation)
     for (index_t i = 0; i < numGrads ; ++i)
     {
         //2D specific case
@@ -578,14 +530,6 @@ transformLaplaceH(  index_t k,
             hessian(1,2) = allHessians(5+i*n2d,k);
             hessian(2,1) = allHessians(5+i*n2d,k);
         }
-        /*
-        T ut = allGrads(0+i*2,k);
-        T us = allGrads(1+i*2,k);
-
-        result(0,i) += ut*(jac2inv(0,0) + jac2inv(1,0)) +us*(jac2inv(0,1) + jac2inv(1,1));
-        result(0,i) += tx*tx*hessian(0,0) + 2*sx*tx*hessian(0,1) + sx*sx*hessian(1,1);
-        result(0,i) += ty*ty*hessian(0,0) + 2*sy*ty*hessian(1,0) + sy*sy*hessian(1,1);
-        */
 
         //Frobenius mutiplication of tmp and hessian
         //Exployting symmetry
@@ -593,20 +537,7 @@ transformLaplaceH(  index_t k,
         {
             result(0,i) += (tmp.row(c)*hessian.col(c)).value();
         }
-        //returning the paramatrix values since im debugging on unitsquare!
-        //result(0,i) = allHessians(0+i*n2d,k) + allHessians(1+i*n2d,k);
     }
-    //gsInfo << "inv_jacs: \n" << m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim)<< std::endl;
-    //gsInfo << "secDer: \n" << secDer<< std::endl;
-    //T tx = m_jacInvs(0,0+k*ParDim);
-    /*T ty = m_jacInvs(1,0+k*ParDim);
-    T sx = m_jacInvs(0,1+k*ParDim);
-    //T sy = m_jacInvs(1,1+k*ParDim);
-    if (math::abs(ty) > 1e-13)
-        {gsInfo << "Ty is : " << ty << std::endl;}
-    if (math::abs(sx) > 1e-13)
-        {gsInfo << "Sx is : " << sx << std::endl;}
-    */
 }
 
 
