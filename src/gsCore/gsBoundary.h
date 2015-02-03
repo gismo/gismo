@@ -628,7 +628,7 @@ public:
     
     void matchDofs(gsVector<int>    bSize, 
                    gsMatrix<unsigned> & b1, 
-                   gsMatrix<unsigned> & b2) const;
+                   const gsMatrix<unsigned> & b2) const;
 
 private:
 
@@ -659,13 +659,15 @@ protected:
 /// Print (as string) an interface
 inline std::ostream &operator<<(std::ostream &os, const boundaryInterface & i)
 {
-    os<<"interface between: "<<i.ps1.patch<<":"<< i.ps1.side()<<" and "<<i.ps2.patch<<":"<<i.ps2.side()<<" [ ";
-    index_t j = 0;
-    for ( ; j<i.directionMap.cols()-1; ++j)
+    os << "interface between: "<<i.ps1.patch<<":"<< i.ps1.side()<<" and "
+       << i.ps2.patch<<":"<<i.ps2.side()<<" [ ";
+    for (index_t j = 0; j<i.directionMap.size(); ++j)
     {
-        os << j << "->" << (i.directionOrientation(j) ? "+" : "-") << i.directionMap(j)<<", ";
+        if ( i.ps1.direction() == j ) 
+            continue;
+        os << j << "~" << (i.directionOrientation(j) ? "(+" : "(-") << i.directionMap(j)<<") ";
     }
-    os << j << "->" << (i.directionOrientation(j) ? "+" : "-") << i.directionMap(j)<<"] ";
+    os <<"]";
     return os;
 }
 
