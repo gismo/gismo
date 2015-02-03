@@ -21,15 +21,15 @@ namespace gismo {
 
     Template parameters
     \param d is the dimension
-    \param T is the box-coordinate index type
+    \param Z is the box-coordinate index type
     
     \ingroup HSplines
 */
-template<unsigned d, class T = unsigned>
+template<unsigned d, class Z = unsigned>
 struct gsAabb
 {
 public:
-    typedef gsVector<T,d> point;
+    typedef gsVector<Z,d> point;
 
     gsAabb(point l, point u)
     {
@@ -54,25 +54,29 @@ public:
 /**
     @brief Struct representing a kd-tree node
 
+    The nodes are of two types:
+    - Split nodes
+    - Leaf nodes
+
     Template parameters
     \param d is the dimension
-    \param T is the box-coordinate index type
+    \param Z is the box-coordinate index type
     
     \ingroup HSplines
 */
-template<unsigned d, class T = unsigned>
+template<unsigned d, class Z = unsigned>
 struct kdnode
 {
     // Defines the type of the box
-    typedef          gsAabb<d,T> kdBox;
+    typedef          gsAabb<d,Z> kdBox;
     typedef typename kdBox::point point;
 
     /// axis in which the children of this node split the domain
     /// special value -1 denotes a leaf node
-    int axis ; 
+    int axis; 
 
     /// Split coordinate (meaningfull only for split nodes)
-    T pos;
+    Z pos;
 
     /// level in which the box in the node is completely contained
     /// special value -1 denotes unknown level (in case of a split node)
@@ -246,7 +250,7 @@ struct kdnode
 
 
     // Splits the node (ie. two children are added)
-    void split(int splitAxis, T splitPos)
+    void split(int splitAxis, Z splitPos)
     {
         GISMO_ASSERT( box->second[splitAxis] != splitPos, "Degenerate split");
         GISMO_ASSERT( box->first [splitAxis] != splitPos, "Degenerate split");
