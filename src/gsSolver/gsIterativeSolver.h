@@ -84,6 +84,9 @@ public:
     ///The error of the iteretive method
     real_t error() const { return m_error; }
 
+    ///The tolerance used in the iteretive method
+    real_t tolerance() const { return m_tol; }
+
 
 protected:
     gsLinearOperator * m_mat_ptr;
