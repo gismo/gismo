@@ -454,7 +454,7 @@ transformGradsHdiv( index_t k,
 //*/
 }
 
-//JS2: Verified for the 2D case ("quarte Annulus")
+//Not verified!
 template <class T, int ParDim, int codim>
 void gsGenericGeometryEvaluator<T,ParDim,codim>::
 transformLaplaceHgrad(  index_t k,
@@ -490,7 +490,6 @@ transformLaplaceHgrad(  index_t k,
         gsMatrix<T> DJacInvPhys = -m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose()
                 * DJacPhys[c]*m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
         jac2inv.row(c) = DJacInvPhys.col(c).transpose();
-
     }
     //jac2inv contains:
     //(Txx,   Sxx)
