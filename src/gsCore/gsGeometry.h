@@ -422,6 +422,9 @@ public:
     /// Elevate the degree by the given amount.
     virtual void degreeElevate(int const i = 1);
 
+    /// Elevate the degree by the given amount \a i for the direction \a dir.
+    virtual void degreeElevate(int const dir, int const i);
+
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
     virtual typename gsMatrix<T>::uPtr hessian(const gsMatrix<T>& u, unsigned coord) const;

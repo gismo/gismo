@@ -79,7 +79,7 @@ public:
         const gsMultiBasis<T>         &bases,
         const gsBoundaryConditions<T> &dirichlet,
         int unk = 0 
-         ) : m_shift(0)
+        ) : m_shift(0), m_bshift(0)
     {
         init(bases, dirichlet, unk);
     }
@@ -94,7 +94,7 @@ public:
     template<class T>
     gsDofMapper(
         const gsMultiBasis<T>         &bases
-        ) : m_shift(0)
+        ) : m_shift(0), m_bshift(0)
     {
         init(bases);
     }
@@ -109,7 +109,7 @@ public:
     template<class T>
     gsDofMapper(
         std::vector<const gsMultiBasis<T> *> const & bases
-        ) : m_shift(0)
+        ) : m_shift(0), m_bshift(0)
     {
         init(bases);
     }
@@ -124,7 +124,7 @@ public:
     template<class T>
     gsDofMapper(
         const gsBasis<T>               &basis
-         ) : m_shift(0)
+         ) : m_shift(0), m_bshift(0)
     {
         initSingle(basis);
     }
@@ -136,7 +136,7 @@ public:
      */
     gsDofMapper(
         const gsVector<index_t>        &patchDofSizes
-         ) : m_shift(0)
+         ) : m_shift(0), m_bshift(0)
     {
         initPatchDofs(patchDofSizes);
     }
@@ -187,23 +187,28 @@ public:
     void matchDofs(index_t u, const gsMatrix<unsigned> & b1,
                    index_t v, const gsMatrix<unsigned> & b2);
 
+    /// Mark the local dofs \a boundaryDofs of patch \a k as eliminated.
     // to do: put k at the end
     void markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs );
     
     /// Mark the local dof \a i of patch \a k as eliminated.
     void eliminateDof( index_t i, index_t k );
 
-    /// Must be called after all boundaries and interfaces have been marked to set up the dof numbering.
+    /// \brief Must be called after all boundaries and interfaces have
+    /// been marked to set up the dof numbering.
     void finalize();
 
-    /// Print summary to cout
+    /// \brief Print summary to cout
     void print() const;
 
-    /// Set to identity
+    ///\brief Set this mapping to beh the identity
     void setIdentity(index_t nPatches, size_t nDofs);
 
-    /// Add shifts
+    ///\brief Set the shift amount for the global numbering
     void setShift(index_t shift);
+
+    ///\brief Set the shift amount for the boundary numbering
+    void setBoundaryShift(index_t shift);
 
     /** \brief Computes the global indices of the input local indices
      *
@@ -253,7 +258,7 @@ public:
     {
         GISMO_ASSERT( is_boundary_index( gl ), 
                       "global_to_bindex(): specified dof is not on the boundary");
-        return gl - m_shift - freeSize();
+        return gl - m_shift - freeSize() + m_bshift;
     }
 
     /// Returns true if global dof \a gl is not eliminated.
@@ -279,8 +284,8 @@ public:
     /// Returns true if \a gl is a coupled dof.
     inline bool is_coupled_index( index_t gl) const 
     {           
-        return  (gl < m_numFreeDofs + m_shift                    ) && // is a free dof
-                (gl > m_numFreeDofs - m_numCpldDofs - 1 + m_shift);   // is not standard
+        return  (gl < m_numFreeDofs + m_shift                    ) && // is a free dof and
+                (gl + m_numCpldDofs + 1 > m_numFreeDofs + m_shift);   // is not standard dof
     }
 
     /// Returns the total number of dofs (free and eliminated).
@@ -341,6 +346,9 @@ private:
 
     // Shifting of the global index (zero by default)
     index_t m_shift;
+
+    // Shifting of the boundary index (zero by default)
+    index_t m_bshift;
 
     index_t m_numFreeDofs;
     index_t m_numElimDofs;

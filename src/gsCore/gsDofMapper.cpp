@@ -251,6 +251,11 @@ void gsDofMapper::setShift (index_t shift)
     m_shift=shift;
 }
 
+void gsDofMapper::setBoundaryShift (index_t shift)
+{
+    m_bshift=shift;
+}
+
 } // namespace gismo
 
 

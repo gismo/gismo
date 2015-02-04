@@ -98,6 +98,22 @@ void gsGeometry<T>::degreeElevate(int const i)
     delete b;
 }
 
+template<class T>
+void gsGeometry<T>::degreeElevate(int const dir, int const i)
+{
+    gsBasis<T> * b = m_basis->clone();
+    b->component(dir).degreeElevate(i);
+    
+    gsMatrix<T> iVals, iPts = b->anchors();
+    this->eval_into(iPts, iVals);
+    gsGeometry<T> * g = b->interpolate(iVals, iPts);
+
+    std::swap(m_basis, g->m_basis);
+    g->coefs().swap(this->coefs());
+
+    delete g;
+    delete b;
+}
 
 template<class T>
 typename gsMatrix<T>::uPtr
