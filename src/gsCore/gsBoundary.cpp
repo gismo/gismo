@@ -37,6 +37,9 @@ void boundaryInterface::matchDofs(gsVector<int>    bSize,
                                   gsMatrix<unsigned> & b1,
                                   const gsMatrix<unsigned> & b2) const
 {
+    if (b1.size() == 1)
+        return;
+
     // Get structure of the interface dofs
     const index_t s1 = first() .direction();
     const index_t s2 = second().direction();

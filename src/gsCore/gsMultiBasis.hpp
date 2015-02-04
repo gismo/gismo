@@ -181,6 +181,10 @@ void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper &
         * b1= m_bases[bi.first() .patch]->boundary( bi.first() .side() ),
         * b2= m_bases[bi.second().patch]->boundary( bi.second().side() );
 
+    GISMO_ASSERT( b1->rows() == b2->rows(), 
+                  "Input error, sizes do not match: "<<b1->rows()<<"!="<<b2->rows() );
+
+
     // Compute tensor structure of b1 -- to do move to tensor basis
     const index_t d = dim();
     const index_t p1 = bi.first().patch;
@@ -189,7 +193,8 @@ void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper &
     index_t c = 0;
     for (index_t k = 0; k<d; ++k )
     {
-        if ( k == s1 ) continue;
+        if ( k == s1 ) 
+            continue;
         bSize[c] = m_bases[p1]->component(k).size();
         c++;
     }
@@ -198,7 +203,7 @@ void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper &
     bi.matchDofs(bSize, *b1, *b2);
 
     // All set, match interface dofs
-    for (index_t c = 0; c<b1->size(); ++c)
+    for (c = 0; c<b1->size(); ++c)
         mapper.matchDof(bi.first().patch, (*b1)(c,0), bi.second().patch, (*b2)(c,0) );
 
     delete b1;

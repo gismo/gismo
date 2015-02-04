@@ -125,6 +125,13 @@ public:
         return m_bases.end();
     }
 
+    /// Clear (delete) all patches
+    void clear()
+    {
+        m_topology.clear();
+        m_bases   .clear();
+    }
+
     const gsBoxTopology & topology() const { return m_topology; }
 
 public:

@@ -82,7 +82,7 @@ template<class T>
 std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy() const
 {
     std::vector<gsBasis<T> *> bb;
-    for ( typename Base::const_iterator it = m_patches.begin();
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it ) {
         bb.push_back( ( *it )->basis().clone() );
     }
@@ -121,7 +121,7 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
 template<class T>
 void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
 {
-    for ( typename Base::const_iterator it = m_patches.begin();
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
         ( *it )->uniformRefine(numKnots, mul);
@@ -130,9 +130,10 @@ void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
 
 
 
-/**
- * This is based on comparing the corners of the patch side and thus it implicitly assumes that that the patch faces match
- */
+/*
+  This is based on comparing the corners of the patch side and thus
+  it implicitly assumes that that the patch faces match
+*/
 template<class T>
 bool gsMultiPatch<T>::computeTopology( T tol )
 {

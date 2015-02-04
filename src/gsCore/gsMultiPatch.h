@@ -34,7 +34,7 @@ class gsMultiPatch : public gsBoxTopology
 public:
     /// Shared pointer for gsMultiPatch
     typedef memory::shared_ptr<gsMultiPatch> Ptr;
-    typedef std::vector<gsGeometry<T> *> Base;
+    typedef gsBoxTopology Base;
     //typedef memory::unique_ptr< gsGeometry > LocalPtr;
     //typedef struct interface interface;
     //typedef gsGraph< gsGeometry<T> *, interface > PatchContainer;
@@ -205,6 +205,14 @@ public:
 
     /// Attempt to compute interfaces and boundaries automatically.
     bool computeTopology( T tol = 1e-4 );
+
+    /// Clear (delete) all patches
+    void clear()
+    {
+        Base::clear();
+        freeAll(m_patches);
+        m_patches.clear();
+    }
 
     // Data members
 private:
