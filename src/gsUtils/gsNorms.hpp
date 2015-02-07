@@ -211,6 +211,7 @@ T igaL2Distance(const gsGeometry<T>& patch,
     }
     return math::sqrt(sum);
 }
+
 template <typename T>
 T igaL2Distance(const gsGeometry<T>& patch,
                 const gsFunction<T>& func,
@@ -305,6 +306,7 @@ T igaFieldL2Distance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
 
     return math::sqrt(dist);
 }
+
 template <typename T>
 T igaFieldL2Distance(const gsField<T>& u, const gsFunction<T>& v, const gsMultiBasis<T>& B, bool v_isParam)
 {
@@ -321,7 +323,6 @@ T igaFieldL2Distance(const gsField<T>& u, const gsFunction<T>& v, const gsMultiB
 
     return math::sqrt(dist);
 }
-
 
 template <typename T>
 gsVector< gsMatrix<T> > igaFieldL2DistanceEltWiseSq(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam)
@@ -417,6 +418,93 @@ T igaH1Distance(const gsGeometry<T>& patch,
     return math::sqrt(sum);
 }
 
+////////////
+
+template <typename T>
+T igaH1Distance(const gsGeometry<T>& patch,
+                const gsFunction<T>& func,
+                const gsFunction<T>& v,
+                const gsBasis<T>& B,
+                bool v_isParam)
+{
+    std::auto_ptr< gsGeometryEvaluator<T> > geoEval ( patch.evaluator(NEED_VALUE   |
+                                                                      NEED_GRAD_TRANSFORM |
+                                                                      NEED_MEASURE ));
+    // degree of the underlying Gauss rule to use
+    gsVector<int> numNodes( B.dim() );
+    for (index_t i = 0; i < numNodes.size(); ++i)
+        numNodes[i] = B.degree(i) + 1;
+    //gsVector<int> numNodes = gsGaussAssembler<T>::getNumIntNodesFor( B );
+
+    T sum(0);
+    typename gsBasis<T>::domainIter domIt = B.makeDomainIterator();
+    domIt->computeQuadratureRule( numNodes );
+    for (; domIt->good(); domIt->next())
+    {
+        sum += igaH1DistanceOnElt( geoEval, func, v, v_isParam, domIt);
+    }
+    return math::sqrt(sum);
+}
+
+template <typename T>
+T igaFieldH1Distance(const gsField<T>& u, const gsFunction<T>& v, const gsMultiBasis<T>& B, bool v_isParam)
+{
+    T dist(0);
+
+    for (int i = 0; i < u.nPatches(); ++i)
+    {
+        // extract the "function"-part of the gsField
+        const gsFunction<T> & func  = u.function(i);
+        // call igaL2Distance( patch, func, v, v_isParam)
+        const T curDist = igaH1Distance( u.patch(i), func, v, B[i], v_isParam);
+        dist += curDist * curDist;
+    }
+
+    return math::sqrt(dist);
+}
+template <typename T>
+T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
+                      const gsFunction<T> & func,
+                      const gsFunction<T>& v,
+                      const bool & v_isParam,
+                      const typename gsBasis<T>::domainIter & domIt)
+{
+    const int d = func.domainDim();
+
+    // compute image of Gauss nodes under geometry mapping as well as Jacobians
+    geoEval->evaluateAt(domIt->quNodes);
+    gsMatrix<T> func_ders;
+    func.deriv_into(domIt->quNodes, func_ders);
+
+    // get the gradients to columns
+    func_ders.transposeInPlace();
+    func_ders.resize(d, domIt->numQuNodes() );
+
+    // Evaluate function v
+    gsMatrix<T> v_ders = v_isParam ? v.deriv(domIt->quNodes)
+                        : v.deriv( geoEval->values() );
+
+    // get the gradients to columns
+    v_ders.transposeInPlace();
+    v_ders.resize(d,domIt->numQuNodes() );
+
+    // perform the quadrature
+    gsMatrix<T> physGrad_f;
+    T sum(0.0);
+    for (index_t k = 0; k < domIt->numQuNodes(); ++k) // loop over quadrature nodes
+    {
+        // Transform the gradients
+        geoEval->transformGradients(k, func_ders, physGrad_f);
+        if ( v_isParam )
+            v_ders.col(k)=geoEval->gradTransforms().block(0, k*d,d,d) * v_ders.col(k);// to do: generalize
+
+        const T weight = domIt->quWeights[k] * fabs( geoEval->measure(k) );
+        sum += weight * (physGrad_f - v_ders.col(k)).squaredNorm();
+    }
+    return sum;
+
+}
+////////////
 
 template <typename T>
 gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,

@@ -1,4 +1,4 @@
- /** @file gsField.h
+/** @file gsField.h
 
     @brief Provides declaration of the Field class.
 
@@ -21,35 +21,35 @@
 namespace gismo
 {
 
-  /**
-   * \brief A scalar of vector field defined on a parametrized geometry.
-   *
-   * A gsField is, generally speaking, some mathematical function that is defined on a domain of interest
-   * (the name "field" is motivated by, e.g., "scalar field" or "vector field").
-   *
-   * The gsField combines the following:\n
-   * - <b>Geometric information</b> on the domain:\n
-   *
-   * The domain can be represented as one single patch or as a
-   * collection of multiple patches (a.k.a. subdomains).\n This
-   * information is stored in a member of the gsMultiPatch class.\n
-   *
-   * - The <b>function</b> defined on the domain:\n
-   *
-   * For each patch (a.k.a. subdomain), the gsField contains a member
-   * of class gsFunction (which represents the "local field", so to
-   * say).  On this, the operations of gsFunction can be carried out
-   * (e.g., function evaluation or computation of derivatives).\n
-   * Remark: The collection of patch-wise gsFunction is stored in the
-   * private member gsField::m_fields.
-   *
-   * Note that the geometry representation of a single patch can be
-   * extracted by calling the member function gsField::patch.
-   *
-   * The "local field" on a single patch can be extracted by calling gsField::function.
-   *
-   * \ingroup Core
-   */
+/**
+ * \brief A scalar of vector field defined on a parametrized geometry.
+ *
+ * A gsField is, generally speaking, some mathematical function that is defined on a domain of interest
+ * (the name "field" is motivated by, e.g., "scalar field" or "vector field").
+ *
+ * The gsField combines the following:\n
+ * - <b>Geometric information</b> on the domain:\n
+ *
+ * The domain can be represented as one single patch or as a
+ * collection of multiple patches (a.k.a. subdomains).\n This
+ * information is stored in a member of the gsMultiPatch class.\n
+ *
+ * - The <b>function</b> defined on the domain:\n
+ *
+ * For each patch (a.k.a. subdomain), the gsField contains a member
+ * of class gsFunction (which represents the "local field", so to
+ * say).  On this, the operations of gsFunction can be carried out
+ * (e.g., function evaluation or computation of derivatives).\n
+ * Remark: The collection of patch-wise gsFunction is stored in the
+ * private member gsField::m_fields.
+ *
+ * Note that the geometry representation of a single patch can be
+ * extracted by calling the member function gsField::patch.
+ *
+ * The "local field" on a single patch can be extracted by calling gsField::function.
+ *
+ * \ingroup Core
+ */
 
 
 //A field is a function defined on a geometry, or
@@ -59,44 +59,53 @@ template<class T>
 class gsField
 {
 public:
-  /// Shared pointer for gsField
-  typedef memory::shared_ptr< gsField >  Ptr;
+    /// Shared pointer for gsField
+    typedef memory::shared_ptr< gsField >  Ptr;
 
-  /// Unique pointer for gsField
-  typedef memory::auto_ptr< gsField >   uPtr;
+    /// Unique pointer for gsField
+    typedef memory::auto_ptr< gsField >   uPtr;
 
 public:
     
-    gsField( const gsMultiPatch<T> & mp, const std::vector<gsFunction<T> *>& fs, const bool isparam= true)
-        : m_patches(mp), m_fields(fs), parametrized(isparam), m_owning(true)
-        { }
+    gsField( const gsMultiPatch<T> & mp, 
+             const std::vector<gsFunction<T> *>& fs, 
+             const bool isparam= true)
+    : m_patches(mp), m_fields(fs), parametrized(isparam), m_owning(true)
+    { }
+    
+    gsField( const gsMultiPatch<T> & mp, const gsMultiPatch<T> & field)
+    : m_patches(mp), parametrized(true), m_owning(false)
+    { 
+        for (std::size_t i = 0; i< mp.nPatches(); ++i)
+            m_fields.push_back( &field.patch(i) ); 
+    }
 
     gsField( const gsMultiPatch<T> & mp, gsFunction<T> * f, const bool isparam= true) 
-        : m_patches(mp), parametrized(isparam), m_owning(true)
-        { 
-            for (std::size_t i = 0; i< mp.nPatches(); ++i)
-                m_fields.push_back(f); 
-        }
+    : m_patches(mp), parametrized(isparam), m_owning(true)
+    { 
+        for (std::size_t i = 0; i< mp.nPatches(); ++i)
+            m_fields.push_back(f); 
+    }
 
     gsField( const gsMultiPatch<T> & mp, gsFunction<T> & f, const bool isparam= true) 
-        : m_patches(mp), parametrized(isparam), m_owning(false)
-        { 
-            for (size_t i = 0; i< mp.nPatches(); ++i)
-                m_fields.push_back(&f); 
-        }
+    : m_patches(mp), parametrized(isparam), m_owning(false)
+    { 
+        for (size_t i = 0; i< mp.nPatches(); ++i)
+            m_fields.push_back(&f); 
+    }
 
     ~gsField()
+    {
+        if (m_owning)
         {
-            if (m_owning)
-            {
-                // avoid deleting twice the same pointer
-                typename std::vector<gsFunction<T>*>::iterator itr= 
-                    std::unique( m_fields.begin(), m_fields.end() );
-                m_fields.resize( itr - m_fields.begin() ) ;
+            // avoid deleting twice the same pointer
+            typename std::vector<gsFunction<T>*>::iterator itr= 
+                std::unique( m_fields.begin(), m_fields.end() );
+            m_fields.resize( itr - m_fields.begin() ) ;
 
-                freeAll( m_fields );
-            }
+            freeAll( m_fields );
         }
+    }
     
 public:
     
@@ -167,7 +176,8 @@ public:
             return computeL2Distance(*this, func, isFunc_param,  numEvals);
     }
 
-    /// Computes the L2-distance between the field and a function \a func on the physical domain
+    /// Computes the L2-distance between the field and a function \a
+    /// func on the physical domain, using mesh from B
     T distanceL2(gsFunction<T> const & func,
                  gsMultiBasis<T> const & B,
                  bool isFunc_param = false,
@@ -179,13 +189,31 @@ public:
             return computeL2Distance(*this, func, isFunc_param,  numEvals);
     }
 
-    /// Computes the H1-distance between the field and a function \a func on the physical domain
+    /// Computes the H1-distance between the field and a function \a
+    /// func on the physical domain
     T distanceH1(gsFunction<T> const & func, 
                  bool isFunc_param = false,
                  int numEvals=1000) const 
     {
         if ( parametrized ) // isogeometric field
             return igaFieldH1Distance(*this, func, isFunc_param);
+        else
+        {
+            GISMO_UNUSED(numEvals);
+            gsWarn <<"H1 seminorm not implemented.\n";
+            return -1;
+        }
+    }
+
+    /// Computes the H1-distance between the field and a function \a
+    /// func on the physical domain, using mesh from B
+    T distanceH1(gsFunction<T> const & func,
+                 gsMultiBasis<T> const & B,
+                 bool isFunc_param = false,
+                 int numEvals=1000) const
+    {
+        if ( parametrized ) // isogeometric field
+            return igaFieldH1Distance(*this, func, B,isFunc_param);
         else
         {
             GISMO_UNUSED(numEvals);
@@ -212,7 +240,7 @@ public:
     
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
-        { os << "gsField.\n"; return os; }
+    { os << "gsField.\n"; return os; }
     
     /// \brief Returns the dimension of the parameter domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 2).

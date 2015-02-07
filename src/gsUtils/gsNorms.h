@@ -178,6 +178,12 @@ T igaFieldL2Distance(const gsField<T>& u,
                      const gsFunction<T>& v,
                      const gsMultiBasis<T>& B,
                      bool v_isParam = false);
+template <typename T>
+T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
+                      const gsFunction<T> & func,
+                      const gsFunction<T>& v,
+                      const bool & v_isParam,
+                      const typename gsBasis<T>::domainIter & domIt);
 
 
 // Auxiliary functions for igaL2Distance() and igaL2DistanceEltWiseSq().
@@ -222,6 +228,18 @@ T igaH1Distance(const gsGeometry<T>& patch,
                 const gsGeometry<T>& func, 
                 const gsFunction<T>& v, 
                 bool v_isParam = false);
+template <typename T>
+T igaH1Distance(const gsGeometry<T>& patch,
+                const gsFunction<T>& func,
+                const gsFunction<T>& v,
+                const gsBasis<T>& B,
+                bool v_isParam);
+
+template <typename T>
+T igaFieldH1Distance(const gsField<T>& u,
+                     const gsFunction<T>& v,
+                     const gsMultiBasis<T>& B,
+                     bool v_isParam = false);
 
 template <typename T>
 gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,
