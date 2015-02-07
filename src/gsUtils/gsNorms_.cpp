@@ -91,7 +91,7 @@ T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const typename gsBasis<T>::domainIter & domIt);
+                      const gsBasis<T>::domainIter & domIt);
 
 
 TEMPLATE_INST
