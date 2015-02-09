@@ -29,7 +29,7 @@ public:
     gsIterativeSolver(const gsLinearOperator& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
         : m_mat_ptr(NULL), m_mat(_mat), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
     {
-        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implememtation require this!");
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
     }
 
     ///Contructor for sparse matrix
@@ -38,7 +38,7 @@ public:
         : m_mat_ptr(new gsMatrixPreconditioner< gsSparseMatrix<T, _Options, _Index > >(_mat)),
           m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
     {
-        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implememtation require this!");
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
     }
 
     ///Contructor for dense matrix
@@ -47,7 +47,7 @@ public:
         : m_mat_ptr(new gsMatrixPreconditioner< gsMatrix<T, _Rows, _Cols, _Options> >(_mat)),
           m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
     {
-        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implememtation require this!");
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
     }
 
     virtual ~gsIterativeSolver()
@@ -81,10 +81,10 @@ public:
     ///The number of iterations needed to reach the error criteria
     int iterations() const { return m_numIter; }
 
-    ///The error of the iteretive method
+    ///The error of the iterative method
     real_t error() const { return m_error; }
 
-    ///The tolerance used in the iteretive method
+    ///The tolerance used in the iterative method
     real_t tolerance() const { return m_tol; }
 
 

@@ -47,7 +47,7 @@ public:
 
     void initIteration(const VectorType& rhs, VectorType& x0, const gsLinearOperator& precond)
     {
-        GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single collum right hand side matrix");
+        GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single column right hand side matrix");
 
         int n = m_mat.cols();
         int m = 1; // == rhs.cols();
