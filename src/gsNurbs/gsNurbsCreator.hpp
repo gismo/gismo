@@ -194,6 +194,24 @@ gsNurbsCreator<T>::BSplineRectangle( T const & low_x,
 
 }
 
+
+template<class T> gsTensorBSpline<2,T> * 
+gsNurbsCreator<T>::BSplineRectangleWithPara( T low_x, T low_y, T upp_x, T upp_y)
+{
+    gsKnotVector<T> KVx (low_x, upp_x, 0, 2);
+    gsKnotVector<T> KVy (low_y, upp_y, 0, 2);
+
+    gsMatrix<T> C(4,2);
+
+    C << low_x, low_y,
+         upp_x, low_y,
+         low_x, upp_y,
+         upp_x, upp_y;
+
+    return new gsTensorBSpline<2,T>(KVx, KVy, give(C));
+}
+
+
 /// Square of side \a r, with lower left corner at (x,y)
 template<class T> gsTensorBSpline<2,T> * 
 gsNurbsCreator<T>::BSplineSquare( T const & r, 

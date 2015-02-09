@@ -353,6 +353,24 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 {return fd.print(os); }
 
+
+
+
+
+
+/// Write an arbitrary Gismo object to an XML file with the given filename.
+template <typename T>
+void gsWrite(const T& obj, const std::string& fname)
+{
+    gsFileData<> fd;
+    fd << obj;
+    fd.dump(fname);
+}
+
+
+
+
+
 } // namespace gismo
 
 

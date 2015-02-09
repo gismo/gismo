@@ -63,9 +63,11 @@ struct gsNurbsCreator
                                                     T const & upp_x = 1,
                                                     T const & upp_y = 1, T const & turndeg = 0);
 
+    // Rectangle described by the identity mapping over the given parameter domain, using tensor product B-splines.
+    static gsTensorBSpline<2,T> * BSplineRectangleWithPara( T low_x = 0, T low_y = 0, T upp_x = 1, T upp_y = 1);
+
 /// Square of side \a r, with lower left corner at (x,y)
     static gsTensorBSpline<2,T> * BSplineSquare( T const & r = 1, T const & x = 0,
-
                                                  T const & y = 0  );
 
 /// Creates a \em n X \em m rectangle multipatch consisting of B-splines squares

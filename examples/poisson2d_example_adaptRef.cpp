@@ -26,14 +26,6 @@ using namespace std;
 using namespace gismo;
 
 
-template <typename T>
-void gsSave(const T& obj, const std::string& fname)
-{
-    gsFileData<> fd;
-    fd << obj;
-    fd.dump(fname);
-}
-
 
 //S.Kleiss
 //
@@ -61,6 +53,9 @@ int main(int argc, char *argv[])
   // gsMarkElementsForRef explanation)
   real_t refParameter;  // ...specified below with the examples
 
+  // Degree to use for discretization
+  int degree;
+
   // Flag whether final mesh should be plotted in ParaView
   bool plot;
   bool dump;
@@ -75,6 +70,9 @@ int main(int argc, char *argv[])
       gsArgVal<int> arg_initref("i", "initial-ref", 
               "Initial number of uniform refinement steps to perform", 
               false, 2, "int", cmd);
+      gsArgVal<int> arg_degree("", "degree", 
+              "Spline degree of the THB basis", 
+              false, 2, "int", cmd);
       gsArgVal<int> arg_crit("c", "criterion", 
               "Criterion to be used for adaptive refinement (1-3, see documentation)", 
               false, 2, "int", cmd);
@@ -88,6 +86,7 @@ int main(int argc, char *argv[])
       plot          = arg_plot.getValue();
       RefineLoopMax = arg_ref.getValue();
       initUnifRef   = arg_initref.getValue();
+      degree        = arg_degree.getValue();
       refCriterion  = arg_crit.getValue();
       refParameter  = arg_parameter.getValue();
       dump          = arg_dump.getValue();
@@ -105,36 +104,37 @@ int main(int argc, char *argv[])
   //
 
 
-  /*
   // ------ Example 1 ------
 
   // --- Unit square, with a spike of the source function at (0.25, 0.6)
-  gsMFunctionExpr<>  f("if( (x-0.25)^2 + (y-0.6)^2 < 0.2^2, 1, 0 )", 2);
-  gsMFunctionExpr<>  g("0", 2);
+  gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-0.6)^2 < 0.2^2, 1, 0 )");
+  //gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-1.6)^2 < 0.2^2, 1, 0 )");
+  gsFunctionExpr<>  g("0");
   gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineRectangle(0.0,0.0,2.0,1.0) ));
+  //gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0)) );
 
   //RefineLoopMax = 6;
   //refParameter = 0.6;
 
   // ^^^^^^ Example 1 ^^^^^^
-  //*/
 
-//  /*
+  /*
   // ------ Example 2 ------
 
   // The classical example associated with the L-Shaped domain.
   // The exact solution has a singularity at the re-entrant corner at the origin.
 
-  gsMFunctionExpr<>  f("0", 2);
-  gsMFunctionExpr<>  g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) +3*pi)/3.0 ) )", 2);
+  gsFunctionExpr<>  f("0");
+  gsFunctionExpr<>  g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) +3*pi)/3.0 ) )");
 
-  gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p2C1()) );
+  //gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p2C0()) );
+  gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p1()) );
 
   //RefineLoopMax = 8;
   //refParameter = 0.85;
 
   // ^^^^^^ Example 2 ^^^^^^
-  //*/
+  */
 
   cout<<"Source function "<< f << endl;
   cout<<"Exact solution "<< g <<".\n" << endl;
@@ -152,10 +152,15 @@ int main(int argc, char *argv[])
   cout << "Number of patches: " << patches.nPatches() << endl;
 
   if (dump)
-      gsSave(*geo, "adapt_geo.xml");
+      gsWrite(*geo, "adapt_geo.xml");
+
+  gsTensorBSplineBasis<2,real_t> tbb = geo->basis();
+  tbb.setDegree(degree);
+
+  cout << "\nCoarse discretization basis:\n" << tbb << endl;
 
   // With this gsTensorBSplineBasis, it's possible to call the THB-Spline constructor
-  gsTHBSplineBasis<2,real_t> THB( geo->basis() );
+  gsTHBSplineBasis<2,real_t> THB( tbb );
 
   // Finally, create a vector (of length one) of this gsTHBSplineBasis
   gsMultiBasis<real_t> bases(THB);
@@ -164,7 +169,7 @@ int main(int argc, char *argv[])
       bases.uniformRefine();
 
   if (dump)
-      gsSave(bases[0], "adapt_basis_0.xml");
+      gsWrite(bases[0], "adapt_basis_0.xml");
 
   // So, ready to start the adaptive refinement loop:
   for( int RefineLoop = 1; RefineLoop <= RefineLoopMax ; RefineLoop++ )
@@ -179,10 +184,14 @@ int main(int argc, char *argv[])
                                     dirichlet::elimination,iFace::glue);
 
       // Assemble matrix and rhs
+      cout << "Assembling... " << flush;
       pa.assemble();
+      cout << "done." << endl;
 
       // Solve system
+      cout << "Solving... " << flush;
       gsMatrix<> solVector = Eigen::ConjugateGradient<gsSparseMatrix<> >(pa.matrix() ).solve( pa.rhs() );
+      cout << "done." << endl;
       
       // Construct the solution for plotting the mesh later
       gsField<> * sol = pa.constructSolution(solVector);
@@ -215,14 +224,14 @@ int main(int argc, char *argv[])
       {
           stringstream ss;
           ss << "adapt_basis_" << RefineLoop << ".xml";
-          gsSave(bases[0], ss.str());
+          gsWrite(bases[0], ss.str());
       }
 
       if ( (RefineLoop == RefineLoopMax) && plot)
       {
           // Write approximate solution to paraview files
           std::cout<<"Plotting in Paraview...\n";
-          gsWriteParaview<>(*sol, "p2d_adaRef_sol", 1001, true);
+          gsWriteParaview<>(*sol, "p2d_adaRef_sol", 5001, true);
           // Run paraview and plot the last mesh
           result = system("paraview p2d_adaRef_sol0_mesh.vtp &");
       }
