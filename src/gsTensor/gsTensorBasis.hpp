@@ -876,22 +876,22 @@ gsTensorBasis<d,Basis_t>::interpolateGrid(gsMatrix<T> const& vals,
 
     const index_t n  = vals.rows();
     const int sz = this->size();
-    int sz_i, r_i;
 
     // Note: algorithm relies on col-major matrices    
-    gsMatrix<T> q0, q1;
+    gsMatrix<T, Dynamic, Dynamic, ColMajor> q0, q1;
 
     //Note: Sparse LU might fail for rank deficient Cmat
     Eigen::SparseLU<gsSparseMatrix<T>, Eigen::COLAMDOrdering<index_t> >  solver;
     gsSparseMatrix<T> Cmat;
 
+    // size: sz x n
     q0 = vals.transpose();
 
     for (unsigned i = 0; i < d; ++i) // for all coordinate bases
     {
         // Re-order right-hand sides
-        sz_i = m_bases[i]->size();
-        r_i  = sz / sz_i;
+        const int sz_i = m_bases[i]->size();
+        const int r_i  = sz / sz_i;
         q0.resize(sz_i, n * r_i);
 
         // Solve for i-th coordinate basis
