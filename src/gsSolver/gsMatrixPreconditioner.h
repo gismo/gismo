@@ -18,11 +18,11 @@
 namespace gismo
 {
 
-///@brief Simple class to give a matrix (or sparse matrix) preconditioner properties which is needed for the iterative method classes.
+/// @brief Simple adapter class to use a matrix (or matrix-like object) as a linear operator. Needed for the iterative method classes.
 ///
 /// \ingroup Solver
 
-template <typename MatrixType, int UpLo = Eigen::Lower>
+template <typename MatrixType>
 class gsMatrixPreconditioner : public gsLinearOperator
 {
 public:
@@ -38,7 +38,7 @@ public:
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
-        x.noalias() = matPre.template selfadjointView<UpLo>() * input;
+        x.noalias() = matPre * input;
     }
 
     index_t rows() const {return matPre.rows();}
@@ -46,10 +46,20 @@ public:
     index_t cols() const {return matPre.cols();}
 
     ///Returns the matrix
-    MatrixType matrix() const { return matPre; }
+    const MatrixType& matrix() const { return matPre; }
 
 private:
     const MatrixType& matPre;
 };
+
+/** This essentially just calls the gsMatrixPreconditioner constructor, but the
+ * use of a template functions allows us to let the compiler do type inference,
+ * so we don't need to type out the matrix type explicitly.
+ */
+template <typename MatrixType>
+gsMatrixPreconditioner<MatrixType>* makeMatrixOperator(const MatrixType& mat)
+{
+    return new gsMatrixPreconditioner<MatrixType>(mat);
+}
 
 } // namespace gismo

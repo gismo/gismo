@@ -22,19 +22,19 @@ class gsMinimalResidual : public gsIterativeSolver
 public:
     typedef gsMatrix<real_t>                VectorType;
 
-    ///Contructor for general linear operator
+    /// Constructor for general linear operator
     gsMinimalResidual(const gsLinearOperator& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
         : gsIterativeSolver(_mat, _maxIt, _tol) {}
 
-    ///Contructor for sparse matrix
+    /// Constructor for sparse matrix
     template<typename T, int _Options, typename _Index>
     gsMinimalResidual(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(_mat, _maxIt, _tol) {}
+        : gsIterativeSolver(makeMatrixOperator(_mat.template selfadjointView<Lower>()), _maxIt, _tol) {}
 
-    ///Contructor for dense matrix
+    /// Constructor for dense matrix
     template<class T, int _Rows, int _Cols, int _Options>
     gsMinimalResidual(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(_mat, _maxIt, _tol) {}
+        : gsIterativeSolver(makeMatrixOperator(_mat.template selfadjointView<Lower>()), _maxIt, _tol) {}
 
     void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator& precond)
     {
