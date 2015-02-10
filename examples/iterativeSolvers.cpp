@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
-    gsInfo << "MinRes: Before solve"  << std::endl;
+    gsInfo << "\nMinRes: Before solve"  << std::endl;
     MinRes.solve(rhs,x0,preConMat);
     gsInfo << "MinRes: After solve"  << std::endl;
 
@@ -71,6 +71,21 @@ int main(int argc, char *argv[])
     gsInfo << "MinRes: Residual error: " << MinRes.error() << "\n";
     gsInfo << "MinRes: Number of iterations: " << MinRes.iterations() << "\n";
 
+    //Initialize the CG solver
+    gsGMRes GMResSolver(mat,maxIters,tol);
+
+    //Set the initial guess to zero
+    x0.setZero(N,1);
+
+    //Solve system with given preconditioner (solution is stored in x0)
+    gsInfo << "\nGMRes: Before solve"  << std::endl;
+    GMResSolver.solve(rhs,x0,preConMat);
+    gsInfo << "GMRes: After solve"  << std::endl;
+
+    gsInfo << "GMRes: Solved a system of size " << N << "\n";
+    gsInfo << "GMRes: Tolerance: " << tol << "\n";
+    gsInfo << "GMRes: Residual error: " << GMResSolver.error() << "\n";
+    gsInfo << "GMRes: Number of iterations: " << GMResSolver.iterations() << "\n";
 
     //Initialize the CG solver
     gsConjugateGradient CGSolver(mat,maxIters,tol);
