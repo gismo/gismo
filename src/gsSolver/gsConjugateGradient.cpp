@@ -37,6 +37,12 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
     threshold = m_tol*m_tol*rhsNorm2;
     m_numIter = 0;
 
+    if(m_calcEigenvals)
+    {
+        delta.resize(1,0);
+        delta.reserve(m_maxIters);
+        gamma.reserve(m_maxIters);
+    }
 }
 
 
@@ -45,6 +51,9 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLine
     m_mat.apply(p,tmp); //apply system matrix
 
     real_t alpha = absNew / p.col(0).dot(tmp.col(0));   // the amount we travel on dir
+    if(m_calcEigenvals)
+        delta.back()+=(1./alpha);
+
     x += alpha * p;                       // update solution
     residual -= alpha * tmp;              // update residual
 
@@ -59,7 +68,46 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLine
     absNew = Eigen::numext::real(residual.col(0).dot(z.col(0)));     // update the absolute value of r
     real_t beta = absNew / absOld;            // calculate the Gram-Schmidt value used to create the new search direction
     p = z + beta * p;                             // update search direction
+
+    if(m_calcEigenvals)
+    {
+        gamma.push_back(-std::sqrt(beta)/alpha);
+        delta.push_back(beta/alpha);
+    }
     return false;
 }
 
+real_t gsConjugateGradient::getConditionNumber()
+{
+    //TODO: improve by using a recursion of the characteristic polynomial
+    gsMatrix<real_t> eigs;
+    getEigenvalues(eigs);
+
+    return eigs(eigs.rows()-1,0)/eigs(0,0);
 }
+
+void gsConjugateGradient::getEigenvalues(gsMatrix<real_t>& eigs )
+{
+    gsSparseMatrix<real_t> L(m_numIter+1,m_numIter+1);
+    std::vector<Eigen::Triplet<real_t> > list;
+    list.reserve(3*m_numIter);
+
+    list.push_back(Eigen::Triplet<real_t>(0,0,delta[0]));
+    for(int i = 1; i<m_numIter+1;i++)
+    {
+        list.push_back(Eigen::Triplet<real_t>(i,i-1,gamma[i-1]));
+        list.push_back(Eigen::Triplet<real_t>(i-1,i,gamma[i-1]));
+        list.push_back(Eigen::Triplet<real_t>(i,i,delta[i]));
+    }
+    L.setFromTriplets(list.begin(),list.end());
+
+    //there is probably a better option...
+   Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(L.toDense());
+
+   eigs = eigensolver.eigenvalues();
+}
+
+
+}
+
+

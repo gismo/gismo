@@ -32,18 +32,18 @@ public:
     typedef gsMatrix<real_t>    VectorType;
 
     /// Constructor for general linear operator
-    gsConjugateGradient(const gsLinearOperator& _mat, int _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(_mat, _maxIt, _tol){}
+    gsConjugateGradient(const gsLinearOperator& _mat, int _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
+        : gsIterativeSolver(_mat, _maxIt, _tol), m_calcEigenvals(calcEigenval) {}
 
     /// Constructor for sparse matrix
     template<typename T, int _Options, typename _Index>
-    gsConjugateGradient(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol) {}
+    gsConjugateGradient(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
+        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol), m_calcEigenvals(calcEigenval)  {}
 
     /// Constructor for dense matrix
     template<class T, int _Rows, int _Cols, int _Options>
-    gsConjugateGradient(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol) {}
+    gsConjugateGradient(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
+        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol) ,m_calcEigenvals(calcEigenval)  {}
 
     void initIteration(const VectorType& rhs, VectorType& x0, const gsLinearOperator& precond);
 
@@ -62,6 +62,15 @@ public:
 
     bool step( VectorType& x, const gsLinearOperator& precond );
 
+    /// @brief specify if you want to store data for eigenvalue estimation
+    void setCalcEigenvalues(bool flag) {m_calcEigenvals = flag;}
+
+    /// @brief returns the condition number of the (preconditioned) system matrix
+    real_t getConditionNumber();
+
+    /// @brief returns the eigenvalues of the Lanczos matrix (this function should probably be deleted in future)
+    void getEigenvalues(gsMatrix<real_t>& eigs);
+
 private:
     using gsIterativeSolver::m_mat;
     using gsIterativeSolver::m_error;
@@ -72,6 +81,10 @@ private:
     VectorType z, tmp, tmp2, p;
     VectorType residual;
     real_t absNew, residualNorm2, threshold, rhsNorm2;
+
+    bool m_calcEigenvals;
+
+    std::vector<real_t> delta, gamma;
 };
 
 } // namespace gismo
