@@ -40,17 +40,7 @@ namespace gismo
 class gsBlockPreconditioner : public gsLinearOperator
 {
 public:
-    gsBlockPreconditioner(index_t nRows, index_t nCols)
-    {
-        blockPrec.resize(nRows, nCols);
-        blockTargetPositions.setZero(nCols);
-        blockInputPositions.setZero(nRows);
-        gsLinearOperator * null_ptr = NULL;
-        // Fill up all block entries with null pointers.
-        for (index_t i = 0; i< nRows; ++i)
-            for (index_t j = 0; j< nCols; ++j)
-                blockPrec(i,j) = null_ptr;
-    }
+    gsBlockPreconditioner(index_t nRows, index_t nCols);
 
     /**
      * @brief Add a preconditioner \f$C_{ij}\f$ to the block structure
@@ -58,45 +48,14 @@ public:
      * @param row row position in the block preconditioner
      * @param col column position in the block preconditioner
      */
-    void addPreconditioner(gsLinearOperator * prec, index_t row, index_t col)
-    {
-        blockPrec(row, col) = prec;
-        blockTargetPositions[row] = prec->rows();
-        blockInputPositions[col] = prec->cols();
-        if (!ConsistencyCheck())
-            GISMO_ERROR("Block preconditioners do not have correct dimension");
-    }
+    void addPreconditioner(gsLinearOperator * prec, index_t row, index_t col);
 
     /**
      * @brief Apply the correct segment of the input vector on the preconditioners in the block structure and store the result.
      * @param input  Input vector
      * @param result Result vector
      */
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result) const
-    {
-        result.setZero(blockTargetPositions.sum(), input.cols());
-        gsVector<index_t> singleCol(1);
-        singleCol << 1;
-        gsMatrix<real_t>::BlockView resultBlocks= result.blockView(blockTargetPositions, singleCol);
-
-        for (index_t i = 0; i< blockPrec.rows() ; ++i)
-        {
-            index_t inputIndex = 0;
-            for (index_t j = 0; j< blockPrec.cols(); ++j)
-            {
-                if (!blockPrec(i,j))// if the block is a null pointer
-                {
-                    inputIndex += blockInputPositions(j);
-                    continue;
-                }
-
-                gsMatrix<real_t> tmp_result;
-                blockPrec(i,j)->apply(input.block(inputIndex,0,blockInputPositions(j),input.cols()),tmp_result);
-                resultBlocks(i) += tmp_result;
-                inputIndex += blockInputPositions(j);
-            }
-        }
-    }
+    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result) const;
 
     index_t rows() const {return blockTargetPositions.sum();}
     index_t cols() const {return blockInputPositions.sum() ;}
@@ -106,49 +65,7 @@ private:
     /**
      * @brief Loops through every preconditioner and checks that the dimensions are correct
      */
-    bool ConsistencyCheck()
-    {
-        for (index_t i = 0; i< blockPrec.rows(); ++i)
-        {
-            if (!blockPrec(i,0))// if the block is a null pointer
-                    continue;
-
-            index_t r = blockPrec(i,0)->rows();
-
-            for (index_t j = 1; j< blockPrec.cols(); ++j)
-            {
-                if (!blockPrec(i,j))// if the block is a null pointer
-                        continue;
-
-                if (blockPrec(i,j)->rows() != r)
-                {
-                    gsWarn << "Block preconditioners do not have correct dimension" << std::endl;
-                    return false;
-                }
-            }
-        }
-        for (index_t j = 0; j< blockPrec.cols(); ++j)
-        {
-            if (!blockPrec(0,j))// if the block is a null pointer
-                    continue;
-
-            index_t c = blockPrec(0,j)->cols();
-
-            for (index_t i = 1; i< blockPrec.rows(); ++i)
-            {
-                if (!blockPrec(i,j))// if the block is a null pointer
-                        continue;
-
-                if (blockPrec(i,j)->rows() != c)
-                {
-                    gsWarn << "Block preconditioners do not have correct dimension" << std::endl;
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
+    bool consistencyCheck();
 
     Eigen::Array<gsLinearOperator *, Dynamic, Dynamic> blockPrec;
 

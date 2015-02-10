@@ -13,6 +13,8 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsMultiPatch.h>
+#include <gsCore/gsMultiBasis.h>
 #include <gsSolver/gsSmoother.h>
 //Needed for assembling mass matrix in GS preconditioner
 #include <gsAssembler/gsGenericAssembler.h>
