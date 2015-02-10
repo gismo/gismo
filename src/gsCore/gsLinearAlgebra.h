@@ -23,6 +23,10 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
+#ifdef GISMO_WITH_SUPERLU
+#include <Eigen/SuperLUSupport>
+#endif
+
 namespace gismo
 {
 

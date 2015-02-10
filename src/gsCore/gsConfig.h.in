@@ -37,7 +37,7 @@
 /* Enabled Extensions */
 #cmakedefine GISMO_WITH_ONURBS
 #cmakedefine GISMO_WITH_IPOPT
-
+#cmakedefine GISMO_WITH_SUPERLU
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB

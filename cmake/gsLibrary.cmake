@@ -20,7 +20,7 @@ if(GISMO_BUILD_LIB)
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
  set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} 
-     "${gismo_SOURCE_DIR}/src/misc/gsLibInit.cpp")
+     "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
 
 #add_library(${PROJECT_NAME} ${LIB_TYPE}
@@ -28,10 +28,46 @@ endif()
 #           ${${PROJECT_NAME}_EXTENSIONS}
 #           GENERATE_EXPORT_HEADER( ${PROJECT_NAME}
 #           BASE_NAME ${PROJECT_NAME}
-#           EXPORT_MACRO_NAME ${PROJECT_NAME}_EXPORT
+#           EXPORT_MACRO_NAME ${PROJECT_NAME}_EXPORTS
 #           EXPORT_FILE_NAME gsExport.h
-#           STATIC_DEFINE GISMO_BUILT_AS_STATIC
+#           STATIC_DEFINE GISMO_BUILT_STATIC_LIB
 #	   )
+#
+#  add_library(${PROJECT_NAME}_obj OBJECT
+#    #${${PROJECT_NAME}_MODULES}
+#    ${${PROJECT_NAME}_SOURCES}
+#    )
+#
+#  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+#    set_target_properties(${PROJECT_NAME}_obj PROPERTIES 
+#    DEFINE_SYMBOL  "${PROJECT_NAME}_EXPORTS"
+#    DEFINE_SYMBOL  "GISMO_BUILD_SHARED_LIB"
+#    )
+#  endif()
+#
+#    GENERATE_EXPORT_HEADER(${PROJECT_NAME}_obj
+#    #BASE_NAME ${PROJECT_NAME}_obj
+#    #EXPORT_MACRO_NAME ${PROJECT_NAME}_obj_EXPORTS
+#    EXPORT_FILE_NAME gsExport.h
+#    #STATIC_DEFINE GISMO_BUILT_STATIC_LIB
+#    )
+#
+#  set_target_properties(${PROJECT_NAME}_obj PROPERTIES 
+#  POSITION_INDEPENDENT_CODE ON
+#)
+#
+#  add_library(${PROJECT_NAME} SHARED
+#    #${${PROJECT_NAME}_MODULES}
+#    $<TARGET_OBJECTS:${PROJECT_NAME}_obj>
+#    ${${PROJECT_NAME}_EXTENSIONS}
+#    )
+#
+#  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+#    set_target_properties(${PROJECT_NAME}_obj PROPERTIES 
+#    UNDEFINE_SYMBOL  "${PROJECT_NAME}_EXPORTS"
+#    DEFINE_SYMBOL  "GISMO_BUILD_SHARED_LIB"
+#    )
+#  endif()
 
   add_library(${PROJECT_NAME} SHARED
     #${${PROJECT_NAME}_MODULES}
@@ -43,10 +79,14 @@ endif()
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h" 
   POSITION_INDEPENDENT_CODE ON
   COMPILE_DEFINITIONS GISMO_BUILD_SHARED_LIB # Used for DLL exporting on windows
-)
+  )
 
   if (GISMO_WITH_PSOLID)
     target_link_libraries(${PROJECT_NAME} ${PARASOLID_LIBRARY})
+  endif()
+
+  if (GISMO_WITH_SUPERLU)
+    target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
   endif()
 
   IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
@@ -67,6 +107,7 @@ endif( WIN32 )
 
   add_library(${PROJECT_NAME}_static STATIC
   #${${PROJECT_NAME}_MODULES}
+  #$<TARGET_OBJECTS:${PROJECT_NAME}_obj>
   ${${PROJECT_NAME}_SOURCES}
   ${${PROJECT_NAME}_EXTENSIONS}
   )
