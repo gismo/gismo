@@ -62,12 +62,12 @@ public:
         delete m_mat_ptr;
     }
 
-    /// @brief Solves the linear system and stores the solution in x
+    /// @brief Solves the linear system and stores the solution in \a x
     ///
     /// Solves the linear system of equations
-    /// \param[in] rhs the right hand side of the linear system
-    /// \param[in] x the solution is stored in here
-    /// \param[in] precond the preconditioner used (default: Idendity predonditioner)
+    /// \param[in] rhs      the right hand side of the linear system
+    /// \param[in,out] x    starting value; the solution is stored in here
+    /// \param[in] precond  the preconditioner used (default: identity preconditioner)
     ///
     /// \ingroup Solver
     virtual void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator & precond) = 0;
