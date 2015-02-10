@@ -173,6 +173,9 @@ include_directories("${IpOpt_INCLUDE_DIRS}")
  
 endif(GISMO_WITH_IPOPT)
 
+if(GISMO_WITH_SUPERLU)
+  find_package(SuperLU REQUIRED)
+endif(GISMO_WITH_SUPERLU)
 
 ## #################################################################
 ## Build gismo library instantized for GISMO_COEFF_TYPE number type

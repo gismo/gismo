@@ -39,6 +39,7 @@ option(GISMO_WITH_PSOLID         "With Parasolid"         false  )
 option(GISMO_WITH_MPFR           "With MPFR"              false  )
 option(GISMO_WITH_ONURBS         "With OpenNurbs"         false  )
 option(GISMO_WITH_IPOPT          "With IpOpt"             false  )
+option(GISMO_WITH_SUPERLU        "With SuperLU"           false  )
 
 #Extra options
 option(GISMO_BUILD_QT_APP        "Build Qt application"   false  )
@@ -65,6 +66,7 @@ message ("  GISMO_WITH_PSOLID       ${GISMO_WITH_PSOLID}")
 #message ("  GISMO_WITH_MPFR         ${GISMO_WITH_MPFR}")
 message ("  GISMO_WITH_ONURBS       ${GISMO_WITH_ONURBS}")
 #message ("  GISMO_WITH_IPOPT        ${GISMO_WITH_IPOPT}")
+message ("  GISMO_WITH_SUPERLU      ${GISMO_WITH_SUPERLU}")
 
 #https://www.threadingbuildingblocks.org/documentation
 #message ("  GISMO_WITH_ITBB          ${GISMO_WITH_ITBB}")
