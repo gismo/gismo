@@ -1,4 +1,4 @@
-/** @file gsConjugateGradient.hpp
+/** @file gsConjugateGradient.h
 
     @brief Conjugate gradient solver
 
