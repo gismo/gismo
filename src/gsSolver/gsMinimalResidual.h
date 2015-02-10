@@ -17,7 +17,7 @@
 namespace gismo
 {
 
-class gsMinimalResidual : public gsIterativeSolver
+class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver
 {
 public:
     typedef gsMatrix<real_t>                VectorType;
@@ -67,3 +67,11 @@ private:
 };
 
 } // namespace gismo
+
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsMinimalResidual.cpp)
+#endif

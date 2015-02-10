@@ -1,4 +1,4 @@
-/** @file gsSmoother.h
+    /** @file gsSmoother.h
 
     @brief Provides Multigrid smoothers.
 
@@ -51,7 +51,7 @@ struct Smoother
 };
 
 
-class gsSmoother
+class GISMO_EXPORT gsSmoother
 {
 public:
     virtual ~gsSmoother() { }
@@ -158,3 +158,10 @@ GISMO_EXPORT void gaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatri
 
 } // namespace gismo
 
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsSmoother.cpp)
+#endif

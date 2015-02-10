@@ -37,7 +37,7 @@ namespace gismo
  *
  * \ingroup Solver
  */
-class gsBlockPreconditioner : public gsLinearOperator
+class GISMO_EXPORT gsBlockPreconditioner : public gsLinearOperator
 {
 public:
     gsBlockPreconditioner(index_t nRows, index_t nCols);
@@ -77,3 +77,11 @@ private:
 };
 
 } // namespace gismo
+
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsBlockPreconditioner.cpp)
+#endif

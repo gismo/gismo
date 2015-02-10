@@ -18,7 +18,7 @@
 namespace gismo
 {
 
-class gsGMRes: public gsIterativeSolver
+class GISMO_EXPORT gsGMRes: public gsIterativeSolver
 {
 public:
     typedef gsMatrix<real_t>                VectorType;
@@ -67,3 +67,11 @@ private:
 };
 
 } // namespace gismo
+
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsGMRes.cpp)
+#endif

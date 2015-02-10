@@ -20,7 +20,7 @@ namespace gismo
 /// @brief Abstract class for iterative solvers.
 ///
 /// \ingroup Solver
-class gsIterativeSolver
+class GISMO_EXPORT gsIterativeSolver
 {
 public:
     typedef gsMatrix<real_t>                VectorType;

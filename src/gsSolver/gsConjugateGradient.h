@@ -26,7 +26,7 @@ namespace gismo
  *  Only implemented for single right hand side!
  */
 
-class gsConjugateGradient : public gsIterativeSolver
+class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver
 {
 public:
     typedef gsMatrix<real_t>    VectorType;
@@ -88,3 +88,11 @@ private:
 };
 
 } // namespace gismo
+
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsConjugateGradient.cpp)
+#endif
