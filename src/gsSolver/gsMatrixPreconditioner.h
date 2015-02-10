@@ -27,7 +27,8 @@ class gsMatrixPreconditioner : public gsLinearOperator
 {
 public:
 
-    gsMatrixPreconditioner(const MatrixType& _matPre) : matPre(_matPre)
+    gsMatrixPreconditioner(const MatrixType& _matPre, bool sym=false)
+        : matPre(_matPre), m_symmetric(sym)
     {
     }
 
@@ -38,7 +39,10 @@ public:
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
-        x.noalias() = matPre * input;
+        if (m_symmetric)
+            x.noalias() = matPre.template selfadjointView<Lower>() * input;
+        else
+            x.noalias() = matPre * input;
     }
 
     index_t rows() const {return matPre.rows();}
@@ -50,6 +54,7 @@ public:
 
 private:
     const MatrixType& matPre;
+    bool m_symmetric;
 };
 
 /** This essentially just calls the gsMatrixPreconditioner constructor, but the
@@ -57,9 +62,9 @@ private:
  * so we don't need to type out the matrix type explicitly.
  */
 template <typename MatrixType>
-gsMatrixPreconditioner<MatrixType>* makeMatrixOperator(const MatrixType& mat)
+gsMatrixPreconditioner<MatrixType>* makeMatrixOperator(const MatrixType& mat, bool sym=false)
 {
-    return new gsMatrixPreconditioner<MatrixType>(mat);
+    return new gsMatrixPreconditioner<MatrixType>(mat, sym);
 }
 
 } // namespace gismo
