@@ -454,7 +454,7 @@ transformGradsHdiv( index_t k,
 //*/
 }
 
-//Not verified!
+//Verified for 2D
 template <class T, int ParDim, int codim>
 void gsGenericGeometryEvaluator<T,ParDim,codim>::
 transformLaplaceHgrad(  index_t k,
