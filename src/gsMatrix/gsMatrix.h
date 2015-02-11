@@ -14,7 +14,7 @@
 
 # pragma once
 
-// Assumes that Eigen library has been already included
+#include <gsCore/gsLinearAlgebra.h>     // for including Eigen
 
 
 namespace gismo
