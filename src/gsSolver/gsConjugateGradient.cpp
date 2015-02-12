@@ -79,6 +79,7 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLine
 
 real_t gsConjugateGradient::getConditionNumber()
 {
+    GISMO_ASSERT(m_eigsAreCalculated,"No data for eigenvalues was collected, call setCalcEigenvalues(true) and solve with an arbitrary right hand side");
     gsLanczosMatrix<real_t> L(gamma,delta);
 
     return L.maxEigenvalue()/L.minEigenvalue();
@@ -86,6 +87,7 @@ real_t gsConjugateGradient::getConditionNumber()
 
 void gsConjugateGradient::getEigenvalues(gsMatrix<real_t>& eigs )
 {
+   GISMO_ASSERT(m_eigsAreCalculated,"No data for eigenvalues was collected, call setCalcEigenvalues(true) and solve with an arbitrary right hand side");
 
    gsLanczosMatrix<real_t> LM(gamma,delta);
    gsSparseMatrix<real_t> L;

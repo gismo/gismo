@@ -33,17 +33,17 @@ public:
 
     /// Constructor for general linear operator
     gsConjugateGradient(const gsLinearOperator& _mat, int _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
-        : gsIterativeSolver(_mat, _maxIt, _tol), m_calcEigenvals(calcEigenval) {}
+        : gsIterativeSolver(_mat, _maxIt, _tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
 
     /// Constructor for sparse matrix
     template<typename T, int _Options, typename _Index>
     gsConjugateGradient(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
-        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol), m_calcEigenvals(calcEigenval)  {}
+        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
 
     /// Constructor for dense matrix
     template<class T, int _Rows, int _Cols, int _Options>
     gsConjugateGradient(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
-        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol) ,m_calcEigenvals(calcEigenval)  {}
+        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol) ,m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
 
     void initIteration(const VectorType& rhs, VectorType& x0, const gsLinearOperator& precond);
 
@@ -58,6 +58,9 @@ public:
                 m_numIter++;
             }
             m_error = std::sqrt(residualNorm2 / rhsNorm2);
+
+            if(m_calcEigenvals)
+                m_eigsAreCalculated =  true;
         }
 
     bool step( VectorType& x, const gsLinearOperator& precond );
@@ -84,6 +87,7 @@ private:
     real_t absNew, residualNorm2, threshold, rhsNorm2;
 
     bool m_calcEigenvals;
+    bool m_eigsAreCalculated;
 
     std::vector<real_t> delta, gamma;
 };
