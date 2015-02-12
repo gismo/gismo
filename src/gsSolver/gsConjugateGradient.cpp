@@ -79,28 +79,17 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLine
 
 real_t gsConjugateGradient::getConditionNumber()
 {
-    //TODO: improve by using a recursion of the characteristic polynomial
-    gsMatrix<real_t> eigs;
-    getEigenvalues(eigs);
+    gsLanczosMatrix<real_t> L(gamma,delta);
 
-    return eigs(eigs.rows()-1,0)/eigs(0,0);
+    return L.maxEigenvalue()/L.minEigenvalue();
 }
 
 void gsConjugateGradient::getEigenvalues(gsMatrix<real_t>& eigs )
 {
-    gsSparseMatrix<real_t> L(m_numIter+1,m_numIter+1);
-    std::vector<Eigen::Triplet<real_t> > list;
-    list.reserve(3*m_numIter);
 
-    list.push_back(Eigen::Triplet<real_t>(0,0,delta[0]));
-    for(int i = 1; i<m_numIter+1;i++)
-    {
-        list.push_back(Eigen::Triplet<real_t>(i,i-1,gamma[i-1]));
-        list.push_back(Eigen::Triplet<real_t>(i-1,i,gamma[i-1]));
-        list.push_back(Eigen::Triplet<real_t>(i,i,delta[i]));
-    }
-    L.setFromTriplets(list.begin(),list.end());
-
+   gsLanczosMatrix<real_t> LM(gamma,delta);
+   gsSparseMatrix<real_t> L;
+   LM.matrixForm(L);
     //there is probably a better option...
    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(L.toDense());
 

@@ -137,5 +137,140 @@ public:
     }
 };
 
+/** @brief
+class for calculating the eigenvalues of the lanczos matrix (see conjugate gradient for usage)
+
+ \ingroup Solver
+ */
+template<class T>
+class gsLanczosMatrix
+{
+    /**
+     * @brief deriv derivative of characteristic polynomial
+     * @param lambda evaluation point
+     * @param k order of the polynomial (use n to start the recursion)
+     * @return the derivative at position lambda
+     */
+    T deriv(T lambda , unsigned k)
+    {
+        if(k==0)
+            return 0;
+        else if(k==1)
+            return -1;
+        else
+        {
+           return (m_delta[k-1]-lambda)*deriv(lambda,k-1) - value(lambda,k-1)-m_gamma[k-2]*m_gamma[k-2]*deriv(lambda,k-2);
+        }
+    }
+
+    /**
+     * @brief value value of characteristic polynomial
+     * @param lambda evaluation point
+     * @param k order of the polynomial (use n to start the recursion)
+     * @return the value at position lambda
+     */
+    T value(T lambda, unsigned k)
+    {
+        if(k==0)
+            return 1;
+        else if(k==1)
+            return m_delta[0]-lambda;
+        else
+        {
+           return (m_delta[k-1]-lambda)*value(lambda,k-1) - m_gamma[k-2]*m_gamma[k-2]*value(lambda,k-2);
+        }
+    }
+
+    /**
+     * @brief newtonIteration starts a newton iteration for searching the zeros of the charakteristic polynomial with initial value x0;
+     * NOTE THIS FUNCTION NEEDS SOME OPTIMIZATION BECAUSE THE VALUES AND DERIVATIVES IN ONE ITERATION ARE CALCULATION TOO OFTEN DUE TO THE RECURSION.
+     * @param x0 the initial value
+     * @return the zero point (= Eigenvalue of the matrix)
+     */
+    T newtonIteration(T x0)
+    {
+        int iter =0;
+        T res =1;
+        T x_old = x0;
+        T x_new;
+        while(iter<m_maxIter && res > m_tol)
+        {
+            x_new = x_old - value(x_old,n)/deriv(x_old,n);
+            res = std::abs(x_old - x_new);
+
+            x_old = x_new;
+            iter++;
+        }
+        return x_new;
+    }
+
+public:
+
+    /**
+     * @brief gsLanczosMatrix constructor for the lanczos matrix. The lanczos matrix is a symmetric tridiagonal matrix with diagonal delta and offdiagonal gamma.
+     * @param _gamma  the diagonal
+     * @param _delta the offdiagonal
+     * @param _maxIter the number of maximal iterations of the Newton algorithm
+     * @param _tol tolerace for the newton algorithm
+     */
+    gsLanczosMatrix(const std::vector<T> & _gamma, const std::vector<T> & _delta, int _maxIter =20, T _tol = 1.e-6): m_gamma(_gamma) , m_delta(_delta), m_maxIter(_maxIter), m_tol(_tol) { n = m_delta.size();}
+
+    /**
+     * @brief maxEigenvalue calculates the largest eigenvalue
+     * @return the largest eigenvalue
+     */
+    T maxEigenvalue()
+    {
+        // x0 is rowsumNorm
+        T x0 =std::abs(m_delta[0])+std::abs(m_gamma[0]);
+        for(unsigned i=1;i<n-2;i++)
+            if(std::abs(m_delta[i])+std::abs(m_gamma[i])+ std::abs(m_gamma[i-1])>x0)
+                x0 = std::abs(m_delta[i])+std::abs(m_gamma[i])+ std::abs(m_gamma[i-1]);
+
+        if(std::abs(m_delta[n-1])+std::abs(m_gamma[n-1])>x0)
+            x0 = std::abs(m_delta[n-1])+std::abs(m_gamma[n-2]);
+        return newtonIteration(x0);
+    }
+
+    /**
+     * @brief minEigenvalue calculates the smallest eigenvalue
+     * @return the smallest eigenvalue
+     */
+    T minEigenvalue()
+    {
+        T x0 = 0;
+        return newtonIteration(x0);
+    }
+
+    /**
+     * @brief matrixForm this function return the matrix form of the lanczos matrix as a gsSparseMatrix
+     * @param L the lanczos matrix
+     */
+    void matrixForm(gsSparseMatrix<T> & L)
+    {
+        L.resize(n,n);
+        std::vector<Eigen::Triplet<real_t> > list;
+        list.reserve(3*n);
+
+        list.push_back(Eigen::Triplet<real_t>(0,0,m_delta[0]));
+        for(unsigned i = 1; i<n;i++)
+        {
+            list.push_back(Eigen::Triplet<real_t>(i,i-1,m_gamma[i-1]));
+            list.push_back(Eigen::Triplet<real_t>(i-1,i,m_gamma[i-1]));
+            list.push_back(Eigen::Triplet<real_t>(i,i,m_delta[i]));
+        }
+        L.setFromTriplets(list.begin(),list.end());
+
+    }
+
+
+private:
+    const std::vector<T>& m_gamma;
+    const std::vector<T>& m_delta;
+    int m_maxIter;
+    T m_tol;
+
+    unsigned n;
+};
 
 }//namespace gismo

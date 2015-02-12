@@ -63,12 +63,13 @@ public:
     bool step( VectorType& x, const gsLinearOperator& precond );
 
     /// @brief specify if you want to store data for eigenvalue estimation
+    /// @param flag true stores the coefficients of the lancos matrix, false not.
     void setCalcEigenvalues(bool flag) {m_calcEigenvals = flag;}
 
     /// @brief returns the condition number of the (preconditioned) system matrix
     real_t getConditionNumber();
 
-    /// @brief returns the eigenvalues of the Lanczos matrix (this function should probably be deleted in future)
+    /// @brief returns the eigenvalues of the Lanczos matrix
     void getEigenvalues(gsMatrix<real_t>& eigs);
 
 private:

@@ -14,6 +14,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsSolver/gsMatrixPreconditioner.h>
+#include <gsSolver/gsSolverUtils.h>
 
 namespace gismo
 {
