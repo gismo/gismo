@@ -62,5 +62,20 @@ void applyKronecker(const std::vector< gsLinearOperator* > & ops, const gsMatrix
     result.swap( q0 );
 }
 
+
+
+void gsKroneckerProduct::calcSize()
+{
+    m_size = 1;
+
+    for (unsigned i = 0; i < m_ops.size(); ++i)
+    {
+        GISMO_ASSERT(m_ops[i]->cols() == m_ops[i]->rows(), "Kronecker product only implemented for square operators");
+
+        m_size *= m_ops[i]->cols();
+    }
+}
+
+
 }
 
