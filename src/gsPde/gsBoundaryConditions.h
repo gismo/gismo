@@ -95,7 +95,22 @@ struct boundary_condition
     gsFunction<T> * m_function;  ///< Function data for this boundary condition
     // TO DO : robin coefficients?
     condition_type::type m_type; ///< Type of the boundary condition
-    int m_unknown;               ///< Unknown to which this boundary condition refers to 
+    int m_unknown;               ///< Unknown to which this boundary condition refers to
+};
+
+/** 
+    @brief Class prescribing a value related to a corner of a patch
+*/
+template<class T>
+struct corner_value
+{
+    corner_value(int p, boxCorner c, T v, int unk = 0)
+	: patch(p), corner(c), value(v), unknown(unk) { }
+
+    index_t patch;    ///< The index of the patch.
+    boxCorner corner; ///< The corner
+    T value;          ///< The value
+    int   unknown;    ///< Unknown to which this boundary condition refers to
 };
     
 /** @brief
@@ -205,7 +220,8 @@ public:
     iterator robinEnd()
 	{ return robin_sides.end(); }
     
-    void addCondition(int p, boxSide s, condition_type::type t, gsFunction<T> * f, int unknown = 0)
+    void addCondition(int p, boxSide s, condition_type::type t, 
+                      gsFunction<T> * f, int unknown = 0)
     {
         switch (t) {
         case condition_type::dirichlet :
@@ -222,19 +238,32 @@ public:
         }
     }
 
-    void addCondition( boxSide s, condition_type::type t, gsFunction<T> * f, int unknown = 0)
-        {
-            // for single-patch only
-            addCondition(0,s,t,f,unknown);
-        }
+    void addCondition( boxSide s, condition_type::type t, 
+                       gsFunction<T> * f, int unknown = 0)
+    {
+        // for single-patch only
+        addCondition(0,s,t,f,unknown);
+    }
 
-    void addCondition(const patchSide& ps, condition_type::type t, gsFunction<T> * f, int unknown = 0)
-        {
-            addCondition(ps.patch, ps.side(), t, f, unknown);
-        }
+    void addCornerValue(int p, boxCorner c, T value, int unknown = 0)
+    {
+        corner_values.push_back( corner_value<T>(p,c,value,unknown) );
+    }
 
-  /// Prints the object as a string.
-  std::ostream &print(std::ostream &os) const
+    void addCornerValue(boxCorner c, T value, int unknown = 0)
+    {
+        // for single-patch only
+        corner_values.push_back( corner_value<T>(0,c,value,unknown) );
+    }
+    
+    void addCondition(const patchSide& ps, condition_type::type t, 
+                      gsFunction<T> * f, int unknown = 0)
+    {
+        addCondition(ps.patch, ps.side(), t, f, unknown);
+    }
+    
+    /// Prints the object as a string.
+    std::ostream &print(std::ostream &os) const
     { 
         os << "gsBoundaryConditions :\n";
         os << "* Dirichlet boundaries: "<< drchlt_sides.size() <<"\n";
@@ -248,6 +277,7 @@ private:
     std::vector<boundary_condition<T> > drchlt_sides; ///< List of Dirichlet sides
     std::vector<boundary_condition<T> > nmnn_sides;   ///< List of Neumann sides
     std::vector<boundary_condition<T> > robin_sides;  ///< List of Robin sides
+    std::vector<corner_value<T> >       corner_values; ///< List of corners with fixed value
 
 }; // class gsBoundaryConditions
 
