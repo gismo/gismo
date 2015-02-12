@@ -325,15 +325,17 @@ public:
     void getMapper(bool conforming, 
                    const gsBoundaryConditions<T> & bc,
                    int unk,
-                   gsDofMapper & mapper) const;
+                   gsDofMapper & mapper, 
+                   bool finalize = true) const;
 
     void getMapper(bool conforming, 
                    const gsBoundaryConditions<T> & bc,
-                   gsDofMapper & mapper) const
-    { getMapper(conforming, bc, -1, mapper); }
+                   gsDofMapper & mapper,
+                   bool finalize = true) const
+    { getMapper(conforming, bc, 0, mapper, finalize); }
 
 
-    void getMapper(bool conforming, gsDofMapper & mapper) const;
+    void getMapper(bool conforming, gsDofMapper & mapper, bool finalize = true) const;
 
     // to remove
     gsDofMapper * makeMapper(bool conforming) const

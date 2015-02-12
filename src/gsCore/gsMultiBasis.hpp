@@ -136,7 +136,9 @@ int gsMultiBasis<T>::minDegree(int k) const
 }
 
 template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming, gsDofMapper & mapper) const
+void gsMultiBasis<T>::getMapper(bool conforming, 
+                                gsDofMapper & mapper, 
+                                bool finalize) const
 {
     mapper = gsDofMapper(*this);//.init(*this);
     
@@ -149,7 +151,8 @@ void gsMultiBasis<T>::getMapper(bool conforming, gsDofMapper & mapper) const
         }
     }
     
-    mapper.finalize();
+    if (finalize)
+        mapper.finalize();
 }
 
 
@@ -157,7 +160,8 @@ template<class T>
 void gsMultiBasis<T>::getMapper(bool conforming, 
                                 const gsBoundaryConditions<T> & bc, 
                                 int unk,
-                                gsDofMapper & mapper) const
+                                gsDofMapper & mapper, 
+                                bool finalize) const
 {
     mapper = gsDofMapper(*this, bc, unk); //.init(*this, bc, unk);
     
@@ -170,7 +174,8 @@ void gsMultiBasis<T>::getMapper(bool conforming,
         }
     }
 
-    mapper.finalize();
+    if (finalize)
+        mapper.finalize();
 }
     
 template<class T>
