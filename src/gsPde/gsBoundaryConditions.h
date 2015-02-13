@@ -19,7 +19,7 @@
 namespace gismo
 {
 
-template <class T> class gsFunction;
+//template <class T> class gsFunction;
 
 /// @brief Specifies the type of boundary condition
 ///
@@ -66,33 +66,52 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
 template<class T>
 struct boundary_condition
 {
-    boundary_condition( int p, boxSide s, gsFunction<T> * f, condition_type::type t, int unknown = 0)
-	: ps(p, s), m_function(f), m_type(t), m_unknown(unknown) { }
-      
+    typedef memory::shared_ptr<gsFunction<T> > function_ptr;
+
+    boundary_condition( int p, boxSide s, const function_ptr & f_shptr, 
+                        condition_type::type t, int unknown = 0)
+	: ps(p, s), 
+      m_function(f_shptr),
+      m_type(t), 
+      m_unknown(unknown) 
+    { }
+
+    boundary_condition( int p, boxSide s, gsFunction<T> * f_ptr, 
+                        condition_type::type t, int unknown = 0)
+	: ps(p, s), 
+      m_type(t), 
+      m_unknown(unknown) 
+    { 
+        m_function = function_ptr(f_ptr, null_deleter<gsFunction<T> >);
+    }
+    
     boundary_condition( int p, boxSide s, condition_type::type t, int unknown = 0)
 	: ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown)  { }
-      
+    
     /// homogeneous boundary condition ?
     bool isHomogeneous()       const { return m_function == 0; }
+    
+    /// Returns the function data pointer of the boundary condition
+    function_ptr function() const { return m_function; }
 
-    /// Returns the function data of the boundary condition
-    gsFunction<T> * function() const { return m_function; }
+    // Returns a reference to the function data
+    //const gsFunction<T> & function() const { return *m_function; }
 
     /// Returns the type of the boundary condition
     condition_type::type  type()     const { return m_type; }
-
+    
     /// Returns the patch to which this boundary condition refers to
-    int             patch()    const { return ps.patch; }
+    int     patch()    const { return ps.patch; }
 
     /// Returns the side to which this boundary condition refers to
-    boxSide  side()     const { return ps.side(); }
+    boxSide side()     const { return ps.side(); }
 
     /// Returns the unknown to which this boundary condition refers to
-    int             unknown()  const { return m_unknown; }
+    int     unknown()  const { return m_unknown; }
 
 
     patchSide ps;                ///< Side of a patch for this boundary condition
-    gsFunction<T> * m_function;  ///< Function data for this boundary condition
+    function_ptr m_function;     ///< Function data for this boundary condition
     // TO DO : robin coefficients?
     condition_type::type m_type; ///< Type of the boundary condition
     int m_unknown;               ///< Unknown to which this boundary condition refers to
@@ -127,8 +146,16 @@ class gsBoundaryConditions
     
 public:
 
-    typedef typename std::vector<boundary_condition<T> >::iterator iterator;
-    typedef typename std::vector<boundary_condition<T> >::const_iterator const_iterator;
+    typedef typename std::vector<boundary_condition<T> > bcContainer;
+    typedef typename std::vector<corner_value<T> >       cornerContainer;
+
+    typedef typename bcContainer::iterator iterator;
+    typedef typename bcContainer::const_iterator const_iterator;
+
+    typedef typename cornerContainer::iterator citerator;
+    typedef typename cornerContainer::const_iterator const_citerator;
+
+    typedef typename boundary_condition<T>::function_ptr function_ptr;
 
 public:
 
@@ -141,18 +168,28 @@ public:
     
 public:
 
+    void clear()
+    {
+        drchlt_sides .clear();
+        nmnn_sides   .clear();
+        robin_sides  .clear();
+        corner_values.clear();
+    }
+
     /// Return a reference to the Dirichlet sides 
-    const std::vector<boundary_condition<T> > & dirichletSides() const {return drchlt_sides; }
+    const bcContainer & dirichletSides() const {return drchlt_sides; }
 
     /// Return a reference to the Neumann sides 
-    const std::vector<boundary_condition<T> > & neumannSides()   const {return nmnn_sides;   }
+    const bcContainer & neumannSides()   const {return nmnn_sides;   }
 
     /// Return a reference to the Dirichlet sides 
-    const std::vector<boundary_condition<T> > & robinSides()     const {return robin_sides;  }
+    const bcContainer & robinSides()     const {return robin_sides;  }
 
-    std::vector<boundary_condition<T> > allConditions() const
+    const cornerContainer & cornerValues() const  {return corner_values;  }
+
+    bcContainer allConditions() const
     {
-        std::vector<boundary_condition<T> > all;
+        bcContainer all;
         all.reserve( drchlt_sides.size()+nmnn_sides.size()+robin_sides.size());
         all.insert( all.end(), drchlt_sides.begin(), drchlt_sides.end() );
         all.insert( all.end(), nmnn_sides.begin()  , nmnn_sides.end()   );
@@ -209,6 +246,16 @@ public:
     /// \return an iterator to the end of the Robin sides
     const_iterator robinEnd() const
 	{ return robin_sides.end(); }
+
+    /// Get an iterator to the beginning of the corner values
+    /// \return an iterator to the beginning of the corner values
+    const_citerator cornerBegin() const 
+	{ return corner_values.begin(); }
+    
+    /// Get an iterator to the end of corner values
+    /// \return an iterator to the end of the corner values
+    const_citerator cornerEnd() const 
+	{ return corner_values.end(); }
     
     /// Get an iterator to the beginning of the Robin sides
     /// \return an iterator to the beginning of the Robin sides
@@ -219,6 +266,16 @@ public:
     /// \return an iterator to the end of the Robin sides
     iterator robinEnd()
 	{ return robin_sides.end(); }
+
+    /// Get an iterator to the beginning of the corner values
+    /// \return an iterator to the beginning of the corner values
+    citerator cornerBegin()
+	{ return corner_values.begin(); }
+    
+    /// Get an iterator to the end of corner values
+    /// \return an iterator to the end of the corner values
+    citerator cornerEnd()
+	{ return corner_values.end(); }
     
     void addCondition(int p, boxSide s, condition_type::type t, 
                       gsFunction<T> * f, int unknown = 0)
@@ -238,11 +295,41 @@ public:
         }
     }
 
+    void addCondition(int p, boxSide s, condition_type::type t, 
+                      const function_ptr & f_shptr, int unknown = 0)
+    {
+        switch (t) {
+        case condition_type::dirichlet :
+            drchlt_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown) );
+            break;
+        case condition_type::neumann :
+            nmnn_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown) );
+            break;
+        case condition_type::robin :
+            robin_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown) );
+            break;
+        default:
+            std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
+        }
+    }
+
     void addCondition( boxSide s, condition_type::type t, 
                        gsFunction<T> * f, int unknown = 0)
     {
         // for single-patch only
         addCondition(0,s,t,f,unknown);
+    }
+
+    void addCondition(const patchSide& ps, condition_type::type t, 
+                      gsFunction<T> * f, int unknown = 0)
+    {
+        addCondition(ps.patch, ps.side(), t, f, unknown);
+    }
+
+    void addCondition(const patchSide& ps, condition_type::type t, 
+                      const function_ptr & f_shptr, int unknown = 0)
+    {
+        addCondition(ps.patch, ps.side(), t, f_shptr, unknown);
     }
 
     void addCornerValue(int p, boxCorner c, T value, int unknown = 0)
@@ -255,29 +342,24 @@ public:
         // for single-patch only
         corner_values.push_back( corner_value<T>(0,c,value,unknown) );
     }
-    
-    void addCondition(const patchSide& ps, condition_type::type t, 
-                      gsFunction<T> * f, int unknown = 0)
-    {
-        addCondition(ps.patch, ps.side(), t, f, unknown);
-    }
-    
+        
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream & print(std::ostream &os) const
     { 
         os << "gsBoundaryConditions :\n";
         os << "* Dirichlet boundaries: "<< drchlt_sides.size() <<"\n";
         os << "* Neumann boundaries  : "<< nmnn_sides.size() <<"\n";
+        os << "* Corner values       : "<< corner_values.size() <<"\n";
         return os; 
-    };
+    }
 
 // Data members
 private:
 
-    std::vector<boundary_condition<T> > drchlt_sides; ///< List of Dirichlet sides
-    std::vector<boundary_condition<T> > nmnn_sides;   ///< List of Neumann sides
-    std::vector<boundary_condition<T> > robin_sides;  ///< List of Robin sides
-    std::vector<corner_value<T> >       corner_values; ///< List of corners with fixed value
+    bcContainer     drchlt_sides;  ///< List of Dirichlet sides
+    bcContainer     nmnn_sides;    ///< List of Neumann sides
+    bcContainer     robin_sides;   ///< List of Robin sides
+    cornerContainer corner_values; ///< List of corners with fixed value
 
 }; // class gsBoundaryConditions
 

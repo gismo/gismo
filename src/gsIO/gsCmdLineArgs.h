@@ -1,7 +1,7 @@
 /** @file gsCmdLineArgs.h
-
+    
     @brief Provides input command line arguments.
-
+    
     This file is part of the G+Smo library.
     
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -33,30 +33,30 @@ class gsArgVal :  public TCLAP::ValueArg<C>
 public:
     typedef typename TCLAP::ValueArg<C> Base;
 public:
-
-        /**
-         * Labeled ValueArg constructor.
-         * You could conceivably call this constructor with a blank flag, 
-         * but that would make you a bad person.  It would also cause
-         * an exception to be thrown.   If you want an unlabeled argument, 
-         * use the other constructor.
-         * \param flag - The one character flag that identifies this
-         * argument on the command line.
-         * \param name - A one word name for the argument.  Can be
-         * used as a long flag on the command line.
-         * \param desc - A description of what the argument is for or
-         * does.
-         * \param req - Whether the argument is required on the command
-         * line.
-         * \param value - The default value assigned to this argument if it
-         * is not present on the command line.
-         * \param typeDesc - A short, human readable description of the
-         * type that this object expects.  This is used in the generation
-         * of the USAGE statement.  The goal is to be helpful to the end user
-         * of the program.
-         * \param v - An optional visitor.  You probably should not
-         * use this unless you have a very good reason.
-         */
+    
+    /**
+     * Labeled ValueArg constructor.
+     * You could conceivably call this constructor with a blank flag, 
+     * but that would make you a bad person.  It would also cause
+     * an exception to be thrown.   If you want an unlabeled argument, 
+     * use the other constructor.
+     * \param flag - The one character flag that identifies this
+     * argument on the command line.
+     * \param name - A one word name for the argument.  Can be
+     * used as a long flag on the command line.
+     * \param desc - A description of what the argument is for or
+     * does.
+     * \param req - Whether the argument is required on the command
+     * line.
+     * \param value - The default value assigned to this argument if it
+     * is not present on the command line.
+     * \param typeDesc - A short, human readable description of the
+     * type that this object expects.  This is used in the generation
+     * of the USAGE statement.  The goal is to be helpful to the end user
+     * of the program.
+     * \param v - An optional visitor.  You probably should not
+     * use this unless you have a very good reason.
+     */
     gsArgVal( const std::string& flag, 
               const std::string& name, 
               const std::string& desc, 
@@ -64,100 +64,100 @@ public:
               C value,
               const std::string& typeDesc,
               TCLAP::Visitor* v = NULL) ;
+    
 				 
-				 
-        /**
-         * Labeled ValueArg constructor.
-         * You could conceivably call this constructor with a blank flag, 
-         * but that would make you a bad person.  It would also cause
-         * an exception to be thrown.   If you want an unlabeled argument, 
-         * use the other constructor.
-         * \param flag - The one character flag that identifies this
-         * argument on the command line.
-         * \param name - A one word name for the argument.  Can be
-         * used as a long flag on the command line.
-         * \param desc - A description of what the argument is for or
-         * does.
-         * \param req - Whether the argument is required on the command
-         * line.
-         * \param value - The default value assigned to this argument if it
-         * is not present on the command line.
-         * \param typeDesc - A short, human readable description of the
-         * type that this object expects.  This is used in the generation
-         * of the USAGE statement.  The goal is to be helpful to the end user
-         * of the program.
-         * \param parser - A CmdLine parser object to add this Arg to
-         * \param v - An optional visitor.  You probably should not
-         * use this unless you have a very good reason.
-         */
-        gsArgVal( const std::string& flag, 
-                  const std::string& name, 
-                  const std::string& desc, 
-                  bool req, 
-                  C value,
-                  const std::string& typeDesc,
-                  TCLAP::CmdLineInterface& parser,
-                  TCLAP::Visitor* v = NULL );
+    /**
+     * Labeled ValueArg constructor.
+     * You could conceivably call this constructor with a blank flag, 
+     * but that would make you a bad person.  It would also cause
+     * an exception to be thrown.   If you want an unlabeled argument, 
+     * use the other constructor.
+     * \param flag - The one character flag that identifies this
+     * argument on the command line.
+     * \param name - A one word name for the argument.  Can be
+     * used as a long flag on the command line.
+     * \param desc - A description of what the argument is for or
+     * does.
+     * \param req - Whether the argument is required on the command
+     * line.
+     * \param value - The default value assigned to this argument if it
+     * is not present on the command line.
+     * \param typeDesc - A short, human readable description of the
+     * type that this object expects.  This is used in the generation
+     * of the USAGE statement.  The goal is to be helpful to the end user
+     * of the program.
+     * \param parser - A CmdLine parser object to add this Arg to
+     * \param v - An optional visitor.  You probably should not
+     * use this unless you have a very good reason.
+     */
+    gsArgVal( const std::string& flag, 
+              const std::string& name, 
+              const std::string& desc, 
+              bool req, 
+              C value,
+              const std::string& typeDesc,
+              TCLAP::CmdLineInterface& parser,
+              TCLAP::Visitor* v = NULL );
  
-        /**
-         * Labeled ValueArg constructor.
-         * You could conceivably call this constructor with a blank flag, 
-         * but that would make you a bad person.  It would also cause
-         * an exception to be thrown.   If you want an unlabeled argument, 
-         * use the other constructor.
-         * \param flag - The one character flag that identifies this
-         * argument on the command line.
-         * \param name - A one word name for the argument.  Can be
-         * used as a long flag on the command line.
-         * \param desc - A description of what the argument is for or
-         * does.
-         * \param req - Whether the argument is required on the command
-         * line.
-         * \param value - The default value assigned to this argument if it
-         * is not present on the command line.
-         * \param constraint - A pointer to a Constraint object used
-		 * to constrain this Arg.
-         * \param parser - A CmdLine parser object to add this Arg to.
-         * \param v - An optional visitor.  You probably should not
-         * use this unless you have a very good reason.
-         */
-        gsArgVal( const std::string& flag, 
-                  const std::string& name, 
-                  const std::string& desc, 
-                  bool req, 
-                  C value,
-                  TCLAP::Constraint<C>* constraint,
-                  TCLAP::CmdLineInterface& parser,
-                  TCLAP::Visitor* v = NULL );
+    /**
+     * Labeled ValueArg constructor.
+     * You could conceivably call this constructor with a blank flag, 
+     * but that would make you a bad person.  It would also cause
+     * an exception to be thrown.   If you want an unlabeled argument, 
+     * use the other constructor.
+     * \param flag - The one character flag that identifies this
+     * argument on the command line.
+     * \param name - A one word name for the argument.  Can be
+     * used as a long flag on the command line.
+     * \param desc - A description of what the argument is for or
+     * does.
+     * \param req - Whether the argument is required on the command
+     * line.
+     * \param value - The default value assigned to this argument if it
+     * is not present on the command line.
+     * \param constraint - A pointer to a Constraint object used
+     * to constrain this Arg.
+     * \param parser - A CmdLine parser object to add this Arg to.
+     * \param v - An optional visitor.  You probably should not
+     * use this unless you have a very good reason.
+     */
+    gsArgVal( const std::string& flag, 
+              const std::string& name, 
+              const std::string& desc, 
+              bool req, 
+              C value,
+              TCLAP::Constraint<C>* constraint,
+              TCLAP::CmdLineInterface& parser,
+              TCLAP::Visitor* v = NULL );
 	  
-        /**
-         * Labeled ValueArg constructor.
-         * You could conceivably call this constructor with a blank flag, 
-         * but that would make you a bad person.  It would also cause
-         * an exception to be thrown.   If you want an unlabeled argument, 
-         * use the other constructor.
-         * \param flag - The one character flag that identifies this
-         * argument on the command line.
-         * \param name - A one word name for the argument.  Can be
-         * used as a long flag on the command line.
-         * \param desc - A description of what the argument is for or
-         * does.
-         * \param req - Whether the argument is required on the command
-         * line.
-         * \param value - The default value assigned to this argument if it
-         * is not present on the command line.
-         * \param constraint - A pointer to a Constraint object used
-		 * to constrain this Arg.
-         * \param v - An optional visitor.  You probably should not
-         * use this unless you have a very good reason.
-         */
-        gsArgVal( const std::string& flag, 
-                  const std::string& name, 
-                  const std::string& desc, 
-                  bool req, 
-                  C value,
-                  TCLAP::Constraint<C>* constraint,
-                  TCLAP::Visitor* v = NULL );
+    /**
+     * Labeled ValueArg constructor.
+     * You could conceivably call this constructor with a blank flag, 
+     * but that would make you a bad person.  It would also cause
+     * an exception to be thrown.   If you want an unlabeled argument, 
+     * use the other constructor.
+     * \param flag - The one character flag that identifies this
+     * argument on the command line.
+     * \param name - A one word name for the argument.  Can be
+     * used as a long flag on the command line.
+     * \param desc - A description of what the argument is for or
+     * does.
+     * \param req - Whether the argument is required on the command
+     * line.
+     * \param value - The default value assigned to this argument if it
+     * is not present on the command line.
+     * \param constraint - A pointer to a Constraint object used
+     * to constrain this Arg.
+     * \param v - An optional visitor.  You probably should not
+     * use this unless you have a very good reason.
+     */
+    gsArgVal( const std::string& flag, 
+              const std::string& name, 
+              const std::string& desc, 
+              bool req, 
+              C value,
+              TCLAP::Constraint<C>* constraint,
+              TCLAP::Visitor* v = NULL );
 
 
 }; // class gsArgVal
@@ -168,18 +168,18 @@ public:
     typedef TCLAP::SwitchArg Base;
 public:
 
-        /**
-         * SwitchArg constructor.
-         * \param flag - The one character flag that identifies this
-         * argument on the command line.
-         * \param name - A one word name for the argument.  Can be
-         * used as a long flag on the command line.
-         * \param desc - A description of what the argument is for or
-         * does.
-         * \param def - The default value for this Switch. 
-         * \param v - An optional visitor.  You probably should not
-         * use this unless you have a very good reason.
-         */
+    /**
+     * SwitchArg constructor.
+     * \param flag - The one character flag that identifies this
+     * argument on the command line.
+     * \param name - A one word name for the argument.  Can be
+     * used as a long flag on the command line.
+     * \param desc - A description of what the argument is for or
+     * does.
+     * \param def - The default value for this Switch. 
+     * \param v - An optional visitor.  You probably should not
+     * use this unless you have a very good reason.
+     */
     gsArgSwitch(const std::string& flag, 
                 const std::string& name, 
                 const std::string& desc,
@@ -249,36 +249,36 @@ public:
                    bool ignoreable = false,
                    TCLAP::Visitor* v = NULL); 
     
-		/**
-		 * UnlabeledValueArg constructor.
-		 * \param name - A one word name for the argument.  Note that this is used for
-		 * identification, not as a long flag.
-		 * \param desc - A description of what the argument is for or
-		 * does.
-		 * \param req - Whether the argument is required on the command
-		 * line.
-		 * \param value - The default value assigned to this argument if it
-		 * is not present on the command line.
-		 * \param typeDesc - A short, human readable description of the
-		 * type that this object expects.  This is used in the generation
-		 * of the USAGE statement.  The goal is to be helpful to the end user
-		 * of the program.
-		 * \param parser - A CmdLine parser object to add this Arg to
-		 * \param ignoreable - Allows you to specify that this argument can be
-		 * ignored if the '--' flag is set.  This defaults to false (cannot
-		 * be ignored) and should  generally stay that way unless you have 
-		 * some special need for certain arguments to be ignored.
-		 * \param v - Optional Vistor.  You should leave this blank unless
-		 * you have a very good reason.
-		 */
-		gsArgValPlain( const std::string& name, 
-                               const std::string& desc, 
-                               bool req,
-                               C value,
-                               const std::string& typeDesc,
-                               TCLAP::CmdLineInterface& parser,
-                               bool ignoreable = false,
-                               TCLAP::Visitor* v = NULL ); 					
+    /**
+     * UnlabeledValueArg constructor.
+     * \param name - A one word name for the argument.  Note that this is used for
+     * identification, not as a long flag.
+     * \param desc - A description of what the argument is for or
+     * does.
+     * \param req - Whether the argument is required on the command
+     * line.
+     * \param value - The default value assigned to this argument if it
+     * is not present on the command line.
+     * \param typeDesc - A short, human readable description of the
+     * type that this object expects.  This is used in the generation
+     * of the USAGE statement.  The goal is to be helpful to the end user
+     * of the program.
+     * \param parser - A CmdLine parser object to add this Arg to
+     * \param ignoreable - Allows you to specify that this argument can be
+     * ignored if the '--' flag is set.  This defaults to false (cannot
+     * be ignored) and should  generally stay that way unless you have 
+     * some special need for certain arguments to be ignored.
+     * \param v - Optional Vistor.  You should leave this blank unless
+     * you have a very good reason.
+     */
+    gsArgValPlain( const std::string& name, 
+                   const std::string& desc, 
+                   bool req,
+                   C value,
+                   const std::string& typeDesc,
+                   TCLAP::CmdLineInterface& parser,
+                   bool ignoreable = false,
+                   TCLAP::Visitor* v = NULL ); 					
 						
     /**
      * UnlabeledValueArg constructor.

@@ -108,6 +108,8 @@ inline gsMovable<T> give(T & x)
 #endif
 
 
+/// \brief Clones all pointers in the range [\a start \a end) and stores new
+/// pointers in iterator \a out
 template <typename It, typename ItOut>
 void cloneAll(It start, It end, ItOut out)
 {
@@ -115,6 +117,7 @@ void cloneAll(It start, It end, ItOut out)
         *out++ = (*i)->clone();
 }
 
+/// \brief Frees all pointers in the range [\a begin \a end)
 template <typename It>
 void freeAll(It begin, It end)
 {
@@ -123,11 +126,16 @@ void freeAll(It begin, It end)
             delete (*it);
 }
 
+/// \brief Frees all pointers in the container \a Cont
 template <typename Cont>
 void freeAll(Cont& cont)
 {
     freeAll( cont.begin(), cont.end() );
     cont.clear();
 }
+
+/// \brief Deleter function that does not delete an object pointer
+template <typename Obj>
+void null_deleter(Obj *) {}
 
 }; // namespace gismo
