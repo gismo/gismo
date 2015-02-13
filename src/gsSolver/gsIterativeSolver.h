@@ -13,7 +13,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsSolver/gsMatrixPreconditioner.h>
+#include <gsSolver/gsMatrixOperator.h>
 #include <gsSolver/gsSolverUtils.h>
 
 namespace gismo

@@ -1,6 +1,6 @@
-/** @file gsMatrixPreconditioner.h
+/** @file gsMatrixOperator.h
 
-    @brief Simple class to give a matrix preconditioner properties
+    @brief Simple adapter class to use a matrix as a gsLinearOperator
 
     This file is part of the G+Smo library.
 
@@ -23,17 +23,17 @@ namespace gismo
 /// \ingroup Solver
 
 template <typename MatrixType>
-class gsMatrixPreconditioner : public gsLinearOperator
+class gsMatrixOperator : public gsLinearOperator
 {
 public:
 
-    gsMatrixPreconditioner(const MatrixType& _matPre, bool sym=false)
+    gsMatrixOperator(const MatrixType& _matPre, bool sym=false)
         : matPre(_matPre), m_symmetric(sym)
     {
     }
 
     /// Destructor
-    ~gsMatrixPreconditioner()
+    ~gsMatrixOperator()
     {
     }
 
@@ -57,14 +57,14 @@ private:
     bool m_symmetric;
 };
 
-/** This essentially just calls the gsMatrixPreconditioner constructor, but the
+/** This essentially just calls the gsMatrixOperator constructor, but the
  * use of a template functions allows us to let the compiler do type inference,
  * so we don't need to type out the matrix type explicitly.
  */
 template <typename MatrixType>
-gsMatrixPreconditioner<MatrixType>* makeMatrixOperator(const MatrixType& mat, bool sym=false)
+gsMatrixOperator<MatrixType>* makeMatrixOperator(const MatrixType& mat, bool sym=false)
 {
-    return new gsMatrixPreconditioner<MatrixType>(mat, sym);
+    return new gsMatrixOperator<MatrixType>(mat, sym);
 }
 
 } // namespace gismo
