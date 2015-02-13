@@ -157,11 +157,3 @@ GISMO_EXPORT void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, 
 GISMO_EXPORT void gaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
 
 } // namespace gismo
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
-
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsSmoother.cpp)
-#endif
