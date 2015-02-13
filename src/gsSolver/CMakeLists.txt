@@ -40,8 +40,7 @@ if(GISMO_BUILD_LIB)
 
 set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}>
     CACHE INTERNAL "G+Smo modules" )
-
-endif()
-
 set (gismo_SOURCES ${gismo_SOURCES} ${${GM_NAME}_CPP}
      CACHE INTERNAL "gismo source files")
+
+endif()
