@@ -374,7 +374,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
         GISMO_ERROR("query3 says: Wrong order of points defining the box (or empty box): "
                     << qBox.first.transpose() <<", "<< qBox.second.transpose() <<".\n" );
 
-    std::stack<node*> stack;
+    std::stack<node*, std::vector<node*> > stack; //experiment
     stack.push(_node); 
     // initialize result
     typename visitor::return_type res = visitor::init;
