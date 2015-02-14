@@ -89,7 +89,7 @@ struct boundary_condition
 	: ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown)  { }
     
     /// homogeneous boundary condition ?
-    bool isHomogeneous()       const { return m_function == 0; }
+    bool isHomogeneous() const { return m_function == NULL; }
     
     /// Returns the function data pointer of the boundary condition
     function_ptr function() const { return m_function; }
@@ -98,7 +98,7 @@ struct boundary_condition
     //const gsFunction<T> & function() const { return *m_function; }
 
     /// Returns the type of the boundary condition
-    condition_type::type  type()     const { return m_type; }
+    condition_type::type  type() const { return m_type; }
     
     /// Returns the patch to which this boundary condition refers to
     int     patch()    const { return ps.patch; }
