@@ -192,7 +192,7 @@ class gsLanczosMatrix
         int iter =0;
         T res =1;
         T x_old = x0;
-        T x_new;
+        T x_new = x0;
         while(iter<m_maxIter && res > m_tol)
         {
             x_new = x_old - value(x_old,n)/deriv(x_old,n);
