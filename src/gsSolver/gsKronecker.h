@@ -24,12 +24,12 @@ namespace gismo
     kron(ops[0], ops[1], ..., ops[n-1]) * x
   and store it in \a result without computing the large Kronecker product matrix itself.
 */
-void applyKronecker(const std::vector< gsLinearOperator* > & ops, const gsMatrix<>& x, gsMatrix<>& result);
+void GISMO_EXPORT applyKronecker(const std::vector< gsLinearOperator* > & ops, const gsMatrix<>& x, gsMatrix<>& result);
 
 
 
 /// Class for representing a Kronecker product of linear operators
-class gsKroneckerProduct : gsLinearOperator
+class GISMO_EXPORT gsKroneckerProduct : gsLinearOperator
 {
 public:
     /// Kronecker product of a given list of operators. Takes ownership of the operators.
