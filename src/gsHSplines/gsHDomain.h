@@ -105,12 +105,15 @@ private:
     /// Maximum level present in the tree
     unsigned m_maxInsLevel;
 
+    unsigned m_maxPath;
+
 public:
 
     gsHDomain() : m_indexLevel(0)
     {
         m_root=NULL; 
         m_maxInsLevel = 0;
+        m_maxPath = 0;
     }
     
     gsHDomain(point const & upp, unsigned index_level = 10 )
@@ -133,7 +136,8 @@ public:
     gsHDomain( const gsHDomain & o) : 
         m_upperIndex(o.m_upperIndex),
         m_indexLevel(o.m_indexLevel),
-        m_maxInsLevel(o.m_maxInsLevel)
+        m_maxInsLevel(o.m_maxInsLevel),
+        m_maxPath(o.m_maxPath)
     {
         m_root = new node(*o.m_root);
     }
@@ -147,8 +151,9 @@ public:
         m_root = new node(*o.m_root);
 
         m_upperIndex  = o.m_upperIndex;
-        m_indexLevel = o.m_indexLevel;
+        m_indexLevel  = o.m_indexLevel;
         m_maxInsLevel = o.m_maxInsLevel;
+        m_maxPath    = o.m_maxPath;
 
         return *this;
     }
@@ -166,6 +171,7 @@ public:
             m_upperIndex[i] = (upp[i]<< m_indexLevel);
 
         m_root = new node(m_upperIndex);
+        m_maxPath = 1;
     }
 
     /// Destructor deletes the whole tree
@@ -337,7 +343,7 @@ public:
     { return boxSearch< query2_visitor >(lower,upper,level,_node); }
 
     /** \brief Returns true if the box defined by \em lower and \em upper
-     * is completely contained in a domain with a level different to \em level.
+     * is completely contained in a Om-domain with a level different to \em level.
      *
      * \param lower the lower left corner of the box
      * \param upper the upper right corner of the box
@@ -353,11 +359,10 @@ public:
     // query3 is used if both query1 and query2 are false to decide if the
     // coresponding basis function is active or not.  it returns the
     // smallest level in which [k1,k2] is completely contained and not
-    // completely overlaped by higher omega structure of the function is
+    // completely overlaped by higher omega structure. The idea is
     // the same as in case of query1 and query2 but insted of returning a
     // true or false value we remember the lowest level, which is returned
     // at the end.
-    // TO DO "leaf" is misleading -- rename to node_
     int query3(point const & k1, point const & k2, 
                int level, node *_node ) const
     { return boxSearch< query3_visitor >(k1,k2,level,_node); }
@@ -374,7 +379,6 @@ public:
      * \param upper the upper right corner of the box
      * \param level specifies which level \em lower and \em upper refer to.
      *
-     * \todo Check if this really is the use of \em level !
      */
     int query3(point const & lower, point const & upper,
                int level) const
@@ -395,7 +399,6 @@ public:
      * \param upper the upper right corner of the box
      * \param level specifies which level \em lower and \em upper refer to.
      *
-     * \todo Check if this is true!
      */
     int query4(point const & lower, point const & upper,
                int level) const
@@ -437,10 +440,12 @@ public:
     }
 
     void makeCompressed();
-        
+    
     /// Returns the number of nodes in the tree
     int size() const
-    { return nodeSearch< numNodes_visitor >(); }
+    { 
+        return nodeSearch< numNodes_visitor >(); 
+    }
 
     /// Returns the number of distinct knots in direction \a k of level \a lvl
     int numBreaks(int lvl, int k) const
@@ -451,6 +456,9 @@ public:
     /// Returns the number of leaves in the tree
     int leafSize() const 
     { return leafSearch< numLeaves_visitor >(); }
+
+    /// Returns the minimim and maximum path length in the tree
+    std::pair<int,int> minMaxPath() const;
 
     void printLeaves() const
     { leafSearch< printLeaves_visitor >(); }

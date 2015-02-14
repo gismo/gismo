@@ -141,14 +141,15 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
     }
     
     // Initialize stack
-    std::stack<node*> stack;
-    stack.push(_node); //start from root
+    std::vector<node*> stack;
+    stack.reserve( 2 * (m_maxPath + d) );
+    stack.push_back(_node);  //push(_node); 
     
     node * curNode;
     while ( ! stack.empty() )
     {
-        curNode = stack.top();
-        stack.pop();
+        curNode = stack.back(); //top();
+        stack.pop_back();       //pop();
         
 /*
         if ( curNode->is_Node() ) // reached a leaf
@@ -164,7 +165,7 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
             else if ( haveOverlap(*curNode->box, iBox) )
             {
                 curNode->nextMidSplit();
-                stack.push(curNode);
+                stack.push_back(curNode);
             }
         }
         //else..
@@ -187,26 +188,26 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
             {
                 // Increase level and reccurse
                 if ( ++curNode->level != lvl)
-                    stack.push(curNode);
+                    stack.push_back(curNode);
             }
             else // treat new child
             {
-                stack.push(newLeaf);
+                stack.push_back(newLeaf);
             }
         }
         else // roll down the tree
         {
             if ( iBox.second[curNode->axis] <= curNode->pos)
                 // iBox overlaps only left child of this split-node
-                stack.push(curNode->left);
+                stack.push_back(curNode->left);
             else if  ( iBox.first[curNode->axis] >= curNode->pos)
                 // iBox overlaps only right child of this split-node
-                stack.push(curNode->right);
+                stack.push_back(curNode->right);
             else
             {   
                 // iBox overlaps both children of this split-node 
-                stack.push(curNode->left );
-                stack.push(curNode->right);
+                stack.push_back(curNode->left );
+                stack.push_back(curNode->right);
             }
         }
     }
@@ -240,7 +241,7 @@ gsHDomain<d,T>::sinkBox ( point const & k1,
     }
     
     // Initialize stack
-    std::stack<node*> stack;
+    std::stack<node*, std::vector<node*> > stack;
     stack.push(m_root); 
     
     node * curNode;
@@ -289,11 +290,11 @@ gsHDomain<d,T>::sinkBox ( point const & k1,
 template<unsigned d, class T > void
 gsHDomain<d,T>::makeCompressed()
 {
-    std::stack<node*> tstack;
+    std::stack<node*, std::vector<node*> > tstack;
     node * curNode;
 
     // First step: gather all terminal nodes
-    std::stack<node*> stack;
+    std::stack<node*, std::vector<node*> > stack;
     stack.push(m_root);
     while ( ! stack.empty() )
     {
@@ -327,6 +328,9 @@ gsHDomain<d,T>::makeCompressed()
                 tstack.push(curNode->parent );
         }
     }
+    
+    // Store the max path length
+    m_maxPath = minMaxPath().second;
 }
 
 
@@ -371,19 +375,54 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
     local2globalIndex( qBox.second, static_cast<unsigned>(level), qBox.second);
 
     if( isDegenerate(qBox) )
-        GISMO_ERROR("query3 says: Wrong order of points defining the box (or empty box): "
+        GISMO_ERROR("boxSearch: Wrong order of points defining the box (or empty box): "
                     << qBox.first.transpose() <<", "<< qBox.second.transpose() <<".\n" );
 
-    std::stack<node*, std::vector<node*> > stack; //experiment
-    stack.push(_node); 
-    // initialize result
     typename visitor::return_type res = visitor::init;
+
+/*  // under construction
+    node * curNode = m_root;
+    
+    while( curNode != NULL )
+    {        
+        // Visit the node
+        if ( curNode->isLeaf() && 
+             (haveOverlap(qBox,*curNode->box) ||
+              haveOverlap(*curNode->box,qBox) || 
+              isContained(qBox,*curNode->box) ||
+              isContained(*curNode->box,qBox) ) 
+           )
+            visitor::visitLeaf(curNode, level, res );
+
+        if ( ! curNode->isLeaf() )
+            curNode = curNode->left;
+        //else if  ( curNode->right!=NULL)
+        //    curNode = curNode->right;
+        else
+        {
+            while (curNode->parent != NULL &&
+                   curNode != curNode->parent->left)
+                curNode = curNode->parent;
+            
+            if ( curNode->isRoot() ) 
+                break;
+            else 
+                curNode = curNode->parent->right; //so we go to right sibling
+        }
+    }
+//*/
+
+// /* // implementation with stack
+
+    std::vector<node*> stack;
+    stack.reserve( 2 * m_maxPath );
+    stack.push_back(_node);  //push(_node); 
 
     node * curNode;
     while ( ! stack.empty() )
     {
-        curNode = stack.top();
-        stack.pop();
+        curNode = stack.back(); //top();
+        stack.pop_back();       //pop();
         
         if ( curNode->isLeaf() )
         {
@@ -394,21 +433,129 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
         {
             if ( qBox.second[curNode->axis] <= curNode->pos)
                 // qBox overlaps only left child of this split-node
-                stack.push(curNode->left);
+                stack.push_back(curNode->left); //push(curNode->left);
             else if  ( qBox.first[curNode->axis] >= curNode->pos)
                 // qBox overlaps only right child of this split-node
-                stack.push(curNode->right);
+                stack.push_back(curNode->right); //push(curNode->right);
             else
             {   
                 // qBox overlaps both children of this split-node 
-                stack.push(curNode->left );
-                stack.push(curNode->right);
+                stack.push_back(curNode->left ); //push(curNode->left );
+                stack.push_back(curNode->right); //push(curNode->right);
             }
         }
     }   
-
+//*/
     return res;
 }
+
+
+/* 
+   Function to traverse the tree nodes without recursion and without
+   stack, when parents are not stored. Not thread-safe
+//
+template<unsigned d, class T> 
+template<typename visitor>
+typename visitor::return_type
+gsHDomain<d,T>::nodeSearchMorris() const
+{
+    node * curNode, * preNode;
+    
+    typename visitor::return_type i = visitor::init;
+    curNode = m_root;
+    
+    while(curNode != NULL)
+    {
+        if(curNode->left == NULL)
+        {
+            visitor::visitNode(curNode, i);
+            curNode = curNode->right;
+        }    
+        else
+        {
+            // Find the inorder predecessor of curNode
+            preNode = curNode->left;
+            while(preNode->right != NULL && preNode->right != curNode)
+                preNode = preNode->right;
+            
+            // Make curNode as right child of its inorder predecessor
+            if(preNode->right == NULL)
+            {
+                preNode->right = curNode;
+                curNode = curNode->left;
+            }
+            else 
+            {   // Revert the changes made in "if" part to restore the original 
+                preNode->right = NULL;
+                visitor::visitNode(curNode, i);
+                curNode = curNode->right;      
+            } // end if(preNode->right == NULL)
+        } // end if (curNode->left == NULL)
+    } // end while
+
+    return i;
+}
+*/
+
+template<unsigned d, class T> 
+template<typename visitor>
+typename visitor::return_type
+gsHDomain<d,T>::nodeSearch() const
+{
+    typename visitor::return_type i = visitor::init;
+    
+    node * curNode = m_root;
+    
+    while(true)
+    {
+        visitor::visitNode(curNode, i);
+        
+        if ( !curNode->isLeaf() )
+        {   //property: tree has no singles
+            curNode = curNode->left;
+        }    
+        else
+        {
+            while (curNode->parent != NULL && 
+                   curNode != curNode->parent->left)
+                curNode = curNode->parent;
+            
+            if ( curNode->isRoot() ) 
+                break;
+            else 
+                curNode = curNode->parent->right;
+        }
+    }
+    return i;
+}
+
+/*
+// node search version with stack (if no parents available)
+template<unsigned d, class T> 
+template<typename visitor> 
+typename visitor::return_type
+gsHDomain<d,T>::nodeSearch() const
+{
+    typename visitor::return_type i = visitor::init;
+    std::stack<node*, std::vector<node*> > stack;
+    stack.push(m_root); 
+
+    node * curNode;
+    while ( ! stack.empty() )
+    {
+        curNode = stack.top();
+        stack.pop();
+        visitor::visitNode(curNode, i);
+        
+        if ( ! curNode->isLeaf() )
+        {
+                stack.push(curNode->left );
+                stack.push(curNode->right);
+        }
+    }
+    return i;
+}
+//*/
 
 template<unsigned d, class T> 
 template<typename visitor>
@@ -416,7 +563,43 @@ typename visitor::return_type
 gsHDomain<d,T>::leafSearch() const
 {
     typename visitor::return_type i = visitor::init;
-    std::stack<node*> stack;
+    
+    node * curNode = m_root;
+    
+    while(true)
+    {        
+        if ( !curNode->isLeaf() )
+        {   //property: tree has no singles
+            curNode = curNode->left;
+        }    
+        else
+        {
+            // Visit the leaf
+            visitor::visitLeaf(curNode, i);
+            
+            while (curNode->parent != NULL && 
+                   curNode != curNode->parent->left)
+                curNode = curNode->parent;
+            
+            if ( curNode->isRoot() ) 
+                break;
+            else 
+                curNode = curNode->parent->right;
+        }
+    }
+    return i;
+}
+
+
+/*
+// leaf search version with stack (if no parents available)
+template<unsigned d, class T> 
+template<typename visitor>
+typename visitor::return_type
+gsHDomain<d,T>::leafSearch() const
+{
+    typename visitor::return_type i = visitor::init;
+    std::stack<node*, std::vector<node*> > stack;
     stack.push(m_root); 
 
     node * curNode;
@@ -438,30 +621,42 @@ gsHDomain<d,T>::leafSearch() const
     }
     return i;
 }
+//*/
 
-template<unsigned d, class T> 
-template<typename visitor> 
-typename visitor::return_type
-gsHDomain<d,T>::nodeSearch() const
+template<unsigned d, class T >
+std::pair<int,int>
+gsHDomain<d,T>::minMaxPath() const
 {
-    typename visitor::return_type i = visitor::init;
-    std::stack<node*> stack;
-    stack.push(m_root); 
-
-    node * curNode;
-    while ( ! stack.empty() )
-    {
-        curNode = stack.top();
-        stack.pop();
-        visitor::visitNode(curNode, i);
-        
-        if ( ! curNode->isLeaf() )
+    node * curNode = m_root;
+    int min = 1000000000, max = -1, cur = 0;
+    
+    while(true)
+    {        
+        if ( !curNode->isLeaf() )
+        {   //property: tree has no singles
+            curNode = curNode->left;
+            cur++;
+        }
+        else
         {
-                stack.push(curNode->left );
-                stack.push(curNode->right);
+            // Update min-max
+            min = math::min(min,cur);
+            max = math::max(max,cur);
+            
+            while (curNode->parent != NULL && 
+                   curNode != curNode->parent->left)
+            {
+                curNode = curNode->parent;
+                cur--;
+            }
+
+            if ( curNode->isRoot() ) 
+                break;
+            else
+                curNode = curNode->parent->right;
         }
     }
-    return i;
+    return std::make_pair(min,max);
 }
 
 
@@ -704,7 +899,7 @@ gsHDomain<d,T>::getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) con
 {
     boxes.clear();
 
-    std::stack<node*> stack;
+    std::stack<node*, std::vector<node*> > stack;
     stack.push(m_root);    
     node * curNode;
     while ( ! stack.empty() )

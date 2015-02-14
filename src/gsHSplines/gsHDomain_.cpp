@@ -82,6 +82,9 @@ namespace gismo
     HDOMAIN1::levelUp_visitor::return_type
     HDOMAIN1::leafSearch<HDOMAIN1::levelUp_visitor>() const;
     TEMPLATE_INST 
+    HDOMAIN1::levelDown_visitor::return_type
+    HDOMAIN1::leafSearch<HDOMAIN1::levelDown_visitor>() const;
+    TEMPLATE_INST 
     HDOMAIN1::numNodes_visitor::return_type
     HDOMAIN1::nodeSearch<HDOMAIN1::numNodes_visitor>() const;
     TEMPLATE_INST 
@@ -118,6 +121,9 @@ namespace gismo
     HDOMAIN1::levelUp_visitor::return_type
     HDOMAIN1::leafSearch<HDOMAIN1::levelUp_visitor>() const;
     TEMPLATE_INST 
+    HDOMAIN1::levelDown_visitor::return_type
+    HDOMAIN1::leafSearch<HDOMAIN1::levelDown_visitor>() const;
+    TEMPLATE_INST 
     HDOMAIN1::numNodes_visitor::return_type
     HDOMAIN1::nodeSearch<HDOMAIN1::numNodes_visitor>() const;
     TEMPLATE_INST 
@@ -153,6 +159,9 @@ namespace gismo
     TEMPLATE_INST 
     HDOMAIN1::levelUp_visitor::return_type
     HDOMAIN1::leafSearch<HDOMAIN1::levelUp_visitor>() const;
+    TEMPLATE_INST 
+    HDOMAIN1::levelDown_visitor::return_type
+    HDOMAIN1::leafSearch<HDOMAIN1::levelDown_visitor>() const;
     TEMPLATE_INST 
     HDOMAIN1::numNodes_visitor::return_type
     HDOMAIN1::nodeSearch<HDOMAIN1::numNodes_visitor>() const;
