@@ -124,24 +124,30 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 {
     const int dim = m_basis->dim();
     const int stride = dim*(dim+1)/2;
+
     gsVector<int> numNodes(dim);
     for ( int i = 0; i!= dim; ++i )
         numNodes[i] = this->m_basis->degree(i);//+1;
-    
-    gsMatrix<T> der2, localA;
-    
+    gsGaussRule<T> QuRule( numNodes ); // Reference Quadrature rule
+    gsMatrix<T> quNodes, der2, localA;
+    gsVector<T> quWeights;
+    gsMatrix<unsigned> actives;
+
     typename gsBasis<T>::domainIter domIt = m_basis->makeDomainIterator();
-    domIt->computeQuadratureRule( numNodes );
+
     for (; domIt->good(); domIt->next() )
     {
-        m_basis->deriv2_into(domIt->quNodes, der2);
-        const index_t numActive = domIt->computeActiveFunctions().rows();
+        // Map the Quadrature rule to the element and compute basis derivatives
+        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+        m_basis->deriv2_into(quNodes, der2);
+        m_basis->active_into(domIt->center, actives);
+        const index_t numActive = actives.rows();
         localA.setZero(numActive, numActive );
 
         // perform the quadrature
-        for (index_t k = 0; k < domIt->numQuNodes(); ++k)
+        for (index_t k = 0; k < quWeights.rows(); ++k)
         {
-            const T weight = domIt->quWeights[k] * lambda;
+            const T weight = quWeights[k] * lambda;
 
             for (index_t i=0; i!=numActive; ++i)
                 for (index_t j=0; j!=numActive; ++j)
@@ -180,9 +186,9 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
         
         for (index_t i=0; i!=numActive; ++i)
         {
-            const int ii = domIt->activeFuncs(i,0);
+            const int ii = actives(i,0);
             for (index_t j=0; j!=numActive; ++j)
-                A_mat( ii, domIt->activeFuncs(j,0) ) += localA(i,j);
+                A_mat( ii, actives(j,0) ) += localA(i,j);
         }
     }
 }
