@@ -89,7 +89,7 @@ struct boundary_condition
 	: ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown)  { }
     
     /// Reterns true if there is no function data (homogeneous condition)
-    bool isHomogeneous() const { return m_function.get() != NULL; }
+    bool isHomogeneous() const { return m_function.get() == NULL; }
     
     /// Returns the function data pointer of the boundary condition
     function_ptr function() const { return m_function; }
