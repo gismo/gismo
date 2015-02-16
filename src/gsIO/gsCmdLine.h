@@ -49,28 +49,68 @@ public:
      * output.
      * \param delimiter - The character that is used to separate
      * the argument flag/name from the value.  Defaults to ' ' (space).
-     * \param version - The version number to be used in the
-     * --version switch.
      * \param helpAndVersion - Whether or not to create the Help and
      * Version switches. Defaults to true.
      */
     gsCmdLine(const std::string& message,	const char delimiter = ' ',
-              const std::string& version = "none",
               bool helpAndVersion = true);
     
     ~gsCmdLine();
 
- private:
+public:
+
+    bool getValues(int argc, char *argv[]);
+
+    void addInt(const std::string& flag, 
+                const std::string& name, 
+                const std::string& desc, 
+                int & value);
+
+    void addReal(const std::string& flag, 
+                 const std::string& name, 
+                 const std::string& desc, 
+                 real_t & value);
+
+    void addString(const std::string& flag, 
+                   const std::string& name, 
+                   const std::string& desc, 
+                   std::string & value);
+
+    void addSwitch(const std::string& name, 
+                   const std::string& desc, 
+                   bool & value);
+
+private:
+
+
+    // Stores integer arguments
+    std::vector<gsArgVal<int>*    > m_intVals ;
+    std::vector<int*>               m_intRes ;
+
+    // Stores real_t arguments
+    std::vector<gsArgVal<real_t>* > m_realVals;
+    std::vector<real_t*>          m_realRes ;
+
+    // Stores string arguments
+    std::vector<gsArgVal<std::string>* > m_stringVals;
+    std::vector<std::string*>       m_strRes ;
+
+    // Stores switch arguments
+    std::vector<gsArgSwitch*      > m_switches;
+    std::vector<bool*>             m_swRes ;
+
+private:
+
     class GismoCmdOut : public TCLAP::StdOutput
     {
     public:
-	void failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e);
-	void usage(TCLAP::CmdLineInterface& c);
-	void version(TCLAP::CmdLineInterface& c);
+        void failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e);
+        void usage(TCLAP::CmdLineInterface& c);
+        void version(TCLAP::CmdLineInterface& c);
     };
-
+    
     GismoCmdOut cmdout;
-
+    
 }; // class gsCmdLine
 
 

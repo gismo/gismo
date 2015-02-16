@@ -11,8 +11,6 @@
     Author(s): J. Speh
 */
 
-// TO DO: Check if this is appropriate tutorial...
-
 #include <iostream>
 #include <string>
 #include <gismo.h>
@@ -21,83 +19,97 @@ using namespace gismo;
 
 int main(int argc, char* argv[])
 {
+    // Variables that will take values from the command line
+    std::string string("none");  // string variable default value
+    real_t flNumber = 1.0;       // flNumber variable default value
+    int number = 1;              // number variable default value
+    bool boolean = false;        // boolean variable default value
+    std::string plainString;     // argument of reading plain string
 
-    std::string plainString("");
-    std::string string("");
-    int number = 0;
-    bool boolean = false;
-
-    try
-    {
-        gsCmdLine cmd("Tutorial Command Line Arguments");
-
-        // =================================================================
-        // Defining command line arguments
-        // =================================================================
-
-
-        // -----------------------------------------------------------------
-        // plain argument
-        // -----------------------------------------------------------------
-        
-        std::string name = "plain";
-        std::string desc =  "Description of the plain command line argument.";
-        bool req = false; // whether the argument is required
-        std::string value = "default_plain_value"; 
-        std::string typeDesc = "string"; // type description
-        
-        gsArgValPlain<std::string> plainArg(name, desc, req, value, typeDesc, cmd);
-        
-        // -----------------------------------------------------------------
-        // argument value
-        // -----------------------------------------------------------------
-        
-        // example 1
-
-        std::string flag = "s";
-        name = "string";
-        desc = "Description of string command line argument.";
-        req = false;
-        value = "default_string";
-        typeDesc = "string";
-        
-        gsArgVal<std::string> strArg(flag, name, desc, req, value, typeDesc, cmd);
-        
-        // example 2
-        
-        gsArgVal<int> intArg("n", "num", "Description of int command line argument", 
-                             false, 0, "int", cmd);
-        
-        // -----------------------------------------------------------------
-        // argument switch
-        // -----------------------------------------------------------------
-        
-        flag = "b";
-        name = "bool";
-        desc = "Description of the switch argument.";
-        gsArgSwitch switchArg(flag, name, desc, cmd);
-        
-        
-        // =================================================================
-        // parsing command line arguments
-        // =================================================================
-        
-        cmd.parse(argc, argv);
-        plainString = plainArg.getValue();
-        string = strArg.getValue();
-        number = intArg.getValue();
-        boolean = switchArg.getValue();
-    }
-    catch (gsArgException& e)
-    {
-        std::cout << "Error: " << e.error() << " " << e.argId() << std::endl;
-        return -1;
-    }
+    // -----------------------------------------------------------------
+    // First we Initialize the object that sets up and parses command line arguments
+    //
+    // This defines by default 3 arguments that can be readily used:
+    //
+    // --,  --ignore_rest
+    //  Ignores the rest of the labeled arguments following this flag.
+    //
+    // --version
+    // Displays version information and exits.
+    //
+    // -h,  --help
+    // Displays usage information for all other arguments and exits.
+    //
+    gsCmdLine cmd("Tutorial Command Line Arguments");
     
+    // -----------------------------------------------------------------
+    // General syntax to add an argument:
+    // cmd.addType("f", "--flag", "Description", destination)
+    // "f"    is the short flag: -f
+    // "flag" is the long  flag: --flag (same effect as "-f"
+    // "Description" describes what this argument is about
+    // destination is the variable that will have the value of the input argument
+
+    // -----------------------------------------------------------------
+    // Adding a string argument, given by the "-s" (or "--stringArg") flag
+    // If set, string is updated to the input value, otherwise string remains untouched
+    cmd.addString("s", "stringArg", 
+                  "Description of string command line argument.",
+                  string);
+
+    // -----------------------------------------------------------------
+    // Adding a string argument, given by the "-i" (or "--num") flag
+    // If set, number is updated to the input value, otherwise number remains untouched
+    cmd.addInt   ("i", "num", 
+                  "Description of int command line argument", 
+                  number);
+
+    // -----------------------------------------------------------------
+    // Adding a float argument, given by the "-r" (or "--real") flag
+    // If set, flNumber is updated to the input value, otherwise flNumber remains untouched
+    cmd.addReal  ("r", "real", 
+                  "Description of float command line argument", 
+                  flNumber);
+
+    // -----------------------------------------------------------------
+    // Adding a switch argument, given by the "--bool" flag
+    // If set, boolean is updated to the input value, otherwise flNumber boolean untouched
+    cmd.addSwitch("bool","Description of the switch argument.", boolean);
+                
+    // -----------------------------------------------------------------
+    // Extra plain argument (manually defined):
+    // Plain arguments are given without a flag. They need to be
+    // defined by making a "gsArgValPlain" argument object, taking the
+    // cmd object in the constructor
+    std::string name = "plain";
+    std::string desc =  "Description of the plain command line argument.";
+    bool req = false; // whether the argument is required
+    std::string value = "default_plain_value"; 
+    std::string typeDesc = "string"; // type description    
+    gsArgValPlain<std::string> plainArg(name, desc, req, value, typeDesc, cmd);
+
+    // -----------------------------------------------------------------
+    // Reading the arguments: values string, number, flNumber, boolean
+    // are updated with the inputs, if given. If "true" is returned, then reading succeeded.
+    bool ok = cmd.getValues(argc,argv);
+
+    // -----------------------------------------------------------------
+    // The extra (manually defined) arguments are not fetched with the
+    //above command. The user must call "getValue" for each manually
+    //defined argument.
+    plainString = plainArg.getValue();
+
+    if ( !ok ) 
+    {
+        std::cout << "Something went wrong when reading the command line. Exiting.\n";
+        return 0;
+    }
+
     std::cout << "Printing command line arguments:\n\n\n"
               << "Plain string: " << plainString << "\n\n"
               << "String:       " << string << "\n\n"
-              << "Number:       " << number << "\n\n"
+              << "Float:        " << flNumber << "\n\n"
+              << "Integer:      " << number << "\n\n"
               << "Switch:       " << boolean << "\n" << std::endl;
 
     return 0;
