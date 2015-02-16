@@ -1,6 +1,6 @@
 /** @file gsTHBSplineBasis.hpp
 
-    @brief Provides implementation of THBSPlineBasis class.
+    @brief Provides implementation of THBSplineBasis class.
 
     This file is part of the G+Smo library.
     

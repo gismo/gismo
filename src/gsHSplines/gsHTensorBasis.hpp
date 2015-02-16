@@ -372,8 +372,9 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
 //protected functions
 
 
-
-/// Construct the characteristic matrix of level \a level ; i.e., set all the matrix entries corresponding to active functions to one and the rest to zero.
+// Construct the characteristic matrix of level \a level ; i.e., set
+// all the matrix entries corresponding to active functions to one and
+// the rest to zero.
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::set_activ1(int level)
 {
@@ -412,6 +413,18 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
 
     cmat.sort();
 }
+
+//template<unsigned d, class T>
+//void gsHTensorBasis<d,T>::setActive()
+//{
+// iterate over leaf-boxes
+//   for all overlapping supports with the box
+//     set obvious to active (supp. fully contained in box ~ query1)
+//     for all candidate actives (supp. not fully contained in box ~ !query2)
+//     (equiv: actives on the boundary cells of the box)
+//       query3(supp,box.level) == level (min. is level: no coarser)
+// take care: duplicates from different leaves or adj. cells
+//}
 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<unsigned> >& x_matrix_lvl){

@@ -422,9 +422,13 @@ public:
   void printBasic(std::ostream &os = gsInfo) const
   {
       os << "basis of dimension " <<this->dim()<<
-          ",\nlevels="<< this->m_tree.getMaxInsLevel()+1 <<", size="<<
-          this->size()<<", tree_nodes="<< this->m_tree.size() << ".\n";
-      gsMatrix<T> supp  = this->support();
+          ",\nlevels="<< this->m_tree.getMaxInsLevel()+1 <<", size="
+         << this->size()<<", tree_nodes="<< this->m_tree.size()
+    //   << ", leaf_nodes="<< this->m_tree.leafSize();
+    //const std::pair<int,int> paths  = this->m_tree.minMaxPath();
+    //os << ", path lengths=("<<paths.first<<", "<<paths.second
+         << ").\n";
+      const gsMatrix<T> supp  = this->support();
       os << "Domain: ["<< supp.col(0).transpose()<< "]..["<<
           supp.col(1).transpose()<< "].\n";
       os <<"Size per level: ";
@@ -853,8 +857,8 @@ private:
     /// set all functions to active or passive- one by one
     void set_activ1(int level);
 
-    /// set all functions to active or passive- recursive
-    void set_activ1_rec(std::vector<int> sizes, std::vector<int> variables);
+    // set all functions to active or passive- recursive
+    //void setActive();
 
 
 

@@ -601,9 +601,10 @@ private:
             // If we hit a leaf, then it overlaps qBox, so take
             // minimum with current result
             // (assumes that no degenerate leaves exist in the tree)
-            //GISMO_ASSERT( !isDegenerate(*curNode->box), "Encountered an empty leaf");
+            GISMO_ASSERT( !isDegenerate(*leafNode->box), "Encountered an empty leaf");
             
-            if ( (!isDegenerate(*leafNode->box)) && leafNode->level != level )
+            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level != level )
+            if ( leafNode->level != level )
                 // if (leafNode->level != level )
                 res = false;
         }
@@ -622,10 +623,10 @@ private:
             // If we hit a leaf, then it overlaps qBox, so 
             // we checj the level of this leaf
             // (assumes that no degenerate leaves exist in the tree)
-            //GISMO_ASSERT( !isDegenerate(*curNode->box), "Encountered an empty leaf");
+            GISMO_ASSERT( !isDegenerate(*leafNode->box), "Encountered an empty leaf");
             
-            if ( (!isDegenerate(*leafNode->box)) && leafNode->level <= level )
-                // if (leafNode->level <= level )
+            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level <= level )
+            if ( leafNode->level <= level )
                 res = false;
         }
     };
@@ -644,8 +645,9 @@ private:
             // If we hit a leaf, then it overlaps qBox, so take
             // minimum with current result
             // (assumes that no degenerate leaves exist in the tree)
-            //GISMO_ASSERT( !isDegenerate(*curNode->box), "Encountered an empty leaf");
-            if ( (!isDegenerate(*leafNode->box)) && leafNode->level < res )
+            GISMO_ASSERT( !isDegenerate(*leafNode->box), "Encountered an empty leaf");
+            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level < res )
+            if ( leafNode->level < res )
                 res = leafNode->level;
         }
     };
@@ -664,8 +666,9 @@ private:
             // If we hit a leaf, then it overlaps qBox, so take
             // minimum with current result
             // (assumes that no degenerate leaves exist in the tree)
-            //GISMO_ASSERT( !isDegenerate(*curNode->box), "Encountered an empty leaf");
-            if ( (!isDegenerate(*leafNode->box)) && leafNode->level > res )
+            GISMO_ASSERT( !isDegenerate(*leafNode->box), "Encountered an empty leaf");
+            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level > res )
+            if ( leafNode->level > res )
                 res = leafNode->level;
         }
     };
