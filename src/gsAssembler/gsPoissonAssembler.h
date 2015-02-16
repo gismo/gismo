@@ -117,6 +117,43 @@ public:
         m_dofs = m_dofMappers.front().freeSize();
     }
 
+    /** @brief
+        Constructor of the assembler object.
+
+        \param[in] patches is a gsMultiPatch object describing the geometry.
+        \param[in] bases a multi-basis that contains patch-wise bases (gsMultiBasis stored in std::vector).
+                   Note, this class cannot handle vector valued problems.
+        \param[in] bconditions is a gsBoundaryConditions object that holds all boundary conditions.
+        \param[in] rhs is the right-hand side of the Poisson equation, \f$\mathbf{f}\f$.
+        \param[in] dirStrategy option for the treatment of Dirichlet boundary
+        \param[in] intStrategy option for the treatment of patch interfaces
+
+        \ingroup Assembler
+    */
+        gsPoissonAssembler( gsMultiPatch<T> const         & patches,
+                            std::vector<gsMultiBasis<T> > const & bases,
+                            gsBoundaryConditions<T> const & bconditions,
+                            const gsFunction<T>           & rhs,
+                            dirichlet::strategy           dirStrategy = dirichlet::elimination,
+                            iFace::strategy               intStrategy = iFace::glue)
+        :  Base(patches),
+           m_rhsFun(&rhs),
+           m_bConditions(bconditions),
+           m_dirValues  (dirichlet::l2Projection),
+           m_dirStrategy(dirichlet::none),
+           m_intStrategy(iFace::none)
+        {
+            GISMO_ASSERT(bases.size()==1, "gsPoissonAssembler does cannot handle vector valued problems. Use only a single basis.");
+            m_bases.push_back(bases.front());
+
+            gsAssemblerOptions options;
+            options.dirStrategy = dirStrategy;
+            options.intStrategy = intStrategy;
+            setOptions(options);
+
+            m_dofs = m_dofMappers.front().freeSize();
+        }
+
     /// Sets the Poisson assembler options
     void setOptions(const gsAssemblerOptions  & options);
 
