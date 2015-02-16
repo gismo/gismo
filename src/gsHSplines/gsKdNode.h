@@ -180,6 +180,16 @@ struct kdnode
     bool isTerminal() const 
     { return (axis!=-1) && (left->axis==-1) && (right->axis==-1); }
 
+    bool isLeftChild()  const { return parent!=NULL && this==parent->left; }
+
+    bool isRightChild() const { return parent!=NULL && this==parent->right; }
+
+    kdnode * sibling() const 
+    { 
+        GISMO_ASSERT( parent != 0, "Root does not have a sibling.");
+        return (parent->left == this ? parent->right : parent->left ); 
+    }
+
     void multiplyByTwo()
     {
         if ( isLeaf() )
@@ -191,12 +201,6 @@ struct kdnode
         {
             pos *= 2;
         }
-    }
-
-    kdnode * sibling() const 
-    { 
-        GISMO_ASSERT( parent != 0, "Root does not have a sibling.");
-        return (parent->left == this ? parent->right : parent->left ); 
     }
 
     // Splits the node (ie. two children are added)

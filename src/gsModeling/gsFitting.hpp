@@ -64,7 +64,12 @@ void gsFitting<T>::compute(T lambda)
     //gsMatrix<T>A_mat(num_basis,num_basis);
     //To optimize sparse matrix an estimation of nonzero elements per
     //column can be given here
-    A_mat.reserve( gsVector<T>::Constant(num_basis, 15 ) );
+    int nonZerosPerCol = 1;
+    for (int i = 0; i < 2; ++i) // to do: improve
+        //nonZerosPerCol *= 2 * m_basis->degree(i) + 1;
+        nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;//AM: Related to bandwidth of basis
+    A_mat.reserve( gsVector<T>::Constant(num_basis, nonZerosPerCol ) );
+    //gsDebugVar( nonZerosPerCol );
 
     A_mat.setZero(); // ensure that all entries are zero in the beginning
     //right side vector (more dimensional!)
@@ -98,7 +103,10 @@ void gsFitting<T>::compute(T lambda)
 
     //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
 
+    //gsDebugVar( A_mat.nonZerosPerCol().maxCoeff() );
+    //gsDebugVar( A_mat.nonZerosPerCol().minCoeff() );
     A_mat.makeCompressed();
+
     Eigen::BiCGSTAB< gsSparseMatrix<T>,  Eigen::IncompleteLUT<T> > solver( A_mat );
 
     if ( solver.preconditioner().info() != Eigen::Success )

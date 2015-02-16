@@ -42,7 +42,7 @@ public:
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE|NEED_MEASURE;
+        evFlags = NEED_MEASURE;
     }
 
     // Evaluate on element.

@@ -27,6 +27,22 @@
 #include <Eigen/SuperLUSupport>
 #endif
 
+#ifdef GISMO_WITH_PARDISO
+#include <Eigen/PardisoSupport>
+#endif
+
+// sparsesuite
+//#include <Eigen/UmfPackSupport>
+//#include <Eigen/SPQRSupport>
+//#include <Eigen/CholmodSupport>
+
+// METIS
+//#include <Eigen/MetisSupport>
+
+// PaStiX
+//#include <Eigen/PaStiXSupport>
+
+
 namespace gismo
 {
 

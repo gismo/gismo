@@ -1,3 +1,15 @@
+/** @file gsSparseMatrix.h
+
+    @brief Provides declaration of the gsSparseMatrix class.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
 
 # pragma once
 
@@ -155,6 +167,20 @@ public:
                         const gsVector<index_t> & colSizes)
     {
         return BlockView(*this, rowSizes, colSizes);
+    }
+
+
+    /// Returns a pointer wrapped as a gsAsConstVector, which contains
+    /// the number of non-zero entries per column. Note that the
+    /// matrix must be uncompressed format for this to work
+    gsAsConstVector<_Index> nonZerosPerCol()
+    {
+        if ( this->isCompressed() )
+        {
+            gsWarn<<"nonZerosPerCol(): Uncompressing the gsSparseMatrix.\n";
+            this->uncompress();
+        }
+        return gsAsConstVector<_Index>(this->innerNonZeroPtr(),this->innerSize());
     }
 
 }; // class gsSparseMatrix
