@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
     // General syntax to add an argument:
     // cmd.addType("f", "--flag", "Description", destination)
     // "f"    is the short flag: -f
-    // "flag" is the long  flag: --flag (same effect as "-f"
+    // "flag" is the long  flag: --flag (same effect as "-f")
     // "Description" describes what this argument is about
     // destination is the variable that will have the value of the input argument
 
@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 
     // -----------------------------------------------------------------
     // Adding a switch argument, given by the "--bool" flag
-    // If set, boolean is updated to the input value, otherwise flNumber boolean untouched
+    // If set, boolean is updated to the input value, otherwise boolean remains untouched
     cmd.addSwitch("bool","Description of the switch argument.", boolean);
                 
     // -----------------------------------------------------------------
@@ -87,6 +87,10 @@ int main(int argc, char* argv[])
     std::string value = "default_plain_value"; 
     std::string typeDesc = "string"; // type description    
     gsArgValPlain<std::string> plainArg(name, desc, req, value, typeDesc, cmd);
+
+    // Note: Another manually defined argument is
+    //   gsArgMultiVal
+    // which reads several values (i.e. a vector) with one flag
 
     // -----------------------------------------------------------------
     // Reading the arguments: values string, number, flNumber, boolean
