@@ -32,7 +32,7 @@ void gsCmdLine::addReal( const std::string & flag,
                              real_t & value)
 {
 
-    m_realVals.push_back(new gsArgVal<real_t>(flag,name,desc,false,value,"loat",*this) );
+    m_realVals.push_back(new gsArgVal<real_t>(flag,name,desc,false,value,"float",*this) );
     m_realRes.push_back(&value);
 }
 
@@ -68,7 +68,7 @@ bool gsCmdLine::getValues(int argc, char *argv[])
         for( std::size_t i=0; i!=m_realVals.size(); ++i)
             *m_realRes[i] = m_realVals[i]->getValue();
 
-        for( std::size_t i=0; i!=m_switches.size(); ++i)
+        for( std::size_t i=0; i!=m_stringVals.size(); ++i)
             *m_strRes[i] = m_stringVals[i]->getValue();
 
         for( std::size_t i=0; i!=m_switches.size(); ++i)

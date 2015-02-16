@@ -23,39 +23,22 @@ const double PI = 3.14159265;
 
 int main(int argc, char* argv[])
 {
-    int n = 0;
-    int m = 0;
-    int degree = 0;
+    int n = 5;
+    int m = 5;
+    int degree = 3;
     std::string output("");
     
-    try
-    {
+    gsCmdLine cmd("Tutorial on gsTensorBSpline class.");
+    std::cout << "Type -h to see the available options.\n\n";
+    cmd.addInt   ("n", "n", "Number of basis function in one direction"  , n);
+    cmd.addInt   ("m", "m", "Number of basis function in other direction", m); 
+    cmd.addInt   ("d", "degree", "Degree of a surface", degree); 
+    cmd.addString("o", "output", "Name of the output file.", output);
+    cmd.getValues(argc,argv);
 
-        gsCmdLine cmd("Tutorial on gsTensorBSpline class.");
-        
-        gsArgVal<int> nArg("n", "n", "Number of basis function in one direction", 
-                           false, 5, "int ", cmd);
-
-        gsArgVal<int> mArg("m", "m", "Number of basis function in other direction", 
-                           false, 5, "int ", cmd);
-
-        gsArgVal<int> dArg("d", "degree", "Degree of a surface", 
-                           false, 3, "int ", cmd);
-
-        gsArgVal<std::string> outArg("o", "output", "Name of the output file.",
-                                     false, "", "string", cmd);
-
-        cmd.parse(argc, argv);
-        n = nArg.getValue();
-        m = mArg.getValue();
-        degree = dArg.getValue();
-        output = outArg.getValue();
-    }
-    catch (gsArgException& e)
-    {
-        std::cout << "Error: " << e.error() << " " << e.argId() << std::endl;
-        return -1;
-    }
+    // Adjust values to the minimum required
+    n = math::max(n, degree + 1);
+    m = math::max(m, degree + 1);
 
     std::cout << "----------------------\n\n"
               << "n: " << n << "\n\n"
@@ -63,7 +46,6 @@ int main(int argc, char* argv[])
               << "degree: " << degree << "\n\n"
               << "output: " << output << "\n\n"
               << "----------------------\n\n";
-
     
     // 1. construction of a knot vector for each direction
     gsKnotVector<> kv1(0, 1, n - degree - 1, degree + 1);
