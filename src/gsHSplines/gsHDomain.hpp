@@ -242,6 +242,7 @@ gsHDomain<d,T>::sinkBox ( point const & k1,
     
     // Initialize stack
     std::stack<node*, std::vector<node*> > stack;
+    //stack.reserve( 2 * m_maxPath );
     stack.push(m_root); 
     
     node * curNode;
@@ -383,34 +384,70 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
 /*  // under construction
     node * curNode = m_root;
     
-    while( curNode != NULL )
-    {        
-        // Visit the node
-        if ( curNode->isLeaf() && 
-             (haveOverlap(qBox,*curNode->box) ||
-              haveOverlap(*curNode->box,qBox) || 
-              isContained(qBox,*curNode->box) ||
-              isContained(*curNode->box,qBox) ) 
-           )
+    while (true)
+    {   
+        if ( curNode->isLeaf() ) 
+        {
             visitor::visitLeaf(curNode, level, res );
 
-        if ( ! curNode->isLeaf() )
-            curNode = curNode->left;
-        //else if  ( curNode->right!=NULL)
-        //    curNode = curNode->right;
+            //curNode->isRightChild();
+            while ( curNode->parent != NULL &&
+                    curNode != curNode->parent->left )
+            {
+                curNode = curNode->parent;
+
+                if ( curNode->isLeftChild() &&
+                     qBox.second[curNode->axis] <= curNode->pos )
+                    //curNode = curNode->parent;
+                    curNode = curNode->parent->right;
+            }
+            
+            if ( curNode->parent == NULL )
+                break;
+            else// Found a left child,follow right simbling
+                curNode = curNode->parent->right;
+
+
+            // while ( curNode->parent != NULL &&
+            //         curNode != curNode->parent->left)
+            //     curNode = curNode->parent;
+
+            // if ( curNode->parent == NULL )
+            //     break;
+            // else
+            //     curNode = curNode->parent;
+
+            // if  ( qBox.second[curNode->axis] > curNode->pos )  // overlap right ?
+            //     curNode = curNode->right;
+            // else
+            // {
+            //     while ( curNode->parent != NULL &&
+            //             curNode != curNode->parent->left)
+            //         curNode = curNode->parent;
+            //     if ( curNode->parent == NULL )
+            //         break;
+            //     else
+            //         curNode = curNode->parent;
+                
+            //     if  ( qBox.second[curNode->axis] > curNode->pos )  // overlap right ?
+            //         curNode = curNode->right;
+            //     else
+            //         break;
+            // }
+
+        }
         else
         {
-            while (curNode->parent != NULL &&
-                   curNode != curNode->parent->left)
-                curNode = curNode->parent;
-            
-            if ( curNode->isRoot() ) 
+            if ( qBox.first[curNode->axis] < curNode->pos ) // overlap left ?
+                curNode = curNode->left;
+            else if  ( qBox.second[curNode->axis] > curNode->pos) // overlap right ?
+                curNode = curNode->right;
+            else
                 break;
-            else 
-                curNode = curNode->parent->right; //so we go to right sibling
         }
-    }
-//*/
+    } 
+
+// */
 
 // /* // implementation with stack
 
@@ -448,6 +485,44 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
 //*/
     return res;
 }
+
+
+
+template<unsigned d, class T> 
+typename gsHDomain<d,T>::node * 
+gsHDomain<d,T>::pointSearch(point p, int level, node  *_node ) const
+{
+    local2globalIndex(p, static_cast<unsigned>(level), p);
+
+    if( ( p.array() > m_upperIndex.array() ).any() )
+        GISMO_ERROR("pointSearch: Wrong input: "<< p.transpose()<<".\n" );
+
+    std::vector<node*> stack;
+    stack.reserve( 2 * m_maxPath );
+    stack.push_back(_node);  //push(_node); 
+
+    node * curNode;
+    while ( ! stack.empty() )
+    {
+        curNode = stack.back(); //top();
+        stack.pop_back();       //pop();
+        
+        if ( curNode->isLeaf() )
+        {
+            // Point found at current node
+            return curNode;
+        }
+        else // this is a split-node
+        {
+            if ( p[curNode->axis] < curNode->pos)
+                stack.push_back(curNode->left); //push(curNode->left);
+            else
+                stack.push_back(curNode->right); //push(curNode->right);
+        }
+    }
+    return NULL;
+}
+
 
 
 /* 
@@ -569,7 +644,7 @@ gsHDomain<d,T>::leafSearch() const
     while(true)
     {        
         if ( !curNode->isLeaf() )
-        {   //property: tree has no singles
+        {   //property: tree has no singles (only childs)
             curNode = curNode->left;
         }    
         else
@@ -900,6 +975,7 @@ gsHDomain<d,T>::getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) con
     boxes.clear();
 
     std::stack<node*, std::vector<node*> > stack;
+    //stack.reserve( 2 * m_maxPath );
     stack.push(m_root);    
     node * curNode;
     while ( ! stack.empty() )

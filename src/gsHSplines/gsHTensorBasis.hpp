@@ -39,18 +39,14 @@ template<unsigned d, class T> inline
 int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 {
     GISMO_ASSERT(Pt.cols() == 1, "Waiting for single point");
-    gsVector<unsigned int> loIdx( Dim );
-    gsVector<unsigned int> upIdx( Dim );
+    point loIdx;
 
-    const int maxLevel = m_tree.getMaxInsLevel();
+     const int maxLevel = m_tree.getMaxInsLevel();
 
-    for( int i =0; i < Dim; i++)
-    {
-        loIdx[i] = m_bases[maxLevel]->component(i).knots().Uniquefindspan( Pt(i,0) );
-        upIdx[i] = loIdx[i] + 1;
-    }
-
-    return m_tree.query3( loIdx, upIdx, maxLevel);
+     for( int i =0; i < Dim; i++)
+         loIdx[i] = m_bases[maxLevel]->component(i).knots().Uniquefindspan( Pt(i,0) );
+     
+     return m_tree.levelOf( loIdx, maxLevel);
 }
 
 template<unsigned d, class T> inline
@@ -59,18 +55,17 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
     result.resize( u.cols() );
     result.setZero();
 
-    gsVector<unsigned,d> low, upp;
+    point low, upp;
     gsCombinat<gsVector<unsigned,d> > c;
+    const int maxLevel = m_tree.getMaxInsLevel();
 
     for(index_t p = 0; p < u.cols(); p++ ) //for all input points
     {
         for(int i = 0; i != d; ++i)
-        {
-            low[i] = m_bases.back()->component(i).knots().Uniquefindspan(u(i,p));
-            upp[i] = low[i]+1;
-        }        
-        //identify the maximum necessary level
-        int lvl = m_tree.query3(low, upp,m_bases.size()-1);
+            low[i] = m_bases[maxLevel]->component(i).knots().Uniquefindspan(u(i,p));
+
+        // Identify the level of the point
+        const int lvl = m_tree.levelOf(low, maxLevel);
 
         for(int i = 0; i <= lvl; i++)
         {
@@ -85,7 +80,7 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
                     result[p]++;
             }
             while( c.next_lattice_point(low) );
-        }
+        } 
     }
 }
 
@@ -683,22 +678,22 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
 {
-    gsVector<unsigned,d> low, upp;
+    point low, upp;
     gsCombinat<gsVector<unsigned,d> > c;
+    const int maxLevel = m_tree.getMaxInsLevel();
 
     std::vector<std::vector<unsigned> > temp_output;//collects the outputs
     temp_output.resize( u.cols() );
+    std::size_t sz = 0;
 
     for(index_t p = 0; p < u.cols(); p++) //for all input points
     {
         const gsMatrix<T> & curr = u.col(p);
         for(unsigned i = 0; i != d; ++i)
-        {
-            low[i] = m_bases.back()->component(i).knots().Uniquefindspan( curr(i,0) );
-            upp[i] = low[i]+1;
-        }
-        // Identify the maximum necessary level
-        int lvl = m_tree.query3(low, upp, m_bases.size()-1);
+            low[i] = m_bases[maxLevel]->component(i).knots().Uniquefindspan( curr(i,0) );
+
+        // Identify the level of the point
+        const int lvl = m_tree.levelOf(low, maxLevel);
 
         for(int i = 0; i <= lvl; i++)
         {
@@ -718,15 +713,13 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
             }
             while( c.next_lattice_point(low) );
         }
+        
+        // update result size
+        if ( temp_output[p].size() > sz ) 
+            sz = temp_output[p].size();
     }
 
-    int index =0;
-    //finding the longest vector to set the matrix size
-    for(std::size_t i = 0; i < temp_output.size();i++)
-        if(temp_output[i].size()> temp_output[index].size())
-            index = i;
-
-    result.resize(temp_output[index].size(),u.cols());
+    result.resize(sz, u.cols() );
     for(index_t i = 0; i < result.cols(); i++)
         for (index_t j = 0; j < result.rows();j++)
             if (std::size_t(j) < temp_output[i].size())

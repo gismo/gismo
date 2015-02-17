@@ -404,6 +404,10 @@ public:
                int level) const
     { return boxSearch< query4_visitor >(lower,upper,level,m_root); }
 
+    /// Returns the level of the point \a p
+    int levelOf(point const & p, int level) const
+    { return pointSearch(p,level,m_root)->level;}
+
     // to do: move to the hpp file do avoid need for instantization
     void incrementLevel()
     {
@@ -537,6 +541,7 @@ private:
     /// \param lvl the new level for the descendents
     static void setLevel(node *_node, int lvl);
 
+    /// Returns true if the box is degenerate (has zero volume)
     static bool isDegenerate(box const & someBox);
 
     /// Adds \a nlevels new index levels in the tree
@@ -587,6 +592,12 @@ private:
     template<typename visitor>
     typename visitor::return_type
     nodeSearch() const;
+
+    /// Returns the leaf node of the subtree starting at \a _node that
+    /// contains the input point \a p. The cells in the tree are
+    /// considered half-open, i.e. in 2D they are of the form
+    /// [a_1,b_1) x [a_2,b_2)
+    node * pointSearch(point p, int level, node  *_node) const;
 
     // Query 1
     struct query1_visitor
