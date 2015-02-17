@@ -157,11 +157,18 @@ public:
     /// Sets the Poisson assembler options
     void setOptions(const gsAssemblerOptions  & options);
 
+    // Look at gsAssemblerBases for documentation
+    bool isSymmertric() const { return true; }
+
     /// Main assembly routine.
     void assemble();
 
     /// Reconstruct solution field from computed solution vector
     gsField<T> * constructSolution(const gsMatrix<T> & solVector) const;
+
+    /// Reconstruct solution from computed solution vector
+    void constructSolution(const gsMatrix<T>& solVector, 
+                           gsMultiPatch<T>& result) const;
 
     /// Penalty constant for patch \a k, used for weak bounday conditions
     T penalty(int k) const

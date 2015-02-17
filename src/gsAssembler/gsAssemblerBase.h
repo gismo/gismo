@@ -105,6 +105,10 @@ public:
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix() const { return m_matrix; }
 
+    /// @brief Returns true if only the lower triangular part of the
+    /// matrix is computed (for symmetric problems)
+    virtual bool isSymmertric() const { return false; }
+
     /// @brief Returns the left-hand side vector(s)
     /// ( multiple right hand sides possible )
     const gsMatrix<T> & rhs() const { return m_rhs; }
@@ -114,7 +118,7 @@ public:
 
     /// @brief Returns the number of (free) degrees of freedom
     int numDofs() const { return m_dofs; }
-    
+
 protected:
 
     /// @brief The multipatch domain
@@ -136,6 +140,7 @@ protected:
     /// @brief Reference Quadrature rule
     gsQuadRule<T> QuRule;
 
+protected:
     // *** Outputs *** 
     
     /// @brief Global system matrix
@@ -144,10 +149,11 @@ protected:
     /// @brief Right-hand side ( multiple right hand sides possible )
     gsMatrix<T>       m_rhs;
 
+protected:
     // *** Information *** 
 
-    /// @brief Number of degrees of freedom (excluding eliminated, counting glued dofs only once, etc.)
-    // to do: rename to m_matSize
+    /// @brief Number of degrees of freedom (excluding eliminated,
+    /// counting glued dofs only once, etc.)
     int m_dofs;
 
 };

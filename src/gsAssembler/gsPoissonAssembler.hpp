@@ -138,6 +138,19 @@ void gsPoissonAssembler<T>::computeDirichletDofs()
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values.");
     }
+
+    
+    // Corner values
+    //const gsDofMapper & mapper = m_dofMappers.front();
+    for ( typename gsBoundaryConditions<T>::const_citerator
+              it = m_bConditions.cornerBegin();
+          it != m_bConditions.cornerEnd(); ++it )
+    {
+        //
+        //const int i  = m_bases[it->unknown][it->patch].cornerIndex(it->corner);
+        //const int ii = mapper.bindex( (*boundary)(i) , k );
+    }
+    
 }    
     
 
@@ -409,6 +422,43 @@ gsField<T> *  gsPoissonAssembler<T>::constructSolution(const gsMatrix<T>& solVec
 
     //result = gsField<T>(m_patches, sols);
     return new gsField<T>(m_patches, sols);
+}
+
+
+template<class T>
+void gsPoissonAssembler<T>::constructSolution(const gsMatrix<T>& solVector, 
+                                              gsMultiPatch<T>& result) const
+{
+    GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
+
+    const gsDofMapper & mapper = m_dofMappers.front();
+
+    result.clear();
+    
+    const index_t dim = m_rhsFun->targetDim();
+    
+    for (size_t p=0; p < m_patches.nPatches(); ++p )
+    {    
+        // Reconstruct solution coefficients on patch p
+        const int sz  = m_bases[0][p].size();
+        gsMatrix<T> coeffs( sz, dim);
+
+        for (index_t i = 0; i < sz; ++i)
+        {
+            if ( mapper.is_free(i, p) ) // DoF value is in the solVector
+            {
+                coeffs.row(i) = solVector.row( mapper.index(i, p) );
+            }
+            else // eliminated DoF: fill with Dirichlet data
+            {
+                coeffs.row(i) = m_ddof.row( mapper.bindex(i, p) );
+            }
+        }
+        
+        result.addPatch( m_bases[0][p].makeGeometry( give(coeffs) ) );
+    }
+
+    // AM: result topology ?
 }
 
 }// namespace gismo
