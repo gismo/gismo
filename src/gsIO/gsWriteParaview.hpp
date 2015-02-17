@@ -117,6 +117,94 @@ void writeSingleBasisMesh3D(const gsMesh<T> & sl,
     //    makeCollection(fn, ".vtp");
 }
 
+// Export a 2D parametric mesh -- note: duplicates code from writeSingleBasisMesh3D,
+// 
+template<class T>
+void writeSingleBasisMesh2D(const gsMesh<T> & sl,
+                            std::string const & fn)
+{
+    const unsigned numVer = sl.numVertices;
+    const unsigned numEl  = numVer / 4; //(1<<dim)
+    std::string mfn(fn);
+    mfn.append(".vtu");
+    std::ofstream file(mfn.c_str());
+    if ( ! file.is_open() )
+        std::cout<<"Problem opening "<<fn<<std::endl;
+    file << std::fixed; // no exponents
+    file << std::setprecision (PLOT_PRECISION);
+    
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    file <<"<UnstructuredGrid>\n";
+    
+    // Number of vertices and number of cells
+    file <<"<Piece NumberOfPoints=\""<< numVer <<"\" NumberOfCells=\""<<numEl<<"\">\n";
+    
+    // Coordinates of vertices
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); it+=4)
+    {
+        // order is important!
+        file << ((*it)->coords)[0] << " " << ((*it)->coords)[1] << " " << ((*it)->coords)[2] << " \n";
+        file << ((*(it+1))->coords)[0] << " " << ((*(it+1))->coords)[1] << " " << ((*(it+1))->coords)[2] << " \n";
+        file << ((*(it+3))->coords)[0] << " " << ((*(it+3))->coords)[1] << " " << ((*(it+3))->coords)[2] << " \n";
+        file << ((*(it+2))->coords)[0] << " " << ((*(it+2))->coords)[1] << " " << ((*(it+2))->coords)[2] << " \n";
+    }
+    file << "\n";
+    file <<"</DataArray>\n";
+    file <<"</Points>\n";
+
+    // Point data
+    file <<"<PointData Scalars=\"CellArea\">\n";
+    file <<"<DataArray type=\"Float32\" Name=\"CellVolume\" format=\"ascii\" NumberOfComponents=\"1\">\n";
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
+    {
+        file << (*it)->data <<" ";
+    }
+    file << "\n";
+    file <<"</DataArray>\n";
+    file <<"</PointData>\n";
+
+    // Cells
+    file <<"<Cells>\n";
+
+    // Connectivity
+    file <<"<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    for (unsigned i = 0; i!= numVer;++i)
+    {
+        file << i << " ";
+    }
+    file << "\n";
+    file <<"</DataArray>\n";
+
+    // Offsets
+    file << "<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    for (unsigned i = 1; i<= numEl;++i)
+    {
+        file << 4*i << " "; //step: (1<<dim) 
+    }
+    file << "\n";
+    file << "</DataArray>\n";
+
+    // Type
+    file << "<DataArray type=\"Int32\" Name=\"types\" format=\"ascii\">\n";
+    for (unsigned i = 1; i<= numEl;++i)
+    {
+        file << "9 ";// 11: 3D, 9: 2D
+    }
+    file << "\n";
+    file << "</DataArray>\n";
+
+    file <<"</Cells>\n";
+    file << "</Piece>\n";
+    file <<"</UnstructuredGrid>\n";
+    file <<"</VTKFile>\n";
+    file.close();
+    
+    //if( pvd ) // make a pvd file
+    //    makeCollection(fn, ".vtp");
+}
 
   
 /// Export a parametric mesh
@@ -128,6 +216,8 @@ void writeSingleBasisMesh(const gsBasis<T> & basis,
     makeMesh<T>(basis, msh);
     if ( basis.dim() == 3)
         writeSingleBasisMesh3D(msh,fn);
+    else if ( basis.dim() == 2)
+        writeSingleBasisMesh2D(msh,fn);
     else
         gsWriteParaview(msh, fn, false);
 }
@@ -139,8 +229,15 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
 {
     gsMesh<T> msh;
     makeMesh<T>(basis, msh, resolution);
+    //makeMesh<T>(basis, msh, 0);
     Geo.evaluateMesh(msh);
-    gsWriteParaview(msh, fn, false);
+
+    // if ( basis.dim() == 3)
+    //     writeSingleBasisMesh3D(msh,fn);
+    // else if ( basis.dim() == 2)
+    //     writeSingleBasisMesh2D(msh,fn);
+    // else
+        gsWriteParaview(msh, fn, false);
 }
 
 /// Export a control net
@@ -569,7 +666,8 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
     {
         std::string fileName = fn + "_mesh";
         writeSingleBasisMesh(basis, fileName);
-        collection.addPart(fileName, ".vtp");
+        //collection.addPart(fileName, ".vtp");
+        collection.addPart(fileName, ".vtu");
     }
 
     collection.save();
