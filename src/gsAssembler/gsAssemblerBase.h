@@ -121,7 +121,7 @@ public:
 
     /// @brief Returns the number of (free) degrees of freedom
     int numDofs() const { return m_dofs; }
-        
+
 protected:
 
     /// @brief The multipatch domain
@@ -163,4 +163,3 @@ protected:
 
 
 } // namespace gismo
-
