@@ -99,6 +99,9 @@ public:
     /// @brief Return the multi-basis
     const gsMultiBasis<T> & multiBasis(index_t k) const { return m_bases[k]; }
 
+    /// @brief Returns the number of multi-bases
+    std::size_t numMultiBasis() const {return m_bases.size(); }
+
     /// @brief Return the DOF mapper for unknown \em i.
     const gsDofMapper& dofMapper(unsigned i = 0) const     { return m_dofMappers[i]; }
 
