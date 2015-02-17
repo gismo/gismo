@@ -597,7 +597,7 @@ private:
     /// contains the input point \a p. The cells in the tree are
     /// considered half-open, i.e. in 2D they are of the form
     /// [a_1,b_1) x [a_2,b_2)
-    node * pointSearch(point p, int level, node  *_node) const;
+    node * pointSearch(const point & p, int level, node  *_node) const;
 
     // Query 1
     struct query1_visitor

@@ -490,12 +490,13 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
 
 template<unsigned d, class T> 
 typename gsHDomain<d,T>::node * 
-gsHDomain<d,T>::pointSearch(point p, int level, node  *_node ) const
+gsHDomain<d,T>::pointSearch(const point & p, int level, node  *_node ) const
 {
-    local2globalIndex(p, static_cast<unsigned>(level), p);
+    point pp;
+    local2globalIndex(p, static_cast<unsigned>(level), pp);
 
-    if( ( p.array() > m_upperIndex.array() ).any() )
-        GISMO_ERROR("pointSearch: Wrong input: "<< p.transpose()<<".\n" );
+    if( ( pp.array() > m_upperIndex.array() ).any() )
+        GISMO_ERROR("pointSearch: Wrong input: "<< pp.transpose()<<".\n" );
 
     std::vector<node*> stack;
     stack.reserve( 2 * m_maxPath );
@@ -514,7 +515,7 @@ gsHDomain<d,T>::pointSearch(point p, int level, node  *_node ) const
         }
         else // this is a split-node
         {
-            if ( p[curNode->axis] < curNode->pos)
+            if ( pp[curNode->axis] < curNode->pos)
                 stack.push_back(curNode->left); //push(curNode->left);
             else
                 stack.push_back(curNode->right); //push(curNode->right);
