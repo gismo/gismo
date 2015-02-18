@@ -25,23 +25,33 @@ namespace gismo
 {
 
 template<class T>
-void gsPoissonAssembler<T>::setOptions(const gsAssemblerOptions  & options)
+void gsPoissonAssembler<T>::applyOptions()
 {
-    if ( m_dirStrategy != options.dirStrategy ||
-         m_intStrategy != options.intStrategy )
-    {
-        m_dirStrategy = options.dirStrategy;
-        m_intStrategy = options.intStrategy;
-        
-        const bool conforming = ( m_intStrategy == iFace::glue );
+    // Would be efficient not to recreate the mappers every time.
+    // For this, a , "bool force" argument can be added, defaulting to false
+    // Commented for now
+
+    //if ( m_dirStrategy != options.dirStrategy ||
+     //    m_intStrategy != options.intStrategy )
+    //{
+        const bool conforming = ( m_options.intStrategy == iFace::glue );
         m_dofMappers.resize(1);
-        if ( m_dirStrategy == dirichlet::elimination )
+        if ( m_options.dirStrategy == dirichlet::elimination )
             m_bases.front().getMapper(conforming, m_bConditions, m_dofMappers.front() );
         else
             m_bases.front().getMapper(conforming, m_dofMappers.front() );
         
         m_dofs = m_dofMappers.front().freeSize();
-    }
+
+   // }
+}
+
+template<class T>
+void gsPoissonAssembler<T>::setOptions(const gsAssemblerOptions& options)
+{
+    m_options = options;
+
+    applyOptions();
 }
 
 template<class T>
@@ -106,7 +116,7 @@ void gsPoissonAssembler<T>::assemble()
     }
 
     // If requested, force Dirichlet boundary conditions by Nitsche's method
-    if ( m_dirStrategy == dirichlet::nitsche )
+    if ( m_options.dirStrategy == dirichlet::nitsche )
         assembleNitsche();
 
     // Enforce Neumann boundary conditions
@@ -119,7 +129,7 @@ void gsPoissonAssembler<T>::assemble()
 template<class T>
 void gsPoissonAssembler<T>::computeDirichletDofs()
 {
-    switch (m_dirValues)
+    switch (m_options.dirValues)
     {
     case dirichlet::homogeneous:
         // If we have a homogeneous Dirichlet problem fill boundary

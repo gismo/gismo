@@ -19,6 +19,7 @@
 #include <gsCore/gsStdVectorRef.h>
 
 #include <gsAssembler/gsQuadRule.h>
+#include <gsAssembler/gsAssemblerOptions.h>
 
 namespace gismo
 {
@@ -37,6 +38,12 @@ private:
 
 public:
 
+    /// @brief default constructor
+    /// \note none of the data fields are inititalized, use
+    /// additionally an appropriate initialize function
+    gsAssemblerBase()
+    {}
+
     /// @brief Constructor using a multipatch domain
     /// \note Rest of the data fields should be initialized in a
     /// derived constructor
@@ -44,8 +51,63 @@ public:
     m_patches(patches)
     { }
 
+    /// @brief Constructor using a multipatch domain, a
+    /// vector of multibases and the boundary conditions.
+    /// \note Rest of the data fields should be initialized in a
+    /// derived constructor
+    gsAssemblerBase(const gsMultiPatch<T>                    & patches,
+                    std::vector< gsMultiBasis<T> > const     & bases,
+                    gsBoundaryConditions<T> const            & bconditions) :
+    m_patches(patches),
+    m_bases(bases),
+    m_bConditions(bconditions)
+    { }
+
     virtual ~gsAssemblerBase()
     { }
+
+    /// @brief Intitialize function for scalar problems, sets data fields
+    /// using a multi-patch, multi-basis and boundary conditions.
+    /// \note Rest of the data fields should be initialized in the
+    /// derived function.
+    virtual void initializeScalarProblem(const gsMultiPatch<T>          & patches,
+                                         gsMultiBasis<T> const          & basis,
+                                         gsBoundaryConditions<T> const  & bconditions)
+    {
+        m_patches = patches;
+        m_bases.push_back(basis);
+        m_bConditions = bconditions;
+    }
+
+    /// @brief Intitialize function for vector valued problems, sets data fields
+    /// using a multi-patch, a vector of multi-basis and boundary conditions.
+    /// \note Rest of the data fields should be initialized in the
+    /// derived function.
+    virtual void initializeVectorProblem(const gsMultiPatch<T>                   & patches,
+                                         std::vector<  gsMultiBasis<T> > const   & bases,
+                                         gsBoundaryConditions<T> const           & bconditions)
+    {
+        m_patches = patches;
+        m_bases = bases;
+        m_bConditions = bconditions;
+    }
+
+    /// @brief Intitialize function for single patch assembling, sets data fields
+    /// using a gsGeometry, a basis reference for each component (vector) and
+    /// boundary conditions. Works for scalar and vector valued PDES
+    /// \note Rest of the data fields should be initialized in the
+    /// derived function.
+    virtual void initializeSinglePatch(const gsGeometry<T>           & patch,
+                                       const gsBasisRefs<T>          & basis,
+                                       gsBoundaryConditions<T> const & bconditions)
+    {
+        m_patches = gsMultiPatch<T>(patch);
+        m_bConditions=bconditions;
+
+        m_bases.clear();
+        for(std::size_t c=0;c<basis.size();c++)
+            m_bases.push_back(gsMultiBasis<T>(basis[c]));
+    }
 
     /// @brief Generic assembly routine for volume or boundary integrals
     template<class ElementVisitor>
@@ -93,6 +155,9 @@ public:
 
 public:
 
+    /// @brief Main assemble routine
+    virtual void assemble() {GISMO_NO_IMPLEMENTATION;}
+
     /// @brief Return the multipatch.
     const gsMultiPatch<T> & patches() const { return m_patches; }
 
@@ -112,15 +177,21 @@ public:
     /// matrix is computed (for symmetric problems)
     virtual bool isSymmertric() const { return false; }
 
+    /// @brief Returns the Dirichlet values (if applicable)
+    const gsMatrix<T> & dirValues() const { return m_ddof; }
+
     /// @brief Returns the left-hand side vector(s)
     /// ( multiple right hand sides possible )
     const gsMatrix<T> & rhs() const { return m_rhs; }
 
-    /// @brief Returns the Dirichlet values (if applicable)
-    const gsMatrix<T> & dirValues() const { return m_ddof; }
-
     /// @brief Returns the number of (free) degrees of freedom
     int numDofs() const { return m_dofs; }
+
+    /// @brief Returns the options of the assembler
+    const gsAssemblerOptions & options() const { return m_options; }
+
+    /// @brief Returns the boundary conditions (if applicable)
+    const gsBoundaryConditions<T> & bConditions() const {return m_bConditions;}
 
 protected:
 
@@ -137,11 +208,20 @@ protected:
     /// m_dofMappers[i]: DoF Mapper for unknown i
     std::vector<gsDofMapper>  m_dofMappers;
     
-    /// @brief Dirichlet DoF fixed values (if applicable)
-    gsMatrix<T> m_ddof;
-
     /// @brief Reference Quadrature rule
     gsQuadRule<T> QuRule;
+
+protected:
+    // *** Convenience members - not used by the gsAssemblerBase interface ***
+
+    /// @brief Dirichlet DoF fixed values (if applicable)
+    gsMatrix<T> m_ddof; //-- not used in gsAssemblerBase
+
+    /// Boundary conditions
+    gsBoundaryConditions<T> m_bConditions; //-- not used in gsAssemblerBase
+
+    /// Options
+    gsAssemblerOptions m_options; //-- not used in gsAssemblerBase
 
 protected:
     // *** Outputs *** 

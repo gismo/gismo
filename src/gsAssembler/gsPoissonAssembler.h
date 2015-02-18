@@ -46,7 +46,7 @@ public:
 
 public:
 
-/* @brief
+    /* @brief
     Main Constructor of the assembler object.
 
     \param[in] pde A boundary value Poisson problem
@@ -58,10 +58,10 @@ public:
                         gsMultiBasis<T> const         & bases,
                         gsDirichletStrategy           dirStrategy,
                         gsInterfaceStrategy           intStrategy)
-    :  Base(patches), 
+    :  Base(patches),
        m_rhsFun(&rhs),
        m_bConditions(bconditions),
-       m_dirStrategy(dirStrategy), 
+       m_dirStrategy(dirStrategy),
        m_intStrategy(intStrategy)
     {
         m_bases.push_back(bases);
@@ -82,7 +82,7 @@ public:
 //*/
 
 
-/** @brief
+    /** @brief
     Constructor of the assembler object.
 
     \param[in] patches is a gsMultiPatch object describing the geometry.
@@ -100,62 +100,47 @@ public:
                         const gsFunction<T>           & rhs,
                         dirichlet::strategy           dirStrategy = dirichlet::elimination,
                         iFace::strategy               intStrategy = iFace::glue)
-    :  Base(patches), 
-       m_rhsFun(&rhs),
-       m_bConditions(bconditions),
-       m_dirValues  (dirichlet::l2Projection), 
-       m_dirStrategy(dirichlet::none), 
-       m_intStrategy(iFace::none)
+        : m_rhsFun(&rhs)
     {
-        m_bases.push_back(bases);
+        m_options.dirStrategy = dirStrategy;
+        m_options.intStrategy = intStrategy;
+        m_options.dirValues = dirichlet::l2Projection;
+        initializeScalarProblem(patches, bases,bconditions);
+    }
 
-        gsAssemblerOptions options;
-        options.dirStrategy = dirStrategy;
-        options.intStrategy = intStrategy;
-        setOptions(options);
-        
+    void initializeScalarProblem(const gsMultiPatch<T>          & patches,
+                                 gsMultiBasis<T> const          & basis,
+                                 gsBoundaryConditions<T> const  & bconditions)
+    {
+        Base::initializeScalarProblem(patches, basis, bconditions);
+
+        applyOptions();
+
         m_dofs = m_dofMappers.front().freeSize();
     }
 
-    /** @brief
-        Constructor of the assembler object.
+    void initializeVectorProblem(const gsMultiPatch<T>                   & patches,
+                                 std::vector<  gsMultiBasis<T> > const   & bases,
+                                 gsBoundaryConditions<T> const           & bconditions)
+    {
+        GISMO_ERROR("This Poisson Problem is not a Vector Problem.");
+    }
 
-        \param[in] patches is a gsMultiPatch object describing the geometry.
-        \param[in] bases a multi-basis that contains patch-wise bases (gsMultiBasis stored in std::vector).
-                   Note, this class cannot handle vector valued problems.
-        \param[in] bconditions is a gsBoundaryConditions object that holds all boundary conditions.
-        \param[in] rhs is the right-hand side of the Poisson equation, \f$\mathbf{f}\f$.
-        \param[in] dirStrategy option for the treatment of Dirichlet boundary
-        \param[in] intStrategy option for the treatment of patch interfaces
 
-        \ingroup Assembler
-    */
-        gsPoissonAssembler( gsMultiPatch<T> const         & patches,
-                            std::vector<gsMultiBasis<T> > const & bases,
-                            gsBoundaryConditions<T> const & bconditions,
-                            const gsFunction<T>           & rhs,
-                            dirichlet::strategy           dirStrategy = dirichlet::elimination,
-                            iFace::strategy               intStrategy = iFace::glue)
-        :  Base(patches),
-           m_rhsFun(&rhs),
-           m_bConditions(bconditions),
-           m_dirValues  (dirichlet::l2Projection),
-           m_dirStrategy(dirichlet::none),
-           m_intStrategy(iFace::none)
-        {
-            GISMO_ASSERT(bases.size()==1, "gsPoissonAssembler does cannot handle vector valued problems. Use only a single basis.");
-            m_bases.push_back(bases.front());
+    /// Init function
+    void initializeSinglePatch( const gsGeometry<T>            & patch,
+                                const gsBasisRefs<T>           & basis,
+                                const gsBoundaryConditions<T>  & bconditions)
+    {
+        Base::initializeSinglePatch(patch,basis,bconditions);
 
-            gsAssemblerOptions options;
-            options.dirStrategy = dirStrategy;
-            options.intStrategy = intStrategy;
-            setOptions(options);
+        applyOptions();
 
-            m_dofs = m_dofMappers.front().freeSize();
-        }
+        m_dofs = m_dofMappers.front().freeSize();
+    }
 
     /// Sets the Poisson assembler options
-    void setOptions(const gsAssemblerOptions  & options);
+    void setOptions(const gsAssemblerOptions& options);
 
     // Look at gsAssemblerBases for documentation
     bool isSymmertric() const { return true; }
@@ -167,7 +152,7 @@ public:
     gsField<T> * constructSolution(const gsMatrix<T> & solVector) const;
 
     /// Reconstruct solution from computed solution vector
-    void constructSolution(const gsMatrix<T>& solVector, 
+    void constructSolution(const gsMatrix<T>& solVector,
                            gsMultiPatch<T>& result) const;
 
     /// Penalty constant for patch \a k, used for weak bounday conditions
@@ -185,7 +170,7 @@ public:
     {
         return m_matrix.template selfadjointView<Lower>();
     }
-     
+
 protected:
 
     // Nitsche Dirichlet contributions
@@ -203,30 +188,23 @@ protected:
     // Computes the Dirichlet DoF values by L2 projection
     void computeDirichletDofsL2Proj();
 
+    // Applies the Poisson assembler options
+    void applyOptions();
+
 protected:
 
     /// Right hand side function
     const gsFunction<T> * m_rhsFun;
-    
-    /// Boundary conditions
-    gsBoundaryConditions<T> m_bConditions;
-
-    /// Determines how the (fixed) Dirichlet values should be computed
-    dirichlet::values  m_dirValues;
-
-    /// Strategy for enforcing Dirichlet DoFs
-    dirichlet::strategy m_dirStrategy;
-
-    /// Strategy for dealing with patch interface
-    iFace::strategy m_intStrategy;
 
 protected:
 
     // Members from gsAssemblerBase
     using gsAssemblerBase<T>::m_patches;
     using gsAssemblerBase<T>::m_bases;
+    using gsAssemblerBase<T>::m_bConditions;
     using gsAssemblerBase<T>::m_dofMappers;
     using gsAssemblerBase<T>::m_ddof;
+    using gsAssemblerBase<T>::m_options;
     using gsAssemblerBase<T>::m_matrix;
     using gsAssemblerBase<T>::m_rhs;
     using gsAssemblerBase<T>::m_dofs;
