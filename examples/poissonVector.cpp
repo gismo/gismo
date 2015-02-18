@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
     /////////////////// Setup solver ///////////////////
     //Initialize Solver
     gsPoissonAssembler<real_t> PoissonAssembler(*patches,bases,bcInfo,*ppde->rhs(),
-                                                dirichlet::nitsche, iFace::dg);
+                                                dirichlet::elimination, iFace::glue);
 
     gsAssemblerOptions options;
     //Use Nitsche's method for Dirichlet boundaries
