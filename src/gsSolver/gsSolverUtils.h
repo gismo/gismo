@@ -227,7 +227,7 @@ public:
             if(std::abs(m_delta[i])+std::abs(m_gamma[i])+ std::abs(m_gamma[i-1])>x0)
                 x0 = std::abs(m_delta[i])+std::abs(m_gamma[i])+ std::abs(m_gamma[i-1]);
 
-        if(std::abs(m_delta[n-1])+std::abs(m_gamma[n-1])>x0)
+        if(std::abs(m_delta[n-1])+std::abs(m_gamma[n-2])>x0)
             x0 = std::abs(m_delta[n-1])+std::abs(m_gamma[n-2]);
         return newtonIteration(x0);
     }
