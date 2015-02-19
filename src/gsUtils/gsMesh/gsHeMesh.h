@@ -28,7 +28,9 @@
 #include <gsNurbs/gsKnotVector.h>
 
 namespace gismo {
-
+/** 
+    A half-edge mesh
+ */
 template <class T >
 class gsHeMesh : public gsHeMeshElement<T>
 {
@@ -52,7 +54,7 @@ public:
     int numCells;
 
     //std::map<int, gsVertexHandle> vertices;
-    std::vector<gsVertexHandle > vertex;
+    std::vector<gsVertexHandle > vertex; // vertex[0], vertex[1],...
     std::vector<gsHalfEdgeHandle >  edge;
     std::vector<gsHalfFaceHandle >  face;
     std::vector<gsCellHandle >      cell;
@@ -104,8 +106,13 @@ public:
             e2->setId(numHalfEdges++);
         };
 
+    /// \brief adds a half-face given a list of half-edges
     gsHalfFaceHandle addHalfFace(std::vector<gsVertexHandle> V);
     
+
+    // todo:  adds a half-face given indices of vertices
+    //gsHalfFaceHandle addHalfFace(const std::vector<index_t> &  V);
+
     //------------------------------------------------------------------------------------------------------
     void addCell(gsCellHandle *c) 
         {
