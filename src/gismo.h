@@ -104,10 +104,11 @@ namespace internal
 #include <gsAssembler/gsPoissonAssembler.h>
 
 // Solver
+#include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMinimalResidual.h>
 #include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsConjugateGradient.h>
-#include <gsSolver/gsLinearOperator.h>
+#include <gsSolver/gsSimplePreconditioners.h>
 
 // IO
 #include <gsIO/gsCmdLine.h>
