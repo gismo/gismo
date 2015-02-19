@@ -41,8 +41,25 @@ gsFunctionExpr<T>::gsFunctionExpr(std::string expression_string) : my(new gsFunc
     // Keep string data
     my->string = expression_string;
     my->string.erase(std::remove(my->string.begin(),my->string.end(),' '),my->string.end());
+    stringReplace(my->string, "**", "^");
     init();
 }
+
+template<typename T>
+gsFunctionExpr<T>::gsFunctionExpr(std::string expression_string, std::map<std::string, std::string> replace)
+: my(new gsFunctionExprPrivate<T>)
+{
+    // Keep string data
+    my->string = expression_string;
+    my->string.erase(std::remove(my->string.begin(),my->string.end(),' '),my->string.end());
+    stringReplace(my->string, "**", "^");
+    for (std::map<std::string, std::string>::iterator iter = replace.begin(); iter != replace.end(); iter ++)
+    {
+        stringReplace(my->string, iter->first, iter->second);
+    }
+    init();
+}
+
 
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const gsFunctionExpr& other)

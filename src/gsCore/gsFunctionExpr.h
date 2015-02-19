@@ -15,9 +15,9 @@
 
 # include <gsCore/gsFunction.h>
 
-
 namespace gismo
 {
+
 
 template<typename T> class gsFunctionExprPrivate;
 
@@ -40,6 +40,9 @@ public:
   
     /// Constructor by an expression string
     gsFunctionExpr(std::string expression_string);
+
+    /// Constructor by an expression string and map for replacing symbols
+    gsFunctionExpr(std::string expression_string, std::map<std::string, std::string> replace);
   
     ~gsFunctionExpr();
   
@@ -54,6 +57,17 @@ private:
 
     // initialize this instance from its m_string member
     void init();
+
+    void stringReplace(std::string& str, const std::string& oldStr, const std::string& newStr)
+    {
+        index_t pos = 0;
+        while((pos = str.find(oldStr, pos)) != std::string::npos)
+        {
+            str.replace(pos, oldStr.length(), newStr);
+            pos += newStr.length();
+        }
+    }
+
     
 public:
 
@@ -107,6 +121,7 @@ public:
   
     /// returns the last value computed
     //T varList() const
+
   
 // Data members
 private:
