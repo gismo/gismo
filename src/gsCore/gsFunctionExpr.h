@@ -42,7 +42,9 @@ public:
     gsFunctionExpr(std::string expression_string);
 
     /// Constructor by an expression string and map for replacing symbols
-    gsFunctionExpr(std::string expression_string, std::map<std::string, std::string> replace);
+    // to do: remove
+    gsFunctionExpr(std::string expression_string, 
+                   std::map<std::string, std::string> & replace);
   
     ~gsFunctionExpr();
   
@@ -58,9 +60,9 @@ private:
     // initialize this instance from its m_string member
     void init();
 
-    void stringReplace(std::string& str, const std::string& oldStr, const std::string& newStr)
+    static void stringReplace(std::string& str, const std::string& oldStr, const std::string& newStr)
     {
-        index_t pos = 0;
+        size_t pos = 0;
         while((pos = str.find(oldStr, pos)) != std::string::npos)
         {
             str.replace(pos, oldStr.length(), newStr);

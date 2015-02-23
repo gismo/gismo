@@ -46,7 +46,8 @@ gsFunctionExpr<T>::gsFunctionExpr(std::string expression_string) : my(new gsFunc
 }
 
 template<typename T>
-gsFunctionExpr<T>::gsFunctionExpr(std::string expression_string, std::map<std::string, std::string> replace)
+gsFunctionExpr<T>::gsFunctionExpr(std::string expression_string, 
+                                  std::map<std::string, std::string> & replace)
 : my(new gsFunctionExprPrivate<T>)
 {
     // Keep string data
