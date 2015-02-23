@@ -332,15 +332,9 @@ public:
         addCondition(ps.patch, ps.side(), t, f_shptr, unknown);
     }
 
-    void addCornerValue(int p, boxCorner c, T value, int unknown = 0)
+    void addCornerValue(boxCorner c, T value, int p = 0, int unknown = 0)
     {
         corner_values.push_back( corner_value<T>(p,c,value,unknown) );
-    }
-
-    void addCornerValue(boxCorner c, T value, int unknown = 0)
-    {
-        // for single-patch only
-        corner_values.push_back( corner_value<T>(0,c,value,unknown) );
     }
         
     /// Prints the object as a string.
