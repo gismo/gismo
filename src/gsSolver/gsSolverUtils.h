@@ -221,14 +221,20 @@ public:
      */
     T maxEigenvalue()
     {
+        if(n==1)
+            return m_delta[0];
+
         // x0 is rowsumNorm
         T x0 =std::abs(m_delta[0])+std::abs(m_gamma[0]);
+
+
         for(unsigned i=1;i<n-2;i++)
             if(std::abs(m_delta[i])+std::abs(m_gamma[i])+ std::abs(m_gamma[i-1])>x0)
                 x0 = std::abs(m_delta[i])+std::abs(m_gamma[i])+ std::abs(m_gamma[i-1]);
 
         if(std::abs(m_delta[n-1])+std::abs(m_gamma[n-2])>x0)
             x0 = std::abs(m_delta[n-1])+std::abs(m_gamma[n-2]);
+
         return newtonIteration(x0);
     }
 
@@ -238,6 +244,8 @@ public:
      */
     T minEigenvalue()
     {
+        if(n==1)
+            return m_delta[0];
         T x0 = 0;
         return newtonIteration(x0);
     }
