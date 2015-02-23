@@ -217,7 +217,7 @@ public:
         // but that has troubles with the sparse/diagonal expressions etc.
         // So we do it by using a temporary.
         
-        gsVector<T> tmp = m_weights ;
+        const gsVector<T> tmp = m_weights ;
         m_weights.noalias() = transfer * tmp;  // Refine the weights as well
         
         transfer =  m_weights.cwiseInverse().asDiagonal() * transfer *  tmp.asDiagonal(); 
@@ -226,7 +226,10 @@ public:
 
     void degreeElevate(int const& i = 1) 
     {
-        GISMO_NO_IMPLEMENTATION
+        typename SourceBasis::GeometryType tmp(*m_src,m_weights);
+        tmp.degreeElevate(i);
+        tmp.coefs().swap(m_weights);
+        std::swap(*m_src, tmp.basis() );
     }
     
     virtual gsBasis<T>& component(unsigned i) const        { return m_src->component(i); }
