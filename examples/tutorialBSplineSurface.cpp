@@ -37,8 +37,9 @@ int main(int argc, char* argv[])
     cmd.getValues(argc,argv);
 
     // Adjust values to the minimum required
-    n = math::max(n, degree + 1);
-    m = math::max(m, degree + 1);
+    degree = math::max(0, degree    );
+    n      = math::max(n, degree + 1);
+    m      = math::max(m, degree + 1);
 
     std::cout << "----------------------\n\n"
               << "n: " << n << "\n\n"

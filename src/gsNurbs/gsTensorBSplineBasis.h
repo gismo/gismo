@@ -206,6 +206,7 @@ public:
      *
      * \param u     refineKnots Coordinate-wise knot values to be inserted
      * \param[out]  new coefficients
+     \todo rename to insertKnots_withCoefs
      */
     void refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots)
     {
@@ -234,7 +235,7 @@ public:
      *
      * \param u     refineKnots Coordinate-wise knot values to be inserted
      */
-    void refine(const std::vector< std::vector<T> >& refineKnots)
+    void insertKnots(const std::vector< std::vector<T> >& refineKnots)
     {
         GISMO_ASSERT( refineKnots.size() == d, "refineKnots vector has wrong size" );
         for (unsigned j = 0; j < d; ++j) // refine basis in each direction

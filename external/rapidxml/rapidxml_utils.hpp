@@ -27,10 +27,8 @@ namespace rapidxml
         //! \param filename Filename to load.
         file(const char *filename)
         {
-            using namespace std;
-
             // Open stream
-            basic_ifstream<Ch> stream(filename, ios::binary);
+            std::basic_ifstream<Ch> stream(filename, ios::binary);
             if (!stream)
                 throw runtime_error(string("cannot open file ") + filename);
             stream.unsetf(ios::skipws);
@@ -50,13 +48,11 @@ namespace rapidxml
         //! \param stream Stream to load from
         file(std::basic_istream<Ch> &stream)
         {
-            using namespace std;
-
             // Load data and add terminating 0
             stream.unsetf(ios::skipws);
             m_data.assign(istreambuf_iterator<Ch>(stream), istreambuf_iterator<Ch>());
             if (stream.fail() || stream.bad())
-                throw runtime_error("error reading stream");
+                throw std::runtime_error("error reading stream");
             m_data.push_back(0);
         }
         
