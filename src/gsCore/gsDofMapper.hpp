@@ -97,15 +97,25 @@ void gsDofMapper::init(
 {
     init(basis);
 
+    /// \todo move this code to gsMultiBasis::getMapper
     for (typename gsBoundaryConditions<T>::const_iterator
          it = bc.dirichletBegin() ; it != bc.dirichletEnd(); ++it )
     {
         if ( unk == -1 || it->unknown() == unk ) // special value -1 eliminates all BCs found
+        //if ( it->unknown() == unk ) // to do
         {
             gsMatrix<unsigned> * bnd = basis[it->ps.patch].boundary( it->ps.side() );
             markBoundary(it->ps.patch, *bnd);
             delete bnd;
         }
+    }
+
+    // corners
+    for (typename gsBoundaryConditions<T>::const_citerator
+         it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
+    {
+        if ( it->unknown == unk )
+            eliminateDof( basis[it->patch].functionAtCorner(it->corner), it->patch );
     }
 }
 
