@@ -2,7 +2,7 @@
 
     @brief Small wrapper for std::vector
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -29,28 +29,33 @@ class gsStdVectorRef
 public:
 
     /// Constructor from a vector of objs
-    inline gsStdVectorRef(const std::vector<obj> & refVec) : 
-    m_ref(refVec)
+    inline gsStdVectorRef(const std::vector<obj> & refVec) :
+        m_ref(refVec)
     { }
 
+
     /// Accessor
-    inline const obj & operator[](std::size_t i) const 
+    inline const obj & operator[](std::size_t i) const
     { return m_ref[i]; }
 
-    /// Cast to obj by returning the first element
-    inline operator const obj &() const 
+    /// Cast to std::vector
+    inline operator const std::vector<obj> & () const
+    { return m_ref; }
+
+    /// Cast to by returning the first element
+    inline operator const obj &() const
     { return m_ref.front(); }
 
     /// Front
-    inline const obj & front() const 
+    inline const obj & front() const
     { return *m_ref.front(); }
 
     /// Back
-    inline const obj & back () const 
+    inline const obj & back () const
     { return m_ref.back(); }
 
     /// Size
-    inline std::size_t size () const 
+    inline std::size_t size () const
     { return m_ref.size(); }
 
 private:

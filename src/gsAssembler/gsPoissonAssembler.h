@@ -95,54 +95,26 @@ public:
     \ingroup Assembler
 */
     gsPoissonAssembler( gsMultiPatch<T> const         & patches,
-                        gsMultiBasis<T> const         & bases,
+                        gsMultiBasis<T> const         & basis,
                         gsBoundaryConditions<T> const & bconditions,
                         const gsFunction<T>           & rhs,
                         dirichlet::strategy           dirStrategy = dirichlet::elimination,
                         iFace::strategy               intStrategy = iFace::glue)
         : m_rhsFun(&rhs)
     {
+        //set the values, options,...
         m_options.dirStrategy = dirStrategy;
         m_options.intStrategy = intStrategy;
         m_options.dirValues = dirichlet::l2Projection;
-        initializeScalarProblem(patches, bases,bconditions);
-    }
 
-    void initializeScalarProblem(const gsMultiPatch<T>          & patches,
-                                 gsMultiBasis<T> const          & basis,
-                                 gsBoundaryConditions<T> const  & bconditions)
-    {
-        Base::initializeScalarProblem(patches, basis, bconditions);
-
-        applyOptions();
-
-        m_dofs = m_dofMappers.front().freeSize();
-    }
-
-    void initializeVectorProblem(const gsMultiPatch<T>                   & patches,
-                                 std::vector<  gsMultiBasis<T> > const   & bases,
-                                 gsBoundaryConditions<T> const           & bconditions)
-    {
-        GISMO_ERROR("This Poisson Problem is not a Vector Problem.");
-    }
-
-
-    /// Init function
-    void initializeSinglePatch( const gsGeometry<T>            & patch,
-                                const gsBasisRefs<T>           & basis,
-                                const gsBoundaryConditions<T>  & bconditions)
-    {
-        Base::initializeSinglePatch(patch,basis,bconditions);
-
-        applyOptions();
-
-        m_dofs = m_dofMappers.front().freeSize();
+        //initialize the values, options,...
+        this->initialize(patches, basis, bconditions);
     }
 
     /// Sets the Poisson assembler options
     void setOptions(const gsAssemblerOptions& options);
 
-    // Look at gsAssemblerBases for documentation
+    /// Look at gsAssemblerBases for documentation
     bool isSymmertric() const { return true; }
 
     /// Main assembly routine.
@@ -171,16 +143,25 @@ public:
         return m_matrix.template selfadjointView<Lower>();
     }
 
+     // Computes the Dirichlet DoF values
+    void computeDirichletDofs();
+
+
 protected:
+
+    // initializes the pde specfic stuff
+    void initializePdeSpecific()
+    {
+        applyOptions();
+
+        m_dofs = m_dofMappers.front().freeSize();
+    }
 
     // Nitsche Dirichlet contributions
     void assembleNitsche();
     
     // Neumann contributions
     void assembleNeumann();
-
-    // Computes the Dirichlet DoF values
-    void computeDirichletDofs();
 
     // Computes the Dirichlet DoF values by interpolation
     void computeDirichletDofsIntpl();

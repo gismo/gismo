@@ -66,48 +66,62 @@ public:
     virtual ~gsAssemblerBase()
     { }
 
-    /// @brief Intitialize function for scalar problems, sets data fields
-    /// using a multi-patch, multi-basis and boundary conditions.
-    /// \note Rest of the data fields should be initialized in the
-    /// derived function.
-    virtual void initializeScalarProblem(const gsMultiPatch<T>          & patches,
-                                         gsMultiBasis<T> const          & basis,
-                                         gsBoundaryConditions<T> const  & bconditions)
-    {
-        m_patches = patches;
-        m_bases.push_back(basis);
-        m_bConditions = bconditions;
-    }
-
-    /// @brief Intitialize function for vector valued problems, sets data fields
+public:
+    /// @brief Intitialize function for, sets data fields
     /// using a multi-patch, a vector of multi-basis and boundary conditions.
     /// \note Rest of the data fields should be initialized in the
-    /// derived function.
-    virtual void initializeVectorProblem(const gsMultiPatch<T>                   & patches,
-                                         std::vector<  gsMultiBasis<T> > const   & bases,
-                                         gsBoundaryConditions<T> const           & bconditions)
+    /// derived function initializePdeSpecific() .
+    void initialize(const gsMultiPatch<T>                   & patches,
+                    gsStdVectorRef<gsMultiBasis<T> > const   & bases,
+                    gsBoundaryConditions<T> const           & bconditions)
     {
         m_patches = patches;
+        m_bases.clear();
         m_bases = bases;
         m_bConditions = bconditions;
+
+        initializePdeSpecific();
+
+    }
+
+    /// @brief Intitialize function for, sets data fields
+    /// using a multi-patch, a multi-basis and boundary conditions.
+    /// \note Rest of the data fields should be initialized in the
+    /// derived function initializePdeSpecific() .
+    void initialize(const gsMultiPatch<T>         & patches,
+                    gsMultiBasis<T> const         & basis,
+                    gsBoundaryConditions<T> const & bconditions)
+    {
+        m_patches = patches;
+        m_bases.clear();
+        m_bases.push_back(basis);
+        m_bConditions = bconditions;
+
+        initializePdeSpecific();
+
     }
 
     /// @brief Intitialize function for single patch assembling, sets data fields
     /// using a gsGeometry, a basis reference for each component (vector) and
     /// boundary conditions. Works for scalar and vector valued PDES
     /// \note Rest of the data fields should be initialized in the
-    /// derived function.
-    virtual void initializeSinglePatch(const gsGeometry<T>           & patch,
-                                       const gsBasisRefs<T>          & basis,
-                                       gsBoundaryConditions<T> const & bconditions)
+    /// derived function initializePdeSpecific() .
+    void initializeSinglePatch(const gsGeometry<T>           & patch,
+                               const gsBasisRefs<T>          & basis,
+                               gsBoundaryConditions<T> const & bconditions)
     {
         m_patches = gsMultiPatch<T>(patch);
-        m_bConditions=bconditions;
+        m_bConditions = bconditions;
 
         m_bases.clear();
         for(std::size_t c=0;c<basis.size();c++)
             m_bases.push_back(gsMultiBasis<T>(basis[c]));
+
+        initializePdeSpecific();
     }
+
+
+public:
 
     /// @brief Generic assembly routine for volume or boundary integrals
     template<class ElementVisitor>
@@ -152,6 +166,8 @@ public:
         }
     }
 
+    /// @brief forces the Assembler to calculete the Dirichlet dofs again.
+    virtual void computeDirichletDofs() {GISMO_NO_IMPLEMENTATION;}
 
 public:
 
@@ -169,6 +185,9 @@ public:
 
     /// @brief Return the DOF mapper for unknown \em i.
     const gsDofMapper& dofMapper(unsigned i = 0) const     { return m_dofMappers[i]; }
+
+    /// @brief Returns the number of dofMappers (corresponds to the number of components)
+    std::size_t numDofMappers() const {return m_dofMappers.size();}
 
     /// @brief Returns the left-hand global matrix
     const gsSparseMatrix<T> & matrix() const { return m_matrix; }
@@ -194,6 +213,14 @@ public:
     const gsBoundaryConditions<T> & bConditions() const {return m_bConditions;}
 
 protected:
+
+    /// @brief Prototype for initializing PDE specific members. In order to provide
+    /// working init functions, it SHOULD (must) be overridden in the derived class.
+    virtual void initializePdeSpecific() {GISMO_NO_IMPLEMENTATION;}
+
+protected:
+    //This class should obtain the members from gsPde:
+    // m_patches, m_bConditions.
 
     /// @brief The multipatch domain
     gsMultiPatch<T> m_patches;

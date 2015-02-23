@@ -400,7 +400,9 @@ template<class T>
 gsField<T> *  gsPoissonAssembler<T>::constructSolution(const gsMatrix<T>& solVector) const
 //gsField<T> & result ) const
 {
-    GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
+    //For IETI, this assertion cannot be passed, because the the global system is never assembled.
+    //probably add ana accesor to m_rhs to sets its size accordingly.
+    //GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
 
     const gsDofMapper & mapper = m_dofMappers.front();
 
