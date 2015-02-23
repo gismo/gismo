@@ -63,6 +63,13 @@ public:
                 m_eigsAreCalculated =  true;
         }
 
+    /// Solve system without preconditioner
+    void solve(const VectorType& rhs, VectorType& x)
+    {
+        gsIdentityPreconditioner preConId(m_mat.rows());
+        solve(rhs, x, preConId);
+    }
+
     bool step( VectorType& x, const gsLinearOperator& precond );
 
     /// @brief specify if you want to store data for eigenvalue estimation

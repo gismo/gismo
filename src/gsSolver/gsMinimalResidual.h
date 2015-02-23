@@ -39,17 +39,24 @@ public:
     void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator& precond);
 
     void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator& precond)
-        {
-            initIteration(rhs, x, precond);
+    {
+        initIteration(rhs, x, precond);
 
-            while(m_numIter < m_maxIters)
-            {
-                if (step(x, precond))
-                    break;
-                m_numIter++;
-            }
-            m_error = std::sqrt(residualNorm2 / rhsNorm2);
+        while(m_numIter < m_maxIters)
+        {
+            if (step(x, precond))
+                break;
+            m_numIter++;
         }
+        m_error = std::sqrt(residualNorm2 / rhsNorm2);
+    }
+
+    /// Solve system without preconditioner
+    void solve(const VectorType& rhs, VectorType& x)
+    {
+        gsIdentityPreconditioner preConId(m_mat.rows());
+        solve(rhs, x, preConId);
+    }
 
     bool step( VectorType& x, const gsLinearOperator& precond );
 

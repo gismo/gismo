@@ -41,6 +41,13 @@ public:
 
     void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator& precond);
 
+    /// Solve system without preconditioner
+    void solve(const VectorType& rhs, VectorType& x)
+    {
+        gsIdentityPreconditioner preConId(m_mat.rows());
+        solve(rhs, x, preConId);
+    }
+
     bool step( VectorType& x, const gsLinearOperator& precond );
 
 private:

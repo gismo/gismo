@@ -46,4 +46,26 @@ public:
 
 }; // gsLinearOperator
 
+
+/// @brief Identity preconditioner ("do nothing"), must be square!
+class gsIdentityPreconditioner : public gsLinearOperator
+{
+public:
+
+    gsIdentityPreconditioner(index_t dim) : m_dim(dim) {}
+
+
+    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    {
+        x = input;
+    }
+
+    index_t rows() const {return m_dim;}
+
+    index_t cols() const {return m_dim;}
+
+private:
+    const index_t m_dim;
+};
+
 } // namespace gismo
