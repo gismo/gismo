@@ -377,6 +377,23 @@ gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary(boxSide const& s) const
     return this->slice(k, (r ? size(k) - 1 : 0) ).release();
 }
 
+template<unsigned d, class Basis_t >
+unsigned gsTensorBasis<d,Basis_t>::functionAtCorner(boxCorner const & c) const
+{
+    gsVector<bool> position;
+    c.parameters_into(d, position);
+    
+    unsigned index = 0;
+    
+    for(unsigned i = 0; i!=d; ++i)
+    {
+        if ( position[i] )
+            index+= stride(i) * ( size(i) - 1 );
+    }
+
+    return index;
+}
+
 /*
 template<unsigned d, class Basis_t >
 void gsTensorBasis<d,Basis_t>::boundary_into(boxSide const & s, gsMatrix<int> & bstruct, gsMatrix<unsigned>& result) const

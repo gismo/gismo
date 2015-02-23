@@ -501,20 +501,10 @@ public:
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
     virtual gsMatrix<unsigned> * boundary(boxSide const & s ) const;
 
+    virtual unsigned functionAtCorner(boxCorner const & c) const;
+
     /// Returns the boundary basis for side s.
     virtual gsBasis<T> * boundaryBasis(boxSide const & s) const;
-
-    /// Returns the value of the constant parameter on the boundary side s
-    // virtual T parameterValue(boxSide const & s) const { 
-    //     gsMatrix<T> * rr= this->component( direction(s) ).parameterRange();
-    //     T res;
-    //     if ( parameter(s) )
-    //         res= rr->at(0,0);
-    //     else
-    //         res= rr->at(0,1);
-    //     delete rr;
-    //     return res;
-    // };
 
     /// @brief Returns (a bounding box for) the domain of the whole basis.
     ///

@@ -202,6 +202,8 @@ public:
     /// boundary
     gsMatrix<unsigned> * boundary(boxSide const & s ) const ;
 
+    unsigned functionAtCorner(boxCorner const & c) const;
+
     /// Returns a basis for the face s gsTensorBasis<T,d-1,Basis_t>
     BoundaryBasisType * boundaryBasis(boxSide const & s ) const ;
 

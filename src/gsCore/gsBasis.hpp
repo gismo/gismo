@@ -186,6 +186,11 @@ gsBasis<T>::boundary(boxSide const & s ) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+unsigned
+gsBasis<T>::functionAtCorner(boxCorner const & c) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 gsBasis<T> * gsBasis<T>::boundaryBasis(boxSide const & s) const
 { GISMO_NO_IMPLEMENTATION }
 
