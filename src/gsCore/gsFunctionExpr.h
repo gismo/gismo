@@ -41,11 +41,6 @@ public:
     /// Constructor by an expression string
     gsFunctionExpr(std::string expression_string);
 
-    /// Constructor by an expression string and map for replacing symbols
-    // to do: remove
-    gsFunctionExpr(std::string expression_string, 
-                   std::map<std::string, std::string> & replace);
-  
     ~gsFunctionExpr();
   
     gsFunctionExpr(const gsFunctionExpr& other);
