@@ -1169,7 +1169,7 @@ class gsXml< gsBSplineBasis<T, KnotVectorType > >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsBSplineBasis<A2(T,KnotVectorType)>);
+    GSXML_COMMON_FUNCTIONS(gsBSplineBasis<TMPLA2(T,KnotVectorType)>);
     static std::string tag  () { return "Basis"; }
     static std::string type () { return "BSplineBasis"; }
 

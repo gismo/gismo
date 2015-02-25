@@ -6,7 +6,7 @@
 #include <gsNurbs/gsKnotVector.h>
 
 #include <gsIO/gsXmlUtils.h>
-#include <gsIO/gsXmlUtils.hpp> //
+#include <gsIO/gsXmlUtils.hpp> // !
 
 
 namespace gismo
@@ -23,7 +23,7 @@ class gsXml< gsTensorBSplineBasis<d,T,KnotVectorType> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTensorBSplineBasis<A3(d,T,KnotVectorType)>);
+    GSXML_COMMON_FUNCTIONS(gsTensorBSplineBasis<TMPLA3(d,T,KnotVectorType)>);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "TensorBSplineBasis"+to_string(d); }
 
