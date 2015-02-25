@@ -43,7 +43,7 @@ class gsXml< gsBSpline<T, gsKnotVector<T> > > // TO DO: KnotVectorType
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsBSpline<A2(T,gsKnotVector<T>)>);
+    GSXML_COMMON_FUNCTIONS(gsBSpline<TMPLA2(T,gsKnotVector<T>)>);
     static std::string tag () { return "Geometry"; }
     static std::string type () { return "BSpline"; }
 

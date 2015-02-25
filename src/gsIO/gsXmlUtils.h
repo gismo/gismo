@@ -55,8 +55,8 @@ namespace rapidxml
     static  obj * getId (gsXmlNode * node, int id) \
     { return getById< obj >(node, id); }
 
-#define A2(t1,t2)    t1,t2
-#define A3(t1,t2,t3) t1,t2,t3
+#define TMPLA2(t1,t2)    t1,t2
+#define TMPLA3(t1,t2,t3) t1,t2,t3
 #define FILE_PRECISION 16
 
 namespace gismo {

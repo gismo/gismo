@@ -817,7 +817,7 @@ class gsXml< gsHTensorBasis<d,T> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsHTensorBasis<A2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(gsHTensorBasis<TMPLA2(d,T)>);
     static std::string tag () { return "Basis"; }
     static std::string type () { return ""; } // tag ?
 
@@ -867,7 +867,7 @@ class gsXml< gsTensorNurbsBasis<d,T,Basis_t> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTensorNurbsBasis<A3(d,T,Basis_t)>);
+    GSXML_COMMON_FUNCTIONS(gsTensorNurbsBasis<TMPLA3(d,T,Basis_t)>);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "TensorNurbsBasis"+to_string(d); }
 
@@ -891,7 +891,7 @@ class gsXml< gsHBSpline<d,T> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsHBSpline<A2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(gsHBSpline<TMPLA2(d,T)>);
     static std::string tag () { return "Geometry"; }
     static std::string type () { return "HBSpline"+to_string(d); }
 
@@ -915,7 +915,7 @@ class gsXml< gsTHBSpline<d,T> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTHBSpline<A2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(gsTHBSpline<TMPLA2(d,T)>);
     static std::string tag () { return "Geometry"; }
     static std::string type () { return "THBSpline"+to_string(d); }
 
@@ -964,7 +964,7 @@ class gsXml< gsTensorNurbs<d,T> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTensorNurbs<A2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(gsTensorNurbs<TMPLA2(d,T)>);
     static std::string tag () { return "Geometry"; }
     static std::string type () { return "TensorNurbs"+to_string(d); }
 
@@ -1024,7 +1024,7 @@ class gsXml< gsHBSplineBasis<d,T> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsHBSplineBasis<A2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(gsHBSplineBasis<TMPLA2(d,T)>);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "HBSplineBasis"+ (d>1 ? to_string(d):""); }
     
@@ -1048,7 +1048,7 @@ class gsXml< gsTHBSplineBasis<d,T> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTHBSplineBasis<A2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(gsTHBSplineBasis<TMPLA2(d,T)>);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "THBSplineBasis"+ (d>1 ? to_string(d):""); }
 
@@ -2034,5 +2034,5 @@ public:
 }// end namespace gismo
 
 //#undef GSXML_COMMON_FUNCTIONS
-//#undef A2
-//#undef A3
+//#undef TMPLA2
+//#undef TMPLA3

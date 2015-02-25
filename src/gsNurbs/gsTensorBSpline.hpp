@@ -20,7 +20,7 @@ class gsXml< gsTensorBSpline<d,T, KnotVectorType> >
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTensorBSpline<A3(d,T,KnotVectorType)>);
+    GSXML_COMMON_FUNCTIONS(gsTensorBSpline<TMPLA3(d,T,KnotVectorType)>);
     static std::string tag ()  { return "Geometry"; }
     static std::string type () { return "TensorBSpline" +  to_string(d); }
 
