@@ -1,3 +1,16 @@
+/** @file gsMultiPatch.hpp
+
+    @brief Provides declaration of the MultiPatch class.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
+
 #pragma once
 
 #include <iterator>
@@ -131,83 +144,111 @@ void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
 
 
 /*
-  This is based on comparing the corners of the patch side and thus
-  it implicitly assumes that that the patch faces match
+  This is based on comparing a set of reference points of the patch
+  side and thus it implicitly assumes that that the patch faces match
 */
 template<class T>
 bool gsMultiPatch<T>::computeTopology( T tol )
 {
     gsBoxTopology::clear();
 
-    const size_t   np      = m_patches.size();
-    const index_t  nCorP    = 1 << m_dim;     // corners per patch
-    const index_t  nCorS    = 1 << (m_dim-1); // corners per side
+    const size_t   np    = m_patches.size();
+    const index_t  nCorP = 1 << m_dim;     // corners per patch
+    const index_t  nCorS = 1 << (m_dim-1); // corners per side
 
+    gsMatrix<T> supp, 
+    // Parametric coordinates of the reference points. These points
+    // are used to decide if two sides match.
+    // Currently these are the corner points and the side-centers
+    coor(m_dim,nCorP + 2*m_dim*np);
+    gsVector<bool> boxPar(m_dim);
 
-    std::vector<gsMatrix<T> >  pCorners(np); // each matrix contains the physical coordinates of the vertexes of a patch
-    std::vector<patchSide>     pSide;        // list of all patchSides to compare
+    // each matrix contains the physical coordinates of the reference points
+    std::vector<gsMatrix<T> > pCorners(np); 
+
+    std::vector<patchSide> pSide; // list of all candidate patchSides to compare
     pSide.reserve(np * 2 * m_dim);
+
     for (size_t p=0; p<np; ++p)
     {
-        // init the corners coordinated
-        gsMatrix<T> supp  = m_patches[p]->parameterRange(); // the parameter domain of patch i
-        gsMatrix<T> coor(m_dim,nCorP);                      // coordinates of the corners in parameter domain
+        supp = m_patches[p]->parameterRange(); // the parameter domain of patch i
+
+        // Corners' parametric coordinates
         for (boxCorner c=boxCorner::getFirst(m_dim); c<boxCorner::getEnd(m_dim); ++c)
         {
-            gsVector<bool> par   = c.parameters(m_dim);
+            boxPar   = c.parameters(m_dim);
             for (index_t i=0; i<m_dim;++i)
-            {
-                coor(i,c-1) = par(i) ? supp(i,1) : supp(i,0);
-            }
+                coor(i,c-1) = boxPar(i) ? supp(i,1) : supp(i,0);
         }
-        m_patches[p]->eval_into(coor,pCorners[p]);
-        // init the list of patchSides
-        for (boxSide bs=boxSide::getFirst(m_dim); bs<boxSide::getEnd(m_dim); ++bs)
+        
+        // Sides' centers parametric coordinates
+        index_t l = nCorP;
+        for (boxSide c=boxSide::getFirst(m_dim); c<boxSide::getEnd(m_dim); ++c)
         {
-            pSide.push_back(patchSide(p,bs));
+            const index_t dir = c.direction();
+            const index_t par = c.parameter();
+
+            for (index_t i=0; i<m_dim;++i)
+                coor(i,l) = ( dir==i ? ( par?supp(i,1):supp(i,0) ) : 
+                                       (supp(i,1)+supp(i,0))/2.0 );
+            l++;
         }
+
+        // Evaluate the patch on the reference points
+        m_patches[p]->eval_into(coor,pCorners[p]);
+
+        // Add the patchSides for this patch to the candidate list
+        for (boxSide bs=boxSide::getFirst(m_dim); bs<boxSide::getEnd(m_dim); ++bs)
+            pSide.push_back(patchSide(p,bs));
     }
 
     gsVector<index_t>      dirMap(m_dim);
-    gsVector<bool>         dirO(m_dim);
-    std::vector<boxCorner> cId1;
-    std::vector<boxCorner> cId2;
+    gsVector<bool>         matched(nCorS), dirOr(m_dim);
+    std::vector<boxCorner> cId1, cId2;
     cId1.reserve(nCorS);
     cId2.reserve(nCorS);
-    gsVector<bool>         matched;
-    size_t other=0;
-    while (pSide.size()>0)
+
+    while ( pSide.size() != 0 )
     {
         bool done=false;
         const patchSide side = pSide.back();
         pSide.pop_back();
-        for (other=0;other<pSide.size();++other)
+        for (size_t other=0; other<pSide.size(); ++other)
         {
-            side.getContainedCorners(m_dim,cId1);
+            side        .getContainedCorners(m_dim,cId1);
             pSide[other].getContainedCorners(m_dim,cId2);
-
-            matched.setConstant(cId2.size(),false);
-
-            if ( matchVertecesOnSide( pCorners[side.patch], cId1, 0, pCorners[pSide[other].patch], cId2, matched, dirMap, dirO, tol ) )
+            matched.setConstant(false);
+            
+            // Check whether the side center matches
+            if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
+                   pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
+                     ).norm() >= tol )
+                continue;
+            
+            // Check whether the vertices match and compute direction map and orientation
+            if ( matchVerticesOnSide( pCorners[side.patch], cId1, 0, pCorners[pSide[other].patch], cId2, matched, dirMap, dirOr, tol ) )
             {
                 dirMap(side.direction()) = pSide[other].direction();
-                dirO(side.direction())   = !( side.parameter() == pSide[other].parameter() );
-                gsBoxTopology::addInterface( boundaryInterface(side, pSide[other], dirMap, dirO));
+                dirOr(side.direction())   = !( side.parameter() == pSide[other].parameter() );
+                gsBoxTopology::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
+                // done with pSide[other], remove it from candidate list
                 std::swap( pSide[other], pSide.back() );
                 pSide.pop_back();
                 done=true;
-                break;
+                break;//for (size_t other=0..)
             }
         }
-        if (!done)
+        if (!done) // not an interface ?
             gsBoxTopology::addBoundary( side );
     }
+
     return true;
 }
 
 
+
 template <class T>
-bool gsMultiPatch<T>::matchVertecesOnSide (
+bool gsMultiPatch<T>::matchVerticesOnSide (
     const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
     const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
     gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
@@ -219,12 +260,9 @@ bool gsMultiPatch<T>::matchVertecesOnSide (
 
     const int dim = cc1.rows();
 
-    index_t o_dir=0;
-    index_t d_dir=0;
+    index_t o_dir = 0, d_dir = 0;
 
-    gsVector<bool> refPar;
-    gsVector<bool> newPar;
-    gsVector<bool> newMatched;
+    gsVector<bool> refPar, newPar, newMatched;
 
     if (computeOrientation)
     {
@@ -233,10 +271,9 @@ bool gsMultiPatch<T>::matchVertecesOnSide (
         const gsVector<bool> parRef   = ci1[0].parameters(dim);
         for (; o_dir<dim && parStart(o_dir)==parRef(o_dir)  ;) ++o_dir;
     }
+
     if (!setReference)
-    {
         refPar = ci2[reference].parameters(dim);
-    }
 
     for (size_t j=0;j<ci2.size();++j)
     {
@@ -262,35 +299,35 @@ bool gsMultiPatch<T>::matchVertecesOnSide (
                     continue;
                 }
                 dirMap(o_dir) = d_dir;
-                dirO  (o_dir) = (static_cast<index_t>(j)>reference);
+                dirO  (o_dir) = (static_cast<index_t>(j) > reference);
             }
-            if ( start + 1 == index_t( ci1.size() ) )
+            if ( start + 1 == static_cast<index_t>( ci1.size() ) )
             {
                 // we matched the last vertex, we are done
                 return true;
             }
             newMatched = matched;
             newMatched(j) = true;
-            if (!matchVertecesOnSide( cc1,ci1,start+1,cc2,ci2,newMatched,dirMap,dirO, tol,newRef))
-                continue;
-            else
+            if (matchVerticesOnSide( cc1,ci1,start+1,cc2,ci2,newMatched,dirMap,dirO, tol,newRef))
                 return true;
         }
     }
+
     return false;
 }
 
 
-template<class T>
+template<class T> // to do: move to boundaryInterface
 gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface &bi, T scaling) const
 {
     if (scaling==0)
         scaling=1;
-    gsMatrix<T> box1=m_patches[bi.first().patch]->support();
+    gsMatrix<T> box1=m_patches[bi.first().patch ]->support();
     gsMatrix<T> box2=m_patches[bi.second().patch]->support();
-    const index_t oDir1 = bi.first().direction();
+    const index_t oDir1 = bi.first() .direction();
     const index_t oDir2 = bi.second().direction();
     const T len1=box1(oDir1,1)-box1(oDir1,0);
+
     if (bi.second().parameter())
     {
         box2(oDir2,0)=box2(oDir2,1);
@@ -301,6 +338,7 @@ gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface 
         box2(oDir2,1)=box2(oDir2,0);
         box2(oDir2,0)-=scaling*len1;
     }
+
     return gsAffineFunction<T>(bi.dirMap(bi.first()),bi.dirOrientation(bi.first()) ,box1,box2);
 }
 

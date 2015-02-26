@@ -49,27 +49,23 @@ public:
 
     /// Get a const-iterator to the patches
     /// \return an iterator to the beginning of the patches
-    const_iterator begin() const {
-        return m_patches.begin();
-    }
+    const_iterator begin() const 
+    { return m_patches.begin(); }
 
     /// Get a const iterator to the end of the patches
     /// \return an iterator to the end of the patches
-    const_iterator end() const {
-        return m_patches.end();
-    }
+    const_iterator end() const 
+    { return m_patches.end(); }
 
     /// Get an iterator to the beginning of the  patches
     /// \return an iterator to the beginning of the  patches
-    iterator begin() {
-        return m_patches.begin();
-    }
+    iterator begin() 
+    { return m_patches.begin(); }
 
     /// Get an iterator to the end of the  patches
     /// \return an iterator to the end of the  patches
-    iterator end() {
-        return m_patches.end();
-    }
+    iterator end()  
+    { return m_patches.end(); }
 
     /// Default empty constructor
     gsMultiPatch() : gsBoxTopology() { }
@@ -222,7 +218,7 @@ private:
 private:
     // implementation functions
 
-    // match the vertexes in ci1 starting from start to the end with the vertexes
+    // match the vertices in ci1 starting from start to the end with the vertices
     // in ci2 that are still non matched
     // cc1 and cc2 are the physical coordinates of the vertices
     // ci1 and ci2 are the indices corner indices
@@ -231,13 +227,13 @@ private:
     // tol is the allowed distance between two vertexes in physical domain
     // matched keeps track of the already matched vertices
     // dirMap and dirO are the output orientation of the match
-    // return true if all the vertexes starting from start are matched
-static  bool matchVertecesOnSide (
-            const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
-            const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
-            gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
-            T tol,
-            index_t reference=0);
+    // return true if all the vertices starting from start are matched
+    static bool matchVerticesOnSide (
+           const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
+           const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, 
+           const gsVector<bool> &matched,
+           gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
+           T tol, index_t reference=0);
 
 }; // class gsMultiPatch
 
