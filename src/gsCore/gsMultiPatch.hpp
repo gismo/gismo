@@ -160,7 +160,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
     // Parametric coordinates of the reference points. These points
     // are used to decide if two sides match.
     // Currently these are the corner points and the side-centers
-    coor(m_dim,nCorP + 2*m_dim*np);
+    coor(m_dim,nCorP + 2*m_dim);
     gsVector<bool> boxPar(m_dim);
 
     // each matrix contains the physical coordinates of the reference points
@@ -229,7 +229,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
             if ( matchVerticesOnSide( pCorners[side.patch], cId1, 0, pCorners[pSide[other].patch], cId2, matched, dirMap, dirOr, tol ) )
             {
                 dirMap(side.direction()) = pSide[other].direction();
-                dirOr(side.direction())   = !( side.parameter() == pSide[other].parameter() );
+                dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
                 gsBoxTopology::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
                 // done with pSide[other], remove it from candidate list
                 std::swap( pSide[other], pSide.back() );
