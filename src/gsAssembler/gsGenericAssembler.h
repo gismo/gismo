@@ -57,12 +57,12 @@ void localToGlobal(const gsMatrix<T>& localStiffness,
  * i.e., with the geometry mapping being identity.
  */
 template<class T>
-gsSparseMatrix<T>* assembleParameterMass(const gsBasis<T>& basis)
+void assembleParameterMass(const gsBasis<T>& basis, gsSparseMatrix<T>& M)
 {
     const int n = basis.size();
 
-    gsSparseMatrix<T> *M = new gsSparseMatrix<T>(n, n);
-    M->reserve( gsVector<int>::Constant(n, estimateNonzerosPerRow(basis)) );
+    M.resize(n, n);
+    M.reserve( gsVector<int>::Constant(n, estimateNonzerosPerRow(basis)) );
 
     gsMatrix<T> localMass;
 
@@ -89,11 +89,10 @@ gsSparseMatrix<T>* assembleParameterMass(const gsBasis<T>& basis)
             localMass.noalias() += weight * (domIt->basisValues().col(k) * domIt->basisValues().col(k).transpose());
         }
 
-        localToGlobal(localMass, domIt->activeFuncs, *M, true);
+        localToGlobal(localMass, domIt->activeFuncs, M, true);
     }
 
-    M->makeCompressed();
-    return M;
+    M.makeCompressed();
 }
 
 

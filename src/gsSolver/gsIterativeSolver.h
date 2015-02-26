@@ -12,9 +12,9 @@
 */
 #pragma once
 
+#include <gsCore/gsExport.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsSolver/gsMatrixOperator.h>
-#include <gsSolver/gsSolverUtils.h>
 
 namespace gismo
 {

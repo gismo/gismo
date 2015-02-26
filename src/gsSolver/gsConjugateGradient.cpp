@@ -11,6 +11,7 @@
     Author(s): C. Hofreither
 */
 #include <gsSolver/gsConjugateGradient.h>
+#include <gsSolver/gsSolverUtils.h>
 
 namespace gismo
 {

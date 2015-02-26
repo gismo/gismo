@@ -13,8 +13,6 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsMultiBasis.h>
 
 namespace gismo
 {

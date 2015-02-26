@@ -15,6 +15,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsExport.h>
+#include <gsSolver/gsLinearOperator.h>
 
 namespace gismo
 {
@@ -129,6 +130,35 @@ private:
     real_t m_damping;
     Eigen::SparseLU< Eigen::SparseMatrix<real_t> > m_solver;
 
+};
+
+
+/// Generic smoother which applies an arbitrary linear operator to the residual
+class GISMO_EXPORT gsOperatorSmoother : public gsSmoother
+{
+public:
+    /// Takes ownership of the operator
+    gsOperatorSmoother(gsLinearOperator * op, real_t damping = 1.0)
+        : m_op(op), m_damping(damping)
+    {
+    }
+
+    virtual ~gsOperatorSmoother()
+    {
+        delete m_op;
+    }
+
+    virtual void apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
+    {
+        m_residual = m_damping * (f - A * x);
+        m_op->apply(m_residual, x);
+    }
+
+private:
+    gsLinearOperator * m_op;
+    real_t m_damping;
+
+    gsMatrix<> m_residual;      // keep temporary storage to avoid allocations
 };
 
 
