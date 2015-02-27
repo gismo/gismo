@@ -124,14 +124,34 @@ void gsDofMapper::eliminateDof( index_t i, index_t k )
 void gsDofMapper::finalize()
 {
     GISMO_ASSERT(m_curElimId!=0, "Error in gsDofMapper::finalize() called twince.");
-    
-    index_t curFreeDof = 0;                 // free dofs start at 0
-    m_numCpldDofs -= 1;                     // Coupled dofs start after standard dofs
-    index_t curCplDof = m_numFreeDofs - m_numCpldDofs;
-    index_t curElimDof = m_numFreeDofs;     // eliminated dofs start after free dofs
 
-    std::vector<index_t> couplingDofs(m_numCpldDofs, -1);
-    std::vector<index_t> elimDofs(-m_curElimId - 1, -1);
+    // For assigning coupling and eliminated dofs to continuous
+    // indices (-1 = unassigned)
+    std::vector<index_t> couplingDofs(m_numCpldDofs -1, -1);
+    std::vector<index_t> elimDofs    (-m_curElimId - 1, -1);
+
+    // Free dofs start at 0
+    index_t curFreeDof = 0;
+    // Coupling dofs start after standard dofs (=num of zeros in m_dofs)
+    index_t curCplDof = std::count(m_dofs.begin(), m_dofs.end(), 0);
+
+    // Eliminated dofs start after free dofs    
+    index_t curElimDof = m_numFreeDofs;     
+    // Devise number of coupled dofs (m_numCpldDofs was used as
+    // coupling id upto here)
+    m_numCpldDofs = m_numFreeDofs - curCplDof;
+
+    /*// For debugging: counting the number of coupled and boundary dofs
+    std::vector<index_t> alldofs = m_dofs;
+    std::sort( alldofs.begin(), alldofs.end() );
+    alldofs.erase( std::unique( alldofs.begin(), alldofs.end() ), alldofs.end() );
+    const index_t numCoupled =
+    std::count_if( alldofs.begin(), alldofs.end(),
+                          std::bind2nd(std::greater<index_t>(), 0) );
+    const index_t numBoundary =
+    std::count_if( alldofs.begin(), alldofs.end(),
+                          std::bind2nd(std::less<index_t>(), 0) );
+    */
 
     for (std::size_t k = 0; k < m_dofs.size(); ++k)
     {
@@ -155,13 +175,15 @@ void gsDofMapper::finalize()
         }
     }
 
+    GISMO_ASSERT(curCplDof == m_numFreeDofs,
+                 "gsDofMapper::finalize() - computed number of coupling" 
+                 "dofs does not match allocated number");
+    GISMO_ASSERT(curFreeDof + m_numCpldDofs == m_numFreeDofs,
+                 "gsDofMapper::finalize() - computed number of free dofs" 
+                 "does not match allocated number");
+
     // Devise number of eliminated dofs
     m_numElimDofs = curElimDof - m_numFreeDofs;
-
-    GISMO_ASSERT(curCplDof == m_numFreeDofs,
-                 "gsDofMapper::finalize() - computed number of coupling dofs does not match allocated number");
-    GISMO_ASSERT(curFreeDof + m_numCpldDofs == m_numFreeDofs,
-                 "gsDofMapper::finalize() - computed number of free dofs does not match allocated number");
 
     m_curElimId = 0;// Only equal to zero after finalize is called.
 }
