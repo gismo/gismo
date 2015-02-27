@@ -181,6 +181,8 @@ void gsTensorBoehmRefineLocal(
 /// @a direction. With variables @a start and @a end, we can set
 /// subcube of the @a coefs where we will perform a knot insertion.
 /// 
+/// This function should just be used for evaluation via knot insertion (not the
+/// full coefficient matrix will be computed).
 /// \ingroup Nurbs
 template <unsigned d, typename T, typename KnotVectorType, typename Mat>
 void gsTensorInsertKnotDegreeTimes(
