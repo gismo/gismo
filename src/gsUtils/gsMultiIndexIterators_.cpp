@@ -3,8 +3,6 @@
 #include <gsUtils/gsMultiIndexIterators.h>
 #include <gsUtils/gsMultiIndexIterators.hpp>
 
-#define T real_t
-
 namespace gismo
 {
 // Quote from the C++ Standard:
@@ -16,47 +14,45 @@ namespace gismo
 // explicit instantiation, except as described below.'
 // This means we need to manually instantize the templated base class
 // gsMultiIndexIterator
-TEMPLATE_INST
-class gsMultiIndexIterator<index_t,-1>;
-TEMPLATE_INST
-class gsMultiIndexIterator<index_t,2>;
-TEMPLATE_INST
-class gsMultiIndexIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsMultiIndexIterator<index_t,-1>;
+CLASS_TEMPLATE_INST
+gsMultiIndexIterator<index_t,2>;
+CLASS_TEMPLATE_INST
+gsMultiIndexIterator<index_t,3>;
 
-TEMPLATE_INST
-class gsTensorGridIterator<index_t,-1>;
-TEMPLATE_INST
-class gsTensorGridIterator<index_t,2>;
-TEMPLATE_INST
-class gsTensorGridIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsTensorGridIterator<index_t,-1>;
+CLASS_TEMPLATE_INST
+gsTensorGridIterator<index_t,2>;
+CLASS_TEMPLATE_INST
+gsTensorGridIterator<index_t,3>;
 
-TEMPLATE_INST
-class gsTensorGridVertexIterator<index_t,-1>;
-TEMPLATE_INST
-class gsTensorGridVertexIterator<index_t,2>;
-TEMPLATE_INST
-class gsTensorGridVertexIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsTensorGridVertexIterator<index_t,-1>;
+CLASS_TEMPLATE_INST
+gsTensorGridVertexIterator<index_t,2>;
+CLASS_TEMPLATE_INST
+gsTensorGridVertexIterator<index_t,3>;
 
-TEMPLATE_INST
-class gsTensorGridBoundaryIterator<index_t,-1>;
-TEMPLATE_INST
-class gsTensorGridBoundaryIterator<index_t,2>;
-TEMPLATE_INST
-class gsTensorGridBoundaryIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsTensorGridBoundaryIterator<index_t,-1>;
+CLASS_TEMPLATE_INST
+gsTensorGridBoundaryIterator<index_t,2>;
+CLASS_TEMPLATE_INST
+gsTensorGridBoundaryIterator<index_t,3>;
 
-TEMPLATE_INST
-class gsSimplexIterator<index_t,-1>;
-TEMPLATE_INST
-class gsSimplexIterator<index_t,2>;
-TEMPLATE_INST
-class gsSimplexIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsSimplexIterator<index_t,-1>;
+CLASS_TEMPLATE_INST
+gsSimplexIterator<index_t,2>;
+CLASS_TEMPLATE_INST
+gsSimplexIterator<index_t,3>;
 
-TEMPLATE_INST
-class gsCompositionIterator<index_t,-1>;
-TEMPLATE_INST
-class gsCompositionIterator<index_t,2>;
-TEMPLATE_INST
-class gsCompositionIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsCompositionIterator<index_t,-1>;
+CLASS_TEMPLATE_INST
+gsCompositionIterator<index_t,2>;
+CLASS_TEMPLATE_INST
+gsCompositionIterator<index_t,3>;
 }
-
-#undef T
