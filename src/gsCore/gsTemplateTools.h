@@ -18,16 +18,21 @@
 namespace gismo
 {
 
-template<class T>
-class gsKnotVector;
+/*
+  Compile time type switching.
+  Example: The type
+
+  gismo::choose<k==1,double, gsVector<double> >::type
+
+  evaluates (at compile time) to "double" if k is equal to 1, 
+  and to "gsVector<double>" otherwise
+*/
 
 template <bool flag, class IsTrue, class IsFalse>
 struct choose;
 
 template <class IsTrue, class IsFalse>
-struct choose<true, IsTrue, IsFalse> {
-   typedef IsTrue type;
-};
+struct choose<true, IsTrue, IsFalse> { typedef IsTrue type; };
 
 template <class IsTrue, class IsFalse>
 struct choose<false, IsTrue, IsFalse> {
@@ -38,7 +43,7 @@ struct choose<false, IsTrue, IsFalse> {
 
 
 /*
-  Macros for instantiating
+  Macros for instantiating structs, classes or functions
 */
 
 #define STRUCT_TEMPLATE_INST template struct GISMO_EXPORT

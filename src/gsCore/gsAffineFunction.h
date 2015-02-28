@@ -11,10 +11,11 @@
     Author(s): A. Bressan
     Created on: 2014-11-27
 */
-#include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsFunction.h>
+
 #pragma once
 
+#include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsFunction.h>
 
 namespace gismo {
 

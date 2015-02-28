@@ -274,6 +274,12 @@ int gsBasis<T>::numElements() const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+int gsBasis<T>::numElements(boxSide const & s) const
+{ 
+    return this->component( s.direction() ).numElements();
+}
+
+template<class T>
 int gsBasis<T>::elementIndex(const gsVector<T> & u) const
 { GISMO_NO_IMPLEMENTATION }
 

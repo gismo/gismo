@@ -527,58 +527,61 @@ public:
     /// @name Evaluation functions
     /// @{
 
-    /// \brief Evaluates nonzero basis functions at point \a u into \a result.
-    ///
-    /// Let...\n
-    /// \a d denote the dimension of the parameter domain.\n
-    /// \a k denote the number of active (i.e., non-zero) basis functions (see active_into()).
-    /// \a n denote the number of evaluation points.\n
-    ///
-    /// The \a n <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>n</em>.
-    /// Each column of \a u represents one evaluation point.\n
-    /// \n
-    /// The gsMatrix <b>\a result</b> contains the computed function values in the following form:\n
-    /// Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
-    /// The column contains the values of all active functions "above" each other.\n
-    ///
-    /// For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
-    /// (B1, B2, ... , Bn)^T,\n
-    /// where the order the basis functions \a Bi is as returned by active() and active_into().
-    ///
-    /// \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>n</em>.
-    /// See above for details.
-    /// \param[in,out] result gsMatrix of size <em>k</em> x <em>n</em>.
-    /// See above for details.
-    ///
+    /**
+    \brief Evaluates nonzero basis functions at point \a u into \a result.
+    
+    Let...\n
+    \a d denote the dimension of the parameter domain.\n
+    \a k denote the number of active (i.e., non-zero) basis functions (see active_into()).
+    \a n denote the number of evaluation points.\n
+    
+    The \a n <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>n</em>.
+    Each column of \a u represents one evaluation point.\n
+    \n
+    The gsMatrix <b>\a result</b> contains the computed function values in the following form:\n
+    Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
+    The column contains the values of all active functions "above" each other.\n
+    
+    For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
+    (B1, B2, ... , Bn)^T,\n
+    where the order the basis functions \a Bi is as returned by active() and active_into().
+    
+    \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>n</em>.
+    See above for details.
+    \param[in,out] result gsMatrix of size <em>k</em> x <em>n</em>.
+    See above for details.
+    */    
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     /// Evaluate the \a i-th basis function at points \a u into \a result.
     virtual void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
-    /// \brief Evaluates the first partial derivatives of the nonzero basis function.
-    ///
-    /// Let...\n
-    /// \a d denote the dimension of the parameter domain.\n
-    /// \a k denote the number of active (i.e., non-zero) basis functions (see active_into()).
-    /// \a n denote the number of evaluation points.\n
-    ///
-    /// The \a n <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>n</em>.
-    /// Each column of \a u represents one evaluation point.\n
-    /// \n
-    /// The gsMatrix <b>\a result</b> contains the computed derivatives in the following form:\n
-    /// Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
-    /// The column contains the gradients of all active functions "above" each other.\n
-    ///
-    /// For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
-    /// (dx B1, dy B1, dz B1, dx B2, dy B2, dz B2, ... , dx Bn, dy Bn, dz Bn)^T,\n
-    /// where the order the basis functions \a Bi is as returned by active() and active_into().
-    ///
-    /// \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>n</em>.
-    /// See above for details.
-    /// \param[in,out] result gsMatrix of size <em>(k*d)</em> x <em>n</em>.
-    /// See above for details.
-    ///
-    /// \todo Rename to _ grad_into
+    /**
+    \brief Evaluates the first partial derivatives of the nonzero basis function.
+    
+    Let...\n
+    \a d denote the dimension of the parameter domain.\n
+    \a k denote the number of active (i.e., non-zero) basis functions (see active_into()).
+    \a n denote the number of evaluation points.\n
+    
+    The \a n <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>n</em>.
+    Each column of \a u represents one evaluation point.\n
+    \n
+    The gsMatrix <b>\a result</b> contains the computed derivatives in the following form:\n
+    Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
+    The column contains the gradients of all active functions "above" each other.\n
+    
+    For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
+    (dx B1, dy B1, dz B1, dx B2, dy B2, dz B2, ... , dx Bn, dy Bn, dz Bn)^T,\n
+    where the order the basis functions \a Bi is as returned by active() and active_into().
+    
+    \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>n</em>.
+    See above for details.
+    \param[in,out] result gsMatrix of size <em>(k*d)</em> x <em>n</em>.
+    See above for details.
+    
+    \todo Rename to _ grad_into
+    */
     virtual void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
     /// \brief Evaluates the (partial) derivatives of the i-th basis function
@@ -654,10 +657,11 @@ public:
 
     /// @}
 
-    /// Clone this basis, making a deep copy.
+    /// @brief Clone this basis, making a deep copy.
     virtual gsBasis * clone() const = 0;
 
-    /// Create an empty basis of the derived type and return a pointer to it
+    /// @brief Create an empty basis of the derived type and return a
+    /// pointer to it
     virtual gsBasis * create() const;
 
     /// Return a tensor basis of \a this and \a other
@@ -667,21 +671,21 @@ public:
     /// as clone() otherwise
     virtual gsBasis<T> * makeNonRational() const { return clone(); }
 
-    /// Create a gsGeometry of proper type for this basis with the given
-    /// coefficient matrix.
+    /// @brief Create a gsGeometry of proper type for this basis with the
+    /// given coefficient matrix.
     virtual gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs ) const = 0;
 
-    /// Create a gsGeometry of proper type for this basis, taking
-    /// ownership of the coefficient matrix.
+    /// @brief Create a gsGeometry of proper type for this basis,
+    /// taking ownership of the coefficient matrix.
     virtual gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const = 0;
 
-    /// Create a domain iterator for the computational mesh of this basis,
-    /// that points to the first element of the domain
+    /// @brief Create a domain iterator for the computational mesh of
+    /// this basis, that points to the first element of the domain
     virtual domainIter makeDomainIterator() const;
 
-    /// Create a boundary domain iterator for the computational mesh
-    /// this basis, that points to the first element on the boundary of
-    /// the domain
+    /// @brief Create a boundary domain iterator for the computational
+    /// mesh this basis, that points to the first element on the
+    /// boundary of the domain
     virtual domainIter makeDomainIterator(const boxSide & s) const;
 
     /// Prints the object as a string.
@@ -700,11 +704,14 @@ public:
       Member functions that may be implemented or not in the derived class
     */
 
-    /// The number of basis functions in this basis.
+    /// @brief The number of basis functions in this basis.
     virtual int size() const = 0;
 
-    /// The number of elements.
+    /// @brief The number of elements.
     virtual int numElements() const;
+
+    /// @brief The number of elements on side \a s.
+    virtual int numElements(boxSide const & s) const;
 
     /// Returns an index for the element which contains point \a u
     virtual int elementIndex(const gsVector<T> & u ) const;
@@ -731,7 +738,8 @@ public:
      */
     virtual void refine(gsMatrix<T> const & boxes);
 
-    /** @brief Refine the basis to levels and in the areas defined by \a boxes with an extension.
+    /** @brief Refine the basis to levels and in the areas defined by
+     * \a boxes with an extension.
      *
      * As of now (03.Oct.2014), only used for hierarchical
      * tensor basis. See gsHTensorBasis for detailed documentation.
@@ -753,23 +761,24 @@ public:
     /// of coefficients accordingly
     virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul=1);
 
-    /// Refine the basis uniformly and produce a sparse matrix which maps coarse coefficient vectors to refined ones
+    /// @brief Refine the basis uniformly and produce a sparse matrix which
+    /// maps coarse coefficient vectors to refined ones
     virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
                                             int numKnots = 1, int mul=1);
 
-    /// Elevate the degree of the basis by the given amount.
+    /// @brief Elevate the degree of the basis by the given amount.
     virtual void degreeElevate(int const & i = 1);
 
-    /// Elevate the degree of the basis component by the given amount.
+    /// @brief Elevate the degree of the basis component by the given amount.
     virtual void degreeElevateComponent(unsigned dir, int const & i = 1);
 
-    /// Reduce the degree of the basis by the given amount.
+    /// @brief Reduce the degree of the basis by the given amount.
     virtual void degreeReduce(int const & i = 1);
 
-    /// Set the degree of the basis.
+    /// @brief Set the degree of the basis.
     virtual void setDegree(int const& i);
 
-    /// Reduces the continuity of the basis along element boundaries
+    /// @brief Reduces the continuity of the basis along element boundaries
     virtual void reduceContinuity(int const & i = 1);
 
     /// Return the gsDomain which represents the parameter domain of

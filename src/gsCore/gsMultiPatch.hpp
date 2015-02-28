@@ -186,10 +186,10 @@ bool gsMultiPatch<T>::computeTopology( T tol )
         for (boxSide c=boxSide::getFirst(m_dim); c<boxSide::getEnd(m_dim); ++c)
         {
             const index_t dir = c.direction();
-            const index_t par = c.parameter();
+            const index_t s   = static_cast<index_t>(c.parameter());// 0 or 1
 
             for (index_t i=0; i<m_dim;++i)
-                coor(i,l) = ( dir==i ? ( par?supp(i,1):supp(i,0) ) : 
+                coor(i,l) = ( dir==i ?  supp(i,s) :
                                        (supp(i,1)+supp(i,0))/2.0 );
             l++;
         }
