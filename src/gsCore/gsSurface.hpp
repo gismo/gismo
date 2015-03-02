@@ -25,12 +25,12 @@ namespace gismo
 template<class T> 
 void gsSurface<T>::toMesh(gsMesh<T> & msh, int npoints) const
 {   
-    const gsMatrix<T> param        = this->parameterRange();
+    const gsMatrix<T> param = this->parameterRange();
     const gsVector<T> a = param.col(0);
     const gsVector<T> b = param.col(1);
     const gsVector<unsigned> np    = uniformSampleCount(a, b, npoints );
     
-    gsMatrix<T> cp; // Curve point
+    gsMatrix<T> cp;
     
     gsTensorPointGridIterator<T,2> gridPoint(np.cast<int>(), a, b );
     
@@ -48,9 +48,9 @@ void gsSurface<T>::toMesh(gsMesh<T> & msh, int npoints) const
         {
             ind1 =  j * np[0] + i;
             ind2 = ind1 + np[0];
-            msh.addFace(ind1, ind1+1, ind2+1, ind2);
-            // msh.addFace(ind1, ind1+1, ind2+1);
-            // msh.addFace(ind2+1, ind1, ind1+1);
+            //msh.addFace(ind1, ind1+1, ind2+1, ind2);
+            msh.addFace(ind1  , ind1+1, ind2+1);
+            msh.addFace(ind2+1, ind2  , ind1  );
         }
     }
 }
