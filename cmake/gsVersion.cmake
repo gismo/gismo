@@ -12,7 +12,7 @@
 #
 # Versioning scheme:
 #  
-#  M.m.b (major.minor.build)
+#  M.m.b (major.minor.patch)
 #
 #  0.8 will be used for the first alpha release
 #      Subsequent updates will be denoted 0.8.1, 0.8.2, ..
@@ -25,17 +25,17 @@
 
 set(${PROJECT_NAME}_MAJOR_VERSION "0")
 set(${PROJECT_NAME}_MINOR_VERSION "8")
-set(${PROJECT_NAME}_BUILD_VERSION "0")
+set(${PROJECT_NAME}_PATCH_VERSION "0")
 set(${PROJECT_NAME}_VERSION_TYPE  "alpha")
 
 # Constuct version info
-if( "${${PROJECT_NAME}_BUILD_VERSION}" STREQUAL "0")
+if( "${${PROJECT_NAME}_PATCH_VERSION}" STREQUAL "0")
     set(${PROJECT_NAME}_VERSION
         "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}${${PROJECT_NAME}_VERSION_TYPE}"
         CACHE INTERNAL "${PROJECT_NAME} version number")
 else()
     set(${PROJECT_NAME}_VERSION
-        "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${${PROJECT_NAME}BUILD_VERSION}${${PROJECT_NAME}_VERSION_TYPE}"
+        "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${${PROJECT_NAME}PATCH_VERSION}${${PROJECT_NAME}_VERSION_TYPE}"
         CACHE INTERNAL "${PROJECT_NAME} version number")
 endif()
 
