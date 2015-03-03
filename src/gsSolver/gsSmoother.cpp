@@ -236,20 +236,6 @@ void gsJacobiSmoother::apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real
 }
 
 
-void gsDampedPrecRichardsonSmoother::apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
-{
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
-
-    gsMatrix<real_t> corr;
-    corr = f - A * x;
-    corr = m_solver.solve(corr).eval();
-    ////corr.array() *= P.diagonal().array();
-    x += m_damping * corr;
-}
-
-
-
 void gsGaussSeidelSmoother::apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
 {
     gaussSeidelSweep(A, x, f);

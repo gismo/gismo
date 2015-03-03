@@ -52,6 +52,8 @@ struct Smoother
 };
 
 
+
+/// Abstract base class for multigrid smoothers
 class GISMO_EXPORT gsSmoother
 {
 public:
@@ -68,6 +70,8 @@ public:
 };
 
 
+
+/// Damped Richardson smoother
 class GISMO_EXPORT gsRichardsonSmoother : public gsSmoother
 {
 public:
@@ -88,6 +92,8 @@ private:
 };
 
 
+
+/// Damped Jacobi smoother
 class GISMO_EXPORT gsJacobiSmoother : public gsSmoother
 {
 public:
@@ -108,29 +114,29 @@ private:
 };
 
 
-class GISMO_EXPORT gsDampedPrecRichardsonSmoother : public gsSmoother
+
+/// Gauss-Seidel smoother
+class GISMO_EXPORT gsGaussSeidelSmoother : public gsSmoother
 {
 public:
-    gsDampedPrecRichardsonSmoother(const Eigen::SparseMatrix<real_t>* P, real_t damping = real_t(1))
-        : m_prec(P), m_damping(damping)
-    {
-        m_solver.compute(*m_prec);
-        //m_solver.setTolerance(1e-9);
-    }
+    virtual void apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+    virtual void applyT(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+};
 
-    void setDamping(real_t d)
-    {
-        m_damping = d;
-    }
+
+
+/// ILUT (incomplete LU with thresholding) smoother
+class GISMO_EXPORT gsILUTSmoother : public gsSmoother
+{
+public:
+    gsILUTSmoother(const Eigen::SparseMatrix<real_t>& K);
 
     virtual void apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
 
 private:
-    const Eigen::SparseMatrix<real_t>* m_prec;
-    real_t m_damping;
-    Eigen::SparseLU< Eigen::SparseMatrix<real_t> > m_solver;
-
+    Eigen::IncompleteLUT<real_t> m_ilu;
 };
+
 
 
 /// Generic smoother which applies an arbitrary linear operator to the residual
@@ -150,41 +156,28 @@ public:
 
     virtual void apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
     {
-        m_residual = m_damping * (f - A * x);
-        m_op->apply(m_residual, x);
+        assert( A.rows() == x.rows() && x.rows() == f.rows() );
+        assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+
+        m_residual.noalias() = m_damping * (f - A * x);
+        m_op->apply(m_residual, m_temp);
+        x += m_temp;
     }
 
 private:
     gsLinearOperator * m_op;
     real_t m_damping;
 
-    gsMatrix<> m_residual;      // keep temporary storage to avoid allocations
+    gsMatrix<> m_residual, m_temp;      // keep temporary storage to avoid allocations
 };
 
 
 
-class GISMO_EXPORT gsGaussSeidelSmoother : public gsSmoother
-{
-public:
-    virtual void apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
-    virtual void applyT(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
-};
-
-
-class GISMO_EXPORT gsILUTSmoother : public gsSmoother
-{
-public:
-    gsILUTSmoother(const Eigen::SparseMatrix<real_t>& K);
-
-    virtual void apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
-
-private:
-    Eigen::IncompleteLUT<real_t> m_ilu;
-};
-
-
-GISMO_EXPORT void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+/// Update \a x with a forward Gauss-Seidel sweep
 GISMO_EXPORT void gaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+
+/// Update \a x with a backward Gauss-Seidel sweep
+GISMO_EXPORT void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
 
 } // namespace gismo
 
