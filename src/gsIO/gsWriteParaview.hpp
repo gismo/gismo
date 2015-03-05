@@ -334,24 +334,21 @@ void writeSinglePatchField(const gsField<T> & field, int patchNr,
 
 }
 
+/// Export a geometry represented by \a func
 template<class T>
-void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsigned npts)
+void writeSingleGeometry(gsFunction<T> const& func, 
+                         gsMatrix<T> const& supp, 
+                         std::string const & fn, unsigned npts)
 {
-//    gsMesh<T> msh;
-//    Geo.toMesh(msh, npts);
-//    gsWriteParaview(msh, fn);
-//    return;
+    const unsigned n = func.targetDim();
+    const unsigned d = func.domainDim();
 
-    const unsigned n = Geo.geoDim();
-    const unsigned d = Geo.parDim();
-
-    gsMatrix<T> ab = Geo.parameterRange() ;
-    gsVector<T> a = ab.col(0);
-    gsVector<T> b = ab.col(1);
+    gsVector<T> a = supp.col(0);
+    gsVector<T> b = supp.col(1);
     gsVector<unsigned> np = uniformSampleCount(a,b, npts );
     gsMatrix<T> pts = gsPointGrid(a,b,np) ;
 
-    gsMatrix<T>  eval_geo = Geo.eval  ( pts ) ;//pts
+    gsMatrix<T>  eval_func = func.eval  ( pts ) ;//pts
 
     if ( 3 - d > 0 )
     {
@@ -361,15 +358,15 @@ void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsi
 
     if ( 3 - n > 0 )
     {
-        eval_geo.conservativeResize(3,eval_geo.cols() );
-        eval_geo.bottomRows(3-n).setZero();
+        eval_func.conservativeResize(3,eval_func.cols() );
+        eval_func.bottomRows(3-n).setZero();
 
         if ( n == 1 )
         {
             //std::swap( eval_geo.row(d),  eval_geo.row(0) );
-            eval_geo.row(d) = eval_geo.row(0);
-            eval_geo.topRows(d) = pts;
-        }            
+            eval_func.row(d) = eval_func.row(0);
+            eval_func.topRows(d) = pts;
+        }
     }
 
     std::string mfn(fn);
@@ -383,7 +380,7 @@ void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsi
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
     file <<"<StructuredGrid WholeExtent=\"0 "<<np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
     file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
-    // Add norm of the point as data 
+    // Add norm of the point as data
     // file <<"<PointData Scalars =\"PointNorm\">\n";
     // file <<"<DataArray type=\"Float32\" Name=\"PointNorm\" format=\"ascii\" NumberOfComponents=\""<< 1 <<"\">\n";
     // for ( index_t j=0; j<eval_geo.cols(); ++j)
@@ -392,17 +389,28 @@ void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsi
     // file <<"</PointData>\n";
     // end norm
     file <<"<Points>\n";
-    file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<eval_geo.rows()<<"\">\n";
-    for ( index_t j=0; j<eval_geo.cols(); ++j)
-        for ( index_t i=0; i<eval_geo.rows(); ++i)
-            file<< eval_geo.at(i,j) <<" ";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<eval_func.rows()<<"\">\n";
+    for ( index_t j=0; j<eval_func.cols(); ++j)
+        for ( index_t i=0; i<eval_func.rows(); ++i)
+            file<< eval_func.at(i,j) <<" ";
     file <<"</DataArray>\n";
     file <<"</Points>\n";
     file <<"</Piece>\n";
     file <<"</StructuredGrid>\n";
     file <<"</VTKFile>\n";
     file.close();
+}
 
+
+template<class T>
+void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsigned npts)
+{
+//    gsMesh<T> msh;
+//    Geo.toMesh(msh, npts);
+//    gsWriteParaview(msh, fn);
+//    return;
+    gsMatrix<T> ab = Geo.parameterRange();
+    writeSingleGeometry( Geo, ab, fn, npts);
 }
 
 template<class T>
@@ -476,6 +484,19 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
     // Write out the collection file
     collection.save();
 }
+
+/// Export a Geometry without scalar information
+template<class T>
+void gsWriteParaview(const gsGeometrySlice<T> & Geo, 
+                     std::string const & fn, 
+                     unsigned npts)
+{
+    const gsMatrix<T> supp = Geo.parameterRange();
+    writeSingleGeometry(Geo, supp, fn, npts);
+    // Write out a pvd file
+    makeCollection(fn, ".vts"); // make also a pvd file
+}
+
 
 /// Export a multipatch Geometry without scalar information
 template<class T>
@@ -592,7 +613,7 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
 template<class T>
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts)
 {
-    int d= 2;
+    int d = func.domainDim(); // tested for d==2
     //int n= d+1;
 
     gsVector<T> a = supp.col(0);

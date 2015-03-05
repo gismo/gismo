@@ -21,6 +21,8 @@
 #include <gsCore/gsVolume.h>
 #include <gsCore/gsBulk.h>
 
+#include <gsCore/gsGeometrySlice.h>
+
 namespace gismo
 {
 
@@ -475,6 +477,12 @@ public:
 
     /// @}
 
+    /// Gives back an isoParametric slice of the geometry with fixed
+    /// \a par in direction \a dim_fixed as an gsGeometrySlice object.
+    gsGeometrySlice<T> getIsoParametricSlice(index_t dir_fixed, T par) const
+    {
+        return gsGeometrySlice<T>(this,dir_fixed,par);
+    }
 
 protected:
 

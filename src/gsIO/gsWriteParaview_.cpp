@@ -27,6 +27,9 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
                                unsigned npts );
 
 TEMPLATE_INST
+void gsWriteParaview(gsGeometrySlice<T> const& Geo, std::string const & fn, unsigned npts );
+
+TEMPLATE_INST
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts );
 
 TEMPLATE_INST

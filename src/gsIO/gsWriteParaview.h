@@ -19,6 +19,8 @@
 
 #include <sstream>
 
+#include <gsCore/gsGeometrySlice.h>
+
 #pragma once
 
 
@@ -112,6 +114,16 @@ void gsWriteParaview( gsCompositeGeom<2,T> const & Geo,
 template<class T>
 void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, 
                                std::string const & fn, unsigned npts =NS);
+
+
+/// Export a Geometry slice to paraview file
+///
+/// \param Geo a gsGeometrySlice
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each curve
+template<class T>
+void gsWriteParaview(const gsGeometrySlice<T> & Geo,
+                     std::string const & fn, unsigned npts =NS);
 
 
 /// Export a function plot to paraview file
