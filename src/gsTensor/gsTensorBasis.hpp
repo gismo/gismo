@@ -291,7 +291,7 @@ void gsTensorBasis<d,Basis_t>::active_cwise(
 
 
 template<unsigned d, class Basis_t >
-typename gsMatrix<unsigned>::uPtr gsTensorBasis<d,Basis_t>::slice(int dir, int k) const
+typename gsMatrix<unsigned>::uPtr gsTensorBasis<d,Basis_t>::coefSlice(int dir, int k) const
 {
     GISMO_ASSERT( dir>=0 &&  dir < this->dim(), "Invalid slice direction requested" );
     GISMO_ASSERT( k >=0 &&  k < this->trueSize(dir), "Invalid slice position requested" );
@@ -331,11 +331,11 @@ gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary() const
 
     for (unsigned k = 0; k != d; ++k)
     {
-        bd = this->slice(k, 0);
+        bd = this->coefSlice(k, 0);
         for (index_t i = 0; i < bd.size(); ++i)
             bdofs.insert( bd(i) );
 
-        bd = this->slice(k, size(k) - 1);
+        bd = this->coefSlice(k, size(k) - 1);
         for (index_t i = 0; i < bd.size(); ++i)
             bdofs.insert( bd(i) );
     }
@@ -374,7 +374,7 @@ gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary(boxSide const& s) const
     //get m_bases index and start or end case
     int k = s.direction();
     int r = s.parameter();
-    return this->slice(k, (r ? size(k) - 1 : 0) ).release();
+    return this->coefSlice(k, (r ? size(k) - 1 : 0) ).release();
 }
 
 template<unsigned d, class Basis_t >

@@ -390,7 +390,7 @@ public:
     /// Calling dir=1, k=3 gives all functions with tensor-numbering (a,3).
     /// 
     /// \ingroup Tensor
-    typename gsMatrix<unsigned>::uPtr slice(int dir, int k) const;
+    typename gsMatrix<unsigned>::uPtr coefSlice(int dir, int k) const;
 
     /// Returns the degree of the basis wrt variable \a i 
     int degree(int i) const { 
@@ -662,7 +662,7 @@ public:
     }
     
     /// Returns all the basis functions with tensor-numbering \a k in direction \a dir 
-    typename gsMatrix<unsigned>::uPtr slice(int dir, int k) const
+    typename gsMatrix<unsigned>::uPtr coefSlice(int dir, int k) const
     {
         GISMO_ASSERT(dir == 0, "Invalid direction");
         GISMO_ASSERT(k < size(), "Invalid index");

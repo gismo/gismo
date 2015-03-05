@@ -381,8 +381,8 @@ public:
         int numPeriodic = this->component(dir).numCrossingFunctions();
         for( int i = 0; i < numPeriodic; i++ )
         {
-            gsMatrix<unsigned> currentSourceSlice = *(this->slice(dir,i));
-            gsMatrix<unsigned> currentTargetSlice = *(this->slice(dir, this->size(dir)  + i ));
+            gsMatrix<unsigned> currentSourceSlice = *(this->coefSlice(dir,i));
+            gsMatrix<unsigned> currentTargetSlice = *(this->coefSlice(dir, this->size(dir)  + i ));
 
             for( index_t j = 0; j < currentSourceSlice.size(); j++ )
             {
