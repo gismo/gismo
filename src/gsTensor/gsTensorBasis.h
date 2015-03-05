@@ -454,7 +454,7 @@ public:
         result.resize(d);
         result[0] = 1;
         for ( unsigned i=1; i != d; ++i )
-            result[i] = result[i-1] * m_bases[i]->Basis_t::size();
+            result[i] = result[i-1] * m_bases[i-1]->Basis_t::size();
     }
 
     /// Returns the global index of the basis function created by
@@ -739,7 +739,7 @@ inline unsigned gsTensorBasis<d,Basis_t>::index(unsigned i, unsigned j, unsigned
 template<unsigned d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::stride(int dir) const
 {
-    GISMO_ASSERT( dir>=0 &&  dir< this->dim(), "Something went with requested direction." );
+    GISMO_ASSERT( dir>=0 &&  dir< this->dim(), "Something went wrong with requested direction." );
     unsigned s(1);
     for ( int i=0; i<dir; ++i )
         s *= size(i);
