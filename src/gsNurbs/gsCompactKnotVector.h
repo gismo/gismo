@@ -480,7 +480,8 @@ public:
     /// Reduce the degree
     void degreeReduce(int const & i = 1) 
     { 
-        GISMO_NO_IMPLEMENTATION
+        reduceMultiplicity(i);
+        m_p -= i;
     }
 
     /// Reduce the degree keeping interior knots intact
@@ -522,10 +523,56 @@ public:
     /// \param knot value of a knot
     inline int multiplicitySum(const T & knot) const;
 
-    /// Increase the multiplicity of all interior knots by i
+    /// Increase the multiplicity of all interior knots by \a i
     void increaseMultiplicity(int const & i = 1)
     {
-        GISMO_NO_IMPLEMENTATION
+        miterator m  = m_mult_sum.begin()+1;
+        unsigned r = 0;
+        for (; m != m_mult_sum.end()-1; ++m)
+        {
+            r  += i;
+            *m += r;
+        }
+        
+        *m += r; // update last mult. sum (no increase in mult.)
+    }
+
+    /// Reduce multiplicity of all interior knots by i
+    void reduceMultiplicity(int i = 1)
+    {
+        miterator m  = m_mult_sum.begin() + 1;
+        uiterator it = m_knots.begin()    + 1;
+
+        unsigned r = math::min(static_cast<unsigned>(i), *(m-1) );
+        *(m-1) -= r;
+
+        for (; it != m_knots.end();)
+        {
+            const int mult = *m - *(m-1) - r;
+
+            if ( mult > i )
+            {
+                r  += i;
+                *m -= r;
+                ++it   ;
+                ++m    ;
+            }
+            else // delete the knot (new multiplicity == 0)
+            {
+                r  += mult;
+                it  = m_knots.erase(it);
+                m   = m_mult_sum.erase(m);
+            }
+        }
+
+        // Erase the first knot if needed
+        m  = m_mult_sum.begin();
+        it = m_knots   .begin();
+        if ( *m == 0 )
+        {
+            m_knots.erase(it);
+            m_mult_sum.erase(m);
+        }
     }
 
     /// Increase the multiplicity of the first knot by \a i.

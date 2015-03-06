@@ -387,7 +387,8 @@ public:
     // Look at gsBasis class for a description
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
 
-    /// Refine the basis by inserting the given knots and perform knot refinement for the given coefficient matrix.
+    /// Refine the basis by inserting the given knots and perform knot
+    /// refinement for the given coefficient matrix.
     void refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots);
 
     /// Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
