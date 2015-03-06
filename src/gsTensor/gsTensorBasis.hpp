@@ -380,15 +380,18 @@ gsMatrix<unsigned> * gsTensorBasis<d,Basis_t>::boundary(boxSide const& s) const
 template<unsigned d, class Basis_t >
 unsigned gsTensorBasis<d,Basis_t>::functionAtCorner(boxCorner const & c) const
 {
-    gsVector<bool> position;
+    gsVector<bool> position(d);
     c.parameters_into(d, position);
     
     unsigned index = 0;
+    unsigned str   = 1;
     
     for(unsigned i = 0; i!=d; ++i)
     {
+        const unsigned sz_i = size(i);
         if ( position[i] )
-            index+= stride(i) * ( size(i) - 1 );
+            index+= str * ( sz_i - 1 );
+        str *= sz_i;
     }
 
     return index;

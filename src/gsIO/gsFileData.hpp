@@ -130,6 +130,8 @@ void gsFileData<T>::read(String const & fn)
         readStlFile(fn);
     else if (ext=="igs" || ext== "iges") 
         readIgesFile(fn);
+//    else if (ext=="bv") 
+//        readBezierView(fn);
     else if (ext=="x3d") 
         readX3dFile(fn);
     else
@@ -330,7 +332,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
     gsXmlNode* parent = data->first_node("xml") ; // TO DO: parent can be a data member
 
     // Node for a Geometry object
-    gsXmlNode* g;    
+    gsXmlNode * g;    
     // Node for a basis object
     gsXmlNode * src;
 
@@ -777,7 +779,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             unsigned sz= ncp.prod() ;
             //std::cout<<"Reading ncps OK "<< ncp.transpose() <<"\n";
         
-            g= internal::makeNode("Geometry", *data);
+            g = internal::makeNode("Geometry", *data);
             g->append_attribute( internal::makeAttribute("type", "TensorNurbs"+internal::to_string(N), *data) );
             g->append_attribute( internal::makeAttribute("id", ++max_id, *data ) );
             parent->append_node(g);
@@ -888,6 +890,140 @@ bool gsFileData<T>::readGeompFile( String const & fn )
 
     return true;
 };
+
+///////////////////////////////////////////////    
+// SurfLab/BezierView
+///////////////////////////////////////////////    
+
+/*
+template<class T>
+bool gsFileData<T>::readBezierView( String const & fn )
+{   
+    //Input file
+    std::ifstream file(fn.c_str(),std::ios::in);
+    if ( !file.good() ) {std::cout<<"Input file Problem!\n";return false;} 
+
+    std::istringstream lnstream;
+    lnstream.unsetf(std::ios_base::skipws); 
+
+    String line;
+
+    //Note: patch kind/type definitions
+    // #define POLY   1        // polyhedron
+    // #define TRIANG 3        // triangular patch
+    // #define TP_EQ  4        // tensorproduct with same degree in both dir.
+    // #define TP     5        // general tensorproduct
+    // #define TRIM_CURVE 6
+    // #define TP_BSP 7        // general b-spline tensorproduct
+    // #define RATIONAL 8      probably rational tensor product Bezier patch
+    // #define PNTRI    9      // PN triangle patch, containing points and normals
+    // #define PNTP    10      // PN quads patch, containing points and normals 
+    int kind;
+
+    char string[255];
+	int degu, degv, num_normals = 0, num_points;
+
+    gsXmlNode* parent = data->first_node("xml") ;
+    // Node for a Geometry object
+    gsXmlNode * g;    
+    // Node for a basis object
+    gsXmlNode * src;
+
+    while (!file.eof() )
+    {
+        // skip group ids
+        while (!file.eof() && getline(file, line))
+            if ( line.find("group")!=String::npos ||
+                line.find("Group")!=String::npos )
+                break;
+
+        // get kind/type
+        lnstream.clear();
+        lnstream.str(line) ;
+        lnstream >> std::ws >>  kind >>  std::ws ;
+        
+        switch (kind) :
+        {
+        case 4 :
+        case 8 :
+        case 10:
+        case 5:
+            
+            // read degrees
+            lnstream >> std::ws >> degu >>  std::ws ;
+            if(kind==5)
+                degv = degu;
+            else
+                lnstream >> std::ws >> degv >>  std::ws ;
+            
+            if(kind==10)
+            {
+                int Ndegu, Ndegv;
+                lnstream >> std::ws >> Ndegu >>  std::ws >> Ndegv >> std::ws ;
+                num_normals = 3 * (Ndegu+1)*(Ndegv+1);
+            }
+            
+            num_points = (degu+1)*(degv+1);
+            points_dim = (kind==8 ? 4 : 3);
+
+            // read in all control points
+            gsMatrix<T> coefs(num_points, points_dim);
+            for (i=0;i<num_points;i++)
+            {
+                lnstream.clear();
+                lnstream.str(line);
+                for (int j=0;i<points_dim;++k)
+                    lnstream >> std::ws >> coefs(i,k) ;
+            }
+
+            if(kind==10)
+                for (i=0;i<num_normals;i++)
+                    sstr.ignore(128, std::ws);
+            
+            if(kind==8) // 4D control points
+            {
+                gsMatrix<T>  weights =  coefs.row(3);
+                coefs.resize(Eigen::NoChange,3);
+                gsWarn<<"weights: "<< weights.transpose() <<"\n";
+            }
+
+            g = internal::makeNode("Geometry", *data);
+            src = internal::makeNode("Basis", *data);
+            g->append_node(src);
+            gsXmlNode* b = internal::makeNode("coefs", coefs, *data, true);
+            g->append_node(b);
+
+            src->append_attribute( internal::makeAttribute("type", "TensorBSplineBasis2", *data) );
+
+            String kv(4*degv+3,' ');
+            for (i=0;i<degv+1;i++)
+            [    
+                kv[2*i] = '0';
+            }
+
+            b = internal::makeNode("Basis", *data);
+            b->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
+            b->append_attribute( internal::makeAttribute("index", 0, *data) );
+            b = internal::makeNode("KnotVector", lnstream.str(), *data);
+            b->append_attribute( internal::makeAttribute("degree", degu, *data) ) ;
+
+            src->append_node(b);
+            b = internal::makeNode("Basis", *data);
+            b->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
+            b->append_attribute( internal::makeAttribute("index", 1, *data) );
+            src->append_node(b);
+
+            break;
+
+        case 3 : // Triangular patch
+        case 10:
+
+        default:
+            break;
+        }
+    }
+}
+//*/
 
 ///////////////////////////////////////////////    
 // OFF trinagular mesh .off file
@@ -1305,7 +1441,8 @@ bool gsFileData<T>::readIgesFile( String const & fn )
     //Parsing file
     //internal::gsIges a( str, data );
 
-    return true;
+    // not implemented:
+    return false;
 }
 
 

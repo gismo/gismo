@@ -58,6 +58,9 @@ void gsCmdLine::addSwitch( const std::string& name,
 
 bool gsCmdLine::getValues(int argc, char *argv[])
 {
+    if (argc == 0)
+        gsInfo << "Add \"-h\" to see a list of available command-line arguments.\n\n";
+
     try 
     {
         this->parse(argc,argv);
@@ -76,7 +79,12 @@ bool gsCmdLine::getValues(int argc, char *argv[])
 
     }
     catch ( gsArgException& e )
-    { gsWarn << "Error: " << e.error() << " " << e.argId() << "\n"; return false; }
+    { 
+        gsWarn << "\nSomething went wrong when reading the command line.\n";
+        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n"; 
+        return false; 
+    }
+    
     return true;
 }
 

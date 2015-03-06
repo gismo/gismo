@@ -477,7 +477,7 @@ public:
     /// Elevate the degree
     void degreeElevate(int const & i = 1) ;
 
-    /// Elevate the degree
+    /// Reduce the degree
     void degreeReduce(int const & i = 1) 
     { 
         GISMO_NO_IMPLEMENTATION
@@ -531,13 +531,14 @@ public:
     /// Increase the multiplicity of the first knot by \a i.
     void increaseMultFirst(int i = 1)
     {
-        GISMO_NO_IMPLEMENTATION
+        std::transform(m_mult_sum.begin(), m_mult_sum.end(), m_mult_sum.begin(),
+                       std::bind2nd(std::plus<unsigned>(), i) );
     }
     
     /// Increase the multiplicity of the last knot by \a i.
     void increaseMultLast(int i = 1)
     {
-        GISMO_NO_IMPLEMENTATION
+        m_mult_sum.back() += i;
     }
 
     /// Get the multiplicity sum at knot index \a i

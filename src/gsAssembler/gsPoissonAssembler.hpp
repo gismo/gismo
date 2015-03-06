@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): S. Kleiss A. Mantzaflaris, J. Sogn
+    Author(s): S. Kleiss, A. Mantzaflaris, J. Sogn
 */
 
 #include <gsAssembler/gsPoissonAssembler.h>
@@ -85,8 +85,13 @@ void gsPoissonAssembler<T>::assembleNeumann()
 template<class T>
 void gsPoissonAssembler<T>::assemble()
 {
-    computeDirichletDofs();
-        
+
+    if ( m_options.dirStrategy == dirichlet::elimination ||
+         m_options.dirStrategy == dirichlet::penalize     )
+    {
+        computeDirichletDofs();
+    }
+
     if (m_dofs == 0 ) // Are there any interior dofs ?
     {
         gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
@@ -149,16 +154,15 @@ void gsPoissonAssembler<T>::computeDirichletDofs()
         GISMO_ERROR("Something went wrong with Dirichlet values.");
     }
 
-    
     // Corner values
-    //const gsDofMapper & mapper = m_dofMappers.front();
+    const gsDofMapper & mapper = m_dofMappers.front();
     for ( typename gsBoundaryConditions<T>::const_citerator
               it = m_bConditions.cornerBegin();
           it != m_bConditions.cornerEnd(); ++it )
     {
-        //
-        //const int i  = m_bases[it->unknown][it->patch].cornerIndex(it->corner);
-        //const int ii = mapper.bindex( (*boundary)(i) , k );
+        const int i  = m_bases[it->unknown][it->patch].functionAtCorner(it->corner);
+        const int ii = mapper.bindex( i , it->patch );
+        m_ddof.row(ii).setConstant(it->value);
     }
     
 }    

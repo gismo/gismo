@@ -23,8 +23,6 @@ struct dirichlet
 
         penalize     = 13, ///< Penalize the diagonal at the position of Dirichlet DoFs,
 
-        //nullifyrow    = 14,
-
         nitsche      = 12, ///< Enforce the boundary condition weakly by a penalty term
         
         /// Compute Dirichlet DoFs in the normal direction (for a vector valued function),
@@ -60,6 +58,9 @@ struct iFace
 	    /// adjacent patches.
 	    dg = 2,
 
+	    /// Use enhanced smoothness splines between interfaces of adjacent patches.
+	    smooth = 3,
+        
 	    /// Do absolutely nothing for coupling the interfaces.
 	    none = 0
 	};
