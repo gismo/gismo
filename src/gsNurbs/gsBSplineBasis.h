@@ -15,6 +15,8 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsBasis.h>
+#include <gsCore/gsConstantBasis.h>
+
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
 
@@ -48,9 +50,9 @@ struct gsTraits<gsBSplineBasis<T, KnotVectorType>,1>
     typedef gsBSpline<T, KnotVectorType>      TensorGeometryType;
     typedef gsBSpline<T, KnotVectorType>      TensorBoundaryType;
 
-    typedef gsNurbsBasis<T,KnotVectorType>    RationalBasisType;
-    typedef gsNurbsBasis<T, KnotVectorType>   RationalBoundaryType;
-    typedef gsNurbs<T, KnotVectorType>        RationalGeometryType;
+    typedef gsNurbsBasis<T,KnotVectorType> RationalBasisType;
+    typedef gsConstantBasis<T>             RationalBoundaryType;
+    typedef gsNurbs<T, KnotVectorType>     RationalGeometryType;
 };
 
 
@@ -76,7 +78,7 @@ public:
     typedef gsBSpline<T,KnotVectorType> GeometryType;
 
     /// Associated Boundary basis type
-    typedef gsBSplineBasis<T> BoundaryBasisType;
+    typedef gsConstantBasis<T> BoundaryBasisType;
 
     /// Dimension of the parameter domain
     static const int Dim = 1;
@@ -215,10 +217,7 @@ public:
     gsMatrix<unsigned> * boundary(boxSide const & s ) const;
 
     // Look at gsBasis class for a description
-    gsBSplineBasis * boundaryBasis(boxSide const & s ) const 
-    { 
-        return new gsBSplineBasis(KnotVectorType(0,1,0,1));
-    }
+    gsConstantBasis<T> * boundaryBasis(boxSide const & s ) const;
 
     // Look at gsBasis class for a description
     gsMatrix<T> support() const ;

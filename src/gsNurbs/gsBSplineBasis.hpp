@@ -134,6 +134,11 @@ gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary(boxSide const & 
     }
 }
 
+template <class T, class KnotVectorType>
+gsConstantBasis<T> * gsBSplineBasis<T,KnotVectorType>::boundaryBasis(boxSide const & s ) const 
+{ 
+    return new gsConstantBasis<T>(1.0);
+}
 
 template <class T, class KnotVectorType>
 gsMatrix<T> gsBSplineBasis<T,KnotVectorType>::support() const 

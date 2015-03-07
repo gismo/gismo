@@ -70,6 +70,7 @@ template< class T = real_t>  class gsBasis;
 template< class T = real_t>  class gsGeometry;
 template<class Basis_t> class gsGenericGeometry;
 template< class T = real_t> class gsGeometryEvaluator;
+template< class T = real_t>  class gsConstantBasis;
 
 class gsBoxTopology;
 
