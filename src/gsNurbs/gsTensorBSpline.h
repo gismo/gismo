@@ -254,7 +254,7 @@ public:
 
   /// Returns the degree of the basis wrt direction i
   unsigned degree(const unsigned & i) const 
-    { return this->basisComponent(i).degree(); }
+    { return this->basis().component(i).degree(); }
 
 /// Return the face of side s
 
@@ -482,7 +482,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(index_t dir_fix
 
     gsVector<unsigned,d> ssizes;
     base.size_cwise( ssizes );
-    sizes=ssizes.cast<index_t>();
+    sizes=ssizes.template cast<index_t>();
     lowerCorner.setZero();
     lowerCorner(dir_fixed)=index;
     upperCorner=sizes;
