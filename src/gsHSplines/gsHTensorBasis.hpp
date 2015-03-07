@@ -44,7 +44,7 @@ int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
      const int maxLevel = m_tree.getMaxInsLevel();
 
      for( int i =0; i < Dim; i++)
-         loIdx[i] = m_bases[maxLevel]->component(i).knots().Uniquefindspan( Pt(i,0) );
+         loIdx[i] = m_bases[maxLevel]->knots(i).Uniquefindspan( Pt(i,0) );
      
      return m_tree.levelOf( loIdx, maxLevel);
 }
@@ -62,7 +62,7 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
     for(index_t p = 0; p < u.cols(); p++ ) //for all input points
     {
         for(int i = 0; i != d; ++i)
-            low[i] = m_bases[maxLevel]->component(i).knots().Uniquefindspan(u(i,p));
+            low[i] = m_bases[maxLevel]->knots(i).Uniquefindspan(u(i,p));
 
         // Identify the level of the point
         const int lvl = m_tree.levelOf(low, maxLevel);
@@ -106,7 +106,7 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
         // Last tensor-index in level lvl
         gsVector<unsigned, d> end(d);
         for (unsigned i = 0; i < d; ++i)
-            end(i) = bb.size(i) - 1;
+            end(i) = bb.component(i).size() - 1;
 
         unsigned k, s;
         gsVector<unsigned,d> v, upp;
@@ -262,15 +262,15 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
             for(index_t j = 0; j < boxes.rows();j++)
             {
                 // Convert the parameter coordinates to (unique) knot indices
-                int k1 = m_bases[refLevel]->component(j).knots().Uniquefindspan(boxes(j,2*i ));
-                int k2 = m_bases[refLevel]->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
+                int k1 = m_bases[refLevel]->knots(j).Uniquefindspan(boxes(j,2*i ));
+                int k2 = m_bases[refLevel]->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
 
                 // If applicable, add the refinement extension.
                 // Note that extending by one cell on level L means
                 // extending by two cells in level L+1
                 ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
 
-                const index_t maxKtIndex = m_bases[refLevel]->component(j).knots().size();
+                const index_t maxKtIndex = m_bases[refLevel]->knots(j).size();
 
                 ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
 
@@ -314,8 +314,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
         const int fLevel = m_bases.size()-1;
         for(index_t j = 0; j < k1.size();j++)
         {
-            k1[j] = m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i  ))  ;
-            k2[j] = m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
+            k1[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i  ))  ;
+            k2[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
         }
 
         // 2. Find the smallest level in which the box is completely contained
@@ -387,7 +387,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
 
     for(unsigned i = 0; i != d; ++i)
     {
-        curr[i] = m_bases[level]->component(i).knots().begin() ; // beginning of the iteration in i-th direction
+        curr[i] = m_bases[level]->knots(i).begin() ; // beginning of the iteration in i-th direction
         ends[i] = curr[i]+m_bases[level]->component(i).size()-1; // end of the iteration in i-th direction
     }
 
@@ -440,7 +440,7 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
 
         for(unsigned i = 0; i != d; ++i)
         {
-            curr[i] = m_bases[j]->component(i).knots().begin() ; // beginning of the iteration in i-th direction
+            curr[i] = m_bases[j]->knots(i).begin() ; // beginning of the iteration in i-th direction
             ends[i] = curr[i]+m_bases[j]->component(i).size()-1; // end of the iteration in i-th direction
         }
 
@@ -634,12 +634,13 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
          dynamic_cast<const gsTensorBSplineBasis<d,T,gsKnotVector<T> >*>(&tbasis) )
     {
         std::vector<gsBSplineBasis<T, gsCompactKnotVector<T> > * > cw_bases(d);
+        //std::vector<gsBasis<T> * > cw_bases(d);
         
         for ( unsigned i = 0; i!=d; ++i )
         {
             cw_bases[i]=
                 new gsBSplineBasis<T, gsCompactKnotVector<T> >( 
-                    gsCompactKnotVector<T>( tb->component(i).knots()) );
+                    gsCompactKnotVector<T>( tb->knots(i)) );
         }
 
         m_bases.push_back(
@@ -690,7 +691,7 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
     {
         const gsMatrix<T> & curr = u.col(p);
         for(unsigned i = 0; i != d; ++i)
-            low[i] = m_bases[maxLevel]->component(i).knots().Uniquefindspan( curr(i,0) );
+            low[i] = m_bases[maxLevel]->knots(i).Uniquefindspan( curr(i,0) );
 
         // Identify the level of the point
         const int lvl = m_tree.levelOf(low, maxLevel);
@@ -877,8 +878,8 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
     int maxLevel = static_cast<int>( this->maxLevel() );
     // We precompute the parameter values corresponding to indices of m_maxInsLevel
     // although we don't need them if indicesFlag == true.
-    std::vector<T> x_dir(m_bases[maxLevel]->component(0).knots().unique());
-    std::vector<T> y_dir(m_bases[maxLevel]->component(1).knots().unique());
+    std::vector<T> x_dir(m_bases[maxLevel]->knots(0).unique());
+    std::vector<T> y_dir(m_bases[maxLevel]->knots(1).unique());
     
     for(unsigned int i0 = 0; i0 < polylines.size(); i0++)
     {
@@ -974,8 +975,8 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
         std::vector<std::vector<T> > knots;
         for(unsigned int dim = 0; dim < d; dim++)
         {
-            const gsCompactKnotVector<T> & ckv = m_bases[i]->component(dim).knots();
-            const gsCompactKnotVector<T> & fkv = m_bases[i + 1]->component(dim).knots();
+            const gsCompactKnotVector<T> & ckv = m_bases[i]->knots(dim);
+            const gsCompactKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
 
             std::vector<T> dirKnots;
             _differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
@@ -995,7 +996,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult)
 {
-    if (m_bases[lvl]->component(dir).knots().has(knotValue))
+    if (m_bases[lvl]->knots(dir).has(knotValue))
     {
         for(unsigned int i =lvl;i < m_bases.size();i++)
             m_bases[i]->component(dir).insertKnot(knotValue,mult);
@@ -1014,7 +1015,7 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, const std::
 {
     for(unsigned int k =0; k < knotValue.size(); ++k)
     {
-        if (m_bases[lvl]->component(dir).knots().has(knotValue[k]))
+        if (m_bases[lvl]->knots(dir).has(knotValue[k]))
         {
             for(unsigned int i =lvl;i < m_bases.size(); ++i)
                 m_bases[i]->component(dir).insertKnot(knotValue[k],mult);
