@@ -19,9 +19,6 @@
 namespace gismo
 {
 
-// Forward declaration
-template<unsigned d, class Basis_t > class gsTensorBasis;
-
 /** 
  *  @brief Abstract base class for tensor product bases.
  *
@@ -32,22 +29,18 @@ template<unsigned d, class Basis_t > class gsTensorBasis;
  *   \ingroup Tensor
  */
 
-template<unsigned d, class Basis_t >
-class gsTensorBasis : public gsBasis<typename Basis_t::Scalar_t >  
+template<unsigned d, class T>
+class gsTensorBasis : public gsBasis<T>  
 {
 public: 
-    /// Coefficient type
-    typedef typename Basis_t::Scalar_t Scalar_t;
-    typedef typename Basis_t::Scalar_t T;
+    typedef gsTensorBasis<d,T> Self_t;
 
-    /// Coordinate basis type
+    typedef gsBasis<T> Basis_t;
+
     typedef Basis_t CoordinateBasis;
 
-    /// Associated geometry type
-    typedef typename gsTraits<Basis_t,d>::TensorGeometryType GeometryType;
-
-    /// Associated Boundary basis type
-    typedef typename gsTraits<Basis_t,d>::TensorBoundaryType BoundaryBasisType;
+    /// Coefficient type
+    typedef T Scalar_t;
 
     /// Dimension of the parameter domain
     static const int Dim = d;
@@ -62,9 +55,9 @@ public:
     gsTensorBasis()
     {
         for (unsigned i = 0; i < d; ++i)
-            m_bases[i] = new Basis_t;
+            m_bases[i] = NULL;
     }
-    
+
     explicit gsTensorBasis( Basis_t* x)
     { gsWarn<< "Invalid constructor: Tried to make tensor basis of parDim="<<d<<" using only one component.\n"; }
 
@@ -81,11 +74,15 @@ public:
     gsTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w ) ;
     
     /// Constructor nD (takes ownership of the passed bases)
-    gsTensorBasis( std::vector<Basis_t* > const & bb ) ;
-    
+    explicit gsTensorBasis(iterator it) 
+    {
+        for (unsigned i = 0; i < d; ++i)
+            m_bases[i] = *(it++);
+    }
+
     /// Copy Constructor
     gsTensorBasis( const gsTensorBasis & o);
-    
+
     /// Assignment opearator
     gsTensorBasis& operator=( const gsTensorBasis & o);
     
@@ -111,7 +108,7 @@ public:
     int size() const {
         unsigned r=1;
         for (unsigned i = 0; i < d; ++i)
-            r *= m_bases[i]->Basis_t::size();
+            r *= m_bases[i]->size();
         return r; 
     }
 
@@ -182,7 +179,7 @@ public:
      *
      * \ingroup Tensor
      */
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    void genericActive_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
 
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
@@ -204,8 +201,8 @@ public:
 
     unsigned functionAtCorner(boxCorner const & c) const;
 
-    /// Returns a basis for the face s gsTensorBasis<T,d-1,Basis_t>
-    BoundaryBasisType * boundaryBasis(boxSide const & s ) const ;
+    /// Returns the components for a basis on the face \a s 
+    void getComponentsForSide(boxSide const & s, std::vector<Basis_t*> & rr) const;
 
     /// Returns a bounding box for the basis' domain
     gsMatrix<T> support() const ;
@@ -367,13 +364,13 @@ public:
     { return &m_bases[d]; }
 
     /// The number of basis functions in the direction of the k-th parameter component
-    int size(int k) const { return m_bases[k]->Basis_t::size(); }
+    int size(int k) const { return m_bases[k]->size(); }
 
     /// The number of basis functions in the direction of the k-th parameter component
     void size_cwise(gsVector<unsigned,d> & result) const 
     { 
         for ( unsigned k = 0; k!=d; ++k )
-            result[k] = m_bases[k]->Basis_t::size(); 
+            result[k] = m_bases[k]->size(); 
     }
 
     /// Returns all the basis functions with tensor-numbering \param k in direction \param dir
@@ -454,7 +451,7 @@ public:
         result.resize(d);
         result[0] = 1;
         for ( unsigned i=1; i != d; ++i )
-            result[i] = result[i-1] * m_bases[i-1]->Basis_t::size();
+            result[i] = result[i-1] * m_bases[i-1]->size();
     }
 
     /// Returns the global index of the basis function created by
@@ -463,7 +460,8 @@ public:
     //  inline unsigned index(gsVector<unsigned>         & v) const;
 
     /// Returns the tensor index of the basis function with global index \a m.
-    inline gsVector<unsigned, d> tensorIndex(const unsigned& m) const {
+    inline gsVector<unsigned, d> tensorIndex(const unsigned& m) const 
+    {
         gsVector<unsigned, d> ind;
         int mm = m;
         for (unsigned i = 0; i<d; ++i )
@@ -517,7 +515,7 @@ public:
         return *m_bases[dir];
     }
 
-    inline int trueSize(int k) const { return m_bases[k]->Basis_t::trueSize(); }
+    //inline int trueSize(int k) const { return m_bases[k]->trueSize(); }
 
 // Data members
 protected:
@@ -537,67 +535,65 @@ protected:
  *
  *  \ingroup Tensor
  */
-    
 template<class Basis_t>
-class gsTensorBasis<1,Basis_t> : public Basis_t
+class gsTensorBasis1D : public Basis_t
 {
 public: 
+    //typedef gsBasis<T> Basis_t;
     typedef Basis_t Base;
 
     /// Coefficient type
     typedef typename Basis_t::Scalar_t Scalar_t;
-    typedef typename Basis_t::Scalar_t T;
-    
-    /// Coordinate basis type
-    typedef Basis_t CoordinateBasis;
+    typedef Scalar_t T;
 
-    /// Associated Boundary basis type
-    typedef typename Basis_t::BoundaryBasisType BoundaryBasisType;
-    
+    typedef gsBasis<T> CoordinateBasis;
+       
     /// Iterators on coordinate bases
     typedef Basis_t** iterator;
     typedef Basis_t* const* const_iterator;
-    
+
+    typedef gsBasis<T> ** base_iterator;
 public:
 
     /// Default empty constructor
-    gsTensorBasis() : Basis_t()
+    gsTensorBasis1D() : Basis_t()
     { m_address = this;}
 
-    explicit gsTensorBasis(Basis_t * x) : Basis_t(*x)
-    { 
-        m_address = this;
+    // Constructor by basis pointers (takes ownership of the passed bases)
+    explicit gsTensorBasis1D(Basis_t * x) 
+    : Basis_t(*x)
+    {
+        m_address = this; 
         delete x;
     }
-    
-    gsTensorBasis( Basis_t* x,  Basis_t*  y)
+
+    gsTensorBasis1D( Basis_t* x,  Basis_t*  y)
     { gsWarn<<"Invalid constructor.\n"; }
     
-    gsTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z )
+    gsTensorBasis1D( Basis_t* x,  Basis_t* y, Basis_t* z )
     { gsWarn<<"Invalid constructor.\n"; }
     
-    gsTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w )
+    gsTensorBasis1D( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w )
     { gsWarn<<"Invalid constructor.\n"; }
     
     // Constructor by basis pointers (takes ownership of the passed bases)
-    gsTensorBasis( std::vector<Basis_t* > const & bb ) 
-    : Basis_t(*bb[0])
-    { 
-        GISMO_ASSERT(bb.size() == 1, "Invalid number of bases in 1D constructor");
+    explicit gsTensorBasis1D(base_iterator it) 
+    : Basis_t(*static_cast<Basis_t*>(*it))
+    {
         m_address = this; 
-        delete bb.front();
+        delete it;
     }
     
     
     /// Copy Constructor
-    gsTensorBasis( const gsTensorBasis & o) 
+    gsTensorBasis1D( const gsTensorBasis1D & o) 
     : Basis_t(o)
     { 
         m_address = this;
     }
     
     /// Assignment opearator
-    gsTensorBasis& operator=( const gsTensorBasis & o)
+    gsTensorBasis1D& operator=( const gsTensorBasis1D & o)
     { 
         this->Base::operator=(o);
         m_address = this;
@@ -605,7 +601,7 @@ public:
     }
     
     // Destructor
-    ~gsTensorBasis() 
+    ~gsTensorBasis1D() 
     { 
         m_address = NULL;
     }
@@ -646,13 +642,13 @@ public:
     { return &(m_address)+1; }
     
     /// The number of basis functions in the direction of the k-th parameter component
-    int size(int k) const { return Basis_t::size(); }
+    int size(int k) const { return size(); }
     
-    int size() const {return Basis_t::size(); }
+    int size() const {return size(); }
     
     /// The number of basis functions in the direction of the k-th parameter component
     void size_cwise(gsVector<unsigned,1> & result) const 
-    { result[0] = Basis_t::size(); }
+    { result[0] = size(); }
 
     gsVector<int> cwiseDegree() const
     {
@@ -684,6 +680,10 @@ public:
         return 1; 
     }
 
+    /// Returns the components for a basis on the face \a s 
+    void getComponentsForSide(boxSide const & s, std::vector<gsBasis<T>*> & rr) const
+    { rr.clear(); }
+
     /// Returns the global index of the basis function created by
     /// components of indices given in the vector v
     inline unsigned index(gsVector<unsigned,1> const & v) const
@@ -713,7 +713,6 @@ private:
     Basis_t * m_address;
     
 }; // class gsTensorBasis1D
-    
 
 //////////////////////////////////////////////////
 //////////////////////////////////////////////////
@@ -725,7 +724,7 @@ inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) 
 
     ind = v(d-1) ;//compute global index in the tensor product
     for ( int i=d-2; i>=0; --i )
-        ind = ind * trueSize(i) + v(i) ;
+        ind = ind * size(i) + v(i) ;
     return ind;
 }
 
