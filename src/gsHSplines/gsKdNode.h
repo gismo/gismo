@@ -31,10 +31,10 @@ struct gsAabb
 public:
     typedef gsVector<Z,d> point;
 
-    gsAabb(point l, point u)
+    gsAabb(const point & l, const point & u)
     {
-        first .swap(l);
-        second.swap(u);
+        first  = l;
+        second = u;
     }
 
 public:

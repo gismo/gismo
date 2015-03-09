@@ -51,7 +51,7 @@ public:
     }
     
     gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
-                     std::vector<unsigned> boxes, int nlevels = 10)
+                     std::vector<unsigned> & boxes, int nlevels = 10)
         : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis), nlevels, boxes) 
     {
         GISMO_ASSERT(d==1, "Wrong dimension");
@@ -65,7 +65,7 @@ public:
     }
     
     gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
-                     gsMatrix<T> const & boxes, std::vector<unsigned int> levels, int nlevels = 10)
+                     gsMatrix<T> const & boxes, std::vector<unsigned int> & levels, int nlevels = 10)
         : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), nlevels, boxes, levels)
     {
         GISMO_ASSERT(d==1, "Wrong dimension");
@@ -79,7 +79,7 @@ public:
     }
     
     gsHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
-                     std::vector<unsigned> boxes, int nlevels = 10)
+                     std::vector<unsigned> & boxes, int nlevels = 10)
         : gsHTensorBasis<d,T>(tbasis, nlevels, boxes) 
     {
         // initialize(); // is done in the base constructor
@@ -93,7 +93,7 @@ public:
     }
     
     gsHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
-                     gsMatrix<T> const & boxes, std::vector<unsigned int> levels, int nlevels = 10)
+                     gsMatrix<T> const & boxes, std::vector<unsigned int> & levels, int nlevels = 10)
         : gsHTensorBasis<d,T>(tbasis, nlevels, boxes, levels)
     {
         // initialize(); // is done in the base constructor
