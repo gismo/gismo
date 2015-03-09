@@ -633,8 +633,8 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
     if ( const gsTensorBSplineBasis<d,T,gsKnotVector<T> > * tb = 
          dynamic_cast<const gsTensorBSplineBasis<d,T,gsKnotVector<T> >*>(&tbasis) )
     {
-        //std::vector<gsBSplineBasis<T, gsCompactKnotVector<T> > * > cw_bases(d);
-        std::vector<gsBasis<T> * > cw_bases(d);
+        std::vector<gsBSplineBasis<T, gsCompactKnotVector<T> > * > cw_bases(d);
+        //std::vector<gsBasis<T> * > cw_bases(d);
         
         for ( unsigned i = 0; i!=d; ++i )
         {

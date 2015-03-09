@@ -25,30 +25,36 @@
 namespace gismo
 {
 
-/// \brief Traits for BSplineBasis in more dimensions
+/// Traits for BSplineBasis in more dimensions
 template<unsigned d, class T, class KnotVectorType>
 struct gsTraits<gsBSplineBasis<T, KnotVectorType>,d>
 {
-    typedef gsBSplineBasis<T, KnotVectorType> Family_t;
-    typedef gsBSpline<T,KnotVectorType>       GeometryType;
-    typedef gsConstantBasis<T>                BoundaryBasisType;
-
     typedef gsTensorBSplineBasis<d,T,KnotVectorType>  TensorBasisType;
     typedef gsTensorBSpline<d, T, KnotVectorType>     TensorGeometryType;
     typedef typename 
-    choose<d<2, gsConstantBasis<T>, gsTensorBSplineBasis<d-1,T,KnotVectorType>
-           >::type TensorBoundaryType;
+    gsTraits<gsBSplineBasis<T,KnotVectorType>,d-1>::TensorBasisType
+        TensorBoundaryType;
 
+    typedef gsTensorNurbsBasis<d,T,KnotVectorType>     RationalBasisType;
+    typedef gsTensorNurbs<d, T, KnotVectorType>        RationalGeometryType;
     typedef typename 
-    choose<d<2, gsNurbsBasis<T,KnotVectorType>, gsTensorNurbsBasis<d, T, KnotVectorType>
-           >::type RationalBasisType;
-    typedef typename 
-    choose<d<2, gsNurbs<T,KnotVectorType>, gsTensorNurbs<d, T, KnotVectorType>
-           >::type RationalGeometryType;
-    typedef typename 
-    choose<d<2, gsConstantBasis<T>       , gsTensorNurbsBasis<d-1, T, KnotVectorType>
-           >::type RationalBoundaryType;
+    gsTraits<gsBSplineBasis<T,KnotVectorType>,d-1>::RationalBasisType
+        RationalBoundaryType;
 };
+
+/// Traits for BSplineBasis in 1 dimension: specialization for d=1
+template<class T, class KnotVectorType>
+struct gsTraits<gsBSplineBasis<T, KnotVectorType>,1>
+{
+    typedef gsBSplineBasis<T,KnotVectorType>  TensorBasisType;
+    typedef gsBSpline<T, KnotVectorType>      TensorGeometryType;
+    typedef gsBSpline<T, KnotVectorType>      TensorBoundaryType;
+
+    typedef gsNurbsBasis<T,KnotVectorType> RationalBasisType;
+    typedef gsConstantBasis<T>             RationalBoundaryType;
+    typedef gsNurbs<T, KnotVectorType>     RationalGeometryType;
+};
+
 
 /** \brief
     A univariate B-spline basis.
@@ -65,19 +71,14 @@ class gsBSplineBasis : public gsBasis<T>
 public:
     typedef gsBasis<T> Base;
 
-    typedef gsBSplineBasis<T,KnotVectorType> Self_t;
-
-    /// This object identifies the family of B-spline bases
-    typedef Self_t Family_t;
-
     /// Coefficient type
     typedef T Scalar_t;
 
     /// Associated geometry type
-    typedef typename gsTraits<Family_t,1>::GeometryType GeometryType;
+    typedef gsBSpline<T,KnotVectorType> GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsTraits<Family_t,1>::BoundaryBasisType BoundaryBasisType;
+    typedef gsConstantBasis<T> BoundaryBasisType;
 
     /// Dimension of the parameter domain
     static const int Dim = 1;
@@ -164,7 +165,7 @@ public:
     //     else
     //         GISMO_ERROR("Cannot convert "<<o<<" to gsBSplineBasis\n");
     // }
-
+    
 public:
 
     void swap(gsBSplineBasis& other)
@@ -346,7 +347,7 @@ public:
         return ( inDomain(u) ? m_knots.findspan(u)-m_p : 0 );
     }
 
-    // Number of active functions at any point of the domain
+    // Look at gsBasis class for a description
     inline unsigned numActive() const { return m_p + 1; }
 
     /// Returns the index of the first active (ie. non-zero) basis

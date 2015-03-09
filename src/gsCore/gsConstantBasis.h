@@ -44,11 +44,6 @@ public:
     {
         GISMO_ASSERT(weight.ref().size() == 1, "Something seems wrong.");
     }
-
-    // compatibility constructor for gsTensorBasis
-    gsConstantBasis(const std::vector<gsBasis<T>*> & rr)
-    : m_val( 1.0 ), m_domainDim(1)
-    { }
       
     gsConstantBasis * clone() const { return new gsConstantBasis(*this); }
 

@@ -128,9 +128,9 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
         {
             std::vector<T> knots;
             gsCompactKnotVector<T>& ckv =
-                this->m_bases[level]->knots(dim);
+                this->m_bases[level]->component(dim).knots();
             gsCompactKnotVector<T>& fkv =
-                this->m_bases[level + 1]->knots(dim);
+                this->m_bases[level + 1]->component(dim).knots();
 
 
             if (level == cur_level)
@@ -236,10 +236,10 @@ unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
     for (unsigned dim = 0; dim < d; dim++)
     {
         gsCompactKnotVector<T>& ckv =
-            this->m_bases[level]->knots(dim);
+            this->m_bases[level]->component(dim).knots();
 
         gsCompactKnotVector<T>& fkv =
-            this->m_bases[new_level]->knots(dim);
+            this->m_bases[new_level]->component(dim).knots();
 
 
         unsigned mult = index[dim] - ckv.firstKnotIndex(low[dim]);
@@ -361,9 +361,9 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
     for (unsigned dim = 0; dim < d; ++dim)
     {
         gsCompactKnotVector<T>& ckv =
-            this->m_bases[clevel]->knots(dim);
+            this->m_bases[clevel]->component(dim).knots();
         gsCompactKnotVector<T>& fkv =
-            this->m_bases[flevel]->knots(dim);
+            this->m_bases[flevel]->component(dim).knots();
 
         unsigned cnmb_knts = ckv.knotsUntilSpan(chigh[dim]) -
             ckv.knotsUntilSpan(clow[dim]);
@@ -420,10 +420,10 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
     int j0 = b1_outputs(1); //Qglobal2local(b1[1],level,this->m_tree.getIndexLevel());
     int j1 = b2_outputs(1); //Qglobal2local(b2[1],level,this->m_tree.getIndexLevel());
 
-    i0 = this->m_bases[level]->knots(0).lastKnotIndex(i0) - this->m_deg[0];
-    i1 = this->m_bases[level]->knots(0).firstKnotIndex(i1) - 1;
-    j0 = this->m_bases[level]->knots(1).lastKnotIndex(j0) - this->m_deg[1];
-    j1 = this->m_bases[level]->knots(1).firstKnotIndex(j1) - 1;
+    i0 = this->m_bases[level]->component(0).knots().lastKnotIndex(i0) - this->m_deg[0];
+    i1 = this->m_bases[level]->component(0).knots().firstKnotIndex(i1) - 1;
+    j0 = this->m_bases[level]->component(1).knots().lastKnotIndex(j0) - this->m_deg[1];
+    j1 = this->m_bases[level]->component(1).knots().firstKnotIndex(j1) - 1;
 
     // It would also be nice to rename b0, b1, i0, i1, j0 and j1 to something more intuitive.
     for(int i = 0; i < geom_coef.cols(); i++)
@@ -448,8 +448,8 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
         return_cp_1D(temp, i, cp);
     }
     // compute the new vectors for the B-spline patch
-    k1 = gsCompactKnotVector<T>(this->m_deg[0], this->m_bases[level]->knots(0).begin() + i0 , this->m_bases[level]->knots(0).begin() + i1 + this->m_deg[0] + 2);
-    k2 = gsCompactKnotVector<T>(this->m_deg[1], this->m_bases[level]->knots(1).begin() + j0 , this->m_bases[level]->knots(1).begin() + j1 + this->m_deg[1] + 2);
+    k1 = gsCompactKnotVector<T>(this->m_deg[0], this->m_bases[level]->component(0).knots().begin() + i0 , this->m_bases[level]->component(0).knots().begin() + i1 + this->m_deg[0] + 2);
+    k2 = gsCompactKnotVector<T>(this->m_deg[1], this->m_bases[level]->component(1).knots().begin() + j0 , this->m_bases[level]->component(1).knots().begin() + j1 + this->m_deg[1] + 2);
 }
 
 // returns the list of B-spline patches to represent a THB-spline geometry
@@ -523,8 +523,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
         p1(0) = b1(i,0); p1(1) = b1(i,1); p2(0) = b2(i,0); p2(1) = b2(i,1);
 
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);
-        gsTensorBSplineBasis<d, T, gsCompactKnotVector<T> > tbasis(cku, ckv);
-        gsTensorBSpline<d, T, gsCompactKnotVector<T> > *tbspline = new gsTensorBSpline<d, T, gsCompactKnotVector<T> >(tbasis, give(temp1));
+        gsTensorBSplineBasis<2, T, gsCompactKnotVector<T> > tbasis(cku, ckv);
+        gsTensorBSpline<2, T, gsCompactKnotVector<T> > *tbspline = new gsTensorBSpline<2, T, gsCompactKnotVector<T> >(tbasis, give(temp1));
         result.addPatch(tbspline);
 
     }
@@ -899,8 +899,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
         p1(0) = b1(i,0); p1(1) = b1(i,1); p2(0) = b2(i,0); p2(1) = b2(i,1);
 
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);
-        gsTensorBSplineBasis<d, T, gsCompactKnotVector<T> > tbasis(cku, ckv);
-        gsTensorBSpline<d, T, gsCompactKnotVector<T> > *tbspline = new gsTensorBSpline<d, T, gsCompactKnotVector<T> >(tbasis, give(temp1));
+        gsTensorBSplineBasis<2, T, gsCompactKnotVector<T> > tbasis(cku, ckv);
+        gsTensorBSpline<2, T, gsCompactKnotVector<T> > *tbspline = new gsTensorBSpline<2, T, gsCompactKnotVector<T> >(tbasis, give(temp1));
         result.addPatch(tbspline);
 
     }
@@ -1004,17 +1004,17 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs,
         // global dyadic refinement with respect to previous level
         gsCompactKnotVector<T>k1;
         gsCompactKnotVector<T>k2;
-        k1 = this->m_bases[l-1]->knots(0);
-        k2 = this->m_bases[l-1]->knots(1);
+        k1 = this->m_bases[l-1]->component(0).knots();
+        k2 = this->m_bases[l-1]->component(1).knots();
         std::vector<T> knots_x;
         std::vector<T> knots_y;
-        for(unsigned int i = 1; i < this->m_bases[l]->knots(0).unique().size(); i = i+2)
+        for(unsigned int i = 1; i < this->m_bases[l]->component(0).knots().unique().size(); i = i+2)
 	{
-            knots_x.push_back(this->m_bases[l]->knots(0).unique()[i]);
+            knots_x.push_back(this->m_bases[l]->component(0).knots().unique()[i]);
         }
-        for(unsigned int i = 1; i < this->m_bases[l]->knots(1).unique().size(); i = i+2)
+        for(unsigned int i = 1; i < this->m_bases[l]->component(1).knots().unique().size(); i = i+2)
 	{
-            knots_y.push_back(this->m_bases[l]->knots(1).unique()[i]);
+            knots_y.push_back(this->m_bases[l]->component(1).knots().unique()[i]);
         }
 
         gsBoehmRefine(k2,coeffs,this->m_deg[1],knots_y.begin(),knots_y.end());

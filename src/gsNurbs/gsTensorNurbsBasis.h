@@ -43,9 +43,6 @@ public:
     /// Base type
     typedef gsRationalBasis< gsTensorBSplineBasis<d,T,KnotVectorType> > Base;
 
-    /// Family type
-    typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
-
     /// Source basis type
     typedef gsTensorBSplineBasis<d,T,KnotVectorType> Src_t;
 
@@ -59,7 +56,7 @@ public:
     typedef gsTensorNurbs<d, T> GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsTraits<Basis_t,d>::RationalBoundaryType BoundaryBasisType;
+    typedef typename Base::BoundaryBasisType BoundaryBasisType;
 
     typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;
     
@@ -90,10 +87,6 @@ public:
     gsTensorNurbsBasis( Src_t* basis ) : Base(basis) { }
 
     gsTensorNurbsBasis( const Src_t & basis ) : Base(basis) { }
-
-    gsTensorNurbsBasis( std::vector<gsBasis<T>* > const & bb, 
-                          gsMovable< gsMatrix<T> > w )
-    : Base(Src_t(bb),w) { }
 
     gsTensorNurbsBasis( Src_t* basis, gsMovable< gsMatrix<T> > w ) : Base(basis,w) { }
 
