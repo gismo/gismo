@@ -138,8 +138,7 @@ void freeAll(Cont& cont)
 template <typename Base, typename Derived>
 std::vector<Base*> castVectorPtr(std::vector<Derived*> pVec)
 {
-    std::vector<Base*> result;
-    result.reserve(pVec.size());
+    std::vector<Base*> result(pVec.size());
     std::copy(pVec.begin(), pVec.end(), result.begin() );
     return result;
 }
