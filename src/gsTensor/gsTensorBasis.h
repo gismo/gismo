@@ -124,12 +124,12 @@ public:
     // Look at gsBasis class for a description
     int elementIndex(const gsVector<T> & u ) const
     {
-        GISMO_ASSERT( u.rows() == d, "Wrond vector dimension");
+        GISMO_ASSERT( u.rows() == d, "Wrong vector dimension");
 
-        int ElIndex = m_bases[d-1]->elementIndex(u[d-1]);
+        int ElIndex = m_bases[d-1]->elementIndex( u.col(d-1) );
         for ( int i=d-2; i>=0; --i )
             ElIndex = ElIndex * m_bases[i]->numElements() 
-                    + m_bases[i]->elementIndex(u[i]);
+                    + m_bases[i]->elementIndex( u.col(i) );
 
         return ElIndex;        
     }
