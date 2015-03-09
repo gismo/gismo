@@ -189,8 +189,7 @@ void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes,
 template<unsigned d, class T>
 void gsTensorBasis<d,T>::genericActive_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
 {
-    GISMO_ERROR("called generic active "<< *this );
-    gsDebug<<"GEN "<< *this;
+    gsWarn<<"genericActive "<< *this;
 
     gsMatrix<unsigned> act[d];
     gsVector<unsigned, d> v, size;
