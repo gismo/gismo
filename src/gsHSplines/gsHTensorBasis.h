@@ -163,14 +163,14 @@ public:
         {
             for(unsigned j = 0; j < d; j++)
             {
-                k1[j] = this->m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i));
-                k2[j] = this->m_bases.back()->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
+                k1[j] = this->m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i));
+                k2[j] = this->m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
             }
             int level = m_tree.query3(k1,k2,m_bases.size()-1);
             for(unsigned j = 0; j < d; j++)
             {
-                k1[j] = this->m_bases[level+1]->component(j).knots().Uniquefindspan(boxes(j,2*i));
-                k2[j] = this->m_bases[level+1]->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
+                k1[j] = this->m_bases[level+1]->knots(j).Uniquefindspan(boxes(j,2*i));
+                k2[j] = this->m_bases[level+1]->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
             }
 
             insert_box(k1,k2,level+1);
@@ -209,8 +209,8 @@ public:
         {
             for(unsigned j = 0; j < d; j++)
             {
-                k1[j] = m_bases[levels[i]]->component(j).knots().Uniquefindspan(boxes(j,2*i));
-                k2[j] = m_bases[levels[i]]->component(j).knots().Uniquefindspan(boxes(j,2*i+1))+1;
+                k1[j] = m_bases[levels[i]]->knots(j).Uniquefindspan(boxes(j,2*i));
+                k2[j] = m_bases[levels[i]]->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
             }
 
             /* m_boxHistory.push_back( box(k1,k2,levels[i]) );  */                      
@@ -336,7 +336,7 @@ public:
     {
         needLevel(lvl);
 
-        return m_bases[lvl]->component(k).knots().size();
+        return m_bases[lvl]->knots(k).size();
     }
 
     /// Returns the \a i-th knot in direction \a k at level \a lvl
@@ -345,6 +345,7 @@ public:
         needLevel(lvl);
 
         return m_bases[lvl]->component(k).knot(i);
+        //return m_bases[lvl]->knot(k,i);
     }
 
     /// Returns the anchors points that represent the members of the basis
@@ -361,7 +362,7 @@ public:
             {
                 ind = m_bases[i]->tensorIndex(*it);
                 for ( unsigned r = 0; r!=d; ++r ) 
-                    result(r,k) = m_bases[i]->component(r).knots().greville( ind[r] );
+                    result(r,k) = m_bases[i]->knots(r).greville( ind[r] );
                 k++;
             }
         }

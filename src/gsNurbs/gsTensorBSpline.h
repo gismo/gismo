@@ -328,8 +328,8 @@ void reverse(unsigned k)
 /// Sets the resulting BSpline to be periodic in direction \param dir.
 inline void setPeriodic( int dir )
 {
-    this->basis().setPeriodic( dir );
     this->m_coefs = this->basis().perCoefs( this->m_coefs, dir );
+    this->basis().setPeriodic( dir );
 }
 
 private:

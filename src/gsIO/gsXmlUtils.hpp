@@ -223,21 +223,27 @@ Object * getTensorBasisFromXml ( gsXmlNode * node)
 
     // Special case of reading a 1D tensor basis
     if ( !strcmp(node->first_attribute("type")->value(),
-                 gsXml<typename Object::CoordinateBasis>::type().c_str() ) )
+                 gsXml<typename Object::CoordinateBasis>::type().c_str() ) ) // to do in derived
     {
         bb.push_back( gsXml<typename Object::CoordinateBasis>::get(node) );
         return new Object( bb );
     }
 
-    gsXmlNode * tmp = node->first_node("Basis");
-    GISMO_ASSERT( tmp , "Wrong data in the xml file.");
-    unsigned d = Object::Dim;
-	for ( unsigned i = 0; i!=d; ++i)
+    const unsigned d = Object::Dim;
+    gsXmlNode * tmp = node->first_node("Basis");       
+    if ( tmp )
     {
-        bb.push_back( gsXml<typename Object::CoordinateBasis>::get(tmp) );
-        tmp =  tmp->next_sibling("Basis");        
+        for ( unsigned i = 0; i!=d; ++i)
+        {
+            bb.push_back( gsXml<typename Object::CoordinateBasis>::get(tmp) );
+            tmp =  tmp->next_sibling("Basis");        
+        }
+        //gsDebugVar( bb.size() );
+        return new Object( bb );
     }
-    //gsDebugVar( bb.size() );
+
+    GISMO_ASSERT( d == 1, "Wrong data in the xml file.");
+    bb.push_back( gsXml<typename Object::CoordinateBasis>::get(node) );
     return new Object( bb );
 }
 
@@ -1405,6 +1411,10 @@ public:
         if ( const gsBSplineBasis<T,gsKnotVector<T> > * g = 
              dynamic_cast<const gsBSplineBasis<T,gsKnotVector<T> > *>( ptr ) )
             return gsXml< gsBSplineBasis<T, gsKnotVector<T> > >::put(*g,data);
+
+        if ( const gsBSplineBasis<T,gsCompactKnotVector<T> > * g = 
+             dynamic_cast<const gsBSplineBasis<T,gsCompactKnotVector<T> > *>( ptr ) )
+            return gsXml< gsBSplineBasis<T, gsCompactKnotVector<T> > >::put(*g,data);
 
         if ( const gsNurbsBasis<T,gsKnotVector<T> > * g = 
              dynamic_cast<const gsNurbsBasis<T,gsKnotVector<T> > *>( ptr ) )

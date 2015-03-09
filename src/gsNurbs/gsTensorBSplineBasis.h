@@ -21,28 +21,6 @@
 namespace gismo
 {
 
-// forward declaration
-template<unsigned d, class T, class KnotVectorType>
-class gsTensorBSplineBasis;
-
-
-/// Traits for TensorBSplineBasis
-template<unsigned d, class T, class KnotVectorType>
-struct gsTraits< gsTensorBSplineBasis<d,T,KnotVectorType>, d>
-{
-    typedef typename 
-    gsTraits<gsBSplineBasis<T,KnotVectorType>,d>::RationalBasisType
-    RationalBasisType;
-  
-    typedef typename 
-    gsTraits<gsBSplineBasis<T,KnotVectorType>,d>::RationalGeometryType
-    RationalGeometryType;  
-
-    typedef typename 
-    gsTraits<gsBSplineBasis<T,KnotVectorType>,d-1>::RationalBasisType
-        RationalBoundaryType;
-};
-
 /** 
     @brief A tensor product B-spline basis.
 
@@ -52,15 +30,21 @@ struct gsTraits< gsTensorBSplineBasis<d,T,KnotVectorType>, d>
     \ingroup basis
     \ingroup Nurbs
 */
-
   
 template<unsigned d, class T, class KnotVectorType>
-class gsTensorBSplineBasis : public gsTensorBasis< d, gsBSplineBasis<T,KnotVectorType> >  
+class gsTensorBSplineBasis 
+    : public choose<d==1, gsTensorBasis1D<gsBSplineBasis<T,KnotVectorType> >, 
+                          gsTensorBasis<d,T> >::type
 {
-
 public: 
     /// Base type
-    typedef gsTensorBasis< d, gsBSplineBasis<T,KnotVectorType> > Base;
+     typedef typename choose<d==1, gsTensorBasis1D<gsBSplineBasis<T,KnotVectorType> >, 
+                                   gsTensorBasis<d,T> >::type Base;
+
+    /// Family type
+    typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
+
+    typedef gsTensorBSplineBasis Self_t;
 
     /// Coordinate basis type
     typedef gsBSplineBasis<T,KnotVectorType> Basis_t;
@@ -68,28 +52,23 @@ public:
     /// Coefficient type
     typedef T Scalar_t;
 
-    /// Associated geometry type
-    typedef gsTensorBSpline<d, T, KnotVectorType> GeometryType;
+    /// Associated Boundary basis type
+    typedef typename gsTraits<Family_t,d>::TensorGeometryType GeometryType;
 
     /// Associated Boundary basis type
-    //typedef typename Base::BoundaryBasisType BoundaryBasisType;
+    typedef typename gsTraits<Family_t,d>::TensorBoundaryType BoundaryBasisType;
 
     typedef typename Base::iterator        iterator;
     typedef typename Base::const_iterator  const_iterator;
 
-    /// Shared pointer for gsTensorBasis
-    typedef memory::shared_ptr< gsTensorBSplineBasis > Ptr;
+    /// Shared pointer for gsTensorBSplineBasis
+    typedef memory::shared_ptr< Self_t > Ptr;
 
 public:
     /// Constructors for gsTensorBSplineBasis
     gsTensorBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
     : Base( new Basis_t(KV1), new Basis_t(KV2) )
     { m_isPeriodic = -1; }
-
-    // TO DO: temporary, REMOVE
-    gsTensorBSplineBasis( const gsTensorBasis<d,gsBSplineBasis<T,KnotVectorType> > & bb)
-    : Base( bb )
-    { }
 
     gsTensorBSplineBasis( const KnotVectorType& KV1, 
                           const KnotVectorType& KV2, 
@@ -99,12 +78,8 @@ public:
 
     // TO DO: more constructors
 
-
-
     // Constructors forwarded from the base class
     gsTensorBSplineBasis() : Base() { }
-
-    // TODO: Can we store the error message somewhere centrally to be sure that it is the same for all the constructors?
 
     explicit gsTensorBSplineBasis( Basis_t* x) : Base(x) 
     {
@@ -131,9 +106,9 @@ public:
         setIsPeriodic();
     }
     
-    
-    gsTensorBSplineBasis( std::vector<Basis_t* > const & bb ) : Base(bb)
+    gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb ) : Base(bb.data())
     {
+        // to do check cast to Basis_t
         GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
         setIsPeriodic();
     }
@@ -141,6 +116,14 @@ public:
     gsTensorBSplineBasis( const gsTensorBSplineBasis & o) : Base(o)
     {
         m_isPeriodic = o.periodicDirection();
+    }
+    
+
+    BoundaryBasisType * boundaryBasis(boxSide const & s ) const 
+    { 
+        std::vector<gsBasis<T>*> rr;
+        this->getComponentsForSide(s,rr);
+        return new BoundaryBasisType(rr);
     }
     
     gsTensorBSplineBasis * clone() const
@@ -153,6 +136,25 @@ public:
 
     const KnotVectorType & knots (int i) const 
     { return this->component(i).knots(); }
+
+    // knot \a k of direction \a i
+    T knot(int i, int k) const 
+    { return this->component(i).knots()[k]; }
+
+    Basis_t & component(unsigned i) const 
+    {
+        return static_cast<Basis_t &>(Base::component(i));
+    }
+
+    // Look at gsBasis class for a description
+    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+
+    /// Returns a box with the coordinate-wise active functions
+    /// \param u evaluation points
+    /// \param low lower left corner of the box
+    /// \param upp upper right corner of the box
+    void active_cwise(const gsMatrix<T> & u, gsVector<unsigned,d>& low, 
+                      gsVector<unsigned,d>& upp ) const;
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -174,7 +176,7 @@ public:
     void k_refine(int const & i = 1) 
     { 
         for (unsigned j = 0; j < d; ++j)
-            this->m_bases[j]->k_refine(i);
+            component(j).k_refine(i);
     }
 
     /**
@@ -379,10 +381,12 @@ public:
         std::vector<index_t> sourceSliceIndices;
         std::vector<index_t> targetSliceIndices;
         int numPeriodic = this->component(dir).numCrossingFunctions();
+
+        const int sz = this->size(dir) - numPeriodic;
         for( int i = 0; i < numPeriodic; i++ )
         {
             gsMatrix<unsigned> currentSourceSlice = *(this->coefSlice(dir,i));
-            gsMatrix<unsigned> currentTargetSlice = *(this->coefSlice(dir, this->size(dir)  + i ));
+            gsMatrix<unsigned> currentTargetSlice = *(this->coefSlice(dir, sz  + i ));
 
             for( index_t j = 0; j < currentSourceSlice.size(); j++ )
             {
@@ -449,4 +453,9 @@ private:
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
+#else
+// extern template gsTensorBSplineBasis<1,real_t,gsKnotVector<real_t> >();
+// extern template gsTensorBSplineBasis<2,real_t,gsKnotVector<real_t> >();
+// extern template gsTensorBSplineBasis<3,real_t,gsKnotVector<real_t> >();
+// extern template gsTensorBSplineBasis<4,real_t,gsKnotVector<real_t> >();
 #endif

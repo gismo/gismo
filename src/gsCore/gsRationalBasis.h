@@ -58,15 +58,16 @@ public:
     
     /// Associated source basis type
     typedef SrcT SourceBasis;
+
+    /// Family type
+    typedef typename SrcT::Family_t Family_t;
     
     /// Associated geometry type
-    typedef typename
-    gsTraits<SrcT,Dim>::RationalGeometryType  GeometryType;
-    
-    /// Associated boundary basis type
-    typedef typename
-    gsTraits<SrcT,Dim>::RationalBoundaryType  BoundaryBasisType;
-    
+    typedef typename gsTraits<Family_t,Dim>::RationalGeometryType GeometryType;
+
+    /// Associated Boundary basis type
+    typedef typename gsTraits<Family_t,Dim>::RationalBoundaryType BoundaryBasisType;
+
 public:
 
     /// Default empty constructor
@@ -149,6 +150,8 @@ public:
     void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const 
     { m_src->active_into(u, result); }
     
+    virtual gsBasis<T>& component(unsigned i) const { return m_src->component(i); } 
+
     gsMatrix<unsigned> * boundary( ) const {return m_src->boundary(); }
     
     gsMatrix<unsigned> * boundary(boxSide const & s ) const 
@@ -231,8 +234,6 @@ public:
         tmp.coefs().swap(m_weights);
         std::swap(*m_src, tmp.basis() );
     }
-    
-    virtual gsBasis<T>& component(unsigned i) const        { return m_src->component(i); }
     
     gsBasis<T> * boundaryBasis(boxSide const & s ) const   
     { 
