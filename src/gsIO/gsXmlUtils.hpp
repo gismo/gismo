@@ -238,12 +238,14 @@ Object * getTensorBasisFromXml ( gsXmlNode * node)
             bb.push_back( gsXml<typename Object::CoordinateBasis>::get(tmp) );
             tmp =  tmp->next_sibling("Basis");        
         }
-        //gsDebugVar( bb.size() );
-        return new Object( bb );
+    }
+    else
+    {
+        GISMO_ASSERT( d == 1, "Wrong data in the xml file.");
+        bb.push_back( gsXml<typename Object::CoordinateBasis>::get(node) );
     }
 
-    GISMO_ASSERT( d == 1, "Wrong data in the xml file.");
-    bb.push_back( gsXml<typename Object::CoordinateBasis>::get(node) );
+    //gsDebugVar( bb.size() );
     return new Object( bb );
 }
 

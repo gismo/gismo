@@ -134,6 +134,16 @@ void freeAll(Cont& cont)
     cont.clear();
 }
 
+/// \brief Casts a vector of pointers 
+template <typename Base, typename Derived>
+std::vector<Base*> castVectorPtr(std::vector<Derived*> pVec)
+{
+    std::vector<Base*> result;
+    result.reserve(pVec.size());
+    std::copy(pVec.begin(), pVec.end(), result.begin() );
+    return result;
+}
+
 /// \brief Deleter function that does not delete an object pointer
 template <typename Obj>
 void null_deleter(Obj *) {}

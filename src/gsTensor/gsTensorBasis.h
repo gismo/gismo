@@ -536,6 +536,7 @@ protected:
  *  \ingroup Tensor
  */
 template<class Basis_t>
+//class gsTensorBasis<1,typename Basis_t::Scalar_t> : public Basis_t
 class gsTensorBasis1D : public Basis_t
 {
 public: 
@@ -712,7 +713,7 @@ private:
     /// Keeps the address of the object (for compatibility with d>1)
     Basis_t * m_address;
     
-}; // class gsTensorBasis1D
+}; // class gsTensorBasis
 
 //////////////////////////////////////////////////
 //////////////////////////////////////////////////

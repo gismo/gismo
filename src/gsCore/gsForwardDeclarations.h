@@ -13,17 +13,17 @@
 
 #pragma once
 
-#include <gsCore/gsConfig.h>
-#include <gsCore/gsDebug.h>
-#include <gsCore/gsMemory.h>
-
-
 // STD includes
 #include <vector>
 #include <set>
 #include <map>
 #include <stack>
 #include <algorithm>
+
+
+#include <gsCore/gsConfig.h>
+#include <gsCore/gsDebug.h>
+#include <gsCore/gsMemory.h>
 
 namespace gismo 
 {

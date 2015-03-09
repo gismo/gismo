@@ -47,7 +47,8 @@ public:
     typedef gsTensorBSplineBasis Self_t;
 
     /// Coordinate basis type
-    typedef gsBSplineBasis<T,KnotVectorType> Basis_t;
+    typedef gsBSplineBasis<T,KnotVectorType> CoordinateBasis;
+    typedef CoordinateBasis                  Basis_t;
 
     /// Coefficient type
     typedef T Scalar_t;
@@ -113,6 +114,12 @@ public:
         setIsPeriodic();
     }
     
+    gsTensorBSplineBasis(std::vector< Basis_t*> & bb ) : Base( castVectorPtr<gsBasis<T> >(bb).data() )
+    {
+        GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
+        setIsPeriodic();
+    }
+
     gsTensorBSplineBasis( const gsTensorBSplineBasis & o) : Base(o)
     {
         m_isPeriodic = o.periodicDirection();
