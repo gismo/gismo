@@ -14,8 +14,6 @@
 #pragma once
 
 #include <gsUtils/gsMesh/gsMeshElement.h>
-#include <gsUtils/gsMesh/gsHalfEdge.h>
-
 
 namespace gismo {
 

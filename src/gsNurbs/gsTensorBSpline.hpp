@@ -83,7 +83,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,gsTensor
     // construct the d-1 basis
     std::vector<gsBSplineBasis<T,KnotVectorType>* > bases;
     for(unsigned i=0;i<d;++i)
-        if( static_cast<unsigned>(i) != dir_fixed)
+        if( static_cast<index_t>(i) != dir_fixed)
             bases.push_back(new gsBSplineBasis<T,KnotVectorType>(this->basis().knots(i)));
     newBasis *tbasis = new newBasis(bases) ;
 
@@ -120,7 +120,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,gsTensor
 }
 
 template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(index_t dir_fixed,T par,const gsTensorBSpline<d,T>& geo,gsMatrix<T>& result) const
+void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fixed,T par,const gsTensorBSpline<d,T>& geo,gsMatrix<T>& result) const
 {
     const gsTensorBSplineBasis<d,T,KnotVectorType>& base = geo.basis();
     const gsMatrix<T>& fullCoefs=geo.coefs();
@@ -143,7 +143,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(index_t dir_fix
     gsTensorGridIterator<index_t> gridIter(sizes);
     gsTensorGridIterator<index_t> *iter = gridIter.makeSubGridIterator(lowerCorner,upperCorner);
     index_t size=1;
-    for(index_t i = 0;i<d;++i)
+    for(unsigned i = 0;i<d;++i)
         if(dir_fixed!=i)
             size*=sizes(i);
     result.resize(size,fullCoefs.cols());

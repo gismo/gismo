@@ -338,7 +338,7 @@ private:
 /// Helper function for the slice function
 /// selects the row of coefficients from fullCoefs that are suitable
 /// for the isoparametric slice in \a dir_fixed with \a par.
-void constructCoefsForSlice(index_t dir_fixed,T par,
+void constructCoefsForSlice(unsigned dir_fixed,T par,
                             const gsTensorBSpline<d,T>& geo,
                             gsMatrix<T>& result) const;
 
