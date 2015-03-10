@@ -519,7 +519,7 @@ public:
 // Data members
 protected:
 
-    Basis_t* m_bases[d];
+    Basis_t* m_bases[ (d>0 ? d : 1) ]; // Note: For some reason gsTensorBasis<0,.> is instantiated. Why ??
 
 }; // class gsTensorBasis
 
