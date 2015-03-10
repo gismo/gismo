@@ -74,17 +74,25 @@ public:
 
   /// Shared pointer for gsTensorBSpline
   typedef memory::shared_ptr< gsTensorBSpline<d,T> > Ptr;
-
+    
+    typedef typename choose<d==1, gsTensorBSpline<1,T>, 
+                            gsTensorBSpline<d-1,T>  >::type BoundaryGeometry;
 public:
 
     /// Default empty constructor
     gsTensorBSpline() : Base() { }
 
     /// Construct B-Spline by basis functions and coefficient matrix
+    gsTensorBSpline( const gsConstantBasis<T> & basis, const gsMatrix<T> & coefs )
+    { 
+        GISMO_ERROR("something went terribly wrong.");
+    }
+
+    /// Construct B-Spline by basis functions and coefficient matrix
     gsTensorBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
         Base( basis, coefs ) 
     { }
-    
+
     /// Construct B-Spline by basis functions and coefficient matrix
     gsTensorBSpline( const Basis & basis, gsMovable< gsMatrix<T> > coefs ) :
         Base( basis, coefs ) 
@@ -339,7 +347,7 @@ private:
 /// selects the row of coefficients from fullCoefs that are suitable
 /// for the isoparametric slice in \a dir_fixed with \a par.
 void constructCoefsForSlice(unsigned dir_fixed,T par,
-                            const gsTensorBSpline<d,T>& geo,
+                            const gsTensorBSpline<d,T> & geo,
                             gsMatrix<T>& result) const;
 
 public:
@@ -347,7 +355,7 @@ public:
 /// Constucts an isoparametric slice of this tensorBSpline by fixing
 /// \a par in direction \a dir_fixed. The resulting tensorBSpline has
 /// one less dimension and is given back in \a result.
-void slice(index_t dir_fixed,T par,gsTensorBSpline<d-1,T>& result) const;
+void slice(index_t dir_fixed,T par,BoundaryGeometry & result) const;
 
 protected:
 // TODO Check function
