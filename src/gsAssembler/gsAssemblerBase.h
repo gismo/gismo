@@ -172,7 +172,26 @@ public:
 public:
 
     /// @brief Main assemble routine
-    virtual void assemble() {GISMO_NO_IMPLEMENTATION;}
+    virtual void assemble() {GISMO_NO_IMPLEMENTATION}
+
+    /// @brief Main non-linear assemble routine with input from
+    /// current solution
+    virtual void assemble(const gsMultiPatch<T> & curSolution)
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// @brief Reconstruct solution from computed solution vector
+    virtual void constructSolution(const gsMatrix<T>& solVector, 
+                                   gsMultiPatch<T>& result) const
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// @brief Update solution by adding the computed solution vector
+    /// to the current solution
+    virtual void updateSolution(const gsMatrix<T>& solVector, 
+                                gsMultiPatch<T>& result) const
+    {GISMO_NO_IMPLEMENTATION}
+
+
+public:
 
     /// @brief Return the multipatch.
     const gsMultiPatch<T> & patches() const { return m_patches; }
