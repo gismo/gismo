@@ -27,6 +27,9 @@ public:
     rhs_ptr(&rhs)
     { }
 
+    gsVisitorPoisson() :     rhs_ptr(NULL) { }
+
+
     void initialize(const gsBasis<T> & basis, 
                     gsQuadRule<T>    & rule, 
                     unsigned         & evFlags )
@@ -45,7 +48,7 @@ public:
     // Evaluate on element.
     inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
                          gsGeometryEvaluator<T> & geoEval,
-                         gsMatrix<T>            & quNodes)
+                         gsMatrix<T> const      & quNodes)
     {
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
