@@ -41,7 +41,7 @@ public:
   typedef gsGenericGeometry< gsHBSplineBasis<d,T> > Base;
 
   /// Shared pointer for gsHBSpline
-  typedef memory::shared_ptr< gsHBSpline<2,T> > Ptr;
+  typedef memory::shared_ptr< gsHBSpline<d,T> > Ptr;
     
 public:
     
@@ -57,7 +57,7 @@ public:
     Base( basis, coefs ) { }
   
   /// Construct B-Spline from a Tensor B-Spline
-  gsHBSpline( const gsTensorBSpline<2,T> & tbsp )
+  gsHBSpline( const gsTensorBSpline<d,T> & tbsp )
   { 
     this->m_basis = new Basis(tbsp);
     this->m_coefs = tbsp->coefs();
