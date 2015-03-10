@@ -177,7 +177,6 @@ public:
      * \param[out]  result For every column \a i of \a u, a column containing the
      *   active basis functions at evaluation point <em>u</em>.col(<em>i</em>)
      *
-     * \ingroup Tensor
      */
     void genericActive_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
 
@@ -372,21 +371,21 @@ public:
         for ( unsigned k = 0; k!=d; ++k )
             result[k] = m_bases[k]->size(); 
     }
-
-    /// Returns all the basis functions with tensor-numbering \param k in direction \param dir
-    ///
-    /// ## Detailed explanation: ##
-    /// Tensor-numbering in N-variate tensor-product basis means that each basis function
-    /// is assigned an identifier (i_0, i_1, ..., i_{N-1}).
-    /// This function returns indices of basis functions with i_dir = k
-    /// and the returned indices are numbering of the basis functions in the basis
-    /// (i.e., 0,1, ..., basis.size() ).
-    /// ## Example: ##
-    /// Bivariate tensor-product basis functions have tensor numbering (a,b).
-    /// Calling dir=0, k=1 gives all functions with tensor-numbering (1,b).
-    /// Calling dir=1, k=3 gives all functions with tensor-numbering (a,3).
-    /// 
-    /// \ingroup Tensor
+    
+    /**\brief 
+       Returns all the basis functions with tensor-numbering \param k in direction \param dir
+    
+    ## Detailed explanation: ##
+    Tensor-numbering in N-variate tensor-product basis means that each basis function
+    is assigned an identifier (i_0, i_1, ..., i_{N-1}).
+    This function returns indices of basis functions with i_dir = k
+    and the returned indices are numbering of the basis functions in the basis
+    (i.e., 0,1, ..., basis.size() ).
+    ## Example: ##
+    Bivariate tensor-product basis functions have tensor numbering (a,b).
+    Calling dir=0, k=1 gives all functions with tensor-numbering (1,b).
+    Calling dir=1, k=3 gives all functions with tensor-numbering (a,3).
+    */
     typename gsMatrix<unsigned>::uPtr coefSlice(int dir, int k) const;
 
     /// Returns the degree of the basis wrt variable \a i 
@@ -525,7 +524,7 @@ protected:
 }; // class gsTensorBasis
 
 
-/** 
+/* 
  *  @brief 
  *  Class for a Tensor product spline space of dimension 1.
  *  This specialization is mainly for compatibility.
@@ -535,9 +534,9 @@ protected:
  *
  *  \ingroup Tensor
  */
+/*
 template<class Basis_t>
-//class gsTensorBasis<1,typename Basis_t::Scalar_t> : public Basis_t
-class gsTensorBasis1D : public Basis_t
+class gsTensorBasis1D<Basis_t> : public Basis_t
 {
 public: 
     //typedef gsBasis<T> Basis_t;
@@ -714,6 +713,7 @@ private:
     Basis_t * m_address;
     
 }; // class gsTensorBasis
+*/
 
 //////////////////////////////////////////////////
 //////////////////////////////////////////////////
@@ -739,7 +739,8 @@ inline unsigned gsTensorBasis<d,Basis_t>::index(unsigned i, unsigned j, unsigned
 template<unsigned d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::stride(int dir) const
 {
-    GISMO_ASSERT( dir>=0 &&  dir< this->dim(), "Something went wrong with requested direction." );
+    GISMO_ASSERT( dir>=0 &&  dir< this->dim(), 
+                  "Something went wrong with requested direction." );
     unsigned s(1);
     for ( int i=0; i<dir; ++i )
         s *= size(i);

@@ -1,3 +1,15 @@
+/** @file gsBSplineBasis.hpp
+
+    @brief Implementation of 1D B-spline basis
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris, D. Mokris
+*/
 
 #pragma once 
 
@@ -24,7 +36,6 @@ gsBSplineBasis<T,KnotVectorType> & gsBSplineBasis<T,KnotVectorType>::component(u
         GISMO_ERROR("gsBSplineBasis has only one component");
 }
 
-
 template <class T, class KnotVectorType>
 int gsBSplineBasis<T,KnotVectorType>::elementIndex(const gsVector<T> & u ) const
 {
@@ -36,7 +47,6 @@ int gsBSplineBasis<T,KnotVectorType>::elementIndex(T u ) const
 {
     return m_knots.findElementIndex( u );
 }
-
 
 template <class T, class KnotVectorType>
 void gsBSplineBasis<T,KnotVectorType>::connectivity(const gsMatrix<T> & nodes, 

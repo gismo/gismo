@@ -112,7 +112,7 @@ void tensorCombineTransferMatrices(
     transfer.makeCompressed();
 }
 
-/// Helper to compute the strides of a d-tensor
+/// \brief Helper to compute the strides of a d-tensor
 template<int d>
 void tensorStrides(const gsVector<int,d> & sz, gsVector<int,d> & strides) 
 {
@@ -127,6 +127,7 @@ void tensorStrides(const gsVector<int,d> & sz, gsVector<int,d> & strides)
 /// \a sz.prod() x \a d matrix arranged as a flattened \a sz tensor,
 /// so that the rows are re-arranged according to the input
 /// permutation \a perm. The \a sz is updated to the new ordering.
+/// \ingroup Tensor
 template <typename T, int d>
 void permuteTensorVector( const gsVector<int,d> & perm, 
                           gsVector<int,d> & sz, 
@@ -161,7 +162,8 @@ void permuteTensorVector( const gsVector<int,d> & perm,
 }
 
 
-// in place
+/// \brief Flips tensor directions in place
+/// \ingroup Tensor
 template <typename T, int d>
 void flipTensorVector( const int dir,
                        gsVector<int,d> sz, 

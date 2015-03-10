@@ -15,8 +15,12 @@
 #pragma once
 
 #include <gsTensor/gsTensorBasis.h>
-#include <gsNurbs/gsTensorBSpline.h>
 #include <gsTensor/gsTensorTools.h>
+
+// #include <gsNurbs/gsBSplineBasis.h>
+// #include <gsNurbs/gsKnotVector.h>
+// #include <gsNurbs/gsCompactKnotVector.h>
+#include <gsNurbs/gsTensorBSpline.h>
 
 namespace gismo
 {
@@ -33,13 +37,15 @@ namespace gismo
   
 template<unsigned d, class T, class KnotVectorType>
 class gsTensorBSplineBasis 
-    : public choose<d==1, gsTensorBasis1D<gsBSplineBasis<T,KnotVectorType> >, 
-                          gsTensorBasis<d,T> >::type
+    : public gsTensorBasis<d,T>
+//    : public choose<d==1, gsTensorBasis1D<gsBSplineBasis<T,KnotVectorType> >, 
+//                          gsTensorBasis<d,T> >::type
 {
 public: 
     /// Base type
-     typedef typename choose<d==1, gsTensorBasis1D<gsBSplineBasis<T,KnotVectorType> >, 
-                                   gsTensorBasis<d,T> >::type Base;
+    //typedef typename choose<d==1, gsTensorBasis1D<gsBSplineBasis<T,KnotVectorType> >, 
+    //                               gsTensorBasis<d,T> >::type Base;
+    typedef gsTensorBasis<d,T> Base;
 
     /// Family type
     typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
@@ -460,9 +466,17 @@ private:
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
+/*
 #else
-// extern template gsTensorBSplineBasis<1,real_t,gsKnotVector<real_t> >();
-// extern template gsTensorBSplineBasis<2,real_t,gsKnotVector<real_t> >();
-// extern template gsTensorBSplineBasis<3,real_t,gsKnotVector<real_t> >();
-// extern template gsTensorBSplineBasis<4,real_t,gsKnotVector<real_t> >();
+namespace gismo {
+extern template class gsTensorBSplineBasis<1,real_t,gsKnotVector<real_t> >;
+extern template class gsTensorBSplineBasis<2,real_t,gsKnotVector<real_t> >;
+extern template class gsTensorBSplineBasis<3,real_t,gsKnotVector<real_t> >;
+extern template class gsTensorBSplineBasis<4,real_t,gsKnotVector<real_t> >;
+extern template class gsTensorBSplineBasis<1,real_t,gsCompactKnotVector<real_t> >;
+extern template class gsTensorBSplineBasis<2,real_t,gsCompactKnotVector<real_t> >;
+extern template class gsTensorBSplineBasis<3,real_t,gsCompactKnotVector<real_t> >;
+extern template class gsTensorBSplineBasis<4,real_t,gsCompactKnotVector<real_t> >;
+}
+//*/
 #endif
