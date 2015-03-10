@@ -83,15 +83,15 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,gsTensor
     // construct the d-1 basis
     std::vector<gsBSplineBasis<T,KnotVectorType>* > bases;
     for(unsigned i=0;i<d;++i)
-        if(i!=dir_fixed)
+        if( static_cast<unsigned>(i) != dir_fixed)
             bases.push_back(new gsBSplineBasis<T,KnotVectorType>(this->basis().knots(i)));
     newBasis *tbasis = new newBasis(bases) ;
 
-    const int mult = this->basis().knots(dir_fixed).multiplicity(par);
-    const unsigned degree = this->basis().degree(dir_fixed);
+    const int mult   = this->basis().knots(dir_fixed).multiplicity(par);
+    const int degree = this->basis().degree(dir_fixed);
 
     gsMatrix<T> coefs;
-    if(mult>=degree)
+    if( mult>=degree )
     {
         // no knot insertion needed, just extract the right coefficients
         constructCoefsForSlice(dir_fixed,par,*this,coefs);
