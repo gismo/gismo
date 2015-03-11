@@ -58,10 +58,11 @@ struct boundary
 
 
     /// Identifiers for topological corners.
-    // warning: naming southwest etc ambiguous for 3D (points to an edge)
+    // warning: naming southwest etc ambiguous for 3D (corresponds to an edge)
     enum corner { southwestfront = 1, southeastfront = 2, northwestfront = 3, northeastfront = 4,
                   southwestback  = 5, southeastback  = 6, northwestback  = 7, northeastback  = 8,
-                  southwest      = 1, southeast      = 2, northwest      = 3, northeast      = 4 };
+                  southwest      = 1, southeast      = 2, northwest      = 3, northeast      = 4
+    };
 };
 
 struct boxCorner;// defined later
@@ -389,7 +390,7 @@ public:
     
     
 */  
-struct boundaryInterface
+struct GISMO_EXPORT boundaryInterface
 {
 public:
     boundaryInterface() { }

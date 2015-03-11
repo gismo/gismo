@@ -519,15 +519,19 @@ public:
 // Data members
 protected:
 
-    Basis_t* m_bases[ (d>0 ? d : 1) ]; // Note: For some reason gsTensorBasis<0,.> is instantiated. Why ??
+    Basis_t* m_bases[d];
 
 }; // class gsTensorBasis
 
+// Next line disallows instantization of gsTensorBasis<0,T>
+template<typename T> class gsTensorBasis<0,T>
+{using T::GISMO_ERROR_gsTensorBasis_cannot_have_dimension_zero;};
 
 /* 
  *  @brief 
  *  Class for a Tensor product spline space of dimension 1.
  *  This specialization is mainly for compatibility.
+ *  (not needed anymore)
  *
  *   \param T coefficient type
  *   \param Basis_t type of the (single) coordinate-wise bases
