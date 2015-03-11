@@ -32,11 +32,22 @@ class gsNewtonIterator
 {
 public:
 
-    /// Constructor giving access to the gsAssemblerBase object to create a linear system per iteration
+    /// Constructor giving access to the gsAssemblerBase object to
+    /// create a linear system per iteration
     gsNewtonIterator(  gsAssemblerBase<T> & assembler, 
                        const gsMultiPatch<T> & initialSolution)
     : m_assembler(assembler),
       m_curSolution(initialSolution),
+      m_numIterations(0),
+      m_maxIterations(100),
+      m_tolerance(1e-12),
+      m_converged(false)
+    { 
+
+    }
+
+    gsNewtonIterator(gsAssemblerBase<T> & assembler)
+    : m_assembler(assembler),
       m_numIterations(0),
       m_maxIterations(100),
       m_tolerance(1e-12),
@@ -96,8 +107,9 @@ protected:
     gsMatrix<T>         m_updateVector;
 
     /// Linear solver employed
-    Eigen::SparseLU<gsSparseMatrix<>, Eigen::COLAMDOrdering<index_t> >  m_solver;
-    //Eigen::BiCGSTAB< gsSparseMatrix<>, Eigen::DiagonalPreconditioner<real_t> > solver;
+    Eigen::SparseLU<gsSparseMatrix<T>, Eigen::COLAMDOrdering<index_t> >  m_solver;
+    //Eigen::BiCGSTAB< gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > solver;
+    //Eigen::ConjugateGradient< gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > solver;
     //Eigen::SparseQR<gsSparseMatrix<>, Eigen::COLAMDOrdering<index_t> >  solver;
 
 protected:
@@ -176,7 +188,7 @@ void gsNewtonIterator<T>::firstIteration()
 
     // Compute initial residue
     m_residue = m_assembler.rhs().norm();
-	m_updnorm = m_updateVector.norm();
+    m_updnorm = m_updateVector   .norm();
 
 	gsDebug<<"Iteration: "<< 0
                <<", residue: "<< m_residue
