@@ -28,7 +28,7 @@ namespace gismo
     \ingroup Core
 */
 template<class T>
-class gsMultiPatch : public gsBoxTopology
+class gsMultiPatch : public gsBoxTopology //gsPiecewiseFunction
 {
 
 public:
@@ -198,6 +198,8 @@ public:
     }
 
     void uniformRefine(int numKnots = 1, int mul = 1);
+
+    void degreeElevate(int elevationSteps = 1);
 
     /// Attempt to compute interfaces and boundaries automatically.
     bool computeTopology( T tol = 1e-4 );
