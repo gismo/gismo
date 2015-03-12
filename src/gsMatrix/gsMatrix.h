@@ -57,28 +57,28 @@ public:
     typedef Eigen::Block<const Base> constBlock;
     
     // Type pointing to a row of the matrix
-    typedef Eigen::Block<Base, 1, Dynamic, false> Row;
+    typedef Eigen::Block<Base, 1, _Cols, false> Row;
 
     // Type pointing to a (const) row of the matrix
-    typedef Eigen::Block<const Base, 1, Dynamic, false> constRow;
+    typedef Eigen::Block<const Base, 1, _Cols, false> constRow;
 
     // Type pointing to a set of successive rows of the matrix
-    typedef Eigen::Block<Base, Dynamic, Dynamic, false> Rows;
+    typedef Eigen::Block<Base, Dynamic, _Cols, false> Rows;
 
     // Type pointing to a a set of successive (const) rows of the matrix
-    typedef Eigen::Block<const Base, Dynamic, Dynamic, false> constRows;
+    typedef Eigen::Block<const Base, Dynamic, _Cols, false> constRows;
 
     // Type pointing to a column of the matrix
-    typedef Eigen::Block<Base, Dynamic, 1, true > Column;
+    typedef Eigen::Block<Base, _Rows, 1, true > Column;
 
     // Type pointing to a (const) column of the matrix
-    typedef Eigen::Block<const Base, Dynamic, 1, true > constColumn;
+    typedef Eigen::Block<const Base, _Rows, 1, true > constColumn;
 
     // Type pointing to a set of successive columns of the matrix
-    typedef Eigen::Block<Base, Dynamic, Dynamic, true > Columns;
+    typedef Eigen::Block<Base, _Rows, Dynamic, true > Columns;
 
     // Type pointing to a set of successive (const) columns of the matrix
-    typedef Eigen::Block<const Base, Dynamic, Dynamic, true > constColumns;
+    typedef Eigen::Block<const Base, _Rows, Dynamic, true > constColumns;
 
     // Type pointing to the transpose of the matrix
     typedef Eigen::Transpose<Base> Tr;
