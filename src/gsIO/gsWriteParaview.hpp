@@ -28,6 +28,7 @@
 #include <gsModeling/gsSolid.h>
 #include <gsUtils/gsMesh/gsHeMesh.h>
 
+
 #define PLOT_PRECISION 5
 
 namespace gismo
@@ -1165,6 +1166,8 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,
 template <class T>
 void gsWriteParaview(gsHeMesh<T> const& sl, std::string const & fn)
 {
+
+    gsHeMesh<T> mesh = sl;
     std::string mfn(fn);
     mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
@@ -1178,12 +1181,15 @@ void gsWriteParaview(gsHeMesh<T> const& sl, std::string const & fn)
     file <<"<PolyData>\n";
 
     /// Number of vertices and number of faces
-    file <<"<Piece NumberOfPoints=\""<< sl.numVertices <<"\" NumberOfVerts=\"0\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\""<< sl.numHalfFaces << "\">\n";
+    file <<"<Piece NumberOfPoints=\""<< mesh.getnumVertices() <<"\" NumberOfVerts=\"0\" NumberOfLines=\""
+         << mesh.getnumHalfEdges()<<"\" NumberOfStrips=\"0\" NumberOfPolys=\""<< mesh.getnumHalfFaces() << "\">\n";
 
     /// Coordinates of vertices
     file <<"<Points>\n";
-      file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    for (typename std::vector< gsHeVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+
+    std::vector< gsHeVertex<T>* > ve = mesh.getVertices();
+    for (typename std::vector< gsHeVertex<T>* >::const_iterator it=ve.begin(); it!=ve.end(); ++it)
     {
       file << ((*it)->coords)[0] << " " << ((*it)->coords)[1] << " " << ((*it)->coords)[2] << " \n";
     }
@@ -1192,64 +1198,80 @@ void gsWriteParaview(gsHeMesh<T> const& sl, std::string const & fn)
     file <<"</DataArray>\n";
     file <<"</Points>\n";
 
-    /// Scalar field attached to each vertex
-    file << "<PointData Scalars=\"my_scalars\">\n";
-      file << "<DataArray type=\"Float32\" Name=\"my_scalars\" format=\"ascii\">\n";
-    /// limit: for now, assign all scalars to 0
-    for (int i=1; i<=sl.numVertices; ++i)
-    {
-      file << 0 << " ";
-    }
-    file << "\n";
-      file << "</DataArray>\n";
-    file << "</PointData>\n";
+    // Scalar field attached to each face
+    // file << "<PointData Scalars=\"point_scalars\">\n";
+    // file << "<DataArray type=\"Int32\" Name=\"point_scalars\" format=\"ascii\">\n";
+    // for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin();
+    //      it!=sl.vertex.end(); ++it)
+    // {
+    //     file << 0 << " ";
+    // }
+    // file << "\n";
+    // file << "</DataArray>\n";
+    // file << "</PointData>\n";
 
-    /// Scalar field attached to each face
-    file << "<CellData Scalars=\"cell_scalars\">\n";
-    file << "<DataArray type=\"Int32\" Name=\"cell_scalars\" format=\"ascii\">\n";
-    /// limit: for now, assign all scalars to 0
-    for (int i=1; i<=sl.numHalfFaces; ++i)
+    // Write out edges
+    file << "<Lines>\n";
+    file << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    typename std::vector< gsHalfEdge<T>* > edge = mesh.getHalfEdges();
+    for (typename std::vector< gsHalfEdge<T>* >::const_iterator it=edge.begin();
+         it!=edge.end(); ++it)
     {
-      file << 0 << " ";
+            file << (*it)->source->getId() << " " << (*it)->target->getId() << "\n";
+    }
+    file << "</DataArray>\n";
+    file << "<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    int count=0;
+    edge = mesh.getHalfEdges();
+    for (typename std::vector< gsHalfEdge<T>* >::const_iterator it=edge.begin();
+         it!=edge.end(); ++it)
+    {
+        count+=2;
+        file << count << " ";
     }
     file << "\n";
     file << "</DataArray>\n";
-    file << "</CellData>\n";
+    file << "</Lines>\n";
+
+    // Scalar field attached to each face (* if edges exists, this has a problem)
+    // file << "<CellData Scalars=\"cell_scalars\">\n";
+    // file << "<DataArray type=\"Int32\" Name=\"cell_scalars\" format=\"ascii\">\n";
+    // for (typename std::vector< gsFace<T>* >::const_iterator it=sl.face.begin();
+    //      it!=sl.face.end(); ++it)
+    // {
+    //     file << 1 << " ";
+    // }
+    // file << "\n";
+    // file << "</DataArray>\n";
+    // file << "</CellData>\n";
 
     /// Which vertices belong to which faces
     file << "<Polys>\n";
-      file << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
-    for (typename std::vector< gsHalfFace<T>* >::const_iterator it=sl.face.begin(); it!=sl.face.end(); ++it)
+    file << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    std::vector< gsHalfFace<T>* > face = mesh.getHalfFaces();
+    for (typename std::vector< gsHalfFace<T>* >::const_iterator it=face.begin();
+         it!=face.end(); ++it)
     {
-      /// limit: for now only valid for faces with no holes
-      gsHalfEdge<T> * edge1 = (*it)->boundary;
-      gsHalfEdge<T> * current_edge=edge1->next;
-      file << edge1->source->getId() << " ";
-      while ( current_edge->getId() != edge1->getId() )
-      {
-        file << current_edge->source->getId() << " ";
-        current_edge=current_edge->next;
-      }
+        std::vector< gsHeVertex<T>* > ve = (*it)->getVertices();
+        for (typename std::vector< gsHeVertex<T>* >::const_iterator vit= ve.begin();
+             vit!=ve.end(); ++vit)
+        {
+            file << (*vit)->getId() << " ";
+        }
+        file << "\n";
+    }
+    file << "</DataArray>\n";
+    file << "<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    count=0;
+    face = mesh.getHalfFaces();
+    for (typename std::vector< gsHalfFace<T>* >::const_iterator it=face.begin();
+         it!=face.end(); ++it)
+    {
+        count += (*it)->getVertices().size();
+        file << count << " ";
     }
     file << "\n";
-      file << "</DataArray>\n";
-      file << "<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
-    int count=0;
-    for (typename std::vector< gsHalfFace<T>* >::const_iterator it=sl.face.begin(); it!=sl.face.end(); ++it)
-    {
-      /// limit: for now only valid for faces with no holes
-      gsHalfEdge<T> * edge1 = (*it)->boundary;
-      count++;
-      gsHalfEdge<T> * current_edge=edge1->next;
-      while ( current_edge->getId() != edge1->getId() )
-      {
-        count++;
-        current_edge=current_edge->next;
-      }
-      file << count << " ";
-    }
-    file << "\n";
-      file << "</DataArray>\n";
+    file << "</DataArray>\n";
     file << "</Polys>\n";
 
     file << "</Piece>\n";
@@ -1257,7 +1279,8 @@ void gsWriteParaview(gsHeMesh<T> const& sl, std::string const & fn)
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vtp"); // make also a pvd file
+    makeCollection(fn, ".vtp");
+
 }
 
 template<class T>
