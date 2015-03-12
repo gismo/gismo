@@ -454,6 +454,57 @@ public:
                                        const gsMatrix<T> & allHessians,
                                        gsMatrix<T> & result) const = 0;
 
+    /**
+    \brief Transforms paramatric 1st and 2ed derivatives to 2nd derivatives on the physical domain.
+
+    The gradient information on the parameter domain at a certain points
+    is given in \em <b>allGrads</b> in the following
+    format:\n
+    Each column of \em allGrads corresponds to one evaluation point. In this column, the
+    gradients of all active (i.e., non-zero) basis functions are stored "one above the other".\n
+    Example: Let \f$B_i(r,s,t), i = 1,...,9\f$ be a set of bivariate basis functions.
+    Then, a column of \em allGrads reads\n
+    \f[
+    ( \partial_r B_1, \partial_s B_1, \partial_t B_1, \partial_r B_2, \partial_s B_2, \partial_t B_2, \ldots, \partial_t B_9 )^T.
+    \f]
+    Hence, \em <b>allGrads</b> is a gsMatrix of size <em>(n * ParDim)</em> x <em>K</em>,
+    where \n
+    ...\em n denotes the number of active functions, \n
+    ...<em>ParDim</em> denotes the dimension of the parameter domain, and\n
+    ...\em K denotes the number of columns of \em allGrads.\n
+    \n
+    The second derivative (the Hessian) on the parameter domain at a certain points
+    is given in \em <b>allHessians</b> in the following
+    format:\n
+    Each column of \em allHessians corresponds to one evaluation point. In this column, the
+    second derivatives of all active (i.e., non-zero) basis functions are stored "one above the other".\n
+    Example: Let \f$B_i(r,s,t), i = 1,...,9\f$ be a set of bivariate basis functions.
+    Then, a column of \em allHessians reads\n
+    \f[
+    ( \partial_{rr} B_1, \partial_{ss} B_1, \partial_{tt} B_1, \partial_{rs} B_1, \partial_{rt} B_1, \partial_{st} B_1, \partial_{rr} B_2, \partial_{ss} B_2, \partial_{tt} B_2, \partial_{rs} B_2, \partial_{rt} B_2, \partial_{st} B_2, \ldots, \partial_{st} B_9 )^T.
+    \f]
+    Hence, \em <b>allHessians</b> is a gsMatrix of size <em>(n * (ParDim + (ParDim*(ParDim-1))/2))</em> x <em>K</em>,
+    where \n
+    ...\em n denotes the number of active functions, \n
+    ...<em>ParDim</em> denotes the dimension of the parameter domain, and\n
+    ...\em K denotes the number of columns of \em allHessians.\n
+    \n
+
+
+    These gradients and Hessians in the <em>k</em>-th column of \em allGrads and \em allHessians
+    are transformed to the physical domain and stored in \em <b>result</b>.
+    \em result is of size <em>number of Gradients</em> x <em>GeoDim*(GeoDim+1)/2</em>. Each row
+    corresponds to one active function and each row gives the values of the second derivatives.\n
+    \n
+
+    \param k Indicates which column of \em allGrads should be transformed.
+    \param[in] allGrads gsMatrix containing computed gradients in the format
+    described above.
+    \param[in] allHessians gsMatrix containing computed second derivatives in the format
+    described above.
+    \param[out] result gsMatrix with the corresponding second derivatives on the
+    physical domain in the format as described above.
+    */
     virtual void transformDeriv2Hgrad(  index_t k,
                             const gsMatrix<T> & allGrads,
                             const gsMatrix<T> & allHessians,
