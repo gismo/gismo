@@ -11,15 +11,14 @@
     Author(s): G. Kiss, A. Mantzaflaris
 */
 
-# pragma once
+#pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsHSplines/gsHDomainLeafIter.h>
 #include <gsHSplines/gsAAPolyline.h>
 
-#include <list>
-
-namespace gismo {
+namespace gismo 
+{
 
 template<typename T, unsigned d> class gsHDomainIterator;
 

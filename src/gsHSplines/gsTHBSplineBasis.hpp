@@ -1073,13 +1073,13 @@ void gsTHBSplineBasis<d,T>::deriv2Single_into(unsigned i,
     
     if (this->m_is_truncated[i] == -1) // basis function not truncated
     {
-        unsigned level = this->levelOf(i);
-        unsigned fl_tensor_index = flatTensorIndexOf(i, level);
+        const unsigned level = this->levelOf(i);
+        const unsigned fl_tensor_index = flatTensorIndexOf(i, level);
         this->m_bases[level]->deriv2Single_into(fl_tensor_index, u, result);
     }
     else
     {
-        unsigned level = this->m_is_truncated[i];
+        const unsigned level = this->m_is_truncated[i];
         const gsSparseVector<T>& coefs = this->getCoefs(i);
         const gsTensorBSplineBasis<d, T, gsCompactKnotVector<T> >& base =
             *this->m_bases[level];
@@ -1092,25 +1092,22 @@ void gsTHBSplineBasis<d,T>::deriv2Single_into(unsigned i,
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-
     gsMatrix<unsigned> indices;
     gsMatrix<T> res(1, 1);
     this->active_into(u, indices);
 
-    result.resize(indices.rows(), u.cols());
-    result.fill(0);
+    result.setZero(indices.rows(), u.cols());
 
-
-    for (int i = 0; i < indices.cols(); i++)
+    for (index_t i = 0; i < indices.cols(); i++)
     {
-        for (int j = 0; j < indices.rows(); j++)
+        for (index_t j = 0; j < indices.rows(); j++)
         {
-            unsigned index = indices(j, i);
+            const unsigned index = indices(j, i);
             if (j != 0 && index == 0)
                 break;
-
+            
             evalSingle_into(index, u.col(i), res);
-            result(j, i) = res(0, 0);
+            result(j, i) = res.value();
         }
     }
 }
@@ -1122,23 +1119,22 @@ void gsTHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& resul
     gsMatrix<unsigned> indices;
     this->active_into(u, indices);
 
-    const unsigned numDers = (d * (d + 1)) / 2;
+    static const unsigned numDers = (d * (d + 1)) / 2;
     gsMatrix<T> res(numDers, 1); // result of deriv2Single_into
 
-    result.resize(indices.rows() * numDers, u.cols());
-    result.fill(0);
+    result.setZero(indices.rows() * numDers, u.cols());
 
     for (int i = 0; i < indices.cols(); i++)
     {
         for (int j = 0; j < indices.rows(); j++)
         {
-            unsigned index = indices(j, i);
+            const unsigned index = indices(j, i);
             if (j != 0 && index == 0)
                 break;
 
             this->deriv2Single_into(index, u.col(i), res);
 
-            result.block(j * numDers, i, numDers, 1) = res;
+            result.template block<numDers, 1>(j * numDers, i) = res;
         }
     }
 }
@@ -1152,21 +1148,19 @@ void gsTHBSplineBasis<d,T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result
     this->active_into(u, indices);
     gsMatrix<T> res(d, 1);
 
-    result.resize(indices.rows() * d, u.cols());
-    result.fill(0);
-
+    result.setZero(indices.rows() * d, u.cols());
 
     for (int i = 0; i < indices.cols(); i++)
     {
         for (int j = 0; j < indices.rows(); j++)
         {
 
-            unsigned index = indices(j, i);
+            const unsigned index = indices(j, i);
             if (j != 0 && index == 0)
                 break;
 
             this->derivSingle_into(index, u.col(i), res);
-            result.block(j * d, i, d, 1) = res;
+            result.template block<d,1>(j * d, i) = res;
         }
     }
 }
