@@ -477,7 +477,7 @@ transformDeriv2Hgrad(  index_t k,
     gsMatrix<T,ParDim,GeoDim> JMT = m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
     gsMatrix<T,GeoDim,ParDim> JM1 = m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
 
-    // First part: J⁻T H J⁻¹
+    // First part: J^-T H J^-1
     gsMatrix<T,ParDim,ParDim> parFuncHessian;
     for (index_t i = 0; i < numGrads ; ++i)
     {
@@ -485,7 +485,7 @@ transformDeriv2Hgrad(  index_t k,
         hessianToSecDer<T,GeoDim>(JM1 * parFuncHessian * JMT,result.row(i));
     }
 
-    // Second part: J⁻T G J⁻1 DJ J⁻1
+    // Second part: J^-T G J^-1 DJ J^-1
     const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
     gsMatrix<T,ParDim,ParDim>DJac[GeoDim];
     secDerToTensor<T,ParDim,GeoDim>(secDer,DJac);
