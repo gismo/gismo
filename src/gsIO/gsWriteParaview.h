@@ -19,10 +19,7 @@
 
 #include <sstream>
 
-#include <gsCore/gsGeometrySlice.h>
-
 #pragma once
-
 
 #define NS 1000
 
@@ -198,11 +195,6 @@ template <class T>
 void gsWriteParaviewSolid(gsSolid<T> const& sl, 
                           std::string const & fn, 
                           unsigned numSamples = NS);
-
-/// Visualizing an edge graph of a 3D solid structured as gsHeMesh
-template <class T>
-void gsWriteParaview(gsHeMesh<T> const& sl, std::string const & fn);
-
 
 /// Visualizing a gsCurveLoop
 ///
