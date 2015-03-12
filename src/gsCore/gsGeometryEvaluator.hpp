@@ -491,7 +491,7 @@ transformDeriv2Hgrad(  index_t k,
     secDerToTensor<T,ParDim,GeoDim>(secDer,DJac);
     gsMatrix<T> gradF,HGT;
     HGT.setZero(GeoDim,fisSecDirSize);
-    for(unsigned i = 0;i<GeoDim;++i)
+    for(int i = 0;i<GeoDim;++i)
         hessianToSecDer<T,GeoDim>(JM1 * DJac[i] * JMT,HGT.row(i));
     const gsAsConstMatrix<T,ParDim> grads_k(funcGrad.col(k).data(), ParDim, numGrads);
     gradF=JM1*grads_k;
