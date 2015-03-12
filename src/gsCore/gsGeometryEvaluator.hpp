@@ -447,7 +447,7 @@ transformLaplaceHgrad(  index_t k,
                         gsMatrix<T> & result) const
 {
     gsMatrix<T> hessians;
-    transformHessianHgrad(k,allGrads,allHessians,hessians);
+    transformDeriv2Hgrad(k,allGrads,allHessians,hessians);
     result=hessians.leftCols(ParDim).rowwise().sum();
     result.transposeInPlace();
 }
