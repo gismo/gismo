@@ -26,7 +26,7 @@
 #include <gsCore/gsField.h>
 #include <gsCore/gsDebug.h>
 #include <gsModeling/gsSolid.h>
-#include <gsUtils/gsMesh/gsHeMesh.h>
+//#include <gsUtils/gsMesh/gsHeMesh.h>
 
 
 #define PLOT_PRECISION 5
@@ -1163,6 +1163,7 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,
 
 
 /// Visualizing an edge graph of a 3D solid structured as gsHeMesh
+/*
 template <class T>
 void gsWriteParaview(gsHeMesh<T> const& sl, std::string const & fn)
 {
@@ -1282,6 +1283,7 @@ void gsWriteParaview(gsHeMesh<T> const& sl, std::string const & fn)
     makeCollection(fn, ".vtp");
 
 }
+*/
 
 template<class T>
 void gsWriteParaview(gsPlanarDomain<T> const & pdomain, std::string const & fn, unsigned npts)
