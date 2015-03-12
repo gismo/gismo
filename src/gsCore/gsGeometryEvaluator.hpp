@@ -11,86 +11,70 @@
     Author(s): A. Bressan, C. Hofreither, J. Sogn, A. Mantzaflaris
 */
 
+#include <gsCore/gsGeometryEvaluator.h>
+
 namespace gismo
 {
 
-template <unsigned d, typename T>
-struct jacobianPartials 
-{ 
-    static void 
-    compute(const typename gsMatrix<T>::constColumn  & secDer,
-            std::vector<gsMatrix<T> > & DJac)
-    {
-        // Number of second derivatives
-        //const index_t n2d = (ParDim + (ParDim*(ParDim-1))/2);
-        GISMO_ERROR("Not implemented.");
-    }
-};
-
-template <typename T>
-struct jacobianPartials<2,T>
+template<typename T,int ParDim>
+void secDerToHessian(const gsMatrix<T> & secDers,gsMatrix<T,ParDim,ParDim>& hessian)
 {
-    static void 
-    compute(const typename gsMatrix<T>::constColumn  & secDer,
-            std::vector<gsMatrix<T> > & DJac)
+    if(ParDim==1)
     {
-        DJac.resize(2, gsMatrix<T>(2,2) );
-        // Note: stride is 3
-        //dx
-        DJac[0](0,0) = secDer(0);//G1xx
-        DJac[0](0,1) = secDer(2);//G1xy
-        DJac[0](1,0) = secDer(3);//G2xx
-        DJac[0](1,1) = secDer(5);//G2xy
-        //dy
-        DJac[1](0,0) = secDer(2);//G1yx
-        DJac[1](0,1) = secDer(1);//G1yy
-        DJac[1](1,0) = secDer(5);//G2yx
-        DJac[1](1,1) = secDer(4);//G2yy
+        hessian(0,0)=secDers(0,0);
     }
-};
+    if(ParDim==2)
+    {
+        hessian(0,0)=secDers(0,0);
+        hessian(0,1)=secDers(2,0);
+        hessian(1,0)=secDers(2,0);
+        hessian(1,1)=secDers(1,0);
+    }
+    if(ParDim==3)
+    {
+        hessian(0,0)=secDers(0,0);
+        hessian(0,1)=secDers(3,0);
+        hessian(0,2)=secDers(4,0);
+        hessian(1,0)=secDers(3,0);
+        hessian(1,1)=secDers(1,0);
+        hessian(1,2)=secDers(5,0);
+        hessian(2,0)=secDers(4,0);
+        hessian(2,1)=secDers(5,0);
+        hessian(2,2)=secDers(2,0);
+    }
+}
 
-template <typename T>
-struct jacobianPartials<3,T>
+template<typename T,int ParDim>
+void hessianToSecDer (const gsMatrix<T,ParDim,ParDim>& hessian, typename gsMatrix<T>::Row secDers)
 {
-    static void 
-    compute(const typename gsMatrix<T>::constColumn  & secDer,
-            std::vector<gsMatrix<T> > & DJac)
+    if(ParDim==1)
     {
-        DJac.resize(3, gsMatrix<T>(3,3) );
-        // Note: stride is 6
-        //du
-        DJac[0](0,0) = secDer(0 );//G1uu
-        DJac[0](0,1) = secDer(3 );//G1uv
-        DJac[0](0,2) = secDer(4 );//G1uw
-        DJac[0](1,0) = secDer(6 );//G2uu
-        DJac[0](1,1) = secDer(9 );//G2uv
-        DJac[0](1,2) = secDer(10);//G2uw
-        DJac[0](2,0) = secDer(12);//G3uu
-        DJac[0](2,1) = secDer(15);//G3uv
-        DJac[0](2,2) = secDer(16);//G3uw
-        //dv
-        DJac[1](0,0) = secDer(3 );//G1vu
-        DJac[1](0,1) = secDer(1 );//G1vv
-        DJac[1](0,2) = secDer(5 );//G1vw
-        DJac[1](1,0) = secDer(9 );//G2vu
-        DJac[1](1,1) = secDer(7 );//G2vv
-        DJac[1](1,2) = secDer(11);//G2vw
-        DJac[1](2,0) = secDer(15);//G3vu
-        DJac[1](2,1) = secDer(13);//G3vv
-        DJac[1](2,2) = secDer(17);//G3vw
-        //dw
-        DJac[2](0,0) = secDer(4 );//G1wu
-        DJac[2](0,1) = secDer(5 );//G1wv
-        DJac[2](0,2) = secDer(2 );//G1ww
-        DJac[2](1,0) = secDer(10);//G2wu
-        DJac[2](1,1) = secDer(11);//G2wv
-        DJac[2](1,2) = secDer(8 );//G2ww
-        DJac[2](2,0) = secDer(16);//G3wu
-        DJac[2](2,1) = secDer(17);//G3wv
-        DJac[2](2,2) = secDer(14);//G3ww
+        secDers(0,0)=hessian(0,0);
     }
-};
+    if(ParDim==2)
+    {
+        secDers(0,0)=hessian(0,0);
+        secDers(0,1)=hessian(1,1);
+        secDers(0,2)=(hessian(1,0)+hessian(0,1))/2;
+    }
+    if(ParDim==3)
+    {
+        secDers(0,0)=hessian(0,0);
+        secDers(0,1)=hessian(1,1);
+        secDers(0,2)=hessian(2,2);
+        secDers(0,3)=(hessian(0,1)+hessian(1,0))/2;
+        secDers(0,4)=(hessian(0,2)+hessian(2,0))/2;
+        secDers(0,5)=(hessian(1,2)+hessian(2,1))/2;
+    }
+}
 
+template<typename T,int ParDim,int GeoDim>
+void secDerToTensor(const gsMatrix<T>& secDers,gsMatrix<T,ParDim,ParDim> * a)
+{
+    const int dim = ParDim*(ParDim+1)/2;
+    for(int i=0;i<GeoDim;++i)
+        secDerToHessian<T,ParDim>(secDers.middleRows(i*dim,dim),a[i]);
+}
 
 // Geometry transformation 
 template <class T, int ParDim, int GeoDim>
@@ -462,81 +446,57 @@ transformLaplaceHgrad(  index_t k,
                         const gsMatrix<T> & allHessians,
                         gsMatrix<T> & result) const
 {
+    gsMatrix<T> hessians;
+    transformHessianHgrad(k,allGrads,allHessians,hessians);
+    result=hessians.leftCols(ParDim).rowwise().sum();
+    result.transposeInPlace();
+}
+
+//Verified for 2D
+template <class T, int ParDim, int codim>
+void gsGenericGeometryEvaluator<T,ParDim,codim>::
+transformDeriv2Hgrad(  index_t k,
+                        const gsMatrix<T> & funcGrad,
+                        const gsMatrix<T> & funcSecDir,
+                        gsMatrix<T> & result) const
+{
+    GISMO_ASSERT(
+                   (ParDim==1 && (GeoDim==1||GeoDim==2||GeoDim==3))
+                || (ParDim==2 && (GeoDim==2||GeoDim==3))
+                || (ParDim==3 && GeoDim==3 ), "No implementation for this case");
+
+    // important sizes
+    const int parSecDirSize = ParDim*(ParDim+1)/2;
+    const int fisSecDirSize = GeoDim*(GeoDim+1)/2;
+
     // allgrads
-    const index_t numGrads = allGrads.rows() / ParDim;
-    // result: 1 X numGrads
-    const index_t n2d = (ParDim + (ParDim*(ParDim-1))/2);
+    const index_t numGrads = funcGrad.rows() / ParDim;
 
-    const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
+    result.setZero(numGrads,fisSecDirSize);
 
-    std::vector<gsMatrix<T> > DJac; // [0]: J_t   [1]: J_s etc...
-    std::vector<gsMatrix<T> > DJacPhys(GeoDim); // [0]: J_x   [1]: J_y etc...
-    jacobianPartials<ParDim,T>::compute(secDer,DJac);
+    gsMatrix<T,ParDim,GeoDim> JMT = m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
+    gsMatrix<T,GeoDim,ParDim> JM1 = m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
 
-    //Find the partial derivative wrt the physical cordinates c.
-    for(index_t c = 0; c < GeoDim; ++c)
-    {
-        DJacPhys[c].setZero(GeoDim, ParDim);
-        for(index_t j = 0; j < GeoDim; ++j)
-        {
-            DJacPhys[c] += DJac[j]*m_jacInvs(c,j+k*ParDim);
-        }
-    }
-
-    gsMatrix<T> jac2inv(GeoDim, GeoDim);
-    for(index_t c = 0; c < GeoDim; ++c)
-    {
-        // - J⁻¹ dJ/dx J⁻¹ = dJ⁻¹/dx
-        gsMatrix<T> DJacInvPhys = -m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose()
-                * DJacPhys[c]*m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
-        jac2inv.row(c) = DJacInvPhys.col(c).transpose();
-    }
-    //jac2inv contains:
-    //(Txx,   Sxx)
-    //(Tyy,   Syy)
-
-    const gsAsConstMatrix<T,ParDim> grads_k(allGrads.col(k).data(), ParDim, numGrads);
-    gsMatrix<T> collaps;
-    collaps.setOnes(1,ParDim);
-    result.noalias() = collaps*(jac2inv * grads_k);
-
-    //J⁻¹J⁻T
-    gsMatrix<T> tmp = m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose()
-                    * m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
-
-    gsMatrix<T> hessian(ParDim, ParDim);
-
+    // First part: J⁻T H J⁻¹
+    gsMatrix<T,ParDim,ParDim> parFuncHessian;
     for (index_t i = 0; i < numGrads ; ++i)
     {
-        //2D specific case
-        if (ParDim == 2)
-        {
-            hessian(0,0) = allHessians(0+i*n2d,k);
-            hessian(1,1) = allHessians(1+i*n2d,k);
-            hessian(0,1) = allHessians(2+i*n2d,k);
-            hessian(1,0) = allHessians(2+i*n2d,k);
-        }
-        //3D specific case
-        if (ParDim == 3)
-        {
-            hessian(0,0) = allHessians(0+i*n2d,k);
-            hessian(1,1) = allHessians(1+i*n2d,k);
-            hessian(2,2) = allHessians(2+i*n2d,k);
-            hessian(0,1) = allHessians(3+i*n2d,k);
-            hessian(1,0) = allHessians(3+i*n2d,k);
-            hessian(0,2) = allHessians(4+i*n2d,k);
-            hessian(2,0) = allHessians(4+i*n2d,k);
-            hessian(1,2) = allHessians(5+i*n2d,k);
-            hessian(2,1) = allHessians(5+i*n2d,k);
-        }
-
-        //Frobenius mutiplication of tmp and hessian
-        //Exployting symmetry
-        for(index_t c = 0; c < GeoDim; ++c)
-        {
-            result(0,i) += (tmp.row(c)*hessian.col(c)).value();
-        }
+        secDerToHessian<T,ParDim>(funcSecDir.block(i*parSecDirSize,k,parSecDirSize,1), parFuncHessian);
+        hessianToSecDer<T,GeoDim>(JM1 * parFuncHessian * JMT,result.row(i));
     }
+
+    // Second part: J⁻T G J⁻1 DJ J⁻1
+    const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
+    gsMatrix<T,ParDim,ParDim>DJac[GeoDim];
+    secDerToTensor<T,ParDim,GeoDim>(secDer,DJac);
+    gsMatrix<T> gradF,HGT;
+    HGT.setZero(GeoDim,fisSecDirSize);
+    for(unsigned i = 0;i<GeoDim;++i)
+        hessianToSecDer<T,GeoDim>(JM1 * DJac[i] * JMT,HGT.row(i));
+    const gsAsConstMatrix<T,ParDim> grads_k(funcGrad.col(k).data(), ParDim, numGrads);
+    gradF=JM1*grads_k;
+    // Lastpart: substract part2 from part1
+    result-=gradF.transpose()*HGT;
 }
 
 
@@ -588,4 +548,4 @@ void gsGenericGeometryEvaluator<T,ParDim,codim>::computeNormal()
 }
 */
 
-}; // namespace gismo
+} // namespace gismo

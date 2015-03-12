@@ -454,6 +454,11 @@ public:
                                        const gsMatrix<T> & allHessians,
                                        gsMatrix<T> & result) const = 0;
 
+    virtual void transformDeriv2Hgrad(  index_t k,
+                            const gsMatrix<T> & allGrads,
+                            const gsMatrix<T> & allHessians,
+                            gsMatrix<T> & result) const = 0;
+
     /// Computes the outer normal on side \a s
     /// Assumes that points \a u are on the side 
     /// result is a vector containing the normal vector
@@ -598,6 +603,11 @@ public:
                                const gsMatrix<T> & allgrads,
                                const gsMatrix<T> & allHessians,
                                gsMatrix<T> & result) const;
+
+    void transformDeriv2Hgrad(  index_t k,
+                            const gsMatrix<T> & allGrads,
+                            const gsMatrix<T> & allHessians,
+                            gsMatrix<T> & result) const;
 
 
     /// \note This implementation silently assumes a tensor domain
