@@ -19,6 +19,11 @@
 namespace gismo
 {
 
+/** @brief The gsNormL2 class provides the functionality
+ * to calculate the L2 - norm between a field and a function.
+ *
+ * \ingroup Assembler
+*/
 template <class T>
 class gsNormL2 : public gsNorm<T>
 {
