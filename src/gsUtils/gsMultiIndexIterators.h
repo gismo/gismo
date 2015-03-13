@@ -279,7 +279,7 @@ public:
      * \brief construct a boundary iterator by setting the thickness
      *
      * Iterates over f$(a_0,...,a_n)f$ such that f$m_i\leq a_i<m_i+mOffset_i f$
-     * or f$M_i-mOffset_i\leq a_i < M_i f$.
+     * or f$M_i-MOffset_i\leq a_i < M_i f$.
      * the returned flat indexes of the boundary iterator coincide with those
      * of the original iterators on the same coordinate.
      * \param m

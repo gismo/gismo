@@ -366,7 +366,7 @@ public:
     int size(int k) const { return m_bases[k]->size(); }
 
     /// The number of basis functions in the direction of the k-th parameter component
-    void size_cwise(gsVector<unsigned,d> & result) const 
+    void size_cwise(gsVector<index_t,d> & result) const
     { 
         for ( unsigned k = 0; k!=d; ++k )
             result[k] = m_bases[k]->size(); 
