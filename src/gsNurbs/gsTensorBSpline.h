@@ -17,7 +17,6 @@
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsNurbs/gsBoehm.h>
-#include <gsUtils/gsMultiIndexIterators.h>
 
 namespace gismo
 {

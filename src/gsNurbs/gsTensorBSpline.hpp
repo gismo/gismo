@@ -4,6 +4,7 @@
 #include <gsIO/gsXmlUtils.h>
 
 #include <gsNurbs/gsBSplineBasis.h>
+#include <gsUtils/gsMultiIndexIterators.h>
 
 namespace gismo
 {
@@ -132,10 +133,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fi
     const KnotVectorType& knots = base.knots(dir_fixed);
     const int index = knots.findspan(par)-degree;
     gsVector<index_t,d> sizes,lowerCorner,upperCorner;
-
-    gsVector<unsigned,d> ssizes;
-    base.size_cwise( ssizes );
-    sizes=ssizes.template cast<index_t>();
+    base.size_cwise( sizes );
     lowerCorner.setZero();
     lowerCorner(dir_fixed)=index;
     upperCorner=sizes;
