@@ -17,8 +17,8 @@ namespace gismo
 {
 
 template<typename T,int ParDim>
-void secDerToHessian(const gsMatrix<T> & secDers, 
-                     gsMatrix<T,ParDim,ParDim>& hessian)
+void secDerToHessian(typename gsMatrix<T,ParDim*(ParDim+1)/2,1>::constRef & secDers, 
+                     gsMatrix<T,ParDim,ParDim> & hessian)
 {
     switch ( ParDim )
     {
@@ -74,12 +74,77 @@ void hessianToSecDer (const gsMatrix<T,ParDim,ParDim> & hessian,
     }
 }
 
+
+/*
+// Partial derivatives of the Jacobian matrix
+template<typename T,int ParDim> void
+secDerToJacPartial(const typename gsMatrix<T>::constColumn  & secDer,
+                   gsMatrix<T,ParDim,ParDim> * DJac)
+{
+    switch ( ParDim )
+    {
+    case 1: 
+        *DJac = secDer;
+        break;
+    case 2:
+        // Note: stride is 3
+        //dx
+        DJac[0](0,0) = secDer(0);//G1xx
+        DJac[0](0,1) = secDer(2);//G1xy
+        DJac[0](1,0) = secDer(3);//G2xx
+        DJac[0](1,1) = secDer(5);//G2xy
+        //dy
+        DJac[1](0,0) = secDer(2);//G1yx
+        DJac[1](0,1) = secDer(1);//G1yy
+        DJac[1](1,0) = secDer(5);//G2yx
+        DJac[1](1,1) = secDer(4);//G2yy
+        break;
+    case 3:
+        // Note: stride is 6
+        //du
+        DJac[0](0,0) = secDer(0 );//G1uu
+        DJac[0](0,1) = secDer(3 );//G1uv
+        DJac[0](0,2) = secDer(4 );//G1uw
+        DJac[0](1,0) = secDer(6 );//G2uu
+        DJac[0](1,1) = secDer(9 );//G2uv
+        DJac[0](1,2) = secDer(10);//G2uw
+        DJac[0](2,0) = secDer(12);//G3uu
+        DJac[0](2,1) = secDer(15);//G3uv
+        DJac[0](2,2) = secDer(16);//G3uw
+        //dv
+        DJac[1](0,0) = secDer(3 );//G1vu
+        DJac[1](0,1) = secDer(1 );//G1vv
+        DJac[1](0,2) = secDer(5 );//G1vw
+        DJac[1](1,0) = secDer(9 );//G2vu
+        DJac[1](1,1) = secDer(7 );//G2vv
+        DJac[1](1,2) = secDer(11);//G2vw
+        DJac[1](2,0) = secDer(15);//G3vu
+        DJac[1](2,1) = secDer(13);//G3vv
+        DJac[1](2,2) = secDer(17);//G3vw
+        //dw
+        DJac[2](0,0) = secDer(4 );//G1wu
+        DJac[2](0,1) = secDer(5 );//G1wv
+        DJac[2](0,2) = secDer(2 );//G1ww
+        DJac[2](1,0) = secDer(10);//G2wu
+        DJac[2](1,1) = secDer(11);//G2wv
+        DJac[2](1,2) = secDer(8 );//G2ww
+        DJac[2](2,0) = secDer(16);//G3wu
+        DJac[2](2,1) = secDer(17);//G3wv
+        DJac[2](2,2) = secDer(14);//G3ww
+        break;
+    default:
+        break;
+    }
+}
+//*/
+
 template<typename T,int ParDim,int GeoDim>
-void secDerToTensor(const gsMatrix<T>& secDers,gsMatrix<T,ParDim,ParDim> * a)
+void secDerToTensor(const typename gsMatrix<T>::constColumn & secDers,
+                    gsMatrix<T,ParDim,ParDim> * a)
 {
     static const int dim = ParDim*(ParDim+1)/2;
     for(int i=0;i<GeoDim;++i)
-        secDerToHessian<T,ParDim>(secDers.middleRows(i*dim,dim),a[i]);
+        secDerToHessian<T,ParDim>(secDers.segment(i*dim,dim),a[i]);
 }
 
 // Geometry transformation 
@@ -411,8 +476,8 @@ transformGradsHdiv( index_t k,
     const Eigen::Transpose< const typename gsMatrix<T>::constColumns > & 
         invJac = this->gradTransform(k).transpose();
     
-    std::vector<gsMatrix<T> > DJac;
-    jacobianPartials<ParDim,T>::compute(secDer,DJac); // secDerToJacPartial
+    gsMatrix<T,GeoDim,ParDim> DJac[ParDim];
+    secDerToJacPartial<ParDim,T>(secDer,DJac);
     
     gsVector<T> gradDetJrec(ParDim);        
     for (int i=0; i<ParDim; ++i)
@@ -480,15 +545,18 @@ transformDeriv2Hgrad(  index_t k,
 
     result.setZero(numGrads,fisSecDirSize);
 
-    typename gsMatrix<T,GeoDim,ParDim>::constRef JM1 = m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
-    typename gsMatrix<T,ParDim,GeoDim>::constRef JMT = m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
+    typename gsMatrix<T,GeoDim,ParDim>::constRef JM1 = 
+        m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
+    typename gsMatrix<T,ParDim,GeoDim>::constRef JMT = 
+        m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
 
     // First part: J^-T H J^-1
     gsMatrix<T,ParDim,ParDim> parFuncHessian;
     for (index_t i = 0; i < numGrads ; ++i)
     {
-        secDerToHessian<T,ParDim>(funcSecDir.block(i*parSecDirSize,k,parSecDirSize,1), parFuncHessian);
-        hessianToSecDer<T,GeoDim>( JM1 * parFuncHessian * JMT, result.row(i));
+        secDerToHessian<T,ParDim>(
+            funcSecDir.template block<parSecDirSize,1>(i*parSecDirSize,k), parFuncHessian);
+        hessianToSecDer<T,GeoDim>( JM1 * parFuncHessian * JMT, result.row(i) );
     }
 
     // Second part: J^-T G J^-1 DDG J^-1
