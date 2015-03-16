@@ -24,8 +24,6 @@
 #include <fstream>
 #include <iomanip>
 
-#include <rapidxml/rapidxml.hpp> // External file
-
 
 namespace gismo {
 

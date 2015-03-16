@@ -8,12 +8,6 @@
 project(gsOpennurbsExtension)
 
 
-# don't build shared libs 
-set(BUILD_SHARED_LIBS OFF)
-
-# build static libs by default
-set(BUILD_STATIC_LIBS ON)
-
 set(OPENNURBS_SOURCES
 ${gismo_externals}/onurbs/opennurbs_3dm_attributes.cpp
 ${gismo_externals}/onurbs/opennurbs_3dm_properties.cpp
@@ -121,29 +115,27 @@ ${gismo_externals}/onurbs/opennurbs_zlib_memory.cpp
 ${gismo_externals}/onurbs/opennurbs_memory.c
 ${gismo_externals}/onurbs/opennurbs_memory_util.c
 # zlib
-${gismo_externals}/onurbs/zlib/adler32.c
-${gismo_externals}/onurbs/zlib/compress.c
-${gismo_externals}/onurbs/zlib/crc32.c
-${gismo_externals}/onurbs/zlib/deflate.c
-${gismo_externals}/onurbs/zlib/infback.c
-${gismo_externals}/onurbs/zlib/inffast.c
-${gismo_externals}/onurbs/zlib/inflate.c
-${gismo_externals}/onurbs/zlib/inftrees.c
-${gismo_externals}/onurbs/zlib/trees.c
-${gismo_externals}/onurbs/zlib/uncompr.c
-${gismo_externals}/onurbs/zlib/zutil.c
+#${gismo_externals}/onurbs/zlib/adler32.c
+#${gismo_externals}/onurbs/zlib/compress.c
+#${gismo_externals}/onurbs/zlib/crc32.c
+#${gismo_externals}/onurbs/zlib/deflate.c
+#${gismo_externals}/onurbs/zlib/infback.c
+#${gismo_externals}/onurbs/zlib/inffast.c
+#${gismo_externals}/onurbs/zlib/inflate.c
+#${gismo_externals}/onurbs/zlib/inftrees.c
+#${gismo_externals}/onurbs/zlib/trees.c
+#${gismo_externals}/onurbs/zlib/uncompr.c
+#${gismo_externals}/onurbs/zlib/zutil.c
 # 
 gsReadOpenNurbs.cpp
   )
 
-if (BUILD_SHARED_LIBS)
-set(OPENNURBS_SOURCES ${OPENNURBS_SOURCES} ${gismo_externals}/onurbs/opennurbs_dll.cpp)
-endif()
-
-set(OPENNURBS_SOURCES_UNUSED
-${gismo_externals}/onurbs/opennurbs_gl.cpp
-  )
-
+#if (BUILD_SHARED_LIBS)
+#set(OPENNURBS_SOURCES ${OPENNURBS_SOURCES} ${gismo_externals}/onurbs/opennurbs_dll.cpp)
+#endif()
+#set(OPENNURBS_SOURCES_UNUSED
+#${gismo_externals}/onurbs/opennurbs_gl.cpp
+#  )
 
 SET(OPENNURBS_HEADERS
 examples_linking_pragmas.h
@@ -249,16 +241,16 @@ ${gismo_externals}/onurbs/opennurbs_workspace.h
 ${gismo_externals}/onurbs/opennurbs_xform.h
 ${gismo_externals}/onurbs/opennurbs_zlib.h
 # zlib
-${gismo_externals}/onurbs/zlib/crc32.h
-${gismo_externals}/onurbs/zlib/deflate.h
-${gismo_externals}/onurbs/zlib/inffast.h
-${gismo_externals}/onurbs/zlib/inffixed.h
-${gismo_externals}/onurbs/zlib/inflate.h
-${gismo_externals}/onurbs/zlib/inftrees.h
-${gismo_externals}/onurbs/zlib/trees.h
-${gismo_externals}/onurbs/zlib/zconf.h
-${gismo_externals}/onurbs/zlib/zlib.h
-${gismo_externals}/onurbs/zlib/zutil.h
+#${gismo_externals}/onurbs/zlib/crc32.h
+#${gismo_externals}/onurbs/zlib/deflate.h
+#${gismo_externals}/onurbs/zlib/inffast.h
+#${gismo_externals}/onurbs/zlib/inffixed.h
+#${gismo_externals}/onurbs/zlib/inflate.h
+#${gismo_externals}/onurbs/zlib/inftrees.h
+#${gismo_externals}/onurbs/zlib/trees.h
+#${gismo_externals}/onurbs/zlib/zconf.h
+#${gismo_externals}/onurbs/zlib/zlib.h
+#${gismo_externals}/onurbs/zlib/zutil.h
 # 
 gsReadOpenNurbs.h
   )
@@ -309,7 +301,6 @@ add_definitions(-DON_COMPILING_OPENNURBS)
 
 if(MSVC)
   add_definitions(-DUNICODE)
-  set(OPENNURBS_LINKLIBRARIES ${OPENNURBS_LINKLIBRARIES} Rpcrt4 ) # needed ?
 endif(MSVC)
 
 # Do not re-compile G+Smo in this unit
@@ -317,21 +308,15 @@ if ( NOT GISMO_BUILD_LIB)
    add_definitions(-DGISMO_BUILD_LIB)
 endif()
 
-IF(BUILD_STATIC_LIBS)
     add_library(${PROJECT_NAME} OBJECT ${OPENNURBS_SOURCES}) #STATIC
-    #target_link_libraries(${PROJECT_NAME} ${OPENNURBS_LINKLIBRARIES}) # needed ?
-    IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
-        SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS -fPIC)
-    ENDIF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
+    #target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
+
+   set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
     IF(NOT WIN32)
       SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
     ENDIF(NOT WIN32)
-ELSEIF(BUILD_SHARED_LIBS)
-  add_library(${PROJECT_NAME} SHARED ${OPENNURBS_SOURCES})
-  #target_link_libraries(${PROJECT_NAME} ${OPENNURBS_LINKLIBRARIES}) # needed ?
-  set_property(TARGET ${PROJECT_NAME} PROPERTY LINK_INTERFACE_LIBRARIES "")
-  SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VERSION "2010.04.95")
-ENDIF(BUILD_STATIC_LIBS)
+   #SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VERSION "2010.04.95")
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:gsOpennurbsExtension>
     CACHE INTERNAL "Gismo extensions to be included")
