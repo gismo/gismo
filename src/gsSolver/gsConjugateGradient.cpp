@@ -40,8 +40,11 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
 
     if(m_calcEigenvals)
     {
+        delta.clear();
         delta.resize(1,0);
         delta.reserve(m_maxIters);
+
+        gamma.clear();
         gamma.reserve(m_maxIters);
     }
 }

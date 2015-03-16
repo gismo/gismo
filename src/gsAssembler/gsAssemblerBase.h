@@ -103,13 +103,17 @@ public:
 
     /// @brief Intitialize function for single patch assembling, sets data fields
     /// using a gsGeometry, a basis reference for each component (vector) and
-    /// boundary conditions. Works for scalar and vector valued PDES
+    /// boundary conditions. With the last argument you can specify which patch
+    /// was choosen or if it is a different one, select -1 (default).
+    /// Works for scalar and vector valued PDEs.
     /// \note Rest of the data fields should be initialized in the
     /// derived function initializePdeSpecific() .
     void initializeSinglePatch(const gsGeometry<T>           & patch,
                                const gsBasisRefs<T>          & basis,
-                               gsBoundaryConditions<T> const & bconditions)
+                               gsBoundaryConditions<T> const & bconditions,
+                               int                             np = -1)
     {
+        m_singlePatch = np;
         m_patches = gsMultiPatch<T>(patch);
         m_bConditions = bconditions;
 
@@ -284,6 +288,10 @@ protected:
     /// @brief Number of degrees of freedom (excluding eliminated,
     /// counting glued dofs only once, etc.)
     int m_dofs;
+
+protected:
+    // *** auxiliary members ***
+    int m_singlePatch;
 
 };
 
