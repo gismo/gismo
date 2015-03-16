@@ -11,6 +11,8 @@
 set(${PROJECT_NAME}_externals "${CMAKE_CURRENT_SOURCE_DIR}"
     CACHE INTERNAL "Externals directory")
 
+add_subdirectory(zlib)
+
 if(GISMO_BUILD_CPPLOT)
 #add_subdirectory(boost)
 add_subdirectory(cpplot)

@@ -1487,7 +1487,8 @@ ON_BinaryArchive::ReadString( ON_wString& s )
         }
       }
     }
-    if (!rc)
+    // G+Smo
+    //if (!rc)
       s.Destroy();
   }
   return rc;
