@@ -128,7 +128,8 @@ ${gismo_externals}/onurbs/opennurbs_memory_util.c
 #${gismo_externals}/onurbs/zlib/zutil.c
 # 
 gsReadOpenNurbs.cpp
-  )
+gsWriteOpenNurbs.cpp
+)
 
 #if (BUILD_SHARED_LIBS)
 #set(OPENNURBS_SOURCES ${OPENNURBS_SOURCES} ${gismo_externals}/onurbs/opennurbs_dll.cpp)
@@ -253,7 +254,8 @@ ${gismo_externals}/onurbs/opennurbs_zlib.h
 #${gismo_externals}/onurbs/zlib/zutil.h
 # 
 gsReadOpenNurbs.h
-  )
+gsWriteOpenNurbs.h
+)
 
 set(OPENNURBS_UNUSED
 ${gismo_externals}/onurbs/opennurbs_gl.h
