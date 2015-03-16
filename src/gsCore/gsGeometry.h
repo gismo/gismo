@@ -139,7 +139,7 @@ public:
     
     /// @brief Default constructor.  Note: Derived constructors (except for
     /// the default) should assign \a m_basis to a valid pointer
-    gsGeometry() :m_basis( NULL )
+    gsGeometry() :m_basis( NULL ), m_id(0)
     { }
 
     /// @brief Constructor by a basis and coefficient vector
@@ -147,12 +147,12 @@ public:
     /// Coefficients are given by \em{give(coefs) and they are
     /// consumed, i.e. the \coefs variable will be empty after the call
     gsGeometry( const gsBasis<T> & basis, gsMovable< gsMatrix<Scalar_t> > coefs) :
-    m_coefs(coefs), m_basis( basis.clone() )
+    m_coefs(coefs), m_basis( basis.clone() ), m_id(0)
     { }
 
     /// @brief Constructor by a basis and coefficient vector
     gsGeometry( const gsBasis<T> & basis, const gsMatrix<Scalar_t> & coefs ) :
-    m_coefs(coefs), m_basis( basis.clone() )
+    m_coefs(coefs), m_basis( basis.clone() ), m_id(0)
     { }
 
     /// @brief Copy Constructor
@@ -160,6 +160,7 @@ public:
     {
         m_coefs = o.m_coefs;
         m_basis = o.basis().clone();
+        m_id = o.m_id;
     }
 
     /// @}
@@ -171,6 +172,7 @@ public:
             m_coefs = o.m_coefs;
             delete m_basis;
             m_basis = o.basis().clone() ;
+            m_id = o.m_id;
         }
         return *this;
     }
@@ -468,7 +470,8 @@ public:
 
     virtual void toMesh(gsMesh<T> & msh, int npoints) const;
 
-    /// Returns new mesh, with the same connections as the input \a mesh.
+    /// Updates the vertices of input \a mesh by evaluating the
+    /// geometry at vertices.
     ///  Vertices of the new mesh are
     ///
     /// { geom(v) | v vertex of input mesh }
@@ -484,6 +487,13 @@ public:
         return gsGeometrySlice<T>(this,dir_fixed,par);
     }
 
+
+    /// Sets the patch index for this patch
+    void setId(const size_t i) { m_id = i; }
+
+    /// Returns the patch index for this patch
+    size_t id() const { return m_id; }
+
 protected:
 
     /// Coefficient matrix of size coefsSize() x geoDim()
@@ -492,6 +502,10 @@ protected:
 
     /// Pointer to the basis of this geometry
     gsBasis<T> * m_basis;
+
+    /// An auxiliary index for this geometry (eg. in case it is part
+    /// of a multi-patch object)
+    size_t m_id;
 
 }; // class gsGeometry
 
@@ -563,11 +577,11 @@ public:
     { return Basis_t::IsRational; }
     
     // Look at gsGeometry base constructor for a brief description
-          Basis_t & basis()       { return static_cast<Basis_t&>(*this->m_basis); }
-
+    Basis_t & basis()       { return static_cast<Basis_t&>(*this->m_basis); }
+    
     // Look at gsGeometry base constructor for a brief description
     const Basis_t & basis() const { return static_cast<const Basis_t&>(*this->m_basis); }
-
+    
 }; // class gsGenericGeometry
 
 

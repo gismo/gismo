@@ -43,9 +43,9 @@ public:
 public:
 
     /// Type definitions
-    typedef typename std::vector<gsGeometry<T> *>::size_type size_t;
-    typedef typename std::vector<gsGeometry<T> *>::iterator iterator;
-    typedef typename std::vector<gsGeometry<T> *>::const_iterator const_iterator;
+    typedef typename PatchContainer::size_type size_t;
+    typedef typename PatchContainer::iterator iterator;
+    typedef typename PatchContainer::const_iterator const_iterator;
 
     /// Get a const-iterator to the patches
     /// \return an iterator to the beginning of the patches
@@ -211,6 +211,10 @@ public:
         freeAll(m_patches);
         m_patches.clear();
     }
+
+protected:
+
+    void setIds();
 
     // Data members
 private:

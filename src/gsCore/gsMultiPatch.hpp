@@ -28,6 +28,7 @@ gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
     : gsBoxTopology( geo.parDim() )
 {
     m_patches.push_back( geo.clone() );
+    //m_patches[0]->setId(0); // Note: for the single-patch constructor the id remains unchanged
     addBox();
     this->addAutoBoundaries();
 }
@@ -45,6 +46,7 @@ template<class T>
 gsMultiPatch<T>::gsMultiPatch( const std::vector<gsGeometry<T> *>& patches )
     : gsBoxTopology( patches[0]->parDim(), patches.size() ) , m_patches( patches )
 {
+    setIds();
     this->addAutoBoundaries();
 }
 
@@ -54,12 +56,24 @@ gsMultiPatch<T>::gsMultiPatch( const PatchContainer& patches,
                                const std::vector<boundaryInterface>& interfaces )
     : gsBoxTopology( patches[0]->parDim(), patches.size(), boundary, interfaces ),
       m_patches( patches )
-{ }
+{ 
+    setIds();
+}
 
 template<class T>
 gsMultiPatch<T>::~gsMultiPatch()
 {
     freeAll(m_patches);
+}
+
+template<class T>
+void gsMultiPatch<T>::setIds()
+{
+    size_t id = 0;
+    for ( iterator it = m_patches.begin(); it != m_patches.end(); ++it ) 
+    {
+        ( *it )->setId( id++ );
+    }
 }
 
 template<class T>
@@ -95,8 +109,9 @@ template<class T>
 std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy() const
 {
     std::vector<gsBasis<T> *> bb;
-    for ( typename PatchContainer::const_iterator it = m_patches.begin();
-          it != m_patches.end(); ++it ) {
+    for ( const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it ) 
+    {
         bb.push_back( ( *it )->basis().clone() );
     }
     return bb ;
@@ -105,20 +120,26 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy() const
 template<class T>
 void gsMultiPatch<T>::addPatch( gsGeometry<T>* g ) 
 {
-    if ( m_dim == -1 ) {
+    if ( m_dim == -1 ) 
+    {
         m_dim = g->parDim();
-    } else {
-        assert( m_dim == g->parDim() );
+    } else 
+    {
+        GISMO_ASSERT( m_dim == g->parDim(), 
+                      "Tried to add a patch of different dimension in a multipatch." );
     }
+    g->setId( m_patches.size() );
     m_patches.push_back( g ) ;
     addBox();
 }
 
 template<class T>
-int gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const {
-    typename PatchContainer::const_iterator it
-            = std::find( m_patches.begin(), m_patches.end(), g );
-    assert( it != m_patches.end() );
+int gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const 
+{
+    const_iterator it
+        = std::find( m_patches.begin(), m_patches.end(), g );
+    GISMO_ASSERT( it != m_patches.end(), "Did not find the patch index." );
+    // note: should return g->patchId();
     return it - m_patches.begin();
 }
 
@@ -353,4 +374,5 @@ gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface 
     return gsAffineFunction<T>(bi.dirMap(bi.first()),bi.dirOrientation(bi.first()) ,box1,box2);
 }
 
-}
+
+} // namespace gismo
