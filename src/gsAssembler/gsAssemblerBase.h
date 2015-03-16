@@ -75,7 +75,6 @@ public:
                     gsStdVectorRef<gsMultiBasis<T> > const   & bases,
                     gsBoundaryConditions<T> const           & bconditions)
     {
-        m_singlePatch = -1;
         m_patches = patches;
         m_bases.clear();
         m_bases = bases;
@@ -93,7 +92,6 @@ public:
                     gsMultiBasis<T> const         & basis,
                     gsBoundaryConditions<T> const & bconditions)
     {
-        m_singlePatch = -1;
         m_patches = patches;
         m_bases.clear();
         m_bases.push_back(basis);
@@ -112,10 +110,8 @@ public:
     /// derived function initializePdeSpecific() .
     void initializeSinglePatch(const gsGeometry<T>           & patch,
                                const gsBasisRefs<T>          & basis,
-                               gsBoundaryConditions<T> const & bconditions,
-                               int                             np = -1)
+                               gsBoundaryConditions<T> const & bconditions)
     {
-        m_singlePatch = np;
         m_patches = gsMultiPatch<T>(patch);
         m_bConditions = bconditions;
 
@@ -290,11 +286,6 @@ protected:
     /// @brief Number of degrees of freedom (excluding eliminated,
     /// counting glued dofs only once, etc.)
     int m_dofs;
-
-protected:
-    // *** auxiliary members ***
-    int m_singlePatch;
-
 };
 
 
