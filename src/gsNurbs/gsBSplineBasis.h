@@ -36,17 +36,17 @@ struct gsTraits<gsBSplineBasis<T, KnotVectorType>,d>
     typedef gsTensorBSplineBasis<d,T,KnotVectorType>  TensorBasisType;
     typedef gsTensorBSpline<d, T, KnotVectorType>     TensorGeometryType;
     typedef typename 
-    choose<d<2, gsConstantBasis<T>, gsTensorBSplineBasis<d-1,T,KnotVectorType>
+    choose<d==1, gsConstantBasis<T>, gsTensorBSplineBasis<d-1,T,KnotVectorType>
            >::type TensorBoundaryType;
 
     typedef typename 
-    choose<d<2, gsNurbsBasis<T,KnotVectorType>, gsTensorNurbsBasis<d, T, KnotVectorType>
+    choose<d==1, gsNurbsBasis<T,KnotVectorType>, gsTensorNurbsBasis<d, T, KnotVectorType>
            >::type RationalBasisType;
     typedef typename 
-    choose<d<2, gsNurbs<T,KnotVectorType>, gsTensorNurbs<d, T, KnotVectorType>
+    choose<d==1, gsNurbs<T,KnotVectorType>, gsTensorNurbs<d, T, KnotVectorType>
            >::type RationalGeometryType;
     typedef typename 
-    choose<d<2, gsConstantBasis<T>       , gsTensorNurbsBasis<d-1, T, KnotVectorType>
+    choose<d==1, gsConstantBasis<T>       , gsTensorNurbsBasis<d-1, T, KnotVectorType>
            >::type RationalBoundaryType;
 };
 

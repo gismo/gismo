@@ -114,6 +114,7 @@ template<unsigned d, class T = real_t> class gsTensorBernsteinBasis;
 
 
 template<class basis_t > class gsRationalBasis;
+template<unsigned d, class T = real_t>  class gsTensorBasis;
 template<unsigned d, class T = real_t>  class gsHTensorBasis;
 template<unsigned d, class T = real_t>  class gsHBSplineBasis;
 template<unsigned d, class T = real_t>  class gsTHBSplineBasis;

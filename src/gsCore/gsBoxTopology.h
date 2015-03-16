@@ -227,6 +227,12 @@ public:
         return std::find(m_boundary.begin(), m_boundary.end(), ps) != m_boundary.end();
     }
 
+    /// Returns true if side \a s on patch \a p is a boundary.
+    bool isBoundary( int p, boxSide s )
+    {
+        return isBoundary( patchSide(p,s) );
+    }
+
     /// Is the given patch side \a ps set to an interface?
     bool isInterface(const patchSide& ps) const;
 
