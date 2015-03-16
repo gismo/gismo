@@ -44,14 +44,14 @@ The information on the hierarchical domains is stored in a k-d-tree, where each 
 The implementation is, up to some technical differences, based on the technique described in the following publication
 
 - G. Kiss, C. Giannelli, and B. Juettler.
-Algorithms and data structures for truncated hierarchical B–splines. In M. Floater et al., editors, Mathematical Methods for Curves and Surfaces, volume 8177, pages 304–323.
+Algorithms and data structures for truncated hierarchical B-splines. In M. Floater et al., editors, Mathematical Methods for Curves and Surfaces, volume 8177, pages 304-323.
 Lecture Notes in Computer Science, 2014.
 
 also available as a technical report
 
 - G. Kiss, C. Giannelli, and B. Juettler.
 Algorithms and Data Structures for
-Truncated Hierarchical B–splines
+Truncated Hierarchical B-splines
 DK-Report No. 2012-14, Doctoral Program Computational Mathematics: Numerical Anaylsis and Symbolic Computation, 2012.
 
 Regarding the mentioned technical differences: A binary tree is used instead of a quad-tree (which was discussed in the above-mentioned publications). Also, the domains are not necessarily split at their middle, but according to the position of the domain of the next level.
