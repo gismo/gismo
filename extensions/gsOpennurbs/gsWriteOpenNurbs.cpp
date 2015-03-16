@@ -11,6 +11,9 @@
     Author(s): A. Mantzaflaris
 */
 
+#include <gismo.h>
+#include <gsCore/gsTemplateTools.h>
+
 #include <gsOpennurbs/gsWriteOpenNurbs.h>
 
 #include <onurbs/opennurbs.h>
@@ -20,10 +23,6 @@
 #include <fstream>
 #include <iomanip>
 
-
-#include <gsCore/gsTemplateTools.h>
-
-#include <gismo.h>
 
 namespace gismo {
 
