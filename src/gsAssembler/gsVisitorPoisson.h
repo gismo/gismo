@@ -88,6 +88,8 @@ public:
             localRhs.noalias() += weight * ( bVals.col(k) * rhsVals.col(k).transpose() ) ;
             localMat.noalias() += weight * (physGrad.transpose() * physGrad);
         }
+        //gsDebugVar(localRhs.transpose() );
+        //gsDebugVar(localMat.asVector().transpose() );
     }
     
     inline void localToGlobal(const gsDofMapper     & mapper,
@@ -114,9 +116,10 @@ public:
                     const int jj = actives(j);
                     if ( mapper.is_free_index(jj) )
                     {
-                        // Matrix is symmetric, store only lower triangular part
-                        if ( jj <= ii ) 
-                            sysMatrix.coeffRef(ii, jj) += localMat(i, j);
+                        // Matrix is symmetric, so we could store only
+                        // lower triangular part
+                        //if ( jj <= ii ) 
+                        sysMatrix.coeffRef(ii, jj) += localMat(i, j);
                     }
                     else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
                     {

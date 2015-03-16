@@ -220,6 +220,9 @@ public:
     /// @brief Returns the Dirichlet values (if applicable)
     const gsMatrix<T> & dirValues() const { return m_ddof; }
 
+    /// @brief Sets any Dirichlet values to homogeneous (if applicable)
+    void homogenizeDirichlet() { m_ddof.setZero(); }
+
     /// @brief Returns the left-hand side vector(s)
     /// ( multiple right hand sides possible )
     const gsMatrix<T> & rhs() const { return m_rhs; }
