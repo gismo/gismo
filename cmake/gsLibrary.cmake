@@ -18,6 +18,10 @@
 
 if(GISMO_BUILD_LIB)
 
+#if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+#  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-implicit-templates")
+#endif()
+
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
  set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} 
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
@@ -83,6 +87,10 @@ endif()
 
   if (GISMO_WITH_PSOLID)
     target_link_libraries(${PROJECT_NAME} ${PARASOLID_LIBRARY})
+  endif()
+
+  if (GISMO_WITH_ONURBS AND MSVC)
+    target_link_libraries(${PROJECT_NAME} Rpcrt4)
   endif()
 
   if (GISMO_WITH_SUPERLU)
