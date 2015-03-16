@@ -11,6 +11,8 @@
     Author(s): A. Bressan, C. Hofreither, J. Sogn, A. Mantzaflaris
 */
 
+#pragma once
+
 #include <gsCore/gsGeometryEvaluator.h>
 
 namespace gismo
@@ -144,7 +146,7 @@ void secDerToTensor(const typename gsMatrix<T>::constColumn & secDers,
 {
     static const int dim = ParDim*(ParDim+1)/2;
     for(int i=0;i<GeoDim;++i)
-        secDerToHessian<T,ParDim>(secDers.segment(i*dim,dim),a[i]);
+        secDerToHessian<T,ParDim>(secDers.template segment<dim>(i*dim),a[i]);
 }
 
 // Geometry transformation 
@@ -543,7 +545,7 @@ transformDeriv2Hgrad(  index_t k,
     // allgrads
     const index_t numGrads = funcGrad.rows() / ParDim;
 
-    result.setZero(numGrads,fisSecDirSize);
+    result.resize(numGrads,fisSecDirSize);
 
     typename gsMatrix<T,GeoDim,ParDim>::constRef JM1 = 
         m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
