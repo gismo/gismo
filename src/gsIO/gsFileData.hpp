@@ -17,16 +17,18 @@
 #include <rapidxml/rapidxml_print.hpp> // External file
 
 #ifdef GISMO_WITH_ONURBS               // Extension files
-#include "gsOpennurbs/gsReadOpenNurbs.h"
+#include <gsOpennurbs/gsReadOpenNurbs.h>
 #endif
 
 #ifdef GISMO_WITH_PSOLID               // Extension files
-#include "gsParasolid/gsReadParasolid.h"
+#include <gsParasolid/gsReadParasolid.h>
 #endif
 
+
+#include <zlib/gzstream.h>
+
+
 namespace gismo {
-
-
 
 template<class T>
 gsFileData<T>::gsFileData()
@@ -73,16 +75,46 @@ std::ostream & gsFileData<T>::print(std::ostream &os) const
 
 
 template<class T> void
-gsFileData<T>::dump(std::string const & fname)  const
+gsFileData<T>::dump(std::string const & fname)  const 
+{ save(fname); }
+
+template<class T> void
+gsFileData<T>::save(std::string const & fname, bool compress)  const
 { 
+    if (compress)
+    {
+        saveCompressed(fname);
+        return;
+    }
+    
     String tmp = getExtension(fname);
     if (tmp != "xml" )
         tmp = fname + ".xml";
     else
         tmp = fname;
-
+    
     std::ofstream fn( tmp.c_str() ); 
+    fn << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+    //rapidxml::print_no_indenting
+    fn<< *data; 
+    fn.close();
+}
 
+template<class T> void
+gsFileData<T>::saveCompressed(std::string const & fname)  const
+{ 
+    String tmp = getExtension(fname);
+    if (tmp != "gz" )
+    {
+        if (tmp != "xml" )
+            tmp = fname + ".xml.gz";
+        else
+            tmp = fname + ".gz";
+    }
+    else
+        tmp = fname;
+
+    ogzstream fn( tmp.c_str() ); 
     fn << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
     //rapidxml::print_no_indenting
     fn<< *data; 
@@ -104,6 +136,8 @@ void gsFileData<T>::read(String const & fn)
 
     if (ext== "xml") 
         readXmlFile(fn);
+    else if (ext== "gz" && ends_with(fn, ".xml.gz") )
+        readXmlGzFile(fn);
     else if (ext== "txt") 
         readGeompFile(fn);
     else if (ext== "g2") 
@@ -135,9 +169,7 @@ void gsFileData<T>::read(String const & fn)
     else if (ext=="x3d") 
         readX3dFile(fn);
     else
-    {
         gsWarn<< "gsFileData: Unknown extension \"."<<ext<<"\"\n";
-    }
 }
 
 ///////////////////////////////////////////////    
@@ -149,30 +181,38 @@ bool gsFileData<T>::readXmlFile( String const & fn )
 {
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
-    if ( file.fail() ) {std::cout<<"gsFileData: Input file Problem: "<<fn<<"\n"; return false; } 
+    if ( file.fail() ) 
+    {gsWarn<<"gsFileData: Input file Problem: "<<fn<<"\n"; return false; } 
     
-    std::vector<char> buffer(
-        std::istreambuf_iterator<char>(file.rdbuf() ), 
-        std::istreambuf_iterator<char>() );
-    buffer.push_back('\0');
-   
-    // Load file contents 
-    FileData * xmlTree = new FileData;
-    xmlTree->parse<0>(&buffer[0]);
+    return readGismoXmlStream(file);
+}
 
-    // TO DO: Check if it contains unknown tags... 
-    readGismoFile(buffer, xmlTree);
+template<class T>
+bool gsFileData<T>::readXmlGzFile( String const & fn )
+{
+    // Open file
+    igzstream file(fn.c_str(), std::ios::in);
+    if ( file.fail() ) 
+    {gsWarn<<"gsFileData: Input file Problem: "<<fn<<"\n"; return false; } 
 
-    return true;
+    return readGismoXmlStream(file);
 }
 
 
 template<class T>
-void gsFileData<T>::readGismoFile(std::vector<char> & bf, FileData * xmlTree )
+bool gsFileData<T>::readGismoXmlStream(std::istream & is)
 {
-    m_buffer.swap(bf);
-    std::swap(data, xmlTree);
-    delete xmlTree;
+    std::vector<char> buffer(
+        std::istreambuf_iterator<char>(is.rdbuf() ), 
+        std::istreambuf_iterator<char>() );
+    buffer.push_back('\0');
+    m_buffer.swap(buffer);
+
+    // Load file contents 
+    data->parse<0>(&m_buffer[0]);
+
+    // TO DO: Check if it contains unknown tags... 
+    return true;
 }
 
 

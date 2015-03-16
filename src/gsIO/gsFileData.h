@@ -53,8 +53,14 @@ public:
     
     // Clear all data
     void clear();
+
+    // Save file contents to an xml file
+    void save(std::string const & fname = "dump", bool compress = false) const;
+
+    // Save file contents to compressed xml file
+    void saveCompressed(std::string const & fname = "dump") const;
     
-    // Dump file containts to an xml file
+    // Dump file contents to an xml file
     void dump(std::string const & fname = "dump") const;
     
 private:
@@ -76,8 +82,11 @@ protected:
     /// Reads a file with xml extension
     bool readXmlFile( String const & fn );
 
+    /// Reads a file with xml.gz extension
+    bool readXmlGzFile( String const & fn );
+
     /// Reads Gismo's native XML file
-    void readGismoFile(std::vector<char> & bf, FileData * xmlTree);
+    bool readGismoXmlStream(std::istream & is);
 
     /// Reads Axel file
     bool readAxelFile(String const & fn);
@@ -295,6 +304,13 @@ public:
             return ext;
         }
         return "";
+    }
+    
+    static bool ends_with(String const & value, String const & ending)
+    {
+        if (ending.size() > value.size()) return false;
+        //std::transform(value.begin(), value.end(), tmp.begin(), ::tolower); 
+        return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
     }
 
     /// Returns the base name without extension of the filename \a fn
