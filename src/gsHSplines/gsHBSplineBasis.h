@@ -43,6 +43,12 @@ public:
     typedef memory::shared_ptr< gsHBSplineBasis > Ptr;
 
 public:
+
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable : 4702 )
+#endif
+
     /// Constructor out of a gsBSplineBasis
     gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis, int nlevels = 10)
         : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis), nlevels)
@@ -63,7 +69,11 @@ public:
     {
         GISMO_ASSERT(d==1, "Wrong dimension");
     }
-    
+
+#ifdef _MSC_VER
+#pragma warning( pop ) 
+#endif
+
     gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
                      gsMatrix<T> const & boxes, std::vector<unsigned int> & levels, int nlevels = 10)
         : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), nlevels, boxes, levels)

@@ -48,4 +48,13 @@ bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd);
 
 }
 
-}
+} // namespace gismo
+
+
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsWriteOpenNurbs.hpp)
+#endif

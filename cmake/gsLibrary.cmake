@@ -82,7 +82,7 @@ endif()
   set_target_properties(${PROJECT_NAME} PROPERTIES 
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h" 
   POSITION_INDEPENDENT_CODE ON
-  COMPILE_DEFINITIONS GISMO_BUILD_SHARED_LIB # Used for DLL exporting on windows
+  #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
   )
 
   if (GISMO_WITH_PSOLID)

@@ -11,8 +11,14 @@
     Author(s): A. Mantzaflaris
 */
 
-#include <gismo.h>
+
 #include <gsCore/gsTemplateTools.h>
+
+#include <gsModeling/gsPlanarDomain.h>
+
+#include <gsNurbs/gsBSplineBasis.h>
+#include <gsNurbs/gsKnotVector.h>
+
 
 #include <gsOpennurbs/gsWriteOpenNurbs.h>
 
@@ -160,13 +166,6 @@ bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd)
 
     return true;
 }
-
-
-
-
-TEMPLATE_INST bool writeON_PlanarDomain( const gsPlanarDomain<real_t> & pd);
-
-
 
 
 }// namespace extensions
