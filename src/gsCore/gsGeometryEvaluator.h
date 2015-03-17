@@ -91,7 +91,7 @@ public:
 
     const gsGeometry<T> & geometry() const {return m_geo;}
 
-    const size_t id() const {return m_geo.id();}
+    inline size_t id() const {return m_geo.id();}
 
 public:
 

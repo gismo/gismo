@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsMath.h>
 
 namespace gismo
 {

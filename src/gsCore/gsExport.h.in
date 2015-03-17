@@ -1,12 +1,42 @@
+/** @file gsExport.h
+
+    @brief Handles compiler definitions for G+Smo on MS Windows
+
+    Preprocessor/compile definitions on MS Windows should be set as
+    follows:
+    
+    - Define GISMO_BUILD_LIB when building or consuming the shared or
+      static library. Otherwise a pure template build will take place
+      (GISMO_BUILD_LIB is set in gsCore/gsConfig.h when G+Smo is
+      installed as a shared library).
+
+    - Do not define gismo_EXPORTS when consuming G+Smo as a shared DLL
+      library (this is only defined during build).
+    
+    - Define gismo_STATIC when building/consuming G+Smo as a static
+      library (by default gismo_STATIC is not defined).
+    
+    
+    This file is part of the G+Smo library. 
+    
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
+
 #pragma once
 
-#if defined(WIN32) && defined(GISMO_BUILD_SHARED_LIB)
-#  ifdef @PROJECT_NAME@_EXPORTS		// building shared library?
+#if defined(_WIN32) && defined(GISMO_BUILD_LIB)
+#if defined(@PROJECT_NAME@_STATIC)          // using/building static library?
+#    define GISMO_EXPORT
+#  elif defined(@PROJECT_NAME@_EXPORTS)		// building shared library?
 #    define GISMO_EXPORT __declspec(dllexport)
-#  else						// using shared library?
+#  else						                // using shared library?
 #    define GISMO_EXPORT __declspec(dllimport)
 #  endif
-#else
+#else                                       // not on MS Windows, or pure build
 #  define GISMO_EXPORT
 #endif
 

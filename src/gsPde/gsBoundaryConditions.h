@@ -19,8 +19,6 @@
 namespace gismo
 {
 
-//template <class T> class gsFunction;
-
 /// @brief Specifies the type of boundary condition
 ///
 /// \ingroup Pde

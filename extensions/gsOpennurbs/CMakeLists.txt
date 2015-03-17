@@ -305,20 +305,18 @@ if(MSVC)
   add_definitions(-DUNICODE)
 endif(MSVC)
 
-# Do not re-compile G+Smo in this unit
-if ( NOT GISMO_BUILD_LIB)
-   add_definitions(-DGISMO_BUILD_LIB)
-endif()
+add_library(${PROJECT_NAME} OBJECT ${OPENNURBS_SOURCES}) #STATIC
+#target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
 
-    add_library(${PROJECT_NAME} OBJECT ${OPENNURBS_SOURCES}) #STATIC
-    #target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
+set_target_properties(${PROJECT_NAME} 
+PROPERTIES POSITION_INDEPENDENT_CODE ON
+COMPILE_DEFINITIONS gismo_EXPORTS
+)
 
-   set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-    IF(NOT WIN32)
-      SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
-    ENDIF(NOT WIN32)
-   #SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VERSION "2010.04.95")
+IF(NOT WIN32)
+  SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
+ENDIF(NOT WIN32)
+#SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VERSION "2010.04.95")
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:gsOpennurbsExtension>
     CACHE INTERNAL "Gismo extensions to be included")
