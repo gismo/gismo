@@ -127,9 +127,6 @@ protected:
     // Show the line number where something went wrong
     void ioError(int lineNumber,const std::string& str);
 
-    /// Returns the size of the data
-    size_t bufferSize() const { return m_buffer.size(); };
-
 public:
 
 ////////////////////////////////////////////////////////
@@ -216,6 +213,9 @@ public:
         }            
     }
     
+    /// Returns the size of the data
+    size_t bufferSize() const { return m_buffer.size(); };
+
     /// Prints the XML data as a string
     std::ostream &print(std::ostream &os) const;
 
