@@ -127,6 +127,9 @@ protected:
     // Show the line number where something went wrong
     void ioError(int lineNumber,const std::string& str);
 
+    /// Returns the size of the data
+    size_t bufferSize() const { return m_buffer.size(); };
+
 public:
 
 ////////////////////////////////////////////////////////
@@ -291,8 +294,9 @@ public:
 
     /// Lists the contents of the filedata
     String contents () const;         
-    /// Counts the number of Objects in the filedata
-    int size () const;
+
+    /// Counts the number of Objects/tags in the filedata
+    int numTags () const;
 
     /// Returns the extension of the filename \a fn
     static String getExtension(String const & fn)
@@ -375,8 +379,8 @@ std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 
 
 /// Write an arbitrary Gismo object to an XML file with the given filename.
-template <typename T>
-void gsWrite(const T& obj, const std::string& fname)
+template <typename Object>
+void gsWrite(const Object& obj, const std::string& fname)
 {
     gsFileData<> fd;
     fd << obj;

@@ -12,7 +12,6 @@
 */
 #pragma once
 
-#include <gismo.h>
 #include <gsSolver/gsIterativeSolver.h>
 
 namespace gismo

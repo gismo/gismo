@@ -1722,7 +1722,7 @@ gsFileData<T>::contents () const
 };
 
 template<class T> inline
-int gsFileData<T>::size () const
+int gsFileData<T>::numTags() const
 {
     int i(0);
     for (gsXmlNode * child = data->first_node("xml")->first_node() ; 
