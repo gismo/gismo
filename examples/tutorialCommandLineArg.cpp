@@ -41,8 +41,6 @@ int main(int argc, char* argv[])
     // Displays usage information for all other arguments and exits.
     //
     gsCmdLine cmd("Tutorial Command Line Arguments");
-
-    std::cout << "Type \"-h\" to see the description for all arguments.\n\n";
     
     // -----------------------------------------------------------------
     // General syntax to add an argument:

@@ -59,42 +59,33 @@ int main(int argc, char *argv[])
   // Flag whether final mesh should be plotted in ParaView
   bool plot;
   bool dump;
-
-  try 
-  {
-      gsCmdLine cmd("Solving a PDE with adaptive refinement using THB-splines.");
-      gsArgSwitch arg_plot("", "plot", "Plot resulting mesh in ParaView", cmd);
-      gsArgVal<int> arg_ref("r", "refine", 
-              "Maximum number of adaptive refinement steps to perform", 
-              false, 2, "int", cmd);
-      gsArgVal<int> arg_initref("i", "initial-ref", 
-              "Initial number of uniform refinement steps to perform", 
-              false, 2, "int", cmd);
-      gsArgVal<int> arg_degree("", "degree", 
-              "Spline degree of the THB basis", 
-              false, 2, "int", cmd);
-      gsArgVal<int> arg_crit("c", "criterion", 
-              "Criterion to be used for adaptive refinement (1-3, see documentation)", 
-              false, 2, "int", cmd);
-      gsArgVal<real_t> arg_parameter("p", "parameter", 
-              "Parameter for adaptive refinement", 
-              false, 0.85, "float", cmd);
-      gsArgSwitch arg_dump("", "dump", "Write geometry and sequence of bases into XML files", cmd);
-
-      cmd.parse(argc,argv);
-
-      plot          = arg_plot.getValue();
-      RefineLoopMax = arg_ref.getValue();
-      initUnifRef   = arg_initref.getValue();
-      degree        = arg_degree.getValue();
-      refCriterion  = arg_crit.getValue();
-      refParameter  = arg_parameter.getValue();
-      dump          = arg_dump.getValue();
-
-  } catch ( gsArgException& e )
-  { cerr << "Error: " << e.error() << " " << e.argId() << endl; return -1; }
-
-
+  
+  plot = false;
+  RefineLoopMax = 2;
+  initUnifRef = 2;
+  degree = 2;
+  refCriterion = 2;
+  refParameter = 0.85;
+  dump = false;
+  
+  gsCmdLine cmd("Solving a PDE with adaptive refinement using THB-splines.");
+  cmd.addSwitch("plot", "Plot resulting mesh in ParaView", plot);
+  cmd.addInt("r", "refine", "Maximum number of adaptive refinement steps to perform", 
+             RefineLoopMax);
+  cmd.addInt("i", "initial-ref", "Initial number of uniform refinement steps to perform",
+             initUnifRef);
+  cmd.addInt("", "degree", "Spline degree of the THB basis", degree);
+  cmd.addInt("c", "criterion",  "Criterion to be used for adaptive refinement (1-3, see documentation)",
+             refCriterion);
+  cmd.addReal("p", "parameter", "Parameter for adaptive refinement", refParameter);
+  cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files", 
+                dump);
+  
+  bool ok = cmd.getValues(argc,argv);
+  if (!ok) {
+    cout << "Error during parsing!";
+    return -1;
+  }
 
   // ****** Prepared test examples ******
   //

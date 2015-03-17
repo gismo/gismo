@@ -29,62 +29,40 @@ int main(int argc, char *argv[])
     int wEdge = 10;
     int wInterior = 1;
 
-    try 
-    {
-        
-        gsCmdLine cmd("Recover the features of a triangulated surface.");
-        
-        gsArgValPlain<std::string> a1("filename","File containing the input mesh.",
+    gsCmdLine cmd("Recover the features of a triangulated surface.");
+    gsArgValPlain<std::string> a1("filename","File containing the input mesh.",
                                       false,filename,"string",cmd );
-        gsArgSwitch ap("", "plot", "Output mesh in ParaView format", cmd);
-        gsArgSwitch ax("", "xml", "Output solid to xml file", cmd);
-        gsArgSwitch ans("", "nosmooth", "Do not smooth corners of faces", cmd);
-        gsArgSwitch wpn("", "writenums", "Write patch numbers to patchnumbers.txt", cmd);
-        gsArgVal<int> aWInterior("f", "interiorweight","Surface fitting: weight for interior points.",
-                                      false,wInterior,"double precision float",cmd );
-        gsArgVal<int> aWEdge("e", "edgeweight","Surface fitting: weight for edges.",
-                                      false,wEdge,"double precision float",cmd );
-        gsArgVal<int> aInteriorPts("i", "interior","Interior knot points of each dimension of trimmed surface.",
-                                      false,interiorPts,"double precision float",cmd );
-        gsArgVal<int> aDegree("d", "degree","Degree of each dimension of trimmed surface.",
-                                      false,degree,"double precision float",cmd );
-        gsArgVal<> aPAW("p", "paw","Patch area weight.",
-                                      false,patchAreaWeight,"double precision float",cmd );
-        gsArgVal<> aMSP("m", "msp","Merge small patches.",
-                                      false,mergeSmallPatches,"double precision float",cmd );
-        gsArgVal<> aInnerAngle("y", "innerangle","Cutoff angle (degrees) for second pass.",
-                                      false,innerAngle,"double precision float",cmd );
-        gsArgVal<> aCutoff("c", "cutoff","Cutoff angle (degrees).",
-                                      false,cutoffAngle,"double precision float",cmd );
-        
-        
-        
-        cmd.parse(argc,argv);
-        filename = a1.getValue();
-        if (filename.empty() )
-        {
-            std::cout<< "Waiting for file input.\n";
-            return 0;
-        }
-        plot = ap.getValue();
-        toxml = ax.getValue();
-        noSmooth = ans.getValue();
-        writePatchNumbers = wpn.getValue();
-        cutoffAngle = aCutoff.getValue();
-        innerAngle = aInnerAngle.getValue();
-        patchAreaWeight = aPAW.getValue();
-        mergeSmallPatches = aMSP.getValue();
-        degree = aDegree.getValue();
-        interiorPts = aInteriorPts.getValue();
-        wEdge = aWEdge.getValue();
-        wInterior = aWInterior.getValue();
-
+    cmd.addSwitch("plot", "Output mesh in ParaView format", plot);
+    cmd.addSwitch("xml", "Output solid to xml file", toxml);
+    cmd.addSwitch("nosmooth", "Do not smooth corners of faces", noSmooth);
+    cmd.addSwitch("writenums", "Write patch numbers to patchnumbers.txt", writePatchNumbers);
+    cmd.addInt("f", "interiorweight","Surface fitting: weight for interior points.",
+               wInterior);
+    cmd.addInt("e", "edgeweight","Surface fitting: weight for edges.",
+               wEdge);
+    cmd.addInt("i", "interior","Interior knot points of each dimension of trimmed surface.",
+               interiorPts);
+    cmd.addInt("d", "degree","Degree of each dimension of trimmed surface.",
+               degree);
+    cmd.addReal("p", "paw","Patch area weight.", patchAreaWeight);
+    cmd.addReal("m", "msp","Merge small patches.", mergeSmallPatches);
+    cmd.addReal("y", "innerangle","Cutoff angle (degrees) for second pass.",
+                innerAngle);
+    cmd.addReal("c", "cutoff","Cutoff angle (degrees).", cutoffAngle);
+                  
+    bool ok = cmd.getValues(argc,argv);
+    if (!ok) {
+      cout << "Error during parsing";
+      return 1;
     }
-    catch ( gsArgException& e )
+    
+    filename = a1.getValue(); 
+    if (filename.empty() )
     {
-        cout << "Error: " << e.error() << " " << e.argId() << endl;
-        return 1;
+        std::cout<< "Waiting for file input.\n";
+        return 0;
     }
+        
 
     // decide on the base filename
     size_t nameStartIdx = filename.rfind('/');

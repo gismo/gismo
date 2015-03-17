@@ -36,61 +36,46 @@ int main(int argc, char *argv[])
     int extension = 2;
     double refPercent = 0.1;
     std::string fn = GISMO_DATA_DIR "/fitting/deepdrawingC.xml";
+    
+    // Reading options from the command line
+    gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a 3 x N matrix. Every column represents a point (x,y,z) in space.");
+    cmd.addSwitch("save", "Save result in XML format", save);
+    cmd.addInt("i", "iter", "number of iterations", iter);
+    cmd.addInt("x", "deg_x", "degree in x direction", deg_x);
+    cmd.addInt("y", "deg_y", "degree in y direction", deg_y);
+    cmd.addReal("s", "lambda", "smoothing coefficient", lambda);
+    cmd.addReal("t", "threshold", "error threshold (special valule -1)", threshold);
+    cmd.addReal("p", "refPercent", "percentage of points to refine in each iteration", refPercent);
+    cmd.addInt("q", "extension", "extension size", extension);
+    cmd.addInt("r", "urefine", "initial uniform refinement steps", numURef);
+    cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
+    cmd.addString("d", "data", "Input sample data", fn);
+    
+    bool ok = cmd.getValues(argc,argv);
+    if (!ok) 
+    {
+      std::cout << "Something went wrong when reading the command line. Exiting.\n";
+      return -1;
+    }
+    
+    if (deg_x < 1)
+    { cout << "Degree x must be positive.\n";  return 0;} //throw TCLAP::ExitException(0);
+    if (deg_y < 1)
+    { cout << "Degree y must be positive.\n"; return 0;}
+    if (extension < 0)
+    { cout << "Extension must be non negative.\n"; return 0;}
 
-    try
-    {   // Reading options from the command line
-        gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a 3 x N matrix. Every column represents a point (x,y,z) in space.");
-        gsArgSwitch arg_save("", "save", "Save result in XML format", cmd); 
-        gsArgVal<int> arg_iter("i", "iter", "number of iterations", false, iter, "int", cmd);
-        gsArgVal<int> arg_deg_x("x", "deg_x", "degree in x direction",false,deg_x,"int",cmd);
-        gsArgVal<int> arg_deg_y("y", "deg_y", "degree in y direction",false,deg_y,"int",cmd);
-        gsArgVal<> arg_lambda("s", "lambda", "smoothing coefficient",false,lambda,"double",cmd);
-        gsArgVal<> arg_err_threshold("t", "threshold", "error threshold (special valule -1)",false, threshold, "double", cmd);
-        gsArgVal<> arg_perc("p", "refPercent", "percentage of points to refine in each iteration", false, refPercent, "double", cmd);
-        gsArgVal<int> arg_extension("q", "extension", "extension size", false, extension, "int", cmd);
-        gsArgVal<int> arg_uref("r", "urefine", "initial uniform refinement steps",
-                               false, numURef, "int", cmd);
-        gsArgVal<> arg_tolerance("e", "tolerance",  "error tolerance (desired upper bound for pointwise error)", false, tolerance, "double", cmd);
-        gsArgVal<std::string> arg_data("d", "data", "Input sample data", false, fn, "double", cmd);
+    if ( tolerance < 0 )
+    { 
+        cout << "Error tolerance cannot be negative, setting it to default value.\n";
+        tolerance = 1e-02;
+    }
 
-        cmd.parse(argc,argv);
-        iter =  arg_iter.getValue();
-        deg_x  =  arg_deg_x.getValue();
-        deg_y = arg_deg_y.getValue();
-        numURef = arg_uref.getValue();
-        lambda = arg_lambda.getValue();
-        threshold = arg_err_threshold.getValue();
-        fn  = arg_data.getValue();
-        extension = arg_extension.getValue();
-        refPercent = arg_perc.getValue();
-        //if ( extension == -1 )
-        // {
-        //    extension = deg_x +1;
-        // }
-        tolerance = arg_tolerance.getValue();
-        save = arg_save.getValue();
-
-        if (deg_x < 1)
-        { cout << "Degree x must be positive.\n";  return 0;} //throw TCLAP::ExitException(0);
-        if (deg_y < 1)
-        { cout << "Degree y must be positive.\n"; return 0;}
-        if (extension < 0)
-        { cout << "Extension must be non negative.\n"; return 0;}
-
-        if ( tolerance < 0 )
-        { 
-            cout << "Error tolerance cannot be negative, setting it to default value.\n";
-            tolerance = 1e-02;
-        }
-
-        if (threshold > 0 && threshold > tolerance )
-        { 
-            cout << "Refinement threshold is over tolerance, setting it the same as tolerance.\n";
-            threshold = tolerance;
-        }
-
-    } catch ( gsArgException& e )
-    { std::cout << "Error: " << e.error() << " " << e.argId() <<"\n"; return -1; }
+    if (threshold > 0 && threshold > tolerance )
+    { 
+        cout << "Refinement threshold is over tolerance, setting it the same as tolerance.\n";
+        threshold = tolerance;
+    }
 
     // Surface fitting
     // Expected input is a file with matrices with:

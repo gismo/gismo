@@ -165,43 +165,41 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
                   gsMultiPatch<> *& geo, gsPoissonPde<> *& ppde,
                   gsMultiBasis<> &  bases )
 {
-  try
-  {
-    gsCmdLine cmd("Solves Poisson's equation with an isogeometric discretization.");
-
-    gsArgVal<std::string> a6("p","pde","File containing a poisson PDE (.xml)",
-                 false,"", "PDE file", cmd );
-    gsArgSwitch arg_dirich("n", "nitsche", "Use the Nitsche's method for Dirichlet sides", cmd);
-    gsArgSwitch arg_dg("d", "discGalerkin", "Use Discontiouous Galerkin method for patch interfaces", cmd);
-    gsArgSwitch a4("", "plot", "Plot result in ParaView format", cmd);
-    gsArgVal<int> arg_plot_pts("s","plotSamples",
-             "Number of sample points to use for plotting",
-             false,1000, "sampling points for plotting", cmd );
-
-    gsArgVal<int> a3("e","degreeElevation",
+  std::string fn_pde("");
+  std::string fn("");
+  std::string fn_basis("");
+  bool arg_dirich = false;
+  bool arg_dg = false;
+  plot = false;
+  plot_pts = 1000;
+  numElevate = -1;
+  numRefine = 2;
+  
+  gsCmdLine cmd("Solves Poisson's equation with an isogeometric discretization.");
+  cmd.addString("p","pde","File containing a poisson PDE (.xml)", fn_pde);
+  cmd.addSwitch("nitsche", "Use the Nitsche's method for Dirichlet sides", arg_dirich);
+  cmd.addSwitch("discGalerkin", "Use Discontiouous Galerkin method for patch interfaces", arg_dg);
+  cmd.addSwitch("plot", "Plot result in ParaView format", plot);
+  cmd.addInt("s","plotSamples", "Number of sample points to use for plotting", plot_pts);
+  cmd.addInt("e","degreeElevation", 
              "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)",
-             false,-1, "degree elevation steps", cmd );
-    gsArgVal<int> a2("r","uniformRefine",
-             "Number of Uniform h-refinement steps to perform before solving",
-             false,2, "refinement steps", cmd );
-    gsArgVal<std::string> a5("b","basis","File containing basis for discretization (.xml)",
-                 false,"", "basis file", cmd );
-    gsArgVal<std::string> a1("g","geometry","File containing Geometry (.xml, .axl, .txt)",
-                 false, "", "geometry file", cmd );
-
-    cmd.parse(argc,argv);
-    std::string fn = a1.getValue();
-    std::string fn_pde = a6.getValue();
-    std::string fn_basis = a5.getValue();
-
-    numRefine  = a2.getValue();
-    numElevate = a3.getValue();
-    if ( arg_dirich.getValue() )
+             numElevate);
+  cmd.addInt("r","uniformRefine", "Number of Uniform h-refinement steps to perform before solving",
+             numRefine);
+  cmd.addString("b","basis","File containing basis for discretization (.xml)", fn_basis);
+  cmd.addString("g","geometry","File containing Geometry (.xml, .axl, .txt)", fn);
+  bool ok = cmd.getValues(argc,argv);
+  if (!ok) {
+    cout << "Error parsing command line!\n";
+    return false; 
+  }
+    
+    if ( arg_dirich )
         Dirichlet  = 1;
     else
         Dirichlet  = 0;
 
-    if ( arg_dg.getValue() )
+    if ( arg_dg )
     {
         DG  = 1;
         Dirichlet  = 1;// use Nitsche for boundary
@@ -209,8 +207,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     else
         DG  = 0;
 
-    plot       = a4.getValue();
-    plot_pts   = arg_plot_pts.getValue();
+    
 
     if ( ! fn_basis.empty() )
     {
@@ -292,7 +289,6 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     return false;
       }
 
-  } catch ( gsArgException& e )
-    { cout << "Error: " << e.error() << " " << e.argId() << "\n"; return false; }
+ 
   return true;
 }

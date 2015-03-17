@@ -21,18 +21,16 @@ using std::cout;
 
 int main(int argc, char *argv[])
 {
-    bool plot; // If set to true, paraview file is generated and launched on exit
-    try 
-    {
-        gsCmdLine cmd("Tutorial 01 shows the use of BSpline curves.");
-        gsArgSwitch ap("", "plot", "Plot result in ParaView format", cmd);
+    bool plot = false; // If set to true, paraview file is generated and launched on exit
+    
+    
+    gsCmdLine cmd("Tutorial 01 shows the use of BSpline curves.");
+    cmd.addSwitch("plot", "Plot result in ParaView format", plot);
 
-        cmd.parse(argc,argv);
-        plot = ap.getValue();
-    } 
-    catch ( gsArgException& e )
+    bool ok = cmd.getValues(argc,argv);
+    if (!ok)    
     { 
-        cout << "Error: " << e.error() << " " << e.argId() << "\n"; 
+        cout << "Error during parsing the command line!\n";
         return -1; 
     }
 

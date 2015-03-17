@@ -34,28 +34,22 @@ int main(int argc, char* argv[])
     std::string input("");
     std::string output("");
 
-    try
-    {
-        // for information about command line arguments 
-        // look at tutorialCommandLineArg.cpp
+    // for information about command line arguments 
+    // look at tutorialCommandLineArg.cpp
         
-        gsCmdLine cmd("Tutorial on gsGeometry class.");
+    gsCmdLine cmd("Tutorial on gsGeometry class.");
         
-        gsArgValPlain<std::string> inArg("input", "G+Smo input geometry file.", 
+    gsArgValPlain<std::string> inArg("input", "G+Smo input geometry file.", 
                                          false, GISMO_DATA_DIR
                                          "surfaces/simple.xml", 
                                          "file", cmd);
-        
-        gsArgVal<std::string> outArg("o", "output", "Name of the output file.",
-                                     false, "", "string", cmd);
-
-        cmd.parse(argc, argv);
-        input = inArg.getValue();
-        output = outArg.getValue();
-    }
-    catch (gsArgException& e)
+    cmd.addString("o", "output", "Name of the output file", output);
+    bool ok = cmd.getValues(argc,argv);
+   
+    input = inArg.getValue();
+    if (!ok)
     {
-        std::cout << "Error: " << e.error() << " " << e.argId() << std::endl;
+        std::cout << "Error during parsing command line!";
         return -1;
     }
     
