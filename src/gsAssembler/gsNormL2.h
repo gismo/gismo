@@ -39,6 +39,12 @@ public:
         
     }
 
+    gsNormL2(const gsField<T> & _field1)
+    : gsNorm<T>(_field1), f2param(false)
+    {
+
+    }
+
 public:
     
     T compute(bool storeElWise = false)

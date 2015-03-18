@@ -11,6 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
+#include<gsAssembler/gsNorm.h>
 
 #pragma once
 
@@ -32,13 +33,23 @@ public:
     gsSeminormH1(const gsField<T> & _field1,
              const gsFunction<T> & _func2,
              bool _f2param = false) 
-    : gsNorm<T>(_field1,_func2), f2param(_f2param)
+    : gsNorm<T>(_field1,_func2), dfunc2(NULL), f2param(_f2param)
     { 
         
     }
 
+    gsSeminormH1(const gsField<T> & _field1,
+             const gsFunction<T> & _func2,
+             const gsFunction<T> & _dfunc2,
+             bool _f2param = false)
+    : gsNorm<T>(_field1,_func2), dfunc2(&_dfunc2), f2param(_f2param)
+    {
+
+    }
+
+
     gsSeminormH1(const gsField<T> & _field1) 
-    : gsNorm<T>(_field1,gsConstantFunction<T>(T(0.0), 1)), f2param(false)
+    : gsNorm<T>(_field1), dfunc2(NULL), f2param(false)
     { }
 
 public:
@@ -83,15 +94,19 @@ protected:
 
         // Evaluate second function (defined of physical domain)
         geoEval.evaluateAt(quNodes);
-        func2.deriv_into(geoEval.values(), f2ders);
+        if(dfunc2==NULL)
+        {
+            func2.deriv_into(geoEval.values(), f2ders);
+            // get the gradients to columns
+            f2ders.transposeInPlace();
+            f2ders.resize(quNodes.rows(), quNodes.cols() );
+        }
+        else
+            dfunc2->eval_into(geoEval.values(), f2ders);
 
         // ** Evaluate function v
         //gsMatrix<T> f2val = func2Param ? func2.deriv(quNodes)
-        //: func2.eval( geoEval->values() );
-
-        // get the gradients to columns
-        f2ders.transposeInPlace();
-        f2ders.resize(quNodes.rows(), quNodes.cols() );
+        //: func2.eval( geoEval->values() );      
     }
 
     // assemble on element
@@ -114,6 +129,7 @@ protected:
     }
     
 private:
+    const gsFunction<T> * dfunc2;
 
     using gsNorm<T>::m_value;
     using gsNorm<T>::m_elWise;

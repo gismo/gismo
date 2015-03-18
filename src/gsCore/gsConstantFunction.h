@@ -95,6 +95,14 @@ public:
         result = gsMatrix<T>::Zero( this->targetDim(), this->domainDim() * u.cols() );
     }
 
+    virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
+                                              << ", expected "<< m_domainDim);
+        result = gsMatrix<T>::Zero( (this->domainDim()*(this->domainDim()+1))/2,
+                                    this->targetDim()*u.cols() );
+    }
+
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {

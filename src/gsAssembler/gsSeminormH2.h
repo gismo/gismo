@@ -34,13 +34,22 @@ public:
     gsSeminormH2(const gsField<T> & _field1,
              const gsFunction<T> & _func2,
              bool _f2param = false) 
-    : gsNorm<T>(_field1,_func2), f2param(_f2param)
+        : gsNorm<T>(_field1,_func2), ddfunc2(NULL), f2param(_f2param)
     { 
         
     }
 
+    gsSeminormH2(const gsField<T> & _field1,
+             const gsFunction<T> & _func2,
+             const gsFunction<T> & _ddfunc2,
+             bool _f2param = false)
+    : gsNorm<T>(_field1,_func2), ddfunc2(&_ddfunc2), f2param(_f2param)
+    {
+
+    }
+
     gsSeminormH2(const gsField<T> & _field1)
-    : gsNorm<T>(_field1,gsConstantFunction<T>(T(0.0), 1)), f2param(false)
+    : gsNorm<T>(_field1), ddfunc2(NULL), f2param(false)
     { }
 
 public:
@@ -87,7 +96,10 @@ protected:
 
         // Evaluate second function (defined of physical domain)
         geoEval.evaluateAt(quNodes);
-        func2.deriv2_into(geoEval.values(), f2ders2);
+        if(ddfunc2==NULL)
+            func2.deriv2_into(geoEval.values(), f2ders2);
+        else
+            ddfunc2->eval_into(geoEval.values(), f2ders2);
 
         // ** Evaluate function v
         //gsMatrix<T> f2val = func2Param ? func2.deriv(quNodes)
@@ -111,12 +123,13 @@ protected:
             int rest = f1pders2.rows()-parDim;
             const T weight = quWeights[k] *  geoEval.measure(k);
             sum += weight * ((f1pders2.topRows(parDim) - f2ders2.col(k).topRows(parDim)).squaredNorm() +
-                             (f1pders2.bottomRows(rest) - f2ders2.col(k).bottomRows(rest)).squaredNorm());
+                             2*(f1pders2.bottomRows(rest) - f2ders2.col(k).bottomRows(rest)).squaredNorm());
         }
         return sum;
     }
     
 private:
+    const gsFunction<T> * ddfunc2;
 
     using gsNorm<T>::m_value;
     using gsNorm<T>::m_elWise;

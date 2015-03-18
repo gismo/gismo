@@ -32,8 +32,14 @@ public:
     /// Constructor using a multipatch domain
     gsNorm(const gsField<T> & _field1,
            const gsFunction<T> & _func2) 
-    : patchesPtr( &_field1.patches() ), 
+    : m_zeroFunction(gsConstantFunction<T>(T(0.0),_field1.parDim())), patchesPtr( &_field1.patches() ),
       field1(&_field1), func2(&_func2)
+    { }
+
+    /// Constructor using a multipatch domain
+    gsNorm(const gsField<T> & _field1)
+    : m_zeroFunction(gsConstantFunction<T>(T(0.0),_field1.parDim())), patchesPtr( &_field1.patches() ),
+      field1(&_field1), func2(&m_zeroFunction)
     { }
 
 
@@ -122,6 +128,12 @@ public:
     /// @brief Returns the computed norm value
     T value() const { return m_value; }
 
+private:
+    // constant function zero that is used  when no function is specified
+    // to calculate the norm and not the distance
+    // maybe its possible to optimize this
+    const gsConstantFunction<T> m_zeroFunction;
+
 protected:
 
     const gsMultiPatch<T> * patchesPtr;
@@ -135,7 +147,6 @@ protected:
     std::vector<T> m_elWise;
     T              m_value;
 };
-
 
 } // namespace gismo
 
