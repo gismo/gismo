@@ -32,9 +32,12 @@ template <class T>
 class gsConstantFunction : public gsFunction<T>
 {
 public:
+    gsConstantFunction() { }
+
     explicit gsConstantFunction(const gsVector<T>& val, int domainDim = 1)
         : m_val(val), m_domainDim(domainDim)
     { }
+
 
     explicit gsConstantFunction(T x, int domainDim  = 1)
         : m_domainDim(domainDim)
@@ -58,6 +61,15 @@ public:
         m_val(0) = x;
         m_val(1) = y;
         m_val(2) = z;
+    }
+    gsConstantFunction(T x, T y, T z, T n,  int domainDim)
+        : m_domainDim(domainDim)
+    {
+        m_val.resize(4);
+        m_val(0) = x;
+        m_val(1) = y;
+        m_val(2) = z;
+        m_val(3) = n;
     }
 
     virtual gsConstantFunction * clone() const { return new gsConstantFunction(*this); }
