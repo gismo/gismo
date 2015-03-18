@@ -30,11 +30,11 @@ int main(int argc, char *argv[])
     int iter      = 2;
     int deg_x     = 2;
     int deg_y     = 2;
-    double lambda = 1e-07;
-    double threshold = 1e-02;
-    double tolerance = 1e-02;
+    real_t lambda = 1e-07;
+    real_t threshold = 1e-02;
+    real_t tolerance = 1e-02;
     int extension = 2;
-    double refPercent = 0.1;
+    real_t refPercent = 0.1;
     std::string fn = GISMO_DATA_DIR "/fitting/deepdrawingC.xml";
     
     // Reading options from the command line
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     }
     
     if (deg_x < 1)
-    { cout << "Degree x must be positive.\n";  return 0;} //throw TCLAP::ExitException(0);
+    { cout << "Degree x must be positive.\n";  return 0;}
     if (deg_y < 1)
     { cout << "Degree y must be positive.\n"; return 0;}
     if (extension < 0)
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
                   "Wrong input");
 
     // Determine the parameter domain by mi/max of parameter values
-    double u_min = uv.row(0).minCoeff(),
+    real_t u_min = uv.row(0).minCoeff(),
         u_max = uv.row(0).maxCoeff(),
         v_min = uv.row(1).minCoeff(),
         v_max = uv.row(1).maxCoeff();
