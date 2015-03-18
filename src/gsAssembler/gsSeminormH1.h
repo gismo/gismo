@@ -129,7 +129,8 @@ protected:
     }
     
 private:
-    const gsFunction<T> * dfunc2;
+    // first derivative of func2:
+    const gsFunction<T> * dfunc2; // If this is NULL a numerical approximation will be used
 
     using gsNorm<T>::m_value;
     using gsNorm<T>::m_elWise;
