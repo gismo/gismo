@@ -20,10 +20,10 @@ int main(int argc, char *argv[])
     std::string filename;
     filename= GISMO_DATA_DIR;
     filename += "/off/mushroom_triangulated.off";
-    double cutoffAngle = 40.0;
-    double innerAngle = 15.0;
-    double patchAreaWeight = 0.2;
-    double mergeSmallPatches = 2;
+    real_t cutoffAngle = 40.0;
+    real_t innerAngle = 15.0;
+    real_t patchAreaWeight = 0.2;
+    real_t mergeSmallPatches = 2;
     int degree = 4;
     int interiorPts = 5;
     int wEdge = 10;
