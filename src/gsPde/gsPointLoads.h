@@ -29,7 +29,7 @@ struct point_load
     point_load(const gsVector<T> & _point, 
                const T             _value, 
                int _patch = 0, 
-               bool _parametric = false)
+               bool _parametric = true)
     :
     patch(_patch), value(_value), point(1), parametric(_parametric)
     { 
@@ -39,7 +39,7 @@ struct point_load
     point_load(const gsVector<T> & _point, 
                const gsVector<T> & _value, 
                int _patch = 0, 
-               bool _parametric = false)
+               bool _parametric = true)
     :
     patch(_patch), value(_value), point(_point), parametric(_parametric)
     { }
@@ -66,6 +66,10 @@ class gsPointLoads
 public:
     typedef point_load<T> pLoad;
     typedef typename std::vector<pLoad> plContainer;
+
+    typedef typename std::vector<pLoad>::iterator iterator;
+
+    typedef typename std::vector<pLoad>::const_iterator const_iterator;
 
 public:
 
@@ -110,6 +114,8 @@ public:
     {
         m_pointLoads.push_back( pLoad(_point,_value,_patch,_parametric) );
     }
+
+    size_t numLoads() const { return  m_pointLoads.size(); }
 
 private:
 
