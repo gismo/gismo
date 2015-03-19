@@ -24,15 +24,16 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${GM_NAME}_HPP)
 
 if(GISMO_BUILD_LIB)
 
-  #include_directories(${GISMO_INCLUDE_DIRS})
+  include_directories(${GISMO_INCLUDE_DIRS})
 
   add_library(${GM_NAME} OBJECT
   ${${GM_NAME}_H}
   ${${GM_NAME}_HPP}
-  #${${GM_NAME}_CPP}
+  ${${GM_NAME}_CPP}
   )
 
   set_target_properties(${GM_NAME} PROPERTIES
+  COMPILE_DEFINITIONS gismo_EXPORTS 
   POSITION_INDEPENDENT_CODE ON
   LINKER_LANGUAGE CXX
   EXCLUDE_FROM_ALL 1
@@ -40,7 +41,5 @@ if(GISMO_BUILD_LIB)
 
 set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}>
     CACHE INTERNAL "G+Smo modules" )
-set (gismo_SOURCES ${gismo_SOURCES} ${${GM_NAME}_CPP}
-     CACHE INTERNAL "gismo source files")
 
 endif()

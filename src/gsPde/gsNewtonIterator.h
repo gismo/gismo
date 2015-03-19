@@ -107,10 +107,10 @@ protected:
     gsMatrix<T>         m_updateVector;
 
     /// Linear solver employed
-    Eigen::SparseLU<gsSparseMatrix<T>, Eigen::COLAMDOrdering<index_t> >  m_solver;
-    //Eigen::BiCGSTAB< gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > solver;
-    //Eigen::ConjugateGradient< gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > solver;
-    //Eigen::SparseQR<gsSparseMatrix<>, Eigen::COLAMDOrdering<index_t> >  solver;
+    //Eigen::SparseLU<gsSparseMatrix<T>, Eigen::COLAMDOrdering<index_t> >  m_solver;
+    //Eigen::BiCGSTAB< gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > m_solver;
+    //Eigen::ConjugateGradient< gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > m_solver;
+    Eigen::SparseLU<gsSparseMatrix<>, Eigen::COLAMDOrdering<index_t> >  m_solver;
 
 protected:
 
@@ -186,8 +186,14 @@ void gsNewtonIterator<T>::firstIteration()
     m_solver.compute( m_assembler.matrix() );
     m_updateVector = m_solver.solve( m_assembler.rhs() );
 
+    //gsDebugVar( m_assembler.rhs().transpose() );
+
     // Construct initial solution
     m_assembler.constructSolution(m_updateVector, m_curSolution);
+
+    // Homogenize Dirichlet dofs (values are now copied in
+    // m_curSolution)
+    m_assembler.homogenizeDirichlet();
 
     // Compute initial residue
     m_residue = m_assembler.rhs().norm();
@@ -208,7 +214,10 @@ void gsNewtonIterator<T>::nextIteration()
     // Compute the newton update
     m_solver.compute( m_assembler.matrix() );
     m_updateVector = m_solver.solve( m_assembler.rhs() );
-    
+
+    // gsDebugVar( m_assembler.rhs().transpose() );
+    // gsDebugVar( m_updateVector.transpose() );
+
     // Update the deformed solution
     m_assembler.updateSolution(m_updateVector, m_curSolution);
     
