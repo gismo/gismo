@@ -135,11 +135,13 @@ if( GISMO_BUILD_LIB )
   target_link_libraries(${PROJECT_NAME} gismo)
 endif()
 
-get_property(gsAxelPlugin_location TARGET ${PROJECT_NAME} PROPERTY LOCATION)
+# note: policy CMP0026: The LOCATION property should not be read from target
+#get_property(gsAxelPlugin_location TARGET ${PROJECT_NAME} PROPERTY LOCATION)
+
 ADD_CUSTOM_COMMAND(
     TARGET ${PROJECT_NAME}
     POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${gsAxelPlugin_location} ${Axel_DIR}/plugins
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${Axel_DIR}/plugins
     COMMAND ${CMAKE_COMMAND} -E echo 'The plugin has been copied to ${Axel_DIR}/plugins.'
     )
 
