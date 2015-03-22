@@ -545,7 +545,8 @@ void gsGeometryDialog::refineGeometry(void)
          updateText();
 
          surf->updateControlGrid();
-         surf->touch();
+
+         emit update();
     }
     else
     {

@@ -131,11 +131,8 @@ target_link_libraries(${PROJECT_NAME}
   #)
 
 if( GISMO_BUILD_LIB )
-  target_link_libraries(${PROJECT_NAME} gismo_static)
-#  target_link_libraries(${PROJECT_NAME} gismo)
-
-  #COMPILE_DEFINITIONS GISMO_BUILD_SHARED_LIB # Used for DLL exporting on windows
-
+# target_link_libraries(${PROJECT_NAME} gismo_static) #problematic
+  target_link_libraries(${PROJECT_NAME} gismo)
 endif()
 
 get_property(gsAxelPlugin_location TARGET ${PROJECT_NAME} PROPERTY LOCATION)

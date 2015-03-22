@@ -461,10 +461,11 @@ void gsGeometryData<axlObj>::updateControlGrid()
             this->defineControlPointConnection( it->source->getId(), it->target->getId() );
         }
 
-        //emit this->setEditable(false);
-        this->touch();
+        this->setEditable(false);
+
+        emit this->touch();
         emit this->updated();
-        
+
     }//end if
 }
 

@@ -90,7 +90,10 @@ axlMesh *gsGeometryConverter::toMesh(void)
     }
 
     axlMesh *mesh = new axlMesh;
-    QVector<axlPoint *> pointSet;
+
+    // Note: newer version of axel use QVector
+    //QVector<axlPoint *> pointSet;
+    QList<axlPoint *> pointSet;
 
     // Vertices
     for(index_t i = 0; i < eval_geo.cols(); i++) {

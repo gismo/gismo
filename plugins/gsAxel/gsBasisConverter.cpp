@@ -73,7 +73,10 @@ axlMesh *gsBasisConverter::toMesh(void)
     for ( int k = 0; k != basis->size(); ++k)
     {
 	axlMesh *mesh = new axlMesh;
-    QVector<axlPoint *> pointSet;
+
+    // Note: Became QVector in recent Axel
+    //QVector<axlPoint *> pointSet;
+    QList<axlPoint *> pointSet;
 
 	int pdim= basis->dim();
 	
