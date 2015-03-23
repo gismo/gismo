@@ -10,3 +10,16 @@ namespace gismo {
 
 
 }
+
+
+
+
+/**
+  \defgroup pdeclass
+
+  @brief This group collects classes that define specific PDEs.
+
+  \copydetails gsPde
+
+  \anchor pdeclass_classes  
+*/
