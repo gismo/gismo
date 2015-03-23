@@ -454,5 +454,4 @@ public:
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsCmdLineArgs.hpp)
-#include GISMO_HPP_HEADER(gsCmdLineArgs.cpp)
 #endif

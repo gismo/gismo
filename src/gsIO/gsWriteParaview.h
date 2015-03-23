@@ -284,5 +284,4 @@ std::string toString(T value)
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsWriteParaview.hpp)
-#include GISMO_HPP_HEADER(gsWriteParaview.cpp)
 #endif

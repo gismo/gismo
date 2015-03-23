@@ -251,6 +251,13 @@ public:
     inline index_t bindex( index_t i, index_t k = 0 ) const 
     { return MAPPER_PATCH_DOF(i,k) - freeSize() + m_bshift;}
 
+    /// @brief Returns the coupled dof index
+    inline index_t cindex( index_t i, index_t k = 0 ) const
+    {
+        GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        return MAPPER_PATCH_DOF(i,k) + m_numCpldDofs - m_numFreeDofs;
+    }
+
     /// @brief Returns the boundary index of global dof \a gl.
     ///
     /// Produces undefined results if dof \a gl does not lie on the boundary.
@@ -361,14 +368,4 @@ private:
 }; // class gsDofMapper
 
 } // namespace gismo
-
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
-
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsDofMapper.hpp)
-#include GISMO_HPP_HEADER(gsDofMapper.cpp)
-#endif
 

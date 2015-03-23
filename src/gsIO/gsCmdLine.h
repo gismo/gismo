@@ -20,6 +20,8 @@
 
 #include <gsIO/gsCmdLineArgs.h>
 
+#include <gsCore/gsBoxTopology.h>
+
 namespace gismo
 {
 
@@ -115,11 +117,3 @@ private:
 
 
 }; // namespace gismo
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
-
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsCmdLine.cpp)
-#endif
