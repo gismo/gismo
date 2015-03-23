@@ -126,18 +126,15 @@ target_link_libraries(${PROJECT_NAME}
   axlCore
   axlGui)
 
-  #set_target_properties(${PROJECT_NAME} PROPERTIES 
-  #POSITION_INDEPENDENT_CODE ON
-  #)
+set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if( GISMO_BUILD_LIB )
-# target_link_libraries(${PROJECT_NAME} gismo_static) #problematic
-  target_link_libraries(${PROJECT_NAME} gismo)
+  target_link_libraries(${PROJECT_NAME} gismo_static)
+#  target_link_libraries(${PROJECT_NAME} gismo)
 endif()
 
 # note: policy CMP0026: The LOCATION property should not be read from target
 #get_property(gsAxelPlugin_location TARGET ${PROJECT_NAME} PROPERTY LOCATION)
-
 ADD_CUSTOM_COMMAND(
     TARGET ${PROJECT_NAME}
     POST_BUILD
