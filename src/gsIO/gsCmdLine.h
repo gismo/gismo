@@ -20,8 +20,6 @@
 
 #include <gsIO/gsCmdLineArgs.h>
 
-#include <gsCore/gsBoxTopology.h>
-
 namespace gismo
 {
 
