@@ -49,6 +49,8 @@ public:
 
     QPushButton * refineButton;
 
+    QPushButton * insertKnotButton;
+
     /* Joker
     QPushButton * jokerButton;
     //*/
@@ -162,20 +164,26 @@ void gsGeometryDialog::initWidget(void) {
 	}
     layoutTop->addLayout(layoutSampling);
 
-    //BASIS BUTTON//
+    //Basis button
     d->basisButton = new QPushButton("Show basis",this);
     layoutTop->addWidget(d->basisButton);
     connect(d->basisButton, SIGNAL(clicked()), this, SLOT(showBasis()));
 
-    //SAVE BUTTON//
+    //Save button
     d->saveButton = new QPushButton("Save geometry",this);
     layoutTop->addWidget(d->saveButton);
     connect(d->saveButton, SIGNAL(clicked()), this, SLOT(saveGeometry()));
 
-    //REFINE BUTTON//
+    //Refine button
     d->refineButton = new QPushButton("Refine here",this);
     layoutTop->addWidget(d->refineButton);
     connect(d->refineButton, SIGNAL(clicked()), this, SLOT(refineGeometry()));
+
+    // Insert knot button
+    d->insertKnotButton = new QPushButton("Insert knot",this);
+    layoutTop->addWidget(d->insertKnotButton);
+    connect(d->insertKnotButton, SIGNAL(clicked()), this, SLOT(insertKnot()));
+
 
     /* Joker
     d->jokerButton = new QPushButton("Joker",this);
@@ -494,6 +502,57 @@ void gsGeometryDialog::saveGeometry(void)
     }	
 }
 
+void gsGeometryDialog::insertKnot(void)
+{
+    gsGeometryPointer myGismoData = getGeometryPointer(d->data);
+    gsAxelSurface * surf = dynamic_cast<gsAxelSurface *>(d->data);
+    
+    if ( ! surf )
+    {
+        gsWarn<<"Not a surface.\n";
+        return;
+    }
+
+    // Get index of the selected control point
+    const int parameter = surf->getParameter();
+    
+    // knot coordinates
+    real_t u, v;
+
+    if ( gismo::gsTHBSpline<2> * hb = dynamic_cast<gismo::gsTHBSpline<2>*>(myGismoData) )
+    {
+      // get level of basis function
+      const int lvl = hb->basis().levelOf(parameter);
+
+      const gismo::gsTensorBSplineBasis<2,real_t,gismo::gsCompactKnotVector<real_t> > & 
+	tb = hb->basis().tensorLevel(lvl);
+
+      const unsigned ind = hb->basis().flatTensorIndexOf(parameter);
+      const gismo::gsVector<unsigned,2> tind = tb.tensorIndex(ind);
+
+      const int degu = tb.degree(0);
+      const int degv = tb.degree(1);
+
+      const unsigned us = tind[0] + (degu + 1) / 2  ;
+      const unsigned vs = tind[1] + (degv + 1) / 2  ;
+      
+      gsDebugVar(us);
+      gsDebugVar(vs);
+
+      u = tb.knot(0,us);
+      v = tb.knot(1,vs);
+
+      gsDebugVar(u);
+      gsDebugVar(v);
+
+      // Inserting knots u and v ..
+      hb->increaseMultiplicity(lvl,0,u,1);// knot, direction, incrAmount
+      // hb->increaseMultiplicity(lvl,1,v,1);
+
+    }
+}
+
+
 /* Joker
 void gsGeometryDialog::jokerPlay(void)
 {
@@ -518,6 +577,7 @@ void gsGeometryDialog::refineGeometry(void)
         return;
     }
 
+    // Get index of the selected control point
     const int parameter = surf->getParameter();
 
     if ( gismo::gsTHBSpline<2> * hb = dynamic_cast<gismo::gsTHBSpline<2>*>(myGismoData) )

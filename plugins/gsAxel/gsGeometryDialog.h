@@ -69,6 +69,8 @@ public slots:
 
     void refineGeometry(void);
 
+    void insertKnot(void);
+
     /* Joker
     void jokerPlay(void);
     //*/
