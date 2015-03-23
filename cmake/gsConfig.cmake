@@ -100,11 +100,12 @@ include( OptimizeForArchitecture )
 endif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-#  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 18)
-#    endif()
-#    endif()
+
+  #  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 18)
+  #    endif()
+
     # Disable checked iterators
-    set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS}  /D_SECURE_SCL=0")
+    set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS}  /bigobj /D_SECURE_SCL=0")
     # See http://msdn.microsoft.com/en-us/library/hh697468.aspx
     #add_definitions(-D_HAS_ITERATOR_DEBUGGING=0)
     #add_definitions(-D_SECURE_SCL=0)
@@ -121,10 +122,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
     if (CMAKE_SIZEOF_VOID_P EQUAL 8) #64bit compiler 
        # Note: On 64bit-platforms, /Wp64 flag is present, causing extra warnings
-#       set(CMAKE_CXX_FLAGS_DEBUG    "${CMAKE_CXX_FLAGS_DEBUG}  /wd4244 /wd4267")
-#       set(CMAKE_CXX_FLAGS_RELEASE  "${CMAKE_CXX_FLAG_RELEASE} /wd4244 /wd4267")
-#       set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "${CMAKE_CXX_FLAG_RELWITHDEBINFO} /wd4244 /wd4267")
-       set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS}  /wd4244 /wd4267")
+       set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
     #else() #32bit compiler has CMAKE_SIZEOF_VOID_P EQUAL 4
     endif()
 
