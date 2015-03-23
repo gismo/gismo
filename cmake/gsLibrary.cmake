@@ -74,7 +74,7 @@ endif()
 #  endif()
 
   add_library(${PROJECT_NAME} SHARED
-    #${${PROJECT_NAME}_MODULES}
+    ${${PROJECT_NAME}_MODULES}
     ${${PROJECT_NAME}_SOURCES}
     ${${PROJECT_NAME}_EXTENSIONS}
     )
@@ -113,8 +113,10 @@ if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
     COMMAND ${CMAKE_COMMAND} -E echo 'The file $<TARGET_FILE:${PROJECT_NAME}> is copied in the bin folder for convenience.' )
 endif( WIN32 )
 
+endif(GISMO_BUILD_LIB)
+
   add_library(${PROJECT_NAME}_static STATIC
-  #${${PROJECT_NAME}_MODULES}
+  ${${PROJECT_NAME}_MODULES}
   #$<TARGET_OBJECTS:${PROJECT_NAME}_obj>
   ${${PROJECT_NAME}_SOURCES}
   ${${PROJECT_NAME}_EXTENSIONS}
@@ -127,11 +129,6 @@ endif( WIN32 )
   COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
   )
  
-  IF (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
-    SET_TARGET_PROPERTIES(${PROJECT_NAME}_static PROPERTIES 
-                         POSITION_INDEPENDENT_CODE ON)
-  ENDIF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
-
   IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
      TARGET_LINK_LIBRARIES(${PROJECT_NAME}_static ${DBGHELP_LIBRARY}) 	
   ENDIF() 
@@ -139,8 +136,6 @@ endif( WIN32 )
   set_target_properties(${PROJECT_NAME}_static 
   PROPERTIES LINKER_LANGUAGE CXX
   OUTPUT_NAME ${PROJECT_NAME}_static )
-
-endif(GISMO_BUILD_LIB)
 
 
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib/)
@@ -156,7 +151,9 @@ set(INSTALL_BIN_DIR     bin     CACHE PATH "Installation directory for executabl
 set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
 
 
-install(TARGETS ${PROJECT_NAME}
+if(GISMO_BUILD_LIB)
+
+  install(TARGETS ${PROJECT_NAME}
   # IMPORTANT: Add the ${PROJECT_NAME} library to the "export-set"
   EXPORT gismoTargets
   RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
@@ -164,3 +161,5 @@ install(TARGETS ${PROJECT_NAME}
   PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/${PROJECT_NAME}"
   #ARCHIVE DESTINATION lib
   )
+
+endif(GISMO_BUILD_LIB)

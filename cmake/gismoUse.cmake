@@ -27,6 +27,7 @@ macro(add_gismo_pure_executable FILE)
     add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME} )
     #message(STATUS "exec (pure template): ${FNAME}")
     add_executable(${FNAME} ${FNAME} ${gismo_SOURCES} ${gismo_EXTENSIONS})
+    target_link_libraries(${FNAME} gismo_static)
     # Allow CMake to follow dependencies on hpp files
     set_property( TARGET ${FNAME} PROPERTY 
     IMPLICIT_DEPENDS_INCLUDE_TRANSFORM "GISMO_HPP_HEADER(%)=\"%\"")
