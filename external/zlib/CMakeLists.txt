@@ -31,9 +31,9 @@ ${gismo_externals}/zlib/uncompr.c
 ${gismo_externals}/zlib/zutil.c
 )
 
-if(MSVC)
-add_definitions(-D_CRT_NONSTDC_NO_WARNINGS)
-add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  add_definitions(-D_CRT_NONSTDC_NO_WARNINGS)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
 add_library(${PROJECT_NAME} OBJECT ${ZLIB_SOURCES})
@@ -44,17 +44,8 @@ add_library(${PROJECT_NAME} OBJECT ${ZLIB_SOURCES})
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(GISMO_WITH_ONURBS)
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "MY_ZCALLOC")
+  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "MY_ZCALLOC")
 endif()
-
-#if(GISMO_BUILD_LIB)
-
-#set (gismo_SOURCES ${gismo_SOURCES} ${ZLIB_SOURCES}
-#     CACHE INTERNAL "gismo source files")
-
-#endif()
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:zlib>
     CACHE INTERNAL "Gismo extensions to be included")
-
-

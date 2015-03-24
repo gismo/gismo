@@ -85,12 +85,12 @@ endif()
   #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
   )
 
-  if (GISMO_WITH_PSOLID)
-    target_link_libraries(${PROJECT_NAME} ${PARASOLID_LIBRARY})
+  if (GISMO_WITH_ONURBS AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" )
+    target_link_libraries(${PROJECT_NAME} Rpcrt4)
   endif()
 
-  if (GISMO_WITH_ONURBS AND MSVC)
-    target_link_libraries(${PROJECT_NAME} Rpcrt4)
+  if (GISMO_WITH_PSOLID)
+    target_link_libraries(${PROJECT_NAME} ${PARASOLID_LIBRARY})
   endif()
 
   if (GISMO_WITH_SUPERLU)
@@ -101,8 +101,7 @@ endif()
     TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${DBGHELP_LIBRARY}) 	
   ENDIF() 
 
- set_target_properties(${PROJECT_NAME} 
- PROPERTIES LINKER_LANGUAGE CXX)
+ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
     add_custom_command(

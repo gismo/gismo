@@ -5,7 +5,7 @@
 ######################################################################
 
 ## OpenNurbs extension
-project(gsOpennurbsExtension)
+project(gsOpennurbs)
 
 
 set(OPENNURBS_SOURCES
@@ -293,36 +293,33 @@ endif(HAVE_SYS_STAT_H)
 # Apply same configuration as G+Smo
 include( gsConfig)
 
-#if (MSVC)
+#if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 #  add_definitions(
 #    -DON_COMPILING_OPENNURBS
 #    -DON_DLL_EXPORTS
 #    -DON_DLL_IMPORTS
 #    )
 #  SET(OPENNURBS_HEADERS "${OPENNURBS_HEADERS};${ON_DLL_HEADERS}")
-#else (MSVC)
+#else ()
 add_definitions(-DON_COMPILING_OPENNURBS)
-#endif(MSVC)
+#endif()
 
 
-if(MSVC)
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_definitions(-DUNICODE)
-endif(MSVC)
+endif()
 
-add_library(${PROJECT_NAME} OBJECT ${OPENNURBS_SOURCES}) #STATIC
-#target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
+add_library(gsOpennurbs OBJECT ${OPENNURBS_SOURCES}) #STATIC
+#target_link_libraries(gsOpennurbs Rpcrt4) # Note: linked with gismolib instead
 
-set_target_properties(${PROJECT_NAME} 
+set_target_properties(gsOpennurbs 
 PROPERTIES POSITION_INDEPENDENT_CODE ON
 COMPILE_DEFINITIONS gismo_EXPORTS
 )
 
-IF(NOT WIN32)
-  SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
-ENDIF(NOT WIN32)
-#SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VERSION "2010.04.95")
+#SET_TARGET_PROPERTIES(gsOpennurbs PROPERTIES VERSION "2010.04.95")
 
-set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:gsOpennurbsExtension>
+set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:gsOpennurbs>
     CACHE INTERNAL "Gismo extensions to be included")
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
