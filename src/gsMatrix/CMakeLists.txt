@@ -22,9 +22,11 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${GM_NAME}_HPP)
 ## Add module
 ## #################################################################
 
-if(NOT GISMO_BUILD_LIB)
+if( (NOT GISMO_BUILD_LIB) )
   aux_instance_directory (${CMAKE_CURRENT_SOURCE_DIR} ${GM_NAME}_INS)
-  LIST( REMOVE_ITEM ${GM_NAME}_CPP ${${GM_NAME}_INS})
+  if(${GM_NAME}_INS)
+    LIST( REMOVE_ITEM ${GM_NAME}_CPP ${${GM_NAME}_INS})
+  endif()
 endif()
 
 include_directories(${GISMO_INCLUDE_DIRS})
