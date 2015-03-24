@@ -533,7 +533,6 @@ transformDeriv2Hgrad(  index_t k,
                         const gsMatrix<T> & funcSecDir,
                         gsMatrix<T> & result) const
 {
-    std::cout<<"k: "<<k<<std::endl;//"\nfuncGrad: "<<funcGrad<<"\nfuncSecDir: "<<funcSecDir<<std::endl;   
     GISMO_ASSERT(
                    (ParDim==1 && (GeoDim==1||GeoDim==2||GeoDim==3))
                 || (ParDim==2 && (GeoDim==2||GeoDim==3))
@@ -565,7 +564,6 @@ transformDeriv2Hgrad(  index_t k,
     // Second part: J^-T G J^-1 DDG J^-1
     const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
     gsMatrix<T,ParDim,ParDim> DDG[GeoDim]; // Each matrix is the Hessian of a component of the Geometry
-    std::cout<<"secDer: "<<secDer<<std::endl;
     secDerToTensor<T,ParDim,GeoDim>(secDer, DDG);
     gsMatrix<T> HGT(GeoDim,fisSecDirSize);
     for(int i = 0; i < GeoDim; ++i)
