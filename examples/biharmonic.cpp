@@ -36,9 +36,9 @@ int main(int argc, char *argv[])
                               "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                               " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
 
-    gsMultiPatch<> * geo;
-    geo = new gsMultiPatch<>( *safe(gsNurbsCreator<>::BSplineFatQuarterAnnulus()) );
-    gsMultiBasis<> basis = gsMultiBasis<>(*geo);
+    gsMultiPatch<> geo( *safe(gsNurbsCreator<>::BSplineFatQuarterAnnulus()) );
+    gsMultiBasis<> basis(geo);
+
     //p-refine to get equal polynomial degree s,t directions (for Annulus)
     basis.degreeElevateComponent(0);
 
@@ -62,14 +62,14 @@ int main(int argc, char *argv[])
     bcInfo2.addCondition( boundary::south, condition_type::neumann, &laplace);
 
     //Initilize solver
-    gsBiharmonicAssembler<real_t> BiharmonicAssembler(*geo,basis,bcInfo,bcInfo2,source,
+    gsBiharmonicAssembler<real_t> BiharmonicAssembler( geo,basis,bcInfo,bcInfo2,source,
                                                        dirStrategy, intStrategy);
 
     std::cout<<"Assembling..." << std::endl;
     BiharmonicAssembler.assemble();
 
     cout<<"Solving with direct solver, "<< BiharmonicAssembler.numDofs()<< " DoFs..."<< endl;
-    Eigen::SparseQR< gsSparseMatrix<>, Eigen::COLAMDOrdering<int> > solver;
+    Eigen::SparseLU< gsSparseMatrix<>, Eigen::COLAMDOrdering<int> > solver;
     solver.analyzePattern(BiharmonicAssembler.matrix() );
     solver.factorize(BiharmonicAssembler.matrix());
     gsMatrix<> solVector= solver.solve(BiharmonicAssembler.rhs());
@@ -78,15 +78,15 @@ int main(int argc, char *argv[])
     gsField<>::uPtr solField = safe(BiharmonicAssembler.constructSolution(solVector));
 
     //Contruct the H2 norm, part by part.
-    gsSeminormH2<real_t> h2Seminorm = gsSeminormH2<real_t>(*solField,solution,sol2der);
+    gsSeminormH2<real_t> h2Seminorm(*solField,solution,sol2der);
     h2Seminorm.compute();
     real_t errorH2Semi = h2Seminorm.value();
 
-    gsSeminormH1<real_t> h1Seminorm = gsSeminormH1<real_t>(*solField,solution,sol1der);
+    gsSeminormH1<real_t> h1Seminorm(*solField,solution,sol1der);
     h1Seminorm.compute();
     real_t errorH1Semi = h1Seminorm.value();
 
-    gsNormL2<real_t> L2Norm = gsNormL2<real_t>(*solField,solution);
+    gsNormL2<real_t> L2Norm(*solField,solution);
     L2Norm.compute();
     real_t errorL2 = L2Norm.value();
 
@@ -103,11 +103,9 @@ int main(int argc, char *argv[])
         // Write approximate and exact solution to paraview files
         std::cout<<"Plotting in Paraview...\n";
         gsWriteParaview<>(*solField, "Biharmonic2d", 5000);
-        const gsField<> exact( *geo, solution, false );
+        const gsField<> exact( geo, solution, false );
         gsWriteParaview<>( exact, "Biharmonic2d_exact", 5000);
     }
-
-    delete geo;
 
     return  0;
 }
