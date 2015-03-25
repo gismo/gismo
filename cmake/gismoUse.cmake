@@ -44,6 +44,7 @@ macro(add_gismo_shared_executable FILE)
     if (GISMO_BUILD_COVERAGE)
       target_link_libraries(${FNAME} gcov)
     endif(GISMO_BUILD_COVERAGE)
+	set_property(TARGET ${FNAME} PROPERTY FOLDER "tests-gismo")
 endmacro(add_gismo_shared_executable)
 
 # add an executable compiled statically with the library
