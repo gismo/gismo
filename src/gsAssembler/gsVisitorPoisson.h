@@ -17,7 +17,7 @@ namespace gismo
 {
 
 
-template <class T>
+template <class T, bool paramCoef = false>
 class gsVisitorPoisson
 {
 public:
@@ -61,8 +61,10 @@ public:
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geoEval.evaluateAt(quNodes);// is this generic ??
         
-        // Evaluate right-hand side at the geometry points
-        rhs_ptr->eval_into( geoEval.values(), rhsVals ); // to do: parametric rhs ?
+        // Evaluate right-hand side at the geometry points paramCoef
+        // specifies whether the right hand side function should be
+        // evaluated in parametric(true) or physical (false)
+        rhs_ptr->eval_into( (paramCoef ?  quNodes :  geoEval.values() ), rhsVals );
         
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive      );
