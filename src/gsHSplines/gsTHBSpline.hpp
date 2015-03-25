@@ -66,6 +66,25 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
     delete newGeo;
 }
 
+template<unsigned d, class T>
+void gsTHBSpline<d, T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult)
+{
+    std::cout<<"WARNING - this code is not working properly"<<std::endl;
+    // Copy the current characteristic matrices
+    std::cout<<"in geo"<<std::endl;
+    std::vector<gsSortedVector<unsigned> > OX = this->basis().getXmatrix();
+
+    // Insert the knot in the basis
+    this->basis().increaseMultiplicity(lvl,dir,knotValue,mult);
+    std::cout<<"increased"<<std::endl;
+    // Compute the transfer matrix
+    gsMatrix<T> trMatrix;
+    this->basis().transfer(OX, trMatrix);
+    std::cout<<"transfer"<<std::endl;
+    // Multiply the coeffs by the transfer matrix
+    this->m_coefs = trMatrix * this->m_coefs;
+}
+
 /// Return the list of B-spline patches to represent a THB-spline geometry
 /// \returns b1 bottom left corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
 /// \returns b2 top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)

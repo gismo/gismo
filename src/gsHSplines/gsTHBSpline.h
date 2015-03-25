@@ -122,13 +122,20 @@ public:
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
     void convertToBSpline( gsTensorBSpline<d,T>& result );
 
+    /// Increase multiplicity of knot-value \a knotValue in level \a lvl and direction \a dir by \a mult
+    void increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult = 1);
+
+
 private:
+
     ///get B-spline control points on a given box of a certain level by refining eveywhere
     void getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned l, gsTensorBSpline<2> geo) const;
     ///function for getBsplinePatchGlobal
     void globalRefinement(int level)const;
+
     ///initialization of cmatrix
     void initialize_cmatrix(int col, int c_level) const;
+
     ///convert the coefficient matrix mat in the given direction to a column of the control points matrix
     void return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const;
 }; // class gsTHBSpline

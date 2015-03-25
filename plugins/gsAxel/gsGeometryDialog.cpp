@@ -524,8 +524,10 @@ void gsGeometryDialog::insertKnot(void)
       // get level of basis function
       const int lvl = hb->basis().levelOf(parameter);
 
+      gsDebugVar(lvl);
+
       const gismo::gsTensorBSplineBasis<2,real_t,gismo::gsCompactKnotVector<real_t> > & 
-	tb = hb->basis().tensorLevel(lvl);
+      tb = hb->basis().tensorLevel(lvl);
 
       const unsigned ind = hb->basis().flatTensorIndexOf(parameter);
       const gismo::gsVector<unsigned,2> tind = tb.tensorIndex(ind);
@@ -546,8 +548,12 @@ void gsGeometryDialog::insertKnot(void)
       gsDebugVar(v);
 
       // Inserting knots u and v ..
-      hb->increaseMultiplicity(lvl,0,u,1);// knot, direction, incrAmount
-      // hb->increaseMultiplicity(lvl,1,v,1);
+      //hb->increaseMultiplicity( lvl,0,u,1);// knot, direction, incrAmount
+
+      hb->basis().increaseMultiplicity(1,0,0.5,1);
+
+
+      gsDebugVar( tb.knots(0).detail() );
 
     }
 }

@@ -963,7 +963,7 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
 template<unsigned d, class T>
 void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >& old, gsMatrix<T>& result)
 {
-    // Note: implementation assumes old.size() + 1 m_bases exists in this basis
+    // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );
 
     gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > T_0_copy = this->tensorLevel(0);
@@ -990,6 +990,11 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
         }
         T_0_copy.refine_withTransfer(transfer[i], knots);
     }
+
+    // Add missing empty char. matrices
+    while ( old.size() >=  this->m_xmatrix.size())
+        this->m_xmatrix.push_back( gsSortedVector<unsigned>() );
+
     result = this->coarsening_direct(old,this->m_xmatrix, transfer);
 }
 

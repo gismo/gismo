@@ -1328,7 +1328,12 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<
 
 
 template<unsigned d, class T>
-gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer){
+gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
+                                                      const std::vector<gsSortedVector<unsigned> >& n,
+                                                      const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
+{
+    GISMO_ASSERT(old.size() < n.size(), "old,n problem in coarsening.");
+
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
     for(unsigned int i =0; i< old.size();i++)
