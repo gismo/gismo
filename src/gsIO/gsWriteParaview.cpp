@@ -1,8 +1,22 @@
-#include <gsIO/gsWriteParaview.h>
+/** @file gsWriteParaview.cpp
+
+    @brief Utility for plotting error / obsolete - to be removed
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): G. Kiss
+*/
+
+
+#include <gsCore/gsTemplateTools.h>
 
 #include <gsIO/gsParaviewCollection.h>
 
-#include <gsHSplines/gsTHBSpline.h>
+#include <gsMatrix/gsMatrix.h>
 
 namespace gismo
 {
@@ -87,3 +101,6 @@ void plot_errors<real_t>(gismo::gsMatrix<real_t>,
                          std::vector<real_t>, std::string const&); 
 
 }
+
+
+
