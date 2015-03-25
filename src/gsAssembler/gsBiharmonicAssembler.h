@@ -92,7 +92,7 @@ public:
         m_rhs.setZero(m_dofs, m_rhsFun->targetDim() );
 
         // Assemble volume stiffness and load vector integrals
-        GISMO_ASSERT(m_patches.nPatches() == 1, "Only valid for Multipatch");
+        GISMO_ASSERT(m_patches.nPatches() == 1, "Not verified  for Multipatch");
 
         gsVisitorBiharmonic<T> visitBiHar(*m_rhsFun);
         for (unsigned np=0; np < m_patches.nPatches(); ++np )
