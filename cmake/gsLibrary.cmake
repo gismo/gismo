@@ -98,6 +98,10 @@ endif()
     target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
   endif()
 
+  if (GISMO_WITH_PARDISO)
+    target_link_libraries(${PROJECT_NAME} ${PARDISO_LIBRARIES})
+  endif()
+
   IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
     TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${DBGHELP_LIBRARY}) 	
   ENDIF() 

@@ -16,6 +16,11 @@ endif()
 
 project(gismo)
 
+#message("CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
+#message("CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG}")
+#message("CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE}")
+#message("CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+
 if("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
    message(FATAL_ERROR "In-source G+Smo builds are not permitted. Please make a separate folder for building, otherwise type \nmake\nthat will create a ./build folder and will compile in that folder. Cmake has created garbage files/dirs (you may manually remove them):\n CMakeCache.txt CMakeFiles")
 endif("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
@@ -81,10 +86,9 @@ unset(${PROJECT_NAME}_SOURCES    CACHE)
 unset(${PROJECT_NAME}_EXTENSIONS CACHE)
 unset(${PROJECT_NAME}_MODULES    CACHE)
 unset(${PROJECT_NAME}_optionals  CACHE)
+unset(gismo_TMPL_HEADERS         CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
-#
-unset(gismo_TMPL_HEADERS CACHE)
 
 set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src;${PROJECT_SOURCE_DIR}/external;${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories")
@@ -177,6 +181,11 @@ if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
 endif(GISMO_WITH_SUPERLU)
 
+if(GISMO_WITH_PARDISO)
+   message("PARDISO: not operational yet.")
+#  find_package(PARDISO REQUIRED)
+endif(GISMO_WITH_PARDISO)
+
 ## #################################################################
 ## Build gismo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################
@@ -187,9 +196,9 @@ if(GISMO_BUILD_LIB)
     set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
   endif()
 
-  include(gsLibrary)
-
 endif()
+
+include(gsLibrary)
 
 ## #################################################################
 ## Plugins
@@ -214,9 +223,8 @@ include( gsInstall )
 ## Testing
 ## #################################################################
 
-enable_testing()
 include(CTest)
-
+enable_testing()
 
 ## #################################################################
 ## Executables

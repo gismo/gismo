@@ -40,6 +40,7 @@ option(GISMO_WITH_MPFR           "With MPFR"              false  )
 option(GISMO_WITH_ONURBS         "With OpenNurbs"         false  )
 option(GISMO_WITH_IPOPT          "With IpOpt"             false  )
 option(GISMO_WITH_SUPERLU        "With SuperLU"           false  )
+option(GISMO_WITH_PARDISO        "With PARDISO"           false  )
 
 #Extra options
 option(GISMO_BUILD_QT_APP        "Build Qt application"   false  )
