@@ -39,8 +39,10 @@
 
 /* Enabled Extensions */
 #cmakedefine GISMO_WITH_ONURBS
+#cmakedefine GISMO_WITH_PSOLID
 #cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_SUPERLU
+#cmakedefine GISMO_WITH_PARDISO
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
@@ -66,3 +68,6 @@
 /* Compile-time static assertions are replaced by runtime assertions;
   this saves compilation time. */
 #define EIGEN_NO_STATIC_ASSERT
+
+/* Using Intel MKL. */
+//#define EIGEN_USE_MKL_ALL
