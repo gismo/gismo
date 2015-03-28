@@ -16,11 +16,6 @@ endif()
 
 project(gismo)
 
-#message("CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
-#message("CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG}")
-#message("CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE}")
-#message("CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-
 if("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
    message(FATAL_ERROR "In-source G+Smo builds are not permitted. Please make a separate folder for building, otherwise type \nmake\nthat will create a ./build folder and will compile in that folder. Cmake has created garbage files/dirs (you may manually remove them):\n CMakeCache.txt CMakeFiles")
 endif("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
@@ -182,8 +177,9 @@ if(GISMO_WITH_SUPERLU)
 endif(GISMO_WITH_SUPERLU)
 
 if(GISMO_WITH_PARDISO)
-   message("PARDISO: not operational yet.")
-#  find_package(PARDISO REQUIRED)
+   message(WARNING "PARDISO support is not cross-platform yet, more twwaking required.")
+   #find_package(PARDISO REQUIRED)
+   find_package(MKL REQUIRED)
 endif(GISMO_WITH_PARDISO)
 
 ## #################################################################

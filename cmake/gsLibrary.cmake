@@ -99,7 +99,7 @@ endif()
   endif()
 
   if (GISMO_WITH_PARDISO)
-    target_link_libraries(${PROJECT_NAME} ${PARDISO_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
   endif()
 
   IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
