@@ -20,4 +20,10 @@ if(GISMO_WITH_SUPERLU)
   mark_gismo_optional (gsSuperLU_test.cpp)
 endif(GISMO_WITH_SUPERLU)
 
+if(GISMO_WITH_PARDISO)
+  add_gismo_executable(gsPardiso_test.cpp)
+  mark_gismo_optional (gsPardiso_test.cpp)
+endif(GISMO_WITH_PARDISO)
+
+
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
