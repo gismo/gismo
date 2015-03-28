@@ -118,7 +118,12 @@ void gsDofMapper::init(
          it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
     {
         if ( it->unknown == unk )
+        {
+            GISMO_ASSERT( it->patch < static_cast<index_t>(m_offset.size()), 
+                          "Problem: a corner boundary condition is set on a patch id which does not exist.");
+
             eliminateDof( basis[it->patch].functionAtCorner(it->corner), it->patch );
+        }
     }
 }
 
