@@ -219,6 +219,8 @@ class gsSparseMatrix;
 template<typename T=real_t, int _Options=0, typename _Index = index_t>
 class gsSparseVector;
 
+template<class T> class gsSparseEntries;
+
 /// @endcond
 
 ///@}

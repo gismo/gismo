@@ -1,10 +1,11 @@
 
 #pragma once 
 
-#include <gsIO/gsXmlUtils.h>
-
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsUtils/gsMultiIndexIterators.h>
+
+#include <gsIO/gsXml.h>
+#include <gsIO/gsXmlGenericUtils.hpp>
 
 namespace gismo
 {

@@ -14,11 +14,11 @@
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsNurbs/gsTensorBSplineBasis.h>
-
 #include <gsNurbs/gsKnotVector.h>
 
-#include <gsIO/gsXmlUtils.h>
-#include <gsIO/gsXmlUtils.hpp> // !
+
+#include <gsIO/gsXml.h>
+#include <gsIO/gsXmlGenericUtils.hpp>
 
 
 namespace gismo
