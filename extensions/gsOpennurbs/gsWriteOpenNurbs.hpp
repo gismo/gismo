@@ -12,15 +12,14 @@
 */
 
 
+#include <gsOpennurbs/gsWriteOpenNurbs.h>
+
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsModeling/gsPlanarDomain.h>
 
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsKnotVector.h>
-
-
-#include <gsOpennurbs/gsWriteOpenNurbs.h>
 
 #include <onurbs/opennurbs.h>
 

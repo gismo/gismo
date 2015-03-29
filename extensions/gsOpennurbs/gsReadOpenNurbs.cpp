@@ -47,7 +47,7 @@ Returns:
   FILE* archive_fp = ON::OpenFile( sFileName, L"rb");
   if ( !archive_fp ) 
   {
-    gsWarn<< "  Unable to open 3dm file.\n";
+    gsWarn<< "  Unable to open 3dm file: file not valid.\n";
     return false;
   }
 
@@ -59,7 +59,7 @@ Returns:
 
   // close the file
   ON::CloseFile( archive_fp );
-
+  
   if ( ! rc )
     {
     gsWarn<< "Error while reading 3dm file.\n";

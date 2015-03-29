@@ -15,7 +15,7 @@
 
 #include <gsCore/gsDebug.h>
 
-#include <gsIO/gsXmlUtils.h>
+#include <gsIO/gsXml.h>
 
 class ON_Surface;
 class ON_Curve;
