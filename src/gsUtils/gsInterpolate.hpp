@@ -3,7 +3,6 @@
 # pragma once
 
 #include <gsCore/gsGeometry.h>
-#include <gsUtils/gsCollocationMatrix.h>
 #include <gsCore/gsDomainIterator.h>
 
 namespace gismo
@@ -18,7 +17,7 @@ gsGeometry<T> * gsInterpolate( gsBasis<T> const& g, gsMatrix<T> const& pts, gsMa
   GISMO_ASSERT (g.size() == vals.cols(), "Expecting as many values as the number of points." );
 
   gsSparseMatrix<T>  Cmat;
-  gsCollocationMatrix_into( g , pts,Cmat );
+  g.collocationMatrix(pts, Cmat );
   gsMatrix<T> x (g.size(), vals.rows());
 
   //Eigen::ConjugateGradient< gsSparseMatrix<T> > solver(Cmat);// for symmetric - does not apply here

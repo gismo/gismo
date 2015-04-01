@@ -123,5 +123,4 @@ namespace internal
 #include <gsUtils/gsStopwatch.h>
 #include <gsCore/gsFieldCreator.h>
 #include <gsUtils/gsInterpolate.h>
-#include <gsUtils/gsCollocationMatrix.h>
 

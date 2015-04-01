@@ -1,5 +1,5 @@
 ######################################################################
-## CMakeLists.txt ---
+## CMakeLists.txt
 ## This file is part of the G+Smo library.
 ## 
 ## Author: Angelos Mantzaflaris 
