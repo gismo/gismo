@@ -143,10 +143,18 @@ public:
     /// @brief Computes the L2-distance between this function and the
     /// field and a function \a func
     virtual T distanceL2(gsFunction<T> const & func) const
-    {
-        GISMO_NO_IMPLEMENTATION
-            }
+    { GISMO_NO_IMPLEMENTATION }
 
+    /// Newton-Raphson method to find a solution of the equation f(\a
+    /// arg) = \a value with starting vector \a arg.
+    /// If the point cannot be inverted the corresponding parameter
+    /// values will be undefined
+    int newtonRaphson(const gsVector<T> & value,
+                      gsVector<T> & arg,
+                      bool withSupport = true, 
+                      const T accuracy = 1e-6,
+                      int max_loop = 100 ) const;
+    
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {

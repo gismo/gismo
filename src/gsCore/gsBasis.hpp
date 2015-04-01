@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsUtils/gsCollocationMatrix.h>
-
 namespace gismo
 {
 
@@ -99,7 +97,27 @@ inline gsMatrix<T> * gsBasis<T>::laplacian(const gsMatrix<T> & u ) const
 template<class T> inline
 void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & result) const 
 {
-    gsCollocationMatrix_into (*this, u, result);
+    result.resize( u.cols(), size() );
+
+    // Evaluate basis functions on u
+    gsMatrix<T> ev;
+    eval_into(u, ev);
+
+    // Get indices of nonzero functions
+    gsMatrix<unsigned> act;
+    active_into(u, act);
+
+    gsSparseEntries<T> entries;
+    entries.reserve( ev.cols() * act.rows() );
+
+    //Construct matrix :  
+    //rows= samples 1,..,n - cols= basis functions 1,..,n
+    for (index_t k=0; k!= ev.cols(); ++k)
+        for (index_t i=0; i!=act.rows(); ++i)
+            entries.add(k , act(i,k), ev(i,k));
+
+    result.setFrom(entries);
+    result.makeCompressed();
 }
 
 template<class T> inline
@@ -112,7 +130,7 @@ gsGeometry<T> * gsBasis<T>::interpolate( gsMatrix<T> const& vals,
     GISMO_ASSERT (size() == vals.cols(), "Expecting as many values as the number of points." );
 
     gsSparseMatrix<T>  Cmat;
-    gsCollocationMatrix_into( *this , pts,Cmat );
+    collocationMatrix(pts, Cmat);
     gsMatrix<T> x ( size(), vals.rows());
 
     //Eigen::ConjugateGradient< gsSparseMatrix<T> > solver(Cmat);// for symmetric - does not apply here

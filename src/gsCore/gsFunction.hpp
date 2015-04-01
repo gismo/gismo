@@ -140,7 +140,40 @@ gsMatrix<T>* gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
     return res;
 }
 
+template <class T>
+int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
+                                  gsVector<T> & arg,
+                                  bool withSupport, 
+                                  const T accuracy,
+                                  int max_loop) const
+{
+    gsMatrix<T> delta, jac, supp;
 
+    if (withSupport)
+        supp = support();
+
+    int iter = 0;
+    do {
+        // compute residual: value - f(arg)
+        eval_into (arg, delta);
+        delta = value - delta;
+
+        // compute Jacobian and solve for next arg
+        deriv_into(arg, jac);
+        delta = jac.partialPivLu().solve( delta );
+        arg += delta;
+
+        // clamp x to the support of the function
+        if (withSupport)
+            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
+
+        if (delta.norm() <= accuracy)
+            return iter;
+    } while (++iter < max_loop);
+
+    // no solution found within max_loop iterations
+    return -1;
+}
 
 template <class T>
 gsFunction<T> * gsFunction<T>::clone() const 

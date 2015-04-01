@@ -17,6 +17,8 @@
 #include <gsUtils/gsMesh/gsMesh.h>
 //#include <gsCore/gsBoundary.h>
 
+#include <gsCore/gsGeometrySlice.h>
+
 namespace gismo
 {
 
@@ -31,9 +33,12 @@ gsGeometry<T>::boundary(boxSide const& s) const
     {
         coeffs.row(i) = m_coefs.row( (*ind)(i,0) );
     }
+
     delete ind;
+
     gsBasis<T> *Bs = this->basis().boundaryBasis(s);  // Basis for boundary side s
     gsGeometry *bgeo = Bs->makeGeometry( give(coeffs) );
+
     delete Bs;
     return bgeo;
 }
@@ -52,6 +57,28 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
     {
         eval_into( mesh.vertex[i]->coords.topRows(pDim), tmp );
         mesh.vertex[i]->coords.topRows( gDim ) = tmp;
+    }
+}
+
+template<class T>
+gsGeometrySlice<T> gsGeometry<T>::getIsoParametricSlice(index_t dir_fixed, T par) const
+{
+    return gsGeometrySlice<T>(this,dir_fixed,par);
+}
+
+template<class T>
+void gsGeometry<T>::invertPoints(const gsMatrix<T> & points, 
+                                 gsMatrix<T> & result, 
+                                 const T accuracy)
+{
+    result.resize(parDim(), points.cols() );
+    gsVector<T> arg;
+    for ( index_t i = 0; i!= points.cols(); ++i)
+    {         
+        arg = parameterCenter();
+        // int iter = 
+        this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
+        result.col(i) = arg;
     }
 }
 

@@ -29,7 +29,6 @@ int main(int argc, char* argv[])
     std::string output("");
     
     gsCmdLine cmd("Tutorial on gsTensorBSpline class.");
-    std::cout << "Type -h to see the available options.\n\n";
     cmd.addInt   ("n", "n", "Number of basis function in one direction"  , n);
     cmd.addInt   ("m", "m", "Number of basis function in other direction", m); 
     cmd.addInt   ("d", "degree", "Degree of a surface", degree); 

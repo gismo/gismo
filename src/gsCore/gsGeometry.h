@@ -21,7 +21,6 @@
 #include <gsCore/gsVolume.h>
 #include <gsCore/gsBulk.h>
 
-#include <gsCore/gsGeometrySlice.h>
 
 namespace gismo
 {
@@ -482,11 +481,13 @@ public:
 
     /// Gives back an isoParametric slice of the geometry with fixed
     /// \a par in direction \a dim_fixed as an gsGeometrySlice object.
-    gsGeometrySlice<T> getIsoParametricSlice(index_t dir_fixed, T par) const
-    {
-        return gsGeometrySlice<T>(this,dir_fixed,par);
-    }
+    gsGeometrySlice<T> getIsoParametricSlice(index_t dir_fixed, T par) const;
 
+    /// Takes the physical \a points and computes the corresponding
+    /// parameter values.  If the point cannot be inverted (eg. is not
+    /// part of the geometry) the corresponding parameter values will be undefined
+    virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
+                              const T accuracy = 1e-6);
 
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }

@@ -203,6 +203,16 @@ public:
     gsAsConstVector<T, Dynamic> asVector() const
     { return gsAsConstVector<T, Dynamic>(this->data(), this->rows()*this->cols() ); }
 
+    /// Returns the entries of the matrix resized to a 1 x n*m
+    /// row-vector column-wise
+    gsAsMatrix<T, 1, Dynamic> asRowVector()
+    { return gsAsMatrix<T, 1, Dynamic>(this->data(), 1, this->rows()*this->cols() ); }
+
+    /// Returns the entries of the matrix resized to a (const) 1 x n*m
+    /// row-vector column-wise
+    gsAsConstMatrix<T, 1, Dynamic> asRowVector() const
+    { return gsAsConstMatrix<T, 1, Dynamic>(this->data(), 1, this->rows()*this->cols() ); }
+
     /// Get a submatrix consisting of the columns indexed by the vector cols
     gsMatrix<T,_Rows,Dynamic> * submatrixCol( std::vector<index_t> & cols ) const
     {
