@@ -10,10 +10,12 @@ include_directories(${GISMO_INCLUDE_DIRS})
 
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 LIST( REMOVE_ITEM SUBDIRS misc)
+LIST( APPEND SUBDIRS gsUtils/gsMesh)
 
 FOREACH(subdir ${SUBDIRS})
 
-  #message("module: ${subdir}")
+  get_filename_component(GM_NAME ${subdir} NAME)
+  #message("module: ${GM_NAME}")
 
   ## Collect files
   aux_header_directory     (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_H  )
@@ -28,13 +30,13 @@ FOREACH(subdir ${SUBDIRS})
   endif()
 
   ## Add module
-  add_library(${subdir} OBJECT
+  add_library(${GM_NAME} OBJECT
     ${${subdir}_H}
     ${${subdir}_HPP}
     ${${subdir}_CPP}
     )
 
-  set_target_properties(${subdir} PROPERTIES
+  set_target_properties(${GM_NAME} PROPERTIES
     COMPILE_DEFINITIONS gismo_EXPORTS 
     POSITION_INDEPENDENT_CODE ON
     LINKER_LANGUAGE CXX
@@ -43,7 +45,7 @@ FOREACH(subdir ${SUBDIRS})
     #EXCLUDE_FROM_DEFAULT_BUILD 1
     )
 
-  set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${subdir}>
+  set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}>
       CACHE INTERNAL "G+Smo modules" )
 
   ## install module
@@ -69,13 +71,13 @@ if (GISMO_BUILD_PCH)
 
   FOREACH(subdir ${SUBDIRS})
 
-    add_dependencies(${subdir} gsCore_pch)
-    set_target_properties(${subdir} PROPERTIES
+    get_filename_component(GM_NAME ${subdir} NAME)
+
+    add_dependencies(${GM_NAME} gsCore_pch)
+    set_target_properties(${GM_NAME} PROPERTIES
       COTIRE_CXX_PREFIX_HEADER_INIT "${gismo_prefixHeader}")
-    #cotire(${subdir})
+    cotire(${GM_NAME})
 
   ENDFOREACH()
-
-cotire(${SUBDIRS})
 
 endif(GISMO_BUILD_PCH)
