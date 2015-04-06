@@ -257,7 +257,8 @@ public:
     /// Returns the number of patches.
     int nPatches()  const { return m_patches.nPatches(); }
 
-    gsGeometry<T>   & geometry() const { assert(m_patches.size()==1); return m_patches[0]; }
+    const gsGeometry<T> & geometry() const 
+    { assert(m_patches.size()==1); return m_patches[0]; }
 
     /// Returns gsMultiPatch containing the geometric information on the domain.
     const gsMultiPatch<T> & patches() const    { return m_patches; }

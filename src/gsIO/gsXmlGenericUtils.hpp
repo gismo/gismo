@@ -148,7 +148,7 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
 template<class Object>
 gsXmlNode * putHTensorBasisToXml ( Object const & obj, gsXmlTree & data)
 {
-    typedef typename Object::Scalar_t T;
+    //typedef typename Object::Scalar_t T;
     const int d = obj.dim();
 
     // Add a new node (without data)

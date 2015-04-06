@@ -30,7 +30,7 @@
 #endif
 
 #ifdef GISMO_EXTRA_DEBUG
-  #include <gsCore/gsStackWalker.h>
+  #include <misc/gsStackWalker.h>
 #endif
 
 
