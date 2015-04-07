@@ -102,7 +102,6 @@ protected:
                      gsGeometryEvaluator<T> & geoEval,
                      gsVector<T> const      & quWeights)
     {
-        std::cout << "Inside compute " << std::endl;
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
