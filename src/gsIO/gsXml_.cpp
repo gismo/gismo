@@ -16,7 +16,7 @@ namespace internal
 TEMPLATE_INST
 gsXmlNode * makeNode( const std::string & name, 
                       const gsMatrix<T> & value, gsXmlTree & data,
-                      bool transposed = false );
+                      bool transposed);
 
 TEMPLATE_INST
 void getMatrixFromXml ( gsXmlNode * node, 

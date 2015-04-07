@@ -154,8 +154,8 @@ void gsTriMeshToSolid<T>::getFeatures(T angleGrad,bool& bWarnNonManifold,bool& b
         if(cosPhi>1.0) cosPhi=1.0;
         else if(cosPhi<-1.0) cosPhi=-1.0;
 
-        const T PI(3.14159);
-        T phiGrad(acos(cosPhi)/PI*180);
+        const T PI_(3.14159);
+        T phiGrad(acos(cosPhi)/PI_*180);
         if(phiGrad>=angleGrad)
             iter->sharp=1;
         else
@@ -265,8 +265,8 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
                 if(cosPhi>1.0) cosPhi=1.0;
                 else if(cosPhi<-1.0) cosPhi=-1.0;
 
-                const T PI(3.14159);
-                T phiGrad(acos(cosPhi)/PI*180);
+                const T PI_(3.14159);
+                T phiGrad(acos(cosPhi)/PI_*180);
                 if(phiGrad>=innerAngle)
                     edge[j].sharp=1;
                 else
