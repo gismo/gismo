@@ -94,41 +94,6 @@ gsXmlNode * gsXml<Object>::put (const Object & obj, gsXmlTree & data)
 ////////////////////////////////////////////////////////
 // Implementations of common XML get/put functions
 ////////////////////////////////////////////////////////
-   
-template<class T>
-void getMatrixFromXml ( gsXmlNode * node, unsigned const & rows, 
-                        unsigned const & cols, gsMatrix<T> & result ) 
-{
-    //gsWarn<<"Reading "<< node->name() <<" matrix of size "<<rows<<"x"<<cols<<"Geometry..\n";
-    std::istringstream str;
-    str.str( node->value() );
-    result.resize(rows,cols);
- 
-    for (unsigned i=0; i<rows; ++i)
-        for (unsigned j=0; j<cols; ++j)
-            if ( !(str >> result(i,j) ) )
-            {
-                gsWarn<<"XML Warning: Reading matrix of size "<<rows<<"x"<<cols<<" failed.\n";
-                gsWarn<<"Tag: "<< node->name() <<", Matrix entry: ("<<i<<", "<<j<<").\n";
-                return;
-            }
-}
-
-template<class T>
-void getSparseEntriesFromXml ( gsXmlNode * node,
-                              gsSparseEntries<T> & result ) 
-{
-    result.clear();
-
-    std::istringstream str;
-    str.str( node->value() );
-    index_t r,c;
-    T val;
-
-    while( (str >> r) && (str >> c) && (str >> val) ) 
-        result.add(r,c,val);
-}
-
 
 template<class T>
 void getFunctionFromXml ( gsXmlNode * node, gsMFunctionExpr<T> & result ) 
@@ -148,75 +113,6 @@ void getFunctionFromXml ( gsXmlNode * node, gsMFunctionExpr<T> & result )
 
     result = gsMFunctionExpr<T>( expr_strings, d );
 }
-
-
-template<class T>
-gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, gsXmlTree & data, std::string name) 
-{
-    std::ostringstream str;
-    str << std::setprecision(FILE_PRECISION);
-    // Write the matrix entries
-    for (index_t i=0; i< mat.rows(); ++i)
-    {
-        for (index_t j=0; j<mat.cols(); ++j)
-            str << mat(i,j)<< " ";
-        str << "\n";
-    }
-
-    // Create XML tree node
-    gsXmlNode* new_node = internal::makeNode(name, str.str(), data);        
-    return new_node;
-};
-
-template<class T>
-gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat, 
-                                   gsXmlTree & data, std::string name)
-{
-    typedef typename gsSparseMatrix<T>::InnerIterator cIter;
-
-    std::ostringstream str;
-    str << std::setprecision(FILE_PRECISION);
-    const index_t nCol = mat.cols();
-
-    for (index_t j=0; j != nCol; ++j) // for all columns
-        for ( cIter it(mat,j); it; ++it ) // for all non-zeros in column
-        {
-            // Write the matrix entry
-            str <<it.index() <<" "<<j<<" " << it.value() << "\n";
-        }
-    
-    // Create XML tree node
-    gsXmlNode* new_node = internal::makeNode(name, str.str(), data);        
-    return new_node;
-};
-
-template<class T>
-gsXmlNode * makeNode( const std::string & name, 
-                      const gsMatrix<T> & value, gsXmlTree & data,
-                      bool transposed)
-{
-    std::ostringstream oss;
-    // Set precision
-    oss << std::setprecision(FILE_PRECISION);
-  
-    if ( transposed )
-        for ( index_t j = 0; j< value.rows(); ++j)
-        {
-            for ( index_t i = 0; i< value.cols(); ++i)
-                oss << value(j,i) <<" ";
-            //oss << "\n";
-        }
-    else
-        for ( index_t j = 0; j< value.cols(); ++j)
-        {
-            for ( index_t i = 0; i< value.rows(); ++i)
-                oss << value(i,j) <<" ";
-            //oss << "\n";
-        }
-  
-    return makeNode(name, oss.str(), data);
-}
-
 
  
 ////////////////////////////////////////////////////////
@@ -689,32 +585,6 @@ public:
 };
 
 
-/// Get a THBSpline from XML data
-template<unsigned d, class T>
-class gsXml< gsTHBSpline<d,T> >
-{
-private:
-    gsXml() { }
-public:
-    GSXML_COMMON_FUNCTIONS(gsTHBSpline<TMPLA2(d,T)>);
-    static std::string tag () { return "Geometry"; }
-    static std::string type () { return "THBSpline"+to_string(d); }
-
-    static gsTHBSpline<d,T> * get (gsXmlNode * node)
-    {
-        return getGeometryFromXml< gsTHBSpline<d,T> >(node);
-    }
-
-    static gsXmlNode * put (const gsTHBSpline<d,T> & obj,
-                            gsXmlTree & data )
-    {
-        return putGeometryToXml< gsTHBSpline<d,T> >(obj,data);
-    }
-};
-
-
-
-
 /// Get a Nurbs from XML data
 template<class T>
 class gsXml< gsNurbs<T> >
@@ -797,54 +667,6 @@ public:
         return nodeTS;
     }
 };
-
-/// Get a Hierarchical B-spline basis from XML data
-template<unsigned d, class T>
-class gsXml< gsHBSplineBasis<d,T> >
-{
-private:
-    gsXml() { }
-public:
-    GSXML_COMMON_FUNCTIONS(gsHBSplineBasis<TMPLA2(d,T)>);
-    static std::string tag () { return "Basis"; }
-    static std::string type () { return "HBSplineBasis"+ (d>1 ? to_string(d):""); }
-    
-    static gsHBSplineBasis<d,T> * get (gsXmlNode * node)
-    {
-        return getHTensorBasisFromXml< gsHBSplineBasis<d,T> > (node);
-    }
-  
-    static gsXmlNode * put (const gsHBSplineBasis<d,T> & obj,
-                            gsXmlTree & data )
-    {
-        return putHTensorBasisToXml< gsHBSplineBasis<d,T> > (obj, data);
-    }
-};
-
-
-/// Get a Truncated Hierarchical B-spline basis from XML data
-template<unsigned d, class T>
-class gsXml< gsTHBSplineBasis<d,T> >
-{
-private:
-    gsXml() { }
-public:
-    GSXML_COMMON_FUNCTIONS(gsTHBSplineBasis<TMPLA2(d,T)>);
-    static std::string tag () { return "Basis"; }
-    static std::string type () { return "THBSplineBasis"+ (d>1 ? to_string(d):""); }
-
-    static gsTHBSplineBasis<d,T> * get (gsXmlNode * node)
-    {
-        return getHTensorBasisFromXml< gsTHBSplineBasis<d,T> > (node);
-    }
-
-    static gsXmlNode * put (const gsTHBSplineBasis<d,T> & obj,
-                            gsXmlTree & data )
-    {
-        return putHTensorBasisToXml< gsTHBSplineBasis<d,T> > (obj, data);
-    }
-};
-
 
 /// Get a Geometry from XML data
 template<class T>

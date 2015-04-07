@@ -18,6 +18,10 @@
 #include <gsNurbs/gsBoehm.h>
 #include <gsNurbs/gsDeboor.hpp>
 
+#include <gsIO/gsXml.h>
+#include <gsIO/gsXmlGenericUtils.hpp>
+
+
 namespace gismo
 {
 
@@ -1610,5 +1614,34 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
     return result;
 }
 
+
+namespace internal
+{
+
+/// Get a Truncated Hierarchical B-spline basis from XML data
+template<unsigned d, class T>
+class gsXml< gsTHBSplineBasis<d,T> >
+{
+private:
+    gsXml() { }
+public:
+    GSXML_COMMON_FUNCTIONS(gsTHBSplineBasis<TMPLA2(d,T)>);
+    static std::string tag () { return "Basis"; }
+    static std::string type () { return "THBSplineBasis"+ (d>1 ? to_string(d):""); }
+
+    static gsTHBSplineBasis<d,T> * get (gsXmlNode * node)
+    {
+        return getHTensorBasisFromXml< gsTHBSplineBasis<d,T> > (node);
+    }
+
+    static gsXmlNode * put (const gsTHBSplineBasis<d,T> & obj,
+                            gsXmlTree & data )
+    {
+        return putHTensorBasisToXml< gsTHBSplineBasis<d,T> > (obj, data);
+    }
+};
+
+
+}
 
 } // namespace gismo

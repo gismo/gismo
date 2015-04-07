@@ -13,6 +13,8 @@
 
 #pragma once 
 
+#include <gsIO/gsXml.h>
+#include <gsIO/gsXmlGenericUtils.hpp>
 
 namespace gismo
 {
@@ -356,5 +358,34 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedV
     }
     return result;
 }
+
+namespace internal
+{
+
+/// Get a Hierarchical B-spline basis from XML data
+template<unsigned d, class T>
+class gsXml< gsHBSplineBasis<d,T> >
+{
+private:
+    gsXml() { }
+public:
+    GSXML_COMMON_FUNCTIONS(gsHBSplineBasis<TMPLA2(d,T)>);
+    static std::string tag () { return "Basis"; }
+    static std::string type () { return "HBSplineBasis"+ (d>1 ? to_string(d):""); }
     
+    static gsHBSplineBasis<d,T> * get (gsXmlNode * node)
+    {
+        return getHTensorBasisFromXml< gsHBSplineBasis<d,T> > (node);
+    }
+  
+    static gsXmlNode * put (const gsHBSplineBasis<d,T> & obj,
+                            gsXmlTree & data )
+    {
+        return putHTensorBasisToXml< gsHBSplineBasis<d,T> > (obj, data);
+    }
+};
+
+}
+
+
 }// namespace gismo

@@ -343,5 +343,32 @@ void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction,
     }
 }*/
 
-}
 
+namespace internal
+{
+/// Get a THBSpline from XML data
+template<unsigned d, class T>
+class gsXml< gsTHBSpline<d,T> >
+{
+private:
+    gsXml() { }
+public:
+    GSXML_COMMON_FUNCTIONS(gsTHBSpline<TMPLA2(d,T)>);
+    static std::string tag () { return "Geometry"; }
+    static std::string type () { return "THBSpline"+to_string(d); }
+
+    static gsTHBSpline<d,T> * get (gsXmlNode * node)
+    {
+        return getGeometryFromXml< gsTHBSpline<d,T> >(node);
+    }
+
+    static gsXmlNode * put (const gsTHBSpline<d,T> & obj,
+                            gsXmlTree & data )
+    {
+        return putGeometryToXml< gsTHBSpline<d,T> >(obj,data);
+    }
+};
+
+}// namespace internal
+
+}// namespace gismo

@@ -83,14 +83,31 @@ public:
     static Object * getId    (gsXmlNode * node, int id);
 };
 
-/// Helper to allocate XML value
-char * makeValue( const std::string & value, gsXmlTree & data);
+/// Helper to read an object by a given id value: 
+/// \param node parent node, we check his children to get the given id
+template<class Object>
+Object * getById(gsXmlNode * node, const int & id)
+{
+    std::string tag = internal::gsXml<Object>::tag();
+    for (gsXmlNode * child = node->first_node(tag.c_str());
+         child; child = child->next_sibling(tag.c_str()))
+    {
+        if (  atoi(child->first_attribute("id")->value() ) == id )
+            return internal::gsXml<Object>::get(child);
+    }
+    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag() 
+             <<" with id="<<id<<" not found.\n";
+    return NULL;
+}
 
-// Helper to allocate XML attribute
+/// Helper to allocate XML value
+GISMO_EXPORT char * makeValue( const std::string & value, gsXmlTree & data);
+
+/// Helper to allocate XML attribute
 GISMO_EXPORT gsXmlAttribute *  makeAttribute( const std::string & name,
 				              const std::string & value, gsXmlTree & data);
 
-// Helper to allocate XML attribute with unsigned int value
+/// Helper to allocate XML attribute with unsigned int value
 GISMO_EXPORT gsXmlAttribute *  makeAttribute( const std::string & name,
 					           const unsigned & value, gsXmlTree & data);
 
@@ -101,7 +118,7 @@ GISMO_EXPORT gsXmlNode *  makeNode( const std::string & name, gsXmlTree & data);
 GISMO_EXPORT gsXmlNode * makeNode( const std::string & name,
 			             const std::string & value, gsXmlTree & data);
 
-// Helper to convert small unsigned to string
+/// Helper to convert small unsigned to string
 GISMO_EXPORT std::string to_string(const unsigned & i);
 
 /// Helper to count the number of Objects (by tag) that exist in the
@@ -125,35 +142,15 @@ GISMO_EXPORT gsXmlNode * firstByTagType(const std::string & tag,
                                          const std::string & type, 
                                          gsXmlNode * root );
 
-/// Helper which finds a node matching \a tag and \a type in the XML
-/// tree
-GISMO_EXPORT gsXmlNode * anyByTagType(const std::string & tag,
-                                       const std::string & type,
-                                       gsXmlNode * root );
+// Helper which finds a node matching \a tag and \a type in the XML
+// tree
+//GISMO_EXPORT gsXmlNode * anyByTagType(const std::string & tag,
+//                                       const std::string & type,
+//                                       gsXmlNode * root );
 
 /// Helper to get any object (by tag) if one exists in the XML tree
 GISMO_EXPORT gsXmlNode * anyByTag(const std::string & tag,
                                   gsXmlNode * root );
-
-/// Helper to read an object by a given id value: 
-/// \param node parent node, we check his children to get the given id
-//template<class Object> 
-//Object * getById(gsXmlNode * node, const int & id);
-
-template<class Object>
-Object * getById(gsXmlNode * node, const int & id)
-{
-    std::string tag = internal::gsXml<Object>::tag();
-    for (gsXmlNode * child = node->first_node(tag.c_str());
-         child; child = child->next_sibling(tag.c_str()))
-    {
-        if (  atoi(child->first_attribute("id")->value() ) == id )
-            return internal::gsXml<Object>::get(child);
-    }
-    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag() 
-             <<" with id="<<id<<" not found.\n";
-    return NULL;
-}
 
 /// Helper to allocate XML node with gsMatrix value
 template<class T>
@@ -172,7 +169,7 @@ void getMatrixFromXml ( gsXmlNode * node,
 /// Helper to insert matrices into XML
 template<class T>
 gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, 
-                             gsXmlTree & data, std::string name="Matrix");
+                             gsXmlTree & data, std::string name = "Matrix");
 
 /// Helper to fetch sparse entries
 template<class T>
@@ -182,11 +179,12 @@ void getSparseEntriesFromXml ( gsXmlNode * node,
 /// Helper to insert sparse matrices into XML
 template<class T>
 gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat, 
-                                   gsXmlTree & data, std::string name="SparseMatrix");
+                                   gsXmlTree & data, std::string name = "SparseMatrix");
 
 }// end namespace internal
 
 }// end namespace gismo
 
-
-// gsXml.hpp
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsXml.hpp)
+#endif
