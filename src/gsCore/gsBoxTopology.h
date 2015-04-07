@@ -176,8 +176,6 @@ public:
     {
         m_boundary.clear();
         m_interfaces.clear();
-        m_dim = -1;
-        nboxes = 0;
     }
 
     /// Swap with another gsBoxTopology.
