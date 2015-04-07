@@ -629,7 +629,7 @@ template<unsigned d, class T>
 void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n, 
                                                 gsMatrix<T>& result ) const
 {
-    GISMO_ASSERT( n<=2, "gsTensorBasis::evalAllDers() not implemented for n > 1." );
+    GISMO_ASSERT( n<=2, "gsTensorBasis::evalAllDers() not implemented for n > 2." );
 
     gsMatrix<T> values[d];
 

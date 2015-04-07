@@ -58,7 +58,7 @@ public:
      * elementNorms().
      */
     template <class NormVisitor>
-    void apply(NormVisitor & visitor, bool storeElWise = false)
+    void apply(NormVisitor & visitor, bool storeElWise = false, boxSide side = boundary::none)
     {
         if ( storeElWise )
             m_elWise.clear();
@@ -82,7 +82,7 @@ public:
             typename gsGeometry<T>::Evaluator geoEval(
                 patchesPtr->patch(pn).evaluator(evFlags));
             
-            typename gsBasis<T>::domainIter domIt = func1.basis().makeDomainIterator();
+            typename gsBasis<T>::domainIter domIt = func1.basis().makeDomainIterator(side);
             for (; domIt->good(); domIt->next())
             {
                 // Map the Quadrature rule to the element
