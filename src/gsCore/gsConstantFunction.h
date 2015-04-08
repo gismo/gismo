@@ -114,7 +114,12 @@ public:
         os << m_val; 
         return os; 
     }
-  
+    void setToNewValue(double & new_v)
+     {
+         m_val.resize(2);
+         m_val(0) = new_v;
+
+     }
 private:
 
     gsVector<T> m_val;

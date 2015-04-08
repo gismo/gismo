@@ -84,7 +84,15 @@ void gsTraceLine( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
       Jmap.row(0) =  *map.first->deriv(current );
       Jmap.row(1) =  *map.second->deriv(current);
       
-      // std::cout<<"jacobian matrix is \n"<< Jmap<<"\n";
+      if ( fabs( Jmap.determinant() ) < 0.0001) //0.025 amoeba_hole,austria_hole
+            {
+               gsInfo<< "\n trace line: \n Jacobian vanished at : " << current.transpose() <<"\n"
+         "with Jacobian = "<< fabs( Jmap.determinant() )<<"\n \n";
+
+               loops =-1 ;
+                break; // stop Newton iteration
+            }
+
       delta = Jmap.inverse()*(next.col(0)-line.col(0));
       current += delta;
       
@@ -239,10 +247,7 @@ void gsTraceCurvePart(std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
                const T tolerance = 0.0001)
 {
     int loops=100;
-    
-    
-    
-    
+
     gsMatrix<T> current (2,1);
     current=x;
     gsMatrix<T> next (2,1), delta, rr;
@@ -273,9 +278,11 @@ void gsTraceCurvePart(std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
             Jmap.row(1) =  *map.second->deriv(current);
             
             //std::cout<<"jacobian matrix is \n"<< Jmap<<"\n";
-            if ( fabs( Jmap.determinant() ) < 0.025) //0.025 amoeba_hole,austria_hole
+            if ( fabs( Jmap.determinant() ) < 0.01) //0.025 amoeba_hole,austria_hole
             {
-               gsInfo<< "Jacobian vanished at : " << current.transpose() <<"\n";
+                gsInfo<< "Jacobian vanished at : " << current.transpose() <<"\n"
+                "with Jacobian = "<< fabs( Jmap.determinant() )<<"\n \n";
+
                 cont = false;
                 break; // stop Newton iteration
             }

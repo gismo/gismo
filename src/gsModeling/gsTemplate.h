@@ -124,15 +124,217 @@ public:
       
      m_pdomain = gsPlanarDomain<T>( gsNurbsCreator<T>::BSplineFatCircle() );
       
-//     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0),0.0*xi.col(0))  );
-//     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(1),0.0*xi.col(1))  );
-//     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(2),0.0*xi.col(2))  );
-//     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(3),0.0*xi.col(3))  );
-  
-     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0),0.167231*xi.col(0)+0.0*xi.col(1))  );
-     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(1),0.167231*xi.col(0)+0.0*xi.col(1))  );
-     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(2),0.167231*xi.col(0)+0.0*xi.col(1))  );
-     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(3),0.167231*xi.col(0)+0.0*xi.col(1))  );
+     // ************** RIGHT THINGS for amoeba_lake1_pdomain.xml:
+                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0),-0.534694*xi.col(0)+0*xi.col(1))  );
+                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(1),-0.534694*xi.col(0)+0*xi.col(1))  );
+                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(2),-0.534694*xi.col(0)+0*xi.col(1))  );
+                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(3),-0.534694*xi.col(0)+0*xi.col(1))  );
+    }
+    else if(i==2)
+     {
+        m_pdomain = gsPlanarDomain<T>( gsNurbsCreator<T>::BSplineFatCircle() );
+
+        //First 4 curves around upper puncture
+
+        //1
+        addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.25) +
+                                                           xi.col(1)*(0.732),(0.25)*xi.col(0)+xi.col(1)*(0.55)));
+
+        //2
+
+        gsMatrix<T> cc(5,2);
+        cc<<0.691, 0.717,
+                0.572, 0.672,
+                0.427, 0.55,
+                0.427, 0.55,
+                0.25, 0.55;
+        gsKnotVector<T> kk(0,1,2,3,1,2);
+        gsBSpline<T> *Trick2 = new gsBSpline<T>(kk,cc);
+        addSkeleton(Trick2);
+
+        // 3
+        addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.25) +
+                                                           xi.col(1)*(0.363),( 0.25)*xi.col(0)+xi.col(1)*(0.55)));
+        //4
+        addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.064) +
+                                                           xi.col(1)*(0.55),( 0.25)*xi.col(0)+xi.col(1)*(0.55)));
+
+        //5  Arc up left
+
+        gsMatrix<T> coeff(3,2);
+        coeff<<-0.583, 0.876,
+                -0.468, 0.802,
+                0.064, 0.55;
+        gsKnotVector<T> kv(0,1,0,3,2);
+        gsBSpline<T> * ArcUpLeft = new gsBSpline<T>(kv,coeff);
+        addSkeleton(ArcUpLeft);
+
+        //6 Arc center left
+        coeff<<0.064, 0.55,
+                -0.255,0.106,
+                -0.078, -0.55;
+        gsBSpline<T> * ArcCenterLeft = new gsBSpline<T>(kv, coeff);
+        addSkeleton(ArcCenterLeft);
+
+        // 7 Arc center right
+        coeff<< 0.427, 0.55,
+                0.619, 0.007,
+                0.288, -0.55;
+        gsBSpline<T> * ArcCenterRight = new gsBSpline<T>(kv,coeff);
+        addSkeleton(ArcCenterRight);
+
+        // 8 Central Arc
+
+
+        coeff<<0.25, 0.363,
+                0.170, -0.004,
+                0.10, -0.366;
+
+        gsBSpline<T> *CentralArc = new gsBSpline<T>(kv,coeff);
+        addSkeleton(CentralArc);
+
+        //9 Arc up
+        addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.25) +
+                                                           xi.col(1)*(0.986),( 0.25)*xi.col(0)+xi.col(1)*(0.732)));
+
+        //10 Arc up right
+
+        coeff<<0.749, 0.750,
+                0.572, 0.672,
+                0.427, 0.55 ;
+        gsBSpline<T> * ArcUpRight = new gsBSpline<T>(kv,coeff);
+        addSkeleton(ArcUpRight);
+
+        // 4 curves around puncture low
+
+        //11
+        addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.10) +
+                                                           xi.col(1)*(-0.366),(0.10)*xi.col(0)+xi.col(1)*(-0.55)));
+        //12
+        addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.288) +
+                                                           xi.col(1)*(-0.55),(0.10)*xi.col(0)+xi.col(1)*(-0.55)));
+
+        //13
+        addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.10) +
+                                                           xi.col(1)*(-0.993),(0.10)*xi.col(0)+xi.col(1)*(-0.55)));
+        //14
+        addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(-0.078) +
+                                                           xi.col(1)*(-0.55),(0.10)*xi.col(0)+xi.col(1)*(-0.55)));
+
+        // 15 Arc low left
+        coeff<< -0.638,-0.837, //-0.623, -0.842
+                -0.517,-0.725,
+                -0.078, -0.55;
+        gsBSpline<T> * ArcLowLeft = new gsBSpline<T>(kv,coeff);
+        addSkeleton(ArcLowLeft);
+
+        //16 Arc low
+        addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.10) +
+                                                           xi.col(1)*(-0.990),(0.10)*xi.col(0)+xi.col(1)*(-0.718)));
+
+
+        //17 Arc low right
+
+        coeff<<0.690, -0.824, //0.685, -0.804
+                0.556, -0.675,
+                0.288, -0.55;
+        gsBSpline<T>* ArcLowRight = new gsBSpline<T>(kv,coeff);
+        addSkeleton(ArcLowRight);
+
+        //circular arcs around upper puncture
+
+        // 18
+        coeff<<0.25, 0.732,
+                0.377, 0.697,
+                0.427, 0.55;
+        gsBSpline<T> * Archetto1 = new gsBSpline<T> (kv,coeff);
+        addSkeleton(Archetto1);
+
+        //19
+        coeff<< 0.427, 0.55,
+                0.37, 0.416,
+                0.25, 0.377;
+        gsBSpline<T> * Archetto2 = new gsBSpline<T>(kv,coeff);
+        addSkeleton(Archetto2);
+
+        //20
+        coeff<< 0.25, 0.377,
+                0.132, 0.419,
+                0.064, 0.55;
+        gsBSpline<T>* Archetto3 = new gsBSpline<T>(kv,coeff);
+        addSkeleton(Archetto3);
+
+        //21
+        coeff<<0.064, 0.55,
+                0.117, 0.679,
+                0.25, 0.732;
+        gsBSpline<T>* Archetto4 = new gsBSpline<T>(kv,coeff);
+        addSkeleton(Archetto4);
+
+        //circular arcs around low puncture
+
+        //22
+        coeff<<0.10, -0.366,
+                0.224, -0.409,
+                0.288, -0.55;
+        gsBSpline<T>* Archetto5 = new gsBSpline<T>(kv,coeff);
+        addSkeleton(Archetto5);
+
+        //23
+        coeff<< 0.288, -0.55,
+                0.220, -0.686,
+                0.10, -0.718;
+        gsBSpline<T>* Archetto6 = new gsBSpline<T>(kv,coeff);
+        addSkeleton(Archetto6);
+
+        //24
+        coeff<<0.10, -0.718,
+                -0.025, -0.675,
+                -0.078, -0.55;
+        gsBSpline<T>* Archetto7 = new gsBSpline<T>(kv,coeff);
+        addSkeleton(Archetto7);
+
+        //25
+
+        coeff<< -0.078, -0.55,
+                -0.025, -0.412,
+                0.10, -0.366;
+        gsBSpline<T> *Archetto8 = new gsBSpline<T>(kv, coeff);
+        addSkeleton(Archetto8);
+
+        //For plotting the template segmentation
+
+        //gsWriteParaview(*m_skeleton[0],"1th",30);
+        //gsWriteParaview(*m_skeleton[1],"2th",30);
+        //gsWriteParaview(*m_skeleton[2],"3th",30);
+        //gsWriteParaview(*m_skeleton[3],"4th",30);
+
+
+        //gsWriteParaview(*m_skeleton[4],"5th",30);
+        //gsWriteParaview(*m_skeleton[5],"6th",30);
+        //gsWriteParaview(*m_skeleton[6],"7th",30);
+        //gsWriteParaview(*m_skeleton[7],"8th",30);
+
+        //gsWriteParaview(*m_skeleton[8],"9th",30);
+        //gsWriteParaview(*m_skeleton[9],"10th",30);
+        //gsWriteParaview(*m_skeleton[10],"11th",30);
+
+        //gsWriteParaview(*m_skeleton[11],"12th",30);
+        //gsWriteParaview(*m_skeleton[12],"13th",30);
+        //gsWriteParaview(*m_skeleton[13],"14th",30);
+        //gsWriteParaview(*m_skeleton[14],"15th",30);
+        //gsWriteParaview(*m_skeleton[15],"16th",30);
+        //gsWriteParaview(*m_skeleton[16],"17th",30);
+        //gsWriteParaview(*m_skeleton[17],"18th",30);
+        //gsWriteParaview(*m_skeleton[18],"19th",30);
+        //gsWriteParaview(*m_skeleton[19],"20th",30);
+        //gsWriteParaview(*m_skeleton[20],"21th",30);
+        //gsWriteParaview(*m_skeleton[21],"22th",30);
+        //gsWriteParaview(*m_skeleton[22],"23th",30);
+        //gsWriteParaview(*m_skeleton[23],"24th",30);
+        //gsWriteParaview(*m_skeleton[24],"25th",30);
+
+
     }
     else
     {
