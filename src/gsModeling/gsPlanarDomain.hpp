@@ -250,8 +250,8 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     gsMesh<T> * m = new gsMesh<T>();
     // Typedefs
     typedef typename gsVertex<T>::gsVertexHandle VertexHandle;
-    typedef std::deque<VertexHandle>            VertexList;
-    typedef typename std::deque<VertexHandle>::iterator  VertexListIter;
+    //typedef std::deque<VertexHandle>            VertexList;
+    //typedef typename std::deque<VertexHandle>::iterator  VertexListIter;
 
     GISMO_ASSERT(npoints > 0, "Number of points must be positive.");
 

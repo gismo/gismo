@@ -29,10 +29,9 @@
 //#include <errno.h>
 #endif
 
-#ifdef GISMO_EXTRA_DEBUG
-  #include <misc/gsStackWalker.h>
-#endif
-
+//#ifdef GISMO_EXTRA_DEBUG
+//  #include <misc/gsStackWalker.h>
+//#endif
 
 /** Logging messages:
  *  gsInfo is ment to display information log messages, 

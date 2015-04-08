@@ -34,10 +34,11 @@ class gsMultiPatch : public gsBoxTopology //gsPiecewiseFunction
 public:
     /// Shared pointer for gsMultiPatch
     typedef memory::shared_ptr<gsMultiPatch> Ptr;
+
+    typedef memory::auto_ptr<gsMultiPatch> uPtr;
+
     typedef gsBoxTopology Base;
-    //typedef memory::unique_ptr< gsGeometry > LocalPtr;
-    //typedef struct interface interface;
-    //typedef gsGraph< gsGeometry<T> *, interface > PatchContainer;
+
     typedef std::vector<gsGeometry<T> *> PatchContainer;
 
 public:
@@ -176,10 +177,10 @@ public:
     gsBasis<T> & basis( std::size_t i ) const;
 
     /// Add a patch.
-    void addPatch( gsGeometry<T>* g );
+    void addPatch( gsGeometry<T> * g );
 
-    // TO DO Add a patch by copying the argument.
-    //void addPatch( const gsGeometry<T> & geo );
+    // Add a patch by copying argument -- to do
+    //void addPatch(const gsGeometry<T> & g );
 
     /// Search for the given geometry and return its patch index.
     int findPatchIndex( gsGeometry<T>* g ) const;
@@ -207,7 +208,7 @@ public:
     /// Clear (delete) all patches
     void clear()
     {
-        Base::clear();
+        Base::clearAll();
         freeAll(m_patches);
         m_patches.clear();
     }

@@ -172,10 +172,18 @@ public:
 	{ return m_boundary.end(); }
 
     /// Clear all boundary and interface data.
-    void clear()
+    void clearTopology()
     {
-        m_boundary.clear();
+        m_boundary  .clear();
         m_interfaces.clear();
+    }
+
+    /// Clear all boxes, boundary and interface data.
+    void clearAll()
+    {
+        clearTopology();
+        m_dim  = -1;
+        nboxes =  0;
     }
 
     /// Swap with another gsBoxTopology.
@@ -297,9 +305,16 @@ public:
 protected:
     // Data members
 
+    /// Dimension of the boxes held
     int m_dim;
+
+    /// Number of boxes held
     int nboxes;
+
+    /// List of boundaries of the boxes
     std::vector< patchSide > m_boundary;
+
+    /// List of intefaces between boxes
     std::vector< boundaryInterface > m_interfaces ;
 
 }; // class gsBoxTopology

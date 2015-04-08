@@ -182,7 +182,7 @@ void gsMultiPatch<T>::degreeElevate(int elevationSteps)
 template<class T>
 bool gsMultiPatch<T>::computeTopology( T tol )
 {
-    gsBoxTopology::clear();
+    gsBoxTopology::clearTopology();
 
     const size_t   np    = m_patches.size();
     const index_t  nCorP = 1 << m_dim;     // corners per patch

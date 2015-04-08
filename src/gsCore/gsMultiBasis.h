@@ -128,7 +128,7 @@ public:
     /// Clear (delete) all patches
     void clear()
     {
-        m_topology.clear();
+        m_topology.clearAll();
         m_bases   .clear();
     }
 
