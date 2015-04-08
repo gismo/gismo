@@ -14,6 +14,10 @@ cmake_policy(SET CMP0042 OLD)
 cmake_policy(SET CMP0048 OLD)
 endif()
 
+if(POLICY CMP0054)# CMake 3.1
+cmake_policy(SET CMP0054 OLD)
+endif()
+
 project(gismo)
 
 if("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")

@@ -143,7 +143,7 @@ public:
         return m_matrix.template selfadjointView<Lower>();
     }
 
-     // Computes the Dirichlet DoF values
+    /// Computes the Dirichlet DoF values
     void computeDirichletDofs();
 
 
@@ -162,6 +162,9 @@ protected:
     
     // Neumann contributions
     void assembleNeumann();
+
+    /// Force Dirichlet boundary conditions by diagonal penalization
+    void penalizeDirichlet();
 
     // Computes the Dirichlet DoF values by interpolation
     void computeDirichletDofsIntpl();

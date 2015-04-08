@@ -83,6 +83,43 @@ void gsPoissonAssembler<T>::assembleNeumann()
 }
 
 template<class T>
+void gsPoissonAssembler<T>::penalizeDirichlet()
+{
+    static const T PP = 1e8; // magic number
+    
+    // Store mapper
+    gsDofMapper old = m_dofMappers[0];
+
+    // Recompute dof mapper
+    const bool conforming = ( m_options.intStrategy == iFace::conforming );
+    m_bases.front().getMapper(conforming, m_bConditions, 0, m_dofMappers[0]);
+
+    // Compute dirichlet values
+    computeDirichletDofs();
+
+    // apply BCs
+    for ( typename gsBoundaryConditions<T>::const_iterator
+              it = m_bConditions.dirichletBegin();
+          it != m_bConditions.dirichletEnd(); ++it )
+    {            
+        const gsBasis<T> & basis = (m_bases[0])[it->patch()];
+
+        gsMatrix<unsigned> bnd = safe( basis.boundary(it->side() ) ); 
+        for (index_t k=0; k!= bnd.size(); ++k)
+        {
+            const index_t ii = old            .index ( bnd(k) , it->patch() );
+            const index_t bb = m_dofMappers[0].bindex( bnd(k) , it->patch() );
+
+            m_matrix(ii,ii) = PP;
+            m_rhs.row(ii)   = PP * m_ddof.row(bb);
+        }
+    }
+
+    // restore mapper
+    m_dofMappers[0] = old;
+}
+
+template<class T>
 void gsPoissonAssembler<T>::assemble()
 {
 
@@ -123,6 +160,10 @@ void gsPoissonAssembler<T>::assemble()
     // If requested, force Dirichlet boundary conditions by Nitsche's method
     if ( m_options.dirStrategy == dirichlet::nitsche )
         assembleNitsche();
+
+    // If requested, force Dirichlet boundary conditions by diagonal penalization
+    if ( m_options.dirStrategy == dirichlet::penalize )
+        penalizeDirichlet();
 
     // Enforce Neumann boundary conditions
     assembleNeumann();
@@ -449,7 +490,7 @@ void gsPoissonAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
     const gsDofMapper & mapper = m_dofMappers.front();
 
-    result.clear();
+    result.clear(); // result is cleared first
     
     const index_t dim = m_rhsFun->targetDim();
     

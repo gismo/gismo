@@ -60,7 +60,6 @@ if (GISMO_BUILD_PCH)
 
   #set(CMAKE_C_FLAGS    "${CMAKE_CXX_FLAGS} -H") # for GCC: test if PCH is used
 
-  include(cotire)
   set_property(DIRECTORY PROPERTY COTIRE_ADD_UNITY_BUILD FALSE)
   LIST( REMOVE_ITEM SUBDIRS gsCore)
   set_target_properties(gsCore PROPERTIES
