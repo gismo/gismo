@@ -18,6 +18,7 @@
 #include <gsAssembler/gsPoissonAssembler.h>
 #include <gsAssembler/gsVisitorBiharmonic.h>
 #include <gsAssembler/gsVisitorNeumannBiharmonic.h>
+//#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
 #include <gsPde/gsPoissonPde.h>
 
 namespace gismo
@@ -35,7 +36,7 @@ template <class T>
 class gsBiharmonicAssembler : public gsPoissonAssembler<T>
 {
 public:
-    typedef gsAssemblerBase<T> Base;
+    typedef gsPoissonAssembler<T> Base;
 
 public:
 /** @brief
@@ -71,14 +72,14 @@ public:
     /// Main assembly routine
     void assemble()
     {
-         if (m_dofs == 0 ) // Are there any interior dofs ?
+        gsPoissonAssembler<T>::computeDirichletDofs();
+
+        if (m_dofs == 0 ) // Are there any interior dofs ?
         {
             gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
             return;
         }
-
-        gsPoissonAssembler<T>::computeDirichletDofs();
-
+        
         // Pre-allocate non-zero elements for each column of the
         // sparse matrix
         int nonZerosPerCol = 1;
@@ -91,13 +92,9 @@ public:
         // Resize the load vector
         m_rhs.setZero(m_dofs, m_rhsFun->targetDim() );
 
-        // Assemble volume stiffness and load vector integrals
-        GISMO_ASSERT(m_patches.nPatches() == 1, "Not verified  for Multipatch");
-
         gsVisitorBiharmonic<T> visitBiHar(*m_rhsFun);
         for (unsigned np=0; np < m_patches.nPatches(); ++np )
             this->apply(visitBiHar, np);
-
 
         for ( typename gsBoundaryConditions<T>::const_iterator
                   it = m_bConditions.neumannBegin();
@@ -106,6 +103,7 @@ public:
             gsVisitorNeumann<T> neumann(*it->function(), it->side());
             this->apply(neumann, it->patch(), it->side() );
         }
+
         for ( typename gsBoundaryConditions<T>::const_iterator
                   it = m_bConditions2.neumannBegin();
               it != m_bConditions2.neumannEnd(); ++it )
@@ -113,6 +111,22 @@ public:
             gsVisitorNeumannBiharmonic<T> neumann(*it->function(), it->side());
             this->apply(neumann, it->patch(), it->side() );
         }
+
+/*
+        // If requested, force Dirichlet boundary conditions by Nitsche's method
+        if ( m_options.dirStrategy == dirichlet::nitsche )
+        {
+            for ( typename gsBoundaryConditions<T>::const_iterator
+                      it = m_bConditions.dirichletBegin();
+                  it != m_bConditions.dirichletEnd(); ++it )
+            {
+                gsVisitorNitscheBiharmonic<T> nitsche(*it->function(), this->penalty(it->patch()), it->side());
+            
+                // Note: it->unknown() == 0
+                this->apply(nitsche, it->patch(), it->side() );
+            }
+        }
+*/
 
         // Assembly is done, compress the matrix
         m_matrix.makeCompressed();
