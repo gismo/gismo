@@ -75,11 +75,16 @@ public:
     virtual gsConstantFunction * clone() const { return new gsConstantFunction(*this); }
 
     virtual int domainDim() const   { return m_domainDim ; }
+
     virtual int targetDim() const   { return m_val.rows(); }
 
     const gsVector<T> & value() const { return m_val;}
 
     T value(size_t i = 0) const { return m_val[i];}
+
+    void setValue(T val) { m_val.setConstant(val);}
+
+    void setValue(const gsVector<T> & val) { m_val = val;}
 
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
