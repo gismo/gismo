@@ -106,5 +106,9 @@ add_custom_target(doctar #ALL
 
 add_dependencies(doc doc-gismo-prerequisites)
 
+else (DOXYGEN_FOUND)
+
+add_custom_target(doc
+    ${CMAKE_COMMAND} -E cmake_echo_color --cyan "Doxygen was not found! Please install doxygen and run cmake again to build the doc.")
 
 endif(DOXYGEN_FOUND)
