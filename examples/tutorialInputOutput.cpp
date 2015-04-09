@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
     if (!ok)
     {
         std::cout << "Error during parsing the command line!";
-        return -1;
+        return 1;
     }
     
     if (input == "")

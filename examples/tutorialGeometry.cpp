@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
     if (!ok)
     {
         std::cout << "Error during parsing command line!";
-        return -1;
+        return false;
     }
     
     // ======================================================================

@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
   bool ok = cmd.getValues(argc,argv);
   if (!ok) {
     cout << "Error during parsing!";
-    return -1;
+    return 1;
   }
 
   // ****** Prepared test examples ******

@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     if (!ok)    
     { 
         cout << "Error during parsing the command line!\n";
-        return -1; 
+        return 1; 
     }
 
 

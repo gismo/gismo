@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
   if ( ! success )
   {
       cout<<"Input failed, quitting.\n";
-      return 0;
+      return 1;
   }
   /////////////////// Print info ///////////////////
   cout<<"Type "<< argv[0]<< " -h, to get the list of command line options.\n\n";

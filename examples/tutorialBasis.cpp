@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
     input = inArg.getValue();
     if (!ok) {
         std::cout << "Error during parsing command line!";
-        return -1;
+        return 1;
     }
     
     // ======================================================================

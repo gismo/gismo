@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
     if ( !ok ) 
     {
         std::cout << "Something went wrong when reading the command line. Exiting.\n";
-        return 0;
+        return 1;
     }
 
     std::cout << "Printing command line arguments:\n\n\n"

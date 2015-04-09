@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     if ( !ok ) 
     {
         std::cout << "Something went wrong when reading the command line. Exiting.\n";
-        return -1;
+        return 1;
     }
     
     if (fn.empty() )
