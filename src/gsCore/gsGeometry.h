@@ -407,12 +407,18 @@ public:
 
     /// Embeds coefficients in 3D
     void embed3d()
+    {
+        embed(3);
+    }
+
+    /// Embeds coefficients in \a N dimension
+    void embed(unsigned N)
     { 
-        const int n = 3 - m_coefs.cols();
+        const int n = N - m_coefs.cols();
 
         if ( n != 0 )
         {
-            m_coefs.conservativeResize(Eigen::NoChange, 3);
+            m_coefs.conservativeResize(Eigen::NoChange, N);
             if ( n > 0 )
                 m_coefs.rightCols(n).setZero();
             else
