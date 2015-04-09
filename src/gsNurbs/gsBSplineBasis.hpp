@@ -120,7 +120,7 @@ gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary() const
 
 
 template <class T, class KnotVectorType> 
-gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary(boxSide const & s ) const
+gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary(boxSide const & s,unsigned offset ) const
 {
     if( m_periodic )
     {
@@ -130,12 +130,13 @@ gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary(boxSide const & 
     else
     {
         gsMatrix<unsigned> * res = new gsMatrix<unsigned>(1,1);
+        GISMO_ASSERT(offset<=m_knots.size()-m_p-2,"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
         switch (s) {
         case boundary::left : // left
-            (*res)(0,0)= 0;
+            (*res)(0,0)= offset;
             break;
         case boundary::right : // right
-            (*res)(0,0)= m_knots.size()-m_p-2;
+            (*res)(0,0)= m_knots.size()-m_p-2-offset;
             break;
         default:
             GISMO_ERROR("gsBSplineBasis: valid sides is left(west) and right(east).");

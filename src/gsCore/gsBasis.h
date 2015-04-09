@@ -499,7 +499,10 @@ public:
     virtual gsMatrix<unsigned> * boundary( ) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
-    virtual gsMatrix<unsigned> * boundary(boxSide const & s ) const;
+    /// If an offset is provided (the default is zero), it will return the indizes of the basis
+    /// functions having this offset to the provided boxSide. Note that the offset cannot be
+    /// bigger than the size of the basis in the direction orthogonal to boxSide.
+    virtual gsMatrix<unsigned> * boundary(boxSide const & s, unsigned offset=0) const;
 
     virtual unsigned functionAtCorner(boxCorner const & c) const;
 

@@ -154,8 +154,8 @@ public:
 
     gsMatrix<unsigned> * boundary( ) const {return m_src->boundary(); }
     
-    gsMatrix<unsigned> * boundary(boxSide const & s ) const 
-    {return m_src->boundary(s); };
+    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset=0 ) const
+    {return m_src->boundary(s,offset); };
     
     // Look at gsBasis class for a description
     int degree(int i = 0) const {return m_src->degree(i); }

@@ -446,7 +446,7 @@ public:
     gsMatrix<unsigned> * boundary( ) const;
 
     // Look at gsBasis.h for the documentation of this function
-    virtual gsMatrix<unsigned> * boundary(boxSide const & s ) const;
+    virtual gsMatrix<unsigned> * boundary(boxSide const & s, unsigned offset = 0 ) const;
 
     // Look at gsBasis.h for the documentation of this function
     void evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const;

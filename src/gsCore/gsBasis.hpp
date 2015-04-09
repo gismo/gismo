@@ -200,7 +200,7 @@ gsBasis<T>::boundary( ) const
 
 template<class T>
 gsMatrix<unsigned> *
-gsBasis<T>::boundary(boxSide const & s ) const
+gsBasis<T>::boundary(boxSide const & s,unsigned offset) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

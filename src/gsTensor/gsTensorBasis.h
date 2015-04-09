@@ -196,7 +196,7 @@ public:
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> * boundary(boxSide const & s ) const ;
+    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset=0 ) const ;
 
     unsigned functionAtCorner(boxCorner const & c) const;
 

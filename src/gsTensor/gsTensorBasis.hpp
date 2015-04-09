@@ -300,12 +300,13 @@ gsMatrix<unsigned> * gsTensorBasis<d,T>::boundary() const
 
 
 template<unsigned d, class T>
-gsMatrix<unsigned> * gsTensorBasis<d,T>::boundary(boxSide const& s) const
+gsMatrix<unsigned> * gsTensorBasis<d,T>::boundary(boxSide const& s,unsigned offset) const
 {
     //get m_bases index and start or end case
     int k = s.direction();
     int r = s.parameter();
-    return this->coefSlice(k, (r ? size(k) - 1 : 0) ).release();
+    GISMO_ASSERT(offset<=size(k)-1,"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
+    return this->coefSlice(k, (r ? size(k) - 1 -offset : offset) ).release();
 }
 
 template<unsigned d, class T>

@@ -750,7 +750,7 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary( ) const
 }
 
 template<unsigned d, class T>
-gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary(boxSide const & s ) const
+gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary(boxSide const & s,unsigned offset) const
 { 
     //get information on the side
     int k   = s.direction();
@@ -761,7 +761,8 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary(boxSide const & s ) const
     // i goes through all levels of the hierarchical basis
     for(unsigned i = 0; i <= this->maxLevel(); i++)
     {
-        unsigned r = ( par ? this->m_bases[i]->size(k) - 1 : 0);
+        GISMO_ASSERT(offset<=this->m_bases[i]->size(k)-1,"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
+        unsigned r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
         for (CMatrix::const_iterator it = m_xmatrix[i].begin(); 
              it != m_xmatrix[i].end(); it++)
         {

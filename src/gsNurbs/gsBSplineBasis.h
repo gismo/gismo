@@ -213,7 +213,7 @@ public:
     gsMatrix<unsigned> * boundary( ) const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> * boundary(boxSide const & s ) const;
+    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset=0 ) const;
 
     // Look at gsBasis class for a description
     gsConstantBasis<T> * boundaryBasis(boxSide const & s ) const;
