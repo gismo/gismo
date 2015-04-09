@@ -68,6 +68,8 @@ public:
     /// Associated Boundary basis type
     typedef typename gsTraits<Family_t,Dim>::RationalBoundaryType BoundaryBasisType;
 
+    using gsBasis<T>::boundary;
+
 public:
 
     /// Default empty constructor
@@ -154,7 +156,7 @@ public:
 
     gsMatrix<unsigned> * boundary( ) const {return m_src->boundary(); }
     
-    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset=0 ) const
+    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset ) const
     {return m_src->boundary(s,offset); };
     
     // Look at gsBasis class for a description

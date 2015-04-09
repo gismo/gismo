@@ -49,6 +49,8 @@ public:
     typedef Basis_t** iterator;
     typedef Basis_t* const* const_iterator;
 
+    using gsBasis<T>::boundary;
+
 public:
     
     /// Default empty constructor
@@ -196,7 +198,7 @@ public:
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset=0 ) const ;
+    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset ) const ;
 
     unsigned functionAtCorner(boxCorner const & c) const;
 
