@@ -320,7 +320,7 @@ gsMatrix<unsigned> * gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,unsigne
     //get m_bases index and start or end case
     int k = s.direction();
     int r = s.parameter();
-    GISMO_ASSERT(offset < size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
+    GISMO_ASSERT(static_cast<int>(offset) < size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
     return this->coefSlice(k, (r ? size(k) - 1 -offset : offset) ).release();
 }
 
