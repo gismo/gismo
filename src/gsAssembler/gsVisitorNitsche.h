@@ -8,14 +8,23 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris , S. Moore
 */
 
 #pragma once
 
 namespace gismo
 {
-
+/** \brief Visitor for the weak imposition of the dirichlet boundary condition.
+ *
+ * Adds this term to the bilinear terms
+ * \f[ (\nabla u, v)_\partial \Omega + (u, \nabla v )_\partial \Omega 
+ *                                   + (\mu*u, v)_\partial \Omega \f]
+ * 
+ * The following term is also added to the linear form
+ * \f[ (g_D, \mu*v + \nabla v)_\partial \Omega  \f],
+ *
+ */
 
 template <class T>
 class gsVisitorNitsche
