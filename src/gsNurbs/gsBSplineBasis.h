@@ -217,10 +217,10 @@ public:
     void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> * boundary( ) const ;
+    gsMatrix<unsigned> * allBoundary( ) const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset=0 ) const;
+    gsMatrix<unsigned> * boundaryOffset(boxSide const & s,unsigned offset) const;
 
     // Look at gsBasis class for a description
     gsConstantBasis<T> * boundaryBasis(boxSide const & s ) const;

@@ -102,7 +102,7 @@ void gsBSplineBasis<T,KnotVectorType>::active_into(const gsMatrix<T>& u,
 }
 
 template <class T, class KnotVectorType> 
-gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary() const
+gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::allBoundary() const
 {
     if( m_periodic ) // Periodic basis does not have such things as boundaries.
     {
@@ -120,7 +120,8 @@ gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary() const
 
 
 template <class T, class KnotVectorType> 
-gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary(boxSide const & s,unsigned offset ) const
+gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundaryOffset(boxSide const & s,
+                                                                      unsigned offset ) const
 {
     if( m_periodic )
     {
