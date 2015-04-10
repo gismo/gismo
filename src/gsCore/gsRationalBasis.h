@@ -68,8 +68,6 @@ public:
     /// Associated Boundary basis type
     typedef typename gsTraits<Family_t,Dim>::RationalBoundaryType BoundaryBasisType;
 
-    using gsBasis<T>::boundary;
-
 public:
 
     /// Default empty constructor
@@ -154,10 +152,10 @@ public:
     
     virtual gsBasis<T>& component(unsigned i) const { return m_src->component(i); } 
 
-    gsMatrix<unsigned> * boundary( ) const {return m_src->boundary(); }
+    gsMatrix<unsigned> * allBoundary( ) const {return m_src->allBoundary(); }
     
-    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset ) const
-    {return m_src->boundary(s,offset); };
+    gsMatrix<unsigned> * boundaryOffset(boxSide const & s,unsigned offset ) const
+    {return m_src->boundaryOffset(s,offset); };
     
     // Look at gsBasis class for a description
     int degree(int i = 0) const {return m_src->degree(i); }

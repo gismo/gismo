@@ -188,8 +188,8 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
 //        gsInfo <<" upper : "<< it.upperCorner() <<"\n";
 
         lvl = it.level() + 1; 
-        const point l = it.lowerCorner();
-        const point u = it.upperCorner();
+        const point & l = it.lowerCorner();
+        const point & u = it.upperCorner();
 
         boxes.push_back(lvl);
         boxes.push_back( l(0) * 2);
@@ -687,6 +687,8 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
     temp_output.resize( u.cols() );
     std::size_t sz = 0;
 
+    //gsMatrix<unsigned> activesLvl;
+
     for(index_t p = 0; p < u.cols(); p++) //for all input points
     {
         const gsMatrix<T> & curr = u.col(p);
@@ -698,6 +700,15 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
 
         for(int i = 0; i <= lvl; i++)
         {
+/*
+            m_bases[i]->active_into(curr, activesLvl);
+            
+            std::set_intersection(m_xmatrix[i].begin(), m_xmatrix[i].end(), 
+                                  activesLvl.data(), activesLvl.data() + activesLvl.size(),
+                                  std::back_inserter( temp_output[p] ) );
+            +++ Renumbering to H-basis indexing
+// */                                 
+// /*
             m_bases[i]->active_cwise(curr, low, upp);
             c.first_lattice_point(low,upp,low);
             do
@@ -713,8 +724,9 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
                 }
             }
             while( c.next_lattice_point(low) );
+//*/
         }
-        
+      
         // update result size
         if ( temp_output[p].size() > sz ) 
             sz = temp_output[p].size();
@@ -730,7 +742,7 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
 }
 
 template<unsigned d, class T>
-gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary( ) const
+gsMatrix<unsigned> *  gsHTensorBasis<d,T>::allBoundary( ) const
 {
     std::vector<unsigned> temp;
     gsVector<unsigned,d>  ind;
@@ -750,7 +762,7 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary( ) const
 }
 
 template<unsigned d, class T>
-gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary(boxSide const & s,unsigned offset) const
+gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundaryOffset(boxSide const & s,unsigned offset) const
 { 
     //get information on the side
     int k   = s.direction();
@@ -761,7 +773,7 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundary(boxSide const & s,unsigned o
     // i goes through all levels of the hierarchical basis
     for(unsigned i = 0; i <= this->maxLevel(); i++)
     {
-        GISMO_ASSERT(offset<=this->m_bases[i]->size(k)-1,"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
+        GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
         unsigned r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
         for (CMatrix::const_iterator it = m_xmatrix[i].begin(); 
              it != m_xmatrix[i].end(); it++)

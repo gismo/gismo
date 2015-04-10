@@ -97,8 +97,6 @@ public:
 
     /// Dimension of the parameter domain
     static const int Dim = d;
-
-    using gsBasis<T>::boundary;
     
 public:
     /// Default empty constructor
@@ -445,10 +443,10 @@ public:
 
 
     // Look at gsBasis.h for the documentation of this function
-    gsMatrix<unsigned> * boundary( ) const;
+    gsMatrix<unsigned> * allBoundary( ) const;
 
     // Look at gsBasis.h for the documentation of this function
-    virtual gsMatrix<unsigned> * boundary(boxSide const & s, unsigned offset ) const;
+    virtual gsMatrix<unsigned> * boundaryOffset(boxSide const & s, unsigned offset ) const;
 
     // Look at gsBasis.h for the documentation of this function
     void evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const;

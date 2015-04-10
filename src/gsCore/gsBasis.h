@@ -496,16 +496,16 @@ public:
     /// @}
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
-    virtual gsMatrix<unsigned> * boundary( ) const;
+    virtual gsMatrix<unsigned> * allBoundary( ) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
     /// If an offset is provided (the default is zero), it will return the indizes of the basis
     /// functions having this offset to the provided boxSide. Note that the offset cannot be
     /// bigger than the size of the basis in the direction orthogonal to boxSide.
-    virtual gsMatrix<unsigned> * boundary(boxSide const & s, unsigned offset) const;
+    virtual gsMatrix<unsigned> * boundaryOffset(boxSide const & s, unsigned offset) const;
 
     gsMatrix<unsigned> * boundary(boxSide const & s) const
-    { return this->boundary(s,0); }
+    { return this->boundaryOffset(s,0); }
 
     virtual unsigned functionAtCorner(boxCorner const & c) const;
 
@@ -819,6 +819,8 @@ public:
     /// classes with more efficient algorithms. (by default uses
     /// interpolate(pts,vals)
     virtual gsGeometry<T> * interpolate(gsMatrix<T> const& vals) const;
+
+    gsGeometry<T> * project(gsFunction<T> const & func) const;
 
     /// @brief Computes the collocation matrix w.r.t. points \a u.
     ///

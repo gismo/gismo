@@ -202,6 +202,13 @@ public:
         m_knots.greville_into(result); 
     }
 
+    /// Returns the anchors (greville points) of the basis
+    void anchor_into(unsigned i, gsMatrix<T> & result) const 
+    { 
+        result.resize(1,1);
+        result(0,0) = m_knots.greville(i);
+    }
+
     // Look at gsBasis class for a description
     void connectivity(const gsMatrix<T> & nodes, 
                       gsMesh<T> & mesh) const;

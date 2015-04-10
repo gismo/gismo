@@ -145,6 +145,21 @@ void gsTensorBasis<d,T>::anchors_into(gsMatrix<T>& result) const
 }
 
 template<unsigned d, class T>
+void gsTensorBasis<d,T>::anchor_into(unsigned i, gsMatrix<T>& result) const
+{
+    gsVector<unsigned, d> ti = tensorIndex(i);
+
+    gsMatrix<T> gr;
+    result.resize(d, 1 );
+
+    for (unsigned i = 0; i < d; ++i)
+    {
+        m_bases[i]->anchor_into(ti[i], gr);
+        result(i,0) = gr.value(); 
+    }
+}
+
+template<unsigned d, class T>
 void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, 
                                             gsMesh<T> & mesh) const
 {
@@ -255,7 +270,7 @@ typename gsMatrix<unsigned>::uPtr gsTensorBasis<d,T>::coefSlice(int dir, int k) 
 
 
 template<unsigned d, class T>
-gsMatrix<unsigned> * gsTensorBasis<d,T>::boundary() const
+gsMatrix<unsigned> * gsTensorBasis<d,T>::allBoundary() const
 {
     gsMatrix<unsigned> bd;
     std::set<unsigned> bdofs;
@@ -300,12 +315,12 @@ gsMatrix<unsigned> * gsTensorBasis<d,T>::boundary() const
 
 
 template<unsigned d, class T>
-gsMatrix<unsigned> * gsTensorBasis<d,T>::boundary(boxSide const& s,unsigned offset) const
+gsMatrix<unsigned> * gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,unsigned offset) const
 {
     //get m_bases index and start or end case
     int k = s.direction();
     int r = s.parameter();
-    GISMO_ASSERT(offset<=size(k)-1,"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
+    GISMO_ASSERT(offset < size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
     return this->coefSlice(k, (r ? size(k) - 1 -offset : offset) ).release();
 }
 

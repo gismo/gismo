@@ -158,6 +158,14 @@ gsGeometry<T> * gsBasis<T>::interpolate(gsMatrix<T> const & vals) const
     return interpolate(vals, pts);
 }
 
+template<class T> inline
+gsGeometry<T> * gsBasis<T>::project(gsFunction<T> const & func) const
+{
+/*
+
+*/
+    return NULL;
+}
 
 template<class T> inline
 void gsBasis<T>::anchors_into(gsMatrix<T>& result) const
@@ -195,12 +203,12 @@ void gsBasis<T>::activeCoefs_into(const gsVector<T> & u, const gsMatrix<T> & coe
 
 template<class T>
 gsMatrix<unsigned> *
-gsBasis<T>::boundary( ) const
+gsBasis<T>::allBoundary( ) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
 gsMatrix<unsigned> *
-gsBasis<T>::boundary(boxSide const & s,unsigned offset) const
+gsBasis<T>::boundaryOffset(boxSide const & s,unsigned offset) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

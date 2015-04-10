@@ -49,8 +49,6 @@ public:
     typedef Basis_t** iterator;
     typedef Basis_t* const* const_iterator;
 
-    using gsBasis<T>::boundary;
-
 public:
     
     /// Default empty constructor
@@ -147,6 +145,9 @@ public:
     /// Returns the anchors (graville absissae) that represent the members of the basis
     void anchors_into(gsMatrix<T>& result) const;
 
+    /// Returns the anchors (graville absissae) that represent the members of the basis
+    void anchor_into(unsigned i, gsMatrix<T>& result) const;
+
     /**
      * \brief Returns the indices of active (non-zero) basis functions
      * at points <em>u</em>, as a list of indices, in <em>result</em>.
@@ -194,11 +195,11 @@ public:
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> * boundary( ) const ;
+    gsMatrix<unsigned> * allBoundary( ) const ;
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> * boundary(boxSide const & s,unsigned offset ) const ;
+    gsMatrix<unsigned> * boundaryOffset(boxSide const & s,unsigned offset ) const ;
 
     unsigned functionAtCorner(boxCorner const & c) const;
 

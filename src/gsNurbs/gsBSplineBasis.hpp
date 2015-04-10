@@ -130,7 +130,7 @@ gsMatrix<unsigned> * gsBSplineBasis<T,KnotVectorType>::boundary(boxSide const & 
     else
     {
         gsMatrix<unsigned> * res = new gsMatrix<unsigned>(1,1);
-        GISMO_ASSERT(offset<=m_knots.size()-m_p-2,"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
+        GISMO_ASSERT(offset+m_p+1 < m_knots.size(),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
         switch (s) {
         case boundary::left : // left
             (*res)(0,0)= offset;
