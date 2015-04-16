@@ -1052,12 +1052,13 @@ void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, int par,std::vector<unsig
     gsMatrix<unsigned> b1,b2;
     gsVector<unsigned> level;
     m_tree.getBoxesInLevelIndex(b1,b2,level);
+    gsVector<unsigned> min,max;
     for(int i = 0;i<level.rows();i++)
     {
-        gsVector<unsigned> min = b1.row(i);
-        gsVector<unsigned> max = b2.row(i);
-        unsigned l = level(i);
-        unsigned par_index = m_bases[l]->knots(dir).findElementIndex(par);
+        min = b1.row(i);
+        max = b2.row(i);
+        const unsigned l = level(i);
+        const unsigned par_index = m_bases[l]->knots(dir).findElementIndex(par);
         if((par_index>=min(dir))||(par_index<=max(dir)))
         {
             boxes.push_back(l);

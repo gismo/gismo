@@ -96,7 +96,7 @@ public:
     /// one less dimension and is given back in \a result.
     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const
     {
-        BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
+        const BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
 
         gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
         bBasis->anchors_into(anchorsSlice);

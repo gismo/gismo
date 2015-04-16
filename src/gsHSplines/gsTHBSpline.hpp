@@ -344,9 +344,9 @@ void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction,
 }*/
 
 template<unsigned d, class T>
-void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,gsTHBSpline<d,T>::BoundaryGeometryType & result) const
+void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,typename gsTHBSpline<d,T>::BoundaryGeometryType & result) const
 {
-    BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
+    const typename gsTHBSpline<d,T>::BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
 
     gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
     bBasis->anchors_into(anchorsSlice);
