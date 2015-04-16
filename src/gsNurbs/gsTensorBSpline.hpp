@@ -79,16 +79,12 @@ gsTensorBSpline<d,T,KnotVectorType>::gsTensorBSpline(gsMatrix<T> const & corner,
 // todo: move to hpp
 template<unsigned d, class T, class KnotVectorType>
 void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
-                                                BoundaryGeometry & result) const
+                                                BoundaryGeometryType & result) const
 {
-    typedef typename gsTraits<gsBSplineBasis<T,KnotVectorType>,d>::TensorBoundaryType newBasis;
     GISMO_ASSERT(d-1>0,"cannot take iso slice of a curve");
     // construct the d-1 basis
-    std::vector<gsBasis<T>* > bases;
-    for(unsigned i=0;i<d;++i)
-        if( static_cast<index_t>(i) != dir_fixed)
-            bases.push_back(new gsBSplineBasis<T,KnotVectorType>(this->basis().knots(i)));
-    newBasis *tbasis = new newBasis(bases) ;
+    boxSide side(dir_fixed,0);
+    BoundaryBasisType *tbasis = this->basis().boundaryBasis(side) ;
 
     const int mult   = this->basis().knots(dir_fixed).multiplicity(par);
     const int degree = this->basis().degree(dir_fixed);
@@ -120,7 +116,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
     // construct the object
     //result = gsTensorBSpline<d-1,T>(*tbasis, give(coefs) );
     //result = BoundaryGeometry(*tbasis, give(coefs) );
-    result = BoundaryGeometry(*tbasis, coefs );
+    result = BoundaryGeometryType(*tbasis, coefs );
     delete tbasis;
 }
 

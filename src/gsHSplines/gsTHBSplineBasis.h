@@ -41,6 +41,9 @@ public:
     
     typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
 
+    //typedef gsTHBSplineBasis<d-1,T> BoundaryBasisType;
+    typedef gsTHBSplineBasis<1,T> BoundaryBasisType;
+
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
 
 public:
@@ -77,6 +80,15 @@ public:
 
     ~gsTHBSplineBasis()
     { }
+
+    /// Gives back the boundary basis at boxSide s
+    BoundaryBasisType * boundaryBasis(boxSide const & s ) const
+    {
+        return basisSlice(s.direction(),s.parameter());
+    }
+
+    /// Gives back the basis at a slice in \a dir_fixed at \a par
+    BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
 
 public:
 

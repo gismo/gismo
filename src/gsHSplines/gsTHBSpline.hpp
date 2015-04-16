@@ -343,6 +343,26 @@ void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction,
     }
 }*/
 
+template<unsigned d, class T>
+void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,gsTHBSpline<d,T>::BoundaryGeometryType & result) const
+{
+    BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
+
+    gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
+    bBasis->anchors_into(anchorsSlice);
+    anchorsInGeom.resize(anchorsSlice.rows()+1,anchorsSlice.cols());
+    anchorsInGeom.topRows(dir_fixed)=anchorsSlice.topRows(dir_fixed);
+    anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
+    anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
+    this->eval_into(anchorsInGeom,vals);
+    gsTHBSpline<d,T>::BoundaryGeometryType* geom = dynamic_cast<gsTHBSpline<d,T>::BoundaryGeometryType *>(bBasis->interpolate(vals));
+    GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
+    result = *geom;
+
+    delete bBasis;
+    delete geom;
+}
+
 
 namespace internal
 {

@@ -46,6 +46,9 @@ public:
   /// Shared pointer for gsHBSpline
   typedef memory::shared_ptr< gsTHBSpline<d,T> > Ptr;
 
+    typedef gsTHBSpline<1,T> BoundaryGeometryType;
+    typedef gsTHBSplineBasis<1,T> BoundaryBasisType;
+
 public:
 
     /// Default empty constructor
@@ -138,6 +141,14 @@ private:
 
     ///convert the coefficient matrix mat in the given direction to a column of the control points matrix
     void return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const;
+
+public:
+
+    /// Constucts an isoparametric slice of this THBSpline by fixing
+    /// \a par in direction \a dir_fixed. The resulting THBSpline has
+    /// one less dimension and is given back in \a result.
+    void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const;
+
 }; // class gsTHBSpline
 
 

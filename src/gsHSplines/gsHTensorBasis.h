@@ -27,7 +27,6 @@
 
 #include <limits>
 
-
 namespace gismo
 {
 
@@ -242,7 +241,6 @@ public:
     { 
         freeAll( m_bases );
     }
-    
 
 protected:
 
@@ -846,6 +844,11 @@ protected:
             }
         }
     }
+
+    /// gets all the boxes along a slice in direction \a dir at parameter \a par.
+    /// the boxes are given back in a std::vector<unsigned> and are in the right format
+    /// to be given to refineElements().
+    void getBoxesAlongSlice( int dir, int par,std::vector<unsigned>& boxes ) const;
 
 private:
 

@@ -40,6 +40,9 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
 
+    //typedef gsHBSplineBasis<d-1,T> BoundaryBasisType;
+    typedef gsHBSplineBasis<1,T> BoundaryBasisType;
+
     typedef memory::shared_ptr< gsHBSplineBasis > Ptr;
 
 public:
@@ -108,6 +111,15 @@ public:
     {
         // initialize(); // is done in the base constructor
     }
+
+    /// Gives back the boundary basis at boxSide s
+    BoundaryBasisType * boundaryBasis(boxSide const & s ) const
+    {
+        return basisSlice(s.direction(),s.parameter());
+    }
+
+    /// Gives back the basis at a slice in \a dir_fixed at \a par
+    BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
     
 public:
     

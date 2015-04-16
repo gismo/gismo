@@ -75,7 +75,9 @@ public:
   typedef memory::shared_ptr< gsTensorBSpline<d,T> > Ptr;
     
     typedef typename choose<d==1, gsTensorBSpline<1,T>, 
-                            gsTensorBSpline<d-1,T>  >::type BoundaryGeometry;
+                            gsTensorBSpline<d-1,T>  >::type BoundaryGeometryType;
+    typedef typename gsTraits<gsBSplineBasis<T,KnotVectorType>,d>::TensorBoundaryType BoundaryBasisType;
+
 public:
 
     /// Default empty constructor
@@ -343,8 +345,9 @@ inline void setPeriodic( int dir )
 private:
 
 /// Helper function for the slice function
-/// selects the row of coefficients from fullCoefs that are suitable
+/// selects the row of coefficients from coefficients of geo that are suitable
 /// for the isoparametric slice in \a dir_fixed with \a par.
+/// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
 void constructCoefsForSlice(unsigned dir_fixed,T par,
                             const gsTensorBSpline<d,T> & geo,
                             gsMatrix<T>& result) const;
@@ -354,7 +357,7 @@ public:
 /// Constucts an isoparametric slice of this tensorBSpline by fixing
 /// \a par in direction \a dir_fixed. The resulting tensorBSpline has
 /// one less dimension and is given back in \a result.
-void slice(index_t dir_fixed,T par,BoundaryGeometry & result) const;
+void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const;
 
 protected:
 // TODO Check function

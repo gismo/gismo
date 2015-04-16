@@ -1046,6 +1046,30 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, const std::
     update_structure();
 }
 
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, int par,std::vector<unsigned>& boxes ) const
+{
+    gsMatrix<unsigned> b1,b2;
+    gsVector<unsigned> level;
+    m_tree.getBoxesInLevelIndex(b1,b2,level);
+    for(int i = 0;i<level.rows();i++)
+    {
+        gsVector<unsigned> min = b1.row(i);
+        gsVector<unsigned> max = b2.row(i);
+        unsigned l = level(i);
+        unsigned par_index = m_bases[l]->knots(dir).findElementIndex(par);
+        if((par_index>=min(dir))||(par_index<=max(dir)))
+        {
+            boxes.push_back(l);
+            for(unsigned j=0;j<min.rows();++j)
+                if(j!=dir)
+                    boxes.push_back(min(j));
+            for(unsigned j=0;j<max.rows();++j)
+                if(j!=dir)
+                    boxes.push_back(max(j));
+        }
+    }
+}
 
 
 } // namespace gismo

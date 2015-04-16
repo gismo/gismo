@@ -42,6 +42,9 @@ public:
 
   /// Shared pointer for gsHBSpline
   typedef memory::shared_ptr< gsHBSpline<d,T> > Ptr;
+
+    typedef gsHBSpline<1,T> BoundaryGeometryType;
+    typedef gsHBSplineBasis<1,T> BoundaryBasisType;
     
 public:
     
@@ -86,7 +89,29 @@ public:
     unsigned degree(const unsigned & i) const 
     { return this->basisComponent(i).degree(); };
     
-  
+public:
+
+    /// Constucts an isoparametric slice of this HBSpline by fixing
+    /// \a par in direction \a dir_fixed. The resulting HBSpline has
+    /// one less dimension and is given back in \a result.
+    void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const
+    {
+        BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
+
+        gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
+        bBasis->anchors_into(anchorsSlice);
+        anchorsInGeom.resize(anchorsSlice.rows()+1,anchorsSlice.cols());
+        anchorsInGeom.topRows(dir_fixed)=anchorsSlice.topRows(dir_fixed);
+        anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
+        anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
+        this->eval_into(anchorsInGeom,vals);
+        BoundaryGeometryType* geom = dynamic_cast<BoundaryGeometryType *>(bBasis->interpolate(vals));
+        GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
+        result = *geom;
+
+        delete bBasis;
+        delete geom;
+    }
 }; // class gsHBSpline
   
     

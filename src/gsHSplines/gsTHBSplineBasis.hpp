@@ -21,9 +21,25 @@
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
-
 namespace gismo
 {
+
+template<unsigned d, class T>
+typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
+{
+    //gsTensorBSplineBasis<d-1,T>* bBSplineBasis = this->m_bases[0].boundaryBasis(s);
+    boxSide side(dir_fixed,0);
+    gsBasis<T>* basis = this->m_bases[0]->boundaryBasis(side);
+    gsTensorBSplineBasis<1,T,gsCompactKnotVector<T> >* bBSplineBasis = dynamic_cast<gsTensorBSplineBasis<1,T,gsCompactKnotVector<T> >* >(basis);
+    gsTHBSplineBasis<d,T>::BoundaryBasisType* bBasis = new gsTHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis,this->m_tree.getMaxInsLevel()+1);
+
+    std::vector<unsigned> boxes;
+    this->getBoxesAlongSlice(dir_fixed,par,boxes);
+    bBasis->refineElements(boxes);
+
+    delete bBSplineBasis;
+    return bBasis;
+}
 
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::representBasis()
@@ -66,7 +82,6 @@ void gsTHBSplineBasis<d,T>::representBasis()
         }
     }
 }
-
 
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::_representBasisFunction(
