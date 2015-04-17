@@ -318,7 +318,7 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
 
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
-    gsSparseMatrix<T> globProjMat( mapper.boundarySize(), mapper.boundarySize() );
+    gsSparseEntries<T> projMatEntries;
     gsMatrix<T>       globProjRhs;   
     globProjRhs.setZero( mapper.boundarySize(), m_rhsFun->targetDim() );
 
@@ -419,7 +419,7 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
                         // function value.
                         // Use the boundary index to put the value in the proper
                         // place in the global projection matrix.
-                        globProjMat.coeffRef(ii,jj) += weight_k * basisVals(i,k) * basisVals(j,k);
+                        projMatEntries.add(ii, jj, weight_k * basisVals(i,k) * basisVals(j,k));
                     } // for j
 
                     globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
@@ -429,6 +429,8 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
         } // bdryIter
     } // boundaryConditions-Iterator
 
+    gsSparseMatrix<T> globProjMat( mapper.boundarySize(), mapper.boundarySize() );
+    globProjMat.setFrom( projMatEntries );
     globProjMat.makeCompressed();
 
     // Solve the linear system:
