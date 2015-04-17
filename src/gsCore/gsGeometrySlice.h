@@ -49,6 +49,12 @@ public:
         return m_geo->targetDim();
     }
 
+    /// Clone function. Makes a deep copy of the geometry object.
+    gsGeometrySlice * clone() const
+    {
+        return new gsGeometrySlice(m_geo,m_fixed_dir,m_par);
+    }
+
     /// \brief Gives back the values of this slice at points \a u in \a result
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {

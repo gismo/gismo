@@ -1047,7 +1047,7 @@ void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, const std::
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, int par,std::vector<unsigned>& boxes ) const
+void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<unsigned>& boxes ) const
 {
     gsMatrix<unsigned> b1,b2;
     gsVector<unsigned> level;
@@ -1062,10 +1062,10 @@ void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, int par,std::vector<unsig
         if((par_index>=min(dir))||(par_index<=max(dir)))
         {
             boxes.push_back(l);
-            for(unsigned j=0;j<min.rows();++j)
+            for(int j=0;j<min.rows();++j)
                 if(j!=dir)
                     boxes.push_back(min(j));
-            for(unsigned j=0;j<max.rows();++j)
+            for(int j=0;j<max.rows();++j)
                 if(j!=dir)
                     boxes.push_back(max(j));
         }
