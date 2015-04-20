@@ -242,6 +242,9 @@ public:
 
 public:
 
+    // Look at gsGeometry class for a description
+    void degreeElevate(int const i = 1, int const dir = -1);
+
 //////////////////////////////////////////////////
 // Virtual member functions required by the base class
 //////////////////////////////////////////////////
