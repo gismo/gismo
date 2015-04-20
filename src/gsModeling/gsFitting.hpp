@@ -47,20 +47,12 @@ void gsFitting<T>::compute(T lambda)
     if ( m_result )
         delete m_result;
 
-    //number of basis functions
     const int num_basis=m_basis->size();
-    // number of points
-    const int num_points=m_points.rows();
-
-    //for computing the value of the basis function
-    gsMatrix<T> value;
-    gsMatrix<unsigned> actives;
-
     const int dimension=m_points.cols();
 
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
-    gsSparseMatrix<T> A_mat(num_basis,num_basis);
+    gsSparseMatrix<T> A_mat(num_basis, num_basis);
     //gsMatrix<T>A_mat(num_basis,num_basis);
     //To optimize sparse matrix an estimation of nonzero elements per
     //column can be given here
@@ -78,23 +70,8 @@ void gsFitting<T>::compute(T lambda)
     m_B.setZero(); 
     // building the matrix A and the vector b of the system of linear
     // equations A*x==b
-    for(index_t k=0;k<num_points;k++)
-    {
-        const gsMatrix<T> & curr_point = m_param_values.col(k);
-        //computing the values of the basis functions at the current point
-        m_basis->eval_into(curr_point, value);
-        // which functions have been computed i.e. which are active
-        m_basis->active_into(curr_point, actives);
-        const index_t numActive = actives.rows();
-
-        for (index_t i=0; i!=numActive; ++i)
-        {
-            const int ii = actives(i,0);
-            m_B.row(ii) += value(i,0)*m_points.row(k);
-            for (index_t j=0; j!=numActive; ++j)
-                A_mat( ii, actives(j,0) ) += value(i,0)*value(j,0);
-        }
-    }
+    
+    assembleSystem(A_mat, m_B);
 
     // --- Smoothing matrix computation
     //test degree >=3
@@ -125,6 +102,39 @@ void gsFitting<T>::compute(T lambda)
     m_result = m_basis->makeGeometry( give(x) );
 }
 
+
+template <class T>
+void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
+				  gsMatrix<T>& m_B)
+{
+    const int num_points = m_points.rows();    
+
+    //for computing the value of the basis function
+    gsMatrix<T> value;
+    gsMatrix<unsigned> actives;
+
+
+    for(index_t k = 0; k < num_points; k++)
+    {
+        const gsMatrix<T>& curr_point = m_param_values.col(k);
+
+        //computing the values of the basis functions at the current point
+        m_basis->eval_into(curr_point, value);
+
+        // which functions have been computed i.e. which are active
+        m_basis->active_into(curr_point, actives);
+        
+	const index_t numActive = actives.rows();
+
+        for (index_t i = 0; i != numActive; ++i)
+        {
+            const int ii = actives(i, 0);
+            m_B.row(ii) += value(i, 0) * m_points.row(k);
+            for (index_t j = 0; j != numActive; ++j)
+                A_mat(ii, actives(j, 0)) += value(i, 0) * value(j, 0);
+        }
+    }
+}
 
 
 template<class T>

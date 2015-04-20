@@ -85,6 +85,13 @@ public:
     /// Computes the least squares fit for a gsBasis
     void iterativeCompute( T const & tolerance, unsigned const & num_iters = 10);
 
+    /// Adds to the matrix A_mat terms for minimization of second derivative, weighted
+    /// with parameter lambda.
+    void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
+    
+    /// Assembles system for the least square fit.
+    void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
+
 
 public:
 
@@ -102,7 +109,6 @@ public:
 
     /// returns the points
     gsMatrix<T> returnPoints() const {return m_points;}
-
 
 protected:
 
@@ -128,8 +134,8 @@ protected:
     T m_min_error;
 
 private:
-    void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
     //void applySmoothing(T lambda, gsMatrix<T> & A_mat);
+
 }; // class gsFitting
 
 
