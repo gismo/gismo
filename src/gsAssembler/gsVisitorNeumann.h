@@ -15,13 +15,25 @@
 
 namespace gismo
 {
+/** @brief
+    Implementation of a Neumann BC for elliptic Assembler.
 
+    It sets up an assembler and adds the following term to the linear term.
+    \f[ \nabla u \cdot \mathbf{n} = g_N  \f]
+*/
 
 template <class T>
 class gsVisitorNeumann
 {
 public:
-
+/** @brief
+ * Constructor of the assembler object 
+ * 
+   \param[in] neudata is the Neumann boundary data.
+   \param[in] s are the sides of the geometry where neumann BC are prescribed.
+   
+   \f[ \nabla u \cdot \mathbf{n} = g_N  \f]
+*/
     gsVisitorNeumann(const gsFunction<T> & neudata, boxSide s) : 
     neudata_ptr(&neudata), side(s)
     { }
