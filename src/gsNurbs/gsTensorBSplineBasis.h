@@ -15,7 +15,6 @@
 #pragma once
 
 #include <gsTensor/gsTensorBasis.h>
-#include <gsTensor/gsTensorTools.h>
 
 // #include <gsNurbs/gsBSplineBasis.h>
 // #include <gsNurbs/gsKnotVector.h>
@@ -200,19 +199,8 @@ public:
      * \param u     refineKnots Coordinate-wise knot values to be inserted
      * \param[out]  transfer Transfer matrix
      */
-    void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector< std::vector<T> >& refineKnots)
-    {
-        GISMO_ASSERT( refineKnots.size() == d, "refineKnots vector has wrong size" );
-        gsSparseMatrix<T,RowMajor> B[d];
+    void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector< std::vector<T> >& refineKnots);
 
-        // refine component bases and obtain their transfer matrices
-        for (unsigned i = 0; i < d; ++i)
-        {
-            this->component(i).refine_withTransfer( B[i], refineKnots[i] );
-        }
-
-        tensorCombineTransferMatrices<d, T>( B, transfer );
-    }
 
     /**
      * \brief

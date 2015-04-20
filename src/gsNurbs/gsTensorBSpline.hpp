@@ -7,6 +7,8 @@
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
+#include <gsTensor/gsTensorTools.h>
+
 namespace gismo
 {
 
@@ -119,6 +121,35 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
     result = BoundaryGeometryType(*tbasis, coefs );
     delete tbasis;
 }
+
+template<unsigned d, class T, class KnotVectorType>
+void gsTensorBSpline<d,T,KnotVectorType>::degreeElevate(int const i, int const dir)
+{
+    if (dir == -1)
+    {
+        for (unsigned j = 0; j < d; ++j)
+            degreeElevate(i, j);
+        return;
+    }
+    
+    GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
+                  "Invalid basis component "<< dir <<" requested for degree elevation" );
+
+    const index_t n = this->m_coefs.cols();
+    
+    gsVector<index_t,d> sz;
+    this->basis().size_cwise(sz);
+    
+    swapTensorDirection(0, dir, sz, this->m_coefs);
+    this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+
+    bspline::degreeElevateBSpline(this->basis().component(dir), this->m_coefs, i);
+    sz[0] = this->m_coefs.rows();
+
+    this->m_coefs.resize( sz.prod(), n );
+    swapTensorDirection(0, dir, sz, this->m_coefs);
+}
+
 
 template<unsigned d, class T, class KnotVectorType>
 void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fixed,T par,const gsTensorBSpline<d,T>& geo,gsMatrix<T>& result) const

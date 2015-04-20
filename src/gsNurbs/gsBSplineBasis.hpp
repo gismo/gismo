@@ -759,9 +759,9 @@ void gsBSplineBasis<T,KnotVectorType>::deriv_into(const gsMatrix<T> & u, const g
 { 
     // TO DO specialized computation for gsBSplineBasis
     if( m_periodic == 0 )
-        gsBasis<T>::deriv_into(u, coefs, result);
+        gsBasis<T>::derivFunc_into(u, coefs, result);
     else
-        gsBasis<T>::deriv_into(u, perCoefs(coefs), result);
+        gsBasis<T>::derivFunc_into(u, perCoefs(coefs), result);
 }
 
 template <class T, class KnotVectorType> inline 
@@ -769,9 +769,9 @@ void gsBSplineBasis<T,KnotVectorType>::deriv2_into(const gsMatrix<T> & u, const 
 { 
     // TO DO specialized computation for gsBSplineBasis
     if( m_periodic == 0 )
-        gsBasis<T>::deriv2_into(u, coefs, result);
+        gsBasis<T>::deriv2Func_into(u, coefs, result);
     else
-        gsBasis<T>::deriv2_into(u, perCoefs(coefs), result);
+        gsBasis<T>::deriv2Func_into(u, perCoefs(coefs), result);
 }
 
 template <class T, class KnotVectorType>  inline

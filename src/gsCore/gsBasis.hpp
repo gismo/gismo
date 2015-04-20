@@ -18,7 +18,9 @@ namespace gismo
 
 // Evaluates a linear combination of basis functions (default implementation)
 template<class T>
-void gsBasis<T>::eval_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const {
+void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u, 
+                           const gsMatrix<T> & coefs, 
+                           gsMatrix<T>& result) const {
 
     result.resize(coefs.cols(), u.cols()) ;
     gsMatrix<T> B ;
@@ -39,7 +41,7 @@ void gsBasis<T>::eval_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMa
 
 // Evaluates the Jacobian of the function given by coefs (default implementation)
 template<class T>
-void gsBasis<T>::deriv_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const {  
+void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const {  
     unsigned n = coefs.cols();
     unsigned numPts = u.cols();       // at how many points to evaluate the gradients
     int pardim = this->dim();
@@ -62,7 +64,9 @@ void gsBasis<T>::deriv_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsM
 
 // Evaluates the second derivatives of the function given by coefs (default implementation)
 template<class T>
-void gsBasis<T>::deriv2_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const 
+void gsBasis<T>::deriv2Func_into(const gsMatrix<T> &u, 
+                                 const gsMatrix<T> & coefs, 
+                                 gsMatrix<T>& result) const 
 {  
     unsigned n = coefs.cols();
     // at how many points to evaluate the gradients
@@ -124,7 +128,7 @@ void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & re
 }
 
 template<class T> inline
-gsGeometry<T> * gsBasis<T>::interpolate( gsMatrix<T> const& vals,
+gsGeometry<T> * gsBasis<T>::interpolateData( gsMatrix<T> const& vals,
                                          gsMatrix<T> const& pts) const
 {
     GISMO_ASSERT (dim()  == pts.rows() , "Wrong dimension of the points("<<
@@ -152,23 +156,24 @@ gsGeometry<T> * gsBasis<T>::interpolate( gsMatrix<T> const& vals,
 }
 
 template<class T> inline
-gsGeometry<T> * gsBasis<T>::interpolate(gsMatrix<T> const & vals) const
+gsGeometry<T> * gsBasis<T>::interpolateAtAnchors(gsMatrix<T> const & vals) const
 {
     GISMO_ASSERT (this->size() == vals.cols(), 
                   "Expecting as many values as the number of basis functions." );
     gsMatrix<T> pts;
     anchors_into(pts);
-    return interpolate(vals, pts);
+    return interpolateData(vals, pts);
 }
 
-template<class T> inline
-gsGeometry<T> * gsBasis<T>::project(gsFunction<T> const & func) const
-{
 /*
 
-*/
+template<class T>
+gsGeometry<T> * gsBasis<T>::projectL2(gsFunction<T> const & func) const
+{
+
     return NULL;
 }
+*/
 
 template<class T> inline
 void gsBasis<T>::anchors_into(gsMatrix<T>& result) const
@@ -342,7 +347,7 @@ void gsBasis<T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfe
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeElevate(int const & i)
+void gsBasis<T>::degreeElevate(int const & i, int dir)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

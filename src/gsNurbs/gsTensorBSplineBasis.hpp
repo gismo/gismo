@@ -12,7 +12,7 @@
 */
 
 #include <gsCore/gsTemplateTools.h>
-
+#include <gsTensor/gsTensorTools.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsNurbs/gsKnotVector.h>
 
@@ -39,6 +39,23 @@ active_cwise(const gsMatrix<T> & u,
             upp[i] = low[i] + component(i).degree();
         }
     }
+}
+
+template<unsigned d, class T, class KnotVectorType>
+void gsTensorBSplineBasis<d,T,KnotVectorType>::
+refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
+                    const std::vector< std::vector<T> >& refineKnots)
+{
+    GISMO_ASSERT( refineKnots.size() == d, "refineKnots vector has wrong size" );
+    gsSparseMatrix<T,RowMajor> B[d];
+    
+    // refine component bases and obtain their transfer matrices
+    for (unsigned i = 0; i < d; ++i)
+    {
+        this->component(i).refine_withTransfer( B[i], refineKnots[i] );
+    }
+    
+        tensorCombineTransferMatrices<d, T>( B, transfer );
 }
 
 

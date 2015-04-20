@@ -8,6 +8,9 @@
 
 #include (GenerateExportHeader)
 
+#include(cotire)
+#cotire(${${PROJECT_NAME}_MODULES})
+
 ## #################################################################
 ## Add library targets
 ## #################################################################
@@ -37,41 +40,12 @@ endif()
 #           STATIC_DEFINE GISMO_BUILT_STATIC_LIB
 #	   )
 #
-#  add_library(${PROJECT_NAME}_obj OBJECT
-#    #${${PROJECT_NAME}_MODULES}
-#    ${${PROJECT_NAME}_SOURCES}
-#    )
-#
-#  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-#    set_target_properties(${PROJECT_NAME}_obj PROPERTIES 
-#    DEFINE_SYMBOL  "${PROJECT_NAME}_EXPORTS"
-#    DEFINE_SYMBOL  "GISMO_BUILD_SHARED_LIB"
-#    )
-#  endif()
-#
 #    GENERATE_EXPORT_HEADER(${PROJECT_NAME}_obj
 #    #BASE_NAME ${PROJECT_NAME}_obj
 #    #EXPORT_MACRO_NAME ${PROJECT_NAME}_obj_EXPORTS
 #    EXPORT_FILE_NAME gsExport.h
 #    #STATIC_DEFINE GISMO_BUILT_STATIC_LIB
 #    )
-#
-#  set_target_properties(${PROJECT_NAME}_obj PROPERTIES 
-#  POSITION_INDEPENDENT_CODE ON
-#)
-#
-#  add_library(${PROJECT_NAME} SHARED
-#    #${${PROJECT_NAME}_MODULES}
-#    $<TARGET_OBJECTS:${PROJECT_NAME}_obj>
-#    ${${PROJECT_NAME}_EXTENSIONS}
-#    )
-#
-#  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-#    set_target_properties(${PROJECT_NAME}_obj PROPERTIES 
-#    UNDEFINE_SYMBOL  "${PROJECT_NAME}_EXPORTS"
-#    DEFINE_SYMBOL  "GISMO_BUILD_SHARED_LIB"
-#    )
-#  endif()
 
   add_library(${PROJECT_NAME} SHARED
     ${${PROJECT_NAME}_MODULES}
@@ -102,6 +76,15 @@ endif()
     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
   endif()
 
+  if (GISMO_WITH_IPOPT)
+    #find_package( LAPACK REQUIRED ) # Problematic on ubuntu
+    find_package( BLAS REQUIRED )
+    #find_package( DL REQUIRED )
+    find_program( patch_cmd "patch" REQUIRED )
+    add_definitions( -DFORTRAN_INTEGER_TYPE=int -DHAVE_CMATH -DHAVE_CSTDIO)
+    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIBS} lapack blas dl)
+  endif()
+
   IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
     TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${DBGHELP_LIBRARY}) 	
   ENDIF() 
@@ -121,7 +104,6 @@ endif(GISMO_BUILD_LIB)
 
   add_library(${PROJECT_NAME}_static STATIC
   ${${PROJECT_NAME}_MODULES}
-  #$<TARGET_OBJECTS:${PROJECT_NAME}_obj>
   ${${PROJECT_NAME}_SOURCES}
   ${${PROJECT_NAME}_EXTENSIONS}
   )

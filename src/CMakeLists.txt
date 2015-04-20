@@ -58,6 +58,8 @@ ENDFOREACH()
 
 if (GISMO_BUILD_PCH)
 
+   include(cotire)
+
   #set(CMAKE_C_FLAGS    "${CMAKE_CXX_FLAGS} -H") # for GCC: test if PCH is used
 
   set_property(DIRECTORY PROPERTY COTIRE_ADD_UNITY_BUILD FALSE)

@@ -704,15 +704,6 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     }
 }
 
-
-template<unsigned d, class T>
-void gsTensorBasis<d,T>::deriv_into(const gsMatrix<T> & u, 
-                                          const gsMatrix<T> & coefs, 
-                                          gsMatrix<T>& result ) const 
-{
-    gsBasis<T>::deriv_into(u, coefs, result);
-}
-
 template<unsigned d, class T>
 void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u, 
                                            gsMatrix<T>& result ) const 
@@ -821,7 +812,7 @@ gsTensorBasis<d,T>::makeDomainIterator(const boxSide & s) const
 
 template<unsigned d, class T>
 gsGeometry<T> * 
-gsTensorBasis<d,T>::interpolate(gsMatrix<T> const& vals) const
+gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
 {
     std::vector<gsMatrix<T> > grid(d);
 

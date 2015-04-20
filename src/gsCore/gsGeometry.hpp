@@ -107,33 +107,21 @@ std::vector<gsGeometry<T> *> gsGeometry<T>:: boundary() const
     GISMO_NO_IMPLEMENTATION
 }
 
-
 template<class T>
-void gsGeometry<T>::degreeElevate(int const i) 
+void gsGeometry<T>::degreeElevate(int const i, int const dir)
 {
     gsBasis<T> * b = m_basis->clone();
-    b->degreeElevate(i);
-    
+ 
+    if ( dir == -1 )
+        b->degreeElevate(i);
+    else if (dir < parDim() )
+        b->component(dir).degreeElevate(i);        
+    else
+        GISMO_ERROR("Invalid direction "<< dir <<" to elevate.");
+
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
-    gsGeometry<T> * g = b->interpolate(iVals, iPts);
-
-    std::swap(m_basis, g->m_basis);
-    g->coefs().swap(this->coefs());
-
-    delete g;
-    delete b;
-}
-
-template<class T>
-void gsGeometry<T>::degreeElevate(int const dir, int const i)
-{
-    gsBasis<T> * b = m_basis->clone();
-    b->component(dir).degreeElevate(i);
-    
-    gsMatrix<T> iVals, iPts = b->anchors();
-    this->eval_into(iPts, iVals);
-    gsGeometry<T> * g = b->interpolate(iVals, iPts);
+    gsGeometry<T> * g = b->interpolateData(iVals, iPts);
 
     std::swap(m_basis, g->m_basis);
     g->coefs().swap(this->coefs());

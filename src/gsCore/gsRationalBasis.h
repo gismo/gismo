@@ -154,8 +154,8 @@ public:
 
     gsMatrix<unsigned> * allBoundary( ) const {return m_src->allBoundary(); }
     
-    gsMatrix<unsigned> * boundaryOffset(boxSide const & s,unsigned offset ) const
-    {return m_src->boundaryOffset(s,offset); };
+    gsMatrix<unsigned> * boundaryOffset(boxSide const & s, unsigned offset ) const
+    { return m_src->boundaryOffset(s,offset); }
     
     // Look at gsBasis class for a description
     int degree(int i = 0) const {return m_src->degree(i); }
@@ -227,10 +227,10 @@ public:
     }
 
 
-    void degreeElevate(int const& i = 1) 
+    void degreeElevate(int const& i = 1, int const dir = -1) 
     {
         typename SourceBasis::GeometryType tmp(*m_src,m_weights);
-        tmp.degreeElevate(i);
+        tmp.degreeElevate(i,dir);
         tmp.coefs().swap(m_weights);
         std::swap(*m_src, tmp.basis() );
     }
@@ -405,7 +405,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n, gsMat
     // evaluate weights and their derivatives
     gsMatrix<T> Wval, Wder;
     m_src->eval_into(u,  m_weights, Wval);
-    m_src->deriv_into(u, m_weights, Wder);
+    m_src->derivFunc_into(u, m_weights, Wder);
 
     for (index_t i = 0; i < u.cols(); ++i)// for all parametric points
     {
@@ -445,7 +445,7 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& resul
   m_src->deriv_into(u, result         );
   m_src->eval_into (u, ev             ); 
   m_src->eval_into (u, m_weights, Wval); 
-  m_src->deriv_into(u, m_weights, Wder); 
+  m_src->derivFunc_into(u, m_weights, Wder); 
 
   //std::cout<<"Src Deriv:\n"<< result <<"\n";
   //std::cout<<"Weights:\n"<< *m_weights <<"\n";
@@ -520,7 +520,7 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
     m_src->eval_into(u, m_weights, Wval); 
 
     gsMatrix<T> Wder;
-    m_src->deriv_into(u, m_weights, Wder); 
+    m_src->derivFunc_into(u, m_weights, Wder); 
     gsMatrix<unsigned> act;
     m_src->active_into(u,act);
 

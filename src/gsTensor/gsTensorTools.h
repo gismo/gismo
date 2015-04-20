@@ -125,6 +125,52 @@ void tensorStrides(const gsVector<int,d> & sz, gsVector<int,d> & strides)
 
 /// Reorders (inplace) the given tensor \a coefs vector (regarded as a
 /// \a sz.prod() x \a d matrix arranged as a flattened \a sz tensor,
+/// so that the rows are re-arranged so that \a k1 and \a k2 are swapped
+/// permutation \a perm. The \a sz is updated to the new ordering.
+/// \ingroup Tensor
+template <typename T, int d>
+void swapTensorDirection( int k1, int k2,
+                          gsVector<int,d> & sz, 
+                          gsMatrix<T> & coefs)
+{
+    const int dd = sz.size();
+    GISMO_ASSERT( sz.prod()  == coefs.rows(), 
+                  "Input error, sizes do not match: "<<sz.prod()<<"!="<< coefs.rows() );
+    GISMO_ASSERT( k1<d && k2 < d && k1>=0 && k2>=0,
+                  "Invalid directions: "<< k1 <<", "<< k2 );
+    
+    if ( k1 == k2 )
+        return;
+    
+    // gsVector<int,d> perm = gsVector<int,2>::LinSpaced(d,0,d-1);
+    // std::swap(perm[k1],perm[k2] );
+    // permuteTensorVector(perm,sz,coefs);
+    // return;
+
+    gsMatrix<T> tmp(coefs.rows(), coefs.cols() );
+    gsVector<int,d> perstr;
+    std::swap( sz[k1], sz[k2] );
+    tensorStrides<d>(sz, perstr);
+    std::swap( sz[k1], sz[k2] );
+    
+    index_t r = 0;
+    gsVector<int,d> v(dd);
+    v.setZero();
+    do 
+    {
+        std::swap( v[k1], v[k2] );
+        tmp.row(perstr.dot(v)) = coefs.row(r++);
+        std::swap( v[k1], v[k2] );
+    } 
+    while (nextLexicographic(v, sz));
+
+    coefs.swap(tmp);
+    std::swap( sz[k1], sz[k2] );
+}
+
+
+/// Reorders (inplace) the given tensor \a coefs vector (regarded as a
+/// \a sz.prod() x \a d matrix arranged as a flattened \a sz tensor,
 /// so that the rows are re-arranged according to the input
 /// permutation \a perm. The \a sz is updated to the new ordering.
 /// \ingroup Tensor
@@ -139,7 +185,6 @@ void permuteTensorVector( const gsVector<int,d> & perm,
     GISMO_ASSERT( perm.sum() == dd*(dd-1)/2, "Error in the permutation: "<< perm.transpose());
 
     Eigen::PermutationMatrix<d> P(perm);
-    const gsVector<int,d> oldsz(sz);
 
     gsVector<int,d> perstr(dd);
     tensorStrides<d>(P*sz, perstr);
@@ -160,7 +205,6 @@ void permuteTensorVector( const gsVector<int,d> & perm,
     coefs.swap(tmp);
     sz = P * sz;
 }
-
 
 /// \brief Flips tensor directions in place
 /// \ingroup Tensor
@@ -190,6 +234,88 @@ void flipTensorVector( const int dir,
         coefs.row( i1 ).swap( coefs.row( i2 ) );
     } 
     while (nextLexicographic(v, sz));
+}
+
+
+/** \brief Computes the sparse Kronecker product of sparse matrix blocks.
+
+    The sparse matrices \a m1 and \a m2 must have sizers n1 x k*n1 and
+    n2 x k*n2 respectively.
+    
+    Let \f$ c_{1,k},\, c_{2,k}\f$ be the two blocks of m1 and m2, the result is 
+
+    \f$ \sum_k c_{1,k} \prod c_{2,k} \f$
+
+    \param[in]  m1     
+    \param[in]  m2
+    \param[out] result
+
+    \ingroup Tensor
+*/
+template<class T>
+void gsSparseKroneckerProduct(const gsSparseMatrix<T> & m1, const gsSparseMatrix<T> & m2,
+                              gsSparseMatrix<T> & result, index_t nzPerCol = 10)
+{
+    typedef typename gsSparseMatrix<T>::InnerIterator cIter;
+    typedef typename std::vector<cIter>::iterator     vIter;
+
+    // Assumes square coordinate matrices
+    const index_t s2 = m2.rows(),
+                  s1 = m1.rows();
+    const index_t rk = m1.cols() / s1;
+
+    result.resize (s1*s2, s1*s2);
+    result.reserve(gsVector<index_t>::Constant(result.cols(), (nzPerCol+1)/2) );
+
+    std::vector<cIter> it1(rk, cIter(m1,0) ), 
+                       it2(rk, cIter(m2,0) );
+
+    for (index_t k1=0; k1 != s1; ++k1) // for all cols of m1
+        for (index_t k2=0; k2 != s2; ++k2) // for all cols of m2
+        {
+            for (index_t i=0; i != rk; ++i)
+                it1[i] = cIter(m1, i*s1 + k1);
+            
+            for (; it1[0];) // for all rows of m1
+            {
+                for (index_t i=0; i != rk; ++i)
+                    it2[i] = cIter(m2, i*s2 + k2);
+
+                for (; it2[0];) // for all rows of m2
+                {
+                    const index_t i = it2[0].index() * s1 + it1[0].index(),
+                                  j = k2             * s1 + k1   ;
+
+                    // Lower triangular part only ?
+                    //if ( j <= i )
+                    {
+                        T tmp = it1[0].value() * it2[0].value();
+                        for (index_t r=1; r < rk; ++r)
+                            tmp += it1[r].value() * it2[r].value();
+                        result.insert(i,j) = tmp;
+                    }
+
+                    for (vIter i=it2.begin(); i != it2.end(); ++i) ++(*i);
+                }
+
+                for (vIter i=it1.begin(); i != it1.end(); ++i) ++(*i);
+            }
+        }
+
+/*  // Equivalent Dense matrix version:
+    T tmp;
+    for (index_t c = 0; c != s1; c++) // for all cols of m1
+        for (index_t j = 0; j != s2; j++) // for all cols of m2
+            for (index_t r = 0; r != s1; r++)  // for all rows of m1
+                for (index_t i = 0; i != s2; i++) // for all rows of m2
+                {
+                    tmp = m1(r,c)*m2(i,j);
+                    for (index_t t = 1; t != rk; ++t)
+                        tmp +=  m1(r,t*s1 + c)*m2(i,t*s2+j);
+                    result(i*s1+r, j*s1+c) = tmp;
+                }
+// */
+    //result.makeCompressed();
 }
 
 

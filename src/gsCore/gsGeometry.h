@@ -193,15 +193,15 @@ public:
 
     // Look at gsFunction class for documentation
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { this->basis().eval_into(u, m_coefs, result); }
+    { this->basis().evalFunc_into(u, m_coefs, result); }
 
     // Look at gsFunction class for documentation
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { this->basis().deriv_into(u, m_coefs, result); }
+    { this->basis().derivFunc_into(u, m_coefs, result); }
 
     // Look at gsFunction class for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { this->basis().deriv2_into(u, m_coefs, result); }
+    { this->basis().deriv2Func_into(u, m_coefs, result); }
 
     /// @}
 
@@ -412,27 +412,28 @@ public:
     }
 
     /// Embeds coefficients in \a N dimension
-    void embed(unsigned N)
+    void embed(index_t N)
     { 
-        const int n = N - m_coefs.cols();
+        GISMO_ASSERT( N > 0, "Embed dimension must be positive");
 
-        if ( n != 0 )
+        const index_t nc = N - m_coefs.cols();
+
+        if ( nc != 0 )
         {
             m_coefs.conservativeResize(Eigen::NoChange, N);
-            if ( n > 0 )
-                m_coefs.rightCols(n).setZero();
-            else
+            if ( nc > 0 )
+                m_coefs.rightCols(nc).setZero();
+            else // nc < 0
             {
-                gsWarn<<"Coefficients deleted..\n";
+                gsWarn<<"Coefficients projected (deleted)..\n";
             }
         }
     }
 
-    /// Elevate the degree by the given amount.
-    virtual void degreeElevate(int const i = 1);
-
-    /// Elevate the degree by the given amount \a i for the direction \a dir.
-    virtual void degreeElevate(int const dir, int const i);
+    /// Elevate the degree by the given amount \a i for the direction
+    /// \a dir. If \a dir is -1 then degree elevation is done
+    /// for all directions
+    virtual void degreeElevate(int const i = 1, int const dir = -1);
 
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u

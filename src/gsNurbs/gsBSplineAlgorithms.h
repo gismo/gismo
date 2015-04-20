@@ -219,32 +219,89 @@ namespace bspline
 
 
 
-/// Increase the degree of a B-spline from degree p to degree p + r.
-template<class T, class BasisType, class Mat>
-void degreeElevateBSpline(BasisType &basis, Mat &coefs, int r)
+/// Increase the degree of a 1D B-spline from degree p to degree p + m.
+template<class Basis_t>
+void degreeElevateBSpline(Basis_t &basis, 
+                          gsMatrix<typename Basis_t::Scalar_t> & coefs,
+                          int m)
 {
-    // TODO: Current implementation is not efficient, requiring a matrix
-    // inversion. Use a more efficient algorithm such as A5.9 in The
-    // NURBS Book 2nd edition.
-    GISMO_ASSERT(r > 0, "Can only elevate degree by a positive amount");
+    typedef typename Basis_t::Scalar_t T;
+
+    GISMO_ASSERT(m > 0, "Can only elevate degree by a positive amount");
     GISMO_ASSERT(basis.size() == coefs.rows(), "Invalid coefficients");
 
-    BasisType *oldBasis = basis.clone();
-    basis.degreeElevate(r); // create new knot vector
-    gsMatrix<T> grevs, matchvals, newbvals;
-    basis.anchors_into(grevs); // greville points of the new basis
-    oldBasis->eval_into(grevs, coefs, matchvals); // eval original spline
-    gsMatrix<T> ident(grevs.cols(), grevs.cols());
-    ident.setIdentity();
-    basis.eval_into(grevs, ident, newbvals); // eval new basis
-    delete oldBasis;
+    const int p      = basis.degree();
+    const int ncoefs = coefs.rows();
+    const int n      = coefs.cols();
+    const gsKnotVector<T> & knots = basis.knots();
 
-    // solve the coefficients of the new basis
-    Eigen::Matrix<T, Dynamic, Dynamic> m1 = newbvals.inverse();
-    gsMatrix<T> m = m1;
-    coefs = (matchvals * m).transpose();
+    // compute original derivative coefficients P (recurrence)
+    gsMatrix<T> P[p+1];// original derivative coefficients
+    for(int i=0;i<p+1;i++)
+        P[i].setZero(ncoefs - i, n);
 
-    GISMO_ASSERT(basis.size() == coefs.rows(), "Invalid coefficients");
+    // insert first row
+    P[0].swap(coefs);
+    // fill table of derivative coefficients
+    for(int j=1; j<=p;j++)
+        for(int i=0; i<ncoefs-j; i++)
+        {
+            if(knots[i+p+1]>knots[i+j])
+                P[j].row(i).noalias() = 
+                    ( P[j-1].row(i+1) - P[j-1].row(i) ) / ( knots[i+p+1] - knots[i+j] );
+        }
+
+    // loop over unique knot values (exept last one)
+    const std::vector<int> mult = knots.multiplicities(); // vector of mulitplicities
+
+    // degree elevate basis
+    basis.degreeElevate(m);
+    const int ncoefs_new = basis.size();
+    const int p_new      = basis.degree();
+
+    gsMatrix<T> Q[p_new+1]; // new (elevated) derivative coefficients
+    for(int i=0; i<p_new+1; i++)
+        Q[i].setZero(ncoefs_new - i, n);
+
+    // loop over knot intervals (with positive measure):
+    // prescibe known coefficients (see Huang Theorem 2) and fill
+    // corresponding triangular table using backwards recurrence
+
+    // precompute factors
+    gsVector<T> factor = gsVector<T>::Ones(p+1);
+    for(int j=0; j<=p; j++)
+        for(int l=1; l<=j; l++)
+            factor[j] *= static_cast<double>((p+1-l)) / (p_new+1-l);
+
+    //set known coefficients
+    // for(int j=0; j<=p; ++j)
+    //     Q[j].row(0)=factor[j]*P[j].row(0);
+
+    int betak = 0; // sum of interior mulitplicities
+    for(unsigned k=0; k<mult.size()-1; k++)
+    {
+        //set known coefficients
+        for(int j=p+1-mult[k]; j<=p; ++j)
+            Q[j].row(betak+k*m) = factor[j] * P[j].row(betak);
+
+        for(int j=p_new-1; j>=0;j--)
+        {
+            // fill triangular table
+            for(int i=1; i<=p_new-j; i++)
+            {
+                const int ik= i+betak+k*m; // update index i for the considered knot value
+                if(knots[ik+p_new]>knots[ik+j])
+                    Q[j].row(ik).noalias() = 
+                        Q[j].row(ik-1) + Q[j+1].row(ik-1) * (knots[ik-1+p_new+1]-knots[ik-1+j+1]);
+
+            }
+        }
+        
+        betak += mult[k+1];
+    }
+
+    // Insert new coefficients into coefs
+    coefs.swap( Q[0] );
 }
 
 

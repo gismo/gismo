@@ -418,7 +418,8 @@ gsNurbsCreator<T>::BSplineQuarterAnnulus(int const & deg)
     gsKnotVector<T> KV2(0,1, deg-2, deg+1);
 
     gsTensorBSplineBasis<2,T> tbsp (new gsBSplineBasis<T>(KV1), new gsBSplineBasis<T>(KV2));
-    gsGeometry<T> * approxGeom = tbsp.interpolate(quann->eval(*tbsp.anchors()));
+    const gsMatrix<T> pts = tbsp.anchors();
+    gsGeometry<T> * approxGeom = tbsp.interpolateData(quann->eval(pts),pts);
     delete quann;
 
     return approxGeom;

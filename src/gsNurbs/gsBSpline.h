@@ -365,7 +365,7 @@ public:
         {
             // uses knot insertion
             //gsMatrix<T> * c = this->coefs();
-            bspline::degreeElevateBSpline<T>(this->basis(), this->coefs(), r);
+            bspline::degreeElevateBSpline(this->basis(), this->coefs(), r);
         }    
 
     /// @brief Returns true iff the point p is contained (approximately) on

@@ -261,7 +261,7 @@ public:
     uMatrixPtr eval(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
         gsMatrix<T> * result = new gsMatrix<T>;
-        this->eval_into(u, coefs, *result);
+        this->evalFunc_into(u, coefs, *result);
         return uMatrixPtr(result);
     }
 
@@ -276,7 +276,9 @@ public:
      * \param[out] result  a matrix of size <em>n x m</em> with one function value as a column vector
      *              per evaluation point
      */
-    virtual void eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
+    virtual void evalFunc_into(const gsMatrix<T> & u, 
+                               const gsMatrix<T> & coefs, 
+                               gsMatrix<T>& result) const;
 
 
     /** @brief Evaluate the derivatives of the function described by \a coefs at points \a u.
@@ -290,7 +292,7 @@ public:
     uMatrixPtr deriv(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
         gsMatrix<T> * result = new gsMatrix<T>;
-        this->deriv_into(u, coefs, *result);
+        this->derivFunc_into(u, coefs, *result);
         return uMatrixPtr(result);
     }
 
@@ -352,7 +354,9 @@ public:
      *\em n is the number of evaluation points\n
      *\em k is the number of coefficients
      */
-    virtual void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;
+    virtual void derivFunc_into(const gsMatrix<T> & u, 
+                                const gsMatrix<T> & coefs, 
+                                gsMatrix<T>& result ) const;
 
 
     /** \brief Evaluates the second derivatives of the
@@ -370,7 +374,7 @@ public:
     uMatrixPtr deriv2(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
         gsMatrix<T> *result = new gsMatrix<T>;
-        this->deriv2_into(u, coefs, *result);
+        this->deriv2Func_into(u, coefs, *result);
         return uMatrixPtr(result);
     }
 
@@ -413,7 +417,7 @@ public:
      * See also deriv2() (the one with input parameter \em coefs).
      *
      */
-    virtual void deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;
+    virtual void deriv2Func_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;
 
     /// @}
 
@@ -773,7 +777,7 @@ public:
                                             int numKnots = 1, int mul=1);
 
     /// @brief Elevate the degree of the basis by the given amount.
-    virtual void degreeElevate(int const & i = 1);
+    virtual void degreeElevate(int const & i = 1, int const dir = -1);
 
     /// @brief Elevate the degree of the basis component by the given amount.
     virtual void degreeElevateComponent(unsigned dir, int const & i = 1);
@@ -811,16 +815,16 @@ public:
 
     /// @brief Applies interpolation given the parameter values \a pts
     /// and values \a vals.
-    gsGeometry<T> * interpolate(gsMatrix<T> const& vals,
-                                gsMatrix<T> const& pts ) const;
+    gsGeometry<T> * interpolateData(gsMatrix<T> const& vals,
+                                    gsMatrix<T> const& pts ) const;
 
     /// @brief Applies interpolation of values \a pts using the
     /// anchors as parameter points.  May be reimplemented in derived
     /// classes with more efficient algorithms. (by default uses
-    /// interpolate(pts,vals)
-    virtual gsGeometry<T> * interpolate(gsMatrix<T> const& vals) const;
-
-    gsGeometry<T> * project(gsFunction<T> const & func) const;
+    /// interpolateData(pts,vals)
+    virtual gsGeometry<T> * interpolateAtAnchors(gsMatrix<T> const& vals) const;
+    
+    //gsGeometry<T> * projectL2(gsFunction<T> const & func) const;
 
     /// @brief Computes the collocation matrix w.r.t. points \a u.
     ///

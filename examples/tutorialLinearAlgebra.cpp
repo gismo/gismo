@@ -28,8 +28,11 @@ int main()
   gsVector<> w (2);
   w= F.row(1);
 
-
   cout << "vector c:\n" << c <<"\n"<< E << endl;
+  
+  cout << "vector as diagonal:\n" << gsMatrix<>( c.asDiagonal() ) << endl;
+
+  cout << "E.sum():\n" << E.sum() << endl;
 
   cout << "dyn: " << Dynamic << endl;
 
