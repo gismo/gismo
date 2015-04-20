@@ -24,7 +24,7 @@ class ON_NurbsCurve;
 class ON_NurbsCage;
 class ON_Brep;
 class ON_MorphControl;
-
+class ONX_Model;
 
 namespace gismo {
 
@@ -41,10 +41,15 @@ void gsWriteOpenNurbs(const gsGeometry<T>& geom,
 template<class T>
 bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd);
 
+template<class T>
+bool writeON_MultiPatch( const gsMultiPatch<T> & patches);
+
+template<class T>
+bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std::string & name);
 
 // Writes a NURBS curve to OpenNurbs file
 //template<class T>
-//bool writeON_NurbsCurve( const gsCurve<T> & curve)
+//bool writeON_NurbsCurve( const gsCurve<T> & curve);
 
 }
 
