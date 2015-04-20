@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     gsMultiBasis<> basis(geo);
 
     //p-refine to get equal polynomial degree s,t directions (for Annulus)
-    basis.degreeElevateComponent(0);
+    basis.degreeElevate(1,0);
 
     for (int i = 0; i < numDegree; ++i)
         basis.degreeElevate();
