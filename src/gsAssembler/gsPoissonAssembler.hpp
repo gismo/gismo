@@ -85,7 +85,7 @@ void gsPoissonAssembler<T>::assembleNeumann()
 template<class T>
 void gsPoissonAssembler<T>::penalizeDirichlet()
 {
-    static const T PP = 1e8; // magic number
+    static const T PP = 1e9; // magic number
     
     // Store mapper
     gsDofMapper old = m_dofMappers[0];
@@ -282,13 +282,14 @@ void gsPoissonAssembler<T>::computeDirichletDofsIntpl()
 
         // Interpolate dirichlet boundary 
         gsBasis<T> * h = basis.boundaryBasis(it->side());
-        gsGeometry<T> * geo = h->interpolate(fpts);
+        gsGeometry<T> * geo = h->interpolateAtAnchors(fpts);
         const gsMatrix<T> & dVals =  geo->coefs();
 
         // Save corresponding boundary dofs
         for (index_t k=0; k!= boundary->size(); ++k)
         {
             const int ii= mapper.bindex( (*boundary)(k) , it->patch() );
+
             m_ddof.row(ii) = dVals.row(k);
         }
         delete h;
