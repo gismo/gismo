@@ -351,10 +351,6 @@ void gsBasis<T>::degreeElevate(int const & i, int dir)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeElevateComponent(unsigned dir, int const & i)
-{ GISMO_NO_IMPLEMENTATION }
-
-template<class T>
 void gsBasis<T>::degreeReduce(int const & i)
 { GISMO_NO_IMPLEMENTATION }
 

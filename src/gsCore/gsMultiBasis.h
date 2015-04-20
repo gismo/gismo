@@ -282,13 +282,6 @@ public:
             m_bases[k]->degreeElevate(i,dir);
     }
 
-    /// @brief Elevate the degree of every basis by the given amount.
-    void degreeElevateComponent(unsigned dir, int const& i = 1)
-    {
-        for (size_t k = 0; k < m_bases.size(); ++k)
-            m_bases[k]->degreeElevate(i,dir);
-    }
-
     /// Reduce the degree of the basis by the given amount.
     void degreeReduce(int const& i = 1)
     {
