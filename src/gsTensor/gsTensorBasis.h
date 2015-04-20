@@ -199,7 +199,7 @@ public:
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> * boundaryOffset(boxSide const & s,unsigned offset ) const ;
+    gsMatrix<unsigned> * boundaryOffset(boxSide const & s, unsigned offset) const;
 
     unsigned functionAtCorner(boxCorner const & c) const;
 
@@ -230,7 +230,7 @@ public:
     /// Evaluates the gradient the non-zero basis functions at value u.
     virtual void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
-    /// Evaluates the second derivatives of the non-zero basis functions at value u.
+    // Evaluates the second derivatives of the non-zero basis functions at value u.
     virtual void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
     /// Evaluate the i-th basis function derivative at all columns of
@@ -238,8 +238,8 @@ public:
 
     virtual void deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
-    /// Evaluates the (partial) derivatives of an element given by coefs at (the columns of) u.
-    void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
+    // Evaluates the (partial) derivatives of an element given by coefs at (the columns of) u.
+    //void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for documentation 
     typename gsBasis<T>::domainIter makeDomainIterator() const
@@ -257,7 +257,7 @@ public:
     }
 
     // Look at gsBasis class for documentation 
-    virtual gsGeometry<T> * interpolate(gsMatrix<T> const& vals) const;
+    virtual gsGeometry<T> * interpolateAtAnchors(gsMatrix<T> const& vals) const;
 
     /// Interpolates values on a tensor-grid of points, given in
     /// tensor form (d coordinate-wise vectors). Samples \a vals
@@ -312,20 +312,21 @@ public:
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1, int mul=1);
 
     // Look at gsBasis class for documentation 
-    virtual void degreeElevate(int const & i = 1)
+    virtual void degreeElevate(int const & i = 1, int const dir = -1)
     { 
-        for (unsigned j = 0; j < d; ++j)
-            m_bases[j]->degreeElevate(i);
+        if (dir == -1)
+        {
+            for (unsigned j = 0; j < d; ++j)
+                m_bases[j]->degreeElevate(i);
+        }
+        else 
+        {
+            GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+                          "Invalid basis component requested" );
+            m_bases[dir]->degreeElevate(i);
+        }
     }
     
-    // Look at gsBasis class for documentation 
-    virtual void degreeElevateComponent(unsigned dir,int const & i = 1)
-    {
-        GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
-                      "Invalid basis component requested" );
-        m_bases[dir]->degreeElevate(i);
-    }
-
     // Look at gsBasis class for documentation 
     virtual void degreeReduce(int const & i = 1)
     { 
