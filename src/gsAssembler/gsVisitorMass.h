@@ -15,18 +15,23 @@
 
 namespace gismo
 {
-
-
 /** 
     @brief The visitor computes element mass integrals
-    
+
+    It sets up an assembler and assembles the mass matrix element-wise and
+    combines the patch-local mass matrices into a global matrix.
+      
     \ingroup Assembler
 */
 template <class T>
 class gsVisitorMass
 {
 public:
-
+ /** \brief Visitor for assembling the mass matrix
+    *  
+    * \f[ (u, v) \f]  
+    */
+ 
     gsVisitorMass()
     { }
 

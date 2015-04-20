@@ -65,12 +65,15 @@ template<class T>
 void gsBasis<T>::deriv2_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const 
 {  
     unsigned n = coefs.cols();
-    unsigned numPts = u.cols();  // at how many points to evaluate the gradients
+    // at how many points to evaluate the gradients
+    unsigned numPts = u.cols();  
 
     gsMatrix<T> B;
     gsMatrix<unsigned> ind;
-    this->deriv2_into(u,B);    // col j = nonzero 2nd derivatives at column point u(..,j)
-    this->active_into(u,ind);  // col j = indices of active functions at column point u(..,j)
+    // col j = nonzero 2nd derivatives at column point u(..,j)
+    this->deriv2_into(u,B);    
+    // col j = indices of active functions at column point u(..,j)
+    this->active_into(u,ind);  
 
     const unsigned stride = B.rows() / ind.rows() ;
 

@@ -18,19 +18,29 @@ namespace gismo
 /** \brief Visitor for the weak imposition of the dirichlet boundary condition.
  *
  * Adds this term to the bilinear terms
- * \f[ (\nabla u, v)_\partial \Omega + (u, \nabla v )_\partial \Omega 
- *                                   + (\mu*u, v)_\partial \Omega \f]
+ * \f[ (\nabla u, v)_{\partial \Omega} + (u, \nabla v )_{\partial \Omega} 
+ *                                     + (\mu*u, v)_{\partial \Omega} \f]
  * 
  * The following term is also added to the linear form
- * \f[ (g_D, \mu*v + \nabla v)_\partial \Omega  \f],
- *
+ * \f[ (g_D, \mu*v + \nabla v)_{\partial \Omega} \f],
+ * where the dirichlet term is given as \f[ g_D \f].
  */
 
 template <class T>
 class gsVisitorNitsche
 {
 public:
+/** @brief
+    Constructor of the assembler object.
 
+    \param[in] basis a multi-basis that contains patch-wise basis
+    \param[in] dirData  is a gsBoundaryConditions object that holds boundary conditions of the form:
+    \f[ \text{Dirichlet: } u = g_D \text{ on } \Gamma.\f]
+    \f$ v \f$ is the test function and \f$ \Gamma\f$ is the boundary side.
+    \param[in] rhs is the right-hand side of the Poisson equation, \f$\mathbf{f}\f$.
+    \param[in] dirStrategy option for the treatment of Dirichlet boundary in the \em bconditions object.
+    \param[in] penalty for inputing the penalty choice
+*/
     gsVisitorNitsche(const gsFunction<T> & dirdata, T _penalty, boxSide s) : 
     dirdata_ptr(&dirdata),penalty(_penalty), side(s)
     { }

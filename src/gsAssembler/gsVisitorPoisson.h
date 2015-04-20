@@ -16,12 +16,24 @@
 namespace gismo
 {
 
+/** \brief Visitor for the Poisson equation.
+ *
+ * Assembles the bilinear terms
+ * \f[ (\nabla u,\nabla v)_\Omega \text{ and } (f,v)_\Omega \f]
+ * For \f[ u = g \quad on \quad \partial \Omega \f],
+ *
+ */
 
 template <class T, bool paramCoef = false>
 class gsVisitorPoisson
 {
 public:
-
+    
+    /** \brief Constructor for gsVisitorBiharmonic.
+     *
+     * \param[in] rhs Given right-hand-side function/source term that, for
+     * \param[in] coeff_a Given coefficient
+     */
     /// Constructor with the right hand side function of the Poisson equation
     gsVisitorPoisson(const gsFunction<T> & rhs) : 
     rhs_ptr(&rhs)

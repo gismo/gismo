@@ -67,8 +67,7 @@ struct gsNurbsCreator
     static gsTensorBSpline<2,T> * BSplineRectangleWithPara( T low_x = 0, T low_y = 0, T upp_x = 1, T upp_y = 1);
 
 /// Square of side \a r, with lower left corner at (x,y)
-    static gsTensorBSpline<2,T> * BSplineSquare( T const & r = 1, T const & x = 0,
-                                                 T const & y = 0  );
+    static gsTensorBSpline<2,T> * BSplineSquare( T const & r = 1, T const & x = 0, T const & y = 0  );
 
 /// Creates a \em n X \em m rectangle multipatch consisting of B-splines squares
 /// with lower left corner at at (lx,ly).
@@ -104,7 +103,8 @@ struct gsNurbsCreator
     static gsTensorBSpline<3,T> * BSplineHalfCube( T const & r = 1, T const & x = 0,
                                                    T const & y = 0, T const & z = 0  );
     
-    static gsTensorNurbs<3,T> * NurbsCube( T const & r =1, T const & x = 0);
+    static gsTensorNurbs<3,T> * NurbsCube( T const & r = 1, T const & x = 0,
+                                           T const & y = 0, T const & z = 0 );
 
     static gsTensorNurbs<2,T> * NurbsQuarterAnnulus( T const & r0 =1, T const & r1 =2);
 
@@ -118,23 +118,23 @@ struct gsNurbsCreator
     /// (x, y) = (1 + s - s*t*t - t*t, 2*s*t -s*t*t + 2*t - t*t)
     static gsTensorBSpline<2,T> * BSplineFatQuarterAnnulus( T const & r0 =1, T const & r1 =2);
 
-    static gsTensorNurbs<2,T> * NurbsSphere( T const & r =1, T const & x = 0);
+    static gsTensorNurbs<2,T> * NurbsSphere( T const & r =1, T const & x = 0, T const & y = 0, T const & z = 0);
 
-    static gsNurbs<T> * NurbsCircle( T const & r =T(1), T const & x = 0);
+    static gsNurbs<T> * NurbsCircle( T const & r =T(1), T const & x = 0, T const & y = 0);
 
-    static gsBSpline<T> * BSplineFatCircle( T const & r =T(1), T const & x = 0);
+    static gsBSpline<T> * BSplineFatCircle( T const & r =T(1), T const & x = 0, T const & y = 0);
 
-    static gsTensorBSpline<2,T> *BSplineFatDisk (T const & r=1, T const & x=0);
+    static gsTensorBSpline<2,T> *BSplineFatDisk (T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsNurbs<T> *NurbsCurve1 (T const & r=1, T const & x=0);
+    static gsNurbs<T> *NurbsCurve1 (T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsNurbs<T> *NurbsCurve2 (T const & r=1, T const & x=0);
+    static gsNurbs<T> *NurbsCurve2 (T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsNurbs<T> *NurbsBean(T const & r=1, T const & x=0);
+    static gsNurbs<T> *NurbsBean(T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsBSpline<T> *BSplineE (T const & r=1, T const & x=0);
+    static gsBSpline<T> *BSplineE (T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsNurbs<T> *NurbsAmoebaFull(T const & r=1, T const & x=0);
+    static gsNurbs<T> *NurbsAmoebaFull(T const & r=1, T const & x=0, T const & y = 0);
 
     static gsBSpline<T> *BSplineLineSegment(gsMatrix<T> const & p0, gsMatrix<T> const & p1 );
 
@@ -149,17 +149,17 @@ struct gsNurbsCreator
     /// with C1-continuity and double control points at the corners.
     static gsTensorBSpline<2,T> * BSplineLShape_p2C1();
 
-    static gsBSpline<T> *BSplineAmoeba(T const & r=1, T const & x=0);
+    static gsBSpline<T> *BSplineAmoeba(T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsBSpline<T> *BSplineAmoebaBig(T const & r=1, T const & x=0);
+    static gsBSpline<T> *BSplineAmoebaBig(T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsBSpline<T> *BSplineAustria(T const & r=1, T const & x=0);
+    static gsBSpline<T> *BSplineAustria(T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsBSpline<T> *BSplineFish(T const & r=1, T const & x=0);
+    static gsBSpline<T> *BSplineFish(T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsBSpline<T> *BSplineAmoeba3degree(T const & r=1, T const & x=0);
+    static gsBSpline<T> *BSplineAmoeba3degree(T const & r=1, T const & x=0, T const & y = 0);
 
-    static gsTensorNurbs<2,T> *NurbsDisk(T const & r=1, T const & x=0);
+    static gsTensorNurbs<2,T> *NurbsDisk(T const & r=1, T const & x=0, T const & y = 0);
 
     static gsTensorBSpline<2,T> * NurbsQrtPlateWHoleC0();
 }; // struct
