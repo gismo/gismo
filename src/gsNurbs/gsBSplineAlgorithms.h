@@ -236,7 +236,8 @@ void degreeElevateBSpline(Basis_t &basis,
     const gsKnotVector<T> & knots = basis.knots();
 
     // compute original derivative coefficients P (recurrence)
-    gsMatrix<T> P[p+1];// original derivative coefficients
+    // original derivative coefficients
+    STACK_ARRAY(gsMatrix<T>,P,p+1);
     for(int i=0;i<p+1;i++)
         P[i].setZero(ncoefs - i, n);
 
@@ -259,7 +260,8 @@ void degreeElevateBSpline(Basis_t &basis,
     const int ncoefs_new = basis.size();
     const int p_new      = basis.degree();
 
-    gsMatrix<T> Q[p_new+1]; // new (elevated) derivative coefficients
+    // new (elevated) derivative coefficients
+    STACK_ARRAY(gsMatrix<T>,Q,p_new+1);
     for(int i=0; i<p_new+1; i++)
         Q[i].setZero(ncoefs_new - i, n);
 
