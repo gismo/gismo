@@ -99,10 +99,11 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 include( OptimizeForArchitecture )
 endif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
-  #  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 18)
-  #    endif()
+    #  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 18)
+    # Update 4 of MSVC 2013 ?
+    #    endif()
 
     # Disable checked iterators
     set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS}  /bigobj /D_SECURE_SCL=0")
@@ -132,7 +133,7 @@ if(GISMO_EXTRA_DEBUG)
   include(gsDebugExtra)
 endif(GISMO_EXTRA_DEBUG)
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
   # Force to always compile with W4
   if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
     string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
@@ -147,3 +148,11 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Update if necessary
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long") # -Woverloaded-virtual -Wconversion -Wextra -pedantic
 endif()
+
+
+#message("CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
+#message("CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG}")
+#message("CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE}")
+#message("CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+#string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
+#message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")

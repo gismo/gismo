@@ -68,7 +68,7 @@ endmacro(mark_gismo_optional)
 
 # list all subdirectories of the current directory
 MACRO(SUBDIRLIST result curdir)
-  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/gs*)
   SET(dirlist "")
   FOREACH(child ${children})
     IF(IS_DIRECTORY ${curdir}/${child})
