@@ -20,7 +20,7 @@ namespace gismo
 {
 
 template<unsigned d, class T>
-gsHBSplineBasis<d,T>::gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis, int nlevels = 10)
+gsHBSplineBasis<d,T>::gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis, int nlevels)
     : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis), nlevels)
 {
     GISMO_ASSERT(d==1, "Wrong dimension");
