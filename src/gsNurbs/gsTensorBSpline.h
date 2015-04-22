@@ -72,10 +72,10 @@ public:
   typedef gsGenericGeometry< Basis > Base;
 
   /// Shared pointer for gsTensorBSpline
-  typedef memory::shared_ptr< gsTensorBSpline<d,T> > Ptr;
+  typedef memory::shared_ptr< gsTensorBSpline<d,T,KnotVectorType> > Ptr;
     
     typedef typename choose<d==1, gsTensorBSpline<1,T>, 
-                            gsTensorBSpline<d-1,T>  >::type BoundaryGeometryType;
+                            gsTensorBSpline<d-1,T,KnotVectorType>  >::type BoundaryGeometryType;
     typedef typename gsTraits<gsBSplineBasis<T,KnotVectorType>,d>::TensorBoundaryType BoundaryBasisType;
 
 public:
@@ -321,7 +321,7 @@ void reverse(unsigned k)
 
     gsVector<int> str(d); 
     gsVector<int> sz (d); 
-    gsTensorBSplineBasis<d,T> & tbsbasis = this->basis();
+    gsTensorBSplineBasis<d,T,KnotVectorType> & tbsbasis = this->basis();
 
     sz[0]  = tbsbasis.component(k).size();
     sz[1]  = tbsbasis.component(!k).size();
@@ -352,7 +352,7 @@ private:
 /// for the isoparametric slice in \a dir_fixed with \a par.
 /// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
 void constructCoefsForSlice(unsigned dir_fixed,T par,
-                            const gsTensorBSpline<d,T> & geo,
+                            const gsTensorBSpline<d,T,KnotVectorType> & geo,
                             gsMatrix<T>& result) const;
 
 public:

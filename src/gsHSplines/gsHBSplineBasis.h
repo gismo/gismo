@@ -53,11 +53,7 @@ public:
 #endif
 
     /// Constructor out of a gsBSplineBasis
-    gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis, int nlevels = 10)
-        : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis), nlevels)
-    {
-        GISMO_ASSERT(d==1, "Wrong dimension");
-    }
+    gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis, int nlevels = 10);
     
     gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
                      std::vector<unsigned> & boxes, int nlevels = 10)

@@ -159,6 +159,15 @@ void gsTensorBoehm<T, gsKnotVector<T>, gsMatrix<T> >(
         int r,
         bool update_knots);
 
+TEMPLATE_INST
+void gsTensorBoehm<T, gsCompactKnotVector<T>, gsMatrix<T> >(
+        gsCompactKnotVector<T>& knots,
+        gsMatrix<T>& coefs,
+        T val,
+        int direction,
+        gsVector<unsigned> str,
+        int r,
+        bool update_knots);
 
 
 // gsTensorBoehmRefine

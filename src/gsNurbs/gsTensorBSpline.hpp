@@ -100,7 +100,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
     else
     {
         // clone the basis and inserting upto degree knots at par
-        gsTensorBSpline<d,T>* clone = this->clone();
+        gsTensorBSpline<d,T,KnotVectorType>* clone = this->clone();
 
         gsVector<unsigned> strides;
         gsVector<int> intStrides;
@@ -152,7 +152,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::degreeElevate(int const i, int const d
 
 
 template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fixed,T par,const gsTensorBSpline<d,T>& geo,gsMatrix<T>& result) const
+void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fixed,T par,const gsTensorBSpline<d,T,KnotVectorType>& geo,gsMatrix<T>& result) const
 {
     const gsTensorBSplineBasis<d,T,KnotVectorType>& base = geo.basis();
     const gsMatrix<T>& fullCoefs=geo.coefs();
