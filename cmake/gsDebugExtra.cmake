@@ -14,16 +14,16 @@
 
 if(GISMO_EXTRA_DEBUG)
 
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang")
     # using Clang
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  elseif ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xGNU")
     # using GCC
     #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic")
     # Enable checked iterators
     add_definitions(-D_GLIBCXX_DEBUG)
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+  elseif ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
     # using Intel C++
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  elseif ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
     # using Visual Studio C++
     # Enable checked iterators
     STRING(REPLACE "/D_SECURE_SCL=0" "" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})

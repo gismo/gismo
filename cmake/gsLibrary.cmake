@@ -21,11 +21,11 @@
 
 if(GISMO_BUILD_LIB)
 
-#if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+#if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xGNU")
 #  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-implicit-templates")
 #endif()
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
  set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} 
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
@@ -60,7 +60,7 @@ endif()
   FOLDER "G+Smo libraries"
   )
 
-  if (GISMO_WITH_ONURBS AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" )
+  if (GISMO_WITH_ONURBS AND "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" )
     target_link_libraries(${PROJECT_NAME} Rpcrt4)
   endif()
 
