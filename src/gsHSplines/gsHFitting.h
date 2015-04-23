@@ -27,7 +27,7 @@ namespace gismo {
     \ingroup HSplines
 */
 
-template <class T>
+template <unsigned d, class T>
 class gsHFitting : public gsFitting<T>
 {
 public:
@@ -52,7 +52,7 @@ public:
     */
     gsHFitting(gsMatrix<T> const & param_values,
                gsMatrix<T> const & points,
-               gsHTensorBasis<2,T> & basis,
+               gsHTensorBasis<d,T> & basis,
                T refin, std::vector<int> extension,
                T lambda = 0)
     : gsFitting<T>(param_values, points, basis)
@@ -63,14 +63,14 @@ public:
             GISMO_ASSERT(extension[i]>=0, "Extension must be a positive number.");
         }
 
-        GISMO_ASSERT(extension.size()== static_cast<std::size_t>(basis.dim()), 
-                     "Extension is not of the right dimension");
+        GISMO_ASSERT(extension.size() == d, "Extension is not of the right dimension");
 
         m_ref    = refin;     //how many % to refine
 
-        m_ext.resize(2);
-        m_ext[0] = extension[0]; // size of the extension
-        m_ext[1] = extension[1];
+        m_ext.resize(d);
+	for (unsigned dim = 0; dim != d; dim++)
+	    m_ext[dim] = extension[dim]; 
+
 
         m_lambda = lambda;    // Smoothing parameter
 
@@ -94,7 +94,7 @@ public:
      * If it is equal to -1 the m_ref percentage is used 
      * 0 = global refinement
      */
-    void iterative_refine(int iterations, T tolerance, T err_threshold = -1);
+    void iterativeRefine(int iterations, T tolerance, T err_threshold = -1);
 
     /**
      * @brief nextIteration One step of the refinement of iterative_refine(...);
@@ -104,7 +104,7 @@ public:
     void nextIteration(T tolerance, T err_threshold);
 
     /// Return the refinement percentage
-    T get_refinement() const
+    T getRefPercentage() const
     {
         return m_ref;
     }
@@ -116,14 +116,14 @@ public:
     }
 
     /// Sets the refinement percentage
-    void set_refinement(double refin)
+    void setRefPercentage(double refPercent)
     {
-        GISMO_ASSERT((refin >=0) && (refin <=1), "Invalid percentage" );
-        m_ref = refin;
+        GISMO_ASSERT((refPercent >=0) && (refPercent <=1), "Invalid percentage" );
+        m_ref = refPercent;
     }
 
     /// Sets the cell extension
-    void set_extension(std::vector<unsigned> const & extension)
+    void setExtension(std::vector<unsigned> const & extension)
     {
         for(std::size_t i = 0; i < extension.size();i++)
         {
@@ -133,21 +133,36 @@ public:
         m_ext = extension;
     }
 
+    /// Returns boxes which define refinment area. 
+    std::vector<unsigned> getBoxes(const std::vector<T>& errors,
+				   const double threshold);
+
+
 private:
 
     /// Identifies the threshold from where we should refine
-    T to_refine(const std::vector<T> & errors);
+    T setRefineThreshold(const std::vector<T>& errors);
 
-    /// Identifies the cells in the highest level where the error is bigger then max_error
-    std::vector<int> select_cells(std::vector<T> & errors, double max_error);
 
-    /// Return the levels in which the cells are included
-    std::vector<int> get_levels(const std::vector<int> & cells);
+    /// Appends a box around parameter to the boxes only if the box is not
+    /// already in boxes
+    void appendBox(std::vector<unsigned>& boxes,
+		   std::vector<unsigned>& cells,
+		   const gsVector<T>& parameter);
+    
 
-    /// Combine cells and levels to get the refinement boxes
-    std::vector<unsigned> get_boxes(const std::vector<int> & cells, 
-                                    const std::vector<int> & levels);
-
+    /// Checks if a_cell is already inserted in container of cells
+    static bool isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell, 
+					     const std::vector<unsigned>& cells);
+    
+    /// Appends a box to the end of boxes (This function also works for cells)
+    static void append(std::vector<unsigned>& boxes,
+		       const gsVector<unsigned>& box)
+    {
+	for (index_t col = 0; col != box.rows(); col++)
+	    boxes.push_back(box[col]);
+    }
+		    
 private:
 
     /// How many % to refine - 0-1 interval
@@ -171,37 +186,35 @@ private:
 
 
 
+
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
-template<class T>
-void gsHFitting<T>::nextIteration(T tolerance, T err_threshold)
+template<unsigned d, class T>
+void gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
 {
-    if ( m_pointErrors.size() != 0 ) // Previous step already computed ?
+    // INVARIANT 
+    // look at iterativeRefine
+    
+    if ( m_pointErrors.size() != 0 ) 
     {
-        gsHTensorBasis<2,T> * h_basis = static_cast<gsHTensorBasis<2,T> *> (this->m_basis);
-        std::vector<int> cells ; //cells to be refined
-        std::vector<int> levels; //levels of the cells
-        std::vector<unsigned> boxes; // boxes of the basis corresponding to cells
 
-        if ( m_max_error > tolerance ) // We are not done yet.
+        if ( m_max_error > tolerance ) 
         {
-            if(err_threshold>=0) // Refinement strategy is to refine all the cells with too big an error.
-            {
-                cells = select_cells(m_pointErrors, err_threshold);
-            }
-            else // -1 : m_ref percentage; 0 : global refinement. Correct?
-            {
-                cells = select_cells(m_pointErrors, to_refine(m_pointErrors));
-            }
-
-            levels = get_levels(cells);
-            boxes  = get_boxes(cells,levels);
-
-            h_basis->refineElements(boxes);
-
-            gsInfo <<"inserted "<< levels.size() <<" boxes.\n";
+	    // if err_treshold is -1 we refine the m_ref percent of the whole domain
+	    T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+	    
+	    std::vector<unsigned> boxes = getBoxes(m_pointErrors, threshold);
+	    
+	    gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
+            basis->refineElements(boxes);
+	    
+            gsInfo << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
         }
+	else
+	{
+	    gsInfo << "Tolerance reached.\n";
+	}
     }
 
     // We run one fitting step and compute the errors
@@ -209,9 +222,13 @@ void gsHFitting<T>::nextIteration(T tolerance, T err_threshold)
     this->computeErrors();
 }
 
-template<class T>
-void gsHFitting<T>::iterative_refine(int numIterations, T tolerance, T err_threshold)
+template<unsigned d, class T>
+void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_threshold)
 {
+    // INVARIANT:
+    // m_pointErrors contains the point-wise errors of the fitting
+    // therefore: if the size of m_pointErrors is 0, there was no fitting up to this point
+    
     if ( m_pointErrors.size() == 0 )
     {
         this->compute(m_lambda);
@@ -223,161 +240,129 @@ void gsHFitting<T>::iterative_refine(int numIterations, T tolerance, T err_thres
         nextIteration( tolerance, err_threshold );
         if( m_max_error <= tolerance )
         {
-            std::cout<<"Tolerance reached at iteration: "<< i <<"\n";
+            gsInfo << "Tolerance reached at iteration: " << i << "\n";
             break;
         }
     }
 }
 
-
-
-////private functions
-template<class T>
-T gsHFitting<T>::to_refine(const std::vector<T> & errors)
+template <unsigned d, class T>
+std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
+						 const double threshold)
 {
-    std::vector<T> tmp = errors; // temp copy
-    const std::size_t i = static_cast<std::size_t>(errors.size()*(1.0-m_ref));
-    typename std::vector<T>::iterator pos = tmp.begin() + i;
-    std::nth_element(tmp.begin(), pos, tmp.end());
+    // cells contains lower corners of elements marked for refinment from maxLevel 
+    std::vector<unsigned> cells;
+    
+    // boxes contains elements marked for refinement from differnet levels,
+    // format: { level lower-corners  upper-corners ... }
+    std::vector<unsigned> boxes;
+    
+    for (std::size_t index = 0; index != errors.size(); index++)
+    {
+	if (threshold <= errors[index])
+	{
+	    appendBox(boxes, cells, this->m_param_values.col(index));
+	}
+    }
+    
+    return boxes;
+}
+
+
+template <unsigned d, class T>
+void  gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
+				  std::vector<unsigned>& cells,
+				  const gsVector<T>& parameter)
+{
+    gsTHBSplineBasis<d, T>* basis = static_cast< gsTHBSplineBasis<d,T>* > (this->m_basis);
+    const int maxLvl = basis->maxLevel();
+    gsTensorBSplineBasis< d, T, gsCompactKnotVector<T> > tensorBasis =
+                *(basis->getBases()[maxLvl]);
+    
+    // get a cell
+    gsVector<unsigned, d> a_cell;
+    
+    for (unsigned dim = 0; dim != d; dim++)
+    {
+	const gsCompactKnotVector<T>& kv = tensorBasis.component(dim).knots();
+	a_cell(dim) = static_cast<unsigned>(kv.Uniquefindspan(parameter(dim)));
+    }
+    
+    if (!isCellAlreadyInserted(a_cell, cells))
+    {
+	append(cells, a_cell);
+	
+	// get level of a cell
+	gsVector<unsigned, d> a_cell_upp = a_cell + gsVector<unsigned, d>::Ones();
+	const int cell_lvl = basis->tree().query3(a_cell, a_cell_upp, maxLvl) + 1;
+	
+	// get the box
+	gsVector<unsigned> box(2 * d + 1);
+	box[0] = cell_lvl;
+	for (unsigned dim = 0; dim != d; dim++)
+	{
+	    const unsigned numBreaks = basis->numBreaks(cell_lvl, dim) - 1 ;
+	    
+	    unsigned lowIndex = 0;
+	    if (cell_lvl < maxLvl)
+	    {
+		const unsigned shift = maxLvl - cell_lvl;
+		lowIndex = (a_cell(dim) >> shift);
+	    }
+	    else
+	    {
+		const unsigned shift = cell_lvl - maxLvl;
+		lowIndex = (a_cell(dim) << shift);
+	    }
+
+	    // apply extensions
+	    unsigned low = ( (lowIndex > m_ext[dim]) ? (lowIndex - m_ext[dim]) : 0 );
+	    unsigned upp = ( (lowIndex + m_ext[dim] + 1 < numBreaks) ?
+			     (lowIndex + m_ext[dim] + 1) : numBreaks );
+	    
+	    box[1 + dim] = low;
+	    box[1 + d + dim] = upp;
+	}
+
+	append(boxes, box);
+    }
+}
+
+
+template <unsigned d, class T>
+bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell, 
+					     const std::vector<unsigned>& cells)
+{
+    
+    for (std::size_t i = 0; i != cells.size(); i += a_cell.rows())
+    {
+	int commonEntries = 0;
+	for (index_t col = 0; col != a_cell.rows(); col++)
+	{
+	    if (cells[i + col] == a_cell[col])
+	    {
+		commonEntries++;
+	    }
+	}
+	
+	if (commonEntries == a_cell.rows())
+	{
+	    return true;
+	}
+    }
+    
+    return false;
+}
+
+template<unsigned d, class T>
+T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
+{
+    std::vector<T> errorsCopy = errors; 
+    const std::size_t i = static_cast<std::size_t>(errorsCopy.size() * (1.0 - m_ref));
+    typename std::vector<T>::iterator pos = errorsCopy.begin() + i;
+    std::nth_element(errorsCopy.begin(), pos, errorsCopy.end());
     return *pos;
 }
-
-template<class T>
-std::vector<int> gsHFitting<T>::get_levels(const std::vector<int> & cells)
-{
-    gsHTensorBasis<2,T>  * h_basis = static_cast<gsHTensorBasis<2,T> *> (this->m_basis);
-
-    const int level = h_basis->maxLevel();
-    //const int level = h_basis->maxAllowdLevel();
-
-    std::vector<int> result;
-    gsVector<unsigned int> lower(2);
-    gsVector<unsigned int> upper(2);
-    for( std::size_t i = 0; i < cells.size(); i+=2 )
-    {
-        lower[0] = cells[i];
-        lower[1] = cells[i+1];
-        upper[0] = cells[i]+1;
-        upper[1] = cells[i+1]+1;
-        result.push_back( h_basis->tree().query3(lower, upper, level) );
-    }
-    return result;
-}
-
-template<class T>
-std::vector<unsigned> gsHFitting<T>::get_boxes(const std::vector<int> & cells,
-                                                              const std::vector<int> & levels)
-{
-    gsHTensorBasis<2,T>  * h_basis = static_cast<gsHTensorBasis<2,T> *> (this->m_basis);
-
-    const int maxLevel = h_basis->maxLevel(); 
-    //const int level = h_basis->maxAllowdLevel();
-
-    std::vector<unsigned> result;
-
-    unsigned a;
-    for(std::size_t i = 0; i < cells.size(); i+=2)
-    {
-        const int newLevel   = levels[i/2]+1;
-
-        const unsigned sz0 = h_basis->numBreaks(newLevel,0) - 1 ;
-        // equiv: sz0 = h_basis->m_bases[newLevel]->component(0).knots().uSize() - 1 ;
-        const unsigned sz1 = h_basis->numBreaks(newLevel,1) - 1 ;
-        // equiv: sz1 = h_basis->m_bases[newLevel]->component(1).knots().uSize() - 1 ;
-        const unsigned shift = (maxLevel<newLevel ? newLevel - maxLevel : maxLevel - newLevel);
-
-        result.push_back(newLevel);
-
-        // Lower - x
-        a  = ( (cells[i]+1) << shift );
-        //equiv: a = Knot0.Uniquefindspan( lKnot0.uValue(cells[i]+1) );
-        result.push_back( ( a > m_ext[0] ? a - m_ext[0] : 0 ) );
-
-        // Lower - y
-        a = ( (cells[i+1]+1) << shift );
-        //equiv: a = Knot1.Uniquefindspan( lKnot1.uValue(cells[i+1]+1) );
-        result.push_back( ( a > m_ext[1] ? a - m_ext[1] : 0 ) );
-
-        // Upper - x
-        a = ( (cells[i]+1) << shift );
-        //equiv: a = Knot0.Uniquefindspan( lKnot0.uValue(cells[i]+1) );
-        result.push_back( ( a + m_ext[0] + 1 < sz0 ? 
-                            a + m_ext[0] + 1 : sz0 ) );
-
-        // Upper - y
-        a = ( (cells[i+1]+1) << shift );        
-        //equiv: a  = Knot1.Uniquefindspan(lKnot1.uValue(cells[i+1]+1) );
-        result.push_back( ( a + m_ext[1] + 1 < sz1 ? 
-                            a + m_ext[1] + 1 : sz1 ) );
-    }
-
-    return result;
-}
-
-template<class T>
-std::vector<int> gsHFitting<T>::select_cells(std::vector<T> & errors,
-                                                            double max_error)
-{
-    gsHTensorBasis<2,T>  * h_basis = static_cast<gsHTensorBasis<2,T> *> (this->m_basis);
-    std::vector<int> result;
-    std::vector<int> temp;
-
-    const int level = h_basis->maxLevel();
-    //const int level = h_basis->maxAllowedLevel();
-
-    const gsCompactKnotVector<T> & lKnot0  = 
-        h_basis->getBases()[level]->component(0).knots();
-    const gsCompactKnotVector<T> & lKnot1  = 
-        h_basis->getBases()[level]->component(1).knots();
-
-    for(std::size_t i= 0; i < errors.size(); i++)
-    {
-        if(errors[i]>=max_error)
-        {
-            //find the cell in max level
-
-            temp.push_back( lKnot0.Uniquefindspan( m_param_values(0,i) ) );
-            temp.push_back( lKnot1.Uniquefindspan( m_param_values(1,i) ) );
-
-            // TODO; get the boxes here at once.
-
-            bool insert= true;
-            // Compare temp with the boxes in result
-            //std::equal(result.begin(), result.begin(), temp.begin() );
-            for(std::size_t j = 0; j < result.size(); j += temp.size())
-            {
-                std::size_t ins = 0;
-                for(std::size_t k = 0; k < temp.size();k++)
-                {
-                    if(result[j+k] == temp[k])
-                    {
-                        ins++;
-                    }
-                }
-
-                if(ins == temp.size())
-                {   
-                    //if the box is already in result do not insert it again
-                    insert = false;
-                    break;
-                }
-            }
-            if(insert == true)
-            {
-                //insert the box if it is not in reasult
-                for(std::size_t j = 0; j < temp.size();j++)
-                {
-                    result.push_back(temp[j]);
-                }
-            }
-        }
-        temp.clear();
-    }
-
-    return result;
-}
-
-
 
 
 };// namespace gismo

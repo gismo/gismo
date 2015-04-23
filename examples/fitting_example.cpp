@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
     ext.push_back(extension);
 
     // Create hierarchical refinement object
-    gsHFitting<real_t> ref( uv, xyz, THB, refPercent, ext, lambda);
+    gsHFitting<2, real_t> ref( uv, xyz, THB, refPercent, ext, lambda);
     
     const std::vector<real_t> & errors = ref.pointWiseErrors();
 

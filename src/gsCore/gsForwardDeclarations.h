@@ -138,7 +138,7 @@ template<class T = real_t> class gsGalerkinMethod;
 
 // Domains
 // template< class T = real_t>  class gsTensorDomain;
-template< class T = real_t>   class gsHFitting;
+template<unsigned d, class T = real_t>   class gsHFitting;
 
 // Pde
 template< class T = real_t>  class gsPde;
