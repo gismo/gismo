@@ -15,7 +15,7 @@
 #include <gsTensor/gsTensorTools.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsNurbs/gsKnotVector.h>
-
+#include <gsNurbs/gsBoehm.h>
 
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
@@ -56,6 +56,29 @@ refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
     }
     
         tensorCombineTransferMatrices<d, T>( B, transfer );
+}
+
+template<unsigned d, class T, class KnotVectorType>
+void gsTensorBSplineBasis<d,T,KnotVectorType>::
+refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots)
+{
+    GISMO_ASSERT( refineKnots.size() == d, "refineKnots vector has wrong size" );
+    gsVector<unsigned> strides(d);
+    for (unsigned j = 0; j < d; ++j) //calculate the strides for each direction
+    {
+        strides[j]=this->stride(j);
+    }
+    for (unsigned i = 0; i < d; ++i)
+    {
+        if(refineKnots[i].size()>0)
+        {
+            gsTensorBoehmRefine(this->component(i).knots(), coefs, i, strides,
+                                refineKnots[i].begin(), refineKnots[i].end(), true);
+            
+            for (index_t j = i+1; j<strides.rows(); ++j)
+                strides[j]=this->stride(j); //new stride for this direction
+        }
+    }
 }
 
 

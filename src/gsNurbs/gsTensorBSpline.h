@@ -16,8 +16,6 @@
 #include <gsCore/gsGeometry.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
-#include <gsNurbs/gsBoehm.h>
-
 namespace gismo
 {
 
@@ -67,16 +65,23 @@ class gsTensorBSpline :
 {
 
 public: 
-  typedef T Scalar_t;
-  typedef gsTensorBSplineBasis<d,T,KnotVectorType> Basis;
-  typedef gsGenericGeometry< Basis > Base;
+    typedef T Scalar_t;
 
-  /// Shared pointer for gsTensorBSpline
-  typedef memory::shared_ptr< gsTensorBSpline<d,T,KnotVectorType> > Ptr;
+    typedef gsTensorBSplineBasis<d,T,KnotVectorType> Basis;
+
+    typedef gsGenericGeometry< Basis > Base;
     
-    typedef typename choose<d==1, gsTensorBSpline<1,T>, 
-                            gsTensorBSpline<d-1,T,KnotVectorType>  >::type BoundaryGeometryType;
-    typedef typename gsTraits<gsBSplineBasis<T,KnotVectorType>,d>::TensorBoundaryType BoundaryBasisType;
+    /// Family type
+    typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
+
+    /// Shared pointer for gsTensorBSpline
+    typedef memory::shared_ptr< gsTensorBSpline<d,T,KnotVectorType> > Ptr;
+
+    /// Associated Boundary basis type
+    typedef typename gsTraits<Family_t,d>::TBoundaryGeometryType BoundaryGeometryType;
+
+    /// Associated Boundary basis type
+    typedef typename gsTraits<Family_t,d>::TensorBoundaryType BoundaryBasisType;
 
 public:
 
@@ -314,29 +319,8 @@ gsGeometry<T> * boundary( boxSide const& s ) const
 */
 
 /// Toggle orientation wrt coordinate k
-/// \todo use flipTensor to generalize to adn dimension
-void reverse(unsigned k)
-{ 
-    GISMO_ASSERT(d==2, "only 2D for now");
-
-    gsVector<int> str(d); 
-    gsVector<int> sz (d); 
-    gsTensorBSplineBasis<d,T,KnotVectorType> & tbsbasis = this->basis();
-
-    sz[0]  = tbsbasis.component(k).size();
-    sz[1]  = tbsbasis.component(!k).size();
-    str[0] = tbsbasis.stride( k );
-    str[1] = tbsbasis.stride(!k );
-    
-    for  ( int i=0; i< sz[0]; i++ )
-        for  ( int j=0; j< sz[1]/2; j++ )
-        {
-            this->m_coefs.row(i*str[0] + j*str[1] ).swap(
-                this->m_coefs.row(i*str[0] + (sz[1]-j-1)*str[1] )
-                );
-        }
-    tbsbasis.component(k).reverse();
-}
+/// \todo use flipTensor to generalize to any dimension
+void reverse(unsigned k);
 
 /// Sets the resulting BSpline to be periodic in direction \param dir.
 inline void setPeriodic( int dir )

@@ -2,12 +2,16 @@
 #pragma once 
 
 #include <gsNurbs/gsBSplineBasis.h>
+#include <gsNurbs/gsBoehm.h>
+
 #include <gsUtils/gsMultiIndexIterators.h>
 
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
 #include <gsTensor/gsTensorTools.h>
+
+#include <gsCore/gsConstantFunction.h>
 
 namespace gismo
 {
@@ -121,6 +125,31 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
     result = BoundaryGeometryType(*tbasis, coefs );
     delete tbasis;
 }
+
+template<unsigned d, class T, class KnotVectorType>
+void gsTensorBSpline<d,T,KnotVectorType>::reverse(unsigned k)
+{ 
+    GISMO_ASSERT(d==2, "only 2D for now");
+
+    gsVector<int> str(d); 
+    gsVector<int> sz (d); 
+    gsTensorBSplineBasis<d,T,KnotVectorType> & tbsbasis = this->basis();
+
+    sz[0]  = tbsbasis.component(k).size();
+    sz[1]  = tbsbasis.component(!k).size();
+    str[0] = tbsbasis.stride( k );
+    str[1] = tbsbasis.stride(!k );
+    
+    for  ( int i=0; i< sz[0]; i++ )
+        for  ( int j=0; j< sz[1]/2; j++ )
+        {
+            this->m_coefs.row(i*str[0] + j*str[1] ).swap(
+                this->m_coefs.row(i*str[0] + (sz[1]-j-1)*str[1] )
+                );
+        }
+    tbsbasis.component(k).reverse();
+}
+
 
 template<unsigned d, class T, class KnotVectorType>
 void gsTensorBSpline<d,T,KnotVectorType>::degreeElevate(int const i, int const dir)

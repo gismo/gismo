@@ -38,6 +38,9 @@ struct gsTraits<gsBSplineBasis<T, KnotVectorType>,d>
     typedef typename 
     choose<d==1, gsConstantBasis<T>, gsTensorBSplineBasis<d-1,T,KnotVectorType>
            >::type TensorBoundaryType;
+    typedef typename 
+    choose<d==1, gsConstantFunction<T>, gsTensorBSpline<d-1,T,KnotVectorType>
+           >::type TBoundaryGeometryType;
 
     typedef typename 
     choose<d==1, gsNurbsBasis<T,KnotVectorType>, gsTensorNurbsBasis<d, T, KnotVectorType>

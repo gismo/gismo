@@ -211,26 +211,7 @@ public:
      * \param[out]  new coefficients
      \todo rename to insertKnots_withCoefs
      */
-    void refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots)
-    {
-        GISMO_ASSERT( refineKnots.size() == d, "refineKnots vector has wrong size" );
-        gsVector<unsigned> strides(d);
-        for (unsigned j = 0; j < d; ++j) //calculate the strides for each direction
-        {
-            strides[j]=this->stride(j);
-        }
-        for (unsigned i = 0; i < d; ++i)
-        {
-            if(refineKnots[i].size()>0)
-            {
-                gsTensorBoehmRefine(this->component(i).knots(), coefs, i, strides,
-                                    refineKnots[i].begin(), refineKnots[i].end(), true);
-
-                for (index_t j = i+1; j<strides.rows(); ++j)
-                    strides[j]=this->stride(j); //new stride for this direction
-            }
-        }
-    }
+    void refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots);
 
     /**
      * \brief
