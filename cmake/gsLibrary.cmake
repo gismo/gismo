@@ -78,11 +78,15 @@ endif()
 
   if (GISMO_WITH_IPOPT)
     #find_package( LAPACK REQUIRED ) # Problematic on ubuntu
-    find_package( BLAS REQUIRED )
+    #find_package( BLAS REQUIRED )
     #find_package( DL REQUIRED )
     find_program( patch_cmd "patch" REQUIRED )
     add_definitions( -DFORTRAN_INTEGER_TYPE=int -DHAVE_CMATH -DHAVE_CSTDIO)
-    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIBS} lapack blas dl)
+    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_IpOpt} dl )
+    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_Blas} )
+    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_Lapack} )
+    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_Mumps} )
+    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_Metis} )
   endif()
 
   IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
