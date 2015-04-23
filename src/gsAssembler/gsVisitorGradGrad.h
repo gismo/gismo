@@ -32,7 +32,13 @@ public:
     typedef gsVisitorMass<T> Base;
 
 public:
-
+/** @brief
+ * Constructor of the assembler object 
+ * 
+ * This visitor assemble the element-wise bilinear form:
+ * \f[ ( \nabla u , \nabla v )_{K} \f].
+ * Where \f[ v$ \f]  is the test function and \f[u \f] is trial function.
+ */
     gsVisitorGradGrad()
     { }
 
