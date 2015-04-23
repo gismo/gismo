@@ -127,7 +127,7 @@ if(GISMO_WITH_IPOPT)
   find_library(IpOpt_LIB_Lapack NAMES lapack liblapack atlclapack libatlclapack )
   find_library(IpOpt_LIB NAMES ipopt libipopt )
   #message(WARNING, "Found IpOpt_LIB_IpOpt='${IpOpt_LIB_IpOpt}'")
-  message(WARNING, "Found IpOpt_LIB_IpOpt-NOTFOUND='${IpOpt_LIB_IpOpt-NOTFOUND}'")
+  #message(WARNING, "Found IpOpt_LIB_IpOpt-NOTFOUND='${IpOpt_LIB_IpOpt-NOTFOUND}'")
 
   if(IpOpt_LIB)
       #message(WARNING, "Using ipopt system library")
