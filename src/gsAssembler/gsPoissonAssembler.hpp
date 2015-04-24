@@ -276,9 +276,15 @@ void gsPoissonAssembler<T>::computeDirichletDofsIntpl()
             }
         }
 
+        GISMO_ASSERT(it->function()->targetDim() == m_rhsFun->targetDim(), 
+                     "Given Dirichlet boundary function does not match problem dimension.\n");
+
         // Compute dirichlet values
-        gsMatrix<T> fpts = 
-            it->function()->eval( m_patches[it->patch()].eval(  gsPointGrid( rr ) ) );
+        gsMatrix<T> fpts;
+        if ( it->parametric() )
+            fpts = it->function()->eval( gsPointGrid( rr ) );
+        else
+            fpts = it->function()->eval( m_patches[it->patch()].eval(  gsPointGrid( rr ) ) );
 
         // Interpolate dirichlet boundary 
         gsBasis<T> * h = basis.boundaryBasis(it->side());

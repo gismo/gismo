@@ -67,24 +67,30 @@ struct boundary_condition
     typedef memory::shared_ptr<gsFunction<T> > function_ptr;
 
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr, 
-                        condition_type::type t, int unknown = 0)
+                        condition_type::type t, int unknown = 0,
+                        bool parametric = false)
 	: ps(p, s), 
       m_function(f_shptr),
       m_type(t), 
-      m_unknown(unknown) 
+      m_unknown(unknown),
+      m_parametric(parametric)
     { }
 
     boundary_condition( int p, boxSide s, gsFunction<T> * f_ptr, 
-                        condition_type::type t, int unknown = 0)
+                        condition_type::type t, int unknown = 0,
+                        bool parametric = false)
 	: ps(p, s), 
       m_type(t), 
-      m_unknown(unknown) 
+      m_unknown(unknown),
+      m_parametric(parametric)
     { 
         m_function = function_ptr(f_ptr, null_deleter<gsFunction<T> >);
     }
     
-    boundary_condition( int p, boxSide s, condition_type::type t, int unknown = 0)
-	: ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown)  { }
+    boundary_condition( int p, boxSide s, condition_type::type t, 
+                        int unknown = 0, bool parametric = false)
+	: ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown),m_parametric(parametric)
+    { }
     
     /// Reterns true if there is no function data (homogeneous condition)
     bool isHomogeneous() const { return m_function.get() == NULL; }
@@ -107,12 +113,22 @@ struct boundary_condition
     /// Returns the unknown to which this boundary condition refers to
     int     unknown()  const { return m_unknown; }
 
+    /// Returns true if the function data for this boundary condition
+    /// is defined in parametric coordinates
+    bool    parametric()  const { return m_parametric; }
+
 
     patchSide ps;                ///< Side of a patch for this boundary condition
+
     function_ptr m_function;     ///< Function data for this boundary condition
+
     // TO DO : robin coefficients?
+
     condition_type::type m_type; ///< Type of the boundary condition
+
     int m_unknown;               ///< Unknown to which this boundary condition refers to
+
+    bool m_parametric;
 };
 
 /** 
@@ -155,6 +171,10 @@ public:
 
     typedef typename boundary_condition<T>::function_ptr function_ptr;
 
+    typedef memory::shared_ptr< gsBoundaryConditions > Ptr;
+
+    typedef memory::auto_ptr< gsBoundaryConditions > uPtr;
+
 public:
 
     /// Default empty constructor
@@ -163,6 +183,20 @@ public:
 
     ~gsBoundaryConditions() // Destructor
     { }
+
+
+    gsBoundaryConditions & operator= (uPtr other)
+    {
+        if ( other.get() != NULL )
+        {
+            drchlt_sides.swap( other->drchlt_sides);
+            nmnn_sides  .swap( other->nmnn_sides  );
+            robin_sides .swap( other->robin_sides );
+        }
+
+        return *this;
+    }
+
     
 public:
 
@@ -276,17 +310,17 @@ public:
 	{ return corner_values.end(); }
     
     void addCondition(int p, boxSide s, condition_type::type t, 
-                      gsFunction<T> * f, int unknown = 0)
+                      gsFunction<T> * f, int unknown = 0, bool parametric = false)
     {
         switch (t) {
         case condition_type::dirichlet :
-            drchlt_sides.push_back( boundary_condition<T>(p,s,f,t,unknown) );
+            drchlt_sides.push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
             break;
         case condition_type::neumann :
-            nmnn_sides.push_back( boundary_condition<T>(p,s,f,t,unknown) );
+            nmnn_sides.push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
             break;
         case condition_type::robin :
-            robin_sides.push_back( boundary_condition<T>(p,s,f,t,unknown) );
+            robin_sides.push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
             break;
         default:
             std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
@@ -294,17 +328,18 @@ public:
     }
 
     void addCondition(int p, boxSide s, condition_type::type t, 
-                      const function_ptr & f_shptr, int unknown = 0)
+                      const function_ptr & f_shptr, int unknown = 0, 
+                      bool parametric = false)
     {
         switch (t) {
         case condition_type::dirichlet :
-            drchlt_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown) );
+            drchlt_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         case condition_type::neumann :
-            nmnn_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown) );
+            nmnn_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         case condition_type::robin :
-            robin_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown) );
+            robin_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         default:
             std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
@@ -312,22 +347,22 @@ public:
     }
 
     void addCondition( boxSide s, condition_type::type t, 
-                       gsFunction<T> * f, int unknown = 0)
+                       gsFunction<T> * f, int unknown = 0, bool parametric = false)
     {
         // for single-patch only
-        addCondition(0,s,t,f,unknown);
+        addCondition(0,s,t,f,unknown,parametric);
     }
 
     void addCondition(const patchSide& ps, condition_type::type t, 
-                      gsFunction<T> * f, int unknown = 0)
+                      gsFunction<T> * f, int unknown = 0, bool parametric = false)
     {
-        addCondition(ps.patch, ps.side(), t, f, unknown);
+        addCondition(ps.patch, ps.side(), t, f, unknown,parametric);
     }
 
     void addCondition(const patchSide& ps, condition_type::type t, 
-                      const function_ptr & f_shptr, int unknown = 0)
+                      const function_ptr & f_shptr, int unknown = 0, bool parametric = false)
     {
-        addCondition(ps.patch, ps.side(), t, f_shptr, unknown);
+        addCondition(ps.patch, ps.side(), t, f_shptr, unknown,parametric);
     }
 
     void addCornerValue(boxCorner c, T value, int p = 0, int unknown = 0)
@@ -353,6 +388,9 @@ private:
     bcContainer     robin_sides;   ///< List of Robin sides
     cornerContainer corner_values; ///< List of corners with fixed value
 
+    // Pointer to associated multipatch domain
+    //gsMultiPatch<T> * m_patches;
+    
 }; // class gsBoundaryConditions
 
 
