@@ -348,22 +348,32 @@ void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction,
 template<unsigned d, class T>
 void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,typename gsTHBSpline<d,T>::BoundaryGeometryType & result) const
 {
+    GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
+    GISMO_ASSERT(dir_fixed<d,"cannot fix a dir greater than dim");
     const typename gsTHBSpline<d,T>::BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
-
-    gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
-    bBasis->anchors_into(anchorsSlice);
-    anchorsInGeom.resize(anchorsSlice.rows()+1,anchorsSlice.cols());
-    anchorsInGeom.topRows(dir_fixed)=anchorsSlice.topRows(dir_fixed);
-    anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
-    anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
-    this->eval_into(anchorsInGeom,vals);
-    gsTHBSpline<d,T>::BoundaryGeometryType* geom =
-        dynamic_cast<gsTHBSpline<d,T>::BoundaryGeometryType *>(bBasis->interpolateData(vals,anchorsSlice));
-    GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
-    result = *geom;
-
+    if(d==1)
+    {
+        gsMatrix<T> val(1,1),point;
+        val(0,0)=par;
+        this->eval_into(val,point);
+        result=typename gsTHBSpline<d,T>::BoundaryGeometryType(*bBasis,point);
+    }
+    else
+    {
+        gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
+        bBasis->anchors_into(anchorsSlice);
+        anchorsInGeom.resize(anchorsSlice.rows()+1,anchorsSlice.cols());
+        anchorsInGeom.topRows(dir_fixed)=anchorsSlice.topRows(dir_fixed);
+        anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
+        anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
+        this->eval_into(anchorsInGeom,vals);
+        gsTHBSpline<d,T>::BoundaryGeometryType* geom =
+                dynamic_cast<gsTHBSpline<d,T>::BoundaryGeometryType *>(bBasis->interpolateData(vals,anchorsSlice));
+        GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
+        result = *geom;
+        delete geom;
+    }
     delete bBasis;
-    delete geom;
 }
 
 

@@ -31,6 +31,7 @@ public:
     : m_geo(geo),m_fixed_dir(fixed_dir),m_par(par)
     {
         GISMO_ASSERT(geo->domainDim()>fixed_dir,"Geometry has not big enough dimension to fix the given fixed_dim.");
+        GISMO_ASSERT(geo->domainDim()!=1,"Cannot take a slice of a curve.");
     }
 
     /// \brief Gives back the domain dimension of this slice

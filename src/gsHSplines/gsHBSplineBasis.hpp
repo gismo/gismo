@@ -30,15 +30,20 @@ gsHBSplineBasis<d,T>::gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis, int nlevels)
 template<unsigned d, class T>
 typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
 {
+    GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
+    GISMO_ASSERT(dir_fixed<d,"cannot fix a dir greater than dim");
     const boxSide side(dir_fixed,0);
     const typename gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> >::BoundaryBasisType * bBSplineBasis =
-        this->m_bases[0]->boundaryBasis(side);
+            this->m_bases[0]->boundaryBasis(side);
     typename gsHBSplineBasis<d,T>::BoundaryBasisType* bBasis =
-        new typename gsHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);
+            new typename gsHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);
 
-    std::vector<unsigned> boxes;
-    this->getBoxesAlongSlice(dir_fixed,par,boxes);
-    bBasis->refineElements(boxes);
+    if(d!=1)
+    {
+        std::vector<unsigned> boxes;
+        this->getBoxesAlongSlice(dir_fixed,par,boxes);
+        bBasis->refineElements(boxes);
+    }
 
     delete bBSplineBasis;
     return bBasis;

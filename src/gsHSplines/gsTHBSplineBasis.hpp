@@ -27,15 +27,20 @@ namespace gismo
 template<unsigned d, class T>
 typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
 {
+    GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
+    GISMO_ASSERT(dir_fixed<d,"cannot fix a dir greater than dim");
     const boxSide side(dir_fixed,0);
     const typename gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> >::BoundaryBasisType * bBSplineBasis =
-        this->m_bases[0]->boundaryBasis(side);
+            this->m_bases[0]->boundaryBasis(side);
     typename gsTHBSplineBasis<d,T>::BoundaryBasisType* bBasis =
-        new typename gsTHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);//,this->m_tree.getMaxInsLevel()+1);
+            new typename gsTHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);//,this->m_tree.getMaxInsLevel()+1);
 
-    std::vector<unsigned> boxes;
-    this->getBoxesAlongSlice(dir_fixed,par,boxes);
-    bBasis->refineElements(boxes);
+    if(d!=1)
+    {
+        std::vector<unsigned> boxes;
+        this->getBoxesAlongSlice(dir_fixed,par,boxes);
+        bBasis->refineElements(boxes);
+    }
 
     delete bBSplineBasis;
     return bBasis;

@@ -99,22 +99,32 @@ public:
     /// one less dimension and is given back in \a result.
     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const
     {
+        GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
+        GISMO_ASSERT(dir_fixed<d,"cannot fix a dir greater than dim");
         const BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
-
-        gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
-        bBasis->anchors_into(anchorsSlice);
-        anchorsInGeom.resize(anchorsSlice.rows()+1,anchorsSlice.cols());
-        anchorsInGeom.topRows(dir_fixed)=anchorsSlice.topRows(dir_fixed);
-        anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
-        anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
-        this->eval_into(anchorsInGeom,vals);
-        BoundaryGeometryType* geom = 
-            dynamic_cast<BoundaryGeometryType *>(bBasis->interpolateAtAnchors(vals));
-        GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
-        result = *geom;
-
+        if(d==1)
+        {
+            gsMatrix<T> val(1,1),point;
+            val(0,0)=par;
+            this->eval_into(val,point);
+            result=BoundaryGeometryType(*bBasis,point);
+        }
+        else
+        {
+            gsMatrix<T> vals,anchorsSlice,anchorsInGeom;
+            bBasis->anchors_into(anchorsSlice);
+            anchorsInGeom.resize(anchorsSlice.rows()+1,anchorsSlice.cols());
+            anchorsInGeom.topRows(dir_fixed)=anchorsSlice.topRows(dir_fixed);
+            anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
+            anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
+            this->eval_into(anchorsInGeom,vals);
+            BoundaryGeometryType* geom =
+                    dynamic_cast<BoundaryGeometryType *>(bBasis->interpolateAtAnchors(vals));
+            GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
+            result = *geom;
+            delete geom;
+        }
         delete bBasis;
-        delete geom;
     }
 }; // class gsHBSpline
   
