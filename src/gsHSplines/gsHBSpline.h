@@ -47,7 +47,7 @@ public:
     choose<d==1, gsConstantFunction<T>, gsHBSpline<d-1,T>
            >::type BoundaryGeometryType;
 
-    typedef typename gsHBSplineBasis<d>::BoundaryBasisType BoundaryBasisType;
+    typedef typename gsHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;
     
 public:
     

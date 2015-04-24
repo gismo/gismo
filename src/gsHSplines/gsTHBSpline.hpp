@@ -2,6 +2,8 @@
 
 #include <gsNurbs/gsBoehm.h>
 
+#include <gsCore/gsConstantFunction.h>
+
 namespace gismo{
 
 //////////////////////////////////////////////////
@@ -355,7 +357,7 @@ void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,typename gsTHBSpline<d,T>::
     anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
     anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
     this->eval_into(anchorsInGeom,vals);
-    gsTHBSpline<d,T>::BoundaryGeometryType* geom = 
+    gsTHBSpline<d,T>::BoundaryGeometryType* geom =
         dynamic_cast<gsTHBSpline<d,T>::BoundaryGeometryType *>(bBasis->interpolateData(vals,anchorsSlice));
     GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
     result = *geom;

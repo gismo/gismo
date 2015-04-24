@@ -40,14 +40,17 @@ template<unsigned d, class T>
 class gsTHBSpline : public gsGenericGeometry<gsTHBSplineBasis<d,T> >
 {
 public:
-  typedef gsTHBSplineBasis<d,T> Basis;
-  typedef gsGenericGeometry< gsTHBSplineBasis<d,T> > Base;
+    typedef gsTHBSplineBasis<d,T> Basis;
+    typedef gsGenericGeometry< gsTHBSplineBasis<d,T> > Base;
 
-  /// Shared pointer for gsHBSpline
-  typedef memory::shared_ptr< gsTHBSpline<d,T> > Ptr;
+    /// Shared pointer for gsHBSpline
+    typedef memory::shared_ptr< gsTHBSpline<d,T> > Ptr;
 
-    typedef gsTHBSpline<1,T> BoundaryGeometryType;
-    typedef gsTHBSplineBasis<1,T> BoundaryBasisType;
+    typedef typename
+    choose<d==1, gsConstantFunction<T>, gsTHBSpline<d-1,T>
+           >::type BoundaryGeometryType;
+
+    typedef typename gsTHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;
 
 public:
 
@@ -63,17 +66,17 @@ public:
 
     /// Construct THB-Spline by basis functions and coefficient matrix
     gsTHBSpline( const Basis& basis, gsMatrix<T> & coefs ) :
-        Base( basis, coefs ) 
+        Base( basis, coefs )
     {
 
     }
 
     /// Construct B-Spline from a Tensor B-Spline
-  gsTHBSpline( const gsTensorBSpline<d,T> & tbsp )
-        {
-          this->m_basis = new Basis(tbsp.basis(), 3);// 3 levels
-          this->m_coefs = tbsp.coefs();
-        }
+    gsTHBSpline( const gsTensorBSpline<d,T> & tbsp )
+    {
+        this->m_basis = new Basis(tbsp.basis(), 3);// 3 levels
+        this->m_coefs = tbsp.coefs();
+    }
 
     /// Copy constructor
     gsTHBSpline( const gsTHBSpline & other )
@@ -84,7 +87,7 @@ public:
 
     /// Clone the gsHBspline
     virtual gsTHBSpline * clone() const
-        { return new gsTHBSpline(*this); }
+    { return new gsTHBSpline(*this); }
 
     ~gsTHBSpline() { } //destructor
 

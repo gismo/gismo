@@ -31,10 +31,9 @@ template<unsigned d, class T>
 typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
 {
     const boxSide side(dir_fixed,0);
-    typename gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> >::BoundaryBasisType * bBSplineBasis = 
+    const typename gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> >::BoundaryBasisType * bBSplineBasis =
         this->m_bases[0]->boundaryBasis(side);
-
-    typename gsHBSplineBasis<d,T>::BoundaryBasisType* bBasis = 
+    typename gsHBSplineBasis<d,T>::BoundaryBasisType* bBasis =
         new typename gsHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);
 
     std::vector<unsigned> boxes;
