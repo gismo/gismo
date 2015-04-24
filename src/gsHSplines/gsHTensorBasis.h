@@ -895,7 +895,11 @@ public:
 //        ) const;
 
 }; // class gsHTensorBasis
- 
+
+// Next line disallows instantization of gsTensorBasis<0,T>
+template<typename T> class gsHTensorBasis<0,T>
+{using T::GISMO_ERROR_gsHTensorBasis_cannot_have_dimension_zero;};
+
 
 } // namespace gismo
 
