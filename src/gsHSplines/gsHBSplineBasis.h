@@ -40,8 +40,9 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
 
-    //typedef gsHBSplineBasis<d-1,T> BoundaryBasisType;
-    typedef gsHBSplineBasis<1,T> BoundaryBasisType;
+    typedef typename 
+    choose<d==1, gsConstantBasis<T>, gsHBSplineBasis<d-1,T>
+           >::type BoundaryBasisType;
 
     typedef memory::shared_ptr< gsHBSplineBasis > Ptr;
 

@@ -37,47 +37,48 @@ template<unsigned d, class T>
 class gsHBSpline : public gsGenericGeometry<gsHBSplineBasis<d,T> >
 {   
 public: 
-  typedef gsHBSplineBasis<d,T> Basis;
-  typedef gsGenericGeometry< gsHBSplineBasis<d,T> > Base;
+    typedef gsHBSplineBasis<d,T> Basis;
+    typedef gsGenericGeometry< gsHBSplineBasis<d,T> > Base;
+    
+    /// Shared pointer for gsHBSpline
+    typedef memory::shared_ptr< gsHBSpline<d,T> > Ptr;
+    
+    typedef gsHBSpline<d-1,T> BoundaryGeometryType;
 
-  /// Shared pointer for gsHBSpline
-  typedef memory::shared_ptr< gsHBSpline<d,T> > Ptr;
-
-    typedef gsHBSpline<1,T> BoundaryGeometryType;
-    typedef gsHBSplineBasis<1,T> BoundaryBasisType;
+    typedef gsHBSplineBasis<d-1,T> BoundaryBasisType;
     
 public:
     
-  /// Default empty constructor
-  gsHBSpline() { }
+    /// Default empty constructor
+    gsHBSpline() { }
   
-  /// Construct HB-Spline by basis functions and coefficient matrix
-  gsHBSpline( const Basis * basis, const gsMatrix<T> * coefs ) :
+    /// Construct HB-Spline by basis functions and coefficient matrix
+    gsHBSpline( const Basis * basis, const gsMatrix<T> * coefs ) :
     Base( basis, coefs ) { }
 
-  /// Construct HB-Spline by basis functions and coefficient matrix
-  gsHBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
+    /// Construct HB-Spline by basis functions and coefficient matrix
+    gsHBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
     Base( basis, coefs ) { }
   
-  /// Construct B-Spline from a Tensor B-Spline
-  gsHBSpline( const gsTensorBSpline<d,T> & tbsp )
-  { 
-    this->m_basis = new Basis(tbsp);
-    this->m_coefs = tbsp->coefs();
-  }
+    /// Construct B-Spline from a Tensor B-Spline
+    gsHBSpline( const gsTensorBSpline<d,T> & tbsp )
+    { 
+        this->m_basis = new Basis(tbsp);
+        this->m_coefs = tbsp->coefs();
+    }
   
-  /// Copy constructor
-  gsHBSpline( const gsHBSpline & other )
-  { 
-    this->m_basis = other.basis().clone();
-    this->m_coefs = other.coefs();
-  }
+    /// Copy constructor
+    gsHBSpline( const gsHBSpline & other )
+    { 
+        this->m_basis = other.basis().clone();
+        this->m_coefs = other.coefs();
+    }
   
-  /// Clone the gsHBspline
-  virtual gsHBSpline * clone() const
-  { return new gsHBSpline(*this); };
+    /// Clone the gsHBspline
+    virtual gsHBSpline * clone() const
+    { return new gsHBSpline(*this); };
   
-  ~gsHBSpline() { }; //destructor   
+    ~gsHBSpline() { }; //destructor   
   
 public:
   
