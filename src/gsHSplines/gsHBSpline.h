@@ -43,9 +43,11 @@ public:
     /// Shared pointer for gsHBSpline
     typedef memory::shared_ptr< gsHBSpline<d,T> > Ptr;
     
-    typedef gsHBSpline<d-1,T> BoundaryGeometryType;
+    typedef typename 
+    choose<d==1, gsConstantFunction<T>, gsHBSpline<d-1,T>
+           >::type BoundaryGeometryType;
 
-    typedef gsHBSplineBasis<d-1,T> BoundaryBasisType;
+    typedef typename gsHBSplineBasis<d>::BoundaryBasisType BoundaryBasisType;
     
 public:
     
