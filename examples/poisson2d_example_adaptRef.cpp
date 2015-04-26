@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
           std::cout<<"Plotting in Paraview...\n";
           gsWriteParaview<>(*sol, "p2d_adaRef_sol", 5001, true);
           // Run paraview and plot the last mesh
-          result = system("paraview p2d_adaRef_sol0_mesh.vtp &");
+          result = system("paraview p2d_adaRef_sol.pvd &");
       }
 
       delete sol;
