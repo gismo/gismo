@@ -87,42 +87,53 @@ template<unsigned d, class T, class KnotVectorType>
 void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
                                                 BoundaryGeometryType & result) const
 {
-    GISMO_ASSERT(d-1>0,"cannot take iso slice of a curve");
+    GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
+    GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     // construct the d-1 basis
     boxSide side(dir_fixed,0);
     BoundaryBasisType *tbasis = this->basis().boundaryBasis(side) ;
 
-    const int mult   = this->basis().knots(dir_fixed).multiplicity(par);
-    const int degree = this->basis().degree(dir_fixed);
-
-    gsMatrix<T> coefs;
-    if( mult>=degree )
+    if(d==1)
     {
-        // no knot insertion needed, just extract the right coefficients
-        constructCoefsForSlice(dir_fixed,par,*this,coefs);
+        gsMatrix<T> val(1,1),point;
+        val(0,0)=par;
+        this->eval_into(val,point);
+        result = BoundaryGeometryType(*tbasis, point );
     }
     else
     {
-        // clone the basis and inserting upto degree knots at par
-        gsTensorBSpline<d,T,KnotVectorType>* clone = this->clone();
+        const int mult   = this->basis().knots(dir_fixed).multiplicity(par);
+        const int degree = this->basis().degree(dir_fixed);
 
-        gsVector<unsigned> strides;
-        gsVector<int> intStrides;
-        this->basis().stride_cwise(intStrides);
-        strides=intStrides.cast<unsigned>();
-        gsTensorBoehm<T,KnotVectorType,gsMatrix<T> >(
-                    clone->basis().knots(dir_fixed),clone->coefs(),par,dir_fixed,
-                    strides,degree-mult,true);
+        gsMatrix<T> coefs;
+        if( mult>=degree )
+        {
+            // no knot insertion needed, just extract the right coefficients
+            constructCoefsForSlice(dir_fixed,par,*this,coefs);
+        }
+        else
+        {
+            // clone the basis and inserting upto degree knots at par
+            gsTensorBSpline<d,T,KnotVectorType>* clone = this->clone();
 
-        // extract right ceofficients
-        constructCoefsForSlice(dir_fixed,par,*clone,coefs);
-        delete clone;
+            gsVector<unsigned> strides;
+            gsVector<int> intStrides;
+            this->basis().stride_cwise(intStrides);
+            strides=intStrides.cast<unsigned>();
+            gsTensorBoehm<T,KnotVectorType,gsMatrix<T> >(
+                        clone->basis().knots(dir_fixed),clone->coefs(),par,dir_fixed,
+                        strides,degree-mult,true);
+
+            // extract right ceofficients
+            constructCoefsForSlice(dir_fixed,par,*clone,coefs);
+            delete clone;
+        }
+
+        // construct the object
+        //result = gsTensorBSpline<d-1,T>(*tbasis, give(coefs) );
+        //result = BoundaryGeometry(*tbasis, give(coefs) );
+        result = BoundaryGeometryType(*tbasis, coefs );
     }
-
-    // construct the object
-    //result = gsTensorBSpline<d-1,T>(*tbasis, give(coefs) );
-    //result = BoundaryGeometry(*tbasis, give(coefs) );
-    result = BoundaryGeometryType(*tbasis, coefs );
     delete tbasis;
 }
 

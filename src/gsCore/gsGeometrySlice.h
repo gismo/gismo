@@ -30,7 +30,7 @@ public:
     gsGeometrySlice(const gsGeometry<T>* geo, index_t fixed_dir,T par)
     : m_geo(geo),m_fixed_dir(fixed_dir),m_par(par)
     {
-        GISMO_ASSERT(geo->domainDim()>fixed_dir,"Geometry has not big enough dimension to fix the given fixed_dim.");
+        GISMO_ASSERT(fixed_dir>=0 && geo->domainDim()>static_cast<int>(fixed_dir),"Geometry has not big enough dimension to fix the given fixed_dim.");
         GISMO_ASSERT(geo->domainDim()!=1,"Cannot take a slice of a curve.");
     }
 

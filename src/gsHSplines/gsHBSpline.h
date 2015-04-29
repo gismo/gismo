@@ -100,7 +100,7 @@ public:
     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const
     {
         GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
-        GISMO_ASSERT(dir_fixed<d,"cannot fix a dir greater than dim");
+        GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
         const BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
         if(d==1)
         {
