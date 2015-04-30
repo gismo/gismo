@@ -417,6 +417,13 @@ public:
     inline bool isPeriodic() const { return this->basis().isPeriodic(); }
 
 
+    /// Returns true if this curve is closed
+    bool isClosed(T tol = 1e-10) const 
+    { 
+        return ( this->basis().isPeriodic() || 
+                 (m_coefs.row(0) - m_coefs.row(m_coefs.rows()-1)).squaredNorm()<tol );  
+    }
+
     bool isOn(gsMatrix<T> const &u, T tol = 1e-3) const;
     
 protected:
