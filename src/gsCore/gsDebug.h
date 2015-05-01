@@ -50,7 +50,10 @@
 #ifndef  NDEBUG 
 //#ifdef GISMO_LOGGING_DEBUG
   #define gsDebug std::cout<<"GISMO_DEBUG: "
-  #define gsDebugVar(variable) gsDebug <<"L"<<__LINE__<< ", "#variable": "<<(variable)<<"\n"
+
+#define gsDebugVar(variable) gsDebug << (strrchr(__FILE__, '/') ? \
+                             strrchr(__FILE__, '/') + 1 : __FILE__) <<":"<<    \
+                              __LINE__<< ", "#variable": \n"<<(variable)<<"\n"
 #else
   #define gsDebug if (0) std::cerr
   #define gsDebugVar(variable)
@@ -302,7 +305,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 #define GISMO_STATIC_ASSERT_SAME_MATRIX_SIZE(TYPE0,TYPE1) \
   GISMO_STATIC_ASSERT( \
      GISMO_PREDICATE_SAME_MATRIX_SIZE(TYPE0,TYPE1),\
-    YOU_MIXED_MATRICES_OF_DIFFERENT_SIZES)
+     YOU_MIXED_MATRICES_OF_DIFFERENT_SIZES)
 
 #ifdef GISMO_WARNINGS
     //#pragma message("G+Smo Warnings ON")

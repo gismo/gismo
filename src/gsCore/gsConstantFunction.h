@@ -94,7 +94,7 @@ public:
 
     const gsVector<T> & value() const { return m_val;}
 
-    T value(size_t i = 0) const { return m_val[i];}
+    T value(size_t i) const { return m_val[i];}
 
     void setValue(T val) { m_val.setConstant(val);}
 

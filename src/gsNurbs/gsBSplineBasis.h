@@ -246,7 +246,7 @@ public:
     virtual void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
-    virtual void eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
+    virtual void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;

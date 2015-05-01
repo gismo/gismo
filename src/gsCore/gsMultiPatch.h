@@ -213,6 +213,8 @@ public:
         m_patches.clear();
     }
 
+    void boundingBox(gsMatrix<T> & result) const;
+    
 protected:
 
     void setIds();

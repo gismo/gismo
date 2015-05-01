@@ -380,28 +380,29 @@ T gsKnotVector<T>::last  () const { return my->knots.back(); }
 template <class T>
 void gsKnotVector<T>::push_back( T knot)  
 { 
-    GISMO_ASSERT(my->knots.empty() || knot>=my->knots.back(), "Knot out of range");
+    GISMO_ASSERT(my->knots.empty() || knot>=my->knots.back(), 
+                 "Knot "<<knot<<" ("<<my->knots.size()<<") out of range");
     my->knots.push_back(knot); 
 }
 
 template <class T>
 void gsKnotVector<T>::push_back( T knot, int mult)  
 { 
-    GISMO_ASSERT(my->knots.empty() || knot>=my->knots.back(), "Knot out of range");
+    GISMO_ASSERT(my->knots.empty() || knot>=my->knots.back(), "Knot "<<knot<<" out of range");
     my->knots.insert(my->knots.end(), mult, knot); 
 }
   
 template <class T>
 void gsKnotVector<T>::push_front( T knot)  
 {   
-    GISMO_ASSERT( my->knots.empty() || knot<=my->knots.front(), "Knot out of range");
+    GISMO_ASSERT( my->knots.empty() || knot<=my->knots.front(), "Knot "<<knot<<" out of range");
     my->knots.insert(my->knots.begin(), knot); 
 }
 
 template <class T>
 void gsKnotVector<T>::push_front( T knot, int mult)  
 {   
-    GISMO_ASSERT( my->knots.empty() || knot<=my->knots.front(), "Knot out of range");
+    GISMO_ASSERT( my->knots.empty() || knot<=my->knots.front(), "Knot "<<knot<<" out of range");
     my->knots.insert(my->knots.begin(), mult, knot); 
 }
   
@@ -506,22 +507,42 @@ T gsKnotVector<T>::minKnotSpanLength() const
 template <class T>
 void gsKnotVector<T>::transform(T c, T d)
 {
-    T a = my->knots.front();
-    T b = my->knots.back();
-    my->knots.front() = c;
-    my->knots.back()  = d;       
+    GISMO_ASSERT(c<d && d-c > 0.00001, 
+    "Cannot transform the knot-vector to invalid interval ["<<c<<","<<d<<"].\n");
 
-    for (typename std::vector<T>::iterator it = my->knots.begin()+1; it != my->knots.end()-1; ++it)
+    const T a    = my->knots.front();
+    const int ma = multiplicity(a);
+    const T b    = my->knots.back();
+    const int mb = multiplicity(b);
+
+    std::fill(my->knots.begin() , my->knots.begin() +ma, c);
+    std::fill(my->knots.rbegin(), my->knots.rbegin()+mb, d);
+
+    for (typename std::vector<T>::iterator it = my->knots.begin()+ma; 
+         it != my->knots.end()-mb; ++it)
         (*it) = c + ((*it) - a) * (d - c) / (b - a) ;
 }
 
+/*
+template <class T>
+int gsKnotVector<T>::removeSmallSpans(T tol) const 
+{ 
+
+}
+
+template <class T>
+int gsKnotVector<T>::check() const 
+{ 
+
+}
+*/
 
 template <class T>
 void gsKnotVector<T>::merge(gsKnotVector<T> other)
 { 
     // check for degree
     if ( this->degree() != other.degree() )
-    {std::cout<<"gsKnotVector: Cannot merge KnotVectors of different degree"<<"\n"; return;}
+    {gsWarn<<"gsKnotVector: Cannot merge KnotVectors of different degree"<<"\n"; return;}
 
     other.setFirst( last() ) ;
     // TO DO: check that this->degree() = K.degree()
@@ -866,30 +887,57 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
     typename std::vector<T>::const_iterator itr = my->knots.begin() + 1;
     const int p = my->p;
     result.resize(1, this->size() -p-1 ) ; 
-    unsigned i(1);
+    unsigned i = 1;
   
     if ( my->p!=0)
     {
-        result(0,0)=  std::accumulate(itr, itr+p, T(0) ) / my->p;
+        result(0,0) = std::accumulate( itr, itr+p, T(0.0) ) / my->p ;
+
+        if ( result(0,0) < *(itr-1) )// Ensure that the point is in range
+            result(0,0) = *(itr-1);
+
         for (++itr; itr != my->knots.end()-p; ++itr, ++i )
         {
-            result(0,i)=  std::accumulate( itr, itr+p, T(0) ) / my->p ;
+            result(0,i) = std::accumulate( itr, itr+p, T(0.0) ) / my->p ;
             if ( result(0,i) == result(0,i-1) )
-                result(0,i-1) -= 1e-10;// perturbe point to remain inside the needed support
+                // perturbe point to remain inside the needed support
+                result(0,i-1) -= 1e-10;
         }
+
+        itr = my->knots.end()-1;
+        i -= 1;
+        if ( result(0,i) > *(itr) )// Ensure that the point is in range
+            result(0,i) = *(itr);
     }
     else
+#       ifdef _MSC_VER
+// Note: Using checked_array_iterator on MSVC fixes C4996 warning for
+// unsecured memory. This wrapper Behaves as
+//  namespace stdext 
+//  { 
+//  template<typename T> inline T* 
+//  checked_array_iterator(T* arr, size_t numVals) 
+//  { return arr; } 
+//  }
+        std::copy(my->knots.begin(), my->knots.end()-1,
+        stdext::checked_array_iterator<T*>(result.data(), result.size())
+        );
+#       else
         std::copy(my->knots.begin(), my->knots.end()-1, result.data() );
+#       endif
 }
 
 template <class T>
 T gsKnotVector<T>::greville(int i) const
 {
-    // TO DO: check special case as in greville_into
-    typename std::vector<T>::const_iterator itr = my->knots.begin();
-    return ( my->p!=0 ? 
-             std::accumulate( itr+1+i, itr+my->p+i+1, T(0.0) ) / my->p :
-             std::accumulate( itr+1+i, itr+my->p+i+1, T(0.0) )      );
+    GISMO_ASSERT(i>=0 && i< this->size()-my->p-1, 
+                 "Index of Greville point is out of range.");
+    typename std::vector<T>::const_iterator itr = my->knots.begin() + 1;
+    return ( my->p==0 ? *(itr+i-1) :
+             std::accumulate( itr+i, itr+my->p, T(0.0) ) / my->p 
+             // Special case C^{-1}
+             - (*(itr+i) == *(itr+i+my->p) ? 1e-10 : 0 )
+           );
 }
 
 template <class T>

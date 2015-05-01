@@ -330,7 +330,7 @@ void gsRationalBasis<SrcT>::evalSingle_into(unsigned i, const gsMatrix<T> & u, g
     m_src->evalSingle_into(i, u, result);  
     result.array() *= m_weights.at(i,0);
     gsMatrix<T> denom;
-    m_src->eval_into(u, m_weights, denom); 
+    m_src->evalFunc_into(u, m_weights, denom); 
     
     result.array() /= denom.array();
 }
@@ -343,7 +343,7 @@ void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result
     const gsMatrix<unsigned> act = m_src->active(u);
     
     gsMatrix<T> denom;
-    m_src->eval_into(u, m_weights, denom); 
+    m_src->evalFunc_into(u, m_weights, denom); 
     
     for ( index_t j=0; j< act.cols(); ++j)
     {
@@ -388,7 +388,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n, gsMat
         GISMO_ERROR("gsRationalBasis::evalAllDers_into not implemented for n > 1");
         return;
     }
-    assert( n == 1 );
+
     static const int d = Dim;
 
     // find active basis functions
@@ -404,7 +404,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n, gsMat
 
     // evaluate weights and their derivatives
     gsMatrix<T> Wval, Wder;
-    m_src->eval_into(u,  m_weights, Wval);
+    m_src->evalFunc_into (u,  m_weights, Wval);
     m_src->derivFunc_into(u, m_weights, Wder);
 
     for (index_t i = 0; i < u.cols(); ++i)// for all parametric points
@@ -444,7 +444,7 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& resul
   
   m_src->deriv_into(u, result         );
   m_src->eval_into (u, ev             ); 
-  m_src->eval_into (u, m_weights, Wval); 
+  m_src->evalFunc_into (u, m_weights, Wval); 
   m_src->derivFunc_into(u, m_weights, Wder); 
 
   //std::cout<<"Src Deriv:\n"<< result <<"\n";
@@ -517,7 +517,7 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
     //std::cout<<"TP rational deriv \n";
     m_src->deriv2_into(u,result); 
     m_src->eval_into(u, ev); 
-    m_src->eval_into(u, m_weights, Wval); 
+    m_src->evalFunc_into(u, m_weights, Wval); 
 
     gsMatrix<T> Wder;
     m_src->derivFunc_into(u, m_weights, Wder); 

@@ -514,10 +514,10 @@ void gsBSplineBasis<T,KnotVectorType>::evalDerSingle_into(unsigned i,
 }
 
 template <class T, class KnotVectorType> inline
-void gsBSplineBasis<T,KnotVectorType>::eval_into(const gsMatrix<T> &u, 
+void gsBSplineBasis<T,KnotVectorType>::evalFunc_into(const gsMatrix<T> &u, 
                                                  const gsMatrix<T> & coefs, 
                                                  gsMatrix<T>& result) const 
-{  
+{
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate (got "
                   <<u.rows()<<").");
   if( m_periodic == 0 )

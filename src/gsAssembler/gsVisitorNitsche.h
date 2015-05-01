@@ -143,7 +143,7 @@ public:
             for (index_t i=0; i!=numActive; ++i)
             {
                 const unsigned ii = actives(i);
-                if ( jj <= ii ) // assuming symmetric problem (!) probably we must not.
+//                if ( jj <= ii ) // assuming symmetric problem
                     sysMatrix( ii, jj ) -= localMat(i,j);
             }
         }

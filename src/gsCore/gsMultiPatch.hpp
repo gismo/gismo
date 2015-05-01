@@ -173,6 +173,24 @@ void gsMultiPatch<T>::degreeElevate(int elevationSteps)
 }
 
 
+template<class T>
+void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const
+{
+    result.setZero(geoDim(),2);
+    if ( m_patches.size() == 0 )
+        return;
+
+    // to do: this is the bounding box of a gsGeometry, make a member function
+    result.col(0) = patch(0).coefs().colwise().minCoeff().transpose();
+    result.col(1) = patch(0).coefs().colwise().maxCoeff().transpose();
+
+    for (const_iterator it = begin()+1; it != end(); ++it)
+    {
+        const gsMatrix<T>  & cc = (*it)->coefs();
+        result.col(0) = result.col(0).cwiseMin( cc.colwise().minCoeff().transpose() ) ;
+        result.col(1) = result.col(1).cwiseMax( cc.colwise().maxCoeff().transpose() ) ;
+    }
+}
 
 
 /*
