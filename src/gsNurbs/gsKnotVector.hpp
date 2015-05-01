@@ -934,7 +934,7 @@ T gsKnotVector<T>::greville(int i) const
                  "Index of Greville point is out of range.");
     typename std::vector<T>::const_iterator itr = my->knots.begin() + 1;
     return ( my->p==0 ? *(itr+i-1) :
-             std::accumulate( itr+i, itr+my->p, T(0.0) ) / my->p 
+             std::accumulate( itr+i, itr+i+my->p, T(0.0) ) / my->p 
              // Special case C^{-1}
              - (*(itr+i) == *(itr+i+my->p) ? 1e-10 : 0 )
            );
