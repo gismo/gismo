@@ -13,17 +13,16 @@
 
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsLinearAlgebra.h>
 
-#include <gsIO/gsParaviewCollection.h>
-
-#include <gsMatrix/gsMatrix.h>
+#include <fstream>
 
 namespace gismo
 {
 
 template <class T>
-void plot_errors(gsMatrix<T> orig, 
-                 gsMatrix<T> comp, std::vector<T> errors, 
+void plot_errors(const gsMatrix<T> & orig, 
+                 const gsMatrix<T> & comp, const std::vector<T> & errors, 
                  std::string const & fn)
 {
     std::string mfn(fn);
@@ -34,7 +33,7 @@ void plot_errors(gsMatrix<T> orig,
         myfile<<"<?xml version=\"1.0\"?>\n";
         myfile <<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\">\n";
         myfile <<"<UnstructuredGrid>\n";
-        myfile << "<Piece NumberOfPoints=\""<< 2*errors.size() <<"\" NumberOfCells=\""<< errors.size() <<"\">"<<std::endl;
+        myfile << "<Piece NumberOfPoints=\""<< 2*errors.size() <<"\" NumberOfCells=\""<< errors.size() <<"\">"<<"\n";
         myfile <<"<PointData Scalars=\"scalars\">\n";
         myfile <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\">\n";
         for(size_t j = 0; j < errors.size();j++){
@@ -57,10 +56,10 @@ void plot_errors(gsMatrix<T> orig,
         myfile <<"<Points>\n";
         myfile <<"<DataArray type=\"Float32\" NumberOfComponents=\""<< 3 <<"\" format=\"ascii\">\n";
         for(unsigned int i =0; i < errors.size();i++){
-            myfile<<orig(0,i)<<" " << orig(1,i)<<" "<<orig(2,i)<<std::endl;
+            myfile<<orig(0,i)<<" " << orig(1,i)<<" "<<orig(2,i)<<"\n";
         }
         for(unsigned int i =0; i < errors.size();i++){
-            myfile<<comp(0,i)<<" " << comp(1,i)<<" "<<comp(2,i)<<std::endl;
+            myfile<<comp(0,i)<<" " << comp(1,i)<<" "<<comp(2,i)<<"\n";
         }
         myfile <<"</DataArray>\n";
         myfile <<"</Points>\n";
@@ -96,9 +95,10 @@ void plot_errors(gsMatrix<T> orig,
 
 
 TEMPLATE_INST 
-void plot_errors<real_t>(gismo::gsMatrix<real_t>, 
-                         gismo::gsMatrix<real_t>, 
-                         std::vector<real_t>, std::string const&); 
+void plot_errors<real_t>(const gsMatrix<real_t>&,  
+                         const gsMatrix<real_t>&, 
+                         const std::vector<real_t>&,
+                         std::string const&); 
 
 }
 
