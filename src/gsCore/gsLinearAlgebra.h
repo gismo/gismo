@@ -18,10 +18,19 @@
 
 #include <gsCore/gsMath.h>
 
+
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
+
+// Plugin provides extra members
+#define EIGEN_MATRIXBASE_PLUGIN <gsMatrix/gsMatrixAddons.h>
+#include <gsMatrix/gsEigenDeclarations.h>
+
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+
+// Extra Eigen code
+#include <gsMatrix/gsEigenAddons.h>
 
 #ifdef GISMO_WITH_SUPERLU
 #include <Eigen/SuperLUSupport>

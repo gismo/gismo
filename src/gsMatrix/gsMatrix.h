@@ -11,11 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-
 # pragma once
-
-#include <gsCore/gsLinearAlgebra.h>     // for including Eigen
-
 
 namespace gismo
 {
