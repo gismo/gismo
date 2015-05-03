@@ -14,7 +14,6 @@
 
 #include <vector>
 #include <gsCore/gsExport.h>
-#include <gsMatrix/gsMatrix.h>
 #include <gsSolver/gsLinearOperator.h>
 
 namespace gismo
