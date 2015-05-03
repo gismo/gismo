@@ -254,7 +254,10 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
 
 // Please document
 template <class T>
-void plot_errors(gsMatrix<T> orig, gsMatrix<T> comp, std::vector<T> errors, std::string const & fn);
+void plot_errors(const gsMatrix<T> & orig, 
+                 const gsMatrix<T> & comp,
+                 std::vector<T> const & errors,
+                 std::string const & fn);
 
 
 namespace internal
