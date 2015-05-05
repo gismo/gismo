@@ -413,7 +413,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
     
     // The following should be equivalent to the scary 
     //Qlocal2global(1,0, this->m_tree.getIndexLevel()-level) that was here before.
-    const unsigned loc2glob = ( 1<< (this->m_tree.getIndexLevel() - level) );
+    const unsigned loc2glob = ( 1<< (this->maxLevel() - level) );
     if( b1[0]%loc2glob != 0 )
     {
         b1[0] -= b1[0]%loc2glob;
@@ -436,8 +436,8 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
     // The following should be equivalent to the commented Qglobal2locals.
     gsVector<unsigned,d> b1_outputs, b2_outputs;
 
-    this->m_tree.global2localIndex( b1, level, b1_outputs );
-    this->m_tree.global2localIndex( b2, level, b2_outputs );
+    this->m_tree.computeLevelIndex( b1, level, b1_outputs );
+    this->m_tree.computeLevelIndex( b2, level, b2_outputs );
 
     int i0 = b1_outputs(0); //Qglobal2local(b1[0],level,this->m_tree.getIndexLevel());
     int i1 = b2_outputs(0); //Qglobal2local(b2[0],level,this->m_tree.getIndexLevel());
@@ -680,14 +680,15 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
     std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const
 {
     //identify the outer polylines- conected components
-    int first_level = 0;
-    for(unsigned int i = 0; i < this->m_xmatrix.size(); i++){
-        if(this->m_xmatrix[i].size()>0){
-            first_level = i-1;
-            break;
-        }
-    }
-    gsInfo<<"new min level"<<"\n";
+//     int first_level = 0;
+//     for(unsigned int i = 0; i < this->m_xmatrix.size(); i++){
+//         if(this->m_xmatrix[i].size()>0){
+//             first_level = i - 1; 
+//             break;
+//         }
+//     }
+    
+    // gsInfo<<"new min level"<< first_level << "\n";
     std::vector< std::vector< std::vector< std::vector< T > > > > res; //things to assign to trim_curves
     std::vector< std::vector< std::vector< unsigned int > > > aabb;//axis aligned bounding box
     std::vector< std::vector< unsigned int > > boxes;
@@ -714,7 +715,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
             if(is_boundary)
             {
                 boxes.push_back(aabb[i][j]);
-                boxes[boxes.size()-1].push_back(i+first_level);//adding the level information
+                boxes[boxes.size()-1].push_back(i);//adding the level information
                 trim_curves.resize(trim_curves.size()+1);
                 trim_curves[trim_curves.size()-1].push_back(res[i][j]);//trim_curves
             }
