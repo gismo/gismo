@@ -796,8 +796,8 @@ void gsKnotVector<T>::degreeElevate(int const & i)
     if (i==0) 
         return;
 
-    T k0 = my->knots[my->p],
-        k1 = *(my->knots.end()-my->p-1);
+    const T k0 = my->knots[my->p],
+            k1 = *(my->knots.end()-my->p-1);
 
     std::vector<T> u = this->unique() ; 
 
@@ -836,6 +836,13 @@ void gsKnotVector<T>::degreeIncrease(int const & i)
     increaseMultFirst(i);
     increaseMultLast (i);
 }
+
+template <class T>
+bool gsKnotVector<T>::contains(gsKnotVector<T> & other)
+{
+GISMO_NO_IMPLEMENTATION
+}
+
 
 template <class T>
 void gsKnotVector<T>::increaseMultiplicity(int const & i)

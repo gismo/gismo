@@ -487,6 +487,11 @@ public:
     /// Reduce the degree keeping interior knots intact
     void degreeDecrease(int const & i = 1);
     
+    /// \brief Returns true if the knot vector contains all knots of
+    /// \a other, taking into account multiplicities
+    bool contains(gsCompactKnotVector<T> & other);
+
+
     /// Increase the degree keeping interior knots intact (add clamped knots only)
     void degreeIncrease(int const & i = 1);
     
@@ -608,7 +613,6 @@ public:
     /// i-th basis function.
     /// \param i index of the basis function
     inline gsMatrix<unsigned> supportIndex(const size_t& i) const;
-
 
 private:
     template <class It>
@@ -920,6 +924,12 @@ void gsCompactKnotVector<T>::degreeIncrease(int const & i)
     m_p += i;
     increaseMultFirst(i);
     increaseMultLast (i);
+}
+
+template <class T>
+bool gsCompactKnotVector<T>::contains(gsCompactKnotVector<T> & other)
+{
+    GISMO_NO_IMPLEMENTATION
 }
 
 template <class T>

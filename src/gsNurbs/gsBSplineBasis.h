@@ -402,12 +402,38 @@ public:
     /// Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots);
 
-    /// Perform k-refinement to the basis i times
-    void k_refine(int const & i = 1) 
+    /// \brief Increases the degree without adjusting the smoothness at inner
+    /// knots, except from the knot values in \a knots (constrained
+    /// knots of initial geometry)
+    /// 
+    /// This type of refinement is known as k-refinement.  Note that
+    /// this type of refinement is ment to be performed after one (or
+    /// more) with one h-refinement steps the parent mesh (\a other),
+    /// otherwise this function is equivalent to p-refinement of \a other.
+    /// Note: not tested yet
+    void refine_k(const Self_t & other, int const & i = 1)
     { 
+        GISMO_ASSERT( m_p >= other.m_p, "Degree of other knot-vector should be lower.");
+        //for (typename std::vector<T>::iterator it = 
+        //         m_knots.begin(); it != m_knots.end(); ++it)
+        //    GISMO_ASSERT( has(*it), "Knot "<< *it<<" is not in the knot vector.");
+
+        // grab unique knots
+        std::vector<T> knots = other.m_knots.unique();
+        // Increase the degree without adjusting any knot
         m_p += i; 
-        m_knots.degreeIncrease(i);
+        m_knots.set_degree(m_p);
+        // Adjust (reduce) smoothness to satisfy initial constraint knots
+        m_knots.insert(knots,i);
     }
+
+    /// \brief p-refinement (essentially degree elevation)
+    void refine_p(int const & i = 1)
+    { degreeElevate(i); }
+
+    /// \brief Uniform h-refinement (placing \a i new knots inside each knot-span
+    void refine_h(int const & i = 1)
+    { uniformRefine(i); }
   
     /// Elevate the degree of the basis and preserve the smoothness
     void degreeElevate(int const & i = 1, int const dir = -1)

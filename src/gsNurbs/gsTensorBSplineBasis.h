@@ -144,18 +144,18 @@ public:
 public:
 
     KnotVectorType & knots (int i)
-    { return this->component(i).knots(); }
+    { return Self_t::component(i).knots(); }
 
     const KnotVectorType & knots (int i) const 
-    { return this->component(i).knots(); }
+    { return Self_t::component(i).knots(); }
 
     // knot \a k of direction \a i
     T knot(int i, int k) const 
-    { return this->component(i).knots()[k]; }
+    { return Self_t::component(i).knots()[k]; }
 
-    Basis_t & component(unsigned i) const 
+    Basis_t & component(unsigned dir) const 
     {
-        return static_cast<Basis_t &>(Base::component(i));
+        return static_cast<Basis_t &>(Base::component(dir));
     }
 
     // Look at gsBasis class for a description
@@ -175,20 +175,36 @@ public:
         if( m_isPeriodic != -1 )
             os << "Periodic in " << m_isPeriodic << "-th direction.\n";
         for ( unsigned i = 0; i!=d; ++i )
-            os << "\n  Direction "<< i <<": "<< this->component(i).knots() <<" ";
+            os << "\n  Direction "<< i <<": "<< Self_t::component(i).knots() <<" ";
         os << "\n";
         return os;
     }
 
     /**
-     * \brief Perform k-refinement coordinate-wise
-     *
-     * \param[in] i number of k-refinement steps to perform
+       \brief Perform k-refinement coordinate-wise, in all directions
+       
+       \param[in] i number of k-refinement steps to perform
+       
+       \copydetails gsBSplineBasis:refine_k
      */
-    void k_refine(int const & i = 1) 
+    void k_refine(Self_t & other, int const & i = 1) const
     { 
         for (unsigned j = 0; j < d; ++j)
-            component(j).k_refine(i);
+            Self_t::component(j).refine_k(other.component(j), i);
+    }
+
+    /// \brief p-refinement (essentially degree elevation in all directions)
+    void refine_p(int const & i = 1)
+    {
+        for (unsigned j = 0; j < d; ++j)
+            Self_t::component(j).refine_p(i);
+    }
+    
+    /// \brief Uniform h-refinement (placing \a i new knots inside each knot-span, for all directions
+    void refine_h(int const & i = 1)
+    {
+        for (unsigned j = 0; j < d; ++j)
+            Self_t::component(j).refine_h(i);
     }
 
     /**
@@ -272,7 +288,7 @@ public:
         {
 
             // for simplicity, get the corresponding knot vector.
-            KnotVectorType kold_di = this->component(di).knots();
+            KnotVectorType kold_di = Self_t::component(di).knots();
 
             // vector of flags for refining knotspans
             gsVector<int> flagInsertKt( kold_di.size() );
@@ -300,7 +316,7 @@ public:
                 if( flagInsertKt[i] == 1)
                 {
                     T midpt = (kold_di[i] + kold_di[i-1])/2;
-                    this->component(di).insertKnot( midpt );
+                    Self_t::component(di).insertKnot( midpt );
                 }
 
         } // for( int di )
@@ -314,32 +330,58 @@ public:
     void reduceContinuity(int const & i = 1) 
     { 
         for (unsigned j = 0; j < d; ++j)
-            this->component(j).reduceContinuity(i);
+            Self_t::component(j).reduceContinuity(i);
     }
 
-    /// Returns knot indices of the beginning and end of the support of the i-th
-    /// basis function.
+    /// Returns span (element) indices of the beginning and end of the
+    /// support of the i-th basis function.
     void elementSupport_into(const unsigned& i,
                              gsMatrix<unsigned, d, 2>& result) const
     {
         gsMatrix<unsigned> tmp_vec;
-        gsVector<unsigned, d> ti = this->tensorIndex(i);
+        const gsVector<unsigned, d> ti = this->tensorIndex(i);
 
         for (unsigned dim = 0; dim < d; ++dim)
         {
-            this->component(dim).knots().supportIndex_into(ti[dim], tmp_vec);
+            Self_t::component(dim).knots().supportIndex_into(ti[dim], tmp_vec);
             result.row(dim) = tmp_vec.row(0);
         }
     }
 
-
-    /// Returns knot indices of the beginning and end of the support of the i-th
-    /// basis function.
+    /// \brief Returns span (element) indices of the beginning and end of the
+    /// support of the i-th basis function.
     gsMatrix<unsigned, d, 2> elementSupport(const unsigned & i) const
     {
         gsMatrix<unsigned, d, 2> result(d, 2);
         elementSupport_into(i, result);
         return result;
+    }
+
+    /// \brief Returns the indices of active basis functions in the given
+    /// input element box
+    void elementActive_into(const gsMatrix<unsigned,d,2> & box,
+                             gsMatrix<unsigned> & result) const
+    {
+        gsMatrix<unsigned,d,2> tmp;
+        
+        gsVector<int> str;
+        this->stride_cwise(str);
+
+        for (unsigned dm = 0; dm != d; ++dm)
+        {
+            tmp(dm,0) = Self_t::component(dm).knots().lastKnotIndex (box(dm,0)) - this->degree(dm);
+            tmp(dm,1) = Self_t::component(dm).knots().firstKnotIndex(box(dm,1)) - 1; //-tmp(dm,0)
+        }
+
+        gsVector<index_t> sz = tmp.col(1)- tmp.col(0) + gsVector<index_t,d>::Ones();
+
+        gsMatrix<unsigned> cact = 
+            gsVector<unsigned>::LinSpaced(sz[0], tmp(0,0), tmp(0,1));
+        for (unsigned dm = 1; dm != d; ++dm)
+            cact = cact.replicate(1,sz[dm]) + 
+                   gsVector<unsigned>::Constant(cact.rows(), str[dm] )
+                 * gsVector<unsigned>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1)).transpose()
+            ;        
     }
 
     /// Tells, whether there is a coordinate direction in which the basis is periodic.
@@ -351,8 +393,8 @@ public:
     /// Converts \param dir -th basis to periodic.
     inline void setPeriodic( const int dir )
     {
-        this->component(dir).setPeriodic();
-        if( this->component(dir).isPeriodic() ) // Only when succeeded when converting to periodic.
+        Self_t::component(dir).setPeriodic();
+        if( Self_t::component(dir).isPeriodic() ) // Only when succeeded when converting to periodic.
             m_isPeriodic = dir;
     }
 
@@ -362,7 +404,7 @@ public:
         // Identify which coefficients to copy and where to copy them.
         std::vector<index_t> sourceSliceIndices;
         std::vector<index_t> targetSliceIndices;
-        int numPeriodic = this->component(dir).numCrossingFunctions();
+        int numPeriodic = Self_t::component(dir).numCrossingFunctions();
 
         const int sz = this->size(dir) - numPeriodic;
         for( int i = 0; i < numPeriodic; i++ )
@@ -389,13 +431,6 @@ public:
         return result;
     }
 
-    /// Evaluate an element of the space given by coefs at points u
-    void eval_into_new(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
-    {
-
-    }
-
-
 private:
 
     /// Repeated code from the constructors is held here.
@@ -405,7 +440,7 @@ private:
         m_isPeriodic = -1;
         for( int i = 0; i < this->dim(); i++ )
         {
-            if( this->component(i).isPeriodic() )
+            if( Self_t::component(i).isPeriodic() )
             {
                 if( m_isPeriodic == -1 )
                     m_isPeriodic = i;
