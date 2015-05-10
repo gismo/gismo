@@ -1265,7 +1265,28 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){
     transfer.resize(this->maxLevel() );
     for(unsigned i = 0; i < this->maxLevel();i++)
     {
-        T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
+
+        //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
+        std::vector<std::vector<T> > knots;
+        for(unsigned int dim = 0; dim < d; dim++)
+        {
+            const gsCompactKnotVector<T> & ckv = m_bases[i]->knots(dim);
+            const gsCompactKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
+
+            std::vector<T> dirKnots;
+            _differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
+                                          fkv, 0, fkv.uSize() - 1,
+                                          dirKnots);
+            knots.push_back(dirKnots);
+
+            //gsDebug << "level: " << i << "\n"
+            //        << "direction: " << dim << "\n";
+            //std::cout<<"dirknots:\n"<<gsAsMatrix<T>(dirKnots)<<std::endl;
+        }
+        T_0_copy.refine_withTransfer(transfer[i], knots);
+//        //Must use refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots)
+//        //must correctly find the knots to insert
+//        T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
     }
     std::vector< gsSparseMatrix<T,RowMajor> > temp_transf;
     for(unsigned j = 0; j < this->maxLevel();j++)
@@ -1385,6 +1406,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
     {
         temptransfer[i] = transfer[i];
     }
+    //std::cout<<"temp:\n"<< temptransfer[0]<<std::endl;
 
     for (unsigned int i = 0; i < old.size(); i++)//iteration through the levels of the old basis
     {
@@ -1398,13 +1420,14 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
         for (unsigned int j = 0; j < old[i].size();j++)//iteration through the basis functions in the given level
         {
             //cout<<"j...."<<j<<endl;
+            //std::cout<<"i = "<< i<< " j= "<<j<<std::endl;
             start_lv_i = 0;
             for(unsigned int l =0; l < i; l++)
             {
                 start_lv_i += n[l].size();
             }
             const unsigned old_ij = old[i][j];  // tensor product index
-
+            //std::cout<<"oldij = "<< old_ij<<std::endl;
             if( n[i].bContains(old_ij) )//it he basis function was not refined
             {
                 result(start_lv_i + std::distance(n[i].begin(), n[i].find_it_or_fail(old_ij) ),glob_numb ) = 1;//settign the coefficient of the not refined basis function to 1
@@ -1524,13 +1547,15 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
             {
                 gsMatrix<unsigned, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
-                unsigned max_lvl = 
+                //std::cout<<"supp "<< supp<<std::endl;
+                unsigned max_lvl =
                     math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
                 std::vector<lvl_coef> coeffs;
                 lvl_coef temp;
                 temp.pos = old_ij;
                 temp.coef = 1;
                 temp.lvl = i;
+                //std::cout<<"temp.pos: "<<temp.pos<<" temp.coef: "<<temp.coef<<" temp.lvl "<< temp.lvl<<std::endl;
                 coeffs.push_back(temp);
                 while(!coeffs.empty())
 		{
@@ -1592,17 +1617,20 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                                 p = false;
                             }
                         }
+                        //std::cout<<"k.row "<<k.row()<<std::endl;
                         if(n[coeffs[0].lvl+1].bContains(k.row()))
                         {
                             if(p){
                                 const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
                                 //T ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                                //std::cout<<"inserted coef "<< coeffs[0].coef<<"*"<< temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos)<<std::endl;
                                 result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
                                 if(coeffs[0].lvl < max_lvl-1)
                                 {
                                     temp.pos = k.row();
                                     temp.coef = temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos) * coeffs[0].coef;
                                     temp.lvl = coeffs[0].lvl+1;
+                                    //std::cout<<"temp.pos: "<<temp.pos<<" temp.coef: "<<temp.coef<<" temp.lvl "<< temp.lvl<<std::endl;
                                     coeffs.push_back(temp);
                                 }
                             }
@@ -1615,6 +1643,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                                     temp.pos = k.row();
                                     temp.coef = temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos) * coeffs[0].coef;
                                     temp.lvl = coeffs[0].lvl+1;
+                                    //std::cout<<"temp.pos: "<<temp.pos<<" temp.coef: "<<temp.coef<<" temp.lvl "<< temp.lvl<<std::endl;
                                     coeffs.push_back(temp);
                                 }
                             }
