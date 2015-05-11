@@ -1274,9 +1274,9 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){
             const gsCompactKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
 
             std::vector<T> dirKnots;
-            _differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
-                                          fkv, 0, fkv.uSize() - 1,
-                                          dirKnots);
+            this->_differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
+                                                fkv, 0, fkv.uSize() - 1,
+                                                dirKnots);
             knots.push_back(dirKnots);
 
             //gsDebug << "level: " << i << "\n"

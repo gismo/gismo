@@ -620,6 +620,8 @@ private:
     // if m_is_truncated[j] is equal to -1, then there is no entry
     // m_presentation[j]
     std::map<unsigned, gsSparseVector<T> > m_presentation;
+
+    using gsHTensorBasis<d,T>::m_bases;
 };
 /**
  * End of class gsTHBSplineBasis definition
