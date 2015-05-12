@@ -99,10 +99,11 @@ public:
     }
     
     // to do: make time collections as well
-    //void addTimestep(String const & fn)
-    //{
-    //    *mfile << "<DataSet timestep=\""<<i<<"\" file=\""<<fn<<"\"/>\n";
-    //}
+	// ! i is not included in the filename, must be in included fn !
+    void addTimestep(String const & fn,int i, String const & ext)
+    {
+        *mfile << "<DataSet timestep=\""<<i<<"\" file=\""<<fn<<ext<<"\"/>\n";
+    }
 
     /// Finalizes the collection by closing the XML tags, always call
     /// this function (once) when you finish adding files
