@@ -156,6 +156,7 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
     refine(boxes);
     gsMatrix<> transf;
     this->transfer(OX, transf);
+    std::cout<<"tranf orig:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
 
@@ -165,6 +166,17 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vect
     refineElements(boxes);
     gsMatrix<> transf;
     this->transfer(OX, transf);
+    //std::cout<<"tranf orig:\n"<<transf<<std::endl;
+    coefs = transf*coefs;
+}
+
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes){
+    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    refineElements(boxes);
+    gsMatrix<> transf;
+    this->transfer2(OX, transf);
+    //std::cout<<"tranf 2:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
 
@@ -1010,6 +1022,45 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
 
     result = this->coarsening_direct(old,this->m_xmatrix, transfer);
 }
+
+template<unsigned d, class T>
+void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> >& old, gsMatrix<T>& result)
+{
+    // Note: implementation assumes number of old + 1 m_bases exists in this basis
+    needLevel( old.size() );
+
+    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > T_0_copy = this->tensorLevel(0);
+    std::vector< gsSparseMatrix<T,RowMajor> > transfer;
+    transfer.resize( m_bases.size()-1 );
+    for(size_t i = 0; i < m_bases.size()-1; i++)
+    {
+        //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
+        std::vector<std::vector<T> > knots;
+        for(unsigned int dim = 0; dim < d; dim++)
+        {
+            const gsCompactKnotVector<T> & ckv = m_bases[i]->knots(dim);
+            const gsCompactKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
+
+            std::vector<T> dirKnots;
+            _differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
+                                          fkv, 0, fkv.uSize() - 1,
+                                          dirKnots);
+            knots.push_back(dirKnots);
+
+            //gsDebug << "level: " << i << "\n"
+            //        << "direction: " << dim << "\n";
+            //gsDebugVar(gsAsMatrix<T>(dirKnots));
+        }
+        T_0_copy.refine_withTransfer(transfer[i], knots);
+    }
+
+    // Add missing empty char. matrices
+    while ( old.size() >=  this->m_xmatrix.size())
+        this->m_xmatrix.push_back( gsSortedVector<unsigned>() );
+
+    result = this->coarsening_direct2(old,this->m_xmatrix, transfer);
+}
+
 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult)

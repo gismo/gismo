@@ -606,6 +606,10 @@ private:
                                    const std::vector<gsSortedVector<unsigned> >& n, 
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
 
+    gsMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
+                                   const std::vector<gsSortedVector<unsigned> >& n,
+                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
+
 private:
 
     // m_is_truncated(j)

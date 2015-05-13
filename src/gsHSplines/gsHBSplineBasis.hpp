@@ -365,7 +365,10 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedV
                     {
                         if(n[coeffs[0].lvl+1].bContains(k.row()))
                         {
+                            //std::cout<<"j: "<<j<<" "<<"oldij"<<old_ij<<"k.row() "<<k.row()<<"   ";
+                            //std::cout<<"j: "<<j<<" "<<"globnumb "<<glob_numb<<" "<<" coef "<<  coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos)<<" ";
                             const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
+                            //std::cout<<"pos:"<<pos<<std::endl;
                             //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
                             result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
                         }else
@@ -429,7 +432,7 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorted
 
         for (unsigned int j = 0; j < old[i].size();j++)//iteration through the basis functions in the given level
         {
-
+            //std::cout<<"j = "<<j<<std::endl;
             int start_lv_i = 0;
             for(unsigned int l =0; l < i; l++)
             {
@@ -451,23 +454,33 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorted
                 gsSparseVector<T,RowMajor> t(this->m_bases[i]->size());
                 t.setZero();
                 t[old_ij] = 1;
-                for(unsigned int k = i+1; k < max_lvl;k++){
+                //std::cout<<"j = "<<j<<std::endl;
+                for(unsigned int k = i+1; k < n.size();k++){
                     gsSparseVector<T,RowMajor> M;
                     M = temptransfer[i] * t.transpose();
-                    for(typename gsSparseVector<T,RowMajor>::InnerIterator l(M); l; ++l)//basis function was refined->looking for the coeficinets from the global transfer matrix
+                    //std::cout<<"M\n"<<M<<std::endl;
+                    for(int l = 0 ; l < M.size();l++)
+                    //for(typename gsSparseVector<T,RowMajor>::InnerIterator l(M); l; ++l)//basis function was refined->looking for the coeficinets from the global transfer matrix
                     {
-                        if(n[k].bContains(l))
-                        {
-                            const int pos = start_lv_i + n[k-1].size() + std::distance(n[k].begin(), n[k].find_it_or_fail(l));
-                            //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
-                            result(pos,glob_numb) += M[l];//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
-                            M[l] = 0;
-                        }
+                        if(M[l]!=0)
+                            if(n[k].bContains(l))
+                            {
+                                //std::cout<<"j: "<<j<<" "<<"oldij"<<old_ij<<" "<<"l:"<<l<<"    ";
+                                //std::cout<<"j: "<<j<<" "<<"globnumb "<<glob_numb<<" "<<"l:"<<l<<" "<<M[l]<<"  ";
+                                const int pos = start_lv_i + n[k-1].size() + std::distance(n[k].begin(), n[k].find_it_or_fail(l));
+                                //std::cout<<"pos:"<<pos<<std::endl;
+                                //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                                result(pos,glob_numb) = M[l];//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                                M[l] = 0;
+                                //const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
+                                //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                                //result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                            }
                     }
 
                 }
-
             }
+            glob_numb++;
         }
 
     }
