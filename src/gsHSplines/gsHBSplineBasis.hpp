@@ -389,6 +389,91 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedV
     return result;
 }
 
+template<unsigned d, class T>
+gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
+                                                     const std::vector<gsSortedVector<unsigned> >& n,
+                                                     const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
+{
+    int size1= 0;int size2 = 0;
+    int glob_numb = 0;//continous numbering of hierarchical basis
+    for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis
+        size1 += old[i].size();
+    }
+    for(unsigned int i =0; i< n.size();i++){//count the number of basis functions in new basis
+        size2 += n[i].size();
+    }
+    gsMatrix<T> result(size2,size1);
+    result.setZero();
+
+
+//    std::vector<gsMatrix<T> > transferDense;// = transfer;
+//    transferDense.resize(transfer.size());
+//    for (unsigned int i = 0; i < transfer.size();i++){
+//        transferDense[i] = transfer[i];
+//    }
+    std::vector<gsSparseMatrix<T,ColMajor> > temptransfer;// = transfer;
+    temptransfer.resize(transfer.size());
+    for (unsigned int i = 0; i < transfer.size();i++){
+        temptransfer[i] = transfer[i];
+    }
+
+    for (unsigned int i = 0; i < old.size(); i++)//iteration through the levels of the old basis
+    {
+        // find starting index of level i in new basis
+        int start_lv_i = 0;
+        for(unsigned int l =0; l < i; l++)
+        {
+            start_lv_i += n[l].size();
+        }
+
+
+        for (unsigned int j = 0; j < old[i].size();j++)//iteration through the basis functions in the given level
+        {
+
+            int start_lv_i = 0;
+            for(unsigned int l =0; l < i; l++)
+            {
+                start_lv_i += n[l].size();
+            }
+            const unsigned old_ij = old[i][j];  // tensor product index
+
+            if( n[i].bContains(old_ij) )//it he basis function was not refined
+            {
+                result(start_lv_i + std::distance(n[i].begin(), n[i].find_it_or_fail(old_ij) ),glob_numb ) = 1;//settign the coefficient of the not refined basis function to 1
+            }
+            else
+            {
+                gsMatrix<unsigned, d, 2> supp(d, 2);
+                this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
+                //std::cout<<"supp "<< supp<<std::endl;
+                unsigned max_lvl =
+                    math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+                gsSparseVector<T,RowMajor> t(this->m_bases[i]->size());
+                t.setZero();
+                t[old_ij] = 1;
+                for(unsigned int k = i+1; k < max_lvl;k++){
+                    gsSparseVector<T,RowMajor> M;
+                    M = temptransfer[i] * t.transpose();
+                    for(typename gsSparseVector<T,RowMajor>::InnerIterator l(M); l; ++l)//basis function was refined->looking for the coeficinets from the global transfer matrix
+                    {
+                        if(n[k].bContains(l))
+                        {
+                            const int pos = start_lv_i + n[k-1].size() + std::distance(n[k].begin(), n[k].find_it_or_fail(l));
+                            //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                            result(pos,glob_numb) += M[l];//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                            M[l] = 0;
+                        }
+                    }
+
+                }
+
+            }
+        }
+
+    }
+
+    return result;
+}
 namespace internal
 {
 
