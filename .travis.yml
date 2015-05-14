@@ -1,0 +1,6 @@
+language: cpp
+compiler:
+  - gcc
+script:
+  - cmake --build
+  - ./bin/unittests
