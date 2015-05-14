@@ -208,28 +208,36 @@ Files related to doxygen documentation.
 
 * Coordinator and maintainer: Angelos Mantzaflaris
 
-* Developers:
-
-  Andrea Bressan
-  Florian Buchegger
-  Antonella Falini
-  Carlotta Giannelli
-  Clemens Hofreither
-  Mario Kapl
-  Gabor Kiss
-  Stefan Kleiss
-  Angelos Mantzaflaris
-  David Mayer
-  Dominik Mokris
-  Jarle Sogn
-  Jaka Speh
-  Stephen Moore
-  Manh Dang Nguyen
-  Michael Pauley
-  Harald Weiner
+* Current Developers:
+        Andrea Bressan
+        Florian Buchegger
+        Antonella Falini
+        Michael Haberleitner
+        Christoph Hofer
+        ​Clemens Hofreither
+        Mario Kapl
+        ​Gabor Kiss
+        Stefan Kleiss
+        ​Angelos Mantzaflaris
+        ​Stephen Moore
+        ​Dominik Mokris
+        ​Jarle Sogn
+        Jaka Speh
+        Harald Weiner 
 
 * Scientific board:
+        ​Bert Juettler
+        ​Ulrich Langer
+        ​Walter Zulehner 
 
-  Bert Juettler
-  Ulrich Langer
-  Walter Zulehner
+* External contributors:
+        ​Anmol Goyal (TU. Kaiserslautern)
+        Andrzej Jaeschke (TU Delft)
+        ​Oliver Weeger (TU. Kaiserslautern)
+        ​Yang Xia (U. Hong Kong) 
+
+* Past developers:
+        ​Carlotta Giannelli (U. Florence)
+        David Mayer
+        ​Manh Dang Nguyen (U. Florida)
+        ​Michael Pauley 
