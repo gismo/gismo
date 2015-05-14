@@ -418,6 +418,7 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorted
     temptransfer.resize(transfer.size());
     for (unsigned int i = 0; i < transfer.size();i++){
         temptransfer[i] = transfer[i];
+        //std::cout<<"transfer"<<i<<"\n"<<transfer[i]<<std::endl;
     }
 
     for (unsigned int i = 0; i < old.size(); i++)//iteration through the levels of the old basis
@@ -446,6 +447,7 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorted
             }
             else
             {
+
                 gsMatrix<unsigned, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 //std::cout<<"supp "<< supp<<std::endl;
@@ -455,9 +457,23 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorted
                 t.setZero();
                 t[old_ij] = 1;
                 //std::cout<<"j = "<<j<<std::endl;
+                //std::cout<<"nsize"<<n.size()<<std::endl;
                 for(unsigned int k = i+1; k < n.size();k++){
+                    start_lv_i = 0;
+                    for(unsigned int l =0; l < k-1; l++)
+                    {
+                        start_lv_i += n[l].size();
+                    }
+//                    std::cout<<"k "<<k<<std::endl;
+//                    std::cout<<"nk"<<std::endl;
+//                    for(int a = 0; a < n[k].size();a++){
+//                        std::cout<<n[k][a]<<" ";
+//                    }
+                    //std::cout<<std::endl;
                     gsSparseVector<T,RowMajor> M;
-                    M = temptransfer[i] * t.transpose();
+                    M.setZero();
+                    M = temptransfer[k-1] * t.transpose();
+
                     //std::cout<<"M\n"<<M<<std::endl;
                     for(int l = 0 ; l < M.size();l++)
                     //for(typename gsSparseVector<T,RowMajor>::InnerIterator l(M); l; ++l)//basis function was refined->looking for the coeficinets from the global transfer matrix
@@ -466,7 +482,7 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorted
                             if(n[k].bContains(l))
                             {
                                 //std::cout<<"j: "<<j<<" "<<"oldij"<<old_ij<<" "<<"l:"<<l<<"    ";
-                                //std::cout<<"j: "<<j<<" "<<"globnumb "<<glob_numb<<" "<<"l:"<<l<<" "<<M[l]<<"  ";
+                                //std::cout<<"k "<<k<<" j: "<<j<<" "<<"globnumb "<<glob_numb<<" "<<"l:"<<l<<" "<<M[l]<<"  ";
                                 const int pos = start_lv_i + n[k-1].size() + std::distance(n[k].begin(), n[k].find_it_or_fail(l));
                                 //std::cout<<"pos:"<<pos<<std::endl;
                                 //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
@@ -477,7 +493,8 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorted
                                 //result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
                             }
                     }
-
+                    t = M;
+                    //std::cout<<"M after \n"<<M<<std::endl;
                 }
             }
             glob_numb++;
