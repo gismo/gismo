@@ -9,7 +9,6 @@
 =====                                                            ===== 
 ======================================================================
 
- 
 G+Smo library for isogeometric analysis is supported by the Research
 Network ``Geometry + Simulation'' (NFN S117), funded by the Austrian
 Science Fund, www.gs.jku.at.  It is distributed under the Mozilla
