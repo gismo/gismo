@@ -1376,8 +1376,172 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
                                                       const std::vector<gsSortedVector<unsigned> >& n,
                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
 {
-    gsMatrix<T> temp;
-    return temp;
+    int size1= 0;int size2 = 0;
+    int glob_numb = 0;//continous numbering of hierarchical basis
+    for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis
+        size1 += old[i].size();
+    }
+    for(unsigned int i =0; i< n.size();i++){//count the number of basis functions in new basis
+        size2 += n[i].size();
+    }
+    gsMatrix<T> result(size2,size1);
+    result.setZero();
+
+
+//    std::vector<gsMatrix<T> > transferDense;// = transfer;
+//    transferDense.resize(transfer.size());
+//    for (unsigned int i = 0; i < transfer.size();i++){
+//        transferDense[i] = transfer[i];
+//    }
+    std::vector<gsSparseMatrix<T,ColMajor> > temptransfer;// = transfer;
+    temptransfer.resize(transfer.size());
+    for (unsigned int i = 0; i < transfer.size();i++){
+        temptransfer[i] = transfer[i];
+        //std::cout<<"transfer"<<i<<"\n"<<transfer[i]<<std::endl;
+    }
+
+    for (unsigned int i = 0; i < old.size(); i++)//iteration through the levels of the old basis
+    {
+        // find starting index of level i in new basis
+        int start_lv_i = 0;
+        for(unsigned int l =0; l < i; l++)
+        {
+            start_lv_i += n[l].size();
+        }
+
+        //std::cout<<old[i].size()<<std::endl;
+        for (unsigned int j = 0; j < old[i].size();j++)//iteration through the basis functions in the given level
+        {
+            //std::cout<<"j = "<<j<<std::endl;
+            int start_lv_i = 0;
+            for(unsigned int l =0; l < i; l++)
+            {
+                start_lv_i += n[l].size();
+            }
+            const unsigned old_ij = old[i][j];  // tensor product index
+            gsMatrix<unsigned, d, 2> supp(d, 2);
+            this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
+            //std::cout<<"supp "<< supp<<std::endl;
+//            unsigned max_lvl =
+//                math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+            gsSparseVector<T,RowMajor> t(this->m_bases[i]->size());
+            t.setZero();
+            t[old_ij] = 1;
+            for(unsigned int k = i; k < n.size()-1;k++){
+                //std::cout<<"i: "<<i<<" j: "<<j<<" k: "<<k<<std::endl;
+                if(k > i){
+                    //compare with old matrix
+                    for(int l = 0 ; l < t.size();l++){
+                        if(t[l]!=0)
+                            if( (k) < (old.size()))
+                            if(old[k].bContains(l)){
+                                t[l]=0;
+                            }
+
+                    }
+                }
+                //std::cout<<"ksize:"<<n[k].size()<<std::endl;
+                if(k!=0){
+                    start_lv_i = 0;
+                    for(unsigned int l =0; l < k-1; l++)
+                    {
+                        start_lv_i += n[l].size();
+                    }
+                }
+                //for all non zero in t comapre with new
+                for(int l = 0 ; l < t.size();l++){
+                    //std::cout<<"i: "<<i<<" j: "<<j<<" l: "<<l<<"nsize"<<n.size()<<std::endl;
+                    if(t[l]!=0)
+                        if(n[k].bContains(l)){
+                            //std::cout<<"j: "<<j<<" "<<"oldij"<<old_ij<<" "<<"l:"<<l<<"    ";
+                            //std::cout<<"k "<<k<<" j: "<<j<<" "<<"globnumb "<<glob_numb<<" "<<"l:"<<l<<" "<<M[l]<<"  ";
+                            int p = 0;
+                            if(k!=0){
+                                p = n[k-1].size();
+                            }
+                            const int pos = start_lv_i + p + std::distance(n[k].begin(), n[k].find_it_or_fail(l));
+                            //const int pos = start_lv_i + n[k].size() + std::distance(n[k+1].begin(), n[k+1].find_it_or_fail(l));
+                            //std::cout<<"pos:"<<pos<<std::endl;
+                            //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                            result(pos,glob_numb) = t[l];//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                            //t[l] = 0;
+                            //const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
+                            //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                            //result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                        }
+                }
+                //std::cout<<"b"<<std::endl;
+                gsSparseVector<T,RowMajor> temp(this->m_bases[i]->size());
+                //std::cout<<"c"<<std::endl;
+                temp.setZero();
+                temp = temptransfer[k] * t.transpose();
+                t = temp;
+                //refine
+            }
+
+
+//            if( n[i].bContains(old_ij) )//it he basis function was not refined
+//            {
+//                result(start_lv_i + std::distance(n[i].begin(), n[i].find_it_or_fail(old_ij) ),glob_numb ) = 1;//settign the coefficient of the not refined basis function to 1
+//            }
+//            else
+//            {
+
+//                gsMatrix<unsigned, d, 2> supp(d, 2);
+//                this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
+//                //std::cout<<"supp "<< supp<<std::endl;
+//                unsigned max_lvl =
+//                    math::min<unsigned>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+//                gsSparseVector<T,RowMajor> t(this->m_bases[i]->size());
+//                t.setZero();
+//                t[old_ij] = 1;
+//                //std::cout<<"j = "<<j<<std::endl;
+//                //std::cout<<"nsize"<<n.size()<<std::endl;
+//                for(unsigned int k = i+1; k < n.size();k++){
+//                    start_lv_i = 0;
+//                    for(unsigned int l =0; l < k-1; l++)
+//                    {
+//                        start_lv_i += n[l].size();
+//                    }
+////                    std::cout<<"k "<<k<<std::endl;
+////                    std::cout<<"nk"<<std::endl;
+////                    for(int a = 0; a < n[k].size();a++){
+////                        std::cout<<n[k][a]<<" ";
+////                    }
+//                    //std::cout<<std::endl;
+//                    gsSparseVector<T,RowMajor> M;
+//                    M.setZero();
+//                    M = temptransfer[k-1] * t.transpose();
+
+//                    //std::cout<<"M\n"<<M<<std::endl;
+//                    for(int l = 0 ; l < M.size();l++)
+//                    //for(typename gsSparseVector<T,RowMajor>::InnerIterator l(M); l; ++l)//basis function was refined->looking for the coeficinets from the global transfer matrix
+//                    {
+//                        if(M[l]!=0)
+//                            if(n[k].bContains(l))
+//                            {
+//                                //std::cout<<"j: "<<j<<" "<<"oldij"<<old_ij<<" "<<"l:"<<l<<"    ";
+//                                //std::cout<<"k "<<k<<" j: "<<j<<" "<<"globnumb "<<glob_numb<<" "<<"l:"<<l<<" "<<M[l]<<"  ";
+//                                const int pos = start_lv_i + n[k-1].size() + std::distance(n[k].begin(), n[k].find_it_or_fail(l));
+//                                //std::cout<<"pos:"<<pos<<std::endl;
+//                                //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+//                                result(pos,glob_numb) = M[l];//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+//                                M[l] = 0;
+//                                //const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
+//                                //double ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+//                                //result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+//                            }
+//                    }
+//                    t = M;
+//                    //std::cout<<"M after \n"<<M<<std::endl;
+//                }
+//            }
+            glob_numb++;
+        }
+
+    }
+
+    return result;
 }
 
 template<unsigned d, class T>
