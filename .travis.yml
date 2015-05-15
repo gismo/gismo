@@ -1,10 +1,20 @@
 language: cpp
 compiler:
+  - clang
   - gcc
+
+before_install:
+# Travis uses CMake 2.8.7. We require 2.8.8. Grab latest
+  - sudo apt-get install -qq g++-4.8
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+  - sudo apt-get install lib32stdc++6 -qq &&
+    aria2c -x 16 http://www.cmake.org/files/v2.8/cmake-2.8.12.1-Linux-i386.sh &&
+    chmod a+x cmake-2.8.12.1-Linux-i386.sh &&
+    sudo ./cmake-2.8.12.1-Linux-i386.sh --skip-license --prefix=/usr;
+
 before_script:
   - mkdir build
   - cd build
   - cmake ..
 script:
   - make
-  - ./bin/unittests
