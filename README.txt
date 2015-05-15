@@ -9,21 +9,27 @@
 =====                                                            ===== 
 ======================================================================
 
-G+Smo library for isogeometric analysis is supported by the Research
-Network ``Geometry + Simulation'' (NFN S117), funded by the Austrian
-Science Fund, www.gs.jku.at.  It is distributed under the Mozilla
-Public License v2.0.  (see LICENCE.txt).
-
 This README file contains brief information. More details are found in
-the Wiki page: 
+the Wiki pages: 
 
-https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki
+http://gs.jku.at/gismo
 
-The latest revision of the code can be obtained via SVN (subversion) at:
+The latest revision of the code can be obtained from github:
 
-https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/stable
+https://github.com/filiatra/gismo
 
-Username/password: anonsvn
+Using subversion:
+
+svn co https://github.com/filiatra/gismo
+
+or using git:
+
+git clone git@github.com:filiatra/gismo.git
+
+or as a zip file:
+
+https://github.com/filiatra/gismo/archive/stable.zip
+
 
 ======================================================================
 =====                      Prerequisites                         ===== 
@@ -79,7 +85,7 @@ to obtain the Doxygen documentation in HTML format. The main doxygen
 page is at ./doc/html/index.html.
 
 More information at
-https://ricamsvn.ricam.oeaw.ac.at/trac/gismo
+http://gs.jku.at/gismo
 
 ======================================================================
 =====                   Configuration Options                    ===== 
@@ -189,7 +195,7 @@ Files related to doxygen documentation.
 
 * Wiki pages:
 
-  https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki
+  https://gs.jku.at/gismo
 
 * Mailing list: gismo@ricam.oeaw.ac.at
 
@@ -199,8 +205,7 @@ Files related to doxygen documentation.
 
 * Bug reports: 
 
-  https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/newticket
-
+  https://github.com/filiatra/gismo/issues
 
 ======================================================================
 =====                             People                         ===== 
@@ -241,3 +246,12 @@ Files related to doxygen documentation.
         David Mayer
         ​Manh Dang Nguyen (U. Florida)
         ​Michael Pauley 
+
+======================================================================
+=====            Acknowledgement and os-licence                  ===== 
+======================================================================
+
+G+Smo library for isogeometric analysis is supported by the Research
+Network ``Geometry + Simulation'' (NFN S117), funded by the Austrian
+Science Fund, www.gs.jku.at.  It is distributed under the Mozilla
+Public License v2.0.  (see LICENCE.txt).
