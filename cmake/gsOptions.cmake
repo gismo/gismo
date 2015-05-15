@@ -10,26 +10,10 @@
 ## Options list
 ## #################################################################
 
-# Set a default coefficient numeric types if not specified
-if(NOT GISMO_COEFF_TYPE)
-  set (GISMO_COEFF_TYPE "double" CACHE STRING
-   "Coefficient type(float, double, long double, mpfr::mpreal)" FORCE)
-   set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
-   "float" "double" "long double" "mpfr::mpreal"
-   )
-endif()
-
-if(NOT GISMO_INDEX_TYPE)
-  set (GISMO_INDEX_TYPE "int" CACHE STRING
-   "Index type(int, unsigned, size_t)" FORCE)
-   set_property(CACHE GISMO_INDEX_TYPE PROPERTY STRINGS
-   "int" "unsigned" "size_t"
-   )
-endif()
-
 #Standard options
 option(GISMO_EXTRA_DEBUG         "Extra debug features"   false  )
 option(GISMO_BUILD_LIB           "Build shared library"   true   )
+#option(GISMO_BUILD_PCH           "Build precompiled headers" false)
 option(GISMO_BUILD_EXAMPLES      "Build examples"         true   )
 option(GISMO_BUILD_AXL           "Build Axel Plugin"      false  )
 option(GISMO_BUILD_PVIEW         "Build Paraview Plugin"  false  )

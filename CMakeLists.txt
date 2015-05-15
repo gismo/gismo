@@ -44,16 +44,16 @@ message( " GGGGGGGGGG      GGGG     GGGGGGGGG  GG   GGG   GGGG  GGGGGGGGGG  " )
 message( "                  version ${${PROJECT_NAME}_VERSION} (revision ${GISMO_WC_REVISION})" )
 
 ## #################################################################
-## Project options
-## #################################################################
-
-include( gsOptions )
-
-## #################################################################
 ## Configuration and Compilation
 ## #################################################################
 
 include( gsConfig )
+
+## #################################################################
+## Project options
+## #################################################################
+
+include( gsOptions )
 
 ## #################################################################
 ## Preprocessor definitions
@@ -142,7 +142,7 @@ if(GISMO_WITH_IPOPT)
           SOURCE_DIR        ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
           CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/configure --prefix=<INSTALL_DIR> #--libdir=${CMAKE_BINARY_DIR}/lib
           URL http://www.coin-or.org/download/source/Ipopt/Ipopt-3.11.9.tgz
-          PATCH_COMMAND      patch -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/external/ipopt.patch -d ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
+          PATCH_COMMAND      patch -t -s -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/external/ipopt.patch -d ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
           COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/get.Mumps
           COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Metis/get.Metis
           COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Blas/get.Blas
