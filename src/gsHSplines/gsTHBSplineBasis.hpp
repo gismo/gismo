@@ -1372,7 +1372,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<
     return result;
 }
 template<unsigned d, class T>
-gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
+gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
                                                       const std::vector<gsSortedVector<unsigned> >& n,
                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
 {
@@ -1381,7 +1381,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
 }
 
 template<unsigned d, class T>
-gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
+gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
                                                       const std::vector<gsSortedVector<unsigned> >& n,
                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
 {
