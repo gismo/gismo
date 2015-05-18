@@ -1427,7 +1427,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
             gsSparseVector<T,RowMajor> t(this->m_bases[i]->size());
             t.setZero();
             t[old_ij] = 1;
-            for(unsigned int k = i; k < n.size()-1;k++){
+            for(unsigned int k = i; k < n.size();k++){
                 //std::cout<<"i: "<<i<<" j: "<<j<<" k: "<<k<<std::endl;
                 if(k > i){
                     //compare with old matrix
@@ -1454,7 +1454,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
                     if(t[l]!=0)
                         if(n[k].bContains(l)){
                             //std::cout<<"j: "<<j<<" "<<"oldij"<<old_ij<<" "<<"l:"<<l<<"    ";
-                            //std::cout<<"k "<<k<<" j: "<<j<<" "<<"globnumb "<<glob_numb<<" "<<"l:"<<l<<" "<<M[l]<<"  ";
+                            //std::cout<<"k "<<k<<" j: "<<j<<" "<<"globnumb "<<glob_numb<<" oldij "<<old_ij<<" "<<"l:"<<l<<" "<<t[l]<<"  ";
                             int p = 0;
                             if(k!=0){
                                 p = n[k-1].size();
@@ -1474,7 +1474,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
                 gsSparseVector<T,RowMajor> temp(this->m_bases[i]->size());
                 //std::cout<<"c"<<std::endl;
                 temp.setZero();
-                temp = temptransfer[k] * t.transpose();
+                if(k<temptransfer.size())
+                    temp = temptransfer[k] * t.transpose();
                 t = temp;
                 //refine
             }
@@ -1794,6 +1795,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                             if(p){
                                 const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
                                 //T ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
+                                //std::cout<<"pos "<<pos<<" oldij "<<old_ij<<" "<< "coeflvl "<<coeffs[0].lvl<<" ";
                                 //std::cout<<"inserted coef "<< coeffs[0].coef<<"*"<< temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos)<<std::endl;
                                 result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
                                 if(coeffs[0].lvl < max_lvl-1)
