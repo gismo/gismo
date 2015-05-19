@@ -22,6 +22,7 @@
 
 typedef int PK_GEOM_t;
 typedef int PK_BSURF_t;
+typedef int PK_BCURVE_t;
 struct PK_UVBOX_s;
 
 namespace gismo {
@@ -43,6 +44,12 @@ namespace extensions {
     /// \param[out] bsurf Parasolid spline surface
     template<class T> void
     createPK_BSURF( const gsTensorBSpline<2,T> & bsp, PK_BSURF_t & bsurf);
+
+    /// Translates a gsBSpline to a PK_BCURVE_t
+    /// \param[in] curve B-Spline surve
+    /// \param[out] bcurve Parasolid spline curve
+    template<class T> void
+    createPK_BCURVE( const gsBSpline<T>& curve, PK_BCURVE_t& bcurve );
 
     /// Translates a gsGeometry to a PK_GEOM_t
     /// \param[in] ggeo inpute G+SMO geometry

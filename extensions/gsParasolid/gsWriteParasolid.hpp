@@ -22,6 +22,8 @@
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsTensorBSpline.h>
+#include <gsNurbs/gsBSpline.h>
+
 
 
 namespace gismo {
@@ -166,6 +168,13 @@ createPK_GEOM( const gsGeometry<T> & ggeo,
     {
         createPK_BSURF(*tbsp, pgeo);
     }
+// the following lines produce warnings, because writing a multipatch already assumes 
+// that the geometries are surfaces
+//     else if ( const gsBSpline<>* bspl = 
+// 	      dynamic_cast< const gsBSpline<>* >(&ggeo) )
+//     {
+// 	createPK_BCURVE(*bspl, pgeo);
+//     }
     else
     {
         gsInfo << "Cannot write "<<ggeo<<" to parasolid file.\n";
@@ -229,6 +238,49 @@ createPK_BSURF( const gsTensorBSpline<2,T> & bsp,
     // Create parasolid surface with the previous spline data
     PK_ERROR_code_t err = PK_BSURF_create(&sform, &bsurf);
     PARASOLID_ERROR(PK_BSURF_create, err);
+}
+
+template<class T> void
+createPK_BCURVE( const gsBSpline<T>& curve, 
+		 PK_BCURVE_t& bcurve)
+{
+    PK_BCURVE_sf_t sform; // B-curve data holder (standard form)
+
+    // Degree
+    sform.degree = curve.degree();
+    
+    // Knots
+    std::vector<T> knots = curve.basis().knots().unique();
+    std::vector<int> mult = curve.basis().knots().multiplicities();
+    sform.n_knots = knots.size();
+    sform.knot = knots.data();
+    sform.knot_mult = mult.data();
+
+
+    // Control points
+    sform.n_vertices = curve.basis().size();
+    gsMatrix<T> coefs = curve.coefs();
+    const int n = curve.geoDim();
+    if (n < 3)
+    {
+	coefs.conservativeResize(Eigen::NoChange, 3);
+	coefs.rightCols(3 - n).setZero();
+    }
+    coefs.transposeInPlace();
+    coefs.resize(3 * curve.basis().size(), 1);
+    sform.vertex_dim = 3;
+    sform.vertex = coefs.data();
+    
+    // Attributes
+    sform.is_rational = PK_LOGICAL_false;
+    sform.form = PK_BCURVE_form_unset_c;
+    sform.knot_type = PK_knot_unset_c;
+    sform.is_periodic = PK_LOGICAL_false;
+    sform.is_closed = PK_LOGICAL_false;
+    sform.self_intersecting = PK_self_intersect_unset_c;
+    
+    PK_ERROR_code_t err = PK_BCURVE_create(&sform, &bcurve);
+    PARASOLID_ERROR(PK_BCURVE_create, err);
 }
 
 }//extensions
