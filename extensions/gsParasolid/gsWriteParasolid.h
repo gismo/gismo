@@ -23,6 +23,7 @@
 typedef int PK_GEOM_t;
 typedef int PK_BSURF_t;
 typedef int PK_BCURVE_t;
+typedef int PK_BODY_t;
 struct PK_UVBOX_s;
 
 namespace gismo {
@@ -38,6 +39,9 @@ namespace extensions {
 
     template<class T>
     bool gsWriteParasolid( const gsMultiPatch<T> & gssurfs, std::string const & filename );
+
+    template<class T>
+    bool gsWriteParasolid( const gsMesh<T>& mesh, std::string const & filename );
 
     /// Translates a gsTensorBSpline to a PK_BSURF_t
     /// \param[in] bsp B-spline surface
@@ -56,6 +60,14 @@ namespace extensions {
     /// \param[out] pgeo Parasolid geometric entity
     template<class T> void
     createPK_GEOM( const gsGeometry<T> & ggeo, PK_GEOM_t & pgeo);
+
+    /// Translates a gsMesh to PK_BODY_t
+    /// \param[in] mesh input G+Smo mesh
+    /// \param[out] body Parasolid wire body
+    template<class T> void
+    exportMesh(const gsMesh<T>& mesh,
+	       PK_BODY_t& body);
+
 
 }//extensions
 

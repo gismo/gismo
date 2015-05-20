@@ -24,7 +24,7 @@
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsBSpline.h>
 
-
+#include <gsUtils/gsMesh/gsMesh.h>
 
 namespace gismo {
 
@@ -65,6 +65,8 @@ PK_FACE_make_solid_bodies
 template<class T>
 bool gsWriteParasolid( const gsMultiPatch<T> & gssurfs, std::string const & filename )
 {
+    std::cout << "write parasolid mulitpatch" << std::endl;
+    
     PK_ERROR_code_t err;
     PK_BODY_t  part;     // Empty part
     PK_GEOM_t   geo[ gssurfs.nPatches() ];      // Geometries
@@ -120,7 +122,6 @@ bool gsWriteParasolid( const gsMultiPatch<T> & gssurfs, std::string const & file
     return err;
 }
 
-
 template<class T>
 bool gsWriteParasolid( const gsGeometry<T> & ggeo, std::string const & filename )
 {
@@ -158,6 +159,31 @@ bool gsWriteParasolid( const gsGeometry<T> & ggeo, std::string const & filename 
 }
 
 
+template<class T>
+bool gsWriteParasolid( const gsMesh<T>& mesh, const std::string & filename)
+{
+    gsPKSession::start();
+
+    PK_LOGICAL_t checks(0);
+    PK_SESSION_set_check_continuity(checks);
+    PK_SESSION_set_check_self_int(checks);
+    
+    PK_ASSEMBLY_t assembly;
+    exportMesh(mesh, assembly);
+
+    PK_PART_transmit_o_t transmit_options;
+    PK_PART_transmit_o_m(transmit_options);
+    transmit_options.transmit_format = PK_transmit_format_text_c;
+
+    PK_ERROR_code_t err = PK_PART_transmit(1, &assembly, filename.c_str(), &transmit_options);
+    PARASOLID_ERROR(PK_PART_transmit, err);
+    
+    gsPKSession::stop();
+    
+    return err;
+}
+
+
 template<class T> void
 createPK_GEOM( const gsGeometry<T> & ggeo, 
              PK_GEOM_t & pgeo)
@@ -168,13 +194,13 @@ createPK_GEOM( const gsGeometry<T> & ggeo,
     {
         createPK_BSURF(*tbsp, pgeo);
     }
-// the following lines produce warnings, because writing a multipatch already assumes 
-// that the geometries are surfaces
-//     else if ( const gsBSpline<>* bspl = 
-// 	      dynamic_cast< const gsBSpline<>* >(&ggeo) )
-//     {
-// 	createPK_BCURVE(*bspl, pgeo);
-//     }
+// the following lines produce warnings if called from multipatch version of gsWriteParasolid, 
+// because it already assumes that the geometries are surfaces
+    else if ( const gsBSpline<>* bspl = 
+	      dynamic_cast< const gsBSpline<>* >(&ggeo) )
+    {
+	createPK_BCURVE(*bspl, pgeo);
+    }
     else
     {
         gsInfo << "Cannot write "<<ggeo<<" to parasolid file.\n";
@@ -186,6 +212,7 @@ template<class T> void
 createPK_BSURF( const gsTensorBSpline<2,T> & bsp, 
              PK_BSURF_t & bsurf)
 {
+    
     // Translate to parasolid standard form, ie fill up parasolid
     // spline data record
     PK_BSURF_sf_t sform;   // B-spline data holder (standard form)
@@ -282,6 +309,75 @@ createPK_BCURVE( const gsBSpline<T>& curve,
     PK_ERROR_code_t err = PK_BCURVE_create(&sform, &bcurve);
     PARASOLID_ERROR(PK_BCURVE_create, err);
 }
+
+template<class T> void
+exportMesh(const gsMesh<T>& mesh,
+	   PK_ASSEMBLY_t& assembly)
+{
+    // tried to:
+    //  - make one wire body out of all mesh edges with PK_CURVE_make_wire_body_2
+    //    and it doesn't work, because edges cross each other
+    //  - make a boolean union of all mesh edges with PK_BODY_boolean_2
+    //    and it doesn't work function fails to make a union body (I don't know 
+    //    the reason)
+
+    PK_ERROR_code_t err = PK_SESSION_set_general_topology(PK_LOGICAL_true);
+    PARASOLID_ERROR(PK_SESSION_set_genetal_topology, err);
+
+    err = PK_ASSEMBLY_create_empty(&assembly);
+    PARASOLID_ERROR(PK_ASSEMBLY_create_empty, err);
+
+    PK_CURVE_make_wire_body_o_t options;
+    PK_CURVE_make_wire_body_o_m(options);
+    
+    gsKnotVector<T> kv(0, 1, 0, 2);
+    gsMatrix<T> coefs(2, 3);
+    gsBSpline<T> bspl(kv, coefs);
+
+    gsMatrix<T> newCoefs(2, 3);
+    for (int i = 0; i != mesh.numEdges; ++i)
+    {
+	newCoefs.row(0) = mesh.edge[i].source->coords.transpose();
+	newCoefs.row(1) = mesh.edge[i].target->coords.transpose();
+	
+	if ((newCoefs.row(0) - newCoefs.row(1)).norm() < 1e-6)
+	{
+	    continue;
+	}
+
+	bspl.setCoefs(newCoefs);
+	
+	PK_BCURVE_t bcurve;
+	createPK_BCURVE(bspl, bcurve);
+	
+	PK_INTERVAL_t interval;
+	err = PK_CURVE_ask_interval(bcurve, &interval);
+	PARASOLID_ERROR(PK_CURVE_ask_interval, err);
+	
+	PK_BODY_t b;
+	int n_new_edges = 0;
+	PK_EDGE_t** new_edges = NULL;
+	int** edge_index = NULL;
+	
+	err = PK_CURVE_make_wire_body_2(1, &bcurve, &interval, &options,
+					&b, &n_new_edges, new_edges, edge_index);
+	PARASOLID_ERROR(PK_CURVE_make_wire_body_2, err);
+	
+	PK_INSTANCE_sf_t sform;
+	sform.assembly = assembly;
+	sform.transf = PK_ENTITY_null;
+	sform.part = b;
+	
+	PK_INSTANCE_t instance;
+
+	err = PK_INSTANCE_create(&sform, &instance);
+	PARASOLID_ERROR(PK_INSTANCE_create, err);
+    }
+
+    err = PK_SESSION_set_general_topology(PK_LOGICAL_false);
+    PARASOLID_ERROR(PK_SESSION_set_genetal_topology, err);    
+}
+
 
 }//extensions
 

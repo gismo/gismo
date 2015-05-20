@@ -1,6 +1,6 @@
-/** @file gsParasolidBCURVE.cpp
+/** @file gsParasolidExportMesh.cpp
 
-    @brief Test for the PK_BCURVE from the Siemens's Parasolid geometric kernel.
+    @brief Test for exporting gsMesh to the Siemens's Parasolid geometric kernel.
 
     This file is part of the G+Smo library.
 
@@ -15,22 +15,22 @@
 #include <string>
 
 #include <gismo.h>
-
+#include <gsIO/gsIOUtils.h>
 
 #include <gsParasolid/gsWriteParasolid.h>
-
 
 using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    std::string input(GISMO_DATA_DIR "/curves3d/bspline3d_curve_01.xml");
+
+    std::string input(GISMO_DATA_DIR "/surfaces/thbs_face_3levels.xml");
     std::string output("out");
 
-    gsCmdLine cmd("Ploting a G+Smo B-spline curve to parasolid PK_BCURVE.");
+    gsCmdLine cmd("Ploting a geometry to paradolid wire geometry.");
     cmd.addString("i", "input", "Input file", input);
     cmd.addString("o", "output", "Output file", output);
-    
+
     bool ok = cmd.getValues(argc, argv);
 
     if (!ok)
@@ -42,13 +42,18 @@ int main(int argc, char *argv[])
 	      << "input: " << input << "\n\n"
 	      << "output: " << output << "\n\n"
 	      << "--------------------------------------------------\n" << std::endl;
-
-    gsBSpline<>* curve = gsReadFile<>(input);
-
-    extensions::gsWriteParasolid(*curve, output);
-
-
+    
+    gsGeometry<>* geom = gsReadFile<>(input);
+    
+    gsMesh<> mesh;
+    
+    makeMesh<>( geom->basis(), mesh, 5);
+    
+    geom->evaluateMesh(mesh);
+    
+    extensions::gsWriteParasolid(mesh, output);
+    
     return 0;
 }
 
-
+    

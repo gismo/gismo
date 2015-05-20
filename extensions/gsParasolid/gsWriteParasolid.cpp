@@ -27,6 +27,10 @@ TEMPLATE_INST bool
 gsWriteParasolid<real_t>
 ( const gsMultiPatch<real_t> & mp, std::string const & filename );
 
+TEMPLATE_INST bool
+gsWriteParasolid<real_t>
+( const gsMesh<real_t>& mesh, std::string const & filename );
+
 
 }// extensions
 
