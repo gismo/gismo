@@ -113,6 +113,23 @@ int main(int argc, char *argv[])
         return system("paraview gsview.pvd &");
     }
     default:
+        if ( filedata.has< gsMultiPatch<> >() )
+               {
+                   gsMultiPatch<>* mp = filedata.getFirst< gsMultiPatch<> >();
+                   if ( mp != NULL )
+                       gsInfo<< "Got "<< *mp <<"\n";
+                   else
+                   {
+                       gsInfo<< "Problem encountered in file "<<fn<<",quitting." <<"\n";
+                       return 0;
+                   }
+
+                   gsWriteParaview( *mp, "gsview", np, plot_mesh, plot_net);
+
+                   delete mp;
+
+                   return system("paraview gsview.pvd &");
+               }
         if ( filedata.has< gsGeometry<> >() )
         {
             std::vector<gsGeometry<>* > geo = filedata.getAll< gsGeometry<> >();
