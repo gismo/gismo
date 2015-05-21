@@ -128,10 +128,6 @@ protected:
                      gsGeometryEvaluator<T> & geoEval,
                      gsVector<T> const      & quWeights)
     {
-        T hh = T(1.0);
-        for( index_t i=0; i < element.upperCorner().size(); i++)
-            hh *= ( element.upperCorner()[i] - element.lowerCorner()[i] );
-
         T sum(0.0);
 
         for (index_t k = 0; k < quWeights.size(); ++k) // loop over quadrature nodes
@@ -191,7 +187,82 @@ protected:
 
         }
 
-        return hh * sum;
+
+        // Numerical computation of the diameter of the element
+        // in the physical space.
+        // Basically, just comparing all distances between
+        // all cornerpoints of the cell in the physical domain.
+        // Should be good enough, as long as cells are not distorted
+        // too extremely.
+        T hh = T(0.0);
+        if( m_parDim == 2 )
+        {
+            gsMatrix<T> corners(2,4);
+
+            corners << element.lowerCorner()[0] , element.lowerCorner()[0] , \
+                    element.upperCorner()[0] , element.upperCorner()[0] , \
+                    element.lowerCorner()[1] , element.upperCorner()[1] , \
+                    element.lowerCorner()[1] , element.upperCorner()[1];
+
+            geoEval.evaluateAt(corners);
+            gsMatrix<T> pC = geoEval.values();
+
+            for( index_t i = 0; i < 4; i++)
+                for( index_t j = (i+1); j < 4; j++)
+                {
+                    T d = std::sqrt( (pC(0,i)-pC(0,j))*(pC(0,i)-pC(0,j)) + \
+                                     (pC(1,i)-pC(1,j))*(pC(1,i)-pC(1,j)) );
+
+                    if( d > hh )
+                        hh = d;
+                }
+        }
+        else if( m_parDim == 3 )
+        {
+            gsMatrix<T> corners(3,8);
+
+            corners << element.lowerCorner()[0] , \
+                    element.lowerCorner()[0] , \
+                    element.lowerCorner()[0] , \
+                    element.lowerCorner()[0] , \
+                    element.upperCorner()[0] , \
+                    element.upperCorner()[0] , \
+                    element.upperCorner()[0] , \
+                    element.upperCorner()[0] , \
+                    element.lowerCorner()[1] , \
+                    element.lowerCorner()[1] , \
+                    element.upperCorner()[1] , \
+                    element.upperCorner()[1] , \
+                    element.lowerCorner()[1] , \
+                    element.lowerCorner()[1] , \
+                    element.upperCorner()[1] , \
+                    element.upperCorner()[1] , \
+                    element.lowerCorner()[2] , \
+                    element.upperCorner()[2] , \
+                    element.lowerCorner()[2] , \
+                    element.upperCorner()[2] , \
+                    element.lowerCorner()[2] , \
+                    element.upperCorner()[2] , \
+                    element.lowerCorner()[2] , \
+                    element.upperCorner()[2];
+
+            geoEval.evaluateAt(corners);
+            gsMatrix<T> pC = geoEval.values();
+
+            for( index_t i = 0; i < 8; i++)
+                for( index_t j = (i+1); j < 8; j++)
+                {
+                    T d = std::sqrt( \
+                                (pC(0,i)-pC(0,j))*(pC(0,i)-pC(0,j)) + \
+                                (pC(1,i)-pC(1,j))*(pC(1,i)-pC(1,j)) + \
+                                (pC(2,i)-pC(2,j))*(pC(2,i)-pC(2,j)) );
+
+                    if( d > hh )
+                        hh = d;
+                }
+        }
+
+        return hh * hh * sum;
     }
 
 private:
