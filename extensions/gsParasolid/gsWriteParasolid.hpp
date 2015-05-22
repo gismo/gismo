@@ -321,15 +321,9 @@ exportMesh(const gsMesh<T>& mesh,
     //    and it doesn't work function fails to make a union body (I don't know 
     //    the reason)
 
-    PK_ERROR_code_t err = PK_SESSION_set_general_topology(PK_LOGICAL_true);
-    PARASOLID_ERROR(PK_SESSION_set_genetal_topology, err);
-
-    err = PK_ASSEMBLY_create_empty(&assembly);
+    PK_ERROR_t err = PK_ASSEMBLY_create_empty(&assembly);
     PARASOLID_ERROR(PK_ASSEMBLY_create_empty, err);
 
-    PK_CURVE_make_wire_body_o_t options;
-    PK_CURVE_make_wire_body_o_m(options);
-    
     gsKnotVector<T> kv(0, 1, 0, 2);
     gsMatrix<T> coefs(2, 3);
     gsBSpline<T> bspl(kv, coefs);
@@ -350,32 +344,9 @@ exportMesh(const gsMesh<T>& mesh,
 	PK_BCURVE_t bcurve;
 	createPK_BCURVE(bspl, bcurve);
 	
-	PK_INTERVAL_t interval;
-	err = PK_CURVE_ask_interval(bcurve, &interval);
-	PARASOLID_ERROR(PK_CURVE_ask_interval, err);
-	
-	PK_BODY_t b;
-	int n_new_edges = 0;
-	PK_EDGE_t** new_edges = NULL;
-	int** edge_index = NULL;
-	
-	err = PK_CURVE_make_wire_body_2(1, &bcurve, &interval, &options,
-					&b, &n_new_edges, new_edges, edge_index);
-	PARASOLID_ERROR(PK_CURVE_make_wire_body_2, err);
-	
-	PK_INSTANCE_sf_t sform;
-	sform.assembly = assembly;
-	sform.transf = PK_ENTITY_null;
-	sform.part = b;
-	
-	PK_INSTANCE_t instance;
-
-	err = PK_INSTANCE_create(&sform, &instance);
-	PARASOLID_ERROR(PK_INSTANCE_create, err);
+	err = PK_PART_add_geoms(assembly, 1, &bcurve);
+	PARASOLID_ERROR(PK_PART_add_geoms, err);
     }
-
-    err = PK_SESSION_set_general_topology(PK_LOGICAL_false);
-    PARASOLID_ERROR(PK_SESSION_set_genetal_topology, err);    
 }
 
 
