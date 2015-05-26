@@ -1,14 +1,15 @@
 
+#include "gsAxelPlugin.h"
+
 #include "gsGeometryData.h"
 #include "gsGeometryConverter.h"
-#include "gsAxelPlugin.h"
 
 #include <axlCore/axlAbstractData.h>
 
 #include <axlCore/axlMesh.h>
 #include <axlCore/axlPoint.h>
 
-#include <dtkCore/dtkAbstractDataFactory.h>
+#include <dtkCoreSupport/dtkAbstractDataFactory.h>
 
 #include <gsUtils/gsPointGrid.hpp>
 
@@ -48,7 +49,7 @@ QString gsGeometryConverter::toType (void) const
 
 bool gsGeometryConverter::registered(void)
 {
-    return gsAxelPlugin::dataFactSingleton->registerDataConverterType("gsGeometryConverter", QStringList(), "axlMesh", createGoGeometryConverter);
+    return gsAxelPlugin::dataFactSingleton->registerDataConverterType("gsGeometryConverter", QStringList(), "axlMesh", createGsGeometryConverter);
 }
 
 void gsGeometryConverter::setData(dtkAbstractData *data)
@@ -92,8 +93,8 @@ axlMesh *gsGeometryConverter::toMesh(void)
     axlMesh *mesh = new axlMesh;
 
     // Note: newer version of axel use QVector
-    //QVector<axlPoint *> pointSet;
-    QList<axlPoint *> pointSet;
+    QVector<axlPoint *> pointSet;
+    //QList<axlPoint *> pointSet;
 
     // Vertices
     for(index_t i = 0; i < eval_geo.cols(); i++) {
@@ -306,7 +307,7 @@ axlMesh *gsGeometryConverter::toMesh(void)
   return NULL;
 }
 
-dtkAbstractDataConverter *createGoGeometryConverter(void)
+dtkAbstractDataConverter *createGsGeometryConverter(void)
 {
     return new gsGeometryConverter;
 }

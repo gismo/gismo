@@ -13,7 +13,7 @@
 
 #include "gsAxelPluginExport.h"
 
-#include <dtkCore/dtkAbstractDataReader.h>
+#include <dtkCoreSupport/dtkAbstractDataReader.h>
 
 class GSAXELPLUGIN_EXPORT gsReader : public dtkAbstractDataReader
 {

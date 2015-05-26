@@ -10,10 +10,10 @@
 /* MyCompany-contact@mycompany.com-http://www.mycompany.com */
 
 #include <axlCore/axlAbstractProcess.h>
-#include <dtkCore/dtkAbstractProcessFactory.h>
-#include <dtkCore/dtkAbstractDataFactory.h>
+#include <dtkCoreSupport/dtkAbstractProcessFactory.h>
+#include <dtkCoreSupport/dtkAbstractDataFactory.h>
 #include <dtkLog/dtkLog.h>
-#include <dtkGui/dtkColorButton.h>
+#include <dtkGuiSupport/dtkColorButton.h>
 
 #include "gsAxelPlugin.h"
 #include "gsGeometryData.h"
@@ -122,7 +122,7 @@ gsGeometryCreator::~gsGeometryCreator()
 
 bool gsGeometryCreator::registered(void) 
 {
-	gsAxelPlugin::processFactSingleton->registerProcessType("gsGeometryCreator", createProcessCreatorgsGeometryData, "axlAbstractCreator");
+    gsAxelPlugin::processFactSingleton->registerProcessType("gsGeometryCreator", createProcessCreatorgsGeometryData, "gismo"); // more than one ?
     return
 	axlInspectorToolFactory::instance()->registerInspectorTool("gsGeometryCreator", creategsGeometryCreator);
 }

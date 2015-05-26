@@ -9,15 +9,20 @@ project(gsAxelPlugin)
 set(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+set(CMAKE_AUTOMOC ON)
 
 ######################################################################
 # Check dependencies for axel plugin
 ######################################################################
 
-find_package (Qt4 REQUIRED)
+find_package (dtk REQUIRED)
+include_directories(${dtk_INCLUDE_DIRS})
+
+#find_package (Qt4 REQUIRED)
+find_package (Qt5Core REQUIRED)
 set (QT_USE_QTXML 1)
 set (QT_USE_QTOPENGL 1)
-include (${QT_USE_FILE})
+#include (${QT_USE_FILE})
 add_definitions (${QT_DEFINITIONS})
 add_definitions (-DQT_PLUGIN)
 add_definitions (-DQT_SHARED)
@@ -104,7 +109,7 @@ set(${PROJECT_NAME}_SOURCES
 
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plAxel)
 
-qt4_wrap_cpp(${PROJECT_NAME}_SOURCES_MOC ${${PROJECT_NAME}_HEADERS_MOC})
+#qt4_wrap_cpp(${PROJECT_NAME}_SOURCES_MOC ${${PROJECT_NAME}_HEADERS_MOC})
 
 
 #to do: replace by macro
@@ -119,12 +124,25 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 target_link_libraries(${PROJECT_NAME}
-  ${QT_LIBRARIES}
-  dtkGui
-  dtkCore
+  #${QT_LIBRARIES}
+
+  #dtkGui
+  #dtkCore
+  dtkGuiSupport
+  dtkCoreSupport 
   dtkLog
   axlCore
   axlGui)
+
+qt5_use_modules(${PROJECT_NAME} Quick)
+qt5_use_modules(${PROJECT_NAME} Network)
+qt5_use_modules(${PROJECT_NAME} Declarative)
+qt5_use_modules(${PROJECT_NAME} Xml)
+qt5_use_modules(${PROJECT_NAME} Core)
+qt5_use_modules(${PROJECT_NAME} Gui)
+qt5_use_modules(${PROJECT_NAME} OpenGL)
+qt5_use_modules(${PROJECT_NAME} Widgets)
+
 
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

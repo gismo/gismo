@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <dtkCore/dtkAbstractDataFactory.h>
+#include <dtkCoreSupport/dtkAbstractDataFactory.h>
 
 #include <typeinfo>
 
@@ -463,8 +463,9 @@ void gsGeometryData<axlObj>::updateControlGrid()
 
         this->setEditable(false);
 
-        emit this->touch();
-        emit this->updated();
+        gsDebug<< "Updating CPs\n";
+        this->touch(); // axlAbstractData
+        this->updated();
 
     }//end if
 }

@@ -13,8 +13,9 @@
 
 #pragma once
 
-#include <dtkCore/dtkPlugin.h>
-//#include <dtkCoreSupport/dtkPlugin.h>
+//#include <dtkCore/dtkPlugin.h>
+// Transition files, to DTK1 (stable release version)
+#include <dtkCoreSupport/dtkPlugin.h>
 
 #include "gsAxelPluginExport.h"
 
@@ -29,7 +30,7 @@ class GSAXELPLUGIN_EXPORT gsAxelPlugin : public dtkPlugin
 {
     Q_OBJECT
     Q_INTERFACES(dtkPlugin)
-    //Q_PLUGIN_METADATA(IID "at.jku.Gismo" FILE "gismoPlugin.json")    
+    Q_PLUGIN_METADATA(IID "at.jku.Gismo" FILE "gsAxelPlugin.json")
 
 public:
     gsAxelPlugin(QObject *parent = 0);

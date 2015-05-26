@@ -1,7 +1,7 @@
 
 #include "gsAxelPluginExport.h"
 
-#include <dtkCore/dtkAbstractDataFactory.h>
+#include <dtkCoreSupport/dtkAbstractDataFactory.h>
 
 #include "gsBasisData.h"// templated generic data
 

@@ -17,10 +17,10 @@
 
 #include <axlCore/axlAbstractData.h>
 #include <axlGui/axlInspectorUtils.h>
-#include <dtkCore/dtkAbstractData.h>
+#include <dtkCoreSupport/dtkAbstractData.h>
 
-#include <dtkGui/dtkColorButton.h>
-#include <dtkGui/dtkSplitter.h>
+#include <dtkGuiSupport/dtkColorButton.h>
+#include <dtkGuiSupport/dtkSplitter.h>
 
 #include <QtGui>
 

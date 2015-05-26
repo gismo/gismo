@@ -8,7 +8,7 @@
 #include <axlCore/axlMesh.h>
 #include <axlCore/axlPoint.h>
 
-#include <dtkCore/dtkAbstractDataFactory.h>
+#include <dtkCoreSupport/dtkAbstractDataFactory.h>
 
 #include <gsUtils/gsPointGrid.hpp>
 
@@ -75,8 +75,8 @@ axlMesh *gsBasisConverter::toMesh(void)
 	axlMesh *mesh = new axlMesh;
 
     // Note: Became QVector in recent Axel
-    //QVector<axlPoint *> pointSet;
-    QList<axlPoint *> pointSet;
+    QVector<axlPoint *> pointSet;
+    //QList<axlPoint *> pointSet;
 
 	int pdim= basis->dim();
 	

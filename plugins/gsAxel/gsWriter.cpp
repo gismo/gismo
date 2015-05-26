@@ -5,8 +5,8 @@
 
 #include "gsWriter.h"
 
-#include <dtkCore/dtkAbstractData.h>
-#include <dtkCore/dtkAbstractDataFactory.h>
+#include <dtkCoreSupport/dtkAbstractData.h>
+#include <dtkCoreSupport/dtkAbstractDataFactory.h>
 
 #include<axlCore/axlAbstractDataConverter.h>
 #include<axlCore/axlMesh.h>

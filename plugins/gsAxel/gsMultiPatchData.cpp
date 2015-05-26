@@ -1,12 +1,14 @@
 
 #include "gsAxelPluginExport.h"
 
-#include <dtkCore/dtkAbstractDataFactory.h>
+#include <dtkCoreSupport/dtkAbstractDataFactory.h>
 
 #include "gsMultiPatchData.h"
 #include "gsGeometryData.h"
 
 #include <gsCore/gsMultiPatch.h>
+
+#include <QColor>
 
 #define DEFAULT_SAMPLES 20
 

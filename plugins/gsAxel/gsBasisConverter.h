@@ -5,6 +5,8 @@
 
 class gsBasisConverterPrivate;
 
+
+// public axlAbstactData
 class gsBasisConverter : public axlAbstractDataConverter
 {
     Q_OBJECT

@@ -12,8 +12,8 @@
 
 #include <axlCore/axlAbstractField.h>
 
-#include <dtkCore/dtkAbstractData.h>
-#include <dtkCore/dtkAbstractDataFactory.h>
+#include <dtkCoreSupport/dtkAbstractData.h>
+#include <dtkCoreSupport/dtkAbstractDataFactory.h>
 
 //to read fields applied on thi object
 #include <axlCore/axlAbstractField.h>

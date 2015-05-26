@@ -1,5 +1,5 @@
-#ifndef GSGEOMETRYCONVERTER_H
-#define GSGEOMETRYCONVERTER_H
+
+#pragma once
 
 #include <axlCore/axlAbstractDataConverter.h>
 
@@ -30,6 +30,5 @@ private:
     gsGeometryConverterPrivate *d;
 };
 
-dtkAbstractDataConverter *createGoGeometryConverter(void);
+dtkAbstractDataConverter *createGsGeometryConverter(void);
 
-#endif

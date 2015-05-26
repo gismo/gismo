@@ -28,8 +28,8 @@
 #include "gsBasisConverter.h"
 
 #include <axlGui/axlInspectorObjectFactory.h>
-#include <dtkCore/dtkAbstractDataFactory.h>
-#include <dtkCore/dtkAbstractProcessFactory.h>
+#include <dtkCoreSupport/dtkAbstractDataFactory.h>
+#include <dtkCoreSupport/dtkAbstractProcessFactory.h>
 #include <dtkLog/dtkLog.h>
 
 // /////////////////////////////////////////////////////////////////
@@ -134,5 +134,6 @@ dtkAbstractDataFactory *gsAxelPlugin::dataFactSingleton = NULL;
 dtkAbstractProcessFactory *gsAxelPlugin::processFactSingleton = NULL;
 
 
-Q_EXPORT_PLUGIN2(gsAxelPlugin, gsAxelPlugin)
+// following line for Qt4 only
+//Q_EXPORT_PLUGIN2(gsAxelPlugin, gsAxelPlugin)
 
