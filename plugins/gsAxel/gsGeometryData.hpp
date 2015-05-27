@@ -1,9 +1,15 @@
-/* (C) RICAM-Linz */
+/** @file gsGeometryData.hpp
 
+    @brief This file Provides implemetation of G+Smo geometry data for Axel modeler.
 
-/* Axel Plugin for Gismo IGA library*/
+    This file is part of the G+Smo library. 
 
-/* Angelos.Mantzaflaris@oeaw.ac.at */
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
 
 #pragma once
 
@@ -32,8 +38,6 @@ idLookup<axlObj>::identifier()
 {
     axlObj::AxelObject_Identifier_does_not_exist_ERROR;
 }
-
-    
 
 // /////////////////////////////////////////////////////////////////
 // gsGeometryData
@@ -66,13 +70,13 @@ bool gsGeometryData<axlObj>::registered(void)
 {
     // is dynamic cast better ?
     if ( typeid(axlObj) == typeid(axlAbstractCurveBSpline) )
-     	 return gsAxelPlugin::dataFactSingleton->registerDataType("gsGeometryData1", creategsGeometryData1);
+     	 return gsAxelPlugin::dataFactSingleton->registerDataType("SplineCurve", creategsGeometryData1);
     if ( typeid(axlObj) == typeid(axlAbstractSurfaceBSpline) )
-	 return gsAxelPlugin::dataFactSingleton->registerDataType("gsGeometryData2", creategsGeometryData2);
+	 return gsAxelPlugin::dataFactSingleton->registerDataType("SplineSurface", creategsGeometryData2);
     if ( typeid(axlObj) == typeid(axlAbstractVolumeBSpline) )
-    	 return gsAxelPlugin::dataFactSingleton->registerDataType("gsGeometryData3", creategsGeometryData3);
+    	 return gsAxelPlugin::dataFactSingleton->registerDataType("SplineVolume", creategsGeometryData3);
     if ( typeid(axlObj) == typeid(axlAbstractSurfaceTrimmed) )
-    	 return gsAxelPlugin::dataFactSingleton->registerDataType("gsTrimmedSurface", creategsTrimSurf);
+    	 return gsAxelPlugin::dataFactSingleton->registerDataType("TrimSurface", creategsTrimSurf);
 
     return false;
 }
@@ -80,15 +84,16 @@ bool gsGeometryData<axlObj>::registered(void)
 template <class axlObj>
 QString gsGeometryData<axlObj>::description(void) const
 {
-    QString result = "gsGeometryData : A Gismo geometry object";
-    
+    QString result = "A Gismo ";
+    result.append(dataId<axlObj>::id);
     return result;
 }
 
 template <class axlObj>
 QString gsGeometryData<axlObj>::identifier(void) const
 {
-    return "gsGeometryData";
+    return dataId<axlObj>::id;
+    //return "gsGeometryData";
 }
 
 template <class axlObj>

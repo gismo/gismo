@@ -224,7 +224,14 @@ gsGeometryDialog::~gsGeometryDialog(void)
 
 bool gsGeometryDialog::registered(void)
 {
-    return axlInspectorObjectFactory::instance()->registerInspectorObject("gsGeometryData", creategsGeometryDialog);
+    return 
+        axlInspectorObjectFactory::instance()->registerInspectorObject("SplineCurve", creategsGeometryDialog)
+        &&
+        axlInspectorObjectFactory::instance()->registerInspectorObject("SplineSurface", creategsGeometryDialog)
+        &&
+        axlInspectorObjectFactory::instance()->registerInspectorObject("TrimSurface", creategsGeometryDialog)
+        &&
+        axlInspectorObjectFactory::instance()->registerInspectorObject("SplineVolume", creategsGeometryDialog);
 }
 
 axlInspectorObjectInterface *creategsGeometryDialog(void)

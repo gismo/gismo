@@ -1,6 +1,6 @@
 /** @file gsAxelPlugin.h
 
-    @brief This file Provides declaration of the G+Smo plugin for Axel modeler.
+    @brief This file provides declaration of the G+Smo plugin for Axel modeler.
 
     This file is part of the G+Smo library. 
 

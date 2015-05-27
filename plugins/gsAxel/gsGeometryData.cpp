@@ -1,8 +1,26 @@
+/** @file gsGeometryData.cpp
+
+    @brief This file Provides declaration of G+Smo geometry data for Axel modeler.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
 
 #include "gsAxelPluginExport.h"
 
 #include "gsGeometryData.h"// templated geometry data
 
+
+// Identifier for different data
+const QString dataId<axlAbstractCurveBSpline>::id   = "SplineCurve";
+const QString dataId<axlAbstractSurfaceBSpline>::id = "SplineSurface";
+const QString dataId<axlAbstractSurfaceTrimmed>::id = "TrimSurface";
+const QString dataId<axlAbstractVolumeBSpline>::id  = "SplineVolume";
 
 
 gsGeometryPointer getGeometryPointer( axlAbstractData * axlData)
