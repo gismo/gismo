@@ -58,8 +58,7 @@ public:
             m_bases[i] = NULL;
     }
 
-    explicit gsTensorBasis( Basis_t* x)
-    { gsWarn<< "Invalid constructor: Tried to make tensor basis of parDim="<<d<<" using only one component.\n"; }
+    explicit gsTensorBasis( Basis_t* x);
 
     /// Constructor 2D (takes ownership of the passed bases)
     gsTensorBasis( Basis_t* x,  Basis_t* y);
