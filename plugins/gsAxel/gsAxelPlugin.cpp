@@ -20,7 +20,7 @@
 #include "gsGeometryCreator.h"
 #include "gsGeometryDialog.h"
 #include "gsReaderXml.h"
-#include "gsReaderAxl.h"
+
 //#include "gsGeometryConverter.h"// Using an actor instead
 
 //#include "gsPdeAssembler.h"
@@ -87,9 +87,6 @@ bool gsAxelPlugin::initialize(void)
     if(!gsReaderXml::registered())
 	std::cout << "Unable to register gsReaderXml type";
 
-    if(!gsReaderAxl::registered())
-	std::cout << "Unable to register gsReaderAxl type";
-
     if(!gsBasisData::registered())
     	std::cout << "Unable to register gsBasisData";
     
@@ -131,7 +128,7 @@ QStringList gsAxelPlugin::types(void) const
     QStringList stringList;
     stringList <<"gsGeometryData"<<"gsGeometryDialog"<<"gsGeometryCreator"
                <<"gsBasisData"   <<"gsBasisConverter"<<"gsMultiPatchData" 
-               <<"gsReader" <<"gsReaderAxl";
+               <<"gsReaderXml";
     return stringList;
 }
 
