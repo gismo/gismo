@@ -438,16 +438,16 @@ transformValuesHdiv( index_t k,
                      const std::vector<gsMatrix<T> >& allValues,
                      gsMatrix<T>  & result) const
 {
-    GISMO_ASSERT( static_cast<size_t>(GeoDim) == allValues.size(), "Expecting TarDim==GeoDim.");
+    GISMO_ASSERT( static_cast<size_t>(ParDim) == allValues.size(), "The number of components must equal the dimension of the domain.");
     int numA = 0;
-    for(int comp = 0; comp < GeoDim; ++comp)
+    for(int comp = 0; comp < ParDim; ++comp)
         numA += allValues[comp].rows();
     result.resize(GeoDim,numA); // GeoDim x numA
     
     const T det = this->jacDet(k);
     const typename gsMatrix<T>::constColumns & jac = this->jacobian(k);    
     index_t c = 0;
-    for(int comp = 0; comp < GeoDim; ++comp)  // component
+    for(int comp = 0; comp < ParDim; ++comp)  // component
     {
         const typename gsMatrix<T>::constColumn & bvals = allValues[comp].col(k);
         for( index_t j=0; j< allValues[comp].rows() ; ++j) // active of component

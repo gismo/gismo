@@ -34,7 +34,7 @@ struct lvl_coef
 {
     int pos;
     int unsigned lvl;
-    double coef;
+    real_t coef;
 };
 
 
@@ -590,6 +590,10 @@ public:
         return m_boxHistory;
     }
 */
+
+
+    virtual void degreeElevate(int const & i = 1, int const dir = -1);
+
 
     /** @brief Refine the basis to levels and in the areas defined by
      * \a boxes with an extension.

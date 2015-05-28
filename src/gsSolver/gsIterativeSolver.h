@@ -97,13 +97,13 @@ public:
 
 
 protected:
-    const gsLinearOperator * m_mat_ptr;
-    const gsLinearOperator& m_mat;
+    const gsLinearOperator *m_mat_ptr;
+    const gsLinearOperator &m_mat;
 
-    index_t m_maxIters;
-    real_t m_tol;
-    index_t m_numIter;
-    real_t m_error;
+    index_t  m_maxIters;
+    real_t   m_tol;
+    index_t  m_numIter;
+    real_t   m_error;
 
 };
 

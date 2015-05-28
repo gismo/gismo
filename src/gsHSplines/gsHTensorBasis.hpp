@@ -41,12 +41,12 @@ int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
     GISMO_ASSERT(Pt.cols() == 1, "Waiting for single point");
     point loIdx;
 
-     const int maxLevel = m_tree.getMaxInsLevel();
+    const int maxLevel = m_tree.getMaxInsLevel();
 
-     for( int i =0; i < Dim; i++)
-         loIdx[i] = m_bases[maxLevel]->knots(i).Uniquefindspan( Pt(i,0) );
-     
-     return m_tree.levelOf( loIdx, maxLevel);
+    for( int i =0; i < Dim; i++)
+        loIdx[i] = m_bases[maxLevel]->knots(i).Uniquefindspan( Pt(i,0) );
+
+    return m_tree.levelOf( loIdx, maxLevel);
 }
 
 template<unsigned d, class T> inline
@@ -73,14 +73,14 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
             c.first_lattice_point(low,upp,low);
             do
             {
-                CMatrix::const_iterator it = 
-                    m_xmatrix[i].find_it_or_fail( m_bases[i]->index(low) );
+                CMatrix::const_iterator it =
+                        m_xmatrix[i].find_it_or_fail( m_bases[i]->index(low) );
                 
                 if( it != m_xmatrix[i].end() )// if index is found
                     result[p]++;
             }
             while( c.next_lattice_point(low) );
-        } 
+        }
     }
 }
 
@@ -95,7 +95,7 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
     for(index_t i = 0; i< sz; ++i )
         mesh.addVertex( nodes.row(i).transpose() );
 
-    const gsVector<unsigned,d> & low = gsVector<unsigned,d>::Zero();    
+    const gsVector<unsigned,d> & low = gsVector<unsigned,d>::Zero();
 
     // For all levels
     for(unsigned lvl = 0; lvl <= maxLevel(); lvl++)
@@ -117,7 +117,7 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
             upp    = end;
             upp[i] = 0; // suppress to face v[i]==0
             
-            do // Insert all edges normal to axis i 
+            do // Insert all edges normal to axis i
             {
                 k = bb.index(v);
                 for (unsigned j = 0; j != end[i]; ++j)
@@ -125,14 +125,14 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
                     if ( cmat.bContains( k )  && cmat.bContains( k+s ) )
                     {
                         // inefficient for now
-                        const index_t kInd =  m_xmatrix_offset[lvl] + 
-                            (std::lower_bound(cmat.begin(), cmat.end(), k ) 
-                             - cmat.begin() );
+                        const index_t kInd =  m_xmatrix_offset[lvl] +
+                                (std::lower_bound(cmat.begin(), cmat.end(), k )
+                                 - cmat.begin() );
                         
                         // inefficient for now
-                        const index_t kNextInd =  m_xmatrix_offset[lvl] + 
-                            (std::lower_bound(cmat.begin(), cmat.end(), k+s ) 
-                             - cmat.begin() );
+                        const index_t kNextInd =  m_xmatrix_offset[lvl] +
+                                (std::lower_bound(cmat.begin(), cmat.end(), k+s )
+                                 - cmat.begin() );
                         
                         mesh.addEdge(kInd, kNextInd );
                     }
@@ -140,10 +140,10 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
                 }
             }
             while ( nextCubePoint(v, low, upp) );
-        }   
+        }
     }
 }
-    
+
 template<unsigned d, class T>
 int gsHTensorBasis<d,T>::size() const 
 {
@@ -195,11 +195,11 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
     
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); it.good(); it.next() )
     {
-//        gsInfo <<" level : "<< it.level() <<"\n";
-//        gsInfo <<" lower : "<< it.lowerCorner() <<"\n";
-//        gsInfo <<" upper : "<< it.upperCorner() <<"\n";
+        //        gsInfo <<" level : "<< it.level() <<"\n";
+        //        gsInfo <<" lower : "<< it.lowerCorner() <<"\n";
+        //        gsInfo <<" upper : "<< it.upperCorner() <<"\n";
 
-        lvl = it.level() + 1; 
+        lvl = it.level() + 1;
         const point & l = it.lowerCorner();
         const point & u = it.upperCorner();
 
@@ -219,21 +219,21 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
 {
-     GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
-     GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied refine() with them.");
+    GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
+    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied refine() with them.");
 
 
-     gsMatrix<T> para = support();
-     for(int i = 0; i < boxes.cols()/2; i++)
-     {
-         for( unsigned j = 0; j < d; j++ )
-         {
-        GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
-                      "In refine() the first corner is outside the computational domain.");
-        GISMO_ASSERT( para(j,1) >= boxes(j, 2*i+1),
-                      "In refine() the second corner is outside the computational domain." );
-         }
-     }
+    gsMatrix<T> para = support();
+    for(int i = 0; i < boxes.cols()/2; i++)
+    {
+        for( unsigned j = 0; j < d; j++ )
+        {
+            GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
+                          "In refine() the first corner is outside the computational domain.");
+            GISMO_ASSERT( para(j,1) >= boxes(j, 2*i+1),
+                          "In refine() the second corner is outside the computational domain." );
+        }
+    }
 
     if( refExt == 0 )
     {
@@ -312,9 +312,9 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     {
         for( unsigned j = 0; j < d; j++ )
         {
-            GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) , 
+            GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
                           "In refine() the first corner is outside the computational domain.");
-            GISMO_ASSERT( para(j,1) >= boxes(j, 2*i+1), 
+            GISMO_ASSERT( para(j,1) >= boxes(j, 2*i+1),
                           "In refine() the second corner is outside the computational domain." );
         }
     }
@@ -612,8 +612,8 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
     m_xmatrix_offset.push_back(0);
     for (std::size_t i = 0; i != m_xmatrix.size(); i++)
     {
-        m_xmatrix_offset.push_back( 
-            m_xmatrix_offset.back() + m_xmatrix[i].size() );
+        m_xmatrix_offset.push_back(
+                    m_xmatrix_offset.back() + m_xmatrix[i].size() );
     }
 }
 
@@ -625,11 +625,11 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 
     for ( int i = 0; i < extraLevels; ++i )
     {
-        gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > 
-            * next_basis = m_bases.back()->clone();
+        gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >
+                * next_basis = m_bases.back()->clone();
         next_basis->uniformRefine(1);
         m_bases.push_back (next_basis); //note: m_bases is mutable
-    }   
+    }
 }
 
 template<unsigned d, class T>
@@ -642,7 +642,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
         m_deg[i] = tbasis.degree(i);
 
     // Construct the initial basis
-    if ( const gsTensorBSplineBasis<d,T,gsKnotVector<T> > * tb = 
+    if ( const gsTensorBSplineBasis<d,T,gsKnotVector<T> > * tb =
          dynamic_cast<const gsTensorBSplineBasis<d,T,gsKnotVector<T> >*>(&tbasis) )
     {
         //std::vector<gsBSplineBasis<T, gsCompactKnotVector<T> > * > cw_bases(d);
@@ -651,14 +651,14 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
         for ( unsigned i = 0; i!=d; ++i )
         {
             cw_bases[i]=
-                new gsBSplineBasis<T, gsCompactKnotVector<T> >( 
-                    gsCompactKnotVector<T>( tb->knots(i)) );
+                    new gsBSplineBasis<T, gsCompactKnotVector<T> >(
+                        gsCompactKnotVector<T>( tb->knots(i)) );
         }
 
         m_bases.push_back(
-            new gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >(cw_bases) );
+                    new gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >(cw_bases) );
     }
-    else if ( const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * tb = 
+    else if ( const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * tb =
               dynamic_cast<const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >*>(&tbasis) )
     {
         m_bases.push_back( tb->clone() );
@@ -667,7 +667,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
     {
         GISMO_ERROR("Cannot construct a Hierarchical basis from "<< tbasis );
     }
-   
+
     // Initialize the binary tree
     point upp;
     for ( unsigned i = 0; i!=d; ++i )
@@ -679,8 +679,8 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
     m_bases.reserve(3);
     for(unsigned int i = 1; i <= 2; i++)
     {
-        gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > 
-            * next_basis = m_bases[i-1]->clone();
+        gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >
+                * next_basis = m_bases[i-1]->clone();
         next_basis->uniformRefine(1);
         m_bases.push_back( next_basis );
     }
@@ -712,35 +712,35 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
 
         for(int i = 0; i <= lvl; i++)
         {
-/*
+            /*
             m_bases[i]->active_into(curr, activesLvl);
             
-            std::set_intersection(m_xmatrix[i].begin(), m_xmatrix[i].end(), 
+            std::set_intersection(m_xmatrix[i].begin(), m_xmatrix[i].end(),
                                   activesLvl.data(), activesLvl.data() + activesLvl.size(),
                                   std::back_inserter( temp_output[p] ) );
             +++ Renumbering to H-basis indexing
 // */                                 
-// /*
+            // /*
             m_bases[i]->active_cwise(curr, low, upp);
             c.first_lattice_point(low,upp,low);
             do
             {
-                CMatrix::const_iterator it = 
-                    m_xmatrix[i].find_it_or_fail( m_bases[i]->index(low) );
-                        
+                CMatrix::const_iterator it =
+                        m_xmatrix[i].find_it_or_fail( m_bases[i]->index(low) );
+
                 if( it != m_xmatrix[i].end() )// if index is found
                 {
                     temp_output[p].push_back(
-                        this->m_xmatrix_offset[i] + (it - m_xmatrix[i].begin() )
-                        );
+                                this->m_xmatrix_offset[i] + (it - m_xmatrix[i].begin() )
+                                );
                 }
             }
             while( c.next_lattice_point(low) );
-//*/
+            //*/
         }
-      
+
         // update result size
-        if ( temp_output[p].size() > sz ) 
+        if ( temp_output[p].size() > sz )
             sz = temp_output[p].size();
     }
 
@@ -759,7 +759,7 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::allBoundary( ) const
     std::vector<unsigned> temp;
     gsVector<unsigned,d>  ind;
     for(unsigned i = 0; i <= this->maxLevel(); i++)
-        for (CMatrix::const_iterator it = m_xmatrix[i].begin(); 
+        for (CMatrix::const_iterator it = m_xmatrix[i].begin();
              it != m_xmatrix[i].end(); it++)
         {
             ind = this->m_bases[i]->tensorIndex(*it);
@@ -787,14 +787,14 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundaryOffset(boxSide const & s,unsi
     {
         GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
         unsigned r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
-        for (CMatrix::const_iterator it = m_xmatrix[i].begin(); 
+        for (CMatrix::const_iterator it = m_xmatrix[i].begin();
              it != m_xmatrix[i].end(); it++)
         {
             ind = this->m_bases[i]->tensorIndex(*it);
             if ( ind[k]==r )
-                temp.push_back( 
-                    m_xmatrix_offset[i] +  (it - m_xmatrix[i].begin() )
-                    );
+                temp.push_back(
+                            m_xmatrix_offset[i] +  (it - m_xmatrix[i].begin() )
+                            );
         }
     }
     return makeMatrix<unsigned>(temp.begin(),temp.size(),1 ).release();
@@ -811,6 +811,11 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     numActive(u, tmp);
     unsigned nb = tmp.maxCoeff();
     
+    if(n<0)
+    {
+        result.resize(0,u.cols());
+        return;
+    }
     if( n == 0 )
         result.resize( nb, u.cols());
     else if( n == 1 )
@@ -821,7 +826,7 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 
     this->eval_into(u, values);
     result.topRows(nb) = values;
-      
+
     if ( n >= 1 )
     {
         this->deriv_into(u, values);
@@ -839,10 +844,10 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
 {
-    GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1"); 
+    GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1");
 
     GISMO_ASSERT( m_tree.getMaxInsLevel() < static_cast<unsigned>(m_bases.size()),
-                  "Problem with max inserted levels: "<< m_tree.getMaxInsLevel() 
+                  "Problem with max inserted levels: "<< m_tree.getMaxInsLevel()
                   <<"<" << m_bases.size() <<"\n");
 
     // Delete the first level
@@ -850,8 +855,8 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
     m_bases.erase( m_bases.begin() );
 
     // Keep consistency of finest level
-    gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * last_basis 
-        = m_bases.back()->clone();
+    gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * last_basis
+            = m_bases.back()->clone();
     last_basis->uniformRefine(1,mul);
     m_bases.push_back( last_basis );
 
@@ -864,22 +869,22 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
 template<unsigned d, class T>
 std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const
 {
-  std::vector< std::vector< std::vector< std::vector< unsigned int > > > > dummy; 
-  return domainBoundariesGeneric( dummy, result, false );
+    std::vector< std::vector< std::vector< std::vector< unsigned int > > > > dummy;
+    return domainBoundariesGeneric( dummy, result, false );
 }
 
 template<unsigned d, class T>
 std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& result ) const
 {
-  std::vector< std::vector< std::vector< std::vector< T > > > > dummy; 
-  return domainBoundariesGeneric( result, dummy, true );
+    std::vector< std::vector< std::vector< std::vector< T > > > > dummy;
+    return domainBoundariesGeneric( result, dummy, true );
 }
 
 
 template<unsigned d, class T>
 std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& indices,
-												       std::vector< std::vector< std::vector< std::vector< T > > > >& params,
-												       bool indicesFlag ) const
+                                                                                                       std::vector< std::vector< std::vector< std::vector< T > > > >& params,
+                                                                                                       bool indicesFlag ) const
 {
     indices.clear();
     params.clear();
@@ -895,10 +900,10 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
 
     // We want indices/params to be of the same size as polylines. We achieve this here and in the for cycles.
     if( indicesFlag )
-      indices.resize( polylines.size() );
+        indices.resize( polylines.size() );
     
     else
-      params.resize(polylines.size());
+        params.resize(polylines.size());
 
     int maxLevel = static_cast<int>( this->maxLevel() );
     // We precompute the parameter values corresponding to indices of m_maxInsLevel
@@ -909,17 +914,17 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
     for(unsigned int i0 = 0; i0 < polylines.size(); i0++)
     {
         if( indicesFlag )
-	  indices[i0].resize( polylines[i0].size() );
+            indices[i0].resize( polylines[i0].size() );
         else
-	  params[i0].resize( polylines[i0].size() );
+            params[i0].resize( polylines[i0].size() );
 
         res_aabb[i0].resize( polylines[i0].size() );
         for(unsigned int i1 = 0; i1 < polylines[i0].size(); i1++)
         {
-	    if( indicesFlag )
-	      indices[i0][i1].resize( polylines[i0][i1].size() );
-	    else
-	      params[i0][i1].resize( polylines[i0][i1].size() );
+            if( indicesFlag )
+                indices[i0][i1].resize( polylines[i0][i1].size() );
+            else
+                params[i0][i1].resize( polylines[i0][i1].size() );
 
             res_aabb[i0][i1].resize( 4 );
             res_aabb[i0][i1][0] = 1000000;
@@ -928,38 +933,38 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
             res_aabb[i0][i1][3] = -10000000;
             for(unsigned int i2 = 0; i2 < polylines[i0][i1].size(); i2++)
             {
-	        if( indicesFlag )
-		{
-		  indices[i0][i1][i2].resize(4);
-		  indices[i0][i1][i2][0] = polylines[i0][i1][i2][0];
-		  indices[i0][i1][i2][1] = polylines[i0][i1][i2][1];
-		  indices[i0][i1][i2][2] = polylines[i0][i1][i2][2];
-		  indices[i0][i1][i2][3] = polylines[i0][i1][i2][3];
-        
-		}
-		else
-		{
-		  params[i0][i1][i2].resize(4);
-		  // We could as well successively push_back() them but this should be slightly more efficient.
-		  params[i0][i1][i2][0] = (x_dir[polylines[i0][i1][i2][0]]);
-		  params[i0][i1][i2][1] = (y_dir[polylines[i0][i1][i2][1]]);
-		  params[i0][i1][i2][2] = (x_dir[polylines[i0][i1][i2][2]]);
-		  params[i0][i1][i2][3] = (y_dir[polylines[i0][i1][i2][3]]);
-		}
+                if( indicesFlag )
+                {
+                    indices[i0][i1][i2].resize(4);
+                    indices[i0][i1][i2][0] = polylines[i0][i1][i2][0];
+                    indices[i0][i1][i2][1] = polylines[i0][i1][i2][1];
+                    indices[i0][i1][i2][2] = polylines[i0][i1][i2][2];
+                    indices[i0][i1][i2][3] = polylines[i0][i1][i2][3];
+
+                }
+                else
+                {
+                    params[i0][i1][i2].resize(4);
+                    // We could as well successively push_back() them but this should be slightly more efficient.
+                    params[i0][i1][i2][0] = (x_dir[polylines[i0][i1][i2][0]]);
+                    params[i0][i1][i2][1] = (y_dir[polylines[i0][i1][i2][1]]);
+                    params[i0][i1][i2][2] = (x_dir[polylines[i0][i1][i2][2]]);
+                    params[i0][i1][i2][3] = (y_dir[polylines[i0][i1][i2][3]]);
+                }
                 if(res_aabb[i0][i1][0]>signed(polylines[i0][i1][i2][0]))
-		{
+                {
                     res_aabb[i0][i1][0] = polylines[i0][i1][i2][0];
                 }
                 if(res_aabb[i0][i1][1]>signed(polylines[i0][i1][i2][1]))
-		{
+                {
                     res_aabb[i0][i1][1] = polylines[i0][i1][i2][1];
                 }
                 if(res_aabb[i0][i1][2]<signed(polylines[i0][i1][i2][2]))
-		{
+                {
                     res_aabb[i0][i1][2] = polylines[i0][i1][i2][2];
                 }
                 if(res_aabb[i0][i1][3]<signed(polylines[i0][i1][i2][3]))
-		{
+                {
                     res_aabb[i0][i1][3] = polylines[i0][i1][i2][3];
                 }
             }
@@ -1123,6 +1128,18 @@ void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<unsigne
     }
 }
 
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::degreeElevate(int const & i, int const dir)
+{
+    for (size_t level=0;level<m_bases.size();++level)
+        m_bases[level]->degreeElevate(i,dir);
+
+    for(unsigned i=0; i<d; ++i)
+        m_deg[i]=m_bases[0]->degree(i);
+
+    this->update_structure();
+}
+
 
 } // namespace gismo
 
@@ -1188,3 +1205,5 @@ void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<unsigne
 //        }
 //    }
 //}
+
+

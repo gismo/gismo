@@ -38,7 +38,8 @@ public:
         this->m_unknownDim.resize(2);
         this->m_unknownDim[0] = m_domain.dim();
         this->m_unknownDim[1] = 1;
-        this->m_solution.push_back(new gsPiecewiseFunction<T>(sol));
+        if(sol)
+            this->m_solution.push_back(new gsPiecewiseFunction<T>(*sol));
     }
 
     gsStokesPde(const gsMultiPatch<T> &domain, const gsBoundaryConditions<T> &bc, const gsPiecewiseFunction<T> &rhs, const gsPiecewiseFunction<T> &sol)
