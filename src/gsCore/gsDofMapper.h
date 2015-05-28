@@ -323,6 +323,18 @@ public:
     std::size_t offset(int k) const
     {return m_offset[k];}
 
+    /// Returns the number of patches present underneath the mapper
+    std::size_t numPatches() const
+    {return m_offset.size();}
+
+    /// Returns the total number of patch-local degrees of freedom
+    /// that are being mapped
+    std::size_t mapSize() const
+    {return m_dofs.size();}
+
+    index_t mapIndex(index_t n) const
+    {return m_dofs[n];}
+
 private:
 
     // replace all references to oldIdx by newIdx
