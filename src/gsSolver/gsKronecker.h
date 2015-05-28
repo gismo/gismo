@@ -29,7 +29,7 @@ void GISMO_EXPORT applyKronecker(const std::vector< gsLinearOperator* > & ops, c
 
 
 /// Class for representing a Kronecker product of linear operators
-class GISMO_EXPORT gsKroneckerProduct : gsLinearOperator
+class GISMO_EXPORT gsKroneckerProduct : public gsLinearOperator
 {
 public:
     /// Kronecker product of a given list of operators. Takes ownership of the operators.
