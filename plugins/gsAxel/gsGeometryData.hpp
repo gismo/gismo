@@ -258,28 +258,28 @@ void gsGeometryData<axlObj>::setNumSamples(int sampling)
 {
     sampling_u=sampling;
     emit this->samplingChanged();
-    this->touch();
+    this->touchGeometry();
 }
 template <class axlObj>
 void gsGeometryData<axlObj>::setNumSamples_u(int sampling)
 {
     sampling_u=sampling;
     emit this->samplingChanged();
-    this->touch();
+    this->touchGeometry();
 }
 template <class axlObj>
 void gsGeometryData<axlObj>::setNumSamples_v(int sampling)
 {
     sampling_v=sampling;
     emit this->samplingChanged();
-    this->touch();
+    this->touchGeometry();
 }
 template <class axlObj>
 void gsGeometryData<axlObj>::setNumSamples_w(int sampling)
 {
     sampling_w=sampling;   
     emit this->samplingChanged();
-    this->touch();
+    this->touchGeometry();
 }
 
 // template <class axlObj>
@@ -345,7 +345,7 @@ bool gsGeometryData<axlObj>::setCoef(int n, double *controlPoint)
     m_geometry->coef(n,1) = controlPoint[1];
     if (m_geometry->geoDim()>2)
 	m_geometry->coef(n,2) = controlPoint[2];
-    this->touch();
+    this->touchGeometry();
     return true;
 } 
 template <class axlObj>
@@ -356,7 +356,7 @@ bool gsGeometryData<axlObj>::setCoef(int i, int j, double *controlPoint)
     m_geometry->coef(pos,1) = controlPoint[1];
     if (m_geometry->geoDim()>2)
 	m_geometry->coef(pos,2) = controlPoint[2];
-    this->touch();
+    this->touchGeometry();
     return true;
 } 
 template <class axlObj>
@@ -368,7 +368,7 @@ bool gsGeometryData<axlObj>::setCoef(int i, int j, int k, double *controlPoint)
     m_geometry->coef(pos,1) = controlPoint[1];
     if (m_geometry->geoDim()>2)
 	m_geometry->coef(pos,2) = controlPoint[2];
-    this->touch();
+    this->touchGeometry();
     return true;
 } 
 
@@ -376,7 +376,7 @@ template <class axlObj>
 bool gsGeometryData<axlObj>::setCoef(int i, int j, int v, double c)
 {
     m_geometry->coef(i+j*this->countControlPoints_u(),v) = c;
-    this->touch();
+    this->touchGeometry();
     return true;
 } 
 template <class axlObj>
@@ -384,7 +384,7 @@ bool gsGeometryData<axlObj>::setCoef(int i, int j, int k, int v, double c)
 {
     m_geometry->coef(i+j*this->countControlPoints_u()+
         k*this->countControlPoints_v()*this->countControlPoints_u(),v) = c;
-    this->touch();
+    this->touchGeometry();
     return true;
 } 
 
@@ -466,11 +466,20 @@ void gsGeometryData<axlObj>::updateControlGrid()
             this->defineControlPointConnection( it->source->getId(), it->target->getId() );
         }
 
-        this->setEditable(false);
+        // Update the structure in the vtkView
+        this->touchStructure();
+        
+        // Note: we do not have access to the actor of the object. a
+        // line like the one below must be done though the interface
+        // instead, by connecting a slot of axlAbstractActor with a
+        // signal of axlActorBSpline (and derived classes)
+        // this->getActor()->onModifiedControlPoints();
 
-        gsDebug<< "Updating CPs\n";
-        this->touch(); // axlAbstractData
-        this->updated();
+        // this->touchGeometry();
+        // this->touchGeometry();
+
+        // Q: what does update() do ?
+        // this->updated();
 
     }//end if
 }
