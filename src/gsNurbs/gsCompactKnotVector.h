@@ -298,20 +298,20 @@ public:
     /// Get the cardinal index of the knot-index \a i
     /// This is the index of the knot without counting multiplicities
     /// \param i index of the knot
-    inline unsigned cardinalIndex(size_t i) const;
+    unsigned cardinalIndex(size_t i) const;
 
     // returns the span-index of a parametric value
     // to do: rename to findCardinalIndex ?? // similarities with findElementIndex ..
-    inline unsigned Uniquefindspan (T u) const ; 
+    unsigned Uniquefindspan (T u) const ; 
 
     /// Get the element index of the knot-index \a i
     /// Same as cardinalIndex but its result is always a valid element
     /// e.g. Ending knot is regarded in the last element
     /// \param i index of the knot
-    inline unsigned elementIndex(size_t i) const;
+    unsigned elementIndex(size_t i) const;
 
     /// returns the span-index of a parameter value
-    inline unsigned findElementIndex (T u) const ; 
+    unsigned findElementIndex (T u) const ; 
     
     /// Returns the first knot-index of cardinal index i
     inline unsigned firstKnotIndex(const size_t & i) const
@@ -367,11 +367,11 @@ public:
         return result; 
     } 
 
-    inline unsigned findspan (T u) const ;
+    unsigned findspan (T u) const ;
    
     const_iterator findspanIter (T u) const;
 
-    inline gsMatrix<unsigned,1> * findspan (const gsMatrix<T,1> & u) const ;
+    gsMatrix<unsigned,1> * findspan (const gsMatrix<T,1> & u) const ;
     
     void scale (const T& u0, const T & u1);
     void mirror ();
@@ -522,11 +522,11 @@ public:
 
     /// Get the multiplicity of the knot
     /// \param knot value of a knot
-    inline int multiplicity(const T & knot) const;
+    int multiplicity(const T & knot) const;
 
     /// Get the multiplicity sum at knot value \a  knot
     /// \param knot value of a knot
-    inline int multiplicitySum(const T & knot) const;
+    int multiplicitySum(const T & knot) const;
 
     /// Increase the multiplicity of all interior knots by \a i
     void increaseMultiplicity(int const & i = 1)
@@ -595,24 +595,23 @@ public:
 
     /// Get the multiplicity sum at knot index \a i
     /// \param i knot-index
-    inline int multiplicitySumIndex(size_t const& i) const;
+    int multiplicitySumIndex(size_t const& i) const;
 
     /// Get the multiplicity of the unique knot indexed i
     /// \param i index of the knot
-    inline unsigned u_multiplicityIndex(size_t const & i) const;
+    unsigned u_multiplicityIndex(size_t const & i) const;
 
     /// Get the multiplicity of the knot indexed i
     /// \param i index of the knot
-    inline unsigned multiplicityIndex(size_t const & i) const;
+    unsigned multiplicityIndex(size_t const & i) const;
 
     /// Look at the supportIndex function.
-    inline
     void supportIndex_into(const size_t& i, gsMatrix<unsigned>& result) const;
 
     /// Get the unique knot index of the beginning and end of support of the
     /// i-th basis function.
     /// \param i index of the basis function
-    inline gsMatrix<unsigned> supportIndex(const size_t& i) const;
+    gsMatrix<unsigned> supportIndex(const size_t& i) const;
 
 private:
     template <class It>
