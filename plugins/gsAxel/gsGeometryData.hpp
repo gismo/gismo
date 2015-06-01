@@ -25,19 +25,6 @@
 //#include <gsNurbs/gsTensorNurbs.h>
 #include <gsModeling/gsTrimSurface.h>
 
-#define DEFAULT_SAMPLES 20
-
-
-// /////////////////////////////////////////////////////////////////
-// Axel object
-// /////////////////////////////////////////////////////////////////
-
-// Specializations may provide different Ids.
-template<class axlObj> void
-idLookup<axlObj>::identifier() 
-{
-    axlObj::AxelObject_Identifier_does_not_exist_ERROR;
-}
 
 // /////////////////////////////////////////////////////////////////
 // gsGeometryData
@@ -344,7 +331,7 @@ bool gsGeometryData<axlObj>::setCoef(int n, double *controlPoint)
     m_geometry->coef(n,0) = controlPoint[0];
     m_geometry->coef(n,1) = controlPoint[1];
     if (m_geometry->geoDim()>2)
-	m_geometry->coef(n,2) = controlPoint[2];
+        m_geometry->coef(n,2) = controlPoint[2];
     this->touchGeometry();
     return true;
 } 
@@ -355,7 +342,7 @@ bool gsGeometryData<axlObj>::setCoef(int i, int j, double *controlPoint)
     m_geometry->coef(pos,0) = controlPoint[0];
     m_geometry->coef(pos,1) = controlPoint[1];
     if (m_geometry->geoDim()>2)
-	m_geometry->coef(pos,2) = controlPoint[2];
+        m_geometry->coef(pos,2) = controlPoint[2];
     this->touchGeometry();
     return true;
 } 

@@ -28,6 +28,7 @@
 
 #include <gsIO/gsFileData.h>
 
+#define DEFAULT_SAMPLES 20
 
 // Process
 #include <axlCore/axlAbstractFieldGenerator.h>
@@ -48,6 +49,13 @@ public:
     QSpinBox *spinBoxSampling_u;
     QSpinBox *spinBoxSampling_v;
     QSpinBox *spinBoxSampling_w;
+
+    // Control point box
+    QSpinBox       *cpIndex;
+    QDoubleSpinBox *coordinatePoint_x;
+    QDoubleSpinBox *coordinatePoint_y;
+    QDoubleSpinBox *coordinatePoint_z;
+
 
     QPushButton *basisButton;    
 
@@ -146,7 +154,7 @@ void gsGeometryDialog::initWidget(void) {
     d->spinBoxSampling_u = new QSpinBox(this);
     d->spinBoxSampling_u->setMaximum(5000);
     d->spinBoxSampling_u->setMinimum(5);
-    d->spinBoxSampling_u->setValue(20);
+    d->spinBoxSampling_u->setValue(DEFAULT_SAMPLES);
     layoutSampling->addWidget(d->spinBoxSampling_u);
     connect(d->spinBoxSampling_u, SIGNAL(valueChanged(int)), this, SLOT(onSamplingDataChanged_u(int)));
     int pdim = getGeometryPointer(d->data)->parDim();
@@ -155,7 +163,7 @@ void gsGeometryDialog::initWidget(void) {
 	    d->spinBoxSampling_v = new QSpinBox(this);
 	    d->spinBoxSampling_v->setMaximum(5000);
 	    d->spinBoxSampling_v->setMinimum(5);
-	    d->spinBoxSampling_v->setValue(20);
+	    d->spinBoxSampling_v->setValue(DEFAULT_SAMPLES);
 	    layoutSampling->addWidget(d->spinBoxSampling_v);
 	    connect(d->spinBoxSampling_v, SIGNAL(valueChanged(int)), this, SLOT(onSamplingDataChanged_v(int)));
 	    if ( pdim > 2)
@@ -163,12 +171,58 @@ void gsGeometryDialog::initWidget(void) {
 		    d->spinBoxSampling_w = new QSpinBox(this);
 		    d->spinBoxSampling_w->setMaximum(5000);
 		    d->spinBoxSampling_w->setMinimum(5);
-		    d->spinBoxSampling_w->setValue(20);
+		    d->spinBoxSampling_w->setValue(DEFAULT_SAMPLES);
 		    layoutSampling->addWidget(d->spinBoxSampling_w);
 		    connect(d->spinBoxSampling_w, SIGNAL(valueChanged(int)), this, SLOT(onSamplingDataChanged_w(int)));
 		}
 	}
     layoutTop->addLayout(layoutSampling);
+
+// /*
+    // CONTROL POINT
+    gismo::gsGeometry<> * g = getGeometryPointer(d->data);
+    d->cpIndex           = new QSpinBox(this);
+    d->cpIndex->setMaximum( 1e6);
+    d->cpIndex->setMinimum(-1e6);
+    d->coordinatePoint_x = new QDoubleSpinBox(this);
+    d->coordinatePoint_x->setRange(-1e6, 1e6);
+    d->coordinatePoint_x->setValue(g->coef(0,0));
+    d->coordinatePoint_x->setSingleStep(0.1);
+    d->coordinatePoint_y = new QDoubleSpinBox(this);
+    d->coordinatePoint_y->setRange(-1e6, 1e6);
+    d->coordinatePoint_y->setValue(g->coef(0,1));
+    d->coordinatePoint_y->setSingleStep(0.1);
+    d->coordinatePoint_z = new QDoubleSpinBox(this);
+    d->coordinatePoint_z->setRange(-1e6, 1e6);
+    d->coordinatePoint_z->setValue(g->coef(0,2));
+    d->coordinatePoint_z->setSingleStep(0.1);
+    QHBoxLayout *layout_cpid = new QHBoxLayout;
+    layout_cpid->addWidget(new QLabel("id",this));
+    layout_cpid->addWidget(d->cpIndex);
+    QHBoxLayout *layout_coord_x = new QHBoxLayout;
+    layout_coord_x->addWidget(new QLabel("x",this));
+    layout_coord_x->addWidget(d->coordinatePoint_x);
+    QHBoxLayout *layout_coord_y = new QHBoxLayout;
+    layout_coord_y->addWidget(new QLabel("y",this));
+    layout_coord_y->addWidget(d->coordinatePoint_y);
+    QHBoxLayout *layout_coord_z = new QHBoxLayout;
+    layout_coord_z->addWidget(new QLabel("z",this));
+    layout_coord_z->addWidget(d->coordinatePoint_z);
+    layoutTop->addWidget(new QLabel("CP :",this));
+    layoutTop->addLayout(layout_cpid);
+    layoutTop->addLayout(layout_coord_x);
+    layoutTop->addLayout(layout_coord_y);
+    layoutTop->addLayout(layout_coord_z);
+
+    // when changing the value, update the gismo pointer and the display
+    connect(d->coordinatePoint_x, SIGNAL(valueChanged(double)), this, SLOT(onControlPointChanged_x(double)));
+    connect(d->coordinatePoint_y, SIGNAL(valueChanged(double)), this, SLOT(onControlPointChanged_y(double)));
+    connect(d->coordinatePoint_z, SIGNAL(valueChanged(double)), this, SLOT(onControlPointChanged_z(double)));
+    connect(d->cpIndex, SIGNAL(valueChanged(int)), this, SLOT(onControlPointIndexChanged(int)));
+
+    // When selecting a control point inside the view, update the coordinate boxes
+    connect(d->data, SIGNAL(indexSelected(int)), this, SLOT(onIndexSelected(int)));
+//*/
 
     //Basis button
     d->basisButton = new QPushButton("Show basis",this);
@@ -269,6 +323,50 @@ void gsGeometryDialog::setData(dtkAbstractData *data)
     {
         initWidget();
     }
+}
+
+void gsGeometryDialog::onIndexSelected(int i)
+{
+    gismo::gsGeometry<> * g = getGeometryPointer(d->data);
+    --i;// zero numbering
+    d->cpIndex->setValue(i);
+    d->coordinatePoint_x->setValue(g->coef(i,0));
+    d->coordinatePoint_y->setValue(g->coef(i,1));
+    d->coordinatePoint_z->setValue(g->coef(i,2));
+}
+
+void gsGeometryDialog::onControlPointChanged_x(double c)
+{
+    // assume 3D cps
+    getGeometryPointer(d->data)->coef(d->cpIndex->value(),0)= c;
+    d->data->touchGeometry();
+    emit update();
+}
+
+void gsGeometryDialog::onControlPointChanged_y(double c)
+{
+    // assume 3D cps
+    getGeometryPointer(d->data)->coef(d->cpIndex->value(),1)= c;
+    d->data->touchGeometry();
+    emit update();
+}
+
+void gsGeometryDialog::onControlPointChanged_z(double c)
+{
+    // assume 3D cps
+    getGeometryPointer(d->data)->coef(d->cpIndex->value(),2)= c;
+    d->data->touchGeometry();
+    emit update();
+}
+
+void gsGeometryDialog::onControlPointIndexChanged(int i)
+{
+    d->coordinatePoint_x->setValue( getGeometryPointer(d->data)->coef(i,0) );
+    d->coordinatePoint_y->setValue( getGeometryPointer(d->data)->coef(i,1) );
+    d->coordinatePoint_z->setValue( getGeometryPointer(d->data)->coef(i,2) );
+
+    // does this work ???
+    //d->coordinatePoint_z->setValue( getGeometryPointer(d->data)->coef(d->cpIndex->value(),2) );
 }
 
 void gsGeometryDialog::onSamplingDataChanged_u(int numSamples)

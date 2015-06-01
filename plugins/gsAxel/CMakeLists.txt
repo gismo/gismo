@@ -4,6 +4,16 @@
 
 cmake_minimum_required(VERSION 2.8.8)
 
+if(POLICY CMP0048)# CMake 3.0
+cmake_policy(SET CMP0011 OLD)
+cmake_policy(SET CMP0042 OLD)
+cmake_policy(SET CMP0048 OLD)
+endif()
+
+if(POLICY CMP0043)# CMake 3.1
+cmake_policy(SET CMP0043 OLD)
+endif()
+
 project(gsAxelPlugin)
 
 set(CMAKE_COLOR_MAKEFILE ON)
@@ -151,13 +161,15 @@ if( GISMO_BUILD_LIB )
 #  target_link_libraries(${PROJECT_NAME} gismo)
 endif()
 
+#message("Axel plugins directory: ${AXEL_PLUGIN_DIR}")
+
 # note: policy CMP0026: The LOCATION property should not be read from target
 #get_property(gsAxelPlugin_location TARGET ${PROJECT_NAME} PROPERTY LOCATION)
 ADD_CUSTOM_COMMAND(
     TARGET ${PROJECT_NAME}
     POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${Axel_DIR}/plugins
-    COMMAND ${CMAKE_COMMAND} -E echo 'The plugin has been copied to ${Axel_DIR}/plugins.'
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${AXEL_PLUGIN_DIR}
+    COMMAND ${CMAKE_COMMAND} -E echo 'The plugin has been copied to ${AXEL_PLUGIN_DIR}.'
     )
 
 ## #################################################################

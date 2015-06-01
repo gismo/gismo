@@ -22,6 +22,8 @@
 
 #include <axlCore/axlPoint.h>
 
+#define DEFAULT_SAMPLES 20
+
 // Forward Declarations
 namespace gismo
 {
@@ -81,15 +83,6 @@ dtkAbstractData *creategsTrimSurf(void);
 gsGeometryPointer getGeometryPointer( axlAbstractData * axlData);
 axlAbstractData * newGeometryData   ( gsGeometryPointer gsData );
 
-
-// Diversing the Id name of instances if needed (not needed upto now)
-template<class axlObj>
-struct idLookup
-{
-    /// Return identifier based on axlObj type
-    void identifier();
-    //QString description(void) const;
-};
 
 template <class axlObj>
 class gsGeometryData : public axlObj

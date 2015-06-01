@@ -1,9 +1,17 @@
-/* gsWriter.h ---
- *
- */
+/** @file gsReader.h
 
-#ifndef AXLOFFWRITER_H
-#define AXLOFFWRITER_H
+    @brief This file provides declaration of the XML writer for Axel
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
+
+#pragma once
 
 #include "gsAxelPluginExport.h"
 
@@ -42,5 +50,3 @@ private:
 };
 
 dtkAbstractDataWriter *creategsWriter(void);
-
-#endif // AXLOFFWRITER_H

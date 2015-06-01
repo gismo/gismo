@@ -29,6 +29,7 @@
 #include "gsBasisData.h"
 #include "gsBasisConverter.h"
 
+#include <axlCore/axlMenuFactory.h>
 #include <axlGui/axlInspectorObjectFactory.h>
 #include <dtkCoreSupport/dtkAbstractDataFactory.h>
 #include <dtkCoreSupport/dtkAbstractProcessFactory.h>
@@ -63,11 +64,19 @@ bool gsAxelPlugin::initialize(void)
 {
     dtkWarn() << "Warnings are on.\n";
 
+    QMenu * m = new QMenu("G+Smo"); 
+    m->addSeparator();
+    axlMenuFactory::instance()->registerMenu(m);
+    QAction * a = new QAction(tr("A&bout G+Smo"), this);
+    //newAct->setShortcuts(QKeySequence::New);
+    m->addAction(a);
+    //connect(newAct, SIGNAL(triggered()), this, SLOT(newFile()));
+
     gsAxelPlugin::dataFactSingleton    = dtkAbstractDataFactory::instance();
     gsAxelPlugin::processFactSingleton = dtkAbstractProcessFactory::instance();
         
     if(!gsGeometryData< axlAbstractCurveBSpline >::registered())
-    std::cout << "Unable to register gsGeometryData CURVE type";
+        std::cout << "Unable to register gsGeometryData CURVE type";
 
     if(!gsGeometryData< axlAbstractSurfaceBSpline >::registered())
 	std::cout << "Unable to register gsGeometryData SURFACE type";

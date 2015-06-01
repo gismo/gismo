@@ -33,7 +33,7 @@ public:
     QSize sizeHint(void) const;
     
     static bool registered(void);
-    
+
 signals:
     
     void colorChanged(QColor color,  dtkAbstractData *data);
@@ -57,6 +57,13 @@ public slots:
     void onSamplingDataChanged_u(int numSamples);
     void onSamplingDataChanged_v(int numSamples);
     void onSamplingDataChanged_w(int numSamples);
+
+    void onControlPointChanged_x(double c);
+    void onControlPointChanged_y(double c);
+    void onControlPointChanged_z(double c);
+
+    void onControlPointIndexChanged(int i);
+    void onIndexSelected(int i);
 
     void openShader(void);
     void onShaderStateChanged(bool isShader);

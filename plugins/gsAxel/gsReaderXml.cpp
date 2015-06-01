@@ -67,7 +67,7 @@ bool gsReaderXml::canRead(const QString& file)
     ext = fn.substr(fn.find_last_of(".") + 1);
     std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
-    return (ext== "xml");
+    return (ext=="xml"); // || ext=="axl"
 }
 
 
