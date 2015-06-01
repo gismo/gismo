@@ -20,7 +20,9 @@
 namespace gismo
 {
 /** 
-    @brief Struct that defines the boundary sides and types of a geometric object.
+    @brief Struct that defines the boundary sides and corners and types of a geometric object.
+
+    These definitions are used by, e.g., boxSide, boxCorner, etc.
 
     The sides are numbered as follows:
 
@@ -78,6 +80,10 @@ public:
                 west = 1, east = 2, south = 3, north= 4, front=5, back=6 ,
                 left = 1, right= 2, down  = 3, up   = 4   };
 
+    /** \brief Index of the side
+    *
+    * ...stored as number, specified in boundary::side
+    **/
     index_t m_index;
 public:
     boxSide (): m_index(0) {}
@@ -124,7 +130,7 @@ public:
 
 
     /**
-     *  \brief Returns the index of the box side
+     *  \brief Returns the index (as specified in boundary::side) of the box side
     **/
     int    index () const {return m_index;}
 
@@ -189,7 +195,8 @@ public:
 
 /** 
     @brief  Struct which represents a certain side of a patch.
-    
+
+    Basically a boxSide with an additional index for the patch.
 */  
 struct patchSide: public boxSide
 {
@@ -256,6 +263,10 @@ inline std::ostream &operator<<(std::ostream &os, patchSide const & i)
 struct boxCorner
 {
 public:
+    /** \brief Index of the corner
+    *
+    * ...stored as number, specified in boundary::corner
+    **/
     index_t m_index;
 public:
     boxCorner (index_t a=0) : m_index(a) { GISMO_ASSERT(a>=0,"invalid side");}
@@ -359,7 +370,7 @@ public:
 /**
     @brief Struct which represents a certain corner of a patch.
     
-    
+
 */
 struct patchCorner : public boxCorner
 {
@@ -625,6 +636,7 @@ public:
             return getInverse().dirMap(ps,dir);
     }
     
+    /// Accessor for boundaryInterface::directionOrientation
     gsVector<bool> dirOrientation(const patchSide & ps) const
     {
         if(ps==ps1)
@@ -633,6 +645,7 @@ public:
             return getInverse().dirOrientation(ps);
     }
 
+    /// Accessor for boundaryInterface::directionMap
     gsVector<index_t>  dirMap(const patchSide & ps) const
     {
         if(ps==ps1)
@@ -658,17 +671,69 @@ private:
     patchSide ps2; ///< The second patch side.
 
     /**
-     * @brief store the combinatorial data about the interface:
+     * @brief store the combinatorial data about the interface
+     *
+     *
+     * Accessed by dirMap()
+     *
      * we describe the permutation and orientation of the coordinate directions
      * through an affine map that puts ps1.patch next to ps2.patch in such a way that
      * ps1 coincide to ps2.
      *
-     * \a directionMap stores the permutation of the coordinate directions, i.e. the rotation of the map
-     * \a directionOrientation stores the corresponding orientation.
+     * \a boundaryInterface::directionMap stores the permutation of the coordinate directions, i.e. the rotation of the map.\n
+     * \a boundaryInterface::directionOrientation stores the corresponding orientation.
+     *
+     *
+     * <b>Example 1:</b>
+     * \f[
+     \mathrm{patch~0}~
+     \begin{array}{|cc|cc|}
+     \hline
+     \uparrow x &     &  \uparrow x  &   &\\
+      & \rightarrow y &  & \rightarrow y &\\\hline
+     \end{array}
+     ~\mathrm{patch~1}
+     \f]
+     * In Example 1, the image of
+     * the x-axis of patch 0 is oriented such that it corresponds to the
+     * image of the x-axis of patch 1. Hence, the coordinate direction "0" is
+     * mapped to coordinate direction "0", and direction "1" is
+     * mapped to direction "1". In this case, directionMap is stored
+     * as the vector <em>[0,1]</em>.
+     *
+     * The orientations of both coordinate directions is the same, so
+     * boundaryInterface::directionOrientation is <em>[ 1, 1 ]</em>
+     *
+     * <b>Example 2:</b>
+     * \f[
+     \mathrm{patch~0}~
+     \begin{array}{|cc|cc|cc|}
+     \hline
+     \uparrow x &       &               & \rightarrow x \\
+         & \rightarrow y & \downarrow y & \\\hline
+     \end{array}
+     ~\mathrm{patch~1}
+     \f]
+     *
+     * In Example 2, the image of
+     * the x-axis of patch 0 is oriented such that it corresponds to the
+     * image of the y-asis of patch 1. This means that the coordinate direction "0" is
+     * mapped to coordinate direction "1". Also, direction "1" is
+     * mapped to direction "0". In this case, directionMap is <em>[1,0]</em>.
+     *
+     * The orientations of the x-axis of patch 0 and its corresponding
+     * counterpart (i.e., the y-axis of patch 1) are reversed. The orientation of
+     * the y-axis and its counterpart are the same. Hence,
+     * boundaryInterface::directionOrientation is <em>[ 0, 1 ]</em>
      */
     gsVector<index_t> directionMap;
-    /// For each coordinate direction we save if the original
-    /// coordinate and the destination one have the same orientation
+    /** For each coordinate direction we save if the original
+    * coordinate and the destination one have the same orientation
+    *
+    * Accessed by dirOrientation()
+    *
+    * See boundaryInterface::directionMap for documentation.
+    */
     gsVector<bool>    directionOrientation;
 
     /// TODO: the information could be stored in a single vector of signed integers: the sign gives the orientation
