@@ -308,7 +308,25 @@ public:
     /// \return an iterator to the end of the corner values
     citerator cornerEnd()
 	{ return corner_values.end(); }
-    
+
+
+
+
+    /** \brief Adds another boundary condition
+     *
+     * Creates an object of type boundary_condition and adds is to
+     * the list of corresponding boundary conditions.
+     *
+     * \param p Index of the patch
+     * \param s Side of the patch
+     * \param t Type of boundary condition (see condition_type::type)
+     * \param f Function defining the boundary condition
+     * \param unknown Specifies which unknown variable the boundary condition
+     * refers to (to be used if more than one variable is unknown, e.g.,
+     * velocity and pressure)
+     * \param parametric True if the function data for this boundary condition
+     * is defined in parametric coordinates.
+     */
     void addCondition(int p, boxSide s, condition_type::type t, 
                       gsFunction<T> * f, int unknown = 0, bool parametric = false)
     {
