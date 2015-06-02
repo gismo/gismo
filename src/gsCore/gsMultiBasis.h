@@ -356,6 +356,25 @@ public:
 
 //private: // to do
 
+    /**
+     * @brief Matches the degrees of freedom along an interface
+     *
+     * The boundaryInterface specifying the interface
+     * is passed as argument.\n
+     * The degrees of freedom (DOFs) along the interface from
+     * both patches are matched in the sense that they are
+     * then treated as one global DOF by the mapper.
+     *
+     * @todo Check if this description is accurate.
+     *
+     * @warning This function (as of 02.Jun.2015) assumes
+     * <b>tensor-product-structure with matching mesh</b> along
+     * the interface!
+     *
+     * @param bi specifies the interface to be matched
+     * @param mapper the gsDofMapper which should know that
+     * these interface-DOFs are matched.
+     */
     void matchInterface(const boundaryInterface & bi,
                         gsDofMapper & mapper) const;
 
