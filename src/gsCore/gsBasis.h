@@ -508,6 +508,7 @@ public:
     /// bigger than the size of the basis in the direction orthogonal to boxSide.
     virtual gsMatrix<unsigned> * boundaryOffset(boxSide const & s, unsigned offset) const;
 
+    /// Returns the indices of the basis functions that are nonzero at the domain boundary as single-column-matrix.
     gsMatrix<unsigned> * boundary(boxSide const & s) const
     { return this->boundaryOffset(s,0); }
 
