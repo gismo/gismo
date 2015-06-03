@@ -466,12 +466,25 @@ public:
     void printLeaves() const
     { leafSearch< printLeaves_visitor >(); }
 
-    /// Returns a list of boxes defined by left-bottom (b1) and
-    /// right-top (b2) corners for the splitting in B-spline patches
-    /// together with the corresponding levelOf
-    /// \param b1 left bottom corners of boxes
-    /// \param b2 right upper corners of boxs
-    /// \param level corresponding level
+    /** \brief Returns the boxes which make up the hierarchical domain
+    * and the respective levels.
+    *
+    * Returns a list of boxes defined by left-bottom (b1) and
+    * right-top (b2) corners for the splitting in B-spline patches
+    * together with the corresponding levelOf()
+    *
+    * The boxes \em b1 and \em b2 are given as matrices
+    * of size <em>n</em> x <em>d</em>, where \em d is the dimension
+    * of the domain, and where \em n is the number of boxes of
+    * the gsHDomain.\n
+    *
+    * The numbers in \em b1 and \em b2 are given as
+    * unique knot indices of gsHDomain::m_maxInsLevel
+    *
+    * \param b1 <em>n</em> x <em>d</em>-matrix, left bottom corners of boxes
+    * \param b2 <em>n</em> x <em>d</em>-matrix, right upper corners of boxes
+    * \param level vector of length \em n, corresponding levels
+    */
     void getBoxes(gsMatrix<unsigned>& b1, 
                   gsMatrix<unsigned>& b2, 
                   gsVector<unsigned>& level) const;
@@ -482,7 +495,7 @@ public:
     /// b1 and b2 are indexing in the corresponding level indices
     /// \param b1 left bottom corners of boxes
     /// \param b2 right upper corners of boxs
-    /// \param level corresponding level
+    /// \param level corresponding levels
     void getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
                   gsMatrix<unsigned>& b2,
                   gsVector<unsigned>& level) const;
