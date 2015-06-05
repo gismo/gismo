@@ -15,13 +15,6 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 
-
-#include <iostream>
-
-#include <string>
-
-#include <fstream>
-
 namespace gismo {
 
 /** 
@@ -58,10 +51,10 @@ public:
     gsParaviewCollection(std::string const & fn)
         : counter(0)
     {
-        String mfn(fn);
+        mfn = fn;
         mfn.append(".pvd");
-        mfile = new std::ofstream( mfn.c_str() );
-        GISMO_ASSERT(mfile->is_open(), "Error creating "<< mfn );
+        mfile = new std::stringstream( mfn.c_str() );
+        //GISMO_ASSERT(mfile->is_open(), "Error creating "<< mfn );
 
         *mfile <<"<?xml version=\"1.0\"?>\n";
         *mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
@@ -71,30 +64,28 @@ public:
     /// Destructor: save() should be called before reaching here
     ~gsParaviewCollection()
     {
-        GISMO_ASSERT(!mfile->is_open(), 
-                     "gsParaviewCollection Error: Call save() before exit." );
-        delete mfile;
+
     }
 
     /// Adds a part in the collection, with complete filename (including extension) \a fn
     void addPart(String const & fn)
     {
         GISMO_ASSERT(fn.find_last_of(".") != String::npos, "File without extension");
-        GISMO_ASSERT(mfile->is_open(), "Error: "<< mfile <<" is not open." );
+        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
         *mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<"\"/>\n";
     }
 
     /// Adds a part in the collection, with filename \a fn with extension \a ext appended
     void addPart(String const & fn, String const & ext)
     {
-        GISMO_ASSERT(mfile->is_open(), "Error: "<< mfile <<" is not open." );
+        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
         *mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
     }
 
     /// Adds a part in the collection, with filename \a fn_i and extension \a ext appended
     void addPart(String const & fn, int i, String const & ext)
     {
-        GISMO_ASSERT(mfile->is_open(), "Error: "<< mfile <<" is not open." );
+        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
         *mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<"_"<<i<<ext<<"\"/>\n";
     }
     
@@ -109,15 +100,25 @@ public:
     /// this function (once) when you finish adding files
     void save()
     {
-        GISMO_ASSERT(mfile->is_open(), "Error: "<< mfile <<" is not open." );
+        GISMO_ASSERT(counter!=-1, "Error: gsParaviewCollection::save() already called." );
         *mfile <<"</Collection>\n";
         *mfile <<"</VTKFile>\n";
-        mfile->close();
+
+        std::ofstream f( mfn.c_str() );
+        GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
+        f << mfile->rdbuf();
+        f.close();
+        delete mfile;
+        mfile = NULL;
+        counter = -1;
     }
 
 private:
-    /// Pointer to the open file
-    std::ofstream * mfile;
+    /// Pointer to char stream
+    std::stringstream * mfile;
+    
+    /// File name
+    String mfn;
 
     /// Counter for the number of parts (files) added in the collection
     int counter;

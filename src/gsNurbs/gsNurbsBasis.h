@@ -181,8 +181,6 @@ public:
         //m_knots->uniformRefine();
     };
   
-    void degreeElevate(int const & i = 1) { };
-  
 }; // class gsNurbsBasis
 
 

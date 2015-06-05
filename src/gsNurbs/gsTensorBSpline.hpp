@@ -210,7 +210,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fi
     // to do: gsMatrix<index_t> ind = gsTensorBasis::coefSlice(dim_fixed, index) ?
 
     gsTensorGridIterator<index_t> gridIter(sizes);
-    gsTensorGridIterator<index_t> *iter = gridIter.makeSubGridIterator(lowerCorner,upperCorner);
+    gsTensorGridIterator<index_t> * iter = gridIter.makeSubGridIterator(lowerCorner,upperCorner);
     index_t size=1;
     for(unsigned i = 0;i<d;++i)
         if(dir_fixed!=i)
@@ -222,6 +222,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fi
         result.row(i)=fullCoefs.row(iter->flatIndex());
         ++i;
     }
+
+    delete iter;
 }
 
 

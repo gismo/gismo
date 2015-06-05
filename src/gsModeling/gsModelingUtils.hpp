@@ -348,7 +348,7 @@ gsMatrix<T> convert2Zero(gsMatrix<T> const & mat)
     {
         for (int j=0;j!=n2;j++)
         {
-            if (abs(mat(i,j))< eps) matc(i,j)=0.;
+            if (math::abs(mat(i,j))< eps) matc(i,j)=0.;
         }
     }
     return matc;
