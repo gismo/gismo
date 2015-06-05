@@ -74,7 +74,7 @@ public:
         {
             m_knots.resize(sz);
             m_mult_sum.resize(sz);
-            m_mult_sum[0]= 1.0;
+            m_mult_sum[0]= 1;
             std::vector<unsigned>::iterator i = m_mult_sum.begin();
             while ( ++i != m_mult_sum.end() ) *i = *(i-1) + 1;
         }
