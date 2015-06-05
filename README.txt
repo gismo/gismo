@@ -20,7 +20,7 @@ https://github.com/filiatra/gismo
 
 Using subversion:
 
-svn co https://github.com/filiatra/gismo
+svn co https://github.com/filiatra/gismo/trunk gismo
 
 or using git:
 
@@ -30,6 +30,14 @@ or as a zip file:
 
 https://github.com/filiatra/gismo/archive/stable.zip
 
+If you prefer an updatable copy and you do not have a GitHub account, there is also an anonymous SVN repository 
+
+svn co https://ricamsvn.ricam.oeaw.ac.at/gismo/stable gismo
+
+In this case you will be asked for username and password, use
+
+Username: anonsvn
+Password: anonsvn
 
 ======================================================================
 =====                      Prerequisites                         ===== 

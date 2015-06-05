@@ -18,4 +18,4 @@ before_script:
   - cmake ..
 
 script:
-  - make -j8
+  - make -j3
