@@ -455,7 +455,7 @@ void writeSingleCurve(gsFunction<T> const& func,
     // Lines
     file <<"<Lines>\n";
     file <<"<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\" RangeMin=\"0\" RangeMax=\""<<npts-1<<"\">\n";
-    for (index_t i=0; i< npts-1; ++i )
+    for (unsigned i=0; i< npts-1; ++i )
     {
         file << i << " " << i+1 << " ";
     }
@@ -463,7 +463,7 @@ void writeSingleCurve(gsFunction<T> const& func,
     file <<"\n</DataArray>\n";
     unsigned offset(0);
     file <<"<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\" RangeMin=\"0\" RangeMax=\""<<npts-1<<"\">\n";
-    for (index_t i=0; i< npts-1; ++i )
+    for (unsigned i=0; i< npts-1; ++i )
     {
         offset +=2;
         file << offset << " ";
