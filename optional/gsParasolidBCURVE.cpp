@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
 
     extensions::gsWriteParasolid(*curve, output);
 
+    delete curve;
 
     return 0;
 }

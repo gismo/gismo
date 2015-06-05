@@ -52,6 +52,8 @@ int main(int argc, char *argv[])
     geom->evaluateMesh(mesh);
     
     extensions::gsWriteParasolid(mesh, output);
+
+    delete geom;
     
     return 0;
 }
