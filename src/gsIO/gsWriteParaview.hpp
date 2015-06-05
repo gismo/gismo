@@ -401,6 +401,88 @@ void writeSingleGeometry(gsFunction<T> const& func,
     file.close();
 }
 
+/// Export a curve geometry represented by \a func
+template<class T>
+void writeSingleCurve(gsFunction<T> const& func, 
+                      gsMatrix<T> const& supp, 
+                      std::string const & fn, unsigned npts)
+{
+    const unsigned n = func.targetDim();
+    const unsigned d = func.domainDim();
+    GISMO_ASSERT( d == 1, "Not a curve");
+
+    gsVector<T> a = supp.col(0);
+    gsVector<T> b = supp.col(1);
+    gsVector<unsigned> np = uniformSampleCount(a,b, npts );
+    gsMatrix<T> pts = gsPointGrid(a,b,np) ;
+
+    gsMatrix<T>  eval_func = func.eval  ( pts ) ;//pts
+
+    np.conservativeResize(3);
+    np.bottomRows(3-d).setOnes();
+
+    if ( 3 - n > 0 )
+    {
+        eval_func.conservativeResize(3,eval_func.cols() );
+        eval_func.bottomRows(3-n).setZero();
+
+        //std::swap( eval_geo.row(d),  eval_geo.row(0) );
+        eval_func.row(d) = eval_func.row(0);
+        eval_func.topRows(d) = pts;
+    }
+
+    std::string mfn(fn);
+    mfn.append(".vtp");
+    std::ofstream file(mfn.c_str());
+    if ( ! file.is_open() )
+        std::cout<<"Problem opening "<<fn<<"\n";
+    file << std::fixed; // no exponents
+    file << std::setprecision (PLOT_PRECISION);
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    file <<"<PolyData>\n";
+    // Accounting
+    file <<"<Piece NumberOfPoints=\""<< npts
+         <<"\" NumberOfVerts=\"0\" NumberOfLines=\""<< npts-1
+         <<"\" NumberOfStrips=\"0\" NumberOfPolys=\"0\">\n";
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<eval_func.rows()<<"\">\n";
+    for ( index_t j=0; j<eval_func.cols(); ++j)
+        for ( index_t i=0; i<eval_func.rows(); ++i)
+            file<< eval_func.at(i,j) <<" ";
+    file <<"\n</DataArray>\n";
+    file <<"</Points>\n";
+    // Lines
+    file <<"<Lines>\n";
+    file <<"<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\" RangeMin=\"0\" RangeMax=\""<<npts-1<<"\">\n";
+    for (index_t i=0; i< npts-1; ++i )
+    {
+        file << i << " " << i+1 << " ";
+    }
+    // offsets
+    file <<"\n</DataArray>\n";
+    unsigned offset(0);
+    file <<"<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\" RangeMin=\"0\" RangeMax=\""<<npts-1<<"\">\n";
+    for (index_t i=0; i< npts-1; ++i )
+    {
+        offset +=2;
+        file << offset << " ";
+    }
+    file <<"\n</DataArray>\n";
+    file <<"</Lines>\n";
+    // Closing 
+    file <<"</Piece>\n";
+    file <<"</PolyData>\n";
+    file <<"</VTKFile>\n";
+    file.close();
+}
+
+template<class T>
+void writeSingleCurve(const gsGeometry<T> & Geo, std::string const & fn, unsigned npts)
+{
+    gsMatrix<T> ab = Geo.parameterRange();
+    writeSingleCurve( Geo, ab, fn, npts);
+}
 
 template<class T>
 void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsigned npts)
@@ -462,10 +544,20 @@ template<class T>
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn, 
                      unsigned npts, bool mesh, bool ctrlNet)
 {
+    const bool curve = ( Geo.domainDim() == 1 );
+
     gsParaviewCollection collection(fn);
-    
-    writeSingleGeometry(Geo, fn, npts);
-    collection.addPart(fn, ".vts");
+
+    if ( curve )
+    {
+        writeSingleCurve(Geo, fn, npts);
+        collection.addPart(fn, ".vtp");
+    }
+    else
+    {
+        writeSingleGeometry(Geo, fn, npts);
+        collection.addPart(fn, ".vts");
+    }
 
     if ( mesh ) // Output the underlying mesh
     {
@@ -504,14 +596,24 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string cons
                       unsigned npts, bool mesh, bool ctrlNet)
 {
     const size_t n = Geo.size();
+
     gsParaviewCollection collection(fn);
 
     for ( size_t i=0; i<n ; i++)
     {
         std::string fnBase = fn + internal::toString<index_t>(i);
-        writeSingleGeometry( *Geo[i], fnBase, npts ) ;
-        collection.addPart(fnBase, ".vts");
-
+        
+        if ( Geo.at(i)->domainDim() == 1 )
+        {
+            writeSingleCurve(*Geo[i], fnBase, npts);
+            collection.addPart(fnBase, ".vtp");
+        }
+        else
+        {
+            writeSingleGeometry( *Geo[i], fnBase, npts ) ;
+            collection.addPart(fnBase, ".vts");
+        }
+        
         if ( mesh ) 
         {
             const std::string fileName = fnBase + "_mesh";
