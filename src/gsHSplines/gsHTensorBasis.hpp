@@ -378,7 +378,6 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
 
 //protected functions
 
-
 // Construct the characteristic matrix of level \a level ; i.e., set
 // all the matrix entries corresponding to active functions to one and
 // the rest to zero.
@@ -421,27 +420,88 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     cmat.sort();
 }
 
-//template<unsigned d, class T>
-//void gsHTensorBasis<d,T>::setActive()
-//{
-// iterate over leaf-boxes
-//   for all overlapping supports with the box
-//     set obvious to active (supp. fully contained in box ~ query1)
-//     for all candidate actives (supp. not fully contained in box ~ !query2)
-//     (equiv: actives on the boundary cells of the box)
-//       query3(supp,box.level) == level (min. is level: no coarser)
-// take care: duplicates from different leaves or adj. cells
-//}
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::functionOverlap(const point & boxLow, const point & boxUpp, 
+                                          const int level, point & actLow, point & actUpp)
+{
+    const tensorBasis & tb = *m_bases[level];
+    for(unsigned i = 0; i != d; ++i)
+    {
+        actLow[i] = tb.knots(i).lastKnotIndex (boxLow[i]) - m_deg[i];
+        actUpp[i] = tb.knots(i).firstKnotIndex(boxUpp[i]) - 1       ;
+
+        // Note aao:
+        //actLow[i] = firstKnotIndex(boxLow[i]);
+        //actUpp[i] = tb.knots(i).lastKnotIndex(boxUpp[i])-m_deg[i]-1;
+    }
+}
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<unsigned> >& x_matrix_lvl){
+void gsHTensorBasis<d,T>::setActive()
+{
+//    for(std::size_t lvl = 0; lvl != m_xmatrix.size(); lvl++)
+//        set_activ1(lvl);
+//    return;
+
+    // iterate over leaf-boxes
+    //   for all overlapping supports with the box
+    //     set obvious to active
+    //     for the rest candidates (supp. not fully contained in box ~ !query2)
+    //     (equiv: actives on the boundary cells of the box)
+    //       query3(supp,box.level) == level (min. is level: no coarser)
+    // take care: duplicates from different leaves or adj. cells
+    point curr, actUpp;
+    gsMatrix<unsigned,d,2> elSupp;
+    CMatrix cmat;
+
+    // try: iteration per level
+    for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); 
+          it.good(); it.next() )
+    {
+        const unsigned lvl = it.level();
+        CMatrix & cmat = m_xmatrix[lvl];
+
+        // Get candidate functions
+        functionOverlap(it.lowerCorner(), it.upperCorner(), lvl, curr, actUpp);
+
+        do 
+        {
+            const unsigned gi = m_bases[lvl]->index( curr );
+            
+            // Get element support
+            m_bases[lvl]->elementSupport_into(gi, elSupp);
+
+            if ( (elSupp.col(0).array() >= it.lowerCorner().array()).all() &&
+                 (elSupp.col(1).array() <= it.upperCorner().array()).all() )
+            {
+                // to do: all-at-once
+                cmat.push_unsorted( gi );
+            }
+            else
+            {
+                // Check if active (iff no overlap with level less than lvl)
+                if ( m_tree.query3(elSupp.col(0), elSupp.col(1), lvl) == lvl)
+                    cmat.push_unsorted( gi );
+            }
+        }
+        while( nextCubePoint(curr, actUpp) );
+    }
+
+    for(std::size_t lvl = 0; lvl != m_xmatrix.size(); ++lvl)
+    {
+        m_xmatrix[lvl].sort();
+        m_xmatrix[lvl].erase( std::unique( m_xmatrix[lvl].begin(), m_xmatrix[lvl].end() ),
+                      m_xmatrix[lvl].end() );
+    }
+}
+
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<unsigned> >& x_matrix_lvl)
+{
     x_matrix_lvl.resize(level+1);
 
     gsVector<unsigned,d> low, upp;
     for(int j =0; j < level+1; j++){
-        int counterA = 0;
-        int counterB = 0;
-        //CMatrix & cmat = x_matrix_lvl[j];
 
         // Clear previous entries
         x_matrix_lvl[j].clear();
@@ -467,12 +527,10 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
             }
             if(j < level){
                 if ( m_tree.query3(low, upp,j) == j){ //if active
-                    counterA ++;
                     x_matrix_lvl[j].push_unsorted( m_bases[j]->index( ind ) );
                 }
             }else{
                 if ( m_tree.query3(low, upp,j) >= j){ //if active
-                    counterB ++;
                     x_matrix_lvl[j].push_unsorted( m_bases[j]->index( ind ) );
                 }
             }
@@ -493,11 +551,9 @@ void gsHTensorBasis<d,T>::insert_box(gsVector<unsigned,d> const & k1,
     // Remember box in History (for debugging)
     // m_boxHistory.push_back( box(k1,k2,lvl) );
 
-    
     m_tree.insertBox(k1,k2, lvl);
 
     needLevel( m_tree.getMaxInsLevel() );
-
 }
 
 template<unsigned d, class T>
@@ -605,7 +661,10 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
 
     for(std::size_t i = 0; i != m_xmatrix.size(); i ++)
         set_activ1(i);
-    
+
+    // Store all indices of active basis functions to m_matrix
+    //setActive();
+
     // Compute offsets
     m_xmatrix_offset.clear();
     m_xmatrix_offset.reserve(m_xmatrix.size()+1);

@@ -260,7 +260,7 @@ protected:
     /// which is of type std::vector.\n
     /// <em>m_bases[k]</em> stores the pointer to the
     /// (global) tensor-product basis \f$ B^k\f$.
-    mutable std::vector<gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >* > m_bases;
+    mutable std::vector<tensorBasis*> m_bases;
 
     /// \brief The characteristic matrices for each level.
     ///
@@ -857,17 +857,22 @@ protected:
 
 private:
 
-    /// insert a domain into quadtree
+    /// \brief Inserts a domain into the basis
     void insert_box(gsVector<unsigned,d> const & k1, 
                     gsVector<unsigned,d> const & k2, int lvl);
     
     void initialize_class(gsBasis<T> const&  tbasis);
 
-    /// set all functions to active or passive- one by one
-    void set_activ1(int level);
+    /// \brief Returns the basis functions of \a level which have support on \a
+    /// box, represented as an index box
+    void functionOverlap(const point & boxLow, const point & boxUpp, 
+                         const int level, point & actLow, point & actUpp);
 
-    // set all functions to active or passive- recursive
-    //void setActive();
+    // \brief Sets all functions of \a level to active or passive- one by one
+    void set_activ1(int level);
+    
+    // \brief Computes the set of active basis functions in the basis
+    void setActive();
 
 
 
@@ -876,7 +881,7 @@ private:
     virtual gsMatrix<T> coarsening_direct(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
     virtual gsMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
 
-    /// Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
+    /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
     /// @param indices and @param params but fills in only one depending on @param indicesFlag (if true, then it returns indices).
     std::vector< std::vector< std::vector< unsigned int > > > domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector< unsigned int > > > >& indices,
 										      std::vector< std::vector< std::vector< std::vector< T > > > >& params,
@@ -884,11 +889,15 @@ private:
 
  //D
 public:
-    ///returns transfer matrix betweend the hirarchycal spline given by the characteristic matrix  "old" and this
+    /// \brief Returns transfer matrix betweend the hirarchycal spline given
+    /// by the characteristic matrix "old" and this
     void transfer (const std::vector<gsSortedVector<unsigned> > &old, gsMatrix<T>& result);
+
     void transfer2 (const std::vector<gsSortedVector<unsigned> > &old, gsMatrix<T>& result);
-    /// create characteristic matrices for basis where "level" is the maximum level i.e. ignoring higher level refinements
-    void setActiveToLvl(int level, std::vector<gsSortedVector<unsigned> >& x_matrix_lvl);
+
+    /// \brief Creates characteristic matrices for basis where "level" is the
+    /// maximum level i.e. ignoring higher level refinements
+    void setActiveToLvl(int level, std::vector<CMatrix>& x_matrix_lvl);
 
 
 //    void local2globalIndex( gsVector<unsigned,d> const & index,
