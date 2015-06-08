@@ -384,6 +384,8 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::set_activ1(int level)
 {
+    typedef typename gsCompactKnotVector<T>::const_iterator knotIter;
+
     //gsDebug<<" Setting level "<< level <<"\n";
     gsVector<unsigned,d> low, upp;
 
@@ -392,14 +394,14 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     // Clear previous entries
     cmat.clear();
 
-    gsCombinat<gsVector<typename gsCompactKnotVector<T>::const_iterator,d> > it; // vector of iterators. one iterator for each dimension
-    gsVector<typename gsCompactKnotVector<T>::const_iterator,d> ends, curr;
+    gsCombinat<gsVector<knotIter,d> > it; // vector of iterators. one iterator for each dimension
+    gsVector<knotIter,d> ends, curr;
     gsVector<unsigned,d> ind;
 
     for(unsigned i = 0; i != d; ++i)
     {
         curr[i] = m_bases[level]->knots(i).begin() ; // beginning of the iteration in i-th direction
-        ends[i] = curr[i]+m_bases[level]->component(i).size()-1; // end of the iteration in i-th direction
+        ends[i] = curr[i]+m_bases[level]->size(i)-1; // end of the iteration in i-th direction
     }
 
     it.first_lattice_point(curr, ends, curr); // This is crucial, since it sets the ends to be the ends of iteration.
@@ -439,9 +441,9 @@ void gsHTensorBasis<d,T>::functionOverlap(const point & boxLow, const point & bo
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::setActive()
 {
-//    for(std::size_t lvl = 0; lvl != m_xmatrix.size(); lvl++)
-//        set_activ1(lvl);
-//    return;
+    // for(std::size_t lvl = 0; lvl != m_xmatrix.size(); lvl++)
+    //     set_activ1(lvl);
+    // return;
 
     // iterate over leaf-boxes
     //   for all overlapping supports with the box
@@ -458,7 +460,7 @@ void gsHTensorBasis<d,T>::setActive()
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); 
           it.good(); it.next() )
     {
-        const unsigned lvl = it.level();
+        const int lvl = it.level();
         CMatrix & cmat = m_xmatrix[lvl];
 
         // Get candidate functions
