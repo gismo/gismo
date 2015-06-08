@@ -301,6 +301,33 @@ public:
         return BlockView(*this, rowSizes, colSizes);
     }
 
+    /// Sorts matrix by row \em j.
+    void sortByColumn( index_t j )
+    {
+        GISMO_ASSERT( j < this->cols(), "Invalid column.");
+
+        unsigned lastSwapDone = this->rows() - 1;
+        unsigned lastCheckIdx = lastSwapDone;
+
+        bool didSwap;
+        gsMatrix<T> tmp(1, this->cols() );
+        do{
+            didSwap = false;
+            lastCheckIdx = lastSwapDone;
+
+            for( unsigned i=0; i < lastCheckIdx; i++)
+                if( this->at(i,j) > this->at(i+1,j) )
+                {
+                    tmp.row(0) = this->row(i);
+                    this->row(i) = this->row(i+1);
+                    this->row(i+1) = tmp.row(0);
+
+                    didSwap = true;
+                    lastSwapDone = i;
+                }
+        }while( didSwap );
+    }
+
 }; // class gsMatrix
 
 
