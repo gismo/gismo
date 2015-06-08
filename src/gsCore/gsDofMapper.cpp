@@ -65,20 +65,26 @@ void gsDofMapper::matchDof( index_t u, index_t i, index_t v, index_t j )
 
     if (d1 < 0)         // first dof is eliminated
     {
-        if (d2 < 0)         mergeDofsGlobally( d1, d2 );  // both are eliminated, merge their indices
-        else if (d2 == 0)   MAPPER_PATCH_DOF(j,v) = d1;   // second is free, eliminate it along with first
-        else /* d2 > 0*/    replaceDofGlobally( d2, d1 ); // second is coupling, eliminate all instances of it
+        if (d2 < 0)
+            mergeDofsGlobally( d1, d2 );  // both are eliminated, merge their indices
+        else if (d2 == 0)
+            MAPPER_PATCH_DOF(j,v) = d1;   // second is free, eliminate it along with first
+        else /* d2 > 0*/
+            replaceDofGlobally( d2, d1 ); // second is coupling, eliminate all instances of it
     }
     else if (d1 == 0)   // first dof is a free dof
     {
-        if (d2 == 0)        MAPPER_PATCH_DOF(i,u) = MAPPER_PATCH_DOF(j,v) = m_numCpldDofs++;  // both are free, assign them a new coupling id
-        else if (d2 > 0)    MAPPER_PATCH_DOF(i,u) = d2;             // second is coupling, add first to the same coupling group
-        else                GISMO_ERROR("Something went terribly wrong");
+        if (d2 == 0)
+            MAPPER_PATCH_DOF(i,u) = MAPPER_PATCH_DOF(j,v) = m_numCpldDofs++;  // both are free, assign them a new coupling id
+        else if (d2 > 0)
+            MAPPER_PATCH_DOF(i,u) = d2;   // second is coupling, add first to the same coupling group
+        else
+            GISMO_ERROR("Something went terribly wrong");
     }
     else /* d1 > 0 */   // first dof is a coupling dof
     {
         GISMO_ASSERT(d2 > 0, "Something went terribly wrong");
-        mergeDofsGlobally( d1, d2 );                            // both are coupling dofs, merge them
+        mergeDofsGlobally( d1, d2 );      // both are coupling dofs, merge them
     }
 
     // if we merged two different non-eliminated dofs, we lost one free dof
