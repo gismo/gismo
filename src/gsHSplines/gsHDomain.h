@@ -562,11 +562,16 @@ private:
         GISMO_NO_IMPLEMENTATION
     }
 
-    /// Represents boxes of the tree in a big vector.
-    /// \param[out] boxes each item corresponds to a box and is
-    /// represented by a vector of unsigned ints: first the
-    /// coordinates of the lower left and then the coordinates of
-    /// upper right corner. All indexing is in terms of m_maxInsLevel.
+    /// \brief Represents boxes of the tree in a big vector.
+    ///
+    /// \param[out] boxes Each item corresponds to a box and is
+    /// represented by a vector of unsigned ints. First the
+    /// coordinates of the lower left, then the coordinates of the
+    /// upper right corner, and then the level of this box
+    /// (i.e., for each \em i, the size of
+    /// \em boxes[i] is <em>2d+1</em>, where \em d is
+    /// the dimension of the domain).\n
+    /// All indexing is in terms of level gsHDomain::m_maxInsLevel. \n
     void getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) const;
 
     ///connect the boxes returned from quadtree
