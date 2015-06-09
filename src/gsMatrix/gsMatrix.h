@@ -301,7 +301,7 @@ public:
         return BlockView(*this, rowSizes, colSizes);
     }
 
-    /// Sorts matrix by row \em j.
+    /// Sorts rows of matrix by column \em j.
     void sortByColumn( index_t j )
     {
         GISMO_ASSERT( j < this->cols(), "Invalid column.");
