@@ -15,6 +15,9 @@ if(GISMO_WITH_PSOLID)
 
   add_gismo_executable(gsParasolidExportMesh.cpp)
   mark_gismo_optional (gsParasolidExportMesh.cpp)
+
+  add_gismo_executable(gsParasolidExportTHB.cpp)
+  mark_gismo_optional (gsParasolidExportTHB.cpp)
   
   #set_property(TARGET gsParasolid_test APPEND PROPERTY 
   #INCLUDE_DIRECTORIES ${PARASOLID_INCLUDE_DIR} )

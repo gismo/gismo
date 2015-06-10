@@ -26,6 +26,10 @@
 
 #include <gsUtils/gsMesh/gsMesh.h>
 
+#include <gsHSplines/gsTHBSpline.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
+
+
 namespace gismo {
 
 namespace extensions {
@@ -184,6 +188,30 @@ bool gsWriteParasolid( const gsMesh<T>& mesh, const std::string & filename)
 }
 
 
+template<class T>
+bool gsWriteParasolid(const gsTHBSpline<2, T>& thb, const std::string& filename)
+{
+    gsPKSession::start();
+    PK_LOGICAL_t checks(0);
+    PK_SESSION_set_check_continuity(checks);
+    PK_SESSION_set_check_self_int(checks);
+    
+    PK_ASSEMBLY_t assembly;
+    exportTHBsurface<real_t>(thb, assembly);
+    
+    PK_PART_transmit_o_t transmit_options;
+    PK_PART_transmit_o_m(transmit_options);
+    transmit_options.transmit_format = PK_transmit_format_text_c;    
+
+    PK_ERROR_code_t err = PK_PART_transmit(1, &assembly, filename.c_str(), &transmit_options);
+    PARASOLID_ERROR(PK_PART_transmit, err);
+    
+    gsPKSession::stop();
+    
+    return err;
+}
+
+
 template<class T> void
 createPK_GEOM( const gsGeometry<T> & ggeo, 
              PK_GEOM_t & pgeo)
@@ -192,7 +220,7 @@ createPK_GEOM( const gsGeometry<T> & ggeo,
     if ( const gsTensorBSpline<2,T> * tbsp = 
          dynamic_cast<const gsTensorBSpline<2,T> *>(&ggeo) )
     {
-        createPK_BSURF(*tbsp, pgeo);
+        createPK_BSURF< T, gsKnotVector<T> >(*tbsp, pgeo);
     }
 // the following lines produce warnings if called from multipatch version of gsWriteParasolid, 
 // because it already assumes that the geometries are surfaces
@@ -208,9 +236,9 @@ createPK_GEOM( const gsGeometry<T> & ggeo,
 }
 
 
-template<class T> void
-createPK_BSURF( const gsTensorBSpline<2,T> & bsp, 
-             PK_BSURF_t & bsurf)
+template<class T, class KnotVectorType> void
+createPK_BSURF(const gsTensorBSpline< 2, T, KnotVectorType > & bsp, 
+	       PK_BSURF_t & bsurf)
 {
     
     // Translate to parasolid standard form, ie fill up parasolid
@@ -348,6 +376,249 @@ exportMesh(const gsMesh<T>& mesh,
 	PARASOLID_ERROR(PK_PART_add_geoms, err);
     }
 }
+
+
+// This function is here as workaround around Parasolid / MTU visualization bug.
+// The bug is:
+//     Let say that you make a trimmed sheet in a such way that you make a 
+//     hole into geometry. So there is a region in geometry which will be trimmed 
+//     away. If multiple coefficients, which define this region, are equal to 
+//     (0, 0, 0) then Parasolid / MTU visualization complains because the surface 
+//     self intersects. Parasolid / MTU visulation doesn't realize that this reigon
+//     will be trimmed away and it is not important.
+//
+// The workaround:
+//     We change the problematic coefficients, from the trimmed-away area, such that 
+//     the bspline approximates the THB surface.
+//
+// TODO: refactor this function: split it to multiple parts
+void
+makeValidGeometry(const gsTHBSpline<2>& surface,
+		  gsTensorBSpline<2, real_t, gsCompactKnotVector<> >& bspline)
+{
+    // check how many coefs are zero
+    
+    gsMatrix<>& coefs = bspline.coefs();
+    gsVector<int> globalToLocal(coefs.rows());
+    globalToLocal.setConstant(-1);
+    
+    int numZeroRows = 0;
+    for (index_t row = 0; row != coefs.rows(); row++)
+    {
+	bool zeroRow = true;
+	for (index_t col = 0; col != coefs.cols(); col++)
+	{
+	    if (coefs(row, col) != 0.0)
+	    {
+		zeroRow = false;
+		break;
+	    }
+	}
+	
+	if (zeroRow)
+	{
+	    globalToLocal(row) = numZeroRows;
+	    numZeroRows++;
+	}
+    }
+ 
+    // if more than 2 coefs ontinue
+
+    if (numZeroRows < 2)
+    {
+	return;
+    }
+    
+    // evaluate basis functions with zero coefs on grevielle points
+
+    gsMatrix<> anchors;
+    bspline.basis().anchors_into(anchors);
+
+    gsMatrix<> params(2, coefs.rows());
+    gsVector<> localToGlobal(coefs.rows());
+    index_t counter = 0;
+
+    for (index_t fun = 0; fun != globalToLocal.rows(); fun++)
+    {
+	if (globalToLocal(fun) != -1)
+	{
+	    params.col(counter) = anchors.col(fun);
+	    localToGlobal(counter) = fun;
+	    counter++;
+	}
+    }
+    
+    params.conservativeResize(2, counter);
+    localToGlobal.conservativeResize(counter);
+    
+    gsMatrix<> points;
+    surface.eval_into(params, points);
+    
+    // do least square fit 
+
+    gsSparseMatrix<> A(localToGlobal.rows(), localToGlobal.rows());
+    A.setZero();
+    gsMatrix<> B(localToGlobal.rows(), 3);
+    B.setZero();
+    
+    gsMatrix<> value;
+    gsMatrix<unsigned> actives;
+    
+    for (index_t k = 0; k != params.cols(); k++)
+    {
+	const gsMatrix<>& curr_param = params.col(k);
+	
+	bspline.basis().eval_into(curr_param, value);
+	bspline.basis().active_into(curr_param, actives);
+	const index_t numActive = actives.rows();
+	
+	for (index_t i = 0; i != numActive; i++)
+	{
+	    const int I = globalToLocal(actives(i, 0));
+	    if (I != -1)
+	    {
+		B.row(I) += value(i, 0) * points.col(k);
+		
+		for (index_t j = 0; j != numActive; j++)
+		{
+		    const int J = globalToLocal(actives(j, 0));
+		    if (J != -1)
+		    {
+			A(I, J) += value(i, 0) * value(j, 0);
+		    }
+		}
+	    }
+	}
+    }
+
+    A.makeCompressed();
+    Eigen::BiCGSTAB< gsSparseMatrix<>,  Eigen::IncompleteLUT<real_t> > solver(A);
+    if (solver.preconditioner().info() != Eigen::Success)
+    {
+        gsWarn<<  "The preconditioner failed. Aborting.\n";
+        return;
+    }
+
+    // update coefficients
+
+    gsMatrix<> x = solver.solve(B);
+    
+    for (index_t row = 0; row != x.rows(); row++)
+    {
+	coefs.row(localToGlobal(row)) = x.row(row);
+    }
+}
+
+
+
+template <class T> void
+exportTHBsurface(const gsTHBSpline<2, T>& surface,
+		 PK_ASSEMBLY_t& assembly)
+{
+    PK_ERROR_t err = PK_ASSEMBLY_create_empty(&assembly);
+    PARASOLID_ERROR(PK_ASSEMBLY_create_empty, err);
+
+    gsTHBSplineBasis<2>::AxisAlignedBoundingBox boundaryAABB;
+    gsTHBSplineBasis<2>::TrimmingCurves trimCurves;
+   
+    const gsTHBSplineBasis<2>& basis= surface.basis();
+    
+    basis.decomposeDomain(boundaryAABB, trimCurves);
+    
+    for (unsigned level = 0; level != boundaryAABB.size(); level++)
+    {
+
+	for (unsigned box = 0; box != boundaryAABB[level].size(); box++)
+	{
+	    gsTensorBSpline<2, T, gsCompactKnotVector<> > bspline =
+		basis.getBSplinePatch(boundaryAABB[level][box], level, surface.coefs());
+	    
+	    makeValidGeometry(surface, bspline);
+
+	    PK_BSURF_t bsurf;
+	    createPK_BSURF<T, gsCompactKnotVector<> >(bspline, bsurf);
+	    
+	    std::vector<PK_CURVE_t> curves;
+	    std::vector<PK_INTERVAL_t> intervals;
+	    std::vector<int> trim_loop;
+	    std::vector<int> trim_set;
+	    
+	    for (unsigned curve = 0; curve != trimCurves[level][box].size(); curve++)
+	    {
+		for (unsigned seg = 0; seg != trimCurves[level][box][curve].size(); seg++)
+		{
+		    real_t x1 = trimCurves[level][box][curve][seg][0];
+		    real_t y1 = trimCurves[level][box][curve][seg][1];
+		    real_t x2 = trimCurves[level][box][curve][seg][2];
+		    real_t y2 = trimCurves[level][box][curve][seg][3];
+		    
+		    PK_CURVE_t line;
+		    PK_INTERVAL_t intervalDummy;
+		    PK_INTERVAL_t interval;
+		    
+		    PK_SURF_make_curve_isoparam_o_t options;
+		    PK_SURF_make_curve_isoparam_o_m(options);
+		    
+		    if (x1 == x2)
+		    {	
+			err = PK_SURF_make_curve_isoparam(bsurf, x1, PK_PARAM_direction_v_c, 
+							  &options, &line, &intervalDummy);
+			PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
+			
+			interval.value[0] = y1;
+			interval.value[1] = y2;
+		    }
+		    else
+		    {
+			err = PK_SURF_make_curve_isoparam(bsurf, y1, PK_PARAM_direction_u_c, 
+							  &options, &line, &intervalDummy);
+			PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
+			
+			interval.value[0] = x1;
+			interval.value[1] = x2;
+		    }
+		    
+		    curves.push_back(line);
+		    intervals.push_back(interval);
+		    trim_loop.push_back(curve);
+		    trim_set.push_back(0);
+		}
+	    }
+	    
+	    PK_SURF_trim_data_t trim_data;
+	    trim_data.n_spcurves = static_cast<int>(curves.size());
+	    trim_data.spcurves = curves.data();
+	    trim_data.intervals = intervals.data();
+	    trim_data.trim_loop = trim_loop.data();
+	    trim_data.trim_set = trim_set.data();
+	    
+	    PK_SURF_make_sheet_trimmed_o_t options;
+	    PK_SURF_make_sheet_trimmed_o_m(options);
+	    options.check_loops = PK_LOGICAL_true;
+	    
+	    PK_BODY_t trimSurface;
+	    PK_check_state_t state;
+	    err = PK_SURF_make_sheet_trimmed(bsurf, trim_data, 1e-8, &options, 
+					     &trimSurface, &state);
+	    PARASOLID_ERROR(PK_SURF_make_sheet_trimmed, err);	    
+	    
+	    if (state != PK_BODY_state_ok_c)
+	    {
+		std::cout << "Something went wrong." << std::endl;
+	    }
+	    
+	    PK_INSTANCE_sf_t sform;
+	    sform.assembly = assembly;
+	    sform.transf = PK_ENTITY_null;
+	    sform.part = trimSurface;
+
+	    PK_INSTANCE_t instance;
+	    err = PK_INSTANCE_create(&sform, &instance);
+	    PARASOLID_ERROR(PK_INSTANCE_create, err);
+	}
+    }
+}
+
 
 
 }//extensions

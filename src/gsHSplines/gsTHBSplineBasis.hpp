@@ -407,7 +407,7 @@ template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned level, const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsCompactKnotVector<T>& k1, gsCompactKnotVector<T>& k2) const
 {
     std::vector< std::map<unsigned,T> > cmatrix;
-    update_cmatrix(cmatrix);
+    initializeToZero(cmatrix);
     
     // check if the indices in b1, and b2 are correct with respect to the given level
     
@@ -1217,7 +1217,7 @@ void gsTHBSplineBasis<d,T>::derivSingle_into(unsigned i,
 
 
 template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::update_cmatrix(std::vector< std::map<unsigned,T> > & cmatrix) const
+void gsTHBSplineBasis<d,T>::initializeToZero(std::vector< std::map<unsigned,T> > & cmatrix) const
 {
     //srand((unsigned)time(NULL));//seed the random alg.
     cmatrix.clear();
@@ -1252,6 +1252,159 @@ void gsTHBSplineBasis<d,T>::update_cmatrix(const gsMatrix<T>&geom_coeff, int col
     }
 }
 
+
+template<unsigned d, class T> 
+void gsTHBSplineBasis<d, T>::decomposeDomain(
+			   gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& boundaryAABB,
+			   gsTHBSplineBasis<d, T>::TrimmingCurves& trimCurves) const
+{
+    // polygon lines
+    // the stucture is [levels [ line [ segments [ x y z w ] ] ] ],
+    // where x y z w describes segment from (x, y) to (z, w)
+    typedef std::vector< std::vector< std::vector< std::vector<T> > > > Polylines;
+    
+    // the structure is [levels [ boxes [ low_x low_y upp_x upp_y] ] ]
+    // where the box is define by lower left corner (low_x, low_y) and upper right 
+    // corner (upp_x, upp_y)
+    typedef std::vector< std::vector< std::vector<unsigned> > > AxisAlignedBoundingBox;
+
+
+    Polylines polylines;
+    AxisAlignedBoundingBox aabb;
+    
+    aabb = this->domainBoundariesParams(polylines);
+
+    int numBoundaryBoxes = 0;
+    for (unsigned level = 0; level != aabb.size(); level++)
+    {
+	boundaryAABB.push_back(std::vector< std::vector<unsigned> >());
+	trimCurves.push_back(std::vector< std::vector< std::vector< std::vector<T> > > >());
+
+	//compare every aabb with the others
+	for (unsigned boxI = 0; boxI != aabb[level].size(); boxI++)
+	{
+	    bool isBoundaryBox = true; 
+	    for (unsigned boxJ = 0; boxJ != aabb[level].size(); boxJ++)
+	    {
+		if (boxI != boxJ)
+		{
+		    if (isFirstBoxCompletelyInsideSecond(aabb[level][boxI], aabb[level][boxJ]))
+		    {
+			isBoundaryBox = !isBoundaryBox;
+		    }
+		}
+	    }
+	    
+	    if (isBoundaryBox)
+	    {
+		numBoundaryBoxes++;
+		boundaryAABB[level].push_back(aabb[level][boxI]);
+		
+		// make new componenet
+		trimCurves[level].push_back(std::vector< std::vector< std::vector<T> > >());
+		trimCurves[level][trimCurves[level].size() - 1].push_back(polylines[level][boxI]);
+	    }
+	}	
+    }
+    
+    for (unsigned level = 0; level != aabb.size(); level++)
+    {
+	for (unsigned box = 0; box != aabb[level].size(); box++)
+	{
+	    int closestBox = -1;
+	    for (unsigned boundBox = 0; 
+		 boundBox != boundaryAABB[level].size(); 
+		 boundBox++)
+	    {
+		if (isFirstBoxCompletelyInsideSecond(aabb[level][box], boundaryAABB[level][boundBox]))
+		{
+		    if (closestBox == -1 ||  
+			!isFirstBoxCompletelyInsideSecond(boundaryAABB[level][closestBox],
+							  boundaryAABB[level][boundBox]))
+		    {
+			closestBox = boundBox;
+		    }
+		}
+		else if (areBoxesTheSame(aabb[level][box], boundaryAABB[level][boundBox]))
+		{
+		    closestBox = -1;
+		    break;
+		}
+	    }
+	    
+	    if (-1 < closestBox)
+	    {
+		trimCurves[level][closestBox].push_back(polylines[level][box]);
+	    }
+	}
+    }
+}
+
+
+template<unsigned d, class T>
+gsTensorBSpline<d, T, gsCompactKnotVector<T> > 
+gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<unsigned>& boundingBox,
+					const unsigned level,
+					const gsMatrix<T>& geomCoefs) const
+{
+    std::vector< std::map<unsigned, T> > cmatrix;
+    initializeToZero(cmatrix);
+
+    gsVector<unsigned, d> low, upp, lowLevel, uppLevel;
+    for (unsigned dim = 0; dim != d; dim++)
+    {
+	low(dim) = boundingBox[dim];
+	upp(dim) = boundingBox[d + dim];
+    }
+    this->m_tree.computeLevelIndex(low, level, lowLevel);
+    this->m_tree.computeLevelIndex(upp, level, uppLevel);
+    
+    const gsCompactKnotVector<T>& knots0 = this->m_bases[level]->knots(0);
+    const gsCompactKnotVector<T>& knots1 = this->m_bases[level]->knots(1);
+
+    const int lowIndex0 = knots0.lastKnotIndex(lowLevel(0)) - this->m_deg[0];
+    const int uppIndex0 = knots0.firstKnotIndex(uppLevel(0)) - 1;
+    const int lowIndex1 = knots1.lastKnotIndex(lowLevel(1)) - this->m_deg[1];
+    const int uppIndex1 = knots1.firstKnotIndex(uppLevel(1)) - 1;
+
+    
+    const int numDirection0 = uppIndex0 - lowIndex0 + 1;
+    const int numDirection1 = uppIndex1 - lowIndex1 + 1;
+    const int numNewCoefs = numDirection0 * numDirection1;
+    gsMatrix<T> newCoefs(numNewCoefs, geomCoefs.cols());
+    
+    for (index_t col = 0; col != geomCoefs.cols(); col++)
+    {
+	update_cmatrix(geomCoefs, col, level, cmatrix);
+	gsMatrix<T> coefs;
+	globalRefinement(level, coefs, cmatrix);
+	
+	for (int i = lowIndex0; i <= uppIndex0; i++)
+	{
+	    for (int j = lowIndex1; j <= uppIndex1; j++)
+	    {
+		coefs(j - lowIndex1, i - lowIndex0) = coefs(j, i);
+	    }
+	}
+	
+	coefs.conservativeResize(numDirection1, numDirection0);
+	return_cp_1D(coefs, col, newCoefs);
+    }
+
+    gsCompactKnotVector<T> kv0(this->m_deg[0], knots0.begin() + lowIndex0, 
+			       knots0.begin() + uppIndex0 + this->m_deg[0] + 2);
+    
+    gsCompactKnotVector<T> kv1(this->m_deg[1], knots1.begin() + lowIndex1, 
+			       knots1.begin() + uppIndex1 + this->m_deg[1] + 2);
+
+    gsTensorBSplineBasis<d, T, gsCompactKnotVector<T> > basis(kv0, kv1);
+    return gsTensorBSpline<d, T, gsCompactKnotVector<T> > (basis, newCoefs);
+}
+
+
+// --------------------------------------------------------------------------------
+// Code for hierarchical coarsening
+// --------------------------------------------------------------------------------
 
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){

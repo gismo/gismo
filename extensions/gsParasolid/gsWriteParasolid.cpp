@@ -31,6 +31,10 @@ TEMPLATE_INST bool
 gsWriteParasolid<real_t>
 ( const gsMesh<real_t>& mesh, std::string const & filename );
 
+TEMPLATE_INST bool
+gsWriteParasolid<real_t>
+( const gsTHBSpline<2, real_t>& thb, std::string const & filename);
+
 
 }// extensions
 

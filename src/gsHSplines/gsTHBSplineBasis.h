@@ -47,6 +47,23 @@ public:
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
 
+    // polygon lines in parameter domain
+    // the stucture is [levels [ line [ segments [ x y z w ] ] ] ],
+    // where x y z w describes segment from (x, y) to (z, w)
+    typedef std::vector< std::vector< std::vector< std::vector<T> > > > Polylines;
+
+    // axis aligned bounding boxes in parameter domain
+    // the structure is [levels [ boxes [ low_x low_y upp_x upp_y] ] ]
+    // where the box is define by lower left corner (low_x, low_y) and upper right 
+    // corner (upp_x, upp_y)
+    typedef std::vector< std::vector< std::vector<unsigned> > > AxisAlignedBoundingBox;
+
+    // trimming curves in parameter domain
+    // the stucture is [level [connected componenet [ line [ segments [ x y z w ] ] ] ] ],
+    // where x y z w describes segment from (x, y) to (z, w), and first line 
+    // indicates outer loop and next line describes holes
+    typedef std::vector< std::vector< std::vector< std::vector< std::vector<T> > > > > TrimmingCurves;
+
 public:
 
     /// Constructor out of a 2D Tensor BSpline Basis
@@ -553,7 +570,7 @@ public:
   /**
    * @brief Initializes the \a cmatrix with 0 for evaluation of basis functions.
    */
-  void update_cmatrix(std::vector< std::map<unsigned,T> > & cmatrix) const;
+  void initializeToZero(std::vector< std::map<unsigned,T> > & cmatrix) const;
 
   /**
    * @brief Initialize the cmatrix up to \a c_level
@@ -569,6 +586,17 @@ public:
 
    ///returns transfer matrices betweend the levels of the given hierarchical spline
    void transferbyLvl (std::vector<gsMatrix<T> >& result);
+
+    /// TO DO   
+    void decomposeDomain(gsTHBSplineBasis::AxisAlignedBoundingBox& boundaryAABB,
+			 gsTHBSplineBasis::TrimmingCurves& trimCurves) const;
+
+    /// TO DO
+    gsTensorBSpline<d, T, gsCompactKnotVector<T> >
+    getBSplinePatch(const std::vector<unsigned>& boundingBox,
+		    const unsigned level,
+		    const gsMatrix<T>& geomCoefs) const;
+
 
 
 private:
@@ -609,6 +637,29 @@ private:
     gsMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
                                    const std::vector<gsSortedVector<unsigned> >& n,
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
+
+    /// @brief Checks if the first box is completely inside second box.
+    /// 
+    /// Utility function for decomposeDomain member function.
+    bool isFirstBoxCompletelyInsideSecond(const std::vector<unsigned>& firstBox,
+					  const std::vector<unsigned>& secondBox) const
+    {
+	return secondBox[0] < firstBox[0] && secondBox[1] < firstBox[1] &&
+	       firstBox[2] < secondBox[2] && firstBox[3] < secondBox[3];   
+    }
+    
+
+    /// @brief Checks if the boxes are the same
+    ///
+    /// Utility function for decomposeDomain member function.
+    bool areBoxesTheSame(const std::vector<unsigned>& firstBox,
+			 const std::vector<unsigned>& secondBox) const
+    {
+	return firstBox[0] == secondBox[0] && firstBox[1] == secondBox[1] &&
+  	       firstBox[2] == secondBox[2] && firstBox[3] == secondBox[3];
+    }
+
+
 
 private:
 

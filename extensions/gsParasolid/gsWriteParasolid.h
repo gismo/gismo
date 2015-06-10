@@ -24,6 +24,7 @@ typedef int PK_GEOM_t;
 typedef int PK_BSURF_t;
 typedef int PK_BCURVE_t;
 typedef int PK_BODY_t;
+typedef int PK_ASSEMBLY_t;
 struct PK_UVBOX_s;
 
 namespace gismo {
@@ -43,11 +44,14 @@ namespace extensions {
     template<class T>
     bool gsWriteParasolid( const gsMesh<T>& mesh, std::string const & filename );
 
+    template<class T>
+    bool gsWriteParasolid(const gsTHBSpline<2, T>& thb, std::string const & filename);
+
     /// Translates a gsTensorBSpline to a PK_BSURF_t
     /// \param[in] bsp B-spline surface
     /// \param[out] bsurf Parasolid spline surface
-    template<class T> void
-    createPK_BSURF( const gsTensorBSpline<2,T> & bsp, PK_BSURF_t & bsurf);
+    template<class T, class KnotVectorType> void
+    createPK_BSURF( const gsTensorBSpline< 2, T, KnotVectorType > & bsp, PK_BSURF_t & bsurf);
 
     /// Translates a gsBSpline to a PK_BCURVE_t
     /// \param[in] curve B-Spline surve
@@ -67,6 +71,13 @@ namespace extensions {
     template<class T> void
     exportMesh(const gsMesh<T>& mesh,
 	       PK_BODY_t& body);
+
+    /// Translates a THB-Spline surface to PK_BODY_t
+    /// \param[in] surface THB-Spline surface
+    /// \param[out] body Parasolid body
+    template<class T> void
+    exportTHBsurface(const gsTHBSpline<2, T>& surface,
+		     PK_ASSEMBLY_t& body);
 
 
 }//extensions
