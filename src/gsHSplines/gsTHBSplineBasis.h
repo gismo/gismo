@@ -588,8 +588,8 @@ public:
    void transferbyLvl (std::vector<gsMatrix<T> >& result);
 
     /// TO DO   
-    void decomposeDomain(gsTHBSplineBasis::AxisAlignedBoundingBox& boundaryAABB,
-			 gsTHBSplineBasis::TrimmingCurves& trimCurves) const;
+    void decomposeDomain(typename gsTHBSplineBasis::AxisAlignedBoundingBox& boundaryAABB,
+			 typename gsTHBSplineBasis::TrimmingCurves& trimCurves) const;
 
     /// TO DO
     gsTensorBSpline<d, T, gsCompactKnotVector<T> >
