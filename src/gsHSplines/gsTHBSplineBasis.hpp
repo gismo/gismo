@@ -1255,20 +1255,9 @@ void gsTHBSplineBasis<d,T>::update_cmatrix(const gsMatrix<T>&geom_coeff, int col
 
 template<unsigned d, class T> 
 void gsTHBSplineBasis<d, T>::decomposeDomain(
-			   gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& boundaryAABB,
-			   gsTHBSplineBasis<d, T>::TrimmingCurves& trimCurves) const
+			   typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& boundaryAABB,
+			   typename gsTHBSplineBasis<d, T>::TrimmingCurves& trimCurves) const
 {
-    // polygon lines
-    // the stucture is [levels [ line [ segments [ x y z w ] ] ] ],
-    // where x y z w describes segment from (x, y) to (z, w)
-    typedef std::vector< std::vector< std::vector< std::vector<T> > > > Polylines;
-    
-    // the structure is [levels [ boxes [ low_x low_y upp_x upp_y] ] ]
-    // where the box is define by lower left corner (low_x, low_y) and upper right 
-    // corner (upp_x, upp_y)
-    typedef std::vector< std::vector< std::vector<unsigned> > > AxisAlignedBoundingBox;
-
-
     Polylines polylines;
     AxisAlignedBoundingBox aabb;
     

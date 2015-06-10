@@ -50,19 +50,19 @@ public:
     // polygon lines in parameter domain
     // the stucture is [levels [ line [ segments [ x y z w ] ] ] ],
     // where x y z w describes segment from (x, y) to (z, w)
-    typedef std::vector< std::vector< std::vector< std::vector<T> > > > Polylines;
+    typedef typename std::vector< std::vector< std::vector< std::vector<T> > > > Polylines;
 
     // axis aligned bounding boxes in parameter domain
     // the structure is [levels [ boxes [ low_x low_y upp_x upp_y] ] ]
     // where the box is define by lower left corner (low_x, low_y) and upper right 
     // corner (upp_x, upp_y)
-    typedef std::vector< std::vector< std::vector<unsigned> > > AxisAlignedBoundingBox;
+    typedef typename std::vector< std::vector< std::vector<unsigned> > > AxisAlignedBoundingBox;
 
     // trimming curves in parameter domain
     // the stucture is [level [connected componenet [ line [ segments [ x y z w ] ] ] ] ],
     // where x y z w describes segment from (x, y) to (z, w), and first line 
     // indicates outer loop and next line describes holes
-    typedef std::vector< std::vector< std::vector< std::vector< std::vector<T> > > > > TrimmingCurves;
+    typedef typename std::vector< std::vector< std::vector< std::vector< std::vector<T> > > > > TrimmingCurves;
 
 public:
 
