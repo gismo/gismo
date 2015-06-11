@@ -456,43 +456,42 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
             unsigned knot0L = knot0 >> ( indexLevelUse - L1 );
             unsigned knot1L = knot1 >> ( indexLevelUse - L1 );
 
-            if( bi.first().side() % 2 == 1 ) // west or south
+            gsVector<unsigned> upperCornOnLevel(2);
+            switch( bi.first().side().index() )
             {
-                if( bi.first().direction() == 0 ) // west
-                {
-                    refElts0.push_back( 0 );
-                    refElts0.push_back( knot0L );
-                    refElts0.push_back( 1 );
-                    refElts0.push_back( knot1L );
-                }
-                else // south
-                {
-                    refElts0.push_back( knot0L );
-                    refElts0.push_back( 0 );
-                    refElts0.push_back( knot1L );
-                    refElts0.push_back( 1 );
-                }
-            }
-            else // east or north
-            {
-                gsVector<unsigned> upperCornOnLevel(2);
+            case 1: // west
+                refElts0.push_back( 0 );
+                refElts0.push_back( knot0L );
+                refElts0.push_back( 1 );
+                refElts0.push_back( knot1L );
+                break;
+            case 2: // east
                 upperCornOnLevel[0] = ( upperCorn0[0] >> ( indexLevelUse - L1 ) );
                 upperCornOnLevel[1] = ( upperCorn0[1] >> ( indexLevelUse - L1 ) );
 
-                if( bi.first().direction() == 0 ) //east
-                {
-                    refElts0.push_back( upperCornOnLevel[0]-1 );
-                    refElts0.push_back( knot0L );
-                    refElts0.push_back( upperCornOnLevel[0] );
-                    refElts0.push_back( knot1L );
-                }
-                else
-                {
-                    refElts0.push_back( knot0L );
-                    refElts0.push_back( upperCornOnLevel[1]-1 );
-                    refElts0.push_back( knot1L );
-                    refElts0.push_back( upperCornOnLevel[1] );
-                }
+                refElts0.push_back( upperCornOnLevel[0]-1 );
+                refElts0.push_back( knot0L );
+                refElts0.push_back( upperCornOnLevel[0] );
+                refElts0.push_back( knot1L );
+                break;
+            case 3: // south
+                refElts0.push_back( knot0L );
+                refElts0.push_back( 0 );
+                refElts0.push_back( knot1L );
+                refElts0.push_back( 1 );
+                break;
+            case 4: // north
+                upperCornOnLevel[0] = ( upperCorn0[0] >> ( indexLevelUse - L1 ) );
+                upperCornOnLevel[1] = ( upperCorn0[1] >> ( indexLevelUse - L1 ) );
+
+                refElts0.push_back( knot0L );
+                refElts0.push_back( upperCornOnLevel[1]-1 );
+                refElts0.push_back( knot1L );
+                refElts0.push_back( upperCornOnLevel[1] );
+                break;
+            default:
+                GISMO_ASSERT(false,"3D not implemented yet. You can do it, if you want.");
+                break;
             }
         }
         else if( L0 > L1 ) // refine second()
@@ -513,43 +512,42 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
             knot0L = knot0L >> ( indexLevelUse - L0 );
             knot1L = knot1L >> ( indexLevelUse - L0 );
 
-            if( bi.second().side() % 2 == 1 ) // west or south
+            gsVector<unsigned> upperCornOnLevel(2);
+            switch( bi.second().side().index() )
             {
-                if( bi.second().direction() == 0 ) // west
-                {
-                    refElts1.push_back( 0 );
-                    refElts1.push_back( knot0L );
-                    refElts1.push_back( 1 );
-                    refElts1.push_back( knot1L );
-                }
-                else // south
-                {
-                    refElts1.push_back( knot0L );
-                    refElts1.push_back( 0 );
-                    refElts1.push_back( knot1L );
-                    refElts1.push_back( 1 );
-                }
-            }
-            else // east or north
-            {
-                gsVector<unsigned> upperCornOnLevel(2);
+            case 1: // west
+                refElts1.push_back( 0 );
+                refElts1.push_back( knot0L );
+                refElts1.push_back( 1 );
+                refElts1.push_back( knot1L );
+                break;
+            case 2: // east
                 upperCornOnLevel[0] = ( upperCorn1[0] >> ( indexLevelUse - L0 ) );
                 upperCornOnLevel[1] = ( upperCorn1[1] >> ( indexLevelUse - L0 ) );
 
-                if( bi.second().direction() == 0 ) //east
-                {
-                    refElts1.push_back( upperCornOnLevel[0]-1 );
-                    refElts1.push_back( knot0L );
-                    refElts1.push_back( upperCornOnLevel[0] );
-                    refElts1.push_back( knot1L );
-                }
-                else // north
-                {
-                    refElts1.push_back( knot0L );
-                    refElts1.push_back( upperCornOnLevel[1]-1 );
-                    refElts1.push_back( knot1L );
-                    refElts1.push_back( upperCornOnLevel[1] );
-                }
+                refElts1.push_back( upperCornOnLevel[0]-1 );
+                refElts1.push_back( knot0L );
+                refElts1.push_back( upperCornOnLevel[0] );
+                refElts1.push_back( knot1L );
+                break;
+            case 3: // south
+                refElts1.push_back( knot0L );
+                refElts1.push_back( 0 );
+                refElts1.push_back( knot1L );
+                refElts1.push_back( 1 );
+                break;
+            case 4: // north
+                upperCornOnLevel[0] = ( upperCorn1[0] >> ( indexLevelUse - L0 ) );
+                upperCornOnLevel[1] = ( upperCorn1[1] >> ( indexLevelUse - L0 ) );
+
+                refElts1.push_back( knot0L );
+                refElts1.push_back( upperCornOnLevel[1]-1 );
+                refElts1.push_back( knot1L );
+                refElts1.push_back( upperCornOnLevel[1] );
+                break;
+            default:
+                GISMO_ASSERT(false,"3D not implemented yet. You can do it, if you want.");
+                break;
             }
         }
     }
