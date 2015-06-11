@@ -267,6 +267,15 @@ public:
     }
 
     /// @brief Refine the are defined by \em boxes
+    /// on patch \em k.
+    ///
+    /// See gsHTensorBasis::refineElements() for further documentation.
+    void refineElements(int k, std::vector<unsigned> const & boxes)
+    {
+        m_bases[k]->refineElements(boxes);
+    }
+
+    /// @brief Refine the are defined by \em boxes
     /// on patch \em k with extension \em refExt.
     ///
     /// See gsHTensorBasis::refineWithExtension() for further documentation.
@@ -274,6 +283,28 @@ public:
     {
         m_bases[k]->refine( boxes, refExt);
     }
+
+    /// @brief Checks if the interfaces \em bivec are fully matching, and if not, repairs them, i.e., makes them fully matching.
+    void repairInterfaces( const std::vector< boundaryInterface > & bivec )
+    {
+        size_t kmax = 2*bivec.size();
+        size_t k = 0;
+        bool somethingChanged = false;
+        do
+        {
+            somethingChanged = false;
+            for( size_t i = 0; i < bivec.size(); ++i )
+                somethingChanged = ( somethingChanged || repairInterface( bivec[i] ) );
+            k++; // just to be sure this can't go wrong
+        }
+        while( somethingChanged && k <= kmax );
+    }
+
+    /** @brief Checks if the interface is fully matching, and if not, repairs it.
+    *
+    * \returns true, if something was repaired, i.e., if the mesh on the interface was changed.
+    */
+    bool repairInterface( const boundaryInterface & bi );
 
     /// @brief Elevate the degree of every basis by the given amount.
     void degreeElevate(int const& i = 1, int const dir = -1)
@@ -357,7 +388,7 @@ public:
 //private: // to do
 
     /**
-     * @brief Matches the degrees of freedom along an interface
+     * @brief Matches the degrees of freedom along an interface.
      *
      * The boundaryInterface specifying the interface
      * is passed as argument.\n
@@ -367,9 +398,11 @@ public:
      *
      * @todo Check if this description is accurate.
      *
-     * @warning This function (as of 02.Jun.2015) assumes
-     * <b>tensor-product-structure with matching mesh</b> along
-     * the interface!
+     * @remarks This function assumes
+     * tensor-product-structure with matching mesh along
+     * the interface! If the gsMultiBasis contains
+     * bases of class gsHTensorBasis (or derived), it
+     * calls the function matchInterfaceHTensor().
      *
      * @param bi specifies the interface to be matched
      * @param mapper the gsDofMapper which should know that
@@ -377,6 +410,19 @@ public:
      */
     void matchInterface(const boundaryInterface & bi,
                         gsDofMapper & mapper) const;
+
+    /**
+     * @brief Matches the degrees of freedom along an interface.
+     *
+     * Same as matchInterface(), but for bases of
+     * class gsHTensorBasis or derived classes.
+     *
+     * @param bi specifies the interface to be matched
+     * @param mapper the gsDofMapper which should know that
+     * these interface-DOFs are matched.
+     */
+    void matchInterfaceHTensor(const boundaryInterface & bi,
+                               gsDofMapper & mapper) const;
 
     // Data members
 private:

@@ -16,6 +16,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsHSplines/gsHDomainLeafIter.h>
 #include <gsHSplines/gsAAPolyline.h>
+#include <gsCore/gsBoundary.h>
 
 namespace gismo 
 {
@@ -69,9 +70,9 @@ class gsHDomain
 public:
     typedef kdnode<d,T> node;
 
-    typedef typename node::point point; 
+    typedef typename node::point point; // it's a gsVector<unsigned,d>
 
-    typedef typename node::kdBox box; 
+    typedef typename node::kdBox box; // it's a gsAabb<d,unsigned>
 
     typedef gsHDomainLeafIter<node,false> literator;
 
@@ -94,7 +95,7 @@ private:
     /// Pointer to the root node of the tree
     node * m_root;
 
-    /// Keeps the highest upper indices
+    /// Keeps the highest upper indices (at level gsHDomain::m_indexLevel)
     point m_upperIndex;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -201,6 +202,7 @@ public:
                             gsVector<unsigned,d> & result
         ) const;
 
+    /// Accessor for gsHDomain::m_upperIndex
     const point & upperCorner() const
     {
         return m_upperIndex;
@@ -481,13 +483,31 @@ public:
     * The numbers in \em b1 and \em b2 are given as
     * unique knot indices of gsHDomain::m_maxInsLevel
     *
-    * \param b1 <em>n</em> x <em>d</em>-matrix, left bottom corners of boxes
-    * \param b2 <em>n</em> x <em>d</em>-matrix, right upper corners of boxes
-    * \param level vector of length \em n, corresponding levels
+    * \param[out] b1 <em>n</em> x <em>d</em>-matrix, left bottom corners of boxes
+    * \param[out] b2 <em>n</em> x <em>d</em>-matrix, right upper corners of boxes
+    * \param[out] level vector of length \em n, corresponding levels
     */
     void getBoxes(gsMatrix<unsigned>& b1, 
                   gsMatrix<unsigned>& b2, 
                   gsVector<unsigned>& level) const;
+
+    /** \brief Returns the boxes which make up the hierarchical domain
+    * and the respective levels touching side \em s.
+    *
+    * Similar to getBoxes() with additional input of the side \em s.
+    * Returns only those boxes which touch the side \em s of the domain.
+    *
+    * \param[in] s Side (as in boundary::side) specifying the side of the domain
+    * \param[out] b1 <em>n</em> x <em>d</em>-matrix, left bottom corners of boxes
+    * \param[out] b2 <em>n</em> x <em>d</em>-matrix, right upper corners of boxes
+    * \param[out] level vector of length \em n, corresponding levels
+    */
+    void getBoxesOnSide(boundary::side s,
+                        gsMatrix<unsigned>& b1,
+                        gsMatrix<unsigned>& b2,
+                        gsVector<unsigned>& level) const;
+
+
 
     /// Returns a list of boxes defined by left-bottom (b1) and
     /// right-top (b2) corners for the splitting in B-spline patches

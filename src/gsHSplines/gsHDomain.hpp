@@ -33,6 +33,7 @@ inline unsigned translateIndex( unsigned const & i,
 
 #include <gsHSplines/gsAAPolyline.h>
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsBoundary.h>
 
 #include <queue>
 
@@ -797,6 +798,58 @@ void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gs
         }
         level[i] = boxes[i][2*d];
     }
+}
+
+
+template<unsigned d, class T>
+void gsHDomain<d,T>::getBoxesOnSide(boundary::side s, gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level) const
+{
+
+    getBoxes( b1, b2, level);
+    std::vector<int> onSide;
+
+    unsigned remainder = (s-1) % 2;
+    // remainder will be
+    // 0 for sides 1 (west), 3 (south/down), or 5 (front)
+    // 1 for sides 2 (east), 4 (north/up),   or 6 (back)
+    unsigned quotient = ( (s-1) - remainder ) / 2;
+    // quotient will be
+    // 0 for east/west
+    // 1 for south/north or down/up
+    // 2 for front/back
+
+    if( remainder == 0 ) // sides 1 (west), 3 (south/down), or 5 (front)
+    {
+        // if a box touches
+        for( unsigned int i = 0; i < b1.rows(); i++)
+            if( b1(i, quotient ) == 0 )
+                onSide.push_back(i);
+    }
+    else // remainder == 1, sides east, north/up, or back
+    {
+        for( unsigned int i = 0; i < b1.rows(); i++)
+        {
+            // index of upper corner
+            unsigned B2( b2(i, quotient ) );
+            // transform to index-level
+            B2 = B2 << (m_indexLevel - m_maxInsLevel);
+
+            // check if this index is on the boundary
+            if( B2 == m_upperIndex[ quotient ] )
+                onSide.push_back( i );
+        }
+    }
+
+    // select only the boxes on side s:
+    for( unsigned i =0; i < onSide.size(); i++)
+    {
+        b1.row(i) = b1.row( onSide[i] );
+        b2.row(i) = b2.row( onSide[i] );
+        level[i]  = level( onSide[i] );
+    }
+    b1.conservativeResize( onSide.size(), b1.cols() );
+    b2.conservativeResize( onSide.size(), b2.cols() );
+    level.conservativeResize( onSide.size() );
 }
 
 template<unsigned d, class T>
