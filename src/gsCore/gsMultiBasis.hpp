@@ -557,10 +557,6 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
     if( refElts1.size() > 0 )
         m_bases[ bi.second().patch ]->refineElements( refElts1 );
 
-
-    //delete bas0;
-    //delete bas1;
-
     return ( ( refElts0.size() > 0 ) || ( refElts1.size() > 0 ) );
 
 }

@@ -284,7 +284,14 @@ public:
         m_bases[k]->refine( boxes, refExt);
     }
 
-    /// @brief Checks if the interfaces \em bivec are fully matching, and if not, repairs them, i.e., makes them fully matching.
+    /** @brief Checks if the interfaces \em bivec are fully matching, and if not, repairs them, i.e., makes them fully matching.
+    *
+    * \remarks Designed for gsHTensorBasis and derived bases.
+    * Assumes that the meshes on all levels of the gsHTensorBasis
+    * are fully matching.
+    *
+    * Calls repairInterface() for each boundaryInterface in \em bivec.
+    */
     void repairInterfaces( const std::vector< boundaryInterface > & bivec )
     {
         size_t kmax = 2*bivec.size();
@@ -301,6 +308,10 @@ public:
     }
 
     /** @brief Checks if the interface is fully matching, and if not, repairs it.
+    *
+    * \remarks Designed for gsHTensorBasis and derived bases.
+    * Assumes that the meshes on all levels of the gsHTensorBasis
+    * are fully matching.
     *
     * \returns true, if something was repaired, i.e., if the mesh on the interface was changed.
     */
@@ -416,6 +427,9 @@ public:
      *
      * Same as matchInterface(), but for bases of
      * class gsHTensorBasis or derived classes.
+     *
+     * \remarks Assumes that the meshes on all levels of
+     * the gsHTensorBasis are fully matching at the interface.
      *
      * @param bi specifies the interface to be matched
      * @param mapper the gsDofMapper which should know that
