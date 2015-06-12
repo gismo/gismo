@@ -4,7 +4,7 @@
 
 message ("  CMAKE_INSTALL_PREFIX    ${CMAKE_INSTALL_PREFIX}")
 
-#set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
+set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
 
 # Offer the user the choice of overriding the installation directories
 set(INSTALL_LIB_DIR     lib     CACHE PATH "Installation directory for libraries")
