@@ -16,7 +16,7 @@
 #include <gsNurbs/gsCompactKnotVector.h>
 #include <gsNurbs/gsCompactKnotVectorIter.h>
 
-#include <gsIO/gsXmlUtils.h>
+#include <gsIO/gsXml.h>
 
 #include <numeric>
 

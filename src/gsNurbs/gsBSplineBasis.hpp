@@ -22,7 +22,7 @@
 
 #include <gsMatrix/gsSparseRows.hpp>
 
-#include <gsIO/gsXmlUtils.h>
+#include <gsIO/gsXml.h>
 
 namespace gismo
 {
