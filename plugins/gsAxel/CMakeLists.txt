@@ -110,6 +110,7 @@ set(${PROJECT_NAME}_SOURCES
   gsReaderXml.cpp
   gsWriter.cpp
   gsNativeAxelReader.cpp
+  QDialogEditCP.cpp
 )
 
 

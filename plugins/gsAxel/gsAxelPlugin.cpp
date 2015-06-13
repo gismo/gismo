@@ -64,13 +64,7 @@ bool gsAxelPlugin::initialize(void)
 {
     dtkWarn() << "Warnings are on.\n";
 
-    QMenu * m = new QMenu("G+Smo"); 
-    m->addSeparator();
-    axlMenuFactory::instance()->registerMenu(m);
-    QAction * a = new QAction(tr("A&bout G+Smo"), this);
-    //newAct->setShortcuts(QKeySequence::New);
-    m->addAction(a);
-    //connect(newAct, SIGNAL(triggered()), this, SLOT(newFile()));
+    setupGismoMenu();
 
     gsAxelPlugin::dataFactSingleton    = dtkAbstractDataFactory::instance();
     gsAxelPlugin::processFactSingleton = dtkAbstractProcessFactory::instance();
@@ -112,6 +106,25 @@ bool gsAxelPlugin::initialize(void)
     return true;
 }
 
+void gsAxelPlugin::setupGismoMenu(void)
+{
+    QMenu * gismoMenu = new QMenu("G+Smo"); 
+
+    QAction * a;
+    
+    a = new QAction(tr("Refine at selection"), this);
+    gismoMenu->addAction(a);
+    a->setEnabled(false);
+    
+    gismoMenu->addSeparator();
+    a = new QAction(tr("A&bout G+Smo"), this);
+    //newAct->setShortcuts(QKeySequence::New);
+    gismoMenu->addAction(a);
+    //connect(newAct, SIGNAL(triggered()), this, SLOT(newFile()));
+
+    axlMenuFactory::instance()->registerMenu(gismoMenu);
+}
+
 bool gsAxelPlugin::uninitialize(void)
 {
     return true;
@@ -124,7 +137,7 @@ QString gsAxelPlugin::name(void) const
 
 QString gsAxelPlugin::description(void) const
 {
-    return "G+Smo plugin. Geometry + Simulation modules, www.gs.jku.at";
+    return "G+Smo plugin. Geometry + Simulation modules, www.gs.jku.at/gismo";
 }
 
 QStringList gsAxelPlugin::tags(void) const

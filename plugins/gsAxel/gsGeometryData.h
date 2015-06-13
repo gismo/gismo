@@ -84,8 +84,14 @@ gsGeometryPointer getGeometryPointer( axlAbstractData * axlData);
 axlAbstractData * newGeometryData   ( gsGeometryPointer gsData );
 
 
+class gsGeometryBase
+{
+public:
+    virtual axlAbstractData * toAxel() = 0;
+};
+
 template <class axlObj>
-class gsGeometryData : public axlObj
+class gsGeometryData : public axlObj, public gsGeometryBase
 {
     //As long as we don't need any custom signals or slots and we
     //don't need to access meta-data provided by QObject's methods, we
@@ -94,6 +100,7 @@ class gsGeometryData : public axlObj
     
 public:
     typedef axlObj Base;
+
 public:
     /// Creates an uninitialized gsGeometryData, which can only be
     /// assigned to some gsGeometry later.
@@ -105,6 +112,8 @@ public:
     /// Virtual destructor, enables safe inheritance.
     virtual ~gsGeometryData(void);
     
+    axlObj * toAxel() {return static_cast<axlObj*>(this); }
+
     virtual QString description(void) const;
     virtual QString identifier(void) const;
     virtual QString objectType(void) const;

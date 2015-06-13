@@ -1,21 +1,3 @@
-/* goSurfaceBSplineReader.h ---
- *
- * Author: Julien Wintz
- * Copyright (C) 2008-2011 - Julien Wintz, Inria.
- * Created: Wed Sep 21 11:13:23 2011 (+0200)
- * Version: $Id$
- * Last-Updated: Wed Sep 21 11:49:25 2011 (+0200)
- *           By: Julien Wintz
- *     Update #: 21
- */
-
-/* Commentary:
- *
- */
-
-/* Change log:
- *
- */
 
 #ifndef GOSURFACEBSPLINEREADER_H
 #define GOSURFACEBSPLINEREADER_H

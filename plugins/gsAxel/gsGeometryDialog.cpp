@@ -17,7 +17,10 @@
 #include "gsBasisData.h"
 #include "gsGeometryCreator.h"
 
+#include "QDialogEditCP.h"
+
 #include <axlCore/axlAbstractData.h>
+#include <axlCore/axlMenuFactory.h>
 #include <axlGui/axlInspectorUtils.h>
 #include <dtkCoreSupport/dtkAbstractData.h>
 
@@ -32,6 +35,29 @@
 
 // Process
 #include <axlCore/axlAbstractFieldGenerator.h>
+
+
+
+//
+#define CALL_DATA_METHOD(method) \
+if ( gsAxelCurve * obj = dynamic_cast<gsAxelCurve *>(d->data) ) \
+        obj-> method ();  else \
+    if ( gsAxelSurface * obj = dynamic_cast<gsAxelSurface *>(d->data) ) \
+        obj-> method (); else \
+    if ( gsAxelVolume * obj = dynamic_cast<gsAxelVolume *>(d->data) ) \
+        obj-> method (); else \
+    if ( gsAxelTrimSurf * obj = dynamic_cast<gsAxelTrimSurf *>(d->data) ) \
+        obj-> method ();
+#define CALL_DATA_METHOD1(method,arg1)  \
+if ( gsAxelCurve * obj = dynamic_cast<gsAxelCurve *>(d->data) ) \
+        obj-> method (arg1);  else \
+    if ( gsAxelSurface * obj = dynamic_cast<gsAxelSurface *>(d->data) ) \
+        obj-> method (arg1); else \
+    if ( gsAxelVolume * obj = dynamic_cast<gsAxelVolume *>(d->data) ) \
+        obj-> method (arg1); else \
+    if ( gsAxelTrimSurf * obj = dynamic_cast<gsAxelTrimSurf *>(d->data) ) \
+        obj-> method (arg1);
+//
 
 class gsGeometryDialogPrivate
 {
@@ -52,10 +78,7 @@ public:
 
     // Control point box
     QSpinBox       *cpIndex;
-    QDoubleSpinBox *coordinatePoint_x;
-    QDoubleSpinBox *coordinatePoint_y;
-    QDoubleSpinBox *coordinatePoint_z;
-
+    QPushButton    *cpEdit;
 
     QPushButton *basisButton;    
 
@@ -178,12 +201,21 @@ void gsGeometryDialog::initWidget(void) {
 	}
     layoutTop->addLayout(layoutSampling);
 
-// /*
     // CONTROL POINT
-    gismo::gsGeometry<> * g = getGeometryPointer(d->data);
+    //gismo::gsGeometry<> * g = getGeometryPointer(d->data);
     d->cpIndex           = new QSpinBox(this);
-    d->cpIndex->setMaximum( 1e6);
-    d->cpIndex->setMinimum(-1e6);
+    //d->cpIndex->setButtonSymbols(QAbstractSpinBox::NoButtons);
+    d->cpIndex->setMinimum(0  );
+    d->cpIndex->setMaximum(1e6);
+    QHBoxLayout *layout_cpid = new QHBoxLayout;
+    layout_cpid->addWidget(new QLabel("Control point",this));
+    layout_cpid->addWidget(d->cpIndex);
+    layoutTop->addLayout(layout_cpid);
+    d->cpEdit = new QPushButton("Edit",this);
+    layoutTop->addWidget(d->cpEdit);
+    layout_cpid->addWidget(d->cpEdit);
+    connect(d->cpEdit, SIGNAL(clicked()), this, SLOT(onEditCP()) );
+/*
     d->coordinatePoint_x = new QDoubleSpinBox(this);
     d->coordinatePoint_x->setRange(-1e6, 1e6);
     d->coordinatePoint_x->setValue(g->coef(0,0));
@@ -196,33 +228,19 @@ void gsGeometryDialog::initWidget(void) {
     d->coordinatePoint_z->setRange(-1e6, 1e6);
     d->coordinatePoint_z->setValue(g->coef(0,2));
     d->coordinatePoint_z->setSingleStep(0.1);
-    QHBoxLayout *layout_cpid = new QHBoxLayout;
-    layout_cpid->addWidget(new QLabel("id",this));
-    layout_cpid->addWidget(d->cpIndex);
-    QHBoxLayout *layout_coord_x = new QHBoxLayout;
-    layout_coord_x->addWidget(new QLabel("x",this));
-    layout_coord_x->addWidget(d->coordinatePoint_x);
-    QHBoxLayout *layout_coord_y = new QHBoxLayout;
-    layout_coord_y->addWidget(new QLabel("y",this));
-    layout_coord_y->addWidget(d->coordinatePoint_y);
-    QHBoxLayout *layout_coord_z = new QHBoxLayout;
-    layout_coord_z->addWidget(new QLabel("z",this));
-    layout_coord_z->addWidget(d->coordinatePoint_z);
-    layoutTop->addWidget(new QLabel("CP :",this));
-    layoutTop->addLayout(layout_cpid);
-    layoutTop->addLayout(layout_coord_x);
-    layoutTop->addLayout(layout_coord_y);
-    layoutTop->addLayout(layout_coord_z);
-
-    // when changing the value, update the gismo pointer and the display
-    connect(d->coordinatePoint_x, SIGNAL(valueChanged(double)), this, SLOT(onControlPointChanged_x(double)));
-    connect(d->coordinatePoint_y, SIGNAL(valueChanged(double)), this, SLOT(onControlPointChanged_y(double)));
-    connect(d->coordinatePoint_z, SIGNAL(valueChanged(double)), this, SLOT(onControlPointChanged_z(double)));
-    connect(d->cpIndex, SIGNAL(valueChanged(int)), this, SLOT(onControlPointIndexChanged(int)));
+    QHBoxLayout *layout_coord = new QHBoxLayout;
+    layout_coord->addWidget(d->coordinatePoint_x);
+    //QHBoxLayout *layout_coord_y = new QHBoxLayout;
+    //layout_cpid->addWidget(new QLabel("y",this));
+    layout_cpid->addWidget(d->coordinatePoint_y);
+    layout_cpid->addWidget(d->coordinatePoint_z);
+    layoutTop->addLayout(layout_coord);
+*/
+    // when changing the value, grab the new index
+    //connect(d->cpIndex, SIGNAL(valueChanged(int)), this, SLOT(onControlPointIndexChanged(int)));
 
     // When selecting a control point inside the view, update the coordinate boxes
     connect(d->data, SIGNAL(indexSelected(int)), this, SLOT(onIndexSelected(int)));
-//*/
 
     //Basis button
     d->basisButton = new QPushButton("Show basis",this);
@@ -243,7 +261,6 @@ void gsGeometryDialog::initWidget(void) {
     d->insertKnotButton = new QPushButton("Insert knot",this);
     layoutTop->addWidget(d->insertKnotButton);
     connect(d->insertKnotButton, SIGNAL(clicked()), this, SLOT(insertKnot()));
-
 
     /* Joker
     d->jokerButton = new QPushButton("Joker",this);
@@ -272,6 +289,14 @@ void gsGeometryDialog::initWidget(void) {
     connect(d->sliderOpacity, SIGNAL(sliderMoved(int)), this, SLOT(onOpacityChanged(int)));
     connect(d->lineEditShader, SIGNAL(textChanged(QString)), this, SLOT(onShaderChanged(QString)));
 
+
+
+    // G+Smo menu
+    QMenu * m = axlMenuFactory::instance()->menus().at(0);
+    QAction * a = m->actions().at(0);
+    a->setEnabled(true);
+    connect(a, SIGNAL(triggered()), this, SLOT(refineGeometry()));
+    // note: function ptr can go there instead of SLOT
 }
 
 
@@ -280,6 +305,9 @@ gsGeometryDialog::~gsGeometryDialog(void)
     delete d;
     
     d = NULL;
+
+    QAction * a = axlMenuFactory::instance()->menus().at(0)->actions().at(0);
+    a->setEnabled(false);
 }
 
 bool gsGeometryDialog::registered(void)
@@ -294,6 +322,17 @@ bool gsGeometryDialog::registered(void)
         axlInspectorObjectFactory::instance()->registerInspectorObject("SplineVolume", creategsGeometryDialog);
 }
 
+axlAbstractData * gsGeometryDialog::data(void)
+{
+    return d->data;
+}
+
+int gsGeometryDialog::selectedCp()
+{
+    return d->cpIndex->value();
+}
+
+
 axlInspectorObjectInterface *creategsGeometryDialog(void)
 {
     return new gsGeometryDialog;
@@ -301,7 +340,7 @@ axlInspectorObjectInterface *creategsGeometryDialog(void)
 
 QSize gsGeometryDialog::sizeHint(void) const
 {
-    return QSize(300, 300);
+    return QSize(600, 600);
 }
 
 void gsGeometryDialog::updateText()
@@ -327,50 +366,13 @@ void gsGeometryDialog::setData(dtkAbstractData *data)
 
 void gsGeometryDialog::onIndexSelected(int i)
 {
-    gismo::gsGeometry<> * g = getGeometryPointer(d->data);
-    --i;// zero numbering
+    //--i;// 1-based numbering? --> no.
     d->cpIndex->setValue(i);
-    d->coordinatePoint_x->setValue(g->coef(i,0));
-    d->coordinatePoint_y->setValue(g->coef(i,1));
-    d->coordinatePoint_z->setValue(g->coef(i,2));
-}
-
-void gsGeometryDialog::onControlPointChanged_x(double c)
-{
-    // assume 3D cps
-    getGeometryPointer(d->data)->coef(d->cpIndex->value(),0)= c;
-    d->data->touchGeometry();
-    emit update();
-}
-
-void gsGeometryDialog::onControlPointChanged_y(double c)
-{
-    // assume 3D cps
-    getGeometryPointer(d->data)->coef(d->cpIndex->value(),1)= c;
-    d->data->touchGeometry();
-    emit update();
-}
-
-void gsGeometryDialog::onControlPointChanged_z(double c)
-{
-    // assume 3D cps
-    getGeometryPointer(d->data)->coef(d->cpIndex->value(),2)= c;
-    d->data->touchGeometry();
-    emit update();
-}
-
-void gsGeometryDialog::onControlPointIndexChanged(int i)
-{
-    d->coordinatePoint_x->setValue( getGeometryPointer(d->data)->coef(i,0) );
-    d->coordinatePoint_y->setValue( getGeometryPointer(d->data)->coef(i,1) );
-    d->coordinatePoint_z->setValue( getGeometryPointer(d->data)->coef(i,2) );
-
-    // does this work ???
-    //d->coordinatePoint_z->setValue( getGeometryPointer(d->data)->coef(d->cpIndex->value(),2) );
 }
 
 void gsGeometryDialog::onSamplingDataChanged_u(int numSamples)
 {
+    //CALL_DATA_METHOD(
     if ( gsAxelCurve * obj = dynamic_cast<gsAxelCurve *>(d->data) )
             obj->setNumSamples_u(numSamples);
     else 
@@ -388,16 +390,16 @@ void gsGeometryDialog::onSamplingDataChanged_u(int numSamples)
 void gsGeometryDialog::onSamplingDataChanged_v(int numSamples)
 {
     if ( gsAxelCurve * obj = dynamic_cast<gsAxelCurve *>(d->data) )
-            obj->setNumSamples_v(numSamples);
+        obj->setNumSamples_v(numSamples);
     else 
-    if ( gsAxelSurface * obj = dynamic_cast<gsAxelSurface *>(d->data) )
+        if ( gsAxelSurface * obj = dynamic_cast<gsAxelSurface *>(d->data) )
             obj->setNumSamples_v(numSamples);
-    else
-    if ( gsAxelVolume * obj = dynamic_cast<gsAxelVolume *>(d->data) )
-            obj->setNumSamples_v(numSamples);
-    else
-    if ( gsAxelTrimSurf * obj = dynamic_cast<gsAxelTrimSurf *>(d->data) )
-            obj->setNumSamples_v(numSamples);
+        else
+            if ( gsAxelVolume * obj = dynamic_cast<gsAxelVolume *>(d->data) )
+                obj->setNumSamples_v(numSamples);
+            else
+                if ( gsAxelTrimSurf * obj = dynamic_cast<gsAxelTrimSurf *>(d->data) )
+                    obj->setNumSamples_v(numSamples);
     emit update();
 }
 
@@ -683,6 +685,33 @@ void gsGeometryDialog::jokerPlay(void)
 }
 //*/
 
+void gsGeometryDialog::onEditCP(void)
+{
+    QDialogEditCP cpEdit(this);
+
+    const int ret = cpEdit.exec();
+    if ( ret == QDialog::Accepted)
+    {
+        gismo::gsGeometry<> * g = getGeometryPointer(d->data);
+        const int cp  = d->cpIndex->value();
+        const int gdim = g->geoDim();
+        g->coef(cp,0) = cpEdit.xCoord();
+        if ( gdim > 1)
+        {
+            g->coef(cp,1) = cpEdit.yCoord();
+                if ( gdim > 2)
+                    g->coef(cp,2) = cpEdit.zCoord();
+        }
+
+        d->data->touchStructure();// should be just onControlPointChange
+        d->data->touchGeometry();
+        
+        emit update();
+
+        //CALL_DATA_METHOD( samplingChanged );
+    }
+}
+
 void gsGeometryDialog::refineGeometry(void)
 {
     gsGeometryPointer myGismoData = getGeometryPointer(d->data);
@@ -695,7 +724,7 @@ void gsGeometryDialog::refineGeometry(void)
     }
 
     // Get index of the selected control point
-    const int parameter = surf->getParameter();
+    const int parameter = surf->getParameter(); // to do: replace by signal
 
     if ( gismo::gsTHBSpline<2> * hb = dynamic_cast<gismo::gsTHBSpline<2>*>(myGismoData) )
     {

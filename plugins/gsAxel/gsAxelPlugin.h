@@ -25,6 +25,9 @@ class dtkAbstractDataFactory;
 class dtkAbstractProcessFactory;
 
 class gsAxelPluginPrivate;
+class QMenu;
+
+// the G+Smo menu
 
 class GSAXELPLUGIN_EXPORT gsAxelPlugin : public dtkPlugin
 {
@@ -48,6 +51,9 @@ public:
 public:
     static dtkAbstractDataFactory *dataFactSingleton;
     static dtkAbstractProcessFactory *processFactSingleton;
+    
+protected:
+    void setupGismoMenu(void);
     
     
 private:

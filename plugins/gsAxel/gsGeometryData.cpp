@@ -25,7 +25,6 @@ const QString dataId<axlAbstractVolumeBSpline>::id  = "SplineVolume";
 
 gsGeometryPointer getGeometryPointer( axlAbstractData * axlData)
 {
-    // To do: probably static_cast is suitable here
     if(gsAxelCurve *gsData = dynamic_cast<gsAxelCurve *>(axlData))
         return gsData->getGismoPointer() ;
     else if (gsAxelSurface *gsData = dynamic_cast<gsAxelSurface *>(axlData))

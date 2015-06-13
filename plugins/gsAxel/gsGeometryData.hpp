@@ -465,8 +465,8 @@ void gsGeometryData<axlObj>::updateControlGrid()
         // this->touchGeometry();
         // this->touchGeometry();
 
-        // Q: what does update() do ?
-        // this->updated();
+        // Q: what does updated() do ?
+        this->updated();
 
     }//end if
 }
