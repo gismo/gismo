@@ -244,7 +244,7 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
     gsMatrix<unsigned> b0b = * bas0->boundary( bi.first().side() );
     //gsMatrix<unsigned> b1b = * bas1->boundary( bi.second().side() );
 
-    for( unsigned i=0; i < b0b.rows(); i++)
+    for( index_t i=0; i < b0b.rows(); i++)
     {
         // get the level of the basis function on side first()
         unsigned L = bas0->levelOf( b0b(i,0) );
@@ -257,7 +257,7 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
         // tens1 will store the tensor-index on side second()...
         gsVector<unsigned> tens1(2);
         // ...and flat1 the corresponding flat index.
-        unsigned flat1;
+        unsigned flat1 = 0;
 
         // idxUse stores the "relevant" one of the tensor indices
         // on side first(). The other index is constant for the
@@ -308,7 +308,7 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
             flat1 = bas0->tensorLevel(L).index( tens1 );
             break;
         default:
-            GISMO_ASSERT(false,"3D, huh? Not implemented yet. You can do it!");
+            GISMO_ASSERT(false,"3D case not implemented yet. You can do it!");
         }
 
         // compute the "continuous" index on second(), i.e., the index

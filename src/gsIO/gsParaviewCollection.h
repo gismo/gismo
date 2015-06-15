@@ -49,22 +49,19 @@ public:
     
     /// Constructor using a filename.
     gsParaviewCollection(std::string const & fn)
-        : counter(0)
+    : mfn(fn), counter(0)
     {
-        mfn = fn;
-        mfn.append(".pvd");
-        mfile = new std::stringstream( mfn.c_str() );
-        //GISMO_ASSERT(mfile->is_open(), "Error creating "<< mfn );
+        mfile = new std::stringstream();
 
         *mfile <<"<?xml version=\"1.0\"?>\n";
         *mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
         *mfile <<"<Collection>\n";
     }
 
-    /// Destructor: save() should be called before reaching here
+    /// Destructor
     ~gsParaviewCollection()
     {
-
+        delete mfile;
     }
 
     /// Adds a part in the collection, with complete filename (including extension) \a fn
@@ -104,6 +101,7 @@ public:
         *mfile <<"</Collection>\n";
         *mfile <<"</VTKFile>\n";
 
+        mfn.append(".pvd");
         std::ofstream f( mfn.c_str() );
         GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
         f << mfile->rdbuf();

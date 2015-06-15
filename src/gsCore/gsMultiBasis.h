@@ -183,8 +183,12 @@ public:
 
     /// @brief Returns the polynomial degree of basis \a i in component \a j,
     /// if the basis is of polynomial or piecewise polynomial type.
-    int degree(int i = 0, int comp = 0) const
-    { return m_bases[i]->degree(comp);}
+    int degree(size_t i = 0, int comp = 0) const
+    { 
+        GISMO_ASSERT( i < m_bases.size(),
+        "Invalid patch index "<<i<<" requested from gsMultiBasis" );
+        return m_bases[i]->degree(comp);
+    }
 
     /// @brief Maximum degree with respect to variable \a k.
     int maxDegree(int k) const;
@@ -199,8 +203,12 @@ public:
     int minCwiseDegree() const;
 
     /// @brief The number of basis functions in basis \a i.
-    int size(int i) const
-    { return m_bases[i]->size();}
+    int size(size_t i) const
+    {
+        GISMO_ASSERT( i < m_bases.size(),
+        "Invalid patch index "<<i<<" requested from gsMultiBasis" ); 
+        return m_bases[i]->size();
+    }
 
     /// @brief The total number of basis functions in all bases
     size_t totalSize() const
@@ -226,7 +234,8 @@ public:
     /// Return the \a i-th basis block.
     const gsBasis<T> & basis( std::size_t i ) const
     {
-        GISMO_ASSERT( i < m_bases.size(), "Invalid patch index requested from gsMultiBasis" );
+        GISMO_ASSERT( i < m_bases.size(), 
+        "Invalid patch index"<<i<<" requested from gsMultiBasis" );
         return *m_bases[i];
     }
 
@@ -281,6 +290,8 @@ public:
     /// See gsHTensorBasis::refineWithExtension() for further documentation.
     void refine(int k, gsMatrix<T> const & boxes, int refExt)
     {
+        GISMO_ASSERT( k < m_bases.size(),
+                      "Invalid patch index "<<k<<" requested from gsMultiBasis" );
         m_bases[k]->refine( boxes, refExt);
     }
 
@@ -337,6 +348,15 @@ public:
         for (size_t k = 0; k < m_bases.size(); ++k)
         {
             m_bases[k]->setDegree(i);
+        }
+    }
+
+    /// Reduce the continuity by i
+    void reduceContinuity(int const i)
+    {
+        for (size_t k = 0; k < m_bases.size(); ++k)
+        {
+            m_bases[k]->reduceContinuity(i);
         }
     }
 
