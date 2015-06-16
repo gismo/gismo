@@ -821,13 +821,13 @@ void gsHDomain<d,T>::getBoxesOnSide(boundary::side s, gsMatrix<unsigned>& b1, gs
     if( remainder == 0 ) // sides 1 (west), 3 (south/down), or 5 (front)
     {
         // if a box touches
-        for( unsigned int i = 0; i < b1.rows(); i++)
+        for( index_t i = 0; i < b1.rows(); i++)
             if( b1(i, quotient ) == 0 )
                 onSide.push_back(i);
     }
     else // remainder == 1, sides east, north/up, or back
     {
-        for( unsigned int i = 0; i < b1.rows(); i++)
+        for( index_t i = 0; i < b1.rows(); i++)
         {
             // index of upper corner
             unsigned B2( b2(i, quotient ) );
@@ -841,7 +841,7 @@ void gsHDomain<d,T>::getBoxesOnSide(boundary::side s, gsMatrix<unsigned>& b1, gs
     }
 
     // select only the boxes on side s:
-    for( unsigned i =0; i < onSide.size(); i++)
+    for( unsigned i=0; i < onSide.size(); i++)
     {
         b1.row(i) = b1.row( onSide[i] );
         b2.row(i) = b2.row( onSide[i] );

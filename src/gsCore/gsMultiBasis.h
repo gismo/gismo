@@ -288,7 +288,7 @@ public:
     /// on patch \em k with extension \em refExt.
     ///
     /// See gsHTensorBasis::refineWithExtension() for further documentation.
-    void refine(int k, gsMatrix<T> const & boxes, int refExt)
+    void refine(size_t k, gsMatrix<T> const & boxes, int refExt)
     {
         GISMO_ASSERT( k < m_bases.size(),
                       "Invalid patch index "<<k<<" requested from gsMultiBasis" );
