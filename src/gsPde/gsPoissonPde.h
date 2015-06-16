@@ -120,7 +120,7 @@ public:
     }
 
     gsPiecewiseFunction<T> * rhsField() const { return m_rhs; }
-    gsFunction<T> *          rhs(index_t k=0)      const { return &(m_rhs->operator[](k)); }
+    const gsFunction<T> *          rhs(index_t k=0)      const { return &(m_rhs->operator[](k)); }
 
     virtual int numUnknowns() const     {return 1;}
 

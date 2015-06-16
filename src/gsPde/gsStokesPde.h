@@ -33,7 +33,7 @@ protected:
     using gsPde<T>::m_solution;
 public:
     gsStokesPde(const gsMultiPatch<T> &domain, const gsBoundaryConditions<T> &bc, gsFunction<T> * rhs, gsFunction<T> * sol = 0 )
-        : gsPde<T>(domain,bc), m_rhs(rhs), m_viscosity(0.001)
+        : gsPde<T>(domain,bc), m_rhs(new gsPiecewiseFunction<T>(*rhs, domain.nPatches())), m_viscosity(0.001)
     { 
         this->m_unknownDim.resize(2);
         this->m_unknownDim[0] = m_domain.dim();
@@ -52,7 +52,7 @@ public:
     }
 
     gsStokesPde(const gsMultiPatch<T> &domain, const gsBoundaryConditions<T> &bc, const gsFunction<T> & rhs)
-        : gsPde<T>(domain,bc), m_rhs(rhs.clone()), m_viscosity(0.001)
+        : gsPde<T>(domain,bc), m_rhs(new gsPiecewiseFunction<T>(rhs, domain.nPatches())), m_viscosity(0.001)
     { 
         this->m_unknownDim.resize(2);
         this->m_unknownDim[0] = m_domain.dim();
@@ -60,14 +60,14 @@ public:
     }
     // COMPATIBILITY CONSTRUCTORS, DO NOT USE
     gsStokesPde( const gsFunction<T> &rhs, int domdim)
-        :         m_rhs(rhs.clone()), m_viscosity(0.001)
+        :         m_rhs(new gsPiecewiseFunction<T>(rhs)), m_viscosity(0.001)
     {
         this->m_unknownDim.resize(2);
         this->m_unknownDim[0] = domdim;
         this->m_unknownDim[1] = 1;
     }
     gsStokesPde( const gsFunction<T> &rhs, int domdim, const gsFunction<T> &sol)
-        :         m_rhs(rhs.clone()), m_viscosity(0.001)
+        :         m_rhs(new gsPiecewiseFunction<T>(rhs)), m_viscosity(0.001)
     {
         this->m_unknownDim.resize(2);
         this->m_unknownDim[0] = domdim;
@@ -80,7 +80,8 @@ public:
         delete m_rhs;
     }
 
-    gsFunction<T> * rhs() const         { return m_rhs; }
+    const gsFunction<T>* rhs(index_t k=0) const
+    { return &(m_rhs->operator[](k)); }
     T viscocity() const                 { return m_viscosity; }
 
     /// Consistency check
@@ -105,7 +106,7 @@ public:
 	}
 
 protected:
-    gsFunction<T> * m_rhs;
+    gsPiecewiseFunction<T> * m_rhs;
     T m_viscosity;
 }; // class gsStokesPde
 
