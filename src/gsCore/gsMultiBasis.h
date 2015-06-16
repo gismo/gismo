@@ -307,26 +307,43 @@ public:
     {
         size_t kmax = 2*bivec.size();
         size_t k = 0;
-        bool somethingChanged = false;
+        bool sthChanged = false;
+        bool change = false;
         do
         {
-            somethingChanged = false;
-            for( size_t i = 0; i < bivec.size(); ++i )
-                somethingChanged = ( somethingChanged || repairInterface( bivec[i] ) );
-            k++; // just to be sure this can't go wrong
+            sthChanged = false;
+            for( size_t i = 0; i < bivec.size(); i++ )
+            {
+                change = repairInterface( bivec[i] );
+                sthChanged = sthChanged || change;
+            }
+            k++; // just to be sure this cannot go on infinitely
         }
-        while( somethingChanged && k <= kmax );
+        while( sthChanged && k <= kmax );
     }
 
     /** @brief Checks if the interface is fully matching, and if not, repairs it.
     *
+    * Same as repairInterface(), but only for 2D and a bit more efficient.
+    *
+    * \returns true, if something was repaired, i.e., if the mesh on the interface was changed.
+    */
+    bool repairInterface2d( const boundaryInterface & bi );
+
+    /** @brief Checks if the interface is fully matching, and if not, repairs it.
+    *
     * \remarks Designed for gsHTensorBasis and derived bases.
-    * Assumes that the meshes on all levels of the gsHTensorBasis
-    * are fully matching.
+    * Assumes that the respective meshes on all levels of the
+    * gsHTensorBasis are fully matching.
     *
     * \returns true, if something was repaired, i.e., if the mesh on the interface was changed.
     */
     bool repairInterface( const boundaryInterface & bi );
+
+    /** @brief Is called by repairInterface(), templated over dimension.
+     */
+    template<unsigned d>
+    bool repairInterfaceImpl( const boundaryInterface & bi );
 
     /// @brief Elevate the degree of every basis by the given amount.
     void degreeElevate(int const& i = 1, int const dir = -1)
@@ -455,6 +472,7 @@ public:
      * @param mapper the gsDofMapper which should know that
      * these interface-DOFs are matched.
      */
+    template<unsigned d>
     void matchInterfaceHTensor(const boundaryInterface & bi,
                                gsDofMapper & mapper) const;
 

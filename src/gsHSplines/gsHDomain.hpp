@@ -779,15 +779,37 @@ template<unsigned d, class T>
 void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level) const
 {
     std::vector<std::vector<unsigned int> > boxes;
+
+    // get all boxes in vector-format
     getBoxes_vec(boxes);
-    for(unsigned int i = 0; i < boxes.size(); i++){
-        if ((boxes[i][0]==boxes[i][2]) || (boxes[i][1]==boxes[i][3])){
+
+    // remove empty boxes
+    // (i.e., those where lower and upper corner are the same)
+    for(unsigned int i = 0; i < boxes.size(); i++)
+    {
+        if( (boxes[i][0]==boxes[i][d+0]) || (boxes[i][1]==boxes[i][d+1]) )
+        {
             boxes.erase(boxes.begin()+i);
             i--;
         }
+        else if( d == 3 )
+        {
+            if( boxes[i][2]==boxes[i][d+2] )
+            {
+                boxes.erase(boxes.begin()+i);
+                i--;
+            }
+
+        }
+
     }
 
+    // connect boxes which have the same levels and are
+    // are aligned such that their union again is an
+    // axis-aligned box.
     connect_Boxes(boxes);
+
+    // write the result into b1, b2, and level
     b1.resize(boxes.size(),d);
     b2.resize(boxes.size(),d);
     level.resize(boxes.size());
@@ -889,9 +911,24 @@ void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
     }
 }
 
+template<unsigned d, class T> void
+gsHDomain<d,T>::connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) const
+{
+    switch( d )
+    {
+    case 2:
+        connect_Boxes2d(boxes);
+        break;
+    case 3:
+        connect_Boxes3d(boxes);
+        break;
+    default:
+        GISMO_ASSERT(false,"dimension other than 2 or 3");
+    }
+}
 
 template<unsigned d, class T> void 
-gsHDomain<d,T>::connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) const
+gsHDomain<d,T>::connect_Boxes2d(std::vector<std::vector<unsigned int> > &boxes) const
 {
     bool change = true;
     while(change){
@@ -901,7 +938,9 @@ gsHDomain<d,T>::connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) co
         {
             for(int j = i+1; j < s; j++)
             {
-                if(boxes[i][4]==boxes[j][4]){
+                // if the levels are the same:
+                if(boxes[i][4]==boxes[j][4])
+                {
                     if( (boxes[i][0]==boxes[j][0]) && (boxes[i][2]==boxes[j][2]))
                     {
                         if(boxes[i][1]==boxes[j][3])
@@ -946,6 +985,83 @@ gsHDomain<d,T>::connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) co
         }
     }
     //std::cout<<"in the connecting fucntion"<<boxes.size()<<std::endl;
+}
+
+// Needs some testing, chould probably replace the 2d-version.
+// For the moment, keep the old, running 2d-version.
+template<unsigned d, class T> void
+gsHDomain<d,T>::connect_Boxes3d(std::vector<std::vector<unsigned int> > &boxes) const
+{
+    bool change = true;
+    while(change)
+    {
+        change =  false;
+        int s = boxes.size();
+        for(int i = 0; i < s;i++)
+        {
+        for(int j = i+1; j < s; j++)
+        {
+        if(boxes[i][2*d]==boxes[j][2*d]) // if the levels are the same
+        {
+            unsigned nmCoordLo = 0;
+            unsigned nmCoordUp = 0;
+            unsigned nmCountUp = 0;
+            unsigned nmCountLo = 0;
+
+            // Compare the lower and upper corners of the boxes
+            // coordinate-wise, and check if there are differences.
+            // If there are differences, count and store the coordinate
+            for( int k=0; k < d; k++)
+            {
+                if( boxes[i][k] != boxes[j][k] )
+                {
+                    nmCountLo++;
+                    nmCoordLo = k;
+                }
+
+                if( boxes[i][d+k] != boxes[j][d+k] )
+                {
+                    nmCountUp++;
+                    nmCoordUp = k;
+                }
+            }
+
+            // The boxes can only be merged, if
+            // the lower and upper corners are the same,
+            // except in one coordinate direction.
+            if( nmCountLo == 1
+                    && nmCountUp == 1
+                    && nmCoordLo == nmCoordUp )
+            {
+
+                if( boxes[i][nmCoordLo] == boxes[j][d+nmCoordUp] )
+                {
+                    // box i is "on top" of box j.
+                    // It inherits the lower corner from box j:
+                    boxes[i][nmCoordLo] = boxes[j][nmCoordLo];
+                    boxes.erase( boxes.begin()+j );
+                    s--;
+                    j--;
+                    change = true;
+                }
+
+                if( boxes[i][d+nmCoordUp] == boxes[i][nmCoordLo] )
+                {
+                    // box i is "below" of box j.
+                    // It inherits the upper corner from box j:
+                    boxes[i][d+nmCoordUp] = boxes[j][d+nmCoordUp];
+                    boxes.erase( boxes.begin()+j );
+                    s--;
+                    j--;
+                    change = true;
+                }
+            }
+
+        } // if boxes same level
+        } // for j
+        } // for i
+
+    }
 }
 
 

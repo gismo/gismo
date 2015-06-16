@@ -16,7 +16,6 @@
 #include <iterator>
 
 #include <gsCore/gsMultiPatch.h>
-//#include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsUtils/gsCombinatorics.h>
 
@@ -183,61 +182,69 @@ void gsMultiBasis<T>::getMapper(bool conforming,
 template<class T>
 void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
-    const gsHTensorBasis<2,T> * bas0 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.first().patch ] );
-    const gsHTensorBasis<2,T> * bas1 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.second().patch ] );
+    const gsHTensorBasis<2,T> * bas2d0 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.first().patch ] );
+    const gsHTensorBasis<2,T> * bas2d1 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.second().patch ] );
+    const gsHTensorBasis<3,T> * bas3d0 = dynamic_cast< const gsHTensorBasis<3,T> * >( m_bases[ bi.first().patch ] );
+    const gsHTensorBasis<3,T> * bas3d1 = dynamic_cast< const gsHTensorBasis<3,T> * >( m_bases[ bi.second().patch ] );
 
     // Check, if an gsHTensorBasis is involved, and if so,
     // call matchInterfaceHTensor
-    if( bas0 != 0 && bas1 != 0 )
-        matchInterfaceHTensor( bi, mapper );
-    else if( bas0 != 0 || bas1 != 0 )
+    if( bas2d0 != 0 && bas2d1 != 0 )
+        matchInterfaceHTensor<2>( bi, mapper );
+    else if( bas3d0 != 0 && bas3d1 != 0 )
+        matchInterfaceHTensor<3>( bi, mapper );
+    else if( bas2d0 != 0 || bas2d1 != 0 || bas3d0 != 0 || bas3d1 != 0 )
         GISMO_ASSERT(false, "One Basis is HTensor, the other is not. Or dimension is not 2. Cannot handle this. You should implement that.");
     else
     {
-    // Grab the indices to be matched
-    gsMatrix<unsigned>
-        * b1= m_bases[bi.first() .patch]->boundary( bi.first() .side() ),
-        * b2= m_bases[bi.second().patch]->boundary( bi.second().side() );
+        // Tensor-Basis-case (default)
 
-    GISMO_ASSERT( b1->rows() == b2->rows(), 
-                  "Input error, sizes do not match: "<<b1->rows()<<"!="<<b2->rows() );
+        // Grab the indices to be matched
+        gsMatrix<unsigned>
+            * b1= m_bases[bi.first() .patch]->boundary( bi.first() .side() ),
+            * b2= m_bases[bi.second().patch]->boundary( bi.second().side() );
+
+        GISMO_ASSERT( b1->rows() == b2->rows(),
+                      "Input error, sizes do not match: "<<b1->rows()<<"!="<<b2->rows() );
 
 
-    // Compute tensor structure of b1 -- to do move to tensor basis
-    const index_t d = dim();
-    const index_t p1 = bi.first().patch;
-    const index_t s1 = bi.first().direction();
-    gsVector<int>  bSize(d-1);
-    index_t c = 0;
-    for (index_t k = 0; k<d; ++k )
-    {
-        if ( k == s1 ) 
-            continue;
-        bSize[c] = m_bases[p1]->component(k).size();
-        c++;
-    }
+        // Compute tensor structure of b1 -- to do move to tensor basis
+        const index_t d = dim();
+        const index_t p1 = bi.first().patch;
+        const index_t s1 = bi.first().direction();
+        gsVector<int>  bSize(d-1);
+        index_t c = 0;
+        for (index_t k = 0; k<d; ++k )
+        {
+            if ( k == s1 )
+                continue;
+            bSize[c] = m_bases[p1]->component(k).size();
+            c++;
+        }
 
-    // Reorder the indices so that they match on the interface
-    bi.matchDofs(bSize, *b1, *b2);
+        // Reorder the indices so that they match on the interface
+        bi.matchDofs(bSize, *b1, *b2);
 
-    // All set, match interface dofs
-    for (c = 0; c<b1->size(); ++c)
-        mapper.matchDof(bi.first().patch, (*b1)(c,0), bi.second().patch, (*b2)(c,0) );
+        // All set, match interface dofs
+        for (c = 0; c<b1->size(); ++c)
+            mapper.matchDof(bi.first().patch, (*b1)(c,0), bi.second().patch, (*b2)(c,0) );
 
-    delete b1;
-    delete b2;
+        delete b1;
+        delete b2;
     } // if-else
 }
 
 template<class T>
+template<unsigned dim>
 void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
-    const gsHTensorBasis<2,T> * bas0 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.first().patch ] );
-    const gsHTensorBasis<2,T> * bas1 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.second().patch ] );
+    const gsHTensorBasis<dim,T> * bas0 = dynamic_cast< const gsHTensorBasis<dim,T> * >( m_bases[ bi.first().patch ] );
+    const gsHTensorBasis<dim,T> * bas1 = dynamic_cast< const gsHTensorBasis<dim,T> * >( m_bases[ bi.second().patch ] );
 
     // see if the orientation is preserved on side second()
     const gsVector<bool> dirOrient = bi.dirOrientation();
-    bool orientPreserv = dirOrient[ ( bi.first().direction() + 1 ) % 2 ];
+
+    const gsVector<int> dirMap = bi.dirMap();
 
     // get the global indices of the basis functions which are
     // active on the interface
@@ -254,66 +261,54 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
         // ... and change it to the tensor-index.
         gsVector<unsigned> tens0 = bas0->tensorLevel(L).tensorIndex( flat0 );
 
-        // tens1 will store the tensor-index on side second()...
-        gsVector<unsigned> tens1(2);
-        // ...and flat1 the corresponding flat index.
+        // tens1 will store the tensor-index on side second(),...
+        gsVector<unsigned> tens1(dim);
+        // ...flat1 the corresponding flat index
+        // (single-number on level)...
         unsigned flat1 = 0;
+        // ...and cont1 the corresponding continued (global) index.
+        unsigned cont1 = 0;
 
-        // idxUse stores the "relevant" one of the tensor indices
-        // on side first(). The other index is constant for the
-        // whole domain side, right?
-        unsigned idxUse;
-        if( bi.first().direction() == 0 ) // west or east
-            idxUse = tens0[1];
-        else
-            idxUse = tens0[0];
+        // get the sizes of the components of the tensor-basis on this level,
+        // i.e., the sizes of the univariate bases corresponding
+        // to the respective coordinate directions
+        gsVector<unsigned> N(dim);
+        for( index_t j=0; j < dim; j++)
+            N[j] = bas1->tensorLevel(L).component(j).size();
 
-        // Size of the tensor-product basis of level L on
-        // interface side second().
-        unsigned N0 = bas1->tensorLevel(L).component(0).size();
-        unsigned N1 = bas1->tensorLevel(L).component(1).size();
-
-        switch( bi.second().side().index() )
+        // get the tensor-index of the basis function on level L on
+        // second() that should be matched with flatp/tens0
+        for( unsigned j=0; j<dim; j++)
         {
-        case 1: // west
-            tens1[0] = 0;
-            if( orientPreserv )
-                tens1[1] = idxUse;
+            // coordinate direction j on first() gets
+            // mapped to direction jj on second()
+            unsigned jj = dirMap[j];
+            // store the respective component of the tensor-index
+            tens1[jj] = tens0[j];
+            if( jj == bi.second().direction() )
+            {
+                // if jj is the direction() of the interface,
+                // however, we need either the first
+                // or last basis function
+                if( bi.second().parameter() ) // true = 1 = end
+                    tens1[jj] = N[jj]-1;
+                else
+                    tens1[jj] = 0;
+            }
             else
-                tens1[1] = N1-1 - idxUse;
-            flat1 = bas1->tensorLevel(L).index( tens1 );
-            break;
-        case 2: // east
-            tens1[0] = N0-1;
-            if( orientPreserv )
-                tens1[1] = idxUse;
-            else
-                tens1[1] = N1-1 - idxUse;
-            flat1 = bas0->tensorLevel(L).index( tens1 );
-            break;
-        case 3: // south
-            tens1[1] = 0;
-            if( orientPreserv )
-                tens1[0] = idxUse;
-            else
-                tens1[0] = N0-1 - idxUse;
-            flat1 = bas1->tensorLevel(L).index( tens1 );
-            break;
-        case 4: // north
-            tens1[1] = N1-1;
-            if( orientPreserv )
-                tens1[0] = idxUse;
-            else
-                tens1[0] = N0-1 - idxUse;
-            flat1 = bas0->tensorLevel(L).index( tens1 );
-            break;
-        default:
-            GISMO_ASSERT(false,"3D case not implemented yet. You can do it!");
+            {
+                // otherwise, check if the orientation is
+                // preserved. If necessary, flip it.
+                if( !dirOrient[j] )
+                    tens1[jj] = N[jj]-1 - tens1[jj];
+            }
+
         }
+        flat1 = bas1->tensorLevel(L).index( tens1 );
 
         // compute the "continuous" index on second(), i.e., the index
         // in the numbering which is global over all levels.
-        unsigned cont1 = bas1->flatTensorIndexToHierachicalIndex( flat1, L );
+        cont1 = bas1->flatTensorIndexToHierachicalIndex( flat1, L );
 
         // finally, match these two degrees of freedom
         mapper.matchDof( bi.first().patch, b0b(i,0), bi.second().patch, cont1 );
@@ -324,6 +319,253 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
 template<class T>
 bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
 {
+    bool changed = false;
+    switch( this->dim() )
+    {
+    case 2:
+        changed = repairInterfaceImpl<2>( bi );
+        break;
+    case 3:
+        changed = repairInterfaceImpl<3>( bi );
+        break;
+    default:
+        GISMO_ASSERT(false,"wrong dimension");
+    }
+    return changed;
+}
+
+template<class T>
+template<unsigned dim>
+bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
+{
+    // get direction and orientation maps
+    const gsVector<bool> dirOrient = bi.dirOrientation();
+    const gsVector<int> dirMap= bi.dirMap();
+
+    // get the bases of both sides as gsHTensorBasis
+    const gsHTensorBasis<dim,T> * bas0 = dynamic_cast< const gsHTensorBasis<dim,T> * >( m_bases[ bi.first().patch ] );
+    const gsHTensorBasis<dim,T> * bas1 = dynamic_cast< const gsHTensorBasis<dim,T> * >( m_bases[ bi.second().patch ] );
+
+    GISMO_ASSERT( bas0 != 0 && bas1 != 0, "Cannot cast basis as needed.");
+
+    gsMatrix<unsigned> lo0;
+    gsMatrix<unsigned> up0;
+    gsVector<unsigned> level0;
+    gsMatrix<unsigned> lo1;
+    gsMatrix<unsigned> up1;
+    gsVector<unsigned> level1;
+
+    unsigned idxExponent;
+
+    // get the higher one of both indexLevels
+    unsigned indexLevelUse = ( bas0->tree().getIndexLevel() > bas1->tree().getIndexLevel() ? bas0->tree().getIndexLevel() : bas1->tree().getIndexLevel() );
+    unsigned indexLevelDiff0 = indexLevelUse - bas0->tree().getIndexLevel();
+    unsigned indexLevelDiff1 = indexLevelUse - bas1->tree().getIndexLevel();
+
+    // get upper corners, but w.r.t. level "indexLevelUse"
+    gsVector<unsigned> upperCorn0 = bas0->tree().upperCorner();
+    gsVector<unsigned> upperCorn1 = bas1->tree().upperCorner();
+    for( index_t i=0; i < dim; i++)
+    {
+        upperCorn0[i] = upperCorn0[i] << indexLevelDiff0;
+        upperCorn1[i] = upperCorn1[i] << indexLevelDiff1;
+    }
+
+    GISMO_ASSERT( upperCorn0[0] == upperCorn1[0] &&
+            upperCorn0[1] == upperCorn1[1], "The meshes are not matching as they should be!");
+    if( dim == 3 )
+        GISMO_ASSERT( upperCorn0[2] == upperCorn1[2], "The meshes are not matching as they should be!");
+
+    // get the box-representation of the gsHDomain on the interface
+    bas0->tree().getBoxesOnSide( bi.first().side(),  lo0, up0, level0);
+    bas1->tree().getBoxesOnSide( bi.second().side(), lo1, up1, level1);
+
+    // Compute the indices on the same level (indexLevelUse)
+    idxExponent = ( indexLevelUse - bas0->tree().getMaxInsLevel());
+    for( index_t i=0; i < lo0.rows(); i++)
+        for( index_t j=0; j < dim; j++)
+        {
+            lo0(i,j) = lo0(i,j) << idxExponent;
+            up0(i,j) = up0(i,j) << idxExponent;
+        }
+    idxExponent = ( indexLevelUse - bas1->tree().getMaxInsLevel());
+    for( index_t i=0; i < lo1.rows(); i++)
+        for( index_t jj=0; jj < dim; jj++)
+        {
+            // Computation done via dirMap, because...
+            unsigned j = dirMap[jj];
+            lo1(i,j) = lo1(i,j) << idxExponent;
+            up1(i,j) = up1(i,j) << idxExponent;
+
+            //... we also have to check whether the orientation
+            // is preserved or not.
+            if( !dirOrient[jj] )
+            {
+                unsigned tmp = upperCorn1[j] - lo1(i,j);
+                lo1(i,j)  = upperCorn1[j] - up1(i,j);
+                up1(i,j)  = tmp;
+            }
+        }
+
+    // Find the merged interface mesh with
+    // the respective levels.
+    // Not efficient, but simple to implement.
+    // If you want to improve it, go ahead! :)
+
+    // a, b will correspond to the coordinate
+    // directions which "span" the interface
+    unsigned a0, b0, a1, b1;
+    // c corresponds to the coordinate direction which
+    // defines the interface-side by being set to 0 or 1
+    unsigned c0, c1;
+    switch( bi.first().direction() )
+    {
+    case 0:
+        a0 = 1; b0 = 2; c0 = 0;
+        break;
+    case 1:
+        a0 = 0; b0 = 2; c0 = 1;
+        break;
+    case 2:
+        a0 = 0; b0 = 1; c0 = 2;
+        break;
+    }
+
+    // If dim == 2, the "b"'s are not needed.
+    // Setting them to the "a"'s will
+    // result in some steps and tests being repeated,
+    // but the implementation is inefficient anyways...
+    if( dim == 2 )
+        b0 = a0;
+
+    a1 = dirMap[a0];
+    b1 = dirMap[b0];
+    c1 = dirMap[c0];
+
+    // Run through all possible pairings of
+    // boxes and see if they overlap.
+    // If so, their overlap is a box of the merged
+    // interface mesh.
+    std::vector< std::vector<unsigned> > iU;
+    for( index_t i0 = 0; i0 < lo0.rows(); i0++)
+        for( index_t i1 = 0; i1 < lo1.rows(); i1++)
+        {
+            if(     lo0(i0,a0) < up1(i1,a1) &&
+                    lo0(i0,b0) < up1(i1,b1) &&
+                    lo1(i1,a1) < up0(i0,a0) &&
+                    lo1(i1,b1) < up0(i0,b0) )// overlap
+            {
+                std::vector<unsigned> tmp;
+                tmp.push_back( std::max( lo0(i0,a0), lo1(i1,a1) ) );
+                tmp.push_back( std::max( lo0(i0,b0), lo1(i1,b1) ) ); // duplicate in 2D
+                tmp.push_back( std::min( up0(i0,a0), up1(i1,a1) ) );
+                tmp.push_back( std::min( up0(i0,b0), up1(i1,b1) ) ); // duplicate in 2D
+                tmp.push_back( level0[i0] );
+                tmp.push_back( level1[i1] );
+                iU.push_back( tmp );
+            }
+        }
+
+    std::vector<unsigned> refElts0;
+    std::vector<unsigned> refElts1;
+    std::vector<unsigned> tmpvec(1+2*dim);
+    for( size_t i = 0; i < iU.size(); i++)
+    {
+        // the levels on both sides of the
+        // box of the interface
+        unsigned L0 = iU[i][4];
+        unsigned L1 = iU[i][5];
+
+        if( L0 != L1 ) // one side has to be refined
+        {
+            unsigned a, b, c, Luse;
+            unsigned refSideIndex;
+            unsigned upperCornOnLevel;
+
+            if( L0 < L1 ) // refine first()
+            {
+                Luse = L1;
+                a = a0;
+                b = b0;
+                c = c0;
+                refSideIndex = bi.first().side().index();
+                upperCornOnLevel = ( upperCorn0[c] >> ( indexLevelUse - Luse ) );
+            }
+            else // refine second()
+            {
+                Luse = L0;
+                a = a1;
+                b = b1;
+                c = c1;
+                refSideIndex = bi.second().side().index();
+                upperCornOnLevel = ( upperCorn1[c] >> ( indexLevelUse - Luse ) );
+            }
+
+            // store the new level
+            tmpvec[0] = Luse;
+            // store the box on the interface that
+            // has to be refined to that new level
+            tmpvec[1+a] = iU[i][0] >> ( indexLevelUse - Luse );
+            tmpvec[1+dim+a] = iU[i][2] >> ( indexLevelUse - Luse );
+            if( dim == 3 )
+            {
+                tmpvec[1+b] = iU[i][1] >> ( indexLevelUse - Luse );
+                tmpvec[1+dim+b] = iU[i][3] >> ( indexLevelUse - Luse );
+            }
+
+            if( refSideIndex % 2 == 1 )
+            {
+                // west, south, front:
+                tmpvec[1+c] = 0;
+                tmpvec[1+dim+c] = 1;
+            }
+            else
+            {
+                // east, north, back:
+                tmpvec[1+c] = upperCornOnLevel-1;
+                tmpvec[1+dim+c] = upperCornOnLevel;
+            }
+
+            if( Luse == L1 ) // refine first
+            {
+                // no messing around with orientation and
+                // maps needed.
+                for( unsigned j=0; j < tmpvec.size(); j++)
+                    refElts0.push_back( tmpvec[j] );
+            }
+            else // refine second
+            {
+                // if the orientation is changed, flip where necessary
+                for( index_t jj = 0; jj < dim; jj++)
+                {
+                    unsigned j = dirMap[jj];
+                    if( j != c && !dirOrient[ jj ] )
+                    {
+                        upperCornOnLevel = ( upperCorn1[j] >> ( indexLevelUse - Luse ) );
+                        unsigned tmp = tmpvec[1+j];
+                        tmpvec[1+j]     = upperCornOnLevel - tmpvec[1+dim+j];
+                        tmpvec[1+dim+j] = upperCornOnLevel - tmp;
+                    }
+                }
+
+                for( unsigned j=0; j < (1+2*dim); j++)
+                    refElts1.push_back( tmpvec[j] );
+            }
+        }
+    }
+
+    if( refElts0.size() > 0 )
+        m_bases[ bi.first().patch ]->refineElements( refElts0 );
+    if( refElts1.size() > 0 )
+        m_bases[ bi.second().patch ]->refineElements( refElts1 );
+
+    return ( ( refElts0.size() > 0 ) || ( refElts1.size() > 0 ) );
+}
+
+
+template<class T>
+bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
+{
     // get direction and orientation maps
     const gsVector<bool> dirOrient = bi.dirOrientation();
 
@@ -331,11 +573,12 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
     const gsHTensorBasis<2,T> * bas0 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.first().patch ] );
     const gsHTensorBasis<2,T> * bas1 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.second().patch ] );
 
+    GISMO_ASSERT( bas0 != 0 && bas1 != 0, "Cannot cast basis as needed.");
+
     gsMatrix<unsigned> lo;
     gsMatrix<unsigned> up;
     gsVector<unsigned> level;
 
-    int dir;
     unsigned idxExponent;
 
     // get the higher one of both indexLevels
@@ -346,28 +589,28 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
     // get the box-representation of the gsHDomain on the interface
     bas0->tree().getBoxesOnSide( bi.first().side(), lo, up, level);
 
-    dir = ( bi.first().direction() + 1 ) % 2;
-    bool orientPreserv = dirOrient[ dir ];
+    int dir0 = ( bi.first().direction() + 1 ) % 2;
+    bool orientPreserv = dirOrient[ dir0 ];
     // for mapping the indices to the same
     idxExponent = ( indexLevelUse - bas0->tree().getMaxInsLevel());
     gsMatrix<unsigned> intfc0( lo.rows(), 3 );
     for( index_t i=0; i < lo.rows(); i++)
     {
-        intfc0(i,0) = lo(i,dir) << idxExponent;
-        intfc0(i,1) = up(i,dir) << idxExponent;
+        intfc0(i,0) = lo(i,dir0) << idxExponent;
+        intfc0(i,1) = up(i,dir0) << idxExponent;
         intfc0(i,2) = level[i];
     }
     intfc0.sortByColumn(0);
 
     // get the box-representation of the gsHDomain on the interface
     bas1->tree().getBoxesOnSide( bi.second().side(), lo, up, level);
-    dir = ( bi.second().direction() + 1 ) % 2;
+    int dir1 = ( bi.second().direction() + 1 ) % 2;
     idxExponent = ( indexLevelUse - bas1->tree().getMaxInsLevel());
     gsMatrix<unsigned> intfc1( lo.rows(), 3 );
     for( index_t i=0; i < lo.rows(); i++)
     {
-        intfc1(i,0) = lo(i,dir) << idxExponent;
-        intfc1(i,1) = up(i,dir) << idxExponent;
+        intfc1(i,0) = lo(i,dir1) << idxExponent;
+        intfc1(i,1) = up(i,dir1) << idxExponent;
         intfc1(i,2) = level[i];
     }
 
@@ -388,8 +631,8 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
         // flip the knot indices
         for( index_t i=0; i < lo.rows(); i++)
         {
-            unsigned tmp = upperCorn1[dir] - intfc1(i, 1);
-            intfc1(i,1)  = upperCorn1[dir] - intfc1(i, 0);
+            unsigned tmp = upperCorn1[dir1] - intfc1(i, 1);
+            intfc1(i,1)  = upperCorn1[dir1] - intfc1(i, 0);
             intfc1(i,0)  = tmp;
         }
     }
@@ -456,7 +699,7 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
             unsigned knot0L = knot0 >> ( indexLevelUse - L1 );
             unsigned knot1L = knot1 >> ( indexLevelUse - L1 );
 
-            gsVector<unsigned> upperCornOnLevel(2);
+            unsigned upperCornOnLevel;
             switch( bi.first().side().index() )
             {
             case 1: // west
@@ -466,12 +709,11 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
                 refElts0.push_back( knot1L );
                 break;
             case 2: // east
-                upperCornOnLevel[0] = ( upperCorn0[0] >> ( indexLevelUse - L1 ) );
-                upperCornOnLevel[1] = ( upperCorn0[1] >> ( indexLevelUse - L1 ) );
+                upperCornOnLevel = ( upperCorn0[0] >> ( indexLevelUse - L1 ) );
 
-                refElts0.push_back( upperCornOnLevel[0]-1 );
+                refElts0.push_back( upperCornOnLevel-1 );
                 refElts0.push_back( knot0L );
-                refElts0.push_back( upperCornOnLevel[0] );
+                refElts0.push_back( upperCornOnLevel );
                 refElts0.push_back( knot1L );
                 break;
             case 3: // south
@@ -481,13 +723,12 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
                 refElts0.push_back( 1 );
                 break;
             case 4: // north
-                upperCornOnLevel[0] = ( upperCorn0[0] >> ( indexLevelUse - L1 ) );
-                upperCornOnLevel[1] = ( upperCorn0[1] >> ( indexLevelUse - L1 ) );
+                upperCornOnLevel = ( upperCorn0[1] >> ( indexLevelUse - L1 ) );
 
                 refElts0.push_back( knot0L );
-                refElts0.push_back( upperCornOnLevel[1]-1 );
+                refElts0.push_back( upperCornOnLevel-1 );
                 refElts0.push_back( knot1L );
-                refElts0.push_back( upperCornOnLevel[1] );
+                refElts0.push_back( upperCornOnLevel );
                 break;
             default:
                 GISMO_ASSERT(false,"3D not implemented yet. You can do it, if you want.");
@@ -505,8 +746,8 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
             if( !orientPreserv )
             {
                 unsigned tmp = knot0L;
-                knot0L = ( upperCorn1[dir] - knot1L );
-                knot1L = ( upperCorn1[dir] - tmp );
+                knot0L = ( upperCorn1[dir1] - knot1L );
+                knot1L = ( upperCorn1[dir1] - tmp );
             }
             // push to level L0
             knot0L = knot0L >> ( indexLevelUse - L0 );

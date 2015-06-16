@@ -596,6 +596,8 @@ private:
 
     ///connect the boxes returned from quadtree
     void connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) const;
+    void connect_Boxes2d(std::vector<std::vector<unsigned int> > &boxes) const;
+    void connect_Boxes3d(std::vector<std::vector<unsigned int> > &boxes) const;
     void connect_Boxes_2(std::vector<std::vector<unsigned int> > &boxes) const;
 
     /// For each x-coordinate delete repeated parts of vertical segments.
