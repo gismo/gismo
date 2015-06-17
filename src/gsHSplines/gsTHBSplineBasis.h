@@ -587,17 +587,26 @@ public:
    ///returns transfer matrices betweend the levels of the given hierarchical spline
    void transferbyLvl (std::vector<gsMatrix<T> >& result);
 
-    /// TO DO   
+
+    /// @brief Decomposes domain of the THB-Spline-Basis into partitions.
+    ///
+    /// Each partiotion describes an area of the same level, this area is contained in 
+    /// a bounding box (boundaryAABB) and has its own trimming curves (trimmCurves).
+    /// Look above for the definition of types (AxisAlignedBoundingBox, TrimmingCurves).
+    ///
+    /// @param[out] boundaryAABB axis aligned bounding boxes -- "each" trimCurve has it own box
+    /// @param[out] trimCurves trimming curves, each trimming curve describes a region of the same level
     void decomposeDomain(typename gsTHBSplineBasis::AxisAlignedBoundingBox& boundaryAABB,
 			 typename gsTHBSplineBasis::TrimmingCurves& trimCurves) const;
 
-    /// TO DO
+    /// @brief Returns a tensor B-Spline patch defined by boundingBox.
+    ///
+    /// The B-Spline patch knots are the same as the THB-Spline-Basis knots from the input
+    /// level. Geometry of the patch is defined via input coefficients.
     gsTensorBSpline<d, T, gsCompactKnotVector<T> >
     getBSplinePatch(const std::vector<unsigned>& boundingBox,
 		    const unsigned level,
 		    const gsMatrix<T>& geomCoefs) const;
-
-
 
 private:
     /**
@@ -637,10 +646,15 @@ private:
     gsMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
                                    const std::vector<gsSortedVector<unsigned> >& n,
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
+    
 
+    // ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    // Utility functions for decomposeDomain
+    // ......................................................................
+    
     /// @brief Checks if the first box is completely inside second box.
     /// 
-    /// Utility function for decomposeDomain member function.
+    /// Utility function for the decomposeDomain member function.
     bool isFirstBoxCompletelyInsideSecond(const std::vector<unsigned>& firstBox,
 					  const std::vector<unsigned>& secondBox) const
     {
@@ -651,15 +665,57 @@ private:
 
     /// @brief Checks if the boxes are the same
     ///
-    /// Utility function for decomposeDomain member function.
+    /// Utility function for the decomposeDomain member function.
     bool areBoxesTheSame(const std::vector<unsigned>& firstBox,
 			 const std::vector<unsigned>& secondBox) const
     {
 	return firstBox[0] == secondBox[0] && firstBox[1] == secondBox[1] &&
   	       firstBox[2] == secondBox[2] && firstBox[3] == secondBox[3];
     }
+    
+    /// @brief Breaks the cycles of polylines and returns updated polylines.
+    ///
+    /// domainBoundaryParams can return polylines with cycles, this function 
+    /// decomposes the cycles and returns polylines without cycles. Look 
+    /// above for the definition of types (AxisAlignedBoundingBox, TrimmingCurves).
+    ///
+    /// @param aabb axis aligned bounding boxes each polyline has it own box
+    /// @param polylines polyline describing area with the same level
+    void breakCycles(typename gsTHBSplineBasis::AxisAlignedBoundingBox& aabb,
+		     typename gsTHBSplineBasis::Polylines& polylines) const;
 
 
+    /// @brief Identify if the polyline can be split into two cycles.
+    ///
+    /// @param[in] polyline description of polyline
+    /// @param[out] point the point where two cycles meet (if there are two cycles)
+    /// @return the index of the segment with the point 
+    index_t identifyCycle(const std::vector< std::vector< real_t> >& polyline,
+			  std::pair<real_t, real_t>& point) const;
+
+    
+    /// @brief Breaks polyline into two parts.
+    ///
+    /// Function splits input polyline (with al least two cycles) at given point 
+    /// into two cycles (part1 and part2). 
+    ///
+    /// @param[in] polyline input polyline with at least two cycles
+    /// @param[in] segment the index of the segment of the polyline where the point is
+    /// @param[in] point the point where two cyles in polyline meet
+    /// @param[out] part1 first cycle of polyline
+    /// @param[out] part2 second cycle of polyline
+    void breakPolylineIntoTwoParts(const std::vector< std::vector< real_t> >& polyline, 
+				   const index_t segment, 
+				   const std::pair<real_t, real_t>& point,
+				   std::vector< std::vector< real_t> >& part1, 
+				   std::vector< std::vector< real_t> >& part2) const;
+
+
+    /// @brief Finds new axis aligned bounding box for given polyline.
+    void findNewAABB(const std::vector< std::vector<real_t> >& polyline,
+		     std::vector<unsigned>& aabb) const;
+
+	
 
 private:
 

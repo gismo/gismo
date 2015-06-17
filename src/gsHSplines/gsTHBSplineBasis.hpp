@@ -1262,6 +1262,7 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
     AxisAlignedBoundingBox aabb;
     
     aabb = this->domainBoundariesParams(polylines);
+    breakCycles(aabb, polylines);
 
     int numBoundaryBoxes = 0;
     for (unsigned level = 0; level != aabb.size(); level++)
@@ -1389,6 +1390,213 @@ gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<unsigned>& boundingBox
     gsTensorBSplineBasis<d, T, gsCompactKnotVector<T> > basis(kv0, kv1);
     return gsTensorBSpline<d, T, gsCompactKnotVector<T> > (basis, newCoefs);
 }
+
+template<unsigned d, class T>
+void gsTHBSplineBasis<d, T>::breakCycles(
+    typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& aabb,
+    typename gsTHBSplineBasis<d, T>::Polylines& polylines) const
+{
+    for (std::size_t level = 0; level != polylines.size(); level++)
+    {
+	for (std::size_t line = 0; line != polylines[level].size(); line++)
+	{
+	    std::pair< real_t, real_t> point;
+	    index_t segment = identifyCycle(polylines[level][line], point);
+	    
+	    if (-1 < segment)
+	    {
+		std::vector< std::vector<real_t> > part1, part2;
+		breakPolylineIntoTwoParts(polylines[level][line], segment, point,
+					  part1, part2);
+		
+		polylines[level][line] = part1;
+		polylines[level].push_back(part2);
+		
+		std::vector<unsigned> aabb1, aabb2;
+		findNewAABB(part1, aabb1);
+		findNewAABB(part2, aabb2);
+		
+		aabb[level][line] = aabb1;
+		aabb[level].push_back(aabb2);
+		
+		// very important, this will check current line again if it has more cycles
+		line--; 
+	    }
+	}
+    }
+}
+
+// ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+// utility funcitions for breakCycles
+// ......................................................................
+
+// utility funcition for breakCycles
+template<unsigned d, class T>
+index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< real_t> >& line,
+					      std::pair<real_t, real_t>& point) const
+{
+    std::map< std::pair<real_t, real_t>, index_t > times;
+    std::map< std::pair<real_t, real_t>, index_t > index;
+    
+    for (std::size_t seg = 0; seg != line.size(); seg++)
+    {
+	const std::size_t seg1 = (seg + 1) % line.size();
+	
+	std::pair<real_t, real_t> point( line[seg][0], line[seg][1] );
+	if (!((point.first == line[seg1][0] && point.second == line[seg1][1]) ||
+	      (point.first == line[seg1][2] && point.second == line[seg1][3])))
+	{
+	    point.first = line[seg][2];
+	    point.second = line[seg][3];
+	}
+	
+	std::size_t count = times.count(point);
+	if (0 < count)
+	{
+	    times[point] += 1;
+	}
+	else
+	{
+	    times[point] = 1;
+	    index[point] = seg1;
+	}
+    }
+
+    typedef std::map< std::pair<real_t, real_t>, index_t>::iterator iterator;
+    for (iterator it = times.begin(); it != times.end(); it++)
+    {
+	if (it->second == 2)
+	{
+	    point = it->first;
+	    return index[it->first];
+	}
+	else if (2 < it->second)
+	{
+	    std::cout << "This sould not happen, "
+		"check the polylines from the domainBaoundariesParam" << std::endl;
+	    throw "Polylines with too many intersections";
+	}
+    }
+    return -1;
+}
+
+// utility funcition for breakCycles
+template<unsigned d, class T>
+void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
+			     const std::vector< std::vector< real_t> >& line, 
+			     const index_t segment, 
+			     const std::pair<real_t, real_t>& point,
+			     std::vector< std::vector< real_t> >& part1, 
+			     std::vector< std::vector< real_t> >& part2) const
+{
+    bool p1 = false; // inside part 1
+    bool p2 = false; // inside part 2
+    
+    index_t length = static_cast<index_t> (line.size());
+    for (index_t i = 0; i != length; i++)
+    {
+	const index_t seg = (i + segment) % length;
+	
+	if (!p1 and !p2) // start
+	{
+	    p1 = true;
+	    part1.push_back(line[seg]);
+	}
+	else // not start
+	{
+	    // we hit the point again
+	    if ((point.first == line[seg][0] && point.second == line[seg][1]) ||
+		(point.first == line[seg][2] && point.second == line[seg][3]))
+	    {
+		if (p1) // end of part 1
+		{
+		    part1.push_back(line[seg]);
+		    p1 = false;
+		    p2 = true;
+		}
+		else if (p2) // start or finish
+		{
+		    part2.push_back(line[seg]);
+		}
+	    }
+	    else
+	    {
+		if (p1)
+		{
+		    part1.push_back(line[seg]);
+		}
+		else if (p2)
+		{
+		    part2.push_back(line[seg]);
+		}
+	    }
+	}
+    }
+}
+
+// utility funcition for breakCycles
+template<unsigned d, class T>
+void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<real_t> >& polyline,
+					 std::vector<unsigned>& aabb) const
+{
+    real_t minX = polyline[0][0];
+    real_t minY = polyline[0][1];
+    real_t maxX = polyline[0][2];
+    real_t maxY = polyline[0][3];
+    
+
+    for (std::size_t seg = 0; seg != polyline.size(); seg++)
+    {
+	if (polyline[seg][0] < minX)
+	{
+	    minX = polyline[seg][0];
+	}
+	if (polyline[seg][1] < minY)
+	{
+	    minY = polyline[seg][1];
+	}
+	if (maxX < polyline[seg][2])
+	{
+	    maxX = polyline[seg][2];
+	}
+	if (maxY < polyline[seg][3])
+	{
+	    maxY = polyline[seg][3];
+	}
+    }
+    
+    unsigned maxLevel = this->maxLevel();
+    const gsCompactKnotVector<T>& kv0 = this->m_bases[maxLevel]->knots(0);
+    const gsCompactKnotVector<T>& kv1 = this->m_bases[maxLevel]->knots(1);
+    
+    aabb.resize(4);
+    for (unsigned i = 0; i != kv0.uSize(); i++)
+    {
+	if (kv0.uValue(i) <= minX)
+	{
+	    aabb[0] = i;
+	}
+	if (maxX <= kv0.uValue(i))
+	{
+	    aabb[2] = i;
+	    break;
+	}
+    }
+    
+    for (unsigned i = 0; i != kv1.uSize(); i++)
+    {
+	if (kv1.uValue(i) <= minY)
+	{
+	    aabb[1] = i;
+	}
+	if (maxY <= kv1.uValue(i))
+	{
+	    aabb[3] = i;
+	    break;
+	}
+    }
+}
+
 
 
 // --------------------------------------------------------------------------------
