@@ -32,129 +32,7 @@
 
 namespace gismo {
 
-/**
-    \brief Interface to add a local contribution to the global matrix
 
-    gsLocalToGlobalMapper objects describe how to add the element
-    contributions to the global problem matrix.
-
-    Different techniques are coded in different sub-classes.
-    The sub-classes come usually in pairs:
-        -one for the main matrix
-        -one for the right-hand-side
-    The name of sub-classes for the right-hand-side ends in Rhs and
-    they adopt a one to one correspondence of the columns.
-
-    \tparam T type of the scalar coefficients for the local matrix
-    
-    \ingroup Assembler
-**/
-
-template < typename T = real_t >
-class gsLocalToGlobalMapper{
-public:
-    virtual ~gsLocalToGlobalMapper()
-    {}
-    /**
-       \brief Adds contribution from a local matrix to a destination matrix
-
-       \param[in] activeTest    input indices for test space (rows)
-       \param[in] activeUnknown input indices for solution space (columns)
-       \param[in] locMat        local matrix to store to the global
-     */
-    virtual void store(
-            const gsMatrix<unsigned> &activeTest,
-            const gsMatrix<unsigned> &activeUnknown,
-            const gsMatrix<T>        &locMat
-            )
-    {}
-};
-
-
-
-/**
-    \brief this templated class contains the code that loops over the
-    local matrix entries and add them to the global matrix.
-
-    The actual behavior of the loop is determined by 3 policy classes:
-        - one for the transformation of the row indexes,
-        - one for the transformation of the column indexes,
-        - one for the actual addition
-
-    The classes implementing the transformation of the indexes must
-    contain a method
-
-    unsigned operator() (unsigned \pos, const gsMatrix<unsigned> &\active)
-
-    pos is the row in the matrix, active contains the local \active function indexes
-    so that the row \pos of the local matrix correspond to the function active(\pos).
-    See gsIdentityMapping, gsActiveMapping and gsDOFMappedMapping.
-
-
-    The classes implementing the writing must contain a method
-
-    void add(unsigned r, unsigned c, MatrixT::Scalar v)
-
-    where \r and \c are the indexes of the coefficient to write to
-    and \v is the value to add to the global matrix.
-    Writer classes are templated on the destination so that they can be chained.
-
-    See gsDW, gsSimmetricWriter, gsSimmetricWriter and gsMultiplierWriter.
-    
-    \ingroup Assembler
-**/
-
-template <typename TransT, typename TransU, typename Writer>
-class gsL2GBase
-        : public gsLocalToGlobalMapper<typename Writer::Scalar>
-{
-protected:
-    typedef typename Writer::Scalar T;
-private:
-    TransU m_tu;
-    TransT m_tt;
-    Writer m_wr;
-public:
-    gsL2GBase( TransT tt, TransU tu,  Writer wr)
-        : m_tu(tu), m_tt(tt), m_wr(wr)
-    {}
-    gsL2GBase( Writer wr)
-        : m_wr(wr)
-    {}
-
-    virtual void store(
-            const gsMatrix<unsigned> &activeTest,
-            const gsMatrix<unsigned> &activeUnknown,
-            const gsMatrix<T>        &locMat
-            )
-    {
-        if ( (Writer::Flags & Eigen::RowMajor) == Eigen::RowMajor )
-        {
-            for (int r=0; r < locMat.rows (); ++r)
-            {
-                int rr=m_tt(r,activeTest);
-                for (int c=0; c < locMat.cols (); ++c)
-                {
-                    int cc=m_tu(c,activeUnknown);
-                    m_wr.add(rr,cc,locMat(r,c));
-                }
-            }
-        }
-        else if ( (Writer::Flags & Eigen::ColMajor) == Eigen::ColMajor )
-        {
-            for (int c=0; c < locMat.cols (); ++c)
-            {
-                int cc=m_tu(c,activeUnknown);
-                for (int r=0; r < locMat.rows (); ++r)
-                {
-                    int rr=m_tt(r,activeTest);
-                    m_wr.add(rr,cc,locMat(r,c));
-                }
-            }
-        }
-
-    }
-};
 
 //////////////////// writer policies
 
@@ -175,7 +53,7 @@ protected:
     MatrixT &m_dest;
 public:
     gsBaseWriter(MatrixT &dest) : m_dest(dest) {}
-    void add(unsigned r, unsigned c, Scalar v) {m_dest(r,c)+=v;}
+    void add(index_t r, index_t c, Scalar v) {m_dest(r,c)+=v;}
 };
 
 
@@ -228,7 +106,7 @@ public:
     typedef ScalarT Scalar;
 public:
     static gsNullWriter<ScalarT> unique_instance;
-    void add(int r, int c, ScalarT value) {}
+    void add(index_t r, index_t c, ScalarT value) {}
 };
 
 template <typename ScalarT>
@@ -253,7 +131,7 @@ public:
 public:
     gsSymmetricWriter (ArgT dest) : m_dest(dest) {}
 
-    void add(int r, int c, Scalar value)
+    void add(index_t r, index_t c, Scalar value)
     {
         if (r>=c)
             m_dest.add(r,c,value);
@@ -283,7 +161,7 @@ public:
     gsMultiplierWriter (ArgT1 dest1, ArgT2 dest2) : m_dest1(dest1), m_dest2(dest2) {}
     gsMultiplierWriter (ArgT1 dest) : m_dest1(dest), m_dest2(dest) {}
 
-    void add(int r, int c, Scalar v)
+    void add(index_t r, index_t c, Scalar v)
     {
         m_dest1.add(r,c,v);
         m_dest2.add(c,r,v);
@@ -306,9 +184,9 @@ protected:
 public:
     gsCoeffWriter (ArgT dest, Scalar coef) : m_dest(dest), m_coef(coef) {}
 
-    void add(int r, int c, Scalar value)
+    void add(index_t r, index_t c, Scalar value)
     {
-            m_dest.add(r,c,value*m_coef);
+        m_dest.add(r,c,value*m_coef);
     }
 };
 
@@ -323,15 +201,15 @@ public:
     enum {Flags = Dest::Flags};
     typedef typename Dest::Scalar Scalar;
 protected:
-    Dest      m_dest;
-    int       m_tshift;
-    int       m_ushift;
+    Dest       m_dest;
+    index_t    m_tshift;
+    index_t    m_ushift;
 public:
-    gsBoundaryWriter (ArgT dest, int tshift,int  ushift)
+    gsBoundaryWriter (ArgT dest, index_t tshift,index_t  ushift)
         : m_dest(dest),m_tshift(tshift) ,m_ushift(ushift)
-        {}
+    {}
 
-    void add(int r, int c, Scalar value)
+    void add(index_t r, index_t c, Scalar value)
     {
         if (r>=m_tshift && c >=m_ushift)
             m_dest.add(r-m_tshift,c-m_ushift,value);
@@ -357,11 +235,11 @@ public:
 public:
     gsMultipleWriter (ArgT1 dest1,ArgT2 dest2) : m_dest1(dest1), m_dest2(dest2) {}
 
-    void add(int r, int c, Scalar value)
+    void add(index_t r, index_t c, Scalar value)
     {
-            m_dest1.add(r,c,value);
-            m_dest2.add(r,c,value);
-   }
+        m_dest1.add(r,c,value);
+        m_dest2.add(r,c,value);
+    }
 };
 
 /**
@@ -376,15 +254,15 @@ protected:
     typedef typename WriterDestType<Writer>::Argument    ArgT;
 
     Dest m_dest;
-    int m_shift_r, m_shift_c;
+    index_t m_shift_r, m_shift_c;
 public:
     enum {Flags= Dest::Flags};
     typedef typename Dest::Scalar Scalar;
 public:
-    gsShiftWriter(ArgT dest, int shift_r, int shift_c)
+    gsShiftWriter(ArgT dest, index_t shift_r, index_t shift_c)
         : m_dest(dest), m_shift_r(shift_r), m_shift_c(shift_c)
     {}
-    void add(int r, int c, Scalar v)
+    void add(index_t r, index_t c, Scalar v)
     {
         m_dest.add(r+m_shift_r,c+m_shift_c,v);
     }
@@ -420,7 +298,7 @@ public:
         : m_dest1(dest1), m_dest2(dest2), m_rlimit(r_limit),m_climit(c_limit)
     {}
 
-    void add(int r, int c, Scalar v)
+    void add(index_t r, index_t c, Scalar v)
     {
         if (r<m_rlimit)
         {
@@ -431,6 +309,296 @@ public:
         }
     }
 };
+
+
+/**
+ \brief This writer intercept writes to degrees of freedom
+ greater then a fixed amount and perform then to a second destination.
+
+ This is the mechanism used to write the matrix that produces the rhs_modification
+ when some degrees of freedom are fixed.
+**/
+template <typename Writer>
+class gsAccumulatorWriter
+{
+protected:
+    typedef typename WriterDestType<Writer>::Destination Dest;
+    typedef typename WriterDestType<Writer>::Argument    ArgT;
+    Dest m_dest;
+    index_t m_r;
+    index_t m_c;
+public:
+    enum {Flags= Dest::Flags};
+    typedef typename Dest::Scalar Scalar;
+public:
+    gsAccumulatorWriter(index_t r, index_t c, ArgT dest)
+        : m_dest(dest), m_r(r), m_c(c)
+    {}
+    void add(index_t r, index_t c, Scalar v)
+    {
+        m_dest.add(m_r,m_c,v);
+    }
+};
+
+
+/**
+    \brief Interface to add a local contribution to the global matrix
+
+    gsLocalToGlobalMapper objects describe how to add the element
+    contributions to the global problem matrix.
+
+    Different techniques are coded in different sub-classes.
+    The sub-classes come usually in pairs:
+        -one for the main matrix
+        -one for the right-hand-side
+    The name of sub-classes for the right-hand-side ends in Rhs and
+    they adopt a one to one correspondence of the columns.
+
+    \tparam T type of the scalar coefficients for the local matrix
+
+    \ingroup Assembler
+**/
+
+template < typename T = real_t >
+class gsLocalToGlobalMapper{
+public:
+    virtual ~gsLocalToGlobalMapper()
+    {}
+    /**
+       \brief Adds contribution from a local matrix to a destination matrix
+
+       \param[in] activeTest    input indices for test space (rows)
+       \param[in] activeUnknown input indices for solution space (columns)
+       \param[in] locMat        local matrix to store to the global
+     */
+    virtual void store(
+            const gsMatrix<unsigned> &activeTest,
+            const gsMatrix<unsigned> &activeUnknown,
+            const gsMatrix<T>        &locMat
+            )
+    {}
+};
+
+
+/**
+ *  use active index directly
+ */
+template < typename Writer>
+class gsL2GMapperActive : public gsLocalToGlobalMapper<typename Writer::Scalar>
+{
+protected:
+    typedef typename Writer::Scalar                      Scalar;
+    typedef typename WriterDestType<Writer>::Destination Dest;
+    typedef typename WriterDestType<Writer>::Argument    ArgT;
+
+    Dest m_wr;
+public:
+    gsL2GMapperActive(ArgT dest)
+        : m_wr(dest)
+    {
+    }
+    /**
+       \brief Adds contribution from a local matrix to a destination matrix
+
+       \param[in] activeTest    input indices for test space (rows)
+       \param[in] activeUnknown input indices for solution space (columns)
+       \param[in] locMat        local matrix to store to the global
+     */
+    virtual void store(
+            const gsMatrix<unsigned> &activeTest,
+            const gsMatrix<unsigned> &activeUnknown,
+            const gsMatrix<Scalar>   &locMat
+            )
+    {
+        if ( (Writer::Flags & Eigen::RowMajor) == Eigen::RowMajor )
+        {
+            for (index_t r=0; r < locMat.rows (); ++r)
+            {
+                index_t rr=activeTest(r);
+                for (index_t c=0; c < locMat.cols (); ++c)
+                {
+                    index_t cc=activeUnknown(c);
+                    m_wr.add(rr,cc,locMat(r,c));
+                }
+            }
+        }
+        else if ( (Writer::Flags & Eigen::ColMajor) == Eigen::ColMajor )
+        {
+            for (index_t c=0; c < locMat.cols (); ++c)
+            {
+                index_t cc=activeUnknown(c);
+                for (index_t r=0; r < locMat.rows (); ++r)
+                {
+                    index_t rr=activeTest(r);
+                    m_wr.add(rr,cc,locMat(r,c));
+                }
+            }
+        }
+    }
+};
+
+
+
+
+/**
+ *  use dof mapper
+ */
+template < typename Writer>
+class gsL2GMapperDofMapper : public gsLocalToGlobalMapper<typename Writer::Scalar>
+{
+protected:
+    typedef typename Writer::Scalar                      Scalar;
+    typedef typename WriterDestType<Writer>::Destination Dest;
+    typedef typename WriterDestType<Writer>::Argument    ArgT;
+
+    Dest m_wr;
+    const gsDofMapper &m_dofT;
+    const gsDofMapper &m_dofU;
+    const int m_patch;
+public:
+    gsL2GMapperDofMapper(ArgT dest, const gsDofMapper &dofMap,int patch=0)
+        : m_wr(dest), m_dofT(dofMap), m_dofU(dofMap), m_patch(patch)
+    {}
+    gsL2GMapperDofMapper(ArgT dest, const gsDofMapper &dofMapT,const gsDofMapper &dofMapU
+                         ,int patch=0)
+        : m_wr(dest), m_dofT(dofMapT), m_dofU(dofMapU), m_patch(patch)
+    {}
+
+
+
+    /**
+       \brief Adds contribution from a local matrix to a destination matrix
+
+       \param[in] activeTest    input indices for test space (rows)
+       \param[in] activeUnknown input indices for solution space (columns)
+       \param[in] locMat        local matrix to store to the global
+     */
+    virtual void store(
+            const gsMatrix<unsigned> &activeTest,
+            const gsMatrix<unsigned> &activeUnknown,
+            const gsMatrix<Scalar>   &locMat
+            )
+    {
+        if ( (Writer::Flags & Eigen::RowMajor) == Eigen::RowMajor )
+        {
+            for (index_t r=0; r < locMat.rows (); ++r)
+            {
+                index_t rr=m_dofT.index(activeTest(r),m_patch);
+                for (index_t c=0; c < locMat.cols (); ++c)
+                {
+                    index_t cc=m_dofU.index(activeUnknown(c),m_patch);
+                    m_wr.add(rr,cc,locMat(r,c));
+                }
+            }
+        }
+        else if ( (Writer::Flags & Eigen::ColMajor) == Eigen::ColMajor )
+        {
+            for (index_t c=0; c < locMat.cols (); ++c)
+            {
+                index_t cc=m_dofU.index(activeUnknown(c),m_patch);
+                for (index_t r=0; r < locMat.rows (); ++r)
+                {
+                    index_t rr=m_dofT.index(activeTest(r),m_patch);
+                    m_wr.add(rr,cc,locMat(r,c));
+                }
+            }
+        }
+    }
+};
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+///       OLD  COMPLEX BUT WORKING CODE
+//////////////////////////////////////////////////////////////////////////////
+
+
+/**
+    \brief this templated class contains the code that loops over the
+    local matrix entries and add them to the global matrix.
+
+    The actual behavior of the loop is determined by 3 policy classes:
+        - one for the transformation of the row indexes,
+        - one for the transformation of the column indexes,
+        - one for the actual addition
+
+    The classes implementing the transformation of the indexes must
+    contain a method
+
+    unsigned operator() (unsigned \pos, const gsMatrix<unsigned> &\active)
+
+    pos is the row in the matrix, active contains the local \active function indexes
+    so that the row \pos of the local matrix correspond to the function active(\pos).
+    See gsIdentityMapping, gsActiveMapping and gsDOFMappedMapping.
+
+
+    The classes implementing the writing must contain a method
+
+    void add(index_t r, index_t c, MatrixT::Scalar v)
+
+    where \r and \c are the indexes of the coefficient to write to
+    and \v is the value to add to the global matrix.
+    Writer classes are templated on the destination so that they can be chained.
+
+    See gsDW, gsSimmetricWriter, gsSimmetricWriter and gsMultiplierWriter.
+
+    \ingroup Assembler
+**/
+
+template <typename TransT, typename TransU, typename Writer>
+class gsL2GBase
+        : public gsLocalToGlobalMapper<typename Writer::Scalar>
+{
+protected:
+    typedef typename Writer::Scalar T;
+private:
+    TransU m_tu;
+    TransT m_tt;
+    Writer m_wr;
+public:
+    gsL2GBase( TransT tt, TransU tu,  Writer wr)
+        : m_tu(tu), m_tt(tt), m_wr(wr)
+    {}
+    gsL2GBase( Writer wr)
+        : m_wr(wr)
+    {}
+
+    virtual void store(
+            const gsMatrix<unsigned> &activeTest,
+            const gsMatrix<unsigned> &activeUnknown,
+            const gsMatrix<T>        &locMat
+            )
+    {
+        if ( (Writer::Flags & Eigen::RowMajor) == Eigen::RowMajor )
+        {
+            for (index_t r=0; r < locMat.rows (); ++r)
+            {
+                index_t rr=m_tt(r,activeTest);
+                for (index_t c=0; c < locMat.cols (); ++c)
+                {
+                    index_t cc=m_tu(c,activeUnknown);
+                    m_wr.add(rr,cc,locMat(r,c));
+                }
+            }
+        }
+        else if ( (Writer::Flags & Eigen::ColMajor) == Eigen::ColMajor )
+        {
+            for (index_t c=0; c < locMat.cols (); ++c)
+            {
+                index_t cc=m_tu(c,activeUnknown);
+                for (index_t r=0; r < locMat.rows (); ++r)
+                {
+                    index_t rr=m_tt(r,activeTest);
+                    m_wr.add(rr,cc,locMat(r,c));
+                }
+            }
+        }
+
+    }
+};
+
 
 /**
    \brief Maps the coefficient according to the reported position in the local matrix.
@@ -671,8 +839,8 @@ class gsL2GMappedMultiplier :  public gsL2GBase<
         gsDOFMappedMapping<typename MatrixT1::Scalar >,
         gsDOFMappedMapping<typename MatrixT1::Scalar >,
         gsMultiplierWriter<
-            gsMatAndRhsModWriter<gsShiftWriter<MatrixT1>,gsShiftWriter<MatrixT2> >,
-            gsMatAndRhsModWriter<gsShiftWriter<MatrixT1>,gsShiftWriter<MatrixT2> > >
+        gsMatAndRhsModWriter<gsShiftWriter<MatrixT1>,gsShiftWriter<MatrixT2> >,
+        gsMatAndRhsModWriter<gsShiftWriter<MatrixT1>,gsShiftWriter<MatrixT2> > >
         >
 {
 protected:
@@ -696,16 +864,16 @@ public:
                                       gsDOFMappedMapping<T>(tSpaceDMap,patchID),
                                       gsDOFMappedMapping<T>(uSpaceDMap,patchID),
                                       MW(
-                                        SpW(tSpaceDMap.freeSize(),uSpaceDMap.freeSize(),
-                                            SM(mat_dest,start_r,start_c),
-                                            SR(rhs_dest,start_r,0)
-                                            ),
-                                        SpW(
-                                            uSpaceDMap.freeSize(),tSpaceDMap.freeSize(),
-                                            SM(mat_dest,start_c,start_r),
-                                            SR(rhs_dest,start_c,0)
-                                            )
-                                         )
+                                          SpW(tSpaceDMap.freeSize(),uSpaceDMap.freeSize(),
+                                              SM(mat_dest,start_r,start_c),
+                                              SR(rhs_dest,start_r,0)
+                                              ),
+                                          SpW(
+                                              uSpaceDMap.freeSize(),tSpaceDMap.freeSize(),
+                                              SM(mat_dest,start_c,start_r),
+                                              SR(rhs_dest,start_c,0)
+                                              )
+                                          )
                                       ) {}
 };
 
