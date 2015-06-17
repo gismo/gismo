@@ -1011,7 +1011,7 @@ gsHDomain<d,T>::connect_Boxes3d(std::vector<std::vector<unsigned int> > &boxes) 
             // Compare the lower and upper corners of the boxes
             // coordinate-wise, and check if there are differences.
             // If there are differences, count and store the coordinate
-            for( int k=0; k < d; k++)
+            for( unsigned k=0; k < d; k++)
             {
                 if( boxes[i][k] != boxes[j][k] )
                 {

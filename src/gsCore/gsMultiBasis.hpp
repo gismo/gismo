@@ -238,6 +238,8 @@ template<class T>
 template<unsigned d>
 void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
+    GISMO_ASSERT( d == 2 || d == 3, "Dimension must be 2 or 3.");
+
     const gsHTensorBasis<d,T> * bas0 = dynamic_cast< const gsHTensorBasis<d,T> * >( m_bases[ bi.first().patch ] );
     const gsHTensorBasis<d,T> * bas1 = dynamic_cast< const gsHTensorBasis<d,T> * >( m_bases[ bi.second().patch ] );
 
@@ -338,6 +340,8 @@ template<class T>
 template<unsigned d>
 bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
 {
+    GISMO_ASSERT( d == 2 || d == 3, "Dimension must be 2 or 3.");
+
     // get direction and orientation maps
     const gsVector<bool> dirOrient = bi.dirOrientation();
     const gsVector<int> dirMap= bi.dirMap();
@@ -429,6 +433,9 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
     case 2:
         a0 = 0; b0 = 1; c0 = 2;
         break;
+    default:
+        a0 = 99; b0 = 99; c0 = 99;
+        // Initialize for CDash, let it crash if this happens.
     }
 
     // If d == 2, the "b"'s are not needed.
