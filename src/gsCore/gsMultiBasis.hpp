@@ -235,11 +235,11 @@ void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper &
 }
 
 template<class T>
-template<unsigned dim>
+template<unsigned d>
 void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
-    const gsHTensorBasis<dim,T> * bas0 = dynamic_cast< const gsHTensorBasis<dim,T> * >( m_bases[ bi.first().patch ] );
-    const gsHTensorBasis<dim,T> * bas1 = dynamic_cast< const gsHTensorBasis<dim,T> * >( m_bases[ bi.second().patch ] );
+    const gsHTensorBasis<d,T> * bas0 = dynamic_cast< const gsHTensorBasis<d,T> * >( m_bases[ bi.first().patch ] );
+    const gsHTensorBasis<d,T> * bas1 = dynamic_cast< const gsHTensorBasis<d,T> * >( m_bases[ bi.second().patch ] );
 
     // see if the orientation is preserved on side second()
     const gsVector<bool> dirOrient = bi.dirOrientation();
@@ -262,7 +262,7 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
         gsVector<unsigned> tens0 = bas0->tensorLevel(L).tensorIndex( flat0 );
 
         // tens1 will store the tensor-index on side second(),...
-        gsVector<unsigned> tens1(dim);
+        gsVector<unsigned> tens1(d);
         // ...flat1 the corresponding flat index
         // (single-number on level)...
         unsigned flat1 = 0;
@@ -272,13 +272,13 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
         // get the sizes of the components of the tensor-basis on this level,
         // i.e., the sizes of the univariate bases corresponding
         // to the respective coordinate directions
-        gsVector<unsigned> N(dim);
-        for( index_t j=0; j < dim; j++)
+        gsVector<unsigned> N(d);
+        for( index_t j=0; j < d; j++)
             N[j] = bas1->tensorLevel(L).component(j).size();
 
         // get the tensor-index of the basis function on level L on
         // second() that should be matched with flatp/tens0
-        for( unsigned j=0; j<dim; j++)
+        for( unsigned j=0; j<d; j++)
         {
             // coordinate direction j on first() gets
             // mapped to direction jj on second()
@@ -335,7 +335,7 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
 }
 
 template<class T>
-template<unsigned dim>
+template<unsigned d>
 bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
 {
     // get direction and orientation maps
@@ -343,8 +343,8 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
     const gsVector<int> dirMap= bi.dirMap();
 
     // get the bases of both sides as gsHTensorBasis
-    const gsHTensorBasis<dim,T> * bas0 = dynamic_cast< const gsHTensorBasis<dim,T> * >( m_bases[ bi.first().patch ] );
-    const gsHTensorBasis<dim,T> * bas1 = dynamic_cast< const gsHTensorBasis<dim,T> * >( m_bases[ bi.second().patch ] );
+    const gsHTensorBasis<d,T> * bas0 = dynamic_cast< const gsHTensorBasis<d,T> * >( m_bases[ bi.first().patch ] );
+    const gsHTensorBasis<d,T> * bas1 = dynamic_cast< const gsHTensorBasis<d,T> * >( m_bases[ bi.second().patch ] );
 
     GISMO_ASSERT( bas0 != 0 && bas1 != 0, "Cannot cast basis as needed.");
 
@@ -365,7 +365,7 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
     // get upper corners, but w.r.t. level "indexLevelUse"
     gsVector<unsigned> upperCorn0 = bas0->tree().upperCorner();
     gsVector<unsigned> upperCorn1 = bas1->tree().upperCorner();
-    for( index_t i=0; i < dim; i++)
+    for( index_t i=0; i < d; i++)
     {
         upperCorn0[i] = upperCorn0[i] << indexLevelDiff0;
         upperCorn1[i] = upperCorn1[i] << indexLevelDiff1;
@@ -373,7 +373,7 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
 
     GISMO_ASSERT( upperCorn0[0] == upperCorn1[0] &&
             upperCorn0[1] == upperCorn1[1], "The meshes are not matching as they should be!");
-    if( dim == 3 )
+    if( d == 3 )
         GISMO_ASSERT( upperCorn0[2] == upperCorn1[2], "The meshes are not matching as they should be!");
 
     // get the box-representation of the gsHDomain on the interface
@@ -383,14 +383,14 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
     // Compute the indices on the same level (indexLevelUse)
     idxExponent = ( indexLevelUse - bas0->tree().getMaxInsLevel());
     for( index_t i=0; i < lo0.rows(); i++)
-        for( index_t j=0; j < dim; j++)
+        for( index_t j=0; j < d; j++)
         {
             lo0(i,j) = lo0(i,j) << idxExponent;
             up0(i,j) = up0(i,j) << idxExponent;
         }
     idxExponent = ( indexLevelUse - bas1->tree().getMaxInsLevel());
     for( index_t i=0; i < lo1.rows(); i++)
-        for( index_t jj=0; jj < dim; jj++)
+        for( index_t jj=0; jj < d; jj++)
         {
             // Computation done via dirMap, because...
             unsigned j = dirMap[jj];
@@ -431,11 +431,11 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
         break;
     }
 
-    // If dim == 2, the "b"'s are not needed.
+    // If d == 2, the "b"'s are not needed.
     // Setting them to the "a"'s will
     // result in some steps and tests being repeated,
     // but the implementation is inefficient anyways...
-    if( dim == 2 )
+    if( d == 2 )
         b0 = a0;
 
     a1 = dirMap[a0];
@@ -468,7 +468,7 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
 
     std::vector<unsigned> refElts0;
     std::vector<unsigned> refElts1;
-    std::vector<unsigned> tmpvec(1+2*dim);
+    std::vector<unsigned> tmpvec(1+2*d);
     for( size_t i = 0; i < iU.size(); i++)
     {
         // the levels on both sides of the
@@ -506,24 +506,24 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
             // store the box on the interface that
             // has to be refined to that new level
             tmpvec[1+a] = iU[i][0] >> ( indexLevelUse - Luse );
-            tmpvec[1+dim+a] = iU[i][2] >> ( indexLevelUse - Luse );
-            if( dim == 3 )
+            tmpvec[1+d+a] = iU[i][2] >> ( indexLevelUse - Luse );
+            if( d == 3 )
             {
                 tmpvec[1+b] = iU[i][1] >> ( indexLevelUse - Luse );
-                tmpvec[1+dim+b] = iU[i][3] >> ( indexLevelUse - Luse );
+                tmpvec[1+d+b] = iU[i][3] >> ( indexLevelUse - Luse );
             }
 
             if( refSideIndex % 2 == 1 )
             {
                 // west, south, front:
                 tmpvec[1+c] = 0;
-                tmpvec[1+dim+c] = 1;
+                tmpvec[1+d+c] = 1;
             }
             else
             {
                 // east, north, back:
                 tmpvec[1+c] = upperCornOnLevel-1;
-                tmpvec[1+dim+c] = upperCornOnLevel;
+                tmpvec[1+d+c] = upperCornOnLevel;
             }
 
             if( Luse == L1 ) // refine first
@@ -536,19 +536,19 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
             else // refine second
             {
                 // if the orientation is changed, flip where necessary
-                for( index_t jj = 0; jj < dim; jj++)
+                for( index_t jj = 0; jj < d; jj++)
                 {
                     unsigned j = dirMap[jj];
                     if( j != c && !dirOrient[ jj ] )
                     {
                         upperCornOnLevel = ( upperCorn1[j] >> ( indexLevelUse - Luse ) );
                         unsigned tmp = tmpvec[1+j];
-                        tmpvec[1+j]     = upperCornOnLevel - tmpvec[1+dim+j];
-                        tmpvec[1+dim+j] = upperCornOnLevel - tmp;
+                        tmpvec[1+j]     = upperCornOnLevel - tmpvec[1+d+j];
+                        tmpvec[1+d+j] = upperCornOnLevel - tmp;
                     }
                 }
 
-                for( unsigned j=0; j < (1+2*dim); j++)
+                for( unsigned j=0; j < (1+2*d); j++)
                     refElts1.push_back( tmpvec[j] );
             }
         }
