@@ -284,9 +284,10 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
         {
             // coordinate direction j on first() gets
             // mapped to direction jj on second()
-            unsigned jj = dirMap[j];
+            int jj = dirMap[j];
             // store the respective component of the tensor-index
             tens1[jj] = tens0[j];
+
             if( jj == bi.second().direction() )
             {
                 // if jj is the direction() of the interface,
@@ -306,6 +307,7 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
             }
 
         }
+
         flat1 = bas1->tensorLevel(L).index( tens1 );
 
         // compute the "continuous" index on second(), i.e., the index
@@ -369,7 +371,7 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
     // get upper corners, but w.r.t. level "indexLevelUse"
     gsVector<unsigned> upperCorn0 = bas0->tree().upperCorner();
     gsVector<unsigned> upperCorn1 = bas1->tree().upperCorner();
-    for( index_t i=0; i < d; i++)
+    for( unsigned i=0; i < d; i++)
     {
         upperCorn0[i] = upperCorn0[i] << indexLevelDiff0;
         upperCorn1[i] = upperCorn1[i] << indexLevelDiff1;
@@ -387,14 +389,14 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
     // Compute the indices on the same level (indexLevelUse)
     idxExponent = ( indexLevelUse - bas0->tree().getMaxInsLevel());
     for( index_t i=0; i < lo0.rows(); i++)
-        for( index_t j=0; j < d; j++)
+        for( unsigned j=0; j < d; j++)
         {
             lo0(i,j) = lo0(i,j) << idxExponent;
             up0(i,j) = up0(i,j) << idxExponent;
         }
     idxExponent = ( indexLevelUse - bas1->tree().getMaxInsLevel());
     for( index_t i=0; i < lo1.rows(); i++)
-        for( index_t jj=0; jj < d; jj++)
+        for( unsigned jj=0; jj < d; jj++)
         {
             // Computation done via dirMap, because...
             unsigned j = dirMap[jj];
@@ -543,7 +545,7 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
             else // refine second
             {
                 // if the orientation is changed, flip where necessary
-                for( index_t jj = 0; jj < d; jj++)
+                for( unsigned jj = 0; jj < d; jj++)
                 {
                     unsigned j = dirMap[jj];
                     if( j != c && !dirOrient[ jj ] )
