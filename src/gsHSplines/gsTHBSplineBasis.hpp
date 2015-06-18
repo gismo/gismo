@@ -1497,7 +1497,7 @@ void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
     {
 	const index_t seg = (i + segment) % length;
 	
-	if (!p1 and !p2) // start
+	if (!p1 && !p2) // start
 	{
 	    p1 = true;
 	    part1.push_back(line[seg]);
