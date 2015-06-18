@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
   RefineLoopMax = 2;
   initUnifRef = 2;
   degree = 2;
-  refCriterion = 2;
+  refCriterion = PUCA;
   refParameter = 0.85;
   dump = false;
   

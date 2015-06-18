@@ -21,6 +21,12 @@
 namespace gismo
 {
 
+enum MarkingStrategy
+{
+    GARU=1,
+    PUCA=2,
+    errorFraction=3
+};
 
 /** \brief Marks elements/cells for refinement.
  *
@@ -36,19 +42,19 @@ namespace gismo
  *
  * Let \f$\rho\f$ denote the input parameter \em refParameter.
  *
- * <b>refCriterion = 1</b>:\n
+ * <b>refCriterion = 1 = treshold</b>:\n
  * Threshold computed based on the largest of all appearing local errors:
  * \f[ \Theta = \rho \cdot \max_K \{ \eta_K \} \f]
  * The actual number of marked elements can vary in each refinement step,
  * depending on the distribution of the error.
  *
- * <b>refCriterion = 2</b>:\n
+ * <b>refCriterion = 2 = cellPercentage</b>:\n
  * In each step, a certain percentage of all elements are marked.
  * \f[ \Theta = (1-\rho)\cdot 100\ \textrm{-percentile of}\ \{ \eta_K \}_K \f]
  * For example, if \f$\rho = 0.8\f$, those 20% of all elements which have the
  * largest local errors are marked for refinement.
  *
- * <b>refCriterion = 3</b> ("Doerfler-marking"):\n
+ * <b>refCriterion = 3 = errorFraction</b> ("Doerfler-marking"):\n
  * The threshold is chosen in such a manner that the local
  * errors on the marked cells sum up to a certain fraction of the
  * global error:
@@ -63,113 +69,148 @@ namespace gismo
  *
  * \ingroup Assembler
  */
+
 template <class T>
-void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked)
+void gsMarkThreshold( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
 {
-
-    GISMO_ASSERT( 1 <= refCriterion && refCriterion <= 3, "Used wrong/undefined refCriterion");
-
     T Thr = T(0);
 
-    if( refCriterion == 1 )
-    {
-        // First, conduct a brutal search for the maximum local error
-        T maxErr = 0;
-        for( unsigned i = 0; i < elError.size(); ++i)
-            if( maxErr < elError[i] )
-                 maxErr = elError[i];
+    // First, conduct a brutal search for the maximum local error
+    T maxErr = 0;
+    for( unsigned i = 0; i < elError.size(); ++i)
+        if( maxErr < elError[i] )
+            maxErr = elError[i];
 
-        // Compute the threshold:
-        Thr = refParameter * maxErr;
-    }
-    else if ( refCriterion == 2 )
-    {
-        // Total number of elements:
-        unsigned NE = elError.size();
-        // The vector of local errors will need to be sorted,
-        // which will be done on a copy:
-        std::vector<T> elErrCopy = elError;
-
-        // Compute the index from which the refinement should start,
-        // once the vector is sorted.
-        unsigned idxRefineStart = static_cast<unsigned>( floor( refParameter * T(NE) ) );
-        // ...and just to be sure we are in range:
-        if( idxRefineStart == elErrCopy.size() )
-            idxRefineStart -= 1;
-
-       // Sort the list using bubblesort.
-       // After each loop, the largest elements are at the end
-       // of the list. Since we are only interested in the largest elements,
-       // it is enough to run the sorting until enough "largest" elements
-       // have been found, i.e., until we have reached indexRefineStart
-       unsigned lastSwapDone = elErrCopy.size() - 1;
-       unsigned lastCheckIdx = lastSwapDone;
-
-       bool didSwap;
-       T tmp;
-       do{
-           didSwap = false;
-           lastCheckIdx = lastSwapDone;
-           for( unsigned i=0; i < lastCheckIdx; i++)
-               if( elErrCopy[i] > elErrCopy[i+1] )
-               {
-                   tmp = elErrCopy[i];
-                   elErrCopy[i] = elErrCopy[i+1];
-                   elErrCopy[i+1] = tmp;
-
-                   didSwap = true;
-                   lastSwapDone = i;
-               }
-       }while( didSwap && (lastSwapDone+1 >= idxRefineStart ) );
-
-       // Compute the threshold:
-       Thr = elErrCopy[ idxRefineStart ];
-    }
-    else if( refCriterion == 3 )
-    {
-        // The vector of local errors will need to be sorted,
-        // which will be done on a copy:
-        std::vector<T> elErrCopy = elError;
-
-        // Compute the sum, i.e., the global/total error
-        T totalError = T(0);
-        for( unsigned i = 0; i < elErrCopy.size(); ++i)
-            totalError += elErrCopy[i];
-
-        // We want to mark just enough cells such that their
-        // cummulated errors add up to a certain fraction
-        // of the total error.
-        T errorMarkSum = (1-refParameter) * totalError;
-        T cummulErrMarked = 0;
-
-        T tmp;
-        unsigned lastSwapDone = elErrCopy.size() - 1;
-        do{
-            for( unsigned i=0; i < lastSwapDone; i++)
-                if( elErrCopy[i] > elErrCopy[i+1] )
-                {
-                    tmp = elErrCopy[i];
-                    elErrCopy[i] = elErrCopy[i+1];
-                    elErrCopy[i+1] = tmp;
-                }
-
-            cummulErrMarked += elErrCopy[ lastSwapDone  ];
-            lastSwapDone -= 1;
-
-        }while( cummulErrMarked < errorMarkSum && lastSwapDone > 0 );
-
-        // Compute the threshold:
-        Thr = elErrCopy[ lastSwapDone + 1 ];
-    }
+    // Compute the threshold:
+    Thr = refParameter * maxErr;
 
     elMarked.resize( elError.size() );
-
     // Now just check for each element, whether the local error
     // is above the computed threshold or not, and mark accordingly.
     for( unsigned i=0; i < elError.size(); i++)
         ( elError[i] >= Thr ? elMarked[i] = true : elMarked[i] = false );
+}
 
-} // gsMarkCells
+template <class T>
+void gsMarkPercentage( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
+{
+    T Thr = T(0);
+
+    // Total number of elements:
+    unsigned NE = elError.size();
+    // The vector of local errors will need to be sorted,
+    // which will be done on a copy:
+    std::vector<T> elErrCopy = elError;
+
+    // Compute the index from which the refinement should start,
+    // once the vector is sorted.
+    unsigned idxRefineStart = static_cast<unsigned>( floor( refParameter * T(NE) ) );
+    // ...and just to be sure we are in range:
+    if( idxRefineStart == elErrCopy.size() )
+        idxRefineStart -= 1;
+
+    // Sort the list using bubblesort.
+    // After each loop, the largest elements are at the end
+    // of the list. Since we are only interested in the largest elements,
+    // it is enough to run the sorting until enough "largest" elements
+    // have been found, i.e., until we have reached indexRefineStart
+    unsigned lastSwapDone = elErrCopy.size() - 1;
+    unsigned lastCheckIdx = lastSwapDone;
+
+    bool didSwap;
+    T tmp;
+    do{
+        didSwap = false;
+        lastCheckIdx = lastSwapDone;
+        for( unsigned i=0; i < lastCheckIdx; i++)
+            if( elErrCopy[i] > elErrCopy[i+1] )
+            {
+                tmp = elErrCopy[i];
+                elErrCopy[i] = elErrCopy[i+1];
+                elErrCopy[i+1] = tmp;
+
+                didSwap = true;
+                lastSwapDone = i;
+            }
+    }while( didSwap && (lastSwapDone+1 >= idxRefineStart ) );
+
+    // Compute the threshold:
+    Thr = elErrCopy[ idxRefineStart ];
+    elMarked.resize( elError.size() );
+    // Now just check for each element, whether the local error
+    // is above the computed threshold or not, and mark accordingly.
+    for( unsigned i=0; i < elError.size(); i++)
+        ( elError[i] >= Thr ? elMarked[i] = true : elMarked[i] = false );
+}
+
+
+template <class T>
+void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
+{
+    T Thr = T(0);
+
+    // The vector of local errors will need to be sorted,
+    // which will be done on a copy:
+    std::vector<T> elErrCopy = elError;
+
+    // Compute the sum, i.e., the global/total error
+    T totalError = T(0);
+    for( unsigned i = 0; i < elErrCopy.size(); ++i)
+        totalError += elErrCopy[i];
+
+    // We want to mark just enough cells such that their
+    // cummulated errors add up to a certain fraction
+    // of the total error.
+    T errorMarkSum = (1-refParameter) * totalError;
+    T cummulErrMarked = 0;
+
+    T tmp;
+    unsigned lastSwapDone = elErrCopy.size() - 1;
+    do{
+        for( unsigned i=0; i < lastSwapDone; i++)
+            if( elErrCopy[i] > elErrCopy[i+1] )
+            {
+                tmp = elErrCopy[i];
+                elErrCopy[i] = elErrCopy[i+1];
+                elErrCopy[i+1] = tmp;
+            }
+
+        cummulErrMarked += elErrCopy[ lastSwapDone  ];
+        lastSwapDone -= 1;
+
+    }while( cummulErrMarked < errorMarkSum && lastSwapDone > 0 );
+
+    // Compute the threshold:
+    Thr = elErrCopy[ lastSwapDone + 1 ];
+    elMarked.resize( elError.size() );
+    // Now just check for each element, whether the local error
+    // is above the computed threshold or not, and mark accordingly.
+    for( unsigned i=0; i < elError.size(); i++)
+        ( elError[i] >= Thr ? elMarked[i] = true : elMarked[i] = false );
+}
+
+
+template <class T>
+void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked)
+{
+    switch (refCriterion)
+    {
+    case GARU:
+        gsMarkThreshold(elError,refParameter,elMarked);
+        break;
+    case PUCA:
+        gsMarkPercentage(elError,refParameter,elMarked);
+        break;
+    case errorFraction:
+        gsMarkFraction(elError,refParameter,elMarked);
+        break;
+    default:
+        GISMO_ERROR("unknown marking strategy");
+    }
+
+}
+
+
 
 
 /** \brief Refine a gsMultiBasis, based on a vector of element-markings.
@@ -218,7 +259,7 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
     {
         // Get number of elements to be refined on this patch
         const int numEl = basis[pn].numElements();
-        numMarked = std::count_if(elMarked.begin() + poffset, 
+        numMarked = std::count_if(elMarked.begin() + poffset,
                                   elMarked.begin() + poffset + numEl,
                                   std::bind2nd(std::equal_to<bool>(), true) );
         poffset += numEl;
@@ -235,7 +276,7 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
                 // Construct degenerate box by setting both
                 // corners equal to the center
                 refBoxes.col(2*numMarked  ) =
-                refBoxes.col(2*numMarked+1) = domIt->centerPoint();
+                        refBoxes.col(2*numMarked+1) = domIt->centerPoint();
 
                 // Advance marked cells counter
                 numMarked++;
