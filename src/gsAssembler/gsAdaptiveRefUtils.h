@@ -42,13 +42,13 @@ enum MarkingStrategy
  *
  * Let \f$\rho\f$ denote the input parameter \em refParameter.
  *
- * <b>refCriterion = 1 = treshold</b>:\n
+ * <b>refCriterion = 1 = treshold, GARU-criterion</b> (greatest appearing eRror utilization):\n
  * Threshold computed based on the largest of all appearing local errors:
  * \f[ \Theta = \rho \cdot \max_K \{ \eta_K \} \f]
  * The actual number of marked elements can vary in each refinement step,
  * depending on the distribution of the error.
  *
- * <b>refCriterion = 2 = cellPercentage</b>:\n
+ * <b>refCriterion = 2 = cellPercentage, PUCA-criterion</b> (percentile-utilizing cutoff ascertainment):\n
  * In each step, a certain percentage of all elements are marked.
  * \f[ \Theta = (1-\rho)\cdot 100\ \textrm{-percentile of}\ \{ \eta_K \}_K \f]
  * For example, if \f$\rho = 0.8\f$, those 20% of all elements which have the
