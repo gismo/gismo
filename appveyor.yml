@@ -1,0 +1,60 @@
+# Specify version format
+version: "0.8.{build}"
+
+# Operating system (build VM template)
+# os: Windows Server 2012 R2
+
+# build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
+platform: 
+  - Win32
+  - x64
+
+# specify custom environment variables
+environment:
+#  BOOST_ROOT: c:\Libraries\boost
+#  BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
+
+# build Configuration, i.e. Debug, Release, etc.
+configuration:
+  - Debug
+  - Release
+
+# scripts that are called at very beginning, before repo cloning
+init:
+  - cmd: cmake --version
+  - cmd: msbuild /version
+
+# clone directory
+clone_folder: C:\projects\gismo
+
+# branches to build
+branches:
+  # gismo
+  except:
+    - gh-pages
+
+# scripts that run after cloning repository
+install:
+  - cmd: cd C:\projects
+
+# scripts to run before build
+before_build:
+  - cmd: cd C:\projects\gismo
+  - cmd: md build
+  - cmd: cd build
+  - cmd: if "%platform%"=="Win32" set CMAKE_GENERATOR_NAME=Visual Studio 12
+  - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 12 Win64
+  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% ..
+
+build:
+  project: C:\projects\gismo\build\gismo.sln
+
+  # enable MSBuild parallel builds
+  parallel: true
+
+  # MSBuild verbosity level (quiet|minimal|normal|detailed)
+  verbosity: detailed
+
+test_script:
+  - cmd: ctest -C Release -VV
+  - cmd: ctest -C Debug -VV
