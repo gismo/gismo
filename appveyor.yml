@@ -24,8 +24,8 @@ clone_depth: 5 # clone entire repository history if not defined
 
 # build Configuration, i.e. Debug, Release, etc.
 configuration:
-#  - Debug
-  - Release
+  - Debug
+#  - Release
 
 # scripts that are called at very beginning, before repo cloning
 init:
@@ -52,9 +52,10 @@ install:
 # scripts to run before build
 before_build:
   - cmd: cd build-gismo
-  - cmd: if "%platform%"=="Win32" set CMAKE_GENERATOR_NAME=Visual Studio 12
-  - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 12 Win64
-  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo
+#  - cmd: if "%platform%"=="Win32" set CMAKE_GENERATOR_NAME=Visual Studio 12
+#  - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 12 Win64
+#  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo
+  - cmd: cmake -DCMAKE_BUILD_TYPE=%configuration% ../gismo
 
 build:
   project: C:\projects\build-gismo\gismo.sln
