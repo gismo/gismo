@@ -2,7 +2,7 @@
 version: "0.8.{build}"
 
 # Operating system (build VM template)
-# os: Windows Server 2012 R2
+os: Windows Server 2012 R2
 
 # build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
 platform: 
@@ -10,7 +10,7 @@ platform:
   - x64
 
 # specify custom environment variables
-environment:
+# environment:
 #  BOOST_ROOT: c:\Libraries\boost
 #  BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
 
