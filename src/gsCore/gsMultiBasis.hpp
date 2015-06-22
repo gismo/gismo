@@ -275,7 +275,7 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
         // i.e., the sizes of the univariate bases corresponding
         // to the respective coordinate directions
         gsVector<unsigned> N(d);
-        for( index_t j=0; j < d; j++)
+        for( unsigned j=0; j < d; j++)
             N[j] = bas1->tensorLevel(L).component(j).size();
 
         // get the tensor-index of the basis function on level L on
