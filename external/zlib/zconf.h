@@ -508,4 +508,18 @@ typedef uLong FAR uLongf;
   #pragma map(inflate_copyright,"INCOPY")
 #endif
 
+
+/* G+Smo change - Added to suppress complier warnings */
+#if defined(_MSC_VER)
+#pragma warning ( disable : 4127 ) /* cond expr is constant */
+#pragma warning ( disable : 4131 ) /* old style declaration */
+#pragma warning ( disable : 4244 ) /* conversion loss of data */
+#endif
+#if defined(__BORLANDC__)
+#pragma warn -8004 /* assigned a value that is never used */
+#pragma warn -8008 /* condition is always true */
+#pragma warn -8066 /* unreachable code */
+#endif
+
+
 #endif /* ZCONF_H */

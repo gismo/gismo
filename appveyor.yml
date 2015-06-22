@@ -24,12 +24,12 @@ clone_depth: 5 # clone entire repository history if not defined
 
 # build Configuration, i.e. Debug, Release, etc.
 configuration:
-  - Debug
-#  - Release
+#  - Debug
+  - Release
 
 # scripts that are called at very beginning, before repo cloning
 init:
-  - cmd: cmake --version
+#  - cmd: cmake --version
   - cmd: msbuild /version
 
 # clone directory
@@ -37,7 +37,7 @@ clone_folder: C:\projects\gismo
 
 # branches to build
 branches:
-  # gismo
+  # stable
   except:
     - gh-pages
 

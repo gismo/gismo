@@ -40,9 +40,10 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
 void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b )
 {
     const index_t last = b.size()-1;
-    for ( index_t k=0; k<last; ++k)
+
+    for ( index_t l=0; l!=last; ++l)
     {
-        this->matchDof( k, b(k,0), k, b(k+1,0) );
+        this->matchDof( k, b(l,0), k, b(l+1,0) );
     }
 }
 
@@ -129,7 +130,7 @@ void gsDofMapper::eliminateDof( index_t i, index_t k )
 
 void gsDofMapper::finalize()
 {
-    GISMO_ASSERT(m_curElimId!=0, "Error in gsDofMapper::finalize() called twince.");
+    GISMO_ASSERT(m_curElimId!=0, "Error in gsDofMapper::finalize() called twice.");
 
     // For assigning coupling and eliminated dofs to continuous
     // indices (-1 = unassigned)
