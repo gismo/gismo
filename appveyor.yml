@@ -52,6 +52,7 @@ install:
 # scripts to run before build
 before_build:
   - cmd: cd build-gismo
+  set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
 #  - cmd: if "%platform%"=="Win32" set CMAKE_GENERATOR_NAME=Visual Studio 12
 #  - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 12 Win64
 #  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo
@@ -72,5 +73,5 @@ build:
   #include_nuget_references: true
 
 test_script:
-  - cmd: ctest -C Release -VV
+  - cmd: ctest -C %configuration% -VV
 #  - cmd: ctest -C Debug -VV
