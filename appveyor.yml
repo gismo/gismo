@@ -24,8 +24,8 @@ clone_depth: 5 # clone entire repository history if not defined
 
 # build Configuration, i.e. Debug, Release, etc.
 configuration:
-#  - Debug
-  - Release
+  - Debug
+#  - Release
 
 # scripts that are called at very beginning, before repo cloning
 init:

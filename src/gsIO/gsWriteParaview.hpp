@@ -696,11 +696,11 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<3<<"\">\n";
     for ( index_t j=0; j<eval_geo.cols(); ++j)
     {
-        for ( int i=0; i< d; ++i)
-            file<< pts(i,j) <<" ";
+        for ( int l=0; l!=d; ++l)
+            file<< pts(l,j) <<" ";
         file<< eval_geo.at(0,j) <<" ";
-         for ( index_t i=d; i< pts.rows(); ++i)
-             file<< pts(i,j) <<" ";
+         for ( index_t l=d; l!=pts.rows(); ++l)
+             file<< pts(l,j) <<" ";
     }
     file <<"</DataArray>\n";
     file <<"</Points>\n";

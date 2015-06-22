@@ -20,25 +20,28 @@ namespace gismo
 
 
 /**
-   @brief AbsError
+   @brief Generates a field with value the absolute difference (error)
+   between and isogeometric function and a function defined on the
+   physical domain
+
+   For a multipatch geometry, use the static method of gismo::gsFieldCreator
 
    \ingroup Core
 */
-
 template<class T>
-class gsAbsError : public gismo::gsFunction<T> 
+class gsAbsError : public gsFunction<T> 
 {
 public:
     gsAbsError( gsFunction<T> const & f1, 
                 gsGeometry<T> const & geo, 
                 gsFunction<T> const & f2 )
-        : m_geo(geo), m_f1(f1), m_f2(f2)
+    : m_geo(geo), m_f1(f1), m_f2(f2)
     { 
             
     }
 
     gsAbsError * clone() const
-      { return new gsAbsError(*this); }
+    { return new gsAbsError(*this); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -52,7 +55,7 @@ public:
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
-        { os << "Absolute error.\n"; return os; };
+    { os << "Absolute error.\n"; return os; };
 private:
     const gsGeometry<T> & m_geo;
 
@@ -64,18 +67,25 @@ private:
 };
 
 
+/**
+   @brief Generates a field with value being the gradient of an isogeometric function
+
+   For a multipatch geometry, use the static method of gismo::gsFieldCreator
+
+   \ingroup Core
+*/
 template<class T>
-class gsGradientField : public gismo::gsFunction<T> 
+class gsGradientField : public gsFunction<T> 
 {
 public:
     gsGradientField( gsGeometry<T> const & geo, gsFunction<T> const & f)
-        : m_geo(geo), m_f(f)
+    : m_geo(geo), m_f(f)
     { 
             
     }
 
     gsGradientField * clone() const
-      { return new gsGradientField(*this); }
+    { return new gsGradientField(*this); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -90,14 +100,21 @@ public:
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
-        { os << "Gradient field of "; return os; };
+    { os << "Gradient field of "; return os; };
 private:
     const gsGeometry<T> & m_geo;
     const gsFunction<T> & m_f  ;
 };
 
+/**
+   @brief Generates a field with value the Jacobian determinant of a geometry
+
+   For a multipatch geometry, use the static method of gismo::gsFieldCreator
+
+   \ingroup Core
+*/
 template<class T>
-class gsJacDetField : public gismo::gsFunction<T> 
+class gsJacDetField : public gsFunction<T> 
 {
 public:
     gsJacDetField( gsGeometry<T> const & geo)
@@ -107,7 +124,7 @@ public:
     }
 
     gsJacDetField * clone() const
-      { return new gsJacDetField(*this); }
+    { return new gsJacDetField(*this); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -122,15 +139,21 @@ public:
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
-        { os << "Jacobian determinant field of "; return os; };
+    { os << "Jacobian determinant field of "; return os; };
 private:
     const gsGeometry<T> & m_geo;
     const int m_dim;
 };
 
+/**
+   @brief Generates the normal field of a geometry
 
+   For a multipatch geometry, use the static method of gismo::gsFieldCreator
+
+   \ingroup Core
+*/
 template<class T>
-class gsNormalField : public gismo::gsFunction<T> 
+class gsNormalField : public gsFunction<T> 
 {
 public:
     gsNormalField( gsGeometry<T> const & geo) : m_geo(geo)
@@ -139,7 +162,7 @@ public:
     }
 
     gsNormalField * clone() const
-      { return new gsNormalField(*this); }
+    { return new gsNormalField(*this); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -167,7 +190,7 @@ public:
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
-        { os << "NormalField"; return os; };
+    { os << "NormalField"; return os; };
 private:
     const gsGeometry<T> & m_geo;
 
@@ -175,13 +198,97 @@ private:
 //    gsNormalField() { }
 };
 
+/**
+   @brief Generates a field that attaches the parameter values on each
+   physical point
+
+   For a multipatch geometry, use the static method of gismo::gsFieldCreator
+
+   \ingroup Core
+*/
+template<class T>
+class gsParamField : public gsFunction<T> 
+{
+public:
+    gsParamField(gsGeometry<T> const & geo)
+    : m_geo(geo)
+    { 
+            
+    }
+
+    gsParamField * clone() const
+    { return new gsParamField(*this); }
+
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    { result = u; }
+
+    int domainDim() const { return m_geo.domainDim(); }
+    int targetDim() const { return m_geo.domainDim(); }
+
+    /// Prints the object as a string.
+    std::ostream &print(std::ostream &os) const
+    { os << "Parameter field.\n"; return os; };
+
+private:
+    const gsGeometry<T> & m_geo;
+};
+
+/**
+   @brief Generates a field that indicates the boundary sides on the geometry
+
+   For a multipatch geometry, use the static method of gismo::gsFieldCreator
+
+   In Paraview, choose blot as a color map and Wireframe as representation
+
+   \ingroup Core
+*/
+template<class T>
+class gsBoundaryField : public gsFunction<T> 
+{
+public:
+    gsBoundaryField(gsGeometry<T> const & geo_)
+    : geo(geo_), m_supp(geo.support())
+    { }
+
+    gsBoundaryField * clone() const
+    { return new gsBoundaryField(*this); }
+
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    { 
+        result.setZero(1, u.cols() );
+
+        const int d = geo.parDim();
+        for (boxSide c=boxSide::getFirst(d); c<boxSide::getEnd(d); ++c)
+        {
+            const index_t dir = c.direction();
+            const T par = m_supp(dir, c.parameter() );
+
+            for (index_t v = 0; v != u.cols(); ++v) // for all columns of u
+            {
+                if ( math::abs( u(dir,v) - par ) < 1e-2 )
+                    result(0,v) = static_cast<T>(c);
+            }
+        }
+    }
+
+    int domainDim() const { return geo.domainDim(); }
+    int targetDim() const { return 1; }
+
+    /// Prints the object as a string.
+    std::ostream &print(std::ostream &os) const
+    { os << "Boundary side indicator field.\n"; return os; };
+
+private:
+    const gsGeometry<T> & geo;
+    gsMatrix<T>           m_supp;
+};
 
 
 
 /**
    @brief Class that creates standard fields on a given parametric
    (multipatch) geometry.
-   
+
    \ingroup Core
 */
 template<class T>
@@ -203,7 +310,7 @@ struct gsFieldCreator
     
     
     static typename gsField<T>::uPtr gradient(gsMultiPatch<T> const & mp, gsFunction<T> const & f)
-        {
+    {
         std::vector<gsFunction<T> *> nFields;
         nFields.reserve( mp.nPatches() );
         
@@ -236,8 +343,30 @@ struct gsFieldCreator
         return typename gsField<T>::uPtr( new gsField<T>(mp, nFields, true ) );
     }
 
+    static typename gsField<T>::uPtr parameters(gsMultiPatch<T> const & mp)
+    {
+        std::vector<gsFunction<T> *> nFields;
+        nFields.reserve( mp.nPatches() );
+        
+        for (unsigned k=0; k< mp.nPatches(); ++k)
+            nFields.push_back( new gsParamField<T>(mp.patch(k)) );
+        
+        return typename gsField<T>::uPtr( new gsField<T>(mp, nFields, true ) );
+    }
+
+    static typename gsField<T>::uPtr boundarySides(gsMultiPatch<T> const & mp)
+    {
+        std::vector<gsFunction<T> *> nFields;
+        nFields.reserve( mp.nPatches() );
+        
+        for (unsigned k=0; k< mp.nPatches(); ++k)
+            nFields.push_back( new gsBoundaryField<T>(mp.patch(k)) );
+        
+        return typename gsField<T>::uPtr( new gsField<T>(mp, nFields, true ) );
+    }
+
 }; // struct gsFieldCreator
 
 
 
-}; // namespace gismo
+} // namespace gismo
