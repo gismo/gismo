@@ -13,6 +13,8 @@
 
 #pragma once 
 
+#include <gsHSplines/gsHTensorBasis.h>
+
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
@@ -315,11 +317,11 @@ gsMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedV
             start_lv_i += n[l].size();
         }
 
-
+        
         for (unsigned int j = 0; j < old[i].size();j++)//iteration through the basis functions in the given level
         {
-
-            int start_lv_i = 0;
+            
+            start_lv_i = 0;
             for(unsigned int l =0; l < i; l++)
             {
                 start_lv_i += n[l].size();
