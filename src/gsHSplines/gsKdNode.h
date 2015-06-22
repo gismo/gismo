@@ -144,20 +144,23 @@ struct kdnode
     /// Recursively deletes the whole subtree under this node
     ~kdnode()
     {
+        // to do: non-reccursive
+
         if ( isLeaf() ) 
         {
-            GISMO_ASSERT( (left == 0) && (right == 0), 
-                          "Problem: leaf with children." );
-            if (box != 0)
+            // No throw in destructor
+            //GISMO_ASSERT( (left == 0) && (right == 0), 
+            //              "Problem: leaf with children." );
                 delete box;
         }
         else
         {
-            GISMO_ASSERT( box == 0, 
-                          "Problem: split node with box." );
+            // No throw in destructor
+            //GISMO_ASSERT( box == 0, 
+            //              "Problem: split node with box." );
             delete left;
             delete right;
-        }        
+        }
     }
 
     // Box Accessors

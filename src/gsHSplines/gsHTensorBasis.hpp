@@ -454,7 +454,6 @@ void gsHTensorBasis<d,T>::setActive()
     // take care: duplicates from different leaves or adj. cells
     point curr, actUpp;
     gsMatrix<unsigned,d,2> elSupp;
-    CMatrix cmat;
 
     // try: iteration per level
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); 
@@ -703,7 +702,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
         m_deg[i] = tbasis.degree(i);
 
     // Construct the initial basis
-    if ( const gsTensorBSplineBasis<d,T,gsKnotVector<T> > * tb =
+    if ( const gsTensorBSplineBasis<d,T,gsKnotVector<T> > * tb1 =
          dynamic_cast<const gsTensorBSplineBasis<d,T,gsKnotVector<T> >*>(&tbasis) )
     {
         //std::vector<gsBSplineBasis<T, gsCompactKnotVector<T> > * > cw_bases(d);
@@ -713,16 +712,16 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
         {
             cw_bases[i]=
                     new gsBSplineBasis<T, gsCompactKnotVector<T> >(
-                        gsCompactKnotVector<T>( tb->knots(i)) );
+                        gsCompactKnotVector<T>( tb1->knots(i)) );
         }
 
         m_bases.push_back(
                     new gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >(cw_bases) );
     }
-    else if ( const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * tb =
+    else if ( const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * tb2 =
               dynamic_cast<const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >*>(&tbasis) )
     {
-        m_bases.push_back( tb->clone() );
+        m_bases.push_back( tb2->clone() );
     }
     else
     {
