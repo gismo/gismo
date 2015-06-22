@@ -1175,7 +1175,7 @@ void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<unsigne
         max = b2.row(i);
         const unsigned l = level(i);
         const unsigned par_index = m_bases[l]->knots(dir).findElementIndex(par);
-        if((par_index>=min(dir))||(par_index<=max(dir)))
+        if(l>0 && (par_index>=min(dir)) && (par_index<=max(dir)))
         {
             boxes.push_back(l);
             for(int j=0;j<min.rows();++j)
