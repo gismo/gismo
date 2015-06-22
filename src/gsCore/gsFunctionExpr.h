@@ -22,7 +22,7 @@ namespace gismo
 template<typename T> class gsFunctionExprPrivate;
 
 /** 
-    @brief Class defining a real function given by a string
+    @brief Class defining a scalar real function given by a string
     mathematical expression.
 
     \ingroup function
@@ -86,7 +86,8 @@ public:
   
     void set_y_der (std::string expression_string);
   
-    /// Evaluate the expression (overrided from gsFunction)
+    // Evaluate the expression (overrided from gsFunction)
+    // see gsFunction for documentation
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     /// Evaluate the expression for component \a comp in the target
@@ -95,7 +96,7 @@ public:
                                      const index_t comp, 
                                      gsMatrix<T>& result) const;
 
-    /// Evaluate the gradient
+    // Evaluate the gradient // see gsFunction for documentation
     virtual void deriv_into(const gsMatrix<T>& u, 
                             gsMatrix<T>& result) const;
   

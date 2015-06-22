@@ -99,10 +99,11 @@ public:
       (override the _into versions in derived classes).
     */
 
-    /// Evaluate the function
+    /// Evaluate the function, see eval_into() for details.
     uMatrixPtr eval(const gsMatrix<T>& u) const;
 
-    /// Evaluate the derivatives. Returns a matrix of size targetDim() x (domainDim() * u.cols()), gradients are stored as row vectors
+    /// Evaluate the derivatives, see deriv_into() for details.
+    //Returns a matrix of size targetDim() x (domainDim() * u.cols()), gradients are stored as row vectors
     uMatrixPtr deriv(const gsMatrix<T>& u) const;
 
     // Evaluate the gradient
@@ -111,7 +112,18 @@ public:
     /// Evaluate the second derivatives
     uMatrixPtr deriv2(const gsMatrix<T>& u) const;
 
-    /// Evaluate the function at points \a u into \a result.
+    /** \brief Evaluate the function at points \a u into \a result.
+     *
+     * Let \em d be the dimension of the source space ( d = domainDim() ).\n
+     * Let \em D be the dimension of the image/target space ( D = targetDim() ).\n
+     * Let \em n denote the number of evaluation points.
+     *
+     * \param[in] u gsMatrix of size <em>d</em> x <em>n</em>, where each
+     * column of \em u represents one evaluation point.
+     * \param[out] result gsMatrix of size <em>D</em> x <em>n</em>, where each
+     * column of \em u represents the result of the function at the
+     * respective valuation point.
+     */
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const = 0;
 
     /// Evaluate the function for component \a comp in the target dimension at points \a u into \a result.
@@ -119,9 +131,41 @@ public:
                                      const index_t comp, 
                                      gsMatrix<T>& result) const;
 
-    /// @brief Evaluate derivatives of the function at points \a u into \a result.
-    ///
-    /// By default uses central finite differences with h=0.00001
+    /** \brief Evaluate derivatives of the function at points \a u into \a result.
+     *
+     * Let \em d be the dimension of the source space ( d = domainDim() ).\n
+     * Let \em D be the dimension of the image/target space ( D = targetDim() ).\n
+     * Let \em n denote the number of evaluation points.
+     *
+     * Let \f$ f:\mathbb R^2 \rightarrow \mathbb R^3 \f$, i.e.,
+     * \f$ f(x,y) = ( f_1(x,y), f_2(x,y), f_3(x,y) )^T\f$,\n
+     * and let
+     * \f$ u = ( u_1, \ldots, u_n) = ( (x_1,y_1)^T, \ldots, (x_n,y_n)^T )\f$.\n
+     * Then, \em result is of the form
+     * \f[
+     \left[
+     \begin{array}{ccccc}
+        \partial_x f_1(u_1) & \partial_y f_1(u_1) & \partial_x f_1(u_2)
+           & \ldots & \partial_y f_1(u_n) \\
+        \partial_x f_2(u_1) & \partial_y f_2(u_1) & \partial_x f_2(u_2)
+           & \ldots & \partial_y f_2(u_n) \\
+        \partial_x f_3(u_1) & \partial_y f_3(u_1) & \partial_x f_3(u_2)
+           & \ldots & \partial_y f_3(u_n)
+     \end{array}
+     \right]
+     \f]
+     *
+     * \param[in] u gsMatrix of size <em>d</em> x <em>n</em>, where each
+     * column of \em u represents one evaluation point.
+     * \param[out] result gsMatrix of size <em>D</em> x <em>(d*n)</em>.
+     * Each row of \em result corresponds to one component in the target
+     * space and contains the gradients for each evaluation point,
+     * as row vectors, one after the other (see above for details on the format).
+     *
+     * \warning By default, gsFunction uses central finite differences
+     * with h=0.00001! One must override this function in derived
+     * classes to get proper results.
+     */
     virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
   
     /// @brief Evaluate second derivatives of the function at points \a u into \a result.
