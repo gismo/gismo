@@ -804,10 +804,31 @@ void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gs
 
     }
 
+    /* // this was and still is for testing, will be removed later
+    cout << "\n --- before connecting:" << endl;
+    for( int i=0; i < int( boxes.size() ); i++)
+    {
+        for( int j=0; j < int( boxes[i].size() ); j++)
+            cout << boxes[i][j] << " ";
+        cout << endl;
+    }
+    */
+
     // connect boxes which have the same levels and are
     // are aligned such that their union again is an
     // axis-aligned box.
     connect_Boxes(boxes);
+
+    /* // this was and still is for testing, will be removed later
+    cout << "\n --- after connecting:" << endl;
+    for( int i=0; i < int( boxes.size() ); i++)
+    {
+        for( int j=0; j < int( boxes[i].size() ); j++)
+            cout << boxes[i][j] << " ";
+        cout << endl;
+    }
+    cout << endl;
+    */
 
     // write the result into b1, b2, and level
     b1.resize(boxes.size(),d);
@@ -880,10 +901,16 @@ void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
               gsVector<unsigned>& level) const{
     std::vector<std::vector<unsigned int> > boxes;
     getBoxes_vec(boxes);
-    GISMO_ASSERT(d==2,"this part only words for 2D");
+    GISMO_ASSERT(d==2 || d==3,"Wrong dimension, should be 2 or 3.");
     //is this test really necessary? florian b.
     for(unsigned int i = 0; i < boxes.size(); i++){
-        if ((boxes[i][0]==boxes[i][2]) || (boxes[i][1]==boxes[i][3])){
+        if ((boxes[i][0]==boxes[i][d+0]) || (boxes[i][1]==boxes[i][1+d]))
+        {
+            boxes.erase(boxes.begin()+i);
+            i--;
+        }
+        else if( (d == 3) && ( boxes[i][2]==boxes[i][d+2] ) )
+        {
             boxes.erase(boxes.begin()+i);
             i--;
         }
@@ -911,25 +938,14 @@ void gsHDomain<d,T>::getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
     }
 }
 
+// Old version that only works for 2D
+// Should be replaced by the "new" connect_Boxes.
+// Keeping the code for the moment, in order not to loose
+// the old code before the new one is properly tested.
 template<unsigned d, class T> void
-gsHDomain<d,T>::connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) const
-{
-    switch( d )
-    {
-    case 2:
-        connect_Boxes2d(boxes);
-        break;
-    case 3:
-        connect_Boxes3d(boxes);
-        break;
-    default:
-        GISMO_ASSERT(false,"dimension other than 2 or 3");
-    }
-}
-
-template<unsigned d, class T> void 
 gsHDomain<d,T>::connect_Boxes2d(std::vector<std::vector<unsigned int> > &boxes) const
 {
+    GISMO_ASSERT( d == 2, "This one only works for 2D");
     bool change = true;
     while(change){
         change =  false;
@@ -987,10 +1003,8 @@ gsHDomain<d,T>::connect_Boxes2d(std::vector<std::vector<unsigned int> > &boxes) 
     //std::cout<<"in the connecting fucntion"<<boxes.size()<<std::endl;
 }
 
-// Needs some testing, chould probably replace the 2d-version.
-// For the moment, keep the old, running 2d-version.
 template<unsigned d, class T> void
-gsHDomain<d,T>::connect_Boxes3d(std::vector<std::vector<unsigned int> > &boxes) const
+gsHDomain<d,T>::connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) const
 {
     bool change = true;
     while(change)
@@ -1001,12 +1015,12 @@ gsHDomain<d,T>::connect_Boxes3d(std::vector<std::vector<unsigned int> > &boxes) 
         {
         for(int j = i+1; j < s; j++)
         {
-        if(boxes[i][2*d]==boxes[j][2*d]) // if the levels are the same
+        if(boxes[i][2*d]==boxes[j][2*d]) // if( the levels are the same )
         {
             unsigned nmCoordLo = 0;
             unsigned nmCoordUp = 0;
             unsigned nmCountUp = 0;
-            unsigned nmCountLo = 0;
+            unsigned nmCountLo = 0; //...the "nm" is for non-matching
 
             // Compare the lower and upper corners of the boxes
             // coordinate-wise, and check if there are differences.

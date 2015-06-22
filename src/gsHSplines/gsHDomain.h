@@ -594,10 +594,19 @@ private:
     /// All indexing is in terms of level gsHDomain::m_maxInsLevel. \n
     void getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) const;
 
-    ///connect the boxes returned from quadtree
+    /// \brief connect the boxes returned from quadtree getBoxes_vec()
+    ///
+    /// If two neighbouring boxes could be represented by a single
+    /// box (i.e., if the union of two axis-aligned boxes is again
+    /// an axis-aligned box), then these two are merged into a single box.
+    ///
+    /// \param[in,out] boxes Format as of getBoxes_vec(), i.e., each box
+    /// is represented as vector of size <em>2*d + 1</em> containing
+    /// [ [lower corner],[upper corner], Level ], where the corners
+    /// are defined by the knot indices on level gsHDomain::m_maxInsLevel.
     void connect_Boxes(std::vector<std::vector<unsigned int> > &boxes) const;
     void connect_Boxes2d(std::vector<std::vector<unsigned int> > &boxes) const;
-    void connect_Boxes3d(std::vector<std::vector<unsigned int> > &boxes) const;
+
     void connect_Boxes_2(std::vector<std::vector<unsigned int> > &boxes) const;
 
     /// For each x-coordinate delete repeated parts of vertical segments.
