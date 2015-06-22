@@ -752,12 +752,26 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
     gsVector<> localToGlobal(coefs.rows());
     index_t counter = 0;
 
+    gsMatrix<> support = bspline.basis().support();
+    
     for (index_t fun = 0; fun != globalToLocal.rows(); fun++)
     {
 	if (globalToLocal(fun) != -1)
 	{
 	    params.col(counter) = anchors.col(fun);
 	    localToGlobal(counter) = fun;
+	    for (index_t row = 0; row != support.rows(); row++)
+	    {
+		if (params(row, counter) < support(row, 0))
+		{
+		    params(row, counter) = support(row, 0);
+		}
+		
+		if (support(row, 1) < params(row, counter))
+		{
+		    params(row, counter) = support(row, 1);
+		}
+	    }
 	    counter++;
 	}
     }
@@ -777,7 +791,7 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
     
     gsMatrix<> value;
     gsMatrix<unsigned> actives;
-    
+
     for (index_t k = 0; k != params.cols(); k++)
     {
 	const gsMatrix<>& curr_param = params.col(k);
@@ -785,6 +799,7 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
 	bspline.basis().eval_into(curr_param, value);
 	bspline.basis().active_into(curr_param, actives);
 	const index_t numActive = actives.rows();
+	
 	for (index_t i = 0; i != numActive; i++)
 	{
 	    const int I = globalToLocal(actives(i, 0));
@@ -803,7 +818,7 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
 	    }
 	}
     }
-
+    
     A.makeCompressed();
     Eigen::BiCGSTAB< gsSparseMatrix<>,  Eigen::IncompleteLUT<real_t> > solver(A);
     if (solver.preconditioner().info() != Eigen::Success)
@@ -818,8 +833,6 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
     {
 	coefs.row(localToGlobal(row)) = x.row(row);
     }
-    
-
 }
 
 
