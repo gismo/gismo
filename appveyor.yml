@@ -30,7 +30,7 @@ configuration:
 # scripts that are called at very beginning, before repo cloning
 init:
 #  - cmd: cmake --version
- - echo Platform is %platform%
+ - cmd: echo Platform is %platform%
  - cmd: msbuild /version
 
 # clone directory
