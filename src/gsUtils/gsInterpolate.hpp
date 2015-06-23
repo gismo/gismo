@@ -200,7 +200,6 @@ GISMO_DEPRECATED void gsL2ProjectOnBoundary( const gsBasis<T> & basis,
 
             // Put the local contributions to the corresponding places
             // in the global system.
-            int ii;
             int jj;
             for( int i=0; i < locN; i++)
             {

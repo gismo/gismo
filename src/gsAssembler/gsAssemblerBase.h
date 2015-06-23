@@ -138,10 +138,9 @@ public:
         
         gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
         gsVector<T> quWeights; // Temp variable for mapped weights
-        gsQuadRule<T> QuRule; // Reference Quadrature rule
         unsigned evFlags(0);
 
-        // Initialize 
+        // Initialize Reference Quadrature rule
         visitor.initialize(bases, QuRule, evFlags);
 
         // Initialize geometry evaluator -- TODO: Initialize inside visitor

@@ -292,12 +292,13 @@ void gsPoissonAssembler<T>::computeDirichletDofsIntpl()
         const gsMatrix<T> & dVals =  geo->coefs();
 
         // Save corresponding boundary dofs
-        for (index_t k=0; k!= boundary->size(); ++k)
+        for (index_t l=0; l!= boundary->size(); ++l)
         {
-            const int ii= mapper.bindex( (*boundary)(k) , it->patch() );
+            const int ii= mapper.bindex( (*boundary)(l) , it->patch() );
 
-            m_ddof.row(ii) = dVals.row(k);
+            m_ddof.row(ii) = dVals.row(l);
         }
+
         delete h;
         delete geo;
         delete boundary;
@@ -460,6 +461,8 @@ gsField<T> *  gsPoissonAssembler<T>::constructSolution(const gsMatrix<T>& solVec
 
     const gsDofMapper & mapper = m_dofMappers.front();
 
+    GISMO_ASSERT(solVector.rows() == mapper.freeSize(), "Something went wrong, solution vector is not OK.");
+
     std::vector<gsFunction<T> * > sols ;
 
     const index_t dim = m_rhsFun->targetDim();
@@ -495,9 +498,12 @@ template<class T>
 void gsPoissonAssembler<T>::constructSolution(const gsMatrix<T>& solVector, 
                                               gsMultiPatch<T>& result) const
 {
-    GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
+    // we might need to get a result even without having the system ..
+    //GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
 
     const gsDofMapper & mapper = m_dofMappers.front();
+
+    GISMO_ASSERT(solVector.rows() == mapper.freeSize(), "Something went wrong, solution vector is not OK.");
 
     result.clear(); // result is cleared first
     

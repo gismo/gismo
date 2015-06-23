@@ -164,12 +164,12 @@ void gsTensorBasis<d,T>::anchor_into(unsigned i, gsMatrix<T>& result) const
     gsVector<unsigned, d> ti = tensorIndex(i);
 
     gsMatrix<T> gr;
-    result.resize(d, 1 );
+    result.resize(d, 1);
 
-    for (unsigned i = 0; i < d; ++i)
+    for (unsigned l = 0; l < d; ++l)
     {
-        m_bases[i]->anchor_into(ti[i], gr);
-        result(i,0) = gr.value(); 
+        m_bases[l]->anchor_into(ti[l], gr);
+        result(l,0) = gr.value(); 
     }
 }
 

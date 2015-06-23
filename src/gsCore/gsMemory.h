@@ -130,8 +130,10 @@ template <typename It>
 void freeAll(It begin, It end)
 {
     for (It it = begin; it != end; ++it)
-        if ( *it )
-            delete (*it);
+    {
+        delete (*it);
+        *it = NULL;
+    }
 }
 
 /// \brief Frees all pointers in the container \a Cont

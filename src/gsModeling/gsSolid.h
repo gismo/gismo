@@ -105,14 +105,14 @@ public:
 
     inline bool isFaceCCW()    const { return FaceCCW;}
 
-    inline gsSolidHeVertexHandle getVertexFromID(int const & id) const 
-    {return *(vertex.begin()+id);}
+    inline gsSolidHeVertexHandle getVertexFromID(int const & _id) const 
+    {return *(vertex.begin()+_id);}
 
-    inline gsSolidHalfEdgeHandle getHalfEdgeFromID(int const & id) const 
-    {return *(edge.begin()+id);}
+    inline gsSolidHalfEdgeHandle getHalfEdgeFromID(int const & _id) const 
+    {return *(edge.begin()+_id);}
 
-    inline gsSolidHalfFaceHandle getHalfFaceFromID(int const & id) const 
-    {return *(face.begin()+id);}
+    inline gsSolidHalfFaceHandle getHalfFaceFromID(int const & _id) const 
+    {return *(face.begin()+_id);}
 
     gsBoundingBox<T> getBoundingBox() const {return bb;}
     
