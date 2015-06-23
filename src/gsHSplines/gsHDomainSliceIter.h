@@ -1,6 +1,6 @@
 /** @file gsHDomainSliceIter.h
 
-    @brief Provides declaration of HDomainLeafIter class.
+    @brief Provides declaration of HDomainSliceIter class.
 
     This file is part of the G+Smo library.
     
@@ -32,33 +32,33 @@ namespace gismo
 */
 
 template<typename node, bool isconst = false>
-class gsHDomainLeafIter
+class gsHDomainSliceIter
 {
 public:
     //typedef kdnode<d, unsigned> node;
     typedef typename choose<isconst, const node&, node&>::type reference;
     typedef typename choose<isconst, const node*, node*>::type pointer;
 
-    typedef typename node::point point;
+    typedef typename node::point::Projection_t point;
 
-    typedef typename node::point::Projection_t slicedPoint;// to do: this must have dimension = d-1
+    static const index_t d = point::_Rows;// d is the slice dimension
 
 public:
-    reference operator*() const { return *m_curNode; }
-    pointer  operator->() const { return  m_curNode; }
+    reference operator*() const { return *curNode; }
+    pointer  operator->() const { return  curNode; }
 
 public:
 
     gsHDomainSliceIter() 
-    : m_dir(0), m_pos(0), m_curNode(0), m_index_level(0)
+    : m_dir(0), m_pos(0), m_last(0), curNode(0), m_index_level(0)
     { }
 
-    // to do: constructor by gsHDomain instead
     gsHDomainSliceIter( node * const root_node, 
                         const unsigned _dir, 
                         const unsigned _pos,
+                        const unsigned _last,
                         const unsigned index_level)
-    : m_dir(m_dir), m_pos(_pos), m_index_level(index_level)
+    : m_dir(m_dir), m_pos(_pos), m_last(_last), m_index_level(index_level)
     { 
         m_stack.push(root_node);
 
@@ -71,35 +71,45 @@ public:
     {
         while ( ! m_stack.empty() )
         {
-            m_curNode = m_stack.top();
+            curNode = m_stack.top();
             m_stack.pop();
             
-            if ( m_curNode->isLeaf() )
+            if ( curNode->isLeaf() )
             {
                 // does this box intersect the slice ?  
                 // note: boxes are considered half-open, eg. products
                 // of intervals [a,b), except from the rightmost
                 // interval which is closed
-                if ( (m_curNode->box->lowCorner()[dir] <= m_pos) && 
-                     (m_curNode->box->uppCorner()[dir] >  m_pos  ||
-                     (m_pos == m_last && m_curNode->box->uppCorner()[dir] == m_pos) )
-                   )
+                // if ( (curNode->box->lowCorner()[m_dir] <= m_pos) && 
+                //      (curNode->box->uppCorner()[m_dir] >  m_pos  ||
+                //      (m_pos == m_last && curNode->box->uppCorner()[m_dir] == m_pos) )
+                //    )
                      return true;
             }
             else // this is a split-node
             {
-                m_stack.push(m_curNode->left );
-                m_stack.push(m_curNode->right);
+                if ( curNode->axis == m_dir )
+                {
+                    if (m_pos < curNode->pos)
+                        m_stack.push(curNode->left);
+                    else 
+                        m_stack.push(curNode->right);
+                }
+                else
+                {
+                    m_stack.push(curNode->left);
+                    m_stack.push(curNode->right);
+                }
             }
         }
 
         // Leaves exhausted
-        m_curNode = NULL;
+        curNode = NULL;
         return false;
     }
 
     /// Returns true iff we are still pointing at a valid leaf
-    bool good() const   { return m_curNode != 0; }
+    bool good() const   { return curNode != 0; }
 
     /// The iteration is done in the sub-tree hanging from node \start
     void startFrom( node * const root_node)
@@ -108,14 +118,17 @@ public:
         m_stack.push(root_node);
     }
 
-    int level() const { return m_curNode->level; }
+    int level() const { return curNode->level; }
 
-    /// \brief The lower corner of the sliced box
-    /// TODO: Note that m_dir is skipped
-    slicedPoint lowerCorner() const
+    /// \brief The lower corner of the sliced box.
+    /// Note that \a m_dir is skipped
+    point lowerCorner() const
     { 
-        point result = m_curNode->box->first;
-        const int lvl = m_curNode->level;
+        point result;
+        result.topRows   (m_dir  ) = curNode->box->first.topRows(m_dir     );
+        result.bottomRows(d-m_dir) = curNode->box->first.bottomRows(d-m_dir);
+
+        const int lvl = curNode->level;
 
         for ( index_t i = 0; i!= result.size(); ++i )
             result[i] = result[i] >> (m_index_level-lvl) ;
@@ -123,12 +136,15 @@ public:
         return result; 
     }
 
-    /// \brief The upper corner of the sliced box
-    /// TODO: Note that m_dir is skipped
-    slicedPoint upperCorner() const
+    /// \brief The upper corner of the sliced box.
+    /// Note that \a m_dir is skipped
+    point upperCorner() const
     { 
-        point result = m_curNode->box->second;
-        const int lvl = m_curNode->level;
+        point result = curNode->box->second;
+        result.topRows   (m_dir  ) = curNode->box->second.topRows(m_dir     );
+        result.bottomRows(d-m_dir) = curNode->box->second.bottomRows(d-m_dir);
+
+        const int lvl = curNode->level;
 
         for ( index_t i = 0; i!=result.size(); ++i )
             result[i] = result[i] >> (m_index_level-lvl) ;
@@ -136,17 +152,17 @@ public:
         return result; 
     }
 
-    unsigned indexLevel() {return m_index_level;}
+    unsigned indexLevel() const {return m_index_level;}
 
 private:
 
     // Slice information
     unsigned m_dir; // direction normal to the slice
     unsigned m_pos; // slice position index (span-index)
-    unsigned m_last; // last (span-index) in direction \a m_dir
+    unsigned m_last; // last (span-index) in direction \a m_dir --> most likely not needed
 
     // current node
-    node * m_curNode;
+    node * curNode;
 
     /// The level of the box representation
     unsigned m_index_level;

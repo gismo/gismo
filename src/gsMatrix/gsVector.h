@@ -60,6 +60,9 @@ public:
 
     typedef const Eigen::Ref<const Base> ConstRef;
 
+    // Type for a vector of dimension one less
+    typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, ColMajor> Projection_t;
+
 public:
 
     typedef T * iterator;

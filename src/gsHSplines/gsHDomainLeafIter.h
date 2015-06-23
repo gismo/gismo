@@ -36,12 +36,12 @@ public:
     typedef typename node::point point;
 
 public:
-    reference operator*() const { return *m_curNode; }
-    pointer  operator->() const { return  m_curNode; }
+    reference operator*() const { return *curNode; }
+    pointer  operator->() const { return  curNode; }
 
 public:
 
-    gsHDomainLeafIter() : m_curNode(0)
+    gsHDomainLeafIter() : curNode(0)
     { }
 
     explicit gsHDomainLeafIter( node * const root_node, unsigned index_level)
@@ -58,27 +58,27 @@ public:
     {
         while ( ! m_stack.empty() )
         {
-            m_curNode = m_stack.top();
+            curNode = m_stack.top();
             m_stack.pop();
             
-            if ( m_curNode->isLeaf() )
+            if ( curNode->isLeaf() )
             {
                 return true;
             }
             else // this is a split-node
             {
-                m_stack.push(m_curNode->left );
-                m_stack.push(m_curNode->right);
+                m_stack.push(curNode->left );
+                m_stack.push(curNode->right);
             }
         }
 
         // Leaves exhausted
-        m_curNode = NULL;
+        curNode = NULL;
         return false;
     }
 
     /// Returns true iff we are still pointing at a valid leaf
-    bool good() const   { return m_curNode != 0; }
+    bool good() const   { return curNode != 0; }
 
     /// The iteration is done in the sub-tree hanging from node \start
     void startFrom( node * const root_node)
@@ -87,12 +87,12 @@ public:
         m_stack.push(root_node);
     }
 
-    int level() const { return m_curNode->level; }
+    int level() const { return curNode->level; }
 
     point lowerCorner() const
     { 
-        point result = m_curNode->box->first;
-        const int lvl = m_curNode->level;
+        point result = curNode->box->first;
+        const int lvl = curNode->level;
 
         //result = result.array() / (1>> (m_index_level-lvl)) ;
         for ( index_t i = 0; i!= result.size(); ++i )
@@ -103,8 +103,8 @@ public:
 
     point upperCorner() const
     { 
-        point result = m_curNode->box->second;
-        const int lvl = m_curNode->level;
+        point result = curNode->box->second;
+        const int lvl = curNode->level;
 
         for ( index_t i = 0; i!=result.size(); ++i )
             result[i] = result[i] >> (m_index_level-lvl) ;
@@ -112,18 +112,18 @@ public:
         return result; 
     }
 
-    unsigned indexLevel() {return m_index_level;}
+    unsigned indexLevel() const {return m_index_level;}
 
 private:
 
     // current node
-    node * m_curNode;
+    node * curNode;
 
     /// The level of the box representation
     unsigned m_index_level;
 
     // stack of pointers to tree nodes, used in next()
-    std::stack<node*> m_stack;
+    std::stack<node*> m_stack; // to do: change type to std::vector
 };
 
 
