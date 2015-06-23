@@ -487,6 +487,8 @@ public:
     * \param[out] b2 <em>n</em> x <em>d</em>-matrix, right upper corners of boxes
     * \param[out] level vector of length \em n, corresponding levels
     */
+    // getBoxes-functions might get removed at some point of time.
+    // Use iterators instead whenever possible.
     void getBoxes(gsMatrix<unsigned>& b1, 
                   gsMatrix<unsigned>& b2, 
                   gsVector<unsigned>& level) const;
@@ -502,6 +504,8 @@ public:
     * \param[out] b2 <em>n</em> x <em>d</em>-matrix, right upper corners of boxes
     * \param[out] level vector of length \em n, corresponding levels
     */
+    // getBoxes-functions might get removed at some point of time.
+    // Use iterators instead whenever possible.
     void getBoxesOnSide(boundary::side s,
                         gsMatrix<unsigned>& b1,
                         gsMatrix<unsigned>& b2,
@@ -516,6 +520,8 @@ public:
     /// \param b1 left bottom corners of boxes
     /// \param b2 right upper corners of boxs
     /// \param level corresponding levels
+    // getBoxes-functions might get removed at some point of time.
+    // Use iterators instead whenever possible.
     void getBoxesInLevelIndex(gsMatrix<unsigned>& b1,
                   gsMatrix<unsigned>& b2,
                   gsVector<unsigned>& level) const;
@@ -592,6 +598,8 @@ private:
     /// \em boxes[i] is <em>2d+1</em>, where \em d is
     /// the dimension of the domain).\n
     /// All indexing is in terms of level gsHDomain::m_maxInsLevel. \n
+    // getBoxes-functions might get removed at some point of time.
+    // Use iterators instead whenever possible.
     void getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) const;
 
     /// \brief connect the boxes returned from quadtree getBoxes_vec()
