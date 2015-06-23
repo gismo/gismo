@@ -56,9 +56,9 @@ public:
     {}
 
     /// @brief Constructor with given exact solution.
-    gsPde(const gsMultiPatch<T>         &domain,
-          const gsBoundaryConditions<T> &bc,
-          const std::vector<gsPiecewiseFunction<T> *>  &solutions
+    gsPde(const gsMultiPatch<T>               &domain,
+          const gsBoundaryConditions<T>       &bc,
+          const std::vector<gsFunction<T> *>  &solutions
           )
         : m_domain(domain), m_boundary_conditions(bc), m_solution(solutions)
     {}
@@ -113,21 +113,30 @@ public:
      * @brief Gives the exact solution for the <em>field_id</em>-th field on the <em>patch_id</em>-th patch.
      *
      * @param field_id
-     * @param patch_id
      * @return a pointer to the function or NULL depending if the exact solution is provided
      */
-    gsFunction<T>* solution(index_t field_id = 0, index_t patch_id =0) const
+    gsFunction<T>* solution(index_t field_id = 0) const
     {
         GISMO_ASSERT(field_id<numUnknowns(),"Asked for the exact solution for a non existing field of this PDE type");
-        return &(m_solution[field_id]->operator[](patch_id));
+        return (m_solution[field_id]);
     }
+
+    /**
+     * @brief solutions
+     * @return a reference to the vector of solutions for each field
+     */
+    const std::vector<gsFunction<T>*> &solutions()
+    {
+    return m_solution;
+    }
+
     /**
      * @brief Gives the exact solution for the \em field_id-th field.
      *
      * @param field_id
      * @return a pointer to the function or NULL depending if the exact solution is provided
      */
-    const gsPiecewiseFunction<T>* solutionField(index_t field_id = 0) const
+    const gsFunction<T>* solutionField(index_t field_id = 0) const
     {
         GISMO_ASSERT(field_id<numUnknowns(),"Asked for size of a non existing field of this PDE type");
         return m_solution[field_id];
@@ -151,11 +160,14 @@ public:
      * it returns 1 for scalar fields, 2 for 2d vectors field etc.
      * @param field_id the field index
      */
+    GISMO_DEPRECATED
     int fieldDim(index_t field_id = 0)
     {
         GISMO_ASSERT(field_id<numUnknowns(),"Asked for size of an Unknown field for this PDE type");
         return m_unknownDim[field_id];
     }
+
+    GISMO_DEPRECATED
     /**
      * @brief returns the dimension of the domain
      *
@@ -164,14 +176,12 @@ public:
     {
         return m_domain.dim();
     }
-
-
 protected:
     /// @brief Description of the unknown fields:
     /// for each one the target dimension.
     std::vector<unsigned>                 m_unknownDim;
     /// @brief Exact solution(s)
-    std::vector<gsPiecewiseFunction<T> *> m_solution;
+    std::vector<gsFunction<T> *>          m_solution;
     /// @brief Computational domain
     gsMultiPatch<T>                       m_domain;
     /// @brief Boundary conditions

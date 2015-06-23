@@ -7,11 +7,6 @@ namespace gismo
 {
 
 
-// pressure (p):  p=2, 
-// velocity (u):  p=3, ( p-refined ) , two components, one for each dimension
-
-// \nu constant = 0.001
-
 template <class T> class gsFunction;
 
 /** @brief
@@ -31,64 +26,50 @@ protected:
     using gsPde<T>::m_domain;
     using gsPde<T>::m_unknownDim;
     using gsPde<T>::m_solution;
+
 public:
-    gsStokesPde(const gsMultiPatch<T> &domain, const gsBoundaryConditions<T> &bc, gsFunction<T> * rhs, gsFunction<T> * sol = 0 )
-        : gsPde<T>(domain,bc), m_rhs(new gsPiecewiseFunction<T>(*rhs, domain.nPatches())), m_viscosity(0.001)
-    { 
-        this->m_unknownDim.resize(2);
-        this->m_unknownDim[0] = m_domain.dim();
-        this->m_unknownDim[1] = 1;
-        if(sol)
-            this->m_solution.push_back(new gsPiecewiseFunction<T>(*sol));
-    }
-
-    gsStokesPde(const gsMultiPatch<T> &domain, const gsBoundaryConditions<T> &bc, const gsPiecewiseFunction<T> &rhs, const gsPiecewiseFunction<T> &sol)
-        : gsPde<T>(domain,bc), m_rhs(rhs.clone()), m_viscosity(0.001)
-    { 
-        this->m_unknownDim.resize(2);
-        this->m_unknownDim[0] = m_domain.dim();
-        this->m_unknownDim[1] = 1;
-        this->m_solution.push_back(sol.clone());
-    }
-
-    gsStokesPde(const gsMultiPatch<T> &domain, const gsBoundaryConditions<T> &bc, const gsFunction<T> & rhs)
-        : gsPde<T>(domain,bc), m_rhs(new gsPiecewiseFunction<T>(rhs, domain.nPatches())), m_viscosity(0.001)
-    { 
-        this->m_unknownDim.resize(2);
-        this->m_unknownDim[0] = m_domain.dim();
-        this->m_unknownDim[1] = 1;
-    }
-    // COMPATIBILITY CONSTRUCTORS, DO NOT USE
-    gsStokesPde( const gsFunction<T> &rhs, int domdim)
-        :         m_rhs(new gsPiecewiseFunction<T>(rhs)), m_viscosity(0.001)
+    gsStokesPde(
+        const gsMultiPatch<T>          &domain,
+        const gsBoundaryConditions<T>  &bc,
+         gsFunction<T>       *force,
+         gsFunction<T>       *velSol = NULL,
+         gsFunction<T>       *preSol = NULL,
+         gsFunction<T>       *source = NULL,
+        const T                    viscosity = 1
+        )
+        :
+            gsPde<T>(domain,bc),
+            m_force(force),
+            m_source(source),
+            m_viscosity(viscosity)
     {
-        this->m_unknownDim.resize(2);
-        this->m_unknownDim[0] = domdim;
-        this->m_unknownDim[1] = 1;
-    }
-    gsStokesPde( const gsFunction<T> &rhs, int domdim, const gsFunction<T> &sol)
-        :         m_rhs(new gsPiecewiseFunction<T>(rhs)), m_viscosity(0.001)
-    {
-        this->m_unknownDim.resize(2);
-        this->m_unknownDim[0] = domdim;
-        this->m_unknownDim[1] = 1;
-        this->m_solution.push_back(new gsPiecewiseFunction<T>(sol));
+        m_solution.resize(2);
+        m_solution[0]=velSol;
+        m_solution[1]=preSol;
+
+        m_unknownDim.push_back(m_domain.dim());
+        m_unknownDim.push_back(1);
     }
 
     ~gsStokesPde( ) 
     { 
-        delete m_rhs;
+        delete m_force;
+        delete m_source;
     }
 
-    const gsFunction<T>* rhs(index_t k=0) const
-    { return &(m_rhs->operator[](k)); }
+    const gsFunction<T>* rhs() const
+    { return m_force; }
+    const gsFunction<T>* force() const
+    { return m_force; }
+    const gsFunction<T>* source() const
+    { return m_source; }
+
+    const gsFunction<T>* velocitySolution() const
+    { return m_solution[0]; }
+    const gsFunction<T>* pressureSolution() const
+    { return m_solution[1]; }
     T viscocity() const                 { return m_viscosity; }
 
-    /// Consistency check
-    bool check() 
-    {
-        return true;
-    }
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -97,16 +78,25 @@ public:
           <<"-\u0394u-\u2207p = f,\n"
           <<" \u2207\u00B7u=0"
           <<"with:\n";
-	    os<<"Source function f= "<< * m_rhs <<".\n";
-        if ( this->solutionGiven(0) )
-            os<<"Exact solution u = "<< * this->m_solution[0] <<".\n";
-        if ( this->solutionGiven(0) )
-            os<<"Exact solution p = "<< * this->m_solution[1] <<".\n";
+        if ( m_force )
+        os<<"Force  function f= "<< *m_force <<".\n";
+        if ( m_source )
+        os<<"Source function g= "<< *m_source <<".\n";
+        if ( m_solution[0] )
+            os<<"Exact solution u = "<< * m_solution[0] <<".\n";
+        if ( m_solution[1] )
+            os<<"Exact solution p = "<< * m_solution[1] <<".\n";
 	    return os; 
 	}
-
+    /// Consistency check
+    bool check()
+    {
+        return true;
+    }
 protected:
-    gsPiecewiseFunction<T> * m_rhs;
+    const gsFunction<T> * m_force;
+    const gsFunction<T> * m_source;
+
     T m_viscosity;
 }; // class gsStokesPde
 

@@ -42,40 +42,19 @@ public:
     gsPoissonPde(
         const gsMultiPatch<T>         &domain,
         const gsBoundaryConditions<T> &bc,
-        const gsFunction<T>     &rhs
+        const gsFunction<T>           *rhs,
+        const gsFunction<T>           *sol = NULL
          )
     : gsPde<T>(domain,bc)
     {
-        m_rhs=new gsPiecewiseFunction<T>(rhs,m_domain.size());
+        m_rhs=rhs->clone();
         m_unknownDim.push_back(1);
-    }
-
-    /// Constructor
-    gsPoissonPde(
-        const gsMultiPatch<T>         &domain,
-        const gsBoundaryConditions<T> &bc,
-        const gsPiecewiseFunction<T>  &rhs
-         )
-    : gsPde<T>(domain,bc), m_rhs(rhs.clone())
-    {
-        m_unknownDim.push_back(1);
-    }
-
-    /// Constructor
-    gsPoissonPde(
-        const gsMultiPatch<T>         &domain,
-        const gsBoundaryConditions<T> &bc,
-        const gsPiecewiseFunction<T>  &rhs,
-        const gsPiecewiseFunction<T>  &sol
-         )
-    : gsPde<T>(domain,bc), m_rhs(rhs.clone())
-    {
-        m_solution.push_back(sol.clone());
-        m_unknownDim.push_back(1);
+        if (sol) m_solution.push_back(sol->clone());
     }
 
     // FOR COMPATIBILITY WITH OLD STRUCTURE: DO NOT USE
     int m_compat_dim;
+    GISMO_DEPRECATED
     gsPoissonPde(
         const gsFunction<T>  &rhs,
         int                   domdim,
@@ -83,11 +62,12 @@ public:
         )
         : m_compat_dim(domdim)
     {
-        m_rhs=new gsPiecewiseFunction<T>(rhs);
-        m_solution.push_back(new gsPiecewiseFunction<T>(sol));
+        m_rhs=rhs.clone();
+        m_solution.push_back(sol.clone());
         m_unknownDim.push_back(1);
 
     }
+    GISMO_DEPRECATED
     gsPoissonPde(
         const gsFunction<T>  &rhs,
         int                   domdim
@@ -95,14 +75,15 @@ public:
        : m_compat_dim(domdim)
 
     {
-        m_rhs=new gsPiecewiseFunction<T>(rhs);
+        m_rhs=rhs.clone();
         m_unknownDim.push_back(1);
     }
+    GISMO_DEPRECATED
     gsPoissonPde(
         void * unused
         )
     {
-        m_rhs=new gsPiecewiseFunction<T>(gsConstantFunction<T>(0));
+        m_rhs=new gsConstantFunction<T>(0);
         m_unknownDim.push_back(1);
     }
 
@@ -116,11 +97,10 @@ public:
      */
     virtual int numRhs() const
     {
-        return m_rhs->operator[](0).targetDim();
+        return m_rhs->targetDim();
     }
 
-    gsPiecewiseFunction<T> * rhsField() const { return m_rhs; }
-    const gsFunction<T> *          rhs(index_t k=0)      const { return &(m_rhs->operator[](k)); }
+    const gsFunction<T> *    rhs()      const { return m_rhs; }
 
     virtual int numUnknowns() const     {return 1;}
 
@@ -138,7 +118,7 @@ public:
 protected:
     using gsPde<T>::m_unknownDim;
     using gsPde<T>::m_solution;
-    gsPiecewiseFunction<T> *m_rhs;
+    gsFunction<T> *m_rhs;
 }; // class gsPoissonPde
 
 } // namespace gismo
