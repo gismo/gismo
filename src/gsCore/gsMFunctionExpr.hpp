@@ -212,7 +212,7 @@ void gsMFunctionExpr<T>::init()
         my->expression[i].release();
         my->expression[i].register_symbol_table( my->symbol_table);
         
-        parser.cache_symbols() = true; 
+        //parser.cache_symbols() = true; 
         bool success = parser.compile(my->string[i], my->expression[i]);        
         if ( ! success )
             gsInfo<<"gsMFunctionExpr error: " <<parser.error() <<std::endl;

@@ -210,9 +210,9 @@ public:
         if (numDerivs > 0)
         {
             // currently only 1 implemented
-            const int numDerivs = numActive * m_basis->dim();
-            basisEvals.push_back( allValues.middleRows( curRow, numDerivs ) );
-            curRow += numDerivs;
+            const int DerivCount = numActive * m_basis->dim();
+            basisEvals.push_back( allValues.middleRows( curRow, DerivCount ) );
+            curRow += DerivCount;
         }
         if (numDerivs > 1)
         {

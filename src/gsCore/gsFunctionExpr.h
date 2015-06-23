@@ -13,7 +13,7 @@
  
 #pragma once
 
-# include <gsCore/gsFunction.h>
+#include <gsCore/gsFunction.h>
 
 namespace gismo
 {
@@ -28,18 +28,19 @@ template<typename T> class gsFunctionExprPrivate;
     \ingroup function
     \ingroup Core
 */
-
 template<typename T>
 class gsFunctionExpr : public gsFunction<T>
 {
-    
 public:
     
     /// Default empty constructor
     gsFunctionExpr(); 
   
-    /// Constructor by an expression string
-    gsFunctionExpr(std::string expression_string);
+    /** \brief Constructor by an expression string and the domain dimension
+        
+        If the domain dimension is not given, it defaults to 2.
+    */
+    gsFunctionExpr(std::string expression_string, int ddim = 2);
 
     ~gsFunctionExpr();
   
