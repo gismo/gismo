@@ -82,12 +82,12 @@ protected:
     
     // Evaluate on element.
     void evaluate(gsGeometryEvaluator<T> & geoEval,
-                  const gsGeometry<T>    & func1,
-                  const gsFunction<T>    & func2,
+                  const gsGeometry<T>    & _func1,
+                  const gsFunction<T>    & _func2,
                   gsMatrix<T>            & quNodes)
     {
         // Evaluate first function
-        func1.deriv_into(quNodes, f1ders);
+        _func1.deriv_into(quNodes, f1ders);
         // get the gradients to columns
         f1ders.transposeInPlace();
         f1ders.resize(quNodes.rows(), quNodes.cols() );
@@ -96,7 +96,7 @@ protected:
         geoEval.evaluateAt(quNodes);
         if(dfunc2==NULL)
         {
-            func2.deriv_into(geoEval.values(), f2ders);
+            _func2.deriv_into(geoEval.values(), f2ders);
             // get the gradients to columns
             f2ders.transposeInPlace();
             f2ders.resize(quNodes.rows(), quNodes.cols() );
@@ -106,7 +106,7 @@ protected:
 
         // ** Evaluate function v
         //gsMatrix<T> f2val = func2Param ? func2.deriv(quNodes)
-        //: func2.eval( geoEval->values() );      
+        //: _func2.eval( geoEval->values() );      
     }
 
     // assemble on element

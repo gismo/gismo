@@ -75,18 +75,18 @@ protected:
     
     // Evaluate on element.
     inline void evaluate(gsGeometryEvaluator<T> & geoEval,
-                         const gsGeometry<T>    & func1,
-                         const gsFunction<T>    & func2,
+                         const gsGeometry<T>    & _func1,
+                         const gsFunction<T>    & _func2,
                          gsMatrix<T>            & quNodes)
     {
         // Evaluate first function
-        func1.eval_into(quNodes, f1vals);
+        _func1.eval_into(quNodes, f1vals);
         
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
         
         // Evaluate second function (defined of physical domain)
-        func2.eval_into(geoEval.values(), f2vals);
+        _func2.eval_into(geoEval.values(), f2vals);
         
         // ** Evaluate function v
         //gsMatrix<T> f2val = func2Param ? func2.eval(quNodes)

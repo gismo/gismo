@@ -221,7 +221,7 @@ namespace exprtk
          if (('0' <= h) && (h <= '9'))
             return (h - '0');
          else
-            return (std::toupper(h) - 'A');
+            return static_cast<unsigned char>(std::toupper(h) - 'A');
       }
 
       template <typename Iterator>
@@ -594,12 +594,12 @@ namespace exprtk
          {
             if ('*' == (*p_itr))
             {
-               const char target = std::toupper(*(p_itr - 1));
+                const char target = static_cast<const char>(std::toupper(*(p_itr - 1)));
 
                if ('*' == target)
                {
                   diff_index = std::distance(str.begin(),s_itr);
-                  diff_value = std::toupper(*p_itr);
+                  diff_value = static_cast<char>(std::toupper(*p_itr));
 
                   return false;
                }
@@ -622,7 +622,7 @@ namespace exprtk
                     )
             {
                diff_index = std::distance(str.begin(),s_itr);
-               diff_value = std::toupper(*p_itr);
+               diff_value = static_cast<const char>(std::toupper(*p_itr));
 
                return false;
             }
@@ -17993,7 +17993,7 @@ namespace exprtk
             expression_node_ptr right_branch   = error_node();
             expression_node_ptr new_expression = error_node();
 
-            if ((right_branch = parse_expression(current_state.right)))
+            if (0!=(right_branch = parse_expression(current_state.right)))
             {
                if (
                     details::is_return_node(  expression) ||
@@ -18079,8 +18079,8 @@ namespace exprtk
                expression_node_ptr return_node = error_node();
 
                if (
-                    (return_node = symtab_store_.get_variable(v)) ||
-                    (return_node = sem_         .get_variable(v))
+                   (0!=(return_node = symtab_store_.get_variable(v))) ||
+                   (0!=(return_node = sem_         .get_variable(v)))
                   )
                {
                   free_node(node_allocator_,node);
@@ -19024,7 +19024,7 @@ namespace exprtk
 
             branch = simplify(arg_list,side_effect_list);
 
-            if ((sdd.delete_ptr = (0 == branch)))
+            if (0!=(sdd.delete_ptr = (0 == branch)))
             {
                brkcnt_list_.pop_front();
 
@@ -28242,9 +28242,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // v0 o0 (v1 o1 (c o2 v2))
-               typedef typename synthesize_vocov_expression1::node_type vocov_t;
+               typedef typename synthesize_vocov_expression1::node_type vocov_type;
 
-               const vocov_t* vocov = static_cast<const vocov_t*>(branch[1]);
+               const vocov_type* vocov = static_cast<const vocov_type*>(branch[1]);
                const Type& v0 = static_cast<details::variable_node<Type>*>(branch[0])->ref();
                const Type& v1 = vocov->t0();
                const Type   c = vocov->t1();
@@ -28399,9 +28399,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // c0 o0 (v0 o1 (c1 o2 v1))
-               typedef typename synthesize_vocov_expression1::node_type vocov_t;
+               typedef typename synthesize_vocov_expression1::node_type vocov_type;
 
-               const vocov_t* vocov = static_cast<const vocov_t*>(branch[1]);
+               const vocov_type* vocov = static_cast<const vocov_type*>(branch[1]);
                const Type  c0 = static_cast<details::literal_node<Type>*>(branch[0])->value();
                const Type& v0 = vocov->t0();
                const Type  c1 = vocov->t1();
@@ -28452,9 +28452,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // v0 o0 (c0 o1 (v1 o2 c2))
-               typedef typename synthesize_covoc_expression1::node_type covoc_t;
+               typedef typename synthesize_covoc_expression1::node_type covoc_type;
 
-               const covoc_t* covoc = static_cast<const covoc_t*>(branch[1]);
+               const covoc_type* covoc = static_cast<const covoc_type*>(branch[1]);
                const Type& v0 = static_cast<details::variable_node<Type>*>(branch[0])->ref();
                const Type  c0 = covoc->t0();
                const Type& v1 = covoc->t1();
@@ -28660,9 +28660,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // v0 o0 ((v1 o1 v2) o2 c)
-               typedef typename synthesize_vovoc_expression0::node_type vovoc_t;
+               typedef typename synthesize_vovoc_expression0::node_type vovoc_type;
 
-               const vovoc_t* vovoc = static_cast<const vovoc_t*>(branch[1]);
+               const vovoc_type* vovoc = static_cast<const vovoc_type*>(branch[1]);
                const Type& v0 = static_cast<details::variable_node<Type>*>(branch[0])->ref();
                const Type& v1 = vovoc->t0();
                const Type& v2 = vovoc->t1();
@@ -28712,9 +28712,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // v0 o0 ((v1 o1 c) o2 v2)
-               typedef typename synthesize_vocov_expression0::node_type vocov_t;
+               typedef typename synthesize_vocov_expression0::node_type vocov_type;
 
-               const vocov_t* vocov = static_cast<const vocov_t*>(branch[1]);
+               const vocov_type* vocov = static_cast<const vocov_type*>(branch[1]);
                const Type& v0 = static_cast<details::variable_node<Type>*>(branch[0])->ref();
                const Type& v1 = vocov->t0();
                const Type   c = vocov->t1();
@@ -28869,9 +28869,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // c0 o0 ((v0 o1 c1) o2 v1)
-               typedef typename synthesize_vocov_expression0::node_type vocov_t;
+               typedef typename synthesize_vocov_expression0::node_type vocov_type;
 
-               const vocov_t* vocov = static_cast<const vocov_t*>(branch[1]);
+               const vocov_type* vocov = static_cast<const vocov_type*>(branch[1]);
                const Type  c0 = static_cast<details::literal_node<Type>*>(branch[0])->value();
                const Type& v0 = vocov->t0();
                const Type  c1 = vocov->t1();
@@ -29357,9 +29357,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // ((v0 o0 c0) o1 v1) o2 c1
-               typedef typename synthesize_vocov_expression0::node_type vocov_t;
+               typedef typename synthesize_vocov_expression0::node_type vocov_type;
 
-               const vocov_t* vocov = static_cast<const vocov_t*>(branch[0]);
+               const vocov_type* vocov = static_cast<const vocov_type*>(branch[0]);
                const Type& v0 = vocov->t0();
                const Type  c0 = vocov->t1();
                const Type& v1 = vocov->t2();
@@ -29463,9 +29463,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // ((v0 o0 c0) o1 c1) o2 v1
-               typedef typename synthesize_vococ_expression0::node_type vococ_t;
+               typedef typename synthesize_vococ_expression0::node_type vococ_type;
 
-               const vococ_t* vococ = static_cast<const vococ_t*>(branch[0]);
+               const vococ_type* vococ = static_cast<const vococ_type*>(branch[0]);
                const Type& v0 = vococ->t0();
                const Type  c0 = vococ->t1();
                const Type  c1 = vococ->t2();
@@ -29620,9 +29620,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // ((v0 o0 (v1 o1 c)) o2 v1)
-               typedef typename synthesize_vovoc_expression1::node_type vovoc_t;
+               typedef typename synthesize_vovoc_expression1::node_type vovoc_type;
 
-               const vovoc_t* vovoc = static_cast<const vovoc_t*>(branch[0]);
+               const vovoc_type* vovoc = static_cast<const vovoc_type*>(branch[0]);
                const Type& v0 = vovoc->t0();
                const Type& v1 = vovoc->t1();
                const Type   c = vovoc->t2();
@@ -29672,9 +29672,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // ((v0 o0 (c o1 v1)) o2 v2)
-               typedef typename synthesize_vocov_expression1::node_type vocov_t;
+               typedef typename synthesize_vocov_expression1::node_type vocov_type;
 
-               const vocov_t* vocov = static_cast<const vocov_t*>(branch[0]);
+               const vocov_type* vocov = static_cast<const vocov_type*>(branch[0]);
                const Type& v0 = vocov->t0();
                const Type   c = vocov->t1();
                const Type& v1 = vocov->t2();
@@ -29775,9 +29775,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // ((c0 o0 (v0 o1 c1)) o2 v1)
-               typedef typename synthesize_covoc_expression1::node_type covoc_t;
+               typedef typename synthesize_covoc_expression1::node_type covoc_type;
 
-               const covoc_t* covoc = static_cast<const covoc_t*>(branch[0]);
+               const covoc_type* covoc = static_cast<const covoc_type*>(branch[0]);
                const Type  c0 = covoc->t0();
                const Type& v0 = covoc->t1();
                const Type  c1 = covoc->t2();
@@ -29827,9 +29827,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // ((v0 o0 (c0 o1 v1)) o2 c1)
-               typedef typename synthesize_vocov_expression1::node_type vocov_t;
+               typedef typename synthesize_vocov_expression1::node_type vocov_type;
 
-               const vocov_t* vocov = static_cast<const vocov_t*>(branch[0]);
+               const vocov_type* vocov = static_cast<const vocov_type*>(branch[0]);
                const Type& v0 = vocov->t0();
                const Type  c0 = vocov->t1();
                const Type& v1 = vocov->t2();

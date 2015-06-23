@@ -356,14 +356,14 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
             numQuNodes[i] = (basis.degree(i)+1);
         numQuNodes[ iter->side().direction()] = 1;
 
-        gsGaussRule<T> QuRule(numQuNodes);
+        gsGaussRule<T> bdQuRule(numQuNodes);
 
         // Create the iterator along the given part boundary.
         typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
 
         for(; bdryIter->good(); bdryIter->next() )
         {
-            QuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
+            bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
                           quNodes, quWeights);
 
             geoEval->evaluateAt( quNodes );
