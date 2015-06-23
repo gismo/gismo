@@ -1763,7 +1763,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
         for (unsigned int j = 0; j < old[i].size();j++)//iteration through the basis functions in the given level
         {
             //std::cout<<"j = "<<j<<std::endl;
-            int start_lv_i = 0;
+            start_lv_i = 0;
             for(unsigned int l =0; l < i; l++)
             {
                 start_lv_i += n[l].size();

@@ -845,7 +845,10 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundaryOffset(boxSide const & s,unsi
     // i goes through all levels of the hierarchical basis
     for(unsigned i = 0; i <= this->maxLevel(); i++)
     {
-        GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
+        GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
+                     "Offset cannot be bigger than the amount of basis" 
+                     "functions orthogonal to Boxside s!");
+
         unsigned r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
              it != m_xmatrix[i].end(); it++)
@@ -1194,8 +1197,8 @@ void gsHTensorBasis<d,T>::degreeElevate(int const & i, int const dir)
     for (size_t level=0;level<m_bases.size();++level)
         m_bases[level]->degreeElevate(i,dir);
 
-    for(unsigned i=0; i<d; ++i)
-        m_deg[i]=m_bases[0]->degree(i);
+    for(unsigned c=0; c<d; ++c)
+        m_deg[c]=m_bases[0]->degree(c);
 
     this->update_structure();
 }
