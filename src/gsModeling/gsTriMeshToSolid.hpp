@@ -1291,7 +1291,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         faceConstruct.push_back(faceHelp);
         for (size_t j=0;j<innerBdrys[i].size();j++)
         {
-            std::vector<gsSolidHeVertex<T>* > faceHelp;
+            faceHelp.clear();
             for (size_t k=0;k<innerBdrys[i][j].size();k++)
                 //faceHelp.push_back(sl.vertex[getIndex(*innerBdrys[i][j][k],vertVec)]);
                 faceHelp.push_back( sl.vertex[ vertVec.getIndex(*innerBdrys[i][j][k])] );

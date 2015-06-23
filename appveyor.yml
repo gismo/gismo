@@ -30,7 +30,8 @@ configuration:
 # scripts that are called at very beginning, before repo cloning
 init:
 #  - cmd: cmake --version
-  - cmd: msbuild /version
+ - echo Platform is %platform%
+ - cmd: msbuild /version
 
 # clone directory
 clone_folder: C:\projects\gismo

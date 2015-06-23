@@ -55,12 +55,12 @@ bool gsCurveLoop<T>::parameterOf(gsMatrix<T> const &u, int i, T & result, T tol)
         gsAsMatrix<T> xx(roots); 
         m_curves[i]->eval_into( xx, e ); 
     
-        for(index_t i=0; i!=e.cols(); i++)
+        for(index_t r=0; r!=e.cols(); r++)
         {     
-            //gsInfo<<"matrix e (1,i): "<< e(1,i) <<"\n";
-            if( math::abs(e( 1, i )-u(1,0))< tol )
+            //gsInfo<<"matrix e (1,r): "<< e(1,r) <<"\n";
+            if( math::abs(e( 1, r )-u(1,0))< tol )
             {
-                result = roots[i];
+                result = roots[r];
                 return true;
             }
         }

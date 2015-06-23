@@ -68,12 +68,7 @@ public slots:
     void onSamplingDataChanged_v(int numSamples);
     void onSamplingDataChanged_w(int numSamples);
 
-    void onControlPointChanged_x(double c);
-    void onControlPointChanged_y(double c);
-    void onControlPointChanged_z(double c);
-
     void onIndexSelected(int i);
-    void onControlPointChanged();
 
     void openShader(void);
     void onShaderStateChanged(bool isShader);

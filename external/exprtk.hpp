@@ -7438,9 +7438,16 @@ namespace exprtk
                {
                   std::size_t size = std::min((s0_r1 - s0_r0),(s1_r1 - s1_r0)) + 1;
 
+#                 ifdef _MSC_VER
+                  // fixes MSVC C4996 warning for unsecured memory.
+                  std::copy(str1_base_ptr_->base() + s1_r0,
+                            str1_base_ptr_->base() + s1_r0 + size,
+                            stdext::checked_array_iterator<char*>(const_cast<char*>(base() + s0_r0),size) );
+#                 else
                   std::copy(str1_base_ptr_->base() + s1_r0,
                             str1_base_ptr_->base() + s1_r0 + size,
                             const_cast<char*>(base() + s0_r0));
+#                 endif
                }
             }
 
@@ -28503,9 +28510,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // c0 o0 (v0 o1 (v1 o2 c1))
-               typedef typename synthesize_vovoc_expression1::node_type vovoc_t;
+               typedef typename synthesize_vovoc_expression1::node_type vovoc_type;
 
-               const vovoc_t* vovoc = static_cast<const vovoc_t*>(branch[1]);
+               const vovoc_type* vovoc = static_cast<const vovoc_type*>(branch[1]);
                const Type  c0 = static_cast<details::literal_node<Type>*>(branch[0])->value();
                const Type& v0 = vovoc->t0();
                const Type& v1 = vovoc->t1();
@@ -28556,9 +28563,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // v0 o0 (c0 o1 (c1 o2 v1))
-               typedef typename synthesize_cocov_expression1::node_type cocov_t;
+               typedef typename synthesize_cocov_expression1::node_type cocov_type;
 
-               const cocov_t* cocov = static_cast<const cocov_t*>(branch[1]);
+               const cocov_type* cocov = static_cast<const cocov_type*>(branch[1]);
                const Type& v0 = static_cast<details::variable_node<Type>*>(branch[0])->ref();
                const Type  c0 = cocov->t0();
                const Type  c1 = cocov->t1();
@@ -29305,9 +29312,9 @@ namespace exprtk
                                                       expression_node_ptr (&branch)[2])
             {
                // ((c0 o0 v0) o1 c1) o2 v1
-               typedef typename synthesize_covoc_expression0::node_type covoc_t;
+               typedef typename synthesize_covoc_expression0::node_type covoc_type;
 
-               const covoc_t* covoc = static_cast<const covoc_t*>(branch[0]);
+               const covoc_type* covoc = static_cast<const covoc_type*>(branch[0]);
                const Type  c0 = covoc->t0();
                const Type& v0 = covoc->t1();
                const Type  c1 = covoc->t2();
