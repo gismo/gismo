@@ -20,10 +20,9 @@ gsGeometry<T> * gsInterpolate( gsBasis<T> const& g, gsMatrix<T> const& pts, gsMa
   g.collocationMatrix(pts, Cmat );
   gsMatrix<T> x (g.size(), vals.rows());
 
-  //Eigen::ConjugateGradient< gsSparseMatrix<T> > solver(Cmat);// for symmetric - does not apply here
-  //Eigen::BiCGSTAB<gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > solver;
-  //Eigen::BiCGSTAB<gsSparseMatrix<T>, Eigen::IdentityPreconditioner > solver;
-  Eigen::BiCGSTAB< gsSparseMatrix<T>,  Eigen::IncompleteLUT<T> > solver( Cmat );
+  // typename gsSparseSolver<T>::BiCGSTABIdentity solver( Cmat );
+  // typename gsSparseSolver<T>::BiCGSTABDiagonal solver( Cmat );
+  typename gsSparseSolver<T>::BiCGSTABILUT solver( Cmat );
 
   // Solves for many right hand side  columns
   x =  solver.solve( vals.transpose() ); //toDense()
@@ -219,9 +218,8 @@ GISMO_DEPRECATED void gsL2ProjectOnBoundary( const gsBasis<T> & basis,
 
     gloA.makeCompressed();
 
-    Eigen::ConjugateGradient< gsSparseMatrix<T> > solver;
-    //Eigen::Matrix<T,Dynamic,Dynamic> gloX;
-    vecCoeff = solver.compute( gloA ).solve ( gloB );
+    typename gsSparseSolver<T>::CGDiagonal solver( gloA );
+    vecCoeff = solver.solve ( gloB );
 
     if( getGlobalData )
     {

@@ -30,7 +30,10 @@ namespace gismo
     \endcode
 
     The template arguments are the same as the ones for gismo::gsSparseMatrix
-   See also http://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
+    See also http://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
+
+   \tparam T coefficient type
+   \ingroup Matrix
 */
 template<typename T=real_t, int _Options=0, typename _Index = index_t>
 struct gsSparseSolver
@@ -52,6 +55,14 @@ struct gsSparseSolver
     /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
     typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,_Options,_Index>,
                             Eigen::IncompleteLUT<T> > BiCGSTABILUT;
+
+    /// BiCGSTAB with Diagonal (Jacobi) preconditioner
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,_Options,_Index>,
+                            Eigen::DiagonalPreconditioner<T> > BiCGSTABDiagonal;
+
+    /// BiCGSTAB without preconditioner (identity as preconditioner) 
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,_Options,_Index>,
+                            Eigen::IdentityPreconditioner > BiCGSTABIdentity;
 
     /// Direct LDLt factorization
     typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<T,_Options,_Index> > SimplicialLDLT;

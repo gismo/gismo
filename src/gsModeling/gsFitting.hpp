@@ -84,7 +84,7 @@ void gsFitting<T>::compute(T lambda)
     //gsDebugVar( A_mat.nonZerosPerCol().minCoeff() );
     A_mat.makeCompressed();
 
-    Eigen::BiCGSTAB< gsSparseMatrix<T>,  Eigen::IncompleteLUT<T> > solver( A_mat );
+    typename gsSparseSolver<T>::BiCGSTABILUT solver( A_mat );
 
     if ( solver.preconditioner().info() != Eigen::Success )
     {

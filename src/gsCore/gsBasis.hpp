@@ -140,10 +140,9 @@ gsGeometry<T> * gsBasis<T>::interpolateData( gsMatrix<T> const& vals,
     collocationMatrix(pts, Cmat);
     gsMatrix<T> x ( size(), vals.rows());
 
-    //Eigen::ConjugateGradient< gsSparseMatrix<T> > solver(Cmat);// for symmetric - does not apply here
-    //Eigen::BiCGSTAB<gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > solver;
-    //Eigen::BiCGSTAB<gsSparseMatrix<T>, Eigen::IdentityPreconditioner > solver;
-    Eigen::BiCGSTAB< gsSparseMatrix<T>,  Eigen::IncompleteLUT<T> > solver( Cmat );
+    // typename gsSparseSolver<T>::BiCGSTABIdentity solver( Cmat );
+    // typename gsSparseSolver<T>::BiCGSTABDiagonal solver( Cmat );
+    typename gsSparseSolver<T>::BiCGSTABILUT solver( Cmat );
 
     // Solves for many right hand side  columns
     x =  solver.solve( vals.transpose() );
