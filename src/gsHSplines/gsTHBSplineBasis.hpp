@@ -1400,13 +1400,13 @@ void gsTHBSplineBasis<d, T>::breakCycles(
     {
 	for (std::size_t line = 0; line != polylines[level].size(); line++)
 	{
-	    std::pair< real_t, real_t> point;
-	    index_t segment = identifyCycle(polylines[level][line], point);
+	    std::pair< real_t, real_t> pt; // point
+	    index_t segment = identifyCycle(polylines[level][line], pt);
 	    
 	    if (-1 < segment)
 	    {
 		std::vector< std::vector<real_t> > part1, part2;
-		breakPolylineIntoTwoParts(polylines[level][line], segment, point,
+		breakPolylineIntoTwoParts(polylines[level][line], segment, pt,
 					  part1, part2);
 		
 		polylines[level][line] = part1;
@@ -1433,7 +1433,7 @@ void gsTHBSplineBasis<d, T>::breakCycles(
 // utility funcition for breakCycles
 template<unsigned d, class T>
 index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< real_t> >& line,
-					      std::pair<real_t, real_t>& point) const
+					      std::pair<real_t, real_t>& pt) const
 {
     std::map< std::pair<real_t, real_t>, index_t > times;
     std::map< std::pair<real_t, real_t>, index_t > index;
@@ -1442,23 +1442,23 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< re
     {
 	const std::size_t seg1 = (seg + 1) % line.size();
 	
-	std::pair<real_t, real_t> point( line[seg][0], line[seg][1] );
-	if (!((point.first == line[seg1][0] && point.second == line[seg1][1]) ||
-	      (point.first == line[seg1][2] && point.second == line[seg1][3])))
+	std::pair<real_t, real_t> currentPt( line[seg][0], line[seg][1] );
+	if (!((currentPt.first == line[seg1][0] && currentPt.second == line[seg1][1]) ||
+	      (currentPt.first == line[seg1][2] && currentPt.second == line[seg1][3])))
 	{
-	    point.first = line[seg][2];
-	    point.second = line[seg][3];
+	    currentPt.first = line[seg][2];
+	    currentPt.second = line[seg][3];
 	}
 	
-	std::size_t count = times.count(point);
+	std::size_t count = times.count(currentPt);
 	if (0 < count)
 	{
-	    times[point] += 1;
+	    times[currentPt] += 1;
 	}
 	else
 	{
-	    times[point] = 1;
-	    index[point] = seg1;
+	    times[currentPt] = 1;
+	    index[currentPt] = seg1;
 	}
     }
 
@@ -1467,7 +1467,7 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< re
     {
 	if (it->second == 2)
 	{
-	    point = it->first;
+	    pt = it->first;
 	    return index[it->first];
 	}
 	else if (2 < it->second)
@@ -1485,7 +1485,7 @@ template<unsigned d, class T>
 void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
 			     const std::vector< std::vector< real_t> >& line, 
 			     const index_t segment, 
-			     const std::pair<real_t, real_t>& point,
+			     const std::pair<real_t, real_t>& meetingPt,
 			     std::vector< std::vector< real_t> >& part1, 
 			     std::vector< std::vector< real_t> >& part2) const
 {
@@ -1504,9 +1504,9 @@ void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
 	}
 	else // not start
 	{
-	    // we hit the point again
-	    if ((point.first == line[seg][0] && point.second == line[seg][1]) ||
-		(point.first == line[seg][2] && point.second == line[seg][3]))
+	    // we hit the meeting point again
+	    if ((meetingPt.first == line[seg][0] && meetingPt.second == line[seg][1]) ||
+		(meetingPt.first == line[seg][2] && meetingPt.second == line[seg][3]))
 	    {
 		if (p1) // end of part 1
 		{

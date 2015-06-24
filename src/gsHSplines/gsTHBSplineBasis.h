@@ -688,10 +688,10 @@ private:
     /// @brief Identify if the polyline can be split into two cycles.
     ///
     /// @param[in] polyline description of polyline
-    /// @param[out] point the point where two cycles meet (if there are two cycles)
+    /// @param[out] pt the point where two cycles meet (if there are two cycles)
     /// @return the index of the segment with the point 
     index_t identifyCycle(const std::vector< std::vector< real_t> >& polyline,
-			  std::pair<real_t, real_t>& point) const;
+			  std::pair<real_t, real_t>& pt) const;
 
     
     /// @brief Breaks polyline into two parts.
@@ -701,12 +701,12 @@ private:
     ///
     /// @param[in] polyline input polyline with at least two cycles
     /// @param[in] segment the index of the segment of the polyline where the point is
-    /// @param[in] point the point where two cyles in polyline meet
+    /// @param[in] pt the point where two cyles in polyline meet
     /// @param[out] part1 first cycle of polyline
     /// @param[out] part2 second cycle of polyline
     void breakPolylineIntoTwoParts(const std::vector< std::vector< real_t> >& polyline, 
 				   const index_t segment, 
-				   const std::pair<real_t, real_t>& point,
+				   const std::pair<real_t, real_t>& pt,
 				   std::vector< std::vector< real_t> >& part1, 
 				   std::vector< std::vector< real_t> >& part2) const;
 
