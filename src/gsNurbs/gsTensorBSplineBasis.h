@@ -16,7 +16,7 @@
 
 #include <gsTensor/gsTensorBasis.h>
 
-// #include <gsNurbs/gsBSplineBasis.h>
+#include <gsNurbs/gsBSplineBasis.h>
 // #include <gsNurbs/gsKnotVector.h>
 // #include <gsNurbs/gsCompactKnotVector.h>
 #include <gsNurbs/gsTensorBSpline.h>
