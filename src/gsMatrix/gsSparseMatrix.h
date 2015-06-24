@@ -18,6 +18,52 @@
 namespace gismo
 {
 
+/** @brief Collection of available sparse linear solvers
+
+    Example of usage:
+    \code
+    gsSparseMatrix<> M; // sparse system matrix
+    gsMatrix<> b; // right-hand side
+    gsSparseSolver<>::CGDiagonal solver;
+    solver.compute(M);
+    gsMatrix<> x = solver.solve(b);
+    \endcode
+
+    The template arguments are the same as the ones for gismo::gsSparseMatrix
+   See also http://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
+*/
+template<typename T=real_t, int _Options=0, typename _Index = index_t>
+struct gsSparseSolver
+{
+    // Note: IncompleteILU is not compatible with
+    // Eigen::ConjugateGradient because this preconditionner does not
+    // preserve symmetry.
+
+    /// Congugate gradient without preconditioner (identity as preconditioner) 
+    /// The matrix is assumed symmetric and only the lower trinagular part is used
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,_Options,_Index>,
+            Eigen::Lower, Eigen::IdentityPreconditioner> CGIdentity;
+
+    /// Congugate gradient with diagonal (Jacobi) preconditioner
+    /// The matrix is assumed symmetric and only the lower trinagular part is used
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,_Options,_Index>, 
+            Eigen::Lower, Eigen::DiagonalPreconditioner<T> > CGDiagonal;
+
+    /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,_Options,_Index>,
+                            Eigen::IncompleteLUT<T> > BiCGSTABILUT;
+
+    /// Direct LDLt factorization
+    typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<T,_Options,_Index> > SimplicialLDLT;
+
+    /// Sparse LU solver
+    typedef Eigen::SparseLU<Eigen::SparseMatrix<T,_Options,_Index>,
+                            Eigen::COLAMDOrdering<_Index> > LU;
+
+    /// Sparse QR solver
+    typedef Eigen::SparseQR<Eigen::SparseMatrix<T,_Options,_Index>,
+                            Eigen::COLAMDOrdering<_Index> > QR;
+};
 
 /**
    @brief Class that provides a container for triplets (i,j,value) to be
@@ -46,8 +92,6 @@ public:
     { this->push_back( Triplet(i,j,value) ); }
 
 };
-
-
 
 /** @brief Sparse matrix class, based on Eigen::SparseMatrix.
  *

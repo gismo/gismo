@@ -63,9 +63,7 @@ int main()
 
   cout << "The product x*bt is : \n" << x *  b.transpose() << endl;
 
-  Eigen::Matrix<real_t,-1,-1> M = x *  b.transpose() ;
-
-  gsMatrix<> R1= (gsMatrix<>) ( x *  b.transpose() ) ;
+  gsMatrix<> M  = x *  b.transpose() ;
 
   //gsMatrix<real_t,Dynamic,Dynamic> W;
   gsMatrix<real_t,3,3> W;
@@ -99,7 +97,7 @@ int main()
       I(i,i)=1;
   gsMatrix<> r(9,1);
   r.setZero();
-  Eigen::ConjugateGradient< gsSparseMatrix<> > solver;
+  gsSparseSolver<>::CGDiagonal solver;
   gsMatrix<> rr(9,1);
   rr =  solver.compute(I).solve( r );
   cout << " sol: "<< rr.transpose()  << endl;
