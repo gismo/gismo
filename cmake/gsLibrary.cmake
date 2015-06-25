@@ -95,7 +95,7 @@ endif()
 
  set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
-#  if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
+ if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
     if(CMAKE_CONFIGURATION_TYPES)
       add_custom_command(
       TARGET ${PROJECT_NAME}
@@ -113,7 +113,7 @@ endif()
       COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${PROJECT_NAME}> ${CMAKE_BINARY_DIR}/bin
       COMMAND ${CMAKE_COMMAND} -E echo 'The file $<TARGET_FILE:${PROJECT_NAME}> is copied to the bin folder for convenience.' )
     endif()
-#  endif( WIN32 )
+  endif( WIN32 )
 
 endif(GISMO_BUILD_LIB)
 
