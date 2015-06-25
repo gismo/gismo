@@ -2,7 +2,7 @@
 
     @brief Provides declaration of MultiBasis class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -59,10 +59,10 @@ public:
 
     /// Create from a vector of bases and topology
     gsMultiBasis( const BasisContainer& bases, const gsBoxTopology & topology)
-    : m_topology( topology )
+        : m_topology( topology )
     {
-       m_bases.resize(bases.size());
-       cloneAll( bases.begin(), bases.end(), m_bases.begin() );
+        m_bases.resize(bases.size());
+        cloneAll( bases.begin(), bases.end(), m_bases.begin() );
     }
     
     /// Create a single-basis instance
@@ -73,10 +73,10 @@ public:
     gsMultiBasis( const BasisContainer& bases,
                   const std::vector<patchSide>& boundary,
                   const std::vector<boundaryInterface>& interfaces )
-    : m_topology( bases[0]->dim(), bases.size(), boundary, interfaces )      
-    { 
-       m_bases.resize(bases.size());
-       cloneAll( bases.begin(), bases.end(), m_bases.begin() );
+        : m_topology( bases[0]->dim(), bases.size(), boundary, interfaces )
+    {
+        m_bases.resize(bases.size());
+        cloneAll( bases.begin(), bases.end(), m_bases.begin() );
     }
     
     /// Destructor
@@ -101,14 +101,14 @@ public:
 
     /// Get a const-iterator to the patches
     /// \return an iterator to the beginning of the patches
-    const_iterator begin() const 
+    const_iterator begin() const
     {
         return m_bases.begin();
     }
 
     /// Get a const iterator to the end of the patches
     /// \return an iterator to the end of the patches
-    const_iterator end() const 
+    const_iterator end() const
     {
         return m_bases.end();
     }
@@ -138,24 +138,24 @@ public:
 
     /// Assess i-th parametric basis
     const_reference at(size_t i) const
-	{return *m_bases.at(i);}
+    {return *m_bases.at(i);}
 
     //reference at(size_t i)
     //{return *m_bases.at(i);}
 
-	const_reference operator[](size_t i) const
+    const_reference operator[](size_t i) const
     {return *m_bases[i];}
     
-	reference operator[](size_t i)			
+    reference operator[](size_t i)
     {return *m_bases[i];}
 
     // reference front()
     // {return *m_bases.front();}
 
-	const_reference front() const
+    const_reference front() const
     {return *m_bases.front();}
     
-    // reference back()						
+    // reference back()
     // {return *m_bases.back();}
 
     const_reference back() const
@@ -184,9 +184,9 @@ public:
     /// @brief Returns the polynomial degree of basis \a i in component \a j,
     /// if the basis is of polynomial or piecewise polynomial type.
     int degree(size_t i = 0, int comp = 0) const
-    { 
+    {
         GISMO_ASSERT( i < m_bases.size(),
-        "Invalid patch index "<<i<<" requested from gsMultiBasis" );
+                      "Invalid patch index "<<i<<" requested from gsMultiBasis" );
         return m_bases[i]->degree(comp);
     }
 
@@ -206,7 +206,7 @@ public:
     int size(size_t i) const
     {
         GISMO_ASSERT( i < m_bases.size(),
-        "Invalid patch index "<<i<<" requested from gsMultiBasis" ); 
+                      "Invalid patch index "<<i<<" requested from gsMultiBasis" );
         return m_bases[i]->size();
     }
 
@@ -234,8 +234,8 @@ public:
     /// Return the \a i-th basis block.
     const gsBasis<T> & basis( std::size_t i ) const
     {
-        GISMO_ASSERT( i < m_bases.size(), 
-        "Invalid patch index"<<i<<" requested from gsMultiBasis" );
+        GISMO_ASSERT( i < m_bases.size(),
+                      "Invalid patch index"<<i<<" requested from gsMultiBasis" );
         return *m_bases[i];
     }
 
@@ -253,7 +253,7 @@ public:
                        gsBasis<T>* g2, boxSide s2 );
 
     /// @brief Add side s of patch g to the outer boundary of the domain
-    void addPatchBoundary( gsBasis<T>* g, boxSide s ) 
+    void addPatchBoundary( gsBasis<T>* g, boxSide s )
     {
         const int p =findBasisIndex( g );
         m_topology.addBoundary( patchSide( p, s ) );
@@ -377,24 +377,29 @@ public:
         }
     }
 
-   BasisContainer & patchBases() 
-   {
-       return m_bases;
-   }
+    BasisContainer & patchBases()
+    {
+        return m_bases;
+    }
+
+    const BasisContainer & patchBases() const
+    {
+        return m_bases;
+    }
 
     void setTopology(const gsBoxTopology & tpl)
-	{
+    {
         m_topology = tpl;
     }
 
 
-    void getMapper(bool conforming, 
+    void getMapper(bool conforming,
                    const gsBoundaryConditions<T> & bc,
                    int unk,
-                   gsDofMapper & mapper, 
+                   gsDofMapper & mapper,
                    bool finalize = true) const;
 
-    void getMapper(bool conforming, 
+    void getMapper(bool conforming,
                    const gsBoundaryConditions<T> & bc,
                    gsDofMapper & mapper,
                    bool finalize = true) const
@@ -412,7 +417,7 @@ public:
     }
 
     // to remove
-    gsDofMapper * makeMapper(bool conforming, 
+    gsDofMapper * makeMapper(bool conforming,
                              const gsBoundaryConditions<T> & bc) const
     {
         gsDofMapper * mapper = new gsDofMapper;
@@ -421,19 +426,19 @@ public:
     }
 
     gsDofMapper * makeIdMapper()  const
-	{
+    {
         gsDofMapper * mapper = new gsDofMapper();
 
         int nDofs = 0;
         for (size_t k = 0; k < m_bases.size(); ++k)
             nDofs += m_bases[k]->size();
 
-        mapper->setIdentity(m_bases.size(), nDofs );       
+        mapper->setIdentity(m_bases.size(), nDofs );
         return mapper;
     }
 
 
-//private: // to do
+    //private: // to do
 
     /**
      * @brief Matches the degrees of freedom along an interface.

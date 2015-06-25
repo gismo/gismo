@@ -325,7 +325,22 @@ public:
             m_bases[dir]->degreeElevate(i);
         }
     }
-    
+
+    // Look at gsBasis class for documentation
+    virtual void degreeIncrease(int const & i = 1, int const dir = -1)
+    {
+        if (dir == -1)
+        {
+            for (unsigned j = 0; j < d; ++j)
+                m_bases[j]->degreeIncrease(i);
+        }
+        else
+        {
+            GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+                          "Invalid basis component requested" );
+            m_bases[dir]->degreeIncrease(i);
+        }
+    }
     // Look at gsBasis class for documentation 
     virtual void degreeReduce(int const & i = 1)
     { 
@@ -512,7 +527,7 @@ public:
 
     Basis_t& component(unsigned dir) const 
     { 
-        GISMO_ASSERT( static_cast<int>(dir) < this->dim(), 
+        GISMO_ASSERT( static_cast<int>(dir) < Dim,
                       "Invalid basis component requested" );
         return *m_bases[dir];
     }

@@ -777,8 +777,11 @@ public:
     virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
                                             int numKnots = 1, int mul=1);
 
-    /// @brief Elevate the degree of the basis by the given amount.
+    /// @brief Elevate the degree of the basis by the given amount, preserve smoothness.
     virtual void degreeElevate(int const & i = 1, int const dir = -1);
+
+    /// @brief Elevate the degree of the basis by the given amount, preserve knots multiplicity.
+    virtual void degreeIncrease(int const & i = 1, int const dir = -1);
 
     /// @brief Reduce the degree of the basis by the given amount.
     virtual void degreeReduce(int const & i = 1);

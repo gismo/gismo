@@ -125,7 +125,7 @@ public:
      * @brief solutions
      * @return a reference to the vector of solutions for each field
      */
-    const std::vector<gsFunction<T>*> &solutions()
+    const std::vector<gsFunction<T>*> &solutions() const
     {
     return m_solution;
     }
@@ -172,7 +172,7 @@ public:
      * @brief returns the dimension of the domain
      *
     **/
-    int dim()
+    int dim() const
     {
         return m_domain.dim();
     }

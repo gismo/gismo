@@ -442,6 +442,13 @@ public:
         m_p+=i; m_knots.degreeElevate(i); 
     }
 
+    /// Elevate the degree of the basis and preserve the knot multiplicity
+    void degreeIncrese(int const & i = 1, int const dir = -1)
+    {
+        GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
+        m_p+=i; m_knots.degreeIncrease(i);
+    }
+
     void setDegree(int const & i);
 
     /// Reduce the degree of the basis and preserve the smoothness

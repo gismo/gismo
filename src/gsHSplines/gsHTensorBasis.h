@@ -593,6 +593,7 @@ public:
 
 
     virtual void degreeElevate(int const & i = 1, int const dir = -1);
+    virtual void degreeIncrease(int const & i= 1, int const dir = -1);
 
 
     /** @brief Refine the basis to levels and in the areas defined by

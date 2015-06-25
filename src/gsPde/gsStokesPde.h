@@ -38,14 +38,14 @@ public:
         const T                    viscosity = 1
         )
         :
-            gsPde<T>(domain,bc),
-            m_force(force),
-            m_source(source),
-            m_viscosity(viscosity)
+            gsPde<T>(domain,bc),    m_viscosity(viscosity)
+
     {
+        m_force  = force  ? force->clone()  : NULL;
+        m_source = source ? source->clone() : NULL;
         m_solution.resize(2);
-        m_solution[0]=velSol;
-        m_solution[1]=preSol;
+        m_solution[0] = velSol ? velSol->clone() : NULL;
+        m_solution[1] = preSol ? preSol->clone() : NULL;
 
         m_unknownDim.push_back(m_domain.dim());
         m_unknownDim.push_back(1);

@@ -1203,6 +1203,17 @@ void gsHTensorBasis<d,T>::degreeElevate(int const & i, int const dir)
     this->update_structure();
 }
 
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::degreeIncrease(int const & i, int const dir)
+{
+    for (size_t level=0;level<m_bases.size();++level)
+        m_bases[level]->degreeIncrease(i,dir);
+
+    for(unsigned c=0; c<d; ++c)
+        m_deg[c]=m_bases[0]->degree(c);
+
+    this->update_structure();
+}
 
 } // namespace gismo
 
