@@ -804,6 +804,10 @@ public:
 	    if ( const gsTensorBSpline<2,T,gsCompactKnotVector<T> > * g = 
              dynamic_cast<const gsTensorBSpline<2,T,gsCompactKnotVector<T> > *>( ptr ) )
             return gsXml< gsTensorBSpline<2,T,gsCompactKnotVector<T> > >::put(*g,data);
+
+	    if ( const gsTensorBSpline<3,T,gsCompactKnotVector<T> > * g = 
+             dynamic_cast<const gsTensorBSpline<3,T,gsCompactKnotVector<T> > *>( ptr ) )
+            return gsXml< gsTensorBSpline<3,T,gsCompactKnotVector<T> > >::put(*g,data);
         
 		gsWarn<<"gsXmlUtils: put Geometry: No known object "<< obj <<"Error.\n";
         return NULL;
