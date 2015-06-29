@@ -419,23 +419,26 @@ void writeSingleCurve(gsFunction<T> const& func,
     gsMatrix<T>  eval_func = func.eval  ( pts ) ;//pts
 
     np.conservativeResize(3);
-    np.bottomRows(3-d).setOnes();
+    np.bottomRows(2).setOnes();
 
     if ( 3 - n > 0 )
     {
         eval_func.conservativeResize(3,eval_func.cols() );
         eval_func.bottomRows(3-n).setZero();
 
-        //std::swap( eval_geo.row(d),  eval_geo.row(0) );
-        eval_func.row(d) = eval_func.row(0);
-        eval_func.topRows(d) = pts;
+        if ( n == 1 )
+        {
+            //std::swap( eval_geo.row(d),  eval_geo.row(0) );
+            eval_func.row(d) = eval_func.row(0);
+            eval_func.topRows(d) = pts;
+        }
     }
 
     std::string mfn(fn);
     mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        std::cout<<"Problem opening "<<fn<<"\n";
+        gsInfo<<"Problem opening "<<fn<<"\n";
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     file <<"<?xml version=\"1.0\"?>\n";
