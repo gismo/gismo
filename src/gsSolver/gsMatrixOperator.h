@@ -126,9 +126,9 @@ gsSolverOperator< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  makeC
 ///
 /// @note This uses the default COLAMD column ordering.
 template <typename T, int _Opt, typename _Index>
-gsSolverOperator< Eigen::SparseLU< Eigen::SparseMatrix<T,_Opt,_Index> > > *  makeSparseLUSolver(const Eigen::SparseMatrix<T,_Opt,_Index> & mat)
+gsSolverOperator< gsSparseSolver<>::LU > *  makeSparseLUSolver(const Eigen::SparseMatrix<T,_Opt,_Index> & mat)
 {
-    return new gsSolverOperator< Eigen::SparseLU< Eigen::SparseMatrix<T,_Opt,_Index> > >(mat);
+    return new gsSolverOperator< gsSparseSolver<>::LU >(mat);
 }
 
 
@@ -136,9 +136,9 @@ gsSolverOperator< Eigen::SparseLU< Eigen::SparseMatrix<T,_Opt,_Index> > > *  mak
 ///
 /// @note Works only on sparse, symmetric (stored in lower half) and positive definite matrices.
 template <typename T, int _Opt, typename _Index>
-gsSolverOperator< Eigen::SimplicialLDLT< Eigen::SparseMatrix<T,_Opt,_Index>  > > *  makeSparseCholeskySolver(const Eigen::SparseMatrix<T,_Opt,_Index> & mat)
+gsSolverOperator< gsSparseSolver<>::SimplicialLDLT > *  makeSparseCholeskySolver(const Eigen::SparseMatrix<T,_Opt,_Index> & mat)
 {
-    return new gsSolverOperator< Eigen::SimplicialLDLT< Eigen::SparseMatrix<T,_Opt,_Index> > >(mat);
+    return new gsSolverOperator< gsSparseSolver<>::SimplicialLDLT >(mat);
 }
 
 

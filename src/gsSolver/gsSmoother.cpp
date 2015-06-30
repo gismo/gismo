@@ -96,7 +96,7 @@ void dampedPreRichardsonSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen:
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
 
-    Eigen::ConjugateGradient< gsSparseMatrix<real_t> > solver;
+    gsSparseSolver<>::CGDiagonal solver;
     gsMatrix<real_t> corr;
     corr = f - A * x;
     corr = solver.compute( P ).setTolerance(1e-3).solve(corr).eval();
@@ -120,7 +120,7 @@ void dampedPreJacobiSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spa
     corr = f - A * x;
     corr.array() /= A.diagonal().array();
     
-    corr = Eigen::ConjugateGradient< gsSparseMatrix<real_t> >( P ).setTolerance(1e-3).solve(corr).eval();
+    corr = gsSparseSolver<>::CGDiagonal( P ).setTolerance(1e-3).solve(corr).eval();
     corr.array() *= P.diagonal().array();
 #else
     // symmetricized version
@@ -130,7 +130,7 @@ void dampedPreJacobiSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spa
     corr.array() /= A.diagonal().array().sqrt();
     corr.array() *= P.diagonal().array().sqrt();
 
-    corr = Eigen::ConjugateGradient< gsSparseMatrix<real_t> >( P ).setTolerance(1e-3).solve(corr).eval();
+    corr = gsSparseSolver<>::CGDiagonal( P ).setTolerance(1e-3).solve(corr).eval();
 
     corr.array() *= P.diagonal().array().sqrt();
     corr.array() /= A.diagonal().array().sqrt();
@@ -213,7 +213,7 @@ void preGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spar
     }
 
     
-    corr = Eigen::ConjugateGradient< gsSparseMatrix<real_t> >( P )
+    corr = gsSparseSolver<>::CGDiagonal( P )
             .setTolerance(1e-3).solve(corr).eval();
     x.array() += tau * /*P.diagonal().array() * */ corr.array();
 }

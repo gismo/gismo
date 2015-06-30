@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 
     // Initialize the conjugate gradient solver
     std::cout<<"Solving...\n";
-    Eigen::ConjugateGradient< gsSparseMatrix<> > solver( PoissonAssembler.matrix() );
+    gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
     gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
 
     /////////////////// Post processing ///////////////////

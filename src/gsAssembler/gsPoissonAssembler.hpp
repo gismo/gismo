@@ -445,7 +445,7 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
     // The position in the solution vector already corresponds to the
     // numbering by the boundary index. Hence, we can simply take them
     // for the values of the eliminated Dirichlet DOFs.
-    Eigen::ConjugateGradient< gsSparseMatrix<T> > solver;
+    gsSparseSolver<>::CGDiagonal solver;
     m_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
     
 } // computeDirichletDofsL2Proj

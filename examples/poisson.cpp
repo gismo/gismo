@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
   gsStopwatch time;
   poisson.assemble();
   const double assmTime = time.stop();
-  Eigen::ConjugateGradient< gsSparseMatrix<> > solver( poisson.matrix() );
+  gsSparseSolver<>::CGDiagonal solver( poisson.matrix() );
   gsMatrix<> solVector = solver.solve( poisson.rhs() );
   const double solveTime = time.stop();
   gsField<>* x = poisson.constructSolution(solVector);

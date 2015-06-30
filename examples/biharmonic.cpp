@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     BiharmonicAssembler.assemble();
 
     cout<<"Solving with direct solver, "<< BiharmonicAssembler.numDofs()<< " DoFs..."<< endl;
-    Eigen::SparseLU< gsSparseMatrix<>, Eigen::COLAMDOrdering<int> > solver;
+    gsSparseSolver<>::LU solver;
     solver.analyzePattern(BiharmonicAssembler.matrix() );
     solver.factorize(BiharmonicAssembler.matrix());
     gsMatrix<> solVector= solver.solve(BiharmonicAssembler.rhs());

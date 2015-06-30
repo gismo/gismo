@@ -852,7 +852,7 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
     gsMatrix<T, Dynamic, Dynamic, ColMajor> q0, q1;
 
     //Note: Sparse LU might fail for rank deficient Cmat
-    Eigen::SparseLU<gsSparseMatrix<T>, Eigen::COLAMDOrdering<index_t> >  solver;
+    gsSparseSolver<>::LU  solver;
     gsSparseMatrix<T> Cmat;
 
     // size: sz x n

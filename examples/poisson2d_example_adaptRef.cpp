@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 
       // Solve system
       cout << "Solving... " << flush;
-      gsMatrix<> solVector = Eigen::ConjugateGradient<gsSparseMatrix<> >(pa.matrix() ).solve( pa.rhs() );
+      gsMatrix<> solVector = gsSparseSolver<>::CGDiagonal(pa.matrix() ).solve( pa.rhs() );
       cout << "done." << endl;
       
       // Construct the solution for plotting the mesh later

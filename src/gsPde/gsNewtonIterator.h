@@ -107,10 +107,10 @@ protected:
     gsMatrix<T>         m_updateVector;
 
     /// Linear solver employed
-    //Eigen::SparseLU<gsSparseMatrix<T>, Eigen::COLAMDOrdering<index_t> >  m_solver;
-    //Eigen::BiCGSTAB< gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > m_solver;
-    //Eigen::ConjugateGradient< gsSparseMatrix<T>, Eigen::DiagonalPreconditioner<T> > m_solver;
-    Eigen::SparseLU<gsSparseMatrix<>, Eigen::COLAMDOrdering<index_t> >  m_solver;
+    //gsSparseSolver<>::LU  m_solver;
+    //typename gsSparseSolver<T>::BiCGSTABDiagonal m_solver;
+    //typename gsSparseSolver<>::CGDiagonal m_solver;
+    gsSparseSolver<>::LU  m_solver;
 
 protected:
 
