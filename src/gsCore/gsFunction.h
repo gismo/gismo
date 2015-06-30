@@ -167,7 +167,12 @@ public:
      * classes to get proper results.
      */
     virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
-  
+
+    // temporary: towards sanitizing the format of deriv_into ( point u.col(i) --> result.col(i) )
+    void jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    // to be removed
+    void newderiv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+ 
     /// @brief Evaluate second derivatives of the function at points \a u into \a result.
     ///
     /// By default uses central finite differences with h=0.00001

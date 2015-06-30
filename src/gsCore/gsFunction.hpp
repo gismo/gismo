@@ -45,6 +45,22 @@ gsFunction<T>::deriv2(const gsMatrix<T>& u) const
     return uMatrixPtr(result);
 }
 
+template <class T>
+void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{
+    this->deriv_into( u, result );
+    // after changing deriv_into
+    //result.resize(d, d * u.cols() );
+}
+
+template <class T>
+void gsFunction<T>::newderiv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{
+    this->deriv_into( u, result );
+    // before changing deriv_into
+    result.resize( targetDim() * domainDim() , u.cols() );
+}
+
 
 template <class T>
 void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
