@@ -227,8 +227,10 @@ void degreeElevateBSpline(Basis_t &basis,
 {
     typedef typename Basis_t::Scalar_t T;
 
-    GISMO_ASSERT(m > 0, "Can only elevate degree by a positive amount");
+    GISMO_ASSERT(m >= 0, "Can only elevate degree by a positive amount");
     GISMO_ASSERT(basis.size() == coefs.rows(), "Invalid coefficients");
+
+    if (m==0) return;
 
     const int p      = basis.degree();
     const int ncoefs = coefs.rows();

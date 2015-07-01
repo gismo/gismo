@@ -329,11 +329,11 @@ public:
             for(int iteration = 0; iteration < nIterations; iteration++)
             {
                 c.eval_into(u, curveVal);
-                c.deriv_into(u, curveDeriv);
+                c.jacobian_into(u, curveDeriv);
                 c.deriv2_into(u, curveDeriv2);
 
                 m_surface->eval_into(curveVal, surfVal);
-                m_surface->deriv_into(curveVal, surfDeriv);
+                m_surface->jacobian_into(curveVal, surfDeriv);
                 m_surface->deriv2_into(curveVal, surfDeriv2);
 
                 // evaluate derivative of f

@@ -91,8 +91,7 @@ public:
     {
         gsMatrix<T> tmp;
         m_geo.eval_into(u, tmp);
-        m_f.deriv_into(tmp, result);
-        result.resize( m_geo.geoDim(), u.cols() );
+        m_f.newderiv_into(tmp, result);
     }
 
     int domainDim() const { return m_geo.parDim(); }
