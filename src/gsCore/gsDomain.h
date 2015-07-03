@@ -1,4 +1,4 @@
-/** @file gsLinearAlgebra.h
+/** @file gsDomain.h
 
     @brief Abstracgt Base class representing a domain. i.e. a
     collection of elements (triangles, rectangles, cubes, simplices.
@@ -51,35 +51,24 @@ public:
 
     /// Returns a list of elements
     virtual gsMatrix<T> elements()
-    {
-        GISMO_NO_IMPLEMENTATION
-            }
+    {GISMO_NO_IMPLEMENTATION}
 
     /// Returns the mesh..
     virtual gsMatrix<T> mesh()
-    {
-        GISMO_NO_IMPLEMENTATION
-        
-            }
+    {GISMO_NO_IMPLEMENTATION }
 
     virtual T minMeshSize()
-    {
-        GISMO_NO_IMPLEMENTATION
-            }
+    {GISMO_NO_IMPLEMENTATION}
 
     /// Returns the breaks..
     virtual std::vector<T> breaks() const
-    {
-        GISMO_NO_IMPLEMENTATION   
-            }
+    {GISMO_NO_IMPLEMENTATION}
     
-
     /// Clone function. Used to make a copy of the (derived) geometry
     virtual gsDomain* clone() const = 0;
 
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const = 0;
-
 
     /*
       Member functions that may be implemented or not in the derived class

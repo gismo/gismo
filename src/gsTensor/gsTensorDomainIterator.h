@@ -69,7 +69,7 @@ public:
 
 
     // note: this assumes that b is a tensor product basis
-    gsTensorDomainIterator(const gsBasis<T>& b)
+    gsTensorDomainIterator(const gsBasis<T>& b) // to do: change to gsTensorBasis
         : gsDomainIterator<T>( b ),
           d( m_basis->dim() ),
           lower ( gsVector<T, D>::Zero(d) ),

@@ -893,7 +893,7 @@ class SparseMatrix<Scalar,_Options,_Index>::InnerIterator
   protected:
     const Scalar* m_values;
     const Index* m_indices;
-    Index m_outer; // G+Smo: was const Index m_outer;
+    Index m_outer; // G+Smo
     Index m_id;
     Index m_end;
 };
