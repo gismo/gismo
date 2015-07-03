@@ -58,7 +58,6 @@ struct gsTenBSplTraits<3,T>
     \ingroup geometry
     \ingroup Nurbs
 */
-
 template<unsigned d, class T, class KnotVectorType>
 class gsTensorBSpline : 
     public gsGenericGeometry< gsTensorBSplineBasis<d,T,KnotVectorType> >
@@ -88,11 +87,18 @@ public:
     /// Default empty constructor
     gsTensorBSpline() : Base() { }
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable : 4702 )
+#endif
     /// Construct B-Spline by basis functions and coefficient matrix
     gsTensorBSpline( const gsConstantBasis<T> & basis, const gsMatrix<T> & coefs )
     { 
         GISMO_ERROR("something went terribly wrong.");
     }
+#ifdef _MSC_VER
+#pragma warning( pop ) 
+#endif
 
     /// Construct B-Spline by basis functions and coefficient matrix
     gsTensorBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :

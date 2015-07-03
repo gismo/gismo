@@ -534,7 +534,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
             x_line.push_back(m->addVertex(x_all[j*2],y_samples(0,i)));
             intersection_vec.push_back(m->addVertex(x_all[j*2],y_samples(0,i)));
 
-            for(int k=0;k<numPoints[j];k++)
+            for(k=0; k<numPoints[j]; k++)
             {
                 x_line.push_back(m->addVertex(x_all[j*2]*(numPoints[j]-k)/(numPoints[j]+1)+x_all[j*2+1]*(k+1)/(numPoints[j]+1),y_samples(0,i)));
             }

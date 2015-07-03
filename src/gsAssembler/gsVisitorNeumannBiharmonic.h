@@ -108,7 +108,6 @@ public:
     {
         // Local DoFs to global DoFs
         mapper.localToGlobal(actives, patchIndex, actives);
-        const index_t numActive = actives.rows();
 
         // Push element contribution to the global load vector
         for (index_t j=0; j!=numActive; ++j)
