@@ -46,6 +46,7 @@ set(SHOW_USED_FILES                     "no")
 set(INCLUDED_BY_GRAPH                   "no")
 set(GROUP_GRAPHS                        "no")
 set(UML_LOOK                            "no")
+string(TIMESTAMP TODAY "%Y-%m-%d, %H:%M" UTC)
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in

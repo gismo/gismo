@@ -3,7 +3,7 @@ namespace gismo {
 /**
   \mainpage Documentation
 
-The latest revision of this manual is <a href="https://ricamsvn.ricam.oeaw.ac.at/trac/gismo/wiki/public/Doxygen" target="_parent">available online</a>.
+These pages were created on \today. The latest revision of this manual is <a href="http://gs.jku.at/trac/gismo/wiki/public/Doxygen" target="_parent">available online</a>.
 
 The library is licenced under the <a href="https://www.mozilla.org/MPL/2.0" target="_blank">Mozilla Public License Version 2.0</a>.
 
@@ -16,7 +16,7 @@ The library is licenced under the <a href="https://www.mozilla.org/MPL/2.0" targ
 The library is partitioned into smaller entities called Modules.
 See section <a href="usergroup0.html">\gismo modules</a> for an overview of available modules.
 
-<h2><a href="GettingStarted.html">\subpage GettingStarted with \gismo</a></h2>
+<h2><a href="GettingStarted.html">Getting Started with \gismo</a></h2>
 
 A quick-start guide to using the library.
 

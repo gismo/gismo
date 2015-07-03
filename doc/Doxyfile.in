@@ -240,8 +240,9 @@ TAB_SIZE               = 8
 # "Side Effects:". You can put \n's in the value part of an alias to insert
 # newlines.
 
-ALIASES                = "gismo_no_inplementation=This method is not implemented by default. Derived classes that need this functionality should provide an implementation, otherwise a runtime error will occur." \
+ALIASES                = "gismo_no_implementation=This method is not implemented by default. Derived classes that need this functionality should provide an implementation, otherwise a runtime error will occur." \
                          "nonstableyet=\warning This functionality is not stable yet, use with caution." \
+			 "today=@TODAY@ UTC" \
 			 "gismo=G+Smo"
 			 #"gismo=<font style="font-variant:small-caps;">G+Smo</font>"
 
@@ -709,7 +710,7 @@ CITE_BIB_FILES         = "${gismo_SOURCE_DIR}/doc/gismo.bib"
 # messages are off.
 # The default value is: NO.
 
-QUIET                  = NO
+QUIET                  = YES
 
 # The WARNINGS tag can be used to turn on/off the warning messages that are
 # generated to standard error ( stderr) by doxygen. If WARNINGS is set to YES

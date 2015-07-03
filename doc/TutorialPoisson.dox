@@ -110,6 +110,9 @@ for (int i = 0; i < numRefine; ++i)
 
 \subsection solver Setting up and using the Assembler
 
+* Note the lower triangular representation!!
+
+
 We use \ref gsPoissonAssembler class to assemble and the Poisson equation. First we initialize the class object by giving the geometry (patches), discretization basis, boundary condition, source function, and the strategies for treating Dirichlet boundary conditions and patch interfaces:
 ~~~~~
 gsPoissonAssembler<> PoissonAssembler( *patches, *refine_bases, bcInfo, f,
