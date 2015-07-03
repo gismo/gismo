@@ -36,24 +36,47 @@ namespace internal
 
 }
 
-#include <gsCore/gsConfig.h>
-#include <gsCore/gsDebug.h>
-#include <gsCore/gsForwardDeclarations.h>
-
+//////////////////////////////////////////////////
 // Core
+//////////////////////////////////////////////////
+
+// #include <gsCore/gsConfig.h>
+// #include <gsCore/gsDebug.h>
+// #include <gsCore/gsMemory.h>
+#include <gsCore/gsForwardDeclarations.h>
+#include <gsCore/gsExport.h>
+
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsFunction.h>
+#include <gsCore/gsBoundary.h>
+
+#include <gsCore/gsGeometry.h>
+#include <gsCore/gsCurve.h>
+#include <gsCore/gsSurface.h>
+#include <gsCore/gsVolume.h>
+#include <gsCore/gsBulk.h>
+#include <gsCore/gsGenericGeometry.h>
+
+#include <gsCore/gsConstantFunction.h>
 #include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsMFunctionExpr.h>
-#include <gsCore/gsConstantFunction.h>
+
+#include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsField.h>
+
+#include <gsCore/gsBasis.h>
+
+#include <gsCore/gsFieldCreator.h>
 
 // Domain iterators
 #include <gsCore/gsDomainIterator.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
 
+//////////////////////////////////////////////////
 // Nurbs
+//////////////////////////////////////////////////
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsCompactKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>
@@ -66,14 +89,18 @@ namespace internal
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbsCreator.h>
 
-// Thbs
+//////////////////////////////////////////////////
+// HSplines
+//////////////////////////////////////////////////
 #include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 
+//////////////////////////////////////////////////
 // Modeling
+//////////////////////////////////////////////////
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsCurveLoop.h>
 #include <gsModeling/gsPlanarDomain.h>
@@ -84,43 +111,60 @@ namespace internal
 #include <gsModeling/gsFitting.h>
 #include <gsModeling/gsCurveFitting.h>
 
+//////////////////////////////////////////////////
 // Pde
+//////////////////////////////////////////////////
 #include <gsPde/gsConvDiffRePde.h>
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
 #include <gsPde/gsBVProblem.h>
-// Norms
-#include <gsAssembler/gsNormL2.h>
-#include <gsAssembler/gsSeminormH1.h>
 
+//////////////////////////////////////////////////
+// Norms
+//////////////////////////////////////////////////
+#include <gsAssembler/gsNorm.h>
+#include <gsAssembler/gsNormL2.h>
+#include <gsAssembler/gsNormL2Boundary.h>
+#include <gsAssembler/gsSeminormH1.h>
+#include <gsAssembler/gsSeminormH2.h>
+
+//////////////////////////////////////////////////
 // Quadrature
+//////////////////////////////////////////////////
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsGaussRule.h>
 
+//////////////////////////////////////////////////
 // Assembler
+//////////////////////////////////////////////////
 #include <gsAssembler/gsAssemblerBase.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
 
+//////////////////////////////////////////////////
 // Solver
+//////////////////////////////////////////////////
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMinimalResidual.h>
 #include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsConjugateGradient.h>
 #include <gsSolver/gsSimplePreconditioners.h>
 
+//////////////////////////////////////////////////
 // IO
+//////////////////////////////////////////////////
 #include <gsIO/gsCmdLine.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsParaviewCollection.h>
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
+#include <gsIO/gsXmlUtils.h>
 
+//////////////////////////////////////////////////
 // Utilities
-#include <gsCore/gsMemory.h>
+//////////////////////////////////////////////////
 #include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
-#include <gsCore/gsFieldCreator.h>
 #include <gsUtils/gsInterpolate.h>
 

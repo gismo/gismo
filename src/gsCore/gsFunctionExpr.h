@@ -40,7 +40,7 @@ public:
         
         If the domain dimension is not given, it defaults to 2.
     */
-    gsFunctionExpr(std::string expression_string, int ddim = 2);
+    gsFunctionExpr(const std::string & expression_string, int ddim = 2);
 
     ~gsFunctionExpr();
   

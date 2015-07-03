@@ -406,10 +406,10 @@ bool nextCubeVertex(Vec& cur, const Vec& start, const Vec& end)
         if ( cur[i] != end[i] )
         {
             cur[i] = end[i];
-            for (int j = i-1; j!=-1; --j)
-                cur[j] = start[j];
             return true;
         }
+        else
+            cur[i] = start[i];
     }
     return false;
 }
@@ -430,10 +430,10 @@ bool nextCubePoint(Vec& cur, const Vec& end)
         if ( cur[i] != end[i] )
         {
             ++cur[i];
-            for (int j = i-1; j!=-1; --j)
-                cur[j] = 0;
             return true;
         }
+        else
+            cur[i] = 0;
     }
     return false;
 }
@@ -455,10 +455,11 @@ bool nextCubePoint(Vec& cur, const Vec& start, const Vec& end)
         if ( cur[i] != end[i] )
         {
             ++cur[i];
-            for (int j = i-1; j!=-1; --j)
-                cur[j] = start[j];
             return true;
         }
+        else
+            cur[i] = start[i];
+
     }
     return false;
 }

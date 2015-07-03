@@ -110,7 +110,7 @@ struct WindowsWallClock
     static double getTime()
     {
         _timeb tb;
-        _ftime( &tb );
+        _ftime_s( &tb );
         return (double)tb.time + tb.millitm / 1000.0;
     }
 };

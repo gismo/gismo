@@ -182,6 +182,9 @@ void gsNewtonIterator<T>::firstIteration()
     // Construct the linear system
     m_assembler.assemble();
 
+    //gsDebugVar( m_assembler.matrix() );
+    //gsDebugVar( m_assembler.rhs().transpose() );
+
     // Compute the newton update
     m_solver.compute( m_assembler.matrix() );
     m_updateVector = m_solver.solve( m_assembler.rhs() );
@@ -215,8 +218,8 @@ void gsNewtonIterator<T>::nextIteration()
     m_solver.compute( m_assembler.matrix() );
     m_updateVector = m_solver.solve( m_assembler.rhs() );
 
-    // gsDebugVar( m_assembler.rhs().transpose() );
-    // gsDebugVar( m_updateVector.transpose() );
+    //gsDebugVar( m_assembler.rhs().transpose() );
+    //gsDebugVar( m_updateVector.transpose() );
 
     // Update the deformed solution
     m_assembler.updateSolution(m_updateVector, m_curSolution);

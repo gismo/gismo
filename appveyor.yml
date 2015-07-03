@@ -24,13 +24,14 @@ clone_depth: 5 # clone entire repository history if not defined
 
 # build Configuration, i.e. Debug, Release, etc.
 configuration:
-  - Debug
-#  - Release
+#  - Debug
+#  - RelWithDebInfo
+  - Release
 
 # scripts that are called at very beginning, before repo cloning
 init:
 #  - cmd: cmake --version
- - cmd: echo Platform is %platform%
+# - cmd: echo Platform is %platform%
  - cmd: msbuild /version
 
 # clone directory
@@ -67,7 +68,7 @@ build:
   parallel: true
 
   # MSBuild verbosity level (quiet|minimal|normal|detailed)
-  verbosity: normal
+  verbosity: minimal
 
   # NuGet
   #publish_nuget: true

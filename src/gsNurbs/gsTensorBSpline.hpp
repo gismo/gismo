@@ -1,4 +1,4 @@
-/** @file gsTensorBSpline.h
+/** @file gsTensorBSpline.hpp
 
     @brief Provides implementation of a tensor-product B-spline patch
     of arbitrary dimension

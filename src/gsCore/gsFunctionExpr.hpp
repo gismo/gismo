@@ -99,7 +99,7 @@ template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr() : my(new gsFunctionExprPrivate<T>) {}
 
 template<typename T>
-gsFunctionExpr<T>::gsFunctionExpr(std::string expression_string, int ddim)
+gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string, int ddim)
 : my(new gsFunctionExprPrivate<T>)
 {
     // Keep string data
@@ -115,6 +115,7 @@ gsFunctionExpr<T>::gsFunctionExpr(const gsFunctionExpr& other)
 {
     my = new gsFunctionExprPrivate<T>;
     my->string = other.my->string;
+    my->dim = other.my->dim;
     init();
 }
 
@@ -124,6 +125,7 @@ gsFunctionExpr<T>& gsFunctionExpr<T>::operator=(const gsFunctionExpr& other)
     if (this != &other)
     {
         my->string = other.my->string;
+        my->dim = other.my->dim;
         init();
     }
     return *this;
