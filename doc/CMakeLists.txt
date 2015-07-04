@@ -49,7 +49,7 @@ set(UML_LOOK                            "no")
 
 # get the date in variable TODAY
 if(CMAKE_MAJOR_VERSION EQUAL 2 AND
-   CMAKE_MINOR_VERSION LESS  8 AND
+   CMAKE_MINOR_VERSION LESS  9 AND
    CMAKE_PATCH_VERSION LESS 11 )
  if (WIN32)
    execute_process(COMMAND "cmd" " /C date /T" OUTPUT_VARIABLE TODAY)
