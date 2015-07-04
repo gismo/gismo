@@ -74,7 +74,7 @@ public:
     /// Construct B-Spline from a Tensor B-Spline
     gsTHBSpline( const gsTensorBSpline<d,T> & tbsp )
     {
-        this->m_basis = new Basis(tbsp.basis(), 3);// 3 levels
+        this->m_basis = new Basis( tbsp.basis() );
         this->m_coefs = tbsp.coefs();
     }
 

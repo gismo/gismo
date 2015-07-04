@@ -101,18 +101,16 @@ public:
     /// Default empty constructor
     gsHTensorBasis() { }
 
-    gsHTensorBasis( gsBasis<T> const&  tbasis, int nlevels)
+    gsHTensorBasis( gsBasis<T> const&  tbasis)
     {      
-        GISMO_ASSERT( nlevels > 0, "Invalid number of levels." );
         initialize_class(tbasis);
         // Build the characteristic matrices
         update_structure();
     }
 
     gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
-                    int nlevels, std::vector<unsigned> boxes)
+                    const std::vector<unsigned> & boxes)
     {
-        GISMO_ASSERT( nlevels > 0, "Invalid number of levels." );
         initialize_class(tbasis);
         gsVector<unsigned int> i1;
         gsVector<unsigned int> i2;
@@ -147,12 +145,11 @@ public:
  *                 level where it is completely contained
  */
     gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
-                    int nlevels, gsMatrix<T> const & boxes)
+                    gsMatrix<T> const & boxes)
     {
         //assert(boxes.rows() == 2);    //can accept only 2D coordinates- Delete during the generalization of the lac to nD
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
         GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");
-        GISMO_ASSERT( nlevels > 0, "Invalid number of levels." );
         initialize_class(tbasis);
         
         gsVector<unsigned int,d> k1;
@@ -188,9 +185,9 @@ public:
  * contains the lover left and upper right corner of the box
  * @param levels
  */
-    gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis, int nlevels, 
+    gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
                     gsMatrix<T> const & boxes, 
-                    std::vector<unsigned int> levels)
+                    const std::vector<unsigned int> & levels)
     {
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
         GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");

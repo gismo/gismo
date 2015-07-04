@@ -66,34 +66,30 @@ public:
 
 public:
 
-    /// Constructor out of a 2D Tensor BSpline Basis
-    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
-                     int nlevels = 10) 
-    : gsHTensorBasis<d,T>(tbasis, nlevels) 
+    /// Constructor out of a Tensor BSpline Basis
+    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis) 
+    : gsHTensorBasis<d,T>(tbasis) 
     { representBasis(); }
 
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
-                     const std::vector<unsigned> & boxes, 
-                     int nlevels = 10) 
-    : gsHTensorBasis<d,T>(tbasis, nlevels, boxes)
+                     const std::vector<unsigned> & boxes) 
+    : gsHTensorBasis<d,T>(tbasis, boxes)
     { representBasis(); }
 
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
-                     gsMatrix<T> const & boxes, 
-                     int nlevels = 10) 
-    : gsHTensorBasis<d,T>(tbasis, nlevels, boxes) 
+                     gsMatrix<T> const & boxes)
+    : gsHTensorBasis<d,T>(tbasis, boxes) 
     {  representBasis(); }
 
     gsTHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis, 
                       gsMatrix<T> const & boxes, 
-                      std::vector<unsigned int> levels, 
-                      int nlevels = 10)
-    : gsHTensorBasis<d,T>(tbasis, nlevels, boxes, levels)
+                      const std::vector<unsigned int> & levels)
+    : gsHTensorBasis<d,T>(tbasis, boxes, levels)
     {  representBasis(); }
 
     /// Constructor out of a tensor BSpline Basis
-    gsTHBSplineBasis(gsBasis<T> const&  tbasis, int nlevels = 10)
-        : gsHTensorBasis<d,T>(tbasis, nlevels)
+    gsTHBSplineBasis(gsBasis<T> const&  tbasis)
+        : gsHTensorBasis<d,T>(tbasis)
     {  representBasis(); }
 
     ~gsTHBSplineBasis()

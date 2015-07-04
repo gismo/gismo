@@ -54,57 +54,57 @@ public:
 #endif
 
     /// Constructor out of a gsBSplineBasis
-    gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis, int nlevels = 10);
+    gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis);
     
     gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
-                     std::vector<unsigned> & boxes, int nlevels = 10)
-        : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis), nlevels, boxes) 
+                     std::vector<unsigned> & boxes)
+        : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis), boxes) 
     {
-        GISMO_ASSERT(d==1, "Wrong dimension");
+        GISMO_ASSERT(d==1 && bsbasis.dim()==1, "Wrong dimension");
     }
     
     gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
-                     gsMatrix<T> const & boxes, int nlevels = 10)
-        : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), nlevels, boxes) 
+                     gsMatrix<T> const & boxes)
+        : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), boxes) 
     {
-        GISMO_ASSERT(d==1, "Wrong dimension");
+        GISMO_ASSERT(d==1 && bsbasis.dim()==1, "Wrong dimension");
+    }
+
+    gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
+                     gsMatrix<T> const & boxes, std::vector<unsigned int> & levels)
+        : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), boxes)
+    {
+        GISMO_ASSERT(d==1 && bsbasis.dim()==1, "Wrong dimension");
     }
 
 #ifdef _MSC_VER
 #pragma warning( pop ) 
 #endif
 
-    gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
-                     gsMatrix<T> const & boxes, std::vector<unsigned int> & levels, int nlevels = 10)
-        : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), nlevels, boxes, levels)
-    {
-        GISMO_ASSERT(d==1, "Wrong dimension");
-    }
-
     /// Constructor out of a tensor BSpline Basis
-    gsHBSplineBasis(gsBasis<T> const&  tbasis, int nlevels = 10)
-        : gsHTensorBasis<d,T>(tbasis, nlevels) 
+    gsHBSplineBasis(gsBasis<T> const&  tbasis)
+        : gsHTensorBasis<d,T>(tbasis) 
     {
         // initialize(); // is done in the base constructor
     }
     
     gsHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
-                     std::vector<unsigned> & boxes, int nlevels = 10)
-        : gsHTensorBasis<d,T>(tbasis, nlevels, boxes) 
+                     std::vector<unsigned> & boxes)
+        : gsHTensorBasis<d,T>(tbasis, boxes) 
     {
         // initialize(); // is done in the base constructor
     }
     
     gsHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
-                     gsMatrix<T> const & boxes, int nlevels = 10)
-        : gsHTensorBasis<d,T>(tbasis, nlevels, boxes) 
+                     gsMatrix<T> const & boxes)
+        : gsHTensorBasis<d,T>(tbasis, boxes) 
     {
         // initialize(); // is done in the base constructor
     }
     
     gsHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
-                     gsMatrix<T> const & boxes, std::vector<unsigned int> & levels, int nlevels = 10)
-        : gsHTensorBasis<d,T>(tbasis, nlevels, boxes, levels)
+                     gsMatrix<T> const & boxes, std::vector<unsigned int> & levels)
+        : gsHTensorBasis<d,T>(tbasis, boxes)
     {
         // initialize(); // is done in the base constructor
     }
