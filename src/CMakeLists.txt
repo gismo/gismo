@@ -58,7 +58,7 @@ ENDFOREACH()
 
 if (GISMO_BUILD_PCH)
 
-   include(cotire)
+  include(cotire)
 
   #set(CMAKE_C_FLAGS    "${CMAKE_CXX_FLAGS} -H") # for GCC: test if PCH is used
 
@@ -70,15 +70,14 @@ if (GISMO_BUILD_PCH)
   cotire(gsCore)
   get_target_property(gismo_prefixHeader gsCore COTIRE_CXX_PREFIX_HEADER)
 
+
   FOREACH(subdir ${SUBDIRS})
-
     get_filename_component(GM_NAME ${subdir} NAME)
-
     add_dependencies(${GM_NAME} gsCore_pch)
     set_target_properties(${GM_NAME} PROPERTIES
       COTIRE_CXX_PREFIX_HEADER_INIT "${gismo_prefixHeader}")
     cotire(${GM_NAME})
-
   ENDFOREACH()
+
 
 endif(GISMO_BUILD_PCH)

@@ -58,8 +58,7 @@ before_build:
   #- cmd: cmake -DCMAKE_BUILD_TYPE=%configuration% ../gismo
   - cmd: if "%platform%"=="Win32" set CMAKE_GENERATOR_NAME=Visual Studio 14 2015
   - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64
-  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_BUILD_PCH=ON ../gismo
-
+  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo
 
 build:
   project: C:\projects\build-gismo\gismo.sln
@@ -77,4 +76,3 @@ build:
 
 test_script:
   - cmd: ctest -C %configuration% -VV
-#  - cmd: ctest -C Debug -VV
