@@ -48,10 +48,10 @@ public:
 
 public:
 
-#ifdef _MSC_VER
-#pragma warning( push )
-#pragma warning( disable : 4702 )
-#endif
+// #ifdef _MSC_VER
+// #pragma warning( push )
+// #pragma warning( disable : 4702 )
+// #endif
 
     /// Constructor out of a gsBSplineBasis
     gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis);
@@ -60,26 +60,26 @@ public:
                      std::vector<unsigned> & boxes)
         : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis), boxes) 
     {
-        GISMO_ASSERT(d==1 && bsbasis.dim()==1, "Wrong dimension");
+        GISMO_ASSERT(bsbasis.dim()==1 && d==1, "Wrong dimension");
     }
     
     gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
                      gsMatrix<T> const & boxes)
         : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), boxes) 
     {
-        GISMO_ASSERT(d==1 && bsbasis.dim()==1, "Wrong dimension");
+        GISMO_ASSERT(bsbasis.dim()==1 && d==1, "Wrong dimension");
     }
 
     gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
                      gsMatrix<T> const & boxes, std::vector<unsigned int> & levels)
         : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), boxes)
     {
-        GISMO_ASSERT(d==1 && bsbasis.dim()==1, "Wrong dimension");
+        GISMO_ASSERT(bsbasis.dim()==1 && d==1, "Wrong dimension");
     }
 
-#ifdef _MSC_VER
-#pragma warning( pop ) 
-#endif
+// #ifdef _MSC_VER
+// #pragma warning( pop ) 
+// #endif
 
     /// Constructor out of a tensor BSpline Basis
     gsHBSplineBasis(gsBasis<T> const&  tbasis)
