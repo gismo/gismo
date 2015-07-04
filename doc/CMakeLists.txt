@@ -46,7 +46,24 @@ set(SHOW_USED_FILES                     "no")
 set(INCLUDED_BY_GRAPH                   "no")
 set(GROUP_GRAPHS                        "no")
 set(UML_LOOK                            "no")
-#string(TIMESTAMP TODAY "%Y-%m-%d, %H:%M" UTC)
+
+# get the date in variable TODAY
+if(CMAKE_MAJOR_VERSION EQUAL 2 AND
+   CMAKE_MINOR_VERSION LESS  8 AND
+   CMAKE_PATCH_VERSION LESS 11 )
+ if (WIN32)
+   execute_process(COMMAND "cmd" " /C date /T" OUTPUT_VARIABLE TODAY)
+   string(REGEX REPLACE "(..)/(..)/..(..).*" "\\1/\\2/\\3" TODAY ${TODAY})
+ elseif(UNIX)
+   execute_process(COMMAND "date" "+%d/%m/%Y" OUTPUT_VARIABLE TODAY)
+   string(REGEX REPLACE "(..)/(..)/..(..).*" "\\1/\\2/\\3" TODAY ${TODAY})
+ else (WIN32)
+   message(SEND_ERROR "date not implemented")
+   set(${RESULT} 000000)
+ endif (WIN32)
+else()
+  string(TIMESTAMP TODAY "%d/%m/%Y")
+endif()
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in
