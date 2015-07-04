@@ -57,6 +57,8 @@ class CwiseBinaryOpImpl<BinaryOp, Lhs, Rhs, Sparse>
     {
       typedef typename internal::traits<Lhs>::StorageKind LhsStorageKind;
       typedef typename internal::traits<Rhs>::StorageKind RhsStorageKind;
+      EIGEN_ONLY_USED_FOR_DEBUG(LhsStorageKind);
+      EIGEN_ONLY_USED_FOR_DEBUG(RhsStorageKind);
       EIGEN_STATIC_ASSERT((
                 (!internal::is_same<LhsStorageKind,RhsStorageKind>::value)
             ||  ((Lhs::Flags&RowMajorBit) == (Rhs::Flags&RowMajorBit))),
