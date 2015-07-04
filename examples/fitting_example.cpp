@@ -108,8 +108,8 @@ int main(int argc, char *argv[])
 
     // Create Initial hierarchical basis
     
-    gsTHBSplineBasis<2>  THB ( T_tbasis , iter+1) ;
-    //gsHBSplineBasis<2>  THB ( T_tbasis , iter+1) ;
+    gsTHBSplineBasis<2>  THB ( T_tbasis ) ;
+    //gsHBSplineBasis<2>  THB ( T_tbasis ) ;
 
     // Specify extension size in u and v cells
     std::vector<int> ext;
