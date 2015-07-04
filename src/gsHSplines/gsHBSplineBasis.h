@@ -60,6 +60,11 @@ public:
                      std::vector<unsigned> & boxes)
         : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis), boxes) 
     {
+        //  Note: The compiler adds automatically a return statement
+        //  at the end of each constructor.  Throwing an exception
+        //  causes this return statement to be unreachable, and
+        //  warning 4702 is emitted.  To stop this warning we add
+        //  "bsbasis.dim()==1", which is not known at compile time
         GISMO_ASSERT(bsbasis.dim()==1 && d==1, "Wrong dimension");
     }
     
