@@ -170,6 +170,9 @@ public:
 
     // temporary: towards sanitizing the format of deriv_into ( point u.col(i) --> result.col(i) )
     void jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+
+    void grad_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+
     // to be removed
     void newderiv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
  

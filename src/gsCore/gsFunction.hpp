@@ -50,7 +50,40 @@ void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
 {
     this->deriv_into( u, result );
     // after changing deriv_into
-    //result.resize(d, d * u.cols() );
+    //result.resize(n, u.rows() * u.cols() );
+}
+
+template <class T>
+void gsFunction<T>::grad_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{
+    this->deriv_into( u, result );
+
+    const int n = targetDim();
+
+    if (n == 1)
+    {
+        result.resize(u.rows(), u.cols() ); // newderiv: ~
+        return;
+    }
+    
+    if (u.cols() == 1)
+    {
+        //newderiv: result.resize(n, u.rows() * u.cols() );
+        result.transposeInPlace();
+        result.resize(n*u.rows(), u.cols() );
+    }
+    else
+    {
+        const index_t d = u.rows();
+        for (index_t k = 0; k < u.cols(); ++k)
+        {
+            result.reshapeCol(k*d,d,n) = // newderiv: reshapeCol(k,d,n)
+                result.reshapeCol(k*d,n,d).transpose().eval();
+            // equivalent code:
+            // const gsMatrix<T> tmp = result.middleCols(k*d,d).transpose();
+            // result.reshapeCol(k*d,d,n) = tmp;
+        }
+    }
 }
 
 template <class T>
