@@ -29,8 +29,11 @@ namespace gismo
     gsMatrix<> x = solver.solve(b);
     \endcode
 
-    The template arguments are the same as the ones for gismo::gsSparseMatrix
-    See also http://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
+    The template arguments are the same as the ones for gismo::gsSparseMatrix.
+    See also
+    http://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
+    and
+    http://eigen.tuxfamily.org/dox/classEigen_1_1IterativeSolverBase.html
 
    \tparam T coefficient type
    \ingroup Matrix

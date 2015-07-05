@@ -50,6 +50,17 @@ public:
     gsAsMatrix( T * pt, unsigned n, unsigned m)
     : Base( pt, n, m) {  }
 
+#ifdef _MSC_VER
+    template <class EigenExpr>
+    gsAsMatrix& operator= (const EigenExpr & other) 
+    {
+        this->Base::operator=(other);
+        return *this;
+    }
+#else
+    using Base::operator=;
+#endif
+
 private:
     gsAsMatrix() { }
 };
