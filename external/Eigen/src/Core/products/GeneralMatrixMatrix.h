@@ -387,10 +387,10 @@ class GeneralProduct<Lhs, Rhs, GemmProduct>
     typedef typename  Lhs::Scalar LhsScalar;
     typedef typename  Rhs::Scalar RhsScalar;
     typedef           Scalar      ResScalar;
+    typedef internal::scalar_product_op<LhsScalar,RhsScalar> BinOp;
 
     GeneralProduct(const Lhs& lhs, const Rhs& rhs) : Base(lhs,rhs)
     {
-      typedef internal::scalar_product_op<LhsScalar,RhsScalar> BinOp;
       EIGEN_ONLY_USED_FOR_DEBUG(BinOp);
       EIGEN_CHECK_BINARY_COMPATIBILIY(BinOp,LhsScalar,RhsScalar);
     }
