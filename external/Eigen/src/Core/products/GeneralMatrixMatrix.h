@@ -391,7 +391,6 @@ class GeneralProduct<Lhs, Rhs, GemmProduct>
 
     GeneralProduct(const Lhs& lhs, const Rhs& rhs) : Base(lhs,rhs)
     {
-      EIGEN_ONLY_USED_FOR_DEBUG(BinOp);
       EIGEN_CHECK_BINARY_COMPATIBILIY(BinOp,LhsScalar,RhsScalar);
     }
 
