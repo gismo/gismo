@@ -1,4 +1,4 @@
-/** @file gsPoissonAssembler.h
+/** @file gsHeatEquation.h
 
     @brief Provides assembler for the heat equation.
 
@@ -111,21 +111,9 @@ protected:
 
 namespace gismo
 {
-/*
 template<class T>
-void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, T Dt)
-{
-    GISMO_ASSERT( curSolution.rows() == m_matrix.rows(), "Wrong size in current solution vector.");
-
-    // Backward Euler
-    m_curMat           = m_matrix + Dt * m_stiffMat;
-    m_curRhs.noalias() = Dt * m_rhs + m_matrix * curSolution;
-
-    
-}
-*/
-template<class T>
-void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, const gsMatrix<T> & curRhs, T Dt)
+void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, 
+                                     const gsMatrix<T> & curRhs, T Dt)
 {
     GISMO_ASSERT( curSolution.rows() == m_matrix.rows(), "Wrong size in current solution vector.");
   
@@ -134,7 +122,7 @@ void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, const gsMa
     
     m_curRhs.noalias() = Dt * m_theta * m_rhs + m_matrix * curSolution
                        + Dt * (1.0 - m_theta) * curRhs 
-                       - Dt * (1.0 - m_theta) * m_matrix * curSolution;    
+                       - Dt * (1.0 - m_theta) * m_stiffMat * curSolution;    
 }
 
 template<class T>
