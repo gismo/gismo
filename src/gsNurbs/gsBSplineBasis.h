@@ -319,11 +319,13 @@ public:
                                         int n, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
-    int degree(int i = 0) const 
+    int degree(int i) const 
     { 
         GISMO_ASSERT(i==0,"Asked for degree(i) in 1D basis.");
         return m_p; 
     }
+
+    int degree() const {return m_p;}
 
     // Look at gsBasis class for a description
     int maxDegree()   const { return m_p; }

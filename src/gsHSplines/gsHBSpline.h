@@ -84,16 +84,6 @@ public:
   
 public:
   
-    //////////////////////////////////////////////////
-    // Virtual member functions required by the base class
-    //////////////////////////////////////////////////
-    
-    /// Returns the degree wrt direction i
-    unsigned degree(const unsigned & i) const 
-    { return this->basisComponent(i).degree(); };
-    
-public:
-
     /// Constucts an isoparametric slice of this HBSpline by fixing
     /// \a par in direction \a dir_fixed. The resulting HBSpline has
     /// one less dimension and is given back in \a result.

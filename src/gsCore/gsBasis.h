@@ -14,11 +14,6 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsBasisFun.h>
-
-#include <gsCore/gsBoundary.h>
-
-#include <gsCore/gsForwardDeclarations.h>
 
 #define GISMO_MAKE_GEOMETRY_NEW                                         \
     virtual gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs ) const \
@@ -132,10 +127,7 @@ public:
     //
     /// Note that the gsBasisFun object only holds a reference to the current
     /// basis, so it is invalidated when the basis is destroyed.
-    gsBasisFun<T> function(unsigned i) const
-    {
-        return gsBasisFun<T>(this,i);
-    }
+    gsBasisFun<T> function(unsigned i) const;
 
     /// @name Evaluation functions
     /// @{
@@ -812,7 +804,7 @@ public:
     /// If the basis is a tensor product of (piecewise)
     /// polynomial bases, then this function returns the polynomial
     /// degree of the \a i-th component.
-    virtual int degree(int i = 0) const ;
+    virtual int degree(int i) const;
 
     /// @brief Applies interpolation given the parameter values \a pts
     /// and values \a vals.

@@ -524,10 +524,6 @@ public:
   void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
 
   void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
-  /// @brief If the basis is of polynomial or piecewise polynomial
-  /// type, then this function returns the polynomial degree.
-  virtual inline int degree() const
-    { return m_bases[0]->degree(); }
 
     int maxDegree() const 
     { 

@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBasis.h>
+#include <gsCore/gsBoundary.h>
 #include <gsUtils/gsSortedVector.h>
 
 namespace gismo
@@ -407,35 +408,26 @@ public:
     typename gsMatrix<unsigned>::uPtr coefSlice(int dir, int k) const;
 
     /// Returns the degree of the basis wrt variable \a i 
-    int degree(int i) const { 
-        return m_bases[i]->degree(); 
+    int degree(int i) const 
+    { 
+        return m_bases[i]->degree(0); 
     }
 
-    // to remove
-    int degree() const 
-    { 
-        int td = 0;
-        // take maximum of coordinate bases degrees
-        for (unsigned k=0; k!=d; ++k)
-            td = math::max(td, m_bases[k]->degree());
-        return td;
-    }
-    
     int maxDegree() const 
     { 
-        int td = m_bases[0]->degree();
+        int td = m_bases[0]->degree(0);
         // take maximum of coordinate bases degrees
         for (unsigned k=1; k!=d; ++k)
-            td = math::max(td, m_bases[k]->degree());
+            td = math::max(td, m_bases[k]->degree(0));
         return td;
     }
     
     int minDegree() const 
     { 
-        int td = m_bases[0]->degree();
+        int td = m_bases[0]->degree(0);
         // take minimum of coordinate bases degrees
         for (unsigned k=1; k!=d; ++k)
-            td = math::min(td, m_bases[k]->degree());
+            td = math::min(td, m_bases[k]->degree(0));
         return td;
     }
     
@@ -443,7 +435,7 @@ public:
     { 
         int td = 0;
         for (unsigned k=0; k!=d; ++k)
-            td = + m_bases[k]->degree();
+            td = + m_bases[k]->degree(0);
         return td;
     }
 
@@ -451,7 +443,7 @@ public:
     {
         gsVector<int> deg(d);
         for (unsigned k=0; k!=d; ++k)
-            deg[k] = m_bases[k]->degree();
+            deg[k] = m_bases[k]->degree(0);
         return deg;
     }
 

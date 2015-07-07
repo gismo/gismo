@@ -91,7 +91,8 @@ int main(int argc, char* argv[])
     std::cout << "Dimension of the parameter space: " << pBasis->dim() << "\n"
               << "Number of basis functions: " << pBasis->size() << "\n"
               << "Number of elements: " << pBasis->numElements() << "\n"
-              << "Degree of the basis: " << pBasis->degree() << "\n"
+              << "Max degree of the basis: " << pBasis->maxDegree() << "\n"
+              << "Min degree of the basis: " << pBasis->minDegree() << "\n"
               << std::endl;
 
 

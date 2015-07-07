@@ -13,14 +13,27 @@
 
 #pragma once
 
+#include <gsCore/gsBasisFun.h>
+
+#include <gsCore/gsBoundary.h>
+
 namespace gismo
 {
+
+
+template<class T>
+gsBasisFun<T> gsBasis<T>::function(unsigned i) const
+{
+    return gsBasisFun<T>(this,i);
+}
+
 
 // Evaluates a linear combination of basis functions (default implementation)
 template<class T>
 void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u, 
                            const gsMatrix<T> & coefs, 
-                           gsMatrix<T>& result) const {
+                           gsMatrix<T>& result) const 
+{
 
     result.resize(coefs.cols(), u.cols()) ;
     gsMatrix<T> B ;
@@ -41,7 +54,8 @@ void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u,
 
 // Evaluates the Jacobian of the function given by coefs (default implementation)
 template<class T>
-void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const {  
+void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const 
+{  
     unsigned n = coefs.cols();
     unsigned numPts = u.cols();       // at how many points to evaluate the gradients
     int pardim = this->dim();

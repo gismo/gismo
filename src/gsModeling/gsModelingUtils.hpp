@@ -29,7 +29,7 @@ gsMatrix<T> * innerProduct( const gsBasis<T>& B1, const gsBasis<T>& B2)
     gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
     K->setZero();
     
-    int nGauss = int( ceil( double(B1.degree() + B2.degree() + 1)/2 ) );
+    int nGauss = int( ceil( double(B1.degree(0) + B2.degree(0) + 1)/2 ) );
     if (nGauss<1) nGauss=1;
     
     gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
@@ -64,7 +64,7 @@ gsMatrix<T> * innerProduct1( const gsBasis<T>& B1, const gsBasis<T>& B2)
     gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
     K->setZero();
 
-    int nGauss = int( ceil( double(B1.degree()-1 + B2.degree()-1 + 1)/2 ) );
+    int nGauss = int( ceil( double(B1.degree(0)-1 + B2.degree(0)-1 + 1)/2 ) );
     if (nGauss<1) nGauss=1;
     
     gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
@@ -100,7 +100,7 @@ gsMatrix<T> * innerProduct2( const gsBasis<T>& B1, const gsBasis<T>& B2)
     gsMatrix<T> * K = new gsMatrix<T>(B1.size(), B2.size() ) ;
     K->setZero();
 
-    int nGauss = int( ceil( double(B1.degree()-2 + B2.degree()-2 + 1)/2 ) );
+    int nGauss = int( ceil( double(B1.degree(0)-2 + B2.degree(0)-2 + 1)/2 ) );
     if (nGauss<1) nGauss=1;
 
     gsGaussRule<T> QuRule(nGauss); // Reference Quadrature rule
