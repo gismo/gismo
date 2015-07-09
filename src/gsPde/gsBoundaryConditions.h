@@ -398,8 +398,47 @@ public:
         return os; 
     }
 
+    /**
+     * @brief   getSideCondition
+     * @param   ps the patch side
+     * @return  the boundary condition associated to ps or NULL if no condition is associated to ps
+     */
+    const boundary_condition<T>* getConditionFromSide (patchSide ps) const
+    {
+        typename std::vector<boundary_condition<T> >::const_iterator beg, end, cur;
+        patchSideComparison psRef(ps);
+        beg=drchlt_sides.begin();
+        end=drchlt_sides.end();
+        cur=std::find_if(beg,end,psRef);
+        if (cur != end)
+            return &(*cur);
+        beg=nmnn_sides.begin();
+        end=nmnn_sides.end();
+        cur=std::find_if(beg,end,psRef);
+        if (cur != end)
+            return &(*cur);
+        beg=robin_sides.begin();
+        end=robin_sides.end();
+        cur=std::find_if(beg,end,psRef);
+        if (cur != end)
+            return &(*cur);
+
+        return NULL;
+    }
 // Data members
 private:
+    struct patchSideComparison
+    {
+        const patchSide m_ps;
+        patchSideComparison(patchSide ps)
+            : m_ps(ps)
+            {}
+
+        bool operator() (const boundary_condition<T> &bc) const
+        {
+            return bc.ps==m_ps;
+        }
+    };
 
     bcContainer     drchlt_sides;  ///< List of Dirichlet sides
     bcContainer     nmnn_sides;    ///< List of Neumann sides
