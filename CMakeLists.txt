@@ -70,6 +70,11 @@ configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
+if("${PROJECT_NAME}" STREQUAL "gismo")
+set(GISMO_CDASH_DROP_LOCATION "Gismo-stable")
+else()
+set(GISMO_CDASH_DROP_LOCATION "Gismo")
+endif()
 configure_file ("${PROJECT_SOURCE_DIR}/cmake/CTestConfig.cmake.in"
                 "${CMAKE_BINARY_DIR}/CTestConfig.cmake" )
 
