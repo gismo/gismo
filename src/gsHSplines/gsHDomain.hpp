@@ -783,27 +783,6 @@ void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gs
     // get all boxes in vector-format
     getBoxes_vec(boxes);
 
-    // remove empty boxes
-    // (i.e., those where lower and upper corner are the same)
-    for(unsigned int i = 0; i < boxes.size(); i++)
-    {
-        if( (boxes[i][0]==boxes[i][d+0]) || (boxes[i][1]==boxes[i][d+1]) )
-        {
-            boxes.erase(boxes.begin()+i);
-            i--;
-        }
-        else if( d == 3 )
-        {
-            if( boxes[i][2]==boxes[i][d+2] )
-            {
-                boxes.erase(boxes.begin()+i);
-                i--;
-            }
-
-        }
-
-    }
-
     /* // this was and still is for testing, will be removed later
     cout << "\n --- before connecting:" << endl;
     for( int i=0; i < int( boxes.size() ); i++)
