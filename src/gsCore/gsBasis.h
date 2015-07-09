@@ -609,7 +609,7 @@ public:
      * Each column of \em result corresponds to a column of \em u. It contains the
      * "pure" and the mixed derivatives for each active basis function, "above" each other.\n
      * \n
-     ** <b>Example (bivariate):</b> Let \f$B_i(x,y)$\f be bivariate basis functions,
+     ** <b>Example (bivariate):</b> Let \f$B_i(x,y)\f$ be bivariate basis functions,
      * and let the functions with indices <em>3,4,7, and 8</em> be active at an evaluation
      * point \em u. Then, the corresponding column of \em result represents:\n
      * \f$ (

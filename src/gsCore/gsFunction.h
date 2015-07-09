@@ -176,9 +176,24 @@ public:
     // to be removed
     void newderiv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
  
-    /// @brief Evaluate second derivatives of the function at points \a u into \a result.
-    ///
-    /// By default uses central finite differences with h=0.00001
+    /** @brief Evaluate second derivatives of the function at points \a u into \a result.
+     *
+     * Let \em d be the dimension of the source space ( d = domainDim() ).\n
+     * Let \em D be the dimension of the image/target space ( D = targetDim() ).\n
+     * Let \em n denote the number of evaluation points.
+     *
+     * \param[in] u gsMatrix of size <em>d</em> x <em>n</em>, where each
+     * column of \em u represents one evaluation point.
+     * \param[out] result gsMatrix of size <em>(S*D)</em> x <em>n</em>,
+     * where <em>S=d*(d+1)/2</em>.\n
+     * Each column in \em result corresponds to one point (i.e., one column in \em u)\n
+     * and contains the following values (for <em>d=3</em>, <em>D=3</em>):\n
+     * \f$ (\partial_{xx} f_1, \partial_{yy} f_1, \partial_{zz} f_1, \partial_{xy} f_1,
+       \partial_{xz} f_1, \partial_{yz} f_1, \partial_{xx} f_2,\ldots,\partial_{yz} f_3 )^T\f$
+     * \warning By default uses central finite differences with h=0.00001!
+     * One must override this function in derived
+     * classes to get proper results.
+     */
     virtual void deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) const;
   
     /// Evaluates the Hessian (matrix of second partial derivatives) of
