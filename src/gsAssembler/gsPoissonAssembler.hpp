@@ -305,18 +305,6 @@ void gsPoissonAssembler<T>::computeDirichletDofsIntpl()
     }
 }
 
-
-// S.Kleiss
-/** \brief Incorporates Dirichlet-boundary conditions by L2-projection.
- *
- * ...if the Dirichlet-strategy \em elimination is chosen.\n
- * A global \f$L_2\f$-projection is applied to the given Dirichlet data
- * and the eliminated coefficients are set to the corresponding values.
- * The projection is global in the sense that all Dirichlet-DOFs are
- * computed at once.
- *
- * \ingroup Assembler
- */
 template<class T>
 void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
 {
@@ -368,6 +356,9 @@ void gsPoissonAssembler<T>::computeDirichletDofsL2Proj()
 
             geoEval->evaluateAt( quNodes );
 
+            // the values of the boundary condition are stored
+            // to rhsVals. Here, "rhs" refers to the right-hand-side
+            // of the L2-projection, not of the PDE.
             rhsVals = iter->function()->eval( m_patches[patchIdx].eval( quNodes ) );
 
             basis.eval_into( quNodes, basisVals);
