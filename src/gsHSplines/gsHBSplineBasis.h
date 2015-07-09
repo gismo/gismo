@@ -48,44 +48,6 @@ public:
 
 public:
 
-// #ifdef _MSC_VER
-// #pragma warning( push )
-// #pragma warning( disable : 4702 )
-// #endif
-
-    /// Constructor out of a gsBSplineBasis
-    gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis);
-    
-    gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
-                     std::vector<unsigned> & boxes)
-        : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis), boxes) 
-    {
-        //  Note: The compiler adds automatically a return statement
-        //  at the end of each constructor.  Throwing an exception
-        //  causes this return statement to be unreachable, and
-        //  warning 4702 is emitted.  To stop this warning we add
-        //  "bsbasis.dim()==1", which is not known at compile time
-        GISMO_ASSERT(bsbasis.dim()==1 && d==1, "Wrong dimension");
-    }
-    
-    gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
-                     gsMatrix<T> const & boxes)
-        : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), boxes) 
-    {
-        GISMO_ASSERT(bsbasis.dim()==1 && d==1, "Wrong dimension");
-    }
-
-    gsHBSplineBasis( gsBSplineBasis<T> &  bsbasis,
-                     gsMatrix<T> const & boxes, std::vector<unsigned int> & levels)
-        : gsHTensorBasis<d,T>(gsTensorBSplineBasis<d,T>(&bsbasis), boxes)
-    {
-        GISMO_ASSERT(bsbasis.dim()==1 && d==1, "Wrong dimension");
-    }
-
-// #ifdef _MSC_VER
-// #pragma warning( pop ) 
-// #endif
-
     /// Constructor out of a tensor BSpline Basis
     gsHBSplineBasis(gsBasis<T> const&  tbasis)
         : gsHTensorBasis<d,T>(tbasis) 

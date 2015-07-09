@@ -21,13 +21,19 @@
 namespace gismo
 {
 
+/*
 template<unsigned d, class T>
 gsHBSplineBasis<d,T>::gsHBSplineBasis(gsBSplineBasis<T> &  bsbasis)
     : gsHTensorBasis<d,T>( gsTensorBSplineBasis<d,T>(&bsbasis) )
 {
+    //  Note: The compiler adds automatically a return statement
+    //  at the end of each constructor.  Throwing an exception
+    //  causes this return statement to be unreachable, and
+    //  warning 4702 is emitted.  To stop this warning we add
+    //  "bsbasis.dim()==1", which is not known at compile time
     GISMO_ASSERT(d==1, "Wrong dimension");
 }
-
+*/
 
 template<unsigned d, class T>
 typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
