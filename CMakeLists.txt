@@ -141,8 +141,9 @@ if(GISMO_WITH_IPOPT)
       ExternalProject_Add(IpOpt
           SOURCE_DIR        ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
           CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/configure --prefix=<INSTALL_DIR> #--libdir=${CMAKE_BINARY_DIR}/lib
-          URL http://www.coin-or.org/download/source/Ipopt/Ipopt-3.11.9.tgz
+          URL http://www.coin-or.org/download/source/Ipopt/Ipopt-3.12.3.tgz
           PATCH_COMMAND      patch -t -s -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/external/ipopt.patch -d ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
+          COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/mumps.patch ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/mumps.patch
           COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/get.Mumps
           COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Metis/get.Metis
           COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Blas/get.Blas
