@@ -123,20 +123,26 @@ if (GISMO_WITH_VTK)
 endif(GISMO_WITH_VTK)
 
 if(GISMO_WITH_IPOPT)
-  find_library(IpOpt_LIB_Blas NAMES blas libblas cblas atlcblas libatlcblas )
-  find_library(IpOpt_LIB_Lapack NAMES lapack liblapack atlclapack libatlclapack )
   find_library(IpOpt_LIB NAMES ipopt libipopt )
-  #message(WARNING, "Found IpOpt_LIB_IpOpt='${IpOpt_LIB_IpOpt}'")
-  #message(WARNING, "Found IpOpt_LIB_IpOpt-NOTFOUND='${IpOpt_LIB_IpOpt-NOTFOUND}'")
 
   if(IpOpt_LIB)
       #message(WARNING, "Using ipopt system library")
-      find_library(IpOpt_LIB_Mumps NAMES mumps libmumps cmumps libcmumps )
-      find_library(IpOpt_LIB_Metis NAMES metis libmetis )
+      #find_library(IpOpt_LIB_Mumps NAMES mumps libmumps cmumps libcmumps )
+      #find_library(IpOpt_LIB_Metis NAMES metis libmetis )
       set(IpOpt_INCLUDE_DIRS /usr/include/coin CACHE INTERNAL "IpOpt include path")
       set(IpOpt_LIB_IpOpt ${IpOpt_LIB})
+
   else(IpOpt_LIB)
-      #message(WARNING, "Downloading and compiling ipopt")
+     #find_library(IpOpt_LIB_Blas NAMES blas libblas cblas atlcblas libatlcblas PATHS /usr/lib64/ NO_DEFAULT_PATH)
+     #find_library(IpOpt_LIB_Lapack NAMES lapack liblapack atlclapack libatlclapack )
+     #find_package( LAPACK REQUIRED ) # Problematic on ubuntu
+     #find_package( BLAS REQUIRED )
+     #find_package( DL REQUIRED )
+     message(WARNING "Will Download and compile ipopt 3.12.3")
+     #message(WARNING, "Found IpOpt_LIB_IpOpt='${IpOpt_LIB_IpOpt}'")
+     #message(WARNING, "Found IpOpt_LIB_IpOpt-NOTFOUND='${IpOpt_LIB_IpOpt-NOTFOUND}'")
+     find_program( patch_cmd "patch" REQUIRED )
+
       include(ExternalProject)
       ExternalProject_Add(IpOpt
           SOURCE_DIR        ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
@@ -153,17 +159,16 @@ if(GISMO_WITH_IPOPT)
           UPDATE_COMMAND     ""
       )
 
+      set(IpOpt_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin
+          CACHE INTERNAL "IpOpt include path")
+
       #add_dependencies(IpOpt mumps metis)
       #add_dependencies(mumps metis)
       #get_property(IpOpt_location TARGET IpOpt PROPERTY LOCATION)
       #add_dependencies(${PROJECT_NAME} IpOpt)
-
-      set(IpOpt_LIB_IpOpt "${CMAKE_BINARY_DIR}/lib/libipopt.so" CACHE INTERNAL "IpOpt shared library")
-      set(IpOpt_LIB_Mumps "${CMAKE_BINARY_DIR}/lib/libcoinmumps.so" CACHE INTERNAL "IpOpt shared mumps library")
-      set(IpOpt_LIB_Metis "${CMAKE_BINARY_DIR}/lib/libcoinmetis.so" CACHE INTERNAL "IpOpt shared metis library")
-
-      set(IpOpt_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin
-          CACHE INTERNAL "IpOpt include path")
+      #set(IpOpt_LIB_IpOpt "${CMAKE_BINARY_DIR}/lib/libipopt.so" CACHE INTERNAL "IpOpt shared library")
+      #set(IpOpt_LIB_Mumps "${CMAKE_BINARY_DIR}/lib/libcoinmumps.so" CACHE INTERNAL "IpOpt shared mumps library")
+      #set(IpOpt_LIB_Metis "${CMAKE_BINARY_DIR}/lib/libcoinmetis.so" CACHE INTERNAL "IpOpt shared metis library")
     
   endif(IpOpt_LIB)
   include_directories("${IpOpt_INCLUDE_DIRS}")
