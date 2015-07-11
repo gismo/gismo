@@ -34,8 +34,8 @@ public:
     gsQuadRule() 
     { }
 
-    // Construct a quadrature rule with \a numNodes number of quadrature
-    // points per integration variable
+    // Construct a quadrature rule with \a numNodes number of
+    // quadrature points per integration variable
     // gsQuadRule(gsVector<index_t> const & numNodes, 
     //            unsigned digits = std::numeric_limits<T>::digits10 )
     // { 
@@ -102,19 +102,25 @@ public:
     index_t dim() const { return m_nodes.rows(); }
 
 
-    /**\brief Maps quadrature rule (i.e., points and weights) from the reference domain to an element.
+    /**\brief Maps quadrature rule (i.e., points and weights) from the
+     * reference domain to an element.
      *
-     * The currently kept rule (which is initialized on the reference hypercube [-1,1]^<em>d</em> by calling setNodes()) is mapped
-     * to the <em>d</em>-dimensional hypercube specified by \a lower and \a upper.\n
-     * For example, for <em>d=2</em>, the square <em>[a,b]x[c,d]</em> is defined by <em>lower = [a,c]</em>, <em>upper = [b,c]</em>.
-     * \param[in] lower vector of length \a d, defining the coordinates of the lower corner of the hypercube.
-     * \param[in] upper vector of length \a d, defining the coordinates of the upper corner of the hypercube.
-     * \param[in,out] nodes will be overwritten with the coordinates of the quadrature nodes.\n
-     * Size of the matrix \a nodes = <em>d</em> x <em>n</em>, where \n
-     * \a d is the dimension of the element, and\n
-     * \a n is the number of quadrature points.
-     * \param[in,out] weights will be overwritten with the corresponding Gauss quadrature weights.\n
-     * Length of the vector \a weights = number of quadrature nodes.
+     * The currently kept rule (which is initialized on the reference
+     * hypercube [-1,1]^<em>d</em> by calling setNodes()) is mapped to
+     * the <em>d</em>-dimensional hypercube specified by \a lower and
+     * \a upper.\n For example, for <em>d=2</em>, the square
+     * <em>[a,b]x[c,d]</em> is defined by <em>lower = [a,c]</em>,
+     * <em>upper = [b,c]</em>.  \param[in] lower vector of length \a
+     * d, defining the coordinates of the lower corner of the
+     * hypercube.  \param[in] upper vector of length \a d, defining
+     * the coordinates of the upper corner of the hypercube.
+     * \param[in,out] nodes will be overwritten with the coordinates
+     * of the quadrature nodes.\n Size of the matrix \a nodes =
+     * <em>d</em> x <em>n</em>, where \n \a d is the dimension of the
+     * element, and\n \a n is the number of quadrature points.
+     * \param[in,out] weights will be overwritten with the
+     * corresponding Gauss quadrature weights.\n Length of the vector
+     * \a weights = number of quadrature nodes.
      */
     inline void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const;
@@ -124,10 +130,18 @@ public:
      */
     void mapTo( T startVal, T endVal,
                 gsMatrix<T> & nodes, gsVector<T> & weights ) const;
+
+    /**\brief Maps a univariate quadrature rule (i.e., points and
+     * weights) from the reference interval to a number of intervals,
+     * implied by the \a breaks.
+     */
+    void mapToAll( const std::vector<T> & breaks,
+                   gsMatrix<T> & nodes, gsVector<T> & weights ) const;
     
 protected:
     
-    /// \brief Computes the tensor product rule from coordinate-wise 1D \a nodes and \a weights.
+    /// \brief Computes the tensor product rule from coordinate-wise
+    /// 1D \a nodes and \a weights.
     void computeTensorProductRule(const std::vector<gsVector<T> > & nodes, 
                                   const std::vector<gsVector<T> > & weights);
 
@@ -136,7 +150,8 @@ protected:
     /// \brief Reference quadrature nodes (on the interval [-1,1]).
     gsMatrix<T> m_nodes;
 
-    /// \brief Reference quadrature weights (corresponding to interval [-1,1]).
+    /// \brief Reference quadrature weights (corresponding to interval
+    /// [-1,1]).
     gsVector<T> m_weights;
 
 }; // class gsQuadRule
