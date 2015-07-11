@@ -34,39 +34,15 @@ class gsMultiPatch : public gsBoxTopology //gsPiecewiseFunction
 public:
     /// Shared pointer for gsMultiPatch
     typedef memory::shared_ptr<gsMultiPatch> Ptr;
-
     typedef memory::auto_ptr<gsMultiPatch> uPtr;
-
     typedef gsBoxTopology Base;
-
     typedef std::vector<gsGeometry<T> *> PatchContainer;
 
-public:
-
-    /// Type definitions
     typedef typename PatchContainer::size_type size_t;
     typedef typename PatchContainer::iterator iterator;
     typedef typename PatchContainer::const_iterator const_iterator;
 
-    /// Get a const-iterator to the patches
-    /// \return an iterator to the beginning of the patches
-    const_iterator begin() const 
-    { return m_patches.begin(); }
-
-    /// Get a const iterator to the end of the patches
-    /// \return an iterator to the end of the patches
-    const_iterator end() const 
-    { return m_patches.end(); }
-
-    /// Get an iterator to the beginning of the  patches
-    /// \return an iterator to the beginning of the  patches
-    iterator begin() 
-    { return m_patches.begin(); }
-
-    /// Get an iterator to the end of the  patches
-    /// \return an iterator to the end of the  patches
-    iterator end()  
-    { return m_patches.end(); }
+public:
 
     /// Default empty constructor
     gsMultiPatch() : gsBoxTopology() { }
@@ -99,6 +75,28 @@ public:
     gsMultiPatch* clone() const {
         return new gsMultiPatch( *this );
     }
+
+public:
+
+    /// Get a const-iterator to the patches
+    /// \return an iterator to the beginning of the patches
+    const_iterator begin() const 
+    { return m_patches.begin(); }
+
+    /// Get a const iterator to the end of the patches
+    /// \return an iterator to the end of the patches
+    const_iterator end() const 
+    { return m_patches.end(); }
+
+    /// Get an iterator to the beginning of the  patches
+    /// \return an iterator to the beginning of the  patches
+    iterator begin() 
+    { return m_patches.begin(); }
+
+    /// Get an iterator to the end of the  patches
+    /// \return an iterator to the end of the  patches
+    iterator end()  
+    { return m_patches.end(); }
 
 public:
     /**
