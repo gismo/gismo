@@ -119,7 +119,6 @@ namespace internal
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
-#include <gsPde/gsBVProblem.h>
 
 //////////////////////////////////////////////////
 // Norms
@@ -167,5 +166,3 @@ namespace internal
 //////////////////////////////////////////////////
 #include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
-#include <gsUtils/gsInterpolate.h>
-

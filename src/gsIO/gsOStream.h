@@ -1,4 +1,0 @@
-
-#include <iostream>
-
-// ALL "<<" operators

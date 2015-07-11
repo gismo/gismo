@@ -45,7 +45,6 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsPde<real_t>        >;
     CLASS_TEMPLATE_INST gsXml< gsPoissonPde<real_t> >;
 //    CLASS_TEMPLATE_INST gsXml< gsSurfacePoissonPde<real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsBVProblem<real_t>  >;
 
     CLASS_TEMPLATE_INST gsXml< gsPlanarDomain<real_t> >;
     

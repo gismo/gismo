@@ -95,7 +95,6 @@ template< class T = real_t>  class gsFunction;
 template< class T = real_t>  class gsFunctionExpr;
 template< class T = real_t>  class gsConstantFunction;
 template< class T = real_t>  class gsMultiPatch;
-template< class T = real_t>  class gsBVProblem;
 
 // Bases
 template< class T = real_t>  class gsKnotVector;

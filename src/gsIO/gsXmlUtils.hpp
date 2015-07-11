@@ -39,7 +39,6 @@
 #include <gsHSplines/gsHBSpline.h>
 
 
-#include <gsPde/gsBVProblem.h>
 //#include <gsTrBezier/gsTriangularBezierBasis.h>
 //#include <gsTrBezier/gsTriangularBezier.h>
 #include <gsPde/gsPoissonPde.h>
@@ -1558,6 +1557,7 @@ public:
 };
 */
 
+/*
 /// Get a Boundary Value Problem from XML
 template<class T>
 class gsXml< gsBVProblem<T> >
@@ -1639,6 +1639,7 @@ public:
         return NULL;
     }
 };
+*/
 
 }// end namespace internal
 
