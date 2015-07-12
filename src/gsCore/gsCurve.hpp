@@ -52,6 +52,13 @@ void gsCurve<T>::toMesh(gsMesh<T> & msh, int npoints) const
     }
 }
 
+template<class T>
+unsigned gsCurve<T>::functionAtCorner(boxCorner const & c) const
+{
+    GISMO_ASSERT(c<boxCorner(3),"Invalid endpoint of curve.");
+    return ( c == 1 ? 0 : this->coefsSize()-1);
+}
+
 template<class T> 
 gsGeometryEvaluator<T> *
 gsCurve<T>::evaluator(unsigned flags) const

@@ -46,6 +46,34 @@ bool gsBSpline<T,KnotVectorType>::isOn(gsMatrix<T> const &u, T tol) const
     return false;
 }
 
+template<class T, class KnotVectorType >    
+bool gsBSpline<T,KnotVectorType>::isPatchCorner(gsMatrix<T> const &v, T tol) const
+{
+    return (( v - m_coefs.row(0)       ).squaredNorm() < tol ||
+            ( v - m_coefs.bottomRows(1)).squaredNorm() < tol );
+}
+
+template<class T, class KnotVectorType >    
+void gsBSpline<T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
+{
+    if ((v - m_coefs.row(0)).squaredNorm() < 1e-3)
+        return;
+    else if ((v - m_coefs.bottomRows(1)).squaredNorm() < 1e-3)
+        this->reverse();
+    else
+        gsWarn<<"Point "<< v <<" is not an endpoint of the curve.\n";
+}
+
+template<class T, class KnotVectorType >    
+void gsBSpline<T,KnotVectorType>::setFurthestCorner(gsMatrix<T> const &v)
+{
+    if ((v - m_coefs.row(0)).squaredNorm() < 1e-3)
+        this->reverse();
+    else if ((v - m_coefs.bottomRows(1)).squaredNorm() < 1e-3)
+        return;
+    else
+        gsWarn<<"Point "<< v <<" is not an endpoint of the curve.\n";
+}
 
 namespace internal
 {

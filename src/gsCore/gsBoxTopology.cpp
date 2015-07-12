@@ -81,10 +81,23 @@ bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result) const
     return getNeighbour(ps, result, a);
 }
 
+bool gsBoxTopology::areNeighbours(const int b1, const int b2) const
+{
+    for ( unsigned i = 0; i < m_interfaces.size(); ++i ) 
+    {
+        if ( (m_interfaces[i].first() .patch == b1  && 
+              m_interfaces[i].second().patch == b2) ||
+             (m_interfaces[i].first() .patch == b2  && 
+              m_interfaces[i].second().patch == b1) )
+            return true;
+    }
+    return false;
+}
+
 bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const
 {
     bool innerVertex=true;
-    cornerList.resize(0);
+    cornerList.clear();
     cornerList.push_back(start);
     std::vector<patchSide> visitedSides;
     std::vector<patchSide> psides;     // psides and vertices relate to each other

@@ -122,7 +122,7 @@ inline int ipow(int x, unsigned p)
 
 /// Returns convex combination of \a a and \a b with weight \a t
 template<class T>
-T mix(T const & a, T const & b, T const & t)
+inline T mix(T const & a, T const & b, T const & t)
 {
     return (1 - t) * a + t * b;
 }

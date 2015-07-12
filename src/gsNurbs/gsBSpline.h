@@ -424,7 +424,23 @@ public:
                  (m_coefs.row(0) - m_coefs.row(m_coefs.rows()-1)).squaredNorm()<tol );  
     }
 
+    /// \brief Return true if point \a u is on the curve with
+    /// tolerance \a tol
     bool isOn(gsMatrix<T> const &u, T tol = 1e-3) const;
+
+    /// \brief Return true if point \a u is an endpoint (corner) of
+    /// the curve with tolerance \a tol
+    bool isPatchCorner(gsMatrix<T> const &v, T tol = 1e-3) const;
+
+    /// \brief Modifies the parameterization such that the point \a v
+    /// is the starting point of the curve. Assumes that \a v is
+    /// either the starting or the ending point of the curve
+    void setOriginCorner(gsMatrix<T> const &v);
+
+    /// \brief Modifies the parameterization such that the point \a v
+    /// is the ending point of the curve. Assumes that \a v is
+    /// either the starting or the ending point of the curve
+    void setFurthestCorner(gsMatrix<T> const &v);
     
 protected:
     

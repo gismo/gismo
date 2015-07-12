@@ -169,28 +169,19 @@ public:
     **/
 
     static  boxSide    getEnd       (int dim) {return boxSide(2*dim+1);}
-    /**
-     * @brief set to next boxSide
-     */
-    boxSide& operator++ () { ++m_index; return *this;} //prefix
-    boxSide operator++ (int ) { boxSide temp(*this); ++m_index; return temp;} //postfix
 
     /**
-     * @brief set to previous boxSide
+     * @brief Incrementset boxSide
      */
-    boxSide& operator-- () { --m_index; return *this;} //prefix
-    boxSide operator-- (int ) { boxSide temp(*this); --m_index; return temp;} //postfix
-
+    boxSide& operator++ ()    { ++m_index; return *this;} //prefix
+    //boxSide  operator++ (int) { boxSide temp(*this); ++m_index; return temp;} //postfix
+ 
     /**
-     * @brief comparisons between boxSides are allowed
-     * @param other
-     * @return
-    **/
-    bool operator!= (const boxSide& other) const {return m_index!=other.m_index;}
-    bool operator>  (const boxSide& other) const {return m_index>other.m_index;}
-    bool operator<  (const boxSide& other) const {return m_index<other.m_index;}
-    bool operator<= (const boxSide& other) const {return m_index<=other.m_index;}
-    bool operator>= (const boxSide& other) const {return m_index>=other.m_index;}
+     * @brief Decrement boxSide
+     */
+    boxSide& operator-- ()    { --m_index; return *this;} //prefix
+    //boxSide  operator-- (int) { boxSide temp(*this); --m_index; return temp;} //postfix
+
 };
 
 /** 
@@ -200,11 +191,6 @@ public:
 */  
 struct patchSide: public boxSide
 {
-private:
-    using boxSide::operator <;
-    using boxSide::operator <=;
-    using boxSide::operator >;
-    using boxSide::operator >=;
 public:
     index_t patch;              ///< The index of the patch.
 public:
@@ -346,39 +332,23 @@ public:
      * @brief set to next boxCorner
      */
     boxCorner& operator++ () { ++m_index; return *this;} //prefix
-    boxCorner operator++ (int ) { boxCorner temp(*this); ++m_index; return temp;} //postfix
+    //boxCorner operator++ (int ) { boxCorner temp(*this); ++m_index; return temp;} //postfix
 
     /**
      * @brief set to previous boxCorner
      */
     boxCorner& operator-- () { --m_index; return *this;} //prefix
-    boxCorner operator-- (int ) { boxCorner temp(*this); --m_index; return temp;} //postfix
+    //boxCorner operator-- (int ) { boxCorner temp(*this); --m_index; return temp;} //postfix
 
-    /**
-     * @brief comparisons between boxCorner are allowed
-     * @param other
-     * @return
-    **/
-    bool operator!= (const boxCorner& other) const {return m_index!=other.m_index;}
-    bool operator>  (const boxCorner& other) const {return m_index>other.m_index;}
-    bool operator<  (const boxCorner& other) const {return m_index<other.m_index;}
-    bool operator<= (const boxCorner& other) const {return m_index<=other.m_index;}
-    bool operator>= (const boxCorner& other) const {return m_index>=other.m_index;}
 };
 
 
 /**
     @brief Struct which represents a certain corner of a patch.
-    
 
 */
 struct patchCorner : public boxCorner
 {
-private:
-    using boxCorner::operator <;
-    using boxCorner::operator <=;
-    using boxCorner::operator >;
-    using boxCorner::operator >=;
 public:
     index_t patch;
 public:

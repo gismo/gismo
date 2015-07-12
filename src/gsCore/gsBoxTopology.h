@@ -271,6 +271,10 @@ public:
     /// false if it is a boundary patchSide
     bool getNeighbour(const patchSide& ps ,patchSide& result) const;
 
+    /// Returns true if \a b1 and \a b2 are two box indices which are
+    /// connected with an interface
+    bool areNeighbours(const int b1, const int b2) const;
+
     /// set \a result to the associated interface of \a ps, returns
     /// false if it is a boundary patchSide
     bool getInterface(const patchSide& ps,boundaryInterface & result) const
