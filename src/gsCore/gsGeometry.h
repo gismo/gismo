@@ -352,8 +352,13 @@ public:
         this->m_coefs.rowwise() += v.transpose();
     }
 
-//    /// Reverse the coefficients // Now in gsCurve
-//    void reverse()
+    /// \brief Returns the control point at corner \a c
+    typename gsMatrix<T>::RowXpr
+    coefAtCorner(boxCorner const & c);
+
+    /// \brief Returns the control point at corner \a c
+    typename gsMatrix<T>::ConstRowXpr
+    coefAtCorner(boxCorner const & c) const;
 
     /// @}
 

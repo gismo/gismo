@@ -476,6 +476,9 @@ public:
         return (m_periodic > 0);
     }
 
+    // Look at gsBasis class for a description
+    unsigned functionAtCorner(boxCorner const & c) const;
+
     /// Returns number of functions crossing the boundary of the knot vector.
     int numCrossingFunctions () const
     {

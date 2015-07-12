@@ -1037,6 +1037,12 @@ void gsBSplineBasis<T,KnotVectorType>::uniformRefine_withTransfer(gsSparseMatrix
     this->refine_withTransfer(transfer, newKnots);
 }
 
+template <class T, class KnotVectorType>
+unsigned gsBSplineBasis<T,KnotVectorType>::functionAtCorner(boxCorner const & c) const
+{
+    GISMO_ASSERT(c<3,"Invalid corner for 1D basis.");
+    return ( c == 1 ? 0 : this->size()-1);
+}
 
 template <class T, class KnotVectorType>
 void gsBSplineBasis<T,KnotVectorType>::setDegree(int const & i) 

@@ -84,8 +84,6 @@ public:
     virtual bool isOn(gsMatrix<T> const &u, T tol = 1e-3) const
     { GISMO_NO_IMPLEMENTATION }
 
-    unsigned functionAtCorner(boxCorner const & c) const;
-
 }; // class gsCurve
 
 }; // namespace gismo

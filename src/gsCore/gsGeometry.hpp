@@ -67,6 +67,20 @@ gsGeometrySlice<T> gsGeometry<T>::getIsoParametricSlice(index_t dir_fixed, T par
 }
 
 template<class T>
+typename gsMatrix<T>::RowXpr
+gsGeometry<T>::coefAtCorner(boxCorner const & c)
+{
+    return this->m_coefs.row(this->basis().functionAtCorner(c));
+}
+
+template<class T>
+typename gsMatrix<T>::ConstRowXpr
+gsGeometry<T>::coefAtCorner(boxCorner const & c) const
+{
+    return this->m_coefs.row(this->basis().functionAtCorner(c));
+}
+
+template<class T>
 void gsGeometry<T>::invertPoints(const gsMatrix<T> & points, 
                                  gsMatrix<T> & result, 
                                  const T accuracy)
