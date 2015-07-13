@@ -21,29 +21,29 @@ namespace gismo
 
 
 /*
-template <unsigned d, typename T>
-struct gsTenBSplTraits
-{
+  template <unsigned d, typename T>
+  struct gsTenBSplTraits
+  {
 
-};
+  };
 
-template <typename T>
-struct gsTenBSplTraits<1,T>
-{
-    typedef gsBSpline<T> BoundaryGeo;
-};
+  template <typename T>
+  struct gsTenBSplTraits<1,T>
+  {
+  typedef gsBSpline<T> BoundaryGeo;
+  };
 
-template <typename T>
-struct gsTenBSplTraits<2,T>
-{
-    typedef gsBSpline<T> BoundaryGeo;
-};
+  template <typename T>
+  struct gsTenBSplTraits<2,T>
+  {
+  typedef gsBSpline<T> BoundaryGeo;
+  };
 
-template <typename T>
-struct gsTenBSplTraits<3,T>
-{
-    typedef gsTensorBSpline<2, T> BoundaryGeo;
-};
+  template <typename T>
+  struct gsTenBSplTraits<3,T>
+  {
+  typedef gsTensorBSpline<2, T> BoundaryGeo;
+  };
 */
 
 /** \brief
@@ -60,7 +60,7 @@ struct gsTenBSplTraits<3,T>
 */
 template<unsigned d, class T, class KnotVectorType>
 class gsTensorBSpline : 
-    public gsGenericGeometry< gsTensorBSplineBasis<d,T,KnotVectorType> >
+        public gsGenericGeometry< gsTensorBSplineBasis<d,T,KnotVectorType> >
 {
 
 public: 
@@ -93,12 +93,12 @@ public:
 
     /// Construct B-Spline by basis functions and coefficient matrix
     gsTensorBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
-        Base( basis, coefs ) 
+    Base( basis, coefs ) 
     { }
 
     /// Construct B-Spline by basis functions and coefficient matrix
     gsTensorBSpline( const Basis & basis, gsMovable< gsMatrix<T> > coefs ) :
-        Base( basis, coefs ) 
+    Base( basis, coefs ) 
     { }
     
     /// Construct 2D tensor B-Spline by knot vectors, degrees and coefficient matrix
@@ -112,7 +112,7 @@ public:
         Basis *tbasis = new Basis(Bu,Bv) ;//d==2
         
         GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-        "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
+                     "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
 
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
@@ -130,7 +130,7 @@ public:
         Basis *tbasis = new Basis(Bu,Bv) ;//d==2
         
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
-        "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
+                     "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
         
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
@@ -157,7 +157,7 @@ public:
         Basis *tbasis = new Basis(Bu,Bv,Bw) ;//d==3
     
         GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-        "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
+                     "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
         
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
@@ -178,7 +178,7 @@ public:
         Basis *tbasis = new Basis(Bu,Bv,Bw) ;//d==3
         
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
-        "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
+                     "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
         
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
@@ -200,7 +200,7 @@ public:
         Basis *tbasis = new Basis(Bu,Bv,Bw,Bz) ;//d==4
     
         GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-        "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
+                     "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
         
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
@@ -223,7 +223,7 @@ public:
         Basis *tbasis = new Basis(Bu,Bv,Bw,Bz) ;//d==3
         
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
-        "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
+                     "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
         
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
@@ -247,27 +247,26 @@ public:
     // Look at gsGeometry class for a description
     void degreeElevate(int const i = 1, int const dir = -1);
 
+    /// Returns a reference to the knot vector in direction \a i
+    KnotVectorType & knots(const int i) { return this->basis().knots(i); }
+
+    /// Returns a reference to the knot vector \a i
+    const KnotVectorType & knots(const int i) const { return this->basis().knots(i); }
+
 //////////////////////////////////////////////////
 // Virtual member functions required by the base class
 //////////////////////////////////////////////////
 
-  /// Prints the object as a string.
-  std::ostream &print(std::ostream &os) const
-  { 
-    os << "Tensor BSpline geometry "<< "R^"<< this->parDim() << 
-        " --> R^"<< this->geoDim()<< ", #control pnts= "<< this->coefsSize() <<
-      ": "<< this->coef(0) <<" ... "<< this->coef(this->coefsSize()-1); 
-    os<<"\nBasis:\n" << this->basis() ;
-    return os; 
-  }
+    /// Prints the object as a string.
+    std::ostream &print(std::ostream &os) const;
 
 
 //////////////////////////////////////////////////
 // Additional members for tensor B-Splines
 //////////////////////////////////////////////////
 
-  /// Returns the degree of the basis wrt direction i
-  unsigned degree(const unsigned & i) const 
+    /// Returns the degree of the basis wrt direction i
+    unsigned degree(const unsigned & i) const 
     { return this->basis().component(i).degree(); }
 
 /// Return the face of side s
@@ -280,72 +279,92 @@ public:
  *
  * this function is commented in case someone needs this version
  * with additional orientation
-gsGeometry<T> * boundary( boxSide const& s ) const
-{
-    // this sould be a vector
-    gsMatrix<unsigned> * ind = this->m_basis->boundary(s);
+ gsGeometry<T> * boundary( boxSide const& s ) const
+ {
+ // this sould be a vector
+ gsMatrix<unsigned> * ind = this->m_basis->boundary(s);
 
-    gsMatrix<T> * fs = new gsMatrix<T>(ind->rows(),this->geoDim());
+ gsMatrix<T> * fs = new gsMatrix<T>(ind->rows(),this->geoDim());
 
-    // CORRECT ORIENTATION
-    if ( (s == boundary::north) || (s == boundary::west) )
-    {
-        ind->reverseInPlace();
-    }
-
-
-    for ( index_t i = 0; i< ind->rows(); ++i)
-    {
-        fs->row(i) = this->m_coefs.row((*ind)(i, 0));
-    }
+ // CORRECT ORIENTATION
+ if ( (s == boundary::north) || (s == boundary::west) )
+ {
+ ind->reverseInPlace();
+ }
 
 
-    if (this->parDim() == 1)
-    {
-        return new typename gsTenBSplTraits<d, T>::BoundaryGeo();
-    }
-    else if (this->parDim() == 2 || this->parDim() == 3)
-    {
-        return new typename gsTenBSplTraits<d, T>::BoundaryGeo(
-                    *this->m_basis->boundaryBasis(s), *fs);
-    }
+ for ( index_t i = 0; i< ind->rows(); ++i)
+ {
+ fs->row(i) = this->m_coefs.row((*ind)(i, 0));
+ }
 
-    GISMO_ERROR("Function face is only implemented for dimension 1, 2 and 3!");
-    return new gsBSpline<T>();
-}
+
+ if (this->parDim() == 1)
+ {
+ return new typename gsTenBSplTraits<d, T>::BoundaryGeo();
+ }
+ else if (this->parDim() == 2 || this->parDim() == 3)
+ {
+ return new typename gsTenBSplTraits<d, T>::BoundaryGeo(
+ *this->m_basis->boundaryBasis(s), *fs);
+ }
+
+ GISMO_ERROR("Function face is only implemented for dimension 1, 2 and 3!");
+ return new gsBSpline<T>();
+ }
 */
 
-/// Toggle orientation wrt coordinate k
-/// \todo use flipTensor to generalize to any dimension
-void reverse(unsigned k);
+    /// Toggle orientation wrt coordinate k
+    /// \todo use flipTensor to generalize to any dimension
+    void reverse(unsigned k);
+    
+    /// \brief Return true if point \a u is a corner of
+    /// the patch with tolerance \a tol
+    bool isPatchCorner(gsMatrix<T> const &v, T tol = 1e-3) const;
 
-/// Sets the resulting BSpline to be periodic in direction \param dir.
-inline void setPeriodic( int dir )
-{
-    this->m_coefs = this->basis().perCoefs( this->m_coefs, dir );
-    this->basis().setPeriodic( dir );
-}
+    /// \brief Modifies the parameterization such that the point \a v
+    /// is the origin of the parametrization of the patch. Assumes
+    /// that \a v is either input is indeed a corner of this patch
+    void setOriginCorner(gsMatrix<T> const &v);
+
+    /// \brief Modifies the parameterization such that the point \a v
+    /// is the ending corner of the parametrization of the
+    /// patch. Assumes that \a v is either input is indeed a corner of
+    /// this patch
+    void setFurthestCorner(gsMatrix<T> const &v);
+    
+    /// Sets the resulting BSpline to be periodic in direction \param dir.
+    inline void setPeriodic( int dir )
+    {
+        this->m_coefs = this->basis().perCoefs( this->m_coefs, dir );
+        this->basis().setPeriodic( dir );
+    }
+    
+    
 
 private:
 
-/// Helper function for the slice function
-/// selects the row of coefficients from coefficients of geo that are suitable
-/// for the isoparametric slice in \a dir_fixed with \a par.
-/// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
-void constructCoefsForSlice(unsigned dir_fixed,T par,
-                            const gsTensorBSpline<d,T,KnotVectorType> & geo,
-                            gsMatrix<T>& result) const;
+    /// Helper function for the slice function
+    /// selects the row of coefficients from coefficients of geo that are suitable
+    /// for the isoparametric slice in \a dir_fixed with \a par.
+    /// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
+    void constructCoefsForSlice(unsigned dir_fixed,T par,
+                                const gsTensorBSpline<d,T,KnotVectorType> & geo,
+                                gsMatrix<T>& result) const;
 
 public:
 
-/// Constucts an isoparametric slice of this tensorBSpline by fixing
-/// \a par in direction \a dir_fixed. The resulting tensorBSpline has
-/// one less dimension and is given back in \a result.
-void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const;
+    /// Constucts an isoparametric slice of this tensorBSpline by fixing
+    /// \a par in direction \a dir_fixed. The resulting tensorBSpline has
+    /// one less dimension and is given back in \a result.
+    void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const;
 
 protected:
-// TODO Check function
-// check function: check the coefficient number, degree, knot vector ...
+    // TODO Check function
+    // check function: check the coefficient number, degree, knot vector ...
+
+    using Base::m_basis;
+    using Base::m_coefs;
 
 }; // class gsBSpline
 

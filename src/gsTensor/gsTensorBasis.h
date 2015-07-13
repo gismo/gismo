@@ -455,9 +455,9 @@ public:
     inline unsigned stride(int dir) const;
 
     /// Returns the strides for all dimensions
-    void stride_cwise(gsVector<int> & result) const 
+    void stride_cwise(gsVector<index_t,d> & result) const 
     { 
-        result.resize(d);
+        //result.resize(d);
         result[0] = 1;
         for ( unsigned i=1; i != d; ++i )
             result[i] = result[i-1] * m_bases[i-1]->size();

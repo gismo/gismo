@@ -129,13 +129,11 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
             // clone the basis and inserting upto degree knots at par
             gsTensorBSpline<d,T,KnotVectorType>* clone = this->clone();
 
-            gsVector<unsigned> strides;
-            gsVector<int> intStrides;
+            gsVector<index_t,d> intStrides;
             this->basis().stride_cwise(intStrides);
-            strides=intStrides.cast<unsigned>();
             gsTensorBoehm<T,KnotVectorType,gsMatrix<T> >(
                         clone->basis().knots(dir_fixed),clone->coefs(),par,dir_fixed,
-                        strides,degree-mult,true);
+                        intStrides.cast<unsigned>(), degree-mult,true);
 
             // extract right ceofficients
             constructCoefsForSlice(dir_fixed,par,*clone,coefs);
@@ -153,6 +151,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
 template<unsigned d, class T, class KnotVectorType>
 void gsTensorBSpline<d,T,KnotVectorType>::reverse(unsigned k)
 { 
+    //todo: use flipTensor to generalize to any dimension
     GISMO_ASSERT(d==2, "only 2D for now");
 
     gsVector<int> str(d); 
@@ -172,6 +171,70 @@ void gsTensorBSpline<d,T,KnotVectorType>::reverse(unsigned k)
                 );
         }
     tbsbasis.component(k).reverse();
+}
+
+template<unsigned d, class T, class KnotVectorType>
+bool gsTensorBSpline<d,T,KnotVectorType>::isPatchCorner(gsMatrix<T> const &v, T tol) const
+{
+    gsVector<index_t,d> str(d), vupp(d), curr = gsVector<index_t,d>::Zero(d);
+    this->basis().stride_cwise(str);
+    this->basis().size_cwise(vupp);
+    vupp.array() -= 1;
+
+    do // loop over all vertices
+    {
+        if ( (v - m_coefs.row(curr.dot(str))).squaredNorm() < tol )
+            return true;
+    }
+    while ( nextCubeVertex(curr, vupp) );
+    
+    return false;
+}
+
+template<unsigned d, class T, class KnotVectorType>
+void gsTensorBSpline<d,T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
+{
+    gsVector<index_t,d> str(d), vupp(d), curr = gsVector<index_t,d>::Zero(d);
+    this->basis().stride_cwise(str);
+    this->basis().size_cwise(vupp);
+    vupp.array() -= 1;
+
+    do // loop over all vertices
+    {
+        if ( (v - m_coefs.row(curr.dot(str))).squaredNorm() < 1e-3 )
+        {
+            for(unsigned k = 0; k!=d; ++k)
+                if ( curr[k] != 0 )
+                    this->reverse(k);
+            return;
+        }
+    }
+    while ( nextCubeVertex(curr, vupp) );
+ 
+    gsWarn<<"Point "<< v <<" is not an corner of the patch.\n";
+}
+
+template<unsigned d, class T, class KnotVectorType>
+void gsTensorBSpline<d,T,KnotVectorType>::setFurthestCorner(gsMatrix<T> const &v)
+{
+    gsVector<index_t,d> str(d), vupp(d), curr = gsVector<index_t,d>::Zero(d);
+    this->basis().stride_cwise(str);
+    this->basis().size_cwise(vupp);
+    vupp.array() -= 1;
+
+    do // loop over all vertices
+    {
+        if ( (v - m_coefs.row(curr.dot(str))).squaredNorm() < 1e-3 )
+        {
+            for(unsigned k = 0; k!=d; ++k)
+                if ( curr[k] == 0 )
+                    this->reverse(k);
+            return;
+        }
+    }
+    while ( nextCubeVertex(curr, vupp) );
+ 
+    gsWarn<<"Point "<< v <<" is not an corner of the patch.\n";
 }
 
 
@@ -237,6 +300,20 @@ void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fi
     }
 
     delete iter;
+}
+
+
+template<unsigned d, class T, class KnotVectorType>
+std::ostream & gsTensorBSpline<d,T,KnotVectorType>::print(std::ostream &os) const
+{ 
+    os << "Tensor BSpline geometry "<< "R^"<< d << 
+        " --> R^"<< this->geoDim()
+       << ", #control pnts= "<< this->coefsSize();
+    if ( m_coefs.size() )
+        os << ": "<< this->coef(0) <<" ... "<< this->coef(this->coefsSize()-1);
+    if ( m_basis )
+        os<<"\nBasis:\n" << this->basis() ;
+    return os; 
 }
 
 

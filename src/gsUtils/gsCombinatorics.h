@@ -414,6 +414,29 @@ bool nextCubeVertex(Vec& cur, const Vec& start, const Vec& end)
     return false;
 }
 
+/// Iterate in lexicographic order through the vertices of the cube
+/// [0,end]. Updates cur with the current vertex and returns true
+/// if another vertex is available. Cube may be degenerate.
+template<class Vec>
+bool nextCubeVertex(Vec& cur, const Vec& end)
+{
+    const int d = cur.size();
+    GISMO_ASSERT( d == end.size(),
+        "Vector sizes don't match in nextCubeVertex");
+
+    for (int i = 0; i != d; ++i)
+    {
+        if ( cur[i] != end[i] )
+        {
+            cur[i] = end[i];
+            return true;
+        }
+        else
+            cur[i] = 0;
+    }
+    return false;
+}
+
 /// Iterate in lexigographic order through the points of the integer
 /// lattice contained in the cube [0,end]. Updates cur with the
 /// current point and returns true if another point is available. Cube

@@ -364,7 +364,7 @@ public:
     {
         gsMatrix<unsigned,d,2> tmp;
         
-        gsVector<int> str;
+        gsVector<index_t,d> str;
         this->stride_cwise(str);
 
         for (unsigned dm = 0; dm != d; ++dm)
@@ -373,7 +373,7 @@ public:
             tmp(dm,1) = Self_t::component(dm).knots().firstKnotIndex(box(dm,1)) - 1; //-tmp(dm,0)
         }
 
-        gsVector<index_t> sz = tmp.col(1)- tmp.col(0) + gsVector<index_t,d>::Ones();
+        const gsVector<index_t,d> sz = tmp.col(1)- tmp.col(0) + gsVector<index_t,d>::Ones();
 
         gsMatrix<unsigned> cact = 
             gsVector<unsigned>::LinSpaced(sz[0], tmp(0,0), tmp(0,1));
