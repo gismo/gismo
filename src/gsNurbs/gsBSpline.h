@@ -202,22 +202,34 @@ public:
     T domainEnd() const { return this->basis().knots().last(); }
     
     /// Returns a reference to the knot vector
-    KnotVectorType & knots()             { return this->basis().knots(); }
-    /// Returns a reference to the knot vector
-    const KnotVectorType & knots() const { return this->basis().knots(); }
+    KnotVectorType & knots(const int i = 0) 
+    {
+        GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
+        return this->basis().knots(); 
+    }
+
+    /// Returns a (const )reference to the knot vector
+    const KnotVectorType & knots(const int i = 0) const 
+    { 
+        GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
+        return this->basis().knots(); 
+    }
 
     /// Returns the degree of the B-spline
-    int degree() const { return this->basis().degree(); }
+    int degree(int i = 0) const 
+    { 
+        GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
+        return this->basis().degree(); 
+    }
     
-    // Angelos, shall I implement the following two? It should be analogous to conversion to periodic.
     // compatible curves: same degree, same first/last p+1 knots
     void isCompatible( gsGeometry<T> * other )
-      { GISMO_NO_IMPLEMENTATION }
-
+    { GISMO_NO_IMPLEMENTATION }
+    
     // compatible curves: same degree, same first/last p+1 knots
     void makeCompatible( gsGeometry<T> * other )
-      { GISMO_NO_IMPLEMENTATION }
-
+    { GISMO_NO_IMPLEMENTATION }
+    
     /// Merge other B-spline into this one.
     void merge( gsGeometry<T> * other )
     {

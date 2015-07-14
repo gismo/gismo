@@ -71,22 +71,43 @@ public:
     typedef memory::shared_ptr< Self_t > Ptr;
 
 public:
-    /// Constructors for gsTensorBSplineBasis
+
+    // \brief Default empty constructor
+    gsTensorBSplineBasis() : Base() { }
+
+    /**
+       \brief Constructs a 2D tensor product B-spline basis. Assumes
+       that the tamplate parameter \a d is equal to 2.
+       
+       \param KV1 knot-vector with respect to the first parameter dimension
+       \param KV2 knot-vector with respect to the second parameter dimension
+     */
     gsTensorBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
     : Base( new Basis_t(KV1), new Basis_t(KV2) )
     { m_isPeriodic = -1; }
 
+    /**
+       \brief Constructs a 3D tensor product B-spline basis. Assumes
+       that the tamplate parameter \a d is equal to 3.
+       
+       \param KV1 knot-vector with respect to the first dimension
+       \param KV2 knot-vector with respect to the second dimension
+       \param KV3 knot-vector with respect to the third dimension
+     */
     gsTensorBSplineBasis( const KnotVectorType& KV1, 
                           const KnotVectorType& KV2, 
                           const KnotVectorType& KV3 )
     : Base( new Basis_t(KV1), new Basis_t(KV2), new Basis_t(KV3) )
     { m_isPeriodic = -1; }
 
-    // TO DO: more constructors
-
-    // Constructors forwarded from the base class
-    gsTensorBSplineBasis() : Base() { }
-
+    /**
+       \brief Constructs a 3D tensor product B-spline basis. Assumes
+       that the tamplate parameter \a d is equal to 3.
+       
+       \param KV1 knot-vector with respect to the first dimension
+       \param KV2 knot-vector with respect to the second dimension
+       \param KV3 knot-vector with respect to the third dimension
+     */
     explicit gsTensorBSplineBasis( Basis_t* x) : Base(x) 
     {
         GISMO_ENSURE(d==1,"Invalid constructor." );
@@ -129,7 +150,15 @@ public:
     {
         m_isPeriodic = o.periodicDirection();
     }
-    
+
+    /// \brief Converter to univariate B-spline basis
+    operator const Family_t &() const
+    {
+        if ( d==1 )
+            return static_cast<const Family_t &>(*m_bases[0]);
+        else
+            GISMO_ERROR("Cannot convert to gsBSplineBasis.");
+    }
 
     BoundaryBasisType * boundaryBasis(boxSide const & s ) const 
     { 
@@ -454,8 +483,12 @@ private:
     /////////////
     // Members //
     /////////////
+protected:
 
-    // Coordinate direction, where the basis is periodic (equal to -1 if there is no such direction).
+    using Base::m_bases;
+
+    /// Coordinate direction, where the basis is periodic (when equal
+    /// to -1 if there is no such direction).
     int m_isPeriodic;
 
 };
