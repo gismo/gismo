@@ -359,6 +359,7 @@ public:
 
     /// \brief Returns the indices of active basis functions in the given
     /// input element box
+    // for optimization!
     void elementActive_into(const gsMatrix<unsigned,d,2> & box,
                              gsMatrix<unsigned> & result) const
     {

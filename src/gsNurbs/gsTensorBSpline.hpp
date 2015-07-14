@@ -133,7 +133,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
             this->basis().stride_cwise(intStrides);
             gsTensorBoehm<T,KnotVectorType,gsMatrix<T> >(
                         clone->basis().knots(dir_fixed),clone->coefs(),par,dir_fixed,
-                        intStrides.cast<unsigned>(), degree-mult,true);
+                        intStrides.template cast<unsigned>(), degree-mult,true);
 
             // extract right ceofficients
             constructCoefsForSlice(dir_fixed,par,*clone,coefs);
