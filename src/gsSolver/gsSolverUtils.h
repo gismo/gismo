@@ -154,9 +154,9 @@ class gsLanczosMatrix
     T deriv(T lambda , unsigned k)
     {
         if(k==0)
-            return 0;
+            return T(0);
         else if(k==1)
-            return -1;
+            return T(-1);
         else
         {
            return (m_delta[k-1]-lambda)*deriv(lambda,k-1) - value(lambda,k-1)-m_gamma[k-2]*m_gamma[k-2]*deriv(lambda,k-2);
@@ -172,7 +172,7 @@ class gsLanczosMatrix
     T value(T lambda, unsigned k)
     {
         if(k==0)
-            return 1;
+            return T(1);
         else if(k==1)
             return m_delta[0]-lambda;
         else
@@ -221,6 +221,7 @@ public:
      */
     T maxEigenvalue()
     {
+         //This function might be very slow, use instead the matrix form
         if(n==1)
             return m_delta[0];
 
@@ -244,6 +245,7 @@ public:
      */
     T minEigenvalue()
     {
+        //This function might be very slow, use instead the matrix form
         if(n==1)
             return m_delta[0];
         T x0 = 0;
@@ -257,15 +259,15 @@ public:
     void matrixForm(gsSparseMatrix<T> & L)
     {
         L.resize(n,n);
-        std::vector<Eigen::Triplet<real_t> > list;
+        std::vector<Eigen::Triplet<T> > list;
         list.reserve(3*n);
 
-        list.push_back(Eigen::Triplet<real_t>(0,0,m_delta[0]));
+        list.push_back(Eigen::Triplet<T>(0,0,m_delta[0]));
         for(unsigned i = 1; i<n;i++)
         {
-            list.push_back(Eigen::Triplet<real_t>(i,i-1,m_gamma[i-1]));
-            list.push_back(Eigen::Triplet<real_t>(i-1,i,m_gamma[i-1]));
-            list.push_back(Eigen::Triplet<real_t>(i,i,m_delta[i]));
+            list.push_back(Eigen::Triplet<T>(i,i-1,m_gamma[i-1]));
+            list.push_back(Eigen::Triplet<T>(i-1,i,m_gamma[i-1]));
+            list.push_back(Eigen::Triplet<T>(i,i,m_delta[i]));
         }
         L.setFromTriplets(list.begin(),list.end());
 
