@@ -380,18 +380,12 @@ void gsMultiPatch<T>::closeGaps(T tol)
         gsGeometry<T> & p1 = *m_patches[it->first() .patch];
         gsGeometry<T> & p2 = *m_patches[it->second().patch];
 
-        // Grab boundary control points
-        bdr1 = safe( p1.basis().boundary( it->first() .side()) );
-        bdr2 = safe( p2.basis().boundary( it->second().side()) );
+        // Grab boundary control points in matching configuration
+        p1.basis().matchWith(*it, p2.basis(), bdr1, bdr2);
         
-        GISMO_ASSERT(bdr1.size() == bdr2.size(),
-                     "Closing gaps for non-matching patches not implemented.");
-
-        // todo: match bdr1/bdr2
-
         for (index_t i = 0; i!= bdr1.size(); ++i )
         {
-            if ( ( p1.coef(bdr1[i]) - p2.coef(bdr1[i]) ).squaredNorm() > tol )
+            if ( ( p1.coef(bdr1(i)) - p2.coef(bdr1(i)) ).squaredNorm() > tol )
                 gsWarn<<"Big gap detected between patches "<< it->first() .patch 
                       <<" and "<<it->second() .patch <<"\n";
 

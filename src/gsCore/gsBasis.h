@@ -834,8 +834,8 @@ public:
     /// between this patch and \a other. 
     /// The output is two lists of indices \a bndThis and \a bndOther,
     /// with indices that match one-to-one on the boundary \a bi.
-    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
-                   gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
+    virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                           gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
 
 protected:
 
