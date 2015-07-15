@@ -72,7 +72,7 @@ T computeL2Distance(const gsField<T>& u, const gsField<T>& v, int numEvals=1000)
 /// parameter domain (<em>v_isParam = true</em>) or on the
 /// physical domain (<em>v_isParam = false</em>).
 ///
-/// \param[out] return Scalar, L2-norm of the difference.
+/// \returns Scalar, L2-norm of the difference.
 ///
 /// \ingroup Utils
 ///

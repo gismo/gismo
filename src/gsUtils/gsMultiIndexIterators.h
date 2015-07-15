@@ -24,7 +24,7 @@ namespace gismo {
 /**
     \brief interface for random access iterators on multi-indexes
 
-    they iterate on structured subset of f$\mathbb{Z}^nf$.
+    they iterate on structured subset of \f$\mathbb{Z}^n\f$.
     the standard loop structure for an iterator it is
 
     for (it.first() ; it.good(); it.next())
@@ -248,14 +248,14 @@ public:
     /**
      * \brief constructor form the maximum of the coodinates
      *
-     * iterates over f$(a_0,...,a_n)f$ such that f$0\leq a_i\leq M_if$.
+     * iterates over \f$(a_0,...,a_n)\f$ such that \f$0\leq a_i\leq M_i\f$.
      * \param M
      */
     gsTensorGridIterator(MIndexT const & M);
     /**
      * \brief construct an iterator by setting the minimum and
      *
-     * iterates over f$(a_0,...,a_n)f$ such that f$m_i\leq a_i\leq M_if$.
+     * iterates over \f$(a_0,...,a_n)\f$ such that \f$m_i\leq a_i\leq M_i\f$.
      * \param m
      * \param M
      */
@@ -267,7 +267,7 @@ public:
     /**
      * \brief construct an iterator by setting lower and upper corners
      *
-     * Iterates over f$(a_0,...,a_n)f$ such that f$m_i\leq a_i< M_if$.
+     * Iterates over \f$(a_0,...,a_n)\f$ such that \f$m_i\leq a_i< M_i\f$.
      * the returned flat indexes of the SubGridIterator coincide with those
      * of the original iterators on the same coordinate.
      * \param m
@@ -278,8 +278,8 @@ public:
     /**
      * \brief construct a boundary iterator by setting the thickness
      *
-     * Iterates over f$(a_0,...,a_n)f$ such that f$m_i\leq a_i<m_i+mOffset_i f$
-     * or f$M_i-MOffset_i\leq a_i < M_i f$.
+     * Iterates over \f$(a_0,...,a_n)\f$ such that \f$m_i\leq a_i<m_i+mOffset_i \f$
+     * or \f$M_i-MOffset_i\leq a_i < M_i \f$.
      * the returned flat indexes of the boundary iterator coincide with those
      * of the original iterators on the same coordinate.
      * \param m
@@ -383,7 +383,7 @@ public:
     /**
      * \brief constructor form the maximum of the coodinates
      *
-     * iterates over f$(a_0,...,a_n)f$ such that f$0\leq a_i\leq M_if$.
+     * iterates over \f$(a_0,...,a_n)\f$ such that \f$0\leq a_i\leq M_i\f$.
      * \param M
      */
     gsTensorGridBoundaryIterator(
@@ -484,8 +484,8 @@ protected:
 /**
     \brief iterates over the simplex
 
-    returns all points f$(a_0,\dots,a_{n-1})f$ in f$Z^nf$ such that
-    f$\sum_{i=0}^{n-1}a_i \leq k f$
+    returns all points \f$(a_0,\dots,a_{n-1})\f$ in \f$Z^n\f$ such that
+    \f$\sum_{i=0}^{n-1}a_i \leq k \f$
 
   \ingroup combinatorics
   \ingroup Utils

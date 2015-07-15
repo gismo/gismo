@@ -53,9 +53,11 @@ public:
      * The computed value can be accessed by value().
      *
      * \param[in] visitor The Norm-visitor to be used.
-     * \param[in] storeEltWise Flag indicating whether the
+     * \param[in] storeElWise Flag indicating whether the
      * element-wise norms should be stored. See also
      * elementNorms().
+     * \param[in] side To be used, if the visitor will
+     * iterate over a side of the domain.
      */
     template <class NormVisitor>
     void apply(NormVisitor & visitor, bool storeElWise = false, boxSide side = boundary::none)

@@ -482,7 +482,7 @@ public:
         return ind;
     }
 
-    /// Returns true iff the basis function with multi-index \ind is on
+    /// Returns true iff the basis function with multi-index \em ind is on
     /// the boundary
     inline bool indexOnBoundary(const gsVector<unsigned, d> & ind) const 
     {

@@ -100,7 +100,7 @@ public:
     : Base( new Basis_t(KV1), new Basis_t(KV2), new Basis_t(KV3) )
     { m_isPeriodic = -1; }
 
-    /**
+    /*
        \brief Constructs a 3D tensor product B-spline basis. Assumes
        that the tamplate parameter \a d is equal to 3.
        
@@ -262,7 +262,7 @@ public:
      * \brief
      * Takes a vector of coordinate wise knot values and inserts these values to the basis.
      *
-     * \param u     refineKnots Coordinate-wise knot values to be inserted
+     * \param refineKnots Coordinate-wise knot values to be inserted
      */
     void insertKnots(const std::vector< std::vector<T> >& refineKnots)
     {

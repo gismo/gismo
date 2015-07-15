@@ -333,7 +333,8 @@ public:
     /// this patch
     void setFurthestCorner(gsMatrix<T> const &v);
     
-    /// Sets the resulting BSpline to be periodic in direction \param dir.
+    /// Sets the resulting BSpline to be periodic in direction \em dir.
+    /// \param dir
     inline void setPeriodic( int dir )
     {
         this->m_coefs = this->basis().perCoefs( this->m_coefs, dir );

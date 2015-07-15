@@ -552,7 +552,7 @@ public:
   // S.K.
   /// @brief Returns the level(s) at point(s) in the parameter domain
   ///
-  /// \param[in] Pts gsMatrix of size <em>d</em> x <em>n</em>, where\n
+  /// \param[in] Pt gsMatrix of size <em>d</em> x <em>n</em>, where\n
   /// \em d is the dimension of the parameter domain and\n
   /// \em n is the number of evaluation points.\n
   /// Each column of \em Pts represents one evaluation point.
@@ -796,7 +796,7 @@ protected:
     /// @param fkv finer knot vector
     /// @param f_low low index of the interested area for the fkv
     /// @param f_high high index of the interested area for the fkv
-    /// @param knots {k | k \in fkv & k \notin ckv}
+    /// @param knots \f$ {k | k \in fkv & k \notin ckv} \f$
     static
     void _differenceBetweenKnotVectors(const gsCompactKnotVector<T>& ckv,
                                        const unsigned c_low,
