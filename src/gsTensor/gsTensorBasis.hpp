@@ -941,6 +941,8 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         // Apply permutation to bndThis and bndOther so that they
         // finally match on both sides
         permuteTensorVector<unsigned,-1>(bPerm, bSize, bndThis);
+
+        return;
     }
     
     gsWarn<<"Cannot match with "<< other <<"\n";
