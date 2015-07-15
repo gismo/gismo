@@ -136,11 +136,12 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
     const int numPts = u.cols();                // number of points to compute at
     gsVector<T> tmp( d );
     gsMatrix<T> ev, uc( d, 3 ), ucm( d, 4 );
-    const int stride = d + d * ( d - 1 ) / 2;
+    const int stride = d + d * ( d - 1 ) / 2;   // number of second derivatives per component
     result.resize( n * stride , numPts );
     for ( int thisPt = 0; thisPt < numPts; thisPt++ ) {
         int r = d;
-        for ( int j = 0; j < d; j++ ) { // pure 2nd derivs
+        for ( int j = 0; j < d; j++ )
+        { // pure 2nd derivs
             tmp.setZero();
             tmp( j ) = T( 0.00001 );
             uc.col( 0 ).noalias() = u.col( thisPt ) + tmp;
@@ -150,7 +151,8 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
             for ( int k = 0; k < n; k++ ) // for all coordinates
                 result( k * stride + j, thisPt ) =
                     ( ev( k, 0 ) - 2 * ev( k, 1 ) + ev( k, 2 ) ) / T( 0.0000000001 ) ;
-            for ( int l = j + 1; l < d; l++ ) { // pure 2nd derivs
+            for ( int l = j + 1; l < d; l++ )
+            { // pure 2nd derivs
                 tmp( l ) = T( 0.00001 );
                 ucm.col( 0 ).noalias() = u.col( thisPt ) + tmp;
                 ucm.col( 3 ).noalias() = u.col( thisPt ) - tmp;

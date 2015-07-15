@@ -1,4 +1,4 @@
-/** @file gsNormH1.h
+/** @file gsSeminormH1.h
 
     @brief Computes the H1 norm.
 

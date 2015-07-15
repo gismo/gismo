@@ -1,4 +1,4 @@
-/** @file tutorialBSplineCurve
+/** @file tutorialBSplineCurve.cpp
 
     @brief Tutorial on gsBSpline class.
 

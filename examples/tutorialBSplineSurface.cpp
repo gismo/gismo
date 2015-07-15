@@ -1,4 +1,4 @@
-/** @file tutorialGeometry
+/** @file tutorialBSplineSurface.cpp
 
     @brief Tutorial on gsTensorBSpline class.
 

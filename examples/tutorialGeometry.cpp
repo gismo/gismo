@@ -1,4 +1,4 @@
-/** @file tutorialGeometry
+/** @file tutorialGeometry.cpp
 
     @brief Tutorial on gsGeometry abstract class.
 

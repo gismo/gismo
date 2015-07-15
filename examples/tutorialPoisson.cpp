@@ -1,4 +1,4 @@
-/** @file tutorialPoissonSolver.cpp
+/** @file tutorialPoisson.cpp
 
     @brief Tutorial example on how the use one of the Poisson assemblers
 

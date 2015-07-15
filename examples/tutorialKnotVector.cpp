@@ -1,4 +1,4 @@
-/** @file tutorialKnotVector
+/** @file tutorialKnotVector.cpp
 
     @brief Tutorial on gsKnotVector class.
 

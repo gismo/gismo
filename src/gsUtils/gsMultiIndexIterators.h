@@ -1,4 +1,4 @@
-/** @file gsMultiIndexIterarors.h
+/** @file gsMultiIndexIterators.h
 
     @brief This file contains iterators over discrete set of points in
  Z^n.  In particular it contains a tensorGrid and a simplexGrid

@@ -1,4 +1,4 @@
-/** @file gsXmlUtils.cpp
+/** @file gsXml.cpp
 
     @brief Provides implementation of input/output XML utilities struct.
 

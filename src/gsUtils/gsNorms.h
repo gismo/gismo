@@ -27,7 +27,8 @@
 
 #include <gsCore/gsGeometryEvaluator.h>
 
-/** @file Global functions for norm computations.
+/** @file gsNorms.h
+ * Global functions for norm computations.
  * \ingroup Utils
  */
 

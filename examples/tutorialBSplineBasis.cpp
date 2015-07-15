@@ -1,4 +1,4 @@
-/** @file tutorialGeometry
+/** @file tutorialBSplineBasis.cpp
 
     @brief Tutorial on gsBSplineBasis class.
 

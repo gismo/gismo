@@ -1,4 +1,4 @@
-/** @file gsVisitorNeumannBiharmoniic.h
+/** @file gsVisitorNeumannBiharmonic.h
 
     @brief Neumann conditions visitor for 4th order problems.
 

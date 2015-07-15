@@ -1,4 +1,4 @@
-/** @file tutorialBasis
+/** @file tutorialBasis.cpp
 
     @brief Tutorial on gsBasis abstract class.
 

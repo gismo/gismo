@@ -1,4 +1,4 @@
-/** @file gsSemiormH2.h
+/** @file gsSeminormH2.h
 
     @brief Computes the H2 seminorm.
 
