@@ -70,6 +70,23 @@ void gsBSplineBasis<T,KnotVectorType>::connectivity(const gsMatrix<T> & nodes,
         mesh.addEdge( sz-1, 0);
 }
 
+template <class T, class KnotVectorType>
+void gsBSplineBasis<T,KnotVectorType>::matchWith(const boundaryInterface & bi,
+                                                 const gsBasis<T> & other,
+                                                 gsMatrix<unsigned> & bndThis,
+                                                 gsMatrix<unsigned> & bndOther) const
+{
+    if ( const Self_t * _other = dynamic_cast<const Self_t*>(&other) )
+    {
+        bndThis .resize(1,1);
+        bndOther.resize(1,1);
+        bndThis (0,0) =  bi.first() .side() == 1 ? 0 :         m_knots.size()        -m_p-2;
+        bndOther(0,0) =  bi.second().side() == 1 ? 0 : _other->m_knots.size()-_other->m_p-2;
+        return;
+    }
+
+    gsWarn<< "Cannot match with "<< other <<"\n";
+}
 
 template <class T, class KnotVectorType>
 void gsBSplineBasis<T,KnotVectorType>::active_into(const gsMatrix<T>& u, 

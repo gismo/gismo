@@ -385,13 +385,13 @@ void gsMultiPatch<T>::closeGaps(T tol)
         
         for (index_t i = 0; i!= bdr1.size(); ++i )
         {
-            if ( ( p1.coef(bdr1(i)) - p2.coef(bdr1(i)) ).squaredNorm() > tol )
+            if ( ( p1.coef(bdr1(i)) - p2.coef(bdr2(i)) ).squaredNorm() > tol )
                 gsWarn<<"Big gap detected between patches "<< it->first() .patch 
                       <<" and "<<it->second() .patch <<"\n";
 
             // Set both control points equal to their average value
             mean.noalias()   = ( p1.coef(bdr1(i)) + p2.coef(bdr2(i)) ) / 2.0 ;
-            p1.coef(bdr1(i)) = p2.coef(bdr2(i))   = mean;
+            p1.coef(bdr1(i)) =   p2.coef(bdr2(i)) = mean;
         }
     }    
 }

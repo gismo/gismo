@@ -531,6 +531,10 @@ public:
     // Look at gsBasis class for a description
     void reverse() { m_knots.reverse(); }
 
+    void matchWith(const boundaryInterface & bi,
+                   const gsBasis<T> & other,
+                   gsMatrix<unsigned> & bndThis,
+                   gsMatrix<unsigned> & bndOther) const;
 
     /// Returns the size of the basis ignoring the bureaucratic way of
     /// turning the basis into periodic.
