@@ -547,12 +547,10 @@ public:
 
 private:
     
-    /// Returns true if the boxes defined by pairs [k1,k2] and [k3,k4]
-    /// overlap
-    /// \param k1 the lower left corner of the first box
-    /// \param k2 the upper right corner of the first box
-    /// \param k3 the lower left corner of the second box
-    /// \param k4 the upper right corner of the second box
+    /// Returns true if the boxes overlap
+    /// \param box1
+    /// \param box2
+    /// \returns \em true if the boxes overlap
     static bool haveOverlap(box const & box1, box const & box2);
 
     /// Returns true if box1 is contained in box2

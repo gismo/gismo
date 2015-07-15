@@ -162,10 +162,10 @@ public:
         that is caused by the change of variables.
 
         if the dimension of the parametric domain equals that of the target
-        space this is the determinant of the jacobian f$\det J^f$.
+        space this is the determinant of the jacobian \f$\det J\f$.
         If the geometry is a curve it is the modulus of the normal.
         If it is a surface in R^3 it is the length of the normal.
-        In general it can always be computed as f$\det(J^t J)^{1/2}f$
+        In general it can always be computed as \f$\det(J^t J)^{1/2}\f$
     **/
     const gsVector<T>&  measures() const
     { GISMO_ASSERT(m_flags & NEED_MEASURE, "det(J) not computed"); return m_measures; }
@@ -320,8 +320,6 @@ public:
       \partial_y B_1 & \partial_y B_2 & \ldots & \partial_y B_9
       \end{array}\right)
       \f]
-    
-    
       \param k Indicates which column of \em allGrads should be transformed.
       \param[in] allGrads gsMatrix containing computed gradients in the format
       described above.
@@ -373,7 +371,6 @@ public:
       \f[
       ( \partial_s B_1, \partial_t B_1, \partial_s B_2, \partial_t B_2, \ldots, \partial_t B_9 )^T.
       \f]
-
 
       \param k Indicates which column of the matrices in \em allegros_vec should be transformed.
       \param[in] allGrads std::vector of gsMatrix containing computed gradients in the format
@@ -448,11 +445,11 @@ public:
     described above.
     \param[in] allHessians gsMatrix containing computed second derivatives in the format
     described above.
-    \param[out] resultgsMatrix with the corresponding gradients on the
+    \param[out] result gsMatrix with the corresponding gradients on the
     physical domain in the format as described above.
     */
     virtual void transformLaplaceHgrad(index_t k,
-                                       const gsMatrix<T> & allgrads,
+                                       const gsMatrix<T> & allGrads,
                                        const gsMatrix<T> & allHessians,
                                        gsMatrix<T> & result) const = 0;
 

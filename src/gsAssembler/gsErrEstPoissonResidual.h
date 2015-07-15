@@ -70,7 +70,7 @@ public:
      * (see class-documentation at the top).
      *
      *
-     * \param storeEltWise Bool indicating whether the element-wise
+     * \param storeElWise Bool indicating whether the element-wise
      * errors should be stored also. If <em>storeEletWise = true</em>,
      * the gsVector of element-wise estimates \f$\eta_K\f$
      * can be obtained by

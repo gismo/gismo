@@ -527,19 +527,19 @@ public:
     The classes implementing the transformation of the indexes must
     contain a method
 
-    unsigned operator() (unsigned \pos, const gsMatrix<unsigned> &\active)
+    unsigned operator() (unsigned \em pos, const gsMatrix<unsigned> &\em active)
 
-    pos is the row in the matrix, active contains the local \active function indexes
-    so that the row \pos of the local matrix correspond to the function active(\pos).
+    pos is the row in the matrix, active contains the local \em active function indexes
+    so that the row \em pos of the local matrix correspond to the function active(\em pos).
     See gsIdentityMapping, gsActiveMapping and gsDOFMappedMapping.
 
 
     The classes implementing the writing must contain a method
 
-    void add(index_t r, index_t c, MatrixT::Scalar v)
+    void add(index_t \em r, index_t \em c, MatrixT::Scalar \em v)
 
-    where \r and \c are the indexes of the coefficient to write to
-    and \v is the value to add to the global matrix.
+    where \em r and \em c are the indexes of the coefficient to write to
+    and \em v is the value to add to the global matrix.
     Writer classes are templated on the destination so that they can be chained.
 
     See gsDW, gsSimmetricWriter, gsSimmetricWriter and gsMultiplierWriter.
