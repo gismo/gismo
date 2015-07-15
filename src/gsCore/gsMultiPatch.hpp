@@ -195,7 +195,7 @@ void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const
 
 /*
   This is based on comparing a set of reference points of the patch
-  side and thus it implicitly assumes that that the patch faces match
+  side and thus it implicitly assumes that the patch faces match
 */
 template<class T>
 bool gsMultiPatch<T>::computeTopology( T tol )
@@ -247,7 +247,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
         // Evaluate the patch on the reference points
         m_patches[p]->eval_into(coor,pCorners[p]);
 
-        // Add the patchSides for this patch to the candidate list
+        // Add all the patchSides of this patch to the candidate list
         for (boxSide bs=boxSide::getFirst(m_dim); bs<boxSide::getEnd(m_dim); ++bs)
             pSide.push_back(patchSide(p,bs));
     }
@@ -260,7 +260,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
 
     while ( pSide.size() != 0 )
     {
-        bool done=false;
+        bool done = false;
         const patchSide side = pSide.back();
         pSide.pop_back();
         for (size_t other=0; other<pSide.size(); ++other)
@@ -276,7 +276,9 @@ bool gsMultiPatch<T>::computeTopology( T tol )
                 continue;
             
             // Check whether the vertices match and compute direction map and orientation
-            if ( matchVerticesOnSide( pCorners[side.patch], cId1, 0, pCorners[pSide[other].patch], cId2, matched, dirMap, dirOr, tol ) )
+            if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0, 
+                                      pCorners[pSide[other].patch], cId2, 
+                                      matched, dirMap, dirOr, tol ) )
             {
                 dirMap(side.direction()) = pSide[other].direction();
                 dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
@@ -294,7 +296,6 @@ bool gsMultiPatch<T>::computeTopology( T tol )
 
     return true;
 }
-
 
 
 template <class T>
@@ -364,6 +365,41 @@ bool gsMultiPatch<T>::matchVerticesOnSide (
     }
 
     return false;
+}
+
+
+template<class T> 
+void gsMultiPatch<T>::closeGaps(T tol)
+{
+    //GISMO_UNUSED(tol);
+    gsMatrix<unsigned> bdr1, bdr2; // indices of the boundary control points
+    gsMatrix<T> mean;
+
+    for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
+    {
+        gsGeometry<T> & p1 = *m_patches[it->first() .patch];
+        gsGeometry<T> & p2 = *m_patches[it->second().patch];
+
+        // Grab boundary control points
+        bdr1 = safe( p1.basis().boundary( it->first() .side()) );
+        bdr2 = safe( p2.basis().boundary( it->second().side()) );
+        
+        GISMO_ASSERT(bdr1.size() == bdr2.size(),
+                     "Closing gaps for non-matching patches not implemented.");
+
+        // todo: match bdr1/bdr2
+
+        for (index_t i = 0; i!= bdr1.size(); ++i )
+        {
+            if ( ( p1.coef(bdr1[i]) - p2.coef(bdr1[i]) ).squaredNorm() > tol )
+                gsWarn<<"Big gap detected between patches "<< it->first() .patch 
+                      <<" and "<<it->second() .patch <<"\n";
+
+            // Set both control points equal to their average value
+            mean.noalias()   = ( p1.coef(bdr1(i)) + p2.coef(bdr2(i)) ) / 2.0 ;
+            p1.coef(bdr1(i)) = p2.coef(bdr2(i))   = mean;
+        }
+    }    
 }
 
 

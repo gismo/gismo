@@ -19,9 +19,9 @@
 namespace gismo
 {
 
-/** @brief
-    Holds a set of geometry patches and their
-    interface/outer boundary information.
+/** @brief Container clas sfor a set of geometry patches and their
+    topology, that is, the interface connections and outer boundary
+    faces.
 
     \tparam T coefficient type
     
@@ -196,12 +196,21 @@ public:
         gsBoxTopology::addBoundary( patchSide( p, s ) );
     }
 
+    /// \brief Refine uniformly all patches by inserting \a numKnots
+    /// in each knot-span with multipliplicity \a mul
     void uniformRefine(int numKnots = 1, int mul = 1);
 
+    /// \brief Elevate the degree of all patches by \a elevationSteps.
     void degreeElevate(int elevationSteps = 1);
 
-    /// Attempt to compute interfaces and boundaries automatically.
+    /// \brief Attempt to compute interfaces and boundaries
+    /// automatically.
     bool computeTopology( T tol = 1e-4 );
+
+    /// \brief Attempt to close gaps between the interfaces. Assumes
+    /// that the topology is computed, ie. computeTopology() has been
+    /// called.
+    void closeGaps( T tol = 1e-4 );
 
     /// Clear (delete) all patches
     void clear()
@@ -211,6 +220,9 @@ public:
         m_patches.clear();
     }
 
+    /// \brief Returns a bounding box for the multipatch domain. The
+    /// output \a result is a matrix with two columns, corresponding
+    /// to two points: the lower and upper corner of the bounding box.
     void boundingBox(gsMatrix<T> & result) const;
     
 protected:

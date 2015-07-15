@@ -73,10 +73,11 @@ template<class Basis_t>      class gsGenericGeometry;
 template< class T = real_t>  class gsGeometryEvaluator;
 template< class T = real_t>  class gsConstantBasis;
 template< class T = real_t>  class gsBasisFun;
-class gsBoxTopology;
 
-class boxSide;
+class  gsBoxTopology;
+class  boxSide;
 struct boxCorner;
+struct boundaryInterface;
 
 template< class T = real_t>  class gsCurve;
 template< class T = real_t>  class gsSurface;

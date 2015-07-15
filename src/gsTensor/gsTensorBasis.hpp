@@ -852,7 +852,7 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
     gsMatrix<T, Dynamic, Dynamic, ColMajor> q0, q1;
 
     //Note: Sparse LU might fail for rank deficient Cmat
-    gsSparseSolver<>::LU  solver;
+    typename gsSparseSolver<T>::LU  solver;
     gsSparseMatrix<T> Cmat;
 
     // size: sz x n
@@ -888,6 +888,63 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
     return this->makeGeometry( give(q0) );
 }
 
+
+template<unsigned d, class T>
+void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
+                                   const gsBasis<T> & other,
+                                   gsMatrix<unsigned> & bndThis,
+                                   gsMatrix<unsigned> & bndOther) const
+{
+    if ( const Self_t * _other = dynamic_cast<const Self_t*>(&other) )
+    {
+        // Grab the indices to be matched
+        bndThis = safe(  this->boundary( bi.first() .side() ));
+        bndOther= safe(_other->boundary( bi.second().side() ));
+        GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
+                      "Input error, sizes do not match: "
+                      <<bndThis.rows()<<"!="<<bndOther.rows() );
+        if (bndThis.size() == 1) return;
+
+        // Get interface data
+        const unsigned s1 = bi.first() .direction();
+        const index_t  s2 = bi.second().direction();
+        const gsVector<bool>    & dirOr = bi.dirOrientation();
+        const gsVector<index_t> & bMap  = bi.dirMap();
+        
+        // Compute the tensor structure of bndThis
+        gsVector<int>  bSize(d-1);
+        index_t c = 0;
+        for (unsigned k = 0; k<d; ++k )
+        {
+            if ( k == s1 )
+                continue;
+            bSize[c] = this->component(k).size();
+            c++;
+        }
+
+        // Apply flips to bndThis and bndOther so that they have the
+        // same orientation
+        gsVector<int>  bPerm(d-1);
+        c = 0;
+        for (unsigned k = 0; k<d; ++k )
+        {
+            if ( k == s1 ) // skip ?
+                continue;
+            
+            if ( ! dirOr[k] ) // flip ?
+                flipTensorVector(c, bSize, bndThis);
+            
+            bPerm[c] = ( bMap[k] < s2 ? bMap[k] : bMap[k]-1 );
+            c++;
+        }
+    
+        // Apply permutation to bndThis and bndOther so that they
+        // finally match on both sides
+        permuteTensorVector<unsigned,-1>(bPerm, bSize, bndThis);
+    }
+    
+    gsWarn<<"Cannot match with "<< other <<"\n";
+}
 
 //template<unsigned d, class T>
 //gsDomain<T> * gsTensorBasis<d,T>::makeDomain() const 

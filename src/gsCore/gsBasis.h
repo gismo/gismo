@@ -829,6 +829,14 @@ public:
     /// Reverse the basis
     virtual void reverse();
 
+    /// \brief Computes the indices of DoFs that match on the
+    /// interface \a bi. The interface is assumed to be a common face
+    /// between this patch and \a other. 
+    /// The output is two lists of indices \a bndThis and \a bndOther,
+    /// with indices that match one-to-one on the boundary \a bi.
+    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                   gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
+
 protected:
 
     // inline void getLinearCombination(

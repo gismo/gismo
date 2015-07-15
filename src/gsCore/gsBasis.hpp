@@ -403,6 +403,10 @@ template<class T>
 void gsBasis<T>::reverse()
 { GISMO_NO_IMPLEMENTATION }
 
+template<class T>
+void gsBasis<T>::matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+               gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const
+{ GISMO_NO_IMPLEMENTATION }
 
 //template<class T> inline
 // void gsBasis<T>::getLinearCombination(
