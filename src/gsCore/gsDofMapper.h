@@ -73,6 +73,7 @@ public:
      *
      * @param bases
      * @param dirichlet
+     * @param unk
      */
     template<class T>
     gsDofMapper(
@@ -132,7 +133,7 @@ public:
     /**
      * @brief construct a dof mapper with a given number of dofs per patch
      *
-     * @param basis
+     * @param patchDofSizes
      */
     gsDofMapper(
         const gsVector<index_t>        &patchDofSizes

@@ -274,7 +274,7 @@ public:
      * @brief returns a vector of parameters describing the position
      *        of the corner
      * @param dim
-     * @param param(i) is 1 if the corner is contained in box_face(i,1)
+     * @param param is 1 if the corner is contained in box_face(i,1)
      *        and 0 if it is contained in box_face(i,0)
      */
     void parameters_into (int dim, gsVector<bool> &param) const

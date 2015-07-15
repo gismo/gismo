@@ -141,6 +141,7 @@ public:
     /// \param degree degree of the spline space
     /// \param coefs coefficients of the spline space
     /// \param mult_interior multiplicity at the interior knots
+    /// \param periodic specifies whether the B-spline is periodic
     ///
     /// \ingroup Nurbs
     gsBSpline(T u0, T u1, unsigned interior, int degree, gsMovable< gsMatrix<T> > coefs, unsigned mult_interior=1, bool periodic = false)

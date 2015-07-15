@@ -249,6 +249,7 @@ void flipTensorVector( const int dir,
     \param[in]  m1     
     \param[in]  m2
     \param[out] result
+    \param[in] nzPerCol
 
     \ingroup Tensor
 */

@@ -111,7 +111,7 @@ public:
     /// Returns true iff we are still pointing at a valid leaf
     bool good() const   { return curNode != 0; }
 
-    /// The iteration is done in the sub-tree hanging from node \start
+    /// The iteration is done in the sub-tree hanging from node \em root_node
     void startFrom( node * const root_node)
     {
         m_stack.clear();

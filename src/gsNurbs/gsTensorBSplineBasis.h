@@ -300,7 +300,8 @@ public:
      * \param[in] boxes gsMatrix of size <em>d</em> x <em>(2*N)</em>;
      * specifies areas for refinement.\n
      * See above for details and format.
-     * \param NOTE This function directly modifies the basis (by inserting
+     *
+     * \remarks NOTE This function directly modifies the basis (by inserting
      * knots in the underlying univariate B-spline bases).
      *
      * \ingroup Nurbs

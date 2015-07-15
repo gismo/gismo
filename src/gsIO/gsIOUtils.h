@@ -250,9 +250,11 @@ void gsWriteGoTools(const gsMultiPatch<T>& multiPatch,
 }
 
 
-/// Returns the computational mesh of \a basis.
+/// \brief Returns the computational mesh of \a basis.
 ///
-/// \param n number of samples per element side
+/// \param[in] basis
+/// \param mesh
+/// \param[in] n number of samples per element side
 template<class T>
 void makeMesh(const gsBasis<T>& basis, gsMesh<T> & mesh, int n = 0)
 {

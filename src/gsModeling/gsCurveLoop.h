@@ -186,6 +186,7 @@ public:
       static void adjustPolygonToUnitSquare(gsMatrix<T> &corners, T const margin);
       
       /// split the \a curveId^th curve in the loop into two curves. Return the point where it splits.
+      /// \param curveId
       /// \param lengthRatio    the ratio between the lengths of the first new curve and that of the original curve
       gsMatrix<T> splitCurve(std::size_t curveId, T lengthRatio=.5);
 

@@ -110,7 +110,7 @@ T igaL2Distance(const gsGeometry<T>& patch,
 /// parameter domain (<em>v_isParam = true</em>) or on the
 /// physical domain (<em>v_isParam = false</em>).
 ///
-/// \param[out] Errs gsMatrix of size <em>NE</em> x <em>( 2*d+1 )</em>, where\n
+/// \returns Errs gsMatrix of size <em>NE</em> x <em>( 2*d+1 )</em>, where\n
 /// \em NE is the number of elements.\n
 /// \em d is the dimension of the parameter domain.\n
 /// See above for format of entries.
@@ -144,7 +144,7 @@ gsMatrix<T> igaL2DistanceEltWiseSq(const gsGeometry<T>& patch,
 /// parameter domain (<em>v_isParam = true</em>) or on the
 /// physical domain (<em>v_isParam = false</em>).
 ///
-/// \param[out] Errs gsVector of length \em N, where \em N is the number of patches (a.k.a. subdomains) of \em u.\n
+/// \returns Errs gsVector of length \em N, where \em N is the number of patches (a.k.a. subdomains) of \em u.\n
 /// Each entry of the vector is a gsMatrix of size <em>NE</em> x <em>( 2*d+1 )</em>, where\n
 /// \em NE is the number of elements.\n
 /// \em d is the dimension of the parameter domain.\n
@@ -166,7 +166,7 @@ gsVector< gsMatrix<T> > igaFieldL2DistanceEltWiseSq(const gsField<T>& u, const g
 /// parameter domain (<em>v_isParam = true</em>) or on the
 /// physical domain (<em>v_isParam = false</em>).
 ///
-/// \param[out] return L2-norm of the difference.
+/// \returns L2-norm of the difference.
 ///
 /// \ingroup Utils
 ///

@@ -522,7 +522,7 @@ public:
     /// Computes the normal vector of a co-dimension one geometry at evaluation point \a k
     virtual void normal(index_t k, gsVector<T> & result)  const = 0;
 
-    /// Computes the divergence of the geometry at evaluation point \k
+    /// Computes the divergence of the geometry at evaluation point \a k
     virtual void divergence(gsVector<T> & result)  const = 0;
 
 /*

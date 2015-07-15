@@ -80,13 +80,13 @@ void gsBoehmRefine( KnotVectorType & knots,
 
 /// Performs a knot insertion on knots and recomputes coefficients.
 ///
-/// \parameter knots - vector of knots in direction "direction"
-/// \parameter coefs - coefficients (control points)
-/// \parameter val - value of a knot we will insert
-/// \parameter direction - in which direction (knot vector) we will insert knot
-/// \parameter str - vector of strides
-/// \parameter r - how many times we will insert knot
-/// \parameter update_knots - if we update knots or not
+/// \param knots - vector of knots in direction "direction"
+/// \param coefs - coefficients (control points)
+/// \param val - value of a knot we will insert
+/// \param direction - in which direction (knot vector) we will insert knot
+/// \param str - vector of strides
+/// \param r - how many times we will insert knot
+/// \param update_knots - if we update knots or not
 ///
 /// \ingroup Nurbs
 //  Algorithm is based on gsBoehm and THE NURBS BOOK.
@@ -112,7 +112,7 @@ void gsTensorBoehm(
 /// \param knots - knot vector in direction "direction"
 /// \param coefs - coefficients (control points)
 /// \param direction - in which direction we will refine knots
-/// \param strides - vector of strides
+/// \param str - vector of strides
 /// \param valBegin - iterator pointing to the begining of the vector of the
 ///                       knots we want to insert
 /// \param valEnd - iterator pointing to the end of the vector of the knots

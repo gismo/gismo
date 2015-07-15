@@ -28,48 +28,6 @@ enum MarkingStrategy
     errorFraction=3
 };
 
-/** \brief Marks elements/cells for refinement.
- *
- * Let the global error/error estimate \f$\eta\f$ be a sum of element/cell-wise
- * local contributions:
- * \f[ \eta = \sum_{K} \eta_k \quad \mathrm{or} \quad \eta^2 = \sum_K \eta_K^2 \f]
- *
- * Computes a threshold \f$\Theta\f$ and marks all elements \f$K\f$ for refinement,
- * for which
- * \f[ \eta_K \geq \Theta \f]
- * holds.
- * Three criteria for computing \f$\Theta\f$ are currently (26.Nov.2014) implemented:
- *
- * Let \f$\rho\f$ denote the input parameter \em refParameter.
- *
- * <b>refCriterion = 1 = treshold, GARU-criterion</b> (greatest appearing eRror utilization):\n
- * Threshold computed based on the largest of all appearing local errors:
- * \f[ \Theta = \rho \cdot \max_K \{ \eta_K \} \f]
- * The actual number of marked elements can vary in each refinement step,
- * depending on the distribution of the error.
- *
- * <b>refCriterion = 2 = cellPercentage, PUCA-criterion</b> (percentile-utilizing cutoff ascertainment):\n
- * In each step, a certain percentage of all elements are marked.
- * \f[ \Theta = (1-\rho)\cdot 100\ \textrm{-percentile of}\ \{ \eta_K \}_K \f]
- * For example, if \f$\rho = 0.8\f$, those 20% of all elements which have the
- * largest local errors are marked for refinement.
- *
- * <b>refCriterion = 3 = errorFraction</b> ("Doerfler-marking"):\n
- * The threshold is chosen in such a manner that the local
- * errors on the marked cells sum up to a certain fraction of the
- * global error:
- * \f[ \sum_{ K:\ \eta_K \geq \Theta } \eta_K \geq (1-\rho) \cdot \eta \f]
- *
- * \param elError std::vector of local errors on some elements.
- * \param refCriterion selects the criterion (see above) for marking elements.
- * \param refParameter parameter \f$ \rho \f$ for refinement criterion (see above).\n
- * \f$\rho = 0\f$ corresponds to global refinement,\n
- * \f$ \rho=1\f$ corresponds to (almost) no refinement.
- * \param[out] elMarked std::vector of Booleans indicating whether the corresponding element is marked or not.
- *
- * \ingroup Assembler
- */
-
 template <class T>
 void gsMarkThreshold( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
 {
@@ -190,6 +148,47 @@ void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector
 }
 
 
+/** \brief Marks elements/cells for refinement.
+ *
+ * Let the global error/error estimate \f$\eta\f$ be a sum of element/cell-wise
+ * local contributions:
+ * \f[ \eta = \sum_{K} \eta_k \quad \mathrm{or} \quad \eta^2 = \sum_K \eta_K^2 \f]
+ *
+ * Computes a threshold \f$\Theta\f$ and marks all elements \f$K\f$ for refinement,
+ * for which
+ * \f[ \eta_K \geq \Theta \f]
+ * holds.
+ * Three criteria for computing \f$\Theta\f$ are currently (26.Nov.2014) implemented:
+ *
+ * Let \f$\rho\f$ denote the input parameter \em refParameter.
+ *
+ * <b>refCriterion = 1 = treshold, GARU-criterion</b> (greatest appearing eRror utilization):\n
+ * Threshold computed based on the largest of all appearing local errors:
+ * \f[ \Theta = \rho \cdot \max_K \{ \eta_K \} \f]
+ * The actual number of marked elements can vary in each refinement step,
+ * depending on the distribution of the error.
+ *
+ * <b>refCriterion = 2 = cellPercentage, PUCA-criterion</b> (percentile-utilizing cutoff ascertainment):\n
+ * In each step, a certain percentage of all elements are marked.
+ * \f[ \Theta = (1-\rho)\cdot 100\ \textrm{-percentile of}\ \{ \eta_K \}_K \f]
+ * For example, if \f$\rho = 0.8\f$, those 20% of all elements which have the
+ * largest local errors are marked for refinement.
+ *
+ * <b>refCriterion = 3 = errorFraction</b> ("Doerfler-marking"):\n
+ * The threshold is chosen in such a manner that the local
+ * errors on the marked cells sum up to a certain fraction of the
+ * global error:
+ * \f[ \sum_{ K:\ \eta_K \geq \Theta } \eta_K \geq (1-\rho) \cdot \eta \f]
+ *
+ * \param elError std::vector of local errors on some elements.
+ * \param refCriterion selects the criterion (see above) for marking elements.
+ * \param refParameter parameter \f$ \rho \f$ for refinement criterion (see above).\n
+ * \f$\rho = 0\f$ corresponds to global refinement,\n
+ * \f$ \rho=1\f$ corresponds to (almost) no refinement.
+ * \param[out] elMarked std::vector of Booleans indicating whether the corresponding element is marked or not.
+ *
+ * \ingroup Assembler
+ */
 template <class T>
 void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked)
 {

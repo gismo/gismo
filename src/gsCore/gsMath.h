@@ -163,7 +163,7 @@ inline bool gsClose (const T &a, const T &b, const T &tol)
 }
 
 /**
-    \brief tests if the difference between two matrices is bounded by tol in L^\infty norm
+    \brief tests if the difference between two matrices is bounded by tol in \f$ L^\infty \f$ norm
 
     The tolerance is relative to maximum absolute values of the entries of the matrices.
     **/
@@ -175,7 +175,7 @@ inline bool gsAllCloseRelativeToMax (const matrix_t1 &a, const matrix_t2 &b, con
 }
 
 /**
-    \brief tests if the difference between two matrices is bounded by tol in L^\infty norm
+    \brief tests if the difference between two matrices is bounded by tol in \f$ L^\infty \f$ norm
 
     The tolerance is absolute, therefore independent of the matrix entries.
     **/
@@ -187,7 +187,7 @@ inline bool gsAllCloseAbsolute (const matrix_t1 &a, const matrix_t2 &b, const ty
 }
 
 /**
-    \brief tests if the difference between two matrices is bounded by tol in L^\infty norm
+    \brief tests if the difference between two matrices is bounded by tol in \f$ L^\infty \f$ norm
 
     The tolerance is absolute below the reference, but relative for bigger numbers.
     **/

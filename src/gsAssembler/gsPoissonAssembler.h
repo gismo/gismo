@@ -86,7 +86,7 @@ public:
     Constructor of the assembler object.
 
     \param[in] patches is a gsMultiPatch object describing the geometry.
-    \param[in] bases a multi-basis that contains patch-wise bases
+    \param[in] basis a multi-basis that contains patch-wise bases
     \param[in] bconditions is a gsBoundaryConditions object that holds all boundary conditions.
     \param[in] rhs is the right-hand side of the Poisson equation, \f$\mathbf{f}\f$.
     \param[in] dirStrategy option for the treatment of Dirichlet boundary

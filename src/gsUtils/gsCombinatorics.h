@@ -131,6 +131,7 @@ public:
  * and store them in the supplied vector \a v.
  * Uses the Pacal triangle rule.
  *
+ * \param[in] n
  * \param[out] v a vector with n+1 components each equal to
  * \ingroup combinatorics
  * \ingroup Utils

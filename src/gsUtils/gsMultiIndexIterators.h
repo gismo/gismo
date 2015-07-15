@@ -227,7 +227,7 @@ template<typename Flat, int d> class gsTensorGridBoundaryIterator;
     \brief iterates on tensor grids
 
     With a tensor grid we mean a subset of Z^n containing the
-    points f$(a_0,...,a_n)f$ such that f$m_i\leq a_i< M_if$.
+    points \f$(a_0,...,a_n)\f$ such that \f$m_i\leq a_i< M_i\f$.
 
     The iteration is in lexicographic order.
     The multi-index is the vector of point coordinates and the
