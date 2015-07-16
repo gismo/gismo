@@ -198,39 +198,14 @@ void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper &
     else
     {
         // Tensor-Basis-case (default)
+        gsMatrix<unsigned> b1, b2;
+        m_bases[bi.first().patch]->matchWith(bi, *m_bases[bi.second().patch],
+                                             b1, b2);
 
-        // Grab the indices to be matched
-        gsMatrix<unsigned>
-            * b1= m_bases[bi.first() .patch]->boundary( bi.first() .side() ),
-            * b2= m_bases[bi.second().patch]->boundary( bi.second().side() );
+        // Match the dofs on the interface
+        for (index_t c = 0; c<b1.size(); ++c)
+            mapper.matchDof(bi.first().patch, b1(c,0), bi.second().patch, b2(c,0) );
 
-        GISMO_ASSERT( b1->rows() == b2->rows(),
-                      "Input error, sizes do not match: "<<b1->rows()<<"!="<<b2->rows() );
-
-
-        // Compute tensor structure of b1 -- to do move to tensor basis
-        const index_t d = dim();
-        const index_t p1 = bi.first().patch;
-        const index_t s1 = bi.first().direction();
-        gsVector<int>  bSize(d-1);
-        index_t c = 0;
-        for (index_t k = 0; k<d; ++k )
-        {
-            if ( k == s1 )
-                continue;
-            bSize[c] = m_bases[p1]->component(k).size();
-            c++;
-        }
-
-        // Reorder the indices so that they match on the interface
-        bi.matchDofs(bSize, *b1, *b2);
-
-        // All set, match interface dofs
-        for (c = 0; c<b1->size(); ++c)
-            mapper.matchDof(bi.first().patch, (*b1)(c,0), bi.second().patch, (*b2)(c,0) );
-
-        delete b1;
-        delete b2;
     } // if-else
 }
 
