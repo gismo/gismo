@@ -6,9 +6,9 @@
 
 namespace gismo{
 
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 // Public member functions
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 
 
 template<unsigned d, class T>
@@ -87,11 +87,11 @@ void gsTHBSpline<d, T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, 
     this->m_coefs = trMatrix * this->m_coefs;
 }
 
-/// Return the list of B-spline patches to represent a THB-spline geometry
-/// \returns b1 bottom left corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
-/// \returns b2 top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
-/// \returns level levels of the boxes (level[i]: level of the i-th box,)
-/// \returns bpatches list of B-spline patches associated with the boxes
+// Return the list of B-spline patches to represent a THB-spline geometry
+// \returns b1 bottom left corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
+// \returns b2 top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
+// \returns level levels of the boxes (level[i]: level of the i-th box,)
+// \returns bpatches list of B-spline patches associated with the boxes
 template<unsigned d, class T>
 //void gsTHBSplineBasis<d,T>::getBsplinePatches(gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, gsMatrix<unsigned>& nvertices) const
 //void gsTHBSpline<d,T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, std::vector< gsTensorBSpline<2> >& bpatches) const
@@ -196,19 +196,19 @@ void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsig
     //cout<<"level "<<level.rows()<<endl;
     //cout<<"nv "<<nvertices.rows()<<endl;//ko
 }
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 // Private member functions
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 
-///
-/// Return the B-spline representation of a THB-spline subpatch
-/// \param b1 bottom left corner of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
-/// \param b2 top right corner of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
-/// \param level level of the box
-/// \param geom_coef control points of the THB-spline geometry
-/// \returns cp control control points of the B-spline patch
-/// \returns k1 knot vector of the B-spline patch (first dimension)
-/// \returns k2 knot vector of the B-spline patch (second dimension)
+//
+// Return the B-spline representation of a THB-spline subpatch
+// \param b1 bottom left corner of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
+// \param b2 top right corner of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
+// \param level level of the box
+// \param geom_coef control points of the THB-spline geometry
+// \returns cp control control points of the B-spline patch
+// \returns k1 knot vector of the B-spline patch (first dimension)
+// \returns k2 knot vector of the B-spline patch (second dimension)
 /*template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned level, gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsCompactKnotVector<T>& k1, gsCompactKnotVector<T>& k2) const
 {
@@ -258,9 +258,9 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
     k2 = gsCompactKnotVector<T>(this->m_deg[1], this->m_bases[level]->component(1).knots().begin() + j0 , this->m_bases[level]->component(1).knots().begin() + j1 + this->m_deg[1] + 2);
 }*/
 
-///
-/// Function called by getBsplinePatchGlobal
-/// \param level
+//
+// Function called by getBsplinePatchGlobal
+// \param level
 /*template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs)const
 {
@@ -311,10 +311,10 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs)cons
     }
 }*/
 
-///
-/// Initializes the m_cmatrix up to given level with the coeffs of the geometry
-/// \param col dimension (0, 1, 2 = x, y, z)
-/// \param c_level level
+//
+// Initializes the m_cmatrix up to given level with the coeffs of the geometry
+// \param col dimension (0, 1, 2 = x, y, z)
+// \param c_level level
 /*template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::initialize_cmatrix(gsMatrix<T>&geom_coeff, int col, int c_level) const{
     int counter = 0;
@@ -328,11 +328,11 @@ void gsTHBSplineBasis<d,T>::initialize_cmatrix(gsMatrix<T>&geom_coeff, int col, 
     }
 }*/
 
-///
-/// Converts the coefficient matrix to a column of the control points matrix with respect to the given direction
-/// \param mat
-/// \param direction dimension (0, 1, 2 = x, y, z)
-/// \returns cp the column direction of cp is updated with the related coordinate of the control points
+//
+// Converts the coefficient matrix to a column of the control points matrix with respect to the given direction
+// \param mat
+// \param direction dimension (0, 1, 2 = x, y, z)
+// \returns cp the column direction of cp is updated with the related coordinate of the control points
 /*template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const{
     GISMO_ASSERT((mat.cols()*mat.rows() == cp.rows()), "Wrong matrix dimension.");

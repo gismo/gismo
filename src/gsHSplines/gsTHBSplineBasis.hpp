@@ -1854,11 +1854,11 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
 //                    {
 //                        start_lv_i += n[l].size();
 //                    }
-////                    std::cout<<"k "<<k<<std::endl;
-////                    std::cout<<"nk"<<std::endl;
-////                    for(int a = 0; a < n[k].size();a++){
-////                        std::cout<<n[k][a]<<" ";
-////                    }
+// //                    std::cout<<"k "<<k<<std::endl;
+// //                    std::cout<<"nk"<<std::endl;
+// //                    for(int a = 0; a < n[k].size();a++){
+// //                        std::cout<<n[k][a]<<" ";
+// //                    }
 //                    //std::cout<<std::endl;
 //                    gsSparseVector<T,RowMajor> M;
 //                    M.setZero();

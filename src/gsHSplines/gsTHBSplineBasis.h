@@ -399,8 +399,8 @@ private:
     ///
     /// @param j     index of basis function
     /// @param pres_level levet at which we want to present j-th basis function
-    /// @param low "low index" of support of j-th basis function (finest grid)
-    /// @param high "high index" of support of j-th basis function (finest grid)
+    /// @param finest_low "low index" of support of j-th basis function (finest grid)
+    /// @param finest_high "high index" of support of j-th basis function (finest grid)
     void _representBasisFunction(const unsigned j,
                                 const unsigned pres_level,
                                 const gsVector<unsigned, d>& finest_low,
@@ -469,8 +469,8 @@ private:
     ///
     /// @param clevel coarse level
     /// @param flevel finer level
-    /// @param flow "low index" of the support of a basis function (finest grid)
-    /// @param chigh "high index" of the support of a basis function (finest
+    /// @param finest_low "low index" of the support of a basis function (finest grid)
+    /// @param finest_high "high index" of the support of a basis function (finest
     ///        grid)
     /// @param size_of_coefs size of the coefficients
     ///
@@ -576,6 +576,7 @@ public:
    * @param geom_coeff control points of the geometry
    * @param col direction (0, 1, 2 = x, y, z)
    * @param c_level the maximum level of interest
+   * @param cmatrix characteristic matrix
    */
    void update_cmatrix(const gsMatrix<T>& geom_coeff, int col, int c_level, 
                        std::vector< std::map<unsigned,T> > & cmatrix) const;
@@ -619,6 +620,7 @@ private:
      * @brief Returns the coefficients computed by Boehm algorithm (called by \ref getBsplinePatchGlobal).
      * @param level maximum refinement level
      * @param[out] coeffs coefficients obtained by knot insertion
+     * @param[out] cmatrix updated characteristic matrix
      */
     void globalRefinement(int level, gsMatrix<T>& coeffs,
                           std::vector< std::map<unsigned,T> > & cmatrix ) const;

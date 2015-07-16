@@ -95,9 +95,9 @@ public:
 
 public:
 
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 // Virtual member functions required by the base class
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 
     /// Returns the degree wrt direction i
     unsigned degree(const unsigned & i) const
@@ -114,13 +114,19 @@ public:
     }
 
 
-//////////////////////////////////////////////////
-/// Other member functions
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
+// / Other member functions
+// ////////////////////////////////////////////////
 public:
-    ///get all the B-spline patches out of a THB-spline geometry
-    //void getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, std::vector< gsTensorBSpline<2> > & bpatches) const;
+    /** \brief Return the list of B-spline patches to represent a THB-spline geometry
+
+    \param[out] b1 bottom left corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
+    \param[out] b2 top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
+    \param[out] level levels of the boxes (level[i]: level of the i-th box,)
+    */
     void getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level) const;
+    //\param[out] bpatches list of B-spline patches associated with the boxes
+    //void getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, std::vector< gsTensorBSpline<2> > & bpatches) const;
 
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
     void convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result );
@@ -155,8 +161,8 @@ public:
 }; // class gsTHBSpline
 
 
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 
 
 
