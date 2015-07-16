@@ -29,10 +29,9 @@ class gsVisitorPoisson
 {
 public:
     
-    /** \brief Constructor for gsVisitorBiharmonic.
+    /** \brief Constructor for gsVisitorPoisson.
      *
      * \param[in] rhs Given right-hand-side function/source term that, for
-     * \param[in] coeff_a Given coefficient
      */
     /// Constructor with the right hand side function of the Poisson equation
     gsVisitorPoisson(const gsFunction<T> & rhs) : 

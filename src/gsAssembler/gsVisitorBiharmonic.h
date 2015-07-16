@@ -32,7 +32,6 @@ public:
     /** \brief Constructor for gsVisitorBiharmonic.
      *
      * \param[in] rhs Given right-hand-side function/source term that, for
-     * \param[in] coeff_a Given coefficient
      */
     gsVisitorBiharmonic(const gsFunction<T> & rhs) :
         rhs_ptr(&rhs)

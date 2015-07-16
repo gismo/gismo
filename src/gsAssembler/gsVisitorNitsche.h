@@ -33,13 +33,11 @@ public:
 /** @brief
     Constructor of the assembler object.
 
-    \param[in] basis a multi-basis that contains patch-wise basis
-    \param[in] dirData  is a gsBoundaryConditions object that holds boundary conditions of the form:
+    \param[in] dirdata  is a gsBoundaryConditions object that holds boundary conditions of the form:
     \f[ \text{Dirichlet: } u = g_D \text{ on } \Gamma.\f]
     \f$ v \f$ is the test function and \f$ \Gamma\f$ is the boundary side.
-    \param[in] rhs is the right-hand side of the Poisson equation, \f$\mathbf{f}\f$.
-    \param[in] dirStrategy option for the treatment of Dirichlet boundary in the \em bconditions object.
-    \param[in] penalty for inputing the penalty choice
+    \param[in] _penalty for inputing the penalty choice
+    \param[in] s
 */
     gsVisitorNitsche(const gsFunction<T> & dirdata, T _penalty, boxSide s) : 
     dirdata_ptr(&dirdata),penalty(_penalty), side(s)
