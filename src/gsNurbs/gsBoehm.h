@@ -252,7 +252,7 @@ unsigned getIndex(const gsVector<unsigned, d>& stride,
 /// \param knots - knot vector
 /// \param value - knot we want to insert
 /// \param r - how many times we want to insert knot value
-/// \param k - value \in [knots[k], knots[k + 1])
+/// \param k - value in [knots[k], knots[k + 1])
 /// \param p - degree corresponding B-splines
 /// \param s - multiplicity of knot value
 ///
@@ -320,6 +320,7 @@ void getLastIndex(const gsVector<unsigned>& stride,
 ///                       knots we want to insert
 /// \param valEnd - iterator pointing to the end of the vector of the knots
 ///                     we want to insert
+/// \param sparse
 /// \return void (note "returns" values through alpha and nknots)
 template <typename T, typename KnotVectorType, typename ValIt,
           typename newKnotsType>
@@ -406,7 +407,7 @@ void correctNewStride(gsVector<unsigned>& new_str,
 /// Computes last point of a cube. We can pass the point to nextCubePoint
 /// function. Function computes last point for local algorithm.
 ///
-/// @param size_of_coefs size of the coefficients
+/// @param size_of_coef size of the coefficients
 /// @param last_point we compute last point into this variable
 template<unsigned d>
 void getLastIndexLocal(const gsVector<unsigned, d>& size_of_coef,

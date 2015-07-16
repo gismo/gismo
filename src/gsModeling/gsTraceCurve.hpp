@@ -238,13 +238,16 @@ void gsTraceCurve( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
 /// \param x: point in the planar domain, should correspond to pre image (via \em map) to the
 /// middle point of \em bs.
 /// \param bs is the curve you want to trace
-/// \param t0 , \param t1 parametric values, they represent the interval you want to discretize
+/// \param t0 and...
+/// \param t1 parametric values, they represent the interval you want to discretize
 /// \param result stores resulting points 
 /// \param n_points is the number of points you want to trace per curve
+/// \param tolerance
 template<class T>
 void gsTraceCurvePart(std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
-               gsMatrix<T> const & x, gsBSpline<T> * bs, T t0, T t1, gsMatrix<T> & result,const int n_points = 50, 
-               const T tolerance = 0.0001)
+                      gsMatrix<T> const & x, gsBSpline<T> * bs, T t0, T t1,
+                      gsMatrix<T> & result,const int n_points = 50,
+                      const T tolerance = 0.0001)
 {
     int loops=100;
 

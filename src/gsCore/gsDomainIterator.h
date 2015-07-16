@@ -225,7 +225,7 @@ public:
 
     /// \brief Returns basis function values at quadrature nodes.
     ///
-    /// \param[out] basisValues gsMatrix of size <em>k</em> x <em>n</em>, where \n
+    /// \returns gsMatrix of size <em>k</em> x <em>n</em>, where \n
     /// <em>k</em> is the number of active basis functions on the current element.\n
     /// <em>n</em> is the number of quadrature nodes (which can be accessed via numQuNodes()).\n
     /// The entry <em>(i,j)</em> of the matrix corresponds to the value of the <em>i</em>-th function evaluated
@@ -234,7 +234,10 @@ public:
 
     /// \brief Returns derivatives of the basis functions at quadrature nodes.
     ///
-    /// \param[out] basisDerivs gsMatrix of size <em>(k*d)</em> x <em>n</em>, where \n
+    /// \param[in] der Specifies which derivative should be returned.
+    /// 1 for first derivatives, 2 for second derivatives, and so on.
+    /// 0 for function values should also work.
+    /// \returns gsMatrix of size <em>(k*d)</em> x <em>n</em>, where \n
     /// <em>k</em> is the number of active basis functions on the current element.\n
     /// <em>d</em> is the dimension of the parameter domain.
     /// <em>n</em> is the number of quadrature nodes (which can be accessed via numQuNodes()).\n

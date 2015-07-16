@@ -123,7 +123,7 @@ public:
      * \a n denotes the number of evaluation points.\n
      * Each column of \a u corresponds to one evaluation point.
      * @param[in] i Index of the considered patch/subdomain.
-     * @param[out] uPtr The <em>j</em>-th column of \a uPtr corresponds
+     * @returns uPtr The <em>j</em>-th column of \a uPtr corresponds
      * to the image of the point \a u_j (which is defined by the \a j-th column of the input parameter \a u).
      */
     typename gsMatrix<T>::uPtr point(const gsMatrix<T>& u, int i = 0) const
@@ -141,7 +141,7 @@ public:
      * \a n denotes the number of evaluation points.\n
      * Each column of \a u corresponds to one evaluation point.
      * @param[in] i Index of the considered patch/subdomain.
-     * @param[out] uPtr The <em>j</em>-th column of \a uPtr corresponds
+     * @returns uPtr The <em>j</em>-th column of \a uPtr corresponds
      * to the value of the field at the point \a u_j (which is defined by the \a j-th column of the input parameter \a u).
      */
     typename gsMatrix<T>::uPtr value(const gsMatrix<T>& u, int i = 0)  const
