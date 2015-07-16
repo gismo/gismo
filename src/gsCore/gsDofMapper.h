@@ -30,24 +30,30 @@ namespace gismo
     solving the system and won't actually translate into unknowns.
     An example are dofs on Dirichlet boundaries.
 
-    This class creates a mapping between an arbitrary number of per-patch
-    local dofs to an enumeration of global dofs.
+    This class creates a mapping between an arbitrary number of
+    per-patch local dofs to an enumeration of global dofs.
     Furthermore, dofs can also be marked as eliminated.
 
+    This is a a many-to-one mapping: many patch-local dofs are mapped
+    to a single global dfo (index).
     Every global dof gets a unique number, forming a continuous range
-    starting from 0. This range has length gsDofMapper::size().  The
-    dofs are numbered in the following order:
+    starting from 0. This range has length gsDofMapper::size().
+    The dofs are numbered in the following order:
 
-    - first the standard \em free (non-eliminated) dofs, ie. dofs that are not coupled on the boundary.
+    - first the standard \em free (non-eliminated) dofs, ie. dofs that
+      are not coupled on the boundary. For the standard dofs there is
+      unique pre-image pair (patch,localdof).
     
-    - then the \em free dofs which are coupled with other dofs (in a
-      1-1 coupling) (number: gsDofMapper::coupleSize()).
+    - then the \em free dofs which are coupled with other dofs For the
+      coupled dofs there is a list of pre-image pairs of the form
+      (patch,localdof).
+
+      Upto here we get all the dofs which are \em free (number:
+      gsDofMapper::freeSize() ). Then a final group follows:
     
-    Upto here we get all the dofs which are \em free (number:
-    gsDofMapper::freeSize() ). Then a final group follows:
-    
-    - then the dofs that are on Dirichlet boundaries
-      (number: gsDofMapper::boundarySize()).
+    - then the dofs that are on Dirichlet boundaries (number:
+      gsDofMapper::boundarySize()). These dofs might have a unique
+      pre-image or not.
     
     The boundary (eg. eliminated) dofs have their own 0-based
     numbering. The index of an boundary global dof in this numbering
@@ -328,13 +334,21 @@ public:
     std::size_t numPatches() const
     {return m_offset.size();}
 
-    /// Returns the total number of patch-local degrees of freedom
-    /// that are being mapped
+    /// \brief Returns the total number of patch-local degrees of
+    /// freedom that are being mapped
     std::size_t mapSize() const
     {return m_dofs.size();}
 
+    /// \brief For \a gl being a global index, this function returns a
+    /// vector of pairs (patch,dof) that contains all the pairs which
+    /// map to \a gl
+    void preImage(index_t gl, std::vector<std::pair<index_t,index_t> > & result) const;
+
+    /// \brief For \a n being an index which is already offsetted, it
+    /// returns the global index where it is mapped to by the dof
+    /// mapper.
     index_t mapIndex(index_t n) const
-    {return m_dofs[n];}
+    {return m_dofs[n]+m_shift;}
 
 private:
 

@@ -253,6 +253,30 @@ void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2)
     }
 }
 
+void gsDofMapper::preImage(const index_t gl, 
+                           std::vector<std::pair<index_t,index_t> > & result) const
+{ 
+    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    typedef std::vector<index_t>::const_iterator citer;
+
+    result.clear();
+
+    index_t cur = 0;//local offsetted index
+    for (citer it = m_dofs.begin(); it != m_dofs.end(); ++it, ++cur)
+    {
+        if ( *it == gl )
+        {
+            // Get the patch index of "cur" by "un-offsetting"
+            const index_t patch = std::lower_bound(m_offset.begin(), m_offset.end(), cur) - m_offset.begin()-1;
+
+            // Found a patch-dof pair
+            result.push_back( std::make_pair(patch, cur - m_offset[patch] - m_shift) );
+        }
+    }
+}
+
+
+
 index_t gsDofMapper::coupledSize() const
 { 
     GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
