@@ -17,6 +17,7 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometry.h>
+#include <gsCore/gsDofMapper.h>
 
 #include <gsUtils/gsCombinatorics.h>
 
@@ -373,12 +374,20 @@ void gsMultiPatch<T>::closeGaps(T tol)
 {
     //GISMO_UNUSED(tol);
     gsMatrix<unsigned> bdr1, bdr2; // indices of the boundary control points
-    gsMatrix<T> mean;
+
+    // Create a map which assigns to all meeting patch-local indices a
+    // unique global id
+    const index_t sz = m_patches.size();
+    gsVector<index_t> patchSizes(sz);
+    for (index_t i=0; i!= sz; ++i)
+        patchSizes[i] = m_patches[i]->coefsSize();
+
+    gsDofMapper mapper(patchSizes);
 
     for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
     {
-        gsGeometry<T> & p1 = *m_patches[it->first() .patch];
-        gsGeometry<T> & p2 = *m_patches[it->second().patch];
+        const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
+        const gsGeometry<T> & p2 = *m_patches[it->second().patch];
 
         // Grab boundary control points in matching configuration
         p1.basis().matchWith(*it, p2.basis(), bdr1, bdr2);
@@ -386,14 +395,38 @@ void gsMultiPatch<T>::closeGaps(T tol)
         for (index_t i = 0; i!= bdr1.size(); ++i )
         {
             if ( ( p1.coef(bdr1(i)) - p2.coef(bdr2(i)) ).squaredNorm() > tol )
-                gsWarn<<"Big gap detected between patches "<< it->first() .patch 
-                      <<" and "<<it->second() .patch <<"\n";
+                gsWarn<<"Big gap detected between patches "<< it->first().patch 
+                      <<" and "<<it->second().patch <<"\n";
 
-            // Set both control points equal to their average value
-            mean.noalias()   = ( p1.coef(bdr1(i)) + p2.coef(bdr2(i)) ) / 2.0 ;
-            p1.coef(bdr1(i)) =   p2.coef(bdr2(i)) = mean;
-        }
-    }    
+            // Match the dofs on the interface
+            mapper.matchDof(it->first().patch, bdr1(i,0), it->second().patch, bdr2(i,0) );
+        }        
+    }
+
+    // Finalize the mapper. At this point all patch-local dofs are
+    // mapped to unique global indices
+    mapper.finalize();
+
+    gsMatrix<T> meanVal;
+    std::vector<std::pair<index_t,index_t> > dof; 
+    const index_t start = mapper.freeSize() - mapper.coupledSize();
+    const index_t end   = mapper.coupledSize();
+
+    for (index_t i = start; i!= end; ++i) // For all coupled DoFs
+    {
+        // Get the preimages of this global dof (as pairs (patch,index) )
+        mapper.preImage(i, dof);
+
+        // Compute the mean value
+        meanVal = m_patches[dof[0].first]->coef(dof[0].second);
+        for (size_t k = 1; k!=dof.size(); ++k)
+            meanVal += m_patches[dof[k].first]->coef(dof[k].second);
+        meanVal.array() /= dof.size();
+        
+        // Set involved control points equal to their average value
+        for (size_t k = 1; k!=dof.size(); ++k)
+            m_patches[dof[k].first]->coef(dof[k].second) = meanVal;
+    }
 }
 
 
