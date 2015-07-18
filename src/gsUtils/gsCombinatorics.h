@@ -61,15 +61,15 @@ inline unsigned long long factorial( unsigned long long n)
   
   \ingroup Utils
 */
-template <typename T>
-inline T binomial(T n, T r)
+template <typename Z>
+inline Z binomial(const Z n, const Z r)
 {
     GISMO_ASSERT(r>=0, "binomial coefficient (n,r) exists only for n,r positive");
     //GISMO_ASSERT(n>=r, "binomial coefficient (n,r) exists only for n,r such that n>=r");
 
-    const T diff = math::min( n-r, r );
+    const Z diff = math::min( n-r, r );
     int result = 1;
-    for (T i=0;i < diff;)
+    for (Z i=0;i < diff;)
     {
         result *= n-i;
         result /= ++i;
@@ -326,7 +326,7 @@ void firstPermutation (Vec &current)
 }
 
 /**
- * \brief changes current to the next lexicographically ordered permutation
+ * \brief Changes current to the next lexicographically ordered permutation
  * \return false when the lexicographically last permutation is given
  */
 template<class Vec>
@@ -337,7 +337,7 @@ bool nextPermutation (Vec &current)
 }
 
 
-/// iterate through a tensor lattice with the given size. Updates cur
+/// \brief Iterates through a tensor lattice with the given size. Updates cur
 /// and returns true if another entry was available End values (\a
 /// size) are not included in the enumerated points, as with
 /// iterators.
@@ -364,7 +364,7 @@ bool nextLexicographic(Vec& cur, const Vec& size)
 }
 
 
-/// Iterate through a tensor lattice with the given start and end
+/// \brief Iterate through a tensor lattice with the given start and end
 /// points.  \a end coordinates are not included in the enumerated
 /// points, as with iterators.  Updates cur and returns true if
 /// another entry was available.
@@ -392,7 +392,7 @@ bool nextLexicographic(Vec& cur, const Vec& start, const Vec& end)
 }
 
 
-/// Iterate in lexicographic order through the vertices of the cube
+/// \brief Iterate in lexicographic order through the vertices of the cube
 /// [start,end]. Updates cur with the current vertex and returns true
 /// if another vertex is available. Cube may be degenerate.
 template<class Vec>
@@ -415,7 +415,7 @@ bool nextCubeVertex(Vec& cur, const Vec& start, const Vec& end)
     return false;
 }
 
-/// Iterate in lexicographic order through the vertices of the cube
+/// \brief Iterate in lexicographic order through the vertices of the cube
 /// [0,end]. Updates cur with the current vertex and returns true
 /// if another vertex is available. Cube may be degenerate.
 template<class Vec>
@@ -438,7 +438,7 @@ bool nextCubeVertex(Vec& cur, const Vec& end)
     return false;
 }
 
-/// Iterate in lexigographic order through the points of the integer
+/// \brief Iterate in lexigographic order through the points of the integer
 /// lattice contained in the cube [0,end]. Updates cur with the
 /// current point and returns true if another point is available. Cube
 /// may be degenerate.
@@ -462,7 +462,7 @@ bool nextCubePoint(Vec& cur, const Vec& end)
     return false;
 }
 
-/// Iterate in lexigographic order through the points of the integer
+/// \brief Iterates in lexigographic order through the points of the integer
 /// lattice contained in the cube [start,end]. Updates cur with the
 /// current point and returns true if another point is available. Cube
 /// may be degenerate.
@@ -488,7 +488,7 @@ bool nextCubePoint(Vec& cur, const Vec& start, const Vec& end)
     return false;
 }
 
-/// iterate in lex-order through the boundary points of the cube
+/// \brief Iterates in lex-order through the boundary points of the cube
 /// [start,end]. Updates cur with the current point and returns true
 /// if another point is available. Cube may be degenerate.
 template<class Vec>
@@ -526,7 +526,7 @@ bool nextCubeBoundary(Vec& cur, const Vec& start, const Vec& end)
     return false;
 }
 
-/// iterate in lex-order through the boundary points of the cube
+/// \brief Iterates in lex-order through the boundary points of the cube
 /// [start,end], with an \ offset to the interior. Updates cur with
 /// the current point and returns true if another point is
 /// available. Cube may be degenerate.
@@ -566,7 +566,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, Vec & of
     return false;
 }
 
-/// iterate in lex-order through the boundary points of the cube
+/// \brief Iterates in lex-order through the boundary points of the cube
 /// [start,end], with offset \a loffset from \ start and \a roffset
 /// .from the \a end. Updates cur with the current point and returns
 /// true if another point is available. Cube may be degenerate.
@@ -607,8 +607,70 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end,
     return false;
 }
 
+/// \brief Returns the number of elements (faces) of dimension \a k 
+/// of a \a d-cube
+inline index_t numCubeElements(const index_t k, const index_t d)
+{
+    GISMO_ASSERT(k >= 0 && k<=d, "Invalid arguments.");
+    return binomial(d,k) * (1<<(d-k));
+}
 
-/// Construct first composition of \a sum into \a dim integers
+/// \brief Returns the dimension of an element (face) of the \a d-cube
+/// [0,1]^d. The element is expected to contain 0,1 (corresponding to
+/// cube extrema) and the special value 2 at the position of "free"
+/// coordinates
+template<class Vec>
+inline index_t dimCubeElement(const Vec & cur)
+{
+    return (cur.array() == 2).count();
+}
+
+/// \brief Updates \a cur to contain the lexicographically first
+/// element (face) of the cube [0,1]^d of dimension \a k. For k==d the
+/// face (2..2) is returned, corresponding to the cube itself.
+template<class Vec>
+void firstCubeElement(Vec & cur, const index_t k = 0)
+{
+    const index_t d = cur.size();
+    GISMO_ASSERT(k >= 0 && k<=d, "Invalid arguments.");
+    cur.topRows   (k  ).setConstant(2);
+    cur.bottomRows(d-k).setConstant(0);
+}
+
+/// \brief Iterates in lexicographic order through the elements
+/// (faces) of dimension \a k of the cube [0,1]^d. Updates \a cur with
+/// the current element (face) and returns true if another element
+/// (face) of dimension \a k is available.  Coordinates with value 2
+/// indicate free/not-fixed dimensions.
+template<class Vec>
+bool nextCubeElement(Vec & cur, const index_t k)
+{
+    const index_t d = cur.size();
+    GISMO_ASSERT(k >= 0 && k<=cur.size(), "Invalid arguments.");
+
+    index_t i;
+    do
+    {
+        for (i = 0; i != d; ++i)
+        {
+            if ( cur[i] != 2 )
+            {
+                ++cur[i];
+                if ( (cur.array() == 2).count() == k ) // dimCubeElement(cur)==k ?
+                    return true;
+                else
+                    break;// skip face 
+            }
+            else
+                cur[i] = 0;
+        }
+    }
+    while ( i!=d );
+
+    return false;
+}
+
+/// \brief Construct first composition of \a sum into \a dim integers
 template<class Vec>
 void firstComposition( typename Vec::Scalar_t sum, index_t dim, Vec & res)
 {  
@@ -616,7 +678,7 @@ void firstComposition( typename Vec::Scalar_t sum, index_t dim, Vec & res)
     res[0] = sum;
 }
 
-/// Next composition in lexicographic order
+/// \brief Next composition in lexicographic order
 template<class Vec>
 inline bool nextComposition(Vec & v)
 {
@@ -640,6 +702,7 @@ inline bool nextComposition(Vec & v)
     return false;
 }
 
+/// \brief Number of compositions of \a sum into \a dim integers
 inline
 unsigned numCompositions(int sum, int dim)
 {
