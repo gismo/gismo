@@ -219,8 +219,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
 {
     gsVector<index_t,d> curr;
     findCorner(v, curr);
-    if ( curr[0] == this->basis().size(0) );
-         return;
+    if ( curr[0] == this->basis().size(0) )
+        return;
     for(unsigned k = 0; k!=d; ++k)
         if ( curr[k] != 0 )
             this->reverse(k);
@@ -231,8 +231,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::setFurthestCorner(gsMatrix<T> const &v
 {
     gsVector<index_t,d> curr;
     findCorner(v, curr);
-    if ( curr[0] == this->basis().size(0) );
-         return;
+    if ( curr[0] == this->basis().size(0) )
+        return;
     for(unsigned k = 0; k!=d; ++k)
         if ( curr[k] == 0 )
             this->reverse(k);
