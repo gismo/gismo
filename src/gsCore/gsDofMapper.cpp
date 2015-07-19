@@ -261,13 +261,14 @@ void gsDofMapper::preImage(const index_t gl,
 
     result.clear();
 
-    index_t cur = 0;//local offsetted index
+    std::size_t cur = 0;//local offsetted index
     for (citer it = m_dofs.begin(); it != m_dofs.end(); ++it, ++cur)
     {
         if ( *it == gl )
         {
             // Get the patch index of "cur" by "un-offsetting"
-            const index_t patch = std::lower_bound(m_offset.begin(), m_offset.end(), cur) - m_offset.begin()-1;
+            const index_t patch = std::upper_bound(m_offset.begin(), m_offset.end(), cur) 
+                                - m_offset.begin() - 1;
 
             // Found a patch-dof pair
             result.push_back( std::make_pair(patch, cur - m_offset[patch] - m_shift) );

@@ -203,8 +203,7 @@ void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper &
                                              b1, b2);
 
         // Match the dofs on the interface
-        for (index_t c = 0; c<b1.size(); ++c)
-            mapper.matchDof(bi.first().patch, b1(c,0), bi.second().patch, b2(c,0) );
+        mapper.matchDofs(bi.first().patch, b1, bi.second().patch, b2 );
 
     } // if-else
 }

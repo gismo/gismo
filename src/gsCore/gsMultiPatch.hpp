@@ -392,6 +392,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
         // Grab boundary control points in matching configuration
         p1.basis().matchWith(*it, p2.basis(), bdr1, bdr2);
         
+        //mapper.matchDofs(it->first().patch, bdr1, it->second().patch, bdr2);
         for (index_t i = 0; i!= bdr1.size(); ++i )
         {
             if ( ( p1.coef(bdr1(i)) - p2.coef(bdr2(i)) ).squaredNorm() > tol )
@@ -410,7 +411,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
     gsMatrix<T> meanVal;
     std::vector<std::pair<index_t,index_t> > dof; 
     const index_t start = mapper.freeSize() - mapper.coupledSize();
-    const index_t end   = mapper.coupledSize();
+    const index_t end   = mapper.freeSize();
 
     for (index_t i = start; i!= end; ++i) // For all coupled DoFs
     {
@@ -418,7 +419,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
         mapper.preImage(i, dof);
 
         // Compute the mean value
-        meanVal = m_patches[dof[0].first]->coef(dof[0].second);
+        meanVal = m_patches[dof.front().first]->coef(dof.front().second);
         for (size_t k = 1; k!=dof.size(); ++k)
             meanVal += m_patches[dof[k].first]->coef(dof[k].second);
         meanVal.array() /= dof.size();
