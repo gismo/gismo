@@ -54,6 +54,23 @@ bool gsBSpline<T,KnotVectorType>::isPatchCorner(gsMatrix<T> const &v, T tol) con
 }
 
 template<class T, class KnotVectorType >    
+void gsBSpline<T,KnotVectorType>::findCorner(const gsMatrix<T> & v, 
+                                             gsVector<index_t,1> & curr,
+                                             T tol)
+{
+    if ((v - m_coefs.row(0)).squaredNorm() < tol)
+        curr[0] = 0;
+    else if ((v - m_coefs.bottomRows(1)).squaredNorm() < tol)
+        curr[0] = m_coefs.rows()-1;
+    else
+    {
+        curr[0] = m_coefs.rows(); // invalidate result
+        gsWarn<<"Point "<< v <<" is not an corner of the patch. (Call isPatchCorner() first!).\n";
+    }
+}
+
+
+template<class T, class KnotVectorType >    
 void gsBSpline<T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
 {
     if ((v - m_coefs.row(0)).squaredNorm() < 1e-3)

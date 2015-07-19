@@ -445,6 +445,13 @@ public:
     /// the curve with tolerance \a tol
     bool isPatchCorner(gsMatrix<T> const &v, T tol = 1e-3) const;
 
+    /// \brief returns the tensor-index \a curr of the corner control
+    /// point \a v, or an invalid index if the corner is not found
+    /// within the tolerance \a tol
+    void findCorner(const gsMatrix<T>   & v, 
+                    gsVector<index_t,1> & curr,
+                    T tol = 1e-3);
+
     /// \brief Modifies the parameterization such that the point \a v
     /// is the starting point of the curve. Assumes that \a v is
     /// either the starting or the ending point of the curve

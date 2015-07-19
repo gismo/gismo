@@ -192,49 +192,50 @@ bool gsTensorBSpline<d,T,KnotVectorType>::isPatchCorner(gsMatrix<T> const &v, T 
 }
 
 template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
+void gsTensorBSpline<d,T,KnotVectorType>::findCorner(const gsMatrix<T> & v, 
+                                                     gsVector<index_t,d> & curr,
+                                                     T tol)
 {
-    gsVector<index_t,d> str(d), vupp(d), curr = gsVector<index_t,d>::Zero(d);
+    gsVector<index_t,d> str, // Tensor strides
+                        sz; // Tensor sizes 
     this->basis().stride_cwise(str);
-    this->basis().size_cwise(vupp);
-    vupp.array() -= 1;
+    this->basis().size_cwise(sz);
 
+    curr.setZero();
     do // loop over all vertices
     {
-        if ( (v - m_coefs.row(curr.dot(str))).squaredNorm() < 1e-3 )
-        {
-            for(unsigned k = 0; k!=d; ++k)
-                if ( curr[k] != 0 )
-                    this->reverse(k);
+        if ( (v - m_coefs.row(curr.dot(str))).squaredNorm() < tol )
             return;
-        }
     }
-    while ( nextCubeVertex(curr, vupp) );
+    while ( nextLexicographic(curr, sz) );
  
-    gsWarn<<"Point "<< v <<" is not an corner of the patch.\n";
+    // Corner not found, Invalidate the result
+    curr.swap(sz);
+    gsWarn<<"Point "<< v <<" is not an corner of the patch. (Call isPatchCorner() first!).\n";
+}
+
+template<unsigned d, class T, class KnotVectorType>
+void gsTensorBSpline<d,T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
+{
+    gsVector<index_t,d> curr;
+    findCorner(v, curr);
+    if ( curr[0] == this->basis().size(0) );
+         return;
+    for(unsigned k = 0; k!=d; ++k)
+        if ( curr[k] != 0 )
+            this->reverse(k);
 }
 
 template<unsigned d, class T, class KnotVectorType>
 void gsTensorBSpline<d,T,KnotVectorType>::setFurthestCorner(gsMatrix<T> const &v)
 {
-    gsVector<index_t,d> str(d), vupp(d), curr = gsVector<index_t,d>::Zero(d);
-    this->basis().stride_cwise(str);
-    this->basis().size_cwise(vupp);
-    vupp.array() -= 1;
-
-    do // loop over all vertices
-    {
-        if ( (v - m_coefs.row(curr.dot(str))).squaredNorm() < 1e-3 )
-        {
-            for(unsigned k = 0; k!=d; ++k)
-                if ( curr[k] == 0 )
-                    this->reverse(k);
-            return;
-        }
-    }
-    while ( nextCubeVertex(curr, vupp) );
- 
-    gsWarn<<"Point "<< v <<" is not an corner of the patch.\n";
+    gsVector<index_t,d> curr;
+    findCorner(v, curr);
+    if ( curr[0] == this->basis().size(0) );
+         return;
+    for(unsigned k = 0; k!=d; ++k)
+        if ( curr[k] == 0 )
+            this->reverse(k);
 }
 
 

@@ -468,7 +468,8 @@ public:
     inline unsigned index(gsVector<unsigned,d> const & v) const;
     //  inline unsigned index(gsVector<unsigned>         & v) const;
 
-    /// Returns the tensor index of the basis function with global index \a m.
+    /// \brief Returns the tensor index of the basis function with
+    /// global index \a m.
     inline gsVector<unsigned, d> tensorIndex(const unsigned& m) const 
     {
         gsVector<unsigned, d> ind;
@@ -481,9 +482,14 @@ public:
         }
         return ind;
     }
+    
+    void swapDirections(const unsigned i, const unsigned j)
+    {
+        std::swap(m_bases[i],m_bases[j]);
+    }
 
-    /// Returns true iff the basis function with multi-index \em ind is on
-    /// the boundary
+    /// \brief Returns true iff the basis function with multi-index
+    /// \em ind is on the boundary
     inline bool indexOnBoundary(const gsVector<unsigned, d> & ind) const 
     {
         for ( unsigned i = 0; i < d; ++i )
@@ -492,8 +498,8 @@ public:
         return ( (ind.array() > 0).all() );
     }
 
-    /// Returns true iff the basis function indexed \a m is on the
-    /// boundary
+    /// \brief Returns true iff the basis function indexed \a m is on
+    /// the boundary
     inline bool indexOnBoundary(const unsigned m) const 
     {
         return ( indexOnBoundary( tensorIndex(m) ) );
