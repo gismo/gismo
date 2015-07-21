@@ -22,7 +22,7 @@ namespace gismo
 /// \brief Returns the factorial of \a n i.e. \a n!
 /// Remember that factorial grow too fast and only n! with n<=13 can be stored in a 32bit that is an unsigned.
 /// \ingroup combinatorics
-/// \ingroup Utils
+// \ingroup Utils
 inline unsigned factorial( unsigned n)
 {
     GISMO_ASSERT(n<14, "Overflow when computing factorial.");
@@ -58,9 +58,9 @@ inline unsigned long long factorial( unsigned long long n)
   \param r term of the binomial expansion
 
   \ingroup combinatorics
-  
-  \ingroup Utils
 */
+//  \ingroup Utils
+
 template <typename Z>
 inline Z binomial(const Z n, const Z r)
 {
@@ -89,8 +89,8 @@ template<int n, int r> class binomialT;
    b=binomial<n,r>();
    The second form relies on the compiler optimizations to avoid function call.
    \ingroup combinatorics
-   \ingroup Utils
 */
+//   \ingroup Utils
 template <unsigned n, unsigned r>
 inline unsigned binomial () {return binomialT<n,r>::value;}
 
@@ -134,8 +134,8 @@ public:
  * \param[in] n
  * \param[out] v a vector with n+1 components each equal to
  * \ingroup combinatorics
- * \ingroup Utils
  */
+//\ingroup Utils
 inline void binomial_into( unsigned n, gsVector<unsigned>& v)
 {
     v.resize (n+1);

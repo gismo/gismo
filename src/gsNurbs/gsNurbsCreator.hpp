@@ -23,7 +23,7 @@
 namespace gismo
 {
 
-/**
+/*
    @brief Class gsNurbsCreator provides some simple examples of Nurbs Geometries
 */
 
@@ -82,7 +82,7 @@ template<class T> gsTensorBSpline<4,T> * gsNurbsCreator<T>::lift4D( gsTensorBSpl
                                     KV, give(newcoefs) );
 }
 
-/** Computes a set of control points, weights, and knots that define an order-3 circular arc centered at the origin
+/* * Computes a set of control points, weights, and knots that define an order-3 circular arc centered at the origin
     \param X Defines the X axis of the plane containing the arc
     \param Y Defines the Y axis of the plane containing the arc
     \param StartAngle Start angle of the arc in radians

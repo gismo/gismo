@@ -140,7 +140,7 @@ public:
       \right)
       \f]
     
-      \param[out] J gsMatrix of size <em>physDim</em> x <em>parDim*N</em>, where\n
+      \returns J gsMatrix of size <em>physDim</em> x <em>parDim*N</em>, where\n
       \em physDim is the dimension of the physical domain, and\n
       \em parDim is the dimension of the parameter domain, and\n
       \em N is the number of evaluation points.

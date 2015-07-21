@@ -14,10 +14,10 @@
 namespace gismo {
 
 
-///////////////////////////////////////////
-/// @brief TENSOR GRID ITERATOR FUNCTIONS
-/// 
-/// \ingroup Utils
+// /////////////////////////////////////////
+// TENSOR GRID ITERATOR FUNCTIONS
+//
+// / \ingroup Utils
 
 template<typename Flat, int dim>
 gsTensorGridIterator<Flat,dim>::gsTensorGridIterator (MIndexT const & M)
@@ -203,9 +203,9 @@ bool gsTensorGridIterator<Flat,dim>::flatIsValid(Flat index)  const
 }
 
 
-///////////////////////////////////////////
-/// TENSOR GRID BOUNDARY ITERATOR FUNCTIONS
-///
+// /////////////////////////////////////////
+// / TENSOR GRID BOUNDARY ITERATOR FUNCTIONS
+// /
 
 template<typename Flat, int dim>
 gsTensorGridVertexIterator<Flat,dim>::gsTensorGridVertexIterator(gsTensorGridIterator<Flat,dim> &area)
@@ -266,9 +266,9 @@ bool gsTensorGridVertexIterator<Flat,dim>::multiIsValid (MIndexT const & index) 
 }
 
 
-///////////////////////////////////////////
-/// TENSOR GRID BOUNDARY ITERATOR FUNCTIONS
-///
+// /////////////////////////////////////////
+// / TENSOR GRID BOUNDARY ITERATOR FUNCTIONS
+// /
 
 template<typename Flat, int dim>
 gsTensorGridBoundaryIterator<Flat,dim>::gsTensorGridBoundaryIterator(
@@ -480,10 +480,10 @@ bool gsTensorGridBoundaryIterator<Flat,dim>::multiIsValid(MIndexT const & index)
        ( index.array()>=(m_vmax-m_uppOff).array() && index.array()<m_vmax.array()).any() ;
 }
 
-///////////////////////////////////////////
-/// COMPOSITION ITERATOR FUNCTIONS
-///
-///
+// /////////////////////////////////////////
+// / COMPOSITION ITERATOR FUNCTIONS
+// /
+// /
 
 template<typename Flat, int dim>
 gsCompositionIterator<Flat,dim>::gsCompositionIterator(Flat sum, int _dim)
@@ -647,10 +647,10 @@ template<typename Flat, int dim>
 bool  gsCompositionIterator<Flat,dim>::flatIsValid (Flat index) const {return m_fmin<=index && index<=m_fmax;}
 
 
-///////////////////////////////////////////
-/// SIMPLEX ITERATOR FUNCTIONS
-///
-///
+// /////////////////////////////////////////
+// / SIMPLEX ITERATOR FUNCTIONS
+// /
+// /
 
 template<typename Flat, int dim>
 gsSimplexIterator<Flat,dim>::gsSimplexIterator(Flat sum, int _dim)

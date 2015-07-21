@@ -267,7 +267,7 @@ public:
     void insert(T knot, int mult=1);
 
     /// @brief Insert knots into the knot vector.
-    /// \param knot parameter values of the new knots, stored in a std::vector
+    /// \param knots parameter values of the new knots, stored in a std::vector
     /// \param mult multiplicity of the new knots
     void insert(std::vector<T> const & knots, int mult=1);
 

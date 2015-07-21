@@ -137,7 +137,6 @@ public:
 /**
  * @brief gsHTensorBasis
  * @param tbasis - tensor basis
- * @param nlevels - number of levels
  * @param boxes - matrix containing boxes - each 2x2 submatrix
  * contains the lover left and upper right corner of the box
  *
@@ -180,7 +179,6 @@ public:
 /**
  * @brief gsHTensorBasis
  * @param tbasis
- * @param nlevels - maximum number of levels
  * @param boxes - matrix containing boxes - eaxh 2x2 submatrix
  * contains the lover left and upper right corner of the box
  * @param levels

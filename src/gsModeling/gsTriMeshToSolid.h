@@ -288,10 +288,13 @@ public:
      */
     static T calcDist(VertexHandle v1,VertexHandle v2);
     
-    
-    /** \brief using Heron's Formula for the area of a triangle.
-     *  \param f1 - the face of  which the area shall be calculated.
-     *  \return the area of the input face \e f1.
+
+    // Documentation guessed by S.K.
+    /** \brief checks whether vertices are corners.
+     *  \param vertexVec3d vector of vertices.
+     *  \return vector indicating whether the corresponding vertex is a corner or not.
+     *
+     *  \todo Verify that this description is correct.
      */
     static std::vector<bool> isCorner(std::vector<VertexHandle > const & vertexVec3d);
 

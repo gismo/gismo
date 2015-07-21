@@ -155,6 +155,7 @@ protected:
     /// and restored only on setTo, first, last or reset functions if
     /// the iterator is not empty
     bool    m_good;
+
     /// current multiIndex
     MIndexT m_vpos;
 };
@@ -211,9 +212,11 @@ public:
 protected:
     /// dimension
     const index_t d;
+
     /// bool to represent iterator validity, true when the iterator
     /// points to a new value
     bool    m_good;
+
     /// current multiIndex
     MIndexT m_vpos;
 };
@@ -234,7 +237,6 @@ template<typename Flat, int d> class gsTensorGridBoundaryIterator;
     flat index is the position during iteration.
 
   \ingroup combinatorics
-  \ingroup Utils
 **/
 template<typename Flat=index_t, int dim=-1>
 class gsTensorGridIterator : public gsMultiIndexIterator<Flat,dim>
@@ -282,8 +284,8 @@ public:
      * or \f$M_i-MOffset_i\leq a_i < M_i \f$.
      * the returned flat indexes of the boundary iterator coincide with those
      * of the original iterators on the same coordinate.
-     * \param m
-     * \param M
+     * \param mOffset
+     * \param MOffset
      */
     virtual gsTensorGridIterator<Flat,dim>
     * makeBoundaryIterator (MIndexT const & mOffset, MIndexT const & MOffset);
@@ -384,7 +386,9 @@ public:
      * \brief constructor form the maximum of the coodinates
      *
      * iterates over \f$(a_0,...,a_n)\f$ such that \f$0\leq a_i\leq M_i\f$.
-     * \param M
+     * \param area
+     * \param mOffset
+     * \param MOffset
      */
     gsTensorGridBoundaryIterator(
             gsTensorGridIterator<Flat,dim> &area,
@@ -431,7 +435,6 @@ protected:
     dimension argument in the constructor is ignored.
 
     \ingroup combinatorics
-    \ingroup Utils
 **/
 template<typename Flat=index_t, int dim=-1>
 class gsCompositionIterator
@@ -484,11 +487,10 @@ protected:
 /**
     \brief iterates over the simplex
 
-    returns all points \f$(a_0,\dots,a_{n-1})\f$ in \f$Z^n\f$ such that
+    iterates over all points \f$(a_0,\dots,a_{n-1})\f$ in \f$\mathbb{Z}^n\f$ such that
     \f$\sum_{i=0}^{n-1}a_i \leq k \f$
 
   \ingroup combinatorics
-  \ingroup Utils
 **/
 
 template<typename Flat=index_t, int dim=-1>

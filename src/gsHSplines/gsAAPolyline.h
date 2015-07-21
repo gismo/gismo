@@ -48,10 +48,12 @@ public:
     /// Default destructor.
     ~gsVSegment() { }
 
-    /// Test the equality with the segment \param other.
+    /// Test the equality with the segment \em other.
+    /// \param other
     bool isClosing(const gsVSegment& other)const;
 
-    /// Test conection to the segment \param other.
+    /// Test conection to the segment \em other.
+    /// \param other
     bool isConnected(const gsVSegment& other)const;
     T length()const;
 

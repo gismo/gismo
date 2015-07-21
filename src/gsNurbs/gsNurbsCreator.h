@@ -40,7 +40,7 @@ struct gsNurbsCreator
     
     static gsTensorBSpline<4,T> * lift4D( gsTensorBSpline<3,T> const & geo, T z = 1);
 
-    /** Computes a set of control points, weights, and knots that define an order-3 circular arc centered at the origin
+    /* Computes a set of control points, weights, and knots that define an order-3 circular arc centered at the origin
     \param X Defines the X axis of the plane containing the arc
     \param Y Defines the Y axis of the plane containing the arc
     \param StartAngle Start angle of the arc in radians

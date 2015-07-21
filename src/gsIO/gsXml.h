@@ -83,8 +83,9 @@ public:
     static Object * getId    (gsXmlNode * node, int id);
 };
 
-/// Helper to read an object by a given id value: 
-/// \param node parent node, we check his children to get the given id
+/// Helper to read an object by a given \em id value:
+/// \param node parent node, we check his children to get the given \em id
+/// \param id
 template<class Object>
 Object * getById(gsXmlNode * node, const int & id)
 {
