@@ -1125,7 +1125,7 @@ void appendBoxTopology(const gsBoxTopology& topology,
 
     if ( topology.nInterfaces() != 0 )
     {
-        for ( typename gsBoxTopology::const_iiterator it = topology.iBegin();
+        for ( gsBoxTopology::const_iiterator it = topology.iBegin();
               it != topology.iEnd(); ++it )
         {
             oss << it->first().patch  << " " << int(it->first().side()) << " "
@@ -1140,7 +1140,7 @@ void appendBoxTopology(const gsBoxTopology& topology,
 
     if ( topology.nBoundary() != 0)
     {
-        for ( typename gsBoxTopology::const_biterator it = topology.bBegin();
+        for ( gsBoxTopology::const_biterator it = topology.bBegin();
               it != topology.bEnd(); ++it )
         {
             oss << it->patch << " " << int(it->side()) << "\n";
