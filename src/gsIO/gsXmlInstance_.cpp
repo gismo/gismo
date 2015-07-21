@@ -18,6 +18,7 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsSurface<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsBasis<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsMultiPatch<real_t> >;
+    CLASS_TEMPLATE_INST gsXml< gsMultiBasis<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsSolid<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsTrimSurface<real_t> >;
 

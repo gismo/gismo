@@ -213,7 +213,7 @@ public:
     }
     bool operator!= (const patchSide& other) const
     {
-        return patch==other.patch || m_index==other.m_index;
+        return patch!=other.patch || m_index!=other.m_index;
     }
     bool operator>  (const patchSide& other) const
     {
