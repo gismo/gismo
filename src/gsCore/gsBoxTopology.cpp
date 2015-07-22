@@ -129,7 +129,7 @@ bool gsBoxTopology::getNeighbour(const patchSide& ps ,patchSide& result) const
     return getNeighbour(ps, result, a);
 }
 
-bool gsBoxTopology::areNeighbours(const int b1, const int b2) const
+const boundaryInterface * gsBoxTopology::findInterface(const int b1, const int b2) const
 {
     for ( unsigned i = 0; i < m_interfaces.size(); ++i ) 
     {
@@ -137,9 +137,9 @@ bool gsBoxTopology::areNeighbours(const int b1, const int b2) const
               m_interfaces[i].second().patch == b2) ||
              (m_interfaces[i].first() .patch == b2  && 
               m_interfaces[i].second().patch == b1) )
-            return true;
+            return & m_interfaces[i];
     }
-    return false;
+    return NULL;
 }
 
 bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const

@@ -151,25 +151,10 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
 template<unsigned d, class T, class KnotVectorType>
 void gsTensorBSpline<d,T,KnotVectorType>::reverse(unsigned k)
 { 
-    //todo: use flipTensor to generalize to any dimension
-    GISMO_ASSERT(d==2, "only 2D for now");
-
-    gsVector<int> str(d); 
-    gsVector<int> sz (d); 
     gsTensorBSplineBasis<d,T,KnotVectorType> & tbsbasis = this->basis();
-
-    sz[0]  = tbsbasis.component(k).size();
-    sz[1]  = tbsbasis.component(!k).size();
-    str[0] = tbsbasis.stride( k );
-    str[1] = tbsbasis.stride(!k );
-    
-    for  ( int i=0; i< sz[0]; i++ )
-        for  ( int j=0; j< sz[1]/2; j++ )
-        {
-            this->m_coefs.row(i*str[0] + j*str[1] ).swap(
-                this->m_coefs.row(i*str[0] + (sz[1]-j-1)*str[1] )
-                );
-        }
+    gsVector<int,d> sz;
+    tbsbasis.size_cwise(sz);
+    flipTensorVector(k, sz, m_coefs);
     tbsbasis.component(k).reverse();
 }
 
@@ -208,10 +193,12 @@ void gsTensorBSpline<d,T,KnotVectorType>::findCorner(const gsMatrix<T> & v,
                                                      gsVector<index_t,d> & curr,
                                                      T tol)
 {
-    gsVector<index_t,d> str, // Tensor strides
-                        sz; // Tensor sizes 
+    gsVector<index_t,d> str , // Tensor strides
+                        vupp; // Furthest corner
+
     this->basis().stride_cwise(str);
-    this->basis().size_cwise(sz);
+    this->basis().size_cwise(vupp);
+    vupp.array() -= 1;
 
     curr.setZero();
     do // loop over all vertices
@@ -219,10 +206,11 @@ void gsTensorBSpline<d,T,KnotVectorType>::findCorner(const gsMatrix<T> & v,
         if ( (v - m_coefs.row(curr.dot(str))).squaredNorm() < tol )
             return;
     }
-    while ( nextLexicographic(curr, sz) );
- 
+    while ( nextCubeVertex(curr, vupp) );
+
     // Corner not found, Invalidate the result
-    curr.swap(sz);
+    vupp.array() += 1;
+    curr.swap(vupp);
     gsWarn<<"Point "<< v <<" is not an corner of the patch. (Call isPatchCorner() first!).\n";
 }
 
