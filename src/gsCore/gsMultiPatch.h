@@ -111,57 +111,49 @@ public:
      */
     gsAffineFunction<T> getMapForInterface(const boundaryInterface &bi, T scaling=0) const;
 
-    /// Swap with another gsMultiPatch.
+    /// \brief Swap with another gsMultiPatch
     void swap(gsMultiPatch& other)
     {
         gsBoxTopology::swap( other );
         m_patches.swap( other.m_patches );
     }
 
-    /// Prints the object as a string.
-    std::ostream& print( std::ostream& os ) const
-    {
-        if ( this->size() > 0 ) {
-            os << "gsMultiPatch (" << this->size() << "): ";
-            os << "#Boundaries= " << nBoundary() << ", ";
-            os << "#Interfaces= " << nInterfaces() << ".\n";
-            //gsBoxTopology::print( os );
-        } else {
-            os << "gsMultiPatch ( empty! ).\n";
-        }
-        return os;
-    }
+    /// \brief Prints the object as a string
+    std::ostream& print( std::ostream& os ) const;
 
-    /// Dimension of the parameter domain (must match for all patches).
+    /// \brief Prints the object as a string with extended details
+    std::string detail() const;
+
+    /// \brief Dimension of the parameter domain (must match for all patches).
     int parDim() const 
     {
         //GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
         return m_dim;
     }
 
-    /// Dimension of the geometry (must match for all patches).
+    /// \brief Dimension of the geometry (must match for all patches).
     int geoDim() const;
 
-    /// Co-dimension of the geometry (must match for all patches).
+    /// \brief Co-dimension of the geometry (must match for all patches).
     int coDim() const;
 
-    /// Returns true if the multipatch object is a closed manifold
-    /// (ie. it has no boundaries)
+    /// \brief Returns true if the multipatch object is a closed
+    /// manifold (ie. it has no boundaries)
     bool isClosed() { return this->nBoundary() == 0; }
 
-    /// Returns the range of parameter
+    /// \brief Returns the range of parameter
     gsMatrix<T> parameterRange(int i = 0) const;
 
-    /// Number of patches
+    /// \brief Number of patches
     std::size_t nPatches() const          { return m_patches.size(); }
 
-    /// Returns a vector of patches // to do : replace by copies
+    /// \brief Returns a vector of patches // to do : replace by copies
     PatchContainer const& patches() const { return m_patches; }
 
-    /// Return the \a i-th patch.
+    /// \brief Return the \a i-th patch.
     const gsGeometry<T> & operator []( size_t i ) const { return *m_patches[i]; }
 
-    /// Makes a deep copy of all bases and puts them in a vector
+    /// \brief Makes a deep copy of all bases and puts them in a vector
     std::vector<gsBasis<T> *> basesCopy() const;
 
     /// Return the \a i-th patch.
@@ -171,16 +163,19 @@ public:
         return *m_patches[i];
     }
 
-    /// Return the basis of the \a i-th patch.
+    ///\brief Permutes the patches according to \a perm
+    void permute(const std::vector<int> & perm);
+
+    ///\brief Return the basis of the \a i-th patch.
     gsBasis<T> & basis( std::size_t i ) const;
 
-    /// Add a patch.
+    ///\brief Add a patch (pointer is consumed)
     void addPatch( gsGeometry<T> * g );
 
     // Add a patch by copying argument -- to do
     //void addPatch(const gsGeometry<T> & g );
 
-    /// Search for the given geometry and return its patch index.
+    /// \brief Search for the given geometry and return its patch index.
     int findPatchIndex( gsGeometry<T>* g ) const;
 
     /// @brief Add an interface joint between side \a s1 of geometry

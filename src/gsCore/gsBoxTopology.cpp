@@ -1,3 +1,15 @@
+/** @file gsBoxTopology.cpp
+
+    @brief Provides declaration of the BoxTopology class.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): F. Buchegger, A. Mantzaflaris
+*/
 
 #include <gsCore/gsConfig.h>
 
@@ -5,6 +17,42 @@
 
 namespace gismo
 {
+
+std::ostream & gsBoxTopology::print(std::ostream &os) const
+{
+    if ( this->size() > 0 )
+    {
+        os << "gsBoxTopology (" << this->size() << ").\n";
+    }
+    else
+        os << "gsBoxTopology ( empty! ).\n";
+    
+    os << "Boundaries:";
+    if ( m_boundary.size() )
+    {
+        for( std::vector< patchSide >::const_iterator bit =
+                 m_boundary.begin(); bit != m_boundary.end(); ++bit )
+        {
+            os <<"\n"<< *bit <<" ";
+        }
+    }
+    else
+        os << " (none)";
+    os << "\nInterfaces:";
+    if ( m_interfaces.size() )
+    {
+        for( std::vector< boundaryInterface >::const_iterator iit =
+                 m_interfaces.begin(); iit != m_interfaces.end(); ++iit )
+        {
+            os <<"\n"<< *iit <<" ";
+        }
+    }
+    else
+        os << " (none)";
+    return os;
+}
+
+
 void gsBoxTopology::addAutoBoundaries()
 {
     if ( nboxes == 0 ) {

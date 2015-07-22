@@ -78,6 +78,31 @@ void gsMultiPatch<T>::setIds()
 }
 
 template<class T>
+std::ostream& gsMultiPatch<T>::print(std::ostream& os) const 
+{
+    if ( this->size() > 0 ) {
+        os << "gsMultiPatch (" << this->size() << "): ";
+        os << "#Boundaries= " << nBoundary() << ", ";
+        os << "#Interfaces= " << nInterfaces() << ".\n";
+    } else {
+        os << "gsMultiPatch ( empty! ).\n";
+    }
+    return os;
+}
+
+template<class T>
+std::string gsMultiPatch<T>::detail() const 
+{
+    std::ostringstream os;
+    print(os);
+    if ( size() > 0 ) 
+    {
+        gsBoxTopology::print( os );
+    }
+    return os.str();
+}
+
+template<class T>
 int gsMultiPatch<T>::geoDim() const 
 {
     GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
@@ -116,6 +141,13 @@ std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy() const
         bb.push_back( ( *it )->basis().clone() );
     }
     return bb ;
+}
+
+template<class T>
+void gsMultiPatch<T>::permute(const std::vector<int> & perm)
+{
+    gsAsVector<gsGeometry<T>*> a (m_patches);
+    a = gsVector<>::Permutation(gsAsConstVector<int>(perm)) * a;
 }
 
 template<class T>

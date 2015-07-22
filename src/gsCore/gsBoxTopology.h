@@ -75,32 +75,7 @@ public:
 public:
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
-    {
-        if ( this->size() > 0 )
-        {
-            os << "gsBoxTopology (" << this->size() << ").\n";
-        }
-        else
-            os << "gsBoxTopology ( empty! ).\n";
-
-        if ( m_boundary.size() )
-            os << "Boundaries:\n";
-        for( std::vector< patchSide >::const_iterator bit =
-                m_boundary.begin(); bit != m_boundary.end(); ++bit )
-        {
-            os <<"("<< *bit <<") ";
-        }
-
-        if ( m_interfaces.size() )
-            os << "\nInterfaces:\n";
-        for( std::vector< boundaryInterface >::const_iterator iit =
-                m_interfaces.begin(); iit != m_interfaces.end(); ++iit )
-        {
-            os <<"["<< *iit <<"] ";
-        }
-        return os;
-    }
+    std::ostream &print(std::ostream &os) const;
 
     /// Print (as string) a boxTopology object
     friend std::ostream& operator<<( std::ostream& os, const gsBoxTopology& b )

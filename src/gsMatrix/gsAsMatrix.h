@@ -117,6 +117,9 @@ class gsAsVector : public Eigen::Map< Eigen::Matrix<T,_Rows,1> >
 public:
     typedef Eigen::Map< Eigen::Matrix<T,_Rows,1> > Base;
 
+    // Type for treating a vector as a permutation matrix
+    typedef Eigen::PermutationMatrix<_Rows> Permutation;
+
 public:
     gsAsVector( std::vector<T> & v)
     : Base( &v[0], v.size(), 1 ) 
@@ -126,6 +129,17 @@ public:
 
     gsAsVector( T * pt, unsigned n)
     : Base( pt, n) {  }
+
+#ifdef _MSC_VER
+    template <class EigenExpr>
+    gsAsVector& operator= (const EigenExpr & other) 
+    {
+        this->Base::operator=(other);
+        return *this;
+    }
+#else
+    using Base::operator=;
+#endif
 
 private:
     gsAsVector() { }

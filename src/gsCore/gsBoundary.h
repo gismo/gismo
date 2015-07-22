@@ -184,6 +184,40 @@ public:
 
 };
 
+/// Print (as string) a box side
+inline std::ostream &operator<<(std::ostream &os, const boxSide& o)
+{
+    switch (o)
+    {
+    case 0:
+        os<<"none ";
+        break;
+    case 1:
+        os<< "west ";
+        break;
+    case 2:
+        os<< "east ";
+        break;
+    case 3:
+        os<< "south";
+        break;
+    case 4:
+        os<< "north";
+        break;
+    case 5:
+        os<< "front";
+        break;
+    case 6:
+        os<< "back ";
+        break;
+    default:
+        os<< "side ";
+        break;
+    };
+    os<<"("<<static_cast<int>(o)<<")";
+    return os;
+}
+
 /** 
     @brief  Struct which represents a certain side of a patch.
 
@@ -237,7 +271,7 @@ public:
 inline std::ostream &operator<<(std::ostream &os, patchSide const & i)
 {
     //os<<"Side: patch="<< i.patch<<", side="<< int(i.side)<<", ie. "<< i.side << ".\n";
-    os<<i.patch<<" "<< i.side();
+    os<<i.patch<<":"<< i.side();
     return os;
 }
 
@@ -716,7 +750,7 @@ protected:
 /// Print (as string) an interface
 inline std::ostream &operator<<(std::ostream &os, const boundaryInterface & i)
 {
-    os << "interface between: "<<i.ps1.patch<<":"<< i.ps1.side()<<" and "
+    os << "interface between "<<i.ps1.patch<<":"<< i.ps1.side()<<" and "
        << i.ps2.patch<<":"<<i.ps2.side()<<" [ ";
     for (index_t j = 0; j<i.directionMap.size(); ++j)
     {
@@ -779,44 +813,6 @@ GISMO_DEPRECATED inline bool parameter (int s)
     GISMO_ASSERT( s>0, "Requested parameter of none boundary.\n");
     return ( (s+1) % 2 == 0 ? false : true ) ;
 }
-
-
-
-/// Print (as string) a boundary side
-inline std::ostream &operator<<(std::ostream &os, const boxSide& o)
-{
-    switch (o)
-    {
-    case 0:
-        os<<"none ";
-        break;
-    case 1:
-        os<< "west ";
-        break;
-    case 2:
-        os<< "east ";
-        break;
-    case 3:
-        os<< "south";
-        break;
-    case 4:
-        os<< "north";
-        break;
-    case 5:
-        os<< "front";
-        break;
-    case 6:
-        os<< "back ";
-        break;
-    default:
-        os<< "side ";
-        break;
-    };
-    os<<"("<<static_cast<int>(o)<<")";
-    return os;
-}
-
-
 
 /**
  *  \brief get the matrix containing the lower and upper corner of

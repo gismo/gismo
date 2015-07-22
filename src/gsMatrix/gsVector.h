@@ -56,6 +56,9 @@ public:
     /// Unique pointer for gsVector
     typedef std::auto_ptr< gsVector > uPtr;
 
+    // Type for treating a vector as a permutation matrix
+    typedef Eigen::PermutationMatrix<_Rows> Permutation;
+
     typedef Eigen::Ref<Base> Ref;
 
     typedef const Eigen::Ref<const Base> ConstRef;
