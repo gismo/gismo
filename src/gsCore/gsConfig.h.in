@@ -16,19 +16,19 @@
 
 #pragma once
 
-/* Define the G+Smo version number. */
+/** Define the G+Smo version number. */
 #define GISMO_VERSION    "@gismo_VERSION@"
 #define GISMO_MAJOR      @gismo_MAJOR_VERSION@
 #define GISMO_MINOR      @gismo_MINOR_VERSION@
 #define GISMO_PATCH      @gismo_PATCH_VERSION@
 
-/* Define default coefficient type. */
+/** Define default coefficient type. */
 #define real_t           @GISMO_COEFF_TYPE@
 
-/* Define default index type. */
+/** Define default index type. */
 #define index_t          @GISMO_INDEX_TYPE@
 
-/* Define the file data directory. */
+/** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
 
 /* Define the shared_ptr to that was found on the system. */
@@ -47,9 +47,13 @@
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
 
-/* Determine wheather gismo warnings (eg. deprecated) should be emitted. */
+/* Determine whether gismo warnings (eg. deprecated) should be emitted. */
 #cmakedefine GISMO_WARNINGS
 
+/**
+ * @name Eigen options - MUST be defined before Eigen is included
+ * @{
+ */
 
 /* 
    Eigen options -- these MUST be defined before Eigen is included.
@@ -59,15 +63,35 @@
 */
 
 /*  Index type */
+/** Eigen options -- these MUST be defined before Eigen is included.\n
+   See: http://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
+   
+   Index type
+*/
 #define EIGEN_DEFAULT_DENSE_INDEX_TYPE  index_t
+
+/** Eigen options -- these MUST be defined before Eigen is included.\n
+   See: http://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
+   
+   Index type
+*/
 #define EIGEN_DEFAULT_SPARSE_INDEX_TYPE index_t
 
-// Matrix storage order
+/** Eigen options -- these MUST be defined before Eigen is included.\n
+   See: http://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
+  
+ Matrix storage order
+*/
 #define EIGEN_DEFAULT_TO_COL_MAJOR
 
-/* Compile-time static assertions are replaced by runtime assertions;
+/** Eigen options -- these MUST be defined before Eigen is included.\n
+  See: http://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
+  
+  Compile-time static assertions are replaced by runtime assertions;
   this saves compilation time. */
 #define EIGEN_NO_STATIC_ASSERT
+
+/**@}*/
 
 /* Using Intel MKL. */
 //#define EIGEN_USE_MKL_ALL

@@ -1,4 +1,4 @@
-/** @file gsReader.h
+/** @file gsReaderXml.h
 
     @brief This file provides declaration of the XML reader for Axel
 

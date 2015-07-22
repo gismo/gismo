@@ -3,7 +3,7 @@ namespace gismo {
 /**
 \page PoissonTutorial Poisson equation tutorial
 
-
+\section PoissonTut The Poisson Tutorial
 The Poisson equation: \f{eqnarray*}{
               	      -\Delta\mathbf{u} &=&\mathbf{f} \quad \text{in} \quad \Omega,\\
                	      \mathbf{u} &=& \mathbf{g} \quad \text{on} \quad \Gamma_D,\\
@@ -31,8 +31,9 @@ using std::endl;
 using namespace gismo;
 ~~~~~
 
+
 \subsection Geometry Geometry
- 
+
 Inside the main function we would like to declare the geometry as
 ~~~~~
 gsMultiPatch<> * patches;
@@ -53,7 +54,7 @@ In this example, the four patches are numbered as follows:
 
 \subsection BCs Boundary Conditions
 
-The boundary conditions are stored in an object of type \ref gsBoundaryConditions:
+The boundary conditions are stored in an object of type \ref gsBoundaryConditions :
 
 ~~~~~
 gsBoundaryConditions<> bcInfo;

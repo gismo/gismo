@@ -22,7 +22,7 @@
       <tab type="user" url="@ref geometry" title="Geometries hierarchy"/>
       <tab type="user" url="@ref basis" title="Bases hierarchy"/>
       <tab type="user" url="@ref function" title="Functions hierarchy"/>
-      <tab type="user" url="@ref pde" title="PDE group"/>
+      <tab type="user" url="@ref pdeclass" title="PDE group"/>
       <tab type="user" url="@ref combinatorics" title="Combinatorics group"/>
     </tab>
     

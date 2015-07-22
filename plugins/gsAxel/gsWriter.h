@@ -1,4 +1,4 @@
-/** @file gsReader.h
+/** @file gsWriter.h
 
     @brief This file provides declaration of the XML writer for Axel
 

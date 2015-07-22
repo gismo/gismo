@@ -19,10 +19,13 @@
 namespace gismo
 {
 
-/// \brief Returns the factorial of \a n i.e. \a n!
-/// Remember that factorial grow too fast and only n! with n<=13 can be stored in a 32bit that is an unsigned.
-/// \ingroup combinatorics
+/** \brief Returns the factorial of \a n i.e. \a n!
+* Remember that factorial grow too fast and only n! with n<=13 can be stored in a 32bit that is an unsigned.
+* \ingroup combinatorics
+*/
 // \ingroup Utils
+// could also be in Utils, but doxygen allows only one group for free functions
+
 inline unsigned factorial( unsigned n)
 {
     GISMO_ASSERT(n<14, "Overflow when computing factorial.");
@@ -60,6 +63,8 @@ inline unsigned long long factorial( unsigned long long n)
   \ingroup combinatorics
 */
 //  \ingroup Utils
+// could also be in Utils, but doxygen allows only one group for free functions
+
 
 template <typename Z>
 inline Z binomial(const Z n, const Z r)
@@ -157,6 +162,7 @@ inline void binomial_into( unsigned n, gsVector<unsigned>& v)
       @brief Class for combinatorics. Generates ...
       
       \ingroup Utils
+      \ingroup combinatorics
   */
 
 template<class Vect = gsVector<unsigned> >

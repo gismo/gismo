@@ -1,4 +1,4 @@
-/** @file gsReader.cpp
+/** @file gsReaderXml.cpp
 
     @brief This file provides implementation of the XML reader for Axel
 

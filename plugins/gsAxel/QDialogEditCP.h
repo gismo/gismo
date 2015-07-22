@@ -1,4 +1,4 @@
-/** @file QDialogEdit.h
+/** @file QDialogEditCP.h
 
     @brief This file provides declaration of the QDialogEditCP widget
 

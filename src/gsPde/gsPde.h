@@ -41,6 +41,7 @@ namespace gismo
     PDEs can be read and written to xml files.
     
     \ingroup Pde
+    \ingroup pdeclass
 **/
 template<class T>
 class gsPde
