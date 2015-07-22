@@ -243,6 +243,8 @@ public:
     }
 
     /// split the \a curveId^th curve in the \a loopId^th loop of the planar domain into two curves
+    /// \param loopId specifies the loop
+    /// \param curveId specifies the curve in the loop
     /// \param lengthRatio   ratio of the lengths of the first new curve and of the original curve
     gsMatrix<T> splitCurve(std::size_t loopId, std::size_t curveId, T lengthRatio=.5)
     {
