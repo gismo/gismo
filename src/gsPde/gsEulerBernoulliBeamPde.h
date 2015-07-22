@@ -13,6 +13,7 @@ namespace gismo
     This is a 1D model and can thus only be assembled on 1D geometries.
 
     \ingroup Pde
+    \ingroup pdeclass
  */
 
 template<class T=real_t>

@@ -16,6 +16,7 @@ template <class T> class gsFunction;
     function and optionally a known solution.
 
     \ingroup Pde
+    \ingroup pdeclass
  */
 
 template<class T>

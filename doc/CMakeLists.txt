@@ -33,7 +33,7 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 # Set some Doxygen flags
 set(GISMO_DOXY_PROJECT_NAME             "G+Smo")
 set(GISMO_DOXY_OUTPUT_DIRECTORY_SUFFIX  "")
-set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/extensions\" \"${gismo_SOURCE_DIR}/examples\"")
+set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/extensions\" \"${gismo_SOURCE_DIR}/examples\" \"${gismo_BINARY_DIR}/gsCore\"")
 set(IMAGE_PATH        "\"${gismo_SOURCE_DIR}/doc/figs\"")
 set(GISMO_DOXY_HTML_COLORSTYLE_HUE      "120") #220
 set(GISMO_DOXY_HTML_COLORSTYLE_SAT      "100") #100
