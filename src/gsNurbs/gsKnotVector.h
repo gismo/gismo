@@ -298,6 +298,9 @@ public:
     /// Returns true iff the knot vector has uniform spacing
     bool isUniform() const;
 
+    /// Returns true iff the knot vector is symmetric
+    bool isSymmetric(T tol = 1e-5) const;
+
     /// Returns the number of knot spans in the knot-vector
     int numKnotSpans() const;  
 

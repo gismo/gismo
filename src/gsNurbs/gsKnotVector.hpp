@@ -426,6 +426,19 @@ gsVector<T>* gsKnotVector<T>::getVector() const
     return res; 
 }
 
+template <class T>
+bool gsKnotVector<T>::isSymmetric(T tol) const
+{ 
+    const T ab = this->first() + this->last();
+    const_reverse_iterator rit = rbegin();
+    for (const_iterator it = my->knots.begin(); it != my->knots.end(); ++it)
+    {
+        if ( math::abs( (*it) - ab  + (*rit++) ) > tol )
+            return false;
+    }
+    return true;
+}
+
 template <class T> // AM: we can do this more efficiently..
 int gsKnotVector<T>::numKnotSpans() const
 { 
