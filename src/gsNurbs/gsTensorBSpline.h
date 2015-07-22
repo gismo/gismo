@@ -317,6 +317,10 @@ public:
     /// Toggle orientation wrt coordinate k
     /// \todo use flipTensor to generalize to any dimension
     void reverse(unsigned k);
+
+    /// Toggle orientation wrt coordinate k
+    /// \todo use flipTensor to generalize to any dimension
+    void swapDirections(const unsigned i, const unsigned j);
     
     /// \brief Return true if point \a u is a corner of
     /// the patch with tolerance \a tol

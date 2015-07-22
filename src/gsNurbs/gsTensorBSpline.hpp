@@ -173,6 +173,18 @@ void gsTensorBSpline<d,T,KnotVectorType>::reverse(unsigned k)
     tbsbasis.component(k).reverse();
 }
 
+
+template<unsigned d, class T, class KnotVectorType>
+void gsTensorBSpline<d,T,KnotVectorType>::
+swapDirections(const unsigned i, const unsigned j)
+{
+    this->basis().swapDirections(i,j);
+
+    gsVector<int,d> sz;
+    this->basis().size_cwise(sz);
+    swapTensorDirection(i, j, sz, m_coefs);
+}
+
 template<unsigned d, class T, class KnotVectorType>
 bool gsTensorBSpline<d,T,KnotVectorType>::isPatchCorner(gsMatrix<T> const &v, T tol) const
 {

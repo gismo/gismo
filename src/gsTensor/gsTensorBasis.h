@@ -485,6 +485,8 @@ public:
     
     void swapDirections(const unsigned i, const unsigned j)
     {
+        GISMO_ASSERT( static_cast<int>(i) < Dim && static_cast<int>(j) < Dim,
+                      "Invalid basis components "<<i<<" and "<<j<<" requested" );
         std::swap(m_bases[i],m_bases[j]);
     }
 
