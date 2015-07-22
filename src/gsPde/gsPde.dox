@@ -15,7 +15,7 @@ namespace gismo {
 
 
 /**
-  \defgroup pdeclass
+  \defgroup pdeclass PDE definitions
 
   @brief This group collects classes that define specific PDEs.
 

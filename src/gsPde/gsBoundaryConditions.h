@@ -24,6 +24,7 @@ namespace gismo
 /// \ingroup Pde
 struct condition_type
 {
+ /// Specifies the type of boundary condition
  enum type 
  {
      dirichlet = 0, ///< Dirichlet type

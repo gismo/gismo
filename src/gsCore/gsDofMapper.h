@@ -96,7 +96,6 @@ public:
      * of freedom in the multibasis
      *
      * @param bases
-     * @param dirichlet
      */
     template<class T>
     gsDofMapper(
@@ -111,7 +110,6 @@ public:
      * of freedom for a vector of multibasis
      *
      * @param bases
-     * @param dirichlet
      */
     template<class T>
     gsDofMapper(

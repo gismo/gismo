@@ -457,59 +457,59 @@ transformValuesHdiv( index_t k,
     }
 }
 
-template <class T, int ParDim, int codim>  // AM: Not yet tested
-void gsGenericGeometryEvaluator<T,ParDim,codim>::
-transformGradsHdiv( index_t k,
-                    const std::vector<gsMatrix<T> >& allValues,
-                    std::vector<gsMatrix<T> > const & allGrads,
-                    gsMatrix<T> & result) const
-{
-/*
-    //Assumptions: GeoDim = ParDim = TargetDim
+//template <class T, int ParDim, int codim>  // AM: Not yet tested
+//void gsGenericGeometryEvaluator<T,ParDim,codim>::
+//transformGradsHdiv( index_t k,
+//                    const std::vector<gsMatrix<T> >& allValues,
+//                    std::vector<gsMatrix<T> > const & allGrads,
+//                    gsMatrix<T> & result) const
+//{
+// /*
+//    //Assumptions: GeoDim = ParDim = TargetDim
     
-    index_t c = 0;
-    for(size_t comp = 0; comp < allValues.size(); ++comp)
-        c += allValues[c].rows();
-    result.resize(GeoDim*ParDim,c);
+//    index_t c = 0;
+//    for(size_t comp = 0; comp < allValues.size(); ++comp)
+//        c += allValues[c].rows();
+//    result.resize(GeoDim*ParDim,c);
     
-    const T det = this->jacDet(k);
-    const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
-    const typename gsMatrix<T>::constColumns & Jac    = this->jacobian(k);
-    const Eigen::Transpose< const typename gsMatrix<T>::constColumns > & 
-        invJac = this->gradTransform(k).transpose();
+//    const T det = this->jacDet(k);
+//    const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
+//    const typename gsMatrix<T>::constColumns & Jac    = this->jacobian(k);
+//    const Eigen::Transpose< const typename gsMatrix<T>::constColumns > &
+//        invJac = this->gradTransform(k).transpose();
     
-    gsMatrix<T,GeoDim,ParDim> DJac[ParDim];
-    secDerToJacPartial<ParDim,T>(secDer,DJac);
+//    gsMatrix<T,GeoDim,ParDim> DJac[ParDim];
+//    secDerToJacPartial<ParDim,T>(secDer,DJac);
     
-    gsVector<T> gradDetJrec(ParDim);        
-    for (int i=0; i<ParDim; ++i)
-        gradDetJrec[i] = - ( invJac * DJac[i] ).trace() / det;
+//    gsVector<T> gradDetJrec(ParDim);
+//    for (int i=0; i<ParDim; ++i)
+//        gradDetJrec[i] = - ( invJac * DJac[i] ).trace() / det;
     
-    c = 0;        
-    for(int comp = 0; comp < GeoDim; ++comp) // component
-    {
-        const typename gsMatrix<T>::constColumn & bvals = allValues[comp].col(k);
-        const typename gsMatrix<T>::constColumn & bder  = allGrads [comp].col(k);
+//    c = 0;
+//    for(int comp = 0; comp < GeoDim; ++comp) // component
+//    {
+//        const typename gsMatrix<T>::constColumn & bvals = allValues[comp].col(k);
+//        const typename gsMatrix<T>::constColumn & bder  = allGrads [comp].col(k);
         
-        for( index_t j=0; j< bvals.rows() ; ++j) // active of component
-        {
-            gsAsMatrix<T> tGrad(result.col(c).data(), GeoDim, GeoDim);
+//        for( index_t j=0; j< bvals.rows() ; ++j) // active of component
+//        {
+//            gsAsMatrix<T> tGrad(result.col(c).data(), GeoDim, GeoDim);
             
-            tGrad.noalias() = Jac.col(comp) * bder.segment(j*ParDim,ParDim).transpose() * invJac / det;
+//            tGrad.noalias() = Jac.col(comp) * bder.segment(j*ParDim,ParDim).transpose() * invJac / det;
             
-            // tGrad.colwise() += gradDetJrec[i];
-            for (int i=0; i<ParDim; ++i) // result column
-            {
-                tGrad.col(i).array()   += gradDetJrec[i];
+//            // tGrad.colwise() += gradDetJrec[i];
+//            for (int i=0; i<ParDim; ++i) // result column
+//            {
+//                tGrad.col(i).array()   += gradDetJrec[i];
                 
-                tGrad.col(i) += ( allValues[comp](j,k) / det ) * DJac[i].col(j);
-                }
+//                tGrad.col(i) += ( allValues[comp](j,k) / det ) * DJac[i].col(j);
+//                }
             
-            ++c;// next basis function
-        }
-    }
-//*/
-}
+//            ++c;// next basis function
+//        }
+//    }
+// //*/
+//}
 
 //Verified for 2D
 template <class T, int ParDim, int codim>

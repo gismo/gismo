@@ -130,6 +130,7 @@ public:
     /// \param interior number of interior knots
     /// \param degree degree of the spline space
     /// \param mult_interior multiplicity at the interior knots
+    /// \param periodic specifies if basis is periodic or not
     gsBSplineBasis(T u0, T u1, unsigned interior, 
                    int degree, unsigned mult_interior=1,
                    bool periodic = false ) :

@@ -976,9 +976,9 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn)
     }
 }
 
-/// Depicting edge graph of each volume of one gsSolid with a segmenting loop
-/// INPUTS:
-/// \param eloop: a vector of ID numbers of vertices, often for representing a segmenting loop
+// Depicting edge graph of each volume of one gsSolid with a segmenting loop
+// INPUTS:
+// \param eloop: a vector of ID numbers of vertices, often for representing a segmenting loop
 template <class T>
 void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numPoints_for_eachCurve, int vol_Num,
                      T edgeThick, gsVector3d<T> const & translate, int color_convex,

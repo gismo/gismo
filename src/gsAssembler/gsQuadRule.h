@@ -75,7 +75,7 @@ public:
     /**
      * @brief Returns reference nodes for the currently kept rule.
      *
-     * @param[out] v Vector of length \a d = dim(), where each entry
+     * @returns v Vector of length \a d = dim(), where each entry
      * \a v_i of \a v is again a vector. \a v_i contains the reference
      * quadrature points for the <em>i</em>-th coordinate direction.
      *
@@ -85,7 +85,7 @@ public:
     /**
      * @brief Returns reference weights for the currently kept rule.
      *
-     * @param[out] v Vector of length \a d = dim(), where each entry
+     * @returns v Vector of length \a d = dim(), where each entry
      * \a v_i of \a v is again a vector. \a v_i contains the reference
      * quadrature weights for the <em>i</em>-th coordinate direction.
      *

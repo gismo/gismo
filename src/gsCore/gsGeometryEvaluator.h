@@ -338,51 +338,55 @@ public:
                                      const std::vector<gsMatrix<T> >& allValues, 
                                      gsMatrix<T>  & result) const = 0;
 
-    /**
-      \brief Transforms parametric gradients to a gradients on the physical domain of a vector field while preserving the divergence.
+// S.K.: Commented declaration, because the function code in the hpp-file
+// is completely commented out an the function is not used yet.
+//
+//    /**
+//      \brief Transforms parametric gradients to a gradients on the physical domain of a vector field while preserving the divergence.
 
-      The transformation is sometimes called the contravariant Piola transform:
-      \f[
-        \mathcal{F}^{\text{div}}(\hat{\mathbf{u}}) =\frac{1}{\text{det}\, J} J\,\hat{\mathbf{u}} \circ F^{-1},
-      \f]
-      where \f$F\f$ is mapping from \f$\hat{\Omega}\f$ to \f$\Omega\f$ and \f$J\f$ 
-      is the jacobian.
+//      The transformation is sometimes called the contravariant Piola transform:
+//      \f[
+//        \mathcal{F}^{\text{div}}(\hat{\mathbf{u}}) =\frac{1}{\text{det}\, J} J\,\hat{\mathbf{u}} \circ F^{-1},
+//      \f]
+//      where \f$F\f$ is mapping from \f$\hat{\Omega}\f$ to \f$\Omega\f$ and \f$J\f$
+//      is the jacobian.
 
-      The gradient information on the parameter domain at a certain points for a
-      vector field is given in \em <b>allGrads</b> in the following format:\n
+//      The gradient information on the parameter domain at a certain points for a
+//      vector field is given in \em <b>allGrads</b> in the following format:\n
 
-      Each component of the vector \em allGrads corresponds to a component
-      of the vector field.
+//      Each component of the vector \em allGrads corresponds to a component
+//      of the vector field.
 
-      Each column of a matrix component in \em allGrads corresponds to one
-      evaluation point. In this column, the gradients of all active (i.e., non-zero)
-      basis functions are stored "one above the other".\n
+//      Each column of a matrix component in \em allGrads corresponds to one
+//      evaluation point. In this column, the gradients of all active (i.e., non-zero)
+//      basis functions are stored "one above the other".\n
+
+//      Example: Let \f$B_i(s,t), i = 1,...,9\f$ be a set of bivariate basis functions.
+//      Then, a column of a matrix component in \em allGrads reads\n
+//      \f[
+//      ( \partial_s B_1, \partial_t B_1, \partial_s B_2, \partial_t B_2, \ldots, \partial_t B_9 )^T.
+//      \f]
+
+//      Tha basis values information on the parameter domain at a certain point for a
+//      vector field is given in \em <b>allValues</b>:\n
+
+//      Each column of the matrix \em allValues corresponds to one vector component
+//      in the parametric domain. In this column, the value of all active (i.e., non-zero)
+//      basis functions are stored "one above the other".\n
 
 
-      Tha basis values information on the parameter domain at a certain point for a
-      vector field is given in \em <b>allValues</b>:\n
-
-      Each column of the matrix \em allValues corresponds to one vector component
-      in the parametric domain. In this column, the value of all active (i.e., non-zero)
-      basis functions are stored "one above the other".\n
-
-      Example: Let \f$B_i(s,t), i = 1,...,9\f$ be a set of bivariate basis functions.
-      Then, a column of a matrix component in \em allGrads reads\n
-      \f[
-      ( \partial_s B_1, \partial_t B_1, \partial_s B_2, \partial_t B_2, \ldots, \partial_t B_9 )^T.
-      \f]
-
-      \param k Indicates which column of the matrices in \em allegros_vec should be transformed.
-      \param[in] allGrads std::vector of gsMatrix containing computed gradients in the format
-      described above for each component of the vector field.
-      \param[out] trfGradsK_vec std::vector of gsMatrix with the corresponding gradients on the
-      physical domain in the format as described above for each component of the vector field.
-    */
-    virtual void transformGradsHdiv(index_t k, 
-                                    const std::vector<gsMatrix<T> >& allValues,
-                                    std::vector<gsMatrix<T> > const & allGrads,
-                                    gsMatrix<T> & result) const = 0;
-
+//      \param[in] k Indicates which column of the matrices in \em allegros_vec should be transformed.
+//      \param[in] allValues std::vector of gsMatrix containing function values in the format
+//      described above for each component of the vector field.
+//      \param[in] allGrads std::vector of gsMatrix containing computed gradients in the format
+//      described above for each component of the vector field.
+//      \param[out] result std::vector of gsMatrix with the corresponding gradients on the
+//      physical domain in the format as described above for each component of the vector field.
+//    */
+//    virtual void transformGradsHdiv(index_t k,
+//                                    const std::vector<gsMatrix<T> >& allValues,
+//                                    std::vector<gsMatrix<T> > const & allGrads,
+//                                    gsMatrix<T> & result) const = 0;
 
     /// \brief Transforms parametric gradients to gradients on the physical domain.
     ///

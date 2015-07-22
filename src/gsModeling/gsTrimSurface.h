@@ -187,6 +187,8 @@ public:
     const gsPlanarDomain<T> & domain() const { return *m_domain; }
 
     /// split the \a curveId^th curve in the \a loopId^th loop of the planar domain into two curves
+    /// \param loopId specifies the loop
+    /// \param curveId specifies the curve in the loop
     /// \param lengthRatio   the ratio of the lengths of the first new curve and of the original curve
     gsMatrix<T> splitCurve(std::size_t loopId, std::size_t curveId, T lengthRatio=.5)
     {return m_domain->splitCurve(loopId,curveId,lengthRatio);}
