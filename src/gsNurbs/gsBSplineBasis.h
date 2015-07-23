@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsCore/gsBasis.h>
 #include <gsCore/gsConstantBasis.h>
 
 #include <gsTensor/gsTensorDomainIterator.h>
@@ -64,6 +63,7 @@ struct gsTraits<gsBSplineBasis<T, KnotVectorType>,d>
 
 template<class T, class KnotVectorType >
 class gsBSplineBasis : public gsBasis<T>
+//: public gsTensorBSplineBasis<1,T>
 {
 public:
     typedef gsBasis<T> Base;

@@ -92,6 +92,14 @@ void gsBSpline<T,KnotVectorType>::setFurthestCorner(gsMatrix<T> const &v)
         gsWarn<<"Point "<< v <<" is not an endpoint of the curve.\n";
 }
 
+template <class T, class KnotVectorType>
+void gsBSpline<T,KnotVectorType>::swapDirections(const unsigned i, const unsigned j)
+{
+    GISMO_ASSERT( static_cast<int>(i) == 0 && static_cast<int>(j) == 0,
+                  "Invalid basis components "<<i<<" and "<<j<<" requested" );
+}
+
+
 namespace internal
 {
 

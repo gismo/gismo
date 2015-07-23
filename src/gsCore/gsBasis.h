@@ -716,11 +716,16 @@ public:
     /// @brief The number of elements on side \a s.
     virtual int numElements(boxSide const & s) const;
 
-    /// Returns an index for the element which contains point \a u
+    /// @brief Returns an index for the element which contains point \a u
     virtual int elementIndex(const gsVector<T> & u ) const;
 
-    /// For a tensor product basis, return the 1-d basis for the \a i-th parameter component.
-    virtual gsBasis<T>& component(unsigned i) const;
+    /// @brief For a tensor product basis, return the (const) 1-d
+    /// basis for the \a i-th parameter component.
+    virtual const gsBasis<T> & component(unsigned i) const;
+
+    /// @brief For a tensor product basis, return the 1-d basis for
+    /// the \a i-th parameter component.
+    virtual gsBasis<T> & component(unsigned i);
 
     /** @brief Refine the basis on the area defined by the matrix \a boxes.
      *

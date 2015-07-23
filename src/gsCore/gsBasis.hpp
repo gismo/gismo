@@ -331,7 +331,11 @@ int gsBasis<T>::elementIndex(const gsVector<T> & u) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsBasis<T>& gsBasis<T>::component(unsigned i) const
+const gsBasis<T>& gsBasis<T>::component(unsigned i) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+gsBasis<T>& gsBasis<T>::component(unsigned i)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

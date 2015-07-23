@@ -485,7 +485,13 @@ public:
   void numActive(const gsMatrix<T> & u, gsVector<unsigned>& result) const;
 
   /// The 1-d basis for the i-th parameter component at the highest level
-  virtual gsBSplineBasis<T,gsCompactKnotVector<T> > & component(unsigned i) const
+  virtual gsBSplineBasis<T,gsCompactKnotVector<T> > & component(unsigned i)
+  {
+      return m_bases[ this->maxLevel() ]->component(i);
+  }
+
+  /// The 1-d basis for the i-th parameter component at the highest level
+  virtual const gsBSplineBasis<T,gsCompactKnotVector<T> > & component(unsigned i) const
   {
       return m_bases[ this->maxLevel() ]->component(i);
   }

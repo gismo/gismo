@@ -461,6 +461,8 @@ public:
     /// is the ending point of the curve. Assumes that \a v is
     /// either the starting or the ending point of the curve
     void setFurthestCorner(gsMatrix<T> const &v);
+
+    void swapDirections(const unsigned i, const unsigned j);
     
 protected:
     

@@ -27,8 +27,9 @@ namespace gismo
 /** 
     @brief A tensor product B-spline basis.
 
-    \param T coefficient type
-    \param d dimension of the parameter domain
+    \tparam T coefficient type
+    \tparam d dimension of the parameter domain
+    \tparam KnotVectorType type of the knot-vector
 
     \ingroup basis
     \ingroup Nurbs
@@ -37,15 +38,15 @@ namespace gismo
 template<unsigned d, class T, class KnotVectorType>
 class gsTensorBSplineBasis 
     : public gsTensorBasis<d,T>
-//    : public choose<d==1, gsTensorBasis1D<gsBSplineBasis<T,KnotVectorType> >, 
-//                          gsTensorBasis<d,T> >::type
+    // : public choose<d==1, gsTensorBasis<1,gsBSplineBasis<T,KnotVectorType> >, 
+    //                       gsTensorBasis<d,T> >::typegsTensorBSplineBasi
 {
 public: 
     /// Base type
-    //typedef typename choose<d==1, gsTensorBasis1D<gsBSplineBasis<T,KnotVectorType> >, 
-    //                               gsTensorBasis<d,T> >::type Base;
     typedef gsTensorBasis<d,T> Base;
-
+    // typedef typename choose<d==1, gsTensorBasis<1,gsBSplineBasis<T,KnotVectorType> >, 
+    //                         gsTensorBasis<d,T> >::type Base;
+    
     /// Family type
     typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
 
@@ -155,7 +156,7 @@ public:
     operator const Family_t &() const
     {
         if ( d==1 )
-            return static_cast<const Family_t &>(*m_bases[0]);
+            return static_cast<const Family_t &>(component(0));
         else
             GISMO_ERROR("Cannot convert to gsBSplineBasis.");
     }
@@ -182,7 +183,13 @@ public:
     T knot(int i, int k) const 
     { return Self_t::component(i).knots()[k]; }
 
-    Basis_t & component(unsigned dir) const 
+
+    const Basis_t & component(unsigned dir) const 
+    {
+        return static_cast<const Basis_t &>(Base::component(dir));
+    }
+
+    Basis_t & component(unsigned dir)
     {
         return static_cast<Basis_t &>(Base::component(dir));
     }
@@ -216,20 +223,22 @@ public:
        
        \copydetails gsBSplineBasis:refine_k
      */
-    void k_refine(Self_t & other, int const & i = 1) const
+    void k_refine(Self_t & other, int const & i = 1)
     { 
         for (unsigned j = 0; j < d; ++j)
             Self_t::component(j).refine_k(other.component(j), i);
     }
 
-    /// \brief p-refinement (essentially degree elevation in all directions)
+    /// \brief p-refinement (essentially degree elevation in all
+    /// directions)
     void refine_p(int const & i = 1)
     {
         for (unsigned j = 0; j < d; ++j)
             Self_t::component(j).refine_p(i);
     }
     
-    /// \brief Uniform h-refinement (placing \a i new knots inside each knot-span, for all directions
+    /// \brief Uniform h-refinement (placing \a i new knots inside
+    /// each knot-span, for all directions
     void refine_h(int const & i = 1)
     {
         for (unsigned j = 0; j < d; ++j)
@@ -356,15 +365,16 @@ public:
 
     GISMO_MAKE_GEOMETRY_NEW
 
-    /// Reduces spline continuity (in all directions) at interior knots by \a i
+    /// \brief Reduces spline continuity (in all directions) at
+    /// interior knots by \a i
     void reduceContinuity(int const & i = 1) 
     { 
         for (unsigned j = 0; j < d; ++j)
             Self_t::component(j).reduceContinuity(i);
     }
 
-    /// Returns span (element) indices of the beginning and end of the
-    /// support of the i-th basis function.
+    /// \brief Returns span (element) indices of the beginning and end
+    /// of the support of the i-th basis function.
     void elementSupport_into(const unsigned& i,
                              gsMatrix<unsigned, d, 2>& result) const
     {
@@ -378,8 +388,8 @@ public:
         }
     }
 
-    /// \brief Returns span (element) indices of the beginning and end of the
-    /// support of the i-th basis function.
+    /// \brief Returns span (element) indices of the beginning and end
+    /// of the support of the i-th basis function.
     gsMatrix<unsigned, d, 2> elementSupport(const unsigned & i) const
     {
         gsMatrix<unsigned, d, 2> result(d, 2);
@@ -387,9 +397,8 @@ public:
         return result;
     }
 
-    /// \brief Returns the indices of active basis functions in the given
-    /// input element box
-    // for optimization!
+    /// \brief Returns the indices of active basis functions in the
+    /// given input element box
     void elementActive_into(const gsMatrix<unsigned,d,2> & box,
                              gsMatrix<unsigned> & result) const
     {
@@ -481,12 +490,7 @@ private:
         }
     }
 
-    /////////////
-    // Members //
-    /////////////
 protected:
-
-    using Base::m_bases;
 
     /// Coordinate direction, where the basis is periodic (when equal
     /// to -1 if there is no such direction).

@@ -533,7 +533,14 @@ public:
             GISMO_ERROR("gsTensorBasis has no z component"); 
     }
 
-    Basis_t& component(unsigned dir) const 
+    Basis_t& component(unsigned dir)
+    { 
+        GISMO_ASSERT( static_cast<int>(dir) < Dim,
+                      "Invalid basis component requested" );
+        return *m_bases[dir];
+    }
+    
+    const Basis_t & component(unsigned dir) const
     { 
         GISMO_ASSERT( static_cast<int>(dir) < Dim,
                       "Invalid basis component requested" );
@@ -543,7 +550,7 @@ public:
     //inline int trueSize(int k) const { return m_bases[k]->trueSize(); }
 
 // Data members
-protected:
+private:
 
     Basis_t* m_bases[d];
 
@@ -557,24 +564,24 @@ template<typename T> class gsTensorBasis<0,T>
  *  @brief 
  *  Class for a Tensor product spline space of dimension 1.
  *  This specialization is mainly for compatibility.
- *  (not needed anymore)
  *
- *   \param T coefficient type
- *   \param Basis_t type of the (single) coordinate-wise bases
+ *   \tparam T coefficient type
  *
  *  \ingroup Tensor
  */
 /*
-template<class Basis_t>
-class gsTensorBasis1D<Basis_t> : public Basis_t
+template<class T>
+class gsTensorBasis<1,T> : public gsBasis<T>
 {
 public: 
-    //typedef gsBasis<T> Basis_t;
-    typedef Basis_t Base;
+
+    static const int Dim = 1;
+
+    typedef gsBasis<T> Base;
+    typedef gsBasis<T> Basis_t;
 
     /// Coefficient type
-    typedef typename Basis_t::Scalar_t Scalar_t;
-    typedef Scalar_t T;
+    typedef T Scalar_t;
 
     typedef gsBasis<T> CoordinateBasis;
        
@@ -585,64 +592,82 @@ public:
     typedef gsBasis<T> ** base_iterator;
 public:
 
-    /// Default empty constructor
-    gsTensorBasis1D() : Basis_t()
-    { m_address = this;}
+    /// \brief Default empty constructor
+    gsTensorBasis() : Basis_t()
+    { m_bases = this;}
 
-    // Constructor by basis pointers (takes ownership of the passed bases)
-    explicit gsTensorBasis1D(Basis_t * x) 
+    /// \brief Constructor by basis pointers (takes ownership of the
+    /// passed bases)
+    explicit gsTensorBasis(Basis_t * x) 
     : Basis_t(*x)
     {
-        m_address = this; 
+        m_bases = this; 
         delete x;
     }
 
-    gsTensorBasis1D( Basis_t* x,  Basis_t*  y)
+    gsTensorBasis( Basis_t* x,  Basis_t*  y)
     { gsWarn<<"Invalid constructor.\n"; }
     
-    gsTensorBasis1D( Basis_t* x,  Basis_t* y, Basis_t* z )
+    gsTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z )
     { gsWarn<<"Invalid constructor.\n"; }
     
-    gsTensorBasis1D( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w )
+    gsTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w )
     { gsWarn<<"Invalid constructor.\n"; }
     
-    // Constructor by basis pointers (takes ownership of the passed bases)
-    explicit gsTensorBasis1D(base_iterator it) 
+    /// \brief Constructor by basis pointers (takes ownership of the
+    /// passed bases)
+    explicit gsTensorBasis(base_iterator it) 
     : Basis_t(*static_cast<Basis_t*>(*it))
     {
-        m_address = this; 
+        m_bases = this; 
         delete *it;
     }
-    
-    
-    /// Copy Constructor
-    gsTensorBasis1D( const gsTensorBasis1D & o) 
+        
+    /// \brief Copy Constructor
+    gsTensorBasis( const gsTensorBasis & o) 
     : Basis_t(o)
     { 
-        m_address = this;
+        m_bases = this;
     }
     
+    /// \brief Converter to univariate B-spline basis
+    operator const Basis_t & () const
+    {
+        return *m_bases;
+    }
+
+    /// \brief Converter to univariate B-spline basis
+    operator Basis_t & ()
+    {
+        return *m_bases;
+    }
+
     /// Assignment opearator
-    gsTensorBasis1D& operator=( const gsTensorBasis1D & o)
+    gsTensorBasis& operator=( const gsTensorBasis & o)
     { 
         this->Base::operator=(o);
-        m_address = this;
+        m_bases = this;
         return *this;
     }
     
     // Destructor
-    ~gsTensorBasis1D() 
+    ~gsTensorBasis() 
     { 
-        m_address = NULL;
+        m_bases = NULL;
     }
     
 public:
+
+    int dim() const { return 1;}
+
+    int size() const { return -1;}
     
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
     /// \param low lower left corner of the box
     /// \param upp upper right corner of the box   
-    void active_cwise(const gsMatrix<T> & u, gsVector<unsigned,1>& low, 
+    void active_cwise(const gsMatrix<T> & u, 
+                      gsVector<unsigned,1>& low, 
                       gsVector<unsigned,1>& upp ) const
     { 
         gsMatrix<unsigned> act;
@@ -650,43 +675,57 @@ public:
         low[0]= act(0,0);
         upp[0]= act(act.size()-1, 0 );
     }
+
+    /// Returns the strides for all dimensions
+    void stride_cwise(gsVector<index_t,1> & result) const 
+    { 
+        result[0] = 1;
+    }
     
     /// Get a const-iterator to the beginning of the bases vector
     /// \return an iterator to the beginning of the bases vector
     const_iterator begin() const
-    { return &m_address; }
+    { return &m_bases; }
     
     /// Get a const-iterator to the end of the  bases vector
     /// \return an iterator to the end of the  bases vector
     const_iterator end() const
-    { return &(m_address)+1; }
+    { return &(m_bases)+1; }
     
     /// Get an iterator to the beginning of the  bases vector
     /// \return an iterator to the beginning of the  bases vector
     iterator begin()
-    { return &m_address; }
+    { return &m_bases; }
     
     /// Get an iterator to the end of the  bases vector
     /// \return an iterator to the end of the  bases vector
     iterator end()
-    { return &(m_address)+1; }
+    { return &(m_bases)+1; }
     
     /// The number of basis functions in the direction of the k-th parameter component
-    int size(int k) const { return Basis_t::size(); }
-    
-    int size() const {return Basis_t::size(); }
+    int size(int k) const 
+    {
+        GISMO_ASSERT(k==0, "Invalid direction");
+        return size();
+    }
     
     /// The number of basis functions in the direction of the k-th parameter component
-    void size_cwise(gsVector<unsigned,1> & result) const 
+    void size_cwise(gsVector<index_t,1> & result) const 
     { result[0] = size(); }
 
     gsVector<int> cwiseDegree() const
     {
         gsVector<int> deg(1);
-        deg[0] = this->degree();
+        deg[0] = this->degree(0);
         return deg;
     }
     
+    void swapDirections(const unsigned i, const unsigned j)
+    {
+        GISMO_ASSERT( static_cast<int>(i) == 0 && static_cast<int>(j) == 0,
+                      "Invalid basis components "<<i<<" and "<<j<<" requested" );
+    }
+
     /// Returns all the basis functions with tensor-numbering \a k in direction \a dir 
     typename gsMatrix<unsigned>::uPtr coefSlice(int dir, int k) const
     {
@@ -721,29 +760,35 @@ public:
     
     /// Returns the tensor index of the basis function with global index
     /// \a m
-    inline gsVector<unsigned, 1> tensorIndex(const unsigned& m) const 
+    inline gsVector<unsigned,1> tensorIndex(const unsigned& m) const 
     {
-        return gsVector<unsigned, 1>::Constant(1,m);
+        return gsVector<unsigned,1>::Constant(1,m);
     }
 
-    Basis_t& x() const 
+    const Basis_t& x() const 
     { 
-        return *m_address; 
+        return *m_bases; 
     }
-    
-    Basis_t& component(unsigned i) const 
+
+    Basis_t & component(unsigned i)
     {
         GISMO_ASSERT(i==0,"Invalid component requested");
-        return *m_address; 
+        return *m_bases; 
+    }
+
+    const Basis_t & component(unsigned i) const 
+    {
+        GISMO_ASSERT(i==0,"Invalid component requested");
+        return *m_bases; 
     }
     
-private:
+protected:
     
     /// Keeps the address of the object (for compatibility with d>1)
-    Basis_t * m_address;
+    Basis_t * m_bases;
     
-}; // class gsTensorBasis
-*/
+}; // class gsTensorBasis<1,T>
+//*/
 
 //////////////////////////////////////////////////
 //////////////////////////////////////////////////
