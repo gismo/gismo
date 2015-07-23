@@ -444,6 +444,32 @@ bool nextCubeVertex(Vec& cur, const Vec& end)
     return false;
 }
 
+/// \brief Iterate in lexigographic order through the vertices of the
+/// unit cube. Updates \a cur with the lexicographically next vertex
+/// and returns true if another point is available. This is equivalent
+/// to iterating over all possible binary sequences of length \em
+/// cur.size(). The input \a cur is expected to contain only zeros and
+/// ones.
+template<class Vec>
+bool nextCubeVertex(Vec& cur)
+{
+    const int d = cur.size();
+    GISMO_ASSERT( (cur.array() >= 0).all() && (cur.array() <= 1).all(),
+                  "Input must be a vector of zeros and ones, got: "<<cur.transpose() );
+
+    for (int i = 0; i != d; ++i)
+    {
+        if ( cur[i] == 0 )
+        {
+            ++cur[i];
+            return true;
+        }
+        else
+            cur[i] = 0;
+    }
+    return false;
+}
+
 /// \brief Iterate in lexigographic order through the points of the integer
 /// lattice contained in the cube [0,end]. Updates cur with the
 /// current point and returns true if another point is available. Cube

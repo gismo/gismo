@@ -236,6 +236,91 @@ void flipTensorVector(const int dir,
     while (nextLexicographic(v, vend));
 }
 
+/// \brief Returns the isometry \a result of the vertices of the unit
+/// cube implied by a relocation of the vertex (0,..0), in turn described by
+/// \a flip while keeping directions unchanged
+/// flip[k]==true  : the coordinate is not relocated
+/// flip[k]==false : the coordinate is relocated
+/// \ingroup Tensor
+/// \sa flipTensorVector
+template <typename T, int d>
+//nextCubeVertexIsometry
+void cubeVertexIsometry(const gsVector<bool,d> & flip,
+                        gsVector<T> & result)
+{
+    const int dd = flip.size();//binary sequence of length d
+
+    gsVector<int,d> str(dd), v(dd), vend(dd), ones = gsVector<int,d>::Ones(dd);
+    for (int k=0; k!=dd; ++k)
+        str[k] = (1<<k);
+
+    //gsVector<T> tmp(1<<dd);
+
+    index_t r = 0;
+    result.resize(1<<dd);
+    v.setZero();
+    do
+    {
+        T c = 0;
+        for (int k=0; k!=dd; ++k)
+            c += ( flip[k] == v[k] ) * str[k];
+        
+        result[r++] = c; // restarts result to (0,..,2^d-1)
+        //tmp[r++] = result[c];
+    }
+    while (nextCubeVertex(v, ones));
+
+    //result.swap(tmp);
+}
+
+/// \brief Returns the isometry \a result of the vertices of the
+/// unit cube implied by a permutation \a perm of the cube directions,
+/// while keeping vertex (0,..,0) unchanged
+/// \ingroup Tensor
+/// \sa permuteTensorVector
+template <typename T, int d>
+//cubeVertexIsometry
+void nextCubeDirIsometry( const gsVector<int,d> & perm, 
+                            gsVector<T> & result)
+{
+    const int dd = perm.size();
+    GISMO_ASSERT( perm.sum() == dd*(dd-1)/2, "Error in the permutation: "<< perm.transpose());
+
+    Eigen::PermutationMatrix<d> P(perm);//permutation of (0,..d-1)
+
+    gsVector<int,d> v(dd), perstr(dd);
+    for (int k=0; k!=dd; ++k)
+        perstr[k] = (1<<k);
+
+    gsVector<T> tmp(1<<dd);
+
+    index_t r = 0;
+    result.resize(1<<dd);
+    v.setZero();
+    do 
+    {
+        //result[r++] = perstr.dot(P*v); // restarts result to (0,..,2^d-1)
+        tmp[r++] = result[perstr.dot(P*v)];
+    } 
+    while (nextCubeVertex(v));
+
+    result.swap(tmp);
+}
+
+/// \brief Computes the isometry of the unit d-cube 
+/// implied by a permutation \a perm of the cube directions,
+/// implied by a relocation of the vertex (0,..0)
+/// \ingroup Tensor
+/// \sa cubeVertexIsometry, nextCubeVertexIsometry
+template <typename T, int d>
+void cubeIsometry( const gsVector<bool,d> & flip,
+                   const gsVector<int,d>  & perm, 
+                   gsVector<T> & result)
+{
+    cubeVertexIsometry (flip, result);
+    nextCubeDirIsometry(perm, result);
+}
+
 /** \brief Computes the sparse Kronecker product of sparse matrix blocks.
 
     The sparse matrices \a m1 and \a m2 must have sizers n1 x k*n1 and
