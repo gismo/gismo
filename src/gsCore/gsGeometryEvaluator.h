@@ -320,7 +320,7 @@ public:
       \partial_y B_1 & \partial_y B_2 & \ldots & \partial_y B_9
       \end{array}\right)
       \f]
-      \param k Indicates which column of \em allGrads should be transformed.
+      \param[in] k Indicates which column of \em allGrads should be transformed.
       \param[in] allGrads gsMatrix containing computed gradients in the format
       described above.
       \param[out] trfGradsK gsMatrix with the corresponding gradients on the
@@ -341,7 +341,7 @@ public:
 // S.K.: Commented declaration, because the function code in the hpp-file
 // is completely commented out an the function is not used yet.
 //
-//    /**
+//    /*
 //      \brief Transforms parametric gradients to a gradients on the physical domain of a vector field while preserving the divergence.
 
 //      The transformation is sometimes called the contravariant Piola transform:
@@ -394,7 +394,7 @@ public:
     virtual void transformGradients(index_t k, const typename gsMatrix<T>::Block allGrads, gsMatrix<T>& trfGradsK) const = 0;
 
     /**
-    \brief Transforms paramatric 1st and 2ed derivatives to Laplacians on the physical domain.
+    \brief Transforms paramatric 1st and 2nd derivatives to Laplacians on the physical domain.
 
     The gradient information on the parameter domain at a certain points
     is given in \em <b>allGrads</b> in the following

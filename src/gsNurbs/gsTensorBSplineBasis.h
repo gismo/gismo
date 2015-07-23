@@ -216,13 +216,13 @@ public:
         return os;
     }
 
-    /**
-       \brief Perform k-refinement coordinate-wise, in all directions
-       
-       \param[in] i number of k-refinement steps to perform
-       
-       \copydetails gsBSplineBasis:refine_k
-     */
+    //
+    // param other parent/reference mesh determining the smoothness at the inner knots.
+    // param i number of k-refinement steps to perform
+
+    /// \brief Perform k-refinement coordinate-wise, in all directions.
+    ///
+    /// \copydetails gsBSplineBasis::refine_k
     void k_refine(Self_t & other, int const & i = 1)
     { 
         for (unsigned j = 0; j < d; ++j)
@@ -250,20 +250,21 @@ public:
      * Takes a vector of coordinate wise knot values and inserts these values to the basis.
      * Also constructs and returns the transfer matrix that transfers coefficients to the new basis.
      *
-     * \param u     refineKnots Coordinate-wise knot values to be inserted
      * \param[out]  transfer Transfer matrix
+     * \param[in] refineKnots Coordinate-wise knot values to be inserted
      */
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector< std::vector<T> >& refineKnots);
 
 
     /**
-     * \brief
-     * Takes a vector of coordinate wise knot values and inserts these values to the basis.
+     * \brief Takes a vector of coordinate wise knot values and inserts these values to the basis.
+     *
      * Also takes the old coefficients and changes them to reflect the new coefficients.
      *
-     * \param u     refineKnots Coordinate-wise knot values to be inserted
-     * \param[out]  new coefficients
-     \todo rename to insertKnots_withCoefs
+     * \param[out]  coefs new coefficients
+     * \param refineKnots Coordinate-wise knot values to be inserted
+     *
+     * \todo rename to insertKnots_withCoefs
      */
     void refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots);
 

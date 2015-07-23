@@ -414,9 +414,14 @@ public:
     /// 
     /// This type of refinement is known as k-refinement.  Note that
     /// this type of refinement is ment to be performed after one (or
-    /// more) with one h-refinement steps the parent mesh (\a other),
+    /// more) h-refinement steps the parent mesh (\a other),
     /// otherwise this function is equivalent to p-refinement of \a other.
-    /// Note: not tested yet
+    ///
+    /// \param other parent/reference mesh determining the
+    /// smoothness at the inner knots.
+    /// \param i number of k-refinement steps to perform
+    ///
+    /// \remarks Not tested yet!
     void refine_k(const Self_t & other, int const & i = 1)
     { 
         GISMO_ASSERT( m_p >= other.m_p, "Degree of other knot-vector should be lower.");
