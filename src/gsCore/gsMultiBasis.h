@@ -464,22 +464,23 @@ public:
     void matchInterface(const boundaryInterface & bi,
                         gsDofMapper & mapper) const;
 
-    /**
-     * @brief Matches the degrees of freedom along an interface.
-     *
-     * Same as matchInterface(), but for bases of
-     * class gsHTensorBasis or derived classes.
-     *
-     * \remarks Assumes that the meshes on all levels of
-     * the gsHTensorBasis are fully matching at the interface.
-     *
-     * @param bi specifies the interface to be matched
-     * @param mapper the gsDofMapper which should know that
-     * these interface-DOFs are matched.
-     */
-    template<unsigned d>
-    void matchInterfaceHTensor(const boundaryInterface & bi,
-                               gsDofMapper & mapper) const;
+//    // OUTDATED since implementation of matchWith
+//    /**
+//     * @brief Matches the degrees of freedom along an interface.
+//     *
+//     * Same as matchInterface(), but for bases of
+//     * class gsHTensorBasis or derived classes.
+//     *
+//     * \remarks Assumes that the meshes on all levels of
+//     * the gsHTensorBasis are fully matching at the interface.
+//     *
+//     * @param bi specifies the interface to be matched
+//     * @param mapper the gsDofMapper which should know that
+//     * these interface-DOFs are matched.
+//     */
+//    template<unsigned d>
+//    void matchInterfaceHTensor(const boundaryInterface & bi,
+//                               gsDofMapper & mapper) const;
 
     // Data members
 private:

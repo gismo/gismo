@@ -79,6 +79,8 @@ class gsHTensorBasis: public gsBasis<T>
 public:
     /// Shared pointer for gsHTensorBasis
     typedef memory::shared_ptr< gsHTensorBasis > Ptr;
+
+    typedef gsHTensorBasis<d,T> Self_t;
     
     typedef T Scalar_t;
 
@@ -529,6 +531,10 @@ public:
 
   void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
 
+  // see gsBasis for documentation
+  void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                 gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
+
     int maxDegree() const 
     { 
         int td = m_bases[0]->degree(0);
@@ -587,7 +593,6 @@ public:
         return m_boxHistory;
     }
 */
-
 
     virtual void degreeElevate(int const & i = 1, int const dir = -1);
     virtual void degreeIncrease(int const & i= 1, int const dir = -1);

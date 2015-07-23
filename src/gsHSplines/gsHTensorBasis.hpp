@@ -376,6 +376,101 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
     update_structure();
 }
 
+
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
+                                   const gsBasis<T> & other,
+                                   gsMatrix<unsigned> & bndThis,
+                                   gsMatrix<unsigned> & bndOther) const
+{
+    if( const Self_t * _other = dynamic_cast<const Self_t*>( &other) )
+    {
+        // see if the orientation is preserved on side second()
+        const gsVector<bool> dirOrient = bi.dirOrientation();
+
+        const gsVector<int> dirMap = bi.dirMap();
+
+        // get the global indices of the basis functions which are
+        // active on the interface
+        bndThis = safe( this->boundary( bi.first().side() ) );
+
+        // this is only for checking whether, at least, both involved
+        // bases have the same number of DOF on the interface.
+        bndOther= safe( _other->boundary( bi.second().side() ));
+        GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
+                      "Input error, sizes do not match: "
+                      <<bndThis.rows()<<"!="<<bndOther.rows() );
+        // bndOther gets overwritten completely, so here is the setZero():
+        bndOther.setZero();
+
+        for( index_t i=0; i < bndThis.rows(); i++)
+        {
+            // get the level of the basis function on side first()
+            unsigned L = this->levelOf( bndThis(i,0) );
+            // get the flat tensor index
+            // (i.e., the single-number-index on level L)...
+            unsigned flat0 = this->flatTensorIndexOf( bndThis(i,0) );
+            // ... and change it to the tensor-index.
+            gsVector<unsigned> tens0 = this->tensorLevel(L).tensorIndex( flat0 );
+
+            // tens1 will store the tensor-index on side second(),...
+            gsVector<unsigned> tens1(d);
+            // ...flat1 the corresponding flat index
+            // (single-number on level)...
+            unsigned flat1 = 0;
+            // ...and cont1 the corresponding continued (global) index.
+            unsigned cont1 = 0;
+
+            // get the sizes of the components of the tensor-basis on this level,
+            // i.e., the sizes of the univariate bases corresponding
+            // to the respective coordinate directions
+            gsVector<unsigned> N(d);
+            for( unsigned j=0; j < d; j++)
+                N[j] = _other->tensorLevel(L).component(j).size();
+
+            // get the tensor-index of the basis function on level L on
+            // second() that should be matched with flatp/tens0
+            for( unsigned j=0; j<d; j++)
+            {
+                // coordinate direction j on first() gets
+                // mapped to direction jj on second()
+                int jj = dirMap[j];
+                // store the respective component of the tensor-index
+                tens1[jj] = tens0[j];
+
+                if( jj == bi.second().direction() )
+                {
+                    // if jj is the direction() of the interface,
+                    // however, we need either the first
+                    // or last basis function
+                    if( bi.second().parameter() ) // true = 1 = end
+                        tens1[jj] = N[jj]-1;
+                    else
+                        tens1[jj] = 0;
+                }
+                else
+                {
+                    // otherwise, check if the orientation is
+                    // preserved. If necessary, flip it.
+                    if( !dirOrient[j] )
+                        tens1[jj] = N[jj]-1 - tens1[jj];
+                }
+
+            }
+
+            flat1 = _other->tensorLevel(L).index( tens1 );
+
+            // compute the "continuous" index on second(), i.e., the index
+            // in the numbering which is global over all levels.
+            cont1 = _other->flatTensorIndexToHierachicalIndex( flat1, L );
+            // this is the index that has to be matched with bndThis(i,0)
+            bndOther( i, 0 ) = cont1;
+        }
+        return;
+    }
+    gsWarn<<"Cannot match with "<< other <<"\n";
+}
+
 //protected functions
 
 // Construct the characteristic matrix of level \a level ; i.e., set

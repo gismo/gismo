@@ -182,6 +182,8 @@ void gsMultiBasis<T>::getMapper(bool conforming,
 template<class T>
 void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
+
+    /* // OUTDATED since implementation of matchWith()
     const gsHTensorBasis<2,T> * bas2d0 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.first().patch ] );
     const gsHTensorBasis<2,T> * bas2d1 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.second().patch ] );
     const gsHTensorBasis<3,T> * bas3d0 = dynamic_cast< const gsHTensorBasis<3,T> * >( m_bases[ bi.first().patch ] );
@@ -196,18 +198,24 @@ void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper &
     else if( bas2d0 != 0 || bas2d1 != 0 || bas3d0 != 0 || bas3d1 != 0 )
         GISMO_ASSERT(false, "One Basis is HTensor, the other is not. Or dimension is not 2. Cannot handle this. You should implement that.");
     else
-    {
-        // Tensor-Basis-case (default)
-        gsMatrix<unsigned> b1, b2;
-        m_bases[bi.first().patch]->matchWith(bi, *m_bases[bi.second().patch],
-                                             b1, b2);
+        */
 
-        // Match the dofs on the interface
-        mapper.matchDofs(bi.first().patch, b1, bi.second().patch, b2 );
+    //if( true )
+    //{
 
-    } // if-else
+    // should work for all basis which have matchWith() implementeds
+    gsMatrix<unsigned> b1, b2;
+    m_bases[bi.first().patch]->matchWith(bi, *m_bases[bi.second().patch],
+                                         b1, b2);
+
+    // Match the dofs on the interface
+    mapper.matchDofs(bi.first().patch, b1, bi.second().patch, b2 );
+
+    //} // if-else
 }
 
+
+/* // OUTDATED since implementation of matchWith
 template<class T>
 template<unsigned d>
 void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofMapper & mapper) const
@@ -292,7 +300,7 @@ void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofM
         mapper.matchDof( bi.first().patch, b0b(i,0), bi.second().patch, cont1 );
     }
 }
-
+*/
 
 template<class T>
 bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
