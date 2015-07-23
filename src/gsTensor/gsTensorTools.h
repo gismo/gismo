@@ -209,9 +209,9 @@ void permuteTensorVector( const gsVector<int,d> & perm,
 /// \brief Flips tensor directions in place
 /// \ingroup Tensor
 template <typename T, int d>
-void flipTensorVector( const int dir,
-                       gsVector<int,d> sz, 
-                       gsMatrix<T> & coefs)
+void flipTensorVector(const int dir,
+                      const gsVector<int,d> & sz, 
+                      gsMatrix<T> & coefs)
 {
     GISMO_ASSERT( sz.prod()  == coefs.rows(), 
                   "Input error, sizes do not match: "<<sz.prod()<<"!="<< coefs.rows() );
@@ -222,10 +222,10 @@ void flipTensorVector( const int dir,
     gsVector<int,d> perstr(dd);
     tensorStrides<d>(sz, perstr);
 
-    gsVector<int,d> v(dd);
-    v.setZero();
+    gsVector<int,d> v(dd), vend(dd);
     const int cc = sz[dir] - 1; 
-    sz[dir] /= 2;
+    vend = sz; vend[dir] /= 2;
+    v.setZero();
     do
     {
         const int i1 = perstr.dot(v);
@@ -233,9 +233,8 @@ void flipTensorVector( const int dir,
 
         coefs.row( i1 ).swap( coefs.row( i2 ) );
     } 
-    while (nextLexicographic(v, sz));
+    while (nextLexicographic(v, vend));
 }
-
 
 /** \brief Computes the sparse Kronecker product of sparse matrix blocks.
 

@@ -120,7 +120,7 @@ int gsGeometryData<axlObj>::countControlPoints_w(void) const
 template <class axlObj>
 int gsGeometryData<axlObj>::order(void) const
 {
-    return m_geometry->basis().degree()+1;
+    return m_geometry->basis().degree(0)+1;
 }
 template <class axlObj>
 int gsGeometryData<axlObj>::order_u(void) const

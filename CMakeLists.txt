@@ -123,13 +123,15 @@ if (GISMO_WITH_VTK)
 endif(GISMO_WITH_VTK)
 
 if(GISMO_WITH_IPOPT)
-  find_library(IpOpt_LIB NAMES ipopt libipopt )
+
+  find_library(IpOpt_LIB NAMES ipopt libipopt HINTS ${CMAKE_BINARY_DIR}/lib ${IPOPT_DIR}/lib)
+  find_path(IpOpt_INCLUDE_DIRS NAMES IpTNLP.hpp HINTS /usr/include/coin ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin ${IPOPT_DIR}/include)
 
   if(IpOpt_LIB)
       #message(WARNING, "Using ipopt system library")
       #find_library(IpOpt_LIB_Mumps NAMES mumps libmumps cmumps libcmumps )
       #find_library(IpOpt_LIB_Metis NAMES metis libmetis )
-      set(IpOpt_INCLUDE_DIRS /usr/include/coin CACHE INTERNAL "IpOpt include path")
+      #set(IpOpt_INCLUDE_DIRS /usr/include/coin CACHE INTERNAL "IpOpt include path")
       set(IpOpt_LIB_IpOpt ${IpOpt_LIB})
 
   else(IpOpt_LIB)
@@ -171,6 +173,7 @@ if(GISMO_WITH_IPOPT)
       #set(IpOpt_LIB_Metis "${CMAKE_BINARY_DIR}/lib/libcoinmetis.so" CACHE INTERNAL "IpOpt shared metis library")
     
   endif(IpOpt_LIB)
+  #message("IpOpt headers: ${IpOpt_INCLUDE_DIRS}")
   include_directories("${IpOpt_INCLUDE_DIRS}")
 endif(GISMO_WITH_IPOPT)
 
