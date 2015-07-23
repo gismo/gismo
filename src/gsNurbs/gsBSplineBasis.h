@@ -198,7 +198,10 @@ public:
     int elementIndex(T u ) const;
 
     // Look at gsBasis class for a description
-    gsBSplineBasis & component(unsigned i) const;
+    const gsBSplineBasis & component(unsigned i) const;
+
+    // Look at gsBasis class for a description
+    gsBSplineBasis & component(unsigned i);
 
     /// Returns the anchors (greville points) of the basis
     void anchors_into(gsMatrix<T> & result) const 

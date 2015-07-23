@@ -28,12 +28,17 @@ namespace gismo
 {
 
 template <class T, class KnotVectorType>
-gsBSplineBasis<T,KnotVectorType> & gsBSplineBasis<T,KnotVectorType>::component(unsigned i) const
+gsBSplineBasis<T,KnotVectorType> & gsBSplineBasis<T,KnotVectorType>::component(unsigned i)
 {
-    if ( i == 0 )
-        return const_cast<gsBSplineBasis&>(*this);
-    else
-        GISMO_ERROR("gsBSplineBasis has only one component");
+    GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
+    return const_cast<gsBSplineBasis&>(*this);
+}
+
+template <class T, class KnotVectorType>
+const gsBSplineBasis<T,KnotVectorType> & gsBSplineBasis<T,KnotVectorType>::component(unsigned i) const
+{
+    GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
+    return const_cast<gsBSplineBasis&>(*this);
 }
 
 template <class T, class KnotVectorType>
