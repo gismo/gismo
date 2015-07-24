@@ -715,7 +715,7 @@ void cubeIsometry( const gsVector<bool,d>    & flip,
         T & c = result[r++];
         c = 0;
         for (int k=0; k!=dd; ++k)
-            c += ( flip[perm[k]] == v[k] ) * pstr[k];
+            c += ( flip[perm[k]] == static_cast<bool>(v[k]) ) * pstr[k];
     }
     while (nextCubeVertex(v));
 }

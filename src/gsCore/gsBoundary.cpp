@@ -32,6 +32,37 @@ void boxSide::getContainedCorners (int dim, std::vector<boxCorner> &corners) con
     }
 }
 
+void boundaryInterface::faceData(gsVector<bool> & flip, gsVector<index_t> & perm) const
+{ 
+    const index_t d = directionMap.size();
+    flip.resize(d-1);
+    perm.resize(d-1);
+    const index_t s1 = ps1.direction();
+    const index_t s2 = ps2.direction();
+    index_t c = 0;
+
+    for (index_t k = 0; k!=s1; ++k)
+    {
+        flip[c] = directionOrientation[k];
+        perm[c] = (directionMap[k] < s2 ? directionMap[k] : directionMap[k]-1);
+        c++;
+    }
+    for (index_t k = s1+1; k!=d; ++k)
+    {
+        flip[c] = directionOrientation[k];
+        perm[c] = (directionMap[k] < s2 ? directionMap[k] : directionMap[k]-1);
+        c++;
+    }
+}
+
+void boundaryInterface::cornerMap(gsVector<index_t> & cmap) const
+{
+    gsVector<bool>    flip;
+    gsVector<index_t> perm;
+    faceData(flip, perm);
+    cubeIsometry(flip, perm, cmap);
+}
+
 
 void boundaryInterface::matchDofs(gsVector<int>    bSize,
                                   gsMatrix<unsigned> & b1,

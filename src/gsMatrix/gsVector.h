@@ -56,8 +56,11 @@ public:
     /// Unique pointer for gsVector
     typedef std::auto_ptr< gsVector > uPtr;
 
-    // Type for treating a vector as a permutation matrix
+    // Type for copying a vector as a permutation matrix
     typedef Eigen::PermutationMatrix<_Rows> Permutation;
+
+    // Type for treating a vector as a permutation matrix
+    typedef Eigen::PermutationWrapper<Base> PermutationWrap;
 
     typedef Eigen::Ref<Base> Ref;
 
@@ -87,7 +90,9 @@ public:
 public:
 
     gsVector() ;
+
     gsVector(const Base& a) ;
+
     gsVector(int dimension) ;
 
     ~gsVector () ;
@@ -139,6 +144,10 @@ public:
         this->swap( other.ref() );
         return *this;
     }
+
+    /// Returns a permutation 
+    PermutationWrap asPermutation()
+    { return PermutationWrap(*this);}
 
     inline T   at (index_t i) const { return (*this)(i,0); }
     inline T & at (index_t i)       { return (*this)(i,0); }

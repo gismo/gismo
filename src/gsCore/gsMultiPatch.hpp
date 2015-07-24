@@ -244,6 +244,9 @@ bool gsMultiPatch<T>::computeTopology( T tol )
     // are used to decide if two sides match.
     // Currently these are the corner points and the side-centers
     coor(m_dim,nCorP + 2*m_dim);
+    // if (cornersOnly)
+    //     coor.resize(m_dim,nCorP);
+
     gsVector<bool> boxPar(m_dim);
 
     // each matrix contains the physical coordinates of the reference points
@@ -264,6 +267,8 @@ bool gsMultiPatch<T>::computeTopology( T tol )
                 coor(i,c-1) = boxPar(i) ? supp(i,1) : supp(i,0);
         }
         
+        //if (!cornersOnly)
+        //{
         // Sides' centers parametric coordinates
         index_t l = nCorP;
         for (boxSide c=boxSide::getFirst(m_dim); c<boxSide::getEnd(m_dim); ++c)
@@ -276,6 +281,7 @@ bool gsMultiPatch<T>::computeTopology( T tol )
                                        (supp(i,1)+supp(i,0))/2.0 );
             l++;
         }
+        //}
 
         // Evaluate the patch on the reference points
         m_patches[p]->eval_into(coor,pCorners[p]);
@@ -457,7 +463,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
         meanVal.array() /= dof.size();
         
         // Set involved control points equal to their average value
-        for (size_t k = 1; k!=dof.size(); ++k)
+        for (size_t k = 0; k!=dof.size(); ++k)
             m_patches[dof[k].first]->coef(dof[k].second) = meanVal;
     }
 }

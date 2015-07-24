@@ -198,8 +198,11 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
                                   const T accuracy,
                                   int max_loop) const
 {
-    gsMatrix<T> delta, jac, supp;
+    const index_t n = targetDim();
+    GISMO_ASSERT( value.rows() == n, "Invalid input values");
+    const bool squareJac = (n == domainDim());
 
+    gsMatrix<T> delta, jac, supp;
     if (withSupport)
         supp = support();
 
@@ -209,9 +212,17 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
         eval_into (arg, delta);
         delta = value - delta;
 
-        // compute Jacobian and solve for next arg
-        deriv_into(arg, jac);
-        delta = jac.partialPivLu().solve( delta );
+        // compute Jacobian 
+        jacobian_into(arg, jac);
+
+        // Solve for next update
+        if (squareJac)
+            delta = jac.partialPivLu().solve( delta );
+        else// use pseudo-inverse
+            delta = jac.colPivHouseholderQr().solve(
+                gsMatrix<T>::Identity(n,n)) * delta;
+
+        // update arg
         arg += delta;
 
         // clamp x to the support of the function

@@ -664,7 +664,14 @@ public:
     const gsVector<bool> & dirOrientation()  const
     { return directionOrientation; }
 
-    
+    void faceData(gsVector<bool> & flip, gsVector<index_t> & perm) const;
+
+    /// \brief Returns a vector which describes the mapping between
+    /// the corners of \a ps1 and the corners of \a ps2.  In
+    /// particular, the i-th corner of \a ps1 (in lex-order) is mapped
+    /// to the corner cmap[i] (in lex-order) of \a ps2
+    void cornerMap(gsVector<index_t> & cmap) const;
+
     void matchDofs(gsVector<int>    bSize, 
                    gsMatrix<unsigned> & b1, 
                    const gsMatrix<unsigned> & b2) const;
