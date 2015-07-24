@@ -163,11 +163,10 @@ template<unsigned d, class T, class KnotVectorType>
 void gsTensorBSpline<d,T,KnotVectorType>::
 swapDirections(const unsigned i, const unsigned j)
 {
-    this->basis().swapDirections(i,j);
-
     gsVector<int,d> sz;
     this->basis().size_cwise(sz);
     swapTensorDirection(i, j, sz, m_coefs);
+    this->basis().swapDirections(i,j);
 }
 
 template<unsigned d, class T, class KnotVectorType>
