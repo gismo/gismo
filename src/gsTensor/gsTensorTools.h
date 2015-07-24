@@ -238,41 +238,6 @@ void flipTensorVector(const int dir,
     while (nextLexicographic(v, vend));
 }
 
-/// \brief Computes the isometry of the unit d-cube 
-/// implied by a permutation \a perm of the cube directions
-/// plus a relocation \a flip of the cube vertices
-///
-/// \param[in] flip the relocation of the cube vertices
-/// flip[k]==true  : the coordinate of the vertex is not relocated
-/// flip[k]==false : the coordinate of the vertex is relocated
-/// \param[in] perm the permutation of the cube directions (0,..,d-1)
-/// \param[out] result A permutation of the vertices (0,..,2^d-1)
-/// \ingroup Tensor
-template <typename T, int d>
-void cubeIsometry( const gsVector<bool,d>    & flip,
-                   const gsVector<index_t,d> & perm, 
-                   gsVector<T> & result)
-{
-    const int dd = flip.size(); //binary sequence of length d
-    GISMO_ASSERT( dd == perm.size(), "Dimensions do not match in cubeIsometry");
-    GISMO_ASSERT( perm.sum() == dd*(dd-1)/2, "Error in the permutation: "<< perm.transpose());
-
-    gsVector<index_t,d> pstr(dd), v = gsVector<index_t,d>::Zero(dd);
-    for (int k=0; k!=dd; ++k)
-        pstr[k] = (1<<perm[k]);
-
-    result.resize(1<<dd);
-    index_t r = 0;
-    do
-    {
-        T & c = result[r++];
-        c = 0;
-        for (int k=0; k!=dd; ++k)
-            c += ( flip[perm[k]] == v[k] ) * pstr[k];
-    }
-    while (nextCubeVertex(v));
-}
-
 /** \brief Computes the sparse Kronecker product of sparse matrix blocks.
 
     The sparse matrices \a m1 and \a m2 must have sizers n1 x k*n1 and

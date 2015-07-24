@@ -20,12 +20,12 @@ namespace gismo
 {
 
 /** \brief Returns the factorial of \a n i.e. \a n!
-* Remember that factorial grow too fast and only n! with n<=13 can be stored in a 32bit that is an unsigned.
-* \ingroup combinatorics
+ * Remember that factorial grow too fast and only n! with n<=13 can be
+ * stored in a 32bit that is an unsigned.
+ * \ingroup combinatorics
 */
 // \ingroup Utils
 // could also be in Utils, but doxygen allows only one group for free functions
-
 inline unsigned factorial( unsigned n)
 {
     GISMO_ASSERT(n<14, "Overflow when computing factorial.");
@@ -34,10 +34,10 @@ inline unsigned factorial( unsigned n)
 }
 
 /*
-/// \brief Returns the factorial of \a n
-/// Remember that factorial grow too fast and only n! with n<=21 can
-/// be stored in a 64bit that is an unsigned long long.  \ingroup
-/// combinatorics
+// \brief Returns the factorial of \a n
+// Remember that factorial grow too fast and only n! with n<=21 can
+// be stored in a 64bit that is an unsigned long long.  \ingroup
+// combinatorics
 inline unsigned long long factorial( unsigned long long n)
 {
     static const unsigned long long precomputed[]= {1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600, 6227020800, 87178291200, 1307674368000, 20922789888000, 355687428096000, 6402373705728000, 121645100408832000, 2432902008176640000 };
@@ -46,7 +46,7 @@ inline unsigned long long factorial( unsigned long long n)
 */
 
 /**
- \brief Returns binomial(n,r)
+ \brief Computes the binomial expansion coefficient binomial(n,r)
 
   The binomial coefficient indexed by \a n and \a k is is the
   coefficient of the $x^k$ term in the polynomial expansion of the
@@ -62,10 +62,8 @@ inline unsigned long long factorial( unsigned long long n)
 
   \ingroup combinatorics
 */
-//  \ingroup Utils
-// could also be in Utils, but doxygen allows only one group for free functions
-
-
+// \ingroup Utils
+// Note: could also be in Utils, but doxygen allows only one group for free functions
 template <typename Z>
 inline Z binomial(const Z n, const Z r)
 {
@@ -81,54 +79,6 @@ inline Z binomial(const Z n, const Z r)
     }
     return result;
 }
-
-// forward declaration
-template<int n, int r> class binomialT;
-
-/**
-   \brief Returns binomial(n,r) as a compile time constant
-
-   This is done using template recursion and can be accessed either by
-   b=binomialT<n,r>::value;
-   or
-   b=binomial<n,r>();
-   The second form relies on the compiler optimizations to avoid function call.
-   \ingroup combinatorics
-*/
-//   \ingroup Utils
-template <unsigned n, unsigned r>
-inline unsigned binomial () {return binomialT<n,r>::value;}
-
-// TEMPLATE IMPLEMENTATION NOT DOCUMENTED, BASED ON PASCAL TRIANGLE
-template<int n, int r>
-class binomialT
-{
-public:
-   enum { value= binomialT<n-1,r-1>::value+binomialT<n-1,r>::value};
-};
-
-template<int n>
-class binomialT<n,n>
-{
-public:
-   enum { value= 1};
-};
-
-template< >
-class binomialT<0,0>
-{
-public:
-   enum { value= 1};
-};
-
-template<int n>
-class binomialT<n,0>
-{
-public:
-   enum { value= 1};
-};
-
-
 
 /** \brief Returns a vector containing all the binomials (n,r) with n fixed.
  *
@@ -154,16 +104,33 @@ inline void binomial_into( unsigned n, gsVector<unsigned>& v)
     }
 }
 
+// Used by binomial<n,r>()
+template<int n, int r>
+class binomialT
+{public:enum { value= binomialT<n-1,r-1>::value+binomialT<n-1,r>::value};};
+template<int n> class binomialT<n,n> {public:enum { value= 1};};
+template<>      class binomialT<0,0> {public:enum { value= 1};};
+template<int n> class binomialT<n,0> {public:enum { value= 1};};
+/**
+   \brief Returns binomial(n,r) as a compile time constant
+
+   This is done using template recursion and can be accessed either by
+   b=binomialT<n,r>::value;
+   or
+   b=binomial<n,r>();
+   The second form relies on the compiler optimizations to avoid function call.
+   \ingroup combinatorics
+*/
+template <unsigned n, unsigned r>
+inline unsigned binomial () {return binomialT<n,r>::value;}
 
 
-
-
-  /** 
-      @brief Class for combinatorics. Generates ...
-      
-      \ingroup Utils
-      \ingroup combinatorics
-  */
+/** 
+    @brief Class for combinatorics. Generates ...
+    
+    \ingroup Utils
+    \ingroup combinatorics
+*/
 
 template<class Vect = gsVector<unsigned> >
 class gsCombinat
@@ -323,6 +290,7 @@ private:
 /**
  * \brief changes current to the first permutation of 0 ... size(current)-1
  * note that you must resize the vector to specify the number of elements
+ * \ingroup combinatorics
  */
 template<class Vec>
 void firstPermutation (Vec &current)
@@ -334,6 +302,7 @@ void firstPermutation (Vec &current)
 /**
  * \brief Changes current to the next lexicographically ordered permutation
  * \return false when the lexicographically last permutation is given
+ * \ingroup combinatorics
  */
 template<class Vec>
 bool nextPermutation (Vec &current)
@@ -347,6 +316,7 @@ bool nextPermutation (Vec &current)
 /// and returns true if another entry was available End values (\a
 /// size) are not included in the enumerated points, as with
 /// iterators.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextLexicographic(Vec& cur, const Vec& size)
 {
@@ -374,6 +344,7 @@ bool nextLexicographic(Vec& cur, const Vec& size)
 /// points.  \a end coordinates are not included in the enumerated
 /// points, as with iterators.  Updates cur and returns true if
 /// another entry was available.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextLexicographic(Vec& cur, const Vec& start, const Vec& end)
 {
@@ -401,6 +372,7 @@ bool nextLexicographic(Vec& cur, const Vec& start, const Vec& end)
 /// \brief Iterate in lexicographic order through the vertices of the cube
 /// [start,end]. Updates cur with the current vertex and returns true
 /// if another vertex is available. Cube may be degenerate.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextCubeVertex(Vec& cur, const Vec& start, const Vec& end)
 {
@@ -424,6 +396,7 @@ bool nextCubeVertex(Vec& cur, const Vec& start, const Vec& end)
 /// \brief Iterate in lexicographic order through the vertices of the cube
 /// [0,end]. Updates cur with the current vertex and returns true
 /// if another vertex is available. Cube may be degenerate.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextCubeVertex(Vec& cur, const Vec& end)
 {
@@ -450,6 +423,7 @@ bool nextCubeVertex(Vec& cur, const Vec& end)
 /// to iterating over all possible binary sequences of length \em
 /// cur.size(). The input \a cur is expected to contain only zeros and
 /// ones.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextCubeVertex(Vec& cur)
 {
@@ -474,6 +448,7 @@ bool nextCubeVertex(Vec& cur)
 /// lattice contained in the cube [0,end]. Updates cur with the
 /// current point and returns true if another point is available. Cube
 /// may be degenerate.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextCubePoint(Vec& cur, const Vec& end)
 {
@@ -498,6 +473,7 @@ bool nextCubePoint(Vec& cur, const Vec& end)
 /// lattice contained in the cube [start,end]. Updates cur with the
 /// current point and returns true if another point is available. Cube
 /// may be degenerate.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextCubePoint(Vec& cur, const Vec& start, const Vec& end)
 {
@@ -523,6 +499,7 @@ bool nextCubePoint(Vec& cur, const Vec& start, const Vec& end)
 /// \brief Iterates in lex-order through the boundary points of the cube
 /// [start,end]. Updates cur with the current point and returns true
 /// if another point is available. Cube may be degenerate.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextCubeBoundary(Vec& cur, const Vec& start, const Vec& end)
 {
@@ -562,6 +539,7 @@ bool nextCubeBoundary(Vec& cur, const Vec& start, const Vec& end)
 /// [start,end], with an \ offset to the interior. Updates cur with
 /// the current point and returns true if another point is
 /// available. Cube may be degenerate.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, Vec & offset)
 {
@@ -602,6 +580,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, Vec & of
 /// [start,end], with offset \a loffset from \ start and \a roffset
 /// .from the \a end. Updates cur with the current point and returns
 /// true if another point is available. Cube may be degenerate.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, 
                             Vec & loffset, Vec & uoffset)
@@ -641,6 +620,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end,
 
 /// \brief Returns the number of elements (faces) of dimension \a k 
 /// of a \a d-cube
+/// \ingroup combinatorics
 inline index_t numCubeElements(const index_t k, const index_t d)
 {
     GISMO_ASSERT(k >= 0 && k<=d, "Invalid arguments.");
@@ -651,6 +631,7 @@ inline index_t numCubeElements(const index_t k, const index_t d)
 /// [0,1]^d. The element is expected to contain 0,1 (corresponding to
 /// cube extrema) and the special value 2 at the position of "free"
 /// coordinates
+/// \ingroup combinatorics
 template<class Vec>
 inline index_t dimCubeElement(const Vec & cur)
 {
@@ -660,6 +641,7 @@ inline index_t dimCubeElement(const Vec & cur)
 /// \brief Updates \a cur to contain the lexicographically first
 /// element (face) of the cube [0,1]^d of dimension \a k. For k==d the
 /// face (2..2) is returned, corresponding to the cube itself.
+/// \ingroup combinatorics
 template<class Vec>
 void firstCubeElement(Vec & cur, const index_t k = 0)
 {
@@ -674,6 +656,7 @@ void firstCubeElement(Vec & cur, const index_t k = 0)
 /// the current element (face) and returns true if another element
 /// (face) of dimension \a k is available.  Coordinates with value 2
 /// indicate free/not-fixed dimensions.
+/// \ingroup combinatorics
 template<class Vec>
 bool nextCubeElement(Vec & cur, const index_t k)
 {
@@ -702,7 +685,43 @@ bool nextCubeElement(Vec & cur, const index_t k)
     return false;
 }
 
+/// \brief Computes the isometry of the unit d-cube 
+/// implied by a permutation \a perm of the cube directions
+/// plus a relocation \a flip of the cube vertices
+///
+/// \param[in] flip the relocation of the cube vertices
+/// flip[k]==true  : the coordinate \em k of the vertex is not relocated
+/// flip[k]==false : the coordinate \em k of the vertex is relocated
+/// \param[in] perm the permutation of the cube directions (0,..,d-1)
+/// \param[out] result A permutation of the vertices (0,..,2^d-1)
+/// \ingroup combinatorics
+template <typename T, int d>
+void cubeIsometry( const gsVector<bool,d>    & flip,
+                   const gsVector<index_t,d> & perm, 
+                   gsVector<T> & result)
+{
+    const int dd = flip.size(); //binary sequence of length d
+    GISMO_ASSERT( dd == perm.size(), "Dimensions do not match in cubeIsometry");
+    GISMO_ASSERT( perm.sum() == dd*(dd-1)/2, "Error in the permutation: "<< perm.transpose());
+
+    gsVector<index_t,d> pstr(dd), v = gsVector<index_t,d>::Zero(dd);
+    for (int k=0; k!=dd; ++k)
+        pstr[k] = (1<<perm[k]);
+
+    result.resize(1<<dd);
+    index_t r = 0;
+    do
+    {
+        T & c = result[r++];
+        c = 0;
+        for (int k=0; k!=dd; ++k)
+            c += ( flip[perm[k]] == v[k] ) * pstr[k];
+    }
+    while (nextCubeVertex(v));
+}
+
 /// \brief Construct first composition of \a sum into \a dim integers
+/// \ingroup combinatorics
 template<class Vec>
 void firstComposition( typename Vec::Scalar_t sum, index_t dim, Vec & res)
 {  
@@ -711,6 +730,7 @@ void firstComposition( typename Vec::Scalar_t sum, index_t dim, Vec & res)
 }
 
 /// \brief Next composition in lexicographic order
+/// \ingroup combinatorics
 template<class Vec>
 inline bool nextComposition(Vec & v)
 {
@@ -735,8 +755,8 @@ inline bool nextComposition(Vec & v)
 }
 
 /// \brief Number of compositions of \a sum into \a dim integers
-inline
-unsigned numCompositions(int sum, int dim)
+/// \ingroup combinatorics
+inline unsigned numCompositions(int sum, int dim)
 {
     return binomial(sum+dim-1,dim-1);
 }
