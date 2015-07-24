@@ -147,7 +147,7 @@ public:
 
 
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(MIndexT)%16)==0 )
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(MIndexT)%16)==0 );
     //EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
@@ -206,9 +206,9 @@ public:
 
 
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(MIndexT)%16)==0 )
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(MIndexT)%16)==0 );
     //EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
+    
 protected:
     /// dimension
     const index_t d;
