@@ -55,7 +55,8 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
     result.resize( u.cols() );
     result.setZero();
 
-    point low, upp, cur;
+    point low, upp;
+    gsCombinat<gsVector<unsigned,d> > c;
     const int maxLevel = m_tree.getMaxInsLevel();
 
     for(index_t p = 0; p < u.cols(); p++ ) //for all input points
@@ -69,16 +70,16 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
         for(int i = 0; i <= lvl; i++)
         {
             m_bases[i]->active_cwise(u.col(p), low, upp);
-            cur = low;
-            do //iterate over all points in [low,upp]
+            c.first_lattice_point(low,upp,low);
+            do
             {
                 CMatrix::const_iterator it =
-                    m_xmatrix[i].find_it_or_fail( m_bases[i]->index(low) );
+                        m_xmatrix[i].find_it_or_fail( m_bases[i]->index(low) );
                 
                 if( it != m_xmatrix[i].end() )// if index is found
                     result[p]++;
             }
-            while( nextCubePoint(cur,low,upp) );
+            while( c.next_lattice_point(low) );
         }
     }
 }
@@ -125,13 +126,13 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
                     {
                         // inefficient for now
                         const index_t kInd =  m_xmatrix_offset[lvl] +
-                            (std::lower_bound(cmat.begin(), cmat.end(), k )
-                             - cmat.begin() );
+                                (std::lower_bound(cmat.begin(), cmat.end(), k )
+                                 - cmat.begin() );
                         
                         // inefficient for now
                         const index_t kNextInd =  m_xmatrix_offset[lvl] +
-                            (std::lower_bound(cmat.begin(), cmat.end(), k+s )
-                             - cmat.begin() );
+                                (std::lower_bound(cmat.begin(), cmat.end(), k+s )
+                                 - cmat.begin() );
                         
                         mesh.addEdge(kInd, kNextInd );
                     }
@@ -160,8 +161,7 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
-{
+void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes){
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     refineElements(boxes);
     gsMatrix<> transf;
@@ -171,8 +171,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vect
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
-{
+void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes){
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     refineElements(boxes);
     gsMatrix<> transf;
@@ -182,8 +181,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vec
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
-{
+void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul){
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     //uniformRefine(numKnots);
     //gsMatrix<> transf;
@@ -350,11 +348,11 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 
 
 /*
-  template<unsigned d, class T>
-  void gsHTensorBasis<d,T>::refine(gsDomainIterator<T> const & boxes) 
-  {
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::refine(gsDomainIterator<T> const & boxes) 
+{
 
-  }
+}
 */
 
 template<unsigned d, class T>
@@ -381,9 +379,9 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
-                                    const gsBasis<T> & other,
-                                    gsMatrix<unsigned> & bndThis,
-                                    gsMatrix<unsigned> & bndOther) const
+                                   const gsBasis<T> & other,
+                                   gsMatrix<unsigned> & bndThis,
+                                   gsMatrix<unsigned> & bndOther) const
 {
     if( const Self_t * _other = dynamic_cast<const Self_t*>( &other) )
     {
@@ -491,18 +489,17 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     // Clear previous entries
     cmat.clear();
 
-    gsVector<knotIter,d> starts, ends, curr;
+    gsCombinat<gsVector<knotIter,d> > it; // vector of iterators. one iterator for each dimension
+    gsVector<knotIter,d> ends, curr;
     gsVector<unsigned,d> ind;
 
     for(unsigned i = 0; i != d; ++i)
     {
-        // beginning of the iteration in i-th direction
-        starts[i] = m_bases[level]->knots(i).begin() ; 
-        // end of the iteration in i-th direction
-        ends [i]  = curr[i]+m_bases[level]->size(i)-1; 
+        curr[i] = m_bases[level]->knots(i).begin() ; // beginning of the iteration in i-th direction
+        ends[i] = curr[i]+m_bases[level]->size(i)-1; // end of the iteration in i-th direction
     }
 
-    curr = starts;// start iteration
+    it.first_lattice_point(curr, ends, curr); // This is crucial, since it sets the ends to be the ends of iteration.
     do
     {
         for(unsigned i = 0; i != d; ++i)
@@ -515,7 +512,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
         if ( m_tree.query3(low, upp,level) == level) //if active
             cmat.push_unsorted( m_bases[level]->index( ind ) );
     }
-    while (  nextCubePoint(curr,starts,ends) ); // while there are some functions (i.e., some combinations of iterators) left
+    while (  it.next_lattice_point(curr) ); // while there are some functions (i.e., some combinations of iterators) left
 
     cmat.sort();
 }
@@ -590,7 +587,7 @@ void gsHTensorBasis<d,T>::setActive()
     {
         m_xmatrix[lvl].sort();
         m_xmatrix[lvl].erase( std::unique( m_xmatrix[lvl].begin(), m_xmatrix[lvl].end() ),
-                              m_xmatrix[lvl].end() );
+                      m_xmatrix[lvl].end() );
     }
 }
 
@@ -600,24 +597,22 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
     x_matrix_lvl.resize(level+1);
 
     gsVector<unsigned,d> low, upp;
-    for(int j =0; j < level+1; j++)
-    {
+    for(int j =0; j < level+1; j++){
+
         // Clear previous entries
         x_matrix_lvl[j].clear();
 
-        // vectors of iterators. one iterator for each dimension
-        gsVector<typename gsCompactKnotVector<T>::const_iterator,d> starts, ends, curr;
+        gsCombinat<gsVector<typename gsCompactKnotVector<T>::const_iterator,d> > it; // vector of iterators. one iterator for each dimension
+        gsVector<typename gsCompactKnotVector<T>::const_iterator,d> ends, curr;
         gsVector<unsigned,d> ind;
 
         for(unsigned i = 0; i != d; ++i)
         {
-            // beginning of the iteration in i-th direction
-            starts[i] = m_bases[j]->knots(i).begin() ;
-            // end of the iteration in i-th direction
-            ends[i] = curr[i]+m_bases[j]->component(i).size()-1;
+            curr[i] = m_bases[j]->knots(i).begin() ; // beginning of the iteration in i-th direction
+            ends[i] = curr[i]+m_bases[j]->component(i).size()-1; // end of the iteration in i-th direction
         }
 
-        curr = starts; // set start of iteration
+        it.first_lattice_point(curr, ends, curr); // This is crucial, since it sets the ends to be the ends of iteration.
         do
         {
             for(unsigned i = 0; i != d; ++i)
@@ -626,20 +621,17 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
                 upp[i]  = (curr[i]+m_deg[i]+1).span; // upper right corner of the span of the function
                 ind[i]  = curr[i].index; // index of the function in the matrix
             }
-            if(j < level)
-            {
-                if ( m_tree.query3(low, upp,j) == j)
-                { //if active
+            if(j < level){
+                if ( m_tree.query3(low, upp,j) == j){ //if active
                     x_matrix_lvl[j].push_unsorted( m_bases[j]->index( ind ) );
                 }
             }else{
-                if ( m_tree.query3(low, upp,j) >= j)
-                { //if active
+                if ( m_tree.query3(low, upp,j) >= j){ //if active
                     x_matrix_lvl[j].push_unsorted( m_bases[j]->index( ind ) );
                 }
             }
         }
-        while ( nextCubePoint(curr,starts,ends) ); // while there are some functions (i.e., some combinations of iterators) left
+        while (  it.next_lattice_point(curr) ); // while there are some functions (i.e., some combinations of iterators) left
 
         x_matrix_lvl[j].sort();
     }
@@ -776,7 +768,7 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
     for (std::size_t i = 0; i != m_xmatrix.size(); i++)
     {
         m_xmatrix_offset.push_back(
-            m_xmatrix_offset.back() + m_xmatrix[i].size() );
+                    m_xmatrix_offset.back() + m_xmatrix[i].size() );
     }
 }
 
@@ -789,7 +781,7 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
     for ( int i = 0; i < extraLevels; ++i )
     {
         gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >
-            * next_basis = m_bases.back()->clone();
+                * next_basis = m_bases.back()->clone();
         next_basis->uniformRefine(1);
         m_bases.push_back (next_basis); //note: m_bases is mutable
     }
@@ -814,12 +806,12 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
         for ( unsigned i = 0; i!=d; ++i )
         {
             cw_bases[i]=
-                new gsBSplineBasis<T, gsCompactKnotVector<T> >(
-                    gsCompactKnotVector<T>( tb1->knots(i)) );
+                    new gsBSplineBasis<T, gsCompactKnotVector<T> >(
+                        gsCompactKnotVector<T>( tb1->knots(i)) );
         }
 
         m_bases.push_back(
-            new gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >(cw_bases) );
+                    new gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >(cw_bases) );
     }
     else if ( const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * tb2 =
               dynamic_cast<const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >*>(&tbasis) )
@@ -843,7 +835,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
     for(unsigned int i = 1; i <= 2; i++)
     {
         gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >
-            * next_basis = m_bases[i-1]->clone();
+                * next_basis = m_bases[i-1]->clone();
         next_basis->uniformRefine(1);
         m_bases.push_back( next_basis );
     }
@@ -854,7 +846,8 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
 {
-    point low, upp, cur;
+    point low, upp;
+    gsCombinat<gsVector<unsigned,d> > c;
     const int maxLevel = m_tree.getMaxInsLevel();
 
     std::vector<std::vector<unsigned> > temp_output;//collects the outputs
@@ -865,9 +858,9 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
 
     for(index_t p = 0; p < u.cols(); p++) //for all input points
     {
-        const gsMatrix<T> & currPoint = u.col(p);
+        const gsMatrix<T> & curr = u.col(p);
         for(unsigned i = 0; i != d; ++i)
-            low[i] = m_bases[maxLevel]->knots(i).Uniquefindspan( currPoint(i,0) );
+            low[i] = m_bases[maxLevel]->knots(i).Uniquefindspan( curr(i,0) );
 
         // Identify the level of the point
         const int lvl = m_tree.levelOf(low, maxLevel);
@@ -875,30 +868,29 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
         for(int i = 0; i <= lvl; i++)
         {
             /*
-              m_bases[i]->active_into(currPoint, activesLvl);
-              
-              std::set_intersection(m_xmatrix[i].begin(), m_xmatrix[i].end(),
-              activesLvl.data(), activesLvl.data() + activesLvl.size(),
-              std::back_inserter( temp_output[p] ) );
-              +++ Renumbering to H-basis indexing
-            // */                                 
-
+            m_bases[i]->active_into(curr, activesLvl);
+            
+            std::set_intersection(m_xmatrix[i].begin(), m_xmatrix[i].end(),
+                                  activesLvl.data(), activesLvl.data() + activesLvl.size(),
+                                  std::back_inserter( temp_output[p] ) );
+            +++ Renumbering to H-basis indexing
+// */                                 
             // /*
-            m_bases[i]->active_cwise(currPoint, low, upp);
-            cur = low;
+            m_bases[i]->active_cwise(curr, low, upp);
+            c.first_lattice_point(low,upp,low);
             do
             {
                 CMatrix::const_iterator it =
-                    m_xmatrix[i].find_it_or_fail( m_bases[i]->index(cur) );
+                        m_xmatrix[i].find_it_or_fail( m_bases[i]->index(low) );
 
                 if( it != m_xmatrix[i].end() )// if index is found
                 {
                     temp_output[p].push_back(
-                        this->m_xmatrix_offset[i] + (it - m_xmatrix[i].begin() )
-                        );
+                                this->m_xmatrix_offset[i] + (it - m_xmatrix[i].begin() )
+                                );
                 }
             }
-            while( nextCubePoint(cur,low,upp) );
+            while( c.next_lattice_point(low) );
             //*/
         }
 
@@ -909,11 +901,11 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
 
     result.resize(sz, u.cols() );
     for(index_t i = 0; i < result.cols(); i++)
-    {
-        result.col(i).topRows(temp_output[i].size())
-            = gsAsConstVector<unsigned>(temp_output[i]);
-        result.col(i).bottomRows(sz-temp_output[i].size()).setZero();
-    }
+        for (index_t j = 0; j < result.rows();j++)
+            if (std::size_t(j) < temp_output[i].size())
+                result(j,i) = temp_output[i][j];
+            else
+                result(j,i) = 0 ;
 }
 
 template<unsigned d, class T>
@@ -937,8 +929,7 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::allBoundary( ) const
 }
 
 template<unsigned d, class T>
-gsMatrix<unsigned> *  gsHTensorBasis<d,T>::
-boundaryOffset(boxSide const & s,unsigned offset) const
+gsMatrix<unsigned> *  gsHTensorBasis<d,T>::boundaryOffset(boxSide const & s,unsigned offset) const
 { 
     //get information on the side
     int k   = s.direction();
@@ -960,8 +951,8 @@ boundaryOffset(boxSide const & s,unsigned offset) const
             ind = this->m_bases[i]->tensorIndex(*it);
             if ( ind[k]==r )
                 temp.push_back(
-                    m_xmatrix_offset[i] +  (it - m_xmatrix[i].begin() )
-                    );
+                            m_xmatrix_offset[i] +  (it - m_xmatrix[i].begin() )
+                            );
         }
     }
     return makeMatrix<unsigned>(temp.begin(),temp.size(),1 ).release();
@@ -1023,7 +1014,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
 
     // Keep consistency of finest level
     gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * last_basis
-        = m_bases.back()->clone();
+            = m_bases.back()->clone();
     last_basis->uniformRefine(1,mul);
     m_bases.push_back( last_basis );
 
