@@ -41,17 +41,25 @@ template<unsigned d, class T, class KnotVectorType> class gsTensorNurbs;
 
 template<unsigned d, class T, class KnotVectorType>
 class gsTensorNurbs : 
-    public gsGenericGeometry< gsTensorNurbsBasis<d,T,KnotVectorType>  > 
+    public gsGenericGeometry< gsTensorNurbsBasis<d,T,KnotVectorType> > 
 {
 
 public: 
-  typedef T Scalar_t;
-  typedef gsTensorBSplineBasis<d,T,KnotVectorType> TBasis;      // underlying tensor basis
-  typedef gsTensorNurbsBasis<d,T,KnotVectorType>   Basis;       // rational version of tensor basis (basis for this geometry)
-  typedef gsGenericGeometry<Basis> Base;
+    typedef gsGenericGeometry< gsTensorNurbsBasis<d,T,KnotVectorType>  > Base;
 
-  /// Shared pointer for gsTensorNurbs
-  typedef memory::shared_ptr< gsTensorNurbs<d,T,KnotVectorType> > Ptr;
+    typedef T Scalar_t;
+    
+    typedef gsTensorBSplineBasis<d,T,KnotVectorType> TBasis;      // underlying tensor basis
+    
+    /// Family type
+    typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
+    
+    // rational version of tensor basis (basis for this geometry)
+    //typedef typename gsTraits<Family_t,d>::RationalBasisType Basis;
+    typedef gsTensorNurbsBasis<d,T,KnotVectorType>   Basis;
+    
+    /// Shared pointer for gsTensorNurbs
+    typedef memory::shared_ptr< gsTensorNurbs<d,T,KnotVectorType> > Ptr;
 
 public:
 

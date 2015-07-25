@@ -33,7 +33,7 @@ Object * getTensorBasisFromXml ( gsXmlNode * node)
                  gsXml<typename Object::CoordinateBasis>::type().c_str() ) ) // to do in derived
     {
         bb.push_back( gsXml<typename Object::CoordinateBasis>::get(node) );
-        return new Object( bb );
+        return Object::New( bb );
     }
 
     const unsigned d = Object::Dim;
@@ -53,7 +53,7 @@ Object * getTensorBasisFromXml ( gsXmlNode * node)
     }
 
     //gsDebugVar( bb.size() );
-    return new Object( bb );
+    return Object::New( bb );
 }
 
 template<class Object>

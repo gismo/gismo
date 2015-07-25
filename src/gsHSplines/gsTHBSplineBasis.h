@@ -39,6 +39,8 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
     
+    typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
+    
     typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
 
     typedef typename

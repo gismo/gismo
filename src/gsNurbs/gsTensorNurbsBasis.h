@@ -47,6 +47,7 @@ public:
     typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
 
     /// Source basis type
+    //typedef typename gsTraits<Family_t,d>::TensorBasisType Src_t;
     typedef gsTensorBSplineBasis<d,T,KnotVectorType> Src_t;
 
     /// Coordinate basis type
@@ -59,6 +60,7 @@ public:
     typedef gsTensorNurbs<d, T> GeometryType;
 
     /// Associated Boundary basis type
+    //typedef typename gsTraits<Family_t,d>::RationalBoundaryType BoundaryBasisType;
     typedef typename gsTraits<Basis_t,d>::RationalBoundaryType BoundaryBasisType;
 
     typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;

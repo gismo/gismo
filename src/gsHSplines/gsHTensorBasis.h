@@ -94,7 +94,7 @@ public:
 
     typedef gsSortedVector< unsigned > CMatrix; // charMatrix_
 
-    typedef gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > tensorBasis;
+    typedef typename gsTraits<gsBSplineBasis<T,gsCompactKnotVector<T> >,d>::TensorBasisType tensorBasis;
 
     /// Dimension of the parameter domain
     static const int Dim = d;
@@ -227,8 +227,7 @@ public:
         m_xmatrix        = o.m_xmatrix;
         
         m_bases.reserve( m_bases.size() );
-        for( typename std::vector<gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >* > 
-                 ::const_iterator it = 
+        for( typename std::vector<tensorBasis*>::const_iterator it = 
                  o.m_bases.begin(); it != o.m_bases.end(); ++it )
             m_bases.push_back( (*it)->clone() );
     }
@@ -311,7 +310,7 @@ public:
     /// \brief Returns the tensor B-spline space of all levels.
     /// \return
     ///
-    const std::vector<gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >* >& getBases() const
+    const std::vector<tensorBasis*>& getBases() const
     {
         return m_bases;
     }

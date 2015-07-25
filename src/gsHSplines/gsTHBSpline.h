@@ -41,6 +41,9 @@ class gsTHBSpline : public gsGenericGeometry<gsTHBSplineBasis<d,T> >
 {
 public:
     typedef gsTHBSplineBasis<d,T> Basis;
+
+    typedef typename Basis::tensorBasis tensorBasis;
+
     typedef gsGenericGeometry< gsTHBSplineBasis<d,T> > Base;
 
     /// Shared pointer for gsHBSpline

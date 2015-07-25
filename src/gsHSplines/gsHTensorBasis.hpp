@@ -788,8 +788,7 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 
     for ( int i = 0; i < extraLevels; ++i )
     {
-        gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >
-            * next_basis = m_bases.back()->clone();
+        tensorBasis * next_basis = m_bases.back()->clone();
         next_basis->uniformRefine(1);
         m_bases.push_back (next_basis); //note: m_bases is mutable
     }
@@ -819,10 +818,10 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
         }
 
         m_bases.push_back(
-            new gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >(cw_bases) );
+            tensorBasis::New(cw_bases) );
     }
-    else if ( const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * tb2 =
-              dynamic_cast<const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >*>(&tbasis) )
+    else if ( const tensorBasis * tb2 =
+              dynamic_cast<const tensorBasis*>(&tbasis) )
     {
         m_bases.push_back( tb2->clone() );
     }
@@ -842,7 +841,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
     m_bases.reserve(3);
     for(unsigned int i = 1; i <= 2; i++)
     {
-        gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> >
+        tensorBasis
             * next_basis = m_bases[i-1]->clone();
         next_basis->uniformRefine(1);
         m_bases.push_back( next_basis );
@@ -1022,7 +1021,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
     m_bases.erase( m_bases.begin() );
 
     // Keep consistency of finest level
-    gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > * last_basis
+    tensorBasis * last_basis
         = m_bases.back()->clone();
     last_basis->uniformRefine(1,mul);
     m_bases.push_back( last_basis );

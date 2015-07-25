@@ -528,6 +528,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMa
 template<unsigned d, class T>
 gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMatrix<T>& geom_coef) const
 {
+    GISMO_ASSERT(d==2,"Dim must be 2 for now");
     gsMultiPatch<T> result;
     gsMatrix<unsigned> b1;
     gsMatrix<unsigned> b2;
@@ -547,8 +548,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
         p1(0) = b1(i,0); p1(1) = b1(i,1); p2(0) = b2(i,0); p2(1) = b2(i,1);
 
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);
-        gsTensorBSplineBasis<d, T, gsCompactKnotVector<T> > tbasis(cku, ckv);
-        gsTensorBSpline<d, T, gsCompactKnotVector<T> > *tbspline = new gsTensorBSpline<d, T, gsCompactKnotVector<T> >(tbasis, give(temp1));
+        gsTensorBSplineBasis<2, T, gsCompactKnotVector<T> > tbasis(cku, ckv);
+        gsTensorBSpline<2, T, gsCompactKnotVector<T> > *tbspline = new gsTensorBSpline<2, T, gsCompactKnotVector<T> >(tbasis, give(temp1));
         result.addPatch(tbspline);
 
     }
@@ -924,8 +925,8 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
         p1(0) = b1(i,0); p1(1) = b1(i,1); p2(0) = b2(i,0); p2(1) = b2(i,1);
 
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);
-        gsTensorBSplineBasis<d, T, gsCompactKnotVector<T> > tbasis(cku, ckv);
-        gsTensorBSpline<d, T, gsCompactKnotVector<T> > *tbspline = new gsTensorBSpline<d, T, gsCompactKnotVector<T> >(tbasis, give(temp1));
+        gsTensorBSplineBasis<2, T, gsCompactKnotVector<T> > tbasis(cku, ckv);
+        gsTensorBSpline<2, T, gsCompactKnotVector<T> > *tbspline = new gsTensorBSpline<2, T, gsCompactKnotVector<T> >(tbasis, give(temp1));
         result.addPatch(tbspline);
 
     }
@@ -1387,7 +1388,7 @@ gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<unsigned>& boundingBox
     gsCompactKnotVector<T> kv1(this->m_deg[1], knots1.begin() + lowIndex1, 
 			       knots1.begin() + uppIndex1 + this->m_deg[1] + 2);
 
-    gsTensorBSplineBasis<d, T, gsCompactKnotVector<T> > basis(kv0, kv1);
+    tensorBasis basis(kv0, kv1);
     return gsTensorBSpline<d, T, gsCompactKnotVector<T> > (basis, newCoefs);
 }
 

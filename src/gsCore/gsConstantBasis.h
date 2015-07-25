@@ -52,6 +52,11 @@ public:
       
     gsConstantBasis * clone() const { return new gsConstantBasis(*this); }
 
+    static gsConstantBasis * New(std::vector<gsBasis<T>*> & bb )
+    { 
+        return new gsConstantBasis(bb);
+    }
+
 public:
 
     int dim() const   { return m_domainDim; }

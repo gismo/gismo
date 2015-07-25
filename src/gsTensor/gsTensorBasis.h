@@ -565,7 +565,7 @@ template<typename T> class gsTensorBasis<0,T>
  *
  *  \ingroup Tensor
  */
-/*
+ /*
 template<class T>
 class gsTensorBasis<1,T> : public gsBasis<T>
 {
@@ -656,8 +656,6 @@ public:
 
     int dim() const { return 1;}
 
-    int size() const { return -1;}
-    
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
     /// \param low lower left corner of the box
@@ -702,9 +700,10 @@ public:
     int size(int k) const 
     {
         GISMO_ASSERT(k==0, "Invalid direction");
-        return size();
+        return this->size();
     }
-    
+    using Base::size;
+
     /// The number of basis functions in the direction of the k-th parameter component
     void size_cwise(gsVector<index_t,1> & result) const 
     { result[0] = size(); }
@@ -778,7 +777,7 @@ public:
         return *m_bases; 
     }
     
-protected:
+private:
     
     /// Keeps the address of the object (for compatibility with d>1)
     Basis_t * m_bases;

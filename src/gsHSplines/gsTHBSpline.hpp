@@ -44,6 +44,8 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVecto
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {
+    GISMO_ASSERT(d==2,"Not implemented for d!=2");
+
     // Construct a box covering the whole parameter domain.
     const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
     std::vector<unsigned> wholeDomainAsBox(2*d+1,0);
@@ -55,10 +57,10 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
     // Refine the whole domain to the finest level present there.
     refineElements( wholeDomainAsBox );
 
-    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > &tpBasis = 
+    tensorBasis & tpBasis = 
         this->basis().tensorLevel(this->basis().maxLevel());
 
-    gsTensorBSplineBasis<d,T> newtpBasis(tpBasis.knots(0), tpBasis.knots(1)); 
+    gsTensorBSplineBasis<2,T> newtpBasis(tpBasis.knots(0), tpBasis.knots(1)); 
     // makeGeometry returns an abstract class, so we need to cast to the particular.
     gsTensorBSpline<d,T> *newGeo = 
         static_cast< gsTensorBSpline<d,T> *>(newtpBasis.makeGeometry(this->coefs()));

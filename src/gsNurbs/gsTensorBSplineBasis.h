@@ -165,12 +165,18 @@ public:
     { 
         std::vector<gsBasis<T>*> rr;
         this->getComponentsForSide(s,rr);
-        return new BoundaryBasisType(rr);
+        return BoundaryBasisType::New(rr);
     }
     
     gsTensorBSplineBasis * clone() const
     { return new gsTensorBSplineBasis(*this); }
     
+    static Self_t * New(std::vector<gsBasis<T>*> & bb )
+    { return new Self_t(bb); }
+
+    static Self_t * New(std::vector<Family_t*> & bb )
+    { return new Self_t(bb); }
+
 public:
 
     KnotVectorType & knots (int i)
