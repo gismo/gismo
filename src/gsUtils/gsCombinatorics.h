@@ -23,7 +23,7 @@ namespace gismo
  * Remember that factorial grow too fast and only n! with n<=13 can be
  * stored in a 32bit that is an unsigned.
  * \ingroup combinatorics
-*/
+ */
 // \ingroup Utils
 // could also be in Utils, but doxygen allows only one group for free functions
 inline unsigned factorial( unsigned n)
@@ -40,27 +40,27 @@ inline unsigned factorial( unsigned n)
 // combinatorics
 inline unsigned long long factorial( unsigned long long n)
 {
-    static const unsigned long long precomputed[]= {1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600, 6227020800, 87178291200, 1307674368000, 20922789888000, 355687428096000, 6402373705728000, 121645100408832000, 2432902008176640000 };
-    return precomputed[n];
+static const unsigned long long precomputed[]= {1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600, 6227020800, 87178291200, 1307674368000, 20922789888000, 355687428096000, 6402373705728000, 121645100408832000, 2432902008176640000 };
+return precomputed[n];
 }
 */
 
 /**
- \brief Computes the binomial expansion coefficient binomial(n,r)
+   \brief Computes the binomial expansion coefficient binomial(n,r)
 
-  The binomial coefficient indexed by \a n and \a k is is the
-  coefficient of the $x^k$ term in the polynomial expansion of the
-  binomial power $(1 + x)^n$.
+   The binomial coefficient indexed by \a n and \a k is is the
+   coefficient of the $x^k$ term in the polynomial expansion of the
+   binomial power $(1 + x)^n$.
 
-  This functions computes a single binomial coefficient, if many
-  binomial coefficients with fixed \a n are needed then it is probably
-  faster use the function binomial_into.  This function uses a loop
-  implementation.  
+   This functions computes a single binomial coefficient, if many
+   binomial coefficients with fixed \a n are needed then it is probably
+   faster use the function binomial_into.  This function uses a loop
+   implementation.  
 
-  \param n binomial power
-  \param r term of the binomial expansion
+   \param n binomial power
+   \param r term of the binomial expansion
 
-  \ingroup combinatorics
+   \ingroup combinatorics
 */
 // \ingroup Utils
 // Note: could also be in Utils, but doxygen allows only one group for free functions
@@ -105,8 +105,7 @@ inline void binomial_into( unsigned n, gsVector<unsigned>& v)
 }
 
 // Used by binomial<n,r>()
-template<int n, int r>
-class binomialT
+template<int n, int r> class binomialT
 {public:enum { value= binomialT<n-1,r-1>::value+binomialT<n-1,r>::value};};
 template<int n> class binomialT<n,n> {public:enum { value= 1};};
 template<>      class binomialT<0,0> {public:enum { value= 1};};
@@ -124,168 +123,32 @@ template<int n> class binomialT<n,0> {public:enum { value= 1};};
 template <unsigned n, unsigned r>
 inline unsigned binomial () {return binomialT<n,r>::value;}
 
-
-/** 
-    @brief Class for combinatorics. Generates ...
-    
-    \ingroup Utils
-    \ingroup combinatorics
-*/
-
-template<class Vect = gsVector<unsigned> >
-class gsCombinat
+/// \brief Computes the first \a r-combination of {0,..,n-1}
+/// \ingroup combinatorics
+template<class Vec>
+void firstCombination(const unsigned n, const unsigned r, Vec & res)
 {
-
-public:
-
-  /// Default empty constructor
-  gsCombinat() : n(0) { }
-
-  //destructor
-  ~gsCombinat() { } 
-
-public:
-
-  /// Construct first combination of {0,..,n-1}
-  void first_combination ( unsigned const& n_, unsigned const & r, Vect & res)
-  {
-    n=n_;
     if (r<=n) 
-      res= Vect::LinSpaced(r,0,r-1);
+        res= Vec::LinSpaced(r,0,r-1);
     else
-      std::cerr << "gsCombinat: r>n combination requested. r="<< r<<", n="<< n<<"\n";
-  }
-  
-  /// Construct NEXT combination of {0,..,n-1}
-  /// first_combination should have been called before this
-  bool next_combination ( Vect & v)
-  {
-    int r= v.rows() ;            
-    if  (v == Vect::LinSpaced(r,n-r,n-1)) return false;
-    int i=r-1;
-    while (v[i] == n-r+i ) --i;
-    v[i] += 1;
-    for (int j=i+1; j<r; ++j)
-      v[j] = v[i] +j-i;
-    return true;
-  }
-
-  /// Number of combinations (binomial coefficient)
-  /// first_combination should have been called before this
-  unsigned combinations(unsigned const & r)
-  {
-    return binomial(n,r);
-  }
-  
-  /// Number of combinations (binomial coefficient)
-  static unsigned combinations( unsigned const& n_, unsigned const & r_)
-  {
-    return binomial(n_,r_);
-  }
-  
-
-  /// Number of permutations (binomial coefficient)
-  /// first_permutation should have been called before this
-  unsigned permutations()
-  {
-    return factorial(n);
-  }
-
-  /// Number of permutations (binomial coefficient)
-  static unsigned permutations( unsigned const& n_ )
-  {
-    //return exp(lgamma(n + 1));// computation using the Gamma function
-    return factorial(n_);
-  }
-  
-  // To do:
-  //first_sum
-  //next_sum
-  //sums
-  
-  // To do:
-  //first_binary
-  //next_binary
-  //binaries
-  
-  
-  /// Construct first lattice point in the rectangle [l, u]
-  void first_lattice_point( const Vect& l, const Vect& u, Vect & res)
-  { 
-    GISMO_ASSERT(l.size()==u.size(), 
-		 "Lattice endpoints have invalid dimension");
-    low=l; upp=u; res=low;     
+        std::cerr << "Error: r>n combination requested. r="<< r<<", n="<< n<<"\n";
 }
   
-  /// Construct first lattice point in the rectangle [0, u]
-  void first_lattice_point( const Vect& u, Vect & res)
-  { low.setZero(u.size()); upp=u; res=low; }
-  
-  /// Next lattice point in [low,upp] after v in lexicographic order
-  /// first_lattice_point should have been called before
-  inline bool next_lattice_point( Vect & v) const 
-  {
-    if ( v==upp ) return false;// finished
-    //note: May exist a better implementation with: std::mismatch,  std::pair
-
-    int i(0);
-    while ( v[i] == upp[i]) { ++i; }
-    v[i]+=1;
-
-    --i;
-    while ( i>=0 )
-      {
-        v[i]= low[i];
-        --i;
-      }
-    
+/// \brief Computes the next r-combination of {0,..,n-1}, where r = \a v.size().
+/// The input \a v is expected to be a valid combination
+/// \ingroup combinatorics
+template<class Vec>
+bool nextCombination (Vec & v, const unsigned n)
+{
+    const index_t r = v.rows() ;            
+    if  (v == Vec::LinSpaced(r,n-r,n-1)) return false;
+    int i = r-1;
+    while (v[i] == n-r+i) --i;
+    v[i] += 1;
+    for (index_t j=i+1; j<r; ++j)
+        v[j] = v[i] +j-i;
     return true;
-  }
-
-  /// Number of lattice points in [low,upp]
-  /// first_lattice_point should have been called before
-  unsigned lattice_points() const 
-  {
-    return (upp-low+Vect::Ones(upp.size()) ).prod();
-  }
-  
-  /// Number of lattice points in [l,u]
-  static unsigned lattice_points( const Vect& l, const Vect& u)
-  {
-    return (u-l+Vect::Ones(u.size()) ).prod();
-  }
-
-
-  /// Construct first composition
-  void first_composition( const Vect& u, Vect & res)
-  {  
-
-  }
-  
-  /// Next composition
-  /// first_composition should have been called before
-  inline bool nextComposition( Vect & v) const 
-  {
-
-    return true;
-  }
-
-  /// Number of compositions
-  /// first_lattice_point should have been called before
-  unsigned numCompositions() const 
-  {
-      return 1;
-  }
-
-  
-// Data members
-private:
-  Vect low, upp;
-
-  unsigned n;
-
-}; // class gsCombinat
-
+}
 
 /**
  * \brief changes current to the first permutation of 0 ... size(current)-1
@@ -325,7 +188,7 @@ bool nextLexicographic(Vec& cur, const Vec& size)
 
     for (index_t i = 0; i < d; ++i)
     {
-                                    // increase current dimension
+        // increase current dimension
         if (++cur[i] == size[i])    // current dimension exhausted ?
         {
             if (i == d - 1)         // was it the last one?
@@ -350,11 +213,11 @@ bool nextLexicographic(Vec& cur, const Vec& start, const Vec& end)
 {
     const index_t d = cur.size();
     GISMO_ASSERT( d == start.size() && d == end.size(),
-        "Vector sizes don't match in nextLexicographic");
+                  "Vector sizes don't match in nextLexicographic");
 
     for (index_t i = 0; i < d; ++i)
     {
-                                    // increase current dimension
+        // increase current dimension
         if (++cur[i] == end[i])     // current dimension exhausted ?
         {
             if (i == d - 1)         // was it the last one?
@@ -378,7 +241,7 @@ bool nextCubeVertex(Vec& cur, const Vec& start, const Vec& end)
 {
     const int d = cur.size();
     GISMO_ASSERT( d == start.size() && d == end.size(),
-        "Vector sizes don't match in nextCubeVertex");
+                  "Vector sizes don't match in nextCubeVertex");
 
     for (int i = 0; i != d; ++i)
     {
@@ -402,7 +265,7 @@ bool nextCubeVertex(Vec& cur, const Vec& end)
 {
     const int d = cur.size();
     GISMO_ASSERT( d == end.size(),
-        "Vector sizes don't match in nextCubeVertex");
+                  "Vector sizes don't match in nextCubeVertex");
 
     for (int i = 0; i != d; ++i)
     {
@@ -420,9 +283,8 @@ bool nextCubeVertex(Vec& cur, const Vec& end)
 /// \brief Iterate in lexigographic order through the vertices of the
 /// unit cube. Updates \a cur with the lexicographically next vertex
 /// and returns true if another point is available. This is equivalent
-/// to iterating over all possible binary sequences of length \em
-/// cur.size(). The input \a cur is expected to contain only zeros and
-/// ones.
+/// to iterating over all possible binary sequences of length \em cur.size().
+/// The input \a cur is expected to contain only zeros and ones (or true/false).
 /// \ingroup combinatorics
 template<class Vec>
 bool nextCubeVertex(Vec& cur)
@@ -454,7 +316,7 @@ bool nextCubePoint(Vec& cur, const Vec& end)
 {
     const int d = cur.size();
     GISMO_ASSERT(d == static_cast<int>(end.size()),
-        "Vector sizes don't match in nextCubePoint");
+                 "Vector sizes don't match in nextCubePoint");
 
     for (int i = 0; i != d; ++i)
     {
@@ -480,7 +342,7 @@ bool nextCubePoint(Vec& cur, const Vec& start, const Vec& end)
     const int d = cur.size();
     GISMO_ASSERT( d == static_cast<int>(start.size()) &&
                   d == static_cast<int>(end.size()),
-        "Vector sizes don't match in nextCubePoint");
+                  "Vector sizes don't match in nextCubePoint");
 
     for (int i = 0; i != d; ++i)
     {
@@ -505,7 +367,7 @@ bool nextCubeBoundary(Vec& cur, const Vec& start, const Vec& end)
 {
     const int d = cur.size();
     GISMO_ASSERT( d == start.size() && d == end.size(),
-        "Vector sizes don't match in nextCubeBoundary");
+                  "Vector sizes don't match in nextCubeBoundary");
 
     for (int i = 0; i != d; ++i)
     {        
@@ -545,7 +407,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end, Vec & of
 {
     const int d = cur.size();
     GISMO_ASSERT( d == start.size() && d == end.size(),
-        "Vector sizes don't match in nextCubeBoundaryOffset");
+                  "Vector sizes don't match in nextCubeBoundaryOffset");
 
     for (int i = 0; i != d; ++i)
     {        
@@ -587,7 +449,7 @@ bool nextCubeBoundaryOffset(Vec& cur, const Vec& start, const Vec& end,
 {
     const int d = cur.size();
     GISMO_ASSERT( d == start.size() && d == end.size(),
-        "Vector sizes don't match in nextCubeBoundaryOffset");
+                  "Vector sizes don't match in nextCubeBoundaryOffset");
 
     for (int i = 0; i != d; ++i)
     {        
@@ -695,27 +557,28 @@ bool nextCubeElement(Vec & cur, const index_t k)
 /// \param[in] perm the permutation of the cube directions (0,..,d-1)
 /// \param[out] result A permutation of the vertices (0,..,2^d-1)
 /// \ingroup combinatorics
-template <typename T, int d>
+template <typename Z, int d>
 void cubeIsometry( const gsVector<bool,d>    & flip,
                    const gsVector<index_t,d> & perm, 
-                   gsVector<T> & result)
+                   gsVector<Z> & result)
 {
-    const int dd = flip.size(); //binary sequence of length d
+    const index_t dd = flip.size(); //binary sequence of length d
     GISMO_ASSERT( dd == perm.size(), "Dimensions do not match in cubeIsometry");
     GISMO_ASSERT( perm.sum() == dd*(dd-1)/2, "Error in the permutation: "<< perm.transpose());
 
-    gsVector<index_t,d> pstr(dd), v = gsVector<index_t,d>::Zero(dd);
-    for (int k=0; k!=dd; ++k)
+    gsVector<index_t,d> pstr(dd);
+    for (index_t k=0; k!=dd; ++k)
         pstr[k] = (1<<perm[k]);
 
     result.resize(1<<dd);
     index_t r = 0;
+    gsVector<bool,d> v = gsVector<bool,d>::Zero(dd);
     do
     {
-        T & c = result[r++];
+        Z & c = result[r++];
         c = 0;
-        for (int k=0; k!=dd; ++k)
-            c += ( flip[perm[k]] == static_cast<bool>(v[k]) ) * pstr[k];
+        for (index_t k=0; k!=dd; ++k)
+            c += ( flip[perm[k]] == v[k] ) * pstr[k];
     }
     while (nextCubeVertex(v));
 }
@@ -768,9 +631,9 @@ struct lex_less
 {
     bool operator() (const gsVector<Z,d> & lhs, const gsVector<Z,d> & rhs) const
     {
-	unsigned i = 0;
-	while( (i<d) && (lhs[i] == rhs[i++]) ) ;
-	return ( --i==d ? false : lhs[i] < rhs[i] );
+        unsigned i = 0;
+        while( (i<d) && (lhs[i] == rhs[i++]) ) ;
+        return ( --i==d ? false : lhs[i] < rhs[i] );
     }
 };
 
