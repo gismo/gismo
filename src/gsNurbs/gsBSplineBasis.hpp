@@ -67,7 +67,7 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::matchWith(const boundaryInterface
                                                  gsMatrix<unsigned> & bndThis,
                                                  gsMatrix<unsigned> & bndOther) const
 {
-    if ( const Self_t * _other = dynamic_cast<const Self_t*>(&other) )
+    if ( const TensorSelf_t * _other = dynamic_cast<const TensorSelf_t*>(&other) )
     {
         bndThis .resize(1,1);
         bndOther.resize(1,1);
