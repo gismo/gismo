@@ -14,7 +14,9 @@
 
 #pragma once 
 
-#include <gsNurbs/gsBSplineBasis.h>
+#include <gsCore/gsConstantFunction.h>
+
+#include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsBoehm.h>
 
 #include <gsUtils/gsMultiIndexIterators.h>
@@ -24,7 +26,6 @@
 
 #include <gsTensor/gsTensorTools.h>
 
-#include <gsCore/gsConstantFunction.h>
 
 namespace gismo
 {
@@ -32,67 +33,68 @@ namespace gismo
 template<unsigned d, class T, class KnotVectorType>
 gsTensorBSpline<d,T,KnotVectorType>::gsTensorBSpline(gsMatrix<T> const & corner, KnotVectorType const& KV1, KnotVectorType const & KV2)
 {
-  assert(d==2);
+    GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
 
-  gsBSplineBasis<T,KnotVectorType> * Bu= new gsBSplineBasis<T,KnotVectorType>(KV1);
-  gsBSplineBasis<T,KnotVectorType> * Bv= new gsBSplineBasis<T,KnotVectorType>(KV2);
-  Basis *tbasis = new Basis(Bu,Bv) ;//d==2
+    std::vector<Family_t*> cbases;
+    cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
+    cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+    Basis * tbasis = Basis::New(cbases); //d==2
 
-  int n1 = KV1.size() - KV1.degree() - 1;
-  int n2 = KV2.size() - KV2.degree() - 1;
-
-  GISMO_ASSERT( (corner.rows()==4) && (corner.cols()==3),
-           "gsTensorBSpline: Please make sure that the size of *corner* is 4-by-3");
-
-  gsMatrix<T> pcp (n1*n2, 3);
-  // set up CPs on boundary first. The inner CPs on each boundary curve are
-  // uniformly linear dependent on the two corner CPs
-  int j=0; // boundary v=0
-  for (int i=0; i<=n1-1; i++)
-  {
-      for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
-      {
-          pcp(i+j*n1,xi)=corner(0,xi) + i/((T)(n1-1))*( corner(1,xi) - corner(0,xi) );
-      }
-  }
-  j=n2-1; // boundary v=1
-  for (int i=0; i<=n1-1; i++)
-  {
-      for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
-      {
-          pcp(i+j*n1,xi)=corner(3,xi) + i/((T)(n1-1))*( corner(2,xi) - corner(3,xi) );
-      }
-  }
-  int i=0; // boundary u=0;
-  for (j=0; j<=n2-1; j++)
-  {
-      for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
-      {
-          pcp(i+j*n1,xi)=corner(0,xi) + j/((T)(n2-1))*( corner(3,xi) - corner(0,xi) );
-      }
-  }
-  i=n1-1; // boundary u=1;
-  for (j=0; j<=n2-1; j++)
-  {
-      for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
-      {
-          pcp(i+j*n1,xi)=corner(1,xi) + j/((T)(n2-1))*( corner(2,xi) - corner(1,xi) );
-      }
-  }
-  // uniformly linear dependent in horizontal direction
-  for (j=1; j<=n2-2; j++)
-  {
-    for (i=1; i<=n1-2; i++)
+    int n1 = KV1.size() - KV1.degree() - 1;
+    int n2 = KV2.size() - KV2.degree() - 1;
+    
+    GISMO_ASSERT( (corner.rows()==4) && (corner.cols()==3),
+                  "gsTensorBSpline: Please make sure that the size of *corner* is 4-by-3");
+    
+    gsMatrix<T> pcp (n1*n2, 3);
+    // set up CPs on boundary first. The inner CPs on each boundary curve are
+    // uniformly linear dependent on the two corner CPs
+    int j=0; // boundary v=0
+    for (int i=0; i<=n1-1; i++)
     {
-      for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
-      {
-          pcp(i+j*n1,xi)=pcp(0+j*n1,xi) + i/((T)(n1-1))*( pcp(n1-1+j*n1,xi)-pcp(0+j*n1,xi) );
-      }
+        for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+        {
+            pcp(i+j*n1,xi)=corner(0,xi) + i/((T)(n1-1))*( corner(1,xi) - corner(0,xi) );
+        }
     }
-  }
+    j=n2-1; // boundary v=1
+    for (int i=0; i<=n1-1; i++)
+    {
+        for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+        {
+            pcp(i+j*n1,xi)=corner(3,xi) + i/((T)(n1-1))*( corner(2,xi) - corner(3,xi) );
+        }
+    }
+    int i=0; // boundary u=0;
+    for (j=0; j<=n2-1; j++)
+    {
+        for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+        {
+            pcp(i+j*n1,xi)=corner(0,xi) + j/((T)(n2-1))*( corner(3,xi) - corner(0,xi) );
+        }
+    }
+    i=n1-1; // boundary u=1;
+    for (j=0; j<=n2-1; j++)
+    {
+        for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+        {
+            pcp(i+j*n1,xi)=corner(1,xi) + j/((T)(n2-1))*( corner(2,xi) - corner(1,xi) );
+        }
+    }
+    // uniformly linear dependent in horizontal direction
+    for (j=1; j<=n2-2; j++)
+    {
+        for (i=1; i<=n1-2; i++)
+        {
+            for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+            {
+                pcp(i+j*n1,xi)=pcp(0+j*n1,xi) + i/((T)(n1-1))*( pcp(n1-1+j*n1,xi)-pcp(0+j*n1,xi) );
+            }
+        }
+    }
 
-  this->m_basis = tbasis;
-  this->m_coefs.swap( pcp );
+    this->m_basis = tbasis;
+    this->m_coefs.swap( pcp );
 }
 
 // todo: move to hpp
@@ -132,8 +134,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
             gsVector<index_t,d> intStrides;
             this->basis().stride_cwise(intStrides);
             gsTensorBoehm<T,KnotVectorType,gsMatrix<T> >(
-                        clone->basis().knots(dir_fixed),clone->coefs(),par,dir_fixed,
-                        intStrides.template cast<unsigned>(), degree-mult,true);
+                clone->basis().knots(dir_fixed),clone->coefs(),par,dir_fixed,
+                intStrides.template cast<unsigned>(), degree-mult,true);
 
             // extract right ceofficients
             constructCoefsForSlice(dir_fixed,par,*clone,coefs);
@@ -193,7 +195,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::findCorner(const gsMatrix<T> & v,
                                                      T tol)
 {
     gsVector<index_t,d> str , // Tensor strides
-                        vupp; // Furthest corner
+        vupp; // Furthest corner
 
     this->basis().stride_cwise(str);
     this->basis().size_cwise(vupp);

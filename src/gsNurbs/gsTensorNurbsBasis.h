@@ -14,9 +14,8 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-
-
 #include <gsCore/gsRationalBasis.h>
+
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo
@@ -34,21 +33,20 @@ namespace gismo
     \ingroup basis
     \ingroup Nurbs
 */
-  
 template<unsigned d, class T, class KnotVectorType >
-class gsTensorNurbsBasis : public gsRationalBasis< gsTensorBSplineBasis<d,T,KnotVectorType> >  
+class gsTensorNurbsBasis : 
+        public gsRationalBasis<typename gsBSplineTraits<d,T,KnotVectorType>::Basis>
 {
 
 public: 
     /// Base type
-    typedef gsRationalBasis< gsTensorBSplineBasis<d,T,KnotVectorType> > Base;
+    typedef gsRationalBasis<typename gsBSplineTraits<d,T,KnotVectorType>::Basis> Base;
 
     /// Family type
     typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
 
     /// Source basis type
-    //typedef typename gsTraits<Family_t,d>::TensorBasisType Src_t;
-    typedef gsTensorBSplineBasis<d,T,KnotVectorType> Src_t;
+    typedef typename gsBSplineTraits<d,T,KnotVectorType>::Basis Src_t;
 
     /// Coordinate basis type
     typedef typename Src_t::Basis_t Basis_t;
@@ -57,11 +55,10 @@ public:
     typedef T Scalar_t;
 
     /// Associated geometry type
-    typedef gsTensorNurbs<d, T> GeometryType;
+    typedef typename gsBSplineTraits<d,T,KnotVectorType>::RatGeometry GeometryType;
 
     /// Associated Boundary basis type
-    //typedef typename gsTraits<Family_t,d>::RationalBoundaryType BoundaryBasisType;
-    typedef typename gsTraits<Basis_t,d>::RationalBoundaryType BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T,KnotVectorType>::RatBasis BoundaryBasisType;
 
     typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;
     
@@ -101,6 +98,11 @@ public:
 
     gsTensorNurbsBasis(const gsTensorNurbsBasis & o) : Base(o) { }
 
+    /// Clone function. Used to make a copy of the object
+    gsTensorNurbsBasis * clone() const
+    { return new gsTensorNurbsBasis(*this); }
+  
+    GISMO_MAKE_GEOMETRY_NEW
 
 public:
 
@@ -114,11 +116,22 @@ public:
         return os;
     }
 
-    /// Clone function. Used to make a copy of the object
-    gsTensorNurbsBasis * clone() const
-    { return new gsTensorNurbsBasis(*this); }
-  
-    GISMO_MAKE_GEOMETRY_NEW
+    BoundaryBasisType * boundaryBasis(boxSide const & s ) const   
+    { 
+        typename Src_t::BoundaryBasisType * bb = m_src->boundaryBasis(s);
+        gsMatrix<unsigned> * ind = m_src->boundary(s);
+        
+        gsMatrix<T> ww( ind->size(),1);
+        for ( index_t i=0; i<ind->size(); ++i)
+            ww(i,0) = m_weights( (*ind)(i,0), 0);
+        
+        delete ind;
+        return new BoundaryBasisType(bb, give(ww));// note: constructor consumes the pointer
+    }
+
+protected:
+    using Base::m_src;
+    using Base::m_weights;
 
 };
 

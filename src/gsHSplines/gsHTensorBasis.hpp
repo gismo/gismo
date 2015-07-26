@@ -1162,7 +1162,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );
 
-    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > T_0_copy = this->tensorLevel(0);
+    tensorBasis T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
     transfer.resize( m_bases.size()-1 );
     for(size_t i = 0; i < m_bases.size()-1; i++)
@@ -1200,7 +1200,7 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> 
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );
 
-    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > T_0_copy = this->tensorLevel(0);
+    tensorBasis T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
     transfer.resize( m_bases.size()-1 );
     for(size_t i = 0; i < m_bases.size()-1; i++)

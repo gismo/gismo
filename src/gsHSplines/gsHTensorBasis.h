@@ -94,7 +94,11 @@ public:
 
     typedef gsSortedVector< unsigned > CMatrix; // charMatrix_
 
-    typedef typename gsTraits<gsBSplineBasis<T,gsCompactKnotVector<T> >,d>::TensorBasisType tensorBasis;
+    typedef gsCompactKnotVector<T> KnotVectorType;
+
+    typedef typename gsBSplineTraits<d-1,T,KnotVectorType>::Basis BoundaryBasisType;
+
+    typedef typename gsBSplineTraits<d,T,KnotVectorType>::Basis tensorBasis;
 
     /// Dimension of the parameter domain
     static const int Dim = d;

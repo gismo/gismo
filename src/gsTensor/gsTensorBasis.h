@@ -15,7 +15,6 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsBoundary.h>
-#include <gsUtils/gsSortedVector.h>
 
 namespace gismo
 {
@@ -276,32 +275,7 @@ public:
     }
 
     // Look at gsBasis class for documentation 
-    void refineElements(std::vector<unsigned> const & elements)
-    {
-        gsSortedVector<unsigned> elIndices[d];
-        unsigned tmp, mm;
-
-        // Get coordinate wise element indices
-        for ( typename  std::vector<unsigned>::const_iterator
-              it = elements.begin(); it != elements.end(); ++it )
-        {
-            mm = *it;
-            for (unsigned i = 0; i<d; ++i )
-            {
-                const unsigned nEl_i = m_bases[i]->numElements();
-                tmp = mm % nEl_i;
-                mm = (mm - tmp) / nEl_i;
-                elIndices[i].push_sorted_unique(tmp);
-            }
-        }
-
-        // Refine in each coordinate
-        // Element refinement propagates along knot-lines
-        for (unsigned i = 0; i<d; ++i )
-        {
-            m_bases[i]->refineElements(elIndices[i]);
-        }
-    }
+    void refineElements(std::vector<unsigned> const & elements);
 
     /// Refine the basis uniformly and perform knot refinement for the
     /// given coefficient vector
@@ -565,7 +539,6 @@ template<typename T> class gsTensorBasis<0,T>
  *
  *  \ingroup Tensor
  */
- /*
 template<class T>
 class gsTensorBasis<1,T> : public gsBasis<T>
 {
@@ -783,10 +756,9 @@ private:
     Basis_t * m_bases;
     
 }; // class gsTensorBasis<1,T>
-//*/
 
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
+/**********************************************/
+/**********************************************/
 
 template<unsigned d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) const

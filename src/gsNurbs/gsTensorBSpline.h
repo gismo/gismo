@@ -60,16 +60,17 @@ namespace gismo
 */
 template<unsigned d, class T, class KnotVectorType>
 class gsTensorBSpline : 
-        public gsGenericGeometry< gsTensorBSplineBasis<d,T,KnotVectorType> >
+        public gsGenericGeometry<typename gsBSplineTraits<d,T,KnotVectorType>::Basis>
 {
-
 public: 
     typedef T Scalar_t;
 
-    typedef gsTensorBSplineBasis<d,T,KnotVectorType> Basis;
+    //typedef gsTensorBSplineBasis<d,T,KnotVectorType> Basis;
+    typedef typename gsBSplineTraits<d,T,KnotVectorType>::Basis Basis;
 
-    typedef gsGenericGeometry< Basis > Base;
-    
+    //typedef gsGenericGeometry< Basis > Base;
+    typedef gsGenericGeometry<typename gsBSplineTraits<d,T,KnotVectorType>::Basis> Base;
+
     /// Family type
     typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
 
@@ -77,10 +78,10 @@ public:
     typedef memory::shared_ptr< gsTensorBSpline<d,T,KnotVectorType> > Ptr;
 
     /// Associated Boundary basis type
-    typedef typename gsTraits<Family_t,d>::TBoundaryGeometryType BoundaryGeometryType;
+    typedef typename gsBSplineTraits<d-1,T,KnotVectorType>::Geometry BoundaryGeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsTraits<Family_t,d>::TensorBoundaryType BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T,KnotVectorType>::Basis BoundaryBasisType;
 
 public:
 
@@ -106,10 +107,11 @@ public:
                      gsMovable< gsMatrix<T> > tcoefs)
     {
         GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
-        
-        gsBSplineBasis<T,KnotVectorType> * Bu= new gsBSplineBasis<T,KnotVectorType>(KV1);
-        gsBSplineBasis<T,KnotVectorType> * Bv= new gsBSplineBasis<T,KnotVectorType>(KV2);
-        Basis *tbasis = new Basis(Bu,Bv) ;//d==2
+     
+        std::vector<Family_t*> cbases;
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+        Basis * tbasis = Basis::New(cbases); //d==2
         
         GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
                      "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
@@ -124,10 +126,11 @@ public:
                      const gsMatrix<T> & tcoefs)
     {
         GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
-        
-        gsBSplineBasis<T,KnotVectorType> * Bu= new gsBSplineBasis<T,KnotVectorType>(KV1);
-        gsBSplineBasis<T,KnotVectorType> * Bv= new gsBSplineBasis<T,KnotVectorType>(KV2);
-        Basis *tbasis = new Basis(Bu,Bv) ;//d==2
+
+        std::vector<Family_t*> cbases;
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+        Basis * tbasis = Basis::New(cbases); //d==2
         
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
                      "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
@@ -150,12 +153,13 @@ public:
                      gsMovable< gsMatrix<T> > tcoefs )
     {
         GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 3 knot-vectors.");
-        
-        gsBSplineBasis<T,KnotVectorType> * Bu= new gsBSplineBasis<T,KnotVectorType>(KV1);
-        gsBSplineBasis<T,KnotVectorType> * Bv= new gsBSplineBasis<T,KnotVectorType>(KV2);
-        gsBSplineBasis<T,KnotVectorType> * Bw= new gsBSplineBasis<T,KnotVectorType>(KV3);
-        Basis *tbasis = new Basis(Bu,Bv,Bw) ;//d==3
-    
+
+        std::vector<Family_t*> cbases;
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV3) );
+        Basis * tbasis = Basis::New(cbases); //d==3
+            
         GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
                      "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
         
@@ -172,10 +176,11 @@ public:
     {
         GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 3 knot-vectors.");
 
-        gsBSplineBasis<T,KnotVectorType> * Bu= new gsBSplineBasis<T,KnotVectorType>(KV1);
-        gsBSplineBasis<T,KnotVectorType> * Bv= new gsBSplineBasis<T,KnotVectorType>(KV2);
-        gsBSplineBasis<T,KnotVectorType> * Bw= new gsBSplineBasis<T,KnotVectorType>(KV3);
-        Basis *tbasis = new Basis(Bu,Bv,Bw) ;//d==3
+        std::vector<Family_t*> cbases;
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV3) );
+        Basis * tbasis = Basis::New(cbases); //d==3
         
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
                      "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
@@ -192,13 +197,15 @@ public:
                      gsMovable< gsMatrix<T> > tcoefs )
     {
         GISMO_ASSERT(d==4, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 4 knot-vectors.");
-        
-        gsBSplineBasis<T,KnotVectorType> * Bu= new gsBSplineBasis<T,KnotVectorType>(KV1);
-        gsBSplineBasis<T,KnotVectorType> * Bv= new gsBSplineBasis<T,KnotVectorType>(KV2);
-        gsBSplineBasis<T,KnotVectorType> * Bw= new gsBSplineBasis<T,KnotVectorType>(KV3);
-        gsBSplineBasis<T,KnotVectorType> * Bz= new gsBSplineBasis<T,KnotVectorType>(KV4);        
-        Basis *tbasis = new Basis(Bu,Bv,Bw,Bz) ;//d==4
-    
+
+        std::vector<Family_t*> cbases;
+        cbases.reserve(4);
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV3) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV4) );
+        Basis * tbasis = Basis::New(cbases); //d==4
+            
         GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
                      "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
         
@@ -216,11 +223,13 @@ public:
     {
         GISMO_ASSERT(d==4, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 4 knot-vectors.");
 
-        gsBSplineBasis<T,KnotVectorType> * Bu= new gsBSplineBasis<T,KnotVectorType>(KV1);
-        gsBSplineBasis<T,KnotVectorType> * Bv= new gsBSplineBasis<T,KnotVectorType>(KV2);
-        gsBSplineBasis<T,KnotVectorType> * Bw= new gsBSplineBasis<T,KnotVectorType>(KV3);
-        gsBSplineBasis<T,KnotVectorType> * Bz= new gsBSplineBasis<T,KnotVectorType>(KV4);
-        Basis *tbasis = new Basis(Bu,Bv,Bw,Bz) ;//d==3
+        std::vector<Family_t*> cbases;
+        cbases.reserve(4);
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV3) );
+        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV4) );
+        Basis * tbasis = Basis::New(cbases); //d==4
         
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
                      "Coefficient matrix for the tensor B-spline does not have the expected number of control points (rows)." );
@@ -228,8 +237,6 @@ public:
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
     }
-
-    
     
     gsTensorBSpline( gsTensorBSpline const & o ) : Base(o) { }
     
@@ -237,7 +244,7 @@ public:
     gsTensorBSpline * clone() const
     { 
         return new gsTensorBSpline( *this );
-    };
+    }
 
     // Destructor
     ~gsTensorBSpline() { }

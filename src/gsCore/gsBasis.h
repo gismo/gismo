@@ -25,13 +25,6 @@
 namespace gismo
 {
 
-/// Traits class to define basis-related types.
-template <class Basis_t, unsigned d = 1>
-struct gsTraits
-{
-// To do: add here generic gsBasis traits..
-};
-
 /** 
     \brief A basis represents a family of \em scalar basis functions
     defined over a common parameter domain.

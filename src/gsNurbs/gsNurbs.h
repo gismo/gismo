@@ -83,14 +83,14 @@ public:
     
     /// Construct B-Spline by a knot vector, degree and projective coefficient matrix
     gsNurbs( const gsKnotVector<T>& KV, const gsMatrix<T> * pcoefs ) :
-        Base( new Basis(KV, & pcoefs->rightCols(1) ), pcoefs) {
+        Base( new Basis(KV, & pcoefs->rightCols(1) ), pcoefs) 
+    {
       // TO DO: divide pcoefs by the weights
-    };
+    }
     
     /// Clone function. Used to make a copy of the (derived) geometry
     virtual gsNurbs * clone() const
-        { return new gsNurbs(*this); };
-
+        { return new gsNurbs(*this); }
 
 public:
 

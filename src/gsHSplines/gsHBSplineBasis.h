@@ -40,6 +40,8 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
 
+    typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
+
     typedef typename 
     choose<d==1, gsConstantBasis<T>, gsHBSplineBasis<d-1,T>
            >::type BoundaryBasisType;

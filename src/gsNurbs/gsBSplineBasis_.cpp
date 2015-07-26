@@ -8,6 +8,9 @@
 
 namespace gismo
 {
+    CLASS_TEMPLATE_INST gsTensorBSplineBasis<1, real_t, gsKnotVector<real_t> >;
+    CLASS_TEMPLATE_INST gsTensorBSplineBasis<1, real_t, gsCompactKnotVector<real_t> >;
+
     CLASS_TEMPLATE_INST gsBSplineBasis<real_t, gsKnotVector<real_t>        >;
     CLASS_TEMPLATE_INST gsBSplineBasis<real_t, gsCompactKnotVector<real_t> >;
 

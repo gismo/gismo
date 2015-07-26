@@ -494,7 +494,8 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches(const gsMatrix<T>& geom_coef, gsMa
     gsCompactKnotVector<T> cku, ckv;
     nvertices.resize(nboxes,this->dim());
 
-    for (int i = 0; i < nboxes; i++){
+    for (int i = 0; i < nboxes; i++)
+    {
         p1(0) = b1(i,0); p1(1) = b1(i,1); p2(0) = b2(i,0); p2(1) = b2(i,1);
 
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);        
@@ -1605,18 +1606,18 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<real_t> 
 // --------------------------------------------------------------------------------
 
 template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){
+void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
+{
     //std::vector< gsMatrix<T> > result;
     result.clear();
     gsVector<unsigned> level;
     gsMatrix<unsigned> b1, b2;//boxes in highes level numbering
     this->m_tree.getBoxesInLevelIndex(b1,b2,level);//return boxes in level indices
-    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > T_0_copy = this->tensorLevel(0);
+    tensorBasis T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
     transfer.resize(this->maxLevel() );
     for(unsigned i = 0; i < this->maxLevel();i++)
     {
-
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
         std::vector<std::vector<T> > knots;
         for(unsigned int dim = 0; dim < d; dim++)
@@ -1657,7 +1658,8 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){
 
 //todo remove
 template<unsigned d, class T>
-gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer){
+gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer)
+{
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
     for(unsigned int i =0; i< old.size();i++)
@@ -1699,7 +1701,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<
                     //TODO test if the basis function is in the basis
                     if(transferDense(k, old_ij) != 0)//if the coefficient is non zero we find the coresponding function in n
                     {
-                        if(n[i+1].bContains(k)){
+                        if(n[i+1].bContains(k))
+                        {
                             const int pos = start_lv_i + n[i].size() + std::distance(n[i+1].begin(), n[i+1].find_it_or_fail(k));
                             result(pos,glob_numb) = transferDense(k, old_ij);
                         }
@@ -1780,7 +1783,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
             t[old_ij] = 1;
             for(unsigned int k = i; k < n.size();k++){
                 //std::cout<<"i: "<<i<<" j: "<<j<<" k: "<<k<<std::endl;
-                if(k > i){
+                if(k > i)
+                {
                     //compare with old matrix
                     for(int l = 0 ; l < t.size();l++){
                         if(t[l]!=0)
@@ -1792,7 +1796,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
                     }
                 }
                 //std::cout<<"ksize:"<<n[k].size()<<std::endl;
-                if(k!=0){
+                if(k!=0)
+                {
                     start_lv_i = 0;
                     for(unsigned int l =0; l < k-1; l++)
                     {
@@ -1800,10 +1805,12 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
                     }
                 }
                 //for all non zero in t comapre with new
-                for(int l = 0 ; l < t.size();l++){
+                for(int l = 0 ; l < t.size();l++)
+                {
                     //std::cout<<"i: "<<i<<" j: "<<j<<" l: "<<l<<"nsize"<<n.size()<<std::endl;
                     if(t[l]!=0)
-                        if(n[k].bContains(l)){
+                        if(n[k].bContains(l))
+                        {
                             //std::cout<<"j: "<<j<<" "<<"oldij"<<old_ij<<" "<<"l:"<<l<<"    ";
                             //std::cout<<"k "<<k<<" j: "<<j<<" "<<"globnumb "<<glob_numb<<" oldij "<<old_ij<<" "<<"l:"<<l<<" "<<t[l]<<"  ";
                             int p = 0;
@@ -2030,7 +2037,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                         }
                         if(n[coeffs[0].lvl+1].bContains(k.row()))
                         {
-                            if(p){
+                            if(p)
+                            {
                                 const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
 
                                 result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
@@ -2143,7 +2151,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                         //std::cout<<"k.row "<<k.row()<<std::endl;
                         if(n[coeffs[0].lvl+1].bContains(k.row()))
                         {
-                            if(p){
+                            if(p)
+                            {
                                 const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
                                 //T ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
                                 //std::cout<<"pos "<<pos<<" oldij "<<old_ij<<" "<< "coeflvl "<<coeffs[0].lvl<<" ";

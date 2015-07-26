@@ -59,15 +59,6 @@ public:
     /// Associated source basis type
     typedef SrcT SourceBasis;
 
-    /// Family type
-    typedef typename SrcT::Family_t Family_t;
-    
-    /// Associated geometry type
-    typedef typename gsTraits<Family_t,Dim>::RationalGeometryType GeometryType;
-
-    /// Associated Boundary basis type
-    typedef typename gsTraits<Family_t,Dim>::RationalBoundaryType BoundaryBasisType;
-
 public:
 
     /// Default empty constructor
@@ -91,14 +82,16 @@ public:
     gsRationalBasis(SrcT * basis, const gsMatrix<T> & w)
         : m_src (basis), m_weights(w)
     { 
-        GISMO_ASSERT(m_weights.rows() == m_src->size(), "Invalid basis/weights");
+        GISMO_ASSERT(m_weights.rows() == m_src->size(),
+                     "Invalid basis/weights ("<<m_weights.rows()<<"/"<<m_src->size());
     }
     
     /// Construct a rational counterpart of basis
     gsRationalBasis(SrcT * basis, gsMovable< gsMatrix<T> > w)
         : m_src(basis), m_weights(w)
     { 
-        GISMO_ASSERT(m_weights.rows() == m_src->size(), "Invalid basis/weights");
+        GISMO_ASSERT(m_weights.rows() == m_src->size(), 
+                     "Invalid basis/weights ("<<m_weights.rows()<<"/"<<m_src->size());
     }
     
     /// Copy Constructor
@@ -235,6 +228,7 @@ public:
         std::swap(*m_src, tmp.basis() );
     }
     
+    /*
     gsBasis<T> * boundaryBasis(boxSide const & s ) const   
     { 
         typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
@@ -245,8 +239,10 @@ public:
             ww(i,0) = m_weights( (*ind)(i,0), 0);
         
         delete ind;
-        return new BoundaryBasisType(bb, give(ww));
+        return new BoundaryBasisType(*safe(bb), give(ww));
+        return 0;
     }
+    */
 
     gsDomain<T> * domain() const { return m_src->domain(); }
 

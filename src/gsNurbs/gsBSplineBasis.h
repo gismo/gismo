@@ -1,6 +1,6 @@
 /** @file gsBSplineBasis.h
 
-    @brief Represents a B-spline basis with one parameter
+    @brief Provides declaration of BSplineBasis class
 
     This file is part of the G+Smo library. 
 
@@ -11,45 +11,47 @@
     Author(s): A. Mantzaflaris, D. Mokris
 */
 
+
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsConstantBasis.h>
 
+#include <gsTensor/gsTensorBasis.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
-
+ 
 #include <gsNurbs/gsBSplineAlgorithms.h>
+
+
 
 namespace gismo
 {
 
 /// \brief Traits for BSplineBasis in more dimensions
 template<unsigned d, class T, class KnotVectorType>
-struct gsTraits<gsBSplineBasis<T, KnotVectorType>,d>
+struct gsBSplineTraits
 {
-    typedef gsBSplineBasis<T, KnotVectorType> Family_t;
-    typedef gsBSpline<T,KnotVectorType>       GeometryType;
-    typedef gsConstantBasis<T>                BoundaryBasisType;
-
-    typedef gsTensorBSplineBasis<d,T,KnotVectorType>  TensorBasisType;
-    typedef gsTensorBSpline<d, T, KnotVectorType>     TensorGeometryType;
-    typedef typename 
-    choose<d==1, gsConstantBasis<T>, gsTensorBSplineBasis<d-1,T,KnotVectorType>
-           >::type TensorBoundaryType;
-    typedef typename 
-    choose<d==1, gsConstantFunction<T>, gsTensorBSpline<d-1,T,KnotVectorType>
-           >::type TBoundaryGeometryType;
-
-    typedef typename 
-    choose<d==1, gsNurbsBasis<T,KnotVectorType>, gsTensorNurbsBasis<d, T, KnotVectorType>
-           >::type RationalBasisType;
-    typedef typename 
-    choose<d==1, gsNurbs<T,KnotVectorType>, gsTensorNurbs<d, T, KnotVectorType>
-           >::type RationalGeometryType;
-    typedef typename 
-    choose<d==1, gsConstantBasis<T>       , gsTensorNurbsBasis<d-1, T, KnotVectorType>
-           >::type RationalBoundaryType;
+    typedef gsTensorBSplineBasis<d,T,KnotVectorType> Basis;
+    typedef gsTensorNurbsBasis<d,T,KnotVectorType>   RatBasis;
+    typedef gsTensorBSpline<d,T,KnotVectorType>      Geometry;
+    typedef gsTensorNurbs<d,T,KnotVectorType>        RatGeometry;
+};
+template<class T, class KnotVectorType>
+struct gsBSplineTraits<1,T,KnotVectorType>
+{
+    typedef gsBSplineBasis<T,KnotVectorType>         Basis;
+    typedef gsNurbsBasis<T,KnotVectorType>           RatBasis;
+    typedef gsBSpline<T,KnotVectorType>              Geometry;
+    typedef gsNurbs<T,KnotVectorType>                RatGeometry;
+};
+template<class T, class KnotVectorType>
+struct gsBSplineTraits<0,T,KnotVectorType>
+{
+    typedef gsConstantBasis<T>                       Basis;
+    typedef gsConstantBasis<T>                       RatBasis;
+    typedef gsConstantFunction<T>                    Geometry;
+    typedef gsConstantFunction<T>                    RatGeometry;
 };
 
 /** \brief
@@ -59,42 +61,40 @@ struct gsTraits<gsBSplineBasis<T, KnotVectorType>,d>
     \tparam KnotVectorType the type of knot vector to use
 
     \ingroup basis
+    \ingroup Nurbs
 */
-
-template<class T, class KnotVectorType >
-class gsBSplineBasis : public gsBasis<T>
-//: public gsTensorBSplineBasis<1,T>
+template<class T, class KnotVectorType>
+class gsTensorBSplineBasis<1,T,KnotVectorType> : public gsTensorBasis<1,T>
 {
 public:
-    typedef gsBasis<T> Base;
+    typedef gsTensorBasis<1,T> Base;
 
     typedef gsBSplineBasis<T,KnotVectorType> Self_t;
 
-    /// This object identifies the family of B-spline bases
-    typedef Self_t Family_t;
+    typedef gsTensorBSplineBasis TensorSelf_t;
 
     /// Coefficient type
     typedef T Scalar_t;
 
     /// Associated geometry type
-    typedef typename gsTraits<Family_t,1>::GeometryType GeometryType;
+    typedef typename gsBSplineTraits<1,T,KnotVectorType>::Geometry GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsTraits<Family_t,1>::BoundaryBasisType BoundaryBasisType;
+    typedef typename gsBSplineTraits<0,T,KnotVectorType>::Basis BoundaryBasisType;
 
     /// Dimension of the parameter domain
     static const int Dim = 1;
 
-    /// Shared pointer for gsBSplineBasis
-    typedef memory::shared_ptr< gsBSplineBasis > Ptr;
+    /// Shared pointer for gsTensorBSplineBasis
+    typedef memory::shared_ptr< Self_t > Ptr;
 
     static Ptr makeShared ( const KnotVectorType & KV )
-    { return Ptr( new gsBSplineBasis(KV) ); }
+    { return Ptr( new Self_t(KV) ); }
   
 public:
 
     /// Default empty constructor
-    explicit gsBSplineBasis( bool periodic = false ) :
+    explicit gsTensorBSplineBasis( bool periodic = false ) :
     Base(), m_p(0), m_periodic(0)
     {
         m_knots.initClamped(0);
@@ -110,7 +110,7 @@ public:
 
 
     /// Construct BSpline basis of a knot vector
-    gsBSplineBasis( const KnotVectorType & KV, bool periodic = false) :
+    gsTensorBSplineBasis( const KnotVectorType & KV, bool periodic = false) :
     m_p(KV.degree()), m_knots(KV), m_periodic(0)
     { 
         if( periodic )
@@ -124,6 +124,11 @@ public:
 
     }
 
+    // For compatibility
+    gsTensorBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
+    { GISMO_ERROR("Invalid constructor."); }
+
+
     /// Construct a BSpline basis
     /// \param u0 starting parameter
     /// \param u1 end parameter parameter
@@ -131,7 +136,7 @@ public:
     /// \param degree degree of the spline space
     /// \param mult_interior multiplicity at the interior knots
     /// \param periodic specifies if basis is periodic or not
-    gsBSplineBasis(T u0, T u1, unsigned interior, 
+    gsTensorBSplineBasis(T u0, T u1, unsigned interior, 
                    int degree, unsigned mult_interior=1,
                    bool periodic = false ) :
     m_p(degree), 
@@ -150,28 +155,46 @@ public:
 
     
     /// Copy Constructor
-    gsBSplineBasis( const gsBSplineBasis & o)
+    gsTensorBSplineBasis( const gsTensorBSplineBasis & o)
     : m_p(o.m_p), m_knots( o.knots() ), m_periodic(o.m_periodic)
     {
 
     }
+
+    // Look at gsBasis class for a description
+    TensorSelf_t * clone() const = 0;
     
-    // gsBSplineBasis( const Base & o)
+    // gsTensorBSplineBasis( const Base & o)
     // { 
-    //     const gsBSplineBasis * a;
-    //     if ( ( a = dynamic_cast<const gsBSplineBasis *>( &o )) )
+    //     const gsTensorBSplineBasis * a;
+    //     if ( ( a = dynamic_cast<const gsTensorBSplineBasis *>( &o )) )
     //     {
     //         m_p        = a->degree() ; 
     //         m_knots    = KnotVectorType( a->knots() );
     //         m_periodic = a->m_periodic;
     //     }
     //     else
-    //         GISMO_ERROR("Cannot convert "<<o<<" to gsBSplineBasis\n");
+    //         GISMO_ERROR("Cannot convert "<<o<<" to gsTensorBSplineBasis\n");
     // }
+
+    static Self_t * New(std::vector<gsBasis<T>*> & bb )
+    { 
+        // to do: check cast to Familiy
+        return new Self_t(*static_cast<Self_t*>(bb.front()) ); 
+    }
+
+    static Self_t * New(std::vector<Self_t*> & bb )
+    { 
+        return new Self_t(bb.front());
+    }
+
+    operator Self_t &() { return static_cast<Self_t&>(*this);}
+
+    operator const Self_t &() const { return static_cast<const Self_t&>(*this);}
 
 public:
 
-    void swap(gsBSplineBasis& other)
+    void swap(gsTensorBSplineBasis& other)
     {
         std::swap(m_p, other.m_p);
         std::swap(m_periodic, other.m_periodic);
@@ -183,10 +206,11 @@ public:
 //////////////////////////////////////////////////
 
     // Look at gsBasis class for a description
-    int dim() const { return Dim; }
+    int size() const { return m_knots.size() - m_p - 1 - m_periodic; }
+    using Base::size;
 
     // Look at gsBasis class for a description
-    int size() const { return m_knots.size() - m_p - 1 - m_periodic; }
+    int dim() const { return Dim; }
     
     // Look at gsBasis class for a description
     int numElements() const { return m_knots.numKnotSpans(); }
@@ -197,11 +221,21 @@ public:
     // Same as gsBasis::elementIndex but argument is a value instead of a vector
     int elementIndex(T u ) const;
 
-    // Look at gsBasis class for a description
-    const gsBSplineBasis & component(unsigned i) const;
+    /// \brief Returns span (element) indices of the beginning and end
+    /// of the support of the i-th basis function.
+    void elementSupport_into(const unsigned & i,
+                             gsMatrix<unsigned,1,2>& result) const
+    {
+        gsMatrix<unsigned> tmp_vec;
+        m_knots.supportIndex_into(i, tmp_vec);
+        result = tmp_vec;
+    }
 
     // Look at gsBasis class for a description
-    gsBSplineBasis & component(unsigned i);
+    const TensorSelf_t & component(unsigned i) const {return *this;}
+
+    // Look at gsBasis class for a description
+    TensorSelf_t & component(unsigned i) {return *this;}
 
     /// Returns the anchors (greville points) of the basis
     void anchors_into(gsMatrix<T> & result) const 
@@ -272,9 +306,6 @@ public:
 
     // Look at gsBasis class for a description
     gsMatrix<T> * laplacian(const gsMatrix<T> & u ) const ;
-
-    // Look at gsBasis class for a description
-    gsBSplineBasis * clone() const;
 
     // Look at gsBasis class for a description
     gsBasis<T> * tensorize(const gsBasis<T> & other) const;
@@ -378,14 +409,21 @@ public:
     gsDomain<T> * domain() const { return const_cast<KnotVectorType *>(&m_knots); }
 
     /// Returns the knot vector of the basis
-    const KnotVectorType & knots () const { return m_knots;}
-    KnotVectorType & knots ()       { return m_knots;}
+    const KnotVectorType & knots (int i  = 0) const { return m_knots;}
+    KnotVectorType & knots (int i  = 0)             { return m_knots;}
 
     T knot(index_t const & i) const { return m_knots[i];}
 
     /// Inserts the knot \em knot in the underlying knot vector.
     void insertKnot(T knot, int mult=1)
     { m_knots.insert( knot, mult); }
+
+    // compatibility with tensor-bsplines
+    void insertKnots(const std::vector< std::vector<T> >& refineKnots)
+    {
+        GISMO_ASSERT( refineKnots.size() == 1, "refineKnots vector has wrong size" );
+        this->knots().insert(refineKnots.front());
+    }
 
     // Look at gsBasis class for a description
     void refineElements(std::vector<unsigned> const & elements)
@@ -405,8 +443,21 @@ public:
     /// refinement for the given coefficient matrix.
     void refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots);
 
+    // compatibility with tensor-bsplines
+    void refine_withCoefs(gsMatrix<T> & coefs, 
+                          const std::vector< std::vector<T> >& refineKnots)
+    {
+        refine_withCoefs(coefs,refineKnots.front() );
+    }
+
     /// Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots);
+
+    void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
+                             const std::vector<std::vector<T> >& knots)
+    {
+        GISMO_NO_IMPLEMENTATION
+    }
 
     /// \brief Increases the degree without adjusting the smoothness at inner
     /// knots, except from the knot values in \a knots (constrained
@@ -545,11 +596,6 @@ public:
                    gsMatrix<unsigned> & bndThis,
                    gsMatrix<unsigned> & bndOther) const;
 
-    /// Returns the size of the basis ignoring the bureaucratic way of
-    /// turning the basis into periodic.
-    int trueSize() const
-    { return size() + m_periodic; }
-
 private:
 
     /// Tries to convert the basis into periodic
@@ -574,6 +620,12 @@ public:
         return per_coefs;
     }
 
+    gsMatrix<T> perCoefs(const gsMatrix<T>& coefs, int dir) const
+    {
+        GISMO_ASSERT(dir==0, "Error");
+        return perCoefs(coefs);
+    }
+
     /// \brief Helper function for transforming periodic coefficients
     /// to full coefficients
     void expandCoefs(gsMatrix<T> & coefs) const
@@ -590,9 +642,14 @@ public:
         const index_t sz = coefs.rows();
         coefs.conservativeResize(sz-m_periodic, Eigen::NoChange);
     }
+
+    /// Returns the size of the basis ignoring the bureaucratic way of
+    /// turning the basis into periodic.
+    int trueSize() const
+    { return this->size() + m_periodic; }
  
 // Data members
-private:
+protected:
 
     /// Degree
     int m_p;
@@ -606,14 +663,76 @@ private:
     /*/// Multiplicity of the p+1st knot from the beginning and from the end.
       int m_bordKnotMulti;*/
 
-}; // class gsBSplineBasis
+}; // class gsTensorBSplineBasis<1>
+
+
+//Using C++11 alias:
+// template<class T, class KnotVectorType>
+// using gsBSplineBasis = gsTensorBSplineBasis<1,T,KnotVectorType>
+
+template<class T, class KnotVectorType>
+class gsBSplineBasis : public gsTensorBSplineBasis<1,T,KnotVectorType>
+{
+public:
+    typedef gsTensorBSplineBasis<1,T,KnotVectorType> Base;
+    typedef gsBSplineBasis<T,KnotVectorType> Self_t;
+
+public:
+    /// Default empty constructor
+    explicit gsBSplineBasis( bool periodic = false )
+    : Base(periodic)
+    { }
+
+
+    /// Construct BSpline basis of a knot vector
+    gsBSplineBasis( const KnotVectorType & KV, bool periodic = false)
+    : Base(KV,periodic)
+    { }
+
+    /// Construct a BSpline basis
+    /// \param u0 starting parameter
+    /// \param u1 end parameter parameter
+    /// \param interior number of interior knots
+    /// \param degree degree of the spline space
+    /// \param mult_interior multiplicity at the interior knots
+    /// \param periodic specifies if basis is periodic or not
+    gsBSplineBasis(T u0, T u1, unsigned interior, 
+                   int degree, unsigned mult_interior=1,
+                   bool periodic = false )
+    : Base(u0,01,interior,degree,mult_interior,periodic)
+    { }
+
+
+
+    // For compatibility
+    gsBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
+    {GISMO_ERROR("Cannot Construct BSplineBasis using 2 knot-vectors."); }
+
+    
+    /// Copy Constructor
+    gsBSplineBasis( const gsBSplineBasis & o)
+    : Base(o)
+    { }
+
+    // Look at gsBasis class for a description
+    gsBSplineBasis * clone() const;
+
+    // Look at gsBasis class for a description
+    Self_t & component(unsigned i);
+    
+    // Look at gsBasis class for a description
+    const Self_t & component(unsigned i) const;
+
+private:
+    using Base::m_p;
+    using Base::m_knots;
+    using Base::m_periodic;
+
+};
 
 
 } // namespace gismo
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 
 #ifndef GISMO_BUILD_LIB

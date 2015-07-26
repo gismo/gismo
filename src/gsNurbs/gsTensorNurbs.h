@@ -55,7 +55,6 @@ public:
     typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
     
     // rational version of tensor basis (basis for this geometry)
-    //typedef typename gsTraits<Family_t,d>::RationalBasisType Basis;
     typedef gsTensorNurbsBasis<d,T,KnotVectorType>   Basis;
     
     /// Shared pointer for gsTensorNurbs

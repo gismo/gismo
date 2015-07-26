@@ -60,10 +60,10 @@ public:
     typedef T Scalar_t;
 
     /// Associated Boundary basis type
-    typedef typename gsTraits<Family_t,d>::TensorGeometryType GeometryType;
+    typedef typename gsBSplineTraits<d,T,KnotVectorType>::Geometry GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsTraits<Family_t,d>::TensorBoundaryType BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T,KnotVectorType>::Basis BoundaryBasisType;
 
     typedef typename Base::iterator        iterator;
     typedef typename Base::const_iterator  const_iterator;
