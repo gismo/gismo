@@ -180,12 +180,12 @@ public:
     static Self_t * New(std::vector<gsBasis<T>*> & bb )
     { 
         // to do: check cast to Familiy
-        return new Self_t(*static_cast<Self_t*>(bb.front()) ); 
+        return new Self_t(*static_cast<Self_t*>(bb.front())); 
     }
 
     static Self_t * New(std::vector<Self_t*> & bb )
     { 
-        return new Self_t(bb.front());
+        return new Self_t(*bb.front());
     }
 
     operator Self_t &() { return static_cast<Self_t&>(*this);}
