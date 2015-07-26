@@ -473,7 +473,7 @@ public:
     /// \param i number of k-refinement steps to perform
     ///
     /// \remarks Not tested yet!
-    void refine_k(const Self_t & other, int const & i = 1)
+    void refine_k(const TensorSelf_t & other, int const & i = 1)
     { 
         GISMO_ASSERT( m_p >= other.m_p, "Degree of other knot-vector should be lower.");
         //for (typename std::vector<T>::iterator it = 
@@ -724,7 +724,8 @@ public:
     // Look at gsBasis class for a description
     const Self_t & component(unsigned i) const;
 
-protected:
+private:
+
     using Base::m_p;
     using Base::m_knots;
     using Base::m_periodic;
