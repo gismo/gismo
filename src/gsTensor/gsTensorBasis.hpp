@@ -14,12 +14,13 @@
 #pragma once
 
 #include <gsTensor/gsTensorTools.h>
-
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
 
 #include <gsCore/gsBoundary.h>
 #include <gsUtils/gsMesh/gsMesh.h>
+//#include <gsUtils/gsSortedVector.h>
+
 
 #if defined __INTEL_COMPILER
 #pragma warning (disable : 175 ) /* disable subscript out of range warning */
@@ -776,6 +777,35 @@ void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u,
         r+= stride;
     } while (nextLexicographic(v, size));
 }
+
+template<unsigned d, class T>
+void gsTensorBasis<d,T>::refineElements(std::vector<unsigned> const & elements)
+{
+    gsSortedVector<unsigned> elIndices[d];
+    unsigned tmp, mm;
+    
+    // Get coordinate wise element indices
+    for ( typename  std::vector<unsigned>::const_iterator
+              it = elements.begin(); it != elements.end(); ++it )
+    {
+        mm = *it;
+            for (unsigned i = 0; i<d; ++i )
+            {
+                const unsigned nEl_i = m_bases[i]->numElements();
+                tmp = mm % nEl_i;
+                mm = (mm - tmp) / nEl_i;
+                elIndices[i].push_sorted_unique(tmp);
+            }
+    }
+    
+    // Refine in each coordinate
+    // Element refinement propagates along knot-lines
+    for (unsigned i = 0; i<d; ++i )
+    {
+        m_bases[i]->refineElements(elIndices[i]);
+    }
+}
+
 
 template<unsigned d, class T>
 void gsTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
