@@ -481,7 +481,8 @@ public:
         //    GISMO_ASSERT( has(*it), "Knot "<< *it<<" is not in the knot vector.");
 
         // grab unique knots
-        std::vector<T> knots = other.m_knots.unique();
+        const std::vector<T> knots = other.m_knots.unique();
+
         // Increase the degree without adjusting any knot
         m_p += i; 
         m_knots.set_degree(m_p);
@@ -723,7 +724,7 @@ public:
     // Look at gsBasis class for a description
     const Self_t & component(unsigned i) const;
 
-private:
+protected:
     using Base::m_p;
     using Base::m_knots;
     using Base::m_periodic;

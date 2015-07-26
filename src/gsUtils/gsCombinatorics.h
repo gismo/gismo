@@ -306,6 +306,25 @@ bool nextCubeVertex(Vec& cur)
     return false;
 }
 
+// Specialization for booleans
+template<unsigned _Rows>
+inline bool nextCubeVertex(gsVector<bool,_Rows> & cur)
+{
+    const index_t d = cur.size();
+
+    for (index_t i = 0; i != d; ++i)
+    {
+        if ( cur[i] == 0 )
+        {
+            cur[i] = true;
+            return true;
+        }
+        else
+            cur[i] = false;
+    }
+    return false;
+}
+
 /// \brief Iterate in lexigographic order through the points of the integer
 /// lattice contained in the cube [0,end]. Updates cur with the
 /// current point and returns true if another point is available. Cube
