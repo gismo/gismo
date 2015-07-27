@@ -547,6 +547,9 @@ public:
     static const int Dim = 1;
 
     typedef gsBasis<T> Base;
+
+    typedef gsTensorBasis<1,T> Self_t;
+
     typedef gsBasis<T> Basis_t;
 
     /// Coefficient type
@@ -562,13 +565,13 @@ public:
 public:
 
     /// \brief Default empty constructor
-    gsTensorBasis() : Basis_t()
+    gsTensorBasis() : Base()
     { m_bases = this;}
 
     /// \brief Constructor by basis pointers (takes ownership of the
     /// passed bases)
-    explicit gsTensorBasis(Basis_t * x) 
-    : Basis_t(*x)
+    explicit gsTensorBasis(Base * x) 
+    : Base(*x)
     {
         m_bases = this; 
         delete x;
@@ -586,7 +589,8 @@ public:
     /// \brief Constructor by basis pointers (takes ownership of the
     /// passed bases)
     explicit gsTensorBasis(base_iterator it) 
-    : Basis_t(*static_cast<Basis_t*>(*it))
+    //: Basis_t(*static_cast<Basis_t*>(*it))
+    : Basis_t(**it)
     {
         m_bases = this; 
         delete *it;
@@ -599,18 +603,6 @@ public:
         m_bases = this;
     }
     
-    /// \brief Converter to univariate B-spline basis
-    operator const Basis_t & () const
-    {
-        return *m_bases;
-    }
-
-    /// \brief Converter to univariate B-spline basis
-    operator Basis_t & ()
-    {
-        return *m_bases;
-    }
-
     /// Assignment opearator
     gsTensorBasis& operator=( const gsTensorBasis & o)
     { 

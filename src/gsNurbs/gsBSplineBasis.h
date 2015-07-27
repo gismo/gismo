@@ -206,12 +206,12 @@ public:
 //////////////////////////////////////////////////
 
     // Look at gsBasis class for a description
+    int dim() const { return Dim; }
+
+    // Look at gsBasis class for a description
     int size() const { return m_knots.size() - m_p - 1 - m_periodic; }
     using Base::size;
 
-    // Look at gsBasis class for a description
-    int dim() const { return Dim; }
-    
     // Look at gsBasis class for a description
     int numElements() const { return m_knots.numKnotSpans(); }
 
@@ -700,15 +700,12 @@ public:
     gsBSplineBasis(T u0, T u1, unsigned interior, 
                    int degree, unsigned mult_interior=1,
                    bool periodic = false )
-    : Base(u0,01,interior,degree,mult_interior,periodic)
+    : Base(u0,u1,interior,degree,mult_interior,periodic)
     { }
-
-
 
     // For compatibility
     gsBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
     {GISMO_ERROR("Cannot Construct BSplineBasis using 2 knot-vectors."); }
-
     
     /// Copy Constructor
     gsBSplineBasis( const gsBSplineBasis & o)
@@ -729,7 +726,6 @@ private:
     using Base::m_p;
     using Base::m_knots;
     using Base::m_periodic;
-
 };
 
 
