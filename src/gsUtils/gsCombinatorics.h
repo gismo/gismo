@@ -306,25 +306,6 @@ bool nextCubeVertex(Vec& cur)
     return false;
 }
 
-// Specialization for booleans
-template<unsigned _Rows>
-inline bool nextCubeVertex(gsVector<bool,_Rows> & cur)
-{
-    const index_t d = cur.size();
-
-    for (index_t i = 0; i != d; ++i)
-    {
-        if ( cur[i] == 0 )
-        {
-            cur[i] = true;
-            return true;
-        }
-        else
-            cur[i] = false;
-    }
-    return false;
-}
-
 /// \brief Iterate in lexigographic order through the points of the integer
 /// lattice contained in the cube [0,end]. Updates cur with the
 /// current point and returns true if another point is available. Cube
@@ -590,7 +571,8 @@ void cubeIsometry( const gsVector<bool,d>    & flip,
         pstr[k] = (1<<perm[k]);
 
     result.resize(1<<dd);
-    index_t r = 0;
+    index_t r  = 0;
+    index_t i;
     gsVector<bool,d> v = gsVector<bool,d>::Zero(dd);
     do
     {
@@ -598,8 +580,19 @@ void cubeIsometry( const gsVector<bool,d>    & flip,
         c = 0;
         for (index_t k=0; k!=dd; ++k)
             c += ( flip[perm[k]] == v[k] ) * pstr[k];
+        
+        for (i = 0; i != dd; ++i)
+        {
+            if ( !v[i] )
+            {
+                v[i] = true;
+                break;//for
+            }
+            else
+                v[i] = false;
+        }
     }
-    while (nextCubeVertex(v));
+    while (i!=dd);
 }
 
 /// \brief Construct first composition of \a sum into \a dim integers
