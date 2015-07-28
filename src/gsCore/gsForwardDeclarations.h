@@ -98,27 +98,25 @@ template< class T = real_t>  class gsConstantFunction;
 template< class T = real_t>  class gsMultiPatch;
 
 // Bases
+template<class basis_t > class gsRationalBasis;
+template<unsigned d, class T = real_t>  class gsTensorBasis;
+template<unsigned d, class T = real_t>  class gsHTensorBasis;
+
 template< class T = real_t>  class gsKnotVector;
 template< class T = real_t>  class gsCompactKnotVector;
-template< class T = real_t>  class gsHKnotVector;
-
 template< class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsBSplineBasis;
 template< class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsNurbsBasis;
-template< class T = real_t>  class gsBernsteinBasis;
-//template< class T = real_t>  class gsRatBernsteinBasis;
+template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsTensorBSplineBasis;
+template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsTensorNurbsBasis;
+template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > struct gsBSplineTraits;
 
 template<unsigned d, class T = real_t>  class gsCompositeIncrSmoothnessBasis;
 template<unsigned d, class T = real_t>  class gsCompositeGeom;
 
-//template<unsigned d, class basis_t > class gsTensorBasis;
-template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsTensorBSplineBasis;
-template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsTensorNurbsBasis;
+template< class T = real_t>  class gsBernsteinBasis;
 template<unsigned d, class T = real_t> class gsTensorBernsteinBasis;
 
-
-template<class basis_t > class gsRationalBasis;
-template<unsigned d, class T = real_t>  class gsTensorBasis;
-template<unsigned d, class T = real_t>  class gsHTensorBasis;
+//template< class T = real_t>  class gsHKnotVector;
 template<unsigned d, class T = real_t>  class gsHBSplineBasis;
 template<unsigned d, class T = real_t>  class gsTHBSplineBasis;
 template<unsigned d, class T = real_t>  class gsTHBSpline;

@@ -1,12 +1,15 @@
-/**
- * @file   gsFileData.h
- * @author A. Mantzaflaris <Angelos.Mantzaflaris@oeaw.ac.at>
- * @date   February 2013
- * 
- * @brief  Reads a file
- * 
- *  Part of GISMO library, developed at RICAM-Linz, Austria
- */
+/** @file gsFiledata.h
+
+    @brief Utility class which holds I/O XML data to read/write to/from files
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
 
 #pragma once
 
@@ -51,16 +54,19 @@ public:
     
     ~gsFileData();
     
-    // Clear all data
+    /// \brief Clear all data
     void clear();
 
-    // Save file contents to an xml file
+    /// \brief Reports the number of objects which are held in the file data
+    int numData() const { return max_id+1;}
+
+    /// \brief Save file contents to an xml file
     void save(std::string const & fname = "dump", bool compress = false) const;
 
-    // Save file contents to compressed xml file
+    /// \brief Save file contents to compressed xml file
     void saveCompressed(std::string const & fname = "dump") const;
     
-    // Dump file contents to an xml file
+    /// \brief Dump file contents to an xml file
     void dump(std::string const & fname = "dump") const;
     
 private:
