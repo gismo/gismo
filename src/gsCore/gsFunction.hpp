@@ -45,13 +45,6 @@ gsFunction<T>::deriv2(const gsMatrix<T>& u) const
     return uMatrixPtr(result);
 }
 
-template <class T>
-void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-{
-    this->deriv_into( u, result );
-    // after changing deriv_into
-    //result.resize(n, u.rows() * u.cols() );
-}
 
 template <class T>
 void gsFunction<T>::grad_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
@@ -87,11 +80,25 @@ void gsFunction<T>::grad_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 }
 
 template <class T>
-void gsFunction<T>::newderiv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+typename gsFunction<T>::uMatrixPtr
+gsFunction<T>::jacobian(const gsMatrix<T>& u) const
 {
-    this->deriv_into( u, result );
-    // before changing deriv_into
-    result.resize( targetDim() * domainDim() , u.cols() );
+    gsMatrix<T>* result = new gsMatrix<T>;
+    this->jacobian_into( u, *result );
+    return uMatrixPtr(result);
+}
+
+template <class T>
+void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{
+    const int domDim=u.rows();
+    const int tarDim=eval(u.col(0))->rows();
+    const int numPts = u.cols();
+
+    deriv_into(u,result);
+    for (int p=0; p<numPts; ++p)
+        result.reshapeCol(p,tarDim,domDim)= result.reshapeCol(p,domDim,tarDim).transpose().eval();
+    result.resize(tarDim,domDim*numPts);
 }
 
 
@@ -99,29 +106,32 @@ template <class T>
 void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
     gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
-    const int d = u.rows();                     // dimension of domain
-    const int n = eval(u.col(0))->rows();       // dimension of codomain
-    const int numPts = u.cols();                // number of points to compute at
+    const index_t parDim = u.rows();                     // dimension of domain
+    const index_t tarDim = eval(u.col(0))->rows();       // dimension of codomain
+    const index_t numPts = u.cols();                // number of points to compute at
 
-    gsVector<T> tmp(d);
-    gsMatrix<T> ev, uc(d,4);
-    result.resize( n, d * numPts );
+    gsVector<T> delta(parDim);
+    gsVector<T> tmp(tarDim);
 
-    for ( int thisPt = 0; thisPt < numPts; thisPt++ )
+    gsMatrix<T> ev, uc(parDim,4);
+    result.resize( parDim *tarDim,  numPts );
+
+    for ( index_t p = 0; p < numPts; p++ )
     {
-        for ( int j = 0; j<d; j++ )
+        for ( index_t j = 0; j<parDim; j++ )
         {
-            int outputCol = thisPt * d + j;
-            tmp.setZero();
-            tmp(j) = T(0.00001);
-            uc.col(0).noalias() = u.col(thisPt)+tmp;
-            uc.col(1).noalias() = u.col(thisPt)-tmp;
-            tmp(j) = T(0.00002);
-            uc.col(2).noalias() = u.col(thisPt)+tmp;
-            uc.col(3).noalias() = u.col(thisPt)-tmp;
+            delta.setZero();
+            delta(j) = T(0.00001);
+            uc.col(0).noalias() = u.col(p)+delta;
+            uc.col(1).noalias() = u.col(p)-delta;
+            delta(j) = T(0.00002);
+            uc.col(2).noalias() = u.col(p)+delta;
+            uc.col(3).noalias() = u.col(p)-delta;
             this->eval_into(uc, ev );
+            tmp=(8*( ev.col(0)- ev.col(1)) + ev.col(3) - ev.col(2) ) / T(0.00012);
 
-            result.col(outputCol) = (8*( ev.col(0)- ev.col(1)) + ev.col(3) - ev.col(2) ) / T(0.00012);
+            for (index_t c=0; c<tarDim; ++c)
+                result(c*parDim+j,p)=tmp(c);
         }
     }
 }

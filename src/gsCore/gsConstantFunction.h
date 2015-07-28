@@ -113,7 +113,7 @@ public:
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
-        result = gsMatrix<T>::Zero( this->targetDim(), this->domainDim() * u.cols() );
+        result = gsMatrix<T>::Zero( this->targetDim()*this->domainDim(), u.cols() );
     }
 
     // Documentation in gsFunction class

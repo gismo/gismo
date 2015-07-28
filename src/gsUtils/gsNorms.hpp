@@ -71,7 +71,7 @@ T computeL2Distance(const gsGeometry<T>& geo, const gsFunction<T>& u, bool isPar
         // only compute the geometry points if either function is not parametrized
         geo_pts =  (!isParametrized_u || !isParametrized_v) ?
                     geo.eval(nodes) : gsMatrix<T>();
-        geo_jac = geo.jac(nodes);
+        geo_jac = geo.jacobian(nodes);
         
         // evaluate u and v
         u_val = isParametrized_u ? u.eval(nodes) : u.eval(geo_pts);

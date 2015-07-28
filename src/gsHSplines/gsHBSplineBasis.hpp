@@ -77,7 +77,6 @@ void gsHBSplineBasis<d,T>::initialize()
 template<unsigned d, class T>
 void gsHBSplineBasis<d,T>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-    result.resize(1,u.cols() );
     int lvl = this->levelOf(i);
     this->m_bases[lvl]->evalSingle_into( 
         this->m_xmatrix[lvl][ i - this->m_xmatrix_offset[lvl] ], u, result);
@@ -86,7 +85,6 @@ void gsHBSplineBasis<d,T>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gs
 template<unsigned d, class T>
 void gsHBSplineBasis<d,T>::derivSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 {
-    result.resize(1,u.cols() );
     int lvl = this->levelOf(i);
     this->m_bases[lvl]->derivSingle_into( 
         this->m_xmatrix[lvl][ i - this->m_xmatrix_offset[lvl] ], u, result);

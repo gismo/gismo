@@ -91,7 +91,7 @@ public:
     {
         gsMatrix<T> tmp;
         m_geo.eval_into(u, tmp);
-        m_f.newderiv_into(tmp, result);
+        m_f.deriv_into(tmp, result);
     }
 
     int domainDim() const { return m_geo.parDim(); }
@@ -172,7 +172,7 @@ public:
 
         for( index_t j=0; j < u.cols(); ++j )
         {
-            Jk = m_geo.jac( u.col(j) );
+            Jk = m_geo.jacobian( u.col(j) );
             T alt_sgn(1.0);
             gsMatrix<T> mm(ParDim,ParDim);
             for (int i = 0; i <= ParDim; ++i) // for all components of the normal vector

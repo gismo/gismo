@@ -56,23 +56,24 @@ void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u,
 template<class T>
 void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const 
 {  
-    unsigned n = coefs.cols();
-    unsigned numPts = u.cols();       // at how many points to evaluate the gradients
-    int pardim = this->dim();
+    const index_t n = coefs.cols();
+    const index_t numPts = u.cols();       // at how many points to evaluate the gradients
+    const index_t pardim = this->dim();
 
-    result.setZero( n, numPts * pardim );
+    result.setZero( n*pardim, numPts );
     gsMatrix<T> B;
     gsMatrix<unsigned> ind;
 
     this->deriv_into(u,B);     // col j = nonzero derivatives at column point u(..,j)
     this->active_into(u,ind);  // col j = indices of active functions at column point u(..,j)
-  
-    for (unsigned j = 0; j < numPts; ++j)
-        for (unsigned k=0; k<n; ++k ) // for all rows of the jacobian
-            for ( index_t i=0; i< ind.rows() ; i++ ) // for all nonzero basis functions)
+    const index_t numAct=ind.rows();
+
+    for (index_t p = 0; p < numPts; ++p) // p = point
+        for (index_t c=0; c<n; ++c )     // c = component
+            for ( index_t a=0; a< numAct ; ++a ) // a = active function
             {
-                result.block(k,j*pardim,  1, pardim).noalias() +=  
-                    coefs(ind(i,j), k) * B.block(i*pardim, j, pardim, 1).transpose(); 
+                result.block(pardim*c,p,pardim,1).noalias()+=
+                     coefs(ind(a,p), c) *    B.block(a*pardim, p, pardim, 1);
             }
 }
 

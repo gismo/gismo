@@ -81,7 +81,7 @@ typename gsMatrix<T>::uPtr gsTrimSurface<T>::derivatives(int sourceID) const
   gsMatrix<T> CPside2 = (trimLoop[sourceID]->coefs());
   gsMatrix<T> AngleVertex(2,1); // vertex of the trimmed surface angle
   AngleVertex << CPside2(0,0), CPside2(0,1);
-  return m_surface->jac(AngleVertex);
+  return m_surface->jacobian(AngleVertex);
 }
 
 

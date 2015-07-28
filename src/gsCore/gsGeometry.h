@@ -168,15 +168,6 @@ public:
 
     /// @}
 
-    /// \brief Evaluates the Jacobian (matrix of first partial derivatives).
-    ///
-    /// Per column of \a u, result is a <em>n x d</em> matrix;
-    /// result is stored in a <em>n x (d*u.cols)</em> matrix
-    ///
-    /// Default implementation: sum(coefs x basis_derivs).
-    typename gsMatrix<T>::uPtr jac(const gsMatrix<T>& u) const
-    { return this->deriv(u); }
-
     /// \brief Evaluates if the geometry orientation coincide with the
     /// ambient orientation.
     /// This is computed in the center of the parametrization and will
@@ -186,7 +177,7 @@ public:
     {
         if ( parDim() == geoDim() )
         {
-            const T val = jac( parameterCenter() )->determinant();
+            const T val = gsFunction<T>::jacobian( parameterCenter() )->determinant();
             return (T(0) < val) - (val < T(0));
         }
         return 1;

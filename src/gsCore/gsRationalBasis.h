@@ -457,11 +457,11 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& resul
     for ( index_t k=0; k<ev.rows() ; ++k ) // for all basis funct. values
     {
       result.template block<d,1>(k*d,i).noalias() -=  ev(k,i)  * // - N_i W'
-	Wder.block(0,i*d,1,d).transpose();
+        Wder.col(i);
       result.template block<d,1>(k*d,i) *= m_weights.at( act(k,i), 0) ;
     }
     result.col(i) /= Wval(0,i) * Wval(0,i);
-  } 
+  }
 };
 
 

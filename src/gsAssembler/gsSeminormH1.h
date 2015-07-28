@@ -89,7 +89,6 @@ protected:
         // Evaluate first function
         _func1.deriv_into(quNodes, f1ders);
         // get the gradients to columns
-        f1ders.transposeInPlace();
         f1ders.resize(quNodes.rows(), quNodes.cols() );
 
         // Evaluate second function (defined of physical domain)
@@ -98,7 +97,6 @@ protected:
         {
             _func2.deriv_into(geoEval.values(), f2ders);
             // get the gradients to columns
-            f2ders.transposeInPlace();
             f2ders.resize(quNodes.rows(), quNodes.cols() );
         }
         else

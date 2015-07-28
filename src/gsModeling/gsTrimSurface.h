@@ -241,7 +241,7 @@ public:
     /// Compute the unit normal vector of the trimmed surface at a point in the parameter domain
     gsMatrix<T> unitNormal(gsMatrix<T> point) const
     {
-      gsMatrix<T> Jacobian = m_surface->jac(point);
+      gsMatrix<T> Jacobian = m_surface->jacobian(point);
             
       gsMatrix<T> sigma_u = Jacobian.col(0);
       gsMatrix<T> sigma_v = Jacobian.col(1);
@@ -278,8 +278,8 @@ public:
       // sample parameter points 
       gsMatrix<T> tval = gsPointGrid(interval(0,0), interval(0,1), npoints);
       gsMatrix<T> trimCur = m_domain->curve(loopN,curveN).eval(tval);
-      gsMatrix<T> trimCurDev = m_domain->curve(loopN,curveN).jac(tval);
-      gsMatrix<T> trimCurJac = m_surface->jac( trimCur );
+      gsMatrix<T> trimCurDev = m_domain->curve(loopN,curveN).jacobian(tval);
+      gsMatrix<T> trimCurJac = m_surface->jacobian( trimCur );
       //gsMatrix<T> tangents(this->geoDim(),npoints);
       typename gsMatrix<T>::uPtr tangents ( new gsMatrix<T>(3,npoints) );
       for (size_t i=0; i<=npoints-1; i++)
