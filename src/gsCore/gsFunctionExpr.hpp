@@ -281,6 +281,7 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
             else
                 result(n*i+j) = exprtk::derivative<T>( my->expression, my->vars[j], 0.00001 ) ;
     }
+    result.resize(n, u.cols());
 }
 
 template<typename T>
