@@ -390,14 +390,14 @@ void gsGeometryData<axlObj>::normal(axlPoint *normal, double u,double v)
     int n = m_geometry->geoDim();
     if ( n==2)
 	{
-	    //tmp = m_geometry->jac(uv);
+	    //tmp = m_geometry->jacobian(uv);
  	    //gismo::gsMatrix<double> ev = tmp->topRows(2).cross(tmp->bottomRows(2) );
  	    //normal->setValues(ev(0,0), ev(1,0),  1 );
 	    normal->setValues(0, 0 , 1 );
 	}
     else
 	{
-	    tmp = m_geometry->jac(uv);
+	    tmp = m_geometry->jacobian(uv);
 	    //std::cout<< "J=\n"<< *tmp <<"\n";
 	    gismo::gsMatrix<double> ev = 
 		tmp.block<3,1>(0,0).cross( tmp.block<3,1>(0,1) );
