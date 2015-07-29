@@ -413,7 +413,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n, gsMat
         for (index_t k = 0; k < numAct; ++k)
         {
             der.template block<d,1>(k*d,i).noalias() -=  
-                ev(k,i) * Wder.block(0,i*d,1,d).transpose();
+                ev(k,i) * Wder.col(i);
             
             der.template block<d,1>(k*d,i) *=
                 m_weights( act(k,i), 0 ) / (Wval_i*Wval_i);
