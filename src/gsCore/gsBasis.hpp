@@ -53,6 +53,33 @@ void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u,
 
 
 // Evaluates the Jacobian of the function given by coefs (default implementation)
+// For each point, result contains a geomDim x parDim matrix block containing the Jacobian matrix
+template<class T>
+void gsBasis<T>::jacobianFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const 
+{  
+    const index_t n = coefs.cols();
+    const index_t numPts = u.cols();       // at how many points to evaluate the gradients
+    const index_t pardim = this->dim();
+
+    result.setZero( n, pardim * numPts );
+    gsMatrix<T> B;
+    gsMatrix<unsigned> ind;
+
+    this->deriv_into(u,B);     // col j = nonzero derivatives at column point u(..,j)
+    this->active_into(u,ind);  // col j = indices of active functions at column point u(..,j)
+    const index_t numAct=ind.rows();
+
+    for (index_t p = 0; p < numPts; ++p) // p = point
+        for (index_t c=0; c<n; ++c )     // c = component
+            for ( index_t a=0; a< numAct ; ++a ) // a = active function
+            {
+                result.block(c,p*pardim,  1, pardim).noalias() +=   
+                    coefs(ind(a,p), c) * B.block(a*pardim, p, pardim, 1).transpose();  
+            }
+}
+
+// Evaluates the partial derivatives of the function given by coefs (default implementation)
+// For each point, result contains one column with stacked gradients of the components
 template<class T>
 void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const 
 {  

@@ -343,6 +343,13 @@ public:
                                 const gsMatrix<T> & coefs, 
                                 gsMatrix<T>& result ) const;
 
+    /** \brief Evaluate the Jacobian of the function described by \a coefs at points \a u.
+        Jacobian matrices are stacked in blocks
+     */
+    virtual void jacobianFunc_into(const gsMatrix<T> & u, 
+                                   const gsMatrix<T> & coefs, 
+                                   gsMatrix<T>& result ) const;
+
 
     /** \brief Evaluates the second derivatives of the
      * function described by \a coefs at points \a u.
