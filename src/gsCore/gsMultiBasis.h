@@ -232,7 +232,15 @@ public:
     size_t nBases() const          { return m_bases.size(); }
 
     /// Return the \a i-th basis block.
-    const gsBasis<T> & basis( std::size_t i ) const
+    const gsBasis<T> & basis(const  std::size_t i ) const
+    {
+        GISMO_ASSERT( i < m_bases.size(),
+                      "Invalid patch index"<<i<<" requested from gsMultiBasis" );
+        return *m_bases[i];
+    }
+
+    /// Return the \a i-th basis block.
+    gsBasis<T> & basis(const std::size_t i )
     {
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
@@ -266,6 +274,16 @@ public:
         for (size_t k = 0; k < m_bases.size(); ++k)
         {
             m_bases[k]->uniformRefine(numKnots,mul);
+        }
+    }
+
+    /// @brief Refine the component \a comp of every basis uniformly
+    /// by inserting \a numKnots new knots on each knot span
+    void uniformRefineComponent(int comp, int numKnots = 1, int mul=1)
+    {
+        for (size_t k = 0; k < m_bases.size(); ++k)
+        {
+            m_bases[k]->component(comp).uniformRefine(numKnots,mul);
         }
     }
 
