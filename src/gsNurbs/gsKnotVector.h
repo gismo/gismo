@@ -409,21 +409,16 @@ public:
     void increaseMultLast(int i = 1);
 
     /// Look at the supportIndex function.
-    inline
-    void supportIndex_into(const size_t& i, gsMatrix<unsigned>& result) const
-    { GISMO_NO_IMPLEMENTATION }
+    void supportIndex_into(const size_t& i, gsMatrix<unsigned>& result) const;
 
     /// Get the unique knot index of the beginning and end of support of the
     /// i-th basis function.
     /// \param i index of the basis function
-    gsMatrix<unsigned> supportIndex(const size_t& i) const
-    { GISMO_NO_IMPLEMENTATION }
+    gsMatrix<unsigned> supportIndex(const size_t& i) const;
 
-    unsigned firstKnotIndex(const size_t & i) const
-    { GISMO_NO_IMPLEMENTATION }
+    unsigned firstKnotIndex(const size_t & i) const;
 
-    unsigned lastKnotIndex(const size_t & i) const
-    { GISMO_NO_IMPLEMENTATION }
+    unsigned lastKnotIndex(const size_t & i) const;
 
 // Data members
 private:

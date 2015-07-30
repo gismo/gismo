@@ -210,11 +210,7 @@ public:
 
     // Look at gsBasis class for a description
     int size() const { return m_knots.size() - m_p - 1 - m_periodic; }
-    int size(int i) const 
-    { 
-        GISMO_ASSERT(i==0,"invalid component");
-        return m_knots.size() - m_p - 1 - m_periodic; 
-    }
+    using gsTensorBasis<1,T>::size;
 
     // Look at gsBasis class for a description
     int numElements() const { return m_knots.numKnotSpans(); }

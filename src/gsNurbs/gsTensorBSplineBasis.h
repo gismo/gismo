@@ -382,9 +382,11 @@ public:
 
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
+    template <index_t _Rows>
     void elementSupport_into(const unsigned& i,
-                             gsMatrix<unsigned, d, 2>& result) const
+                             gsMatrix<unsigned, _Rows, 2> & result) const
     {
+        result.resize(d,2);
         gsMatrix<unsigned> tmp_vec;
         const gsVector<unsigned, d> ti = this->tensorIndex(i);
 
@@ -406,10 +408,12 @@ public:
 
     /// \brief Returns the indices of active basis functions in the
     /// given input element box
-    void elementActive_into(const gsMatrix<unsigned,d,2> & box,
+    template <index_t _Rows>
+    void elementActive_into(const gsMatrix<unsigned,_Rows,2> & box,
                              gsMatrix<unsigned> & result) const
     {
-        gsMatrix<unsigned,d,2> tmp;
+        GISMO_ASSERT( box.rows() == static_cast<index_t>(d), "Invalid input box");
+        gsMatrix<index_t,d,2> tmp;
         
         gsVector<index_t,d> str;
         this->stride_cwise(str);
@@ -417,7 +421,7 @@ public:
         for (unsigned dm = 0; dm != d; ++dm)
         {
             tmp(dm,0) = Self_t::component(dm).knots().lastKnotIndex (box(dm,0)) - this->degree(dm);
-            tmp(dm,1) = Self_t::component(dm).knots().firstKnotIndex(box(dm,1)) - 1; //-tmp(dm,0)
+            tmp(dm,1) = Self_t::component(dm).knots().firstKnotIndex(box(dm,1)) - 1;
         }
 
         const gsVector<index_t,d> sz = tmp.col(1)- tmp.col(0) + gsVector<index_t,d>::Ones();

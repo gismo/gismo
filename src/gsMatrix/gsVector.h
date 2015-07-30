@@ -145,10 +145,6 @@ public:
         return *this;
     }
 
-    /// Returns a permutation 
-    PermutationWrap asPermutation()
-    { return PermutationWrap(*this);}
-
     inline T   at (index_t i) const { return (*this)(i,0); }
     inline T & at (index_t i)       { return (*this)(i,0); }
 

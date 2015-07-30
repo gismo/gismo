@@ -1105,7 +1105,73 @@ std::string gsKnotVector<T>::detail() const
     os << ". Size="<<size()<<", minSpan="<< minKnotSpanLength() <<", maxSpan="<< maxKnotSpanLength() <<"\n";
     return os.str();
 }
-  
+
+template <class T>
+void gsKnotVector<T>::supportIndex_into(const size_t& i,
+                                       gsMatrix<unsigned>& result) const
+{
+    result.resize(1, 2);
+
+    GISMO_ASSERT(i < (my->knots.size() - my->p - 1),
+                 "Index "<<i<<" is out of range");
+
+    const T val = my->knots[i];
+
+    /*
+    typename std::vector<T>::const_iterator begin = my->knots.begin()+my->p;
+    typename std::vector<T>::const_iterator end = my->knots.end()-my->p;
+    typename std::vector<T>::const_iterator pos = begin + 1;
+    while ( *pos == *(pos-1) ) ++pos;
+    */
+
+    std::vector<T> uknots = my->knots;
+    uknots.erase( std::unique( uknots.begin(), uknots.end() ),
+                  uknots.end() );
+
+    typename std::vector<T>::const_iterator begin
+        = std::upper_bound(uknots.begin(), uknots.end(), val) - 1;
+
+    typename std::vector<T>::const_iterator tmp =
+        uknots.end() - begin  > my->p + 1 ?
+        begin + my->p + 1 : uknots.end();
+
+    typename std::vector<T>::const_iterator end
+        = std::upper_bound(begin, tmp, my->knots[i+my->p+1]) - 1;
+
+    result(0, 0) = begin - uknots.begin();
+    result(0, 1) = end   - uknots.begin();
+
+    gsDebugVar(result);
+}  
+
+template <typename T>
+gsMatrix<unsigned> gsKnotVector<T>::supportIndex(const size_t& i) const
+{
+    gsMatrix<unsigned> result;
+    supportIndex_into(i, result);
+    return result;
+}
+
+template <typename T>
+unsigned gsKnotVector<T>::firstKnotIndex(const size_t & i) const
+{
+    // for ..
+   std::vector<T> uknots = my->knots;
+    uknots.erase( std::unique( uknots.begin(), uknots.end() ),
+                  uknots.end() );
+    return findspan(uknots[i]);
+}
+
+template <typename T>
+unsigned gsKnotVector<T>::lastKnotIndex(const size_t & i) const
+{
+    std::vector<T> uknots = my->knots;
+    uknots.erase( std::unique( uknots.begin(), uknots.end() ),
+                  uknots.end() );
+    unsigned k = findspan(uknots[i]);
+    while ( k < my->knots.size() && my->knots[k] ==  my->knots[k+1]) ++k;
+    return k;
+}
 
 namespace internal
 {

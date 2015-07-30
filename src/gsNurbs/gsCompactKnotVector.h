@@ -319,7 +319,7 @@ public:
         return ( i == 0 ? 0 : m_mult_sum[i-1] ) ;
     }
 
-    /// Returns the first knot-index of cardinal index i
+    /// Returns the first knot-index of the knot value \a knot
     inline unsigned  findFirstKnotInstance(const T & knot) const 
     { return firstKnotIndex(Uniquefindspan(knot)); }
     
@@ -327,7 +327,7 @@ public:
     inline unsigned lastKnotIndex(const size_t & i) const
     { return m_mult_sum[i]-1; }
 
-    /// Returns the last knot-index of cardinal index i
+    /// Returns the last knot-index of the knot value \a knot
     inline unsigned findLastKnotInstance(const T & knot) const
     { return lastKnotIndex(Uniquefindspan(knot)); }
      
