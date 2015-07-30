@@ -473,8 +473,12 @@ public:
      */
     virtual void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
 
-    /// Returns the number of active (nonzero) basis functions at points \a u in \a result.
+    /// \brief Returns the number of active (nonzero) basis functions at points \a u in \a result.
     virtual void numActive_into(const gsMatrix<T> & u, gsVector<unsigned>& result) const;
+
+    /// \brief Returns true if there the point \a u with non-zero
+    /// value or derivatives when evaluated at the basis function \a i
+    bool isActive(const unsigned i, const gsVector<T> & u) const;
 
     /** \brief Returns the matrix <em>result</em> of active
      * coefficients at points <em>u</em>, each row being one

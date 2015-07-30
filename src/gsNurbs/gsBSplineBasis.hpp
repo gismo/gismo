@@ -109,6 +109,14 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::active_into(const gsMatrix<T>& u,
         }
 }
 
+template <class T, class KnotVectorType>
+bool gsTensorBSplineBasis<1,T,KnotVectorType>::isActive(const unsigned i, const gsVector<T>& u) const 
+{
+    GISMO_ASSERT( u.rows() == 1, "Invalid input.");
+    // Note: right end of the support will be considered active
+    return( (u.value() >= m_knots[i]) && (u.value() <= m_knots[i+m_p+1]) );
+}
+
 template <class T, class KnotVectorType> 
 gsMatrix<unsigned> * gsTensorBSplineBasis<1,T,KnotVectorType>::allBoundary() const
 {

@@ -258,6 +258,9 @@ public:
     void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
 
     // Look at gsBasis class for a description
+    bool isActive(const unsigned i, const gsVector<T> & u) const;
+
+    // Look at gsBasis class for a description
     gsMatrix<unsigned> * allBoundary( ) const ;
 
     // Look at gsBasis class for a description

@@ -252,6 +252,17 @@ void gsTensorBasis<d,T>::genericActive_into(const gsMatrix<T> & u, gsMatrix<unsi
 }
 
 template<unsigned d, class T>
+bool gsTensorBasis<d,T>::isActive(const unsigned i, const gsVector<T>& u) const 
+{
+    GISMO_ASSERT( u.rows() == static_cast<index_t>(d), "Invalid input.");
+    const gsVector<unsigned, d> ti = tensorIndex(i);
+    for (unsigned i = 0; i < d; ++i)
+        if (  ! m_bases[i]->isActive(ti[i], u.row(i)) )
+            return false;
+    return true;
+}
+
+template<unsigned d, class T>
 typename gsMatrix<unsigned>::uPtr gsTensorBasis<d,T>::coefSlice(int dir, int k) const
 {
     GISMO_ASSERT( dir>=0 &&  dir < this->dim(), "Invalid slice direction requested" );
