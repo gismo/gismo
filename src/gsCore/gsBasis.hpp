@@ -444,22 +444,27 @@ void gsBasis<T>::matchWith(const boundaryInterface & bi, const gsBasis<T> & othe
                gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const
 { GISMO_NO_IMPLEMENTATION }
 
-//template<class T> inline
-// void gsBasis<T>::getLinearCombination(
-// const gsMatrix<T>         & scalars,
-// const gsMatrix<T> * const & coefs, 
-// const gsMatrix<unsigned>  & indices, 
-// gsMatrix<T>&                result )
-// {
-// 	result.resize(coefs->cols(), scalars.cols()) ;
+// gsBasis<T>::linearComb(active, evals, m_tmpCoefs, result);
+// gsBasis<T>::jacobianFromGradients(active, grads, m_tmpCoefs, result);
 
-// 	for ( index_t j=0; j< scalars.cols() ; j++ ) // for all values
-// 	    {
-// 		result.col(j).noalias() =  coefs.row( indices(0,j) ) * scalars(0,j) ;
-// 		for ( index_t i=1; i< indices.rows() ; i++ ) // TO DO: numActive
-// 		    result.col(j)  +=   coefs.row( indices(i,j) ) * scalars(i,j)  ; 
-// 	    }
-// }
+/*
+template<class T>
+void gsBasis<T>::linearComb(const gsMatrix<unsigned>  & actives, 
+                            const gsMatrix<T>         & basisVals,
+                            const gsMatrix<T>         & coefs, 
+                            gsMatrix<T>&                result )
+{
+    // basisVals.rows()==1 (or else basisVals.rows() == coefs.cols() and .cwiseProd)
+	result.resize(coefs.cols(), basisVals.cols()) ;
 
+	for ( index_t j=0; j!=basisVals.cols() ; j++ ) // for all basis function values
+    {
+        //todo grab result.col(j)
+		result.col(j) =  basisVals(0,j) * coefs.row( actives(0,j) ) ;//transpose ?
+		for ( index_t i=1; i< actives.rows() ; i++ )
+		    result.col(j) += basisVals(i,j) * coefs.row( actives(i,j) ) ; 
+    }
+}
+*/
 
 }; // namespace gismo

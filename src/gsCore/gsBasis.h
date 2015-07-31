@@ -478,7 +478,7 @@ public:
 
     /// \brief Returns true if there the point \a u with non-zero
     /// value or derivatives when evaluated at the basis function \a i
-    bool isActive(const unsigned i, const gsVector<T> & u) const;
+    virtual bool isActive(const unsigned i, const gsVector<T> & u) const;
 
     /** \brief Returns the matrix <em>result</em> of active
      * coefficients at points <em>u</em>, each row being one

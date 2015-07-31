@@ -77,6 +77,11 @@ struct gsSparseSolver
     /// Sparse QR solver
     typedef Eigen::SparseQR<Eigen::SparseMatrix<T,_Options,_Index>,
                             Eigen::COLAMDOrdering<_Index> > QR;
+
+    /// SuperLU (if enabled)
+    #ifdef GISMO_WITH_SUPERLU
+    typedef Eigen::SuperLU<Eigen::SparseMatrix<T,_Options,_Index> > SuperLU;
+    #endif
 };
 
 /**
