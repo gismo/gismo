@@ -256,8 +256,8 @@ bool gsTensorBasis<d,T>::isActive(const unsigned i, const gsVector<T>& u) const
 {
     GISMO_ASSERT( u.rows() == static_cast<index_t>(d), "Invalid input.");
     const gsVector<unsigned, d> ti = tensorIndex(i);
-    for (unsigned i = 0; i < d; ++i)
-        if (  ! m_bases[i]->isActive(ti[i], u.row(i)) )
+    for (unsigned k = 0; k < d; ++k)
+        if (  ! m_bases[k]->isActive(ti[k], u.row(k)) )
             return false;
     return true;
 }
