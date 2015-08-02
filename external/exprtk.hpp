@@ -21041,7 +21041,7 @@ namespace exprtk
                }
             }
 
-            if (vec_initilizer_list.size() > 
+            if (static_cast<int>(vec_initilizer_list.size()) > //G+Smo
                 details::numeric::to_int32(vector_size))
             {
                set_error(
