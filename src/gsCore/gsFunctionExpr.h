@@ -36,11 +36,10 @@ public:
     /// Default empty constructor
     gsFunctionExpr(); 
   
-    /** \brief Constructor by an expression string and the domain dimension
-        
-        If the domain dimension is not given, it defaults to 2.
+    /**
+       \brief Constructor by an expression string and the domain dimension
     */
-    gsFunctionExpr(const std::string & expression_string, int ddim = 2);
+    gsFunctionExpr(const std::string & expression_string, int ddim);
 
     ~gsFunctionExpr();
   
