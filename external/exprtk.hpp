@@ -4143,12 +4143,12 @@ namespace exprtk
                   case e_sub    : return (arg0 - arg1);
                   case e_mul    : return (arg0 * arg1);
                   case e_div    : return (arg0 / arg1);
-                  case e_mod    : return modulus<T>(arg0,arg1);
-                  case e_pow    : return pow<T>(arg0,arg1);
-                  case e_atan2  : return atan2<T>(arg0,arg1);
+                  case e_mod    : return numeric::modulus<T>(arg0,arg1);
+                  case e_pow    : return numeric::pow<T>(arg0,arg1);
+                  case e_atan2  : return numeric::atan2<T>(arg0,arg1);
                   case e_min    : return std::min<T>(arg0,arg1);
                   case e_max    : return std::max<T>(arg0,arg1);
-                  case e_logn   : return logn<T>(arg0,arg1);
+                  case e_logn   : return numeric::logn<T>(arg0,arg1);
                   case e_lt     : return (arg0 <  arg1) ? T(1) : T(0);
                   case e_lte    : return (arg0 <= arg1) ? T(1) : T(0);
                   case e_eq     : return std::equal_to<T>()(arg0,arg1) ? T(1) : T(0);
@@ -21041,7 +21041,8 @@ namespace exprtk
                }
             }
 
-            if (vec_initilizer_list.size() > vector_size)
+            if (vec_initilizer_list.size() > 
+                details::numeric::to_int32(vector_size))
             {
                set_error(
                   make_error(parser_error::e_syntax,
