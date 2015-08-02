@@ -242,6 +242,7 @@ void gsMFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
     {
         for ( int j = 0; j<my->domainDim; j++ )
             my->vars[j] =u(j,i);
+
         for (int k = 0; k!= my->targetDim; ++k)
             result(k,i) = my->expression[k].value();
     }
@@ -251,14 +252,14 @@ template<typename T>
 void gsMFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t comp, gsMatrix<T>& result) const
 {
     GISMO_ASSERT ( u.rows() == my->domainDim, "Wrong point dimension " );
-    GISMO_ASSERT (comp < my->targetDim, "Given component number is higher then number of components");
+    GISMO_ASSERT (comp < my->targetDim, 
+                  "Given component number is higher then number of components");
     result.resize(1, u.cols());
     for ( int i = 0; i<u.cols(); i++ )
     {
         for ( int j = 0; j<my->domainDim; j++ )
-        {
             my->vars[j] =u(j,i);
-        }
+
         result(0,i) = my->expression[comp].value();
     }
 }
@@ -266,19 +267,21 @@ void gsMFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t
 template<typename T>
 void gsMFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    int n = my->domainDim;
-    GISMO_ASSERT ( u.rows() == n, "Wrong point dimension " );
+    gsDebug<< "Using finite differences for derivatives.\n";
+    const int d = my->domainDim;
+    GISMO_ASSERT ( u.rows() == d, "Wrong point dimension" );
     
-    result.resize(my->targetDim, n * u.cols());
-
-    for ( int i = 0; i<u.cols(); i++ )
+    result.resize(d*my->targetDim, u.cols());
+    
+    for ( int p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
-        for ( int j = 0; j<n; j++ )
-            my->vars[j] =u(j,i);
-        for ( int j = 0; j<n; j++ )
-            for (int k = 0; k!= my->targetDim; ++k)
-                result(k,n*i+j) = exprtk::derivative<T>(
-                            my->expression[k], my->vars[j], 0.00001 ) ;
+        for ( int j = 0; j<d; j++ )
+            my->vars[j] =u(j,p);
+
+        for ( int j = 0; j<d; j++ ) // for all variables
+            for (int c = 0; c!= my->targetDim; ++c) // for all components
+                result(c*d + j, p) = 
+                    exprtk::derivative<T>(my->expression[c], my->vars[j], 0.00001 ) ;
     }
 }
 

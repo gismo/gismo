@@ -82,10 +82,6 @@ public:
     void set_u (T const & v) const;
     void set_v (T const & v) const;
   
-    void set_x_der (std::string expression_string);
-  
-    void set_y_der (std::string expression_string);
-  
     // Evaluate the expression (overrided from gsFunction)
     // see gsFunction for documentation
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
@@ -108,7 +104,7 @@ public:
     gsMatrix<T> * laplacian(const gsMatrix<T>& u) const;
   
     ///Mixed derivative wrt variables k and j
-    gsMatrix<T> * mderiv(const gsMatrix<T>& u, const index_t &k, const index_t &j ) const;
+    gsMatrix<T> * mderiv(const gsMatrix<T>& u, const index_t k, const index_t j) const;
   
   
     /// returns the last value computed

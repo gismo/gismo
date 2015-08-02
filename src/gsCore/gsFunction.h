@@ -168,13 +168,13 @@ public:
      */
     virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
-    // temporary: towards sanitizing the format of deriv_into ( point u.col(i) --> result.col(i) )
+    /** @brief Computes for each point \a u a block of \a result
+     * containing the Jacobian matrix
+     */
     void jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+
     uMatrixPtr jacobian(const gsMatrix<T>& u) const;
 
-    void grad_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
-
- 
     /** @brief Evaluate second derivatives of the function at points \a u into \a result.
      *
      * Let \em d be the dimension of the source space ( d = domainDim() ).\n

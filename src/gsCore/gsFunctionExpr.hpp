@@ -26,9 +26,7 @@ public:
     T vars[6];
     exprtk::symbol_table<T> symbol_table;
     exprtk::expression<T> expression;
-    exprtk::expression<T> der_exp[6];
-    bool der_flag[6];
-    std::string  string; 
+    std::string string; 
     int dim;
 };
 
@@ -173,13 +171,6 @@ void gsFunctionExpr<T>::init()
     varlist.erase(std::remove(varlist.begin(), varlist.end(), "pi"), varlist.end());
     my->dim = varlist.size();
 */
-
-    my->der_flag[0]=false;
-    my->der_flag[1]=false;
-    my->der_flag[2]=false;
-    my->der_flag[3]=false;
-    my->der_flag[4]=false;
-    my->der_flag[5]=false;
 }
 
 
@@ -207,7 +198,8 @@ void gsFunctionExpr<T>::set_u (T const & v) const { my->vars[4]= v; }
 template<typename T>
 void gsFunctionExpr<T>::set_v (T const & v) const { my->vars[5]= v; } 
 
-
+/*
+// to do: remove
 template<typename T>
 void gsFunctionExpr<T>::set_x_der (std::string expression_string)
 { 
@@ -231,6 +223,7 @@ void gsFunctionExpr<T>::set_y_der (std::string expression_string)
     else
         my->der_flag[1]=true;
 }
+//*/
 
 template<typename T>
 void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
@@ -266,48 +259,51 @@ void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t 
 template<typename T>
 void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    int n = u.rows();
+    gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
+    int d = u.rows();
     GISMO_ASSERT ( u.rows() < 7 && u.rows() > 0, "Inconsistent point size." );
 
-    result.resize(1, n * u.cols());
+    result.resize(d, u.cols());
 
     for( int i=0; i < u.cols(); ++i )
     {
-        for ( int j = 0; j<n; j++ ) 
+        for ( int j = 0; j<d; j++ ) 
             my->vars[j] =u(j,i);
-        for( int j=0; j< n; ++j )
-            if ( my->der_flag[j] )
-                result(n*i+j) = my->der_exp[j].value();
-            else
-                result(n*i+j) = exprtk::derivative<T>( my->expression, my->vars[j], 0.00001 ) ;
+        for( int j=0; j< d; ++j )
+            result(i,j) = exprtk::derivative<T>( my->expression, my->vars[j], 0.00001 ) ;
     }
-    result.resize(n, u.cols());
 }
 
 template<typename T>
 typename gsFunction<T>::uMatrixPtr
 gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const 
 { 
+    gsDebug<< "Using finite differences (gsFunction::deriv_into) for Hessian.\n";
     GISMO_ENSURE(coord == 0, "Error, function is real");
-    // one column only..
-    int n = u.rows();
+    GISMO_ASSERT ( u.cols() == 1, "Need a single evaluation point." );
+    int d = u.rows();
     GISMO_ASSERT ( u.rows() < 7 && u.rows() > 0, "Inconsistent point size." );
     
-    gsMatrix<T> * res= new gsMatrix<T>(n,n) ;
+    gsMatrix<T> * res = new gsMatrix<T>(d,d);
     
-    for ( int j = 0; j<n; j++ ) 
+    for ( int j = 0; j<d; j++ ) 
         my->vars[j] =u(j,0);
-    for( int j=0; j< n; ++j )
+
+    for( int j=0; j< d; ++j )
     {
         (*res)(j,j) = exprtk::second_derivative<T>( my->expression, my->vars[j], 0.00001 ) ;
         for( int k=0; k<j; ++k )
             (*res)(k,j) = (*res)(j,k) =
-                exprtk::mixed_derivative<T>( my->expression, my->vars[k], my->vars[j], 0.00001 ) ;
+                exprtk::mixed_derivative<T>( my->expression, my->vars[k], 
+                                             my->vars[j], 0.00001 );
     }
     return typename gsFunction<T>::uMatrixPtr(res); 
-} ;
+}
+
 template<typename T>
-gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T>& u, const index_t &k, const index_t &j ) const 
+gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u, 
+                                        const index_t k, 
+                                        const index_t j) const 
 {    
     gsMatrix<T> * res= new gsMatrix<T>(1,u.cols()) ;
     
@@ -324,17 +320,21 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T>& u, const index_t &k, 
 template<typename T>
 gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 {
+    gsDebug<< "Using finite differences (gsFunction::deriv_into) for Laplacian.\n";
     gsMatrix<T> * res= new gsMatrix<T>(1,u.cols()) ;
     res->setZero();
     int n = u.rows();
     
     for( index_t i=0; i< res->cols(); ++i )
+    {
+        T & val = (*res)(0,i);
         for ( int j = 0; j<n; j++ ) 
-        { 
             my->vars[j] =u(j,i);
-            (*res)(0,i) += 
+        
+        for ( int j = 0; j<n; j++ ) 
+            val += 
                 exprtk::second_derivative<T>( my->expression, my->vars[j], 0.00001 ) ;        
-        }
+    }
     return  res; 
 }
 
