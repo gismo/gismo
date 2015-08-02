@@ -1610,14 +1610,14 @@ public:
         }
 
         // Read right hand side function
-        gsXmlNode   * tmp = node->first_node("rhs");	
-        gsFunctionExpr<T> rhs(tmp->value());
+        gsXmlNode * tmp = node->first_node("rhs");	
+        gsFunctionExpr<T> rhs(tmp->value(), d);
 
         // Read exact solution, if one exists in the file
         tmp = node->first_node("solution");	
         if ( tmp )
         {
-            gsFunctionExpr<T> sol(tmp->value());
+            gsFunctionExpr<T> sol(tmp->value(), d);
             //gsDebugVar (*sol);
             return new gsPoissonPde<T>(rhs, d, sol );
         }

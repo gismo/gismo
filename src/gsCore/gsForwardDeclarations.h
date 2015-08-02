@@ -92,7 +92,10 @@ template<class T, int D=-1, typename uiter = typename std::vector<T>::const_iter
 class gsTensorDomainBoundaryIterator;
 
 template< class T = real_t>  class gsDomain;
+template< class T = real_t>  class gsFunctionSet;
 template< class T = real_t>  class gsFunction;
+template< class T = real_t>  class gsFuncData;
+template< class T = real_t>  class gsMapData;
 template< class T = real_t>  class gsFunctionExpr;
 template< class T = real_t>  class gsConstantFunction;
 template< class T = real_t>  class gsMultiPatch;

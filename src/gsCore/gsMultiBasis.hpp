@@ -156,7 +156,6 @@ void gsMultiBasis<T>::getMapper(bool conforming,
         mapper.finalize();
 }
 
-
 template<class T>
 void gsMultiBasis<T>::getMapper(bool conforming, 
                                 const gsBoundaryConditions<T> & bc, 
@@ -182,27 +181,6 @@ void gsMultiBasis<T>::getMapper(bool conforming,
 template<class T>
 void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
-
-    /* // OUTDATED since implementation of matchWith()
-    const gsHTensorBasis<2,T> * bas2d0 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.first().patch ] );
-    const gsHTensorBasis<2,T> * bas2d1 = dynamic_cast< const gsHTensorBasis<2,T> * >( m_bases[ bi.second().patch ] );
-    const gsHTensorBasis<3,T> * bas3d0 = dynamic_cast< const gsHTensorBasis<3,T> * >( m_bases[ bi.first().patch ] );
-    const gsHTensorBasis<3,T> * bas3d1 = dynamic_cast< const gsHTensorBasis<3,T> * >( m_bases[ bi.second().patch ] );
-
-    // Check, if an gsHTensorBasis is involved, and if so,
-    // call matchInterfaceHTensor
-    if( bas2d0 != 0 && bas2d1 != 0 )
-        matchInterfaceHTensor<2>( bi, mapper );
-    else if( bas3d0 != 0 && bas3d1 != 0 )
-        matchInterfaceHTensor<3>( bi, mapper );
-    else if( bas2d0 != 0 || bas2d1 != 0 || bas3d0 != 0 || bas3d1 != 0 )
-        GISMO_ASSERT(false, "One Basis is HTensor, the other is not. Or dimension is not 2. Cannot handle this. You should implement that.");
-    else
-        */
-
-    //if( true )
-    //{
-
     // should work for all basis which have matchWith() implementeds
     gsMatrix<unsigned> b1, b2;
     m_bases[bi.first().patch]->matchWith(bi, *m_bases[bi.second().patch],
@@ -210,97 +188,7 @@ void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper &
 
     // Match the dofs on the interface
     mapper.matchDofs(bi.first().patch, b1, bi.second().patch, b2 );
-
-    //} // if-else
 }
-
-
-/* // OUTDATED since implementation of matchWith
-template<class T>
-template<unsigned d>
-void gsMultiBasis<T>::matchInterfaceHTensor(const boundaryInterface & bi, gsDofMapper & mapper) const
-{
-    GISMO_ASSERT( d == 2 || d == 3, "Dimension must be 2 or 3.");
-
-    const gsHTensorBasis<d,T> * bas0 = dynamic_cast< const gsHTensorBasis<d,T> * >( m_bases[ bi.first().patch ] );
-    const gsHTensorBasis<d,T> * bas1 = dynamic_cast< const gsHTensorBasis<d,T> * >( m_bases[ bi.second().patch ] );
-
-    // see if the orientation is preserved on side second()
-    const gsVector<bool> dirOrient = bi.dirOrientation();
-
-    const gsVector<int> dirMap = bi.dirMap();
-
-    // get the global indices of the basis functions which are
-    // active on the interface
-    gsMatrix<unsigned> b0b = * bas0->boundary( bi.first().side() );
-    //gsMatrix<unsigned> b1b = * bas1->boundary( bi.second().side() );
-
-    for( index_t i=0; i < b0b.rows(); i++)
-    {
-        // get the level of the basis function on side first()
-        unsigned L = bas0->levelOf( b0b(i,0) );
-        // get the flat tensor index
-        // (i.e., the single-number-index on level L)...
-        unsigned flat0 = bas0->flatTensorIndexOf( b0b(i,0) );
-        // ... and change it to the tensor-index.
-        gsVector<unsigned> tens0 = bas0->tensorLevel(L).tensorIndex( flat0 );
-
-        // tens1 will store the tensor-index on side second(),...
-        gsVector<unsigned> tens1(d);
-        // ...flat1 the corresponding flat index
-        // (single-number on level)...
-        unsigned flat1 = 0;
-        // ...and cont1 the corresponding continued (global) index.
-        unsigned cont1 = 0;
-
-        // get the sizes of the components of the tensor-basis on this level,
-        // i.e., the sizes of the univariate bases corresponding
-        // to the respective coordinate directions
-        gsVector<unsigned> N(d);
-        for( unsigned j=0; j < d; j++)
-            N[j] = bas1->tensorLevel(L).component(j).size();
-
-        // get the tensor-index of the basis function on level L on
-        // second() that should be matched with flatp/tens0
-        for( unsigned j=0; j<d; j++)
-        {
-            // coordinate direction j on first() gets
-            // mapped to direction jj on second()
-            int jj = dirMap[j];
-            // store the respective component of the tensor-index
-            tens1[jj] = tens0[j];
-
-            if( jj == bi.second().direction() )
-            {
-                // if jj is the direction() of the interface,
-                // however, we need either the first
-                // or last basis function
-                if( bi.second().parameter() ) // true = 1 = end
-                    tens1[jj] = N[jj]-1;
-                else
-                    tens1[jj] = 0;
-            }
-            else
-            {
-                // otherwise, check if the orientation is
-                // preserved. If necessary, flip it.
-                if( !dirOrient[j] )
-                    tens1[jj] = N[jj]-1 - tens1[jj];
-            }
-
-        }
-
-        flat1 = bas1->tensorLevel(L).index( tens1 );
-
-        // compute the "continuous" index on second(), i.e., the index
-        // in the numbering which is global over all levels.
-        cont1 = bas1->flatTensorIndexToHierachicalIndex( flat1, L );
-
-        // finally, match these two degrees of freedom
-        mapper.matchDof( bi.first().patch, b0b(i,0), bi.second().patch, cont1 );
-    }
-}
-*/
 
 template<class T>
 bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )

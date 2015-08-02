@@ -328,6 +328,34 @@ public:
         }while( didSwap );
     }
 
+/// \brief Transposes in place the matrix block-wise. The matrix is
+//  treated a rows() x (cols()/colBlock) block matrix, and every block
+//  of size rows() x colBlock is transposed in place
+void blockTransposeInPlace(const index_t colBlock)
+{
+    const index_t nc = this->cols();
+    const index_t nr = this->rows();
+    
+    GISMO_ASSERT( nc % colBlock == 0,
+                  "The blocksize is not compatible with number of columns.");
+    
+    if ( nr == colBlock )
+    {
+        for (index_t j = 0; j!= nc; j+=colBlock)
+            this->middleCols(j,colBlock).template triangularView<Eigen::StrictlyUpper>()
+                .swap( this->middleCols(j,colBlock).transpose() );
+    }
+    else
+    {
+        Eigen::Map<Base> m(this->data(), nr, nc);
+        this->resize(colBlock, this->size()/colBlock);
+        
+        index_t i = 0;
+        for (index_t j = 0; j!= nc; j+=colBlock, i+=nr)
+            this->middleCols(i,nr) = m.middleCols(j,colBlock).transpose().eval();
+    }
+}
+
 }; // class gsMatrix
 
 

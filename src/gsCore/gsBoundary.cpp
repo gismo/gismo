@@ -9,7 +9,7 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s): A. Bressan
-**/
+*/
 
 
 #include <gsCore/gsBoundary.h>
@@ -64,36 +64,10 @@ void boundaryInterface::cornerMap(gsVector<index_t> & cmap) const
 }
 
 
-void boundaryInterface::matchDofs(gsVector<int>    bSize,
-                                  gsMatrix<unsigned> & b1,
-                                  const gsMatrix<unsigned> & b2) const
+void boundaryInterface::reorderCorners(gsMatrix<unsigned> & boundary) const
 {
-    if (b1.size() == 1)
-        return;
-
-    // Get structure of the interface dofs
-    const index_t s1 = first() .direction();
-    const index_t s2 = second().direction();
-    const gsVector<bool>    & dirOr = dirOrientation();
-    const gsVector<index_t> & bMap  = dirMap();
-    const index_t  d = bMap.size();
-
-    gsVector<int>  bPerm(d-1);
-    index_t c = 0;
-    for (index_t k = 0; k<d; ++k )
-    {
-        if ( k == s1 ) // skip ?
-            continue;
-
-        if ( ! dirOr[k] ) // flip ?
-            flipTensorVector(c, bSize, b1);
-        
-        bPerm[c] = ( bMap[k] < s2 ? bMap[k] : bMap[k]-1 );
-        c++;
-    }
-    
-    // Permute
-    permuteTensorVector<unsigned,-1>(bPerm, bSize, b1);
+    gsVector<index_t> cmap;
+    boundary = cmap.asPermutation() * boundary;
 }
 
 

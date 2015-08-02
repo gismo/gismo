@@ -98,9 +98,9 @@ int main(int argc, char *argv[])
   // ------ Example 1 ------
 
   // --- Unit square, with a spike of the source function at (0.25, 0.6)
-  gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-0.6)^2 < 0.2^2, 1, 0 )");
-  //gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-1.6)^2 < 0.2^2, 1, 0 )");
-  gsFunctionExpr<>  g("0");
+  gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-0.6)^2 < 0.2^2, 1, 0 )",2);
+  //gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-1.6)^2 < 0.2^2, 1, 0 )",2);
+  gsFunctionExpr<>  g("0",2);
   gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineRectangle(0.0,0.0,2.0,1.0) ));
   //gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0)) );
 
@@ -115,8 +115,8 @@ int main(int argc, char *argv[])
   // The classical example associated with the L-Shaped domain.
   // The exact solution has a singularity at the re-entrant corner at the origin.
 
-  gsFunctionExpr<>  f("0");
-  gsFunctionExpr<>  g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) +3*pi)/3.0 ) )");
+  gsFunctionExpr<>  f("0",2);
+  gsFunctionExpr<>  g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) +3*pi)/3.0 ) )",2);
 
   //gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p2C0()) );
   gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p1()) );

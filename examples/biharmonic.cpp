@@ -27,11 +27,11 @@ int main(int argc, char *argv[])
     dirichlet::strategy dirStrategy = dirichlet::elimination;
     iFace::strategy intStrategy = iFace::glue;
 
-    gsFunctionExpr<> solution("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)");
-    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))");
-    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))");
+    gsFunctionExpr<> solution("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsMFunctionExpr<>sol1der ("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)");
+                              "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
     gsMFunctionExpr<>sol2der ("-16*pi^2*(cos(4*pi*y) - 1)*cos(4*pi*x)",
                               "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                               " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);

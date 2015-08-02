@@ -40,16 +40,16 @@ int main(int argc, char* argv[])
     gsCmdLine cmd("Tutorial about gsBasis class.");
         
     gsArgValPlain<std::string> inArg("input", "G+Smo input basis file.", 
-                                         false, GISMO_DATA_DIR
-                                         "bspbasis/tpBSpline2_02.xml", 
-                                         "file", cmd);
+                                     false, GISMO_DATA_DIR
+                                     "bspbasis/tpBSpline2_02.xml", 
+                                     "file", cmd);
 
     cmd.addString("o", "output", "Name of the output file.", output);
     
     bool ok = cmd.getValues(argc,argv);
     input = inArg.getValue();
     if (!ok) {
-        std::cout << "Error during parsing command line!";
+        gsInfo << "Error during parsing command line!";
         return 1;
     }
     
@@ -66,14 +66,14 @@ int main(int argc, char* argv[])
     }
     else
     {
-        std::cout << "Input file doesn't have a basis inside." << std::endl;
+        gsInfo << "Input file doesn't have a basis inside." << std::endl;
         return -1;
     }
 
         
     if (pBasis == NULL)
     {
-        std::cout << "Didn't find any basis." << std::endl;
+        gsInfo << "Didn't find any basis." << std::endl;
         return -1;
     }
 
@@ -84,23 +84,23 @@ int main(int argc, char* argv[])
     
     
     // printing the basis
-    std::cout << "The file contains: \n" << *pBasis << std::endl;
+    gsInfo << "The file contains: \n" << *pBasis << std::endl;
             
     
     // printing some properties of the basis
-    std::cout << "Dimension of the parameter space: " << pBasis->dim() << "\n"
-              << "Number of basis functions: " << pBasis->size() << "\n"
-              << "Number of elements: " << pBasis->numElements() << "\n"
-              << "Max degree of the basis: " << pBasis->maxDegree() << "\n"
-              << "Min degree of the basis: " << pBasis->minDegree() << "\n"
-              << std::endl;
+    gsInfo << "Dimension of the parameter space: " << pBasis->dim() << "\n"
+           << "Number of basis functions: " << pBasis->size() << "\n"
+           << "Number of elements: " << pBasis->numElements() << "\n"
+           << "Max degree of the basis: " << pBasis->maxDegree() << "\n"
+           << "Min degree of the basis: " << pBasis->minDegree() << "\n"
+           << std::endl;
 
 
     // support of the basis 
     // (dim x 2 matrix, the parametric domain)
     gsMatrix<> support = pBasis->support();
-    std::cout << "Support: \n"
-              << support << "\n" << std::endl;
+    gsInfo << "Support: \n"
+           << support << "\n" << std::endl;
     
 
     
@@ -114,28 +114,31 @@ int main(int argc, char* argv[])
     // ----------------------------------------------------------------------
 
     gsMatrix<> u = 0.3 * support.col(0) + 0.7 * support.col(1);
-    std::cout << "u " << size(u) << ": \n" << u << "\n" << std::endl;
+    gsInfo << "u " << size(u) << ": \n" << u << "\n" << std::endl;
     
     // indices of active (nonzero) functions at parameter u
     gsMatrix<unsigned> active = pBasis->active(u);
-    std::cout << "Active functions at u " << size(active) << ": \n" 
-              << active << "\n" << std::endl;
+    gsInfo << "Active functions at u " << size(active) << ": \n" 
+           << active << "\n" << std::endl;
+
+    gsInfo << "Is number 2 active at the point ? " <<pBasis->isActive(0,u.col(0)) << ": \n" 
+           << active << "\n" << std::endl;
     
 
     // values of all active functions at u
     gsMatrix<> values = pBasis->eval(u);
-    std::cout << "Values at u " << size(values) << ": \n"
-              << values << "\n" << std::endl;
+    gsInfo << "Values at u " << size(values) << ": \n"
+           << values << "\n" << std::endl;
     
     // values of single basis functions
     for (index_t i = 0; i != active.rows(); i++)
     {
         gsMatrix<> val = pBasis->evalSingle(active(i), u);
         
-        std::cout << "basis fun. index:  " << active(i) 
-                  << "   value: " << val(0, 0) << "\n";
+        gsInfo << "basis fun. index:  " << active(i) 
+               << "   value: " << val(0, 0) << "\n";
     }
-    std::cout << std::endl;
+    gsInfo << std::endl;
 
 
     // ----------------------------------------------------------------------
@@ -144,8 +147,8 @@ int main(int argc, char* argv[])
     
 
     gsMatrix<> derivs = pBasis->deriv(u);
-    std::cout << "Derivatives at u " << size(derivs) << ": \n"
-              << derivs << "\n" << std::endl;
+    gsInfo << "Derivatives at u " << size(derivs) << ": \n"
+           << derivs << "\n" << std::endl;
     
 
     // derivatives of single basis function
@@ -153,15 +156,15 @@ int main(int argc, char* argv[])
     {
         gsMatrix<> der = pBasis->derivSingle(active(i), u);
         
-        std::cout << "basis fun. index:  " << active(i)
-                  << "   value: " << std::setw(15) <<  der(0, 0) << "\n";
+        gsInfo << "basis fun. index:  " << active(i)
+               << "   value: " << std::setw(15) <<  der(0, 0) << "\n";
         
         for (index_t row = 1; row != der.rows(); row++)
         {
-            std::cout << std::setw(46) << der(row, 0) << "\n";
+            gsInfo << std::setw(46) << der(row, 0) << "\n";
         }
     }
-    std::cout << std::endl;
+    gsInfo << std::endl;
 
 
     // ----------------------------------------------------------------------
@@ -170,25 +173,25 @@ int main(int argc, char* argv[])
     
 
     gsMatrix<> derivs2 = pBasis->deriv2(u);
-    std::cout << "Second derivatives at u " << size(derivs2) << ": \n"
-              << derivs2 << "\n" << std::endl;
+    gsInfo << "Second derivatives at u " << size(derivs2) << ": \n"
+           << derivs2 << "\n" << std::endl;
     
     for (index_t i = 0; i != active.rows(); i++)
     {
         gsMatrix<> der2 = pBasis->deriv2Single(active(i), u);
 
-        std::cout << "basis fun. index:  " << active(i)
-                  << "   value: " << std::setw(15) << der2(0, 0) << "\n";
+        gsInfo << "basis fun. index:  " << active(i)
+               << "   value: " << std::setw(15) << der2(0, 0) << "\n";
         
         for (index_t row = 1; row != der2.rows(); row++)
         {
-            std::cout << std::setw(46) << der2(row, 0) << "\n";
+            gsInfo << std::setw(46) << der2(row, 0) << "\n";
         }
     }
 
-    std::cout << "\nFor more information about evaluation "
-              << "(and order of derivatives) look at doxygen documentation." 
-              << "\n" << std::endl;
+    gsInfo << "\nFor more information about evaluation "
+           << "(and order of derivatives) look at doxygen documentation." 
+           << "\n" << std::endl;
     
 
 
@@ -198,8 +201,8 @@ int main(int argc, char* argv[])
     
     if (output != "")
     {
-        std::cout << "Writing the basis to a paraview file: " << output 
-                  << "\n" << std::endl;
+        gsInfo << "Writing the basis to a paraview file: " << output 
+               << "\n" << std::endl;
         gsWriteParaview(*pBasis, output);
     }
     

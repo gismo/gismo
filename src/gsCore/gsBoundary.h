@@ -672,9 +672,7 @@ public:
     /// to the corner cmap[i] (in lex-order) of \a ps2
     void cornerMap(gsVector<index_t> & cmap) const;
 
-    void matchDofs(gsVector<int>    bSize, 
-                   gsMatrix<unsigned> & b1, 
-                   const gsMatrix<unsigned> & b2) const;
+    void reorderCorners(gsMatrix<unsigned> & boundary) const;
 
 private:
 
