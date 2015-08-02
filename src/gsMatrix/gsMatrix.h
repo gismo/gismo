@@ -338,8 +338,12 @@ void blockTransposeInPlace(const index_t colBlock)
     
     GISMO_ASSERT( nc % colBlock == 0,
                   "The blocksize is not compatible with number of columns.");
-    
-    if ( nr == colBlock )
+
+    if (nc == 1 || colBlock == 1)
+    {
+        this->resize(colBlock, this->size()/colBlock);
+    }
+    else if ( nr == colBlock )
     {
         for (index_t j = 0; j!= nc; j+=colBlock)
             this->middleCols(j,colBlock).template triangularView<Eigen::StrictlyUpper>()
