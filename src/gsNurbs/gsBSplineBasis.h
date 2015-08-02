@@ -562,13 +562,21 @@ public:
             return true;
     }
 
-    /// If flag is true, tries to convert the basis to periodic (succeeds only if the knot vector is suitable).
+    /// If flag is true, tries to convert the basis to periodic
+    /// (succeeds only if the knot vector is suitable).
     void setPeriodic(bool flag = true)
     {
         if ( flag )
             _convertToPeriodic();
         else
             m_periodic = 0;
+    }
+
+    // Compatible with tensor B-spline basis
+    void setPeriodic(int dir)
+    {
+        GISMO_ASSERT(dir==0, "Invalid direction");
+            _convertToPeriodic();
     }
 
     /// Returns the multiplicity of the first ``significant" knot
