@@ -339,7 +339,7 @@ void blockTransposeInPlace(const index_t colBlock)
     GISMO_ASSERT( nc % colBlock == 0,
                   "The blocksize is not compatible with number of columns.");
 
-    if (nc == 1 || colBlock == 1)
+    if (nr == 1 || colBlock == 1)
     {
         this->resize(colBlock, this->size()/colBlock);
     }
