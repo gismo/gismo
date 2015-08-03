@@ -234,9 +234,8 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
     for ( int i = 0; i<u.cols(); i++ )
     {
         for ( int j = 0; j<u.rows(); j++ )
-        {
             my->vars[j] =u(j,i);
-        }
+
         result(0,i) = my->expression.value();
     }
 }
@@ -259,18 +258,19 @@ void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t 
 template<typename T>
 void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
-    int d = u.rows();
-    GISMO_ASSERT ( u.rows() < 7 && u.rows() > 0, "Inconsistent point size." );
+    //gsDebug<< "Using finite differences (gsFunctionExpr::deriv_into) for derivatives.\n";
+    const index_t d = domainDim();
+    GISMO_ASSERT ( d == u.rows() && d<7, "Inconsistent point size." );
 
-    result.resize(d, u.cols());
+    result.resize(d, u.cols());//targetDim()==1
 
-    for( int i=0; i < u.cols(); ++i )
+    for(index_t p = 0; p < u.cols(); ++p ) // for all points
     {
-        for ( int j = 0; j<d; j++ ) 
-            my->vars[j] =u(j,i);
-        for( int j=0; j< d; ++j )
-            result(i,j) = exprtk::derivative<T>( my->expression, my->vars[j], 0.00001 ) ;
+        for (index_t i = 0; i!=d; ++i ) 
+            my->vars[i] =u(i,p);
+
+        for(index_t i=0; i!=d; ++i )
+            result(i,p) = exprtk::derivative<T>( my->expression, my->vars[i], 0.00001 ) ;
     }
 }
 
@@ -278,7 +278,7 @@ template<typename T>
 typename gsFunction<T>::uMatrixPtr
 gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const 
 { 
-    gsDebug<< "Using finite differences (gsFunction::deriv_into) for Hessian.\n";
+    //gsDebug<< "Using finite differences (gsFunctionExpr::hess) for Hessian.\n";
     GISMO_ENSURE(coord == 0, "Error, function is real");
     GISMO_ASSERT ( u.cols() == 1, "Need a single evaluation point." );
     int d = u.rows();
@@ -320,7 +320,7 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
 template<typename T>
 gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 {
-    gsDebug<< "Using finite differences (gsFunction::deriv_into) for Laplacian.\n";
+    //gsDebug<< "Using finite differences (gsFunction::laplacian) for Laplacian.\n";
     gsMatrix<T> * res= new gsMatrix<T>(1,u.cols()) ;
     res->setZero();
     int n = u.rows();

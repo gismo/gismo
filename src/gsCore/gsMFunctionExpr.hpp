@@ -267,7 +267,7 @@ void gsMFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t
 template<typename T>
 void gsMFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    gsDebug<< "Using finite differences for derivatives.\n";
+    //gsDebug<< "Using finite differences for derivatives.\n";
     const int d = my->domainDim;
     GISMO_ASSERT ( u.rows() == d, "Wrong point dimension" );
     

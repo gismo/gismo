@@ -57,20 +57,19 @@ gsFunction<T>::jacobian(const gsMatrix<T>& u) const
 template <class T>
 void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    const index_t tarDim = targetDim(); // dimension of codomain
-
     // Compute component gradients as columns of result
     deriv_into(u,result);
 
     // Reshape the matrix to get one Jacobian block per evaluation point
-    result.resize(tarDim, result.size()/tarDim);
-    result.blockTransposeInPlace(domainDim());
+    const index_t d = domainDim();     // dimension of domain
+    result.resize(d, result.size()/d); //transposed Jacobians
+    result.blockTransposeInPlace( targetDim() );
 }
 
 template <class T>
 void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
+    //gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
     const index_t parDim = u.rows();                // dimension of domain
     const index_t tarDim = targetDim();             // dimension of codomain
     const index_t numPts = u.cols();                // number of points to compute at
@@ -105,7 +104,7 @@ void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 template <class T>
 void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) const
 {
-    gsDebug << "Using finite differences (gsFunction::deriv2_into) for second derivatives.\n";
+    //gsDebug << "Using finite differences (gsFunction::deriv2_into) for second derivatives.\n";
     const int d = u.rows();                     // dimension of domain
     const int n = targetDim();                  // dimension of codomain
     const int numPts = u.cols();                // number of points to compute at
@@ -151,7 +150,7 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
 template <class T>
 gsMatrix<T>* gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
 {
-    gsDebug << "Using finite differences (gsFunction::laplacian) for computing Laplacian.\n";
+    //gsDebug << "Using finite differences (gsFunction::laplacian) for computing Laplacian.\n";
     int d = u.rows();
     gsVector<T> tmp( d );
     gsMatrix<T>* res = new gsMatrix<T>( d, u.cols() );
@@ -193,6 +192,9 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
 
         // compute Jacobian 
         jacobian_into(arg, jac);
+
+        gsDebugVar(jac);
+        gsDebugVar(delta);
 
         // Solve for next update
         if (squareJac)
