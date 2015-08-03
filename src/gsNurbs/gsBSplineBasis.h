@@ -201,16 +201,17 @@ public:
         m_knots.swap(other.m_knots);
     }
 
-//////////////////////////////////////////////////
-// Virtual member functions required by the base class
-//////////////////////////////////////////////////
+/* Virtual member functions required by the base class */
 
     // Look at gsBasis class for a description
     int dim() const { return Dim; }
 
+    // Unhide/forward gsTensorBasis<1,T>::size(k), since the overload
+    // with size() automatically hides it in this class
+    using Base::size;
+
     // Look at gsBasis class for a description
     int size() const { return m_knots.size() - m_p - 1 - m_periodic; }
-    using gsTensorBasis<1,T>::size;
 
     // Look at gsBasis class for a description
     int numElements() const { return m_knots.numKnotSpans(); }
@@ -682,6 +683,15 @@ protected:
 // template<class T, class KnotVectorType>
 // using gsBSplineBasis = gsTensorBSplineBasis<1,T,KnotVectorType>
 
+/** \brief
+    A univariate B-spline basis.
+
+    \tparam T coefficient type
+    \tparam KnotVectorType the type of knot vector to use
+
+    \ingroup basis
+    \ingroup Nurbs
+*/
 template<class T, class KnotVectorType>
 class gsBSplineBasis : public gsTensorBSplineBasis<1,T,KnotVectorType>
 {

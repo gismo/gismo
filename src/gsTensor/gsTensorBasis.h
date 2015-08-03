@@ -664,17 +664,24 @@ public:
     iterator end()
     { return &(m_bases)+1; }
     
-    /// The number of basis functions in the direction of the k-th parameter component
+    // Unhide/forward gsBasis<T>::size(), since the following
+    // overload with size(k) automatically hides it in this class
+    // Note that MSVC 2010 produces compilation error if we just
+    // do a "using gsBasis<T>::size"
+    int size() const = 0;
+
+    /// \brief The number of basis functions in the direction of the k-th
+    /// parameter component
     int size(int k) const 
     {
         GISMO_ASSERT(k==0, "Invalid direction");
         return this->size();
     }
-    using Base::size;
 
-    /// The number of basis functions in the direction of the k-th parameter component
+    /// \brief The number of basis functions in the direction of the k-th
+    /// parameter component
     void size_cwise(gsVector<index_t,1> & result) const 
-    { result[0] = size(); }
+    { result[0] = this->size(); }
 
     gsVector<int> cwiseDegree() const
     {
@@ -693,7 +700,7 @@ public:
     typename gsMatrix<unsigned>::uPtr coefSlice(int dir, int k) const
     {
         GISMO_ASSERT(dir == 0, "Invalid direction");
-        GISMO_ASSERT(k < size(), "Invalid index");
+        GISMO_ASSERT(k < this->size(), "Invalid index");
         // return 0 or size()-1
         GISMO_NO_IMPLEMENTATION
      }
