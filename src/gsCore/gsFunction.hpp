@@ -193,9 +193,6 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
         // compute Jacobian 
         jacobian_into(arg, jac);
 
-        gsDebugVar(jac);
-        gsDebugVar(delta);
-
         // Solve for next update
         if (squareJac)
             delta = jac.partialPivLu().solve( delta );
