@@ -77,7 +77,7 @@ endif()
   endif()
 
    if (GISMO_WITH_IPOPT)
-     target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_IpOpt})
+     target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB})
 #  find_package( LAPACK REQUIRED ) # Problematic on ubuntu
 #   find_package( BLAS REQUIRED )
 #   find_package( DL REQUIRED )
