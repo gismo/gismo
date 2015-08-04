@@ -695,10 +695,6 @@ public:
             gsWarn << "Warning: Insconsistent "<< *this<< "\n";
     }
 
-    // For compatibility
-    gsBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
-    {GISMO_ERROR("Cannot Construct BSplineBasis using 2 knot-vectors."); }
-
     /// Copy Constructor
     gsBSplineBasis( const gsBSplineBasis & o)
     : Base(o)

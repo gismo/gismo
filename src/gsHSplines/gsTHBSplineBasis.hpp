@@ -1383,13 +1383,16 @@ gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<unsigned>& boundingBox
 	return_cp_1D(coefs, col, newCoefs);
     }
 
-    gsCompactKnotVector<T> kv0(this->m_deg[0], knots0.begin() + lowIndex0, 
-			       knots0.begin() + uppIndex0 + this->m_deg[0] + 2);
-    
-    gsCompactKnotVector<T> kv1(this->m_deg[1], knots1.begin() + lowIndex1, 
-			       knots1.begin() + uppIndex1 + this->m_deg[1] + 2);
+    std::vector<gsCompactKnotVector<T> > kv(2);
 
-    tensorBasis basis(kv0, kv1);
+    kv[0] = gsCompactKnotVector<T>(this->m_deg[0], knots0.begin() + lowIndex0, 
+                                 knots0.begin() + uppIndex0 + this->m_deg[0] + 2);
+
+    kv[1] = gsCompactKnotVector<T>(this->m_deg[1], knots1.begin() + lowIndex1, 
+                                   knots1.begin() + uppIndex1 + this->m_deg[1] + 2);
+
+    tensorBasis basis(kv);
+
     return gsTensorBSpline<d, T, gsCompactKnotVector<T> > (basis, newCoefs);
 }
 
