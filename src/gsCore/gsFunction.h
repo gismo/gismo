@@ -144,12 +144,18 @@ public:
      * Then, \em result is of the form
      * \f[
      \left[
-     \begin{array}{ccccc}
-        \partial_x f_1(u_1) & \partial_y f_1(u_1) & \partial_x f_1(u_2)
+     \begin{array}{cccc}
+        \partial_x f_1(u_1) & \partial_x f_1(u_2)
+           & \ldots & \partial_x f_1(u_n) \\
+        \partial_y f_1(u_1) & \partial_y f_1(u_2)
            & \ldots & \partial_y f_1(u_n) \\
-        \partial_x f_2(u_1) & \partial_y f_2(u_1) & \partial_x f_2(u_2)
-           & \ldots & \partial_y f_2(u_n) \\
-        \partial_x f_3(u_1) & \partial_y f_3(u_1) & \partial_x f_3(u_2)
+        \partial_x f_2(u_1) & \partial_x f_2(u_2)
+           & \ldots & \partial_x f_2(u_n) \\
+        \partial_y f_2(u_1) & \partial_y f_2(u_2)
+           & \ldots & \partial_x f_2(u_n) \\
+        \partial_x f_3(u_1) & \partial_x f_3(u_2)
+           & \ldots & \partial_x f_3(u_n)\\
+        \partial_y f_3(u_1) & \partial_y f_3(u_2)
            & \ldots & \partial_y f_3(u_n)
      \end{array}
      \right]
@@ -157,7 +163,7 @@ public:
      *
      * \param[in] u gsMatrix of size <em>d</em> x <em>n</em>, where each
      * column of \em u represents one evaluation point.
-     * \param[out] result gsMatrix of size <em>D</em> x <em>(d*n)</em>.
+     * \param[out] result gsMatrix of size <em>(D*d)</em> x <em>n</em>.
      * Each row of \em result corresponds to one component in the target
      * space and contains the gradients for each evaluation point,
      * as row vectors, one after the other (see above for details on the format).
