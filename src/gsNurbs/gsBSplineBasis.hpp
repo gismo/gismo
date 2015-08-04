@@ -1195,6 +1195,12 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::_stretchEndKnots()
 /* ********************************************** */
 
 template <class T, class KnotVectorType>
+gsTensorBSplineBasis<1,T,KnotVectorType>* gsTensorBSplineBasis<1,T,KnotVectorType>::clone() const
+{
+    return new gsTensorBSplineBasis<1,T,KnotVectorType>(*this);
+}
+
+template <class T, class KnotVectorType>
 gsBSplineBasis<T,KnotVectorType> * gsBSplineBasis<T,KnotVectorType>::clone() const
 { 
     return new gsBSplineBasis(*this); 

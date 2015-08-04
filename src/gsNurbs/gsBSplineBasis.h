@@ -162,7 +162,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    TensorSelf_t * clone() const = 0;
+    TensorSelf_t * clone() const;
     
     // gsTensorBSplineBasis( const Base & o)
     // { 
