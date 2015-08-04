@@ -92,6 +92,10 @@ public:
     { return Ptr( new Self_t(KV) ); }
   
 public:
+
+    // Look at gsBasis class for a description
+    // Note: Specializing pointer type at return
+    TensorSelf_t * clone() const = 0;
     
     // gsTensorBSplineBasis( const Base & o)
     // { 
@@ -690,7 +694,6 @@ public:
         if( ! this->check() )
             gsWarn << "Warning: Insconsistent "<< *this<< "\n";
     }
-
 
     // For compatibility
     gsBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
