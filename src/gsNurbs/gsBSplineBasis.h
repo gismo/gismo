@@ -92,77 +92,6 @@ public:
     { return Ptr( new Self_t(KV) ); }
   
 public:
-
-    /// Default empty constructor
-    explicit gsTensorBSplineBasis( bool periodic = false ) :
-    Base(), m_p(0), m_periodic(0)
-    {
-        m_knots.initClamped(0);
-        if( periodic )
-        {
-            gsWarn << "Converting your basis to periodic.\n";
-            _convertToPeriodic();
-        }
-
-        if( ! check()  )
-            gsWarn << "Warning: Insconsistent "<< *this<< "\n";
-    }
-
-
-    /// Construct BSpline basis of a knot vector
-    gsTensorBSplineBasis( const KnotVectorType & KV, bool periodic = false) :
-    m_p(KV.degree()), m_knots(KV), m_periodic(0)
-    { 
-        if( periodic )
-        {
-            gsWarn << "Converting your basis to periodic.\n";
-            _convertToPeriodic();
-        }
-
-        if( ! check()  )
-            gsWarn << "Warning: Insconsistent "<< *this<< "\n";
-
-    }
-
-    // For compatibility
-    gsTensorBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
-    { GISMO_ERROR("Invalid constructor."); }
-
-
-    /// Construct a BSpline basis
-    /// \param u0 starting parameter
-    /// \param u1 end parameter parameter
-    /// \param interior number of interior knots
-    /// \param degree degree of the spline space
-    /// \param mult_interior multiplicity at the interior knots
-    /// \param periodic specifies if basis is periodic or not
-    gsTensorBSplineBasis(T u0, T u1, unsigned interior, 
-                   int degree, unsigned mult_interior=1,
-                   bool periodic = false ) :
-    m_p(degree), 
-    m_knots(u0, u1, interior, m_p+1, mult_interior, m_p), 
-    m_periodic(0)
-    {
-        if( periodic )
-        {
-            _convertToPeriodic();
-            gsWarn << "Converting your basis to periodic.\n";
-        }
-
-        if( ! check()  )
-            gsWarn << "Warning: Insconsistent "<< *this<< "\n";
-    }
-
-    
-    /// Copy Constructor
-    gsTensorBSplineBasis( const gsTensorBSplineBasis & o)
-    : m_p(o.m_p), m_knots( o.knots() ), m_periodic(o.m_periodic)
-    {
-
-    }
-
-    // Look at gsBasis class for a description
-    TensorSelf_t * clone() const;
     
     // gsTensorBSplineBasis( const Base & o)
     // { 
@@ -609,7 +538,7 @@ public:
                    gsMatrix<unsigned> & bndThis,
                    gsMatrix<unsigned> & bndOther) const;
 
-private:
+protected:
 
     /// Tries to convert the basis into periodic
     void _convertToPeriodic();
@@ -700,16 +629,45 @@ public:
     typedef gsBSplineBasis<T,KnotVectorType> Self_t;
 
 public:
-    /// Default empty constructor
-    explicit gsBSplineBasis( bool periodic = false )
-    : Base(periodic)
-    { }
 
+    /// Default empty constructor
+    explicit gsBSplineBasis(const bool periodic = false )
+    { 
+        m_p = 0;
+        m_knots.initClamped(0);
+        m_periodic = 0;
+
+        if( periodic )
+            this->_convertToPeriodic();
+
+        if( ! this->check() )
+            gsWarn << "Warning: Insconsistent "<< *this<< "\n";
+    }
 
     /// Construct BSpline basis of a knot vector
-    gsBSplineBasis( const KnotVectorType & KV, bool periodic = false)
-    : Base(KV,periodic)
-    { }
+    gsBSplineBasis( const KnotVectorType & KV, const bool periodic = false)
+    { 
+        m_p        = KV.degree();
+        m_knots    = KV;
+        m_periodic = 0;
+
+        if( periodic )
+            this->_convertToPeriodic();
+
+        if( ! this->check() )
+            gsWarn << "Warning: Insconsistent "<< *this<< "\n";
+    }
+
+    /// Compatibility constructor with input an std::vector containing
+    /// a single knotvector
+    gsBSplineBasis(const std::vector<KnotVectorType> & KV)
+    { 
+        GISMO_ASSERT(1 == KV.size(), "Expecting a single knotvector." );
+
+        m_p        = KV.front().degree();
+        m_knots    = KV.front();
+        m_periodic = 0;
+    }
 
     /// Construct a BSpline basis
     /// \param u0 starting parameter
@@ -718,16 +676,26 @@ public:
     /// \param degree degree of the spline space
     /// \param mult_interior multiplicity at the interior knots
     /// \param periodic specifies if basis is periodic or not
-    gsBSplineBasis(T u0, T u1, unsigned interior, 
-                   int degree, unsigned mult_interior=1,
-                   bool periodic = false )
-    : Base(u0,u1,interior,degree,mult_interior,periodic)
-    { }
+    gsBSplineBasis(const T u0, const T u1, const unsigned interior, 
+                   const int degree, const unsigned mult_interior=1,
+                   const bool periodic = false )
+    { 
+        m_p = degree;
+        m_knots.initUniform(u0, u1, interior, m_p+1, mult_interior, m_p);
+        m_periodic = 0;
+
+        if( periodic )
+            this->_convertToPeriodic();
+        
+        if( ! this->check() )
+            gsWarn << "Warning: Insconsistent "<< *this<< "\n";
+    }
+
 
     // For compatibility
     gsBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
     {GISMO_ERROR("Cannot Construct BSplineBasis using 2 knot-vectors."); }
-    
+
     /// Copy Constructor
     gsBSplineBasis( const gsBSplineBasis & o)
     : Base(o)

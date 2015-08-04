@@ -89,7 +89,9 @@ public:
     /// \param mult_ends multiplicity at the two end knots
     /// \param mult_interior multiplicity at the interior knots
     /// \param degree degree of the spline space
-    gsCompactKnotVector(T const& u0, T const& u1, unsigned const & interior, unsigned const& mult_ends=1, unsigned const& mult_interior=1, int const& degree=-1) ;
+    gsCompactKnotVector(T const u0, T const u1, unsigned const interior, 
+                        unsigned const mult_ends=1, 
+                        unsigned const mult_interior=1, int const degree=-1) ;
 
     /// @brief Construct an open knot vector from the given unique knots.
     /// \param knots sequence of distinct knots
@@ -111,6 +113,8 @@ public:
 
 public:
 
+    void initUniform( T u0, T u1, unsigned interior, unsigned mult_ends, 
+                      unsigned mult_interior = 1, int degree = -1);
 
     void initClamped(int degree, unsigned numKnots = 2, 
                      unsigned mult_interior = 1)

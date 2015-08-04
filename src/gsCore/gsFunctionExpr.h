@@ -105,11 +105,7 @@ public:
   
     ///Mixed derivative wrt variables k and j
     gsMatrix<T> * mderiv(const gsMatrix<T>& u, const index_t k, const index_t j) const;
-  
-  
-    /// returns the last value computed
-    T value() const;
-  
+    
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const;
   

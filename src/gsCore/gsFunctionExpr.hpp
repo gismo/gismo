@@ -17,6 +17,71 @@
 
 #include <exprtk.hpp>// External file
 
+
+
+namespace
+{
+
+// addition of mixed derivative for expressions
+// see https://en.wikipedia.org/wiki/Finite_difference_coefficient
+template <typename T>
+T mixed_derivative(const exprtk::expression<T>& e,
+                     T& x, T& y,
+                     const double& h = 0.00001)
+{
+    T num = T(0.0), tmp;
+    T x_init = x;
+    T y_init = y;
+    
+    x = x_init + T(2.0) * h;
+    y = y_init + T(2.0) * h;
+    num += e.value();
+    y = y_init - T(2.0) * h;
+    num -= e.value();
+    x = x_init - T(2.0) * h;
+    num += e.value();
+    y = y_init + T(2.0) * h;
+    num -= e.value();
+    
+    x = x_init + h;
+    y = y_init + h;
+    tmp = e.value();
+    y = y_init - h;
+    tmp -= e.value();
+    x = x_init - h;
+    tmp += e.value();
+    y = y_init + h;
+    tmp -= e.value();
+    num += 64* tmp;
+    
+    x = x_init + T(2.0) * h;
+    y = y_init - h;
+    tmp = e.value();
+    y = y_init + h;
+    tmp -= e.value();
+    x = x_init - T(2.0) * h;
+    tmp += e.value();
+    y = y_init - h;
+    tmp -= e.value();
+    
+    y = y_init + T(2.0) * h;
+    x = x_init - h;
+    tmp += e.value();
+    x = x_init + h;
+    tmp -= e.value();
+    y = y_init - T(2.0) * h;
+    tmp += e.value();
+    x = x_init - h;
+    tmp -= e.value();
+    num += 8* tmp;
+      
+    x = x_init;
+    y = y_init;
+    return num / ( T(144.0)*h*h );
+}
+
+};//namespace
+
 namespace gismo
 {
 
@@ -292,10 +357,11 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     for( int j=0; j< d; ++j )
     {
         (*res)(j,j) = exprtk::second_derivative<T>( my->expression, my->vars[j], 0.00001 ) ;
+
         for( int k=0; k<j; ++k )
             (*res)(k,j) = (*res)(j,k) =
-                exprtk::mixed_derivative<T>( my->expression, my->vars[k], 
-                                             my->vars[j], 0.00001 );
+                mixed_derivative<T>( my->expression, my->vars[k], 
+                                     my->vars[j], 0.00001 );
     }
     return typename gsFunction<T>::uMatrixPtr(res); 
 }
@@ -311,8 +377,9 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
     {
       	for ( int t = 0; t<u.rows(); t++ )
             my->vars[t] =u(t,i);
+
         (*res)(0,i) =
-            exprtk::mixed_derivative<T>( my->expression, my->vars[k], my->vars[j], 0.00001 ) ;
+            mixed_derivative<T>( my->expression, my->vars[k], my->vars[j], 0.00001 ) ;
     }
     return  res; 
 } ;
@@ -339,15 +406,7 @@ gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 }
 
 template<typename T>
-T gsFunctionExpr<T>::value() const
-{ 
-    return my->expression.value() ; 
-}
-
-template<typename T>
 std::ostream & gsFunctionExpr<T>::print(std::ostream &os) const
 { os << my->string ; return os; }
-
-
 
 }; // namespace gismo

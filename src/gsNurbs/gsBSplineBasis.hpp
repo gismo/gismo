@@ -1110,7 +1110,7 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::enforceOuterKnotsPeriodic()
 template <class T, class KnotVectorType>
 void gsTensorBSplineBasis<1,T,KnotVectorType>::_convertToPeriodic()
 {
-    gsDebug << "gsBSplineBasis: Converting basis to periodic"<< *this<< "\n";
+    gsWarn << "gsBSplineBasis: Converting basis to periodic"<< *this<< "\n";
 
     int borderKnotMult = this->borderKnotMult();
     if( m_knots.size() < 2 * m_p + 2 ) // We need at least one internal knot span.
@@ -1193,12 +1193,6 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::_stretchEndKnots()
 }
 
 /* ********************************************** */
-
-template <class T, class KnotVectorType>
-gsTensorBSplineBasis<1,T,KnotVectorType>* gsTensorBSplineBasis<1,T,KnotVectorType>::clone() const
-{
-    return new gsTensorBSplineBasis<1,T,KnotVectorType>(*this);
-}
 
 template <class T, class KnotVectorType>
 gsBSplineBasis<T,KnotVectorType> * gsBSplineBasis<T,KnotVectorType>::clone() const

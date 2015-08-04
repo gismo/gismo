@@ -101,6 +101,14 @@ public:
     : Base( new Basis_t(KV1), new Basis_t(KV2), new Basis_t(KV3) )
     { m_isPeriodic = -1; }
 
+    gsTensorBSplineBasis(const std::vector<KnotVectorType> & KV)
+    { 
+        GISMO_ENSURE(d == KV.size(), "Invalid number of knot-vectors given." );
+        for(unsigned i = 0; i!=d; ++i)
+            this->m_bases[i] = new Basis_t(KV[i]);
+        m_isPeriodic = -1; 
+    }
+
     /*
        \brief Constructs a 3D tensor product B-spline basis. Assumes
        that the tamplate parameter \a d is equal to 3.

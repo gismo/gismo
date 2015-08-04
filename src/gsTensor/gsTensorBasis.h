@@ -523,7 +523,7 @@ public:
     //inline int trueSize(int k) const { return m_bases[k]->trueSize(); }
 
 // Data members
-private:
+protected:
 
     Basis_t* m_bases[d];
 

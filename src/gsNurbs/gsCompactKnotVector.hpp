@@ -18,7 +18,20 @@ namespace gismo
 {
 
 template <class T>
-gsCompactKnotVector<T>::gsCompactKnotVector(T const& u0, T const& u1, unsigned const& interior, unsigned const& mult_ends, unsigned const& mult_interior, int const& degree)
+gsCompactKnotVector<T>::gsCompactKnotVector(T const u0, T const u1, unsigned const interior,
+                                            unsigned const mult_ends, 
+                                            unsigned const mult_interior,
+                                            int const degree)
+{
+    initUniform( u0, u1, interior, mult_ends, mult_interior, degree );
+}
+
+template <class T>
+void gsCompactKnotVector<T>::initUniform(T const u0, T const u1, 
+                                         unsigned const interior,
+                                         unsigned const mult_ends, 
+                                         unsigned const mult_interior, 
+                                         int const degree)
 {
     T h= (u1-u0)/(interior+1);
 
@@ -38,7 +51,6 @@ gsCompactKnotVector<T>::gsCompactKnotVector(T const& u0, T const& u1, unsigned c
     else
         m_p=degree;
 }
-
 
 template <class T>
 gsCompactKnotVector<T>::gsCompactKnotVector(std::vector<T> const& knots, int degree, int regularity)
