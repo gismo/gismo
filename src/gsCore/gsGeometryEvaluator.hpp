@@ -337,6 +337,7 @@ gsGenericGeometryEvaluator<T,ParDim,codim>::evaluateAt(const gsMatrix<T>& u)
 
     m_numPts = u.cols();
     m_geo.basis().evalAllDers_into(u, m_maxDeriv, m_basisVals);
+
     // todo: If we assume all points (u) lie on the same element we may
     // store the actives only once
     m_geo.basis().active_into(u, m_active);
@@ -368,15 +369,16 @@ template <class T, int ParDim, int codim>
 void gsGenericGeometryEvaluator<T,ParDim,codim>::computeValues()
 {
     const gsMatrix<T> & coefs = m_geo.coefs();
+    const gsMatrix<T> & bVals = m_basisVals.front();
 
     m_values.resize(coefs.cols(), m_numPts);
 
     for (index_t j=0; j < m_numPts; ++j) // for all evaluation points
     {
-        m_values.col(j) =  coefs.row( m_active(0,j) ) * m_basisVals(0,j);
+        m_values.col(j) =  coefs.row( m_active(0,j) ) * bVals(0,j);
 
         for ( index_t i=1; i< m_active.rows() ; i++ )   // for all non-zero basis functions
-            m_values.col(j)  +=   coefs.row( m_active(i,j) ) * m_basisVals(i,j);
+            m_values.col(j)  +=   coefs.row( m_active(i,j) ) * bVals(i,j);
     }
 }
 
@@ -385,6 +387,7 @@ void gsGenericGeometryEvaluator<T,ParDim,codim>::computeJacobians()
 {
     const index_t numActive = m_active.rows();
     const gsMatrix<T> & coefs = m_geo.coefs();
+    const gsMatrix<T> & bVals = m_basisVals[1];
 
     m_jacobians.setZero(GeoDim, m_numPts * ParDim);
 
@@ -392,12 +395,12 @@ void gsGenericGeometryEvaluator<T,ParDim,codim>::computeJacobians()
         for (index_t i = 0; i < numActive; ++i) // for all active basis functions
         {
             m_jacobians.template block<GeoDim,ParDim>(0,j*ParDim).transpose().noalias() +=
-                    m_basisVals.template block<ParDim,1>(numActive+i*ParDim, j) *
+                    bVals.template block<ParDim,1>(i*ParDim, j) *
                     coefs.template block<1,GeoDim>(m_active(i,j),0) ;
 
             // to check: which is faster ? the above or this..
             // m_jacobians.template block<GeoDim,ParDim>(0,j*ParDim).noalias() +=
-            //     (m_basisVals.template block<ParDim,1>(numActive+i*ParDim, j)
+            //     (bVals.template block<ParDim,1>(i*ParDim, j)
             //      * coefs.template block<1,GeoDim>(m_active(i,j),0) ).transpose();
         }
 }
@@ -408,10 +411,9 @@ void gsGenericGeometryEvaluator<T,ParDim,codim>::compute2ndDerivs()
 {
     const index_t numActive = m_active.rows();
     const gsMatrix<T> & coefs = m_geo.coefs();
+    const gsMatrix<T> & bVals = m_basisVals[2];
     // Number of differnt 2ed derivativs combinations
     const index_t numDeriv = ParDim + (ParDim*(ParDim - 1))/2;
-    // Starting index of the second derivatives in m_basisVals
-    const index_t der2start = (1 + ParDim) * numActive;
 
     m_2ndDers.setZero(GeoDim*numDeriv, m_numPts);
 
@@ -422,7 +424,7 @@ void gsGenericGeometryEvaluator<T,ParDim,codim>::compute2ndDerivs()
         for (index_t i = 0; i < numActive; ++i) // for all active basis functions
         {
             reshape.noalias() =
-                    m_basisVals.template block<numDeriv,1>(der2start+i*numDeriv, j)
+                    bVals.template block<numDeriv,1>(i*numDeriv, j)
                     * coefs.template block<1,GeoDim>(m_active(i,j),0);
 
             reshape.resize(GeoDim*numDeriv,1);
@@ -449,10 +451,10 @@ transformValuesHdiv( index_t k,
     index_t c = 0;
     for(int comp = 0; comp < ParDim; ++comp)  // component
     {
-        const typename gsMatrix<T>::constColumn & bvals = allValues[comp].col(k);
+        const typename gsMatrix<T>::constColumn & bVals = allValues[comp].col(k);
         for( index_t j=0; j< allValues[comp].rows() ; ++j) // active of component
         {
-            result.col(c++) = ( bvals[j] / det ) * jac.col(comp);
+            result.col(c++) = ( bVals[j] / det ) * jac.col(comp);
         }
     }
 }

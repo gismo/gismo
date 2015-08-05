@@ -11,6 +11,7 @@
 #if defined(_LARGEFILE64_SOURCE) && _LFS64_LARGEFILE-0
 #  define LSEEK lseek64
 #else
+#  include <unistd.h>         /* for SEEK_*, off_t, and _LFS64_LARGEFILE */
 #  define LSEEK lseek
 #endif
 #endif

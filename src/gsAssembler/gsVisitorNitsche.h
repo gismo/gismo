@@ -89,14 +89,14 @@ public:
                          gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
+        gsMatrix<T> & bGrads = basisData[1];
         const index_t numActive = actives.rows();
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-
-        const typename gsMatrix<T>::Block bVals  = basisData.block(0,k,numActive,1);
-        const typename gsMatrix<T>::Block bGrads = 
-            basisData.bottomRows( numActive * element.dim() );
+        
+        const typename gsMatrix<T>::Block bVals =
+            basisData[0].block(0,k,numActive,1);
 
         // Compute the outer normal vector on the side
         geoEval.outerNormal(k, side, unormal);
@@ -160,7 +160,7 @@ private:
 
 private:
     // Basis values
-    gsMatrix<T>      basisData;
+    std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>      pGrads;
     gsMatrix<unsigned> actives;
 

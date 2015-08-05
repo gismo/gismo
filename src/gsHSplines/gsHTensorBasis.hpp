@@ -492,7 +492,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     cmat.clear();
 
     gsVector<knotIter,d> starts, ends, curr;
-    gsVector<unsigned,d> ind;
+    gsVector<unsigned,d> ind; // unin ? snap
 
     for(unsigned i = 0; i != d; ++i)
     {
@@ -966,46 +966,15 @@ boundaryOffset(boxSide const & s,unsigned offset) const
     return makeMatrix<unsigned>(temp.begin(),temp.size(),1 ).release();
 }
 
+/*
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n, 
-                                           gsMatrix<T>& result) const
+                                           std::vector<gsMatrix<T> >& result) const;
 {
-    GISMO_ASSERT( n<=2, "gsHTensorBasis::evalAllDers() not implemented for n > 2." );
-    
-    gsMatrix<T> values;
-    gsVector<unsigned> tmp;
-    numActive(u, tmp);
-    unsigned nb = tmp.maxCoeff();
-    
-    if(n<0)
-    {
-        result.resize(0,u.cols());
-        return;
-    }
-    if( n == 0 )
-        result.resize( nb, u.cols());
-    else if( n == 1 )
-        result.resize((1 + d)*nb, u.cols());
-    else if (n == 2 )
-        result.resize((1 + d + d*(d+1)/2 )*nb, u.cols());
-    result.setZero();
-
-    this->eval_into(u, values);
-    result.topRows(nb) = values;
-
-    if ( n >= 1 )
-    {
-        this->deriv_into(u, values);
-        result.middleRows(nb,d*nb) = values;
-    }
-
-    if ( n >= 2 )
-    {
-        this->deriv2_into(u, values);
-        result.bottomRows( nb*d*(d+1)/2) = values;
-    }
+    result.resize(n+1);
 
 }
+*/
 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)

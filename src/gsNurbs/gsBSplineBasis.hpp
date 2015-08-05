@@ -612,15 +612,18 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv_into(const gsMatrix<T> & u,
 }
 
 template <class T, class KnotVectorType> inline
-void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const 
+void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2_into(const gsMatrix<T> & u, 
+                                                           gsMatrix<T>& result ) const 
 {
-    gsMatrix<T> ev;
-    this->evalAllDers_into(u,2,ev);
-    result.noalias() = ev.block(2*m_p+2,0,m_p+1,u.cols());  
+    std::vector<gsMatrix<T> > ev;
+    this->evalAllDers_into(u, 2, ev);
+    result.swap(ev[2]);
 }
 
 template <class T, class KnotVectorType>  inline
-void gsTensorBSplineBasis<1,T,KnotVectorType>::derivSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const 
+void gsTensorBSplineBasis<1,T,KnotVectorType>::derivSingle_into(unsigned i, 
+                                                                const gsMatrix<T> & u, 
+                                                                gsMatrix<T>& result ) const 
 {
     // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
     result.resize(1, u.cols() );
@@ -638,11 +641,11 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::derivSingle_into(unsigned i, cons
 }
 
 template <class T, class KnotVectorType>  inline
-void gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDersSingle_into(
-                unsigned i,
-                const gsMatrix<T> & u,
-                int n,
-                gsMatrix<T>& result) const
+void 
+gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDersSingle_into(unsigned i,
+                                                                 const gsMatrix<T> & u,
+                                                                 int n,
+                                                                 gsMatrix<T>& result) const
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
     //gsWarn << "You're about to use evalAllDersSingle_into(...) that has not been tested at all.\n";
@@ -811,10 +814,10 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2Single_into(unsigned i, con
 template <class T, class KnotVectorType> inline
 gsMatrix<T> * gsTensorBSplineBasis<1,T,KnotVectorType>::laplacian(const gsMatrix<T> & u ) const 
 {
-    gsMatrix<T> * der2 = new gsMatrix<T>(this->evalAllDers(u,2)->block(2*m_p+2,0,m_p+1,u.cols()) ); 
-    gsMatrix<T> * ev = new gsMatrix<T>( der2->colwise().sum() ) ;
-    delete der2;
-    return ev;
+    std::vector<gsMatrix<T> > ev;
+    this->evalAllDers_into(u, 2, ev);
+    gsMatrix<T> * res = new gsMatrix<T>( ev[2].colwise().sum() );
+    return res;
 }
 
 template <class T, class KnotVectorType>
@@ -847,7 +850,9 @@ gsGeometry<T> * gsTensorBSplineBasis<1,T,KnotVectorType>::makeGeometry( gsMovabl
 }
 
 template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const  
+void gsTensorBSplineBasis<1,T,KnotVectorType>::
+evalAllDers_into(const gsMatrix<T> & u, int n, 
+                 std::vector<gsMatrix<T> >& result) const
 {
   // TO DO : Use less memory proportionally to n
   // Only last n+1 columns and last n rows of ndu are needed
@@ -861,7 +866,9 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDers_into(const gsMatrix<T
   STACK_ARRAY(T, right, p1);
   STACK_ARRAY(T, a, 2 * p1);
 
-  result.resize( (n+1)*(m_p + 1), u.cols() ) ;  
+  result.resize(n+1);
+  for(int k=0; k<=n; k++)
+      result[k].resize(m_p + 1, u.cols());
 
 #if FALSE
 
@@ -869,12 +876,13 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDers_into(const gsMatrix<T
 
   for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
   {
-    // Check if the point is in the domain
-    if ( ! inDomain( u(0,v) ) )
+      // Check if the point is in the domain
+      if ( ! inDomain( u(0,v) ) )
       {
-	// gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
-	result.col(v).setZero();
-	continue;
+          // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
+          for(int k=0; k<=n; k++)
+              result[k].col(v).setZero();
+          continue;
       }
 
     // Run evaluation algorithm and keep the function values triangle & the knot differences
@@ -923,7 +931,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDers_into(const gsMatrix<T
       if ( ! inDomain( u(0,v) ) )
       {
           // gsWarn<< "Point "<< u(0,s) <<" not in the BSpline domain.\n";
-          result.col(v).setZero();
+          for(int k=0; k<=n; k++)
+              result[k].col(v).setZero();
           continue;
       }
 
@@ -952,9 +961,9 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDers_into(const gsMatrix<T
     }
     
     // Assign 0-derivative equal to function values
-    //result.block(0,v, p1,1) = ndu.col(m_p);
+    //result.front().block(0,v, p1,1) = ndu.col(m_p);
     for (int j=0; j <= m_p ; ++j )
-	result(j,v) = ndu[j*p1 + m_p];
+        result.front()(j,v) = ndu[j*p1 + m_p];
     
     // Compute the derivatives
     for(int r = 0; r <= m_p; r++)
@@ -978,9 +987,9 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDers_into(const gsMatrix<T
           d = a2[0] * ndu[rk*p1 + pk] ;
         }
         
-	j1 = ( rk >= -1  ? 1   : -rk     ); 
-	j2 = ( r-1 <= pk ? k-1 : m_p - r );
-	       
+        j1 = ( rk >= -1  ? 1   : -rk     ); 
+        j2 = ( r-1 <= pk ? k-1 : m_p - r );
+	    
         for(int j = j1; j <= j2; j++)
         {
           a2[j] = (a1[j] - a1[j-1]) / ndu[(pk+1)*p1 + rk+j] ;
@@ -992,7 +1001,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDers_into(const gsMatrix<T
           a2[k] = -a1[k-1] / ndu[(pk+1)*p1 + r] ;
           d += a2[k] * ndu[r*p1 + pk] ;
         }
-        result(k*p1 + r, v) = d;
+
+        result[k](r, v) = d;
 
         std::swap(a1, a2);              // Switch rows
       }
@@ -1001,10 +1011,10 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDers_into(const gsMatrix<T
 
   // Multiply through by the factor factorial(m_p)/factorial(p-k)
   int r = m_p ;
-  for(int k=1;k<=n;k++)
+  for(int k=1; k<=n; k++)
   {
-    result.middleRows(k*p1, p1).array() *= T(r) ;
-    r *= m_p - k ;
+      result[k].array() *= T(r) ;
+      r *= m_p - k ;
   }
 }
 

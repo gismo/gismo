@@ -197,30 +197,7 @@ public:
 
         // WARN: this depends on computeActiveFunctions() having been called before.
         // computeActiveFunctions() thus has to be called when next() is called!
-        const index_t numActive = activeFuncs.rows();
-
-        m_basis->evalAllDers_into(quNodes, numDerivs, allValues);
-
-        basisEvals.clear();
-        //gsDebug << "numActive " << numActive <<" m_basis->dim(): " << m_basis->dim() << " allValues.rows(): " << allValues.rows() << "\n";
-        index_t curRow = 0;
-        basisEvals.push_back( allValues.topRows(numActive) );
-        curRow += numActive;
-
-        if (numDerivs > 0)
-        {
-            // currently only 1 implemented
-            const int DerivCount = numActive * m_basis->dim();
-            basisEvals.push_back( allValues.middleRows( curRow, DerivCount ) );
-            curRow += DerivCount;
-        }
-        if (numDerivs > 1)
-        {
-            const int num2Der = numActive * (m_basis->dim() +(m_basis->dim()*(m_basis->dim()-1))/2);
-            basisEvals.push_back( allValues.middleRows( curRow, num2Der ) );
-            curRow += num2Der;
-        }
-        GISMO_ASSERT(curRow == allValues.rows(), "Unexpected number of rows in evaluateBasis()");
+        m_basis->evalAllDers_into(quNodes, numDerivs, basisEvals);
     }
 
     /// \brief Returns basis function values at quadrature nodes.
@@ -230,7 +207,7 @@ public:
     /// <em>n</em> is the number of quadrature nodes (which can be accessed via numQuNodes()).\n
     /// The entry <em>(i,j)</em> of the matrix corresponds to the value of the <em>i</em>-th function evaluated
     /// at the <em>j</em>-th quadrature point.
-    typename gsMatrix<T>::Block basisValues()           { return basisEvals[0]; }
+    gsMatrix<T> & basisValues()           { return basisEvals[0]; }
 
     /// \brief Returns derivatives of the basis functions at quadrature nodes.
     ///
@@ -244,7 +221,7 @@ public:
     /// See documentation of gsBasis::deriv_into (the one \em without input parameter "coefs") for details on the format of the data.
     // The entry <em>(i,j)</em> of the matrix corresponds to the value of the <em>i</em>-th function evaluated
     // at the <em>j</em>-th quadrature point.
-    typename gsMatrix<T>::Block basisDerivs(int der)    { return basisEvals[der]; }
+    gsMatrix<T> & basisDerivs(int der)    { return basisEvals[der]; }
 
     /// \brief Returns the value of a basis function at a point.
     ///
@@ -365,18 +342,13 @@ public:
     ///
     gsVector<int> activeDofs;
 
-    /// Matrix in which all values (including derivatives) of the active basis
-    /// functions at the quadrature nodes of the current element are stored.
-    gsMatrix<T> allValues;
-
-    // Matrix nlocks pointing to allValues sub-matrices
-    /// \brief Stores all computed function values and derivatives.
-    ///
-    /// The values are stored in a vector. <em>basisEvals[0]</em> is a gsMatrix containing
-    /// functions values, <em>basisEvals[1]</em> is a gsMatrix containing the first derivatives.\n
-    /// For details on the format of these matrices, see documentation of gsBasis::eval_into and gsBasis::deriv_into.
-    /// The accessors are basisValues() and basisDerivs().
-    std::vector< typename gsMatrix<T>::Block > basisEvals;
+    /// Matrix vector in which all values (including derivatives) of
+    /// the active basis functions at the quadrature nodes of the
+    /// current element are stored.  The accessors are basisValues()
+    /// and basisDerivs().  For details on the format of these
+    /// matrices, see documentation of gsBasis::eval_into and
+    /// gsBasis::deriv_into.
+    std::vector<gsMatrix<T> > basisEvals;
 
     /// Coordinates of a central point in the element (in the parameter domain).
     gsVector<T> center;

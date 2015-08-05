@@ -634,16 +634,18 @@ template<unsigned d, class T>
 void gsTensorBasis<d,T>::deriv_into(const gsMatrix<T> & u, 
                                           gsMatrix<T>& result) const
 {
-    gsMatrix<T> values[d];
+    std::vector<gsMatrix<T> > values[d];
 
     gsVector<unsigned, d> v, size;
 
     unsigned nb = 1;
     for (unsigned i = 0; i < d; ++i)
     {
-        m_bases[i]->evalAllDers_into( u.row(i), 1, values[i]); // evaluate basis functions and their first derivatives
+        // evaluate basis functions and their first derivatives
+        m_bases[i]->evalAllDers_into( u.row(i), 1, values[i]); 
 
-        const int num_i = values[i].rows() / 2;            // each basis function has a value and a derivative
+        // number of basis functions
+        const int num_i = values[i].front().rows();
         nb *= num_i;
         size[i] = num_i;
     }
@@ -655,12 +657,13 @@ void gsTensorBasis<d,T>::deriv_into(const gsMatrix<T> & u,
     do {
         for ( unsigned k=0; k<d; ++k)
         {
+            // derivative w.r.t. k-th variable
             const index_t rownum = r*d + k;
-            result.row(rownum)  =  values[k].row( size[k] + v(k) );                       // derivative w.r.t. k-th variable
+            result.row(rownum)  =  values[k][1].row( v(k) );
             for ( unsigned i=0; i<k; ++i)
-                result.row(rownum).array() *= values[i].row( v(i) ).array();
+                result.row(rownum).array() *= values[i][0].row( v(i) ).array();
             for ( unsigned i=k+1; i<d; ++i)
-                result.row(rownum).array() *= values[i].row( v(i) ).array();
+                result.row(rownum).array() *= values[i][0].row( v(i) ).array();
         }
         ++r ;
     } while (nextLexicographic(v, size));
@@ -669,13 +672,14 @@ void gsTensorBasis<d,T>::deriv_into(const gsMatrix<T> & u,
 
 template<unsigned d, class T>
 void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n, 
-                                                gsMatrix<T>& result ) const
+                                          std::vector<gsMatrix<T> >& result) const
 {
-    GISMO_ASSERT( n<=2, "gsTensorBasis::evalAllDers() not implemented for n > 2." );
+    GISMO_ASSERT(n>-1 &&  n<=2, "gsTensorBasis::evalAllDers() not implemented for n > 2." );
 
-    gsMatrix<T> values[d];
-
+    std::vector<gsMatrix<T> >values[d];
     gsVector<unsigned, d> v, size;
+
+    result.resize(n+1);
 
     unsigned nb = 1;
     for (unsigned i = 0; i < d; ++i)
@@ -683,23 +687,23 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         // evaluate basis functions/derivatives
         m_bases[i]->evalAllDers_into( u.row(i), n, values[i] ); 
       
-        // each basis function has n+1 values
-        const int num_i = values[i].rows() / (n+1);
+        // number of basis functions
+        const int num_i = values[i].front().rows();
         nb *= num_i;
         size[i] = num_i;
     }
-    if (n==2)
-        result.resize((1 + 2*d + (d*(d-1))/2)*nb, u.cols());
-    else
-        result.resize((1 + n*d)*nb, u.cols());
+
     // iterate over all tensor product basis functions
     v.setZero();
     unsigned r = 0;
-    do {
-        // Multiply BSplines to get the value of basis function v
-        result.row( r )=  values[0].row( v(0) );
-        for ( unsigned i=1; i<d; ++i)
-            result.row( r ).array() *= values[i].row( v(i) ).array();
+    gsMatrix<T> & vals = result[0];
+    vals.resize(nb  , u.cols());
+    do 
+    {
+        // Multiply basis functions to get the value of basis function v
+        vals.row( r )=  values[0].front().row( v[0] );
+        for ( unsigned i=1; i!=d; ++i)
+            vals.row(r).array() *= values[i].front().row( v[i] ).array();
     
         ++r ;
     } while (nextLexicographic(v, size));
@@ -707,26 +711,30 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     // iterate again and write derivatives
     if ( n>=1)
     {
+        gsMatrix<T> & der = result[1];
+        der.resize(d*nb, u.cols());;
         v.setZero();
-        do {
+        r = 0;
+        do 
+        {
             for ( unsigned k=0; k<d; ++k)
             {
-                const index_t rownum = nb + (r-nb)*d + k;
+                const index_t rownum = r*d + k;
                 // derivative w.r.t. k-th variable
-                result.row(rownum)  =  values[k].row( size[k] + v(k) );
+                der.row(rownum)  =  values[k][1].row( v(k) );
                 for ( unsigned i=0; i<k; ++i)
-                    result.row(rownum).array() *= values[i].row( v(i) ).array();
+                    der.row(rownum).array() *= values[i][0].row( v(i) ).array();
                 for ( unsigned i=k+1; i<d; ++i)
-                    result.row(rownum).array() *= values[i].row( v(i) ).array();
+                    der.row(rownum).array() *= values[i][0].row( v(i) ).array();
             }
             ++r ;
         } while (nextLexicographic(v, size));
     }
+
     if (n==2)
     {
-        gsMatrix<T> result_2der;
-        deriv2_into(u,result_2der);
-        result.block((1 + d)*nb,0,((d+(d*(d-1))/2)*nb),u.cols()).noalias() = result_2der;
+        //result[2].resize(d + d*(d-1)/2, u.cols());
+        deriv2_into(u,result[2]);
     }
 }
 

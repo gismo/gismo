@@ -241,7 +241,8 @@ public:
 
     /// Evaluate the nonzero basis functions and their derivatives up to
     /// order n at all columns of u
-    virtual void evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const;
+    virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
+                                  std::vector<gsMatrix<T> >& result) const;
 
     /// Evaluates the gradient the non-zero basis functions at value u.
     virtual void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
@@ -723,9 +724,9 @@ public:
     { return i; }
 
     /// \todo remove
-    inline unsigned index(unsigned i, unsigned j, unsigned k=0) const
-    { return i; }
-    
+    inline unsigned index(unsigned i, unsigned j) const
+    { GISMO_ERROR("The basis is 1D"); }
+
     /// Returns the stride for dimension dir
     inline unsigned stride(int dir) const 
     { 

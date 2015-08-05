@@ -86,13 +86,9 @@ public:
                          gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
-        const unsigned d = element.dim();
-
-        const typename gsMatrix<T>::Block basisVals  = basisData.topRows(numActive);
-        const typename gsMatrix<T>::Block basisGrads =
-            basisData.middleRows( numActive, numActive * d );
-        const typename gsMatrix<T>::Block basis2ndDerivs =
-            basisData.bottomRows( numActive * (d * (d+1 ))/2 );
+        gsMatrix<T> & basisVals  = basisData[0];
+        gsMatrix<T> & basisGrads = basisData[1];
+        gsMatrix<T> & basis2ndDerivs = basisData[2];
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
@@ -152,7 +148,7 @@ protected:
 
 protected:
     // Basis values
-    gsMatrix<T>        basisData;
+    std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>        physBasisLaplace;
     gsMatrix<unsigned> actives;
     index_t numActive;

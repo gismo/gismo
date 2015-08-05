@@ -284,7 +284,8 @@ public:
                                     int n, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
-    virtual void evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const;
+    virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
+                                  std::vector<gsMatrix<T> >& result) const;
 
     // Look at gsBasis class for a description
     virtual void evalAllDersSingle_into(unsigned i, const gsMatrix<T> & u, 

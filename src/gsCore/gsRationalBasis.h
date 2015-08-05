@@ -262,7 +262,8 @@ public:
 
     void eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const ;
 
-    void evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const;
+    void evalAllDers_into(const gsMatrix<T> & u, int n, 
+                          std::vector<gsMatrix<T> >& result) const;
     
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
     
@@ -372,11 +373,16 @@ void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, const gsMatrix<T> &
     
     
 template<class SrcT>
-void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const
+void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
+                                          std::vector<gsMatrix<T> >& result) const
 {
+    GISMO_ASSERT(n>-1 &&  n<=2, "gsTensorBasis::evalAllDers() not implemented for n > 2." );
+
+    result.resize(n+1);
+
     if (n == 0)
     {
-        eval_into(u, result);
+        eval_into(u, result[0]);
         return;
     }
     else if (n > 1)
@@ -395,8 +401,8 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n, gsMat
     // initialize result matrix with values and derivatives of source
     // basis
     m_src->evalAllDers_into(u, n, result);
-    typename gsMatrix<T>::Block ev  = result.topRows(numAct);
-    typename gsMatrix<T>::Block der = result.bottomRows(result.rows() - numAct);
+    gsMatrix<T> & ev  = result[0];
+    gsMatrix<T> & der = result[1];
 
     // evaluate weights and their derivatives
     gsMatrix<T> Wval, Wder;
@@ -429,7 +435,8 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n, gsMat
     
 
 template<class SrcT>
-void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u, 
+                                       gsMatrix<T>& result) const
 { 
   // Formula:
   // R_i' = (w_i N_i / W)' = w_i ( N_i'W - N_i W' ) / W^2 
@@ -442,11 +449,6 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& resul
   m_src->eval_into (u, ev             ); 
   m_src->evalFunc_into (u, m_weights, Wval); 
   m_src->derivFunc_into(u, m_weights, Wder); 
-
-  //std::cout<<"Src Deriv:\n"<< result <<"\n";
-  //std::cout<<"Weights:\n"<< *m_weights <<"\n";
-  //std::cout<<"Wval:\n"<< Wval <<"\n";
-  //std::cout<<"Wder:\n"<< Wder <<"\n";
 
   gsMatrix<unsigned> act;
   m_src->active_into(u,act);

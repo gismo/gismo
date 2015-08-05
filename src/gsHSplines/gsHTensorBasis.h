@@ -447,7 +447,9 @@ public:
     virtual gsMatrix<unsigned> * boundaryOffset(boxSide const & s, unsigned offset ) const;
 
     // Look at gsBasis.h for the documentation of this function
-    void evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const;
+    /// \todo impl. evalAllDers_into
+    //void evalAllDers_into(const gsMatrix<T> & u, int n, 
+    //                      std::vector<gsMatrix<T> >& result) const;
 
   const gsHDomain<d> & tree() const { return m_tree; }
 

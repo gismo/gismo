@@ -162,15 +162,6 @@ public:
         return uMatrixPtr(result);
     }
 
-    /// @brief Evaluate the nonzero basis functions and their derivatives up to
-    /// order \a n at points \a u.
-    uMatrixPtr evalAllDers(const gsMatrix<T> & u, int n ) const
-    {
-        gsMatrix<T> *result = new gsMatrix<T>;
-        this->evalAllDers_into(u, n, *result);
-        return uMatrixPtr(result);
-    }
-
     /// Evaluate a single basis function \a i at points \a u.
     uMatrixPtr evalSingle(unsigned i, const gsMatrix<T> & u) const
     {
@@ -646,7 +637,8 @@ public:
 
     /// @brief Evaluate the nonzero basis functions and their derivatives up
     /// to order \a n at points \a u into \a result.
-    virtual void evalAllDers_into(const gsMatrix<T> & u, int n, gsMatrix<T>& result) const;
+    virtual void evalAllDers_into(const gsMatrix<T> & u, int n, 
+                                  std::vector<gsMatrix<T> >& result) const;
 
     /// @brief Evaluate the basis function \a i and its derivatives up
     /// to order \a n at points \a u into \a result.

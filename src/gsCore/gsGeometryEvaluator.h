@@ -752,7 +752,7 @@ protected:
     using gsGeometryEvaluator<T>::m_normal;
 */
 
-    gsMatrix<T>           m_basisVals;
+    std::vector<gsMatrix<T> > m_basisVals;
     gsMatrix<unsigned>    m_active;
 private:
     int m_maxDeriv;

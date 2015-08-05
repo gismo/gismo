@@ -63,8 +63,8 @@ public:
         basis.active_into(quNodes.col(0), actives);
         numActive = actives.rows();
 
-        // Evaluate basis functions and derivativies on element
-        basis.evalAllDers_into( quNodes, 1, basisData);
+        // Evaluate basis gradients on element
+        basis.deriv_into( quNodes, basisGrads);
 
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
@@ -80,11 +80,6 @@ public:
                          gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
-        const unsigned d = element.dim();
-
-        const typename gsMatrix<T>::Block basisGrads =
-            basisData.middleRows( numActive, numActive * d );
-
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector on the side
@@ -129,7 +124,7 @@ protected:
     boxSide side;
 
     // Basis values
-    gsMatrix<T>      basisData;
+    gsMatrix<T> basisGrads;
     gsMatrix<unsigned> actives;
 
     // Normal and Neumann values
