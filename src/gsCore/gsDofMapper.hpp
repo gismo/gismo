@@ -90,10 +90,8 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
 }
 
 template<class T>
-void gsDofMapper::init(
-        const gsMultiBasis<T>         &basis,
-        const gsBoundaryConditions<T> &bc, int unk
-        )
+void gsDofMapper::init(const gsMultiBasis<T>         &basis,
+                       const gsBoundaryConditions<T> &bc, int unk)
 {
     init(basis);
 

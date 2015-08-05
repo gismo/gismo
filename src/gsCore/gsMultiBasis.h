@@ -33,7 +33,6 @@ namespace gismo
 template<class T>
 class gsMultiBasis
 {
-
 public:
     typedef memory::shared_ptr<gsMultiBasis> Ptr;
 

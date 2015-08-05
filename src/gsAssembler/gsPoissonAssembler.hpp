@@ -27,6 +27,17 @@ namespace gismo
 template<class T>
 void gsPoissonAssembler<T>::applyOptions()
 {
+    // Check if boundary conditions are OK
+    const int np = m_bases.front().nBases();
+    for (typename gsBoundaryConditions<T>::const_iterator it = 
+             m_bConditions.dirichletBegin() ; it != m_bConditions.dirichletEnd(); ++it )
+        GISMO_ENSURE( it->ps.patch < np && it->ps.patch > -1,
+                      "Problem: a Dirichlet boundary condition is set on a patch id which does not exist.");
+    for (typename gsBoundaryConditions<T>::const_iterator it = 
+             m_bConditions.neumannBegin() ; it != m_bConditions.neumannEnd(); ++it )
+        GISMO_ENSURE( it->ps.patch < np && it->ps.patch > -1,
+                      "Problem: a Neumann boundary condition is set on a patch id which does not exist.");
+    
     // Would be efficient not to recreate the mappers every time.
     // For this, a , "bool force" argument can be added, defaulting to false
     // Commented for now
@@ -40,7 +51,7 @@ void gsPoissonAssembler<T>::applyOptions()
             m_bases.front().getMapper(conforming, m_bConditions, m_dofMappers.front() );
         else
             m_bases.front().getMapper(conforming, m_dofMappers.front() );
-        
+
         m_dofs = m_dofMappers.front().freeSize();
 
    // }
@@ -167,6 +178,9 @@ void gsPoissonAssembler<T>::assemble()
 
     // Enforce Neumann boundary conditions
     assembleNeumann();
+
+    if ( m_options.intStrategy == iFace::dg )
+        gsWarn <<"DG option is not available. Results will be incorrect.\n";
 
     // Assembly is done, compress the matrix
     m_matrix.makeCompressed();   
