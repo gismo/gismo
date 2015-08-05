@@ -753,7 +753,7 @@ void gsCurvatureSmoothing<T>::computeCurvatureError(T & error){
 template<class T>
 void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T, gsKnotVector<T> > * basis, gsMatrix<T> u, gsMatrix<T> *coefs, gsMatrix<T> & values0, gsMatrix<T> & values1, gsMatrix<T> & values2, gsMatrix<T> & values3){
 
-    gsMatrix<T> m_results;
+    std::vector<gsMatrix<T> > m_results;
     gsMatrix<T> m_results1;
     gsMatrix<unsigned> actives;
     basis->evalAllDers_into(u,3,m_results);
@@ -773,14 +773,14 @@ void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T, gsKnotVector<T
     int num=actives.rows();
 
     //computes the values and the derivatives at the parameter values for the coefs
-    for(index_t i=0;i<u.cols();i++){
-        for(index_t k=0;k<num;k++){
-            values0.col(i)+=coefs->row(actives(k,i))*m_results(k,i);
-            values1.col(i)+=coefs->row(actives(k,i))*m_results(k+num,i);
-            values2.col(i)+=coefs->row(actives(k,i))*m_results(k+2*num,i);
-            values3.col(i)+=coefs->row(actives(k,i))*m_results(k+3*num,i);
+    for(index_t i=0;i<u.cols();i++)
+        for(index_t k=0;k<num;k++)
+        {
+            values0.col(i)+=coefs->row(actives(k,i))*m_results[0](k,i);
+            values1.col(i)+=coefs->row(actives(k,i))*m_results[1](k,i);
+            values2.col(i)+=coefs->row(actives(k,i))*m_results[2](k,i);
+            values3.col(i)+=coefs->row(actives(k,i))*m_results[3](k,i);
         }
-    }
 
 };
 

@@ -373,7 +373,7 @@ T gsTrimSurface<T>::arcLength(const gsCurve<T>& curve,
 
         curve.eval_into(param, pointOnCurve);
         curve.deriv_into(param, grad);
-        m_surface->deriv_into(pointOnCurve, jacobian);
+        m_surface->jacobian_into(pointOnCurve, jacobian);
 
         gsMatrix<T> derivative = jacobian * grad;
 
