@@ -149,7 +149,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     bool ok = cmd.getValues(argc,argv);
     if (!ok) {
       cout << "Error during parsing!";
-      return false;
+      return 0;
     }
     
     if ( arg_dirich )

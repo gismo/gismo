@@ -1,6 +1,8 @@
 /** @file tutorialPoisson.cpp
 
-    @brief Tutorial example on how the use one of the Poisson assemblers
+    @brief Tutorial on how to use gismo to solve the Poisson equation
+     using the class gsPoissonAssembler
+
 
     This file is part of the G+Smo library.
 
@@ -11,46 +13,38 @@
     Author(s): J. Sogn
 */
 
-// Tutorial on how to use gismo to solve the Poisson equation
-// using the classes gsPoissonAssembler and gsAssemblerBase.
-//
-// Try also running ./bin/poissonvector.cpp -h to see
-// command line options and how to load problem from
-// file.
-//
-// We consider the vector valued Poisson problem
 
 # include <gismo.h>
 
-
-using std::cout;
-using std::endl;
 using namespace gismo;
 
 int main(int argc, char *argv[]) 
 {
-
+    bool plot = false;
+    // Parse command line
+    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    cmd.addSwitch("plot", "Create a ParaView input file with the solution", plot);
+    const bool ok = cmd.getValues(argc,argv);
+    if (!ok) { gsWarn << "Error during parsing the command line!\n"; return 0;}
 
     //////// Right-hand side and analytic solution ////////
     // Define source function
     gsMFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
                               "((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)");
-    // For homogeneous term, we can use this (last argument dimension of the domain)
+    // For homogeneous term, we can use this (last argument is the dimension of the domain)
     //gsConstantFunction<> f(0.0, 0.0, 2);
-
 
     // Define exact solution (optional)
     gsMFunctionExpr<> g("sin(pi*x*1)*sin(pi*y*2)+pi/10",
                               "sin(pi*x*3)*sin(pi*y*4)-pi/10");
 
     // Print out source function and solution
-    cout<<"Source function "<< f << endl;
-    cout<<"Exact solution "<< g <<"\n" << endl;
+    gsInfo<<"Source function "<< f << "\n";
+    gsInfo<<"Exact solution "<< g <<"\n\n";
   
-
     /////////////////// Setup geometry ///////////////////
     // Define Geometry, must be a gsMultiPatch object
-    gsMultiPatch<> * patches;
+    gsMultiPatch<> ::uPtr patches;
     // Create 4 (2 x 2) patches of squares:
     //
     // Square/patch 0 is in lower left  corner
@@ -60,18 +54,30 @@ int main(int argc, char *argv[])
     //
     // The last argument scale the squares such that we
     // get the unit square as domain.
-    patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
+    patches = safe ( gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5) );
 
-    // For single patch unit square of quadratic elements use
-    //patches = new gsMultiPatch<>(gsNurbsCreator<>::BSplineSquare(2));
+    // For single patch unit square of quadratic elements use (Note:
+    //you need to update the bounadry conditions section for this to
+    //work properly!) :
+    //patches = safe( new gsMultiPatch<>(*safe(gsNurbsCreator<>::BSplineSquare(2))));
 
-    // Geometry can also be read from file
-    //patch= gsReadFile<>( "filenameofgeometry.xml" )
+    // Geometry can also be read from file (full path needed, or
+    // GISMO_DATA_DIR macro which leads to the "filedata" directory
+    // (Note: you need to update the bounadry conditions section for
+    // this to work properly!) :
+    //patches = safe ((gsMultiPatch<>*)gsReadFile<>(GISMO_DATA_DIR "/planar/lshape_p2.xml" ) );
 
-
+    gsInfo << "The domain is a "<< *patches <<"\n";
 
     /////////////////// Setup boundary conditions ///////////////////
-    // Define Boundary conditions
+
+    // Define Boundary conditions. Note that if one boundary is
+    // "free", eg. if no condition is defined, then it is a natural
+    // boundary (zero Neumann condition)
+    // Also, remember that a pure Neumann problem has no unique
+    // solution, thereforer implies a singular matrix. In this case 
+    // a corner DoF can be fixed to a given value to obtain a unique solution.
+    // (example: bcInfo.addCornerValue(boundary::southwest, value, patch);)
     gsBoundaryConditions<> bcInfo;
     // Every patch with a boundary need to be specified. In this
     // there are in total 8 sides (two for each patch)
@@ -94,18 +100,27 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(0, boundary::south, condition_type::neumann, &hSouth);
     bcInfo.addCondition(2, boundary::south, condition_type::neumann, &hSouth);
 
+    /*
+      //Alternatively: You can automatically create Dirichlet boundary
+      //conditions using one function (the exact solution) for all
+      //boundaries like this:
 
-
+    for (gsMultiPatch<>::const_biterator 
+             bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
+    {
+        bcInfo.addCondition( *bit, condition_type::dirichlet, &g );
+    }
+    */
 
     ////////////////////// Refinement h and p //////////////////////
     // Refinement
 
     // Copy basis from the geometry
     gsMultiBasis<> refine_bases( *patches );
-    //std::vector<gsBasis<> *> refine_bases = patches->basesCopy();
 
     // Number for h-refinement of the computational (trail/test) basis.
     int numRefine  = 2;
+
     // Number for p-refinement of the computational (trail/test) basis.
     int numElevate = 2;
 
@@ -118,10 +133,7 @@ int main(int argc, char *argv[])
     if ( numElevate > -1 )
     {
         // Find maximum degree with respect to all the variables
-        int max_tmp = refine_bases.maxDegree(0);
-        for (int j = 1; j < patches->parDim(); ++j )
-            if ( max_tmp < refine_bases.maxDegree(j) )
-                max_tmp = refine_bases.maxDegree(j);                
+        int max_tmp = refine_bases.minCwiseDegree();
         
         // Elevate all degrees uniformly
         max_tmp += numElevate;
@@ -132,28 +144,33 @@ int main(int argc, char *argv[])
     // Initialize Solver
     // Setup method for handling Dirichlet boundaries, options:
     //
-    // elimination: Eliminate the Dirichlet DoFs from the linear system.
+    // * elimination: Eliminate the Dirichlet DoFs from the linear system.
     //
-    // nitsche: Keep the Dirichlet DoFs and enforce the boundary
+    // * nitsche: Keep the Dirichlet DoFs and enforce the boundary
+    //
     // condition weakly by a penalty term.
     // Setup method for handling patch interfaces, options:
     //
-    // glue:Glue patches together by merging DoFs across an interface into one.
-    // This only works for conforming interfaces
+    // * glue:Glue patches together by merging DoFs across an interface into one.
+    //   This only works for conforming interfaces
     //
-    // dg: Use discontinuous Galerkin-like coupling between adjacent patches.
-    // NB! This only works in combination with the Nitsche handling of Dirichlet BC
+    // * dg: Use discontinuous Galerkin-like coupling between adjacent patches.
+    //       (This option might not be available yet)
     gsPoissonAssembler<real_t> PoissonAssembler(*patches,refine_bases,bcInfo,f,
-                                                dirichlet::nitsche, iFace::dg);
+                                                //dirichlet::elimination, iFace::glue);
+                                                  dirichlet::nitsche    , iFace::glue);
 
     // Generate system matrix and load vector
-    std::cout<<"Assembling...\n";
+    gsInfo<< "Assembling...\n";
     PoissonAssembler.assemble();
+    gsInfo << "Assembled a system (matrix and load vector) with "
+           << PoissonAssembler.numDofs() << " dofs.\n";
 
     // Initialize the conjugate gradient solver
-    std::cout<<"Solving...\n";
+    gsInfo << "Solving...\n";
     gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
     gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
+    gsInfo << "Solved the system with CG solver.\n";
 
     /////////////////// Post processing ///////////////////
 
@@ -161,23 +178,22 @@ int main(int argc, char *argv[])
     gsField<>::uPtr sol = safe(PoissonAssembler.constructSolution(solVector));
 
     // Plot solution in paraview
-    bool plot = false;
-    int result = 0;
     if (plot)
     {
         // Write approximate and exact solution to paraview files
-        std::cout<<"Plotting in Paraview...\n";
+        gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>(*sol, "poisson2d", 1000);
         const gsField<> exact( PoissonAssembler.patches(), g, false );
         gsWriteParaview<>( exact, "poisson2d_exact", 1000);
 
         // Run paraview
-        result = system("paraview poisson2d.pvd &");
+        return system("paraview poisson2d.pvd &");
+    }
+    else
+    {
+        gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView " 
+                "file containing Plotting image data.\n";
+        return 0;
     }
 
-
-    // Clean up and exit
-    delete patches;
-
-    return  result;
-}
+}// end main

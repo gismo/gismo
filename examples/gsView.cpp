@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     bool a4 = false;
     bool a5 = false;
     
-    gsCmdLine cmd("Hi, give me a file (.txt, .axl) and I will try to draw it!");  
+    gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");  
     
     cmd.addSwitch("geometry", "Try to find and plot a geometry contained in the file", a5);
     cmd.addSwitch("mesh", "Try to find and plot a mesh contained in the file", a4);
