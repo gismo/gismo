@@ -121,6 +121,20 @@ public:
     }
 
     // Look at gsBasis class for a description
+    int numElements(boxSide const & s) const
+    {
+        const unsigned dir =  s.direction();
+        int nElem = 1;
+        for (unsigned dim = 0; dim < d; ++dim)
+        {
+            if(dim == dir)
+                continue;
+            nElem *= m_bases[dim]->numElements();
+        }
+        return nElem;
+    }
+
+    // Look at gsBasis class for a description
     int elementIndex(const gsVector<T> & u ) const
     {
         GISMO_ASSERT( u.rows() == d, "Wrong vector dimension");
