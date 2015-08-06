@@ -368,7 +368,6 @@ T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
                                    : v.deriv( geoEval->values() );
 
     // get the gradients to columns
-    v_ders.transposeInPlace();
     v_ders.resize(d,domIt->numQuNodes() );
 
     T sum(0.0);
@@ -478,7 +477,6 @@ T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
     func.deriv_into(domIt->quNodes, func_ders);
 
     // get the gradients to columns
-    func_ders.transposeInPlace();
     func_ders.resize(d, domIt->numQuNodes() );
 
     // Evaluate function v
@@ -486,7 +484,6 @@ T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
                                    : v.deriv( geoEval->values() );
 
     // get the gradients to columns
-    v_ders.transposeInPlace();
     v_ders.resize(d,domIt->numQuNodes() );
 
     // perform the quadrature
