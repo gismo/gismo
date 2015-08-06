@@ -158,12 +158,12 @@ std::vector<Base*> castVectorPtr(std::vector<Derived*> pVec)
 /// from \a begin into \a result. The latter is expected to have been
 /// allocated in advance
 template <class T>
-inline void copyRange(const T * begin, T * result, int n)
+inline void copyRange(const T * begin, T * result, const int n)
 {
 #   ifdef _MSC_VER
     // Take care of C4996 warning
     std::copy(begin, begin+n,
-              stdext::checked_array_iterator<T*>(result,6));
+              stdext::checked_array_iterator<T*>(result,n));
 #   else
     std::copy(begin, begin+n, result);
 #   endif
