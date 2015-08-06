@@ -32,7 +32,8 @@ namespace gismo {
     
     \ingroup Core
 */
-namespace memory {
+namespace memory 
+{
 
 // Use the correct shared_ptr
 #ifdef STD_SHARED_PTR_FOUND
@@ -151,6 +152,21 @@ std::vector<Base*> castVectorPtr(std::vector<Derived*> pVec)
     std::vector<Base*> result(pVec.size());
     std::copy(pVec.begin(), pVec.end(), result.begin() );
     return result;
+}
+
+/// \brief Small wrapper for std::copy, copies \a n positions starting
+/// from \a begin into \a result. The latter is expected to have been
+/// allocated in advance
+template <class T>
+inline T * copyRange(const T * begin, T * result, int n)
+{
+#   ifdef _MSC_VER
+    // Take care of C4996 warning
+    return std::copy(begin, begin+n,
+                     stdext::checked_array_iterator<T*>(result,6));
+#   else
+    return std::copy(begin, begin+n, result);
+#   endif
 }
 
 /// \brief Deleter function that does not delete an object pointer
