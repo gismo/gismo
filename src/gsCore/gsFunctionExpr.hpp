@@ -280,6 +280,7 @@ template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const gsFunctionExpr & other)
 {
     my = new PrivateData_t;
+    init(other.my->dim);
     copyRange(other.my->vars, my->vars, 6);
     for (std::size_t i = 0; i!= other.my->string.size(); ++i)
         addComponent(other.my->string[i]);
@@ -287,7 +288,7 @@ gsFunctionExpr<T>::gsFunctionExpr(const gsFunctionExpr & other)
     //my->symbol_table = other.my->symbol_table;
     //my->expression   = other.my->expression;
     //my->string       = other.my->string;
-    my->dim          = other.my->dim;
+    //my->dim          = other.my->dim;
 }
 
 template<typename T>
