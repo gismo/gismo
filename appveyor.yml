@@ -74,4 +74,4 @@ build:
   #include_nuget_references: true
 
 test_script:
-  - cmd: ctest -C %configuration% -VV
+  - cmd: ctest -C %configuration% -VV -D Experimental
