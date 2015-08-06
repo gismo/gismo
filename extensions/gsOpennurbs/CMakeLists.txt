@@ -310,7 +310,6 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 add_library(gsOpennurbs OBJECT ${OPENNURBS_SOURCES}) #STATIC
-set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
 #target_link_libraries(gsOpennurbs Rpcrt4) # Note: linked with gismolib instead
 
 set_target_properties(gsOpennurbs 
