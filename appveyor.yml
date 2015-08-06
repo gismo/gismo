@@ -25,7 +25,7 @@ clone_depth: 5 # clone entire repository history if not defined
 # build Configuration, i.e. Debug, Release, etc.
 configuration:
   - Debug
-#  - RelWithDebInfo
+  - RelWithDebInfo
 #  - Release
 
 # scripts that are called at very beginning, before repo cloning
@@ -55,10 +55,9 @@ install:
 before_build:
   - cmd: cd build-gismo
   - cmd: set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
-  #- cmd: cmake -DCMAKE_BUILD_TYPE=%configuration% ../gismo
   - cmd: if "%platform%"=="Win32" set CMAKE_GENERATOR_NAME=Visual Studio 14 2015
   - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64
-  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo
+  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
 
 build:
   project: C:\projects\build-gismo\gismo.sln
