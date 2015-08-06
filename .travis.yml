@@ -15,7 +15,8 @@ before_install:
 before_script:
   - mkdir build
   - cd build
-  - cmake .. -DGISMO_WITH_IPOPT=ON -DGISMO_WITH_ONURBS=ON
+  - cmake .. -DGISMO_WITH_ONURBS=ON #-DGISMO_WITH_IPOPT=ON
 
 script:
   - make -j3 Experimental
+  - make -j3 ExperimentalMemCheck
