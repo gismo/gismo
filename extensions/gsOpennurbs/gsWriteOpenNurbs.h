@@ -47,9 +47,8 @@ bool writeON_MultiPatch( const gsMultiPatch<T> & patches);
 template<class T>
 bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std::string & name);
 
-// Writes a NURBS curve to OpenNurbs file
-//template<class T>
-//bool writeON_NurbsCurve( const gsCurve<T> & curve);
+template<class T>
+bool writeON_NurbsSurface( const gsSurface<T> & curve, ONX_Model & model, const std::string & name);
 
 }
 

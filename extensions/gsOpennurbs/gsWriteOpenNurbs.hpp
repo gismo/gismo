@@ -79,6 +79,58 @@ bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std:
       return true;
 }
 
+/// Writes a Surface to OpenNurbs file
+template<class T>
+bool writeON_NurbsSurface( const gsSurface<T> & surface, 
+                           ONX_Model & model, const std::string & name)
+{
+    // write a wiggly cubic surface on the "green NURBS wiggle" layer
+    ON_NurbsSurface* wiggle = new ON_NurbsSurface(
+        3, // dimension
+        false, // true if rational
+        surface.basis().degree(0)+1,     // order u
+        surface.basis().degree(1)+1,     // order v
+        surface.basis().component(0).size(),  // number of control vertices in u
+        surface.basis().component(1).size()  // number of control vertices in v
+        );
+    
+    int c = 0;
+    for ( int i = 0; i < wiggle->CVCount(0); i++ )
+        for ( int j = 0; j < wiggle->CVCount(1); j++ )
+        {
+            ON_3dPoint pt( surface.coef(c,0), surface.coef(c,1), surface.coef(c,2)  );
+            wiggle->SetCV( i, j, pt );//Note: j runs faster than i for CP(i,j)
+            c++;
+        }
+    
+      const gsKnotVector<T> & kv1 = 
+          dynamic_cast<const gsBSplineBasis<T>&>( surface.basis().component(0) ).knots();
+      const gsKnotVector<T> & kv2 = 
+          dynamic_cast<const gsBSplineBasis<T>&>( surface.basis().component(1) ).knots();
+      //Note: ON_NurbsSurface's have order+cv_count-2 knots per direction.
+      for (int k = 1; k < kv2.size()-1; k++ ) 
+          wiggle->SetKnot(0, k-1, kv2[k] );
+      for (int k = 1; k < kv1.size()-1; k++ ) 
+          wiggle->SetKnot(1, k-1, kv1[k] );
+      
+      if ( wiggle->IsValid() ) 
+      {
+        ONX_Model_Object& mo = model.m_object_table.AppendNew();
+        mo.m_object = wiggle;
+        mo.m_bDeleteObject = true;
+        mo.m_attributes.m_layer_index = 0;
+        mo.m_attributes.m_name = name.c_str();
+        //mo.m_attributes.m_uuid = ON_UUID();
+      }
+      else
+      {
+          gsInfo<< "Invalid !! \n";      
+          delete wiggle;
+      }
+
+      return true;
+}
+
 /// Writes a MultiPatch to OpenNurbs file
 template<class T>
 bool writeON_MultiPatch( const gsMultiPatch<T> & patches)
@@ -147,16 +199,22 @@ bool writeON_MultiPatch( const gsMultiPatch<T> & patches)
   model.m_layer_table.Append(layer);
 */
 
-  for(std::size_t i =0; i<patches.nPatches();i++)
-  {
-      const gsCurve<T> & c = dynamic_cast<const gsCurve<T> &>(patches.patch(i) );
+  for(std::size_t i = 0; i < patches.nPatches(); ++i)
+  {          
       gsInfo<< "Write patch "<< i << "\n";
-
       std::stringstream  nm("patch");
       nm << i ;
       
-      writeON_NurbsCurve(c, model, nm.str() );
-    }
+      if ( const gsSurface<T> & c = dynamic_cast<const gsSurface<T> &>(patches.patch(i) ) )
+      {
+          writeON_NurbsCurve(c, model, nm.str() );
+      }
+
+      if ( const gsSurface<T> & c = dynamic_cast<const gsSurface<T> &>(patches.patch(i) ) )
+      {      
+          writeON_NurbsSurface(c, model, nm.str() );
+      }
+  }
 
   ON_BinaryFile archive( ON::write3dm, fp ); // fp = pointer from fopoen(...,"wb")
   // start section comment
