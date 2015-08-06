@@ -18,12 +18,23 @@
 namespace gismo
 {
 
-
 template<typename T> class gsFunctionExprPrivate;
 
 /** 
-    @brief Class defining a scalar real function given by a string
-    mathematical expression.
+    @brief Class defining a multivariate (real or vector) function
+    given by a string mathematical expression.
+
+    Numerous forms of functional and logic processing semantics are
+    supported. The class is based on The C++ Mathematical Expression
+    Toolkit Library (ExprTk), see
+
+    http://www.partow.net/programming/exprtk
+
+    and
+
+    https://github.com/ArashPartow/exprtk/blob/master/readme.txt 
+
+    for more details.
 
     \ingroup function
     \ingroup Core
@@ -32,91 +43,98 @@ template<typename T>
 class gsFunctionExpr : public gsFunction<T>
 {
 public:
+    typedef T Scalar_t;
+
+public:
     
     /// Default empty constructor
     gsFunctionExpr(); 
   
     /**
-       \brief Constructor by an expression string and the domain dimension
+       \brief Constructor by an expression string and the domain dimension (real function)
     */
     gsFunctionExpr(const std::string & expression_string, int ddim);
 
+    ///\brief Constructor by two expression strings (2D vector function)
+    gsFunctionExpr(const std::string & expression_string1, 
+                   const std::string & expression_string2,
+                   int ddim);
+
+    ///\brief Constructor by three expression strings (3D vector function)
+    gsFunctionExpr(const std::string & expression_string1, 
+                   const std::string & expression_string2,
+                   const std::string & expression_string3,
+                   int ddim);
+ 
+    gsFunctionExpr(const std::vector<std::string> & expression_string, int ddim);
+
+    gsFunctionExpr(const gsFunctionExpr& other);
+
     ~gsFunctionExpr();
   
-    gsFunctionExpr(const gsFunctionExpr& other);
-  
-    gsFunctionExpr& operator=(const gsFunctionExpr& other);
+    gsFunctionExpr& operator=(gsFunctionExpr other);
   
     gsFunctionExpr * clone() const
     { return new gsFunctionExpr(*this); }
 
+    /// \brief Adds another component to this (vector) function
+    void addComponent(const std::string & strExpression);
+
 private:
 
-    // initialize this instance from its m_string member
-    void init();
+    // initializes the symbol table
+    void init(const int dim);
 
-    static void stringReplace(std::string& str, const std::string& oldStr, const std::string& newStr)
-    {
-        size_t pos = 0;
-        while((pos = str.find(oldStr, pos)) != std::string::npos)
-        {
-            str.replace(pos, oldStr.length(), newStr);
-            pos += newStr.length();
-        }
-    }
-
-    
 public:
 
     // Documented in gsFunction class
-    virtual int domainDim() const;
+    int domainDim() const;
 
     // Documented in gsFunction class
-    virtual int targetDim() const             { return 1; }
+    int targetDim() const;
   
-    //set "constants"
+    /// Sets the symbol "x" to a value
     void set_x (T const & v) const;
+    /// Sets the symbol "y" to a value
     void set_y (T const & v) const;
+    /// Sets the symbol "z" to a value
     void set_z (T const & v) const;
+    /// Sets the symbol "u" to a value
     void set_w (T const & v) const;
+    /// Sets the symbol "v" to a value
     void set_u (T const & v) const;
+    /// Sets the symbol "w" to a value
     void set_v (T const & v) const;
   
-    // Evaluate the expression (overrided from gsFunction)
     // see gsFunction for documentation
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
-    /// Evaluate the expression for component \a comp in the target
-    /// dimension (overrided from gsFunction)
+    // see gsFunction for documentation
     virtual void eval_component_into(const gsMatrix<T>& u, 
                                      const index_t comp, 
                                      gsMatrix<T>& result) const;
 
-    // Evaluate the gradient // see gsFunction for documentation
+    // see gsFunction for documentation
     virtual void deriv_into(const gsMatrix<T>& u, 
                             gsMatrix<T>& result) const;
-  
-    /// Evaluate the HESSIAN matrix
+
+    // see gsFunction for documentation  
     typename gsFunction<T>::uMatrixPtr hess(const gsMatrix<T>& u, unsigned coord = 0) const;
   
-    /// Evaluate the LAPLACIAN
-    /// By default uses central finite differences with h=0.00001
+    // see gsFunction for documentation  
     gsMatrix<T> * laplacian(const gsMatrix<T>& u) const;
   
     ///Mixed derivative wrt variables k and j
     gsMatrix<T> * mderiv(const gsMatrix<T>& u, const index_t k, const index_t j) const;
     
-    /// Prints the object as a string.
+    // see gsFunction for documentation  
     std::ostream &print(std::ostream &os) const;
-  
-    /// returns the last value computed
-    //T varList() const
-
   
 // Data members
 private:
+    typedef gsFunctionExprPrivate<T> PrivateData_t;
 
-    gsFunctionExprPrivate<T> * my;
+    PrivateData_t * my;
 
 }; // class gsFunctionExpr
 
