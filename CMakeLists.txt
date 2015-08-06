@@ -124,7 +124,7 @@ endif(GISMO_WITH_ONURBS)
 
 if(GISMO_WITH_IPOPT)
   add_subdirectory(extensions/gsIpopt)
-  include_directories("${IpOpt_INCLUDE_DIRS}")
+  include_directories(${IPOPT_INCLUDE_DIR})
 endif(GISMO_WITH_IPOPT)
 
 if(GISMO_WITH_SUPERLU)

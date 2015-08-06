@@ -90,7 +90,6 @@ protected:
         _func1.deriv_into(quNodes, f1ders);
         _func1.deriv2_into(quNodes, f1ders2);
         // get the gradients to columns
-        f1ders.transposeInPlace();
         f1ders.resize(quNodes.rows(), quNodes.cols() );
         //f1ders2.transposeInPlace();
 

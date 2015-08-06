@@ -76,21 +76,14 @@ endif()
     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
   endif()
 
-   if (GISMO_WITH_IPOPT)
-     target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB})
-#  find_package( LAPACK REQUIRED ) # Problematic on ubuntu
-#   find_package( BLAS REQUIRED )
-#   find_package( DL REQUIRED )
-#    add_definitions( -DFORTRAN_INTEGER_TYPE=int -DHAVE_CMATH -DHAVE_CSTDIO)
-#    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_Blas} )
-#    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_Lapack} )
-#    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_Mumps} )
-#    target_link_libraries(${PROJECT_NAME} ${IpOpt_LIB_Metis} )
+  if (GISMO_WITH_IPOPT)
+     add_dependencies(${PROJECT_NAME} IpOpt)
+     target_link_libraries(${PROJECT_NAME} ${IPOPT_LIBRARY})
   endif()
 
-  IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
-    TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${DBGHELP_LIBRARY}) 	
-  ENDIF() 
+  if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
+    target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY}) 	
+  endif() 
 
  set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 

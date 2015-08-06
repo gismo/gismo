@@ -88,12 +88,14 @@ int main(int argc, char *argv[])
 
     gsNormL2<real_t> L2Norm(*solField,solution);
     L2Norm.compute();
-    real_t errorL2 = L2Norm.value();
 
+    real_t errorL2 = L2Norm.value();
+    real_t errorH1 = math::sqrt(errorH1Semi*errorH1Semi + errorL2*errorL2);
     real_t errorH2 = math::sqrt(errorH2Semi*errorH2Semi + errorH1Semi*errorH1Semi + errorL2*errorL2);
 
-    cout << "The H2 error of the solution is : " << errorH2 << endl;
+    cout << "The H1 error of the solution is : " << errorH1 << endl;
     cout << "The L2 error of the solution is : " << errorL2 << endl;
+    cout << "The H2 error of the solution is : " << errorH2 << endl;
 
 
     // Plot solution in paraview
