@@ -59,7 +59,6 @@ namespace internal
 
 #include <gsCore/gsConstantFunction.h>
 #include <gsCore/gsFunctionExpr.h>
-#include <gsCore/gsMFunctionExpr.h>
 #include <gsCore/gsBasisFun.h>
 
 #include <gsCore/gsBoxTopology.h>
