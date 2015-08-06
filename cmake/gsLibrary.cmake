@@ -77,7 +77,6 @@ endif()
   endif()
 
   if (GISMO_WITH_IPOPT)
-     add_dependencies(${PROJECT_NAME} IpOpt)
      target_link_libraries(${PROJECT_NAME} ${IPOPT_LIBRARY})
   endif()
 

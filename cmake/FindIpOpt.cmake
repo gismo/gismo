@@ -11,6 +11,8 @@ if(IPOPT_INCLUDE_DIR AND IPOPT_LIBRARY)
 endif()
 
 if(IPOPT_FOUND)
+      #message("IPOPT_INCLUDE_DIR: ${IPOPT_INCLUDE_DIR}")
+      #message("IPOPT_LIBRARY    : ${IPOPT_LIBRARY}")
    if(NOT IPOPT_FIND_QUIETLY)
       MESSAGE(STATUS "Found IpOpt: ${IPOPT_LIBRARY}")
    endif()

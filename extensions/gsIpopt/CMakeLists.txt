@@ -4,13 +4,22 @@
 ## Copyright (C) 2015 - RICAM-Linz.
 ######################################################################
 
-## IpOpt extension
-# project(gsIpopt) #todo add dep
+project(gsIpopt)
 
 find_package(IpOpt QUIET)
 
+set(IPOPT_SOURCES gsOptProblem_.cpp)
+
+add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
+
+set_target_properties(${PROJECT_NAME}
+PROPERTIES POSITION_INDEPENDENT_CODE ON
+COMPILE_DEFINITIONS gismo_EXPORTS
+)
+
 if (NOT IPOPT_FOUND)
-message("IpOpt not found (define IpOpt_DIR if it exists on the system). Will attempt to download and compile ipopt 3.12.3")
+  message("IpOpt not found (define IpOpt_DIR if it exists on the system).")
+  message("Will attempt to download and compile IpOpt 3.12.3 (do: make IpOpt; cmake .")
 include(ExternalProject)
 ExternalProject_Add(IpOpt
           SOURCE_DIR        ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
@@ -32,10 +41,19 @@ ExternalProject_Add(IpOpt
       set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin)
       set(IPOPT_LIBRARY libipopt)
 
+      add_dependencies(${PROJECT_NAME} IpOpt)
 else()
-    add_custom_target (IpOpt)
+    #add_custom_target (IpOpt)
 endif(NOT IPOPT_FOUND)
 
+include_directories(${IPOPT_INCLUDE_DIR})
 
-#message("IPOPT_LIBRARY ${IPOPT_LIBRARY}")
-#message("IPOPT_INCLUDE_DIR ${IPOPT_INCLUDE_DIR}")
+# Apply same configuration as G+Smo
+include( gsConfig)
+
+set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
+    CACHE INTERNAL "Gismo extensions to be included")
+
+install(DIRECTORY ${PROJECT_SOURCE_DIR}
+        DESTINATION include/gismo/gsIpopt/
+        FILES_MATCHING PATTERN "*.h")
