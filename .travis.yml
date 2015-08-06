@@ -18,4 +18,4 @@ before_script:
   - cmake .. -DGISMO_WITH_IPOPT=ON -DGISMO_WITH_ONURBS=ON
 
 script:
-  - make -j3 Continuous
+  - make -j3 Experimental
