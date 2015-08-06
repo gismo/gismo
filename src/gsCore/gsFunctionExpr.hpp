@@ -281,9 +281,12 @@ gsFunctionExpr<T>::gsFunctionExpr(const gsFunctionExpr & other)
 {
     my = new PrivateData_t;
     copyRange(other.my->vars, my->vars, 6);
-    my->symbol_table = other.my->symbol_table;
-    my->expression   = other.my->expression;
-    my->string       = other.my->string;
+    for (std::size_t i = 0; i!= other.my->string.size(); ++i)
+        addComponent(other.my->string[i]);
+
+    //my->symbol_table = other.my->symbol_table;
+    //my->expression   = other.my->expression;
+    //my->string       = other.my->string;
     my->dim          = other.my->dim;
 }
 
@@ -311,6 +314,7 @@ void gsFunctionExpr<T>::init(const int dim)
     my->dim = dim;
     GISMO_ASSERT ( dim < 7, "The number of variables can be at most 6 (x,y,z,u,v,w)." );
     
+    my->symbol_table.clear();
     // Identify symbol table
     my->symbol_table.add_variable("x",my->vars[0]);
     my->symbol_table.add_variable("y",my->vars[1]);
