@@ -23,7 +23,7 @@
 
 
 #include <gsCore/gsFunctionExpr.h>
-#include <gsCore/gsMFunctionExpr.h>
+#include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiBasis.h>
 #include <gsModeling/gsPlanarDomain.h>
@@ -96,7 +96,7 @@ gsXmlNode * gsXml<Object>::put (const Object & obj, gsXmlTree & data)
 ////////////////////////////////////////////////////////
 
 template<class T>
-void getFunctionFromXml ( gsXmlNode * node, gsMFunctionExpr<T> & result ) 
+void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result ) 
 {
     gsWarn<<"Reading "<< node->name() <<" function\n";
 
@@ -111,7 +111,7 @@ void getFunctionFromXml ( gsXmlNode * node, gsMFunctionExpr<T> & result )
         expr_strings.push_back(  child->value() );
     }
 
-    result = gsMFunctionExpr<T>( expr_strings, d );
+    result = gsFunctionExpr<T>( expr_strings, d );
 }
 
  
@@ -1592,13 +1592,13 @@ public:
         if ( tDim >= 1 )
         {
             gsXmlNode * tmp = node->first_node("rhs");
-            gsMFunctionExpr<T>  rhs_fnct;
+            gsFunctionExpr<T>  rhs_fnct;
             getFunctionFromXml(tmp, rhs_fnct);
             
             tmp = node->first_node("solution");
             if ( tmp )
             {
-                gsMFunctionExpr<T> msol;
+                gsFunctionExpr<T> msol;
                 getFunctionFromXml(tmp, msol);
                 
                 return new gsPoissonPde<T>(rhs_fnct, d, msol );

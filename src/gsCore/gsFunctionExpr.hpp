@@ -124,7 +124,7 @@ inline void stringReplace(std::string& str,
     }
 }
 
-};//namespace
+} //namespace
 
 namespace gismo
 {
@@ -249,6 +249,21 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
     addComponent(expression_string1);
     addComponent(expression_string2);
     addComponent(expression_string3);
+}
+
+template<typename T>
+gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
+                   const std::string & expression_string2,
+                   const std::string & expression_string3,
+                   const std::string & expression_string4,
+                   int ddim)
+: my(new PrivateData_t)
+{
+    init(ddim);
+    addComponent(expression_string1);
+    addComponent(expression_string2);
+    addComponent(expression_string3);
+    addComponent(expression_string4);
 }
 
 template<typename T>

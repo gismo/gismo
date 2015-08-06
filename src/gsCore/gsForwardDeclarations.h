@@ -178,7 +178,6 @@ template <class T=real_t>    class gsMVInterpolation;
 template <class T=real_t>    class gsVolumeSegment;
 template <class T=real_t>    class gsCompositeTopology;
 template <class T=real_t>    class gsBasisEvaluator;
-template <class T=real_t>    class gsMFunctionExpr;
 template <class T=real_t>    class gsMultiBasis;
 
 template <class T=real_t>    class gsBemLaplace;

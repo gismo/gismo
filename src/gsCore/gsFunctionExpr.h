@@ -65,7 +65,14 @@ public:
                    const std::string & expression_string2,
                    const std::string & expression_string3,
                    int ddim);
- 
+
+    ///\brief Constructor by four expression strings (4D vector function) used for matrix coefficients
+    gsFunctionExpr(const std::string & expression_string1,
+                   const std::string & expression_string2,
+                   const std::string & expression_string3,
+                   const std::string & expression_string4,
+                   int ddim);
+
     gsFunctionExpr(const std::vector<std::string> & expression_string, int ddim);
 
     gsFunctionExpr(const gsFunctionExpr& other);

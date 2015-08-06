@@ -51,7 +51,7 @@ namespace internal
     
     TEMPLATE_INST
     void getFunctionFromXml<real_t> ( gsXmlNode * node, 
-                                      gsMFunctionExpr<real_t> & result );
+                                      gsFunctionExpr<real_t> & result );
 
 } // end namespace internal
 

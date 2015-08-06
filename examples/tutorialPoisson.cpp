@@ -29,14 +29,14 @@ int main(int argc, char *argv[])
 
     //////// Right-hand side and analytic solution ////////
     // Define source function
-    gsMFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
-                              "((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)");
+    gsFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
+                              "((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)",2);
     // For homogeneous term, we can use this (last argument is the dimension of the domain)
     //gsConstantFunction<> f(0.0, 0.0, 2);
 
     // Define exact solution (optional)
-    gsMFunctionExpr<> g("sin(pi*x*1)*sin(pi*y*2)+pi/10",
-                              "sin(pi*x*3)*sin(pi*y*4)-pi/10");
+    gsFunctionExpr<> g("sin(pi*x*1)*sin(pi*y*2)+pi/10",
+                              "sin(pi*x*3)*sin(pi*y*4)-pi/10",2);
 
     // Print out source function and solution
     gsInfo<<"Source function "<< f << "\n";
@@ -91,8 +91,8 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(3, boundary::north, condition_type::dirichlet, &g);
 
     // Neumann Boundary conditions
-    gsMFunctionExpr<> hEast ("1*pi*cos(pi*1)*sin(pi*2*y)", "3*pi*cos(pi*3)*sin(pi*4*y)");
-    gsMFunctionExpr<> hSouth("-pi*2*sin(pi*x*1)","-pi*4*sin(pi*x*3)");
+    gsFunctionExpr<> hEast ("1*pi*cos(pi*1)*sin(pi*2*y)", "3*pi*cos(pi*3)*sin(pi*4*y)",2);
+    gsFunctionExpr<> hSouth("-pi*2*sin(pi*x*1)","-pi*4*sin(pi*x*3)",2);
 
     bcInfo.addCondition(3, boundary::east,  condition_type::neumann, &hEast);
     bcInfo.addCondition(2, boundary::east,  condition_type::neumann, &hEast);
