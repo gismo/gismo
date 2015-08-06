@@ -205,14 +205,14 @@ bool writeON_MultiPatch( const gsMultiPatch<T> & patches)
       std::stringstream  nm("patch");
       nm << i ;
       
-      if ( const gsSurface<T> & c = dynamic_cast<const gsSurface<T> &>(patches.patch(i) ) )
+      if ( const gsCurve<T> * c = dynamic_cast<const gsCurve<T>*>(&patches.patch(i) ) )
       {
-          writeON_NurbsCurve(c, model, nm.str() );
+          writeON_NurbsCurve(*c, model, nm.str() );
       }
 
-      if ( const gsSurface<T> & c = dynamic_cast<const gsSurface<T> &>(patches.patch(i) ) )
+      if ( const gsSurface<T> * c = dynamic_cast<const gsSurface<T>*>(&patches.patch(i) ) )
       {      
-          writeON_NurbsSurface(c, model, nm.str() );
+          writeON_NurbsSurface(*c, model, nm.str() );
       }
   }
 
