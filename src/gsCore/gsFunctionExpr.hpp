@@ -47,8 +47,7 @@
 // in a compilation failure.
 //#define exprtk_disable_string_capabilities
 
-  #include <exprtk.hpp>            // external file
-
+#include <exprtk.hpp>            // external file
 
 namespace
 {
@@ -135,18 +134,18 @@ template<typename T> class gsFunctionExprPrivate
 public:
 
 #ifdef GISMO_USE_AUTODIFF
-    typedef ad::DScalar1<T, -1> Arithmetic_t;
-    //typedef ad::DScalar2<T, -1> Arithmetic_t;
+    typedef ad::DScalar1<T, -1> Numeric_t;
+    //typedef ad::DScalar2<T, -1> Numeric_t;
 #else
-    typedef T Arithmetic_t;
+    typedef T Numeric_t;
 #endif
 
-    typedef exprtk::symbol_table<Arithmetic_t>  SymbolTable_t;
-    typedef exprtk::expression<Arithmetic_t>    Expression_t;
-    typedef exprtk::parser<Arithmetic_t>        Parser_t;
+    typedef exprtk::symbol_table<Numeric_t>  SymbolTable_t;
+    typedef exprtk::expression<Numeric_t>    Expression_t;
+    typedef exprtk::parser<Numeric_t>        Parser_t;
 
 public:
-    Arithmetic_t              vars[6];
+    Numeric_t                 vars[6];
     SymbolTable_t             symbol_table;
     std::vector<Expression_t> expression;
     std::vector<std::string>  string; 
@@ -410,7 +409,8 @@ void gsFunctionExpr<T>::set_y_der (std::string expression_string)
 template<typename T>
 void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point size.");
+    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
+                   << my->dim <<", got "<< u.rows() <<")");
 
     const int n = targetDim();
     result.resize(n, u.cols());
@@ -434,7 +434,9 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
 template<typename T>
 void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t comp, gsMatrix<T>& result) const
 {
-    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point size.");
+    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
+                   << my->dim <<", got "<< u.rows() <<")");
+
     GISMO_ASSERT (comp < targetDim(),
                   "Given component number is higher then number of components");
 
@@ -456,7 +458,8 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
 {
     //gsDebug<< "Using finite differences (gsFunctionExpr::deriv_into) for derivatives.\n";
     const index_t d = domainDim();
-    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point size.");
+    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
+                   << my->dim <<", got "<< u.rows() <<")");
 
     const int n = targetDim();
     result.resize(d*n, u.cols());
@@ -495,7 +498,8 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     GISMO_ENSURE(coord == 0, "Error, function is real");
     GISMO_ASSERT ( u.cols() == 1, "Need a single evaluation point." );
     const int d = u.rows();
-    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point size.");
+    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
+                   << my->dim <<", got "<< u.rows() <<")");
     
     gsMatrix<T> * res = new gsMatrix<T>(d,d);
 
