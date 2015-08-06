@@ -15,7 +15,7 @@ before_install:
 before_script:
   - mkdir build
   - cd build
-  - cmake ..
+  - cmake .. -DGISMO_WITH_IPOPT=ON -DGISMO_WITH_ONURBS=ON
 
 script:
-  - make -j3
+  - make -j3 Continuous

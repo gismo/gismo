@@ -310,12 +310,20 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 add_library(gsOpennurbs OBJECT ${OPENNURBS_SOURCES}) #STATIC
+set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
 #target_link_libraries(gsOpennurbs Rpcrt4) # Note: linked with gismolib instead
 
 set_target_properties(gsOpennurbs 
 PROPERTIES POSITION_INDEPENDENT_CODE ON
 COMPILE_DEFINITIONS gismo_EXPORTS
 )
+
+# Disable MSVC warning
+if( MSVC )
+  add_definitions(
+    -wd4458 # Suppress 'declaration of '..' hides class member'	
+    )
+endif()
 
 #SET_TARGET_PROPERTIES(gsOpennurbs PROPERTIES VERSION "2010.04.95")
 
