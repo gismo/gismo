@@ -48,10 +48,16 @@ ${gismo_externals}/zlib/zconf.h
 ${gismo_externals}/zlib/zutil.h
 )
 
+# Apply same configuration as G+Smo
+include( gsConfig)
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_definitions(-D_CRT_NONSTDC_NO_WARNINGS)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif()
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  add_definitions ("-Wimplicit-function-declaration")
 endif()
 
 add_library(${PROJECT_NAME} OBJECT ${ZLIB_SOURCES} ${ZLIB_HEADERS})
