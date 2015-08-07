@@ -19,5 +19,9 @@ before_script:
   - cmake .. -DGISMO_WITH_ONURBS=ON #-DGISMO_WITH_IPOPT=ON
 
 script:
-  - make -j3 Experimental
-  - make -j3 ExperimentalMemCheck
+  - ctest -D ExperimentalBuild
+  - ctest -D ExperimentalTest
+  - ctest -D ExperimentalMemCheck
+  - ctest -D ExperimentalSubmit
+#- make -j3 Experimental
+#- make -j3 ExperimentalMemCheck
