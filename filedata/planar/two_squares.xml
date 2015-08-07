@@ -15,10 +15,10 @@ B-splines meeting along one side
       </Basis>
     </Basis>
     <coefs geoDim="2">
-      0.4 0.4 
-      1.4 0.4 
-      0.4 1.4 
-      1.4 1.4 
+      0.0 0.0 
+      1.0 0.0 
+      0.0 1.0 
+      1.0 1.0 
     </coefs>
   </Geometry>
 
@@ -33,10 +33,10 @@ B-splines meeting along one side
       </Basis>
     </Basis>
     <coefs geoDim="2">
-      -0.6 0.4 
-      0.4 0.4 
-      -0.6 1.4 
-      0.4 1.4 
+      -1.0 0.0 
+       0.0 0.0 
+      -1.0 1.0 
+       0.0 1.0 
     </coefs>
   </Geometry>
 
@@ -54,6 +54,4 @@ B-splines meeting along one side
     1 1
     </boundary>
   </MultiPatch>
-
 </xml>
-
