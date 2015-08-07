@@ -317,10 +317,11 @@ PROPERTIES POSITION_INDEPENDENT_CODE ON
 COMPILE_DEFINITIONS gismo_EXPORTS
 )
 
-# Disable MSVC warning
+# Disable MSVC warnings
 if( MSVC )
   add_definitions(
-    -wd4458 # Suppress 'declaration of '..' hides class member'	
+    -wd4458 # Suppress 'declaration of '..' hides class member'	~2400 warns
+    -wd4456 # declaration of '..' hides previous local declaration ~37 warns
     )
 endif()
 
