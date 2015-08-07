@@ -504,7 +504,7 @@ public:
   }
 
   /// Returns the tensor basis member of level i 
-  gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > & tensorLevel(unsigned i) const
+  tensorBasis & tensorLevel(unsigned i) const
   {
       needLevel( i );
       return *this->m_bases[i];

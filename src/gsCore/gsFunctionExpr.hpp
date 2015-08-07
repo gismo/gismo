@@ -495,7 +495,7 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
 #           else
             for ( int j = 0; j!=d; j++ ) // for all variables
                 result(c*d + j, p) = 
-                    exprtk::derivative(my->expression[c], my->vars[j], 0.00001 ) ;
+                    exprtk::derivative<T>(my->expression[c], my->vars[j], 0.00001 ) ;
 #           endif
         }
     }
@@ -530,12 +530,12 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 #       ifdef GISMO_USE_AUTODIFF
 //todo
 #       else
-        (*res)(j,j) = exprtk::second_derivative( my->expression[coord], my->vars[j], 0.00001);
+        (*res)(j,j) = exprtk::second_derivative<T>( my->expression[coord], my->vars[j], 0.00001);
 
         for( int k=0; k<j; ++k )
             (*res)(k,j) = (*res)(j,k) =
-                mixed_derivative( my->expression[coord], my->vars[k], 
-                                  my->vars[j], 0.00001 );
+                mixed_derivative<T>( my->expression[coord], my->vars[k], 
+                                     my->vars[j], 0.00001 );
 #       endif
     }
     return typename gsFunction<T>::uMatrixPtr(res); 
@@ -559,7 +559,7 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
 #       else
         for (int c = 0; c!= n; ++c) // for all components
             (*res)(c,p) =
-                mixed_derivative( my->expression[c], my->vars[k], my->vars[j], 0.00001 ) ;
+                mixed_derivative<T>( my->expression[c], my->vars[k], my->vars[j], 0.00001 ) ;
 #       endif
     }
     return  res; 
@@ -584,7 +584,7 @@ gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 #       else        
         for ( int j = 0; j<n; j++ )
             val += 
-                exprtk::second_derivative( my->expression[0], my->vars[j], 0.00001 );
+                exprtk::second_derivative<T>( my->expression[0], my->vars[j], 0.00001 );
 #       endif
     }
     return  res;

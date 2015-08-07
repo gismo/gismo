@@ -837,14 +837,13 @@ gsTensorBSplineBasis<1,T,KnotVectorType>::tensorize(const gsBasis<T> & other) co
 }
 
 template <class T, class KnotVectorType>
-gsGeometry<T> * gsTensorBSplineBasis<1,T,KnotVectorType>::makeGeometry( const gsMatrix<T> & coefs ) const
+gsGeometry<T> * gsBSplineBasis<T,KnotVectorType>::makeGeometry( const gsMatrix<T> & coefs ) const
 {
-    // ANGELOS, what about periodic case. Should I call it with perCoefs(coefs)?
     return new GeometryType(*this, coefs);
 }
 
 template <class T, class KnotVectorType>
-gsGeometry<T> * gsTensorBSplineBasis<1,T,KnotVectorType>::makeGeometry( gsMovable< gsMatrix<T> > coefs ) const
+gsGeometry<T> * gsBSplineBasis<T,KnotVectorType>::makeGeometry( gsMovable< gsMatrix<T> > coefs ) const
 {
     return new GeometryType(*this, coefs);
 }

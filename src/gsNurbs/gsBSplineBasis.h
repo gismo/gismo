@@ -121,9 +121,9 @@ public:
         return new Self_t(*bb.front());
     }
 
-    operator Self_t &() { return static_cast<Self_t&>(*this);}
-
-    operator const Self_t &() const { return static_cast<const Self_t&>(*this);}
+    // Note: these casts can be dangerous
+    // operator Self_t &() { return dynamic_cast<Self_t&>(*this);}
+    // operator const Self_t &() const { return dynamic_cast<const Self_t&>(*this);}
 
 public:
 
@@ -247,12 +247,6 @@ public:
     // Look at gsBasis class for a description
     gsBasis<T> * tensorize(const gsBasis<T> & other) const;
     
-    // Look at gsBasis class for a description
-    virtual gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs ) const;
-
-    // Look at gsBasis class for a description
-    virtual gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const;
-
     /// Check the BSplineBasis for consistency
     bool check() const
     { 
@@ -633,6 +627,12 @@ public:
     typedef gsTensorBSplineBasis<1,T,KnotVectorType> Base;
     typedef gsBSplineBasis<T,KnotVectorType> Self_t;
 
+    /// Associated geometry type
+    typedef typename gsBSplineTraits<1,T,KnotVectorType>::Geometry GeometryType;
+
+    /// Associated Boundary basis type
+    typedef typename gsBSplineTraits<0,T,KnotVectorType>::Basis BoundaryBasisType;
+
 public:
 
     /// Default empty constructor
@@ -710,6 +710,10 @@ public:
     // Look at gsBasis class for a description
     const Self_t & component(unsigned i) const;
 
+    gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs ) const;
+    
+    gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const;
+        
 private:
 
     using Base::m_p;
