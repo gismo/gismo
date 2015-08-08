@@ -51,12 +51,13 @@ ${gismo_externals}/zlib/zutil.h
 # Apply same configuration as G+Smo
 include( gsConfig)
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
   add_definitions(-D_CRT_NONSTDC_NO_WARNINGS)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang" OR 
+    "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang" )
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-function-declaration")
 endif()
 
