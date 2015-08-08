@@ -17,11 +17,12 @@ before_script:
   - mkdir build
   - cd build
   - cmake .. -DGISMO_WITH_ONURBS=ON #-DGISMO_WITH_IPOPT=ON
+  - ctest -D ExperimentalConfigure
 
 script:
-  - ctest -D ExperimentalBuild
-  - ctest -D ExperimentalTest
-  - ctest -D ExperimentalMemCheck
-  - ctest -D ExperimentalSubmit
+  - ctest -j2 -D ExperimentalBuild
+  - ctest -j2 -D ExperimentalTest
+  - ctest -j2 -D ExperimentalMemCheck
+  - ctest -j2 -D ExperimentalSubmit
 #- make -j3 Experimental
 #- make -j3 ExperimentalMemCheck

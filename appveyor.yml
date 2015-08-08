@@ -59,6 +59,8 @@ install:
 
 # scripts to run before build
 before_build:
+  - cmd: echo %os.env%
+  - cmd: echo %os.compiler%
   - cmd: cd build-gismo
   - cmd: set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
   - cmd: if "%platform%"=="Win32" set CMAKE_GENERATOR_NAME=Visual Studio 14 2015

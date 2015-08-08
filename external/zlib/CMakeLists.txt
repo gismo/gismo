@@ -57,7 +57,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  add_definitions ("-Wimplicit-function-declaration")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wimplicit-function-declaration")
 endif()
 
 add_library(${PROJECT_NAME} OBJECT ${ZLIB_SOURCES} ${ZLIB_HEADERS})

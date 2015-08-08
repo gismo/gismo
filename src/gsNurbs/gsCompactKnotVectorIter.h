@@ -24,15 +24,15 @@ namespace gismo
 template<class T>
 class gsCompactKnotVector;
 
-  /** 
-      @brief Iterator for gsCompactKnotVector.
+/** 
+    @brief Iterator for gsCompactKnotVector.
       
-      Beware of non-const version: changing one knot value does not
-      insert a new simple knot, but just changes the value of all
-      instances of the multiple knot.
+    Beware of non-const version: changing one knot value does not
+    insert a new simple knot, but just changes the value of all
+    instances of the multiple knot.
       
-      \ingroup Nurbs
-  */
+    \ingroup Nurbs
+*/
 template <class T, bool isconst = false> 
 class gsCompactKnotVectorIter {
 // Definitions
@@ -43,14 +43,14 @@ public:
     typedef typename choose<isconst, const T&, T&>::type reference;
     typedef typename choose<isconst, const T*, T*>::type pointer;
     typedef typename choose<isconst, typename gsCompactKnotVector<T>::const_uiterator,    
-			    typename gsCompactKnotVector<T>::uiterator >::type
-      knotptr;
+                            typename gsCompactKnotVector<T>::uiterator >::type
+    knotptr;
     typedef typename choose<isconst, typename std::vector<unsigned>::const_iterator,    
-			    typename std::vector<unsigned>::iterator >::type
-      multptr;
+                            typename std::vector<unsigned>::iterator >::type
+    multptr;
     typedef typename choose<isconst, const gsCompactKnotVector<T>,    
-			    gsCompactKnotVector<T> >::type
-      containertype;
+                            gsCompactKnotVector<T> >::type
+    containertype;
 
 // Constructors
 public:
@@ -64,7 +64,7 @@ public:
       multEnd ( c.mend() ){ }
     
     gsCompactKnotVectorIter(const gsCompactKnotVectorIter<T, false>& it) 
-        : val(it.val), mult(it.mult), index(it.index), span(it.span), multEnd(it.multEnd) { }
+    : val(it.val), mult(it.mult), index(it.index), span(it.span), multEnd(it.multEnd) { }
     
 // Accessors
 public:
@@ -197,41 +197,41 @@ public:
             x.index==y.index);
     }
     
-   friend bool operator!=(const gsCompactKnotVectorIter& x, 
-                          const gsCompactKnotVectorIter& y) 
-   {
-       return (x.index != y.index);
-   }
+    friend bool operator!=(const gsCompactKnotVectorIter& x, 
+                           const gsCompactKnotVectorIter& y) 
+    {
+        return (x.index != y.index);
+    }
 
-   friend bool operator> (const gsCompactKnotVectorIter& x, 
-                          const gsCompactKnotVectorIter& y) 
-   {
-       return (x.index>y.index);
-   }
+    friend bool operator> (const gsCompactKnotVectorIter& x, 
+                           const gsCompactKnotVectorIter& y) 
+    {
+        return (x.index>y.index);
+    }
 
-   friend bool operator< (const gsCompactKnotVectorIter& x, 
-                          const gsCompactKnotVectorIter& y) 
+    friend bool operator< (const gsCompactKnotVectorIter& x, 
+                           const gsCompactKnotVectorIter& y) 
     {
         return (x.index<y.index);
     }
 
-   friend bool operator>=(const gsCompactKnotVectorIter& x, 
-                          const gsCompactKnotVectorIter& y) 
-   {
-       return (x.index>=y.index);
-   }
+    friend bool operator>=(const gsCompactKnotVectorIter& x, 
+                           const gsCompactKnotVectorIter& y) 
+    {
+        return (x.index>=y.index);
+    }
 
-   friend bool operator>=(const gsCompactKnotVectorIter& x, 
-                          const difference_type& n) 
-   {
-       return (x.index>=n);
-   }
+    friend bool operator>=(const gsCompactKnotVectorIter& x, 
+                           const difference_type& n) 
+    {
+        return (x.index>=n);
+    }
 
-   friend bool operator<=(const gsCompactKnotVectorIter& x, 
-                          const gsCompactKnotVectorIter& y) 
-   {
-       return (x.index<=y.index);
-   }
+    friend bool operator<=(const gsCompactKnotVectorIter& x, 
+                           const gsCompactKnotVectorIter& y) 
+    {
+        return (x.index<=y.index);
+    }
 
 // Data
 public:
