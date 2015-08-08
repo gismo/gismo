@@ -65,8 +65,7 @@ before_build:
   - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64
 #  - cmd: if "%os%"=="MinGW"        set CMAKE_GENERATOR_NAME=MinGW Makefiles
   - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
-  - cmd: echo %os.env%
-  - cmd: echo %os.compiler%
+  - cmd: set
   - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
 
 build:
