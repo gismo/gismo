@@ -77,6 +77,7 @@ endif()
   endif()
 
   if (GISMO_WITH_IPOPT)
+     #might be empty before download
      target_link_libraries(${PROJECT_NAME} ${IPOPT_LIBRARY})
   endif()
 

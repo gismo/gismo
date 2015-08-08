@@ -128,39 +128,3 @@ else(GISMO_BUILD_LIB)
    message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
 endif(GISMO_BUILD_LIB)
 
-
-## #################################################################
-## CPack
-## #################################################################
-
-INCLUDE(InstallRequiredSystemLibraries)
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "G+Smo")
-SET(CPACK_PACKAGE_VENDOR "Angelos Mantzaflaris")
-SET(CPACK_PACKAGE_DESCRIPTION_FILE "${${PROJECT_NAME}_SOURCE_DIR}/README.txt")
-SET(CPACK_RESOURCE_FILE_LICENSE "${${PROJECT_NAME}_SOURCE_DIR}/LICENSE.txt")
-SET(CPACK_PACKAGE_VERSION_MAJOR ${${PROJECT_NAME}_MAJOR_VERSION})
-SET(CPACK_PACKAGE_VERSION_MINOR ${${PROJECT_NAME}_MINOR_VERSION})
-SET(CPACK_PACKAGE_VERSION_PATCH ${${PROJECT_NAME}_PATCH_VERSION})
-SET(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
-IF(WIN32 AND NOT UNIX)
-  # There is a bug in NSI that does not handle full unix paths properly. Make
-  # sure there is at least one set of four (4) backlasshes.
-  SET(CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
-  SET(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\gsView.exe")
-  SET(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} My Famous Project")
-  SET(CPACK_NSIS_HELP_LINK "http://gs.jku.at/gismo")
-  SET(CPACK_NSIS_URL_INFO_ABOUT "http://gs.jku.at/gismo")
-  SET(CPACK_NSIS_CONTACT "gismo@ricam.eeaw.ac.at")
-  SET(CPACK_NSIS_MODIFY_PATH ON)
-ELSE(WIN32 AND NOT UNIX)
-  SET(CPACK_STRIP_FILES "bin/gsView")
-  SET(CPACK_SOURCE_STRIP_FILES "")
-ENDIF(WIN32 AND NOT UNIX)
-SET(CPACK_PACKAGE_EXECUTABLES "gsView" "gsView")
-set(CPACK_SOURCE_IGNORE_FILES
-"^${PROJECT_SOURCE_DIR}/.svn"
-"^${PROJECT_SOURCE_DIR}/.git"
-"^${PROJECT_SOURCE_DIR}/.travis.yml"
-"~$"
-#"^${PROJECT_SOURCE_DIR}/debian/"
-)
