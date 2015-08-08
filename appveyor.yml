@@ -6,7 +6,7 @@ os:
 #  - Windows Server 2012 R2
 #  - Default Azure
 #  - SharePoint 2013
-  - MinGW
+#  - MinGW
 #  - Visual Studio 2014 CTP4
   - Visual Studio 2015 RC
 
@@ -59,14 +59,14 @@ install:
 
 # scripts to run before build
 before_build:
-  - cmd: echo %os.env%
-  - cmd: echo %os.compiler%
   - cmd: cd build-gismo
   - cmd: set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
   - cmd: if "%platform%"=="Win32" set CMAKE_GENERATOR_NAME=Visual Studio 14 2015
   - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64
-  - cmd: if "%os%"=="MinGW"        set CMAKE_GENERATOR_NAME=MinGW Makefiles
+#  - cmd: if "%os%"=="MinGW"        set CMAKE_GENERATOR_NAME=MinGW Makefiles
   - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
+  - cmd: echo %os.env%
+  - cmd: echo %os.compiler%
   - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
 
 build:
