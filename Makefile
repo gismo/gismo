@@ -7,13 +7,13 @@
 
 SHELL := /bin/bash
 RM    := rm -rf
-MKDIR := mkdir
+MKDIR := mkdir -p
 
 all: ./build/Makefile
 	@ $(MAKE) -C build  && echo "Build completed in folder ./build"
 
 ./build/Makefile:
-	@ if ![ -d "./buid" ]; then $(MKDIR) build; fi 
+	@ $(MKDIR) build
 	@ (cd build >/dev/null 2>&1 && cmake ..)
 
 distclean:
