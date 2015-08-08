@@ -6,7 +6,7 @@ os:
 #  - Windows Server 2012 R2
 #  - Default Azure
 #  - SharePoint 2013
-#  - MinGW
+  - MinGW
 #  - Visual Studio 2014 CTP4
   - Visual Studio 2015 RC
 
