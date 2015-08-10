@@ -76,6 +76,7 @@ template< class T = real_t>  class gsBasisFun;
 
 class  gsBoxTopology;
 class  boxSide;
+struct patchSide;
 struct boxCorner;
 struct boundaryInterface;
 

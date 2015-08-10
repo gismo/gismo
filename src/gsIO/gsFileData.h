@@ -221,13 +221,14 @@ public:
     /// Prints the XML data as a string
     std::ostream &print(std::ostream &os) const;
 
+/*
     /// Constructs the first Object found in the XML tree and assigns
     /// it to the pointer obj and then deletes it from the data tree.
     /// Returns true if there was something assigned, false if object
     /// did not exist.
     /// WARNING: Use getFirst<Object>() instead. This is buggy due to
     /// template resolution.
-    template<class Object>    
+    template<class Object>
     bool operator>>(Object * obj)
     {        
         gsWarn<< "getting "<< typeid(Object).name() <<"\n";
@@ -245,7 +246,8 @@ public:
             return true;
 	    }
     }
-    
+*/
+  
     /// Returns the first Object found in the XML data
     template<class Object> 
     inline Object * getFirst() const
@@ -260,6 +262,20 @@ public:
             return NULL;
         }           
         return internal::gsXml<Object>::get(node);// Using gsXmlUtils
+    }
+
+    template<class Object> 
+    void getFirst(Object & result) const
+    {
+        gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(), 
+                                       internal::gsXml<Object>::type() );
+        if ( !node )
+        {
+            gsWarn<<"gsFileData: getFirst: Didn't find any "<<
+                internal::gsXml<Object>::type()<<" "<< 
+                internal::gsXml<Object>::tag() <<". Error.\n";
+        }           
+        internal::gsXml<Object>::get_into(node,result);// Using gsXmlUtils
     }
     
     /// Returns a vector with all Objects found in the XML data
@@ -292,6 +308,21 @@ public:
             return NULL;
       }           
         return internal::gsXml<Object>::get(node);// Using gsXmlUtils
+    }
+
+    /// Returns the first Object found in the XML data
+    template<class Object>
+    void getAnyFirst(Object & result) const
+    {
+        gsXmlNode* node = getAnyFirstNode(internal::gsXml<Object>::tag(), 
+                                          internal::gsXml<Object>::type() );
+        if ( !node )
+        {
+            gsWarn <<"gsFileData: getAnyFirst: Didn't find any "<<
+                internal::gsXml<Object>::type()<<" "<< 
+                internal::gsXml<Object>::tag() <<". Error.\n";
+      }
+        internal::gsXml<Object>::get_into(node, result);// Using gsXmlUtils
     }
 
     /// Lists the contents of the filedata

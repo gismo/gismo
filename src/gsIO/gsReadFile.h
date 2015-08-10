@@ -31,31 +31,59 @@ namespace gismo
 
 template< class T>  class gsMultiPatch;
 
+/** 
+  \brief Reads an object from a data file, if such the requested
+  object exists in the file
+  
+  \sa gsFileData
+
+  \tparam T arithmentic type
+ */
 template<class T = real_t >
 class gsReadFile
 {
 public:
 
     /** 
-     * Reads a file into a gsReadFile object
-     * 
-     * @param fn filename string
-     */
+        \brief Opens a file and reads an object into a pointer. This is
+        used in conjuction with a cast operator to a pointer type
+        
+        @param fn filename string
+    */
     gsReadFile(std::string const & fn)
     { 
         m_data.read(fn);
     }
 
+    /** 
+        \brief Opens a file and reads an object into \a result. 
+        
+        Example of usage:
+        \code{.cpp}
+        std::string filename = "/path/to/file.xml";
+        gsMultiPatch<> MP;
+        gsReadFile<>(filenane, MP);
+        \endcode
+
+       \param[in] fn filename string
+       \param[out] result object to read in
+    */
+    template<class Obj>
+    gsReadFile(std::string const & fn, Obj & result)
+    { 
+        m_data.read(fn);
+        m_data.getAnyFirst(result);
+    }
+
+
     ~gsReadFile() { m_data.clear(); }
    
 private:
+
     /// File data as a Gismo xml tree
     gsFileData<T> m_data;
 
 public:
-
-    std::ostream &print(std::ostream &os) const
-    { os << "gsReadFile. .\n"; return os; };
 
     /// Alows to read an Object from a file
     template<class Obj>

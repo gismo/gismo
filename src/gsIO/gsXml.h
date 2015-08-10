@@ -50,6 +50,12 @@ namespace rapidxml
     static  obj * getId (gsXmlNode * node, int id) \
     { return getById< obj >(node, id); }
 
+#define GSXML_GET_POINTER(obj)          \
+    static obj * get (gsXmlNode * node) \
+    {   obj * result = new obj;         \
+        get_into(node, *result);        \
+        return result; }
+
 #define TMPLA2(t1,t2)    t1,t2
 #define TMPLA3(t1,t2,t3) t1,t2,t3
 #define FILE_PRECISION 16
@@ -72,8 +78,9 @@ private:
 public:
     static std::string tag ();
     static std::string type ();
-    static Object * get (gsXmlNode * node);
-    static gsXmlNode * put (const Object & obj, gsXmlTree & data);
+    static Object * get      (gsXmlNode * node);
+    static void     get_into (gsXmlNode * node, Object & result);
+    static gsXmlNode * put   (const Object & obj, gsXmlTree & data);
 
     // Common operations
     static bool     has      (gsXmlNode * node);
@@ -90,7 +97,7 @@ template<class Object>
 Object * getById(gsXmlNode * node, const int & id)
 {
     std::string tag = internal::gsXml<Object>::tag();
-    for (gsXmlNode * child = node->first_node(tag.c_str());
+    for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
          child; child = child->next_sibling(tag.c_str()))
     {
         if (  atoi(child->first_attribute("id")->value() ) == id )
@@ -135,6 +142,9 @@ GISMO_EXPORT gsXmlNode *  makeNode( const std::string & name, gsXmlTree & data);
 GISMO_EXPORT gsXmlNode * makeNode( const std::string & name,
 			             const std::string & value, gsXmlTree & data);
 
+/// Helper to create an XML comment node
+GISMO_EXPORT gsXmlNode *  makeComment(const std::string &, gsXmlTree & data);
+
 /// Helper to convert small unsigned to string
 GISMO_EXPORT std::string to_string(const unsigned & i);
 
@@ -169,12 +179,24 @@ GISMO_EXPORT gsXmlNode * firstByTagType(const std::string & tag,
 GISMO_EXPORT gsXmlNode * anyByTag(const std::string & tag,
                                   gsXmlNode * root );
 
+GISMO_EXPORT void getBoundaries(gsXmlNode                * node, 
+                                std::map<int, int>       & ids,
+                                std::vector< patchSide > & result);
+
+GISMO_EXPORT void getInterfaces(gsXmlNode* node,
+                                const int d,
+                                std::map<int, int>& ids,
+                                std::vector< boundaryInterface > & result);
+
 /// Helper to allocate XML node with gsMatrix value
 template<class T>
 gsXmlNode * makeNode( const std::string & name, 
                       const gsMatrix<T> & value, gsXmlTree & data,
                       bool transposed = false );
 
+/// Helper to fetch functions
+template<class T>
+void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result );
 
 /// Helper to fetch matrices
 template<class T>

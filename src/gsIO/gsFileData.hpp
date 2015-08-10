@@ -90,6 +90,10 @@ gsFileData<T>::dump(std::string const & fname)  const
 template<class T> void
 gsFileData<T>::save(std::string const & fname, bool compress)  const
 { 
+    gsXmlNode * comment = internal::makeComment("This file was created by G+Smo " 
+                                                GISMO_VERSION, *data);
+    data->prepend_node(comment);
+
     if (compress)
     {
         saveCompressed(fname);
@@ -107,6 +111,7 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
     //rapidxml::print_no_indenting
     fn<< *data; 
     fn.close();
+    data->remove_node( data->first_node() );
 }
 
 template<class T> void
@@ -1723,12 +1728,11 @@ int gsFileData<T>::numTags() const
     return i;
 }
 
-
 template<class T> inline
 typename gsFileData<T>::gsXmlNode * 
 gsFileData<T>::getXmlRoot() const
 { 
-    return data->first_node("xml");
+    return data->getRoot();
 } 
 
 template<class T> inline

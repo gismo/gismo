@@ -13,6 +13,7 @@
 
 #include <sstream>
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsFunctionExpr.h>
 
 namespace gismo {
 
@@ -43,6 +44,29 @@ gsXmlNode * makeNode( const std::string & name,
         }
   
     return makeNode(name, oss.str(), data);
+}
+
+template<class T>
+void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result ) 
+{
+    gsWarn<<"Reading "<< node->name() <<" function\n";
+
+    GISMO_ASSERT( node->first_attribute("dim"), "xml reader: No dim found" ) ;
+    const int d = atoi( node->first_attribute("dim")->value() );
+  
+    std::vector< std::string > expr_strings;
+
+    gsXmlNode * child = node->first_node("component");
+
+    if (child != NULL )
+    {
+        for (; child; child = child->next_sibling() )
+            expr_strings.push_back(  child->value() );
+    }
+    else
+        expr_strings.push_back(  node->value() );
+
+    result = gsFunctionExpr<T>( expr_strings, d );
 }
 
 template<class T>

@@ -69,6 +69,12 @@ gsXmlNode * makeNode( const std::string & name, const std::string & value, gsXml
 	   data.allocate_string(name.c_str() ), 
 	   data.allocate_string(value.c_str()) );
 }
+
+gsXmlNode * makeComment(const std::string & comment, gsXmlTree & data)
+{
+    return data.allocate_node(rapidxml::node_comment, 0, 
+                       data.allocate_string(comment.c_str()));
+}
     
 std::string to_string(const unsigned & i)
 {

@@ -17,26 +17,28 @@
 
 //#include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsLinearAlgebra.h>
-
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsRationalBasis.h>
-
 #include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiBasis.h>
-#include <gsModeling/gsPlanarDomain.h>
+#include <gsCore/gsBoundary.h>
+
 #include <gsNurbs/gsNurbsBasis.h>
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorNurbs.h>
+
+#include <gsModeling/gsPlanarDomain.h>
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
-#include <gsUtils/gsMesh/gsMesh.h>
 #include <gsModeling/gsCurveFitting.h>
+
 #include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHBSpline.h>
 
+#include <gsUtils/gsMesh/gsMesh.h>
 
 //#include <gsTrBezier/gsTriangularBezierBasis.h>
 //#include <gsTrBezier/gsTriangularBezier.h>
@@ -1239,20 +1241,25 @@ class gsXml< gsMultiPatch<T> >
 {
 private:
     gsXml() { }
+    typedef gsMultiPatch<T> Object;
+
 public:
-    GSXML_COMMON_FUNCTIONS(gsMultiPatch<T>);
+    GSXML_COMMON_FUNCTIONS(Object);
     static std::string tag () { return "MultiPatch"; }
     static std::string type () { return ""; }
     
-    static gsMultiPatch<T> * get (gsXmlNode * node)
+    GSXML_GET_POINTER(Object);
+    
+    static void get_into (gsXmlNode * node, gsMultiPatch<T> & obj)
     {
         GISMO_ASSERT( !strcmp( node->name(),"MultiPatch"), 
                       "Something went wrong. Expected Multipatch tag." );
         
-        gsXmlNode * toplevel = node->parent();// the geometry patches should be siblings of node
+        // the geometry patches should be siblings of node
+        gsXmlNode * toplevel = node->parent();
         
         const int d = atoi( node->first_attribute("parDim")->value() );
-
+        
         gsXmlNode * tmp = node->first_node("patches");
         std::istringstream str ;
         str.str( tmp->value() );
@@ -1303,9 +1310,9 @@ public:
         if (tmp)
             getInterfaces(tmp, d, ids, interfaces);
 
-        return new gsMultiPatch<T>(patches, boundaries, interfaces);
+        obj = gsMultiPatch<T>(patches, boundaries, interfaces);        
     }
-    
+
     static gsXmlNode * put (const gsMultiPatch<T> & obj,
                             gsXmlTree & data)
     {

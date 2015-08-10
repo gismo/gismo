@@ -38,11 +38,11 @@ int main(int argc, char *argv[])
     cmd.addSwitch("element", "Plot the element mesh (when applicable)", plot_mesh);
     cmd.addSwitch("controlNet", "Plot the control net (when applicable)", plot_net);
     cmd.addSwitch("boundary", "Plot the boundaries and interfaces of patches with colors", plot_boundary);
-    gsArgValPlain<std::string> a1("filename","File containing data to draw (.xml, .axl, .txt)", 
-                              false, "", "string",cmd );
+    gsArgValPlain<std::string> arg_fn("filename","File containing data to draw (.xml, .axl, .txt)", 
+                                  false, "", "string",cmd );
     
     bool ok = cmd.getValues(argc,argv);
-    fn = a1.getValue();
+    fn = arg_fn.getValue();
     if ( !ok ) 
     {
         std::cout << "Something went wrong when reading the command line. Exiting.\n";
@@ -116,30 +116,25 @@ int main(int argc, char *argv[])
     }
     default:
         if ( filedata.has< gsMultiPatch<> >() )
-               {
-                   gsMultiPatch<>* mp = filedata.getFirst< gsMultiPatch<> >();
-                   if ( mp != NULL )
-                       gsInfo<< "Got "<< *mp <<"\n";
-                   else
-                   {
-                       gsInfo<< "Problem encountered in file "<<fn<<",quitting." <<"\n";
-                       return 0;
-                   }
+        {
+            //gsMultiPatch<>* mp = filedata.getFirst< gsMultiPatch<> >();
+            gsMultiPatch<> mp;
+            filedata.getFirst(mp);
+            //gsReadFile<>(fn,mp);// reloads file
+            gsInfo<< "Got "<< mp <<"\n";
 
-                   if (plot_boundary)
-                   {
-                       gsField<>::uPtr nfield = gsFieldCreator<>::boundarySides(*mp);
-                       gsWriteParaview( *nfield, "gsview", numSamples);   
-                   }
-                   else
-                   {
-                       gsWriteParaview( *mp, "gsview", numSamples, plot_mesh, plot_net);
-                   }
+            if (plot_boundary)
+            {
+                gsField<>::uPtr nfield = gsFieldCreator<>::boundarySides(mp);
+                gsWriteParaview( *nfield, "gsview", numSamples);
+            }
+            else
+            {
+                gsWriteParaview(mp, "gsview", numSamples, plot_mesh, plot_net);
+            }
 
-                       delete mp;
-
-                   return system("paraview gsview.pvd &");
-               }
+            return system("paraview gsview.pvd &");
+        }
         if ( filedata.has< gsGeometry<> >() )
         {
             std::vector<gsGeometry<>* > geo = filedata.getAll< gsGeometry<> >();
@@ -172,124 +167,124 @@ int main(int argc, char *argv[])
             gsWriteParaview( *msh, "gsview");
             delete msh;
             
-        return system("paraview gsview.pvd &");
+            return system("paraview gsview.pvd &");
         }
 
-    if ( filedata.has< gsBasis<> >() )
-    {
-        gsBasis<> * bb = filedata.getFirst< gsBasis<> >();
-        //bb->uniformRefine(3);
-        
-        if (bb)
-            gsInfo<< "Got "<< *bb <<"\n";
-        else
+        if ( filedata.has< gsBasis<> >() )
         {
-            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
-            return 0;
+            gsBasis<> * bb = filedata.getFirst< gsBasis<> >();
+            //bb->uniformRefine(3);
+        
+            if (bb)
+                gsInfo<< "Got "<< *bb <<"\n";
+            else
+            {
+                gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
+                return 0;
+            }
+        
+            gsWriteParaview( *bb , "gsview", numSamples, plot_mesh);
+        
+            delete bb;
+
+            return system("paraview gsview.pvd &");        
         }
-        
-        gsWriteParaview( *bb , "gsview", numSamples, plot_mesh);
-        
-        delete bb;
 
-        return system("paraview gsview.pvd &");        
-    }
-
-    if ( filedata.has< gsSolid<> >() )
-    {
-        gsSolid<> * bb = filedata.getFirst< gsSolid<> >();
-
-        if (bb)
-            gsInfo<< "Got "<< *bb <<"\n";
-        else
+        if ( filedata.has< gsSolid<> >() )
         {
-            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
-            return 0;
+            gsSolid<> * bb = filedata.getFirst< gsSolid<> >();
+
+            if (bb)
+                gsInfo<< "Got "<< *bb <<"\n";
+            else
+            {
+                gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
+                return 0;
+            }
+        
+            gsWriteParaviewSolid( *bb, "gsview", numSamples);
+            //gsWriteParaview( *bb, "gsview", numSamples, 0, 0.02);
+        
+            delete bb;
+
+            return system("paraview gsview.pvd &");        
         }
-        
-        gsWriteParaviewSolid( *bb, "gsview", numSamples);
-        //gsWriteParaview( *bb, "gsview", numSamples, 0, 0.02);
-        
-        delete bb;
 
-        return system("paraview gsview.pvd &");        
-    }
-
-    if ( filedata.has< gsTrimSurface<> >() )
-    {
-        gsTrimSurface<> * bb = filedata.getFirst< gsTrimSurface<> >();
-        //bb->uniformRefine(3);
-
-        if (bb)
-            gsInfo<< "Got "<< *bb <<"\n";
-        else
+        if ( filedata.has< gsTrimSurface<> >() )
         {
-            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
-            return 0;
+            gsTrimSurface<> * bb = filedata.getFirst< gsTrimSurface<> >();
+            //bb->uniformRefine(3);
+
+            if (bb)
+                gsInfo<< "Got "<< *bb <<"\n";
+            else
+            {
+                gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
+                return 0;
+            }
+
+            gsWriteParaview( *bb, "gsview", numSamples);
+        
+            delete bb;
+
+            return system("paraview gsview.pvd &");
         }
 
-        gsWriteParaview( *bb, "gsview", numSamples);
-        
-        delete bb;
-
-        return system("paraview gsview.pvd &");
-    }
-
-    if ( filedata.has< gsPlanarDomain<> >() )
-    {
-        gsPlanarDomain<> * bb = filedata.getFirst< gsPlanarDomain<> >();
-        //bb->uniformRefine(3);
-
-        if (bb)
-            gsInfo<< "Got "<< *bb <<"\n";
-        else
+        if ( filedata.has< gsPlanarDomain<> >() )
         {
-            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
-            return 0;
+            gsPlanarDomain<> * bb = filedata.getFirst< gsPlanarDomain<> >();
+            //bb->uniformRefine(3);
+
+            if (bb)
+                gsInfo<< "Got "<< *bb <<"\n";
+            else
+            {
+                gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
+                return 0;
+            }
+        
+            gsMesh<> * msh = bb->toMesh(numSamples);
+
+            gsWriteParaview( *msh , "gsview");
+        
+            delete bb;
+            delete msh;
+
+            return system("paraview gsview.pvd &");        
         }
         
-        gsMesh<> * msh = bb->toMesh(numSamples);
-
-        gsWriteParaview( *msh , "gsview");
-        
-        delete bb;
-        delete msh;
-
-        return system("paraview gsview.pvd &");        
-    }
-        
-    if ( filedata.has< gsMatrix<> >() )
-    {
-        gsMatrix<> * bb = filedata.getFirst< gsMatrix<> >();
-        //bb->uniformRefine(3);
-        
-        if (bb)
-            gsInfo<< "Got Matrix with "<< bb->cols() <<" points.\n";
-        else
+        if ( filedata.has< gsMatrix<> >() )
         {
-            gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
-            return 0;
+            gsMatrix<> * bb = filedata.getFirst< gsMatrix<> >();
+            //bb->uniformRefine(3);
+        
+            if (bb)
+                gsInfo<< "Got Matrix with "<< bb->cols() <<" points.\n";
+            else
+            {
+                gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
+                return 0;
+            }
+
+            gsInfo<< "Plot "<< bb->rows() <<"D points.\n";
+            if (bb->rows() == 2 )    
+            {         
+                gsWriteParaviewPoints<real_t>( bb->row(0),
+                                               bb->row(1), "gsview");
+            }
+            else if (bb->rows() == 3 )    
+                gsWriteParaviewPoints<real_t>( bb->row(0).eval(),
+                                               bb->row(1).eval() , 
+                                               bb->row(2).eval(), "gsview");
+            else
+                gsInfo<< "In trouble...\n";
+
+            delete bb;
+
+            return system("paraview gsview.pvd &");
         }
 
-        gsInfo<< "Plot "<< bb->rows() <<"D points.\n";
-        if (bb->rows() == 2 )    
-        {         
-            gsWriteParaviewPoints<real_t>( bb->row(0),
-                             bb->row(1), "gsview");
-        }
-        else if (bb->rows() == 3 )    
-            gsWriteParaviewPoints<real_t>( bb->row(0).eval(),
-                             bb->row(1).eval() , 
-                             bb->row(2).eval(), "gsview");
-        else
-            gsInfo<< "In trouble...\n";
-
-        delete bb;
-
-        return system("paraview gsview.pvd &");
-    }
-
-    gsInfo<< "Did not find anything to plot in "<<fn<<", quitting."<<"\n";
+        gsInfo<< "Did not find anything to plot in "<<fn<<", quitting."<<"\n";
     }
 
     return 0;

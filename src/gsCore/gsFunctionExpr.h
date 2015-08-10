@@ -45,6 +45,12 @@ class gsFunctionExpr : public gsFunction<T>
 public:
     typedef T Scalar_t;
 
+    /// Shared pointer for gsFunctionExpr
+    typedef memory::shared_ptr< gsFunctionExpr > Ptr;
+
+    /// Auto pointer for gsFunctionExpr
+    typedef typename memory::auto_ptr<gsFunctionExpr> uPtr;
+
 public:
     
     /// Default empty constructor

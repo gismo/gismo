@@ -24,6 +24,9 @@ void getMatrixFromXml ( gsXmlNode * node,
                         unsigned const & cols, 
                         gsMatrix<T> & result );
 
+TEMPLATE_INST
+void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result);
+
 // TEMPLATE_INST
 // void getMatrixFromXml ( gsXmlNode * node, 
 //                         unsigned const & rows, 

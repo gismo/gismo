@@ -58,8 +58,13 @@ template<class T>
 class gsFunction
 {
 public:
+    /// Shared pointer for gsFunction
+    typedef memory::shared_ptr< gsFunction > Ptr;
 
-    typedef typename memory::auto_ptr<gsMatrix<T> >        uMatrixPtr;
+    /// Autopointer for gsFunction
+    typedef memory::shared_ptr< gsFunction > uPtr;
+
+    typedef typename gsMatrix<T>::uPtr       uMatrixPtr;
 
 public:
 
