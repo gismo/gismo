@@ -42,7 +42,7 @@ B-splines meeting along one side
 
   <!-- A multipatch section describes the configuration
        of the two patches above -->
-  <MultiPatch parDim="2" id="0">
+  <MultiPatch parDim="2" id="2">
     <patches type="id_range">0 1</patches>
     <interfaces>1 2 0 1 0 1 1 1
     </interfaces>
@@ -54,4 +54,51 @@ B-splines meeting along one side
     1 1
     </boundary>
   </MultiPatch>
+
+<!--
+    A Poisson PDE 
+-->
+<Pde id="3" type="PoissonPde" dim="2">
+<!--
+<rhs>(8.0-9.0*sqrt(x^2 + y^2))*sin(2*atan(y/x))/(x^2+y^2)</rhs>
+<solution>(x^2+y^2-3*sqrt(x^2+y^2)+2)*sin(2*atan(y/x))</solution>
+-->
+<rhs>2*pi^2*sin(pi*x)*sin(pi*y)</rhs>
+<solution>sin(pi*x) * sin(pi*y)</solution>
+</Pde>
+
+<!--
+    A set of boundary conditions
+-->
+<boundaryConditions id="4" multipatch="2">
+<Function type="expr" dim="2" index="0">sin(pi*x) * sin(pi*y)</Function>
+<Function type="expr" dim="2" index="1">0</Function>
+
+<!-- 
+     The boundary conditions are stored by specifing the attributes:
+
+     * The unknown to which the boundary condition refers to 
+     * Type of condition (dirichlet, neumann)
+     * Function data index (the condition is assumed to be homogeneous
+       if function attribute does not exist
+     
+     And, additionally the indices of the boundaries where this
+     condition applies.  These indices refer to the enumeration of the
+     boundary sides inside the <boundary> tag
+-->
+
+<!-- Dirichlet conditions -->
+<bc unknown="0" type="dirichlet" function="0">
+0 1 2 3 4 5
+</bc>
+
+<!-- Neumann conditions -->
+<!--<bc unknown="0" type="neumann" function="1">
+</bc>-->
+
+<!-- We fix the corner which is at the origin of the axis to zero -->
+<!--<cv unknown="0" patch="0" corner="0">0.0</cv>-->
+
+</boundaryConditions>
+
 </xml>
