@@ -1,6 +1,10 @@
 #ifndef RAPIDXML_HPP_INCLUDED
 #define RAPIDXML_HPP_INCLUDED
 
+
+#include <stdio.h> // G+Smo: for sprintf
+
+
 // Copyright (C) 2006, 2009 Marcin Kalicinski
 // Version 1.13
 // Revision $DateTime: 2009/05/13 01:46:17 $
@@ -1357,13 +1361,43 @@ namespace rapidxml
     template<class Ch = char>
     class xml_document: public xml_node<Ch>, public memory_pool<Ch>
     {
-    
+        //G+Smo
+    protected:
+        int max_Id;
+
+    public:
+        xml_node<Ch> * makeRoot() 
+        { 
+            xml_node<Ch> * root = 
+                this->allocate_node(node_element,this->allocate_string("xml"));
+            this->append_node(root);
+            return root;
+        }
+        
+        inline xml_node<Ch> * getRoot() const {return this->first_node();}
+
+        inline int maxId() const {return max_Id;} 
+        
+        inline int numNodes() const {return max_Id+1;} 
+
+        void appendToRoot(xml_node<Ch> * node)
+        { 
+            char tmp[4];
+            sprintf(tmp,"%d", ++max_Id);
+            node->append_attribute(this->allocate_attribute(
+            this->allocate_string("id"), this->allocate_string(tmp) ) );
+            getRoot()->append_node(node);
+        }
+        //end G+Smo
     public:
 
         //! Constructs empty XML document
         xml_document()
             : xml_node<Ch>(node_document)
         {
+            //G+Smo
+            max_Id = -1;
+            //end G+Smo
         }
 
         //! Parses zero-terminated XML string according to given flags.

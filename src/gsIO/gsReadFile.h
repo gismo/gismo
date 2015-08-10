@@ -1,20 +1,23 @@
-/**
- * @file   gsReadFile.h
- * @author A. Mantzaflaris <Angelos.Mantzaflaris@oeaw.ac.at>
- * @date   March 2013
- * 
- * @brief  Reads a file
- * 
- *  Part of GISMO library, developed at RICAM-Linz, Austria
- */
+/** @file gsReadFile.h
+
+    @brief Utility class which holds I/O XML data to read/write to/from files
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
 
 /*
-Notes:
-QEPCAD: 
-http://opus.bath.ac.uk/29503/
-http://opus.bath.ac.uk/29503/9/QEPCADexamplebank.txt
+  Notes:
+  QEPCAD: 
+  http://opus.bath.ac.uk/29503/
+  http://opus.bath.ac.uk/29503/9/QEPCADexamplebank.txt
 
- */
+*/
 
 #pragma once
 
@@ -23,7 +26,8 @@ http://opus.bath.ac.uk/29503/9/QEPCADexamplebank.txt
 #include <gsCore/gsDebug.h>
 #include <gsIO/gsFileData.h>
 
-namespace gismo {
+namespace gismo 
+{
 
 template< class T>  class gsMultiPatch;
 
@@ -38,11 +42,11 @@ public:
      * @param fn filename string
      */
     gsReadFile(std::string const & fn)
-        { 
-            m_data.read(fn);
-        };
+    { 
+        m_data.read(fn);
+    }
 
-    ~gsReadFile() { m_data.clear(); };
+    ~gsReadFile() { m_data.clear(); }
    
 private:
     /// File data as a Gismo xml tree
@@ -51,7 +55,7 @@ private:
 public:
 
     std::ostream &print(std::ostream &os) const
-        { os << "gsReadFile. .\n"; return os; };
+    { os << "gsReadFile. .\n"; return os; };
 
     /// Alows to read an Object from a file
     template<class Obj>

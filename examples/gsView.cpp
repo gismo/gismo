@@ -20,22 +20,24 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     std::string fn("");
-    int np(1000);
+    int numSamples(1000);
     int choice(0);
     bool plot_mesh = false;
     bool plot_net = false;
-    bool a3 = false;
-    bool a4 = false;
-    bool a5 = false;
+    bool plot_boundary = false;
+    bool get_basis = false;
+    bool get_mesh = false;
+    bool get_geo = false;
     
     gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");  
     
-    cmd.addSwitch("geometry", "Try to find and plot a geometry contained in the file", a5);
-    cmd.addSwitch("mesh", "Try to find and plot a mesh contained in the file", a4);
-    cmd.addSwitch("basis", "Try to find and plot a basis contained in the file", a3);
-    cmd.addInt("s", "samples", "Number of samples to use for viewing", np);
+    cmd.addSwitch("geometry", "Try to find and plot a geometry contained in the file", get_geo);
+    cmd.addSwitch("mesh", "Try to find and plot a mesh contained in the file", get_mesh);
+    cmd.addSwitch("basis", "Try to find and plot a basis contained in the file", get_basis);
+    cmd.addInt("s", "samples", "Number of samples to use for viewing", numSamples);
     cmd.addSwitch("element", "Plot the element mesh (when applicable)", plot_mesh);
     cmd.addSwitch("controlNet", "Plot the control net (when applicable)", plot_net);
+    cmd.addSwitch("boundary", "Plot the boundaries and interfaces of patches with colors", plot_boundary);
     gsArgValPlain<std::string> a1("filename","File containing data to draw (.xml, .axl, .txt)", 
                               false, "", "string",cmd );
     
@@ -54,16 +56,16 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    if (a3)
+    if (get_basis)
         choice= 3;
-    else if (a4)
+    else if (get_mesh)
         choice= 4;
-    else if (a5)
+    else if (get_geo)
         choice= 5;
     
     gsFileData<>  filedata(fn);
     
-    switch ( choice)
+    switch ( choice )
     {
     case 3:
     {
@@ -76,7 +78,7 @@ int main(int argc, char *argv[])
             return 0;
         }
         
-        gsWriteParaview( *bb , "gsview", np, true);
+        gsWriteParaview( *bb , "gsview", numSamples, true);
         
         delete bb;
 
@@ -107,7 +109,7 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        gsWriteParaview( *geo , "gsview", np, plot_mesh, plot_net);
+        gsWriteParaview( *geo , "gsview", numSamples, plot_mesh, plot_net);
         delete geo;
 
         return system("paraview gsview.pvd &");
@@ -124,9 +126,17 @@ int main(int argc, char *argv[])
                        return 0;
                    }
 
-                   gsWriteParaview( *mp, "gsview", np, plot_mesh, plot_net);
+                   if (plot_boundary)
+                   {
+                       gsField<>::uPtr nfield = gsFieldCreator<>::boundarySides(*mp);
+                       gsWriteParaview( *nfield, "gsview", numSamples);   
+                   }
+                   else
+                   {
+                       gsWriteParaview( *mp, "gsview", numSamples, plot_mesh, plot_net);
+                   }
 
-                   delete mp;
+                       delete mp;
 
                    return system("paraview gsview.pvd &");
                }
@@ -141,7 +151,7 @@ int main(int argc, char *argv[])
                 return 0;
             }
             
-            gsWriteParaview( geo , "gsview", np, plot_mesh, plot_net);
+            gsWriteParaview( geo , "gsview", numSamples, plot_mesh, plot_net);
             
             freeAll( geo );
             
@@ -178,7 +188,7 @@ int main(int argc, char *argv[])
             return 0;
         }
         
-        gsWriteParaview( *bb , "gsview", np, plot_mesh);
+        gsWriteParaview( *bb , "gsview", numSamples, plot_mesh);
         
         delete bb;
 
@@ -197,8 +207,8 @@ int main(int argc, char *argv[])
             return 0;
         }
         
-        gsWriteParaviewSolid( *bb, "gsview", np);
-        //gsWriteParaview( *bb, "gsview", np, 0, 0.02);
+        gsWriteParaviewSolid( *bb, "gsview", numSamples);
+        //gsWriteParaview( *bb, "gsview", numSamples, 0, 0.02);
         
         delete bb;
 
@@ -218,7 +228,7 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        gsWriteParaview( *bb, "gsview", np);
+        gsWriteParaview( *bb, "gsview", numSamples);
         
         delete bb;
 
@@ -238,7 +248,7 @@ int main(int argc, char *argv[])
             return 0;
         }
         
-        gsMesh<> * msh = bb->toMesh(np);
+        gsMesh<> * msh = bb->toMesh(numSamples);
 
         gsWriteParaview( *msh , "gsview");
         

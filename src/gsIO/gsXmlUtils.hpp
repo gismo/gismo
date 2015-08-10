@@ -21,8 +21,6 @@
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsRationalBasis.h>
 
-
-#include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiBasis.h>
@@ -101,15 +99,19 @@ void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result )
     gsWarn<<"Reading "<< node->name() <<" function\n";
 
     GISMO_ASSERT( node->first_attribute("dim"), "xml reader: No dim found" ) ;
-    int d = atoi( node->first_attribute("dim")->value() );
+    const int d = atoi( node->first_attribute("dim")->value() );
   
     std::vector< std::string > expr_strings;
 
-    for (gsXmlNode * child = node->first_node("component"); 
-         child; child = child->next_sibling() )
+    gsXmlNode * child = node->first_node("component");
+
+    if (child != NULL )
     {
-        expr_strings.push_back(  child->value() );
+        for (; child; child = child->next_sibling() )
+            expr_strings.push_back(  child->value() );
     }
+    else
+        expr_strings.push_back(  node->value() );
 
     result = gsFunctionExpr<T>( expr_strings, d );
 }
@@ -306,12 +308,10 @@ public:
         nodeSolid->append_node(nodeVolume);
 
         // write trimmed surfaces to the root
-        gsXmlNode * root = data.first_node("xml");
         for(size_t i = 0; i < nFace; i++)
         {
             gsXmlNode* nodeTS = gsXml< gsTrimSurface<T> >::put(*(obj.face[i]->surf), data);
-            nodeTS->append_attribute(makeAttribute("id", i, data) );
-            root->append_node(nodeTS);
+            data.appendToRoot(nodeTS);
         }
 
         return nodeSolid;
@@ -1151,62 +1151,57 @@ void appendBoxTopology(const gsBoxTopology& topology,
     }
 }
 
-/// Reads a box topology from a node, used for gsMultipatch and gsMultiBasis.
-void readBoxTopology(const int d,
-                     std::map<int, int>& ids,
-                     gsXmlNode* node,
-                     std::vector< boundaryInterface >& interfaces,
-                     std::vector< patchSide >& boundaries)
+void getInterfaces(gsXmlNode* node,
+                   const int d,
+                   std::map<int, int>& ids,
+                   std::vector< boundaryInterface > & result)
 {
-
+    GISMO_ASSERT( node != NULL, "Node does not exist");
 
     // temporaries for interface reading
     gsVector<index_t> dirMap(d);
     gsVector<bool>    dirOrient(d);
 
-    gsXmlNode* interfacesNode = node->first_node("interfaces");
-    if (interfacesNode)
+    std::istringstream iss;
+    iss.str( node->value() );
+    
+    gsVector<int> p(4); // { patch, side, patch, side }
+    
+    // Read interface (groups or size 4 + 2*d)
+    while ( iss >> std::ws >> p[0] ) // While there are more ints (groups or size 4+d-1)
     {
-        std::istringstream iss;
-        iss.str( interfacesNode->value() );
-
-        gsVector<int> p(4); // { patch, side, patch, side }
-
-        // Read interface (groups or size 4 + 2*d)
-        while ( iss >> std::ws >> p[0] ) // While there are more ints (groups or size 4+d-1)
+        for ( int i = 1; i != 4; ++i )
         {
-            for ( int i = 1; i != 4; ++i )
+            if ( !(iss >> std::ws >> p[i] >> std::ws) )
             {
-                if ( !(iss >> std::ws >> p[i] >> std::ws) )
-                {
-                    gsWarn << "Error reading interface.\n";
-                }
+                gsWarn << "Error reading interface.\n";
             }
-
-            // Get ids
-            p[0] = ids[ p[0] ];
-            p[2] = ids[ p[2] ];
-
-            // Read the matching direction permutation
-            for ( int i = 0; i != d; ++i )
+        }
+        
+        // Get ids
+        p[0] = ids[ p[0] ];
+        p[2] = ids[ p[2] ];
+        
+        // Read the matching direction permutation
+        for ( int i = 0; i != d; ++i )
+        {
+            if ( !(iss >> std::ws >> dirMap[i]) )
             {
-                if ( !(iss >> std::ws >> dirMap[i]) )
-                {
-                    gsWarn << "Error reading interface direction map.\n";
-                }
+                gsWarn << "Error reading interface direction map.\n";
             }
-
-            // Read the interface orientation
-            for ( int i = 0; i != d; ++i )
+        }
+        
+        // Read the interface orientation
+        for ( int i = 0; i != d; ++i )
+        {
+            if ( !(iss >> std::ws >> dirOrient[i]) )
             {
-                if ( !(iss >> std::ws >> dirOrient[i]) )
-                {
-                    gsWarn << "Error reading interface orientation.\n";
-                }
+                gsWarn << "Error reading interface orientation.\n";
             }
-
-            interfaces.push_back( boundaryInterface(p, dirMap, dirOrient) );
-
+        }
+        
+        result.push_back( boundaryInterface(p, dirMap, dirOrient) );
+        
 //            // OLD format: read in Orientation flags
 //            gsVector<bool> orient(d-1);// orientation flags
 //            int k;
@@ -1217,28 +1212,28 @@ void readBoxTopology(const int d,
 //                orient[i]= (k>0);
 //            }
 //            interfaces.push_back( boundaryInterface(p,orient) ) ;
-        }
-    }
-
-    // Read boundary
-    gsXmlNode* boundaryNode = node->first_node("boundary");
-    if (boundaryNode)
-    {
-        std::istringstream iss;
-        iss.str( boundaryNode->value() );
-        int patch, side;
-
-        while ( iss >> std::ws >> patch  )
-        {
-            patch = ids[ patch ];
-            iss >> std::ws >> side;
-            boundaries.push_back( patchSide(patch, side) );
-        }
     }
 }
 
+void getBoundaries(gsXmlNode                * node, 
+                   std::map<int, int>       & ids,
+                   std::vector< patchSide > & result)
+{
+    GISMO_ASSERT( node != NULL, "Node does not exist");
+    
+    std::istringstream iss;
+    iss.str( node->value() );
+    int patch, side;
+    
+    while ( iss >> std::ws >> patch  )
+    {
+        patch = ids[ patch ];
+        iss >> std::ws >> side;
+        result.push_back( patchSide(patch, side) );
+    }
+}
 
-/// Get a Multipatch
+// Get a Multipatch
 template<class T>
 class gsXml< gsMultiPatch<T> >
 {
@@ -1271,6 +1266,7 @@ public:
             for ( int i = first; i<=last; ++i )
             {
                 patches.push_back( getById< gsGeometry<T> >( toplevel, i ) );
+                patches.back()->setId(i);
                 ids[i] = i - first;
             }
         }
@@ -1280,6 +1276,7 @@ public:
             for (int pindex; str >> pindex;)
             {
                 patches.push_back( getById< gsGeometry<T> >( toplevel, pindex ) );
+                patches.back()->setId(pindex);
                 ids[pindex] = c++;
             }
         }
@@ -1287,10 +1284,24 @@ public:
         {
             gsWarn<<"Unknown tag in XML multipatch object.\n";
         }
-               
-        std::vector< boundaryInterface > interfaces;
+
+
+        //patches: 2 0 1
+        // before offset range: 5 3 4
+
+        // Boundaries and interfaces are also 3,4,5 so we need to translate them t0 0,1,2
+        
+        // Read boundary
         std::vector< patchSide > boundaries;
-        readBoxTopology(d, ids, node, interfaces, boundaries);
+        tmp = node->first_node("boundary");
+        if (tmp)
+            getBoundaries(tmp, ids, boundaries);
+        
+        // Read interfaces
+        std::vector< boundaryInterface > interfaces;
+        tmp = node->first_node("interfaces");
+        if (tmp)
+            getInterfaces(tmp, d, ids, interfaces);
 
         return new gsMultiPatch<T>(patches, boundaries, interfaces);
     }
@@ -1298,23 +1309,18 @@ public:
     static gsXmlNode * put (const gsMultiPatch<T> & obj,
                             gsXmlTree & data)
     {
-        gsXmlNode * toplevel = data.first_node("xml");
-        
         // First insert all geometries
-        int id_start = 0;
-        int id_end   = id_start;   
-        gsXmlNode* tmp;
+        int max_id = data.maxId();
+        gsXmlNode * tmp;
         for ( typename gsMultiPatch<T>::const_iterator it = obj.begin();
               it != obj.end(); ++it )
         {
             tmp = gsXml<gsGeometry<T> >::put(**it,data);
-            tmp->append_attribute( internal::makeAttribute("id", id_end++, data) );
-            toplevel->append_node(tmp);
-        }  
+            data.appendToRoot(tmp);
+        }
         
-        //value : id_start id_end
         std::ostringstream str;
-        str<<  id_start<<" "<< --id_end;
+        str<< max_id+1 <<" "<< data.maxId();
         tmp = internal::makeNode("patches" , str.str(), data);
         tmp->append_attribute( internal::makeAttribute("type", "id_range", data) );
         str.clear(); str.str("");
@@ -1381,9 +1387,17 @@ public:
             gsWarn << "unknown tag in XML multipatch object \n";
         }
 
-        std::vector< boundaryInterface > interfaces;
+        // Read boundary
         std::vector< patchSide > boundaries;
-        readBoxTopology(d, ids, node, interfaces, boundaries);
+        gsXmlNode * tmp = node->first_node("boundary");
+        if (tmp)
+            getBoundaries(tmp, ids, boundaries);
+        
+        // Read interfaces
+        std::vector< boundaryInterface > interfaces;
+        tmp = node->first_node("interfaces");
+        if (tmp)
+            getInterfaces(tmp, d, ids, interfaces);
 
         gsBoxTopology topology( d, bases.size(), boundaries, interfaces);
 
@@ -1394,21 +1408,17 @@ public:
     static gsXmlNode* put(const gsMultiBasis<T>& obj,
                           gsXmlTree& data)
     {
-        gsXmlNode* topLevel = data.first_node("xml");
-
         // Insert all the basis
-        int idStart = 0;
-        int idEnd = idStart;
+        int max_id = data.maxId();
         for ( typename gsMultiBasis<T>::const_iterator it = obj.begin();
               it != obj.end(); ++it )
         {
             gsXmlNode* basisXml = gsXml< gsBasis<T> >::put(**it, data);
-            basisXml->append_attribute( internal::makeAttribute("id", idEnd++, data) );
-            topLevel->append_node(basisXml);
+            data.appendToRoot( basisXml );
         }
 
         std::ostringstream oss;
-        oss << idStart << " " << --idEnd;
+        oss<<  max_id+1 <<" "<< data.maxId();
         gsXmlNode* node = internal::makeNode("patches", oss.str(), data);
         node->append_attribute( internal::makeAttribute("type", "id_range", data) );
         oss.clear();

@@ -1,5 +1,9 @@
 sudo: required
 
+os:
+  - linux
+  - osx
+
 language: cpp
 
 compiler:
@@ -8,10 +12,8 @@ compiler:
 
 before_install:
 ## Install CMake 2.8.8
-- sudo add-apt-repository ppa:kalakris/cmake -y
-- sudo apt-get update -qq
-- sudo apt-get install cmake
-- sudo apt-get install valgrind
+- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository ppa:kalakris/cmake -y; sudo apt-get update -qq; sudo apt-get install cmake valgrind; fi
+- if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; brew install cmake valgrind; fi
 
 before_script:
   - mkdir build

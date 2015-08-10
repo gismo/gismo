@@ -1,3 +1,16 @@
+/** @file gsFiledata.hpp
+
+    @brief Implementation of utility class which holds I/O XML data to
+           read/write to/from files
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): A. Mantzaflaris
+*/
 
 #pragma once
 
@@ -33,19 +46,15 @@ namespace gismo {
 template<class T>
 gsFileData<T>::gsFileData()
 { 
-    max_id= -1;
     data = new FileData; 
-    gsXmlNode* root = internal::makeNode("xml", *data);
-    data->append_node(root);
+    data->makeRoot();
 }
 
 template<class T>
 gsFileData<T>::gsFileData(String const & fn)
 { 
-    max_id= -1;
     data = new FileData; 
-    gsXmlNode* root = internal::makeNode("xml", *data);
-    data->append_node(root);
+    data->makeRoot();
 
     this->read(fn); 
 }
@@ -261,15 +270,12 @@ bool gsFileData<T>::readAxelCurve(gsXmlNode * node )
 {    
     std::stringstream str;
     
-    gsXmlNode* parent = data->first_node("xml") ; // TO DO: parent can be a data member
-
     //bool rational(true);
 
     gsXmlNode* g = internal::makeNode("Geometry", *data);
     g->append_attribute( internal::makeAttribute("type", "BSpline", *data) );
-    g->append_attribute( internal::makeAttribute("id", ++max_id, *data ) );
-    parent->append_node(g);
-    parent= g;
+    data->appendToRoot(g);
+    gsXmlNode * parent= g;
 
     gsXmlNode* tmp = node->first_node("dimension");   
     String geoDim = tmp->value();
@@ -302,13 +308,10 @@ bool gsFileData<T>::readAxelSurface(gsXmlNode * node )
 {    
     std::stringstream str;
     
-    gsXmlNode* parent = data->first_node("xml") ; // TO DO: parent can be a data member
-
     gsXmlNode* g = internal::makeNode("Geometry", *data);
     g->append_attribute( internal::makeAttribute("type", "TensorBSpline2", *data) );
-    g->append_attribute( internal::makeAttribute("id", ++max_id, *data ) );
-    parent->append_node(g);
-    parent= g;
+    data->appendToRoot(g);
+    gsXmlNode * parent = g;
 
     //gsXmlNode* tmp = node->first_node("dimension");// dimension is 3
     
@@ -368,8 +371,6 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
     lnstream.unsetf(std::ios_base::skipws); 
     
     String line;
-
-    gsXmlNode* parent = data->first_node("xml") ; // TO DO: parent can be a data member
 
     // Node for a Geometry object
     gsXmlNode * g;    
@@ -594,8 +595,7 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
                                                          (rational ? "TensorNurbs" : "TensorBSpline")+internal::to_string(parDim), *data) );
         }
 
-        parent->append_node(g);
-        g->append_attribute( internal::makeAttribute("id", ++max_id, *data ) );
+        data->appendToRoot(g);
         src = internal::makeNode("Basis", *data);
         if (parDim>1)
             src->append_attribute( internal::makeAttribute("type",
@@ -732,9 +732,8 @@ bool gsFileData<T>::readGeompFile( String const & fn )
         lnstream >> std::ws >> Ni  >> std::ws >> Ns >>  std::ws ;
 
     // Start id by 1, to match numbering in GeoPDEs file:
-    max_id=0;
+    //max_id=0;
     
-    gsXmlNode* parent = data->first_node("xml") ; // TO DO: parent can be a data member
     gsXmlNode* g;    
 
     //std::cout<<"Reading N="<<N<<" and Np="<< Np  <<"\n";
@@ -760,6 +759,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
         {
             continue;
         }
+        /* //Note: no need to read topology
         else if ( line.find("interface")!=String::npos )
         {
             while (!file.eof() && getline(file, line))
@@ -794,6 +794,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
                 patch=false;
             }
         }
+        */
         else if ( ( line.find("patch")!=String::npos ) || patch==true ) 
         {
             // gsDebug <<"Patch "<<  line <<"\n";
@@ -821,8 +822,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
         
             g = internal::makeNode("Geometry", *data);
             g->append_attribute( internal::makeAttribute("type", "TensorNurbs"+internal::to_string(N), *data) );
-            g->append_attribute( internal::makeAttribute("id", ++max_id, *data ) );
-            parent->append_node(g);
+            data->appendToRoot(g);
 
             // Rational tensor basis
             gsXmlNode* rtb = internal::makeNode("Basis", *data);
@@ -910,7 +910,8 @@ bool gsFileData<T>::readGeompFile( String const & fn )
         }	
     }
 
-    // Reading a multipatch structure
+    /*
+    // Note: no need to read multipatch structure
     if ( Np > 1 )
     {
         g = internal::makeNode("MultiPatch", *data);
@@ -927,7 +928,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
         c = internal::makeNode("boundary",bdr, *data);
         g->append_node(c);
     }
-
+    */
     return true;
 };
 
@@ -1076,12 +1077,9 @@ bool gsFileData<T>::readOffFile( String const & fn )
     std::ifstream file(fn.c_str(),std::ios::in);
     if ( !file.good() ) {std::cout<<"Input file Problem!\n";return false;} 
 
-    gsXmlNode* parent = data->first_node("xml") ;
-
     gsXmlNode* g = internal::makeNode("Mesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
-    g->append_attribute( internal::makeAttribute("id", ++max_id, *data ) );
-    parent->append_node( g ) ;
+    data->appendToRoot(g);
 
     String line;
     std::istringstream lnstream;
@@ -1133,12 +1131,9 @@ bool gsFileData<T>::readStlFile( String const & fn )
     std::ifstream file(fn.c_str(),std::ios::in);
     if ( !file.good() ) {std::cout<<"Input file Problem!\n";return false;} 
 
-    gsXmlNode* parent = data->first_node("xml") ;
     gsXmlNode* g = internal::makeNode("Mesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
-    g->append_attribute( internal::makeAttribute("id", ++max_id, *data ) );
-    parent->append_node( g ) ;
-
+    data->appendToRoot(g);
 
     std::ostringstream triangles;
     triangles.unsetf(std::ios_base::skipws); 
@@ -1216,8 +1211,6 @@ bool gsFileData<T>::readObjFile( String const & fn )
     //std::cout<<"Assuming Linux file, please convert dos2unix first.\n";
 
 #if FALSE
-
-    gsXmlNode* parent = data->first_node("xml") ;
 
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
@@ -1493,7 +1486,6 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
     // assert shape->name()==Shape
 
     gsXmlNode * patch;
-    gsXmlNode* parent = data->first_node("xml") ; // TO DO: parent can be a data member
 
     //node = node->first_node("NurbsTrimmedSurface");
     //node = node->first_node("NurbsCurve2D");
@@ -1582,7 +1574,7 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
         patch->append_node( cp_node);
 
         // Attach patch to gismo xml tree
-        parent->append_node(patch);
+        data->appendToRoot(patch);
     }
 }
 
@@ -1738,19 +1730,6 @@ gsFileData<T>::getXmlRoot() const
 { 
     return data->first_node("xml");
 } 
-
-template<class T> inline
-void gsFileData<T>::appendToRoot(gsXmlNode * node)
-{ 
-    gsXmlNode * root = data->first_node("xml");
-    root->append_node(node);
-}
-
-template<class T> inline
-void gsFileData<T>::appendId(gsXmlNode * node)
-{ 
-    node->append_attribute( internal::makeAttribute("id", ++max_id, *data) );
-}
 
 template<class T> inline
 void gsFileData<T>::deleteXmlSubtree(gsXmlNode * node)

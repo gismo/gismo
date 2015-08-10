@@ -101,6 +101,22 @@ Object * getById(gsXmlNode * node, const int & id)
     return NULL;
 }
 
+/// Helper to fetch a node with a certain \em id value.
+/// \param root parent node, we check his children for the given \em id
+/// \param id the ID number which is seeked for
+inline gsXmlNode * searchId(const int id, gsXmlNode * root)
+{
+    for (gsXmlNode * child = root->first_node();
+         child; child = child->next_sibling())
+    {
+        // todo check if id attribute exists
+        if (  atoi(child->first_attribute("id")->value() ) == id )
+            return child;
+    }
+    gsWarn <<"gsXmlUtils: No object with id = "<<id<<" found.\n";
+    return NULL;
+}
+
 /// Helper to allocate XML value
 GISMO_EXPORT char * makeValue( const std::string & value, gsXmlTree & data);
 

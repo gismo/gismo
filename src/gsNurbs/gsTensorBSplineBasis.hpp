@@ -140,20 +140,21 @@ class gsXml< gsTensorBSplineBasis<d,T,KnotVectorType> >
 {
 private:
     gsXml() { }
+    typedef gsTensorBSplineBasis<d,T,KnotVectorType> Object;
 public:
     GSXML_COMMON_FUNCTIONS(gsTensorBSplineBasis<TMPLA3(d,T,KnotVectorType)>);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "TensorBSplineBasis"+to_string(d); }
 
-    static gsTensorBSplineBasis<d,T,KnotVectorType> * get (gsXmlNode * node)
+    static Object * get (gsXmlNode * node)
     {
-        return getTensorBasisFromXml<gsTensorBSplineBasis<d,T,KnotVectorType> >( node );
+        return getTensorBasisFromXml<Object >( node );
     }
     
-    static gsXmlNode * put (const gsTensorBSplineBasis<d,T,KnotVectorType> & obj, 
+    static gsXmlNode * put (const Object & obj, 
                             gsXmlTree & data )
     {
-        return putTensorBasisToXml<gsTensorBSplineBasis<d,T,KnotVectorType> >(obj,data);
+        return putTensorBasisToXml<Object >(obj,data);
     }
 };
 

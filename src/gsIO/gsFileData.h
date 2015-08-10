@@ -58,7 +58,7 @@ public:
     void clear();
 
     /// \brief Reports the number of objects which are held in the file data
-    int numData() const { return max_id+1;}
+    int numData() const { return data->numNodes();}
 
     /// \brief Save file contents to an xml file
     void save(std::string const & fname = "dump", bool compress = false) const;
@@ -75,9 +75,6 @@ private:
     
     // Used to hold parsed data of native gismo XML files
     std::vector<char> m_buffer;
-    
-    /// Max id
-    int max_id;
     
 protected:
     
@@ -213,9 +210,8 @@ public:
                          <<" to the XML tree. is \"put\" implemented ??\n";
         }
         else
-        {                
-            appendId(node);
-            appendToRoot(node);
+        {
+            data->appendToRoot(node);
         }            
     }
     
@@ -351,8 +347,6 @@ public:
 private:
 
     gsXmlNode * getXmlRoot() const;
-    void        appendToRoot  (gsXmlNode* node);
-    void        appendId      (gsXmlNode* node);
     static void deleteXmlSubtree (gsXmlNode* node);
 
     // getFirst ? (tag and or type)
