@@ -73,6 +73,18 @@ public:
                    const std::string & expression_string4,
                    int ddim);
 
+    ///\brief Constructor by nine expression strings (9D vector function) used for (3x3) matrix coefficients
+    gsFunctionExpr(const std::string & expression_string1,
+                   const std::string & expression_string2,
+                   const std::string & expression_string3,
+                   const std::string & expression_string4,
+                   const std::string & expression_string5,
+                   const std::string & expression_string6,
+                   const std::string & expression_string7,
+                   const std::string & expression_string8,
+                   const std::string & expression_string9,
+                   int ddim);
+
     gsFunctionExpr(const std::vector<std::string> & expression_string, int ddim);
 
     gsFunctionExpr(const gsFunctionExpr& other);
