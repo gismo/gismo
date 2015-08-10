@@ -65,7 +65,7 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
 template<class T>
 struct boundary_condition
 {
-    typedef memory::shared_ptr<gsFunction<T> > function_ptr;
+    typedef typename gsFunction<T>::Ptr function_ptr;
 
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr, 
                         condition_type::type t, int unknown = 0,
