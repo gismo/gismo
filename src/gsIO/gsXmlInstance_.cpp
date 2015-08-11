@@ -49,10 +49,6 @@ namespace internal
 
     CLASS_TEMPLATE_INST gsXml< gsPlanarDomain<real_t> >;
     
-    TEMPLATE_INST
-    void getFunctionFromXml<real_t> ( gsXmlNode * node, 
-                                      gsFunctionExpr<real_t> & result );
-
 } // end namespace internal
 
 

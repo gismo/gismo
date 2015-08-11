@@ -27,12 +27,6 @@ void getMatrixFromXml ( gsXmlNode * node,
 TEMPLATE_INST
 void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result);
 
-// TEMPLATE_INST
-// void getMatrixFromXml ( gsXmlNode * node, 
-//                         unsigned const & rows, 
-//                         unsigned const & cols, 
-//                         gsMatrix<unsigned> & result );
-
 TEMPLATE_INST
 gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, 
                              gsXmlTree & data, std::string name);

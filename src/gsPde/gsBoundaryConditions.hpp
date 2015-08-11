@@ -39,10 +39,22 @@ public:
         GISMO_ASSERT( !strcmp( node->name(), tag().c_str() ),
                       "Something went wrong. Expected tag "<< tag() );
         
-        // there should exist a sibling of type MultiPatch
-        const int d = atoi( node->first_attribute("multipatch")->value() );
+        // There should exist a sibling of type MultiPatch
         gsXmlNode * toplevel = node->parent();
-        gsXmlNode * mp       = searchId(d, toplevel);
+        gsXmlNode * mp       = NULL;
+
+        const gsXmlAttribute * mp_at = node->first_attribute("multipatch");
+        if ( mp_at )
+        {
+            const int d = atoi( mp_at->value() );
+            mp = searchId(d, toplevel);
+        }
+        else
+        {
+            // multipatch not referenced, grab the first one in the
+            // file
+            mp = toplevel->first_node("MultiPatch");
+        }
 
         if ( mp == NULL || strcmp( mp->name(), "MultiPatch" ) )
             gsWarn <<"Did not find a mulitpatch object.\n";
@@ -61,7 +73,7 @@ public:
             str >> std::ws >>  first >>  std::ws >> last >> std::ws ;
             for ( int i = first; i<=last; ++i )
             {
-                GISMO_ASSERT( searchId(d, toplevel) != NULL, 
+                GISMO_ASSERT( searchId(i, toplevel) != NULL, 
                               "Invalid reference to node Id");
                 ids[i] = i - first;
             }
@@ -144,8 +156,19 @@ public:
     static gsXmlNode * put (const Object & obj, 
                             gsXmlTree & data )
     {
+        // Check if the last node is a multipatch
+        //gsXmlNode * mp = deta.getRoot()->last_node("MultiPatch");
+
         gsWarn<<"To do\n";
-        return NULL;
+
+        gsXmlNode * BCs = internal::makeNode("boundaryConditions" , data);
+        data.appendToRoot(BCs);
+
+        // collect function pointers
+
+        // for all bcs, append bc, cv
+
+        return BCs;
     }
 };
 

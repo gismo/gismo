@@ -70,32 +70,57 @@ int main(int argc, char *argv[])
   
     gsInfo << "Discret. Space 0: "<< bases[0] << "\n";
     gsInfo << BCs<<"\n";
+
+    double time, totalTime = 0.0;
+    gsStopwatch watch;
   
-    /////////////////// Setup solver ///////////////////
+    gsInfo << "Setup problem.. \n";
     gsPoissonAssembler<real_t> poisson(geo, bases, BCs, *ppde->rhs(),
                                        ( Dirichlet==1 ? dirichlet::nitsche 
                                          : dirichlet::elimination) );
-
+    time = watch.stop();
+    totalTime += time;
+    gsInfo << "time: " <<  time << " s" << "\n";
     gsInfo<<"System size: "<< poisson.numDofs() << "\n";
   
     // Assemble and solve
-    gsStopwatch time;
+
+    gsInfo << "Assembling.. \n";
+    watch.restart();
     poisson.assemble();
-    const double assmTime = time.stop();
+    time = watch.stop();
+    totalTime += time;
+    gsInfo << "time: " <<  time << " s" << "\n";
+
+    gsInfo << "Solving.. \n";
+    //gsDebugVar(poisson.matrix().isCompressed());
+    watch.restart();
     gsSparseSolver<>::CGDiagonal solver( poisson.matrix() );
     gsMatrix<> solVector = solver.solve( poisson.rhs() );
-    const double solveTime = time.stop();
+    time = watch.stop();
+    totalTime += time;
+    gsInfo << "time: " <<  time << " s" << "\n";    
+
+    gsInfo << "Constructing solution.. \n";
+    watch.restart();
     gsField<>* x = poisson.constructSolution(solVector);
+    time = watch.stop();
+    totalTime += time;
+    gsInfo << "time: " <<  time << " s" << "\n";    
 
-    //gsInfo <<  poisson.linearSystem() <<"\n";
+    //gsInfo << "Solution: " << x->function()  << "\n";
 
-    gsInfo << "Assembling time: " <<  assmTime << " s" << "\n";    
-    gsInfo << "Solver time:     " <<  solveTime - assmTime << " s" << "\n";    
-    gsInfo << "Total time:      " <<  solveTime << " s" << "\n";    
-    gsInfo << "Solution: " << x->function()  << "\n";
     if ( ppde->solution() )
-        gsInfo << "L2 error: " << x->distanceL2(*ppde->solution() ) 
-             << "\n";
+    {
+        gsInfo << "Computing L2 error.. \n";
+        watch.restart();
+        const real_t L2error = x->distanceL2(*ppde->solution() );
+        gsInfo << "time: " <<  time << " s" << "\n";
+        totalTime += time;
+        gsInfo << "L2 error: " << L2error<< "\n";
+    }
+
+    gsInfo << "Total time: " <<  totalTime << " s" << "\n";
 
     // Optionally plot solution in paraview
     if (plot)
@@ -107,6 +132,9 @@ int main(int argc, char *argv[])
         gsField<> exact( geo , *ppde->solution() , false ) ;
         gsWriteParaview<>( exact, "poisson_sol_exact", plot_pts) ;
     }
+
+    // bool save = false;
+    // if (save)
 
     delete x;
     delete ppde;

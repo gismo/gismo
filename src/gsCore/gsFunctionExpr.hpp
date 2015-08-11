@@ -47,7 +47,15 @@
 // in a compilation failure.
 //#define exprtk_disable_string_capabilities
 
-#include <exprtk.hpp>            // external file
+//#define GISMO_USE_AUTODIFF
+#ifdef GISMO_USE_AUTODIFF
+  /* Optional automatic differentiation */
+  #include <exprtk_ad_adaptor.hpp> // external file
+#else
+  #include <exprtk.hpp>            // external file
+#endif
+
+#include <gsIO/gsXml.h>
 
 namespace
 {
@@ -407,6 +415,12 @@ int gsFunctionExpr<T>::targetDim() const
 }
 
 template<typename T>
+const std::string & gsFunctionExpr<T>::expression(int i) const
+{
+    return my->string[i];
+}
+
+template<typename T>
 void gsFunctionExpr<T>::set_x (T const & v) const { my->vars[0]= v; }
 
 template<typename T>
@@ -629,5 +643,55 @@ std::ostream & gsFunctionExpr<T>::print(std::ostream &os) const
     os <<" ]";
     return os;
 }
+
+namespace internal
+{
+
+/// @brief Get a FunctionsExpr from XML data
+template<class T>
+class gsXml< gsFunctionExpr<T> >
+{
+private:
+    gsXml() { }
+    typedef gsFunctionExpr<T> Object;
+public:
+    GSXML_COMMON_FUNCTIONS(Object);
+    static std::string tag ()  { return "Function"; }
+    static std::string type () { return "expr"; }
+
+    GSXML_GET_POINTER(Object);
+
+    static void get_into (gsXmlNode * node, Object & obj)
+    {
+        getFunctionFromXml(node, obj);
+    }
+    
+    static gsXmlNode * put (const Object & obj, 
+                            gsXmlTree & data )
+    {
+        gsXmlNode * func = makeNode("Function", data);
+        func->append_attribute(makeAttribute("dim", obj.domainDim(), data));
+
+        const int tdim = obj.targetDim();
+        
+        if ( tdim == 1)
+        {
+            func->value( makeValue(obj.expression(), data) );
+        }
+        else
+        {
+            gsXmlNode * cnode;
+            for (int c = 0; c!=tdim; ++c)
+            {
+                cnode = makeNode("c", obj.expression(c), data);
+                func->append_node(cnode);
+            }
+        }
+
+        return func;
+    }
+};
+
+} // internal
 
 }; // namespace gismo

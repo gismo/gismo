@@ -49,14 +49,14 @@ gsXmlNode * makeNode( const std::string & name,
 template<class T>
 void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result ) 
 {
-    gsWarn<<"Reading "<< node->name() <<" function\n";
+    //gsWarn<<"Reading "<< node->name() <<" function\n";
 
-    GISMO_ASSERT( node->first_attribute("dim"), "xml reader: No dim found" ) ;
+    GISMO_ASSERT( node->first_attribute("dim"), "getFunctionFromXml: No dim found" ) ;
     const int d = atoi( node->first_attribute("dim")->value() );
   
     std::vector< std::string > expr_strings;
 
-    gsXmlNode * child = node->first_node("component");
+    gsXmlNode * child = node->first_node("c");
 
     if (child != NULL )
     {

@@ -92,34 +92,6 @@ gsXmlNode * gsXml<Object>::put (const Object & obj, gsXmlTree & data)
 */
  
 ////////////////////////////////////////////////////////
-// Implementations of common XML get/put functions
-////////////////////////////////////////////////////////
-
-template<class T>
-void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result ) 
-{
-    //gsWarn<<"Reading "<< node->name() <<" function\n";
-
-    GISMO_ASSERT( node->first_attribute("dim"), "xml reader: No dim found" ) ;
-    const int d = atoi( node->first_attribute("dim")->value() );
-
-    std::vector< std::string > expr_strings;
-
-    gsXmlNode * child = node->first_node("component");
-
-    if (child != NULL )
-    {
-        for (; child; child = child->next_sibling() )
-            expr_strings.push_back(  child->value() );
-    }
-    else
-        expr_strings.push_back(  node->value() );
-
-    result = gsFunctionExpr<T>( expr_strings, d );
-}
-
- 
-////////////////////////////////////////////////////////
 // Getting Xml data
 ////////////////////////////////////////////////////////
 
@@ -1272,6 +1244,8 @@ public:
             str >> std::ws >>  first >>  std::ws >> last >> std::ws ;
             for ( int i = first; i<=last; ++i )
             {
+                GISMO_ASSERT( searchId(i, toplevel) != NULL, 
+                              "No Geometry with Id "<<i<<" found in the XML data.");
                 patches.push_back( getById< gsGeometry<T> >( toplevel, i ) );
                 patches.back()->setId(i);
                 ids[i] = i - first;
@@ -1282,6 +1256,8 @@ public:
             int c = 0;
             for (int pindex; str >> pindex;)
             {
+                GISMO_ASSERT( searchId(pindex, toplevel) != NULL, 
+                              "No Geometry with Id "<<pindex<<" found in the XML data.");
                 patches.push_back( getById< gsGeometry<T> >( toplevel, pindex ) );
                 patches.back()->setId(pindex);
                 ids[pindex] = c++;

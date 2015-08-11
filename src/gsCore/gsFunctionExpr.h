@@ -117,6 +117,9 @@ public:
 
     // Documented in gsFunction class
     int targetDim() const;
+
+    // returns the string expression for component \a i
+    const std::string & expression(int i = 0) const;
   
     /// Sets the symbol "x" to a value
     void set_x (T const & v) const;

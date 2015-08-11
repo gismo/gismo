@@ -100,7 +100,8 @@ Object * getById(gsXmlNode * node, const int & id)
     for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
          child; child = child->next_sibling(tag.c_str()))
     {
-        if (  atoi(child->first_attribute("id")->value() ) == id )
+        const gsXmlAttribute * id_at = child->first_attribute("id");
+        if (id_at && atoi(id_at->value()) == id )
             return internal::gsXml<Object>::get(child);
     }
     std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag() 
@@ -116,8 +117,8 @@ inline gsXmlNode * searchId(const int id, gsXmlNode * root)
     for (gsXmlNode * child = root->first_node();
          child; child = child->next_sibling())
     {
-        // todo check if id attribute exists
-        if (  atoi(child->first_attribute("id")->value() ) == id )
+        const gsXmlAttribute * id_at = child->first_attribute("id");
+        if ( id_at &&  atoi(id_at->value()) == id )
             return child;
     }
     gsWarn <<"gsXmlUtils: No object with id = "<<id<<" found.\n";
@@ -195,6 +196,7 @@ gsXmlNode * makeNode( const std::string & name,
                       bool transposed = false );
 
 /// Helper to fetch functions
+///\todo read gsFunction instead
 template<class T>
 void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result );
 
