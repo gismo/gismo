@@ -1,4 +1,4 @@
-/** @file gsHTensorBasis.h
+/** @file gsHTensorBasis.hpp
 
     @brief Provides implementation of HTensorBasis common operations.
 
