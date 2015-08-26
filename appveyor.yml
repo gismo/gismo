@@ -72,10 +72,10 @@ install:
 # scripts to run before build
 before_build:
   - cmd: cd build-gismo
-  - cmd: set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
+  - cmd: set PATH=C:\MinGW\msys\1.0\bin;C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
   - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
   - cmd: if "%BUILD%"=="msvc" ( if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64) else (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015) )
-  - cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MSYS Makefiles && C:\MinGW\msys\1.0\bin\sh --login /c/projects/libgit2/script/appveyor-mingw.sh)
+  - cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MSYS Makefiles) # && C:\MinGW\msys\1.0\bin\sh --login /c/projects/libgit2/script/appveyor-mingw.sh)
   - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
   #- cmd: cmake --build . --config RelWithDebInfo -- /verbosity:minimal
   #- ctest -D ExperimentalConfigure && exit 0
