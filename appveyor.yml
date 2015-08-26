@@ -49,8 +49,9 @@ init:
 #  - cmd: cmake --version
 # - cmd: echo Platform is %platform%
  - cmd: msbuild /version
-
+ - cmd: wmic os get osarchitecture
 # clone directory
+
 clone_folder: C:\projects\gismo
 
 # branches to build
@@ -76,9 +77,11 @@ before_build:
   - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
 #  - cmd: set
   - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
+  - ctest -D ExperimentalConfigure
 
 build_script:
-  - cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln)
+  #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
+  - cmd: ctest -j4 -D ExperimentalBuild
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln
@@ -94,4 +97,7 @@ build_script:
   #include_nuget_references: true
 
 test_script:
-  - cmd: ctest -C %configuration% -VV -D Experimental
+  #- cmd: ctest -C %configuration% -VV -D Experimental
+  - cmd: ctest -j4 -D ExperimentalTest
+  #- cmd: ctest -j2 -D ExperimentalMemCheck
+  - cmd: ctest -j2 -D ExperimentalSubmit
