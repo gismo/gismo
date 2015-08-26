@@ -2,13 +2,13 @@
 version: "G+Smo-stable.{build}"
 
 # Operating system (build VM template)
-#os: 
+os: 
 #  - Windows Server 2012 R2
 #  - Default Azure
 #  - SharePoint 2013
 #  - MinGW
 #  - Visual Studio 2014 CTP4
-#  - Visual Studio 2015 RC
+  - Visual Studio 2015 RC
 
 environment:
   CTEST_OUTPUT_ON_FAILURE: 1
@@ -75,7 +75,7 @@ before_build:
   - cmd: if "%BUILD%"=="mingw" set CMAKE_GENERATOR_NAME=MinGW Makefiles
   - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
 #  - cmd: set
-  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo-stable
+  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
 
 build_script:
   - ps: |
