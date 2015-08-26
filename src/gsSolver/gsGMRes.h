@@ -51,11 +51,11 @@ public:
 
 private:
 
-    /// Solves the Upper triangular system Ry = g
+    /// Solves the Upper triangular system Ry = gg
     /// and stores the solution in the private member y.
-    void solveUpperTriangular(gsMatrix<> R, gsMatrix<> g)
+    void solveUpperTriangular(const gsMatrix<real_t> & R, const gsMatrix<real_t> & gg)
     {
-       y = R.triangularView<Eigen::Upper>().solve(g);
+       y = R.triangularView<Eigen::Upper>().solve(gg);
     }
 
 private:

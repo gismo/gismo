@@ -50,8 +50,8 @@ init:
 # - cmd: echo Platform is %platform%
  - cmd: msbuild /version
  - cmd: wmic os get osarchitecture
-# clone directory
 
+# clone directory
 clone_folder: C:\projects\gismo
 
 # branches to build
