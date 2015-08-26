@@ -78,7 +78,7 @@ before_build:
 #  - cmd: set
   - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
 
-build:
+build_script:
   - ps: |
       if (%BUILD% -eq "mingw") {
         mingw32-make -j4
