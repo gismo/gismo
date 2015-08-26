@@ -72,17 +72,16 @@ install:
 before_build:
   - cmd: cd build-gismo
   - cmd: set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
-  - cmd: if "%BUILD%"=="msvc" ( if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64) else (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015) )
-  - cmd: if "%BUILD%"=="mingw" set CMAKE_GENERATOR_NAME=MSYS Makefiles
-    #set CMAKE_GENERATOR_NAME=MinGW Makefiles
   - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
+  - cmd: if "%BUILD%"=="msvc" ( if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64) else (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015) )
+  - cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MSYS Makefiles && C:\MinGW\msys\1.0\bin\sh --login /c/projects/libgit2/script/appveyor-mingw.sh)
 #  - cmd: set
   - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
   - ctest -D ExperimentalConfigure
 
 build_script:
   #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
-  - cmd: ctest -j4 -D ExperimentalBuild
+  - cmd: ctest -j4 -D ExperimentalBuild && exit 0
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln
@@ -99,6 +98,6 @@ build_script:
 
 test_script:
   #- cmd: ctest -C %configuration% -VV -D Experimental
-  - cmd: ctest -j4 -D ExperimentalTest
+  - cmd: ctest -j4 -D ExperimentalTest && exit 0
   #- cmd: ctest -j2 -D ExperimentalMemCheck
   - cmd: ctest -j2 -D ExperimentalSubmit
