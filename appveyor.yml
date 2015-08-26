@@ -2,18 +2,26 @@
 version: "G+Smo-stable.{build}"
 
 # Operating system (build VM template)
-os: 
+#os: 
 #  - Windows Server 2012 R2
 #  - Default Azure
 #  - SharePoint 2013
-  - MinGW
+#  - MinGW
 #  - Visual Studio 2014 CTP4
-  - Visual Studio 2015 RC
+#  - Visual Studio 2015 RC
+
+environment:
+  CTEST_OUTPUT_ON_FAILURE: 1
+  matrix:
+  - BUILD: msvc
+  - BUILD: msvc
+    platform: x64
+  - BUILD: mingw
 
 # build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
-platform: 
-  - Win32
-  - x64
+#platform: 
+#  - Win32
+#  - x64
 
 #artifacts:
 #  - path: tt
@@ -30,7 +38,7 @@ clone_depth: 5 # clone entire repository history if not defined
 
 # build Configuration, i.e. Debug, Release, etc.
 configuration:
-  - Debug
+#  - Debug
 #  - RelWithDebInfo
   - Release
 
@@ -62,7 +70,8 @@ before_build:
   - cmd: cd build-gismo
   - cmd: set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
   - cmd: if "%platform%"=="Win32" set CMAKE_GENERATOR_NAME=Visual Studio 14 2015
-  - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64
+#  - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64
+  - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=MinGW Makefiles
 #  - cmd: if "%os%"=="MinGW"        set CMAKE_GENERATOR_NAME=MinGW Makefiles
   - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
   - cmd: set
