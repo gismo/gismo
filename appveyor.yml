@@ -71,15 +71,15 @@ install:
 before_build:
   - cmd: cd build-gismo
   - cmd: set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
-  - cmd: if "%BUILD%"=="msvc" ( if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64) else (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 ) )
-  - cmd: if "%BUILD%"=="mingw" set CMAKE_GENERATOR_NAME=MinGW Makefiles
+  - cmd: if "%BUILD%"=="msvc" ( if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME="Visual Studio 14 2015 Win64") else (set CMAKE_GENERATOR_NAME="Visual Studio 14 2015" ) )
+  - cmd: if "%BUILD%"=="mingw" set CMAKE_GENERATOR_NAME="MinGW Makefiles"
   - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
 #  - cmd: set
   - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
 
 build_script:
   - ps: |
-      if (%BUILD% -eq "mingw") (
+      if (%BUILD%=="mingw") (
         mingw32-make -j4
       ) else (
         msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln
