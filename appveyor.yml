@@ -14,6 +14,7 @@ environment:
   CTEST_OUTPUT_ON_FAILURE: 1
   matrix:
   - BUILD: msvc
+    platform: Win32
   - BUILD: msvc
     platform: x64
   - BUILD: mingw
@@ -69,11 +70,8 @@ install:
 before_build:
   - cmd: cd build-gismo
   - cmd: set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
-  - cmd: if "%BUILD%"=="msvc" {if "%platform%"=="x64" {set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64} else {set CMAKE_GENERATOR_NAME=Visual Studio 14 2015} }
+  - cmd: if "%BUILD%"=="msvc" { if "%platform%"=="x64" { set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64} else {set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 } }
   - cmd: if "%BUILD%"=="mingw" set CMAKE_GENERATOR_NAME=MinGW Makefiles
-#  - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64
-#  - cmd: if "%platform%"=="x64"   set CMAKE_GENERATOR_NAME=MinGW Makefiles
-#  - cmd: if "%os%"=="MinGW"        set CMAKE_GENERATOR_NAME=MinGW Makefiles
   - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
 #  - cmd: set
   - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
@@ -86,8 +84,8 @@ build_script:
         msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln
       }
 
+#build:
 #  project: C:\projects\build-gismo\gismo.sln
-
   # enable MSBuild parallel builds
 #  parallel: true
 
