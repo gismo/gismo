@@ -5173,6 +5173,7 @@ bool ON_Brep::SetTrimStartVertex( const int ti0, const int vi )
   if ( ti0 < 0 || vi < 0 )
     return false;
   int next_ti, ti, ei, evi, tvi, counter;
+  bool bEncounteredBoundaryTrim =  false;
 
   // Step counter clockwise around vertex until we hit a boundary
   // or we get back to where we started.
@@ -5189,9 +5190,19 @@ bool ON_Brep::SetTrimStartVertex( const int ti0, const int vi )
       ti = next_ti;
       tvi = 1-tvi;
       if ( ti == ti0 && tvi == 0 )
+      {
+        if (bEncounteredBoundaryTrim)
+          break;
         return true; // vertex was interior
+      }
       if ( m_T[ti].m_type != ON_BrepTrim::singular )
-        HopAcrossEdge( ti, tvi ); // OK if hop fails because ti is a boundary
+      {
+        // When ti is a boundary trim, then it is OK if hop fails.
+        if ( !HopAcrossEdge( ti, tvi ) )
+        {
+          bEncounteredBoundaryTrim = true;
+        }
+      }
       continue;
     }
 
@@ -5216,6 +5227,7 @@ bool ON_Brep::SetTrimStartVertex( const int ti0, const int vi )
       break; // should not happen
     if ( edge_trim_count == 1 ) {
       SetEdgeVertex( ei, evi, vi );
+      bEncounteredBoundaryTrim = true;
       break; // ran into boundary
     }
     if ( !HopAcrossEdge( ti, tvi ) )
@@ -6859,7 +6871,11 @@ static int curve_area( ON_3dPoint& start_point, const ON_Curve* curve, const ON_
       //     gets the wrong dir, increase the number
       //     after the < by one until it works.  Add
       //     the curve to RR and list the RR number here.
-      while ( span_count*degree < 16 )
+
+      // 17 October 2012 Dale Lear
+      //   To fix http://dev.mcneel.com/bugtrack/?q=113316
+      //   I changed "< 16" to "< 17".
+      while ( span_count*degree < 17 )
         degree *= 2;
     }
 
@@ -6898,8 +6914,10 @@ static int curve_area( ON_3dPoint& start_point, const ON_Curve* curve, const ON_
     }
     p0 = p1;
     p1 = curve->PointAt(curve_domain[1]);
-    twice_area += (p0.x-p1.x)*(p0.y+p1.y);
     start_point = p1;
+    if ( xform )
+      p1 = (*xform)*p1;
+    twice_area += (p0.x-p1.x)*(p0.y+p1.y);
     *area = 0.5*twice_area;
   }  
   
@@ -6924,6 +6942,32 @@ int ON_ClosedCurveOrientation( const ON_Curve& curve, const ON_Xform* xform )
   }
   return curve_orientation;
 }
+
+
+double ON_CurveOrientationArea( 
+  const ON_Curve* curve,
+  const ON_Interval* domain,
+  const ON_Xform* xform,
+  bool bReverseCurve
+  )
+{
+  if ( 0 == curve )
+    return 0.0;
+
+  ON_Interval local_domain = curve->Domain();
+  if ( 0 != domain && domain->IsIncreasing() )
+    local_domain.Intersection(*domain);
+
+  ON_3dPoint start_point = curve->PointAt(local_domain[0]);
+  double a = 0.0;
+  if ( !curve_area( start_point, curve, local_domain, xform, &a ) ) 
+    a = 0.0;
+  else if ( bReverseCurve && 0.0 != a )
+    a = -a;
+
+  return a;
+}
+
 
 static int loop_type_compar(const ON_BrepLoop *const* ppLoopA, const ON_BrepLoop *const* ppLoopB )
 {
@@ -10282,11 +10326,15 @@ ON_Brep* ON_Brep::BrepForm( ON_Brep* brep ) const
   if ( brep )
   {
     if ( brep != this )
+    {
       *brep = *this;      
+      brep->DestroyMesh(ON::any_mesh);
+    }
   }
   else
   {
     brep = new ON_Brep(*this);
+    brep->DestroyMesh(ON::any_mesh);
   }
   return brep;
 }
@@ -10980,6 +11028,8 @@ bool ON_Brep::StandardizeFaceSurface( int face_index )
     const ON_Surface* srf = face->SurfaceOf();
     if ( srf )
     {
+      //Feb 9 2013 - Chuck - Old code doesn't do anything if bRev is false
+      /*
       if ( face->m_bRev )
       {
         if ( SurfaceUseCount( face->m_si, 2 ) >= 2 )
@@ -10993,6 +11043,20 @@ bool ON_Brep::StandardizeFaceSurface( int face_index )
       }
       else
         rc = true;
+        */
+      if ( face->m_bRev )
+        rc = face->Transpose() ? true : false; //Transpose does the SurfaceUseCount check
+      else 
+      {
+        if ( SurfaceUseCount( face->m_si, 2 ) >= 2 )
+        {
+          ON_Surface* newsrf = srf->Duplicate();
+          face->m_si = AddSurface(newsrf);
+          face->SetProxySurface(m_S[face->m_si]);
+          srf = newsrf;
+        }
+        rc = true;
+      }
     }
   }
   return rc;

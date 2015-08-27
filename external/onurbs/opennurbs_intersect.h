@@ -116,6 +116,28 @@ bool ON_Intersect( // Returns false unless intersection is a single point
           double* // parameter on line
           );
 
+/*
+Parameters:
+  line - [in]
+  plane_equation - [in]
+  line_parameter - [out]
+    If the returned parameter is < 0 or > 1, then the
+    line segment between line.from and line.to
+    does not intersect the plane.
+Returns:
+  true if the interesection is a singe point.
+  and false otherwise.
+  If returned parameter is < 0 or > 1, then the line
+  segment between line.m_point[0] and line.m_point[1]
+  does not intersect the plane
+*/
+ON_DECL
+bool ON_Intersect(
+          const ON_Line& line, 
+          const ON_PlaneEquation& plane_equation, 
+          double* line_parameter
+          );
+
 ON_DECL
 bool ON_Intersect( const ON_Plane&, 
                   const ON_Plane&, 

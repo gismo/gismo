@@ -30,15 +30,15 @@
 //
 
 ON_UnitSystem::ON_UnitSystem()
+: m_unit_system(ON::millimeters)
+, m_custom_unit_scale(1.0)
 {
-  m_unit_system = ON::millimeters;
-  m_custom_unit_scale = 1.0;
 }
 
 ON_UnitSystem::ON_UnitSystem(ON::unit_system us)
+: m_unit_system(ON::UnitSystem(us))
+, m_custom_unit_scale(ON::UnitScale(ON::meters,m_unit_system))
 {
-  m_unit_system = ON::UnitSystem(us);
-  m_custom_unit_scale = ON::UnitScale(ON::meters,m_unit_system);
 }
 
 ON_UnitSystem& ON_UnitSystem::operator=(ON::unit_system us)
@@ -114,6 +114,19 @@ bool ON_UnitSystem::IsValid() const
 
   return true;
 }
+
+bool ON_UnitSystem::IsSet() const
+{
+  return ( ON::no_unit_system != m_unit_system && IsValid() );
+}
+
+void ON_UnitSystem::Unset()
+{
+  Default();
+  m_unit_system = ON::no_unit_system;
+}
+
+
 
 bool ON_UnitSystem::Read( ON_BinaryArchive& file )
 {
@@ -278,42 +291,39 @@ void ON_UnitSystem::Dump( ON_TextLog& dump ) const
     dump.Print("Unit system: %ls\n",wsUnitSystem);
 }
 
+const ON_3dmUnitsAndTolerances ON_3dmUnitsAndTolerances::DefaultValue;
+
 void ON_3dmUnitsAndTolerances::Default()
 {
-  m_unit_system.Default();
-  m_unit_system.m_unit_system = ON::millimeters;
+  *this = ON_3dmUnitsAndTolerances::DefaultValue;
   m_unit_system.m_custom_unit_name = L"Units";
-  m_absolute_tolerance = 0.001;    // = 0.01;       // Dale Lear: Changed March 2006
-  m_angle_tolerance = ON_PI/180.0; // = ON_PI/60.0; // Dale Lear: Changed 5 April 2006
-  m_relative_tolerance = 0.01;
-
-  m_distance_display_mode = ON::decimal;
-  m_distance_display_precision = 3;
 }
 
 ON_3dmUnitsAndTolerances::ON_3dmUnitsAndTolerances()
-                        : m_absolute_tolerance(0.0),
-                          m_angle_tolerance(0.0),
-                          m_relative_tolerance(0.0),
-                          m_distance_display_mode(ON::decimal),
-                          m_distance_display_precision(3)
+: m_unit_system(ON::millimeters)
+, m_absolute_tolerance(0.001)
+, m_angle_tolerance(ON_PI/180.0)
+, m_relative_tolerance(0.01)
+, m_distance_display_mode(ON::decimal)
+, m_distance_display_precision(3)
 {
-  Default();
+  // Do not set m_unit_system.m_custom_unit_name here.
+  // Doing so creates a heap allocation in the construction of
+  // ON_3dmUnitsAndTolerances::DefaultValue
+  // and doesn't make much sense in any case.
 }
 
 ON_3dmUnitsAndTolerances::~ON_3dmUnitsAndTolerances()
 {}
 
 ON_3dmUnitsAndTolerances::ON_3dmUnitsAndTolerances(const ON_3dmUnitsAndTolerances& src )
-                        : m_absolute_tolerance(0.0),
-                          m_angle_tolerance(0.0),
-                          m_relative_tolerance(0.0),
-                          m_distance_display_mode(ON::decimal),
-                          m_distance_display_precision(3)
-{
-  Default();
-  *this = src;
-}
+: m_unit_system(src.m_unit_system)
+, m_absolute_tolerance(src.m_absolute_tolerance)
+, m_angle_tolerance(src.m_angle_tolerance)
+, m_relative_tolerance(src.m_relative_tolerance)
+, m_distance_display_mode(src.m_distance_display_mode)
+, m_distance_display_precision(src.m_distance_display_precision)
+{}
 
 ON_3dmUnitsAndTolerances& ON_3dmUnitsAndTolerances::operator=(const ON_3dmUnitsAndTolerances& src )
 {
@@ -360,7 +370,7 @@ bool ON_3dmUnitsAndTolerances::Write( ON_BinaryArchive& file ) const
 
 bool ON_3dmUnitsAndTolerances::Read( ON_BinaryArchive& file )
 {
-  Default();
+  *this = ON_3dmUnitsAndTolerances::DefaultValue;
   int version = 0;
   bool rc = file.ReadInt( &version );
   if ( rc && version >= 100 && version < 200 ) {
@@ -399,6 +409,51 @@ double ON_3dmUnitsAndTolerances::Scale( ON::unit_system us ) const
   // Example: If us = meters and m_unit_system = centimeters,
   // then Scale() returns 100.
   return ON::UnitScale( us, m_unit_system );
+}
+
+
+bool ON_3dmUnitsAndTolerances::TolerancesAreValid() const
+{
+  for(;;)
+  {
+    if ( !(m_absolute_tolerance > 0.0) )
+      break;
+
+    if ( !(m_angle_tolerance > 0.0 && m_angle_tolerance <= ON_PI) )
+      break;
+
+    if ( !( m_relative_tolerance > 0.0 && m_relative_tolerance < 1.0) )
+      break;
+
+    return true;
+  }
+
+  return false;
+}
+
+unsigned int ON_3dmUnitsAndTolerances::SetInvalidTolerancesToDefaultValues()
+{
+  unsigned int rc = 0;
+
+  if ( !(m_absolute_tolerance > 0.0) )
+  {
+    rc |= 1;
+    m_absolute_tolerance = ON_3dmUnitsAndTolerances::DefaultValue.m_absolute_tolerance;
+  }
+
+  if ( !(m_angle_tolerance > 0.0 && m_angle_tolerance <= ON_PI) )
+  {
+    rc |= 2;
+    m_angle_tolerance = ON_3dmUnitsAndTolerances::DefaultValue.m_angle_tolerance;
+  }
+
+  if ( !( m_relative_tolerance > 0.0 && m_relative_tolerance < 1.0) )
+  {
+    rc |= 4;
+    m_relative_tolerance = ON_3dmUnitsAndTolerances::DefaultValue.m_relative_tolerance;
+  }
+
+  return rc;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -2669,8 +2724,8 @@ void ON_3dmSettings::Default()
   m_model_URL.Destroy();
   m_model_basepoint.Set(0.0,0.0,0.0);
   m_earth_anchor_point.Default();
-  m_ModelUnitsAndTolerances.Default();
-  m_PageUnitsAndTolerances.Default();
+  m_ModelUnitsAndTolerances = ON_3dmUnitsAndTolerances::DefaultValue;
+  m_PageUnitsAndTolerances = ON_3dmUnitsAndTolerances::DefaultValue;
   m_RenderMeshSettings.Default();
   m_CustomRenderMeshSettings.Default();
 
@@ -2983,12 +3038,15 @@ static bool ON_3dmSettings_Read_v1_TCODE_NAMED_CPLANE(ON_BinaryArchive& file, ON
   return rc;
 }
 
-static bool ON_3dmSettings_Read_v1_TCODE_UNIT_AND_TOLERANCES(ON_BinaryArchive& file, ON_3dmUnitsAndTolerances& UnitsAndTolerances )
+static bool ON_3dmSettings_Read_v1_TCODE_UNIT_AND_TOLERANCES(
+  ON_BinaryArchive& file, 
+  ON_3dmUnitsAndTolerances& UnitsAndTolerances 
+  )
 {
   bool rc = true;
   int v = 0;
   int us = 0;
-  UnitsAndTolerances.Default();
+  UnitsAndTolerances = ON_3dmUnitsAndTolerances::DefaultValue;
   if (rc) 
     rc = file.ReadInt( &v ); // should get v = 1
   if (rc) 

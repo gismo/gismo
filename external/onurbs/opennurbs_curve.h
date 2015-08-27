@@ -1374,4 +1374,30 @@ Returns:
 ON_DECL
 int ON_ClosedCurveOrientation( const ON_Curve& curve, const ON_Xform* xform );
 
+
+/*
+Description:
+  Get a crude aproximation of the signed area of the region in the 
+  x-y plane traced out by the curve.  This is useful for calculating
+  the orientation of projections of loops to planes when you have
+  more than one curve.
+Paramters:
+  curve - [in] 
+  domain - [in]
+    optional sub-domain. (null if entire curve should be used).
+  xform - [in] Transformation to map the curve to the xy plane. If the
+               curve is parallel to the xy plane, you may pass NULL.
+  bReverseCurve - [in]
+Returns:
+  1/2 the sum of (p[i].x-p[i+1].x)*(p[i].y+p[i+1].y), where p[i] 
+  is a series of sampled points on the curve.
+*/
+ON_DECL
+double ON_CurveOrientationArea( 
+  const ON_Curve* curve,
+  const ON_Interval* domain,
+  const ON_Xform* xform,
+  bool bReverseCurve
+  );
+
 #endif

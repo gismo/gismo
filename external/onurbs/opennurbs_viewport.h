@@ -566,6 +566,42 @@ public:
 
   /*
   Description:
+    Get the normalized extents of the smallest rectangle that
+    contains the intersection of bbox and the view's frustum.
+  Parameters:
+    bbox - [in] 
+      bounding box
+    x_extents - [out] 
+    y_extents - [out] 
+      0 <= x_extents[0] <= x_extents[1] <= 1.0
+      0 <= y_extents[0] <= y_extents[1] <= 1.0
+      If true is returned, then intersection of the bbox
+      and the view's frustum is not empty and the bounding
+      rectangle of the projection of the intersection set
+      is returned in x_range and y_range. The returned values
+      are normalized image extents.  For example, if
+      x_extents[0] = 0.0, x_extents[1] = 0.25, y_extents[0] = 0.75
+      and y_extents[1] = 1.0, then the portion of bbox in the
+      view's frustum would project to the upper left corner
+      of the image.
+  Returns:
+    True if the bounding box intersects the view frustum and
+    x_range and y_range were set.
+    False if the bounding box does not intersect the view
+    frustum.
+  Remarks:
+    This function takes the viewport's near and far settings
+    into account.  Set them to something appropriate before
+    calling this function.
+  */
+  bool GetBoundingBoxProjectionExtents(
+    ON_BoundingBox bbox,
+    ON_Interval& x_extents,
+    ON_Interval& y_extents
+    ) const;
+
+  /*
+  Description:
     Get near and far clipping distances of a bounding sphere.
   Parameters:
     sphere - [in] 
@@ -1348,6 +1384,58 @@ public:
     viewport_id - [in]    
   */
   void ChangeViewportId(const ON_UUID& viewport_id);
+
+
+  /*
+  Description:
+    The "view frustum" is the frustum the m_xform transformation
+    maps to clipping coordinate box (-1,+1)^3.  These functions
+    determine if some portion of the convex hull of the test points
+    is inside the view frustum.
+  Parameters:
+    P - [in] point
+    box - [in] bounding box
+    count - [in] number of points
+    p - [in] array of points
+    bEnableClippingPlanes - [in]
+      If true, then the additional clipping planes are tested.
+      If false, then the additional clipping planes are ignored.
+  Returns:
+    0 = No part of the of the convex hull of the tested points
+        is in the view frustum or the view camera and frustum
+        have not been set.
+    1 = A portion of the convex hull of the otested points may
+        be in the view frustum.
+    2 = The entire convex hull of the tested points is in the
+        view frustum.
+
+  Remarks:
+    Each call to ON_Viewport::InViewFrustum() requires the calculation
+    of the world-to-clipping coordinates transformation.  If multiple
+    queries are required, fewer computation resources will be used
+    if you set ON_ClippingRegion.m_xform to the viewport's world-to-
+    clipping coordinate transformation and then call the
+    ON_ClippingRegion::InViewFrustum() functions.
+  */
+  int InViewFrustum( 
+    ON_3dPoint P
+    ) const;
+  int InViewFrustum( 
+    const ON_BoundingBox& bbox
+    ) const;
+  int InViewFrustum( 
+    int count, 
+    const ON_3fPoint* p
+    ) const;
+  int InViewFrustum( 
+    int count, 
+    const ON_3dPoint* p
+    ) const;
+  int InViewFrustum( 
+    int count, 
+    const ON_4dPoint* p
+    ) const;
+
   
 protected:
 

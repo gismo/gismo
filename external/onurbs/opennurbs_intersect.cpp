@@ -349,43 +349,58 @@ bool ON_Intersect( const ON_Line& lineA, const ON_Line& lineB,
 }
 
 
-bool ON_Intersect( const ON_Line& line, const ON_Plane& plane,  
-                   double* line_parameter 
-                 )
+bool ON_Intersect( 
+  const ON_Line& line,
+  const ON_PlaneEquation& plane_equation,  
+  double* line_parameter 
+  )
 {
   bool rc = false;
   double a, b, d, fd, t;
 
-  a = plane.plane_equation.ValueAt(line[0]);
-  b = plane.plane_equation.ValueAt(line[1]);
+  a = plane_equation.ValueAt(line.from);
+  b = plane_equation.ValueAt(line.to);
   d = a-b;
-  if ( d == 0.0 ) {
-    if ( fabs(a) < fabs(b) ) {
+  if ( d == 0.0 )
+  {
+    if ( fabs(a) < fabs(b) )
       t = 0.0;
-    }
-    else if ( fabs(b) < fabs(a) ) {
+    else if ( fabs(b) < fabs(a) )
       t = 1.0;
-    }
-    else {
+    else
       t = 0.5;
-    }
   }
-  else {
+  else
+  {
     d = 1.0/d;
     fd = fabs(d);
-    if ( fd > 1.0 && (fabs(a) >= ON_DBL_MAX/fd || fabs(b) >= ON_DBL_MAX/fd ) ) {
-      // double overflow - line is probably parallel to plane
+    if ( fd > 1.0 && (fabs(a) >= ON_DBL_MAX/fd || fabs(b) >= ON_DBL_MAX/fd ) )
+    {
+      // double overflow - line may be (nearly) parallel to plane
       t = 0.5;
     }
-    else {
-      t = a*d;
+    else 
+    {
+      t = a/(a-b); // = a*d;  a/(a-b) has more precision than a*d
       rc = true;
     }
   }
+
   if ( line_parameter )
     *line_parameter = t;
+
   return rc;
 }
+
+bool ON_Intersect(
+  const ON_Line& line,
+  const ON_Plane& plane,  
+  double* line_parameter 
+  )
+{
+  return ON_Intersect( line, plane.plane_equation, line_parameter );
+}
+
 
 
 bool ON_Intersect( const ON_Plane& R, const ON_Plane& S,

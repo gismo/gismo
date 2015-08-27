@@ -527,9 +527,12 @@ ON_Matrix::RowReduce(
     }
     rank++;
 
-    // swap rows
-    SwapRows( ix, k );
-    det = -det;
+    if ( ix != k )
+    {
+      // swap rows
+      SwapRows( ix, k );
+      det = -det;
+    }
 
     // scale row k of matrix and B
     det *= this_m[k][k];
@@ -584,9 +587,12 @@ ON_Matrix::RowReduce(
       break;
     rank++;
 
-    // swap rows of matrix and B
-    SwapRows( ix, k );
-    t = B[ix]; B[ix] = B[k]; B[k] = t;
+    if ( ix != k )
+    {
+      // swap rows of matrix and B
+      SwapRows( ix, k );
+      t = B[ix]; B[ix] = B[k]; B[k] = t;
+    }
 
     // scale row k of matrix and B
     x = 1.0/this_m[k][k];
@@ -644,9 +650,12 @@ ON_Matrix::RowReduce(
       break;
     rank++;
 
-    // swap rows of matrix and B
-    SwapRows( ix, k );
-    t = B[ix]; B[ix] = B[k]; B[k] = t;
+    if ( ix != k )
+    {
+      // swap rows of matrix and B
+      SwapRows( ix, k );
+      t = B[ix]; B[ix] = B[k]; B[k] = t;
+    }
 
     // scale row k of matrix and B
     x = 1.0/this_m[k][k];
@@ -1044,8 +1053,7 @@ bool ON_Matrix::IsColOrthoNormal() const
 bool ON_Matrix::Invert( double zero_tolerance )
 {
   ON_Workspace ws;
-  int i, j, k, ix, jx;
-  //int rank;
+  int i, j, k, ix, jx, rank;
   double x;
   const int n = MinCount();
   if ( n < 1 )
@@ -1056,7 +1064,7 @@ bool ON_Matrix::Invert( double zero_tolerance )
   int* col = ws.GetIntMemory(n);
 
   I.SetDiagonal(1.0);
-  //rank = 0;
+  rank = 0;
 
   double** this_m = ThisM();
 

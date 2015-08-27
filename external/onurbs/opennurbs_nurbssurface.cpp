@@ -1,6 +1,6 @@
 /* $NoKeywords: $ */
 /*
-/
+//
 // Copyright (c) 1993-2012 Robert McNeel & Associates. All rights reserved.
 // OpenNURBS, Rhinoceros, and Rhino3D are registered trademarks of Robert
 // McNeel & Associates.
@@ -2096,13 +2096,18 @@ double ON_NurbsSurface::GrevilleAbcissa(
   return ON_GrevilleAbcissa( m_order[dir], m_knot[dir] + gindex );
 }
 
-bool ON_NurbsSurface::GetGrevilleAbcissae( // see ON_GetGrevilleAbcissae() for details
-         int dir,          // dir
-         double* g         // g[cv1-cv0]
+bool ON_NurbsSurface::GetGrevilleAbcissae(
+         int dir,
+         double* g
          ) const
 {
   if (dir) 
     dir = 1;
+  // The "false" for the 4th parameter is on purpose and should not be
+  // replaced with this->IsPeriodic(dir).  The problem
+  // being that when the 4th parameter is true, it is not possible
+  // to determine which subset of the full list of Greville abcissae
+  // was returned.
   return ON_GetGrevilleAbcissae( m_order[dir], m_cv_count[dir], m_knot[dir], false, g );
 }
 
@@ -2597,11 +2602,11 @@ bool ON_MakeDegreesCompatible(
        ON_NurbsCurve& nurbs_curveB
        )
 {
-  //bool rc = false;
-  //if ( nurbs_curveA.m_order > nurbs_curveB.m_order )
-  //  rc = nurbs_curveB.IncreaseDegree( nurbs_curveA.Degree() )?true:false;
-  //else
-  //  rc = nurbs_curveA.IncreaseDegree( nurbs_curveB.Degree() )?true:false;
+  bool rc = false;
+  if ( nurbs_curveA.m_order > nurbs_curveB.m_order )
+    rc = nurbs_curveB.IncreaseDegree( nurbs_curveA.Degree() )?true:false;
+  else
+    rc = nurbs_curveA.IncreaseDegree( nurbs_curveB.Degree() )?true:false;
   return (nurbs_curveA.m_order == nurbs_curveB.m_order);
 }
 

@@ -18,6 +18,29 @@
 
 //////////////////////////////////////////////////////////////////////////////
 
+ON_TextLogIndent::ON_TextLogIndent(ON_TextLog& text_log)
+: m_text_log(text_log)
+, m_bEnabled(true)
+{
+  m_text_log.PushIndent();
+}
+
+ON_TextLogIndent::ON_TextLogIndent(ON_TextLog& text_log, bool bEnable)
+: m_text_log(text_log)
+, m_bEnabled(bEnable)
+{
+  if ( m_bEnabled )
+    m_text_log.PushIndent();
+}
+
+ON_TextLogIndent::~ON_TextLogIndent()
+{
+  if ( m_bEnabled )
+    m_text_log.PopIndent();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
 ON_TextLog::ON_TextLog() : m_pFile(0), m_pString(0), m_indent(""), m_beginning_of_line(1), m_indent_size(0)
 {
   SetFloatFormat("%g");

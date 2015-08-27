@@ -1077,6 +1077,16 @@ public:
   bool operator==(const ON_UnitSystem&);
   bool operator!=(const ON_UnitSystem&);
 
+  /*
+  Returns 
+    true if m_unit_system is a valid ON::unit_system enum value,
+    which may be ON::no_unit_system.  If m_unit_system is
+    ON::custom_unit_system, then IsValid() returns true
+    if m_custom_unit_scale > 0.0 and false otherwise.
+    The value of m_custom_unit_name is not tested.
+  See Also:
+    IsSet()
+  */  
   bool IsValid() const;
 
   void Default(); // millimeters = default unit system
@@ -1084,6 +1094,20 @@ public:
   bool Read( class ON_BinaryArchive& );
   bool Write( class ON_BinaryArchive& ) const;
   void Dump( class ON_TextLog& ) const;
+
+  /*
+  Returns
+    true If the unit system is valid and set to something beside
+    ON::no_unit_systm;
+  */
+  bool IsSet() const;
+
+  /*
+  Description:
+    Clears the custom units string, sets m_custom_unit_scale = 1.0,
+    and sets m_unit_system = ON::no_unit_system.
+  */
+  void Unset();
 
   ON::unit_system m_unit_system;
 

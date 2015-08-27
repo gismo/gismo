@@ -38,6 +38,8 @@ class ON_3fVectorArray;
 // be used for arrays of classes that require explicit
 // construction, destruction, or copy operators.
 //
+// Elements returned by AppendNew() are memset to zero.
+//
 // By default, ON_SimpleArray<> uses onrealloc() to manage
 // the dynamic array memory. If you want to use something 
 // besides onrealloc() to manage the array memory, then override
@@ -119,6 +121,7 @@ public:
 
   T& AppendNew();                    // Most efficient way to add a new element 
                                      // to the array.  Increases count by 1.
+                                     // Returned element is memset to zero.
 
   void Append( const T& );           // Append copy of element.
                                      // Increments count by 1.
@@ -1307,6 +1310,24 @@ public:
 
   /*
   Description:
+    Saves the uuid list in an archive.
+  Parameters:
+    archive - [in] archive to write to.
+    bSortBeforeWrite - [in]
+      True if ids should be sorted before the write
+      so future lookups will be fast.  False if
+      the current state of the sorted/unsorted bits
+      should be preserved.
+  Returns:
+    true if write was successful.
+  */
+  bool Write( 
+    class ON_BinaryArchive& archive,
+      bool bSortBeforeWrite
+    ) const;
+
+  /*
+  Description:
     Read the uuid list from an archive.
   Parameters:
     archive - [in] archive to read from.
@@ -1315,6 +1336,25 @@ public:
   */
   bool Read( 
     class ON_BinaryArchive& archive 
+    );
+
+  /*
+  Description:
+    Read the uuid list from an archive.
+  Parameters:
+    archive - [in] 
+      archive to read from.
+    bool bSortAfterRead - [in]
+      True if ids should be sorted after the read
+      so future lookups will be fast.  False if
+      the state of the sorted/unsorted bits that
+      existed at write time should be preserved.
+  Returns:
+    true if the read was successful.
+  */
+  bool Read( 
+    class ON_BinaryArchive& archive,
+    bool bSortAferRead
     );
 
   /*
@@ -1343,6 +1383,7 @@ public:
     );
 
 private:
+  void PurgeHelper();
   void SortHelper();
   ON_UUID* SearchHelper(const ON_UUID*) const;
   int m_sorted_count;

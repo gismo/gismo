@@ -1948,24 +1948,9 @@ bool ON_LinearDimension2::GetTightBoundingBox(
   if ( 5 == m_points.Count() )
   {
     ON_3dPointArray P(5);
-    ON_2dPoint uv;
-    if ( m_userpositionedtext )
-    {
-      uv = m_points[0]; // point someplace in text
-      P.Append( m_plane.PointAt(uv.x,uv.y) );
-    }
-
-    P.Append( m_plane.origin );
-
-    uv.x = 0.0;
-    uv.y = m_points[1].y;
-    P.Append( m_plane.PointAt(uv.x,uv.y) );
-
-    uv = m_points[2];
-    P.Append( m_plane.PointAt(uv.x,uv.y) );
-
-    uv.y = m_points[1].y;
-    P.Append( m_plane.PointAt(uv.x,uv.y) );
+    // 18 Oct 2012 - Lowell - Fixed this to add all of the points to the bbox rr116270
+    for(int i = 0; i < 5; i++)
+      P.Append( m_plane.PointAt(m_points[i].x,m_points[i].y) );
 
     if ( P.GetTightBoundingBox( tight_bbox, bGrowBox, xform ) )
       bGrowBox = true;
@@ -2791,19 +2776,8 @@ bool ON_RadialDimension2::GetTightBoundingBox(
   if ( 4 == m_points.Count() )
   {
     ON_3dPointArray P(4);
-    ON_2dPoint uv;
-
-    uv = m_points[0]; // + sign at center of dimension (usually at (0,0)
-    P.Append( m_plane.PointAt(uv.x,uv.y) );
-
-    uv = m_points[1];
-    P.Append( m_plane.PointAt(uv.x,uv.y) );
-
-    uv = m_points[2];
-    P.Append( m_plane.PointAt(uv.x,uv.y) );
-
-    uv = m_points[3];
-    P.Append( m_plane.PointAt(uv.x,uv.y) );
+    for(int i = 0; i < 4; i++)
+      P.Append( m_plane.PointAt(m_points[i].x,m_points[i].y) );
 
     if ( P.GetTightBoundingBox( tight_bbox, bGrowBox, xform ) )
       bGrowBox = true;
@@ -5685,20 +5659,25 @@ void ON_TextDot::SetTextString( const wchar_t* string)
   if( string)
   {
     int len = (int)wcslen(string);
-    wchar_t* str = 0;
-    if(len > 0 && string[len-1] <= L' ')
+    wchar_t* str = (wchar_t*)onmalloc((2*len+1)*sizeof(wchar_t));
+    if(len > 0 /*&& string[len-1] <= L' '*/)
     {
       // trim off trailing white space
-      str = (wchar_t*)onmalloc((len+1)*sizeof(wchar_t));
+      //str = (wchar_t*)onmalloc((len+1)*sizeof(wchar_t));
       int j = 0;
       for(int i = 0; i < len; i++)
       {
-        if(string[i] == L'\r' || string[i] == L'\n')
+        // change \r to \r\n
+        if(string[i] == L'\r')
+        {
+          str[j++] = string[i];
+          if(string[i+1] != L'\n')
+            str[j++] = L'\n';
           continue;
+        }
         str[j++] = string[i];
       }
       str[j] = 0;
-//      wcscpy(str, string);
 
       for(int i = len-1; i >= 0 && str[i] <= L' '; i--)
         str[i] = 0;

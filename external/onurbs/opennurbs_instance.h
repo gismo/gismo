@@ -123,6 +123,15 @@ public:
 
   // Interface
   const wchar_t* Name() const;
+
+  /*
+  Parameters
+    name - [in]
+      Instance definition name.
+      Leading and trailing white space will be removed.
+      If name is null, empty, or all white space, then the
+      instance definition name will be null.
+  */
   void SetName( const wchar_t* name );
 
   const wchar_t* Description() const;

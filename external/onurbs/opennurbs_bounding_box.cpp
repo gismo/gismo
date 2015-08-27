@@ -132,6 +132,75 @@ ON_BoundingBox::GetCorners(
   return (8==n);
 }
 
+bool ON_BoundingBox::GetEdges( 
+  ON_Line edges[12] 
+  ) const
+{
+  int i;
+  ON_Line line;
+  int edge_count = 0;
+  if ( IsValid() )
+  {
+    for ( i = 0; i < 3; i++ )
+    {
+      line.to = m_min;
+      if  ( 1 == i )
+        line.to.z = m_max.z;
+
+      line.from = line.to;
+      if ( i < 2 )
+        line.to.x = m_max.x;
+      else
+      {
+        line.from.z = m_min.z;
+        line.to.z = m_max.z;
+      }
+      edges[edge_count++] = line;
+
+      line.from = line.to;
+      if ( i < 2 )
+        line.to.y = m_max.y;
+      else
+      {
+        line.from.z = m_min.z;
+        line.to.z = m_max.z;
+      }
+      edges[edge_count++] = line;
+
+      line.from = line.to;
+      if ( i < 2 )
+        line.to.x = m_min.x;
+      else
+      {
+        line.from.z = m_min.z;
+        line.to.z = m_max.z;
+      }
+      edges[edge_count++] = line;
+
+      line.from = line.to;
+      if ( i < 2 )
+        line.to.y = m_min.y;
+      else
+      {
+        line.from.z = m_min.z;
+        line.to.z = m_max.z;
+      }
+      edges[edge_count++] = line;
+    }
+  }
+
+  if ( 12 != edge_count )
+  {
+    edges[0].from = ON_3dPoint::UnsetPoint;
+    edges[0].to   = ON_3dPoint::UnsetPoint;
+    for ( i = 1; i < 12; i++ )
+      edges[i] = edges[0];
+  }
+
+  return (12 == edge_count);
+}
+
+
 bool
 ON_BoundingBox::GetCorners( 
   ON_3dPointArray& corners// returns list of 8 corner points
@@ -1104,8 +1173,7 @@ int ON_BoundingBox::IsVisible(
   const ON_Xform& bbox2c
   ) const
 {
-  int i,j,k;
-  //int n;
+    int i,j,k; //,n;
   unsigned int all_out, some_out, out;
   double bx,by,bz,x,w;
   const double* p;
@@ -1116,7 +1184,7 @@ int ON_BoundingBox::IsVisible(
   some_out = 0;    // will be != 0 if some portion of box is outside visible region
   all_out  = 0xFFFFFFFF; // will be == 0 if some portion of box is inside visible region
   p = &bbox2c.m_xform[0][0];
-  //n = 0; 
+//  n = 0; 
   i = 2; bx = m_min.x;
   while(i--)
   {
@@ -1677,6 +1745,15 @@ bool ON_BoundingBox::Set(
   return ON_GetPointListBoundingBox(dim, is_rat, count, stride, points, *this, bGrowBox!=0, 0 );
 }
 
+bool ON_BoundingBox::Set(     
+    int dim, int is_rat, int count, int stride, 
+    const float* points, 
+    int bGrowBox
+  )
+{
+  return ON_GetPointListBoundingBox(dim, is_rat, count, stride, points, *this, bGrowBox!=0, 0 );
+}
+
 bool ON_BoundingBox::Set ( const ON_3dPoint& P, int bGrowBox )
 {
   if ( !bGrowBox || !IsValid() )
@@ -1691,6 +1768,24 @@ bool ON_BoundingBox::Set ( const ON_3dPoint& P, int bGrowBox )
     if ( P.z < m_min.z ) m_min.z = P.z; else if ( m_max.z < P.z ) m_max.z = P.z;
   }
   return true;
+}
+
+bool ON_BoundingBox::Set ( const ON_2dPoint& P, int bGrowBox )
+{
+  const ON_3dPoint dP(P.x,P.y,0.0);
+  return Set(dP,bGrowBox);
+}
+
+bool ON_BoundingBox::Set ( const ON_3fPoint& P, int bGrowBox )
+{
+  const ON_3dPoint dP(P);
+  return Set(dP,bGrowBox);
+}
+
+bool ON_BoundingBox::Set ( const ON_2fPoint& P, int bGrowBox )
+{
+  const ON_3dPoint dP(P.x,P.y,0.0);
+  return Set(dP,bGrowBox);
 }
 
 
@@ -1712,6 +1807,27 @@ bool ON_BoundingBox::Set( const ON_SimpleArray<ON_2dPoint>& a, int bGrowBox )
 {
   const int count = a.Count();
   const double* p = (count>0) ? &a.Array()->x : 0;
+  return ON_GetPointListBoundingBox(2, 0, count, 2, p, *this, bGrowBox!=0, 0 );
+}
+
+bool ON_BoundingBox::Set( const ON_SimpleArray<ON_4fPoint>& a, int bGrowBox )
+{
+  const int count = a.Count();
+  const float* p = (count>0) ? &a.Array()->x : 0;
+  return ON_GetPointListBoundingBox(3, 1, count, 4, p, *this, bGrowBox!=0, 0 );
+}
+
+bool ON_BoundingBox::Set( const ON_SimpleArray<ON_3fPoint>& a, int bGrowBox )
+{
+  const int count = a.Count();
+  const float* p = (count>0) ? &a.Array()->x : 0;
+  return ON_GetPointListBoundingBox(3, 0, count, 3, p, *this, bGrowBox!=0, 0 );
+}
+
+bool ON_BoundingBox::Set( const ON_SimpleArray<ON_2fPoint>& a, int bGrowBox )
+{
+  const int count = a.Count();
+  const float* p = (count>0) ? &a.Array()->x : 0;
   return ON_GetPointListBoundingBox(2, 0, count, 2, p, *this, bGrowBox!=0, 0 );
 }
 

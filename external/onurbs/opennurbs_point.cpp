@@ -3749,7 +3749,6 @@ ON_2dPoint& ON_2dPoint::operator=(const ON_3dVector& v)
 {
   x = v.x;
   y = v.y;
-  y = v.z;
   return *this;
 }
 

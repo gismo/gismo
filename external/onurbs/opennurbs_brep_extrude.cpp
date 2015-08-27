@@ -546,6 +546,9 @@ int ON_BrepExtrudeFace(
 {
   int rc = 0; // returns 1 for success with no cap, 2 for success with a cap
 
+  brep.DestroyMesh(ON::any_mesh);
+  brep.DestroyRegionTopology();
+
   if ( face_index < 0 || face_index >= brep.m_F.Count() )
     return false;
 
@@ -674,6 +677,9 @@ int ON_BrepExtrudeLoop(
   ON_SimpleArray<int> side_face_index; // index of new face above brep.m_L[loop_index].m_ti[lti]
   ON_3dVector path_vector;
 
+  brep.DestroyMesh(ON::any_mesh);
+  brep.DestroyRegionTopology();
+
   const int face_count0 = brep.m_F.Count();
 
   if ( loop_index < 0 || loop_index >= brep.m_L.Count() )
@@ -715,6 +721,9 @@ int ON_BrepExtrudeEdge(
           )
 {
   ON_3dVector path_vector;
+
+  brep.DestroyMesh(ON::any_mesh);
+  brep.DestroyRegionTopology();
 
   if ( edge_index < 0 && edge_index >= brep.m_E.Count() )
     return false;
@@ -765,6 +774,9 @@ bool ON_BrepExtrude(
   const int ecount0 = brep.m_E.Count();
   const int fcount0 = brep.m_F.Count();
 
+  brep.DestroyMesh(ON::any_mesh);
+  brep.DestroyRegionTopology();
+
   const ON_3dPoint PathStart = path_curve.PointAtStart();
   ON_3dPoint P = path_curve.PointAtEnd();
   if ( !PathStart.IsValid() || !P.IsValid() )
@@ -800,6 +812,8 @@ bool ON_BrepExtrude(
   brep.m_C2.Reserve( brep.m_C2.Count() + i );
   brep.m_L.Reserve( lcount0 + side_count + (bCap?lcount0:0) );
   i = side_count + (bCap?ecount0:side_count);
+  if (side_count == 1)//NewFace(srf,vid,eid,bRev3d), down below, always reserves 4 edges.
+    i++;
   brep.m_E.Reserve( ecount0 + i );
   brep.m_C3.Reserve( brep.m_C3.Count() + i );
   i = side_count + (bCap?fcount0:0);
@@ -1030,7 +1044,7 @@ bool ON_BrepExtrude(
 
   if ( !bOK )
   {
-    for ( vi = brep.m_V.Count(); vi >= vcount0; vi-- )
+    for ( vi = brep.m_V.Count()-1; vi >= vcount0; vi-- )
     {
       brep.DeleteVertex(brep.m_V[vi]);
     }

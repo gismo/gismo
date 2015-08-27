@@ -9,6 +9,9 @@ More Information:
   for information about opennurbs including supported compilers, build
   instructions, and a description of the examples.
 
+Technical support:
+  http://discourse.mcneel.com/category/opennurbs
+
 Legal Stuff:
 
   The openNURBS Initiative provides CAD, CAM, CAE, and computer
@@ -81,10 +84,9 @@ Legal Stuff:
 	  (zlib format), rfc1951.txt (deflate format) and rfc1952.txt (gzip format).
 
  
-  Copyright (c) 1993-2012 Robert McNeel & Associates. All Rights Reserved.
+  Copyright (c) 1993-2013 Robert McNeel & Associates. All Rights Reserved.
   Rhinoceros is a registered trademark of Robert McNeel & Associates.
 
   THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT EXPRESS OR IMPLIED
   WARRANTY.  ALL IMPLIED WARRANTIES OF FITNESS FOR ANY PARTICULAR
   PURPOSE AND OF MERCHANTABILITY ARE HEREBY DISCLAIMED.
-

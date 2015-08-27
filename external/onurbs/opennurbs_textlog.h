@@ -243,5 +243,42 @@ private:
 
 };
 
+/*
+Description:
+  ON_TextLogIndent is a class used with ON_TextLog to
+  push and pop indentation.
+*/
+class ON_TextLogIndent
+{
+public:
+    // The constructor calls text_log.PushIndent()
+    // and the destuctor calls text_log.PopIndent()
+  ON_TextLogIndent(
+    class ON_TextLog& text_log
+    );
+
+    // If bEnabled is true, the constructor calls text_log.PushIndent()
+    // and the destuctor calls text_log.PopIndent()
+    ON_TextLogIndent(
+      class ON_TextLog& text_log,
+      bool bEnabled
+    );
+
+  ~ON_TextLogIndent();
+
+private:
+  class ON_TextLog& m_text_log;
+  bool m_bEnabled;
+
+  // prevent use of copy construction and operator=
+  // (no implementations)
+  ON_TextLogIndent(const ON_TextLogIndent&);
+  ON_TextLogIndent& operator=(const ON_TextLogIndent&);
+};
+
+#if defined(OPENNURBS_PLUS)
+ON_DECL
+int ON_CrashTest( int crash_type, ON_TextLog& text_log );
+#endif
 
 #endif

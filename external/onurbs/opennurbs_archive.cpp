@@ -14,10 +14,6 @@
 ////////////////////////////////////////////////////////////////
 */
 
-#if defined __INTEL_COMPILER
-     #pragma warning (disable : 161 ) /* disable unknown pragma warning */
-#endif
-
 #include "opennurbs.h"
 
 FILE* ON_FileStream::Open( const wchar_t* filename, const wchar_t* mode )
@@ -1487,8 +1483,7 @@ ON_BinaryArchive::ReadString( ON_wString& s )
         }
       }
     }
-    // G+Smo
-    //if (!rc)
+    if (!rc)
       s.Destroy();
   }
   return rc;
@@ -4545,22 +4540,24 @@ size_t ON_BinaryArchive::ArchiveStartOffset() const
 bool 
 ON_BinaryArchive::BeginWrite3dmChunk( unsigned int typecode, int value )
 {
-  //ON__INT64 value64 = 0;
+/*// G+Smo
+  ON__INT64 value64 = 0;
   if ( 0 != value )
   {
     if ( ON_IsUnsignedChunkTypecode(typecode) )
     {
       // treat value parameter as an unsigned int
-      //ON__UINT32 u32 = (ON__UINT32)value;
-      //ON__UINT64 u64 = u32;
-      //value64 = (ON__INT64)u64;
+      ON__UINT32 u32 = (ON__UINT32)value;
+      ON__UINT64 u64 = u32;
+      value64 = (ON__INT64)u64;
     }
     else
     {
       // treat value paramter is a signed int
-      //value64 = value;
+      value64 = value;
     }
   }
+*/
   return BeginWrite3dmBigChunk(typecode,value);
 }
 
@@ -9291,58 +9288,66 @@ bool ON_BinaryArchive::Read3dmV1AttributesOrMaterial(
         ReadByte(sizeof_xid,xid.Array());
         if ( !on_stricmp("RhHidePrevLayer",xid) )
         {
-          // v1 object is hidden - real layer name is in xdata
-          char* buffer = (char*)alloca((sizeof_data+1)*sizeof(buffer[0]));
-          buffer[0] = 0;
-          buffer[sizeof_data] = 0;
-          if ( ReadByte(sizeof_data,buffer) )
+          if ( sizeof_data > 0 )
           {
-            if ( -1 == xdata_layer_index )
+            // v1 object is hidden - real layer name is in xdata
+            char* buffer = (char*)onmalloc((sizeof_data+1)*sizeof(buffer[0]));
+            buffer[0] = 0;
+            buffer[sizeof_data] = 0;
+            if ( ReadByte(sizeof_data,buffer) )
             {
-              xdata_layer_index = Read3dmV1LayerIndex(buffer);
-              if ( xdata_layer_index >= 0 )
+              if ( -1 == xdata_layer_index )
               {
-                attributes->m_layer_index = xdata_layer_index;
-                attributes->SetVisible(false);
+                xdata_layer_index = Read3dmV1LayerIndex(buffer);
+                if ( xdata_layer_index >= 0 )
+                {
+                  attributes->m_layer_index = xdata_layer_index;
+                  attributes->SetVisible(false);
+                }
               }
+              else
+              {
+                xdata_layer_index = -2;
+              }
+              //if ( 0 != xdata )
+              //{
+              //  xdata->m_type = ON__3dmV1_XDATA::hidden_object_layer_name;
+              //  xdata->m_string = buffer;               
+              //}
             }
-            else
-            {
-              xdata_layer_index = -2;
-            }
-            //if ( 0 != xdata )
-            //{
-            //  xdata->m_type = ON__3dmV1_XDATA::hidden_object_layer_name;
-            //  xdata->m_string = buffer;               
-            //}
+            onfree(buffer);
           }
         }
         else if ( !on_stricmp("RhFreezePrevLayer",xid) )
         {
           // v1 object is locked - real layer name is in xdata
-          char* buffer = (char*)alloca((sizeof_data+1)*sizeof(buffer[0]));
-          buffer[0] = 0;
-          buffer[sizeof_data] = 0;
-          if ( ReadByte(sizeof_data,buffer)  )
+          if ( sizeof_data > 0 )
           {
-            if ( -1 == xdata_layer_index )
+            char* buffer = (char*)onmalloc((sizeof_data+1)*sizeof(buffer[0]));
+            buffer[0] = 0;
+            buffer[sizeof_data] = 0;
+            if ( ReadByte(sizeof_data,buffer)  )
             {
-              xdata_layer_index = Read3dmV1LayerIndex(buffer);
-              if ( xdata_layer_index >= 0 )
+              if ( -1 == xdata_layer_index )
               {
-                attributes->m_layer_index = xdata_layer_index;
-                attributes->SetMode(ON::locked_object);
+                xdata_layer_index = Read3dmV1LayerIndex(buffer);
+                if ( xdata_layer_index >= 0 )
+                {
+                  attributes->m_layer_index = xdata_layer_index;
+                  attributes->SetMode(ON::locked_object);
+                }
               }
+              else
+              {
+                xdata_layer_index = -2;
+              }
+              //if ( 0 != xdata )
+              //{
+              //  xdata->m_type = ON__3dmV1_XDATA::locked_object_layer_name;
+              //  xdata->m_string = buffer;            
+              //}
             }
-            else
-            {
-              xdata_layer_index = -2;
-            }
-            //if ( 0 != xdata )
-            //{
-            //  xdata->m_type = ON__3dmV1_XDATA::locked_object_layer_name;
-            //  xdata->m_string = buffer;            
-            //}
+            onfree(buffer);
           }
         }
         else if ( !on_stricmp("RhAnnotateArrow",xid) && 24 == sizeof_data )
@@ -9360,16 +9365,20 @@ bool ON_BinaryArchive::Read3dmV1AttributesOrMaterial(
         }
         else if ( !on_stricmp("RhAnnotateDot",xid) )
         {
-          // v1 annotation dot objects were saved
-          // as TCODE_RH_POINT objects with the
-          // dot text saved in "xdata".
-          char* buffer = (char*)alloca((sizeof_data+1)*sizeof(buffer[0]));
-          buffer[0] = 0;
-          buffer[sizeof_data] = 0;
-          if ( ReadByte(sizeof_data,buffer) && 0 != xdata )
+          if ( sizeof_data > 0 )
           {
-            xdata->m_type = ON__3dmV1_XDATA::dot_text;
-            xdata->m_string = buffer;            
+            // v1 annotation dot objects were saved
+            // as TCODE_RH_POINT objects with the
+            // dot text saved in "xdata".
+            char* buffer = (char*)onmalloc((sizeof_data+1)*sizeof(buffer[0]));
+            buffer[0] = 0;
+            buffer[sizeof_data] = 0;
+            if ( ReadByte(sizeof_data,buffer) && 0 != xdata )
+            {
+              xdata->m_type = ON__3dmV1_XDATA::dot_text;
+              xdata->m_string = buffer;            
+            }
+            onfree(buffer);
           }
         }
         else 
@@ -10897,8 +10906,7 @@ static ON_NurbsCurve* ReadV1_TCODE_LEGACY_SPLSTUFF( ON_BinaryArchive& file )
 {
   // reads contents of a v1 TCODE_LEGACY_SPLSTUFF chunk
   ON_NurbsCurve* pNurbsCurve = 0;
-  int i, dim, is_rat, order, cv_count;
-  //int is_closed, form;
+  int i, dim, is_rat, order, cv_count; // , is_closed, form;
   ON_BoundingBox bbox;
   char c;
 
@@ -10944,10 +10952,10 @@ static ON_NurbsCurve* ReadV1_TCODE_LEGACY_SPLSTUFF( ON_BinaryArchive& file )
     return NULL;  
   if (c != 0 && c != 1 && c != 2)
     return NULL;
-  //is_closed = c; // 0 = open, 1 = closed, 2 = periodic
+//  is_closed = c; // 0 = open, 1 = closed, 2 = periodic
   if ( !file.ReadByte(1,&c) )
     return NULL;
-  //form = c;
+//  form = c;
 
   // read bounding box
   if ( !file.ReadDouble( dim, bbox.m_min ) )
@@ -11061,8 +11069,7 @@ static ON_NurbsSurface* ReadV1_TCODE_LEGACY_SRFSTUFF( ON_BinaryArchive& file )
 {
   // reads contents of TCODE_LEGACY_SRFSTUFF chunk
   ON_NurbsSurface* pNurbsSurface = 0;
-  int i, j, dim=0, is_rat=0, order[2], cv_count[2];
-  //int is_closed[2], is_singular[2], form;
+  int i, j, dim=0, is_rat=0, order[2], cv_count[2]; //, is_closed[2], is_singular[2], form;
   ON_BoundingBox bbox;
   char c;
 
@@ -11074,7 +11081,7 @@ static ON_NurbsSurface* ReadV1_TCODE_LEGACY_SRFSTUFF( ON_BinaryArchive& file )
   dim = c;
   if ( !file.ReadByte(1,&c) )
     return NULL;
-  //form = c;
+//  form = c;
   if ( !file.ReadChar(1,&c) )
     return NULL;
   if ( c < 1 )
@@ -11123,23 +11130,23 @@ static ON_NurbsSurface* ReadV1_TCODE_LEGACY_SRFSTUFF( ON_BinaryArchive& file )
     return NULL;  
   if (c != 0 && c != 1 && c != 2)
     return NULL;
-  //is_closed[0] = c; // 0 = open, 1 = closed, 2 = periodic
+//  is_closed[0] = c; // 0 = open, 1 = closed, 2 = periodic
   if ( !file.ReadByte(1,&c) )
     return NULL;  
   if (c != 0 && c != 1 && c != 2)
     return NULL;
-  //is_closed[1] = c; // 0 = open, 1 = closed, 2 = periodic
+//  is_closed[1] = c; // 0 = open, 1 = closed, 2 = periodic
 
   if ( !file.ReadByte(1,&c) )
     return NULL;  
   if (c != 0 && c != 1 && c != 2 && c != 3)
     return NULL;
-  //is_singular[0] = c;
+//  is_singular[0] = c;
   if ( !file.ReadByte(1,&c) )
     return NULL;  
   if (c != 0 && c != 1 && c != 2 && c != 3)
     return NULL;
-  //is_singular[1] = c;
+//  is_singular[1] = c;
 
   // read bounding box
   if ( !file.ReadDouble( dim, bbox.m_min ) )
@@ -11341,7 +11348,7 @@ bool ON_Brep::ReadV1_LegacyTrimStuff( ON_BinaryArchive& file,
         ON_BrepLoop& loop )
 {
   // read contents of TCODE_LEGACY_TRMSTUFF chunk
-  //bool rc = false;
+  bool rc = false;
   int revedge, gcon, mono;
   int curve2d_index = -1, curve3d_index = -1, trim_index = -1;
   double tol_3d, tol_2d;
@@ -11371,11 +11378,11 @@ bool ON_Brep::ReadV1_LegacyTrimStuff( ON_BinaryArchive& file,
     return false;
   if ( BeginRead3dmLEGACYSTUFF( file, TCODE_LEGACY_CRVSTUFF ) ) {
     curve2d = ReadV1_TCODE_LEGACY_CRVSTUFF(file);
-    //if ( !file.EndRead3dmChunk() ) // end of TCODE_LEGACY_CRVSTUFF chunk
-    //  rc = false;
+    if ( !file.EndRead3dmChunk() ) // end of TCODE_LEGACY_CRVSTUFF chunk
+      rc = false;
   }
   if ( !file.EndRead3dmChunk() ) // end of TCODE_LEGACY_CRV chunk
-    //rc = false;
+    rc = false;
   if ( !curve2d )
     return false;
   curve2d_index = AddTrimCurve(curve2d);
@@ -11390,11 +11397,11 @@ bool ON_Brep::ReadV1_LegacyTrimStuff( ON_BinaryArchive& file,
       return false;
     if ( BeginRead3dmLEGACYSTUFF( file, TCODE_LEGACY_CRVSTUFF ) ) {
       curve3d = ReadV1_TCODE_LEGACY_CRVSTUFF(file);
-      //if ( !file.EndRead3dmChunk() ) // end of TCODE_LEGACY_CRVSTUFF chunk
-      //  rc = false;
+      if ( !file.EndRead3dmChunk() ) // end of TCODE_LEGACY_CRVSTUFF chunk
+        rc = false;
     }
     if ( !file.EndRead3dmChunk() ) // end of TCODE_LEGACY_CRV chunk
-      //rc = false;
+      rc = false;
     if ( !curve3d )
       return false;
     curve3d_index = AddEdgeCurve(curve3d);
@@ -11436,6 +11443,7 @@ bool ON_Brep::ReadV1_LegacyTrimStuff( ON_BinaryArchive& file,
     }
   }
 
+  (void)rc;//G+Smo
   return (trim_index>=0) ? true : false;
 }
 
@@ -13358,14 +13366,7 @@ bool ON_BinaryFile::AtEnd() const
       else 
       {
         int buffer;
-#ifdef __GNUC__
-#pragma GCC diagnostic ignored "-Wunused-result"// silence warning
         fread( &buffer, 1, 1, m_fp );
-#pragma GCC diagnostic pop
-#else
-
-        fread( &buffer, 1, 1, m_fp );
-#endif
         if ( feof( m_fp ) ) 
         {
           rc = true;
@@ -13573,8 +13574,7 @@ bool ON_WriteOneObjectArchive(
 
   while(pObject)
   {
-    rc = archive.Write3dmStartSection( version, "Archive created by ON_WriteOneObjectArchive " 
-                                                __DATE__ " " __TIME__ );
+    rc = archive.Write3dmStartSection( version, "Archive created by ON_WriteOneObjectArchive " __DATE__ " " __TIME__ );
     if ( !rc )
       break;
 
@@ -15378,7 +15378,9 @@ const wchar_t* ON_FileIterator::NextFile()
 
     memset( current_name, 0, sizeof(current_name) );
     ON_ConvertUTF8ToWideChar(
-      &m_dirent.d_name[0],-1, // null terminated utf8 string
+      false, // no BOM in input file name as utf8 string
+      &m_dirent.d_name[0],
+      -1, // null terminated utf8 string
       &current_name[0], ((int)(sizeof(current_name)/sizeof(current_name[0]))) - 1, // output wchar_t string
       0, // null output error status
       (4|8|16), // mask common conversion errors

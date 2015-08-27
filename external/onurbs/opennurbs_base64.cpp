@@ -79,7 +79,7 @@ void ON_DecodeBase64::SetError()
   m_status = 1;
 }
 
-bool ON_DecodeBase64::Error() const
+const bool ON_DecodeBase64::Error() const
 {
   return (1 == m_status);
 }

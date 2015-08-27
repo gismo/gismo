@@ -417,19 +417,7 @@ bool ON_Plane::Rotate(
       const ON_3dVector& axis // axis of rotation
       )
 {
-  bool rc = true;
-  if ( axis == zaxis ) {
-    ON_3dVector x = c*xaxis + s*yaxis;
-    ON_3dVector y = c*yaxis - s*xaxis;
-    xaxis = x;
-    yaxis = y;
-  }
-  else {
-    ON_3dPoint origin_pt = origin;
-    rc = Rotate( s, c, axis, origin );
-    origin = origin_pt; // to kill any fuzz
-  }
-  return rc;
+  return Rotate( s, c, axis, origin );
 }
 
 bool ON_Plane::Rotate(
@@ -454,7 +442,8 @@ bool ON_Plane::Rotate(
     rot.Rotation( sin_angle, cos_angle, axis, ON_origin );
     xaxis = rot*xaxis;
     yaxis = rot*yaxis;
-    zaxis = rot*zaxis;
+    if ( !(axis == zaxis) )
+      zaxis = rot*zaxis;
     rc = UpdateEquation();
   }
   else {

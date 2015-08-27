@@ -74,6 +74,16 @@ public:
 
   /*
   Description:
+    Add x to the current sum.
+  Parameters:
+    x - [in] value to add to the current sum.
+    dx - [in] symmetric uncertainty in x.
+         (true value is in the range x-dx to x+dx
+  */
+  void Plus( double x, double dx );
+
+  /*
+  Description:
     Calculates the total sum.   
   Parameters:
     error_estimate - [out] if not NULL, the returned value of
@@ -1305,7 +1315,7 @@ Parameters:
     This means the relative_tolerance insures both the scalar
     curvature and the radii of curvature agree to the specified
     number of decimal places.
-    When in double use ON_RELATIVE_CURVATURE_TOLERANCE, which
+    When in doubt, use ON_RELATIVE_CURVATURE_TOLERANCE, which
     is currently 0.05.
 Returns:
   False if the curvatures should be considered G2.

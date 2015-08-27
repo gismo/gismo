@@ -541,8 +541,6 @@ RELATED FUNCTIONS:
 
   size_t sizeofCV = (i+j)*sizeof(*CV);
 
-
-  // 21 November 2007 Dale Lear RR 29005 - remove call to alloca()
   CV = (double*)( (sizeofCV <= sizeof(stack_buffer)) ? stack_buffer : (free_me=onmalloc(sizeofCV)) );
   if (j) {
     memset( CV+i, 0, j*sizeof(*CV) );
@@ -658,9 +656,6 @@ RELATED FUNCTIONS:
 }
 
 
-bool ON_EvaluateNurbsBasis( int order, const double* knot, 
-                                       double t, double* N )
-{
 /*****************************************************************************
 Evaluate B-spline basis functions
  
@@ -733,13 +728,19 @@ RELATED FUNCTIONS:
   TL_EvNurbBasis
   TL_EvNurbBasisDer
 *****************************************************************************/
-  register double a0, a1, x, y;
+bool ON_EvaluateNurbsBasis( int order, const double* knot, 
+                                       double t, double* N )
+{
+  double a0, a1, x, y;
   const double *k0;
   double *t_k, *k_t, *N0;
   const int d = order-1;
-  register int j, r;
-
-  t_k = (double*)alloca( d<<4 );
+  int j, r;
+  double stack_buffer[80];
+  void* heap_buffer = 0;
+  const size_t sizeof_buffer = d<<4;
+  
+  t_k = (sizeof_buffer <= sizeof(stack_buffer)) ? stack_buffer : (double*)(heap_buffer=onmalloc( sizeof_buffer ));
   k_t = t_k + d;
   
   if (knot[d-1] == knot[d]) {
@@ -807,6 +808,9 @@ RELATED FUNCTIONS:
     }
   }
 
+  if ( heap_buffer )
+    onfree(heap_buffer);
+
   return true;
 }
 
@@ -837,8 +841,6 @@ bool ON_EvaluateNurbsBasisDerivatives( int order, const double* knot,
    * Actually, the above is true when knot[d-1] <= t < knot[d].  Otherwise, the
    * values returned are the values of the polynomials that agree with N_i^k on the
    * half open domain [ knot[d-1], knot[d] )
-	 *
-	 * Ref: The NURBS Book
 	 */
 	double dN, c;
 	const double *k0, *k1;
@@ -858,9 +860,19 @@ bool ON_EvaluateNurbsBasisDerivatives( int order, const double* knot,
 	 * dk[der_count-1] = 1.0/(knot[d] - knot[d-1])
 	 * dk[der_count] = dummy pointer to make loop efficient
 	 */
-	dk = (double**)alloca( (der_count+1) << 3 ); /* << 3 in case pointers are 8 bytes long */
-	a0 = (double*)alloca( (order*(2 + ((d+1)>>1))) << 3 ); /* d for a0, d for a1, d*order/2 for dk[]'s and slop to avoid /2 */
+
+	//dk = (double**)alloca( (der_count+1) << 3 ); /* << 3 in case pointers are 8 bytes long */
+	//a0 = (double*)alloca( (order*(2 + ((d+1)>>1))) << 3 ); /* d for a0, d for a1, d*order/2 for dk[]'s and slop to avoid /2 */
+	//a1 = a0 + order;
+
+  double stack_buffer[80];
+  void* heap_buffer = 0;
+  const size_t dbl_count = (order*(2 + ((d+1)>>1)));
+  const size_t sz = ( dbl_count*sizeof(*a0) + (der_count+1)*sizeof(*dk) );
+
+  a0 = (sz <= sizeof(stack_buffer)) ? stack_buffer : (double*)(heap_buffer = onmalloc(sz));
 	a1 = a0 + order;
+  dk = (double**)(a0 + dbl_count);
 
 	/* initialize reciprocal of knot differences */
 	dk[0] = a1 + order;
@@ -935,6 +947,10 @@ bool ON_EvaluateNurbsBasisDerivatives( int order, const double* knot,
 		dN -= 1.0;
 		c *= dN;
 	}
+
+  if ( 0 != heap_buffer )
+    onfree(heap_buffer);
+
   return true;
 }
 
@@ -957,7 +973,11 @@ bool ON_EvaluateNurbsNonRationalSpan(
   double *N;
 	double a;
 
-	N = (double*)alloca( (order*order)<<3 );
+  double stack_buffer[64];
+  void* heap_buffer = 0;
+  const size_t sizeof_buffer = (order*order)*sizeof(*N);
+
+	N = (sizeof_buffer <= sizeof(stack_buffer)) ? stack_buffer : (double*)(heap_buffer=onmalloc(sizeof_buffer));
 
   if ( stride_minus_dim > 0)
   {
@@ -1008,6 +1028,9 @@ bool ON_EvaluateNurbsNonRationalSpan(
         v[i] = cv[i];
     }
   }
+
+  if ( 0 != heap_buffer )
+    onfree(heap_buffer);
 		
 	return true;
 }
@@ -1030,21 +1053,33 @@ bool ON_EvaluateNurbsRationalSpan(
   int i;
   bool rc;
 
-  hv = (double*)alloca( (der_count+1)*hv_stride*sizeof(*hv) );
+  double stack_buffer[32];
+  void* heap_buffer = 0;
+  const size_t sizeof_buffer = (der_count+1)*hv_stride*sizeof(*hv);
+
+  hv = (sizeof_buffer <= sizeof(stack_buffer)) 
+     ? stack_buffer 
+     : (double*)(heap_buffer=onmalloc(sizeof_buffer));
   
   rc = ON_EvaluateNurbsNonRationalSpan( dim+1, order, knot, 
           cv_stride, cv, der_count, t, hv_stride, hv );
-  if (rc) {
+  if (rc) 
+  {
     rc = ON_EvaluateQuotientRule(dim, der_count, hv_stride, hv);
-  }
-  if ( rc ) {
-    // copy answer to v[]
-    for ( i = 0; i <= der_count; i++ ) {
-      memcpy( v, hv, dim*sizeof(*v) );
-      v += v_stride;
-      hv += hv_stride;
+    if ( rc )
+    {
+      // copy answer to v[]
+      for ( i = 0; i <= der_count; i++ ) {
+        memcpy( v, hv, dim*sizeof(*v) );
+        v += v_stride;
+        hv += hv_stride;
+      }
     }
   }
+
+  if ( heap_buffer )
+    onfree(heap_buffer);
+
   return rc;
 }
 
@@ -1108,12 +1143,19 @@ bool ON_EvaluateNurbsSurfaceSpan(
   const int cvdim = (is_rat) ? dim+1 : dim;
   const int dcv1 = cv_stride1 - cvdim;
 
+  double stack_buffer[128];
+  void* heap_buffer = 0;
+  size_t sizeof_buffer;
+
 	// get work space memory
 	i = order0*order0;
 	j = order1*order1;
 	Pcount = ((der_count+1)*(der_count+2))>>1;
 	Psize = cvdim<<3;
-  N_0 = (double*)alloca( ((i + j) << 3) + Pcount*Psize );
+
+  sizeof_buffer = ((i + j) << 3) + Pcount*Psize;
+
+  N_0 = (sizeof_buffer <= sizeof(stack_buffer)) ? stack_buffer : (double*)(heap_buffer=onmalloc(sizeof_buffer));
 	N_1 = N_0 + i;
 	P0  = N_1 + j;
 	memset( P0, 0, Pcount*Psize );
@@ -1262,6 +1304,9 @@ bool ON_EvaluateNurbsSurfaceSpan(
     v += v_stride;
 		P0 += cvdim;
 	}
+
+  if ( heap_buffer )
+    onfree(heap_buffer);
 
 	return true;
 }

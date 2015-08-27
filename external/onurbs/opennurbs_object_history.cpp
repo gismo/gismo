@@ -2394,7 +2394,12 @@ ON_BOOL32 ON_HistoryRecord::Read( ON_BinaryArchive& archive )
     rc = archive.ReadUuid(m_command_id);
     if(!rc) break;
 
-    rc = m_descendants.Read(archive);
+    // 16 October 2012 Dale Lear
+    //   Fixing http://dev.mcneel.com/bugtrack/?q=101403
+    // Changing bSortDescendantsAferRead from true to false
+    // per discussion in the bug report. 
+    const bool bSortDescendantsAferRead = false;
+    rc = m_descendants.Read(archive,bSortDescendantsAferRead);
     if(!rc) break;
 
     rc = m_antecedents.Read(archive);
@@ -2495,7 +2500,12 @@ ON_BOOL32 ON_HistoryRecord::Write( ON_BinaryArchive& archive ) const
     rc = archive.WriteUuid(m_command_id);
     if(!rc) break;
 
-    rc = m_descendants.Write(archive);
+    // 30 October 2012 Dale Lear
+    //   Fixing http://dev.mcneel.com/bugtrack/?q=101403
+    // Changing bSortDescendantsBeforeWrite from true to false
+    // per discussion in the bug report. 
+    const bool bSortDescendantsBeforeWrite = false;
+    rc = m_descendants.Write(archive,bSortDescendantsBeforeWrite);
     if(!rc) break;
 
     rc = m_antecedents.Write(archive);

@@ -7,7 +7,6 @@
 ## OpenNurbs extension
 project(gsOpennurbs)
 
-
 set(OPENNURBS_SOURCES
 ${gismo_externals}/onurbs/opennurbs_3dm_attributes.cpp
 ${gismo_externals}/onurbs/opennurbs_3dm_properties.cpp
@@ -112,6 +111,8 @@ ${gismo_externals}/onurbs/opennurbs_wstring.cpp
 ${gismo_externals}/onurbs/opennurbs_xform.cpp
 ${gismo_externals}/onurbs/opennurbs_zlib.cpp
 ${gismo_externals}/onurbs/opennurbs_zlib_memory.cpp
+${gismo_externals}/onurbs/opennurbs_quaternion.cpp
+${gismo_externals}/onurbs/opennurbs_photogrammetry.cpp
 ${gismo_externals}/onurbs/opennurbs_memory.c
 ${gismo_externals}/onurbs/opennurbs_memory_util.c
 # zlib
@@ -245,6 +246,8 @@ ${gismo_externals}/onurbs/opennurbs_viewport.h
 ${gismo_externals}/onurbs/opennurbs_workspace.h
 ${gismo_externals}/onurbs/opennurbs_xform.h
 ${gismo_externals}/onurbs/opennurbs_zlib.h
+#${gismo_externals}/onurbs/opennurbs_quaternion.h
+${gismo_externals}/onurbs/opennurbs_photogrammetry.h
 # zlib
 #${gismo_externals}/onurbs/zlib/crc32.h
 #${gismo_externals}/onurbs/zlib/deflate.h
@@ -293,7 +296,7 @@ endif(HAVE_SYS_STAT_H)
 # Apply same configuration as G+Smo
 include( gsConfig)
 
-#if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+#if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 #  add_definitions(
 #    -DON_COMPILING_OPENNURBS
 #    -DON_DLL_EXPORTS
@@ -305,8 +308,14 @@ add_definitions(-DON_COMPILING_OPENNURBS)
 #endif()
 
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
   add_definitions(-DUNICODE)
+  add_definitions(
+    -wd4458 # Suppress 'declaration of '..' hides class member'	~2400 warns
+    -wd4456 # declaration of '..' hides previous local declaration ~37 warns
+    )
+else()
+  add_definitions(-DON_NO_WINDOWS) #for Mingw
 endif()
 
 add_library(gsOpennurbs OBJECT ${OPENNURBS_SOURCES}) #STATIC
@@ -316,14 +325,6 @@ set_target_properties(gsOpennurbs
 PROPERTIES POSITION_INDEPENDENT_CODE ON
 COMPILE_DEFINITIONS gismo_EXPORTS
 )
-
-# Disable MSVC warnings
-if( MSVC )
-  add_definitions(
-    -wd4458 # Suppress 'declaration of '..' hides class member'	~2400 warns
-    -wd4456 # declaration of '..' hides previous local declaration ~37 warns
-    )
-endif()
 
 #SET_TARGET_PROPERTIES(gsOpennurbs PROPERTIES VERSION "2010.04.95")
 

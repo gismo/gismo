@@ -26,17 +26,47 @@
 class ON_CLASS ON_3dmUnitsAndTolerances
 {
 public:
+  // The default constructor sets "this" to the values
+  // in ON_3dmUnitsAndTolerances::DefaultValues.
   ON_3dmUnitsAndTolerances();
-  ON_3dmUnitsAndTolerances(const ON_3dmUnitsAndTolerances&);
   ~ON_3dmUnitsAndTolerances();
+
+  ON_3dmUnitsAndTolerances(const ON_3dmUnitsAndTolerances&);
   ON_3dmUnitsAndTolerances& operator=(const ON_3dmUnitsAndTolerances&);
 
-  void Default();
+  // To get default values, use ... = ON_3dmUnitsAndTolerances::DefaultValue;
+  ON_DEPRECATED void Default();
 
   bool Read( ON_BinaryArchive& );
   bool Write( ON_BinaryArchive& ) const;
 
   void Dump( ON_TextLog& ) const;
+
+  /*
+  Returns:
+    True if tolerances (m_absolute_tolerance, m_angle_tolerance, m_relative_tolerance)
+    are set to valid values.
+  */
+  bool TolerancesAreValid() const;
+
+  /*
+  Description:
+    If m_absolute_tolerance is not set to a valid value, it is set
+    to ON_3dmUnitsAndTolerances::DefaultValue.m_absolute_tolerance.
+    If m_angle_tolerance is not set to a valid value, it is set
+    to ON_3dmUnitsAndTolerances::DefaultValue.m_angle_tolerance.
+    If m_relative_tolerance is not set to a valid value, it is set
+    to ON_3dmUnitsAndTolerances::DefaultValue.m_relative_tolerance.
+  Returns:
+    0: all tolerances were valid
+    0 != (rc & 1): 
+      m_absolute_tolerance was invalid and set to the default value
+    0 != (rc & 2): 
+      m_angle_tolerance was invalid and set to the default value
+    0 != (rc & 4): 
+      m_relative_tolerance was invalid and set to the default value
+  */
+  unsigned int SetInvalidTolerancesToDefaultValues();
 
   //////////
   // Returns scale factor that needs to be applied to change from
@@ -47,23 +77,28 @@ public:
   // Scale(us) = ON::UnitScale(us,ON::meters)*m_custom_unit_scale.
   double Scale( ON::unit_system ) const;
 
-  //ON::unit_system m_unit_system;
-  ON_UnitSystem   m_unit_system;
+  ON_UnitSystem m_unit_system;
 
-  double          m_absolute_tolerance;  // in units (default = 1/100)
-  double          m_angle_tolerance;     // in radians (default = 3 degrees)
-  double          m_relative_tolerance;  // fraction >= 0 and < 1 (default = 1%)
+  double m_absolute_tolerance;  // in units   > 0.0
+  double m_angle_tolerance;     // in radians > 0.0 and <= ON_PI
+  double m_relative_tolerance;  // fraction   > 0.0 and < 1.0
 
-  ON::distance_display_mode m_distance_display_mode;
+  ON::distance_display_mode m_distance_display_mode; // decimal or fractional
   int m_distance_display_precision; // decimal mode: number of decimal places
                                     // fractional modes:
                                     //    denominator = (1/2)^m_distance_display_precision
 
-  ////////////
-  // These settings apply when m_unit_system is ON::custom_unit_system
-  //
-  //double m_custom_unit_scale;      // 1 meter = m_custom_unit_scale custom units
-  //ON_wString m_custom_unit_name;   // name of custom units
+public:
+  /*
+  DefaultValue
+    m_unit_system                 ON::millimeters
+    m_absolute_tolerance          0.001
+    m_angle_tolerance             pi/180 = 1 degree
+    m_relative_tolerance          0.01 = 1%
+    m_distance_display_mode       ON::decimal
+    m_distance_display_precision  3
+  */
+  static const ON_3dmUnitsAndTolerances DefaultValue;
 };
 
 ///////////////////////////////////////////////////////////////////////

@@ -397,7 +397,7 @@ void ON_Brep::SetTolerancesBoxesAndFlags(
 static
 bool CheckForMatchingVertexIndices( int i, int j, int corner_vi[4] )
 {
-  ON_BOOL32 rc = true;
+  ON_BOOL32 rc = false;
   if ( corner_vi[i] >= 0 || corner_vi[j] >= 0 )
   {
     if ( corner_vi[i] == -1 )
@@ -415,7 +415,8 @@ bool CheckForMatchingVertexIndices( int i, int j, int corner_vi[4] )
       rc = true;
     }
   }
-  return rc != 0;
+  (void)rc;//G+Smo
+  return true;
 }
 
 
@@ -2144,7 +2145,7 @@ bool ON_Brep::CloseTrimGap( ON_BrepTrim& trim0, ON_BrepTrim& trim1 )
   case ON_Surface::W_iso:
   case ON_Surface::E_iso:
     // vertical iso curve - lock x coordinate
-    //coord1_lock = 0;
+//    coord1_lock = 0;
     switch(coord0_lock)
     {
     case 0:
@@ -2174,7 +2175,7 @@ bool ON_Brep::CloseTrimGap( ON_BrepTrim& trim0, ON_BrepTrim& trim1 )
   case ON_Surface::S_iso:
   case ON_Surface::N_iso:
     // horizontal iso curve - lock y coordinate
-    //coord1_lock = 1;
+//    coord1_lock = 1;
     switch(coord0_lock)
     {
     case 0:

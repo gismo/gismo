@@ -469,6 +469,17 @@ ON_BOOL32 ON_BrepTrimArray::Read( ON_BinaryArchive& file )
         for ( i = 0; i < count && rc ; i++ ) {
           ON_BrepTrim& trim = AppendNew();
           rc = trim.Read(file)?true:false;
+          if ( rc )
+          {
+            if ( trim.m_trim_index != m_count-1 )
+            {
+              // 28 May 2013 Dale Lear
+              //   Fix http://mcneel.myjetbrains.com/youtrack/issue/RH-18299
+              //   Fix bogus index values to prevent crashes.
+              ON_ERROR("Invalid value of m_trim_index");
+              trim.m_trim_index = m_count-1;
+            }
+          }
         }    
       }
       else {

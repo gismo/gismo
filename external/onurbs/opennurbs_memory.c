@@ -105,6 +105,8 @@ size_t onmsize( const void* memblock )
     sz = _msize( (void*)memblock );
 #elif defined(ON_COMPILER_XCODE)
     sz = malloc_size( (void*)memblock );
+#elif defined(ON_COMPILER_ANDROIDNDK)
+    sz = dlmalloc_usable_size( (void*)memblock );
 #else
     // No predictable function exists and
     // nothing in core opennurbs code uses

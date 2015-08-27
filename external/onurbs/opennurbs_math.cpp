@@ -1280,9 +1280,8 @@ ON_TransformPointList(
 
   if ( !ON_IsValidPointList( dim, is_rat, count, stride, point ) )
     return false;
-  // G+Smo
-  // if ( xform.m_xform == NULL )
-  //   return false;
+  if ( xform.m_xform == NULL )
+    return false;
   if (count == 0)
     return true;
 

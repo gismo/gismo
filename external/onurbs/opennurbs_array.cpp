@@ -652,6 +652,46 @@ int ON_UuidList::CompareUuid(const ON_UUID* a, const ON_UUID* b)
   return memcmp(a,b,sizeof(*a));
 }
 
+
+void ON_UuidList::PurgeHelper()
+{
+  if ( m_removed_count <= m_count && m_removed_count > 0 )
+  {
+    m_removed_count = 0;
+
+    // purge removed ids
+    int count = 0;
+    for ( int i = 0; i < m_count; i++ )
+    {
+      if ( ON_max_uuid == m_a[i] )
+        continue;
+
+      if ( i > count )
+        m_a[count] = m_a[i];
+
+      count++;
+    }
+
+    if ( count < m_count )
+    {
+      m_count = count;
+      if ( count > 0 )
+      {
+        // set m_sorted_count
+        for ( m_sorted_count = 1; m_sorted_count < m_count; m_sorted_count++ )
+        {
+          if ( ON_UuidCompare(m_a[m_sorted_count-1],m_a[m_sorted_count])> 0 )
+            break;
+        }
+      }
+      else
+      {
+        m_sorted_count = 0;
+      }
+    }
+  }
+}
+
 void ON_UuidList::SortHelper()
 {
   if ( m_sorted_count < m_count || m_removed_count > 0 )
@@ -666,6 +706,7 @@ void ON_UuidList::SortHelper()
     m_sorted_count = m_count;
   }
 }
+
 const ON_UUID* ON_UuidList::Array() const
 {
   const ON_UUID* array = 0;
@@ -717,10 +758,31 @@ void ON_UuidList::Compact()
 
 bool ON_UuidList::Write( class ON_BinaryArchive& archive ) const
 {
+  return Write(archive,true);
+}
+
+bool ON_UuidList::Write( 
+  class ON_BinaryArchive& archive, 
+  bool bSortBeforeWrite 
+  ) const
+{
+  // NOTE:
+  // Per bug 101403, this function is called with
+  // bSortBeforeWrite = false when writing ON_HistoryRecord::m_descendants[].
+  // All other used call this function with bSortBeforeWrite = true.
   bool rc = archive.BeginWrite3dmChunk( TCODE_ANONYMOUS_CHUNK, 1, 0 );
   if (rc)
   {
-    const_cast<ON_UuidList*>(this)->SortHelper();
+    if ( bSortBeforeWrite )
+    {
+      // clean and sort
+      const_cast<ON_UuidList*>(this)->SortHelper();
+    }
+    else
+    {
+      // clean
+      const_cast<ON_UuidList*>(this)->PurgeHelper();
+    }
     rc = archive.WriteArray( *this );
     if ( !archive.EndWrite3dmChunk() )
       rc = false;
@@ -730,6 +792,18 @@ bool ON_UuidList::Write( class ON_BinaryArchive& archive ) const
 
 bool ON_UuidList::Read( class ON_BinaryArchive& archive )
 {
+  return  ON_UuidList::Read(archive,true);
+}
+
+bool ON_UuidList::Read( 
+    class ON_BinaryArchive& archive,
+    bool bSortAferRead
+    )
+{
+  // NOTE:
+  // Per bug 101403, this function is called with
+  // bSortAferRead = false when reading ON_HistoryRecord::m_descendants[].
+  // All other used call this function with bSortAferRead = true.
   m_count = 0;
   m_removed_count = 0;
   m_sorted_count = 0;
@@ -750,7 +824,16 @@ bool ON_UuidList::Read( class ON_BinaryArchive& archive )
       rc = false;
   }
 
-  SortHelper();
+  if ( bSortAferRead )
+  {
+    // clean and sort
+    SortHelper();
+  }
+  else
+  {
+    // clean
+    PurgeHelper();
+  }
 
   return rc;
 }

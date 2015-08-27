@@ -60,15 +60,14 @@
 #error Microsoft defines _WIN32 for all Windows builds
 #endif
 
-// G+Smo: the following error is rather technical, WIN32 is defined in both 32,64 anyway
-//#if defined(_M_IA64) || defined(_M_X64) || defined(_M_AMD64)
-//#error Incorrect _M_... setting for 32 bit Windows build.
-//#endif
+#if defined(_M_IA64) || defined(_M_X64) || defined(_M_AMD64)
+#error Incorrect _M_... setting for 32 bit Windows build.
+#endif
 
-//#if !defined(_M_IX86)
-// // This should be automatically defined by the compiler
-//#error _M_IX86 should be defined for 32 bit Windows builds.
-//#endif
+#if !defined(_M_IX86)
+// This should be automatically defined by the compiler
+#error _M_IX86 should be defined for 32 bit Windows builds.
+#endif
 
 #endif
 
@@ -80,10 +79,9 @@
 
 // CHECK SETTINGS AFTER EVERTHING IS INCLUDED
 
-// G+Smo: the following is rather technical, WIN32 is defined in both 32,64 anyway
-//#if defined(WIN32) && defined(WIN64)
-//#error WIN32 and WIN64 defined.  This is wrong!
-//#endif
+#if defined(WIN32) && defined(WIN64)
+#error WIN32 and WIN64 defined.  This is wrong!
+#endif
 
 #if defined(WIN64)
 
@@ -120,16 +118,14 @@
 #error Microsoft defines _WIN32 for all Windows builds
 #endif
 
-// G+Smo: the following is rather technical, WIN32 is defined in both 32,64 anyway
-//#if defined(_M_IA64) || defined(_M_X64) || defined(_M_AMD64)
-//#error Incorrect _M_... setting for 32 bit Windows build.
-//#endif
+#if defined(_M_IA64) || defined(_M_X64) || defined(_M_AMD64)
+#error Incorrect _M_... setting for 32 bit Windows build.
+#endif
 
-// G+Smo: the following is rather technical, WIN32 is defined in both 32,64 anyway
-//#if !defined(_M_IX86)
-// // This should be automatically defined by the compiler
-// #error _M_IX86 should be defined for 32 bit Windows builds.
-// #endif
+#if !defined(_M_IX86)
+// This should be automatically defined by the compiler
+#error _M_IX86 should be defined for 32 bit Windows builds.
+#endif
 
 #endif
 

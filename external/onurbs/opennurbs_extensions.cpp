@@ -5362,11 +5362,11 @@ bool ONX_Model::GetRDKObjectInformation(const ON_Object& object,ON_wString& rdk_
     if ( 0 != sArray && 0 != sArray[0] )
     {
       unsigned int error_status = 0;
-      int wLen = ON_ConvertUTF8ToWideChar(sArray,-1,0,0,&error_status,0,0,0);
+      int wLen = ON_ConvertUTF8ToWideChar(false,sArray,-1,0,0,&error_status,0,0,0);
       if ( wLen > 0 && 0 == error_status )
       {
         rdk_xml_object_data.SetLength(wLen+2);
-        wLen = ON_ConvertUTF8ToWideChar(sArray,-1,rdk_xml_object_data.Array(),wLen+1,&error_status,0,0,0);
+        wLen = ON_ConvertUTF8ToWideChar(false,sArray,-1,rdk_xml_object_data.Array(),wLen+1,&error_status,0,0,0);
         if ( wLen > 0 && 0 == error_status )
           rdk_xml_object_data.SetLength(wLen);
         else
@@ -5427,11 +5427,11 @@ bool ONX_Model::GetRDKDocumentInformation(const ONX_Model_UserData& docud,ON_wSt
     if ( 0 != sArray && 0 != sArray[0] )
     {
       unsigned int error_status = 0;
-      int wLen = ON_ConvertUTF8ToWideChar(sArray,-1,0,0,&error_status,0,0,0);
+      int wLen = ON_ConvertUTF8ToWideChar(false,sArray,-1,0,0,&error_status,0,0,0);
       if ( wLen > 0 && 0 == error_status )
       {
         rdk_xml_document_data.SetLength(wLen+2);
-        wLen = ON_ConvertUTF8ToWideChar(sArray,-1,rdk_xml_document_data.Array(),wLen+1,&error_status,0,0,0);
+        wLen = ON_ConvertUTF8ToWideChar(false,sArray,-1,rdk_xml_document_data.Array(),wLen+1,&error_status,0,0,0);
         if ( wLen > 0 && 0 == error_status )
           rdk_xml_document_data.SetLength(wLen);
         else

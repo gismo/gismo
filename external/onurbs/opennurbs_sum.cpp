@@ -80,6 +80,13 @@ double ON_Sum::SortAndSum( int count, double* a )
   return s;
 }
 
+void ON_Sum::Plus( double x, double dx )
+{
+  Plus(x);
+  if ( ON_IsValid(dx) )
+    m_sum_err += fabs(dx);
+}
+
 void ON_Sum::Plus( double x )
 {
   if (x > 0.0)

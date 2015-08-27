@@ -1316,6 +1316,416 @@ ON_PolyCurve::IsPeriodic() const
   return bIsPeriodic;
 }
 
+static bool ON_ArcToArcTransitionIsNotGsmooth(
+  const ON_Arc& arc0,
+  const ON_Arc& arc1,
+  double cos_angle_tolerance,
+  double curvature_tolerance
+  )
+{
+  const double tolerance = ON_ZERO_TOLERANCE;
+  if ( !arc0.IsValid() )
+    return false;
+  if ( !arc1.IsValid() )
+    return false;
+
+  const double r0 = arc0.Radius();
+  const double r1 = arc1.Radius();
+  const double maxr = (r0 >= r1) ? r0 : r1;
+  const double minr = (r0 >= r1) ? r1 : r0;
+  if ( !(r0 > 0.0 && r1 > 0.0 && maxr < 1.0e6) )
+    return false;
+
+  // Please discuss any changes to this 10% max radius
+  // test with Dale Lear.
+  // This function detects aesthetic changes - it is not
+  // intended to be used for any other purpose.
+  if ( !(fabs(r0-r1) > 0.1*maxr) )
+    return false;
+
+  if ( fabs(1.0/r0 - 1.0/r1) <= curvature_tolerance )
+    return false;
+
+  // The end of arc0 and the start of arc1 must be coincident.
+  double d = arc0.EndPoint().DistanceTo(arc1.StartPoint());
+  if ( !(d <= tolerance && d <= 0.01*minr) )
+    return false;
+
+  // arcs must be coplanar
+  d = arc0.plane.zaxis*arc1.plane.zaxis;
+  if ( !(d >= cos(3.0*ON_PI/180.0)) && !(d >= cos_angle_tolerance) && !(d < 1.0+ON_SQRT_EPSILON) )
+  {
+    // arcs are not coplanar
+    return false;
+  }
+
+  // arcs must be tangent and have centers on the same side of the common point.
+  ON_3dVector V0 = arc0.EndPoint() - arc0.Center();
+  ON_3dVector V1 = arc1.StartPoint() - arc1.Center();
+  V0.Unitize();
+  V1.Unitize();
+  d = V0*V1;
+  if ( !(d >= cos(3.0*ON_PI/180.0)) && !(d >= cos_angle_tolerance) && !(d < 1.0+ON_SQRT_EPSILON) )
+  {
+    // arcs are not tangent or do not have their centers on
+    // the same side of the common point.
+    return false;
+  }
+
+  // If the arcs started at the same location,
+  // they were tangent at the start, and they
+  // were both the length of the shortest arc,
+  // then we should be able to "see" the difference
+  // in the end points.
+  double a0 = fabs(arc0.AngleRadians());
+  double a1 = fabs(arc1.AngleRadians());
+  if (a0 > ON_PI)
+    a0 = ON_PI;
+  if (a1 > ON_PI)
+    a1 = ON_PI;
+  double l0 = r0*a0;
+  double l1 = r1*a1;
+  if ( l0 > l1 )
+  {
+    a0 = l1/r0;
+  }
+  else if ( l1 > l0 )
+  {
+    a1 = l0/r1;
+  }
+  if ( l0 > tolerance && l1 > tolerance )
+  {
+    ON_2dVector D((1.0-r0)*cos(a0) + (r1-1.0)*cos(a1),r0*sin(a0)-r1*sin(a1));
+    d = D.Length();
+    if ( d > tolerance && d > 0.1*maxr )
+      return true; // "visibly" different
+  }
+
+  return false;
+}
+
+static bool ON_NurbsArcToArcTransitionIsNotGsmooth(
+  const ON_NurbsCurve& nurbs_curve,
+  int knot_index,
+  double cos_angle_tolerance,
+  double curvature_tolerance
+  )
+{
+  if ( 0 == nurbs_curve.m_is_rat )
+    return false;
+  if ( nurbs_curve.m_order < 3 )
+    return false;
+  if ( nurbs_curve.m_cv_count <= nurbs_curve.m_order )
+    return false;
+  while ( knot_index > 0 && nurbs_curve.m_knot[knot_index-1] == nurbs_curve.m_knot[knot_index] )
+    knot_index--;
+  if ( knot_index <= nurbs_curve.m_order-2 )
+    return false;
+  if ( knot_index >= nurbs_curve.m_cv_count-1 )
+    return false;
+  if ( !(nurbs_curve.m_knot[knot_index] > nurbs_curve.m_knot[nurbs_curve.m_order-2]) )
+    return false;
+  if ( !(nurbs_curve.m_knot[knot_index] < nurbs_curve.m_knot[nurbs_curve.m_cv_count-1]) )
+    return false;
+  if ( !(nurbs_curve.m_knot[knot_index] == nurbs_curve.m_knot[knot_index+nurbs_curve.m_order-2]) )
+    return false;
+  int k0 = knot_index-nurbs_curve.m_order+1;
+  if ( !(nurbs_curve.m_knot[k0] == nurbs_curve.m_knot[k0+nurbs_curve.m_order-2]) )
+    return false;
+  int k1 = knot_index+nurbs_curve.m_order-1;
+  if ( !(nurbs_curve.m_knot[k1] == nurbs_curve.m_knot[k1+nurbs_curve.m_order-2]) )
+    return false;
+  if ( !(1.0 == nurbs_curve.Weight(knot_index)) )
+    return false;
+
+  ON_NurbsCurve span;
+  span.m_dim = nurbs_curve.m_dim;
+  span.m_is_rat = nurbs_curve.m_is_rat;
+  span.m_order = nurbs_curve.m_order;
+  span.m_cv_count = nurbs_curve.m_order; // no typo here, I want m_cv_count = nurbs_curve.m_order
+  span.m_cv_stride = nurbs_curve.m_cv_stride;
+  span.m_knot = nurbs_curve.m_knot + k0;
+  span.m_cv = nurbs_curve.m_cv + k0*nurbs_curve.m_cv_stride;
+
+  bool rc = false;
+  ON_Arc arc0;
+  if ( !span.IsLinear(ON_ZERO_TOLERANCE) && span.IsArc(0,&arc0) )
+  {
+    ON_Arc arc1;
+    span.m_knot = nurbs_curve.m_knot + knot_index;
+    span.m_cv = nurbs_curve.m_cv + knot_index*nurbs_curve.m_cv_stride;
+    if ( !span.IsLinear(ON_ZERO_TOLERANCE) && span.IsArc(&arc0.plane,&arc1) )
+    {
+      if ( ON_ArcToArcTransitionIsNotGsmooth(arc0,arc1,cos_angle_tolerance,curvature_tolerance) )
+        return true;
+    }
+  }
+
+  span.m_knot = 0;
+  span.m_cv = 0;
+
+  return rc;
+}
+
+
+bool ON_NurbsCurve::GetNextDiscontinuity( 
+                ON::continuity c,
+                double t0,
+                double t1,
+                double* t,
+                int* hint,
+                int* dtype,
+                double cos_angle_tolerance,
+                double curvature_tolerance
+                ) const
+{
+  const double is_linear_tolerance = 1.0e-8;  
+  const double is_linear_min_length = 1.0e-8;
+  int tmp_hint = 0, tmp_dtype=0;
+  double d, tmp_t;
+  ON_3dPoint Pm, Pp;
+  ON_3dVector D1m, D1p, D2m, D2p, Tm, Tp, Km, Kp;
+  int ki;
+  if ( !hint )
+    hint = &tmp_hint;
+  if ( !dtype )
+    dtype = &tmp_dtype;
+  if ( !t )
+    t = &tmp_t;
+  
+  if ( c == ON::C0_continuous )
+    return false;
+  if ( c == ON::C0_locus_continuous )
+  {
+    return ON_Curve::GetNextDiscontinuity( c, t0, t1, t, hint, dtype, 
+                                    cos_angle_tolerance, curvature_tolerance );
+  }
+  if ( t0 == t1 )
+    return false;
+
+  // First test for parametric discontinuities.  If none are found
+  // then we will look for locus discontinuities at ends
+  if ( m_order <= 2 )
+    c = ON::PolylineContinuity(c); // no need to check 2nd derivatives that are zero
+  const ON::continuity input_c = c;
+  c = ON::ParametricContinuity(c);
+  bool bEv2ndDer    = (c == ON::C2_continuous || c == ON::G2_continuous || c == ON::Gsmooth_continuous) && (m_order>2);
+  bool bTestKappa   = ( bEv2ndDer && c != ON::C2_continuous );
+  bool bTestTangent = ( bTestKappa || c == ON::G1_continuous );
+
+  int delta_ki = 1;
+  int delta = ((bEv2ndDer) ? 3 : 2) - m_order; // delta <= 0
+  if ( ON::Cinfinity_continuous == c )
+    delta = 0;
+
+  ki = ON_NurbsSpanIndex(m_order,m_cv_count,m_knot,t0,(t0>t1)?-1:1,*hint);
+  double segtol = (fabs(m_knot[ki]) + fabs(m_knot[ki+1]) + fabs(m_knot[ki+1]-m_knot[ki]))*ON_SQRT_EPSILON;
+
+  const bool bLineWiggleTest = (c == ON::Gsmooth_continuous && m_order >= 4);
+  bool bSpanIsLinear = false;
+
+  if ( t0 < t1 )
+  {
+    int ii = ki+m_order-2;
+    if ( t0 < m_knot[ii+1] && t1 > m_knot[ii+1] && (m_knot[ii+1]-t0) <= segtol && ii+2 < m_cv_count )
+    {
+      t0 = m_knot[ii+1];
+      ki = ON_NurbsSpanIndex(m_order,m_cv_count,m_knot,t0,1,*hint);
+    }
+    if ( bLineWiggleTest )
+      bSpanIsLinear = SpanIsLinear(ki,is_linear_min_length,is_linear_tolerance);
+    *hint = ki;
+    ki += m_order-2;
+    while (ki < m_cv_count-1 && m_knot[ki] <= t0) 
+      ki++;
+    if (ki >= m_cv_count-1) 
+    {
+      if ( input_c != c && t0 < m_knot[m_cv_count-1] && t1 >= m_knot[m_cv_count-1] )
+      {
+        // have to do locus end test
+        return ON_Curve::GetNextDiscontinuity( input_c, t0, t1, t, hint, dtype, 
+                                    cos_angle_tolerance, curvature_tolerance );
+      }
+      return false;
+    }
+  }
+  else
+  {
+    // (t0 > t1) work backwards
+    int ii = ki+m_order-2;
+    if ( t0 > m_knot[ii] && t1 < m_knot[ii] && (t0-m_knot[ii]) <= segtol && ii > m_order-2 )
+    {
+      t0 = m_knot[ii];
+      ki = ON_NurbsSpanIndex(m_order,m_cv_count,m_knot,t0,-1,*hint);
+    }
+    if ( bLineWiggleTest )
+      bSpanIsLinear = SpanIsLinear(ki,is_linear_min_length,is_linear_tolerance);
+    *hint = ki;
+    ki += m_order-2;
+    while (ki > m_order-2 && m_knot[ki] >= t0) 
+      ki--;
+    if (ki <= m_order-2) 
+    {
+      if ( input_c != c && t0 > m_knot[m_order-2] && t1 < m_knot[m_order-2] )
+      {
+        // have to do locus end test
+        return ON_Curve::GetNextDiscontinuity( input_c, t0, t1, t, hint, dtype, 
+                                    cos_angle_tolerance, curvature_tolerance );
+      }
+      return false;
+    }
+    delta_ki = -1;
+    delta = -delta;
+  }
+
+  double search_domain[2];
+  if ( t0 <= t1 )
+  {
+    search_domain[0] = t0;
+    search_domain[1] = t1;
+  }
+  else
+  {
+    search_domain[0] = t1;
+    search_domain[1] = t0;
+  }
+
+  while ( search_domain[0] < m_knot[ki] && m_knot[ki] < search_domain[1] ) 
+  {
+    if ( delta_ki > 0 )
+    {
+      // t0 < t1 case
+      while (ki < m_cv_count-1 && m_knot[ki] == m_knot[ki+1])
+        ki++;
+      if (ki >= m_cv_count-1) 
+        break;    
+    }
+    else
+    {
+      // t0 > t1 case
+      // 20 March 2003 Dale Lear:
+      //     Added to make t0 > t1 case work
+      while (ki > m_order-2 && m_knot[ki] == m_knot[ki-1])
+        ki--;
+      if (ki <= m_order-2) 
+        break;    
+    }
+
+    if (m_knot[ki] == m_knot[ki+delta]) 
+    {  
+      if ( ON::Cinfinity_continuous == c )
+      {
+        // Cinfinity_continuous is treated as asking for the next knot
+        *dtype = 3;
+        *t = m_knot[ki];
+        return true;
+      }
+
+      if ( bEv2ndDer ) {
+        Ev2Der( m_knot[ki], Pm, D1m, D2m, -1, hint );
+        Ev2Der( m_knot[ki], Pp, D1p, D2p,  1, hint );
+      }
+      else {
+        Ev1Der( m_knot[ki], Pm, D1m, -1, hint );
+        Ev1Der( m_knot[ki], Pp, D1p,  1, hint );
+      }
+
+      if ( bTestTangent )
+      {
+        if ( bTestKappa )
+        {
+          ON_EvCurvature( D1m, D2m, Tm, Km );
+          ON_EvCurvature( D1p, D2p, Tp, Kp );
+        }
+        else
+        {
+          Tm = D1m;
+          Tp = D1p;
+          Tm.Unitize();
+          Tp.Unitize();
+        }
+        
+        d = Tm*Tp;
+        if ( d < cos_angle_tolerance )
+        {
+          *dtype = 1;
+          *t = m_knot[ki];
+          return true;
+        }
+        
+        if ( bTestKappa )
+        {
+          bool bIsCurvatureContinuous = ( ON::Gsmooth_continuous == c )
+                  ? ON_IsGsmoothCurvatureContinuous( Km, Kp, cos_angle_tolerance, curvature_tolerance )
+                  : ON_IsG2CurvatureContinuous( Km, Kp, cos_angle_tolerance, curvature_tolerance );
+          if ( bIsCurvatureContinuous && ON::Gsmooth_continuous == c )
+          {
+            if ( ON_NurbsArcToArcTransitionIsNotGsmooth(*this,ki,cos_angle_tolerance,curvature_tolerance) )
+              bIsCurvatureContinuous = false;
+          }
+
+          if ( !bIsCurvatureContinuous )
+          {
+            // NOTE:
+            //   The test to enter this scope must exactly match
+            //   the one used in ON_PolyCurve::GetNextDiscontinuity()
+            //   and  ON_Curve::GetNextDiscontinuity().
+            *dtype = 2;
+            *t = m_knot[ki];
+            return true;
+          }
+          if ( bLineWiggleTest )
+          {
+            if ( bSpanIsLinear != (( delta_ki < 0 )
+                                  ? SpanIsLinear(ki - m_order + 1,is_linear_min_length,is_linear_tolerance)
+                                  : SpanIsLinear(ki - m_order + 2,is_linear_min_length,is_linear_tolerance))
+               )
+            {
+              // we are at a transition between a line segment and a wiggle
+              *dtype = 3;
+              *t = m_knot[ki];
+              return true;
+            }
+          }
+        }
+      }
+      else
+      {
+        if ( !(D1m-D1p).IsTiny(D1m.MaximumCoordinate()*ON_SQRT_EPSILON) )
+        {
+          *dtype = 1;
+          *t = m_knot[ki];
+          return true;
+        }
+        else if ( bEv2ndDer )
+        {
+          if ( !(D2m-D2p).IsTiny(D2m.MaximumCoordinate()*ON_SQRT_EPSILON) )
+          {
+            *dtype = 2;
+            *t = m_knot[ki];
+            return true;
+          }         
+        }
+      }
+    }
+    ki += delta_ki;
+  }
+
+  // 20 March 2003 Dale Lear:
+  //   If we get here, there are not discontinuities strictly between
+  //   t0 and t1.
+  bool rc = false;
+
+  if ( input_c != c )
+  {
+    // use base class for consistent start/end locus testing 
+    rc = ON_Curve::GetNextDiscontinuity( input_c, t0, t1, t, hint, dtype, 
+                                    cos_angle_tolerance, curvature_tolerance );
+  }
+
+  return rc;
+}
+
 bool ON_PolyCurve::GetNextDiscontinuity( 
         ON::continuity c,
         double t0,
@@ -1403,6 +1813,7 @@ bool ON_PolyCurve::GetNextDiscontinuity(
       crv = m_segment[segment_index];
       if ( !crv )
         break;
+      
       cdom = crv->Domain();
       sdom.Set( m_t[segment_index], m_t[segment_index+1] );
       if ( sdom == cdom )
@@ -1585,6 +1996,24 @@ bool ON_PolyCurve::GetNextDiscontinuity(
             bool bIsCurvatureContinuous = ( ON::Gsmooth_continuous == c )
               ? ON_IsGsmoothCurvatureContinuous(Km, Kp, cos_angle_tolerance, curvature_tolerance)
               : ON_IsG2CurvatureContinuous(Km, Kp, cos_angle_tolerance, curvature_tolerance);
+            if ( bIsCurvatureContinuous &&  ON::Gsmooth_continuous == c )
+            {
+              // This fixex http://dev.mcneel.com/bugtrack/?q=116273
+              const ON_ArcCurve* arc0 = ON_ArcCurve::Cast(crv);
+              if ( 0 != arc0 )
+              {
+                const ON_ArcCurve* arc1 = ON_ArcCurve::Cast(crv1);
+                if ( 0 != arc1 )
+                {
+                  // 6 November, 2012 Dale Lear
+                  //   Fix bug 116273
+                  //   by breaking when adjacent, tangent coplanar arcs
+                  //   are visually different.
+                  if ( ON_ArcToArcTransitionIsNotGsmooth(arc0->m_arc,arc1->m_arc, cos_angle_tolerance, curvature_tolerance ) )
+                    bIsCurvatureContinuous = false;
+                }
+              }
+            }
             if ( !bIsCurvatureContinuous )
             {
               // NOTE:
@@ -1768,12 +2197,158 @@ bool ON_PolyCurve::IsContinuous(
             {
               const double is_linear_tolerance = 1.0e-8;  
               const double is_linear_min_length = 1.0e-8;
-              bool b0 = seg0->LastSpanIsLinear(is_linear_min_length,is_linear_tolerance);
-              bool b1 = seg1->FirstSpanIsLinear(is_linear_min_length,is_linear_tolerance);
-              if ( b0 != b1 )
+              bool bIsLinear0 = seg0->LastSpanIsLinear(is_linear_min_length,is_linear_tolerance);
+              bool bIsLinear1 = seg1->FirstSpanIsLinear(is_linear_min_length,is_linear_tolerance);
+              if ( bIsLinear0 != bIsLinear1 )
                 rc = false;
+              else if ( !bIsLinear0 )
+              {
+                const ON_ArcCurve* arc0 = ON_ArcCurve::Cast(seg0);
+                const ON_ArcCurve* arc1 = ON_ArcCurve::Cast(seg1);
+                if ( 0 != arc0 && 0 != arc1 )
+                {
+                  if ( ON_ArcToArcTransitionIsNotGsmooth(arc0->m_arc,arc1->m_arc, cos_angle_tolerance, curvature_tolerance ) )
+                    rc = false;
+                }
+              }
             }
           }
+        }
+      }
+    }
+  }
+  return rc;
+}
+
+bool ON_NurbsCurve::IsContinuous(
+    ON::continuity desired_continuity,
+    double t, 
+    int* hint, // default = NULL,
+    double point_tolerance, // default=ON_ZERO_TOLERANCE
+    double d1_tolerance, // default==ON_ZERO_TOLERANCE
+    double d2_tolerance, // default==ON_ZERO_TOLERANCE
+    double cos_angle_tolerance, // default==ON_DEFAULT_ANGLE_TOLERANCE_COSINE
+    double curvature_tolerance  // default==ON_SQRT_EPSILON
+    ) const
+{
+  bool rc = true;
+
+  if ( m_order <= 2 )
+    desired_continuity = ON::PolylineContinuity(desired_continuity);
+
+  if ( t <= m_knot[m_order-2] || t >= m_knot[m_cv_count-1] )
+  {
+    // 20 March 2003 Dale Lear
+    //     Consistently handles locus case and out of domain case.
+    rc = ON_Curve::IsContinuous( 
+               desired_continuity, t, hint, 
+               point_tolerance, 
+               d1_tolerance, d2_tolerance, 
+               cos_angle_tolerance, 
+               curvature_tolerance );
+    return rc;
+  }
+
+  // "locus" and "parametric" are the same at this point.
+  desired_continuity = ON::ParametricContinuity(desired_continuity);
+
+  if ( m_order < m_cv_count && desired_continuity != ON::C0_continuous )
+  {
+    int tmp_hint;
+    if ( !hint )
+    {
+      tmp_hint = 0;
+      hint = &tmp_hint;
+    }
+    int ki = ON_NurbsSpanIndex(m_order,m_cv_count,m_knot,t,1,*hint);
+
+    {
+      // 20 March 2003 Dale Lear:
+      //     If t is very near interior m_t[] value, see if it
+      //     should be set to that value.  A bit or two of 
+      //     precision sometimes gets lost in proxy
+      //     domain to real curve domain conversions on the interior
+      //     of a curve domain.
+      int ii = ki+m_order-2;
+      double segtol = (fabs(m_knot[ii]) + fabs(m_knot[ii+1]) + fabs(m_knot[ii+1]-m_knot[ii]))*ON_SQRT_EPSILON;
+      if ( m_knot[ii]+segtol < m_knot[ii+1]-segtol )
+      {
+        if ( fabs(t-m_knot[ii]) <= segtol && ii > m_order-2 )
+        {
+          t = m_knot[ii];
+        }
+        else if ( fabs(t-m_knot[ii+1]) <= segtol && ii+2 < m_cv_count )
+        {
+          t = m_knot[ii+1];
+          ki = ON_NurbsSpanIndex(m_order,m_cv_count,m_knot,t,1,*hint);
+        }
+      }
+    }
+
+    if ( ki < 0 )
+      ki = 0;
+    *hint = ki;
+    ki += m_order-2;
+    if ( ki > m_order-2 && ki < m_cv_count-1 && m_knot[ki] == t  )
+    {
+      if ( ON::Cinfinity_continuous == desired_continuity )
+      {
+        // Cinfinity_continuous is a euphanisim for "at a knot"
+        return false;
+      }
+
+      // t = interior knot value - check for discontinuity
+      int knot_mult = ON_KnotMultiplicity( m_order, m_cv_count, m_knot, ki );
+
+      switch(desired_continuity)
+      {
+      case ON::C2_continuous: 
+        if ( m_order - knot_mult >= 3 )
+          return true;
+        break;
+      case ON::C1_continuous: 
+        if ( m_order - knot_mult >= 2 )
+          return true;
+        break;
+      case ON::G2_continuous: 
+      case ON::Gsmooth_continuous: 
+        if ( m_order - knot_mult >= 3 )
+          return true;
+        break;
+      case ON::G1_continuous: 
+        if ( m_order - knot_mult >= 2 )
+          return true;
+        break;
+      default:
+        // intentionally ignoring other ON::continuity enum values
+        break;
+      }
+ 
+      // need to evaluate at knot
+      rc = ON_Curve::IsContinuous( desired_continuity, t, hint, 
+                           point_tolerance, d1_tolerance, d2_tolerance, 
+                           cos_angle_tolerance, curvature_tolerance );
+
+      if ( rc 
+           && ON::Gsmooth_continuous == desired_continuity 
+           && knot_mult == m_order-1 
+           && ki > m_order-2
+           && ki < m_cv_count-1
+           )
+      {
+        // See if we are transitioning from linear to non-linear
+        const double is_linear_tolerance = 1.0e-8;  
+        const double is_linear_min_length = 1.0e-8;
+        bool bIsLinear0 = SpanIsLinear(ki - m_order + 2,is_linear_min_length,is_linear_tolerance);
+        bool bIsLinear1 = SpanIsLinear(ki - 2*m_order + 3,is_linear_min_length,is_linear_tolerance);
+        if ( bIsLinear0 != bIsLinear1 )
+        {
+          rc = false;
+        }
+        else if ( !bIsLinear0 && ON_NurbsArcToArcTransitionIsNotGsmooth(*this,ki,cos_angle_tolerance,curvature_tolerance) )
+        {
+          // aesthetic arc - arc discontinuity
+          rc = false;
         }
       }
     }

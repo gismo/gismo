@@ -766,8 +766,8 @@ int on_MultiByteToWideChar(
     )
 {
   // 14 March 2011 Dale Lear
-  //   It turns out that Windows WideCharToMultiByte does correctly
-  //   convert UTF-16 to UTF-8 in Windows 7 when the code page 
+  //   It turns out that Windows WideCharToMultiByte does not correctly
+  //   convert UTF-8 to UTF-16 in Windows 7 when the code page 
   //   is CP_ACP and calls with CP_UTF8 sometimes fail to do
   //   any conversion.  So, I wrote ON_ConvertUTF8ToWideChar()
   //   and opennurbs will use ON_ConvertUTF8ToWideChar to get 
@@ -776,7 +776,7 @@ int on_MultiByteToWideChar(
   unsigned int error_mask = 0xFFFFFFFF;
   ON__UINT32 error_code_point = 0xFFFD;
   const char* p1 = 0;
-  int count = ON_ConvertUTF8ToWideChar(lpMultiByteStr,cchMultiByte,lpWideCharStr,cchWideChar,
+  int count = ON_ConvertUTF8ToWideChar(false,lpMultiByteStr,cchMultiByte,lpWideCharStr,cchWideChar,
                                        &error_status,error_mask,error_code_point,&p1);
   if ( 0 != error_status )
   {

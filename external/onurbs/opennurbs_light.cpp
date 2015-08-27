@@ -366,7 +366,7 @@ ON::light_style ON_Light::Style() const
   return m_style;
 }
 
-ON_BOOL32 ON_Light::IsPointLight() const
+const ON_BOOL32 ON_Light::IsPointLight() const
 {
   ON_BOOL32 rc;
   switch(m_style)
@@ -383,7 +383,7 @@ ON_BOOL32 ON_Light::IsPointLight() const
   return rc;
 }
 
-ON_BOOL32 ON_Light::IsDirectionalLight() const
+const ON_BOOL32 ON_Light::IsDirectionalLight() const
 {
   ON_BOOL32 rc;
   switch(m_style)
@@ -400,7 +400,7 @@ ON_BOOL32 ON_Light::IsDirectionalLight() const
   return rc;
 }
 
-ON_BOOL32 ON_Light::IsSpotLight() const
+const ON_BOOL32 ON_Light::IsSpotLight() const
 {
   ON_BOOL32 rc;
   switch(m_style)
@@ -417,7 +417,7 @@ ON_BOOL32 ON_Light::IsSpotLight() const
   return rc;
 }
 
-ON_BOOL32 ON_Light::IsLinearLight() const
+const ON_BOOL32 ON_Light::IsLinearLight() const
 {
   ON_BOOL32 rc;
   switch(m_style)
@@ -434,7 +434,7 @@ ON_BOOL32 ON_Light::IsLinearLight() const
   return rc;
 }
 
-ON_BOOL32 ON_Light::IsRectangularLight() const
+const ON_BOOL32 ON_Light::IsRectangularLight() const
 {
   ON_BOOL32 rc;
   switch(m_style)

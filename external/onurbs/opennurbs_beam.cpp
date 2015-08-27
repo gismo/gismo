@@ -1192,6 +1192,18 @@ static bool ON_ExtrusionIsNotValid()
   return ON_IsNotValid(); // good place for a breakpoint
 }
 
+void ON_Extrusion::DestroyRuntimeCache( bool bDelete )
+{
+  if ( 0 != m_profile )
+  {
+    // profile curve clean up
+    m_profile->DestroyRuntimeCache(bDelete);
+  }
+
+  // surface clean up
+  ON_Surface::DestroyRuntimeCache(bDelete);
+}
+
 ON_BOOL32 ON_Extrusion::IsValid( ON_TextLog* text_log ) const
 {
   // check m_profile
@@ -1326,35 +1338,59 @@ void ON_Extrusion::Dump( ON_TextLog& text_log ) const
   text_log.Print("ON_Extrusion: \n");
   {
     text_log.PushIndent();
-  text_log.Print("Path: ");
-  text_log.Print(m_path.PointAt(m_t[0]));
-  text_log.Print(" ");
-  text_log.Print(m_path.PointAt(m_t[1]));
-  text_log.Print("\n");
-  text_log.Print("Up: ");
-  text_log.Print(m_up);
-  text_log.Print("\n");
-  text_log.Print("m_bCap[] = (%d, %d)\n",m_bCap[0],m_bCap[1]);
-  text_log.Print("m_bHaveN[] = (%d, %d)\n",m_bHaveN[0],m_bHaveN[1]);
-  text_log.Print("m_N[] = (");
-  text_log.Print(m_N[0]);
-  text_log.Print(", ");
-  text_log.Print(m_N[1]);
-  text_log.Print("\n");
-  text_log.Print("m_path_domain = (%.17g, %.17g)\n",m_path_domain[0],m_path_domain[1]);
-  text_log.Print("m_bTransposed = %d\n",m_bTransposed);
-  text_log.Print("Profile Count: %d\n",m_profile_count);
-  text_log.Print("Profile:\n");
+    text_log.Print("Path: ");
+    text_log.Print(m_path.PointAt(m_t[0]));
+    text_log.Print(" ");
+    text_log.Print(m_path.PointAt(m_t[1]));
+    text_log.Print("\n");
+    text_log.Print("Up: ");
+    text_log.Print(m_up);
+    text_log.Print("\n");
+    text_log.Print("m_bCap[] = (%d, %d)\n",m_bCap[0],m_bCap[1]);
+    text_log.Print("m_bHaveN[] = (%d, %d)\n",m_bHaveN[0],m_bHaveN[1]);
+    text_log.Print("m_N[] = (");
+    text_log.Print(m_N[0]);
+    text_log.Print(", ");
+    text_log.Print(m_N[1]);
+    text_log.Print("\n");
+    text_log.Print("m_path_domain = (%.17g, %.17g)\n",m_path_domain[0],m_path_domain[1]);
+    text_log.Print("m_bTransposed = %d\n",m_bTransposed);
+    text_log.Print("Profile Count: %d\n",m_profile_count);
+    text_log.Print("Profile:\n");
     {
-  text_log.PushIndent();
-  if ( !m_profile )
-    text_log.Print("NULL");
-  else
-    m_profile->Dump(text_log);
-  text_log.PopIndent();
+      text_log.PushIndent();
+      if ( !m_profile )
+        text_log.Print("NULL");
+      else
+        m_profile->Dump(text_log);
+      text_log.PopIndent();
     }
+
+    {
+      ON::mesh_type mt_list[3] = {ON::render_mesh,ON::analysis_mesh,ON::preview_mesh};
+      const char* mt_name[sizeof(mt_list)/sizeof(mt_list[0])] = {"render mesh","analysis mesh","preview mesh"};
+      const size_t mt_count = sizeof(mt_list)/sizeof(mt_list[0]);
+      for ( size_t mesh_index = 0; mesh_index < mt_count; mesh_index++ )
+      {
+        const ON_Mesh* mesh = this->Mesh(mt_list[mesh_index]);
+        if ( 0 == mesh )
+          continue;
+        const char* mp_style = "Custom";
+        const ON_MeshParameters* mp = mesh->MeshParameters();
+        if ( mp )
+        {
+          if ( 0 == mp->CompareGeometrySettings(ON_MeshParameters::FastRenderMesh) )
+            mp_style = "Fast";
+          else if ( 0 == mp->CompareGeometrySettings(ON_MeshParameters::QualityRenderMesh) )
+            mp_style = "Quality";
+        }
+        text_log.Print("%s %s mesh: %d polygons\n",mp_style,mt_name[mesh_index],mesh->FaceCount());
+      }
+    }
+
     text_log.PopIndent();
   }
+
   return;
 }
 
@@ -2566,25 +2602,40 @@ ON_Brep* ON_Extrusion::BrepForm( ON_Brep* brep, bool bSmoothFaces ) const
   ON_SimpleArray<const ON_Curve*> profile_curves;
   const int profile_count = GetProfileCurves(profile_curves );
   if ( profile_count < 1 || profile_count != profile_curves.Count() )
+  {
+    ON_ERROR("extrusion has no profile curve.");
     return 0;
+  }
 
   // get end cap transformation information
 
   const ON_3dVector T = m_path.Tangent();
   if ( !T.IsUnitVector() )
+  {
+    ON_ERROR("extrusion direction is zero.");
     return 0;
+  }
 
   ON_Xform xform0(1.0), xform1(1.0), scale0(1.0), scale1(1.0), rot0(1.0), rot1(1.0);
   if ( !ON_GetEndCapTransformation(m_path.PointAt(m_t.m_t[0]),T,m_up,m_bHaveN[0]?&m_N[0]:0,xform0,&scale0,&rot0) )
+  {
+    ON_ERROR("Unable to get bottom cap location.");
     return 0;
+  }
 
   if ( !ON_GetEndCapTransformation(m_path.PointAt(m_t.m_t[1]),T,m_up,m_bHaveN[1]?&m_N[1]:0,xform1,&scale1,&rot1) )
+  {
+    ON_ERROR("Unable to get top cap location.");
     return 0;
+  }
 
   ON_Brep* newbrep = brep ? brep : ON_Brep::New();
 
   if ( 0 == newbrep )
+  {
+    ON_ERROR("Unable to get allocate brep.");
     return 0;
+  }
 
   int is_capped = IsCapped();
   if ( is_capped < 0 || is_capped > 3 )
@@ -2626,6 +2677,7 @@ ON_Brep* ON_Extrusion::BrepForm( ON_Brep* brep, bool bSmoothFaces ) const
     const ON_Curve* profile_segment = profile_curves[profile_index];
     if ( 0 == profile_segment )
     {
+      ON_ERROR("null profile segment.");
       if (newbrep != brep )
         delete newbrep;
       return 0;
@@ -2638,6 +2690,7 @@ ON_Brep* ON_Extrusion::BrepForm( ON_Brep* brep, bool bSmoothFaces ) const
       ON_Curve* newprofile = profile_segment->DuplicateCurve();
       if ( 0 == newprofile )
       {
+        ON_ERROR("unable to duplicate profile segment.");
         if (newbrep != brep )
           delete newbrep;
         return 0;
@@ -2669,6 +2722,7 @@ ON_Brep* ON_Extrusion::BrepForm( ON_Brep* brep, bool bSmoothFaces ) const
              || !(t0 < t1)
            )
         {
+          ON_ERROR("Corrupt profile domain.");
           delete newprofile;
           if (newbrep != brep )
             delete newbrep;
@@ -2710,6 +2764,7 @@ ON_Brep* ON_Extrusion::BrepForm( ON_Brep* brep, bool bSmoothFaces ) const
 
     if ( fi1 <= fi0 )
     {
+      ON_ERROR("Corrupt extrusion cannot produce brep form.");
       if (newbrep != brep )
         delete newbrep;
       return 0;
@@ -2944,22 +2999,30 @@ ON_Brep* ON_Extrusion::BrepForm( ON_Brep* brep, bool bSmoothFaces ) const
     break;
   }
 
-  if ( newbrep )
+  if ( 0 != newbrep )
   {
+    if (newbrep->m_F.Count() <= 0 || newbrep->m_E.Count() <= 2) 
+    {
+      ON_ERROR("corrupt extrusion cannot produce a brep form.");
+      if (newbrep != brep )
+        delete newbrep;
+      return 0;
+    }
+
     // set a tight bounding box
     ((CMyBrepIsSolidSetter*)newbrep)->SetBBox(*this);
     newbrep->SetTrimBoundingBoxes(true);
 
     if ( bSetEdgeTolerances )
       newbrep->SetEdgeTolerances(true);
-  }
 
 #if defined(ON_DEBUG)
-  if ( !newbrep->IsValid() )
-  {
-    newbrep->IsValid(); // breakpoint here
-  }
+    if ( !newbrep->IsValid() )
+    {
+      newbrep->IsValid(); // breakpoint here
+    }
 #endif
+  }
 
   return newbrep;
 }
@@ -4434,86 +4497,651 @@ ON_Extrusion* ON_Extrusion::CreateFrom3dCurve(
     bool bCap,
     ON_Extrusion* extrusion
     )
+{
+  if ( 0 != extrusion )
+    extrusion->Destroy();
+
+  if ( ON_IsValid(height) && 0.0 == height )
+    return 0;
+
+  ON_Interval z(0.0,height);
+  if ( z.IsDecreasing() )
+    z.Swap();
+  if ( !z.IsIncreasing() )
+    return 0;
+    
+  if ( !curve.IsValid() )
+    return 0;
+
+  ON_Plane curve_plane;
+  if ( 0 == plane )
   {
-    if ( 0 != extrusion )
+    if ( !curve.IsPlanar(&curve_plane) )
+      return 0;
+    plane = &curve_plane;
+  }
+
+  if ( !plane->IsValid() )
+    return 0;
+
+  ON_Xform xform2d;
+  xform2d.ChangeBasis(ON_Plane::World_xy,*plane);
+
+  ON_Curve* curve2d = curve.DuplicateCurve();
+  if ( 0 == curve2d )
+    return 0;
+
+  ON_Extrusion* result = 0;
+
+  for (;;)
+  {
+    if ( !curve2d->Transform(xform2d) )
+      break;
+    curve2d->ChangeDimension(2);
+
+    if ( 0 == extrusion )
+      result = new ON_Extrusion();
+    else
+      result = extrusion;
+
+    if ( !result->SetPathAndUp(
+                plane->PointAt(0.0,0.0,z[0]),
+                plane->PointAt(0.0,0.0,z[1]),
+                plane->yaxis
+                ) )
+      break;
+
+    if ( !result->SetOuterProfile(curve2d,bCap) )
+      break;
+
+    if ( !result->IsValid() )
+      break;
+
+    // success
+    curve2d = 0;
+
+    break;
+  }
+
+  if ( 0 != curve2d )
+  {
+    // failure
+    delete curve2d;
+    curve2d = 0;
+      
+    if ( 0 != result && result != extrusion )
+      delete result;
+
+    if ( extrusion )
       extrusion->Destroy();
 
-    if ( ON_IsValid(height) && 0.0 == height )
-      return 0;
-
-    ON_Interval z(0.0,height);
-    if ( z.IsDecreasing() )
-      z.Swap();
-    if ( !z.IsIncreasing() )
-      return 0;
-    
-    if ( !curve.IsValid() )
-      return 0;
-
-    ON_Plane curve_plane;
-    if ( 0 == plane )
-    {
-      if ( !curve.IsPlanar(&curve_plane) )
-        return 0;
-      plane = &curve_plane;
-    }
-
-    if ( !plane->IsValid() )
-      return 0;
-
-    ON_Xform xform2d;
-    xform2d.ChangeBasis(ON_Plane::World_xy,*plane);
-
-    ON_Curve* curve2d = curve.DuplicateCurve();
-    if ( 0 == curve2d )
-      return 0;
-
-    ON_Extrusion* result = 0;
-
-    for (;;)
-    {
-      if ( !curve2d->Transform(xform2d) )
-        break;
-      curve2d->ChangeDimension(2);
-
-      if ( 0 == extrusion )
-        result = new ON_Extrusion();
-      else
-        result = extrusion;
-
-      if ( !result->SetPathAndUp(
-                  plane->PointAt(0.0,0.0,z[0]),
-                  plane->PointAt(0.0,0.0,z[1]),
-                  plane->yaxis
-                  ) )
-        break;
-
-      if ( !result->SetOuterProfile(curve2d,bCap) )
-        break;
-
-      if ( !result->IsValid() )
-        break;
-
-      // success
-      curve2d = 0;
-
-      break;
-    }
-
-    if ( 0 != curve2d )
-    {
-      // failure
-      delete curve2d;
-      curve2d = 0;
-      
-      if ( 0 != result && result != extrusion )
-        delete result;
-
-      if ( extrusion )
-        extrusion->Destroy();
-
-      result = 0;
-    }
-
-    return result;
+    result = 0;
   }
+
+  return result;
+}
+
+
+class ON_DisplayMesh
+{
+private:
+  ON_DisplayMesh();
+  ~ON_DisplayMesh();
+  ON_DisplayMesh(const ON_DisplayMesh&);
+  ON_DisplayMesh& operator=(const ON_DisplayMesh&);
+
+  /*
+  Description:
+    Use SetMesh(mesh) to set the fields in this class.
+  Parameters:
+    mesh - [in]
+      If mesh is null, the current settings are deleted.
+      Otherwise, mesh must be on the heap and this class
+      will manage it and delete it when appropriate.
+  Remarks:
+    The CRhExtrusionDisplayMesh class will delete the mesh
+    when it is no longer needed.
+  */
+  void SetMesh(
+    ON_Mesh* mesh,
+    bool bManageMesh,
+    bool bEnableSinglePrecision
+    );
+
+  // You must use SetMesh() to set the value of m_mesh.
+  // Do not change the value of m_mesh directly.
+  // Do not save the value of m_mesh in an ordinary pointer
+  // The mesh is points to may be deleted.
+  const ON_Mesh* m_mesh;
+
+  /*
+  Returns:
+    The serial number for this display mesh information
+    This number is unique for each display mesh setting
+    and is intended to be used to determine when cached
+    values, like those in a vertex object buffer (VBO),
+    need to be updated.
+  */
+  unsigned int DisplayMeshSerialNumber() const;
+
+  /*
+  Parameters:
+    model_view_xform - [in/out]
+      If model_view_xform is not null, its input value should be the
+      current "MODELVIEW" transform and its output value will be
+      the transformation to use with the returned vertices.
+    
+    mesh_V - [out]
+      If mesh_V is not null, then *mesh_V is set to an array of 
+      m_mesh.m_V.Count() vertices to use for drawing the mesh.
+
+  Returns:
+    0:
+       no mesh exists
+    1:
+       (*mesh_V) set to m_mesh.m_V[]
+       Tf model_view_xform is not null, it is not modified.
+       If mesh_V is not null, it is set to m_mesh->m_V.Array().
+    2: 
+       (*mesh_V) set to m_display_F[].
+       Tf model_view_xform is not null, it is multipied on the left
+       by m_display_F_xform.
+       If mesh_V is not null, it is set to m_display_F.Array().
+  */
+  int GetMeshDisplayVertices( ON_Xform* model_view_xform, ON_3fPoint const** mesh_V ) const;
+
+private:
+  // If m_bUse_display_F is true, then single
+  // precision display display code, like current
+  // OpenGL and Direct3D implementations, should 
+  // display the mesh triangles by
+  //   1.) Changing the "MODELVIEW" transform to
+  //       m_display_F_xform*current_model_xform;
+  //   2.) Draw the triangles using m_display_F in place of m_mesh->m_V[]
+  //   3.) Restore the "MODELVIEW" transform.
+  bool m_bUse_display_F;
+  ON_Xform m_display_F_xform;
+  ON_SimpleArray< ON_3fPoint > m_display_F;
+  unsigned int m_display_mesh_sn;
+};
+
+
+class ON_DisplayMeshCache : public ON_UserData
+{
+  ON_OBJECT_DECLARE(ON_DisplayMeshCache);
+public:
+  ON_DisplayMeshCache();
+  ~ON_DisplayMeshCache();
+  ON_DisplayMeshCache(const ON_DisplayMeshCache&);
+  ON_DisplayMeshCache& operator=(const ON_DisplayMeshCache&);
+
+  static ON_DisplayMeshCache* MeshCache(
+    const ON_Object*,
+    bool bCreate 
+    );
+
+  /*
+  Description:
+    Attach a mesh.
+  Parameters:
+    mt - [in]
+      type of mesh that is being attached.
+    mesh - [in]
+      * mesh to attach.  
+      * mesh must be on the heap because ~ON_Extrusion() 
+        will delete it.
+      * if there is already of mesh of the prescribed type,
+        it will be deleted.
+      * if mesh is null, any existing mesh is deleted and
+        nothing is attached.
+  */
+  static bool SetMesh( 
+    const ON_Object*, 
+    ON::mesh_type,
+    ON_Mesh* 
+    );
+
+  /*
+  Description:
+    Get a mesh.
+  Parameters:
+    mt - [in]
+      type of mesh to get.
+  Returns:
+    A pointer to a mesh on the ON_Extusion object.  
+    This mesh will be deleted by ~ON_Extrusion().
+    If a mesh of the requested type is not available,
+    then null is returned.
+  */
+  static const ON_Mesh* Mesh( 
+    const ON_Object*,
+    ON::mesh_type
+    );
+
+  /*
+  Description:
+    Remove a mesh.
+  Parameters:
+    mt - [in]
+      type of mesh to get.
+  Returns:
+    A pointer to a mesh on the ON_Extusion object.  
+    If a mesh of the requested type is not available,
+    then null is returned.
+    The caller is responsible for deleteing the returned mesh.
+  */
+  static ON_Mesh* RemoveMesh(
+    const ON_Object*,
+    ON::mesh_type 
+    );
+
+  /*
+  Description:
+    Destroy a mesh.
+  Parameters:
+    mesh_type - [in] type of mesh to destroy
+    bDeleteMesh - [in] if true, cached mesh is deleted.
+      If false, pointer to cached mesh is just set to null.
+  */
+  static void DestroyMesh( 
+    const ON_Object*, 
+    ON::mesh_type, 
+    bool bDeleteMesh = true
+    );
+
+  // override virtual ON_Object::Dump function
+  void Dump( 
+    ON_TextLog& text_log
+    ) const;
+
+  // override virtual ON_Object::SizeOf function
+  unsigned int SizeOf() const;
+
+  // override virtual ON_Object::DataCRC function
+  ON__UINT32 DataCRC(ON__UINT32 current_remainder) const;
+
+  // override virtual ON_Object::Write function
+  ON_BOOL32 Write(ON_BinaryArchive& binary_archive) const;
+
+  // override virtual ON_Object::Read function
+  ON_BOOL32 Read(ON_BinaryArchive& binary_archive);
+
+  //virtual 
+  ON_BOOL32 GetDescription( ON_wString& description );
+
+  //virtual 
+  ON_BOOL32 Archive() const; 
+
+  //virtual 
+  ON_BOOL32 Transform( const ON_Xform& ); 
+
+private:
+  void ConstructHelper();
+  void DestroyHelper();
+  void CopyHelper(const ON_DisplayMeshCache&);
+  bool IsEmpty() const
+  {
+    return (0 == m_mesh[0] && 0 == m_mesh[1] && 0 == m_mesh[2]);
+  }
+  static ON_2dex MeshIndexDomain( ON::mesh_type );
+  ON_Mesh* m_mesh[3]; // m_render_mesh,m_analysis_mesh,m_preview_mesh;
+};
+
+ON_OBJECT_IMPLEMENT(ON_DisplayMeshCache,ON_UserData,"A8130A3E-E4F3-4CB0-BB8A-F10A473912D0");
+
+ON_DisplayMeshCache::ON_DisplayMeshCache()
+  : ON_UserData()
+{
+  ConstructHelper();
+  m_userdata_uuid = ON_DisplayMeshCache::m_ON_DisplayMeshCache_class_id.Uuid();
+  m_application_uuid = ON_opennurbs5_id; // opennurbs.dll reads/writes this userdata
+                                         // The id must be the version 5 id because
+                                         // V6 SaveAs V5 needs to work.
+  m_userdata_copycount = 1;
+}
+
+ON_DisplayMeshCache::~ON_DisplayMeshCache()
+{
+  DestroyHelper();
+}
+
+ON_DisplayMeshCache::ON_DisplayMeshCache(const ON_DisplayMeshCache& src)
+  : ON_UserData(src)
+{
+  ConstructHelper();
+  m_userdata_uuid = ON_DisplayMeshCache::m_ON_DisplayMeshCache_class_id.Uuid();
+  m_application_uuid = ON_opennurbs5_id; // opennurbs.dll reads/writes this userdata
+                                         // The id must be the version 5 id because
+                                         // V6 SaveAs V5 needs to work.
+  CopyHelper(src);
+}
+
+ON_DisplayMeshCache& ON_DisplayMeshCache::operator=(const ON_DisplayMeshCache& src)
+{
+  if ( this != &src )
+  {
+    DestroyHelper();
+    ON_UserData::operator=(src);
+    CopyHelper(src);
+  }
+  return *this;
+}
+
+void ON_DisplayMeshCache::ConstructHelper()
+{
+  for(size_t i = 0; i < sizeof(m_mesh)/sizeof(m_mesh[0]); i++ )
+  {
+    m_mesh[i] = 0;
+  }
+}
+
+void ON_DisplayMeshCache::CopyHelper(const ON_DisplayMeshCache& src)
+{
+  for(size_t i = 0; i < sizeof(m_mesh)/sizeof(m_mesh[0]); i++ )
+  {
+    if ( 0 != src.m_mesh[i] )
+      m_mesh[i] = new ON_Mesh(*src.m_mesh[i]);
+  }
+}
+
+void ON_DisplayMeshCache::DestroyHelper()
+{
+  for(size_t i = 0; i < sizeof(m_mesh)/sizeof(m_mesh[0]); i++ )
+  {
+    if ( 0 != m_mesh[i] )
+    {
+      delete m_mesh[i];
+      m_mesh[i] = 0;
+    }
+  }
+}
+
+
+// override virtual ON_Object::Dump function
+void ON_DisplayMeshCache::Dump( 
+  ON_TextLog& text_log
+  ) const
+{
+  text_log.Print("ON_DisplayMeshCache user data\n");
+  text_log.PushIndent();
+  if ( IsEmpty() )
+  {
+    text_log.Print("no cached meshes\n");
+  }
+  else
+  {
+    for(size_t i = 0; i < sizeof(m_mesh)/sizeof(m_mesh[0]); i++ )
+    {
+      if ( 0 == m_mesh[i] )
+      {
+        text_log.Print("m_mesh[%d] = null\n",i);
+      }
+      else
+      {
+        text_log.Print("m_mesh[%d] = \n",i);
+        text_log.PushIndent();
+        m_mesh[i]->Dump(text_log);
+        text_log.PopIndent();
+      }
+    }
+  }
+  text_log.PopIndent();
+}
+
+// override virtual ON_Object::SizeOf function
+unsigned int ON_DisplayMeshCache::SizeOf() const
+{
+  size_t sz = ON_UserData::SizeOf();
+
+  sz += sizeof(*this) - sizeof(ON_UserData);
+
+  for(size_t i = 0; i < sizeof(m_mesh)/sizeof(m_mesh[0]); i++ )
+  {
+    if ( 0 != m_mesh[i] )
+    {
+      sz += m_mesh[i]->SizeOf();
+    }
+  }
+
+  return (unsigned int)sz;
+}
+
+// override virtual ON_Object::DataCRC function
+ON__UINT32 ON_DisplayMeshCache::DataCRC(ON__UINT32 current_remainder) const
+{
+  for(size_t i = 0; i < sizeof(m_mesh)/sizeof(m_mesh[0]); i++ )
+  {
+    if ( 0 != m_mesh[i] )
+    {
+      current_remainder = m_mesh[i]->DataCRC(current_remainder);
+    }
+  }
+
+  return current_remainder;
+}
+
+// override virtual ON_Object::Write function
+ON_BOOL32 ON_DisplayMeshCache::Write(ON_BinaryArchive& binary_archive) const
+{
+  ON_BOOL32 rc = true;
+  bool bSaveMeshes = binary_archive.Save3dmRenderMeshes();
+  for(size_t i = 0; i < sizeof(m_mesh)/sizeof(m_mesh[0]) && rc; i++ )
+  {
+    const ON_Mesh* mesh = bSaveMeshes ? m_mesh[i] : 0;
+    rc = binary_archive.WriteObject(mesh);
+  }
+  return rc;
+}
+
+// override virtual ON_Object::Read function
+ON_BOOL32 ON_DisplayMeshCache::Read(ON_BinaryArchive& binary_archive)
+{
+  DestroyHelper();
+  ON_BOOL32 rc = true;
+  
+  for(size_t i = 0; i < sizeof(m_mesh)/sizeof(m_mesh[0]) && rc; i++ )
+  {
+    ON_Object* p = 0;
+    rc = binary_archive.ReadObject(&p);
+    if ( rc )
+      m_mesh[i] = ON_Mesh::Cast(p);
+    if ( 0 != p && 0 == m_mesh[i] )
+    {
+      delete p;
+      rc = false;
+    }
+  }
+
+  return rc;
+}
+
+//virtual 
+ON_BOOL32 ON_DisplayMeshCache::GetDescription( ON_wString& description )
+{
+  description.Format("Cached meshes");
+  return true;
+}
+
+//virtual 
+ON_BOOL32 ON_DisplayMeshCache::Archive() const
+{
+  return this->IsEmpty() ? false : true;
+}
+
+//virtual 
+ON_BOOL32 ON_DisplayMeshCache::Transform( const ON_Xform& xform )
+{
+  ON_BOOL32 rc = true;
+  for(size_t i = 0; i < sizeof(m_mesh)/sizeof(m_mesh[0]) && rc; i++ )
+  {
+    if ( 0 != m_mesh[i] )
+      rc = m_mesh[i]->Transform(xform);
+  }
+  return rc;
+}
+
+
+
+ON_DisplayMeshCache* ON_DisplayMeshCache::MeshCache(const ON_Object* p, bool bCreate)
+{
+  if ( 0 == p )
+    return 0;
+
+  ON_DisplayMeshCache* mc = ON_DisplayMeshCache::Cast( p->GetUserData(ON_DisplayMeshCache::m_ON_DisplayMeshCache_class_id.Uuid()) );
+  if ( 0 == mc && bCreate )
+  {
+    mc = new ON_DisplayMeshCache();
+    if ( false == const_cast<ON_Object*>(p)->AttachUserData(mc) )
+    {
+      delete mc;
+      mc = 0;
+    }
+  }
+
+  return mc;
+}
+
+ON_2dex ON_DisplayMeshCache::MeshIndexDomain( ON::mesh_type mt )
+{
+  ON_2dex index_domain;
+  switch(mt)
+  {
+  case ON::render_mesh:
+    index_domain.i = 0;
+    index_domain.j = 1;
+    break;
+  case ON::analysis_mesh:
+    index_domain.i = 1;
+    index_domain.j = 2;
+    break;
+  case ON::preview_mesh:
+    index_domain.i = 2;
+    index_domain.j = 3;
+    break;
+  case ON::default_mesh:
+  case ON::any_mesh:
+    index_domain.i = 0;
+    index_domain.j = 3;
+    break;
+  default:
+    index_domain.i = 0;
+    index_domain.j = 0;
+    break;
+  }
+  return index_domain;
+}
+
+bool ON_DisplayMeshCache::SetMesh( const ON_Object* p, ON::mesh_type mt, ON_Mesh* mesh )
+{
+  ON_2dex index_domain = ON_DisplayMeshCache::MeshIndexDomain(mt);
+
+  if ( 0 != mesh && index_domain.i+1 != index_domain.j )
+    return false;
+
+  ON_DisplayMeshCache* mc = ON_DisplayMeshCache::MeshCache(p,0 != mesh);
+
+  if ( 0 == mc )
+    return (0 == mesh);
+
+  if ( mesh != mc->m_mesh[index_domain.i] )
+  {
+    delete mc->m_mesh[index_domain.i];
+    mc->m_mesh[index_domain.i] = mesh;
+  }
+  
+  if ( mc->IsEmpty() )
+    delete mc;
+
+  return true;
+}
+
+const ON_Mesh* ON_DisplayMeshCache::Mesh( const ON_Object* p, ON::mesh_type mt )
+{
+  ON_2dex index_domain = ON_DisplayMeshCache::MeshIndexDomain(mt);
+
+  if ( 0 == index_domain.j )
+    return 0;
+
+  ON_DisplayMeshCache* mc = ON_DisplayMeshCache::MeshCache(p,false);
+  if ( 0 == mc )
+    return 0;
+
+  for ( int i = index_domain.i; i < index_domain.j; i++ )
+  {
+    if ( 0 != mc->m_mesh[i] )
+      return mc->m_mesh[i];
+  }
+
+  return 0;
+}
+
+ON_Mesh* ON_DisplayMeshCache::RemoveMesh( const ON_Object* p, ON::mesh_type mt )
+{
+  ON_2dex index_domain = ON_DisplayMeshCache::MeshIndexDomain(mt);
+
+  if ( index_domain.i+1 != index_domain.j )
+    return 0;
+
+  ON_DisplayMeshCache* mc = ON_DisplayMeshCache::MeshCache(p,false);
+  if ( 0 == mc )
+    return 0;
+
+  for ( int i = index_domain.i; i < index_domain.j; i++ )
+  {
+    if ( 0 != mc->m_mesh[i] )
+    {
+      ON_Mesh* mesh = mc->m_mesh[i];
+      mc->m_mesh[i] = 0;
+      if ( mc->IsEmpty() )
+        delete mc;
+      return mesh;
+    }
+  }
+
+  return 0;
+}
+
+void ON_DisplayMeshCache::DestroyMesh( const ON_Object* p, ON::mesh_type mt, bool bDeleteMesh )
+{
+  ON_2dex index_domain = ON_DisplayMeshCache::MeshIndexDomain(mt);
+
+  if ( 0 == index_domain.j )
+    return;
+
+  ON_DisplayMeshCache* mc = ON_DisplayMeshCache::MeshCache(p,false);
+  if ( 0 == mc )
+    return;
+
+  for ( int i = index_domain.i; i < index_domain.j; i++ )
+  {
+    if ( 0 != mc->m_mesh[i] )
+    {
+      if ( bDeleteMesh )
+        delete mc->m_mesh[i];
+      mc->m_mesh[i] = 0;
+    }
+  }
+
+  if ( mc->IsEmpty() )
+    delete mc;
+}
+
+bool ON_Extrusion::SetMesh( ON::mesh_type mt, ON_Mesh* mesh )
+{
+  return ON_DisplayMeshCache::SetMesh(this,mt,mesh);
+}
+
+const ON_Mesh* ON_Extrusion::Mesh( ON::mesh_type mt ) const
+{
+  return ON_DisplayMeshCache::Mesh(this,mt);
+}
+
+ON_Mesh* ON_Extrusion::RemoveMesh( ON::mesh_type mt )
+{
+  return ON_DisplayMeshCache::RemoveMesh(this,mt);
+}
+
+void ON_Extrusion::DestroyMesh( ON::mesh_type mt, bool bDeleteMesh )
+{
+  ON_DisplayMeshCache::DestroyMesh(this,mt,bDeleteMesh);
+}

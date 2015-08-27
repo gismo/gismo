@@ -114,7 +114,7 @@ static int c2w( int c_count,
       unsigned int error_mask = 0xFFFFFFFF;
       ON__UINT32 error_code_point = 0xFFFD;
       const char* p1 = 0;
-      rc = ON_ConvertUTF8ToWideChar(c,c_count,w,w_count,&error_status,error_mask,error_code_point,&p1);
+      rc = ON_ConvertUTF8ToWideChar(false,c,c_count,w,w_count,&error_status,error_mask,error_code_point,&p1);
       if ( rc > 0 && rc <= w_count )
         w[rc] = 0;
       else {

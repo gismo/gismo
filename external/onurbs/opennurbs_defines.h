@@ -298,6 +298,7 @@ ON_END_EXTERNC
 // so that K.IsTiny() = true implies |K| <= ON_ZERO_CURVATURE_TOLERANCE
 */
 #define ON_ZERO_CURVATURE_TOLERANCE 1.0e-8
+#define ON_RELATIVE_CURVATURE_TOLERANCE 0.05
 
 /* default value for angle tolerances = 1 degree */
 #define ON_DEFAULT_ANGLE_TOLERANCE (ON_PI/180.0)

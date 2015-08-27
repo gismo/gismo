@@ -63,6 +63,22 @@ public:
     ON_3dPoint box_corners[8] // returns list of 8 corner points
     ) const;
 
+  /*
+  Parameters:
+    edges[] - out
+      12 edge lines. If the bounding box has no height, width or depth,
+      then the corresponding edges will have the same "from" and "to"
+      points.
+  Returns:
+    If the bounding box is valid, then true is returned and
+    12 line segments, some possibly a single point, are returned.
+    Otherwise false is returned and 12 line segments with "from"
+    and "to" points set to ON_3dPoint::UnsetPoint are returned.
+  */
+  bool GetEdges( 
+    ON_Line edges[12]  // returns list of 12 edge segments
+    ) const;
+
   bool IsValid() const; // empty boxes are not valid
   
   void Dump(class ON_TextLog&) const;
@@ -115,6 +131,11 @@ public:
     int bGrowBox = false
     );
 
+  bool Set(
+    const ON_2dPoint& point,
+    int bGrowBox = false
+    );
+
   bool Set(     
     const ON_SimpleArray<ON_4dPoint>& point_array,
     int bGrowBox = false
@@ -127,6 +148,40 @@ public:
 
   bool Set(     
     const ON_SimpleArray<ON_2dPoint>& point_array,
+    int bGrowBox = false
+    );
+
+  bool Set(     
+    int dim,
+    int is_rat,
+    int count,
+    int stride,
+    const float* point_array,
+    int bGrowBox = false
+    );
+
+  bool Set(
+    const ON_3fPoint& point,
+    int bGrowBox = false
+    );
+
+  bool Set(
+    const ON_2fPoint& point,
+    int bGrowBox = false
+    );
+
+  bool Set(     
+    const ON_SimpleArray<ON_4fPoint>& point_array,
+    int bGrowBox = false
+    );
+
+  bool Set(     
+    const ON_SimpleArray<ON_3fPoint>& point_array,
+    int bGrowBox = false
+    );
+
+  bool Set(     
+    const ON_SimpleArray<ON_2fPoint>& point_array,
     int bGrowBox = false
     );
 

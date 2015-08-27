@@ -47,6 +47,8 @@ public:
   //
   // overrides of virtual ON_Object functions
   // 
+  void DestroyRuntimeCache( bool bDelete = true );
+
   ON_BOOL32 IsValid( ON_TextLog* text_log = NULL ) const;
   void Dump( ON_TextLog& ) const;
   unsigned int SizeOf() const;
@@ -306,6 +308,81 @@ public:
         double surface_s, double surface_t,
         double* nurbs_s,  double* nurbs_t
         ) const;
+
+
+  ////////////////////////////////////////////////////////////
+  //
+  // ON_Extrusion mesh interface
+  // 
+
+  /*
+  Description:
+    Attach a mesh to the ON_Extrusion.
+  Parameters:
+    mt - [in]
+      type of mesh that is being attached.
+      If mt is ON::render_mesh, ON::analysis_mesh or ON::preview_mesh,
+      the mesh is attached as that type of mesh.
+      If mt is ON::default_mesh or ON::any_mesh, then 
+      nothing is done and false is returned.
+    mesh - [in]
+      * mesh to attach.  
+      * mesh must be on the heap because ~ON_Extrusion() 
+        will delete it.
+      * if there is already of mesh of the prescribed type,
+        it will be deleted.
+      * if mesh is null, any existing mesh is deleted and
+        nothing is attached.
+  */
+  bool SetMesh( ON::mesh_type mt, ON_Mesh* mesh );
+
+  /*
+  Description:
+    Get a mesh attached to the ON_Extrusion.
+  Parameters:
+    mt - [in]
+      type of mesh to get.
+      ON::render_mesh, ON::analysis_mesh and ON::preview_mesh 
+      remove the meshes of those types.
+      If mt is ON::default_mesh or ON::any_mesh, then 
+      the first non null mesh is returned.
+  Returns:
+    A pointer to a mesh on the ON_Extusion object.  
+    This mesh will be deleted by ~ON_Extrusion().
+    If a mesh of the requested type is not available,
+    then null is returned.
+  */
+  const ON_Mesh* Mesh( ON::mesh_type mt ) const;
+
+  /*
+  Description:
+    Remove a mesh attached to the ON_Extrusion.
+  Parameters:
+    mt - [in]
+      type of mesh to get.
+      ON::render_mesh, ON::analysis_mesh and ON::preview_mesh 
+      remove the meshes of those types.
+      If mt is ON::default_mesh or ON::any_mesh, then 
+      null is returned.
+  Returns:
+    A pointer to a mesh on the ON_Extusion object.  
+    If a mesh of the requested type is not available,
+    then null is returned.
+    The caller is responsible for deleteing the returned mesh.
+  */
+  ON_Mesh* RemoveMesh( ON::mesh_type mt );
+
+  /*
+  Description:
+    Destroy a mesh attached to the ON_Extrusion.
+  Parameters:
+    mt - [in] type of mesh to destroy
+      If mt is ON::default_mesh or ON::any_mesh, then 
+      all attached meshes of all types are destroyed.
+    bDeleteMesh - [in] if true, cached mesh is deleted.
+      If false, pointer to cached mesh is just set to null.
+  */
+  void DestroyMesh( ON::mesh_type mt, bool bDeleteMesh = true );
 
   ////////////////////////////////////////////////////////////
   //

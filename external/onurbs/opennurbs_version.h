@@ -23,14 +23,14 @@
 // OpenNURBS users:
 //   Do not change OPENNURBS_VERSION or the OpenNURBS code
 //   that reads 3DM files not work correctly.
-#define OPENNURBS_VERSION 201210245
+#define OPENNURBS_VERSION 201307115
 
 // Subversion revision and branch used for source code.
 // Note: ...2012-09-14... is the correct svn branch for
 //       the October, 24 release.
-#define OPENNURBS_SRC_SVN_REVISION "86244"
-#define OPENNURBS_SRC_SVN_BRANCH ".../opennurbs_public/2012-09-14-0000/opennurbs"
+#define OPENNURBS_SRC_SVN_REVISION "91919"
+#define OPENNURBS_SRC_SVN_BRANCH ".../opennurbs_public/2013-07-11-0000/opennurbs"
 
 // Subversion revision and branch used for documentation.
-#define OPENNURBS_DOC_SVN_REVISION "86244"
-#define OPENNURBS_DOC_SVN_BRANCH ".../opennurbs_public/2012-09-14-0000/opennurbs"
+#define OPENNURBS_DOC_SVN_REVISION "91919"
+#define OPENNURBS_DOC_SVN_BRANCH ".../opennurbs_public/2013-07-11-0000/opennurbs"

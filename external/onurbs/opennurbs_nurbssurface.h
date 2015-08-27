@@ -203,10 +203,10 @@ public:
   Description:
     Collapse the side of a NURBS surface to a single point.
   Parameters:
-    side - [in] 0 = south west, 
-                1 = south east, 
-                2 = north east,
-                3 = north west
+    side - [in] 0 = collapse south side, 
+                1 = collapse east side, 
+                2 = collapse north side,
+                3 = collapse west side
     point - [in] point to collapse to.  If point is ON_unset_point,
                 the the current location of the start of the side
                 is used.

@@ -19,6 +19,90 @@
 
 ON_BEGIN_EXTERNC
 
+enum ON_UnicodeEncoding
+{
+  ON_UTF_unset=0, // 
+  ON_not_UTF,     // not a UTF encoding
+  ON_UTF_8,       // UTF-8 big endian byte order
+  ON_UTF_16,      // UTF-16 in native CPU byte order
+  ON_UTF_16BE,    // UTF-16 big endian byte order
+  ON_UTF_16LE,    // UTF-16 little endian byte order
+  ON_UTF_32,      // UTF-32 in native CPU byte order
+  ON_UTF_32BE,    // UTF-32 big endian byte order
+  ON_UTF_32LE     // UTF-32 little endian CPU byte order
+};
+
+/*
+Returns:
+  ON_UTF_16BE 
+    The byte order on where the function was run is big endian.
+  ON_UTF_16L
+    The byte order on where the function was run is little endian.
+*/
+ON_DECL
+enum ON_UnicodeEncoding ON_UnicodeNativeCPU_UTF16();
+
+/*
+Returns:
+  ON_UTF_32BE 
+    The byte order on where the function was run is big endian.
+  ON_UTF_32LE
+    The byte order on where the function was run is little endian.
+*/
+ON_DECL
+enum ON_UnicodeEncoding ON_UnicodeNativeCPU_UTF32();
+
+/*
+Description:
+  Determine if the buffer has the values of a UTF BOM (byte order mark)
+Parameters:
+  buffer - [in]
+    buffer to test
+  sizeof_buffer - [in]
+    number of bytes that can be examined in the buffer
+Returns:
+  ON_UTF_unset (0)
+    buffer is not a UTF BOM
+  ON_UTF_8
+    sizeof_buffer >= 3 and the values fo the first three bytes
+    are 0xEF, 0xBB, 0xBF.
+  ON_UTF_16BE
+    sizeof_buffer >= 2 and the values of the first two bytes
+    are 0xFE, 0xFF and, if sizeof_buffer >= 4, the value of
+    one of the thrid or forth byte is not zero.
+  ON_UTF_16LE
+    sizeof_buffer >= 2 and the values of the first two bytes
+    are 0xFE, 0xFF
+  ON_UTF_32BE
+    sizeof_buffer >= 4 and the values of the first four bytes
+    are 0x00, 0x00, 0xFE, 0xFF.
+  ON_UTF_32LE
+    sizeof_buffer >= 4 and the values of the first four bytes
+    are 0xFF, 0xFE, 0x00, 0x00.
+*/
+ON_DECL
+enum ON_UnicodeEncoding ON_IsUTFByteOrderMark(
+  const void* buffer,
+  size_t sizeof_buffer
+  );
+
+/*
+Description:
+  Test a value to determine if it is a valid unicode code point value.
+Parameters:
+  u - [in] value to test
+Returns:
+  true: u is a valid unicode code point
+  false: u is not a valid unicode code point
+Remarks:
+  Valid unicode code points are 
+  (0 <= u && u <= 0xD7FF) || (0xE000 <= u && u <= 0x10FFFF)
+*/
+ON_DECL
+int ON_IsValidUnicodeCodePoint(
+  ON__UINT32 u
+  );
+
 struct ON_UnicodeErrorParameters
 {
   /*
@@ -50,14 +134,15 @@ struct ON_UnicodeErrorParameters
        If the error is masked, then the unicode code point is 
        used and parsing continues.
 
-   16: An illegal UTF-8 encoding sequence occured or an invalid
-       unicode code point value resulted from decoding a
-       UTF-8 sequence. 
+   16: An illegal UTF-8, UTF-16 or UTF-32 encoding sequence occured
+       or an invalid unicode code point value resulted from decoding
+       a UTF-8 sequence. 
 
        This error is masked if 0 != (16 & m_error_mask).
        If the error is masked and the value of m_error_code_point is
        a valid unicode code point, then m_error_code_point is used
        and parsing continues.
+
   */
   unsigned int m_error_status;
 
@@ -77,21 +162,91 @@ struct ON_UnicodeErrorParameters
   ON__UINT32 m_error_code_point;
 };
 
+/*
+Description:
+  Decode a UTF-32 string to get a single unicode code point.
+Parameters:
+  sUTF32 - [in]
+    UTF-32 string to convert in the CPU's native byte order.
+
+  sUTF32_count - [in]
+    number of ON__UINT32 elements in sUTF32[].
+
+  e - [in/out] 
+    If e is null, errors are not masked and parsing is performed
+    to the point where the first error occurs.
+    If e is not null, all errors are reported by setting the appropriate
+    e->m_error_status bits and errors are handled as described in the
+    definition of the ON_UnicodeErrorParameters struct.
+
+  unicode_code_point - [out]
+    The unicode_code_point pointer must not be null.
+    If a nonzero value is returned, then *unicode_code_point is
+    a valid unicode code point value in the CPU's native byte order.
+Returns:
+  Number of elements of sUTF32 that were parsed.
+  0: 
+     Nothing was decoded. The input value of *unicode_code_point
+     is not changed.  See e->m_error_status.
+  1: 
+     If no error occured, then sUTF32[0] was decoded was a valid 
+     UTF-32 value. See e for masked errors.
+  2:
+      sUTF32[0],sUTF32[1] had values of a valid UTF-16 surrogate pair
+      and e indicated to mask this error.  The UTF-16 code point
+      value was returned and e was set to indicate the error occured.
+*/
+ON_DECL
+int ON_DecodeUTF32(
+    const ON__UINT32* sUTF32,
+    int sUTF32_count,
+    struct ON_UnicodeErrorParameters* e,
+    ON__UINT32* unicode_code_point
+    );
 
 /*
 Description:
-  Test a value to determine if it is a valid unicode code point value.
+  Decode a UTF-16 encode string whose elements have byte order
+  opposite the native CPU's to get a single unicode code point.
 Parameters:
-  u - [in] value to test
+  sUTF16 - [in]
+    UTF-16 string to convert with byte order opposite the
+    CPU's native byte order.
+
+  sUTF16_count - [in]
+    number of ON__UINT16 elements in sUTF16[].
+
+  e - [in/out] 
+    If e is null, errors are not masked and parsing is performed
+    to the point where the first error occurs.
+    If e is not null, all errors are reported by setting the appropriate
+    e->m_error_status bits and errors are handled as described in the
+    definition of the ON_UnicodeErrorParameters struct.
+
+  unicode_code_point - [out]
+    The unicode_code_point pointer must not be null.
+    If a nonzero value is returned, then *unicode_code_point is
+    a valid unicode code point value in the CPU's native byte order.
 Returns:
-  true: u is a valid unicode code point
-  false: u is not a valid unicode code point
-Remarks:
-  Valid unicode code points are 
-  (0 <= u && u <= 0xD7FF) || (0xE000 <= u && u <= 0x10FFFF)
+  Number of elements of sUTF32 that were parsed.
+  0: 
+     Nothing was decoded. The input value of *unicode_code_point
+     is not changed.  See e->m_error_status.
+  1: 
+     If no error occured, then sUTF32[0] was decoded was a valid 
+     UTF-32 value. See e for masked errors.
+  2:
+      sUTF32[0],sUTF32[1] had values of a valid UTF-16 surrogate pair
+      and e indicated to mask this error.  The UTF-16 code point
+      value was returned and e was set to indicate the error occured.
 */
 ON_DECL
-int ON_IsValidUnicodeCodePoint( ON__UINT32 u );
+int ON_DecodeSwapByteUTF32(
+    const ON__UINT32* sUTF32,
+    int sUTF32_count,
+    struct ON_UnicodeErrorParameters* e,
+    ON__UINT32* unicode_code_point
+    );
 
 /*
 Description:
@@ -175,11 +330,11 @@ Parameters:
     the CPU's native byte order.
 Returns:
   0: u is not a valid Unicode code point. No changes are
-     made to the w[] values.
-  1: u is a valie Unicode code point with a UTF-16 form 
-     consisting of the single value returned in w[0].
+     made to the sUTF16[] values.
+  1: u is a valid Unicode code point with a UTF-16 form 
+     consisting of the single value returned in sUTF16[0].
   2: u is a valid Unicode code point with a UTF-16 form 
-     consisting of a surrogate pair returned in w[0] and w[1].
+     consisting of a surrogate pair returned in sUTF16[0] and sUTF16[1].
 */
 ON_DECL
 int ON_EncodeUTF16( ON__UINT32 unicode_code_point, ON__UINT16 sUTF16[2] );
@@ -207,7 +362,20 @@ Parameters:
     a valid unicode code point value in the CPU's native byte order.
 Returns:
   Number of elements of sUTF16 that were parsed.
-  0 indicates failure.
+  0: 
+     Nothing was decoded. The input value of *unicode_code_point
+     is not changed.  See e->m_error_status.
+  1: 
+     If no error occured, then sUTF16[0] was decoded as a valid 
+     UTF-16 singleton. See e for masked errors.
+  2: 
+     If no error occured, then sUTF16[0],sUTF16[1] was decoded 
+     as a valid UTF-16 surrogate pair.
+     See e for masked errors.
+  n >= 3:
+      sUTF16[0],..,sUTF16[n-1] did not forma valid UTF-16 encoding
+      and were parsed as reasonably as possible.
+      See e for masked errors.
 */
 ON_DECL
 int ON_DecodeUTF16(
@@ -242,7 +410,20 @@ Parameters:
     a valid unicode code point value in the CPU's native byte order.
 Returns:
   Number of elements of sUTF16 that were parsed.
-  0 indicates failure.
+  0: 
+     Nothing was decoded. The input value of *unicode_code_point
+     is not changed.  See e->m_error_status.
+  1: 
+     If no error occured, then sUTF16[0] was decoded as a valid 
+     UTF-16 singleton. See e for masked errors.
+  2: 
+     If no error occured, then sUTF16[0],sUTF16[1] was decoded 
+     as a valid UTF-16 surrogate pair.
+     See e for masked errors.
+  n >= 3:
+      sUTF16[0],..,sUTF16[n-1] did not forma valid UTF-16 encoding
+      and were parsed as reasonably as possible.
+      See e for masked errors.
 */
 ON_DECL
 int ON_DecodeSwapByteUTF16(
@@ -258,6 +439,14 @@ Description:
   into a UTF-16 encoded ON__UINT16 array.
 
 Parameters:
+  bTestByteOrder - [in]
+    If bTestByteOrder is true and the first 3 bytes of sUTF8 are,
+    (0xEF 0xBB 0xBF), then those three bytes are skipped and
+    conversion begins at sUTF8[3]
+    
+    In all other cases the first element of sUTF8[] is 
+    converted.
+
   sUTF8 - [in]
     UTF-8 string to convert.
 
@@ -341,6 +530,7 @@ Returns:
 */
 ON_DECL
 int ON_ConvertUTF8ToUTF16(
+    int bTestByteOrder,
     const ON__UINT8* sUTF8,
     int sUTF8_count,
     ON__UINT16* sUTF16,
@@ -357,6 +547,14 @@ Description:
   into a UTF-32 encoded ON__UINT32 array.
 
 Parameters:
+  bTestByteOrder - [in]
+    If bTestByteOrder is true and the first 3 bytes of sUTF8 are,
+    (0xEF 0xBB 0xBF), then those three bytes are skipped and
+    conversion begins at sUTF8[3].
+    
+    In all other cases the first element of sUTF8[] is 
+    converted.
+
   sUTF8 - [in]
     UTF-8 string to convert.
 
@@ -441,6 +639,7 @@ Returns:
 */
 ON_DECL
 int ON_ConvertUTF8ToUTF32(
+    int bTestByteOrder,
     const ON__UINT8* sUTF8,
     int sUTF8_count,
     ON__UINT32* sUTF32,
@@ -918,6 +1117,132 @@ int ON_ConvertUTF32ToUTF16(
 
 /*
 Description:
+  Convert a unicode string from a UTF-32 encoded ON__UINT32 array
+  into a UTF-32 encoded ON__UINT32 array.  This is not simply
+  a copy in the case when the input has different byte ordering
+  or contains errors.  This function can be used to validate
+  UTF-32 encoded strings.
+
+Parameters:
+  bTestByteOrder - [in]
+    If bTestByteOrder is true and the first element of sUTF32[]
+    is 0x0000FEFF, then this element is ignored.
+
+    If bTestByteOrder is true and the first element of sUTF32[]
+    is 0xFFFE0000, then this element is ignored and the subsequent
+    elements of sUTF32[] have their bytes swapped before the 
+    conversion is calculated.
+
+    In all other cases the first element of sUTF32[] is 
+    converted and no byte swapping is performed.
+
+  sInputUTF32 - [in]
+    UTF-32 string to convert.  
+    
+    If bTestByteOrder is true and the first element of sInputUTF32[]
+    is 0x0000FEFF, then this element is skipped and it is assumed 
+    that sInputUTF32[] is in the CPU's native byte order.
+    
+    If bTestByteOrder is true and the first element of sInputUTF32[]
+    is 0xFFFE0000, then this element is skipped and it is assumed 
+    that sInputUTF32[] is not in the CPU's native byte order and bytes
+    are swapped before characters are converted.
+
+    If bTestByteOrder is false or the first character of sUTF32[]
+    is neither 0x0000FEFF nor 0xFFFE0000, then the sUTF32 string 
+    must match the CPU's byte order.
+
+  sInputUTF32_count - [in]
+    If sInputUTF32_count >= 0, then it specifies the number of
+    ON__UINT32 elements in sInputUTF32[] to convert.
+
+    If sInputUTF32_count == -1, then sInputUTF32 must be a null 
+    terminated string and all the elements up to the first null
+    element are converted.
+
+  sOutputUTF32 - [out]
+    If sOutputUTF32 is not null and sOutputUTF32_count > 0, then
+    the UTF-32 encoded string is returned in this buffer. If there
+    is room for the null terminator, the converted string will be null
+    terminated. The null terminator is never included in the count 
+    of returned by this function. The converted string is in the 
+    CPU's native byte order. No byte order mark is prepended.
+
+  sOutputUTF32_count - [in]
+    If sOutputUTF32_count > 0, then it specifies the number of available
+    ON__UINT32 elements in the sOutputUTF32[] buffer.
+    
+    If sOutputUTF32_count == 0, then the sOutputUTF32 parameter
+    is ignored.  This is useful when you want to validate a UTF-32
+    formatted string.
+
+  error_status - [out]
+    If error_status is not null, then bits of *error_status are
+    set to indicate the success or failure of the conversion.  
+    When the error_mask parameter is used to used to mask some
+    conversion errors, multiple bits may be set.
+       0: Successful conversion with no errors.
+       1: Invalid input parameters. This error cannot be masked.
+       2: The sOutputUTF32 output buffer was not large enough to hold 
+          the converted string. This error cannot be masked.
+       4: The values of two UTF-32 elements were a valid
+          UTF-16 surrogate pair. This error can be masked. If the
+          error is masked, then the surrogate pair is added to
+          the UTF-32 output string and parsing continues.
+      16: An invalid unicode code point occured in sInputUTF32[].
+          This error can be masked. If the error is masked and
+          error_code_point is a valid unicode code point,
+          then its UTF-32 encoding is added to the UTF-32 output
+          string and parsing continues.
+
+  error_mask - [in]
+    If 0 != (error_mask & 4), then type 4 errors are masked.
+    If 0 != (error_mask & 16) and error_code_point is a valid unicode
+    code point value, then type 16 errors are masked.
+
+  error_code_point - [in]
+    Unicode code point value to use in when masking type 16 errors.
+    If 0 == (error_mask & 16), then this parameter is ignored.
+    0xFFFD is a popular choice for the error_code_point value.
+
+  sNextInputUTF32 - [out]
+    If sNextInputUTF32 is not null, then *sNextInputUTF32 points to
+    the first element in the input sInputUTF32[] buffer that was not
+    converted. 
+
+    If an error occurs and is not masked, then this unsigned int
+    will be an illegal unicode code point value.
+
+    If an error does not occur, then (*sNextInputUTF32 - sInputUTF32) 
+    is the number of values converted.
+
+Returns:
+  If sOutputUTF32_count > 0, the return value is the number of ON__UINT32
+  elements written to sOutputUTF32[].  
+  When the return value < sOutputUTF32_count,
+  a null terminator is written to sOutputUTF32[return value].
+
+  If sOutputUTF32_count == 0, the return value is the minimum number of
+  ON__UINT32 elements that are needed to hold the converted string.
+  The return value does not include room for a null terminator.  
+  Increment the return value by one if you want to have an element
+  to use for a null terminator.
+*/
+ON_DECL
+int ON_ConvertUTF32ToUTF32(
+    int bTestByteOrder,
+    const ON__UINT32* sInputUTF32,
+    int sInputUTF32_count,
+    ON__UINT32* sOuputUTF32,
+    int sOutputUTF32_count,
+    unsigned int* error_status,
+    unsigned int error_mask,
+    ON__UINT32 error_code_point,
+    const ON__UINT32** sNextInputUTF32
+    );
+
+/*
+Description:
   Convert a wchar_t string using the native platform's most common
   encoding into a unicode string encoded as a UTF-8 char array.
 
@@ -1039,6 +1364,131 @@ int ON_ConvertWideCharToUTF8(
 
 /*
 Description:
+  Convert a wchar_t string using the native platform's most common
+  encoding into a unicode string encoded as a UTF-32 char array.
+
+  If 1 = sizeof(wchar_t), then the wchar_t array is assumed to be
+  a UTF-8 encoded string.
+
+  If 2 = sizeof(wchar_t), then the wchar_t array is assumed to be
+  a UTF-16 encoded string. This is the case with current versions
+  of Microsoft Windows.
+
+  If 4 = sizeof(wchar)t), then the wchar_t array is assumed to be
+  a UTF-32 encoded string. This is the case with current versions
+  of Apple OSX.
+
+Parameters:
+  bTestByteOrder - [in]
+    If bTestByteOrder is true and the first element of sWideChar[]
+    is 0xFEFF, then this element is ignored.
+
+    If bTestByteOrder is true and the first element of sWideChar[]
+    is 0xFFFE, then this element is ignored and the subsequent
+    elements of sWideChar[] have their bytes swapped before the 
+    conversion is calculated.
+
+    In all other cases the first element of sWideChar[] is 
+    converted and no byte swapping is performed.
+
+  sWideChar - [in]
+    wchar_t string to convert.  
+    
+    If bTestByteOrder is true and the first element of sWideChar[]
+    is 0xFEFF, then this element is skipped and it is assumed 
+    that sWideChar[] is in the CPU's native byte order.
+    
+    If bTestByteOrder is true and the first element of sWideChar[]
+    is 0xFFFE, then this element is skipped and it is assumed 
+    that sWideChar[] is not in the CPU's native byte order and bytes
+    are swapped before characters are converted.
+
+    If bTestByteOrder is false or the first character of sWideChar[]
+    is neither 0xFEFF nor 0xFFFE, then the sWideChar string must match
+    the CPU's byte order.
+
+  sWideChar_count - [in]
+    If sWideChar_count >= 0, then it specifies the number of
+    wchar_t elements in sWideChar[] to convert.
+
+    If sWideChar_count == -1, then sWideChar must be a null terminated
+    string and all the elements up to the first null element are
+    converted.
+    
+  sUTF8 - [out]
+    If sUTF8 is not null and sUTF8_count > 0, then the UTF-8
+    encoded string is returned in this buffer. If there is room
+    for the null terminator, the converted string will be null
+    terminated. The null terminator is never included in the count 
+    of returned by this function. The converted string is in the 
+    CPU's native byte order. No byte order mark is prepended.
+
+  sUTF32_count - [in]
+    If sUTF32_count > 0, then it specifies the number of available
+    ON__UINT32 elements in the sUTF32[] buffer.
+    
+    If sUTF32_count == 0, then the sUTF32 parameter is ignored.
+
+  error_status - [out]
+    If error_status is not null, then bits of *error_status are
+    set to indicate the success or failure of the conversion.  
+    When the error_mask parameter is used to used to mask some
+    conversion errors, multiple bits may be set.
+       0: Successful conversion with no errors.
+       1: Invalid input parameters. This error cannot be masked.
+       2: The sUTF32 output buffer was not large enough to hold 
+          the converted string. This error cannot be masked.
+      16: An illegal wchar_t encoding sequence occured or an invalid
+          unicode code point value resulted from decoding a
+          wchar_t sequence. This error can be masked. If the error is
+          masked and error_code_point is a valid unicode code point,
+          then its UTF-8 encoding is added to the UTF-8 output
+          string and parsing continues.
+
+  error_mask - [in]
+    If 0 != (error_mask & 16) and error_code_point is a valid unicode
+    code point value, then type 16 errors are masked.
+
+  error_code_point - [in]
+    Unicode code point value to use in when masking type 16 errors.
+    If 0 == (error_mask & 16), then this parameter is ignored.
+    0xFFFD is a popular choice for the error_code_point value.
+
+  sNextWideChar - [out]
+    If sNextWideChar is not null, then *sNextWideChar points to the first
+    element in the input sWideChar[] buffer that was not converted. 
+
+    If an error occurs and is not masked, then *sNextWideChar points to
+    the element of sWideChar[] where the conversion failed.  If no errors
+    occur or all errors are masked, then *sNextWideChar points to
+    sWideChar + sWideChar_count.
+
+  If sUTF32_count > 0, the return value is the number of ON__UINT32
+  elements written to sUTF32[].  When the return value < sUTF32_count,
+  a null terminator is written to sUTF32[return value].
+
+  If sUTF32_count == 0, the return value is the minimum number of
+  ON__UINT32 elements that are needed to hold the converted string.
+  The return value does not include room for a null terminator.  
+  Increment the return value by one if you want to have an element
+  to use for a null terminator.
+*/
+ON_DECL
+int ON_ConvertWideCharToUTF32(
+    int bTestByteOrder,
+    const wchar_t* sWideChar,
+    int sWideChar_count,
+    ON__UINT32* sUTF32,
+    int sUTF32_count,
+    unsigned int* error_status,
+    unsigned int error_mask,
+    ON__UINT32 error_code_point,
+    const wchar_t** sNextWideChar
+    );
+
+
+/*
+Description:
   Convert a UTF-8 encoded char string to wchar_t string using
   the native platform's most common encoding.
 
@@ -1051,6 +1501,14 @@ Description:
   Apple OSX.
 
 Parameters:
+  bTestByteOrder - [in]
+    If bTestByteOrder is true and the first 3 bytes of sUTF8 are,
+    (0xEF 0xBB 0xBF), then those three bytes are skipped and
+    conversion begins at sUTF8[3]
+    
+    In all other cases the first element of sUTF8[] is 
+    converted.
+
   sUTF8 - [in]
     UTF-8 string to convert.
 
@@ -1134,6 +1592,7 @@ Returns:
 */
 ON_DECL
 int ON_ConvertUTF8ToWideChar(
+    int bTestByteOrder,
     const char* sUTF8,
     int sUTF8_count,
     wchar_t* sWideChar,

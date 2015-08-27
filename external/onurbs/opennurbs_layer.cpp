@@ -2398,7 +2398,7 @@ bool ON_Layer::GetSavedSettings( ON_Layer& layer, unsigned int& settings ) const
     rc = true;
   }
 
-  return rc;
+  return true;
 }
 
 bool ON_Layer::PersistentVisibility() const

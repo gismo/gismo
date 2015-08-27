@@ -666,13 +666,17 @@ bool ON_BezierCurve::GetBoundingBox( // returns true if successful
        int bGrowBox             // true means grow box
        ) const
 {
+  void* heap_buffer = 0;
   double *boxmin, *boxmax;
+  
   if ( m_dim > 3 ) 
   {
-    boxmin = (double*)alloca(2*m_dim*sizeof(*boxmin));
+    heap_buffer = onmalloc(2*m_dim*sizeof(*boxmin));
+    boxmin = (double*)heap_buffer;
     memset( boxmin, 0, 2*m_dim*sizeof(*boxmin) );
     boxmax = boxmin + m_dim;
-    if ( bGrowBox ) {
+    if ( bGrowBox ) 
+    {
       boxmin[0] = bbox.m_min.x;
       boxmin[1] = bbox.m_min.y;
       boxmin[2] = bbox.m_min.z;
@@ -681,15 +685,23 @@ bool ON_BezierCurve::GetBoundingBox( // returns true if successful
       boxmax[2] = bbox.m_max.z;
     }
   }
-  else {
+  else 
+  {
     boxmin = &bbox.m_min.x;
     boxmax = &bbox.m_max.x;
   }
+  
   bool rc = GetBBox( boxmin, boxmax, bGrowBox );
-  if ( rc && m_dim > 3 ) {
+  
+  if ( rc && m_dim > 3 ) 
+  {
     bbox.m_min = boxmin;
     bbox.m_max = boxmax;
   }
+
+  if ( 0 != heap_buffer )
+    onfree(heap_buffer);
+
   return rc;
 }
 
@@ -1628,12 +1640,21 @@ bool ON_BezierCurve::Split(
        ) const
 {
   bool rc = ( 0.0 < t && t < 1.0 && IsValid() ) ? true : false;
-  if ( rc ) {
+  if ( rc ) 
+  {
     const int cvdim = CVSize();
     int i,j,k,n;
     double *p, *r, s;
     const double* q;
-    double** b = (double**)alloca((2*m_order-1)*sizeof(*b));
+    
+    double** b;
+    double *stack_buffer[2*9-1];
+    void* heap_buffer = 0;
+    const size_t sizeof_buffer = (2*m_order-1)*sizeof(*b);
+
+    b = (sizeof_buffer <= sizeof(stack_buffer))
+      ? stack_buffer
+      : (double**)(heap_buffer = onmalloc(sizeof_buffer));
     
     if ( this != &left_bez )
     {
@@ -1736,7 +1757,11 @@ bool ON_BezierCurve::Split(
       j = cvdim;
       while(j--) *p++ = *q++;
     }
+
+    if ( 0 != heap_buffer )
+      onfree(heap_buffer);
   }
+
   return rc;
 }
 
@@ -2068,9 +2093,11 @@ bool ON_BezierSurface::GetBoundingBox( // returns true if successful
        ) const
 {
   double *boxmin, *boxmax;
+  void* heap_buffer = 0;
+
   if ( m_dim > 3 ) 
   {
-    boxmin = (double*)alloca(2*m_dim*sizeof(*boxmin));
+    boxmin = (double*)(heap_buffer = onmalloc(2*m_dim*sizeof(*boxmin)));
     memset( boxmin, 0, 2*m_dim*sizeof(*boxmin) );
     boxmax = boxmin + m_dim;
     if ( bGrowBox ) {
@@ -2091,6 +2118,9 @@ bool ON_BezierSurface::GetBoundingBox( // returns true if successful
     bbox.m_min = boxmin;
     bbox.m_max = boxmax;
   }
+
+  if ( 0 != heap_buffer )
+    onfree(heap_buffer);
   return rc;
 }
 
@@ -2206,23 +2236,36 @@ bool ON_BezierSurface::Evaluate( // returns false if unable to evaluate
 {
   // TODO: When time permits write a faster special case bezier surface evaluator.
   // For now, cook up some fake knot vectors and use NURBS surface span evaluator.
+  double stack_buffer[24];
   double *knot0, *knot1, *p;
   int deg0 = m_order[0]-1;
   int deg1 = m_order[1]-1;
   int i = (deg0<=deg1)?deg1 : deg0;
-  p = knot0 = (double*)alloca(i*2*sizeof(*knot0));
+  
+  void* heap_buffer = 0;
+  size_t sizeof_buffer = i*2*sizeof(*knot0);
+
+  knot0 = (sizeof_buffer <= sizeof(stack_buffer))
+        ? stack_buffer
+        : (double*)(heap_buffer=onmalloc(sizeof_buffer));
+
+  p = knot0;
   memset(p,0,i*sizeof(*p));
   p += i;
-  while (i--) *p++ = 1.0;
-  if ( deg0 >= deg1 ) {
+  while (i--) 
+    *p++ = 1.0;
+
+  if ( deg0 >= deg1 ) 
+  {
     knot1 = knot0 + (deg0-deg1);
   }
-  else {
+  else
+  {
     knot1 = knot0;
     knot0 = knot1 + (deg1-deg0);
   }
 
-  return ON_EvaluateNurbsSurfaceSpan(
+  bool rc = ON_EvaluateNurbsSurfaceSpan(
         m_dim,                          // dimension
         m_is_rat,                       // true if NURBS is rational
         m_order[0], m_order[1],         // order0, order1
@@ -2235,6 +2278,11 @@ bool ON_BezierSurface::Evaluate( // returns false if unable to evaluate
         v_stride,                       // answer_stride (>=dimension)
         v                               // answer[] array of length (ndir+1)*answer_stride
         );
+
+  if ( 0 != heap_buffer )
+    onfree(heap_buffer);
+
+  return rc;
 }
 
 ON_3dPoint ON_BezierSurface::PointAt(double s, double t) const

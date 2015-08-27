@@ -24,6 +24,8 @@
 #if !defined(OPENNURBS_INC_)
 #define OPENNURBS_INC_
 
+#define OPENNURBS_INC_IN_PROGRESS
+
 #include "opennurbs_system.h"       /* system headers used by openNURBS code */
 
 #include "opennurbs_3dm.h"          /* 3DM typecode (TCODE) definitions */
@@ -52,6 +54,7 @@
 #include "opennurbs_bounding_box.h"   // simple 3d axis aligned bounding box
 #include "opennurbs_matrix.h"         // general m X n matrix
 #include "opennurbs_xform.h"          // 4 X 4 transformation matrix
+#include "opennurbs_quaternion.h"     // quaternion
 #include "opennurbs_workspace.h"      // workspace memory allocation
 #include "opennurbs_plane.h"          // simple 3d plane
 #include "opennurbs_circle.h"         // simple 3d circle
@@ -124,8 +127,12 @@
 #include "opennurbs_detail.h"         // ON_Detail definition
 #include "opennurbs_lookup.h"         // ON_SerialNumberTable
 #include "opennurbs_object_history.h"
+#include "opennurbs_photogrammetry.h"
+
 #include "opennurbs_extensions.h"
 
 #endif
+
+#undef OPENNURBS_INC_IN_PROGRESS
 
 #endif

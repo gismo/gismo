@@ -3363,6 +3363,206 @@ bool ON_Viewport::GetBoundingBoxDepth(
   return rc;
 }
 
+static bool TrimLineHelper( ON_PlaneEquation e, bool bFlipPlane, ON_Line& line )
+{
+  // trims the line - keeping the portion "above" the plane
+  ON_3dPoint P;
+  double e0,e1,s;
+  
+  e0 = e.ValueAt(line.from);
+  e1 = e.ValueAt(line.to);
+  if ( bFlipPlane )
+  {
+    e0 = -e0;
+    e1 = -e1;
+  }
+  
+  if ( e0 <= 0.0 && e1 <= 0.0 )
+    return false;
+
+  if ( e0 < 0.0 || e1 < 0.0 )
+  {
+    s = e0/(e0-e1);
+    if ( ON_IsValid(s) && s > 0.0 && s < 1.0 )
+    {
+      P = line.PointAt(s);
+      if ( e0 > 0.0 )
+      {
+        line.to = P;
+      }
+      else if ( e1 > 0.0 )
+      {
+        line.from = P;
+      }
+    }
+  }
+
+  return true;
+}
+
+
+bool ON_Viewport::GetBoundingBoxProjectionExtents(
+    ON_BoundingBox bbox,
+    ON_Interval& x_extents,
+    ON_Interval& y_extents
+    ) const
+{
+  const ON_Interval unit_interval(0.0,1.0);
+  x_extents = unit_interval;
+  y_extents = unit_interval;
+
+  if ( !bbox.IsValid() )
+    return false;
+
+  if ( !IsValidCamera() && !IsValidFrustum() )
+    return false;
+
+  const ON_3dPoint cam_loc = CameraLocation();
+  if ( !cam_loc.IsValid() )
+    return false;
+
+  // far_rect[] points run image ccw 
+  // (image lower left, lower right, upper right, upper left)
+  ON_3dPoint far_rect[4];
+  if ( !GetFarRect(far_rect[0],far_rect[1],far_rect[3],far_rect[2]) )
+    return false;
+
+  ON_3dPoint clipping_point(ON_UNSET_VALUE,ON_UNSET_VALUE,0.0);
+  ON_BoundingBox clipping_bbox;
+  clipping_bbox.m_min.z = clipping_point.z;
+  clipping_bbox.m_max.z = clipping_point.z;
+
+  ON_Line camera_ray(cam_loc,ON_3dPoint::UnsetPoint);
+  for ( int i = 0; i < 4; i++ )
+  {
+    camera_ray.to = far_rect[i];
+    for ( int j = 0; j < 3; j++ )
+    {
+      ON_PlaneEquation e(0.0,0.0,0.0,0.0);
+      e[j] = 1.0;
+      for ( int k = 0; k < 2; k++ )
+      {
+        ON_3dPoint bbox_point = k ? bbox.m_max : bbox.m_min;
+        e.d = 0.0;
+        e.d = -bbox_point[j];
+        double t = ON_UNSET_VALUE;
+        if ( ON_Intersect(camera_ray,e,&t) )
+        {
+          if ( t > 0.0 )
+          {
+            ON_3dPoint P = camera_ray.PointAt(t);
+            P[j] = bbox_point[j];
+            if ( bbox.IsPointIn(P) )
+            {
+              clipping_point.x = (1 == i || 2 == i) ? 1.0 : -1.0;
+              clipping_point.y = (i >= 2) ? 1.0 : -1.0;
+              clipping_bbox.Set(clipping_point,true);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (    clipping_bbox.m_min.x != -1.0 || clipping_bbox.m_min.y != -1.0
+       || clipping_bbox.m_max.x !=  1.0 || clipping_bbox.m_max.y !=  1.0
+     )
+  {
+    ON_Xform w2c;
+    if ( !GetXform(ON::world_cs,ON::clip_cs,w2c) )
+      return false;
+
+    ON_PlaneEquation vp_near_plane;
+    if ( !GetNearPlaneEquation(vp_near_plane) )
+      return false;
+
+    ON_PlaneEquation vp_far_plane;
+    if ( !GetFarPlaneEquation(vp_far_plane) )
+      return false;
+
+    ON_PlaneEquation frustum_sides[4];
+    if ( !GetFrustumLeftPlaneEquation(frustum_sides[0]) )
+      return false;
+    if ( !GetFrustumBottomPlaneEquation(frustum_sides[1]) )
+      return false;
+    if ( !GetFrustumRightPlaneEquation(frustum_sides[2]) )
+      return false;
+    if ( !GetFrustumTopPlaneEquation(frustum_sides[3]) )
+      return false;
+
+    ON_Line bbox_lines[12];
+    bbox.GetEdges(bbox_lines);
+
+    for ( int i = 0; i < 12; i++ )
+    {
+      ON_Line line = bbox_lines[i];
+
+      if ( !TrimLineHelper( vp_near_plane, true, line ) )
+        continue;
+
+      if ( !TrimLineHelper( vp_far_plane, false, line ) )
+        continue;
+
+      for ( int j = 0; j < 4; j++ )
+      {
+        if ( !TrimLineHelper(frustum_sides[j],false,line) )
+        {
+          line.from = ON_3dPoint::UnsetPoint;
+          line.to = ON_3dPoint::UnsetPoint;
+          break;
+        }
+      }
+
+      if ( !line.IsValid() )
+        continue;      
+
+      clipping_point = w2c*line.from;
+      clipping_bbox.Set(clipping_point,true);
+
+      clipping_point = w2c*line.to;
+      clipping_bbox.Set(clipping_point,true);
+    }
+  }
+
+  bool rc = clipping_bbox.IsValid();
+
+  if ( rc )
+  {
+    ON_Interval extents[2];
+    for ( int i = 0; i < 2; i++ )
+    {
+      extents[i].Set( 
+        0.5*(clipping_bbox.m_min[i]+1.0),
+        0.5*(clipping_bbox.m_max[i]+1.0)
+        );    
+      
+      if ( extents[i].IsIncreasing() || extents[i].IsSingleton() )
+      {
+        if ( extents[i].Intersection(unit_interval) && extents[i].IsValid() )
+        {
+          if ( extents[i].IsIncreasing() )
+            continue;
+          if ( extents[i].IsSingleton() )
+            continue;
+        }
+      }
+
+      rc = false;
+      break;
+    }
+
+    if ( rc )
+    {
+      x_extents = extents[0];
+      y_extents = extents[1];
+    }
+  }
+
+
+  return rc;
+}
+
+
 bool ON_Viewport::GetSphereDepth( 
        ON_Sphere sphere,
        double* near_dist,
@@ -4481,3 +4681,59 @@ void ON_Viewport::GetPerspectiveClippingPlaneConstraints(
   if ( min_near_over_far )
     *min_near_over_far = nof;
 }
+
+
+int ON_Viewport::InViewFrustum( 
+  ON_3dPoint P
+  ) const
+{
+  ON_ClippingRegion cr;
+  if ( !GetXform(ON::world_cs,ON::clip_cs,cr.m_xform) )
+    return 0;
+  return cr.InViewFrustum(P);
+}
+
+int ON_Viewport::InViewFrustum( 
+  const ON_BoundingBox& bbox
+  ) const
+{
+  ON_ClippingRegion cr;
+  if ( !GetXform(ON::world_cs,ON::clip_cs,cr.m_xform) )
+    return 0;
+  return cr.InViewFrustum(bbox);
+}
+
+int ON_Viewport::InViewFrustum( 
+  int count, 
+  const ON_3fPoint* p
+  ) const
+{
+  ON_ClippingRegion cr;
+  if ( !GetXform(ON::world_cs,ON::clip_cs,cr.m_xform) )
+    return 0;
+  return cr.InViewFrustum(count,p);
+}
+
+int ON_Viewport::InViewFrustum( 
+  int count, 
+  const ON_3dPoint* p
+  ) const
+{
+  ON_ClippingRegion cr;
+  if ( !GetXform(ON::world_cs,ON::clip_cs,cr.m_xform) )
+    return 0;
+  return cr.InViewFrustum(count,p);
+}
+
+int ON_Viewport::InViewFrustum( 
+  int count, 
+  const ON_4dPoint* p
+  ) const
+{
+  ON_ClippingRegion cr;
+  if ( !GetXform(ON::world_cs,ON::clip_cs,cr.m_xform) )
+    return 0;
+  return cr.InViewFrustum(count,p);
+}
+
+
