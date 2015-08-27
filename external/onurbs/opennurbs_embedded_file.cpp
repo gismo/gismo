@@ -305,6 +305,7 @@ bool ON_Buffer::Compact()
       }
     }
   }
+  (void)rc; //G+Smo
   return true;
 }
 
@@ -476,7 +477,7 @@ bool ON_Buffer::IsValid( const ON_TextLog* text_log ) const
   if ( 0 != m_last_segment->m_next_segment )
     return ON_Buffer_IsNotValid();
 
-  bool bCurrentSegInList = (0 == m_current_segment);
+  //bool bCurrentSegInList = (0 == m_current_segment);
   ON__UINT64 pos = 0;
   ON__UINT64 u;
   const struct ON_BUFFER_SEGMENT* prev_seg = 0;
@@ -492,8 +493,8 @@ bool ON_Buffer::IsValid( const ON_TextLog* text_log ) const
     if ( pos != seg->m_segment_position0 )
       return ON_Buffer_IsNotValid();
 
-    if ( m_current_segment == seg )
-      bCurrentSegInList = true;
+    //if ( m_current_segment == seg )
+    //  bCurrentSegInList = true;
 
     // pos checks prevent infinite loop when the linked list has a cycle;
     u = pos + (seg->m_segment_position1 - seg->m_segment_position0);
@@ -912,7 +913,7 @@ bool ON_Buffer::WriteToBinaryArchive( ON_BinaryArchive& archive ) const
     if ( !archive.WriteInt(buffer_crc) )
       break;
 
-    bool buffer_rc = true;
+    //bool buffer_rc = true;
     ON__UINT64 size = 0;
     for ( struct ON_BUFFER_SEGMENT* seg = m_first_segment; 
           0 != seg && size < m_buffer_size; 
@@ -928,7 +929,7 @@ bool ON_Buffer::WriteToBinaryArchive( ON_BinaryArchive& archive ) const
         seg_size = m_buffer_size - size;
       if ( !archive.WriteByte( (size_t)seg_size, seg->m_segment_buffer ) )
       {
-        buffer_rc = false;
+        //buffer_rc = false;
         break;
       }
       size += seg_size;

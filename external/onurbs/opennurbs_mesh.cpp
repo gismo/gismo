@@ -7136,7 +7136,7 @@ bool ON_MeshTopology::Create()
     const int topv_count = m_topv.Count();
     if ( topv_count >= 2 ) 
     {
-      bool rc = false;
+//      bool rc = false;
       int ei, ecnt, fi, vi0, vi1, efi, topfvi[4];
       ON_MeshFace f;
 
@@ -7149,7 +7149,7 @@ bool ON_MeshTopology::Create()
         
         if ( ecnt > 0 ) 
         {
-          rc = true;
+//          rc = true;
           ON_SortMeshFaceSidesByVertexIndex( ecnt, e );
 
           // count number of topological edges and allocate storage

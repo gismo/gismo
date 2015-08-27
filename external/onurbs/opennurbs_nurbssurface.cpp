@@ -2602,11 +2602,13 @@ bool ON_MakeDegreesCompatible(
        ON_NurbsCurve& nurbs_curveB
        )
 {
+
   bool rc = false;
   if ( nurbs_curveA.m_order > nurbs_curveB.m_order )
     rc = nurbs_curveB.IncreaseDegree( nurbs_curveA.Degree() )?true:false;
   else
     rc = nurbs_curveA.IncreaseDegree( nurbs_curveB.Degree() )?true:false;
+  (void)rc;//G+Smo
   return (nurbs_curveA.m_order == nurbs_curveB.m_order);
 }
 

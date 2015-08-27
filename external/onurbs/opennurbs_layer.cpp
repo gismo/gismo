@@ -2398,6 +2398,7 @@ bool ON_Layer::GetSavedSettings( ON_Layer& layer, unsigned int& settings ) const
     rc = true;
   }
 
+  (void)rc;//G+Smo
   return true;
 }
 
