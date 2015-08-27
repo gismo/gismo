@@ -29,6 +29,6 @@ before_script:
   - cmake .. -DGISMO_WITH_ONURBS=ON -DSITE="travis-ci.org" #-DGISMO_WITH_IPOPT=ON
 
 script:
-  - ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
+  - ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit -V
   #- make -j2 Experimental
   #- make -j2 ExperimentalMemCheck
