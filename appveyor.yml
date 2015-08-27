@@ -89,8 +89,7 @@ before_build:
 
 build_script:
   #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
-  #- cmd: ctest -j4 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
-  - cmd: make -j4 Experimental
+  - cmd: ctest -j4 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln
