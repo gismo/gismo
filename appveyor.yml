@@ -13,11 +13,11 @@ os:
 environment:
   CTEST_OUTPUT_ON_FAILURE: 1
   matrix:
+  - BUILD: mingw
   - BUILD: msvc
     platform: Win32
   - BUILD: msvc
     platform: x64
-  - BUILD: mingw
 
 # build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
 #platform: 
@@ -78,11 +78,19 @@ before_build:
   #MSYS Makefiles
   - cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MinGW Makefiles)
   - cmd: cmake -DBUILDNAME="%CMAKE_GENERATOR_NAME%" -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
-  #- cmd: cmake --build . --config RelWithDebInfo -- /verbosity:minimal
+
+# for MSYS
+#  - cmd: C:\MinGW\msys\1.0\bin\sh --login -c "
+#    echo 'C:\MinGW\ /MinGW' > /etc/fstab;
+#    cd /c/projects/build-gismo;
+#    cmake -G'MSYS Makefiles'  ../gismo;
+#    make -j2 Experimental
+#    "
 
 build_script:
   #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
-  - cmd: ctest -j4 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
+  #- cmd: ctest -j4 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
+  - cmd: make -j4 Experimental
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln
@@ -95,7 +103,4 @@ build_script:
   #include_nuget_references: true
 
 #test_script:
-  #- cmd: ctest -C %configuration% -VV -D Experimental
-#  - cmd: ctest -j4 -D ExperimentalTest && exit 0
   #- cmd: ctest -j2 -D ExperimentalMemCheck
-#  - cmd: ctest -j2 -D ExperimentalSubmit
