@@ -7522,10 +7522,10 @@ const ON_MeshPartition* ON_Mesh::CreatePartition(
               )
 {
   ON_Workspace ws;
-  bool bNeedFaceSort = true;
+  //bool bNeedFaceSort = true;
   if ( m_partition ) 
   {
-    bNeedFaceSort = false;
+      //bNeedFaceSort = false;
     if (   m_partition->m_partition_max_triangle_count > partition_max_triangle_count
         || m_partition->m_partition_max_vertex_count > partition_max_vertex_count )
         DestroyPartition();
@@ -7692,13 +7692,13 @@ const ON_MeshPartition* ON_Mesh::CreatePartition(
 
       // fill in m_part.vi[]
       int m, pi, partition_count = m_partition->m_part.Count();
-      int vi0, vi1, vi2, vi3;
+      int vi0, vi2, vi3;
       for (vi2 = 0; vi2 < vertex_count && pmark[vi2]<2; vi2++)
       {/*empty for body*/}
       vi3=vi2;
       for ( pi = 0; pi < partition_count; pi++ ) {
         vi0 = vi2;
-        vi1 = vi3;
+        //vi1 = vi3;
         m = 2*pi + 4;
         for ( vi2 = vi3; vi2 < vertex_count && pmark[vi2] <  m; vi2++) 
         {/*empty for body*/}

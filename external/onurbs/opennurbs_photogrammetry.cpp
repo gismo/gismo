@@ -548,7 +548,7 @@ bool ON_AerialPhotoCameraPosition::SetOrientationRotation(
   m_orientation_up = Y;
   m_orientation_direction = -Z;
 
-  double s1, c1, s2, c2, s3, c3;
+  double s1, c1, s2, c2, c3;
 
   s2 = Z.x;
   double a = 1.0 - s2*s2;
@@ -568,14 +568,14 @@ bool ON_AerialPhotoCameraPosition::SetOrientationRotation(
   {
     s1 = -Z.y/c2;
     c1 =  Z.z/c2;
-    s3 = -Y.x/c2;
+    //s3 = -Y.x/c2;
     c3 =  X.x/c2;
   }
   else
   {
     s1 = 0.0;
     c1 = 1.0;
-    s3 = ( X.y ==  Y.z ) ? X.y : 0.5*(X.y + Y.z);
+    //s3 = ( X.y ==  Y.z ) ? X.y : 0.5*(X.y + Y.z);
     c3 = ( Y.y == -X.z ) ? Y.y : 0.5*(Y.y - X.z);
   }
 
