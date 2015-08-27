@@ -1,8 +1,9 @@
-sudo: required
+#sudo: required
+sudo: false
 
 os:
-  - linux
   - osx
+  - linux
 
 language: cpp
 
@@ -10,21 +11,22 @@ compiler:
   - clang
   - gcc
 
-before_install:
+#before_install:
 ## Install CMake 2.8.8
-- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository ppa:kalakris/cmake -y; sudo apt-get update -qq; sudo apt-get install cmake valgrind; fi
-- if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; brew install cmake valgrind; fi
+#- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository ppa:kalakris/cmake -y; sudo apt-get update -qq; sudo apt-get install cmake valgrind; fi
+#- if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; brew install cmake valgrind; fi
+
+addons:
+  apt:
+    packages:
+    - cmake
+    - valgrind
+    #- time
 
 before_script:
   - mkdir build
   - cd build
-  - cmake .. -DGISMO_WITH_ONURBS=ON #-DGISMO_WITH_IPOPT=ON
-  - ctest -D ExperimentalConfigure
+  - cmake .. -DGISMO_WITH_ONURBS=ON -DSITE="travis-ci.org" #-DGISMO_WITH_IPOPT=ON
 
 script:
-  - ctest -j2 -D ExperimentalBuild
-  - ctest -j2 -D ExperimentalTest
-  - ctest -j2 -D ExperimentalMemCheck
-  - ctest -j2 -D ExperimentalSubmit
-#- make -j3 Experimental
-#- make -j3 ExperimentalMemCheck
+  - ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit

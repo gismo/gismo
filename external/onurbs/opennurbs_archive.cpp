@@ -15376,7 +15376,12 @@ const wchar_t* ON_FileIterator::NextFile()
   {
     current_file_attributes = 0;
     struct dirent* dp = 0;
+    //G+Smo
+#   ifndef __MINGW32__ 
+    int readdir_errno = 0;
+    #else 
     int readdir_errno = readdir_r(m_dir, &m_dirent, &dp);
+#   endif
     if ( 0 !=  readdir_errno )
       break;
     if ( 0 == dp )

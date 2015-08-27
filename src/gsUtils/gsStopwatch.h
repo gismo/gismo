@@ -110,7 +110,11 @@ struct WindowsWallClock
     static double getTime()
     {
         _timeb tb;
+       #ifdef __MINGW32__
+        _ftime( &tb );
+       #else
         _ftime_s( &tb );
+       #endif
         return (double)tb.time + tb.millitm / 1000.0;
     }
 };
