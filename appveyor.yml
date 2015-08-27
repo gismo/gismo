@@ -72,7 +72,7 @@ install:
 # scripts to run before build
 before_build:
   - cmd: cd build-gismo
-  - cmd: del "C:/Program Files (x86)/Git/bin/sh.exe"
+  - cmd: del "C:\Program Files (x86)\Git\bin\sh.exe"
   - cmd: set PATH=C:\MinGW\bin;C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH% #C:\MinGW\msys\1.0\bin
   - cmd: if "%BUILD%"=="msvc" ( if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64) else (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015) )
   #MSYS Makefiles
