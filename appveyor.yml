@@ -77,7 +77,7 @@ before_build:
   - cmd: if "%BUILD%"=="msvc" ( if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64) else (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015) )
   #MSYS Makefiles
   - cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MinGW Makefiles)
-  - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
+  - cmd: cmake -DBUILDNAME="%CMAKE_GENERATOR_NAME%" -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
   #- cmd: cmake --build . --config RelWithDebInfo -- /verbosity:minimal
 
 build_script:
