@@ -23,7 +23,7 @@
 namespace gismo {
 
 
-template<class T = real_t >
+template<class T>
 class gsFileData
 {
 public:
