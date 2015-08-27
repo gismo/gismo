@@ -311,7 +311,8 @@ private:
   ON_String m_utf8_file_name_filter;
   DIR* m_dir;
   struct dirent m_dirent;
-  char m_dirent_name_buffer[NAME_MAX+1]; // < this field provide storage for m_dirent.d_name[]
+  // G+Smo
+  char m_dirent_name_buffer[FILENAME_MAX+1]; // < this field provide storage for m_dirent.d_name[]
 
   // information about the current file
   wchar_t m_current_name[1024];

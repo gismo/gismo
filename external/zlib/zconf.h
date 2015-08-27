@@ -520,6 +520,10 @@ typedef uLong FAR uLongf;
 #pragma warn -8008 /* condition is always true */
 #pragma warn -8066 /* unreachable code */
 #endif
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-function-declaration"
+#endif
 
 
 #endif /* ZCONF_H */

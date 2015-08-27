@@ -56,9 +56,9 @@ if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
-if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-    STRING(REPLACE "-Wimplicit-function-declaration" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
-endif()
+#if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+#    STRING(REPLACE "-Wimplicit-function-declaration" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+#endif()
 
 add_library(${PROJECT_NAME} OBJECT ${ZLIB_SOURCES} ${ZLIB_HEADERS})
 
