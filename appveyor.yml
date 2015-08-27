@@ -72,26 +72,22 @@ install:
 # scripts to run before build
 before_build:
   - cmd: cd build-gismo
-  - cmd: set PATH=C:\MinGW\msys\1.0\bin;C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
-  - cmd: echo Configuring %CMAKE_GENERATOR_NAME% %configuration%
+  - cmd: del C:/Program Files (x86)/Git/bin/sh.exe
+  - cmd: set PATH=C:\MinGW\bin;C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH% #C:\MinGW\msys\1.0\bin
   - cmd: if "%BUILD%"=="msvc" ( if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64) else (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015) )
-  - cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MSYS Makefiles) # && C:\MinGW\msys\1.0\bin\sh --login /c/projects/libgit2/script/appveyor-mingw.sh)
+  #MSYS Makefiles
+  - cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MinGW Makefiles)
   - cmd: cmake -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
   #- cmd: cmake --build . --config RelWithDebInfo -- /verbosity:minimal
-  #- ctest -D ExperimentalConfigure && exit 0
 
 build_script:
   #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
-  #- cmd: ctest -j4 -D ExperimentalBuild && exit 0
   - cmd: ctest -j4 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln
-  # enable MSBuild parallel builds
-#  parallel: true
-
-  # MSBuild verbosity level (quiet|minimal|normal|detailed)
-#  verbosity: minimal
+#  parallel: true # enable MSBuild parallel builds
+#  verbosity: minimal # MSBuild verbosity level (quiet|minimal|normal|detailed)
 
   # NuGet
   #publish_nuget: true
