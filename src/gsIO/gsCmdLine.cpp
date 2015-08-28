@@ -20,10 +20,15 @@
 namespace gismo
 {
 
+class gsCmdLinePrivate
+{
+    
+};
+
 gsCmdLine::gsCmdLine( const std::string& message,	
                       const char delimiter,
                       bool helpAndVersion)  
-    : Base(message,delimiter,GISMO_VERSION,helpAndVersion) 
+: Base(message,delimiter,GISMO_VERSION,helpAndVersion), m_plainString(NULL), m_pstrRes(NULL)
 { 
     this->setOutput( &cmdout );
 }
@@ -67,6 +72,22 @@ void gsCmdLine::addSwitch( const std::string& name,
     m_swRes.push_back(&value);
 }
 
+void gsCmdLine::addPlainString( const std::string& name, 
+                                const std::string& desc, 
+                                std::string & value)
+{
+    if ( m_plainString )
+    {
+        gsWarn<<"Plain string already added.\n";
+        return;
+    }
+    else
+    {
+        m_plainString = new gsArgValPlain<std::string>(name,desc,false,value,"string",*this);
+        m_pstrRes     = &value;
+    }
+}
+
 
 bool gsCmdLine::getValues(int argc, char *argv[])
 {
@@ -89,6 +110,8 @@ bool gsCmdLine::getValues(int argc, char *argv[])
         for( std::size_t i=0; i!=m_switches.size(); ++i)
             *m_swRes[i] = m_switches[i]->getValue();
 
+        if ( m_plainString )
+            *m_pstrRes = m_plainString->getValue();
     }
     catch ( gsArgException& e )
     { 
@@ -107,6 +130,7 @@ gsCmdLine::~gsCmdLine()
     freeAll( m_realVals  );
     freeAll( m_stringVals);
     freeAll( m_switches  );
+    delete m_plainString;
 }
 
 void gsCmdLine::GismoCmdOut::failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e)
@@ -119,7 +143,7 @@ void gsCmdLine::GismoCmdOut::failure(TCLAP::CmdLineInterface& c, TCLAP::ArgExcep
 
 void gsCmdLine::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
 {
-    std::string head= c.getProgramName();
+    std::string head = c.getProgramName();
     head += " is part of G+Smo.";
     spacePrint( gsInfo, head , 75, 3, 0 );
     gsInfo << "\n";

@@ -23,6 +23,8 @@
 namespace gismo
 {
 
+//class gsCmdLinePrivate;
+
 /** 
     @brief Type used for exceptions while reading command-line arguments
 */
@@ -80,9 +82,14 @@ public:
                    const std::string& desc, 
                    bool & value);
 
+    void addPlainString(const std::string& name, 
+                        const std::string& desc, 
+                        std::string & value);
+
 private:
 
-
+    //gsCmdLinePrivate * my;
+    
     // Stores integer arguments
     std::vector<gsArgVal<int>*    > m_intVals ;
     std::vector<int*>               m_intRes ;
@@ -98,6 +105,10 @@ private:
     // Stores switch arguments
     std::vector<gsArgSwitch*      > m_switches;
     std::vector<bool*>             m_swRes ;
+
+    // Stores plain string argument
+    gsArgValPlain<std::string> * m_plainString;
+    std::string *                m_pstrRes;
 
 private:
 
