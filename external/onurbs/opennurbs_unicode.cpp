@@ -837,7 +837,7 @@ int ON_ConvertUTF8ToUTF16(
     )
 {
   int i, j, k, output_count;
-  ON__UINT32 u;
+  ON__UINT32 u = 0;
   ON__UINT16 w[2];
   struct ON_UnicodeErrorParameters e;
 
@@ -931,7 +931,7 @@ int ON_ConvertUTF8ToUTF32(
     )
 {
   int i, j, output_count;
-  ON__UINT32 u;
+  ON__UINT32 u = 0;
   struct ON_UnicodeErrorParameters e;
 
   if ( 0 != error_status )
