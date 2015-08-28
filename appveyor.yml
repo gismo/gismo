@@ -75,7 +75,7 @@ install:
   #- if [%BUILD%]==[mingw] set PATH=C:\MinGW\bin;%PATH%
   - if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
   #- if [%BUILD%]==[mingw] appveyor DownloadFile "https://bintray.com/artifact/download/drewwells/generic/x86_64-4.9.2-release-win32-seh-rt_v4-rev3.7z" -FileName mw64.7z
-  - if [%BUILD%]==[mingw] appveyor DownloadFile "http://downloads.sourceforge.net/project/mingw-w64/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.3/threads-win32/seh/x86_64-4.9.3-release-win32-seh-rt_v4-rev0.7z?r=&ts=1440763635&use_mirror=freefr" -FileName mw64.7z
+  - if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/4.9.3/threads-win32/seh/x86_64-4.9.3-release-win32-seh-rt_v4-rev0.7z" -FileName mw64.7z
 
   - if [%BUILD%]==[mingw] 7z x -oC:\ mw64.7z > NUL
 
