@@ -169,6 +169,11 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   endif()
 endif()
 
+if (MINGW)
+  # large files can overflow pe/coff sections
+  # this switches binutils to use the pe+ format
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa -mbig-obj")
+endif()
 
 #message("CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
 #message("CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG}")
