@@ -69,21 +69,21 @@ install:
   - cmd: cd C:\projects
   - cmd: md build-gismo
 
+  #- cmd: set PATH=C:\MinGW\bin;C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH% #C:\MinGW\msys\1.0\bin
   - if [%BUILD%]==[msvc] set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
 
-  - if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
-  #- if [%BUILD%]==[mingw] set PATH=C:\MinGW\bin;%PATH%
+  #- if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
+  - if [%BUILD%]==[mingw] set PATH=C:\MinGW\bin;%PATH%
   - if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
+  # install mingw
   #- if [%BUILD%]==[mingw] appveyor DownloadFile "https://bintray.com/artifact/download/drewwells/generic/x86_64-4.9.2-release-win32-seh-rt_v4-rev3.7z" -FileName mw64.7z
   #- if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-win32/seh/x86_64-5.1.0-release-win32-seh-rt_v4-rev0.7z" -FileName mw64.7z
-  - if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-posix/seh/x86_64-5.1.0-release-posix-seh-rt_v4-rev0.7z" -FileName mw64.7z
-  - if [%BUILD%]==[mingw] 7z x -oC:\ mw64.7z > NUL
+  #- if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-posix/seh/x86_64-5.1.0-release-posix-seh-rt_v4-rev0.7z" -FileName mw64.7z
+  #- if [%BUILD%]==[mingw] 7z x -oC:\ mw64.7z > NUL
 
 # scripts to run before build
 before_build:
   - cmd: cd build-gismo
-  #- cmd: del "C:\Program Files (x86)\Git\bin\sh.exe"
-  #- cmd: set PATH=C:\MinGW\bin;C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH% #C:\MinGW\msys\1.0\bin
   - cmd: if "%BUILD%"=="msvc" (if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64) else (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015) )
   #MSYS Makefiles
   #- cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MSYS Makefiles)
