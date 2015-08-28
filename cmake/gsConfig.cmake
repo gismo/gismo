@@ -173,7 +173,6 @@ if (MINGW)
   # large files can overflow pe/coff sections
   # this switches binutils to use the pe+ format
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj")
-  add_definitions(-O3)
 endif()
 
 #message("CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
