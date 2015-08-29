@@ -16,12 +16,10 @@
 #include <iostream>
 #include <string>
 
-#include <gsCore/gsLinearAlgebra.h>
+#include <gsIO/gsXml.h>
 
-#include <gsIO/gsXmlUtils.h>
-
-namespace gismo {
-
+namespace gismo 
+{
 
 template<class T>
 class gsFileData
@@ -403,23 +401,6 @@ private:
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 {return fd.print(os); }
-
-
-
-
-
-
-/// Write an arbitrary Gismo object to an XML file with the given filename.
-template <typename Object>
-void gsWrite(const Object& obj, const std::string& fname)
-{
-    gsFileData<> fd;
-    fd << obj;
-    fd.dump(fname);
-}
-
-
-
 
 
 } // namespace gismo
