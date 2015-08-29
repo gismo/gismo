@@ -48,6 +48,15 @@ public:
         cmd.setOutput( &cmdout );
     }
 
+	~gsCmdLinePrivate()  
+	{  
+        freeAll( intVals   ); 
+        freeAll( realVals  ); 
+        freeAll( stringVals); 
+        freeAll( switches  ); 
+        delete plainString; 
+    }
+
 public:
     
     TCLAP::CmdLine cmd;
