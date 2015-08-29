@@ -154,16 +154,16 @@ std::vector<Base*> castVectorPtr(std::vector<Derived*> pVec)
     return result;
 }
 
-/// \brief Small wrapper for std::copy, copies \a n positions starting
-/// from \a begin into \a result. The latter is expected to have been
-/// allocated in advance
-template <class T>
-inline void copyRange(const T * begin, T * result, const int n)
+/// \brief Small wrapper for std::copy mimicking memcpy, copies \a n
+/// positions starting from \a begin into \a result. The latter is
+/// expected to have been allocated in advance
+template <class T, class U>
+inline void copyRange(const T * begin, U * result, const int n)
 {
 #   ifdef _MSC_VER
     // Take care of C4996 warning
     std::copy(begin, begin+n,
-              stdext::checked_array_iterator<T*>(result,n));
+              stdext::checked_array_iterator<U*>(result,n));
 #   else
     std::copy(begin, begin+n, result);
 #   endif

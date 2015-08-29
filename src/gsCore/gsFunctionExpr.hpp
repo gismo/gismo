@@ -33,19 +33,19 @@
 
 // This define will disable the short-circuit '&' (and) and '|' (or)
 // operators
-//#define exprtk_disable_sc_andor
+#define exprtk_disable_sc_andor
 
 // This define will disable all enhanced features such as strength
 // reduction and special function optimisations and expression specific
 // type instantiations. This feature will reduce compilation times and
 // binary sizes but will also result in massive performance degradation
 // of expression evaluations.
-//#define exprtk_disable_enhanced_features
+#define exprtk_disable_enhanced_features
 
 // This define will disable all string processing capabilities. Any
 // expression that contains a string or string related syntax will result
 // in a compilation failure.
-//#define exprtk_disable_string_capabilities
+#define exprtk_disable_string_capabilities
 
 //#define GISMO_USE_AUTODIFF
 #ifdef GISMO_USE_AUTODIFF
