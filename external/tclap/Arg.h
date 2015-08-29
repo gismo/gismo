@@ -54,8 +54,6 @@ typedef std::istrstream istringstream;
 #include <tclap/ArgTraits.h>
 #include <tclap/StandardTraits.h>
 
-#include <gsCore/gsExport.h> // For building library on windows.
-
 namespace TCLAP {
 
 /**
@@ -63,7 +61,7 @@ namespace TCLAP {
  * This class, or one of its existing children, must be subclassed to do
  * anything.
  */
-class GISMO_EXPORT Arg
+class Arg
 {
 	private:
 		/**

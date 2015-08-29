@@ -22,7 +22,6 @@
 
 // --- start External files
 #include <tclap/CmdLine.h>   
-#include <tclap/CmdLine.cpp>
 #include <tclap/ValueArg.h>
 //#include <tclap/UnlabeledValueArg.h>
 //#include <tclap/MultiArg.h>

@@ -29,8 +29,6 @@
 
 #include <tclap/Arg.h>
 
-#include <gsCore/gsExport.h> // For building library on windows.
-
 namespace TCLAP {
 
 /**
@@ -38,7 +36,7 @@ namespace TCLAP {
  * the getValue method will return the opposite of the default value for the
  * switch.
  */
-class GISMO_EXPORT SwitchArg : public Arg
+class SwitchArg : public Arg
 {
 	protected:
 
