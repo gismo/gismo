@@ -172,7 +172,15 @@ endif()
 if (MINGW)
   # large files can overflow pe/coff sections
   # this switches binutils to use the pe+ format
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj -ffunction-sections -Wl,--gc-sections")
+  #Check for "-Wa,-mbig-obj" option
+  include(CheckCXXCompilerFlag)
+  CHECK_CXX_COMPILER_FLAG("-Wa,-mbig-obj" HAS_MBIGOBJ)
+  if(NOT HAS_MBIGOBJ)
+    message(WARNING "Current compiler does not suppport -Wa,-mbig-obj option.")
+  else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj")
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -Wl,--gc-sections")
+  endif()
 endif()
 
 #message("CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")

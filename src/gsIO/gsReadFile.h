@@ -24,7 +24,6 @@
 #include <string>
 
 #include <gsCore/gsDebug.h>
-#include <gsIO/gsFileData.h>
 
 namespace gismo 
 {
@@ -200,6 +199,14 @@ public:
     
    
 };  // class gsReadFile
- 
-};  // namespace gismo
- 
+
+/// \brief Write an arbitrary Gismo object to an XML file with the given filename.
+template <typename Object>
+void gsWrite(const Object& obj, const std::string& fname)
+{
+    gsFileData<real_t> fd;
+    fd << obj;
+    fd.dump(fname);
+}
+
+} // namespace gismo

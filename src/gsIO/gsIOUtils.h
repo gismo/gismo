@@ -144,7 +144,7 @@ void gsWriteGoTools(const gsGeometry<T>& geom,
     std::string fn(fileName);
 
     // check the extension
-    std::string ext = gsFileData<>::getExtension(fileName);
+    std::string ext = gsFileData<T>::getExtension(fileName);
     if (ext != "g2")
     {
          fn += ".g2";
@@ -223,7 +223,7 @@ void gsWriteGoTools(const gsMultiPatch<T>& multiPatch,
     std::string fn(fileName);
 
     // check the extension
-    std::string ext = gsFileData<>::getExtension(fileName);
+    std::string ext = gsFileData<T>::getExtension(fileName);
     if (ext != "g2")
     {
         fn += ".g2";

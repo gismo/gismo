@@ -35,7 +35,6 @@
 namespace gismo
 {
 
-//class GISMO_EXPORT gsCmdLinePrivate
 class gsCmdLinePrivate
 {
 public:

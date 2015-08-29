@@ -36,10 +36,8 @@ namespace internal
 
 }
 
-//////////////////////////////////////////////////
-// Core
-//////////////////////////////////////////////////
 
+/* ----------- Core ----------- */
 // #include <gsCore/gsConfig.h>
 // #include <gsCore/gsDebug.h>
 // #include <gsCore/gsMemory.h>
@@ -74,9 +72,7 @@ namespace internal
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
 
-//////////////////////////////////////////////////
-// Nurbs
-//////////////////////////////////////////////////
+/* ----------- Nurbs ----------- */
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsCompactKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>
@@ -89,18 +85,14 @@ namespace internal
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbsCreator.h>
 
-//////////////////////////////////////////////////
-// HSplines
-//////////////////////////////////////////////////
+/* ----------- HSplines ----------- */
 #include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 
-//////////////////////////////////////////////////
-// Modeling
-//////////////////////////////////////////////////
+/* ----------- Modeling ----------- */
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsCurveLoop.h>
 #include <gsModeling/gsPlanarDomain.h>
@@ -111,58 +103,45 @@ namespace internal
 #include <gsModeling/gsFitting.h>
 #include <gsModeling/gsCurveFitting.h>
 
-//////////////////////////////////////////////////
-// Pde
-//////////////////////////////////////////////////
+/* ----------- Pde ----------- */
 #include <gsPde/gsConvDiffRePde.h>
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
 
-//////////////////////////////////////////////////
-// Norms
-//////////////////////////////////////////////////
+/* ----------- Norms ----------- */
 #include <gsAssembler/gsNorm.h>
 #include <gsAssembler/gsNormL2.h>
 #include <gsAssembler/gsNormL2Boundary.h>
 #include <gsAssembler/gsSeminormH1.h>
 #include <gsAssembler/gsSeminormH2.h>
 
-//////////////////////////////////////////////////
-// Quadrature
-//////////////////////////////////////////////////
+/* ----------- Quadrature ----------- */
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsGaussRule.h>
 
-//////////////////////////////////////////////////
-// Assembler
-//////////////////////////////////////////////////
+/* ----------- Assembler ----------- */
 #include <gsAssembler/gsAssemblerBase.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
 
-//////////////////////////////////////////////////
-// Solver
-//////////////////////////////////////////////////
+/* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMinimalResidual.h>
 #include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsConjugateGradient.h>
 #include <gsSolver/gsSimplePreconditioners.h>
 
-//////////////////////////////////////////////////
-// IO
-//////////////////////////////////////////////////
+/* ----------- IO ----------- */
 #include <gsIO/gsCmdLine.h>
 #include <gsIO/gsCmdLineArgs.h>
+#include <gsIO/gsFileData.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsParaviewCollection.h>
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
 
-//////////////////////////////////////////////////
-// Utilities
-//////////////////////////////////////////////////
+/* ----------- Utilities ----------- */
 #include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
