@@ -154,6 +154,7 @@ namespace internal
 // IO
 //////////////////////////////////////////////////
 #include <gsIO/gsCmdLine.h>
+#include <gsIO/gsCmdLineArgs.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsParaviewCollection.h>
 #include <gsIO/gsReadFile.h>
