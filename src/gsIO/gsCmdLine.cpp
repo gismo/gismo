@@ -35,6 +35,7 @@
 namespace gismo
 {
 
+//class GISMO_EXPORT gsCmdLinePrivate
 class gsCmdLinePrivate
 {
 public:
@@ -42,7 +43,7 @@ public:
     gsCmdLinePrivate(const std::string& message,	
                      const char delimiter = ' ',
                      bool helpAndVersion = true)
-    : cmd(message,delimiter,GISMO_VERSION,helpAndVersion)
+        : cmd(message,delimiter,GISMO_VERSION,helpAndVersion), plainString(NULL)
     {
         cmd.setOutput( &cmdout );
     }
