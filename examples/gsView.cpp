@@ -32,20 +32,18 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");  
     
     cmd.addSwitch("geometry", "Try to find and plot a geometry contained in the file", get_geo);
-    cmd.addSwitch("mesh", "Try to find and plot a mesh contained in the file", get_mesh);
-    cmd.addSwitch("basis", "Try to find and plot a basis contained in the file", get_basis);
-    cmd.addInt("s", "samples", "Number of samples to use for viewing", numSamples);
-    cmd.addSwitch("element", "Plot the element mesh (when applicable)", plot_mesh);
+    cmd.addSwitch("mesh"    , "Try to find and plot a mesh contained in the file", get_mesh);
+    cmd.addSwitch("basis"   , "Try to find and plot a basis contained in the file", get_basis);
+    cmd.addInt   ("s", "samples", "Number of samples to use for viewing", numSamples);
+    cmd.addSwitch("element"   , "Plot the element mesh (when applicable)", plot_mesh);
     cmd.addSwitch("controlNet", "Plot the control net (when applicable)", plot_net);
-    cmd.addSwitch("boundary", "Plot the boundaries and interfaces of patches with colors", plot_boundary);
-    gsArgValPlain<std::string> arg_fn("filename","File containing data to draw (.xml, .axl, .txt)", 
-                                  false, "", "string",cmd );
+    cmd.addSwitch("boundary"  , "Plot the boundaries and interfaces of patches with colors", plot_boundary);
+    cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
     
     bool ok = cmd.getValues(argc,argv);
-    fn = arg_fn.getValue();
     if ( !ok ) 
     {
-        std::cout << "Something went wrong when reading the command line. Exiting.\n";
+        gsWarn << "Something went wrong when reading the command line. Exiting.\n";
         return 1;
     }
     

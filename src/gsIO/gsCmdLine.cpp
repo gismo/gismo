@@ -11,26 +11,92 @@
     Author(s): A. Mantzaflaris
 */
 
-#include <gsIO/gsCmdLine.h>
+#include <vector> // temp
 
+#include <gsCore/gsConfig.h>
+#include <gsCore/gsDebug.h>
 #include <gsCore/gsMemory.h>
 
-#include <tclap/CmdLine.cpp> // External file
+#include <gsIO/gsCmdLine.h>
+//#include <gsIO/gsCmdLineArgs.h>
+
+// --- start External files
+#include <tclap/CmdLine.h>   
+#include <tclap/CmdLine.cpp>
+#include <tclap/ValueArg.h>
+//#include <tclap/UnlabeledValueArg.h>
+//#include <tclap/MultiArg.h>
+//#include <tclap/UnlabeledMultiArg.h>
+#include <tclap/SwitchArg.h>
+//#include <tclap/MultiSwitchArg.h>
+// --- end External files
+
+
 
 namespace gismo
 {
 
 class gsCmdLinePrivate
 {
+public:
     
+    gsCmdLinePrivate(const std::string& message,	
+                     const char delimiter = ' ',
+                     bool helpAndVersion = true)
+    : cmd(message,delimiter,GISMO_VERSION,helpAndVersion)
+    {
+        cmd.setOutput( &cmdout );
+    }
+
+public:
+    
+    TCLAP::CmdLine cmd;
+
+    // Stores integer arguments
+    std::vector<TCLAP::ValueArg<int>*    > intVals ;
+    std::vector<int*>               intRes ;
+
+    // Stores real_t arguments
+    std::vector<TCLAP::ValueArg<real_t>*> realVals;
+    std::vector<real_t*>           realRes ;
+
+    // Stores string arguments
+    std::vector<TCLAP::ValueArg<std::string>*> stringVals;
+    std::vector<std::string*>           strRes ;
+
+    // Stores switch arguments
+    std::vector<TCLAP::SwitchArg*      > switches;
+    std::vector<bool*>              swRes ;
+
+    // Stores plain string argument
+    TCLAP::UnlabeledValueArg<std::string> * plainString;
+    std::string *                pstrRes;
+
+    class GismoCmdOut : public TCLAP::StdOutput
+    {
+    public:
+        void failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e);
+        void usage(TCLAP::CmdLineInterface& c);
+        void version(TCLAP::CmdLineInterface& c);
+    };
+    
+    GismoCmdOut cmdout;
 };
 
 gsCmdLine::gsCmdLine( const std::string& message,	
                       const char delimiter,
                       bool helpAndVersion)  
-: Base(message,delimiter,GISMO_VERSION,helpAndVersion), m_plainString(NULL), m_pstrRes(NULL)
-{ 
-    this->setOutput( &cmdout );
+: my(new gsCmdLinePrivate(message,delimiter,helpAndVersion))
+{ }
+
+gsCmdLine::operator TCLAP::CmdLineInterface &()
+{
+    return my->cmd;
+}
+
+std::string & gsCmdLine::getMessage()
+{
+    return my->cmd.getMessage();
 }
 
 void gsCmdLine::addInt( const std::string& flag, 
@@ -38,9 +104,8 @@ void gsCmdLine::addInt( const std::string& flag,
                              const std::string& desc, 
                              int & value)
 {
-
-    m_intVals.push_back(new gsArgVal<int>(flag,name,desc,false,value,"int",*this) );
-    m_intRes.push_back(&value);
+    my->intVals.push_back(new TCLAP::ValueArg<int>(flag,name,desc,false,value,"int",my->cmd) );
+    my->intRes.push_back(&value);
 }
 
 void gsCmdLine::addReal( const std::string & flag, 
@@ -49,8 +114,8 @@ void gsCmdLine::addReal( const std::string & flag,
                              real_t & value)
 {
 
-    m_realVals.push_back(new gsArgVal<real_t>(flag,name,desc,false,value,"float",*this) );
-    m_realRes.push_back(&value);
+    my->realVals.push_back(new TCLAP::ValueArg<real_t>(flag,name,desc,false,value,"float",my->cmd) );
+    my->realRes.push_back(&value);
 }
 
 void gsCmdLine::addString( const std::string& flag, 
@@ -59,32 +124,42 @@ void gsCmdLine::addString( const std::string& flag,
                            std::string & value)
 {
 
-    m_stringVals.push_back(
-    new gsArgVal<std::string>(flag,name,desc,false,value,"string",*this) );
-    m_strRes.push_back(&value);
+    my->stringVals.push_back(
+    new TCLAP::ValueArg<std::string>(flag,name,desc,false,value,"string",my->cmd) );
+    my->strRes.push_back(&value);
 }
 
 void gsCmdLine::addSwitch( const std::string& name, 
                            const std::string& desc, 
                            bool & value)
 {
-    m_switches.push_back(new gsArgSwitch("",name,desc,*this) );
-    m_swRes.push_back(&value);
+    my->switches.push_back(new TCLAP::SwitchArg("",name,desc,my->cmd) );
+    my->swRes.push_back(&value);
+}
+
+void gsCmdLine::addSwitch( const std::string& flag, 
+                           const std::string& name, 
+                           const std::string& desc, 
+                           bool & value)
+{
+    my->switches.push_back(new TCLAP::SwitchArg(flag,name,desc,my->cmd) );
+    my->swRes.push_back(&value);
 }
 
 void gsCmdLine::addPlainString( const std::string& name, 
                                 const std::string& desc, 
                                 std::string & value)
 {
-    if ( m_plainString )
+    if ( my->plainString )
     {
         gsWarn<<"Plain string already added.\n";
         return;
     }
     else
     {
-        m_plainString = new gsArgValPlain<std::string>(name,desc,false,value,"string",*this);
-        m_pstrRes     = &value;
+        my->plainString = 
+            new TCLAP::UnlabeledValueArg<std::string>(name,desc,false,value,"string",my->cmd);
+        my->pstrRes     = &value;
     }
 }
 
@@ -96,24 +171,24 @@ bool gsCmdLine::getValues(int argc, char *argv[])
 
     try 
     {
-        this->parse(argc,argv);
+        my->cmd.parse(argc,argv);
         
-        for( std::size_t i=0; i!=m_intVals.size(); ++i)
-            *m_intRes[i] = m_intVals[i]->getValue();
+        for( std::size_t i=0; i!=my->intVals.size(); ++i)
+            *my->intRes[i] = my->intVals[i]->getValue();
 
-        for( std::size_t i=0; i!=m_realVals.size(); ++i)
-            *m_realRes[i] = m_realVals[i]->getValue();
+        for( std::size_t i=0; i!=my->realVals.size(); ++i)
+            *my->realRes[i] = my->realVals[i]->getValue();
 
-        for( std::size_t i=0; i!=m_stringVals.size(); ++i)
-            *m_strRes[i] = m_stringVals[i]->getValue();
+        for( std::size_t i=0; i!=my->stringVals.size(); ++i)
+            *my->strRes[i] = my->stringVals[i]->getValue();
 
-        for( std::size_t i=0; i!=m_switches.size(); ++i)
-            *m_swRes[i] = m_switches[i]->getValue();
+        for( std::size_t i=0; i!=my->switches.size(); ++i)
+            *my->swRes[i] = my->switches[i]->getValue();
 
-        if ( m_plainString )
-            *m_pstrRes = m_plainString->getValue();
+        if ( my->plainString )
+            *my->pstrRes = my->plainString->getValue();
     }
-    catch ( gsArgException& e )
+    catch ( TCLAP::ArgException& e )
     { 
         gsWarn << "\nSomething went wrong when reading the command line.\n";
         gsWarn << "Error: " << e.error() << " " << e.argId() << "\n"; 
@@ -126,14 +201,10 @@ bool gsCmdLine::getValues(int argc, char *argv[])
 
 gsCmdLine::~gsCmdLine() 
 { 
-    freeAll( m_intVals   );
-    freeAll( m_realVals  );
-    freeAll( m_stringVals);
-    freeAll( m_switches  );
-    delete m_plainString;
+    delete my;
 }
 
-void gsCmdLine::GismoCmdOut::failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e)
+void gsCmdLinePrivate::GismoCmdOut::failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e)
 {
     gsInfo << e.what() << "\n";
     gsInfo <<"\n USAGE: \n";
@@ -141,7 +212,7 @@ void gsCmdLine::GismoCmdOut::failure(TCLAP::CmdLineInterface& c, TCLAP::ArgExcep
     throw;
 }
 
-void gsCmdLine::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
+void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
 {
     std::string head = c.getProgramName();
     head += " is part of G+Smo.";
@@ -181,7 +252,7 @@ void gsCmdLine::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
 }
 
 
-void gsCmdLine::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
+void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
 {
     //gsInfo <<"Executable: "<< c.getProgramName() <<", part of \n\n";
     gsInfo << "\n";

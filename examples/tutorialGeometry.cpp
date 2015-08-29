@@ -31,26 +31,21 @@ std::string size(const gsMatrix<T>& matrix)
 int main(int argc, char* argv[])
 {
 
-    std::string input("");
+    std::string input(GISMO_DATA_DIR "surfaces/simple.xml");
     std::string output("");
 
     // for information about command line arguments 
     // look at tutorialCommandLineArg.cpp
         
     gsCmdLine cmd("Tutorial on gsGeometry class.");
-        
-    gsArgValPlain<std::string> inArg("input", "G+Smo input geometry file.", 
-                                         false, GISMO_DATA_DIR
-                                         "surfaces/simple.xml", 
-                                         "file", cmd);
+    cmd.addPlainString("filename", "G+Smo input geometry file.", input);
     cmd.addString("o", "output", "Name of the output file", output);
     bool ok = cmd.getValues(argc,argv);
    
-    input = inArg.getValue();
     if (!ok)
     {
-        std::cout << "Error during parsing command line!";
-        return false;
+        gsWarn << "Error during parsing command line!";
+        return 1;
     }
     
     // ======================================================================

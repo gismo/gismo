@@ -15,20 +15,10 @@ namespace gismo
 #define Z int
 #define S std::string
 
-
-CLASS_TEMPLATE_INST gsArgVal<T>;
-CLASS_TEMPLATE_INST gsArgVal<uZ>;
-CLASS_TEMPLATE_INST gsArgVal<Z>;
-CLASS_TEMPLATE_INST gsArgVal<S>;
-CLASS_TEMPLATE_INST gsArgValPlain<T>;
-CLASS_TEMPLATE_INST gsArgValPlain<uZ>;
-CLASS_TEMPLATE_INST gsArgValPlain<Z>;
-CLASS_TEMPLATE_INST gsArgValPlain<S>;
 CLASS_TEMPLATE_INST gsArgMultiVal<T>;
 CLASS_TEMPLATE_INST gsArgMultiVal<uZ>;
 CLASS_TEMPLATE_INST gsArgMultiVal<Z>;
 CLASS_TEMPLATE_INST gsArgMultiVal<S>;
-
 
 #undef T
 #undef uZ

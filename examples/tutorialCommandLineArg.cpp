@@ -78,15 +78,9 @@ int main(int argc, char* argv[])
                 
     // -----------------------------------------------------------------
     // Extra plain argument (manually defined):
-    // Plain arguments are given without a flag. They need to be
-    // defined by making a "gsArgValPlain" argument object, taking the
-    // cmd object in the constructor
-    std::string name = "plain";
-    std::string desc =  "Description of the plain command line argument.";
-    bool req = false; // whether the argument is required
+    // Plain arguments are given without a flag.
     std::string value = "default_plain_value"; 
-    std::string typeDesc = "string"; // type description    
-    gsArgValPlain<std::string> plainArg(name, desc, req, value, typeDesc, cmd);
+    cmd.addPlainString("plain", "Description of the plain command line argument.", plainString);
 
     // Note: Another manually defined argument is
     //   gsArgMultiVal
@@ -97,25 +91,19 @@ int main(int argc, char* argv[])
     // are updated with the inputs, if given. If "true" is returned, then reading succeeded.
     bool ok = cmd.getValues(argc,argv);
 
-    // -----------------------------------------------------------------
-    // The extra (manually defined) arguments are not fetched with the
-    //above command. The user must call "getValue" for each manually
-    //defined argument.
-    plainString = plainArg.getValue();
-
     if ( !ok ) 
     {
-        std::cout << "Something went wrong when reading the command line. Exiting.\n";
+        gsWarn << "Something went wrong when reading the command line. Exiting.\n";
         return 1;
     }
 
-    std::cout << "Printing command line arguments:\n\n\n"
-              << "Plain string: " << plainString << "\n\n"
-              << "String:       " << string << "\n\n"
-              << "Float:        " << flNumber << "\n\n"
-              << "Integer:      " << number << "\n\n"
-              << "Switch:       " << boolean << "\n" << std::endl;
-
+    gsInfo << "Printing command line arguments:\n\n\n"
+           << "Plain string: " << plainString << "\n\n"
+           << "String:       " << string << "\n\n"
+           << "Float:        " << flNumber << "\n\n"
+           << "Integer:      " << number << "\n\n"
+           << "Switch:       " << boolean << "\n\n";
+    
     return 0;
 }
 

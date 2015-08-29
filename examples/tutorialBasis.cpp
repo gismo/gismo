@@ -31,23 +31,17 @@ std::string size(const gsMatrix<T>& matrix)
 int main(int argc, char* argv[])
 {
 
-    std::string input("");
+    std::string input(GISMO_DATA_DIR "bspbasis/tpBSpline2_02.xml");
     std::string output("");
     
     // for information about command line arguments 
     // look at tutorialCommandLineArg.cpp
         
     gsCmdLine cmd("Tutorial about gsBasis class.");
-        
-    gsArgValPlain<std::string> inArg("input", "G+Smo input basis file.", 
-                                     false, GISMO_DATA_DIR
-                                     "bspbasis/tpBSpline2_02.xml", 
-                                     "file", cmd);
-
+    cmd.addPlainString("input", "G+Smo input basis file.", input);
     cmd.addString("o", "output", "Name of the output file.", output);
     
     bool ok = cmd.getValues(argc,argv);
-    input = inArg.getValue();
     if (!ok) {
         gsInfo << "Error during parsing command line!";
         return 1;

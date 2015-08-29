@@ -30,8 +30,7 @@ int main(int argc, char *argv[])
     int wInterior = 1;
 
     gsCmdLine cmd("Recover the features of a triangulated surface.");
-    gsArgValPlain<std::string> a1("filename","File containing the input mesh.",
-                                      false,filename,"string",cmd );
+    cmd.addPlainString("filename", "File containing the input mesh", filename);
     cmd.addSwitch("plot", "Output mesh in ParaView format", plot);
     cmd.addSwitch("xml", "Output solid to xml file", toxml);
     cmd.addSwitch("nosmooth", "Do not smooth corners of faces", noSmooth);
@@ -51,12 +50,12 @@ int main(int argc, char *argv[])
     cmd.addReal("c", "cutoff","Cutoff angle (degrees).", cutoffAngle);
                   
     bool ok = cmd.getValues(argc,argv);
-    if (!ok) {
-      cout << "Error during parsing";
-      return 1;
+    if (!ok) 
+    {
+        gsInfo << "Error during parsing";
+        return 1;
     }
     
-    filename = a1.getValue(); 
     if (filename.empty() )
     {
         std::cout<< "Waiting for file input.\n";

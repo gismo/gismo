@@ -14,21 +14,23 @@
 #pragma once
 
 #include <gsCore/gsExport.h>
-#include <gsCore/gsDebug.h>
 
-#include <tclap/CmdLine.h>   // External file
+namespace TCLAP
+{
+//forward declarations
+class CmdLineInterface;
+}
 
-#include <gsIO/gsCmdLineArgs.h>
 
 namespace gismo
 {
 
-//class gsCmdLinePrivate;
+class gsCmdLinePrivate;
 
-/** 
+/* 
     @brief Type used for exceptions while reading command-line arguments
 */
-typedef TCLAP::ArgException gsArgException;
+//typedef TCLAP::ArgException gsArgException;
 
 /** 
     @brief Class for command-line argument parsing
@@ -39,10 +41,8 @@ typedef TCLAP::ArgException gsArgException;
     
     \ingroup IO
 */
-class GISMO_EXPORT gsCmdLine :  public TCLAP::CmdLine
+class GISMO_EXPORT gsCmdLine
 {
-public:
-    typedef TCLAP::CmdLine Base;
 public:
     /**
      * Command line constructor. Defines how the arguments will be
@@ -59,9 +59,13 @@ public:
     
     ~gsCmdLine();
 
+    operator TCLAP::CmdLineInterface &();
+
 public:
 
     bool getValues(int argc, char *argv[]);
+
+    std::string & getMessage();
 
     void addInt(const std::string& flag, 
                 const std::string& name, 
@@ -82,46 +86,19 @@ public:
                    const std::string& desc, 
                    bool & value);
 
+    void addSwitch(const std::string& flag, 
+                   const std::string& name, 
+                   const std::string& desc, 
+                   bool & value);
+
     void addPlainString(const std::string& name, 
                         const std::string& desc, 
                         std::string & value);
 
 private:
 
-    //gsCmdLinePrivate * my;
-    
-    // Stores integer arguments
-    std::vector<gsArgVal<int>*    > m_intVals ;
-    std::vector<int*>               m_intRes ;
+    gsCmdLinePrivate * my;
 
-    // Stores real_t arguments
-    std::vector<gsArgVal<real_t>* > m_realVals;
-    std::vector<real_t*>          m_realRes ;
-
-    // Stores string arguments
-    std::vector<gsArgVal<std::string>* > m_stringVals;
-    std::vector<std::string*>       m_strRes ;
-
-    // Stores switch arguments
-    std::vector<gsArgSwitch*      > m_switches;
-    std::vector<bool*>             m_swRes ;
-
-    // Stores plain string argument
-    gsArgValPlain<std::string> * m_plainString;
-    std::string *                m_pstrRes;
-
-private:
-
-    class GismoCmdOut : public TCLAP::StdOutput
-    {
-    public:
-        void failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e);
-        void usage(TCLAP::CmdLineInterface& c);
-        void version(TCLAP::CmdLineInterface& c);
-    };
-    
-    GismoCmdOut cmdout;
-    
 }; // class gsCmdLine
 
 
