@@ -27,22 +27,11 @@ using extensions::gsWriteParasolid;
 
 int main(int argc, char *argv[])
 {
-    std::string fn;
-    try 
-    {
-        gsCmdLine cmd("Hi, give me a file and I will read the contents to/from Parasolid.");    
-        gsArgValPlain<std::string> arg_file("filename","G+SMO or Parasolid file", 
-                                  false, "", "string",cmd );
-        cmd.parse(argc,argv);
-        fn = arg_file.getValue();
+    std::string fn = GISMO_DATA_DIR "surfaces/simple.xml";
 
-        if (fn.empty() )
-        {
-            fn = GISMO_DATA_DIR "surfaces/simple.xml";
-        }
-        
-    } catch ( gsArgException& e )
-    { cout << "Error: " << e.error() << " " << e.argId() << endl; }
+    gsCmdLine cmd("Hi, give me a file and I will read the contents to/from Parasolid.");
+    cmd.addPlainString("filename", "G+SMO or Parasolid file", fn);
+    cmd.parse(argc,argv);
     
     // Read in a surface
     cout << "Read in "<< gsFileData<>::getFilename(fn) <<"\n";

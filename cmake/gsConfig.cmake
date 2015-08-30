@@ -27,6 +27,9 @@ if(NOT GISMO_INDEX_TYPE)
    )
 endif()
 
+# Shared pointer
+find_package (TR1 QUIET)
+
 ## #################################################################
 ## Setup build types
 ## #################################################################
@@ -170,9 +173,10 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 if (MINGW)
-  # large files can overflow pe/coff sections
-  # this switches binutils to use the pe+ format
-  #Check for "-Wa,-mbig-obj" option
+  # export explicit template instantiations
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--export-all-symbols")
+
+  # large files can overflow pe/coff sections, so use the pe+ format
   include(CheckCXXCompilerFlag)
   CHECK_CXX_COMPILER_FLAG("-Wa,-mbig-obj" HAS_MBIGOBJ)
   if(NOT HAS_MBIGOBJ)

@@ -25,13 +25,20 @@ if("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
 endif("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
 
 ## #################################################################
-## Cmake Inclusions and options
+## Cmake Inclusions and configuration options
 ## #################################################################
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include( gsVersion )
 include( gismoUse  )
+include( gsConfig )
+
+## #################################################################
+## Documentation
+## #################################################################
+
+add_subdirectory(doc)
 
 message( "   GGGGGGGGG      GGGG      GGGGGGGGG  GGGGGG   GGGGGG  GGGGGGGGGG" )
 message( "  GGGG            GGGG     GGGG        GGGGGG  GGGGGG  GGGG   GGGG" )
@@ -44,12 +51,6 @@ message( " GGGGGGGGGG      GGGG     GGGGGGGGG  GG   GGG   GGGG  GGGGGGGGGG  " )
 message( "                  version ${${PROJECT_NAME}_VERSION} (revision ${GISMO_WC_REVISION})" )
 
 ## #################################################################
-## Configuration and Compilation
-## #################################################################
-
-include( gsConfig )
-
-## #################################################################
 ## Project options
 ## #################################################################
 
@@ -58,9 +59,6 @@ include( gsOptions )
 ## #################################################################
 ## Preprocessor definitions
 ## #################################################################
-
-# Shared pointer
-find_package (TR1 QUIET)
 
 # Data directory
 set (GISMO_DATA_DIR   "${PROJECT_SOURCE_DIR}/filedata/")
@@ -138,7 +136,7 @@ if(GISMO_WITH_PARDISO)
 endif(GISMO_WITH_PARDISO)
 
 ## #################################################################
-## Build gismo library instantized for GISMO_COEFF_TYPE number type
+## Build G+Smo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################
 
 if(GISMO_BUILD_LIB)
@@ -195,9 +193,3 @@ if (NOT gismo_optionals STREQUAL "")
   message(STATUS "Optional compile list: ${gismo_optionals}")
 endif()
 
-
-## #################################################################
-## Documentation
-## #################################################################
-
-add_subdirectory(doc)
