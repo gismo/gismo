@@ -146,6 +146,10 @@ public:
     virtual void deriv_into(const gsMatrix<T>& u, 
                             gsMatrix<T>& result) const;
 
+    // see gsFunction for documentation
+    virtual void deriv2_into(const gsMatrix<T>& u, 
+                             gsMatrix<T>& result) const;
+
     // see gsFunction for documentation  
     typename gsFunction<T>::uMatrixPtr hess(const gsMatrix<T>& u, unsigned coord = 0) const;
   

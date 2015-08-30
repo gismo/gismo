@@ -50,6 +50,7 @@
 //#define GISMO_USE_AUTODIFF
 #ifdef GISMO_USE_AUTODIFF
   /* Optional automatic differentiation */
+  #define DScalar ad::DScalar2<real_t,-1>
   #include <exprtk_ad_adaptor.hpp> // external file
 #else
   #include <exprtk.hpp>            // external file
@@ -142,8 +143,7 @@ template<typename T> class gsFunctionExprPrivate
 public:
 
 #ifdef GISMO_USE_AUTODIFF
-    typedef ad::DScalar1<T, -1> Numeric_t;
-    //typedef ad::DScalar2<T, -1> Numeric_t;
+    typedef DScalar Numeric_t;
 #else
     typedef T Numeric_t;
 #endif
@@ -157,7 +157,7 @@ public:
     SymbolTable_t             symbol_table;
     std::vector<Expression_t> expression;
     std::vector<std::string>  string; 
-    int dim;
+    index_t dim;
 };
 
 
@@ -525,29 +525,72 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
     
     for ( int p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
+#       ifdef GISMO_USE_AUTODIFF
+        for (index_t k = 0; k!=d; ++k)
+            my->vars[k].setVariable(k,d,u(k,p));
+        for (int c = 0; c!= n; ++c) // for all components
+            result.block(c*d,p,d,1) = my->expression[c].value().getGradient();
+#       else
         copyRange(u.col(p).data(), my->vars, my->dim);
+        for (int c = 0; c!= n; ++c) // for all components
+            for ( int j = 0; j!=d; j++ ) // for all variables
+                result(c*d + j, p) = 
+                    exprtk::derivative<T>(my->expression[c], my->vars[j], 0.00001 ) ;
+#       endif
+    }
+}
+
+template<typename T>
+void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{
+    const index_t d = domainDim();
+    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
+                   << my->dim <<", got "<< u.rows() <<")");
+    
+    const int n = targetDim();
+    const unsigned stride = d + d*(d-1)/2;
+    result.resize(stride*n, u.cols() );
+    
+    for ( int p = 0; p!=u.cols(); p++ ) // for all evaluation points
+    {
+#       ifndef GISMO_USE_AUTODIFF
+        copyRange(u.col(p).data(), my->vars, my->dim);
+#       endif
 
         for (int c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_USE_AUTODIFF
-            result.block(c*d,p,d,1) = my->expression[c].value().getGradient();
+            for (index_t v = 0; v!=d; ++v)
+                my->vars[v].setVariable(v,d,u(v,p));
+            const DScalar::Hessian_t & Hmat = my->expression[c].value().getHessian();
+
+            for ( index_t k=0; k!=d; ++k)
+            {
+                result(k,p) = Hmat(k,k);
+                index_t m = d;
+                for ( index_t l=k+1; l<d; ++l)
+                    result(m++,p) = Hmat(k,l);
+            }
 #           else
-            for ( int j = 0; j!=d; j++ ) // for all variables
-                result(c*d + j, p) = 
-                    exprtk::derivative<T>(my->expression[c], my->vars[j], 0.00001 ) ;
+            for (index_t k = 0; k!=d; ++k)
+            {
+                // H_{k,k}
+                result(k,p) = exprtk::
+                    second_derivative<T>(my->expression[c], my->vars[k], 0.00001);
+                
+                index_t m = d;
+                for (index_t l=k+1; l<d; ++l)
+                {
+                    // H_{k,l}
+                    result(m++,p) =
+                        mixed_derivative<T>( my->expression[c], my->vars[k], 
+                                             my->vars[l], 0.00001 );
+                }
+            }
 #           endif
         }
     }
 }
-
-/* // todo
-template<typename T>
-void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-{
-
-
-}
-*/
 
 template<typename T>
 typename gsFunction<T>::uMatrixPtr
@@ -556,27 +599,30 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     //gsDebug<< "Using finite differences (gsFunctionExpr::hess) for Hessian.\n";
     GISMO_ENSURE(coord == 0, "Error, function is real");
     GISMO_ASSERT ( u.cols() == 1, "Need a single evaluation point." );
-    const int d = u.rows();
+    const index_t d = u.rows();
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
                    << my->dim <<", got "<< u.rows() <<")");
     
     gsMatrix<T> * res = new gsMatrix<T>(d,d);
 
+#   ifdef GISMO_USE_AUTODIFF
+    for (index_t v = 0; v!=d; ++v)
+        my->vars[v].setVariable(v, d, u(v,0) );
+    *res = my->expression[coord].value().getHessian();
+#   else
     copyRange(u.data(), my->vars, d);    
-
     for( int j=0; j!=d; ++j )
     {
-#       ifdef GISMO_USE_AUTODIFF
-//todo
-#       else
-        (*res)(j,j) = exprtk::second_derivative<T>( my->expression[coord], my->vars[j], 0.00001);
+        (*res)(j,j) = exprtk::
+            second_derivative<T>( my->expression[coord], my->vars[j], 0.00001);
 
-        for( int k=0; k<j; ++k )
+        for( int k = 0; k!=j; ++k )
             (*res)(k,j) = (*res)(j,k) =
                 mixed_derivative<T>( my->expression[coord], my->vars[k], 
                                      my->vars[j], 0.00001 );
-#       endif
     }
+#       endif
+
     return typename gsFunction<T>::uMatrixPtr(res); 
 }
 
@@ -591,42 +637,56 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
     
     for( index_t p=0; p!=res->cols(); ++p )
     {
+#       ifndef GISMO_USE_AUTODIFF
         copyRange(u.col(p).data(), my->vars, my->dim);
+#       endif
 
-#       ifdef GISMO_USE_AUTODIFF
-//todo
-#       else
         for (int c = 0; c!= n; ++c) // for all components
+        {
+#           ifdef GISMO_USE_AUTODIFF
+            for (index_t v = 0; v!=my->dim; ++v)
+                my->vars[v].setVariable(v, my->dim, u(v,p) );
+            my->expression[c].value().getHessian();
+            const DScalar::Hessian_t & Hmat = my->expression[c].value().getHessian();
+            (*res)(c,p) = Hmat(k,j);
+#           else
             (*res)(c,p) =
                 mixed_derivative<T>( my->expression[c], my->vars[k], my->vars[j], 0.00001 ) ;
-#       endif
+#           endif
+        }
     }
-    return  res; 
+    return res; 
 }
 
 template<typename T>
 gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 {
     //gsDebug<< "Using finite differences (gsFunction::laplacian) for Laplacian.\n";
-    gsMatrix<T> * res= new gsMatrix<T>(1,u.cols()) ;
-    res->setZero();
-    int n = u.rows();
+    GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point size.");
+    const int n = targetDim();
+    gsMatrix<T> * res= new gsMatrix<T>(n,u.cols()) ;
     
-    for( index_t p=0; p!=res->cols(); ++p )
+    for( index_t p = 0; p != res->cols(); ++p )
     {
+#       ifndef GISMO_USE_AUTODIFF
         copyRange(u.col(p).data(), my->vars, my->dim);
-
-        T & val = (*res)(0,p);
-#       ifdef GISMO_USE_AUTODIFF
-//todo
-        val = 0.0;
-#       else        
-        for ( int j = 0; j<n; j++ )
-            val += 
-                exprtk::second_derivative<T>( my->expression[0], my->vars[j], 0.00001 );
 #       endif
+
+        for (int c = 0; c!= n; ++c) // for all components
+        {
+#           ifdef GISMO_USE_AUTODIFF
+            for (index_t v = 0; v!=my->dim; ++v)
+                my->vars[v].setVariable(v, my->dim, u(v,p) );
+            (*res)(c,p) = my->expression[c].value().getHessian().trace();
+#           else
+            T & val = (*res)(c,p);
+            for ( index_t j = 0; j!=my->dim; ++j )
+                val += exprtk::
+                    second_derivative<T>( my->expression[c], my->vars[j], 0.00001 );
+#           endif
+        }
     }
-    return  res;
+        return  res;
 }
 
 template<typename T>
