@@ -54,6 +54,15 @@ public:
 
 public:
 
+    /// Clones the function object, making a deep copy.
+    gsPiecewiseFunction * clone() const
+    {
+        gsPiecewiseFunction* c= new gsPiecewiseFunction();
+        for(size_t i=0; i<m_funcs.size();i++)
+            c->addPiece(*piece(i).clone());
+        return c;
+    }
+
     /// Add a piece
     void addPiece(const gsFunction<T> & func)
     { 
