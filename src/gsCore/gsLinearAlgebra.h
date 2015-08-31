@@ -40,6 +40,10 @@
 #include <Eigen/PardisoSupport>
 #endif
 
+#ifdef GISMO_WITH_PASTIX
+#include <Eigen/PaStiXSupport>
+#endif
+
 // sparsesuite
 //#include <Eigen/UmfPackSupport>
 //#include <Eigen/SPQRSupport>

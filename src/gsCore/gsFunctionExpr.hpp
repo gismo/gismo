@@ -47,8 +47,7 @@
 // in a compilation failure.
 #define exprtk_disable_string_capabilities
 
-//#define GISMO_USE_AUTODIFF
-#ifdef GISMO_USE_AUTODIFF
+#ifdef GISMO_WITH_ADIFF
   /* Optional automatic differentiation */
   #define DScalar ad::DScalar2<real_t,-1>
   #include <exprtk_ad_adaptor.hpp> // external file

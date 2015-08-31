@@ -6,6 +6,13 @@
 ## Copyright (C) 2012 - 2015 RICAM-Linz.
 ######################################################################
 
+#macro(print_gismo_option NAME)
+##option(${NAME} ${DESCR} false)
+#if (${NAME})
+#  message ("  ${NAME}        ${${NAME}}")
+#endif()
+#endmacro(print_gismo_option)
+
 ## #################################################################
 ## Options list
 ## #################################################################
@@ -23,8 +30,10 @@ option(GISMO_WITH_PSOLID         "With Parasolid"         false  )
 option(GISMO_WITH_MPFR           "With MPFR"              false  )
 option(GISMO_WITH_ONURBS         "With OpenNurbs"         false  )
 option(GISMO_WITH_IPOPT          "With IpOpt"             false  )
+option(GISMO_WITH_ADIFF          "With auto-diff"         false  )
 option(GISMO_WITH_SUPERLU        "With SuperLU"           false  )
 option(GISMO_WITH_PARDISO        "With PARDISO"           false  )
+option(GISMO_WITH_PASTIX         "With PastiX"            false  )
 
 #Extra options
 option(GISMO_BUILD_QT_APP        "Build Qt application"   false  )
@@ -52,6 +61,9 @@ message ("  GISMO_WITH_PSOLID       ${GISMO_WITH_PSOLID}")
 message ("  GISMO_WITH_ONURBS       ${GISMO_WITH_ONURBS}")
 #message ("  GISMO_WITH_IPOPT        ${GISMO_WITH_IPOPT}")
 message ("  GISMO_WITH_SUPERLU      ${GISMO_WITH_SUPERLU}")
+if (${GISMO_WITH_ADIFF})
+message ("  GISMO_WITH_ADIFF        ${GISMO_WITH_ADIFF}")
+endif()
 
 #https://www.threadingbuildingblocks.org/documentation
 #message ("  GISMO_WITH_ITBB          ${GISMO_WITH_ITBB}")
