@@ -129,12 +129,6 @@ if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
 endif(GISMO_WITH_SUPERLU)
 
-if(GISMO_WITH_PARDISO)
-   message(WARNING "PARDISO support is not cross-platform yet, more twwaking required.")
-   #find_package(PARDISO REQUIRED)
-   find_package(MKL REQUIRED)
-endif(GISMO_WITH_PARDISO)
-
 ## #################################################################
 ## Build G+Smo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################

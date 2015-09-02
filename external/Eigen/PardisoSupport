@@ -5,7 +5,8 @@
 
 #include "src/Core/util/DisableStupidWarnings.h"
 
-#include <mkl_pardiso.h>
+//#include <mkl_pardiso.h>
+#include <gsPardiso.h> // Using G+Smo header file
 
 #include <unsupported/Eigen/SparseExtra>
 
