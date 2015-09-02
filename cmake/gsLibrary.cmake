@@ -99,8 +99,6 @@ if (GISMO_WITH_OPENMP)
     else(OPENMP_FOUND)
         message(STATUS "OpenMP Libraries were not found")
     endif(OPENMP_FOUND)
-elseif(CMAKE_COMPILER_IS_GNUCXX)
-     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
 endif()
 
   if (GISMO_WITH_IPOPT)

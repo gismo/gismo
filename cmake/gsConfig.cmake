@@ -176,7 +176,7 @@ if (MINGW)
   endif()
 endif()
 
-if (GISMO_WITH_OPENMP AND CMAKE_COMPILER_IS_GNUCXX)
+if (CMAKE_COMPILER_IS_GNUCXX AND NOT GISMO_WITH_OPENMP)
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
 endif()
 
