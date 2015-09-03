@@ -286,6 +286,8 @@ Derived& PardisoImpl<Derived>::compute(const MatrixType& a)
 {
   m_size = a.rows();
   eigen_assert(a.rows() == a.cols());
+  eigen_assert(a.isCompressed() && 
+               "Requires a sparse matrix in compressed mode. Call .makeCompressed() in advance.");
 
   pardisoRelease();
   memset(m_pt, 0, sizeof(m_pt));
@@ -309,6 +311,8 @@ Derived& PardisoImpl<Derived>::analyzePattern(const MatrixType& a)
 {
   m_size = a.rows();
   eigen_assert(m_size == a.cols());
+  eigen_assert(a.isCompressed() && 
+               "Requires a sparse matrix in compressed mode. Call .makeCompressed() in advance.");
 
   pardisoRelease();
   memset(m_pt, 0, sizeof(m_pt));
@@ -332,7 +336,9 @@ Derived& PardisoImpl<Derived>::factorize(const MatrixType& a)
 {
   eigen_assert(m_analysisIsOk && "You must first call analyzePattern()");
   eigen_assert(m_size == a.rows() && m_size == a.cols());
-  
+  eigen_assert(a.isCompressed() && 
+               "Requires a sparse matrix in compressed mode. Call .makeCompressed() in advance.");
+
   derived().getMatrix(a);
 
   Index error;  

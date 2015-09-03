@@ -82,6 +82,13 @@ struct gsSparseSolver
     #ifdef GISMO_WITH_SUPERLU
     typedef Eigen::SuperLU<Eigen::SparseMatrix<T,_Options,_Index> > SuperLU;
     #endif
+
+    /// Pardiso (if enabled)
+    #ifdef GISMO_WITH_PARDISO
+    typedef Eigen::PardisoLDLT<Eigen::SparseMatrix<T,_Options,_Index> > PardisoLDLT;
+    typedef Eigen::PardisoLLT <Eigen::SparseMatrix<T,_Options,_Index> > PardisoLLT;
+    typedef Eigen::PardisoLU  <Eigen::SparseMatrix<T,_Options,_Index> > PardisoLU;
+    #endif
 };
 
 /**
