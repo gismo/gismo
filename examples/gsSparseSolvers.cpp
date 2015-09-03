@@ -91,8 +91,9 @@ int main()
 
     gsSparseSolver<>::PardisoLU solverpLU;
     solverpLU.compute(Q);
-    gsInfo <<"Solved Ax = b with PardisoLU. Solution: "<< x.transpose() <<"\n";
     x = solverpLU.solve(b);
+    gsInfo <<"Solved Ax = b with PardisoLU. Solution: "<< x.transpose() <<"\n";
+
 #   else
     gsInfo <<"PARDISO is not available.\n";
 #   endif
@@ -100,8 +101,9 @@ int main()
     #ifdef GISMO_WITH_SUPERLU
     gsSparseSolver<>::SuperLU solverSLU;
     solverSLU.compute(Q);
-    gsInfo <<"Solved Ax = b with Super. Solution: "<< x.transpose() <<"\n";
     x = solverSLU.solve(b);
+    gsInfo <<"Solved Ax = b with Super. Solution: "<< x.transpose() <<"\n";
+
 #   else
     gsInfo <<"SuperLU is not available.\n";
 #   endif
