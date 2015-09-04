@@ -36,4 +36,6 @@ void pardiso_64( void          *, long long int *, long long int *, long long in
                  long long int *, long long int *, long long int *, long long int *,
                  long long int *,          void *,          void *, long long int *);
 
+void pardisoinit(void* , int*, int*, int*, void*, int* );
+
 } // extern "C"

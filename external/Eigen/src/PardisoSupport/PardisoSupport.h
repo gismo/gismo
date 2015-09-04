@@ -218,6 +218,61 @@ class PardisoImpl
 
     void pardisoInit(int type)
     {
+      if(true) //Pardiso v5.0
+      {
+          Index error = 0;
+          int solver =0;
+          ::pardisoinit(m_pt, &type, &solver, m_iparm.data(), 0, &error);
+          m_iparm[2] = 1; //one OpenMP thread
+          
+          m_iparm[7] = 2; // two iterative refinement step
+          /*
+          // explanation of new options
+          m_iparm[0] = 1;   // No solver default
+          m_iparm[1] = 2;   // use Metis for the ordering
+          m_iparm[2] = 1;   // Numbers of processors, value of OMP_NUM_THREADS
+          m_iparm[3] = 0;   // No iterative-direct algorithm
+          m_iparm[4] = 0;   // No user fill-in reducing permutation
+          m_iparm[5] = 0;   // Write solution into x
+          m_iparm[6] = 0;   // Not in use
+          m_iparm[7] = 0;   // Max numbers of iterative refinement steps
+          m_iparm[8] = 0;   // Not in use
+          m_iparm[9] = 13;  // Perturb the pivot elements with 1E-13
+          m_iparm[10] = symmetric ? 0 : 1; // Use nonsymmetric permutation and scaling MPS
+          m_iparm[11] = 0;  //Solve with transposed matrix // Not in use
+          m_iparm[12] = symmetric ? 0 : 1;  // Maximum weighted matching algorithm is switched-off (default for symmetric).
+          // Try m_iparm[12] = 1 in case of inappropriate accuracy
+          m_iparm[13] = 0;  // Output: Number of perturbed pivots
+          m_iparm[14] = 0;  // Not in use
+          m_iparm[15] = 0;  // Not in use
+          m_iparm[16] = 0;  // Not in use
+          m_iparm[17] = -1; // Output: Number of nonzeros in the factor LU
+          m_iparm[18] = -1; // Output: Mflops for LU factorization
+          m_iparm[19] = 0;  // Output: Numbers of CG Iterations
+
+          m_iparm[20] = 0;  // 1x1 pivoting
+
+          m_iparm[23] = 1;   //parallel NumFact
+          m_iparm[24] = 1;   //parallel Forward/Backward solve
+          m_iparm[25] = 0;   //partial solve
+          m_iparm[27] = 0;   //parallel Metis
+          m_iparm[28] = (sizeof(RealScalar) == 4) ? 1 : 0;    //   32 bit /64bit
+
+          m_iparm[29] = 0;    //  use default supernode size
+          m_iparm[30] = 0;    // partial solve
+          m_iparm[31] = 0;    // direct solve
+          m_iparm[32] = 0;    // calculate determinant
+          m_iparm[33] = 0;    // identical solutions
+
+          m_iparm[35] = 0;    // selected inversion for Aij^-1
+          m_iparm[36] = 0;    // selected inversion for Aij^-1 (symm)
+          m_iparm[37] = 0;    // calc schur compl
+          m_iparm[50] = 0;    // use OpenMP (or OpenMP/MPI)
+          m_iparm[51] = 0;    // number of distributed mem solver
+          */
+      }
+      else //mkl_pardiso
+      {
       m_type = type;
       bool symmetric = std::abs(m_type) < 10;
       m_iparm[0] = 1;   // No solver default
@@ -245,8 +300,10 @@ class PardisoImpl
       m_iparm[20] = 0;  // 1x1 pivoting
       m_iparm[26] = 0;  // No matrix checker
       m_iparm[27] = (sizeof(RealScalar) == 4) ? 1 : 0;
-      m_iparm[34] = 1;  // C indexing
+      //m_iparm[34] = 1;  // C indexing
+      m_iparm[34] = 0;  // chofer/G+Smo: fortran indexing, for compatibility with Pardiso v.5.0
       m_iparm[59] = 1;  // Automatic switch between In-Core and Out-of-Core modes
+      }
     }
 
   protected:
@@ -413,6 +470,7 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
   protected:
     typedef PardisoImpl< PardisoLU<MatrixType> > Base;
     typedef typename Base::Scalar Scalar;
+    typedef typename Base::Index Index;
     typedef typename Base::RealScalar RealScalar;
     using Base::pardisoInit;
     using Base::m_matrix;
@@ -439,6 +497,11 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
     void getMatrix(const MatrixType& matrix)
     {
       m_matrix = matrix;
+      
+      for(Index i=0; i<m_matrix.nonZeros();i++)
+          m_matrix.innerIndexPtr()[i]++;
+      for(Index i=0; i<matrix.rows()+1;i++)
+          m_matrix.outerIndexPtr()[i]++;
     }
     
   private:
@@ -498,6 +561,11 @@ class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,_UpLo> >
       PermutationMatrix<Dynamic,Dynamic,Index> p_null;
       m_matrix.resize(matrix.rows(), matrix.cols());
       m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>().twistedBy(p_null);
+
+      for(Index i=0; i<m_matrix.nonZeros();i++)
+          m_matrix.innerIndexPtr()[i]++;
+      for(Index i=0; i<matrix.rows()+1;i++)
+          m_matrix.outerIndexPtr()[i]++;
     }
     
   private:
@@ -557,6 +625,11 @@ class PardisoLDLT : public PardisoImpl< PardisoLDLT<MatrixType,Options> >
       PermutationMatrix<Dynamic,Dynamic,Index> p_null;
       m_matrix.resize(matrix.rows(), matrix.cols());
       m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>().twistedBy(p_null);
+
+      for(Index i=0; i<m_matrix.nonZeros();i++)
+          m_matrix.innerIndexPtr()[i]++;
+      for(Index i=0; i<matrix.rows()+1;i++)
+          m_matrix.outerIndexPtr()[i]++;
     }
     
   private:
