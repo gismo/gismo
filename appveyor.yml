@@ -45,7 +45,7 @@ configuration:
 shallow_clone: true
 
 # scripts that are called at very beginning, before repo cloning
-init:
+#init:
 #  - cmd: cmake --version
 #  - cmd: echo Platform is %platform%
 #  - cmd: set
@@ -77,7 +77,7 @@ before_build:
   - if [%BUILD%]==[msvc] set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
   - if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
   - if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
-  - cmd: cd C:\projects; md build-gismo; cd build-gismo
+  - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
   - cmd: cmake -DBUILDNAME="%generator%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo -DGISMO_WITH_ONURBS=ON
 
 # for MSYS
