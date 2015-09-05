@@ -38,9 +38,11 @@ environment:
   - BUILD: msvc2010
     platform: Win32
     generator: "Visual Studio 10"
-  - BUILD: msvc2008
-    platform: Win32
-    generator: "Visual Studio 9 2008"
+#  - BUILD: msvc2008
+#  Note:  error C2039: 'data' : is not a member of 'std::vector<_Ty>' 
+#  ( &std::vector<_Ty>::front() would work)
+#    platform: Win32
+#    generator: "Visual Studio 9 2008"
 
 configuration:
 #  - Debug
@@ -96,7 +98,7 @@ before_build:
   #if [%BUILD%]==[mingw] 
   - rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
-  - cmd: cmake -DBUILDNAME="%generator%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo -DGISMO_WITH_ONURBS=ON
+  - cmd: cmake -DSITE="AppVeyor.com" -DBUILDNAME="%generator%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
 
 # for MSYS
 #  - cmd: C:\MinGW\msys\1.0\bin\sh --login -c "
