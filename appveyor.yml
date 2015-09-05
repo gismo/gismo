@@ -11,13 +11,25 @@ os:
   - Visual Studio 2015
 
 environment:
+  # custom environment variables
   CTEST_OUTPUT_ON_FAILURE: 1
+  #BOOST_ROOT: c:\Libraries\boost
+  #BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
   matrix:
   - BUILD: mingw
+    generator: "MinGW Makefiles"
+    #MSYS Makefiles
   - BUILD: msvc
     platform: Win32
+    generator: "Visual Studio 14 2015"
   - BUILD: msvc
     platform: x64
+    generator: "Visual Studio 14 2015 Win64"
+
+configuration:
+#  - Debug
+  - RelWithDebInfo
+#  - Release
 
 # build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
 #platform: 
@@ -29,23 +41,11 @@ environment:
 #    name: ipopt
 #    type: dll
 
-# specify custom environment variables
-# environment:
-#  BOOST_ROOT: c:\Libraries\boost
-#  BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
-
-# set clone depth
 #clone_depth: 5 # clone entire repository history if not defined
 shallow_clone: true
 
-# build Configuration, i.e. Debug, Release, etc.
-configuration:
-#  - Debug
-#  - RelWithDebInfo
-  - Release
-
 # scripts that are called at very beginning, before repo cloning
-#init:
+init:
 #  - cmd: cmake --version
 #  - cmd: echo Platform is %platform%
 #  - cmd: set
@@ -66,15 +66,6 @@ skip_tags: true
 
 # scripts that run after cloning repository
 install:
-  - cmd: cd C:\projects
-  - cmd: md build-gismo
-
-  #- cmd: set PATH=C:\MinGW\bin;C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH% #C:\MinGW\msys\1.0\bin
-  - if [%BUILD%]==[msvc] set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
-
-  - if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
-  #- if [%BUILD%]==[mingw] set PATH=C:\MinGW\bin;%PATH%
-  - if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
   # install mingw
   #- if [%BUILD%]==[mingw] appveyor DownloadFile "https://bintray.com/artifact/download/drewwells/generic/x86_64-4.9.2-release-win32-seh-rt_v4-rev3.7z" -FileName mw64.7z
   #- if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-win32/seh/x86_64-5.1.0-release-win32-seh-rt_v4-rev0.7z" -FileName mw64.7z
@@ -83,12 +74,11 @@ install:
 
 # scripts to run before build
 before_build:
-  - cmd: cd build-gismo
-  - cmd: if "%BUILD%"=="msvc" (if "%platform%"=="x64" (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015 Win64) else (set CMAKE_GENERATOR_NAME=Visual Studio 14 2015) )
-  #MSYS Makefiles
-  #- cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MSYS Makefiles)
-  - cmd: if "%BUILD%"=="mingw" (set CMAKE_GENERATOR_NAME=MinGW Makefiles)
-  - cmd: cmake -DBUILDNAME="%CMAKE_GENERATOR_NAME%" -G "%CMAKE_GENERATOR_NAME%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo #-DGISMO_WITH_ONURBS=ON
+  - if [%BUILD%]==[msvc] set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
+  - if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
+  - if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
+  - cmd: cd C:\projects; md build-gismo; cd build-gismo
+  - cmd: cmake -DBUILDNAME="%generator%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo -DGISMO_WITH_ONURBS=ON
 
 # for MSYS
 #  - cmd: C:\MinGW\msys\1.0\bin\sh --login -c "
@@ -101,7 +91,6 @@ before_build:
 build_script:
   #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
   - cmd: ctest -j4 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit -V
-
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln

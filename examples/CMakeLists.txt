@@ -13,6 +13,10 @@ endif()
 
 project(gismo-examples)
 
+# Add a grouping target that builds all tests this is equivalent to
+# running "make" inside the tests build folder
+add_custom_target(${PROJECT_NAME})
+
 #find_package(gismo REQUIRED)
 #include_directories( ${GISMO_INCLUDE_DIRS})
 #link_directories   ( ${GISMO_LIBRARY_DIR} )
@@ -24,6 +28,8 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 
 foreach(file ${FILES})
     add_gismo_executable(${file})
+    get_filename_component(tarname ${file} NAME_WE) # name without extension
+    add_dependencies(${PROJECT_NAME} ${tarname})
 endforeach(file ${FILES})
 
 list(LENGTH FILES len)

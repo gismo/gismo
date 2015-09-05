@@ -40,7 +40,9 @@
 // type instantiations. This feature will reduce compilation times and
 // binary sizes but will also result in massive performance degradation
 // of expression evaluations.
-//#define exprtk_disable_enhanced_features
+#ifndef NDEBUG
+#define exprtk_disable_enhanced_features
+#endif
 
 // This define will disable all string processing capabilities. Any
 // expression that contains a string or string related syntax will result
