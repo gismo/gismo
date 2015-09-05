@@ -40,7 +40,7 @@
 // type instantiations. This feature will reduce compilation times and
 // binary sizes but will also result in massive performance degradation
 // of expression evaluations.
-#ifndef NDEBUG
+#if !defined(NDEBUG) || defined(__MINGW32__)
 #define exprtk_disable_enhanced_features
 #endif
 
