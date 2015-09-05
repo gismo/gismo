@@ -215,16 +215,20 @@ class PardisoImpl
     {
       if(m_initialized) // Factorization ran at least once
       {
-        internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, -1, m_size, 0, 0, 0, m_perm.data(), 0,
-                                                   m_iparm.data(), m_msglvl, 0, 0);
+        /* Release internal memory. */
+        internal::pardiso_run_selector<Index>::
+            run(m_pt, 1, 1, m_type, -1, m_size, 0, 0, 0, m_perm.data(), 0,
+                m_iparm.data(), m_msglvl, 0, 0);
       }
     }
 
-    // see http://www.pardiso-project.org/manual/manual.pdf
+    // For Pardiso 5 options see http://www.pardiso-project.org/manual/manual.pdf
+    // For MKL Pardiso options see https://software.intel.com/en-us/articles/pardiso-parameter-table
     void pardisoInit(int type)
     {
         m_type = type;
 
+        // m_iparm[2]: Numbers of processors: value of OMP_NUM_THREADS
         const char * nProcs = getenv("OMP_NUM_THREADS");
         if(nProcs != NULL)
             sscanf( nProcs, "%d", &m_iparm[2] );
@@ -233,20 +237,19 @@ class PardisoImpl
         gsDebugVar(m_iparm[2]);
 
       bool symmetric = std::abs(m_type) < 10;
-      m_iparm[0] = 1;   // No solver default
-      m_iparm[1] = 3;   // use Metis for the ordering
-      //m_iparm[2] = 1;   // Numbers of processors, value of OMP_NUM_THREADS
-      m_iparm[3] = 0;   // No iterative-direct algorithm
-      m_iparm[4] = 0;   // No user fill-in reducing permutation
-      m_iparm[5] = 0;   // Write solution into x
-      m_iparm[6] = 0;   // Not in use
-      m_iparm[7] = 2;   // Max numbers of iterative refinement steps
-      m_iparm[8] = 0;   // Not in use
-      m_iparm[9] = 13;  // Perturb the pivot elements with 1E-13
+      m_iparm[0]  = 1;   // No solver default
+      m_iparm[1]  = 2;   // use Metis for the ordering (MKL: 3 == OMP nested dissection algorithm)
+      m_iparm[3]  = 0;   // No iterative-direct algorithm
+      m_iparm[4]  = 0;   // No user fill-in reducing permutation
+      m_iparm[5]  = 0;   // Write solution into x
+      m_iparm[6]  = 0;   // Not in use
+      m_iparm[7]  = 2;   // Max numbers of iterative refinement steps
+      m_iparm[8]  = 0;   // Not in use
+      m_iparm[9]  = 13;  // Perturb the pivot elements with 1E-13
       m_iparm[10] = symmetric ? 0 : 1; // Use nonsymmetric permutation and scaling MPS
       m_iparm[11] = 0;  // Not in use
       m_iparm[12] = symmetric ? 0 : 1;  // Maximum weighted matching algorithm is switched-off (default for symmetric).
-                                        // Try m_iparm[12] = 1 in case of inappropriate accuracy
+      // Try m_iparm[12] = 1 in case of inappropriate accuracy
       m_iparm[13] = 0;  // Output: Number of perturbed pivots
       m_iparm[14] = 0;  // Not in use
       m_iparm[15] = 0;  // Not in use
@@ -262,11 +265,8 @@ class PardisoImpl
       m_iparm[34] = 0;  // chofer/G+Smo: fortran indexing, for compatibility with Pardiso v.5.0
       m_iparm[59] = 1;  // Automatic switch between In-Core and Out-of-Core modes
       
-      if(false) //Pardiso v5.0
-      {
-          m_iparm[1] = 2;   // use Metis for the ordering
-          /*
-          // explanation of new options
+      /*
+          // explanation of Pardiso v5.0 options
           m_iparm[0] = 1;   // No solver default
           m_iparm[1] = 2;   // use Metis for the ordering
           m_iparm[2] = 1;   // Numbers of processors, value of OMP_NUM_THREADS
@@ -308,8 +308,7 @@ class PardisoImpl
           m_iparm[37] = 0;    // calc schur compl
           m_iparm[50] = 0;    // use OpenMP (or OpenMP/MPI)
           m_iparm[51] = 0;    // number of distributed mem solver
-          */
-      }
+      */
 
       memset(m_pt, 0, sizeof(m_pt));
     }
@@ -359,9 +358,10 @@ Derived& PardisoImpl<Derived>::compute(const MatrixType& a)
   derived().getMatrix(a);
   
   Index error;
-  error = internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, 12, m_size,
-                                                     m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
-                                                     m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
+  error = internal::pardiso_run_selector<Index>::
+      run(m_pt, 1, 1, m_type, 12, m_size,
+          m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
+          m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
 
   manageErrorCode(error);
   m_analysisIsOk = true;
@@ -383,9 +383,10 @@ Derived& PardisoImpl<Derived>::analyzePattern(const MatrixType& a)
   derived().getMatrix(a);
   
   Index error;
-  error = internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, 11, m_size,
-                                                     m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
-                                                     m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
+  error = internal::pardiso_run_selector<Index>::
+      run(m_pt, 1, 1, m_type, 11, m_size,
+          m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
+          m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
   
   manageErrorCode(error);
   m_analysisIsOk = true;
@@ -405,9 +406,10 @@ Derived& PardisoImpl<Derived>::factorize(const MatrixType& a)
   derived().getMatrix(a);
 
   Index error;  
-  error = internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, 22, m_size,
-                                                     m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
-                                                     m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
+  error = internal::pardiso_run_selector<Index>::
+      run(m_pt, 1, 1, m_type, 22, m_size,
+          m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
+          m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
   
   manageErrorCode(error);
   m_factorizationIsOk = true;
@@ -449,10 +451,11 @@ bool PardisoImpl<Base>::_solve(const MatrixBase<BDerived> &b, MatrixBase<XDerive
   }
   
   Index error;
-  error = internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, 33, m_size,
-                                                     m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
-                                                     m_perm.data(), nrhs, m_iparm.data(), m_msglvl,
-                                                     rhs_ptr, x.derived().data());
+  error = internal::pardiso_run_selector<Index>::
+      run(m_pt, 1, 1, m_type, 33, m_size,
+          m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
+          m_perm.data(), nrhs, m_iparm.data(), m_msglvl,
+          rhs_ptr, x.derived().data());
 
   return error==0;
 }
