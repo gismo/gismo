@@ -11,20 +11,26 @@ os:
   - Visual Studio 2015
 
 environment:
-  # custom environment variables
+  # custom environment variables, see http://www.appveyor.com/docs/installed-software
   CTEST_OUTPUT_ON_FAILURE: 1
   #BOOST_ROOT: c:\Libraries\boost
   #BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
   matrix:
   - BUILD: mingw
+    envpath: "C:\mingw64\bin"
     generator: "MinGW Makefiles"
     #MSYS Makefiles
-  - BUILD: msvc
+  - BUILD: msvc2015
     platform: Win32
+    envpath: "C:\Program Files (x86)\MSBuild\14.0\Bin"
     generator: "Visual Studio 14 2015"
-  - BUILD: msvc
+  - BUILD: msvc2015
     platform: x64
+    envpath: "C:\Program Files (x86)\MSBuild\14.0\Bin"
     generator: "Visual Studio 14 2015 Win64"
+  - BUILD: msvc2010
+    platform: Win32
+    generator: "Visual Studio 10"
 
 configuration:
 #  - Debug
@@ -74,9 +80,11 @@ install:
 
 # scripts to run before build
 before_build:
-  - if [%BUILD%]==[msvc] set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
-  - if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
-  - if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
+  - set PATH=%envpath%;%PATH%
+  #- if [%BUILD%]==[msvc2015] set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
+  #- if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
+  #if [%BUILD%]==[mingw] 
+  - rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
   - cmd: cmake -DBUILDNAME="%generator%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% ../gismo -DGISMO_WITH_ONURBS=ON
 
@@ -90,7 +98,7 @@ before_build:
 
 build_script:
   #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
-  - cmd: ctest -j4 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit -V
+  - cmd: ctest -j4 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit # -V
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln
