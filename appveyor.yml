@@ -28,9 +28,19 @@ environment:
     platform: x64
     envpath: C:\Program Files (x86)\MSBuild\14.0\Bin
     generator: "Visual Studio 14 2015 Win64"
+
+  - BUILD: msvc2013
+    platform: Win32
+    generator: "Visual Studio 12"
+  - BUILD: msvc2012
+    platform: Win32
+    generator: "Visual Studio 11"
   - BUILD: msvc2010
     platform: Win32
     generator: "Visual Studio 10"
+  - BUILD: msvc2008
+    platform: Win32
+    generator: "Visual Studio 9 2008"
 
 configuration:
 #  - Debug
