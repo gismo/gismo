@@ -17,16 +17,16 @@ environment:
   #BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
   matrix:
   - BUILD: mingw
-    envpath: "C:\mingw64\bin"
+    envpath: C:\mingw64\bin
     generator: "MinGW Makefiles"
     #MSYS Makefiles
   - BUILD: msvc2015
     platform: Win32
-    envpath: "C:\Program Files (x86)\MSBuild\14.0\Bin"
+    envpath: C:\Program Files (x86)\MSBuild\14.0\Bin
     generator: "Visual Studio 14 2015"
   - BUILD: msvc2015
     platform: x64
-    envpath: "C:\Program Files (x86)\MSBuild\14.0\Bin"
+    envpath: C:\Program Files (x86)\MSBuild\14.0\Bin
     generator: "Visual Studio 14 2015 Win64"
   - BUILD: msvc2010
     platform: Win32
