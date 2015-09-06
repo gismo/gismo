@@ -18,35 +18,38 @@ environment:
   matrix:
   - BUILD: mingw
     envpath: C:\mingw64\bin
+    configuration: Release 
     generator: "MinGW Makefiles"
     #MSYS Makefiles
+  - BUILD: msvc2010
+    configuration: Release
+    generator: "Visual Studio 10"
+  - BUILD: msvc2012
+    configuration: Release
+    generator: "Visual Studio 11"
+  - BUILD: msvc2013
+    configuration: Release
+    generator: "Visual Studio 12"
+
   - BUILD: msvc2015
-    platform: Win32
-    envpath: C:\Program Files (x86)\MSBuild\14.0\Bin
+    configuration: Release
     generator: "Visual Studio 14 2015"
   - BUILD: msvc2015
-    platform: x64
-    envpath: C:\Program Files (x86)\MSBuild\14.0\Bin
+    configuration: Release
+    generator: "Visual Studio 14 2015 Win64"
+  - BUILD: msvc2015
+    configuration: Debug
     generator: "Visual Studio 14 2015 Win64"
 
-  - BUILD: msvc2013
-    platform: Win32
-    generator: "Visual Studio 12"
-  - BUILD: msvc2012
-    platform: Win32
-    generator: "Visual Studio 11"
-  - BUILD: msvc2010
-    platform: Win32
-    generator: "Visual Studio 10"
 #  - BUILD: msvc2008
 #  Note:  error C2039: 'data' : is not a member of 'std::vector<_Ty>' 
 #  ( &std::vector<_Ty>::front() would work)
-#    platform: Win32
+#    configuration: Release
 #    generator: "Visual Studio 9 2008"
 
-configuration:
+#configuration:
 #  - Debug
-  - RelWithDebInfo
+#  - RelWithDebInfo
 #  - Release
 
 # build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
@@ -86,19 +89,18 @@ skip_tags: true
 install:
   # install mingw
   #- if [%BUILD%]==[mingw] appveyor DownloadFile "https://bintray.com/artifact/download/drewwells/generic/x86_64-4.9.2-release-win32-seh-rt_v4-rev3.7z" -FileName mw64.7z
-  #- if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-win32/seh/x86_64-5.1.0-release-win32-seh-rt_v4-rev0.7z" -FileName mw64.7z
-  - if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-posix/seh/x86_64-5.1.0-release-posix-seh-rt_v4-rev0.7z" -FileName mw64.7z
+  - if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-win32/seh/x86_64-5.1.0-release-win32-seh-rt_v4-rev0.7z" -FileName mw64.7z
+  #- if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-posix/seh/x86_64-5.1.0-release-posix-seh-rt_v4-rev0.7z" -FileName mw64.7z
   - if [%BUILD%]==[mingw] 7z x -oC:\ mw64.7z > NUL
 
 # scripts to run before build
 before_build:
-  - set PATH=%envpath%;%PATH%
-  #- if [%BUILD%]==[msvc2015] set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
+  - if [%BUILD%]==[msvc2015] set envpath=C:\Program Files (x86)\MSBuild\14.0\Bin
   #- if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
-  #if [%BUILD%]==[mingw] 
-  - rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
+  - if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
-  - cmd: cmake -DSITE="AppVeyor.com" -DBUILDNAME="%generator%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
+  - set PATH=%envpath%;%PATH%
+  - cmd: cmake -DSITE="AppVeyor.com" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON ../gismo
 
 # for MSYS
 #  - cmd: C:\MinGW\msys\1.0\bin\sh --login -c "

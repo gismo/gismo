@@ -29,6 +29,7 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 foreach(file ${FILES})
     add_gismo_executable(${file})
     get_filename_component(tarname ${file} NAME_WE) # name without extension
+    set_property(TEST ${tarname} PROPERTY LABELS examples)
     add_dependencies(${PROJECT_NAME} ${tarname})
 endforeach(file ${FILES})
 

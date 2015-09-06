@@ -34,46 +34,54 @@ find_package (TR1 QUIET)
 ## Setup build types
 ## #################################################################
 
-SET( CMAKE_CXX_FLAGS_MAINTAINER "-Wall -Wabi -DUSE_GISMO_STACK_WALKER"
-     CACHE STRING
-    "Flags used by the C++ compiler during maintainer builds."
-    FORCE )
-SET( CMAKE_C_FLAGS_MAINTAINER "-Wall -pedantic" CACHE STRING
-    "Flags used by the C compiler during maintainer builds."
-    FORCE )
-SET( CMAKE_EXE_LINKER_FLAGS_MAINTAINER
-    "-Wl,--warn-unresolved-symbols,--warn-once" CACHE STRING
-    "Flags used for linking binaries during maintainer builds."
-    FORCE )
-SET( CMAKE_SHARED_LINKER_FLAGS_MAINTAINER
-    "-Wl,--warn-unresolved-symbols,--warn-once" CACHE STRING
-    "Flags used by the shared libraries linker during maintainer builds."
-    FORCE )
-MARK_AS_ADVANCED(
-    CMAKE_CXX_FLAGS_MAINTAINER
-    CMAKE_C_FLAGS_MAINTAINER
-    CMAKE_EXE_LINKER_FLAGS_MAINTAINER
-    CMAKE_SHARED_LINKER_FLAGS_MAINTAINER )
+# Add configuration Devel
+set(CMAKE_C_FLAGS_DEVEL
+${CMAKE_C_FLAGS_RELWITHDEBINFO}                CACHE STRING "Flags used by the
+compiler during Devel builds")
+set(CMAKE_CXX_FLAGS_DEVEL
+${CMAKE_CXX_FLAGS_RELWITHDEBINFO}                CACHE STRING "Flags used by the
+compiler during Devel builds")
+set(CMAKE_EXE_LINKER_FLAGS_DEVEL
+${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}        CACHE STRING "Flags used by the
+linker for executables during Devel builds")
+set(CMAKE_SHARED_LINKER_FLAGS_DEVEL
+${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}    CACHE STRING "Flags used by the
+linker for shared libraries during Devel builds")
+set(CMAKE_MODULE_LINKER_FLAGS_DEVEL
+${CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO}    CACHE STRING "Flags used by the
+linker for loadable modules during Devel builds")
+#remove NDEBUG
+string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_DEVEL ${CMAKE_CXX_FLAGS_DEVEL})
+mark_as_advanced(
+    CMAKE_C_FLAGS_DEVEL
+    CMAKE_CXX_FLAGS_DEVEL
+    CMAKE_EXE_LINKER_FLAGS_DEVEL
+    CMAKE_SHARED_LINKER_FLAGS_DEVEL
+    CMAKE_MODULE_LINKER_FLAGS_DEVEL
+)
+
+# This variable is only set for multi-config IDE generators like MSVC
+if(CMAKE_CONFIGURATION_TYPES)
+    list(APPEND CMAKE_CONFIGURATION_TYPES Devel)
+    list(REMOVE_DUPLICATES CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}"
+        CACHE STRING "Semicolon separated list of supported configuration
+types [Debug|Release|MinSizeRel|RelWithDebInfo|Devel]"
+        FORCE)
+endif()
 
 # Update the documentation string of CMAKE_BUILD_TYPE for GUIs
 SET( CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
-    "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Maintainer."
+    "Type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Devel."
     FORCE )
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-   #set(CMAKE_BUILD_TYPE Debug CACHE STRING 
-   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING 
-   "Type of build (Debug, Release, RelWithDebInfo, MinSizeRel)" FORCE)
+   set(CMAKE_BUILD_TYPE Release CACHE STRING
+   "Type of build (None Debug Release RelWithDebInfo MinSizeRel Devel)" FORCE)
    # Set the possible values of build type for cmake-gui
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-     "MinSizeRel" "RelWithDebInfo")
-endif()
-
-
-# Remove NDEBUG flag from RelWithDebInfo builds
-if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    STRING(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+     "RelWithDebInfo" "MinSizeRel" "Devel")
 endif()
 
 set(${PROJECT_NAME}_ARCHIVE_OUTPUT_DIRECTORY lib)
@@ -186,6 +194,16 @@ endif()
 if (CMAKE_COMPILER_IS_GNUCXX AND NOT GISMO_WITH_OPENMP)
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
 endif()
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "Intel" AND NOT GISMO_WITH_OPENMP)
+   if ( CMAKE_SYSTEM_NAME MATCHES "Linux" ) 
+     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -diag-disable 3180") #comma for more warns
+   elseif ( CMAKE_SYSTEM_NAME MATCHES "Windows" ) 
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Qdiag-disable:3180")
+   endif()
+   #set_property(TARGET mytarget PROPERTY INTERPROCEDURAL_OPTIMIZATION 1)
+endif()
+
 
 #message("CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
 #message("CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG}")
