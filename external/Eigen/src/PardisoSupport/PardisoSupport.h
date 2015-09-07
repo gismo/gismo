@@ -228,13 +228,18 @@ class PardisoImpl
     {
         m_type = type;
 
-        // m_iparm[2]: Numbers of processors: value of OMP_NUM_THREADS
+        // Number of threads of Eigen
+        m_iparm[2] = Eigen::nbThreads();
+
+        /*
+          // To get the number of threads from the environment
         const char * nProcs = getenv("OMP_NUM_THREADS");
         if(nProcs != NULL)
             sscanf( nProcs, "%d", &m_iparm[2] );
         else
             m_iparm[2] = 1; //one OpenMP thread
         gsDebugVar(m_iparm[2]);
+        */
 
       bool symmetric = std::abs(m_type) < 10;
       m_iparm[0]  = 1;   // No solver default

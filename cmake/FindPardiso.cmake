@@ -1,5 +1,5 @@
 
-find_library(PARDISO_LIBRARY NAMES pardiso500-GNU481-X86-64 pardiso500-GNU472-X86-64 pardiso500-INTEL1301-X86-64 pardiso500-MACOS-X86-64 libpardiso500-WIN-X86-64
+find_library(PARDISO_LIBRARY NAMES pardiso500-INTEL1301-X86-64 pardiso500-GNU481-X86-64 pardiso500-GNU472-X86-64 pardiso500-MACOS-X86-64 libpardiso500-WIN-X86-64
              HINTS ${CMAKE_BINARY_DIR}/lib ${Pardiso_DIR} ${Pardiso_DIR}/lib)
 
 if(PARDISO_LIBRARY)
