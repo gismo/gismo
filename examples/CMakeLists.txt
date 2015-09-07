@@ -16,6 +16,7 @@ project(gismo-examples)
 # Add a grouping target that builds all tests this is equivalent to
 # running "make" inside the tests build folder
 add_custom_target(${PROJECT_NAME})
+set_property(TARGET ${PROJECT_NAME} PROPERTY LABELS ${PROJECT_NAME})
 
 #find_package(gismo REQUIRED)
 #include_directories( ${GISMO_INCLUDE_DIRS})
