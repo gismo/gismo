@@ -59,7 +59,7 @@ public:
     {
         gsPiecewiseFunction* c= new gsPiecewiseFunction();
         for(size_t i=0; i<m_funcs.size();i++)
-            c->addPiece(*piece(i).clone());
+            c->addPiece(piece(i));
         return c;
     }
 
