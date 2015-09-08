@@ -16,7 +16,7 @@ project(examples)
 # Add a grouping target that builds all tests this is equivalent to
 # running "make" inside the tests build folder
 add_custom_target(${PROJECT_NAME})
-set_property(TARGET ${PROJECT_NAME} PROPERTY LABELS ${PROJECT_NAME})
+set_property(TARGET ${PROJECT_NAME} PROPERTY LABELS "${PROJECT_NAME};gismo")
 
 #find_package(gismo REQUIRED)
 #include_directories( ${GISMO_INCLUDE_DIRS})
@@ -30,7 +30,7 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 foreach(file ${FILES})
     add_gismo_executable(${file})
     get_filename_component(tarname ${file} NAME_WE) # name without extension
-    set_property(TEST ${tarname} PROPERTY LABELS examples)
+    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME};gismo")
     add_dependencies(${PROJECT_NAME} ${tarname})
 endforeach(file ${FILES})
 

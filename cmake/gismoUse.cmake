@@ -72,7 +72,7 @@ MACRO(SUBDIRLIST result curdir)
   SET(dirlist "")
   FOREACH(child ${children})
     IF(IS_DIRECTORY ${curdir}/${child})
-        SET(dirlist ${dirlist} ${child})
+        LIST(APPEND dirlist ${child})
     ENDIF()
   ENDFOREACH()
   SET(${result} ${dirlist})
@@ -83,20 +83,20 @@ ENDMACRO(SUBDIRLIST)
 
 # collect .h files
 macro(aux_header_directory DIR VAR)
-	FILE(GLOB ${ARGV1} ${DIR}/*.h)
+	FILE(GLOB ${ARGV1} ${DIR}/[^.]*.h)
 endmacro(aux_header_directory)
 
 # collect .hpp files
 macro(aux_tmpl_header_directory DIR VAR)
-	FILE(GLOB ${ARGV1} ${DIR}/*.hpp)
+	FILE(GLOB ${ARGV1} ${DIR}/[^.]*.hpp)
 endmacro(aux_tmpl_header_directory)
 
 # collect .cxx files
 macro(aux_cxx_source_directory DIR VAR)
-	FILE(GLOB ${ARGV1} ${DIR}/*.cxx)
+	FILE(GLOB ${ARGV1} ${DIR}/[^.]*.cxx)
 endmacro(aux_cxx_source_directory)
 
 # collect _.cpp (instance) files
 macro(aux_instance_directory DIR VAR)
-	FILE(GLOB ${ARGV1} ${DIR}/*_.cpp)
+	FILE(GLOB ${ARGV1} ${DIR}/[^.]*_.cpp)
 endmacro(aux_instance_directory)
