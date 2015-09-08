@@ -622,6 +622,7 @@ int ON_EncodeUTF16( ON__UINT32 unicode_code_point, ON__UINT16 sUTF16[2] )
     // code point values U+0000 ... U+D7FF
     // = UTF-16 values
     sUTF16[0] = (ON__UINT16)unicode_code_point;
+    sUTF16[1] = 0;
     return 1;
   }
 
@@ -636,6 +637,7 @@ int ON_EncodeUTF16( ON__UINT32 unicode_code_point, ON__UINT16 sUTF16[2] )
     // code point values U+E000 ... U+FFFF
     // = UTF-16 values
     sUTF16[0] = (ON__UINT16)unicode_code_point;
+    sUTF16[1] = 0;
     return 1;
   }
 
