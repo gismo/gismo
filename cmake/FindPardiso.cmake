@@ -58,28 +58,6 @@ if(NOT Pardiso_FOUND)
 
 endif(NOT Pardiso_FOUND)
 
-# Third try: Pardiso from Intel MKL
-if(NOT Pardiso_FOUND)
-
-  # see https://software.intel.com/en-us/articles/link-to-intel-mkl-sparse-solvers
-  # and https://software.intel.com/en-us/node/470282
-  # and https://software.intel.com/en-us/articles/intel-mkl-pardiso
-  find_package(MKL QUIET)
-  if(MKL_LIBRARIES)
-     #find_library(PARDISO_LIBRARY NAMES mkl_intel mkl_intel_lp64 HINTS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel ${MKL_ROOT}/lib/intel64)
-     #find_library(intelthread_LIBRARY NAMES libmkl_intel_thread HINTS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel ${MKL_ROOT}/lib/intel64)
-     #find_library(intelcore_LIBRARY NAMES libmkl_core HINTS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel ${MKL_ROOT}/lib/intel64)
-     #find_library(PARDISO_LIBRARY NAMES ${MKL_INTERFACE_LIBRARY})
-     add_library(Pardiso SHARED IMPORTED)
-     set_property(TARGET Pardiso PROPERTY IMPORTED_LOCATION ${MKL_INTERFACE_LIBRARY})
-     set_target_properties(Pardiso PROPERTIES IMPORTED_LINK_INTERFACE_LIBRARIES ${MKL_LIBRARIES})
-     set(Pardiso_FOUND TRUE)
-     set(PARDISO_LIBRARY ${MKL_INTERFACE_LIBRARY} CACHE FILEPATH "Path to Pardiso library" FORCE)
-     set(Pardiso_MKL TRUE)
-  endif(MKL_LIBRARIES)
-
-endif(NOT Pardiso_FOUND)
-
 if(Pardiso_FOUND)
 #   get_filename_component(PARDISO_LIBRARY_DIR ${PARDISO_LIBRARY} PATH)
       #message("PARDISO_LIBRARY    : ${PARDISO_LIBRARY}")
