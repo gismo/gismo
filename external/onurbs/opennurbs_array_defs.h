@@ -39,6 +39,11 @@
 #pragma warning(disable:4211)
 #endif
 
+#if defined(__GNUC__) && (!defined( __INTEL_COMPILER)) // G+smo
+ 	#pragma GCC diagnostic push 
+ 	#pragma GCC diagnostic ignored "-Wstrict-overflow" 
+#endif 
+
 // The main reason the definitions of the functions for the 
 // ON_SimpleArray and ON_ClassArray templates are in this separate
 // file is so that the Microsoft developer studio autocomplete

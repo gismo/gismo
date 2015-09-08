@@ -14,10 +14,6 @@
 ////////////////////////////////////////////////////////////////
 */
 
-#if defined __INTEL_COMPILER 
-    #pragma warning (disable : 161 ) /*G+Smo: disable unknown pragma warning */ 
-#endif 
-
 #include "opennurbs.h"
 
 FILE* ON_FileStream::Open( const wchar_t* filename, const wchar_t* mode )
@@ -13371,7 +13367,7 @@ bool ON_BinaryFile::AtEnd() const
       else 
       {
         int buffer;
-#       ifdef __GNUC__ 
+#if defined(__GNUC__) && (!defined( __INTEL_COMPILER)) 
 	    #pragma GCC diagnostic ignored "-Wunused-result"//G+Smo silence warning 
         fread( &buffer, 1, 1, m_fp );
 #       pragma GCC diagnostic pop 
