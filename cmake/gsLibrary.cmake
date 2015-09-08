@@ -115,11 +115,12 @@ endif(GISMO_BUILD_LIB)
   COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
   LABELS ${PROJECT_NAME}
   )
- 
-  if (MKL_FOUND)
+
+  if (EIGEN_USE_MKL_ALL)
     # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
+    find_package(MKL REQUIRED)
     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
-  endif(MKL_FOUND)
+  endif()
 
   IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
      TARGET_LINK_LIBRARIES(${PROJECT_NAME}_static ${DBGHELP_LIBRARY}) 	

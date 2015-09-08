@@ -95,6 +95,10 @@
   this saves compilation time. */
 #define EIGEN_NO_STATIC_ASSERT
 
+/** Eigen options -- these MUST be defined before Eigen is included.\n
+    See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html */
+#cmakedefine EIGEN_USE_MKL_ALL
+
 /**@}*/
 
 /* Using Intel MKL. */
