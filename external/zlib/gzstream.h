@@ -88,6 +88,10 @@ public:
 // ofstream respectively. They read and write files based on the gz*
 // function interface of the zlib. Files are compatible with gzip compression.
 // ----------------------------------------------------------------------------
+#if defined(_MSC_VER) // G+Smo
+#pragma warning( push )
+#pragma warning( disable : 4250 )
+#endif
 
 class igzstream : public gzstreambase, public std::istream {
 public:
@@ -110,6 +114,10 @@ public:
         gzstreambase::open( name, open_mode);
     }
 };
+
+#if defined(_MSC_VER) //G+Smo
+#pragma warning( pop )
+#endif
 
 #ifdef GZSTREAM_NAMESPACE
 } // namespace GZSTREAM_NAMESPACE
