@@ -629,6 +629,7 @@ int ON_EncodeUTF16( ON__UINT32 unicode_code_point, ON__UINT16 sUTF16[2] )
   if ( unicode_code_point < 0xE000 )
   {
     // 0xD800 ... 0xDFFF are invalid unicode code point values
+    sUTF16[0] = sUTF16[1] = 0;
     return 0;
   }
 
@@ -652,6 +653,7 @@ int ON_EncodeUTF16( ON__UINT32 unicode_code_point, ON__UINT16 sUTF16[2] )
   }
 
   // 0x110000 ... 0xFFFFFFFF are invalid unicode code point values
+  sUTF16[0] = sUTF16[1] = 0;
   return 0;
 }
 

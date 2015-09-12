@@ -101,8 +101,10 @@ int main(int argc, char *argv[])
 
     /////////////////// Setup solver ///////////////////
     //Initialize Solver
-    gsPoissonAssembler<real_t> PoissonAssembler(*patches,bases,bcInfo,*ppde->rhs(),
-                                                dirichlet::elimination, iFace::glue);
+
+    // gsPoissonAssembler<real_t> PoissonAssembler(*patches,bases,bcInfo,*ppde->rhs(),
+    //                                             dirichlet::elimination, iFace::glue);
+    gsPoissonAssembler<real_t> PoissonAssembler(*ppde->rhs());
 
     gsAssemblerOptions options;
     //Use Nitsche's method for Dirichlet boundaries
@@ -118,7 +120,7 @@ int main(int argc, char *argv[])
         options.intStrategy = iFace::dg;
     }
 
-    PoissonAssembler.setOptions(options);
+    PoissonAssembler.initialize(*patches, bases, bcInfo, options);
 
     // Generate system matrix and load vector
     std::cout<<"Assembling...\n";

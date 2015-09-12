@@ -90,7 +90,7 @@ struct gsNurbsCreator
     // Note: this can probably be removed once we have degree elevation for tensor B-splines.
     //
     /// The unit square represented as a tensor B-spline of degree \a deg
-    static gsTensorBSpline<2,T> * BSplineSquare(int deg);
+    static gsTensorBSpline<2,T> * BSplineSquare(int deg, T scale = 1.0);
     
     static gsTensorBSpline<3,T> * BSplineCube( T const & r = 1, T const & x = 0,
                                                T const & y = 0, T const & z = 0  );

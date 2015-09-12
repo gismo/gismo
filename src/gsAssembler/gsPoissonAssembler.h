@@ -111,6 +111,10 @@ public:
         this->initialize(patches, basis, bconditions);
     }
 
+    gsPoissonAssembler(const gsFunction<T> & rhs)
+    : m_rhsFun(&rhs) //, m_initialized(false)
+    { }
+
     /// Sets the Poisson assembler options
     void setOptions(const gsAssemblerOptions& options);
 
@@ -146,15 +150,12 @@ public:
     /// Computes the Dirichlet DoF values
     void computeDirichletDofs();
 
-
 protected:
 
     // initializes the pde specfic stuff
     void initializePdeSpecific()
     {
         applyOptions();
-
-        m_dofs = m_dofMappers.front().freeSize();
     }
 
     // Nitsche Dirichlet contributions

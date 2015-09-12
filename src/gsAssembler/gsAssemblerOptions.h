@@ -19,7 +19,7 @@ struct dirichlet
 {	
 	enum strategy
 	{
-        elimination  = 11, ///< Compute Dirichlet DoFs by using interpolation on the boundary
+        elimination  = 11, ///< Enforce Dirichlet BCs by using interpolation on the boundary
 
         penalize     = 13, ///< Penalize the diagonal at the position of Dirichlet DoFs,
 

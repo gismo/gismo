@@ -274,29 +274,14 @@ gsNurbsCreator<T>::BSplineSquare( gsMatrix<T> const & Box)
     return new gsTensorBSpline<2,T>(KV,KV, give(C));
 };
 
-
-// Note: this can probably be removed once we have degree elevation for tensor B-splines.
-//
-/// The unit square represented as a tensor B-spline of degree \a deg
+// The unit square represented as a tensor B-spline of degree \a deg
 template<class T> gsTensorBSpline<2,T> * 
-gsNurbsCreator<T>::BSplineSquare(int deg)
+gsNurbsCreator<T>::BSplineSquare(int deg, T scale)
 {
-    const int n = (deg + 1) * (deg + 1);        // number of basis functions
-
-    gsMatrix<T> C(n, 2);
-
-    index_t r = 0;
-
-    for (int j = 0; j <= deg; ++j)
-        for (int i = 0; i <= deg; ++i)
-        {
-            C(r, 0) = ((T) i) / deg;
-            C(r, 1) = ((T) j) / deg;
-            ++r;
-        }
-
-    gsKnotVector<T> KV(0,1, 0, deg+1);
-    return new gsTensorBSpline<2,T>(KV,KV, give(C));
+    GISMO_ASSERT(deg>0,"Degree must be at least one.");
+    gsTensorBSpline<2,T> * res = BSplineSquare(scale, 0.0, 0.0);
+    res->degreeElevate(deg-1);
+    return res;
 }
 
 

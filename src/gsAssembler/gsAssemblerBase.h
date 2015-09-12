@@ -101,6 +101,16 @@ public:
 
     }
 
+    // Same as initialize with options
+    void initialize(const gsMultiPatch<T>         & patches,
+                    gsMultiBasis<T> const         & basis,
+                    gsBoundaryConditions<T> const & bconditions,
+                    gsAssemblerOptions      const & options )
+    {
+        m_options = options;
+        initialize(patches, basis, bconditions);
+    }
+
     /// @brief Intitialize function for single patch assembling, sets data fields
     /// using a gsGeometry, a basis reference for each component (vector) and
     /// boundary conditions. With the last argument you can specify which patch
@@ -204,7 +214,7 @@ public:
     std::size_t numMultiBasis() const {return m_bases.size(); }
 
     /// @brief Return the DOF mapper for unknown \em i.
-    const gsDofMapper& dofMapper(unsigned i = 0) const     { return m_dofMappers[i]; }
+    const gsDofMapper & dofMapper(unsigned i = 0) const { return m_dofMappers[i]; }
 
     /// @brief Returns the number of dofMappers (corresponds to the number of components)
     std::size_t numDofMappers() const {return m_dofMappers.size();}
@@ -218,6 +228,9 @@ public:
 
     /// @brief Returns the Dirichlet values (if applicable)
     const gsMatrix<T> & dirValues() const { return m_ddof; }
+
+    /// @brief Returns the Dirichlet values (if applicable)
+    void setDirichletValues(gsMatrix<T> values) { m_ddof.swap(values); }
 
     /// @brief Sets any Dirichlet values to homogeneous (if applicable)
     void homogenizeDirichlet() { m_ddof.setZero(); }
