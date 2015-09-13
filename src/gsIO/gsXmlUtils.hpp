@@ -349,21 +349,23 @@ class gsXml< gsMatrix<T> >
 {
 private:
     gsXml() { }
+    typedef gsMatrix<T> Object;
+
 public:
-    GSXML_COMMON_FUNCTIONS(gsMatrix<T>);
+    GSXML_COMMON_FUNCTIONS(Object);
     static std::string tag () { return "Matrix"; }
     static std::string type() { return ""; }
   
-    static gsMatrix<T> * get (gsXmlNode * node)
+    GSXML_GET_POINTER(Object);
+
+    static void get_into (gsXmlNode * node, Object & obj)
     {
         GISMO_ASSERT( !strcmp( node->name(),"Matrix"), 
                       "Something went wrong. Expected Matrix tag." );
         
         unsigned rows  = atoi ( node->first_attribute("rows")->value() ) ;
         unsigned cols  = atoi ( node->first_attribute("cols")->value() ) ;
-        gsMatrix<T> * tmp = new gsMatrix<T>;
-        getMatrixFromXml<T>(node,rows,cols, *tmp);
-        return tmp;
+        getMatrixFromXml<T>(node, rows, cols, obj);
     }
     
     static gsXmlNode * put (const gsMatrix<T> & obj,
@@ -387,26 +389,28 @@ class gsXml< gsSparseMatrix<T> >
 {
 private:
     gsXml() { }
+    typedef gsSparseMatrix<T> Object;
+
 public:
-    GSXML_COMMON_FUNCTIONS(gsSparseMatrix<T>);
+    GSXML_COMMON_FUNCTIONS(Object);
     static std::string tag () { return "SparseMatrix"; }
     static std::string type() { return ""; }
   
-    static gsSparseMatrix<T> * get (gsXmlNode * node)
+    GSXML_GET_POINTER(Object);
+
+    static void get_into (gsXmlNode * node, Object & obj)
     {
         GISMO_ASSERT( !strcmp( node->name(),"SparseMatrix"), 
                       "Something went wrong. Expected SparseMatrix tag." );
 
         const index_t rows  = atoi ( node->first_attribute("rows")->value() ) ;
         const index_t cols  = atoi ( node->first_attribute("cols")->value() ) ;
-        gsSparseMatrix<T> * result = new gsSparseMatrix<T>(rows,cols);
 
         gsSparseEntries<T> entries;
         getSparseEntriesFromXml<T>(node, entries);
 
-        result->setFrom(entries);
-        //result->makeCompressed(); // needed ?
-        return result;
+        obj.resize(rows,cols);
+        obj.setFrom(entries);
     }
     
     static gsXmlNode * put (const gsSparseMatrix<T> & obj,
@@ -1222,7 +1226,7 @@ public:
     
     GSXML_GET_POINTER(Object);
     
-    static void get_into (gsXmlNode * node, gsMultiPatch<T> & obj)
+    static void get_into (gsXmlNode * node, Object & obj)
     {
         GISMO_ASSERT( !strcmp( node->name(),"MultiPatch"), 
                       "Something went wrong. Expected Multipatch tag." );
