@@ -48,6 +48,12 @@ gsArgMultiVal<C>::gsArgMultiVal( const std::string& flag,
 { } 
 
 template<class C>
+gsArgMultiVal<C>::~gsArgMultiVal()
+{
+    delete my;
+}
+
+template<class C>
 const std::vector<C> & gsArgMultiVal<C>::getValue()
 {
     return my->arg.getValue();

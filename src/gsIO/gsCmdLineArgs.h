@@ -58,6 +58,8 @@ public:
                    TCLAP::CmdLineInterface& parser,
                    TCLAP::Visitor* v = NULL );
 
+    ~gsArgMultiVal();
+
     /*
      * Constructor.
      * \param flag - The one character flag that identifies this
