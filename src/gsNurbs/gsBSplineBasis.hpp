@@ -27,6 +27,25 @@
 namespace gismo
 {
 
+
+template <class T, class KnotVectorType>
+typename gsTensorBSplineBasis<1,T,KnotVectorType>::Self_t *
+gsTensorBSplineBasis<1,T,KnotVectorType>::New(std::vector<gsBasis<T>*> & bb )
+{
+    GISMO_ASSERT( bb.size() == 1, "Expecting one component");
+    Self_t * c = dynamic_cast<Self_t*>(bb.front());
+    if ( NULL != c )
+    {
+        bb.clear();
+        return c;
+    }
+    else
+    {
+        gsWarn<<"Something went wrong during BSpline construction.\n";
+        return NULL;
+    }
+}
+
 template <class T, class KnotVectorType>
 int gsTensorBSplineBasis<1,T,KnotVectorType>::elementIndex(const gsVector<T> & u ) const
 {

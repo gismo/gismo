@@ -55,13 +55,15 @@ void gsPoissonAssembler<T>::applyOptions()
         m_dofs = m_dofMappers.front().freeSize();
 
    // }
+
+        //m_dofs = m_dofMappers.front().freeSize();
 }
 
 template<class T>
 void gsPoissonAssembler<T>::setOptions(const gsAssemblerOptions& options)
 {
     m_options = options;
-
+    // if ( m_initialized )
     applyOptions();
 }
 
@@ -203,7 +205,10 @@ void gsPoissonAssembler<T>::computeDirichletDofs()
         computeDirichletDofsL2Proj();
         break;
     case dirichlet::user:
-        // 
+        // Assuming that the DoFs are already set by the user
+        GISMO_ENSURE( m_ddof.rows() == m_dofMappers[0].boundarySize() && 
+                      m_ddof.cols() == m_rhsFun->targetDim(), 
+                      "The Dirichlet DoFs are not correctly provided.");
         break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values.");

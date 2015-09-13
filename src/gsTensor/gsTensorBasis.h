@@ -52,13 +52,7 @@ public:
 public:
     
     /// Default empty constructor
-    gsTensorBasis()
-    {
-        for (unsigned i = 0; i < d; ++i)
-            m_bases[i] = NULL;
-    }
-
-    explicit gsTensorBasis( Basis_t* x);
+    gsTensorBasis() : m_bases() { }
 
     /// Constructor 2D (takes ownership of the passed bases)
     gsTensorBasis( Basis_t* x,  Basis_t* y);
@@ -85,11 +79,10 @@ public:
     /// Assignment opearator
     gsTensorBasis& operator=( const gsTensorBasis & o);
     
-    // Destructor
+    /// Destructor
     ~gsTensorBasis() 
     { 
-        for (unsigned i = 0; i < d; ++i)
-            delete m_bases[i];
+        freeAll(m_bases, m_bases+d);
     }
     
 public:
@@ -584,25 +577,17 @@ public:
 
     /// \brief Default empty constructor
     gsTensorBasis() : Base()
-    { m_bases = this;}
+    { m_address = this;}
 
     /// \brief Constructor by basis pointers (takes ownership of the
     /// passed bases)
     explicit gsTensorBasis(Base * x) 
     : Base(*x)
     {
-        m_bases = this; 
+        m_address = this; 
         delete x;
+        x = NULL;
     }
-
-    gsTensorBasis( Basis_t* x,  Basis_t*  y)
-    { gsWarn<<"Invalid constructor.\n"; }
-    
-    gsTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z )
-    { gsWarn<<"Invalid constructor.\n"; }
-    
-    gsTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w )
-    { gsWarn<<"Invalid constructor.\n"; }
     
     /// \brief Constructor by basis pointers (takes ownership of the
     /// passed bases)
@@ -610,29 +595,30 @@ public:
     //: Basis_t(*static_cast<Basis_t*>(*it))
     : Basis_t(**it)
     {
-        m_bases = this; 
+        m_address = this; 
         delete *it;
+        *it = NULL;
     }
         
     /// \brief Copy Constructor
     gsTensorBasis( const gsTensorBasis & o) 
     : Basis_t(o)
     { 
-        m_bases = this;
+        m_address = this;
     }
     
     /// Assignment opearator
     gsTensorBasis& operator=( const gsTensorBasis & o)
     { 
         this->Base::operator=(o);
-        m_bases = this;
+        m_address = this;
         return *this;
     }
     
     // Destructor
     ~gsTensorBasis() 
     { 
-        m_bases = NULL;
+        m_address = NULL;
     }
     
 public:
@@ -662,22 +648,22 @@ public:
     /// Get a const-iterator to the beginning of the bases vector
     /// \return an iterator to the beginning of the bases vector
     const_iterator begin() const
-    { return &m_bases; }
+    { return &m_address; }
     
     /// Get a const-iterator to the end of the  bases vector
     /// \return an iterator to the end of the  bases vector
     const_iterator end() const
-    { return &(m_bases)+1; }
+    { return (&m_address)+1; }
     
     /// Get an iterator to the beginning of the  bases vector
     /// \return an iterator to the beginning of the  bases vector
     iterator begin()
-    { return &m_bases; }
+    { return &m_address; }
     
     /// Get an iterator to the end of the  bases vector
     /// \return an iterator to the end of the  bases vector
     iterator end()
-    { return &(m_bases)+1; }
+    { return (&m_address)+1; }
     
     // Unhide/forward gsBasis<T>::size(), since the following
     // overload with size(k) automatically hides it in this class
@@ -752,25 +738,25 @@ public:
 
     const Basis_t& x() const 
     { 
-        return *m_bases; 
+        return *this; 
     }
 
     Basis_t & component(unsigned i)
     {
         GISMO_ASSERT(i==0,"Invalid component requested");
-        return *m_bases; 
+        return *this; 
     }
 
     const Basis_t & component(unsigned i) const 
     {
         GISMO_ASSERT(i==0,"Invalid component requested");
-        return *m_bases; 
+        return *this; 
     }
     
 private:
     
-    /// Keeps the address of the object (for compatibility with d>1)
-    Basis_t * m_bases;
+    /// Keeps the address of the object (for iterator compatibility with d>1)
+    Basis_t * m_address;
     
 }; // class gsTensorBasis<1,T>
 

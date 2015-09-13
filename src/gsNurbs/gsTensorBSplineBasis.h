@@ -38,14 +38,10 @@ namespace gismo
 template<unsigned d, class T, class KnotVectorType>
 class gsTensorBSplineBasis 
     : public gsTensorBasis<d,T>
-    // : public choose<d==1, gsTensorBasis<1,gsBSplineBasis<T,KnotVectorType> >, 
-    //                       gsTensorBasis<d,T> >::typegsTensorBSplineBasi
 {
 public: 
     /// Base type
     typedef gsTensorBasis<d,T> Base;
-    // typedef typename choose<d==1, gsTensorBasis<1,gsBSplineBasis<T,KnotVectorType> >, 
-    //                         gsTensorBasis<d,T> >::type Base;
     
     /// Family type
     typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
@@ -109,20 +105,6 @@ public:
         m_isPeriodic = -1; 
     }
 
-    /*
-       \brief Constructs a 3D tensor product B-spline basis. Assumes
-       that the tamplate parameter \a d is equal to 3.
-       
-       \param KV1 knot-vector with respect to the first dimension
-       \param KV2 knot-vector with respect to the second dimension
-       \param KV3 knot-vector with respect to the third dimension
-     */
-    explicit gsTensorBSplineBasis( Basis_t* x) : Base(x) 
-    {
-        GISMO_ENSURE(d==1,"Invalid constructor." );
-        setIsPeriodic();
-    }
-
     gsTensorBSplineBasis( Basis_t* x,  Basis_t*  y) : Base(x,y) 
     { 
         GISMO_ENSURE(d==2,"Invalid constructor." );
@@ -144,14 +126,17 @@ public:
     
     gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb ) : Base(bb.data())
     {
-        // to do check cast to Basis_t
+        GISMO_ASSERT( checkVectorPtrCast<Basis_t>(bb), "Invalid vector of basis pointers.");
         GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
+        bb.clear();
         setIsPeriodic();
     }
     
-    gsTensorBSplineBasis(std::vector< Basis_t*> & bb ) : Base( castVectorPtr<gsBasis<T> >(bb).data() )
+    gsTensorBSplineBasis(std::vector< Basis_t*> & bb ) 
+    : Base( castVectorPtr<gsBasis<T> >(bb).data() )
     {
         GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
+        bb.clear();
         setIsPeriodic();
     }
 
@@ -161,10 +146,10 @@ public:
     }
 
     /// \brief Converter to univariate B-spline basis
-    operator const Family_t &() const
+    operator const Basis_t &() const
     {
         if ( d==1 )
-            return static_cast<const Family_t &>(component(0));
+            return static_cast<const Basis_t &>(component(0));
         else
             GISMO_ERROR("Cannot convert to gsBSplineBasis.");
     }
@@ -182,7 +167,7 @@ public:
     static Self_t * New(std::vector<gsBasis<T>*> & bb )
     { return new Self_t(bb); }
 
-    static Self_t * New(std::vector<Family_t*> & bb )
+    static Self_t * New(std::vector<Basis_t*> & bb )
     { return new Self_t(bb); }
 
 public:

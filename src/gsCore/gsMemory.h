@@ -154,6 +154,17 @@ std::vector<Base*> castVectorPtr(std::vector<Derived*> pVec)
     return result;
 }
 
+/// \brief Returns true if all instances of \a Base cast to \a Derived
+template <typename Derived, typename Base>
+bool checkVectorPtrCast(std::vector<Base*> pVec)
+{
+    for (typename std::vector<Base*>::iterator it = pVec.begin();
+         it != pVec.end(); ++it)
+        if ( ! dynamic_cast<Derived*>(*it) )
+            return false;
+    return true;
+}
+
 /// \brief Small wrapper for std::copy mimicking memcpy, copies \a n
 /// positions starting from \a begin into \a result. The latter is
 /// expected to have been allocated in advance

@@ -31,20 +31,6 @@ namespace gismo
 {
 
 template<unsigned d, class T>
-gsTensorBasis<d,T>::gsTensorBasis( Basis_t* x) 
-{ 
-    GISMO_ASSERT( d==1, "gsTensorBasis error: wrong dimension." );
-
-    if ( x->dim() == unsigned(1) )
-    {
-        m_bases[0] = x;
-    } 
-    else 
-        GISMO_ERROR("gsTensorBasis error: Spaces must be of topological dimension 1.");
-}
-
-
-template<unsigned d, class T>
 gsTensorBasis<d,T>::gsTensorBasis( Basis_t* x,  Basis_t* y) 
 { 
     GISMO_ASSERT( d==2, "gsTensorBasis error: wrong dimension." );

@@ -110,11 +110,7 @@ public:
     //         GISMO_ERROR("Cannot convert "<<o<<" to gsTensorBSplineBasis\n");
     // }
 
-    static Self_t * New(std::vector<gsBasis<T>*> & bb )
-    { 
-        // to do: check cast to Familiy
-        return new Self_t(*static_cast<Self_t*>(bb.front())); 
-    }
+    static Self_t * New(std::vector<gsBasis<T>*> & bb );
 
     static Self_t * New(std::vector<Self_t*> & bb )
     { 

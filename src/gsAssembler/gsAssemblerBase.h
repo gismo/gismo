@@ -229,7 +229,7 @@ public:
     /// @brief Returns the Dirichlet values (if applicable)
     const gsMatrix<T> & dirValues() const { return m_ddof; }
 
-    /// @brief Returns the Dirichlet values (if applicable)
+    /// @brief Sets the Dirichlet values to given \a values (if applicable)
     void setDirichletValues(gsMatrix<T> values) { m_ddof.swap(values); }
 
     /// @brief Sets any Dirichlet values to homogeneous (if applicable)
