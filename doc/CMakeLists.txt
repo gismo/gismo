@@ -92,8 +92,6 @@ configure_file(
 
 #add_definitions("-DGISMO_MAKING_DOCS")
 
-add_subdirectory(snippets)
-
 add_custom_target(
   doc-gismo-prerequisites
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/html/
@@ -101,8 +99,9 @@ add_custom_target(
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-if ( NOT NOSNIPPETS) # drop dependancy on snippets
-add_dependencies(doc-gismo-prerequisites doc-snippets)
+if ( NOT NOSNIPPETS) # drop the snippets
+  add_subdirectory(snippets)
+  add_dependencies(doc-gismo-prerequisites doc-snippets)
 endif()
 
 add_custom_target(doc #ALL
