@@ -30,58 +30,13 @@ endif()
 # Shared pointer
 find_package (TR1 QUIET)
 
-## #################################################################
-## Setup build types
-## #################################################################
-
-# Add configuration Devel
-set(CMAKE_C_FLAGS_DEVEL
-${CMAKE_C_FLAGS_RELWITHDEBINFO}                CACHE STRING "Flags used by the
-compiler during Devel builds")
-string(REPLACE "-DNDEBUG" "" FLAGS_DEVEL ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
-set(CMAKE_CXX_FLAGS_DEVEL #remove NDEBUG
-${FLAGS_DEVEL}                                 CACHE STRING "Flags used by the
-compiler during Devel builds")
-set(CMAKE_EXE_LINKER_FLAGS_DEVEL
-${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}       CACHE STRING "Flags used by the
-linker for executables during Devel builds")
-set(CMAKE_SHARED_LINKER_FLAGS_DEVEL
-${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}    CACHE STRING "Flags used by the
-linker for shared libraries during Devel builds")
-set(CMAKE_MODULE_LINKER_FLAGS_DEVEL
-${CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO}    CACHE STRING "Flags used by the
-linker for loadable modules during Devel builds")
-
-mark_as_advanced(
-    CMAKE_C_FLAGS_DEVEL
-    CMAKE_CXX_FLAGS_DEVEL
-    CMAKE_EXE_LINKER_FLAGS_DEVEL
-    CMAKE_SHARED_LINKER_FLAGS_DEVEL
-    CMAKE_MODULE_LINKER_FLAGS_DEVEL
-)
-
-# This variable is only set for multi-config IDE generators like MSVC
-if(CMAKE_CONFIGURATION_TYPES)
-    list(APPEND CMAKE_CONFIGURATION_TYPES Devel)
-    list(REMOVE_DUPLICATES CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}"
-        CACHE STRING "Semicolon separated list of supported configuration
-types [Debug|Release|MinSizeRel|RelWithDebInfo|Devel]"
-        FORCE)
-endif()
-
-# Update the documentation string of CMAKE_BUILD_TYPE for GUIs
-SET( CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
-    "Type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Devel."
-    FORCE )
-
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-   set(CMAKE_BUILD_TYPE Release CACHE STRING
-   "Type of build (None Debug Release RelWithDebInfo MinSizeRel Devel)" FORCE)
+   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+   "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
    # Set the possible values of build type for cmake-gui
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-     "RelWithDebInfo" "MinSizeRel" "Devel")
+     "RelWithDebInfo" "MinSizeRel")
 endif()
 
 set(${PROJECT_NAME}_ARCHIVE_OUTPUT_DIRECTORY lib)
@@ -131,8 +86,8 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
     #add_definitions(-D_ITERATOR_DEBUG_LEVEL=0) #VS2012
 
     # disable incremental linking for executables (it doesn't help for linking with libraries) -- check
-    STRING(REPLACE "/INCREMENTAL:YES" "/INCREMENTAL:NO" CMAKE_EXE_LINKER_FLAGS_DEBUG ${CMAKE_EXE_LINKER_FLAGS_DEBUG})
-    STRING(REPLACE "/INCREMENTAL:YES" "/INCREMENTAL:NO" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO ${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO})
+    #STRING(REPLACE "/INCREMENTAL:YES" "/INCREMENTAL:NO" CMAKE_EXE_LINKER_FLAGS_DEBUG ${CMAKE_EXE_LINKER_FLAGS_DEBUG})
+    #STRING(REPLACE "/INCREMENTAL:YES" "/INCREMENTAL:NO" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO ${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO})
 
 #    if ( GISMO_BUILD_LIB )
 #    # /MD /MDd
