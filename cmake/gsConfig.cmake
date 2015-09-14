@@ -118,12 +118,13 @@ endif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
-    #  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 18)
-    # Update 4 of MSVC 2013 ?
-    #    endif()
+    if(${MSVC_VERSION} EQUAL 1800 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 18.00.31101.0)
+       message(WARNING "Visual Studio 2013 without Update 4 detected. Update your compiler to avoid G+Smo compilation problems.")
+    endif()
 
-    # Disable checked iterators
-    set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS}  /bigobj /D_SECURE_SCL=0")
+    # Disable checked iterators and irrelevant warnings
+    #wd4351: regards old behaviour before MSVC2005
+    set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS}  /bigobj /D_SECURE_SCL=0  /wd4351")
     # See http://msdn.microsoft.com/en-us/library/hh697468.aspx
     #add_definitions(-D_HAS_ITERATOR_DEBUGGING=0)
     #add_definitions(-D_SECURE_SCL=0)
@@ -140,8 +141,7 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
     if (CMAKE_SIZEOF_VOID_P EQUAL 8) #64bit compiler 
        # Note: On 64bit-platforms, /Wp64 flag is present, causing extra warnings
-       #wd4351: regards old behaviour before MSVC2005
-       set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS} /wd4244 /wd4267 /wd4351")
+       set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
 
     #else() #32bit compiler has CMAKE_SIZEOF_VOID_P EQUAL 4
     endif()
