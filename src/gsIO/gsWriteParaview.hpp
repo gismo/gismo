@@ -323,7 +323,7 @@ void writeSinglePatchField(const gsField<T> & field, int patchNr,
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<eval_geo.rows()<<"\">\n";
     for ( index_t j=0; j<eval_geo.cols(); ++j)
         for ( index_t i=0; i<eval_geo.rows(); ++i)
-            file<< eval_geo.at(i,j) <<" ";
+            file<< eval_geo(i,j) <<" ";
     file <<"</DataArray>\n";
     file <<"</Points>\n";
     file <<"</Piece>\n";
@@ -392,7 +392,7 @@ void writeSingleGeometry(gsFunction<T> const& func,
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<eval_func.rows()<<"\">\n";
     for ( index_t j=0; j<eval_func.cols(); ++j)
         for ( index_t i=0; i<eval_func.rows(); ++i)
-            file<< eval_func.at(i,j) <<" ";
+            file<< eval_func(i,j) <<" ";
     file <<"</DataArray>\n";
     file <<"</Points>\n";
     file <<"</Piece>\n";
@@ -452,7 +452,7 @@ void writeSingleCurve(gsFunction<T> const& func,
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<eval_func.rows()<<"\">\n";
     for ( index_t j=0; j<eval_func.cols(); ++j)
         for ( index_t i=0; i<eval_func.rows(); ++i)
-            file<< eval_func.at(i,j) <<" ";
+            file<< eval_func(i,j) <<" ";
     file <<"\n</DataArray>\n";
     file <<"</Points>\n";
     // Lines
@@ -691,7 +691,7 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
     file <<"<PointData "<< "Scalars"<<"=\"SolutionField\">\n";
     file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<<1<<"\">\n";
     for ( index_t j=0; j<eval_geo.cols(); ++j)
-            file<< eval_geo.at(0,j) <<" ";
+            file<< eval_geo(0,j) <<" ";
     file <<"</DataArray>\n";
     file <<"</PointData>\n";
     //
@@ -701,7 +701,7 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
     {
         for ( int l=0; l!=d; ++l)
             file<< pts(l,j) <<" ";
-        file<< eval_geo.at(0,j) <<" ";
+        file<< eval_geo(0,j) <<" ";
          for ( index_t l=d; l!=pts.rows(); ++l)
              file<< pts(l,j) <<" ";
     }
@@ -1399,7 +1399,7 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
     {
         for (index_t i = 0; i < points.rows(); ++i)
         {
-            file << points.at(i, j) << " ";
+            file << points(i, j) << " ";
         }
         file << "\n";
     }

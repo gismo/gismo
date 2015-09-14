@@ -161,10 +161,10 @@ public:
       " --> R^"<< this->geoDim()<< ", #control pnts= "<< this->coefsSize() <<": "
        << this->coef(0) <<" ... "<< this->coef(this->coefsSize()-1); 
     os << "\nweights: "
-       << this->basis().weights().at(0,0) <<" ... "
-       << this->basis().weights().at(this->coefsSize()-1,0)
+       << this->basis().weights().at(0) <<" ... "
+       << this->basis().weights().at(this->coefsSize()-1)
        <<"\n" ;
-    return os; }  
+    return os; }
 
 //////////////////////////////////////////////////
 // Additional members for tensor NURBS

@@ -18,7 +18,9 @@ namespace gismo
 {
 
 template<class T>
-typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, gsVector<T> const & b, gsVector<unsigned> const & np )
+typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, 
+                                        gsVector<T> const & b, 
+                                        gsVector<unsigned> const & np )
 {
   const index_t d = a.size();
   assert( d == b.size() );
@@ -42,11 +44,11 @@ typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, gsVector<T> const
       //res->col(r) = a.array() + v.array().cast<T>() * span.array() / segments.array();
       for (index_t i = 0; i < d; ++i)
           if ( v[i] == 0 )
-              res->at(i,r) = a[i]; // avoid numerical error in the start of the interval
+              res->coeffRef(i,r) = a[i]; // avoid numerical error in the start of the interval
           else if ( v[i] == np[i]-1 )
-              res->at(i,r) = b[i]; // avoid numerical error in the end of the interval
+              res->coeffRef(i,r) = b[i]; // avoid numerical error in the end of the interval
           else
-              res->at(i,r) = a[i] + v[i] * span[i] / segments[i];
+              res->coeffRef(i,r) = a[i] + v[i] * span[i] / segments[i];
       ++r ;
   } while ( nextLexicographic(v, np) );
 
@@ -161,7 +163,10 @@ typename gsMatrix<T>::uPtr uniformPointGrid(const gsVector<T>& lower,
 }
 
 template<typename T>
-void uniformIntervals(const gsVector<T>& lower, const gsVector<T>& upper, std::vector< std::vector<T> >& intervals, int numIntervals)
+void uniformIntervals(const gsVector<T>& lower, 
+                      const gsVector<T>& upper, 
+                      std::vector< std::vector<T> >& intervals, 
+                      int numIntervals)
 {
     const int d = lower.rows();
     assert( d == upper.rows() );

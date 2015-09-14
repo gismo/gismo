@@ -325,7 +325,7 @@ template<class SrcT>
 void gsRationalBasis<SrcT>::evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const
 { 
     m_src->evalSingle_into(i, u, result);  
-    result.array() *= m_weights.at(i,0);
+    result.array() *= m_weights.at(i);
     gsMatrix<T> denom;
     m_src->evalFunc_into(u, m_weights, denom); 
     
@@ -460,7 +460,7 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,
     {
       result.template block<d,1>(k*d,i).noalias() -=  ev(k,i)  * // - N_i W'
         Wder.col(i);
-      result.template block<d,1>(k*d,i) *= m_weights.at( act(k,i), 0) ;
+      result.template block<d,1>(k*d,i) *= m_weights.at( act(k,i) ) ;
     }
     result.col(i) /= Wval(0,i) * Wval(0,i);
   }
@@ -483,13 +483,13 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,
 //~ 
 //~     for ( index_t i=0; i!= res->cols(); ++i )
 //~     {
-//~         res->col(i)  *= Wval->at(0,i) ;
-//~         res->col(i)  -= ev->col(i)  * Wder->at(0,i) ;
+//~         res->col(i)  *= Wval->coeff(0,i) ;
+//~         res->col(i)  -= ev->col(i)  * Wder->at(i) ;
 //~ 
 //~         for ( index_t j=0; j!= res->rows(); ++j )
 //~         {
-//~             res->at(j,i)  *= m_weights.at( act->at(j,i), 0) ;
-//~             res->at(j,i)  /= Wval->at(0,i) * Wval->at(0,i);
+//~             (*res)(j,i)  *= m_weights.at( (*act)(j,i) ) ;
+//~             (*res)(j,i)  /= Wval->coeff(0,i) * Wval->at(i);
 //~         }
 //~         
 //~     }

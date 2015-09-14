@@ -176,26 +176,32 @@ public:
         return *this;
     }
 
-    T   at (index_t i, index_t j = 0) const { return (*this)(i,j); }
-    T & at (index_t i, index_t j = 0)       { return (*this)(i,j); }
+    /// \brief Returns the \a i-th element of the vectorization of the matrix
+    T   at (index_t i) const { return *(this->data()+i);}
 
-    /// Returns the matrix resized to n x m matrix (data is not copied)
+    /// \brief Returns the \a i-th element of the vectorization of the matrix
+    T & at (index_t i)       { return *(this->data()+i);}
+
+    // \brief Returns the last element of the matrix (maximum row and column)
+    //T   lastCoeff() { return *(this->data()+this->size()-1);}
+
+    /// \brief Returns the matrix resized to n x m matrix (data is not copied)
     gsAsMatrix<T, Dynamic, Dynamic> reshape(index_t n, index_t m )
     { return gsAsMatrix<T, Dynamic, Dynamic>(this->data(), n, m); }
 
-    /// Returns column \a c of the matrix resized to n x m matrix
+    /// \brief Returns column \a c of the matrix resized to n x m matrix
     gsAsMatrix<T, Dynamic, Dynamic> reshapeCol( index_t c, index_t n, index_t m )
     { return gsAsMatrix<T, Dynamic, Dynamic>(this->col(c).data(), n, m); }
 
-    /// Returns column \a c of the matrix resized to n x m matrix
+    /// \brief Returns column \a c of the matrix resized to n x m matrix
     gsAsConstMatrix<T, Dynamic, Dynamic> reshapeCol( index_t c, index_t n, index_t m ) const
     { return gsAsConstMatrix<T, Dynamic, Dynamic>(this->col(c).data(), n, m); }
 
-    /// Returns the entries of the matrix resized to a n*m vector column-wise
+    /// \brief Returns the entries of the matrix resized to a n*m vector column-wise
     gsAsVector<T, Dynamic> asVector()
     { return gsAsVector<T, Dynamic>(this->data(), this->rows()*this->cols() ); }
 
-    /// Returns the entries of the matrix resized to a (const) n*m vector column-wise
+    /// \brief Returns the entries of the matrix resized to a (const) n*m vector column-wise
     gsAsConstVector<T, Dynamic> asVector() const
     { return gsAsConstVector<T, Dynamic>(this->data(), this->rows()*this->cols() ); }
 
@@ -316,7 +322,7 @@ public:
             lastCheckIdx = lastSwapDone;
 
             for( unsigned i=0; i < lastCheckIdx; i++)
-                if( this->at(i,j) > this->at(i+1,j) )
+                if( this->coeff(i,j) > this->coeff(i+1,j) )
                 {
                     tmp.row(0) = this->row(i);
                     this->row(i) = this->row(i+1);
@@ -387,11 +393,6 @@ gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(int rows, int cols) : Base(rows,col
 template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options>::~gsMatrix() { }
   
-   
-// without range testing:
-//  inline T   at (const size_t & i,const size_t & j) const { return this->coeff(i,j); }
-//  inline T & at (const size_t & i,const size_t & j) { return this->coeffRef(i,j); }
-    
 /// Clone function. Used to make a copy of the matrix
 template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone() const

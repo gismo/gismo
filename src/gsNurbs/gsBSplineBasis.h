@@ -326,10 +326,11 @@ public:
 
     /// Returns the index of the first active (ie. non-zero) basis
     /// function at all columns (points) of u
-    inline gsMatrix<unsigned,1> * firstActive(const gsMatrix<T,1> & u) const { 
+    inline gsMatrix<unsigned,1> * firstActive(const gsMatrix<T,1> & u) const 
+    { 
         gsMatrix<unsigned,1> * fa = new gsMatrix<unsigned,1>(1, u.cols() );
         for ( index_t i = 0; i < u.cols(); i++ )
-            fa->at(0,i) = ( inDomain(u(0,i)) ? m_knots.findspan(u(0,i))-m_p : 0 );
+            fa->at(i) = ( inDomain(u(0,i)) ? m_knots.findspan(u.at(i))-m_p : 0 );
         return fa;
     }
 
