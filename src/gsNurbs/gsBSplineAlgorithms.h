@@ -227,7 +227,7 @@ void degreeElevateBSpline(Basis_t &basis,
 {
     typedef typename Basis_t::Scalar_t T;
 
-    GISMO_ASSERT(m >= 0, "Can only elevate degree by a positive amount");
+    GISMO_ASSERT(m >= 0 && m<512, "Can only elevate degree by a positive (not enormous) amount.");
     GISMO_ASSERT(basis.size() == coefs.rows(), "Invalid coefficients");
 
     if (m==0) return;
@@ -239,10 +239,10 @@ void degreeElevateBSpline(Basis_t &basis,
 
     // compute original derivative coefficients P (recurrence)
     // original derivative coefficients
-#ifdef __clang__ // Note: No non-POD VLAs in clang compiler
-    std::vector<gsMatrix<T> > P(p+1);
-#   else
+#   if defined(__GNUC__)
     STACK_ARRAY(gsMatrix<T>,P,p+1);
+#   else // Note: No non-POD VLAs in clang/MSVC compiler
+    std::vector<gsMatrix<T> > P(p+1);
 #   endif
     for(int i=0;i<p+1;i++)
         P[i].setZero(ncoefs - i, n);
@@ -267,10 +267,10 @@ void degreeElevateBSpline(Basis_t &basis,
     const int p_new      = basis.degree();
 
     // new (elevated) derivative coefficients
-    #ifdef __clang__ // Note: No non-POD VLAs in clang compiler
-    std::vector<gsMatrix<T> > Q(p_new+1);
-#   else
+#   if defined(__GNUC__)
     STACK_ARRAY(gsMatrix<T>,Q,p_new+1);
+#   else // Note: No non-POD VLAs in clang/MSVC compiler
+    std::vector<gsMatrix<T> > Q(p_new+1);
 #   endif
     for(int i=0; i<p_new+1; i++)
         Q[i].setZero(ncoefs_new - i, n);

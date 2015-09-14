@@ -14,6 +14,8 @@
 #pragma once 
 
 #include <gsNurbs/gsBSpline.h>
+#include <gsNurbs/gsBSplineAlgorithms.h>
+
 #include <gsNurbs/gsDeboor.hpp>
 #include <gsNurbs/gsBoehm.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>

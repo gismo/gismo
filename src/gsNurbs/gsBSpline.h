@@ -247,13 +247,13 @@ public:
             // make a degree elevated copy of the other spline
             elevateOther = true;
             bother = bother->clone();
-            bother->elevate(thisDegree - otherDegree);
+            bother->gsBSpline::degreeElevate(thisDegree - otherDegree);
         }
         else if (otherDegree > thisDegree)
         {
             // degree elevate this spline in place, since we are merging
             // in place.
-            elevate(otherDegree - thisDegree);
+            gsBSpline::degreeElevate(otherDegree - thisDegree);
         }
 
         //check geometric dimension
@@ -374,12 +374,8 @@ public:
             gsBoehmRefine( this->basis().knots(), this->coefs(), this->degree(), begin, end);
     }
 
-    void elevate( int r )
-        {
-            // uses knot insertion
-            //gsMatrix<T> * c = this->coefs();
-            bspline::degreeElevateBSpline(this->basis(), this->coefs(), r);
-        }    
+    // Look at gsGeometry class for a description
+    void degreeElevate(int const i = 1, int const dir = -1);
 
     /// @brief Returns true iff the point p is contained (approximately) on
     /// the curve, with the given tolerance.

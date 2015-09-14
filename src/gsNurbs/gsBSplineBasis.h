@@ -21,10 +21,6 @@
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
  
-#include <gsNurbs/gsBSplineAlgorithms.h>
-
-
-
 namespace gismo
 {
 

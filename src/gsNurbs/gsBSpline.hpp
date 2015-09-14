@@ -14,6 +14,7 @@
 
 #pragma once 
 
+#include <gsNurbs/gsBSplineAlgorithms.h>
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
@@ -99,6 +100,15 @@ void gsBSpline<T,KnotVectorType>::swapDirections(const unsigned i, const unsigne
                   "Invalid basis components "<<i<<" and "<<j<<" requested" );
 }
 
+
+template<class T, class KnotVectorType>
+void gsBSpline<T,KnotVectorType>::degreeElevate(int const i, int const dir)
+{
+    GISMO_ASSERT( (dir == -1) || (dir == 0),
+                  "Invalid basis component "<< dir <<" requested for degree elevation" );
+    
+    bspline::degreeElevateBSpline(this->basis(), this->m_coefs, i);
+}
 
 namespace internal
 {

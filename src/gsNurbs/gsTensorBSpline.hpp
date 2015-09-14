@@ -17,6 +17,7 @@
 #include <gsCore/gsConstantFunction.h>
 
 #include <gsNurbs/gsBSpline.h>
+#include <gsNurbs/gsBSplineAlgorithms.h>
 #include <gsNurbs/gsBoehm.h>
 
 #include <gsUtils/gsMultiIndexIterators.h>
