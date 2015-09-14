@@ -92,7 +92,6 @@ configure_file(
 
 #add_definitions("-DGISMO_MAKING_DOCS")
 
-set(snippets_targets "")
 add_subdirectory(snippets)
 
 add_custom_target(
@@ -103,7 +102,7 @@ add_custom_target(
 )
 
 if ( NOT NOSNIPPETS) # drop dependancy on snippets
-add_dependencies(doc-gismo-prerequisites all_snippets)
+add_dependencies(doc-gismo-prerequisites doc-snippets)
 endif()
 
 add_custom_target(doc #ALL

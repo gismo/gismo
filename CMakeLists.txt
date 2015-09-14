@@ -30,15 +30,12 @@ endif("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+include(CTest)
+enable_testing()
+
 include( gsVersion )
 include( gismoUse  )
 include( gsConfig )
-
-## #################################################################
-## Documentation
-## #################################################################
-
-add_subdirectory(doc)
 
 message( "   GGGGGGGGG      GGGG      GGGGGGGGG  GGGGGG   GGGGGG  GGGGGGGGGG" )
 message( "  GGGG            GGGG     GGGG        GGGGGG  GGGGGG  GGGG   GGGG" )
@@ -144,6 +141,12 @@ endif()
 include(gsLibrary)
 
 ## #################################################################
+## Documentation
+## #################################################################
+
+add_subdirectory(doc)
+
+## #################################################################
 ## Plugins
 ## #################################################################
 
@@ -161,13 +164,6 @@ endif(GISMO_BUILD_MEX)
 ## #################################################################
 
 include( gsInstall )
-
-## #################################################################
-## Testing
-## #################################################################
-
-include(CTest)
-enable_testing()
 
 ## #################################################################
 ## Executables

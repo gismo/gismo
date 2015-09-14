@@ -13,7 +13,7 @@ cmake_policy(SET CMP0011 OLD)
 cmake_policy(SET CMP0048 OLD)
 endif()
 
-project(gismo-snippets)
+project(doc-snippets)
 
 include(CTest)
 enable_testing()
@@ -22,31 +22,36 @@ enable_testing()
 # Collect source file names
 file(GLOB snippets_SRCS "*.cpp")
 
-add_custom_target(all_snippets)
+add_custom_target(${PROJECT_NAME})
+set_property(TARGET ${PROJECT_NAME} PROPERTY LABELS "${PROJECT_NAME};gismo")
 
 foreach(snippet_src ${snippets_SRCS})
-  get_filename_component(snippet ${snippet_src} NAME_WE)
-  set(compile_snippet_target compile_${snippet})
-  set(compile_snippet_src ${compile_snippet_target}.cpp)
+
+  get_filename_component(snippet_target ${snippet_src} NAME_WE)
+  set(snippet_target snippet_${snippet_target})
+
   file(READ ${snippet_src} snippet_source_code)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/compile_snippet.cpp.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/${compile_snippet_src})
-  add_executable(${compile_snippet_target}
-                 ${CMAKE_CURRENT_BINARY_DIR}/${compile_snippet_src})
+                 ${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.cpp)
+
+  add_executable(${snippet_target}  ${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.cpp)
+  add_test(${snippet_target} ${CMAKE_CURRENT_BINARY_DIR}/${snippet_target})
+  set_property(TEST ${snippet_target} PROPERTY LABELS "${PROJECT_NAME};gismo")
+
   if(GISMO_BUILD_LIB)
-    target_link_libraries(${compile_snippet_target} gismo)
+    target_link_libraries(${snippet_target} gismo)
   endif()
 
   add_custom_command(
-    TARGET ${compile_snippet_target}
+    TARGET ${snippet_target}
     POST_BUILD
-    COMMAND ${compile_snippet_target}
-    ARGS >${CMAKE_CURRENT_BINARY_DIR}/${snippet}.out
+    COMMAND ${snippet_target}
+    ARGS >${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.out
   )
 
-  add_dependencies(all_snippets ${compile_snippet_target})
+  add_dependencies(${PROJECT_NAME} ${snippet_target})
 
-  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${compile_snippet_src}
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${snippet_src}
                               PROPERTIES OBJECT_DEPENDS ${snippet_src})
 endforeach(snippet_src)
 

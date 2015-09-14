@@ -38,11 +38,12 @@ find_package (TR1 QUIET)
 set(CMAKE_C_FLAGS_DEVEL
 ${CMAKE_C_FLAGS_RELWITHDEBINFO}                CACHE STRING "Flags used by the
 compiler during Devel builds")
-set(CMAKE_CXX_FLAGS_DEVEL
-${CMAKE_CXX_FLAGS_RELWITHDEBINFO}                CACHE STRING "Flags used by the
+string(REPLACE "-DNDEBUG" "" FLAGS_DEVEL ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+set(CMAKE_CXX_FLAGS_DEVEL #remove NDEBUG
+${FLAGS_DEVEL}                                 CACHE STRING "Flags used by the
 compiler during Devel builds")
 set(CMAKE_EXE_LINKER_FLAGS_DEVEL
-${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}        CACHE STRING "Flags used by the
+${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}       CACHE STRING "Flags used by the
 linker for executables during Devel builds")
 set(CMAKE_SHARED_LINKER_FLAGS_DEVEL
 ${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}    CACHE STRING "Flags used by the
@@ -50,8 +51,7 @@ linker for shared libraries during Devel builds")
 set(CMAKE_MODULE_LINKER_FLAGS_DEVEL
 ${CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO}    CACHE STRING "Flags used by the
 linker for loadable modules during Devel builds")
-#remove NDEBUG
-string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_DEVEL ${CMAKE_CXX_FLAGS_DEVEL})
+
 mark_as_advanced(
     CMAKE_C_FLAGS_DEVEL
     CMAKE_CXX_FLAGS_DEVEL
@@ -140,7 +140,9 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
     if (CMAKE_SIZEOF_VOID_P EQUAL 8) #64bit compiler 
        # Note: On 64bit-platforms, /Wp64 flag is present, causing extra warnings
-       set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
+       #wd4351: regards old behaviour before MSVC2005
+       set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS} /wd4244 /wd4267 /wd4351")
+
     #else() #32bit compiler has CMAKE_SIZEOF_VOID_P EQUAL 4
     endif()
 
