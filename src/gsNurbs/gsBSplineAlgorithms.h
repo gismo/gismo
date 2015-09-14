@@ -239,11 +239,11 @@ void degreeElevateBSpline(Basis_t &basis,
 
     // compute original derivative coefficients P (recurrence)
     // original derivative coefficients
-#   if defined(__GNUC__)
-    STACK_ARRAY(gsMatrix<T>,P,p+1);
-#   else // Note: No non-POD VLAs in clang/MSVC compiler
+// #   if defined(__GNUC__)
+//     STACK_ARRAY(gsMatrix<T>,P,p+1);
+// #   else // Note: No non-POD VLAs in clang/MSVC compiler
     std::vector<gsMatrix<T> > P(p+1);
-#   endif
+// #   endif
     for(int i=0;i<p+1;i++)
         P[i].setZero(ncoefs - i, n);
 
@@ -267,11 +267,11 @@ void degreeElevateBSpline(Basis_t &basis,
     const int p_new      = basis.degree();
 
     // new (elevated) derivative coefficients
-#   if defined(__GNUC__)
-    STACK_ARRAY(gsMatrix<T>,Q,p_new+1);
-#   else // Note: No non-POD VLAs in clang/MSVC compiler
+// #   if defined(__GNUC__)
+//     STACK_ARRAY(gsMatrix<T>,Q,p_new+1);
+// #   else // Note: No non-POD VLAs in clang/MSVC compiler
     std::vector<gsMatrix<T> > Q(p_new+1);
-#   endif
+// #   endif
     for(int i=0; i<p_new+1; i++)
         Q[i].setZero(ncoefs_new - i, n);
 
