@@ -32,7 +32,7 @@ namespace gismo
     Dirichlet boundary can only be enforced strongly (i.e Nitsche is
     not implemented).
 */
-template <class T>
+template <class T, class bhVisitor = gsVisitorBiharmonic<T> >
 class gsBiharmonicAssembler : public gsPoissonAssembler<T>
 {
 public:
@@ -66,7 +66,7 @@ public:
                        rhs,
                        dirStrategy,
                        intStrategy),
-      m_bConditions2(bconditions2)
+        m_bConditions2(bconditions2)
     {    }
 
     /// Main assembly routine
@@ -92,7 +92,7 @@ public:
         // Resize the load vector
         m_rhs.setZero(m_dofs, m_rhsFun->targetDim() );
 
-        gsVisitorBiharmonic<T> visitBiHar(*m_rhsFun);
+        bhVisitor visitBiHar(*m_rhsFun);
         for (unsigned np=0; np < m_patches.nPatches(); ++np )
             this->apply(visitBiHar, np);
 
