@@ -184,6 +184,29 @@ void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real
     }
 }
 
+void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs)
+{
+    //Sort from lowest to highes
+    DoFs.sortByColumn(0);
+    const index_t size = DoFs.rows();
+
+    GISMO_ASSERT ( DoFs(size-1)< A.cols(), "The given DoF is higher than the size of the matrix");
+
+    gsMatrix<real_t> Dblock(size, size);
+    gsMatrix<real_t> residual(size, 1);
+    for (int i = 0; i< size; i++)
+    {
+        residual(i,0) = f(DoFs(i),0) - (A.block(DoFs(i), 0, 1, A.cols())*x).value();
+        Dblock.block(i,0,1,size) = A.block(DoFs(i), DoFs(i)-i, 1, size);
+    }
+    //Multiply residual with the inverse of the diagonal block
+    residual = Dblock.inverse()*residual;
+
+    //Update
+    for (int i = 0; i< size; i++)
+       x(DoFs(i),0) += residual(i,0);
+}
+
 void preGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::SparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, bool reverse)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
@@ -244,6 +267,28 @@ void gsGaussSeidelSmoother::apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix
 void gsGaussSeidelSmoother::applyT(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
 {
     reverseGaussSeidelSweep(A, x, f);
+}
+
+void gsGaussSeidelBlockSmoother::apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
+{
+    assert( A.rows() == x.rows() && x.rows() == f.rows() );
+    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    assert( m_blockInfo.size() > 0);
+
+    const index_t numberOfBlocks = m_blockInfo.size();
+    for (index_t k = 0; k < numberOfBlocks; k++)
+        gaussSeidelSingleBlock(A, x, f, m_blockInfo[k]);
+}
+
+void gsGaussSeidelBlockSmoother::applyT(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
+{
+    assert( A.rows() == x.rows() && x.rows() == f.rows() );
+    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    assert( m_blockInfo.size() > 0);
+
+    const index_t numberOfBlocks = m_blockInfo.size();
+    for (index_t k = 0; k < numberOfBlocks; k++)
+        gaussSeidelSingleBlock(A, x, f, m_blockInfo[numberOfBlocks - 1 - k]);
 }
 
 

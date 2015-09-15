@@ -114,7 +114,6 @@ private:
 };
 
 
-
 /// Gauss-Seidel smoother
 class GISMO_EXPORT gsGaussSeidelSmoother : public gsSmoother
 {
@@ -123,6 +122,22 @@ public:
     virtual void applyT(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
 };
 
+/// Block Gauss-Seidel smoother
+class GISMO_EXPORT gsGaussSeidelBlockSmoother : public gsSmoother
+{
+public:
+    /// Each elemet in \a blockInfo contains a vector with the indices of the DoFs with are grouped
+    /// together in one block
+    gsGaussSeidelBlockSmoother(std::vector<gsVector<index_t> > &blockInfo)
+        : m_blockInfo(blockInfo)
+    { }
+
+    virtual void apply(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+    virtual void applyT(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+
+private:
+    std::vector<gsVector<index_t> > m_blockInfo;
+};
 
 
 /// ILUT (incomplete LU with thresholding) smoother
@@ -178,6 +193,10 @@ GISMO_EXPORT void gaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatri
 
 /// Update \a x with a backward Gauss-Seidel sweep
 GISMO_EXPORT void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+
+/// Preforms a block Gauss-Seidel on the degrees of freedom in DoFs.
+GISMO_EXPORT void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs);
+
 
 } // namespace gismo
 
