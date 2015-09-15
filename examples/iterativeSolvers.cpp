@@ -51,8 +51,8 @@ int main(int argc, char *argv[])
 
     //Set maximum number of iterations
     index_t maxIters = 1000;
-    //Set tolerance
-    real_t tol = 1e-08;
+    //Set tolerance 
+    real_t tol = math::pow(10.0, - REAL_DIG / 3);
 
     //Initialize the MinRes solver
     gsMinimalResidual MinRes(mat,maxIters,tol);

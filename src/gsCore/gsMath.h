@@ -31,7 +31,7 @@ namespace gismo {
 */
 namespace math {
 
-using std::numeric_limits;
+typedef std::numeric_limits<real_t> limits;
 
 // Math functions
 using std::abs;
@@ -56,8 +56,10 @@ T min(T a, T b) {return  (a < b ? a : b); }
 template <typename T>
 T max(T a, T b) {return  (a < b ? b : a); }
 
+/** Numeric precision (number of exact decimal digits expected) for real_t */
+#define REAL_DIG std::numeric_limits<real_t>::digits10
+
 // functions to check for floating point errors
-// Note: Some duplication in gsUtils/gsDebug.h
 // Get isnan/isinf working on different compilers
 #ifdef _MSC_VER
 #include <float.h>
@@ -129,18 +131,57 @@ inline T mix(T const & a, T const & b, T const & t)
 
 // numerical comparison
 template<class T>
-bool lessthan (T const& a, T const& b)
-{ return ( b-a > 1e-6); }
-
-// numerical equality
-template<class T>
-bool almostEqual (T const& a, T const& b)
-{  return ( math::abs(b-a) < 1e-6); }
+inline bool lessthan (T const  a, T const  b)
+{ return ( b-a > math::limits::epsilon); }
 
 // numerical equality with \a prec decimal digits
 template<int prec, class T>
-bool almostEqual (T const& a, T const& b)
+bool almostEqual (T const a, T const b)
 {  return ( math::log10(math::abs(b-a)) < -prec); }
+
+// numerical equality adjusted to the floating point number type
+template<class T>
+bool almostEqualUlp(const T a, const T b, const unsigned ulps)
+{
+    typedef std::numeric_limits<T> Tlimits;
+
+    // Handle NaN.
+    if (isnan(a) || isnan(b))
+        return false;
+
+    // Handle very small and exactly equal values.
+    if (math::abs(a-b) <= ulps * Tlimits::denorm_min())
+        return true;
+
+    // If we get this far and either number is zero, then the other is
+    // too big, so just handle that now.
+    if (a == 0 || b == 0)
+        return false;
+
+    // Break the numbers into significand and exponent, sorting them
+    // by exponent. (note that infinity might not be correctly handled)
+    int min_exp, max_exp;
+    T min_frac = std::frexp(a, &min_exp);
+    T max_frac = std::frexp(b, &max_exp);
+    if (min_exp > max_exp)
+    {
+        std::swap(min_frac, max_frac);
+        std::swap(min_exp, max_exp);
+    }
+
+    // Convert the smaller to the scale of the larger by adjusting its
+    // significand.
+    const T scaled_min_frac = std::ldexp(min_frac, min_exp-max_exp);
+
+    // Since the significands are now in the same scale, and the
+    // larger is in the range [0.5, 1), 1 ulp is just epsilon/2.
+    return math::abs(max_frac-scaled_min_frac) <= ulps * Tlimits::epsilon() / 2.0;
+}
+
+// Default value for ULPs in the above
+template<class T>
+bool almostEqual(const T a, const T b)
+{return almostEqualUlp<T>(a,b,4); }
 
 // static const double pi      =  3.141592653589793238462;
 // static const double e       =  2.718281828459045235360;
@@ -151,7 +192,7 @@ bool almostEqual (T const& a, T const& b)
 // static const double _2_pi   =  0.636619772367581343076;
 // static const double _180_pi = 57.295779513082320876798;
 
-}
+} //end namespace math
 
 /**
     \brief tests if the difference between two numbers is below tolerance
@@ -230,4 +271,4 @@ struct min
 };
 */
 
-}
+} //end namespace gismo

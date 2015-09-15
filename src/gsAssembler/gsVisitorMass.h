@@ -104,7 +104,7 @@ public:
                 {
                     const int jj = actives(j,0); // N_j
                     if ( mapper.is_free_index(jj) )
-                        if ( jj <= ii ) // only store lower triangular part
+                        //if ( jj <= ii ) // only store lower triangular part
                             sysMatrix.coeffRef(ii, jj) += localMat(i, j); // N_i*N_j
                 }
             }
