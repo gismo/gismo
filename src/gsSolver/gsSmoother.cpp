@@ -186,7 +186,7 @@ void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real
 
 void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs)
 {
-    //Sort from lowest to highes
+    //Sorting from lowest to highest
     DoFs.sortByColumn(0);
     const index_t size = DoFs.rows();
 
@@ -197,7 +197,8 @@ void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_
     for (int i = 0; i< size; i++)
     {
         residual(i,0) = f(DoFs(i),0) - (A.block(DoFs(i), 0, 1, A.cols())*x).value();
-        Dblock.block(i,0,1,size) = A.block(DoFs(i), DoFs(i)-i, 1, size);
+        for (int j = 0; j< size; j++)
+            Dblock(i,j) = A.coeff(DoFs(i), DoFs(j));
     }
     //Multiply residual with the inverse of the diagonal block
     residual = Dblock.inverse()*residual;
