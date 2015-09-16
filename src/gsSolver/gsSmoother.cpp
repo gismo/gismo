@@ -184,6 +184,7 @@ void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real
     }
 }
 
+//Assumes A is symmetric (not needed)!
 void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs)
 {
     //Sorting from lowest to highest
@@ -196,7 +197,8 @@ void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_
     gsMatrix<real_t> residual(size, 1);
     for (int i = 0; i< size; i++)
     {
-        residual(i,0) = f(DoFs(i),0) - (A.block(DoFs(i), 0, 1, A.cols())*x).value();
+        //Symmetry is assumed here!
+        residual(i,0) = f(DoFs(i),0) - (A.innerVector(DoFs(i)).transpose()*x).value();
         for (int j = 0; j< size; j++)
             Dblock(i,j) = A.coeff(DoFs(i), DoFs(j));
     }

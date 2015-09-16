@@ -123,6 +123,7 @@ public:
 };
 
 /// Block Gauss-Seidel smoother
+/// Assumes A is symmetric (not needed)!
 class GISMO_EXPORT gsGaussSeidelBlockSmoother : public gsSmoother
 {
 public:
