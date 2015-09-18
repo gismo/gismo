@@ -231,7 +231,7 @@ void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const
   side and thus it implicitly assumes that the patch faces match
 */
 template<class T>
-bool gsMultiPatch<T>::computeTopology( T tol )
+bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
 {
     gsBoxTopology::clearTopology();
 
@@ -243,10 +243,12 @@ bool gsMultiPatch<T>::computeTopology( T tol )
     // Parametric coordinates of the reference points. These points
     // are used to decide if two sides match.
     // Currently these are the corner points and the side-centers
-    coor(m_dim,nCorP + 2*m_dim);
-    // if (cornersOnly)
-    //     coor.resize(m_dim,nCorP);
-
+    coor;
+    if (cornersOnly)
+        coor.resize(m_dim,nCorP);
+    else
+        coor.resize(m_dim,nCorP + 2*m_dim);
+    
     gsVector<bool> boxPar(m_dim);
 
     // each matrix contains the physical coordinates of the reference points
@@ -267,21 +269,21 @@ bool gsMultiPatch<T>::computeTopology( T tol )
                 coor(i,c-1) = boxPar(i) ? supp(i,1) : supp(i,0);
         }
         
-        //if (!cornersOnly)
-        //{
-        // Sides' centers parametric coordinates
-        index_t l = nCorP;
-        for (boxSide c=boxSide::getFirst(m_dim); c<boxSide::getEnd(m_dim); ++c)
+        if (!cornersOnly)
         {
-            const index_t dir = c.direction();
-            const index_t s   = static_cast<index_t>(c.parameter());// 0 or 1
-
-            for (index_t i=0; i<m_dim;++i)
-                coor(i,l) = ( dir==i ?  supp(i,s) :
-                                       (supp(i,1)+supp(i,0))/2.0 );
-            l++;
+            // Sides' centers parametric coordinates
+            index_t l = nCorP;
+            for (boxSide c=boxSide::getFirst(m_dim); c<boxSide::getEnd(m_dim); ++c)
+            {
+                const index_t dir = c.direction();
+                const index_t s   = static_cast<index_t>(c.parameter());// 0 or 1
+                
+                for (index_t i=0; i<m_dim;++i)
+                    coor(i,l) = ( dir==i ?  supp(i,s) :
+                                  (supp(i,1)+supp(i,0))/2.0 );
+                l++;
+            }
         }
-        //}
 
         // Evaluate the patch on the reference points
         m_patches[p]->eval_into(coor,pCorners[p]);
@@ -309,10 +311,11 @@ bool gsMultiPatch<T>::computeTopology( T tol )
             matched.setConstant(false);
             
             // Check whether the side center matches
-            if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
-                   pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
-                     ).norm() >= tol )
-                continue;
+            if (!cornersOnly)
+                if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
+                       pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
+                         ).norm() >= tol )
+                    continue;
             
             // Check whether the vertices match and compute direction map and orientation
             if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0, 
