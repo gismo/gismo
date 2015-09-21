@@ -1388,7 +1388,9 @@ public:
 
         gsBoxTopology topology( d, bases.size(), boundaries, interfaces);
 
-        return new gsMultiBasis<T> (bases, topology);
+        gsMultiBasis<T> * result = new gsMultiBasis<T> (bases, topology);
+        freeAll(bases);
+        return result;
 
     }
 
