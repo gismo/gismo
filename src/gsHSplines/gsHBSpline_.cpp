@@ -6,8 +6,8 @@
 #include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsHBSplineBasis.hpp>
 
-//#include <gsHSplines/gsHBSpline.h>
-//#include <gsHSplines/gsHBSpline.hpp>
+#include <gsHSplines/gsHBSpline.h>
+#include <gsHSplines/gsHBSpline.hpp>
 
 namespace gismo
 {
@@ -28,6 +28,7 @@ CLASS_TEMPLATE_INST gsXml< gsHBSplineBasis<2,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSplineBasis<3,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSplineBasis<4,real_t> >;
 
+CLASS_TEMPLATE_INST gsXml< gsHBSpline<1,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSpline<2,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSpline<3,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSpline<4,real_t> >;

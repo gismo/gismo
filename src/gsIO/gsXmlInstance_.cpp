@@ -39,15 +39,6 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<3,real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<4,real_t> >;
 
-    // Jaka:
-    // The LISP interpreter links with the gsXml< gsHBSpline > 
-    // defined here. It can not link with the gsXml< gsHBSpline > 
-    // defined in gsHBSpline_.cpp. I don't know the reason for this 
-    // behaviour. 
-    CLASS_TEMPLATE_INST gsXml< gsHBSpline<1,real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsHBSpline<2,real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsHBSpline<3,real_t> >;
-
     //CLASS_TEMPLATE_INST gsXml< gsBezier<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsMesh<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsCurveFitting<real_t> >;

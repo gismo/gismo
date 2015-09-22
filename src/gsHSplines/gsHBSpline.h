@@ -117,13 +117,11 @@ public:
         delete bBasis;
     }
 }; // class gsHBSpline
-  
-    
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-    
 
-    
     
 }; // namespace gismo
     
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsHBSpline.hpp)
+#endif
+
