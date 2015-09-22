@@ -178,7 +178,6 @@ public:
     
     gsCompactKnotVectorIter operator-(const gsCompactKnotVectorIter& rhs) const
     {
-        gsWarn<< "gsCompactKnotVectorIter difference not implemented.\n";
         gsCompactKnotVectorIter tmp(*this);
         tmp -= index - rhs.index;
         return tmp;

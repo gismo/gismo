@@ -35,10 +35,6 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<3,real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<4,real_t> >;
 
-    CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<2,real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<3,real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<4,real_t> >;
-
     //CLASS_TEMPLATE_INST gsXml< gsBezier<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsMesh<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsCurveFitting<real_t> >;

@@ -23,6 +23,12 @@ CLASS_TEMPLATE_INST gsHBSplineBasis <4,real_t>;
 
 namespace internal
 {
+
+CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<1,real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<2,real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<3,real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<4,real_t> >;
+
 CLASS_TEMPLATE_INST gsXml< gsHBSplineBasis<1,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSplineBasis<2,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSplineBasis<3,real_t> >;
