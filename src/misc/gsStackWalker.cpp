@@ -34,7 +34,7 @@ namespace gismo {
 namespace internal {
 
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(_WIN32)
 
 bool gsExceptionHandler()
 {

@@ -18,8 +18,8 @@
 
 #include <signal.h>
 
-#ifdef _WIN32
-  #define NOMINMAX
+#if defined(_WIN32) && !defined(NOMINMAX)
+  #define NOMINMAX 1
   #include <windows.h>
   #undef NOMINMAX
 #endif
@@ -29,7 +29,7 @@ namespace gismo {
 
 namespace internal {
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(_WIN32)
 
     /// Prints the call stack
     void gsStackWalker(void * context);

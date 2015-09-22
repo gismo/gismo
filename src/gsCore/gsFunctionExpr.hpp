@@ -154,11 +154,85 @@ public:
     typedef exprtk::parser<Numeric_t>        Parser_t;
 
 public:
-    Numeric_t                 vars[6];
+
+    gsFunctionExprPrivate(const int _dim)
+    : dim(_dim)
+    { 
+        GISMO_ENSURE( dim < 7, "The number of variables can be at most 6 (x,y,z,u,v,w)." );
+        init();
+    }
+
+    gsFunctionExprPrivate(const gsFunctionExprPrivate & other)
+    : dim(other.dim)
+    {
+        GISMO_ASSERT ( string.size() == expression.size(), "Corrupted FunctionExpr");
+        init();
+        //copyRange(other.vars, vars, 6);
+        string    .reserve(string.size());
+        expression.reserve(string.size());
+        for (std::size_t i = 0; i!= other.string.size(); ++i)
+            addComponent(other.string[i]);
+    }
+
+    void addComponent(const std::string & strExpression)
+    { 
+        string.push_back( strExpression );// Keep string data
+        std::string & str = string.back();
+        str.erase(std::remove(str.begin(), str.end(),' '), str.end() );
+        stringReplace(str, "**", "^");
+        
+        // String expression
+        expression.push_back(Expression_t());
+        Expression_t & expr = expression.back();
+        //expr.release();
+        expr.register_symbol_table(symbol_table);
+        
+        // Parser
+        Parser_t parser;
+        //Collect variable symbols
+        //parser.dec().collect_variables() = true;
+        bool success = parser.compile(str, expr);
+        if ( ! success )
+            gsWarn<<"gsFunctionExpr error: " <<parser.error() <<" while parsing "<<str<<"\n";
+        /* 
+           typedef typename exprtk::parser_t::
+           dependent_entity_collector::symbol_t symbol_t;
+           
+           std::deque<symbol_t> symbol_list;
+           parser.dec().symbols(symbol_list);
+           for (std::size_t i = 0; i != symbol_list.size(); ++i)
+           {
+           symbol_t& symbol = symbol_list[i];
+           // do something
+           }
+        //*/
+    }
+
+    void init()
+    {
+        //symbol_table.clear();
+        // Identify symbol table
+        symbol_table.add_variable("x",vars[0]);
+        symbol_table.add_variable("y",vars[1]);
+        symbol_table.add_variable("z",vars[2]);
+        symbol_table.add_variable("w",vars[3]);
+        symbol_table.add_variable("u",vars[4]);
+        symbol_table.add_variable("v",vars[5]);
+        //symbol_table.remove_variable("w",vars[3]);
+        symbol_table.add_pi();
+        //symbol_table.add_constant("C", 1);
+    }
+    
+public:
+    mutable Numeric_t         vars[6];
     SymbolTable_t             symbol_table;
     std::vector<Expression_t> expression;
     std::vector<std::string>  string; 
     index_t dim;
+
+private:
+    gsFunctionExprPrivate();
+    gsFunctionExprPrivate operator= (const gsFunctionExprPrivate & other); 
 };
 
 
@@ -225,26 +299,24 @@ return true;
 //*/
 
 template<typename T>
-gsFunctionExpr<T>::gsFunctionExpr() : my(new PrivateData_t) 
+gsFunctionExpr<T>::gsFunctionExpr() : my(new PrivateData_t(0)) 
 { }
 
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string, int ddim)
-: my(new PrivateData_t)
+: my(new PrivateData_t(ddim))
 {
-    init(ddim);
-    addComponent(expression_string);
+    my->addComponent(expression_string);
 }
 
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1, 
                                   const std::string & expression_string2,
                                   int ddim) 
-: my(new PrivateData_t)
+: my(new PrivateData_t(ddim))
 {
-    init(ddim);
-    addComponent(expression_string1);
-    addComponent(expression_string2);
+    my->addComponent(expression_string1);
+    my->addComponent(expression_string2);
 }
 
 template<typename T>
@@ -252,12 +324,11 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
                                   const std::string & expression_string2,
                                   const std::string & expression_string3,
                                   int ddim) 
-: my(new PrivateData_t)
+: my(new PrivateData_t(ddim))
 {
-    init(ddim);
-    addComponent(expression_string1);
-    addComponent(expression_string2);
-    addComponent(expression_string3);
+    my->addComponent(expression_string1);
+    my->addComponent(expression_string2);
+    my->addComponent(expression_string3);
 }
 
 template<typename T>
@@ -266,13 +337,12 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string3,
                    const std::string & expression_string4,
                    int ddim)
-: my(new PrivateData_t)
+: my(new PrivateData_t(ddim))
 {
-    init(ddim);
-    addComponent(expression_string1);
-    addComponent(expression_string2);
-    addComponent(expression_string3);
-    addComponent(expression_string4);
+    my->addComponent(expression_string1);
+    my->addComponent(expression_string2);
+    my->addComponent(expression_string3);
+    my->addComponent(expression_string4);
 }
 
 template<typename T>
@@ -286,43 +356,32 @@ gsFunctionExpr<T>::gsFunctionExpr(const std::string & expression_string1,
                    const std::string & expression_string8,
                    const std::string & expression_string9,
                    int ddim)
-: my(new PrivateData_t)
+: my(new PrivateData_t(ddim))
 {
-    init(ddim);
-    addComponent(expression_string1);
-    addComponent(expression_string2);
-    addComponent(expression_string3);
-    addComponent(expression_string4);
-    addComponent(expression_string5);
-    addComponent(expression_string6);
-    addComponent(expression_string7);
-    addComponent(expression_string8);
-    addComponent(expression_string9);
+    my->addComponent(expression_string1);
+    my->addComponent(expression_string2);
+    my->addComponent(expression_string3);
+    my->addComponent(expression_string4);
+    my->addComponent(expression_string5);
+    my->addComponent(expression_string6);
+    my->addComponent(expression_string7);
+    my->addComponent(expression_string8);
+    my->addComponent(expression_string9);
 }
 
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const std::vector<std::string> & expression_string, 
                                   int ddim)
-: my(new PrivateData_t)
+: my(new PrivateData_t(ddim))
 {
-    init(ddim);
     for (std::size_t i = 0; i!= expression_string.size(); ++i)
-        addComponent(expression_string[i]);
+        my->addComponent(expression_string[i]);
 }
 
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr(const gsFunctionExpr & other)
 {
-    my = new PrivateData_t;
-    init(other.my->dim);
-    copyRange(other.my->vars, my->vars, 6);
-    for (std::size_t i = 0; i!= other.my->string.size(); ++i)
-        addComponent(other.my->string[i]);
-
-    //my->symbol_table = other.my->symbol_table;
-    //my->expression   = other.my->expression;
-    //my->string       = other.my->string;
-    //my->dim          = other.my->dim;
+    my = new PrivateData_t(*other.my);
 }
 
 template<typename T>
@@ -338,71 +397,6 @@ gsFunctionExpr<T>::~gsFunctionExpr()
     delete my;
 }
 
-
-// template<typename T>
-// void gsFunctionExpr<T>::init(variables,constants)
-
-
-template<typename T>
-void gsFunctionExpr<T>::init(const int dim)
-{
-    my->dim = dim;
-    GISMO_ASSERT ( dim < 7, "The number of variables can be at most 6 (x,y,z,u,v,w)." );
-    
-    my->symbol_table.clear();
-    // Identify symbol table
-    my->symbol_table.add_variable("x",my->vars[0]);
-    my->symbol_table.add_variable("y",my->vars[1]);
-    my->symbol_table.add_variable("z",my->vars[2]);
-    my->symbol_table.add_variable("w",my->vars[3]);
-    my->symbol_table.add_variable("u",my->vars[4]);
-    my->symbol_table.add_variable("v",my->vars[5]);
-    //my->symbol_table.remove_variable("w",my->vars[3]);
-    my->symbol_table.add_pi();
-    //my->symbol_table.add_constant("C", 1);
-}
-
-template<typename T>
-void gsFunctionExpr<T>::addComponent(const std::string & strExpression)
-{ 
-    typedef typename gsFunctionExprPrivate<T>::Expression_t Expression_t;
-    typedef typename gsFunctionExprPrivate<T>::Parser_t     Parser_t;
-
-    // String
-    my->string.push_back( strExpression );// Keep string data
-    std::string & str = my->string.back();
-    str.erase(std::remove(str.begin(), str.end(),' '), str.end() );
-    stringReplace(str, "**", "^");
-
-    // String expression
-    my->expression.push_back(Expression_t());
-    Expression_t & expr = my->expression.back();
-    //expr.release();
-    expr.register_symbol_table(my->symbol_table);
-
-    // Parser
-    Parser_t parser;
-    //Collect variable symbols
-    //parser.dec().collect_variables() = true;
-    bool success = parser.compile(str, expr);
-    if ( ! success )
-        gsWarn<<"gsFunctionExpr error: " <<parser.error() <<" while parsing "<<str<<"\n";
-/*
-    typedef typename exprtk::parser_t::
-        dependent_entity_collector::symbol_t symbol_t;
-
-    std::deque<symbol_t> symbol_list;
-    parser.dec().symbols(symbol_list);
-    for (std::size_t i = 0; i != symbol_list.size(); ++i)
-    {
-        symbol_t& symbol = symbol_list[i];
-        // do something
-    }
-//*/
-
-}
-
-
 template<typename T>
 int gsFunctionExpr<T>::domainDim() const
 { 
@@ -413,6 +407,12 @@ template<typename T>
 int gsFunctionExpr<T>::targetDim() const
 { 
     return static_cast<int>(my->string.size());
+}
+
+template<typename T>
+void gsFunctionExpr<T>::addComponent(const std::string & strExpression)
+{
+    my->addComponent(strExpression);
 }
 
 template<typename T>
@@ -475,18 +475,21 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
     const int n = targetDim();
     result.resize(n, u.cols());
 
-    for ( int p = 0; p!=u.cols(); p++ ) // for all evaluation points
-    {
-        copyRange(u.col(p).data(), my->vars, my->dim);
+    const gsFunctionExprPrivate<T> & expr = 
+#   ifdef _OPENMP
+        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+#   endif
+        *my;
 
-        for ( int j = 0; j!=my->dim; ++j )
-            my->vars[j] =u(j,p);
+    for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
+    {
+        copyRange(u.col(p).data(), expr.vars, expr.dim);
 
         for (int c = 0; c!= n; ++c) // for all components
 #           ifdef GISMO_USE_AUTODIFF
-            result(c,p) = my->expression[c].value().getValue();
+            result(c,p) = expr.expression[c].value().getValue();
 #           else
-            result(c,p) = my->expression[c].value();
+            result(c,p) = expr.expression[c].value();
 #           endif
     }
 }
@@ -501,7 +504,7 @@ void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t 
                   "Given component number is higher then number of components");
 
     result.resize(1, u.cols());
-    for ( int p = 0; p!=u.cols(); ++p )
+    for ( index_t p = 0; p!=u.cols(); ++p )
     {
         copyRange(u.col(p).data(), my->vars, my->dim);
 
@@ -523,20 +526,26 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
 
     const int n = targetDim();
     result.resize(d*n, u.cols());
+
+    const gsFunctionExprPrivate<T> & expr = 
+#   ifdef _OPENMP
+        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+#   endif
+        *my;
     
-    for ( int p = 0; p!=u.cols(); p++ ) // for all evaluation points
+    for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
 #       ifdef GISMO_USE_AUTODIFF
         for (index_t k = 0; k!=d; ++k)
-            my->vars[k].setVariable(k,d,u(k,p));
+            expr.vars[k].setVariable(k,d,u(k,p));
         for (int c = 0; c!= n; ++c) // for all components
-            result.block(c*d,p,d,1) = my->expression[c].value().getGradient();
+            result.block(c*d,p,d,1) = expr.expression[c].value().getGradient();
 #       else
-        copyRange(u.col(p).data(), my->vars, my->dim);
+        copyRange(u.col(p).data(), expr.vars, expr.dim);
         for (int c = 0; c!= n; ++c) // for all components
             for ( int j = 0; j!=d; j++ ) // for all variables
                 result(c*d + j, p) = 
-                    exprtk::derivative<T>(my->expression[c], my->vars[j], 0.00001 ) ;
+                    exprtk::derivative<T>(expr.expression[c], expr.vars[j], 0.00001 ) ;
 #       endif
     }
 }
@@ -551,19 +560,25 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
     const int n = targetDim();
     const unsigned stride = d + d*(d-1)/2;
     result.resize(stride*n, u.cols() );
-    
-    for ( int p = 0; p!=u.cols(); p++ ) // for all evaluation points
+
+    const gsFunctionExprPrivate<T> & expr = 
+#   ifdef _OPENMP
+        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+#   endif
+        *my;    
+
+    for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
 #       ifndef GISMO_USE_AUTODIFF
-        copyRange(u.col(p).data(), my->vars, my->dim);
+        copyRange(u.col(p).data(), expr.vars, expr.dim);
 #       endif
 
         for (int c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_USE_AUTODIFF
             for (index_t v = 0; v!=d; ++v)
-                my->vars[v].setVariable(v,d,u(v,p));
-            const DScalar::Hessian_t & Hmat = my->expression[c].value().getHessian();
+                expr.vars[v].setVariable(v,d,u(v,p));
+            const DScalar::Hessian_t & Hmat = expr.expression[c].value().getHessian();
 
             for ( index_t k=0; k!=d; ++k)
             {
@@ -577,15 +592,15 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
             {
                 // H_{k,k}
                 result(k,p) = exprtk::
-                    second_derivative<T>(my->expression[c], my->vars[k], 0.00001);
+                    second_derivative<T>(expr.expression[c], expr.vars[k], 0.00001);
                 
                 index_t m = d;
                 for (index_t l=k+1; l<d; ++l)
                 {
                     // H_{k,l}
                     result(m++,p) =
-                        mixed_derivative<T>( my->expression[c], my->vars[k], 
-                                             my->vars[l], 0.00001 );
+                        mixed_derivative<T>( expr.expression[c], expr.vars[k], 
+                                             expr.vars[l], 0.00001 );
                 }
             }
 #           endif
@@ -606,21 +621,27 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     
     gsMatrix<T> * res = new gsMatrix<T>(d,d);
 
+    const gsFunctionExprPrivate<T> & expr = 
+#   ifdef _OPENMP
+        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+#   endif
+        *my;
+
 #   ifdef GISMO_USE_AUTODIFF
     for (index_t v = 0; v!=d; ++v)
-        my->vars[v].setVariable(v, d, u(v,0) );
-    *res = my->expression[coord].value().getHessian();
+        expr.vars[v].setVariable(v, d, u(v,0) );
+    *res = expr.expression[coord].value().getHessian();
 #   else
-    copyRange(u.data(), my->vars, d);    
+    copyRange(u.data(), expr.vars, d);    
     for( int j=0; j!=d; ++j )
     {
         (*res)(j,j) = exprtk::
-            second_derivative<T>( my->expression[coord], my->vars[j], 0.00001);
+            second_derivative<T>( expr.expression[coord], expr.vars[j], 0.00001);
 
         for( int k = 0; k!=j; ++k )
             (*res)(k,j) = (*res)(j,k) =
-                mixed_derivative<T>( my->expression[coord], my->vars[k], 
-                                     my->vars[j], 0.00001 );
+                mixed_derivative<T>( expr.expression[coord], expr.vars[k], 
+                                     expr.vars[j], 0.00001 );
     }
 #       endif
 
@@ -636,23 +657,29 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
     const int n = targetDim();
     gsMatrix<T> * res= new gsMatrix<T>(n,u.cols()) ;
     
+    const gsFunctionExprPrivate<T> & expr = 
+#   ifdef _OPENMP
+        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+#   endif
+        *my;
+
     for( index_t p=0; p!=res->cols(); ++p )
     {
 #       ifndef GISMO_USE_AUTODIFF
-        copyRange(u.col(p).data(), my->vars, my->dim);
+        copyRange(u.col(p).data(), expr.vars, expr.dim);
 #       endif
 
         for (int c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_USE_AUTODIFF
-            for (index_t v = 0; v!=my->dim; ++v)
-                my->vars[v].setVariable(v, my->dim, u(v,p) );
-            my->expression[c].value().getHessian();
-            const DScalar::Hessian_t & Hmat = my->expression[c].value().getHessian();
+            for (index_t v = 0; v!=expr.dim; ++v)
+                expr.vars[v].setVariable(v, expr.dim, u(v,p) );
+            expr.expression[c].value().getHessian();
+            const DScalar::Hessian_t & Hmat = expr.expression[c].value().getHessian();
             (*res)(c,p) = Hmat(k,j);
 #           else
             (*res)(c,p) =
-                mixed_derivative<T>( my->expression[c], my->vars[k], my->vars[j], 0.00001 ) ;
+                mixed_derivative<T>( expr.expression[c], expr.vars[k], expr.vars[j], 0.00001 ) ;
 #           endif
         }
     }
@@ -667,23 +694,29 @@ gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
     const int n = targetDim();
     gsMatrix<T> * res= new gsMatrix<T>(n,u.cols()) ;
     
+    const gsFunctionExprPrivate<T> & expr = 
+#   ifdef _OPENMP
+        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+#   endif
+        *my;
+
     for( index_t p = 0; p != res->cols(); ++p )
     {
 #       ifndef GISMO_USE_AUTODIFF
-        copyRange(u.col(p).data(), my->vars, my->dim);
+        copyRange(u.col(p).data(), expr.vars, expr.dim);
 #       endif
 
         for (int c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_USE_AUTODIFF
-            for (index_t v = 0; v!=my->dim; ++v)
-                my->vars[v].setVariable(v, my->dim, u(v,p) );
-            (*res)(c,p) = my->expression[c].value().getHessian().trace();
+            for (index_t v = 0; v!=expr.dim; ++v)
+                expr.vars[v].setVariable(v, expr.dim, u(v,p) );
+            (*res)(c,p) = expr.expression[c].value().getHessian().trace();
 #           else
             T & val = (*res)(c,p);
-            for ( index_t j = 0; j!=my->dim; ++j )
+            for ( index_t j = 0; j!=expr.dim; ++j )
                 val += exprtk::
-                    second_derivative<T>( my->expression[c], my->vars[j], 0.00001 );
+                    second_derivative<T>( expr.expression[c], expr.vars[j], 0.00001 );
 #           endif
         }
     }

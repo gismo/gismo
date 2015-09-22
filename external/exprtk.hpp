@@ -31931,7 +31931,7 @@ namespace exprtk
    }
 
    template <typename T>
-   inline T derivative(expression<T>& e,
+   inline T derivative(const expression<T> & e,
                        T& x,
                        const T& h = T(0.00000001))
    {
@@ -31950,7 +31950,7 @@ namespace exprtk
    }
 
    template <typename T>
-   inline T second_derivative(expression<T>& e,
+   inline T second_derivative(const expression<T>& e,
                               T& x,
                               const T& h = T(0.00001))
    {
@@ -31970,7 +31970,7 @@ namespace exprtk
    }
 
    template <typename T>
-   inline T third_derivative(expression<T>& e,
+   inline T third_derivative(const expression<T>& e,
                              T& x,
                              const T& h = T(0.0001))
    {
@@ -31989,7 +31989,7 @@ namespace exprtk
    }
 
    template <typename T>
-   inline T derivative(expression<T>& e,
+   inline T derivative(const expression<T>& e,
                        const std::string& variable_name,
                        const T& h = T(0.00000001))
    {
@@ -32016,7 +32016,7 @@ namespace exprtk
    }
 
    template <typename T>
-   inline T second_derivative(expression<T>& e,
+   inline T second_derivative(const expression<T>& e,
                               const std::string& variable_name,
                               const T& h = T(0.00001))
    {
@@ -32043,7 +32043,7 @@ namespace exprtk
    }
 
    template <typename T>
-   inline T third_derivative(expression<T>& e,
+   inline T third_derivative(const expression<T>& e,
                              const std::string& variable_name,
                              const T& h = T(0.0001))
    {
