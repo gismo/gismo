@@ -28,15 +28,13 @@
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorNurbs.h>
 
+#include <gsHSplines/gsHBSpline.h>
+#include <gsHSplines/gsTHBSpline.h>
+
 #include <gsModeling/gsPlanarDomain.h>
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
 #include <gsModeling/gsCurveFitting.h>
-
-#include <gsHSplines/gsHBSplineBasis.h>
-#include <gsHSplines/gsTHBSplineBasis.h>
-#include <gsHSplines/gsTHBSpline.h>
-#include <gsHSplines/gsHBSpline.h>
 
 #include <gsUtils/gsMesh/gsMesh.h>
 
@@ -462,55 +460,6 @@ public:
                             gsXmlTree & data )
     {
         return putRationalBasisToXml(obj,data);
-    }
-};
-
-/// Get a HTensorBasis from XML data
-template<unsigned d, class T>
-class gsXml< gsHTensorBasis<d,T> >
-{
-private:
-    gsXml() { }
-public:
-    GSXML_COMMON_FUNCTIONS(gsHTensorBasis<TMPLA2(d,T)>);
-    static std::string tag () { return "Basis"; }
-    static std::string type () { return ""; } // tag ?
-
-    static gsHTensorBasis<d,T> * get (gsXmlNode * node)
-    {
-        gsXmlAttribute * btype = node->first_attribute("type");
-        if ( ! btype )
-        {
-            gsWarn<< "Basis without a type in the xml file.\n";
-            return NULL;
-        }
-        std::string s = btype->value() ;
-        if ( s.compare(0, 9, "HBSplineB" , 9 ) == 0 ) // needs correct d as well
-            return gsXml< gsHBSplineBasis<d,T> >::get(node);
-        if ( s.compare(0, 10,"THBSplineB", 10) == 0 )
-            return gsXml< gsTHBSplineBasis<d,T> >::get(node);
-
-        gsWarn<<"gsXmlUtils: gsHTensorBasis: No known basis \""<<s<<"\". Error.\n";
-        return NULL;
-    }
-    
-    static gsXmlNode * put (const gsHTensorBasis<d,T> & obj,
-                            gsXmlTree & data )
-    {
-        const gsBasis<T> * ptr = & obj;
-
-        // Hier. B-splines
-        if ( const gsHBSplineBasis<d,T>  * g =
-             dynamic_cast<const gsHBSplineBasis<d,T> *>( ptr ) )
-            return gsXml< gsHBSplineBasis<d,T> >::put(*g,data);
-        
-        // Truncated hier. B-splines
-        if ( const gsTHBSplineBasis<d,T>  * g =
-             dynamic_cast<const gsTHBSplineBasis<d,T> *>( ptr ) )
-            return gsXml< gsTHBSplineBasis<d,T> >::put(*g,data);
-        
-        gsWarn<<"gsXmlUtils put: getBasis: No known basis \""<<obj<<"\". Error.\n";
-        return NULL;
     }
 };
 
