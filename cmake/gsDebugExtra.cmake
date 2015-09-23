@@ -17,7 +17,9 @@ if(GISMO_EXTRA_DEBUG)
   if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang")
     # using Clang
     if(GISMO_CLANG_DEBUG)
-     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer")
+     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -fno-omit-frame-pointer")
     endif()
   elseif ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xGNU")
     # using GCC
