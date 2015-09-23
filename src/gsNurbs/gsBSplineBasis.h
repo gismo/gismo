@@ -721,4 +721,13 @@ private:
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
+#elseif __cplusplus > 199711L
+//#include <gsNurbs/gsBSplineBasis.tpl>
+namespace gismo 
+{
+extern template class gsTensorBSplineBasis<1, real_t, gsKnotVector<real_t> >;
+extern template class gsTensorBSplineBasis<1, real_t, gsCompactKnotVector<real_t> >;
+extern template class gsBSplineBasis<real_t, gsKnotVector<real_t>        >;
+extern template class gsBSplineBasis<real_t, gsCompactKnotVector<real_t> >;
+}
 #endif

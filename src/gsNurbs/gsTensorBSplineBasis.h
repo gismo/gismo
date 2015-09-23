@@ -513,14 +513,13 @@ protected:
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
-/*
-#else
-namespace gismo {
-extern template class gsTensorBSplineBasis<1,real_t,gsKnotVector<real_t> >;
+// /*
+#elseif __cplusplus > 199711L
+namespace gismo 
+{
 extern template class gsTensorBSplineBasis<2,real_t,gsKnotVector<real_t> >;
 extern template class gsTensorBSplineBasis<3,real_t,gsKnotVector<real_t> >;
 extern template class gsTensorBSplineBasis<4,real_t,gsKnotVector<real_t> >;
-extern template class gsTensorBSplineBasis<1,real_t,gsCompactKnotVector<real_t> >;
 extern template class gsTensorBSplineBasis<2,real_t,gsCompactKnotVector<real_t> >;
 extern template class gsTensorBSplineBasis<3,real_t,gsCompactKnotVector<real_t> >;
 extern template class gsTensorBSplineBasis<4,real_t,gsCompactKnotVector<real_t> >;

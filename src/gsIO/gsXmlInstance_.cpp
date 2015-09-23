@@ -22,9 +22,6 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsSolid<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsTrimSurface<real_t> >;
 
-    CLASS_TEMPLATE_INST gsXml< gsBSpline<real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsBSplineBasis<real_t> >;
-
     CLASS_TEMPLATE_INST gsXml< gsNurbs<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsNurbsBasis<real_t> >;
         

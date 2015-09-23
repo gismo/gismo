@@ -49,45 +49,6 @@
 namespace gismo {
 
 namespace internal {
-
-/* // Note: no default impl.
-/// Generic get XML class: specializations provide implementation
-template<class Object>
-std::string gsXml<Object>::tag ()
-{
-    //Next line will produce compile-time error
-    //Object::Object_does_not_exist_ERROR;
-    return "";
-}
-    
-template<class Object>
-std::string gsXml<Object>::type ()
-{
-    // Produce compile-time error
-    //Object::Object_does_not_exist_ERROR;
-    return "";
-}
-    
-template<class Object>
-Object * gsXml<Object>::get (gsXmlNode * node)
-{
-    //Next line will produce compile-time error
-    //Object::Object_does_not_exist_ERROR;
-
-    GISMO_ERROR("XML reading error. Is the object readable?");
-    return NULL;
-}
-
-template<class Object>
-gsXmlNode * gsXml<Object>::put (const Object & obj, gsXmlTree & data)
-{
-    //Next line will produce compile-time error
-    //Object::Object_does_not_exist_ERROR;
-
-    GISMO_ERROR("XML reading error. Is the object readable?");
-    return NULL;
-}
-*/
  
 ////////////////////////////////////////////////////////
 // Getting Xml data

@@ -19,6 +19,17 @@ namespace gismo {
 
 namespace internal {
 
+/*
+template<class Object>
+std::string gsXml<Object>::tag ()
+{
+    // Next line will produce compile-time error
+    // if gsXml is not specialized for Object
+    Object::Object_does_not_exist_ERROR;
+    return "";
+}
+*/
+
 template<class T>
 gsXmlNode * makeNode( const std::string & name, 
                       const gsMatrix<T> & value, gsXmlTree & data,

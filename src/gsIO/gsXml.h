@@ -76,7 +76,14 @@ class gsXml
 private:
     gsXml() { }// Disallow instantization
 public:
+    
     static std::string tag ();
+/*    {   // Next line will produce compile-time error
+        // when class is not specialized for Object
+        Object::Object_does_not_exist_ERROR;
+        return "";
+    }
+//*/
     static std::string type ();
     static Object * get      (gsXmlNode * node);
     static void     get_into (gsXmlNode * node, Object & result);
