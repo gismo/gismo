@@ -22,6 +22,9 @@ CLASS_TEMPLATE_INST
 gsMultiIndexIterator<index_t,2>;
 CLASS_TEMPLATE_INST
 gsMultiIndexIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsMultiIndexIterator<index_t,4>;
+
 
 CLASS_TEMPLATE_INST
 gsTensorGridIterator<index_t,-1>;
@@ -31,6 +34,8 @@ CLASS_TEMPLATE_INST
 gsTensorGridIterator<index_t,2>;
 CLASS_TEMPLATE_INST
 gsTensorGridIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsTensorGridIterator<index_t,4>;
 
 CLASS_TEMPLATE_INST
 gsTensorGridVertexIterator<index_t,-1>;
@@ -40,6 +45,8 @@ CLASS_TEMPLATE_INST
 gsTensorGridVertexIterator<index_t,2>;
 CLASS_TEMPLATE_INST
 gsTensorGridVertexIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsTensorGridVertexIterator<index_t,4>;
 
 CLASS_TEMPLATE_INST
 gsTensorGridBoundaryIterator<index_t,-1>;
@@ -49,6 +56,10 @@ CLASS_TEMPLATE_INST
 gsTensorGridBoundaryIterator<index_t,2>;
 CLASS_TEMPLATE_INST
 gsTensorGridBoundaryIterator<index_t,3>;
+CLASS_TEMPLATE_INST
+gsTensorGridBoundaryIterator<index_t,4>;
+
+
 
 CLASS_TEMPLATE_INST
 gsSimplexIterator<index_t,-1>;
