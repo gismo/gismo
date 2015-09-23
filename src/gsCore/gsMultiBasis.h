@@ -168,7 +168,7 @@ public:
     /// Swap with another gsMultiBasis.
     void swap(gsMultiBasis& other)
     {
-        m_topology.swap( m_topology );
+        m_topology.swap( other.m_topology );
 
         m_bases.swap( other.m_bases );
     }
