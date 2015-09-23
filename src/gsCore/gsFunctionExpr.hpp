@@ -143,7 +143,7 @@ template<typename T> class gsFunctionExprPrivate
 {
 public:
 
-#ifdef GISMO_USE_AUTODIFF
+#ifdef GISMO_WITH_ADIFF
     typedef DScalar Numeric_t;
 #else
     typedef T Numeric_t;
@@ -486,7 +486,7 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
         copyRange(u.col(p).data(), expr.vars, expr.dim);
 
         for (int c = 0; c!= n; ++c) // for all components
-#           ifdef GISMO_USE_AUTODIFF
+#           ifdef GISMO_WITH_ADIFF
             result(c,p) = expr.expression[c].value().getValue();
 #           else
             result(c,p) = expr.expression[c].value();
@@ -508,7 +508,7 @@ void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t 
     {
         copyRange(u.col(p).data(), my->vars, my->dim);
 
-#           ifdef GISMO_USE_AUTODIFF
+#           ifdef GISMO_WITH_ADIFF
             result(0,p) = my->expression[comp].value().getValue();
 #           else
             result(0,p) = my->expression[comp].value();
@@ -535,7 +535,7 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
     
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
-#       ifdef GISMO_USE_AUTODIFF
+#       ifdef GISMO_WITH_ADIFF
         for (index_t k = 0; k!=d; ++k)
             expr.vars[k].setVariable(k,d,u(k,p));
         for (int c = 0; c!= n; ++c) // for all components
@@ -569,16 +569,17 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
-#       ifndef GISMO_USE_AUTODIFF
+#       ifndef GISMO_WITH_ADIFF
         copyRange(u.col(p).data(), expr.vars, expr.dim);
 #       endif
 
         for (int c = 0; c!= n; ++c) // for all components
         {
-#           ifdef GISMO_USE_AUTODIFF
+#           ifdef GISMO_WITH_ADIFF
             for (index_t v = 0; v!=d; ++v)
                 expr.vars[v].setVariable(v,d,u(v,p));
-            const DScalar::Hessian_t & Hmat = expr.expression[c].value().getHessian();
+            const DScalar &            ads  = expr.expression[c].value();
+            const DScalar::Hessian_t & Hmat = ads.getHessian();
 
             for ( index_t k=0; k!=d; ++k)
             {
@@ -627,7 +628,7 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 #   endif
         *my;
 
-#   ifdef GISMO_USE_AUTODIFF
+#   ifdef GISMO_WITH_ADIFF
     for (index_t v = 0; v!=d; ++v)
         expr.vars[v].setVariable(v, d, u(v,0) );
     *res = expr.expression[coord].value().getHessian();
@@ -643,7 +644,7 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
                 mixed_derivative<T>( expr.expression[coord], expr.vars[k], 
                                      expr.vars[j], 0.00001 );
     }
-#       endif
+#   endif
 
     return typename gsFunction<T>::uMatrixPtr(res); 
 }
@@ -665,18 +666,18 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
 
     for( index_t p=0; p!=res->cols(); ++p )
     {
-#       ifndef GISMO_USE_AUTODIFF
+#       ifndef GISMO_WITH_ADIFF
         copyRange(u.col(p).data(), expr.vars, expr.dim);
 #       endif
 
         for (int c = 0; c!= n; ++c) // for all components
         {
-#           ifdef GISMO_USE_AUTODIFF
+#           ifdef GISMO_WITH_ADIFF
             for (index_t v = 0; v!=expr.dim; ++v)
                 expr.vars[v].setVariable(v, expr.dim, u(v,p) );
             expr.expression[c].value().getHessian();
-            const DScalar::Hessian_t & Hmat = expr.expression[c].value().getHessian();
-            (*res)(c,p) = Hmat(k,j);
+            const DScalar &            ads  = expr.expression[c].value();
+            (*res)(c,p) = ads.getHessian()(k,j);
 #           else
             (*res)(c,p) =
                 mixed_derivative<T>( expr.expression[c], expr.vars[k], expr.vars[j], 0.00001 ) ;
@@ -702,13 +703,13 @@ gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 
     for( index_t p = 0; p != res->cols(); ++p )
     {
-#       ifndef GISMO_USE_AUTODIFF
+#       ifndef GISMO_WITH_ADIFF
         copyRange(u.col(p).data(), expr.vars, expr.dim);
 #       endif
 
         for (int c = 0; c!= n; ++c) // for all components
         {
-#           ifdef GISMO_USE_AUTODIFF
+#           ifdef GISMO_WITH_ADIFF
             for (index_t v = 0; v!=expr.dim; ++v)
                 expr.vars[v].setVariable(v, expr.dim, u(v,p) );
             (*res)(c,p) = expr.expression[c].value().getHessian().trace();
