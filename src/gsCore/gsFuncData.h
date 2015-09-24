@@ -14,7 +14,27 @@
 
 #pragma once
 
-#include <gsCore/gsFunctionSet.h>
+/**
+   @brief Contains the information for all functions in a gsFunctionSet.
+*/
+struct gsFuncInfo
+{
+public:
+    int  domainDim;
+    int  targetDim;
+public:
+    // functions giving the size (the number of returned coefficient per function)
+    int  derivSize () const {return domainDim*targetDim;}
+    int  deriv2Size() const {return targetDim*domainDim*(domainDim+1) / 2; }
+    int  divSize   () const {return targetDim/domainDim;}
+public:
+    gsFuncInfo()
+    {}
+
+    gsFuncInfo(int domDir,int tarDim)
+        :domainDim(domDir),targetDim(tarDim)
+    {}
+};
 
 namespace gismo 
 {
@@ -113,11 +133,23 @@ public:
     void addFlags (unsigned newFlags) 
     { flags = flags|newFlags; }
 
+
+    int maxDeriv() const 
+    {
+        if (flags & NEED_2ND_DER)
+            return 2;
+        if (flags & NEED_DERIV)
+            return 1;
+        if (flags & NEED_VALUE)
+            return 0;
+        return -1;
+    }
+
     /**
      * @brief Provides memory usage information
      * @return the number of bytes occupied by this object
      */
-    unsigned bytesUsed() 
+    unsigned bytesUsed() const
     { /*to do*/
         return 1;
     }
@@ -210,7 +242,7 @@ class gsMapData : public gsFuncData<T>
 {
 public:
     typedef gsFuncData<T> Base;
-    typedef typename Base::constColumn constColumn;
+    typedef typename Base::constColumn         constColumn;
     typedef typename Base::matrixView          matrixView;
     typedef typename Base::matrixTransposeView matrixTransposeView;
 
