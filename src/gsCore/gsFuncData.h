@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include<gsCore/gsLinearAlgebra.h> 
+
 /**
    @brief Contains the information for all functions in a gsFunctionSet.
 */
@@ -72,6 +74,8 @@ union gsNeededValues
     }
 };
 */
+
+template <typename T> class gsFunctionSet;
 
 /**
    @brief the gsFuncData is a cache of pre-computed function sets values.
