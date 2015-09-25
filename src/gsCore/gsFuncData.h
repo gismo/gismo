@@ -36,6 +36,8 @@ public:
     gsFuncInfo(int domDir,int tarDim)
         :domainDim(domDir),targetDim(tarDim)
     {}
+
+    bool operator== (const gsFuncInfo& other) const {return domainDim==other.domainDim && targetDim==other.targetDim;}
 };
 
 namespace gismo 
