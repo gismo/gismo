@@ -1,0 +1,5 @@
+dependencies:
+  pre:
+    - mkdir build; cd build; cmake .. -DSITE="circleci.com"
+  override:
+    - ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit -V
