@@ -50,7 +50,7 @@ FOREACH(subdir ${SUBDIRS})
 
   ## install module
   install(DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/${subdir}"
-          DESTINATION include/${PROJECT_NAME}/
+          DESTINATION include/${PROJECT_NAME}
           FILES_MATCHING PATTERN "*.h"
           )
 
@@ -79,5 +79,5 @@ if (GISMO_BUILD_PCH)
     cotire(${GM_NAME})
   ENDFOREACH()
 
-
 endif(GISMO_BUILD_PCH)
+

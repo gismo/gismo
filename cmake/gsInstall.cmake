@@ -75,25 +75,25 @@ set_target_properties(gismo PROPERTIES
 
 # For gsExport.h
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
-        DESTINATION include/${PROJECT_NAME}/gsCore/)
+        DESTINATION include/${PROJECT_NAME}/gsCore)
 
 # For gsLinearAlgebra.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen
-        DESTINATION include/${PROJECT_NAME}/ 
+        DESTINATION include/${PROJECT_NAME}
         PATTERN "*.txt" EXCLUDE
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
         )
 
 # For gsCmdLine.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
-        DESTINATION include/${PROJECT_NAME}/ 
+        DESTINATION include/${PROJECT_NAME} 
         FILES_MATCHING
         PATTERN "*.h"
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # For eiquadprog.hpp
 install(FILES ${PROJECT_SOURCE_DIR}/external/eiquadprog.hpp
-        DESTINATION include/${PROJECT_NAME}/ )
+        DESTINATION include/${PROJECT_NAME} )
 
 # For gsXmlUtils.h
 install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
@@ -103,7 +103,7 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
 
 # For pure install
 #install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/rapidxml
-#        DESTINATION include/${PROJECT_NAME}/
+#        DESTINATION include/${PROJECT_NAME}
 #        FILES_MATCHING
 #        PATTERN "*.hpp"
 #        PATTERN ".svn" EXCLUDE
