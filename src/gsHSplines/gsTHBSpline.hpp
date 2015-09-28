@@ -362,17 +362,22 @@ void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction,
 }*/
 
 template<unsigned d, class T>
-void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,typename gsTHBSpline<d,T>::BoundaryGeometryType & result) const
+void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,
+                             typename gsTHBSpline<d,T>::BoundaryGeometryType & result) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
     GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
-    const typename gsTHBSpline<d,T>::BoundaryBasisType * bBasis = this->basis().basisSlice(dir_fixed,par);
+
+    typedef typename gsTHBSpline<d,T>::BoundaryBasisType    THBBoundaryBasis;
+    typedef typename gsTHBSpline<d,T>::BoundaryGeometryType THBBoundary;
+
+    const THBBoundaryBasis * bBasis = this->basis().basisSlice(dir_fixed,par);
     if(d==1)
     {
         gsMatrix<T> val(1,1),point;
         val(0,0)=par;
         this->eval_into(val,point);
-        result=typename gsTHBSpline<d,T>::BoundaryGeometryType(*bBasis,point);
+        result = THBBoundary(*bBasis,point);
     }
     else
     {
@@ -383,8 +388,8 @@ void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,typename gsTHBSpline<d,T>::
         anchorsInGeom.row(dir_fixed)=gsVector<T>::Constant(anchorsSlice.cols(),par);
         anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
         this->eval_into(anchorsInGeom,vals);
-        gsTHBSpline<d,T>::BoundaryGeometryType* geom =
-                dynamic_cast<gsTHBSpline<d,T>::BoundaryGeometryType *>(bBasis->interpolateData(vals,anchorsSlice));
+        THBBoundary* geom = 
+            dynamic_cast<THBBoundary*>(bBasis->interpolateData(vals,anchorsSlice));
         GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
         result = *geom;
         delete geom;
