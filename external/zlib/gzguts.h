@@ -19,7 +19,7 @@
 #endif
 
 #include <stdio.h>
-#ifdef __unix__
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #  include <string.h>
 #  include <unistd.h>
 #  include <sys/socket.h>
