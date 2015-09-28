@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsUtils/gsMultiIndexIterators.h>
+#include <gsUtils/gsPointGrid.h>
 
 namespace gismo
 {
@@ -273,5 +274,41 @@ bool gsPointIterator<T,IntegerIterator,PointProducer>::setTo(FIndexT here)
     update();
     return m_good;
 }
+
+template<class T>
+void uniformPointGrid( gsMatrix<T> const        & boundingBox,
+                       index_t                    np,
+                       gsMatrix<T>              & grid
+                        )
+{
+    gsVector<T> low=boundingBox.col(0);
+    gsVector<T> upp=boundingBox.col(1);
+    uniformPointGrid(boundingBox,uniformSampleCount(low,upp, np),grid);
+}
+
+template<class T>
+void uniformPointGrid( gsMatrix<T> const        & boundingBox,
+                       gsVector<unsigned> const & np,
+                       gsMatrix<T>              & grid
+                        )
+{
+    const index_t dim=boundingBox.rows();
+    grid.resize(dim,np.prod());
+
+    gsVector<index_t> segments = np.cast<index_t>().array()-1;
+    for (index_t c=0; c<dim; ++c) segments[c]=math::max(segments[c], 1);
+    gsVector<T> step = (boundingBox.col(1)-boundingBox.col(0)).array()/segments.cast<T>().array();
+
+    gsTensorGridIterator<> it(np.cast<index_t>());
+    for (;it.good();it.next())
+        for (index_t c=0; c<dim;++c)
+        {
+            if (it.multiIndex()(c)==segments(c))
+                grid(c,it.flatIndex())=boundingBox(c,1); // avoid approximate bounding box
+            else
+                grid(c,it.flatIndex())=it.multiIndex()(c)*step(c)+boundingBox(c,0);
+        }
+}
+
 
 } // namespace gismo
