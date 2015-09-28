@@ -24,8 +24,10 @@
 #  include <string.h>
 #  include <stdlib.h>
 #  include <limits.h>
+#ifdef __GNUC__
 #  include <unistd.h>
 #  include <sys/socket.h>
+#endif
 #endif
 #include <fcntl.h>
 
