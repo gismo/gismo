@@ -139,9 +139,9 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib/)
 ## #################################################################
 
 # Offer the user the choice of overriding the installation directories
-set(INSTALL_LIB_DIR     lib     CACHE PATH "Installation directory for libraries")
-set(INSTALL_BIN_DIR     bin     CACHE PATH "Installation directory for executables")
-set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
+set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries")
+set(BIN_INSTALL_DIR     bin     CACHE PATH "Installation directory for executables")
+set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header files")
 
 
 if(GISMO_BUILD_LIB)
@@ -150,7 +150,7 @@ if(GISMO_BUILD_LIB)
   # IMPORTANT: Add the ${PROJECT_NAME} library to the "export-set"
   EXPORT gismoTargets
   RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
-  LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT shlib
+  LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shlib
   PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/${PROJECT_NAME}"
   #ARCHIVE DESTINATION lib
   )

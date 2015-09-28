@@ -7,15 +7,15 @@ message ("  CMAKE_INSTALL_PREFIX    ${CMAKE_INSTALL_PREFIX}")
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
 
 # Offer the user the choice of overriding the installation directories
-set(INSTALL_LIB_DIR     lib     CACHE PATH "Installation directory for libraries")
-set(INSTALL_BIN_DIR     bin     CACHE PATH "Installation directory for executables")
-set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
+set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries")
+set(BIN_INSTALL_DIR     bin     CACHE PATH "Installation directory for executables")
+set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header files")
 
 # Set CMake installation directory
 if(WIN32 AND NOT CYGWIN)
-  set(DEF_INSTALL_CMAKE_DIR ${INSTALL_LIB_DIR}/cmake)
+  set(DEF_INSTALL_CMAKE_DIR ${LIB_INSTALL_DIR}/cmake)
 else()
-   set(DEF_INSTALL_CMAKE_DIR ${INSTALL_LIB_DIR})
+   set(DEF_INSTALL_CMAKE_DIR ${LIB_INSTALL_DIR})
 endif()
 set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
   "Installation directory for CMake files")
@@ -57,7 +57,7 @@ configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
 
 # ... for the install tree
 set(CONF_INCLUDE_DIRS "${INSTALL_INCLUDE_DIR}/${PROJECT_NAME}")
-set(CONF_LIB_DIRS     "${INSTALL_LIB_DIR}")
+set(CONF_LIB_DIRS     "${LIB_INSTALL_DIR}")
 set(CONF_USE_FILE     "${INSTALL_CMAKE_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
               "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake" @ONLY)
