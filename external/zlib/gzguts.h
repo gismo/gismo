@@ -19,15 +19,18 @@
 #endif
 
 #include <stdio.h>
+#ifdef __unix__
+#  include <string.h>
+#  include <unistd.h>
+#  include <sys/socket.h>
+#endif
+
 #include "zlib.h"
+
 #ifdef STDC
 #  include <string.h>
 #  include <stdlib.h>
 #  include <limits.h>
-#ifdef __GNUC__
-#  include <unistd.h>
-#  include <sys/socket.h>
-#endif
 #endif
 #include <fcntl.h>
 
