@@ -140,7 +140,10 @@ endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
   #-Wl,--no-allow-shlib-undefined
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined -Wl,-z,defs")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
+  if (NOT MINGW)
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,defs")
+  endif()
 endif()
 
 if (MINGW)
