@@ -139,7 +139,8 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined -Wl,--no-allow-shlib-undefined -Wl,-z,defs")
+  #-Wl,--no-allow-shlib-undefined
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined -Wl,-z,defs")
 endif()
 
 if (MINGW)
