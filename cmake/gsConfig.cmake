@@ -147,8 +147,8 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 if (MINGW)
-  # export explicit template instantiations
-  #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--export-all-symbols")
+  # export explicit template instantiations (to be fixed)
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--export-all-symbols")
 
   # large files can overflow pe/coff sections, so use the pe+ format
   include(CheckCXXCompilerFlag)
