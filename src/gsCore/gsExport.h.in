@@ -1,28 +1,28 @@
 /** @file gsExport.h
 
-    @brief Handles compiler definitions for G+Smo on MS Windows
+    @brief Handles shared library creation
 
-    Preprocessor/compile definitions on MS Windows should be set as
-    follows:
+    By default no symbols are exported in the shared library. Symbols
+    that have to be exported must be marked with GISMO_EXPORT. Symbols
+    that should not be exported can be marked with GISMO_LOCAL.
+    Also:
+
+    - When building the shared library, gismo_EXPORTS must be defined,
+      but NOT when consuming G+Smo as a shared library
+
+    - When building the static library, gismo_STATIC must be defined
     
-    - Define GISMO_BUILD_LIB when building or consuming the shared or
+    - If GISMO_BUILD_LIB is defined when building or consuming the shared or
       static library. Otherwise a pure template build will take place
       (GISMO_BUILD_LIB is set in gsCore/gsConfig.h when G+Smo is
       compiled/installed as a shared library).
 
-    - Do not define gismo_EXPORTS when consuming G+Smo as a shared DLL
-      library (this is only defined during build).
-    
-    - Define gismo_STATIC when building/consuming G+Smo as a static
-      library (by default gismo_STATIC is not defined).
-    
-    
     This file is part of the G+Smo library. 
     
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -30,15 +30,29 @@
 
 #include <gsCore/gsConfig.h>
 
-#if defined(_WIN32) && defined(GISMO_BUILD_LIB)
-#if defined(@PROJECT_NAME@_STATIC)          // using/building static library?
-#    define GISMO_EXPORT
-#  elif defined(@PROJECT_NAME@_EXPORTS)		// building shared library?
-#    define GISMO_EXPORT __declspec(dllexport)
-#  else						                // using shared library?
-#    define GISMO_EXPORT __declspec(dllimport)
-#  endif
-#else                                       // not on MS Windows, or pure build
-#  define GISMO_EXPORT
-#endif
+#if defined(@PROJECT_NAME@_STATIC) // using/building static library?
 
+#  define GISMO_EXPORT
+#  define GISMO_LOCAL
+
+#elif defined(@PROJECT_NAME@_EXPORTS) // building shared library?
+
+#  if defined(_WIN32)
+#    define GISMO_EXPORT __declspec(dllexport)
+#    define GISMO_LOCAL
+#  else						                
+#    define GISMO_EXPORT __attribute__((visibility("default")))
+#    define GISMO_LOCAL  __attribute__((visibility("hidden" )))
+#  endif
+
+#else // using shared library?
+
+#  if defined(_WIN32)
+#    define GISMO_EXPORT __declspec(dllimport)
+#    define GISMO_LOCAL
+#  else
+#    define GISMO_EXPORT
+#    define GISMO_LOCAL
+#  endif
+
+#endif

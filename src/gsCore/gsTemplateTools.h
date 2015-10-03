@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsCore/gsExport.h>
+
 namespace gismo
 {
 
@@ -44,12 +46,6 @@ struct choose<false, IsTrue, IsFalse> {
   Macros for instantiating templated structs, classes or functions
 */
 
-#if defined(_WIN32)
-#define STRUCT_TEMPLATE_INST template struct __declspec(dllexport)
-#define CLASS_TEMPLATE_INST  template class  __declspec(dllexport)
-#define TEMPLATE_INST        template        __declspec(dllexport)
-#else
-#define STRUCT_TEMPLATE_INST template struct
-#define CLASS_TEMPLATE_INST  template class 
-#define TEMPLATE_INST        template       
-#endif
+#define STRUCT_TEMPLATE_INST template struct GISMO_EXPORT
+#define CLASS_TEMPLATE_INST  template class  GISMO_EXPORT
+#define TEMPLATE_INST        template        GISMO_EXPORT
