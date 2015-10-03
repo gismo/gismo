@@ -37,29 +37,29 @@ namespace gismo
 */
 enum gsNeedEnum
 {
-    NEED_ACTIVE            = 1U <<10, /// Active function ids
+    NEED_ACTIVE            = 1U <<10, ///< Active function ids
 
-    NEED_VALUE             = 1U << 0, /// Value of the object
+    NEED_VALUE             = 1U << 0, ///< Value of the object
 
-    NEED_NORMAL            = 1U <<16, /// Normal vector of the object
-    NEED_OUTER_NORMAL      = 1U <<17, /// Outward normal on the boundary
+    NEED_NORMAL            = 1U <<16, ///< Normal vector of the object
+    NEED_OUTER_NORMAL      = 1U <<17, ///< Outward normal on the boundary
 
-    NEED_DERIV             = 1U << 1, /// Gradient of the object
+    NEED_DERIV             = 1U << 1, ///< Gradient of the object
     NEED_GRAD              = NEED_DERIV,
-    NEED_JACOBIAN          = 1U << 2, /// Jacobian of the object
+    NEED_JACOBIAN          = 1U << 2, ///< Jacobian of the object
 
-    NEED_MEASURE           = 1U << 3, /// The density of the measure pull back
-    NEED_GRAD_TRANSFORM    = 1U << 4, /// Gradient transformation matrix
-    NEED_DIV               = 1U << 5, /// Div operator
-    NEED_CURL              = 1U << 6, /// Curl operator 
+    NEED_MEASURE           = 1U << 3, ///< The density of the measure pull back
+    NEED_GRAD_TRANSFORM    = 1U << 4, ///< Gradient transformation matrix
+    NEED_DIV               = 1U << 5, ///< Div operator
+    NEED_CURL              = 1U << 6, ///< Curl operator 
 
-    NEED_DERIV2            = 1U << 7, /// Second derivatives
+    NEED_DERIV2            = 1U << 7, ///< Second derivatives
     NEED_2ND_DER           = NEED_DERIV2,
-    NEED_HESSIAN           = 1U << 8, /// Hessian matrix
+    NEED_HESSIAN           = 1U << 8, ///< Hessian matrix
 
-    NEED_LAPLACIAN         = 1U << 9, /// Laplacian
+    NEED_LAPLACIAN         = 1U << 9, ///< Laplacian
 
-    SAME_ELEMENT           = 1U <<27  /// Enable optimizations based on the assumbtion that all evaluation points are in the same bezier domain
+    SAME_ELEMENT           = 1U <<27  ///< Enable optimizations based on the assumbtion that all evaluation points are in the same bezier domain
 };
 
 /** @name ForwardDeclarations

@@ -73,22 +73,22 @@ configure_file(
 If(GISMO_PLAINDOX)
  configure_file(
    ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_header_empty.html.in
-   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_header.html )
+   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_header.html COPYONLY)
  configure_file(
    ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_footer_empty.html.in
-   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_footer.html )
+   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_footer.html COPYONLY)
 else()
  configure_file(
    ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_header.html.in
-   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_header.html )
+   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_header.html COPYONLY)
  configure_file(
    ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_footer.html.in
-   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_footer.html )
+   ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_footer.html COPYONLY)
 endif()
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/gismodoxy_layout.xml.in
-  ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_layout.xml )
+  ${CMAKE_CURRENT_BINARY_DIR}/gismodoxy_layout.xml COPYONLY)
 
 #add_definitions("-DGISMO_MAKING_DOCS")
 
