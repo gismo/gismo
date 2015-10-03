@@ -87,8 +87,9 @@ public:
     gsDomainIterator( ) : m_basis(NULL), m_isGood( true ) { }
 
     /// \brief Constructor using a basis 
-    gsDomainIterator( const gsBasis<T>& basis )
-        : center( gsVector<T>::Zero(basis.dim()) ), m_basis( &basis ), m_isGood( true )
+    gsDomainIterator( const gsBasis<T>& basis, const boxSide & s = boundary::none)
+        : center( gsVector<T>::Zero(basis.dim()) ), m_basis( &basis ), 
+          m_isGood( true ), m_side(s)
     { }
 
     virtual ~gsDomainIterator() { }
@@ -295,20 +296,22 @@ public:
     /// Returns the number of elements.
     virtual index_t numElements() const
     {
-        //\todo Remove this implementation, as it gives wrong results
-        //for boundary iterators. Probably one using "reset" and
-        //"next" would do this correctly.
+        //\todo Remove this implementation. Probably using a shallow
+        //copy, "reset" and "next" would do this better.
 
         // Buggy, and probably a terrible implementation,
         // but needed and therefore can be useful
         // sometimes.
-        typename gsBasis<T>::domainIter domIter = m_basis->makeDomainIterator();
+        typename gsBasis<T>::domainIter domIter = m_basis->makeDomainIterator(m_side);
 
         index_t numEl = 0;
         for (; domIter->good(); domIter->next(), numEl++){}
 
         return numEl;
     }
+
+
+    inline boxSide side() const {return m_side;}
 
 public:
     // quadrature nodes and weights
@@ -359,6 +362,8 @@ protected:
 
     /// Flag indicating whether the domain iterator is "good". If it is "good", the iterator can continue to the next element.
     bool m_isGood;
+
+    boxSide m_side;
 
 private:
     // disable copying

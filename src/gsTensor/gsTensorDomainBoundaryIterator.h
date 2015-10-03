@@ -39,13 +39,13 @@ class gsTensorDomainBoundaryIterator : public gsDomainIterator<T>
 public:
 
     gsTensorDomainBoundaryIterator( const gsBasis<T>& b, const boxSide & s )
-        : gsDomainIterator<T>( b ),
-          d( m_basis->dim() ),
-          lower ( gsVector<T, D>::Zero(d) ),
-          upper ( gsVector<T, D>::Zero(d) )
+    : gsDomainIterator<T>(b, s),
+      d( m_basis->dim() ),
+      lower ( gsVector<T, D>::Zero(d) ),
+      upper ( gsVector<T, D>::Zero(d) )
     {
         center =  gsVector<T, D>::Zero(d);
-        par= s.parameter();
+        par = s.parameter();
         dir = s.direction();
         meshBegin.resize(d);
         meshEnd.resize(d);
