@@ -1,5 +1,5 @@
-#sudo: required
-sudo: false
+sudo: required
+#sudo: false
 
 os:
   - linux
