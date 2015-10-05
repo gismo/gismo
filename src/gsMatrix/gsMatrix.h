@@ -400,4 +400,4 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
   
 
 
-}; // namespace gismo
+} // namespace gismo

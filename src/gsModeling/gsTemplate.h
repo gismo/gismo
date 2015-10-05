@@ -653,4 +653,4 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsTemplate<T>& b)
 {return b.print(os); }
 
-}; // namespace gismo
+} // namespace gismo

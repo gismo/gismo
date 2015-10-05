@@ -269,4 +269,4 @@ public:
 }; // class gsTensorDomainBoundaryIterator
 
 
-}; // namespace gismo
+} // namespace gismo

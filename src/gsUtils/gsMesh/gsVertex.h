@@ -198,6 +198,6 @@ bool operator != (gsVertex<T> const & lhs, gsVertex<T> const & rhs)
   return !(lhs.x()== rhs.x()&& lhs.y()==rhs.y()&& lhs.z()==rhs.z())
     ;}
 
-};// namespace gismo
+} // namespace gismo
 
 

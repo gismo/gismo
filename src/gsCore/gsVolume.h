@@ -77,7 +77,7 @@ public:
 
 }; // class gsVolume
 
-}; // namespace gismo
+} // namespace gismo
 
 
 #ifndef GISMO_BUILD_LIB

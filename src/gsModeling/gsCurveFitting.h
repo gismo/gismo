@@ -263,4 +263,4 @@ std::ostream & operator <<( std::ostream &os, gsCurveFitting<T> const & cf)
     return os;
 }
 
-}; // namespace gismo
+} // namespace gismo

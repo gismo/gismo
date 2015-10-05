@@ -82,7 +82,7 @@ public:
     }
 
     /// Copy constructor
-    gsTHBSpline( const gsTHBSpline & other )
+    gsTHBSpline( const gsTHBSpline & other ) : Base(other)
     {
         this->m_basis = other.basis().clone();
         this->m_coefs = other.coefs();
@@ -164,13 +164,7 @@ public:
 }; // class gsTHBSpline
 
 
-// ////////////////////////////////////////////////
-// ////////////////////////////////////////////////
-
-
-
-
-}; // namespace gismo
+} // namespace gismo
 
 
 #ifndef GISMO_BUILD_LIB

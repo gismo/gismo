@@ -144,6 +144,6 @@ public:
     int faceIdentity;
 };
 
-};// namespace gismo
+} // namespace gismo
 
 

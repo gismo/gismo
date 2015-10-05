@@ -70,7 +70,7 @@ public:
     }
   
     /// Copy constructor
-    gsHBSpline( const gsHBSpline & other )
+    gsHBSpline( const gsHBSpline & other ) : Base(other)
     { 
         this->m_basis = other.basis().clone();
         this->m_coefs = other.coefs();
@@ -119,7 +119,7 @@ public:
 }; // class gsHBSpline
 
     
-}; // namespace gismo
+} // namespace gismo
     
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsHBSpline.hpp)

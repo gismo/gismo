@@ -164,7 +164,7 @@ struct gsNurbsCreator
     static gsTensorBSpline<2,T> * NurbsQrtPlateWHoleC0();
 }; // struct
 
-}; // namespace gismo
+} // namespace gismo
 
 //////////////////////////////////////////////////
 //////////////////////////////////////////////////

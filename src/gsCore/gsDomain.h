@@ -89,7 +89,7 @@ public:
 /// Print (as string) operator to be used by all derived classes
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsDomain<T>& b)
-{return b.print(os); };
+{return b.print(os); }
 
 
-}; // namespace gismo
+} // namespace gismo

@@ -793,7 +793,7 @@ inline unsigned gsTensorBasis<d,Basis_t>::stride(int dir) const
 }
 
 
-}; // namespace gismo
+} // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBasis.hpp)

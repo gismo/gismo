@@ -238,6 +238,12 @@ public:
         os << "gsFunction.\n"; return os; 
     }
 
+    virtual void compute(const gsMatrix <T> &points , gsFuncData<T> &result) const;
+
+    virtual void compute(const gsMapData<T> &geoData, gsFuncData<T> &result) const;
+
+    virtual void compute(const gsMatrix <T> &points , gsMapData<T> &result) const;
+
 }; // class gsFunction
 
 
@@ -247,7 +253,7 @@ public:
 /// Print (as string) operator to be used by all derived classes
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFunction<T>& b)
-{return b.print(os); };
+{return b.print(os); }
 
 
 } // namespace gismo

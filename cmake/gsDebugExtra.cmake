@@ -33,7 +33,9 @@ if(GISMO_EXTRA_DEBUG)
     string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_RELWITHDEBINFO ${CMAKE_C_FLAGS_RELWITHDEBINFO})
     string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_MINSIZEREL ${CMAKE_C_FLAGS_MINSIZEREL})
 
-    #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic")
+    # more strict warnings
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra -ggdb -Wpedantic")
+
     # Enable checked iterators
     add_definitions(-D_GLIBCXX_DEBUG)
   elseif ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
@@ -57,6 +59,13 @@ if(GISMO_EXTRA_DEBUG)
     string(REPLACE "/D NDEBUG" "" CMAKE_C_FLAGS_MINSIZEREL ${CMAKE_C_FLAGS_MINSIZEREL})
 
   endif()
+
+# Detect shadows
+#if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.99") OR
+#   CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+#  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow")
+#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
+#endif()
 
   #add_definitions(-DEIGEN_INTERNAL_DEBUGGING)
 

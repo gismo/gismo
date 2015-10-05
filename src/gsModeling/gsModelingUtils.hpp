@@ -725,12 +725,4 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
 }
 
 
-
-
-
-
-
-
-
-
-}; // namespace gismo
+} // namespace gismo

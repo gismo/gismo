@@ -34,7 +34,7 @@ public:
     T getMaxSize() const {return (pMax-pMin).maxCoeff();};
 };
 
-}; // namespace gismo
+} // namespace gismo
 
 #endif
 

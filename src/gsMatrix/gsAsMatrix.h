@@ -221,4 +221,4 @@ typename gsMatrix<T>::uPtr makeMatrix(iterator it, index_t n, index_t m)
 }
 
 
-}; // namespace gismo
+} // namespace gismo

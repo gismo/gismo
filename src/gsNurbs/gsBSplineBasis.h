@@ -158,10 +158,10 @@ public:
     }
 
     // Look at gsBasis class for a description
-    const TensorSelf_t & component(unsigned i) const {return *this;}
+    const TensorSelf_t & component(unsigned i) const = 0;
 
     // Look at gsBasis class for a description
-    TensorSelf_t & component(unsigned i) {return *this;}
+    TensorSelf_t & component(unsigned i) = 0;
 
     /// Returns the anchors (greville points) of the basis
     void anchors_into(gsMatrix<T> & result) const 
@@ -334,8 +334,16 @@ public:
     gsDomain<T> * domain() const { return const_cast<KnotVectorType *>(&m_knots); }
 
     /// Returns the knot vector of the basis
-    const KnotVectorType & knots (int i  = 0) const { return m_knots;}
-    KnotVectorType & knots (int i  = 0)             { return m_knots;}
+    const KnotVectorType & knots (int i  = 0) const 
+    { 
+        GISMO_ENSURE(i==0, "Invalid knots requested");
+        return m_knots;
+    }
+    KnotVectorType & knots (int i  = 0)
+    {
+        GISMO_ENSURE(i==0, "Invalid knots requested");
+        return m_knots;
+    }
 
     T knot(index_t const & i) const { return m_knots[i];}
 

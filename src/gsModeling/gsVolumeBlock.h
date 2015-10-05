@@ -744,4 +744,4 @@ public:
     std::vector<HalfFace*>  face;
 };
 
-};// namespace gismo
+} // namespace gismo

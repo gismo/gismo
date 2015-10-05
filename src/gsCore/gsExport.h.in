@@ -37,7 +37,7 @@
 
 #elif defined(@PROJECT_NAME@_EXPORTS) // building shared library?
 
-#  if defined(_WIN32)
+#  if defined(_WIN32) || defined(__CYGWIN__)
 #    define GISMO_EXPORT __declspec(dllexport)
 #    define GISMO_LOCAL
 #  else						                
@@ -47,7 +47,7 @@
 
 #else // using shared library?
 
-#  if defined(_WIN32)
+#  if defined(_WIN32) || defined(__CYGWIN__)
 #    define GISMO_EXPORT __declspec(dllimport)
 #    define GISMO_LOCAL
 #  else

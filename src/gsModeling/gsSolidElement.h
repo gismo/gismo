@@ -69,4 +69,4 @@ public:
 };
 
 
-};// namespace gismo
+} // namespace gismo

@@ -92,7 +92,7 @@ struct ChangeDim<Dynamic, Change>
 };
 
 
-}; // namespace gismo
+} // namespace gismo
 
 
 #include <gsMatrix/gsMatrixBlockView.h>

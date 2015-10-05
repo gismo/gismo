@@ -141,7 +141,9 @@ void freeAll(It begin, It end)
 template <typename Cont>
 void freeAll(Cont& cont)
 {
-    freeAll( cont.begin(), cont.end() );
+    for (typename Cont::iterator it = cont.begin(); 
+         it != cont.end(); ++it)
+        delete (*it);
     cont.clear();
 }
 
@@ -184,4 +186,4 @@ inline void copyRange(const T * begin, U * result, const int n)
 template <typename Obj>
 void null_deleter(Obj *) {}
 
-}; // namespace gismo
+} // namespace gismo

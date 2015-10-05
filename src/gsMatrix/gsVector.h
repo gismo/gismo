@@ -291,4 +291,4 @@ gsVector3d<T>::~gsVector3d () { }
 
 
 
-}; // namespace gismo
+} // namespace gismo

@@ -650,4 +650,4 @@ struct lex_less
 };
 
 
-}; // namespace gismo
+} // namespace gismo

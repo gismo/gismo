@@ -487,7 +487,7 @@ protected:
 /// Print (as string) operator to be used by all derived classes
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsGeometry<T>& b)
-{return b.print(os); };
+{return b.print(os); }
 
 } // namespace gismo
 

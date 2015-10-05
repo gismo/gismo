@@ -378,4 +378,4 @@ private:
 //{return b.print(os); }
 
 
-}; // namespace gismo
+} // namespace gismo

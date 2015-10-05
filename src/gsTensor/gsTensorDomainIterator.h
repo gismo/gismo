@@ -222,4 +222,4 @@ public:
 }; // class gsTensorDomainIterator
 
 
-}; // namespace gismo
+} // namespace gismo

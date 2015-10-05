@@ -86,7 +86,7 @@ public:
 
 }; // class gsCurve
 
-}; // namespace gismo
+} // namespace gismo
 
 
 #ifndef GISMO_BUILD_LIB

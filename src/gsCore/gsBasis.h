@@ -93,8 +93,9 @@ public:
 
     typedef memory::auto_ptr< gsDomainIterator<T> > domainIter;
 
+/*    
 protected:
-    
+
     /// Constructor for derived classes
     gsBasis() { }
 
@@ -102,7 +103,8 @@ protected:
     gsBasis(const gsBasis& other) { }
 
     /// Assignment for derived classes
-    gsBasis & operator=(const gsBasis& other){return *this;}
+    gsBasis & operator=(const gsBasis& other) {return *this;}
+*/
 
 public:
 
@@ -859,7 +861,7 @@ std::ostream &operator<<(std::ostream &os, const gsBasis<T>& b)
 {return b.print(os); }
 
 
-}; // namespace gismo
+} // namespace gismo
 
 
 #ifndef GISMO_BUILD_LIB

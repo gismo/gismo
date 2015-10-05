@@ -89,8 +89,11 @@ public:
         return os; 
     }
 
-    gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs )      const { return NULL; }
-    gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const { return NULL; }
+    gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs )      const 
+    { GISMO_ERROR("No Geometry"); }
+
+    gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const 
+    { GISMO_ERROR("No Geometry"); }
 
 public:
 

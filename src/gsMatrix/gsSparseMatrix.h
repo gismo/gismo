@@ -296,4 +296,4 @@ gsSparseMatrix<T, _Options,_Index> * gsSparseMatrix<T, _Options, _Index>::clone(
 
 
 
-}; // namespace gismo
+} // namespace gismo

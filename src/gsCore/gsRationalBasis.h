@@ -132,7 +132,7 @@ public:
 // Virtual member functions overriding source basis
 ///////////////////////////////////////////////////
 
-    int dim() const { return Dim; };
+    int dim() const { return Dim; }
     
     int size() const { return m_src->size(); }
 
@@ -464,7 +464,7 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,
     }
     result.col(i) /= Wval(0,i) * Wval(0,i);
   }
-};
+}
 
 
 // TODO: is this version faster? try it for Dim=1
@@ -500,7 +500,7 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,
 //~     delete Wder;
 //~     
 //~     return res;
-//~ };
+//~ }
 
 
 template<class SrcT>
@@ -536,4 +536,4 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
 }
 
 
-}; // namespace gismo
+} // namespace gismo

@@ -95,5 +95,5 @@ public:
   std::vector<int> numPatches;
 };
 
-};//namespace gismo
+} //namespace gismo
 
