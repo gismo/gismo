@@ -238,11 +238,14 @@ public:
         os << "gsFunction.\n"; return os; 
     }
 
-    virtual void compute(const gsMatrix <T> &points , gsFuncData<T> &result) const;
+    virtual void compute(const gsMatrix <T> &points , gsFuncData<T> &result) const
+    { GISMO_NO_IMPLEMENTATION }
 
-    virtual void compute(const gsMapData<T> &geoData, gsFuncData<T> &result) const;
+    virtual void compute(const gsMapData<T> &geoData, gsFuncData<T> &result) const
+    { GISMO_NO_IMPLEMENTATION }
 
-    virtual void compute(const gsMatrix <T> &points , gsMapData<T> &result) const;
+    virtual void compute(const gsMatrix <T> &points , gsMapData<T> &result) const
+    { GISMO_NO_IMPLEMENTATION }
 
 }; // class gsFunction
 
