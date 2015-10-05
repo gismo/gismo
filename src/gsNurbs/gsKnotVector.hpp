@@ -82,14 +82,14 @@ gsKnotVector<T>::gsKnotVector(std::vector<T> const& knots, int degree, int regul
     typename std::vector<T>::const_iterator itr;
     int mult= degree - regularity ;
   
-    for ( int j=0; j<degree-1; j++ )
+    for ( int j=0; j<degree; j++ )
         my->knots.push_unsorted( knots.front() );
   
     for ( itr= knots.begin(); itr != knots.end(); ++itr )
         for ( int j=0; j< mult; j++ )
             my->knots.push_unsorted( *itr );
   
-    for ( int j=0; j<degree-1; j++ )
+    for ( int j=0; j<degree; j++ )
         my->knots.push_unsorted( knots.back() );
   
     my->p=degree;
