@@ -647,7 +647,7 @@ public:
             this->_convertToPeriodic();
 
         if( ! this->check() )
-            gsWarn << "Warning: Insconsistent "<< *this<< "\n";
+            gsWarn << "Warning: Inconsistent "<< *this<< "\n";
     }
 
     /// Construct BSpline basis of a knot vector
