@@ -17,26 +17,39 @@
 #include<gsCore/gsLinearAlgebra.h> 
 
 /**
-   @brief Contains the information for all functions in a gsFunctionSet.
+   @brief Contains information for the functions in a gsFunctionSet.
 */
 struct gsFuncInfo
 {
 public:
+    /// \brief Dimension of the (source) domain.
+    /// @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$ returns \f$n\f$.
     int  domainDim;
+    /// \brief Dimension of the target (image) space.
+    /// @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$ returns \f$m\f$.
     int  targetDim;
 public:
     // functions giving the size (the number of returned coefficient per function)
+    /// Number of derivatives (<em>targetDim*domainDim</em>).
     int  derivSize () const {return domainDim*targetDim;}
+
+    /// Number of 2nd derivatives (<em>targetDim*domainDim*(domainDim+1)/2</em>).
     int  deriv2Size() const {return targetDim*domainDim*(domainDim+1) / 2; }
+    /// Size of computed divergence (<em>targetDim/domainDim</em>).
     int  divSize   () const {return targetDim/domainDim;}
 public:
     gsFuncInfo()
     {}
 
+    /// \brief Constructor.
+    ///
+    /// \param[in] domDim Dimension of (source) domain (see gsFuncInfo::domainDim).
+    /// \param[in] tarDim Dimension of target space (see gsFuncInfo::targetDim).
     gsFuncInfo(int domDir,int tarDim)
         :domainDim(domDir),targetDim(tarDim)
     {}
 
+    /// Equality test, returns true if both <em>domainDim</em> and <em>targetDim</em> are equal.
     bool operator== (const gsFuncInfo& other) const {return domainDim==other.domainDim && targetDim==other.targetDim;}
 };
 
