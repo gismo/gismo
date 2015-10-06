@@ -43,11 +43,20 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
     switch (o)
     {
     case condition_type::dirichlet:
+    {
         os<< "Dirichlet";
+        break;
+    }
     case condition_type::neumann:
+    {
         os<< "Neumann";
+        break;
+    }
     case condition_type::robin:
+    {
         os<< "Mixed";
+        break;
+    }
     default:
         gsInfo<<"condition type not known.\n";
     };
