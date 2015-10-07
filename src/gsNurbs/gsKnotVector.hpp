@@ -78,18 +78,17 @@ template <class T>
 gsKnotVector<T>::gsKnotVector(std::vector<T> const& knots, int degree, int regularity)
 : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 {
-  
     typename std::vector<T>::const_iterator itr;
-    int mult= degree - regularity ;
+    int mult= math::max(degree - regularity,0);
   
-    for ( int j=0; j<degree; j++ )
+    for ( int j=0; j<degree+1-mult; j++ ) // adjust multiplicity first knot
         my->knots.push_unsorted( knots.front() );
   
     for ( itr= knots.begin(); itr != knots.end(); ++itr )
         for ( int j=0; j< mult; j++ )
             my->knots.push_unsorted( *itr );
   
-    for ( int j=0; j<degree; j++ )
+    for ( int j=0; j<degree+1-mult; j++ ) // adjust multiplicity last knot
         my->knots.push_unsorted( knots.back() );
   
     my->p=degree;
