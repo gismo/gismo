@@ -12,12 +12,12 @@ compiler:
   - gcc
 
 addons:
-    apt:
-        sources:
-            - kalakris-cmake
+  apt:
+    sources:
+    - kalakris-cmake
     packages:
-	    - cmake
-	    - valgrind
+    - cmake
+    - valgrind
 
 before_install:
 #- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository ppa:kalakris/cmake -y; sudo apt-get update -qq; sudo apt-get install cmake valgrind; fi
