@@ -10,6 +10,8 @@
 ## Configuration
 ## #################################################################
 
+include(CheckCXXCompilerFlag)
+
 # Set a default coefficient numeric types if not specified
 if(NOT GISMO_COEFF_TYPE)
   set (GISMO_COEFF_TYPE "double" CACHE STRING
@@ -53,7 +55,6 @@ endforeach()
 # Enable C++ 11 features if present
 if(GISMO_BUILD_CPP11 AND NOT MSVC)
   #cmake 3.1: set(CMAKE_CXX_STANDARD 11)
-  include(CheckCXXCompilerFlag)
   CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
   if(COMPILER_SUPPORTS_CXX11)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -151,13 +152,18 @@ if (MINGW)
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--export-all-symbols")
 
   # large files can overflow pe/coff sections, so use the pe+ format
-  include(CheckCXXCompilerFlag)
   CHECK_CXX_COMPILER_FLAG("-Wa,-mbig-obj" HAS_MBIGOBJ)
   if(NOT HAS_MBIGOBJ)
     message(WARNING "Current compiler does not suppport -Wa,-mbig-obj option.")
   else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj")
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -Wl,--gc-sections")
+  endif()
+elseif(CMAKE_COMPILER_IS_GNUCXX AND NOT POLICY CMP0063) #not mingw
+  check_cxx_compiler_flag(-fvisibility=hidden visibility)
+  if (visibility) # for object libraries with cmake less than 3.3
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden")
   endif()
 endif()
 
@@ -170,11 +176,6 @@ endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX AND NOT GISMO_WITH_OPENMP)
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
-endif()
-
-if (CMAKE_COMPILER_IS_GNUCXX AND NOT POLICY CMP0063)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel" AND NOT GISMO_WITH_OPENMP)
