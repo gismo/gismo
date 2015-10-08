@@ -172,6 +172,11 @@ if (CMAKE_COMPILER_IS_GNUCXX AND NOT GISMO_WITH_OPENMP)
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
 endif()
 
+if (CMAKE_COMPILER_IS_GNUCXX AND NOT POLICY CMP0063)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden")
+endif()
+
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel" AND NOT GISMO_WITH_OPENMP)
    if ( CMAKE_SYSTEM_NAME MATCHES "Linux" ) 
      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -diag-disable 3180") #comma for more warns
