@@ -133,7 +133,7 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Update if necessary
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long") # -Woverloaded-virtual -Wconversion -Wextra -pedantic
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wattributes") # -Woverloaded-virtual -Wconversion -Wextra -pedantic
   if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftrack-macro-expansion=0")
   endif()
@@ -159,12 +159,12 @@ if (MINGW)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj")
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -Wl,--gc-sections")
   endif()
-elseif(CMAKE_COMPILER_IS_GNUCXX AND NOT POLICY CMP0063) #not mingw
+elseif(NOT MSVC AND NOT POLICY CMP0063) #not mingw
   check_cxx_compiler_flag(-fvisibility=hidden visibility)
-  if (visibility) # for object libraries with cmake less than 3.3
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden")
-  endif()
+    if (visibility) # for object libraries with cmake less than 3.3
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden")
+    endif()
 endif()
 
 if (GISMO_WITH_OPENMP)
