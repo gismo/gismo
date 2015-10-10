@@ -35,6 +35,7 @@ public:
     /** @brief Interface for IpOpt optimization problem
      *
      */
+template<typename T>
 class gsIpOptTNLP : public Ipopt::TNLP
 {
     typedef Ipopt::Index                     Index;
@@ -43,8 +44,6 @@ class gsIpOptTNLP : public Ipopt::TNLP
     typedef Ipopt::IpoptData                 IpoptData;
     typedef Ipopt::IpoptCalculatedQuantities IpoptCalculatedQuantities;
     
-    typedef real_t T;
-
     public:
         gsIpOptTNLP(gsOptProblem<T> & op) : m_op(op) { }
 
@@ -206,7 +205,7 @@ gsOptProblem<T>::gsOptProblem()
     #ifdef GISMO_WITH_IPOPT
 
     m_data       =  new gsOptProblemPrivate();
-    m_data->tnlp =  new gsIpOptTNLP(*this);
+    m_data->tnlp =  new gsIpOptTNLP<T>(*this);
     #else
     m_data = NULL;
     #endif

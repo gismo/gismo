@@ -18,7 +18,7 @@
 namespace gismo
 {
 
-class gsIpOptTNLP;
+template <typename T> class gsIpOptTNLP;
 class gsOptProblemPrivate;
 
 /**
@@ -29,7 +29,7 @@ template <typename T>
 class gsOptProblem
 {
 
-    friend class gsIpOptTNLP;
+    friend class gsIpOptTNLP<T>;
 
 public:
 
