@@ -332,7 +332,9 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
         for(index_t j = 0; j < k1.size();j++)
         {
             k1[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i  ))  ;
-            k2[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
+            k2[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1))  ;
+            if (boxes(j,2*i+1)>m_bases.back()->knots(j).uValue(k2[j]) )
+                k2[j]++;
         }
 
         // 2. Find the smallest level in which the box is completely contained
