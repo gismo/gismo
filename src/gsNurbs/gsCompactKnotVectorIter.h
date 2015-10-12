@@ -176,11 +176,9 @@ public:
         return tmp;
     }
     
-    gsCompactKnotVectorIter operator-(const gsCompactKnotVectorIter& rhs) const
+    difference_type operator-(const gsCompactKnotVectorIter& rhs) const
     {
-        gsCompactKnotVectorIter tmp(*this);
-        tmp -= index - rhs.index;
-        return tmp;
+        return index - rhs.index;
     }
 
     //friend inline gsCompactKnotVectorIter operator-(const int& lhs, const gsCompactKnotVectorIter& rhs)
