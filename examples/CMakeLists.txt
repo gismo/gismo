@@ -1,7 +1,8 @@
 ### CMakeLists.txt ---
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - RICAM-Linz.
+## Author: Harald Weiner
+## Copyright (C) 2012-2015 - RICAM-Linz.
 ######################################################################
 
 cmake_minimum_required(VERSION 2.8.8)
@@ -38,3 +39,20 @@ list(LENGTH FILES len)
 message(STATUS "Number of examples to compile: ${len}")
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
+
+include( CMakeEmscripten )
+
+# install the example executables to <CMAKE_INSTALL_PREFIX>/bin/
+message("install_bin_dir='${CMAKE_INSTALL_PREFIX}/${BIN_INSTALL_DIR}/'")
+install(DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
+		DESTINATION "${CMAKE_INSTALL_PREFIX}/${BIN_INSTALL_DIR}/"
+		FILE_PERMISSIONS
+					OWNER_READ OWNER_WRITE OWNER_EXECUTE
+					GROUP_READ GROUP_WRITE GROUP_EXECUTE
+					WORLD_READ WORLD_EXECUTE
+		PATTERN "*.*"
+		PERMISSIONS
+					OWNER_READ OWNER_WRITE OWNER_EXECUTE
+					GROUP_READ GROUP_WRITE GROUP_EXECUTE
+					WORLD_READ WORLD_EXECUTE
+)
