@@ -62,7 +62,7 @@ include( gsOptions )
 ## #################################################################
 
 # Data directory
-set (GISMO_DATA_DIR   "${PROJECT_SOURCE_DIR}/filedata/")
+include ( gsDataDir )
 
 # Configure
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
