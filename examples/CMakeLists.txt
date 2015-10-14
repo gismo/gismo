@@ -1,7 +1,8 @@
 ### CMakeLists.txt ---
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - RICAM-Linz.
+## Author: Harald Weiner
+## Copyright (C) 2012-2015 - RICAM-Linz.
 ######################################################################
 
 cmake_minimum_required(VERSION 2.8.8)
