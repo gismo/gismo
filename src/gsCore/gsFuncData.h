@@ -15,6 +15,7 @@
 #pragma once
 
 #include<gsCore/gsLinearAlgebra.h> 
+#include<gsCore/gsBoundary.h> // need patchSide
 
 /**
    @brief Contains information for the functions in a gsFunctionSet.
@@ -270,8 +271,8 @@ public:
      * @brief Main constructor
      * @param flags what to compute
      */
-    explicit gsMapData(unsigned _flags = 0)
-    : Base(_flags)
+    explicit gsMapData(unsigned _flags = 0, patchSide _side=patchSide(0,0))
+    : Base(_flags), side(_side)
     { }
 
 public:
@@ -284,6 +285,7 @@ public:
     gsMatrix<T> gradTransforms;
     gsMatrix<T> normals;
 
+    patchSide   side;
 public:
     inline constColumn point(const index_t point) const { return points.col(point);}
 
