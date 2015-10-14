@@ -33,8 +33,8 @@ foreach(file ${FILES})
     set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME};gismo")
     add_dependencies(${PROJECT_NAME} ${tarname})
     # install the example executables to <CMAKE_INSTALL_PREFIX>/bin/
-	message("install_bin_dir='${BIN_INSTALL_DIR}'")
-	message("targets add='${tarname}'")
+	#message("install_bin_dir='${BIN_INSTALL_DIR}'")
+	#message("targets add='${tarname}'")
     install(TARGETS ${tarname} 
 		DESTINATION "${BIN_INSTALL_DIR}/"
 		PERMISSIONS
