@@ -816,6 +816,27 @@ gsNurbsCreator<T>::BSplineLShape_p2C1()
     return new gsTensorBSpline<2,T>(tK1,tK2, give(C));
 }
 
+template<class T> gsMultiPatch<T> *
+gsNurbsCreator<T>::BSplineLShapeMultiPatch_p2()
+{
+    gsMultiPatch<T> * mp = new gsMultiPatch<T>;
+
+    gsTensorBSpline<2,T> * patch1 = BSplineSquare(0.5, 0.0, 0.0);
+    patch1->degreeElevate();
+    mp->addPatch(patch1) ;
+
+    gsTensorBSpline<2,T> * patch2 = BSplineSquare(0.5, 0, 0.5);
+    patch2->degreeElevate();
+    mp->addPatch(patch2) ;
+
+    gsTensorBSpline<2,T> * patch3 = BSplineSquare(0.5, 0.5, 0);
+    patch3->degreeElevate();
+    mp->addPatch(patch3) ;
+
+    mp->computeTopology();
+    return mp;
+}
+
 template<class T> gsBSpline<T> *
 gsNurbsCreator<T>::BSplineAmoeba(T const & r, T const & x, T const & y)
 {

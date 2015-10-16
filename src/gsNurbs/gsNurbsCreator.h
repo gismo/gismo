@@ -149,6 +149,10 @@ struct gsNurbsCreator
     /// with C1-continuity and double control points at the corners.
     static gsTensorBSpline<2,T> * BSplineLShape_p2C1();
 
+    /// L-Shaped domain represented as a multipatch (3 patches) tensor B-spline of degree 2
+    /// 1. Patch is the middel part, 2. Patch is the upper part, 3 Patch is the right part.
+    static gsMultiPatch<T> * BSplineLShapeMultiPatch_p2();
+
     static gsBSpline<T> *BSplineAmoeba(T const & r=1, T const & x=0, T const & y = 0);
 
     static gsBSpline<T> *BSplineAmoebaBig(T const & r=1, T const & x=0, T const & y = 0);
