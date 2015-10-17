@@ -70,13 +70,6 @@ public:
     {
         // initialize(); // is done in the base constructor
     }
-    
-    gsHBSplineBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
-                     gsMatrix<T> const & boxes, std::vector<unsigned int> & levels)
-        : gsHTensorBasis<d,T>(tbasis, boxes)
-    {
-        // initialize(); // is done in the base constructor
-    }
 
     /// Gives back the boundary basis at boxSide s
     BoundaryBasisType * boundaryBasis(boxSide const & s ) const

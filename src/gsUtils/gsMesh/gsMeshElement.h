@@ -72,5 +72,5 @@ private:
 };
 
 
-};// namespace gismo
+} // namespace gismo
 

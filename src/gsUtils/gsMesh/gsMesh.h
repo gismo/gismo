@@ -154,12 +154,8 @@ public:
     //gsBoundingBox<scalar_t> bb;
 };
 
-//////////////////////////////////////////////////////
-//////////////////////////////////////////////////////
 
-
-
-};// namespace gismo
+} // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsMesh.hpp)

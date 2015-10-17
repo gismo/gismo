@@ -20,6 +20,20 @@ namespace gismo {
 namespace extensions {
 
 TEMPLATE_INST bool
+createPK_BSURF( const gsTensorBSpline< 2, real_t,
+                gsKnotVector<real_t> > & bsp, 
+                PK_BSURF_t & bsurf );
+
+TEMPLATE_INST bool
+createPK_BCURVE(const gsBSpline<real_t>& curve, PK_BCURVE_t& bcurve);
+
+TEMPLATE_INST bool
+exportTHBsurface( const gsTHBSpline<2,real_t>& surface, PK_ASSEMBLY_t& body );
+
+TEMPLATE_INST bool
+exportMesh( const gsMesh<real_t>& mesh, PK_BODY_t& body );
+
+TEMPLATE_INST bool
 gsWriteParasolid<real_t>
 ( const gsGeometry<real_t> & ggeo, std::string const & filename );
 
