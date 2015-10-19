@@ -18,30 +18,32 @@ to get up a list of solver options. To specify the source term and analytic solu
 
 \n
 
-We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial we explain how to do this. As an example we will use the \c Tutorial_PoissonSolver.cpp file in the example folder. We will go through essentials of the code in details (For more detail of the solver see the documentation for \ref gsPoissonAssembler, \ref gsAssemblerBase, and \ref gsVisitorPoisson.) 
+We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial we explain how to do this. As an example we will use the \c tutorialPoisson.cpp file in the example folder. We will go through essentials of the code in details (For more detail of the solver see the documentation for \ref gsPoissonAssembler, \ref gsAssemblerBase, and \ref gsVisitorPoisson.) 
 
-First we include the correct libraries and use some useful name space.
+First we include the library and use the gismo namespace.
 
-~~~~~
-# include <gismo.h>
+\snippet tutorialPoisson.cpp Include namespace
 
-using std::cout;
-using std::endl;
-using namespace gismo;
-~~~~~
+We add a command-line argument which allows the user to create a
+Paraview visualization file.
 
+\snippet tutorialPoisson.cpp Parse command line
+
+Our Poisson problem is defined by source (right-hand side) function and Dirichlet function data:
+
+\snippet tutorialPoisson.cpp Function data
 
 \section TPGeometry Geometry
 
-Inside the main function we would like to declare the geometry as
-~~~~~
-gsMultiPatch<> * patches;
-~~~~~
-Note that we use this even if we only have a single patch geometry. The \ref gsNurbsCreator class creates several simple geometries. For example,
-~~~~~
-patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
-~~~~~
-represents the unit square consisting of 2 x 2 squares, which all have side-length 0.5, i.e., the computational domain is the unit square \f$\Omega = (0,1)^2\f$ .
+Inside the main function we declare the geometry. Note that we use
+this even if we only have a single patch geometry. The \ref
+gsNurbsCreator class creates several simple geometries:
+
+\snippet tutorialPoisson.cpp Geometry data
+
+The chosen geometry represents the unit square consisting of 2 x 2
+squares, which all have side-length 0.5, i.e., the computational
+domain is the unit square \f$\Omega = (0,1)^2\f$ .
 
 In this example, the four patches are numbered as follows:
 
@@ -50,74 +52,35 @@ In this example, the four patches are numbered as follows:
 <tr><td>0</td><td>2</td></tr>
 </table>
 
-
 \section BCs Boundary Conditions
 
 The boundary conditions are stored in an object of type \ref gsBoundaryConditions :
 
-~~~~~
-gsBoundaryConditions<> bcInfo;
-~~~~~
+I the 2D case, each patch has 4 boundary sides: \a west, \a east, \a
+south and \a north (in addition there is \a front and \a back for 3D
+geometries). The boundary conditions must be specified for each
+patch. In this example we have 4 patches forming a unit square, hence
+we need to specify 8 boundary conditions:
 
-I the 2D case, each patch has 4 boundary sides: \a west, \a east, \a south and \a north (in addition there is \a front and \a back for 3D geometries). The boundary conditions must be specified for each patch. In this example we have 4 patches forming a unit square, hence we need to specify 8 boundary conditions:
-~~~~~
-// Dirichlet Boundary conditions
-bcInfo.addCondition(0, boundary::west,  boundary::dirichlet, &g);
-bcInfo.addCondition(1, boundary::west,  boundary::dirichlet, &g);
-bcInfo.addCondition(1, boundary::north, boundary::dirichlet, &g);
-bcInfo.addCondition(3, boundary::north, boundary::dirichlet, &g);
+\snippet tutorialPoisson.cpp Boundary conditions
 
-// Neumann Boundary conditions
-bcInfo.addCondition(3, boundary::east,  boundary::neumann, &hEast);
-bcInfo.addCondition(2, boundary::east,  boundary::neumann, &hEast);
-bcInfo.addCondition(0, boundary::south, boundary::neumann, &hSouth);
-bcInfo.addCondition(2, boundary::south, boundary::neumann, &hSouth);
-~~~~~
-the first arguments in the \c addCondition is the patch number. 
+Note that the first argument in the \c addCondition is the patch number. 
 
 \section tp_dbasis Discretization Basis
 
-We now need a discretization basis. We use the basis from the patches:
-~~~~~
-gsMultiBasis<> * refine_bases = new gsMultiBasis<>( *patches );
-~~~~~
-Now we can h or/and p refine this basis (note that h refinement should be done before p refinement).
-~~~~~
-// Number for h-refinement of the computational (trail/test) basis.
-int numRefine  = 2;
-// Number for p-refinement of the computational (trail/test) basis.
-int numElevate = 2;
+We now need a discretization basis. We use the basis from the patches.
+We can h or/and p refine this basis (in any order).
 
-// h-refine each basis numRefine times
-for (int i = 0; i < numRefine; ++i)
-    refine_bases->uniformRefine();
-
-// Elevate and p-refine the basis to order k + numElevate
-// where k is the highest degree in the bases
-    if ( numElevate > -1 )
-    {
-        // get maximum degree
-        int max_tmp = refine_bases->degree(0);
-        for (int j = 0; j < patches->parDim(); ++j )
-            if ( max_tmp < refine_bases->degree(j) )
-                max_tmp = refine_bases->degree(j);
-
-        // Elevate all degrees uniformly
-        max_tmp += numElevate;
-        refine_bases->setDegree(max_tmp);
-    }
-~~~~~
+\snippet tutorialPoisson.cpp Refinement
 
 \section solver Setting up and using the Assembler
 
 * Note the lower triangular representation!!
 
-
 We use \ref gsPoissonAssembler class to assemble and the Poisson equation. First we initialize the class object by giving the geometry (patches), discretization basis, boundary condition, source function, and the strategies for treating Dirichlet boundary conditions and patch interfaces:
-~~~~~
-gsPoissonAssembler<> PoissonAssembler( *patches, *refine_bases, bcInfo, f,
-dirichlet::elimination, iFace::glue );
-~~~~~
+
+\snippet tutorialPoisson.cpp Assemble
+
 With \c dirichlet::elimination, we specify that the degrees of freedom (DOF) on the Dirichlet bondary should be eliminated already during the assembling process.
 
 By \c iFace::glue, we specify that the DOFs at interfaces should be "glued" together in the sense that corresponding DOFs will be identified with each other and treated as one global DOF (which results in \f$C^0\f$-continuity at the interfaces).
@@ -131,26 +94,36 @@ The assembled system matrix and the right-hand-side can be accessed via
 PoissonAssembler.matrix();
 PoissonAssembler.rhs();
 ~~~~~
-where the system matrix is stored as a \ref gsSparseMatrix and the right-hand-side as \ref gsMatrix.
+where the system matrix is stored as a \ref gsSparseMatrix and the
+right-hand-side as \ref gsMatrix.
 
 \section GetPostProcSolution Computing and Post processing the solution
 
-Solving the linear system of equations is done in the main file. In this example of the Poisson problem, where we have a symmetric and positive definite system matrix, we can, for example, use the CG-solver of the Eigen-library:
+Solving the linear system of equations is done in the main file. In
+this example of the Poisson problem, where we have a symmetric and
+positive definite system matrix, we can, for example, use the
+CG-solver of the Eigen library, with a diagonal preconditioner.
 
-~~~~~
-gsMatrix<> solVector = Eigen::ConjugateGradient<gsSparseMatrix<> >(pa.matrix() ).solve( pa.rhs() );
-~~~~~
+\snippet tutorialPoisson.cpp Solve
 
-The \c solVector contains the computed coefficients \em without the Dirichlet DOFs (which were eliminated). In order to get obtain the discrete solution as a \ref gsField, we call
-~~~~~
-gsField<> * sol = pa.constructSolution(solVector);
-~~~~~
+The \c solVector contains the computed coefficients \em without the
+Dirichlet DOFs (which were eliminated). In order to obtain the
+discrete solution as a \ref gsField, we call
+
+\snippet tutorialPoisson.cpp Construct solution
+
 Finally we want evaluate the solutions and write write to a file:
-~~~~~
-gsWriteParaview<>( sol, "poisson2d", 1000);
-gsWriteParaview<>( exact, "poisson2d_exact", 1000);  
-~~~~~
+
+\snippet tutorialPoisson.cpp Plot in Paraview
+
 the solutions can now opened and viewed in paraview.
+
+\section tutorialPoisson Annotated source file with comments
+
+Here is the full file \c examples/tutorialPoisson.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include tutorialPoisson.cpp
 
 */
 
