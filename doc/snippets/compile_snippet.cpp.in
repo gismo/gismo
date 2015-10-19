@@ -1,12 +1,10 @@
 #include <gismo.h>
-#include <iostream>
 
 using namespace gismo;
-using namespace std;
 
 int main(int, char**)
 {
-    cout.precision(3);
-    ${snippet_source_code}
+    gsInfo.precision(3);
+${snippet_source_code}
     return 0;
 }
