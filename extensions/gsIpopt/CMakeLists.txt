@@ -12,10 +12,13 @@ set(IPOPT_SOURCES gsOptProblem_.cpp)
 
 add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
 
-set_target_properties(${PROJECT_NAME}
-PROPERTIES POSITION_INDEPENDENT_CODE ON
-COMPILE_DEFINITIONS gismo_EXPORTS
-)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    COMPILE_DEFINITIONS gismo_EXPORTS 
+    POSITION_INDEPENDENT_CODE ON
+    LINKER_LANGUAGE CXX
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON
+    FOLDER "G+Smo extensions"  )
 
 if (NOT IPOPT_FOUND)
   message("IpOpt not found (define IpOpt_DIR if it exists on the system).")
