@@ -15,7 +15,6 @@ $mathjax
 <link href="$relpath$$stylesheet"   rel="stylesheet" type="text/css" />
 <link href="$relpath$gismodoxy.css" rel="stylesheet" type="text/css">
 <!-- $extrastylesheet -->
-<script type="text/javascript" src="$relpath$navtree_hacks.js"></script>
 <!-- <script type="text/javascript"> -->
 <!-- </script> -->
 

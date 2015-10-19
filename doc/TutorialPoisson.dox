@@ -3,7 +3,6 @@ namespace gismo {
 /**
 \page PoissonTutorial Poisson equation tutorial
 
-\section PoissonTut The Poisson Tutorial
 The Poisson equation: \f{eqnarray*}{
               	      -\Delta\mathbf{u} &=&\mathbf{f} \quad \text{in} \quad \Omega,\\
                	      \mathbf{u} &=& \mathbf{g} \quad \text{on} \quad \Gamma_D,\\
@@ -32,7 +31,7 @@ using namespace gismo;
 ~~~~~
 
 
-\subsection Geometry Geometry
+\section TPGeometry Geometry
 
 Inside the main function we would like to declare the geometry as
 ~~~~~
@@ -52,7 +51,7 @@ In this example, the four patches are numbered as follows:
 </table>
 
 
-\subsection BCs Boundary Conditions
+\section BCs Boundary Conditions
 
 The boundary conditions are stored in an object of type \ref gsBoundaryConditions :
 
@@ -60,8 +59,8 @@ The boundary conditions are stored in an object of type \ref gsBoundaryCondition
 gsBoundaryConditions<> bcInfo;
 ~~~~~
 
-I the 2D case, each patch has 4 boundary sides: \a west, \a east, \a south and \a north (in addition there is \a front and \a back for 3D geometries. The boundary conditions must be specified for each patch. In this example we have 4 patches forming a unit square, hence we need to specify 8 boundary conditions:
- ~~~~~
+I the 2D case, each patch has 4 boundary sides: \a west, \a east, \a south and \a north (in addition there is \a front and \a back for 3D geometries). The boundary conditions must be specified for each patch. In this example we have 4 patches forming a unit square, hence we need to specify 8 boundary conditions:
+~~~~~
 // Dirichlet Boundary conditions
 bcInfo.addCondition(0, boundary::west,  boundary::dirichlet, &g);
 bcInfo.addCondition(1, boundary::west,  boundary::dirichlet, &g);
@@ -76,7 +75,7 @@ bcInfo.addCondition(2, boundary::south, boundary::neumann, &hSouth);
 ~~~~~
 the first arguments in the \c addCondition is the patch number. 
 
-\subsection tp_dbasis Discretization Basis
+\section tp_dbasis Discretization Basis
 
 We now need a discretization basis. We use the basis from the patches:
 ~~~~~
@@ -109,7 +108,7 @@ for (int i = 0; i < numRefine; ++i)
     }
 ~~~~~
 
-\subsection solver Setting up and using the Assembler
+\section solver Setting up and using the Assembler
 
 * Note the lower triangular representation!!
 
@@ -134,7 +133,7 @@ PoissonAssembler.rhs();
 ~~~~~
 where the system matrix is stored as a \ref gsSparseMatrix and the right-hand-side as \ref gsMatrix.
 
-\subsection GetPostProcSolution Computing and Post processing the solution
+\section GetPostProcSolution Computing and Post processing the solution
 
 Solving the linear system of equations is done in the main file. In this example of the Poisson problem, where we have a symmetric and positive definite system matrix, we can, for example, use the CG-solver of the Eigen-library:
 
