@@ -860,8 +860,7 @@ EXCLUDE_SYMBOLS        = internal::* \
 # that contain example code fragments that are included (see the \include
 # command).
 
-EXAMPLE_PATH           = "${gismo_SOURCE_DIR}/doc/snippets" \
-                         "${gismo_BINARY_DIR}/doc/snippets" \
+EXAMPLE_PATH           = "${gismo_BINARY_DIR}/doc/snippets" \
 			 "${gismo_SOURCE_DIR}/examples"
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the

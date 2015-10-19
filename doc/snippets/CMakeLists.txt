@@ -28,7 +28,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY LABELS "${PROJECT_NAME};gismo")
 foreach(snippet_src ${snippets_SRCS})
 
   get_filename_component(snippet_target ${snippet_src} NAME_WE)
-  set(snippet_target snippet_${snippet_target})
+  #set(snippet_target snippet_${snippet_target})
 
   file(READ ${snippet_src} snippet_source_code)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/compile_snippet.cpp.in
