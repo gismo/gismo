@@ -55,6 +55,9 @@ public:
     /// Computes the euclidean error for each point
     void computeErrors();
 
+    /// Computes the maximum norm error for each point
+    void computeMaxNormErrors();
+
     /// Computes the approximation error of the fitted curve to the original point cloud
     void computeApproxError(T & error, int type = 0) const;
 

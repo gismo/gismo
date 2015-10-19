@@ -235,6 +235,27 @@ void gsFitting<T>::computeErrors()
     }
 }
 
+
+template<class T>
+void gsFitting<T>::computeMaxNormErrors()
+{
+    m_pointErrors.clear();
+
+    gsMatrix<T> values;
+    m_result->eval_into(m_param_values, values);
+
+    for (index_t i = 0; i != m_points.rows(); i++)
+    {
+        const T err = (m_points.row(i) - values.col(i).transpose()).cwiseAbs().maxCoeff();
+
+        m_pointErrors.push_back(err);
+
+        if ( i == 0 || m_max_error < err ) m_max_error = err;
+        if ( i == 0 || err < m_min_error ) m_min_error = err;
+    }
+}
+
+
   
 template<class T>
 void gsFitting<T>::computeApproxError(T& error, int type) const
