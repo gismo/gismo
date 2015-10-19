@@ -1,8 +1,7 @@
 /** @file tutorialPoisson.cpp
 
-    @brief Tutorial on how to use gismo to solve the Poisson equation
-     using the class gsPoissonAssembler
-
+    @brief Tutorial on how to use G+Smo to solve the Poisson equation,
+    see the \ref PoissonTutorial
 
     This file is part of the G+Smo library.
 
@@ -13,21 +12,24 @@
     Author(s): J. Sogn
 */
 
-
+//! [Include namespace]
 # include <gismo.h>
 
 using namespace gismo;
+//! [Include namespace]
 
 int main(int argc, char *argv[]) 
 {
+    //! [Parse command line]
     bool plot = false;
-    // Parse command line
+
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
-    cmd.addSwitch("plot", "Create a ParaView input file with the solution", plot);
+    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     const bool ok = cmd.getValues(argc,argv);
     if (!ok) { gsWarn << "Error during parsing the command line!\n"; return 0;}
+    //! [Parse command line]
 
-    //////// Right-hand side and analytic solution ////////
+    //! [Function data]
     // Define source function
     gsFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
                               "((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)",2);
@@ -41,8 +43,9 @@ int main(int argc, char *argv[])
     // Print out source function and solution
     gsInfo<<"Source function "<< f << "\n";
     gsInfo<<"Exact solution "<< g <<"\n\n";
+    //! [Function data]
   
-    /////////////////// Setup geometry ///////////////////
+    //! [Geometry data]
     // Define Geometry, must be a gsMultiPatch object
     gsMultiPatch<> ::uPtr patches;
     // Create 4 (2 x 2) patches of squares:
@@ -55,6 +58,8 @@ int main(int argc, char *argv[])
     // The last argument scale the squares such that we
     // get the unit square as domain.
     patches = safe ( gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5) );
+    gsInfo << "The domain is a "<< *patches <<"\n";
+    //! [Geometry data]
 
     // For single patch unit square of quadratic elements use (Note:
     //you need to update the bounadry conditions section for this to
@@ -67,9 +72,6 @@ int main(int argc, char *argv[])
     // this to work properly!) :
     //patches = safe ((gsMultiPatch<>*)gsReadFile<>(GISMO_DATA_DIR "/planar/lshape_p2.xml" ) );
 
-    gsInfo << "The domain is a "<< *patches <<"\n";
-
-    /////////////////// Setup boundary conditions ///////////////////
 
     // Define Boundary conditions. Note that if one boundary is
     // "free", eg. if no condition is defined, then it is a natural
@@ -78,6 +80,8 @@ int main(int argc, char *argv[])
     // solution, thereforer implies a singular matrix. In this case 
     // a corner DoF can be fixed to a given value to obtain a unique solution.
     // (example: bcInfo.addCornerValue(boundary::southwest, value, patch);)
+
+    //! [Boundary conditions]
     gsBoundaryConditions<> bcInfo;
     // Every patch with a boundary need to be specified. In this
     // there are in total 8 sides (two for each patch)
@@ -99,6 +103,7 @@ int main(int argc, char *argv[])
 
     bcInfo.addCondition(0, boundary::south, condition_type::neumann, &hSouth);
     bcInfo.addCondition(2, boundary::south, condition_type::neumann, &hSouth);
+    //! [Boundary conditions]
 
     /*
       //Alternatively: You can automatically create Dirichlet boundary
@@ -112,16 +117,14 @@ int main(int argc, char *argv[])
     }
     */
 
-    ////////////////////// Refinement h and p //////////////////////
-    // Refinement
-
+    //! [Refinement]
     // Copy basis from the geometry
     gsMultiBasis<> refine_bases( *patches );
 
-    // Number for h-refinement of the computational (trail/test) basis.
+    // Number for h-refinement of the computational (trial/test) basis.
     int numRefine  = 2;
 
-    // Number for p-refinement of the computational (trail/test) basis.
+    // Number for p-refinement of the computational (trial/test) basis.
     int numElevate = 2;
 
     // h-refine each basis (4, one for each patch)
@@ -139,6 +142,7 @@ int main(int argc, char *argv[])
         max_tmp += numElevate;
         refine_bases.setDegree(max_tmp);
     }
+    //! [Refinement]
 
     ////////////// Setup solver and solve //////////////
     // Initialize Solver
@@ -156,6 +160,7 @@ int main(int argc, char *argv[])
     //
     // * dg: Use discontinuous Galerkin-like coupling between adjacent patches.
     //       (This option might not be available yet)
+    //! [Assemble]
     gsPoissonAssembler<real_t> PoissonAssembler(*patches,refine_bases,bcInfo,f,
                                                 //dirichlet::elimination, iFace::glue);
                                                   dirichlet::nitsche    , iFace::glue);
@@ -165,21 +170,24 @@ int main(int argc, char *argv[])
     PoissonAssembler.assemble();
     gsInfo << "Assembled a system (matrix and load vector) with "
            << PoissonAssembler.numDofs() << " dofs.\n";
+    //! [Assemble]
 
+    //! [Solve]
     // Initialize the conjugate gradient solver
     gsInfo << "Solving...\n";
     gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
     gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
     gsInfo << "Solved the system with CG solver.\n";
+    //! [Solve]
 
-    /////////////////// Post processing ///////////////////
-
+    //! [Construct solution]
     // Construct the solution as a scalar field
     gsField<>::uPtr sol = safe(PoissonAssembler.constructSolution(solVector));
+    //! [Construct solution]
 
-    // Plot solution in paraview
     if (plot)
     {
+        //! [Plot in Paraview]
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>(*sol, "poisson2d", 1000);
@@ -188,6 +196,7 @@ int main(int argc, char *argv[])
 
         // Run paraview
         return system("paraview poisson2d.pvd &");
+        //! [Plot in Paraview]
     }
     else
     {
