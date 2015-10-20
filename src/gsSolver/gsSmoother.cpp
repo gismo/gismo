@@ -96,7 +96,7 @@ void dampedPreRichardsonSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen:
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
 
-    gsSparseSolver<>::CGDiagonal solver;
+    gsSparseSolver<real_t>::CGDiagonal solver;
     gsMatrix<real_t> corr;
     corr = f - A * x;
     corr = solver.compute( P ).setTolerance(1e-3).solve(corr).eval();
@@ -130,7 +130,7 @@ void dampedPreJacobiSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spa
     corr.array() /= A.diagonal().array().sqrt();
     corr.array() *= P.diagonal().array().sqrt();
 
-    corr = gsSparseSolver<>::CGDiagonal( P ).setTolerance(1e-3).solve(corr).eval();
+    corr = gsSparseSolver<real_t>::CGDiagonal( P ).setTolerance(1e-3).solve(corr).eval();
 
     corr.array() *= P.diagonal().array().sqrt();
     corr.array() /= A.diagonal().array().sqrt();
@@ -239,7 +239,7 @@ void preGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spar
     }
 
     
-    corr = gsSparseSolver<>::CGDiagonal( P )
+    corr = gsSparseSolver<real_t>::CGDiagonal( P )
             .setTolerance(1e-3).solve(corr).eval();
     x.array() += tau * /*P.diagonal().array() * */ corr.array();
 }

@@ -786,7 +786,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         // Linear system
         Eigen::SparseMatrix<T, ColMajor> A(n,n);
         gsSparseEntries<T> coefficients;
-        gsSparseSolver<>::LU solver;
+        typename gsSparseSolver<T>::LU solver;
 
         // idea: Pre-define a map (std::map) from the
         // vertexhandles to 0...n+k-1, also containing additional

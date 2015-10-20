@@ -95,7 +95,7 @@ struct ChangeDim<Dynamic, Change>
 /**
    @brief Adaptor for Eigen types
 */
-template<typename T = real_t>
+template<typename T>
 struct gsEigenAdaptor
 {
 public:
@@ -159,4 +159,4 @@ public:
 #include <gsMatrix/gsAsMatrix.h>
 #include <gsMatrix/gsSparseMatrix.h>
 #include <gsMatrix/gsSparseVector.h>
-#include <gsMatrix/gsSolver.h>
+#include <gsMatrix/gsSparseSolver.h>
