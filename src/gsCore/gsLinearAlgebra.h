@@ -92,6 +92,64 @@ struct ChangeDim<Dynamic, Change>
 };
 
 
+/**
+   @brief Adaptor for Eigen types
+*/
+template<typename T = real_t>
+struct gsEigenAdaptor
+{
+public:
+    // Note: IncompleteILU is not compatible with
+    // Eigen::ConjugateGradient because this preconditionner does not
+    // preserve symmetry.
+
+    /// Congugate gradient without preconditioner (identity as preconditioner) 
+    /// The matrix is assumed symmetric and only the lower trinagular part is used
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>,
+            Eigen::Lower, Eigen::IdentityPreconditioner> CGIdentity;
+
+    /// Congugate gradient with diagonal (Jacobi) preconditioner
+    /// The matrix is assumed symmetric and only the lower trinagular part is used
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>, 
+            Eigen::Lower, Eigen::DiagonalPreconditioner<T> > CGDiagonal;
+
+    /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::IncompleteLUT<T> > BiCGSTABILUT;
+
+    /// BiCGSTAB with Diagonal (Jacobi) preconditioner
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::DiagonalPreconditioner<T> > BiCGSTABDiagonal;
+
+    /// BiCGSTAB without preconditioner (identity as preconditioner) 
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::IdentityPreconditioner > BiCGSTABIdentity;
+
+    /// Direct LDLt factorization
+    typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<T,0,index_t> > SimplicialLDLT;
+
+    /// Sparse LU solver
+    typedef Eigen::SparseLU<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::COLAMDOrdering<index_t> > SparseLU;
+
+    /// Sparse QR solver
+    typedef Eigen::SparseQR<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::COLAMDOrdering<index_t> > SparseQR;
+
+    #ifdef GISMO_WITH_SUPERLU
+    /// SuperLU (if enabled)
+    typedef Eigen::SuperLU<Eigen::SparseMatrix<T,0,index_t> > SuperLU;
+    #endif
+
+    #ifdef GISMO_WITH_PARDISO
+    /// Pardiso (if enabled)
+    typedef Eigen::PardisoLDLT<Eigen::SparseMatrix<T,0,index_t> > PardisoLDLT;
+    typedef Eigen::PardisoLLT <Eigen::SparseMatrix<T,0,index_t> > PardisoLLT;
+    typedef Eigen::PardisoLU  <Eigen::SparseMatrix<T,0,index_t> > PardisoLU;
+    #endif
+
+};
+
 } // namespace gismo
 
 
@@ -101,6 +159,4 @@ struct ChangeDim<Dynamic, Change>
 #include <gsMatrix/gsAsMatrix.h>
 #include <gsMatrix/gsSparseMatrix.h>
 #include <gsMatrix/gsSparseVector.h>
-
-
 
