@@ -221,6 +221,12 @@ public:
 
     ~gsSparseMatrix() ;
 
+    void clear()
+    {
+        this->resize(0,0);
+        this->data().squeeze();
+    }
+
     void setFrom( gsSparseEntries<T> const & entries) ;
 
     inline T   at (_Index i, _Index j = 0) const { return this->coeff(i,j); }
