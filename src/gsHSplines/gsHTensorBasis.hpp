@@ -333,6 +333,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
         {
             k1[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i  ))  ;
             k2[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1))  ;
+            // Boxes are half-open.
             if (boxes(j,2*i+1)>m_bases.back()->knots(j).uValue(k2[j]) )
                 k2[j]++;
         }
