@@ -676,8 +676,7 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
             for (index_t v = 0; v!=expr.dim; ++v)
                 expr.vars[v].setVariable(v, expr.dim, u(v,p) );
             expr.expression[c].value().getHessian();
-            const DScalar &            ads  = expr.expression[c].value();
-            (*res)(c,p) = ads.getHessian()(k,j);
+            (*res)(c,p) = expr.expression[c].value().getHessian()(k,j);
 #           else
             (*res)(c,p) =
                 mixed_derivative<T>( expr.expression[c], expr.vars[k], expr.vars[j], 0.00001 ) ;

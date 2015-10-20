@@ -159,4 +159,4 @@ public:
 #include <gsMatrix/gsAsMatrix.h>
 #include <gsMatrix/gsSparseMatrix.h>
 #include <gsMatrix/gsSparseVector.h>
-
+#include <gsMatrix/gsSolver.h>
