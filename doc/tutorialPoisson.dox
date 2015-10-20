@@ -1,7 +1,8 @@
 namespace gismo {
 
 /**
-\page PoissonTutorial Poisson equation tutorial
+
+\page tutorialPoisson tutorialPoisson.cpp
 
 The Poisson equation: \f{eqnarray*}{
               	      -\Delta\mathbf{u} &=&\mathbf{f} \quad \text{in} \quad \Omega,\\
@@ -56,7 +57,7 @@ In this example, the four patches are numbered as follows:
 
 The boundary conditions are stored in an object of type \ref gsBoundaryConditions :
 
-I the 2D case, each patch has 4 boundary sides: \a west, \a east, \a
+In the 2D case, each patch has 4 boundary sides: \a west, \a east, \a
 south and \a north (in addition there is \a front and \a back for 3D
 geometries). The boundary conditions must be specified for each
 patch. In this example we have 4 patches forming a unit square, hence
@@ -112,13 +113,14 @@ discrete solution as a \ref gsField, we call
 
 \snippet tutorialPoisson.cpp Construct solution
 
-Finally we want evaluate the solutions and write write to a file:
+Finally we want to evaluate the (exact and approximate) solutions and
+write to a file:
 
 \snippet tutorialPoisson.cpp Plot in Paraview
 
 the solutions can now opened and viewed in paraview.
 
-\section tutorialPoisson Annotated source file with comments
+\section tutorialPoissonAnnotated Annotated source file
 
 Here is the full file \c examples/tutorialPoisson.cpp. Clicking on a function
 or class name will lead you to its reference documentation.

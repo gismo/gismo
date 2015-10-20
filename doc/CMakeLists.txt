@@ -41,7 +41,11 @@ set(IMAGE_PATH        "\"${gismo_SOURCE_DIR}/doc/figs\"")
 set(GISMO_DOXY_HTML_COLORSTYLE_HUE      "120") #220
 set(GISMO_DOXY_HTML_COLORSTYLE_SAT      "100") #100
 set(GISMO_DOXY_HTML_COLORSTYLE_GAMMA    "100")  # 80
-set(GISMO_DOXY_TAGFILES                 "")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Eigen.doxytags")
+  set(GISMO_DOXY_TAGFILES                 "${CMAKE_CURRENT_SOURCE_DIR}/Eigen.doxytags=http://eigen.tuxfamily.org/dox/")
+else()
+  set(GISMO_DOXY_TAGFILES                 "")
+endif()
 set(SHOW_INCLUDE_FILES                  "yes")
 set(CLASS_FLAGS                         "yes")
 set(COLLABORATION_GRAPH                 "yes")

@@ -1,0 +1,50 @@
+namespace gismo {
+
+/**
+
+\page Examples Examples
+
+In the gismo/examples sub-directory we find:
+
+- \subpage biharmonic
+
+- \subpage fitting_example
+
+- \subpage gsSparseSolvers
+
+- \subpage gsView
+
+- \subpage iterativeSolvers
+
+- \subpage poisson2d_example_adaptRef
+
+- \subpage poisson
+
+- \subpage poissonVector
+
+- \subpage thbRefinement
+
+- \subpage triMeshToSolid
+
+- \subpage tutorialBasis
+
+- \subpage tutorialBSplineBasis
+
+- \subpage tutorialBSplineCurve
+
+- \subpage tutorialBSplineSurface
+
+- \subpage tutorialCommandLineArg
+
+- \subpage tutorialGeometry
+
+- \subpage tutorialInputOutput
+
+- \subpage tutorialKnotVector
+
+- \subpage tutorialLinearAlgebra
+
+- \subpage tutorialPoisson
+
+*/
+}

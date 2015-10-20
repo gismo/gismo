@@ -3,8 +3,8 @@
   <!-- Navigation index tabs for HTML output -->
   <navindex>
     <tab type="mainpage" visible="no" title=""/> 
-    
-    <tab type="usergroup" title="Modules">
+
+    <tab type="usergroup" title="Modules" intro="A list of available modules:">
       <tab type="user" url="@ref Core" title="Core"/>
       <tab type="user" url="@ref Nurbs" title="Nurbs"/>
       <tab type="user" url="@ref HSplines" title="HSplines"/>

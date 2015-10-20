@@ -13,6 +13,8 @@ The library is licenced under the <a href="https://www.mozilla.org/MPL/2.0" targ
 
 - The list of \subpage Tutorials.
 
+- The list of \subpage Examples.
+
 - The library is partitioned into smaller entities called <a href="usergroup0.html"><b>modules</b></a>. See section <a href="usergroup0.html"><b>\gismo modules</b></a> for an overview of available modules.
 
 - Object hierarchies and groups of classes that are related or
