@@ -512,7 +512,7 @@ inline unsigned gsCompactKnotVector<T>::elementIndex(size_t i) const
 template <class T>
 std::ostream & gsCompactKnotVector<T>::print(std::ostream &os) const
 {
-    typename gsKnotVector<T>::const_iterator itr;
+    typename std::vector<T>::const_iterator itr;
     unsigned i=0;
 
     os << "[ " ;

@@ -625,7 +625,7 @@ private:
 private:
 
     // Distinct knot values
-    gsSortedVector<T> m_knots;
+    std::vector<T> m_knots;
 
     // Contains the sums of multiplicities
     std::vector<unsigned> m_mult_sum;
