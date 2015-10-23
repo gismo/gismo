@@ -55,6 +55,7 @@ void gsCompactKnotVector<T>::initUniform(T const u0, T const u1,
 template <class T>
 gsCompactKnotVector<T>::gsCompactKnotVector(std::vector<T> const& knots, int degree, int regularity)
 {
+    GISMO_ASSERT(knots.size() >= 2, "We need at least two knots to define a meaningful knot vector.");
     typename std::vector<T>::const_iterator itr;
     int mult= degree - regularity ;
 
@@ -77,6 +78,7 @@ template <class It>
 void gsCompactKnotVector<T>::init(int deg, It start, It end)
 {
     // ASSUMES that start..end is sorted
+    // Also ASSUMES that start + 1 <= end.
     m_p = deg;
     m_knots.push_back(*start);
     m_mult_sum.push_back(1);

@@ -94,12 +94,12 @@ public:
                         unsigned const mult_interior=1, int const degree=-1) ;
 
     /// @brief Construct an open knot vector from the given unique knots.
-    /// \param knots sequence of distinct knots
-    /// \param degree degree of a spline space
+    /// \param knots sequence of strictly increasing (i.e., unique and sorted) knots
+    /// \param degree degree of the spline space
     /// \param regularity of spline space across the knots
     gsCompactKnotVector(std::vector<T> const& knots, int degree, int regularity);
 
-    /// Construct a open knot vector from two iterators of a gsKnotVector.
+    /// Construct a open knot vector from two iterators of a non-empty gsKnotVector.
     /// \param deg degree
     /// \param start iterator pointing the first knot value
     /// \param end iterator pointing the last knot value
