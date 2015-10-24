@@ -18,28 +18,28 @@
 namespace gismo
 {
 
-  /** \brief
-      Class that creates a rational counterpart for a given basis.
+/** \brief
+    Class that creates a rational counterpart for a given basis.
 
-      A rational basis holds an inner basis of the given source type,
-      and a matrix of coefficients defining a weight function in terms
-      of the source basis.
+    A rational basis holds an inner basis of the given source type,
+    and a matrix of coefficients defining a weight function in terms
+    of the source basis.
 
-      If \em w_i is the i-th weight coefficient and \em b_i the i-th basis
-      function of the source basis, then the i-th basis function of the
-      resulting rational basis is given by
-        r_i(u) = b_i(u) w_i / (sum(b_j(u) w_j, j = 1, ..., size))
+    If \em w_i is the i-th weight coefficient and \em b_i the i-th basis
+    function of the source basis, then the i-th basis function of the
+    resulting rational basis is given by
+    r_i(u) = b_i(u) w_i / (sum(b_j(u) w_j, j = 1, ..., size))
 
-      If the weights are constant, the rational basis is identical
-      to the source basis.
+    If the weights are constant, the rational basis is identical
+    to the source basis.
 
-      Example: the rational version of a B-spline basis is a NURBS basis.
+    Example: the rational version of a B-spline basis is a NURBS basis.
 
-      \tparam SrcT the basis of which to create a rational version
+    \tparam SrcT the basis of which to create a rational version
 
-      \ingroup basis
-      \ingroup Core
-  */
+    \ingroup basis
+    \ingroup Core
+*/
 
 template<class SrcT>
 class gsRationalBasis : public gsBasis< typename SrcT::Scalar_t >
@@ -66,21 +66,21 @@ public:
     
     /// Construct a rational counterpart of basis
     gsRationalBasis(SrcT* basis)
-        : m_src(basis)
+    : m_src(basis)
     { 
         m_weights.setOnes(basis->size(), 1);
     }
     
     /// Construct a rational counterpart of basis
     gsRationalBasis(const SrcT & basis)
-        : m_src(basis.clone() )
+    : m_src(basis.clone() )
     { 
         m_weights.setOnes(basis.size(), 1);
     }
     
     /// Construct a rational counterpart of basis
     gsRationalBasis(SrcT * basis, const gsMatrix<T> & w)
-        : m_src (basis), m_weights(w)
+    : m_src (basis), m_weights(w)
     { 
         GISMO_ASSERT(m_weights.rows() == m_src->size(),
                      "Invalid basis/weights ("<<m_weights.rows()<<"/"<<m_src->size());
@@ -88,7 +88,7 @@ public:
     
     /// Construct a rational counterpart of basis
     gsRationalBasis(SrcT * basis, gsMovable< gsMatrix<T> > w)
-        : m_src(basis), m_weights(w)
+    : m_src(basis), m_weights(w)
     { 
         GISMO_ASSERT(m_weights.rows() == m_src->size(), 
                      "Invalid basis/weights ("<<m_weights.rows()<<"/"<<m_src->size());
@@ -119,8 +119,8 @@ public:
     bool check() const
     { 
         return ( 
-                m_weights.size() == m_src->size()
-               ); 
+            m_weights.size() == m_src->size()
+            ); 
     }
     
     gsBasis<T> * makeNonRational() const
@@ -229,19 +229,19 @@ public:
     }
     
     /*
-    gsBasis<T> * boundaryBasis(boxSide const & s ) const   
-    { 
-        typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
-        gsMatrix<unsigned> * ind = m_src->boundary(s);
+      gsBasis<T> * boundaryBasis(boxSide const & s ) const   
+      { 
+      typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
+      gsMatrix<unsigned> * ind = m_src->boundary(s);
       
-        gsMatrix<T> ww( ind->size(),1);
-        for ( index_t i=0; i<ind->size(); ++i)
-            ww(i,0) = m_weights( (*ind)(i,0), 0);
+      gsMatrix<T> ww( ind->size(),1);
+      for ( index_t i=0; i<ind->size(); ++i)
+      ww(i,0) = m_weights( (*ind)(i,0), 0);
         
-        delete ind;
-        return new BoundaryBasisType(*safe(bb), give(ww));
-        return 0;
-    }
+      delete ind;
+      return new BoundaryBasisType(*safe(bb), give(ww));
+      return 0;
+      }
     */
 
     gsDomain<T> * domain() const { return m_src->domain(); }
@@ -374,7 +374,7 @@ void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, const gsMatrix<T> &
     
 template<class SrcT>
 void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
-                                          std::vector<gsMatrix<T> >& result) const
+                                             std::vector<gsMatrix<T> >& result) const
 {
     GISMO_ASSERT(n>-1 &&  n<=2, "gsTensorBasis::evalAllDers() not implemented for n > 2." );
 
@@ -438,99 +438,111 @@ template<class SrcT>
 void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u, 
                                        gsMatrix<T>& result) const
 { 
-  // Formula:
-  // R_i' = (w_i N_i / W)' = w_i ( N_i'W - N_i W' ) / W^2 
+    // Formula:
+    // R_i' = (w_i N_i / W)' = w_i ( N_i'W - N_i W' ) / W^2 
 
-  static const int d = Dim;
-  //const index_t numPts = u.cols();// at how many points to evaluate the gradients
-  gsMatrix<T> ev, Wval, Wder;
-  
-  m_src->deriv_into(u, result         );
-  m_src->eval_into (u, ev             ); 
-  m_src->evalFunc_into (u, m_weights, Wval); 
-  m_src->derivFunc_into(u, m_weights, Wder); 
+    gsMatrix<unsigned> act;
+    m_src->active_into(u,act);
 
-  gsMatrix<unsigned> act;
-  m_src->active_into(u,act);
+    result.resize( act.rows()*Dim, u.cols() );
+
+    std::vector<gsMatrix<T> > ev(2);
+    m_src->evalAllDers_into(u, 1, ev); 
+
+    T W;
+    gsMatrix<T> dW(Dim,1);
   
-  for ( index_t i=0; i!= result.cols(); ++i )// for all parametric points
-  {  
-    result.col(i).array()  *=  Wval(0,i) ;  // N_i'W
-    for ( index_t k=0; k<ev.rows() ; ++k ) // for all basis funct. values
-    {
-      result.template block<d,1>(k*d,i).noalias() -=  ev(k,i)  * // - N_i W'
-        Wder.col(i);
-      result.template block<d,1>(k*d,i) *= m_weights.at( act(k,i) ) ;
+    for ( index_t i = 0; i!= result.cols(); ++i )// for all parametric points
+    {  
+        // Start weight function computation
+        W = 0.0;
+        dW.setZero();
+        for ( index_t k = 0; k != act.rows(); ++k ) // for all basis functions
+        {
+            const T curw = m_weights.at(act(k,i));
+            W  += curw * ev[0](k,i);
+            dW += curw * ev[1].template block<Dim,1>(k*Dim,i);
+        }
+        // End weight function computation
+
+        result.col(i) = W * ev[1].col(i);  // N_i'W
+
+        for ( index_t k = 0; k != act.rows() ; ++k) // for all basis functions
+        {
+            const index_t kd = k * Dim;
+
+            result.template block<Dim,1>(kd,i).noalias() -=  
+                ev[0](k,i) * dW; // - N_i W'
+                
+            result.template block<Dim,1>(kd,i) *= m_weights.at( act(k,i) ) / W * W;
+        }
     }
-    result.col(i) /= Wval(0,i) * Wval(0,i);
-  }
 }
-
-
-// TODO: is this version faster? try it for Dim=1
-//
-//~ /// For specialized version (e.g. gsBSplineBasis )
-//~ template<class T, template<class T> class source_basis>
-//~ gsMatrix<T> * gsRationalBasis<SrcT>::deriv(const gsMatrix<T> & u ) const
-//~ { 
-//~     gsMatrix<T> * res   = m_src->deriv(u); 
-//~     gsMatrix<T> * ev    = m_src->eval(u); 
-//~     gsMatrix<T> * Wval  = m_src->eval(u,m_weights); 
-//~ 
-//~     // TO DO Should not use this, if we want to avoid infinite loops !!!
-//~     gsMatrix<T> * Wder  = m_src->deriv(u,m_weights); 
-//~     gsMatrix<unsigned> * act   = m_src->active(u);
-//~ 
-//~     for ( index_t i=0; i!= res->cols(); ++i )
-//~     {
-//~         res->col(i)  *= Wval->coeff(0,i) ;
-//~         res->col(i)  -= ev->col(i)  * Wder->at(i) ;
-//~ 
-//~         for ( index_t j=0; j!= res->rows(); ++j )
-//~         {
-//~             (*res)(j,i)  *= m_weights.at( (*act)(j,i) ) ;
-//~             (*res)(j,i)  /= Wval->coeff(0,i) * Wval->at(i);
-//~         }
-//~         
-//~     }
-//~ 
-//~     delete ev;
-//~     delete act;
-//~     delete Wval;
-//~     delete Wder;
-//~     
-//~     return res;
-//~ }
-
 
 template<class SrcT>
 void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {   
-    static const int d = Dim;
+    // Formula:
+    // ( W^2 / w_k) * R_k'' = ( N_k'' W - N_k W'' ) - 2 N_k' W' + 2 N_k (W')^2 / W
+    // ( W^2 / w_k) * d_ud_vR_k = ( d_ud_vN_k W - N_k d_ud_vW ) 
+    //                          - d_uN_k d_vW - d_vN_k d_uW + 2 N_k d_uW d_vW / W
+    
+    static const int str = Dim * (Dim+1) / 2;
 
-    GISMO_ASSERT(d==1,"gsRationalBasis::deriv2_into is currently not working correctly for dim>1.");
-
-    gsMatrix<T> ev, Wval;
-
-    //std::cout<<"TP rational deriv \n";
-    m_src->deriv2_into(u,result); 
-    m_src->eval_into(u, ev); 
-    m_src->evalFunc_into(u, m_weights, Wval); 
-
-    gsMatrix<T> Wder;
-    m_src->derivFunc_into(u, m_weights, Wder); 
     gsMatrix<unsigned> act;
     m_src->active_into(u,act);
 
-    for ( index_t i=0; i!= result.cols(); ++i )
-    {
-        result.col(i).array()  *=  Wval(0,i) ;
+    result.resize( act.rows()*str, u.cols() );
 
-        for ( index_t k=0; k < ev.rows() ; ++k )
+    T W;
+    gsMatrix<T> dW(Dim,1), ddW(str,1);
+    std::vector<gsMatrix<T> > ev(3);
+    m_src->evalAllDers_into(u, 2, ev); 
+
+    for ( index_t i = 0; i!= u.cols(); ++i ) // for all points
+    {
+        // Start weight function computation
+        W = 0.0;
+        dW .setZero();
+        ddW.setZero();
+        for ( index_t k = 0; k != act.rows(); ++k ) // for all basis functions
         {
-	  result.template block<d,1>(k*d,i).array() -=  ev(k,i)  * Wder(0,i) ;// TO DO: correct as deriv -- this is currently not right
-            result.template block<d,1>(k*d,i) *= m_weights( act(k,i), 0) ;
-            result.template block<d,1>(k*d,i) /= Wval(0,i) * Wval(0,i);
+            //to do with lweights
+            const T curw = m_weights.at(act(k,i));
+            W   += curw * ev[0](k,i);
+            dW  += curw * ev[1].template block<Dim,1>(k*Dim,i);
+            ddW += curw * ev[2].template block<str,1>(k*str,i);
+        }
+        // End weight function computation
+
+        result.col(i) = W * ev[2].col(i); // N_k'' W
+
+        for ( index_t k=0; k != act.rows() ; ++k ) // for all basis functions
+        {
+            const index_t kstr = k * str;
+            const index_t kd   = k * Dim;
+
+            result.template block<str,1>(kstr,i) -= 
+                ev[0](k,i) * ddW; // - N_k * W''
+
+            result.template block<Dim,1>(kstr,i) += 
+                // - 2 N_k' W' + 2 N_k (W')^2 / W 
+                ( 2 * ev[0](k,i) / W ) * dW.cwiseProduct(dW)
+                - 2 * ev[1].template block<Dim,1>(kd,i).cwiseProduct(dW);
+
+            int m = Dim;
+            for ( int u=0; u != Dim; ++u ) // for all mixed derivatives
+                for ( int v=u+1; v != Dim; ++v )
+                {
+                    result(kstr + m++, i) += 
+                        - ev[1](kd+u,i) * dW.at(v) // - du N_k * dv W
+                        - ev[1](kd+v,i) * dW.at(u) // - dv N_k * du W
+                        // + 2 * N_k * du W * dv W / W
+                        + 2 * ev[0](k,i) * dW.at(u) * dW.at(v) / W;
+                }
+
+            result.template block<str,1>(kstr,i) *= 
+                m_weights.at( act(k,i) ) / (W*W); // * (w_k / W^2)
         }
     }
 }
