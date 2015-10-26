@@ -262,17 +262,13 @@ public:
 
     void eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const ;
 
-    void evalAllDers_into(const gsMatrix<T> & u, int n, 
-                          std::vector<gsMatrix<T> >& result) const;
+    //void evalAllDers_into(const gsMatrix<T> & u, int n, 
+    //                      std::vector<gsMatrix<T> >& result) const;
     
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
     
     void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
     
-//////////////////////////////////////////////////
-// Additional members for rational bases
-//////////////////////////////////////////////////
-
     /// Returns the source basis of the rational basis
     const SrcT & source () const
     { return *m_src; }
@@ -371,31 +367,22 @@ void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, const gsMatrix<T> &
         result.col(j) /= denom(0,j) ;
 }
     
-    
+
+/* TODO
 template<class SrcT>
 void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
                                              std::vector<gsMatrix<T> >& result) const
 {
-    GISMO_ASSERT(n>-1 &&  n<=2, "gsTensorBasis::evalAllDers() not implemented for n > 2." );
-
     result.resize(n+1);
 
-    if (n == 0)
-    {
-        eval_into(u, result[0]);
-        return;
-    }
-    else if (n > 1)
-    {
-        GISMO_ERROR("gsRationalBasis::evalAllDers_into not implemented for n > 1");
-        return;
-    }
+    gsMatrix<T> src_ev;
 
-    static const int d = Dim;
-
+    m_src->evalAllDers_into(u,n,src_ev);
+    
     // find active basis functions
     gsMatrix<unsigned> act;
     m_src->active_into(u,act);
+
     const int numAct = act.rows();
 
     // initialize result matrix with values and derivatives of source
@@ -418,10 +405,10 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
       
         for (index_t k = 0; k < numAct; ++k)
         {
-            der.template block<d,1>(k*d,i).noalias() -=  
+            der.template block<Dim,1>(k*Dim,i).noalias() -=  
                 ev(k,i) * Wder.col(i);
             
-            der.template block<d,1>(k*d,i) *=
+            der.template block<Dim,1>(k*Dim,i) *=
                 m_weights( act(k,i), 0 ) / (Wval_i*Wval_i);
         }
         
@@ -432,7 +419,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
             ev(k,i) *= m_weights( act(k,i), 0 ) ;
     }
 }
-    
+*/
 
 template<class SrcT>
 void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u, 
@@ -473,8 +460,8 @@ void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,
 
             result.template block<Dim,1>(kd,i).noalias() -=  
                 ev[0](k,i) * dW; // - N_i W'
-                
-            result.template block<Dim,1>(kd,i) *= m_weights.at( act(k,i) ) / W * W;
+            
+            result.template block<Dim,1>(kd,i) *= m_weights.at( act(k,i) ) / (W * W);
         }
     }
 }
