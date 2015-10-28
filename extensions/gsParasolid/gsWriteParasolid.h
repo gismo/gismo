@@ -50,7 +50,8 @@ namespace extensions {
     /// \param[in] bsp B-spline surface
     /// \param[out] bsurf Parasolid spline surface
     template<class T, class KnotVectorType> 
-    bool createPK_BSURF( const gsTensorBSpline< 2, T, KnotVectorType > & bsp, PK_BSURF_t & bsurf );
+    bool createPK_BSURF( const gsTensorBSpline< 2, T, KnotVectorType > & bsp, PK_BSURF_t & bsurf,
+			 bool closed_u = false, bool closed_v = false );
 
     /// Translates a gsBSpline to a PK_BCURVE_t
     /// \param[in] curve B-Spline surve

@@ -229,7 +229,7 @@ bool gsWriteParasolid(const gsTHBSpline<2, T>& thb, const std::string& filename)
 
 template<class T> 
 bool createPK_GEOM( const gsGeometry<T> & ggeo, 
-             PK_GEOM_t & pgeo)
+		    PK_GEOM_t & pgeo)
 {
     // Identify input gismo geometry
     if ( const gsTensorBSpline<2,T> * tbsp = 
@@ -254,7 +254,9 @@ bool createPK_GEOM( const gsGeometry<T> & ggeo,
 
 template<class T, class KnotVectorType> 
 bool createPK_BSURF(const gsTensorBSpline< 2, T, KnotVectorType > & bsp, 
-		    PK_BSURF_t & bsurf)
+		    PK_BSURF_t & bsurf,
+		    bool closed_u,
+		    bool closed_v)
 {
     for (index_t dim = 0; dim != 2; dim++)
     {
@@ -311,8 +313,19 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T, KnotVectorType > & bsp,
     sform.v_knot_type   = PK_knot_unset_c;
     sform.is_u_periodic = PK_LOGICAL_false;
     sform.is_v_periodic = PK_LOGICAL_false;
-    sform.is_u_closed   = PK_LOGICAL_false;
+    sform.is_u_closed   = PK_LOGICAL_false;    
     sform.is_v_closed   = PK_LOGICAL_false;
+
+    if (closed_u)
+    {
+	sform.is_u_closed = PK_LOGICAL_true;
+    }
+    
+    if (closed_v)
+    {
+	sform.is_v_closed = PK_LOGICAL_true;
+    }
+
     sform.self_intersecting = PK_self_intersect_unset_c;
     sform.convexity         = PK_convexity_unset_c;
 
