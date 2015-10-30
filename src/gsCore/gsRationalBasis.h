@@ -518,14 +518,14 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
                 - 2 * ev[1].template block<Dim,1>(kd,i).cwiseProduct(dW);
 
             int m = Dim;
-            for ( int u=0; u != Dim; ++u ) // for all mixed derivatives
-                for ( int v=u+1; v != Dim; ++v )
+            for ( int _u=0; _u != Dim; ++_u ) // for all mixed derivatives
+                for ( int _v=_u+1; _v != Dim; ++_v )
                 {
                     result(kstr + m++, i) += 
-                        - ev[1](kd+u,i) * dW.at(v) // - du N_k * dv W
-                        - ev[1](kd+v,i) * dW.at(u) // - dv N_k * du W
+                        - ev[1](kd+_u,i) * dW.at(_v) // - du N_k * dv W
+                        - ev[1](kd+_v,i) * dW.at(_u) // - dv N_k * du W
                         // + 2 * N_k * du W * dv W / W
-                        + 2 * ev[0](k,i) * dW.at(u) * dW.at(v) / W;
+                        + 2 * ev[0](k,i) * dW.at(_u) * dW.at(_v) / W;
                 }
 
             result.template block<str,1>(kstr,i) *= 

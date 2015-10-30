@@ -84,6 +84,8 @@ public:
         return range;
     }
 
+    inline gsMatrix<T> support() const { return parameterRange();}
+
 private:
 
     /// \brief This function takes a point matrix u and adds the row of the
