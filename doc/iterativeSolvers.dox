@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page iterativeSolvers iterativeSolvers.cpp
+
+
+<!-- more info on the file examples/iterativeSolvers.cpp go here -->
+
+
+\section iterativeSolversAnnotated Annotated source file
+
+Here is the full file \c examples/iterativeSolvers.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include iterativeSolvers.cpp
+
+*/
+
+}

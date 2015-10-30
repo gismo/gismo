@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page poisson2d_example_adaptRef poisson2d_example_adaptRef.cpp
+
+
+<!-- more info on the file examples/poisson2d_example_adaptRef.cpp go here -->
+
+
+\section poisson2d_example_adaptRefAnnotated Annotated source file
+
+Here is the full file \c examples/poisson2d_example_adaptRef.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include poisson2d_example_adaptRef.cpp
+
+*/
+
+}
