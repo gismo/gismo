@@ -264,14 +264,93 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
     gsWriteParaview(msh, fn, false);
 }
 
+template<class T>
+void writeSinglePatchField(const gsFunction<T> & geometry,
+                           const gsFunction<T> & parField,
+                           std::string const & fn, unsigned npts)
+{
+    const int n = geometry.targetDim();
+    const int d = geometry.domainDim();
+
+    gsMatrix<T> ab = geometry.support();
+    gsVector<T> a = ab.col(0);
+    gsVector<T> b = ab.col(1);
+
+    gsVector<unsigned> np = uniformSampleCount(a, b, npts);
+    gsMatrix<T> pts = gsPointGrid(a, b, np);
+
+    gsMatrix<T> eval_geo = geometry.eval(pts);//pts
+
+    if ( 3 - d > 0 )
+    {
+        np.conservativeResize(3);
+        np.bottomRows(3-d).setOnes();
+    }
+    else if (d > 3)
+    {
+        gsWarn<< "Cannot plot 4D data.\n";
+        return;
+    }
+
+    if ( 3 - n > 0 )
+    {
+        eval_geo.conservativeResize(3,eval_geo.cols() );
+        eval_geo.bottomRows(3-n).setZero();
+    }
+    else if (n > 3)
+    {
+        eval_geo = eval_geo.topRows(3);
+        gsWarn<< "Projecting 4D data.\n";
+    }
+
+    gsMatrix<T>  eval_field = parField.eval(pts);//values
+    //GISMO_ASSERT( eval_field.rows() == field.dim(), "Error in field dimension");
+    if ( eval_field.rows() > 1 )
+    {
+        eval_field.conservativeResize(3,eval_geo.cols() );
+        eval_field.bottomRows( 3-d ).setZero();
+    }
+    
+    std::string mfn(fn);
+    mfn.append(".vts");
+    std::ofstream file(mfn.c_str());
+    file << std::fixed; // no exponents
+    file << std::setprecision (PLOT_PRECISION);
+
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
+    file <<"<StructuredGrid WholeExtent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
+    file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
+    file <<"<PointData "<< ( eval_field.rows()==1 ?"Scalars":"Vectors")<<"=\"SolutionField\">\n";
+    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< eval_field.rows() <<"\">\n";
+    for ( index_t j=0; j<eval_field.cols(); ++j)
+        for ( index_t i=0; i<eval_field.rows(); ++i)
+            file<< eval_field(i,j) <<" ";
+    file <<"</DataArray>\n";
+    file <<"</PointData>\n";
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<eval_geo.rows()<<"\">\n";
+    for ( index_t j=0; j<eval_geo.cols(); ++j)
+        for ( index_t i=0; i<eval_geo.rows(); ++i)
+            file<< eval_geo(i,j) <<" ";
+    file <<"</DataArray>\n";
+    file <<"</Points>\n";
+    file <<"</Piece>\n";
+    file <<"</StructuredGrid>\n";
+    file <<"</VTKFile>\n";
+
+    file.close();
+}
 
 /// Write a file containing a solution field over a single geometry
 template<class T>
 void writeSinglePatchField(const gsField<T> & field, int patchNr, 
                            std::string const & fn, unsigned npts)
 {
-    unsigned n = field.geoDim();
-    unsigned d = field.parDim();
+    writeSinglePatchField(field.patch(patchNr), field.function(patchNr), fn, npts);
+/*
+    const int n = field.geoDim();
+    const int d = field.parDim();
 
     gsMatrix<T> ab = field.patches().parameterRange(patchNr);
     gsVector<T> a = ab.col(0);
@@ -287,11 +366,21 @@ void writeSinglePatchField(const gsField<T> & field, int patchNr,
         np.conservativeResize(3);
         np.bottomRows(3-d).setOnes();
     }
+    else if (d > 3)
+    {
+        gsWarn<< "Cannot plot 4D data.\n";
+        return;
+    }
 
     if ( 3 - n > 0 )
     {
         eval_geo.conservativeResize(3,eval_geo.cols() );
         eval_geo.bottomRows(3-n).setZero();
+    }
+    else if (d > 3)
+    {
+        gsWarn<< "Cannot plot 4D data.\n";
+        return;
     }
 
     gsMatrix<T>  eval_field = field.value ( pts, patchNr );//values
@@ -331,7 +420,7 @@ void writeSinglePatchField(const gsField<T> & field, int patchNr,
     file <<"</VTKFile>\n";
 
     file.close();
-
+*/
 }
 
 /// Export a geometry represented by \a func

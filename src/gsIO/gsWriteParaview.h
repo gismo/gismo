@@ -253,6 +253,11 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
                                  const std::string fn,
                                  unsigned npts = NS);
 
+// function to plot a field on a single patch
+template<class T>
+void writeSinglePatchField(const gsFunction<T> & geometry,
+                           const gsFunction<T> & parField,
+                           std::string const & fn, unsigned npts);
 
 // Please document
 template <class T>

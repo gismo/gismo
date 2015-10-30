@@ -84,6 +84,12 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
                                  const std::string fn,
                                  unsigned npts);
 
+TEMPLATE_INST
+void writeSinglePatchField(const gsFunction<T> & geometry,
+                           const gsFunction<T> & parField,
+                           std::string const & fn, unsigned npts);
+
+
 } // namespace gismo
 
 #undef T
