@@ -323,6 +323,14 @@ void gsCompactKnotVector<T>::degreeIncrease(int const & i)
 }
 
 template <class T>
+void gsCompactKnotVector<T>::degreeDecrease(int const & i)
+{
+    m_p -= i;
+    increaseMultFirst(i);
+    increaseMultLast (i);
+}
+
+template <class T>
 bool gsCompactKnotVector<T>::contains(gsCompactKnotVector<T> & other)
 {
     GISMO_NO_IMPLEMENTATION
@@ -338,6 +346,14 @@ void gsCompactKnotVector<T>::remove(T const& knot)
     //to do: update mults tail
     m_knots.erase(itr);
 */
+}
+
+template <class T>
+void gsKnotVector<T>::trim(int i)
+{
+    std::transform(m_mult_sum.begin(), m_mult_sum.end(), m_mult_sum.begin(),
+                   std::bind2nd(std::minus<unsigned>(), i) );
+    m_mult_sum.back() -= i;
 }
 
 template <class T>

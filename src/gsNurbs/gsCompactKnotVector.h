@@ -488,16 +488,15 @@ public:
         m_p -= i;
     }
 
-    /// Reduce the degree keeping interior knots intact
-    void degreeDecrease(int const & i = 1);
-    
     /// \brief Returns true if the knot vector contains all knots of
     /// \a other, taking into account multiplicities
     bool contains(gsCompactKnotVector<T> & other);
 
-
     /// Increase the degree keeping interior knots intact (add clamped knots only)
     void degreeIncrease(int const & i = 1);
+
+    /// Decrease the degree keeping interior knots intact (add clamped knots only)
+    void degreeDecrease(int const & i = 1);
     
     /// Remove a knot from the knot vector.
     /// \param knot parameter value of the knot.
@@ -583,6 +582,9 @@ public:
             m_mult_sum.erase(m);
         }
     }
+
+    /// Trim the knot vector from left and right by \a i knots
+    void trim(int i = 1);
 
     /// Increase the multiplicity of the first knot by \a i.
     void increaseMultFirst(int i = 1)
