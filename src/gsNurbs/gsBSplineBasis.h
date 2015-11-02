@@ -438,21 +438,28 @@ public:
         m_p+=i; m_knots.degreeElevate(i); 
     }
 
-    /// Elevate the degree of the basis and preserve the knot multiplicity
+    // Look at gsBasis for documentation
+    void degreeReduce (int const & i = 1) 
+    { 
+        GISMO_ASSERT( i<=m_p, "Cannot reduce degree to negative");
+        m_p-=i; m_knots.degreeReduce(i);
+        //m_periodic =
+    }
+
+    void setDegree(int const & i);
+
+    // Look at gsBasis for documentation
     void degreeIncrease(int const & i = 1, int const dir = -1)
     {
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         m_p+=i; m_knots.degreeIncrease(i);
     }
 
-    void setDegree(int const & i);
-
-    /// Reduce the degree of the basis and preserve the smoothness
-    void degreeReduce (int const & i = 1) 
-    { 
-        GISMO_ASSERT( i<=m_p, "Cannot reduce degree to negative");
-        m_p-=i; m_knots.degreeReduce(i);
-        //m_periodic =
+    // Look at gsBasis for documentation
+    void degreeDecrease(int const & i = 1, int const dir = -1)
+    {
+        GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
+        m_p-=i; m_knots.degreeDecrease(i);
     }
 
     /// Reduces spline continuity at interior knots by \a i

@@ -776,13 +776,17 @@ public:
     /// @brief Elevate the degree of the basis by the given amount, preserve smoothness.
     virtual void degreeElevate(int const & i = 1, int const dir = -1);
 
-    /// @brief Elevate the degree of the basis by the given amount, preserve knots multiplicity.
-    virtual void degreeIncrease(int const & i = 1, int const dir = -1);
-
     /// @brief Reduce the degree of the basis by the given amount.
     virtual void degreeReduce(int const & i = 1);
 
-    /// @brief Set the degree of the basis.
+    /// @brief Elevate the degree of the basis by the given amount, preserve knots multiplicity.
+    virtual void degreeIncrease(int const & i = 1, int const dir = -1);
+
+    /// @brief Lower the degree of the basis by the given amount, preserving knots multiplicity.
+    virtual void degreeDecrease(int const & i = 1, int const dir = -1); 
+
+    /// @brief Set the degree of the basis (either elevate or
+    /// reduce)e in order to have degree equal to \a i
     virtual void setDegree(int const& i);
 
     /// @brief Reduces the continuity of the basis along element boundaries
