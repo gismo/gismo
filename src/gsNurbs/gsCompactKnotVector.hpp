@@ -349,7 +349,7 @@ void gsCompactKnotVector<T>::remove(T const& knot)
 }
 
 template <class T>
-void gsKnotVector<T>::trim(int i)
+void gsCompactKnotVector<T>::trim(int i)
 {
     std::transform(m_mult_sum.begin(), m_mult_sum.end(), m_mult_sum.begin(),
                    std::bind2nd(std::minus<unsigned>(), i) );
