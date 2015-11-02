@@ -269,6 +269,30 @@ void gsTensorBSpline<d,T,KnotVectorType>::degreeElevate(int const i, int const d
     swapTensorDirection(0, dir, sz, this->m_coefs);
 }
 
+template<unsigned d, class T, class KnotVectorType>
+void gsTensorBSpline<d,T,KnotVectorType>::insertKnot( T knot, int dir, int i)
+{
+    GISMO_ASSERT( i>0, "multiplicity must be at least 1");
+
+
+    GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
+                  "Invalid basis component "<< dir <<" requested for degree elevation" );
+
+    const index_t n = this->m_coefs.cols();
+
+    gsVector<index_t,d> sz;
+    this->basis().size_cwise(sz);
+
+    swapTensorDirection(0, dir, sz, this->m_coefs);
+    this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+
+    gsBoehm( this->basis().component(dir).knots(), this->coefs() , knot, i);
+    sz[0] = this->m_coefs.rows();
+
+    this->m_coefs.resize( sz.prod(), n );
+    swapTensorDirection(0, dir, sz, this->m_coefs);
+}
+
 
 template<unsigned d, class T, class KnotVectorType>
 void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fixed,T par,const gsTensorBSpline<d,T,KnotVectorType>& geo,gsMatrix<T>& result) const
