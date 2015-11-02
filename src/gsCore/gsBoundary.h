@@ -441,9 +441,9 @@ public:
         directionMap.resize(2);
         directionOrientation.resize(2);
         directionMap(ps1.direction())=ps2.direction();
-        directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
         directionMap(1-ps1.direction())=1-ps2.direction();
-        directionMap(1-ps1.direction())=o1;
+        directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
+        directionOrientation(1-ps1.direction())=o1;
     }
 
 
