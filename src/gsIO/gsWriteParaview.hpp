@@ -299,8 +299,7 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
     }
     else if (n > 3)
     {
-        eval_geo = eval_geo.topRows(3);
-        gsWarn<< "Projecting 4D data.\n";
+        gsWarn<< "Data is more than 3 dimensions.\n";
     }
 
     gsMatrix<T>  eval_field = parField.eval(pts);//values
@@ -329,9 +328,9 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
     file <<"</DataArray>\n";
     file <<"</PointData>\n";
     file <<"<Points>\n";
-    file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<eval_geo.rows()<<"\">\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\">\n";
     for ( index_t j=0; j<eval_geo.cols(); ++j)
-        for ( index_t i=0; i<eval_geo.rows(); ++i)
+        for ( index_t i=0; i<3; ++i)
             file<< eval_geo(i,j) <<" ";
     file <<"</DataArray>\n";
     file <<"</Points>\n";

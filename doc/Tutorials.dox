@@ -3,9 +3,9 @@ namespace gismo {
 /**
 \page Tutorials Tutorials
 
-- \subpage GettingStarted
+- \subpage GettingStartedGismo
 
-Check out the <a href="examples.html"><b>examples</b></a> page and the 
+Check out the \ref Examples page and the 
 <a href="usergroup0.html"><b>\gismo modules</b></a> page as well.
 
 */

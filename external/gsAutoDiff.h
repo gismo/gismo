@@ -110,8 +110,7 @@ public:
         value = _value;
         assert( d == -1 || d == numVars );
         assert( index < numVars && "Index must be less than the number of variables");
-        grad.resize(numVars);
-        grad.setZero();
+        grad.setZero(numVars);
         grad(index) = 1;
     }
 
@@ -534,11 +533,9 @@ public:
         value = _value;
         assert( d == -1 || d == static_cast<int>(numVars) );
         assert( index < numVars && "Index must be less than the number of variables");
-        grad.resize(numVars);
-        grad.setZero();
+        grad.setZero(numVars);
         grad(index) = 1;
-        hess.resize(numVars,numVars);
-        hess.setZero();
+        hess.setZero(numVars,numVars);
     }
 
     template<int _Rows, int _Cols>
