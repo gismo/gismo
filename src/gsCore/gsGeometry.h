@@ -476,14 +476,6 @@ protected:
 
 }; // class gsGeometry
 
-/** \example tutorialGeometry.cpp
- * This is an example of how to use the gsGeometry interface.
- */
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
-
 /// Print (as string) operator to be used by all derived classes
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsGeometry<T>& b)

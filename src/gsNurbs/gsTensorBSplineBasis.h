@@ -97,6 +97,13 @@ public:
     : Base( new Basis_t(KV1), new Basis_t(KV2), new Basis_t(KV3) )
     { m_isPeriodic = -1; }
 
+    gsTensorBSplineBasis( const KnotVectorType& KV1, 
+                          const KnotVectorType& KV2, 
+                          const KnotVectorType& KV3,
+                          const KnotVectorType& KV4)
+    : Base( new Basis_t(KV1), new Basis_t(KV2), new Basis_t(KV3), new Basis_t(KV4) )
+    { m_isPeriodic = -1; }
+
     gsTensorBSplineBasis(const std::vector<KnotVectorType> & KV)
     { 
         GISMO_ENSURE(d == KV.size(), "Invalid number of knot-vectors given." );
@@ -514,7 +521,7 @@ protected:
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
 // /*
-#elseif __cplusplus > 199711L
+#elif __cplusplus > 199711L
 namespace gismo 
 {
 extern template class gsTensorBSplineBasis<2,real_t,gsKnotVector<real_t> >;

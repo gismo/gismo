@@ -58,14 +58,14 @@ public:
     }
 
     /// Create from a vector of patches
-    explicit gsMultiPatch( const std::vector<gsGeometry<T> *>& patches );
+    explicit gsMultiPatch( PatchContainer & patches );
 
     /// Create a single-patch instance
-    explicit gsMultiPatch( const gsGeometry<T> & geo );
+    gsMultiPatch( const gsGeometry<T> & geo );
 
     /// Create from patches and boundary/interface information
-    gsMultiPatch( const PatchContainer& patches,
-            const std::vector<patchSide>& boundary,
+    gsMultiPatch( PatchContainer & patches,
+                  const std::vector<patchSide>& boundary,
                   const std::vector<boundaryInterface>& interfaces );
 
     /// Destructor

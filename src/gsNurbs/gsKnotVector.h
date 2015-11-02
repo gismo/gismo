@@ -244,13 +244,15 @@ public:
     std::vector<T> breaks() const;
 
     /// Find the index of the span in which value \a u lies.
-    /// \returns the largest knot-index \c i such that \c knot[i] <= \a u and \c knot[i] < L
-    /// where \c L is the maximum of the knots.
+    /// \return the largest knot-index \c i such that \c knot[i] <=
+    /// \a u and \c knot[i] < L where \c L is the end of the domain,
+    /// i.e. L = knot[size()-m_p-1]
     unsigned findspan (T u) const;
 
     /// Find the position of the span in which value \a u lies.
-    /// \returns an iterator to the largest knot \c k such that \c k <= \a u and \c knot[i] < L
-    /// where \c L is the maximum of the knots.
+    /// \return an iterator to the largest knot \c k such that \c k
+    /// <= \a u and \c knot[i] < L where \c L is the end of the domain
+    /// i.e. L = knot[size()-m_p-1]
     const_iterator findspanIter (T u) const ;
   
     gsMatrix<unsigned,1> * findspan (const gsMatrix<T,1> & u) const;

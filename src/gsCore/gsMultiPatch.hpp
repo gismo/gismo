@@ -44,20 +44,22 @@ gsMultiPatch<T>::gsMultiPatch( const gsMultiPatch& other )
 }
 
 template<class T>
-gsMultiPatch<T>::gsMultiPatch( const std::vector<gsGeometry<T> *>& patches )
-    : gsBoxTopology( patches[0]->parDim(), patches.size() ) , m_patches( patches )
+gsMultiPatch<T>::gsMultiPatch(PatchContainer & patches )
+    : gsBoxTopology( patches[0]->parDim(), patches.size() )
 {
+    m_patches.swap(patches); // patches are consumed
     setIds();
     this->addAutoBoundaries();
 }
 
 template<class T>
-gsMultiPatch<T>::gsMultiPatch( const PatchContainer& patches,
+gsMultiPatch<T>::gsMultiPatch( PatchContainer& patches,
                                const std::vector<patchSide>& boundary,
                                const std::vector<boundaryInterface>& interfaces )
     : gsBoxTopology( patches[0]->parDim(), patches.size(), boundary, interfaces ),
       m_patches( patches )
 { 
+    m_patches.swap(patches); // patches are consumed
     setIds();
 }
 

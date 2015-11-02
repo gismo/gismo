@@ -18,8 +18,20 @@
 //#include <algorithm>			// For lower_bound
 
 
-namespace gismo {
+namespace std
+{
 
+template<typename T1, typename T2>
+std::ostream& operator << ( std::ostream& os, 
+    			const std::pair<T1,T2>& rhs )
+{
+    os << rhs.first << ", " << rhs.second;
+    return os;
+}
+
+}//namespace std
+
+namespace gismo {
 
 /** \brief This class is derived from std::vector, and adds sort tracking.
 
@@ -397,5 +409,5 @@ protected:
 };
 
 
-}; //namespace gismo
+} //namespace gismo
 

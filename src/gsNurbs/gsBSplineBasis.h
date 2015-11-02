@@ -729,7 +729,7 @@ private:
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
-#elseif __cplusplus > 199711L
+#elif __cplusplus > 199711L
 //#include <gsNurbs/gsBSplineBasis.tpl>
 namespace gismo 
 {

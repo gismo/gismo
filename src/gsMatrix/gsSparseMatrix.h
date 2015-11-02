@@ -154,6 +154,14 @@ public:
         this->data().squeeze();
     }
 
+    std::pair<index_t,index_t> dim() const 
+    { return std::make_pair(this->rows(), this->cols() ); }
+
+    void reservePerColumn(const index_t nz)
+    {
+        this->reserve(gsVector<index_t>::Constant(this->cols(), nz));   
+    }
+
     void setFrom( gsSparseEntries<T> const & entries) ;
 
     inline T   at (_Index i, _Index j = 0) const { return this->coeff(i,j); }

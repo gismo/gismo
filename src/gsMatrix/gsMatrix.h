@@ -115,7 +115,9 @@ public:
 public:
 
     gsMatrix() ;
+
     gsMatrix(const Base& a) ;
+
     gsMatrix(int rows, int cols) ;
 
     /// This constructor allows constructing a gsMatrix from Eigen expressions
@@ -176,6 +178,9 @@ public:
         return *this;
     }
 
+    std::pair<index_t,index_t> dim() const 
+    { return std::make_pair(this->rows(), this->cols() ); }
+
     /// \brief Returns the \a i-th element of the vectorization of the matrix
     T   at (index_t i) const { return *(this->data()+i);}
 
@@ -215,15 +220,39 @@ public:
     gsAsConstMatrix<T, 1, Dynamic> asRowVector() const
     { return gsAsConstMatrix<T, 1, Dynamic>(this->data(), 1, this->rows()*this->cols() ); }
 
-    /// Get a submatrix consisting of the columns indexed by the vector cols
-    gsMatrix<T,_Rows,Dynamic> * submatrixCol( std::vector<index_t> & cols ) const
+    /// Returns a submatrix consisting of the columns indexed by the vector \a colInd
+    void submatrixCols(const gsMatrix<unsigned> & colInd, gsMatrix<T> & result) const
     {
-        const index_t cc= cols.size();
-        gsMatrix<T,_Rows,Dynamic> res = new gsMatrix<T,_Rows,Dynamic>(_Rows, cc);
-        for ( index_t i = 0; i!= cc; ++i )
-            res->col(i) = this->col(i);
+        GISMO_ASSERT(colInd.cols() == 1, "Invalid column index vector");
+        const index_t nc = colInd.rows();
+        result.resize(this->rows(), nc );
+        for ( index_t i = 0; i!= nc; ++i )
+            result.col(i) = this->col( colInd.at(i) );
+    }
 
-        return res;
+    /// Returns a submatrix consisting of the rows indexed by the vector \a rowInd
+    void submatrixRows(const gsMatrix<unsigned> & rowInd, gsMatrix<T> & result) const
+    {
+        GISMO_ASSERT(rowInd.cols() == 1, "Invalid row index vector");
+        const index_t nr = rowInd.rows();
+        result.resize(this->rows(), nr );
+        for ( index_t i = 0; i!= nr; ++i )
+            result.row(i) = this->row( rowInd.at(i) );
+    }
+
+    /// Returns a submatrix consisting of the rows and columns indexed
+    /// by the vectors \a rowInd and \a colInd respectively
+    void submatrix(const gsMatrix<unsigned> & rowInd, 
+                   const gsMatrix<unsigned> & colInd, 
+                   gsMatrix<T> & result) const
+    {
+        GISMO_ASSERT(rowInd.cols() == 1 && colInd.cols() == 1, "Invalid index vector");
+        const index_t nr = rowInd.rows();
+        const index_t nc = colInd.rows();
+        result.resize(nr, nc );
+        for ( index_t i = 0; i!= nr; ++i )
+            for ( index_t j = 0; j!= nc; ++j )
+                result(i,j) = this->coeff(rowInd.at(i), colInd.at(j) );
     }
 
     /// Removes column \a i from the matrix. After the operation the

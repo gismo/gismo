@@ -413,6 +413,7 @@ public:
 
     /// Returns the dimension \em d of the parameter space.
     virtual int dim() const = 0;
+    int domainDim() const {return dim();}
 
     /**
      * @brief
