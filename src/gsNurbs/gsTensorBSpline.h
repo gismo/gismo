@@ -254,8 +254,7 @@ public:
     // Look at gsGeometry class for a description
     void degreeElevate(int const i = 1, int const dir = -1);
 
-    void degreeIncrease(int const i = 1, int const dir = -1);
-
+    /// Inserts knot \a knot at direction \a dir, \a i times
     void insertKnot( T knot, int dir, int i = 1);
 
     /// Returns a reference to the knot vector in direction \a i
