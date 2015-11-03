@@ -326,8 +326,7 @@ template <class T>
 void gsCompactKnotVector<T>::degreeDecrease(int const & i)
 {
     m_p -= i;
-    increaseMultFirst(i);
-    increaseMultLast (i);
+    trim(i);
 }
 
 template <class T>
