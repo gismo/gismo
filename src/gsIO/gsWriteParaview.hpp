@@ -267,6 +267,7 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
 template<class T>
 void writeSinglePatchField(const gsFunction<T> & geometry,
                            const gsFunction<T> & parField,
+                           const bool isParam,
                            std::string const & fn, unsigned npts)
 {
     const int n = geometry.targetDim();
@@ -280,6 +281,7 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
     gsMatrix<T> pts = gsPointGrid(a, b, np);
 
     gsMatrix<T> eval_geo = geometry.eval(pts);//pts
+    gsMatrix<T>  eval_field = isParam ? parField.eval(pts) : parField.eval(eval_geo);
 
     if ( 3 - d > 0 )
     {
@@ -302,7 +304,6 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
         gsWarn<< "Data is more than 3 dimensions.\n";
     }
 
-    gsMatrix<T>  eval_field = parField.eval(pts);//values
     //GISMO_ASSERT( eval_field.rows() == field.dim(), "Error in field dimension");
     if ( eval_field.rows() > 1 )
     {
@@ -346,7 +347,7 @@ template<class T>
 void writeSinglePatchField(const gsField<T> & field, int patchNr, 
                            std::string const & fn, unsigned npts)
 {
-    writeSinglePatchField(field.patch(patchNr), field.function(patchNr), fn, npts);
+    writeSinglePatchField(field.patch(patchNr), field.function(patchNr), field.isParametrized(), fn, npts);
 /*
     const int n = field.geoDim();
     const int d = field.parDim();

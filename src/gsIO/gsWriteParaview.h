@@ -257,6 +257,7 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
 template<class T>
 void writeSinglePatchField(const gsFunction<T> & geometry,
                            const gsFunction<T> & parField,
+                           const bool isParam,
                            std::string const & fn, unsigned npts);
 
 // Please document
