@@ -15,7 +15,6 @@
 #pragma once
 
 #include<gsCore/gsLinearAlgebra.h> 
-#include<gsCore/gsBoundary.h> // need patchSide
 
 /**
    @brief Contains information for the functions in a gsFunctionSet.
@@ -271,8 +270,8 @@ public:
      * @brief Main constructor
      * @param flags what to compute
      */
-    explicit gsMapData(unsigned _flags = 0, patchSide _side=patchSide(0,0))
-    : Base(_flags), side(_side)
+    explicit gsMapData(unsigned _flags = 0)
+    : Base(_flags)
     { }
 
 public:
@@ -282,10 +281,9 @@ public:
     gsMatrix<T> points; ///< input (parametric) points
 
     gsMatrix<T> measures;
-    gsMatrix<T> gradTransforms;
+    gsMatrix<T> fundForms; // First fundumental forms
     gsMatrix<T> normals;
 
-    patchSide   side;
 public:
     inline constColumn point(const index_t point) const { return points.col(point);}
 
@@ -296,11 +294,11 @@ public:
         return measures.col(point);
     }
 
-    inline matrixView gradTransform(const index_t point) const
+    inline matrixView fundForm(const index_t point) const
     {
         GISMO_ASSERT(flags & NEED_GRAD_TRANSFORM,
-                   "gradTransforms are not computed unless the NEED_GRAD_TRANSFORM flag is set.");
-        return gradTransforms.reshapeCol(point, info.targetDim, info.domainDim);
+                   "fundForms are not computed unless the NEED_GRAD_TRANSFORM flag is set.");
+        return fundForms.reshapeCol(point, info.targetDim, info.domainDim);
     }
 
     inline constColumn normal(const index_t point) const
