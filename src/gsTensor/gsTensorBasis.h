@@ -387,8 +387,10 @@ public:
     int size(int k) const { return m_bases[k]->size(); }
 
     /// The number of basis functions in the direction of the k-th parameter component
-    void size_cwise(gsVector<index_t,d> & result) const
-    { 
+    template<index_t s>
+    void size_cwise(gsVector<index_t,s> & result) const
+    {
+        result.resize(d);
         for ( unsigned k = 0; k!=d; ++k )
             result[k] = m_bases[k]->size(); 
     }
