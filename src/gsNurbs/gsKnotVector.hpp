@@ -596,7 +596,7 @@ template <class T>
 typename gsKnotVector<T>::const_iterator 
 gsKnotVector<T>::findspanIter (T u) const
 {
-    GISMO_ASSERT( ( u >= my->knots[my->p]) && ( u  <= *(my->knots.end()-my->p) ), 
+    GISMO_ASSERT( ( u >= my->knots[my->p]) && ( u  <= *(my->knots.end()-my->p-1) ),
                   "The requested abscissae u="<<u<<" is not in the knot vector." );
     /// \todo: reduce calls to findspan
 

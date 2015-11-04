@@ -131,7 +131,7 @@ template <class T>
 typename gsCompactKnotVector<T>::const_iterator
 gsCompactKnotVector<T>::findspanIter (T u) const
 {
-    GISMO_ERROR("not implemented");
+    return gsCompactKnotVector<T>::const_iterator(*this,static_cast<size_t>(findElementIndex(u)));
 }
 
 // to do:

@@ -62,7 +62,14 @@ public:
 	  index ( (start ? 0           : c.size() ) ),
       span  ( (start ? 0           : c.uSize()-1) ),
       multEnd ( c.mend() ){ }
-    
+
+    gsCompactKnotVectorIter( containertype & c , size_t pos)
+    : val   ( c.ubegin()+pos ),
+      mult  ( c.mbegin()+pos ),
+      index ( *mult-1 ),
+      span  ( pos ),
+      multEnd ( c.mend() ){ }
+
     gsCompactKnotVectorIter(const gsCompactKnotVectorIter<T, false>& it) 
     : val(it.val), mult(it.mult), index(it.index), span(it.span), multEnd(it.multEnd) { }
     

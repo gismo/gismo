@@ -215,9 +215,9 @@ gsMatrix<T> gsTensorBSplineBasis<1,T,KnotVectorType>::support(const unsigned & i
     GISMO_ASSERT( i < static_cast<unsigned>(m_knots.size()-m_p-1),
                   "Invalid index of basis function." );
     gsMatrix<T> res(1,2);
-    res << ( i > static_cast<unsigned>(m_p) ? m_knots[i] : m_knots[m_p] ), 
-      ( i < static_cast<unsigned>(m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] : 
-	m_knots[m_knots.size()-m_p-1] );
+    res << ( i > static_cast<unsigned>(m_p) ? m_knots[i] : m_knots[m_p] ),
+      ( i < static_cast<unsigned>(m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
+    m_knots[m_knots.size()-m_p-1] );
     return res ;
 }
 
@@ -957,14 +957,18 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
       }
 
     // Run evaluation algorithm and keep the function values triangle & the knot differences
-    unsigned span = m_knots.findspan( u(0,v) ) ;
+    typename KnotVectorType::const_iterator span=m_knots.findspanIter( u(0,v) );
+//    unsigned span = m_knots.findspan( u(0,v) ) ;
     
     ndu[0] = T(1) ; // 0-th degree function value
     for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
     {
       // Compute knot splits
-      left[j]  = u(0,v) - m_knots[span+1-j];
-      right[j] = m_knots[span+j] - u(0,v);
+//      left[j]  = u(0,v) - m_knots[span+1-j];
+//      right[j] = m_knots[span+j] - u(0,v);
+      left[j] = u(0,v) - *(span+1-j);
+      right[j] = *(span+j) - u(0,v);
+
       T saved = T(0) ;
 
       for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)

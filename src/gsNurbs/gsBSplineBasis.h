@@ -300,13 +300,13 @@ public:
 
     /// True iff the point \a pp is in the domain of the basis
     inline bool inDomain(T const & pp) const 
-    { return ( (pp >= m_knots[m_p]) &&  (pp <= *(m_knots.end()-m_p-1) ) ); }
+    { return ( (pp >= *(m_knots.begin()+m_p)) &&  (pp <= *(m_knots.end()-m_p-1) ) ); }
 
     /// Returns the starting value of the domain of the basis
-    T domainStart() const { return m_knots[m_p]; }
+    T domainStart() const { return *(m_knots.begin()+m_p); }
 
     /// Returns the ending value of the domain of the basis
-    T domainEnd() const { return m_knots[m_knots.size()-m_p-1]; }
+    T domainEnd() const { return *(m_knots.end()-m_p-1); }
 
     /// Returns length of the ``active" part of the knot vector.
     T _activeLength() const { return domainEnd() - domainStart(); }
