@@ -74,10 +74,10 @@ protected:
     }
     
     // Evaluate on element.
-    inline void evaluate(gsGeometryEvaluator<T> & geoEval,
-                         const gsGeometry<T>    & _func1,
-                         const gsFunction<T>    & _func2,
-                         gsMatrix<T>            & quNodes)
+    void evaluate(gsGeometryEvaluator<T> & geoEval,
+                  const gsGeometry<T>    & _func1,
+                  const gsFunction<T>    & _func2,
+                  gsMatrix<T>            & quNodes)
     {
         // Evaluate first function
         _func1.eval_into(quNodes, f1vals);
@@ -85,18 +85,14 @@ protected:
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
         
-        // Evaluate second function (defined of physical domain)
-        _func2.eval_into(geoEval.values(), f2vals);
-        
-        // ** Evaluate function v
-        //gsMatrix<T> f2val = func2Param ? func2.eval(quNodes)
-        //: func2.eval( geoEval->values() );
+        // Evaluate second function
+        _func2.eval_into( f2param ? quNodes : geoEval.values() , f2vals);        
     }
     
     // assemble on element
-    inline T compute(gsDomainIterator<T>    & element, 
-                     gsGeometryEvaluator<T> & geoEval,
-                     gsVector<T> const      & quWeights)
+    T compute(gsDomainIterator<T>    & element, 
+              gsGeometryEvaluator<T> & geoEval,
+              gsVector<T> const      & quWeights)
     {
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes

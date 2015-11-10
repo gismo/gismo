@@ -93,7 +93,7 @@ public:
 
     gsVector(const Base& a) ;
 
-    gsVector(int dimension) ;
+    explicit gsVector(int dimension) ;
 
     ~gsVector () ;
 

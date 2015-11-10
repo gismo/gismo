@@ -415,6 +415,9 @@ public:
     virtual int dim() const = 0;
     int domainDim() const {return dim();}
 
+    /// Returns the dimension \em d of the target space
+    virtual int targetDim() const {return 1;}
+
     /**
      * @brief
      * Returns the anchor points that represent the members of the basis.

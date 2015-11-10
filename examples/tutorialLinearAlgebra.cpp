@@ -16,13 +16,12 @@
 #include <gismo.h>
 
 
-using namespace std;
 using namespace gismo;
 
 int main()
 {
 #ifdef EIGEN_VECTORIZE
-    cout << "Vectorization is enabled in Eigen."<< endl;
+    gsInfo << "Vectorization is enabled in Eigen."<< "\n";
 #endif
 
     // A matrix with entries of type real_t, and allocated size 3x3
@@ -52,23 +51,23 @@ int main()
     gsVector<> w (2);
     w= F.row(1);
 
-    cout << "vector c:\n" << c <<"\n"<< E << endl;
+    gsInfo << "vector c:\n" << c <<"\n"<< E << "\n";
   
-    cout << "vector as diagonal:\n" << gsMatrix<>( c.asDiagonal() ) << endl;
+    gsInfo << "vector as diagonal:\n" << gsMatrix<>( c.asDiagonal() ) << "\n";
 
-    cout << "E.sum():\n" << E.sum() << endl;
+    gsInfo << "E.sum():\n" << E.sum() << "\n";
 
-    cout << "dyn: " << Dynamic << endl;
+    gsInfo << "dyn: " << Dynamic << "\n";
 
     gsVector<> b (3);
     b << 3, 3, 4;
 
-    cout << "Here is the matrix A:\n" << A << endl;
-    cout << "Here is the vector b:\n" << b << endl;
+    gsInfo << "Here is the matrix A:\n" << A << "\n";
+    gsInfo << "Here is the vector b:\n" << b << "\n";
  
-    cout << "Size of A: " << A.rows() << " x " << A.cols()  << endl;
-    cout << "Determinant of A: "<< A.determinant()  << endl;
-    cout << "Transpose of A:\n"<< A.transpose()  << endl;
+    gsInfo << "Size of A: " << A.rows() << " x " << A.cols()  << "\n";
+    gsInfo << "Determinant of A: "<< A.determinant()  << "\n";
+    gsInfo << "Transpose of A:\n"<< A.transpose()  << "\n";
 
     // Note that A.transpose() does not alter A, but only returns an
     // expression of its transpose.
@@ -78,36 +77,38 @@ int main()
 
     // Note that A.inverse() does not alter A. To save the inverse in place of A use
     // A.inverseInPlace()
-    cout << "Inverse of A:\n"<< A.inverse()  << endl;
+    gsInfo << "Inverse of A:\n"<< A.inverse()  << "\n";
 
     // We can initialize a matrix using other matrices by "<<"
     // Note that AAA must have the right size!
     gsMatrix<> AAA(3,12);
     AAA << A, A.transpose(), A.adjugate(), A;
-    cout << "A block matrix containing [A, A.tranpose(), A.adjugate(), A] :\n"<< AAA  << endl;
+    gsInfo << "A block matrix containing [A, A.tranpose(), A.adjugate(), A] :\n"<< AAA  << "\n";
     AAA.blockTransposeInPlace(3);
-    cout << "Block-wise transposition of the above:\n"<< AAA  << endl;
+    gsInfo << "Block-wise transposition of the above:\n"<< AAA  << "\n";
     AAA.blockTransposeInPlace(6);
-    cout << "Block-wise transposition of the above seen as 3x6 blocks:\n"<< AAA  << endl;  
+    gsInfo << "Block-wise transposition of the above seen as 3x6 blocks:\n"<< AAA  << "\n";  
 
     gsVector<index_t> perm(3);
     perm << 2,1,0;
-    cout << "Here is the row permutation ("<<perm.transpose()<<") of matrix A:\n" 
-         << perm.asPermutation() * A << endl;
-    cout << "Here is the column permutation ("<<perm.transpose()<<") of matrix A:\n" 
-         <<  A * perm.asPermutation() << endl;
+    gsInfo << "Here is the row permutation ("<<perm.transpose()<<") of matrix A:\n" 
+         << perm.asPermutation() * A << "\n";
+    gsInfo << "Here is the column permutation ("<<perm.transpose()<<") of matrix A:\n" 
+         <<  A * perm.asPermutation() << "\n";
+
+    gsInfo << "Here is the matrix A:\n" << A << "\n";
   
     gsVector<> x;
     // Computes QR factorization and solved Ax=b for the unknown x using
     // this factorization
     x= A.colPivHouseholderQr().solve(b);
-    cout << "The solution of Ax=b is:\n" << x << endl;
-    cout << "Verification, A*x is:\n" << A*x << endl;
+    gsInfo << "The solution of Ax=b is:\n" << x << "\n";
+    gsInfo << "Verification, A*x is:\n" << A*x << "\n";
 
-    cout << "The dot product x.b is : " <<  x.transpose()* b<< endl; //x.dot(b)
-    cout << "The dot product x.b is : " <<  x.dot( b )<< endl; //x.dot(b)
+    gsInfo << "The dot product x.b is : " <<  x.transpose()* b<< "\n"; //x.dot(b)
+    gsInfo << "The dot product x.b is : " <<  x.dot( b )<< "\n"; //x.dot(b)
 
-    cout << "The product x*bt is : \n" << x *  b.transpose() << endl;
+    gsInfo << "The product x*bt is : \n" << x *  b.transpose() << "\n";
 
     gsMatrix<> M  = x *  b.transpose() ;
 
@@ -116,10 +117,10 @@ int main()
     W << 2,2,3,  4,5,6,  7,8,10;
     gsMatrix<> R2 = W * W ; //x * b.transpose() ;
 
-    cout << "Block of A of size (2,2), starting at (1,1):\n"<< A.block<2,2>(1,1) << endl;
-    // if the block size is not known at compile time:  A.block(1,1,2,2) << endl;
+    gsInfo << "Block of A of size (2,2), starting at (1,1):\n"<< A.block<2,2>(1,1) << "\n";
+    // if the block size is not known at compile time:  A.block(1,1,2,2) << "\n";
 
-    cout << "Reverse matrix:\n"<< A.colwise().reverse() << endl;
+    gsInfo << "Reverse matrix:\n"<< A.colwise().reverse() << "\n";
 
     gsSparseMatrix<> B(3,3);
     B.insert(0,0) = 1 ;
@@ -128,49 +129,50 @@ int main()
 
     B(1,1) += 3 ;
 
-    cout << "Here is a sparse matrix B:\n" << B<< " and B(1,1) is "<< B.coeffRef(1,1) << endl;
-    cout << "Matrix B has "<<B.nonZeros()  << " non-zero elements"<< endl;
-    cout << "Here is the product A*B:\n" << A*B << endl;
+    gsInfo << "Here is a sparse matrix B:\n" << B<< " and B(1,1) is "<< B.coeffRef(1,1) << "\n";
+    gsInfo << "Matrix B has "<<B.nonZeros()  << " non-zero elements"<< "\n";
+    gsInfo << "Here is the product A*B:\n" << A*B << "\n";
 
     gsVector3d<> v1;
     v1 << 1,2,3;
     gsVector3d<> v2;
     v2 << 3,2,1;
 
-    cout << " dot product: "<< v1.dot(v2) << endl;
-    cout << " cross product: "<< v1.cross(v2) << endl;
+    gsInfo << " dot product: "<< v1.dot(v2) << "\n";
+    gsInfo << " cross product: "<< v1.cross(v2) << "\n";
  
-    cout << " dot product of matrix columns: "<< A.col(0).adjoint() * A.col(1) << endl;
-    cout << " Another way: converts 1x1 matrix to value: "<< (A.col(0).transpose() * A.col(1) ).value() << endl;
+    gsInfo << " dot product of matrix columns: "<< A.col(0).adjoint() * A.col(1) << "\n";
+    gsInfo << " Another way: converts 1x1 matrix to value: "<< (A.col(0).transpose() * A.col(1) ).value() << "\n";
 
     gsMatrix<> r;
     A.firstMinor(0, 0, r);
-    cout << "Here are some minors of A:\n" << r  << endl;
+    gsInfo << "Here are some minors of A:\n" << r  << "\n";
     A.firstMinor(1, 2, r);
-    cout << r  << endl;
+    gsInfo << r  << "\n";
     A.firstMinor(2, 0, r);
-    cout << r  << endl;
+    gsInfo << r  << "\n";
     A.firstMinor(2, 2, r);
-    cout << r  << endl;
+    gsInfo << r  << "\n";
 
     r.setRandom(2,2);
-    cout <<"Set matrix to zero setZero():\n"<< r <<"\n";
+    gsInfo <<"Set matrix to zero setZero():\n"<< r <<"\n";
     r.setOnes();
-    cout <<"Set matrix to all ones setOnes():\n"<< r <<"\n";
+    gsInfo <<"Set matrix to all ones setOnes():\n"<< r <<"\n";
     r.setConstant(3);
-    cout <<"Set matrix to all a constant setConstant(3):\n"<< r <<"\n";
+    gsInfo <<"Set matrix to all a constant setConstant(3):\n"<< r <<"\n";
     r.setRandom();
-    cout <<"Set matrix to random entires setRandom():\n"<< r <<"\n";
+    gsInfo <<"Set matrix to random entires setRandom():\n"<< r <<"\n";
 
-    cout << " Eigenvalues of non-symmetric matrix: "<< A.eigenvalues().transpose() << endl;
-    cout << " Eigenvectors of non-symmetric matrix: \n"
-         << Eigen::EigenSolver<gsMatrix<>::Base>(A).eigenvectors() << endl;
+    gsInfo << " Eigenvalues of non-symmetric matrix: "<< A.eigenvalues().transpose() << "\n";
+    gsInfo << " Eigenvectors of non-symmetric matrix: \n"
+         << Eigen::EigenSolver<gsMatrix<>::Base>(A).eigenvectors() << "\n";
 
-    cout << " Eigenvalues of symmetric matrix (A's lower triangular part): "
-         << A.selfadjointView<Lower>().eigenvalues().transpose()  << endl;
+    gsInfo << " Eigenvalues of symmetric matrix (A's lower triangular part): "
+         << A.selfadjointView<Lower>().eigenvalues().transpose()  << "\n";
 
-    cout << " Eigenvalues of symmetric matrix (A's upper triangular part): "
-         << A.selfadjointView<Upper>().eigenvalues().transpose()  << endl;
+    gsInfo << " Eigenvalues of symmetric matrix (A's upper triangular part): "
+         << A.selfadjointView<Upper>().eigenvalues().transpose()  << "\n";
+
 
     return 0;
 

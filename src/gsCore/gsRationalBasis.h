@@ -375,21 +375,15 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
 {
     result.resize(n+1);
 
-    gsMatrix<T> src_ev;
+    std::vector<gsMatrix<T> > ev(n+1);
 
-    m_src->evalAllDers_into(u,n,src_ev);
+    m_src->evalAllDers_into(u, n, ev);
     
     // find active basis functions
     gsMatrix<unsigned> act;
     m_src->active_into(u,act);
 
     const int numAct = act.rows();
-
-    // initialize result matrix with values and derivatives of source
-    // basis
-    m_src->evalAllDers_into(u, n, result);
-    gsMatrix<T> & ev  = result[0];
-    gsMatrix<T> & der = result[1];
 
     // evaluate weights and their derivatives
     gsMatrix<T> Wval, Wder;
@@ -419,7 +413,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
             ev(k,i) *= m_weights( act(k,i), 0 ) ;
     }
 }
-*/
+//*/
 
 template<class SrcT>
 void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u, 

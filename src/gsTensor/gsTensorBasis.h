@@ -187,7 +187,7 @@ public:
      *   active basis functions at evaluation point <em>u</em>.col(<em>i</em>)
      *
      */
-    void genericActive_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    virtual void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
 
     // Look at gsBasis class for documentation 
     bool isActive(const unsigned i, const gsVector<T>& u) const;

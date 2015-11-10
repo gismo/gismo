@@ -201,11 +201,10 @@ void gsTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes,
     }
 }
 
-// generic version for the case that the basis does not implement firstActive() / numActive():
 template<unsigned d, class T>
-void gsTensorBasis<d,T>::genericActive_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
+void gsTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
 {
-    gsWarn<<"genericActive "<< *this;
+    //gsWarn<<"genericActive "<< *this;
 
     gsMatrix<unsigned> act[d];
     gsVector<unsigned, d> v, size;
@@ -228,10 +227,10 @@ void gsTensorBasis<d,T>::genericActive_into(const gsMatrix<T> & u, gsMatrix<unsi
         // Fill with active bases indices
         for ( index_t j=0; j<u.cols(); ++j)
         {
-            nb= act[d-1]( v(d-1) ,j) ;//compute global index in the tensor product
-            for ( int i=d-2; i>=0; --i )
-                nb = nb * m_bases[i]->size() + act[i]( v(i),j) ;
-            result( r, j )= nb;
+            nb = act[d-1]( v(d-1) ,j) ;//compute global index in the tensor product
+            for ( int i=d-2; i>=0; --i ) // to do: strides
+                nb = nb * m_bases[i]->size() + act[i](v(i), j) ;
+            result(r, j) = nb;
         }
         ++r ;
     } while (nextLexicographic(v, size));

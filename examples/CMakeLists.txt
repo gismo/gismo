@@ -29,20 +29,15 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 #message("found files: ${FILES}")
 
 foreach(file ${FILES})
+
     add_gismo_executable(${file})
     get_filename_component(tarname ${file} NAME_WE) # name without extension
     set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME};gismo")
     add_dependencies(${PROJECT_NAME} ${tarname})
-    # install the example executables to <CMAKE_INSTALL_PREFIX>/bin/
-	#message("install_bin_dir='${BIN_INSTALL_DIR}'")
-	#message("targets add='${tarname}'")
-    install(TARGETS ${tarname} 
-		DESTINATION "${BIN_INSTALL_DIR}/"
-		PERMISSIONS
-			OWNER_READ OWNER_WRITE OWNER_EXECUTE
-			GROUP_READ GROUP_WRITE GROUP_EXECUTE
-			WORLD_READ WORLD_EXECUTE
-	)
+
+    # install the example executables
+    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}/")
+
 endforeach(file ${FILES})
 
 list(LENGTH FILES len)
