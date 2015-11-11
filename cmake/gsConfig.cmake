@@ -10,6 +10,10 @@
 ## Configuration
 ## #################################################################
 
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
 include(CheckCXXCompilerFlag)
 
 # Set a default coefficient numeric types if not specified
