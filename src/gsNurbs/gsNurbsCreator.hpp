@@ -60,7 +60,7 @@ template<class T> gsTensorBSpline<4,T> * gsNurbsCreator<T>::lift4D( gsTensorBSpl
     gsKnotVector<T> KV(0, 1, 0, 2);
     const int sz = geo.basis().size();
 
-    gsMatrix<T> newcoefs( 3*sz, geo.geoDim() ) ;
+    gsMatrix<T> newcoefs( 2*sz, geo.geoDim() ) ;
 
     // Copy coefficients
     newcoefs.topRows(sz)    =
