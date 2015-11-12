@@ -12,8 +12,8 @@
 
 include(CheckCXXCompilerFlag)
 
-if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  #fixme: enable for Darwin (probably no export explicit template instantiations)
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  #fixme: enable for Darwin/clang (probably no export explicit template instantiations)
   set(GISMO_CXX_VISIBILITY_PRESET hidden)
   set(CMAKE_C_VISIBILITY_PRESET   hidden)
   set(CMAKE_VISIBILITY_INLINES_HIDDEN 1 )
@@ -166,8 +166,8 @@ if (MINGW)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj")
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -Wl,--gc-sections")
   endif()
-elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  #fixme: enable for Darwin (probably no export explicit template instantiations)
+elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  #fixme: enable for Darwin/clang (probably no export explicit template instantiations)
   check_cxx_compiler_flag(-fvisibility=hidden visibility)
     if (visibility) # for object libraries with cmake less than 3.3
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
