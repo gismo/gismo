@@ -25,7 +25,7 @@ endif()
 project(gismo)
 
 if(NOT GISMO_INSOURCE_BUILD AND "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
-   message(FATAL_ERROR "In-source G+Smo builds are not permitted. Please make a separate folder for building, otherwise type \nmake\nthat will create a ./build folder and will compile in that folder. Cmake has created garbage files/dirs (you may manually remove them):\n CMakeCache.txt CMakeFiles")
+   message(FATAL_ERROR "In-source G+Smo builds are not permitted. \n How to fix this:\n 1. Please make a separate folder for building, otherwise type \nmake\nthat will create a ./build folder and will compile in that folder. Cmake has created garbage files/dirs (you may manually remove them):\n CMakeCache.txt CMakeFiles \n 2. If your source folder contains these two files please remove them first!")
 endif()
 
 ## #################################################################

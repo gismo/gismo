@@ -393,6 +393,11 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
 {
     if( const Self_t * _other = dynamic_cast<const Self_t*>( &other) )
     {
+        gsVector<unsigned> N(d);
+
+        // tens1 will store the tensor-index on side second(),...
+        gsVector<unsigned> tens0(d), tens1(d);
+
         // see if the orientation is preserved on side second()
         const gsVector<bool> dirOrient = bi.dirOrientation();
 
@@ -419,10 +424,8 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
             // (i.e., the single-number-index on level L)...
             unsigned flat0 = this->flatTensorIndexOf( bndThis(i,0) );
             // ... and change it to the tensor-index.
-            gsVector<unsigned> tens0 = this->tensorLevel(L).tensorIndex( flat0 );
+            tens0 = this->tensorLevel(L).tensorIndex( flat0 );
 
-            // tens1 will store the tensor-index on side second(),...
-            gsVector<unsigned> tens1(d);
             // ...flat1 the corresponding flat index
             // (single-number on level)...
             unsigned flat1 = 0;
@@ -432,7 +435,6 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
             // get the sizes of the components of the tensor-basis on this level,
             // i.e., the sizes of the univariate bases corresponding
             // to the respective coordinate directions
-            gsVector<unsigned> N(d);
             for( unsigned j=0; j < d; j++)
                 N[j] = _other->tensorLevel(L).component(j).size();
 
