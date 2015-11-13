@@ -104,8 +104,13 @@ public:
     static const int Dim = d;
     
 public:
+
     /// Default empty constructor
-    gsHTensorBasis() { }
+    gsHTensorBasis() 
+    { 
+        initialize_class(tensorBasis());
+        update_structure();
+    }
 
     gsHTensorBasis( gsBasis<T> const&  tbasis)
     {      

@@ -68,7 +68,10 @@ public:
 
 public:
 
-    gsTHBSplineBasis() { }
+    gsTHBSplineBasis()
+    { 
+        representBasis(); 
+    }
 
     /// Constructor out of a Tensor BSpline Basis
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis) 

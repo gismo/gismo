@@ -671,20 +671,32 @@ public:
 
         const T   sgn = sideOrientation(s) * m_orientation;
         const int dir = s.direction();
-
+        
         // assumes points u on boundary "s"
-        //GISMO_ASSERT( ParDim == GeoDim, "Codim different than one");
-        result.resize(GeoDim);
-        const gsMatrix<T, ParDim, ParDim> Jk = 
-            m_jacobians.template block<ParDim,ParDim>(0, k*ParDim);
-
-        T alt_sgn = sgn;
-        gsMatrix<T, ParDim-1, ParDim-1> minor;        
-        for (int i = 0; i != ParDim; ++i) // for all components of the normal
+        result.resize(GeoDim);        
+        if (ParDim + 1 == GeoDim) // surface case GeomDim == 3
         {
-            Jk.firstMinor(i, dir, minor);
-            result[i] = alt_sgn * minor.determinant();
-            alt_sgn = -alt_sgn;
+            const gsMatrix<T, GeoDim, ParDim> Jk = 
+                m_jacobians.template block<GeoDim,ParDim>(0, k*ParDim);
+
+            // fixme: generalize to nD
+            normal(k,result);
+            result = result.cross( sgn * Jk.template block<GeoDim, 1>(0,!dir) );
+        }
+            else // planar case
+        {            
+            GISMO_ASSERT( ParDim == GeoDim, "Codim different than zero/one");
+            const gsMatrix<T, ParDim, ParDim> Jk = 
+                m_jacobians.template block<ParDim,ParDim>(0, k*ParDim);
+
+            T alt_sgn = sgn;
+            gsMatrix<T, ParDim-1, ParDim-1> minor;        
+            for (int i = 0; i != ParDim; ++i) // for all components of the normal
+            {
+                Jk.firstMinor(i, dir, minor);
+                result[i] = alt_sgn * minor.determinant();
+                alt_sgn = -alt_sgn;
+            }
         }
     }
 
