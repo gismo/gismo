@@ -69,8 +69,12 @@ public:
 
 public:
 
-    // \brief Default empty constructor
-    gsTensorBSplineBasis() : Base() { }
+    /// \brief Default constructor
+    gsTensorBSplineBasis() : Base() 
+    {
+        for(unsigned i = 0; i!=d; ++i)
+            this->m_bases[i] = new Basis_t();
+    }
 
     /**
        \brief Constructs a 2D tensor product B-spline basis. Assumes

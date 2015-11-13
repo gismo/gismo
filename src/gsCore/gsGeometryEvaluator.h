@@ -674,14 +674,27 @@ public:
         
         // assumes points u on boundary "s"
         result.resize(GeoDim);        
-        if (ParDim + 1 == GeoDim) // surface case GeomDim == 3
+        if (ParDim + 1 == GeoDim) // surface case GeoDim == 3
         {
-            const gsMatrix<T, GeoDim, ParDim> Jk = 
+            gsMatrix<T, ParDim+1, ParDim> Jk = 
                 m_jacobians.template block<GeoDim,ParDim>(0, k*ParDim);
-
             // fixme: generalize to nD
             normal(k,result);
-            result = result.cross( sgn * Jk.template block<GeoDim, 1>(0,!dir) );
+            result = result.normalized().cross( sgn * Jk.template block<GeoDim, 1>(0,!dir) );
+
+//            /*
+            gsDebugVar(result.transpose()); // result 1
+            Jk.col(dir) = result.normalized();
+            gsMatrix<T, ParDim, ParDim> minor;
+            T alt_sgn = sgn;
+            for (int i = 0; i != GeoDim; ++i) // for all components of the normal
+            {
+                Jk.rowMinor(i, minor);
+                result[i] = alt_sgn * minor.determinant();
+                alt_sgn = -alt_sgn;
+            }
+            gsDebugVar(result.transpose()); // result 2
+            //*/
         }
             else // planar case
         {            
@@ -690,7 +703,7 @@ public:
                 m_jacobians.template block<ParDim,ParDim>(0, k*ParDim);
 
             T alt_sgn = sgn;
-            gsMatrix<T, ParDim-1, ParDim-1> minor;        
+            gsMatrix<T, ParDim-1, ParDim-1> minor;
             for (int i = 0; i != ParDim; ++i) // for all components of the normal
             {
                 Jk.firstMinor(i, dir, minor);

@@ -35,7 +35,11 @@ void gsCompactKnotVector<T>::initUniform(T const u0, T const u1,
 {
     T h= (u1-u0)/(interior+1);
 
-    m_knots.push_back(u0);
+    m_knots   .clear();
+    m_mult_sum.clear();
+    m_knots   .reserve(interior+2);
+    m_mult_sum.reserve(interior+2);
+    m_knots   .push_back(u0);
     m_mult_sum.push_back(mult_ends);
 
     for ( unsigned i=1; i<=interior; i++ )

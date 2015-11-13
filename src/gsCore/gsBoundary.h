@@ -55,8 +55,9 @@ namespace gismo
 struct boundary
 {
     /// Identifiers for topological sides.
-    enum side { west = 1, east = 2, south = 3, north= 4, front=5, back=6 ,
-                left = 1, right= 2, down  = 3, up   = 4 , none = 0 };
+    enum side { west  = 1,  east = 2, south = 3, north= 4, front=5, back=6,
+                stime = 7, etime = 8,
+                left  = 1, right = 2, down  = 3, up   = 4 , none = 0 };
 
 
     /// Identifiers for topological corners.

@@ -119,15 +119,8 @@ public:
     void initClamped(int degree, unsigned numKnots = 2, 
                      unsigned mult_interior = 1)
     {
-        gsWarn<<"not finished.";
         GISMO_ASSERT( numKnots > 1 , "Not enough knots.");
-        //initUniform(0.0, 1.0, numKnots - 2, degree + 1, mult_interior, degree );
-        m_knots.resize(2);
-        m_knots[0]=0.0;
-        m_knots[1]=1.0;
-        m_mult_sum.resize(2);
-        m_mult_sum[0] = 
-            m_mult_sum[1] = degree+1;
+        initUniform(0.0, 1.0, numKnots - 2, degree + 1, mult_interior, degree );
     }
 
 
