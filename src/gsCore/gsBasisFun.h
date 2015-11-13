@@ -21,13 +21,14 @@ namespace gismo
 template<class T> class gsBasis;
 
 /** 
-    @brief Represents an individual basis function of a gsBasis.
+    @brief Represents an individual function in a function set, or a
+           certain component of a vecto-valued function
 
-    It is constructed using a basis and the index of a single basis
+    It is constructed using a function set and the index of a single
     function in that basis.  Note that it does not own the underlying
-    basis: if you delete the object the basis is not deleted. The
-    lifetime of the underlying basis should be at least the lifetime
-    of gsBasisFun.
+    function set (eg. basis): if you delete the parent object is not
+    deleted. The lifetime of the parent object should be at least the
+    lifetime of gsBasisFun.
     
     \ingroup function
     \ingroup Core
@@ -41,7 +42,7 @@ private:
     
 public:
     /// Construct a basis function by a pointer to a basis and an index i
-    gsBasisFun(gsBasis<T> const * basis, unsigned const & i = 0);
+    gsBasisFun(const gsBasis<T> & basis, unsigned const i);
 
     ~gsBasisFun() { } //destructor
 
@@ -50,8 +51,14 @@ public:
 
 public:
   
+    int domainDim () const {return m_basis.domainDim();}
+
+    int targetDim () const {return m_basis.targetDim();}
+
     gsMatrix<T> support() const;
+
     void eval_into (const gsMatrix<T>& u, gsMatrix<T>& result ) const;
+
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const;
 
     /// The gsBasisFun points to the i-th basis function of m_basis
@@ -68,7 +75,7 @@ public:
 
 // Data members
 private:
-    gsBasis<T> const * m_basis;
+    const gsBasis<T> & m_basis;
     unsigned m_index;
 
 }; // class gsBasisFun
@@ -78,16 +85,16 @@ private:
 //////////////////////////////////////////////////
 
 template<class T>
-gsBasisFun<T>::gsBasisFun(gsBasis<T> const * basis, unsigned const & i )
+gsBasisFun<T>::gsBasisFun(const gsBasis<T> & basis, const unsigned i )
 : m_basis(basis), m_index(i) 
 { 
-    GISMO_ASSERT( i<unsigned(m_basis->size()),"Invalid basis function index" );
+    GISMO_ASSERT( i<unsigned(m_basis.size()),"Invalid basis function index" );
 }
 
 template<class T> void
 gsBasisFun<T>::setFunction( unsigned const & i )
 {
-    GISMO_ASSERT( i<unsigned(m_basis->size()),"Invalid basis function index" );
+    GISMO_ASSERT( i<unsigned(m_basis.size()),"Invalid basis function index" );
     m_index = i;
 }
 
@@ -100,25 +107,25 @@ gsBasisFun<T>::first()
 template<class T> bool
 gsBasisFun<T>::next()
 {
-    return ( ++m_index < m_basis->size() );
+    return ( ++m_index < m_basis.size() );
 }
 
 template<class T> gsMatrix<T>
 gsBasisFun<T>::support()  const
 {
-    return m_basis->support(m_index);
+    return m_basis.support(m_index);
 }
 
 template<class T> void
 gsBasisFun<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result )  const
 {
-    m_basis->evalSingle_into(m_index, u, result);
+    m_basis.evalSingle_into(m_index, u, result);
 }
 
 template<class T> void
 gsBasisFun<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result )  const
 {
-    m_basis->derivSingle_into(m_index, u, result);
+    m_basis.derivSingle_into(m_index, u, result);
 }
 
 

@@ -40,6 +40,8 @@ public:
         : m_mat(other.m_mat), m_trans(other.m_trans)
     {}
 
+    gsAffineFunction * clone() const { return new gsAffineFunction(*this);}
+
     /**
      * @brief all fine maps are the composition of a linear map with a translation
      *        this constructor takes the two components explicitly

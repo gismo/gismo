@@ -16,8 +16,12 @@
 
 #include<gsCore/gsLinearAlgebra.h> 
 
+namespace gismo 
+{
+
 /**
-   @brief Contains information for the functions in a gsFunctionSet.
+   @brief Contains dimension information of source and target domains
+   of the functions in a gsFunctionSet.
 */
 struct gsFuncInfo
 {
@@ -52,9 +56,6 @@ public:
     /// Equality test, returns true if both <em>domainDim</em> and <em>targetDim</em> are equal.
     bool operator== (const gsFuncInfo& other) const {return domainDim==other.domainDim && targetDim==other.targetDim;}
 };
-
-namespace gismo 
-{
 
 
 /*
@@ -120,7 +121,7 @@ protected:
 
 public:
     unsigned flags;
-    int      patchId;
+    int      patchId; // move to mapdata
 
     gsFuncInfo         info;
     gsMatrix<unsigned> actives;
@@ -155,11 +156,11 @@ public:
 
     int maxDeriv() const 
     {
-        if (flags & NEED_2ND_DER)
+        if (flags & (NEED_LAPLACIAN|NEED_DERIV2) )
             return 2;
-        if (flags & NEED_DERIV)
+        else if (flags & (NEED_DERIV|NEED_CURL|NEED_DIV) )
             return 1;
-        if (flags & NEED_VALUE)
+        else if (flags & (NEED_VALUE) )
             return 0;
         return -1;
     }

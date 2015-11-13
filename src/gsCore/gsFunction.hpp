@@ -12,38 +12,12 @@
 */
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsFuncData.h>
 
 #pragma once
 
 namespace gismo
 {
-
-template <class T>
-typename gsFunction<T>::uMatrixPtr
-gsFunction<T>::eval(const gsMatrix<T>& u) const
-{
-    gsMatrix<T>* result = new gsMatrix<T>;
-    this->eval_into( u, *result );
-    return uMatrixPtr(result);
-}
-
-template <class T>
-typename gsFunction<T>::uMatrixPtr
-gsFunction<T>::deriv(const gsMatrix<T>& u) const
-{
-    gsMatrix<T>* result = new gsMatrix<T>;
-    this->deriv_into( u, *result );
-    return uMatrixPtr(result);
-}
-
-template <class T>
-typename gsFunction<T>::uMatrixPtr
-gsFunction<T>::deriv2(const gsMatrix<T>& u) const
-{
-    gsMatrix<T>* result = new gsMatrix<T>;
-    this->deriv2_into( u, *result );
-    return uMatrixPtr(result);
-}
 
 template <class T>
 typename gsFunction<T>::uMatrixPtr
@@ -215,10 +189,7 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
     return -1;
 }
 
-template <class T>
-gsFunction<T> * gsFunction<T>::clone() const 
-{ GISMO_NO_IMPLEMENTATION }
-
+/*
 template <class T>
 int gsFunction<T>::domainDim() const
 { GISMO_NO_IMPLEMENTATION }
@@ -226,10 +197,7 @@ int gsFunction<T>::domainDim() const
 template <class T>
 int gsFunction<T>::targetDim() const
 { GISMO_NO_IMPLEMENTATION }
-
-template <class T>
-gsMatrix<T> gsFunction<T>::support() const
-{ GISMO_NO_IMPLEMENTATION }
+*/
 
 template <class T>
 void gsFunction<T>::eval_component_into(const gsMatrix<T>& u, 
@@ -241,6 +209,57 @@ template <class T>
 typename gsFunction<T>::uMatrixPtr
 gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const    
 { GISMO_NO_IMPLEMENTATION }
+
+// Computes map data out of this map
+template <class T>
+void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
+{
+    // Fill function data
+    this->compute(InOut.points, InOut);
+
+    // Fill extra data
+    const int parDim = domainDim();
+    const int tarDim = targetDim();
+
+    if (InOut.flags & NEED_GRAD_TRANSFORM)
+    {
+        // invert  trJacobian
+    }
+
+    if (InOut.flags & NEED_MEASURE)
+    {
+        InOut.measures.resize(1, InOut.points.cols());
+        for (index_t p = 0; p != InOut.points.cols(); ++p) // for all points
+        {
+            // transposed Jacobian matrix at the current point
+            const gsAsMatrix<T> jacT = InOut.values[1].reshapeCol(p, tarDim, parDim);
+            InOut.measures.at(p) = tarDim == parDim ? math::abs(jacT.determinant()) :
+                                    math::sqrt( ( jacT*jacT.transpose() ).determinant() );
+        }
+    }
+
+    if (InOut.flags & NEED_NORMAL)
+    {
+        GISMO_ASSERT( parDim+1 == tarDim, "Codimension should be equal to one");
+
+        gsMatrix<T> minor;
+        InOut.normals.resize(tarDim, InOut.points.cols());
+        for (index_t p = 0; p != InOut.points.cols(); ++p) // for all points
+        {
+            // transposed Jacobian matrix at the current point
+            const gsAsMatrix<T> jacT = InOut.values[1].reshapeCol(p, tarDim, parDim);
+            int alt_sgn(1);
+            for (int i = 0; i != tarDim; ++i) // for all components of the normal vector
+            {
+                jacT.colMinor(i, minor);
+                InOut.normals(i,p) = alt_sgn * minor.determinant();
+                alt_sgn = -alt_sgn;
+            }
+        }
+    }
+
+    // if (InOut.flags & NEED_OUTER_NORMAL   )
+}
 
 
 } // namespace gismo

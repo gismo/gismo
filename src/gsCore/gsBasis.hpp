@@ -24,7 +24,7 @@ namespace gismo
 template<class T>
 gsBasisFun<T> gsBasis<T>::function(unsigned i) const
 {
-    return gsBasisFun<T>(this,i);
+    return gsBasisFun<T>(*this,i);
 }
 
 

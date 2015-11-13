@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsFunctionSet.h>
 
 #define GISMO_MAKE_GEOMETRY_NEW                                         \
     virtual gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs ) const \
@@ -77,10 +77,13 @@ namespace gismo
 */
 
 template<class T>
-class gsBasis
+class gsBasis : public gsFunctionSet<T>
 {
 
 public: 
+
+    typedef gsFunctionSet<T> Base;
+
     /// Shared pointer for gsBasis
     typedef memory::shared_ptr< gsBasis > Ptr;
     //typedef memory::unique_ptr< gsBasis > LocalPtr;
@@ -127,43 +130,6 @@ public:
     /// @name Evaluation functions
     /// @{
 
-    /// Evaluate the nonzero basis functions at points \a u.
-    uMatrixPtr eval(const gsMatrix<T> & u) const
-    // gsMatrix<T> eval(const gsMatrix<T> & u) const
-    {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        this->eval_into(u, *result);
-        //return give(result);
-        return uMatrixPtr(result);
-    }
-
-    /// \brief Evaluate the derivatives of the nonzero basis functions at points \a u.
-    ///
-    /// See deriv_into() for detailed documentation.
-    /// \todo Rename to grad
-    uMatrixPtr deriv(const gsMatrix<T> & u) const
-    {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        this->deriv_into(u, *result);
-        return uMatrixPtr(result);
-    }
-
-    /** \brief Evaluates the second derivatives of active (i.e., non-zero) basis at points \a u.
-     *
-     * See documentation for deriv2_into()
-     * (the one without input parameter \em coefs) for details.
-     *
-     * \param[in] u     Evaluation points in columns.
-     * \return  For every column of \a u, a column containing the second derivatives.
-     * See documentation for deriv2_into() (the one without input parameter \em coefs) for details.
-     */
-    uMatrixPtr deriv2(const gsMatrix<T> & u ) const 
-    {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        this->deriv2_into(u, *result);
-        return uMatrixPtr(result);
-    }
-
     /// Evaluate a single basis function \a i at points \a u.
     uMatrixPtr evalSingle(unsigned i, const gsMatrix<T> & u) const
     {
@@ -186,15 +152,6 @@ public:
         gsMatrix<T> * result = new gsMatrix<T>;
         this->deriv2Single_into(i, u, *result);
         return uMatrixPtr(result);
-    }
-
-    /// @brief Returns the indices of active (nonzero) basis functions at
-    /// points \a u, as a list of indices.
-    typename gsMatrix<unsigned>::uPtr active(const gsMatrix<T> & u) const
-    {
-        typename gsMatrix<unsigned>::uPtr result ( new gsMatrix<unsigned> );
-        this->active_into(u, *result);
-        return result;
     }
 
     /** \brief Number of active basis functions at an arbitrary parameter value.
@@ -242,6 +199,7 @@ public:
         this->evalFunc_into(u, coefs, *result);
         return uMatrixPtr(result);
     }
+    using Base::eval;
 
     /** \brief Evaluate the function described by \a coefs at points \a u,
      * i.e., evaluates a linear combination of coefs x BasisFunctions, into \a result.
@@ -273,6 +231,7 @@ public:
         this->derivFunc_into(u, coefs, *result);
         return uMatrixPtr(result);
     }
+    using Base::deriv;
 
     /** \brief Evaluate the derivatives of the function described by \a coefs at points \a u.
      *
@@ -362,7 +321,7 @@ public:
         this->deriv2Func_into(u, coefs, *result);
         return uMatrixPtr(result);
     }
-
+    using Base::deriv2;
 
     /** \brief Evaluates the second derivatives of the function described by \a coefs at points \a u.
      *
@@ -413,6 +372,7 @@ public:
 
     /// Returns the dimension \em d of the parameter space.
     virtual int dim() const = 0;
+
     int domainDim() const {return dim();}
 
     /// Returns the dimension \em d of the target space

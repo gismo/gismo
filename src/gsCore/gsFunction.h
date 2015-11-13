@@ -13,7 +13,7 @@
  
 #pragma once
 
-#include <gsCore/gsForwardDeclarations.h>
+#include <gsCore/gsFunctionSet.h>
 
 namespace gismo
 {
@@ -55,9 +55,11 @@ namespace gismo
 */
 
 template<class T>
-class gsFunction
+class gsFunction : public gsFunctionSet<T>
 {
 public:
+    typedef gsFunctionSet<T> Base;
+
     /// Shared pointer for gsFunction
     typedef memory::shared_ptr< gsFunction > Ptr;
 
@@ -66,28 +68,13 @@ public:
 
     typedef typename gsMatrix<T>::uPtr       uMatrixPtr;
 
+    using Base::support;
+    using Base::domainDim;
+    using Base::targetDim;
 public:
 
-    /// Clones the function object, making a deep copy.
-    virtual gsFunction * clone() const;
-
-    /// Destructor
-    virtual ~gsFunction() { }
-
-public:
-
-    /// The dimension of the function domain, i.e., the source space.
-    virtual int domainDim() const;
-
-    /// The dimension of the target space.
-    virtual int targetDim() const;
-
-    /// @brief Returns (a bounding box for) the support of the function.
-    ///
-    /// Returns a dx2 matrix, containing the two diagonally extreme
-    /// corners of a hypercube.
-    virtual gsMatrix<T> support() const;
-
+    virtual gsFunction * clone() const // = 0;
+    {GISMO_NO_IMPLEMENTATION}
 
     /**
         @name Evaluation functions
@@ -103,19 +90,6 @@ public:
       Member functions with non-virtual implementations
       (override the _into versions in derived classes).
     */
-
-    /// Evaluate the function, see eval_into() for details.
-    uMatrixPtr eval(const gsMatrix<T>& u) const;
-
-    /// Evaluate the derivatives, see deriv_into() for details.
-    //Returns a matrix of size targetDim() x (domainDim() * u.cols()), gradients are stored as row vectors
-    uMatrixPtr deriv(const gsMatrix<T>& u) const;
-
-    // Evaluate the gradient
-    //uMatrixPtr grad(const gsMatrix<T>& u) const        { return deriv(u); /* should return gradients as column vectors for 1D functions */ }
-  
-    /// Evaluate the second derivatives
-    uMatrixPtr deriv2(const gsMatrix<T>& u) const;
 
     /** \brief Evaluate the function at points \a u into \a result.
      *
@@ -238,14 +212,21 @@ public:
         os << "gsFunction.\n"; return os; 
     }
 
-    virtual void compute(const gsMatrix <T> &points , gsFuncData<T> &result) const
-    { GISMO_NO_IMPLEMENTATION }
+    /**
+       @brief Computes map function data
 
-    virtual void compute(const gsMapData<T> &geoData, gsFuncData<T> &result) const
-    { GISMO_NO_IMPLEMENTATION }
+       This function evaluates the functions and their derivatives at
+       the points \a InOut.points and writes them in the corresponding
+       fields of \a InOut. Which field to write (and what to compute)
+       is controlled by the \a InOut.flags (see also \link gsMapData ).
+       This is intended for parametrizations only and it works on
+       functions sets of cardinality 1 only.
 
-    virtual void compute(const gsMatrix <T> &points , gsMapData<T> &result) const
-    { GISMO_NO_IMPLEMENTATION }
+       @param[in,out] InOut
+     */
+    virtual void computeMap(gsMapData<T> & InOut) const;
+
+    index_t size() const { return 1;}
 
 }; // class gsFunction
 
