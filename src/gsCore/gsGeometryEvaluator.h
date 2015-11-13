@@ -682,8 +682,9 @@ public:
             normal(k,result);
             result = result.normalized().cross( sgn * Jk.template block<GeoDim, 1>(0,!dir) );
 
-//            /*
+            /*
             gsDebugVar(result.transpose()); // result 1
+            normal(k,result);
             Jk.col(dir) = result.normalized();
             gsMatrix<T, ParDim, ParDim> minor;
             T alt_sgn = sgn;
