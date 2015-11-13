@@ -57,11 +57,10 @@ public:
     explicit gsMultiBasis( const gsMultiPatch<T> & mpatch );
 
     /// Create from a vector of bases and topology
-    gsMultiBasis( const BasisContainer& bases, const gsBoxTopology & topology)
+    gsMultiBasis(BasisContainer& bases, const gsBoxTopology & topology)
         : m_topology( topology )
     {
-        m_bases.resize(bases.size());
-        cloneAll( bases.begin(), bases.end(), m_bases.begin() );
+        m_bases.swap(bases);// consumes the pointers
     }
     
     /// Create a single-basis instance
@@ -69,13 +68,12 @@ public:
 
 
     /// Create from bases and boundary/interface information
-    gsMultiBasis( const BasisContainer& bases,
+    gsMultiBasis( BasisContainer & bases,
                   const std::vector<patchSide>& boundary,
                   const std::vector<boundaryInterface>& interfaces )
         : m_topology( bases[0]->dim(), bases.size(), boundary, interfaces )
     {
-        m_bases.resize(bases.size());
-        cloneAll( bases.begin(), bases.end(), m_bases.begin() );
+        m_bases.swap(bases);// consumes the pointers
     }
     
     /// Destructor
