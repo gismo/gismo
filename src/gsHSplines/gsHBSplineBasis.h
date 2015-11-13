@@ -50,6 +50,8 @@ public:
 
 public:
 
+    gsHBSplineBasis() { }
+
     /// Constructor out of a tensor BSpline Basis
     gsHBSplineBasis(gsBasis<T> const&  tbasis)
         : gsHTensorBasis<d,T>(tbasis) 

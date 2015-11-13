@@ -79,7 +79,6 @@ void gsTHBSplineBasis<d,T>::representBasis()
 
             this->m_is_truncated[j] = clevel;
             _representBasisFunction(j, clevel, low, high);
-
         }
         else
         {
