@@ -66,6 +66,7 @@ struct iFace
 	};
 };
 
+/*
 struct transform
 {	
 	enum type
@@ -87,8 +88,7 @@ struct space
 	    none          = 0
 	};
 };
-
-
+*/
 
 struct gsAssemblerOptions
 {
@@ -96,24 +96,39 @@ public:
     // Default constructor
     gsAssemblerOptions()
     : dirValues    (dirichlet::l2Projection ), 
-      dirStrategy  (dirichlet::nitsche      ), 
-      intStrategy  (iFace    ::glue         ),
-      transformType(transform::Hgrad        ),
-      spaceType    (space    ::taylorHood   )
+      dirStrategy  (dirichlet::elimination  ), 
+      intStrategy  (iFace    ::conforming   ),
+      // transformType(transform::Hgrad        ),
+      // spaceType    (space    ::taylorHood   )
+      bdA(2.0),
+      bdB(1  ),
+      quA(1.0),
+      quB(1  )
     { }
 
 public:
 
-    dirichlet::values  dirValues;
+    dirichlet::values    dirValues;
 
     dirichlet::strategy  dirStrategy;
 
     iFace::strategy      intStrategy;
 
-    transform::type      transformType;
-    
-    space::type          spaceType;
+    // transform::type      transformType;
+    // space::type          spaceType;
 
+    // If set to a value different than zero, it controls the
+    // allocation of the sparse matrix, ie. the maximum number of
+    // non-zero entries per column (set to: A * p + B)
+    double bdA;
+    int    bdB;
+
+    // The formula for the number of quadrature points for all
+    // integral computations will be set to the integer which is
+    // closest to (A * p + B), where \a p is the (coordinate-wise)
+    // degree of the basis
+    double quA;
+    int    quB;
 };
 
 } // namespace gismo

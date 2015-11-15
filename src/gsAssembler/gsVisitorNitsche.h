@@ -30,6 +30,11 @@ template <class T>
 class gsVisitorNitsche
 {
 public:
+
+    gsVisitorNitsche(const gsPde<T> & pde, const boundary_condition<T> & s) 
+    : dirdata_ptr( s.function().get() ), side(s.side())
+    { }
+
 /** @brief
     Constructor of the assembler object.
 
@@ -58,6 +63,23 @@ public:
 
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
+    }
+
+    void initialize(const gsBasis<T> & basis,
+                    const index_t patchIndex,
+                    const gsAssemblerOptions & options, 
+                    gsQuadRule<T>    & rule,
+                    unsigned         & evFlags )
+    {
+        // Setup Quadrature (harmless slicing occurs)
+        rule = gsGaussRule<T>(basis, options.quA, options.quB, side.direction() );
+
+        // Set Geometry evaluation flags
+        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+
+        // Compute penalty parameter
+        const int deg = basis.maxDegree();
+        penalty = (deg + basis.dim()) * (deg + 1) * T(2.0);
     }
 
     // Evaluate on element.

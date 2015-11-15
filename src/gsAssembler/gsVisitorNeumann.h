@@ -26,6 +26,11 @@ template <class T>
 class gsVisitorNeumann
 {
 public:
+
+    gsVisitorNeumann(const gsPde<T> & pde, const boundary_condition<T> & s) 
+    : neudata_ptr( s.function().get() ), side(s.side())
+    { }
+
 /** @brief
  * Constructor of the assembler object 
  * 
@@ -53,6 +58,19 @@ public:
 
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE|NEED_JACOBIAN;
+    }
+
+    void initialize(const gsBasis<T> & basis,
+                    const index_t patchIndex,
+                    const gsAssemblerOptions & options, 
+                    gsQuadRule<T>    & rule,
+                    unsigned         & evFlags )
+    {
+        // Setup Quadrature (harmless slicing occurs)
+        rule = gsGaussRule<T>(basis, options.quA, options.quB, side.direction() );
+
+        // Set Geometry evaluation flags
+        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
     // Evaluate on element.

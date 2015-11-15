@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsAssembler/gsGaussRule.h>
+
 namespace gismo
 {
 
@@ -28,6 +30,11 @@ template <class T, bool paramCoef = false>
 class gsVisitorPoisson
 {
 public:
+
+    gsVisitorPoisson(const gsPde<T> & pde)
+    { 
+        rhs_ptr = static_cast<const gsPoissonPde<T>*>(&pde)->rhs() ;
+    }
     
     /** \brief Constructor for gsVisitorPoisson.
      *
@@ -51,6 +58,19 @@ public:
         
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
+
+        // Set Geometry evaluation flags
+        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+    }
+
+    void initialize(const gsBasis<T> & basis,
+                    const index_t patchIndex,
+                    const gsAssemblerOptions & options, 
+                    gsQuadRule<T>    & rule,
+                    unsigned         & evFlags )
+    {
+        // Setup Quadrature
+        rule = gsGaussRule<T>(basis, options.quA, options.quB);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;

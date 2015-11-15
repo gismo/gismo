@@ -29,6 +29,11 @@ class gsVisitorBiharmonic
 {
 public:
 
+    gsVisitorBiharmonic(const gsPde<T> & pde)
+    { 
+        rhs_ptr = static_cast<const gsBiharmonicPde<T>&>(pde).rhs() ;
+    }
+
     /** \brief Constructor for gsVisitorBiharmonic.
      *
      * \param[in] rhs Given right-hand-side function/source term that, for
@@ -49,6 +54,19 @@ public:
 
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// NB!
+
+        // Set Geometry evaluation flags
+        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
+    }
+
+    void initialize(const gsBasis<T> & basis,
+                    const index_t patchIndex,
+                    const gsAssemblerOptions & options, 
+                    gsQuadRule<T>    & rule,
+                    unsigned         & evFlags )
+    {
+        // Setup Quadrature
+        rule = gsGaussRule<T>(basis, options.quA, options.quB);
 
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
@@ -143,8 +161,6 @@ public:
 protected:
     // Right hand side
     const gsFunction<T> * rhs_ptr;
-    // flag for stabilization method
-    unsigned flagStabType;
 
 protected:
     // Basis values

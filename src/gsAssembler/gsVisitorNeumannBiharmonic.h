@@ -30,6 +30,10 @@ class gsVisitorNeumannBiharmonic
 {
 public:
 
+    gsVisitorNeumannBiharmonic(const gsPde<T> & pde, const boundary_condition<T> & s) 
+    : neudata_ptr( s.function().get() ), side(s.side())
+    { }
+
     gsVisitorNeumannBiharmonic(const gsFunction<T> & neudata, boxSide s) :
     neudata_ptr(&neudata), side(s)
     { }
@@ -50,6 +54,19 @@ public:
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM ;
 
+    }
+
+    void initialize(const gsBasis<T> & basis,
+                    const index_t patchIndex,
+                    const gsAssemblerOptions & options, 
+                    gsQuadRule<T>    & rule,
+                    unsigned         & evFlags )
+    {
+        // Setup Quadrature (harmless slicing occurs)
+        rule = gsGaussRule<T>(basis, options.quA, options.quB, side.direction() );
+
+        // Set Geometry evaluation flags
+        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
     // Evaluate on element.

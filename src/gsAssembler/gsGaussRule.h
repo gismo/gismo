@@ -33,18 +33,21 @@ public:
     gsGaussRule() { }
     
     gsGaussRule(gsVector<index_t> const & numNodes, 
-                unsigned digits = std::numeric_limits<T>::digits10 ): 
-        gsQuadRule<T>() 
-        { 
-            setNodes(numNodes, digits);
-        }
+                const unsigned digits = std::numeric_limits<T>::digits10 )
+    { 
+        setNodes(numNodes, digits);
+    }
+    
+    gsGaussRule(const gsBasis<T> & basis, const double quA, const int quB); 
+                //const unsigned digits = std::numeric_limits<T>::digits10 );
+    
+    gsGaussRule(const gsBasis<T> & basis, const double quA, const int quB, const int fixDir); 
 
     gsGaussRule(index_t numNodes, 
-                unsigned digits = std::numeric_limits<T>::digits10 ): 
-        gsQuadRule<T>() 
-        { 
-            setNodes(numNodes, digits);
-        }
+                const unsigned digits = std::numeric_limits<T>::digits10 )
+    { 
+        setNodes(numNodes, digits);
+    }
 
     
     ~gsGaussRule() { }
