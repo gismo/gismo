@@ -29,10 +29,12 @@ class gsVisitorBiharmonic
 {
 public:
 
+/*
     gsVisitorBiharmonic(const gsPde<T> & pde)
     { 
         rhs_ptr = static_cast<const gsBiharmonicPde<T>&>(pde).rhs() ;
     }
+*/
 
     /** \brief Constructor for gsVisitorBiharmonic.
      *

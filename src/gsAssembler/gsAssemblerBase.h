@@ -21,6 +21,8 @@
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsAssemblerOptions.h>
 
+#include <gsPde/gsBoundaryConditions.h>
+
 namespace gismo
 {
 
