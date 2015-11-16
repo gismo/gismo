@@ -45,7 +45,7 @@ class gsTensorNurbs : //public gsGeoTraits<d,T>::GeometryBase
 
 public: 
     //typedef typename gsGeoTraits<d,T>::GeometryBase Base;
-    typedef typename gsGenericGeometry<gsTensorNurbsBasis<d,T,KnotVectorType> > Base;
+    typedef gsGenericGeometry<gsTensorNurbsBasis<d,T,KnotVectorType> > Base;
 
     typedef T Scalar_t;
     
