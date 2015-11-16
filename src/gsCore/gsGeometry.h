@@ -117,8 +117,8 @@ public:
     gsGeometry( const gsBasis<T> & basis, gsMovable< gsMatrix<Scalar_t> > coefs) :
     m_coefs(coefs), m_basis( basis.clone() ), m_id(0)
     { 
-        GISMO_ASSERT( basis.size() == coefs.ref().rows(), 
-                      "The coefficient matrix of the geometry (rows="<<coefs.ref().rows()
+        GISMO_ASSERT( basis.size() == m_coefs.rows(), 
+                      "The coefficient matrix of the geometry (rows="<<m_coefs.rows()
                       <<") does not match the number of basis functions in its basis("
                       << basis.size() <<").");
     }
@@ -127,8 +127,8 @@ public:
     gsGeometry( const gsBasis<T> & basis, const gsMatrix<Scalar_t> & coefs ) :
     m_coefs(coefs), m_basis( basis.clone() ), m_id(0)
     { 
-        GISMO_ASSERT( basis.size() == coefs.rows(), 
-                      "The coefficient matrix of the geometry (rows="<<coefs.rows()
+        GISMO_ASSERT( basis.size() == m_coefs.rows(), 
+                      "The coefficient matrix of the geometry (rows="<<m_coefs.rows()
                       <<") does not match the number of basis functions in its basis("
                       << basis.size() <<").");
     }
