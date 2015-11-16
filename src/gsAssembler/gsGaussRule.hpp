@@ -69,14 +69,14 @@ gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis,
 
     for(int i = 0; i!=fixDir; ++i )
     {
-        const index_t numNodes = quA * basis.degree(i) + quB + 0.5;//+0.5 for rounding
+        const index_t numNodes = static_cast<index_t>(quA * basis.degree(i) + quB + 0.5);//+0.5 for rounding
         lookupReference(numNodes, nodes[i], weights[i]);
     }
     nodes  [fixDir].setZero(1); // numNodes == 1
     weights[fixDir].setConstant(1, 2.000000000000000000000000000000);
     for(int i = fixDir+1; i!=d; ++i )
     {
-        const index_t numNodes = quA * basis.degree(i) + quB;
+        const index_t numNodes = static_cast<index_t>(quA * basis.degree(i) + quB);
         lookupReference(numNodes, nodes[i], weights[i]);
     }
 
