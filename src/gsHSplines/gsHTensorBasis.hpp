@@ -310,7 +310,7 @@ template<unsigned d, class T>
 void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes) 
 {
     GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
-    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied refine() with them.");
+    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provide refine() with them.");
 
     gsMatrix<T> para = support();
     for(int i = 0; i < boxes.cols()/2; i++)
@@ -332,10 +332,11 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
         for(index_t j = 0; j < k1.size();j++)
         {
             k1[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i  ))  ;
-            k2[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1))  ;
-            // Boxes are half-open.
-            if (boxes(j,2*i+1)>m_bases.back()->knots(j).uValue(k2[j]) )
-                k2[j]++;
+            k2[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
+
+            // Boxes are half-open
+            if (boxes(j,2*i+1) == m_bases.back()->knots(j).uValue(k2[j]) )
+                --k2[j];
         }
 
         // 2. Find the smallest level in which the box is completely contained
