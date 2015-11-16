@@ -329,14 +329,14 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     {
         // 1. Get a small cell containing the box
         const int fLevel = m_bases.size()-1;
+
         for(index_t j = 0; j < k1.size();j++)
         {
-            k1[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i  ))  ;
-            k2[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
+            k1[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i  )) ;
+            k2[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1)) ;
 
-            // Boxes are half-open
-            if (boxes(j,2*i+1) == m_bases.back()->knots(j).uValue(k2[j]) )
-                --k2[j];
+            // Boxes are half-open, trivial boxes trigger at least one box refined
+            if ( k1[j] == k2[j] ) ++k2[j];
         }
 
         // 2. Find the smallest level in which the box is completely contained
