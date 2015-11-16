@@ -33,7 +33,7 @@ gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, const double quA, const in
     //{
         for( int i=0; i<d; ++i )
         {
-            const index_t numNodes = quA * basis.degree(i) + quB + 0.5;//+0.5 for rounding
+            const index_t numNodes = static_cast<index_t>(quA * basis.degree(i) + quB + 0.5);//+0.5 for rounding
             //const bool found = 
             lookupReference(numNodes, nodes[i], weights[i]);
             //if (!found)

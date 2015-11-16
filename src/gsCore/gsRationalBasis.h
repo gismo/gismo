@@ -104,9 +104,13 @@ public:
     /// Assignment operator
     gsRationalBasis& operator=( const gsRationalBasis & o)
     {
-        if ( this == &o )
-            return *this;
-        return gsRationalBasis(o);
+        if ( this != &o )
+        {
+            delete m_src;
+            m_src = o.source().clone();
+            m_weights = o.weights()  ;
+        }
+        return *this;
     }
     
     // Destructor

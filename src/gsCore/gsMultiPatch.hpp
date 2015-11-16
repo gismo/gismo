@@ -203,7 +203,7 @@ void gsMultiPatch<T>::degreeElevate(int elevationSteps)
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
-        ( *it )->degreeElevate(elevationSteps);
+        ( *it )->degreeElevate(elevationSteps, -1);
     }
 }
 

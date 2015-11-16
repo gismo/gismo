@@ -89,7 +89,7 @@ public:
     gsTensorNurbsBasis( const Src_t & basis ) : Base(basis) { }
 
     gsTensorNurbsBasis( std::vector<gsBasis<T>* > const & bb, 
-                          gsMovable< gsMatrix<T> > w )
+                        gsMovable< gsMatrix<T> > w )
     : Base(Src_t(bb),w) { }
 
     gsTensorNurbsBasis( Src_t* basis, gsMovable< gsMatrix<T> > w ) : Base(basis,w) { }
