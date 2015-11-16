@@ -39,11 +39,13 @@ namespace gismo
 */
 
 template<unsigned d, class T, class KnotVectorType>
-class gsTensorNurbs : public gsGeoTraits<d,T>::GeometryBase
-{
+class gsTensorNurbs : //public gsGeoTraits<d,T>::GeometryBase
+        public gsGenericGeometry<gsTensorNurbsBasis<d,T,KnotVectorType> >
+        {
 
 public: 
-    typedef typename gsGeoTraits<d,T>::GeometryBase Base;
+    //typedef typename gsGeoTraits<d,T>::GeometryBase Base;
+    typedef typename gsGenericGeometry<gsTensorNurbsBasis<d,T,KnotVectorType> > Base;
 
     typedef T Scalar_t;
     
@@ -143,7 +145,7 @@ public:
   //gsTensorNurbs( gsTensorBasis<T,d> * const basis, gsMatrix<T> * const coefs ) :
   //  gsGeometry<T,d>( basis, coefs ) { };
 
-    GISMO_BASIS_ACCESSORS
+    //GISMO_BASIS_ACCESSORS
 
 public:
 
