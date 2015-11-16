@@ -15,14 +15,13 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 
+#include <gsNurbs/gsTensorNurbsBasis.h>
+
 #include <gsCore/gsGeometry.h>
 
-#include <gsNurbs/gsTensorNurbsBasis.h>
 
 namespace gismo
 {
-
-template<unsigned d, class T, class KnotVectorType> class gsTensorNurbs;
 
 /** \brief 
     A tensor product Non-Uniform Rational B-spline function

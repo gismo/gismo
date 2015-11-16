@@ -13,9 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsRationalBasis.h>
-
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo

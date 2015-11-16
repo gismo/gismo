@@ -18,8 +18,8 @@
 
 
 #define GISMO_BASIS_ACCESSORS \
-    Basis & basis() { return static_cast<Basis&>(*this->m_basis); } \
-    const Basis & basis() const { return static_cast<const Basis&>(*this->m_basis); }
+    virtual Basis & basis() { return static_cast<Basis&>(*this->m_basis); } \
+    virtual const Basis & basis() const { return static_cast<const Basis&>(*this->m_basis); }
     // bool isProjective() const{ return Basis::IsRational; }
 
 namespace gismo
