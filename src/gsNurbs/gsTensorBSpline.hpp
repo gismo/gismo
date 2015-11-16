@@ -344,6 +344,19 @@ std::ostream & gsTensorBSpline<d,T,KnotVectorType>::print(std::ostream &os) cons
 }
 
 
+/*
+template<unsigned d, class T, class KnotVectorType>
+std::vector<gsGeometry<T>*> splitAt(const T knot, int dir = -1) const
+{
+// compute mult of insertion
+// probably make a copy of m_coefs
+// insertKnot(knot, dir, mult) (without swap dir)
+// get the left and right part
+// swap back (0,dir)
+// give left and right part as new gsGeometries
+}
+*/
+
 namespace internal
 {
 

@@ -148,6 +148,11 @@ public:
         this->swap( *other );
     }
 
+
+    inline operator Ref () { return Ref(*this); }
+
+    inline operator const constRef () { return constRef(*this); }
+
     ~gsMatrix() ;
 
     // Using the assignment operators of Eigen

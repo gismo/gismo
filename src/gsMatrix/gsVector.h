@@ -32,7 +32,8 @@ namespace gismo
     \ingroup Matrix
 */
 template<class T, int _Rows>
-class gsVector : public gsMatrix<T,_Rows,1,ColMajor>
+class gsVector : public gsMatrix<T, _Rows, 1, ColMajor>
+//class gsVector : public gsMatrix<T, _Rows, (_Rows!=-1 ? 1 : -1), ColMajor>
 {
 public:
     // Base is the single-column dense matrix class of Eigen
@@ -95,6 +96,10 @@ public:
 
     explicit gsVector(int dimension) ;
 
+    inline operator Ref () { return Ref(*this); }
+
+    inline operator const ConstRef () { return ConstRef(*this); }
+
     ~gsVector () ;
 
     // This constructor allows constructing a gsVector from Eigen expressions
@@ -145,8 +150,11 @@ public:
         return *this;
     }
 
-    inline T   at (index_t i) const { return (*this)(i,0); }
-    inline T & at (index_t i)       { return (*this)(i,0); }
+    /// \brief Returns the \a i-th element of the vector
+    inline T at (index_t i) const { return *(this->data()+i);}
+
+    /// \brief Returns the \a i-th element of the vector
+    inline T & at (index_t i)     { return *(this->data()+i);}
 
     /// Return a row-block view of the vector with \a rowSizes
     BlockView blockView(const gsVector<index_t> & rowSizes)

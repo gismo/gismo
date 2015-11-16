@@ -75,7 +75,7 @@ enum gsNeedEnum
 template< class T = real_t>  class gsBasis;
 template< class T = real_t>  class gsGeometry;
 template< class T = real_t>  class gsGeometrySlice;
-template<class Basis_t>      class gsGenericGeometry;
+template<unsigned d, class T = real_t>  class gsGenericGeometry;
 template< class T = real_t>  class gsGeometryEvaluator;
 template< class T = real_t>  class gsConstantBasis;
 template< class T = real_t>  class gsBasisFun;

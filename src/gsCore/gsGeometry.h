@@ -18,8 +18,8 @@
 
 
 #define GISMO_BASIS_ACCESSORS \
-    virtual Basis & basis() { return static_cast<Basis&>(*this->m_basis); } \
-    virtual const Basis & basis() const { return static_cast<const Basis&>(*this->m_basis); }
+    Basis & basis() { return static_cast<Basis&>(*this->m_basis); } \
+    const Basis & basis() const { return static_cast<const Basis&>(*this->m_basis); }
     // bool isProjective() const{ return Basis::IsRational; }
 
 namespace gismo
@@ -375,7 +375,7 @@ public:
     /// @{
 
     /// Refine the geometry uniformly, inserting \a numKnots new knots into each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1)
+    virtual void uniformRefine(int numKnots = 1, int mul=1) // todo: int dir = -1
     {
         this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
     }
@@ -543,8 +543,6 @@ struct gsGeoTraits<4,T>
 };
 
 } // namespace gismo
-
-#include <gsCore/gsGenericGeometry.h>
 
 
 #ifndef GISMO_BUILD_LIB

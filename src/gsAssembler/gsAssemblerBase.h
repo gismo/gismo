@@ -144,6 +144,9 @@ public:
                boxSide side = boundary::none)
     {
         //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
+        
+        // GISMO_ASSERT(patchIndex < );
+        // GISMO_ASSERT(sidex < );
 
         const gsBasisRefs<T> bases(m_bases, patchIndex);
         const gsDofMappers mappers(m_dofMappers);

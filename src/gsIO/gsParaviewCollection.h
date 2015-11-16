@@ -51,17 +51,9 @@ public:
     gsParaviewCollection(std::string const & fn)
     : mfn(fn), counter(0)
     {
-        mfile = new std::stringstream();
-
-        *mfile <<"<?xml version=\"1.0\"?>\n";
-        *mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
-        *mfile <<"<Collection>\n";
-    }
-
-    /// Destructor
-    ~gsParaviewCollection()
-    {
-        delete mfile;
+        mfile <<"<?xml version=\"1.0\"?>\n";
+        mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
+        mfile <<"<Collection>\n";
     }
 
     /// Adds a part in the collection, with complete filename (including extension) \a fn
@@ -69,28 +61,28 @@ public:
     {
         GISMO_ASSERT(fn.find_last_of(".") != String::npos, "File without extension");
         GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        *mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<"\"/>\n";
+        mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<"\"/>\n";
     }
 
     /// Adds a part in the collection, with filename \a fn with extension \a ext appended
     void addPart(String const & fn, String const & ext)
     {
         GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        *mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
+        mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
     }
 
     /// Adds a part in the collection, with filename \a fn_i and extension \a ext appended
     void addPart(String const & fn, int i, String const & ext)
     {
         GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        *mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<"_"<<i<<ext<<"\"/>\n";
+        mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<"_"<<i<<ext<<"\"/>\n";
     }
     
     // to do: make time collections as well
 	// ! i is not included in the filename, must be in included fn !
     void addTimestep(String const & fn,int i, String const & ext)
     {
-        *mfile << "<DataSet timestep=\""<<i<<"\" file=\""<<fn<<ext<<"\"/>\n";
+        mfile << "<DataSet timestep=\""<<i<<"\" file=\""<<fn<<ext<<"\"/>\n";
     }
 
     /// Finalizes the collection by closing the XML tags, always call
@@ -98,22 +90,21 @@ public:
     void save()
     {
         GISMO_ASSERT(counter!=-1, "Error: gsParaviewCollection::save() already called." );
-        *mfile <<"</Collection>\n";
-        *mfile <<"</VTKFile>\n";
+        mfile <<"</Collection>\n";
+        mfile <<"</VTKFile>\n";
 
         mfn.append(".pvd");
         std::ofstream f( mfn.c_str() );
         GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
-        f << mfile->rdbuf();
+        f << mfile.rdbuf();
         f.close();
-        delete mfile;
-        mfile = NULL;
+        mfile.str("");
         counter = -1;
     }
 
 private:
     /// Pointer to char stream
-    std::stringstream * mfile;
+    std::stringstream mfile;
     
     /// File name
     String mfn;

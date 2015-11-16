@@ -1,6 +1,6 @@
 /** @file gsGenericGeometry.h
 
-    @brief Provides declaration of GenericGeometry abstract interface.
+    @brief Provides declaration of gsGenericGeometry class
 
     This file is part of the G+Smo library. 
 
@@ -13,56 +13,44 @@
 
 #pragma once
 
+/**
+   \brief The generic geometry class represents a function defined as
+   coefficients times basis function defined in a basis.
+
+   This is a generic implementation with minimal functionality. For
+   common geometry types (B-splines, tensor-product B-splines,
+   hierarchical splines) specific classes are implemented, which
+   provide additional functionalities.
+
+ */
+#include <gsCore/gsGeometry.h>
+
 namespace gismo
 {
 
-
-/** \brief  Base class for geometries with statically known basis types.
- *
- * This is an internal implementation class which all concrete geometries
- * derive from. It allows the compile-time specification of the associated
- * basis type. Note that the basis dimension is also statically known.
- *
- * \tparam Basis_t  type of the basis for this geometry
- *
- *
- * \ingroup Core
- */
-//template<unsigned d, typename T>
-template<typename Basis_t>
-class gsGenericGeometry : 
-        public gsGeoTraits<Basis_t::Dim, 
-                           typename Basis_t::Scalar_t>::GeometryBase
-//public gsGeoTraits<d,T>::GeometryBase
+template<unsigned d, class T>
+class gsGenericGeometry : public gsGeoTraits<d,T>::GeometryBase
 {
-public: 
-    typedef typename Basis_t::Scalar_t Scalar_t;
+public:
+    typedef gsBasis<T> Basis;
 
-    typedef Basis_t Basis;
-
-    typedef typename gsGeoTraits<Basis_t::Dim,Scalar_t>::GeometryBase Base;
+    typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
 public:
-
-    // Look at gsGeometry base constructor for a brief description
-    gsGenericGeometry() : Base() { }
-
-    // Look at gsGeometry base constructor for a brief description
-    gsGenericGeometry(const Basis_t & basis, const gsMatrix<Scalar_t> & coefs )
+    gsGenericGeometry(const gsBasis<T> & basis, 
+                            const gsMatrix<T> & coefs)
     : Base (basis,coefs)
-    { }
-    
-    // Look at gsGeometry base constructor for a brief description
-    gsGenericGeometry(const Basis_t & basis, gsMovable< gsMatrix<Scalar_t> > coefs )
-    : Base (basis,coefs)
-    { }
-        
-public:
+    { 
+        GISMO_ASSERT( this->m_basis->dim() == static_cast<int>(d), 
+                      "Incoherent basis dimension in gsGenericGeomtry");
+    }
+
+    gsGenericGeometry * clone() const
+    { return new gsGenericGeometry(*this); }
 
     GISMO_BASIS_ACCESSORS
-    
-}; // class gsGenericGeometry
 
-
+};
 
 } // namespace gismo
+

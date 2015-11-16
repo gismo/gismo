@@ -281,7 +281,7 @@ public:
             sort();
         }
         
-        // iterator itr// Assumes sorted in descending order
+        // iterator itr// Assumes sorted in ascending order
         //     = std::lower_bound(vec.begin(), vec.end(), e, std::greater<C>() );
         iterator pos = std::lower_bound(inherited::begin(), inherited::end(), t );
         
