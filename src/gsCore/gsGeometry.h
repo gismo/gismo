@@ -16,6 +16,12 @@
 #include <gsCore/gsFunction.h>
 #include <gsCore/gsBoundary.h>
 
+
+#define GISMO_BASIS_ACCESSORS \
+    Basis & basis() { return static_cast<Basis&>(*this->m_basis); } \
+    const Basis & basis() const { return static_cast<const Basis&>(*this->m_basis); }
+    // bool isProjective() const{ return Basis::IsRational; }
+
 namespace gismo
 {
 
@@ -110,12 +116,22 @@ public:
     /// consumed, i.e. the \coefs variable will be empty after the call
     gsGeometry( const gsBasis<T> & basis, gsMovable< gsMatrix<Scalar_t> > coefs) :
     m_coefs(coefs), m_basis( basis.clone() ), m_id(0)
-    { }
+    { 
+        GISMO_ASSERT( basis.size() == coefs.ref().rows(), 
+                      "The coefficient matrix of the geometry (rows="<<coefs.ref().rows()
+                      <<") does not match the number of basis functions in its basis("
+                      << basis.size() <<").");
+    }
 
     /// @brief Constructor by a basis and coefficient vector
     gsGeometry( const gsBasis<T> & basis, const gsMatrix<Scalar_t> & coefs ) :
     m_coefs(coefs), m_basis( basis.clone() ), m_id(0)
-    { }
+    { 
+        GISMO_ASSERT( basis.size() == coefs.rows(), 
+                      "The coefficient matrix of the geometry (rows="<<coefs.rows()
+                      <<") does not match the number of basis functions in its basis("
+                      << basis.size() <<").");
+    }
 
     /// @brief Copy Constructor
     gsGeometry(const gsGeometry & o)
@@ -232,8 +248,8 @@ public:
         return ( S.col(0) + S.col(1) ) * T(0.5);
     }
 
-    /// Whether the coefficients of this geometry are stored in projective or affine form
-    virtual bool isProjective() const = 0;
+    // Whether the coefficients of this geometry are stored in projective or affine form
+    //virtual bool isProjective() const = 0;
 
     /// @}
 
@@ -483,6 +499,50 @@ std::ostream &operator<<(std::ostream &os, const gsGeometry<T>& b)
 
 } // namespace gismo
 
+#include <gsCore/gsCurve.h>
+#include <gsCore/gsSurface.h>
+#include <gsCore/gsVolume.h>
+#include <gsCore/gsBulk.h>
+
+namespace gismo
+{
+
+// Generic traits for geometry with dimension known at compile time
+template <unsigned d, typename T>
+struct gsGeoTraits
+{
+    typedef gsGeometry<T> GeometryBase;
+};
+
+// Traits for curve
+template <typename T>
+struct gsGeoTraits<1,T>
+{
+    typedef gsCurve<T> GeometryBase;
+};
+
+// Traits for surface
+template <typename T>
+struct gsGeoTraits<2,T>
+{
+    typedef gsSurface<T> GeometryBase;
+};
+
+// Traits for volume
+template <typename T>
+struct gsGeoTraits<3,T>
+{
+    typedef gsVolume<T> GeometryBase;
+};
+
+// Traits for bulk
+template <typename T>
+struct gsGeoTraits<4,T>
+{
+    typedef gsBulk<T> GeometryBase;
+};
+
+} // namespace gismo
 
 #include <gsCore/gsGenericGeometry.h>
 

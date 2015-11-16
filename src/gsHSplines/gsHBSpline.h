@@ -34,11 +34,12 @@ namespace gismo
 */    
     
 template<unsigned d, class T>
-class gsHBSpline : public gsGenericGeometry<gsHBSplineBasis<d,T> >
+class gsHBSpline : public gsGeoTraits<d,T>::GeometryBase
 {   
 public: 
+    typedef typename gsGeoTraits<d,T>::GeometryBase Base;
+
     typedef gsHBSplineBasis<d,T> Basis;
-    typedef gsGenericGeometry< gsHBSplineBasis<d,T> > Base;
     
     /// Shared pointer for gsHBSpline
     typedef memory::shared_ptr< gsHBSpline<d,T> > Ptr;
@@ -69,18 +70,11 @@ public:
         this->m_coefs = tbsp->coefs();
     }
   
-    /// Copy constructor
-    gsHBSpline( const gsHBSpline & other ) : Base(other)
-    { 
-        this->m_basis = other.basis().clone();
-        this->m_coefs = other.coefs();
-    }
-  
     /// Clone the gsHBspline
     virtual gsHBSpline * clone() const
     { return new gsHBSpline(*this); };
-  
-    ~gsHBSpline() { }; //destructor   
+
+    GISMO_BASIS_ACCESSORS
   
 public:
   

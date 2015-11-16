@@ -40,12 +40,11 @@ template<unsigned d, class T, class KnotVectorType> class gsTensorNurbs;
 */
 
 template<unsigned d, class T, class KnotVectorType>
-class gsTensorNurbs : 
-    public gsGenericGeometry< gsTensorNurbsBasis<d,T,KnotVectorType> > 
+class gsTensorNurbs : public gsGeoTraits<d,T>::GeometryBase
 {
 
 public: 
-    typedef gsGenericGeometry< gsTensorNurbsBasis<d,T,KnotVectorType>  > Base;
+    typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
     typedef T Scalar_t;
     
@@ -144,6 +143,8 @@ public:
   /// Construct nD tensor B-Spline 
   //gsTensorNurbs( gsTensorBasis<T,d> * const basis, gsMatrix<T> * const coefs ) :
   //  gsGeometry<T,d>( basis, coefs ) { };
+
+    GISMO_BASIS_ACCESSORS
 
 public:
 

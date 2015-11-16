@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include <iostream>
 #include <gsPde/gsBoundaryConditions.h>
-#include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsMultiPatch.h>
+#include <gsCore/gsPiecewiseFunction.h>
 
 namespace gismo
 {
@@ -74,8 +73,13 @@ public:
      *
      * There is also a const version returning a const reference.
      */
-    gsMultiPatch<T> &domain() {return m_domain;}
-    const gsMultiPatch<T> &domain() const {return m_domain;}
+    gsMultiPatch<T>       & domain() {return m_domain;}
+
+    const gsMultiPatch<T> & domain() const {return m_domain;}
+
+    gsMultiPatch<T>       & patches() {return m_domain;}
+
+    const gsMultiPatch<T> & patches() const {return m_domain;}
 
     /**
      * @brief Returns a reference to the Pde boundary conditions.
@@ -83,7 +87,10 @@ public:
      * There is also a const version returning a const reference.
      */
     gsBoundaryConditions<T> &boundaryConditions() {return m_boundary_conditions;}
+
     const gsBoundaryConditions<T> &boundaryConditions() const {return m_boundary_conditions;}
+
+    const gsBoundaryConditions<T> & bc() const {return m_boundary_conditions;}
 
     // Is the associated linear system symmetric?
     // TODO: Remove, because it depends on the method and the used
@@ -168,15 +175,16 @@ public:
         return m_unknownDim[field_id];
     }
 
-    GISMO_DEPRECATED
     /**
      * @brief returns the dimension of the domain
      *
     **/
+    GISMO_DEPRECATED
     int dim() const
     {
         return m_domain.dim();
     }
+
 protected:
     /// @brief Description of the unknown fields:
     /// for each one the target dimension.

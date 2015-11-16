@@ -37,14 +37,14 @@ namespace gismo
 */
 
 template<unsigned d, class T>
-class gsTHBSpline : public gsGenericGeometry<gsTHBSplineBasis<d,T> >
+class gsTHBSpline : public gsGeoTraits<d,T>::GeometryBase
 {
 public:
     typedef gsTHBSplineBasis<d,T> Basis;
 
     typedef typename Basis::tensorBasis tensorBasis;
 
-    typedef gsGenericGeometry< gsTHBSplineBasis<d,T> > Base;
+    typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
     /// Shared pointer for gsHBSpline
     typedef memory::shared_ptr< gsTHBSpline<d,T> > Ptr;
@@ -62,17 +62,13 @@ public:
 
     /// Construct THB-Spline by basis functions and coefficient matrix
     gsTHBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
-        Base( basis, coefs ) 
-    {
-        
-    }
+    Base( basis, coefs ) 
+    { }
 
     /// Construct THB-Spline by basis functions and coefficient matrix
     gsTHBSpline( const Basis& basis, gsMatrix<T> & coefs ) :
         Base( basis, coefs )
-    {
-
-    }
+    { }
 
     /// Construct B-Spline from a Tensor B-Spline
     gsTHBSpline( const gsTensorBSpline<d,T> & tbsp )
@@ -81,20 +77,11 @@ public:
         this->m_coefs = tbsp.coefs();
     }
 
-    /// Copy constructor
-    gsTHBSpline( const gsTHBSpline & other ) : Base(other)
-    {
-        this->m_basis = other.basis().clone();
-        this->m_coefs = other.coefs();
-    }
-
     /// Clone the gsHBspline
     virtual gsTHBSpline * clone() const
     { return new gsTHBSpline(*this); }
 
-    ~gsTHBSpline() { } //destructor
-
-    //void deriv2_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
+    GISMO_BASIS_ACCESSORS
 
 public:
 

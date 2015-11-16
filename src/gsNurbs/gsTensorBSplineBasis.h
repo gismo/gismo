@@ -15,10 +15,7 @@
 #pragma once
 
 #include <gsTensor/gsTensorBasis.h>
-
 #include <gsNurbs/gsBSplineBasis.h>
-// #include <gsNurbs/gsKnotVector.h>
-// #include <gsNurbs/gsCompactKnotVector.h>
 #include <gsNurbs/gsTensorBSpline.h>
 
 namespace gismo
@@ -36,8 +33,7 @@ namespace gismo
 */
   
 template<unsigned d, class T, class KnotVectorType>
-class gsTensorBSplineBasis 
-    : public gsTensorBasis<d,T>
+class gsTensorBSplineBasis : public gsTensorBasis<d,T>
 {
 public: 
     /// Base type

@@ -193,13 +193,12 @@ public:
      * \return      a matrix of size <em>n x m</em> with one function value as a column vector
      *              per evaluation point
      */
-    uMatrixPtr eval(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
+    uMatrixPtr evalFunc(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
         gsMatrix<T> * result = new gsMatrix<T>;
         this->evalFunc_into(u, coefs, *result);
         return uMatrixPtr(result);
     }
-    using Base::eval;
 
     /** \brief Evaluate the function described by \a coefs at points \a u,
      * i.e., evaluates a linear combination of coefs x BasisFunctions, into \a result.
@@ -225,13 +224,12 @@ public:
      *   one Jacobian matrix of size <em>n x d</em>, such that the total size of
      *   the result is <em>n x (d * m)</em>
      */
-    uMatrixPtr deriv(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
+    uMatrixPtr derivFunc(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
         gsMatrix<T> * result = new gsMatrix<T>;
         this->derivFunc_into(u, coefs, *result);
         return uMatrixPtr(result);
     }
-    using Base::deriv;
 
     /** \brief Evaluate the derivatives of the function described by \a coefs at points \a u.
      *
@@ -315,13 +313,12 @@ public:
      */
     //  second derivatives as follows (eg. for a surface (x,y) --> (f_1, f_2, f_3):
     //     *   ( dxxf_1 dyyf_1 dxyf_1 dxxf_2 dyyf_2 dxy2f_2 dxxf_3 dyyf_3 dxyf_3 )^T
-    uMatrixPtr deriv2(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
+    uMatrixPtr deriv2Func(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
         gsMatrix<T> *result = new gsMatrix<T>;
         this->deriv2Func_into(u, coefs, *result);
         return uMatrixPtr(result);
     }
-    using Base::deriv2;
 
     /** \brief Evaluates the second derivatives of the function described by \a coefs at points \a u.
      *

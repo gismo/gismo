@@ -19,33 +19,6 @@
 namespace gismo
 {
 
-
-/*
-  template <unsigned d, typename T>
-  struct gsTenBSplTraits
-  {
-
-  };
-
-  template <typename T>
-  struct gsTenBSplTraits<1,T>
-  {
-  typedef gsBSpline<T> BoundaryGeo;
-  };
-
-  template <typename T>
-  struct gsTenBSplTraits<2,T>
-  {
-  typedef gsBSpline<T> BoundaryGeo;
-  };
-
-  template <typename T>
-  struct gsTenBSplTraits<3,T>
-  {
-  typedef gsTensorBSpline<2, T> BoundaryGeo;
-  };
-*/
-
 /** \brief
     A tensor product of \em d B-spline functions, with arbitrary target dimension.
 
@@ -59,8 +32,7 @@ namespace gismo
     \ingroup Nurbs
 */
 template<unsigned d, class T, class KnotVectorType>
-class gsTensorBSpline : 
-        public gsGenericGeometry<typename gsBSplineTraits<d,T,KnotVectorType>::Basis>
+class gsTensorBSpline : public gsGeoTraits<d,T>::GeometryBase
 {
 public: 
     typedef T Scalar_t;
@@ -68,8 +40,7 @@ public:
     //typedef gsTensorBSplineBasis<d,T,KnotVectorType> Basis;
     typedef typename gsBSplineTraits<d,T,KnotVectorType>::Basis Basis;
 
-    //typedef gsGenericGeometry< Basis > Base;
-    typedef gsGenericGeometry<typename gsBSplineTraits<d,T,KnotVectorType>::Basis> Base;
+    typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
     /// Family type
     typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
@@ -238,16 +209,13 @@ public:
         this->m_coefs = tcoefs;
     }
     
-    gsTensorBSpline( gsTensorBSpline const & o ) : Base(o) { }
-    
     /// Clone function. Used to make a copy of the geometry
     gsTensorBSpline * clone() const
     { 
         return new gsTensorBSpline( *this );
     }
 
-    // Destructor
-    ~gsTensorBSpline() { }
+    GISMO_BASIS_ACCESSORS
 
 public:
 
@@ -263,66 +231,16 @@ public:
     /// Returns a reference to the knot vector \a i
     const KnotVectorType & knots(const int i) const { return this->basis().knots(i); }
 
-//////////////////////////////////////////////////
-// Virtual member functions required by the base class
-//////////////////////////////////////////////////
+    /*** Virtual member functions required by the base class ***/
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const;
 
-
-//////////////////////////////////////////////////
-// Additional members for tensor B-Splines
-//////////////////////////////////////////////////
+    /*** Additional members for tensor B-Splines ***/
 
     /// Returns the degree of the basis wrt direction i
     unsigned degree(const unsigned & i) const 
     { return this->basis().component(i).degree(); }
-
-/// Return the face of side s
-
-
-
-// Overlaps/reimplements functionality of gsGeometry::boundary(),
-// and adds orientation to the result.
-/* LOOK AT THE gsGeometry::boundary
- *
- * this function is commented in case someone needs this version
- * with additional orientation
- gsGeometry<T> * boundary( boxSide const& s ) const
- {
- // this sould be a vector
- gsMatrix<unsigned> * ind = this->m_basis->boundary(s);
-
- gsMatrix<T> * fs = new gsMatrix<T>(ind->rows(),this->geoDim());
-
- // CORRECT ORIENTATION
- if ( (s == boundary::north) || (s == boundary::west) )
- {
- ind->reverseInPlace();
- }
-
-
- for ( index_t i = 0; i< ind->rows(); ++i)
- {
- fs->row(i) = this->m_coefs.row((*ind)(i, 0));
- }
-
-
- if (this->parDim() == 1)
- {
- return new typename gsTenBSplTraits<d, T>::BoundaryGeo();
- }
- else if (this->parDim() == 2 || this->parDim() == 3)
- {
- return new typename gsTenBSplTraits<d, T>::BoundaryGeo(
- *this->m_basis->boundaryBasis(s), *fs);
- }
-
- GISMO_ERROR("Function face is only implemented for dimension 1, 2 and 3!");
- return new gsBSpline<T>();
- }
-*/
 
     /// Toggle orientation wrt coordinate k
     /// \todo use flipTensor to generalize to any dimension
