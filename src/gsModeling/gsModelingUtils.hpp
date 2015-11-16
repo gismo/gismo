@@ -590,8 +590,8 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     gsMatrix<T> ident2(n2, n2);
     ident1.setIdentity();
     ident2.setIdentity();
-    Nu  = bs1.eval(exactPoints.row(0), ident1); // u-BSplines
-    Nv  = bs2.eval(exactPoints.row(1), ident2); // v-BSplines
+    Nu  = bs1.evalFunc(exactPoints.row(0), ident1); // u-BSplines
+    Nv  = bs2.evalFunc(exactPoints.row(1), ident2); // v-BSplines
     Nu.transposeInPlace();
     Nv.transposeInPlace();
     npts = exactPoints.cols();
@@ -607,10 +607,10 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     ecor.block(2*npts,0,npts,1) = (exactValues.row(2)).transpose();
 
     //Assemble Approximative constraints for inner points on edges
-    Nu  = bs1.eval(appxPointsEdges.row(0), ident1); // u-BSplines
-    dNu = bs1.deriv(appxPointsEdges.row(0), ident1);
-    Nv  = bs2.eval(appxPointsEdges.row(1), ident2); // v-BSplines
-    dNv = bs2.deriv(appxPointsEdges.row(1), ident2);
+    Nu  = bs1.evalFunc(appxPointsEdges.row(0), ident1); // u-BSplines
+    dNu = bs1.derivFunc(appxPointsEdges.row(0), ident1);
+    Nv  = bs2.evalFunc(appxPointsEdges.row(1), ident2); // v-BSplines
+    dNv = bs2.derivFunc(appxPointsEdges.row(1), ident2);
     Nu.transposeInPlace();
     Nv.transposeInPlace();
     dNu.transposeInPlace();
@@ -628,10 +628,10 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     bappEdge.block(2*npts,0,npts,1) = (appxValuesEdges.row(2)).transpose();
 
     //Assemble Approximate constraints for interior
-    Nu  = bs1.eval(appxPointsInt.row(0), ident1); // u-BSplines
-    dNu = bs1.deriv(appxPointsInt.row(0), ident1);
-    Nv  = bs2.eval(appxPointsInt.row(1), ident2); // v-BSplines
-    dNv = bs2.deriv(appxPointsInt.row(1), ident2);
+    Nu  = bs1.evalFunc(appxPointsInt.row(0), ident1); // u-BSplines
+    dNu = bs1.derivFunc(appxPointsInt.row(0), ident1);
+    Nv  = bs2.evalFunc(appxPointsInt.row(1), ident2); // v-BSplines
+    dNv = bs2.derivFunc(appxPointsInt.row(1), ident2);
     Nu.transposeInPlace();
     Nv.transposeInPlace();
     dNu.transposeInPlace();
@@ -649,10 +649,10 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     bappInt.block(2*npts,0,npts,1) = (appxValuesInt.row(2)).transpose();
 
     //Assemble Approximative constraints for normals
-    Nu  = bs1.eval(appxNormalPoints.row(0), ident1); // u-BSplines
-    dNu = bs1.deriv(appxNormalPoints.row(0), ident1);
-    Nv  = bs2.eval(appxNormalPoints.row(1), ident2); // v-BSplines
-    dNv = bs2.deriv(appxNormalPoints.row(1), ident2);
+    Nu  = bs1.evalFunc(appxNormalPoints.row(0), ident1); // u-BSplines
+    dNu = bs1.derivFunc(appxNormalPoints.row(0), ident1);
+    Nv  = bs2.evalFunc(appxNormalPoints.row(1), ident2); // v-BSplines
+    dNv = bs2.derivFunc(appxNormalPoints.row(1), ident2);
     Nu.transposeInPlace();
     Nv.transposeInPlace();
     dNu.transposeInPlace();
