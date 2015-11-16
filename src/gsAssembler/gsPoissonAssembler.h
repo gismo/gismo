@@ -1,4 +1,4 @@
-/** @file gsPoissonAssembler.h
+ /** @file gsPoissonAssembler.h
 
     @brief Provides assembler for the Poisson equation.
 
@@ -105,8 +105,8 @@ public:
         //set the values, options,...
         m_options.dirStrategy = dirStrategy;
         m_options.intStrategy = intStrategy;
-        //m_options.dirValues = dirichlet::l2Projection;
-        m_options.dirValues = dirichlet::interpolation;
+        m_options.dirValues = dirichlet::l2Projection;
+        //m_options.dirValues = dirichlet::interpolation;
 
         //initialize the values, options,...
         this->initialize(patches, basis, bconditions);
