@@ -33,7 +33,7 @@ public:
         : gsPde<T>(domain,bc),
             m_diff(diff), m_conv(conv), m_reac(reac), m_rhs(rhs)
     {
-            m_unknownDim.push_back( rhs->targetDim() );
+        m_unknownDim.setOnes(1);
     }
 
     // COMPATIBILITY CONSTRUCTOR, DO NOT USE
@@ -41,7 +41,7 @@ public:
         const gsFunction<T> *diff, const gsFunction<T> *conv, const gsFunction<T> *reac, const gsFunction<T>  *rhs)
            : m_diff(diff), m_conv(conv), m_reac(reac), m_rhs(rhs)
     {
-            m_unknownDim.push_back( rhs->targetDim() );
+        m_unknownDim.secOnes(1);
     }
 
     ~gsConvDiffRePde()
