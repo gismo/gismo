@@ -13,15 +13,13 @@
 
 #pragma once
 
-#include <gsCore/gsFunction.h>
+#include <gsCore/gsPatchwiseFunction.h>
 
 namespace gismo
 {
 
-template <class T> class gsFunction;
-
 /** @brief A function depending on an index \a i, typically referring
-    to a patch/sub-domain.
+    to a patch/sub-domain. On each patch a different gsFunction object is used.
 
     \tparam T argument and value type
     
@@ -29,28 +27,53 @@ template <class T> class gsFunction;
 */
 
 template <class T>
-class gsPiecewiseFunction
+class gsPiecewiseFunction : public gsPatchwiseFunction<T>
 {
 public:
-    typedef std::size_t size_t;
-    typedef typename std::vector<gsFunction<T>*>::iterator fiterator;
-    typedef typename std::vector<gsFunction<T>*>::const_iterator const_fiterator;
+    typedef gsPatchwiseFunction<T>                     Base;
+    typedef typename std::vector<gsFunction<T>*>       FunctionContainer;
+    typedef typename FunctionContainer::iterator       fiterator;
+    typedef typename FunctionContainer::const_iterator const_fiterator;
 
 public:
 
     gsPiecewiseFunction() { }
-    
-    explicit gsPiecewiseFunction(const gsFunction<T> & func, size_t numPieces = 1)
-    { 
-        gsFunction<T> * cf = func.clone();
-        m_funcs.resize(numPieces, cf);
+
+    gsPiecewiseFunction(const gsFunction<T> & func)
+    {
+        m_funcs.push_back(func.clone());
+        //m_funcs.resize(n, func.clone());
+    }
+
+    gsPiecewiseFunction(const gsPiecewiseFunction & other)
+    {
+        m_funcs.resize(other.m_funcs.size() );
+        cloneAll( other.m_funcs.begin(), other.m_funcs.end(),
+                  m_funcs.begin() );
+    }
+
+    gsPiecewiseFunction(FunctionContainer & funcs)
+    {
+        m_funcs.swap(funcs); // funcs are consumed
     }
 
     ~gsPiecewiseFunction()
     {
-        fiterator it = std::unique(m_funcs.begin(), m_funcs.end() );
-        freeAll(m_funcs.begin(), it);
-    }    
+        freeAll(m_funcs);
+    }
+
+    /// Assignment operator (uses copy-and-swap idiom)
+    gsPiecewiseFunction & operator= ( gsPiecewiseFunction other )
+    {
+        this->swap( other );
+        return *this;
+    }
+
+    /// \brief Swap with another gsPiecewiseFunction
+    void swap(gsPiecewiseFunction & other)
+    {
+        m_funcs.swap( other.m_funcs );
+    }
 
 public:
 
@@ -69,37 +92,13 @@ public:
         m_funcs.push_back( func.clone() );
     }
     
-    /// Evaluate at \a i on evaluation points \a u, output at \a result.
-    void eval_into(size_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        GISMO_ASSERT(i< m_funcs.size(), "Wrong piece index");
-        m_funcs[i]->eval_into(u,result);
-    }
-
-    /// Derivative at \a i on evaluation points \a u, output at \a result.
-    void deriv_into(size_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        GISMO_ASSERT(i< m_funcs.size(), "Wrong piece index");
-        m_funcs[i]->deriv_into(u,result);
-    }
-
-    const gsFunction<T> & piece(size_t i) const 
+    const gsFunction<T> & piece(const index_t i) const 
     { 
-        GISMO_ASSERT(i< m_funcs.size(), "Wrong piece index");
+        GISMO_ASSERT(static_cast<size_t>(i) < m_funcs.size(), "Wrong piece index");
         return *m_funcs[i]; 
     }
 
-    inline const gsFunction<T> & operator [] (size_t & i) const 
-    {
-        GISMO_ASSERT(i< m_funcs.size(), "Wrong piece index");
-        return *m_funcs[i];
-    }
-    
-    inline gsFunction<T> & operator [] (size_t i) 
-    {
-        GISMO_ASSERT(i<m_funcs.size(), "Wrong piece index");
-        return *m_funcs[i];
-    }
+    index_t size() const {return m_funcs.size();}
 
     std::ostream &print(std::ostream &os) const
     {
@@ -107,15 +106,15 @@ public:
         return os; 
     }
 
-    friend std::ostream & operator<<(std::ostream &os, const gsPiecewiseFunction &pwf)
+    friend std::ostream & operator<<(std::ostream & os, const gsPiecewiseFunction & pwf)
     {
         return pwf.print(os);
     }
 
-private:
+protected:
     
-    std::vector<gsFunction<T> * > m_funcs;
+    FunctionContainer m_funcs;
 };
 
-}
+} // namespace gismo
 
