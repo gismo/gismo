@@ -233,8 +233,8 @@ public:
         m_deg            = o.m_deg;
         m_tree           = o.m_tree;
         m_xmatrix        = o.m_xmatrix;
-        
-        m_bases.reserve( o.m_bases.size() );
+
+        m_bases.resize( o.m_bases.size() );
         cloneAll(o.m_bases.begin(), o.m_bases.end(), m_bases.begin());
     }
     
