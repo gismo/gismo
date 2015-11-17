@@ -11,8 +11,6 @@
     Author(s): S. Moore, A. Mantzaflaris
 */
 
-
-
 #pragma once
 
 
@@ -20,10 +18,10 @@ namespace gismo
 {
 
 template <class T>
-class gsHeatEquation : public gsPoissonAssembler<T>
+class gsHeatEquation : public gsPoissonAssembler2<T>
 {
 public:
-    typedef gsPoissonAssembler<T> Base;
+    typedef gsPoissonAssembler2<T> Base;
 
 public:
 
@@ -89,13 +87,13 @@ protected:
     
 
     // Members from gsAssemblerBase
-    using gsAssemblerBase<T>::m_patches;
-    using gsAssemblerBase<T>::m_bases;
-    using gsAssemblerBase<T>::m_dofMappers;
-    using gsAssemblerBase<T>::m_ddof;
-    using gsAssemblerBase<T>::m_matrix;
-    using gsAssemblerBase<T>::m_rhs;
-    using gsAssemblerBase<T>::m_dofs;
+    using Base::m_patches;
+    using Base::m_bases;
+    using Base::m_dofMappers;
+    using Base::m_ddof;
+    using Base::m_matrix;
+    using Base::m_rhs;
+    using Base::m_dofs;
 
 
 };// end class definition

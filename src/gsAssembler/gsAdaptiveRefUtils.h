@@ -281,7 +281,7 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
                 numMarked++;
             }
         }
-        // Refine all of the found refBoxes in this patchx
+        // Refine all of the found refBoxes in this patch
         basis.refine( pn, refBoxes, refExtension );
     }
 }

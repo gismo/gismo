@@ -32,16 +32,16 @@ public:
     typedef gsVisitorMass<T> Base;
 
 public:
-/** @brief
- * Constructor of the assembler object 
+/** @brief Visitor for stiffness (grad-grad) integrals
  * 
  * This visitor assemble the element-wise bilinear form:
  * \f[ ( \nabla u , \nabla v )_{K} \f].
  * Where \f[ v$ \f]  is the test function and \f[u \f] is trial function.
  */
-    gsVisitorGradGrad()
+    gsVisitorGradGrad(const gsPde<T> & pde)
     { }
 
+    /*
     static void initialize(const gsBasis<T> & basis, 
                            gsQuadRule<T> & rule, 
                            unsigned & evFlags ) // replace with geoEval ?
@@ -59,6 +59,21 @@ public:
         //this->m_patches.patch(patchIndex).evaluator( evFlags ) );
         
     }
+    */
+
+    void initialize(const gsBasis<T> & basis,
+                    const index_t patchIndex,
+                    const gsAssemblerOptions & options, 
+                    gsQuadRule<T>    & rule,
+                    unsigned         & evFlags )
+    {
+        // Setup Quadrature
+        rule = gsGaussRule<T>(basis, options.quA, options.quB);// harmless slicing occurs here
+
+        // Set Geometry evaluation flags
+        evFlags = NEED_MEASURE|NEED_GRAD_TRANSFORM;
+    }
+
 
     // Evaluate on element.
     inline void evaluate(gsBasis<T> const       & basis,

@@ -29,12 +29,10 @@ class gsVisitorBiharmonic
 {
 public:
 
-/*
     gsVisitorBiharmonic(const gsPde<T> & pde)
     { 
         rhs_ptr = static_cast<const gsBiharmonicPde<T>&>(pde).rhs() ;
     }
-*/
 
     /** \brief Constructor for gsVisitorBiharmonic.
      *
@@ -125,6 +123,18 @@ public:
         }
     }
 
+    inline void localToGlobal(const int patchIndex,
+                              const gsMatrix<T>     & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
+    {
+        // Map patch-local DoFs to global DoFs
+        system.mapColIndices(actives, patchIndex, actives);
+
+        // Add contributions to the system matrix and right-hand side
+        system.push(localMat, localRhs, actives, eliminatedDofs, 0, 0);
+    }
+
+    /*
     inline void localToGlobal(const gsDofMapper     & mapper,
                               const gsMatrix<T>     & eliminatedDofs,
                               const int patchIndex,
@@ -158,6 +168,7 @@ public:
             }
         }
     }
+    */
 
 
 protected:

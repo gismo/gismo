@@ -15,6 +15,7 @@
 
 namespace gismo
 {
+
 struct dirichlet
 {	
 	enum strategy
@@ -64,9 +65,18 @@ struct iFace
 	    /// Do absolutely nothing for coupling the interfaces.
 	    none = 0
 	};
+
 };
 
 /*
+	enum iFaceTopology
+	{
+        nested   = 1,
+
+        clamped  = 2, 
+    }
+
+
 struct transform
 {	
 	enum type

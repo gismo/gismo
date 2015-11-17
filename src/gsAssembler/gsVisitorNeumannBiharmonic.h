@@ -112,6 +112,18 @@ public:
         }
     }
     
+    inline void localToGlobal(const int patchIndex,
+                              const gsMatrix<T>     & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
+    {
+        // Map patch-local DoFs to global DoFs
+        system.mapColIndices(actives, patchIndex, actives);
+
+        // Add contributions to the system matrix and right-hand side
+        system.pushToRhs(localRhs, actives, 0);
+    }
+
+    /*
     void localToGlobal(const gsDofMapper  & mapper,
                        const gsMatrix<T>     & eliminatedDofs,
                        const int patchIndex,
@@ -132,6 +144,7 @@ public:
             }
         }
     }
+    */
 
 protected:
 

@@ -27,24 +27,25 @@ template <class T>
 class gsVisitorMass
 {
 public:
- /** \brief Visitor for assembling the mass matrix
-    *  
-    * \f[ (u, v) \f]  
-    */
- 
+
     gsVisitorMass()
     { }
 
-    static void initialize(const gsBasis<T> & basis, 
-                           gsQuadRule<T> & rule, 
-                           unsigned & evFlags )
+    /** \brief Visitor for assembling the mass matrix
+     *  
+     * \f[ (u, v) \f]  
+     */
+    gsVisitorMass(const gsPde<T> & pde)
+    { }
+
+    void initialize(const gsBasis<T> & basis,
+                    const index_t patchIndex,
+                    const gsAssemblerOptions & options, 
+                    gsQuadRule<T>    & rule,
+                    unsigned         & evFlags )
     {
-        gsVector<index_t> numQuadNodes( basis.dim() );
-        for (int i = 0; i < basis.dim(); ++i)
-            numQuadNodes[i] = basis.degree(i) + 1;
-        
         // Setup Quadrature
-        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
+        rule = gsGaussRule<T>(basis, options.quA, options.quB);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
         evFlags = NEED_MEASURE;
@@ -84,6 +85,35 @@ public:
         }
     }
     
+    inline void localToGlobal(const int patchIndex,
+                              const gsMatrix<T>     & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
+    {
+        // Map patch-local DoFs to global DoFs
+        system.mapColIndices(actives, patchIndex, actives);
+
+        // Add contributions to the system matrix and right-hand side
+        system.pushToMatrix(localMat, actives, 0, 0);
+    }
+
+/* -----------------------  to be removed later*/
+
+    static void initialize(const gsBasis<T> & basis, 
+                           gsQuadRule<T> & rule, 
+                           unsigned & evFlags )
+    {
+        gsVector<index_t> numQuadNodes( basis.dim() );
+        for (int i = 0; i < basis.dim(); ++i)
+            numQuadNodes[i] = basis.degree(i) + 1;
+        
+        // Setup Quadrature
+        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
+
+        // Set Geometry evaluation flags
+        evFlags = NEED_MEASURE;
+    }
+
+
     void localToGlobal(const gsDofMapper     & mapper,
                        const gsMatrix<T>     & eliminatedDofs,
                        const int               patchIndex,
@@ -110,6 +140,7 @@ public:
             }
         }
     }
+
 
 protected:
 

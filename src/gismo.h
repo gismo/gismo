@@ -45,7 +45,10 @@ namespace internal
 #include <gsCore/gsExport.h>
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsFunctionSet.h>
 #include <gsCore/gsFunction.h>
+#include <gsCore/gsPatchwiseFunction.h>
+#include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsBoundary.h>
 
 #include <gsCore/gsGeometry.h>
@@ -104,6 +107,7 @@ namespace internal
 #include <gsModeling/gsCurveFitting.h>
 
 /* ----------- Pde ----------- */
+#include <gsPde/gsBoundaryConditions.h>
 #include <gsPde/gsConvDiffRePde.h>
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
@@ -121,7 +125,7 @@ namespace internal
 #include <gsAssembler/gsGaussRule.h>
 
 /* ----------- Assembler ----------- */
-#include <gsAssembler/gsAssemblerBase.h>
+#include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
 

@@ -136,13 +136,24 @@ public:
         const T mu = penalty / element.getCellSize();
 
         // Sum up quadrature point evaluations
-        localRhs.noalias() += weight * (( pGrads.transpose() * unormal - mu * bVals )
+        localRhs.noalias() -= weight * (( pGrads.transpose() * unormal - mu * bVals )
                                         * dirData.col(k).transpose() );
 
-        localMat.noalias() += weight * ( bVals * unormal.transpose() * pGrads
+        localMat.noalias() -= weight * ( bVals * unormal.transpose() * pGrads
                            +  (bVals * unormal.transpose() * pGrads).transpose()
                            -  mu * bVals * bVals.transpose() );
         }
+    }
+
+    inline void localToGlobal(const int patchIndex,
+                              const gsMatrix<T>     & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
+    {
+        // Map patch-local DoFs to global DoFs
+        system.mapColIndices(actives, patchIndex, actives);
+
+        // Add contributions to the system matrix and right-hand side
+        system.pushAllFree(localMat, localRhs, actives, 0);
     }
     
     void localToGlobal(const gsDofMapper  & mapper,
@@ -159,12 +170,12 @@ public:
         for (index_t j=0; j!=numActive; ++j)
         {
             const unsigned jj = actives(j);
-            rhsMatrix.row(jj) -= localRhs.row(j);
+            rhsMatrix.row(jj) += localRhs.row(j);
             for (index_t i=0; i!=numActive; ++i)
             {
                 const unsigned ii = actives(i);
 //                if ( jj <= ii ) // assuming symmetric problem
-                    sysMatrix( ii, jj ) -= localMat(i,j);
+                    sysMatrix( ii, jj ) += localMat(i,j);
             }
         }
 

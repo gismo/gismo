@@ -65,7 +65,7 @@ public:
 
     void initialize(const gsBasis<T> & basis,
                     const index_t patchIndex,
-                    const gsAssemblerOptions & options, 
+                    const gsAssemblerOptions & options,
                     gsQuadRule<T>    & rule,
                     unsigned         & evFlags )
     {
@@ -77,7 +77,7 @@ public:
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
+    inline void evaluate(gsBasis<T> const       & basis,
                          gsGeometryEvaluator<T> & geoEval,
                          gsMatrix<T> const      & quNodes)
     {
@@ -120,8 +120,17 @@ public:
             localRhs.noalias() += weight * ( bVals.col(k) * rhsVals.col(k).transpose() ) ;
             localMat.noalias() += weight * (physGrad.transpose() * physGrad);
         }
-        //gsDebugVar(localRhs.transpose() );
-        //gsDebugVar(localMat.asVector().transpose() );
+    }
+
+    inline void localToGlobal(const int patchIndex,
+                              const gsMatrix<T>     & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
+    {
+        // Map patch-local DoFs to global DoFs
+        system.mapColIndices(actives, patchIndex, actives);
+
+        // Add contributions to the system matrix and right-hand side
+        system.push(localMat, localRhs, actives, eliminatedDofs, 0, 0);
     }
     
     inline void localToGlobal(const gsDofMapper     & mapper,
