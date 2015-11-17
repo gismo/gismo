@@ -149,6 +149,15 @@ public:
         GISMO_ASSERT(field_id<numUnknowns(),"Asked for size of a non existing field of this PDE type");
         return m_solution[field_id];
     }
+
+    /**
+     * @brief Gives the vector of dimensions of the unknowns
+     */
+    const gsVector<unsigned> & unknownDim() const
+    {
+        return m_unknownDim;
+    }
+
     /**
      * @brief Gives the number of unknown fields of the PDEs.
      */
@@ -156,6 +165,7 @@ public:
     {
         return m_unknownDim.size();
     }
+
     /**
      * @brief gives the number of rhs functions of the PDEs
      */
@@ -188,7 +198,7 @@ public:
 protected:
     /// @brief Description of the unknown fields:
     /// for each one the target dimension.
-    std::vector<unsigned>                 m_unknownDim;
+    gsVector<unsigned>                 m_unknownDim;
     /// @brief Exact solution(s)
     std::vector<gsFunction<T> *>          m_solution;
     /// @brief Computational domain

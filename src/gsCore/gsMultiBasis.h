@@ -18,6 +18,8 @@
 #include <gsCore/gsDofMapper.h>
 #include <gsCore/gsBoxTopology.h>
 #include <gsPde/gsBoundaryConditions.h>
+#include <gsAssembler/gsAssemblerOptions.h>
+
 
 namespace gismo
 {
@@ -424,9 +426,19 @@ public:
                    bool finalize = true) const
     { getMapper(conforming, bc, 0, mapper, finalize); }
 
+    void getMapper(iFace::strategy is,
+                   const gsBoundaryConditions<T> & bc,
+                   gsDofMapper & mapper,
+                   bool finalize = true) const
+    { getMapper(is==iFace::glue, bc, 0, mapper, finalize); }
+
 
     void getMapper(bool conforming, gsDofMapper & mapper, bool finalize = true) const;
 
+    void getMapper(iFace::strategy is, gsDofMapper & mapper, bool finalize = true) const
+    { getMapper(is==iFace::glue, mapper, finalize); }
+
+    /*
     // to remove
     gsDofMapper * makeMapper(bool conforming) const
     {
@@ -455,7 +467,7 @@ public:
         mapper->setIdentity(m_bases.size(), nDofs );
         return mapper;
     }
-
+    */
 
     //private: // to do
 

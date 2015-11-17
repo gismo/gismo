@@ -15,17 +15,16 @@
 #pragma once
 
 #include <gsPde/gsPde.h>
+#include <gsCore/gsPiecewiseFunction.h>
 
 namespace gismo
 {
-
-template <class T> class gsFunction;
 
 /** @brief
     A Poisson PDE.
 
     This class describes a Poisson PDE, with an arbitrary right-hand side
-    function and optionally a known solution.
+    function.
 
     \ingroup Pde
     \ingroup pdeclass
@@ -35,61 +34,50 @@ template<class T>
 class gsPoissonPde : public gsPde<T>
 {
 protected:
-    gsPoissonPde( ) { }
     using gsPde<T>::m_domain;
+
 public:
+    
+    gsPoissonPde( ) { }
+
+
     /// Constructor
-    gsPoissonPde(
-        const gsMultiPatch<T>         &domain,
-        const gsBoundaryConditions<T> &bc,
-        const gsFunction<T>           *rhs,
-        const gsFunction<T>           *sol = NULL
-         )
-    : gsPde<T>(domain,bc)
+    gsPoissonPde(const gsMultiPatch<T>         &domain,
+                 const gsBoundaryConditions<T> &bc,
+                 const gsPiecewiseFunction<T>  &rhs,
+                 const gsFunction<T>           *sol = NULL)
+    : gsPde<T>(domain,bc), m_rhs(rhs)
     {
-        m_rhs=rhs->clone();
-        m_unknownDim.push_back(1);
-        if (sol) m_solution.push_back(sol->clone());
+        m_unknownDim.setOnes(1);
+        if (sol) 
+            m_solution.push_back(sol->clone());
     }
 
-    // FOR COMPATIBILITY WITH OLD STRUCTURE: DO NOT USE
     int m_compat_dim;
     GISMO_DEPRECATED
-    gsPoissonPde(
-        const gsFunction<T>  &rhs,
-        int                   domdim,
-        const gsFunction<T>  &sol
-        )
-        : m_compat_dim(domdim)
+    gsPoissonPde(const gsFunction<T>  &rhs,
+                 int                   domdim,
+                 const gsFunction<T>  &sol)
+    : m_compat_dim(domdim), m_rhs(rhs)
     {
-        m_rhs=rhs.clone();
         m_solution.push_back(sol.clone());
-        m_unknownDim.push_back(1);
+        m_unknownDim.setOnes(1);
 
     }
     GISMO_DEPRECATED
-    gsPoissonPde(
-        const gsFunction<T>  &rhs,
-        int                   domdim
-        )
-       : m_compat_dim(domdim)
+    gsPoissonPde(const gsFunction<T>  &rhs,
+                 int                   domdim)
+       : m_compat_dim(domdim), m_rhs(rhs)
 
     {
-        m_rhs=rhs.clone();
-        m_unknownDim.push_back(1);
+        m_unknownDim.setOnes(1);
     }
+
     GISMO_DEPRECATED
-    gsPoissonPde(
-        void * unused
-        )
+    gsPoissonPde(void * unused)
     {
         m_rhs=new gsConstantFunction<T>(0);
-        m_unknownDim.push_back(1);
-    }
-
-    ~gsPoissonPde( ) 
-    { 
-        delete m_rhs;
+        m_unknownDim.setOnes(1);
     }
 
     /**
@@ -97,10 +85,10 @@ public:
      */
     virtual int numRhs() const
     {
-        return m_rhs->targetDim();
+        return m_rhs[0].targetDim();
     }
 
-    const gsFunction<T> *    rhs()      const { return m_rhs; }
+    const gsFunction<T> *    rhs()      const { return &m_rhs[0]; }
 
     virtual int numUnknowns() const     {return 1;}
 
@@ -110,7 +98,7 @@ public:
     std::ostream &print(std::ostream &os) const
     {
 	    os<<"Poisson's equation  -\u0394u = f ,  with:\n";
-	    os<<"Source function f= "<< * m_rhs <<".\n";
+	    os<<"Source function f= "<< m_rhs <<".\n";
 	    if ( this->solutionGiven() )
             os<<"Exact solution g = "<< * this->m_solution[0] <<".\n";
 	    return os; 
@@ -118,7 +106,7 @@ public:
 protected:
     using gsPde<T>::m_unknownDim;
     using gsPde<T>::m_solution;
-    gsFunction<T> *m_rhs;
+    gsPiecewiseFunction<T> m_rhs;
 }; // class gsPoissonPde
 
 } // namespace gismo

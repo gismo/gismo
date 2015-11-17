@@ -40,7 +40,7 @@ gsMultiBasis<T>::gsMultiBasis( const gsMultiPatch<T> & mpatch )
   
 template<class T>
 gsMultiBasis<T>::gsMultiBasis( const gsMultiBasis& other )
-: m_bases         ( other.m_bases        ),
+: m_bases         ( other.m_bases.size() ),
   m_topology      ( other.m_topology     )
 {
     cloneAll( other.m_bases.begin(), other.m_bases.end(),

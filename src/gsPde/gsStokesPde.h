@@ -48,8 +48,9 @@ public:
         m_solution[0] = velSol ? velSol->clone() : NULL;
         m_solution[1] = preSol ? preSol->clone() : NULL;
 
-        m_unknownDim.push_back(m_domain.dim());
-        m_unknownDim.push_back(1);
+        m_unknownDim.resize(4);
+        m_unknownDim[0] = m_domain.dim();
+        m_unknownDim[1] = 1;
     }
 
     ~gsStokesPde( ) 

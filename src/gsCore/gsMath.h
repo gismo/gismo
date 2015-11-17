@@ -51,6 +51,9 @@ using std::log;
 using std::log10;
 
 template <typename T>
+T round(T a) {return math::floor(a<0.0 ? a-0.5 : a+0.5); }
+
+template <typename T>
 T min(T a, T b) {return  (a < b ? a : b); }
 
 template <typename T>

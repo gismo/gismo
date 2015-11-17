@@ -157,8 +157,7 @@ template< class T = real_t>  class gsPoissonPde;
 template< class T = real_t>  class gsStokesAssembler;
 template< class T = real_t>  class gsPoissonAssembler;
 template< class T = real_t>  class gsSolverUtils;
-template< class T = real_t>  class gsInterpolationAssembler;
-template< class T = real_t>  class gsSparseSystem;
+template< class T = real_t, bool symm = false>  class gsSparseSystem;
 template< class T = real_t>  class gsConvDiffRePde;
 
 // More

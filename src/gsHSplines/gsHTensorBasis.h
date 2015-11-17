@@ -229,16 +229,13 @@ public:
     /// Copy constructor
     gsHTensorBasis( const gsHTensorBasis & o) : gsBasis<T>(o)
     {
-        //max_size         = o.max_size;
         m_xmatrix_offset = o.m_xmatrix_offset;
         m_deg            = o.m_deg;
         m_tree           = o.m_tree;
         m_xmatrix        = o.m_xmatrix;
         
-        m_bases.reserve( m_bases.size() );
-        for( typename std::vector<tensorBasis*>::const_iterator it = 
-                 o.m_bases.begin(); it != o.m_bases.end(); ++it )
-            m_bases.push_back( (*it)->clone() );
+        m_bases.reserve( o.m_bases.size() );
+        cloneAll(o.m_bases.begin(), o.m_bases.end(), m_bases.begin());
     }
     
     /// Destructor

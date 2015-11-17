@@ -162,6 +162,19 @@ public:
         const gsMultiBasis<T>         &basis,
         const gsBoundaryConditions<T> &dirichlet, int unk = 0 );
 
+    void swap(gsDofMapper & other)
+    {
+        m_dofs  .swap(other.m_dofs);
+        m_offset.swap(other.m_offset);
+
+        std::swap(m_shift      , other.m_shift);
+        std::swap(m_bshift     , other.m_bshift);
+        std::swap(m_numFreeDofs, other.m_numFreeDofs);
+        std::swap(m_numElimDofs, other.m_numElimDofs);
+        std::swap(m_numCpldDofs, other.m_numCpldDofs);
+        std::swap(m_curElimId  , other.m_curElimId);
+    }
+
 private:
 
     /// Initialize by a single basis patch
