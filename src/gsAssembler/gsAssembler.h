@@ -261,7 +261,7 @@ public:
         int nz = 1;
         for (int i = 0; i != m_bases.front().dim(); ++i) // to do: improve
             nz *= static_cast<index_t>(
-                m_options.bdA * m_bases.front().maxDegree(i) + m_options.bdB;) // "3 *" for dg
+                m_options.bdA * m_bases.front().maxDegree(i) + m_options.bdB); // "3 *" for dg
         
         m_system.reserve(nz, m_pde_ptr->numRhs());
     }
