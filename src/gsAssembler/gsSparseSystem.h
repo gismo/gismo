@@ -84,7 +84,7 @@ public:
         const index_t d = dims.size();
         const index_t s = dims.sum();
 
-        if ( m_mappers.size() == 2*d )
+        if ( static_cast<index_t>(m_mappers.size()) == 2*d )
             m_col.array() += d;
         else if ( m_mappers.size() == 1 )
         {
@@ -119,9 +119,9 @@ public:
 
         m_mappers.swap(mappers);
         
-        if ( m_mappers.size() == rows + cols )
+        if ( static_cast<index_t>(m_mappers.size()) == rows + cols )
             m_col.array() += rows;
-        else if ( m_mappers.size() == rows )
+        else if ( static_cast<index_t>(m_mappers.size()) == rows )
         {
             GISMO_ENSURE( rows == cols, "Dof Mapper vector does not match block dimensions");
         }

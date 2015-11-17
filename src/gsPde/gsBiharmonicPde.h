@@ -58,7 +58,7 @@ public:
         const gsPiecewiseFunction<T>  &rhs,
         const gsFunction<T>           *sol = NULL
          )
-    : gsPde<T>(domain,bc1), m_boundary_conditions_second(bc2), m_rhs(rhs)
+    : gsPde<T>(domain,bc1), m_rhs(rhs), m_boundary_conditions_second(bc2)
     {
         m_unknownDim.setOnes(1);
         if (sol) m_solution.push_back(sol->clone());
