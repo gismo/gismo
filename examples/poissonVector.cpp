@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
     // gsPoissonAssembler<real_t> PoissonAssembler(*patches,bases,bcInfo,*ppde->rhs(),
     //                                             dirichlet::elimination, iFace::glue);
-    gsPoissonAssembler<real_t> PoissonAssembler(*ppde->rhs());
+    gsPoissonAssembler<real_t> PoissonAssembler;
 
     gsAssemblerOptions options;
     //Use Nitsche's method for Dirichlet boundaries
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
         options.intStrategy = iFace::dg;
     }
 
-    PoissonAssembler.initialize(*patches, bases, bcInfo, options);
+    PoissonAssembler.initialize(*ppde, bases, options);
 
     // Generate system matrix and load vector
     std::cout<<"Assembling...\n";
@@ -131,9 +131,10 @@ int main(int argc, char *argv[])
     gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
     gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
 
-    // Construct the solution
     // Construct the solution as a scalar field
-    gsField<>::uPtr sol = safe(PoissonAssembler.constructSolution(solVector));
+    gsMultiPatch<> mpsol;
+    PoissonAssembler.constructSolution(solVector, mpsol);
+    gsField<> sol( PoissonAssembler.patches(), mpsol);
 
     // Plot solution in paraview
     int result = 0;
@@ -141,7 +142,7 @@ int main(int argc, char *argv[])
     {
         // Write approximate and exact solution to paraview files
         std::cout<<"Plotting in Paraview...\n";
-        gsWriteParaview<>(*sol, "poisson2d", plot_pts);
+        gsWriteParaview<>(sol, "poisson2d", plot_pts);
         //gsField<> exact( PoissonSolver.patches(), g, false );
         //gsWriteParaview<>( exact, "poisson2d_exact", plot_pts);
 

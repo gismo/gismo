@@ -185,12 +185,14 @@ int main(int argc, char *argv[])
       cout << "done." << endl;
       
       // Construct the solution for plotting the mesh later
-      gsField<> * sol = pa.constructSolution(solVector);
+      gsMultiPatch<> mpsol;
+      pa.constructSolution(solVector, mpsol);
+      gsField<> sol( pa.patches(), mpsol);
 
       // Set up and compute the L2-error to the known exact solution...
-      gsNormL2<real_t> norm(*sol,g);
+      gsNormL2<real_t> norm(sol,g);
       // ...and the error estimate, which needs the right-hand-side.
-      gsErrEstPoissonResidual<real_t> errEst(*sol,f);
+      gsErrEstPoissonResidual<real_t> errEst(sol,f);
 
       norm  .compute(true); // "true" stores element-wise errors
       errEst.compute(true);
@@ -208,6 +210,8 @@ int main(int argc, char *argv[])
       // ...or the error estimate.
       gsMarkElementsForRef( elErrEst, refCriterion, refParameter, elMarked);
 
+      gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true);
+
       // Refine the elements of the mesh, based on elMarked.
       gsRefineMarkedElements( bases, elMarked);
 
@@ -222,12 +226,11 @@ int main(int argc, char *argv[])
       {
           // Write approximate solution to paraview files
           std::cout<<"Plotting in Paraview...\n";
-          gsWriteParaview<>(*sol, "p2d_adaRef_sol", 5001, true);
+          gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
           // Run paraview and plot the last mesh
           result = system("paraview p2d_adaRef_sol.pvd &");
       }
 
-      delete sol;
   }
 
   cout << "\nFinal basis: " << bases[0] << "\n";

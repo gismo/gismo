@@ -182,7 +182,9 @@ int main(int argc, char *argv[])
 
     //! [Construct solution]
     // Construct the solution as a scalar field
-    gsField<>::uPtr sol = safe(PoissonAssembler.constructSolution(solVector));
+    gsMultiPatch<> mpsol;
+    PoissonAssembler.constructSolution(solVector, mpsol);
+    gsField<> sol( PoissonAssembler.patches(), mpsol);
     //! [Construct solution]
 
     if (plot)
@@ -190,7 +192,7 @@ int main(int argc, char *argv[])
         //! [Plot in Paraview]
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>(*sol, "poisson2d", 1000);
+        gsWriteParaview<>(sol, "poisson2d", 1000);
         const gsField<> exact( PoissonAssembler.patches(), g, false );
         gsWriteParaview<>( exact, "poisson2d_exact", 1000);
 

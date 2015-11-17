@@ -75,18 +75,20 @@ int main(int argc, char *argv[])
     gsMatrix<> solVector= solver.solve(BiharmonicAssembler.rhs());
 
     //Reconstruct solution
-    gsField<>::uPtr solField = safe(BiharmonicAssembler.constructSolution(solVector));
+    gsMultiPatch<> mpsol;
+    BiharmonicAssembler.constructSolution(solVector, mpsol);
+    gsField<> solField(BiharmonicAssembler.patches(), mpsol);
 
     //Contruct the H2 norm, part by part.
-    gsSeminormH2<real_t> h2Seminorm(*solField,solution,sol2der);
+    gsSeminormH2<real_t> h2Seminorm(solField,solution,sol2der);
     h2Seminorm.compute();
     real_t errorH2Semi = h2Seminorm.value();
 
-    gsSeminormH1<real_t> h1Seminorm(*solField,solution,sol1der);
+    gsSeminormH1<real_t> h1Seminorm(solField,solution,sol1der);
     h1Seminorm.compute();
     real_t errorH1Semi = h1Seminorm.value();
 
-    gsNormL2<real_t> L2Norm(*solField,solution);
+    gsNormL2<real_t> L2Norm(solField,solution);
     L2Norm.compute();
 
     real_t errorL2 = L2Norm.value();
@@ -104,7 +106,7 @@ int main(int argc, char *argv[])
     {
         // Write approximate and exact solution to paraview files
         std::cout<<"Plotting in Paraview...\n";
-        gsWriteParaview<>(*solField, "Biharmonic2d", 5000);
+        gsWriteParaview<>(solField, "Biharmonic2d", 5000);
         const gsField<> exact( geo, solution, false );
         gsWriteParaview<>( exact, "Biharmonic2d_exact", 5000);
     }
