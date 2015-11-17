@@ -1,3 +1,16 @@
+/** @file gsPoissonPde.h
+
+    @brief Describes a Poisson PDE.
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): S. Kleiss, A. Mantzaflaris
+*/
+
 #pragma once
 
 #include <gsPde/gsPde.h>
@@ -41,7 +54,7 @@ public:
         const gsFunction<T> *diff, const gsFunction<T> *conv, const gsFunction<T> *reac, const gsFunction<T>  *rhs)
            : m_diff(diff), m_conv(conv), m_reac(reac), m_rhs(rhs)
     {
-        m_unknownDim.secOnes(1);
+        m_unknownDim.setOnes(1);
     }
 
     ~gsConvDiffRePde()

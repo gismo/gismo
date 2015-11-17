@@ -159,7 +159,8 @@ public:
 
     void reservePerColumn(const index_t nz)
     {
-        this->reserve(gsVector<index_t>::Constant(this->cols(), nz));   
+        this->setZero();
+        this->reserve(gsVector<index_t>::Constant(this->cols(), nz));
     }
 
     void setFrom( gsSparseEntries<T> const & entries) ;
@@ -179,7 +180,6 @@ public:
     {
         return BlockView(*this, rowSizes, colSizes);
     }
-
 
     /// Returns a pointer wrapped as a gsAsConstVector, which contains
     /// the number of non-zero entries per column. Note that the
