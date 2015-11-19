@@ -26,6 +26,8 @@ In the gismo/examples sub-directory we find:
 
 - \subpage triMeshToSolid
 
+- \subpage tutorialAdaptRefinementTHB
+
 - \subpage tutorialBasis
 
 - \subpage tutorialBSplineBasis
@@ -45,6 +47,8 @@ In the gismo/examples sub-directory we find:
 - \subpage tutorialLinearAlgebra
 
 - \subpage tutorialPoisson
+
+- \subpage tutorialTHBSplineBasis
 
 */
 }
