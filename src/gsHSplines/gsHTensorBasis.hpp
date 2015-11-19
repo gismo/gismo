@@ -53,6 +53,23 @@ int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 }
 
 template<unsigned d, class T> inline
+void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
+                                                     gsVector<unsigned> & lvl,
+                                                     gsMatrix<unsigned> & loIdx ) const
+{
+    lvl.resize( Pt.cols() );
+    loIdx.resize( Pt.rows(), Pt.cols() );
+    lvl.setZero();
+    loIdx.setZero();
+    for( size_t i = 0; i < Pt.cols(); i++)
+    {
+        lvl[i] = unsigned( getLevelAtPoint( Pt.col(i) ) );
+        for( size_t j = 0; j < Pt.rows(); j++)
+            loIdx(j,i) = m_bases[ lvl[i] ]->knots(j).Uniquefindspan( Pt(j,i) ) ;
+    }
+}
+
+template<unsigned d, class T> inline
 void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& result) const 
 {
     result.resize( u.cols() );

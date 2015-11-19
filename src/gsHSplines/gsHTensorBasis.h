@@ -566,8 +566,10 @@ public:
   virtual inline int degree(int i) const
     { return m_bases[0]->degree(i);}
 
+
+
   // S.K.
-  /// @brief Returns the level(s) at point(s) in the parameter domain
+  /// @brief Returns the level(s) at point(s) in the parameter domain.
   ///
   /// \param[in] Pt gsMatrix of size <em>d</em> x <em>n</em>, where\n
   /// \em d is the dimension of the parameter domain and\n
@@ -576,6 +578,22 @@ public:
   /// \return levels gsMatrix of size <em>1</em> x <em>n</em>.\n
   /// <em>levels(0,i)</em> is the level of the point defined by the <em>i</em>-th column in \em Pts.
   int getLevelAtPoint(const  gsMatrix<T> & Pt ) const;
+
+  // S.K.
+  /// @brief Returns the level(s) and knot span(s) at point(s) in the parameter domain.
+  ///
+  /// \param[in] Pt gsMatrix of size <em>d</em> x <em>n</em>, where\n
+  /// \em d is the dimension of the parameter domain and\n
+  /// \em n is the number of evaluation points.\n
+  /// Each column of \em Pts represents one evaluation point.
+  /// \param[out] lvl gsVector of length \em n with the levels of the respective points.
+  /// \param[out] lo  gsMatrix of size <em>d</em> x <em>n</em>.\n
+  /// Each column contains
+  /// the lower corner of the knot span containing <em>i</em>-th point. The corner is given
+  /// in unique knot span indices of level lvl[i].
+  void getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
+                                  gsVector<unsigned> & lvl,
+                                  gsMatrix<unsigned> & loIdx ) const;
 
   /// Returns the level in which the indices are stored internally
   unsigned maxLevel() const
