@@ -272,7 +272,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
               it = m_pde_ptr->bc().dirichletBegin();
           it != m_pde_ptr->bc().dirichletEnd(); ++it )
     {
-        const int unk = it->unknown();
+        //const int unk = it->unknown();
         const int k   = it->patch();
         const gsBasis<T> & basis = mbasis[k];
 
