@@ -429,17 +429,19 @@ public:
     void getMapper(iFace::strategy is,
                    const gsBoundaryConditions<T> & bc,
                    gsDofMapper & mapper,
+                   int unk,
                    bool finalize = true) const
-    { getMapper(is==iFace::glue, bc, 0, mapper, finalize); }
+    { getMapper(is==iFace::glue, bc, unk, mapper, finalize); }
 
     void getMapper(dirichlet::strategy ds,
                    iFace::strategy is,
                    const gsBoundaryConditions<T> & bc,
                    gsDofMapper & mapper,
+                   int unk,
                    bool finalize = true) const
     {
         if ( ds == dirichlet::elimination )
-            getMapper(is==iFace::glue, bc, 0, mapper, finalize); 
+            getMapper(is==iFace::glue, bc, unk, mapper, finalize); 
         else
             getMapper(is==iFace::glue,        mapper, finalize); 
     }
@@ -447,11 +449,12 @@ public:
     gsDofMapper getMapper(dirichlet::strategy ds,
                           iFace::strategy is,
                           const gsBoundaryConditions<T> & bc,
-                   bool finalize = true) const
+                          int unk,
+                          bool finalize = true) const
     {
         gsDofMapper mapper;
         if ( ds == dirichlet::elimination )
-            getMapper(is==iFace::glue, bc, 0, mapper, finalize); 
+            getMapper(is==iFace::glue, bc, unk, mapper, finalize); 
         else
             getMapper(is==iFace::glue,        mapper, finalize); 
         return mapper;
