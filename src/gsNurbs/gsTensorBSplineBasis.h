@@ -520,7 +520,7 @@ protected:
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
-// /*
+/*
 #elif __cplusplus > 199711L
 namespace gismo 
 {
