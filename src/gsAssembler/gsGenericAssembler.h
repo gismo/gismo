@@ -138,14 +138,8 @@ public:
     {
         m_bases.push_back(bases);
 
-        // Init mapper
-        m_dofMappers.resize(1);
-        if (bc)
-            bases.getMapper(conforming, *bc, m_dofMappers.front() );
-        else
-            bases.getMapper(conforming, m_dofMappers.front() );
-        m_dofs = m_dofMappers.front().freeSize();
-        m_matrix.setZero();
+        Base::initialize(m_pde, bases, opt);
+        refresh();
     }
     */
 
@@ -155,7 +149,7 @@ public:
         gsDofMapper mapper;
         m_bases[0].getMapper(m_options.dirStrategy,
                              m_options.intStrategy,
-                             this->pde().bc(), mapper);
+                             this->pde().bc(), mapper, 0);
         m_system = gsSparseSystem<T>(mapper);
         const index_t nz = m_options.numColNz(m_bases[0][0]);
         m_system.reserve(nz, 1);
