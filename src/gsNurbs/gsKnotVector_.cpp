@@ -1,14 +1,21 @@
 #include <gsCore/gsTemplateTools.h>
 
+#ifdef _MSC_VER
+//non-standard extension: extern before explicit inst.
+#pragma warning(push)
+#pragma warning(disable : 4231)
+#endif
+
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsKnotVector.hpp>
 
 namespace gismo
 {
-    #ifdef _MSC_VER
-    #pragma warning(suppress : 4231)
-    #endif
     CLASS_TEMPLATE_EINST gsKnotVector<real_t>;
 
     CLASS_TEMPLATE_INST internal::gsXml< gsKnotVector<real_t> >;
 }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
