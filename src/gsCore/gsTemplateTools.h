@@ -48,9 +48,9 @@ struct choose<false, IsTrue, IsFalse> {
 
 #ifdef _MSC_VER
 
-#define STRUCT_TEMPLATE_INST template struct GISMO_EXPORT
-#define CLASS_TEMPLATE_INST  template class  GISMO_EXPORT
-#define TEMPLATE_INST        template        GISMO_EXPORT
+#define STRUCT_TEMPLATE_EINST template struct GISMO_EXPORT
+#define CLASS_TEMPLATE_EINST  template class  GISMO_EXPORT
+#define TEMPLATE_EINST        template        GISMO_EXPORT
 
 #define EXTERN_STRUCT_TEMPLATE extern template struct
 #define EXTERN_CLASS_TEMPLATE  extern template class 
