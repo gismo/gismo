@@ -58,9 +58,13 @@ struct choose<false, IsTrue, IsFalse> {
 
 #else
 
-#define STRUCT_TEMPLATE_INST template struct
-#define CLASS_TEMPLATE_INST  template class 
-#define TEMPLATE_INST        template       
+#define STRUCT_TEMPLATE_EINST template struct
+#define CLASS_TEMPLATE_EINST  template class 
+#define TEMPLATE_EINST        template       
+
+#define STRUCT_TEMPLATE_INST template struct GISMO_EXPORT
+#define CLASS_TEMPLATE_INST  template class  GISMO_EXPORT
+#define TEMPLATE_INST        template        GISMO_EXPORT
 
 #define EXTERN_STRUCT_TEMPLATE extern template struct GISMO_EXPORT
 #define EXTERN_CLASS_TEMPLATE  extern template class  GISMO_EXPORT
