@@ -1033,7 +1033,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
     }
   }// end for all columns v
 
-  // Multiply through by the factor factorial(m_p)/factorial(p-k)
+  // Multiply through by the factor factorial(m_p)/factorial(m_p-k)
   int r = m_p ;
   for(int k=1; k<=n; k++)
   {

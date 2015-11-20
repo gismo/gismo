@@ -88,7 +88,7 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper mapper;
     m_bases.front().getMapper(m_options.dirStrategy, m_options.intStrategy,
-                              this->pde().bc(), mapper);
+                              this->pde().bc(), mapper, 0);
 
     // 2. Create the sparse system
     m_system = gsSparseSystem<T>(mapper);//1,1
@@ -157,9 +157,8 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
         : mbasis.getMapper(dirichlet::elimination, m_options.intStrategy, 
                            m_pde_ptr->bc(), unk) ;
     
-    const index_t numDirDofs = mapper.boundarySize();
-    
-    GISMO_ASSERT(m_ddof.rows()==numDirDofs && m_ddof.cols() == m_pde_ptr->numRhs(),
+    GISMO_ASSERT(m_ddof.rows()==mapper.boundarySize() && 
+                 m_ddof.cols() == m_pde_ptr->numRhs(),
                  "Fixed DoFs were not initialized");
 
     // for every side with a Dirichlet BC
@@ -210,7 +209,7 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     const gsDofMapper & mapper = 
         dirichlet::elimination == m_options.dirStrategy ? m_system.colMapper(unk) 
         : mbasis.getMapper(dirichlet::elimination, m_options.intStrategy, 
-                           m_pde_ptr->bc(), unk) ;
+                           m_pde_ptr->bc(), unk);
 
     switch (m_options.dirValues)
     {

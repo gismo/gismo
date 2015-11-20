@@ -436,9 +436,11 @@ private:
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsKnotVector.hpp)
-#else
+// /*
+#elif defined(__GNUC__)
 namespace gismo 
 {
 EXTERN_CLASS_TEMPLATE gsKnotVector<real_t>;
 }
+//*/
 #endif
