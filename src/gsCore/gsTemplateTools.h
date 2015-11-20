@@ -46,10 +46,25 @@ struct choose<false, IsTrue, IsFalse> {
   Macros for instantiating templated structs, classes or functions
 */
 
+#ifdef _MSC_VER
+
 #define STRUCT_TEMPLATE_INST template struct GISMO_EXPORT
 #define CLASS_TEMPLATE_INST  template class  GISMO_EXPORT
 #define TEMPLATE_INST        template        GISMO_EXPORT
 
-#define EXTERN_STRUCT_TEMPLATE extern template struct //GISMO_EXPORT
-#define EXTERN_CLASS_TEMPLATE  extern template class  //GISMO_EXPORT
-#define EXTERN_TEMPLATE        extern template        //GISMO_EXPORT
+#define EXTERN_STRUCT_TEMPLATE extern template struct
+#define EXTERN_CLASS_TEMPLATE  extern template class 
+#define EXTERN_TEMPLATE        extern template       
+
+#else
+
+#define STRUCT_TEMPLATE_INST template struct
+#define CLASS_TEMPLATE_INST  template class 
+#define TEMPLATE_INST        template       
+
+#define EXTERN_STRUCT_TEMPLATE extern template struct GISMO_EXPORT
+#define EXTERN_CLASS_TEMPLATE  extern template class  GISMO_EXPORT
+#define EXTERN_TEMPLATE        extern template        GISMO_EXPORT
+
+#endif
+
