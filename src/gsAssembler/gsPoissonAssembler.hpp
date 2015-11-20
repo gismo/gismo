@@ -20,39 +20,49 @@ namespace gismo
 {
 
 template<class T>
+void gsPoissonAssembler<T>::refresh()
+{
+    // We use predefined helper which initializes the system matrix
+    // rows and columns using the same test and trial space
+    Base::scalarProblemGalerkinRefresh();
+}
+
+template<class T>
 void gsPoissonAssembler<T>::assemble()
 {
-    // Compute the Dirichlet Degrees of freedom
-    this->computeDirichletDofs();
+    GISMO_ASSERT(m_system.initialized(), 
+                 "Sparse system is not initialized, call initialize() or refresh()");
 
-    if (m_dofs == 0 ) // Are there any interior dofs ?
+    if ( 0 == Base::numDofs() ) // Are there any interior dofs ?
     {
         gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
         return;
     }
 
-    // Allocate memory for the sparse matrix and right-hand side
-    this->reserveSparseSystem();
+    // Compute the Dirichlet Degrees of freedom (if needed by m_options)
+    Base::computeDirichletDofs();
+
+    // Clean the sparse system
+    m_system.setZero();
 
     // Assemble volume integrals
-    this->template push<gsVisitorPoisson<T> >();
+    Base::template push<gsVisitorPoisson<T> >();
 
     // Enforce Neumann boundary conditions
-    this->template push<gsVisitorNeumann<T> >(m_pde_ptr->bc().neumannSides() );
+    Base::template push<gsVisitorNeumann<T> >(m_pde_ptr->bc().neumannSides() );
      
      // If requested, enforce Dirichlet boundary conditions by Nitsche's method
      if ( m_options.dirStrategy == dirichlet::nitsche )
-         this->template push<gsVisitorNitsche<T> >(m_pde_ptr->bc().dirichletSides());
-    
+         Base::template push<gsVisitorNitsche<T> >(m_pde_ptr->bc().dirichletSides());
      // If requested, enforce Dirichlet boundary conditions by diagonal penalization
-     if ( m_options.dirStrategy == dirichlet::penalize )
-         this->penalizeDirichlet();
+     else if ( m_options.dirStrategy == dirichlet::penalize )
+         Base::penalizeDirichletDofs();
      
     if ( m_options.intStrategy == iFace::dg )
-        gsWarn <<"DG option is not available. Results will be incorrect.\n";
+        gsWarn <<"DG option is ignored.\n";
     
     // Assembly is done, compress the matrix
-    this->finalize();
+    Base::finalize();
 }
 
 }// namespace gismo

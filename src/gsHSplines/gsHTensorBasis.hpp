@@ -61,10 +61,10 @@ void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
     loIdx.resize( Pt.rows(), Pt.cols() );
     lvl.setZero();
     loIdx.setZero();
-    for( size_t i = 0; i < Pt.cols(); i++)
+    for( index_t i = 0; i < Pt.cols(); i++)
     {
-        lvl[i] = unsigned( getLevelAtPoint( Pt.col(i) ) );
-        for( size_t j = 0; j < Pt.rows(); j++)
+        lvl[i] = static_cast<unsigned>( getLevelAtPoint( Pt.col(i) ) );
+        for( index_t j = 0; j < Pt.rows(); j++)
             loIdx(j,i) = m_bases[ lvl[i] ]->knots(j).Uniquefindspan( Pt(j,i) ) ;
     }
 }

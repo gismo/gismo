@@ -1,6 +1,6 @@
 /** @file gsAssembler.hpp
 
-    @brief Provides assembler implementation for the Poisson equation.
+    @brief Provides generic assembler routines
 
     This file is part of the G+Smo library.
 
@@ -25,42 +25,8 @@ namespace gismo
 {
 
 template<class T>
-void gsAssembler<T>::penalizeDirichlet()
-{
-    static const T PP = 1e9; // magic number
-    
-    // Store mapper
-    gsDofMapper & elim = m_system.colMapper(0);
-    gsDofMapper old    = elim;
-    
-    // Recompute dof mapper
-    const bool conforming = ( m_options.intStrategy == iFace::conforming );
-    m_bases.front().getMapper(conforming, m_pde_ptr->bc(), 0, elim); //unk
-
-    // Compute dirichlet values
-    computeDirichletDofs(); // fixme: add mapper
-
-    // apply BCs
-    for ( typename gsBoundaryConditions<T>::const_iterator
-              it = m_pde_ptr->bc().dirichletBegin();
-          it != m_pde_ptr->bc().dirichletEnd(); ++it )
-    {            
-        const gsBasis<T> & basis = (m_bases[0])[it->patch()];
-
-        gsMatrix<unsigned> bnd = safe( basis.boundary(it->side() ) ); 
-        for (index_t k=0; k!= bnd.size(); ++k)
-        {
-            const index_t ii = old            .index ( bnd(k) , it->patch() );
-            const index_t bb = elim.bindex( bnd(k) , it->patch() );
-
-            m_system.matrix()(ii,ii) = PP;                  // corr. free indices
-            m_system.rhs().row(ii)   = PP * m_ddof.row(bb); // boundary indices
-        }
-    }
-
-    // restore mapper
-    elim = old;
-}
+void gsAssembler<T>::refresh()
+{ }
 
 template<class T>
 void gsAssembler<T>::assemble()
@@ -70,57 +36,214 @@ template<class T>
 void gsAssembler<T>::assemble(const gsMultiPatch<T> & curSolution)
 {GISMO_NO_IMPLEMENTATION}
 
+template<class T>
+gsAssembler<T> * gsAssembler<T>::create() const
+{GISMO_NO_IMPLEMENTATION}
 
 template<class T>
-void gsAssembler<T>::setDirichletDofs(const gsMatrix<T> & vals, int unk)
+gsAssembler<T> * gsAssembler<T>::clone() const
+{GISMO_NO_IMPLEMENTATION}
+
+template<class T>
+bool gsAssembler<T>::check()
 {
-    m_ddof = vals;
+    const gsBoundaryConditions<T> & m_bConditions = m_pde_ptr->bc();
+    
+    // Check if boundary conditions are OK
+    const int np = m_bases.front().nBases();
+    for (typename gsBoundaryConditions<T>::const_iterator it = 
+             m_bConditions.dirichletBegin() ; it != m_bConditions.dirichletEnd(); ++it )
+    {
+        GISMO_ENSURE( it->ps.patch < np && it->ps.patch > -1,
+                      "Problem: a Dirichlet boundary condition is set " 
+                      "on a patch id which does not exist.");
+    }
+
+    for (typename gsBoundaryConditions<T>::const_iterator it = 
+             m_bConditions.neumannBegin() ; it != m_bConditions.neumannEnd(); ++it )
+    {
+        GISMO_ENSURE( it->ps.patch < np && it->ps.patch > -1,
+                      "Problem: a Neumann boundary condition is set "
+                      "on a patch id which does not exist.");
+    }
+
+    if ( m_pde_ptr->domain().nPatches() == 0)
+        gsWarn<< "No domain given ! \n";
+
+    if ( m_pde_ptr->bc().size() == 0)
+        gsWarn<< "No boundary conditions given ! \n";
+
+    return true;
+}
+
+template <class T>
+void gsAssembler<T>::scalarProblemGalerkinRefresh()
+{
+    // Check for coherency
+    GISMO_ASSERT(this->check(), "Incoherent data in Poisson assembler");
+
+    GISMO_ASSERT(1==m_bases.size(), "Expecting a single discrete space " 
+                 "for standard scalar Galerkin");
+
+    // 1. Obtain a map from basis functions to matrix columns and rows
+    gsDofMapper mapper;
+    m_bases.front().getMapper(m_options.dirStrategy, m_options.intStrategy,
+                              this->pde().bc(), mapper);
+
+    // 2. Create the sparse system
+    m_system = gsSparseSystem<T>(mapper);//1,1
+    const index_t nz = m_options.numColNz(m_bases[0][0]);
+    m_system.reserve(nz, this->pde().numRhs());
+}
+
+template<class T>
+void gsAssembler<T>::penalizeDirichletDofs(int unk)
+{
+    GISMO_ASSERT( m_options.dirStrategy == dirichlet::penalize, "Incorrect options");
+
+    static const T PP = 1e9; // magic number
+
+    const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
+    const gsDofMapper     & mapper = m_system.colMapper(unk);
+    // Note: dofs in the system, however dof values need to be computed
+    const gsDofMapper & bmap = mbasis.getMapper(dirichlet::elimination, 
+                                                m_options.intStrategy,
+                                                m_pde_ptr->bc(), unk) ;
+
+    GISMO_ENSURE( m_ddof.rows() == mapper.boundarySize() && 
+                  m_ddof.cols() == m_pde_ptr->numRhs(), 
+                  "The Dirichlet DoFs were not computed.");
+    
+    // BCs
+    for ( typename gsBoundaryConditions<T>::const_iterator
+              it = m_pde_ptr->bc().dirichletBegin();
+          it != m_pde_ptr->bc().dirichletEnd(); ++it )
+    {            
+        const gsBasis<T> & basis = mbasis[it->patch()];
+
+        gsMatrix<unsigned> bnd = safe( basis.boundary(it->side() ) ); 
+        for (index_t k=0; k!= bnd.size(); ++k)
+        {
+            // free dof position
+            const index_t ii = mapper.index ( bnd(k) , it->patch() );
+            // boundary dof position
+            const index_t bb = bmap  .bindex( bnd(k) , it->patch() );
+
+            m_system.matrix()(ii,ii) = PP;                  
+            m_system.rhs().row(ii)   = PP * m_ddof.row(bb);
+        }
+    }
+
+    // Corner values
+    for ( typename gsBoundaryConditions<T>::const_citerator
+              it = m_pde_ptr->bc().cornerBegin();
+          it != m_pde_ptr->bc().cornerEnd(); ++it )
+    {
+        const int i  = mbasis[it->patch].functionAtCorner(it->corner);
+        const int ii = mapper.bindex( i , it->patch );
+        m_system.matrix()(ii,ii)       = PP;                  
+        m_system.rhs().row(ii).setConstant(PP * it->value);
+    }
+}
+
+template<class T>
+void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int patch)
+{
+    GISMO_ASSERT( m_options.dirValues == dirichlet::user, "Incorrect options");
+
+    const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
+    const gsDofMapper & mapper = 
+        dirichlet::elimination == m_options.dirStrategy ? m_system.colMapper(unk) 
+        : mbasis.getMapper(dirichlet::elimination, m_options.intStrategy, 
+                           m_pde_ptr->bc(), unk) ;
+    
+    const index_t numDirDofs = mapper.boundarySize();
+    
+    GISMO_ASSERT(m_ddof.rows()==numDirDofs && m_ddof.cols() == m_pde_ptr->numRhs(),
+                 "Fixed DoFs were not initialized");
+
+    // for every side with a Dirichlet BC
+    for ( typename gsBoundaryConditions<T>::const_iterator
+              it =  m_pde_ptr->bc().dirichletBegin();
+              it != m_pde_ptr->bc().dirichletEnd()  ; ++it )
+    {
+        const int k = it->patch();
+        if ( k == patch )
+        {
+            // Get indices in the patch on this boundary
+            const gsMatrix<unsigned> boundary = 
+                safe(mbasis[k].boundary(it->side()));
+            
+            //gsInfo <<"Setting the value for: "<< boundary.transpose() <<"\n";
+            
+            for (index_t i=0; i!= boundary.size(); ++i)
+            {
+                // Note: boundary.at(i) is the patch-local index of a
+                // control point on the patch
+                const int ii  = mapper.bindex( boundary.at(i) , k );
+                
+                m_ddof.row(ii) = coefMatrix.row(boundary.at(i));
+            }
+        }
+    }
+}
+
+template<class T>
+void gsAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, int unk)
+{
+    m_ddof.swap(vals);
+    vals.resize(0,0);
     // Assuming that the DoFs are already set by the user
     GISMO_ENSURE( m_ddof.rows() == m_system.colMapper(unk).boundarySize() && 
                   m_ddof.cols() == m_pde_ptr->numRhs(), 
                   "The Dirichlet DoFs were not provided correctly.");
 }
 
-template<class T>
-void gsAssembler<T>::computeDirichletDofs() // index_t unk, mapper
-{
-    if ( m_options.dirStrategy != dirichlet::nitsche)
-    {
-        switch (m_options.dirValues)
-        {
-        case dirichlet::homogeneous:
-            // If we have a homogeneous Dirichlet problem fill boundary
-            // DoFs with zeros
-            m_ddof.setZero( m_system.colMapper(0).boundarySize(), m_pde_ptr->numRhs() );
-            break;
-        case dirichlet::interpolation:        
-            computeDirichletDofsIntpl();
-            break;
-        case dirichlet::l2Projection:
-            computeDirichletDofsL2Proj();
-            break;
-        case dirichlet::user:
-            // Assuming that the DoFs are already set by the user
-            // fixme: more unknowns
-            GISMO_ENSURE( m_ddof.rows() == m_system.colMapper(0).boundarySize() && 
-                          m_ddof.cols() == m_pde_ptr->numRhs(), 
-                          "The Dirichlet DoFs are not correctly provided.");
-            break;
-        default:
-            GISMO_ERROR("Something went wrong with Dirichlet values.");
-        }
-    }
 
+template<class T>
+void gsAssembler<T>::computeDirichletDofs(int unk)
+{
+    if ( m_options.dirStrategy == dirichlet::nitsche)
+        return; // Nothing to compute
+
+    const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
+    const gsDofMapper & mapper = 
+        dirichlet::elimination == m_options.dirStrategy ? m_system.colMapper(unk) 
+        : mbasis.getMapper(dirichlet::elimination, m_options.intStrategy, 
+                           m_pde_ptr->bc(), unk) ;
+
+    switch (m_options.dirValues)
+    {
+    case dirichlet::homogeneous:
+        // If we have a homogeneous Dirichlet problem fill boundary
+        // DoFs with zeros
+        m_ddof.setZero(mapper.boundarySize(), m_pde_ptr->numRhs() );
+        break;
+    case dirichlet::interpolation:        
+        computeDirichletDofsIntpl(mapper, mbasis);
+        break;
+    case dirichlet::l2Projection:
+        computeDirichletDofsL2Proj(mapper, mbasis);
+        break;
+    case dirichlet::user :
+        // Assuming that the DoFs are already set by the user
+        GISMO_ENSURE( m_ddof.rows() == mapper.boundarySize() && 
+                      m_ddof.cols() == m_pde_ptr->numRhs(), 
+                      "The Dirichlet DoFs are not set.");
+        break;
+    default:
+        GISMO_ERROR("Something went wrong with Dirichlet values.");
+    }
+    
     // Corner values
-    const gsDofMapper & mapper = m_system.colMapper(0);
     for ( typename gsBoundaryConditions<T>::const_citerator
               it = m_pde_ptr->bc().cornerBegin();
           it != m_pde_ptr->bc().cornerEnd(); ++it )
     {
-        const int i  = m_bases[it->unknown][it->patch].functionAtCorner(it->corner);
+        const int i  = mbasis[it->patch].functionAtCorner(it->corner);
         const int ii = mapper.bindex( i , it->patch );
         m_ddof.row(ii).setConstant(it->value);
-    }    
+    }
 }
 
 
@@ -139,12 +262,11 @@ void gsAssembler<T>::computeDirichletDofs() // index_t unk, mapper
 // With truncated hierarchical B-splines, the use of classical anchors does
 // not work, because functions might be truncated to zero at these points.
 template<class T> // 
-void gsAssembler<T>::computeDirichletDofsIntpl()
+void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
+                                               const gsMultiBasis<T> & mbasis)
 {
-    const gsDofMapper & mapper = m_system.colMapper(0);
-    
-    m_ddof.resize( mapper.boundarySize(), m_pde_ptr->numRhs() );
-    
+    m_ddof.resize(mapper.boundarySize(), m_pde_ptr->numRhs() );
+
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator
               it = m_pde_ptr->bc().dirichletBegin();
@@ -152,20 +274,19 @@ void gsAssembler<T>::computeDirichletDofsIntpl()
     {
         const int unk = it->unknown();
         const int k   = it->patch();
-        const gsBasis<T> & basis = (m_bases[unk])[k];
+        const gsBasis<T> & basis = mbasis[k];
 
         // Get dofs on this boundary
-        gsMatrix<unsigned> * boundary = basis.boundary(it->side()) ;
+        const gsMatrix<unsigned> boundary = safe(basis.boundary(it->side()));
 
         // If the condition is homogeneous then fill with zeros
         if ( it->isHomogeneous() )
         {
-            for (index_t i=0; i!= boundary->size(); ++i)
+            for (index_t i=0; i!= boundary.size(); ++i)
             {
-                const int ii= mapper.bindex( (*boundary)(i) , k );
+                const int ii= mapper.bindex( boundary.at(i) , k );
                 m_ddof.row(ii).setZero();
             }
-            delete boundary;
             continue;
         }
 
@@ -207,30 +328,28 @@ void gsAssembler<T>::computeDirichletDofsIntpl()
         const gsMatrix<T> & dVals =  geo->coefs();
 
         // Save corresponding boundary dofs
-        for (index_t l=0; l!= boundary->size(); ++l)
+        for (index_t l=0; l!= boundary.size(); ++l)
         {
-            const int ii= mapper.bindex( (*boundary)(l) , it->patch() );
+            const int ii = mapper.bindex( boundary.at(l) , it->patch() );
 
             m_ddof.row(ii) = dVals.row(l);
         }
 
         delete h;
         delete geo;
-        delete boundary;
     }
 }
 
 template<class T>
-void gsAssembler<T>::computeDirichletDofsL2Proj()
+void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
+                                                const gsMultiBasis<T> & mbasis)
 {
-    const gsDofMapper & mapper = m_system.colMapper(0);
-
     m_ddof.resize( mapper.boundarySize(), m_pde_ptr->numRhs() );
 
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
-    gsMatrix<T>       globProjRhs;   
+    gsMatrix<T>        globProjRhs;   
     globProjRhs.setZero( mapper.boundarySize(), m_pde_ptr->numRhs() );
 
     // Temporaries
@@ -252,14 +371,10 @@ void gsAssembler<T>::computeDirichletDofsL2Proj()
 
         typename gsGeometry<T>::Evaluator geoEval( m_pde_ptr->domain()[patchIdx].evaluator(NEED_MEASURE));
 
-        // Set up quadrature. The number of integration points in the direction
-        // that is NOT along the element has to be set to 1.
-        gsVector<index_t> numQuNodes( basis.dim() );
-        for( int i=0; i < basis.dim(); i++)
-            numQuNodes[i] = (basis.degree(i)+1);
-        numQuNodes[ iter->side().direction()] = 1;
-
-        gsGaussRule<T> bdQuRule(numQuNodes);
+        // Set up quadrature to degree+1 Gauss points per direction,
+        // all lying on iter->side() except from the direction which
+        // is NOT along the element
+        gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
 
         // Create the iterator along the given part boundary.
         typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());

@@ -432,42 +432,38 @@ public:
                    bool finalize = true) const
     { getMapper(is==iFace::glue, bc, 0, mapper, finalize); }
 
+    void getMapper(dirichlet::strategy ds,
+                   iFace::strategy is,
+                   const gsBoundaryConditions<T> & bc,
+                   gsDofMapper & mapper,
+                   bool finalize = true) const
+    {
+        if ( ds == dirichlet::elimination )
+            getMapper(is==iFace::glue, bc, 0, mapper, finalize); 
+        else
+            getMapper(is==iFace::glue,        mapper, finalize); 
+    }
+    
+    gsDofMapper getMapper(dirichlet::strategy ds,
+                          iFace::strategy is,
+                          const gsBoundaryConditions<T> & bc,
+                   bool finalize = true) const
+    {
+        gsDofMapper mapper;
+        if ( ds == dirichlet::elimination )
+            getMapper(is==iFace::glue, bc, 0, mapper, finalize); 
+        else
+            getMapper(is==iFace::glue,        mapper, finalize); 
+        return mapper;
+    }
 
+
+    // to remove
     void getMapper(bool conforming, gsDofMapper & mapper, bool finalize = true) const;
 
     void getMapper(iFace::strategy is, gsDofMapper & mapper, bool finalize = true) const
     { getMapper(is==iFace::glue, mapper, finalize); }
 
-    /*
-    // to remove
-    gsDofMapper * makeMapper(bool conforming) const
-    {
-        gsDofMapper * mapper = new gsDofMapper;
-        getMapper(conforming, *mapper);
-        return mapper;
-    }
-
-    // to remove
-    gsDofMapper * makeMapper(bool conforming,
-                             const gsBoundaryConditions<T> & bc) const
-    {
-        gsDofMapper * mapper = new gsDofMapper;
-        getMapper(conforming, bc, 0, *mapper);// using unknown 0
-        return mapper;
-    }
-
-    gsDofMapper * makeIdMapper()  const
-    {
-        gsDofMapper * mapper = new gsDofMapper();
-
-        int nDofs = 0;
-        for (size_t k = 0; k < m_bases.size(); ++k)
-            nDofs += m_bases[k]->size();
-
-        mapper->setIdentity(m_bases.size(), nDofs );
-        return mapper;
-    }
-    */
 
     //private: // to do
 

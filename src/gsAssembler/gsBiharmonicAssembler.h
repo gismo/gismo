@@ -67,45 +67,12 @@ public:
         m_options.dirStrategy = dirStrategy;
         m_options.intStrategy = intStrategy;
 
-        this->initialize(m_ppde, bases, m_options);
+        Base::initialize(m_ppde, bases, m_options);
     }
 
-    /// Main assembly routine
-    void assemble()
-    {
-        // Compute the Dirichlet Degrees of freedom
-        this->computeDirichletDofs();
-        
-        if (m_dofs == 0 ) // Are there any interior dofs ?
-        {
-            gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
-            return;
-        }
-        
-        // Allocate memory for the sparse matrix and right-hand side
-        this->reserveSparseSystem();
-        
-        // Assemble volume integrals
-        this->template push<bhVisitor >();
-
-        // Newman conditions of first kind
-        this->template push<gsVisitorNeumann<T> >(
-            m_ppde.bcFirstKind().neumannSides() );
-
-        // Newman conditions of second kind
-        this->template push<gsVisitorNeumannBiharmonic<T> >(
-            m_ppde.bcSecondKind().neumannSides() );
-
-        /*
-        // If requested, force Dirichlet boundary conditions by Nitsche's method
-        this->template push<gsVisitorNitscheBiharmonic<T> >(
-            m_ppde.bcSecondKind().dirichletSides() );
-        */
-
-        // Assembly is done, compress the matrix
-        this->finalize();
-    }
-
+    void refresh();
+    
+    void assemble();
 
 protected:
 
@@ -118,8 +85,57 @@ protected:
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
-    using Base::m_dofs;
 };
+
+template <class T, class bhVisitor>
+void gsBiharmonicAssembler<T,bhVisitor>::refresh()
+{
+    // We use predefined helper which initializes the system matrix
+    // rows and columns using the same test and trial space
+    Base::scalarProblemGalerkinRefresh();
+}
+
+template <class T, class bhVisitor>
+void gsBiharmonicAssembler<T,bhVisitor>::assemble()
+{
+    GISMO_ASSERT(m_system.initialized(), "Sparse system is not initialized, call refresh()");
+
+    // Compute the Dirichlet Degrees of freedom
+    this->computeDirichletDofs();
+    
+    if ( 0 == Base::numDofs() ) // Are there any interior dofs ?
+    {
+        gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
+        return;
+    }
+    
+    // Compute the Dirichlet Degrees of freedom (if needed by m_options)
+    Base::computeDirichletDofs();
+    
+    // Assemble volume integrals
+    Base::template push<bhVisitor >();
+    
+    // Newman conditions of first kind
+    Base::template push<gsVisitorNeumann<T> >(
+        m_ppde.bcFirstKind().neumannSides() );
+    
+    // Newman conditions of second kind
+    Base::template push<gsVisitorNeumannBiharmonic<T> >(
+        m_ppde.bcSecondKind().neumannSides() );
+
+    if ( m_options.intStrategy == iFace::dg )
+        gsWarn <<"DG option ignored.\n";
+
+    /*
+    // If requested, force Dirichlet boundary conditions by Nitsche's method
+    this->template push<gsVisitorNitscheBiharmonic<T> >(
+    m_ppde.bcSecondKind().dirichletSides() );
+    */
+    
+    // Assembly is done, compress the matrix
+    Base::finalize();
+}
+
 
 } // namespace gismo
 

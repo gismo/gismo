@@ -116,18 +116,17 @@ public:
 public:
 
     /// Constructor with gsMultiBasis
-    gsGenericAssembler( gsMultiPatch<T> const         & patches,
-                        gsMultiBasis<T> const         & bases,
-                        bool conforming = false,
+    gsGenericAssembler( const gsMultiPatch<T>    & patches,
+                        const gsMultiBasis<T>    & bases,
+                        const gsAssemblerOptions & opt = gsAssemblerOptions(),
                         const gsBoundaryConditions<T> * bc = NULL)
     : m_pde(patches)
     {
-        m_options.intStrategy = ( conforming ? iFace::conforming : iFace::none);
-
         if ( bc != NULL)
             m_pde.boundaryConditions() = *bc;
 
-        this->initialize(m_pde, bases, m_options);
+        Base::initialize(m_pde, bases, opt);
+        refresh();
     }
 
     /* TODO (id geometry)
@@ -150,11 +149,23 @@ public:
     }
     */
 
+    void refresh()
+    {
+        // Setup sparse system
+        gsDofMapper mapper;
+        m_bases[0].getMapper(m_options.dirStrategy,
+                             m_options.intStrategy,
+                             this->pde().bc(), mapper);
+        m_system = gsSparseSystem<T>(mapper);
+        const index_t nz = m_options.numColNz(m_bases[0][0]);
+        m_system.reserve(nz, 1);
+    }
+
     /// Mass assembly routine
     const gsSparseMatrix<T> & assembleMass()
     {
-        // Allocate memory for the sparse matrix and right-hand side
-        this->reserveSparseSystem();
+        // Clean the sparse system
+        m_system.setZero();
 
         // Assemble mass integrals
         this->template push<gsVisitorMass<T> >();
@@ -168,10 +179,10 @@ public:
     /// Stiffness assembly routine
     const gsSparseMatrix<T> & assembleStiffness()
     {
-        // Allocate memory for the sparse matrix and right-hand side
-        this->reserveSparseSystem();
+        // Clean the sparse system
+        m_system.setZero();
 
-        // Assemble mass integrals
+        // Assemble stiffness integrals
         this->template push<gsVisitorGradGrad<T> >();
 
         // Assembly is done, compress the matrix
@@ -183,8 +194,8 @@ public:
     /// Moments assembly routine
     const gsMatrix<T> & assembleMoments(const gsFunction<T> & func)
     {
-        // Allocate memory for the sparse matrix and right-hand side
-        this->reserveSparseSystem();
+        // Clean the right-hand side vector
+        m_system.rhs().setZero();
 
         // Assemble moment integrals
         gsVisitorMoments<T> mom(func);
@@ -200,7 +211,7 @@ public:
     const gsSparseMatrix<T> & assembleMass(int patchIndex)
     {
         gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex), 
-                                  m_bases[patchIndex], false);
+                                  m_bases[patchIndex], m_options);
         tmp.assembleMass();
         m_system.matrix().swap(tmp.m_system.matrix());
         return m_system.matrix();
@@ -210,23 +221,25 @@ public:
     const gsSparseMatrix<T> & assembleStiffness(int patchIndex)
     {
         gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex), 
-                                  m_bases[patchIndex], false);
+                                  m_bases[patchIndex],  m_options);
         tmp.assembleStiffness();
         m_system.matrix().swap(tmp.m_system.matrix());
         return m_system.matrix();
     }
     
     /// Returns an expression of the "full" assembled sparse
-    /// matrix. Note that matrix() returns a lower diagonal matrix,
-    /// since we exploit symmetry during assembly (whenever possible).
+    /// matrix. Note that matrix() might return a lower diagonal
+    /// matrix, if we exploit possible symmetry during assembly
+    /// (check: m_matrix.symmetry() == true )
     typename gsSparseMatrix<T>::fullView fullMatrix()
     {
         return m_system.matrix().template selfadjointView<Lower>();
     }
 
     /// Returns an expression of the "full" assembled sparse
-    /// matrix. Note that matrix() returns a lower diagonal matrix,
-    /// since we exploit symmetry during assembly (whenever possible).
+    /// matrix. Note that matrix() might return a lower diagonal
+    /// matrix, if we exploit possible symmetry during assembly
+    /// (check: m_matrix.symmetry() == true )
     const typename gsSparseMatrix<T>::constFullView fullMatrix() const
     {
         return m_system.matrix().template selfadjointView<Lower>();
@@ -241,11 +254,8 @@ private:
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
-    using Base::m_dofs;
 
 private:
-    // Hiding the rhs
-    const gsMatrix<T> & rightHandSide() const;
 
     gsLaplacePde<T> m_pde;
 };

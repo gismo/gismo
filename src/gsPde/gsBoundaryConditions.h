@@ -218,6 +218,12 @@ public:
         corner_values.clear();
     }
 
+    size_t size() const 
+    {
+        return drchlt_sides.size() + nmnn_sides.size() + 
+            robin_sides.size() + corner_values.size();
+    }
+
     /// Return a reference to the Dirichlet sides 
     const bcContainer & dirichletSides() const {return drchlt_sides; }
 

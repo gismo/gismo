@@ -20,7 +20,7 @@ struct dirichlet
 {	
 	enum strategy
 	{
-        elimination  = 11, ///< Enforce Dirichlet BCs by using interpolation on the boundary
+        elimination  = 11, ///< Enforce Dirichlet BCs by eliminating them from the system
 
         penalize     = 13, ///< Penalize the diagonal at the position of Dirichlet DoFs,
 
@@ -139,6 +139,29 @@ public:
     // degree of the basis
     double quA;
     int    quB;
+
+public: /* Utility functions that return values implied by the settings*/
+
+
+    index_t numQuNodes(const gsBasis<real_t> & b)
+    {
+        index_t res = 1;
+        for( int i=0; i<b.domainDim(); ++i )
+        {
+            res *= static_cast<index_t>(quA * b.degree(i) + quB + 0.5);
+        }
+
+        return res;
+    }
+
+    index_t numColNz(const gsBasis<real_t> & b)
+    {
+        index_t nz = 1;
+        for (int i = 0; i != b.dim(); ++i)
+            nz *= static_cast<index_t>(bdA * b.maxDegree() + bdB);
+        return nz;
+    }
+
 };
 
 } // namespace gismo

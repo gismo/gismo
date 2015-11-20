@@ -58,10 +58,9 @@ public:
         m_options.dirStrategy = dirStrategy;
         m_options.intStrategy = intStrategy;
 
-        this->initialize(pde, bases, m_options);
+        Base::initialize(pde, bases, m_options);
+        refresh();
     }
-
-
 
     /** @brief
     Constructor of the assembler object.
@@ -85,17 +84,20 @@ public:
     {
         m_options.dirStrategy = dirStrategy;
         m_options.intStrategy = intStrategy;
-        //m_options.dirValues = dirichlet::interpolation;
-
-        this->initialize(m_ppde, basis, m_options);
+        
+        Base::initialize(m_ppde, basis, m_options);
     }
 
-    // Main assembly routine.
+    // Refresh routine
+    void refresh();
+
+    // Main assembly routine
     void assemble();
 
     /// Returns an expression of the "full" assembled sparse
-    /// matrix. Note that matrix() returns a lower diagonal matrix,
-    /// since we exploit symmetry during assembly.
+    /// matrix. Note that matrix() might return a lower diagonal
+    /// matrix, if we exploit possible symmetry during assembly
+    /// (check: m_matrix.symmetry() == true )
     Eigen::SparseSelfAdjointView< typename gsSparseMatrix<T>::Base, Lower> fullMatrix()
     {
         return m_system.matrix().template selfadjointView<Lower>();
@@ -114,7 +116,6 @@ protected:
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
-    using Base::m_dofs;
 };
 
 

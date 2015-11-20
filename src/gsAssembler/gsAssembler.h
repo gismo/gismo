@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): S. Kleiss, A. Mantzaflaris, J. Sogn
 */
 
 #pragma once
@@ -45,34 +45,41 @@ private:
 
     typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
 
+protected: // *** Input data members *** 
+
+    /// The PDE: contains multi-patch domain, boundary conditions and
+    /// coeffcient functions
+    const gsPde<T> * m_pde_ptr;
+
+    /// The discretization bases corresponding to \a m_patches and to
+    /// the number of solution fields that are to be computed
+    std::vector< gsMultiBasis<T> > m_bases;
+    
+    /// Options
+    gsAssemblerOptions m_options;
+
+protected: // *** Output data members *** 
+    
+    /// Global sparse linear system
+    gsSparseSystem<T> m_system;
+
+    /// Fixed DoF values (if applicable, for instance eliminated Dirichlet DoFs)
+    gsMatrix<T> m_ddof;  // fixme: std::vector<gsMatrix<T> > m_fixedDofs;
+    // One for each colMapper
+
 public: /* Constructors and initializers */
 
     /// @brief default constructor
     /// \note none of the data fields are inititalized, use
     /// additionally an appropriate initialize function
-    gsAssembler()
-    { }
-
-    /// @brief Constructor using a multipatch domain, a
-    /// vector of multibases and the boundary conditions.
-    /// \note Rest of the data fields should be initialized in a
-    /// derived constructor
-    gsAssembler(const gsPde<T>                         & pde  ,
-                const gsStdVectorRef<gsMultiBasis<T> > & bases, 
-                const gsAssemblerOptions & opt = gsAssemblerOptions() )
-    { 
-        initialize(pde, bases, opt);
-    }
-
-    gsAssembler(const gsPde<T>        & pde,
-                const gsMultiBasis<T> & bases, 
-                const gsAssemblerOptions & opt = gsAssemblerOptions() )
-    { 
-        initialize(pde, bases, opt);
-    }
+    gsAssembler() { }
 
     virtual ~gsAssembler()
     { }
+
+    virtual gsAssembler * create() const;
+
+    virtual gsAssembler * clone() const;
 
     /// @brief Intitialize function for, sets data fields
     /// using a multi-patch, a vector of multi-basis and boundary conditions.
@@ -82,13 +89,12 @@ public: /* Constructors and initializers */
                     const gsStdVectorRef<gsMultiBasis<T> > & bases, 
                     const gsAssemblerOptions & opt = gsAssemblerOptions() )
     {
-        // fixme: add cast op in gsMultiBasis: gsMultiBasis--> gsStdVectorRef
-        // add cast operator in gsBasis: gsBasis --> gsMultiBasis -->  gsStdVectorRef
         m_pde_ptr = &pde;
         m_bases.clear();// bug ?
         m_bases = bases;
         m_options = opt;
-        initializeDofs();
+        refresh(); // virtual call to derived
+        GISMO_ASSERT( check(), "Something went wrong in assembler initialization");
     }
 
     void initialize(const gsPde<T>           & pde,
@@ -99,53 +105,30 @@ public: /* Constructors and initializers */
         m_bases.clear();// bug ?
         m_bases.push_back(bases);
         m_options = opt;
-        initializeDofs();
+        refresh(); // virtual call to derived
+        GISMO_ASSERT( check(), "Something went wrong in assembler initialization");
     }
 
-public: /* Dof initialization */
-
-    void initializeDofs()
-    {
-        const gsBoundaryConditions<T> & m_bConditions = m_pde_ptr->bc();
-
-        // Check if boundary conditions are OK
-        const int np = m_bases.front().nBases();
-        for (typename gsBoundaryConditions<T>::const_iterator it = 
-                 m_bConditions.dirichletBegin() ; it != m_bConditions.dirichletEnd(); ++it )
-            GISMO_ENSURE( it->ps.patch < np && it->ps.patch > -1,
-                          "Problem: a Dirichlet boundary condition is set on a patch id which does not exist.");
-        for (typename gsBoundaryConditions<T>::const_iterator it = 
-                 m_bConditions.neumannBegin() ; it != m_bConditions.neumannEnd(); ++it )
-            GISMO_ENSURE( it->ps.patch < np && it->ps.patch > -1,
-                          "Problem: a Neumann boundary condition is set on a patch id which does not exist.");
-        
-        
-        // option: same basis for all coordinates of unknowns
-        // poisson: 1 unknown, 1 coordinate (many right-hand sides)
-        // stokes: 2 unknowns, coords: d + 1, (possibly many right-hand sides)
-
-        // for all unknowns
-        // 
-
-        // Initialize DoF mapper
-        const bool conforming = ( m_options.intStrategy == iFace::glue );
-        std::vector<gsDofMapper> mappers(1); // number of unknowns 
-        if ( m_options.dirStrategy == dirichlet::elimination )
-            m_bases.front().getMapper(conforming, m_bConditions, mappers.front() );
-        else
-            m_bases.front().getMapper(conforming, mappers.front() );
-
-        m_dofs = mappers.front().freeSize();
-
-        m_system = gsSparseSystem<T>(mappers, 
-                                     m_pde_ptr->numUnknowns() , 
-                                     m_pde_ptr->numUnknowns() );
-    }
+    bool check();
 
     void finalize()
     {
         m_system.matrix().makeCompressed();
     }
+
+public:  /* Virtual assembly routines */
+
+    /// @brief Setup the sparse system,
+    /// to be implemented in derived classes
+    virtual void refresh();
+
+    /// @brief Main assemble routine, to be implemented in derived classes
+    virtual void assemble();
+
+    /// @brief Main non-linear assemble routine with input from
+    /// current solution
+    virtual void assemble(const gsMultiPatch<T> & curSolution);
+
 
 public: /* Element visitors */
 
@@ -165,7 +148,7 @@ public: /* Element visitors */
     /// @brief Iterates over all elements of the boundaries \a BCs and
     /// applies the \a ElementVisitor
     template<class BElementVisitor>
-    void push(const bcContainer & BCs) // ---------------- push()
+    void push(const bcContainer & BCs)
     {
         for (typename bcContainer::const_iterator it 
                  = BCs.begin(); it!= BCs.end(); ++it)
@@ -189,32 +172,37 @@ public: /* Element visitors */
         }
     }
 
-public:  /* Virtual assembly routines */
-
-    /// @brief Main assemble routine
-    virtual void assemble();
-
-    /// @brief Main non-linear assemble routine with input from
-    /// current solution
-    virtual void assemble(const gsMultiPatch<T> & curSolution);
-
 public:  /* Dirichlet degrees of freedom computation */
 
-    /// @brief forces the Assembler to calculete the Dirichlet dofs again.
-    void computeDirichletDofs();
+    /// @brief Triggers computation of the Dirichlet dofs
+    void computeDirichletDofs(int unk = 0);
 
-    void setDirichletDofs(const gsMatrix<T> & vals, int unk = 0);
-
-    void computeDirichletDofsIntpl();
+    void setFixedDofs(const gsMatrix<T> & coefMatrix, int unk = 0, int patch = 0);
     
-    void computeDirichletDofsL2Proj();
+    void setFixedDofVector(gsMatrix<T> & vals, int unk = 0);
 
     /// Enforce Dirichlet boundary conditions by diagonal penalization
-    void penalizeDirichlet();
+    void penalizeDirichletDofs(int unk = 0);
+
+    /// @brief Sets any Dirichlet values to homogeneous (if applicable)
+    void homogenizeFixedDofs(int unk = 0)
+    {m_ddof.setZero(); }
 
     // index_t numFixedDofs(int unk = 0) {return m_dofMappers[unk].boundarySize();}
 
-public:  /* Dirichlet degrees of freedom computation */
+    /// @brief Returns the Dirichlet values (if applicable)
+    const gsMatrix<T> & fixedDofs() const { return m_ddof; }
+    const gsMatrix<T> & dirValues() const { return m_ddof; }//remove
+
+private:  /* Helpers for Dirichlet degrees of freedom computation */
+
+    void computeDirichletDofsIntpl(const gsDofMapper     & mapper,
+                                   const gsMultiBasis<T> & mbasis);
+    
+    void computeDirichletDofsL2Proj(const gsDofMapper     & mapper,
+                                    const gsMultiBasis<T> & mbasis);
+
+public:  /* Solution reconstruction */
 
     /// @brief Reconstruct solution from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, 
@@ -230,8 +218,7 @@ public:  /* Dirichlet degrees of freedom computation */
                                 gsMultiPatch<T>& result) const
     {GISMO_NO_IMPLEMENTATION}
 
-
-public:
+public: // *** Accessors *** 
 
     /// @brief Return the Pde
     const gsPde<T> & pde() const { return *m_pde_ptr; }
@@ -255,42 +242,21 @@ public:
     /// @brief Returns the left-hand global matrix
     const gsSparseSystem<T> & system() const { return m_system; }
 
-    /// @brief Allocates sparse matrix and right-hand side
-    void reserveSparseSystem() 
-    {
-        int nz = 1;
-        for (int i = 0; i != m_bases.front().dim(); ++i) // to do: improve
-            nz *= static_cast<index_t>(
-                m_options.bdA * m_bases.front().maxDegree(i) + m_options.bdB); // "3 *" for dg
-        
-        m_system.reserve(nz, m_pde_ptr->numRhs());
-    }
-
-    /// @brief Allocates sparse matrix and right-hand side
     void setSparseSystem(gsSparseSystem<T> & sys) 
     {
-        m_system.swap(sys);
+       GISMO_ASSERT(sys.initialized(), "Sparse system must be initialized first");
+       m_system.swap(sys);
     }
 
-    // Returns true if only the lower triangular part of the
-    // matrix is computed (for symmetric problems)
-    //virtual bool isSymmertric() const { return false; }
-
-    /// @brief Returns the Dirichlet values (if applicable)
-    const gsMatrix<T> & dirValues() const { return m_ddof; }
-
-    /// @brief Sets the Dirichlet values to given \a values (if applicable)
-    void setDirichletValues(gsMatrix<T> values) { m_ddof.swap(values); }
-
-    /// @brief Sets any Dirichlet values to homogeneous (if applicable)
-    void homogenizeDirichlet() { m_ddof.setZero(); }
-
     /// @brief Returns the number of (free) degrees of freedom
-    int numDofs() const { return m_dofs; }
+    int numDofs() const { return m_system.matrix().cols(); }
 
     /// @brief Returns the options of the assembler
     const gsAssemblerOptions & options() const { return m_options; }
 
+protected:
+
+    void scalarProblemGalerkinRefresh();
 
 protected:
 
@@ -299,38 +265,8 @@ protected:
     void apply(ElementVisitor & visitor, 
                int patchIndex = 0, 
                boxSide side = boundary::none);
-    
-protected:
 
-    /// The PDE: contains multi-patch domain, boundary conditions and
-    /// coeffcient functions
-    const gsPde<T> * m_pde_ptr;
-
-    /// The discretization bases corresponding to \a m_patches and to
-    /// the number of solution fields that are to be computed
-    /// m_bases[i]: The multi-basis for unknown i
-    std::vector< gsMultiBasis<T> > m_bases;
-    
-protected:
-
-    /// Fixed DoF values (if applicable, for instance eliminated Dirichlet DoFs)
-    gsMatrix<T> m_ddof;  // fixme: std::vector<gsMatrix<T> > m_fixedDofs;
-
-    /// Options
-    gsAssemblerOptions m_options;
-
-protected: // *** Outputs *** 
-    
-    /// Global sparse linear system
-    gsSparseSystem<T> m_system;
-
-protected: // *** Information *** 
-
-    /// Number of degrees of freedom (excluding eliminated,
-    /// counting glued dofs only once, etc.)
-    int m_dofs;
 };
-
 
 template <class T>
 template<class ElementVisitor>

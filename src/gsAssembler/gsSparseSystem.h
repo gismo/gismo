@@ -14,6 +14,8 @@
 
 #pragma once
 
+//#include <gsCore/gsRefVector.h>
+
 namespace gismo
 {
 
@@ -40,7 +42,9 @@ protected:
     gsSparseMatrix<T> m_matrix;
 
     gsMatrix<T> m_rhs;
-    
+
+
+    // -- Structure
     DofMappers m_mappers;
 
     gsVector<size_t> m_row;
@@ -50,6 +54,9 @@ protected:
     gsVector<index_t> m_rstr;
 
     gsVector<index_t> m_cstr;
+
+    gsVector<index_t> m_cvar;
+    //
 
 public:
 
@@ -61,10 +68,12 @@ public:
       m_row    (1),
       m_col    (1),
       m_rstr   (1),
-      m_cstr   (1)
+      m_cstr   (1),
+      m_cvar   (1)
     {
-        m_row [0] =  m_col [0] =
-        m_rstr[0] =  m_cstr[0] = 0;
+        m_row [0] =  m_col [0] = 
+        m_rstr[0] =  m_cstr[0] = 
+        m_cvar[0] = 0;
 
         m_mappers.front().swap(mapper);
         
@@ -85,11 +94,15 @@ public:
         const index_t s = dims.sum();
 
         if ( static_cast<index_t>(m_mappers.size()) == 2*d )
+        {
             m_col.array() += d;
+            m_cvar = m_row.cast<index_t>();//assume 1-1 bases
+        }
         else if ( m_mappers.size() == 1 )
         {
             m_row.setZero();
             m_col.setZero();
+            m_cvar.setZero(1);
         }
         else
         {
@@ -120,15 +133,20 @@ public:
         m_mappers.swap(mappers);
         
         if ( static_cast<index_t>(m_mappers.size()) == rows + cols )
+        {
             m_col.array() += rows;
+            m_cvar = m_row.cast<index_t>();//assume 1-1 bases
+        }
         else if ( static_cast<index_t>(m_mappers.size()) == rows )
         {
             GISMO_ENSURE( rows == cols, "Dof Mapper vector does not match block dimensions");
+            m_cvar = m_row.cast<index_t>();//assume 1-1 bases
         }
         else if ( m_mappers.size() == 1 )
         {
             m_row.setZero();
             m_col.setZero();
+            m_cvar.setZero(1);
         }
         else
         {
@@ -147,11 +165,13 @@ public:
 
     gsSparseSystem(DofMappers & mappers, 
                    const gsVector<index_t> & rowInd, 
-                   const gsVector<index_t> & colInd)
+                   const gsVector<index_t> & colInd, 
+                   const gsVector<index_t> & colvar)
     : m_row (rowInd),
       m_col (colInd),
       m_rstr(rowInd.size()),
-      m_cstr(colInd.size())
+      m_cstr(colInd.size()),
+      m_cvar(colvar)
     {
         const index_t rows = m_row.size();
         const index_t cols = m_col.size();
@@ -172,19 +192,34 @@ public:
 
     void swap(gsSparseSystem & other)
     {
-        m_matrix .swap(other.m_matrix);
-        m_rhs    .swap(other.m_rhs);
+        m_matrix .swap(other.m_matrix );
+        m_rhs    .swap(other.m_rhs    );
         m_mappers.swap(other.m_mappers);
-        m_row    .swap(other.m_row);
-        m_col    .swap(other.m_col);
+        m_row    .swap(other.m_row    );
+        m_col    .swap(other.m_col    );
+        m_rstr   .swap(other.m_rstr   );
+        m_cstr   .swap(other.m_cstr   );
+        m_cvar   .swap(other.m_cvar   );
     }
     
     /// Non-zeros per column for the sparse matrix, number of columns
     /// for the right-hand side
     void reserve(const index_t nz, const index_t numRhs)
     {
+        GISMO_ASSERT( 0 != m_mappers.size(), "Sparse system was not initialized");
         m_matrix.reservePerColumn(nz); 
         m_rhs.setZero(m_matrix.cols(), numRhs);
+    }
+
+    void setZero()
+    {
+        m_matrix.setZero();
+        m_rhs   .setZero();
+    }
+
+    index_t cols()
+    {
+        return m_rhs.rows();
     }
 
 public: /* Accessors */
@@ -221,13 +256,42 @@ public: /* Accessors */
     { return m_mappers[m_row[r]]; }
 
     const gsDofMapper & colMapper(const index_t c) const
-    { return m_mappers[m_col[c]]; }
+    {
+        return m_mappers[m_col[c]]; 
+    }
+    
+    bool initialized() const
+    {
+        return 0 != m_col.size();
+    }
 
+    bool symmetry() const
+    {
+        return symm;
+    }
+
+    // Returns the mapper index for column block \a c
     gsDofMapper & colMapper(const index_t c)
     { return m_mappers[m_col[c]]; }
 
+    // Returns the basis index for column block \a c
+    index_t colBasis(const index_t c) // better name ?
+    { return m_cvar[c]; }
+
     const DofMappers & dofMappers() const
     { return m_mappers; }
+
+    /*
+    gsRefVector<gsDofMapper> colMappers()
+    {
+        return gsRefVector<gsDofMapper>(m_mappers, m_col);
+    }
+
+    gsRefVector<gsDofMapper> rowMappers()
+    {
+        return gsRefVector<gsDofMapper>(m_mappers, m_row);
+    }
+    */
     
 
 public: /* mapping patch-local to global indices */
@@ -350,8 +414,7 @@ public: /* Add local contributions to system matrix and right-hand side */
                      const size_t r = 0, const size_t c = 0)
     {
         const index_t numActive = actives.rows();
-        const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
-        GISMO_ASSERT( &rowMap == &m_mappers[m_col.at(c)], "Error");
+        //GISMO_ASSERT( &m_mappers[m_row.at(r)] == &m_mappers[m_col.at(c)], "Error");
 
         for (index_t j=0; j!=numActive; ++j)
         {
