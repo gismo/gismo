@@ -253,13 +253,13 @@ private:
     gsGaussRule<T> m_quadrature;
 
     // First mesh-line on the tensor grid
-    std::vector<uiter> meshBegin;
+    gsVector<uiter, D> meshBegin;
 
     // Last mesh-line on the tensor grid
-    std::vector<uiter> meshEnd;
+    gsVector<uiter, D> meshEnd;
 
     // Current element as pointers to it's supporting mesh-lines
-    std::vector<uiter> curElement;
+    gsVector<uiter, D> curElement;
 
     // parameter coordinates of current grid cell
     gsVector<T> lower, upper;

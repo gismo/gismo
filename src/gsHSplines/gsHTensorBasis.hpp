@@ -517,7 +517,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     // Clear previous entries
     cmat.clear();
 
-    std::vector<knotIter> starts(d), ends(d), curr(d);
+    gsVector<knotIter,d> starts, ends, curr;
     gsVector<unsigned,d> ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
 
@@ -633,7 +633,7 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
         x_matrix_lvl[j].clear();
 
         // vectors of iterators. one iterator for each dimension
-        std::vector<typename gsCompactKnotVector<T>::const_iterator> starts(d), ends(d), curr(d);
+        gsVector<typename gsCompactKnotVector<T>::const_iterator,d> starts, ends, curr;
         gsVector<unsigned,d> ind;
 
         for(unsigned i = 0; i != d; ++i)

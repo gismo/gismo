@@ -179,11 +179,11 @@ private:
             for (unsigned index = start; index <= end; ++index)
                 m_breaks[dim].push_back(kv.uValue(index));
 
-            m_curElement[dim] =
-            m_meshStart[dim]  = m_breaks[dim].begin();
+            m_curElement(dim) = 
+            m_meshStart(dim)  = m_breaks[dim].begin();
 
             // for n breaks, we have n - 1 elements (spans)
-            m_meshEnd[dim] =  m_breaks[dim].end() - 1;
+            m_meshEnd(dim) =  m_breaks[dim].end() - 1;
         }
 
         // We are at a new element, so update cell data
@@ -231,10 +231,10 @@ private:
     std::vector< std::vector<T> > m_breaks;
 
     // Extent of the tensor grid
-    std::vector<uiter> m_meshStart, m_meshEnd;
+    gsVector<uiter, d> m_meshStart, m_meshEnd;
 
     // Current element as pointers to it's supporting mesh-lines
-    std::vector<uiter> m_curElement;
+    gsVector<uiter, d> m_curElement;
 
     // parameter coordinates of current grid cell
     gsVector<T> m_lower, m_upper;

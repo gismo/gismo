@@ -111,8 +111,7 @@ public:
     void reset()
     {
         curElement = meshStart;
-        for (int i = 0; i < meshEnd.size() ; ++i)
-            m_isGood = m_isGood && ( meshEnd[i] != meshStart[i] ) ;
+        m_isGood = ( meshEnd.array() != meshStart.array() ).all() ;
         if (m_isGood)
             update();
     }
@@ -210,10 +209,10 @@ private:
     gsGaussRule<T> m_quadrature;
 
     // Extent of the tensor grid
-    std::vector<uiter> meshStart, meshEnd;
+    gsVector<uiter, D> meshStart, meshEnd;
 
     // Current element as pointers to it's supporting mesh-lines
-    std::vector<uiter> curElement;
+    gsVector<uiter, D> curElement;
 
     // parameter coordinates of current grid cell
     gsVector<T> lower, upper;
