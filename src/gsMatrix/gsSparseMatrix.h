@@ -76,6 +76,7 @@ public:
     gsSparseMatrixIter& operator=(gsSparseMatrixIter other)
     {
         std::swap(m_it, other.m_it);
+        return *this;
     }
 
 public:
