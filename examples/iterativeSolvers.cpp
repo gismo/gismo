@@ -16,28 +16,21 @@
 
 using namespace gismo;
 
-int main(int argc, char *argv[])
+
+//Create a tri-diagonal matrix with -1 of the off diagonals and 2 in the diagonal.
+//This matrix is equivalent to discretizing the 1D Poisson equation with homogenius
+//Dirichlet boundary condition using a finite difference method. It is a SPD matrix.
+void poissonDiscretization(gsSparseMatrix<> &mat, gsMatrix<> &rhs, index_t N)
 {
-    //Size of linear system
-    index_t N = 200;
-    if (argc >= 2)
-        N = atoi(argv[1]);
-
-    gsSparseMatrix<> mat;
-    gsMatrix<>       rhs;
-
     rhs.setRandom(N,1);
 
     mat.resize(N,N);
     mat.setZero();
 
     //Reserving space in the sparse matrix (Speeds up the assemble time of the matrix)
-    gsVector<int> reserve = gsVector<int>::Constant(N,3);
+    gsVector<int> reserve = gsVector<int>::Constant(N,3);//Reserve 3 non-zero entry per column
     mat.reserve( reserve );
 
-    //Create a tri-diagonal matrix with -1 of the off diagonals and 2 in the diagonal.
-    //This matrix is equivalent to discretizing the 1D Poisson equation with homogenius
-    //Dirichlet boundary condition using a finite difference method. It is a SPD matrix.
     mat(0,0) = 2;
     mat(0,1) = -1;
     mat(N-1, N-1) = 2;
@@ -50,7 +43,21 @@ int main(int argc, char *argv[])
     }
     //Compress the matrix
     mat.makeCompressed();
+}
 
+
+int main(int argc, char *argv[])
+{
+    //Size of linear system
+    index_t N = 200;
+    if (argc >= 2)
+        N = atoi(argv[1]);
+
+    gsSparseMatrix<> mat;
+    gsMatrix<>       rhs;
+
+    //Assemble the 1D Poisson equation
+    poissonDiscretization(mat, rhs, N);
 
     //The minimal residual implementation requires a preconditioner.
     //We initialize an identity preconditioner (does nothing).
