@@ -50,28 +50,25 @@ void tensorCombineTransferMatrices(
     gsSparseMatrix<T,RowMajor> B[d],
     gsSparseMatrix<T,RowMajor> & transfer)
 {
-    typedef typename gsSparseMatrix<T,RowMajor>::InnerIterator InnerIt;
+    typedef typename gsSparseMatrix<T,RowMajor>::iterator InnerIt;
     gsSparseEntries<T> entries;
     gsVector<unsigned, d> oldSize, newSize, v, v_old;
 
     for (unsigned i = 0; i < d; ++i)
     {
-        oldSize[i] = (unsigned) B[i].innerSize();
-        newSize[i] = (unsigned) B[i].outerSize();
+        oldSize[i] = static_cast<unsigned>(B[i].innerSize());
+        newSize[i] = static_cast<unsigned>(B[i].outerSize());
     }
+
+    std::vector<InnerIt> it(d);
 
     // iterate over all new tensor indices
     v.setZero();
     index_t newIdx = 0;
     do {
-        assert( newIdx == fromTensorIndex<d>(v, newSize) );
-
         // set up iterators over component contributions
-        //InnerIt it[d];
-        std::vector<InnerIt> it;
-        it.reserve(d);
         for (unsigned i = 0; i < d; ++i)
-            it.push_back(  InnerIt( B[i], v[i] ) );
+            it[i] = B[i].begin(v[i]);
 
         // iterate over the component contributions
         bool more;
@@ -83,15 +80,15 @@ void tensorCombineTransferMatrices(
                 contrib *= it[i].value();
                 v_old[i] = it[i].index();
             }
-            index_t oldIdx = fromTensorIndex<d>(v_old, oldSize);
 
+            const index_t oldIdx = fromTensorIndex<d>(v_old, oldSize);
             entries.add( newIdx, oldIdx, contrib );
 
             // advance iterators
             more = true;
             for (unsigned i = 0; i < d; ++i)
             {
-                ++it[i];                    // increase current dimension
+                ++it[i];                  // increase current dimension
                 if (it[i])                  // current dimension not yet exhausted?
                     break;
                 else                        // current dimension exhausted
@@ -99,13 +96,13 @@ void tensorCombineTransferMatrices(
                     if (i == d - 1)         // was it the last one?
                         more = false;       // then all elements exhausted
                     else
-                        it[i] = InnerIt( B[i], v[i] ); // otherwise, reset this to start and increase the next dimension
+                        it[i] = B[i].begin(v[i]); // otherwise, reset this to start and increase the next dimension
                 }
             }
         } while (more);
     } while (++newIdx, nextLexicographic(v, newSize));
 
-    assert( newIdx == (index_t) newSize.prod() );
+    GISMO_ASSERT( newIdx == (index_t) newSize.prod(), "Iteration did not complete as expected." );
 
     transfer.resize( newSize.prod(), oldSize.prod() );
     transfer.setFrom( entries );

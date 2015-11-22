@@ -62,7 +62,8 @@ gsKnotVector<T>::gsKnotVector(int p, unsigned sz )
 : gsDomain<T>(), my(new gsKnotVectorPrivate<T>)
 { 
     my->p = p;
-    my->knots.resize(sz); 
+    GISMO_ASSERT( static_cast<unsigned>(2*p+1)>sz, "Incoherent knotvector");
+    my->knots.resize(sz, 0.0); 
 }
 
 template <class T>

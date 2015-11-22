@@ -83,8 +83,6 @@ public: /* Constructors and initializers */
 
     /// @brief Intitialize function for, sets data fields
     /// using a multi-patch, a vector of multi-basis and boundary conditions.
-    /// \note Rest of the data fields should be initialized in the
-    /// derived function initializePdeSpecific() .
     void initialize(const gsPde<T>                         & pde,
                     const gsStdVectorRef<gsMultiBasis<T> > & bases, 
                     const gsAssemblerOptions & opt = gsAssemblerOptions() )

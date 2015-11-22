@@ -390,8 +390,10 @@ class GeneralProduct<Lhs, Rhs, GemmProduct>
 
     GeneralProduct(const Lhs& lhs, const Rhs& rhs) : Base(lhs,rhs)
     {
+#     ifndef NDEBUG //G+Smo warn fix
       typedef internal::scalar_product_op<LhsScalar,RhsScalar> BinOp;
       EIGEN_CHECK_BINARY_COMPATIBILIY(BinOp,LhsScalar,RhsScalar);
+#     endif
     }
 
     template<typename Dest> void scaleAndAddTo(Dest& dst, const Scalar& alpha) const

@@ -29,7 +29,7 @@ namespace gismo
    \tparam T coefficient type
    \ingroup Matrix
 */
-template<class T>
+template<typename T>
 class gsSparseEntries : public std::vector<Eigen::Triplet<T,index_t> >
 {
 public:
@@ -44,6 +44,49 @@ public:
     inline void add( int i, int j, T value )
     { this->push_back( Triplet(i,j,value) ); }
 
+};
+
+/** 
+    @brief Iterator over the non-zero entries of a sparse matrix
+
+    This wraps an Eigen::SparseMatrix::InnerIteretor
+*/
+template<typename T, int _Options, typename _Index>
+class gsSparseMatrixIter
+{
+private:
+    typedef Eigen::SparseMatrix<T,_Options,_Index> SparseMatrix;
+    typedef typename Eigen::SparseMatrix<T,_Options,_Index>::InnerIterator InnerIterator;
+
+private:
+    InnerIterator * m_it;
+
+public:
+    gsSparseMatrixIter() : 
+    m_it(NULL) { }
+
+    ~gsSparseMatrixIter() {delete m_it;}
+
+    gsSparseMatrixIter(const SparseMatrix& mat, _Index outer) : 
+    m_it( new InnerIterator(mat,outer) ) { }
+
+    gsSparseMatrixIter(const gsSparseMatrixIter & other)
+    : m_it(NULL == other.m_it ? NULL : new InnerIterator(*other.m_it)) { }
+
+    gsSparseMatrixIter& operator=(gsSparseMatrixIter other)
+    {
+        std::swap(m_it, other.m_it);
+    }
+
+public:
+    inline gsSparseMatrixIter& operator++() { m_it->operator++(); return *this; }
+    inline const T& value() const { return m_it->value();         }
+    inline T &   valueRef()       { return m_it->valueRef();      }
+    inline _Index index()  const  { return m_it->index();         }
+    inline _Index outer()  const  { return m_it->outer();         }
+    inline _Index row()    const  { return m_it->row();           }
+    inline _Index col()    const  { return m_it->col();           }
+    inline operator bool() const  { return m_it->operator bool(); }
 };
 
 /** @brief Sparse matrix class, based on Eigen::SparseMatrix.
@@ -73,6 +116,8 @@ class gsSparseMatrix : public Eigen::SparseMatrix<T,_Options,_Index>
 {
 public:
     typedef Eigen::SparseMatrix<T,_Options,_Index> Base;
+
+    typedef gsSparseMatrixIter<T,_Options,_Index> iterator;
 
     // Type pointing to a block of the sparse matrix
     typedef typename Eigen::Block<Base> Block;
@@ -148,6 +193,8 @@ public:
 
     ~gsSparseMatrix() ;
 
+    iterator begin(index_t outer) const { return iterator(*this,outer);}
+
     void clear()
     {
         this->resize(0,0);
@@ -197,17 +244,10 @@ public:
 }; // class gsSparseMatrix
 
 
-
-////////////////////////////////////////////////
-////////////////////////////////////////////////
-
-
-
-
-template<class T> inline
+template<typename T> inline
 gsSparseEntries<T>::gsSparseEntries() : Base() { }
 
-template<class T> inline
+template<typename T> inline
 gsSparseEntries<T>::~gsSparseEntries() {  }
 
 //template<class T>
