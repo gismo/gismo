@@ -14,8 +14,6 @@
 #include <iostream>
 #include <gismo.h>
 
-using std::cout;
-using std::endl;
 using namespace gismo;
 
 int main(int argc, char *argv[])
@@ -62,9 +60,9 @@ int main(int argc, char *argv[])
     x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
-    gsInfo << "\nMinRes: Before solve"  << std::endl;
+    gsInfo << "\nMinRes: Before solve"  << "\n";
     MinRes.solve(rhs,x0,preConMat);
-    gsInfo << "MinRes: After solve"  << std::endl;
+    gsInfo << "MinRes: After solve"  << "\n";
 
     gsInfo << "MinRes: Solved a system of size " << N << "\n";
     gsInfo << "MinRes: Tolerance: " << tol << "\n";
@@ -78,9 +76,9 @@ int main(int argc, char *argv[])
     x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
-    gsInfo << "\nGMRes: Before solve"  << std::endl;
+    gsInfo << "\nGMRes: Before solve"  << "\n";
     GMResSolver.solve(rhs,x0,preConMat);
-    gsInfo << "GMRes: After solve"  << std::endl;
+    gsInfo << "GMRes: After solve"  << "\n";
 
     gsInfo << "GMRes: Solved a system of size " << N << "\n";
     gsInfo << "GMRes: Tolerance: " << tol << "\n";
@@ -94,9 +92,9 @@ int main(int argc, char *argv[])
     x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
-    gsInfo << "\nCG: Before solve"  << std::endl;
+    gsInfo << "\nCG: Before solve"  << "\n";
     CGSolver.solve(rhs,x0,preConMat);
-    gsInfo << "CG: After solve"  << std::endl;
+    gsInfo << "CG: After solve"  << "\n";
 
     gsInfo << "CG: Solved a system of size " << N << "\n";
     gsInfo << "CG: Tolerance: " << tol << "\n";

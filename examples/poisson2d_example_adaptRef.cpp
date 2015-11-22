@@ -22,9 +22,7 @@
 
 #include <gsAssembler/gsErrEstPoissonResidual.h>
 
-using namespace std;
 using namespace gismo;
-
 
 
 //S.Kleiss
@@ -83,7 +81,7 @@ int main(int argc, char *argv[])
   
   bool ok = cmd.getValues(argc,argv);
   if (!ok) {
-    cout << "Error during parsing!";
+    gsInfo << "Error during parsing!";
     return 1;
   }
 
@@ -127,8 +125,8 @@ int main(int argc, char *argv[])
   // ^^^^^^ Example 2 ^^^^^^
   */
 
-  cout<<"Source function "<< f << endl;
-  cout<<"Exact solution "<< g <<".\n" << endl;
+  gsInfo<<"Source function "<< f << "\n";
+  gsInfo<<"Exact solution "<< g <<".\n" << "\n";
 
   // Define Boundary conditions
   gsBoundaryConditions<> bcInfo;
@@ -139,8 +137,8 @@ int main(int argc, char *argv[])
   bcInfo.addCondition( boundary::south, condition_type::dirichlet, &g );
 
   gsTensorBSpline<2,real_t> * geo = dynamic_cast< gsTensorBSpline<2,real_t> * >( & patches.patch(0) );
-  cout << " --- Geometry:\n" << *geo << endl;
-  cout << "Number of patches: " << patches.nPatches() << endl;
+  gsInfo << " --- Geometry:\n" << *geo << "\n";
+  gsInfo << "Number of patches: " << patches.nPatches() << "\n";
 
   if (dump)
       gsWrite(*geo, "adapt_geo.xml");
@@ -148,7 +146,7 @@ int main(int argc, char *argv[])
   gsTensorBSplineBasis<2,real_t> tbb = geo->basis();
   tbb.setDegree(degree);
 
-  cout << "\nCoarse discretization basis:\n" << tbb << endl;
+  gsInfo << "\nCoarse discretization basis:\n" << tbb << "\n";
 
   // With this gsTensorBSplineBasis, it's possible to call the THB-Spline constructor
   gsTHBSplineBasis<2,real_t> THB( tbb );
@@ -165,9 +163,9 @@ int main(int argc, char *argv[])
   // So, ready to start the adaptive refinement loop:
   for( int RefineLoop = 1; RefineLoop <= RefineLoopMax ; RefineLoop++ )
   {
-      cout << "\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << endl << endl;
+      gsInfo << "\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << "\n" << "\n";
 
-      cout <<"Basis: "<< bases[0] <<"\n";
+      gsInfo <<"Basis: "<< bases[0] <<"\n";
 
       // Create solver... maybe not the smartest thing to set up a new solver
       // in each iteration loop, but good enough for now.
@@ -175,14 +173,14 @@ int main(int argc, char *argv[])
                                     dirichlet::elimination,iFace::glue);
 
       // Assemble matrix and rhs
-      cout << "Assembling... " << flush;
+      gsInfo << "Assembling... " << std::flush;
       pa.assemble();
-      cout << "done." << endl;
+      gsInfo << "done." << "\n";
 
       // Solve system
-      cout << "Solving... " << flush;
+      gsInfo << "Solving... " << std::flush;
       gsMatrix<> solVector = gsSparseSolver<>::CGDiagonal(pa.matrix() ).solve( pa.rhs() );
-      cout << "done." << endl;
+      gsInfo << "done." << "\n";
       
       // Construct the solution for plotting the mesh later
       gsMultiPatch<> mpsol;
@@ -217,7 +215,7 @@ int main(int argc, char *argv[])
 
       if (dump)
       {
-          stringstream ss;
+          std::stringstream ss;
           ss << "adapt_basis_" << RefineLoop << ".xml";
           gsWrite(bases[0], ss.str());
       }
@@ -225,7 +223,7 @@ int main(int argc, char *argv[])
       if ( (RefineLoop == RefineLoopMax) && plot)
       {
           // Write approximate solution to paraview files
-          std::cout<<"Plotting in Paraview...\n";
+          gsInfo<<"Plotting in Paraview...\n";
           gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
           // Run paraview and plot the last mesh
           result = system("paraview p2d_adaRef_sol.pvd &");
@@ -233,7 +231,7 @@ int main(int argc, char *argv[])
 
   }
 
-  cout << "\nFinal basis: " << bases[0] << "\n";
+  gsInfo << "\nFinal basis: " << bases[0] << "\n";
 
   return result;
 }

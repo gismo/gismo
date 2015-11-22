@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     n      = math::max(n, degree + 1);
     m      = math::max(m, degree + 1);
 
-    std::cout << "----------------------\n\n"
+    gsInfo << "----------------------\n\n"
               << "n: " << n << "\n\n"
               << "m: " << m << "\n\n"
               << "degree: " << degree << "\n\n"
@@ -76,21 +76,21 @@ int main(int argc, char* argv[])
     if (output != "")
     {
         std::string out = output + "Geometry";
-        std::cout << "Writing the surface to a paraview file: " << out 
+        gsInfo << "Writing the surface to a paraview file: " << out 
                   << "\n\n";
         
         gsWriteParaview(surface, out);
         
         out = output + "Basis";
-        std::cout << "Writing the basis to a paraview file: " << out 
+        gsInfo << "Writing the basis to a paraview file: " << out 
                   << "\n\n";
         
         gsWriteParaview(basis, out);
         
 
         out = output + "ContolNet";
-        std::cout << "Writing the control net to a paraview file: " << out 
-                  << "\n" << std::endl;
+        gsInfo << "Writing the control net to a paraview file: " << out 
+                  << "\n" << "\n";
 
         gsMesh<> mesh; 
         surface.controlNet(mesh);

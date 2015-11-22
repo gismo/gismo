@@ -61,14 +61,14 @@ int main(int argc, char* argv[])
     }
     else
     {
-        std::cout << "Input file doesn't have a geometry inside." << std::endl;
+        gsInfo << "Input file doesn't have a geometry inside." << "\n";
         return -1;
     }
 
         
     if (pGeom == NULL)
     {
-        std::cout << "Didn't find any geometry." << std::endl;
+        gsInfo << "Didn't find any geometry." << "\n";
         return -1;
     }
     
@@ -81,28 +81,28 @@ int main(int argc, char* argv[])
     // printing the geometry
     // ----------------------------------------------------------------------
 
-    std::cout << "The file contains: \n" << *pGeom << std::endl;
+    gsInfo << "The file contains: \n" << *pGeom << "\n";
     
     // G+Smo geometries contains basis and coefficients
     const gsBasis<>& basis = pGeom->basis();
-    std::cout << "\nBasis: \n" << basis << std::endl;
+    gsInfo << "\nBasis: \n" << basis << "\n";
     
     const gsMatrix<>& coefs = pGeom->coefs();
-    std::cout << "\nCoefficients: \n" << coefs << "\n" << std::endl;
+    gsInfo << "\nCoefficients: \n" << coefs << "\n" << "\n";
     
     
     // ----------------------------------------------------------------------
     // printing some properties about the basis
     // ----------------------------------------------------------------------
     
-    std::cout << "Dimension of the parameter space: " << pGeom->parDim() << "\n"
+    gsInfo << "Dimension of the parameter space: " << pGeom->parDim() << "\n"
               << "Dimension of the geometry: " << pGeom->geoDim() << "\n";
 
     // support of the geometry, this is the same as gsBasis::support
     // (dim x 2 matrix, the parametric domain)
     gsMatrix<> support = pGeom->support();
-    std::cout << "Support: \n"
-              << support << "\n" << std::endl;
+    gsInfo << "Support: \n"
+              << support << "\n" << "\n";
 
 
     
@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
     // ----------------------------------------------------------------------
     
     gsMatrix<> u = 0.3 * support.col(0) + 0.7 * support.col(1);
-    std::cout << "u " << size(u) << ": \n" << u << "\n" << std::endl;
+    gsInfo << "u " << size(u) << ": \n" << u << "\n" << "\n";
 
     // geoDim x 1 matrix
     gsMatrix<> value = pGeom->eval(u); 
@@ -125,17 +125,17 @@ int main(int argc, char* argv[])
     // [geoDim * (parDim + parDim * (parDim - 1) / 2)] x 1 matrix
     gsMatrix<> der2 = pGeom->deriv2(u);
     
-    std::cout << "Value at u " << size(value) << ": \n"
+    gsInfo << "Value at u " << size(value) << ": \n"
               << value
               << "\n\nDerivative at u " << size(der1) << ": \n"
               << der1 
               << "\n\nSecond derivative at u " << size(der2) << ": \n"
               << der2
-              << "\n" << std::endl;
+              << "\n" << "\n";
     
-    std::cout << "\nFor more information about evaluation "
+    gsInfo << "\nFor more information about evaluation "
               << "(and order of derivatives) look at doxygen documentation." 
-              << "\n" << std::endl;
+              << "\n" << "\n";
 
     
     // ======================================================================
@@ -155,20 +155,20 @@ int main(int argc, char* argv[])
     if (output != "")
     {
         std::string out = output + "Geometry";
-        std::cout << "Writing the geometry to a paraview file: " << out 
+        gsInfo << "Writing the geometry to a paraview file: " << out 
                   << "\n\n";
         
         gsWriteParaview(*pGeom, out);
         
         out = output + "Basis";
-        std::cout << "Writing the basis to a paraview file: " << out 
+        gsInfo << "Writing the basis to a paraview file: " << out 
                   << "\n\n";
         
         gsWriteParaview(basis, out);
         
         out = output + "ContolNet";
-        std::cout << "Writing the control net to a paraview file: " << out 
-                  << "\n" << std::endl;
+        gsInfo << "Writing the control net to a paraview file: " << out 
+                  << "\n" << "\n";
         
         gsWriteParaview(mesh, out);
 

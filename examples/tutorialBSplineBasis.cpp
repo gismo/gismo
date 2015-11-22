@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
     // different construction of a knot vector
     // ======================================================================
     
-    std::cout << "------------- Constructions -----------------------------\n";
+    gsInfo << "------------- Constructions -----------------------------\n";
 
     real_t a = 0; // starting knot
     real_t b = 1; // ending knot
@@ -50,9 +50,9 @@ int main(int argc, char* argv[])
     // ======================================================================
 
 
-    std::cout << "------------- Some properties    -----------------------\n\n";
+    gsInfo << "------------- Some properties    -----------------------\n\n";
     
-    std::cout << "bsb0.size(): " << bsb0.size() << "\n\n"
+    gsInfo << "bsb0.size(): " << bsb0.size() << "\n\n"
               << "bsb0.numElements(): " << bsb0.numElements() << "\n\n"
               << "bsb0.degree(): " << bsb0.degree() << "\n\n";
 
@@ -61,20 +61,20 @@ int main(int argc, char* argv[])
     // some operations
     // ======================================================================
 
-    std::cout << "------------- Some operations    -----------------------\n\n";
+    gsInfo << "------------- Some operations    -----------------------\n\n";
 
     const gsKnotVector<>& knots = bsb0.knots();
-    std::cout << "Knots: \n";
-    knots.print(std::cout);
-    std::cout << "\n\n";
+    gsInfo << "Knots: \n";
+    knots.print(gsInfo);
+    gsInfo << "\n\n";
 
     printToParaview(bsb0, "basis");
     
-    std::cout << "bsb0.uniformRefine()\n";
+    gsInfo << "bsb0.uniformRefine()\n";
     bsb0.uniformRefine();
     printToParaview(bsb0, "basisRefined");
     
-    std::cout << "bsb0.degreeElevate()\n";
+    gsInfo << "bsb0.degreeElevate()\n";
     bsb0.degreeElevate();
     printToParaview(bsb0, "basisElevated");
         
@@ -84,16 +84,16 @@ int main(int argc, char* argv[])
 void printToParaview(const gsBSplineBasis<>& bsb,
                      const std::string& name)
 {
-    std::cout << "Writing bsb0 to paraview in a file: " << name << "\n\n";
+    gsInfo << "Writing bsb0 to paraview in a file: " << name << "\n\n";
     gsWriteParaview(bsb, name);
 }
 
 void print(const gsBSplineBasis<>& bsb,
            const std::string& name)
 {
-    std::cout << name << ": \n";
-    bsb.print(std::cout);
-    std::cout << "\n\n";
+    gsInfo << name << ": \n";
+    bsb.print(gsInfo);
+    gsInfo << "\n\n";
 }
 
 

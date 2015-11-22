@@ -18,8 +18,6 @@
 
 #include <gismo.h>
 
-
-using std::cout;
 using namespace gismo;
 
 int main(int argc, char *argv[])
@@ -54,26 +52,26 @@ int main(int argc, char *argv[])
     bool ok = cmd.getValues(argc,argv);
     if (!ok) 
     {
-      std::cout << "Something went wrong when reading the command line. Exiting.\n";
+      gsInfo << "Something went wrong when reading the command line. Exiting.\n";
       return 1;
     }
     
     if (deg_x < 1)
-    { cout << "Degree x must be positive.\n";  return 0;}
+    { gsInfo << "Degree x must be positive.\n";  return 0;}
     if (deg_y < 1)
-    { cout << "Degree y must be positive.\n"; return 0;}
+    { gsInfo << "Degree y must be positive.\n"; return 0;}
     if (extension < 0)
-    { cout << "Extension must be non negative.\n"; return 0;}
+    { gsInfo << "Extension must be non negative.\n"; return 0;}
 
     if ( tolerance < 0 )
     { 
-        cout << "Error tolerance cannot be negative, setting it to default value.\n";
+        gsInfo << "Error tolerance cannot be negative, setting it to default value.\n";
         tolerance = 1e-02;
     }
 
     if (threshold > 0 && threshold > tolerance )
     { 
-        cout << "Refinement threshold is over tolerance, setting it the same as tolerance.\n";
+        gsInfo << "Refinement threshold is over tolerance, setting it the same as tolerance.\n";
         threshold = tolerance;
     }
 
@@ -122,45 +120,45 @@ int main(int argc, char *argv[])
     const std::vector<real_t> & errors = ref.pointWiseErrors();
 
     // Print settings summary
-    cout<<"Fitting "<< xyz.cols() <<" samples.\n";
-    cout<<"----------------\n";
-    cout<<"Cell extension     : "<< ext[0]<<" "<<ext[1]<<".\n";
+    gsInfo<<"Fitting "<< xyz.cols() <<" samples.\n";
+    gsInfo<<"----------------\n";
+    gsInfo<<"Cell extension     : "<< ext[0]<<" "<<ext[1]<<".\n";
     if ( threshold >= 0.0 )
-        cout<<"Ref. threshold     : "<< threshold<<".\n";
+        gsInfo<<"Ref. threshold     : "<< threshold<<".\n";
     else
-        cout<<"Cell refinement    : "<< 100*refPercent<<"%%.\n";
-    cout<<"Error tolerance    : "<< tolerance<<".\n";
-    cout<<"Smoothing parameter: "<< lambda<<".\n";
+        gsInfo<<"Cell refinement    : "<< 100*refPercent<<"%%.\n";
+    gsInfo<<"Error tolerance    : "<< tolerance<<".\n";
+    gsInfo<<"Smoothing parameter: "<< lambda<<".\n";
 
     gsStopwatch time;
 
     for(int i = 0; i <= iter; i++)
     {
-        cout<<"----------------\n";
-        cout<<"Iteration "<<i<<".."<<"\n";
+        gsInfo<<"----------------\n";
+        gsInfo<<"Iteration "<<i<<".."<<"\n";
         
         time.restart();
         ref.nextIteration(tolerance, threshold);
         const double clock = time.stop();
-        cout<<"Fitting time: "<< clock <<"\n";
+        gsInfo<<"Fitting time: "<< clock <<"\n";
 
-        cout<<"Fitted with "<< ref.result()->basis() <<"\n";
-        cout<<"Min distance : "<< ref.minPointError() <<" / ";
-        cout<<"Max distance : "<< ref.maxPointError() <<"\n";
-        cout<<"Points below tolerance: "<< 100.0 * ref.numPointsBelow(tolerance)/errors.size()<<"%.\n";
+        gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
+        gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
+        gsInfo<<"Max distance : "<< ref.maxPointError() <<"\n";
+        gsInfo<<"Points below tolerance: "<< 100.0 * ref.numPointsBelow(tolerance)/errors.size()<<"%.\n";
 
         if ( ref.maxPointError() < tolerance )
         {
-            cout<<"Error tolerance achieved after "<<i<<" iterations.\n";
+            gsInfo<<"Error tolerance achieved after "<<i<<" iterations.\n";
             break;
         }
     }
 
-    cout<<"----------------\nFinished.\n";
+    gsInfo<<"----------------\nFinished.\n";
 
     if ( save )
     {
-        cout<<"Writing fitting_out.xml"<<"\n";
+        gsInfo<<"Writing fitting_out.xml"<<"\n";
         fd << *ref.result() ;
 
         fd.dump("fitting_out");

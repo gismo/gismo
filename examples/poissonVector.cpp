@@ -16,8 +16,6 @@
 
 # include <gismo.h>
 
-using std::cout;
-using std::endl;
 using namespace gismo;
 
 // Getting the input (defined after the main function)
@@ -46,15 +44,15 @@ int main(int argc, char *argv[])
       return 0;
 
     /////////////////// Print info ///////////////////
-    cout<<"Type "<< argv[0]<< " -h, to get the list of command line options.\n\n";
-    cout<<"Domain: "<< *patches <<"\n";
-    cout<< "Number of patches are " << patches->nPatches() << endl;
-    cout<<"Source function "<< *ppde->rhs() << endl;
-    cout<<"Exact solution "<< *ppde->solution() <<".\n" << endl;
-    cout<<"p-refinent steps before solving: "<< numElevate <<"\n";
-    cout<<"h-refinent steps before solving: "<< numRefine <<"\n";
+    gsInfo<<"Type "<< argv[0]<< " -h, to get the list of command line options.\n\n";
+    gsInfo<<"Domain: "<< *patches <<"\n";
+    gsInfo<< "Number of patches are " << patches->nPatches() << "\n";
+    gsInfo<<"Source function "<< *ppde->rhs() << "\n";
+    gsInfo<<"Exact solution "<< *ppde->solution() <<".\n" << "\n";
+    gsInfo<<"p-refinent steps before solving: "<< numElevate <<"\n";
+    gsInfo<<"h-refinent steps before solving: "<< numRefine <<"\n";
 
-    cout<< * ppde <<"\n";
+    gsInfo<< * ppde <<"\n";
 
     /////////////////// Setup boundary conditions ///////////////////
     // Define Boundary conditions
@@ -96,7 +94,7 @@ int main(int argc, char *argv[])
         for (int i = 0; i < numRefine; ++i)
             bases[j].uniformRefine();
 
-    cout << "Discrete. Space 0: "<< bases[0] << endl;
+    gsInfo << "Discrete. Space 0: "<< bases[0] << "\n";
 
 
     /////////////////// Setup solver ///////////////////
@@ -110,24 +108,24 @@ int main(int argc, char *argv[])
     //Use Nitsche's method for Dirichlet boundaries
     if ( Dirichlet == 1)
     {
-        cout<<"Using Nitsche's method for Dirichlet boundaries.\n";
+        gsInfo<<"Using Nitsche's method for Dirichlet boundaries.\n";
         options.dirStrategy = dirichlet::nitsche;
     }
 
     if ( DG == 1)
     {
-        cout<<"Using DG method for patch interfaces.\n";
+        gsInfo<<"Using DG method for patch interfaces.\n";
         options.intStrategy = iFace::dg;
     }
 
     PoissonAssembler.initialize(*ppde, bases, options);
 
     // Generate system matrix and load vector
-    std::cout<<"Assembling...\n";
+    gsInfo<<"Assembling...\n";
     PoissonAssembler.assemble();
 
     // Initialize the conjugate gradient solver
-    std::cout<<"Solving...\n";
+    gsInfo<<"Solving...\n";
     gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
     gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
 
@@ -141,7 +139,7 @@ int main(int argc, char *argv[])
     if (plot)
     {
         // Write approximate and exact solution to paraview files
-        std::cout<<"Plotting in Paraview...\n";
+        gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>(sol, "poisson2d", plot_pts);
         //gsField<> exact( PoissonSolver.patches(), g, false );
         //gsWriteParaview<>( exact, "poisson2d_exact", plot_pts);
@@ -151,11 +149,11 @@ int main(int argc, char *argv[])
     }
     //delete tbasis;
 
-    cout << "Test is done: Cleaning up..." << endl; //freeAll(m_bconditions);
+    gsInfo << "Test is done: Cleaning up..." << "\n"; //freeAll(m_bconditions);
 
     delete patches;
 
-    cout << "Test is done: Exiting" << endl;
+    gsInfo << "Test is done: Exiting" << "\n";
 
     delete ppde;
 
@@ -193,7 +191,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
   cmd.addString("g","geometry","File containing Geometry (.xml, .axl, .txt)", fn);
   bool ok = cmd.getValues(argc,argv);
   if (!ok) {
-    cout << "Error parsing command line!\n";
+    gsInfo << "Error parsing command line!\n";
     return false; 
   }
     
@@ -215,19 +213,19 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     if ( ! fn_basis.empty() )
     {
     gsBasis<> * bb = gsReadFile<>( fn_basis );
-    cout << "Got basis: "<< * bb<<"\n";
+    gsInfo << "Got basis: "<< * bb<<"\n";
     bases.addBasis(bb);
-    //cout << "Warning: basis ignored.\n";
+    //gsInfo << "Warning: basis ignored.\n";
     }
 
     if (numRefine<0)
     {
-      cout << "Number of refinements must be non-negative, setting to zero.\n";
+      gsInfo << "Number of refinements must be non-negative, setting to zero.\n";
       numRefine = 0;
     }
     if (numElevate<-1)
     {
-      cout << "Number of elevations must be non-negative, ignoring parameter.\n";
+      gsInfo << "Number of elevations must be non-negative, ignoring parameter.\n";
       numElevate = -1;
     }
 
@@ -288,7 +286,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     geo = gsReadFile<>( fn );
     if ( !geo )
       {
-    cout << "Did not find any geometries in "<< fn<<", quitting.\n";
+    gsInfo << "Did not find any geometries in "<< fn<<", quitting.\n";
     return false;
       }
 

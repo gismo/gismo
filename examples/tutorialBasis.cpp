@@ -60,14 +60,14 @@ int main(int argc, char* argv[])
     }
     else
     {
-        gsInfo << "Input file doesn't have a basis inside." << std::endl;
+        gsInfo << "Input file doesn't have a basis inside." << "\n";
         return -1;
     }
 
         
     if (pBasis == NULL)
     {
-        gsInfo << "Didn't find any basis." << std::endl;
+        gsInfo << "Didn't find any basis." << "\n";
         return -1;
     }
 
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
     
     
     // printing the basis
-    gsInfo << "The file contains: \n" << *pBasis << std::endl;
+    gsInfo << "The file contains: \n" << *pBasis << "\n";
             
     
     // printing some properties of the basis
@@ -87,14 +87,14 @@ int main(int argc, char* argv[])
            << "Number of elements: " << pBasis->numElements() << "\n"
            << "Max degree of the basis: " << pBasis->maxDegree() << "\n"
            << "Min degree of the basis: " << pBasis->minDegree() << "\n"
-           << std::endl;
+           << "\n";
 
 
     // support of the basis 
     // (dim x 2 matrix, the parametric domain)
     gsMatrix<> support = pBasis->support();
     gsInfo << "Support: \n"
-           << support << "\n" << std::endl;
+           << support << "\n" << "\n";
     
 
     
@@ -108,21 +108,21 @@ int main(int argc, char* argv[])
     // ----------------------------------------------------------------------
 
     gsMatrix<> u = 0.3 * support.col(0) + 0.7 * support.col(1);
-    gsInfo << "u " << size(u) << ": \n" << u << "\n" << std::endl;
+    gsInfo << "u " << size(u) << ": \n" << u << "\n" << "\n";
     
     // indices of active (nonzero) functions at parameter u
     gsMatrix<unsigned> active = pBasis->active(u);
     gsInfo << "Active functions at u " << size(active) << ": \n" 
-           << active << "\n" << std::endl;
+           << active << "\n" << "\n";
 
     gsInfo << "Is number 2 active at the point ? " <<pBasis->isActive(0,u.col(0)) << ": \n" 
-           << active << "\n" << std::endl;
+           << active << "\n" << "\n";
     
 
     // values of all active functions at u
     gsMatrix<> values = pBasis->eval(u);
     gsInfo << "Values at u " << size(values) << ": \n"
-           << values << "\n" << std::endl;
+           << values << "\n" << "\n";
     
     // values of single basis functions
     for (index_t i = 0; i != active.rows(); i++)
@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
         gsInfo << "basis fun. index:  " << active(i) 
                << "   value: " << val(0, 0) << "\n";
     }
-    gsInfo << std::endl;
+    gsInfo << "\n";
 
 
     // ----------------------------------------------------------------------
@@ -142,7 +142,7 @@ int main(int argc, char* argv[])
 
     gsMatrix<> derivs = pBasis->deriv(u);
     gsInfo << "Derivatives at u " << size(derivs) << ": \n"
-           << derivs << "\n" << std::endl;
+           << derivs << "\n" << "\n";
     
 
     // derivatives of single basis function
@@ -158,7 +158,7 @@ int main(int argc, char* argv[])
             gsInfo << std::setw(46) << der(row, 0) << "\n";
         }
     }
-    gsInfo << std::endl;
+    gsInfo << "\n";
 
 
     // ----------------------------------------------------------------------
@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
 
     gsMatrix<> derivs2 = pBasis->deriv2(u);
     gsInfo << "Second derivatives at u " << size(derivs2) << ": \n"
-           << derivs2 << "\n" << std::endl;
+           << derivs2 << "\n" << "\n";
     
     for (index_t i = 0; i != active.rows(); i++)
     {
@@ -185,7 +185,7 @@ int main(int argc, char* argv[])
 
     gsInfo << "\nFor more information about evaluation "
            << "(and order of derivatives) look at doxygen documentation." 
-           << "\n" << std::endl;
+           << "\n" << "\n";
     
 
 
@@ -196,7 +196,7 @@ int main(int argc, char* argv[])
     if (output != "")
     {
         gsInfo << "Writing the basis to a paraview file: " << output 
-               << "\n" << std::endl;
+               << "\n" << "\n";
         gsWriteParaview(*pBasis, output);
     }
     

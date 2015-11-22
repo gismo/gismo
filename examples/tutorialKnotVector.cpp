@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
     // different construction of a knot vector
     // ======================================================================
     
-    std::cout << "------------- Constructions -----------------------------\n";
+    gsInfo << "------------- Constructions -----------------------------\n";
 
     gsKnotVector<> kv0; 
     printKnotVector(kv0, "kv0");
@@ -73,21 +73,21 @@ int main(int argc, char* argv[])
 
     // looping over all knots
     
-    std::cout << "\n\n"
+    gsInfo << "\n\n"
               << "------------- Looping over knots -----------------------\n"
               << "kv7: \n";
     for (gsKnotVector<>::iterator it = kv7.begin(); it != kv7.end(); it++)
     {
-        std::cout << *it << " ";
+        gsInfo << *it << " ";
     }
-    std::cout << "\n\n";
+    gsInfo << "\n\n";
     
     // looping over unique knots
     for (gsKnotVector<>::uiterator it = kv7.ubegin(); it != kv7.uend(); it++)
     {
-        std::cout << *it << " ";
+        gsInfo << *it << " ";
     }
-    std::cout << "\n\n\n";
+    gsInfo << "\n\n\n";
 
     
     // ======================================================================
@@ -95,12 +95,12 @@ int main(int argc, char* argv[])
     // ======================================================================
 
 
-    std::cout << "------------- Some properties    -----------------------\n"
+    gsInfo << "------------- Some properties    -----------------------\n"
               << "kv7: \n\n";
     
     printKnotVector(kv7);
 
-    std::cout << "kv7.size(): " << kv7.size() << "\n\n"
+    gsInfo << "kv7.size(): " << kv7.size() << "\n\n"
               << "kv7.findspan(1.5): " << kv7.findspan(1.5) << "\n\n"
               << "kv7.findspan(2): " << kv7.findspan(2) << "\n\n"
               << "kv7.has(2): " << kv7.has(2) << "\n\n"
@@ -116,52 +116,52 @@ int main(int argc, char* argv[])
     // some operations
     // ======================================================================
 
-    std::cout << "------------- Some operations    -----------------------\n";
+    gsInfo << "------------- Some operations    -----------------------\n";
     printKnotVector(kv6, "kv6");
     
     
     std::vector<real_t> unique = kv6.unique();
-    std::cout << "\nUnique knots: \n";
+    gsInfo << "\nUnique knots: \n";
     std::for_each(unique.begin(), unique.end(), print);
     
     gsMatrix<>* greville = kv6.greville();
-    std::cout << "\n\nGreville points: \n" << *greville << "\n\n";
+    gsInfo << "\n\nGreville points: \n" << *greville << "\n\n";
     delete greville;
     
     
     std::vector<int> mult = kv6.multiplicities();
-    std::cout << "Multiplicities: ";
+    gsInfo << "Multiplicities: ";
     std::for_each(mult.begin(), mult.end(), print);
-    std::cout << "\n\n";
+    gsInfo << "\n\n";
     
     printKnotVector(kv6, "kv6");
     
-    std::cout << "kv6.uniformRefine()\n";
+    gsInfo << "kv6.uniformRefine()\n";
     kv6.uniformRefine();
     printKnotVector(kv6);
     
-    std::cout << "kv6.degreeElevate()\n";
+    gsInfo << "kv6.degreeElevate()\n";
     kv6.degreeElevate();
     printKnotVector(kv6);
     
-    std::cout << "For other capabilites of gsKnotVector look at "
-        "src/gsNurbs/gsKnotVector.h\n" << std::endl;
+    gsInfo << "For other capabilites of gsKnotVector look at "
+        "src/gsNurbs/gsKnotVector.h\n" << "\n";
 
     return 0;
 }
 
 void print(const real_t& el)
 {
-    std::cout << el << " ";
+    gsInfo << el << " ";
 }
 
 
 void printKnotVector(const gsKnotVector<>& kv,
                      const std::string& name)
 {
-    std::cout << name << ":\n";
-    kv.print(std::cout);
-    std::cout << "\n" << std::endl;
+    gsInfo << name << ":\n";
+    kv.print(gsInfo);
+    gsInfo << "\n" << "\n";
 }
 
 
@@ -169,9 +169,9 @@ void printKnotVector(const gsKnotVector<>& kv)
 {
     for (gsKnotVector<>::const_iterator it = kv.begin(); it != kv.end(); it++)
     {
-        std::cout << *it << " ";
+        gsInfo << *it << " ";
     }
-    std::cout << "\n\n";
+    gsInfo << "\n\n";
 }
 
 

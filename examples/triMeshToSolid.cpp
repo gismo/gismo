@@ -7,10 +7,6 @@
 
 using namespace gismo;
 
-using std::cout;
-using std::endl;
-using std::size_t;
-
 int main(int argc, char *argv[])
 { 
     bool plot = 1; // If user gives --plot as argiment, paraview file is generated and launched on exit
@@ -58,7 +54,7 @@ int main(int argc, char *argv[])
     
     if (filename.empty() )
     {
-        std::cout<< "Waiting for file input.\n";
+        gsInfo<< "Waiting for file input.\n";
         return 0;
     }
         
@@ -71,23 +67,23 @@ int main(int argc, char *argv[])
         nameStartIdx+= 1;
     size_t nameEndIdx = filename.rfind('.');
     std::string baseName = filename.substr(nameStartIdx, nameEndIdx - nameStartIdx);
-    cout << "--- Settings ---\n";
-    cout << "Processing " << baseName << "\n";
-    cout << "Cutoff angle is " << cutoffAngle << "\n";
-    cout << "Master surfaces have degree " << degree << " and " << interiorPts << " interior knot points.\n";
-    cout << "Surface fit: edge weighting is " << wEdge << " and interior point weighting is " << wInterior << ".\n";
-    if(noSmooth) cout << "Will NOT smooth corners of faces\n";
-    else cout << "WILL smooth corners of faces\n";
-    if(plot) cout << "WILL create paraview plot\n";
-    else cout << "Will NOT create paraview plot\n";
-    cout << "----------------\n";
+    gsInfo << "--- Settings ---\n";
+    gsInfo << "Processing " << baseName << "\n";
+    gsInfo << "Cutoff angle is " << cutoffAngle << "\n";
+    gsInfo << "Master surfaces have degree " << degree << " and " << interiorPts << " interior knot points.\n";
+    gsInfo << "Surface fit: edge weighting is " << wEdge << " and interior point weighting is " << wInterior << ".\n";
+    if(noSmooth) gsInfo << "Will NOT smooth corners of faces\n";
+    else gsInfo << "WILL smooth corners of faces\n";
+    if(plot) gsInfo << "WILL create paraview plot\n";
+    else gsInfo << "Will NOT create paraview plot\n";
+    gsInfo << "----------------\n";
 
     gsMesh<> * m = gsReadFile<>(filename);
     if (m)
-      cout<< "Got "<< *m <<endl;
+      gsInfo<< "Got "<< *m <<"\n";
     else
     {
-      cout<< "Problem encountered in file "<<filename<<", quitting." <<endl;
+      gsInfo<< "Problem encountered in file "<<filename<<", quitting." <<"\n";
       return 0;
     }
     std::vector< gsMesh<> * > paraMeshes;// filled inside toSolid
@@ -119,7 +115,7 @@ int main(int argc, char *argv[])
     tmts.calcPatchNumbers();
     
     // write patch numbers
-    cout << "Writing patch numbers...\n";
+    gsInfo << "Writing patch numbers...\n";
     if(writePatchNumbers)
     {
         std::ofstream pn("patchnumbers.txt");
@@ -140,7 +136,7 @@ int main(int argc, char *argv[])
     
     if (toxml)
     {
-        cout << "Writing xml file..." << endl;
+        gsInfo << "Writing xml file..." << "\n";
         
         gsFileData<> newdata;
         newdata << *sl;
@@ -187,7 +183,7 @@ int main(int argc, char *argv[])
     if (plot)
     {
         // Write a paraview file
-        cout<<"Writing paraview file..." << endl;
+        gsInfo<<"Writing paraview file..." << "\n";
 
         gsWriteParaview( *m, "output");
     }

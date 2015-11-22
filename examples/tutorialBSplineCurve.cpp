@@ -15,9 +15,7 @@
 
 #include <gismo.h>
 
-
 using namespace gismo;
-using std::cout;
 
 int main(int argc, char *argv[])
 {
@@ -30,7 +28,7 @@ int main(int argc, char *argv[])
     bool ok = cmd.getValues(argc,argv);
     if (!ok)    
     { 
-        cout << "Error during parsing the command line!\n";
+        gsInfo << "Error during parsing the command line!\n";
         return 1; 
     }
 
@@ -46,7 +44,7 @@ int main(int argc, char *argv[])
     gsBSpline<> curve( kv, give(coefs));
   
     // Print the Bspline curve
-    cout << "I am a " << curve << "\n";
+    gsInfo << "I am a " << curve << "\n";
 
     if (plot) 
     {
