@@ -133,10 +133,10 @@ EIGEN_DONT_INLINE void triangular_solve_matrix<Scalar,Index,OnTheLeft,Mode,Conju
               }
               else
               {
-                Index ss = IsLower ? i+1 : i-rs;
+                Index s = IsLower ? i+1 : i-rs;
                 Scalar b = (other(i,j) *= a);
-                Scalar* r = &other(ss,j);
-                const Scalar* l = &tri(ss,i);
+                Scalar* r = &other(s,j);
+                const Scalar* l = &tri(s,i);
                 for (Index i3=0;i3<rs;++i3)
                   r[i3] -= b * conj(l[i3]);
               }
@@ -302,9 +302,12 @@ EIGEN_DONT_INLINE void triangular_solve_matrix<Scalar,Index,OnTheRight,Mode,Conj
                 for (Index i=0; i<actual_mc; ++i)
                   r[i] -= a[i] * b;
               }
-              Scalar b = (Mode & UnitDiag) ? Scalar(1) : Scalar(1)/conj(rhs(j,j));
-              for (Index i=0; i<actual_mc; ++i)
-                r[i] *= b;
+              if((Mode & UnitDiag)==0)
+              {
+                Scalar b = conj(rhs(j,j));
+                for (Index i=0; i<actual_mc; ++i)
+                  r[i] /= b;
+              }
             }
 
             // pack the just computed part of lhs to A

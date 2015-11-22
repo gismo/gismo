@@ -52,12 +52,11 @@ class CwiseBinaryOpImpl<BinaryOp, Lhs, Rhs, Sparse>
     class InnerIterator;
     class ReverseInnerIterator;
     typedef CwiseBinaryOp<BinaryOp, Lhs, Rhs> Derived;
-    typedef typename internal::traits<Lhs>::StorageKind LhsStorageKind;
-    typedef typename internal::traits<Rhs>::StorageKind RhsStorageKind;
-
     EIGEN_SPARSE_PUBLIC_INTERFACE(Derived)
     CwiseBinaryOpImpl()
     {
+      typedef typename internal::traits<Lhs>::StorageKind LhsStorageKind;
+      typedef typename internal::traits<Rhs>::StorageKind RhsStorageKind;
       EIGEN_STATIC_ASSERT((
                 (!internal::is_same<LhsStorageKind,RhsStorageKind>::value)
             ||  ((Lhs::Flags&RowMajorBit) == (Rhs::Flags&RowMajorBit))),
@@ -315,10 +314,10 @@ SparseMatrixBase<Derived>::operator+=(const SparseMatrixBase<OtherDerived>& othe
 
 template<typename Derived>
 template<typename OtherDerived>
-EIGEN_STRONG_INLINE const EIGEN_SPARSE_CWISE_PRODUCT_RETURN_TYPE
+EIGEN_STRONG_INLINE const typename SparseMatrixBase<Derived>::template CwiseProductDenseReturnType<OtherDerived>::Type
 SparseMatrixBase<Derived>::cwiseProduct(const MatrixBase<OtherDerived> &other) const
 {
-  return EIGEN_SPARSE_CWISE_PRODUCT_RETURN_TYPE(derived(), other.derived());
+  return typename CwiseProductDenseReturnType<OtherDerived>::Type(derived(), other.derived());
 }
 
 } // end namespace Eigen
