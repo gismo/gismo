@@ -1,6 +1,6 @@
 /** @file iterativeSolvers.cpp
 
-    @brief Example on how the solve a system of linear equation with the MINRES and CG method.
+    @brief Example on how the solve a system of linear equation with the MINRES, GMRes and CG method.
 
     This file is part of the G+Smo library.
 
@@ -23,15 +23,21 @@ int main(int argc, char *argv[])
     if (argc >= 2)
         N = atoi(argv[1]);
 
-    gsMatrix<> mat;
-    gsMatrix<> rhs;
+    gsSparseMatrix<> mat;
+    gsMatrix<>       rhs;
 
-    mat.setZero(N,N);
     rhs.setRandom(N,1);
+
+    mat.resize(N,N);
+    mat.setZero();
+
+    //Reserving space in the sparse matrix (Speeds up the assemble time of the matrix)
+    gsVector<int> reserve = gsVector<int>::Constant(N,3);
+    mat.reserve( reserve );
 
     //Create a tri-diagonal matrix with -1 of the off diagonals and 2 in the diagonal.
     //This matrix is equivalent to discretizing the 1D Poisson equation with homogenius
-    //Dirichlet boundary condition using a finit difference schema. It is a SPD matrix.
+    //Dirichlet boundary condition using a finite difference method. It is a SPD matrix.
     mat(0,0) = 2;
     mat(0,1) = -1;
     mat(N-1, N-1) = 2;
@@ -42,9 +48,12 @@ int main(int argc, char *argv[])
         mat(k,k-1) = -1;
         mat(k,k+1) = -1;
     }
+    //Compress the matrix
+    mat.makeCompressed();
+
 
     //The minimal residual implementation requires a preconditioner.
-    //We initialize an Identity preconditioner (does nothing).
+    //We initialize an identity preconditioner (does nothing).
     gsIdentityPreconditioner preConMat(N);
 
     //Set maximum number of iterations
@@ -60,9 +69,9 @@ int main(int argc, char *argv[])
     x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
-    gsInfo << "\nMinRes: Before solve"  << "\n";
+    gsInfo << "\nMinRes: Started solving..."  << "\n";
     MinRes.solve(rhs,x0,preConMat);
-    gsInfo << "MinRes: After solve"  << "\n";
+    gsInfo << "MinRes: Done solving!"  << "\n";
 
     gsInfo << "MinRes: Solved a system of size " << N << "\n";
     gsInfo << "MinRes: Tolerance: " << tol << "\n";
@@ -76,9 +85,9 @@ int main(int argc, char *argv[])
     x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
-    gsInfo << "\nGMRes: Before solve"  << "\n";
+    gsInfo << "\nGMRes: Started solving..."  << "\n";
     GMResSolver.solve(rhs,x0,preConMat);
-    gsInfo << "GMRes: After solve"  << "\n";
+    gsInfo << "GMRes: Done solving!"  << "\n";
 
     gsInfo << "GMRes: Solved a system of size " << N << "\n";
     gsInfo << "GMRes: Tolerance: " << tol << "\n";
@@ -92,9 +101,9 @@ int main(int argc, char *argv[])
     x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
-    gsInfo << "\nCG: Before solve"  << "\n";
+    gsInfo << "\nCG: Started solving..."  << "\n";
     CGSolver.solve(rhs,x0,preConMat);
-    gsInfo << "CG: After solve"  << "\n";
+    gsInfo << "CG: Done solving!"  << "\n";
 
     gsInfo << "CG: Solved a system of size " << N << "\n";
     gsInfo << "CG: Tolerance: " << tol << "\n";
