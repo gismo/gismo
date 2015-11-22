@@ -155,6 +155,7 @@ template<unsigned d, class T = real_t>   class gsHFitting;
 template< class T = real_t>  class gsPde;
 template< class T = real_t>  class gsPoissonPde;
 template< class T = real_t>  class gsStokesAssembler;
+template< class T = real_t>  class gsGenericAssembler;
 template< class T = real_t>  class gsPoissonAssembler;
 template< class T = real_t>  class gsSolverUtils;
 template< class T = real_t, bool symm = false>  class gsSparseSystem;

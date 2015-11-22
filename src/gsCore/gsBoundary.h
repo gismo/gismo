@@ -316,7 +316,7 @@ public:
     void parameters_into (int dim, gsVector<bool> &param) const
     {
         param.resize(dim);
-        for (index_t i=0; i<dim; ++i)
+        for (int i=0; i<dim; ++i)
             param(i)=((m_index-1)>>i)&1;
     }
 
@@ -339,7 +339,7 @@ public:
         sides.resize(dim);
         gsVector<bool> param;
         parameters_into(dim,param);
-        for (index_t i=0;i<dim;++i)
+        for (int i=0;i<dim;++i)
             sides[i]=boxSide(i,param(i));
     }
 
@@ -417,7 +417,7 @@ public:
         sides.resize(dim);
         gsVector<bool> param;
         parameters_into(dim,param);
-        for (index_t i=0;i<dim;++i)
+        for (int i=0;i<dim;++i)
             sides[i]=patchSide(patch, boxSide(i, param(i)));
     }
 };
@@ -459,8 +459,8 @@ public:
 
         directionMap(ps1.direction())=ps2.direction();
         directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
-        index_t i=1;
-        for ( ;i<dim;++i)
+
+        for (int i = 1 ; i < dim; ++i)
         {
             const index_t o = (ps1.direction()+i)%dim;
             const index_t d = (ps2.direction()+i)%dim;

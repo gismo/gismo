@@ -442,7 +442,7 @@ public:
       @return the size of the function set: the number of functions
      
      */
-    virtual index_t size() const //= 0;
+    virtual int size() const //= 0;
     {GISMO_NO_IMPLEMENTATION}
 };
 

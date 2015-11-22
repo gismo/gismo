@@ -66,7 +66,7 @@ public:
     }
     
     /// Create a single-basis instance
-    explicit gsMultiBasis( const gsBasis<T> & geo );
+    gsMultiBasis( const gsBasis<T> & geo );
 
 
     /// Create from bases and boundary/interface information
@@ -247,7 +247,7 @@ public:
     }
 
     /// @brief Add a basis (ownership of the pointer is also acquired)
-    void addBasis( gsBasis<T>* g );
+    void addBasis( gsBasis<T> * & g );
 
     /// @brief Search for the given basis and return its index.
     int findBasisIndex( gsBasis<T>* g ) const;

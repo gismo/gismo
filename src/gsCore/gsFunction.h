@@ -226,7 +226,7 @@ public:
      */
     virtual void computeMap(gsMapData<T> & InOut) const;
 
-    index_t size() const { return 1;}
+    int size() const { return 1;}
 
 }; // class gsFunction
 

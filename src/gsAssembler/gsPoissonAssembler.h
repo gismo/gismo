@@ -59,7 +59,6 @@ public:
         m_options.intStrategy = intStrategy;
 
         Base::initialize(pde, bases, m_options);
-        refresh();
     }
 
     /** @brief

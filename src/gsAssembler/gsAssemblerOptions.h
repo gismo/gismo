@@ -158,7 +158,7 @@ public: /* Utility functions that return values implied by the settings*/
     {
         index_t nz = 1;
         for (int i = 0; i != b.dim(); ++i)
-            nz *= static_cast<index_t>(bdA * b.maxDegree() + bdB);
+            nz *= static_cast<index_t>(bdA * b.degree(i) + bdB + 0.5);
         return nz;
     }
 

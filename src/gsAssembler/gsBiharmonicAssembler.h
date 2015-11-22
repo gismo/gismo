@@ -100,15 +100,6 @@ void gsBiharmonicAssembler<T,bhVisitor>::assemble()
 {
     GISMO_ASSERT(m_system.initialized(), "Sparse system is not initialized, call refresh()");
 
-    // Compute the Dirichlet Degrees of freedom
-    this->computeDirichletDofs();
-    
-    if ( 0 == Base::numDofs() ) // Are there any interior dofs ?
-    {
-        gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
-        return;
-    }
-    
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     Base::computeDirichletDofs();
     

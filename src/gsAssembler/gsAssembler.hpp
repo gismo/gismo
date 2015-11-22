@@ -90,6 +90,9 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
     m_bases.front().getMapper(m_options.dirStrategy, m_options.intStrategy,
                               this->pde().bc(), mapper, 0);
 
+    if ( 0 == mapper.freeSize() ) // Are there any interior dofs ?
+        gsWarn << " No internal DOFs, zero sized system.\n";
+
     // 2. Create the sparse system
     m_system = gsSparseSystem<T>(mapper);//1,1
     const index_t nz = m_options.numColNz(m_bases[0][0]);

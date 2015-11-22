@@ -895,13 +895,14 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
     for (unsigned i = 0; i < d; ++i) // for all coordinate bases
     {
         // Re-order right-hand sides
-        const int sz_i = m_bases[i]->size();
-        const int r_i  = sz / sz_i;
+        const index_t sz_i = m_bases[i]->size();
+        const index_t r_i  = sz / sz_i;
         q0.resize(sz_i, n * r_i);
 
         // Solve for i-th coordinate basis
         m_bases[i]->collocationMatrix(grid[i], Cmat);
         solver.compute(Cmat); 
+        #ifndef NDEBUG
         if ( solver.info() != Eigen::Success )
         {
             gsWarn<< "Failed LU decomposition for:\n";//<< Cmat.toDense() <<"\n";
@@ -909,7 +910,7 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
             gsWarn<< "Knots:\n"<< m_bases[i]->detail() <<"\n";
             return 0;
         }
-
+        #endif
         // Transpose solution component-wise
         q1.resize(r_i, n * sz_i);
         for ( index_t k = 0; k!=n; ++k)

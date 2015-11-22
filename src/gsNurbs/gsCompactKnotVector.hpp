@@ -135,7 +135,7 @@ template <class T>
 typename gsCompactKnotVector<T>::const_iterator
 gsCompactKnotVector<T>::findspanIter (T u) const
 {
-    return gsCompactKnotVector<T>::const_iterator(*this,static_cast<size_t>(findElementIndex(u)));
+    return const_iterator(*this,static_cast<size_t>(findElementIndex(u)));
 }
 
 // to do:

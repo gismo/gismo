@@ -207,8 +207,11 @@ public:
     void reserve(const index_t nz, const index_t numRhs)
     {
         GISMO_ASSERT( 0 != m_mappers.size(), "Sparse system was not initialized");
-        m_matrix.reservePerColumn(nz); 
-        m_rhs.setZero(m_matrix.cols(), numRhs);
+        if ( 0 != m_matrix.cols() )
+        {
+            m_matrix.reservePerColumn(nz); 
+            m_rhs.setZero(m_matrix.cols(), numRhs);
+        }
     }
 
     void setZero()
