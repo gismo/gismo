@@ -137,7 +137,7 @@ public:
     gsGeometry(const gsGeometry & o)
     {
         m_coefs = o.m_coefs;
-        m_basis = o.basis().clone();
+        m_basis = o.m_basis != NULL ? o.basis().clone() : NULL;
         m_id = o.m_id;
     }
 

@@ -255,8 +255,8 @@ template<class T>
 void gsSparseKroneckerProduct(const gsSparseMatrix<T> & m1, const gsSparseMatrix<T> & m2,
                               gsSparseMatrix<T> & result, index_t nzPerCol = 10)
 {
-    typedef typename gsSparseMatrix<T>::InnerIterator cIter;
-    typedef typename std::vector<cIter>::iterator     vIter;
+    typedef typename gsSparseMatrix<T>::iterator  cIter;
+    typedef typename std::vector<cIter>::iterator vIter;
 
     // Assumes square coordinate matrices
     const index_t s2 = m2.rows(),
@@ -266,19 +266,18 @@ void gsSparseKroneckerProduct(const gsSparseMatrix<T> & m1, const gsSparseMatrix
     result.resize (s1*s2, s1*s2);
     result.reserve(gsVector<index_t>::Constant(result.cols(), (nzPerCol+1)/2) );
 
-    std::vector<cIter> it1(rk, cIter(m1,0) ), 
-                       it2(rk, cIter(m2,0) );
+    std::vector<cIter> it1(rk), it2(rk);
 
     for (index_t k1=0; k1 != s1; ++k1) // for all cols of m1
         for (index_t k2=0; k2 != s2; ++k2) // for all cols of m2
         {
             for (index_t i=0; i != rk; ++i)
-                it1[i] = cIter(m1, i*s1 + k1);
+                it1[i] = m1.begin(i*s1 + k1);
             
             for (; it1[0];) // for all rows of m1
             {
                 for (index_t i=0; i != rk; ++i)
-                    it2[i] = cIter(m2, i*s2 + k2);
+                    it2[i] = m2.begin(i*s2 + k2);
 
                 for (; it2[0];) // for all rows of m2
                 {

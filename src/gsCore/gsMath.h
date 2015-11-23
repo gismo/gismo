@@ -49,15 +49,14 @@ using std::tanh;
 using std::acos;
 using std::log;
 using std::log10;
+using std::min;
+using std::max;
 
+// template <typename T> T min(T a, T b) {return  (a < b ? a : b); }
+// template <typename T> T max(T a, T b) {return  (a < b ? b : a); }
 template <typename T>
 T round(T a) {return math::floor(a<0.0 ? a-0.5 : a+0.5); }
 
-template <typename T>
-T min(T a, T b) {return  (a < b ? a : b); }
-
-template <typename T>
-T max(T a, T b) {return  (a < b ? b : a); }
 
 /** Numeric precision (number of exact decimal digits expected) for real_t */
 #define REAL_DIG std::numeric_limits<real_t>::digits10

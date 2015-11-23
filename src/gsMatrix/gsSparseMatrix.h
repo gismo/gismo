@@ -49,45 +49,50 @@ public:
 /** 
     @brief Iterator over the non-zero entries of a sparse matrix
 
-    This wraps an Eigen::SparseMatrix::InnerIteretor
+    This class is similar to Eigen::SparseMatrix::InnerIteretor but in
+    addition it is default-constructible and assignable.
 */
 template<typename T, int _Options, typename _Index>
 class gsSparseMatrixIter
 {
-private:
     typedef Eigen::SparseMatrix<T,_Options,_Index> SparseMatrix;
-    typedef typename Eigen::SparseMatrix<T,_Options,_Index>::InnerIterator InnerIterator;
-
-private:
-    InnerIterator * m_it;
+    static const int IsRowMajor = SparseMatrix::IsRowMajor;
 
 public:
-    gsSparseMatrixIter() : 
-    m_it(NULL) { }
+    gsSparseMatrixIter()
+    : m_values(NULL), m_indices(NULL), 
+      m_end(NULL)   , m_outer(0)
+    { }
 
-    ~gsSparseMatrixIter() {delete m_it;}
-
-    gsSparseMatrixIter(const SparseMatrix& mat, _Index outer) : 
-    m_it( new InnerIterator(mat,outer) ) { }
-
-    gsSparseMatrixIter(const gsSparseMatrixIter & other)
-    : m_it(NULL == other.m_it ? NULL : new InnerIterator(*other.m_it)) { }
-
-    gsSparseMatrixIter& operator=(gsSparseMatrixIter other)
+    gsSparseMatrixIter(const SparseMatrix& mat, const _Index outer)
+    : m_outer(outer)
     {
-        std::swap(m_it, other.m_it);
-        return *this;
+        const _Index oind = mat.outerIndexPtr()[outer];
+        m_values  = mat.valuePtr()      + oind;
+        m_indices = mat.innerIndexPtr() + oind;
+        m_end = mat.isCompressed() ? 
+            mat.innerIndexPtr() + mat.outerIndexPtr()[outer+1] : 
+            mat.innerIndexPtr() + oind + mat.innerNonZeroPtr()[outer];
     }
+    
+    inline gsSparseMatrixIter& operator++() 
+    { ++m_values; ++m_indices; return *this; }
+    
+    inline const T& value() const { return *m_values; }
+    inline T& valueRef() { return const_cast<T&>(*m_values); }
+    
+    inline _Index index() const { return *m_indices; }
+    inline _Index outer() const { return m_outer; }
+    inline _Index row() const { return IsRowMajor ? m_outer : index(); }
+    inline _Index col() const { return IsRowMajor ? index() : m_outer; }
 
-public:
-    inline gsSparseMatrixIter& operator++() { m_it->operator++(); return *this; }
-    inline const T& value() const { return m_it->value();         }
-    inline T &   valueRef()       { return m_it->valueRef();      }
-    inline _Index index()  const  { return m_it->index();         }
-    inline _Index outer()  const  { return m_it->outer();         }
-    inline _Index row()    const  { return m_it->row();           }
-    inline _Index col()    const  { return m_it->col();           }
-    inline operator bool() const  { return m_it->operator bool(); }
+    inline operator bool() const { return (m_indices < m_end); }
+    
+protected:
+    const T      * m_values;
+    const _Index * m_indices;
+    const _Index * m_end;
+    _Index m_outer;
 };
 
 /** @brief Sparse matrix class, based on Eigen::SparseMatrix.
@@ -194,7 +199,9 @@ public:
 
     ~gsSparseMatrix() ;
 
-    iterator begin(index_t outer) const { return iterator(*this,outer);}
+    /// \brief Returns an iterator to the first non-zero elemenent of
+    /// column \ a outer (or row \a outer if the matrix is RowMajor)
+    inline iterator begin(const index_t outer) const { return iterator(*this,outer);}
 
     void clear()
     {
@@ -270,11 +277,11 @@ gsSparseMatrix<T, _Options, _Index>::~gsSparseMatrix() { }
 
 template<typename T, int _Options, typename _Index> inline
 void gsSparseMatrix<T, _Options, _Index>::setFrom( gsSparseEntries<T> const & entries) 
-        { this->setFromTriplets(entries.begin(),entries.end() ); }
+{ this->setFromTriplets(entries.begin(),entries.end() ); }
 
 template<typename T, int _Options, typename _Index> inline
 gsSparseMatrix<T, _Options,_Index> * gsSparseMatrix<T, _Options, _Index>::clone() const
-        { return new gsSparseMatrix(*this); }
+{ return new gsSparseMatrix(*this); }
 
 
 
