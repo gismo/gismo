@@ -231,51 +231,11 @@ public:
     // compatible curves: same degree, same first/last p+1 knots
     void makeCompatible( gsGeometry<T> * other )
     { GISMO_NO_IMPLEMENTATION }
-    
+
+
     /// Merge other B-spline into this one.
-    void merge( gsGeometry<T> * other )
-    {
-        GISMO_ASSERT( this->basis().isPeriodic() == false, "Cannot merge a closed curve with anything." );
-        //check for BSpline
-        gsBSpline *  bother = static_cast<gsBSpline *>( other );
+    void merge( gsGeometry<T> * otherG );
 
-        //check degree
-        bool elevateOther = false;
-        int thisDegree = this->basis().degree();
-        int otherDegree = bother->basis().degree();
-        if (thisDegree > otherDegree)
-        {
-            // make a degree elevated copy of the other spline
-            elevateOther = true;
-            bother = bother->clone();
-            bother->gsBSpline::degreeElevate(thisDegree - otherDegree);
-        }
-        else if (otherDegree > thisDegree)
-        {
-            // degree elevate this spline in place, since we are merging
-            // in place.
-            gsBSpline::degreeElevate(otherDegree - thisDegree);
-        }
-
-        //check geometric dimension
-
-        //check that it touches *this curve
-
-         // merge knot vector
-        this->basis().knots().merge( bother->basis().knots() ) ;
-
-        // merge coefficients
-        int n= this->coefsSize();
-        this->m_coefs.conservativeResize( n + bother->coefsSize() -1, Eigen::NoChange ) ;
-
-        this->m_coefs.block( n,0,bother->coefsSize()-1,bother->geoDim() ) =
-            bother->m_coefs.block( 1,0,bother->coefsSize()-1,bother->geoDim() ) ;
-
-        if(elevateOther)
-        {
-            delete bother;
-        }
-    }
 
     /// Insert the given new knot (multiplicity \a i) without changing the curve.
     void insertKnot( T knot, int i = 1)

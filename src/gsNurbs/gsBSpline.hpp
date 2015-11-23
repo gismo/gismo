@@ -21,6 +21,65 @@
 namespace gismo
 {
 
+
+template<class T, class KnotVectorType >
+void gsBSpline<T,KnotVectorType>::merge( gsGeometry<T> * otherG )
+{
+    // See also gsNurbs::merge().
+    // check geometric dimension
+    GISMO_ASSERT(this->geoDim()==otherG->geoDim(),
+                 "gsNurbs: cannot merge curves in different spaces ( R^"
+                 << this->geoDim() << ", R^" << otherG->geoDim() << " ).");
+
+    // check if the type of other is BSpline
+    gsBSpline *  other = dynamic_cast<gsBSpline *>( otherG );
+    GISMO_ASSERT( other!=NULL, "Can only merge with B-spline curves.");
+    other=other->clone();
+
+    GISMO_ASSERT( this ->basis().isPeriodic() == false &&
+                  other->basis().isPeriodic() == false,
+                  "Cannot merge a closed curve with anything." );
+
+    // check degree
+    const int mDeg = this ->basis().degree();
+    const int oDeg = other->basis().degree();
+    const int deg  = math::max(mDeg,oDeg);
+
+    other->gsBSpline::degreeElevate( deg - oDeg ); // degreeElevate(0) does nothing (and very quickly)
+    this ->gsBSpline::degreeElevate( deg - mDeg );
+
+    // check whether the resulting curve will be continuous
+    // TODO: ideally, the tolerance should be a parameter of the function
+    T tol = 1e-8;
+    gsMatrix<T> mValue = this ->eval(this ->support().col(1));
+    gsMatrix<T> oValue = other->eval(other->support().col(0));
+    bool continuous = gsAllCloseAbsolute(mValue,oValue,tol);
+
+    // merge knot vectors.
+    KnotVectorType& mKnots = this ->basis().knots();
+    KnotVectorType& oKnots = other->basis().knots();
+    T lastKnot = mKnots.last();
+    if (continuous) // reduce knot multiplicity
+    {
+        // TODO check for clamped knot vectors otherwise
+        // we should do knot insertion beforehands
+        mKnots.remove(lastKnot);
+    }// else there is a knot of multiplicity deg + 1 at the discontinuity
+
+    oKnots.addConstant(lastKnot-oKnots.first());
+    mKnots.append( oKnots.begin()+deg+1, oKnots.end());
+
+    // merge coefficients
+    int n= this->coefsSize();
+    int skip = continuous ? 1 : 0;
+    this->m_coefs.conservativeResize( n + other->coefsSize() -skip, Eigen::NoChange ) ;
+
+    this->m_coefs.block( n,0,other->coefsSize()-skip,other->geoDim() ) =
+        other->m_coefs.block( 1,0,other->coefsSize()-skip,other->geoDim() ) ;
+
+    delete other;
+}
+
 template<class T, class KnotVectorType >    
 bool gsBSpline<T,KnotVectorType>::isOn(gsMatrix<T> const &u, T tol) const
 {

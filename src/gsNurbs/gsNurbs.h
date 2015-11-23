@@ -133,35 +133,66 @@ public:
         // compatible curves: same degree, same first/last p+1 knots
     };
 
-    void merge( gsGeometry<T> * other )
+    void merge( gsGeometry<T> * otherG )
     {
-        //check for BSpline
-        gsNurbs<T> *  bother = static_cast<gsNurbs<T> *>( other );
+        // See also gsBSpline::merge().
+        // check geometric dimension
+        GISMO_ASSERT(this->geoDim()==otherG->geoDim(),
+                     "gsNurbs: cannot merge curves in different spaces ( R^"
+                     << this->geoDim() << ", R^" << otherG->geoDim() << " ).");
 
-        //check degree
-        if ( this->basis().degree() != bother->basis().degree() )
-        {std::cout<<"gsNurbs: Cannot merge with different degree curve"<<"\n"; return;}
-            
-        //check geometric dimension
+        // check if the type of other is BSpline
+        gsNurbs *  other = dynamic_cast<gsNurbs *>( otherG );
+        GISMO_ASSERT( other!=NULL, "Can only merge with B-spline curves.");
+        other=other->clone();
 
-        //check that it touches *this curve
+        // TODO: check for periodic
 
-        // merge knot vector
-        this->basis().knots().merge( bother->basis().knots() ) ;
+        // check degree
+        const int mDeg = this ->basis().degree();
+        const int oDeg = other->basis().degree();
+        const int deg  = math::max(mDeg,oDeg);
+
+        other->gsNurbs::degreeElevate( deg - oDeg ); // degreeElevate(0) does nothing (and very quickly)
+        this ->gsNurbs::degreeElevate( deg - mDeg );
+
+        // check whether the resulting curve will be continuous
+        // TODO: ideally, the tolerance should be a parameter of the function
+        T tol = 1e-8;
+        gsMatrix<T> mValue = this ->eval(this ->support().col(1));
+        gsMatrix<T> oValue = other->eval(other->support().col(0));
+        bool continuous = gsAllCloseAbsolute(mValue,oValue,tol);
+
+        // merge knot vectors.
+        KnotVectorType& mKnots = this ->basis().knots();
+        KnotVectorType& oKnots = other->basis().knots();
+        T lastKnot = mKnots.last();
+        if (continuous) // reduce knot multiplicity
+        {
+            // TODO check for clamped knot vectors otherwise
+            // we should do knot insertion beforehands
+            mKnots.remove(lastKnot);
+        }// else there is a knot of multiplicity deg + 1 at the discontinuity
+
+        oKnots.addConstant(lastKnot-oKnots.first());
+        mKnots.append( oKnots.begin()+deg+1, oKnots.end());
 
         // merge coefficients
         int n= this->coefsSize();
-        this->m_coefs.conservativeResize( n + bother->coefsSize() -1, Eigen::NoChange ) ;
-            
-        this->m_coefs.block( n,0,bother->coefsSize()-1,bother->geoDim() ) =
-            bother->m_coefs.block( 1,0,bother->coefsSize()-1,bother->geoDim() ) ;
+        int skip = continuous ? 1 : 0;
+        this->m_coefs.conservativeResize( n + other->coefsSize() -skip, Eigen::NoChange ) ;
+
+        this->m_coefs.block( n,0,other->coefsSize()-skip,other->geoDim() ) =
+            other->m_coefs.block( 1,0,other->coefsSize()-skip,other->geoDim() ) ;
 
         // merge Weights
-        this->weights().conservativeResize( n + bother->coefsSize() -1, Eigen::NoChange ) ;
+        this->weights().conservativeResize( n + other->coefsSize() -skip, Eigen::NoChange ) ;
             
-        this->weights().block( n,0,bother->coefsSize()-1,1 ) =
-            bother->weights().block( 1,0,bother->coefsSize()-1, 1 ) ;
-    };
+        this->weights().block( n,0,other->coefsSize()-skip,1 ) =
+            other->weights().block( 1,0,other->coefsSize()-skip, 1 ) ;
+
+        delete other;
+    }
     
     /// Insert the given new knot (multiplicity \a i) without changing the curve.
     void insertKnot( T knot, int i = 1 )
