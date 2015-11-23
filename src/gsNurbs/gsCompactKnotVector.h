@@ -428,8 +428,13 @@ public:
     void merge(gsCompactKnotVector other ) 
 	{ 
 	    // TO DO
-	}
-    
+    }
+    /// Insert a knot range into the knot vector.
+    void append(iterator const & v0, iterator const & v1 )
+    {
+        // TO DO
+        //m_knots.insert( m_knots.end(), v0, v1 );
+    }
     /// Remove last knot from the knot vector.
     void pop_back(int const& i = 1) 
     { 
