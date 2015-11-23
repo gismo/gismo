@@ -37,6 +37,8 @@ void gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     sPrew = 0; s = 0; sNew = 0;
     cPrew = 1; c = 1; cNew = 1;
     rhsNorm2 = rhs.squaredNorm();
+    if (rhsNorm2 == 0)
+        rhsNorm2 = 1.0;
     residualNorm2 = 0;
     threshold = m_tol*m_tol*rhsNorm2;
     m_numIter = 0;

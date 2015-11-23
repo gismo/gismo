@@ -34,6 +34,8 @@ void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const 
     Omega_prew = gsMatrix<>::Identity(2, 2);
 
     rhsNorm2 = rhs.squaredNorm(); // This is ||r||²
+    if (rhsNorm2 == 0)
+        rhsNorm2 = 1.0;
     residualNorm2 = 0;
     threshold = m_tol*m_tol*rhsNorm2;
     m_numIter = 0;

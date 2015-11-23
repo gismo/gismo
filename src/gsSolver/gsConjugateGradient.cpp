@@ -34,6 +34,8 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
 
     absNew = Eigen::numext::real(residual.col(0).dot(p.col(0)));  // the square of the absolute value of r scaled by invM
     rhsNorm2 = rhs.squaredNorm();
+    if (rhsNorm2 == 0)
+        rhsNorm2 = 1.0;
     residualNorm2 = 0;
     threshold = m_tol*m_tol*rhsNorm2;
     m_numIter = 0;
