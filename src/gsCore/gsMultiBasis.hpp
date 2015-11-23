@@ -250,10 +250,10 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
         upperCorn1[i] = upperCorn1[i] << indexLevelDiff1;
     }
 
-    GISMO_ASSERT( upperCorn0[0] == upperCorn1[0] &&
-            upperCorn0[1] == upperCorn1[1], "The meshes are not matching as they should be!");
-    GISMO_ASSERT( (d<3) || (upperCorn0[2] == upperCorn1[2]),
-                  "The meshes are not matching as they should be!");
+//    GISMO_ASSERT( upperCorn0[0] == upperCorn1[0] &&
+//            upperCorn0[1] == upperCorn1[1], "The meshes are not matching as they should be!");
+//    GISMO_ASSERT( (d<3) || (upperCorn0[2] == upperCorn1[2]),
+//                  "The meshes are not matching as they should be!");
 
     // get the box-representation of the gsHDomain on the interface
     bas0->tree().getBoxesOnSide( bi.first().side(),  lo0, up0, level0);
