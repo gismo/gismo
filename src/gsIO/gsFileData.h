@@ -71,6 +71,8 @@ public:
     /// \brief Dump file contents to an xml file
     void dump(std::string const & fname = "dump") const;
     
+    void addComment(std::string const & message);
+
 private:
     /// File data as an xml tree
     FileData * data;

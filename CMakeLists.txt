@@ -37,6 +37,17 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CTest)
 enable_testing()
 
+#Use solution folders for Visual Studio
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+   # Set default build type to RelWithDebInfo
+   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+   "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
+   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+     "RelWithDebInfo" "MinSizeRel")
+endif()
+
 include( gsVersion )
 include( gismoUse  )
 include( gsConfig )

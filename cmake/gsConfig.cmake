@@ -12,6 +12,12 @@
 
 include(CheckCXXCompilerFlag)
 
+#Remove NDEBUG from RelWithDebInfo builds
+string(REPLACE "-DNDEBUG" "" replacementFlags ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO ${replacementFlags} CACHE INTERNAL "" FORCE)
+string(REPLACE "-DNDEBUG" "" replacementFlags ${CMAKE_C_FLAGS_RELWITHDEBINFO})
+set(CMAKE_C_FLAGS_RELWITHDEBINFO ${replacementFlags} CACHE INTERNAL "" FORCE)
+
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   #fixme: enable for Darwin/clang (probably no export explicit template instantiations)
   set(GISMO_CXX_VISIBILITY_PRESET hidden)
