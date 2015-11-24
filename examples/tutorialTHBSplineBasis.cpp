@@ -71,20 +71,6 @@ int main(int argc, char *argv[])
     gsWriteParaview(thb, "thb1_refined" );
     cout << "after refinement," << endl;
 
-    //! [refViaStdVec2]
-    box.clear();
-    box.push_back( 2 );
-    box.push_back( 2 );
-    box.push_back( 4 );
-    box.push_back( 6 );
-    box.push_back( 10 );
-
-    thb.refineElements(box);
-    //! [refViaStdVec2]
-
-    gsWriteParaview(thb, "thb2_refined" );
-
-
     //! [stdOpsCout]
     std::cout << "this basis is:\n" << thb << std::endl;
     //! [stdOpsCout]
@@ -95,8 +81,8 @@ int main(int argc, char *argv[])
     u(0,0) = 0.99;
     u(1,0) = 0.01;
 
-    u(0,1) = 0.51;
-    u(1,1) = 0.91;
+    u(0,1) = 0.6;
+    u(1,1) = 0.9;
 
     gsMatrix<unsigned> resActives;
     gsMatrix<real_t>   resEvals;
@@ -122,6 +108,7 @@ int main(int argc, char *argv[])
 
     std::cout << std::endl;
 
+    // print the underlying tree
     //! [stdOpsHTensTree]
     gsMatrix<unsigned> resUpperCorner;
     thb.tree().getBoxes( resLowerCorner, resUpperCorner, resLevels);
@@ -131,11 +118,29 @@ int main(int argc, char *argv[])
     //! [stdOpsHTensTree]
 
 
+    // --------------- 2nd local refinement ---------------
+    std::cout << std::endl << std::endl;
+
+    //! [refViaStdVec2]
+    box.clear();
+    box.push_back( 2 );
+    box.push_back( 2 );
+    box.push_back( 4 );
+    box.push_back( 6 );
+    box.push_back( 10 );
+
+    thb.refineElements(box);
+
+    std::cout << "after 2nd refinement, this basis is:\n" << thb << std::endl;
+    //! [refViaStdVec2]
+
+    gsWriteParaview(thb, "thb2_refined" );
+
     //! [Plot in Paraview]
     if( true ) // (plot)
     {
         // Run paraview
-        return system("paraview thb2_refined.pvd &");
+        return system("paraview thb1_refined.pvd &");
     }
     //! [Plot in Paraview]
     else
