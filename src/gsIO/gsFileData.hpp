@@ -87,6 +87,14 @@ template<class T> void
 gsFileData<T>::dump(std::string const & fname)  const 
 { save(fname); }
 
+
+template<class T> void
+gsFileData<T>::addComment(std::string const & message)
+{
+    gsXmlNode * comment = internal::makeComment(message, *data);
+    data->prepend_node(comment);
+}
+
 template<class T> void
 gsFileData<T>::save(std::string const & fname, bool compress)  const
 { 
