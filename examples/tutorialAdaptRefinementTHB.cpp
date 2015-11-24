@@ -15,7 +15,6 @@
 //! [Include namespace]
 # include <gismo.h>
 # include <gsAssembler/gsAdaptiveRefUtils.h>
-//# include <iostream>
 
 using namespace std;
 using namespace gismo;
@@ -31,7 +30,6 @@ int main(int argc, char *argv[])
     const bool ok = cmd.getValues(argc,argv);
     if (!ok) { gsWarn << "Error during parsing the command line!\n"; return 0;}
     //! [Parse command line]
-
 
     // --------------- specify exact solution and right-hand-side ---------------
 
@@ -121,8 +119,8 @@ int main(int argc, char *argv[])
 
     // Specify cell-marking strategy...
     MarkingStrategy adaptRefCrit = GARU;
-    //MarkingStrategy adaptRefCrit = PUCA;
-    //MarkingStrategy adaptRefCrit = errorFraction;
+//    MarkingStrategy adaptRefCrit = PUCA;
+//    MarkingStrategy adaptRefCrit = errorFraction;
 
     // ... and parameter.
     const real_t adaptRefParam = 0.5;

@@ -14,7 +14,6 @@
 // Look also in tuturialBasis and tutorialBSplineBasis.
 
 //! [Include namespace]
-#include <iostream>
 #include <string>
 #include <gismo.h>
 //! [Include namespace]
@@ -22,8 +21,16 @@
 using namespace gismo;
 using namespace std;
 
-int main()
+int main(int argc, char *argv[])
 {
+    //! [Parse command line]
+    bool plot = true;
+
+    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    const bool ok = cmd.getValues(argc,argv);
+    if (!ok) { gsWarn << "Error during parsing the command line!\n"; return 0;}
+    //! [Parse command line]
 
     // --------------- construction of a THB-spline basis ---------------
 
@@ -63,6 +70,20 @@ int main()
     // Export the refined basis to paraview files
     gsWriteParaview(thb, "thb1_refined" );
     cout << "after refinement," << endl;
+
+    //! [refViaStdVec2]
+    box.clear();
+    box.push_back( 2 );
+    box.push_back( 2 );
+    box.push_back( 4 );
+    box.push_back( 6 );
+    box.push_back( 10 );
+
+    thb.refineElements(box);
+    //! [refViaStdVec2]
+
+    gsWriteParaview(thb, "thb2_refined" );
+
 
     //! [stdOpsCout]
     std::cout << "this basis is:\n" << thb << std::endl;
@@ -109,6 +130,18 @@ int main()
     std::cout << "upper corners: " << std::endl << resUpperCorner << std::endl;
     //! [stdOpsHTensTree]
 
-    return 0;
 
+    //! [Plot in Paraview]
+    if( true ) // (plot)
+    {
+        // Run paraview
+        return system("paraview thb2_refined.pvd &");
+    }
+    //! [Plot in Paraview]
+    else
+    {
+        gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
+                "file containing Plotting image data.\n";
+        return 0;
+    }
 }
