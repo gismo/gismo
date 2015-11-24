@@ -21,6 +21,10 @@
 namespace gismo 
 {
 
+/**
+   \brief This class represents an XML data tree which can be read
+   from or written to a (file) stream
+ */
 template<class T>
 class gsFileData
 {

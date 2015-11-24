@@ -3,6 +3,16 @@ namespace gismo {
 /**
 \page Tutorials Tutorials
 
+List of tutorials:
+
+- \subpage Tutorial01
+
+- \subpage Tutorial02
+
+- \subpage Tutorial03
+
+- \subpage Tutorial04
+
 - \subpage GettingStartedGismo
 
 Check out the \ref Examples page and the 

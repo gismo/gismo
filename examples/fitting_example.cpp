@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
         threshold = tolerance;
     }
 
+    //! [Read data]       
     // Surface fitting
     // Expected input is a file with matrices with:
     // id 0:  u,v   -- parametric coordinates, size 2 x N
@@ -82,6 +83,7 @@ int main(int argc, char *argv[])
     gsFileData<> fd_in(fn);
     gsMatrix<> uv      = safe( fd_in.getId<gsMatrix<> >(0) );
     gsMatrix<> xyz     = safe( fd_in.getId<gsMatrix<> >(1) );
+    //! [Read data]       
 
     // This is for outputing an XML file, if requested
     gsFileData<> fd;

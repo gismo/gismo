@@ -81,6 +81,7 @@ int main(int argc, char* argv[])
     // printing the geometry
     // ----------------------------------------------------------------------
 
+    //! [printing the geometry]
     gsInfo << "The file contains: \n" << *pGeom << "\n";
     
     // G+Smo geometries contains basis and coefficients
@@ -89,12 +90,14 @@ int main(int argc, char* argv[])
     
     const gsMatrix<>& coefs = pGeom->coefs();
     gsInfo << "\nCoefficients: \n" << coefs << "\n" << "\n";
+    //! [printing the geometry]
     
     
     // ----------------------------------------------------------------------
     // printing some properties about the basis
     // ----------------------------------------------------------------------
-    
+
+    //! [printing properties]    
     gsInfo << "Dimension of the parameter space: " << pGeom->parDim() << "\n"
               << "Dimension of the geometry: " << pGeom->geoDim() << "\n";
 
@@ -103,7 +106,7 @@ int main(int argc, char* argv[])
     gsMatrix<> support = pGeom->support();
     gsInfo << "Support: \n"
               << support << "\n" << "\n";
-
+    //! [printing properties]    
 
     
     // ======================================================================
@@ -114,7 +117,8 @@ int main(int argc, char* argv[])
     // ----------------------------------------------------------------------
     // values, 1st derivatives, and 2nd derivatives
     // ----------------------------------------------------------------------
-    
+
+    //! [values and derivatives]        
     gsMatrix<> u = 0.3 * support.col(0) + 0.7 * support.col(1);
     gsInfo << "u " << size(u) << ": \n" << u << "\n" << "\n";
 
@@ -132,7 +136,8 @@ int main(int argc, char* argv[])
               << "\n\nSecond derivative at u " << size(der2) << ": \n"
               << der2
               << "\n" << "\n";
-    
+    //! [values and derivatives]        
+
     gsInfo << "\nFor more information about evaluation "
               << "(and order of derivatives) look at doxygen documentation." 
               << "\n" << "\n";
@@ -141,12 +146,13 @@ int main(int argc, char* argv[])
     // ======================================================================
     // contol net
     // ======================================================================
-    
+
+    //! [control net]    
     // mesh holds the control net of a geometry
     // mesh is a set of vertices and lines (connections between vertices)
     gsMesh<> mesh; 
     pGeom->controlNet(mesh);
-    
+    //! [control net]        
     
     // ======================================================================
     // writing to paraview
@@ -154,6 +160,7 @@ int main(int argc, char* argv[])
     
     if (output != "")
     {
+        //! [write to paraview]
         std::string out = output + "Geometry";
         gsInfo << "Writing the geometry to a paraview file: " << out 
                   << "\n\n";
@@ -171,7 +178,7 @@ int main(int argc, char* argv[])
                   << "\n" << "\n";
         
         gsWriteParaview(mesh, out);
-
+        //! [write to paraview]
     }
 
     delete pGeom;

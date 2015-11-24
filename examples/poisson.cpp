@@ -102,9 +102,11 @@ int main(int argc, char *argv[])
     gsInfo << "time: " <<  time << " s" << "\n";    
 
     gsInfo << "Constructing solution.. \n";
+    gsMultiPatch<> mpsol;
     watch.restart();
-    gsField<>* x = poisson.constructSolution(solVector);
+    poisson.constructSolution(solVector, mpsol);
     time = watch.stop();
+    gsField<> x( geo , mpsol);
     totalTime += time;
     gsInfo << "time: " <<  time << " s" << "\n";    
 
@@ -114,7 +116,7 @@ int main(int argc, char *argv[])
     {
         gsInfo << "Computing L2 error.. \n";
         watch.restart();
-        const real_t L2error = x->distanceL2(*ppde->solution() );
+        const real_t L2error = gsNormL2<real_t>(x,*ppde->solution() ).compute();
         gsInfo << "time: " <<  time << " s" << "\n";
         totalTime += time;
         gsInfo << "L2 error: " << L2error<< "\n";
@@ -126,7 +128,7 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsInfo<<"Plotting in Paraview..." << "\n";
-        gsWriteParaview<>( *x, "poisson_sol" , plot_pts) ;
+        gsWriteParaview<>( x, "poisson_sol" , plot_pts) ;
       
         //Plot exact solution in paraview
         gsField<> exact( geo , *ppde->solution() , false ) ;
@@ -136,7 +138,6 @@ int main(int argc, char *argv[])
     // bool save = false;
     // if (save)
 
-    delete x;
     delete ppde;
 
     return ( plot ? system("paraview poisson_sol.pvd&") : 0 ); 

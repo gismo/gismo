@@ -28,7 +28,8 @@ int main(int argc, char *argv[])
     bool get_basis = false;
     bool get_mesh = false;
     bool get_geo = false;
-    
+ 
+    //! [Parse Command line]   
     gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");  
     
     cmd.addSwitch("geometry", "Try to find and plot a geometry contained in the file", get_geo);
@@ -46,6 +47,7 @@ int main(int argc, char *argv[])
         gsWarn << "Something went wrong when reading the command line. Exiting.\n";
         return 1;
     }
+    //! [Parse Command line]
     
     if (fn.empty() )
     {
