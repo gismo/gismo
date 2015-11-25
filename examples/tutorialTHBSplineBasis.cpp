@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
     // Set up and construct a knot vector...
     real_t a = 0;                   // starting knot
     real_t b = 1;                   // ending knot
-    int degree = 2;
     unsigned interior = 3;          // number of interior knots
+    int      degree = 2;
     unsigned multEnd = degree + 1;  // multiplicity at the two end knots
     gsKnotVector<> kv(a, b, interior, multEnd);
 
@@ -77,22 +77,63 @@ int main(int argc, char *argv[])
 
     // --------------- "standard" evaluations ---------------
     //! [stdOpsStd]
-    gsMatrix<real_t> u(2,2);
-    u(0,0) = 0.99;
-    u(1,0) = 0.01;
+    gsMatrix<real_t> u(2,3);
+    u(0,0) = 0.95;
+    u(1,0) = 0.05;
 
-    u(0,1) = 0.6;
-    u(1,1) = 0.9;
+    u(0,1) = 0.95;
+    u(1,1) = 0.3;
+
+    u(0,2) = 0.6;
+    u(1,2) = 0.9;
 
     gsMatrix<unsigned> resActives;
     gsMatrix<real_t>   resEvals;
 
-    thb.active_into( u,resActives);
-    thb.eval_into(   u,resEvals);
+    thb.active_into( u, resActives);
+    thb.eval_into(   u, resEvals);
 
-    std::cout << "active functions: " << std::endl << resActives << std::endl;
-    std::cout << "their values:     " << std::endl << resEvals   << std::endl;
+    std::cout << "active functions: \n" << resActives << std::endl;
+    std::cout << "their values:     \n" << resEvals   << std::endl;
     //! [stdOpsStd]
+
+    std::cout << std::endl;
+
+    // --------------- index-computations ---------------
+
+    //! [indexTransfForw]
+    std::vector<unsigned> tmpFlatIndices;
+    std::vector<int>      tmpLevels;
+
+    std::cout << "transform indices\n";
+    std::cout << "global/hier.index  ->  flat tensor index (on level)" << std::endl;
+    for( unsigned i = 27; i <= 35; i++)
+    {
+        // print computed indices/levels
+        std::cout << i;
+        std::cout << "  ->  ";
+        std::cout << thb.flatTensorIndexOf(i);
+        std::cout << "  ( " << thb.levelOf(i) << " )" << std::endl;
+
+        // store indices/levels for reverse transformation later
+        tmpFlatIndices.push_back( thb.flatTensorIndexOf(i) );
+        tmpLevels.push_back(  thb.levelOf(i) );
+    }
+    //! [indexTransfForw]
+
+
+    //! [indexTransfBack]
+    std::cout << std::endl;
+    std::cout << "reverse index transformation\n";
+    std::cout << "flat tensor index (on level)  ->  global/hier.index" << std::endl;
+    for( unsigned i = 0; i < tmpLevels.size(); i++ )
+    {
+        // print global/hierarchical indices
+        std::cout << tmpFlatIndices[i] << "  ( " << tmpLevels[i] << " )";
+        std::cout << "->  ";
+        std::cout << thb.flatTensorIndexToHierachicalIndex( tmpFlatIndices[i], tmpLevels[i] ) << std::endl;
+    }
+    //! [indexTransfBack]
 
     std::cout << std::endl;
 
@@ -118,6 +159,8 @@ int main(int argc, char *argv[])
     //! [stdOpsHTensTree]
 
 
+
+
     // --------------- 2nd local refinement ---------------
     std::cout << std::endl << std::endl;
 
@@ -136,8 +179,9 @@ int main(int argc, char *argv[])
 
     gsWriteParaview(thb, "thb2_refined" );
 
+    // --------------- plot basis after 1 refinement ---------------
     //! [Plot in Paraview]
-    if( true ) // (plot)
+    if( plot )
     {
         // Run paraview
         return system("paraview thb1_refined.pvd &");

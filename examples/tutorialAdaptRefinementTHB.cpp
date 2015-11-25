@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     // --------------- specify exact solution and right-hand-side ---------------
 
     //! [Function data]
-    // Define exact solution (will be used for specifing Dirichlet boundary conditions
+    // Define exact solution (will be used for specifying Dirichlet boundary conditions
     gsFunctionExpr<> g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x)+3*pi)/3.0 ) )", 2);
     // Define source function
     gsFunctionExpr<> f("0",2);
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     //! [GetGeometryData]
     // Read xml and create gsMultiPatch
     string fileSrc( GISMO_DATA_DIR "/planar/lshape2d_3patches_thb.xml" );
-    gsMultiPatch<real_t> * patches = gsReadFile<real_t>(fileSrc);
+    gsMultiPatch<real_t> * patches = gsReadFile<real_t>( fileSrc );
     //! [GetGeometryData]
     gsInfo << "The domain is a "<< *patches <<"\n";
 
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 
     //! [GetGeometryDataTens]
     string fileSrcTens( GISMO_DATA_DIR "/planar/lshape2d_3patches_tens.xml" );
-    gsMultiPatch<real_t> * patchesTens = gsReadFile<real_t>(fileSrcTens);
+    gsMultiPatch<real_t> * patchesTens = gsReadFile<real_t>( fileSrcTens );
     patchesTens->computeTopology();
     //! [GetGeometryDataTens]
 
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
     // For simplicity, set Dirichlet boundary conditions
     // given by exact solution g on all boundaries:
-    for (gsMultiPatch<>::const_biterator
+    for ( gsMultiPatch<>::const_biterator
              bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
     {
         bcInfo.addCondition( *bit, condition_type::dirichlet, &g );
@@ -93,11 +93,14 @@ int main(int argc, char *argv[])
     //! [GetBasisFromTens]
     // Copy tensor basis
     gsMultiBasis<real_t> basesTens( * patchesTens );
+
     // Create a "basisContainer"
     std::vector< gsBasis<real_t>* > basisContainer;
+
     // fill the "basisContainer" with patch-wise...
     for ( size_t i = 0; i < basesTens.nBases(); i++)
         basisContainer.push_back(new gsTHBSplineBasis<2,real_t>( basesTens.basis(i) ));
+
     // finally, create the gsMultiBasis containing gsTHBSpline ...
     gsMultiBasis<real_t> basesFromTens( basisContainer, * patches );
     //! [GetBasisFromTens]
@@ -106,6 +109,7 @@ int main(int argc, char *argv[])
     //! [initialRefinements]
     // Number of initial uniform refinement steps:
     int numInitUniformRefine  = 2;
+
     for (int i = 0; i < numInitUniformRefine; ++i)
       bases.uniformRefine();
     //! [initialRefinements]
