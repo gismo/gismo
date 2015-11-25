@@ -54,11 +54,6 @@ Obtaining the gsMultiBasis from the gsMultiPatch is straightforward, just call t
 
 Note that the resulting gsMultiBasis will be composed of the bases defining the geometry. In this example, the geometry is given as a gsTHBSpline. Accordingly, the created gsMultiBasis is composed of gsTHBSplineBasis.
 
-If desired or necessary (e.g., because the geometry is given by a very coarse representation), apply initial uniform (i.e., global) refinement steps:
-
-\snippet tutorialAdaptRefinementTHB.cpp initialRefinements
-
-
 \subsubsection sGeoFromTens Get a gsTHBSplineBasis from a gsTensorBSpline
 
 If the geometry is not given as a gsTHBSpline, but as a gsTensorBSpline...
@@ -84,11 +79,15 @@ Setting the parameter to 0 will result in global refinement, setting it to 1 wil
 
 \snippet tutorialAdaptRefinementTHB.cpp adaptRefSettings
 
+\subsection solving Solving the problem
+
+If desired or necessary (e.g., because the geometry is given by a very coarse representation), apply initial uniform (i.e., global) refinement steps:
+
+\snippet tutorialAdaptRefinementTHB.cpp initialRefinements
+
 Wrap a loop around the solution process
 
 \snippet tutorialAdaptRefinementTHB.cpp beginRefLoop
-
-\subsection solving Solving the problem
 
 The part re solving the equation is the same as in \ref tutorialPoisson.
 

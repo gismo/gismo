@@ -119,15 +119,15 @@ int main(int argc, char *argv[])
 
     //! [adaptRefSettings]
     // Number of refinement loops to be done
-    int numRefinementLoops = 2;
+    int numRefinementLoops = 4;
 
     // Specify cell-marking strategy...
-    MarkingStrategy adaptRefCrit = GARU;
-//    MarkingStrategy adaptRefCrit = PUCA;
+    MarkingStrategy adaptRefCrit = PUCA;
+//    MarkingStrategy adaptRefCrit = GARU;
 //    MarkingStrategy adaptRefCrit = errorFraction;
 
     // ... and parameter.
-    const real_t adaptRefParam = 0.5;
+    const real_t adaptRefParam = 0.9;
     //! [adaptRefSettings]
 
 
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
     }
 
     //! [Plot in Paraview]
-    if( plot ) // (plot)
+    if( plot )
     {
         // Run paraview
         return system("paraview adaptRef.pvd &");

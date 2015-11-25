@@ -310,10 +310,10 @@ In our example, this will return
 
 \verbatim
 levels: 
-1 0
+1 1 0
 lower corners: 
-7 2
-0 3
+7 7 2
+0 2 3
 \endverbatim
 These indices are given on the respective level.
 
