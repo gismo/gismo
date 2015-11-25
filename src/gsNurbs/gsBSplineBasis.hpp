@@ -224,6 +224,8 @@ gsMatrix<T> gsTensorBSplineBasis<1,T,KnotVectorType>::support(const unsigned & i
 template <class T, class KnotVectorType>
 unsigned gsTensorBSplineBasis<1,T,KnotVectorType>::twin(unsigned i) const 
 {
+    if( m_periodic == 0 )
+        return i;
     const unsigned s = size();
     if ( i < static_cast<unsigned>(m_periodic) ) 
         i += s;
@@ -1222,8 +1224,10 @@ template <class T, class KnotVectorType>
 void gsTensorBSplineBasis<1,T,KnotVectorType>::_stretchEndKnots()
 {
     GISMO_ASSERT( isClamped(), "_stretchEndKnots() is intended for use only to knot vectors with clamped end knots.");
-    m_knots[0] = m_knots[m_knots.size() - m_p - 2] - _activeLength();
-    m_knots[m_knots.size() - 1] = m_knots[m_p + 1] + _activeLength();
+    T curFirst=m_knots[0];
+    T curLast=m_knots[m_knots.size() - 1];
+    m_knots.remove(curFirst); m_knots.insert(m_knots[m_knots.size() - m_p - 2] - _activeLength());
+    m_knots.remove(curLast);  m_knots.insert(m_knots[m_p + 1] + _activeLength());
 }
 
 /* ********************************************** */

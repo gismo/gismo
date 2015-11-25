@@ -121,12 +121,13 @@ public:
   
 public:
     /// Return true if the first root exist, the value of the root is in this->value()
-    bool firstRoot(gsBSpline<T,gsKnotVector<T> > const & bsp, int const & coord = 0, 
-                   T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100);
-
-    /// Return true if the first root exist, the value of the root is in this->value()
-    bool firstRoot(gsBSpline<T, gsCompactKnotVector<T> > const & bsp, int const & coord = 0, 
-                   T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100);
+    template<typename knotVectorType>
+    bool firstRoot(gsBSpline<T,knotVectorType > const & bsp, int const & coord = 0,
+                   T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100)
+    {
+        initSolver<gsKnotVector<T> >(bsp,coord,tr,tol,N);
+        return nextRoot();
+    }
 
     /// Next root (requires that first root has been called before)
     bool nextRoot ();
@@ -135,20 +136,48 @@ public:
     inline T value () { return x;}
 
     // Return a vector with all the roots
-    void allRoots (gsBSpline<T,gsKnotVector<T> > const & bsp, std::vector<T> & result, 
+    template<typename knotVectorType>
+    void allRoots (gsBSpline<T,knotVectorType > const & bsp, std::vector<T> & result,
                    int const & coord = 0, 
-                   T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100);
+                   T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100)
+    {
+        result.clear();
+        initSolver<knotVectorType> (bsp,coord,tr,tol,N);
 
-    // Return a vector with all the roots
-    void allRoots (gsBSpline<T,gsCompactKnotVector<T> > const & bsp, std::vector<T> & result, 
-                   int const & coord = 0, 
-                   T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100);
+        while ( nextRoot() )
+        {
+            result.push_back( value() ) ;
+        }
+        //gsLog<< "gsBSplineSolver: found "<< result.size() <<" roots.\n  ";
+    }
 
 private:
     /// Initialize the solver with B-spline data
     template<class KnotVectorType>
     void initSolver(gsBSpline<T,KnotVectorType> const & bsp , int const & coord, 
-                    T const & tr, T const & tol, unsigned const &N);
+                    T const & tr, T const & tol, unsigned const &N)
+    {
+        m_n  = bsp.coefsSize();
+        m_d  = bsp.degree();
+        m_k  = 1;
+        eps  = tol;
+        x    = 0.0;
+        maxn = N + m_n;
+
+        const KnotVectorType & kv = bsp.knots();
+
+        m_t.resize(m_n+N+m_d+1);
+        m_c.resize(m_n+N);
+
+        for ( unsigned i = 0; i < m_n; ++i )
+        {
+            m_c[i]= bsp.coef(i, coord) - tr;
+            m_t[i]= kv[i];
+        }
+
+        for ( unsigned i = m_n; i < m_n + m_d +1 ; ++i )
+            m_t[i]= kv[i];
+    }
 
     /// insert knot x in interval mu by Boehms algorithm
     /// Note: t,c must have size at least n+1, n+d+2 respectively
