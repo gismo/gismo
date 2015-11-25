@@ -20,7 +20,7 @@ In the gismo/examples sub-directory we find:
 
 - \subpage poisson
 
-- \subpage poissonVector
+- \subpage tutorialAssembly
 
 - \subpage thbRefinement
 

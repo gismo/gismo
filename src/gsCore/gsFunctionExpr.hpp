@@ -730,10 +730,12 @@ std::ostream & gsFunctionExpr<T>::print(std::ostream &os) const
     if( my->string.empty() )
         os << "empty";
     else
+    {
         os << my->string[0];
 
-    for (int k = 1; k!= targetDim(); ++k)
-        os <<", " << my->string[k];
+        for (int k = 1; k<targetDim(); ++k)
+            os <<", " << my->string[k];
+    }
     os <<" ]";
     return os;
 }

@@ -2,7 +2,7 @@ namespace gismo {
 /**
 \page Tutorial01 Tutorial 01: Hello \gismo
 
-In this tutotial you will get to know the structure of the library,
+In this tutorial you will get to know the structure of the library,
 some main tools which are available as well as how to write your first
 program.
 
@@ -28,7 +28,7 @@ There source folder contains the following sub-folders:
    src. Here is a list of these folders/modules:
    - \ref Core "gsCore"
    
-      Contains several general objects that are usefull for the rest
+      Contains several general objects that are useful for the rest
       of the modules.  Most importantly it contains abstract classes
       such as gsFunction and gsBasis which represent functions and
       sets of bases on a parametric domain. Continue here.
@@ -75,7 +75,7 @@ There source folder contains the following sub-folders:
    - \ref Solver "gsSolver"
 
      Contains iterative linear solvers which complement the ones from
-     the Eigen library, such as GMRES. It also containes multigrid
+     the Eigen library, such as GMRES. It also contains multigrid
      solvers and preconditioners.
 
    - \ref IO "gsIO"
@@ -95,7 +95,7 @@ There source folder contains the following sub-folders:
 
      Contains several utilities that are needed by other modules. This
      includes combinatorics utilities, point grid generators and
-     iterators, utilites for measuring the CPU time, and a data
+     iterators, utilities for measuring the CPU time, and a data
      structure for triangular meshes.
 
 - \b examples 
@@ -201,7 +201,7 @@ The build folder has the following subfolders and files:
   all the needed paths (eg. the path to the source folder) and all
   compilation flags and options.
 
-- \b stable, \b examples, \b external, \b optional
+- \b src, \b examples, \b external, \b optional
 
   These folders are named as the corresponding folders in the source
   folder, and contain the compiled object files. All the files in
@@ -530,13 +530,13 @@ of a matrix by a number. Here are some equivalent ways to do this:
   gsMatrix<> M(4,6);
 
   // Manually
-  gsMatrix<> R1;
+  gsMatrix<> R1(4,6);
   for (index_t i = 0; i<4; ++i) // for all rows
     for (index_t j = 0; j<6; ++i) // for all columns
       R1(i,j) = M(i,j) * v[i];
 
     // Using row-blocks
-    gsMatrix<> R2;
+    gsMatrix<> R2(4,6);
     for (index_t i = 0; i<4; ++i) // for all rows
       R1.row(i).noalias() = M.row(i) * v[i]; // matrix x scalar
 
