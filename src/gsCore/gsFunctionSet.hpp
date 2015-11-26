@@ -31,7 +31,7 @@ template <typename T>
 void gsFunctionSet<T>::active_into     (const gsMatrix<T> &u, gsMatrix<unsigned> &result) const
 {
     // this default implementation assumes a single function 0 is active always 
-    result.setConstant(0,u.cols());
+    result.setConstant(1,u.cols(),0);
 }
 
 // evaluation
