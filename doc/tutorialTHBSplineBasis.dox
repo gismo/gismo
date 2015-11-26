@@ -18,7 +18,7 @@ We start with two sets of B-Spline basis functions of degree 2:
 
 Level 0, the "coarse" ones, with knot vector \f$ s^0 = (0,\ 0,\ 0,\ 1/8,\ 2/8,\ ... 7/8,\ 1,\ 1,\ 1)\f$
 
-Level 1, the "fine" ones, with knot vector \f$ s^1 = (0,\ 0,\ 0,\ 1/16,\ 2/16,\ ... 7/16,\ 1,\ 1,\ 1)\f$
+Level 1, the "fine" ones, with knot vector \f$ s^1 = (0,\ 0,\ 0,\ 1/16,\ 2/16,\ ... 15/16,\ 1,\ 1,\ 1)\f$
 
 These two bases are illustrated here (shown in different colours and thickness only for better visibility):
 \image html figs/tutTHB_1d_B0.png "B-splines of level 0"
@@ -130,7 +130,7 @@ The tensor-product B-spline basis in the "THBSplineBasis2" defines the basis of 
 
 \subsection sRefElts using refineElements( std::vector )
 
-See gsHTensorBasis::refineElements(). The argument is a std::vector<unsigned> containing a sequence of <em>n*(1+2*d)</em> unsigned. Each (1+2*d)-tupel contains the following information:
+See gsHTensorBasis::refineElements(). The argument is a std::vector<unsigned> containing a sequence of <em>n*(1+2*d)</em> unsigned. Each (1+2*d)-tuple contains the following information:
 - the the level that you want to refine to
 - the lower corner in unique knot span indices of the new level
 - the upper corner in unique knot span indices of the new level
