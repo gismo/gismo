@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
     {
         // print global/hierarchical indices
         std::cout << tmpFlatIndices[i] << "  ( " << tmpLevels[i] << " )";
-        std::cout << "->  ";
+        std::cout << "  ->  ";
         std::cout << thb.flatTensorIndexToHierachicalIndex( tmpFlatIndices[i], tmpLevels[i] ) << std::endl;
     }
     //! [indexTransfBack]
@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
     gsMatrix<unsigned> resLowerCorner;
 
     thb.getLevelUniqueSpanAtPoints(u, resLevels, resLowerCorner);
+
     std::cout << "levels:        " << std::endl << resLevels.transpose() << std::endl;
     std::cout << "lower corners: " << std::endl << resLowerCorner        << std::endl;
     //! [stdOpsHTens]
@@ -152,7 +153,9 @@ int main(int argc, char *argv[])
     // print the underlying tree
     //! [stdOpsHTensTree]
     gsMatrix<unsigned> resUpperCorner;
+
     thb.tree().getBoxes( resLowerCorner, resUpperCorner, resLevels);
+
     std::cout << "levels:        " << std::endl << resLevels      << std::endl;
     std::cout << "lower corners: " << std::endl << resLowerCorner << std::endl;
     std::cout << "upper corners: " << std::endl << resUpperCorner << std::endl;

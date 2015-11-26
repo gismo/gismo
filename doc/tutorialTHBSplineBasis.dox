@@ -171,6 +171,8 @@ boxM(1,0) = 0.0;
 
 boxM(0,1) = 1.0;
 boxM(1,1) = 0.5;
+
+thb.refine( boxM );
 \endverbatim
 
 This method refines all elements overlapping the specified box.
@@ -374,6 +376,28 @@ Size per level: 30 32 8
 
 This should be kept in mind when manually creating THB-spline geometries.
 
+
+\subsection sRefPresOfCoeff Preservation of coefficients
+
+
+Assume you have given a certain spline geometry (curve, surface, volume,...) represented by tensor-product splines of level 0 with coefficients \f$ c^0_i \f$:
+\f[ G(\xi) = \sum_{ \beta^0_i \in B^0} c^0_i \beta^0_i(\xi) \f]
+
+The <em>same</em> geometry can be represented on level 1 with different coefficients \f$ c^1_j \f$:
+\f[ G(\xi) = \sum_{ \beta^1_j \in B^1} c^1_j \beta^1_j(\xi) \f]
+
+
+If an area \f$ \Omega^1 \subset \Omega^0 \f$ is refined to level 1, we obtain the THB-spline basis consisting of
+- truncated coarse functions \f$ \mathrm{trunc}^1 \beta^0_i(\xi), \mathrm{supp} \beta^0_i \not \subseteq \Omega^1 \f$ 
+- and fine functions \f$ \beta^1_j, \ \mathrm{supp} \beta^1_j \subseteq \Omega^1 \f$
+
+The geometry \f$ G \f$ can be obtained <em>exactly</em> by taking the same coefficients \f$ c^0_j \f$ and \f$ c^1_j \f$ that were used on the respective levels:
+\f[ G(\xi) = 
+\sum_{ \beta^0_i \in B^0,\ \mathrm{supp} \beta^0_i \not \subseteq \Omega^1} 
+c^0_i\ \mathrm{trunc}^1 \beta^0_i(\xi) 
++ \sum_{ \beta^1_j \in B^1,\ \mathrm{supp} \beta^1_j \subseteq \Omega^1} 
+c^1_j \beta^1_j(\xi) 
+\f]
 
 \section sReferences References
 
