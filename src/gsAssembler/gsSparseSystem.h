@@ -246,7 +246,7 @@ public: /* Accessors */
         for (index_t r = 0; r != rowSizes.size(); ++r) // for all row-blocks
             rowSizes[r] = m_mappers[r].freeSize();
 
-        for (size_t c = 0; c != colSizes.size(); ++c) // for all col-blocks
+        for (index_t c = 0; c != colSizes.size(); ++c) // for all col-blocks
             colSizes[c] = m_mappers[c].freeSize();
 
         return m_matrix.blockView(rowSizes,colSizes); 

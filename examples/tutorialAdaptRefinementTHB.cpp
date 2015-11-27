@@ -52,20 +52,22 @@ int main(int argc, char *argv[])
     //! [GetGeometryData]
     // Read xml and create gsMultiPatch
     string fileSrc( GISMO_DATA_DIR "/planar/lshape2d_3patches_thb.xml" );
-    gsMultiPatch<real_t> * patches = gsReadFile<real_t>( fileSrc );
+    gsMultiPatch<real_t> patches;
+    gsReadFile<real_t>( fileSrc, patches);
     //! [GetGeometryData]
-    gsInfo << "The domain is a "<< *patches <<"\n";
+    gsInfo << "The domain is a "<< patches <<"\n";
 
     //! [computeTopology]
     // Get all interfaces and boundaries:
-    patches->computeTopology();
+    patches.computeTopology();
     //! [computeTopology]
 
 
     //! [GetGeometryDataTens]
     string fileSrcTens( GISMO_DATA_DIR "/planar/lshape2d_3patches_tens.xml" );
-    gsMultiPatch<real_t> * patchesTens = gsReadFile<real_t>( fileSrcTens );
-    patchesTens->computeTopology();
+    gsMultiPatch<real_t> patchesTens;
+    gsReadFile<real_t>( fileSrcTens, patchesTens);
+    patchesTens.computeTopology();
     //! [GetGeometryDataTens]
 
 
@@ -76,7 +78,7 @@ int main(int argc, char *argv[])
     // For simplicity, set Dirichlet boundary conditions
     // given by exact solution g on all boundaries:
     for ( gsMultiPatch<>::const_biterator
-             bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
+             bit = patches.bBegin(); bit != patches.bEnd(); ++bit)
     {
         bcInfo.addCondition( *bit, condition_type::dirichlet, &g );
     }
@@ -87,12 +89,12 @@ int main(int argc, char *argv[])
 
     //! [GetBasisFromTHB]
     // Copy basis from the geometry
-    gsMultiBasis<> bases( *patches );
+    gsMultiBasis<> bases( patches );
     //! [GetBasisFromTHB]
 
     //! [GetBasisFromTens]
     // Copy tensor basis
-    gsMultiBasis<real_t> basesTens( * patchesTens );
+    gsMultiBasis<real_t> basesTens( patchesTens );
 
     // Create a "basisContainer"
     std::vector< gsBasis<real_t>* > basisContainer;
@@ -102,7 +104,7 @@ int main(int argc, char *argv[])
         basisContainer.push_back(new gsTHBSplineBasis<2,real_t>( basesTens.basis(i) ));
 
     // finally, create the gsMultiBasis containing gsTHBSpline ...
-    gsMultiBasis<real_t> basesFromTens( basisContainer, * patches );
+    gsMultiBasis<real_t> basesFromTens( basisContainer, patches );
     //! [GetBasisFromTens]
 
 
@@ -142,7 +144,7 @@ int main(int argc, char *argv[])
 
         //! [solverPart]
         // Construct assembler
-        gsPoissonAssembler<real_t> PoissonAssembler(*patches,bases,bcInfo,f,dirichlet::elimination, iFace::glue);
+        gsPoissonAssembler<real_t> PoissonAssembler(patches,bases,bcInfo,f,dirichlet::elimination, iFace::glue);
 
         // Generate system matrix and load vector
         PoissonAssembler.assemble();
@@ -187,7 +189,7 @@ int main(int argc, char *argv[])
         //! [repairInterfaces]
         // Call repair interfaces to make sure that the new meshes
         // match along patch interfaces.
-        bases.repairInterfaces( patches->interfaces() );
+        bases.repairInterfaces( patches.interfaces() );
         //! [repairInterfaces]
 
 

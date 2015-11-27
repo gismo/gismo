@@ -32,7 +32,8 @@
     - a degenerate volume
     ./bin/gsInterpolateMap -d 3 -X "5*cos(2*pi*x)" -Y "5*sin(2*pi*y)" -Z "15*z"
 
-    Try more from http://virtualmathmuseum.org/Surface/ellipsoid/ellipsoid.html
+    
+    Try more from http://virtualmathmuseum.org/Surface/gallery_o.html
     (take care of the parameter range ;) )
 
     This file is part of the G+Smo library.
@@ -144,7 +145,7 @@ int main(int argc, char* argv[])
 
     // Cleanup: deleting the raw pointer
     delete interpolant;
-
+    delete tBasis;
     return 0;
 }
 
