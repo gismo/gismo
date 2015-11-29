@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gsCore/gsPatchwiseFunction.h>
 #include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsAffineFunction.h>
 
@@ -28,7 +29,7 @@ namespace gismo
     \ingroup Core
 */
 template<class T>
-class gsMultiPatch : public gsBoxTopology //gsPiecewiseFunction
+class gsMultiPatch : public gsBoxTopology, public gsPatchwiseFunction<T>
 {
 
 public:
@@ -45,7 +46,7 @@ public:
 public:
 
     /// Default empty constructor
-    gsMultiPatch() : gsBoxTopology() { }
+    gsMultiPatch() { }
 
     /// Copy constructor (makes deep copy)
     gsMultiPatch( const gsMultiPatch& other );
@@ -72,9 +73,8 @@ public:
     ~gsMultiPatch();
 
     /// Clone function. Used to make a copy of the object
-    gsMultiPatch* clone() const {
-        return new gsMultiPatch( *this );
-    }
+    gsMultiPatch* clone() const 
+    {return new gsMultiPatch( *this );}
 
 public:
 
@@ -97,6 +97,14 @@ public:
     /// \return an iterator to the end of the  patches
     iterator end()  
     { return m_patches.end(); }
+
+public:
+    
+    const gsFunction<T> & piece(const index_t i) const
+    { return *m_patches[i]; }
+
+    virtual index_t size() const
+    { return m_patches.size(); }
 
 public:
     /**
