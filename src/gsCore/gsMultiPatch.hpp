@@ -13,11 +13,10 @@
 
 #pragma once
 
-#include <iterator>
-
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsDofMapper.h>
+#include <gsCore/gsAffineFunction.h>
 
 #include <gsUtils/gsCombinatorics.h>
 

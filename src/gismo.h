@@ -59,6 +59,7 @@ namespace internal
 #include <gsCore/gsGenericGeometry.h>
 
 #include <gsCore/gsConstantFunction.h>
+#include <gsCore/gsAffineFunction.h>
 #include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsBasisFun.h>
 

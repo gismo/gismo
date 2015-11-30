@@ -57,7 +57,7 @@ public:
 public:
 
     /// Default empty constructor
-    gsTensorBSpline() : Base() { }
+    gsTensorBSpline() { }
 
     // Construct B-Spline by basis functions and coefficient matrix
     //gsTensorBSpline( const gsConstantBasis<T> & basis, const gsMatrix<T> & coefs )

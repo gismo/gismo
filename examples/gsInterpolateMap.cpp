@@ -17,11 +17,35 @@
     - a helical surface
     ./bin/gsInterpolateMap -d 2 -X "x*cos(2*pi*y)" -Y "x*sin(2*pi*y)" -Z "2*pi*y"
 
+    - Hyperboloid
+    ./bin/gsInterpolateMap -d 2 -X "sqrt(1+4*(y-1/2)^2)*cos(2*pi*x)" -Y "4*(y-1/2)" -Z "sqrt(1+4*(y-1/2)^2)*sin(2*pi*x)"  -k 8
+
+    - A bottle
+    ./bin/gsInterpolateMap -d 2 -X "(2+sin(4*pi*y))*cos(2*pi*x)" -Y "10*y" -Z "(2+sin(4*pi*y))*sin(2*pi*x)"
+
+    - Mobius band
+    ./bin/gsInterpolateMap -d 2 -X "(4+2*(y-0.5)*cos(pi*x))*cos(2*pi*x)" -Y "(4+2*(y-0.5)*cos(pi*x))*sin(2*pi*x)" -Z "2*(y-0.5)*sin(pi*x)"
+
     - An part of an annulus
     ./bin/gsInterpolateMap -d 2 -X "cos(x)*(y+1)" -Y "sin(x)*(y+1)" -Z "0"
 
+    - A quarter of an annulus
+    ./bin/gsInterpolateMap -d 2 -X "cos(0.5*pi*x)*(y+1.5)" -Y "sin(0.5*pi*x)*(y+1.5)"
+
     - a cylinder
     ./bin/gsInterpolateMap -d 2 -X "5*cos(2*pi*y)" -Y "5*sin(2*pi*y)" -Z "15*x"
+
+    - Sphere
+    ./bin/gsInterpolateMap -d 2 -X "cos(pi*x)*cos(2*pi*y)" -Y "sin(pi*x)*cos(2*pi*y)" -Z "sin(2*pi*y)" -k 10
+
+    - Torus
+    ./bin/gsInterpolateMap -d 2 -X "(3+cos(2*pi*y))*cos(2*pi*x)" -Y "(3+cos(2*pi*y))*sin(2*pi*x)" -Z "sin(2*pi*y)" -k 8
+    
+    - Cone
+    ./bin/gsInterpolateMap -d 2 -X "cosh(2*pi*x)*cos(2*pi*y)" -Y "cosh(2*pi*x)*sin(2*pi*y)" -Z "sinh(2*pi*x)"
+
+    - 3D pipe
+    ./bin/gsInterpolateMap -d 3 -X "cos(2*pi*x)*(y+2)" -Y "sin(2*pi*x)*(y+2)" -Z "4*z"
 
     - a volume
     ./bin/gsInterpolateMap -d 3 -X "cos(x)*(y+1)" -Y "sin(x)*(y+1)" -Z "z*2"
@@ -32,7 +56,8 @@
     - a degenerate volume
     ./bin/gsInterpolateMap -d 3 -X "5*cos(2*pi*x)" -Y "5*sin(2*pi*y)" -Z "15*z"
 
-    
+    ./bin/gsInterpolateMap -d 3 -X "(z+1)*sqrt(1+4*(y-1/2)^2)*cos(2*pi*x)" -Y "(z+1)*4*(y-1/2)" -Z "(z+1)*sqrt(1+4*(y-1/2)^2)*sin(2*pi*x)"  -k 4
+
     Try more from http://virtualmathmuseum.org/Surface/gallery_o.html
     (take care of the parameter range ;) )
 

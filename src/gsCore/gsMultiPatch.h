@@ -15,7 +15,7 @@
 
 #include <gsCore/gsPatchwiseFunction.h>
 #include <gsCore/gsBoxTopology.h>
-#include <gsCore/gsAffineFunction.h>
+#include <gsCore/gsGeometry.h>
 
 namespace gismo
 {

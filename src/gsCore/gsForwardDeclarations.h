@@ -105,6 +105,7 @@ template< class T = real_t>  class gsFuncData;
 template< class T = real_t>  class gsMapData;
 template< class T = real_t>  class gsFunctionExpr;
 template< class T = real_t>  class gsConstantFunction;
+template< class T = real_t>  class gsAffineFunction;
 template< class T = real_t>  class gsMultiPatch;
 
 // Bases

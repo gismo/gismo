@@ -15,6 +15,7 @@
 
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsVisitorMass.h>
+#include <gsAssembler/gsVisitorTPmass.h>
 #include <gsAssembler/gsVisitorGradGrad.h>
 #include <gsAssembler/gsVisitorMoments.h>
 
@@ -126,7 +127,7 @@ public:
             m_pde.boundaryConditions() = *bc;
 
         Base::initialize(m_pde, bases, opt);
-        refresh();
+        gsGenericAssembler::refresh();
     }
 
     /* TODO (id geometry)
@@ -139,7 +140,7 @@ public:
         m_bases.push_back(bases);
 
         Base::initialize(m_pde, bases, opt);
-        refresh();
+        gsGenericAssembler::refresh();
     }
     */
 
@@ -159,9 +160,11 @@ public:
     const gsSparseMatrix<T> & assembleMass()
     {
         // Clean the sparse system
-        m_system.setZero();
+        gsGenericAssembler::refresh();
+        //m_system.setZero(); //note: no allocation
 
         // Assemble mass integrals
+        //this->template push<gsVisitorMass<T> >();
         this->template push<gsVisitorMass<T> >();
 
         // Assembly is done, compress the matrix
@@ -170,11 +173,22 @@ public:
         return m_system.matrix();
     }
 
+    /// Mass assembly routine
+    const gsSparseMatrix<T> & assembleMass2()
+    {
+        // Clean the sparse system
+        gsGenericAssembler::refresh();
+        
+        this->template push<gsVisitorTPmass<T> >();
+        this->finalize();
+        return m_system.matrix();
+    }
+
     /// Stiffness assembly routine
     const gsSparseMatrix<T> & assembleStiffness()
     {
         // Clean the sparse system
-        m_system.setZero();
+        gsGenericAssembler::refresh();
 
         // Assemble stiffness integrals
         this->template push<gsVisitorGradGrad<T> >();
