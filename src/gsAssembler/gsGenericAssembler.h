@@ -15,7 +15,7 @@
 
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsVisitorMass.h>
-#include <gsAssembler/gsVisitorTPmass.h>
+//#include <gsAssembler/gsVisitorTPmass.h>
 #include <gsAssembler/gsVisitorGradGrad.h>
 #include <gsAssembler/gsVisitorMoments.h>
 
@@ -179,7 +179,7 @@ public:
         // Clean the sparse system
         gsGenericAssembler::refresh();
         
-        this->template push<gsVisitorTPmass<T> >();
+        //this->template push<gsVisitorTPmass<T> >();
         this->finalize();
         return m_system.matrix();
     }
