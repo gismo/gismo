@@ -18,6 +18,9 @@
 namespace gismo
 {
 
+template<class T, int _Rows, int _Cols>
+class gsAsConstMatrix;
+
 /** \brief Creates a mapped object or data pointer to a matrix without
     copying data.
     
@@ -93,7 +96,7 @@ public:
         result.rightCols(mcols-j) = this->rightCols(mcols-j);
     }
 
-
+    operator gsAsConstMatrix<T,_Rows,_Cols>() const {return gsAsConstMatrix<T,_Rows,_Cols>(&(*this)(0,0),Base::rows(),Base::cols());}
 private:
     gsAsMatrix() { }
 };
