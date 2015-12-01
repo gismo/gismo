@@ -66,7 +66,7 @@ void gsIterativeSolverInfo(const gsIterativeSolver &method, std::string methodNa
 int main(int argc, char *argv[])
 {
     //Size of linear system
-    index_t N = 200;
+    index_t N = 100;
     if (argc >= 2)
         N = atoi(argv[1]);
 
