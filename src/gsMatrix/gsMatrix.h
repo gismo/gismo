@@ -118,6 +118,9 @@ public:
 
     gsMatrix(const Base& a) ;
 
+    // implicitly deleted in C++11
+    gsMatrix(const gsMatrix& a) : Base(a) { }
+
     gsMatrix(int rows, int cols) ;
 
     /// This constructor allows constructing a gsMatrix from Eigen expressions
@@ -167,6 +170,13 @@ public:
 #else
     using Base::operator=;
 #endif
+    
+    // implicitly deleted in C++11
+    gsMatrix & operator=(gsMatrix other)
+    {
+        this->swap( other );
+        return *this;
+    }
 
     /// This method allows to swap with another matrix
     gsMatrix& operator= (gsMovable< gsMatrix > other)

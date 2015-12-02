@@ -94,6 +94,9 @@ public:
 
     gsVector(const Base& a) ;
 
+    // implicitly deleted in C++11
+    gsVector(const gsVector& a) : gsBase(a) { }
+
     explicit gsVector(int dimension) ;
 
     inline operator Ref () { return Ref(*this); }
@@ -150,6 +153,13 @@ public:
         return *this;
     }
 
+    // implicitly deleted in C++11
+    gsVector & operator=(gsVector other)
+    {
+        this->swap( other );
+        return *this;
+    }
+
     /// \brief Returns the \a i-th element of the vector
     inline T at (index_t i) const { return *(this->data()+i);}
 
@@ -196,10 +206,15 @@ public:
 
 public:
 
-    gsVector3d() ;
+    gsVector3d();
+
     gsVector3d(scalar_t x, scalar_t y, scalar_t z = 0 );
 
+    // implcitly declared deleted in C++11
+    gsVector3d(const gsVector3d& a) : Base(a) { }
+
     gsVector3d(const Base& a) ;
+
     ~gsVector3d () ;
 
     /// This constructor allows constructing a gsVector3d from Eigen expressions
@@ -218,6 +233,13 @@ public:
 #else
     using Base::operator=;
 #endif
+
+    // implicitly deleted in C++11
+    gsVector3d & operator=(gsVector3d other)
+    {
+        this->swap( other );
+        return *this;
+    }
 
     inline T   at (index_t i) const { return (*this)(i,0); }
     inline T & at (index_t i)       { return (*this)(i,0); }
