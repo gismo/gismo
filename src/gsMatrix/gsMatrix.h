@@ -172,9 +172,9 @@ public:
 #endif
     
     // implicitly deleted in C++11
-    gsMatrix & operator=(gsMatrix other)
+    gsMatrix & operator=(const gsMatrix & other)
     {
-        this->swap( other );
+        this->Base::operator=(other);
         return *this;
     }
 

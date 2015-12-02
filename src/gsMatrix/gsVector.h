@@ -154,9 +154,9 @@ public:
     }
 
     // implicitly deleted in C++11
-    gsVector & operator=(gsVector other)
+    gsVector & operator=(const gsVector & other)
     {
-        this->swap( other );
+        this->Base::operator=(other);
         return *this;
     }
 
@@ -235,9 +235,9 @@ public:
 #endif
 
     // implicitly deleted in C++11
-    gsVector3d & operator=(gsVector3d other)
+    gsVector3d & operator=(const gsVector3d & other)
     {
-        this->swap( other );
+        this->Base::operator=(other);
         return *this;
     }
 
