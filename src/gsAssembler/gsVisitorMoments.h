@@ -47,7 +47,7 @@ public:
         rule = gsGaussRule<T>(basis, options.quA, options.quB);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_MEASURE;
+        evFlags = NEED_MEASURE | NEED_VALUE;
     }
 
     // Evaluate on element.
@@ -61,7 +61,7 @@ public:
         numActive = actives.rows();
         
         // Evaluate basis functions on element
-        basis.evalAllDers_into( quNodes, 1, basisData);
+        basis.evalAllDers_into( quNodes, 0, basisData);
         
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geoEval.evaluateAt(quNodes);// is this generic ??
@@ -80,13 +80,11 @@ public:
                          gsVector<T> const      & quWeights)
     {
         gsMatrix<T> & bVals  = basisData[0];
-        gsMatrix<T> & bGrads = basisData[1];
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
-            //const T weight = quWeights[k] * geoEval.measure(k);
-            const T weight = quWeights[k];
+            const T weight = quWeights[k] * geoEval.measure(k);
             
             localRhs.noalias() += weight * ( bVals.col(k) * rhsVals.col(k).transpose() ) ;
         }
@@ -94,6 +92,17 @@ public:
         //gsDebugVar(localMat.asVector().transpose() );
     }
     
+    inline void localToGlobal(const int patchIndex,
+                              const gsMatrix<T>     & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
+    {
+        // Map patch-local DoFs to global DoFs
+        system.mapColIndices(actives, patchIndex, actives);
+
+        // Add contributions to the right-hand side
+        system.pushToRhs(localRhs, actives, 0);
+    }
+
     inline void localToGlobal(const gsDofMapper     & mapper,
                               const gsMatrix<T>     & eliminatedDofs,
                               const int patchIndex,

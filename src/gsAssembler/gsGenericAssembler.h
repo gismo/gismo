@@ -212,7 +212,7 @@ public:
         // Assembly is done, compress the matrix
         this->finalize();
 
-        return m_system.matrix();
+        return m_system.rhs();
     }
 
     /// Stiffness assembly routine on patch \a patchIndex
