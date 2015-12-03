@@ -183,28 +183,72 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
 
 
 
-template<class T>
+template <typename T>
+void extractRows( const gsMatrix<T> &in, typename gsMatrix<unsigned>::constColumn actives, gsMatrix<T> &out)
+{
+    out.resize(actives.rows(), in.cols());
+    for (index_t r=0; r<actives.rows();++r)
+        out.row(r)=in.row(actives(r,0));
+}
+
+template <class T>
 void
 gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
 {  
-/*
-temporary
-    gsFuncData<T> tmp(out.flags);
+
+    const unsigned flags = out.flags | NEED_ACTIVE;
+    const index_t  numPt = in.cols();
+    const index_t  numCo = m_coefs.cols();
+
+    gsFuncData<T> tmp(flags);
     this->basis().compute(in, tmp);
     
-    const index_t k = tmp.maxDeriv();
+    out.values.resize(out.maxDeriv()+1);
+    out.info.targetDim = numCo;
+    out.info.domainDim = tmp.info.domainDim;
+    if ( flags & SAME_ELEMENT )
+    {
+        gsMatrix<T> coefM;
+        extractRows(m_coefs,tmp.active(0),coefM);
 
-    const gsMatrix<T> & coefs = m_geo.coefs();
+        if (flags & NEED_VALUE)
+            out.values[0]=coefM.transpose()*tmp.values[0];
+        if (flags & NEED_DERIV)
+        {
+            const index_t derS = tmp.info.derivSize();
+            out.values[1].resize(derS*numCo,numPt);
+            for (index_t p=0; p< numPt; ++p)
+                out.values[1].reshapeCol(p, derS, numCo) = tmp.deriv(p)*coefM;
+        }
+        if (flags & NEED_DERIV2)
+        {
+            const index_t derS = tmp.info.deriv2Size();
+            out.values[2].resize(derS*numCo,numPt);
+            for (index_t p=0; p< numPt; ++p)
+                out.values[2].reshapeCol(p, derS, numCo) = tmp.deriv2(p)*coefM;
+        }
+    } else
+    {
+        gsMatrix<T> coefM;
+        const index_t derS = tmp.info.derivSize();
+        const index_t der2S = tmp.info.deriv2Size();
 
-    for ( index_t i = 0; i!=k; ++i)
-        for (index_t j=0; j < m_numPts; ++j) // for all evaluation points
+        if (flags & NEED_VALUE)  out.values[0].resize(numCo,numPt);
+        if (flags & NEED_DERIV)  out.values[1].resize(numCo*derS,numPt);
+        if (flags & NEED_DERIV2) out.values[2].resize(numCo*der2S,numPt);
 
-        for (index_t i = 0; i!=k; ++i)
-*/
-    
-    
+        for (index_t p=0; p<numPt;++p)
+        {
+            extractRows(m_coefs,tmp.active(p),coefM);
+            if (flags & NEED_VALUE)
+                out.values[0].reshapeCol(p,1,numCo) = tmp.eval(p)*coefM;
+            if (flags & NEED_DERIV)
+                out.values[1].reshapeCol(p, derS, numCo) = tmp.deriv(p)*coefM;
+            if (flags & NEED_DERIV2)
+                out.values[2].reshapeCol(p, derS, numCo) = tmp.deriv2(p)*coefM;
+        }
+    }
 }
 
 
-
-}; // namespace gismo
+} // namespace gismo
