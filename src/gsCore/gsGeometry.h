@@ -178,11 +178,15 @@ public:
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().derivFunc_into(u, m_coefs, result); }
 
-    // Look at gsFunction class for documentation
+    // Look at gsFunctionSet class for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().deriv2Func_into(u, m_coefs, result); }
 
     /// @}
+
+
+    // Look at gsFunctionSet for documentation
+    virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
 
     /// \brief Evaluates if the geometry orientation coincide with the
     /// ambient orientation.

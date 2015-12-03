@@ -181,4 +181,30 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
     return typename gsMatrix<T>::uPtr(DD); 
 }
 
+
+
+template<class T>
+void
+gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
+{  
+/*
+temporary
+    gsFuncData<T> tmp(out.flags);
+    this->basis().compute(in, tmp);
+    
+    const index_t k = tmp.maxDeriv();
+
+    const gsMatrix<T> & coefs = m_geo.coefs();
+
+    for ( index_t i = 0; i!=k; ++i)
+        for (index_t j=0; j < m_numPts; ++j) // for all evaluation points
+
+        for (index_t i = 0; i!=k; ++i)
+*/
+    
+    
+}
+
+
+
 }; // namespace gismo
