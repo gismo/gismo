@@ -135,7 +135,7 @@ public:
 
     /// Returns boxes which define refinment area. 
     std::vector<unsigned> getBoxes(const std::vector<T>& errors,
-				   const double threshold);
+				   const T threshold);
 
 
 private:
