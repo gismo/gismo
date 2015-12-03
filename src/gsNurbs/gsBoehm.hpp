@@ -199,7 +199,7 @@ void gsBoehmRefine( KnotVectorType & knots,
 
             T alfa = nknots[k+l] - newKnot;
 
-            if( fabs(alfa) == 0.0 )
+            if( math::abs(alfa) == 0.0 )
                 coefs.row(ind-1) = coefs.row(ind);
             else
             {
@@ -449,7 +449,7 @@ void gsTensorBoehmRefine(
                 const T alfa = alpha[j][ell - 1];
                 const int index = k - p + ell;
 
-                if (std::fabs(alfa) == 0.0)
+                if (math::abs(alfa) == 0.0)
                     new_coefs.row(new_ind + (index - 1) * new_step) =
                             new_coefs.row(new_ind + index * new_step);
                 else
@@ -612,7 +612,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
                         static_cast<unsigned>(mindex))
                     break;
 
-                if (std::fabs(alfa) == 0.0)
+                if (math::abs(alfa) == 0.0)
                 {
                     if (static_cast<unsigned>(mindex) ==
                             act_size_of_coefs[direction])

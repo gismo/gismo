@@ -60,7 +60,7 @@ void gsFitting<T>::compute(T lambda)
     for (int i = 0; i < 2; ++i) // to do: improve
         //nonZerosPerCol *= 2 * m_basis->degree(i) + 1;
         nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;//AM: Related to bandwidth of basis
-    A_mat.reserve( gsVector<T>::Constant(num_basis, nonZerosPerCol ) );
+    A_mat.reserve( gsVector<index_t>::Constant(num_basis, nonZerosPerCol ) );
     //gsDebugVar( nonZerosPerCol );
 
     A_mat.setZero(); // ensure that all entries are zero in the beginning

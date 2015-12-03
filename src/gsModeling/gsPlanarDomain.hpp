@@ -456,7 +456,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     return m;
 #endif
     T bbox_length_y =m_bbox(1,1)-m_bbox(1,0);
-    int yPoints = static_cast<int>( npoints*bbox_length_y) ;
+    int yPoints = cast<T,int>( npoints*bbox_length_y) ;
     int lb_yPoints=25;
     if(yPoints<lb_yPoints)
     {
@@ -525,7 +525,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
         int k(0);
         for ( typename std::vector<T>::const_iterator it = x_all.begin();
               it < x_all.end(); it += 2 )
-            numPoints[k++] = static_cast<int>( (*(it+1) - *it)* npoints );
+            numPoints[k++] = cast<T,int>( (*(it+1) - *it)* npoints );
 
         std::vector<VertexHandle> x_line;
         std::vector<VertexHandle> intersection_vec;

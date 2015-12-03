@@ -55,7 +55,7 @@ void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator
     if (m_numIter == m_maxIters)
         m_numIter--;
 
-    m_error = std::sqrt(residualNorm2 / rhsNorm2);
+    m_error = math::sqrt(residualNorm2 / rhsNorm2);
 
     //Post processing
     //Remove last row of H and g

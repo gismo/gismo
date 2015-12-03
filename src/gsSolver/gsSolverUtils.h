@@ -196,7 +196,7 @@ class gsLanczosMatrix
         while(iter<m_maxIter && res > m_tol)
         {
             x_new = x_old - value(x_old,n)/deriv(x_old,n);
-            res = std::abs(x_old - x_new);
+            res = math::abs(x_old - x_new);
 
             x_old = x_new;
             iter++;
@@ -226,15 +226,15 @@ public:
             return m_delta[0];
 
         // x0 is rowsumNorm
-        T x0 =std::abs(m_delta[0])+std::abs(m_gamma[0]);
+        T x0 =math::abs(m_delta[0])+math::abs(m_gamma[0]);
 
 
         for(unsigned i=1;i<n-2;i++)
-            if(std::abs(m_delta[i])+std::abs(m_gamma[i])+ std::abs(m_gamma[i-1])>x0)
-                x0 = std::abs(m_delta[i])+std::abs(m_gamma[i])+ std::abs(m_gamma[i-1]);
+            if(math::abs(m_delta[i])+math::abs(m_gamma[i])+ math::abs(m_gamma[i-1])>x0)
+                x0 = math::abs(m_delta[i])+math::abs(m_gamma[i])+ math::abs(m_gamma[i-1]);
 
-        if(std::abs(m_delta[n-1])+std::abs(m_gamma[n-2])>x0)
-            x0 = std::abs(m_delta[n-1])+std::abs(m_gamma[n-2]);
+        if(math::abs(m_delta[n-1])+math::abs(m_gamma[n-2])>x0)
+            x0 = math::abs(m_delta[n-1])+math::abs(m_gamma[n-2]);
 
         return newtonIteration(x0);
     }

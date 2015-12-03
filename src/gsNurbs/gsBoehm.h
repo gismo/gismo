@@ -366,7 +366,7 @@ void computeTensorAlpha(std::vector< std::vector<T> >& alpha,
         for (int ell = 1; ell <= p; ell++)
         {
             T alfa = nknots[k + ell] - newKnot;
-            if (std::fabs(alfa) != 0.0)
+            if (math::abs(alfa) != 0.0)
                 alfa /= nknots[k + ell] - knots[i - p + ell];
 
             alpha[j][ell - 1] = alfa;

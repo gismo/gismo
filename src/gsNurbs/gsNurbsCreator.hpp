@@ -173,8 +173,8 @@ gsNurbsCreator<T>::BSplineRectangle( T const & low_x,
     for(int i =0; i < 4; i++)
     {
         tx = C(i,0); ty = C(i,1);
-        C(i,0) = std::cos(r) * tx - std::sin(r) * ty;
-        C(i,1) = std::sin(r) * tx + std::cos(r) * ty;
+        C(i,0) = math::cos(r) * tx - math::sin(r) * ty;
+        C(i,1) = math::sin(r) * tx + math::cos(r) * ty;
     }
 
     gsMatrix<T> D(9,2);

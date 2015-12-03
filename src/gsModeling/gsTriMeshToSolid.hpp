@@ -146,9 +146,9 @@ void gsTriMeshToSolid<T>::getFeatures(T angleGrad,bool& bWarnNonManifold,bool& b
         }
         GISMO_ASSERT(vT.size()==2, "Edge must belong to two triangles, got "<<vT.size() );
         gsVector3d<T> nv0((*vT[0]).orthogonalVector());
-        nv0 = nv0/(sqrt(nv0.squaredNorm()));
+        nv0 = nv0/(math::sqrt(nv0.squaredNorm()));
         gsVector3d<T> nv1((*vT[1]).orthogonalVector());
-        nv1 = nv1/(sqrt(nv1.squaredNorm()));
+        nv1 = nv1/(math::sqrt(nv1.squaredNorm()));
         T cosPhi( nv0.dot(nv1) );
         // Numerical robustness
         if(cosPhi>1.0) cosPhi=1.0;
@@ -257,9 +257,9 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
             {
 
                 gsVector3d<T> nv0(edge[j].nFaces[0]->orthogonalVector());
-                nv0 = nv0/(sqrt(nv0.squaredNorm()));
+                nv0 = nv0/(math::sqrt(nv0.squaredNorm()));
                 gsVector3d<T> nv1(edge[j].nFaces[1]->orthogonalVector());
-                nv1 = nv1/(sqrt(nv1.squaredNorm()));
+                nv1 = nv1/(math::sqrt(nv1.squaredNorm()));
                 T cosPhi( nv0.dot(nv1) );
                 // Numerical robustness
                 if(cosPhi>1.0) cosPhi=1.0;
@@ -1070,7 +1070,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             for(size_t j=0;j<faceEdges[i].size();j++)
             {
                 T l=calcDist(faceEdges[i][j]->source,faceEdges[i][j]->target);
-                int add= math::max( static_cast<int>(l/h)-1, 0 );
+                int add= math::max( cast<T,int>(l/h)-1, 0 );
                 nAddIntPointsPerEdge.push_back(add);
                 nAddIntPoints+=add;
             }
@@ -1211,7 +1211,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         }
         gsMatrix<T> appxNormalPoints(2,0);
         gsMatrix<T> appxNormals(3,0);
-        int innerPts=(int)(sqrt((T)nCorners)+kvAdditionalInnerPoints);
+        int innerPts=cast<T,int>(math::sqrt(cast<T,int>(nCorners))+kvAdditionalInnerPoints);
         if (innerPts<0)
             innerPts=0;
 
@@ -1244,7 +1244,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         if(plot) // for debugging ( plot trimmed surfaces
         {
             gsMesh<T> * m;
-            int nPoints=static_cast<int>(meshPoints*sqrt(sqrt(areas[i]/maxArea)));
+            int nPoints=cast<T,int>(meshPoints*math::sqrt(math::sqrt(areas[i]/maxArea)));
             if (nPoints<10)
                 nPoints=10;
             m = cface->toMesh(nPoints);
@@ -1796,7 +1796,7 @@ T gsTriMeshToSolid<T>::calcArea(FaceHandle f1)
     T d3=calcDist(f1->vertices[1],f1->vertices[2]);
     //p=perimeter/2
     T p=(d1+d2+d3)/2;
-    T area=sqrt(p*(p-d1)*(p-d2)*(p-d3));
+    T area=math::sqrt(p*(p-d1)*(p-d2)*(p-d3));
     return area;
 }
 

@@ -33,7 +33,7 @@ public:
     gsGaussRule() { }
     
     gsGaussRule(gsVector<index_t> const & numNodes, 
-                const unsigned digits = std::numeric_limits<T>::digits10 )
+                const unsigned digits = REAL_DIG )
     { 
         setNodes(numNodes, digits);
     }
@@ -44,7 +44,7 @@ public:
     gsGaussRule(const gsBasis<T> & basis, const double quA, const int quB, const int fixDir); 
 
     gsGaussRule(index_t numNodes, 
-                const unsigned digits = std::numeric_limits<T>::digits10 )
+                const unsigned digits = REAL_DIG )
     { 
         setNodes(numNodes, digits);
     }
@@ -55,10 +55,10 @@ public:
 public:
     // see gsQuadRule.h for documentation
     void setNodes( gsVector<index_t> const & numNodes, 
-                   unsigned digits = std::numeric_limits<T>::digits10 );
+                   unsigned digits = REAL_DIG );
 
     void setNodes( index_t numNodes, 
-                   unsigned digits = std::numeric_limits<T>::digits10 )
+                   unsigned digits = REAL_DIG )
     {
         gsVector<index_t> nn(1);
         nn[0] = numNodes;
@@ -73,7 +73,7 @@ private:
      * This function is called by setNodes(), if lookupReference() (which is called first) returned \a false.
      */
     static void computeReference(index_t n, gsVector<T> & x, gsVector<T> & w, 
-                                 unsigned digits =  std::numeric_limits<T>::digits10);
+                                 unsigned digits =  REAL_DIG);
 
     /** 
      *@brief  Look up function for the Gauss quadrature rule in the interval [-1,1].

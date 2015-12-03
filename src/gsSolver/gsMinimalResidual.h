@@ -48,7 +48,7 @@ public:
                 break;
             m_numIter++;
         }
-        m_error = std::sqrt(residualNorm2 / rhsNorm2);
+        m_error = math::sqrt(residualNorm2 / rhsNorm2);
     }
 
     /// Solve system without preconditioner

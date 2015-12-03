@@ -523,8 +523,8 @@ void gsCurveLoop<T>::initFromIsConvex(const std::vector<bool> isConvex, T margin
     for(size_t i = 0; i < np; i++)
     {
         T angle = (T)i * (T)M_PI * 2 / np;
-        corners(i, 0) = std::cos(angle);
-        corners(i, 1) = std::sin(angle);
+        corners(i, 0) = math::cos(angle);
+        corners(i, 1) = math::sin(angle);
     }
     // choose control points of cubic splines which ensure the correct angle signs
     gsMatrix<T> cps(np * 4, 2);

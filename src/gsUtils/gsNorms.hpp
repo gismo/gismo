@@ -117,7 +117,7 @@ T computeL2Distance(const gsField<T>& u, const gsField<T>& v, int numEvals)
         dist += curDist * curDist;
     }
 
-    return std::sqrt(dist);
+    return math::sqrt(dist);
 }
 
 

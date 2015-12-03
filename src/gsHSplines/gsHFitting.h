@@ -248,7 +248,7 @@ void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_thr
 
 template <unsigned d, class T>
 std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
-						 const double threshold)
+						 const T threshold)
 {
     // cells contains lower corners of elements marked for refinment from maxLevel 
     std::vector<unsigned> cells;

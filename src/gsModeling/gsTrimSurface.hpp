@@ -187,7 +187,7 @@ gsBSpline<T> gsTrimSurface<T>::cuttingCurve(int const & sourceID,int const & tar
   int curveDeg = trimLoop[sourceID]->degree();
   if (curveDeg<=1)
   {
-    std::cout<<"\n WARNING: gsTrimSurface: degree of trimming curve is less than 2, this will fail to work in most cases. The degree is set to 3 instead.\n";
+    gsWarn<<"gsTrimSurface: degree of trimming curve is less than 2, this will fail to work in most cases. The degree is set to 3 instead.\n";
     curveDeg=3;
   }
   gsKnotVector<T> kv(0, 1, 0, curveDeg+1); // todo: get kv from curve00.basis().knots(),curve00.basis().degree()
@@ -311,7 +311,7 @@ T gsTrimSurface<T>::getLengthOfCurve(const int loopNumber,
     T length = 1;
     T newLength = 0;
 
-    while (eps < std::abs(length - newLength))
+    while (eps < math::abs(length - newLength))
     {
         params = uniformPointGrid(supStart, supEnd, n);
         length = newLength;
@@ -383,7 +383,7 @@ T gsTrimSurface<T>::arcLength(const gsCurve<T>& curve,
             value += derivative(row, 0) * derivative(row, 0);
         }
 
-        value = std::sqrt(value);
+        value = math::sqrt(value);
         length += weights(col) * value;
     }
 
@@ -417,7 +417,7 @@ T gsTrimSurface<T>::getLengthOfCurve(const gsCurve<T>& curve,
                 dst += tmp;
             }
 
-            length += std::sqrt(dst);
+            length += math::sqrt(dst);
         }
     }
     else
@@ -526,7 +526,7 @@ T gsTrimSurface<T>::findParameter(const gsCurve<T>& curve,
     T midParam;
 
     // do the binary search
-    while (eps < std::abs(arcUpp - arcLow))
+    while (eps < math::abs(arcUpp - arcLow))
     {
         midParam = lowParam + (uppParam - lowParam) / 2;
 

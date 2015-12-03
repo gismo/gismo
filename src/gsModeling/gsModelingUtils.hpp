@@ -166,13 +166,13 @@ T conditionedAngle(gsVector3d<T> vec1, gsVector3d<T> vec2)
 {   T dotp = vec1.dot(vec2)/( vec1.norm()*vec2.norm() );
     if ( dotp<-1 ) {
         dotp = -1;
-        std::cout<<"\nWARNING: gsModelingUtils: truncations done for std::acos \n";
+        gsWarn<<"gsModelingUtils: truncations done for std::acos \n";
         return M_PI;}
     if ( dotp>1 ) {dotp = 1;
-        std::cout<<"\nWARNING: gsModelingUtils: truncations done for std::acos \n";
+        gsWarn<<"gsModelingUtils: truncations done for std::acos \n";
         return 0;}
 
-    T ag = std::acos(dotp);
+    T ag = math::acos(dotp);
     return ag;
 }
 

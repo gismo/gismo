@@ -77,7 +77,7 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLine
 
     if(m_calcEigenvals)
     {
-        gamma.push_back(-std::sqrt(beta)/alpha);
+        gamma.push_back(-math::sqrt(beta)/alpha);
         delta.push_back(beta/alpha);
     }
     return false;

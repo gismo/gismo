@@ -53,6 +53,8 @@
   /* Optional automatic differentiation */
   #define DScalar ad::DScalar2<real_t,-1>
   #include <exprtk_ad_adaptor.hpp> // external file
+#elif defined(GISMO_WITH_MPFR)
+  #include <exprtk_mpfr_adaptor.hpp> // external file
 #else
   #include <exprtk.hpp>            // external file
 #endif
