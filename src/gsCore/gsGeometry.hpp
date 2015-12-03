@@ -185,7 +185,7 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
 
 template<class T>
 void
-gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
+gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
 {  
 /*
 temporary
