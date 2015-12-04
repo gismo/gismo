@@ -113,7 +113,7 @@ class gsFuncData
 {
     friend class gsFunctionSet<T>;
 
-protected:
+public:
     typedef typename gsMatrix<T>::constColumn constColumn;
     // Types for returning quick access to data in matrix format
     typedef gsAsConstMatrix<T, -1, -1>                  matrixView;
@@ -288,11 +288,11 @@ public:
 public:
     inline constColumn point(const index_t point) const { return points.col(point);}
 
-    inline constColumn measure(const index_t point) const
+    inline T measure(const index_t point) const
     {
         GISMO_ASSERT(flags & NEED_MEASURE,
                    "measures are not computed unless the NEED_MEASURE flag is set.");
-        return measures.col(point);
+        return measures(0,point);
     }
 
     inline matrixView fundForm(const index_t point) const
