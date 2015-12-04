@@ -1211,7 +1211,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         }
         gsMatrix<T> appxNormalPoints(2,0);
         gsMatrix<T> appxNormals(3,0);
-        int innerPts=cast<T,int>(math::sqrt(cast<T,int>(nCorners))+kvAdditionalInnerPoints);
+        int innerPts=cast<T,int>(math::sqrt(cast<int,T>(nCorners+kvAdditionalInnerPoints)));
         if (innerPts<0)
             innerPts=0;
 
