@@ -119,7 +119,7 @@ void dampedPreJacobiSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spa
     gsMatrix<real_t> corr;
     corr = f - A * x;
     corr.array() /= A.diagonal().array();
-    
+
     corr = gsSparseSolver<>::CGDiagonal( P ).setTolerance(1e-3).solve(corr).eval();
     corr.array() *= P.diagonal().array();
 #else
@@ -148,8 +148,8 @@ void gaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x,
     // A is supposed to be symmetric, so it doesn't matter if it's stored in row- or column-major order
     for (int i = 0; i < A.outerSize(); ++i)
     {
-        real_t diag = real_t(0.0);
-        real_t sum = real_t(0.0);
+        real_t diag = 0.0;
+        real_t sum  = 0.0;
 
         for (Eigen::SparseMatrix<real_t>::InnerIterator it(A,i); it; ++it)
         {
@@ -170,8 +170,8 @@ void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real
     // A is supposed to be symmetric, so it doesn't matter if it's stored in row- or column-major order
     for (int i = A.outerSize() - 1; i >= 0; --i)
     {
-        real_t diag = real_t(0.0);
-        real_t sum = real_t(0.0);
+        real_t diag = 0.0;
+        real_t sum = 0.0;
 
         for (Eigen::SparseMatrix<real_t>::InnerIterator it(A,i); it; ++it)
         {
@@ -225,8 +225,8 @@ void preGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spar
     // A is supposed to be symmetric, so it doesn't matter if it's stored in row- or column-major order
     for (int i = 0; i < A.outerSize(); ++i)
     {
-        real_t diag = real_t(0.0);
-        real_t sum = real_t(0.0);
+        real_t diag = 0.0;
+        real_t sum  = 0.0;
 
         for (Eigen::SparseMatrix<real_t>::InnerIterator it(A,i); it; ++it)
         {
@@ -238,7 +238,7 @@ void preGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spar
         corr(i) = (f(i) - sum) / diag;
     }
 
-    
+
     corr = gsSparseSolver<real_t>::CGDiagonal( P )
             .setTolerance(1e-3).solve(corr).eval();
     x.array() += tau * /*P.diagonal().array() * */ corr.array();

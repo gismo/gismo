@@ -1,9 +1,9 @@
 /** @file gsGeometryEvaluator.hpp
 
     @brief Provides implementation of GeometryEvaluation interface.
-    
+
     This file is part of the G+Smo library-
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -19,12 +19,12 @@ namespace gismo
 {
 
 template<typename T,int ParDim>
-void secDerToHessian(typename gsMatrix<T,ParDim*(ParDim+1)/2,1>::constRef & secDers, 
+void secDerToHessian(typename gsMatrix<T,ParDim*(ParDim+1)/2,1>::constRef & secDers,
                      gsMatrix<T,ParDim,ParDim> & hessian)
 {
     switch ( ParDim )
     {
-    case 1: 
+    case 1:
         hessian(0,0)=secDers(0,0);
         break;
     case 2:
@@ -50,12 +50,12 @@ void secDerToHessian(typename gsMatrix<T,ParDim*(ParDim+1)/2,1>::constRef & secD
 }
 
 template<typename T,int ParDim>
-void hessianToSecDer (const gsMatrix<T,ParDim,ParDim> & hessian, 
+void hessianToSecDer (const gsMatrix<T,ParDim,ParDim> & hessian,
                       typename gsMatrix<T>::Row secDers)
 {
     switch ( ParDim )
     {
-    case 1: 
+    case 1:
         secDers(0,0)=hessian(0,0);
         break;
     case 2:
@@ -85,7 +85,7 @@ secDerToJacPartial(const typename gsMatrix<T>::constColumn  & secDer,
 {
     switch ( ParDim )
     {
-    case 1: 
+    case 1:
         *DJac = secDer;
         break;
     case 2:
@@ -149,7 +149,7 @@ void secDerToTensor(const typename gsMatrix<T>::constColumn & secDers,
         secDerToHessian<T,ParDim>(secDers.template segment<dim>(i*dim),a[i]);
 }
 
-// Geometry transformation 
+// Geometry transformation
 template <class T, int ParDim, int GeoDim>
 struct gsGeoTransform
 {
@@ -180,7 +180,7 @@ struct gsGeoTransform
         {
             const Eigen::Block<const typename gsMatrix<T>::Base,GeoDim,ParDim> Ji =
                     jacobians.template block<GeoDim,ParDim>(0, i * ParDim);
-            
+
             result.template block<GeoDim,ParDim>(0, i*ParDim) =
                 Ji *  ( Ji.transpose() * Ji ).inverse().eval(); // temporary here
         }
@@ -227,11 +227,11 @@ struct gsGeoTransform
         const gsVector<T,GeoDim> tangent  = sgn * jacobians.template block<GeoDim, 1>(0,!dir);
         if ( tangent.squaredNorm() < 1e-10 )
         gsWarn<< "Zero tangent.\n";
-        
+
         // Manifold outer normal vector
         const gsVector<T,3> outer_normal = jacobians.template block<GeoDim, 1>(0,0).cross(
         jacobians.template block<GeoDim, 1>(0,1) ).normalized();
-        
+
         // Co-normal vector
         result = tangent.cross( outer_normal ) ;
         */
@@ -341,7 +341,7 @@ gsGenericGeometryEvaluator<T,ParDim,codim>::evaluateAt(const gsMatrix<T>& u)
     // todo: If we assume all points (u) lie on the same element we may
     // store the actives only once
     m_geo.basis().active_into(u, m_active);
-    
+
     if (this->m_flags & NEED_VALUE)
         computeValues();
     if (this->m_flags & NEED_JACOBIAN)
@@ -445,9 +445,9 @@ transformValuesHdiv( index_t k,
     for(int comp = 0; comp < ParDim; ++comp)
         numA += allValues[comp].rows();
     result.resize(GeoDim,numA); // GeoDim x numA
-    
+
     const T det = this->jacDet(k);
-    const typename gsMatrix<T>::constColumns & jac = this->jacobian(k);    
+    const typename gsMatrix<T>::constColumns & jac = this->jacobian(k);
     index_t c = 0;
     for(int comp = 0; comp < ParDim; ++comp)  // component
     {
@@ -468,45 +468,45 @@ transformValuesHdiv( index_t k,
 //{
 // /*
 //    //Assumptions: GeoDim = ParDim = TargetDim
-    
+
 //    index_t c = 0;
 //    for(size_t comp = 0; comp < allValues.size(); ++comp)
 //        c += allValues[c].rows();
 //    result.resize(GeoDim*ParDim,c);
-    
+
 //    const T det = this->jacDet(k);
 //    const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
 //    const typename gsMatrix<T>::constColumns & Jac    = this->jacobian(k);
 //    const Eigen::Transpose< const typename gsMatrix<T>::constColumns > &
 //        invJac = this->gradTransform(k).transpose();
-    
+
 //    gsMatrix<T,GeoDim,ParDim> DJac[ParDim];
 //    secDerToJacPartial<ParDim,T>(secDer,DJac);
-    
+
 //    gsVector<T> gradDetJrec(ParDim);
 //    for (int i=0; i<ParDim; ++i)
 //        gradDetJrec[i] = - ( invJac * DJac[i] ).trace() / det;
-    
+
 //    c = 0;
 //    for(int comp = 0; comp < GeoDim; ++comp) // component
 //    {
 //        const typename gsMatrix<T>::constColumn & bvals = allValues[comp].col(k);
 //        const typename gsMatrix<T>::constColumn & bder  = allGrads [comp].col(k);
-        
+
 //        for( index_t j=0; j< bvals.rows() ; ++j) // active of component
 //        {
 //            gsAsMatrix<T> tGrad(result.col(c).data(), GeoDim, GeoDim);
-            
+
 //            tGrad.noalias() = Jac.col(comp) * bder.segment(j*ParDim,ParDim).transpose() * invJac / det;
-            
+
 //            // tGrad.colwise() += gradDetJrec[i];
 //            for (int i=0; i<ParDim; ++i) // result column
 //            {
 //                tGrad.col(i).array()   += gradDetJrec[i];
-                
+
 //                tGrad.col(i) += ( allValues[comp](j,k) / det ) * DJac[i].col(j);
 //                }
-            
+
 //            ++c;// next basis function
 //        }
 //    }
@@ -523,7 +523,7 @@ transformLaplaceHgrad(  index_t k,
 {
     gsMatrix<T> hessians;
     transformDeriv2Hgrad(k,allGrads,allHessians,hessians);
-    result=hessians.leftCols(ParDim).rowwise().sum();
+    result=hessians.leftCols(ParDim).rowwise().sum(); // trace of Hessian
     result.transposeInPlace();
 }
 
@@ -549,9 +549,9 @@ transformDeriv2Hgrad(  index_t k,
 
     result.resize(numGrads,fisSecDirSize);
 
-    typename gsMatrix<T,GeoDim,ParDim>::constRef JM1 = 
+    typename gsMatrix<T,GeoDim,ParDim>::constRef JM1 =
         m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim);
-    typename gsMatrix<T,ParDim,GeoDim>::constRef JMT = 
+    typename gsMatrix<T,ParDim,GeoDim>::constRef JMT =
         m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
 
     // First part: J^-T H J^-1

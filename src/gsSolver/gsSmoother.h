@@ -2,15 +2,15 @@
 
     @brief Provides Multigrid smoothers.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): C. Hofreither
 */
- 
+
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
@@ -24,7 +24,7 @@ namespace gismo
 
 
 /// @brief A struct containing an enumeration of smoothing algorithms and functions to apply them for use in gsMultiGrid. (OBSOLETE, see gsSmoother below)
-/// 
+///
 /// \ingroup Solver
 struct Smoother
 {
@@ -75,7 +75,7 @@ public:
 class GISMO_EXPORT gsRichardsonSmoother : public gsSmoother
 {
 public:
-    gsRichardsonSmoother(real_t damping = real_t(1))
+    gsRichardsonSmoother(real_t damping = 1.0)
         : m_damping(damping)
     { }
 
@@ -97,7 +97,7 @@ private:
 class GISMO_EXPORT gsJacobiSmoother : public gsSmoother
 {
 public:
-    gsJacobiSmoother(real_t damping = real_t(1))
+    gsJacobiSmoother(real_t damping = 1.0)
         : m_damping(damping)
     { }
 
