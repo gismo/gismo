@@ -47,14 +47,20 @@ protected:
     // -- Structure
     DofMappers m_mappers;
 
+    /// @brief map between rows blocks and index of \a m_mappers
     gsVector<size_t> m_row;
 
+    /// @brief map between columns blocks and index of \a m_mappers
     gsVector<size_t> m_col;    
 
+    /// @brief strides for the rows (shifting of mapped indices)
     gsVector<index_t> m_rstr;
 
+    /// @brief strides for the columns (shifting of mapped indices)
     gsVector<index_t> m_cstr;
 
+    /// @brief map between column blocks and used multibasis
+    /// (which unknown/component correlate to which basis)
     gsVector<index_t> m_cvar;
     //
 
@@ -531,7 +537,7 @@ public: /* Add local contributions to system matrix and right-hand side */
         }
     }
 
-    // Seveal local matrices/rhs, same row/col indexing
+    // Several local matrices/rhs, same row/col indexing
     void push(const std::vector<gsMatrix<T> > & localMat, 
               const std::vector<gsMatrix<T> > & localRhs,
               const std::vector<gsMatrix<unsigned> > & actives,

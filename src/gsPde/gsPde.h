@@ -195,16 +195,24 @@ public:
         return m_domain.dim();
     }
 
+    /**
+
+     */
+    virtual gsPde<T>* restrictToPatch(int np) const{GISMO_NO_IMPLEMENTATION}
+
+    virtual T getCoeffForIETI(int np) const {GISMO_NO_IMPLEMENTATION}
+
 protected:
     /// @brief Description of the unknown fields:
     /// for each one the target dimension.
     gsVector<unsigned>                 m_unknownDim;
-    /// @brief Exact solution(s)
-    std::vector<gsFunction<T> *>          m_solution;
+
     /// @brief Computational domain
     gsMultiPatch<T>                       m_domain;
     /// @brief Boundary conditions
     gsBoundaryConditions<T>               m_boundary_conditions;
+    /// @brief Exact solution(s)
+    std::vector<gsFunction<T> *>          m_solution;
 }; // class gsPde
 
 /// Print (as string) operator to be used by all derived classes

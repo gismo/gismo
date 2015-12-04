@@ -50,8 +50,8 @@ public:
     \param[in] dirStrategy option for the treatment of Dirichlet boundary
     \param[in] intStrategy option for the treatment of patch interfaces
     */
-    gsPoissonAssembler( gsPoissonPde<T> const         & pde,
-                        gsMultiBasis<T> const         & bases,
+    gsPoissonAssembler( const gsPoissonPde<T>          & pde,
+                        const gsMultiBasis<T>          & bases,
                         dirichlet::strategy           dirStrategy,
                         iFace::strategy               intStrategy = iFace::glue)
     {
@@ -87,6 +87,16 @@ public:
         Base::initialize(m_ppde, basis, m_options);
     }
 
+    gsAssembler<T>* clone() const
+    {
+        const gsPoissonPde<T> * ppde = static_cast<const gsPoissonPde<T>* >(m_pde_ptr);
+        return new gsPoissonAssembler<T>(*ppde,m_bases[0], m_options.dirStrategy,m_options.intStrategy );
+    }
+    gsAssembler<T>* create() const
+    {
+        return new gsPoissonAssembler<T>();
+    }
+
     // Refresh routine
     void refresh();
 
@@ -101,6 +111,7 @@ public:
     {
         return m_system.matrix().template selfadjointView<Lower>();
     }
+
 
 protected:
 

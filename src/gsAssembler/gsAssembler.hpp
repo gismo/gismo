@@ -67,6 +67,8 @@ bool gsAssembler<T>::check()
                       "on a patch id which does not exist.");
     }
 
+    //TODO: add check m_bases[i].nBases() == pde.domain().nPatches().
+
     if ( m_pde_ptr->domain().nPatches() == 0)
         gsWarn<< "No domain given ! \n";
 

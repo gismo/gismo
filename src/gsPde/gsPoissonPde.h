@@ -33,8 +33,6 @@ namespace gismo
 template<class T>
 class gsPoissonPde : public gsPde<T>
 {
-protected:
-    using gsPde<T>::m_domain;
 
 public:
     
@@ -73,12 +71,15 @@ public:
         m_unknownDim.setOnes(1);
     }
 
+
     GISMO_DEPRECATED
     gsPoissonPde(void * unused)
     {
         m_rhs=new gsConstantFunction<T>(0);
         m_unknownDim.setOnes(1);
     }
+
+
 
     /**
      * @brief gives the number of rhs functions of the PDEs
@@ -95,7 +96,7 @@ public:
     virtual bool isSymmetric () const { gsWarn<<"Function is gsPde::isSymmetric should not be used!!"; return true;}
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    virtual std::ostream &print(std::ostream &os) const
     {
 	    os<<"Poisson's equation  -\u0394u = f ,  with:\n";
 	    os<<"Source function f= "<< m_rhs <<".\n";
@@ -103,9 +104,30 @@ public:
             os<<"Exact solution g = "<< * this->m_solution[0] <<".\n";
 	    return os; 
 	}
+
+
+    virtual gsPde<T>* restrictToPatch(int np) const
+    {
+        gsBoundaryConditions<T> bc;
+        m_boundary_conditions.getConditionsForPatch(np,bc);
+        if(m_solution.size()!=0)
+            return new gsPoissonPde<T>(m_domain.patch(np),bc,m_rhs,m_solution[0]);
+        else
+            return new gsPoissonPde<T>(m_domain.patch(np),bc,m_rhs);
+
+    }
+
+    virtual T getCoeffForIETI(int np) const {
+        if(np==0)
+            gsInfo<<"Assume homogeneous coefficient alpha==1\n";
+        return 1;
+    }
 protected:
     using gsPde<T>::m_unknownDim;
     using gsPde<T>::m_solution;
+    using gsPde<T>::m_domain;
+    using gsPde<T>::m_boundary_conditions;
+
     gsPiecewiseFunction<T> m_rhs;
 }; // class gsPoissonPde
 

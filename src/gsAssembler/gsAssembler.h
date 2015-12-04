@@ -84,11 +84,11 @@ public: /* Constructors and initializers */
     /// @brief Intitialize function for, sets data fields
     /// using a multi-patch, a vector of multi-basis and boundary conditions.
     void initialize(const gsPde<T>                         & pde,
-                    const gsStdVectorRef<gsMultiBasis<T> > & bases, 
+                    const gsStdVectorRef<gsMultiBasis<T> > & bases,
+                    //note: merge with initialize(.., const gsMultiBasis<T> ,..) ?
                     const gsAssemblerOptions & opt = gsAssemblerOptions() )
     {
         m_pde_ptr = &pde;
-        m_bases.clear();// bug ?
         m_bases = bases;
         m_options = opt;
         refresh(); // virtual call to derived
@@ -100,8 +100,27 @@ public: /* Constructors and initializers */
                     const gsAssemblerOptions & opt = gsAssemblerOptions() )
     {
         m_pde_ptr = &pde;
-        m_bases.clear();// bug ?
+        m_bases.clear();
         m_bases.push_back(bases);
+        m_options = opt;
+        refresh(); // virtual call to derived
+        GISMO_ASSERT( check(), "Something went wrong in assembler initialization");
+    }
+
+    void initialize(const gsPde<T>           & pde,
+                    const gsBasisRefs<T>     & basis,
+                    const gsAssemblerOptions & opt = gsAssemblerOptions() )
+    {
+        GISMO_ASSERT(pde.domain().nPatches() ==1,
+                     "You cannot initialize a multipatch domain with bases on a single patch");
+
+        m_pde_ptr = &pde;
+
+        m_bases.clear();
+        m_bases.reserve(basis.size());
+        for(std::size_t c=0;c<basis.size();c++)
+            m_bases.push_back(gsMultiBasis<T>(basis[c]));
+
         m_options = opt;
         refresh(); // virtual call to derived
         GISMO_ASSERT( check(), "Something went wrong in assembler initialization");

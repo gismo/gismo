@@ -441,6 +441,29 @@ public:
 
         return NULL;
     }
+
+    /**
+     * @brief returns the set of all boundary conditions with refer to patch \a np
+     * @param[in] np the patch index
+     * @param[out] result the new set of boundary conditions
+     */
+    void getConditionsForPatch(const int np, gsBoundaryConditions& result) const
+    {
+        result.clear();
+        std::vector<boundary_condition<T> > bc_all = allConditions(); //inefficient, but fewer code
+        for(typename std::vector<boundary_condition<T> >::const_iterator it = bc_all.begin(); it!= bc_all.end();it++)
+        {
+            if((*it).patch()==np)
+                result.addCondition(0,(*it).side(),(*it).type(),(*it).function(),(*it).unknown());
+        }
+
+        for(const_citerator it = cornerBegin(); it!= cornerEnd();it++)
+        {
+            if((*it).patch==np)
+                result.addCornerValue( (*it).corner, (*it).value,  0, (*it).unknown);
+        }
+    }
+
 // Data members
 private:
     struct patchSideComparison
