@@ -99,9 +99,9 @@ axlMesh *gsBasisConverter::toMesh(void)
 	// Vertices
 	for ( index_t j=0; j<eval_geo.cols(); ++j)
     {
-		pointSet.append( new axlPoint( pts.at(0,j),
-                                       ( pdim>1 ? pts.at(1,j) : 0 ),
-                                       eval_geo.at(0,j) ) );
+		pointSet.append( new axlPoint( pts(0,j),
+                                       ( pdim>1 ? pts(1,j) : 0 ),
+                                       eval_geo(0,j) ) );
     }
     
 	mesh->setVertices( pointSet );

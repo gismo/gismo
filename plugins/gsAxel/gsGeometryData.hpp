@@ -171,49 +171,49 @@ void gsGeometryData<axlObj>::eval(axlPoint *point, double u, double v, double w)
 template <class axlObj>
 double gsGeometryData<axlObj>::startParam(void)
 {
-    return m_geometry->parameterRange().at(0,0);
+    return m_geometry->parameterRange()(0,0);
 }
 
 template <class axlObj>
 double gsGeometryData<axlObj>::startParam_u(void)
 {
-    return m_geometry->parameterRange().at(0,0);
+    return m_geometry->parameterRange()(0,0);
 }
 
 template <class axlObj>
 double gsGeometryData<axlObj>::startParam_v(void)
 {
-    return m_geometry->parameterRange().at(1,0);
+    return m_geometry->parameterRange()(1,0);
 }
 
 template <class axlObj>
 double gsGeometryData<axlObj>::startParam_w(void)
 {
-    return m_geometry->parameterRange().at(2,0);
+    return m_geometry->parameterRange()(2,0);
 }
 
 template <class axlObj>
 double gsGeometryData<axlObj>::endParam(void)
 {
-    return m_geometry->parameterRange().at(0,1);
+    return m_geometry->parameterRange()(0,1);
 }
 
 template <class axlObj>
 double gsGeometryData<axlObj>::endParam_u(void)
 {
-    return m_geometry->parameterRange().at(0,1);
+    return m_geometry->parameterRange()(0,1);
 }
 
 template <class axlObj>
 double gsGeometryData<axlObj>::endParam_v(void)
 {
-    return m_geometry->parameterRange().at(1,1);
+    return m_geometry->parameterRange()(1,1);
 }
 
 template <class axlObj>
 double gsGeometryData<axlObj>::endParam_w(void)
 {
-    return m_geometry->parameterRange().at(2,1);
+    return m_geometry->parameterRange()(2,1);
 }
 
 template <class axlObj>
