@@ -79,7 +79,7 @@ T computeL2Distance(const gsGeometry<T>& geo, const gsFunction<T>& u, bool isPar
         
         for (index_t k = 0; k < numPts; ++k)
         {
-            const T funcDet = fabs( geo_jac.block(0, k*d, d,d).determinant() ) ;
+            const T funcDet = math::abs( geo_jac.block(0, k*d, d,d).determinant() ) ;
             const gsVector<T> diff = u_val.col(k) - v_val.col(k);
             sum += weights[k] * funcDet * diff.dot(diff);
         }
@@ -146,7 +146,7 @@ T igaL2DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
 
     for (index_t k = 0; k < domIt->numQuNodes(); ++k) // loop over quadrature nodes
     {
-        const T weight = domIt->quWeights[k] * fabs( geoEval->measure(k) );
+        const T weight = domIt->quWeights[k] * math::abs( geoEval->measure(k) );
         const gsVector<T> diff = func_vals.col(k) - v_val.col(k);
         sum += weight * diff.dot(diff);
     }
@@ -176,7 +176,7 @@ T igaL2DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
 
     for (index_t k = 0; k < domIt->numQuNodes(); ++k) // loop over quadrature nodes
     {
-        const T weight = domIt->quWeights[k] * fabs( geoEval->measure(k) );
+        const T weight = domIt->quWeights[k] * math::abs( geoEval->measure(k) );
         const gsVector<T> diff = func_vals.col(k) - v_val.col(k);
         sum += weight * diff.dot(diff);
     }
@@ -379,7 +379,7 @@ T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
         if ( v_isParam )
             v_ders.col(k)=geoEval->gradTransforms().block(0, k*d,d,d) * v_ders.col(k);// to do: generalize
 
-        const T weight = domIt->quWeights[k] * fabs( geoEval->measure(k) );
+        const T weight = domIt->quWeights[k] * math::abs( geoEval->measure(k) );
         sum += weight * (physGrad_f - v_ders.col(k)).squaredNorm();
     }
     return sum;
@@ -496,7 +496,7 @@ T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
         if ( v_isParam )
             v_ders.col(k)=geoEval->gradTransforms().block(0, k*d,d,d) * v_ders.col(k);// to do: generalize
 
-        const T weight = domIt->quWeights[k] * fabs( geoEval->measure(k) );
+        const T weight = domIt->quWeights[k] * math::abs( geoEval->measure(k) );
         sum += weight * (physGrad_f - v_ders.col(k)).squaredNorm();
     }
     return sum;

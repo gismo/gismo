@@ -210,8 +210,8 @@ protected:
             for( index_t i = 0; i < 4; i++)
                 for( index_t j = (i+1); j < 4; j++)
                 {
-                    T d = std::sqrt( (pC(0,i)-pC(0,j))*(pC(0,i)-pC(0,j)) + \
-                                     (pC(1,i)-pC(1,j))*(pC(1,i)-pC(1,j)) );
+                    T d = math::sqrt( (pC(0,i)-pC(0,j))*(pC(0,i)-pC(0,j)) + \
+                                      (pC(1,i)-pC(1,j))*(pC(1,i)-pC(1,j)) );
 
                     if( d > hh )
                         hh = d;
@@ -252,7 +252,7 @@ protected:
             for( index_t i = 0; i < 8; i++)
                 for( index_t j = (i+1); j < 8; j++)
                 {
-                    T d = std::sqrt( \
+                    T d = math::sqrt( \
                                 (pC(0,i)-pC(0,j))*(pC(0,i)-pC(0,j)) + \
                                 (pC(1,i)-pC(1,j))*(pC(1,i)-pC(1,j)) + \
                                 (pC(2,i)-pC(2,j))*(pC(2,i)-pC(2,j)) );

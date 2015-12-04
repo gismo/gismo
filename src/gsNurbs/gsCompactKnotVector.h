@@ -154,7 +154,7 @@ public:
         std::vector<unsigned>::iterator m = m_mult_sum.begin();
         while( k+1 != m_knots.end() )
         {
-            if ( fabs( *k - *(k+1) ) <= tol )
+            if ( math::abs( *k - *(k+1) ) <= tol )
             {
                 *m = *(m+1) ;
                 m_knots.erase(k+1);  

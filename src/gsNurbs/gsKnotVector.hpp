@@ -499,7 +499,7 @@ T gsKnotVector<T>::maxKnotSpanLength() const
 {
     T hmax = 0.0;
     for (int i = 0; i < size() - 1; ++i)
-        hmax = std::max(hmax, at(i+1) - at(i));
+        hmax = math::max(hmax, at(i+1) - at(i));
     return hmax;
 }
 
