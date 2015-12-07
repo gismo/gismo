@@ -260,7 +260,7 @@ struct gsGeoTransform<T,ParDim,ParDim>
         for (index_t i = 0; i < numPts; ++i)
         {
             result[i] =
-                    math::fabs((jacobians.template block<ParDim,ParDim>(0, i*ParDim)).determinant());
+                    math::abs((jacobians.template block<ParDim,ParDim>(0, i*ParDim)).determinant());
         }
     }
 

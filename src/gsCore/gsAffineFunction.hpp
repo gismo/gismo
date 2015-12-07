@@ -32,7 +32,7 @@ gsAffineFunction<T>::gsAffineFunction(const gsVector<index_t> &dir, const gsVect
     m_trans.resize(dim);
     for (index_t i=0; i<dim; ++i)
     {
-        const T ratio = size1(i)==0 ? 1 : size2(dir(i))/size1(i);
+        const T ratio = size1(i)==0 ? T(1) : size2(dir(i))/size1(i);
         m_mat(dir(i),i) = o(i) ? ratio : -ratio;
         m_trans(dir(i)) = o(i) ? low2(dir(i)) : upp2(dir(i));
     }

@@ -272,10 +272,10 @@ gsMatrix<T> gsCurveLoop<T>::getBoundingBox()
     for(int i = 1; i < numCurves; i++)
     {
         coefs = &(m_curves[i]->coefs());
-        result(0, 0) = std::min(result(0, 0), coefs->col(0).minCoeff()-offset );
-        result(1, 0) = std::min(result(1, 0), coefs->col(1).minCoeff()-offset );
-        result(0, 1) = std::max(result(0, 1), coefs->col(0).maxCoeff()+offset );
-        result(1, 1) = std::max(result(1, 1), coefs->col(1).maxCoeff()+offset );
+        result(0, 0) = math::min(result(0, 0), coefs->col(0).minCoeff()-offset );
+        result(1, 0) = math::min(result(1, 0), coefs->col(1).minCoeff()-offset );
+        result(0, 1) = math::max(result(0, 1), coefs->col(0).maxCoeff()+offset );
+        result(1, 1) = math::max(result(1, 1), coefs->col(1).maxCoeff()+offset );
     }
     return result;
 }

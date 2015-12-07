@@ -1,36 +1,27 @@
-# Copyright (c) 2008-2010 Kent State University
-# Copyright (c) 2011-2012 Texas A&M University
-#
-# This file is distributed under the MIT License. See the accompanying file
-# LICENSE.txt or http://www.opensource.org/licenses/mit-license.php for terms
-# and conditions.
+######################################################################
+## FindGMP.cmake
+## This file is part of the G+Smo library. 
+##
+## Author: Angelos Mantzaflaris 
+## Copyright (C) 2012 - 2015 RICAM-Linz.
+##
+##
+## GMP_FOUND       - system has GMP lib
+## GMP_INCLUDE_DIR - the GMP include directory
+## GMP_LIBRARY     - Libraries needed to use GMP
+## GMPXX_LIBRARY   - Libraries needed to use GMP C++
+######################################################################
 
-# FIXME: How do I find the version of GMP that I want to use?
-# What versions are available?
+if (GMP_INCLUDE_DIR AND GMP_LIBRARY AND GMPXX_LIBRARY)
+   set(GMP_FIND_QUIETLY TRUE)
+endif ()
 
-# NOTE: GMP prefix is understood to be the path to the root of the GMP
-# installation library.
-set(GMP_PREFIX "" CACHE PATH "The path to the prefix of a GMP installation")
+find_path(GMP_INCLUDE_DIR NAMES gmp.h )
+find_library(GMP_LIBRARY   NAMES gmp   libgmp   )
+find_library(GMPXX_LIBRARY NAMES gmpxx libgmpxx )
+MESSAGE(STATUS "Found GMP: " ${GMP_LIBRARY} " " ${GMPXX_LIBRARY} )
 
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(GMP DEFAULT_MSG GMP_INCLUDE_DIR GMP_LIBRARY)
 
-find_path(GMP_INCLUDE_DIR gmp.h 
-	PATHS ${GMP_PREFIX}/include /usr/include /usr/local/include)
-
-find_library(GMP_LIBRARY NAMES gmp 
-	PATHS ${GMP_PREFIX}/lib /usr/lib /usr/local/lib)
-
-
-if(GMP_INCLUDE_DIR AND GMP_LIBRARY)
-	get_filename_component(GMP_LIBRARY_DIR ${GMP_LIBRARY} PATH)
-	set(GMP_FOUND TRUE)
-endif()
-
-if(GMP_FOUND)
-   if(NOT GMP_FIND_QUIETLY)
-      MESSAGE(STATUS "Found GMP: ${GMP_LIBRARY}")
-   endif()
-elseif(GMP_FOUND)
-   if(GMP_FIND_REQUIRED)
-      message(FATAL_ERROR "Could not find GMP")
-   endif()
-endif()
+mark_as_advanced(GMP_INCLUDE_DIR GMP_LIBRARY)

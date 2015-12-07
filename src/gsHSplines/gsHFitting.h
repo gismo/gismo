@@ -358,7 +358,7 @@ template<unsigned d, class T>
 T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
 {
     std::vector<T> errorsCopy = errors; 
-    const std::size_t i = static_cast<std::size_t>(errorsCopy.size() * (1.0 - m_ref));
+    const std::size_t i = cast<T,std::size_t>(errorsCopy.size() * (1.0 - m_ref));
     typename std::vector<T>::iterator pos = errorsCopy.begin() + i;
     std::nth_element(errorsCopy.begin(), pos, errorsCopy.end());
     return *pos;

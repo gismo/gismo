@@ -40,13 +40,22 @@
 /* Enabled Extensions */
 #cmakedefine GISMO_WITH_PSOLID
 #cmakedefine GISMO_WITH_ONURBS
-//#cmakedefine GISMO_WITH_MPFR
 #cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_ADIFF
 
 #cmakedefine GISMO_WITH_SUPERLU
 #cmakedefine GISMO_WITH_PARDISO
 #cmakedefine GISMO_WITH_PASTIX
+
+#cmakedefine GISMO_WITH_MPFR
+#ifdef GISMO_WITH_MPFR
+#include <mpreal.h>
+#endif
+
+#cmakedefine GISMO_WITH_MPQ
+#ifdef GISMO_WITH_MPQ
+#include <gmpxx.h>
+#endif
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB

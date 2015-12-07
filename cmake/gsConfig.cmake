@@ -28,11 +28,14 @@ endif()
 # Set a default coefficient numeric types if not specified
 if(NOT GISMO_COEFF_TYPE)
   set (GISMO_COEFF_TYPE "double" CACHE STRING
-   "Coefficient type(float, double, long double, mpfr::mpreal)" FORCE)
-   set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
-   "float" "double" "long double" "mpfr::mpreal"
-   )
+   "Coefficient type(float, double, long double, mpfr::mpreal, mpq_class)" FORCE)
+elseif(${GISMO_COEFF_TYPE} STREQUAL "mpfr::mpreal")
+  set(GISMO_WITH_MPFR ON CACHE INTERNAL "Use MPFR")
+elseif(${GISMO_COEFF_TYPE} STREQUAL "mpq_class")
+  set(GISMO_WITH_MPQ ON CACHE INTERNAL "Use GMP/mpq_class")
 endif()
+set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
+"float" "double" "long double" "mpfr::mpreal" "mpq_class")
 
 if(NOT GISMO_INDEX_TYPE)
   set (GISMO_INDEX_TYPE "int" CACHE STRING

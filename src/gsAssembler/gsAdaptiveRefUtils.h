@@ -62,7 +62,7 @@ void gsMarkPercentage( const std::vector<T> & elError, T refParameter, std::vect
 
     // Compute the index from which the refinement should start,
     // once the vector is sorted.
-    unsigned idxRefineStart = static_cast<unsigned>( floor( refParameter * T(NE) ) );
+    unsigned idxRefineStart = cast<T,unsigned>( math::floor( refParameter * T(NE) ) );
     // ...and just to be sure we are in range:
     if( idxRefineStart == elErrCopy.size() )
         idxRefineStart -= 1;

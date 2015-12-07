@@ -155,7 +155,7 @@ void gsTriMeshToSolid<T>::getFeatures(T angleGrad,bool& bWarnNonManifold,bool& b
         else if(cosPhi<-1.0) cosPhi=-1.0;
 
         const T PI_(3.14159);
-        T phiGrad(acos(cosPhi)/PI_*180);
+        T phiGrad(math::acos(cosPhi)/PI_*180);
         if(phiGrad>=angleGrad)
             iter->sharp=1;
         else
@@ -266,7 +266,7 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
                 else if(cosPhi<-1.0) cosPhi=-1.0;
 
                 const T PI_(3.14159);
-                T phiGrad(acos(cosPhi)/PI_*180);
+                T phiGrad(math::acos(cosPhi)/PI_*180);
                 if(phiGrad>=innerAngle)
                     edge[j].sharp=1;
                 else
@@ -1241,10 +1241,12 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         gsPlanarDomain<T> * domain=  new gsPlanarDomain<T>(loops);
         gsTrimSurface<T> * cface= new gsTrimSurface<T> (spline,domain);
         tSurfVec.push_back(cface);
+
         if(plot) // for debugging ( plot trimmed surfaces
         {
             gsMesh<T> * m;
-            int nPoints=cast<T,int>(meshPoints*math::sqrt(math::sqrt(areas[i]/maxArea)));
+            int nPoints=cast<T,int>(
+                meshPoints*math::sqrt(math::sqrt(areas[i]/maxArea)));
             if (nPoints<10)
                 nPoints=10;
             m = cface->toMesh(nPoints);
@@ -1540,7 +1542,7 @@ T gsTriMeshToSolid<T>::calcWeight(VertexHandle v1,VertexHandle v2,
             {
 
                 const gsVector3d<T> vec2 = v2->nVertices[j]->coords - v1->coords;
-                weight+=tan(conditionedAngle( vec1,  vec2)/2);
+                weight+=math::tan(conditionedAngle( vec1,  vec2)/2);
             }
         }
     }

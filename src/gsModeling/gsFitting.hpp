@@ -297,7 +297,7 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
         T err = 0;
         for (index_t col = 0; col != m_points.cols(); col++)
         {
-            err += pow(m_points(row, col) - results(row, col), 2);
+            err += math::pow(m_points(row, col) - results(row, col), 2);
         }
 
         switch (type)
