@@ -31,9 +31,9 @@ typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basis
     GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     const boxSide side(dir_fixed,0);
     const typename gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> >::BoundaryBasisType * bBSplineBasis =
-            this->m_bases[0]->boundaryBasis(side);
+        this->m_bases[0]->boundaryBasis(side);
     typename gsTHBSplineBasis<d,T>::BoundaryBasisType* bBasis =
-            new typename gsTHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);//,this->m_tree.getMaxInsLevel()+1);
+        new typename gsTHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);//,this->m_tree.getMaxInsLevel()+1);
 
     if(d!=1)
     {
@@ -566,7 +566,7 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
     for(unsigned int i = 0; i < this->m_xmatrix.size(); i++)
     {
         if(this->m_xmatrix[i].size()>0)
-	{
+        {
             first_level = i;
             break;
         }
@@ -764,8 +764,8 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
             gsMatrix<T> bigger;
             int cprows = cp.rows();
             /*cp.conservativeResize( cp.rows() + temp_cp.rows(), Eigen::NoChange );
-            for( int j=cprows; j < cp.rows(); j++ )
-                cp.row(j) = temp2.row(j-cprows);*/
+              for( int j=cprows; j < cp.rows(); j++ )
+              cp.row(j) = temp2.row(j-cprows);*/
             bigger.resize(cp.rows()+new_cp.rows(), cp.cols());
             for(int j=0; j< bigger.rows(); j++)
             {
@@ -854,7 +854,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     for(unsigned int i = 0; i < this->m_xmatrix.size(); i++)
     {
         if(this->m_xmatrix[i].size()>0)
-	{
+        {
             first_level = i;
             break;
         }
@@ -899,7 +899,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     for(std::size_t i = 0; i < boxes.size(); i++)
     {
         for(unsigned j = 0; j < d; j++)
-	{
+        {
             //convert from param spece to index space in highest level
             // (!) next lines: Conversion form double to int, possible loss of data
             b1(i,j) = boxes[i][j];
@@ -1014,19 +1014,24 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs,
 {    
     //coeffs.resize(this->m_bases[0]->component(1).knots().size()-this->m_deg[1]-1,this->m_bases[0]->component(0).knots().size()-this->m_deg[0]-1);
     coeffs.resize(this->m_bases[0]->size(1),this->m_bases[0]->size(0));
-    for(int j = 0; j < coeffs.rows(); j++){
-        for(int k = 0; k < coeffs.cols(); k++){
-            unsigned s  = this->m_bases[0]->index(k,j);//this->fromPair(k,j, 0);
-            if(this->m_xmatrix[0].bContains(s) ){
+    for(int j = 0; j < coeffs.rows(); j++)
+    {
+        for(int k = 0; k < coeffs.cols(); k++)
+        {
+            const unsigned s = this->m_bases[0]->index(k,j);//this->fromPair(k,j, 0);
+            if(this->m_xmatrix[0].bContains(s) )
+            {
                 coeffs(j,k) = cmatrix[0].find( s )->second;
-            }else{
+            }
+            else
+            {
                 coeffs(j,k) = 0;
             }
         }
     }
 
-    for(int l = 1; l <=level; l++){
-
+    for(int l = 1; l <=level; l++)
+    {
         // global dyadic refinement with respect to previous level
         gsCompactKnotVector<T>k1;
         gsCompactKnotVector<T>k2;
@@ -1035,11 +1040,11 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs,
         std::vector<T> knots_x;
         std::vector<T> knots_y;
         for(unsigned int i = 1; i < this->m_bases[l]->knots(0).unique().size(); i = i+2)
-	{
+        {
             knots_x.push_back(this->m_bases[l]->knots(0).unique()[i]);
         }
         for(unsigned int i = 1; i < this->m_bases[l]->knots(1).unique().size(); i = i+2)
-	{
+        {
             knots_y.push_back(this->m_bases[l]->knots(1).unique()[i]);
         }
 
@@ -1051,12 +1056,12 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs,
 
         //overwrite the whole matrix
         for(int j = 0; j < coeffs.rows(); j++)
-	{
+        {
             for(int k = 0; k < coeffs.cols(); k++)
-	    {
+            {
                 unsigned s  = this->m_bases[l]->index(k,j);
                 if(this->m_xmatrix[l].bContains(s) )
-		{
+                {
                     coeffs(j,k) = cmatrix[l].find( s )->second;
                 }
             }
@@ -1256,8 +1261,8 @@ void gsTHBSplineBasis<d,T>::update_cmatrix(const gsMatrix<T>&geom_coeff, int col
 
 template<unsigned d, class T> 
 void gsTHBSplineBasis<d, T>::decomposeDomain(
-			   typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& boundaryAABB,
-			   typename gsTHBSplineBasis<d, T>::TrimmingCurves& trimCurves) const
+    typename gsTHBSplineBasis<d, T>::AxisAlignedBoundingBox& boundaryAABB,
+    typename gsTHBSplineBasis<d, T>::TrimmingCurves& trimCurves) const
 {
     Polylines polylines;
     AxisAlignedBoundingBox aabb;
@@ -1268,66 +1273,66 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
     int numBoundaryBoxes = 0;
     for (unsigned level = 0; level != aabb.size(); level++)
     {
-	boundaryAABB.push_back(std::vector< std::vector<unsigned> >());
-	trimCurves.push_back(std::vector< std::vector< std::vector< std::vector<T> > > >());
+        boundaryAABB.push_back(std::vector< std::vector<unsigned> >());
+        trimCurves.push_back(std::vector< std::vector< std::vector< std::vector<T> > > >());
 
-	//compare every aabb with the others
-	for (unsigned boxI = 0; boxI != aabb[level].size(); boxI++)
-	{
-	    bool isBoundaryBox = true; 
-	    for (unsigned boxJ = 0; boxJ != aabb[level].size(); boxJ++)
-	    {
-		if (boxI != boxJ)
-		{
-		    if (isFirstBoxCompletelyInsideSecond(aabb[level][boxI], aabb[level][boxJ]))
-		    {
-			isBoundaryBox = !isBoundaryBox;
-		    }
-		}
-	    }
+        //compare every aabb with the others
+        for (unsigned boxI = 0; boxI != aabb[level].size(); boxI++)
+        {
+            bool isBoundaryBox = true; 
+            for (unsigned boxJ = 0; boxJ != aabb[level].size(); boxJ++)
+            {
+                if (boxI != boxJ)
+                {
+                    if (isFirstBoxCompletelyInsideSecond(aabb[level][boxI], aabb[level][boxJ]))
+                    {
+                        isBoundaryBox = !isBoundaryBox;
+                    }
+                }
+            }
 	    
-	    if (isBoundaryBox)
-	    {
-		numBoundaryBoxes++;
-		boundaryAABB[level].push_back(aabb[level][boxI]);
+            if (isBoundaryBox)
+            {
+                numBoundaryBoxes++;
+                boundaryAABB[level].push_back(aabb[level][boxI]);
 		
-		// make new componenet
-		trimCurves[level].push_back(std::vector< std::vector< std::vector<T> > >());
-		trimCurves[level][trimCurves[level].size() - 1].push_back(polylines[level][boxI]);
-	    }
-	}	
+                // make new componenet
+                trimCurves[level].push_back(std::vector< std::vector< std::vector<T> > >());
+                trimCurves[level][trimCurves[level].size() - 1].push_back(polylines[level][boxI]);
+            }
+        }	
     }
     
     for (unsigned level = 0; level != aabb.size(); level++)
     {
-	for (unsigned box = 0; box != aabb[level].size(); box++)
-	{
-	    int closestBox = -1;
-	    for (unsigned boundBox = 0; 
-		 boundBox != boundaryAABB[level].size(); 
-		 boundBox++)
-	    {
-		if (isFirstBoxCompletelyInsideSecond(aabb[level][box], boundaryAABB[level][boundBox]))
-		{
-		    if (closestBox == -1 ||  
-			!isFirstBoxCompletelyInsideSecond(boundaryAABB[level][closestBox],
-							  boundaryAABB[level][boundBox]))
-		    {
-			closestBox = boundBox;
-		    }
-		}
-		else if (areBoxesTheSame(aabb[level][box], boundaryAABB[level][boundBox]))
-		{
-		    closestBox = -1;
-		    break;
-		}
-	    }
+        for (unsigned box = 0; box != aabb[level].size(); box++)
+        {
+            int closestBox = -1;
+            for (unsigned boundBox = 0; 
+                 boundBox != boundaryAABB[level].size(); 
+                 boundBox++)
+            {
+                if (isFirstBoxCompletelyInsideSecond(aabb[level][box], boundaryAABB[level][boundBox]))
+                {
+                    if (closestBox == -1 ||  
+                        !isFirstBoxCompletelyInsideSecond(boundaryAABB[level][closestBox],
+                                                          boundaryAABB[level][boundBox]))
+                    {
+                        closestBox = boundBox;
+                    }
+                }
+                else if (areBoxesTheSame(aabb[level][box], boundaryAABB[level][boundBox]))
+                {
+                    closestBox = -1;
+                    break;
+                }
+            }
 	    
-	    if (-1 < closestBox)
-	    {
-		trimCurves[level][closestBox].push_back(polylines[level][box]);
-	    }
-	}
+            if (-1 < closestBox)
+            {
+                trimCurves[level][closestBox].push_back(polylines[level][box]);
+            }
+        }
     }
 }
 
@@ -1335,8 +1340,8 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
 template<unsigned d, class T>
 gsTensorBSpline<d, T, gsCompactKnotVector<T> > 
 gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<unsigned>& boundingBox,
-					const unsigned level,
-					const gsMatrix<T>& geomCoefs) const
+                                        const unsigned level,
+                                        const gsMatrix<T>& geomCoefs) const
 {
     std::vector< std::map<unsigned, T> > cmatrix;
     initializeToZero(cmatrix);
@@ -1344,8 +1349,8 @@ gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<unsigned>& boundingBox
     gsVector<unsigned, d> low, upp, lowLevel, uppLevel;
     for (unsigned dim = 0; dim != d; dim++)
     {
-	low(dim) = boundingBox[dim];
-	upp(dim) = boundingBox[d + dim];
+        low(dim) = boundingBox[dim];
+        upp(dim) = boundingBox[d + dim];
     }
     this->m_tree.computeLevelIndex(low, level, lowLevel);
     this->m_tree.computeLevelIndex(upp, level, uppLevel);
@@ -1366,26 +1371,26 @@ gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<unsigned>& boundingBox
     
     for (index_t col = 0; col != geomCoefs.cols(); col++)
     {
-	update_cmatrix(geomCoefs, col, level, cmatrix);
-	gsMatrix<T> coefs;
-	globalRefinement(level, coefs, cmatrix);
+        update_cmatrix(geomCoefs, col, level, cmatrix);
+        gsMatrix<T> coefs;
+        globalRefinement(level, coefs, cmatrix);
 	
-	for (int i = lowIndex0; i <= uppIndex0; i++)
-	{
-	    for (int j = lowIndex1; j <= uppIndex1; j++)
-	    {
-		coefs(j - lowIndex1, i - lowIndex0) = coefs(j, i);
-	    }
-	}
+        for (int i = lowIndex0; i <= uppIndex0; i++)
+        {
+            for (int j = lowIndex1; j <= uppIndex1; j++)
+            {
+                coefs(j - lowIndex1, i - lowIndex0) = coefs(j, i);
+            }
+        }
 	
-	coefs.conservativeResize(numDirection1, numDirection0);
-	return_cp_1D(coefs, col, newCoefs);
+        coefs.conservativeResize(numDirection1, numDirection0);
+        return_cp_1D(coefs, col, newCoefs);
     }
 
     std::vector<gsCompactKnotVector<T> > kv(2);
 
     kv[0] = gsCompactKnotVector<T>(this->m_deg[0], knots0.begin() + lowIndex0, 
-                                 knots0.begin() + uppIndex0 + this->m_deg[0] + 2);
+                                   knots0.begin() + uppIndex0 + this->m_deg[0] + 2);
 
     kv[1] = gsCompactKnotVector<T>(this->m_deg[1], knots1.begin() + lowIndex1, 
                                    knots1.begin() + uppIndex1 + this->m_deg[1] + 2);
@@ -1402,31 +1407,31 @@ void gsTHBSplineBasis<d, T>::breakCycles(
 {
     for (std::size_t level = 0; level != polylines.size(); level++)
     {
-	for (std::size_t line = 0; line != polylines[level].size(); line++)
-	{
-	    std::pair< real_t, real_t> pt; // point
-	    index_t segment = identifyCycle(polylines[level][line], pt);
+        for (std::size_t line = 0; line != polylines[level].size(); line++)
+        {
+            std::pair< real_t, real_t> pt; // point
+            index_t segment = identifyCycle(polylines[level][line], pt);
 	    
-	    if (-1 < segment)
-	    {
-		std::vector< std::vector<real_t> > part1, part2;
-		breakPolylineIntoTwoParts(polylines[level][line], segment, pt,
-					  part1, part2);
+            if (-1 < segment)
+            {
+                std::vector< std::vector<real_t> > part1, part2;
+                breakPolylineIntoTwoParts(polylines[level][line], segment, pt,
+                                          part1, part2);
 		
-		polylines[level][line] = part1;
-		polylines[level].push_back(part2);
+                polylines[level][line] = part1;
+                polylines[level].push_back(part2);
 		
-		std::vector<unsigned> aabb1, aabb2;
-		findNewAABB(part1, aabb1);
-		findNewAABB(part2, aabb2);
+                std::vector<unsigned> aabb1, aabb2;
+                findNewAABB(part1, aabb1);
+                findNewAABB(part2, aabb2);
 		
-		aabb[level][line] = aabb1;
-		aabb[level].push_back(aabb2);
+                aabb[level][line] = aabb1;
+                aabb[level].push_back(aabb2);
 		
-		// very important, this will check current line again if it has more cycles
-		line--; 
-	    }
-	}
+                // very important, this will check current line again if it has more cycles
+                line--; 
+            }
+        }
     }
 }
 
@@ -1437,49 +1442,49 @@ void gsTHBSplineBasis<d, T>::breakCycles(
 // utility funcition for breakCycles
 template<unsigned d, class T>
 index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< real_t> >& line,
-					      std::pair<real_t, real_t>& pt) const
+                                              std::pair<real_t, real_t>& pt) const
 {
     std::map< std::pair<real_t, real_t>, index_t > times;
     std::map< std::pair<real_t, real_t>, index_t > index;
     
     for (std::size_t seg = 0; seg != line.size(); seg++)
     {
-	const std::size_t seg1 = (seg + 1) % line.size();
+        const std::size_t seg1 = (seg + 1) % line.size();
 	
-	std::pair<real_t, real_t> currentPt( line[seg][0], line[seg][1] );
-	if (!((currentPt.first == line[seg1][0] && currentPt.second == line[seg1][1]) ||
-	      (currentPt.first == line[seg1][2] && currentPt.second == line[seg1][3])))
-	{
-	    currentPt.first = line[seg][2];
-	    currentPt.second = line[seg][3];
-	}
+        std::pair<real_t, real_t> currentPt( line[seg][0], line[seg][1] );
+        if (!((currentPt.first == line[seg1][0] && currentPt.second == line[seg1][1]) ||
+              (currentPt.first == line[seg1][2] && currentPt.second == line[seg1][3])))
+        {
+            currentPt.first = line[seg][2];
+            currentPt.second = line[seg][3];
+        }
 	
-	std::size_t count = times.count(currentPt);
-	if (0 < count)
-	{
-	    times[currentPt] += 1;
-	}
-	else
-	{
-	    times[currentPt] = 1;
-	    index[currentPt] = seg1;
-	}
+        std::size_t count = times.count(currentPt);
+        if (0 < count)
+        {
+            times[currentPt] += 1;
+        }
+        else
+        {
+            times[currentPt] = 1;
+            index[currentPt] = seg1;
+        }
     }
 
     typedef std::map< std::pair<real_t, real_t>, index_t>::iterator iterator;
     for (iterator it = times.begin(); it != times.end(); it++)
     {
-	if (it->second == 2)
-	{
-	    pt = it->first;
-	    return index[it->first];
-	}
-	else if (2 < it->second)
-	{
-	    std::cout << "This sould not happen, "
-		"check the polylines from the domainBaoundariesParam" << std::endl;
-	    throw "Polylines with too many intersections";
-	}
+        if (it->second == 2)
+        {
+            pt = it->first;
+            return index[it->first];
+        }
+        else if (2 < it->second)
+        {
+            std::cout << "This sould not happen, "
+                "check the polylines from the domainBaoundariesParam" << std::endl;
+            throw "Polylines with too many intersections";
+        }
     }
     return -1;
 }
@@ -1487,11 +1492,11 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< re
 // utility funcition for breakCycles
 template<unsigned d, class T>
 void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
-			     const std::vector< std::vector< real_t> >& line, 
-			     const index_t segment, 
-			     const std::pair<real_t, real_t>& meetingPt,
-			     std::vector< std::vector< real_t> >& part1, 
-			     std::vector< std::vector< real_t> >& part2) const
+    const std::vector< std::vector< real_t> >& line, 
+    const index_t segment, 
+    const std::pair<real_t, real_t>& meetingPt,
+    std::vector< std::vector< real_t> >& part1, 
+    std::vector< std::vector< real_t> >& part2) const
 {
     bool p1 = false; // inside part 1
     bool p2 = false; // inside part 2
@@ -1499,49 +1504,49 @@ void gsTHBSplineBasis<d, T>::breakPolylineIntoTwoParts(
     index_t length = static_cast<index_t> (line.size());
     for (index_t i = 0; i != length; i++)
     {
-	const index_t seg = (i + segment) % length;
+        const index_t seg = (i + segment) % length;
 	
-	if (!p1 && !p2) // start
-	{
-	    p1 = true;
-	    part1.push_back(line[seg]);
-	}
-	else // not start
-	{
-	    // we hit the meeting point again
-	    if ((meetingPt.first == line[seg][0] && meetingPt.second == line[seg][1]) ||
-		(meetingPt.first == line[seg][2] && meetingPt.second == line[seg][3]))
-	    {
-		if (p1) // end of part 1
-		{
-		    part1.push_back(line[seg]);
-		    p1 = false;
-		    p2 = true;
-		}
-		else if (p2) // start or finish
-		{
-		    part2.push_back(line[seg]);
-		}
-	    }
-	    else
-	    {
-		if (p1)
-		{
-		    part1.push_back(line[seg]);
-		}
-		else if (p2)
-		{
-		    part2.push_back(line[seg]);
-		}
-	    }
-	}
+        if (!p1 && !p2) // start
+        {
+            p1 = true;
+            part1.push_back(line[seg]);
+        }
+        else // not start
+        {
+            // we hit the meeting point again
+            if ((meetingPt.first == line[seg][0] && meetingPt.second == line[seg][1]) ||
+                (meetingPt.first == line[seg][2] && meetingPt.second == line[seg][3]))
+            {
+                if (p1) // end of part 1
+                {
+                    part1.push_back(line[seg]);
+                    p1 = false;
+                    p2 = true;
+                }
+                else if (p2) // start or finish
+                {
+                    part2.push_back(line[seg]);
+                }
+            }
+            else
+            {
+                if (p1)
+                {
+                    part1.push_back(line[seg]);
+                }
+                else if (p2)
+                {
+                    part2.push_back(line[seg]);
+                }
+            }
+        }
     }
 }
 
 // utility funcition for breakCycles
 template<unsigned d, class T>
 void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<real_t> >& polyline,
-					 std::vector<unsigned>& aabb) const
+                                         std::vector<unsigned>& aabb) const
 {
     real_t minX = polyline[0][0];
     real_t minY = polyline[0][1];
@@ -1551,22 +1556,22 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<real_t> 
 
     for (std::size_t seg = 0; seg != polyline.size(); seg++)
     {
-	if (polyline[seg][0] < minX)
-	{
-	    minX = polyline[seg][0];
-	}
-	if (polyline[seg][1] < minY)
-	{
-	    minY = polyline[seg][1];
-	}
-	if (maxX < polyline[seg][2])
-	{
-	    maxX = polyline[seg][2];
-	}
-	if (maxY < polyline[seg][3])
-	{
-	    maxY = polyline[seg][3];
-	}
+        if (polyline[seg][0] < minX)
+        {
+            minX = polyline[seg][0];
+        }
+        if (polyline[seg][1] < minY)
+        {
+            minY = polyline[seg][1];
+        }
+        if (maxX < polyline[seg][2])
+        {
+            maxX = polyline[seg][2];
+        }
+        if (maxY < polyline[seg][3])
+        {
+            maxY = polyline[seg][3];
+        }
     }
     
     unsigned maxLevel = this->maxLevel();
@@ -1576,28 +1581,28 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<real_t> 
     aabb.resize(4);
     for (unsigned i = 0; i != kv0.uSize(); i++)
     {
-	if (kv0.uValue(i) <= minX)
-	{
-	    aabb[0] = i;
-	}
-	if (maxX <= kv0.uValue(i))
-	{
-	    aabb[2] = i;
-	    break;
-	}
+        if (kv0.uValue(i) <= minX)
+        {
+            aabb[0] = i;
+        }
+        if (maxX <= kv0.uValue(i))
+        {
+            aabb[2] = i;
+            break;
+        }
     }
     
     for (unsigned i = 0; i != kv1.uSize(); i++)
     {
-	if (kv1.uValue(i) <= minY)
-	{
-	    aabb[1] = i;
-	}
-	if (maxY <= kv1.uValue(i))
-	{
-	    aabb[3] = i;
-	    break;
-	}
+        if (kv1.uValue(i) <= minY)
+        {
+            aabb[1] = i;
+        }
+        if (maxY <= kv1.uValue(i))
+        {
+            aabb[3] = i;
+            break;
+        }
     }
 }
 
@@ -1729,8 +1734,8 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<
 }
 template<unsigned d, class T>
 gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
-                                                      const std::vector<gsSortedVector<unsigned> >& n,
-                                                      const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
+                                                       const std::vector<gsSortedVector<unsigned> >& n,
+                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
 {
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -1791,9 +1796,9 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSorte
                     for(int l = 0 ; l < t.size();l++){
                         if(t[l]!=0)
                             if( (k) < (old.size()))
-                            if(old[k].bContains(l)){
-                                t[l]=0;
-                            }
+                                if(old[k].bContains(l)){
+                                    t[l]=0;
+                                }
 
                     }
                 }
@@ -2056,7 +2061,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                         {
                             //TODO test if level would not be higher than the q4 for this function- or max inserted level
                             if(p)
-			    {
+                            {
                                 if( coeffs[0].lvl + 1< max_lvl)
                                 {
                                     temp.pos = k.row();
@@ -2091,7 +2096,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                 //std::cout<<"temp.pos: "<<temp.pos<<" temp.coef: "<<temp.coef<<" temp.lvl "<< temp.lvl<<std::endl;
                 coeffs.push_back(temp);
                 while(!coeffs.empty())
-		{
+                {
                     start_lv_i = 0;
                     for(unsigned int l =0; l < coeffs[0].lvl; l++)
                     {
@@ -2170,7 +2175,7 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                                 }
                             }
                         }else
-			{
+                        {
                             if(p)
                             {
                                 if(coeffs[0].lvl < max_lvl-1)
