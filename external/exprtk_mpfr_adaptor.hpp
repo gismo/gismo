@@ -364,9 +364,11 @@ namespace exprtk
    {
       namespace details
       {
-         inline void print_type(const std::string&, const mpfr::mpreal& v, exprtk::details::numeric::details::mpfrreal_type_tag)
+         inline void print_type(const std::string& fmt,
+                                const mpfr::mpreal& v v,
+                                exprtk::details::numeric::details::mpfrreal_type_tag)
          {
-            printf("%s",v.toString().c_str());
+            printf(fmt.c_str(), v.toString().c_str());
          }
       }
    }

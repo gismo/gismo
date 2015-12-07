@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
 
         coefs(col, 0) = x;
         coefs(col, 1) = y;
-        coefs(col, 2) = std::sin(x * 2 * PI) * std::sin(y * 2 * PI);
+        coefs(col, 2) = math::sin(x * 2 * PI) * math::sin(y * 2 * PI);
     }
     
     // 4. putting basis and coefficients toghether

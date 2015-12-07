@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     //Maximum number of iterations
     index_t maxIters = 3*N;
     //Tolerance
-    real_t tol = math::pow(10.0, - REAL_DIG * 0.75);
+    real_t tol = std::pow(10.0, - REAL_DIG * 0.75);
 
     ///----------------------GISMO-SOLVERS----------------------///
     gsInfo << "Testing G+Smo's solvers:\n";

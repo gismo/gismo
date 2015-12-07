@@ -14,7 +14,7 @@ In the gismo/examples sub-directory we find:
 
 - \subpage gsView
 
-- \subpage linerSolvers
+- \subpage linearSolvers
 
 - \subpage poisson2d_example_adaptRef
 
