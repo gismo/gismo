@@ -37,6 +37,7 @@ GMP_EXTRA_STD_UNARY_FUNCTION(cos)
 GMP_EXTRA_STD_UNARY_FUNCTION(tan)
 GMP_EXTRA_STD_UNARY_FUNCTION(acos)
 GMP_EXTRA_STD_UNARY_FUNCTION(log)
+GMP_EXTRA_STD_UNARY_FUNCTION(floor)
 GMP_EXTRA_STD_UNARY_FUNCTION(ceil)
 #undef GMP_EXTRA_STD_UNARY_FUNCTION
 
@@ -71,6 +72,8 @@ using std::tanh;
 using std::acos;
 using std::log;
 using std::log10;
+using std::atan;
+using std::atan2;
 using std::min;
 using std::max;
 
@@ -133,6 +136,8 @@ using mpfr::tan;
 using mpfr::tanh;
 using mpfr::acos;
 using mpfr::log;
+using mpfr::atan;
+using mpfr::atan2;
 using mpfr::isnan;
 using mpfr::isfinite;
 using mpfr::isinf;
