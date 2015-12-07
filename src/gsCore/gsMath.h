@@ -92,13 +92,13 @@ T round(T a) {return math::floor(a<0.0 ? a-0.5 : a+0.5); }
 #ifdef _MSC_VER
 #include <float.h>
 template <typename T>
-bool isnan (T a) 
-//{return _isnan(a); }
-{return x == x;}
+bool isnan (T a)
+{return _isnan(a); }
+//{return a == a;} //equiv.
 template <typename T>
 bool isfinite(T a) 
-//{return _finite(a);}
-{(x - x) == (x - x);}
+{return _finite(a);}
+//{(a - a) == (a - a);} //equiv.
 //template <typename T>
 //bool isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
 
