@@ -81,7 +81,11 @@ T round(T a) {return math::floor(a<0.0 ? a-0.5 : a+0.5); }
 
 
 /** Numeric precision (number of exact decimal digits expected) for real_t */
-#define REAL_DIG std::numeric_limits<real_t>::digits10
+#ifdef GISMO_WITH_MPFR
+#  define REAL_DIG std::numeric_limits<real_t>::digits10()
+#else
+#  define REAL_DIG std::numeric_limits<real_t>::digits10
+#endif
 
 // functions to check for floating point errors
 // Get isnan/isinf working on different compilers
