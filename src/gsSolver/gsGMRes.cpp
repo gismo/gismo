@@ -30,8 +30,8 @@ void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const 
     v.push_back(residual/beta);
     g.setZero(2,1);
     g(0,0) = beta;
-    Omega = gsMatrix<>::Identity(2, 2);
-    Omega_prew = gsMatrix<>::Identity(2, 2);
+    Omega = gsMatrix<real_t>::Identity(2, 2);
+    Omega_prew = gsMatrix<real_t>::Identity(2, 2);
 
     rhsNorm2 = rhs.squaredNorm(); // This is ||r||²
     if (rhsNorm2 == 0)
@@ -68,7 +68,7 @@ void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator
     solveUpperTriangular(H, g_tmp);
 
     //Create the matrix from the column matrix in v.
-    gsMatrix<> V(m_mat.rows(),m_numIter+1);
+    gsMatrix<real_t> V(m_mat.rows(),m_numIter+1);
     for (index_t k = 0; k< m_numIter+1; ++k)
     {
         V.col(k) = v[k];
@@ -88,7 +88,7 @@ bool gsGMRes::step( VectorType& x, const gsLinearOperator& precond )
         H.block(0,0,k+1,k) = H_prew;
     }
 
-    Omega = gsMatrix<>::Identity(k+2, k+2);
+    Omega = gsMatrix<real_t>::Identity(k+2, k+2);
     m_mat.apply(v[k],tmp);
     precond.apply(tmp, w);
 

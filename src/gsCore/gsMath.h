@@ -13,12 +13,34 @@
 
 #pragma once
 
+#include <gsCore/gsForwardDeclarations.h>
+
 #ifdef _MSC_VER
 #define _USE_MATH_DEFINES
 #endif
 
 #include <cmath>
 #include <limits>
+
+#ifdef GISMO_WITH_MPQ
+template <class U, class V>
+inline mpq_class max(const __gmp_expr<mpq_t, U> & a,
+                     const __gmp_expr<mpq_t, V> & b)
+{return mpq_class(a < b ? b : a);}
+
+#define GMP_EXTRA_STD_UNARY_FUNCTION(std_fun) template <class U> \
+inline mpq_class std_fun(const __gmp_expr<mpq_t, U> & expr)      \
+{return std::std_fun(mpq_class(expr).get_d());}
+GMP_EXTRA_STD_UNARY_FUNCTION(sqrt)
+GMP_EXTRA_STD_UNARY_FUNCTION(sin)
+GMP_EXTRA_STD_UNARY_FUNCTION(cos)
+GMP_EXTRA_STD_UNARY_FUNCTION(tan)
+GMP_EXTRA_STD_UNARY_FUNCTION(acos)
+GMP_EXTRA_STD_UNARY_FUNCTION(log)
+GMP_EXTRA_STD_UNARY_FUNCTION(ceil)
+#undef GMP_EXTRA_STD_UNARY_FUNCTION
+
+#endif
 
 namespace gismo {
 
@@ -66,11 +88,15 @@ T round(T a) {return math::floor(a<0.0 ? a-0.5 : a+0.5); }
 #ifdef _MSC_VER
 #include <float.h>
 template <typename T>
-int isnan (T a) {return _isnan(a); }
+bool isnan (T a) 
+//{return _isnan(a); }
+{return x == x;}
 template <typename T>
-int isfinite(T a) {return _finite(a);}
-template <typename T>
-int isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
+bool isfinite(T a) 
+//{return _finite(a);}
+{(x - x) == (x - x);}
+//template <typename T>
+//bool isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
 
 #ifndef NAN
 // MSVC doesn't have the NAN constant in cmath, so we use the C++ standard definition
@@ -83,12 +109,11 @@ int isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
 #else
 using std::isnan;
 using std::isfinite;
-using std::isnormal;
 using std::isinf;
 #endif
 #endif
 
-#ifdef __MPREAL_H__
+#ifdef GISMO_WITH_MPFR
 // Math functions for MPFR
 using mpfr::abs;
 using mpfr::pow;
@@ -97,13 +122,41 @@ using mpfr::sqrt;
 using mpfr::ceil;
 using mpfr::floor;
 using mpfr::cos;
+using mpfr::cosh;
 using mpfr::sin;
+using mpfr::sinh;
+using mpfr::tan;
+using mpfr::tanh;
 using mpfr::acos;
 using mpfr::log;
-using std::log10;
+using mpfr::isnan;
+using mpfr::isfinite;
+using mpfr::isinf;
 #endif
 
+#ifdef GISMO_WITH_MPQ
+// Math functions for GMP/mpq_class
+using ::abs;
+using ::sqrt;
+using ::pow;
+using ::fabs;
+using ::ceil;
+using ::floor;
+using ::cos;
+using ::acos;
+using ::sin;
+using ::tan;
+using ::log;
+using ::log10;
+//using ::max;
 
+inline bool isfinite(mpq_class a) {return true; }
+inline bool isnan(mpq_class a)    {return false;}
+inline mpq_class min(mpq_class a, mpq_class b) {return  (a < b ? a : b); }
+inline mpq_class max(mpq_class a, mpq_class b) {return  (a < b ? b : a); }
+inline mpq_class pow (const mpq_class & a, const mpq_class & b) 
+{return  std::pow(a.get_d(),b.get_d()); }
+#endif
 
 /// Returns the sign of \a val
 template <typename T> int getSign(T val)
@@ -263,14 +316,5 @@ struct CompileTimeLog2<0>
 };
 template <unsigned arg>
 unsigned CTLog2 (void) {return CompileTimeLog2<arg>::result;}
-
-/*
-//Template to get the minimum of two numbers at compile time
-template <unsigned a, unsigned b>
-struct min
-{
-    enum { result = a<b ? a:b};
-};
-*/
 
 } //end namespace gismo

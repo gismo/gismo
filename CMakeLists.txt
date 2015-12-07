@@ -115,9 +115,8 @@ include_directories(${GISMO_INCLUDE_DIRS})
 ## Extensions
 ## #################################################################
 
-if(GISMO_WITH_MPFR)
-  add_definitions(-DGISMO_WITH_MPFR="${GISMO_WITH_MPFR}")
-endif(GISMO_WITH_MPFR)
+#if(GISMO_WITH_MPFR)
+#endif(GISMO_WITH_MPFR)
 
 if(GISMO_WITH_PSOLID)
   add_subdirectory(extensions/gsParasolid)

@@ -14,10 +14,7 @@
 
 # pragma once
 
-#include <gsCore/gsForwardDeclarations.h>
-
 #include <gsCore/gsMath.h>
-
 
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
 
@@ -28,6 +25,14 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+
+#if defined(GISMO_WITH_MPFR)
+#include <unsupported/Eigen/MPRealSupport>
+#endif
+
+#if defined(GISMO_WITH_MPQ)
+#include <unsupported/Eigen/MPGmpqSupport.h>
+#endif
 
 // Extra Eigen code
 #include <gsMatrix/gsEigenAddons.h>
