@@ -224,7 +224,7 @@ inline T modulus_impl(const T& v0, const T& v1, mpq_type_tag)
 template <typename T>
 inline T pow_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    return pow(v0, v1);// note: exponent considered constant
+    return std::pow(v0.get_d(), v1.get_d());// note: exponent considered constant
 }
 
 template <typename T>

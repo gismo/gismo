@@ -186,7 +186,8 @@ void gsHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resul
 }
 
 template<unsigned d, class T>
-void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){
+void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
+{
     //std::vector< gsMatrix<T> > result;
     result.clear();
     gsVector<unsigned> level;
@@ -195,7 +196,8 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result){
     tensorBasis T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
     transfer.resize(this->maxLevel() );
-    for(unsigned i = 0; i < this->maxLevel();i++){
+    for(unsigned i = 0; i < this->maxLevel();i++)
+    {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
         std::vector<std::vector<T> > knots;
         for(unsigned int dim = 0l; dim < d;dim++)

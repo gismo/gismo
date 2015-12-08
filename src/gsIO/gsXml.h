@@ -60,6 +60,61 @@ namespace rapidxml
 #define TMPLA3(t1,t2,t3) t1,t2,t3
 #define FILE_PRECISION 16
 
+
+#ifdef GISMO_WITH_MPQ
+// Specialize file I/O to floating point format
+#include<sstream>
+inline std::istringstream & 
+operator>>(std::istringstream & is, mpq_class & var)
+{
+    // read as decimal
+    std::string dn;
+    is >> dn;
+    const std::string::size_type comma( dn.find(".") );
+    if( comma != std::string::npos )
+    {   
+        const std::string::size_type exp = dn.size() - comma - 1;
+        const mpz_class num( dn.erase(comma,1), 10);
+        mpz_class den;
+        mpz_ui_pow_ui(den.get_mpz_t(),10,exp);
+        var = mpq_class(num, den);
+    } 
+    else 
+        var = mpq_class(dn);
+
+    /* 
+    // read as machine float
+    double tmp;
+    is >> tmp;
+    var = tmp;
+
+    // read as rational
+    std::string dn;
+    is >> dn;
+    var.set_str(dn,10);
+    */
+    var.canonicalize();// remove common factors
+    return is;
+}
+
+inline std::ostringstream & 
+operator<<(std::ostringstream & os, mpq_class & var)
+{
+    // write as machine float
+    os<<var.get_d();
+
+    /* 
+    // write as rational
+    os << var.get_str(10);
+    */
+
+    /* 
+    // write as decimal
+    */
+    return os;
+}
+#endif
+
 namespace gismo {
 
 namespace internal {

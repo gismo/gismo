@@ -21,13 +21,9 @@ namespace Eigen
     typedef mpq_class Real;
     typedef mpq_class NonInteger;
     
-    inline static Real epsilon  ()     {    return 0; }
+    inline static Real epsilon  ()              { return 0; }
     inline static Real epsilon  (const Real& x) { return 0; }
-
-    inline static Real dummy_precision()   
-    { 
-        return 0;
-    }
+    inline static Real dummy_precision()        { return 0; }
   };
 
   namespace internal {
@@ -95,14 +91,13 @@ namespace Eigen
     template<typename Index, int mr, int nr, bool ConjugateLhs, bool ConjugateRhs>
     struct gebp_kernel<mpq_class,mpq_class,Index,mr,nr,ConjugateLhs,ConjugateRhs>
     {
-      typedef mpq_class mpreal;
+     typedef mpq_class num_t;
 
       EIGEN_DONT_INLINE
-      void operator()(mpreal* res, Index resStride, const mpreal* blockA, const mpreal* blockB, Index rows, Index depth, Index cols, mpreal alpha,
-                      Index strideA=-1, Index strideB=-1, Index offsetA=0, Index offsetB=0, mpreal* /*unpackedB*/ = 0)
+      void operator()(num_t* res, Index resStride, const num_t* blockA, const num_t* blockB, Index rows, Index depth, Index cols, num_t alpha,
+                      Index strideA=-1, Index strideB=-1, Index offsetA=0, Index offsetB=0, num_t* /*unpackedB*/ = 0)
       {
-       /*
-        mpreal acc1, acc2, tmp;
+        num_t acc1, acc2, tmp;
         
         if(strideA==-1) strideA = depth;
         if(strideB==-1) strideB = depth;
@@ -110,37 +105,38 @@ namespace Eigen
         for(Index j=0; j<cols; j+=nr)
         {
           Index actual_nr = (std::min<Index>)(nr,cols-j);
-          mpreal *C1 = res + j*resStride;
-          mpreal *C2 = res + (j+1)*resStride;
+          num_t *C1 = res + j*resStride;
+          num_t *C2 = res + (j+1)*resStride;
           for(Index i=0; i<rows; i++)
           {
-            mpreal *B = const_cast<mpreal*>(blockB) + j*strideB + offsetB*actual_nr;
-            mpreal *A = const_cast<mpreal*>(blockA) + i*strideA + offsetA;
+            num_t *B = const_cast<num_t*>(blockB) + j*strideB + offsetB*actual_nr;
+            num_t *A = const_cast<num_t*>(blockA) + i*strideA + offsetA;
             acc1 = 0;
             acc2 = 0;
             for(Index k=0; k<depth; k++)
             {
-              mpfr_mul(tmp.mpfr_ptr(), A[k].mpfr_ptr(), B[0].mpfr_ptr(), mpreal::get_default_rnd());
-              mpfr_add(acc1.mpfr_ptr(), acc1.mpfr_ptr(), tmp.mpfr_ptr(),  mpreal::get_default_rnd());
+              mpq_mul(tmp.__get_mp(), A[k].__get_mp(), B[0].__get_mp());
+              mpq_add(acc1.__get_mp(), acc1.__get_mp(), tmp.__get_mp());
               
-              if(actual_nr==2) {
-                mpfr_mul(tmp.mpfr_ptr(), A[k].mpfr_ptr(), B[1].mpfr_ptr(), mpreal::get_default_rnd());
-                mpfr_add(acc2.mpfr_ptr(), acc2.mpfr_ptr(), tmp.mpfr_ptr(),  mpreal::get_default_rnd());
+              if(actual_nr==2) 
+              {
+                mpq_mul(tmp.__get_mp(), A[k].__get_mp(), B[1].__get_mp());
+                mpq_add(acc2.__get_mp(), acc2.__get_mp(), tmp.__get_mp());
               }
               
               B+=actual_nr;
             }
             
-            mpfr_mul(acc1.mpfr_ptr(), acc1.mpfr_ptr(), alpha.mpfr_ptr(), mpreal::get_default_rnd());
-            mpfr_add(C1[i].mpfr_ptr(), C1[i].mpfr_ptr(), acc1.mpfr_ptr(),  mpreal::get_default_rnd());
+            mpq_mul(acc1.__get_mp(), acc1.__get_mp(), alpha.__get_mp());
+            mpq_add(C1[i].__get_mp(), C1[i].__get_mp(), acc1.__get_mp());
             
-            if(actual_nr==2) {
-              mpfr_mul(acc2.mpfr_ptr(), acc2.mpfr_ptr(), alpha.mpfr_ptr(), mpreal::get_default_rnd());
-              mpfr_add(C2[i].mpfr_ptr(), C2[i].mpfr_ptr(), acc2.mpfr_ptr(),  mpreal::get_default_rnd());
+            if(actual_nr==2) 
+            {
+              mpq_mul(acc2.__get_mp(), acc2.__get_mp(), alpha.__get_mp());
+              mpq_add(C2[i].__get_mp(), C2[i].__get_mp(), acc2.__get_mp());
             }
           }
         }
-        //*/ // commented
       }
     };
 
