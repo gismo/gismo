@@ -69,7 +69,7 @@ operator>>(std::istringstream & is, mpq_class & var)
 {
     // read as decimal
     std::string dn;
-    is >> dn;
+    if ( !(is >> dn) ) return is;
     const std::string::size_type comma( dn.find(".") );
     if( comma != std::string::npos )
     {   
@@ -79,43 +79,79 @@ operator>>(std::istringstream & is, mpq_class & var)
         mpz_ui_pow_ui(den.get_mpz_t(),10,exp);
         var = mpq_class(num, den);
     } 
-    else 
-        var = mpq_class(dn);
+    else // integer or rational
+        var.set_str(dn,10);
 
-    /* 
-    // read as machine float
-    double tmp;
-    is >> tmp;
-    var = tmp;
+    //read as machine float
+    //double tmp;
+    //is >> tmp;
+    //var = tmp;
 
-    // read as rational
-    std::string dn;
-    is >> dn;
-    var.set_str(dn,10);
-    */
     var.canonicalize();// remove common factors
     return is;
 }
 
-inline std::ostringstream & 
-operator<<(std::ostringstream & os, mpq_class & var)
+#include <fstream>// for paraview
+template <class U> inline std::ofstream & operator<<
+(std::ofstream &fs, __gmp_expr<U,U> & var)
 {
-    // write as machine float
-    os<<var.get_d();
-
-    /* 
+    fs<<var.get_d(); 
     // write as rational
-    os << var.get_str(10);
-    */
-
-    /* 
-    // write as decimal
-    */
-    return os;
+    //os << var.get_str(10);
+    return fs;
 }
+
 #endif
 
 namespace gismo {
+
+/*
+inline bool gsGetValue(std::istream & is, double & var)
+{
+    std::string dn;
+    if ( !(is >> dn) ) return false;
+    const std::string::size_type slh( dn.find("/") );
+    if( slh != std::string::npos )
+    {
+        var = strtod(dn.substr(0,slh).c_str(), NULL) /
+              strtod(dn.substr(slh+1).c_str(), NULL) ;
+    }
+    else // integer or decimal
+        var = strtod(dn.c_str(), NULL);
+
+    return true;
+}
+
+inline bool gsGetValue(std::istream & is, mpq_class & var)
+{
+    // read as decimal
+    std::string dn;
+    if ( !(is >> dn) ) return false;
+    const std::string::size_type comma( dn.find(".") );
+    if( comma != std::string::npos )
+    {   
+        const std::string::size_type exp = dn.size() - comma - 1;
+        const mpz_class num( dn.erase(comma,1), 10);
+        mpz_class den;
+        mpz_ui_pow_ui(den.get_mpz_t(),10,exp);
+        var = mpq_class(num, den);
+    } 
+    else // integer or rational
+        var.set_str(dn,10);
+
+    // read as machine float
+    //double tmp;
+    //is >> tmp;
+    //var = tmp;
+
+    var.canonicalize();// remove common factors
+    return true;
+}
+
+template<class T> cast<T,double>(const T & n) {return n;}
+//cast<std::string,T>
+
+*/
 
 namespace internal {
 
