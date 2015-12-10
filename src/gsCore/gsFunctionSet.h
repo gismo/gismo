@@ -112,11 +112,19 @@ public:
 
 public:
 
+    gsFunctionSet() 
+    { }
+
+    gsFunctionSet(const gsFunctionSet & o) 
+    { }
+
+    virtual ~gsFunctionSet () 
+    { }
+
     /// @brief Clone this basis, making a deep copy.
     virtual gsFunctionSet * clone() const //= 0;
     {GISMO_NO_IMPLEMENTATION}
 
-    virtual ~gsFunctionSet () {}
 public:
 
     /*

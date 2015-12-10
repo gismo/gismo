@@ -1,4 +1,4 @@
-/** @file gsWriteParaview.h
+/** @file gsWriteParaview.hpp
 
     @brief Provides implementation of functions writing Paraview files.
 

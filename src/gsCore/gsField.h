@@ -279,13 +279,22 @@ public:
 
     bool isParametrized() const         { return parametrized; }
 
-    // S.Kleiss: incomplete documentation.
-    /// Returns coefficient vector corresponding to the function on patch \a i.
-    gsMatrix<T> & coefficientVector(int i=0) const
+    /** \brief Returns the coefficient vector (if it exists)
+        corresponding to the function field for patch \a i.
+    
+    Returns the coefficients of the field corresponding to the \a i-th
+    patch. This is only possible in the case when the field is defined
+    in terms of basis functions (ie. it derives from gsGeometry).
+    
+    */
+    const gsMatrix<T> & coefficientVector(int i=0) const
     {
-        GISMO_ASSERT( parametrized, "Coefficients do not exist.");
-        GISMO_ASSERT( i < int( m_patches.nPatches() ) , "Index of patch exceeds number of patches.");
-        return (dynamic_cast< gsGeometry<T> *>( m_fields[i] ) )->coefs();
+        gsGeometry<T> * geo = dynamic_cast<gsGeometry<T> *>( m_fields[i] );
+
+        GISMO_ASSERT( geo != NULL, "Coefficients do not exist.");
+        GISMO_ASSERT( i < static_cast<int>( m_patches.nPatches() ) , 
+                      "Index of patch exceeds number of patches.");
+        return geo->coefs();
     }
 
 

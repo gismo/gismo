@@ -66,7 +66,7 @@ public:
 public:
 
     /// \brief Default constructor
-    gsTensorBSplineBasis() : Base() 
+    gsTensorBSplineBasis()
     {
         for(unsigned i = 0; i!=d; ++i)
             this->m_bases[i] = new Basis_t();
