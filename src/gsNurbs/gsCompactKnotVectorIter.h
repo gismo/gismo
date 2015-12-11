@@ -52,26 +52,28 @@ public:
                             gsCompactKnotVector<T> >::type
     containertype;
 
+    friend class  gsCompactKnotVectorIter<T, !isconst> ;
+
 // Constructors
 public:
-    gsCompactKnotVectorIter() : index(0), span(0) { }
+    gsCompactKnotVectorIter() : m_index(0), m_span(0) { }
     
     gsCompactKnotVectorIter( containertype & c , bool start = true ) 
 	: val   ( (start ? c.ubegin()  : c.uend() ) ), 
 	  mult  ( (start ? c.mbegin()  : c.mend() ) ),
-	  index ( (start ? 0           : c.size() ) ),
-      span  ( (start ? 0           : c.uSize()-1) ),
+      m_index ( (start ? 0           : c.size() ) ),
+      m_span  ( (start ? 0           : c.uSize()-1) ),
       multEnd ( c.mend() ){ }
 
     gsCompactKnotVectorIter( containertype & c , size_t pos)
     : val   ( c.ubegin()+pos ),
       mult  ( c.mbegin()+pos ),
-      index ( *mult-1 ),
-      span  ( pos ),
+      m_index ( *mult-1 ),
+      m_span  ( pos ),
       multEnd ( c.mend() ){ }
 
     gsCompactKnotVectorIter(const gsCompactKnotVectorIter<T, false>& it) 
-    : val(it.val), mult(it.mult), index(it.index), span(it.span), multEnd(it.multEnd) { }
+    : val(it.val), mult(it.mult), m_index(it.index()), m_span(it.span()), multEnd(it.multEnd) { }
     
 // Accessors
 public:
@@ -86,26 +88,26 @@ public:
     {val = rhs; return *this;}
 
     gsCompactKnotVectorIter& operator=(const gsCompactKnotVectorIter &rhs) 
-    { val=rhs.val; mult= rhs.mult; index=rhs.index; span=rhs.span; multEnd=rhs.multEnd; return *this;}
+    { val=rhs.val; mult= rhs.mult; m_index=rhs.m_index; m_span=rhs.m_span; multEnd=rhs.multEnd; return *this;}
 
     gsCompactKnotVectorIter& operator+=(const int& rhs) 
     {
-        index+= rhs;
+        m_index+= rhs;
         while ( mult != multEnd &&
-                index >= * mult )
+                m_index >= * mult )
         {
             ++ mult;
             ++ val ;
-            ++span ;
+            ++ m_span ;
         }
         return *this;
     }
 
     gsCompactKnotVectorIter& operator-=(const int& rhs) 
     {	
-        index-= rhs;
+        m_index-= rhs;
         while ( span > 0 &&
-                index < *(mult-1) )
+                m_index < *(mult-1) )
         {
             --mult;
             --val ;
@@ -116,12 +118,12 @@ public:
 
     gsCompactKnotVectorIter& operator++() 
     { 
-        ++index;
-        if ( mult != multEnd && index >= *mult )
+        ++m_index;
+        if ( mult != multEnd && m_index >= *mult )
 	    {
             ++mult;
             ++val ;
-            ++span;
+            ++m_span;
 	    }
         return *this;
     }
@@ -129,13 +131,13 @@ public:
     gsCompactKnotVectorIter operator+(const difference_type& n) const
     {
         gsCompactKnotVectorIter tmp(*this);
-        tmp.index+= n;
+        tmp.m_index+= n;
         while ( tmp.mult != tmp.multEnd && 
-                tmp.index >= * tmp.mult )
+                tmp.m_index >= * tmp.mult )
         {  
             ++ tmp.mult;
             ++ tmp.val ;
-            ++ tmp.span ;
+            ++ tmp.m_span ;
         }
         return tmp;
     }
@@ -152,12 +154,12 @@ public:
     
     gsCompactKnotVectorIter & operator--()
     { 
-        --index;
-        if ( span > 0 && index < *(mult-1) )
+        --m_index;
+        if ( m_span > 0 && m_index < *(mult-1) )
 	    {
             --mult;
             --val ;
-            --span;
+            --m_span;
 	    }
         return *this;
     }
@@ -172,20 +174,20 @@ public:
     gsCompactKnotVectorIter operator-(const difference_type& n)  const
     {
         gsCompactKnotVectorIter tmp(*this);
-        tmp.index -= n;
-        while ( tmp.span > 0 &&
-                tmp.index < *(tmp.mult-1) )
+        tmp.m_index -= n;
+        while ( tmp.m_span > 0 &&
+                tmp.m_index < *(tmp.mult-1) )
         {
             --tmp.mult;
             --tmp.val ;
-            --tmp.span;
+            --tmp.m_span;
         }
         return tmp;
     }
     
     difference_type operator-(const gsCompactKnotVectorIter& rhs) const
     {
-        return index - rhs.index;
+        return m_index - rhs.m_index;
     }
 
     //friend inline gsCompactKnotVectorIter operator-(const int& lhs, const gsCompactKnotVectorIter& rhs)
@@ -198,51 +200,58 @@ public:
         return ( 
             //x.val == y.val &&
             //x.mult==y.mult && 
-            x.index==y.index);
+            x.m_index==y.m_index);
     }
     
     friend bool operator!=(const gsCompactKnotVectorIter& x, 
                            const gsCompactKnotVectorIter& y) 
     {
-        return (x.index != y.index);
+        return (x.m_index != y.m_index);
     }
 
     friend bool operator> (const gsCompactKnotVectorIter& x, 
                            const gsCompactKnotVectorIter& y) 
     {
-        return (x.index>y.index);
+        return (x.m_index>y.m_index);
     }
 
     friend bool operator< (const gsCompactKnotVectorIter& x, 
                            const gsCompactKnotVectorIter& y) 
     {
-        return (x.index<y.index);
+        return (x.m_index<y.m_index);
     }
 
     friend bool operator>=(const gsCompactKnotVectorIter& x, 
                            const gsCompactKnotVectorIter& y) 
     {
-        return (x.index>=y.index);
+        return (x.m_index>=y.m_index);
     }
 
     friend bool operator>=(const gsCompactKnotVectorIter& x, 
                            const difference_type& n) 
     {
-        return (x.index>=n);
+        return (x.m_index>=n);
     }
 
     friend bool operator<=(const gsCompactKnotVectorIter& x, 
                            const gsCompactKnotVectorIter& y) 
     {
-        return (x.index<=y.index);
+        return (x.m_index<=y.m_index);
     }
 
-// Data
 public:
+    unsigned index() const
+    { return m_index; }
+
+    int span() const
+    { return m_span; }
+
+// Data
+private:
     knotptr val;
     multptr mult;
-    unsigned index;
-    int span;
+    unsigned m_index;
+    int m_span;
     multptr multEnd;
 };
 
