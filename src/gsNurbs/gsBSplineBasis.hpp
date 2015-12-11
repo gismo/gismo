@@ -1136,11 +1136,13 @@ template<class T, class KnotVectorType>
 void gsTensorBSplineBasis<1,T,KnotVectorType>::enforceOuterKnotsPeriodic()
 {
     int borderKnotMult = this->borderKnotMult(); // Otherwise complains that error: 'borderKnotMult' cannot be used as a function
+    std::vector<T> newKnots(m_knots.begin(), m_knots.end());
     for( int i = 0; i <= m_p - borderKnotMult; i++ )
     {
-        m_knots[i] = m_knots[ m_knots.size() - 2 * m_p - 2 + i + borderKnotMult ] - _activeLength();
-        m_knots[ m_knots.size() - i - 1 ] = m_knots[ 2 * m_p - borderKnotMult + 1 - i ] + _activeLength();
+        newKnots[i] = newKnots[ newKnots.size() - 2 * m_p - 2 + i + borderKnotMult ] - _activeLength();
+        newKnots[ newKnots.size() - i - 1 ] = newKnots[ 2 * m_p - borderKnotMult + 1 - i ] + _activeLength();
     }
+    m_knots=KnotVectorType(m_p, newKnots.begin(), newKnots.end());
 }
 
 template <class T, class KnotVectorType>

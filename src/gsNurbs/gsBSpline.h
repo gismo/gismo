@@ -186,7 +186,7 @@ public:
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
     {
-        //os << "BSpline curve "<< "of degree "<< this->basis().degree()<< ", "<<  this->basis().knots() <<".\n";
+        os << "BSpline curve "<< "of degree "<< this->basis().degree()<< ", "<<  this->basis().knots() <<".\n";
         os << "with control points "<< this->m_coefs.row(0)<<" ... "<<this->m_coefs.bottomRows(1) << ".\n";
         if( this->basis().isPeriodic() )
             os << "Periodic with overlay " << this->basis().numCrossingFunctions() << ".\n";
