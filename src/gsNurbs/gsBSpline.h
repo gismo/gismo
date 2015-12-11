@@ -186,7 +186,7 @@ public:
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
     {
-        os << "BSpline curve "<< "of degree "<< this->basis().degree()<< ", "<<  this->basis().knots() <<".\n";
+        //os << "BSpline curve "<< "of degree "<< this->basis().degree()<< ", "<<  this->basis().knots() <<".\n";
         os << "with control points "<< this->m_coefs.row(0)<<" ... "<<this->m_coefs.bottomRows(1) << ".\n";
         if( this->basis().isPeriodic() )
             os << "Periodic with overlay " << this->basis().numCrossingFunctions() << ".\n";
@@ -285,15 +285,17 @@ public:
     /// \param end iterator pointing to one position after the last
     /// knot to be inserted
     template <class It>
-    void insertKnots( It begin, It end)
+    void insertKnots( It inBegin, It inEnd)
     {
         if( this->basis().isPeriodic() )
         {
             // We assume we got valid (i.e., non-NULL) iterators; I don't think we have a reasonable way to test it in GISMO_ASSERT.
 
-            GISMO_ASSERT( (*begin > *(this->knots().begin()))
-                          && (*(end-1) < *(this->knots().end()-1)),
+            GISMO_ASSERT( (*inBegin > *(this->knots().begin()))
+                          && (*(inEnd-1) < *(this->knots().end()-1)),
                           "Please, ask me to insert knots inside the knot interval only." );
+
+            std::vector<T> newKnots(inBegin,inEnd);
 
             // It can happen that user would ask us to insert knots outside the active range.
             // Should it happen, we shift the values and then sort the knot vector to remain non-decreasing.
@@ -301,7 +303,9 @@ public:
             T activeLength = this->basis()._activeLength();
             T blue1 = *(this->basis().knots().begin()  + this->degree() );
             T blue2 = *(this->basis().knots().end()    - this->degree() );
-            for( It it = begin; it != end; ++it )
+            typename std::vector<T>::iterator begin = newKnots.begin();
+            typename std::vector<T>::iterator end   = newKnots.end();
+            for( typename std::vector<T>::iterator it = begin; it != end; ++it )
             {
                 if( *it < blue1 )
                     *it += activeLength;
@@ -332,7 +336,7 @@ public:
             //this->coefs().conservativeResize( this->basis().size(), this->coefs().cols() );
         }
         else // non-periodic
-            gsBoehmRefine( this->basis().knots(), this->coefs(), this->degree(), begin, end);
+            gsBoehmRefine( this->basis().knots(), this->coefs(), this->degree(), inBegin, inEnd);
     }
 
     // Look at gsGeometry class for a description
