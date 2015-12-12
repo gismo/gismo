@@ -529,16 +529,14 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
         ends  [i] = m_bases[level]->knots(i).end()-m_deg[i]-1;
     }
 
-    gsMatrix<unsigned> supp;
     curr = starts;// start iteration
     do
     {
         for(unsigned i = 0; i != d; ++i)
         {
-            ind[i] = curr[i].index();
-            m_bases[level]->knots(i).supportIndex_into( ind[i], supp);
-            low[i] = supp(0,0);
-            upp[i] = supp(0,1);
+            low[i]  = curr[i].span();  // lower left corner of the span of the function 
+            upp[i]  = (curr[i]+m_deg[i]+1).span(); // upper right corner of the function's span
+            ind[i]  = curr[i].index(); // index of the function in the matrix 
         }
 
         if ( m_tree.query3(low, upp,level) == level) //if active
@@ -653,10 +651,9 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
         {
             for(unsigned i = 0; i != d; ++i)
             {
-                ind[i] = curr[i].index();
-                m_bases[j]->knots(i).supportIndex_into( ind[i], supp);
-                low[i] = supp(0,0);
-                upp[i] = supp(0,1);
+                low[i]  = curr[i].span();    // lower left corner of the span of the function 
+                upp[i]  = (curr[i]+m_deg[i]+1).span(); // upper right corner of the function's span
+                ind[i]  = curr[i].index(); // index of the function in the matrix 
             }
             if(j < level)
             {

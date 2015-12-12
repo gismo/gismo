@@ -16,6 +16,25 @@
 namespace gismo {
 
 
+template <class T>
+gsFunctionSet<T>::gsFunctionSet()
+{ 
+
+}
+
+template <class T>
+gsFunctionSet<T>::gsFunctionSet(const gsFunctionSet & o)
+{ 
+
+}
+
+template <class T>
+gsFunctionSet<T>::~gsFunctionSet ()
+{ 
+
+}
+
+
 // support (domain of definition)
 
 template <class T>
@@ -23,7 +42,6 @@ gsMatrix<T> gsFunctionSet<T>::support() const
 { 
     return gsMatrix<T>(); 
 }
-
 
 // actives
 

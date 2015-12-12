@@ -112,14 +112,11 @@ public:
 
 public:
 
-    gsFunctionSet() 
-    { }
+    gsFunctionSet();
 
-    gsFunctionSet(const gsFunctionSet & o) 
-    { }
+    gsFunctionSet(const gsFunctionSet & o);
 
-    virtual ~gsFunctionSet () 
-    { }
+    virtual ~gsFunctionSet();
 
     /// @brief Clone this basis, making a deep copy.
     virtual gsFunctionSet * clone() const //= 0;

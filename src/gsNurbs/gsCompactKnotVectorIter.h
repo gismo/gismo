@@ -106,12 +106,12 @@ public:
     gsCompactKnotVectorIter& operator-=(const int& rhs) 
     {	
         m_index-= rhs;
-        while ( span > 0 &&
+        while ( m_span > 0 &&
                 m_index < *(mult-1) )
         {
             --mult;
             --val ;
-            --span;
+            --m_span;
         }
         return *this;
     }
