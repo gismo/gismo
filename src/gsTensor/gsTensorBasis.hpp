@@ -26,7 +26,6 @@
 #pragma warning (disable : 175 ) /* disable subscript out of range warning */
 #endif
 
-
 namespace gismo
 {
 
@@ -663,7 +662,7 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 
     std::vector<gsMatrix<T> >values[d];
     gsVector<unsigned, d> v, size;
-
+    unsigned r = 0;
     result.resize(n+1);
 
     unsigned nb = 1;
@@ -674,15 +673,14 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
       
         // number of basis functions
         const int num_i = values[i].front().rows();
-        nb *= num_i;
         size[i] = num_i;
+        nb     *= num_i;
     }
-
+    
     // iterate over all tensor product basis functions
     v.setZero();
-    unsigned r = 0;
     gsMatrix<T> & vals = result[0];
-    vals.resize(nb  , u.cols());
+    vals.resize(nb, u.cols());
     do 
     {
         // Multiply basis functions to get the value of basis function v
@@ -716,64 +714,92 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         } while (nextLexicographic(v, size));
     }
 
-    if (n==2)
+    if (n>1)
     {
-        //result[2].resize(d + d*(d-1)/2, u.cols());
         deriv2_into(u,result[2]);
+
+        gsVector<unsigned, d> cc;
+        unsigned c;
+        for (int i = 3; i <=n; ++i) // for all orders of derivation
+        {
+            gsMatrix<T> & der = result[i];
+            der.resize( nb*numCompositions(i,d), u.cols());
+            v.setZero();
+            
+            r = 0;
+            do // for all basis functions
+            {
+                firstComposition(i, d, cc);
+                c = 0;
+                do // for all partial derivatives of order \a i
+                {
+                    der.row(r) = values[0][cc[0]].row(v[i]);
+                    for (unsigned k = 1; k!=d; ++k) // for all variables
+                        der.row(r).array() *= values[k][cc[k]].row(v[i]).array();
+                    ++c;
+                } while (nextComposition(cc));
+                ++r;
+            } while (nextLexicographic(v, size));
+        }
+
+        // n==2: bubble up
     }
+
 }
 
 template<unsigned d, class T>
 void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u, 
                                            gsMatrix<T>& result ) const 
 {
-    gsMatrix<T> ev[d];
-    gsMatrix<T> d1[d];
-    gsMatrix<T> d2[d];
-
+    std::vector<gsMatrix<T> >values[d];
     gsVector<unsigned, d> v, size;
 
     unsigned nb = 1;
     for (unsigned i = 0; i < d; ++i)
     {
-        // TODO: write this in terms of evalAllDers()
-        m_bases[i]->eval_into   ( u.row(i), ev[i] );
-        m_bases[i]->deriv_into  ( u.row(i), d1[i] );
-        m_bases[i]->deriv2_into ( u.row(i), d2[i] );
-
-        nb *= ev[i].rows();
-        size[i] = ev[i].rows();
+        /*
+        values[i].resize(3);
+        m_bases[i]->eval_into   ( u.row(i), values[i][0] );
+        m_bases[i]->deriv_into  ( u.row(i), values[i][1] );
+        m_bases[i]->deriv2_into ( u.row(i), values[i][2] );
+        */
+        m_bases[i]->evalAllDers_into( u.row(i), 2, values[i]); 
+        const int num_i = values[i].front().rows();
+        size[i] = num_i;
+        nb     *= num_i;
     }
 
     const unsigned stride = d + d*(d-1)/2;
 
     result.resize( stride*nb, u.cols() );
 
+    //deriv2_tp(values, size, result);
+
     v.setZero();
     unsigned r = 0; // r is a local index of a basis function times the stride
-    do {
-        unsigned m=d;
+    do 
+    {
+        unsigned m = d;
         for ( unsigned k=0; k<d; ++k)// First compute the pure second derivatives
         {
-            result.row( r + k )  =  d2[k].row( v(k) ) ;// pure 2nd derivate w.r.t. k-th variable
+            index_t cur = r + k;
+            result.row(cur) = values[k][2].row( v.at(k) ) ;// pure 2nd derivate w.r.t. k-th var
             for ( unsigned i=0; i<k; ++i)
-                result.row( r + k )= result.row( r + k ).cwiseProduct( ev[i].row( v(i) ) ) ;
+                result.row(cur).array() *= values[i][0].row( v.at(i) ).array();
             for ( unsigned i=k+1; i<d; ++i)
-                result.row( r + k )= result.row( r + k ).cwiseProduct( ev[i].row( v(i) ) ) ;
+                result.row(cur).array() *= values[i][0].row( v.at(i) ).array();
           
             for ( unsigned l=k+1; l<d; ++l) // Then all mixed derivatives follow in lex order
             {
-                result.row( r + m ) =
-                    d1[k].row( v(k) ).cwiseProduct( d1[l].row( v(l) ) );
+                cur = r + m; 
+                result.row(cur).noalias() =
+                    values[k][1].row( v.at(k) ).cwiseProduct( values[l][1].row( v.at(l) ) );
                 for ( unsigned i=0; i<k; ++i)
-                    result.row( r + m )= 
-                        result.row( r + m ).cwiseProduct( ev[i].row( v(i) ) ) ;
+                    result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
                 for ( unsigned i=k+1; i<l; ++i)
-                    result.row( r + m )= 
-                        result.row( r + m ).cwiseProduct( ev[i].row( v(i) ) ) ;
+                    result.row(cur).array() *= values[i][0].row( v.at(i) ).array();
                 for ( unsigned i=l+1; i<d; ++i)
-                    result.row( r + m )= 
-                        result.row(r + m).cwiseProduct( ev[i].row( v(i) ) ) ;
+                    result.row(cur).array() *= values[i][0].row( v.at(i) ).array() ;
                 ++m;
             }
         }
@@ -781,6 +807,15 @@ void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u,
         r+= stride;
     } while (nextLexicographic(v, size));
 }
+
+/*
+template<unsigned d, class T>
+void gsTensorBasis<d,T>::deriv2_tp(const std::vector<gsMatrix<T> >& values, 
+                                   gsMatrix<T> & result)
+{
+
+}
+*/
 
 template<unsigned d, class T>
 void gsTensorBasis<d,T>::refineElements(std::vector<unsigned> const & elements)

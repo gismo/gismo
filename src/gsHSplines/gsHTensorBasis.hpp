@@ -631,7 +631,6 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
     gsVector<unsigned,d> ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
     
-    gsMatrix<unsigned> supp;
     gsVector<unsigned,d> low, upp;
     for(int j =0; j < level+1; j++)
     {
