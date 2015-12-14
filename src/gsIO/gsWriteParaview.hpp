@@ -949,7 +949,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::stri
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vts"); // make also a pvd file
+    makeCollection(fn, ".vtp"); // make also a pvd file
 }
 
 template<class T>
