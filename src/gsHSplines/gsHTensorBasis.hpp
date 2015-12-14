@@ -534,8 +534,8 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     {
         for(unsigned i = 0; i != d; ++i)
         {
-            low[i]  = curr[i].span();  // lower left corner of the span of the function 
-            upp[i]  = (curr[i]+m_deg[i]+1).span(); // upper right corner of the function's span
+            low[i]  = curr[i].uIndex();  // lower left corner of the support of the function 
+            upp[i]  = (curr[i]+m_deg[i]+1).uIndex(); // upper right corner of the support
             ind[i]  = curr[i].index(); // index of the function in the matrix 
         }
 
@@ -650,8 +650,8 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
         {
             for(unsigned i = 0; i != d; ++i)
             {
-                low[i]  = curr[i].span();    // lower left corner of the span of the function 
-                upp[i]  = (curr[i]+m_deg[i]+1).span(); // upper right corner of the function's span
+                low[i]  = curr[i].uIndex(); // lower left corner of the support of the function 
+                upp[i]  = (curr[i]+m_deg[i]+1).uIndex(); // upper right corner of the support
                 ind[i]  = curr[i].index(); // index of the function in the matrix 
             }
             if(j < level)

@@ -73,7 +73,7 @@ public:
       multEnd ( c.mend() ){ }
 
     gsCompactKnotVectorIter(const gsCompactKnotVectorIter<T, false>& it) 
-    : val(it.val), mult(it.mult), m_index(it.index()), m_span(it.span()), multEnd(it.multEnd) { }
+    : val(it.val), mult(it.mult), m_index(it.m_index), m_span(it.m_span), multEnd(it.multEnd) { }
     
 // Accessors
 public:
@@ -243,7 +243,7 @@ public:
     unsigned index() const
     { return m_index; }
 
-    int span() const
+    int uIndex() const
     { return m_span; }
 
 // Data

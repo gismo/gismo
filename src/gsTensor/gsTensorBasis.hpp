@@ -662,7 +662,6 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 
     std::vector<gsMatrix<T> >values[d];
     gsVector<unsigned, d> v, size;
-    unsigned r = 0;
     result.resize(n+1);
 
     unsigned nb = 1;
@@ -681,14 +680,15 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
     v.setZero();
     gsMatrix<T> & vals = result[0];
     vals.resize(nb, u.cols());
-    do 
+    unsigned r = 0;
+    do // for all basis functions
     {
         // Multiply basis functions to get the value of basis function v
         vals.row( r )=  values[0].front().row( v[0] );
-        for ( unsigned i=1; i!=d; ++i)
+        for ( unsigned i=1; i!=d; ++i) // for all variables
             vals.row(r).array() *= values[i].front().row( v[i] ).array();
     
-        ++r ;
+        ++r;
     } while (nextLexicographic(v, size));
   
     // iterate again and write derivatives
@@ -698,19 +698,19 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         der.resize(d*nb, u.cols());;
         v.setZero();
         r = 0;
-        do 
+        do // for all basis functions
         {
-            for ( unsigned k=0; k<d; ++k)
+            for ( unsigned k=0; k<d; ++k) // for partial derivatives
             {
-                const index_t rownum = r*d + k;
                 // derivative w.r.t. k-th variable
-                der.row(rownum)  =  values[k][1].row( v(k) );
+                der.row(r) = values[k][1].row( v(k) );
                 for ( unsigned i=0; i<k; ++i)
-                    der.row(rownum).array() *= values[i][0].row( v(i) ).array();
+                    der.row(r).array() *= values[i][0].row( v(i) ).array();
                 for ( unsigned i=k+1; i<d; ++i)
-                    der.row(rownum).array() *= values[i][0].row( v(i) ).array();
+                    der.row(r).array() *= values[i][0].row( v(i) ).array();
+            ++r;
             }
-            ++r ;
+
         } while (nextLexicographic(v, size));
     }
 
@@ -719,7 +719,6 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         deriv2_into(u,result[2]);
 
         gsVector<unsigned, d> cc;
-        unsigned c;
         for (int i = 3; i <=n; ++i) // for all orders of derivation
         {
             gsMatrix<T> & der = result[i];
@@ -730,15 +729,14 @@ void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
             do // for all basis functions
             {
                 firstComposition(i, d, cc);
-                c = 0;
                 do // for all partial derivatives of order \a i
                 {
-                    der.row(r) = values[0][cc[0]].row(v[i]);
+                    // cc[k]: order of derivation w.r.t. variable \a k
+                    der.row(r) = values[0][cc[0]].row(v[0]);
                     for (unsigned k = 1; k!=d; ++k) // for all variables
-                        der.row(r).array() *= values[k][cc[k]].row(v[i]).array();
-                    ++c;
-                } while (nextComposition(cc));
+                        der.row(r).array() *= values[k][cc[k]].row(v[k]).array();
                 ++r;
+                } while (nextComposition(cc));
             } while (nextLexicographic(v, size));
         }
 
