@@ -87,9 +87,9 @@ public:
     
 public:
 
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 // Virtual member functions required by the base class
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 
     // Returns the dimension of the basis
     int dim() const { 
@@ -154,6 +154,7 @@ public:
     /// Returns the anchors (graville absissae) that represent the members of the basis
     void anchor_into(unsigned i, gsMatrix<T>& result) const;
 
+    // TODO: Why is this documentation not in gsBasis?
     /**
      * \brief Returns the indices of active (non-zero) basis functions
      * at points <em>u</em>, as a list of indices, in <em>result</em>.
@@ -215,35 +216,59 @@ public:
     /// Returns the components for a basis on the face \a s 
     void getComponentsForSide(boxSide const & s, std::vector<Basis_t*> & rr) const;
 
-    /// Returns a bounding box for the basis' domain
+    // see gsBasis for doxygen documentation
+    // Returns a bounding box for the basis' domain
     gsMatrix<T> support() const ;
 
-    /// Returns a bounding box for the support of the ith basis function
+    // see gsBasis for doxygen documentation
+    // Returns a bounding box for the support of the ith basis function
     gsMatrix<T> support( const unsigned & i ) const ;
 
-    /// Evaluates the non-zero basis functions (and optionally their
-    /// first k derivatives) at value u into result
+    // see gsBasis for doxygen documentation
+    // Evaluates the non-zero basis functions (and optionally their
+    // first k derivatives) at value u into result
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
-    /// Evaluate the i-th basis function at all columns of the matrix
-    /// (or vector) u
+    // see gsBasis for doxygen documentation
+    // Evaluate the i-th basis function at all columns of the matrix
+    // (or vector) u
     void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     /// Evaluate an element of the space given by coefs at points u
     virtual void eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;
 
-    /// Evaluate the nonzero basis functions and their derivatives up to
-    /// order n at all columns of u
+    // see gsBasis for doxygen documentation
+    // Evaluate the nonzero basis functions and their derivatives up to
+    // order n at all columns of u
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> >& result) const;
 
-    /// Evaluates the gradient the non-zero basis functions at value u.
+    // see gsBasis for doxygen documentation
+    // Evaluates the gradient the non-zero basis functions at value u.
     virtual void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
     // Evaluates the second derivatives of the non-zero basis functions at value u.
     virtual void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
-    /// Evaluate the i-th basis function derivative at all columns of
+private:
+    // Interior function
+    //
+    // values: array of std::vectors of gsMatrix<T>
+    // values[i], i = 0,...,d-1, contains the result of
+    // the univariate evalAllDers_into, corresponding to coordinate direction i.
+    //
+    // values[i] is a std::vector< gsMatrix<T> >
+    // values[i][j] contains the j-th derivatives in coordinate direction i
+    //
+    // size: gsVector of length d, size[i] contains the number of basis functions
+    // in coordinate direction i.
+    static void deriv2_tp(const std::vector< gsMatrix<T> > values[],
+                   gsVector<unsigned, d> size,
+                   gsMatrix<T>& result);
+
+public:
+    // see gsBasis for doxygen documentation
+    // Evaluate the i-th basis function derivative at all columns of
     virtual void derivSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
     virtual void deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
@@ -359,9 +384,9 @@ public:
     }
 
 
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 // Additional members for Tensor Basis
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 
     /// Get a const-iterator to the beginning of the bases vector
     /// \return an iterator to the beginning of the bases vector
@@ -779,8 +804,8 @@ private:
     
 }; // class gsTensorBasis<1,T>
 
-/**********************************************/
-/**********************************************/
+/* ******************************************** */
+/* ******************************************** */
 
 template<unsigned d, class Basis_t >
 inline unsigned gsTensorBasis<d,Basis_t>::index(gsVector<unsigned,d> const & v) const

@@ -32,7 +32,7 @@ namespace gismo
     \param T coefficient type
     \param d dimension of the parameter domain
     
-    \ingroup Nurbs
+    \ingroup Tensor
 */
 template<unsigned d, class T>
 class gsGenericTensorBasis : public gsTensorBasis<d,T>
@@ -58,11 +58,17 @@ public:
 
 public:
     // Constructors forwarded from the base class
-    gsGenericTensorBasis() : Base() { };
+    gsGenericTensorBasis() : Base() { }
 
     gsGenericTensorBasis( Basis_t* x,  Basis_t*  y) : Base(x,y) { }
 
+    gsGenericTensorBasis( const Basis_t & x, const Basis_t & y) :
+        Base(x.clone(),y.clone()) { }
+
     gsGenericTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z ) : Base(x,y,z) { }
+
+    gsGenericTensorBasis( const Basis_t & x, const Basis_t & y, const Basis_t & z ) :
+        Base(x.clone(),y.clone(),z.clone()) { }
 
     gsGenericTensorBasis( std::vector<Basis_t*> & bb ) : Base(bb.data()) 
     { 
