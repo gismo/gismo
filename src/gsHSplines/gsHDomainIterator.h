@@ -161,7 +161,7 @@ private:
         // gsDebug<<"leaf "<<  lower.transpose() <<", " 
         //        << upper.transpose() <<"\n";
 
-        const int level = m_leaf.level();
+        const int level2 = m_leaf.level();
 
         // Update leaf box
         for (unsigned dim = 0; dim < d; ++dim)
@@ -171,7 +171,7 @@ private:
 
             const gsCompactKnotVector<T> & kv =
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)
-                ->tensorLevel(level).component(dim).knots();
+                ->tensorLevel(level2).component(dim).knots();
 
             // knotVals = kv.unique()
 

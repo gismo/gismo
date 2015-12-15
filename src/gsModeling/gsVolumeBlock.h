@@ -374,18 +374,18 @@ public:
             // compute uniform points on each curve
             for (int curveId = 0; curveId < 4; curveId++)
             {
-                HalfEdge* edge = faceEdge->moveAlongEdge(curveId);
+                HalfEdge* edge2 = faceEdge->moveAlongEdge(curveId);
 
                 // gets index of a curve in Trimmed surface
-                int index = edge->face->indexOfEdge(edge);
+                int index = edge2->face->indexOfEdge(edge2);
 
                 gsVector<T> params;
-                edge->face->surf->getPhysicalyUniformCurveParameters(
+                edge2->face->surf->getPhysicalyUniformCurveParameters(
                             0, index, n, params, eps);
 
 
                 gsMatrix<T> curvePoints;
-                edge->face->surf->evalCurve_into(
+                edge2->face->surf->evalCurve_into(
                             0, index, params.transpose(), curvePoints);
 
 
