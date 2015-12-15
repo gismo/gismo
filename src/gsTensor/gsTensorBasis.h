@@ -251,7 +251,7 @@ public:
     virtual void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
 private:
-    // Interior function
+    // Internal function
     //
     // values: array of std::vectors of gsMatrix<T>
     // values[i], i = 0,...,d-1, contains the result of
@@ -263,7 +263,7 @@ private:
     // size: gsVector of length d, size[i] contains the number of basis functions
     // in coordinate direction i.
     static void deriv2_tp(const std::vector< gsMatrix<T> > values[],
-                   gsVector<unsigned, d> size,
+                   const gsVector<unsigned, d> & size,
                    gsMatrix<T>& result);
 
 public:

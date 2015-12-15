@@ -768,7 +768,7 @@ void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u,
 
 template<unsigned d, class T>
 void gsTensorBasis<d,T>::deriv2_tp(const std::vector< gsMatrix<T> > values[],
-                                   gsVector<unsigned, d> size,
+                                   const gsVector<unsigned, d> & size,
                                    gsMatrix<T>& result)
 {
     unsigned nb = 1;
