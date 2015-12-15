@@ -87,21 +87,21 @@ public:
         Base::initialize(m_ppde, basis, m_options);
     }
 
-    gsAssembler<T>* clone() const
+    virtual gsAssembler<T>* clone() const
     {
         const gsPoissonPde<T> * ppde = static_cast<const gsPoissonPde<T>* >(m_pde_ptr);
         return new gsPoissonAssembler<T>(*ppde,m_bases[0], m_options.dirStrategy,m_options.intStrategy );
     }
-    gsAssembler<T>* create() const
+    virtual gsAssembler<T>* create() const
     {
         return new gsPoissonAssembler<T>();
     }
 
     // Refresh routine
-    void refresh();
+    virtual void refresh();
 
     // Main assembly routine
-    void assemble();
+    virtual void assemble();
 
     /// Returns an expression of the "full" assembled sparse
     /// matrix. Note that matrix() might return a lower diagonal
