@@ -658,7 +658,12 @@ template<unsigned d, class T>
 void gsTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
                                           std::vector<gsMatrix<T> >& result) const
 {
-    GISMO_ASSERT( n>-1, "gsTensorBasis::evalAllDers() not implemented for negative n." );
+    GISMO_ASSERT(n>-2 &&  n<=2, "gsTensorBasis::evalAllDers() is implemented only for -2<n<=2: -1 means no value, 0 values only, ... " );
+    if (n==-1)
+    {
+        result.resize(0);
+        return;
+    }
 
     std::vector< gsMatrix<T> >values[d];
     gsVector<unsigned, d> v, size;

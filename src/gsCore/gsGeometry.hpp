@@ -245,7 +245,7 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
             if (flags & NEED_DERIV)
                 out.values[1].reshapeCol(p, derS, numCo) = tmp.deriv(p)*coefM;
             if (flags & NEED_DERIV2)
-                out.values[2].reshapeCol(p, derS, numCo) = tmp.deriv2(p)*coefM;
+                out.values[2].reshapeCol(p, der2S, numCo) = tmp.deriv2(p)*coefM;
         }
     }
 }

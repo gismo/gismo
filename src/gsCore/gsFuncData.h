@@ -15,6 +15,7 @@
 #pragma once
 
 #include<gsCore/gsLinearAlgebra.h> 
+#include<gsCore/gsBoundary.h>
 
 namespace gismo 
 {
@@ -242,11 +243,11 @@ public:
     }
 
 
-    inline matrixTransposeView jacobian (index_t point, index_t func = 0)
+    inline matrixTransposeView jacobian (index_t point, index_t func = 0) const
     {
        GISMO_ASSERT(flags & NEED_DERIV,
                   "jacobian access needs the computation of derivs: set the NEED_DERIV flag.");
-       return gsAsConstMatrix<T, Dynamic, Dynamic>(&values[1].coeffRef(point,func*info.derivSize()), info.domainDim,info.targetDim).transpose();
+       return gsAsConstMatrix<T, Dynamic, Dynamic>(&values[1].coeffRef(func*info.derivSize(),point), info.domainDim,info.targetDim).transpose();
     }
 };
 
@@ -272,18 +273,22 @@ public:
      * @param flags what to compute
      */
     explicit gsMapData(unsigned _flags = 0)
-    : Base(_flags)
+    : Base(_flags), side(boxSide::none)
     { }
 
 public:
     using Base::info;
     using Base::flags;
+    using Base::values;
 
-    gsMatrix<T> points; ///< input (parametric) points
+    boxSide     side;
+
+    gsMatrix<T> points;     ///< input (parametric) points
 
     gsMatrix<T> measures;
-    gsMatrix<T> fundForms; // First fundumental forms
+    gsMatrix<T> fundForms;  // First fundumental forms
     gsMatrix<T> normals;
+    gsMatrix<T> outNormals; // only for the boundary
 
 public:
     inline constColumn point(const index_t point) const { return points.col(point);}
@@ -309,6 +314,19 @@ public:
         return normals.col(point);
     }
 
+    inline constColumn outNormal(const index_t point) const
+    {
+        GISMO_ASSERT(flags & NEED_OUTER_NORMAL,
+                   "normals are not computed unless the NEED_NORMAL flag is set.");
+        return outNormals.col(point);
+    }
+
+    inline matrixTransposeView jacobians () const
+    {
+       GISMO_ASSERT(flags & NEED_DERIV,
+                  "jacobian access needs the computation of derivs: set the NEED_DERIV flag.");
+       return gsAsConstMatrix<T, Dynamic, Dynamic>(&values[1].coeffRef(0,0), info.domainDim,info.targetDim*values[1].cols()).transpose();
+    }
 };
 
 } // namespace gismo

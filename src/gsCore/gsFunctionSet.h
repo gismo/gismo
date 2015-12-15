@@ -278,7 +278,7 @@ public:
     virtual void deriv2_into    (const gsMatrix<T>  &  u, gsMatrix<T> &result) const;
 
     /// @brief Evaluate the nonzero functions and their derivatives up
-    /// to order \a n
+    /// to order \a n. If n is -1 then no computation is performed.
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> > & result) const;
 
