@@ -87,8 +87,8 @@ public:
     gsDomainIterator( ) : m_basis(NULL), m_isGood( true ) { }
 
     /// \brief Constructor using a basis 
-    gsDomainIterator( const gsBasis<T>& basis, const boxSide & s = boundary::none)
-        : center( gsVector<T>::Zero(basis.dim()) ), m_basis( &basis ), 
+    gsDomainIterator( const gsBasis<T>& basisParam, const boxSide & s = boundary::none)
+        : center( gsVector<T>::Zero(basisParam.dim()) ), m_basis( &basisParam ), 
           m_isGood( true ), m_side(s)
     { }
 
