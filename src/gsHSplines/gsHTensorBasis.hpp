@@ -226,10 +226,10 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
         const point & u = it.upperCorner();
 
         boxes.push_back(lvl);
-        boxes.push_back( l(0) * 2);
-        boxes.push_back( l(1) * 2);
-        boxes.push_back( u(0) * 2);
-        boxes.push_back( u(1) * 2);
+        for( unsigned i = 0; i < d; i++)
+            boxes.push_back( l(i) * 2);
+        for( unsigned i = 0; i < d; i++)
+            boxes.push_back( u(i) * 2);
     }
 
     safe(this->clone())->refineElements_withCoefs(coefs, boxes);
