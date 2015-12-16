@@ -112,6 +112,7 @@ public:
       // spaceType    (space    ::taylorHood   )
       bdA(2.0),
       bdB(1  ),
+      maxCapacity(0.75),
       quA(1.0),
       quB(1  )
     { }
@@ -133,6 +134,11 @@ public:
     double bdA;
     int    bdB;
 
+    // the number of allocated entries is determined, such that
+    // A * p + B are maxCapacity*100 percent, i.e. each row is maxial
+    // stored with maxCapacity*100 percent. (0.75 -> 75%)
+    double maxCapacity;
+
     // The formula for the number of quadrature points for all
     // integral computations will be set to the integer which is
     // closest to (A * p + B), where \a p is the (coordinate-wise)
@@ -143,7 +149,7 @@ public:
 public: /* Utility functions that return values implied by the settings*/
 
 
-    index_t numQuNodes(const gsBasis<real_t> & b)
+    index_t numQuNodes(const gsBasis<real_t> & b) const
     {
         index_t res = 1;
         for( int i=0; i<b.domainDim(); ++i )
@@ -154,12 +160,12 @@ public: /* Utility functions that return values implied by the settings*/
         return res;
     }
 
-    index_t numColNz(const gsBasis<real_t> & b)
+    index_t numColNz(const gsBasis<real_t> & b) const
     {
         index_t nz = 1;
         for (int i = 0; i != b.dim(); ++i)
             nz *= static_cast<index_t>(bdA * b.degree(i) + bdB + 0.5);
-        return nz;
+        return static_cast<index_t>(nz/maxCapacity);
     }
 
 };
