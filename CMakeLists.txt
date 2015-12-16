@@ -102,14 +102,17 @@ set(${PROJECT_NAME}_optionals ""
 set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src;${PROJECT_SOURCE_DIR}/external;${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories")
 
-# Add main sources directory
-add_subdirectory(src)
-
 # Add externals directory
 add_subdirectory(external)
 
 # Inclusion paths
+get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
+include_directories(SYSTEM ${EXTERNAL_INCLUDE_DIRS})
+
 include_directories(${GISMO_INCLUDE_DIRS})
+
+# Add main sources directory
+add_subdirectory(src)
 
 ## #################################################################
 ## Extensions
