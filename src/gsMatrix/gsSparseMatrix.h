@@ -36,15 +36,38 @@ public:
     typedef Eigen::Triplet<T,index_t> Triplet;
     typedef std::vector<Eigen::Triplet<T,index_t> > Base;
 
+    typedef typename Base::iterator       iterator;
 public:
     gsSparseEntries() ;
 
-    ~gsSparseEntries() ;
+    ~gsSparseEntries();
 
     inline void add( int i, int j, T value )
     { this->push_back( Triplet(i,j,value) ); }
 
+    inline void addSorted(int i, int j, T value)
+    {
+        Triplet t(i,j,value);
+        iterator pos = std::lower_bound(Base::begin(), Base::end(), t, compTriplet );
+       // iterator pos = std::find(Base::begin(), Base::end(), t);
+        if ( pos == Base::end() || (pos->row() != t.row() && pos->col() !=t.col()) )// If not found
+            Base::insert(pos, t);
+    }
+
+protected:
+    // comparism operator for triplet struct, used to introduce columnwise lex-ordering.
+    static struct _compTriplet
+    {
+        bool operator() (const Triplet & left, const Triplet & right)
+        {
+            return (left.col() < right.col()) ||
+                    (left.col() == right.col() && left.row() < right.row()) ;
+        }
+    } compTriplet ;
+
 };
+
+
 
 /** 
     @brief Iterator over the non-zero entries of a sparse matrix
