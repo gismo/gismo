@@ -112,7 +112,7 @@ public:
       // spaceType    (space    ::taylorHood   )
       bdA(2.0),
       bdB(1  ),
-      maxCapacity(0.75),
+      memOverhead(0.33334),
       quA(1.0),
       quB(1  )
     { }
@@ -134,10 +134,10 @@ public:
     double bdA;
     int    bdB;
 
-    // the number of allocated entries is determined, such that
-    // A * p + B are maxCapacity*100 percent, i.e. each row is maxial
-    // stored with maxCapacity*100 percent. (0.75 -> 75%)
-    double maxCapacity;
+    // more memory is allocated then required for efficency reasons,
+    // more precise, (1+memOverhead) times the original memory is allocated
+    // default value is 0.33334 -> 75% of the allocated memory is used.
+    double memOverhead;
 
     // The formula for the number of quadrature points for all
     // integral computations will be set to the integer which is
@@ -165,7 +165,7 @@ public: /* Utility functions that return values implied by the settings*/
         index_t nz = 1;
         for (int i = 0; i != b.dim(); ++i)
             nz *= static_cast<index_t>(bdA * b.degree(i) + bdB + 0.5);
-        return static_cast<index_t>(nz/maxCapacity);
+        return static_cast<index_t>(nz*(1.0+memOverhead));
     }
 
 };
