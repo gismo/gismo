@@ -76,6 +76,8 @@ using std::atan;
 using std::atan2;
 using std::min;
 using std::max;
+using std::frexp;
+using std::ldexp;
 
 // template <typename T> T min(T a, T b) {return  (a < b ? a : b); }
 // template <typename T> T max(T a, T b) {return  (a < b ? b : a); }
@@ -163,6 +165,8 @@ inline bool isfinite(mpq_class a) {return true; }
 inline bool isnan(mpq_class a)    {return false;}
 inline mpq_class min(mpq_class a, mpq_class b) {return  (a < b ? a : b); }
 inline mpq_class max(mpq_class a, mpq_class b) {return  (a < b ? b : a); }
+inline mpq_class frexp(mpq_class a, int* b) {return  a;}
+inline mpq_class ldexp(mpq_class a, int b) {return  a;}
 inline mpq_class pow (const mpq_class & a, const mpq_class & b) 
 {return  std::pow(a.get_d(),b.get_d()); }
 #endif
@@ -224,9 +228,9 @@ bool almostEqualUlp(const T a, const T b, const unsigned ulps)
 
     // Break the numbers into significand and exponent, sorting them
     // by exponent. (note that infinity might not be correctly handled)
-    int min_exp, max_exp;
-    T min_frac = std::frexp(a, &min_exp);
-    T max_frac = std::frexp(b, &max_exp);
+    int min_exp(0), max_exp(0);
+    T min_frac = frexp(a, &min_exp);
+    T max_frac = frexp(b, &max_exp);
     if (min_exp > max_exp)
     {
         std::swap(min_frac, max_frac);
@@ -235,7 +239,7 @@ bool almostEqualUlp(const T a, const T b, const unsigned ulps)
 
     // Convert the smaller to the scale of the larger by adjusting its
     // significand.
-    const T scaled_min_frac = std::ldexp(min_frac, min_exp-max_exp);
+    const T scaled_min_frac = math::ldexp(min_frac, min_exp-max_exp);
 
     // Since the significands are now in the same scale, and the
     // larger is in the range [0.5, 1), 1 ulp is just epsilon/2.
