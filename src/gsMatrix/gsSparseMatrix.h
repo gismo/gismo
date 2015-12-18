@@ -49,14 +49,13 @@ public:
     {
         Triplet t(i,j,value);
         iterator pos = std::lower_bound(Base::begin(), Base::end(), t, compTriplet );
-       // iterator pos = std::find(Base::begin(), Base::end(), t);
         if ( pos == Base::end() || (pos->row() != t.row() && pos->col() !=t.col()) )// If not found
             Base::insert(pos, t);
     }
 
 protected:
-    // comparism operator for triplet struct, used to introduce columnwise lex-ordering.
-    static struct _compTriplet
+    // comparison operator for triplet struct, used to introduce columnwise lex-ordering.
+    struct _compTriplet
     {
         bool operator() (const Triplet & left, const Triplet & right)
         {
