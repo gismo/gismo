@@ -604,17 +604,16 @@ void firstComposition( typename Vec::Scalar_t sum, index_t dim, Vec & res)
     res[0] = sum;
 }
 
-/// \brief Next composition in lexicographic order
+/// \brief Returns (inplace) the next composition in lexicographic order
 /// \ingroup combinatorics
 template<class Vec>
 inline bool nextComposition(Vec & v)
 {
-    const typename Vec::Scalar_t sum = v.sum();
-    const index_t k   = v.size() - 1;
+    const index_t k = v.size() - 1;
     
-    if (v[k] != sum)
+    if (v[k] != v.sum())
     {
-        for (index_t i = 0; i <= k; i++)
+        for (index_t i = 0; i <= k; ++i)
         {
             if ( v[i]!=0 )
             {

@@ -22,11 +22,31 @@
 #include <cmath>
 #include <limits>
 
+// Macro for getting random seed
+#define GISMO_RANDOM_SEED srand((unsigned int) time(0));
+
 #ifdef GISMO_WITH_MPQ
 template <class U, class V>
 inline mpq_class max(const __gmp_expr<mpq_t, U> & a,
                      const __gmp_expr<mpq_t, V> & b)
 {return mpq_class(a < b ? b : a);}
+
+/*// under construction
+template <class U, class V>
+inline mpq_class pow(const __gmp_expr<mpq_t, U> & a,
+                     const __gmp_expr<mpq_t, V> & b)
+{
+    mpq_class r;
+    const mpq_class aa(a);
+    const mpq_class bb(b);
+    mpz_pow_ui(r.get_num(), aa.get_num(), bb.get_num().get_si());
+    mpz_pow_ui(r.get_den(), aa.get_den(), bb.get_num().get_si());
+    if ( bb.get_den() == 1 )
+        return r;
+    else
+        return std::pow(r.get_d(), 1/bb.get_den().get_d());
+}
+*/
 
 #define GMP_EXTRA_STD_UNARY_FUNCTION(std_fun) template <class U> \
 inline mpq_class std_fun(const __gmp_expr<mpq_t, U> & expr)      \
