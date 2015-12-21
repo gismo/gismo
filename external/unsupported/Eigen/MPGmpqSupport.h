@@ -1,3 +1,10 @@
+// GMP support for Eigen linear algebra library
+//
+// This Source Code Form is subject to the terms of the Mozilla
+// Public License v. 2.0. If a copy of the MPL was not distributed
+// with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Angelos Mantzaflaris, 2015
 
 #pragma once
 
@@ -10,12 +17,12 @@ namespace Eigen
   {
     enum {
       IsInteger = 0,
-      IsSigned = 1,
+      IsSigned  = 1,
       IsComplex = 0,
       RequireInitialization = 1,
       ReadCost = 10,
-      AddCost = 10,
-      MulCost = 40
+      AddCost  = 10,
+      MulCost  = 40
     };
 
     typedef mpq_class Real;
@@ -91,11 +98,13 @@ namespace Eigen
     template<typename Index, int mr, int nr, bool ConjugateLhs, bool ConjugateRhs>
     struct gebp_kernel<mpq_class,mpq_class,Index,mr,nr,ConjugateLhs,ConjugateRhs>
     {
-     typedef mpq_class num_t;
+      typedef mpq_class num_t;
 
       EIGEN_DONT_INLINE
-      void operator()(num_t* res, Index resStride, const num_t* blockA, const num_t* blockB, Index rows, Index depth, Index cols, num_t alpha,
-                      Index strideA=-1, Index strideB=-1, Index offsetA=0, Index offsetB=0, num_t* /*unpackedB*/ = 0)
+      void operator()(num_t* res, Index resStride, const num_t* blockA, const num_t* blockB, 
+                      Index rows, Index depth, Index cols, num_t alpha,
+                      Index strideA=-1, Index strideB=-1, Index offsetA=0, 
+                      Index offsetB=0, num_t* /*unpackedB*/ = 0)
       {
         num_t acc1, acc2, tmp;
         
@@ -141,5 +150,30 @@ namespace Eigen
     };
 
   } // end namespace internal
+
+// Complex scalar division.
+template <class U, class V, class W, class Y>
+std::complex<mpq_class> 
+cdiv(const __gmp_expr<mpq_t, U> & xr,
+     const __gmp_expr<mpq_t, V> & xi,
+     const __gmp_expr<mpq_t, W> & yr,
+     const __gmp_expr<mpq_t, Y> & yi)
+{
+  //using std::abs;
+  mpq_class r,d;
+  if (abs(yr) > abs(yi))
+  {
+      r = yi/yr;
+      d = yr + r*yi;
+      return std::complex<mpq_class>(mpq_class((xr + r*xi)/d), mpq_class((xi - r*xr)/d));
+  }
+  else
+  {
+      r = yr/yi;
+      d = yi + r*yr;
+      return std::complex<mpq_class>(mpq_class((r*xr + xi)/d), mpq_class((r*xi - xr)/d));
+  }
 }
+
+}//namaspace Eigen
 
