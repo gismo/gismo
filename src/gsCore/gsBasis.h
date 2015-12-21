@@ -243,24 +243,25 @@ public:
      * each evaluation point is in \f$\mathbb R^d\f$, and\n
      * each coefficient is a point in \f$\mathbb R^m\f$.
      *
-     * The <em>n</em> <b>evaluation points u</b> are given in a gsMatrix of size <em>d</em> x <em>n</em>.
+     * The <em>N</em> <b>evaluation points u</b> are given in a gsMatrix of size <em>d</em> x <em>N</em>.
      * Each \em column of \em u represents one evaluation point.
      *
-     * The <em>k</em> <b>coefficients coefs</b> are given as a gsMatrix of size <em>k</em> x <em>m</em>.
+     * The <em>K</em> <b>coefficients coefs</b> are given as a gsMatrix of size <em>K</em> x <em>m</em>.
      * Each \em row of \em coefs represents one coefficient in \f$\mathbb R^m\f$.
      *
      * The gsMatrix <b>result</b> contains the following data:\n
-     * For every column of \em u, the matrix \em result contains
-     * one Jacobian matrix of size <em>m</em> x <em>d</em> "next to each other", such that the total size of
-     * \a result is <em>m</em> x <em>(d * n)</em>.
+     * For every column of \em u, the corresponding column in the matrix \em result contains
+     * the gradients of the \em m components of the function above each other.
+     * Hence, the size of \em result is <em>(d*m)</em> x <em>N</em>.
      *
      * <b>Example 1:</b>\n
      * Let \f$f(s,t)\f$ be a bivariate scalar function, \f$f:\mathbb R^2 \to \mathbb R\f$ (i.e., d=2, m=1),
      * and let the evaluation point \f$ u_i\f$ be represented by the <em>i</em>-th column of \em u.\n
      * Then, \em result has the form
      * \f[
-     \left( \begin{array}{ccccccc}
-     \partial_s f(u_1) & \partial_t f(u_1) & \partial_s f(u_2) & \partial_t f(u_2) & \partial_s f(u_3) & \ldots &  \partial_t f(u_n)
+     \left( \begin{array}{cccc}
+     \partial_s f(u_1) & \partial_s f(u_2) & \ldots &  \partial_t f(u_{N}) \\
+     \partial_t f(u_1) & \partial_t f(u_2) & \ldots &  \partial_t f(u_{N})
      \end{array}
      \right)
      \f]
@@ -270,24 +271,26 @@ public:
      * Then, \em result has the form
      * \f[
      \left( \begin{array}{ccccccc}
-     \partial_s f_1(u_1) & \partial_t f_1(u_1) & \partial_s f_1(u_2) & \partial_t f_1(u_2) & \partial_s f_1(u_3) & \ldots &  \partial_t f_1(u_n) \\
-     \partial_s f_2(u_1) & \partial_t f_2(u_1) & \partial_s f_2(u_2) & \partial_t f_2(u_2) & \partial_s f_2(u_3) & \ldots &  \partial_t f_2(u_n) \\
-     \partial_s f_3(u_1) & \partial_t f_3(u_1) & \partial_s f_3(u_2) & \partial_t f_3(u_2) & \partial_s f_3(u_3) & \ldots &  \partial_t f_3(u_n)
+     \partial_s f_1(u_1) & \partial_s f_1(u_2) & \ldots &  \partial_s f_1(u_N) \\
+     \partial_t f_1(u_1) & \partial_t f_1(u_2) & \ldots &  \partial_t f_1(u_N) \\
+     \partial_s f_2(u_1) & \partial_s f_2(u_2) & \ldots &  \partial_s f_2(u_N) \\
+     \partial_t f_2(u_1) & \partial_t f_2(u_2) & \ldots &  \partial_t f_2(u_N) \\
+     \partial_s f_3(u_1) & \partial_s f_3(u_2) & \ldots &  \partial_s f_3(u_N) \\
+     \partial_t f_3(u_1) & \partial_t f_3(u_2) & \ldots &  \partial_t f_3(u_N) \\
      \end{array}
      \right)
      \f]
      *
-     * \param[in] u     Evaluation points as \em d x <em>n</em>-matrix.
-     * \param[in] coefs Coefficient matrix describing the geometry in this basis as <em>k</em> x <em>m</em>-matrix.
-     * \param[in,out] result   For every column of \em u, the matrix \em result will contain
-     *   one Jacobian matrix of size <em>m</em> x <em>d</em> "next to each other", such that the total size of
-     *   \a result is <em>m</em> x <em>(d * n)</em>
+     * \param[in] u     Evaluation points as \em d x <em>N</em>-matrix.
+     * \param[in] coefs Coefficient matrix describing the geometry in this basis as <em>K</em> x <em>m</em>-matrix.\n
+     * \em K should equal the size() of the basis, i.e., the number basis functions.
+     * \param[in,out] result gsMatrix of size <em>d*m</em> x <em>N</em>, see above for format.
      *
      * where\n
      *\em d is the dimension of the parameter domain\n
      *\em m is the dimension of the physical domain\n
-     *\em n is the number of evaluation points\n
-     *\em k is the number of coefficients
+     *\em N is the number of evaluation points\n
+     *\em K is the number of coefficients
      */
     virtual void derivFunc_into(const gsMatrix<T> & u, 
                                 const gsMatrix<T> & coefs, 
@@ -325,9 +328,9 @@ public:
      * ...i.e., evaluates a linear combination of
      * \em coefs * <em>(2nd derivatives of basis functions)</em>, into \a result.
      *
-     * <b>Evaluation points \em u</b> are given as gsMatrix of size \em ParDim x \em n, where\n
+     * <b>Evaluation points \em u</b> are given as gsMatrix of size \em ParDim x \em N, where\n
      * \em ParDim is the dimension of the parameter domain and\n
-     * \em n is the number of evaluation points.\n
+     * \em N is the number of evaluation points.\n
      * Each column of \em u corresponds to the coordinates of one evaluation point.\n
      * \n
      * The <b>coefficients \em coefs</b> are given as gsMatrix of size \em N x \em PhysDim, where\n
@@ -350,7 +353,7 @@ public:
      *
      * \param[in] u     Evaluation points in columns (see above for format).
      * \param[in] coefs Coefficient matrix describing the geometry in this basis.
-     * \param[in,out]  result For every column of \a u, a column containing the
+     * \param[out]  result For every column of \a u, a column containing the
      *   second derivatives at the respective point in the format described above.
      *
      * This function has a default implementation that may be overridden
@@ -359,6 +362,52 @@ public:
      *
      */
     virtual void deriv2Func_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const;
+
+    /**
+     * @brief Evaluates all derivatives up to order \em n of the function described by \a coefs at points \a u.
+     *
+     * <b>Evaluation points \em u</b> are given as gsMatrix of size \em ParDim x \em N, where\n
+     * \em ParDim is the dimension of the parameter domain and\n
+     * \em N is the number of evaluation points.\n
+     * Each column of \em u corresponds to the coordinates of one evaluation point.\n
+     * \n
+     * The <b>coefficients \em coefs</b> are given as gsMatrix of size \em K x \em PhysDim, where\n
+     * \em K is the number of basis functions (=size()) and\n
+     * \em PhysDim is the dimension of the physical domain.\n
+     * Each row of \em coefs corresponds to the coordinates of one control point.
+     *
+     * \em result is a std::vector, where the entry <em>result[i]</em> contains the
+     * gsMatrix corresponding to the <em>i</em>-th derivatives. The format of the
+     * respective entry is as in\n
+     * evalFunc_into()\n
+     * derivFunc_into()\n
+     * deriv2Func_into()\n
+     *
+     * \todo finish documentation
+     *
+     * @param[in] u
+     * @param[in] coefs
+     * @param[out] result
+     */
+    virtual void evalAllDersFunc_into(const gsMatrix<T> & u,
+                                      const gsMatrix<T> & coefs,
+                                      const unsigned n,
+                                      std::vector< gsMatrix<T> >& result ) const;
+
+    /**
+     * @brief Computes the linear combination \em coefs * <em> values( actives ) </em>
+     *
+     * \todo documentation
+     *
+     * @param[in] coefs gsMatrix of size \em K x \em m, where \em K should equal size() of the basis (i.e., the number of basis functions).
+     * @param[in] actives gsMatrix of size \em numAct x \em numPts
+     * @param[in] values gsMatrix of size <em>stride*numAct</em> x \em numPts
+     * @param[out] result gsMatrix of size \em stride x \em numPts
+     */
+    static void linearCombination_into(const gsMatrix<T> & coefs,
+                                       const gsMatrix<unsigned> & actives,
+                                       const gsMatrix<T> & values,
+                                       gsMatrix<T> & result);
 
     /// @}
 

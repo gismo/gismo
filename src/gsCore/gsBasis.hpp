@@ -34,21 +34,17 @@ void gsBasis<T>::evalFunc_into(const gsMatrix<T> &u,
                            const gsMatrix<T> & coefs, 
                            gsMatrix<T>& result) const 
 {
-
-    result.resize(coefs.cols(), u.cols()) ;
     gsMatrix<T> B ;
-    gsMatrix<unsigned> ind;
+    gsMatrix<unsigned> actives;
 
-    this->eval_into(u,B)    ; // col j = nonzero basis functions at column point u(..,j)
-    this->active_into(u,ind);  // col j = indices of active functions at column point u(..,j)
+    // compute function values
+    this->eval_into(u,B);
+    // compute active functions
+    this->active_into(u,actives);
 
-    for ( index_t j=0; j< u.cols() ; j++ ) // for all points (columns of u)
-    {
-        result.col(j) =  coefs.row( ind(0,j) ) * B(0,j)  ;
-        for ( index_t i=1; i< ind.rows() ; i++ ) // for all nonzero basis functions
-            result.col(j)  +=   coefs.row( ind(i,j) ) * B(i,j)  ;
-    }
-
+    // compute result as linear combination of
+    // "coefs(actives)" and B
+    linearCombination_into( coefs, actives, B, result );
 }
 
 
@@ -65,8 +61,8 @@ void gsBasis<T>::jacobianFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coe
     gsMatrix<T> B;
     gsMatrix<unsigned> ind;
 
-    this->deriv_into(u,B);     // col j = nonzero derivatives at column point u(..,j)
-    this->active_into(u,ind);  // col j = indices of active functions at column point u(..,j)
+    this->deriv_into(u,B);
+    this->active_into(u,ind);
     const index_t numAct=ind.rows();
 
     for (index_t p = 0; p < numPts; ++p) // p = point
@@ -82,55 +78,88 @@ void gsBasis<T>::jacobianFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coe
 // For each point, result contains one column with stacked gradients of the components
 template<class T>
 void gsBasis<T>::derivFunc_into(const gsMatrix<T> &u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const 
-{  
-    const index_t n = coefs.cols();
-    const index_t numPts = u.cols();       // at how many points to evaluate the gradients
-    const index_t pardim = this->dim();
+{
+    gsMatrix<T>        B;
+    gsMatrix<unsigned> actives;
 
-    result.setZero( n*pardim, numPts );
-    gsMatrix<T> B;
-    gsMatrix<unsigned> ind;
+    // compute first derivatives
+    this->deriv_into(u,B);
+    // compute active functions
+    this->active_into(u,actives);
 
-    this->deriv_into(u,B);     // col j = nonzero derivatives at column point u(..,j)
-    this->active_into(u,ind);  // col j = indices of active functions at column point u(..,j)
-    const index_t numAct=ind.rows();
-
-    for (index_t p = 0; p < numPts; ++p) // p = point
-        for (index_t c=0; c<n; ++c )     // c = component
-            for ( index_t a=0; a< numAct ; ++a ) // a = active function
-            {
-                result.block(pardim*c,p,pardim,1).noalias()+=
-                     coefs(ind(a,p), c) *    B.block(a*pardim, p, pardim, 1);
-            }
+    // compute result as linear combination of
+    // "coefs(actives)" and B
+    linearCombination_into( coefs, actives, B, result );
 }
 
 // Evaluates the second derivatives of the function given by coefs (default implementation)
 template<class T>
-void gsBasis<T>::deriv2Func_into(const gsMatrix<T> &u, 
+void gsBasis<T>::deriv2Func_into(const gsMatrix<T> & u,
                                  const gsMatrix<T> & coefs, 
                                  gsMatrix<T>& result) const 
 {  
-    unsigned n = coefs.cols();
-    // at how many points to evaluate the gradients
-    unsigned numPts = u.cols();  
-
     gsMatrix<T> B;
-    gsMatrix<unsigned> ind;
-    // col j = nonzero 2nd derivatives at column point u(..,j)
-    this->deriv2_into(u,B);    
-    // col j = indices of active functions at column point u(..,j)
-    this->active_into(u,ind);  
+    gsMatrix<unsigned> actives;
 
-    const unsigned stride = B.rows() / ind.rows() ;
+    // compute second derivatives
+    this->deriv2_into(u,B);
+    // compute active functions
+    this->active_into(u,actives);
 
-    result.setZero( n*stride, numPts);  
-    for (unsigned j = 0; j < numPts; ++j) // For column point u(..,j)
-    {
-        for ( index_t i=0; i< ind.rows() ; i++ )  // for all nonzero basis functions
-            for (unsigned k=0; k<n; ++k )         // for all components of the geometry
-                result.block (stride * k, j, stride, 1).noalias() +=  
-                    coefs(ind(i,j), k) * B.block( stride * i, j, stride, 1); 
-    }
+    // compute result as linear combination of
+    // "coefs(actives)" and B
+    linearCombination_into( coefs, actives, B, result );
+}
+
+template<class T>
+void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
+                                      const gsMatrix<T> & coefs,
+                                      const unsigned n,
+                                      std::vector< gsMatrix<T> >& result) const
+{
+    // resize result so that it will hold
+    // function values and up to the n-th derivatives
+    result.resize(n+1);
+
+    // B will contain the derivatives up to order n
+    std::vector< gsMatrix<T> >B;
+    // actives will contain the indices of the basis functions
+    // which are active at the evaluation points
+    gsMatrix<unsigned> actives;
+
+    this->evalAllDers_into(u,n,B);
+    this->active_into(u,actives);
+
+    // for derivatives 0 to n, evaluate the function by linear combination
+    // of coefficients with the respective function values/derivatives
+    for( unsigned i = 0; i <= n; i++)
+        linearCombination_into( coefs, actives, B[i], result[i] );
+}
+
+
+template<class T>
+// static
+void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
+                                        const gsMatrix<unsigned> & actives,
+                                        const gsMatrix<T> & values,
+                                        gsMatrix<T> & result)
+{
+    const unsigned numPts = values.cols();
+    const unsigned tarDim = coefs.cols();
+    const unsigned stride = values.rows() / actives.rows();
+
+    GISMO_ASSERT( actives.rows() * stride == values.rows(), "number of values and actives does not fit together");
+
+    result.resize( tarDim * stride, numPts );
+    result.setZero();
+
+    for (unsigned pt = 0; pt < numPts; ++pt) // For pt, i.e., for every column of u
+        for ( index_t i = 0; i < actives.rows(); ++i )  // for all nonzero basis functions
+            for (unsigned c = 0; c < tarDim; ++c )      // for all components of the geometry
+            {
+                result.block( stride * c, pt, stride, 1).noalias() +=
+                    coefs( actives(i,pt), c) * values.block( stride * i, pt, stride, 1);
+            }
 }
 
 
