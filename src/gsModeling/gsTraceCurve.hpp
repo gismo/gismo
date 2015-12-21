@@ -84,10 +84,10 @@ void gsTraceLine( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
       Jmap.row(0) =  *map.first->jacobian(current );
       Jmap.row(1) =  *map.second->jacobian(current);
       
-      if ( fabs( Jmap.determinant() ) < 0.0001) //0.025 amoeba_hole,austria_hole
+      if ( math::abs( Jmap.determinant() ) < 0.0001) //0.025 amoeba_hole,austria_hole
             {
                gsInfo<< "\n trace line: \n Jacobian vanished at : " << current.transpose() <<"\n"
-         "with Jacobian = "<< fabs( Jmap.determinant() )<<"\n \n";
+                   "with Jacobian = "<< math::abs( Jmap.determinant() )<<"\n \n";
 
                loops =-1 ;
                 break; // stop Newton iteration

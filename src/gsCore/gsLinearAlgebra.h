@@ -23,8 +23,6 @@
 #include <gsMatrix/gsEigenDeclarations.h>
 
 #include <Eigen/Core>
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
 
 #if defined(GISMO_WITH_MPFR)
 #include <unsupported/Eigen/MPRealSupport>
@@ -33,6 +31,9 @@
 #if defined(GISMO_WITH_MPQ)
 #include <unsupported/Eigen/MPGmpqSupport.h>
 #endif
+
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
 
 // Extra Eigen code
 #include <gsMatrix/gsEigenAddons.h>

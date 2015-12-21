@@ -167,9 +167,11 @@ bool checkVectorPtrCast(std::vector<Base*> pVec)
     return true;
 }
 
-/// \brief Small wrapper for std::copy mimicking memcpy, copies \a n
-/// positions starting from \a begin into \a result. The latter is
-/// expected to have been allocated in advance
+/**
+   \brief Small wrapper for std::copy mimicking memcpy (or
+   std::copy_n), copies \a n positions starting from \a begin into
+   \a result. The latter is expected to have been allocated in advance
+*/
 template <class T, class U>
 inline void copyRange(const T * begin, U * result, const int n)
 {
@@ -179,6 +181,8 @@ inline void copyRange(const T * begin, U * result, const int n)
               stdext::checked_array_iterator<U*>(result,n));
 #   else
     std::copy(begin, begin+n, result);
+    // Note: in C++11 there is:
+    // std::copy_n(begin, n, result);
 #   endif
 }
 
