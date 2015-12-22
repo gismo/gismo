@@ -92,7 +92,7 @@ public:
              bool _rhsFunctionParam = false)
     : gsNorm<T>(_discSolution,_rhsFunction), m_f2param(_rhsFunctionParam)
     {
-
+        /*! this is buggy..
         // In case no boundary conditions are provided, we still
         // need to initialize m_bcInfo.
         // Unpretty workaround, setting up m_bcInfo with only
@@ -103,6 +103,7 @@ public:
         bcInfo.addCondition(0, bs, condition_type::neumann, &g, 0);
 
         m_bcInfo = bcInfo;
+        */
     }
 
 public:
@@ -299,7 +300,7 @@ protected:
         // compute contributions for each side of the element
         // psi = "patchside i"
         sumSidesSq = T(0.0);
-        for( size_t psi = 0; psi < touchingSides.size(); psi++ )
+        for( size_t psi = 0; psi < touchingSides.size(); psi++ ) // todo: use getConditionsForPatch and iterate over them
         {
             boxSide bs( touchingSides[psi] );
             patchSide ps( int(actPatch), bs );
@@ -310,6 +311,8 @@ protected:
             // bc will be the null-pointer, if there is no boundary condition
             // on this patchside
             const boundary_condition<T> * bc = m_bcInfo.getConditionFromSide( ps );
+            if (NULL == bc )
+                continue;
 
             // create quadrature for the side of the element
             numQuadNodesSide = numQuadNodesRef;
@@ -526,6 +529,7 @@ protected:
             }
             else if( bc->type() == condition_type::neumann )
             {
+                gsDebugVar(bc->type());
                 gsMatrix<T> bcFct;
                 bc->function()->eval_into( quNodes.col(qk), bcFct );
                 int unk = bc->unknown();
