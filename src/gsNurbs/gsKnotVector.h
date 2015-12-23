@@ -14,21 +14,12 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsCore/gsDebug.h>
-#include <gsCore/gsExport.h>
-#include <gsCore/gsMemory.h>
 #include <gsCore/gsDomain.h>
 
-#include <gsNurbs/gsKnotVectorIter.h>
+#include <gsNurbs/gsKnotIterator.h>
 
 namespace gismo
 {
-
-
-namespace internal {
-template<typename T> class gsKnotIterator ;
-template<typename T> class gsUKnotIterator;
-}
 
 // TODO: Formatting
 /** @brief Class for representing a knot vector.

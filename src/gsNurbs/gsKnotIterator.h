@@ -1,4 +1,4 @@
-/** @file gsKnotVectorIter.h
+/** @file gsKnotIterator.h
 
     @brief Provides implementation of knot vector iterators.
 

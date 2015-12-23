@@ -25,10 +25,9 @@ namespace gismo
 namespace internal
 {
 
-
-/// Get a KnotVector from XML data
-///
-/// \ingroup Nurbs
+/** \brief Read a KnotVector from XML data
+    \ingroup Nurbs
+*/
 template<class T>
 class gsXml< gsKnotVector<T> >
 {
@@ -83,10 +82,10 @@ public:
 }// namespace internal
 
 
-
 //===============//
 // iterator ends //
 //===============//
+
 
 template<typename T>
 typename gsKnotVector<T>::iterator gsKnotVector<T>::begin()  const
@@ -112,19 +111,15 @@ typename gsKnotVector<T>::reverse_iterator gsKnotVector<T>::rend()    const
     return reverse_iterator(begin());
 }
 
-
-
 template<typename T>
 typename gsKnotVector<T>::uiterator gsKnotVector<T>::ubegin() const
 {
-    //return uiterator( m_repKnots.begin(), m_multSum.begin(), m_multSum.begin() );
     return uiterator(*this);
 }
 
 template<typename T>
 typename gsKnotVector<T>::uiterator gsKnotVector<T>::uend()   const
 {
-    //return uiterator( m_repKnots.begin(), m_multSum.begin(), m_multSum.end() );
     return uiterator::End(*this);
 }
 
@@ -139,8 +134,6 @@ typename gsKnotVector<T>::reverse_uiterator gsKnotVector<T>::urend()   const
 {
     return reverse_uiterator(ubegin());
 }
-
-
 
 template<typename T>
 typename gsKnotVector<T>::smart_iterator gsKnotVector<T>::sbegin() const
@@ -167,10 +160,10 @@ typename gsKnotVector<T>::reverse_smart_iterator gsKnotVector<T>::rsend()   cons
 }
 
 
-
 //==============//
 // constructors //
 //==============//
+
 
 template<typename T>
 gsKnotVector<T>::gsKnotVector( gsMovable< knotContainer > knots )
@@ -288,7 +281,7 @@ template<typename T>
 void gsKnotVector<T>::affineTransformTo(T newBeg, T newEnd)
 {
     GISMO_ASSERT(newEnd > newBeg+0.00001, 
-    "Cannot transform the knot-vector to invalid interval ["<<newBeg<<","<<newEnd<<"].\n");
+                 "Cannot transform the knot-vector to invalid interval ["<<newBeg<<","<<newEnd<<"].\n");
 
     const T beg   = m_repKnots.front();
     const T rr    = (newEnd - newBeg) / (m_repKnots.back() - beg);
@@ -317,7 +310,7 @@ void gsKnotVector<T>::reverse()
     std::reverse(m_repKnots.begin(), m_repKnots.end());
     const T ab = m_repKnots.back() + m_repKnots.front();
     for (uiterator uit = ubegin(); uit != uend(); ++uit)
-            uit.setValue( ab - uit.value() );
+        uit.setValue( ab - uit.value() );
 
     GISMO_ASSERT( check(), "reverse() produced an invalid knot vector.");
 }
@@ -382,7 +375,7 @@ bool gsKnotVector<T>::check() const
 
 template<typename T>
 bool gsKnotVector<T>::isConsistent( const knotContainer & repKnots,
-                                           const multContainer & multSum )
+                                    const multContainer & multSum )
 {
     // check size
     if (repKnots.size()==0)
@@ -432,19 +425,19 @@ void gsKnotVector<T>::rebuildMultSum()
 
 template<typename T>
 gsKnotVector<T>::gsKnotVector( T first,
-                                             T last,
-                                             unsigned interior,
-                                             mult_t mult_ends,
-                                             mult_t mult_interior,
-                                             int degree)
+                               T last,
+                               unsigned interior,
+                               mult_t mult_ends,
+                               mult_t mult_interior,
+                               int degree)
 {
     initUniform( first, last, interior, mult_ends, mult_interior, degree );
 }
 
 template<typename T>
 gsKnotVector<T>::gsKnotVector( const knotContainer& uKnots,
-                                             int degree,
-                                             int regularity )
+                               int degree,
+                               int regularity )
 {
     // The code is very similar to that of the constructor with first, last, ints, mult, mult.
     GISMO_ASSERT( uKnots.front() < uKnots.back(),
@@ -495,11 +488,11 @@ gsKnotVector<T>::gsKnotVector(int degree, const knotContainer& knots )
 
 template <typename T>
 void gsKnotVector<T>::initUniform( T first,
-                                          T last,
-                                          unsigned interior,
-                                          unsigned mult_ends,
-                                          unsigned mult_interior,
-                                          int degree)
+                                   T last,
+                                   unsigned interior,
+                                   unsigned mult_ends,
+                                   unsigned mult_interior,
+                                   int degree)
 {
     const size_t nKnots = 2 * mult_ends + interior*mult_interior;
     // GISMO_ENSURE( nKnots < std::numeric_limits<mult_t>::max(),
@@ -572,11 +565,11 @@ gsKnotVector<T>::iFind( const T u ) const
 
     // equivalentg
     /*GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
-    iterator dend = domainEnd();
-    if ( u == *dend )
-        return --dend;
-    else
-    return std::upper_bound( domainBegin(), dend, u) - 1; */
+      iterator dend = domainEnd();
+      if ( u == *dend )
+      return --dend;
+      else
+      return std::upper_bound( domainBegin(), dend, u) - 1; */
 }
 
 template<typename T>
@@ -755,7 +748,7 @@ T gsKnotVector<T>::greville(int i) const
              std::accumulate( itr+i, itr+i+m_deg, T(0.0) ) / m_deg
              // Special case C^{-1}
              - (*(itr+i) == *(itr+i+m_deg) ? 1e-10 : 0 )
-           );
+        );
 }
 
 template <class T>
@@ -778,7 +771,7 @@ void gsKnotVector<T>::getUniformRefinementKnots(mult_t knotsPerSpan, knotContain
 
 template< typename T>
 void gsKnotVector<T>::supportIndex_into(const mult_t& i,
-                                               gsMatrix<unsigned>& result) const
+                                        gsMatrix<unsigned>& result) const
 {
     T suppBeg=*(this->begin()+i);
     T suppEnd=*(this->begin()+i+m_deg+1);
