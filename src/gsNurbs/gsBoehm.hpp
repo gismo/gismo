@@ -171,7 +171,7 @@ void gsBoehmRefine( KnotVectorType & knots,
 
     for(int j = 0; j <= a; j++)
         nknots[j] = knots[j];
-    for(int j = b+p; j < knots.size(); j++)
+    for(size_t j = b+p; j < knots.size(); j++)
         nknots[j + nk] = knots[j];
 
     int i = b + p - 1;
