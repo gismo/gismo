@@ -56,7 +56,7 @@ bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std:
       const gsKnotVector<T> & kv = 
           dynamic_cast<const gsBSplineBasis<T>&>( curve.basis() ).knots();
       // ON_NurbsCurve's have order+cv_count-2 knots.
-      for (int k = 1; k < kv.size()-1; k++ ) 
+      for (size_t k = 1; k < kv.size()-1; k++ ) 
       {
           wiggle->SetKnot(k-1, kv[k] );
       }
@@ -108,9 +108,9 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
       const gsKnotVector<T> & kv2 = 
           dynamic_cast<const gsBSplineBasis<T>&>( surface.basis().component(1) ).knots();
       //Note: ON_NurbsSurface's have order+cv_count-2 knots per direction.
-      for (int k = 1; k < kv2.size()-1; k++ ) 
+      for (size_t k = 1; k < kv2.size()-1; k++ ) 
           wiggle->SetKnot(0, k-1, kv2[k] );
-      for (int k = 1; k < kv1.size()-1; k++ ) 
+      for (size_t k = 1; k < kv1.size()-1; k++ ) 
           wiggle->SetKnot(1, k-1, kv1[k] );
       
       if ( wiggle->IsValid() ) 

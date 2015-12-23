@@ -467,7 +467,7 @@ public:
     /// Reduces spline continuity at interior knots by \a i
     void reduceContinuity(int const & i = 1) 
     { 
-        GISMO_ASSERT( i>=0 && ( m_knots.size()>2*(m_p+1) || i<=m_p ), 
+        GISMO_ASSERT( i>=0 && ( m_knots.size()>static_cast<size_t>(2*(m_p+1)) || i<=m_p ), 
                       "Cannot achieve continuity less than C^{-1} at interior knots.");
         // TODO check: max interior mult + i <= m_p+1
         m_knots.increaseMultiplicity(i);

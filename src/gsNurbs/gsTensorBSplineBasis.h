@@ -345,11 +345,11 @@ public:
             // For each knot span, check if its midpoint is
             // contained in any of the refinement boxes.
             // If yes, set the corresponding flag to 1.
-            for( int i=1; i < kold_di.size(); i++ ) // loop over spans
+            for( size_t i=1; i < kold_di.size(); i++ ) // loop over spans
                 if( kold_di[i]-kold_di[i-1] > tol)  // check for empty spans
                 {
                     T midpt = (kold_di[i] + kold_di[i-1])/2; // midpoint of knot span
-                    for( int j=0; j < boxes.cols(); j+=2 ) // loop over all boxes
+                    for( index_t j=0; j < boxes.cols(); j+=2 ) // loop over all boxes
                     {
                         if( boxes(di,j) < midpt && midpt < boxes(di,j+1) )
                             flagInsertKt[i] = 1; // if the box contains the midpoint, mark it
@@ -358,7 +358,7 @@ public:
 
             // now, with the flags set, loop over all knots spans and
             // insert midpoint in each knot span which is marked for refinement.
-            for( int i=1; i < kold_di.size(); i++ )
+            for( size_t i=1; i < kold_di.size(); i++ )
                 if( flagInsertKt[i] == 1)
                 {
                     T midpt = (kold_di[i] + kold_di[i-1])/2;
