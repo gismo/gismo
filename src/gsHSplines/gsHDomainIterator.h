@@ -15,7 +15,6 @@
 
 #include <gsHSplines/gsHDomain.h>
 
-#include <gsNurbs/gsCompactKnotVector.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsCore/gsDomainIterator.h>

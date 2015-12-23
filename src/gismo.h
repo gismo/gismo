@@ -78,7 +78,6 @@ namespace internal
 
 /* ----------- Nurbs ----------- */
 #include <gsNurbs/gsKnotVector.h>
-#include <gsNurbs/gsCompactKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsNurbsBasis.h>

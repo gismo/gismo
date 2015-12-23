@@ -5,7 +5,6 @@
 #include <gsNurbs/gsBSplineSolver.hpp>
 
 #include <gsNurbs/gsKnotVector.h>
-#include <gsNurbs/gsCompactKnotVector.h>
 
 namespace gismo
 {

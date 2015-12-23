@@ -21,7 +21,6 @@
 
 #include <gsCore/gsBoundary.h>
 
-#include <gsNurbs/gsCompactKnotVector.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsNurbs/gsBSplineBasis.h> // for gsBasis::component(int)
 

@@ -1151,7 +1151,7 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::_convertToPeriodic()
     gsWarn << "gsBSplineBasis: Converting basis to periodic"<< *this<< "\n";
 
     int borderKnotMult = this->borderKnotMult();
-    if( m_knots.size() < 2 * m_p + 2 ) // We need at least one internal knot span.
+    if( m_knots.size() < static_cast<size_t>(2 * m_p + 2) ) // We need at least one internal knot span.
     {
         gsWarn << "Your basis cannot be changed into periodic:\n Not enough internal control points for our construction of periodic basis.\n";
         m_periodic = 0;

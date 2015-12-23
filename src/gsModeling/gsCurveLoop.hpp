@@ -18,8 +18,6 @@
 # include <gsNurbs/gsBSplineSolver.h>
 # include <gsModeling/gsModelingUtils.hpp>
 
-#include <gsNurbs/gsCompactKnotVector.h> // Should not be needed, to do: remove
-
 namespace gismo
 {
   

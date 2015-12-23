@@ -3,7 +3,6 @@
 #include <gsNurbs/gsBoehm.h>
 #include <gsNurbs/gsBoehm.hpp>
 #include <gsNurbs/gsKnotVector.h>
-#include <gsNurbs/gsCompactKnotVector.h>
 
 #include <gsMatrix/gsSparseRows.hpp>
 
@@ -12,7 +11,7 @@
 namespace gismo
 {
 
-// gsBoehm: gsKnotVector + gsCompactKnotVector
+// gsBoehm
 
 TEMPLATE_INST
 void gsBoehm<T, gsKnotVector<T>, gsMatrix<T> >(
@@ -23,20 +22,6 @@ void gsBoehm<T, gsKnotVector<T>, gsMatrix<T> >(
     bool update_knots
     );
 
-/*
-TEMPLATE_INST
-void gsBoehm<T, gsCompactKnotVector<T>, gsMatrix<T> >(
-    gsCompactKnotVector<T> & knots,
-    gsMatrix<T> & coefs,
-    T val,
-    int r,
-    bool update_knots
-    );
-
-*/
-
-// gsBoehmSingle gsKnotVector + gsCompactKnotVector
-
 TEMPLATE_INST
 void gsBoehmSingle<T, gsKnotVector<T>, gsMatrix<T> >(
     gsKnotVector<T> & knots,
@@ -44,17 +29,6 @@ void gsBoehmSingle<T, gsKnotVector<T>, gsMatrix<T> >(
     T val,
     bool update_knots
     );
-
-/*
-TEMPLATE_INST
-void gsBoehmSingle<T, gsCompactKnotVector<T>, gsMatrix<T> >(
-    gsCompactKnotVector<T> & knots,
-    gsMatrix<T> & coefs,
-    T val,
-    bool update_knots
-    );
-*/
-
 
 // gsBoehmSingle (v2)
 
@@ -66,14 +40,9 @@ void gsBoehmSingle<T, gsKnotVector<T>::iterator, gsMatrix<T> >(
     T val
     );
 
-
-
 // gsBoehmRefine gsKnotVector + gsMatrix + iterator / const_iterator
-//               gsCompactKnotVector + gsMatrix + iterator / const_iterator
-//               gsCompactKnotVector + gsSparseRows + const_iterator
 //               gsKnotVector + gsSparseRows + const_iterator
 
-
 TEMPLATE_INST
 void gsBoehmRefine<gsKnotVector<T>,
                    gsMatrix<T>,
@@ -98,45 +67,6 @@ void gsBoehmRefine<gsKnotVector<T>,
     bool update_knots
     );
 
-/*
-TEMPLATE_INST
-void gsBoehmRefine<gsCompactKnotVector<T>,
-                   gsMatrix<T>,
-                   std::vector<T>::iterator>(
-    gsCompactKnotVector<T> & knots,
-    gsMatrix<T> & coefs,
-    int p,
-    std::vector<T>::iterator valBegin,
-    std::vector<T>::iterator valEnd,
-    bool update_knots
-    );
-
-TEMPLATE_INST
-void gsBoehmRefine<gsCompactKnotVector<T>,
-                   gsMatrix<T>,
-                   std::vector<T>::const_iterator>
-(
-    gsCompactKnotVector<T> & knots,
-    gsMatrix<T> & coefs,
-    int p,
-    std::vector<T>::const_iterator valBegin,
-    std::vector<T>::const_iterator valEnd,
-    bool update_knots
-    );
-
-TEMPLATE_INST
-void gsBoehmRefine<gsCompactKnotVector<T>,
-                   gsSparseRows<T>,
-                   std::vector<T>::const_iterator>(
-    gsCompactKnotVector<T> & knots,
-    gsSparseRows<T> & coefs,
-    int p,
-    std::vector<T>::const_iterator valBegin,
-    std::vector<T>::const_iterator valEnd,
-    bool update_knots
-    );
-*/
-
 TEMPLATE_INST
 void gsBoehmRefine<gsKnotVector<T>,
                    gsSparseRows<T>,
@@ -148,8 +78,6 @@ void gsBoehmRefine<gsKnotVector<T>,
     std::vector<T>::const_iterator valEnd,
     bool update_knots
     );
-
-
 
 // gsTensorBoehm
 
@@ -162,18 +90,6 @@ void gsTensorBoehm<T, gsKnotVector<T>, gsMatrix<T> >(
         gsVector<unsigned> str,
         int r,
         bool update_knots);
-
-/*
-TEMPLATE_INST
-void gsTensorBoehm<T, gsCompactKnotVector<T>, gsMatrix<T> >(
-        gsCompactKnotVector<T>& knots,
-        gsMatrix<T>& coefs,
-        T val,
-        int direction,
-        gsVector<unsigned> str,
-        int r,
-        bool update_knots);
-*/
 
 // gsTensorBoehmRefine
 
@@ -188,22 +104,6 @@ void gsTensorBoehmRefine<gsKnotVector<T>,
         std::vector<T>::const_iterator valBegin,
         std::vector<T>::const_iterator valEnd,
         bool update_knots);
-
-
-/*
-TEMPLATE_INST
-void gsTensorBoehmRefine<gsCompactKnotVector<T>,
-                         gsMatrix<T>,
-                         std::vector<T>::const_iterator>(
-        gsCompactKnotVector<T>& knots,
-        gsMatrix<T>& coefs,
-        const int direction,
-        gsVector<unsigned> str,
-        std::vector<T>::const_iterator valBegin,
-        std::vector<T>::const_iterator valEnd,
-        bool update_knots);
-*/
-
 
 // gsTensorBoehmRefineLocal
 
@@ -280,21 +180,6 @@ void gsTensorBoehmRefineLocal<4,
 // gsTensorInsertKnotDegreeTimes
 // =============================================================================
 
-/*
-TEMPLATE_INST
-void gsTensorInsertKnotDegreeTimes<3,
-                        T,
-                        gsCompactKnotVector<T>,
-                        gsMatrix<T> >(
-        const gsCompactKnotVector<T>& knots,
-        gsMatrix<T>& coefs,
-        const gsVector<unsigned, 3>& size_of_coefs,
-        T val,
-        const unsigned direction,
-        gsVector<unsigned, 3>& start,
-        gsVector<unsigned, 3>& end);
-*/
-
 TEMPLATE_INST
 void gsTensorInsertKnotDegreeTimes<3,
                         T,
@@ -307,21 +192,6 @@ void gsTensorInsertKnotDegreeTimes<3,
         const unsigned direction,
         gsVector<unsigned, 3>& start,
         gsVector<unsigned, 3>& end);
-
-/*
-TEMPLATE_INST
-void gsTensorInsertKnotDegreeTimes<2,
-                        T,
-                        gsCompactKnotVector<T>,
-                        gsMatrix<T> >(
-        const gsCompactKnotVector<T>& knots,
-        gsMatrix<T>& coefs,
-        const gsVector<unsigned, 2>& size_of_coefs,
-        T val,
-        const unsigned direction,
-        gsVector<unsigned, 2>& start,
-        gsVector<unsigned, 2>& end);
-*/
 
 TEMPLATE_INST
 void gsTensorInsertKnotDegreeTimes<2,
