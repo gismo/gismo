@@ -748,7 +748,7 @@ template <class T>
 T gsKnotVector<T>::greville(int i) const
 {
     // Copy pasted from gsKnotVector::greville(int).
-    GISMO_ASSERT(i>=0 && i< this->size()-m_deg-1,
+    GISMO_ASSERT(i>=0 && static_cast<size_t>(i) < size()-m_deg-1,
                  "Index of Greville point is out of range.");
     iterator itr = begin() + 1;
     return ( m_deg==0 ? *(itr+i-1) :
