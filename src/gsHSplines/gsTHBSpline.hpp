@@ -24,7 +24,7 @@ namespace gismo{
 // Public member functions
 // ////////////////////////////////////////////////
 
-
+/*
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result )
 {
@@ -54,6 +54,7 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVecto
     // Don't forget:
     delete newGeo;
 }
+*/
 
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )

@@ -507,7 +507,7 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::set_activ1(int level)
 {
-    typedef typename gsCompactKnotVector<T>::const_iterator knotIter;
+    typedef typename gsCompactKnotVector<T>::smart_iterator knotIter;
 
     //gsDebug<<" Setting level "<< level <<"\n";
     gsVector<unsigned,d> low, upp;
@@ -524,9 +524,9 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     for(unsigned i = 0; i != d; ++i)
     {
         // beginning of the iteration in i-th direction
-        starts[i] = m_bases[level]->knots(i).begin() ; 
+        starts[i] = m_bases[level]->knots(i).sbegin() ; 
         // end of the iteration in i-th direction
-        ends  [i] = m_bases[level]->knots(i).end()-m_deg[i]-1;
+        ends  [i] = m_bases[level]->knots(i).send()-m_deg[i]-1;
     }
 
     curr = starts;// start iteration
@@ -627,7 +627,7 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
     x_matrix_lvl.resize(level+1);
 
     // vectors of iterators. one iterator for each dimension
-    gsVector<typename gsCompactKnotVector<T>::const_iterator,d> starts, ends, curr;
+    gsVector<typename gsCompactKnotVector<T>::smart_iterator,d> starts, ends, curr;
     gsVector<unsigned,d> ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
     
@@ -640,9 +640,9 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
         for(unsigned i = 0; i != d; ++i)
         {
             // beginning of the iteration in i-th direction
-            starts[i] = m_bases[j]->knots(i).begin() ;
+            starts[i] = m_bases[j]->knots(i).sbegin() ;
             // end of the iteration in i-th direction
-            ends  [i] = m_bases[j]->knots(i).end()-m_deg[i]-1;
+            ends  [i] = m_bases[j]->knots(i).send()-m_deg[i]-1;
         }
 
         curr = starts; // set start of iteration

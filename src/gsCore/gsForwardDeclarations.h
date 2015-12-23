@@ -11,7 +11,11 @@
     Author(s): A. Mantzaflaris
 */
 
+
 #pragma once
+
+// aliasing to gsUnifiedKnotVector
+#define gsCompactKnotVector gsKnotVector
 
 // STD includes
 #include <vector>
@@ -24,6 +28,7 @@
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMemory.h>
+
 
 namespace gismo 
 {
@@ -114,7 +119,7 @@ template<unsigned d, class T = real_t>  class gsTensorBasis;
 template<unsigned d, class T = real_t>  class gsHTensorBasis;
 
 template< class T = real_t>  class gsKnotVector;
-template< class T = real_t>  class gsCompactKnotVector;
+//template< class T = real_t>  class gsCompactKnotVector;
 template< class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsBSplineBasis;
 template< class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsNurbsBasis;
 template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsTensorBSplineBasis;

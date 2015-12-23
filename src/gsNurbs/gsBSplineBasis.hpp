@@ -959,7 +959,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
       }
 
     // Run evaluation algorithm and keep the function values triangle & the knot differences
-    typename KnotVectorType::const_iterator span=m_knots.findspanIter( u(0,v) );
+    typename KnotVectorType::iterator span=m_knots.findspanIter( u(0,v) );
 //    unsigned span = m_knots.findspan( u(0,v) ) ;
     
     ndu[0] = T(1) ; // 0-th degree function value

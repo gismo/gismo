@@ -20,7 +20,9 @@
 #include <gsTensor/gsTensorBasis.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
- 
+
+#include <gsNurbs/gsKnotVector.h>
+
 namespace gismo
 {
 

@@ -119,7 +119,7 @@ public:
     //void getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, std::vector< gsTensorBSpline<2> > & bpatches) const;
 
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
-    void convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result );
+//    void convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result );
 
     /// Refines the whole domain to the finest level present in the mesh. Returns the refined geometry as result.
     void convertToBSpline( gsTensorBSpline<d,T>& result );

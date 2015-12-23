@@ -23,6 +23,7 @@ void gsBoehm<T, gsKnotVector<T>, gsMatrix<T> >(
     bool update_knots
     );
 
+/*
 TEMPLATE_INST
 void gsBoehm<T, gsCompactKnotVector<T>, gsMatrix<T> >(
     gsCompactKnotVector<T> & knots,
@@ -32,7 +33,7 @@ void gsBoehm<T, gsCompactKnotVector<T>, gsMatrix<T> >(
     bool update_knots
     );
 
-
+*/
 
 // gsBoehmSingle gsKnotVector + gsCompactKnotVector
 
@@ -44,6 +45,7 @@ void gsBoehmSingle<T, gsKnotVector<T>, gsMatrix<T> >(
     bool update_knots
     );
 
+/*
 TEMPLATE_INST
 void gsBoehmSingle<T, gsCompactKnotVector<T>, gsMatrix<T> >(
     gsCompactKnotVector<T> & knots,
@@ -51,7 +53,7 @@ void gsBoehmSingle<T, gsCompactKnotVector<T>, gsMatrix<T> >(
     T val,
     bool update_knots
     );
-
+*/
 
 
 // gsBoehmSingle (v2)
@@ -96,6 +98,7 @@ void gsBoehmRefine<gsKnotVector<T>,
     bool update_knots
     );
 
+/*
 TEMPLATE_INST
 void gsBoehmRefine<gsCompactKnotVector<T>,
                    gsMatrix<T>,
@@ -132,6 +135,7 @@ void gsBoehmRefine<gsCompactKnotVector<T>,
     std::vector<T>::const_iterator valEnd,
     bool update_knots
     );
+*/
 
 TEMPLATE_INST
 void gsBoehmRefine<gsKnotVector<T>,
@@ -159,6 +163,7 @@ void gsTensorBoehm<T, gsKnotVector<T>, gsMatrix<T> >(
         int r,
         bool update_knots);
 
+/*
 TEMPLATE_INST
 void gsTensorBoehm<T, gsCompactKnotVector<T>, gsMatrix<T> >(
         gsCompactKnotVector<T>& knots,
@@ -168,7 +173,7 @@ void gsTensorBoehm<T, gsCompactKnotVector<T>, gsMatrix<T> >(
         gsVector<unsigned> str,
         int r,
         bool update_knots);
-
+*/
 
 // gsTensorBoehmRefine
 
@@ -185,6 +190,7 @@ void gsTensorBoehmRefine<gsKnotVector<T>,
         bool update_knots);
 
 
+/*
 TEMPLATE_INST
 void gsTensorBoehmRefine<gsCompactKnotVector<T>,
                          gsMatrix<T>,
@@ -196,7 +202,7 @@ void gsTensorBoehmRefine<gsCompactKnotVector<T>,
         std::vector<T>::const_iterator valBegin,
         std::vector<T>::const_iterator valEnd,
         bool update_knots);
-
+*/
 
 
 // gsTensorBoehmRefineLocal
@@ -274,7 +280,7 @@ void gsTensorBoehmRefineLocal<4,
 // gsTensorInsertKnotDegreeTimes
 // =============================================================================
 
-
+/*
 TEMPLATE_INST
 void gsTensorInsertKnotDegreeTimes<3,
                         T,
@@ -287,6 +293,7 @@ void gsTensorInsertKnotDegreeTimes<3,
         const unsigned direction,
         gsVector<unsigned, 3>& start,
         gsVector<unsigned, 3>& end);
+*/
 
 TEMPLATE_INST
 void gsTensorInsertKnotDegreeTimes<3,
@@ -301,7 +308,7 @@ void gsTensorInsertKnotDegreeTimes<3,
         gsVector<unsigned, 3>& start,
         gsVector<unsigned, 3>& end);
 
-
+/*
 TEMPLATE_INST
 void gsTensorInsertKnotDegreeTimes<2,
                         T,
@@ -314,6 +321,7 @@ void gsTensorInsertKnotDegreeTimes<2,
         const unsigned direction,
         gsVector<unsigned, 2>& start,
         gsVector<unsigned, 2>& end);
+*/
 
 TEMPLATE_INST
 void gsTensorInsertKnotDegreeTimes<2,

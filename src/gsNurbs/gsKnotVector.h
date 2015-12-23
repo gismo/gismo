@@ -1,446 +1,915 @@
 /** @file gsKnotVector.h
 
-    @brief Provides declaration of the KnotVector class.
+    @brief Knot vector for B-splines.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
-    Author(s): A. Mantzaflaris
+
+    Author(s): D. Mokris, A. Bressan, A. Mantzaflaris
 */
 
 #pragma once
 
+#include <gsCore/gsForwardDeclarations.h>
+#include <gsCore/gsDebug.h>
+#include <gsCore/gsExport.h>
+#include <gsCore/gsMemory.h>
 #include <gsCore/gsDomain.h>
+
 #include <gsNurbs/gsKnotVectorIter.h>
 
 namespace gismo
 {
-    
-template<class T> class gsKnotVectorPrivate;
 
-/** @brief
-    A 1D knot vector, i.e., a sequence of non-decreasing knots,
-    together with a degree.
-      
-    \tparam T coefficient type
-      
-    \ingroup Nurbs
-*/  
-template<class T>
+
+namespace internal {
+template<typename T> class gsKnotIterator ;
+template<typename T> class gsUKnotIterator;
+}
+
+// TODO: Formatting
+/** @brief Class for representing a knot vector.
+
+ Consists of a vector of non-decreasing knots repeated according to
+ their multiplicities and a vector of sums of multiplicities up to the
+ corresponding unique knot.
+
+ There are three means of iterating through the knots:
+ 1) iterator, which is just an STL iterator over the repeated knots;
+ 2) uiterator, which is similar but iterates over the unique knots (i.e., without multiplicities) and provides additional functionality;
+ 3) smart_iterator, which iterates over the repeated knots and provides additional functionality.
+
+Terminology: TODO update
+
+Domain is the interval between the degree-th knot from the beginning
+and degree-th knot from the end (note that we number from zero).
+
+Span is the interval between two consecutive unique knots. It is
+closed on the left and open on the right, except for the last one in
+the domain, which is closed. Span index is the knot index of the last
+knot (including repetitions) at the beginning of the span.
+
+Element is a span inside the domain. Their numbering is shifted in
+comparison to that of spans so that the element with index 0 starts in
+the beginning of the domain.
+
+Example:
+
+Consider the knot vector (0, 0, 0, .2, .3, .7, 1, 1, 1) with degree 2.
+The domain is [0, 1]. The spans are [0, .2), [.2, .3), [.3, .7) and
+[.7, 1]. Their span indices are 0, 1, 2 and 3, respectively. On a
+clamped knot vector the spans and the elements are the same.
+
+Another example:
+
+Consider knot vector (0, .1, .2, .3, .4, .5, .6, .7) with degree 2.
+The domain is [.2, .5]. The spans are [0, .1), [.1, .2), [.2, .3),
+[.3, .4), [.4, .5], (.5, .6) and [.6, .7] with span indices 0 to
+6. Notice that [.4, .5] and [.6, .7] are closed. The elements are [.2,
+.3), [.3, .4) and [.4, .5] with element indices 0, 1 and 2.
+
+ 
+ */
+template<typename T>
 class gsKnotVector : public gsDomain<T>
 {
-     
+public: // typedefs
+
+    // IMPORTANT: mult_t must be a signed type, otherwise the
+    // knotIterator business would not work.
+    typedef index_t mult_t;
+
+    // container types
+    typedef std::vector<T>      knotContainer;
+    typedef std::vector<mult_t> multContainer;
+
+    // TODO: remove the non-const versions and think about the names.
+    // E.g., reverse_uiterator clashes with urbegin().
+
+    /// This iterator is an iterator over the repeated knots.
+    /// Can be obtained by calling [r]begin() and [r]end().
+    typedef typename knotContainer::const_iterator           iterator;
+    typedef typename knotContainer::const_reverse_iterator   reverse_iterator;
+
+    /// This iterator is an iterator over the unique knots. Has additional functions.
+    /// Can be obtained by calling [r]ubegin() and [r]uend().
+    typedef     internal::gsUKnotIterator<T> uiterator;
+    typedef std::reverse_iterator<uiterator> reverse_uiterator;
+
+    /// This iterator is an iterator over repeated knots with additional functions.
+    /// Can be obtained by calling [r]sbegin() and [r]send().
+    typedef           internal::gsKnotIterator<T>  smart_iterator;
+    typedef std::reverse_iterator<smart_iterator>  reverse_smart_iterator;
+
+    //compatibility iterator typedefs
+    typedef uiterator const_uiterator;
+    typedef iterator  const_iterator;
+    
+public: // iterator ends
+
+    /// Returns iterator pointing to the beginning of the repeated knots.
+    iterator               begin()   const;
+    /// Returns iterator pointing past the end of the repeated knots.
+    iterator               end()     const;    
+    /// Returns reverse iterator pointing past the end of the repeated knots.
+    reverse_iterator       rbegin()  const;    
+    /// Returns reverse iterator pointing to the beginning of the repeated knots.
+    reverse_iterator       rend()    const;
+    
+    /// Returns unique iterator pointing to the beginning of the unique knots.
+    uiterator              ubegin()  const;
+    /// Returns unique iterator pointing past the end of the unique knots.
+    uiterator              uend()    const;
+    /// Returns reverse unique iterator pointing past the end of the unique knots.
+    reverse_uiterator      urbegin() const;
+    /// Returns reverse unique iterator pointing to the beginning of the unique knots.
+    reverse_uiterator      urend()   const;
+
+    /// Returns the smart iterator pointing to the beginning of the repeated knots.
+    smart_iterator         sbegin()  const;
+    /// Returns the smart iterator pointing past the end of the repeated knots.
+    smart_iterator         send()    const;    
+    /// Returns the reverse smart iterator pointing past the end of the repeated knots.
+    reverse_smart_iterator rsbegin() const;
+    /// Returns the reverse smart iterator pointing to the beginning of the repeated knots.
+    reverse_smart_iterator rsend()   const;
+
+public: // constructors
+
+    /// Empty constructor sets the degree to -1 and leaves the knots empty.
+    gsKnotVector() : m_deg(-1)
+    { }
+
+    /// Constructs knot vector from the given \a knots (repeated
+    /// according to multiplicities) and deduces the degree from the
+    /// multiplicity of the endknots.
+    gsKnotVector( gsMovable<knotContainer > knots );
+
+    /// Swaps with \a other knot vector.
+    void swap( gsKnotVector& other );
+
 public:
+    /// Returns a pointer to a copy.
+    gsKnotVector* clone() const;
 
-    /// Type definitions
-    typedef typename std::vector<T>::size_type size_t;
-    // Iterators over all knots
-    typedef typename std::vector<T>::iterator               iterator;
-    typedef typename std::vector<T>::const_iterator         const_iterator;
-    typedef typename std::vector<T>::reverse_iterator       reverse_iterator;
-    typedef typename std::vector<T>::const_reverse_iterator const_reverse_iterator;
+public: // inserting and removing
 
-    // Iterators over unique knots
-    typedef gsKnotVectorIter<T, false>               uiterator;
-    typedef gsKnotVectorIter<T, true >               const_uiterator;
-    typedef std::reverse_iterator<uiterator>         reverse_uiterator;
-    typedef std::reverse_iterator<const_uiterator>   const_reverse_uiterator;
+    /// Inserts knot \a knot into the knot vector with multiplicity \a mult.
+    void insert(T knot, mult_t mult = 1 );
 
-    // Iterators over multiplicity sums
-    //typedef typename ---     miterator;
-    //typedef typename ---     const_miterator;
-
-
-    /// Default empty constructor
-    /// Results in empty knot-vector, and degree set to 0
-    gsKnotVector();
-
-    /// Copy constructor
-    gsKnotVector(gsKnotVector const & other);
-
-    /// Assignment operator
-    gsKnotVector & operator=(gsKnotVector other)
+    /// Inserts each knot between ibeg and iend with multiplicity 1.
+    /// Knots can be repeated in the sequence but they must be sorted.
+    /// The complexity is size() + (iend-ibeg) comparisons
+    template<typename iterType>
+    void insert( iterType ibeg, iterType iend )
     {
-        this->swap(other);
-        return *this;
+        //size_t numKnots = size() + (iend - ibeg);
+        // GISMO_ENSURE( numKnots < std::numeric_limits<mult_t>::max(),
+        //               "Too many knots." );
+        knotContainer temp(m_repKnots.size()+(iend-ibeg) );
+        std::merge( begin(), end(), ibeg, iend, temp.begin() );
+
+        m_repKnots.swap(temp);
+
+        rebuildMultSum(); // Possibly sub-optimal but the code is clean.
+
+        GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities.");
     }
 
-    /// Constructor with degree only
-    explicit gsKnotVector(int p);
+    //TODO: insert with uniqIter and multiplicity.
 
-    /// Constructor with degree and size (=number of knots)
-    gsKnotVector(int p, unsigned sz );
+    /// Decreases multiplicity of the knot pointed by \a uit by \a
+    /// mult; removes it altogether, should its multiplicity be
+    /// decreased to zero.
+    void remove( uiterator uit, mult_t mult = 1 );
 
-    /// Construct a knot vector
-    /// \param u0 starting parameter
-    /// \param u1 end parameter parameter
+    /// Decreases multiplicity of the knot \a knot by \a mult.
+    void remove( const T knot, mult_t mult = 1 );
+
+    //TODO: remove with two iterators.
+
+public: // multiplicities
+
+    /// Returns the multiplicity of the knot-value \a u (or zero if
+    /// the value is not a knot)
+    mult_t multiplicity( T u ) const;
+
+    /// Returns the multiplicity of the first knot
+    mult_t multFirst() const { return m_multSum.front(); }
+
+    /// Returns the multiplicity of the last knot
+    mult_t multLast() const { return m_multSum.back() - m_multSum.end()[-2]; }
+
+    /// Returns the multiplicity of the knot number \a i (counter with
+    /// repetitions).
+    mult_t multiplicityIndex( mult_t i ) const;
+
+public: // modifiers
+
+    /// Scales and translates the knot vector so that its new
+    /// endpoints are \a newBeg and \a newEnd.
+    void affineTransformTo( T newBeg, T newEnd );
+
+public: // queries
+
+    /// Number of knots (including repetitions).
+    inline size_t size() const {return m_repKnots.size(); }
+
+    /// Number of unique knots (without repetitins).
+    inline size_t uSize() const { return m_multSum.size(); }
+
+    /// Provides i-th knot (numbered including repetitions).
+    const T& operator[]( const mult_t i ) const
+    {
+        GISMO_ASSERT( static_cast<size_t>(i) < m_repKnots.size(),
+                      "Index " << i << " not in the knot vector." );
+        return m_repKnots[i];
+    }
+
+    /// Cast to the full vector of knot values (with repetitions).
+    operator const knotContainer& () const {return m_repKnots;}
+
+    /// Returns a pointer to the beginning of the vector of knots.
+    const T * data() const {return m_repKnots.data(); }
+
+    /// Returns a pointer to the beginning of the vector of running
+    /// multiplicities.
+    const mult_t * multSumData() const {return m_multSum.data(); }
+
+public: // miscellaneous
+
+    /// Print the knot vector to the given stream.
+    /// TODO: Improve.
+    std::ostream &print(std::ostream &os = std::cout ) const;
+
+    /// Checks whether the knot vector is in a consistent state
+    bool check() const;
+
+private: // iterator typdefs
+
+    typedef typename knotContainer::iterator               fwKIt; // Forward  Knot Iterator
+    typedef typename knotContainer::reverse_iterator       bwKIt; // Backward Knot Iterator
+    typedef typename knotContainer::const_iterator         cFwKIt;// const Forward Knot Iterator
+    typedef typename knotContainer::const_reverse_iterator cBwKIt;// const Backward Knot Iterator
+
+    typedef multContainer::iterator                   fwMIt;  // Forward  Multiplicity Iterator
+    typedef multContainer::reverse_iterator           bwMIt;  // Backward Multiplicity Iterator
+    typedef multContainer::const_iterator             cFwMIt; // const Forward  Multiplicity Iterator
+    typedef multContainer::const_reverse_iterator     cBwMIt; // const  Backward Multiplicity Iterator
+
+
+    /// Returns a smart iterator pointing to the starting knot of the
+    /// domain
+    iterator domainBegin() const
+    {
+        GISMO_ASSERT( size() > static_cast<size_t>(2*m_deg+1), "Not enough knots.");
+        return begin() + m_deg;
+    }
+
+    /// Returns a smart iterator pointing to the end-knot of the
+    /// domain
+    iterator domainEnd() const
+    {
+        GISMO_ASSERT( size() > static_cast<size_t>(2*m_deg+1), "Not enough knots.");
+        return end() - (m_deg + 1);
+    }
+
+    /// Returns a smart iterator pointing to the starting knot of the
+    /// domain
+    smart_iterator domainSBegin() const
+    { return sbegin() + m_deg; }
+
+    /// Returns a smart iterator pointing to the end-knot of the
+    /// domain
+    smart_iterator domainSEnd() const
+    { return send() - (m_deg + 1); }
+
+    /**
+       \brief Returns a unique iterator pointing to the strarting knot of the
+    domain. 
+    
+    Definition: The starting knot is the knot m_repKnots[m_deg]
+
+    The knot-vector represents the domain which is the closed interval
+    starting at this knot
+    */
+    uiterator domainUBegin() const
+    {
+        return domainSBegin().uIterator();
+        // equivalent:
+        //return ubegin() + domainSBegin().uIndex();
+    }
+
+    /**
+    \brief Returns a unique iterator pointing to the end-knot of the domain
+
+    Definition: The ending knot is the knot m_repKnots.end()[-m_deg-1]
+
+    The knot-vector represents the domain closed interval with
+    end-point equal to this knot
+    */
+    uiterator domainUEnd() const
+    {
+        return domainSEnd().uIterator();
+        // equivalent:
+        //return ubegin() + domainSEnd().uIndex();
+    }
+
+    inline bool inDomain(const T u) const
+    {
+        return u >= *domainBegin() && u <= *domainEnd();
+        // equivalent:
+        // return u >= m_repKnots[m_deg] && u <= m_repKnots.end()[-m_deg-1];
+        
+    }
+
+public:
+
+    /// Sanity check.
+    static bool isConsistent(const knotContainer & repKnots,
+                             const multContainer & multSums);
+
+    /// Compare with another knot vector.
+    inline bool operator== (const gsKnotVector<T>& other) const
+    {
+        return (m_repKnots == other.m_repKnots) &&
+               (m_multSum  == other.m_multSum ) &&
+               (m_deg == other.m_deg);
+    }
+
+private: // internals
+
+    // Creates a vector of multiplicity sums from a scratch and m_repKnots.
+    void rebuildMultSum();
+
+private: // members
+
+    // Knots including repetitions.
+    knotContainer m_repKnots;
+
+    // m_multSum[i] = cardinality of { knots <= unique knot [i] }.
+    multContainer m_multSum;
+
+
+
+
+//=======================================================================//
+//+++++++ Here follow the functions I would like to get rid of. +++++++++//
+//=======================================================================//
+
+
+
+public: // Deprecated functions required by gsKnotVector.
+
+    /// Sets the degree and leaves the knots uninitialized.
+    gsKnotVector(int degree)
+    {
+        m_deg = degree;
+    }
+
+    /// \param first starting parameter
+    /// \param last end parameter parameter
     /// \param interior number of interior knots
     /// \param mult_ends multiplicity at the two end knots
     /// \param mult_interior multiplicity at the interior knots
-    /// \param degree multiplicity of the spline space
-    gsKnotVector(T u0, T u1, unsigned interior, unsigned mult_ends=1, unsigned mult_interior=1, int degree=-1);
+    gsKnotVector( T first,
+                         T last,
+                         unsigned interior,
+                         mult_t mult_ends=1,
+                         mult_t mult_interior=1,
+                         int degree = -1 );
 
-    /// @brief Construct an open knot vector from the given unique knots.
-    /// \param knots sequence of distinct knots
-    /// \param degree degree of a spline space
-    /// \param regularity of spline space across the knots
-    gsKnotVector(std::vector<T> const& knots, int degree, int regularity);
+    /// \param knots knots (sorted) including repetitions.
+    /// Copies \a knots to the internal storage.
+    /// To avoid the copy use gsKnotVector(give(knots)) and keep
+    /// in mind that this will destroy knots.
+    gsKnotVector( int degree, const knotContainer& knots );
 
-    /// @brief Construct a knot vector with the given degree and knots.
-    gsKnotVector(int degree, std::vector<T> const& knots);
-
-    /// Construct a knot vector by a given range
-    /// \param deg
-    /// \param start iterator pointing the first knot value
-    /// \param end iterator pointing the last knot value
-    gsKnotVector(int deg, const_iterator start, const_iterator end);
-
-    gsKnotVector(const gsCompactKnotVector<T> & ckv);
-
-    /// Destructor
-    ~gsKnotVector();
+    /// Constructs knot vector from the given degree and iterators marking its endpoints.
+    /// \param begOfKnots iterator pointing to the beginning of the knots,
+    /// \param endOfKnots iterator pointing past the end of the knots.
+    /// The knots between \a begOfKnots and \endOfKnots are assumed to be repeated
+    /// according to their multiplicities and sorted.
+    template<typename iterType>
+    gsKnotVector(int deg, const iterType begOfKnots, const iterType endOfKnots)
+    {
+        insert(begOfKnots,endOfKnots);
+        m_deg = deg;
+    }
 
 public:
+    // TODO If stays, make it private.
     
-    void initUniform( T u0, T u1, unsigned interior, unsigned mult_ends, 
-                      unsigned mult_interior = 1, int degree = -1);
+    /// Resets the knot vector so that it has \a interior knots
+    /// between \a first and \a last, each of them repeated \a
+    /// mult_interior times (and the endpoints repeated \a mult_ends
+    /// times) and the degree is equal to \a degree
+    void initUniform( T first,
+                      T last,
+                      unsigned interior,
+                      unsigned mult_ends,
+                      unsigned mult_interior,
+                      int degree=-1);
 
-    void initUniform(unsigned numKnots, unsigned mult_ends,
-                     unsigned mult_interior = 1, int degree = -1);
+    /// Resets the knot vector so that it has \a numKnots knots
+    /// between 0 and 1, each repeated \a mult_interior times (whereas
+    /// 0 and 1 are repeated \a mult_ends times each) and the degree
+    /// is equal to \a degree.
+    void initUniform( unsigned numKnots,
+                      unsigned mult_ends,
+                      unsigned mult_interior = 1,
+                      int degree = - 1)
+    {
+        initUniform(0.0, 1.0, numKnots - 2, mult_ends, mult_interior, degree );
+    }
 
-    void initGraded(T u0, T u1, unsigned interior, int degree, 
-                    T grading, unsigned mult_interior = 1);
 
-    void initGraded(unsigned numKnots, int degree, 
-                    T grading = 0.5, unsigned mult_interior = 1);
+    /// Resets the knot vector so that its knots are graded (their
+    /// distances are exponentially changing) and the endpoints are 0 and 1.
+    void initGraded(unsigned numKnots, int degree,
+                    T grading = 0.5, unsigned mult_interior = 1)
+    {
+        initGraded( 0.0, 1.0, numKnots - 2, degree, grading, mult_interior);
+    }
 
-    void initClamped(T u0, T u1, int degree, unsigned interior = 0,
-                     unsigned mult_interior = 1);
+    /// Resets the knot vector so that its knots are graded.
+    void initGraded(T u0, T u1, unsigned interior, int degree,
+                    T grading, unsigned mult_interior = 1)
+    {
+        GISMO_ASSERT(u0<u1,"Knot vector must be an interval.");
 
+        m_deg = degree;
+        m_repKnots.reserve( 2*(m_deg+1) + interior*mult_interior );
+        m_multSum .reserve(interior+2);
+
+        const T h = (u1-u0) / (interior+1);
+
+        m_repKnots.insert(m_repKnots.begin(), m_deg+1, u0);
+        m_multSum .push_back(m_deg+1);
+
+        for ( unsigned i=1; i<=interior; i++ )
+        {
+            m_repKnots.insert(m_repKnots.end(), mult_interior,
+                              math::pow(i*h, 1.0/grading) );
+            m_multSum .push_back( mult_interior + m_multSum.back() );
+        }
+        m_repKnots.insert(m_repKnots.end(), m_deg+1, u1);
+        m_multSum .push_back( m_deg+1 + m_multSum.back() );
+    }
+
+    /// Returns the greville points of the B-splines defined on this
+    /// knot vector.
+    gsMatrix<T> * greville() const
+    {
+        gsMatrix<T> * gr;
+        gr = new gsMatrix<T>( 1,this->size() - m_deg - 1 );
+        this->greville_into(*gr);
+        return gr;
+    }
+
+    // TODO Write properly.
+     
+    /// Compresses the knot-vector by making the knot-sequence strictly
+    /// increasing
+/*    void makeCompressed(const T & tol = 1e-7)
+    {
+        // TO DO: Check and improve
+        typename knotContainer::iterator k = m_repKnots.begin();
+        std::vector<unsigned>::iterator m = m_multSum.begin();
+        while( k+1 != m_repKnots.end() )
+        {
+            if ( fabs( *k - *(k+1) ) <= tol )
+            {
+                *m = *(m+1) ;
+                m_repKnots.erase(k+1);
+                m_multSum.erase(m+1);
+            }
+            else
+            {
+                k++;
+                m++;
+            }
+        }
+        //m_knots.resize( k - m_knots.begin() );
+        //m_mult_sum.resize( m - m_mult_sum.begin() );
+    }*/
+
+     
+    /// Better directly use affineTransformTo.
+    void reverse();
+
+    /// @brief Insert knots into the knot vector.
+    /// \param knots parameter values of the new knots, stored in a std::vector
+    /// \param mult multiplicity of the new knots     
+    void insert( const knotContainer &knots, int mult = 1 )
+    {
+        for( int i = 0; i < mult; ++i)
+            insert( knots.begin(), knots.end() ); // inefficient
+    }
+
+    /// Sets the degree to \a p.
+    void set_degree(int p)
+    {
+        m_deg = p;
+    }
+
+    /// Writes unique indices of the knots of the endpoints of \a
+    /// i - th B-spline defined on this knot vector to \a result.
+    void supportIndex_into(const mult_t &i, gsMatrix<unsigned>& result) const;
+    // TODO: If the function stays, make a unit test from what is in unifiedKnotVector.cpp.
+
+    /// Returns unique knots.
+    knotContainer unique () const
+    {
+        return knotContainer(this->ubegin(),this->uend());
+    }
+
+    /// Inserts \a numKnots (and each of them \a mult - times) between
+    /// each two knots.
+    void uniformRefine( mult_t numKnots = 1, mult_t mult = 1);
+
+    /// Inserts \a knotsPerSpan knots between each two knots between \a begin and \a end.
+    template<typename iterType>
+    void refineSpans( iterType begin, iterType end, mult_t knotsPerSpan )
+    {
+        // We sort the input to be on the safe side.
+        multContainer input;
+        input.insert(input.begin(), begin, end); // Pitfall: using std::copy requires reserve or somesuch beforehand.
+        std::sort(input.begin(), input.end());
+
+        knotContainer newKnots;
+        T segmentsPerSpan = knotsPerSpan + 1;
+        T newKnot;
+        T spanBegin;
+        T spanEnd;
+        for( typename multContainer::const_iterator it= input.begin();
+             it != input.end();
+             ++it )
+            for( mult_t k = 1; k <= knotsPerSpan; ++k )
+            {
+                spanBegin =*(this->ubegin()+*it);
+                spanEnd  =*(this->ubegin()+*it+1);
+                newKnot = ( (segmentsPerSpan-k) * spanBegin + k * spanEnd ) / segmentsPerSpan;
+                newKnots.push_back( newKnot );
+            }
+
+        insert(newKnots.begin(), newKnots.end());
+    }
+
+    /// Adds \a amount to all the knots.
+    void addConstant( T amount );
+
+public: // findspan stuff
+
+    /// Returns the uiterator pointing to the knot at the beginning of
+    /// the interval (closed from left) containing \a u. Exception:
+    /// interval *(domainUEnd()-1, *domainUEnd) is considered closed
+    /// from both sides. I.e., if u == *domainUEnd(), it returns the
+    /// uiterator domainUEnd() - 1.  Functionality of findElement can
+    /// be obtained by calling uIndex() on the result.
+    uiterator uFind( const T u ) const;
+
+    /// Returns an iterator to the largest knot (including
+    /// repetitions) that is smaller or equal to \a u and is strictly
+    /// smaller than *domainEnd().  Functionality of findSpan can be
+    /// easily obtained by subtracting begin() from the result.
+    iterator iFind( const T u ) const;
+    
+    /// See uFind().
+    // TODO: Remove.
+    uiterator findElement( const T u ) const
+    {
+        return uFind( u );
+    }
+    
+    /// Returns the index of the interval containing \a u. \sa findSpan.
+    // TODO: Remove.
+    unsigned findspan( T u ) const
+    {
+        return iFind(u) - begin();
+        // equivalent
+        // return findElement(u).lastAppearance();
+    }
+
+    /// Returns an iterator pointing to the beginning of the span
+    /// containing the point \a u.
+    // TODO Remove, use iFind() instead.
+    iterator findspanIter( T u ) const
+    {
+        return iFind( u );
+    }
+    
+    /// Returns the index of the "element" containing the point \a u.
+    // TODO: Remove
+    int findElementIndex(T u) const
+    {
+        return findElement(u).uIndex();
+    }
+
+public: // things required by gsKnotVector
+
+    /// \param uKnots unique knots (assumed to be sorted),
+    /// \param degree -> endknots have multiplicity \a degree + 1,
+    /// \param regularity -> internal knots have multiplicity \a degree - \a regularity
+    gsKnotVector( const knotContainer& uKnots,
+                         int degree,
+                         int regularity );
+
+    /// Resets the knot vector so that it is uniform from 0 to 1 and
+    /// the multiplicities of the endpoints are chosen according to
+    /// the \a degree.
     void initClamped(int degree, unsigned numKnots = 2, unsigned mult_interior = 1);
 
-    // initKnotsDegreeRegularity()
-    // initKnotsDegreeRegularity()
+    /// Resets the knot vector so that it is uniform and has clamped endknots.
+    void initClamped(T u0, T u1, int degree, unsigned interior = 0,
+                     unsigned mult_interior = 1)
+    {
+        return initUniform(u0, u1, interior, degree + 1, mult_interior, degree );
+    }
 
-    // setInteriorRegularity()
-    // setDegree
-    // setInteriorMultiplicity()
-    // removeKnots()
+    /// Returns the degree of the knot vector.
+    int degree () const;
 
 
-public:
+    /// Writes Greville abscissae of the B-splines defined on this
+    /// knot vector to \a result.
+    void greville_into(gsMatrix<T> & result) const;
 
-    /// Get an iterator to the beginning of the knot vector.
-    iterator begin();
+    /// Deduces and sets the degree from the multiplicities of the
+    /// endpoints.
+    void deduceDegree()
+    {
+        if( this->uSize() == 0 )
+            m_deg = -1;
+        else
+            m_deg = std::max(( this->ubegin() ).multiplicity(),
+                             ( this->uend()-1 ).multiplicity()) - 1;
+    }
 
-    reverse_iterator rbegin();
+    /// Returns Greville abscissa of the \a i - the B-spline defined
+    /// on the knot vector.
+    T greville(int i) const;
+
+    /// Get the first knot.
+    T first () const
+    {
+        GISMO_ASSERT(this->size()>=1, "I need at least one knot.");
+        return m_repKnots.front();
+    }
     
-    /// Get an iterator to the beginning of the unique knots.
-    uiterator ubegin();
+    /// Get the last knot.
+    T last  () const
+    {
+        GISMO_ASSERT(this->size()>=1, "I need at least one knot.");
+        return m_repKnots.back();
+    }
 
-    reverse_uiterator urbegin();
-    
-    /// Get a const-iterator to the beginning of the knot vector.
-    const_iterator begin() const;
+    /// Returns the number of knot spans in the knot-vector
+    int numKnotSpans() const
+    {
+        return uSize() - 1;
+    }
 
-    const_reverse_iterator rbegin() const;
+    /// See affineTransform().
+    void transform(T c, T d)
+    {
+        affineTransformTo(c,d);
+    }
 
-    /// Get a const-iterator to the beginning of the unique knots.
-    const_uiterator ubegin() const;
+    /// Because of type compatibility, cf. the other version.
+    void refineSpans( const std::vector<unsigned> & spanIndices, mult_t knotsPerSpan = 1)
+    {
+        multContainer transformedIndices;
+        transformedIndices.reserve(spanIndices.size());
+        for( std::vector<unsigned>::const_iterator it = spanIndices.begin();
+             it != spanIndices.end();
+             ++it )
+            transformedIndices.push_back(static_cast<mult_t>(*it));
 
-    const_reverse_uiterator urbegin() const;
-    
-    /// Get an iterator to the end of the knot vector.
-    iterator end();
+        return refineSpans( transformedIndices, knotsPerSpan );
+    }
 
-    reverse_iterator rend();
+    /// Inserts \a knotsPerSpan knots into the spans corresponding to
+    /// indices listed in \a span Indices.
+    void refineSpans( const multContainer & spanIndices, mult_t knotsPerSpan = 1);
 
-    /// Get an iterator to the end of the unique knots.
-    uiterator uend();
+    /// Increase the degree keeping interior knots intact (add clamped knots only).
+    /// Cf. degreeElevate.
+    void degreeIncrease(int const & i = 1)
+    {
+        // update knots
+        m_repKnots.reserve(size()+2*i);
+        m_repKnots.insert(m_repKnots.begin(), i, m_repKnots.front() );
+        m_repKnots.insert(m_repKnots.end()  , i, m_repKnots.back()  );
 
-    reverse_uiterator urend();
+        // update multiplicity sum
+        std::transform(m_multSum.begin(), m_multSum.end(), m_multSum.begin(),
+                       std::bind2nd(std::plus<unsigned>(), i) );
+        m_multSum.back() += i;
 
-    /// Get a const-iterator to the end of the knot vector.
-    const_iterator end() const;
+        m_deg += i;
+    }
 
-    const_reverse_iterator rend() const;
+    /// Inverse of degreeIncrease.
+    void degreeDecrease(int const & i = 1 )
+    {
+        remove( ubegin()  , i );
+        remove( uend() - 1, i );
+        m_deg -= i;
+    }
 
-    /// Get a const-iterator to the end of the unique knots.
-    const_uiterator uend() const;
+    /// Increase the multiplicity of all the knots by \a i. If \a
+    /// boundary is set to \em false, the boundary knots are not adjusted
+    void increaseMultiplicity(const mult_t i = 1, bool boundary = false);
 
-    const_reverse_uiterator urend() const;
+    /// Reduce the multiplicity of all knots by \a i. If \a boundary
+    /// is set to \em false, the boundary knots are not adjusted
+    void reduceMultiplicity(const mult_t i = 1, bool boundary = false);
 
+    /// Adds the knots between \a begin and \a end to the knot vector.
+    template<typename iterType>
+        void append ( iterType begin, iterType end )
+    {
+        insert( begin, end );
+    }
 
-    
-    /// \todo implement multiplicity sums iterator
-    //const_iterator rbegin() const {  }
+      void _stretchEndKnots()
+    {
+        // Not necessary, I hope.
+    }
 
-    /// Swap contents of this knot vector with \a other.
-    void swap(gsKnotVector &other);
+    /// Get a reference to the underlying std::vector of knots.
+    const knotContainer& get() const // to be removed since we have implicit cast
+    {
+        return m_repKnots;
+    }
 
-    /// Resize the knot vector to the given length.
-    void resize(unsigned sz);
+public: // Deprecated functions required by gsCompactKnotVector.
 
-    /// Clear all the knots
-    void clear();
+    /// Returns the index of the span containing the point \a u.
+    unsigned Uniquefindspan (T u) const
+    {
+        return findElementIndex(u);
+    }
 
-    /// Print the knot vector to the given stream.
-    std::ostream &print(std::ostream &os) const;
+    /// True iff the knot exists in the vector
+    /// \param knot parameter value.
+    inline bool has(T knot) const
+    {
+        return std::binary_search( ubegin(), uend(), knot);
+        // equivalent:
+        // return 0 != multiplicity(knot);
+    }
+     
+    /// Returns the value of the \a i - th unique index
+    inline T  uValue(const size_t & i) const
+    { return *(ubegin()+i); }
+     
+    /// Get the multiplicity of the unique knot indexed \a i
+    /// \param i index of the knot (without repetitions)
+    unsigned u_multiplicityIndex(size_t const & i) const
+    {
+        return (ubegin() + i).multiplicity();
+    }
+
+    /// Returns the first knot-index of cardinal index \a i
+    /// (i.e. counted without repetitions)
+    inline unsigned firstKnotIndex(const size_t & i) const
+    {
+        return (ubegin()+i).firstAppearance();
+        // equivalent:
+        // return 0 == i ? 0 : m_multSum[i-1];
+    }
+     
+    /// Returns the last knot-index of cardinal index \a i
+    /// (i.e. counted without repetitions)
+    inline unsigned lastKnotIndex(const size_t & i) const
+    {
+        return (ubegin()+i).lastAppearance();
+        // equivalent:
+        // return m_multSum[i] - 1;
+    }
+     
+    /// Returns the multiplicity sum at unique index \a i
+    /// (i.e. counted without repetitions)
+    inline unsigned knotsUntilSpan(const size_t & i) const
+    {
+        return (ubegin()+i).multSum();
+    }
+
+    /// Compares with another knot vector.
+    bool operator != (const gsKnotVector<real_t>& other) const
+    {
+        return ! ((*this)==other);
+    }
+     
+    /// Returns vector of multiplicities of the knots.
+    const std::vector<mult_t> multiplicities() const
+    {
+        std::vector<mult_t> result;
+        result.reserve(uSize());
+        for( uiterator uit = ubegin(); uit != uend(); ++uit )
+            result.push_back( uit.multiplicity() );
+        return result;
+    }
+
+    /// Returns the value of the \a i - th knot (counted with repetitions).
+    inline T at (const size_t & i) const
+    {
+        return m_repKnots.at(i);
+    }
+
+    /// Returns the index (packed in a gsMatrix)
+    gsMatrix<unsigned,1> * findspan (const gsMatrix<T,1> & u) const
+    {
+        // Where is this deleted then? The user is required to do so.
+        gsMatrix<unsigned,1> * fs = new gsMatrix<unsigned,1>(1, u.cols() );
+
+        for( index_t i = 0; i < u.cols(); i++ )
+            (*fs)(0,i) = findspan( u(0,i) );
+
+        return fs;
+    }
+
+    /// Returns the number of knot spans.
+    unsigned spans() const
+    {
+        return this->uSize() - 1;
+    }
+
+    /// Checks whether the knot vector is uniform.
+    bool isUniform(T tol = 1e-9) const
+    {
+        const T df = *(ubegin() + 1) - *ubegin();
+        for( uiterator uit = ubegin() + 1; uit != uend(); ++uit )
+            if( math::abs(*uit - (*uit-1) - df) > tol )
+                return false;
+        return true;
+    }
+     
+    /// Returns true iff the knot is open (ie. both endpoint
+    /// multiplicities equal to degree+1)
+    bool isOpen() const
+    {
+        const int dp1 = m_deg + 1;
+        return (multFirst() == dp1 &&
+                multLast () == dp1 );
+        // equivalent
+        //return ( ubegin  .multiplicity() == dp1 &&
+        //         (--uend).multiplicity() == dp1 );
+        // equivalent
+        //return m_multSum.front() == dp1 && 
+        //    m_multSum.back() - m_multSum.end()[-2] == dp1;
+    }
+
+    /// Returns unique knots.
+    virtual knotContainer breaks() const
+    {
+        return knotContainer(ubegin(), uend());
+    }
+
+public: // others
+
+    /// Compute the new knots needed for uniform refinement with the
+    /// given number of knots per span and return them in \a result.
+    /// TODO: Think who is in charge of uniform refinement: basis or knot vector?
+    void getUniformRefinementKnots(mult_t knotsPerSpan, knotContainer& result, 
+                                   mult_t mult = 1) const;
 
     /// Return a string with detailed information on the knot vector.
     std::string detail() const;
 
-    /// Clone function. Used to make a copy of the (derived) geometry
-    gsKnotVector * clone() const
-    { return new gsKnotVector(*this); }
+    /// Returns the maximum interval length of the knot sequence
+    T maxIntervalLength() const;
 
-    /// Access the \a i-th knot.
-    T  operator [] (size_t i) const;
-    /// Access the \a i-th knot.
-    T& operator [] (size_t i);
+    /// Returns the minimum interval length of the knot sequence
+    T minIntervalLength() const;
 
-    /// Access the \a i-th knot, with bounds checking.
-    T  at (size_t i) const;
-    /// Access the \a i-th knot, with bounds checking.
-    T& at (size_t i);
-  
-    /// Get the first knot.
-    T first () const;
-    /// Get the last knot.
-    T last  () const;
-
-    /// Test if two knot vectors are identical.
-    bool operator==(const gsKnotVector<T> &other) const;
-    /// Test if two knot vectors are different.
-    bool operator!=(const gsKnotVector<T> &other) const;
-  
-    void push_back( T knot);
-
-    void push_back( T knot, int mult);
-
-    void push_front( T knot);
-
-    void push_front( T knot, int mult);
-
-    /// Return the size of the knot vector.
-    int size() const;
-  
-    /// Get a reference to the underlying std::vector of knots.
-    const std::vector<T>& get() const;
-
-    gsVector<T> * getVector() const;
-  
-    /// Get a vector of all the unique values in the knot vector.
-    std::vector<T> unique() const;
-
-    /// Get a vector of all the unique values in the knot-vector
-    /// starting from the i-th and up to the j-th knot
-    std::vector<T> unique(size_t const i, size_t const & j) const;
-
-    /// Breaks (for integration) \todo same as unique() ?
-    std::vector<T> breaks() const;
-
-    /// Find the index of the span in which value \a u lies.
-    /// \return the largest knot-index \c i such that \c knot[i] <=
-    /// \a u and \c knot[i] < L where \c L is the end of the domain,
-    /// i.e. L = knot[size()-m_p-1]
-    unsigned findspan (T u) const;
-
-    /// Find the position of the span in which value \a u lies.
-    /// \return an iterator to the largest knot \c k such that \c k
-    /// <= \a u and \c knot[i] < L where \c L is the end of the domain
-    /// i.e. L = knot[size()-m_p-1]
-    const_iterator findspanIter (T u) const ;
-  
-    gsMatrix<unsigned,1> * findspan (const gsMatrix<T,1> & u) const;
-  
-    //void scale (T u0, T u1);
-    //void mirror ();
-  
-    /// Reverse the knot vector.
-    ///
-    /// Example [0, 0, 0.2, 1, 1] to [0, 0, 0.8, 1, 1]
-    void reverse();
-
-    /// @brief Insert a knot into the knot vector.
-    /// \param knot parameter value of the new knot
-    /// \param mult multiplicity of the new knot
-    void insert(T knot, int mult=1);
-
-    /// @brief Insert knots into the knot vector.
-    /// \param knots parameter values of the new knots, stored in a std::vector
-    /// \param mult multiplicity of the new knots
-    void insert(std::vector<T> const & knots, int mult=1);
-
-    /// True iff the given knot exists in the knot vector.
-    bool has(T knot) const;
-
-    /// Transforms the endpoints of the knot vector to [c, d].
-    void transform(T c, T d);
-  
-    /// Insert a knot range into the knot vector.
-    void append(const_iterator const & v0, const_iterator const & v1 ) ;
-
-    /// Insert a knot range from another knot vector into the knot vector.
-    void merge(gsKnotVector<T> other);
-  
-    /// Remove last knot from the knot vector.
-    void pop_back(int i = 1);
-  
-    /// Remove first knot from the knot vector.
-    void pop_front(int i = 1);
-  
-    /// Add a constant to all knots.
-    void addConstant(T t);
-
-    /// Shift the knot vector so that the first knot is equal to \a t.
-    void setFirst(T t);
-  
-    /// Returns true iff the knot vector has uniform spacing
-    bool isUniform() const;
-
-    /// Returns true iff the knot vector is symmetric
-    bool isSymmetric(T tol = 1e-5) const;
-
-    /// Returns the number of knot spans in the knot-vector
-    int numKnotSpans() const;  
-
-    /// returns the span-index of a knot value
-    int findElementIndex(T u) const;  
-
-    /// Returns a vector containing the lenghts of the knot-spans
-    std::vector<T> knotSpanLengths() const;
-
-    /// Compute the length of the longest span
-    T maxKnotSpanLength() const;
-
-    /// Compute the length of the shortest span
-    T minKnotSpanLength() const;
-
-    /// Returns true iff the knot is open (ie. both endpoint
-    /// multiplicities equal to m_p+1)
-    bool isOpen() const;
-
-    /// Returns the length of the first knot-interval
-    T firstInterval() const;
-
-    // Refine uniformly between "start" and "end" by adding \a numKnots
-    // knot every two distinct knots
-    // void uniformRefine(const T & start , const T & end, int numKnots = 1)
-
-    /// Refine uniformly the knot vector between the interval staring at
-    /// interval(0,0) and finishing at interval(0,1), by adding \a
-    /// numKnots knot every two distinct knots
-    void uniformRefine(gsMatrix<T> const & interval, int numKnots = 1);
-
-    /// Refine the knot vector by adding \a numKnots equally spaced knots of
-    /// multiplicity \a mul in between every two distinct knots
-    void uniformRefine(int numKnots = 1, int mul =1);
-    
-    /// Refine elements pointed by the indices in \a spanIndices
-    void refineSpans(const std::vector<unsigned> & spanIndices, int numKnots = 1);
-
-    /// Compute the new knots needed for uniform refinement with the
-    /// given number of knots per span and return them in \a result.
-    void getUniformRefinementKnots(int knotsPerSpan, std::vector<T>& result, int mul=1) const;
-
-    /// Elevate the degree
+    /// Elevate the degree. I.e., increase the multiplicity of all the
+    /// knots by one and increment the degree.
     void degreeElevate(int const & i = 1);
 
-    /// Reduce the degree
-    void degreeReduce(int const & i = 1);
+    /// Converse to degreeElevate.
+    void degreeReduce(int const & i);
 
-    /// Reduce the degree keeping interior knots intact
-    void degreeDecrease(int const & i = 1);
+public: // members
 
-    /// \brief Returns true if the knot vector contains all knots of
-    /// \a other, taking into account multiplicities
-    bool contains(gsKnotVector<T> & other);
+    // TODO remove!
+    int m_deg;
+};
 
-    /// Increase the degree keeping interior knots intact (add clamped knots only)
-    void degreeIncrease(int const & i = 1);
+template<typename T>
+std::ostream& operator << (std::ostream& out, const gsKnotVector<T> KV )
+{
+    KV.print(out);
+    return out;
+}
 
-    /// Trim the knot vector from left and right by \a i knots
-    void trim(int i = 1);
-
-    /// Increase the multiplicity of all interior knots by i
-    void increaseMultiplicity(int const & i = 1);
-
-    /// Reduce the multiplicity of all interior knots by i
-    void reduceMultiplicity(int const & i = 1);
-
-    /// Remove the given knot from the knot vector.
-    void remove(T knot, int m = 1);
-
-    /// Get the Greville abscissae.
-    gsMatrix<T> * greville() const;
-
-    /// Get the Greville abscissae into \a result.
-    void greville_into(gsMatrix<T> & result) const;
-
-    /// Get the \a i-th Greville abscissa.
-    T greville(int i) const;
-
-    /// Set degree
-    void set_degree(int p);
-
-    /// Get degree
-    int degree() const;
-
-    /// Returns vector of multiplicities of the knots.
-    std::vector<int> multiplicities() const;
-
-    /// Get the multiplicity of the given knot.
-    int multiplicity(T knot) const;
-
-    /// Get the multiplicity of the knot indexed i
-    /// \param i index of the knot
-    unsigned multiplicityIndex(size_t const & i) const;
-
-    /// Returns the multiplicity of the first knot
-    int multFirst() const;
-
-    /// Returns the multiplicity of the last knot
-    int multLast() const;
-
-    /// Increase the multiplicity of the first knot by \a i.
-    void increaseMultFirst(int i = 1);
-
-    /// Increase the multiplicity of the last knot by \a i.
-    void increaseMultLast(int i = 1);
-
-    /// Look at the supportIndex function.
-    void supportIndex_into(const size_t& i, gsMatrix<unsigned>& result) const;
-
-    /// Get the unique knot index of the beginning and end of support of the
-    /// i-th basis function.
-    /// \param i index of the basis function
-    gsMatrix<unsigned> supportIndex(const size_t& i) const;
-
-    unsigned firstKnotIndex(const size_t & i) const;
-
-    unsigned lastKnotIndex(const size_t & i) const;
-
-// Data members
-private:
-    gsKnotVectorPrivate<T> * my;
-
-}; // class gsKnotVector
-
-
-}// namespace gismo
-
+} // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsKnotVector.hpp)
-// /*
-#elif defined(__GNUC__)
-namespace gismo 
-{
-EXTERN_CLASS_TEMPLATE gsKnotVector<real_t>;
-}
-//*/
 #endif

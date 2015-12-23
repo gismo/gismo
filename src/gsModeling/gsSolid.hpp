@@ -419,7 +419,7 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::splitFace(
   }
 
   // create a reverse spline of domainSpline
-  std::vector<T> origKnots = domainSpline->knots().get();
+  std::vector<T> origKnots = domainSpline->knots();
   std::vector<T> mateKnots;
   mateKnots.reserve( origKnots.size() );
   T flipPoint = (*origKnots.begin()) + (*origKnots.rbegin());

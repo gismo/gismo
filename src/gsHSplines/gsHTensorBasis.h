@@ -25,6 +25,8 @@
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsNurbs/gsBSplineBasis.h> // for gsBasis::component(int)
 
+#include <gsUtils/gsSortedVector.h>
+
 #include <limits>
 
 namespace gismo

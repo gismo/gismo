@@ -40,8 +40,8 @@ int main(int argc, char* argv[])
     gsKnotVector<> kv1(3);
     printKnotVector(kv1, "kv1");
     
-    // degree and number of knots
-    gsKnotVector<> kv2(3, 8);
+    // interval [0,1], 3 interior knots, multiplicity 3 at the ends (clamped knots).
+    gsKnotVector<> kv2(0,1,3,3);
     printKnotVector(kv2, "kv2");
     
     real_t a = 1.0; // starting knot
