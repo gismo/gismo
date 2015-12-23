@@ -304,7 +304,7 @@ void gsKnotVector<T>::reverse()
     // reverse the multiplicity
     std::reverse  (m_multSum.begin(), m_multSum.end()-1);
     std::transform(m_multSum.begin(), m_multSum.end()-1, m_multSum.begin(), 
-                   std::bind1st(std::minus<T>(), m_multSum.back() ) );
+                   std::bind1st(std::minus<mult_t>(), m_multSum.back() ) );
 
     // reverse the knots
     std::reverse(m_repKnots.begin(), m_repKnots.end());
