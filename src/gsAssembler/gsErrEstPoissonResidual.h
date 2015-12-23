@@ -253,7 +253,7 @@ protected:
             {
                 gsMatrix<T> Jinv = J.inverse();
 
-                for( int i=0; i < m_parDim; i ++ )
+                for( unsigned i=0; i < m_parDim; i ++ )
                 {
                     sol_Lap += sol_der2(0,0) * Jinv(0,i) * Jinv(0,i) \
                         + sol_der2(2,0) * Jinv(0,i) * Jinv(1,i) \
@@ -265,7 +265,7 @@ protected:
             {
                 gsMatrix<T> Jinv = J.inverse();
 
-                for( int i=0; i < m_parDim; i ++ )
+                for( unsigned i=0; i < m_parDim; i ++ )
                 {
                     sol_Lap += \
                           sol_der2(0,0) * Jinv(0,i) * Jinv(0,i) \
@@ -311,8 +311,10 @@ protected:
             // bc will be the null-pointer, if there is no boundary condition
             // on this patchside
             const boundary_condition<T> * bc = m_bcInfo.getConditionFromSide( ps );
-            if (NULL == bc )
-                continue;
+            // Note that, if the side is NOT an interface, the case
+            // (bc == NULL) corresponds to a homogenous Neumann-boundary condition.
+            // Thus, the contribution of such a boundary also has to be computed.
+            // The case bc == NULL is treated in the function diffNeumannBC()
 
             // create quadrature for the side of the element
             numQuadNodesSide = numQuadNodesRef;
@@ -348,7 +350,7 @@ protected:
             // treat the cases where the side is an interface or on the boundary
             if( isIntfc )
             {
-                sumSidesSq += diffIntfc( * field1, geoEval, ps, intfcRes, quNodesSide, quWeightsSide );
+                sumSidesSq += 0.5 * diffIntfc( * field1, geoEval, ps, intfcRes, quNodesSide, quWeightsSide );
             }
             else
             {
@@ -397,7 +399,7 @@ protected:
                         gsMatrix<T> & quNodes,
                         const gsVector<T> & quWeights )
     {
-        const size_t d = quNodes.rows();
+        const size_t d = size_t( quNodes.rows() );
 
         patchSide p1 = intfc.first();
         patchSide p2 = intfc.second();
@@ -408,7 +410,7 @@ protected:
         // get the points corresponding to the quNodes on the neighbour
         gsMatrix<T> quNodesNeigh( quNodes );
         quNodesNeigh.setZero();
-        for( size_t k=0; k < quNodes.cols(); k++)
+        for( size_t k=0; k < size_t( quNodes.cols() ); k++)
             for( size_t i=0; i < d; i++ )
             {
                 quNodesNeigh( intfc.dirMap(ps,i), k ) = quNodes(i,k);
@@ -436,7 +438,7 @@ protected:
 
         T sum(0.0);
         // quNodes
-        for( size_t qk = 0; qk < quNodes.cols(); qk++)
+        for( size_t qk = 0; qk < size_t( quNodes.cols() ); qk++)
         {
             const T weight = quWeights[qk] * geoEval.measure(qk);
 
@@ -503,7 +505,7 @@ protected:
 
         T sum(0.0);
         // quNodes
-        for( size_t qk = 0; qk < quNodes.cols(); qk++)
+        for( size_t qk = 0; qk < size_t( quNodes.cols() ); qk++)
         {
             const T weight = quWeights[qk] * geoEval.measure(qk);
 
@@ -514,7 +516,7 @@ protected:
             // transform the gradients
             geoEval.transformGradients( qk, grads, trf_grads );
 
-            if( !bc )
+            if( bc == NULL )
             {
                 // it is assumed that the function is only called for patch-sides
                 // which are NOT patch-interfaces.
