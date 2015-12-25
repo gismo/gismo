@@ -171,7 +171,7 @@ public:
     {
         GISMO_ASSERT ( string.size() == expression.size(), "Corrupted FunctionExpr");
         init();
-        //copyRange(other.vars, vars, 6);
+        //copy_n(other.vars, 6, vars);
         string    .reserve(string.size());
         expression.reserve(string.size());
         for (std::size_t i = 0; i!= other.string.size(); ++i)
@@ -487,7 +487,7 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
 
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
-        copyRange(u.col(p).data(), expr.vars, expr.dim);
+        copy_n(u.col(p).data(), expr.dim, expr.vars);
 
         for (int c = 0; c!= n; ++c) // for all components
 #           ifdef GISMO_WITH_ADIFF
@@ -510,7 +510,7 @@ void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t 
     result.resize(1, u.cols());
     for ( index_t p = 0; p!=u.cols(); ++p )
     {
-        copyRange(u.col(p).data(), my->vars, my->dim);
+        copy_n(u.col(p).data(), my->dim, my->vars);
 
 #           ifdef GISMO_WITH_ADIFF
             result(0,p) = my->expression[comp].value().getValue();
@@ -545,7 +545,7 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
         for (int c = 0; c!= n; ++c) // for all components
             result.block(c*d,p,d,1) = expr.expression[c].value().getGradient();
 #       else
-        copyRange(u.col(p).data(), expr.vars, expr.dim);
+        copy_n(u.col(p).data(), expr.dim, expr.vars);
         for (int c = 0; c!= n; ++c) // for all components
             for ( int j = 0; j!=d; j++ ) // for all variables
                 result(c*d + j, p) = 
@@ -574,7 +574,7 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
 #       ifndef GISMO_WITH_ADIFF
-        copyRange(u.col(p).data(), expr.vars, expr.dim);
+        copy_n(u.col(p).data(), expr.dim, expr.vars);
 #       endif
 
         for (int c = 0; c!= n; ++c) // for all components
@@ -637,7 +637,7 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
         expr.vars[v].setVariable(v, d, u(v,0) );
     *res = expr.expression[coord].value().getHessian();
 #   else
-    copyRange(u.data(), expr.vars, d);    
+    copy_n(u.data(), expr.dim, expr.vars);
     for( int j=0; j!=d; ++j )
     {
         (*res)(j,j) = exprtk::
@@ -671,7 +671,7 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
     for( index_t p=0; p!=res->cols(); ++p )
     {
 #       ifndef GISMO_WITH_ADIFF
-        copyRange(u.col(p).data(), expr.vars, expr.dim);
+        copy_n(u.col(p).data(), expr.dim, expr.vars);
 #       endif
 
         for (int c = 0; c!= n; ++c) // for all components
@@ -707,7 +707,7 @@ gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
     for( index_t p = 0; p != res->cols(); ++p )
     {
 #       ifndef GISMO_WITH_ADIFF
-        copyRange(u.col(p).data(), expr.vars, expr.dim);
+        copy_n(u.col(p).data(), expr.dim, expr.vars);
 #       endif
 
         for (int c = 0; c!= n; ++c) // for all components
