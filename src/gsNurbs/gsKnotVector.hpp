@@ -11,14 +11,14 @@
     Author(s): D. Mokris, A. Bressan, A. Mantzaflaris
 */
 
+#pragma once
+
 #include <gsNurbs/gsKnotVector.h>
 #include <gsIO/gsXml.h>
 
-#include <sstream>
 #include <numeric>
-#include <limits>
 
-#pragma once
+
 namespace gismo
 {
 
@@ -33,12 +33,14 @@ class gsXml< gsKnotVector<T> >
 {
 private:
     gsXml() { }
+
 public:
-    GSXML_COMMON_FUNCTIONS( gsKnotVector<T>)
+    GSXML_COMMON_FUNCTIONS(gsKnotVector<T>)
+    GSXML_GET_POINTER(gsKnotVector<T>)
     static std::string tag () { return "KnotVector"; }
     static std::string type() { return ""; }
 
-    static gsKnotVector<T> * get (gsXmlNode * node)
+    static void get_into(gsXmlNode * node, gsKnotVector<T> & result)
     {
         // TODO: make it unused when possible.
         int p = atoi(node->first_attribute("degree")->value() );
@@ -51,9 +53,7 @@ public:
         for (T knot; str >> knot;)
             knotValues.push_back(knot);
 
-        gsKnotVector<T> * kv = new gsKnotVector<T>(p,knotValues);
-
-        return kv;
+        result = gsKnotVector<T>(p,knotValues);
     }
 
     static gsXmlNode * put (const gsKnotVector<T> & obj, gsXmlTree & data)
@@ -271,6 +271,10 @@ typename gsKnotVector<T>::mult_t gsKnotVector<T>::multiplicityIndex( mult_t knot
     cFwKIt L  = std::find_if(it,m_repKnots.end(),std::bind1st(std::not_equal_to<T>(),*it));
     cBwKIt F  = std::find_if(cBwKIt(it),m_repKnots.rend(),std::bind1st(std::not_equal_to<T>(),*it));
     return L-F.base();
+
+    // equivalent:
+    //return (sbegin() + knotIndex).multiplicity();
+
 }
 
 //===========//

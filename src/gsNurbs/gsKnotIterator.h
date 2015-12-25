@@ -19,10 +19,6 @@ namespace internal {
 
     template<typename T> class gsKnotIterator;
 
-// TODO rething constructors: are they needed from outside the knot vector?
-// if not it is possible to remove the knoledge of the knot vector interface from this class
-// so that it is possible to get it from a unique iter
-
 /**
    \brief A bi-directional knot iterator which provides extended
    information for the iterated knot
@@ -205,7 +201,6 @@ public:
         gsUKnotIterator tmp(*this);
         return tmp+=a;
     }
-
 
    /**
        \brief Decrements the iterator by \a a knot positions
@@ -390,11 +385,14 @@ public:
     reference operator*  () const 
     {
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
-        GISMO_ENSURE(m_pos >= 0 && m_pos + 1< m_dbg, "Access to invalid knot position.");
+        GISMO_ENSURE(m_upos >= 0 && m_pos + 1< m_dbg, 
+                     "Access to invalid knot position.");
 #       endif 
         return  m_uit.m_raw[m_pos];
     }
-    pointer   operator-> () const {return  m_uit.m_raw+m_pos;}
+
+    pointer   get()         const {return  m_uit.m_raw+m_pos;}
+    pointer   operator-> () const {return  get();}
 
     gsKnotIterator& operator++() 
     {
@@ -504,21 +502,28 @@ public:
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
         GISMO_ENSURE(m_pos >= 0 && m_pos < m_dbg, "Access to invalid knot position.");
 #       endif 
-        mltpointer start, end;
-        if (a<0) //substructing ?
-        {
-            start = m_uit.m_mlt+math::max<ptrdiff_t>(0,m_uit.m_upos+a);
-            end   = m_uit.m_mlt+m_uit.m_upos;
-        }
-        else //incrementing
-        {
-            start = m_uit.m_mlt+m_uit.m_upos;
-            end   = m_uit.m_mlt+m_uit.m_upos+a;
-        }
 
         // update unique position
-        m_uit.m_upos = std::find_if(start,end,
-                       std::bind2nd(std::greater<mult_t>(), m_pos))-m_uit.m_mlt;
+        mltpointer beg, end;
+        if (a<0) //substracting ?
+        {
+            end = m_uit.m_mlt + m_uit.m_upos;
+            beg = math::max(m_uit.m_mlt, end + a);
+            //note: [beg, end) is a valid sorted range, complexity:  O(log a)
+            m_uit.m_upos = std::upper_bound(beg, end, m_pos) - m_uit.m_mlt;
+        }
+        else    //incrementing
+        {
+            beg = m_uit.m_mlt + m_uit.m_upos;
+            end = beg + a;
+            m_uit.m_upos = std::find_if(beg, end, // complexity:  O(a)
+            std::bind2nd(std::greater<mult_t>(), m_pos)) - m_uit.m_mlt;
+
+            //note: "end" can potentially be over the end of m_mlt,
+            //an efficient version would be:
+            //end = math::min(m_uit.m_mlt + uit.m_dbg-1, beg + a);
+            //m_uit.m_upos = std::upper_bound(beg, end, m_pos) - m_uit.m_mlt;
+        }
 
         return *this;
     }

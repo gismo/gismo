@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
     //gsHBSplineBasis<2>  THB ( T_tbasis ) ;
 
     // Specify extension size in u and v cells
-    std::vector<int> ext;
+    std::vector<unsigned> ext;
     ext.push_back(extension);
     ext.push_back(extension);
 

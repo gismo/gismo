@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     gsKnotVector<> kv(a, b, interior, multEnd);
 
     // ...a 2D-tensor-B-spline basis with this knot vector...
-    gsTensorBSplineBasis<2,real_t,gsKnotVector<> > tens( kv, kv );
+    gsTensorBSplineBasis<2,real_t> tens( kv, kv );
 
     // ...and a 2D-THB-spline basis out of the tensor-B-spline basis.
     gsTHBSplineBasis<2,real_t> thb( tens );

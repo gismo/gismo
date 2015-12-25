@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
     gsKnotVector<> kv2(0, 1, m - degree - 1, degree + 1);
     
     // 2. construction of a basis
-    gsTensorBSplineBasis<2, real_t, gsKnotVector<> > basis(kv1, kv2);
+    gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
     
     // 3. construction of a coefficients
     gsMatrix<> greville = basis.anchors();
@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
     }
     
     // 4. putting basis and coefficients toghether
-    gsTensorBSpline<2, real_t, gsKnotVector<> >  surface(basis, coefs);
+    gsTensorBSpline<2, real_t>  surface(basis, coefs);
 
 
     // 5. saving surface, basis and control net to a file

@@ -165,7 +165,7 @@ void gsCurveFitting<T>::compute()
 
     }
     // finally generate the B-spline curve
-    m_curve = gsBSpline<T,gsKnotVector<T> >(*curveBasis, give(coefs));
+    m_curve = gsBSpline<T >(*curveBasis, give(coefs));
     delete curveBasis;
 }
 
@@ -238,7 +238,7 @@ void gsCurveFitting<T>::compute_periodic()
     curveBasis.setPeriodic(false);
     //coefs = curveBasis->perCoefs(coefs);
     // finally generate the B-spline curve
-    m_curve= gsBSpline<T,gsKnotVector<T> >(curveBasis, give(coefs));
+    m_curve= gsBSpline<T>(curveBasis, give(coefs));
     m_curve.setPeriodic(m_closed);
 }
 
