@@ -385,7 +385,7 @@ public:
     reference operator*  () const 
     {
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
-        GISMO_ENSURE(m_upos >= 0 && m_pos + 1< m_dbg, 
+        GISMO_ENSURE(m_pos >= 0 && m_pos + 1< m_dbg, 
                      "Access to invalid knot position.");
 #       endif 
         return  m_uit.m_raw[m_pos];
