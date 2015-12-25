@@ -173,12 +173,13 @@ bool checkVectorPtrCast(std::vector<Base*> pVec)
    \a result. The latter is expected to have been allocated in advance
 */
 template <class T, class U>
-inline void copyRange(const T * begin, U * result, const int n)
+inline void copy_n(const T * begin, const size_t n, U * result)
 {
 #   ifdef _MSC_VER
     // Take care of C4996 warning
     std::copy(begin, begin+n,
-              stdext::checked_array_iterator<U*>(result,n));
+              stdext::unchecked_array_iterator<U*>(result));
+              //stdext::checked_array_iterator<U*>(result,n));
 #   else
     std::copy(begin, begin+n, result);
     // Note: in C++11 there is:

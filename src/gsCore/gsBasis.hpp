@@ -138,24 +138,24 @@ void gsBasis<T>::evalAllDersFunc_into(const gsMatrix<T> &u,
 
 
 template<class T>
-// static
 void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
                                         const gsMatrix<unsigned> & actives,
                                         const gsMatrix<T> & values,
                                         gsMatrix<T> & result)
 {
-    const size_t numPts = size_t( values.cols() );
-    const size_t tarDim = size_t( coefs.cols()  );
-    const size_t stride = size_t( values.rows() )/size_t(actives.rows());
+    const index_t numPts = values.cols() ;
+    const index_t tarDim = coefs.cols()  ;
+    const index_t stride = values.rows() / actives.rows();
 
-    GISMO_ASSERT( size_t(actives.rows()) * stride == size_t( values.rows() ), "number of values and actives does not fit together");
+    GISMO_ASSERT( actives.rows() * stride == values.rows(), 
+                  "Number of values and actives does not fit together");
 
     result.resize( tarDim * stride, numPts );
     result.setZero();
 
-    for ( size_t pt = 0; pt < numPts; ++pt) // For pt, i.e., for every column of u
-        for ( size_t i = 0; i < actives.rows(); ++i )  // for all nonzero basis functions
-            for ( size_t c = 0; c < tarDim; ++c )      // for all components of the geometry
+    for ( index_t pt = 0; pt < numPts; ++pt ) // For pt, i.e., for every column of u
+        for ( index_t i = 0; i < actives.rows(); ++i )  // for all nonzero basis functions
+            for ( index_t c = 0; c < tarDim; ++c )      // for all components of the geometry
             {
                 result.block( stride * c, pt, stride, 1).noalias() +=
                     coefs( actives(i,pt), c) * values.block( stride * i, pt, stride, 1);

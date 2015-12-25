@@ -80,11 +80,11 @@ class gsIpOptTNLP : public Ipopt::TNLP
             
             // to do: { memcpy(target, start, numVals); }
 
-            copyRange ( m_op.m_desLowerBounds.data(), x_l, n );
-            copyRange ( m_op.m_desUpperBounds.data(), x_u, n );
+            copy_n( m_op.m_desLowerBounds.data(), n, x_l );
+            copy_n( m_op.m_desUpperBounds.data(), n, x_u );
             
-            copyRange ( m_op.m_conLowerBounds.data(), g_l, m );
-            copyRange ( m_op.m_conUpperBounds.data(), g_u, m );
+            copy_n( m_op.m_conLowerBounds.data(), m, g_l );
+            copy_n( m_op.m_conUpperBounds.data(), m, g_u );
             
             return true;
         }
@@ -98,7 +98,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
             //gsDebug<<"Getting get_starting_point.\n";
             
             // Here, we assume we only have starting values for the design variables
-            copyRange ( m_op.m_curDesign.data(), x, n );
+            copy_n( m_op.m_curDesign.data(), n, x );
             return true;
         }
         
@@ -146,8 +146,8 @@ class gsIpOptTNLP : public Ipopt::TNLP
             if (values == NULL) 
             {
                 // pass the structure of the jacobian of the constraints
-                copyRange ( m_op.m_conJacRows.data(), iRow, nele_jac );
-                copyRange ( m_op.m_conJacCols.data(), jCol, nele_jac );
+                copy_n( m_op.m_conJacRows.data(), nele_jac, iRow );
+                copy_n( m_op.m_conJacCols.data(), nele_jac, jCol );
             }
             else 
             {
