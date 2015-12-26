@@ -22,14 +22,16 @@
 #include <cmath>
 #include <limits>
 
-// Macro for getting random seed
-#define GISMO_RANDOM_SEED srand((unsigned int) time(0));
-
 #ifdef GISMO_WITH_MPQ
 template <class U, class V>
 inline mpq_class max(const __gmp_expr<mpq_t, U> & a,
                      const __gmp_expr<mpq_t, V> & b)
 {return mpq_class(a < b ? b : a);}
+
+template <class U, class V>
+inline mpq_class min(const __gmp_expr<mpq_t, U> & a,
+                     const __gmp_expr<mpq_t, V> & b)
+{return mpq_class(a < b ? a : b);}
 
 /*// under construction
 template <class U, class V>
@@ -51,15 +53,23 @@ inline mpq_class pow(const __gmp_expr<mpq_t, U> & a,
 #define GMP_EXTRA_STD_UNARY_FUNCTION(std_fun) template <class U> \
 inline mpq_class std_fun(const __gmp_expr<mpq_t, U> & expr)      \
 {return std::std_fun(mpq_class(expr).get_d());}
+#define GMP_EXTRA_STD_BINARY_FUNCTION(std_fun) template <class U, class V>              \
+inline mpq_class std_fun(const __gmp_expr<mpq_t, U> & a,const __gmp_expr<mpq_t, V> & b) \
+{return std::std_fun(mpq_class(a).get_d(), mpq_class(b).get_d());}
 GMP_EXTRA_STD_UNARY_FUNCTION(sqrt)
 GMP_EXTRA_STD_UNARY_FUNCTION(sin)
 GMP_EXTRA_STD_UNARY_FUNCTION(cos)
 GMP_EXTRA_STD_UNARY_FUNCTION(tan)
 GMP_EXTRA_STD_UNARY_FUNCTION(acos)
+GMP_EXTRA_STD_UNARY_FUNCTION(asin)
 GMP_EXTRA_STD_UNARY_FUNCTION(log)
 GMP_EXTRA_STD_UNARY_FUNCTION(floor)
 GMP_EXTRA_STD_UNARY_FUNCTION(ceil)
+GMP_EXTRA_STD_UNARY_FUNCTION(exp)
+GMP_EXTRA_STD_BINARY_FUNCTION(atan2)
+//GMP_EXTRA_STD_BINARY_FUNCTION(pow)
 #undef GMP_EXTRA_STD_UNARY_FUNCTION
+#undef GMP_EXTRA_STD_BINARY_FUNCTION
 
 #endif
 
@@ -90,10 +100,12 @@ using std::sinh;
 using std::tan;
 using std::tanh;
 using std::acos;
+using std::asin;
 using std::log;
 using std::log10;
 using std::atan;
 using std::atan2;
+using std::exp;
 using std::min;
 using std::max;
 using std::frexp;
@@ -101,11 +113,16 @@ using std::ldexp;
 
 // template <typename T> T min(T a, T b) {return  (a < b ? a : b); }
 // template <typename T> T max(T a, T b) {return  (a < b ? b : a); }
+
+template <typename T> inline T exp2(T a) { return 1 << a;}
+
 template <typename T>
 T round(T a) {return math::floor(a<0.0 ? a-0.5 : a+0.5); }
 
 
-/** Numeric precision (number of exact decimal digits expected) for real_t */
+/** Numeric precision (number of exact decimal digits expected) for
+    real_t
+*/
 #ifdef GISMO_WITH_MPFR
 #  define REAL_DIG std::numeric_limits<real_t>::digits10()
 #else
@@ -128,7 +145,8 @@ int isfinite(T a)
 //bool isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
 
 #ifndef NAN
-// MSVC doesn't have the NAN constant in cmath, so we use the C++ standard definition
+// MSVC doesn't have the NAN constant in cmath, so we use the C++
+// standard definition
 #define NAN (std::numeric_limits<real_t>::quiet_NaN())
 #endif
 
@@ -175,20 +193,25 @@ using ::ceil;
 using ::floor;
 using ::cos;
 using ::acos;
+using ::asin;
 using ::sin;
 using ::tan;
 using ::log;
 using ::log10;
-//using ::max;
+using ::atan2;
+using ::exp;
 
-inline bool isfinite(mpq_class a) {return true; }
-inline bool isnan(mpq_class a)    {return false;}
-inline mpq_class min(mpq_class a, mpq_class b) {return  (a < b ? a : b); }
-inline mpq_class max(mpq_class a, mpq_class b) {return  (a < b ? b : a); }
-inline mpq_class frexp(mpq_class a, int* b) {return  a;}
-inline mpq_class ldexp(mpq_class a, int b) {return  a;}
+//fixme: min/max duplication with global
+inline mpq_class max(const mpq_class & a, const mpq_class & b)
+{return mpq_class(a < b ? b : a);}
+inline mpq_class min(const mpq_class & a, const mpq_class & b)
+{return mpq_class(a < b ? a : b);}
 inline mpq_class pow (const mpq_class & a, const mpq_class & b) 
 {return  std::pow(a.get_d(),b.get_d()); }
+inline bool isfinite(mpq_class a) {return true; }
+inline bool isnan(mpq_class a)    {return false;}
+inline mpq_class frexp(const mpq_class & a, int* b) {return  a;}
+inline mpq_class ldexp(const mpq_class & a, int b ) {return  a;}
 #endif
 
 /// Returns the sign of \a val
@@ -283,8 +306,9 @@ bool almostEqual(const T a, const T b)
 } //end namespace math
 
 /**
-    \brief tests if the difference between two numbers is below tolerance
-    **/
+    \brief tests if the difference between two numbers is below
+    tolerance
+*/
 template <typename T>
 inline bool gsClose (const T &a, const T &b, const T &tol)
 {
@@ -292,10 +316,12 @@ inline bool gsClose (const T &a, const T &b, const T &tol)
 }
 
 /**
-    \brief tests if the difference between two matrices is bounded by tol in \f$ L^\infty \f$ norm
+    \brief tests if the difference between two matrices is bounded by
+    tol in \f$ L^\infty \f$ norm
 
-    The tolerance is relative to maximum absolute values of the entries of the matrices.
-    **/
+    The tolerance is relative to maximum absolute values of the
+    entries of the matrices.
+*/
 template <typename matrix_t1, typename matrix_t2>
 inline bool gsAllCloseRelativeToMax (const matrix_t1 &a, const matrix_t2 &b, const typename matrix_t1::Scalar &tol )
 {
@@ -304,10 +330,11 @@ inline bool gsAllCloseRelativeToMax (const matrix_t1 &a, const matrix_t2 &b, con
 }
 
 /**
-    \brief tests if the difference between two matrices is bounded by tol in \f$ L^\infty \f$ norm
+    \brief tests if the difference between two matrices is bounded by
+    tol in \f$ L^\infty \f$ norm
 
     The tolerance is absolute, therefore independent of the matrix entries.
-    **/
+*/
 template <typename matrix_t1, typename matrix_t2>
 inline bool gsAllCloseAbsolute (const matrix_t1 &a, const matrix_t2 &b, const typename matrix_t1::Scalar &tol )
 {
@@ -316,10 +343,12 @@ inline bool gsAllCloseAbsolute (const matrix_t1 &a, const matrix_t2 &b, const ty
 }
 
 /**
-    \brief tests if the difference between two matrices is bounded by tol in \f$ L^\infty \f$ norm
+    \brief Tests whether the difference between two matrices is bounded by
+    tol in \f$ L^\infty \f$ norm
 
-    The tolerance is absolute below the reference, but relative for bigger numbers.
-    **/
+    The tolerance is absolute below the reference, but relative for
+    bigger numbers.
+*/
 template <typename matrix_t1, typename matrix_t2>
 inline bool gsAllCloseRelAndAbsWithRef (const matrix_t1 &a, const matrix_t2 &b, const typename matrix_t1::Scalar &tol, const typename matrix_t1::Scalar &ref )
 {
@@ -329,9 +358,9 @@ inline bool gsAllCloseRelAndAbsWithRef (const matrix_t1 &a, const matrix_t2 &b, 
 
 
 /*
-  CompileTimeLog2 computes the logarithm base 2 of the argument
-  using template recursion.  
-*/
+  CompileTimeLog2 computes the logarithm base 2 of the argument using
+  template recursion.
+
 template <unsigned arg>
 struct CompileTimeLog2
 {
@@ -349,5 +378,6 @@ struct CompileTimeLog2<0>
 };
 template <unsigned arg>
 unsigned CTLog2 (void) {return CompileTimeLog2<arg>::result;}
+*/
 
 } //end namespace gismo
