@@ -188,15 +188,14 @@ void gsHBSplineBasis<d,T>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resul
 template<unsigned d, class T>
 void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
 {
-    //std::vector< gsMatrix<T> > result;
     result.clear();
     gsVector<unsigned> level;
     gsMatrix<unsigned> b1, b2;//boxes in highes level numbering
     this->m_tree.getBoxesInLevelIndex(b1,b2,level);//return boxes in level indices
     tensorBasis T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
-    transfer.resize(this->maxLevel() );
-    for(unsigned i = 0; i < this->maxLevel();i++)
+    transfer.resize( this->maxLevel() );
+    for(unsigned i = 0; i < this->maxLevel(); ++i)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
         std::vector<std::vector<T> > knots;
@@ -207,14 +206,15 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
 
             std::vector<T> dirKnots;
             this->_differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
-                                          fkv, 0, fkv.uSize() - 1,
-                                          dirKnots);
+                                                fkv, 0, fkv.uSize() - 1,
+                                                dirKnots);
             knots.push_back(dirKnots);
         }
         T_0_copy.refine_withTransfer(transfer[i], knots);
     }
 
-    for(unsigned j = 0; j < this->maxLevel();j++){
+    for(unsigned j = 0; j < this->maxLevel();j++)
+    {
         std::vector<gsSortedVector<unsigned> >x_mat_old_0;
         this->setActiveToLvl(j,x_mat_old_0);
         std::vector<gsSortedVector<unsigned> > x_matrix_lvl;
@@ -223,7 +223,6 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
         gsMatrix<T> crs = this->coarsening(x_mat_old_0, x_matrix_lvl, transfer[j]);
         result.push_back(crs);
     }
-    //return result;
 }
 
 
