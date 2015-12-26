@@ -47,7 +47,7 @@ public:
     {
         if (error_list.size() != h_list.size())
         {
-            gsWarn << "The lists does not have same size!" << std::endl;
+            gsWarn << "The lists does not have same size!\n";
             return 0;
         }
 
@@ -89,7 +89,7 @@ public:
         Eigen::EigenSolver<typename gsMatrix<T>::Base > eigen_values;
         eigen_values.compute(matrix, false);
 
-        T tmp = std::abs(eigen_values.eigenvalues()(0,0).real());
+        T tmp = math::abs(eigen_values.eigenvalues()(0,0).real());
 
         T eigen_low = tmp;
         T eigen_high= tmp;
@@ -97,17 +97,17 @@ public:
         //Find lowest and highest eigenvalue
         for (unsigned k=0; k< N_size; ++k)
         {
-            tmp = std::abs(eigen_values.eigenvalues()(k,0).real());
+            tmp = math::abs(eigen_values.eigenvalues()(k,0).real());
 
             // Remove the one zero eigenvalue from not using pressure avg.
             if(tmp < 1e-13 && removeSingularity)
             {
                 removeSingularity = false;
-                std::cout << "Removed the eigen value: " << tmp << std::endl;
+                gsInfo << "Removed the eigen value: " << tmp << "\n";
                 //In case the first eigenvalue has value zero, we use the second eigenvalue.
                 if (k == 0)
                 {
-                    tmp = std::abs(eigen_values.eigenvalues()(k+1,0).real());
+                    tmp = math::abs(eigen_values.eigenvalues()(k+1,0).real());
                     eigen_low = tmp;
                     eigen_high= tmp;
                 }
@@ -253,7 +253,8 @@ public:
     }
 
     /**
-     * @brief matrixForm this function return the matrix form of the lanczos matrix as a gsSparseMatrix
+     * @brief matrixForm this function return the matrix form of the
+     * lanczos matrix as a gsSparseMatrix
      * @param L the lanczos matrix
      */
     void matrixForm(gsSparseMatrix<T> & L)

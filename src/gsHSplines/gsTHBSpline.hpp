@@ -24,38 +24,6 @@ namespace gismo{
 // Public member functions
 // ////////////////////////////////////////////////
 
-/*
-template<unsigned d, class T>
-void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T,gsCompactKnotVector<T> >& result )
-{
-    // Construct a box covering the whole parameter domain.
-    const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
-    std::vector<unsigned> wholeDomainAsBox(2*d+1,0);
-
-    wholeDomainAsBox[0] = this->basis().tree().getMaxInsLevel();
-
-    std::copy(uCorner.data(), uCorner.data()+d, wholeDomainAsBox.begin()+d+1);
-
-    // Refine the whole domain to the finest level present there.
-    refineElements( wholeDomainAsBox );
-
-    // The & avoids copying of the basis.
-    gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> > &tpBasis = 
-        this->basis().tensorLevel(this->basis().maxLevel());
-    // makeGeometry returns an abstract class, so we need to cast to the particular.
-    gsTensorBSpline<d,T,gsCompactKnotVector<T> > *newGeo = 
-        static_cast< gsTensorBSpline<d,T,gsCompactKnotVector<T> > *>(tpBasis.makeGeometry(this->coefs()));
-
-    // Should work but crashes:
-    //std::swap (*newGeo, result );
-    // Instead, use
-    result = *newGeo;
-
-    // Don't forget:
-    delete newGeo;
-}
-*/
-
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {

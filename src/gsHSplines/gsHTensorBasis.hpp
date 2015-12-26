@@ -119,7 +119,7 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
     // For all levels
     for(unsigned lvl = 0; lvl <= maxLevel(); lvl++)
     {
-        const gsTensorBSplineBasis<d,T,gsCompactKnotVector<T> > & bb = *m_bases[lvl];
+        const gsTensorBSplineBasis<d,T> & bb = *m_bases[lvl];
         const CMatrix & cmat = m_xmatrix[lvl];
         
         // Last tensor-index in level lvl
@@ -507,7 +507,7 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::set_activ1(int level)
 {
-    typedef typename gsCompactKnotVector<T>::smart_iterator knotIter;
+    typedef typename gsKnotVector<T>::smart_iterator knotIter;
 
     //gsDebug<<" Setting level "<< level <<"\n";
     gsVector<unsigned,d> low, upp;
@@ -627,7 +627,7 @@ void gsHTensorBasis<d,T>::setActiveToLvl(int level, std::vector<gsSortedVector<u
     x_matrix_lvl.resize(level+1);
 
     // vectors of iterators. one iterator for each dimension
-    gsVector<typename gsCompactKnotVector<T>::smart_iterator,d> starts, ends, curr;
+    gsVector<typename gsKnotVector<T>::smart_iterator,d> starts, ends, curr;
     gsVector<unsigned,d> ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
     
@@ -832,23 +832,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
         m_deg[i] = tbasis.degree(i);
 
     // Construct the initial basis
-    if ( const gsTensorBSplineBasis<d,T,gsKnotVector<T> > * tb1 =
-         dynamic_cast<const gsTensorBSplineBasis<d,T,gsKnotVector<T> >*>(&tbasis) )
-    {
-        //std::vector<gsBSplineBasis<T, gsCompactKnotVector<T> > * > cw_bases(d);
-        std::vector<gsBasis<T> * > cw_bases(d);
-        
-        for ( unsigned i = 0; i!=d; ++i )
-        {
-            cw_bases[i]=
-                new gsBSplineBasis<T, gsCompactKnotVector<T> >(
-                    gsCompactKnotVector<T>( tb1->knots(i)) );
-        }
-
-        m_bases.push_back(
-            tensorBasis::New(cw_bases) );
-    }
-    else if ( const tensorBasis * tb2 =
+    if ( const tensorBasis * tb2 =
               dynamic_cast<const tensorBasis*>(&tbasis) )
     {
         m_bases.push_back( tb2->clone() );
@@ -1168,8 +1152,8 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
         std::vector<std::vector<T> > knots;
         for(unsigned int dim = 0; dim < d; dim++)
         {
-            const gsCompactKnotVector<T> & ckv = m_bases[i]->knots(dim);
-            const gsCompactKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
+            const gsKnotVector<T> & ckv = m_bases[i]->knots(dim);
+            const gsKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
 
             std::vector<T> dirKnots;
             _differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
@@ -1206,8 +1190,8 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> 
         std::vector<std::vector<T> > knots;
         for(unsigned int dim = 0; dim < d; dim++)
         {
-            const gsCompactKnotVector<T> & ckv = m_bases[i]->knots(dim);
-            const gsCompactKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
+            const gsKnotVector<T> & ckv = m_bases[i]->knots(dim);
+            const gsKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
 
             std::vector<T> dirKnots;
             _differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,

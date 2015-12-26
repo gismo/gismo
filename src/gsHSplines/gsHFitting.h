@@ -125,7 +125,7 @@ public:
     /// Sets the cell extension
     void setExtension(std::vector<unsigned> const & extension)
     {
-        GISMO_ASSERT( (gsAsConstVector<int>(extension).array()>=0).all(), 
+        GISMO_ASSERT( (gsAsConstVector<unsigned>(extension).array()>=0).all(), 
                       "Extension must be a positive number.");
         GISMO_ASSERT(extension.size()== static_cast<size_t>(this->m_basis.dim()), 
                      "Error in dimension");

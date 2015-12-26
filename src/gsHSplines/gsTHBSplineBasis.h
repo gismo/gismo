@@ -521,14 +521,14 @@ public:
    * @param[out] k1 knot vector of the B-spline patch (first dimension)
    * @param[out] k2 knot vector of the B-spline patch (second dimension)
   */
-  void getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned level, const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsCompactKnotVector<T>& k1, gsCompactKnotVector<T>& k2) const;  
+  void getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned level, const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsKnotVector<T>& k1, gsKnotVector<T>& k2) const;  
 
   /**
    * @brief Return the list of B-spline patches to represent a THB-spline geometry.
    * @param geom_coef control points of the THB-spline geometry
    * @param[out] cp  control points of all B-spline patches stacked on top of each other
-   * @param[out] b1  bottom left corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
-   * @param[out] b2  top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
+   * @param[out] b1  bottom left corners of the box (vector of indices with respect to the gsKnotVector of the highest possible level)
+   * @param[out] b2  top right corners of the box (vector of indices with respect to the gsKnotVector of the highest possible level)
    * @param[out] level levels of the boxes (level[i]: level of the i-th box,)
    * @param[out] nvertices number of control points (nvertices[i,j]: number of control points in j-direction for the i-th box)
   */
@@ -544,8 +544,8 @@ public:
      * @brief Return the list of B-spline patches to represent a THB-spline geometry.
      * @param geom_coef control points of the THB-spline geometry
      * @param[out] cp  control points of all B-spline patches stacked on top of each other
-     * @param[out] b1  bottom left corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
-     * @param[out] b2  top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
+     * @param[out] b1  bottom left corners of the box (vector of indices with respect to the gsKnotVector of the highest possible level)
+     * @param[out] b2  top right corners of the box (vector of indices with respect to the gsKnotVector of the highest possible level)
      * @param[out] level levels of the boxes (level[i]: level of the i-th box,)
      * @param[out] nvertices number of control points (nvertices[i,j]: number of control points in j-direction for the i-th box)
      * @param[out] trim_curves the trimming curves for parasolid vector<connected_component<polylines<segments<T> > > > where the first polyline is the outer curve and the rest are holes
@@ -607,7 +607,7 @@ public:
     ///
     /// The B-Spline patch knots are the same as the THB-Spline-Basis knots from the input
     /// level. Geometry of the patch is defined via input coefficients.
-    gsTensorBSpline<d, T, gsCompactKnotVector<T> >
+    gsTensorBSpline<d, T>
     getBSplinePatch(const std::vector<unsigned>& boundingBox,
 		    const unsigned level,
 		    const gsMatrix<T>& geomCoefs) const;

@@ -446,7 +446,7 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
     gsMatrix<T> tcp (ntcp, 2);
 
     // Quadratic forms which (approximately) constitute the beam strain energy
-    gsBSplineBasis< T,gsKnotVector<T> > bs(kv);
+    gsBSplineBasis<T> bs(kv);
     gsMatrix<T> *Q = innerProduct2(bs, bs);
 
     // Exact constraints: point interpolation
@@ -579,8 +579,8 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     int const n1 = kv1.size() - patchDeg1 - 1;
     int const n2 = kv2.size() - patchDeg2 - 1;
 
-    gsBSplineBasis< T,gsKnotVector<T> > bs1(kv1);
-    gsBSplineBasis< T,gsKnotVector<T> > bs2(kv2);
+    gsBSplineBasis<T> bs1(kv1);
+    gsBSplineBasis<T> bs2(kv2);
     gsMatrix<T>  Nu, Nv, dNu, dNv;
     gsMatrix<T> R;
     int npts;

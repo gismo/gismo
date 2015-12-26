@@ -426,25 +426,25 @@ public:
 
 
 /// Get a TensorNurbsBasis from XML data
-template<unsigned d, class T, class Basis_t>
-class gsXml< gsTensorNurbsBasis<d,T,Basis_t> >
+template<unsigned d, class T>
+class gsXml< gsTensorNurbsBasis<d,T> >
 {
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTensorNurbsBasis<TMPLA3(d,T,Basis_t)>);
+    GSXML_COMMON_FUNCTIONS(gsTensorNurbsBasis<TMPLA2(d,T)>);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "TensorNurbsBasis"+to_string(d); }
 
-    static gsTensorNurbsBasis<d,T,Basis_t> * get (gsXmlNode * node)
+    static gsTensorNurbsBasis<d,T> * get (gsXmlNode * node)
     {
-        return getRationalBasisFromXml< gsTensorNurbsBasis<d,T,Basis_t> >(node);
+        return getRationalBasisFromXml< gsTensorNurbsBasis<d,T> >(node);
     }
     
-    static gsXmlNode * put (const gsTensorNurbsBasis<d,T,Basis_t> & obj,
+    static gsXmlNode * put (const gsTensorNurbsBasis<d,T> & obj,
                             gsXmlTree & data )
     {
-        return putRationalBasisToXml< gsTensorNurbsBasis<d,T,Basis_t> >(obj,data);
+        return putRationalBasisToXml< gsTensorNurbsBasis<d,T> >(obj,data);
     }
 };
 
@@ -557,9 +557,9 @@ public:
         std::string s = gtype->value() ;
       
         if ( s == "BSpline"    ) 
-            return gsXml< gsBSpline<T, gsKnotVector<T> > >::get(node);
+            return gsXml< gsBSpline<T> >::get(node);
         if ( s == "Nurbs"      ) 
-            return gsXml< gsNurbs<T,   gsKnotVector<T> > >::get(node);
+            return gsXml< gsNurbs<T> >::get(node);
         if ( s == "HBSpline2"  )  
             return gsXml< gsHBSpline<2,T> >::get(node); 
         if ( s == "HBSpline3"  )  
@@ -601,17 +601,17 @@ public:
 	{
 	    const gsGeometry<T> * ptr = & obj;
 
-	    if ( const gsBSpline<T,gsKnotVector<T> > * g = 
-             dynamic_cast<const gsBSpline<T,gsKnotVector<T> > *>( ptr ) )
-		    return gsXml< gsBSpline<T, gsKnotVector<T> > >::put(*g,data);
+	    if ( const gsBSpline<T> * g = 
+             dynamic_cast<const gsBSpline<T> *>( ptr ) )
+		    return gsXml< gsBSpline<T> >::put(*g,data);
         
 	    if ( const gsNurbs<T> * g = 
              dynamic_cast<const gsNurbs<T> *>( ptr ) )
 		    return gsXml< gsNurbs<T> >::put(*g,data);
         
-	    if ( const gsTensorBSpline<2,T,gsKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorBSpline<2,T,gsKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorBSpline<2,T,gsKnotVector<T> > >::put(*g,data);
+	    if ( const gsTensorBSpline<2,T> * g = 
+             dynamic_cast<const gsTensorBSpline<2,T> *>( ptr ) )
+            return gsXml< gsTensorBSpline<2,T> >::put(*g,data);
         
 	    if ( const gsTensorBSpline<3,T> * g = 
              dynamic_cast<const gsTensorBSpline<3,T> *>( ptr ) )
@@ -664,14 +664,6 @@ public:
         //if ( const gsTriangularBezier<2,T> * g =
         //     dynamic_cast<const gsTriangularBezier<2,T> *>( ptr ) )
         //    return gsXml< gsTriangularBezier<2,T> >::put(*g,data);
-
-	    if ( const gsTensorBSpline<2,T,gsCompactKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorBSpline<2,T,gsCompactKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorBSpline<2,T,gsCompactKnotVector<T> > >::put(*g,data);
-
-	    if ( const gsTensorBSpline<3,T,gsCompactKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorBSpline<3,T,gsCompactKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorBSpline<3,T,gsCompactKnotVector<T> > >::put(*g,data);
         
 		gsWarn<<"gsXmlUtils: put Geometry: No known object "<< obj <<"Error.\n";
         return NULL;
@@ -705,9 +697,9 @@ public:
         std::string s = gtype->value() ;
       
         if ( s == "BSpline"    ) 
-            return gsXml< gsBSpline<T, gsKnotVector<T> > >::get(node);
+            return gsXml< gsBSpline<T> >::get(node);
         if ( s == "Nurbs"      ) 
-            return gsXml< gsNurbs<T,   gsKnotVector<T> > >::get(node);
+            return gsXml< gsNurbs<T> >::get(node);
       
         gsWarn<<"gsXmlUtils: getCurve: No known curve \""<<s<<"\". Error.\n";
         return NULL;
@@ -719,9 +711,9 @@ public:
 	{
 	    const gsGeometry<T> * ptr = & obj;
 
-	    if ( const gsBSpline<T,gsKnotVector<T> > * g = 
-             dynamic_cast<const gsBSpline<T,gsKnotVector<T> > *>( ptr ) )
-		    return gsXml< gsBSpline<T, gsKnotVector<T> > >::put(*g,data);
+	    if ( const gsBSpline<T> * g = 
+             dynamic_cast<const gsBSpline<T> *>( ptr ) )
+		    return gsXml< gsBSpline<T> >::put(*g,data);
         
 	    if ( const gsNurbs<T> * g = 
              dynamic_cast<const gsNurbs<T> *>( ptr ) )
@@ -825,7 +817,7 @@ public:
         std::string s = btype->value() ;
 
         if ( s == "BSplineBasis" )      
-            return gsXml< gsBSplineBasis<T, gsKnotVector<T> > >::get(node);
+            return gsXml< gsBSplineBasis<T> >::get(node);
         if ( s == "NurbsBasis"   )
             return gsXml< gsNurbsBasis<T>   >::get(node);
 
@@ -851,18 +843,18 @@ public:
         //    return gsXml< gsTriangularBezierBasis<2,T> >::get(node);
 
         if ( s == "TensorBSplineBasis2" )
-            return gsXml< gsTensorBSplineBasis<2, T, gsKnotVector<T> > >::get(node);
+            return gsXml< gsTensorBSplineBasis<2, T> >::get(node);
         if ( s == "TensorBSplineBasis3" )
-            return gsXml< gsTensorBSplineBasis<3, T, gsKnotVector<T> > >::get(node);
+            return gsXml< gsTensorBSplineBasis<3, T> >::get(node);
         if ( s == "TensorBSplineBasis4" )
-            return gsXml< gsTensorBSplineBasis<4, T, gsKnotVector<T> > >::get(node);
+            return gsXml< gsTensorBSplineBasis<4, T> >::get(node);
 
         if ( s == "TensorNurbsBasis2" )
-            return gsXml< gsTensorNurbsBasis<2, T, gsKnotVector<T> > >::get(node);
+            return gsXml< gsTensorNurbsBasis<2, T> >::get(node);
         if ( s == "TensorNurbsBasis3" )
-            return gsXml< gsTensorNurbsBasis<3, T, gsKnotVector<T> > >::get(node);
+            return gsXml< gsTensorNurbsBasis<3, T> >::get(node);
         if ( s == "TensorNurbsBasis4" )
-            return gsXml< gsTensorNurbsBasis<4, T, gsKnotVector<T> > >::get(node);
+            return gsXml< gsTensorNurbsBasis<4, T> >::get(node);
                
         gsWarn<<"gsXmlUtils: getBasis: No known basis \""<<s<<"\". Error.\n";
         return NULL;
@@ -873,43 +865,39 @@ public:
     {
         const gsBasis<T> * ptr = & obj;
 
-        if ( const gsBSplineBasis<T,gsKnotVector<T> > * g = 
-             dynamic_cast<const gsBSplineBasis<T,gsKnotVector<T> > *>( ptr ) )
-            return gsXml< gsBSplineBasis<T, gsKnotVector<T> > >::put(*g,data);
+        if ( const gsBSplineBasis<T> * g = 
+             dynamic_cast<const gsBSplineBasis<T> *>( ptr ) )
+            return gsXml< gsBSplineBasis<T> >::put(*g,data);
 
-        if ( const gsBSplineBasis<T,gsCompactKnotVector<T> > * g = 
-             dynamic_cast<const gsBSplineBasis<T,gsCompactKnotVector<T> > *>( ptr ) )
-            return gsXml< gsBSplineBasis<T, gsCompactKnotVector<T> > >::put(*g,data);
-
-        if ( const gsNurbsBasis<T,gsKnotVector<T> > * g = 
-             dynamic_cast<const gsNurbsBasis<T,gsKnotVector<T> > *>( ptr ) )
-            return gsXml< gsNurbsBasis<T, gsKnotVector<T> > >::put(*g,data);
+        if ( const gsNurbsBasis<T> * g = 
+             dynamic_cast<const gsNurbsBasis<T> *>( ptr ) )
+            return gsXml< gsNurbsBasis<T> >::put(*g,data);
 
         // Tensor B-spline
-        if ( const gsTensorBSplineBasis<2, T, gsKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorBSplineBasis<2, T, gsKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorBSplineBasis<2, T, gsKnotVector<T> > >::put(*g,data);
+        if ( const gsTensorBSplineBasis<2, T> * g = 
+             dynamic_cast<const gsTensorBSplineBasis<2, T> *>( ptr ) )
+            return gsXml< gsTensorBSplineBasis<2, T> >::put(*g,data);
 
-        if ( const gsTensorBSplineBasis<3, T, gsKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorBSplineBasis<3, T, gsKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorBSplineBasis<3, T, gsKnotVector<T> > >::put(*g,data);
+        if ( const gsTensorBSplineBasis<3, T> * g = 
+             dynamic_cast<const gsTensorBSplineBasis<3, T> *>( ptr ) )
+            return gsXml< gsTensorBSplineBasis<3, T> >::put(*g,data);
 
-        if ( const gsTensorBSplineBasis<4, T,gsKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorBSplineBasis<4, T,gsKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorBSplineBasis<4, T,gsKnotVector<T> > >::put(*g,data);
+        if ( const gsTensorBSplineBasis<4, T> * g = 
+             dynamic_cast<const gsTensorBSplineBasis<4, T> *>( ptr ) )
+            return gsXml< gsTensorBSplineBasis<4, T> >::put(*g,data);
 
         // Tensor Nurbs
-        if ( const gsTensorNurbsBasis<2, T,gsKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorNurbsBasis<2, T, gsKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorNurbsBasis<2, T, gsKnotVector<T> > >::put(*g,data);
+        if ( const gsTensorNurbsBasis<2, T> * g = 
+             dynamic_cast<const gsTensorNurbsBasis<2, T> *>( ptr ) )
+            return gsXml< gsTensorNurbsBasis<2, T> >::put(*g,data);
 
-        if ( const gsTensorNurbsBasis<3, T,gsKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorNurbsBasis<3, T, gsKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorNurbsBasis<3, T, gsKnotVector<T> > >::put(*g,data);
+        if ( const gsTensorNurbsBasis<3, T> * g = 
+             dynamic_cast<const gsTensorNurbsBasis<3, T> *>( ptr ) )
+            return gsXml< gsTensorNurbsBasis<3, T> >::put(*g,data);
 
-        if ( const gsTensorNurbsBasis<4, T,gsKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorNurbsBasis<4, T, gsKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorNurbsBasis<4, T, gsKnotVector<T> > >::put(*g,data);
+        if ( const gsTensorNurbsBasis<4, T> * g = 
+             dynamic_cast<const gsTensorNurbsBasis<4, T> *>( ptr ) )
+            return gsXml< gsTensorNurbsBasis<4, T> >::put(*g,data);
 
 
         // Tensor-Hier. B-splines
@@ -937,11 +925,6 @@ public:
         //     dynamic_cast<const gsTriangularBezierBasis<2,T> *>( ptr ) )
         //    return gsXml< gsTriangularBezierBasis<2,T> >::put(*g,data);
 
-        // Tensor B-spline (compact knot-vector)
-        if ( const gsTensorBSplineBasis<2, T,gsCompactKnotVector<T> > * g = 
-             dynamic_cast<const gsTensorBSplineBasis<2, T,gsCompactKnotVector<T> > *>( ptr ) )
-            return gsXml< gsTensorBSplineBasis<2, T,gsCompactKnotVector<T> > >::put(*g,data);
-    
         gsWarn<<"gsXmlUtils put: getBasis: No known basis \""<<obj<<"\". Error.\n";
         return NULL;
     }

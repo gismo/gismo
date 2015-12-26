@@ -218,7 +218,7 @@ private:
             const unsigned start = lower(dim);
             const unsigned end  = upper(dim) ;
 
-            const gsCompactKnotVector<T> & kv =
+            const gsKnotVector<T> & kv =
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)
                 ->tensorLevel(level2).component(dim).knots();
 

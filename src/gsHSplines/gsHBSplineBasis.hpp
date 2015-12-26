@@ -41,7 +41,7 @@ typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSl
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
     GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     const boxSide side(dir_fixed,0);
-    const typename gsTensorBSplineBasis<d,T, gsCompactKnotVector<T> >::BoundaryBasisType * bBSplineBasis =
+    const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType * bBSplineBasis =
             this->m_bases[0]->boundaryBasis(side);
     typename gsHBSplineBasis<d,T>::BoundaryBasisType* bBasis =
             new typename gsHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);
@@ -202,8 +202,8 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
         std::vector<std::vector<T> > knots;
         for(unsigned int dim = 0l; dim < d;dim++)
         {
-            gsCompactKnotVector<T> & ckv = this->m_bases[i]->component(dim).knots();
-            gsCompactKnotVector<T> & fkv = this->m_bases[i + 1]->component(dim).knots();
+            gsKnotVector<T> & ckv = this->m_bases[i]->component(dim).knots();
+            gsKnotVector<T> & fkv = this->m_bases[i + 1]->component(dim).knots();
 
             std::vector<T> dirKnots;
             this->_differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,

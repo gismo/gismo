@@ -120,10 +120,10 @@ private:
   gsMatrix<T> m_points;
 
   /// computes all values and derivatives (up to three) at the parameter values u for the given coefs
-  void compute_AllValues(gsBSplineBasis<T,gsKnotVector<T> >  * basis, gsMatrix<T> u, gsMatrix<T> *coefs, gsMatrix<T> & values0, gsMatrix<T> & values1, gsMatrix<T> & values2, gsMatrix<T> & values3);
+  void compute_AllValues(gsBSplineBasis<T>  * basis, gsMatrix<T> u, gsMatrix<T> *coefs, gsMatrix<T> & values0, gsMatrix<T> & values1, gsMatrix<T> & values2, gsMatrix<T> & values3);
 
   /// computes the objective function for given coefs and omega1 and omega2 -- objective function = omega1*ApproximationFunction + omega2*CurvatureFunction
-  void compute_ObjectiveFunction(gsBSplineBasis<T,gsKnotVector<T> >  * basis, gsMatrix<T> *coefs, const T omega1, const T omega2, T &value);
+  void compute_ObjectiveFunction(gsBSplineBasis<T>  * basis, gsMatrix<T> *coefs, const T omega1, const T omega2, T &value);
 
   /// set the smooth curve to the the original curve
   void reset(gsBSpline<T> * newCurve)
@@ -162,7 +162,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariation(const T omega1, const T omega
     T delta=0.0000001; // for numerical differentiation
 
     // the needed basis -- needed for constructing the derivatives
-    gsBSplineBasis<T> * basis = new gsBSplineBasis<T,gsKnotVector<T> >(m_knots);
+    gsBSplineBasis<T> * basis = new gsBSplineBasis<T>(m_knots);
 
     //needed for computing the objective value and the derivatives
     T m_value0=0;
@@ -332,7 +332,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, co
     T delta=0.0000001; // for numerical differentiation
 
     // the needed basis -- needed for constructing the derivatives
-    gsBSplineBasis<T> * basis = new gsBSplineBasis<T,gsKnotVector<T> >(m_knots);
+    gsBSplineBasis<T> * basis = new gsBSplineBasis<T>(m_knots);
 
 
     T m_value0=0;
@@ -440,7 +440,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, co
     T delta=0.0000001; // for numerical differentiation
 
     // the needed basis -- needed for constructing the derivatives
-    gsBSplineBasis<T> * basis = new gsBSplineBasis<T,gsKnotVector<T> >(m_knots);
+    gsBSplineBasis<T> * basis = new gsBSplineBasis<T>(m_knots);
 
 
     T m_value0=0;
@@ -720,28 +720,31 @@ void gsCurvatureSmoothing<T>::computeApproxErrorLMax(T & error){
 
 
 template<class T>
-void gsCurvatureSmoothing<T>::computeApproxErrorCoef(T & error){
-    gsMatrix<T> coefs_original=m_curve_original->coefs(); // get the coefficients of the original curve
-    gsMatrix<T> coefs_smooth=m_curve_smooth->coefs(); // get the coefficients of the smoothed curve
+void gsCurvatureSmoothing<T>::computeApproxErrorCoef(T & error)
+{
+    const gsMatrix<T> & coefs_original=m_curve_original->coefs(); //coefficients of the original curve
+    const gsMatrix<T> & coefs_smooth=m_curve_smooth->coefs(); //coefficients of the smoothed curve
 
     error=0;
 
     //computing the maximal coefficient approximation error
-    for(index_t k=0;k<coefs_original.rows();k++){
-        error= std::max(error,std::sqrt(std::pow(coefs_original(k,0)-coefs_smooth(k,0),2)+std::pow(coefs_original(k,1)-coefs_smooth(k,1),2)));
+    for(index_t k=0;k<coefs_original.rows();k++)
+    {
+        error= math::max(error, (coefs_original.row(k) - coefs_smooth.row(k)).norm() );
     }
 }
 
 
 template<class T>
-void gsCurvatureSmoothing<T>::computeCurvatureError(T & error){
+void gsCurvatureSmoothing<T>::computeCurvatureError(T & error)
+{
 
-    gsKnotVector<T> m_knots=m_curve_smooth->knots(); // take the knots of the current smooth curve
+    const gsKnotVector<T> & m_knots=m_curve_smooth->knots(); // take the knots of the current smooth curve
 
-    gsMatrix<T> current_coefs=m_curve_smooth->coefs(); // the coefficients of the current smooth curve
+    gsMatrix<T> & current_coefs=m_curve_smooth->coefs(); // the coefficients of the current smooth curve
 
     // the needed basis
-    gsBSplineBasis<T> * basis = new gsBSplineBasis<T,gsKnotVector<T> >(m_knots);
+    gsBSplineBasis<T> * basis = new gsBSplineBasis<T>(m_knots);
 
     error=0;
 
@@ -751,7 +754,7 @@ void gsCurvatureSmoothing<T>::computeCurvatureError(T & error){
 }
 
 template<class T>
-void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T, gsKnotVector<T> > * basis, gsMatrix<T> u, gsMatrix<T> *coefs, gsMatrix<T> & values0, gsMatrix<T> & values1, gsMatrix<T> & values2, gsMatrix<T> & values3){
+void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T> * basis, gsMatrix<T> u, gsMatrix<T> *coefs, gsMatrix<T> & values0, gsMatrix<T> & values1, gsMatrix<T> & values2, gsMatrix<T> & values3){
 
     std::vector<gsMatrix<T> > m_results;
     gsMatrix<T> m_results1;
@@ -786,7 +789,7 @@ void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T, gsKnotVector<T
 
 
 template<class T>
-void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T, gsKnotVector<T> > *basis, gsMatrix<T> *coefs, const T omega1, const T omega2, T & value){
+void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T> *basis, gsMatrix<T> *coefs, const T omega1, const T omega2, T & value){
 
     gsMatrix<T> m_values0;
     gsMatrix<T> m_values1;

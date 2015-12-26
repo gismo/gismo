@@ -23,7 +23,9 @@
 //#include <cmath>
 //#define EIGEN_DONT_PARALLELIZE 
 //#define EIGEN_NO_DEBUG
-//#include "Eigen/Core"
+
+namespace gismo
+{
 
 namespace ad
 {
@@ -33,7 +35,7 @@ namespace ad
  *
  * This class provides an instrumented "scalar" value, which may be dependent on
  * a number of independent variables. The implementation keeps tracks of
- * first -order drivatives with respect to these variables using a set
+ * first -order derivatives with respect to these variables using a set
  * of overloaded operations and implementations of special functions (sin,
  * tan, exp, ..).
  *
@@ -287,7 +289,7 @@ public:
 
     friend DScalar1 sqrt(const DScalar1 &s) 
     {
-        Scalar sqrtVal = std::sqrt(s.value),
+        Scalar sqrtVal = math::sqrt(s.value),
             temp    = (Scalar) 1 / ((Scalar) 2 * sqrtVal);
 
         // vn = sqrt(v)
@@ -297,8 +299,8 @@ public:
 
     friend DScalar1 pow(const DScalar1 &s, const Scalar &a)
     {
-        Scalar powVal = std::pow(s.value, a),
-            temp   = a * std::pow(s.value, a-1);
+        Scalar powVal = math::pow(s.value, a),
+            temp   = a * math::pow(s.value, a-1);
         // vn = v ^ a, Dvn = a*v^(a-1) * Dv
         return DScalar1(powVal, s.grad * temp);
     }
@@ -311,7 +313,7 @@ public:
 
     friend DScalar1 exp(const DScalar1 &s) 
     {
-        Scalar expVal = std::exp(s.value);
+        Scalar expVal = math::exp(s.value);
 
         // vn = exp(v), Dvn = exp(v) * Dv
         return DScalar1(expVal, s.grad * expVal);
@@ -319,7 +321,7 @@ public:
 
     friend DScalar1 log(const DScalar1 &s) 
     {
-        Scalar logVal = std::log(s.value);
+        Scalar logVal = math::log(s.value);
 
         // vn = log(v), Dvn = Dv / v
         return DScalar1(logVal, s.grad / s.value);
@@ -328,36 +330,36 @@ public:
     friend DScalar1 sin(const DScalar1 &s) 
     {
         // vn = sin(v), Dvn = cos(v) * Dv
-        return DScalar1(std::sin(s.value), s.grad * std::cos(s.value));
+        return DScalar1(math::sin(s.value), s.grad * math::cos(s.value));
     }
 
     friend DScalar1 cos(const DScalar1 &s) 
     {
         // vn = cos(v), Dvn = -sin(v) * Dv
-        return DScalar1(std::cos(s.value), s.grad * -std::sin(s.value));
+        return DScalar1(math::cos(s.value), s.grad * -math::sin(s.value));
     }
 
     friend DScalar1 acos(const DScalar1 &s) 
     {
-        if (std::abs(s.value) >= 1)
+        if (math::abs(s.value) >= 1)
             throw std::runtime_error("acos: Expected a value in (-1, 1)");
 
-        Scalar temp = -std::sqrt((Scalar) 1 - s.value*s.value);
+        Scalar temp = -math::sqrt((Scalar) 1 - s.value*s.value);
 
         // vn = acos(v), Dvn = -1/sqrt(1-v^2) * Dv
-        return DScalar1(std::acos(s.value),
+        return DScalar1(math::acos(s.value),
                         s.grad * ((Scalar) 1 / temp));
     }
 
     friend DScalar1 asin(const DScalar1 &s) 
     {
-        if (std::abs(s.value) >= 1)
+        if (math::abs(s.value) >= 1)
             throw std::runtime_error("asin: Expected a value in (-1, 1)");
 
-        Scalar temp = std::sqrt((Scalar) 1 - s.value*s.value);
+        Scalar temp = math::sqrt((Scalar) 1 - s.value*s.value);
 
         // vn = asin(v), Dvn = 1/sqrt(1-v^2) * Dv
-        return DScalar1(std::asin(s.value),
+        return DScalar1(math::asin(s.value),
                         s.grad * ((Scalar) 1 / temp));
     }
 
@@ -368,14 +370,14 @@ public:
         const Scalar denom = x.value*x.value + y.value*y.value;
         
         // vn = atan2(y, x), Dvn = (x*Dy - y*Dx) / (x^2 + y^2)
-        return DScalar1(std::atan2(y.value, x.value),
+        return DScalar1(math::atan2(y.value, x.value),
                         y.grad * (x.value / denom) - x.grad * (y.value / denom));
     }
 
     friend DScalar1 atan(const DScalar1 &y) 
     {
         // vn = atan(y), Dvn = Dy / (1 + y^2)
-        return DScalar1(std::atan(y.value), y.grad / ((Scalar)1.0 + y.value*y.value) );
+        return DScalar1(math::atan(y.value), y.grad / ((Scalar)1.0 + y.value*y.value) );
     }
 
     /// @}
@@ -790,7 +792,7 @@ public:
 
     friend DScalar2 log(const DScalar2 &s) 
     {
-        Scalar logVal = std::log(s.value);
+        Scalar logVal = math::log(s.value);
 
         // vn = log(v)
         DScalar2 result(logVal);
@@ -807,8 +809,8 @@ public:
 
     friend DScalar2 sin(const DScalar2 &s) 
     {
-        Scalar sinVal = std::sin(s.value),
-            cosVal = std::cos(s.value);
+        Scalar sinVal = math::sin(s.value),
+            cosVal = math::cos(s.value);
 
         // vn = sin(v)
         DScalar2 result(sinVal);
@@ -825,8 +827,8 @@ public:
 
     friend DScalar2 cos(const DScalar2 &s) 
     {
-        Scalar sinVal = std::sin(s.value),
-            cosVal = std::cos(s.value);
+        Scalar sinVal = math::sin(s.value),
+            cosVal = math::cos(s.value);
         // vn = cos(v)
         DScalar2 result(cosVal);
 
@@ -842,13 +844,13 @@ public:
 
     friend DScalar2 acos(const DScalar2 &s) 
     {
-        if (std::abs(s.value) >= 1.0)
+        if (math::abs(s.value) >= 1.0)
             throw std::runtime_error("acos: Expected a value in (-1, 1)");
 
-        Scalar temp = -std::sqrt((Scalar) 1 - s.value*s.value);
+        Scalar temp = -math::sqrt((Scalar) 1 - s.value*s.value);
 
         // vn = acos(v)
-        DScalar2 result(std::acos(s.value));
+        DScalar2 result(math::acos(s.value));
 
         // Dvn = -1/sqrt(1-v^2) * Dv
         result.grad = s.grad * ((Scalar) 1 / temp);
@@ -863,13 +865,13 @@ public:
 
     friend DScalar2 asin(const DScalar2 &s) 
     {
-        if (std::abs(s.value) >= 1.0)
+        if (math::abs(s.value) >= 1.0)
             throw std::runtime_error("asin: Expected a value in (-1, 1)");
 
-        Scalar temp = std::sqrt((Scalar) 1 - s.value*s.value);
+        Scalar temp = math::sqrt((Scalar) 1 - s.value*s.value);
 
         // vn = asin(v)
-        DScalar2 result(std::asin(s.value));
+        DScalar2 result(math::asin(s.value));
 
         // Dvn = 1/sqrt(1-v^2) * Dv
         result.grad = s.grad * ((Scalar) 1 / temp);
@@ -887,7 +889,7 @@ public:
         prepare(y,x);
 
         // vn = atan2(y, x)
-        DScalar2 result(std::atan2(y.value, x.value));
+        DScalar2 result(math::atan2(y.value, x.value));
 
         // Dvn = (x*Dy - y*Dx) / (x^2 + y^2)
         Scalar denom = x.value*x.value + y.value*y.value,
@@ -916,7 +918,7 @@ public:
         // vn = atan(y)
         // Dvn = Dy / (1 + y^2)
         // D^2vn = D^2y / (1+y^2) - [ 2*y * Dy*Dy^T] / (1+y^2)^2
-        return DScalar2(std::atan(y.value), y.grad / denom, 
+        return DScalar2(math::atan(y.value), y.grad / denom, 
                (y.hess - 2.0 * y.value * y.grad * y.grad.transpose() / denom ) / denom );
     }
 
@@ -996,3 +998,6 @@ std::ostream &operator<<(std::ostream &out, const DScalar2<Scalar,d> & s)
 }
 
 }//namespace ad
+
+
+}//namespace gismo
