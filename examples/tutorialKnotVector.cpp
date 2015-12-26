@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
     gsKnotVector<> kv4(knots, 2, 1); // knots, degree, regularity
     printKnotVector(kv4, "kv4");
 
-    gsKnotVector<> kv5(2, knots); // degree, knots
+    gsKnotVector<> kv5(knots, 2); // knots, degree
     printKnotVector(kv5, "kv5");
 
     gsKnotVector<> kv6;

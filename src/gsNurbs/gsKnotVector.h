@@ -369,7 +369,7 @@ public: // Deprecated functions required by gsKnotVector.
     /// Copies \a knots to the internal storage.
     /// To avoid the copy use gsKnotVector(give(knots)) and keep
     /// in mind that this will destroy knots.
-    gsKnotVector( int degree, const knotContainer& knots );
+    gsKnotVector(const knotContainer& knots,  int degree = -1);
 
     /// Constructs knot vector from the given degree and iterators marking its endpoints.
     /// \param begOfKnots iterator pointing to the beginning of the knots,

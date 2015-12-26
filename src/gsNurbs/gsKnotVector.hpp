@@ -481,11 +481,13 @@ gsKnotVector<T>::gsKnotVector( const knotContainer& uKnots,
 }
 
 template<typename T>
-gsKnotVector<T>::gsKnotVector(int degree, const knotContainer& knots )
+gsKnotVector<T>::gsKnotVector(const knotContainer& knots, int degree)
 {
     m_repKnots = knots;
-    m_deg = degree;
     rebuildMultSum();
+
+    m_deg = (degree == - 1 ? deduceDegree() : degree);
+
     GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
 }
 
