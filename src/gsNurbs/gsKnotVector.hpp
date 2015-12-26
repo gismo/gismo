@@ -53,7 +53,7 @@ public:
         for (T knot; str >> knot;)
             knotValues.push_back(knot);
 
-        result = gsKnotVector<T>(p,knotValues);
+        result = gsKnotVector<T>(give(knotValues), p);
     }
 
     static gsXmlNode * put (const gsKnotVector<T> & obj, gsXmlTree & data)
@@ -166,13 +166,17 @@ typename gsKnotVector<T>::reverse_smart_iterator gsKnotVector<T>::rsend()   cons
 
 
 template<typename T>
-gsKnotVector<T>::gsKnotVector( gsMovable< knotContainer > knots )
+gsKnotVector<T>::gsKnotVector( gsMovable< knotContainer > knots, int degree)
 {
     m_repKnots.swap( knots.ref() );
     rebuildMultSum();
-    deduceDegree();
+
+    m_deg = (degree == - 1 ? deduceDegree() : degree);
+
     GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
 }
+
+
 
 template<typename T>
 void gsKnotVector<T>::swap( gsKnotVector& other )
@@ -208,7 +212,7 @@ void gsKnotVector<T>::insert( T knot, mult_t mult )
     const mult_t fa = uit.firstAppearance();
 
     // update multiplicity sums
-    fwMIt upos = m_multSum.begin() + uit.uIndex();
+    nonConstMultIterator upos = m_multSum.begin() + uit.uIndex();
     if (upos==m_multSum.end() || *uit != knot) // knot value does not exist ?
         upos = m_multSum.insert(upos, fa );
     std::transform(upos, m_multSum.end(), upos, std::bind1st(std::plus<mult_t>(), mult));
@@ -227,9 +231,9 @@ void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
 
     mult_t knotMult = uit.multiplicity();
     mult_t toRemove = std::min(mult, knotMult);
-    fwMIt upos = m_multSum.begin()  + uit.uIndex();
+    nonConstMultIterator upos = m_multSum.begin()  + uit.uIndex();
 
-    fwKIt pos  = m_repKnots.begin() + uit.firstAppearance(); 
+    nonConstIterator pos = m_repKnots.begin() + uit.firstAppearance(); 
     m_repKnots.erase(pos, pos+toRemove);
 
     if( toRemove ==  knotMult )
@@ -242,7 +246,7 @@ template<typename T>
 void gsKnotVector<T>::remove( const T knot, mult_t mult )
 {
     uiterator uit = std::lower_bound( ubegin(), uend(), knot );
-    if( *uit == knot )
+    if( uit != uend() && *uit == knot ) // value found ?
         remove( uit, mult );
     // Otherwise the knot is not present and we cannot remove it.
 }
@@ -267,14 +271,12 @@ typename gsKnotVector<T>::mult_t gsKnotVector<T>::multiplicityIndex( mult_t knot
                   "knotIndex " << knotIndex << "out of bounds [0,"
                   << m_repKnots.size() << ")." );
 
-    cFwKIt it = begin() + knotIndex;
-    cFwKIt L  = std::find_if(it,m_repKnots.end(),std::bind1st(std::not_equal_to<T>(),*it));
-    cBwKIt F  = std::find_if(cBwKIt(it),m_repKnots.rend(),std::bind1st(std::not_equal_to<T>(),*it));
+    iterator it = begin() + knotIndex;
+    iterator L  = std::find_if(it,m_repKnots.end(),std::bind1st(std::not_equal_to<T>(),*it));
+    reverse_iterator F = std::find_if(reverse_iterator(it),m_repKnots.rend(),std::bind1st(std::not_equal_to<T>(),*it));
     return L-F.base();
-
     // equivalent:
     //return (sbegin() + knotIndex).multiplicity();
-
 }
 
 //===========//
@@ -394,7 +396,7 @@ bool gsKnotVector<T>::isConsistent( const knotContainer & repKnots,
     // check order and multiplicities
     T prev = repKnots.front();
     mult_t uniqPos = 0;
-    for( cFwKIt kit = repKnots.begin();
+    for( iterator kit = repKnots.begin();
          kit != repKnots.end();
          ++kit )
     {
@@ -462,7 +464,7 @@ gsKnotVector<T>::gsKnotVector( const knotContainer& uKnots,
     m_multSum.push_back( mult_ends );
 
     // We iterate from the one past begin() to one before end().
-    cFwKIt it = uKnots.begin();
+    iterator it = uKnots.begin();
     for( it += 1; it != uKnots.end() - 1; ++it)
     {
         m_repKnots.insert( m_repKnots.end(), mult_interior, *it );
@@ -475,10 +477,7 @@ gsKnotVector<T>::gsKnotVector( const knotContainer& uKnots,
     //GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
 
     // TODO remove
-    if( degree == - 1 )
-        deduceDegree();
-    else
-        m_deg = degree;
+    m_deg = (degree == - 1 ? deduceDegree() : degree);
 }
 
 template<typename T>
@@ -523,10 +522,7 @@ void gsKnotVector<T>::initUniform( T first,
     m_repKnots.insert( m_repKnots.end(), mult_ends, last );
     m_multSum .push_back( mult_ends + m_multSum.back() );
 
-    if( degree == - 1 )
-        deduceDegree();
-    else
-        m_deg = degree;
+    m_deg = (degree == - 1 ? deduceDegree() : degree);
         
     GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
 }
@@ -656,7 +652,7 @@ void gsKnotVector<T>::increaseMultiplicity(const mult_t i, bool boundary)
     
     // update multiplicity sums
     mult_t r = ( boundary ?  1 : 0 );
-    for (fwMIt m = m_multSum.begin(); m != m_multSum.end()-1; ++m)
+    for (nonConstMultIterator m = m_multSum.begin(); m != m_multSum.end()-1; ++m)
         *m += i * r++;
     m_multSum.back() += i * (boundary ? r : r-1 );
 }

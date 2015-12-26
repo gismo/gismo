@@ -8,8 +8,8 @@
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsBSpline<real_t, gsKnotVector<real_t>        >;
+CLASS_TEMPLATE_INST gsBSpline<real_t>;
 
-CLASS_TEMPLATE_INST internal::gsXml< gsBSpline<real_t, gsKnotVector<real_t>        > >;
+CLASS_TEMPLATE_INST internal::gsXml<gsBSpline<real_t> >;
 
 }

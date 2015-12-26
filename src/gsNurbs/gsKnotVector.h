@@ -137,7 +137,7 @@ public: // constructors
     /// Constructs knot vector from the given \a knots (repeated
     /// according to multiplicities) and deduces the degree from the
     /// multiplicity of the endknots.
-    gsKnotVector( gsMovable<knotContainer > knots );
+    explicit gsKnotVector( gsMovable<knotContainer > knots, int degree = -1 );
 
     /// Swaps with \a other knot vector.
     void swap( gsKnotVector& other );
@@ -241,16 +241,8 @@ public: // miscellaneous
 
 private: // iterator typdefs
 
-    typedef typename knotContainer::iterator               fwKIt; // Forward  Knot Iterator
-    typedef typename knotContainer::reverse_iterator       bwKIt; // Backward Knot Iterator
-    typedef typename knotContainer::const_iterator         cFwKIt;// const Forward Knot Iterator
-    typedef typename knotContainer::const_reverse_iterator cBwKIt;// const Backward Knot Iterator
-
-    typedef multContainer::iterator                   fwMIt;  // Forward  Multiplicity Iterator
-    typedef multContainer::reverse_iterator           bwMIt;  // Backward Multiplicity Iterator
-    typedef multContainer::const_iterator             cFwMIt; // const Forward  Multiplicity Iterator
-    typedef multContainer::const_reverse_iterator     cBwMIt; // const  Backward Multiplicity Iterator
-
+    typedef typename knotContainer::iterator nonConstIterator    ;
+    typedef typename multContainer::iterator nonConstMultIterator;
 
     /// Returns a smart iterator pointing to the starting knot of the
     /// domain
@@ -356,7 +348,7 @@ private: // members
 public: // Deprecated functions required by gsKnotVector.
 
     /// Sets the degree and leaves the knots uninitialized.
-    gsKnotVector(int degree)
+    explicit gsKnotVector(int degree)
     {
         m_deg = degree;
     }
@@ -367,12 +359,12 @@ public: // Deprecated functions required by gsKnotVector.
     /// \param mult_ends multiplicity at the two end knots
     /// \param mult_interior multiplicity at the interior knots
     gsKnotVector( T first,
-                         T last,
-                         unsigned interior,
-                         mult_t mult_ends=1,
-                         mult_t mult_interior=1,
-                         int degree = -1 );
-
+                  T last,
+                  unsigned interior,
+                  mult_t mult_ends=1,
+                  mult_t mult_interior=1,
+                  int degree = -1 );
+    
     /// \param knots knots (sorted) including repetitions.
     /// Copies \a knots to the internal storage.
     /// To avoid the copy use gsKnotVector(give(knots)) and keep
@@ -418,8 +410,9 @@ public:
     }
 
 
-    /// Resets the knot vector so that its knots are graded (their
-    /// distances are exponentially changing) and the endpoints are 0 and 1.
+    /// Resets the knot vector so that its knots are graded towards 0
+    /// according to the \a grading parameter and the endpoints are 0
+    /// and 1.
     void initGraded(unsigned numKnots, int degree,
                     T grading = 0.5, unsigned mult_interior = 1)
     {
@@ -465,17 +458,19 @@ public:
      
     /// Compresses the knot-vector by making the knot-sequence strictly
     /// increasing
-/*    void makeCompressed(const T & tol = 1e-7)
+/*
+    void makeCompressed(const T tol = 1e-7)
     {
-        // TO DO: Check and improve
-        typename knotContainer::iterator k = m_repKnots.begin();
-        std::vector<unsigned>::iterator m = m_multSum.begin();
-        while( k+1 != m_repKnots.end() )
+        // TO DO: Check and improve, use tmp storage
+        nonConstIterator     k = m_repKnots.begin();
+        nonConstMultIterator m = m_multSum  .begin();
+        T prev  = *k;
+        while( k+1 != end() )
         {
-            if ( fabs( *k - *(k+1) ) <= tol )
+            if ( math::abs( *k - *(k+1) ) <= tol )
             {
                 *m = *(m+1) ;
-                m_repKnots.erase(k+1);
+                m_repKnots.erase(k+1);//all app.
                 m_multSum.erase(m+1);
             }
             else
@@ -484,9 +479,10 @@ public:
                 m++;
             }
         }
-        //m_knots.resize( k - m_knots.begin() );
-        //m_mult_sum.resize( m - m_mult_sum.begin() );
-    }*/
+        m_repKnots.resize( k - m_repKnots.begin() );
+        m_multSum .resize( m - m_multSum .begin() );
+    }
+//*/
 
      
     /// Better directly use affineTransformTo.
@@ -607,7 +603,7 @@ public: // things required by gsKnotVector
     /// \param regularity -> internal knots have multiplicity \a degree - \a regularity
     gsKnotVector( const knotContainer& uKnots,
                          int degree,
-                         int regularity );
+                         int regularity);
 
     /// Resets the knot vector so that it is uniform from 0 to 1 and
     /// the multiplicities of the endpoints are chosen according to
@@ -631,13 +627,11 @@ public: // things required by gsKnotVector
 
     /// Deduces and sets the degree from the multiplicities of the
     /// endpoints.
-    void deduceDegree()
+    int deduceDegree()
     {
-        if( this->uSize() == 0 )
-            m_deg = -1;
-        else
-            m_deg = std::max(( this->ubegin() ).multiplicity(),
-                             ( this->uend()-1 ).multiplicity()) - 1;
+        return uSize() == 0 ? -1 :
+            std::max(( ubegin() ).multiplicity(),
+                     ( uend()-1 ).multiplicity()) - 1;
     }
 
     /// Returns Greville abscissa of the \a i - the B-spline defined
