@@ -845,6 +845,7 @@ protected:
                                        const unsigned f_high,
                                        std::vector<T>& knots)
     {
+        knots.clear();
 
         unsigned f_knot_mltpl; // finest knot multiplicity
         unsigned c_knot_mltpl; // coarse knot multiplicity
