@@ -11,6 +11,23 @@
     Author(s): A. Mantzaflaris
 */
 
+/*
+  (BSURF_sf 
+  :u_degree          
+  :v_degree          
+  :n_u_vertices      
+  :n_v_vertices      
+  :vertex_dim        
+  :is_rational       nil
+  :vertex            (vertex-sf cp0)
+  :n_u_knots         
+  :u_knot            
+  :u_knot_mult       
+  :n_v_knots         
+  :v_knot            
+  :v_knot_mult       
+*/
+
 
 #pragma once
 
@@ -49,8 +66,8 @@ namespace extensions {
     /// Translates a gsTensorBSpline to a PK_BSURF_t
     /// \param[in] bsp B-spline surface
     /// \param[out] bsurf Parasolid spline surface
-    template<class T, class KnotVectorType> 
-    bool createPK_BSURF( const gsTensorBSpline< 2, T, KnotVectorType > & bsp, PK_BSURF_t & bsurf,
+    template<class T>
+    bool createPK_BSURF( const gsTensorBSpline< 2,T> & bsp, PK_BSURF_t & bsurf,
 			 bool closed_u = false, bool closed_v = false );
 
     /// Translates a gsBSpline to a PK_BCURVE_t

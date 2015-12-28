@@ -20,11 +20,10 @@ namespace gismo {
 namespace extensions {
 
 TEMPLATE_INST bool
-createPK_BSURF( const gsTensorBSpline< 2, real_t,
-                gsKnotVector<real_t> > & bsp, 
+createPK_BSURF( const gsTensorBSpline< 2, real_t> & bsp, 
                 PK_BSURF_t & bsurf,
-		bool closed_u, 
-		bool closed_v);
+                bool closed_u, 
+                bool closed_v);
 
 TEMPLATE_INST bool
 createPK_BCURVE(const gsBSpline<real_t>& curve, PK_BCURVE_t& bcurve);
