@@ -38,6 +38,8 @@ public:
     typedef gsTHBSpline<d,T> GeometryType;
     
     typedef typename gsHTensorBasis<d,T>::CMatrix CMatrix;
+
+    typedef typename gsHTensorBasis<d,T>::cmatIterator cmatIterator;
     
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
     
@@ -569,28 +571,8 @@ public:
       */
     void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const;
 
-
-  /**
-   * @brief Initializes the \a cmatrix with 0 for evaluation of basis functions.
-   */
-  void initializeToZero(std::vector< std::map<unsigned,T> > & cmatrix) const;
-
-  /**
-   * @brief Initialize the cmatrix up to \a c_level
-   * with the \a geom_coeff of the geometry in the
-   * direction specified by \a col.
-   *
-   * @param geom_coeff control points of the geometry
-   * @param col direction (0, 1, 2 = x, y, z)
-   * @param c_level the maximum level of interest
-   * @param cmatrix characteristic matrix
-   */
-   void update_cmatrix(const gsMatrix<T>& geom_coeff, int col, int c_level, 
-                       std::vector< std::map<unsigned,T> > & cmatrix) const;
-
    ///returns transfer matrices betweend the levels of the given hierarchical spline
    void transferbyLvl (std::vector<gsMatrix<T> >& result);
-
 
     /// @brief Decomposes domain of the THB-Spline-Basis into partitions.
     ///
@@ -624,13 +606,19 @@ private:
     }
 
     /**
-     * @brief Returns the coefficients computed by Boehm algorithm (called by \ref getBsplinePatchGlobal).
-     * @param level maximum refinement level
-     * @param[out] coeffs coefficients obtained by knot insertion
-     * @param[out] cmatrix updated characteristic matrix
+      @brief Returns a representation of \a thbCoefs as tensor-product
+      B-spline coefficientes \a lvlCoefs at level \a level.
+
+      The representation is valid only at areas of the parameter
+      domain with level less or equal to \a level
+
+      @param[in] thbCoefs The input coefficients corresponding to basis function in this THB
+      @param[in] level the level of tensor-product basis to be computed
+      @param[out] lvlCoefs coefficients in tensor-product basis of level \a level
      */
-    void globalRefinement(int level, gsMatrix<T>& coeffs,
-                          std::vector< std::map<unsigned,T> > & cmatrix ) const;
+    // todo: rename as: representAtLevel
+    void globalRefinement(const gsMatrix<T> & thbCoefs, int level, 
+                          gsMatrix<T> & lvlCoefs) const;
 
     gsMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old,
                            const std::vector<gsSortedVector<unsigned> >& n,
@@ -730,6 +718,9 @@ private:
     std::map<unsigned, gsSparseVector<T> > m_presentation;
 
     using gsHTensorBasis<d,T>::m_bases;
+    using gsHTensorBasis<d,T>::m_xmatrix;
+    using gsHTensorBasis<d,T>::m_xmatrix_offset;
+    using gsHTensorBasis<d,T>::m_deg;
 };
 /**
  * End of class gsTHBSplineBasis definition

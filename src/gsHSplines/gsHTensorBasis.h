@@ -33,9 +33,9 @@ namespace gismo
 
 struct lvl_coef
 {
-    int pos;
-    int unsigned lvl;
-    real_t coef;
+    int pos; // flat index at grid of level \a lvl
+    int unsigned lvl; // level 
+    real_t coef; // value of the coefficient (lvl,pos)
 };
 
 
@@ -94,6 +94,8 @@ public:
     typedef std::vector< box > boxHistory;
 
     typedef gsSortedVector< unsigned > CMatrix; // charMatrix_
+
+    typedef typename CMatrix::const_iterator cmatIterator;
 
     typedef gsKnotVector<T> KnotVectorType;
 
