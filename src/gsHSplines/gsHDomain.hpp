@@ -783,31 +783,10 @@ void gsHDomain<d,T>::getBoxes(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gs
     // get all boxes in vector-format
     getBoxes_vec(boxes);
 
-    /* // this was and still is for testing, will be removed later
-    cout << "\n --- before connecting:" << endl;
-    for( int i=0; i < int( boxes.size() ); i++)
-    {
-        for( int j=0; j < int( boxes[i].size() ); j++)
-            cout << boxes[i][j] << " ";
-        cout << endl;
-    }
-    */
-
     // connect boxes which have the same levels and are
     // are aligned such that their union again is an
     // axis-aligned box.
     connect_Boxes(boxes);
-
-    /* // this was and still is for testing, will be removed later
-    cout << "\n --- after connecting:" << endl;
-    for( int i=0; i < int( boxes.size() ); i++)
-    {
-        for( int j=0; j < int( boxes[i].size() ); j++)
-            cout << boxes[i][j] << " ";
-        cout << endl;
-    }
-    cout << endl;
-    */
 
     // write the result into b1, b2, and level
     b1.resize(boxes.size(),d);

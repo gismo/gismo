@@ -632,14 +632,6 @@ private:
     void globalRefinement(int level, gsMatrix<T>& coeffs,
                           std::vector< std::map<unsigned,T> > & cmatrix ) const;
 
-    /**
-     * @brief return_cp_1D converts the coefficient matrix mat in the given direction to a column of the control points matrix
-     * @param mat coefficient matrix
-     * @param direction direction (0, 1, 2 = x, y, z)
-     * @param cp control points
-     */
-    void return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const;
-
     gsMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old,
                            const std::vector<gsSortedVector<unsigned> >& n,
                            const gsSparseMatrix<T,RowMajor> & transfer);

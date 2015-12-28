@@ -407,6 +407,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
 {
     std::vector< std::map<unsigned,T> > cmatrix;
     initializeToZero(cmatrix);
+    gsMatrix<T> temp;
     
     // check if the indices in b1, and b2 are correct with respect to the given level
     
@@ -449,26 +450,26 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
     j1 = this->m_bases[level]->knots(1).firstKnotIndex(j1) - 1;
 
     // It would also be nice to rename b0, b1, i0, i1, j0 and j1 to something more intuitive.
-    for(int i = 0; i < geom_coef.cols(); i++)
+    for(index_t i = 0; i < geom_coef.cols(); i++)
     {
         update_cmatrix(geom_coef, i, level, cmatrix);
-        gsMatrix<T> temp(1,1); // ? (!) ?
         globalRefinement(level, temp, cmatrix);
 
         for(int k = i0; k <= i1; k++)
         {
             for(int j = j0; j <= j1; j++)
             {
-                temp(j-j0,k-i0) = temp(j,k);
+                temp(k-i0,j-j0) = temp(k,j);
             }
         }
-        temp.conservativeResize(j1-j0+1,i1-i0+1);
+        temp.conservativeResize(i1-i0+1,j1-j0+1);
 
         if(i == 0)
         {
             cp.resize(temp.cols()*temp.rows(), geom_coef.cols());
         }
-        return_cp_1D(temp, i, cp);
+
+        cp.col(i) = temp.asVector();
     }
     // compute the new vectors for the B-spline patch
     k1 = gsKnotVector<T>(this->m_deg[0], this->m_bases[level]->knots(0).begin() + i0 , this->m_bases[level]->knots(0).begin() + i1 + this->m_deg[0] + 2);
@@ -529,27 +530,25 @@ template<unsigned d, class T>
 gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMatrix<T>& geom_coef) const
 {
     GISMO_ASSERT(d==2,"Dim must be 2 for now");
+
     gsMultiPatch<T> result;
-    gsMatrix<unsigned> b1;
-    gsMatrix<unsigned> b2;
+
+    gsMatrix<unsigned> b1, b2;
     gsVector<unsigned> level;
     this->m_tree.getBoxes(b1,b2,level); // splitting based on the quadtree
-    int nboxes = level.size();
-    //------------------------------------------------------------------------------------------------------------------------------
-    // iteration on the boxes to call getBsplinePatchGlobal()
-    //------------------------------------------------------------------------------------------------------------------------------
+
+    const int nboxes = level.size();
     gsVector<unsigned> p1, p2;
-    p1.resize(this->dim());
-    p2.resize(this->dim());
     gsMatrix<T> temp1;
     gsKnotVector<T> cku, ckv;
 
-    for (int i = 0; i < nboxes; i++){
-        p1(0) = b1(i,0); p1(1) = b1(i,1); p2(0) = b2(i,0); p2(1) = b2(i,1);
+    for (int i = 0; i < nboxes; i++) // for all boxes
+    {
+        p1 = b1.row(i).transpose();
+        p2 = b2.row(i).transpose();
 
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);
-        gsTensorBSplineBasis<2,T> tbasis(cku, ckv);
-        gsTensorBSpline<2, T> *tbspline = new gsTensorBSpline<2, T>(tbasis, give(temp1));
+        gsTensorBSpline<2, T> * tbspline = new gsTensorBSpline<2, T>(cku, ckv, give(temp1));
         result.addPatch(tbspline);
     }
 
@@ -666,8 +665,6 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
 }
 
 
-
-
 //return data for trimming in parasolid
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
@@ -746,11 +743,10 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
     {
         gsMatrix<T> new_cp;
         gsVector<unsigned> p1, p2;
-        p1.resize(this->dim());
-        p2.resize(this->dim());
         gsKnotVector<T> cku, ckv;
 
-        p1(0) = b1(i,0); p1(1) = b1(i,1); p2(0) = b2(i,0); p2(1) = b2(i,1);
+        p1 = b1.row(i).transpose();
+        p2 = b2.row(i).transpose();
 
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, new_cp, cku, ckv);
 
@@ -984,87 +980,84 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
 }
 
 
+/*
+  Private functions
+*/
 
 
-/**
- * Private functions
- */
-
-
-
+/*
 // convert the coefficient matrix mat in the given direction to a column of the control points matrix
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const
 {
+    cc = mat.asVector();
+    return;
+
     GISMO_ASSERT((mat.cols()*mat.rows() == cp.rows()), "Wrong matrix dimension.");
-    int counter = 0;
-    for(int j = 0; j < mat.rows(); j++){
-        for(int i = 0; i < mat.cols(); i++){
-            cp(counter, direction) = mat(j,i);
-            counter ++;
-        }
-    }
+
+    gsAsMatrix<T> cc(cp.col(direction).data(), mat.cols(), mat.rows() );
+    cc = mat.transpose();
+
+    // int counter = 0;
+    // for(int j = 0; j < mat.rows(); j++){
+    //     for(int i = 0; i < mat.cols(); i++){
+    //         cp(counter, direction) = mat(j,i);
+    //         counter ++;
+    //     }
+    // }
+
 }
+*/
 
 // called by getBsplinePatchGlobal
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs, 
                                              std::vector< std::map<unsigned,T> > & cmatrix) const
-{    
-    //coeffs.resize(this->m_bases[0]->component(1).knots().size()-this->m_deg[1]-1,this->m_bases[0]->component(0).knots().size()-this->m_deg[0]-1);
-    coeffs.resize(this->m_bases[0]->size(1),this->m_bases[0]->size(0));
-    for(int j = 0; j < coeffs.rows(); j++)
+{  
+    // Initialize level 0 coefficients
+    coeffs.setZero(this->m_bases[0]->size(),1);
+    for(typename CMatrix::const_iterator it = this->m_xmatrix[0].begin();
+        it != this->m_xmatrix[0].end(); it++)
     {
-        for(int k = 0; k < coeffs.cols(); k++)
-        {
-            const unsigned s = this->m_bases[0]->index(k,j);//this->fromPair(k,j, 0);
-            if(this->m_xmatrix[0].bContains(s) )
-            {
-                coeffs(j,k) = cmatrix[0].find( s )->second;
-            }
-            else
-            {
-                coeffs(j,k) = 0;
-            }
-        }
+        coeffs.at(*it) = cmatrix[0].find(*it)->second;
     }
+    coeffs.resize(this->m_bases[0]->size(0), this->m_bases[0]->size(1));
+
+    gsKnotVector<T> k1, k2;// boehm refine needs non-const kv
 
     for(int l = 1; l <=level; l++)
     {
         // global dyadic refinement with respect to previous level
-        gsKnotVector<T>k1;
-        gsKnotVector<T>k2;
         k1 = this->m_bases[l-1]->knots(0);
         k2 = this->m_bases[l-1]->knots(1);
-        std::vector<T> knots_x;
-        std::vector<T> knots_y;
+        std::vector<T> knots_x, knots_y;
+
         for(unsigned int i = 1; i < this->m_bases[l]->knots(0).unique().size(); i = i+2)
         {
             knots_x.push_back(this->m_bases[l]->knots(0).unique()[i]);
         }
+
         for(unsigned int i = 1; i < this->m_bases[l]->knots(1).unique().size(); i = i+2)
         {
             knots_y.push_back(this->m_bases[l]->knots(1).unique()[i]);
         }
 
-        gsBoehmRefine(k2,coeffs,this->m_deg[1],knots_y.begin(),knots_y.end());
+        // refine direction 0
+        gsBoehmRefine(k1, coeffs, this->m_deg[0], knots_x.begin(), knots_x.end(), false);
+
+        // refine direction 1
+        coeffs.transposeInPlace();
+        gsBoehmRefine(k2, coeffs, this->m_deg[1], knots_y.begin(), knots_y.end(), false);
         coeffs.transposeInPlace();
 
-        gsBoehmRefine(k1,coeffs,this->m_deg[0],knots_x.begin(),knots_x.end());
-        coeffs.transposeInPlace();
-
-        //overwrite the whole matrix
-        for(int j = 0; j < coeffs.rows(); j++)
-        {
-            for(int k = 0; k < coeffs.cols(); k++)
+        // overwrite level \a l coefficients
+        for(int j = 0; j < coeffs.cols(); j++)
+            for(int k = 0; k < coeffs.rows(); k++)
             {
-                unsigned s  = this->m_bases[l]->index(k,j);
+                const unsigned s = this->m_bases[l]->index(k,j);
                 if(this->m_xmatrix[l].bContains(s) )
-                {
-                    coeffs(j,k) = cmatrix[l].find( s )->second;
-                }
+                    coeffs(k,j) = cmatrix[l].find( s )->second;
             }
-        }
     }
 }
 
@@ -1344,6 +1337,7 @@ gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<unsigned>& boundingBox
 {
     std::vector< std::map<unsigned, T> > cmatrix;
     initializeToZero(cmatrix);
+    gsMatrix<T> coefs;
 
     gsVector<unsigned, d> low, upp, lowLevel, uppLevel;
     for (unsigned dim = 0; dim != d; dim++)
@@ -1371,19 +1365,18 @@ gsTHBSplineBasis<d, T>::getBSplinePatch(const std::vector<unsigned>& boundingBox
     for (index_t col = 0; col != geomCoefs.cols(); col++)
     {
         update_cmatrix(geomCoefs, col, level, cmatrix);
-        gsMatrix<T> coefs;
         globalRefinement(level, coefs, cmatrix);
 	
         for (int i = lowIndex0; i <= uppIndex0; i++)
         {
             for (int j = lowIndex1; j <= uppIndex1; j++)
             {
-                coefs(j - lowIndex1, i - lowIndex0) = coefs(j, i);
+                coefs(i - lowIndex0, j - lowIndex1) = coefs(i, j);
             }
         }
-	
-        coefs.conservativeResize(numDirection1, numDirection0);
-        return_cp_1D(coefs, col, newCoefs);
+
+        coefs.conservativeResize(numDirection0, numDirection1);
+        newCoefs.col(col) = coefs.asVector();
     }
 
     std::vector<gsKnotVector<T> > kv(2);
