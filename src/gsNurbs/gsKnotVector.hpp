@@ -106,6 +106,22 @@ typename gsKnotVector<T>::reverse_iterator gsKnotVector<T>::rbegin()  const
 }
 
 template<typename T>
+bool gsKnotVector<T>::includes(const gsKnotVector<T> & other) const
+{
+    return std::includes(begin(), end(), other.begin(), other.end() );
+}
+
+template<typename T>
+void gsKnotVector<T>::symDifference(const gsKnotVector<T> & other,
+                                    std::vector<T>& result) const
+{
+    result.clear();
+    std::set_symmetric_difference(begin(), end(),
+                                  other.begin(), other.end(),
+                                  std::back_inserter(result));
+}
+
+template<typename T>
 typename gsKnotVector<T>::reverse_iterator gsKnotVector<T>::rend()    const
 {
     return reverse_iterator(begin());
@@ -354,21 +370,21 @@ std::ostream & gsKnotVector<T>::print(std::ostream &os) const
 template <class T>
 T gsKnotVector<T>::maxIntervalLength() const
 {
-    if( size() < 2 ) return 0.0;
+    //if( size() < 2 ) return 0.0;
 
     T hmax = 0.0;
-    for (uiterator it = ubegin(); it < uend()-2; ++it)
-        hmax = math::max(hmax, *(it+1) - *it );
+    for (uiterator it = ubegin()+1; it < uend(); ++it)
+        hmax = math::max(hmax, *(it-1) - *it );
     return hmax;
 }
 
 template <class T>
 T gsKnotVector<T>::minIntervalLength() const
 {
-    if( size() < 2 ) return 0.0;
+    //if( size() < 2 ) return 0.0;
 
     T hmin = std::numeric_limits<T>::max();
-    for (uiterator it = ubegin(); it < uend()-2; ++it)
+    for (uiterator it = ubegin(); it + 2 < uend(); ++it)
         hmin = math::min(hmin, *(it+1) - *it );
     return hmin;
 }

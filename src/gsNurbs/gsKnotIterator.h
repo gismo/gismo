@@ -187,8 +187,10 @@ public:
     {
         m_upos += a;
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
-        GISMO_ENSURE(m_upos >= 0 && m_upos < m_dbg, "Access to invalid knot position.");
-#       endif 
+        // Note: we allow invalid position for iterators on empty knot-vectors
+        GISMO_ENSURE(m_dbg<2 || (m_upos >= 0 && m_upos < m_dbg),
+                     "Iterator jumped to invalid knot position.");
+#       endif
         return *this;
     }
 
@@ -500,7 +502,8 @@ public:
     {
         m_pos += a;
 #       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0 
-        GISMO_ENSURE(m_pos >= 0 && m_pos < m_dbg, "Access to invalid knot position.");
+        GISMO_ENSURE((m_pos >= 0 && m_pos < m_dbg), 
+                     "Iterator jumped to invalid knot position.");
 #       endif 
 
         // update unique position

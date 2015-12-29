@@ -484,7 +484,23 @@ public:
     }
 //*/
 
-     
+
+
+    /** \brief Returns true if every knot of \a other (counted with
+      repetitions) is found within this knot-vector. Also returns
+      true if \a other is empty.
+    */
+    bool includes(const gsKnotVector<T> & other) const;
+
+
+    /** \brief Computes the symmetric difference between this knot-vector and \a other.
+
+        All knots which do not exist in both knot-vectors (counted
+        with repetitions) are stored in \a result
+    */
+    void symDifference(const gsKnotVector<T> & other,
+                       std::vector<T>& result) const;
+    
     /// Better directly use affineTransformTo.
     void reverse();
 
