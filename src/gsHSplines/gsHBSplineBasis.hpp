@@ -193,25 +193,31 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
     gsMatrix<unsigned> b1, b2;//boxes in highest level numbering
     this->m_tree.getBoxesInLevelIndex(b1, b2, level);//return boxes in level indices
     tensorBasis T_0_copy = this->tensorLevel(0);
-    std::vector< gsSparseMatrix<T,RowMajor> > transfer(this->maxLevel());
+    //std::vector< gsSparseMatrix<T,RowMajor> > transfer(this->maxLevel());
+    gsSparseMatrix<T,RowMajor> transfer;
     std::vector<std::vector<T> > knots(d);
+
+    std::vector<gsSortedVector<unsigned> > x_mat_old_0, x_matrix_lvl;
 
     for(unsigned i = 0; i < this->maxLevel(); ++i)
     {
-        //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
         for(unsigned dim = 0; dim < d; ++dim)
         {
-            const gsKnotVector<T> & ckv = this->m_bases[i  ]->component(dim).knots();
-            const gsKnotVector<T> & fkv = this->m_bases[i+1]->component(dim).knots();
-
-            this->_differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
-                                                fkv, 0, fkv.uSize() - 1,
-                                                knots[dim]);
+            const gsKnotVector<T> & ckv = m_bases[i  ]->knots(dim);
+            const gsKnotVector<T> & fkv = m_bases[i+1]->knots(dim);
+            ckv.symDifference(fkv, knots[dim]);
         }
-        T_0_copy.refine_withTransfer(transfer[i], knots);
+
+        T_0_copy.refine_withTransfer(transfer, knots);
+
+        this->setActiveToLvl(i  ,x_mat_old_0 );
+        this->setActiveToLvl(i+1,x_matrix_lvl);
+
+        const gsMatrix<T> crs = this->coarsening(x_mat_old_0, x_matrix_lvl, transfer);
+        result.push_back(crs);
     }
 
-    std::vector<gsSortedVector<unsigned> > x_mat_old_0, x_matrix_lvl;
+/*
     for(unsigned j = 0; j < this->maxLevel();j++)
     {
         this->setActiveToLvl(j,x_mat_old_0);
@@ -220,6 +226,7 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
         const gsMatrix<T> crs = this->coarsening(x_mat_old_0, x_matrix_lvl, transfer[j]);
         result.push_back(crs);
     }
+*/
 }
 
 

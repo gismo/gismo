@@ -109,6 +109,16 @@ public: // iterator ends
     reverse_iterator       rbegin()  const;    
     /// Returns reverse iterator pointing to the beginning of the repeated knots.
     reverse_iterator       rend()    const;
+
+    /// Returns an iterator pointing to the first appearance of the
+    /// knot with cardinal index (ie. unique, counted without
+    /// repetitions) equal to \a upos.
+    iterator               beginAt(const mult_t upos)   const;
+
+    /// Returns an iterator pointing one past the last appearance of
+    /// the knot with cardinal index (ie. unique, counted without
+    /// repetitions) equal to \a upos.
+    iterator               endAt(const mult_t upos)     const;    
     
     /// Returns unique iterator pointing to the beginning of the unique knots.
     uiterator              ubegin()  const;

@@ -86,7 +86,6 @@ public:
 // iterator ends //
 //===============//
 
-
 template<typename T>
 typename gsKnotVector<T>::iterator gsKnotVector<T>::begin()  const
 {
@@ -97,6 +96,18 @@ template<typename T>
 typename gsKnotVector<T>::iterator gsKnotVector<T>::end()    const
 {
     return m_repKnots.end();
+}
+
+template<typename T>
+typename gsKnotVector<T>::iterator gsKnotVector<T>::beginAt(const mult_t upos)  const
+{
+    return m_repKnots.begin() + (0 == upos ? 0 : m_multSum[upos-1]);
+}
+
+template<typename T>
+typename gsKnotVector<T>::iterator gsKnotVector<T>::endAt(const mult_t upos)    const
+{
+    return m_repKnots.begin() + m_multSum[upos];
 }
 
 template<typename T>
