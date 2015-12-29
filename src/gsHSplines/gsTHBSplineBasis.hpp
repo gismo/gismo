@@ -148,22 +148,20 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
         this->m_tree.computeLevelIndex(finest_low, level + 1, flow);
         this->m_tree.computeLevelIndex(finest_high, level + 1, fhigh);
 
+        std::vector<T> knots;
 
         for (unsigned dim = 0; dim < d; ++dim)
         {
-            std::vector<T> knots;
-            const gsKnotVector<T>& ckv =
-                this->m_bases[level]->knots(dim);
-            const gsKnotVector<T>& fkv =
-                this->m_bases[level + 1]->knots(dim);
-
+            const gsKnotVector<T>& ckv = m_bases[level  ]->knots(dim);
+            const gsKnotVector<T>& fkv = m_bases[level+1]->knots(dim);
 
             if (level == cur_level)
                 vector_of_kv[dim] = ckv;
 
-            this->_differenceBetweenKnotVectors(ckv, clow[dim], chigh[dim],
-                                                fkv, flow[dim], fhigh[dim],
-                                                knots);
+            knots.clear();
+            std::set_symmetric_difference(ckv.beginAt(clow[dim]), ckv.endAt(chigh[dim]),
+                                          fkv.beginAt(flow[dim]), fkv.endAt(fhigh[dim]),
+                                          std::back_inserter(knots));
 
             gsTensorBoehmRefineLocal<d,
                                      gsKnotVector<T>,
@@ -1518,10 +1516,7 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
         {
             const gsKnotVector<T> & ckv = m_bases[i]->knots(dim);
             const gsKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
-
-            this->_differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
-                                                fkv, 0, fkv.uSize() - 1,
-                                                knots[dim]);
+            ckv.symDifference(fkv, knots[dim]);
 
             //gsDebug << "level: " << i << "\n"
             //        << "direction: " << dim << "\n";

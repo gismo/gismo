@@ -1156,10 +1156,9 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
         {
             const gsKnotVector<T> & ckv = m_bases[i  ]->knots(dim);
             const gsKnotVector<T> & fkv = m_bases[i+1]->knots(dim);
-
-            _differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
-                                          fkv, 0, fkv.uSize() - 1,
-                                          knots[dim]);
+            ckv.symDifference(fkv, knots[dim]);
+            // equivalent (dyadic ref.):
+            // ckv.getUniformRefinementKnots(1, knots[dim]);
 
             //gsDebug << "level: " << i << "\n"
             //        << "direction: " << dim << "\n";
@@ -1184,20 +1183,18 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> 
     tensorBasis T_0_copy = this->tensorLevel(0);
     std::vector< gsSparseMatrix<T,RowMajor> > transfer;
     transfer.resize( m_bases.size()-1 );
+    std::vector<std::vector<T> > knots(d);
+        
     for(size_t i = 0; i < m_bases.size()-1; i++)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
-        std::vector<std::vector<T> > knots;
         for(unsigned int dim = 0; dim < d; dim++)
         {
             const gsKnotVector<T> & ckv = m_bases[i]->knots(dim);
             const gsKnotVector<T> & fkv = m_bases[i + 1]->knots(dim);
-
-            std::vector<T> dirKnots;
-            _differenceBetweenKnotVectors(ckv, 0, ckv.uSize() - 1,
-                                          fkv, 0, fkv.uSize() - 1,
-                                          dirKnots);
-            knots.push_back(dirKnots);
+            ckv.symDifference(fkv, knots[dim]);
+            // equivalent (dyadic ref.):
+            // ckv.getUniformRefinementKnots(1, knots[dim]);
 
             //gsDebug << "level: " << i << "\n"
             //        << "direction: " << dim << "\n";
