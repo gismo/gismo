@@ -118,12 +118,14 @@ private:
     gsMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
 
     gsMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
+
+    using gsHTensorBasis<d,T>::m_bases;
+    using gsHTensorBasis<d,T>::m_xmatrix;
+    using gsHTensorBasis<d,T>::m_xmatrix_offset;
+    using gsHTensorBasis<d,T>::m_deg;
     
 }; // class gsHBSplineBasis
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 } // namespace gismo
 
