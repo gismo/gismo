@@ -189,15 +189,17 @@ template<unsigned d, class T>
 void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
 {
     result.clear();
-    gsVector<unsigned> level;
-    gsMatrix<unsigned> b1, b2;//boxes in highest level numbering
-    this->m_tree.getBoxesInLevelIndex(b1, b2, level);//return boxes in level indices
+    //gsVector<unsigned> level;
+    //gsMatrix<unsigned> b1, b2; //boxes in highest level numbering
+    //this->m_tree.getBoxesInLevelIndex(b1, b2, level);//return boxes in level indices
     tensorBasis T_0_copy = this->tensorLevel(0);
     //std::vector< gsSparseMatrix<T,RowMajor> > transfer(this->maxLevel());
     gsSparseMatrix<T,RowMajor> transfer;
     std::vector<std::vector<T> > knots(d);
 
-    std::vector<gsSortedVector<unsigned> > x_mat_old_0, x_matrix_lvl;
+    std::vector<gsSortedVector<unsigned> > xmatLvl_i, xmatLvl_i1;
+
+    this->setActiveToLvl(0, xmatLvl_i );
 
     for(unsigned i = 0; i < this->maxLevel(); ++i)
     {
@@ -206,27 +208,20 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
             const gsKnotVector<T> & ckv = m_bases[i  ]->knots(dim);
             const gsKnotVector<T> & fkv = m_bases[i+1]->knots(dim);
             ckv.symDifference(fkv, knots[dim]);
+            
+            // equivalent (dyadic ref.):
+            // ckv.getUniformRefinementKnots(1, knots[dim]);
         }
 
         T_0_copy.refine_withTransfer(transfer, knots);
 
-        this->setActiveToLvl(i  ,x_mat_old_0 );
-        this->setActiveToLvl(i+1,x_matrix_lvl);
+        this->setActiveToLvl(i+1, xmatLvl_i1);
 
-        const gsMatrix<T> crs = this->coarsening(x_mat_old_0, x_matrix_lvl, transfer);
+        const gsMatrix<T> crs = this->coarsening(xmatLvl_i, xmatLvl_i1, transfer);
         result.push_back(crs);
-    }
 
-/*
-    for(unsigned j = 0; j < this->maxLevel();j++)
-    {
-        this->setActiveToLvl(j,x_mat_old_0);
-        this->setActiveToLvl(j+1,x_matrix_lvl);
-
-        const gsMatrix<T> crs = this->coarsening(x_mat_old_0, x_matrix_lvl, transfer[j]);
-        result.push_back(crs);
+        xmatLvl_i.swap(xmatLvl_i1);
     }
-*/
 }
 
 
