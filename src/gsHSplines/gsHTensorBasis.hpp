@@ -1145,14 +1145,13 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
     needLevel( old.size() );
 
     tensorBasis T_0_copy = this->tensorLevel(0);
-    std::vector< gsSparseMatrix<T,RowMajor> > transfer;
-    transfer.resize( m_bases.size()-1 );
+    std::vector< gsSparseMatrix<T,RowMajor> > transfer(m_bases.size()-1);
     std::vector<std::vector<T> > knots(d);
 
-    for(size_t i = 0; i+1 < m_bases.size(); i++)
+    for(size_t i = 0; i+1 < m_bases.size(); ++i)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
-        for(unsigned dim = 0; dim < d; dim++)
+        for(unsigned dim = 0; dim != d; ++dim)
         {
             const gsKnotVector<T> & ckv = m_bases[i  ]->knots(dim);
             const gsKnotVector<T> & fkv = m_bases[i+1]->knots(dim);
@@ -1168,10 +1167,10 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
     }
 
     // Add missing empty char. matrices
-    while ( old.size() >=  this->m_xmatrix.size())
-        this->m_xmatrix.push_back( gsSortedVector<unsigned>() );
+    while ( old.size() >= m_xmatrix.size() )
+        m_xmatrix.push_back( gsSortedVector<unsigned>() );
 
-    result = this->coarsening_direct(old,this->m_xmatrix, transfer);
+    result = this->coarsening_direct(old, m_xmatrix, transfer);
 }
 
 template<unsigned d, class T>
