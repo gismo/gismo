@@ -201,7 +201,7 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
 
     this->setActiveToLvl(0, xmatLvl_i );
 
-    for(unsigned i = 1; i < this->maxLevel(); ++i)
+    for(unsigned i = 1; i <= this->maxLevel(); ++i)
     {
         for(unsigned dim = 0; dim != d; ++dim)
         {
