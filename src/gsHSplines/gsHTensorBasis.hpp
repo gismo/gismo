@@ -1148,13 +1148,13 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
     std::vector< gsSparseMatrix<T,RowMajor> > transfer(m_bases.size()-1);
     std::vector<std::vector<T> > knots(d);
 
-    for(std::size_t i = 0; ++i < m_bases.size(); )
+    for(std::size_t i = 1; i < m_bases.size(); ++i)
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
         for(unsigned dim = 0; dim != d; ++dim)
         {
-            const gsKnotVector<T> & ckv = m_bases[i  ]->knots(dim);
-            const gsKnotVector<T> & fkv = m_bases[i+1]->knots(dim);
+            const gsKnotVector<T> & ckv = m_bases[i-1]->knots(dim);
+            const gsKnotVector<T> & fkv = m_bases[i  ]->knots(dim);
             ckv.symDifference(fkv, knots[dim]);
             // equivalent (dyadic ref.):
             // ckv.getUniformRefinementKnots(1, knots[dim]);
@@ -1163,7 +1163,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
             //        << "direction: " << dim << "\n";
             //gsDebugVar(gsAsMatrix<T>(dirKnots));
         }
-        T_0_copy.refine_withTransfer(transfer[i], knots);
+        T_0_copy.refine_withTransfer(transfer[i-1], knots);
     }
 
     // Add missing empty char. matrices
