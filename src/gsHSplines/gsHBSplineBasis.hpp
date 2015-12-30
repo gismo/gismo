@@ -192,7 +192,7 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
     //gsVector<unsigned> level;
     //gsMatrix<unsigned> b1, b2; //boxes in highest level numbering
     //this->m_tree.getBoxesInLevelIndex(b1, b2, level);//return boxes in level indices
-    tensorBasis T_0_copy = this->tensorLevel(0);
+    tensorBasis curTensorlvl = this->tensorLevel(0);
     //std::vector< gsSparseMatrix<T,RowMajor> > transfer(this->maxLevel());
     gsSparseMatrix<T,RowMajor> transfer;
     std::vector<std::vector<T> > knots(d);
@@ -201,19 +201,19 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
 
     this->setActiveToLvl(0, xmatLvl_i );
 
-    for(unsigned i = 0; i < this->maxLevel(); ++i)
+    for(unsigned i = 1; i < this->maxLevel(); ++i)
     {
-        for(unsigned dim = 0; dim < d; ++dim)
+        for(unsigned dim = 0; dim != d; ++dim)
         {
-            const gsKnotVector<T> & ckv = m_bases[i  ]->knots(dim);
-            const gsKnotVector<T> & fkv = m_bases[i+1]->knots(dim);
+            const gsKnotVector<T> & ckv = m_bases[i-1]->knots(dim);
+            const gsKnotVector<T> & fkv = m_bases[i  ]->knots(dim);
             ckv.symDifference(fkv, knots[dim]);
             
             // equivalent (dyadic ref.):
             // ckv.getUniformRefinementKnots(1, knots[dim]);
         }
 
-        T_0_copy.refine_withTransfer(transfer, knots);
+        curTensorlvl.refine_withTransfer(transfer, knots);
 
         this->setActiveToLvl(i+1, xmatLvl_i1);
 
