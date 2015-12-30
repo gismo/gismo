@@ -1148,7 +1148,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
     std::vector< gsSparseMatrix<T,RowMajor> > transfer(m_bases.size()-1);
     std::vector<std::vector<T> > knots(d);
 
-    for(size_t i = 0; i+1 < m_bases.size(); ++i)
+    for(std::size_t i = 0; ++i < m_bases.size(); )
     {
         //T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
         for(unsigned dim = 0; dim != d; ++dim)

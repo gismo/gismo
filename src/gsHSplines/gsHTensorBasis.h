@@ -375,10 +375,6 @@ public:
 
     virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const;
 
-    // Make gsBasis::connectivity visible
-    virtual void connectivity(gsMesh<T> & mesh) const
-    { gsBasis<T>::connectivity(mesh); }
-
     // Prints the characteristic matrices (ie. the indices of all basis
     // functions in the basis)
     void printCharMatrix(std::ostream &os = gsInfo) const
@@ -825,66 +821,6 @@ protected:
 
     /// @brief Creates \a numLevels extra grids in the hierarchy
     void createMoreLevels(int numLevels) const;
-
-    /// Computes difference between coarser knot vector (ckv) and finer knot
-    /// vector (fkv). Difference is computed just between c_low, c_high
-    /// indices f_low, f_high indices for ckv and fkv respectfully. Result
-    /// is stored in vector knots.
-    ///
-    /// @param ckv coarse knot vector
-    /// @param c_low low index of the interested area for the ckv
-    /// @param c_high high index of the interested area for the ckv
-    /// @param fkv finer knot vector
-    /// @param f_low low index of the interested area for the fkv
-    /// @param f_high high index of the interested area for the fkv
-    /// @param knots \f$ {k | k \in fkv & k \notin ckv} \f$
-    static
-    void _differenceBetweenKnotVectors(const gsKnotVector<T>& ckv,
-                                       const unsigned c_low,
-                                       const unsigned c_high,
-                                       const gsKnotVector<T>& fkv,
-                                       const unsigned f_low,
-                                       const unsigned f_high,
-                                       std::vector<T>& knots)
-    {
-        knots.clear();
-
-        unsigned f_knot_mltpl; // finest knot multiplicity
-        unsigned c_knot_mltpl; // coarse knot multiplicity
-
-        T f_knot, c_knot;// finest and coarsest knot
-
-        unsigned c_index = c_low;
-        unsigned f_index = f_low;
-
-        while (f_index <= f_high)
-        {
-            f_knot = fkv.uValue(f_index); // finest knot
-            c_knot = ckv.uValue(c_index); // coarse knot
-
-            f_knot_mltpl = fkv.u_multiplicityIndex(f_index);
-
-            if (f_knot == c_knot)
-            {
-                c_knot_mltpl = ckv.u_multiplicityIndex(c_index);
-
-                if (c_knot_mltpl < f_knot_mltpl)
-                {
-                    for (unsigned j = 0; j < f_knot_mltpl - c_knot_mltpl; ++j)
-                        knots.push_back(f_knot);
-                }
-
-                ++f_index;
-                ++c_index;
-            }
-            else // f_knot < c_knot
-            {
-                for (unsigned j = 0; j < f_knot_mltpl; ++j)
-                    knots.push_back(f_knot);
-                ++f_index;
-            }
-        }
-    }
 
     /// gets all the boxes along a slice in direction \a dir at parameter \a par.
     /// the boxes are given back in a std::vector<unsigned> and are in the right format
