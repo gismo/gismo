@@ -255,7 +255,7 @@ void gsBasis<T>::anchor_into(unsigned i, gsMatrix<T>& result) const
 
 
 template<class T> inline
-void gsBasis<T>::connectivity(gsMesh<T> & mesh) const
+void gsBasis<T>::connectivityAtAnchors(gsMesh<T> & mesh) const
 { 
     gsMatrix<T> nodes = anchors();
     nodes.transposeInPlace();// coefficient vectors have ctrl points at rows

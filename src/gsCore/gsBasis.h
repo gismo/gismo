@@ -458,7 +458,7 @@ public:
 
     /// Returns the connectivity structure of the basis
     /// The returned mesh has the anchor points as vertices
-    virtual void connectivity(gsMesh<T> & mesh) const;
+    virtual void connectivityAtAnchors(gsMesh<T> & mesh) const;
 
     /// Returns the connectivity structure of the basis
     /// The returned mesh has vertices the rows of matrix \a nodes
@@ -736,6 +736,7 @@ public:
     virtual int numElements() const;
 
     /// @brief The number of elements on side \a s.
+    // fixme: default arg = none
     virtual int numElements(boxSide const & s) const;
 
     /// @brief Returns an index for the element which contains point \a u
