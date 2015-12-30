@@ -215,7 +215,7 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
 
         curTensorlvl.refine_withTransfer(transfer, knots);
 
-        this->setActiveToLvl(i+1, xmatLvl_i1);
+        this->setActiveToLvl(i, xmatLvl_i1);
 
         const gsMatrix<T> crs = this->coarsening(xmatLvl_i, xmatLvl_i1, transfer);
         result.push_back(crs);
