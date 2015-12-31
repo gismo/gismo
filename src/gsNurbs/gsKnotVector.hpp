@@ -126,6 +126,7 @@ template<typename T>
 void gsKnotVector<T>::symDifference(const gsKnotVector<T> & other,
                                     std::vector<T>& result) const
 {
+    result.reserve(std::abs(other.size()-size()));
     result.clear();
     std::set_symmetric_difference(begin(), end(),
                                   other.begin(), other.end(),
@@ -381,21 +382,17 @@ std::ostream & gsKnotVector<T>::print(std::ostream &os) const
 template <class T>
 T gsKnotVector<T>::maxIntervalLength() const
 {
-    //if( size() < 2 ) return 0.0;
-
     T hmax = 0.0;
-    for (uiterator it = ubegin()+1; it < uend(); ++it)
-        hmax = math::max(hmax, *(it-1) - *it );
+    for (uiterator it = ubegin(); it + 1 < uend(); ++it)
+        hmax = math::max(hmax, *(it+1) - *it );
     return hmax;
 }
 
 template <class T>
 T gsKnotVector<T>::minIntervalLength() const
 {
-    //if( size() < 2 ) return 0.0;
-
     T hmin = std::numeric_limits<T>::max();
-    for (uiterator it = ubegin(); it + 2 < uend(); ++it)
+    for (uiterator it = ubegin(); it + 1 < uend(); ++it)
         hmin = math::min(hmin, *(it+1) - *it );
     return hmin;
 }
