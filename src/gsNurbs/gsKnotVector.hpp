@@ -126,7 +126,9 @@ template<typename T>
 void gsKnotVector<T>::symDifference(const gsKnotVector<T> & other,
                                     std::vector<T>& result) const
 {
-    result.reserve(std::abs(other.size()-size()));
+    // Next line is ambiguous on MSVC (std does not overload "abs" for size_t)
+    // result.reserve(std::abs(other.size()-size()));
+
     result.clear();
     std::set_symmetric_difference(begin(), end(),
                                   other.begin(), other.end(),
