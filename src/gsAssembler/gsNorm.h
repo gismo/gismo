@@ -112,7 +112,7 @@ public:
     /** @brief Returns the computed norm values element-wise
      *
      *
-     * \returns The SQUARED element-norms in a gsVector.\n
+     * \returns The SQUARED element-norms in a std::vector.\n
      * It is assumed that they were actually computed by providing
      * the proper flag \em storeEltWise in the call of apply().
      *
