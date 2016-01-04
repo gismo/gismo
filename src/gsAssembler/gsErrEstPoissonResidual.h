@@ -75,8 +75,9 @@ public:
                             const gsBoundaryConditions<T> & bcInfo,
                             bool _rhsFunctionParam = false)
     : gsNorm<T>(_discSolution,_rhsFunction), m_bcInfo(bcInfo), m_f2param(_rhsFunctionParam)
-    {    }
-
+    {
+        m_bcInitialized = true;
+    }
 
 
      /** \brief Constructor
@@ -92,7 +93,9 @@ public:
              bool _rhsFunctionParam = false)
     : gsNorm<T>(_discSolution,_rhsFunction), m_f2param(_rhsFunctionParam)
     {
-        /*! this is buggy..
+        m_bcInitialized = false;
+
+        /* ! this is buggy..
         // In case no boundary conditions are provided, we still
         // need to initialize m_bcInfo.
         // Unpretty workaround, setting up m_bcInfo with only
@@ -310,7 +313,7 @@ protected:
             bool isIntfc = patchesPtr->getInterface( ps, intfcRes );
             // bc will be the null-pointer, if there is no boundary condition
             // on this patchside
-            const boundary_condition<T> * bc = m_bcInfo.getConditionFromSide( ps );
+            const boundary_condition<T> * bc = ( m_bcInitialized ? m_bcInfo.getConditionFromSide( ps ) : NULL );
             // Note that, if the side is NOT an interface, the case
             // (bc == NULL) corresponds to a homogenous Neumann-boundary condition.
             // Thus, the contribution of such a boundary also has to be computed.
@@ -642,6 +645,8 @@ private:
     unsigned m_parDim;
 
     bool m_f2param;
+
+    bool m_bcInitialized;
 
     using gsNorm<T>::patchesPtr;
     using gsNorm<T>::field1;
