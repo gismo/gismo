@@ -99,11 +99,6 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
     m_system = gsSparseSystem<T>(mapper);//1,1
     const index_t nz = m_options.numColNz(m_bases[0][0]);
     m_system.reserve(nz, this->pde().numRhs());
-
-    // 3. reserve components for dirichlet Dofs
-    //must be the number of components, fixme: make more generic,
-    //i.e. m_ddof.resize(m_system.colBlocks());
-    m_ddof.resize(1);
 }
 
 template<class T>
@@ -214,6 +209,10 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
 {
     if ( m_options.dirStrategy == dirichlet::nitsche)
         return; // Nothing to compute
+
+    //if ddof-size is not set
+    if(m_ddof.size()==0)
+        m_ddof.resize(m_system.numColBlocks());
 
     const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
     const gsDofMapper & mapper = 

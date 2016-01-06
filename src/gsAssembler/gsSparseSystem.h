@@ -260,6 +260,10 @@ public: /* Accessors */
         return m_matrix.blockView(rowSizes,colSizes); 
     }
 
+    size_t numColBlocks() {return m_col.size();}
+
+    size_t numRowBlocks() {return m_row.size();}
+
     const gsDofMapper & rowMapper(const index_t r) const
     { return m_mappers[m_row[r]]; }
 
