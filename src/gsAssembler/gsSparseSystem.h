@@ -180,8 +180,6 @@ public:
       m_cstr((index_t)colInd.size())
      // ,m_cvar(colvar) //<< Bug
     {
-        m_rstr.setZero(rowInd.size());
-        m_cstr.setZero(colInd.size());
         m_cvar = colvar;
         const index_t rows = m_row.size();
         const index_t cols = m_col.size();
