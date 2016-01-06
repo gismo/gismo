@@ -207,12 +207,13 @@ void gsAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, int unk)
 template<class T>
 void gsAssembler<T>::computeDirichletDofs(int unk)
 {
-    if ( m_options.dirStrategy == dirichlet::nitsche)
-        return; // Nothing to compute
-
     //if ddof-size is not set
+    //fixme: discuss if this is really the right place for this.
     if(m_ddof.size()==0)
         m_ddof.resize(m_system.numColBlocks());
+
+    if ( m_options.dirStrategy == dirichlet::nitsche)
+        return; // Nothing to compute
 
     const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
     const gsDofMapper & mapper = 
@@ -403,7 +404,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
             // the values of the boundary condition are stored
             // to rhsVals. Here, "rhs" refers to the right-hand-side
             // of the L2-projection, not of the PDE.
-            rhsVals = (iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( quNodes ) ));
+            rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( quNodes ) );
 
             basis.eval_into( quNodes, basisVals);
 

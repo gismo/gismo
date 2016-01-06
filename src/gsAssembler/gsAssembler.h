@@ -209,7 +209,8 @@ public:  /* Dirichlet degrees of freedom computation */
             for(std::size_t i=0;i<m_ddof.size();++i)
                 m_ddof[i].setZero();
         }
-        m_ddof[unk].setZero();
+        else
+            m_ddof[unk].setZero();
     }
 
     // index_t numFixedDofs(int unk = 0) {return m_dofMappers[unk].boundarySize();}
