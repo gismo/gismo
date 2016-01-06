@@ -113,6 +113,7 @@ public:
         else
         {
             GISMO_ASSERT(m_mappers.size() == d, "Cannot deduce block structure.");
+            m_cvar = m_row.cast<index_t>();//assume 1-1 bases
         }
 
         m_rstr[0] = m_cstr[0] = 0;
@@ -170,15 +171,18 @@ public:
     }
 
     gsSparseSystem(DofMappers & mappers, 
-                   const gsVector<index_t> & rowInd, 
-                   const gsVector<index_t> & colInd, 
+                   const gsVector<size_t> & rowInd,
+                   const gsVector<size_t> & colInd,
                    const gsVector<index_t> & colvar)
     : m_row (rowInd),
       m_col (colInd),
-      m_rstr(rowInd.size()),
-      m_cstr(colInd.size()),
-      m_cvar(colvar)
+      m_rstr((index_t)rowInd.size()),
+      m_cstr((index_t)colInd.size())
+     // ,m_cvar(colvar) //<< Bug
     {
+        m_rstr.setZero(rowInd.size());
+        m_cstr.setZero(colInd.size());
+        m_cvar = colvar;
         const index_t rows = m_row.size();
         const index_t cols = m_col.size();
         GISMO_ASSERT( rows > 0 && cols > 0, 
@@ -284,7 +288,7 @@ public: /* Accessors */
     { return m_mappers[m_col[c]]; }
 
     // Returns the basis index for column block \a c
-    index_t colBasis(const index_t c) // better name ?
+    index_t colBasis(const index_t c) const // better name ?
     { return m_cvar[c]; }
 
     const DofMappers & dofMappers() const
@@ -320,6 +324,22 @@ public: /* mapping patch-local to global indices */
     {
         m_mappers[m_col.at(c)].localToGlobal(actives, patchIndex, result);
     }
+
+    void mapToGlobalRowIndex(const unsigned active,
+                       const index_t patchIndex,
+                       unsigned & result,
+                       const size_t r = 0) const
+    {
+        result = m_mappers[m_row.at(r)].index(active, patchIndex)+m_rstr[r];
+    }
+
+    void mapToGlobalColIndex(const unsigned active,
+                       const index_t patchIndex,
+                       unsigned & result,
+                       const size_t c = 0) const
+    {
+        result = m_mappers[m_col.at(c)].index(active, patchIndex)+m_cstr[c];
+    }
  
 public: /* Add local contributions to system matrix */
 
@@ -336,13 +356,13 @@ public: /* Add local contributions to system matrix */
         {
             const int ii = m_rstr.at(r) + actives.at(i); // N_i
             
-            if ( rowMap.is_free_index(ii) )
+            if ( rowMap.is_free_index(actives.at(i)) )
             {
                 for (index_t j = 0; j != numActive; ++j)
                 {
                     const int jj = m_cstr.at(c) + actives.at(j); // N_j
 
-                    if ( rowMap.is_free_index(jj) )
+                    if ( rowMap.is_free_index( actives.at(j)) )
                         // If matrix is symmetric, we store only lower
                         // triangular part
                         if ( (!symm) || jj <= ii ) 
@@ -358,7 +378,30 @@ public: /* Add local contributions to system matrix */
                      const gsMatrix<unsigned> & actives_j,
                      const size_t r = 0, const size_t c = 0)
     {
-        GISMO_NO_IMPLEMENTATION
+        const index_t numActive_i = actives_i.rows();
+        const index_t numActive_j = actives_j.rows();
+
+        const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
+        const gsDofMapper & colMap = m_mappers[m_col.at(c)];
+
+        for (index_t i = 0; i != numActive_i; ++i)
+        {
+            const int ii = m_rstr.at(r) + actives_i.at(i); // N_i
+
+            if ( rowMap.is_free_index(actives_i.at(i)) )
+            {
+                for (index_t j = 0; j != numActive_j; ++j)
+                {
+                    const int jj = m_cstr.at(c) + actives_j.at(j); // N_j
+
+                    if ( colMap.is_free_index(actives_j.at(j)) )
+                        // If matrix is symmetric, we store only lower
+                        // triangular part
+                        if ( (!symm) || jj <= ii )
+                            m_matrix.coeffRef(ii, jj) += localMat(i, j);
+                }
+            }
+        }
     }
 
 public: /* Add local contributions to system right-hand side */
@@ -373,7 +416,7 @@ public: /* Add local contributions to system right-hand side */
         for (index_t i = 0; i != numActive; ++i)
         {
             const int ii =  m_cstr.at(c) + actives.at(i);
-            if ( mapper.is_free_index(ii) )
+            if ( mapper.is_free_index(actives.at(i)) )
             {
                 m_rhs.row(ii) += localRhs.row(i);
             }
@@ -396,14 +439,14 @@ public: /* Add local contributions to system matrix and right-hand side */
         for (index_t i = 0; i != numActive; ++i)
         {
             const int ii =  m_rstr.at(r) + actives(i);
-            if ( rowMap.is_free_index(ii) )
+            if ( rowMap.is_free_index(actives(i)) )
             {
                 m_rhs.row(ii) += localRhs.row(i);
                 
                 for (index_t j = 0; j != numActive; ++j)
                 {
                     const int jj =  m_cstr.at(c) + actives(j);
-                    if ( rowMap.is_free_index(jj) )
+                    if ( rowMap.is_free_index(actives(j)) )
                     {
                         // If matrix is symmetric, we store only lower
                         // triangular part
@@ -456,14 +499,14 @@ public: /* Add local contributions to system matrix and right-hand side */
         for (index_t i = 0; i != numActive; ++i)
         {
             const int ii =  m_rstr.at(r) + actives(i);
-            if ( rowMap.is_free_index(ii) )
+            if ( rowMap.is_free_index(actives.at(i)) )
             {
                 m_rhs.row(ii) += localRhs.row(i);
                 
                 for (index_t j = 0; j < numActive; ++j)
                 {
                     const int jj =  m_cstr.at(c) + actives(j);
-                    if ( rowMap.is_free_index(jj) )
+                    if ( rowMap.is_free_index(actives.at(j)) )
                     {
                         // If matrix is symmetric, we store only lower
                         // triangular part
@@ -473,7 +516,7 @@ public: /* Add local contributions to system matrix and right-hand side */
                     else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
                     {
                         m_rhs.row(ii).noalias() -= localMat(i, j) * 
-                            eliminatedDofs.row( rowMap.global_to_bindex(jj) );
+                            eliminatedDofs.row( rowMap.global_to_bindex(actives.at(j)) );
                     }
                 }
             }
@@ -488,7 +531,38 @@ public: /* Add local contributions to system matrix and right-hand side */
               const gsMatrix<T> & eliminatedDofs_j,
               const size_t r = 0, const size_t c = 0)
     {
-        GISMO_NO_IMPLEMENTATION
+        const index_t numActive_i = actives_i.rows();
+        const index_t numActive_j = actives_j.rows();
+        const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
+        const gsDofMapper & colMap = m_mappers[m_col.at(c)];
+
+        //Assert eliminatedDofs.rows() == rowMap.boundarySize()
+
+        for (index_t i = 0; i != numActive_i; ++i)
+        {
+            const int ii =  m_rstr.at(r) + actives_i.at(i);
+            if ( rowMap.is_free_index(actives_i.at(i)) )
+            {
+                m_rhs.row(ii) += localRhs.row(i);
+
+                for (index_t j = 0; j < numActive_j; ++j)
+                {
+                    const int jj =  m_cstr.at(c) + actives_j.at(j);
+                    if ( colMap.is_free_index(actives_j.at(j)) )
+                    {
+                        // If matrix is symmetric, we store only lower
+                        // triangular part
+                        if ( (!symm) || jj <= ii )
+                            m_matrix.coeffRef(ii, jj) += localMat(i, j);
+                    }
+                    else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
+                    {
+                        m_rhs.row(ii).noalias() -= localMat(i, j) *
+                            eliminatedDofs_j.row( colMap.global_to_bindex(actives_j.at(j)) );
+                    }
+                }
+            }
+        }
     }
 
     // Local matrix and rhs with the same structure as the global system, 

@@ -99,6 +99,11 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
     m_system = gsSparseSystem<T>(mapper);//1,1
     const index_t nz = m_options.numColNz(m_bases[0][0]);
     m_system.reserve(nz, this->pde().numRhs());
+
+    // 3. reserve components for dirichlet Dofs
+    //must be the number of components, fixme: make more generic,
+    //i.e. m_ddof.resize(m_system.colBlocks());
+    m_ddof.resize(1);
 }
 
 template<class T>
@@ -115,8 +120,8 @@ void gsAssembler<T>::penalizeDirichletDofs(int unk)
                                                 m_options.intStrategy,
                                                 m_pde_ptr->bc(), unk) ;
 
-    GISMO_ENSURE( m_ddof.rows() == mapper.boundarySize() && 
-                  m_ddof.cols() == m_pde_ptr->numRhs(), 
+    GISMO_ENSURE( m_ddof[unk].rows() == mapper.boundarySize() &&
+                  m_ddof[unk].cols() == m_pde_ptr->numRhs(),
                   "The Dirichlet DoFs were not computed.");
     
     // BCs
@@ -135,7 +140,7 @@ void gsAssembler<T>::penalizeDirichletDofs(int unk)
             const index_t bb = bmap  .bindex( bnd(k) , it->patch() );
 
             m_system.matrix()(ii,ii) = PP;                  
-            m_system.rhs().row(ii)   = PP * m_ddof.row(bb);
+            m_system.rhs().row(ii)   = PP * m_ddof[unk].row(bb);
         }
     }
 
@@ -162,8 +167,8 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
         : mbasis.getMapper(dirichlet::elimination, m_options.intStrategy, 
                            m_pde_ptr->bc(), unk) ;
     
-    GISMO_ASSERT(m_ddof.rows()==mapper.boundarySize() && 
-                 m_ddof.cols() == m_pde_ptr->numRhs(),
+    GISMO_ASSERT(m_ddof[unk].rows()==mapper.boundarySize() &&
+                 m_ddof[unk].cols() == m_pde_ptr->numRhs(),
                  "Fixed DoFs were not initialized");
 
     // for every side with a Dirichlet BC
@@ -186,7 +191,7 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
                 // control point on the patch
                 const int ii  = mapper.bindex( boundary.at(i) , k );
                 
-                m_ddof.row(ii) = coefMatrix.row(boundary.at(i));
+                m_ddof[unk].row(ii) = coefMatrix.row(boundary.at(i));
             }
         }
     }
@@ -195,11 +200,11 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
 template<class T>
 void gsAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, int unk)
 {
-    m_ddof.swap(vals);
+    m_ddof[unk].swap(vals);
     vals.resize(0,0);
     // Assuming that the DoFs are already set by the user
-    GISMO_ENSURE( m_ddof.rows() == m_system.colMapper(unk).boundarySize() && 
-                  m_ddof.cols() == m_pde_ptr->numRhs(), 
+    GISMO_ENSURE( m_ddof[unk].rows() == m_system.colMapper(unk).boundarySize() &&
+                  m_ddof[unk].cols() == m_pde_ptr->numRhs(),
                   "The Dirichlet DoFs were not provided correctly.");
 }
 
@@ -221,18 +226,18 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     case dirichlet::homogeneous:
         // If we have a homogeneous Dirichlet problem fill boundary
         // DoFs with zeros
-        m_ddof.setZero(mapper.boundarySize(), m_pde_ptr->numRhs() );
+        m_ddof[unk].setZero(mapper.boundarySize(), m_pde_ptr->numRhs() );
         break;
     case dirichlet::interpolation:        
-        computeDirichletDofsIntpl(mapper, mbasis);
+        computeDirichletDofsIntpl(mapper, mbasis,unk);
         break;
     case dirichlet::l2Projection:
-        computeDirichletDofsL2Proj(mapper, mbasis);
+        computeDirichletDofsL2Proj(mapper, mbasis,unk);
         break;
     case dirichlet::user :
         // Assuming that the DoFs are already set by the user
-        GISMO_ENSURE( m_ddof.rows() == mapper.boundarySize() && 
-                      m_ddof.cols() == m_pde_ptr->numRhs(), 
+        GISMO_ENSURE( m_ddof[unk].rows() == mapper.boundarySize() &&
+                      m_ddof[unk].cols() == m_pde_ptr->numRhs(),
                       "The Dirichlet DoFs are not set.");
         break;
     default:
@@ -246,7 +251,7 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     {
         const int i  = mbasis[it->patch].functionAtCorner(it->corner);
         const int ii = mapper.bindex( i , it->patch );
-        m_ddof.row(ii).setConstant(it->value);
+        m_ddof[unk].row(ii).setConstant(it->value);
     }
 }
 
@@ -267,9 +272,10 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
 // not work, because functions might be truncated to zero at these points.
 template<class T> // 
 void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
-                                               const gsMultiBasis<T> & mbasis)
+                                               const gsMultiBasis<T> & mbasis,
+                                               const int unk_)
 {
-    m_ddof.resize(mapper.boundarySize(), m_pde_ptr->numRhs() );
+    m_ddof[unk_].resize(mapper.boundarySize(), m_pde_ptr->numRhs() );
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator
@@ -278,6 +284,8 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
     {
         //const int unk = it->unknown();
         const int k   = it->patch();
+        if(it->unknown()!=unk_)
+            continue;
         const gsBasis<T> & basis = mbasis[k];
 
         // Get dofs on this boundary
@@ -289,7 +297,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             for (index_t i=0; i!= boundary.size(); ++i)
             {
                 const int ii= mapper.bindex( boundary.at(i) , k );
-                m_ddof.row(ii).setZero();
+                m_ddof[unk_].row(ii).setZero();
             }
             continue;
         }
@@ -336,7 +344,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         {
             const int ii = mapper.bindex( boundary.at(l) , it->patch() );
 
-            m_ddof.row(ii) = dVals.row(l);
+            m_ddof[unk_].row(ii) = dVals.row(l);
         }
 
         delete h;
@@ -346,9 +354,10 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
 
 template<class T>
 void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
-                                                const gsMultiBasis<T> & mbasis)
+                                                const gsMultiBasis<T> & mbasis,
+                                                const int unk_)
 {
-    m_ddof.resize( mapper.boundarySize(), m_pde_ptr->numRhs() );
+    m_ddof[unk_].resize( mapper.boundarySize(), m_pde_ptr->numRhs() );
 
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
@@ -370,6 +379,8 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
           iter != m_pde_ptr->bc().dirichletEnd(); ++iter )
     {
         const int unk = iter->unknown();
+        if(unk!=unk_)
+            continue;
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
 
@@ -393,7 +404,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
             // the values of the boundary condition are stored
             // to rhsVals. Here, "rhs" refers to the right-hand-side
             // of the L2-projection, not of the PDE.
-            rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( quNodes ) );
+            rhsVals = (iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( quNodes ) ));
 
             basis.eval_into( quNodes, basisVals);
 
@@ -471,12 +482,12 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
     // numbering by the boundary index. Hence, we can simply take them
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
-    m_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
+    m_ddof[unk_] = solver.compute( globProjMat ).solve ( globProjRhs );
     
 } // computeDirichletDofsL2Proj
 
 template<class T>
-void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector, 
+void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
                                        gsMultiPatch<T>& result, int unk) const
 {
     // we might need to get a result even without having the system ..
@@ -488,11 +499,11 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     GISMO_ASSERT(solVector.rows() == mapper.freeSize(), "Something went wrong, solution vector is not OK.");
 
     result.clear(); // result is cleared first
-    
+
     const index_t dim = m_pde_ptr->numRhs();
-    
+
     for (size_t p=0; p < m_pde_ptr->domain().nPatches(); ++p )
-    {    
+    {
         // Reconstruct solution coefficients on patch p
         const int sz  = m_bases[unk][p].size();
         gsMatrix<T> coeffs( sz, dim);
@@ -505,11 +516,63 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
             }
             else // eliminated DoF: fill with Dirichlet data
             {
-                coeffs.row(i) = m_ddof.row( mapper.bindex(i, p) );
+                coeffs.row(i) = m_ddof[unk].row( mapper.bindex(i, p) );
             }
         }
-        
+
         result.addPatch( m_bases[unk][p].makeGeometry( give(coeffs) ) );
+    }
+
+    // AM: result topology ?
+}
+
+template<class T>
+void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
+                                       gsMultiPatch<T>& result,const gsVector<index_t> unknowns) const
+{
+    // we might need to get a result even without having the system ..
+    //GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
+
+    GISMO_ASSERT(solVector.cols()==1, "Vector valued output only works for single rhs");
+    unsigned idx;
+
+    const index_t dim = unknowns.rows();
+
+    // fixme: based on \a m_options and \a unk choose the right dof mapper
+    std::vector<gsDofMapper> mappers(dim);
+    for(index_t unk = 0; unk<dim;++unk)
+            mappers[unk] = m_system.colMapper(unknowns[unk]);
+
+
+    result.clear(); // result is cleared first
+
+    gsVector<index_t> basisIndices(dim);
+    for(index_t unk = 0; unk<dim;++unk)
+            basisIndices[unk] = m_system.colBasis(unknowns[unk]);
+
+    for (size_t p=0; p < m_pde_ptr->domain().nPatches(); ++p )
+    {
+        const int sz  = m_bases[basisIndices[0]][p].size(); //must be equal for all unk
+        gsMatrix<T> coeffs(sz, dim);
+
+        for(index_t unk = 0; unk<dim;++unk)
+        {
+            // Reconstruct solution coefficients on patch p
+            for (index_t i = 0; i < sz; ++i)
+            {
+                if ( mappers[unk].is_free(i, p) ) // DoF value is in the solVector
+                {
+                    m_system.mapToGlobalColIndex(i,p,idx,unknowns[unk]);
+                    coeffs(i,unk) = solVector(idx,0);
+                    // coeffs(i,unk) = solVector(mappers[unk].index(i, p),0);
+                }
+                else // eliminated DoF: fill with Dirichlet data
+                {
+                    coeffs(i,unk) = m_ddof[unknowns[unk]](mappers[unk].bindex(i, p),0);
+                }
+            }
+        }
+        result.addPatch( m_bases[basisIndices[0]][p].makeGeometry( give(coeffs) ) );
     }
 
     // AM: result topology ?
@@ -540,7 +603,7 @@ gsField<T> *  gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
             }
             else // eliminated DoF: fill with Dirichlet data
             {
-                coeffs.row(i) = m_ddof.row( mapper.bindex(i, p) );
+                coeffs.row(i) = m_ddof[unk].row( mapper.bindex(i, p) );
             }
         }
 

@@ -64,7 +64,7 @@ protected: // *** Output data members ***
     gsSparseSystem<T> m_system;
 
     /// Fixed DoF values (if applicable, for instance eliminated Dirichlet DoFs)
-    gsMatrix<T> m_ddof;  // fixme: std::vector<gsMatrix<T> > m_fixedDofs;
+    std::vector<gsMatrix<T> > m_ddof;  // fixme: std::vector<gsMatrix<T> > m_fixedDofs;
     // One for each colMapper
 
 public: /* Constructors and initializers */
@@ -203,27 +203,44 @@ public:  /* Dirichlet degrees of freedom computation */
 
     /// @brief Sets any Dirichlet values to homogeneous (if applicable)
     void homogenizeFixedDofs(int unk = 0)
-    {m_ddof.setZero(); }
+    {
+        if(unk==-1)
+        {
+            for(std::size_t i=0;i<m_ddof.size();++i)
+                m_ddof[i].setZero();
+        }
+        m_ddof[unk].setZero();
+    }
 
     // index_t numFixedDofs(int unk = 0) {return m_dofMappers[unk].boundarySize();}
 
     /// @brief Returns the Dirichlet values (if applicable)
-    const gsMatrix<T> & fixedDofs() const { return m_ddof; }
-    const gsMatrix<T> & dirValues() const { return m_ddof; }//remove
+    const std::vector<gsMatrix<T> > & allFixedDofs() const { return m_ddof; }
+
+    const gsMatrix<T> & fixedDofs(int unk=0) const { return m_ddof[unk]; }
+    const gsMatrix<T> & dirValues(int unk=0) const { return m_ddof[unk]; }//remove
 
 private:  /* Helpers for Dirichlet degrees of freedom computation */
 
     void computeDirichletDofsIntpl(const gsDofMapper     & mapper,
-                                   const gsMultiBasis<T> & mbasis);
+                                   const gsMultiBasis<T> & mbasis,
+                                   const int unk_ = 0);
     
     void computeDirichletDofsL2Proj(const gsDofMapper     & mapper,
-                                    const gsMultiBasis<T> & mbasis);
+                                    const gsMultiBasis<T> & mbasis,
+                                    const int unk_ = 0);
 
 public:  /* Solution reconstruction */
 
     /// @brief Reconstruct solution from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, 
                                    gsMultiPatch<T>& result, int unk = 0) const;
+
+
+
+    virtual void constructSolution(const gsMatrix<T>& solVector,
+                                   gsMultiPatch<T>& result,
+                                   const gsVector<index_t> unknows) const;
 
     // fixme: remove (currently for compatibility)
     GISMO_DEPRECATED

@@ -86,7 +86,7 @@ public:
     }
     
     inline void localToGlobal(const int patchIndex,
-                              const gsMatrix<T>     & eliminatedDofs,
+                              const std::vector<gsMatrix<T> >    & eliminatedDofs,
                               gsSparseSystem<T>     & system)
     {
         // Map patch-local DoFs to global DoFs
