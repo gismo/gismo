@@ -189,7 +189,7 @@ private:
         {
             // AM: a little ugly for now, to be improved
             return 
-                static_cast<int>(m_leaf.upperCorner().at(dir) )
+                static_cast<size_t>(m_leaf.upperCorner().at(dir) )
                 == 
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)
                 ->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;// todo: more efficient
