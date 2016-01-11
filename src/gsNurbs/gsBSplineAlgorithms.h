@@ -283,7 +283,7 @@ void degreeElevateBSpline(Basis_t &basis,
     gsVector<T> factor = gsVector<T>::Ones(p+1);
     for(int j=0; j<=p; j++)
         for(int l=1; l<=j; l++)
-            factor[j] *= static_cast<double>((p+1-l)) / (p_new+1-l);
+            factor[j] *= static_cast<T>((p+1-l)) / (p_new+1-l);
 
     //set known coefficients
     // for(int j=0; j<=p; ++j)
