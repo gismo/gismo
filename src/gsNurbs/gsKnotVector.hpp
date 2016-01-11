@@ -569,6 +569,16 @@ int gsKnotVector<T>::degree() const
 }
 
 template<typename T>
+typename gsKnotVector<T>::multContainer gsKnotVector<T>::multiplicities() const
+{
+    multContainer result;
+    result.reserve(uSize());
+    for( uiterator uit = ubegin(); uit != uend(); ++uit )
+        result.push_back( uit.multiplicity() );
+    return result;
+}
+
+template<typename T>
 typename gsKnotVector<T>::uiterator
 gsKnotVector<T>::uFind( const T u ) const
 {
@@ -804,7 +814,7 @@ void gsKnotVector<T>::supportIndex_into(const mult_t& i,
     T suppBeg=*(this->begin()+i);
     T suppEnd=*(this->begin()+i+m_deg+1);
     uiterator ubeg   = this->ubegin();
-    uiterator indBeg = findElement(suppBeg);
+    uiterator indBeg = uFind(suppBeg);
     uiterator indEnd = std::find_if(indBeg, this->uend(), std::bind2nd(std::greater_equal<T>(), suppEnd));
     result.resize(1,2);
     result<<indBeg-ubeg,indEnd-ubeg;

@@ -41,7 +41,7 @@ void gsBoehm(
 
     assert( coefs.rows() == index_t(knots.size() - knots.degree()-1) ) ;
 
-    int k = knots.findspan(val);
+    int k = knots.iFind(val) - knots.begin();
     int s = knots.multiplicity(val); // current multiplicity of val
     int p = knots.degree();
     int np= coefs.rows()-1;
@@ -89,7 +89,7 @@ void gsBoehmSingle(
 {
     assert( coefs.rows() == index_t(knots.size() - knots.degree()-1) ) ;
 
-    int k = knots.findspan(val);
+    int k = knots.iFind(val)-knots.begin();
     int p = knots.degree();
 
     coefs.duplicateRow( k );
@@ -158,8 +158,8 @@ void gsBoehmRefine( KnotVectorType & knots,
     const int nk= std::distance( valBegin, valEnd );
     coefs.conservativeResize(np+nk, coefs.cols());
 
-    const int a = knots.findspan( *valBegin );
-    const int b = knots.findspan( *(valEnd-1)  ) + 1;
+    const int a =  knots.iFind( *valBegin    ) - knots.begin();
+    const int b = (knots.iFind( *(valEnd-1)  ) - knots.begin()) + 1;
 
     //gsKnotVector<T> nknots(p, knots.size()+nk);
     std::vector<T> nknots(knots.size()+nk);
@@ -234,7 +234,7 @@ void gsTensorBoehm(
                  "We can not insert a knot outside of the knot vector interval");
 
     int d = str.size(); // dimension
-    int k = knots.findspan(val);
+    int k = knots.iFind(val) - knots.begin();
     int s = knots.multiplicity(val);
     int p = knots.degree();
 
@@ -368,8 +368,8 @@ void gsTensorBoehmRefine(
     GISMO_ASSERT(direction < d,
                  "We can not insert a knot in a given direction");
 
-    const int a = knots.findspan(*valBegin);
-    const int b = knots.findspan(*(valEnd - 1)) + 1;
+    const int a =  knots.iFind(*valBegin)     - knots.begin();
+    const int b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
 
     // we compute new coefficients and put them into new_coef
     int npts_in_dir = nk - p - 1; // number of points in direction d
@@ -495,8 +495,8 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
     //const int d = size_of_coefs.size();    // dimension
 
 
-    const int a = knots.findspan(*valBegin);
-    const int b = knots.findspan(*(valEnd - 1)) + 1;
+    const int a =  knots.iFind(*valBegin)     - knots.begin();
+    const int b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
 
 
     // allocate a memory for new knots and new control points
@@ -742,7 +742,7 @@ void gsTensorInsertKnotDegreeTimes(
         gsVector<unsigned, d>& start,
         gsVector<unsigned, d>& end)
 {
-    int k = knots.findspan(val);
+    int k = knots.iFind(val) - knots.begin();
     int s = knots.multiplicity(val);
     int p = knots.degree();
 

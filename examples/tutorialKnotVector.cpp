@@ -101,12 +101,12 @@ int main(int argc, char* argv[])
     printKnotVector(kv7);
 
     gsInfo << "kv7.size(): " << kv7.size() << "\n\n"
-              << "kv7.findspan(1.5): " << kv7.findspan(1.5) << "\n\n"
-              << "kv7.findspan(2): " << kv7.findspan(2) << "\n\n"
+              << "kv7.findspan(1.5): " << kv7.iFind(1.5) - kv7.begin() << "\n\n"
+              << "kv7.findspan(2): " << kv7.iFind(2) - kv7.begin() << "\n\n"
               << "kv7.has(2): " << kv7.has(2) << "\n\n"
               << "kv7.has(2.1): " << kv7.has(2.1) << "\n\n"
               << "kv7.isUniform(): " << kv7.isUniform() << "\n\n"
-              << "kv7.numKnotSpans(): " << kv7.numKnotSpans() << "\n\n"
+              << "kv7.numKnotSpans(): " << kv7.uSize() - 1 << "\n\n"
               << "kv7.isOpen(): " << kv7.isOpen() << "\n\n"
               << "kv7.multiplicity(2): " << kv7.multiplicity(2) << "\n\n"
               << "kv7.multiplicity(1): " << kv7.multiplicity(1) << "\n\n\n";

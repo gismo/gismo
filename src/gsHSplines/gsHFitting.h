@@ -279,7 +279,7 @@ void  gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
     for (unsigned dim = 0; dim != d; dim++)
     {
         const gsKnotVector<T> & kv = tBasis.component(dim).knots();
-        a_cell(dim) = static_cast<unsigned>(kv.Uniquefindspan(parameter(dim)));
+        a_cell(dim) = static_cast<unsigned>(kv.uFind(parameter(dim)).uIndex());
     }
     
     if (!isCellAlreadyInserted(a_cell, cells))

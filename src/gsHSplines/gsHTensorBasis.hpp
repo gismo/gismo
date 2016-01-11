@@ -47,7 +47,7 @@ int gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
     const int maxLevel = m_tree.getMaxInsLevel();
 
     for( int i =0; i < Dim; i++)
-        loIdx[i] = m_bases[maxLevel]->knots(i).Uniquefindspan( Pt(i,0) );
+        loIdx[i] = m_bases[maxLevel]->knots(i).uFind( Pt(i,0) ).uIndex();
 
     return m_tree.levelOf( loIdx, maxLevel);
 }
@@ -65,7 +65,7 @@ void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
     {
         lvl[i] = static_cast<unsigned>( getLevelAtPoint( Pt.col(i) ) );
         for( index_t j = 0; j < Pt.rows(); j++)
-            loIdx(j,i) = m_bases[ lvl[i] ]->knots(j).Uniquefindspan( Pt(j,i) ) ;
+            loIdx(j,i) = m_bases[ lvl[i] ]->knots(j).uFind( Pt(j,i) ).uIndex() ;
     }
 }
 
@@ -81,7 +81,7 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
     for(index_t p = 0; p < u.cols(); p++ ) //for all input points
     {
         for(int i = 0; i != d; ++i)
-            low[i] = m_bases[maxLevel]->knots(i).Uniquefindspan(u(i,p));
+            low[i] = m_bases[maxLevel]->knots(i).uFind(u(i,p)).uIndex();
 
         // Identify the level of the point
         const int lvl = m_tree.levelOf(low, maxLevel);
@@ -296,8 +296,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
             for(index_t j = 0; j < boxes.rows();j++)
             {
                 // Convert the parameter coordinates to (unique) knot indices
-                int k1 = m_bases[refLevel]->knots(j).Uniquefindspan(boxes(j,2*i ));
-                int k2 = m_bases[refLevel]->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
+                int k1 = m_bases[refLevel]->knots(j).uFind(boxes(j,2*i )).uIndex();
+                int k2 = m_bases[refLevel]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
 
                 // If applicable, add the refinement extension.
                 // Note that extending by one cell on level L means
@@ -349,8 +349,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 
         for(index_t j = 0; j < k1.size();j++)
         {
-            k1[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i  )) ;
-            k2[j] = m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1)) ;
+            k1[j] = m_bases.back()->knots(j).uFind(boxes(j,2*i  )).uIndex() ;
+            k2[j] = m_bases.back()->knots(j).uFind(boxes(j,2*i+1)).uIndex() ;
 
             // Boxes are half-open, trivial boxes trigger at least one box refined
             if ( k1[j] == k2[j] ) ++k2[j];
@@ -879,7 +879,7 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
     {
         const gsMatrix<T> & currPoint = u.col(p);
         for(unsigned i = 0; i != d; ++i)
-            low[i] = m_bases[maxLevel]->knots(i).Uniquefindspan( currPoint(i,0) );
+            low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
 
         // Identify the level of the point
         const int lvl = m_tree.levelOf(low, maxLevel);
@@ -1256,7 +1256,7 @@ void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<unsigne
         min = b1.row(i);
         max = b2.row(i);
         const unsigned l = level(i);
-        const unsigned par_index = m_bases[l]->knots(dir).findElementIndex(par);
+        const unsigned par_index = m_bases[l]->knots(dir).uFind(par).uIndex();
         if(l>0 && (par_index>=min(dir)) && (par_index<=max(dir)))
         {
             boxes.push_back(l);

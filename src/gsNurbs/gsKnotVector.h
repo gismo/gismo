@@ -21,48 +21,59 @@
 namespace gismo
 {
 
-// TODO: Formatting
 /** @brief Class for representing a knot vector.
 
  Consists of a vector of non-decreasing knots repeated according to
  their multiplicities and a vector of sums of multiplicities up to the
- corresponding unique knot.
+ corresponding unique knot. The repeated knots are stored in `m_repKnots`,
+ whereas the multiplicity sum is stored in `m_multSum`.
 
- There are three means of iterating through the knots:
- 1) iterator, which is just an STL iterator over the repeated knots;
- 2) uiterator, which is similar but iterates over the unique knots (i.e., without multiplicities) and provides additional functionality;
- 3) smart_iterator, which iterates over the repeated knots and provides additional functionality.
+# Iterators #
 
-Terminology: TODO update
+There are three means of iterating through the knots:
+ + iterator, which is just an STL iterator over the repeated knots;
+ + uiterator, which is similar but iterates over the unique knots
+   (i.e., without multiplicities) and provides additional functionality;
+ + smart_iterator, which iterates over the repeated knots and provides additional functionality.
 
-Domain is the interval between the degree-th knot from the beginning
-and degree-th knot from the end (note that we number from zero).
+# Terminology #
 
-Span is the interval between two consecutive unique knots. It is
-closed on the left and open on the right, except for the last one in
-the domain, which is closed. Span index is the knot index of the last
-knot (including repetitions) at the beginning of the span.
+ + _repeated knots_ is the non-decreasing sequence, where each knot is repeated according to its multiplicity.
 
-Element is a span inside the domain. Their numbering is shifted in
-comparison to that of spans so that the element with index 0 starts in
-the beginning of the domain.
+ + _unique knots_ is the increasing sequence of all the distinct values from _repeated knots_.
 
-Example:
+ + _starting knot_ is the degree-th knot from the beginning, i.e., `m_repKnots[m_deg]`.
 
-Consider the knot vector (0, 0, 0, .2, .3, .7, 1, 1, 1) with degree 2.
-The domain is [0, 1]. The spans are [0, .2), [.2, .3), [.3, .7) and
-[.7, 1]. Their span indices are 0, 1, 2 and 3, respectively. On a
-clamped knot vector the spans and the elements are the same.
+ + _ending knot_ is the degree-th knot from the end, i.e., `m_repKnots[ m_repKnots.size() - m_deg - 1 ]`
+ or, equivalently, `m_repKnots.end()[-m_deg-1]`.
 
-Another example:
+ + _domain_ is the interval between the _starting knot_ and _ending knot_.
 
-Consider knot vector (0, .1, .2, .3, .4, .5, .6, .7) with degree 2.
-The domain is [.2, .5]. The spans are [0, .1), [.1, .2), [.2, .3),
-[.3, .4), [.4, .5], (.5, .6) and [.6, .7] with span indices 0 to
-6. Notice that [.4, .5] and [.6, .7] are closed. The elements are [.2,
-.3), [.3, .4) and [.4, .5] with element indices 0, 1 and 2.
+ + _knot interval_ \anchor knotInterval is the interval between two consecutive unique knots.
+   It is closed from left and open from right, except for the interval
+   [`*(domainUEnd()-1)`, `*domainUEnd()`], which is considered closed from both sides.
 
- 
+# Compatibility notes #
+
+Earlier versions contained several functions that have been removed.
+
+ + `uiterator findElement( const T u ) const` :  use `uFind( const T u )` instead;
+
+ + `unsigned findspan( T u ) const` : use `iFind(u) - begin()` instead;
+
+ + `iterator findspanIter( T u ) const` : use `iFind(u)` instead;
+
+ + `int findElementIndex(T u) const` : use `uFind(u).uIndex()` instead;
+
+ + `unsigned Uniquefindspan (T u) const` : use `uFind(u).uIndex()` instead;
+
+ + `gsMatrix<unsigned,1> * findspan (const gsMatrix<T,1> & u) const` :
+  call `iFind(u(0,i)) - begin()` for each `i` from `0` to `u.cols()`.
+
+ + `int numKnotSpans() const` : use `uSize() - 1` instead;
+
+ + `unsigned spans() const` : use `uSize() - 1` instead;
+
  */
 template<typename T>
 class gsKnotVector : public gsDomain<T>
@@ -217,18 +228,32 @@ public: // modifiers
 public: // queries
 
     /// Number of knots (including repetitions).
-    inline size_t size() const {return m_repKnots.size(); }
+    inline size_t size() const { return m_repKnots.size(); }
 
-    /// Number of unique knots (without repetitins).
+    /// Number of unique knots (i.e., without repetitions).
     inline size_t uSize() const { return m_multSum.size(); }
 
-    /// Provides i-th knot (numbered including repetitions).
+    /// Provides the i-th knot (numbered including repetitions).
     const T& operator[]( const mult_t i ) const
     {
         GISMO_ASSERT( static_cast<size_t>(i) < m_repKnots.size(),
                       "Index " << i << " not in the knot vector." );
         return m_repKnots[i];
     }
+
+    /// Number of knot intervals inside domain.
+    inline size_t numElements() const { return (domainUEnd() - domainUBegin()); }
+
+public: // getters
+
+    /// Returns unique knots.
+    knotContainer unique () const
+    {
+        return knotContainer(this->ubegin(),this->uend());
+    }
+
+    /// Returns vector of multiplicities of the knots.
+    multContainer multiplicities() const;
 
     /// Cast to the full vector of knot values (with repetitions).
     operator const knotContainer& () const {return m_repKnots;}
@@ -240,6 +265,20 @@ public: // queries
     /// multiplicities.
     const mult_t * multSumData() const {return m_multSum.data(); }
 
+public: // findspan stuff
+
+    /** \brief Returns the uiterator pointing to the knot at the
+     * beginning of the _knot interval_ containing \a u.
+     * Note that if `u == *domainUEnd()`, it returns the uiterator
+     * `domainUEnd() - 1`. Cf. \ref knotInterval "knot interval". */
+    uiterator uFind( const T u ) const;
+
+    /** \brief Returns an iterator to the last occurrence of the knot
+     * at the beginning of the _knot interval_ containing \a u.
+     * Note that if `u == *domainEnd()`, it returns the iterator
+     * `domainEnd() - 1`. Cf. \ref knotInterval "knot interval". */
+    iterator iFind( const T u ) const;
+
 public: // miscellaneous
 
     /// Print the knot vector to the given stream.
@@ -249,21 +288,19 @@ public: // miscellaneous
     /// Checks whether the knot vector is in a consistent state
     bool check() const;
 
-private: // iterator typdefs
+private: // iterator typedefs and getters
 
     typedef typename knotContainer::iterator nonConstIterator    ;
     typedef typename multContainer::iterator nonConstMultIterator;
 
-    /// Returns a smart iterator pointing to the starting knot of the
-    /// domain
+    /// Returns an iterator pointing to the starting knot of the domain.
     iterator domainBegin() const
     {
         GISMO_ASSERT( size() > static_cast<size_t>(2*m_deg+1), "Not enough knots.");
         return begin() + m_deg;
     }
 
-    /// Returns a smart iterator pointing to the end-knot of the
-    /// domain
+    /// Returns an iterator pointing to the end-knot of the domain.
     iterator domainEnd() const
     {
         GISMO_ASSERT( size() > static_cast<size_t>(2*m_deg+1), "Not enough knots.");
@@ -275,20 +312,12 @@ private: // iterator typdefs
     smart_iterator domainSBegin() const
     { return sbegin() + m_deg; }
 
-    /// Returns a smart iterator pointing to the end-knot of the
+    /// Returns a smart iterator pointing to the ending knot of the
     /// domain
     smart_iterator domainSEnd() const
     { return send() - (m_deg + 1); }
 
-    /**
-       \brief Returns a unique iterator pointing to the strarting knot of the
-    domain. 
-    
-    Definition: The starting knot is the knot m_repKnots[m_deg]
-
-    The knot-vector represents the domain which is the closed interval
-    starting at this knot
-    */
+    /// Returns a unique iterator pointing to the starting knot of the domain.
     uiterator domainUBegin() const
     {
         return domainSBegin().uIterator();
@@ -296,14 +325,7 @@ private: // iterator typdefs
         //return ubegin() + domainSBegin().uIndex();
     }
 
-    /**
-    \brief Returns a unique iterator pointing to the end-knot of the domain
-
-    Definition: The ending knot is the knot m_repKnots.end()[-m_deg-1]
-
-    The knot-vector represents the domain closed interval with
-    end-point equal to this knot
-    */
+    /// Returns a unique iterator pointing to the ending knot of the domain.
     uiterator domainUEnd() const
     {
         return domainSEnd().uIterator();
@@ -311,12 +333,12 @@ private: // iterator typdefs
         //return ubegin() + domainSEnd().uIndex();
     }
 
+    /// Checks, whether the given value is inside the domain.
     inline bool inDomain(const T u) const
     {
         return u >= *domainBegin() && u <= *domainEnd();
         // equivalent:
-        // return u >= m_repKnots[m_deg] && u <= m_repKnots.end()[-m_deg-1];
-        
+        // return u >= m_repKnots[m_deg] && u <= m_repKnots.end()[-m_deg-1];        
     }
 
 public:
@@ -534,12 +556,6 @@ public:
     void supportIndex_into(const mult_t &i, gsMatrix<unsigned>& result) const;
     // TODO: If the function stays, make a unit test from what is in unifiedKnotVector.cpp.
 
-    /// Returns unique knots.
-    knotContainer unique () const
-    {
-        return knotContainer(this->ubegin(),this->uend());
-    }
-
     /// Inserts \a numKnots (and each of them \a mult - times) between
     /// each two knots.
     void uniformRefine( mult_t numKnots = 1, mult_t mult = 1);
@@ -574,53 +590,6 @@ public:
 
     /// Adds \a amount to all the knots.
     void addConstant( T amount );
-
-public: // findspan stuff
-
-    /// Returns the uiterator pointing to the knot at the beginning of
-    /// the interval (closed from left) containing \a u. Exception:
-    /// interval *(domainUEnd()-1, *domainUEnd) is considered closed
-    /// from both sides. I.e., if u == *domainUEnd(), it returns the
-    /// uiterator domainUEnd() - 1.  Functionality of findElement can
-    /// be obtained by calling uIndex() on the result.
-    uiterator uFind( const T u ) const;
-
-    /// Returns an iterator to the largest knot (including
-    /// repetitions) that is smaller or equal to \a u and is strictly
-    /// smaller than *domainEnd().  Functionality of findSpan can be
-    /// easily obtained by subtracting begin() from the result.
-    iterator iFind( const T u ) const;
-    
-    /// See uFind().
-    // TODO: Remove.
-    uiterator findElement( const T u ) const
-    {
-        return uFind( u );
-    }
-    
-    /// Returns the index of the interval containing \a u. \sa findSpan.
-    // TODO: Remove.
-    unsigned findspan( T u ) const
-    {
-        return iFind(u) - begin();
-        // equivalent
-        // return findElement(u).lastAppearance();
-    }
-
-    /// Returns an iterator pointing to the beginning of the span
-    /// containing the point \a u.
-    // TODO Remove, use iFind() instead.
-    iterator findspanIter( T u ) const
-    {
-        return iFind( u );
-    }
-    
-    /// Returns the index of the "element" containing the point \a u.
-    // TODO: Remove
-    int findElementIndex(T u) const
-    {
-        return findElement(u).uIndex();
-    }
 
 public: // things required by gsKnotVector
 
@@ -676,12 +645,6 @@ public: // things required by gsKnotVector
     {
         GISMO_ASSERT(this->size()>=1, "I need at least one knot.");
         return m_repKnots.back();
-    }
-
-    /// Returns the number of knot spans in the knot-vector
-    int numKnotSpans() const
-    {
-        return uSize() - 1;
     }
 
     /// See affineTransform().
@@ -760,12 +723,6 @@ public: // things required by gsKnotVector
 
 public: // Deprecated functions required by gsCompactKnotVector.
 
-    /// Returns the index of the span containing the point \a u.
-    unsigned Uniquefindspan (T u) const
-    {
-        return findElementIndex(u);
-    }
-
     /// True iff the knot exists in the vector
     /// \param knot parameter value.
     inline bool has(T knot) const
@@ -815,40 +772,12 @@ public: // Deprecated functions required by gsCompactKnotVector.
     bool operator != (const gsKnotVector<real_t>& other) const
     {
         return ! ((*this)==other);
-    }
-     
-    /// Returns vector of multiplicities of the knots.
-    const std::vector<mult_t> multiplicities() const
-    {
-        std::vector<mult_t> result;
-        result.reserve(uSize());
-        for( uiterator uit = ubegin(); uit != uend(); ++uit )
-            result.push_back( uit.multiplicity() );
-        return result;
-    }
+    }    
 
     /// Returns the value of the \a i - th knot (counted with repetitions).
     inline T at (const size_t & i) const
     {
         return m_repKnots.at(i);
-    }
-
-    /// Returns the index (packed in a gsMatrix)
-    gsMatrix<unsigned,1> * findspan (const gsMatrix<T,1> & u) const
-    {
-        // Where is this deleted then? The user is required to do so.
-        gsMatrix<unsigned,1> * fs = new gsMatrix<unsigned,1>(1, u.cols() );
-
-        for( index_t i = 0; i < u.cols(); i++ )
-            (*fs)(0,i) = findspan( u(0,i) );
-
-        return fs;
-    }
-
-    /// Returns the number of knot spans.
-    unsigned spans() const
-    {
-        return this->uSize() - 1;
     }
 
     /// Checks whether the knot vector is uniform.
@@ -861,8 +790,8 @@ public: // Deprecated functions required by gsCompactKnotVector.
         return true;
     }
      
-    /// Returns true iff the knot is open (ie. both endpoint
-    /// multiplicities equal to degree+1)
+    /// Returns true iff the knot is open (i.e., both endpoints
+    /// have multiplicities equal to degree+1).
     bool isOpen() const
     {
         const int dp1 = m_deg + 1;
@@ -876,10 +805,10 @@ public: // Deprecated functions required by gsCompactKnotVector.
         //    m_multSum.back() - m_multSum.end()[-2] == dp1;
     }
 
-    /// Returns unique knots.
+    /// Returns unique knots of the domain (i.e., including the endpoints of the domain).
     virtual knotContainer breaks() const
     {
-        return knotContainer(ubegin(), uend());
+        return knotContainer(domainUBegin(),domainUEnd()+1);
     }
 
 public: // others

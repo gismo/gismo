@@ -51,13 +51,13 @@ gsTensorBSplineBasis<1,T,KnotVectorType>::New(std::vector<gsBasis<T>*> & bb )
 template <class T, class KnotVectorType>
 int gsTensorBSplineBasis<1,T,KnotVectorType>::elementIndex(const gsVector<T> & u ) const
 {
-    return m_knots.findElementIndex(u(0,0));
+    return m_knots.uFind(u(0,0)).uIndex();
 }
 
 template <class T, class KnotVectorType>
 int gsTensorBSplineBasis<1,T,KnotVectorType>::elementIndex(T u ) const
 {
-    return m_knots.findElementIndex( u );
+    return m_knots.uFind( u ).uIndex();
 }
 
 template <class T, class KnotVectorType>
@@ -319,7 +319,7 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::eval_into(const gsMatrix<T> & u, 
     // Run evaluation algorithm
     
     // Get span of absissae
-    unsigned span = m_knots.findspan( u(0,v) ) ;
+    unsigned span = m_knots.iFind( u(0,v) ) - m_knots.begin() ;
 
     //ndu[0]   = T(1);  // 0-th degree function value
     result(0,v)= T(1);  // 0-th degree function value
@@ -595,7 +595,7 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv_into(const gsMatrix<T> & u,
       // Run evaluation algorithm and keep first derivative
       
       // Get span of absissae
-      const unsigned span = m_knots.findspan( u(0,v) ) ;
+      const unsigned span = m_knots.iFind( u(0,v) ) - m_knots.begin();
 
       ndu[0]  = T(1); // 0-th degree function value
 
@@ -959,7 +959,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
       }
 
     // Run evaluation algorithm and keep the function values triangle & the knot differences
-    typename KnotVectorType::iterator span=m_knots.findspanIter( u(0,v) );
+    typename KnotVectorType::iterator span=m_knots.iFind( u(0,v) );
 //    unsigned span = m_knots.findspan( u(0,v) ) ;
     
     ndu[0] = T(1) ; // 0-th degree function value

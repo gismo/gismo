@@ -302,7 +302,7 @@ void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fi
     // pick the right coefficients and store them in coefs
     const unsigned degree = base.degree(dir_fixed);
     const KnotVectorType& knots = base.knots(dir_fixed);
-    const int index = knots.findspan(par)-degree;
+    const int index = (knots.iFind(par)-knots.begin())-degree;
     gsVector<index_t,d> sizes,lowerCorner,upperCorner;
     base.size_cwise( sizes );
     lowerCorner.setZero();

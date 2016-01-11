@@ -51,7 +51,7 @@ void gsDeboor(
                   "Parametric point "<< u(0,j) <<" outside knot domain ["
                   << knots[deg]<<","<<*(knots.end()-deg-1) <<"]."); 
 
-    ind = knots.findspan( u(0,j) ) - deg;
+    ind = (knots.iFind( u(0,j) ) - knots.begin()) - deg;
     
     //int s= knots.multiplicity( u(0,j) ) ; // TO DO: improve using multiplicity s
     points = coefs.middleRows( ind, deg+1 );

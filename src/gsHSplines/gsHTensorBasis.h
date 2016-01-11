@@ -172,14 +172,14 @@ public:
         {
             for(unsigned j = 0; j < d; j++)
             {
-                k1[j] = this->m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i));
-                k2[j] = this->m_bases.back()->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
+                k1[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i)).uIndex();
+                k2[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
             }
             int level = m_tree.query3(k1,k2,m_bases.size()-1);
             for(unsigned j = 0; j < d; j++)
             {
-                k1[j] = this->m_bases[level+1]->knots(j).Uniquefindspan(boxes(j,2*i));
-                k2[j] = this->m_bases[level+1]->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
+                k1[j] = this->m_bases[level+1]->knots(j).uFind(boxes(j,2*i)).uIndex();
+                k2[j] = this->m_bases[level+1]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
             }
 
             insert_box(k1,k2,level+1);
@@ -217,8 +217,8 @@ public:
         {
             for(unsigned j = 0; j < d; j++)
             {
-                k1[j] = m_bases[levels[i]]->knots(j).Uniquefindspan(boxes(j,2*i));
-                k2[j] = m_bases[levels[i]]->knots(j).Uniquefindspan(boxes(j,2*i+1))+1;
+                k1[j] = m_bases[levels[i]]->knots(j).uFind(boxes(j,2*i)).uIndex();
+                k2[j] = m_bases[levels[i]]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
             }
 
             /* m_boxHistory.push_back( box(k1,k2,levels[i]) );  */                      

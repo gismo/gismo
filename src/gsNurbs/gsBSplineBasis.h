@@ -141,7 +141,7 @@ public:
     int size() const { return m_knots.size() - m_p - 1 - m_periodic; }
 
     // Look at gsBasis class for a description
-    int numElements() const { return m_knots.numKnotSpans(); }
+    int numElements() const { return m_knots.numElements(); }
 
     // Look at gsBasis class for a description
     int elementIndex(const gsVector<T> & u ) const;
@@ -316,7 +316,7 @@ public:
     /// Returns the index of the first active (ie. non-zero) basis function at point u
     /// Takes into account non-clamped knots.
     inline unsigned firstActive(T u) const { 
-        return ( inDomain(u) ? m_knots.findspan(u)-m_p : 0 );
+        return ( inDomain(u) ? (m_knots.iFind(u)-m_knots.begin()) - m_p : 0 );
     }
 
     // Number of active functions at any point of the domain
@@ -328,7 +328,7 @@ public:
     { 
         gsMatrix<unsigned,1> * fa = new gsMatrix<unsigned,1>(1, u.cols() );
         for ( index_t i = 0; i < u.cols(); i++ )
-            fa->at(i) = ( inDomain(u(0,i)) ? m_knots.findspan(u.at(i))-m_p : 0 );
+            fa->at(i) = ( inDomain(u(0,i)) ? (m_knots.iFind(u.at(i))-m_knots.begin()) -m_p : 0 );
         return fa;
     }
 

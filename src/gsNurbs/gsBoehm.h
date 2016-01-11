@@ -331,8 +331,8 @@ void computeTensorAlpha(std::vector< std::vector<T> >& alpha,
                         ValIt valEnd,
                         bool sparse = false)
 {
-    const int a = knots.findspan(*valBegin);
-    const int b = knots.findspan(*(valEnd - 1)) + 1;
+    const int a =  knots.iFind(*valBegin)     - knots.begin();
+    const int b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
     const int p = knots.degree(); // degree
     const int nik = std::distance(valBegin, valEnd); // number of inserted knots
     const int nk = knots.size();
