@@ -379,7 +379,7 @@ public:
     }
 
 /// \brief Transposes in place the matrix block-wise. The matrix is
-//  treated a rows() x (cols()/colBlock) block matrix, and every block
+//  treated a 1 x (cols()/colBlock) block matrix, and every block
 //  of size rows() x colBlock is transposed in place
 void blockTransposeInPlace(const index_t colBlock)
 {

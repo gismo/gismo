@@ -31,20 +31,22 @@ namespace gismo
     \ingroup basis
     \ingroup Nurbs
 */
-template<unsigned d, class T, class KnotVectorType >
+template<unsigned d, class T>
 class gsTensorNurbsBasis : 
-        public gsRationalBasis<typename gsBSplineTraits<d,T,KnotVectorType>::Basis>
+        public gsRationalBasis<typename gsBSplineTraits<d,T>::Basis>
 {
 
 public: 
+    typedef gsKnotVector<T> KnotVectorType;
+
     /// Base type
-    typedef gsRationalBasis<typename gsBSplineTraits<d,T,KnotVectorType>::Basis> Base;
+    typedef gsRationalBasis<typename gsBSplineTraits<d,T>::Basis> Base;
 
     /// Family type
-    typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
+    typedef gsBSplineBasis<T>  Family_t;
 
     /// Source basis type
-    typedef typename gsBSplineTraits<d,T,KnotVectorType>::Basis Src_t;
+    typedef typename gsBSplineTraits<d,T>::Basis Src_t;
 
     /// Coordinate basis type
     typedef typename Src_t::Basis_t Basis_t;
@@ -53,10 +55,10 @@ public:
     typedef T Scalar_t;
 
     /// Associated geometry type
-    typedef typename gsBSplineTraits<d,T,KnotVectorType>::RatGeometry GeometryType;
+    typedef typename gsBSplineTraits<d,T>::RatGeometry GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T,KnotVectorType>::RatBasis BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T>::RatBasis BoundaryBasisType;
 
     typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;
     

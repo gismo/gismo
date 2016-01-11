@@ -109,10 +109,10 @@ void gsTensorBoehmRefine<gsKnotVector<T>,
 
 TEMPLATE_INST
 void gsTensorBoehmRefineLocal<1,
-                              gsCompactKnotVector<T>,
+                              gsKnotVector<T>,
                               gsMatrix<T>,
                               std::vector<T>::const_iterator>(
-        gsCompactKnotVector<T>& knots,
+        gsKnotVector<T>& knots,
         const unsigned index,
         gsMatrix<T>& coefs,
         gsVector<unsigned, 1>& nmb_of_coefs,
@@ -127,10 +127,10 @@ void gsTensorBoehmRefineLocal<1,
 
 TEMPLATE_INST
 void gsTensorBoehmRefineLocal<2,
-                              gsCompactKnotVector<T>,
+                              gsKnotVector<T>,
                               gsMatrix<T>,
                               std::vector<T>::const_iterator>(
-        gsCompactKnotVector<T>& knots,
+        gsKnotVector<T>& knots,
         const unsigned index,
         gsMatrix<T>& coefs,
         gsVector<unsigned, 2>& nmb_of_coefs,
@@ -144,10 +144,10 @@ void gsTensorBoehmRefineLocal<2,
 
 TEMPLATE_INST
 void gsTensorBoehmRefineLocal<3,
-                              gsCompactKnotVector<T>,
+                              gsKnotVector<T>,
                               gsMatrix<T>,
                               std::vector<T>::const_iterator>(
-        gsCompactKnotVector<T>& knots,
+        gsKnotVector<T>& knots,
         const unsigned index,
         gsMatrix<T>& coefs,
         gsVector<unsigned, 3>& nmb_of_coefs,
@@ -161,10 +161,10 @@ void gsTensorBoehmRefineLocal<3,
 
 TEMPLATE_INST
 void gsTensorBoehmRefineLocal<4,
-                              gsCompactKnotVector<T>,
+                              gsKnotVector<T>,
                               gsMatrix<T>,
                               std::vector<T>::const_iterator>(
-        gsCompactKnotVector<T>& knots,
+        gsKnotVector<T>& knots,
         const unsigned index,
         gsMatrix<T>& coefs,
         gsVector<unsigned, 4>& nmb_of_coefs,

@@ -34,25 +34,27 @@ namespace gismo
     \ingroup Nurbs
 */
 
-template<unsigned d, class T, class KnotVectorType>
+template<unsigned d, class T>
 class gsTensorNurbs : public gsGeoTraits<d,T>::GeometryBase
 {
 
 public: 
+    typedef gsKnotVector<T> KnotVectorType;
+
     typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
     typedef T Scalar_t;
     
-    typedef gsTensorBSplineBasis<d,T,KnotVectorType> TBasis;      // underlying tensor basis
+    typedef gsTensorBSplineBasis<d,T> TBasis;      // underlying tensor basis
     
     /// Family type
-    typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
+    typedef gsBSplineBasis<T>  Family_t;
     
     // rational version of tensor basis (basis for this geometry)
-    typedef gsTensorNurbsBasis<d,T,KnotVectorType>   Basis;
+    typedef gsTensorNurbsBasis<d,T>   Basis;
     
     /// Shared pointer for gsTensorNurbs
-    typedef memory::shared_ptr< gsTensorNurbs<d,T,KnotVectorType> > Ptr;
+    typedef memory::shared_ptr< gsTensorNurbs<d,T> > Ptr;
 
 public:
 

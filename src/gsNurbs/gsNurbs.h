@@ -35,18 +35,20 @@ namespace gismo
     \ingroup Nurbs
 */
 
-template<class T, class KnotVectorType>
+template<class T>
 class gsNurbs :  public gsGeoTraits<1,T>::GeometryBase
 {
 
 public: 
+    typedef gsKnotVector<T> KnotVectorType;
+
     typedef typename gsGeoTraits<1,T>::GeometryBase Base;
 
     /// Coefficient type
     typedef T Scalar_t;
 
     typedef gsRationalBasis<gsBSplineBasis<T> > RBasis;
-    typedef gsNurbsBasis<T,KnotVectorType> Basis;
+    typedef gsNurbsBasis<T> Basis;
 
     /// Shared pointer for gsNurbs
     typedef memory::shared_ptr< gsNurbs<T> > Ptr;

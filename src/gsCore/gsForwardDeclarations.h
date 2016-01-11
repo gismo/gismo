@@ -11,11 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-
 #pragma once
-
-// aliasing to gsUnifiedKnotVector
-#define gsCompactKnotVector gsKnotVector
 
 // STD includes
 #include <vector>
@@ -24,11 +20,12 @@
 #include <stack>
 #include <algorithm>
 
-
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMemory.h>
 
+// aliasing to gsUnifiedKnotVector
+#define gsCompactKnotVector gsKnotVector
 
 namespace gismo 
 {
@@ -120,11 +117,11 @@ template<unsigned d, class T = real_t>  class gsHTensorBasis;
 
 template< class T = real_t>  class gsKnotVector;
 //template< class T = real_t>  class gsCompactKnotVector;
-template< class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsBSplineBasis;
-template< class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsNurbsBasis;
-template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsTensorBSplineBasis;
-template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsTensorNurbsBasis;
-template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > struct gsBSplineTraits;
+template< class T = real_t> class gsBSplineBasis;
+template< class T = real_t> class gsNurbsBasis;
+template<unsigned d, class T = real_t> class gsTensorBSplineBasis;
+template<unsigned d, class T = real_t> class gsTensorNurbsBasis;
+template<unsigned d, class T = real_t> struct gsBSplineTraits;
 
 template<unsigned d, class T = real_t>  class gsCompositeIncrSmoothnessBasis;
 template<unsigned d, class T = real_t>  class gsCompositeGeom;
@@ -138,11 +135,11 @@ template<unsigned d, class T = real_t>  class gsTHBSplineBasis;
 template<unsigned d, class T = real_t>  class gsTHBSpline;
 
 // Geometries
-template< class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsBSpline;
-template< class T = real_t, class KnotVectorType=gsKnotVector<T> >  class gsNurbs;
+template< class T = real_t> class gsBSpline;
+template< class T = real_t>  class gsNurbs;
 template< class T = real_t>  class gsBezier;
-template<unsigned d, class T = real_t, class KnotVectorType=gsKnotVector<T> > class gsTensorBSpline;
-template<unsigned d, class T = real_t, class KnotVectorType = gsKnotVector<T> > class gsTensorNurbs;
+template<unsigned d, class T = real_t> class gsTensorBSpline;
+template<unsigned d, class T = real_t> class gsTensorNurbs;
 template<unsigned d, class T = real_t> class gsTensorBezier;
 template<unsigned d, class T = real_t> class gsHBSpline;
 template< class T = real_t>  class gsTrimSurface;

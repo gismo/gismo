@@ -111,6 +111,7 @@ unsigned findHyperPlaneIntersections (
 template<class T>
 class gsBSplineSolver
 {
+    typedef gsKnotVector<T> knotVectorType;
 
 public:
     /// Default empty constructor
@@ -121,11 +122,10 @@ public:
   
 public:
     /// Return true if the first root exist, the value of the root is in this->value()
-    template<typename knotVectorType>
-    bool firstRoot(gsBSpline<T,knotVectorType > const & bsp, int const & coord = 0,
+    bool firstRoot(gsBSpline<T> const & bsp, int const & coord = 0,
                    T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100)
     {
-        initSolver<gsKnotVector<T> >(bsp,coord,tr,tol,N);
+        initSolver(bsp,coord,tr,tol,N);
         return nextRoot();
     }
 
@@ -136,13 +136,12 @@ public:
     inline T value () { return x;}
 
     // Return a vector with all the roots
-    template<typename knotVectorType>
-    void allRoots (gsBSpline<T,knotVectorType > const & bsp, std::vector<T> & result,
+    void allRoots (gsBSpline<T> const & bsp, std::vector<T> & result,
                    int const & coord = 0, 
                    T const & tr = 0, T const & tol = 1e-7, unsigned const & N=100)
     {
         result.clear();
-        initSolver<knotVectorType> (bsp,coord,tr,tol,N);
+        initSolver(bsp,coord,tr,tol,N);
 
         while ( nextRoot() )
         {
@@ -153,8 +152,7 @@ public:
 
 private:
     /// Initialize the solver with B-spline data
-    template<class KnotVectorType>
-    void initSolver(gsBSpline<T,KnotVectorType> const & bsp , int const & coord, 
+    void initSolver(gsBSpline<T> const & bsp , int const & coord, 
                     T const & tr, T const & tol, unsigned const &N)
     {
         m_n  = bsp.coefsSize();
@@ -164,7 +162,7 @@ private:
         x    = 0.0;
         maxn = N + m_n;
 
-        const KnotVectorType & kv = bsp.knots();
+        const knotVectorType & kv = bsp.knots();
 
         m_t.resize(m_n+N+m_d+1);
         m_c.resize(m_n+N);

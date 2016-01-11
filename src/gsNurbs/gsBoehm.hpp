@@ -146,7 +146,7 @@ void gsBoehmSingle( iter knot,   // Knot iterator
 template<class KnotVectorType, class Mat, class ValIt>
 void gsBoehmRefine( KnotVectorType & knots,
                     Mat & coefs, //all Coefficients
-                    int p,       // degree
+                    int p,       // degree --remove
                     ValIt valBegin, ValIt valEnd, // knot values to insert
                     bool update_knots)
 {
@@ -160,17 +160,20 @@ void gsBoehmRefine( KnotVectorType & knots,
 
     const int a =  knots.iFind( *valBegin    ) - knots.begin();
     const int b = (knots.iFind( *(valEnd-1)  ) - knots.begin()) + 1;
+    //const int a = knots.uFind(*valBegin).lastAppearance();
+    //const int b = knots.uFind(*(valEnd-1)).lastAppearance() + 1;
 
     //gsKnotVector<T> nknots(p, knots.size()+nk);
     std::vector<T> nknots(knots.size()+nk);
 
     // shift control points that are not affected
-
     for(index_t j = np ; j > b-1; j--)
       coefs.row( j+nk-1) = coefs.row(j-1);
 
+    //std::copy( knots.begin(), knots.begin()+a+1,nknots.begin());
     for(int j = 0; j <= a; j++)
         nknots[j] = knots[j];
+    //std::copy( knots.begin()+b+p, knots.bend(),nknots.begin()+nk+b+p);
     for(size_t j = b+p; j < knots.size(); j++)
         nknots[j + nk] = knots[j];
 
@@ -214,6 +217,7 @@ void gsBoehmRefine( KnotVectorType & knots,
 
     if ( update_knots )
         knots = KnotVectorType(p, nknots.begin(), nknots.end());
+        //knots.insert(valBegin, valEnd); // bug ?
 }
 
 

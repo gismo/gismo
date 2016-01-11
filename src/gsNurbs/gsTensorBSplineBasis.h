@@ -32,30 +32,32 @@ namespace gismo
     \ingroup Nurbs
 */
   
-template<unsigned d, class T, class KnotVectorType>
+template<unsigned d, class T>
 class gsTensorBSplineBasis : public gsTensorBasis<d,T>
 {
 public: 
+    typedef gsKnotVector<T> KnotVectorType;
+
     /// Base type
     typedef gsTensorBasis<d,T> Base;
     
     /// Family type
-    typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
+    typedef gsBSplineBasis<T>  Family_t;
 
     typedef gsTensorBSplineBasis Self_t;
 
     /// Coordinate basis type
-    typedef gsBSplineBasis<T,KnotVectorType> CoordinateBasis;
+    typedef gsBSplineBasis<T> CoordinateBasis;
     typedef CoordinateBasis                  Basis_t;
 
     /// Coefficient type
     typedef T Scalar_t;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d,T,KnotVectorType>::Geometry GeometryType;
+    typedef typename gsBSplineTraits<d,T>::Geometry GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T,KnotVectorType>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T>::Basis BoundaryBasisType;
 
     typedef typename Base::iterator        iterator;
     typedef typename Base::const_iterator  const_iterator;

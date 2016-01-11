@@ -745,34 +745,32 @@ void gsKnotVector<T>::degreeReduce(int const & i)
 template<typename T>
 void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
 {
-    // Copy pasted from gsKnotVector.hpp and updated to our needs.
-    iterator itr = this->begin() + 1;
-    const int p = m_deg;
-    result.resize(1, this->size() -p-1 ) ;
+    iterator itr = begin() + 1;
+    result.resize(1, size()-m_deg-1 ) ;
     unsigned i = 1;
 
     if ( m_deg!=0)
     {
-        result(0,0) = std::accumulate( itr, itr+p, T(0.0) ) / m_deg ;
+        result(0,0) = std::accumulate( itr, itr+m_deg, T(0.0) ) / m_deg ;
 
         if ( result(0,0) < *(itr-1) )// Ensure that the point is in range
             result(0,0) = *(itr-1);
 
-        for (++itr; itr != this->end()-p; ++itr, ++i )
+        for (++itr; itr != end()-m_deg; ++itr, ++i )
         {
-            result(0,i) = std::accumulate( itr, itr+p, T(0.0) ) / m_deg ;
+            result(0,i) = std::accumulate( itr, itr+m_deg, T(0.0) ) / m_deg ;
             if ( result(0,i) == result(0,i-1) )
                 // perturbe point to remain inside the needed support
                 result(0,i-1) -= 1e-10;
         }
 
-        itr = this->end()-1;
+        itr = end()-1;
         i -= 1;
         if ( result(0,i) > *(itr) )// Ensure that the point is in range
             result(0,i) = *(itr);
     }
     else
-        std::copy(this->begin(), this->end()-1, result.data() );
+        copy_n(m_repKnots.data(), result.size(), result.data() );
 }
 
 template <class T>

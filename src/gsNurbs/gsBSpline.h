@@ -38,16 +38,18 @@ namespace gismo
 */
     
     
-template<class T, class KnotVectorType >
+template<class T>
 class gsBSpline : public gsGeoTraits<1,T>::GeometryBase
 {
 public: 
+    typedef gsKnotVector<T> KnotVectorType;
+
     typedef typename gsGeoTraits<1,T>::GeometryBase Base;
 
-    typedef gsBSplineBasis<T, KnotVectorType> Basis;
+    typedef gsBSplineBasis<T> Basis;
 
     /// Shared pointer for gsBSpline
-    typedef memory::shared_ptr< gsBSpline<T, KnotVectorType> > Ptr;
+    typedef memory::shared_ptr< gsBSpline<T> > Ptr;
     
 public:
     

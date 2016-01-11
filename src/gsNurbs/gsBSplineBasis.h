@@ -27,25 +27,29 @@ namespace gismo
 {
 
 /// \brief Traits for BSplineBasis in more dimensions
-template<unsigned d, class T, class KnotVectorType>
+template<unsigned d, class T>
 struct gsBSplineTraits
 {
-    typedef gsTensorBSplineBasis<d,T,KnotVectorType> Basis;
-    typedef gsTensorNurbsBasis<d,T,KnotVectorType>   RatBasis;
-    typedef gsTensorBSpline<d,T,KnotVectorType>      Geometry;
-    typedef gsTensorNurbs<d,T,KnotVectorType>        RatGeometry;
+    typedef gsKnotVector<T> KnotVectorType;
+
+    typedef gsTensorBSplineBasis<d,T> Basis;
+    typedef gsTensorNurbsBasis<d,T>   RatBasis;
+    typedef gsTensorBSpline<d,T>      Geometry;
+    typedef gsTensorNurbs<d,T>        RatGeometry;
 };
-template<class T, class KnotVectorType>
-struct gsBSplineTraits<1,T,KnotVectorType>
+template<class T>
+struct gsBSplineTraits<1,T>
 {
-    typedef gsBSplineBasis<T,KnotVectorType>         Basis;
-    typedef gsNurbsBasis<T,KnotVectorType>           RatBasis;
-    typedef gsBSpline<T,KnotVectorType>              Geometry;
-    typedef gsNurbs<T,KnotVectorType>                RatGeometry;
+    typedef gsKnotVector<T> KnotVectorType;
+    typedef gsBSplineBasis<T>         Basis;
+    typedef gsNurbsBasis<T>           RatBasis;
+    typedef gsBSpline<T>              Geometry;
+    typedef gsNurbs<T>                RatGeometry;
 };
-template<class T, class KnotVectorType>
-struct gsBSplineTraits<0,T,KnotVectorType>
+template<class T>
+struct gsBSplineTraits<0,T>
 {
+    typedef gsKnotVector<T> KnotVectorType;
     typedef gsConstantBasis<T>                       Basis;
     typedef gsConstantBasis<T>                       RatBasis;
     typedef gsConstantFunction<T>                    Geometry;
@@ -61,13 +65,15 @@ struct gsBSplineTraits<0,T,KnotVectorType>
     \ingroup basis
     \ingroup Nurbs
 */
-template<class T, class KnotVectorType>
-class gsTensorBSplineBasis<1,T,KnotVectorType> : public gsTensorBasis<1,T>
+template<class T>
+class gsTensorBSplineBasis<1,T> : public gsTensorBasis<1,T>
 {
 public:
+    typedef gsKnotVector<T> KnotVectorType;
+
     typedef gsTensorBasis<1,T> Base;
 
-    typedef gsBSplineBasis<T,KnotVectorType> Self_t;
+    typedef gsBSplineBasis<T> Self_t;
 
     typedef gsTensorBSplineBasis TensorSelf_t;
 
@@ -75,10 +81,10 @@ public:
     typedef T Scalar_t;
 
     /// Associated geometry type
-    typedef typename gsBSplineTraits<1,T,KnotVectorType>::Geometry GeometryType;
+    typedef typename gsBSplineTraits<1,T>::Geometry GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<0,T,KnotVectorType>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<0,T>::Basis BoundaryBasisType;
 
     /// Dimension of the parameter domain
     static const int Dim = 1;
@@ -619,7 +625,7 @@ protected:
 
 //Using C++11 alias:
 // template<class T, class KnotVectorType>
-// using gsBSplineBasis = gsTensorBSplineBasis<1,T,KnotVectorType>
+// using gsBSplineBasis = gsTensorBSplineBasis<1,T>
 
 /** \brief
     A univariate B-spline basis.
@@ -630,18 +636,19 @@ protected:
     \ingroup basis
     \ingroup Nurbs
 */
-template<class T, class KnotVectorType>
-class gsBSplineBasis : public gsTensorBSplineBasis<1,T,KnotVectorType>
+template<class T>
+class gsBSplineBasis : public gsTensorBSplineBasis<1,T>
 {
 public:
-    typedef gsTensorBSplineBasis<1,T,KnotVectorType> Base;
-    typedef gsBSplineBasis<T,KnotVectorType> Self_t;
+    typedef gsKnotVector<T> KnotVectorType;
+    typedef gsTensorBSplineBasis<1,T> Base;
+    typedef gsBSplineBasis<T> Self_t;
 
     /// Associated geometry type
-    typedef typename gsBSplineTraits<1,T,KnotVectorType>::Geometry GeometryType;
+    typedef typename gsBSplineTraits<1,T>::Geometry GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<0,T,KnotVectorType>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<0,T>::Basis BoundaryBasisType;
 
 public:
 

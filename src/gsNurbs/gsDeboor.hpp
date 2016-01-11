@@ -127,9 +127,9 @@ void gsDeboorDeriv(
 
 template<unsigned d, typename T, typename KnotVectorType, typename Mat>
 inline
-void gsTensorDeboor(
+void gsTensorDeboor( //LC
         const gsMatrix<T>& u,
-        const gsTensorBSplineBasis<d, T, KnotVectorType>& base,
+        const gsTensorBSplineBasis<d, T>& base,
         const Mat& coefs, // works just for 1D coefficients
         gsMatrix<T>& result
         )
@@ -165,9 +165,9 @@ void gsTensorDeboor(
 // =============================================================================
 
 template<unsigned d, typename T, typename KnotVectorType, typename Mat>
-inline
+inline //LC
 void gsTensorDeriv_into(const gsMatrix<T>& u,
-                        const gsTensorBSplineBasis<d, T, KnotVectorType>& base,
+                        const gsTensorBSplineBasis<d, T>& base,
                         const Mat& coefs,
                         gsMatrix<T>& result)
 {
@@ -200,10 +200,10 @@ void gsTensorDeriv_into(const gsMatrix<T>& u,
 template<unsigned d, typename T, typename KnotVectorType, typename Mat>
 inline
 void gsTensorDeriv2_into(const gsMatrix<T>& u,
-                        const gsTensorBSplineBasis<d, T, KnotVectorType>& base,
+                        const gsTensorBSplineBasis<d, T>& base,
                         const Mat& coefs,
                         gsMatrix<T>& result)
-{
+{//LC
     const unsigned nPts = u.cols(); // number points
     const unsigned n2der = (d * (d + 1)) / 2; // number of second derivatives
 
@@ -229,7 +229,7 @@ template<unsigned d, typename T, typename KnotVectorType, typename Mat>
 inline
 void gsTensorDeboor_v2(
         const gsMatrix<T>& u,
-        const gsTensorBSplineBasis<d, T, KnotVectorType>& base,
+        const gsTensorBSplineBasis<d, T>& base,
         const Mat& coefs,
         gsMatrix<T>& result
         )

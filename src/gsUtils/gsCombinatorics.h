@@ -598,9 +598,10 @@ void cubeIsometry( const gsVector<bool,d>    & flip,
 /// \brief Construct first composition of \a sum into \a dim integers
 /// \ingroup combinatorics
 template<class Vec>
-void firstComposition( typename Vec::Scalar_t sum, index_t dim, Vec & res)
+void firstComposition( typename Vec::Scalar sum, index_t dim, Vec & res)
 {  
-    res.setZero(dim);
+    res.derived().resize(dim);
+    res.setZero();
     res[0] = sum;
 }
 
@@ -617,7 +618,7 @@ inline bool nextComposition(Vec & v)
         {
             if ( v[i]!=0 )
             {
-                const typename Vec::Scalar_t t = v[i];
+                const typename Vec::Scalar t = v[i];
                 v[i]    = 0  ;
                 v[0]    = t-1;
                 v[i+1] += 1  ;
@@ -628,11 +629,66 @@ inline bool nextComposition(Vec & v)
     return false;
 }
 
+
 /// \brief Number of compositions of \a sum into \a dim integers
 /// \ingroup combinatorics
 inline unsigned numCompositions(int sum, int dim)
 {
     return binomial(sum+dim-1,dim-1);
+}
+
+
+/** \brief Constructs first multi-composition of \a a = (a_1,..,a_d) into \a k integers
+ \ingroup combinatorics
+*/
+template<class Vec, class Mat>
+void firstMultiComposition(const Vec & a, index_t k, Mat & res)
+{  
+    const index_t d = a.size();
+    res.setZero(k, d);
+    res.row(0) = a.transpose();
+}
+
+/**
+   \brief Returns (inplace) the next multi-composition 
+   in lexicographic order
+
+   \f$ m \in \mathbb N^{k\times d} \f$
+
+   \ingroup combinatorics
+*/ 
+template<class Mat>
+inline bool nextMultiComposition(Mat & m)
+{
+    const index_t k = m.rows();
+    const index_t d = m.cols();
+           
+    for (index_t j = 0; j != d; ++j)
+    {
+        typename Mat::ColXpr c_j = m.col(j);
+        if ( nextComposition(c_j) )
+            return true;
+        else
+        {
+            const index_t n_j = c_j.sum();
+            firstComposition(n_j, k, c_j);
+        }
+    }
+    return false;
+}
+
+
+/** \brief Number of multi-composition of \a a = (a_1,..,a_d) into \a k integers
+    \ingroup combinatorics
+*/
+template<class Vec>
+unsigned numMultiCompositions(const Vec & a, index_t k)
+{
+    unsigned result = 1;
+    const index_t d = a.size();
+    for (index_t j = 0; j != d; ++j)
+        result *= binomial<unsigned>(a[j]+k-1, k-1);
+    return result;
 }
 
 

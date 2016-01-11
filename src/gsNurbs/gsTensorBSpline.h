@@ -31,28 +31,30 @@ namespace gismo
     \ingroup geometry
     \ingroup Nurbs
 */
-template<unsigned d, class T, class KnotVectorType>
+template<unsigned d, class T>
 class gsTensorBSpline : public gsGeoTraits<d,T>::GeometryBase
 {
 public: 
+    typedef gsKnotVector<T> KnotVectorType;
+
     typedef T Scalar_t;
 
     //typedef gsTensorBSplineBasis<d,T,KnotVectorType> Basis;
-    typedef typename gsBSplineTraits<d,T,KnotVectorType>::Basis Basis;
+    typedef typename gsBSplineTraits<d,T>::Basis Basis;
 
     typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
     /// Family type
-    typedef gsBSplineBasis<T,KnotVectorType>  Family_t;
+    typedef gsBSplineBasis<T>  Family_t;
 
     /// Shared pointer for gsTensorBSpline
-    typedef memory::shared_ptr< gsTensorBSpline<d,T,KnotVectorType> > Ptr;
+    typedef memory::shared_ptr< gsTensorBSpline<d,T> > Ptr;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T,KnotVectorType>::Geometry BoundaryGeometryType;
+    typedef typename gsBSplineTraits<d-1,T>::Geometry BoundaryGeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T,KnotVectorType>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T>::Basis BoundaryBasisType;
 
 public:
 
@@ -80,8 +82,8 @@ public:
         GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
      
         std::vector<Family_t*> cbases;
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T>(KV2) );
         Basis * tbasis = Basis::New(cbases); //d==2
         
         GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
@@ -99,8 +101,8 @@ public:
         GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
 
         std::vector<Family_t*> cbases;
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T>(KV2) );
         Basis * tbasis = Basis::New(cbases); //d==2
         
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
@@ -126,9 +128,9 @@ public:
         GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 3 knot-vectors.");
 
         std::vector<Family_t*> cbases;
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV3) );
+        cbases.push_back(new gsBSplineBasis<T>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T>(KV3) );
         Basis * tbasis = Basis::New(cbases); //d==3
             
         GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
@@ -148,9 +150,9 @@ public:
         GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 3 knot-vectors.");
 
         std::vector<Family_t*> cbases;
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV3) );
+        cbases.push_back(new gsBSplineBasis<T>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T>(KV3) );
         Basis * tbasis = Basis::New(cbases); //d==3
         
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
@@ -171,10 +173,10 @@ public:
 
         std::vector<Family_t*> cbases;
         cbases.reserve(4);
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV3) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV4) );
+        cbases.push_back(new gsBSplineBasis<T>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T>(KV3) );
+        cbases.push_back(new gsBSplineBasis<T>(KV4) );
         Basis * tbasis = Basis::New(cbases); //d==4
             
         GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
@@ -196,10 +198,10 @@ public:
 
         std::vector<Family_t*> cbases;
         cbases.reserve(4);
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV3) );
-        cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV4) );
+        cbases.push_back(new gsBSplineBasis<T>(KV1) );
+        cbases.push_back(new gsBSplineBasis<T>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T>(KV3) );
+        cbases.push_back(new gsBSplineBasis<T>(KV4) );
         Basis * tbasis = Basis::New(cbases); //d==4
         
         GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
@@ -289,7 +291,7 @@ private:
     /// for the isoparametric slice in \a dir_fixed with \a par.
     /// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
     void constructCoefsForSlice(unsigned dir_fixed,T par,
-                                const gsTensorBSpline<d,T,KnotVectorType> & geo,
+                                const gsTensorBSpline<d,T> & geo,
                                 gsMatrix<T>& result) const;
 
 public:

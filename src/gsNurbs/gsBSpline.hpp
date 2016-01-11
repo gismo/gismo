@@ -22,8 +22,8 @@ namespace gismo
 {
 
 
-template<class T, class KnotVectorType >
-void gsBSpline<T,KnotVectorType>::merge( gsGeometry<T> * otherG )
+template<class T>
+void gsBSpline<T>::merge( gsGeometry<T> * otherG )
 {
     // See also gsNurbs::merge().
     // check geometric dimension
@@ -80,8 +80,8 @@ void gsBSpline<T,KnotVectorType>::merge( gsGeometry<T> * otherG )
     delete other;
 }
 
-template<class T, class KnotVectorType >    
-bool gsBSpline<T,KnotVectorType>::isOn(gsMatrix<T> const &u, T tol) const
+template<class T>    
+bool gsBSpline<T>::isOn(gsMatrix<T> const &u, T tol) const
 {
     GISMO_ASSERT( u.cols() == 1, "Expecting single point.");
     gsBSplineSolver<T> slv;
@@ -106,15 +106,15 @@ bool gsBSpline<T,KnotVectorType>::isOn(gsMatrix<T> const &u, T tol) const
     return false;
 }
 
-template<class T, class KnotVectorType >    
-bool gsBSpline<T,KnotVectorType>::isPatchCorner(gsMatrix<T> const &v, T tol) const
+template<class T>    
+bool gsBSpline<T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
 {
     return (( v - m_coefs.row(0)       ).squaredNorm() < tol ||
             ( v - m_coefs.bottomRows(1)).squaredNorm() < tol );
 }
 
-template<class T, class KnotVectorType >    
-void gsBSpline<T,KnotVectorType>::findCorner(const gsMatrix<T> & v, 
+template<class T>    
+void gsBSpline<T>::findCorner(const gsMatrix<T> & v, 
                                              gsVector<index_t,1> & curr,
                                              T tol)
 {
@@ -130,8 +130,8 @@ void gsBSpline<T,KnotVectorType>::findCorner(const gsMatrix<T> & v,
 }
 
 
-template<class T, class KnotVectorType >    
-void gsBSpline<T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
+template<class T>    
+void gsBSpline<T>::setOriginCorner(gsMatrix<T> const &v)
 {
     if ((v - m_coefs.row(0)).squaredNorm() < 1e-3)
         return;
@@ -141,8 +141,8 @@ void gsBSpline<T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
         gsWarn<<"Point "<< v <<" is not an endpoint of the curve.\n";
 }
 
-template<class T, class KnotVectorType >    
-void gsBSpline<T,KnotVectorType>::setFurthestCorner(gsMatrix<T> const &v)
+template<class T>    
+void gsBSpline<T>::setFurthestCorner(gsMatrix<T> const &v)
 {
     if ((v - m_coefs.row(0)).squaredNorm() < 1e-3)
         this->reverse();
@@ -152,16 +152,16 @@ void gsBSpline<T,KnotVectorType>::setFurthestCorner(gsMatrix<T> const &v)
         gsWarn<<"Point "<< v <<" is not an endpoint of the curve.\n";
 }
 
-template <class T, class KnotVectorType>
-void gsBSpline<T,KnotVectorType>::swapDirections(const unsigned i, const unsigned j)
+template <class T>
+void gsBSpline<T>::swapDirections(const unsigned i, const unsigned j)
 {
     GISMO_ASSERT( static_cast<int>(i) == 0 && static_cast<int>(j) == 0,
                   "Invalid basis components "<<i<<" and "<<j<<" requested" );
 }
 
 
-template<class T, class KnotVectorType>
-void gsBSpline<T,KnotVectorType>::degreeElevate(int const i, int const dir)
+template<class T>
+void gsBSpline<T>::degreeElevate(int const i, int const dir)
 {
     GISMO_ASSERT( (dir == -1) || (dir == 0),
                   "Invalid basis component "<< dir <<" requested for degree elevation" );
@@ -174,24 +174,24 @@ namespace internal
 
 /// Get a BSpline from XML data
 template<class T>
-class gsXml< gsBSpline<T, gsKnotVector<T> > > // TO DO: KnotVectorType
+class gsXml< gsBSpline<T> >
 {
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsBSpline<TMPLA2(T,gsKnotVector<T>)>);
+    GSXML_COMMON_FUNCTIONS(gsBSpline<T>);
     static std::string tag () { return "Geometry"; }
     static std::string type () { return "BSpline"; }
 
-    static gsBSpline<T, gsKnotVector<T> > * get (gsXmlNode * node)
+    static gsBSpline<T> * get (gsXmlNode * node)
     {
-        return getGeometryFromXml< gsBSpline<T, gsKnotVector<T> > >(node);
+        return getGeometryFromXml< gsBSpline<T> >(node);
     }
 
-    static gsXmlNode * put (const gsBSpline<T, gsKnotVector<T> > & obj,
+    static gsXmlNode * put (const gsBSpline<T> & obj,
                             gsXmlTree & data )
     {
-        return putGeometryToXml< gsBSpline<T, gsKnotVector<T> > >(obj,data);
+        return putGeometryToXml< gsBSpline<T> >(obj,data);
     }
 };
 

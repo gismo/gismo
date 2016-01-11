@@ -31,14 +31,14 @@
 namespace gismo
 {
 
-template<unsigned d, class T, class KnotVectorType>
-gsTensorBSpline<d,T,KnotVectorType>::gsTensorBSpline(gsMatrix<T> const & corner, KnotVectorType const& KV1, KnotVectorType const & KV2)
+template<unsigned d, class T>
+gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner, KnotVectorType const& KV1, KnotVectorType const & KV2)
 {
     GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
 
     std::vector<Family_t*> cbases;
-    cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV1) );
-    cbases.push_back(new gsBSplineBasis<T,KnotVectorType>(KV2) );
+    cbases.push_back(new gsBSplineBasis<T>(KV1) );
+    cbases.push_back(new gsBSplineBasis<T>(KV2) );
     Basis * tbasis = Basis::New(cbases); //d==2
 
     int n1 = KV1.size() - KV1.degree() - 1;
@@ -99,8 +99,8 @@ gsTensorBSpline<d,T,KnotVectorType>::gsTensorBSpline(gsMatrix<T> const & corner,
 }
 
 // todo: move to hpp
-template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
                                                 BoundaryGeometryType & result) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
@@ -130,11 +130,11 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
         else
         {
             // clone the basis and inserting upto degree knots at par
-            gsTensorBSpline<d,T,KnotVectorType>* clone = this->clone();
+            gsTensorBSpline<d,T>* clone = this->clone();
 
             gsVector<index_t,d> intStrides;
             this->basis().stride_cwise(intStrides);
-            gsTensorBoehm<T,KnotVectorType,gsMatrix<T> >(
+            gsTensorBoehm(
                 clone->basis().knots(dir_fixed),clone->coefs(),par,dir_fixed,
                 intStrides.template cast<unsigned>(), degree-mult,true);
 
@@ -151,10 +151,10 @@ void gsTensorBSpline<d,T,KnotVectorType>::slice(index_t dir_fixed,T par,
     delete tbasis;
 }
 
-template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::reverse(unsigned k)
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::reverse(unsigned k)
 { 
-    gsTensorBSplineBasis<d,T,KnotVectorType> & tbsbasis = this->basis();
+    gsTensorBSplineBasis<d,T> & tbsbasis = this->basis();
     gsVector<int,d> sz;
     tbsbasis.size_cwise(sz);
     flipTensorVector(k, sz, m_coefs);
@@ -162,8 +162,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::reverse(unsigned k)
 }
 
 
-template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::
 swapDirections(const unsigned i, const unsigned j)
 {
     gsVector<int,d> sz;
@@ -172,8 +172,8 @@ swapDirections(const unsigned i, const unsigned j)
     this->basis().swapDirections(i,j);
 }
 
-template<unsigned d, class T, class KnotVectorType>
-bool gsTensorBSpline<d,T,KnotVectorType>::isPatchCorner(gsMatrix<T> const &v, T tol) const
+template<unsigned d, class T>
+bool gsTensorBSpline<d,T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
 {
     gsVector<index_t,d> str(d), vupp(d), curr = gsVector<index_t,d>::Zero(d);
     this->basis().stride_cwise(str);
@@ -190,8 +190,8 @@ bool gsTensorBSpline<d,T,KnotVectorType>::isPatchCorner(gsMatrix<T> const &v, T 
     return false;
 }
 
-template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::findCorner(const gsMatrix<T> & v, 
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v, 
                                                      gsVector<index_t,d> & curr,
                                                      T tol)
 {
@@ -216,8 +216,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::findCorner(const gsMatrix<T> & v,
     gsWarn<<"Point "<< v <<" is not an corner of the patch. (Call isPatchCorner() first!).\n";
 }
 
-template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::setOriginCorner(gsMatrix<T> const &v)
 {
     gsVector<index_t,d> curr;
     findCorner(v, curr);
@@ -228,8 +228,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::setOriginCorner(gsMatrix<T> const &v)
             this->reverse(k);
 }
 
-template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::setFurthestCorner(gsMatrix<T> const &v)
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::setFurthestCorner(gsMatrix<T> const &v)
 {
     gsVector<index_t,d> curr;
     findCorner(v, curr);
@@ -241,8 +241,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::setFurthestCorner(gsMatrix<T> const &v
 }
 
 
-template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::degreeElevate(int const i, int const dir)
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::degreeElevate(int const i, int const dir)
 {
     if (dir == -1)
     {
@@ -269,8 +269,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::degreeElevate(int const i, int const d
     swapTensorDirection(0, dir, sz, this->m_coefs);
 }
 
-template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::insertKnot( T knot, int dir, int i)
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
 {
     GISMO_ASSERT( i>0, "multiplicity must be at least 1");
 
@@ -294,10 +294,10 @@ void gsTensorBSpline<d,T,KnotVectorType>::insertKnot( T knot, int dir, int i)
 }
 
 
-template<unsigned d, class T, class KnotVectorType>
-void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fixed,T par,const gsTensorBSpline<d,T,KnotVectorType>& geo,gsMatrix<T>& result) const
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::constructCoefsForSlice(unsigned dir_fixed,T par,const gsTensorBSpline<d,T>& geo,gsMatrix<T>& result) const
 {
-    const gsTensorBSplineBasis<d,T,KnotVectorType>& base = geo.basis();
+    const gsTensorBSplineBasis<d,T>& base = geo.basis();
     const gsMatrix<T>& fullCoefs=geo.coefs();
     // pick the right coefficients and store them in coefs
     const unsigned degree = base.degree(dir_fixed);
@@ -330,8 +330,8 @@ void gsTensorBSpline<d,T,KnotVectorType>::constructCoefsForSlice(unsigned dir_fi
 }
 
 
-template<unsigned d, class T, class KnotVectorType>
-std::ostream & gsTensorBSpline<d,T,KnotVectorType>::print(std::ostream &os) const
+template<unsigned d, class T>
+std::ostream & gsTensorBSpline<d,T>::print(std::ostream &os) const
 { 
     os << "Tensor BSpline geometry "<< "R^"<< d << 
         " --> R^"<< this->geoDim()
@@ -345,7 +345,7 @@ std::ostream & gsTensorBSpline<d,T,KnotVectorType>::print(std::ostream &os) cons
 
 
 /*
-template<unsigned d, class T, class KnotVectorType>
+template<unsigned d, class T>
 std::vector<gsGeometry<T>*> splitAt(const T knot, int dir = -1) const
 {
 // compute mult of insertion
@@ -363,22 +363,22 @@ namespace internal
 /// @brief Get a Tensor BSpline from XML data
 ///
 /// \ingroup Nurbs
-template<unsigned d, class T, class KnotVectorType>
-class gsXml< gsTensorBSpline<d,T, KnotVectorType> >
+template<unsigned d, class T>
+class gsXml< gsTensorBSpline<d,T> >
 {
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsTensorBSpline<TMPLA3(d,T,KnotVectorType)>);
+    GSXML_COMMON_FUNCTIONS(gsTensorBSpline<TMPLA2(d,T)>);
     static std::string tag ()  { return "Geometry"; }
     static std::string type () { return "TensorBSpline" +  to_string(d); }
 
-    static gsTensorBSpline<d,T,KnotVectorType> * get (gsXmlNode * node)
+    static gsTensorBSpline<d,T> * get (gsXmlNode * node)
     {
-        return getGeometryFromXml< gsTensorBSpline<d,T,KnotVectorType> >( node );
+        return getGeometryFromXml< gsTensorBSpline<d,T> >( node );
     }
     
-    static gsXmlNode * put (const gsTensorBSpline<d,T,KnotVectorType> & obj,
+    static gsXmlNode * put (const gsTensorBSpline<d,T> & obj,
                             gsXmlTree & data)
     {
         return putGeometryToXml(obj,data);

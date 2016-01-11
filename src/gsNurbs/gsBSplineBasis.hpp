@@ -30,9 +30,9 @@ namespace gismo
 {
 
 
-template <class T, class KnotVectorType>
-typename gsTensorBSplineBasis<1,T,KnotVectorType>::Self_t *
-gsTensorBSplineBasis<1,T,KnotVectorType>::New(std::vector<gsBasis<T>*> & bb )
+template <class T>
+typename gsTensorBSplineBasis<1,T>::Self_t *
+gsTensorBSplineBasis<1,T>::New(std::vector<gsBasis<T>*> & bb )
 {
     GISMO_ASSERT( bb.size() == 1, "Expecting one component");
     Self_t * c = dynamic_cast<Self_t*>(bb.front());
@@ -48,20 +48,20 @@ gsTensorBSplineBasis<1,T,KnotVectorType>::New(std::vector<gsBasis<T>*> & bb )
     }
 }
 
-template <class T, class KnotVectorType>
-int gsTensorBSplineBasis<1,T,KnotVectorType>::elementIndex(const gsVector<T> & u ) const
+template <class T>
+int gsTensorBSplineBasis<1,T>::elementIndex(const gsVector<T> & u ) const
 {
     return m_knots.uFind(u(0,0)).uIndex();
 }
 
-template <class T, class KnotVectorType>
-int gsTensorBSplineBasis<1,T,KnotVectorType>::elementIndex(T u ) const
+template <class T>
+int gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
 {
     return m_knots.uFind( u ).uIndex();
 }
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::connectivity(const gsMatrix<T> & nodes, 
+template <class T>
+void gsTensorBSplineBasis<1,T>::connectivity(const gsMatrix<T> & nodes, 
                                             gsMesh<T> & mesh) const
 {
     const index_t sz  = size();
@@ -82,8 +82,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::connectivity(const gsMatrix<T> & 
         mesh.addEdge( sz-1, 0);
 }
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::matchWith(const boundaryInterface & bi,
+template <class T>
+void gsTensorBSplineBasis<1,T>::matchWith(const boundaryInterface & bi,
                                                  const gsBasis<T> & other,
                                                  gsMatrix<unsigned> & bndThis,
                                                  gsMatrix<unsigned> & bndOther) const
@@ -100,8 +100,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::matchWith(const boundaryInterface
     gsWarn<< "Cannot match with "<< other <<"\n";
 }
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::active_into(const gsMatrix<T>& u, 
+template <class T>
+void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u, 
                                                    gsMatrix<unsigned>& result ) const 
 {
     result.resize(m_p+1, u.cols());
@@ -130,16 +130,16 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::active_into(const gsMatrix<T>& u,
         }
 }
 
-template <class T, class KnotVectorType>
-bool gsTensorBSplineBasis<1,T,KnotVectorType>::isActive(const unsigned i, const gsVector<T>& u) const 
+template <class T>
+bool gsTensorBSplineBasis<1,T>::isActive(const unsigned i, const gsVector<T>& u) const 
 {
     GISMO_ASSERT( u.rows() == 1, "Invalid input.");
     // Note: right end of the support will be considered active
     return( (u.value() >= m_knots[i]) && (u.value() <= m_knots[i+m_p+1]) );
 }
 
-template <class T, class KnotVectorType> 
-gsMatrix<unsigned> * gsTensorBSplineBasis<1,T,KnotVectorType>::allBoundary() const
+template <class T> 
+gsMatrix<unsigned> * gsTensorBSplineBasis<1,T>::allBoundary() const
 {
     if( m_periodic ) // Periodic basis does not have such things as boundaries.
     {
@@ -156,8 +156,8 @@ gsMatrix<unsigned> * gsTensorBSplineBasis<1,T,KnotVectorType>::allBoundary() con
 }
 
 
-template <class T, class KnotVectorType> 
-gsMatrix<unsigned> * gsTensorBSplineBasis<1,T,KnotVectorType>::boundaryOffset(boxSide const & s,
+template <class T> 
+gsMatrix<unsigned> * gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
                                                                       unsigned offset ) const
 {
     if( m_periodic )
@@ -184,14 +184,14 @@ gsMatrix<unsigned> * gsTensorBSplineBasis<1,T,KnotVectorType>::boundaryOffset(bo
     }
 }
 
-template <class T, class KnotVectorType>
-gsConstantBasis<T> * gsTensorBSplineBasis<1,T,KnotVectorType>::boundaryBasis(boxSide const & s ) const 
+template <class T>
+gsConstantBasis<T> * gsTensorBSplineBasis<1,T>::boundaryBasis(boxSide const & s ) const 
 { 
     return new gsConstantBasis<T>(1.0);
 }
 
-template <class T, class KnotVectorType>
-gsMatrix<T> gsTensorBSplineBasis<1,T,KnotVectorType>::support() const 
+template <class T>
+gsMatrix<T> gsTensorBSplineBasis<1,T>::support() const 
 {
     // The support of a the whole B-spline basis is the interval
     // between m_knots[m_p] and m_knots[i+m_p+1].
@@ -202,8 +202,8 @@ gsMatrix<T> gsTensorBSplineBasis<1,T,KnotVectorType>::support() const
     return res ;
 }
 
-template <class T, class KnotVectorType>
-gsMatrix<T> gsTensorBSplineBasis<1,T,KnotVectorType>::support(const unsigned & i) const 
+template <class T>
+gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const unsigned & i) const 
 {
     // Note: in the periodic case last index is 
     // m_knots.size() - m_p - 1 - m_periodic
@@ -221,8 +221,8 @@ gsMatrix<T> gsTensorBSplineBasis<1,T,KnotVectorType>::support(const unsigned & i
     return res ;
 }
 
-template <class T, class KnotVectorType>
-unsigned gsTensorBSplineBasis<1,T,KnotVectorType>::twin(unsigned i) const 
+template <class T>
+unsigned gsTensorBSplineBasis<1,T>::twin(unsigned i) const 
 {
     if( m_periodic == 0 )
         return i;
@@ -234,8 +234,8 @@ unsigned gsTensorBSplineBasis<1,T,KnotVectorType>::twin(unsigned i) const
     return i;
 }
 
-template <class T, class KnotVectorType> 
-void gsTensorBSplineBasis<1,T,KnotVectorType>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const 
+template <class T> 
+void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const 
 {
     result.resize(m_p+1, u.cols() );
 
@@ -351,8 +351,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::eval_into(const gsMatrix<T> & u, 
 }
 
 
-template <class T, class KnotVectorType> 
-void gsTensorBSplineBasis<1,T,KnotVectorType>::evalSingle_into(unsigned i, 
+template <class T> 
+void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i, 
                                                        const gsMatrix<T> & u, 
                                                        gsMatrix<T>& result) const 
 {
@@ -431,8 +431,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalSingle_into(unsigned i,
   }
 }
 
-template <class T, class KnotVectorType> 
-void gsTensorBSplineBasis<1,T,KnotVectorType>::evalDerSingle_into(unsigned i, 
+template <class T> 
+void gsTensorBSplineBasis<1,T>::evalDerSingle_into(unsigned i, 
                                                      const gsMatrix<T> & u, 
                                                      int n, 
                                                      gsMatrix<T>& result) const
@@ -552,8 +552,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalDerSingle_into(unsigned i,
 
 }
 
-template <class T, class KnotVectorType> inline
-void gsTensorBSplineBasis<1,T,KnotVectorType>::evalFunc_into(const gsMatrix<T> &u, 
+template <class T> inline
+void gsTensorBSplineBasis<1,T>::evalFunc_into(const gsMatrix<T> &u, 
                                                  const gsMatrix<T> & coefs, 
                                                  gsMatrix<T>& result) const 
 {
@@ -569,8 +569,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::evalFunc_into(const gsMatrix<T> &
 }
 
 
-template <class T, class KnotVectorType> inline
-void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const 
+template <class T> inline
+void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const 
 {
   GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
 
@@ -634,8 +634,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv_into(const gsMatrix<T> & u,
   }// end for all columns v
 }
 
-template <class T, class KnotVectorType> inline
-void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2_into(const gsMatrix<T> & u, 
+template <class T> inline
+void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, 
                                                            gsMatrix<T>& result ) const 
 {
     std::vector<gsMatrix<T> > ev;
@@ -643,15 +643,15 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2_into(const gsMatrix<T> & u
     result.swap(ev[2]);
 }
 
-template <class T, class KnotVectorType>  inline
-void gsTensorBSplineBasis<1,T,KnotVectorType>::derivSingle_into(unsigned i, 
+template <class T>  inline
+void gsTensorBSplineBasis<1,T>::derivSingle_into(unsigned i, 
                                                                 const gsMatrix<T> & u, 
                                                                 gsMatrix<T>& result ) const 
 {
     // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
     result.resize(1, u.cols() );
     gsMatrix<T> tmp;
-    gsTensorBSplineBasis<1,T,KnotVectorType>::deriv_into(u, tmp);
+    gsTensorBSplineBasis<1,T>::deriv_into(u, tmp);
     
     for (index_t j = 0; j < u.cols(); ++j)
     {
@@ -663,9 +663,9 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::derivSingle_into(unsigned i,
     }
 }
 
-template <class T, class KnotVectorType>  inline
+template <class T>  inline
 void 
-gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDersSingle_into(unsigned i,
+gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
                                                                  const gsMatrix<T> & u,
                                                                  int n,
                                                                  gsMatrix<T>& result) const
@@ -796,8 +796,8 @@ gsTensorBSplineBasis<1,T,KnotVectorType>::evalAllDersSingle_into(unsigned i,
 }
 
 
-template <class T, class KnotVectorType> inline 
-void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
+template <class T> inline 
+void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
 { 
     // TO DO specialized computation for gsBSplineBasis
     if( m_periodic == 0 )
@@ -806,8 +806,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv_into(const gsMatrix<T> & u,
         gsBasis<T>::derivFunc_into(u, perCoefs(coefs), result);
 }
 
-template <class T, class KnotVectorType> inline 
-void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const 
+template <class T> inline 
+void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const 
 { 
     // TO DO specialized computation for gsBSplineBasis
     if( m_periodic == 0 )
@@ -816,13 +816,13 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2_into(const gsMatrix<T> & u
         gsBasis<T>::deriv2Func_into(u, perCoefs(coefs), result);
 }
 
-template <class T, class KnotVectorType>  inline
-void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const 
+template <class T>  inline
+void gsTensorBSplineBasis<1,T>::deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const 
 {
     // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
     result.resize(1, u.cols() );
     gsMatrix<T> tmp;
-    gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2_into(u, tmp);
+    gsTensorBSplineBasis<1,T>::deriv2_into(u, tmp);
 
     for (index_t j = 0; j < u.cols(); ++j)
     {
@@ -834,8 +834,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::deriv2Single_into(unsigned i, con
     }
 }
 
-template <class T, class KnotVectorType> inline
-gsMatrix<T> * gsTensorBSplineBasis<1,T,KnotVectorType>::laplacian(const gsMatrix<T> & u ) const 
+template <class T> inline
+gsMatrix<T> * gsTensorBSplineBasis<1,T>::laplacian(const gsMatrix<T> & u ) const 
 {
     std::vector<gsMatrix<T> > ev;
     this->evalAllDers_into(u, 2, ev);
@@ -843,15 +843,15 @@ gsMatrix<T> * gsTensorBSplineBasis<1,T,KnotVectorType>::laplacian(const gsMatrix
     return res;
 }
 
-template <class T, class KnotVectorType>
+template <class T>
 gsBasis<T> * 
-gsTensorBSplineBasis<1,T,KnotVectorType>::tensorize(const gsBasis<T> & other) const 
+gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const 
 { 
     Self_t * ptr1 = dynamic_cast<Self_t*>(other. clone());
     Self_t * ptr2 =  static_cast<Self_t*>( this->clone());
 
     if ( ptr1 )
-        return new gsTensorBSplineBasis<2,T,KnotVectorType>( ptr1, ptr2 );
+        return new gsTensorBSplineBasis<2,T>( ptr1, ptr2 );
     else
     {
         gsInfo<<"Invalid basis "<< other <<"\n";
@@ -859,20 +859,20 @@ gsTensorBSplineBasis<1,T,KnotVectorType>::tensorize(const gsBasis<T> & other) co
     }
 }
 
-template <class T, class KnotVectorType>
-gsGeometry<T> * gsBSplineBasis<T,KnotVectorType>::makeGeometry( const gsMatrix<T> & coefs ) const
+template <class T>
+gsGeometry<T> * gsBSplineBasis<T>::makeGeometry( const gsMatrix<T> & coefs ) const
 {
     return new GeometryType(*this, coefs);
 }
 
-template <class T, class KnotVectorType>
-gsGeometry<T> * gsBSplineBasis<T,KnotVectorType>::makeGeometry( gsMovable< gsMatrix<T> > coefs ) const
+template <class T>
+gsGeometry<T> * gsBSplineBasis<T>::makeGeometry( gsMovable< gsMatrix<T> > coefs ) const
 {
     return new GeometryType(*this, coefs);
 }
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::
+template <class T>
+void gsTensorBSplineBasis<1,T>::
 evalAllDers_into(const gsMatrix<T> & u, int n, 
                  std::vector<gsMatrix<T> >& result) const
 {
@@ -1045,8 +1045,8 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
 }
 
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots)
+template <class T>
+void gsTensorBSplineBasis<1,T>::refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots)
 {
     // Probably does not work with periodic basis. We would need to shift the knots in the ghost areas by the active length,
     // sort the knot vector, swap the coefs accordingly, call this with perCoefs (or coefs?) and stretch outer knots.
@@ -1054,8 +1054,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::refine_withCoefs(gsMatrix<T>& coe
 }
 
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots)
+template <class T>
+void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots)
 {
     // See remark about periodic basis in refine_withCoefs, please.
     gsSparseRows<T> trans;
@@ -1065,8 +1065,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::refine_withTransfer(gsSparseMatri
 }
 
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
+template <class T>
+void gsTensorBSplineBasis<1,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
 {
     // See remark about periodic basis in refine_withCoefs, please.
     std::vector<T> newKnots;
@@ -1075,8 +1075,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::uniformRefine_withCoefs(gsMatrix<
 }
 
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, int mul)
+template <class T>
+void gsTensorBSplineBasis<1,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, int mul)
 {
     // See remark about periodic basis in refine_withCoefs, please.
     std::vector<T> newKnots;
@@ -1084,15 +1084,15 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::uniformRefine_withTransfer(gsSpar
     this->refine_withTransfer(transfer, newKnots);
 }
 
-template <class T, class KnotVectorType>
-unsigned gsTensorBSplineBasis<1,T,KnotVectorType>::functionAtCorner(boxCorner const & c) const
+template <class T>
+unsigned gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
 {
     GISMO_ASSERT(c<3,"Invalid corner for 1D basis.");
     return ( c == 1 ? 0 : this->size()-1);
 }
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::setDegree(int const & i) 
+template <class T>
+void gsTensorBSplineBasis<1,T>::setDegree(int const & i) 
 { 
     if ( i > m_p )
     {
@@ -1109,8 +1109,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::setDegree(int const & i)
     }
 }
 
-template <class T, class KnotVectorType>
-std::ostream & gsTensorBSplineBasis<1,T,KnotVectorType>::print(std::ostream &os) const
+template <class T>
+std::ostream & gsTensorBSplineBasis<1,T>::print(std::ostream &os) const
 {
     os << "BSplineBasis: deg=" <<degree()
         << ", size="<< size() << ", knot vector:\n";
@@ -1119,8 +1119,8 @@ std::ostream & gsTensorBSplineBasis<1,T,KnotVectorType>::print(std::ostream &os)
         os << ",\n m_periodic= " << m_periodic;
     return os;
 }
-template <class T, class KnotVectorType>
-std::string gsTensorBSplineBasis<1,T,KnotVectorType>::detail() const
+template <class T>
+std::string gsTensorBSplineBasis<1,T>::detail() const
 {
     std::stringstream os;
     os << "BSplineBasis: deg=" <<degree()
@@ -1132,8 +1132,8 @@ std::string gsTensorBSplineBasis<1,T,KnotVectorType>::detail() const
 }
 
 
-template<class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::enforceOuterKnotsPeriodic()
+template<class T>
+void gsTensorBSplineBasis<1,T>::enforceOuterKnotsPeriodic()
 {
     int borderKnotMult = this->borderKnotMult(); // Otherwise complains that error: 'borderKnotMult' cannot be used as a function
     std::vector<T> newKnots(m_knots.begin(), m_knots.end());
@@ -1145,8 +1145,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::enforceOuterKnotsPeriodic()
     m_knots=KnotVectorType(m_p, newKnots.begin(), newKnots.end());
 }
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::_convertToPeriodic()
+template <class T>
+void gsTensorBSplineBasis<1,T>::_convertToPeriodic()
 {
     gsWarn << "gsBSplineBasis: Converting basis to periodic"<< *this<< "\n";
 
@@ -1185,8 +1185,8 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::_convertToPeriodic()
     }
 }
 
-template <class T, class KnotVectorType>
-int gsTensorBSplineBasis<1,T,KnotVectorType>::borderKnotMult() const
+template <class T>
+int gsTensorBSplineBasis<1,T>::borderKnotMult() const
 {
     // Terminology: Blue knots are the m_p + 1st from the beginning and from the end of knot vector.
     if( isClamped() )
@@ -1222,8 +1222,8 @@ int gsTensorBSplineBasis<1,T,KnotVectorType>::borderKnotMult() const
 
 }
 
-template <class T, class KnotVectorType>
-void gsTensorBSplineBasis<1,T,KnotVectorType>::_stretchEndKnots()
+template <class T>
+void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 {
     GISMO_ASSERT( isClamped(), "_stretchEndKnots() is intended for use only to knot vectors with clamped end knots.");
     T curFirst=m_knots[0];
@@ -1234,21 +1234,21 @@ void gsTensorBSplineBasis<1,T,KnotVectorType>::_stretchEndKnots()
 
 /* ********************************************** */
 
-template <class T, class KnotVectorType>
-gsBSplineBasis<T,KnotVectorType> * gsBSplineBasis<T,KnotVectorType>::clone() const
+template <class T>
+gsBSplineBasis<T> * gsBSplineBasis<T>::clone() const
 { 
     return new gsBSplineBasis(*this); 
 }
 
-template <class T, class KnotVectorType>
-gsBSplineBasis<T,KnotVectorType> & gsBSplineBasis<T,KnotVectorType>::component(unsigned i)
+template <class T>
+gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i)
 {
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
     return const_cast<gsBSplineBasis&>(*this);
 }
 
-template <class T, class KnotVectorType>
-const gsBSplineBasis<T,KnotVectorType> & gsBSplineBasis<T,KnotVectorType>::component(unsigned i) const
+template <class T>
+const gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i) const
 {
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");
     return const_cast<gsBSplineBasis&>(*this);
@@ -1259,17 +1259,17 @@ namespace internal
 {
 
 /// Get a BSplineBasis from XML data
-template<class T, class KnotVectorType>
-class gsXml< gsBSplineBasis<T, KnotVectorType > >
+template<class T>
+class gsXml< gsBSplineBasis<T> >
 {
 private:
     gsXml() { }
 public:
-    GSXML_COMMON_FUNCTIONS(gsBSplineBasis<TMPLA2(T,KnotVectorType)>);
+    GSXML_COMMON_FUNCTIONS(gsBSplineBasis<T>);
     static std::string tag  () { return "Basis"; }
     static std::string type () { return "BSplineBasis"; }
 
-    static gsBSplineBasis<T, KnotVectorType > * get (gsXmlNode * node)
+    static gsBSplineBasis<T> * get (gsXmlNode * node)
     {
         GISMO_ASSERT( !strcmp( node->name(),"Basis"), "Wrong tag." );
         
@@ -1282,12 +1282,12 @@ public:
         gsXmlNode * tmp = node->first_node("KnotVector");
         // if type: == Plain, == Compact .. 
         GISMO_ASSERT(tmp, "Did not find a KnotVector tag in the Xml file.");
-        KnotVectorType kv = * safe( gsXml<KnotVectorType>::get (tmp) );
+        gsKnotVector<T> kv = * safe( gsXml<gsKnotVector<T> >::get (tmp) );
         
-        return new gsBSplineBasis<T, KnotVectorType>( kv );
+        return new gsBSplineBasis<T>( kv );
     }
     
-    static gsXmlNode * put (const gsBSplineBasis<T, KnotVectorType> & obj, 
+    static gsXmlNode * put (const gsBSplineBasis<T> & obj, 
                             gsXmlTree & data)
     {
         // Add a new node for obj (without data)
@@ -1296,7 +1296,7 @@ public:
         
         // Write the knot vector
         gsXmlNode* tmp = 
-            internal::gsXml<KnotVectorType>::put(obj.knots(), data );
+            internal::gsXml<gsKnotVector<T> >::put(obj.knots(), data );
         bs_node->append_node(tmp);
         
         // All set, return the BSPlineBasis node

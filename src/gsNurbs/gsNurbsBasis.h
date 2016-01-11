@@ -35,17 +35,19 @@ namespace gismo
     \ingroup Nurbs
 */
 
-template<class T, class KnotVectorType >
-class gsNurbsBasis : public gsRationalBasis<gsBSplineBasis<T,KnotVectorType> >
+template<class T>
+class gsNurbsBasis : public gsRationalBasis<gsBSplineBasis<T> >
 {
 public:
+    typedef gsKnotVector<T> KnotVectorType;
+
     /// The family type
-    typedef gsBSplineBasis<T,KnotVectorType> Family_t;
+    typedef gsBSplineBasis<T> Family_t;
 
     /// Associated geometry type
     typedef gsNurbs<T> GeometryType;
 
-    typedef gsRationalBasis<gsBSplineBasis<T,KnotVectorType> > Base;
+    typedef gsRationalBasis<gsBSplineBasis<T> > Base;
 
     typedef T Scalar_t;
 
