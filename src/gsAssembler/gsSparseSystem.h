@@ -9,7 +9,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, C. Hofer
 */
 
 #pragma once
@@ -39,36 +39,54 @@ protected:
     
 protected:
 
+    /// @brief the system matrix
     gsSparseMatrix<T> m_matrix;
 
+    /// @brief the right hand side of the system
     gsMatrix<T> m_rhs;
 
 
     // -- Structure
+
+    /// @brief the mappers for the different blocks. The assignment of the
+    /// mappers to the column (and row) blocks is done via the members
+    /// \a m_row and \a m_col. This also allows for different mappers for columns
+    /// and rows. There are no assumptions on the ordering of \a m_mappers.
+    ///  The relation of column mappers and the used multibasis is done via \a m_cvar.
     DofMappers m_mappers;
 
-    /// @brief map between rows blocks and index of \a m_mappers
+    /// @brief map between row blocks and index of \a m_mappers, i.e.
+    ///  row block i is described by m_mappers[m_row[i]].
     gsVector<size_t> m_row;
 
-    /// @brief map between columns blocks and index of \a m_mappers
+    /// @brief map between column blocks and index of \a m_mappers i.e.
+    ///  col block j is described by m_mappers[m_row[j]].
     gsVector<size_t> m_col;    
 
-    /// @brief strides for the rows (shifting of mapped indices)
+    /// @brief strides for the row blocks (shifting of mapped indices).
+    /// The mapper do not have this information anymore.
     gsVector<index_t> m_rstr;
 
-    /// @brief strides for the columns (shifting of mapped indices)
+    /// @brief strides for the column blocks (shifting of mapped indices).
+    /// The mapper do not have this information anymore.
     gsVector<index_t> m_cstr;
 
     /// @brief map between column blocks and used multibasis
-    /// (which unknown/component correlate to which basis)
+    /// (which unknown/component correlate to which multibasis), i.e. column block i
+    /// uses multibasis m_cvar[i]. So this allows e.g. a single multibasis for several components.
     gsVector<index_t> m_cvar;
-    //
+
 
 public:
 
     gsSparseSystem() 
     { }
 
+    /**
+     * @brief gsSparseSystem Constuctor for the sparse System only considering one block (scalar equation),
+     * described by the one DofMapper \a mapper.
+     * @param[in] mapper the one DofMapper discribing the discretization.
+     */
     gsSparseSystem(gsDofMapper & mapper)
     : m_mappers(1), 
       m_row    (1),
@@ -170,6 +188,18 @@ public:
                          m_cstr.at(cols-1) + m_mappers[m_col[cols-1]].freeSize() );
     }
 
+    /**
+     * @brief gsSparseSystem The constructor for the sparse system given the set of mappers, may be different
+     * for each column and row block, the assignment of mappers to row blocks and column block, and the relation
+     * which Multibases correspond to which unknown. This constructor allows for the most possible freedome to
+     * design your block system.
+     * @param[in] mappers the set of mappers, need not be a one to one relation with the blocks.
+     * @param[in] rowInd assignment of row blocks to mappers, e.g. row block i uses mapper rowInd[i] of the
+     *            set \a mappers.
+     * @param[in] colInd assignment of column blocks to mappers, e.g. column block j uses mapper colInd[j] of the
+     *            set \a mappers. (need not be the same mappers as for the row blocks)
+     * @param[in] colvar assignment of unknowns to the used bases (i.e. column blocks to MultiBasis)
+     */
     gsSparseSystem(DofMappers & mappers, 
                    const gsVector<size_t> & rowInd,
                    const gsVector<size_t> & colInd,
@@ -198,6 +228,10 @@ public:
                          m_cstr.at(cols-1) + m_mappers[m_col[cols-1]].freeSize() );
     }
 
+    /**
+     * @brief swap swaps the content of the Sparse System with the other given one
+     * @param[in] other the other sparse system
+     */
     void swap(gsSparseSystem & other)
     {
         m_matrix .swap(other.m_matrix );
@@ -210,8 +244,11 @@ public:
         m_cvar   .swap(other.m_cvar   );
     }
     
-    /// Non-zeros per column for the sparse matrix, number of columns
-    /// for the right-hand side
+    /**
+     * @brief reserve reserves the memory for the sparse matrix and the rhs.
+     * @param[in] nz Non-zeros per column for the sparse matrix
+     * @param [in]numRhs number of columns
+     */
     void reserve(const index_t nz, const index_t numRhs)
     {
         GISMO_ASSERT( 0 != m_mappers.size(), "Sparse system was not initialized");
@@ -222,12 +259,14 @@ public:
         }
     }
 
+    /// @brief set everything to zero
     void setZero()
     {
         m_matrix.setZero();
         m_rhs   .setZero();
     }
 
+    /// @brief the number of matrix columns
     index_t cols()
     {
         return m_rhs.rows();
@@ -235,18 +274,23 @@ public:
 
 public: /* Accessors */
 
+    /// @brief Access the system Matrix
     const gsSparseMatrix<T> & matrix() const 
     { return m_matrix; }
 
+    /// @brief Access the system Matrix
     gsSparseMatrix<T> & matrix() 
     { return m_matrix; }
 
+    /// @brief Access the right hand side
     const gsMatrix<T> & rhs() const 
     { return m_rhs; }
 
+    /// @brief Access the right hand side
     gsMatrix<T> & rhs() 
     { return m_rhs; }
 
+    /// @brief returns a block view of the matrix, easy way to extract single blocks
     matBlockView blockView()
     {
         gsVector<index_t> rowSizes(m_row.size()), colSizes(m_row.size());
@@ -260,41 +304,70 @@ public: /* Accessors */
         return m_matrix.blockView(rowSizes,colSizes); 
     }
 
+    /// @brief returns the number of column blocks
     size_t numColBlocks() {return m_col.size();}
 
+    /// @brief returns the number of row blocks
     size_t numRowBlocks() {return m_row.size();}
 
+    /**
+     * @brief rowMapper returns the dofMapper for row block \a r
+     * @param[in] r the index of the row block
+     * @return the corresponding DofMapper
+     */
     const gsDofMapper & rowMapper(const index_t r) const
     { return m_mappers[m_row[r]]; }
 
+    /**
+     * @brief rowMapper returns the dofMapper for row block \a r
+     * @param[in] r the index of the row block
+     * @return the corresponding DofMapper
+     */
     gsDofMapper & rowMapper(const index_t r)
     { return m_mappers[m_row[r]]; }
 
+    /**
+     * @brief colMapper returns the dofMapper for column block \a c
+     * @param[in] c the index of the column block
+     * @return the corresponding DofMapper
+     */
     const gsDofMapper & colMapper(const index_t c) const
     {
         return m_mappers[m_col[c]]; 
     }
     
+    /**
+     * @brief colMapper returns the dofMapper for column block \a c
+     * @param[in] c the index of the column block
+     * @return the corresponding DofMapper
+     */
+    gsDofMapper & colMapper(const index_t c)
+    { return m_mappers[m_col[c]]; }
+
+    /**
+     * @brief colBasis returns the index of the Basis used for column block \a c
+     * @param[in] c the index of the column block
+     * @return the index of the used basis
+     */
+    index_t colBasis(const index_t c) const // better name ?
+    { return m_cvar[c]; }
+
+    /// @brief returns all dof Mappers. Note, the result is not a one to one
+    /// relation with the blocks.
+    const DofMappers & dofMappers() const
+    { return m_mappers; }
+
+    /// @brief checks if the system was initialized
     bool initialized() const
     {
         return 0 != m_col.size();
     }
 
+    /// @brief returns true if only half of the matrix is stored
     bool symmetry() const
     {
         return symm;
     }
-
-    // Returns the mapper index for column block \a c
-    gsDofMapper & colMapper(const index_t c)
-    { return m_mappers[m_col[c]]; }
-
-    // Returns the basis index for column block \a c
-    index_t colBasis(const index_t c) const // better name ?
-    { return m_cvar[c]; }
-
-    const DofMappers & dofMappers() const
-    { return m_mappers; }
 
     /*
     gsRefVector<gsDofMapper> colMappers()
@@ -311,6 +384,15 @@ public: /* Accessors */
 
 public: /* mapping patch-local to global indices */
 
+    /**
+     * @brief mapRowIndices Maps a set of basis indices by the corresponding dofMapper.
+     * Note that the result is not the position in the sparse system, since the shifts
+     * are not included.
+     * @param[in] actives the set of basis indices
+     * @param[in] patchIndex the patch under consideration
+     * @param[out] result the mapped indices
+     * @param[in] r the considered row block
+     */
     void mapRowIndices(const gsMatrix<unsigned> & actives,
                        const index_t patchIndex, 
                        gsMatrix<unsigned> & result,
@@ -319,6 +401,15 @@ public: /* mapping patch-local to global indices */
         m_mappers[m_row.at(r)].localToGlobal(actives, patchIndex, result);
     }
     
+    /**
+     * @brief mapColIndices Maps a set of basis indices by the corresponding dofMapper.
+     * Note that the result is not the position in the sparse system, since the shifts
+     * due to the block structure are not included.
+     * @param[in] actives the set of basis indices
+     * @param[in] patchIndex the patch under consideration
+     * @param[out] result the mapped indices
+     * @param[in] c the considered column block
+     */
     void mapColIndices(gsMatrix<unsigned> & actives,
                        const index_t patchIndex, 
                        gsMatrix<unsigned> & result,
@@ -327,6 +418,14 @@ public: /* mapping patch-local to global indices */
         m_mappers[m_col.at(c)].localToGlobal(actives, patchIndex, result);
     }
 
+    /**
+     * @brief mapToGlobalRowIndex Maps a single basis index to the final position in the system,
+     * i.e. including the right shift due to the block structure
+     * @param[in] active the basis index
+     * @param[in] patchIndex the patch index
+     * @param[out] result the mapped index
+     * @param[in] r the considered row block
+     */
     void mapToGlobalRowIndex(const unsigned active,
                        const index_t patchIndex,
                        unsigned & result,
@@ -335,6 +434,14 @@ public: /* mapping patch-local to global indices */
         result = m_mappers[m_row.at(r)].index(active, patchIndex)+m_rstr[r];
     }
 
+    /**
+     * @brief mapToGlobalColIndex Maps a single basis index to the final position in the system,
+     * i.e. including the right shift due to the block structure
+     * @param[in] active the basis index
+     * @param[in] patchIndex the patch index
+     * @param[out] result the mapped index
+     * @param[in] c the considered column block
+     */
     void mapToGlobalColIndex(const unsigned active,
                        const index_t patchIndex,
                        unsigned & result,
@@ -345,7 +452,17 @@ public: /* mapping patch-local to global indices */
  
 public: /* Add local contributions to system matrix */
 
-    // Same index sets for row and column
+    /**
+     * @brief pushToMatrix pushes the local matrix for an element to the global system,
+     * Note: 1) the same index set is assumed for row and column block
+     *       2) dofs with are eliminated are NOT moved to the rhs, they are just ignored in
+     *          the assembly
+     *       3) no assembling is done for the rhs
+     * @param[in] localMat the local matrix
+     * @param[in] actives the mapped index of basis functions, without shifts!
+     * @param[in] r the row block
+     * @param[in] c the column block
+     */
     void pushToMatrix(const gsMatrix<T>  & localMat, 
                       const gsMatrix<unsigned> & actives,
                       const size_t r = 0, const size_t c = 0)
@@ -374,7 +491,18 @@ public: /* Add local contributions to system matrix */
         }
     }
 
-    // Different index sets for row and column
+    /**
+     * @brief pushToMatrix pushes the local matrix for an element to the global system,
+     * Note: 1) the different index sets are used for row and column block
+     *       2) dofs with are eliminated are NOT moved to the rhs, they are just ignored in
+     *          the assembly
+     *       3) no assembling is done for the rhs
+     * @param[in] localMat the local matrix
+     * @param[in] actives_i the mapped index of row - basis functions, without shifts!
+     * @param[in] actives_j the mapped index of column - basis functions, without shifts!
+     * @param[in] r the row block
+     * @param[in] c the column block
+     */
     void pushToMatrix(const gsMatrix<T>  & localMat, 
                      const gsMatrix<unsigned> & actives_i,
                      const gsMatrix<unsigned> & actives_j,
@@ -408,6 +536,15 @@ public: /* Add local contributions to system matrix */
 
 public: /* Add local contributions to system right-hand side */
 
+    /**
+     * @brief pushToRhs pushes the local rhs for an element to the global system
+     * Note: 1) dofs with are eliminated are NOT moved to the rhs, they are just ignored in
+     *          the assembly
+     *       2) no assembling is done for the matrix
+     * @param[in] localRhs the local right hand side matrix/vectir
+     * @param[in] actives the corresponding mapped index of basis functions without shifts
+     * @param[in] c the column block associated to
+     */
     void pushToRhs(const gsMatrix<T> & localRhs, 
                   const gsMatrix<unsigned> & actives, 
                   const size_t c = 0)
@@ -428,7 +565,17 @@ public: /* Add local contributions to system right-hand side */
 
 public: /* Add local contributions to system matrix and right-hand side */
 
-    // Same index set for row and column block
+    /**
+     * @brief push pushes the local system matrix and rhs for an element to the global system,
+     * Note: 1) the same index set is assumed for row and column block
+     *       2) dofs with are eliminated are NOT moved to the rhs, they are just ignored in
+     *          the assembly
+     * @param[in] localMat the local system matrix
+     * @param[in] localRhs the local rhs matrix/vector
+     * @param[in] actives the mapped index of basis functions, without shifts!
+     * @param[in] r the row block
+     * @param[in] c the column block
+     */
     void push(const gsMatrix<T>  & localMat, 
               const gsMatrix<T>  & localRhs,
               const gsMatrix<unsigned> & actives,
@@ -460,8 +607,17 @@ public: /* Add local contributions to system matrix and right-hand side */
         }
     }
 
-    // Same index set for row and column block, no checks for
-    // free/boundary dofs
+    /**
+     * @brief pushAllFree pushes the local system matrix and rhs for an element to the global system,
+     * Note: 1) the same index set is assumed for row and column block
+     *       2) no checks are done if a index is eliminated or not
+     * Use this functions if you already know that your block has no eliminated dofs
+     * @param[in] localMat the local system matrix
+     * @param[in] localRhs the local rhs matrix/vector
+     * @param[in] actives the mapped index of basis functions, without shifts!
+     * @param[in] r the row block
+     * @param[in] c the column block
+     */
     void pushAllFree(const gsMatrix<T>  & localMat, 
                      const gsMatrix<T>  & localRhs,
                      const gsMatrix<unsigned> & actives,
@@ -485,7 +641,18 @@ public: /* Add local contributions to system matrix and right-hand side */
         }
     }
     
-    // Same index set for row and column block, with fixed DoF values
+    /**
+     * @brief push pushes the local system matrix and rhs for an element to the global system,
+     * Note: 1) the same index set is assumed for row and column block
+     *       2) eliminated dofs are incorporated in the right way
+     *
+     * @param[in] localMat the local system matrix
+     * @param[in] localRhs the local rhs matrix/vector
+     * @param[in] actives the mapped index of basis functions, without shifts!
+     * @param[in] eliminatedDofs the values for the dofs, which are removed from the system
+     * @param[in] r the row block
+     * @param[in] c the column block
+     */
     void push(const gsMatrix<T> & localMat, 
               const gsMatrix<T> & localRhs,
               const gsMatrix<unsigned> & actives,
@@ -525,7 +692,20 @@ public: /* Add local contributions to system matrix and right-hand side */
         }
     }
 
-    // Different index sets for row and column blocks
+    /**
+     * @brief push pushes the local system matrix and rhs for an element to the global system,
+     * Note: 1) different index sets can be used for row and column blocks
+     *       2) eliminated dofs are incorporated in the right way
+     *
+     * @param[in] localMat the local system matrix
+     * @param[in] localRhs the local rhs matrix/vector
+     * @param[in] actives_i the mapped index of row basis functions, without shifts!
+     * @param[in] actives_j the mapped index of column basis functions, without shifts!
+     * @param[in] eliminatedDofs_j the values for the dofs (corresponding to the columns), which are
+     *                         removed from the system
+     * @param[in] r the row block
+     * @param[in] c the column block
+     */
     void push(const gsMatrix<T> & localMat, 
               const gsMatrix<T> & localRhs,
               const gsMatrix<unsigned> & actives_i,
@@ -567,9 +747,22 @@ public: /* Add local contributions to system matrix and right-hand side */
         }
     }
 
-    // Local matrix and rhs with the same structure as the global system, 
-    // same index sets -- one per block
     // AM: incomplete, not working yet
+    /**
+     * @brief push pushes one local system matrix and one local rhs for an element to
+     *        the global system for several blocks
+     * Note: 1) the same index set is assumed for row and column blocks
+     *       2) eliminated dofs are incorporated in the right way
+     *       3) several blocks can be pused with one function call, but the same local
+     *          matrix is assumed
+     *       4) if the size of the vector is smaller, than the number of blocks, then only the
+     *          the first \a actives.size() blocks are filled.
+     * @param[in] localMat local system matrices
+     * @param[in] localRhs local rhs vector/matrices
+     * @param[in] actives a vector of index sets (one per block)
+     * @param[in] eliminatedDofs a vector of values for the dofs (corresponding to the columns), which are
+     *           removed from the system, (one per block)
+     */
     void push(const gsMatrix<T> & localMat, 
               const gsMatrix<T> & localRhs,
               const std::vector<gsMatrix<unsigned> >& actives, 
@@ -613,7 +806,20 @@ public: /* Add local contributions to system matrix and right-hand side */
         }
     }
 
-    // Several local matrices/rhs, same row/col indexing
+    /**
+     * @brief push pushes several local system matrices and local rhs for an element to
+     *        the global system for several blocks
+     * Note: 1) the same index set is assumed for row and column blocks
+     *       2) eliminated dofs are incorporated in the right way
+     *       3) several blocks can be pused with one function call
+     * @param[in] localMat a vector local system matrices
+     * @param[in] localRhs a vector local rhs vector/matrices
+     * @param[in] actives a vector of index sets (one per block)
+     * @param[in] eliminatedDofs a vector of values for the dofs (corresponding to the columns), which are
+     *           removed from the system, (one per block)
+     * @param[in] r the row blocks where the matrices should be pushed
+     * @param[in] c the colum blocks where the matrices shouldbe pushed
+     */
     void push(const std::vector<gsMatrix<T> > & localMat, 
               const std::vector<gsMatrix<T> > & localRhs,
               const std::vector<gsMatrix<unsigned> > & actives,
