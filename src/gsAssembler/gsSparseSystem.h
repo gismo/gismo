@@ -779,7 +779,7 @@ public: /* Add local contributions to system matrix and right-hand side */
                 for (index_t i = 0; i != numRowActive; ++i)
                 {
                     const int ii =  m_rstr.at(r) + actives[r].at(i);
-                    if ( rowMap.is_free_index(ii) )
+                    if ( rowMap.is_free_index(actives[r].at(i)) )
                     {
                         m_rhs.row(ii) += localRhs.row(i); //  + c * 
                         const index_t numColActive = actives[c].rows();
@@ -787,7 +787,7 @@ public: /* Add local contributions to system matrix and right-hand side */
                         for (index_t j = 0; j < numColActive; ++j)
                         {
                             const int jj =  m_cstr.at(c) + actives[c].at(j);
-                            if ( rowMap.is_free_index(jj) )
+                            if ( rowMap.is_free_index(actives[c].at(j)) )
                             {
                                 // If matrix is symmetric, we store only lower
                                 // triangular part
