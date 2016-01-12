@@ -160,23 +160,19 @@ inline T expm1_impl(const T& v, mpq_type_tag)
 template <typename T>
 inline T min_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    using std::min;
     return min(v0,v1);
 }
 
 template <typename T>
 inline T max_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    using std::max;
-    return max(v0,v1);
+    return ::max(v0,v1);
 }
 
 template <typename T>
 inline T nequal_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    const T epsilon  = epsilon_type<T>::value();
-    const T eps_norm = (max(T(1),max(abs(v0),abs(v1))) * epsilon);
-    return (abs(v0 - v1) > eps_norm) ? T(1) : T(0);
+    return v0 != v1 ? T(1) : T(0);
 }
 
 template <typename T>
@@ -262,9 +258,7 @@ inline T xnor_impl(const T& v0, const T& v1, mpq_type_tag)
 template <typename T>
 inline T equal_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    const T epsilon  = epsilon_type<T>::value();
-    const T eps_norm = (max(T(1), T(max(abs(v0),abs(v1)) )) * epsilon);
-    return (abs(v0 - v1) <= eps_norm) ? T(1) : T(0);
+    return v0==v1 ? T(1) : T(0);
 }
 
 template <typename T>
@@ -304,7 +298,7 @@ inline T hypot_impl(const T& v0, const T& v1, mpq_type_tag)
 template <typename T>
 inline T atan2_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    return atan2(v0,v1);
+    return ::atan2(v0,v1);
 }
 
 template <typename T>
