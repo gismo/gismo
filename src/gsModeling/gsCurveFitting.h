@@ -243,15 +243,15 @@ void gsCurveFitting<T>::compute_periodic()
 }
 
 template<class T>
-void gsCurveFitting<T>::computeApproxError(T & error){
+void gsCurveFitting<T>::computeApproxError(T & error)
+{
     gsMatrix<T> results;
-    m_curve.eval_into(m_param_values.transpose(),results); // the points of the curve for the corresponding parameter values
+    // the points of the curve for the corresponding parameter values
+    m_curve.eval_into(m_param_values.transpose(),results);
     results.transposeInPlace();
-    error=0;
-    //computing the approximation error = sum_i ||x(u_i)-p_i||^2
-    for(index_t k=0;k<m_points.rows();k++){
-        error+=std::pow(m_points(k,0)-results(k,0),2)+std::pow(m_points(k,1)-results(k,1),2);
-    }
+
+    // computing the approximation error = sum_i ||x(u_i)-p_i||^2
+    error = (m_points - results).squaredNorm();
 }
 
 
