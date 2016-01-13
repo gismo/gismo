@@ -97,20 +97,20 @@ TEMPLATE_T
 Scalar distance(Scalar a, Scalar b)
 {
 	Scalar a1, b1, t;
-	a1 = std::abs(a);
-	b1 = std::abs(b);
+	a1 = math::abs(a);
+	b1 = math::abs(b);
 	if (a1 > b1) 
 	{
 		t = (b1 / a1);
-		return a1 * std::sqrt(1.0 + t * t);
+		return a1 * math::sqrt(1.0 + t * t);
 	}
 	else
 		if (b1 > a1)
 		{
 			t = (a1 / b1);
-			return b1 * std::sqrt(1.0 + t * t);
+			return b1 * math::sqrt(1.0 + t * t);
 		}
-	return a1 * std::sqrt(2.0);
+	return a1 * math::sqrt( Scalar(2.0) );
 }
 
 TEMPLATE_T
@@ -224,7 +224,7 @@ solve_quadprog(MatrixXd & G,  VectorXd & g0,
     /* compute full step length t2: i.e., the minimum step in primal space s.t. the contraint 
       becomes feasible */
     t2 = 0.0;
-    if (std::abs(z.dot(z)) > std::numeric_limits<Scalar>::epsilon()) // i.e. z != 0
+    if (math::abs(z.dot(z)) > std::numeric_limits<Scalar>::epsilon()) // i.e. z != 0
       t2 = (-np.dot(x) - ce0(i)) / z.dot(np);
     
     x += t2 * z;
@@ -276,7 +276,7 @@ l1:	iter++;
 #endif
 
     
-	if (std::abs(psi) <= mi * std::numeric_limits<Scalar>::epsilon() * c1 * c2* 100.0)
+	if (math::abs(psi) <= mi * std::numeric_limits<Scalar>::epsilon() * c1 * c2* 100.0)
 	{
     /* numerically there are not infeasibilities anymore */
 		return f_value;
@@ -343,7 +343,7 @@ l2a:/* Step 2a: determine step direction */
     }
   }
   /* Compute t2: full step length (minimum step in primal space such that the constraint ip becomes feasible */
-  if (std::abs(z.dot(z))  > std::numeric_limits<Scalar>::epsilon()) // i.e. z != 0
+  if (math::abs(z.dot(z))  > std::numeric_limits<Scalar>::epsilon()) // i.e. z != 0
     t2 = -s(ip) / z.dot(np);
   else
     t2 = inf; /* +inf */
@@ -515,10 +515,10 @@ bool add_constraint(MatrixXd& R, MatrixXd& J, VectorXd& d, int& iq, Scalar & R_n
   std::cerr << iq << std::endl;
 #endif
   
-	if (std::abs(d(iq - 1)) <= std::numeric_limits<Scalar>::epsilon() * R_norm)
+	if (math::abs(d(iq - 1)) <= std::numeric_limits<Scalar>::epsilon() * R_norm)
 		// problem degenerate
 		return false;
-	R_norm = std::max<Scalar>(R_norm, std::abs(d(iq - 1)));
+	R_norm = std::max<Scalar>(R_norm, math::abs(d(iq - 1)));
 	return true;
 }
 

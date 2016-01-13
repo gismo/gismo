@@ -181,6 +181,11 @@ using mpfr::atan2;
 using mpfr::isnan;
 using mpfr::isfinite;
 using mpfr::isinf;
+
+//dummies
+inline real_t frexp(const real_t & a, int* b) {return  a;}
+inline real_t ldexp(const real_t & a, int b ) {return  a;}
+
 #endif
 
 #ifdef GISMO_WITH_MPQ

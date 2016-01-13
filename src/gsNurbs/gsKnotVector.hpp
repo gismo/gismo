@@ -60,7 +60,7 @@ public:
     {
         // Write the knot values (for now WITH multiplicities)
         std::ostringstream str;
-        str << std::setprecision(std::numeric_limits<T>::digits10+1);
+        str << std::setprecision(REAL_DIG+1);
 
         for ( typename gsKnotVector<T>::iterator it = obj.begin();
               it != obj.end(); ++it )
