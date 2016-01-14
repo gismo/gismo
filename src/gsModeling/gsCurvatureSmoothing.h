@@ -283,9 +283,9 @@ void gsCurvatureSmoothing<T>::smoothTotalVariation(const T omega1, const T omega
                     }
                 }
             }
-            cond21=std::abs(cond21);
+            cond21=math::abs(cond21);
 
-            cond22=std::abs(c2*helpcond);
+            cond22=math::abs(c2*helpcond);
 
             //for next testing if condition is satisfied
             m_lamda=m_lamda*tau;
@@ -693,7 +693,7 @@ void gsCurvatureSmoothing<T>::computeApproxError(T & error){
     error=0;
     //computing the approximation error = sum_i ||x(u_i)-p_i||^2
     for(index_t k=0;k<m_points.rows();k++){
-        error+=std::pow(m_points(k,0)-results(k,0),2)+std::pow(m_points(k,1)-results(k,1),2);
+        error+=math::pow(m_points(k,0)-results(k,0),2)+math::pow(m_points(k,1)-results(k,1),2);
     }
 }
 
@@ -714,7 +714,7 @@ void gsCurvatureSmoothing<T>::computeApproxErrorLMax(T & error){
     error=0;
     //computing the Lmax approximation error
     for(index_t k=0;k<m_points.rows();k++){
-        error= std::max(error,std::sqrt(std::pow(m_points(k,0)-results(k,0),2)+std::pow(m_points(k,1)-results(k,1),2)));
+        error= math::max(error,math::sqrt(math::pow(m_points(k,0)-results(k,0),2)+math::pow(m_points(k,1)-results(k,1),2)));
     }
 }
 
@@ -805,11 +805,11 @@ void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T> *basis
     // using numerical integration for computing the values - since we have a closed curve rectangle method = trapezoidal rule
     // numerical integration by rectangle method == trapezoidal rule (because of closed curve!!!!)
     for(index_t i=0;i<m_param_values.rows();i++){
-        objective1+=std::pow(m_values0(0,i)-m_points(i,0),2)+std::pow(m_values0(1,i)-m_points(i,1),2);
+        objective1+=math::pow(m_values0(0,i)-m_points(i,0),2)+math::pow(m_values0(1,i)-m_points(i,1),2);
 
-        objective2+= std::abs( 6.0*(m_values1(1,i)*m_values2(0,i) - m_values1(0,i)*m_values2(1,i))*(m_values1(0,i)*m_values2(0,i) + m_values1(1,i)*m_values2(1,i)) +
-                          2*( (std::pow(m_values1(0,i),2)+std::pow(m_values1(1,i),2)) * ((-1.0)*m_values1(1,i)*m_values3(0,i)+ m_values1(0,i)*m_values3(1,i))  )    )/
-                (2*std::pow( std::pow(m_values1(0,i),2)+std::pow(m_values1(1,i),2) ,2.5)   );
+        objective2+= math::abs( 6.0*(m_values1(1,i)*m_values2(0,i) - m_values1(0,i)*m_values2(1,i))*(m_values1(0,i)*m_values2(0,i) + m_values1(1,i)*m_values2(1,i)) +
+                          2*( (math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2)) * ((-1.0)*m_values1(1,i)*m_values3(0,i)+ m_values1(0,i)*m_values3(1,i))  )    )/
+                (2*math::pow( math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2) ,2.5)   );
     }
     objective2=objective2/(0.0+m_param_values.rows());
 

@@ -110,6 +110,7 @@ using std::min;
 using std::max;
 using std::frexp;
 using std::ldexp;
+using std::pow;
 
 // template <typename T> T min(T a, T b) {return  (a < b ? a : b); }
 // template <typename T> T max(T a, T b) {return  (a < b ? b : a); }
@@ -181,6 +182,7 @@ using mpfr::atan2;
 using mpfr::isnan;
 using mpfr::isfinite;
 using mpfr::isinf;
+
 
 //dummies
 inline real_t frexp(const real_t & a, int* b) {return  a;}
