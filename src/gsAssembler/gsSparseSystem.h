@@ -61,7 +61,7 @@ protected:
 
     /// @brief map between column blocks and index of \a m_mappers i.e.
     ///  col block j is described by m_mappers[m_row[j]].
-    gsVector<size_t> m_col;    
+    gsVector<size_t> m_col;
 
     /// @brief strides for the row blocks (shifting of mapped indices).
     /// The mapper do not have this information anymore.
@@ -79,7 +79,7 @@ protected:
 
 public:
 
-    gsSparseSystem() 
+    gsSparseSystem()
     { }
 
     /**
@@ -88,70 +88,122 @@ public:
      * @param[in] mapper the one DofMapper discribing the discretization.
      */
     gsSparseSystem(gsDofMapper & mapper)
-    : m_mappers(1), 
-      m_row    (1),
-      m_col    (1),
-      m_rstr   (1),
-      m_cstr   (1),
-      m_cvar   (1)
+        : m_mappers(1),
+          m_row    (1),
+          m_col    (1),
+          m_rstr   (1),
+          m_cstr   (1),
+          m_cvar   (1)
     {
-        m_row [0] =  m_col [0] = 
-        m_rstr[0] =  m_cstr[0] = 
-        m_cvar[0] = 0;
+        m_row [0] =  m_col [0] =
+                m_rstr[0] =  m_cstr[0] =
+                m_cvar[0] = 0;
 
         m_mappers.front().swap(mapper);
         
-        m_matrix.resize( m_mappers.front().freeSize() , 
-                         m_mappers.front().freeSize() );        
+        m_matrix.resize( m_mappers.front().freeSize() ,
+                         m_mappers.front().freeSize() );
     }
 
+
+    /**
+     * @brief gsSparseSystem Constructor of a sparse System specified by the number of unknows for each
+     * block, given by \a dims. It is assumed that the used Basis (m_bases in gsAssembler) has a one to
+     * one relation with the given \a mappers.
+     * E.g.: dims = {1,3,1,2}, then we consider a matrix with 1+3+1+2 = 7 x 7 blockstructure.  Then
+     * a) mappers.size() == 7: In the first case, row and column mappers are identical, so there is no
+     *    difference bettween column and row blocks.
+     *    - Column block 0     uses mapper 0 and corresponds to m_bases[0]
+     *    - Column block 1,2,3 uses mapper 1 and corresponds to m_bases[1]
+     *    - Column block 4     uses mapper 2 and corresponds to m_bases[2]
+     *    - Column block 5,6   uses mapper 3 and corresponds to m_bases[3]     (in C++ indexing)
+     *    Identical maps for Row blocks
+     * b) mappers.size() == 14: In the second case, row and column mappers are not identical.
+     *    - Row block 0        uses mapper 0
+     *    - Row block 1,2,3    uses mapper 1
+     *    - Row block 4        uses mapper 2
+     *    - Row block 5,6      uses mapper 3
+     *    - Column block 0     uses mapper 4 and corresponds to m_bases[0]
+     *    - Column block 1,2,3 uses mapper 5 and corresponds to m_bases[1]
+     *    - Column block 4     uses mapper 6 and corresponds to m_bases[2]
+     *    - Column block 5,6   uses mapper 7 and corresponds to m_bases[3]     (in C++ indexing)
+     * Other cases are not handled!
+     * @param mappers a vector of gsDofMapper with size == dims.sum() or 2*dims.sum() according to the
+     *                definition above
+     * @param dims Defines how many unknown are determined by a certain dofMapper.
+     */
     gsSparseSystem(DofMappers & mappers,
                    const gsVector<unsigned> & dims)
-    : m_row (gsVector<size_t>::LinSpaced(dims.size(),0,dims.size()-1)),
-      m_col (gsVector<size_t>::LinSpaced(dims.size(),0,dims.size()-1)),
-      m_rstr(dims.sum()),
-      m_cstr(dims.sum())
+        : m_row(dims.sum()),
+          m_col(dims.sum()),
+          m_rstr(dims.sum()),
+          m_cstr(dims.sum())
     {
-        m_mappers.swap(mappers);
-
         const index_t d = dims.size();
         const index_t s = dims.sum();
+        const index_t ms = mappers.size();
 
-        if ( static_cast<index_t>(m_mappers.size()) == 2*d )
-        {
-            m_col.array() += d;
-            m_cvar = m_row.cast<index_t>();//assume 1-1 bases
-        }
-        else if ( m_mappers.size() == 1 )
+        GISMO_ASSERT(ms==s ||ms==2*s, "Connot deduce block structure");
+
+        m_mappers.swap(mappers);
+
+        //Calculate the map for blocks to mappers
+        int k=0;
+        for(int i=0;i<d;++i)
+            for(int j=0; j<dims[i];++j)
+            {
+                m_row[k]=i;
+                ++k;
+            }
+        //At first glance, row blocks and column blocks have the same mapper
+        m_col = m_row;
+
+        if (ms == 1 )
         {
             m_row.setZero();
             m_col.setZero();
             m_cvar.setZero(1);
         }
-        else
-        {
-            GISMO_ASSERT(m_mappers.size() == d, "Cannot deduce block structure.");
-            m_cvar = m_row.cast<index_t>();//assume 1-1 bases
-        }
+        else if ( ms == 2*s )
+            m_col.array() += s; //mappers s+1... 2s are then the column mappers
 
+        //assumes that the mappers are ordered as the bases in gsAssembler and are starting from m_bases[0]!
+        m_cvar = m_row.cast<index_t>();
+
+        //Fill the strides
         m_rstr[0] = m_cstr[0] = 0;
         for (index_t r = 1; r < d; ++r) // for all row-blocks
             m_rstr[r] = m_rstr[r-1] + m_mappers[m_row[r-1]].freeSize();
         for (index_t c = 1; c < d; ++c) // for all col-blocks
             m_cstr[c] = m_cstr[c-1] + m_mappers[m_col[c-1]].freeSize();
 
-        m_matrix.resize( m_rstr.at(d-1) + m_mappers[m_row[d-1]].freeSize() , 
-                         m_cstr.at(d-1) + m_mappers[m_col[d-1]].freeSize() );
+        m_matrix.resize( m_rstr.at(d-1) + m_mappers[m_row[d-1]].freeSize() ,
+                m_cstr.at(d-1) + m_mappers[m_col[d-1]].freeSize() );
 
     }
 
-    gsSparseSystem(DofMappers & mappers, 
-                   const index_t rows, 
+    /**
+     * @brief gsSparseSystem Constructor for the sparse system, with given number of row and column blocks.
+     *        It is assumed that the mappers have a one to one correspondence with the blocks, i.e.
+     *        a) mappers.size() == rows + cols ==> the first \a row entries of \a mappers correspond to
+     *           the row blocks and the last \a cols entries of \a mappers correspond to the column blocks
+     *           Moreover, it is assumes that the basis for the solution space (column blocks) are indexed
+     *           starting by 0. i.e. mappers[cols],...,mappers[rows+cols-1] correspond in a one to one relation
+     *           to m_bases[0],...,m_bases[cols-1] in gsAssembler!!!!
+     *        b) mappers.size() == rows == cols ==> row and column mappers are identical, and
+     *           \a mappers[i] is the mapper for i-th column (and row) block
+     *        c) mappers.size() == 1 ==> only one block
+     * @param mappers the set of mappers, with restrictions above
+     * @param rows the number of row blocks
+     * @param cols the number of column blocks
+     */
+    gsSparseSystem(DofMappers & mappers,
+                   const index_t rows,
                    const index_t cols)
-    : m_row (gsVector<size_t>::LinSpaced(rows,0,rows-1)),
-      m_col (gsVector<size_t>::LinSpaced(cols,0,cols-1)),
-      m_rstr(rows),
-      m_cstr(cols)
+        : m_row (gsVector<size_t>::LinSpaced(rows,0,rows-1)),
+          m_col (gsVector<size_t>::LinSpaced(cols,0,cols-1)),
+          m_rstr(rows),
+          m_cstr(cols)
     {
         GISMO_ASSERT( rows > 0 && cols > 0, "Block dimensions must be positive");
 
@@ -184,8 +236,8 @@ public:
         for (index_t c = 1; c < cols; ++c) // for all col-blocks
             m_cstr[c] = m_cstr[c-1] + m_mappers[m_col[c-1]].freeSize();
 
-        m_matrix.resize( m_rstr.at(rows-1) + m_mappers[m_row[rows-1]].freeSize() , 
-                         m_cstr.at(cols-1) + m_mappers[m_col[cols-1]].freeSize() );
+        m_matrix.resize( m_rstr.at(rows-1) + m_mappers[m_row[rows-1]].freeSize() ,
+                m_cstr.at(cols-1) + m_mappers[m_col[cols-1]].freeSize() );
     }
 
     /**
@@ -193,6 +245,18 @@ public:
      * for each column and row block, the assignment of mappers to row blocks and column block, and the relation
      * which Multibases correspond to which unknown. This constructor allows for the most possible freedome to
      * design your block system.
+     *
+     * What is not possible here, cannot be done!
+     *
+     * a fancy example: rowInd = {1,1,0,3}, colInd={0,2,2}, colvar={1,0,0}.
+     * this leads to a 4x3 block structure matrix
+     *
+     *    - Row block 0,1      uses mapper 1
+     *    - Row block 2        uses mapper 0
+     *    - Row block 3        uses mapper 3
+     *    - Column block 0     uses mapper 0 and corresponds to m_bases[1]
+     *    - Column block 1,2   uses mapper 2 and corresponds to m_bases[0]   (in C++ indexing)
+     *
      * @param[in] mappers the set of mappers, need not be a one to one relation with the blocks.
      * @param[in] rowInd assignment of row blocks to mappers, e.g. row block i uses mapper rowInd[i] of the
      *            set \a mappers.
@@ -200,20 +264,20 @@ public:
      *            set \a mappers. (need not be the same mappers as for the row blocks)
      * @param[in] colvar assignment of unknowns to the used bases (i.e. column blocks to MultiBasis)
      */
-    gsSparseSystem(DofMappers & mappers, 
+    gsSparseSystem(DofMappers & mappers,
                    const gsVector<size_t> & rowInd,
                    const gsVector<size_t> & colInd,
                    const gsVector<index_t> & colvar)
-    : m_row (rowInd),
-      m_col (colInd),
-      m_rstr((index_t)rowInd.size()),
-      m_cstr((index_t)colInd.size())
-     // ,m_cvar(colvar) //<< Bug
+        : m_row (rowInd),
+          m_col (colInd),
+          m_rstr((index_t)rowInd.size()),
+          m_cstr((index_t)colInd.size())
+        // ,m_cvar(colvar) //<< Bug
     {
         m_cvar = colvar;
         const index_t rows = m_row.size();
         const index_t cols = m_col.size();
-        GISMO_ASSERT( rows > 0 && cols > 0, 
+        GISMO_ASSERT( rows > 0 && cols > 0,
                       "Block dimensions must be positive");
 
         m_mappers.swap(mappers);
@@ -224,8 +288,8 @@ public:
         for (index_t c = 1; c < cols; ++c) // for all col-blocks
             m_cstr[c] = m_cstr[c-1] + m_mappers[m_col[c-1]].freeSize();
 
-        m_matrix.resize( m_rstr.at(rows-1) + m_mappers[m_row[rows-1]].freeSize() , 
-                         m_cstr.at(cols-1) + m_mappers[m_col[cols-1]].freeSize() );
+        m_matrix.resize( m_rstr.at(rows-1) + m_mappers[m_row[rows-1]].freeSize() ,
+                m_cstr.at(cols-1) + m_mappers[m_col[cols-1]].freeSize() );
     }
 
     /**
@@ -247,14 +311,14 @@ public:
     /**
      * @brief reserve reserves the memory for the sparse matrix and the rhs.
      * @param[in] nz Non-zeros per column for the sparse matrix
-     * @param [in]numRhs number of columns
+     * @param [in] numRhs number of columns
      */
     void reserve(const index_t nz, const index_t numRhs)
     {
         GISMO_ASSERT( 0 != m_mappers.size(), "Sparse system was not initialized");
         if ( 0 != m_matrix.cols() )
         {
-            m_matrix.reservePerColumn(nz); 
+            m_matrix.reservePerColumn(nz);
             m_rhs.setZero(m_matrix.cols(), numRhs);
         }
     }
@@ -275,19 +339,19 @@ public:
 public: /* Accessors */
 
     /// @brief Access the system Matrix
-    const gsSparseMatrix<T> & matrix() const 
+    const gsSparseMatrix<T> & matrix() const
     { return m_matrix; }
 
     /// @brief Access the system Matrix
-    gsSparseMatrix<T> & matrix() 
+    gsSparseMatrix<T> & matrix()
     { return m_matrix; }
 
     /// @brief Access the right hand side
-    const gsMatrix<T> & rhs() const 
+    const gsMatrix<T> & rhs() const
     { return m_rhs; }
 
     /// @brief Access the right hand side
-    gsMatrix<T> & rhs() 
+    gsMatrix<T> & rhs()
     { return m_rhs; }
 
     /// @brief returns a block view of the matrix, easy way to extract single blocks
@@ -301,7 +365,7 @@ public: /* Accessors */
         for (index_t c = 0; c != colSizes.size(); ++c) // for all col-blocks
             colSizes[c] = m_mappers[c].freeSize();
 
-        return m_matrix.blockView(rowSizes,colSizes); 
+        return m_matrix.blockView(rowSizes,colSizes);
     }
 
     /// @brief returns the number of column blocks
@@ -333,7 +397,7 @@ public: /* Accessors */
      */
     const gsDofMapper & colMapper(const index_t c) const
     {
-        return m_mappers[m_col[c]]; 
+        return m_mappers[m_col[c]];
     }
     
     /**
@@ -363,7 +427,7 @@ public: /* Accessors */
         return 0 != m_col.size();
     }
 
-    /// @brief returns true if only half of the matrix is stored
+    /// @brief returns true if only half of the matrix is stored, due to its symmetry
     bool symmetry() const
     {
         return symm;
@@ -394,9 +458,9 @@ public: /* mapping patch-local to global indices */
      * @param[in] r the considered row block
      */
     void mapRowIndices(const gsMatrix<unsigned> & actives,
-                       const index_t patchIndex, 
+                       const index_t patchIndex,
                        gsMatrix<unsigned> & result,
-                       const size_t r = 0) const 
+                       const size_t r = 0) const
     {
         m_mappers[m_row.at(r)].localToGlobal(actives, patchIndex, result);
     }
@@ -411,9 +475,9 @@ public: /* mapping patch-local to global indices */
      * @param[in] c the considered column block
      */
     void mapColIndices(gsMatrix<unsigned> & actives,
-                       const index_t patchIndex, 
+                       const index_t patchIndex,
                        gsMatrix<unsigned> & result,
-                       const size_t c = 0) const 
+                       const size_t c = 0) const
     {
         m_mappers[m_col.at(c)].localToGlobal(actives, patchIndex, result);
     }
@@ -427,9 +491,9 @@ public: /* mapping patch-local to global indices */
      * @param[in] r the considered row block
      */
     void mapToGlobalRowIndex(const unsigned active,
-                       const index_t patchIndex,
-                       unsigned & result,
-                       const size_t r = 0) const
+                             const index_t patchIndex,
+                             unsigned & result,
+                             const size_t r = 0) const
     {
         result = m_mappers[m_row.at(r)].index(active, patchIndex)+m_rstr[r];
     }
@@ -443,13 +507,13 @@ public: /* mapping patch-local to global indices */
      * @param[in] c the considered column block
      */
     void mapToGlobalColIndex(const unsigned active,
-                       const index_t patchIndex,
-                       unsigned & result,
-                       const size_t c = 0) const
+                             const index_t patchIndex,
+                             unsigned & result,
+                             const size_t c = 0) const
     {
         result = m_mappers[m_col.at(c)].index(active, patchIndex)+m_cstr[c];
     }
- 
+
 public: /* Add local contributions to system matrix */
 
     /**
@@ -463,7 +527,7 @@ public: /* Add local contributions to system matrix */
      * @param[in] r the row block
      * @param[in] c the column block
      */
-    void pushToMatrix(const gsMatrix<T>  & localMat, 
+    void pushToMatrix(const gsMatrix<T>  & localMat,
                       const gsMatrix<unsigned> & actives,
                       const size_t r = 0, const size_t c = 0)
     {
@@ -484,7 +548,7 @@ public: /* Add local contributions to system matrix */
                     if ( rowMap.is_free_index( actives.at(j)) )
                         // If matrix is symmetric, we store only lower
                         // triangular part
-                        if ( (!symm) || jj <= ii ) 
+                        if ( (!symm) || jj <= ii )
                             m_matrix.coeffRef(ii, jj) += localMat(i, j);
                 }
             }
@@ -503,10 +567,10 @@ public: /* Add local contributions to system matrix */
      * @param[in] r the row block
      * @param[in] c the column block
      */
-    void pushToMatrix(const gsMatrix<T>  & localMat, 
-                     const gsMatrix<unsigned> & actives_i,
-                     const gsMatrix<unsigned> & actives_j,
-                     const size_t r = 0, const size_t c = 0)
+    void pushToMatrix(const gsMatrix<T>  & localMat,
+                      const gsMatrix<unsigned> & actives_i,
+                      const gsMatrix<unsigned> & actives_j,
+                      const size_t r = 0, const size_t c = 0)
     {
         const index_t numActive_i = actives_i.rows();
         const index_t numActive_j = actives_j.rows();
@@ -545,9 +609,9 @@ public: /* Add local contributions to system right-hand side */
      * @param[in] actives the corresponding mapped index of basis functions without shifts
      * @param[in] c the column block associated to
      */
-    void pushToRhs(const gsMatrix<T> & localRhs, 
-                  const gsMatrix<unsigned> & actives, 
-                  const size_t c = 0)
+    void pushToRhs(const gsMatrix<T> & localRhs,
+                   const gsMatrix<unsigned> & actives,
+                   const size_t c = 0)
     {
         const gsDofMapper & mapper = m_mappers[m_col.at(c)];
         const index_t    numActive = actives.rows();
@@ -576,7 +640,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] r the row block
      * @param[in] c the column block
      */
-    void push(const gsMatrix<T>  & localMat, 
+    void push(const gsMatrix<T>  & localMat,
               const gsMatrix<T>  & localRhs,
               const gsMatrix<unsigned> & actives,
               const size_t r = 0, const size_t c = 0)
@@ -599,7 +663,7 @@ public: /* Add local contributions to system matrix and right-hand side */
                     {
                         // If matrix is symmetric, we store only lower
                         // triangular part
-                        if ( (!symm) || jj <= ii ) 
+                        if ( (!symm) || jj <= ii )
                             m_matrix.coeffRef(ii, jj) += localMat(i, j);
                     }
                 }
@@ -618,7 +682,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] r the row block
      * @param[in] c the column block
      */
-    void pushAllFree(const gsMatrix<T>  & localMat, 
+    void pushAllFree(const gsMatrix<T>  & localMat,
                      const gsMatrix<T>  & localRhs,
                      const gsMatrix<unsigned> & actives,
                      const size_t r = 0, const size_t c = 0)
@@ -635,7 +699,7 @@ public: /* Add local contributions to system matrix and right-hand side */
                 const unsigned ii = m_rstr.at(r) + actives(i);
                 // If matrix is symmetric, we store only lower
                 // triangular part
-                if ( (!symm) || jj <= ii ) 
+                if ( (!symm) || jj <= ii )
                     m_matrix( ii, jj ) += localMat(i,j);
             }
         }
@@ -653,7 +717,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] r the row block
      * @param[in] c the column block
      */
-    void push(const gsMatrix<T> & localMat, 
+    void push(const gsMatrix<T> & localMat,
               const gsMatrix<T> & localRhs,
               const gsMatrix<unsigned> & actives,
               const gsMatrix<T> & eliminatedDofs,
@@ -679,13 +743,13 @@ public: /* Add local contributions to system matrix and right-hand side */
                     {
                         // If matrix is symmetric, we store only lower
                         // triangular part
-                        if ( (!symm) || jj <= ii ) 
+                        if ( (!symm) || jj <= ii )
                             m_matrix.coeffRef(ii, jj) += localMat(i, j);
                     }
                     else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
                     {
-                        m_rhs.row(ii).noalias() -= localMat(i, j) * 
-                            eliminatedDofs.row( rowMap.global_to_bindex(actives.at(j)) );
+                        m_rhs.row(ii).noalias() -= localMat(i, j) *
+                                eliminatedDofs.row( rowMap.global_to_bindex(actives.at(j)) );
                     }
                 }
             }
@@ -706,7 +770,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] r the row block
      * @param[in] c the column block
      */
-    void push(const gsMatrix<T> & localMat, 
+    void push(const gsMatrix<T> & localMat,
               const gsMatrix<T> & localRhs,
               const gsMatrix<unsigned> & actives_i,
               const gsMatrix<unsigned> & actives_j,
@@ -740,7 +804,7 @@ public: /* Add local contributions to system matrix and right-hand side */
                     else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
                     {
                         m_rhs.row(ii).noalias() -= localMat(i, j) *
-                            eliminatedDofs_j.row( colMap.global_to_bindex(actives_j.at(j)) );
+                                eliminatedDofs_j.row( colMap.global_to_bindex(actives_j.at(j)) );
                     }
                 }
             }
@@ -763,9 +827,9 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] eliminatedDofs a vector of values for the dofs (corresponding to the columns), which are
      *           removed from the system, (one per block)
      */
-    void push(const gsMatrix<T> & localMat, 
+    void push(const gsMatrix<T> & localMat,
               const gsMatrix<T> & localRhs,
-              const std::vector<gsMatrix<unsigned> >& actives, 
+              const std::vector<gsMatrix<unsigned> >& actives,
               const std::vector<gsMatrix<T> > & eliminatedDofs)
     {
         for (size_t r = 0; r != actives.size(); ++r) // for all row-blocks
@@ -781,9 +845,9 @@ public: /* Add local contributions to system matrix and right-hand side */
                     const int ii =  m_rstr.at(r) + actives[r].at(i);
                     if ( rowMap.is_free_index(actives[r].at(i)) )
                     {
-                        m_rhs.row(ii) += localRhs.row(i); //  + c * 
+                        m_rhs.row(ii) += localRhs.row(i); //  + c *
                         const index_t numColActive = actives[c].rows();
-  
+
                         for (index_t j = 0; j < numColActive; ++j)
                         {
                             const int jj =  m_cstr.at(c) + actives[c].at(j);
@@ -791,18 +855,18 @@ public: /* Add local contributions to system matrix and right-hand side */
                             {
                                 // If matrix is symmetric, we store only lower
                                 // triangular part
-                                if ( (!symm) || jj <= ii ) 
+                                if ( (!symm) || jj <= ii )
                                     m_matrix.coeffRef(ii, jj) += localMat(i, j); //  + c * ..
                             }
                             else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
                             {
                                 m_rhs.row(ii).noalias() -= localMat(i, j) *  //  + c *..
-                                    fixedDofs.row( rowMap.global_to_bindex(jj) );
+                                        fixedDofs.row( rowMap.global_to_bindex(jj) );
                             }
                         }
                     }
                 }
-            }   
+            }
         }
     }
 
@@ -820,7 +884,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] r the row blocks where the matrices should be pushed
      * @param[in] c the colum blocks where the matrices shouldbe pushed
      */
-    void push(const std::vector<gsMatrix<T> > & localMat, 
+    void push(const std::vector<gsMatrix<T> > & localMat,
               const std::vector<gsMatrix<T> > & localRhs,
               const std::vector<gsMatrix<unsigned> > & actives,
               const std::vector<gsMatrix<T> > & fixedDofs,
