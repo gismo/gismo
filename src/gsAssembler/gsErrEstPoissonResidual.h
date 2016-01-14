@@ -24,7 +24,7 @@ namespace gismo
  *
  * Let the Poisson problem on the domain \f$ \Omega \f$ be given by
  * \f[
-  -\Delta u = f,\quad u = g_D \mathrm{\ on\ } \Gamma_D,\quad u = g_N \mathrm{\ on\ } \Gamma_N,
+  -\Delta u = f,\quad u = g_D \mathrm{\ on\ } \Gamma_D,\quad n \cdot \nabla u = g_N \mathrm{\ on\ } \Gamma_N,
 \f]
  * where\n
  * \f$ f \f$ is a given right-hand-side,\n
