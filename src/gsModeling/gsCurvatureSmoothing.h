@@ -702,7 +702,7 @@ void gsCurvatureSmoothing<T>::computeApproxErrorL2(T & error){
     error=0;
     // uses the approximation error. Since the the parameter domain is [0,1] of the function the L^2 error = (approx.error/points)^{1/2}
     computeApproxError(error);
-    error= std::sqrt(error/(m_points.rows()+0.0));
+    error= math::sqrt(error/(m_points.rows()+0.0));
 }
 
 

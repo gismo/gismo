@@ -62,6 +62,7 @@ GMP_EXTRA_STD_UNARY_FUNCTION(cos)
 GMP_EXTRA_STD_UNARY_FUNCTION(tan)
 GMP_EXTRA_STD_UNARY_FUNCTION(acos)
 GMP_EXTRA_STD_UNARY_FUNCTION(asin)
+GMP_EXTRA_STD_UNARY_FUNCTION(fabs)
 GMP_EXTRA_STD_UNARY_FUNCTION(log)
 GMP_EXTRA_STD_UNARY_FUNCTION(floor)
 GMP_EXTRA_STD_UNARY_FUNCTION(ceil)
@@ -171,6 +172,7 @@ using mpfr::ceil;
 using mpfr::floor;
 using mpfr::cos;
 using mpfr::cosh;
+using mpfr::asin;
 using mpfr::sin;
 using mpfr::sinh;
 using mpfr::tan;
