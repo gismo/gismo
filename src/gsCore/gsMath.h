@@ -63,7 +63,10 @@ GMP_EXTRA_STD_UNARY_FUNCTION(tan)
 GMP_EXTRA_STD_UNARY_FUNCTION(acos)
 GMP_EXTRA_STD_UNARY_FUNCTION(asin)
 GMP_EXTRA_STD_UNARY_FUNCTION(fabs)
+GMP_EXTRA_STD_UNARY_FUNCTION(sinh)
+GMP_EXTRA_STD_UNARY_FUNCTION(cosh)
 GMP_EXTRA_STD_UNARY_FUNCTION(log)
+GMP_EXTRA_STD_UNARY_FUNCTION(tanh)
 GMP_EXTRA_STD_UNARY_FUNCTION(floor)
 GMP_EXTRA_STD_UNARY_FUNCTION(ceil)
 GMP_EXTRA_STD_UNARY_FUNCTION(exp)
@@ -89,7 +92,6 @@ typedef std::numeric_limits<real_t> limits;
 
 // Math functions
 using std::abs;
-using std::pow;
 using std::fabs;
 using std::sqrt;
 using std::ceil;
@@ -205,6 +207,7 @@ using ::acos;
 using ::asin;
 using ::sin;
 using ::tan;
+using ::tanh;
 using ::log;
 using ::log10;
 using ::atan2;
