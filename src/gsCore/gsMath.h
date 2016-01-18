@@ -62,7 +62,6 @@ GMP_EXTRA_STD_UNARY_FUNCTION(cos)
 GMP_EXTRA_STD_UNARY_FUNCTION(tan)
 GMP_EXTRA_STD_UNARY_FUNCTION(acos)
 GMP_EXTRA_STD_UNARY_FUNCTION(asin)
-GMP_EXTRA_STD_UNARY_FUNCTION(fabs)
 GMP_EXTRA_STD_UNARY_FUNCTION(sinh)
 GMP_EXTRA_STD_UNARY_FUNCTION(cosh)
 GMP_EXTRA_STD_UNARY_FUNCTION(log)
@@ -92,7 +91,6 @@ typedef std::numeric_limits<real_t> limits;
 
 // Math functions
 using std::abs;
-using std::fabs;
 using std::sqrt;
 using std::ceil;
 using std::floor;
@@ -168,7 +166,6 @@ using std::isinf;
 // Math functions for MPFR
 using mpfr::abs;
 using mpfr::pow;
-using mpfr::fabs;
 using mpfr::sqrt;
 using mpfr::ceil;
 using mpfr::floor;
@@ -199,7 +196,6 @@ inline real_t ldexp(const real_t & a, int b ) {return  a;}
 using ::abs;
 using ::sqrt;
 using ::pow;
-using ::fabs;
 using ::ceil;
 using ::floor;
 using ::cos;
