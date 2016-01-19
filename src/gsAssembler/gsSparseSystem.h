@@ -60,7 +60,7 @@ protected:
     gsVector<size_t> m_row;
 
     /// @brief map between column blocks and index of \a m_mappers i.e.
-    ///  col block j is described by m_mappers[m_row[j]].
+    ///  col block j is described by m_mappers[m_col[j]].
     gsVector<size_t> m_col;
 
     /// @brief strides for the row blocks (shifting of mapped indices).
