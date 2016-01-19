@@ -57,7 +57,7 @@ void gsFitting<T>::compute(T lambda)
     //To optimize sparse matrix an estimation of nonzero elements per
     //column can be given here
     int nonZerosPerCol = 1;
-    for (int i = 0; i < 2; ++i) // to do: improve
+    for (int i = 0; i < m_basis->dim(); ++i) // to do: improve
         //nonZerosPerCol *= 2 * m_basis->degree(i) + 1;
         nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;//AM: Related to bandwidth of basis
     A_mat.reserve( gsVector<index_t>::Constant(num_basis, nonZerosPerCol ) );
