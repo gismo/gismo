@@ -281,10 +281,10 @@ void gsTraceCurvePart(std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
             Jmap.row(1) =  *map.second->jacobian(current);
             
             //std::cout<<"jacobian matrix is \n"<< Jmap<<"\n";
-            if ( abs( Jmap.determinant() ) < 0.01) //0.025 amoeba_hole,austria_hole
+            if ( math::abs( Jmap.determinant() ) < 0.01) //0.025 amoeba_hole,austria_hole
             {
                 gsInfo<< "Jacobian vanished at : " << current.transpose() <<"\n"
-                "with Jacobian = "<< abs( Jmap.determinant() )<<"\n \n";
+                "with Jacobian = "<< math::abs( Jmap.determinant() )<<"\n \n";
 
                 cont = false;
                 break; // stop Newton iteration
