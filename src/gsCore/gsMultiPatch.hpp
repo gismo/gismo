@@ -168,6 +168,12 @@ void gsMultiPatch<T>::addPatch( gsGeometry<T>* g )
 }
 
 template<class T>
+void gsMultiPatch<T>::addPatch(const gsGeometry<T> & g) 
+{
+    addPatch(g.clone());
+}
+
+template<class T>
 int gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const 
 {
     const_iterator it

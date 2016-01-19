@@ -180,8 +180,8 @@ public:
     ///\brief Add a patch (pointer is consumed)
     void addPatch( gsGeometry<T> * g );
 
-    // Add a patch by copying argument -- to do
-    //void addPatch(const gsGeometry<T> & g );
+    /// Add a patch by copying argument
+    void addPatch(const gsGeometry<T> & g);
 
     /// \brief Search for the given geometry and return its patch index.
     int findPatchIndex( gsGeometry<T>* g ) const;
