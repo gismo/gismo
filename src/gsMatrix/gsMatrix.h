@@ -206,14 +206,17 @@ public:
     //T   lastCoeff() { return *(this->data()+this->size()-1);}
 
     /// \brief Returns the matrix resized to n x m matrix (data is not copied)
+    /// This function assumes that the matrix is size n*m, ie. already allocated
     gsAsMatrix<T, Dynamic, Dynamic> reshape(index_t n, index_t m )
     { return gsAsMatrix<T, Dynamic, Dynamic>(this->data(), n, m); }
 
     /// \brief Returns column \a c of the matrix resized to n x m matrix
+    /// This function assumes that the matrix is size n*m, ie. already allocated
     gsAsMatrix<T, Dynamic, Dynamic> reshapeCol( index_t c, index_t n, index_t m )
     { return gsAsMatrix<T, Dynamic, Dynamic>(this->col(c).data(), n, m); }
 
     /// \brief Returns column \a c of the matrix resized to n x m matrix
+    /// This function assumes that the matrix is size n*m, ie. already allocated
     gsAsConstMatrix<T, Dynamic, Dynamic> reshapeCol( index_t c, index_t n, index_t m ) const
     { return gsAsConstMatrix<T, Dynamic, Dynamic>(this->col(c).data(), n, m); }
 
@@ -250,7 +253,7 @@ public:
     {
         GISMO_ASSERT(rowInd.cols() == 1, "Invalid row index vector");
         const index_t nr = rowInd.rows();
-        result.resize(this->rows(), nr );
+        result.resize(nr, this->cols() );
         for ( index_t i = 0; i!= nr; ++i )
             result.row(i) = this->row( rowInd.at(i) );
     }
