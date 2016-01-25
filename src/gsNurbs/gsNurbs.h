@@ -222,12 +222,15 @@ public:
     }
 
     
-    void elevate( )
+    /*
+    void degreeElevate(int const i, int const dir = -1)
     {
-        // uses knot insertion
-        //gsMatrix<T> * c = this->coefs();
-    };    
-
+        GISMO_ASSERT( (dir == -1) || (dir == 0),
+                      "Invalid basis component "<< dir <<" requested for degree elevation" );
+        
+        bspline::degreeElevateBSpline(this->basis(), this->m_coefs, i);
+    }
+    */
 
     //void toProjective() { m_weights=w; } ;
     

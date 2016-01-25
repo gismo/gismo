@@ -811,7 +811,7 @@ public:
 
     /// @brief Set the degree of the basis (either elevate or
     /// reduce)e in order to have degree equal to \a i
-    virtual void setDegree(int const& i);
+    void setDegree(int const& i);
 
     /// @brief Reduces the continuity of the basis along element boundaries
     virtual void reduceContinuity(int const & i = 1);

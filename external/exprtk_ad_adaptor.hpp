@@ -21,13 +21,13 @@ namespace exprtk
 {
 
 #ifndef DScalar
-typedef ad::DScalar1<real_t, -1> DScalar;
-//typedef ad::DScalar1<real_t, 2> DScalar;
-//typedef ad::DScalar1<real_t, 3> DScalar;
+typedef typename gismo::ad::DScalar1<real_t, -1> DScalar;
+//typedef gismo::ad::DScalar1<real_t, 2> DScalar;
+//typedef gismo::ad::DScalar1<real_t, 3> DScalar;
 
-//typedef ad::DScalar2<real_t, -1> DScalar;
-//typedef ad::DScalar2<real_t, 2> DScalar;
-//typedef ad::DScalar2<real_t, 3> DScalar;
+//typedef gismo::ad::DScalar2<real_t, -1> DScalar;
+//typedef gismo::ad::DScalar2<real_t, 2> DScalar;
+//typedef gismo::ad::DScalar2<real_t, 3> DScalar;
 #endif
 
 typedef DScalar::Scalar DScalarValue;

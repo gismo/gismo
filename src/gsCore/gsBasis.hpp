@@ -462,7 +462,17 @@ void gsBasis<T>::degreeDecrease(int const & i, int dir)
 
 template<class T>
 void gsBasis<T>::setDegree(int const& i)
-{ GISMO_NO_IMPLEMENTATION }
+{ 
+    const int p = maxDegree();
+    if ( i > p )
+    {
+        degreeElevate(i-p); 
+    }
+    else if  ( i < p )
+    {
+        degreeReduce(p-i); 
+    }
+}
 
 template<class T>
 void gsBasis<T>::reduceContinuity(int const & i)

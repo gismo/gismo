@@ -1092,24 +1092,6 @@ unsigned gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
 }
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::setDegree(int const & i) 
-{ 
-    if ( i > m_p )
-    {
-        m_knots.degreeElevate(i-m_p); 
-        m_p = i;
-        return;
-    }
-    
-    if  ( i < m_p )
-    {
-        m_knots.degreeReduce(m_p-i); 
-        m_p = i;
-        return;
-    }
-}
-
-template <class T>
 std::ostream & gsTensorBSplineBasis<1,T>::print(std::ostream &os) const
 {
     os << "BSplineBasis: deg=" <<degree()

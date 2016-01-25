@@ -376,14 +376,6 @@ public:
             m_bases[j]->degreeReduce(i);
     }
 
-    // Look at gsBasis class for documentation 
-    virtual void setDegree(int const & i)
-    { 
-        for (unsigned j = 0; j < d; ++j)
-            m_bases[j]->setDegree(i);
-    }
-
-
 // ////////////////////////////////////////////////
 // Additional members for Tensor Basis
 // ////////////////////////////////////////////////

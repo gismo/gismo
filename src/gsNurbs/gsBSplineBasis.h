@@ -454,8 +454,6 @@ public:
         //m_periodic =
     }
 
-    void setDegree(int const & i);
-
     // Look at gsBasis for documentation
     void degreeIncrease(int const & i = 1, int const dir = -1)
     {
