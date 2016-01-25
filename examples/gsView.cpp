@@ -81,8 +81,7 @@ int main(int argc, char *argv[])
         gsWriteParaview( *bb , "gsview", numSamples, true);
         
         delete bb;
-
-        return system("paraview gsview.pvd &");
+        break;
     }
     case 4:
     {
@@ -96,10 +95,11 @@ int main(int argc, char *argv[])
         }
         gsWriteParaview( *msh, "gsview");
         delete msh;
-
-        return system("paraview gsview.pvd &");
+        
+        break;
     }
-    case 5:{
+    case 5:
+    {
         gsGeometry<> * geo = filedata.getAnyFirst< gsGeometry<> >();
         if (geo)
             gsInfo<< "Got "<< *geo <<"\n";
@@ -111,8 +111,7 @@ int main(int argc, char *argv[])
 
         gsWriteParaview( *geo , "gsview", numSamples, plot_mesh, plot_net);
         delete geo;
-
-        return system("paraview gsview.pvd &");
+        break;
     }
     default:
         if ( filedata.has< gsMultiPatch<> >() )
@@ -133,7 +132,7 @@ int main(int argc, char *argv[])
                 gsWriteParaview(mp, "gsview", numSamples, plot_mesh, plot_net);
             }
 
-            return system("paraview gsview.pvd &");
+            break;
         }
         if ( filedata.has< gsGeometry<> >() )
         {
@@ -149,8 +148,8 @@ int main(int argc, char *argv[])
             gsWriteParaview( geo , "gsview", numSamples, plot_mesh, plot_net);
             
             freeAll( geo );
-            
-            return system("paraview gsview.pvd &");            
+
+            break;
         }
         
         if ( filedata.has< gsMesh<> >() )
@@ -166,8 +165,7 @@ int main(int argc, char *argv[])
             
             gsWriteParaview( *msh, "gsview");
             delete msh;
-            
-            return system("paraview gsview.pvd &");
+            break;
         }
 
         if ( filedata.has< gsBasis<> >() )
@@ -186,8 +184,7 @@ int main(int argc, char *argv[])
             gsWriteParaview( *bb , "gsview", numSamples, plot_mesh);
         
             delete bb;
-
-            return system("paraview gsview.pvd &");        
+            break;
         }
 
         if ( filedata.has< gsSolid<> >() )
@@ -206,8 +203,7 @@ int main(int argc, char *argv[])
             //gsWriteParaview( *bb, "gsview", numSamples, 0, 0.02);
         
             delete bb;
-
-            return system("paraview gsview.pvd &");        
+            break;
         }
 
         if ( filedata.has< gsTrimSurface<> >() )
@@ -226,8 +222,7 @@ int main(int argc, char *argv[])
             gsWriteParaview( *bb, "gsview", numSamples);
         
             delete bb;
-
-            return system("paraview gsview.pvd &");
+            break;
         }
 
         if ( filedata.has< gsPlanarDomain<> >() )
@@ -249,43 +244,21 @@ int main(int argc, char *argv[])
         
             delete bb;
             delete msh;
-
-            return system("paraview gsview.pvd &");        
+            break;
         }
         
         if ( filedata.has< gsMatrix<> >() )
         {
-            gsMatrix<> * bb = filedata.getFirst< gsMatrix<> >();
-            //bb->uniformRefine(3);
-        
-            if (bb)
-                gsInfo<< "Got Matrix with "<< bb->cols() <<" points.\n";
-            else
-            {
-                gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
-                return 0;
-            }
-
-            gsInfo<< "Plot "<< bb->rows() <<"D points.\n";
-            if (bb->rows() == 2 )    
-            {         
-                gsWriteParaviewPoints<real_t>( bb->row(0),
-                                               bb->row(1), "gsview");
-            }
-            else if (bb->rows() == 3 )    
-                gsWriteParaviewPoints<real_t>( bb->row(0).eval(),
-                                               bb->row(1).eval() , 
-                                               bb->row(2).eval(), "gsview");
-            else
-                gsInfo<< "In trouble...\n";
-
-            delete bb;
-
-            return system("paraview gsview.pvd &");
-        }
-
+            gsMatrix<> bb;
+            filedata.getFirst(bb);
+            gsInfo<< "Got Matrix with "<< bb.cols() <<" points.\n";
+            gsInfo<< "Plot "<< bb.rows() <<"D points.\n";
+            gsWriteParaviewPoints<real_t>( bb, "gsview");
+            break;
+        }        
         gsInfo<< "Did not find anything to plot in "<<fn<<", quitting."<<"\n";
+        return 0;
     }
-
-    return 0;
+    
+        return system("paraview gsview.pvd &");
 }

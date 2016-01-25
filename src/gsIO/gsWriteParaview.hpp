@@ -1028,40 +1028,28 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
     file <<"</Piece>\n";
     file <<"</PolyData>\n";
     file <<"</VTKFile>\n";
-
     file.close();
+
+    makeCollection(fn, ".vtp"); // make also a pvd file
 }
 
 template<class T>
 void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn)
 {
-    index_t rows = points.rows();
-    index_t cols = points.cols();
-
-    GISMO_ASSERT(rows == 2 || rows == 3,
-                 "This function is implemented just for 2D and 3D!");
-
-    gsMatrix<T> X(1, cols);
-    gsMatrix<T> Y(1, cols);
-    gsMatrix<T> Z(1, cols);
-
-    for (index_t col = 0; col < cols; col++)
+    const index_t rows = points.rows();
+    switch (rows)
     {
-        X(0, col) = points(0, col);
-        Y(0, col) = points(1, col);
-        if (rows == 3)
-        {
-            Z(0, col) = points(2, col);
-        }
-    }
-
-    if (rows == 2)
-    {
-        gsWriteParaviewPoints(X, Y, fn);
-    }
-    else if (rows == 3)
-    {
-        gsWriteParaviewPoints(X, Y, Z, fn);
+    case 1:
+        gsWriteParaviewPoints<T>(points.row(0), gsMatrix<T>::Zero(1, points.cols()), fn);
+        break;
+    case 2:
+        gsWriteParaviewPoints<T>(points.row(0), points.row(1), fn);        
+        break;
+    case 3:
+        gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), fn);
+        break;
+    default:
+        GISMO_ERROR("Point plotting is implemented just for 2D and 3D (rows== 1, 2 or 3).");
     }
 }
 
