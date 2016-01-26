@@ -42,6 +42,14 @@ public:
     ///Returns the number of columns in the preconditioner
     virtual index_t cols() const = 0;
 
+    // NOTE: this is rather inefficient and is only provided for debugging and testing purposes
+    void toMatrix(gsMatrix<real_t>& result)
+    {
+        GISMO_ASSERT(rows() == cols(), "only implemented for square operators");
+
+        gsMatrix<real_t> eye = gsMatrix<real_t>::Identity(cols(), cols());
+        this->apply(eye, result);
+    }
 }; // gsLinearOperator
 
 

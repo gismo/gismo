@@ -86,5 +86,52 @@ private:
 };
 
 
+/// Compute the Kronecker product of two sparse matrices as a sparse matrix
+template <typename T>
+void kroneckerProductSparse(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>& B, gsSparseMatrix<T>& result)
+{
+    index_t Ar = A.rows(), Ac = A.cols();
+    index_t Br = B.rows(), Bc = B.cols();
+
+    result.resize(Ar*Br, Ac*Bc);
+    result.resizeNonZeros(0);
+
+    typedef gsSparseMatrix<T> Dest;
+    typedef typename gsSparseMatrix<T>::InnerIterator InnerIterator;
+
+    // compute number of non-zeros per innervectors of result
+    {
+        // TODO VectorXi is not necessarily big enough!
+        Eigen::VectorXi nnzA = Eigen::VectorXi::Zero(Dest::IsRowMajor ? A.rows() : A.cols());
+        for (index_t kA=0; kA < A.outerSize(); ++kA)
+            for (InnerIterator itA(A,kA); itA; ++itA)
+                nnzA(Dest::IsRowMajor ? itA.row() : itA.col())++;
+
+        Eigen::VectorXi nnzB = Eigen::VectorXi::Zero(Dest::IsRowMajor ? B.rows() : B.cols());
+        for (index_t kB=0; kB < B.outerSize(); ++kB)
+            for (InnerIterator itB(B,kB); itB; ++itB)
+                nnzB(Dest::IsRowMajor ? itB.row() : itB.col())++;
+
+        Eigen::Matrix<int,Dynamic,Dynamic,ColMajor> nnzAB = nnzB * nnzA.transpose();
+        result.reserve(Eigen::VectorXi::Map(nnzAB.data(), nnzAB.size()));
+    }
+
+    for (index_t kA=0; kA < A.outerSize(); ++kA)
+    {
+        for (index_t kB=0; kB < B.outerSize(); ++kB)
+        {
+            for (InnerIterator itA(A,kA); itA; ++itA)
+            {
+                for (InnerIterator itB(B,kB); itB; ++itB)
+                {
+                    index_t i = itA.row() * Br + itB.row(),
+                            j = itA.col() * Bc + itB.col();
+                    result.insert(i,j) = itA.value() * itB.value();
+                }
+            }
+        }
+    }
+}
+
 }
 
