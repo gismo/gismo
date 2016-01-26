@@ -39,7 +39,7 @@ namespace gismo
      \eta_K^2 =
      h^2 \int_K ( \Delta u_h + f )^2 dx
      + h \int_{\partial K \cap \Gamma_N} ( g_N - \partial_n u_h )^2 ds
-     + h \int_{\partial K \cap \partial \Omega'} ( \partial_n u_h - \partial_n u_h' )^2 ds
+     + \frac{h}{2} \int_{\partial K \cap \partial \Omega'} ( \partial_n u_h - \partial_n u_h' )^2 ds
      \f]
  * \f$ h \f$ denotes the size of element \f$ K \f$,\n
  * \f$ \partial_n u  = \nabla u \cdot \vec{n} \f$ denotes the normal derivative (\f$ \vec{n} \f$ is the outer unit-normal vector to the current patch), and\n
@@ -77,6 +77,9 @@ public:
     : gsNorm<T>(_discSolution,_rhsFunction), m_bcInfo(bcInfo), m_f2param(_rhsFunctionParam)
     {
         m_bcInitialized = true;
+
+        // auxiliary flag, mainly for debugging
+        m_storeElWiseType = 0;
     }
 
 
@@ -94,6 +97,9 @@ public:
     : gsNorm<T>(_discSolution,_rhsFunction), m_f2param(_rhsFunctionParam)
     {
         m_bcInitialized = false;
+
+        // auxiliary flag, mainly for debugging
+        m_storeElWiseType = 0;
 
         /* ! this is buggy..
         // In case no boundary conditions are provided, we still
@@ -128,6 +134,22 @@ public:
      */
     T compute(bool storeElWise = true)
     {
+        m_elWiseFull.clear();
+        m_storeElWiseType = unsigned( storeElWise );
+
+        this->apply(*this,storeElWise);
+        return this->m_value;
+    }
+
+    // like compute, but allowing for m_storeElWiseType == 2
+    // in which case more information on the local error estimates is stored
+    T compute2(unsigned storeType = 1)
+    {
+        bool storeElWise = ( storeType == 0 ? false : true );
+
+        m_elWiseFull.clear();
+        m_storeElWiseType = storeType;
+
         this->apply(*this,storeElWise);
         return this->m_value;
     }
@@ -218,7 +240,6 @@ protected:
 
         unsigned actPatch = geoEval.id();
 
-
         T sumVolSq(0.0);
         T sumSidesSq(0.0);
         gsMatrix<T> quNodesSide;
@@ -289,10 +310,9 @@ protected:
 
         } // quPts volume
 
-
         // find out which boundaries are touched by this particular element
         std::vector<unsigned> touchingSides;
-        for( size_t di = 0; di < m_parDim; di++)
+        for( unsigned di = 0; di < m_parDim; di++)
         {
             if( element.lowerCorner()[di] == 0 )
                 touchingSides.push_back(2*di+1);
@@ -364,11 +384,33 @@ protected:
 
         } // psi
 
-
         // Estimate the cell-size on the physical domain
         T hhSq = cellsizeEstimateSquared( element, geoEval );
 
+        std::vector<T> tmpStore( 4+2*m_parDim );
+        if( m_storeElWiseType == 2 )
+        {
+            tmpStore[0] = hhSq;
+            tmpStore[1] = sumVolSq;
+            tmpStore[2] = sumSidesSq;
+            tmpStore[3] = actPatch;
+
+            for( unsigned i = 0; i < m_parDim; i++)
+            {
+                tmpStore[4 + i] = element.lowerCorner()[i];
+                tmpStore[4 + m_parDim + i] = element.upperCorner()[i];
+            }
+            m_elWiseFull.push_back( tmpStore );
+        }
+
         return hhSq * sumVolSq + math::sqrt( hhSq ) * sumSidesSq;
+    }
+
+public:
+
+    const std::vector< std::vector<T> > & elementNormsFullData()  const
+    {
+        return m_elWiseFull;
     }
 
 
@@ -651,9 +693,10 @@ private:
     using gsNorm<T>::patchesPtr;
     using gsNorm<T>::field1;
 
-    //unsigned evFlags;
+    // auxiliary flag, mainly for debugging
+    unsigned m_storeElWiseType;
+    std::vector< std::vector<T> > m_elWiseFull;
+
 };
 
-
 } // namespace gismo
-
