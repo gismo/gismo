@@ -51,7 +51,7 @@
     ./bin/gsInterpolateMap -d 3 -X "cos(x)*(y+1)" -Y "sin(x)*(y+1)" -Z "z*2"
 
     - a cylindrical volume
-    /bin/gsInterpolateMap -d 3 -X "x*cos(2*pi*y)" -Y "x*sin(2*pi*y)" -Z "3*z"
+    ./bin/gsInterpolateMap -d 3 -X "x*cos(2*pi*y)" -Y "x*sin(2*pi*y)" -Z "3*z"
 
     - a degenerate volume
     ./bin/gsInterpolateMap -d 3 -X "5*cos(2*pi*x)" -Y "5*sin(2*pi*y)" -Z "15*z"
