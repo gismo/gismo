@@ -32,7 +32,7 @@ foreach(file ${FILES})
 
     add_gismo_executable(${file})
     get_filename_component(tarname ${file} NAME_WE) # name without extension
-    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME};gismo")
+    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
     add_dependencies(${PROJECT_NAME} ${tarname})
 
     # install the example executables
