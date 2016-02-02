@@ -110,6 +110,6 @@
 
 /**@}*/
 
-#if __cplusplus <= 199711L
-#define final
-#endif
+//#if __cplusplus <= 199711L
+//#define final
+//#endif
