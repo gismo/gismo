@@ -110,5 +110,6 @@
 
 /**@}*/
 
-/* Using Intel MKL. */
-//#define EIGEN_USE_MKL_ALL
+#if __cplusplus <= 199711L
+#define final
+#endif

@@ -191,6 +191,8 @@ include( gsInstall )
 #  templated code is used.
 if(GISMO_BUILD_EXAMPLES)
   add_subdirectory(examples)
+else
+  add_subdirectory(examples EXCLUDE_FROM_ALL)
 endif(GISMO_BUILD_EXAMPLES)
 
 add_subdirectory(optional)

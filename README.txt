@@ -58,7 +58,7 @@ Password: anonsvn
   - MS Visual C++
   - Clang
   - Intel C++ compiler
-  - Mingw32 
+  - Mingw64
 
 * Recommended:
    - Paraview for visualization.
