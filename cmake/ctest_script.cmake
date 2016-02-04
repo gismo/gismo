@@ -9,6 +9,7 @@
 ##
 ##   ctest -S /path/to/ctest_script.cmake
 ##
+## It is recommended to make a copy of the file (especially using git).
 ## For extra information
 ##
 ##   ctest -S /path/to/ctest_script.cmake -V
@@ -16,7 +17,8 @@
 ## or even  -VV
 ##
 ## Set execution options in the Configuration part.
-## For multiple tests (eg. different compilers) copy this file and adjust options.
+## For multiple tests (eg. different compilers) make multiple copies
+## of this file and adjust options.
 ##
 ######################################################################
 
@@ -61,8 +63,8 @@ set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/..)
 set(CTEST_BINARY_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/build_ctest)
 
 # Update type (eg. svn or git)
-set( UPDATE_TYPE svn)
-set( CTEST_UPDATE_COMMAND "svn") #"${CTEST_SOURCE_DIRECTORY}/cmake/svn_github.sh"
+set( UPDATE_TYPE git)
+set( CTEST_UPDATE_COMMAND "git") #"${CTEST_SOURCE_DIRECTORY}/cmake/svn_github.sh"
 
 # Timeouts
 set(CTEST_TEST_TIMEOUT 200 CACHE STRING 
@@ -72,15 +74,15 @@ set(DART_TESTING_TIMEOUT 200 CACHE STRING
 
 # Build options
 set(gismo_build_options 
-    #-DGISMO_BUILD_COVERAGE=ON
-    -DGISMO_PLAINDOX=ON # plain doxygen output for the trac Wiki
     -DGISMO_BUILD_LIB=ON
     -DGISMO_WITH_ONURBS=ON
-    -DGISMO_WITH_IPOPT=ON
-    -DIpOpt_DIR=/home/amantzaflaris/dashboards/IpOpt_inst
-    -DGISMO_WITH_PSOLID=ON
-    -DParasolid_DIR=/home/amantzaflaris/dropboxOUT/gforge/parasolid/26/1/153
-    #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/home/amantzaflaris/build/axel
+    #-DGISMO_WITH_IPOPT=ON
+    #-DIpOpt_DIR=/path/to/ipopt
+    #-DGISMO_WITH_PSOLID=ON
+    #-DParasolid_DIR=/path/to/parasolid
+    #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/path/to/axel
+    #-DGISMO_PLAINDOX=ON
+    #-DGISMO_BUILD_COVERAGE=ON
 )
 
 # Coverage analysis
