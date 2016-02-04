@@ -96,6 +96,7 @@ else()
 
     ######################## Threading layer ########################
     if(MKL_MULTI_THREADED)
+        message(STATUS "MKL multi-threaded.")
         set(MKL_THREADING_LIBNAME mkl_intel_thread)
     else()
         set(MKL_THREADING_LIBNAME mkl_sequential)
@@ -161,9 +162,11 @@ find_package_handle_standard_args(MKL DEFAULT_MSG
     MKL_INCLUDE_DIR MKL_LIBRARY MKL_MINIMAL_LIBRARY)
 
 if(MKL_FOUND)
-    set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
+    message(STATUS "Found Intel MKL libraries.")
     set(MKL_LIBRARIES ${MKL_LIBRARY})
     set(MKL_MINIMAL_LIBRARIES ${MKL_LIBRARY})
+    mark_as_advanced (MKL_LIBRARY) 
+    mark_as_advanced (MKL_MINIMAL_LIBRARY)
 endif()
 
-message("MKL_LIBRARIES: ${MKL_LIBRARIES}")
+#message("MKL_LIBRARIES: ${MKL_LIBRARIES}")
