@@ -34,6 +34,7 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <Eigen/StdVector>
 
 // Extra Eigen code
 #include <gsMatrix/gsEigenAddons.h>
