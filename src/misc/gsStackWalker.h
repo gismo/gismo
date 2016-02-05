@@ -54,6 +54,11 @@ namespace internal {
     /// Used to take control of all exceptions
     GISMO_EXPORT BOOL PreventSetUnhandledExceptionFilter();
 
+
+    // see https://msdn.microsoft.com/en-us/library/5at7yxcs.aspx
+    //static const int gismoCrtDbgFlag = 
+    //_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+
 #endif
 
 
@@ -68,9 +73,6 @@ static const bool gismoExceptionHandler = gsExceptionHandler();
 } // end namespace internal
 
 } // end namespace gismo
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 
 #ifndef GISMO_BUILD_LIB

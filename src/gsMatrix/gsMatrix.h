@@ -43,6 +43,8 @@ public:
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
 
+    typedef typename Eigen::aligned_allocator<Base> aalloc;
+
     // Type pointing to a block view of the matrix
     typedef gsMatrixBlockView<Base> BlockView;
 

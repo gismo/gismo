@@ -61,11 +61,32 @@
 // PaStiX
 //#include <Eigen/PaStiXSupport>
 
-
 namespace gismo
 {
 
 using Eigen::internal::cast; // from Core/MathFunctions.h
+
+/**
+   \brief Check if all the entires if the matrix \a x are not NAN (not
+   a number)
+
+   See https://en.wikipedia.org/wiki/Floating_point#Special_values
+   and https://en.wikipedia.org/wiki/NaN
+ */
+template<typename Derived>
+inline bool isnumber(const Eigen::MatrixBase<Derived>& x)
+{ return ((x.array() == x.array())).all(); }
+
+/**
+   \brief Check if all the entires if the matrix \a x are not INF (infinite)
+
+   See https://en.wikipedia.org/wiki/Floating_point#Special_values
+ */
+template<typename Derived>
+inline bool isfinite(const Eigen::MatrixBase<Derived>& x)
+{ return ( (x - x).array() == (x - x).array()).all(); }
+
+
 
 //Global variables related to gsMatrix ( see also
 //gsForwardDeclarations,h)
