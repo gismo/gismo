@@ -326,8 +326,10 @@ public:
      */
     void refine( gsMatrix<T> const & boxes )
     {
-        GISMO_ASSERT( boxes.rows() == this->dim() , "Number of rows of refinement boxes must equal dimension of parameter space.");
-        GISMO_ASSERT( boxes.cols() % 2 == 0, "Refinement boxes must have even number of columns.");
+        GISMO_ASSERT( boxes.rows() == this->dim() , 
+                      "Number of rows of refinement boxes must equal dimension of parameter space.");
+        GISMO_ASSERT( boxes.cols() % 2 == 0, 
+                      "Refinement boxes must have even number of columns.");
 
         const T tol = 0.000000001;
 
