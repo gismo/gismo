@@ -10,11 +10,11 @@
 ##   ctest -S /path/to/ctest_script.cmake
 ##
 ## It is recommended to make a copy of the file (especially using git).
-## For extra information
+## For more verbosity add the flag
 ##
 ##   ctest -S /path/to/ctest_script.cmake -V
 ##
-## or even  -VV
+## or even -VV.
 ##
 ## Set execution options in the Configuration part.
 ## For multiple tests (eg. different compilers) make multiple copies
@@ -33,10 +33,25 @@ set(CTEST_SITE "${HOSTNAME}")
 
 # The Generator for CMake.
 set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
+#set(CTEST_CMAKE_GENERATOR "Ninja")
+#set(CTEST_CMAKE_GENERATOR "NMake Makefiles")
+#set(CTEST_CMAKE_GENERATOR "NMake Makefiles JOM")
+#set(CTEST_CMAKE_GENERATOR "MinGW Makefiles")
+#set(CTEST_CMAKE_GENERATOR "Visual Studio 12 2013")
+#set(CTEST_CMAKE_GENERATOR "Visual Studio 14 2015")
+#set(CTEST_CMAKE_GENERATOR "Visual Studio 14 2015 Win64")
+#set(CTEST_CMAKE_GENERATOR "Xcode")
+#set(CTEST_CMAKE_GENERATOR "CodeBlocks")
+#set(CTEST_CMAKE_GENERATOR "Sublime Text 2")
+#set(CTEST_CMAKE_GENERATOR "Eclipse CDT4")
 
-# Set compiler
-#set(CXX g++)
-#set(CC  gcc)
+# Set environment/compiler
+set(ENV{CC}  "gcc")
+set(ENV{CXX} "g++")
+#set(ENV{CC}  "icc")
+#set(ENV{CXX} "icpc")
+#set(ENV{CC}  "clang")
+#set(ENV{CXX} "clang++")
 
 # Build type
 set(CTEST_BUILD_CONFIGURATION RelWithDebInfo)
@@ -45,16 +60,16 @@ set(CTEST_BUILD_CONFIGURATION RelWithDebInfo)
 find_program(UNAME NAMES uname)
 exec_program("${UNAME}" ARGS "-s" OUTPUT_VARIABLE osname)
 exec_program("${UNAME}" ARGS "-m" OUTPUT_VARIABLE "cpu")
-set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR} / ${CTEST_BUILD_CONFIGURATION} ${CXX}")
+set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}/${CTEST_BUILD_CONFIGURATION} $ENV{CXX}")
 
 # Test type (Nightly, Continuous, Experimental)
-set(dashboard_model "Experimental")
+set(test_model "Experimental")
 
 # For continuous builds, number of seconds to stay alive
-set(dashboard_runtime 40000)
+set(test_runtime 40000)
 
 # Build flags
-set( CTEST_BUILD_FLAGS "-j2")
+set(CTEST_BUILD_FLAGS "-j2")
 
 # Source folder
 set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/..)
@@ -63,8 +78,8 @@ set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/..)
 set(CTEST_BINARY_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/build_ctest)
 
 # Update type (eg. svn or git)
-set( UPDATE_TYPE git)
-set( CTEST_UPDATE_COMMAND "git") #"${CTEST_SOURCE_DIRECTORY}/cmake/svn_github.sh"
+set(UPDATE_TYPE git)
+set(CTEST_UPDATE_COMMAND "git")
 
 # Timeouts
 set(CTEST_TEST_TIMEOUT 200 CACHE STRING 
@@ -86,14 +101,15 @@ set(gismo_build_options
 )
 
 # Coverage analysis
-#set(dashboard_do_coverage TRUE)
+#set(test_coverage TRUE)
 #set(CTEST_COVERAGE_COMMAND "/usr/bin/gcov")
 #set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
 
 # Memory check with valgrind
-#set(dashboard_do_memcheck true)
+#set(test_memcheck true)
 #set(CTEST_MEMORYCHECK_COMMAND "/usr/bin/valgrind")
-
+#set(CTEST_MEMORYCHECK_SUPPRESSIONS_FILE "/path_to/suppression_file.supp")
+#set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full --show-reachable=yes --track-origins=yes")
 
 
 ## #################################################################
@@ -109,44 +125,39 @@ macro(run_ctests)
   ctest_test()
   ctest_submit(PARTS Test)
 
-  if(dashboard_do_coverage)
+  if(test_coverage)
      message("Running coverage..")
      ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
      ctest_submit(PARTS Coverage)
   endif()
 
-  if(dashboard_do_memcheck)
+  if(test_memcheck)
     message("Running memcheck..")
     ctest_memcheck()
     ctest_submit(PARTS MemCheck)
   endif()
 endmacro(run_ctests)
 
-#if(NOT EXISTS "${CTEST_BINARY_DIRECTORY}/CMakeCache.txt")
-#  message("Starting fresh configuration...")
-#  write_cache()
-#endif()
-
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
 #ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
 
-ctest_start(${dashboard_model})
+ctest_start(${test_model})
 
-if(NOT "${dashboard_model}" STREQUAL "Continuous")
+if(NOT "${test_model}" STREQUAL "Continuous")
 
 ctest_update()
 run_ctests()
 
 else() #continuous model
 
-while(${CTEST_ELAPSED_TIME} LESS ${dashboard_runtime})
+while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
   set(START_TIME ${CTEST_ELAPSED_TIME})
   ctest_update(RETURN_VALUE count)
   #message(STATUS "Found ${count} changed files.")
   if( ${count} GREATER 0 )
     run_ctests()
   endif()
-  ctest_sleep(${START_TIME} 300    ${CTEST_ELAPSED_TIME})
+  ctest_sleep(${START_TIME} 300 ${CTEST_ELAPSED_TIME})
 endwhile()
 
-endif(NOT "${dashboard_model}" STREQUAL "Continuous")
+endif(NOT "${test_model}" STREQUAL "Continuous")
