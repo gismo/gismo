@@ -24,13 +24,13 @@
 
 #ifdef GISMO_WITH_MPQ
 template <class U, class V>
-inline mpq_class max(const __gmp_expr<mpq_t, U> & a,
-                     const __gmp_expr<mpq_t, V> & b)
+inline mpq_class (max)(const __gmp_expr<mpq_t, U> & a,
+                       const __gmp_expr<mpq_t, V> & b)
 {return mpq_class(a < b ? b : a);}
 
 template <class U, class V>
-inline mpq_class min(const __gmp_expr<mpq_t, U> & a,
-                     const __gmp_expr<mpq_t, V> & b)
+inline mpq_class (min)(const __gmp_expr<mpq_t, U> & a,
+                       const __gmp_expr<mpq_t, V> & b)
 {return mpq_class(a < b ? a : b);}
 
 /*// under construction
@@ -210,11 +210,11 @@ using ::atan2;
 using ::exp;
 
 //fixme: min/max duplication with global
-inline mpq_class max(const mpq_class & a, const mpq_class & b)
+inline mpq_class (max)(const mpq_class & a, const mpq_class & b)
 {return mpq_class(a < b ? b : a);}
-inline mpq_class min(const mpq_class & a, const mpq_class & b)
+inline mpq_class (min)(const mpq_class & a, const mpq_class & b)
 {return mpq_class(a < b ? a : b);}
-inline mpq_class pow (const mpq_class & a, const mpq_class & b) 
+inline mpq_class pow(const mpq_class & a, const mpq_class & b) 
 {return  std::pow(a.get_d(),b.get_d()); }
 inline bool isfinite(mpq_class a) {return true; }
 inline bool isnan(mpq_class a)    {return false;}
