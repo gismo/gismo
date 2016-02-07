@@ -84,7 +84,7 @@ private:
 
 public:
 
-    /// Alows to read an Object from a file
+    /// Allows to read an Object from a file
     template<class Obj>
     operator Obj * () 
     {
@@ -96,7 +96,7 @@ public:
         return NULL;
     }
 
-    /// Alows to read a file into a gsGeometry
+    /// Allows to read a file into a gsGeometry
     operator gsGeometry<T> * () 
     {
         // Get the first geometry in the file
@@ -107,7 +107,7 @@ public:
         return NULL;
     }
     
-    /// Alows to read a file into a gsCurve
+    /// Allows to read a file into a gsCurve
     operator gsCurve<T> * () 
     {
         // Get the first curve in the file
@@ -118,7 +118,7 @@ public:
         return NULL;
     }
     
-    /// Alows to read a file into a gsBasis
+    /// Allows to read a file into a gsBasis
     operator gsBasis<T> * () 
     {
         // Get the first basis in the file
@@ -129,7 +129,7 @@ public:
         return NULL;
     }
     
-    /// Alows to read a file into a gsBasis
+    /// Allows to read a file into a gsBasis
     operator gsPlanarDomain<T> * () 
     {
         // Get the first basis in the file
@@ -140,7 +140,7 @@ public:
         return NULL;
     }
     
-    /// Alows to convert a gsReadFile to a gsMultipatch
+    /// Allows to convert a gsReadFile to a gsMultipatch
     operator gsMultiPatch<T> * () 
     {
         // Get the first MultiPatch tag, if one exists -- TO DO
@@ -159,7 +159,7 @@ public:
         return NULL;
     }
     
-    /// Alows to read a gsMesh
+    /// Allows to read a gsMesh
     operator gsMesh<T> * () 
     {
         // Get the first Mesh, if one exists
@@ -170,14 +170,14 @@ public:
         return NULL;
     }
     
-    /// Alows to read a file into a vector of gsBasis
+    /// Allows to read a file into a vector of gsBasis
     operator std::vector< gsBasis<T> * > () 
     {
         // Get all bases
         return  this->m_data.template getAll< gsBasis<T> >();
     }
     
-    /// Alows to read a PDE
+    /// Allows to read a PDE
     operator gsPde<T> * () 
     {
         if ( this->m_data.template has< gsPde<T>  >() )
