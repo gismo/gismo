@@ -24,7 +24,7 @@ if(GISMO_WITH_PSOLID)
     mark_gismo_optional (${file})
     get_filename_component(namewe ${file} NAME_WE)
     add_dependencies(examples ${namewe})
-    set_property(TEST ${namewe} PROPERTY LABELS "examples;gismo")
+    set_property(TEST ${namewe} PROPERTY LABELS "examples")
   endforeach()
   
   #set_property(TARGET gsParasolid_test APPEND PROPERTY 
