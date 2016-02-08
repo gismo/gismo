@@ -20,7 +20,7 @@
 namespace gismo
 {
 
-/** @brief Container clas sfor a set of geometry patches and their
+/** @brief Container class for a set of geometry patches and their
     topology, that is, the interface connections and outer boundary
     faces.
 
