@@ -68,10 +68,12 @@ public:
     Base( basis, coefs ) { }
 
     /// Construct 2D tensor NURBS by knot vectors, degrees and coefficient matrix
+    /// All weights are set to be 1.
     gsTensorNurbs( gsKnotVector<T> const& KV1, gsKnotVector<T> const & KV2,
                    gsMovable< gsMatrix<T> > tcoefs)
     {
-        assert(d==2);
+        GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d
+                     <<"D NURBS using 2 knot-vectors.");
 
         gsBSplineBasis<T>    * Bu    = new gsBSplineBasis<T>(KV1);
         gsBSplineBasis<T>    * Bv    = new gsBSplineBasis<T>(KV2);
@@ -80,13 +82,15 @@ public:
       
         this->m_basis = new Basis(tbasis) ;
         this->m_coefs = tcoefs;
-    };
+    }
 
-    /// Construct 2D tensor NURBS by knot vectors, degrees and coefficient matrix
+    /// Construct 2D tensor NURBS by knot vectors, degrees, weights and coefficient matrix
+    /// \a tcoefs, \a wgts become empty after the constructor is called
     gsTensorNurbs( gsKnotVector<T> const& KV1, gsKnotVector<T> const & KV2,
                    gsMovable< gsMatrix<T> > tcoefs, gsMovable< gsMatrix<T> > wgts)
     {
-        assert(d==2);
+        GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d
+                     <<"D NURBS using 2 knot-vectors.");
 
         gsBSplineBasis<T>    * Bu    = new gsBSplineBasis<T>(KV1);
         gsBSplineBasis<T>    * Bv    = new gsBSplineBasis<T>(KV2);
@@ -95,16 +99,34 @@ public:
       
         this->m_basis = new Basis(tbasis , wgts) ;
         this->m_coefs = tcoefs;
-    };
+    }
+
+    /// Construct 2D tensor NURBS by knot vectors, degrees, weights and coefficient matrix
+    gsTensorNurbs( gsKnotVector<T> const& KV1, gsKnotVector<T> const & KV2,
+                   const gsMatrix<T> & tcoefs, const gsMatrix<T> & wgts)
+    {
+        GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d
+                     <<"D NURBS using 2 knot-vectors.");
+
+        gsBSplineBasis<T>    * Bu    = new gsBSplineBasis<T>(KV1);
+        gsBSplineBasis<T>    * Bv    = new gsBSplineBasis<T>(KV2);
+
+        TBasis   *tbasis = new TBasis(Bu,Bv) ;//d==2
+      
+        this->m_basis = new Basis(tbasis , wgts) ;
+        this->m_coefs = tcoefs;
+    }
 
     /// Construct 3D tensor NURBS by knot vectors, degrees and coefficient matrix
+    /// \a tcoefs, \a wgts become empty after the constructor is called
     gsTensorNurbs( gsKnotVector<T> const & KV1, 
                    gsKnotVector<T> const & KV2, 
                    gsKnotVector<T> const & KV3,
                    gsMovable< gsMatrix<T> > tcoefs, 
                    gsMovable< gsMatrix<T> > wgts )
     {
-        assert(d==3);
+        GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "<< d
+                     <<"D NURBS using 3 knot-vectors.");
       
         gsBSplineBasis<T> * Bu= new gsBSplineBasis<T>(KV1);
         gsBSplineBasis<T> * Bv= new gsBSplineBasis<T>(KV2);
@@ -115,14 +137,40 @@ public:
 
         this->m_basis = new Basis(tbasis, wgts) ;
         this->m_coefs = tcoefs;
-    };
+    }
 
+    /// Construct 3D tensor NURBS by knot vectors, degrees and coefficient matrix
+    /// \a tcoefs, \a wgts become empty after the constructor is called
+    gsTensorNurbs( gsKnotVector<T> const & KV1, 
+                   gsKnotVector<T> const & KV2, 
+                   gsKnotVector<T> const & KV3,
+                   const gsMatrix<T> & tcoefs, 
+                   const gsMatrix<T> & wgts )
+    {
+        GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "<< d
+                     <<"D NURBS using 3 knot-vectors.");
+      
+        gsBSplineBasis<T> * Bu= new gsBSplineBasis<T>(KV1);
+        gsBSplineBasis<T> * Bv= new gsBSplineBasis<T>(KV2);
+        gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
+        TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
+      
+        Basis *rbasis;
+
+        this->m_basis = new Basis(tbasis, wgts) ;
+        this->m_coefs = tcoefs;
+    }
+
+    /// Construct 3D tensor NURBS by knot vectors, degrees and coefficient matrix
+    /// \a tcoefs, \a wgts become empty after the constructor is called
+    /// All weights are set to be 1.
     gsTensorNurbs( gsKnotVector<T> const & KV1, 
                    gsKnotVector<T> const & KV2, 
                    gsKnotVector<T> const & KV3,
                    gsMovable< gsMatrix<T> > tcoefs)
     {
-        assert(d==3);
+        GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "<< d
+                     <<"D NURBS using 3 knot-vectors.");
       
         gsBSplineBasis<T> * Bu= new gsBSplineBasis<T>(KV1);
         gsBSplineBasis<T> * Bv= new gsBSplineBasis<T>(KV2);
@@ -131,15 +179,15 @@ public:
       
         this->m_basis = new Basis(tbasis) ;
         this->m_coefs = tcoefs;
-    };
+    }
 
     /// Construct 3D tensor B-Spline by knot vectors, degrees and coefficient matrix
     //gsTensorNurbs( gsTensorBasis<T,d> * const basis, gsMatrix<T> * const coefs ) :
-    //  gsGeometry<T,d>( basis, coefs ) { };
+    //  gsGeometry<T,d>( basis, coefs ) { }
 
     /// Construct nD tensor B-Spline 
     //gsTensorNurbs( gsTensorBasis<T,d> * const basis, gsMatrix<T> * const coefs ) :
-    //  gsGeometry<T,d>( basis, coefs ) { };
+    //  gsGeometry<T,d>( basis, coefs ) { }
 
     GISMO_BASIS_ACCESSORS
 
