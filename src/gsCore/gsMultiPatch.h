@@ -17,6 +17,8 @@
 #include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsGeometry.h>
 
+#include <gsCore/gsMultiBasis.h>
+
 namespace gismo
 {
 
@@ -231,7 +233,74 @@ public:
     /// output \a result is a matrix with two columns, corresponding
     /// to two points: the lower and upper corner of the bounding box.
     void boundingBox(gsMatrix<T> & result) const;
-    
+
+
+    /** @brief Checks if all patch-interfaces are fully matching, and if not, repairs them, i.e., makes them fully matching.
+    *
+    * \remarks Designed for gsHTensorBasis and derived bases.
+    * Assumes that the meshes on all levels of the gsHTensorBasis
+    * are fully matching.
+    */
+    void repairInterfaces()
+    {
+        // A bit crude to create a new gsMultiBasis, but this is the fastest
+        // way to re-use the already existing functions of gsMultiBasis
+        gsMultiBasis<T> multiBasis( * this->clone() );
+        std::vector< boundaryInterface > bivec = interfaces();
+
+        size_t kmax = 2*bivec.size();
+        size_t k = 0;
+        bool sthChanged = false;
+        bool changed = false;
+
+        do
+        {
+            sthChanged = false;
+            //...keep repairing until nothing changes any more
+
+            // loop over all interfaces
+            for( size_t i = 0; i < size_t( bivec.size() ); i++ )
+            {
+                changed = false;
+
+                std::vector<unsigned> refEltsFirst;
+                std::vector<unsigned> refEltsSecond;
+
+                // For each interface, find the areas/elements that do not match...
+                switch( this->dim() )
+                {
+                case 2:
+                    changed = multiBasis.template repairInterfaceFindElements<2>( bivec[i], refEltsFirst, refEltsSecond );
+                    break;
+                case 3:
+                    changed = multiBasis.template repairInterfaceFindElements<3>( bivec[i], refEltsFirst, refEltsSecond );
+                    break;
+                default:
+                    GISMO_ASSERT(false,"wrong dimension");
+                }
+
+                // ...and if there are any found, refine the bases accordingly
+                if( changed )
+                {
+                    if( refEltsFirst.size() > 0 )
+                    {
+                        int pi( bivec[i].first().patch );
+                        m_patches[ pi ]->basis().refineElements_withCoefs( m_patches[pi]->coefs(), refEltsFirst );
+                    }
+                    if( refEltsSecond.size() > 0 )
+                    {
+                        int pi( bivec[i].second().patch );
+                        m_patches[ pi ]->basis().refineElements_withCoefs( m_patches[pi]->coefs(), refEltsSecond );
+                    }
+                }
+
+                sthChanged = sthChanged || changed;
+            }
+            k++; // just to be sure this loop cannot go on infinitely
+        }
+        while( sthChanged && k <= kmax );
+    }
+
 protected:
 
     void setIds();

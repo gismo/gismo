@@ -197,25 +197,46 @@ template<class T>
 bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
 {
     bool changed = false;
+
+    std::vector<unsigned> refEltsFirst;
+    std::vector<unsigned> refEltsSecond;
+
+    // Find the areas/elements that do not match...
     switch( this->dim() )
     {
     case 2:
-        changed = repairInterfaceImpl<2>( bi );
+        changed = repairInterfaceFindElements<2>( bi, refEltsFirst, refEltsSecond );
         break;
     case 3:
-        changed = repairInterfaceImpl<3>( bi );
+        changed = repairInterfaceFindElements<3>( bi, refEltsFirst, refEltsSecond );
         break;
     default:
         GISMO_ASSERT(false,"wrong dimension");
     }
+
+    // ...and if there are any found, refine the bases accordingly
+    if( changed )
+    {
+        if( refEltsFirst.size() > 0 )
+            m_bases[ bi.first().patch ]->refineElements( refEltsFirst );
+        if( refEltsSecond.size() > 0 )
+            m_bases[ bi.second().patch ]->refineElements( refEltsSecond );
+    }
+
     return changed;
 }
 
 template<class T>
 template<unsigned d>
-bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
+bool gsMultiBasis<T>::repairInterfaceFindElements(
+        const boundaryInterface & bi,
+        std::vector<unsigned> & refEltsFirst,
+        std::vector<unsigned> & refEltsSecond )
 {
     GISMO_ASSERT( d == 2 || d == 3, "Dimension must be 2 or 3.");
+
+    refEltsFirst.clear();
+    refEltsSecond.clear();
 
     // get direction and orientation maps
     const gsVector<bool> dirOrient = bi.dirOrientation();
@@ -261,14 +282,14 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
 
     // Compute the indices on the same level (indexLevelUse)
     idxExponent = ( indexLevelUse - bas0->tree().getMaxInsLevel());
-    for( index_t i=0; i < lo0.rows(); i++)
+    for( index_t i=0; i < index_t( lo0.rows() ); i++)
         for( unsigned j=0; j < d; j++)
         {
             lo0(i,j) = lo0(i,j) << idxExponent;
             up0(i,j) = up0(i,j) << idxExponent;
         }
     idxExponent = ( indexLevelUse - bas1->tree().getMaxInsLevel());
-    for( index_t i=0; i < lo1.rows(); i++)
+    for( index_t i=0; i < index_t( lo1.rows() ); i++)
         for( unsigned jj=0; jj < d; jj++)
         {
             // Computation done via dirMap, because...
@@ -289,7 +310,6 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
     // Find the merged interface mesh with
     // the respective levels.
     // Not efficient, but simple to implement.
-    // If you want to improve it, go ahead! :)
 
     // a, b will correspond to the coordinate
     // directions which "span" the interface
@@ -316,7 +336,7 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
     // If d == 2, the "b"'s are not needed.
     // Setting them to the "a"'s will
     // result in some steps and tests being repeated,
-    // but the implementation is inefficient anyways...
+    // but the implementation not optimized w.r.t. efficiency.
     if( d == 2 )
         b0 = a0;
 
@@ -329,8 +349,8 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
     // If so, their overlap is a box of the merged
     // interface mesh.
     std::vector< std::vector<unsigned> > iU;
-    for( index_t i0 = 0; i0 < lo0.rows(); i0++)
-        for( index_t i1 = 0; i1 < lo1.rows(); i1++)
+    for( index_t i0 = 0; i0 < index_t( lo0.rows() ); i0++)
+        for( index_t i1 = 0; i1 < index_t( lo1.rows() ); i1++)
         {
             if(     lo0(i0,a0) < up1(i1,a1) &&
                     lo0(i0,b0) < up1(i1,b1) &&
@@ -348,10 +368,8 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
             }
         }
 
-    std::vector<unsigned> refElts0;
-    std::vector<unsigned> refElts1;
     std::vector<unsigned> tmpvec(1+2*d);
-    for( size_t i = 0; i < iU.size(); i++)
+    for( size_t i = 0; i < size_t( iU.size() ); i++)
     {
         // the levels on both sides of the
         // box of the interface
@@ -413,7 +431,7 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
                 // no messing around with orientation and
                 // maps needed.
                 for( unsigned j=0; j < tmpvec.size(); j++)
-                    refElts0.push_back( tmpvec[j] );
+                    refEltsFirst.push_back( tmpvec[j] );
             }
             else // refine second
             {
@@ -431,17 +449,12 @@ bool gsMultiBasis<T>::repairInterfaceImpl( const boundaryInterface & bi )
                 }
 
                 for( unsigned j=0; j < (1+2*d); j++)
-                    refElts1.push_back( tmpvec[j] );
+                    refEltsSecond.push_back( tmpvec[j] );
             }
         }
     }
 
-    if( refElts0.size() > 0 )
-        m_bases[ bi.first().patch ]->refineElements( refElts0 );
-    if( refElts1.size() > 0 )
-        m_bases[ bi.second().patch ]->refineElements( refElts1 );
-
-    return ( ( refElts0.size() > 0 ) || ( refElts1.size() > 0 ) );
+    return ( ( refEltsFirst.size() > 0 ) || ( refEltsSecond.size() > 0 ) );
 }
 
 

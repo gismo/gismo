@@ -432,6 +432,10 @@ void gsBasis<T>::refineElements(std::vector<unsigned> const & boxes)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::uniformRefine(int numKnots, int mul)
 { GISMO_NO_IMPLEMENTATION }
 

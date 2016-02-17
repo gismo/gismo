@@ -339,7 +339,7 @@ public:
         while( sthChanged && k <= kmax );
     }
 
-    /** @brief Checks if the interface is fully matching, and if not, repairs it.
+    /** @brief Checks if the 2D-interface is fully matching, and if not, repairs it.
     *
     * Same as repairInterface(), but only for 2D and a bit more efficient.
     *
@@ -357,10 +357,33 @@ public:
     */
     bool repairInterface( const boundaryInterface & bi );
 
-    /** @brief Is called by repairInterface(), templated over dimension.
+    /** @brief Finds the elements that need to be refined in order to repair an interface.
+     *
+     * This function compares the hierarchical meshes on both patches associated with
+     * the boundaryInterface \em bi. The elements that need to be refined on <em>bi.first()</em>
+     * and <em>bi.second()</em> are stored in \em refEltsFirst and \em refEltsSecond,
+     * respectively.
+     *
+     * Subsequent calls of the functions\n
+     * m_bases[ bi.first().patch ]->refineElements( refEltsFirst )\n
+     * m_bases[ bi.second().patch ]->refineElements( refEltsSecond )\n
+     * will repair the interface in the sense that the resulting meshes are fully matching
+     * (this is done in repairInterface()).
+     *
+     * \param[in] bi bondaryInterface to be checked.
+     * \param[out] refEltsFirst Contains elements (and levels) specifying needed refinement on patch bi.first().
+     * \param[out] refEltsSecond Contains elements (and levels) specifying needed refinement on patch bi.second().
+     *
+     * \returns <em>True</em>, if anything needs to be refined
+     * (i.e., if refEltsFirst.size() > 0 or refEltsSecond.size() > 0).\n
+     * <em>False</em> if the patches are already fully matching at interface \em bi.
+     *
+     * Is called by repairInterface(), templated over dimension.
      */
     template<unsigned d>
-    bool repairInterfaceImpl( const boundaryInterface & bi );
+    bool repairInterfaceFindElements( const boundaryInterface & bi,
+                                      std::vector<unsigned> & refEltsFirst,
+                                      std::vector<unsigned> & refEltsSecond );
 
     /// @brief Elevate the degree of every basis by the given amount. (keeping the smoothness)
     void degreeElevate(int const& i = 1, int const dir = -1)
@@ -522,8 +545,8 @@ private:
 }; // class gsMultiBasis
 
 
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
+// ////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 
 /// Print (as string) a multibasis structure
 template<class T>
