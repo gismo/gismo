@@ -1017,6 +1017,30 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
     gsWarn<<"Cannot match with "<< other <<"\n";
 }
 
+template<unsigned d, class T>
+T gsTensorBasis<d, T>::getMinCellLength() const
+{
+    T h = 0;
+    for (unsigned i = 0; i < d; ++i)
+    {
+        const T sz = m_bases[i]->getMinCellLength();
+        if ( sz < h || h == 0 ) h = sz;
+    }
+    return h;
+}
+
+template<unsigned d, class T>
+T gsTensorBasis<d, T>::getMaxCellLength() const
+{
+    T h = 0;
+    for (unsigned i = 0; i < d; ++i)
+    {
+        const T sz = m_bases[i]->getMaxCellLength();
+        if ( sz > h ) h = sz;
+    }
+    return h;
+}
+
 //template<unsigned d, class T>
 //gsDomain<T> * gsTensorBasis<d,T>::makeDomain() const 
 //{

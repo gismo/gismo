@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBasisFun.h>
-
+#include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsBoundary.h>
 
 namespace gismo
@@ -510,6 +510,32 @@ template<class T>
 void gsBasis<T>::matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const
 { GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+T gsBasis<T>::getMinCellLength() const
+{
+    const gsBasis<T>::domainIter it = makeDomainIterator();
+    T h = 0;
+    for (; it->good(); it->next() )
+    {
+        const T sz = it->getMinCellLength();
+        if ( sz < h || h == 0 ) h = sz;
+    }
+    return h;
+}
+
+template<class T>
+T gsBasis<T>::getMaxCellLength() const
+{
+    const gsBasis<T>::domainIter it = this->makeDomainIterator();
+    T h = 0;
+    for (; it->good(); it->next() )
+    {
+        const T sz = it->getMaxCellLength();
+        if ( sz > h ) h = sz;
+    }
+    return h;
+}
 
 // gsBasis<T>::linearComb(active, evals, m_tmpCoefs, result);
 // gsBasis<T>::jacobianFromGradients(active, grads, m_tmpCoefs, result);
