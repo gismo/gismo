@@ -1860,79 +1860,41 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                 {
                     coeffs.push_back(temp);
                 }
-                while(!coeffs.empty())
+                for (size_t coeff_index = 0; coeff_index < coeffs.size(); ++coeff_index)
                 {
+                    const lvl_coef coeff = coeffs[coeff_index];
+
                     start_lv_i = 0;
-                    for(unsigned int l =0; l < coeffs[0].lvl; l++)
+                    for(unsigned int l =0; l < coeff.lvl; l++)
                     {
                         start_lv_i += n[l].size();
                     }
-//                    for(int k = 0; k < transferDense[coeffs[0].lvl].rows(); k++)//basis function was refined->looking for the coeficinets from the global transfer matrix
-//                    {
-//                        if(transferDense[coeffs[0].lvl](k, coeffs[0].pos) != 0)
-//                        {
-//                            bool p = true;
-//                            if( (coeffs[0].lvl+1) < (old.size()))
-//                            {
-//                                if(old[coeffs[0].lvl+1].bContains(k))
-//                                {
-//                                    p = false;
-//                                }
-//                            }
-//                            if(n[coeffs[0].lvl+1].bContains(k))
-//                            {
-//                                if(p){
-//                                    const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k));
 
-//                                    result(pos,glob_numb) += coeffs[0].coef * transferDense[coeffs[0].lvl](k, coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
-//                                    if(coeffs[0].lvl < transfer.size()-1)
-//                                    {
-//                                        temp.pos = k;
-//                                        temp.coef = transferDense[coeffs[0].lvl](k, coeffs[0].pos) * coeffs[0].coef;
-//                                        temp.lvl = coeffs[0].lvl+1;
-//                                        coeffs.push_back(temp);
-//                                    }
-//                                }
-//                            }else
-//                            {
-//                                //TODO test if level would not be higher than the q4 for this function- or max inserted level
-//                                if(p){
-//                                    if(coeffs[0].lvl<transfer.size()-1)
-//                                    {
-//                                        temp.pos = k;
-//                                        temp.coef = transferDense[coeffs[0].lvl](k, coeffs[0].pos) * coeffs[0].coef;
-//                                        temp.lvl = coeffs[0].lvl+1;
-//                                        coeffs.push_back(temp);
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
-                    for(typename gsSparseMatrix<T,ColMajor>::InnerIterator k(temptransfer[coeffs[0].lvl],coeffs[0].pos); k; ++k)//basis function was refined->looking for the coeficinets from the global transfer matrix
+                    for(typename gsSparseMatrix<T,ColMajor>::InnerIterator k(temptransfer[coeff.lvl],coeff.pos); k; ++k)//basis function was refined->looking for the coeficinets from the global transfer matrix
                     {
-//                        if(transferDense[coeffs[0].lvl](k, coeffs[0].pos) != 0)
+//                        if(transferDense[coeff.lvl](k, coeff.pos) != 0)
 //                        {
                         //std::cout<<"first while "<< coeffs.size()<<std::endl;
                         bool p = true;
-                        if( (coeffs[0].lvl+1) < (old.size()))
+                        if( (coeff.lvl+1) < old.size())
                         {
-                            if(old[coeffs[0].lvl+1].bContains(k.row()))
+                            if(old[coeff.lvl+1].bContains(k.row()))
                             {
                                 p = false;
                             }
                         }
-                        if(n[coeffs[0].lvl+1].bContains(k.row()))
+                        if(n[coeff.lvl+1].bContains(k.row()))
                         {
                             if(p)
                             {
-                                const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
+                                const int pos = start_lv_i + n[coeff.lvl].size() + std::distance(n[coeff.lvl+1].begin(), n[coeff.lvl+1].find_it_or_fail(k.row()));
 
-                                result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
-                                if(coeffs[0].lvl + 1 < max_lvl)//transfer.size()
+                                result(pos,glob_numb) += coeff.coef * temptransfer[coeff.lvl](k.row(), coeff.pos);//transferDense[coeff.lvl](k, coeff.pos);
+                                if(coeff.lvl + 1 < max_lvl)//transfer.size()
                                 {
                                     temp.pos = k.row();
-                                    temp.coef = temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos) * coeffs[0].coef;
-                                    temp.lvl = coeffs[0].lvl+1;
+                                    temp.coef = temptransfer[coeff.lvl](k.row(), coeff.pos) * coeff.coef;
+                                    temp.lvl = coeff.lvl+1;
                                     coeffs.push_back(temp);
                                 }
                             }
@@ -1941,11 +1903,11 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                             //TODO test if level would not be higher than the q4 for this function- or max inserted level
                             if(p)
                             {
-                                if( coeffs[0].lvl + 1< max_lvl)
+                                if( coeff.lvl + 1< max_lvl)
                                 {
                                     temp.pos = k.row();
-                                    temp.coef = temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos) * coeffs[0].coef;
-                                    temp.lvl = coeffs[0].lvl+1;
+                                    temp.coef = temptransfer[coeff.lvl](k.row(), coeff.pos) * coeff.coef;
+                                    temp.lvl = coeff.lvl+1;
                                     coeffs.push_back(temp);
                                 }
                             }
@@ -1957,7 +1919,6 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
 //                            std::cout<<"( "<< coeffs[ii].pos<<" , "<<coeffs[ii].coef<<" , "<<coeffs[ii].lvl<<" )"<<std::endl;
 //                        }
 //                        std::cout<<"j ="<<j<<std::endl;
-                    coeffs.erase(coeffs.begin());
                 }
             }
             else
@@ -1974,81 +1935,44 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                 temp.lvl = i;
                 //std::cout<<"temp.pos: "<<temp.pos<<" temp.coef: "<<temp.coef<<" temp.lvl "<< temp.lvl<<std::endl;
                 coeffs.push_back(temp);
-                while(!coeffs.empty())
+                for (size_t coeff_index = 0; coeff_index < coeffs.size(); ++coeff_index)
                 {
+                    const lvl_coef coeff = coeffs[coeff_index];
+
                     start_lv_i = 0;
-                    for(unsigned int l =0; l < coeffs[0].lvl; l++)
+                    for(unsigned int l =0; l < coeff.lvl; l++)
                     {
                         start_lv_i += n[l].size();
                     }
-//                    for(int k = 0; k < transferDense[coeffs[0].lvl].rows(); k++)//basis function was refined->looking for the coeficinets from the global transfer matrix
-//                    {
-//                        if(transferDense[coeffs[0].lvl](k, coeffs[0].pos) != 0)
-//                        {
-//                            bool p = true;
-//                            if( (coeffs[0].lvl+1) < (old.size()))
-//                            {
-//                                if(old[coeffs[0].lvl+1].bContains(k))
-//                                {
-//                                    p = false;
-//                                }
-//                            }
-//                            if(n[coeffs[0].lvl+1].bContains(k))
-//                            {
-//                                if(p){
-//                                    const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k));
-//                                    //T ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
-//                                    result(pos,glob_numb) += coeffs[0].coef * transferDense[coeffs[0].lvl](k, coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
-//                                    if(coeffs[0].lvl < transfer.size()-1)
-//                                    {
-//                                        temp.pos = k;
-//                                        temp.coef = transferDense[coeffs[0].lvl](k, coeffs[0].pos) * coeffs[0].coef;
-//                                        temp.lvl = coeffs[0].lvl+1;
-//                                        coeffs.push_back(temp);
-//                                    }
-//                                }
-//                            }else{
-//                                if(p)
-//                                {
-//                                    if(coeffs[0].lvl < transfer.size()-1)
-//                                    {
-//                                        temp.pos = k;
-//                                        temp.coef = transferDense[coeffs[0].lvl](k, coeffs[0].pos) * coeffs[0].coef;
-//                                        temp.lvl = coeffs[0].lvl+1;
-//                                        coeffs.push_back(temp);
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
-                    for(typename gsSparseMatrix<T,ColMajor>::InnerIterator k(temptransfer[coeffs[0].lvl],coeffs[0].pos); k; ++k)//basis function was refined->looking for the coeficinets from the global transfer matrix
+
+                    for(typename gsSparseMatrix<T,ColMajor>::InnerIterator k(temptransfer[coeff.lvl],coeff.pos); k; ++k)//basis function was refined->looking for the coeficinets from the global transfer matrix
                     {
-                        //if(transferDense[coeffs[0].lvl](k, coeffs[0].pos) != 0)
+                        //if(transferDense[coeff.lvl](k, coeff.pos) != 0)
                         //{
                         //std::cout<<"second while "<< coeffs.size()<<std::endl;
                         bool p = true;
-                        if( (coeffs[0].lvl+1) < (old.size()))
+                        if( (coeff.lvl+1) < (old.size()))
                         {
-                            if(old[coeffs[0].lvl+1].bContains(k.row()))
+                            if(old[coeff.lvl+1].bContains(k.row()))
                             {
                                 p = false;
                             }
                         }
                         //std::cout<<"k.row "<<k.row()<<std::endl;
-                        if(n[coeffs[0].lvl+1].bContains(k.row()))
+                        if(n[coeff.lvl+1].bContains(k.row()))
                         {
                             if(p)
                             {
-                                const int pos = start_lv_i + n[coeffs[0].lvl].size() + std::distance(n[coeffs[0].lvl+1].begin(), n[coeffs[0].lvl+1].find_it_or_fail(k.row()));
-                                //T ppp =  transferDense[coeffs[0].lvl](k, coeffs[0].pos);
-                                //std::cout<<"pos "<<pos<<" oldij "<<old_ij<<" "<< "coeflvl "<<coeffs[0].lvl<<" ";
-                                //std::cout<<"inserted coef "<< coeffs[0].coef<<"*"<< temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos)<<std::endl;
-                                result(pos,glob_numb) += coeffs[0].coef * temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos);//transferDense[coeffs[0].lvl](k, coeffs[0].pos);
-                                if(coeffs[0].lvl < max_lvl-1)
+                                const int pos = start_lv_i + n[coeff.lvl].size() + std::distance(n[coeff.lvl+1].begin(), n[coeff.lvl+1].find_it_or_fail(k.row()));
+                                //T ppp =  transferDense[coeff.lvl](k, coeff.pos);
+                                //std::cout<<"pos "<<pos<<" oldij "<<old_ij<<" "<< "coeflvl "<<coeff.lvl<<" ";
+                                //std::cout<<"inserted coef "<< coeff.coef<<"*"<< temptransfer[coeff.lvl](k.row(), coeff.pos)<<std::endl;
+                                result(pos,glob_numb) += coeff.coef * temptransfer[coeff.lvl](k.row(), coeff.pos);//transferDense[coeff.lvl](k, coeff.pos);
+                                if(coeff.lvl < max_lvl-1)
                                 {
                                     temp.pos = k.row();
-                                    temp.coef = temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos) * coeffs[0].coef;
-                                    temp.lvl = coeffs[0].lvl+1;
+                                    temp.coef = temptransfer[coeff.lvl](k.row(), coeff.pos) * coeff.coef;
+                                    temp.lvl = coeff.lvl+1;
                                     //std::cout<<"temp.pos: "<<temp.pos<<" temp.coef: "<<temp.coef<<" temp.lvl "<< temp.lvl<<std::endl;
                                     coeffs.push_back(temp);
                                 }
@@ -2057,11 +1981,11 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
                         {
                             if(p)
                             {
-                                if(coeffs[0].lvl < max_lvl-1)
+                                if(coeff.lvl < max_lvl-1)
                                 {
                                     temp.pos = k.row();
-                                    temp.coef = temptransfer[coeffs[0].lvl](k.row(), coeffs[0].pos) * coeffs[0].coef;
-                                    temp.lvl = coeffs[0].lvl+1;
+                                    temp.coef = temptransfer[coeff.lvl](k.row(), coeff.pos) * coeff.coef;
+                                    temp.lvl = coeff.lvl+1;
                                     //std::cout<<"temp.pos: "<<temp.pos<<" temp.coef: "<<temp.coef<<" temp.lvl "<< temp.lvl<<std::endl;
                                     coeffs.push_back(temp);
                                 }
@@ -2073,7 +1997,6 @@ gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSorted
 //                        for(unsigned int ii = 0; ii < coeffs.size();ii++){
 //                            std::cout<<"( "<< coeffs[ii].pos<<" , "<<coeffs[ii].coef<<" , "<<coeffs[ii].lvl<<" )"<<std::endl;
 //                        }
-                    coeffs.erase(coeffs.begin());
                 }
             }
             glob_numb++;
