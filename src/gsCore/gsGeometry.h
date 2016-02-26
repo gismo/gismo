@@ -228,13 +228,13 @@ public:
     int targetDim() const { return this->geoDim(); }
 
     /// Dimension \em d of the parameter domain.
-    virtual int parDim() const { return this->basis().dim(); }
+    virtual int parDim() const { return this->basis().domainDim(); }
 
     /// Co-dimension of the geometric object
-    int coDim() const { return geoDim()-this->basis().dim(); }
+    int coDim() const { return geoDim()-this->basis().domainDim(); }
 
     /// Dimension \em d of the parameter domain (overriding gsFunction::domainDim()).
-    int domainDim() const { return this->basis().dim(); }
+    int domainDim() const { return this->basis().domainDim(); }
 
     /// Returns the range of parameters as a matrix with two columns, [lower upper]
     virtual gsMatrix<T> parameterRange() const

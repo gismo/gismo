@@ -81,6 +81,9 @@ public:
     {
         gsMatrix<T> & bVals  = basisData[0];
 
+        // localRhs.noalias() = quWeights.array() *  geoEval.measures().array() *  
+        //                      bVals * rhsVals.transpose();
+
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
@@ -93,7 +96,7 @@ public:
     }
     
     inline void localToGlobal(const int patchIndex,
-                              const gsMatrix<T>     & eliminatedDofs,
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>     & system)
     {
         // Map patch-local DoFs to global DoFs

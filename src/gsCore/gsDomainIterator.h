@@ -288,6 +288,18 @@ public:
     {
         return (upperCorner() - lowerCorner()).norm();
     }
+    
+    /// Return the length of the smallest edge of the element
+    T getMinCellLength() const
+    {
+        return (upperCorner() - lowerCorner()).minCoeff();
+    }
+
+    /// Return the length of the largest edge of the element
+    T getMaxCellLength() const
+    {
+        return (upperCorner() - lowerCorner()).maxCoeff();
+    }
 
     /// Return the volume of the element
     T volume() const

@@ -22,37 +22,6 @@ namespace gismo
 
 // smoothers
 
-
-/// @brief A struct containing an enumeration of smoothing algorithms and functions to apply them for use in gsMultiGrid. (OBSOLETE, see gsSmoother below)
-///
-/// \ingroup Solver
-struct Smoother
-{
-    /// List of implemented smoothers
-    enum SmootherType {
-        Richardson,     ///< damped Richardson
-        Jacobi,         ///< damped Jacobi
-        GaussSeidel,    ///< Gauss-Seidel
-        ILU             ///< incomplete LU
-    };
-
-    /// Return the name of the given smoother \a type.
-    static std::string name(SmootherType type)
-    {
-        switch (type)
-        {
-            case Richardson:    return "Richardson";
-            case Jacobi:        return "Jacobi";
-            case GaussSeidel:   return "Gauss-Seidel";
-            case ILU:           return "ILU";
-            default:
-                throw std::runtime_error("unknown smoother");
-        }
-    }
-};
-
-
-
 /// Abstract base class for multigrid smoothers
 class GISMO_EXPORT gsSmoother
 {

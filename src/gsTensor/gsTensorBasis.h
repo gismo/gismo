@@ -531,6 +531,12 @@ public:
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const;
+
+    /// Get the minimum mesh size, as expected for inverse inequalities
+    virtual T getMinCellLength() const;
+    
+    /// Get the maximum mesh size, as expected for approximation error estimates
+    virtual T getMaxCellLength() const;
     
     Basis_t& x() const 
     { 
