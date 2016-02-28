@@ -191,6 +191,15 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vect
 }
 
 template<unsigned d, class T>
+void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<unsigned> const & boxes, gsMatrix<T> & tran)
+{
+    std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
+    this->refineElements(boxes);
+    this->transfer(OX, tran);
+}
+
+
+template<unsigned d, class T>
 void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
 {
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;

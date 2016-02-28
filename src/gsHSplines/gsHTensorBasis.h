@@ -537,7 +537,8 @@ public:
      * then two indices (in the current level indexing) of the lower left corner and finally
      * two indices of the upper right corner.
      */
-    void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
+    void refineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
+    void refineElements_withTransfer(std::vector<unsigned> const & boxes, gsMatrix<T> &transfer);
 
     void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
 
