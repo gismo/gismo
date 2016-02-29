@@ -20,6 +20,11 @@
 namespace gismo
 {
 
+template<class T>
+gsBasis<T>::~gsBasis()
+{
+
+}
 
 template<class T>
 gsBasisFun<T> gsBasis<T>::function(unsigned i) const
@@ -176,25 +181,23 @@ template<class T> inline
 void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & result) const 
 {
     result.resize( u.cols(), size() );
-
-    // Evaluate basis functions on u
     gsMatrix<T> ev;
-    eval_into(u, ev);
-
-    // Get indices of nonzero functions
     gsMatrix<unsigned> act;
-    active_into(u, act);
 
-    gsSparseEntries<T> entries;
-    entries.reserve( ev.cols() * act.rows() );
+    eval_into  (u.col(0), ev);
+    active_into(u.col(0), act);
+    result.reservePerColumn( act.rows() );
+    for (index_t i=0; i!=act.rows(); ++i)
+        result.insert(0, act.at(i) ) = ev.at(i);
 
-    //Construct matrix :  
-    //rows= samples 1,..,n - cols= basis functions 1,..,n
-    for (index_t k=0; k!= ev.cols(); ++k)
+    for (index_t k=1; k!=u.cols(); ++k)
+    {
+        eval_into  (u.col(k), ev );
+        active_into(u.col(k), act);
         for (index_t i=0; i!=act.rows(); ++i)
-            entries.add(k , act(i,k), ev(i,k));
+            result.insert(k, act.at(i) ) = ev.at(i);
+    }
 
-    result.setFrom(entries);
     result.makeCompressed();
 }
 
@@ -236,6 +239,14 @@ gsGeometry<T> * gsBasis<T>::interpolateAtAnchors(gsMatrix<T> const & vals) const
 }
 
 /*
+template<class T> inline
+gsGeometry<T> * gsBasis<T>::interpolateAtAnchors(gsFunction<T> const & func) const
+{
+    gsMatrix<T> pts, vals;
+    anchors_into(pts);
+    func.eval_into(pts, vals);
+    return interpolateData(vals, pts);
+}
 
 template<class T>
 gsGeometry<T> * gsBasis<T>::projectL2(gsFunction<T> const & func) const
