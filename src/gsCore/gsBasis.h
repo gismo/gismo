@@ -112,7 +112,7 @@ protected:
 public:
 
     /// Destructor
-    virtual ~gsBasis() { }
+    virtual ~gsBasis();
 
 public:
 
