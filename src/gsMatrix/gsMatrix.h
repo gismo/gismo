@@ -40,10 +40,13 @@ public:
     // Base is the dense matrix class of Eigen
     typedef Eigen::Matrix<T,_Rows, _Cols, _Options> Base;
 
+    // Self type
+    typedef gsMatrix<T,_Rows, _Cols, _Options> Self;
+
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
 
-    typedef typename Eigen::aligned_allocator<Base> aalloc;
+    typedef typename Eigen::aligned_allocator<Self> aalloc;
 
     // Type pointing to a block view of the matrix
     typedef gsMatrixBlockView<Base> BlockView;
