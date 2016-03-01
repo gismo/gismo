@@ -369,7 +369,7 @@ public:
 
         bool didSwap;
         gsMatrix<T> tmp(1, this->cols() );
-        do{
+        do{ //caution! A stable sort algorithm is needed here for lexSortColumns function below
             didSwap = false;
             lastCheckIdx = lastSwapDone;
 
@@ -384,6 +384,13 @@ public:
                     lastSwapDone = i;
                 }
         }while( didSwap );
+    }
+
+    /// Sorts rows of matrix by columns in vector \em j.
+    void lexSortColumns( std::vector<index_t> j )
+    {
+        for (int k = j.size()-1; k>=0; --k) //sort from last to first given column
+            this->sortByColumn(j[k]);
     }
 
 /// \brief Transposes in place the matrix block-wise. The matrix is
