@@ -216,6 +216,13 @@ public:
 // Additional members for tensor NURBS
 //////////////////////////////////////////////////
 
+    /// Returns a reference to the knot vector \a i
+    const KnotVectorType & knots(const int i) const 
+    { return this->basis().source().knots(i); } 
+
+    KnotVectorType & knots(const int i) 
+    { return this->basis().source().knots(i); } 
+
     /// Access to i-th weight
     T & weight(int i) const { return this->basis().weight(i); }
 
