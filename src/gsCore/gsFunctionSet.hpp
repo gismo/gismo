@@ -155,7 +155,9 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
     const unsigned flags = out.flags;
     
     out.info = info();
-    evalAllDers_into(in, out.maxDeriv(), out.values);
+    const int md = out.maxDeriv();
+    if (md != -1)
+        evalAllDers_into(in, md, out.values);
 
     if (flags & NEED_ACTIVE && flags & SAME_ELEMENT)
         active_into(in.col(0), out.actives);
@@ -178,6 +180,7 @@ void gsFunctionSet<T>::compute(const gsMapData<T> & in, gsFuncData<T> & out) con
     // the dafault implementation assumes a representation in parametric coordinates
     compute(in.points, out);
 
+/* // todo gsFunctionExpr par/phys..
     const int parDim = domainDim();
     const int nGrads = out.values[1].rows() / parDim;
 
@@ -191,6 +194,7 @@ void gsFunctionSet<T>::compute(const gsMapData<T> & in, gsFuncData<T> & out) con
             grads = fform * grads;//tmp
         }
     }
+*/
 }
 
 

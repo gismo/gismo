@@ -251,7 +251,7 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
             int alt_sgn(1);
             for (int i = 0; i != tarDim; ++i) // for all components of the normal vector
             {
-                jacT.colMinor(i, minor);
+                jacT.rowMinor(i, minor);
                 InOut.normals(i,p) = alt_sgn * minor.determinant();
                 alt_sgn = -alt_sgn;
             }
