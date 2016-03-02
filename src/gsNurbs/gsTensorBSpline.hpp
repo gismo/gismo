@@ -320,7 +320,7 @@ gsGeometry<T> * gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & u) const
     basis().stride_cwise(str);
     index_t r = 0;
     do {
-        coefs.col(r++) = allCoefs.col( cur.dot(str) );
+        coefs.row(r++) = allCoefs.row( cur.dot(str) );
     } while ( nextCubePoint(cur, cfirst, clast) );
 
     // All set, return the local representation
