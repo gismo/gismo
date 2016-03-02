@@ -33,13 +33,20 @@ class gsAsMatrix : public Eigen::Map< Eigen::Matrix<T,_Rows,_Cols> >
 public:
     typedef Eigen::Map< Eigen::Matrix<T,_Rows,_Cols> > Base;
 
+    // type of first minor matrix: rows and cols reduced by one
+    typedef typename gsMatrix< T, _Rows, _Cols>::FirstMinorMatrixType FirstMinorMatrixType;
+    
     // type of row minor matrix: rows reduced by one
-    typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, _Cols>
-        RowMinorMatrixType;
+    typedef typename gsMatrix< T, _Rows, _Cols>::RowMinorMatrixType RowMinorMatrixType;
 
     // type of col minor matrix: cols reduced by one
-    typedef gsMatrix< T, _Rows, ChangeDim<_Cols, -1>::D>
-        ColMinorMatrixType;
+    typedef typename gsMatrix< T, _Rows, _Cols>::ColMinorMatrixType  ColMinorMatrixType;
+
+    // Type pointing to the transpose of the matrix
+    typedef Eigen::Transpose<Base> Tr;
+
+    // Type pointing to the (const) transpose of the matrix
+    typedef const Eigen::Transpose<const Base> constTr;
 
 public:
     gsAsMatrix( std::vector<T> & v, index_t n, index_t m)
@@ -69,14 +76,30 @@ public:
     using Base::operator=;
 #endif
 
+    /// Returns the (i,j)-minor, i.e. the matrix after removing row
+    /// \a i and column \a j from the matrix. After the operation the
+    /// row and column size of the matrix is one less.
+    void firstMinor(index_t i, index_t j, FirstMinorMatrixType & result ) const
+    {
+        const index_t mrows = this->rows()-1, 
+            mcols = this->cols()-1;
+        GISMO_ASSERT( i <= mrows, "Invalid row." );
+        GISMO_ASSERT( j <= mcols, "Invalid column." );
+        result.resize(mrows,mcols);
+        result.block(0,0,i,j)             = this->block(0,0,i,j);
+        result.block(i,0,mrows-i,j)       = this->block(i+1,0,mrows-i,j);
+        result.block(0,j,i,mcols-j)       = this->block(0,j+1,i,mcols-j);
+        result.block(i,j,mrows-i,mcols-j) = this->block(i+1,j+1,mrows-i,mcols-j);
+    }
+
     /// Returns the ith row minor, i.e. the matrix after removing row
     /// \a i from the matrix. After the operation the row size of the
     /// matrix is one less.
     void rowMinor(index_t i, RowMinorMatrixType & result ) const
     {
         const index_t mrows = this->rows()-1;
-        GISMO_ASSERT( i <= mrows, "Invalid row." );
-        result.resize(mrows, Eigen::NoChange);
+        GISMO_ASSERT( 0 <= i && i <= mrows, "Invalid row." );
+        result.resize(mrows, this->cols());
         result.topRows(i)          = this->topRows(i);
         result.bottomRows(mrows-i) = this->bottomRows(mrows-i);
     }
@@ -87,8 +110,8 @@ public:
     void colMinor(index_t j, ColMinorMatrixType & result ) const
     {
         const index_t mcols = this->cols()-1;
-        GISMO_ASSERT( j <= mcols, "Invalid column." );
-        result.resize(Eigen::NoChange, mcols);
+        GISMO_ASSERT( 0 <= j && j <= mcols, "Invalid column." );
+        result.resize( this->rows(), mcols);
         result.leftCols(j)        = this->leftCols(j);
         result.rightCols(mcols-j) = this->rightCols(mcols-j);
     }
@@ -112,6 +135,21 @@ class gsAsConstMatrix : public Eigen::Map< const Eigen::Matrix<T,_Rows,_Cols> >
 public:
     typedef Eigen::Map<const Eigen::Matrix<T,_Rows,_Cols> > Base;
 
+    // Type pointing to the transpose of the matrix
+    typedef Eigen::Transpose<Base> Tr;
+
+    // Type pointing to the (const) transpose of the matrix
+    typedef const Eigen::Transpose<const Base> constTr;
+
+    // type of first minor matrix: rows and cols reduced by one
+    typedef typename gsMatrix< T, _Rows, _Cols>::FirstMinorMatrixType FirstMinorMatrixType;
+    
+    // type of row minor matrix: rows reduced by one
+    typedef typename gsMatrix< T, _Rows, _Cols>::RowMinorMatrixType RowMinorMatrixType;
+
+    // type of col minor matrix: cols reduced by one
+    typedef typename gsMatrix< T, _Rows, _Cols>::ColMinorMatrixType  ColMinorMatrixType;
+
 public:
 
     gsAsConstMatrix( const std::vector<T> & v, index_t n, index_t m)
@@ -134,6 +172,47 @@ public:
     : Base( mat.data(), mat.rows(), mat.cols()) 
     {  }
 
+public:
+    
+    /// Returns the (i,j)-minor, i.e. the matrix after removing row
+    /// \a i and column \a j from the matrix. After the operation the
+    /// row and column size of the matrix is one less.
+    void firstMinor(index_t i, index_t j, FirstMinorMatrixType & result ) const
+    {
+        const index_t mrows = this->rows()-1, 
+            mcols = this->cols()-1;
+        GISMO_ASSERT( i <= mrows, "Invalid row." );
+        GISMO_ASSERT( j <= mcols, "Invalid column." );
+        result.resize(mrows,mcols);
+        result.block(0,0,i,j)             = this->block(0,0,i,j);
+        result.block(i,0,mrows-i,j)       = this->block(i+1,0,mrows-i,j);
+        result.block(0,j,i,mcols-j)       = this->block(0,j+1,i,mcols-j);
+        result.block(i,j,mrows-i,mcols-j) = this->block(i+1,j+1,mrows-i,mcols-j);
+    }
+
+    /// Returns the ith row minor, i.e. the matrix after removing row
+    /// \a i from the matrix. After the operation the row size of the
+    /// matrix is one less.
+    void rowMinor(index_t i, RowMinorMatrixType & result ) const
+    {
+        const index_t mrows = this->rows()-1;
+        GISMO_ASSERT( 0 <= i && i <= mrows, "Invalid row." );
+        result.resize(mrows, this->cols());
+        result.topRows(i)          = this->topRows(i);
+        result.bottomRows(mrows-i) = this->bottomRows(mrows-i);
+    }
+    
+    /// Returns the jth column minor, i.e. the matrix after removing row
+    /// \a j from the matrix. After the operation the column size of the
+    /// matrix is one less.
+    void colMinor(index_t j, ColMinorMatrixType & result ) const
+    {
+        const index_t mcols = this->cols()-1;
+        GISMO_ASSERT( 0 <= j && j <= mcols, "Invalid column." );
+        result.resize( this->rows(), mcols);
+        result.leftCols(j)        = this->leftCols(j);
+        result.rightCols(mcols-j) = this->rightCols(mcols-j);
+    }
 
 private:
     gsAsConstMatrix() { }
