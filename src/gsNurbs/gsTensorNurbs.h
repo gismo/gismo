@@ -239,18 +239,18 @@ public:
         tbs.size_cwise(sz);
         
         swapTensorDirection(0, dir, sz, this->m_coefs  );
-        swapTensorDirection(0, dir, sz, this->m_weights);
-        this->m_coefs  .resize( sz[0], n * sz.template tail<d-1>().prod() );
-        this->m_weights.resize( sz[0],     sz.template tail<d-1>().prod() );
+        swapTensorDirection(0, dir, sz, this->m_basis.weights());
+        this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+        this->m_basis.weights().resize( sz[0], sz.template tail<d-1>().prod() );
         
         gsBoehm(tbs.knots(dir), this->weights(), knot, i, false);
         gsBoehm(tbs.knots(dir), this->coefs()  , knot, i);
         sz[0] = this->m_coefs.rows();
         
-        this->m_coefs  .resize( sz.prod(), n );
-        tbs.m_weights.resize( sz.prod(), 1 );
+        this->m_coefs.resize( sz.prod(), n );
+        this->m_basis.weights().resize( sz.prod(), 1 );
         swapTensorDirection(0, dir, sz, this->m_coefs  );
-        swapTensorDirection(0, dir, sz, this->m_weights);        
+        swapTensorDirection(0, dir, sz, this->m_basis.weights());
     }
 
     /// Access to i-th weight
