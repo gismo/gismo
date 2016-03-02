@@ -20,8 +20,6 @@
 #include <gsNurbs/gsBSplineAlgorithms.h>
 #include <gsNurbs/gsBoehm.h>
 
-#include <gsUtils/gsMultiIndexIterators.h>
-
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
@@ -328,38 +326,35 @@ gsGeometry<T> * gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & u) const
 }
 
 template<unsigned d, class T>
-void gsTensorBSpline<d,T>::constructCoefsForSlice(unsigned dir_fixed,T par,const gsTensorBSpline<d,T>& geo,gsMatrix<T>& result) const
+void gsTensorBSpline<d,T>::constructCoefsForSlice(unsigned dir_fixed,T par,
+                                                  const gsTensorBSpline<d,T>& geo,
+                                                  gsMatrix<T>& result) const
 {
-    const gsTensorBSplineBasis<d,T>& base = geo.basis();
-    const gsMatrix<T>& fullCoefs=geo.coefs();
-    // pick the right coefficients and store them in coefs
-    const unsigned degree = base.degree(dir_fixed);
-    const KnotVectorType& knots = base.knots(dir_fixed);
-    const int index = (knots.iFind(par)-knots.begin())-degree;
-    gsVector<index_t,d> sizes,lowerCorner,upperCorner;
-    base.size_cwise( sizes );
-    lowerCorner.setZero();
-    lowerCorner(dir_fixed)=index;
-    upperCorner=sizes;
-    upperCorner(dir_fixed)=index+1;
+    // Note: assumes C^0 continuity at \a par in direction \a dir_fixed.
 
+    const gsTensorBSplineBasis<d,T>& base = geo.basis();
+    // pick the right coefficients and store them in coefs
+    const KnotVectorType& knots = base.knots(dir_fixed);
+    const int index = (knots.iFind(par) - knots.begin()) - base.degree(dir_fixed);
+    gsVector<index_t,d> sizes, lowerCorner, upperCorner;
+    base.size_cwise(sizes);
+    lowerCorner.setZero();
+    upperCorner = sizes;
+    lowerCorner[dir_fixed] = index;
+    upperCorner[dir_fixed] = index + 1;
+    
     // to do: gsMatrix<index_t> ind = gsTensorBasis::coefSlice(dim_fixed, index) ?
 
-    gsTensorGridIterator<index_t> gridIter(sizes);
-    gsTensorGridIterator<index_t> * iter = gridIter.makeSubGridIterator(lowerCorner,upperCorner);
-    index_t size=1;
-    for(unsigned i = 0;i<d;++i)
-        if(dir_fixed!=i)
-            size*=sizes(i);
-    result.resize(size,fullCoefs.cols());
-    index_t i=0;
-    for(iter->first();iter->good();iter->next())
-    {
-        result.row(i)=fullCoefs.row(iter->flatIndex());
-        ++i;
-    }
+    // Collect the boundary coefficients
+    const gsMatrix<T> & fullCoefs = geo.coefs();
+    result.resize( sizes.prod() / sizes[dir_fixed], fullCoefs.cols() );
+    gsVector<index_t,d> str, cur = lowerCorner;
+    base.stride_cwise(str);
+    index_t r = 0;
 
-    delete iter;
+    do {
+        result.row(r++) = fullCoefs.row( cur.dot(str) );
+    } while ( nextLexicographic(cur, lowerCorner, upperCorner) );
 }
 
 

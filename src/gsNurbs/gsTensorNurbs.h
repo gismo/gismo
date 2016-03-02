@@ -223,6 +223,33 @@ public:
     KnotVectorType & knots(const int i) 
     { return this->basis().source().knots(i); } 
 
+    /// Inserts knot \a knot at direction \a dir, \a i times
+    void insertKnot( T knot, int dir, int i = 1)
+    {
+        GISMO_ASSERT( i>0, "multiplicity must be at least 1");
+        GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
+                      "Invalid basis component "<< dir <<" requested for degree elevation" );
+        
+        const index_t n = this->m_coefs.cols();
+        
+        gsVector<index_t,d> sz;
+        this->basis().size_cwise(sz);
+        
+        swapTensorDirection(0, dir, sz, this->m_coefs  );
+        swapTensorDirection(0, dir, sz, this->m_weights);
+        this->m_coefs  .resize( sz[0], n * sz.template tail<d-1>().prod() );
+        this->m_weights.resize( sz[0],     sz.template tail<d-1>().prod() );
+        
+        gsBoehm(this->basis().component(dir).knots(), this->weights(), knot, i, false);
+        gsBoehm(this->basis().component(dir).knots(), this->coefs()  , knot, i);
+        sz[0] = this->m_coefs.rows();
+        
+        this->m_coefs  .resize( sz.prod(), n );
+        this->m_weights.resize( sz.prod(), 1 );
+        swapTensorDirection(0, dir, sz, this->m_coefs  );
+        swapTensorDirection(0, dir, sz, this->m_weights);        
+    }
+
     /// Access to i-th weight
     T & weight(int i) const { return this->basis().weight(i); }
 
