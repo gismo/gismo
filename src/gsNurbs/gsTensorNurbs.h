@@ -238,27 +238,31 @@ public:
         gsVector<index_t,d> sz;
         tbs.size_cwise(sz);
         
-        swapTensorDirection(0, dir, sz, this->m_coefs  );
-        swapTensorDirection(0, dir, sz, this->m_basis.weights());
-        this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
-        this->m_basis.weights().resize( sz[0], sz.template tail<d-1>().prod() );
+        swapTensorDirection(0, dir, sz, m_coefs  );
+        swapTensorDirection(0, dir, sz, weights());
+        m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+        weights().resize( sz[0], sz.template tail<d-1>().prod() );
         
-        gsBoehm(tbs.knots(dir), this->weights(), knot, i, false);
-        gsBoehm(tbs.knots(dir), this->coefs()  , knot, i);
-        sz[0] = this->m_coefs.rows();
-        
-        this->m_coefs.resize( sz.prod(), n );
-        this->m_basis.weights().resize( sz.prod(), 1 );
-        swapTensorDirection(0, dir, sz, this->m_coefs  );
-        swapTensorDirection(0, dir, sz, this->m_basis.weights());
+        gsBoehm(tbs.knots(dir), weights(), knot, i, false);
+        gsBoehm(tbs.knots(dir), m_coefs  , knot, i, true );
+        sz[0] = m_coefs.rows();
+
+        const index_t ncoef = sz.prod();
+        m_coefs  .resize(ncoef, n );
+        weights().resize(ncoef, 1 );
+        swapTensorDirection(0, dir, sz, m_coefs  );
+        swapTensorDirection(0, dir, sz, weights());
     }
 
     /// Access to i-th weight
     T & weight(int i) const { return this->basis().weight(i); }
 
-    /// Returns the weights of the rational basis
+    /// Returns the NURBS weights
     gsMatrix<T> & weights() const { return this->basis().weights(); }
 
+    /// Returns the NURBS weights as non-const reference
+    gsMatrix<T> & weights() { return this->basis().weights(); }
+    
     /// Returns the degree of the basis wrt direction i 
     unsigned degree(unsigned i) const 
     { return this->basis().source().component(i).degree(); }
@@ -296,9 +300,10 @@ public:
 
 
 protected:
-    // TODO Check function
-    // check function: check the coefficient number, degree, knot vector ...
+    // todo: check function: check the coefficient number, degree, knot vector ...
 
+    using gsGeometry<T>::m_coefs;
+    using gsGeometry<T>::m_basis;
 
 // Data members
 private:
