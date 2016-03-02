@@ -2,7 +2,7 @@
 
     @brief Provides implementation of of Function common operations.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -89,7 +89,7 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
     for ( int thisPt = 0; thisPt < numPts; thisPt++ ) {
         int r = d;
         for ( int j = 0; j < d; j++ )
-        {   
+        {
             // pure 2nd derivs
             tmp.setZero();
             tmp( j )    = T( 0.00001 );
@@ -99,7 +99,7 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
             this->eval_into( uc, ev );
             for ( int k = 0; k < n; k++ ) // for all coordinates
                 result( k * stride + j, thisPt ) =
-                    ( ev( k, 0 ) - 2 * ev( k, 1 ) + ev( k, 2 ) ) / T( 0.0000000001 ) ;
+                        ( ev( k, 0 ) - 2 * ev( k, 1 ) + ev( k, 2 ) ) / T( 0.0000000001 ) ;
             // mixed 2nd derivs
             for ( int l = j + 1; l < d; l++ )
             {
@@ -113,7 +113,7 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
                 this->eval_into( ucm, ev );
                 for ( int k = 0; k < n; k++ ) // for all coordinates
                     result( k * stride + r, thisPt ) =
-                        ( ev( k, 0 ) - ev( k, 1 ) - ev( k, 2 ) + ev( k, 3 ) ) / T( 0.0000000004 ) ;
+                            ( ev( k, 0 ) - ev( k, 1 ) - ev( k, 2 ) + ev( k, 3 ) ) / T( 0.0000000004 ) ;
                 r++;
             }
         }
@@ -128,15 +128,15 @@ gsMatrix<T>* gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
     int d = u.rows();
     gsVector<T> tmp( d );
     gsMatrix<T>* res = new gsMatrix<T>( d, u.cols() );
-    for ( int j = 0; j < d; j++ ) 
+    for ( int j = 0; j < d; j++ )
     {
         tmp.setZero();
         tmp( j, 0 )    = T( 0.0000000001 );
-        res->row( j )  = 16 * ( *this->eval(u.colwise() + tmp ) + 
-                                *this->eval(u.colwise() - tmp ) ) - 
-                         30 * ( *this->eval( u ) );
+        res->row( j )  = 16 * ( *this->eval(u.colwise() + tmp ) +
+                                *this->eval(u.colwise() - tmp ) ) -
+                30 * ( *this->eval( u ) );
         tmp( j, 0 )    = T( 0.0000000002 );
-        res->row( j ) -=  ( *this->eval( u.colwise() - tmp ) + 
+        res->row( j ) -=  ( *this->eval( u.colwise() - tmp ) +
                             *this->eval( u.colwise() + tmp ) ) ;
         res->row( j ) /= T( 0.0000000012 ) ;
     }
@@ -145,10 +145,10 @@ gsMatrix<T>* gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
 
 template <class T>
 int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
-                                  gsVector<T> & arg,
-                                  bool withSupport, 
-                                  const T accuracy,
-                                  int max_loop) const
+                                 gsVector<T> & arg,
+                                 bool withSupport,
+                                 const T accuracy,
+                                 int max_loop) const
 {
     const index_t n = targetDim();
     GISMO_ASSERT( value.rows() == n, "Invalid input values");
@@ -164,7 +164,7 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
         eval_into (arg, delta);
         delta = value - delta;
 
-        // compute Jacobian 
+        // compute Jacobian
         jacobian_into(arg, jac);
 
         // Solve for next update
@@ -172,7 +172,7 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
             delta = jac.partialPivLu().solve( delta );
         else// use pseudo-inverse
             delta = jac.colPivHouseholderQr().solve(
-                gsMatrix<T>::Identity(n,n)) * delta;
+                        gsMatrix<T>::Identity(n,n)) * delta;
 
         // update arg
         arg += delta;
@@ -201,8 +201,8 @@ int gsFunction<T>::targetDim() const
 
 template <class T>
 void gsFunction<T>::eval_component_into(const gsMatrix<T>& u, 
-                                     const index_t comp, 
-                                     gsMatrix<T>& result) const 
+                                        const index_t comp,
+                                        gsMatrix<T>& result) const
 { GISMO_NO_IMPLEMENTATION }
 
 template <class T>
@@ -210,55 +210,177 @@ typename gsFunction<T>::uMatrixPtr
 gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const    
 { GISMO_NO_IMPLEMENTATION }
 
-// Computes map data out of this map
-template <class T>
-void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
-{
-    // Fill function data
-    this->compute(InOut.points, InOut);
 
-    // Fill extra data
-    const int parDim = domainDim();
-    const int tarDim = targetDim();
+template <typename T, int domDim, int tarDim>
+void computeAuxiliaryData (gsMapData<T> & InOut)
+{
+    const index_t  numPts = InOut.points.cols();
 
     if (InOut.flags & NEED_GRAD_TRANSFORM)
     {
-        // invert  trJacobian
+        InOut.fundForms.resize(domDim*tarDim,numPts);
+        for (index_t p=0; p<numPts; ++p)
+        {
+            gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(),domDim,tarDim);
+            gsAsMatrix<T,tarDim,domDim>(InOut.fundForms.col(p).data(),tarDim,domDim) = jacT.transpose()*(jacT*jacT.transpose()).inverse().eval();
+        }
     }
 
     if (InOut.flags & NEED_MEASURE)
     {
-        InOut.measures.resize(1, InOut.points.cols());
-        for (index_t p = 0; p != InOut.points.cols(); ++p) // for all points
+        InOut.measures.resize(1,numPts);
+        for (index_t p = 0; p < numPts; ++p) // for all points
         {
-            // transposed Jacobian matrix at the current point
-            const gsAsMatrix<T> jacT = InOut.values[1].reshapeCol(p, tarDim, parDim);
-            InOut.measures.at(p) = tarDim == parDim ? math::abs(jacT.determinant()) :
-                                    math::sqrt( ( jacT*jacT.transpose() ).determinant() );
+            Eigen::Transpose< typename gsAsConstMatrix<T,domDim,tarDim>::Base > jac=gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),domDim,tarDim).transpose();
+            InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  ).determinant() );
         }
     }
 
     if (InOut.flags & NEED_NORMAL)
     {
-        GISMO_ASSERT( parDim+1 == tarDim, "Codimension should be equal to one");
+        GISMO_ASSERT( tarDim - domDim == 1, "Codimension should be equal to one");
 
-        gsMatrix<T> minor;
-        InOut.normals.resize(tarDim, InOut.points.cols());
-        for (index_t p = 0; p != InOut.points.cols(); ++p) // for all points
+        gsMatrix<T,domDim,tarDim-1> minor;
+        InOut.normals.resize(tarDim, numPts);
+        for (index_t p = 0; p != numPts; ++p) // for all points
         {
-            // transposed Jacobian matrix at the current point
-            const gsAsMatrix<T> jacT = InOut.values[1].reshapeCol(p, tarDim, parDim);
-            int alt_sgn(1);
-            for (int i = 0; i != tarDim; ++i) // for all components of the normal vector
+            const gsAsMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(),domDim,tarDim);
+            real_t alt_sgn(1);
+            for (int i = 0; i !=tarDim; ++i) // for all components of the normal vector
             {
-                jacT.rowMinor(i, minor);
+                jacT.colMinor(i, minor);
                 InOut.normals(i,p) = alt_sgn * minor.determinant();
                 alt_sgn = -alt_sgn;
             }
         }
     }
 
-    // if (InOut.flags & NEED_OUTER_NORMAL   )
+    if (InOut.flags & NEED_OUTER_NORMAL )
+    {
+        const T   sgn = sideOrientation(InOut.side);
+        const int dir = InOut.side.direction();
+        InOut.outNormals.resize(tarDim,numPts);
+        typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType   minor;
+        gsMatrix<T,domDim,tarDim>   jacT;
+        for (index_t p=0; p<numPts ;++p)
+        {
+            jacT=gsAsMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),domDim,tarDim);
+            T alt_sgn = sgn * (jacT.rows()==jacT.cols() && jacT.determinant()<0 ? -1 : 1);
+            for (int i = 0; i != tarDim; ++i) // for all components of the normal
+            {
+                jacT.firstMinor(dir,i, minor);
+                InOut.outNormals(i,p) = alt_sgn * minor.determinant();
+                alt_sgn  *= -1;
+            }
+        }
+    }
+
+}
+
+
+// Computes map data out of this map
+template <class T>
+void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
+{
+    // Fill function data
+    if (InOut.flags & NEED_GRAD_TRANSFORM ||InOut.flags & NEED_MEASURE || InOut.flags & NEED_NORMAL || InOut.flags & NEED_OUTER_NORMAL)
+        InOut.flags = InOut.flags | NEED_GRAD;
+
+    this->compute(InOut.points, InOut);
+
+    // Fill extra data
+    const gsFuncInfo info = this->info();
+
+    if (info.domainDim<=4 && info.targetDim <=4)
+        switch ((info.domainDim-1)*4+info.targetDim-1)
+        {
+        // curves
+        case  0: computeAuxiliaryData<T,1,1>(InOut); break;
+        case  1: computeAuxiliaryData<T,1,2>(InOut); break;
+        case  2: computeAuxiliaryData<T,1,3>(InOut); break;
+        case  3: computeAuxiliaryData<T,1,4>(InOut); break;
+            // surfaces
+        case  4: computeAuxiliaryData<T,2,1>(InOut); break;
+        case  5: computeAuxiliaryData<T,2,2>(InOut); break;
+        case  6: computeAuxiliaryData<T,2,3>(InOut); break;
+        case  7: computeAuxiliaryData<T,2,4>(InOut); break;
+            // volumes
+        case  8: computeAuxiliaryData<T,3,1>(InOut); break;
+        case  9: computeAuxiliaryData<T,3,2>(InOut); break;
+        case 10: computeAuxiliaryData<T,3,3>(InOut); break;
+        case 11: computeAuxiliaryData<T,3,4>(InOut); break;
+            // 4 dimensional volumes
+        case 12: computeAuxiliaryData<T,4,1>(InOut); break;
+        case 13: computeAuxiliaryData<T,4,2>(InOut); break;
+        case 14: computeAuxiliaryData<T,4,3>(InOut); break;
+        case 15: computeAuxiliaryData<T,4,4>(InOut); break;
+        default:
+            break;
+        }
+    else
+    {
+
+        const index_t  numPts = InOut.points.cols();
+
+
+
+        if (InOut.flags & NEED_GRAD_TRANSFORM)
+        {
+            InOut.fundForms.resize(info.derivSize(),numPts);
+            for (index_t p=0; p<numPts; ++p)
+            {
+                InOut.fundForms.reshapeCol(p, info.targetDim, info.domainDim) = InOut.jacobian(p)*(InOut.jacobian(p).transpose()*InOut.jacobian(p)).inverse().eval();
+            }
+        }
+
+        if (InOut.flags & NEED_MEASURE)
+        {
+            InOut.measures.resize(1,numPts);
+            for (index_t p = 0; p < numPts; ++p) // for all points
+            {
+                InOut.measures(0,p) = math::sqrt( ( InOut.jacobian(p).transpose()*InOut.jacobian(p)  ).determinant() );
+            }
+        }
+
+        if (InOut.flags & NEED_NORMAL)
+        {
+            GISMO_ASSERT( info.targetDim - info.domainDim == 1, "Codimension should be equal to one");
+
+            gsMatrix<T> minor;
+            InOut.normals.resize(info.targetDim, numPts);
+            for (index_t p = 0; p != numPts; ++p) // for all points
+            {
+                const gsAsMatrix<T> jac = InOut.values[1].reshapeCol(p, info.domainDim, info.targetDim);
+                real_t alt_sgn(1);
+                for (int i = 0; i != info.targetDim; ++i) // for all components of the normal vector
+                {
+                    jac.colMinor(i, minor);
+                    InOut.normals(i,p) = alt_sgn * minor.determinant();
+                    alt_sgn = -alt_sgn;
+                }
+            }
+        }
+
+        if (InOut.flags & NEED_OUTER_NORMAL )
+        {
+            const T   sgn = sideOrientation(InOut.side); // (!) * m_jacSign;
+            const int dir = InOut.side.direction();
+            InOut.outNormals.resize(info.targetDim,numPts);
+            gsMatrix<T> jac;
+            gsMatrix<T> minor;
+            for (index_t p=0; p<numPts ;++p)
+            {
+                jac=InOut.jacobian(p);
+                T alt_sgn = sgn * (jac.rows()==jac.cols() && jac.determinant()<0 ? -1 : 1);
+                for (int i = 0; i != info.targetDim; ++i) // for all components of the normal
+                {
+                    jac.firstMinor(i, dir, minor);
+                    InOut.outNormals(i,p) = alt_sgn * minor.determinant();
+                    alt_sgn  *= -1;
+                }
+            }
+        }
+    }
 }
 
 

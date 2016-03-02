@@ -75,8 +75,8 @@ public:
     void rowMinor(index_t i, RowMinorMatrixType & result ) const
     {
         const index_t mrows = this->rows()-1;
-        GISMO_ASSERT( i <= mrows, "Invalid row." );
-        result.resize(mrows, Eigen::NoChange);
+        GISMO_ASSERT( 0 <= i && i <= mrows, "Invalid row." );
+        result.resize(mrows, this->cols());
         result.topRows(i)          = this->topRows(i);
         result.bottomRows(mrows-i) = this->bottomRows(mrows-i);
     }
@@ -87,8 +87,8 @@ public:
     void colMinor(index_t j, ColMinorMatrixType & result ) const
     {
         const index_t mcols = this->cols()-1;
-        GISMO_ASSERT( j <= mcols, "Invalid column." );
-        result.resize(Eigen::NoChange, mcols);
+        GISMO_ASSERT( 0 <= j && j <= mcols, "Invalid column." );
+        result.resize( this->rows(), mcols);
         result.leftCols(j)        = this->leftCols(j);
         result.rightCols(mcols-j) = this->rightCols(mcols-j);
     }
