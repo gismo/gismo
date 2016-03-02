@@ -212,7 +212,7 @@ gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 
 
 template <typename T, int domDim, int tarDim>
-void computeAuxiliaryData (gsMapData<T> & InOut)
+inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 {
     const index_t  numPts = InOut.points.cols();
 
@@ -221,8 +221,8 @@ void computeAuxiliaryData (gsMapData<T> & InOut)
         InOut.fundForms.resize(domDim*tarDim,numPts);
         for (index_t p=0; p<numPts; ++p)
         {
-            gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(),domDim,tarDim);
-            gsAsMatrix<T,tarDim,domDim>(InOut.fundForms.col(p).data(),tarDim,domDim) = jacT.transpose()*(jacT*jacT.transpose()).inverse().eval();
+            gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(),d, n);
+            gsAsMatrix<T,tarDim,domDim>(InOut.fundForms.col(p).data(), n, d) = jacT.transpose()*(jacT*jacT.transpose()).inverse().eval();
         }
     }
 
@@ -231,20 +231,21 @@ void computeAuxiliaryData (gsMapData<T> & InOut)
         InOut.measures.resize(1,numPts);
         for (index_t p = 0; p < numPts; ++p) // for all points
         {
-            Eigen::Transpose< typename gsAsConstMatrix<T,domDim,tarDim>::Base > jac=gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),domDim,tarDim).transpose();
+            typename gsAsConstMatrix<T,domDim,tarDim>::Tr jac = 
+                gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),d, n).transpose();
             InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  ).determinant() );
         }
     }
 
     if (InOut.flags & NEED_NORMAL)
     {
-        GISMO_ASSERT( tarDim - domDim == 1, "Codimension should be equal to one");
+        GISMO_ASSERT( n - d == 1, "Codimension should be equal to one");
 
         gsMatrix<T,domDim,tarDim-1> minor;
         InOut.normals.resize(tarDim, numPts);
         for (index_t p = 0; p != numPts; ++p) // for all points
         {
-            const gsAsMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(),domDim,tarDim);
+            const gsAsMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
             real_t alt_sgn(1);
             for (int i = 0; i !=tarDim; ++i) // for all components of the normal vector
             {
@@ -264,7 +265,7 @@ void computeAuxiliaryData (gsMapData<T> & InOut)
         gsMatrix<T,domDim,tarDim>   jacT;
         for (index_t p=0; p<numPts ;++p)
         {
-            jacT=gsAsMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),domDim,tarDim);
+            jacT=gsAsMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(), d, n);
             T alt_sgn = sgn * (jacT.rows()==jacT.cols() && jacT.determinant()<0 ? -1 : 1);
             for (int i = 0; i != tarDim; ++i) // for all components of the normal
             {
@@ -290,30 +291,30 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
 
     // Fill extra data
     const gsFuncInfo info = this->info();
-
+    
     if (info.domainDim<=4 && info.targetDim <=4)
         switch ((info.domainDim-1)*4+info.targetDim-1)
         {
         // curves
-        case  0: computeAuxiliaryData<T,1,1>(InOut); break;
-        case  1: computeAuxiliaryData<T,1,2>(InOut); break;
-        case  2: computeAuxiliaryData<T,1,3>(InOut); break;
-        case  3: computeAuxiliaryData<T,1,4>(InOut); break;
+        case  0: computeAuxiliaryData<T,1,1>(InOut, info.domainDim, info.targetDim); break;
+        case  1: computeAuxiliaryData<T,1,2>(InOut, info.domainDim, info.targetDim); break;
+        case  2: computeAuxiliaryData<T,1,3>(InOut, info.domainDim, info.targetDim); break;
+        case  3: computeAuxiliaryData<T,1,4>(InOut, info.domainDim, info.targetDim); break;
             // surfaces
-        case  4: computeAuxiliaryData<T,2,1>(InOut); break;
-        case  5: computeAuxiliaryData<T,2,2>(InOut); break;
-        case  6: computeAuxiliaryData<T,2,3>(InOut); break;
-        case  7: computeAuxiliaryData<T,2,4>(InOut); break;
+        case  4: computeAuxiliaryData<T,2,1>(InOut, info.domainDim, info.targetDim); break;
+        case  5: computeAuxiliaryData<T,2,2>(InOut, info.domainDim, info.targetDim); break;
+        case  6: computeAuxiliaryData<T,2,3>(InOut, info.domainDim, info.targetDim); break;
+        case  7: computeAuxiliaryData<T,2,4>(InOut, info.domainDim, info.targetDim); break;
             // volumes
-        case  8: computeAuxiliaryData<T,3,1>(InOut); break;
-        case  9: computeAuxiliaryData<T,3,2>(InOut); break;
-        case 10: computeAuxiliaryData<T,3,3>(InOut); break;
-        case 11: computeAuxiliaryData<T,3,4>(InOut); break;
+        case  8: computeAuxiliaryData<T,3,1>(InOut, info.domainDim, info.targetDim); break;
+        case  9: computeAuxiliaryData<T,3,2>(InOut, info.domainDim, info.targetDim); break;
+        case 10: computeAuxiliaryData<T,3,3>(InOut, info.domainDim, info.targetDim); break;
+        case 11: computeAuxiliaryData<T,3,4>(InOut, info.domainDim, info.targetDim); break;
             // 4 dimensional volumes
-        case 12: computeAuxiliaryData<T,4,1>(InOut); break;
-        case 13: computeAuxiliaryData<T,4,2>(InOut); break;
-        case 14: computeAuxiliaryData<T,4,3>(InOut); break;
-        case 15: computeAuxiliaryData<T,4,4>(InOut); break;
+        case 12: computeAuxiliaryData<T,4,1>(InOut, info.domainDim, info.targetDim); break;
+        case 13: computeAuxiliaryData<T,4,2>(InOut, info.domainDim, info.targetDim); break;
+        case 14: computeAuxiliaryData<T,4,3>(InOut, info.domainDim, info.targetDim); break;
+        case 15: computeAuxiliaryData<T,4,4>(InOut, info.domainDim, info.targetDim); break;
         default:
             break;
         }

@@ -16,6 +16,8 @@
 #include <gsCore/gsGeometry.h>
 #include <gsNurbs/gsTensorNurbsBasis.h>
 
+#include <gsTensor/gsTensorTools.h> // todo: move to hpp
+
 namespace gismo
 {
 
@@ -231,21 +233,22 @@ public:
                       "Invalid basis component "<< dir <<" requested for degree elevation" );
         
         const index_t n = this->m_coefs.cols();
-        
+        gsTensorBSplineBasis<d,T> & tbs = this->basis().source();
+
         gsVector<index_t,d> sz;
-        this->basis().size_cwise(sz);
+        tbs.size_cwise(sz);
         
         swapTensorDirection(0, dir, sz, this->m_coefs  );
         swapTensorDirection(0, dir, sz, this->m_weights);
         this->m_coefs  .resize( sz[0], n * sz.template tail<d-1>().prod() );
         this->m_weights.resize( sz[0],     sz.template tail<d-1>().prod() );
         
-        gsBoehm(this->basis().component(dir).knots(), this->weights(), knot, i, false);
-        gsBoehm(this->basis().component(dir).knots(), this->coefs()  , knot, i);
+        gsBoehm(tbs.knots(dir), this->weights(), knot, i, false);
+        gsBoehm(tbs.knots(dir), this->coefs()  , knot, i);
         sz[0] = this->m_coefs.rows();
         
         this->m_coefs  .resize( sz.prod(), n );
-        this->m_weights.resize( sz.prod(), 1 );
+        tbs.m_weights.resize( sz.prod(), 1 );
         swapTensorDirection(0, dir, sz, this->m_coefs  );
         swapTensorDirection(0, dir, sz, this->m_weights);        
     }

@@ -41,6 +41,12 @@ public:
     typedef gsMatrix< T, _Rows, ChangeDim<_Cols, -1>::D>
         ColMinorMatrixType;
 
+    // Type pointing to the transpose of the matrix
+    typedef Eigen::Transpose<Base> Tr;
+
+    // Type pointing to the (const) transpose of the matrix
+    typedef const Eigen::Transpose<const Base> constTr;
+
 public:
     gsAsMatrix( std::vector<T> & v, index_t n, index_t m)
     : Base( &v[0], n, m)
@@ -111,6 +117,12 @@ class gsAsConstMatrix : public Eigen::Map< const Eigen::Matrix<T,_Rows,_Cols> >
 {
 public:
     typedef Eigen::Map<const Eigen::Matrix<T,_Rows,_Cols> > Base;
+
+    // Type pointing to the transpose of the matrix
+    typedef Eigen::Transpose<Base> Tr;
+
+    // Type pointing to the (const) transpose of the matrix
+    typedef const Eigen::Transpose<const Base> constTr;
 
 public:
 
