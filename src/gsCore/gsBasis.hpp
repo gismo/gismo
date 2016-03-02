@@ -21,10 +21,16 @@ namespace gismo
 {
 
 template<class T>
-gsBasis<T>::~gsBasis()
-{
+gsBasis<T>::gsBasis()
+{ }
 
-}
+template<class T>
+gsBasis<T>::gsBasis(const gsBasis& other)
+{ }
+        
+template<class T>
+gsBasis<T>::~gsBasis()
+{ }
 
 template<class T>
 gsBasisFun<T> gsBasis<T>::function(unsigned i) const

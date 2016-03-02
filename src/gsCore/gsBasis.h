@@ -96,22 +96,12 @@ public:
 
     typedef memory::auto_ptr< gsDomainIterator<T> > domainIter;
 
-/*    
-protected:
-
-    /// Constructor for derived classes
-    gsBasis() { }
-
-    /// Constructor for derived classes
-    gsBasis(const gsBasis& other) { }
-
-    /// Assignment for derived classes
-    gsBasis & operator=(const gsBasis& other) {return *this;}
-*/
-
 public:
 
-    /// Destructor
+    gsBasis();
+
+    gsBasis(const gsBasis& other);
+    
     virtual ~gsBasis();
 
 public:

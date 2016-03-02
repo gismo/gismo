@@ -40,10 +40,13 @@ public:
     // Base is the dense matrix class of Eigen
     typedef Eigen::Matrix<T,_Rows, _Cols, _Options> Base;
 
+    // Self type
+    typedef gsMatrix<T,_Rows, _Cols, _Options> Self;
+
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
 
-    typedef typename Eigen::aligned_allocator<Base> aalloc;
+    typedef typename Eigen::aligned_allocator<Self> aalloc;
 
     // Type pointing to a block view of the matrix
     typedef gsMatrixBlockView<Base> BlockView;
@@ -366,7 +369,7 @@ public:
 
         bool didSwap;
         gsMatrix<T> tmp(1, this->cols() );
-        do{
+        do{ //caution! A stable sort algorithm is needed here for lexSortColumns function below
             didSwap = false;
             lastCheckIdx = lastSwapDone;
 
@@ -381,6 +384,17 @@ public:
                     lastSwapDone = i;
                 }
         }while( didSwap );
+    }
+
+    /// Sorts rows of matrix by columns in vector \em lorder.
+    void lexSortRows(const std::vector<index_t> & lorder)
+    {
+        GISMO_ASSERT(lorder.size() == static_cast<size_t>(this->cols()),
+                     "Error in dimensions");
+
+        for(std::vector<index_t>::const_reverse_iterator k = lorder.rbegin();
+            k != lorder.rend(); ++k) //sort from last to first given column
+            this->sortByColumn( *k ); // stable sort wrt column
     }
 
 /// \brief Transposes in place the matrix block-wise. The matrix is
