@@ -295,6 +295,39 @@ void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
 
 
 template<unsigned d, class T>
+gsGeometry<T> * gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & u) const
+{
+    std::vector<KnotVectorType> kv(d); // the local knot-vectors
+    gsVector<index_t,d> cfirst, clast; // tensor-indices of local coefficients
+    index_t sz = 1; // number of control points in the local representation
+
+    // Fill in the data defined above
+    for(unsigned i = 0; i!=d; ++i)
+    {
+        const int deg = degree(i);
+        typename KnotVectorType::const_iterator span = knots(i).iFind(u(i,0));
+
+        sz       *= deg + 1;
+        clast[i]  = span - knots(i).begin();
+        cfirst[i] = clast[i] - deg;
+        kv[i]     = KnotVectorType(deg, span - deg, span + deg + 2);
+    }
+
+    // Collect the local coefficients
+    const gsMatrix<T> & allCoefs = this->coefs();
+    gsMatrix<T> coefs(sz, allCoefs.cols() );
+    gsVector<index_t,d> str, cur = cfirst;
+    basis().stride_cwise(str);
+    index_t r = 0;
+    do {
+        coefs.col(r++) = allCoefs.col( cur.dot(str) );
+    } while ( nextCubePoint(cur, cfirst, clast) );
+
+    // All set, return the local representation
+    return Basis(kv).makeGeometry(give(coefs));
+}
+
+template<unsigned d, class T>
 void gsTensorBSpline<d,T>::constructCoefsForSlice(unsigned dir_fixed,T par,const gsTensorBSpline<d,T>& geo,gsMatrix<T>& result) const
 {
     const gsTensorBSplineBasis<d,T>& base = geo.basis();
