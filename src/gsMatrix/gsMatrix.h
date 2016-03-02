@@ -387,13 +387,14 @@ public:
     }
 
     /// Sorts rows of matrix by columns in vector \em lorder.
-    void lexSortColumns(const std::vector<index_t> & lorder)
+    void lexSortRows(const std::vector<index_t> & lorder)
     {
         GISMO_ASSERT(lorder.size() == static_cast<size_t>(this->cols()),
                      "Error in dimensions");
 
-        for (size_t k = lorder.size()-1; k>=0; --k) //sort from last to first given column
-            this->sortByColumn(lorder[k]);
+        for(std::vector<index_t>::const_reverse_iterator k = lorder.rbegin();
+            k != lorder.rend(); ++k) //sort from last to first given column
+            this->sortByColumn( *k ); // stable sort wrt column
     }
 
 /// \brief Transposes in place the matrix block-wise. The matrix is
