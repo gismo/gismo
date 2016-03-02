@@ -111,6 +111,13 @@ gsSolverOperator< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > 
     return new gsSolverOperator< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat);
 }
 
+/// @brief Convenience function to create an LU solver with full pivoting (for dense matrices) as a gsLinearOperator.
+template <class T, int _Rows, int _Cols, int _Opt>
+gsSolverOperator< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  makeFullPivLUSolver(const Eigen::Matrix<T, _Rows, _Cols, _Opt> & mat)
+{
+    return new gsSolverOperator< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat);
+}
+
 
 /// @brief Convenience function to create a Cholesky (LDL^T) solver (for dense matrices) as a gsLinearOperator.
 ///
