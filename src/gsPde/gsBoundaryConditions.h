@@ -96,7 +96,19 @@ struct boundary_condition
     { 
         m_function = function_ptr(f_ptr, null_deleter<gsFunction<T> >);
     }
-    
+
+    boundary_condition( int p, boxSide s, const gsFunction<T> & func,
+                        condition_type::type t, int unknown = 0,
+                        bool parametric = false)
+    : ps(p, s),
+      m_function(func.clone()),
+      m_type(t),
+      m_unknown(unknown),
+      m_parametric(parametric)
+    {
+        //m_function = function_ptr(func.clone());
+    }
+
     boundary_condition( int p, boxSide s, condition_type::type t, 
                         int unknown = 0, bool parametric = false)
 	: ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown),m_parametric(parametric)
@@ -380,6 +392,25 @@ public:
         }
     }
 
+    void addCondition(int p, boxSide s, condition_type::type t,
+                      const gsFunction<T> & func, int unknown = 0,
+                      bool parametric = false)
+    {
+        switch (t) {
+        case condition_type::dirichlet :
+            drchlt_sides.push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
+            break;
+        case condition_type::neumann :
+            nmnn_sides.push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
+            break;
+        case condition_type::robin :
+            robin_sides.push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
+            break;
+        default:
+            std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
+        }
+    }
+
     void addCondition( boxSide s, condition_type::type t, 
                        gsFunction<T> * f, int unknown = 0, bool parametric = false)
     {
@@ -397,6 +428,12 @@ public:
                       const function_ptr & f_shptr, int unknown = 0, bool parametric = false)
     {
         addCondition(ps.patch, ps.side(), t, f_shptr, unknown,parametric);
+    }
+
+    void addCondition(const patchSide& ps, condition_type::type t,
+                      const gsFunction<T> & func, int unknown = 0, bool parametric = false)
+    {
+        addCondition(ps.patch, ps.side(), t, func, unknown,parametric);
     }
 
     void addCornerValue(boxCorner c, T value, int p = 0, int unknown = 0)

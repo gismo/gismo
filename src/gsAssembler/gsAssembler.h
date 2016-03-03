@@ -138,10 +138,10 @@ public: /* Constructors and initializers */
         GISMO_ASSERT( check(), "Something went wrong in assembler initialization");
     }
 
-    ///@brief checks for consistency and legal values of the stored members.
+    /// @brief checks for consistency and legal values of the stored members.
     bool check();
 
-    ///@brief finishes the assembling of the system matrix, i.e. calls its .makeCompressed() method.
+    /// @brief finishes the assembling of the system matrix, i.e. calls its .makeCompressed() method.
     void finalize()
     {
         m_system.matrix().makeCompressed();
@@ -374,7 +374,7 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
     gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
     gsVector<T> quWeights; // Temp variable for mapped weights
     unsigned evFlags(0);
-    
+
     // Initialize reference quadrature rule and visitor data
     visitor.initialize(bases, patchIndex, m_options, QuRule, evFlags);
     
