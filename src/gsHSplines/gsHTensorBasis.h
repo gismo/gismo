@@ -535,7 +535,7 @@ public:
      * @param coefs is a matrix of coefficients as given, e.g., by gsTHBSpline<>::coefs();
      * @param boxes specify where to refine; each 5-tuple gives the level of the box,
      * then two indices (in the current level indexing) of the lower left corner and finally
-     * two indices of the upper right corner.
+     * two indices of the upper right corner, see gsHTensorBasis::refineElements() for details.
      */
     void refineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
     void refineElements_withTransfer(std::vector<unsigned> const & boxes, gsMatrix<T> &transfer);
@@ -892,8 +892,8 @@ template<typename T> class gsHTensorBasis<0,T>
 
 } // namespace gismo
 
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
+// ************************************************
+// ************************************************
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsHTensorBasis.hpp)
