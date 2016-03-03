@@ -310,7 +310,20 @@ public:
             m_bases[j]->uniformRefine(numKnots,mul);
     }
 
-    // Look at gsBasis class for documentation 
+    /** \brief Refine elements defined by their tensor-index.
+     *
+     * In a tensor mesh, each element has a unique index computed
+     * as follows:
+     *
+     * Let \f$n_i\f$ denote the number of basis functions in the
+     * <em>i</em>-th component, and let \f$k_i\f$ denote the index
+     * of an element in the (1-dimensional) mesh of the <em>i</em>-th
+     * component. The global index of element \f$(a,b,c)\f$ is
+     * given by \f$a + b \cdot n_1 + c\cdot n_1 \cdot n_2\f$.
+     *
+     * \param[in] elements vector of unsigned containing the
+     * indices of the elements that should be refined (see above).
+     */
     void refineElements(std::vector<unsigned> const & elements);
 
     /// Refine the basis uniformly and perform knot refinement for the

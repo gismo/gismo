@@ -384,6 +384,16 @@ public:
         this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
     }
 
+    /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
+     *
+     * The syntax of \em boxes depends on the implementation in the
+     * underlying basis. See gsBasis::refineElements_withCoefs() for details.
+     */
+    void refineElements( std::vector<unsigned> const & boxes )
+    {
+        this->basis().refineElements_withCoefs(this->m_coefs, boxes );
+    }
+
     /// Embeds coefficients in 3D
     void embed3d()
     {
@@ -408,6 +418,11 @@ public:
             }
         }
     }
+
+    /// \brief Returns the degree wrt direction i
+    int degree(const unsigned & i) const
+     //{ return this->basisComponent(i).degree(); };
+     { return this->basis().degree(i); }
 
     /// Elevate the degree by the given amount \a i for the direction
     /// \a dir. If \a dir is -1 then degree elevation is done

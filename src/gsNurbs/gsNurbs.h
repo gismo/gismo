@@ -95,9 +95,9 @@ public:
 
 public:
 
-//////////////////////////////////////////////////
+// ***********************************************
 // Virtual member functions required by the base class
-//////////////////////////////////////////////////
+// ***********************************************
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -109,9 +109,9 @@ public:
     };
 
 
-//////////////////////////////////////////////////
+// ***********************************************
 // Additional members for univariate B-Splines
-//////////////////////////////////////////////////
+// ***********************************************
 
     /// Returns the starting value of the domain of the basis
     T domainStart() const { return this->basis().knots().first(); };

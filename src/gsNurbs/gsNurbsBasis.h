@@ -107,7 +107,7 @@ public:
 
     /// Clone function. Used to make a copy of a derived basis
     gsNurbsBasis * clone() const
-    { return new gsNurbsBasis(*this); };
+    { return new gsNurbsBasis(*this); }
   
     GISMO_MAKE_GEOMETRY_NEW
 
@@ -123,9 +123,9 @@ public:
 
     using Base::source;
 
-//////////////////////////////////////////////////
+// ***********************************************
 // Additional members which forward to gsBSplineBasis
-//////////////////////////////////////////////////
+// ***********************************************
 
     /// Returns the starting value of the domain of the basis
     T domainStart() const { return this->source().domainStart(); };

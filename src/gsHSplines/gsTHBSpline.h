@@ -85,28 +85,10 @@ public:
 
 public:
 
-// ////////////////////////////////////////////////
-// Virtual member functions required by the base class
-// ////////////////////////////////////////////////
 
-    /// Returns the degree wrt direction i
-    unsigned degree(const unsigned & i) const
-     //{ return this->basisComponent(i).degree(); };
-     { return this->basis().component(i).degree(); }
-
-    /** Refines the basis and adjusts the coefficients to keep the geometry the same.
-     * The indices of the boxes are the same as in gsHTensorBasis<>::refineElements_withCoefs.
-     */
-    void refineElements( std::vector<unsigned> const & boxes )
-    {
-        gsMatrix<> & coefs = this->m_coefs;
-        this->basis().refineElements_withCoefs( coefs, boxes );
-    }
-
-
-// ////////////////////////////////////////////////
-// / Other member functions
-// ////////////////////////////////////////////////
+// ************************************************
+//  Other member functions
+// ************************************************
 public:
     /** \brief Return the list of B-spline patches to represent a THB-spline geometry
 

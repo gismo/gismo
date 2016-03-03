@@ -767,17 +767,19 @@ public:
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt);
 
-    /** @brief Refine the basis to levels and in the areas defined by \a boxes.
+    /** @brief Refinement function, with different sytax for different basis.
      *
-     * As of now (03.Oct.2014), only used for hierarchical
-     * tensor basis. See gsHTensorBasis for detailed documentation.
+     * See documentation of\n
+     * gsTensorBasis::refineElements()\n
+     * gsHTensorBasis::refineElements()
+     *
      */
     virtual void refineElements(std::vector<unsigned> const & boxes);
 
-    /** @brief Refine basis and geometry coefficients to levels and in the areas defined by \a boxes.
+    /** @brief Refine basis and geometry coefficients to levels.
      *
-     * As of now (17.Feb.2014), only used for hierarchical
-     * tensor basis. See gsHTensorBasis for detailed documentation.
+     * Refines the basis as well as the coefficients. The refinement and the format of the
+     * input depend on the implementation of refineElements().
      */
     virtual void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
 
