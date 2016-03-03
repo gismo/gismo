@@ -135,8 +135,6 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
-        Basis *rbasis;
-
         this->m_basis = new Basis(tbasis, wgts) ;
         this->m_coefs = tcoefs;
     }
@@ -157,8 +155,6 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
-        Basis *rbasis;
-
         this->m_basis = new Basis(tbasis, wgts) ;
         this->m_coefs = tcoefs;
     }
@@ -168,7 +164,7 @@ public:
     gsTensorNurbs( gsKnotVector<T> const & KV1, 
                    gsKnotVector<T> const & KV2, 
                    gsKnotVector<T> const & KV3,
-                   gsMatrix<T> & tcoefs)
+                   const gsMatrix<T> & tcoefs)
     {
         GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "<< d
                      <<"D NURBS using 3 knot-vectors.");
