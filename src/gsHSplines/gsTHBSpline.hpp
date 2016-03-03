@@ -20,9 +20,9 @@
 
 namespace gismo{
 
-// ////////////////////////////////////////////////
+// ************************************************
 // Public member functions
-// ////////////////////////////////////////////////
+// ************************************************
 
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
@@ -38,7 +38,7 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
     std::copy(uCorner.data(), uCorner.data()+d, wholeDomainAsBox.begin()+d+1);
 
     // Refine the whole domain to the finest level present there.
-    refineElements( wholeDomainAsBox );
+    this->refineElements( wholeDomainAsBox );
 
     tensorBasis & tpBasis = 
         this->basis().tensorLevel(this->basis().maxLevel());
@@ -181,9 +181,9 @@ void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsig
     //cout<<"level "<<level.rows()<<endl;
     //cout<<"nv "<<nvertices.rows()<<endl;//ko
 }
-// ////////////////////////////////////////////////
+// ************************************************
 // Private member functions
-// ////////////////////////////////////////////////
+// ************************************************
 
 //
 // Return the B-spline representation of a THB-spline subpatch
