@@ -227,7 +227,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 
             gsAsMatrix<T,tarDim,domDim>(InOut.fundForms.col(p).data(), n, d) =
                 (tarDim == domDim && tarDim!=-1 ?
-                 jacT.eval() :
+                 jacT.inverse().eval() :
                  jacT.transpose()*(jacT*jacT.transpose()).inverse().eval() );
         }
     }
