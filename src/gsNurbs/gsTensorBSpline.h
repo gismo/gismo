@@ -31,7 +31,6 @@ namespace internal
     
     \tparam d the parametric dimension of the tensor product
     \tparam T coefficient type
-    \tparam KnotVectorType the type of knot vector the B-spline bases use
 
     \ingroup geometry
     \ingroup Nurbs
@@ -44,7 +43,6 @@ public:
 
     typedef T Scalar_t;
 
-    //typedef gsTensorBSplineBasis<d,T,KnotVectorType> Basis;
     typedef typename gsBSplineTraits<d,T>::Basis Basis;
 
     typedef typename gsGeoTraits<d,T>::GeometryBase Base;
@@ -82,8 +80,8 @@ public:
     
     /// Construct 2D tensor B-Spline by knot vectors, degrees and coefficient matrix
     template<typename U>
-    gsTensorBSpline( KnotVectorType const & KV1, KnotVectorType const & KV2,
-                     gsMovable< gsMatrix<U> > tcoefs,
+    gsTensorBSpline( gsKnotVector<T> const & KV1, gsKnotVector<U> const & KV2,
+                     gsMovable< gsMatrix<T> > tcoefs,
                      typename internal::enable_if<d==2,U>::type * = NULL)
     {
         GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d
@@ -105,8 +103,8 @@ public:
     /// Construct 2D tensor B-Spline by knot vectors, degrees and
     /// coefficient matrix (copying coefficient matrix)
     template<typename U>
-    gsTensorBSpline( KnotVectorType const & KV1, KnotVectorType const & KV2,
-                     const gsMatrix<U> & tcoefs,
+    gsTensorBSpline( gsKnotVector<T> const & KV1, gsKnotVector<U> const & KV2,
+                     const gsMatrix<T> & tcoefs,
                      typename internal::enable_if<d==2,U>::type * = NULL)
     {
         GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "
@@ -129,13 +127,13 @@ public:
     /// the four boundary curves are linear interpolations of the corners,
     /// the size of the matrix *corner* is 4 by 3
     gsTensorBSpline(gsMatrix<T> const    & corner, 
-                    KnotVectorType const & KV1, 
-                    KnotVectorType const & KV2);
+                    gsKnotVector<T> const & KV1, 
+                    gsKnotVector<T> const & KV2);
 
     /// Construct 3D tensor B-Spline by knot vectors, degrees and coefficient matrix
-    gsTensorBSpline( KnotVectorType const & KV1, 
-                     KnotVectorType const & KV2, 
-                     KnotVectorType const & KV3,
+    gsTensorBSpline( gsKnotVector<T> const & KV1, 
+                     gsKnotVector<T> const & KV2, 
+                     gsKnotVector<T> const & KV3,
                      gsMovable< gsMatrix<T> > tcoefs)
     {
         GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "
@@ -157,9 +155,9 @@ public:
 
     /// Construct 3D tensor B-Spline by knot vectors, degrees and
     /// coefficient matrix (copying coefficient matrix)
-    gsTensorBSpline( KnotVectorType const & KV1, 
-                     KnotVectorType const & KV2, 
-                     KnotVectorType const & KV3,
+    gsTensorBSpline( gsKnotVector<T> const & KV1, 
+                     gsKnotVector<T> const & KV2, 
+                     gsKnotVector<T> const & KV3,
                      const gsMatrix<T> & tcoefs )
     {
         GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "
@@ -180,10 +178,10 @@ public:
     }
 
     /// Construct 4D tensor B-Spline by knot vectors, degrees and coefficient matrix
-    gsTensorBSpline( KnotVectorType const & KV1, 
-                     KnotVectorType const & KV2, 
-                     KnotVectorType const & KV3,
-                     KnotVectorType const & KV4,
+    gsTensorBSpline( gsKnotVector<T> const & KV1, 
+                     gsKnotVector<T> const & KV2, 
+                     gsKnotVector<T> const & KV3,
+                     gsKnotVector<T> const & KV4,
                      gsMovable< gsMatrix<T> > tcoefs )
     {
         GISMO_ASSERT(d==4, "Wrong dimension: tried to make a "
@@ -207,10 +205,10 @@ public:
 
     /// Construct 4D tensor B-Spline by knot vectors, degrees and
     /// coefficient matrix (copying coefficient matrix)
-    gsTensorBSpline( KnotVectorType const & KV1, 
-                     KnotVectorType const & KV2, 
-                     KnotVectorType const & KV3,
-                     KnotVectorType const & KV4,
+    gsTensorBSpline( gsKnotVector<T> const & KV1, 
+                     gsKnotVector<T> const & KV2, 
+                     gsKnotVector<T> const & KV3,
+                     gsKnotVector<T> const & KV4,
                      const gsMatrix<T> & tcoefs )
     {
         GISMO_ASSERT(d==4, "Wrong dimension: tried to make a "
@@ -249,10 +247,10 @@ public:
     void insertKnot( T knot, int dir, int i = 1);
 
     /// Returns a reference to the knot vector in direction \a i
-    KnotVectorType & knots(const int i) { return this->basis().knots(i); }
+    gsKnotVector<T> & knots(const int i) { return this->basis().knots(i); }
 
     /// Returns a reference to the knot vector \a i
-    const KnotVectorType & knots(const int i) const { return this->basis().knots(i); }
+    const gsKnotVector<T> & knots(const int i) const { return this->basis().knots(i); }
 
     /*** Virtual member functions required by the base class ***/
 
