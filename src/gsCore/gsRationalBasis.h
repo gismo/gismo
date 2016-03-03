@@ -30,7 +30,7 @@ namespace gismo
     resulting rational basis is given by
     r_i(u) = b_i(u) w_i / (sum(b_j(u) w_j, j = 1, ..., size))
 
-    If the weights are constant, the rational basis is identical
+    If the weights are constant and equal, the rational basis is identical
     to the source basis.
 
     Example: the rational version of a B-spline basis is a NURBS basis.
@@ -132,9 +132,9 @@ public:
     
 public:
     
-///////////////////////////////////////////////////
+// ***********************************************
 // Virtual member functions overriding source basis
-///////////////////////////////////////////////////
+// ***********************************************
 
     int dim() const { return Dim; }
     
@@ -171,58 +171,33 @@ public:
         m_src->uniformRefine_withCoefs(m_weights, numKnots, mul);
     }
     
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1)
-    {
-        assert( coefs.rows() == this->size() && m_weights.rows() == this->size() );
-        gsSparseMatrix<T, RowMajor> transfer;
-        m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
-      
-        for (int i = 0; i < coefs.rows(); ++i) // transform to projective 
-            coefs.row(i) *= m_weights(i);
-        
-        coefs      = transfer * coefs;
-        m_weights = transfer * m_weights;
-        // Alternative way
-        // gsBasis<T> * tmp = m_src->clone();
-        // tmp->uniformRefine_withCoefs(coefs, numKnots);
-        // delete tmp;
-        // m_src->uniformRefine_withCoefs(m_weights, numKnots);
-        
-        for (int i = 0; i < coefs.rows(); ++i) // back to affine coefs
-            coefs.row(i) /= (m_weights)(i);
-    }
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1);
     
-    
-    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1)
+    void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
+
+    /**
+     * @brief Refines specified areas or boxes, depending on underlying basis.
+     *
+     * @param boxes See the function gsBasis::refineElements() of the underlying
+     * basis for syntax.
+     */
+    void refineElements( std::vector<unsigned> const & boxes)
     {
-        assert( m_weights.rows() == this->size() );
-        
-        // 1. Get source transfer matrix (while refining m_src)
-        m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
-        
-        // 2. Compute rational basis transfer matrix
-        // To be applied on affine coefficients, as usual.
-        // Transfer matrix for rational bases. Formula:
-        //
-        //   ( (T*m_weights)'*I )^{-1} * T*W 
-        //
-        // Where ' denotes transpose, W is a diagonal matrix with
-        // diagonal=m_weights, I is the identity and T the source
-        // transfer matrix.
-        // i.e. apply weight transform ( to compute weighted coefs),
-        // apply T, return to affine by the inverse weight transform
-        // (T*W)'*I )^{-1}.
-        // In Eigen this could be something like
-        // (transfer * (*m_weights) ).asDiagonal().inverse() * transfer * m_weights.asDiagonal() ; 
-        // but that has troubles with the sparse/diagonal expressions etc.
-        // So we do it by using a temporary.
-        
-        const gsVector<T> tmp = m_weights ;
-        m_weights.noalias() = transfer * tmp;  // Refine the weights as well
-        
-        transfer =  m_weights.cwiseInverse().asDiagonal() * transfer *  tmp.asDiagonal(); 
+        // call the refineElements_withCoefs-function of the underlying
+        // basis, where the weights are used as coefficients
+        m_src->refineElements_withCoefs( m_weights, boxes );
     }
 
+    /**
+     * @brief Refines specified areas or boxes, depending on underlying basis.
+     *
+     * @param coefs Coefficients, given as gsMatrix of size \f$ n \times d\f$,
+     * where \f$n\f$ is the number of basis functions and \f$d\f$ is the target
+     * dimension.
+     * @param boxes See the function gsBasis::refineElements() of the underlying
+     * basis for syntax.
+     */
+    void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
 
     void degreeElevate(int const& i = 1, int const dir = -1) 
     {
@@ -264,7 +239,7 @@ public:
     
     void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const ;
 
-    void eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const ;
+    void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
 
     //void evalAllDers_into(const gsMatrix<T> & u, int n, 
     //                      std::vector<gsMatrix<T> >& result) const;
@@ -351,9 +326,9 @@ void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result
 }
   
   
-/// For non-specialized version (e.g. tensor product)
+// For non-specialized version (e.g. tensor product)
 template<class SrcT>
-void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const
+void gsRationalBasis<SrcT>::evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const
 { 
     assert( coefs.rows() == m_weights.rows() ) ;
   
@@ -363,12 +338,12 @@ void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, const gsMatrix<T> &
     gsMatrix<T> denom;
   
     // Evaluate the projective numerator and the denominator
-    m_src->eval_into(u, tmp, result);
-    m_src->eval_into(u, m_weights, denom);
-  
+    m_src->evalFunc_into( u, tmp, result);
+    m_src->evalFunc_into( u, m_weights, denom);
+
     // Divide numerator by denominator
-    for ( index_t j=0; j < u.cols() ; j++ ) // for all points (columns of u)
-        result.col(j) /= denom(0,j) ;
+    for ( index_t j=0; j < u.cols(); j++ ) // for all points (columns of u)
+        result.col(j) /= denom(0,j);
 }
     
 
@@ -530,6 +505,87 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
                 m_weights.at( act(k,i) ) / (W*W); // * (w_k / W^2)
         }
     }
+}
+
+
+template<class SrcT>
+void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots,  int mul)
+{
+    assert( coefs.rows() == this->size() && m_weights.rows() == this->size() );
+    gsSparseMatrix<T, RowMajor> transfer;
+    m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
+
+    for (int i = 0; i < coefs.rows(); ++i) // transform to projective
+        coefs.row(i) *= m_weights(i);
+
+    coefs      = transfer * coefs;
+    m_weights = transfer * m_weights;
+    // Alternative way
+    // gsBasis<T> * tmp = m_src->clone();
+    // tmp->uniformRefine_withCoefs(coefs, numKnots);
+    // delete tmp;
+    // m_src->uniformRefine_withCoefs(m_weights, numKnots);
+
+    for (int i = 0; i < coefs.rows(); ++i) // back to affine coefs
+        coefs.row(i) /= (m_weights)(i);
+}
+
+template<class SrcT>
+void gsRationalBasis<SrcT>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, int mul)
+{
+    assert( m_weights.rows() == this->size() );
+
+    // 1. Get source transfer matrix (while refining m_src)
+    m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
+
+    // 2. Compute rational basis transfer matrix
+    // To be applied on affine coefficients, as usual.
+    // Transfer matrix for rational bases. Formula:
+    //
+    //   ( (T*m_weights)'*I )^{-1} * T*W
+    //
+    // Where ' denotes transpose, W is a diagonal matrix with
+    // diagonal=m_weights, I is the identity and T the source
+    // transfer matrix.
+    // i.e. apply weight transform ( to compute weighted coefs),
+    // apply T, return to affine by the inverse weight transform
+    // (T*W)'*I )^{-1}.
+    // In Eigen this could be something like
+    // (transfer * (*m_weights) ).asDiagonal().inverse() * transfer * m_weights.asDiagonal() ;
+    // but that has troubles with the sparse/diagonal expressions etc.
+    // So we do it by using a temporary.
+
+    const gsVector<T> tmp = m_weights ;
+    m_weights.noalias() = transfer * tmp;  // Refine the weights as well
+
+    transfer =  m_weights.cwiseInverse().asDiagonal() * transfer *  tmp.asDiagonal();
+}
+
+
+template<class SrcT>
+void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
+{
+    index_t n( coefs.cols() );
+    gsMatrix<T> rw( coefs.rows(), n+1 );
+
+    // switch from control points (d-dimensional) to
+    // "projective control points" ((d+1)-dimensional),
+    // where the last coordinate is the weight.
+    for( index_t i = 0; i < n; i++ )
+        rw.col(i) = coefs.col(i).array() * m_weights.array();
+    rw.col( n ) = m_weights;
+
+    // refine with these projective control points as coefficients.
+    m_src->refineElements_withCoefs( rw, boxes );
+
+    coefs.resize( rw.rows(), n );
+    coefs.setZero();
+
+    // Regain the new d-dimensional control points
+    // and the new weights.
+    m_weights = rw.col( n );
+    for( index_t i = 0; i < n; i++ )
+        coefs.col(i) = rw.col(i).array() / m_weights.array();
 }
 
 
