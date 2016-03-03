@@ -96,6 +96,8 @@ public:
 
     gsTensorNurbsBasis( Src_t* basis, gsMovable< gsMatrix<T> > w ) : Base(basis,w) { }
 
+    gsTensorNurbsBasis( Src_t* basis, const gsMatrix<T> & w ) : Base(basis,w) { } 
+
     gsTensorNurbsBasis(const gsTensorNurbsBasis & o) : Base(o) { }
 
     /// Clone function. Used to make a copy of the object
