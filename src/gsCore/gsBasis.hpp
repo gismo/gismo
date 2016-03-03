@@ -531,7 +531,7 @@ void gsBasis<T>::matchWith(const boundaryInterface & bi, const gsBasis<T> & othe
 template<class T>
 T gsBasis<T>::getMinCellLength() const
 {
-    const gsBasis<T>::domainIter it = makeDomainIterator();
+    const domainIter it = this->makeDomainIterator();
     T h = 0;
     for (; it->good(); it->next() )
     {
@@ -544,7 +544,7 @@ T gsBasis<T>::getMinCellLength() const
 template<class T>
 T gsBasis<T>::getMaxCellLength() const
 {
-    const gsBasis<T>::domainIter it = this->makeDomainIterator();
+    const domainIter it = this->makeDomainIterator();
     T h = 0;
     for (; it->good(); it->next() )
     {
