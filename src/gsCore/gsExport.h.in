@@ -59,26 +59,7 @@
 
 
 /*
-   Marks a virtual method indicating it must be overriding a virtual
-   method of the base class
-
-   Example:
-   virtual void foo() GISMO_OVERRIDE;
-*/
-#if defined(_MSC_VER)
-#define GISMO_OVERRIDE override
-#elif defined(__clang__)
-#define GISMO_OVERRIDE override
-#elif defined(__GNUG__) && __cplusplus >= 201103 && \
-(__GNUC__ * 10000 + __GNUC_MINOR__ * 100) >= 40700
-// GCC 4.7 supports with C++11 enabled
-#define GISMO_OVERRIDE override
-#else
-#define GISMO_OVERRIDE
-#endif
-
-
-/*
+  GISMO_FINAL
   Marks a virtual method indicating that derived classes cannot
   override it, or mark a class to indicate that there can be no
   derived classes.
@@ -86,16 +67,27 @@
   Example:
   virtual void foo() GISMO_FINAL;
   class B GISMO_FINAL : public A {};
+
+  GISMO_OVERRIDE
+  Marks a virtual method indicating it must be overriding a virtual
+  method of the base class
+  
+  Example:
+  virtual void foo() GISMO_OVERRIDE;
 */
-#if defined(COMPILER_MSVC)
+#if defined(_MSC_VER)
 // MSVC2010 uses "sealed"
 #define GISMO_FINAL sealed
-#elif defined(__clang__)
+#define GISMO_OVERRIDE override
+#elif defined(__clang__ ) && __has_feature(cxx_override_control)
 #define GISMO_FINAL final
+#define GISMO_OVERRIDE override
 #elif defined(__GNUG__) && __cplusplus >= 201103 && \
 (__GNUC__ * 10000 + __GNUC_MINOR__ * 100) >= 40700
 // GCC 4.7 supports with C++11 enabled
 #define GISMO_FINAL final
+#define GISMO_OVERRIDE override
 #else
 #define GISMO_FINAL
+#define GISMO_OVERRIDE
 #endif
