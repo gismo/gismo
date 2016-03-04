@@ -58,6 +58,11 @@
 #endif
 
 
+
+
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
 /*
   GISMO_FINAL
   Marks a virtual method indicating that derived classes cannot
@@ -91,3 +96,5 @@
 #define GISMO_FINAL
 #define GISMO_OVERRIDE
 #endif
+
+#undef __has_feature
