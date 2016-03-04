@@ -154,6 +154,8 @@ template<class T = real_t> class gsGalerkinMethod;
 // template< class T = real_t>  class gsTensorDomain;
 template<unsigned d, class T = real_t>   class gsHFitting;
 
+template<class T = real_t, unsigned d = -1> class gsUniformGridIterator;
+
 // Pde
 template< class T = real_t>  class gsPde;
 template< class T = real_t>  class gsPoissonPde;

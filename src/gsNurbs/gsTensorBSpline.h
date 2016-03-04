@@ -36,7 +36,7 @@ namespace internal
     \ingroup Nurbs
 */
 template<unsigned d, class T>
-class gsTensorBSpline : public gsGeoTraits<d,T>::GeometryBase
+class gsTensorBSpline GISMO_FINAL : public gsGeoTraits<d,T>::GeometryBase
 {
 public: 
     typedef gsKnotVector<T> KnotVectorType;

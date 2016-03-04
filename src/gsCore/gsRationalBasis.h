@@ -21,17 +21,17 @@ namespace gismo
 /** \brief
     Class that creates a rational counterpart for a given basis.
 
-    A rational basis holds an inner basis of the given source type,
-    and a matrix of coefficients defining a weight function in terms
-    of the source basis.
+    A rational basis holds an inner (referred to as "source") basis of
+    the given source type, and a matrix of coefficients defining a
+    weight function in terms of the source basis.
 
     If \em w_i is the i-th weight coefficient and \em b_i the i-th basis
     function of the source basis, then the i-th basis function of the
     resulting rational basis is given by
     r_i(u) = b_i(u) w_i / (sum(b_j(u) w_j, j = 1, ..., size))
 
-    If the weights are constant and equal, the rational basis is identical
-    to the source basis.
+    If the weights are all equal to one (or all equal to a constant), the
+    rational basis is identical (or a scalar multiple) to the source basis.
 
     Example: the rational version of a B-spline basis is a NURBS basis.
 
@@ -333,7 +333,7 @@ void gsRationalBasis<SrcT>::evalFunc_into(const gsMatrix<T> & u, const gsMatrix<
     assert( coefs.rows() == m_weights.rows() ) ;
   
     // Compute projective coefficients
-    gsMatrix<T> tmp = m_weights.asDiagonal() * coefs;
+    const gsMatrix<T> tmp = m_weights.asDiagonal() * coefs;
   
     gsMatrix<T> denom;
   
@@ -342,8 +342,10 @@ void gsRationalBasis<SrcT>::evalFunc_into(const gsMatrix<T> & u, const gsMatrix<
     m_src->evalFunc_into( u, m_weights, denom);
 
     // Divide numerator by denominator
-    for ( index_t j=0; j < u.cols(); j++ ) // for all points (columns of u)
-        result.col(j) /= denom(0,j);
+    result.array().rowwise() /= denom.row(0).array();
+    // equivalent:
+    //for ( index_t j=0; j < u.cols(); j++ ) // for all points (columns of u)
+    //    result.col(j) /= denom(0,j);
 }
     
 
@@ -467,7 +469,7 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
         ddW.setZero();
         for ( index_t k = 0; k != act.rows(); ++k ) // for all basis functions
         {
-            //to do with lweights
+            //to do with lweights (local weights)
             const T curw = m_weights.at(act(k,i));
             W   += curw * ev[0](k,i);
             dW  += curw * ev[1].template block<Dim,1>(k*Dim,i);
@@ -526,8 +528,11 @@ void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numK
     // delete tmp;
     // m_src->uniformRefine_withCoefs(m_weights, numKnots);
 
-    for (int i = 0; i < coefs.rows(); ++i) // back to affine coefs
-        coefs.row(i) /= (m_weights)(i);
+    // back to affine coefs
+    coefs.array().colwise() /= m_weights.col(0).array();
+    // equiv:
+    // for (int i = 0; i < coefs.rows(); ++i)
+    //    coefs.row(i) /= m_weights.at(i);
 }
 
 template<class SrcT>
@@ -551,7 +556,7 @@ void gsRationalBasis<SrcT>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor
     // apply T, return to affine by the inverse weight transform
     // (T*W)'*I )^{-1}.
     // In Eigen this could be something like
-    // (transfer * (*m_weights) ).asDiagonal().inverse() * transfer * m_weights.asDiagonal() ;
+    // (transfer * m_weights).asDiagonal().inverse() * transfer * m_weights.asDiagonal() ;
     // but that has troubles with the sparse/diagonal expressions etc.
     // So we do it by using a temporary.
 
@@ -563,7 +568,8 @@ void gsRationalBasis<SrcT>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor
 
 
 template<class SrcT>
-void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes)
+void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,
+                                                     std::vector<unsigned> const & boxes)
 {
     index_t n( coefs.cols() );
     gsMatrix<T> rw( coefs.rows(), n+1 );
@@ -571,21 +577,17 @@ void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,std::ve
     // switch from control points (d-dimensional) to
     // "projective control points" ((d+1)-dimensional),
     // where the last coordinate is the weight.
-    for( index_t i = 0; i < n; i++ )
-        rw.col(i) = coefs.col(i).array() * m_weights.array();
-    rw.col( n ) = m_weights;
+    rw.leftCols(n).noalias() = m_weights.asDiagonal() * coefs;
+    rw.col(n)                = m_weights;
 
     // refine with these projective control points as coefficients.
     m_src->refineElements_withCoefs( rw, boxes );
 
-    coefs.resize( rw.rows(), n );
-    coefs.setZero();
-
     // Regain the new d-dimensional control points
     // and the new weights.
+    coefs = rw.leftCols(n).array().colwise() / m_weights.col(0).array();
+    // equiv: coefs = rw.leftCols(n).array() / m_weights.replicate(1,n).array();
     m_weights = rw.col( n );
-    for( index_t i = 0; i < n; i++ )
-        coefs.col(i) = rw.col(i).array() / m_weights.array();
 }
 
 

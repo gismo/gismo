@@ -15,8 +15,10 @@
 #pragma once
 
 #include <gsUtils/gsPointGrid.h>
-#include <gsUtils/gsPointIterator.h>
+#include <gsTensor/gsUniformGridIterator.h>
 #include <gsUtils/gsMesh/gsMesh.h>
+
+
 
 namespace gismo
 {
@@ -25,34 +27,25 @@ namespace gismo
 template<class T> 
 void gsSurface<T>::toMesh(gsMesh<T> & msh, int npoints) const
 {   
-    const gsMatrix<T> param = this->parameterRange();
-    const gsVector<T> a = param.col(0);
-    const gsVector<T> b = param.col(1);
-    const gsVector<unsigned> np    = uniformSampleCount(a, b, npoints );
-    
+    const gsMatrix<T> param     = this->parameterRange();
     gsMatrix<T> cp;
-    
-    gsTensorPointGridIterator<T,2> gridPoint(np.cast<int>(), a, b );
-    
-    for(; gridPoint.good(); gridPoint.next() )
+    gsUniformGridIterator<T,2> pIter(param, npoints);
+    for(; pIter; ++pIter )
     {
-        this->eval_into(gridPoint.currPoint(), cp);
+        this->eval_into( *pIter, cp);
         msh.addVertex( cp );
     }
 
-    unsigned ind1 = 0;
-    unsigned ind2 = 0;
-    for(unsigned j = 0; j < np[1] - 1; j++)
-    {
-        for(unsigned i= 0; i <np[0] - 1; i++)
+    const gsVector<unsigned,2> & np = pIter.numPoints();
+    for(unsigned j = 0; j + 1 != np[1]; j++)
+        for(unsigned i= 0; i + 1 != np[0]; i++)
         {
-            ind1 =  j * np[0] + i;
-            ind2 = ind1 + np[0];
+            const unsigned ind1 = j * np[0] + i;
+            const unsigned ind2 = ind1 + np[0];
             //msh.addFace(ind1, ind1+1, ind2+1, ind2);
             msh.addFace(ind1  , ind1+1, ind2+1);
             msh.addFace(ind2+1, ind2  , ind1  );
         }
-    }
 }
 
 template<class T> 
