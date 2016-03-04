@@ -135,8 +135,6 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
-        Basis *rbasis;
-
         this->m_basis = new Basis(tbasis, wgts) ;
         this->m_coefs = tcoefs;
     }
@@ -157,9 +155,26 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
-        Basis *rbasis;
-
         this->m_basis = new Basis(tbasis, wgts) ;
+        this->m_coefs = tcoefs;
+    }
+
+    /// Construct 3D tensor NURBS by knot vectors, degrees and coefficient matrix
+    /// All weights are set to be 1.
+    gsTensorNurbs( gsKnotVector<T> const & KV1, 
+                   gsKnotVector<T> const & KV2, 
+                   gsKnotVector<T> const & KV3,
+                   const gsMatrix<T> & tcoefs)
+    {
+        GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "<< d
+                     <<"D NURBS using 3 knot-vectors.");
+      
+        gsBSplineBasis<T> * Bu= new gsBSplineBasis<T>(KV1);
+        gsBSplineBasis<T> * Bv= new gsBSplineBasis<T>(KV2);
+        gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
+        TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
+      
+        this->m_basis = new Basis(tbasis) ;
         this->m_coefs = tcoefs;
     }
 
