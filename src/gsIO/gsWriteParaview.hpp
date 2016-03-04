@@ -579,10 +579,12 @@ void writeSingleCurve(const gsGeometry<T> & Geo, std::string const & fn, unsigne
 template<class T>
 void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsigned npts)
 {
-//    gsMesh<T> msh;
-//    Geo.toMesh(msh, npts);
-//    gsWriteParaview(msh, fn);
-//    return;
+    /*
+      gsMesh<T> msh;
+      Geo.toMesh(msh, npts);
+      gsWriteParaview(msh, fn, false);
+      return;
+    //*/
     gsMatrix<T> ab = Geo.parameterRange();
     writeSingleGeometry( Geo, ab, fn, npts);
 }
