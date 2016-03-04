@@ -1,6 +1,6 @@
 /** @file gsExport.h
 
-    @brief Handles shared library creation
+    @brief Handles shared library creation and other class attribures
 
     By default no symbols are exported in the shared library. Symbols
     that have to be exported must be marked with GISMO_EXPORT. Symbols
@@ -55,4 +55,47 @@
 #    define GISMO_LOCAL
 #  endif
 
+#endif
+
+
+/*
+   Marks a virtual method indicating it must be overriding a virtual
+   method of the base class
+
+   Example:
+   virtual void foo() GISMO_OVERRIDE;
+*/
+#if defined(_MSC_VER)
+#define GISMO_OVERRIDE override
+#elif defined(__clang__)
+#define GISMO_OVERRIDE override
+#elif defined(__GNUG__) && __cplusplus >= 201103 && \
+(__GNUC__ * 10000 + __GNUC_MINOR__ * 100) >= 40700
+// GCC 4.7 supports with C++11 enabled
+#define GISMO_OVERRIDE override
+#else
+#define GISMO_OVERRIDE
+#endif
+
+
+/*
+  Marks a virtual method indicating that derived classes cannot
+  override it, or mark a class to indicate that there can be no
+  derived classes.
+
+  Example:
+  virtual void foo() GISMO_FINAL;
+  class B GISMO_FINAL : public A {};
+*/
+#if defined(COMPILER_MSVC)
+// MSVC2010 uses "sealed"
+#define GISMO_FINAL sealed
+#elif defined(__clang__)
+#define GISMO_FINAL final
+#elif defined(__GNUG__) && __cplusplus >= 201103 && \
+(__GNUC__ * 10000 + __GNUC_MINOR__ * 100) >= 40700
+// GCC 4.7 supports with C++11 enabled
+#define GISMO_FINAL final
+#else
+#define GISMO_FINAL
 #endif
