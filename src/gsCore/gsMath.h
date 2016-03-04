@@ -128,7 +128,7 @@ inline real_t nextafter(real_t x, real_t y)
 {
 #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_MPQ)
     return x + ( y < x ? -1e-16 : 1e-16 );
-#   elif defined(_MSC_VER) && _MSC_VER < 1700
+#   elif defined(_MSC_VER) && _MSC_VER < 1800
     return _nextafter(x,y);
     #else
     return ::nextafter(x,y);
