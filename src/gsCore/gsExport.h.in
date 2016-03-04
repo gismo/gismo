@@ -97,4 +97,3 @@
 #define GISMO_OVERRIDE
 #endif
 
-#undef __has_feature
