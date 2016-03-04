@@ -59,6 +59,7 @@
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
+#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
 
 /* Determine whether gismo warnings (eg. deprecated) should be emitted. */
 #cmakedefine GISMO_WARNINGS
@@ -109,7 +110,3 @@
 #cmakedefine EIGEN_USE_MKL_ALL
 
 /**@}*/
-
-//#if __cplusplus <= 199711L
-//#define final
-//#endif

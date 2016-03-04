@@ -122,6 +122,20 @@ template <typename T>
 T round(T a) {return math::floor(a<0.0 ? a-0.5 : a+0.5); }
 
 
+/// For numeric types, this function returns the next representable
+/// value after \a x in the direction of \a y
+inline real_t nextafter(real_t x, real_t y)
+{
+#   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_MPQ)
+    return x + ( y < x ? -1e-16 : 1e-16 );
+#   elif defined(_MSC_VER) && _MSC_VER < 1700
+    return _nextafter(x,y);
+    #else
+    return ::nextafter(x,y);
+    #endif
+}
+
+
 /** Numeric precision (number of exact decimal digits expected) for
     real_t
 */

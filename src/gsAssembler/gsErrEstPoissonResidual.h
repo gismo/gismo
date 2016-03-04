@@ -207,6 +207,7 @@ protected:
                          gsMatrix<T>            & quNodes)
     {
         // Evaluate discrete solution
+        discSolution.deriv_into(quNodes, m_discSolDer);
         discSolution.deriv2_into(quNodes, m_discSol2ndDer);
 
         // Compute geometry related values
@@ -217,8 +218,6 @@ protected:
     }
 
     // assemble on element
-
-
 
     /**
      * @brief Computes the local error estimate on an element.
@@ -241,6 +240,7 @@ protected:
         unsigned actPatch = geoEval.id();
 
         T sumVolSq(0.0);
+        T sumVol(0.0);
         T sumSidesSq(0.0);
         gsMatrix<T> quNodesSide;
         gsVector<T> quWeightsSide;
@@ -256,8 +256,11 @@ protected:
         {
             const T weight = quWeights[k] * geoEval.measure(k);
 
-            const typename gsMatrix<T>::constColumns J = geoEval.jacobian(k);
+            //const typename gsMatrix<T>::constColumns J = geoEval.jacobian(k);
             gsMatrix<T> sol_der2 = m_discSol2ndDer.col(k);
+            
+            geoEval.transformLaplaceHgrad(k,m_discSolDer, m_discSol2ndDer , m_phLaplace);
+            geoEval.transformGradients(k, m_discSolDer , m_phdiscSolDer);
 
             // Compute the APPROXIMATION of the
             // transformation of the
@@ -271,6 +274,7 @@ protected:
             // and because it should be easier to extend this to the
             // convection-diffusion-reaction-equation starting from this.
 
+            /*
             T sol_Lap(0.0);
 
             if( m_parDim == 2 )
@@ -307,6 +311,9 @@ protected:
             // residual squared: Laplace of solution + RHS.
             sumVolSq += weight * ( sol_Lap + m_rhsFctVals(0,k) ) \
                     * ( sol_Lap + m_rhsFctVals(0,k) );
+            */      
+            sumVol += weight * ( m_phLaplace(0,0) + m_rhsFctVals(0,k) ) \
+                    * ( m_phLaplace(0,0) + m_rhsFctVals(0,k) );               
 
         } // quPts volume
 
@@ -403,7 +410,7 @@ protected:
             m_elWiseFull.push_back( tmpStore );
         }
 
-        return hhSq * sumVolSq + math::sqrt( hhSq ) * sumSidesSq;
+        return sumVol;
     }
 
 public:
@@ -681,9 +688,9 @@ private:
 
     gsBoundaryConditions<T> m_bcInfo;
 
-    gsMatrix<T> m_discSol2ndDer;
+    gsMatrix<T> m_discSol2ndDer,m_discSolDer;
     gsMatrix<T> m_rhsFctVals;
-    gsMatrix<T> m_phHessVals;
+    gsMatrix<T> m_phHessVals,m_phLaplace, m_phdiscSolDer;
     unsigned m_parDim;
 
     bool m_f2param;
