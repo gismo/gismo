@@ -26,8 +26,6 @@
 
 #include <gsUtils/gsSortedVector.h>
 
-#include <limits>
-
 namespace gismo
 {
 

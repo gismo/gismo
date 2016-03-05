@@ -71,10 +71,12 @@ namespace internal
 
 #include <gsCore/gsFieldCreator.h>
 
-// Domain iterators
 #include <gsCore/gsDomainIterator.h>
+
+// Tensors
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
+#include <gsTensor/gsGridIterator.h>
 
 /* ----------- Nurbs ----------- */
 #include <gsNurbs/gsKnotVector.h>

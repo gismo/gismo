@@ -19,6 +19,7 @@
 #include <map>
 #include <stack>
 #include <algorithm>
+#include <limits>
 
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>
@@ -154,7 +155,12 @@ template<class T = real_t> class gsGalerkinMethod;
 // template< class T = real_t>  class gsTensorDomain;
 template<unsigned d, class T = real_t>   class gsHFitting;
 
-template<class T = real_t, unsigned d = -1> class gsUniformGridIterator;
+template<typename Z, int d = -1, bool closed = true,
+         bool = //std::tr1::is_integral<Z>::value>
+                //std::is_integral<Z>::value>
+                std::numeric_limits<Z>::is_integer>
+         class gsGridIterator { };
+
 
 // Pde
 template< class T = real_t>  class gsPde;
