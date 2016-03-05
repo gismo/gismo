@@ -125,7 +125,7 @@ template<class T, int d, bool closed>
 class gsGridIterator<T,d,closed,false>
 {   // note: closed = true
 public:
-    typedef gsGridIterator<unsigned, d, false> integer_iterator;
+    typedef gsGridIterator<index_t, d, false> integer_iterator;
 
     typedef typename integer_iterator::point point_index;
 public:
@@ -154,7 +154,7 @@ public:
         const T h = math::pow( span.prod() / numPoints, 1.0 / (d!=-1?d:ab.rows()) );
         point_index npts(ab.rows());
         for (index_t i = 0; i != (d!=-1?d:ab.rows()); ++i)
-            npts[i] = cast<T,unsigned>(math::ceil( span[i] / (h*wght[i]) ) );
+            npts[i] = cast<T,index_t>(math::ceil( span[i] / (h*wght[i]) ) );
         m_iter = integer_iterator(npts);
 
         reset(ab.col(0), ab.col(1));
@@ -194,11 +194,11 @@ public:
 
     const gsMatrix<T> * operator->() const {return &m_cur;}
 
-    const gsVector<unsigned> & tensorIndex() const { return *m_iter;}
+    const point_index & tensorIndex() const { return *m_iter;}
     
     const gsVector<T,d> & step() const {return m_step;}
     
-    unsigned size() const {return numPoints().prod();}
+    index_t size() const {return numPoints().prod();}
 
     point_index numPoints() const {return m_iter.numPoints();}
 

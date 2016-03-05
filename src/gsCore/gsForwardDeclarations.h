@@ -19,6 +19,7 @@
 #include <map>
 #include <stack>
 #include <algorithm>
+#include <limits>
 
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>

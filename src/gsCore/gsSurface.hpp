@@ -33,7 +33,7 @@ void gsSurface<T>::toMesh(gsMesh<T> & msh, int npoints) const
         msh.addVertex( cp );
     }
 
-    const gsVector<unsigned,2> & np = pIter.numPoints();
+    typename gsGridIterator<T,2>::point_index np = pIter.numPoints();
     for(unsigned j = 0; j + 1 != np[1]; j++)
         for(unsigned i= 0; i + 1 != np[0]; i++)
         {
