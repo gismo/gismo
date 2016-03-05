@@ -57,7 +57,7 @@ public:
     void reset() { reset(m_low,m_upp); }
 
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(MIndexT)%16)==0 );
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
 
 public:
 
@@ -179,7 +179,7 @@ public:
     }
 
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(MIndexT)%16)==0 );
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
 
 public:
 
