@@ -14,23 +14,20 @@
 
 #pragma once
 
-#include <gsUtils/gsPointGrid.h>
-#include <gsTensor/gsUniformGridIterator.h>
+#include <gsTensor/gsGridIterator.h>
 #include <gsUtils/gsMesh/gsMesh.h>
-
 
 
 namespace gismo
 {
-
 
 template<class T> 
 void gsSurface<T>::toMesh(gsMesh<T> & msh, int npoints) const
 {   
     const gsMatrix<T> param     = this->parameterRange();
     gsMatrix<T> cp;
-    gsUniformGridIterator<T,2> pIter(param, npoints);
-    for(; pIter; ++pIter )
+    gsGridIterator<T,2> pIter(param, npoints);
+    for(; pIter; ++pIter)
     {
         this->eval_into( *pIter, cp);
         msh.addVertex( cp );
