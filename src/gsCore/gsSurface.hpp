@@ -34,11 +34,11 @@ void gsSurface<T>::toMesh(gsMesh<T> & msh, int npoints) const
     }
 
     typename gsGridIterator<T,2>::point_index np = pIter.numPoints();
-    for(unsigned j = 0; j + 1 != np[1]; j++)
-        for(unsigned i= 0; i + 1 != np[0]; i++)
+    for(index_t j = 0; j + 1 != np[1]; j++)
+        for(index_t i= 0; i + 1 != np[0]; i++)
         {
-            const unsigned ind1 = j * np[0] + i;
-            const unsigned ind2 = ind1 + np[0];
+            const index_t ind1 = j * np[0] + i;
+            const index_t ind2 = ind1 + np[0];
             //msh.addFace(ind1, ind1+1, ind2+1, ind2);
             msh.addFace(ind1  , ind1+1, ind2+1);
             msh.addFace(ind2+1, ind2  , ind1  );

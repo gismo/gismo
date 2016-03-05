@@ -97,6 +97,7 @@ public:
                 }
                 else
                     return *this;
+            GISMO_ERROR("Fatal error in gsGridIterator.");
         }
     }
 
