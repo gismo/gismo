@@ -20,7 +20,6 @@
 #endif
 
 #include <cmath>
-#include <limits>
 
 #ifdef GISMO_WITH_MPQ
 template <class U, class V>

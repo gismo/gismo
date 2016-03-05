@@ -41,9 +41,6 @@ public:
     gsGridIterator(point const & b)
     { reset(point::Zero(b.size()), b); }
 
-    gsGridIterator(gsMatrix<Z> const & ab)
-    { reset(ab.col(0), ab.col(1) ); }
-
     gsGridIterator(gsMatrix<Z,d,2> const & ab)
     { reset(ab.col(0), ab.col(1) ); }
 
@@ -58,6 +55,9 @@ public:
     }
 
     void reset() { reset(m_low,m_upp); }
+
+    // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(MIndexT)%16)==0 );
 
 public:
 
@@ -99,6 +99,7 @@ public:
                     return *this;
             GISMO_ERROR("Fatal error in gsGridIterator.");
         }
+        // else mode==2 (todo: boundary iterator)
     }
 
     inline bool isFloor(int i) const { return m_cur[i] == m_low[i];}
@@ -122,36 +123,39 @@ private:
     Iterator over uniformly distributed numeric points inside a
     (hyper-)cube.
 */
-template<class T, int d, bool closed>
-class gsGridIterator<T,d,closed,false>
+template<class T, int d>
+class gsGridIterator<T,d,1,false>
 {   // note: closed = true
 public:
+
+    typedef gsVector<T,d> point;
+    
     typedef gsGridIterator<index_t, d, false> integer_iterator;
 
     typedef typename integer_iterator::point point_index;
 public:
     
-    gsGridIterator(gsVector<T,d> const & a, 
-                   gsVector<T,d> const & b, 
-                   gsVector<unsigned, d> const & np)
+    gsGridIterator(point const & a, 
+                   point const & b, 
+                   point_index const & np)
     : m_iter(np)
     {
         reset(a, b);
     }
 
-    gsGridIterator(gsMatrix<T> const & ab, 
-                   gsVector<unsigned, d> const & np)
+    gsGridIterator(gsMatrix<T,2> const & ab, 
+                   point_index const & np)
     : m_iter(np)
     {
         reset(ab.col(0), ab.col(1));
     }
 
-    gsGridIterator(gsMatrix<T> const & ab, unsigned numPoints)
+    gsGridIterator(gsMatrix<T,2> const & ab, unsigned numPoints)
     : m_low(ab.col(0)), m_upp(ab.col(1))
     {
         // deduce the number of points per direction
-        const gsVector<T,d> span = ab.col(1) - ab.col(0);
-        const gsVector<T,d> wght = span / span.sum();
+        const point span = ab.col(1) - ab.col(0);
+        const point wght = span / span.sum();
         const T h = math::pow( span.prod() / numPoints, 1.0 / (d!=-1?d:ab.rows()) );
         point_index npts(ab.rows());
         for (index_t i = 0; i != (d!=-1?d:ab.rows()); ++i)
@@ -163,8 +167,8 @@ public:
 
     void reset() { m_cur = m_low;}
 
-    void reset(gsVector<T,d> const & a, 
-               gsVector<T,d> const & b)
+    void reset(point const & a, 
+               point const & b)
     {
         GISMO_ASSERT( (m_iter.numPoints().array()>0).all(), "Number of points is zero.");
         m_cur = m_low = a;
@@ -173,7 +177,10 @@ public:
             .matrix().cwiseMax(1).template cast<T>().array() ;
 
     }
-    
+
+    // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(MIndexT)%16)==0 );
+
 public:
 
     operator bool() const {return m_iter;}
@@ -197,7 +204,7 @@ public:
 
     const point_index & tensorIndex() const { return *m_iter;}
     
-    const gsVector<T,d> & step() const {return m_step;}
+    const point & step() const {return m_step;}
     
     index_t size() const {return numPoints().prod();}
 
@@ -207,13 +214,11 @@ public:
     
     inline bool isCeil (int i) const { return m_iter.isCeil(i);}
 
-    const integer_iterator & index() const { return m_iter;}
+    const integer_iterator & index_iterator() const { return m_iter;}
     
 private:
 
-    gsVector<T,d>  m_low;
-    gsVector<T,d>  m_upp;
-    gsVector<T,d> m_step;
+    point  m_low, m_upp, m_step;
 
     integer_iterator m_iter;    
     gsMatrix<T>      m_cur;
