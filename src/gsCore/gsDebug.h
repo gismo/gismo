@@ -127,6 +127,38 @@
   << __FILE__ <<" has not been implemented ("<<typeid(*this).name()<<").\n"; \
   throw std::runtime_error("GISMO_NO_IMPLEMENTATION");
 
+namespace gismo {
+/*
+#ifdef _MSC_VER
+#include <float.h>
+template <typename T> int isnan   (T a) {return _isnan(a); }
+template <typename T> int isfinite(T a){return _finite(a);}
+template <typename T> bool isinf(T a) {return (_FPCLASS_PINF|_FPCLASS_NINF) & _fpclass(a);}
+ #else
+#ifdef _INTEL_COMPILER
+#include <mathimf.h>
+#else
+using std::isnan;
+using std::isfinite;
+using std::isinf;
+#endif
+*/
+/**
+   Check if a floating point number is different than NAN (not a number)
+
+   See https://en.wikipedia.org/wiki/Floating_point#Special_values
+   and https://en.wikipedia.org/wiki/NaN
+ */
+template <typename T> bool gsIsnumber(T a) {return a == a;}
+template <typename T> bool gsIsnan   (T a) {return a != a;}
+/**
+   Check if a flaoting point number is different than INF
+
+   See https://en.wikipedia.org/wiki/Floating_point#Special_values
+ */
+template <typename T> bool gsIsfinite(T a) {return  (a - a) == (a - a);}
+
+}//namespace gismo
 
 /*
   Disable debug/abort popup windows on MS Windows
@@ -208,30 +240,28 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 
 
 /*
- *  Compile-time assertions: 
- * 
- * - in GISMO_STATIC_ASSERT(CONDITION,MSG) the parameter CONDITION must be a compile time boolean
- *    expression, and MSG an enum listed in struct internal::static_assertion<true>
- *
- *  - define GISMO_NO_STATIC_ASSERT to disable them (and save compilation time)
- *    in that case, the static assertion is converted to the following runtime assert:
- *      gismo_assert(CONDITION && "MSG")
- *
- *  - currently GISMO_STATIC_ASSERT can only be used in function scope
- *
+   Compile-time assertions: 
+  
+  - in GISMO_STATIC_ASSERT(CONDITION,MSG) the parameter CONDITION
+     must be a compile time boolean expression, and MSG an enum
+    listed in struct internal::static_assertion<true>
+ 
+   - define GISMO_NO_STATIC_ASSERT to disable them (and save
+     compilation time) in that case, the static assertion is
+     converted to a runtime assertion.
+ 
+  - GISMO_STATIC_ASSERT can only be used in function scope
  */
-
 #ifndef GISMO_NO_STATIC_ASSERT
 
   #if defined(__GXX_EXPERIMENTAL_CXX0X__) || (defined(_MSC_VER) && (_MSC_VER >= 1600))
 
-    // if native static_assert is enabled, let's use it
+    // Native static_assert is available
     #define GISMO_STATIC_ASSERT(X,MSG) static_assert(X,#MSG);
 
   #else // not CXX0X
 
     namespace gismo {
-
     namespace internal {
 
     template<bool condition>
@@ -241,19 +271,11 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
     struct static_assertion<true>
     {
       enum {
-          YOU_CALLED_AN_INVALID_CONSTRUCTOR,
-          YOU_CALLED_A_FUNCTION_THAT_IS_NOT_IMPLEMENTED,
-          OBJECT_ALLOCATED_ON_STACK_IS_TOO_BIG
+          INCONSISTENT_INSTANTIZATION,
+          INVALID_CONSTRUCTOR,
+          TOO_BIG_OBJECT_ALLOCATED_ON_STACK
       };
     };
-
-// Check:
-// #undef GISMO_NO_IMPLEMENTATION
-//       template<class T>
-//       struct gismo_false { };
-// # define GISMO_NO_IMPLEMENTATION  
-//       {gismo::internal::gismo_false<T>::YOU_CALLED_A_FUNCTION_THAT_IS_NOT_IMPLEMENTED;};
-
 
     } // end namespace internal
 
@@ -278,34 +300,11 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 
 #else // GISMO_NO_STATIC_ASSERT
 
-#define GISMO_STATIC_ASSERT(CONDITION,MSG) gismo_assert((CONDITION) && #MSG);
+#define GISMO_STATIC_ASSERT(CONDITION,MSG) GISMO_ASSERT(CONDITION, #MSG);
 
 #endif // GISMO_NO_STATIC_ASSERT
 
-// static assertion failing if a function is that is not implemented is called
-#define GISMO_STATIC_NO_IMPLEMENTATION \
-  GISMO_STATIC_ASSERT(false                      , \
-                      YOU_CALLED_A_FUNCTION_THAT_IS_NOT_IMPLEMENTED)
 
-// static assertion failing if the type \a TYPE is not fixed-size
-#define GISMO_STATIC_ASSERT_FIXED_SIZE(TYPE) \
-  GISMO_STATIC_ASSERT(TYPE::SizeAtCompileTime!=Gismo::Dynamic, \
-                      YOU_CALLED_A_FIXED_SIZE_METHOD_ON_A_DYNAMIC_SIZE_MATRIX_OR_VECTOR)
-
-// static assertion failing if the type \a TYPE is not dynamic-size
-#define GISMO_STATIC_ASSERT_DYNAMIC_SIZE(TYPE) \
-  GISMO_STATIC_ASSERT(TYPE::SizeAtCompileTime==Gismo::Dynamic, \
-                      YOU_CALLED_A_DYNAMIC_SIZE_METHOD_ON_A_FIXED_SIZE_MATRIX_OR_VECTOR)
-
-  #define GISMO_STATIC_ASSERT_NON_INTEGER(TYPE) \
-    GISMO_STATIC_ASSERT(!NumTraits<TYPE>::IsInteger, THIS_FUNCTION_IS_NOT_FOR_INTEGER_NUMERIC_TYPES)
-
-// static assertion failing if it is guaranteed at compile-time that
-// the two matrix expression types have different sizes
-#define GISMO_STATIC_ASSERT_SAME_MATRIX_SIZE(TYPE0,TYPE1) \
-  GISMO_STATIC_ASSERT( \
-     GISMO_PREDICATE_SAME_MATRIX_SIZE(TYPE0,TYPE1),\
-     YOU_MIXED_MATRICES_OF_DIFFERENT_SIZES)
 
 #ifdef GISMO_WARNINGS
     //#pragma message("G+Smo Warnings ON")
