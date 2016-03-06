@@ -145,12 +145,8 @@ public:
 
     bool isBoundary() const
     {
-        if ( mode )
-            return (m_cur.array() == m_low.array()).any() ||
-                   (m_cur.array() == m_upp.array()).any() ;
-        else
-            return (m_cur.array()     == m_low.array()).any() ||
-                   (m_cur.array() + 1 == m_upp.array()).any() ;
+        return (m_cur.array() == m_low.array()).any() ||
+            (m_cur.array() == m_upp.array()).any() ;
     }
     
     point numPoints() const {return m_upp - m_low;}
@@ -264,7 +260,7 @@ public:
     
     inline bool isCeil (int i) const { return m_iter.isCeil(i);}
 
-    inline bool isBoundary() const { return m_iter.onBoundary();}
+    inline bool isBoundary() const { return m_iter.isBoundary();}
     
     const integer_iterator & index_iterator() const { return m_iter;}
     
