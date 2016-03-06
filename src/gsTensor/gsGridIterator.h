@@ -136,11 +136,12 @@ private:
 */
 template<class T, int d>
 class gsGridIterator<T,d,1,false>
-{   // note: closed = false
+{   // note: it is implied closed = true
 public:
 
     typedef gsVector<T,d> point;
-    
+
+    // note: underlying iteration: closed = false (due to np - num. points)
     typedef gsGridIterator<index_t, d, false> integer_iterator;
 
     typedef typename integer_iterator::point point_index;
