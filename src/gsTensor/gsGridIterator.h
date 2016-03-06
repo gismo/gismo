@@ -33,7 +33,8 @@ public:
 
 public:
 
-    gsGridIterator() { }
+    gsGridIterator()
+    { GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,INCONSISTENT_INSTANTIZATION); }
             
     gsGridIterator(point const & a, point const & b)
     { reset(a,b); }
@@ -191,10 +192,14 @@ public:
             for (int i = 0; i != (d==-1?m_low.size():d); ++i)
                 if ( m_iter.isFloor(i) )
                     m_cur.at(i) = m_low[i]; // avoid numerical error at first val
-                else if ( m_iter.isCeil(i) )
-                    m_cur.at(i) = m_upp[i]; // avoid numerical error at last val
                 else
-                    m_cur.at(i) = m_low[i] + m_iter->at(i) * m_step[i];
+                {
+                    if ( m_iter.isCeil(i) )
+                        m_cur.at(i) = m_upp[i]; // avoid numerical error at last val
+                    else
+                        m_cur.at(i) = m_low[i] + m_iter->at(i) * m_step[i];
+                }
+        
         return *this;        
     }
     
