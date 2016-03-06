@@ -25,9 +25,6 @@
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMemory.h>
 
-// aliasing to gsUnifiedKnotVector
-#define gsCompactKnotVector gsKnotVector
-
 namespace gismo 
 {
 
@@ -155,11 +152,10 @@ template<class T = real_t> class gsGalerkinMethod;
 // template< class T = real_t>  class gsTensorDomain;
 template<unsigned d, class T = real_t>   class gsHFitting;
 
-template<typename Z, int d = -1, bool closed = true,
-         bool = //std::tr1::is_integral<Z>::value>
-                //std::is_integral<Z>::value>
-                std::numeric_limits<Z>::is_integer>
-         class gsGridIterator { };
+template<typename Z, int d = -1, int mode = 0,
+         bool = //std::is_integral<Z>::value>
+         std::numeric_limits<Z>::is_integer >
+         class gsGridIterator;
 
 
 // Pde
