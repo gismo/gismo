@@ -108,6 +108,16 @@ public:
     inline bool isCeil (int i) const
     { return closed ? m_cur[i] == m_upp[i] : m_cur[i] + 1 == m_upp[i];}
 
+    bool onBoundary() const
+    {
+        if ( closed )
+            return (m_cur.array() == m_low.array()).any() ||
+                   (m_cur.array() == m_upp.array()).any() ;
+        else
+            return (m_cur.array()     == m_low.array()).any() ||
+                   (m_cur.array() + 1 == m_upp.array()).any() ;
+    }
+    
     point numPoints() const {return m_upp - m_low;}
 
 private:
@@ -126,7 +136,7 @@ private:
 */
 template<class T, int d>
 class gsGridIterator<T,d,1,false>
-{   // note: closed = true
+{   // note: closed = false
 public:
 
     typedef gsVector<T,d> point;
@@ -166,7 +176,7 @@ public:
         reset(ab.col(0), ab.col(1));
     }
 
-    void reset() { m_cur = m_low;}
+    void reset() { m_cur = m_low; m_iter.reset(); }
 
     void reset(point const & a, 
                point const & b)
@@ -176,7 +186,7 @@ public:
         m_upp = b;
         m_step = (b-a).array() / (m_iter.numPoints().array() - 1)
             .matrix().cwiseMax(1).template cast<T>().array() ;
-
+        m_iter.reset();
     }
 
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
@@ -219,6 +229,9 @@ public:
     
     inline bool isCeil (int i) const { return m_iter.isCeil(i);}
 
+    inline bool onBoundary() const { return m_iter.onBoundary();}
+
+    
     const integer_iterator & index_iterator() const { return m_iter;}
     
 private:
