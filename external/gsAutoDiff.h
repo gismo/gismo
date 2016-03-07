@@ -287,6 +287,15 @@ public:
     /// @{ \name Miscellaneous functions
     // ======================================================================
 
+    friend bool isnan(const DScalar1 &s) {return std::isnan(s.value); }
+
+    friend DScalar1 abs(const DScalar1 &s) 
+    {
+        DScalar1 result(math::abs(s.value));
+        result.grad = (s.value < 0 ? -1 : 1) * s.grad;
+        return result;
+    }
+
     friend DScalar1 sqrt(const DScalar1 &s) 
     {
         Scalar sqrtVal = math::sqrt(s.value),
@@ -475,7 +484,7 @@ std::ostream &operator<<(std::ostream &out, const DScalar1<Scalar,d> &s)
  * \sa DScalar1
  * \author Wenzel Jakob
  */
-template <typename _Scalar, int d = -1>
+template <typename _Scalar, int d = -1> // todo: nder = 1, 2
 struct DScalar2
 {
 public:
@@ -735,6 +744,14 @@ public:
     // ======================================================================
 
     friend bool isnan(const DScalar2 &s) {return std::isnan(s.value); }
+
+    friend DScalar2 abs(const DScalar2 &s) 
+    {
+        DScalar2 result(math::abs(s.value));
+        result.grad = (s.value < 0 ? -1 : 1) * s.grad;
+        result.hess.setZero(s.hess.rows(), s.hess.cols());
+        return result;
+    }
 
     friend DScalar2 sqrt(const DScalar2 &s) 
     {

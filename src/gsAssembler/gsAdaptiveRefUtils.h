@@ -31,22 +31,19 @@ enum MarkingStrategy
 template <class T>
 void gsMarkThreshold( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
 {
-    T Thr = T(0);
-
     // First, conduct a brutal search for the maximum local error
-    T maxErr = 0;
-    for( unsigned i = 0; i < elError.size(); ++i)
-        if( maxErr < elError[i] )
-            maxErr = elError[i];
+    const T maxErr = *std::max_element(elError.begin(), elError.end() );
 
     // Compute the threshold:
-    Thr = refParameter * maxErr;
+    const T Thr = refParameter * maxErr;
 
     elMarked.resize( elError.size() );
     // Now just check for each element, whether the local error
     // is above the computed threshold or not, and mark accordingly.
-    for( unsigned i=0; i < elError.size(); i++)
-        ( elError[i] >= Thr ? elMarked[i] = true : elMarked[i] = false );
+
+    typename std::vector<T>::const_iterator err = elError.begin();
+    for(std::vector<bool>::iterator i = elMarked.begin(); i!=  elMarked.end(); ++i, ++err)
+        *i = ( *err >= Thr );
 }
 
 template <class T>

@@ -46,8 +46,9 @@ set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 #set(CTEST_CMAKE_GENERATOR "Eclipse CDT4")
 
 # Set environment/compiler
-set(ENV{CC}  "gcc")
-set(ENV{CXX} "g++")
+#set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
+#set(ENV{CC}  "gcc")
+#set(ENV{CXX} "g++")
 #set(ENV{CC}  "icc")
 #set(ENV{CXX} "icpc")
 #set(ENV{CC}  "clang")
