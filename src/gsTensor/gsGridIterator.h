@@ -134,6 +134,8 @@ public:
                     return *this;
                 }
             }
+            /*fall through to default*/
+        default:
             m_dim = 0;//done
             return *this;
         }
@@ -325,7 +327,10 @@ public:
             GISMO_ASSERT(cwise[i].cols()==1 || cwise[i].rows()==1, "Invalid input");
         }
         m_iter = integer_iterator(npts, 0);
-        m_cur.derived().resize(cwise.size());
+        if (1==cwise.front().rows())
+            m_cur.derived().resize(cwise.size(),1);
+        else
+            m_cur.derived().resize(1,cwise.size());
         update();
     }
 

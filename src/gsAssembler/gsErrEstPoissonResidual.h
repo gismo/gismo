@@ -240,7 +240,6 @@ protected:
         unsigned actPatch = geoEval.id();
 
         T sumVolSq(0.0);
-        T sumVol(0.0);
         T sumSidesSq(0.0);
         gsMatrix<T> quNodesSide;
         gsVector<T> quWeightsSide;
@@ -312,7 +311,7 @@ protected:
             sumVolSq += weight * ( sol_Lap + m_rhsFctVals(0,k) ) \
                     * ( sol_Lap + m_rhsFctVals(0,k) );
             */      
-            sumVol += weight * ( m_phLaplace(0,0) + m_rhsFctVals(0,k) ) \
+            sumVolSq += weight * ( m_phLaplace(0,0) + m_rhsFctVals(0,k) ) \
                     * ( m_phLaplace(0,0) + m_rhsFctVals(0,k) );               
 
         } // quPts volume
@@ -410,7 +409,7 @@ protected:
             m_elWiseFull.push_back( tmpStore );
         }
 
-        return sumVol;
+        return hhSq * sumVolSq + math::sqrt( hhSq ) * sumSidesSq;;
     }
 
 public:
