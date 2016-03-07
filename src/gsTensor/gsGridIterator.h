@@ -172,7 +172,11 @@ public:
             res[i] = res[i-1] * ( m_upp[i-1] - m_low[i-1] + 1 );
         return res;
     }
-    
+
+    const point & lower() const {return m_low;}
+
+    const point & upper() const {return m_upp;}
+
 private:
     
     point m_low, m_upp;
