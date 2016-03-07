@@ -106,14 +106,14 @@ private:
 
 /// @brief Convenience function to create an LU solver with partial pivoting (for dense matrices) as a gsLinearOperator.
 template <class T, int _Rows, int _Cols, int _Opt>
-gsSolverOperator< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  makePartialPivLUSolver(const Eigen::Matrix<T, _Rows, _Cols, _Opt> & mat)
+gsSolverOperator< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  makePartialPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
     return new gsSolverOperator< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat);
 }
 
 /// @brief Convenience function to create an LU solver with full pivoting (for dense matrices) as a gsLinearOperator.
 template <class T, int _Rows, int _Cols, int _Opt>
-gsSolverOperator< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  makeFullPivLUSolver(const Eigen::Matrix<T, _Rows, _Cols, _Opt> & mat)
+gsSolverOperator< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  makeFullPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
     return new gsSolverOperator< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat);
 }
@@ -123,7 +123,7 @@ gsSolverOperator< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  
 ///
 /// @note Works only on symmetric (stored in lower half) and positive (semi-)definite matrices.
 template <class T, int _Rows, int _Cols, int _Opt>
-gsSolverOperator< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  makeCholeskySolver(const Eigen::Matrix<T, _Rows, _Cols, _Opt> & mat)
+gsSolverOperator< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  makeCholeskySolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
     return new gsSolverOperator< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat);
 }
@@ -133,7 +133,7 @@ gsSolverOperator< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > > *  makeC
 ///
 /// @note This uses the default COLAMD column ordering.
 template <typename T, int _Opt, typename _Index>
-gsSolverOperator< typename gsSparseSolver<T>::LU > *  makeSparseLUSolver(const Eigen::SparseMatrix<T,_Opt,_Index> & mat)
+gsSolverOperator< typename gsSparseSolver<T>::LU > *  makeSparseLUSolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
 {
     return new gsSolverOperator< typename gsSparseSolver<T>::LU >(mat);
 }
@@ -143,7 +143,7 @@ gsSolverOperator< typename gsSparseSolver<T>::LU > *  makeSparseLUSolver(const E
 ///
 /// @note Works only on sparse, symmetric (stored in lower half) and positive definite matrices.
 template <typename T, int _Opt, typename _Index>
-gsSolverOperator< typename gsSparseSolver<T>::SimplicialLDLT > *  makeSparseCholeskySolver(const Eigen::SparseMatrix<T,_Opt,_Index> & mat)
+gsSolverOperator< typename gsSparseSolver<T>::SimplicialLDLT > *  makeSparseCholeskySolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
 {
     return new gsSolverOperator<typename  gsSparseSolver<T>::SimplicialLDLT >(mat);
 }
