@@ -218,14 +218,14 @@ public:
         GISMO_STATIC_ASSERT(mode > -1 && mode<3, INCONSISTENT_INSTANTIZATION);
     }
 
-    gsGridIterator(gsMatrix<T,2> const & ab, 
+    gsGridIterator(gsMatrix<T,d,2> const & ab, 
                    point_index const & np)
     : m_iter(np, 1)
     {
         reset(ab.col(0), ab.col(1));
     }
 
-    gsGridIterator(gsMatrix<T,2> const & ab, unsigned numPoints)
+    gsGridIterator(gsMatrix<T,d,2> const & ab, unsigned numPoints)
     : m_low(ab.col(0)), m_upp(ab.col(1))
     {
         // deduce the number of points per direction
