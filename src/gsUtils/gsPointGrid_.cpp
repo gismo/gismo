@@ -32,6 +32,12 @@ gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower,
                                        int numPoints);
 
 TEMPLATE_INST
+void uniformPointGrid( gsMatrix<T> const        & box,
+                       index_t                    np,
+                       gsMatrix<T>              & result) ;
+
+    
+TEMPLATE_INST
 void uniformIntervals(const gsVector<T>& lower, 
                       const gsVector<T>& upper, 
                       std::vector< std::vector<T> >& intervals, 
