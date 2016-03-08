@@ -26,14 +26,15 @@ void gsSurface<T>::toMesh(gsMesh<T> & msh, int npoints) const
 {   
     const gsMatrix<T> param     = this->parameterRange();
     gsMatrix<T> cp;
-    gsGridIterator<T,2> pIter(param, npoints);
+    static const int it = 1;
+    gsGridIterator<T,CUBE> pIter(param, npoints);
     for(; pIter; ++pIter)
     {
         this->eval_into( *pIter, cp);
         msh.addVertex( cp );
     }
 
-    typename gsGridIterator<T,2>::point_index np = pIter.numPointsCwise();
+    const typename gsGridIterator<T,CUBE>::point_index np = pIter.numPointsCwise();
     for(index_t j = 0; j + 1 != np[1]; j++)
         for(index_t i= 0; i + 1 != np[0]; i++)
         {
