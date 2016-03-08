@@ -26,7 +26,6 @@ void gsSurface<T>::toMesh(gsMesh<T> & msh, int npoints) const
 {   
     const gsMatrix<T> param     = this->parameterRange();
     gsMatrix<T> cp;
-    static const int it = 1;
     gsGridIterator<T,CUBE> pIter(param, npoints);
     for(; pIter; ++pIter)
     {
