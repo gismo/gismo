@@ -37,11 +37,6 @@ inline typename gsMatrix<T>::uPtr gsPointGrid( std::vector< gsVector<T>* > const
   return typename gsMatrix<T>::uPtr( res );
 }
 
-/// Construct a grid of points by coordinate vectors in the container
-/// cwise, use out argument res
-template<class T>
-void gsPointGrid( std::vector< gsVector<T>* > const & cwise, gsMatrix<T>& res);
-
 /// Construct a grid of points by coordinate vectors in the container cwise
 template<class T>
 inline typename gsMatrix<T>::uPtr gsPointGrid( std::vector< gsVector<T> > const & cwise)
@@ -50,6 +45,11 @@ inline typename gsMatrix<T>::uPtr gsPointGrid( std::vector< gsVector<T> > const 
   gsPointGrid(cwise, *res);
   return typename gsMatrix<T>::uPtr( res );
 }
+
+/// Construct a grid of points by coordinate vectors in the container
+/// cwise, use out argument res
+template<class T>
+void gsPointGrid( std::vector< gsVector<T>* > const & cwise, gsMatrix<T>& res);
 
 /// Construct a grid of points by coordinate vectors in the container
 /// cwise, use out argument res
@@ -80,8 +80,16 @@ typename gsMatrix<T>::uPtr gsPointGrid( T const & t1, T const & t2, unsigned con
 /// Approximately uniformly spaced grid in every direction, with
 /// approximately numPoints total points
 template<typename T>
-typename gsMatrix<T>::uPtr uniformPointGrid(const gsVector<T>& lower, const gsVector<T>& upper, int numPoints = 1000);
+typename gsMatrix<T>::uPtr uniformPointGrid(const gsVector<T>& lower,
+                                            const gsVector<T>& upper,
+                                            int numPoints = 1000);
 
+/// Approximately uniformly spaced grid in every direction, with
+/// approximately numPoints total points
+template<class T>
+void uniformPointGrid( gsMatrix<T> const        & box,
+                       index_t                    np,
+                       gsMatrix<T>              & result);
 
 template<typename T>
 gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower, 

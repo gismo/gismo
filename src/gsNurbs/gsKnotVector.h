@@ -163,6 +163,9 @@ public: // constructors
     /// Swaps with \a other knot vector.
     void swap( gsKnotVector& other );
 
+    /// Returns the knots as a matrix of size  1 x size()
+    gsAsConstMatrix<T> asMatrix() const {return m_repKnots;}
+    
 public:
     /// Returns a pointer to a copy.
     gsKnotVector* clone() const;
@@ -806,9 +809,10 @@ public: // Deprecated functions required by gsCompactKnotVector.
     }
 
     /// Returns unique knots of the domain (i.e., including the endpoints of the domain).
+    // \sa gsDomain
     virtual knotContainer breaks() const
     {
-        return knotContainer(domainUBegin(),domainUEnd()+1);
+        return knotContainer(domainUBegin(), domainUEnd()+1);
     }
 
 public: // others

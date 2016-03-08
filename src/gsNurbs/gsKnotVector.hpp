@@ -628,7 +628,7 @@ std::string gsKnotVector<T>::detail() const
         osm << itr.multiplicity() << " ";
     } 
     osm <<")\n";
-    osk << "]\n";
+    osk << "] ~ ";
     osm << "deg="<<m_deg<< ", size="<<size() << ", uSize="<< uSize()
         <<", minSpan="<< minIntervalLength() 
         <<", maxSpan="<< maxIntervalLength() <<"\n";

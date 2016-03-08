@@ -82,6 +82,10 @@ public:
 
         TBasis   *tbasis = new TBasis(Bu,Bv) ;//d==2
       
+        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
+
         this->m_basis = new Basis(tbasis) ;
         this->m_coefs = tcoefs;
     }
@@ -99,6 +103,10 @@ public:
 
         TBasis   *tbasis = new TBasis(Bu,Bv) ;//d==2
       
+        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
+
         this->m_basis = new Basis(tbasis , wgts) ;
         this->m_coefs = tcoefs;
     }
@@ -115,6 +123,10 @@ public:
 
         TBasis   *tbasis = new TBasis(Bu,Bv) ;//d==2
       
+        GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
+
         this->m_basis = new Basis(tbasis , wgts) ;
         this->m_coefs = tcoefs;
     }
@@ -135,6 +147,10 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
+        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
+
         this->m_basis = new Basis(tbasis, wgts) ;
         this->m_coefs = tcoefs;
     }
@@ -155,6 +171,10 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
+        GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
+
         this->m_basis = new Basis(tbasis, wgts) ;
         this->m_coefs = tcoefs;
     }
@@ -174,6 +194,10 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
+        GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
+
         this->m_basis = new Basis(tbasis) ;
         this->m_coefs = tcoefs;
     }
@@ -194,20 +218,17 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
+        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
+
         this->m_basis = new Basis(tbasis) ;
         this->m_coefs = tcoefs;
     }
 
-    /// Construct 3D tensor B-Spline by knot vectors, degrees and coefficient matrix
-    //gsTensorNurbs( gsTensorBasis<T,d> * const basis, gsMatrix<T> * const coefs ) :
-    //  gsGeometry<T,d>( basis, coefs ) { }
-
-    /// Construct nD tensor B-Spline 
-    //gsTensorNurbs( gsTensorBasis<T,d> * const basis, gsMatrix<T> * const coefs ) :
-    //  gsGeometry<T,d>( basis, coefs ) { }
 
     GISMO_BASIS_ACCESSORS
-
+    
     public:
 
 // ***********************************************

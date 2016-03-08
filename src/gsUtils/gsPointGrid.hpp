@@ -162,6 +162,18 @@ typename gsMatrix<T>::uPtr uniformPointGrid(const gsVector<T>& lower,
     return gsPointGrid(lower, upper, cwisePoints);
 }
 
+template<class T>
+void uniformPointGrid( gsMatrix<T> const        & box,
+                       index_t                    np,
+                       gsMatrix<T>              & result
+                        )
+{
+    const gsVector<T> low = box.col(0);
+    const gsVector<T> upp = box.col(1);
+    const gsVector<unsigned> npts = uniformSampleCount(low, upp, np);
+    result = gsPointGrid(low, upp, npts);
+}
+
 template<typename T>
 void uniformIntervals(const gsVector<T>& lower, 
                       const gsVector<T>& upper, 
