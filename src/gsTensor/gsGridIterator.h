@@ -18,19 +18,19 @@ namespace gismo
 {
 
 /**
-   \brief Specifies aliases for modes for gsGridIterator
+   \brief Specifies aliases describing the modes for gsGridIterator
 */
     enum gsGridIteratorMode
     {
-        CUBE   = 0,
-        BDR    = 1,
-        VERTEX = 2,
-        CWISE  = 3
+        CUBE   = 0, ///< Cube mode iterates over all lattice points inside a cube
+        BDR    = 1, ///< Boundary mode iterates over boundary lattice points only
+        VERTEX = 2, ///< Vertex mode iterates over cube vertices only
+        CWISE  = 3  ///< Coordinate-wise mode iterates over a grid given by coordinate vectors
     };
     
 // note: default arguments are found in gsForwardDeclarations.h
-template<typename Z, int mode, int d, bool> class gsGridIterator { };
-
+template<typename Z, int mode, int d, bool> class gsGridIterator
+{using Z::GISMO_ERROR_gsGridIterator_has_invalid_template_arguments;};
 
 /** 
     \brief Iterator over the Cartesian product of integer points in a
@@ -165,7 +165,7 @@ public:
             {        
                 if ( m_cur[i] != m_upp[i] )
                 {
-                    if ( m_cur[i] == m_low[i] && ( i+1!=m_dim || m_dim==1) )
+                    if ( m_cur[i] == m_low[i] && (i+1!=m_dim || m_dim==1) )
                     {
                         int c = i+1;
                         for (int j = c; j!=(d==-1?m_dim:d); ++j)
@@ -180,9 +180,8 @@ public:
                     }
                     else
                         m_cur[i]++;
-                    
-                    for (int k = i-1; k!=-1; --k)
-                        m_cur[k] = m_low[k];
+
+                    m_cur.head(i) = m_low.head(i);
                     return *this;
                 }
             }
@@ -248,9 +247,9 @@ public:
 
        \return An integer vector (stride vector) with the property
        that when we add it to *this we obtain the next point to be
-       iterated. Moreover, the dot product of *this with the stride
-       vector results in the "flat index", i.e. the lexicographic
-       index of the point
+       iterated. Moreover, the dot product of (*this - this->lower())
+       with the stride vector results in the "flat index", i.e. the
+       lexicographic index of the point
 
     */
     point strides() const
@@ -395,26 +394,16 @@ public:
 public:
 
     operator bool() const {return m_iter;}
-    
-    inline gsGridIterator & operator++()
-    {
-        if ( ++m_iter )
-        {
-            for (int i = 0; i != (d==-1?m_low.size():d); ++i)
-                if ( m_iter.isFloor(i) )
-                    m_cur.at(i) = m_low[i]; // avoid numerical error at first val
-                else if ( m_iter.isCeil(i) )
-                    m_cur.at(i) = m_upp[i]; // avoid numerical error at last val
-                else
-                    m_cur.at(i) = m_low[i] + m_iter->at(i) * m_step[i];
-        }
-        return *this;        
-    }
-
-    
+        
     const gsMatrix<T> & operator*() const {return m_cur;}
 
     const gsMatrix<T> * operator->() const {return &m_cur;}
+
+    inline gsGridIterator & operator++()
+    {
+        if ( ++m_iter ) update(*m_iter, m_cur);
+        return *this;        
+    }
 
     /**
        \brief Returns true if the \a i-th coordinate has minimal value
@@ -467,10 +456,42 @@ public:
        iterator
     */    
     const integer_iterator & index_iterator() const { return m_iter;}
+
+    /**
+       \brief Returns the point corresponding to tensor index \a ti
+       
+       \note Unlikely to std iterators, the position is not
+       counted from the current position of \a this, but from the
+       starting point of the iteration
+       
+       \param ti a valid tensor index of a point in the iteration sequence
+    */
+    inline const gsMatrix<T> operator [] (const point_index & ti) const
+    {
+        gsMatrix<T> res;
+        update(ti, res);
+        return res;
+    }
+
+private:
     
+    // Update the point \a pt to the position \a ti
+    inline void update(const point_index & ti, gsMatrix<T> & pt)
+    {
+        pt.resizeLike(m_low);
+        for (index_t i = 0; i != pt.size(); ++i)
+            if ( ti[i] == m_iter.lower()[i] )
+                pt.at(i) = m_low[i]; // avoid numerical error at first val
+            else if ( ti[i] == m_iter.upper()[i] )
+                pt.at(i) = m_upp[i]; // avoid numerical error at last val
+            else
+                pt.at(i) = m_low[i] + ti[i] * m_step[i];
+    }
+
 private:
 
     point  m_low, m_upp, m_step; ///< Iteration lower and upper limits and stepsize
+    
     integer_iterator m_iter;     ///< Underlying integer lattice iterator
     gsMatrix<T>      m_cur;      ///< Current point pointed at by the iterator
 };
@@ -517,39 +538,39 @@ public:
     explicit gsGridIterator(const CwiseContainer & cwise)
     : m_cwise(cwise)
     {
-        gsVector<index_t,d> npts(cwise.size());
+        point_index npts(cwise.size());
         for (index_t i = 0; i != npts.rows(); ++i)
         {
-            npts[i] = cwise[i].rows() - 1;
+            npts[i] = cwise[i].size() - 1;
             GISMO_ASSERT(cwise[i].cols()==1 || cwise[i].rows()==1, "Invalid input");
         }
         m_iter = integer_iterator(npts, 0);
-        if (1==cwise.front().rows())
+        if (1==cwise.front().cols())
             m_cur.derived().resize(cwise.size(),1);
         else
             m_cur.derived().resize(1,cwise.size());
-        update();
+        update(*m_iter, m_cur);
     }
 
     /**
        \brief Resets the iterator, so that a new iteration over the
        points may start
     */
-    void reset() { m_iter.reset(); update();}
+    void reset() { m_iter.reset(); update(*m_iter, m_cur);}
 
 public:
 
     operator bool() const {return m_iter;}
-    
-    inline gsGridIterator & operator++()
-    {
-        if (++m_iter) update();
-        return *this;
-    }
-    
+        
     const gsMatrix<T> & operator*() const {return m_cur;}
 
     const gsMatrix<T> * operator->() const {return &m_cur;}
+    
+    inline gsGridIterator & operator++()
+    {
+        if (++m_iter) update(*m_iter, m_cur);
+        return *this;
+    }
 
     /**
        \brief Returns true if the \a i-th coordinate has minimal value
@@ -588,18 +609,36 @@ public:
     */    
     const integer_iterator & index_iterator() const { return m_iter;}
 
+    /**
+       \brief Returns the point corresponding to tensor index \a ti
+       
+       \note Unlikely to std iterators, the position is not
+       counted from the current position of \a this, but from the
+       starting point of the iteration
+       
+       \param ti a valid tensor index of a point in the iteration sequence
+    */
+    inline const gsMatrix<T> operator [] (const point_index & ti) const
+    {
+        gsMatrix<T> res;
+        update(*m_iter, res);
+        return res;
+    }
+
 private:
 
-    // Update the point to the current iterator position
-    inline void update()
+    // Update the point \a pt to the position \a ti
+    inline void update(const point_index & ti, gsMatrix<T> & pt)
     {
-        for (index_t i = 0; i != m_cur.rows(); ++i)
-            m_cur.at(i) = m_cwise[i].at(m_iter->at(i));
+        pt.resizeLike(m_cur);
+        for (index_t i = 0; i != pt.rows(); ++i)
+            pt.at(i) = m_cwise[i].at(ti[i]);
     }
 
 private:
 
     const CwiseContainer & m_cwise; ///< List of coordinate-wise values
+    
     integer_iterator m_iter;        ///< Underlying integer lattice iterator
     gsMatrix<T>      m_cur;         ///< Current point pointed at by the iterator
 };

@@ -154,7 +154,7 @@ template<unsigned d, class T = real_t>   class gsHFitting;
 
 template<typename Z, int mode, int d = -1,
          bool = //std::is_integral<Z>::value>
-         std::numeric_limits<Z>::is_integer >
+         std::numeric_limits<Z>::is_integer && mode!=3>
          class gsGridIterator;
 
 
