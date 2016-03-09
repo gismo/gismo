@@ -52,14 +52,14 @@ public:
     gsAsMatrix( std::vector<T> & v, index_t n, index_t m)
     : Base( &v[0], n, m)
     { 
-        GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
+        //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
         GISMO_ASSERT( m*n <= index_t(v.size()), "Not enough coefficients in vector to map." ); 
     }
 
     gsAsMatrix( std::vector<T> & v)
     : Base( &v[0], 1, v.size() ) 
     {  
-        GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
+        //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
     }
 
     gsAsMatrix( T * pt, unsigned n, unsigned m)
@@ -155,14 +155,13 @@ public:
     gsAsConstMatrix( const std::vector<T> & v, index_t n, index_t m)
     : Base( &v[0], n, m)
     { 
-        GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
         GISMO_ASSERT( m*n <= index_t(v.size()), "Not enough coefficients in vector to map." ); 
     }
 
     gsAsConstMatrix( const std::vector<T> & v)
     : Base( &v[0], 1, v.size() ) 
     {  
-        GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
+        //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
     }
 
     gsAsConstMatrix( const T * pt, unsigned n, unsigned m)
@@ -240,7 +239,7 @@ public:
     gsAsVector( std::vector<T> & v)
     : Base( &v[0], v.size(), 1 ) 
     {  
-        GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
+        //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
     }
 
     gsAsVector( T * pt, unsigned n)
@@ -281,7 +280,7 @@ public:
     gsAsConstVector( const std::vector<T> & v)
     : Base( &v[0], v.size(), 1) 
     {  
-        GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
+        //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
     }
 
     gsAsConstVector( const T * pt, unsigned n)
