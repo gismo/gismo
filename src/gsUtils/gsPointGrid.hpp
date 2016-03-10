@@ -87,6 +87,7 @@ typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a,
     gsGridIterator<T,CUBE> pt(a, b, np.cast<index_t>());
     for(index_t c = 0; pt; ++pt, ++c)
         res->col(c) = *pt;
+    return gsMatrix<T>::uPt(res);
 }
 
 template<typename T>
