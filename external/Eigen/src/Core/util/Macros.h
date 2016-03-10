@@ -299,17 +299,8 @@
 #else
   #define EIGEN_OS_SOLARIS 0
 #endif
-
-
-#if EIGEN_GNUC_AT_MOST(4,3) && !defined(__clang__)
-  // see bug 89
-  #define EIGEN_SAFE_TO_USE_STANDARD_ASSERT_MACRO 0
-#else
-  #define EIGEN_SAFE_TO_USE_STANDARD_ASSERT_MACRO 1
-#endif
-
 //*/
-//G+Smo : Only the following macro is needed:
+//G+Smo : Only the following macros are needed:
 #ifdef __GNUC__
   #define EIGEN_GNUC_AT_LEAST(x,y) ((__GNUC__==x && __GNUC_MINOR__>=y) || __GNUC__>x)
   #define EIGEN_GNUC_AT_MOST(x,y)  ((__GNUC__==x && __GNUC_MINOR__<=y) || __GNUC__<x)
@@ -320,6 +311,13 @@
 //  #define EIGEN_GNUC_AT(x,y)       0
 #endif
 
+#if EIGEN_GNUC_AT_MOST(4,3) && !defined(__clang__)
+  // see bug 89
+  #define EIGEN_SAFE_TO_USE_STANDARD_ASSERT_MACRO 0
+#else
+  #define EIGEN_SAFE_TO_USE_STANDARD_ASSERT_MACRO 1
+#endif
+//end G+Smo
 
 
 // 16 byte alignment is only useful for vectorization. Since it affects the ABI, we need to enable
