@@ -226,11 +226,12 @@ private:
    \tparam T coefficient type
    \ingroup Matrix
  */
-template<class T, int _Rows=Dynamic>
-class gsAsVector : public Eigen::Map< Eigen::Matrix<T,_Rows,1> >
+template<class T, int _Rows>
+class gsAsVector : public gsAsMatrix<T,_Rows,(_Rows==1?1:0)>
 {
 public:
-    typedef Eigen::Map< Eigen::Matrix<T,_Rows,1> > Base;
+    //typedef Eigen::Map< Eigen::Matrix<T,_Rows,1> > Base;
+    typedef gsAsMatrix<T,_Rows,(_Rows==1?1:0)> Base;
 
     // Type for treating a vector as a permutation matrix
     typedef Eigen::PermutationMatrix<_Rows> Permutation;
@@ -243,7 +244,7 @@ public:
     }
 
     gsAsVector( T * pt, unsigned n)
-    : Base( pt, n) {  }
+    : Base( pt, n, 1) {  }
 
 #ifdef _MSC_VER
     template <class EigenExpr>
@@ -269,12 +270,13 @@ private:
    \tparam T coefficient type
    \ingroup Matrix
  */
-template<class T, int _Rows=Dynamic>
-class gsAsConstVector : public Eigen::Map< const Eigen::Matrix<T,_Rows,1> >
+template<class T, int _Rows>
+class gsAsConstVector : public gsAsConstMatrix<T,_Rows,(_Rows==1?1:0)>
 {
 public:
-    typedef Eigen::Map<const Eigen::Matrix<T,_Rows,1> > Base;
+    //typedef Eigen::Map<const Eigen::Matrix<T,_Rows,1> > Base;
 
+    typedef gsAsConstMatrix<T,_Rows,(_Rows==1?1:0)> Base;
 public:
 
     gsAsConstVector( const std::vector<T> & v)

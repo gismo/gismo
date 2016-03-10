@@ -816,7 +816,7 @@ void JacobiSVD<MatrixType, QRPreconditioner>::allocate(Index rows, Index cols, u
   
   if(m_cols>m_rows)   m_qr_precond_morecols.allocate(*this);
   if(m_rows>m_cols)   m_qr_precond_morerows.allocate(*this);
-  if(m_cols!=m_cols)  m_scaledMatrix.resize(rows,cols);
+  if(m_rows!=m_cols)  m_scaledMatrix.resize(rows,cols);
 }
 
 template<typename MatrixType, int QRPreconditioner>
@@ -872,7 +872,7 @@ JacobiSVD<MatrixType, QRPreconditioner>::compute(const MatrixType& matrix, unsig
         // if this 2x2 sub-matrix is not diagonal already...
         // notice that this comparison will evaluate to false if any NaN is involved, ensuring that NaN's don't
         // keep us iterating forever. Similarly, small denormal numbers are considered zero.
-        using std::max;
+        using std::max; // G+Smo (mpq_class)
         RealScalar threshold = max(considerAsZero, precision * (max)(abs(m_workMatrix.coeff(p,p)),
                                                                        abs(m_workMatrix.coeff(q,q))));
         // We compare both values to threshold instead of calling max to be robust to NaN (See bug 791)

@@ -65,10 +65,10 @@ MatrixBase<Derived>::dot(const MatrixBase<OtherDerived>& other) const
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(OtherDerived)
   EIGEN_STATIC_ASSERT_SAME_VECTOR_SIZE(Derived,OtherDerived)
-  // G+Smo: warning
-  //typedef internal::scalar_conj_product_op<Scalar,typename OtherDerived::Scalar> func;
-  //EIGEN_CHECK_BINARY_COMPATIBILIY(func,Scalar,typename OtherDerived::Scalar);
-
+#if !(defined(EIGEN_NO_STATIC_ASSERT) && defined(EIGEN_NO_DEBUG)) // G+Smo: warning fix
+  typedef internal::scalar_conj_product_op<Scalar,typename OtherDerived::Scalar> func;
+  EIGEN_CHECK_BINARY_COMPATIBILIY(func,Scalar,typename OtherDerived::Scalar);
+#endif
   eigen_assert(size() == other.size());
 
   return internal::dot_nocheck<Derived,OtherDerived>::run(*this, other);
