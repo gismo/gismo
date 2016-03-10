@@ -124,7 +124,7 @@ public:
         GISMO_ASSERT(a.rows() == b.rows(), "Invalid endpoint dimensions");
         m_low = m_cur = a;
         if (open) m_upp = b.array() - 1; else m_upp = b;
-        m_valid = ( (m_low.array() <= m_upp.array()).all() ? a.rows() : 0 );
+        m_valid = ( (m_low.array() <= m_upp.array()).all() ? true : false );
     }
 
     /**
