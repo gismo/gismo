@@ -1,6 +1,6 @@
 /** @file gsPointGrid.h
 
-    @brief Provides functions to generate and iterate over structured point data
+    @brief Provides functions to generate structured point data
 
     This file is part of the G+Smo library. 
 
@@ -14,92 +14,14 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsTensor/gsGridIterator.h>
 
 namespace gismo {
 
-/** @brief Construct a grid of points in a hypercube, using <em>np[i]</em> points in direction \em i.
-*
-* The hypercube is defined by its lower corner \f$a = (a_1,\ldots,a_d)\f$ and
-* the upper corner \f$b = (b_1,\ldots,b_d)\f$, i.e.,
-* the hypercube is \f$ \mathsf{X}_{i=1}^d [a_i,b_i] \f$.
-*
-* \param a gsVector of length \em d, lower corner of the hypercube: \f$a = (a_1,\ldots,a_d)\f$
-* \param b gsVector of length \em d, upper corner of the hypercube: \f$b = (b_1,\ldots,b_d)\f$
-* \param np gsVector of length \em d, indicating number of grid points in each coordinate direction
-*
-* \returns gsMatrix::uPtr with size \f$ d \times \prod_{i=1}^d np[i]\f$.
-*
-* \ingroup Utils
-*/
-template<class T>
-typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, gsVector<T> const & b, 
-                                        gsVector<unsigned> const & np );
 
+/* **************** Utility functions **************** */
 
-/// Construct a grid of points by coordinate vectors in the container cwise
-template<class T>
-inline typename gsMatrix<T>::uPtr gsPointGrid( std::vector< gsVector<T>* > const & cwise)
-{
-  gsMatrix<T> * res = new gsMatrix<T>;
-  gsPointGrid(cwise, *res);
-  return typename gsMatrix<T>::uPtr( res );
-}
-
-/// Construct a grid of points by coordinate vectors in the container cwise
-template<class T>
-inline typename gsMatrix<T>::uPtr gsPointGrid( std::vector< gsVector<T> > const & cwise)
-{
-  gsMatrix<T> * res = new gsMatrix<T>;
-  gsPointGrid(cwise, *res);
-  return typename gsMatrix<T>::uPtr( res );
-}
-
-/// Construct a grid of points by coordinate vectors in the container
-/// cwise, use out argument res
-template<class T>
-void gsPointGrid( std::vector< gsVector<T>* > const & cwise, gsMatrix<T>& res);
-
-/// Construct a grid of points by coordinate vectors in the container
-/// cwise, use out argument res
-template<class T>
-void gsPointGrid( std::vector< gsVector<T> > const & cwise, gsMatrix<T>& res);
-
-/// Compute the tensor product of the vectors in \a cwise and store it
-/// in lexicographic order into the vector \a res
-/// \todo move to gsTensorTools
-///
-/// 
-template<class T>
-void tensorProduct( std::vector< gsVector<T>* > const & cwise, gsVector<T>& res);
-
-/// Specialization of the arguments for the 1D case
-template<class T> inline
-typename gsMatrix<T>::uPtr gsPointGrid( T const & t1, T const & t2, unsigned const & n = 100)
-{
-    gsVector<T> a(1) ; 
-    gsVector<T> b(1) ;
-    gsVector<unsigned> np(1);
-    a<< t1;
-    b<< t2;
-    np<< n;
-    return gsPointGrid(a,b,np);
-}
-
-/// Approximately uniformly spaced grid in every direction, with
-/// approximately numPoints total points
-template<typename T>
-typename gsMatrix<T>::uPtr uniformPointGrid(const gsVector<T>& lower,
-                                            const gsVector<T>& upper,
-                                            int numPoints = 1000);
-
-/// Approximately uniformly spaced grid in every direction, with
-/// approximately numPoints total points
-template<class T>
-void uniformPointGrid( gsMatrix<T> const        & box,
-                       index_t                    np,
-                       gsMatrix<T>              & result);
-
-template<typename T>
+template<typename T>  // gsMatrix<T> ab
 gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower, 
                                        const gsVector<T>& upper, 
                                        int numPoints = 1000);
@@ -107,6 +29,86 @@ gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower,
 template<typename T>
 void uniformIntervals(const gsVector<T>& lower, const gsVector<T>& upper, 
                       std::vector< std::vector<T> >& intervals, int numIntervals = 1000);
+
+
+/* **************** Uniform grids described by limits/corners **************** */
+
+
+/** @brief Construct a Cartesian grid of uniform points in a hypercube, using
+ * <em>np[i]</em> points in direction \em i.
+ *
+ * The hypercube is defined by its lower corner \f$a = (a_1,\ldots,a_d)\f$ and
+ * the upper corner \f$b = (b_1,\ldots,b_d)\f$, i.e.,
+ * the hypercube is \f$ \mathsf{X}_{i=1}^d [a_i,b_i] \f$.
+ *
+ * \param a gsVector of length \em d, lower corner of the hypercube: \f$a = (a_1,\ldots,a_d)\f$
+ * \param b gsVector of length \em d, upper corner of the hypercube: \f$b = (b_1,\ldots,b_d)\f$
+ * \param np gsVector of length \em d, indicating number of grid points in each coordinate direction
+ *
+ * \returns gsMatrix::uPtr with size \f$ d \times \prod_{i=1}^d np[i]\f$.
+ *
+ * \ingroup Utils
+ */
+template<class T>  // gsMatrix<T> ab
+typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, gsVector<T> const & b, 
+                                        gsVector<unsigned> const & np );
+
+// Specialization of the arguments for the 1D case
+template<class T> inline
+gsMatrix<T> gsPointGrid( T const & t1, T const & t2, unsigned const & n = 100)
+{
+    gsMatrix<T> ab(1,2); ab << t1, t2; 
+    return gsPointGrid(ab, n);
+}
+
+/**
+   Approximately uniformly spaced grid in every direction, with
+   approximately numPoints total points
+*/
+template<typename T>  // todo: remove, replace by next one
+typename gsMatrix<T>::uPtr uniformPointGrid(const gsVector<T>& lower, // note: structure lost
+                                            const gsVector<T>& upper,
+                                            int numPoints = 1000);
+
+/**
+   Returns an approximately uniformly spaced grid in every direction,
+   with approximately numPoints total points. 
+
+   Each column of the result correspond to a point.
+*/
+template<class T> inline
+gsMatrix<T> gsPointGrid(gsMatrix<T> const & ab, int numPoints)
+{   // Note: structure lost
+    gsGridIterator<T,CUBE> pt(ab,numPoints);
+    gsMatrix<T> rvo(ab.rows(), pt.numPoints() );
+    for(index_t c = 0; pt; ++pt, ++c)
+        rvo.col(c) = *pt;
+    return rvo;
+}
+
+
+/* **************** Cartesian grids **************** */
+
+
+/// Construct a grid of points by coordinate vectors in the container
+/// cwise, use out argument res
+template<class T, class CwiseContainer> inline
+void gsPointGrid(CwiseContainer const & cwise, gsMatrix<T>& res)
+{
+    gsGridIterator<T,CWISE> pt(cwise);
+    res.resize(cwise.size(), pt.numPoints() );
+    for(index_t c = 0; pt; ++pt, ++c)
+        res.col(c) = *pt;
+}
+
+/// Construct a grid of points by coordinate vectors in the container cwise
+template<class CwiseContainer> inline
+gsMatrix<real_t> gsPointGrid(CwiseContainer const & cwise)
+{
+    gsMatrix<real_t> rvo;
+    gsPointGrid(cwise, rvo);
+    return rvo;
+}
 
 
 } // namespace gismo
