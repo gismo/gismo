@@ -97,7 +97,8 @@ public:
     }
 
     /// Returns the number of elements in the basis
-    int size() const {
+    index_t size() const 
+    {
         unsigned r=1;
         for (unsigned i = 0; i < d; ++i)
             r *= m_bases[i]->size();

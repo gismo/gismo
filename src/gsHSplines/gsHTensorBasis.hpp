@@ -632,7 +632,7 @@ void gsHTensorBasis<d,T>::setActive()
 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::setActiveToLvl(int level, 
-                                         std::vector<gsSortedVector<unsigned> >& x_matrix_lvl)
+                                         std::vector<CMatrix> & x_matrix_lvl)
 {
     x_matrix_lvl.resize(level+1);
 

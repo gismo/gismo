@@ -31,16 +31,16 @@ namespace gismo
 
     \ingroup Matrix
 */
-template<class T, int _Rows>
-class gsVector : public gsMatrix<T, _Rows, 1, ColMajor>
-//class gsVector : public gsMatrix<T, _Rows, (_Rows!=-1 ? 1 : -1), ColMajor>
+template<class T, int _Rows, int _Options>
+class gsVector : public gsMatrix<T, _Rows, 1, _Options>
+//class gsVector : public gsMatrix<T, _Rows, (_Rows!=-1 ? 1 : -1), _Options>
 {
 public:
+    typedef gsMatrix<T,_Rows,1,_Options> gsBase;
+    //typedef gsMatrix<T,_Rows,(_Rows!=-1 ? 1 : -1), _Options> gsBase;
+    
     // Base is the single-column dense matrix class of Eigen
-    typedef typename gsMatrix<T,_Rows,1,ColMajor>::Base Base;
-
-    // The vector didectly inherits from gsMatrix
-    typedef gsMatrix<T,_Rows,1,ColMajor> gsBase;
+    typedef typename gsBase::Base Base;
 
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
@@ -253,34 +253,18 @@ public:
 }; // class gsVector3d
 
 
+template<class T, int _Rows, int _Options> inline
+gsVector<T,_Rows,_Options>::gsVector() : gsBase() { }
 
+template<class T, int _Rows, int _Options> inline
+gsVector<T,_Rows,_Options>::gsVector(const Base& a): gsBase(a) { }
 
-////////////////////////////////////////////////
-////////////////////////////////////////////////
+template<class T, int _Rows, int _Options> inline
+gsVector<T,_Rows,_Options>::gsVector(int dimension): gsBase(dimension,1) { }
 
-
-
-
-
-template<class T, int _Rows> inline
-gsVector<T,_Rows>::gsVector() : gsBase() { }
-
-template<class T, int _Rows> inline
-gsVector<T,_Rows>::gsVector(const Base& a): gsBase(a) { }
-
-template<class T, int _Rows> inline
-gsVector<T,_Rows>::gsVector(int dimension): gsBase(dimension,1) { }
-
-template<class T, int _Rows> inline
-gsVector<T,_Rows>::~gsVector () { }
+template<class T, int _Rows, int _Options> inline
+gsVector<T,_Rows,_Options>::~gsVector () { }
     
-// template<class T, int _Rows> inline
-// template<typename OtherDerived>
-// gsVector<T,_Rows>::gsVector(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
-    
-
-
-
 
 
 template<class T> inline

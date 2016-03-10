@@ -33,7 +33,7 @@ namespace gismo
 
     \enum gsNeedEnum
     
-    \ingroup Core
+    \ingroup enums
 */
 enum gsNeedEnum
 {
@@ -223,11 +223,13 @@ template<class T = real_t> struct gsFieldCreator;
 
 template<class T = real_t, int _Rows=-1, int _Cols=-1, 
          int _Options  = 0 | ( (_Rows==1 && _Cols!=1) ? 0x1 : 0 ) > class gsMatrix;
+template<class T = real_t, int _Rows=-1, int _Options = 0> class gsVector;
 
 template<class T= real_t, int _Rows=-1, int _Cols=-1> class gsAsConstMatrix;
 template<class T= real_t, int _Rows=-1, int _Cols=-1> class gsAsMatrix;
 
-template<class T = real_t, int _Rows=-1> class gsVector;
+template<class T= real_t, int _Rows=-1> class gsAsVector;
+template<class T= real_t, int _Rows=-1> class gsAsConstVector;
 
 template<class T = real_t> class gsVector3d;
 

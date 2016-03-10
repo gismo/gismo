@@ -1,4 +1,4 @@
-/** @file gsIntegerGridIterator.h
+/** @file gsGridIterator.h
 
     @brief Provides iteration over integer or numeric points in a (hyper-)cube
 
@@ -18,15 +18,17 @@ namespace gismo
 {
 
 /**
-   \brief Specifies aliases describing the modes for gsGridIterator
+   \brief Specifies aliases describing the modes for gismo::gsGridIterator
+
+   \ingroup enums
 */
-    enum gsGridIteratorMode
-    {
-        CUBE   = 0, ///< Cube mode iterates over all lattice points inside a cube
-        BDR    = 1, ///< Boundary mode iterates over boundary lattice points only
-        VERTEX = 2, ///< Vertex mode iterates over cube vertices only
-        CWISE  = 3  ///< Coordinate-wise mode iterates over a grid given by coordinate vectors
-    };
+enum gsGridIteratorMode
+{
+    CUBE   = 0, ///< Cube mode iterates over all lattice points inside a cube
+    BDR    = 1, ///< Boundary mode iterates over boundary lattice points only
+    VERTEX = 2, ///< Vertex mode iterates over cube vertices only
+    CWISE  = 3  ///< Coordinate-wise mode iterates over a grid given by coordinate vectors
+};
     
 // note: default arguments are found in gsForwardDeclarations.h
 template<typename Z, int mode, int d, bool> class gsGridIterator
@@ -75,7 +77,7 @@ public:
 
     /**
        \brief Empty constructor
-     */
+    */
     gsGridIterator()
     {
         GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,INCONSISTENT_INSTANTIZATION);
@@ -88,7 +90,7 @@ public:
        \param a lower limit (vertex of a cube)
        \param b upper limit (vertex of a cube)
        \param open if true, the iteration is performed for the points in $[a_i,b_i)$
-     */
+    */
     gsGridIterator(point const & a, point const & b, bool open = true)
     { reset(a, b, open); }
 
@@ -97,7 +99,7 @@ public:
 
        \param b upper limit (vertex of a cube)
        \param open if true, the iteration is performed for the points in $[0,b_i)$
-     */
+    */
     explicit gsGridIterator(point const & b, bool open = true)
     { reset(point::Zero(b.size()), b, open); }
 
@@ -106,7 +108,7 @@ public:
 
        \param ab Matrix with two columns, corresponding to lower and upper limits
        \param open if true, the iteration is performed for the points in $[a_i,b_i)$
-     */
+    */
     explicit gsGridIterator(gsMatrix<Z,d,2> const & ab, bool open = true)
     { reset(ab.col(0), ab.col(1), open); }
 
@@ -116,27 +118,27 @@ public:
        \param a lower limit (vertex of a cube)
        \param b upper limit (vertex of a cube)
        \param open if true, the iteration is performed for the points in $[a_i,b_i)$
-     */    
+    */    
     inline void reset(point const & a, point const & b, bool open = true)
     {
         GISMO_ASSERT(a.rows() == b.rows(), "Invalid endpoint dimensions");
         m_low = m_cur = a;
         if (open) m_upp = b.array() - 1; else m_upp = b;
-        m_dim = ( (m_low.array() <= m_upp.array()).all() ? a.rows() : 0 );
+        m_valid = ( (m_low.array() <= m_upp.array()).all() ? true : false );
     }
 
     /**
        \brief Resets the iterator, so that a new iteration over the
        points may start
-     */
+    */
     void reset() { reset(m_low,m_upp, false); }
 
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
+    //EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
 
 public:
 
-    operator bool() const {return 0!=m_dim;}
+    operator bool() const {return m_valid;}
     
     const point & operator*() const {return m_cur;}
 
@@ -149,7 +151,7 @@ public:
         {
         case 0: // ----------- Iteration over [m_low, m_upp]
         case 2: // iteration over vertices of the cube [m_low, m_upp]
-            for (int i = 0; i != (d==-1?m_dim:d); ++i)
+            for (index_t i = 0; i != m_cur.size(); ++i)
                 if ( m_cur[i] != m_upp[i] )
                 {
                     if (0==mode) ++m_cur[i]; else m_cur[i] = m_upp[i];
@@ -157,18 +159,18 @@ public:
                 }
                 else
                     m_cur[i] = m_low[i];
-            m_dim = 0;//done
+            m_valid = 0;//done
             return *this;
 
         case 1: // ----------- Iteration over boundary of [m_low, m_upp]
-            for (int i = 0; i != (d==-1?m_dim:d); ++i)
+            for (index_t i = 0; i != m_cur.size(); ++i)
             {        
                 if ( m_cur[i] != m_upp[i] )
                 {
-                    if ( m_cur[i] == m_low[i] && (i+1!=m_dim || m_dim==1) )
+                    if ( m_cur[i] == m_low[i] && (i+1!=m_cur.size() || 1==m_cur.size()) )
                     {
-                        int c = i+1;
-                        for (int j = c; j!=(d==-1?m_dim:d); ++j)
+                        index_t c = i+1;
+                        for (index_t j = c; j!=m_cur.size(); ++j)
                             if ( (m_cur[j] == m_low[j]) || 
                                  (m_cur[j] == m_upp[j]) )
                                 ++c;
@@ -187,25 +189,25 @@ public:
             }
             /*fall through to default*/
         default:
-            m_dim = 0;//done
+            m_valid = 0;//done
             return *this;
         }
     }
 
     /**
        \brief Returns true if the \a i-th coordinate has minimal value
-     */
+    */
     inline bool isFloor(int i) const { return m_cur[i] == m_low[i];}
 
     /**
        \brief Returns true if the \a i-th coordinate has maximal value
-     */
+    */
     inline bool isCeil (int i) const
     { return mode ? m_cur[i] == m_upp[i] : m_cur[i] + 1 == m_upp[i];}
 
     /**
        \brief Returns true if the current point lies on a boundary
-     */
+    */
     bool isBoundary() const
     {
         return (m_cur.array() == m_low.array()).any() ||
@@ -214,7 +216,7 @@ public:
 
     /**
        \brief Returns the total number of points that are iterated
-     */
+    */
     index_t numPoints() const
     {
         switch (mode)
@@ -245,12 +247,18 @@ public:
     /**
        \brief Utility function which returns the vector of strides
 
-       \return An integer vector (stride vector) with the property
-       that when we add it to *this we obtain the next point to be
-       iterated. Moreover, the dot product of (*this - this->lower())
-       with the stride vector results in the "flat index", i.e. the
-       lexicographic index of the point
+       \return An integer vector (stride vector). the entry \f$s_i\f$
+       implies that the current \f$i\f$-th coordinate of the iterated
+       point will appear again after \f$s_i\f$ increments.  Moreover,
+       the dot product of (*this - this->lower()) with the stride
+       vector results in the "flat index", i.e. the cardinal index of
+       the point in the iteration sequence.
 
+       If the iteration starts from the point zero
+       (this->lower()==zero), then the stride vector has the property
+       that that when we add it to *this we obtain the next point in
+       the iteration sequence. In this case the flat index is obtained
+       by taking the dot product with *this.
     */
     point strides() const
     {
@@ -264,8 +272,8 @@ public:
 private:
     
     point m_low, m_upp; ///< Iteration lower and upper limits
-    point  m_cur;       ///< Current point pointed at by the iterator
-    int m_dim;          ///< Dimension (number of rows) of the iterated points
+    point m_cur;        ///< Current point pointed at by the iterator
+    bool  m_valid;      ///< Indicates the state of the iterator
 };
 
 
@@ -342,9 +350,9 @@ public:
         reset(ab.col(0), ab.col(1));
     }
 
-        /**
+    /**
        \brief Constructor using lower and upper limits
-     
+       
        Uniformly sampled points will be generated. The number of the
        points is approximately \a numPoints
 
@@ -369,7 +377,7 @@ public:
     /**
        \brief Resets the iterator, so that a new iteration over the
        points may start
-     */
+    */
     void reset() { m_cur = m_low; m_iter.reset(); }
 
     /**
@@ -377,7 +385,7 @@ public:
        
        \param a lower limit (vertex of a cube)
        \param b upper limit (vertex of a cube)
-     */    
+    */    
     void reset(point const & a, 
                point const & b)
     {
@@ -389,7 +397,7 @@ public:
     }
 
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
+    //EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
 
 public:
 
@@ -417,7 +425,7 @@ public:
 
     /**
        \brief Returns true if the current point lies on a boundary
-     */
+    */
     inline bool isBoundary() const { return m_iter.isBoundary();}
 
     /**
@@ -445,6 +453,11 @@ public:
        \brief Returns the tensor index of the current point
     */
     const point_index & tensorIndex() const { return *m_iter;}
+
+    /**
+       \brief Returns the \a i-th index of the current point
+    */
+    const index_t index(const index_t i) const { return m_iter->at(i);}
 
     /**
        \brief Returns the coordinate-wise stepping between the samples
@@ -516,8 +529,8 @@ private:
 
     \ingroup Tensor
 */
-template<class T, int d>
-class gsGridIterator<T,3,d,false>
+template<class T, int d> // mode == 3 == CWISE
+class gsGridIterator<T,CWISE,d,false> 
 {
 public:
 
@@ -525,30 +538,32 @@ public:
 
     typedef typename integer_iterator::point point_index;
 
-    typedef std::vector<gsMatrix<T> > CwiseContainer;
+    typedef gsVector<const T *,d, 2> CwiseData; //non-aligned array
     
 public:
 
     /**
        \brief Constructor using references to the coordinate vectors
        
-       \param cwise A list of matrices, each containing the sample
-       points in the respective coordinate
+       \param cwise A container of matrices or vectors, each
+       containing the sample points in the respective coordinate
     */
+    template<class CwiseContainer>
     explicit gsGridIterator(const CwiseContainer & cwise)
-    : m_cwise(cwise)
+    : m_cwise(cwise.size()), m_cur(m_cwise.size(),1)
     {
-        point_index npts(cwise.size());
-        for (index_t i = 0; i != npts.rows(); ++i)
+        point_index npts(m_cwise.size());
+        for (index_t i = 0; i != npts.size(); ++i)
         {
-            npts[i] = cwise[i].size() - 1;
+            m_cwise[i] = cwise[i].data();
+            npts[i]    = cwise[i].size() - 1;
             GISMO_ASSERT(cwise[i].cols()==1 || cwise[i].rows()==1, "Invalid input");
         }
         m_iter = integer_iterator(npts, 0);
-        if (1==cwise.front().cols())
-            m_cur.derived().resize(cwise.size(),1);
-        else
-            m_cur.derived().resize(1,cwise.size());
+        //if (1==cwise.front().cols())
+        //    m_cur.derived().resize(1, npts.size());
+        //else
+        //m_cur.derived().resize(npts.size(), 1);
         update(*m_iter, m_cur);
     }
 
@@ -557,6 +572,8 @@ public:
        points may start
     */
     void reset() { m_iter.reset(); update(*m_iter, m_cur);}
+
+    //void restart() { m_iter.reset(); update(*m_iter, m_cur);}
 
 public:
 
@@ -584,7 +601,7 @@ public:
 
     /**
        \brief Returns true if the current point lies on a boundary
-     */
+    */
     inline bool isBoundary() const { return m_iter.isBoundary();}
 
     /**
@@ -602,6 +619,11 @@ public:
        \brief Returns the tensor index of the current point
     */
     const point_index & tensorIndex() const { return *m_iter;}
+
+    /**
+       \brief Returns the \a i-th index of the current point
+    */
+    const index_t index(const index_t i) const { return m_iter->at(i);}
 
     /**
        \brief Returns a reference to the underlying integer lattice
@@ -632,15 +654,15 @@ private:
     {
         pt.resizeLike(m_cur);
         for (index_t i = 0; i != pt.rows(); ++i)
-            pt.at(i) = m_cwise[i].at(ti[i]);
+            pt.at(i) = m_cwise[i][ti[i]];
     }
 
 private:
 
-    const CwiseContainer & m_cwise; ///< List of coordinate-wise values
+    CwiseData m_cwise; ///< List of coordinate-wise values
     
-    integer_iterator m_iter;        ///< Underlying integer lattice iterator
-    gsMatrix<T>      m_cur;         ///< Current point pointed at by the iterator
+    integer_iterator m_iter; ///< Underlying integer lattice iterator
+    gsMatrix<T>      m_cur;  ///< Current point pointed at by the iterator
 };
 
 

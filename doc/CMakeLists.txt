@@ -114,7 +114,7 @@ endif()
 add_custom_target(doc #ALL
   COMMAND doxygen
   WORKING_DIRECTORY ${gismo_BINARY_DIR}/doc
-  COMMENT "Generating API documentation with Doxygen" VERBATIM 
+  COMMENT "Generating doc: ${gismo_BINARY_DIR}/doc/html/index.html" VERBATIM	
 )
 
 add_custom_target(doctar #ALL

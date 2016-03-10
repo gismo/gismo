@@ -63,7 +63,7 @@ public:
     gsGenericTensorBasis( Basis_t* x,  Basis_t*  y) : Base(x,y) { }
 
     gsGenericTensorBasis( const Basis_t & x, const Basis_t & y) :
-        Base(x.clone(),y.clone()) { }
+    Base(x.clone(),y.clone()) { }
 
     gsGenericTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z ) : Base(x,y,z) { }
 
