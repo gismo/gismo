@@ -20,10 +20,11 @@ namespace internal {
 template<class Object>
 Object * getTensorBasisFromXml ( gsXmlNode * node)
 {
-    GISMO_ASSERT( !strcmp( node->name(),"Basis"), "Wrong tag name." ) ;
-    //&&  ( !strcmp(node->first_attribute("type")->value(),
-    //              internal::gsXml<Object>::type().c_str() ) ),
-    //"Reading tensor basis failed because of wrong tag name.");
+    GISMO_ASSERT( ( !strcmp( node->name(),"Basis") )
+                  &&  ( !strcmp(node->first_attribute("type")->value(),
+                                internal::gsXml<Object>::type().c_str() ) ),
+                  "Something is wrong with the XML data: There should be a node with a "
+                  <<internal::gsXml<Object>::type().c_str()<<" Basis.");
     
 	// Component container
 	std::vector<typename Object::CoordinateBasis* > bb;
@@ -37,7 +38,7 @@ Object * getTensorBasisFromXml ( gsXmlNode * node)
     }
 
     const unsigned d = Object::Dim;
-    gsXmlNode * tmp = node->first_node("Basis");       
+    gsXmlNode * tmp = node->first_node("Basis");
     if ( tmp )
     {
         for ( unsigned i = 0; i!=d; ++i)
@@ -87,7 +88,8 @@ Object * getRationalBasisFromXml ( gsXmlNode * node)
     GISMO_ASSERT( ( !strcmp( node->name(),"Basis") )
                   &&  ( !strcmp(node->first_attribute("type")->value(),
                                 internal::gsXml<Object>::type().c_str() ) ),
-                  "Something is wrong with the XML data: There should be a node with a "<<internal::gsXml<Object>::type().c_str()<<" Basis.");
+                  "Something is wrong with the XML data: There should be a node with a "
+                  <<internal::gsXml<Object>::type().c_str()<<" Basis.");
 
     // Read source basis
     gsXmlNode * tmp = node->first_node("Basis");
