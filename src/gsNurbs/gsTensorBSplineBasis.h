@@ -323,56 +323,10 @@ public:
      * knots in the underlying univariate B-spline bases).
      *
      * \ingroup Nurbs
+     *
+     *    \note: the \a refExt parameter is ignored in this implementation
      */
-    void refine( gsMatrix<T> const & boxes )
-    {
-        GISMO_ASSERT( boxes.rows() == this->dim() , 
-                      "Number of rows of refinement boxes must equal dimension of parameter space.");
-        GISMO_ASSERT( boxes.cols() % 2 == 0, 
-                      "Refinement boxes must have even number of columns.");
-
-        const T tol = 0.000000001;
-
-        // for each coordinate direction of the parameter domain:
-        for( int di = 0; di < this->dim(); di++)
-        {
-
-            // for simplicity, get the corresponding knot vector.
-            KnotVectorType kold_di = Self_t::component(di).knots();
-
-            // vector of flags for refining knotspans
-            gsVector<int> flagInsertKt( kold_di.size() );
-            flagInsertKt.setZero();
-
-            // This is a very crude and unelegant test, but
-            // conveniently straightforward to implement (and maybe to):
-            // For each knot span, check if its midpoint is
-            // contained in any of the refinement boxes.
-            // If yes, set the corresponding flag to 1.
-            for( size_t i=1; i < kold_di.size(); i++ ) // loop over spans
-                if( kold_di[i]-kold_di[i-1] > tol)  // check for empty spans
-                {
-                    T midpt = (kold_di[i] + kold_di[i-1])/2; // midpoint of knot span
-                    for( index_t j=0; j < boxes.cols(); j+=2 ) // loop over all boxes
-                    {
-                        if( boxes(di,j) < midpt && midpt < boxes(di,j+1) )
-                            flagInsertKt[i] = 1; // if the box contains the midpoint, mark it
-                    }
-                }
-
-            // now, with the flags set, loop over all knots spans and
-            // insert midpoint in each knot span which is marked for refinement.
-            for( size_t i=1; i < kold_di.size(); i++ )
-                if( flagInsertKt[i] == 1)
-                {
-                    T midpt = (kold_di[i] + kold_di[i-1])/2;
-                    Self_t::component(di).insertKnot( midpt );
-                }
-
-        } // for( int di )
-
-
-    } // refine()
+    void refine( gsMatrix<T> const & boxes, int refExt = 0);
 
     GISMO_MAKE_GEOMETRY_NEW
 
@@ -528,12 +482,9 @@ protected:
 #elif __cplusplus > 199711L
 namespace gismo 
 {
-extern template class gsTensorBSplineBasis<2,real_t,gsKnotVector<real_t> >;
-extern template class gsTensorBSplineBasis<3,real_t,gsKnotVector<real_t> >;
-extern template class gsTensorBSplineBasis<4,real_t,gsKnotVector<real_t> >;
-extern template class gsTensorBSplineBasis<2,real_t,gsCompactKnotVector<real_t> >;
-extern template class gsTensorBSplineBasis<3,real_t,gsCompactKnotVector<real_t> >;
-extern template class gsTensorBSplineBasis<4,real_t,gsCompactKnotVector<real_t> >;
+EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<2,real_t>;
+EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<3,real_t>;
+EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<4,real_t>;
 }
 //*/
 #endif

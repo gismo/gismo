@@ -437,10 +437,6 @@ gsBasis<T>& gsBasis<T>::component(unsigned i)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::refine(gsMatrix<T> const & boxes)
-{ GISMO_NO_IMPLEMENTATION }
-
-template<class T>
 void gsBasis<T>::refine(gsMatrix<T> const & boxes, int refExt)
 { GISMO_NO_IMPLEMENTATION }
 

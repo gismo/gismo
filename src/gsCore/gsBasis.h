@@ -754,18 +754,13 @@ public:
      \end{array} \right] \f]
      * results in refinement of the two boxes
      * \f$[0,0.2]\times[0.4,0.6]\f$ and \f$[0.8,1]\times[0.2,0.4]\f$.
+     *
      * \param[in] boxes gsMatrix of size <em>d</em> x <em>n</em>, see above
      * for description of size and meaning.
-     */
-    virtual void refine(gsMatrix<T> const & boxes);
-
-    /** @brief Refine the basis to levels and in the areas defined by
-     * \a boxes with an extension.
      *
-     * As of now (03.Oct.2014), only used for hierarchical
-     * tensor basis. See gsHTensorBasis for detailed documentation.
+     * \param[in] refExt Extension to be applied to the refinement boxes
      */
-    virtual void refine(gsMatrix<T> const & boxes, int refExt);
+    virtual void refine(gsMatrix<T> const & boxes, int refExt = 0);
 
     /** @brief Refinement function, with different sytax for different basis.
      *
