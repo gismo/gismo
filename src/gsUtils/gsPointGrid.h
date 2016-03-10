@@ -17,12 +17,20 @@
 
 namespace gismo {
 
-/// @brief Construct a grid of points in the rectangle [a,b] using np[i] points in direction i
-/// \param a
-/// \param b
-/// \param np
-///
-/// \ingroup Utils
+/** @brief Construct a grid of points in a hypercube, using <em>np[i]</em> points in direction \em i.
+*
+* The hypercube is defined by its lower corner \f$a = (a_1,\ldots,a_d)\f$ and
+* the upper corner \f$b = (b_1,\ldots,b_d)\f$, i.e.,
+* the hypercube is \f$ \mathsf{X}_{i=1}^d [a_i,b_i] \f$.
+*
+* \param a gsVector of length \em d, lower corner of the hypercube: \f$a = (a_1,\ldots,a_d)\f$
+* \param b gsVector of length \em d, upper corner of the hypercube: \f$b = (b_1,\ldots,b_d)\f$
+* \param np gsVector of length \em d, indicating number of grid points in each coordinate direction
+*
+* \returns gsMatrix::uPtr with size \f$ d \times \prod_{i=1}^d np[i]\f$.
+*
+* \ingroup Utils
+*/
 template<class T>
 typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, gsVector<T> const & b, 
                                         gsVector<unsigned> const & np );
