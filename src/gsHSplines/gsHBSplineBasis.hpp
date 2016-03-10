@@ -197,7 +197,7 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
     gsSparseMatrix<T,RowMajor> transfer;
     std::vector<std::vector<T> > knots(d);
 
-    std::vector<gsSortedVector<unsigned> > xmatLvl_i, xmatLvl_i1;
+    std::vector<CMatrix> xmatLvl_i, xmatLvl_i1;
 
     this->setActiveToLvl(0, xmatLvl_i );
 

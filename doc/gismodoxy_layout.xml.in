@@ -24,6 +24,7 @@
       <tab type="user" url="@ref function" title="Functions hierarchy"/>
       <tab type="user" url="@ref pdeclass" title="PDE group"/>
       <tab type="user" url="@ref combinatorics" title="Combinatorics group"/>
+      <tab type="user" url="@ref enum" title="Enumerations used"/>
     </tab>
     
     <tab type="classlist" visible="yes" title="" intro=""/>

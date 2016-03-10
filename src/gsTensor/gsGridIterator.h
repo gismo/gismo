@@ -19,6 +19,8 @@ namespace gismo
 
 /**
    \brief Specifies aliases describing the modes for gismo::gsGridIterator
+
+   \ingroup enums
 */
 enum gsGridIteratorMode
 {
@@ -122,7 +124,7 @@ public:
         GISMO_ASSERT(a.rows() == b.rows(), "Invalid endpoint dimensions");
         m_low = m_cur = a;
         if (open) m_upp = b.array() - 1; else m_upp = b;
-        m_dim = ( (m_low.array() <= m_upp.array()).all() ? a.rows() : 0 );
+        m_valid = ( (m_low.array() <= m_upp.array()).all() ? a.rows() : 0 );
     }
 
     /**
@@ -132,11 +134,11 @@ public:
     void reset() { reset(m_low,m_upp, false); }
 
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
+    //EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
 
 public:
 
-    operator bool() const {return 0!=m_dim;}
+    operator bool() const {return m_valid;}
     
     const point & operator*() const {return m_cur;}
 
@@ -149,7 +151,7 @@ public:
         {
         case 0: // ----------- Iteration over [m_low, m_upp]
         case 2: // iteration over vertices of the cube [m_low, m_upp]
-            for (int i = 0; i != (d==-1?m_dim:d); ++i)
+            for (index_t i = 0; i != m_cur.size(); ++i)
                 if ( m_cur[i] != m_upp[i] )
                 {
                     if (0==mode) ++m_cur[i]; else m_cur[i] = m_upp[i];
@@ -157,18 +159,18 @@ public:
                 }
                 else
                     m_cur[i] = m_low[i];
-            m_dim = 0;//done
+            m_valid = 0;//done
             return *this;
 
         case 1: // ----------- Iteration over boundary of [m_low, m_upp]
-            for (int i = 0; i != (d==-1?m_dim:d); ++i)
+            for (index_t i = 0; i != m_cur.size(); ++i)
             {        
                 if ( m_cur[i] != m_upp[i] )
                 {
-                    if ( m_cur[i] == m_low[i] && (i+1!=m_dim || m_dim==1) )
+                    if ( m_cur[i] == m_low[i] && (i+1!=m_cur.size() || 1==m_cur.size()) )
                     {
-                        int c = i+1;
-                        for (int j = c; j!=(d==-1?m_dim:d); ++j)
+                        index_t c = i+1;
+                        for (index_t j = c; j!=m_cur.size(); ++j)
                             if ( (m_cur[j] == m_low[j]) || 
                                  (m_cur[j] == m_upp[j]) )
                                 ++c;
@@ -187,7 +189,7 @@ public:
             }
             /*fall through to default*/
         default:
-            m_dim = 0;//done
+            m_valid = 0;//done
             return *this;
         }
     }
@@ -270,8 +272,8 @@ public:
 private:
     
     point m_low, m_upp; ///< Iteration lower and upper limits
-    point  m_cur;       ///< Current point pointed at by the iterator
-    int m_dim;          ///< Dimension (number of rows) of the iterated points
+    point m_cur;        ///< Current point pointed at by the iterator
+    bool  m_valid;      ///< Indicates the state of the iterator
 };
 
 
@@ -395,7 +397,7 @@ public:
     }
 
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
+    //EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
 
 public:
 
@@ -451,6 +453,11 @@ public:
        \brief Returns the tensor index of the current point
     */
     const point_index & tensorIndex() const { return *m_iter;}
+
+    /**
+       \brief Returns the \a i-th index of the current point
+    */
+    const index_t index(const index_t i) const { return m_iter->at(i);}
 
     /**
        \brief Returns the coordinate-wise stepping between the samples
@@ -531,30 +538,32 @@ public:
 
     typedef typename integer_iterator::point point_index;
 
-    typedef std::vector<gsMatrix<T> > CwiseContainer;
+    typedef gsVector<const T *,d, 2> CwiseData; //non-aligned array
     
 public:
 
     /**
        \brief Constructor using references to the coordinate vectors
        
-       \param cwise A list of matrices, each containing the sample
-       points in the respective coordinate
+       \param cwise A container of matrices or vectors, each
+       containing the sample points in the respective coordinate
     */
+    template<class CwiseContainer>
     explicit gsGridIterator(const CwiseContainer & cwise)
-    : m_cwise(cwise)
+    : m_cwise(cwise.size()), m_cur(m_cwise.size(),1)
     {
-        point_index npts(cwise.size());
-        for (index_t i = 0; i != npts.rows(); ++i)
+        point_index npts(m_cwise.size());
+        for (index_t i = 0; i != npts.size(); ++i)
         {
-            npts[i] = cwise[i].size() - 1;
+            m_cwise[i] = cwise[i].data();
+            npts[i]    = cwise[i].size() - 1;
             GISMO_ASSERT(cwise[i].cols()==1 || cwise[i].rows()==1, "Invalid input");
         }
         m_iter = integer_iterator(npts, 0);
-        if (1==cwise.front().cols())
-            m_cur.derived().resize(cwise.size(),1);
-        else
-            m_cur.derived().resize(1,cwise.size());
+        //if (1==cwise.front().cols())
+        //    m_cur.derived().resize(1, npts.size());
+        //else
+        //m_cur.derived().resize(npts.size(), 1);
         update(*m_iter, m_cur);
     }
 
@@ -563,6 +572,8 @@ public:
        points may start
     */
     void reset() { m_iter.reset(); update(*m_iter, m_cur);}
+
+    //void restart() { m_iter.reset(); update(*m_iter, m_cur);}
 
 public:
 
@@ -610,6 +621,11 @@ public:
     const point_index & tensorIndex() const { return *m_iter;}
 
     /**
+       \brief Returns the \a i-th index of the current point
+    */
+    const index_t index(const index_t i) const { return m_iter->at(i);}
+
+    /**
        \brief Returns a reference to the underlying integer lattice
        iterator
     */    
@@ -638,15 +654,15 @@ private:
     {
         pt.resizeLike(m_cur);
         for (index_t i = 0; i != pt.rows(); ++i)
-            pt.at(i) = m_cwise[i].at(ti[i]);
+            pt.at(i) = m_cwise[i][ti[i]];
     }
 
 private:
 
-    const CwiseContainer & m_cwise; ///< List of coordinate-wise values
+    CwiseData m_cwise; ///< List of coordinate-wise values
     
-    integer_iterator m_iter;        ///< Underlying integer lattice iterator
-    gsMatrix<T>      m_cur;         ///< Current point pointed at by the iterator
+    integer_iterator m_iter; ///< Underlying integer lattice iterator
+    gsMatrix<T>      m_cur;  ///< Current point pointed at by the iterator
 };
 
 

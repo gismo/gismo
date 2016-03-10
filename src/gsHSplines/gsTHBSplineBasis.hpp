@@ -1529,11 +1529,10 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
         // T_0_copy.uniformRefine_withTransfer(transfer[i], 1);
     }
     std::vector< gsSparseMatrix<T,RowMajor> > temp_transf;
-    for(unsigned j = 0; j < this->maxLevel();j++)
+    for(unsigned j = 0; j < this->maxLevel(); ++j)
     {
-        std::vector<gsSortedVector<unsigned> >x_mat_old_0;
+        std::vector<CMatrix> x_mat_old_0, x_matrix_lvl;
         this->setActiveToLvl(j,x_mat_old_0);
-        std::vector<gsSortedVector<unsigned> > x_matrix_lvl;
         this->setActiveToLvl(j+1,x_matrix_lvl);
         temp_transf.push_back(transfer[j]);
 
@@ -1546,7 +1545,7 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsMatrix<T> >& result)
 template<unsigned d, class T>
 gsMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer)
 {
-    int size1= 0;int size2 = 0;
+    int size1= 0, size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
     for(unsigned int i =0; i< old.size();i++)
     {//count the number of basis functions in old basis

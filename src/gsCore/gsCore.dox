@@ -48,6 +48,14 @@ See \ref geometry and \ref basis.
 
 */
 
+/**
+  \defgroup enum Enumeration declarations
+
+  @brief This group collects the enumeration declarations used in \gismo
+
+  \anchor enum_decl
+*/
+
 
 /**
   \defgroup geometry Geometries hierarchy
