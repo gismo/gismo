@@ -200,6 +200,24 @@ public:
 
     static Object * get (gsXmlNode * node)
     {
+        if (d>1)
+        {
+        GISMO_ASSERT( ( !strcmp( node->name(),"Basis") )
+                      &&  ( !strcmp(node->first_attribute("type")->value(),
+                                    internal::gsXml<Object>::type().c_str() ) ),
+                      "Something is wrong with the XML data: There should be a node with a "
+                      <<internal::gsXml<Object>::type().c_str()<<" Basis.");
+        }
+        else
+        {
+            GISMO_ASSERT( ( !strcmp( node->name(),"Basis") )
+                          &&  ( !strcmp(node->first_attribute("type")->value(),
+                                        internal::gsXml<Object>::type().c_str())
+                                ||  !strcmp(node->first_attribute("type")->value(), "BSplineBasis") ),
+                          "Something is wrong with the XML data: There should be a node with a "
+                          <<internal::gsXml<Object>::type().c_str()<<" Basis.");
+        }
+
         return getTensorBasisFromXml<Object >( node );
     }
     
