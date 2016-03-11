@@ -457,7 +457,7 @@ public:
     /**
        \brief Returns the \a i-th index of the current point
     */
-    const index_t index(const index_t i) const { return m_iter->at(i);}
+    index_t index(const index_t i) const { return m_iter->at(i);}
 
     /**
        \brief Returns the coordinate-wise stepping between the samples
@@ -638,7 +638,7 @@ public:
     /**
        \brief Returns the \a i-th index of the current point
     */
-    const index_t index(const index_t i) const { return m_iter->at(i);}
+    index_t index(const index_t i) const { return m_iter->at(i);}
 
     /**
        \brief Returns a reference to the underlying integer lattice
