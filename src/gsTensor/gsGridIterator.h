@@ -362,10 +362,9 @@ public:
     : m_low(ab.col(0)), m_upp(ab.col(1))
     {
         // deduce the number of points per direction for an approximately uniform grid
-        const double n = std::pow((double)numPoints, 1.0 / m_low.rows());
-        const gsVector<double,d> hh = (ab.col(1) - ab.col(0)).cast<double>();
-        const point_index npts = ((n/hh.prod()) * hh)
-            .unaryExpr((double(*)(double))std::ceil).cast<index_t>();
+        const gsVector<double,d> L = (ab.col(1) - ab.col(0)).cast<double>();
+        const double h = std::pow(L.prod()/numPoints, 1.0 / m_low.rows());
+        const point_index npts = (L/h).unaryExpr((double(*)(double))std::ceil).cast<index_t>();
         m_iter = integer_iterator(npts, 1);
         reset(ab.col(0), ab.col(1));
     }
