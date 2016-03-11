@@ -82,6 +82,58 @@ refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refine
 }
 
 
+template<unsigned d, class T>
+void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
+{
+    // Note: refExt parameter is ignored
+    GISMO_ASSERT( boxes.rows() == this->dim() , 
+                  "Number of rows of refinement boxes must equal dimension of parameter space.");
+    GISMO_ASSERT( boxes.cols() % 2 == 0, 
+                  "Refinement boxes must have even number of columns.");
+    
+    const T tol = 0.000000001;
+    
+    // for each coordinate direction of the parameter domain:
+    for( int di = 0; di < this->dim(); di++)
+    {
+        
+        // for simplicity, get the corresponding knot vector.
+        KnotVectorType kold_di = Self_t::component(di).knots();
+
+        // vector of flags for refining knotspans
+        std::vector<bool> flagInsertKt( kold_di.size(), false);
+
+        // This is a very crude and unelegant test, but
+        // conveniently straightforward to implement (and maybe to):
+        // For each knot span, check if its midpoint is
+        // contained in any of the refinement boxes.
+        // If yes, set the corresponding flag to 1.
+        for( size_t i=1; i < kold_di.size(); i++ ) // loop over spans
+            if( kold_di[i]-kold_di[i-1] > tol)  // check for empty spans
+            {
+                const T midpt = (kold_di[i] + kold_di[i-1])/2; // midpoint of knot span
+                for( index_t j=0; j < boxes.cols(); j+=2 )     // loop over all boxes
+                {
+                    // if the box contains the midpoint, mark it
+                    flagInsertKt[i] = boxes(di,j) < midpt && midpt < boxes(di,j+1);
+                }
+            }
+
+        // now, with the flags set, loop over all knots spans and
+        // insert midpoint in each knot span which is marked for refinement.
+        for( size_t i=1; i < kold_di.size(); i++ )
+            if( flagInsertKt[i] )
+            {
+                T midpt = (kold_di[i] + kold_di[i-1])/2;
+                Self_t::component(di).insertKnot( midpt );
+            }
+
+    } // for( int di )
+
+
+} // refine()
+
+
 /*
  * NB:
  * This implementation assumes that the component bases implement the firstActive() / numActive() protocol.
@@ -148,6 +200,24 @@ public:
 
     static Object * get (gsXmlNode * node)
     {
+        if (d>1)
+        {
+        GISMO_ASSERT( ( !strcmp( node->name(),"Basis") )
+                      &&  ( !strcmp(node->first_attribute("type")->value(),
+                                    internal::gsXml<Object>::type().c_str() ) ),
+                      "Something is wrong with the XML data: There should be a node with a "
+                      <<internal::gsXml<Object>::type().c_str()<<" Basis.");
+        }
+        else
+        {
+            GISMO_ASSERT( ( !strcmp( node->name(),"Basis") )
+                          &&  ( !strcmp(node->first_attribute("type")->value(),
+                                        internal::gsXml<Object>::type().c_str())
+                                ||  !strcmp(node->first_attribute("type")->value(), "BSplineBasis") ),
+                          "Something is wrong with the XML data: There should be a node with a "
+                          <<internal::gsXml<Object>::type().c_str()<<" Basis.");
+        }
+
         return getTensorBasisFromXml<Object >( node );
     }
     

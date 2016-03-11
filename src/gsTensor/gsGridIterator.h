@@ -457,7 +457,7 @@ public:
     /**
        \brief Returns the \a i-th index of the current point
     */
-    const index_t index(const index_t i) const { return m_iter->at(i);}
+    index_t index(const index_t i) const { return m_iter->at(i);}
 
     /**
        \brief Returns the coordinate-wise stepping between the samples
@@ -567,6 +567,21 @@ public:
         update(*m_iter, m_cur);
     }
 
+    template<class Matrix_t>
+    explicit gsGridIterator(const std::vector<Matrix_t*> & cwise)
+    : m_cwise(cwise.size()), m_cur(m_cwise.size(),1)
+    {
+        point_index npts(m_cwise.size());
+        for (index_t i = 0; i != npts.size(); ++i)
+        {
+            m_cwise[i] = cwise[i]->data();
+            npts[i]    = cwise[i]->size() - 1;
+            GISMO_ASSERT(cwise[i]->cols()==1 || cwise[i]->rows()==1, "Invalid input");
+        }
+        m_iter = integer_iterator(npts, 0);
+        update(*m_iter, m_cur);
+    }
+
     /**
        \brief Resets the iterator, so that a new iteration over the
        points may start
@@ -623,7 +638,7 @@ public:
     /**
        \brief Returns the \a i-th index of the current point
     */
-    const index_t index(const index_t i) const { return m_iter->at(i);}
+    index_t index(const index_t i) const { return m_iter->at(i);}
 
     /**
        \brief Returns a reference to the underlying integer lattice

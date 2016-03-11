@@ -429,8 +429,8 @@ void writeSingleGeometry(gsFunction<T> const& func,
                          gsMatrix<T> const& supp, 
                          std::string const & fn, unsigned npts)
 {
-    const unsigned n = func.targetDim();
-    const unsigned d = func.domainDim();
+    const int n = func.targetDim();
+    const int d = func.domainDim();
 
     gsVector<T> a = supp.col(0);
     gsVector<T> b = supp.col(1);
@@ -456,6 +456,11 @@ void writeSingleGeometry(gsFunction<T> const& func,
             eval_func.row(d) = eval_func.row(0);
             eval_func.topRows(d) = pts;
         }
+    }
+    else if (n > 3)
+    {
+        gsWarn<< "Data is more than 3 dimensions, projecting to first 3 coordinates.\n";
+        eval_func.conservativeResize(3,eval_func.cols() );
     }
 
     std::string mfn(fn);
