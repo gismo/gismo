@@ -198,7 +198,7 @@ typename gsKnotVector<T>::reverse_smart_iterator gsKnotVector<T>::rsend()   cons
 template<typename T>
 gsKnotVector<T>::gsKnotVector( gsMovable< knotContainer > knots, int degree)
 {
-    m_repKnots.swap( knots.ref() );
+    knots.moveTo(m_repKnots);
     rebuildMultSum();
 
     m_deg = (degree == - 1 ? deduceDegree() : degree);

@@ -188,6 +188,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 // 4146 - unary minus operator applied to unsigned type, result still unsigned
 // 4181 - qualifier applied to reference type ignored
 // 4211 - nonstandard extension used : redefined extern to static
+// 4231 - nonstandard extension used: extern before template explicit instantiation
 // 4244 - 'argument' : conversion from 'type1' to 'type2', possible loss of data
 // 4251 - needs to have dll-interface to be used by clients of class
 // 4273 - QtAlignedMalloc, inconsistent DLL linkage
@@ -209,7 +210,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 // 4510 - default constructor could not be generated
 // 4610 - user defined constructor required
   #pragma warning( push )
-  #pragma warning( disable : 4100 4127 4146 4251 4428 4275 4503 4505 4512 4566 4661 4714 4789 4996 4510 4610)
+  #pragma warning( disable : 4100 4127 4146 4231 4251 4428 4275 4503 4505 4512 4566 4661 4714 4789 4996 4510 4610)
 
 #elif defined __INTEL_COMPILER
 // 2196 - routine is both "inline" and "noinline" ("noinline" assumed)

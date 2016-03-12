@@ -99,12 +99,16 @@ public:
     typedef memory::shared_ptr< gsMatrix > Ptr;
 
     /// Unique pointer for gsMatrix
-//  #ifdef __GXX_EXPERIMENTAL_CXX0X__
+//  #if defined(__cplusplus) && __cplusplus >= 201103L
 //     typedef std::unique_ptr< gsMatrix > uPtr;
 //  #else
     typedef memory::auto_ptr< gsMatrix > uPtr;
 // #endif
-
+    
+    /// Matrix return type, to be used as return type for function
+    /// returning matrix objects
+    typedef uPtr Return;
+    
     // type of first minor matrix: rows and cols reduced by one
     typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, ChangeDim<_Cols, -1>::D, _Options>
         FirstMinorMatrixType;
@@ -143,7 +147,7 @@ public:
     /// move constructor
     gsMatrix(gsMovable< gsMatrix > other)
     {
-        this->swap( other.ref() );
+        other.moveTo(*this);
     }
 
     /// constructor by swapping a unique pointer
@@ -162,6 +166,8 @@ public:
     inline operator const constRef () { return constRef(*this); }
 
     ~gsMatrix() ;
+
+    void clear() { this->resize(0,0); }
 
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
@@ -186,8 +192,7 @@ public:
     /// This method allows to swap with another matrix
     gsMatrix& operator= (gsMovable< gsMatrix > other)
     {
-        this->resize(0,0);
-        this->swap( other.ref() );
+        other.moveTo(*this);
         return *this;
     }
 

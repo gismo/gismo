@@ -105,6 +105,8 @@ public:
 
     ~gsVector () ;
 
+    void clear() { this->resize(0,0); }
+    
     // This constructor allows constructing a gsVector from Eigen expressions
     template<typename OtherDerived>
     gsVector(const Eigen::EigenBase<OtherDerived>& other) : gsBase(other) { }
@@ -119,7 +121,7 @@ public:
 
     gsVector(gsMovable< gsVector > other)
     {
-        this->swap( other.ref() );
+        other.moveTo(*this);
     }
 
     static gsVector<T,2> vec( T x, T y)
@@ -148,8 +150,7 @@ public:
     /// This method allows to swap with another vector
     gsVector & operator=(gsMovable< gsVector > other)
     {
-        this->resize(0);
-        this->swap( other.ref() );
+        other.moveTo(*this);
         return *this;
     }
 
