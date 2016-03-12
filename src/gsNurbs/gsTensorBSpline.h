@@ -92,12 +92,11 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV2) );
         Basis * tbasis = Basis::New(cbases); //d==2
         
-        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-                     "Coefficient matrix for the tensor B-spline does not have "
-                     "the expected number of control points (rows)." );
-
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
+        GISMO_ASSERT(tbasis->size()==m_coefs.rows(), 
+                     "Coefficient matrix for the tensor B-spline does not have "
+                     "the expected number of control points (rows)." );
     }
     
     /// Construct 2D tensor B-Spline by knot vectors, degrees and
@@ -115,7 +114,7 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV2) );
         Basis * tbasis = Basis::New(cbases); //d==2
         
-        GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
+        GISMO_ASSERT(tbasis->size()==tcoefs.rows(), 
                      "Coefficient matrix for the tensor B-spline does not have "
                      "the expected number of control points (rows)." );
         
@@ -144,13 +143,13 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV2) );
         cbases.push_back(new gsBSplineBasis<T>(KV3) );
         Basis * tbasis = Basis::New(cbases); //d==3
-            
-        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-                     "Coefficient matrix for the tensor B-spline does not have "
-                     "the expected number of control points (rows)." );
         
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
+        
+        GISMO_ASSERT(tbasis->size()==m_coefs.rows(), 
+                     "Coefficient matrix for the tensor B-spline does not have "
+                     "the expected number of control points (rows)." );
     }
 
     /// Construct 3D tensor B-Spline by knot vectors, degrees and
@@ -169,7 +168,7 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV3) );
         Basis * tbasis = Basis::New(cbases); //d==3
         
-        GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
+        GISMO_ASSERT(tbasis->size()==tcoefs.rows(), 
                      "Coefficient matrix for the tensor B-spline does not have "
                      "the expected number of control points (rows)." );
         
@@ -195,12 +194,11 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV4) );
         Basis * tbasis = Basis::New(cbases); //d==4
             
-        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-                     "Coefficient matrix for the tensor B-spline does not have "
-                     "the expected number of control points (rows)." );
-        
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
+        GISMO_ASSERT(tbasis->size()==m_coefs.rows(), 
+                     "Coefficient matrix for the tensor B-spline does not have "
+                     "the expected number of control points (rows)." );
     }
 
     /// Construct 4D tensor B-Spline by knot vectors, degrees and
@@ -222,7 +220,7 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV4) );
         Basis * tbasis = Basis::New(cbases); //d==4
         
-        GISMO_ASSERT(tbasis->size()== tcoefs.rows(), 
+        GISMO_ASSERT(tbasis->size()==tcoefs.rows(), 
                      "Coefficient matrix for the tensor B-spline does not have "
                      "the expected number of control points (rows)." );
         
