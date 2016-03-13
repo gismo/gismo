@@ -173,8 +173,8 @@ template <class T>
 gsVector<T> gsTrimSurface<T>::TangentCoefs_bisect(int const & sourceID, gsVector3d<T> normal) const 
 {
   gsMatrix<T> corJacobian = derivatives(sourceID);
-  gsMatrix<T> tangent_side1 = UnitTangentCoefs_prev(sourceID, corJacobian);
-  gsMatrix<T> tangent_side2 = UnitTangentCoefs_next(sourceID, corJacobian);
+  gsVector3d<T> tangent_side1 = UnitTangentCoefs_prev(sourceID, corJacobian);
+  gsVector3d<T> tangent_side2 = UnitTangentCoefs_next(sourceID, corJacobian);
   gsVector<T> coefs(2);
   coefs = TangentCoefs_bisect(sourceID);
   return ( normal.dot( tangent_side1.cross( tangent_side2 ) ) >= 0 ) ? coefs: (-coefs).eval();

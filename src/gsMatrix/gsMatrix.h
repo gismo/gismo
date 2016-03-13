@@ -110,15 +110,15 @@ public:
     typedef uPtr Return;
     
     // type of first minor matrix: rows and cols reduced by one
-    typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, ChangeDim<_Cols, -1>::D, _Options>
+    typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, ChangeDim<_Cols, -1>::D>
         FirstMinorMatrixType;
 
     // type of row minor matrix: rows reduced by one
-    typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, _Cols, _Options>
+    typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, _Cols>
         RowMinorMatrixType;
 
     // type of col minor matrix: cols reduced by one
-    typedef gsMatrix< T, _Rows, ChangeDim<_Cols, -1>::D, _Options>
+    typedef gsMatrix< T, _Rows, ChangeDim<_Cols, -1>::D>
         ColMinorMatrixType;
 
 public:
