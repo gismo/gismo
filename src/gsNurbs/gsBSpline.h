@@ -376,7 +376,7 @@ public:
     {      
         typename gsMatrix<T>::uPtr images ( new gsMatrix<T>() );
         gsMatrix<T> interval = this->parameterRange();
-        gsMatrix<T> pts = gsPointGrid( interval(0,0), interval(0,1), npoints );
+        const gsMatrix<T> pts = gsPointGrid(interval, npoints );
         this->eval_into( pts, *images );
         return images;
     }

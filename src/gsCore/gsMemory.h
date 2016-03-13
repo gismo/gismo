@@ -70,41 +70,43 @@ inline memory::shared_ptr<T> shared(T *x)
     return memory::shared_ptr<T>(x);
 }
 
-/** Wrapper class for reference types which are allowed to be "moved
- *  from", i.e., which the caller does not need anymore. This is very
- *  similar to C++11 rvalue references, but without the language
- *  support.
- */
+/**
+   Wrapper for a reference that can be swapped with another object.
+   Used by the give(.) function to implement argument passing
+*/
 template <typename T>
 class gsMovable
 {
 public:
-    T& ref() const
-    { return m_value; }
+
+    // Moves resources to \a x
+    inline void moveTo(T & x) { m_ref.swap(x); m_ref.clear();}
 
 private:
-    template <typename U>
-    friend gsMovable<U> give(U& x);
+    template<typename U>
+    friend gsMovable<U> give(U & x);
 
-    explicit gsMovable(T & x)
-        : m_value(x)
-    { }
-
+    // Only give(.) can create the wrapper
+    explicit gsMovable(T & x) : m_ref(x) { }
+    
     // disable default constructor
     gsMovable();
 
     // disable assignment operator
     gsMovable& operator= (const gsMovable& other);
 
-    T & m_value;
+private:
+    T & m_ref;
 };
 
-/** Wrap a T& in a gsMovable<T> to indicate to the call that the
- *  value is not needed anymore.
+/** 
+    Helper function for reference types which are allowed to be "moved
+    from", i.e., which the caller does not need anymore. This is very
+    similar to the use of std::move (C++11) for passing arguments by
+    rvalue reference.
  */
-template <typename T> 
-inline gsMovable<T> give(T & x)
-{ return gsMovable<T>(x); }
+template<typename T> inline
+gsMovable<T> give(T & x) { return gsMovable<T>(x); }
 
 
 // Small, dynamically sized arrays on the stack.
@@ -147,6 +149,18 @@ void freeAll(Cont& cont)
     cont.clear();
 }
 
+/// \brief Constructs a vector of pointers from a vector of objects
+template<typename obj> inline 
+std::vector<obj*> asVectorPtr(const std::vector<obj> & matv)
+{
+    std::vector<obj*> result;
+    const size_t d = matv.size();
+    result.reserve(d);
+    for ( size_t i = 0; i!=d; ++i)
+        result.push_back( const_cast<obj*>(&matv[i]) );
+    return result;
+}
+
 /// \brief Casts a vector of pointers 
 template <typename Base, typename Derived>
 std::vector<Base*> castVectorPtr(std::vector<Derived*> pVec)
@@ -175,15 +189,15 @@ bool checkVectorPtrCast(std::vector<Base*> pVec)
 template <class T, class U>
 inline void copy_n(const T * begin, const size_t n, U * result)
 {
-#   ifdef _MSC_VER
-    // Take care of C4996 warning
     std::copy(begin, begin+n,
-              stdext::unchecked_array_iterator<U*>(result));
+#   ifdef _MSC_VER
+              // Take care of C4996 warning
               //stdext::checked_array_iterator<U*>(result,n));
+              stdext::unchecked_array_iterator<U*>(result));
 #   else
-    std::copy(begin, begin+n, result);
-    // Note: in C++11 there is:
-    // std::copy_n(begin, n, result);
+    result);
+// Note: in C++11 there is:
+// std::copy_n(begin, n, result);
 #   endif
 }
 

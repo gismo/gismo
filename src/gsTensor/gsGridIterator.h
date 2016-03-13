@@ -13,7 +13,6 @@
 
 #pragma once
 
-
 namespace gismo
 {
 
@@ -362,15 +361,11 @@ public:
     gsGridIterator(gsMatrix<T,d,2> const & ab, unsigned numPoints)
     : m_low(ab.col(0)), m_upp(ab.col(1))
     {
-        // deduce the number of points per direction
-        const point span = ab.col(1) - ab.col(0);
-        const point wght = span / span.sum();
-        const T h = math::pow( span.prod() / numPoints, 1.0 / (d!=-1?d:ab.rows()) );
-        point_index npts(ab.rows());
-        for (index_t i = 0; i != (d!=-1?d:ab.rows()); ++i)
-            npts[i] = cast<T,index_t>(math::ceil( span[i] / (h*wght[i]) ) );
+        // deduce the number of points per direction for an approximately uniform grid
+        const gsVector<double,d> L = (ab.col(1) - ab.col(0)).template cast<double>();
+        const double h = std::pow(L.prod()/numPoints, 1.0 / m_low.rows());
+        const point_index npts = (L/h).unaryExpr((double(*)(double))std::ceil).template cast<index_t>();
         m_iter = integer_iterator(npts, 1);
-
         reset(ab.col(0), ab.col(1));
     }
 

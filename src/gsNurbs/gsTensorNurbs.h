@@ -82,12 +82,11 @@ public:
 
         TBasis   *tbasis = new TBasis(Bu,Bv) ;//d==2
       
-        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-                     "Coefficient matrix for the NURBS does not have "
-                     "the expected number of control points (rows)." );
-
         this->m_basis = new Basis(tbasis) ;
         this->m_coefs = tcoefs;
+        GISMO_ASSERT(tbasis->size()== m_coefs.rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
     }
 
     /// Construct 2D tensor NURBS by knot vectors, degrees, weights and coefficient matrix
@@ -97,18 +96,17 @@ public:
     {
         GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d
                      <<"D NURBS using 2 knot-vectors.");
-
+        
         gsBSplineBasis<T>    * Bu    = new gsBSplineBasis<T>(KV1);
         gsBSplineBasis<T>    * Bv    = new gsBSplineBasis<T>(KV2);
 
         TBasis   *tbasis = new TBasis(Bu,Bv) ;//d==2
       
-        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-                     "Coefficient matrix for the NURBS does not have "
-                     "the expected number of control points (rows)." );
-
         this->m_basis = new Basis(tbasis , wgts) ;
         this->m_coefs = tcoefs;
+        GISMO_ASSERT(tbasis->size()== m_coefs.rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
     }
 
     /// Construct 2D tensor NURBS by knot vectors, degrees, weights and coefficient matrix
@@ -147,12 +145,11 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
-        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-                     "Coefficient matrix for the NURBS does not have "
-                     "the expected number of control points (rows)." );
-
         this->m_basis = new Basis(tbasis, wgts) ;
         this->m_coefs = tcoefs;
+        GISMO_ASSERT(tbasis->size()== m_coefs.rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
     }
 
     /// Construct 3D tensor NURBS by knot vectors, degrees and coefficient matrix
@@ -218,12 +215,11 @@ public:
         gsBSplineBasis<T> * Bw= new gsBSplineBasis<T>(KV3);
         TBasis *tbasis = new TBasis(Bu,Bv,Bw) ;//d==3
       
-        GISMO_ASSERT(tbasis->size()== tcoefs.ref().rows(), 
-                     "Coefficient matrix for the NURBS does not have "
-                     "the expected number of control points (rows)." );
-
         this->m_basis = new Basis(tbasis) ;
         this->m_coefs = tcoefs;
+        GISMO_ASSERT(tbasis->size()== m_coefs.rows(), 
+                     "Coefficient matrix for the NURBS does not have "
+                     "the expected number of control points (rows)." );
     }
 
 
