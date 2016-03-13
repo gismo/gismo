@@ -676,7 +676,7 @@ public:
         result.resize(GeoDim);        
         if (ParDim + 1 == GeoDim) // surface case GeoDim == 3
         {
-            gsMatrix<T, ParDim+1, ParDim> Jk = 
+            const gsMatrix<T,GeoDim, ParDim> Jk = 
                 m_jacobians.template block<GeoDim,ParDim>(0, k*ParDim);
             // fixme: generalize to nD
             normal(k,result);
@@ -704,7 +704,7 @@ public:
                 m_jacobians.template block<ParDim,ParDim>(0, k*ParDim);
 
             T alt_sgn = sgn;
-            gsMatrix<T, ParDim-1, ParDim-1> minor;
+            typename gsMatrix<T,ParDim,ParDim>::FirstMinorMatrixType minor;
             for (int i = 0; i != ParDim; ++i) // for all components of the normal
             {
                 Jk.firstMinor(i, dir, minor);
@@ -724,7 +724,7 @@ public:
             m_jacobians.template block<ParDim+1,ParDim>(0, k*ParDim);
 
         T alt_sgn(1.0);
-        gsMatrix<T, ParDim, ParDim> minor;
+        typename gsMatrix<T,ParDim+1,ParDim>::RowMinorMatrixType minor;
         for (int i = 0; i <= ParDim; ++i) // for all components of the normal vector
         {
             Jk.rowMinor(i, minor);

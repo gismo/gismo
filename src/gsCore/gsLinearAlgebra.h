@@ -89,17 +89,17 @@ inline bool isfinite(const Eigen::MatrixBase<Derived>& x)
 
 
 
-//Global variables related to gsMatrix ( see also
-//gsForwardDeclarations,h)
+//Constantss related to gsMatrix
+//( see also external/Eigen/src/Core/util/Constants.h )
 using Eigen::Dynamic ;//=-1
 
-using Eigen::Lower;
-using Eigen::Upper;
+using Eigen::Lower;//=1
+using Eigen::Upper;//=2
 
 // Values for matrix align options
 using Eigen::RowMajor;//=0
 using Eigen::ColMajor;//=1
-using Eigen::AutoAlign;//
+using Eigen::AutoAlign;//=0
 
 template<class T, int _Rows, int _Cols> class gsAsMatrix ;
 template<class T, int _Rows, int _Cols> class gsAsConstMatrix ;
@@ -111,7 +111,7 @@ template<class T, int _Rows> class gsAsConstVector ;
 template <int Dim, int Change>
 struct ChangeDim
 {
-    enum { D = Dim + Change };
+    enum { D = Change+Dim<0 ? 0 : Dim + Change };
 };
 template <int Change>
 struct ChangeDim<Dynamic, Change>
