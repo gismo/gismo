@@ -2,9 +2,8 @@
 
 #define gsKnotVector_EXPORT
 
-#include <gsCore/gsExport.h>
 #include <gsNurbs/gsKnotVector.h>
-#include <gsNurbs/gsKnotVector.hpp>
+#include <gsNurbs/gsKnotVector.hpp> //dependancy
 
 namespace gismo
 {

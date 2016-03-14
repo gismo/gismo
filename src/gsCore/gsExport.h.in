@@ -63,7 +63,7 @@
 // GCC: If a symbol declared dllimport is later defined, the attribute
 // is ignored in subsequent references, and a warning is emitted.
 #    define GISMO_EXPORT //__attribute__ ((dllimport))
-#    define GISMO_IMPORT //__attribute__ ((dllimport))
+#    define GISMO_IMPORT __attribute__ ((dllimport))
 #  endif
 //#  define GISMO_LOCAL
 
@@ -101,7 +101,6 @@
 #define EXTERN_STRUCT_TEMPLATE extern template struct GISMO_IMPORT
 #define EXTERN_CLASS_TEMPLATE  extern template class  GISMO_IMPORT
 #define EXTERN_TEMPLATE        extern template        GISMO_IMPORT
-
 
 #ifndef __has_feature // clang only
 #define __has_feature(x) 0
