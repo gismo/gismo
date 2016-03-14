@@ -743,7 +743,6 @@ private:
 // *****************************************************************
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
-/*
 #else
 #ifdef gsBSplineBasis_EXPORT
 #include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
@@ -755,6 +754,5 @@ namespace gismo
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<1,real_t>;
 EXTERN_CLASS_TEMPLATE gsBSplineBasis<real_t>;
 }
-*/
 #endif
 // *****************************************************************
