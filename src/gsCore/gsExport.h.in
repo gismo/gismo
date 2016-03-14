@@ -102,7 +102,6 @@
 #define EXTERN_CLASS_TEMPLATE  extern template class  GISMO_IMPORT
 #define EXTERN_TEMPLATE        extern template        GISMO_IMPORT
 
-
 #ifndef __has_feature // clang only
 #define __has_feature(x) 0
 #endif

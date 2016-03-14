@@ -740,18 +740,19 @@ private:
 } // namespace gismo
 
 
-
+// *****************************************************************
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
-/*
-#elif __cplusplus > 199711L
-//#include <gsNurbs/gsBSplineBasis.tpl>
-namespace gismo 
-{
-extern template class gsTensorBSplineBasis<1, real_t, gsKnotVector<real_t> >;
-extern template class gsTensorBSplineBasis<1, real_t, gsCompactKnotVector<real_t> >;
-extern template class gsBSplineBasis<real_t, gsKnotVector<real_t>        >;
-extern template class gsBSplineBasis<real_t, gsCompactKnotVector<real_t> >;
-}
-//*/
+#else
+#ifdef gsBSplineBasis_EXPORT
+#include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
+#undef  EXTERN_CLASS_TEMPLATE
+#define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif
+namespace gismo
+{
+EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<1,real_t>;
+EXTERN_CLASS_TEMPLATE gsBSplineBasis<real_t>;
+}
+#endif
+// *****************************************************************

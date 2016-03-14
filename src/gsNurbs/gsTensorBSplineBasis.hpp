@@ -11,6 +11,8 @@
     Author(s): A. Mantzaflaris
 */
 
+#pragma once
+
 #include <gsCore/gsTemplateTools.h>
 #include <gsTensor/gsTensorTools.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -194,7 +196,7 @@ private:
     gsXml() { }
     typedef gsTensorBSplineBasis<d,T> Object;
 public:
-    GSXML_COMMON_FUNCTIONS(gsTensorBSplineBasis<TMPLA2(d,T)>);
+    GSXML_COMMON_FUNCTIONS(Object);
     static std::string tag () { return "Basis"; }
     static std::string type () { return "TensorBSplineBasis"+to_string(d); }
 

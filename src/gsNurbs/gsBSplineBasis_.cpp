@@ -1,17 +1,16 @@
+/* Symbol export for G+Smo shared object */
 
-#include <gsCore/gsTemplateTools.h>
+#define gsBSplineBasis_EXPORT
 
+#include <gsIO/gsXml.h>
 #include <gsNurbs/gsBSplineBasis.h>
-#include <gsNurbs/gsBSplineBasis.hpp>
-
-//#include <misc/gsInstanceTools.h>
-//#include <gsNurbs/gsBSplineBasis.tpl>
+#include <gsNurbs/gsBSplineBasis.hpp>//dependancy
 
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsTensorBSplineBasis<1, real_t>;
-CLASS_TEMPLATE_INST gsBSplineBasis<real_t>;
+// CLASS_TEMPLATE_INST gsTensorBSplineBasis<1, real_t>;
+// CLASS_TEMPLATE_INST gsBSplineBasis<real_t>;
 
 CLASS_TEMPLATE_INST internal::gsXml< gsBSplineBasis<real_t> >;
 

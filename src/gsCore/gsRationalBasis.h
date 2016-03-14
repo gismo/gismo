@@ -585,9 +585,9 @@ void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,
 
     // Regain the new d-dimensional control points
     // and the new weights.
+    m_weights = rw.col( n );
     coefs = rw.leftCols(n).array().colwise() / m_weights.col(0).array();
     // equiv: coefs = rw.leftCols(n).array() / m_weights.replicate(1,n).array();
-    m_weights = rw.col( n );
 }
 
 
