@@ -63,7 +63,7 @@
 // GCC: If a symbol declared dllimport is later defined, the attribute
 // is ignored in subsequent references, and a warning is emitted.
 #    define GISMO_EXPORT //__attribute__ ((dllimport))
-#    define GISMO_IMPORT __attribute__ ((dllimport))
+#    define GISMO_IMPORT //__attribute__ ((dllimport))
 #  endif
 //#  define GISMO_LOCAL
 
