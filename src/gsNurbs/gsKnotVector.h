@@ -535,7 +535,17 @@ public:
     */
     void symDifference(const gsKnotVector<T> & other,
                        std::vector<T>& result) const;
-    
+
+    /** 
+        \brief Computes the union of knot-vectors \a this and \a b.
+    */
+    gsKnotVector knotUnion(const gsKnotVector & b) const;
+
+    /** 
+        \brief Computes the intersection of knot-vectors \a this and \a b.
+     */
+    gsKnotVector knotIntersection(const gsKnotVector & b) const;
+
     /// Better directly use affineTransformTo.
     void reverse();
 

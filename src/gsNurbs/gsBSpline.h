@@ -238,7 +238,6 @@ public:
     /// Merge other B-spline into this one.
     void merge( gsGeometry<T> * otherG );
 
-
     /// Insert the given new knot (multiplicity \a i) without changing the curve.
     void insertKnot( T knot, int i = 1)
     {
@@ -435,13 +434,26 @@ protected:
     // check function: check the coefficient number, degree, knot vector ...
 
 }; // class gsBSpline
+
+
+template<class T>
+gsBSpline<T> operator*(const gsBSpline<T> & lhs, const gsBSpline<T> & rhs) 
+{
+    // Note: quick-fix implementation. Better algorithms  exist
+    gsKnotVector<T> kv = lhs.knots().knotUnion( lhs.knots() );
+    kv.degreeElevate( lhs.degree() + rhs.degree() - kv.degree() );
+
+    gsMatrix<T> pts;
+    kv.greville_into(pts);
+    const gsMatrix<T> ev = (*lhs.eval(pts)).array() * (*rhs.eval(pts)).array();
+    
+    // fixme: avoid temporaries here
+    return *safe(static_cast<gsBSpline<T>*>(gsBSplineBasis<T>(kv).interpolateData(ev,pts)));
+}
     
 
 } // namespace gismo
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsBSpline.hpp)

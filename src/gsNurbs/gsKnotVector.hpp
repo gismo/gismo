@@ -136,6 +136,48 @@ void gsKnotVector<T>::symDifference(const gsKnotVector<T> & other,
 }
 
 template<typename T>
+gsKnotVector<T> gsKnotVector<T>::knotUnion(const gsKnotVector<T> & b) const
+{
+    const gsKnotVector<T> & a = *this;
+    knotContainer kv;
+    kv.reserve( std::max(b.size(),b.size()) );
+    std::set_union(a.m_repKnots.begin(), a.m_repKnots.end(),
+                   b.m_repKnots.begin(), b.m_repKnots.begin(), std::back_inserter(kv) );
+
+    // const T newStart = math::min(*a.domainBegin(), *b.domainBegin() );
+    // const T newEnd   = math::max(*a.domainEnd()  , *b.domainEnd()   );
+    return gsKnotVector<T>( give(kv), std::max(a.m_deg, b.m_deg) );
+}
+
+template<typename T>
+gsKnotVector<T> gsKnotVector<T>::knotIntersection(const gsKnotVector<T> & b) const
+{
+    const gsKnotVector<T> & a = *this;
+    knotContainer kv;
+    kv.reserve( std::min(b.size(),b.size()) );
+    std::set_intersection(a.m_repKnots.begin(), a.m_repKnots.end(),
+                          b.m_repKnots.begin(), b.m_repKnots.begin(), std::back_inserter(kv) );
+    return gsKnotVector<T>( give(kv), std::min(a.m_deg, b.m_deg) );
+}
+
+/*
+// trim to the minimal domain such that \a dbegin and \a dend are contained
+template<typename T>
+const gsKnotVector<T> & gsKnotVector<T>::trimDomain(const T dbegin, const T dend) const
+{
+    iterator lpos = std::upper_bound(begin(), end(), dbegin) - 1; // *lpos<=dbegin
+    iterator rpos = std::lower_bound(begin(), end(), dend)      ; // *rpos>=dend
+    diffptr_t l = lpos  - begin() - m_deg    ;
+    diffptr_t r = end() - rpos    - m_deg - 1;
+    gsDebugVar(l);
+    gsDebugVar(r);
+
+    return *this;
+}
+//*/
+
+
+template<typename T>
 typename gsKnotVector<T>::reverse_iterator gsKnotVector<T>::rend()    const
 {
     return reverse_iterator(begin());
@@ -601,7 +643,7 @@ gsKnotVector<T>::iFind( const T u ) const
     // GISMO_ASSERT done in uFind().
     return  m_repKnots.begin() + uFind(u).lastAppearance();
 
-    // equivalentg
+    // equivalent
     /*GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
       iterator dend = domainEnd();
       if ( u == *dend )
@@ -762,6 +804,7 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
             if ( result(0,i) == result(0,i-1) )
                 // perturbe point to remain inside the needed support
                 result(0,i-1) -= 1e-10;
+            //to try: result(0,i-1) = math::nextafter(result(0,i-1), *result.data() );
         }
 
         itr = end()-1;
