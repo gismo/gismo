@@ -140,7 +140,7 @@ gsKnotVector<T> gsKnotVector<T>::knotUnion(const gsKnotVector<T> & b) const
 {
     const gsKnotVector<T> & a = *this;
     knotContainer kv;
-    kv.reserve( std::max(b.size(),b.size()) );
+    kv.reserve( std::max(a.size(),b.size()) );
     std::set_union(a.m_repKnots.begin(), a.m_repKnots.end(),
                    b.m_repKnots.begin(), b.m_repKnots.begin(), std::back_inserter(kv) );
 
@@ -154,7 +154,7 @@ gsKnotVector<T> gsKnotVector<T>::knotIntersection(const gsKnotVector<T> & b) con
 {
     const gsKnotVector<T> & a = *this;
     knotContainer kv;
-    kv.reserve( std::min(b.size(),b.size()) );
+    kv.reserve( std::min(a.size(),b.size()) );
     std::set_intersection(a.m_repKnots.begin(), a.m_repKnots.end(),
                           b.m_repKnots.begin(), b.m_repKnots.begin(), std::back_inserter(kv) );
     return gsKnotVector<T>( give(kv), std::min(a.m_deg, b.m_deg) );
