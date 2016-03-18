@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsAssembler/gsAssemblerBase.h>
+#include <gsAssembler/gsAssembler.h>
 
 
 namespace gismo
@@ -34,7 +34,7 @@ public:
 
     /// Constructor giving access to the gsAssemblerBase object to
     /// create a linear system per iteration
-    gsNewtonIterator(  gsAssemblerBase<T> & assembler, 
+    gsNewtonIterator(  gsAssembler<T> & assembler,
                        const gsMultiPatch<T> & initialSolution)
     : m_assembler(assembler),
       m_curSolution(initialSolution),
@@ -46,7 +46,7 @@ public:
 
     }
 
-    gsNewtonIterator(gsAssemblerBase<T> & assembler)
+    gsNewtonIterator(gsAssembler<T> & assembler)
     : m_assembler(assembler),
       m_numIterations(0),
       m_maxIterations(100),
@@ -98,7 +98,7 @@ protected:
 
     /// \brief gsAssemblerBase object to generate the linear system
     /// for each iteration
-    gsAssemblerBase<T> & m_assembler;
+    gsAssembler<T> & m_assembler;
 
     /// \brief The latest/current solution
     gsMultiPatch<T>     m_curSolution;
@@ -153,7 +153,7 @@ void gsNewtonIterator<T>::solve()
 
     const T initResidue = m_residue;
 	const T initUpdate = m_updnorm;
-    
+
     // ----- Iterations start -----
     for (m_numIterations = 1; m_numIterations < m_maxIterations; ++m_numIterations)
     {
@@ -194,9 +194,11 @@ void gsNewtonIterator<T>::firstIteration()
     // Construct initial solution
     m_assembler.constructSolution(m_updateVector, m_curSolution);
 
+
+
     // Homogenize Dirichlet dofs (values are now copied in
     // m_curSolution)
-    m_assembler.homogenizeDirichlet();
+    m_assembler.homogenizeFixedDofs(-1);
 
     // Compute initial residue
     m_residue = m_assembler.rhs().norm();

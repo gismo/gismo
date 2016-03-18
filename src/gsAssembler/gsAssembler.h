@@ -283,7 +283,8 @@ public:  /* Solution reconstruction */
 
     /// @brief Construct solution from computed solution vector for a set of unknows.
     /// The result is a vectorfield, where each component is given the corresponding
-    /// entry of \par unknowns.
+    /// entry of \par unknowns. This method assumes that the specified unknows have the
+    /// same basis.
     /// \param[in] solVector the solution vector obtained from the linear system
     /// \param[out] result the solution seen as vectorfield in form of a gsMultiBasis
     /// \param[in] unknows the considered vector of unknowns
@@ -296,12 +297,13 @@ public:  /* Solution reconstruction */
     gsField<T> *  constructSolution(const gsMatrix<T>& solVector, int unk = 0) const;
 
     /// @brief Update solution by adding the computed solution vector
-    /// to the current solution
+    /// to the current solution specified by \par result. This method assumes that all
+    /// unknows have the same basis.
     /// \param[in] solVector the solution vector obtained from the linear system
-    /// \param[out] result the solution in form of a gsMultiBasis
+    /// \param[out]result the solution in form of a gsMultiBasis, \par is added to the
+    ///                   coefficients of result.
     virtual void updateSolution(const gsMatrix<T>& solVector,
-                                gsMultiPatch<T>& result) const
-    {GISMO_NO_IMPLEMENTATION}
+                                gsMultiPatch<T>& result) const;
 
 public: // *** Accessors *** 
 

@@ -369,10 +369,10 @@ public: /* Accessors */
     }
 
     /// @brief returns the number of column blocks
-    size_t numColBlocks() {return m_col.size();}
+    size_t numColBlocks() const {return m_col.size();}
 
     /// @brief returns the number of row blocks
-    size_t numRowBlocks() {return m_row.size();}
+    size_t numRowBlocks() const {return m_row.size();}
 
     /**
      * @brief rowMapper returns the dofMapper for row block \a r

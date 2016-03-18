@@ -613,4 +613,32 @@ gsField<T> *  gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     return new gsField<T>(m_pde_ptr->domain(), sols);
 }
 
+//This silently assumes the same basis for all components
+template<class T>
+void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
+                            gsMultiPatch<T>& result) const
+{
+   // GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
+
+    for (size_t p=0; p < m_pde_ptr->domain().nPatches(); ++p )
+    {
+        // Update solution coefficients on patch p
+        const int sz  = m_bases[0][p].size();
+
+        gsMatrix<T> & coeffs = result.patch(p).coefs();
+
+        for (index_t j = 0; j < m_system.numColBlocks(); ++j)
+        {
+            const gsDofMapper & mapper = m_system.colMapper(j);
+            for (index_t i = 0; i < sz; ++i)
+            {
+                if ( mapper.is_free(i, p) ) // DoF value is in the solVector
+                {
+                    coeffs(i,j) += solVector( mapper.index(i, p), 0);
+                }
+            }
+        }
+    }
+}
+
 }// namespace gismo
