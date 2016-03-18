@@ -130,12 +130,10 @@ public:
             else if (trimID==-1)
             {
                 gsWarn<<"\nAutomatic creation of trimmed surfaces is only supported for a single loop\n";
-                exit(1);
             }
             else
             {
                 gsWarn<<"\n ID of the trimmed surface trimID=" <<trimID<<" is invalid (must be >=-1)\n";
-                exit(1);
             }
         }
         m->setHeMate();

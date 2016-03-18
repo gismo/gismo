@@ -290,7 +290,7 @@ public:  /* Solution reconstruction */
     /// \param[in] unknows the considered vector of unknowns
     virtual void constructSolution(const gsMatrix<T>& solVector,
                                    gsMultiPatch<T>& result,
-                                   const gsVector<index_t> unknows) const;
+                                   const gsVector<index_t>  & unknows) const;
 
     // fixme: remove (currently for compatibility)
     GISMO_DEPRECATED

@@ -82,7 +82,7 @@ void gsSolid<T>::addHeVertex(scalar_t const& x, scalar_t const& y, scalar_t cons
 template <class T>
 typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace(std::vector<gsSolidHeVertexHandle> V)
 {
-    if (V.size() != 4) //{ std::cout<<"\n The following initialization of trimmed surf does not work for less or more than 4 corners yet\n";exit(1);};
+    if (V.size() != 4) //{ std::cout<<"\n The following initialization of trimmed surf does not work for less or more than 4 corners yet\n";};
     {
         return addFace_PlanarPolygon(V);
     }
@@ -346,7 +346,7 @@ void gsSolid<T>::setHeMate()
   if (2*noMate!=edge.size())
   {
 //      std::cout <<"\n"<<"The number of assignments of HE mates (="<< noMate <<") is NOT equal to number of edges (not halfedges) (="<< edge.size()/2 <<"), this is most likely because of the wrong order of the vertices of a face "<<"\n";
-//    assert(1==0);exit(1);
+
       gsWarn << "The number of assignments of HE mates (="<< noMate <<") is NOT equal to number of edges (not halfedges) (="<< edge.size()/2 <<"), this is most likely because of the wrong order of the vertices of a face, or the model is not a manifold\n";
   }
 }

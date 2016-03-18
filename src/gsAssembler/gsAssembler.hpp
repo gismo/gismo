@@ -528,7 +528,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
 template<class T>
 void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
-                                       gsMultiPatch<T>& result,const gsVector<index_t> unknowns) const
+                                       gsMultiPatch<T>& result,const gsVector<index_t> & unknowns) const
 {
     // we might need to get a result even without having the system ..
     //GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
