@@ -95,6 +95,9 @@ void kroneckerProductSparse(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>&
 
     result.resize(Ar*Br, Ac*Bc);
     result.resizeNonZeros(0);
+    
+    if( Ar*Br == 0 || Ac*Bc == 0 )
+        return;
 
     typedef gsSparseMatrix<T> Dest;
     typedef typename gsSparseMatrix<T>::InnerIterator InnerIterator;
