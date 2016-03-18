@@ -964,6 +964,7 @@ public:
 };
 
 /// Appends a box topology into node, used for gsMultiPatch and gsMultiBasis.
+inline
 void appendBoxTopology(const gsBoxTopology& topology,
                        gsXmlNode* node,
                        gsXmlTree& data)
@@ -998,6 +999,7 @@ void appendBoxTopology(const gsBoxTopology& topology,
     }
 }
 
+inline
 void getInterfaces(gsXmlNode* node,
                    const int d,
                    std::map<int, int>& ids,
@@ -1062,6 +1064,7 @@ void getInterfaces(gsXmlNode* node,
     }
 }
 
+inline
 void getBoundaries(gsXmlNode                * node, 
                    std::map<int, int>       & ids,
                    std::vector< patchSide > & result)

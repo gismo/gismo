@@ -15,7 +15,6 @@
 
 #include <gsUtils/gsPointGrid.h>
 #include <gsUtils/gsMesh/gsMesh.h>
-#include <gsCore/gsBasis.h>
 
 namespace gismo
 {

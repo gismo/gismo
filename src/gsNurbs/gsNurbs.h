@@ -120,7 +120,10 @@ public:
     T domainEnd() const { return this->basis().knots().last(); };
 
     /// Access to i-th weight
-    T & weight(int i) const { return this->basis().weight(i); }
+    T & weight(int i) { return this->basis().weight(i); }
+
+    /// Const access to i-th weight
+    const T weight(int i) const { return this->basis().weight(i); }
 
     /// Returns the weights of the rational basis
     const gsMatrix<T> & weights() const { return this->basis().weights(); }
