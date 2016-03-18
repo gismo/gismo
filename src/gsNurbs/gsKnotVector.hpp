@@ -323,6 +323,48 @@ void gsKnotVector<T>::remove( const T knot, mult_t mult )
     // Otherwise the knot is not present and we cannot remove it.
 }
 
+
+template<typename T>
+void gsKnotVector<T>::erase(const mult_t first, const mult_t last)
+{
+    m_repKnots.erase(m_repKnots.begin()+first, m_repKnots.begin()+last);
+    nonConstMultIterator fpos =
+        std::lower_bound(m_multSum.begin(), m_multSum.end(), first);
+    nonConstMultIterator lpos =
+        std::upper_bound(m_multSum.begin(), m_multSum.end(), last);
+    const mult_t numKnots = last - first;
+    *fpos = m_multSum.back() - numKnots;
+    lpos  = m_multSum.erase(fpos + 1, lpos);
+    std::transform(lpos, m_multSum.end(), lpos, std::bind2nd(std::minus<mult_t>(),numKnots));  
+}
+
+template<typename T>
+void gsKnotVector<T>::trimLeft(const mult_t numKnots)
+{
+    // equiv:
+    //erase(0, numKnots);
+    //return;
+    m_repKnots.erase(m_repKnots.begin(), m_repKnots.begin()+numKnots);
+    nonConstMultIterator upos =
+        std::upper_bound(m_multSum.begin(), m_multSum.end(), numKnots);
+    upos = m_multSum.erase(m_multSum.begin(), upos);
+    std::transform(upos, m_multSum.end(), upos, std::bind2nd(std::minus<mult_t>(),numKnots));
+}
+
+template<typename T>
+void gsKnotVector<T>::trimRight(const mult_t numKnots)
+{
+    // equiv:
+    //erase(m_multSum.back()-numKnots, m_multSum.back());
+    //return;
+    m_repKnots.resize(m_repKnots.size()-numKnots);
+    const mult_t newSum = m_multSum.back()-numKnots;
+    nonConstMultIterator upos =
+        std::lower_bound(m_multSum.begin(), m_multSum.end(), newSum) + 1;
+    m_multSum.erase(upos, m_multSum.end() );
+    m_multSum.back() = newSum;
+}
+
 //================//
 // multiplicities //
 //================//
@@ -684,14 +726,16 @@ void gsKnotVector<T>::uniformRefine( mult_t numKnots, mult_t mult )
     //GISMO_ASSERT( numKnots>=0, "Expecting non-negative number");
     if( numKnots < 0 )
         return;
-        
+
+    const mult_t l = ( domainUBegin() - ubegin() ) * numKnots * mult;
+    const mult_t r = (uend() - domainUEnd() - 1  ) * numKnots * mult;
+
     knotContainer newKnots;
     getUniformRefinementKnots(numKnots,newKnots,mult); // iterate instead of store ?
     insert(newKnots.begin(),newKnots.end()); // complexity: newKnots.size() + size()
-    // optimal: 
-    // newKnots, reserve
 
-    // fixme: trim extra knots
+    if (0!=l) trimLeft (l);
+    if (0!=r) trimRight(r);
 }
 
 

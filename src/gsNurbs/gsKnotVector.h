@@ -205,7 +205,7 @@ public: // inserting and removing
     void remove( const T knot, mult_t mult = 1 );
 
     //TODO: remove with two iterators.
-
+    
 public: // multiplicities
 
     /// Returns the multiplicity of the knot-value \a u (or zero if
@@ -343,6 +343,15 @@ private: // iterator typedefs and getters
         // equivalent:
         // return u >= m_repKnots[m_deg] && u <= m_repKnots.end()[-m_deg-1];        
     }
+
+    /// Removes the knots in the range [first,last)
+    void erase(const mult_t first, const mult_t last);
+
+    /// Removes the left-most \a numKnots from the knot-vector
+    void trimLeft (const mult_t numKnots);
+    
+    /// Removes the right-most \a numKnots from the knot-vector
+    void trimRight(const mult_t numKnots);
 
 public:
 
@@ -694,7 +703,7 @@ public: // things required by gsKnotVector
 
         // update multiplicity sum
         std::transform(m_multSum.begin(), m_multSum.end(), m_multSum.begin(),
-                       std::bind2nd(std::plus<unsigned>(), i) );
+                       std::bind2nd(std::plus<mult_t>(), i) );
         m_multSum.back() += i;
 
         m_deg += i;
@@ -703,6 +712,7 @@ public: // things required by gsKnotVector
     /// Inverse of degreeIncrease.
     void degreeDecrease(int const & i = 1 )
     {
+        // note: multiplicities are already updated after each call
         remove( ubegin()  , i );
         remove( uend() - 1, i );
         m_deg -= i;

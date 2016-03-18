@@ -730,7 +730,7 @@ public:
     gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const;
         
 private:
-
+    
     using Base::m_p;
     using Base::m_knots;
     using Base::m_periodic;
@@ -751,6 +751,7 @@ private:
 #endif
 namespace gismo
 {
+template<class T> const int gsTensorBSplineBasis<1,T>::Dim; //-O3 (SLE11) fix
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<1,real_t>;
 EXTERN_CLASS_TEMPLATE gsBSplineBasis<real_t>;
 }
