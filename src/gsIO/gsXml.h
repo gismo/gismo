@@ -287,6 +287,10 @@ GISMO_EXPORT void getInterfaces(gsXmlNode* node,
                                 std::map<int, int>& ids,
                                 std::vector< boundaryInterface > & result);
 
+GISMO_EXPORT void appendBoxTopology(const gsBoxTopology& topology,
+                                    gsXmlNode* node,
+                                    gsXmlTree& data);
+
 /// Helper to allocate XML node with gsMatrix value
 template<class T>
 gsXmlNode * makeNode( const std::string & name, 
