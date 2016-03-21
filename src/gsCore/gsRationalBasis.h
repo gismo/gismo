@@ -603,7 +603,6 @@ template<class SrcT>
 void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,
                                                      std::vector<unsigned> const & boxes)
 {
-    index_t n( coefs.cols() );
     // switch from control points (n-dimensional) to
     // "projective control points" ((n+1)-dimensional),
     // where the last coordinate is the weight.
