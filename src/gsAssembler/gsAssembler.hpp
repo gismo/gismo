@@ -616,7 +616,7 @@ gsField<T> *  gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 //This silently assumes the same basis for all components
 template<class T>
 void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
-                            gsMultiPatch<T>& result) const
+                            gsMultiPatch<T>& result, T theta) const
 {
    // GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
 
@@ -634,7 +634,7 @@ void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
             {
                 if ( mapper.is_free(i, p) ) // DoF value is in the solVector
                 {
-                    coeffs(i,j) += solVector( mapper.index(i, p), 0);
+                    coeffs(i,j) += theta* solVector( mapper.index(i, p), 0);
                 }
             }
         }

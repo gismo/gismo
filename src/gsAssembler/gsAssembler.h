@@ -300,10 +300,11 @@ public:  /* Solution reconstruction */
     /// to the current solution specified by \par result. This method assumes that all
     /// unknows have the same basis.
     /// \param[in] solVector the solution vector obtained from the linear system
-    /// \param[out]result the solution in form of a gsMultiBasis, \par is added to the
+    /// \param[out]result the solution in form of a gsMultiBasis, \par solVector is added to the
     ///                   coefficients of result.
+    /// \param[in] theta damping factor for update, theta = 1 corresponds to a full step.
     virtual void updateSolution(const gsMatrix<T>& solVector,
-                                gsMultiPatch<T>& result) const;
+                                gsMultiPatch<T>& result, T theta = T(1)) const;
 
 public: // *** Accessors *** 
 
