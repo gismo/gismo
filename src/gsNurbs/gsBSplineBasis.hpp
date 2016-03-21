@@ -62,7 +62,7 @@ int gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
 
 template <class T>
 void gsTensorBSplineBasis<1,T>::connectivity(const gsMatrix<T> & nodes, 
-                                            gsMesh<T> & mesh) const
+                                             gsMesh<T> & mesh) const
 {
     const index_t sz  = size();
     GISMO_ASSERT( nodes.rows() == sz, "Invalid input.");
@@ -84,9 +84,9 @@ void gsTensorBSplineBasis<1,T>::connectivity(const gsMatrix<T> & nodes,
 
 template <class T>
 void gsTensorBSplineBasis<1,T>::matchWith(const boundaryInterface & bi,
-                                                 const gsBasis<T> & other,
-                                                 gsMatrix<unsigned> & bndThis,
-                                                 gsMatrix<unsigned> & bndOther) const
+                                          const gsBasis<T> & other,
+                                          gsMatrix<unsigned> & bndThis,
+                                          gsMatrix<unsigned> & bndOther) const
 {
     if ( const TensorSelf_t * _other = dynamic_cast<const TensorSelf_t*>(&other) )
     {
@@ -102,32 +102,32 @@ void gsTensorBSplineBasis<1,T>::matchWith(const boundaryInterface & bi,
 
 template <class T>
 void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u, 
-                                                   gsMatrix<unsigned>& result ) const 
+                                            gsMatrix<unsigned>& result ) const 
 {
     result.resize(m_p+1, u.cols());
     
-        if ( m_periodic )
+    if ( m_periodic )
+    {
+        // We want to keep the non-periodic case unaffected wrt
+        // complexity, therefore we keep the modulo operation of the
+        // periodic case separate
+        const int s = size();
+        for (index_t j = 0; j < u.cols(); ++j)
         {
-            // We want to keep the non-periodic case unaffected wrt
-            // complexity, therefore we keep the modulo operation of the
-            // periodic case separate
-            const int s = size();
-            for (index_t j = 0; j < u.cols(); ++j)
-            {
-                unsigned first = firstActive(u(0,j));
-                for (int i = 0; i != m_p+1; ++i)
-                    result(i,j) = (first++) % s;
-            }
+            unsigned first = firstActive(u(0,j));
+            for (int i = 0; i != m_p+1; ++i)
+                result(i,j) = (first++) % s;
         }
-        else
+    }
+    else
+    {
+        for (index_t j = 0; j < u.cols(); ++j)
         {
-            for (index_t j = 0; j < u.cols(); ++j)
-            {
-                unsigned first = firstActive(u(0,j));
-                for (int i = 0; i != m_p+1; ++i)
-                    result(i,j) = first++;
-            }
+            unsigned first = firstActive(u(0,j));
+            for (int i = 0; i != m_p+1; ++i)
+                result(i,j) = first++;
         }
+    }
 }
 
 template <class T>
@@ -158,7 +158,7 @@ gsMatrix<unsigned> * gsTensorBSplineBasis<1,T>::allBoundary() const
 
 template <class T> 
 gsMatrix<unsigned> * gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
-                                                                      unsigned offset ) const
+                                                               unsigned offset ) const
 {
     if( m_periodic )
     {
@@ -216,8 +216,8 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const unsigned & i) const
                   "Invalid index of basis function." );
     gsMatrix<T> res(1,2);
     res << ( i > static_cast<unsigned>(m_p) ? m_knots[i] : m_knots[m_p] ),
-      ( i < static_cast<unsigned>(m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
-    m_knots[m_knots.size()-m_p-1] );
+        ( i < static_cast<unsigned>(m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
+          m_knots[m_knots.size()-m_p-1] );
     return res ;
 }
 
@@ -282,160 +282,160 @@ void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& re
         return;
     };
 
-  STACK_ARRAY(T, left, m_p + 1);
-  STACK_ARRAY(T, right, m_p + 1);
+    STACK_ARRAY(T, left, m_p + 1);
+    STACK_ARRAY(T, right, m_p + 1);
 
-  for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
-  {
-      // Check if the point is in the domain
-      if ( ! inDomain( u(0,v) ) )
-      {
-          // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
-          result.col(v).setZero();
-      }
-      else
-      {   // Locate the point in the knot-vector
-          kspan = m_knots.findspanIter ( u(0,v) );
-          // Run evaluation algorithm
-          bspline::evalBasis( u(0,v), kspan, m_p, left, right, result.col(v) );
-      }
-  }
+    for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
+    {
+        // Check if the point is in the domain
+        if ( ! inDomain( u(0,v) ) )
+        {
+            // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
+            result.col(v).setZero();
+        }
+        else
+        {   // Locate the point in the knot-vector
+            kspan = m_knots.findspanIter ( u(0,v) );
+            // Run evaluation algorithm
+            bspline::evalBasis( u(0,v), kspan, m_p, left, right, result.col(v) );
+        }
+    }
 
 #endif
 //#if (FALSE)
-  STACK_ARRAY(T, left, m_p + 1);
-  STACK_ARRAY(T, right, m_p + 1);
+    STACK_ARRAY(T, left, m_p + 1);
+    STACK_ARRAY(T, right, m_p + 1);
 
-  for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
-  {
-    // Check if the point is in the domain
-    if ( ! inDomain( u(0,v) ) )
+    for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
     {
-        // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
-        result.col(v).setZero();
-        continue;
-    }
+        // Check if the point is in the domain
+        if ( ! inDomain( u(0,v) ) )
+        {
+            // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
+            result.col(v).setZero();
+            continue;
+        }
 
-    // Run evaluation algorithm
+        // Run evaluation algorithm
     
-    // Get span of absissae
-    unsigned span = m_knots.iFind( u(0,v) ) - m_knots.begin() ;
+        // Get span of absissae
+        unsigned span = m_knots.iFind( u(0,v) ) - m_knots.begin() ;
 
-    //ndu[0]   = T(1);  // 0-th degree function value
-    result(0,v)= T(1);  // 0-th degree function value
+        //ndu[0]   = T(1);  // 0-th degree function value
+        result(0,v)= T(1);  // 0-th degree function value
 
-    for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
-    {
-      left[j]  = u(0,v) - m_knots[span+1-j];
-      right[j] = m_knots[span+j] - u(0,v);
-      T saved = T(0) ;
+        for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
+        {
+            left[j]  = u(0,v) - m_knots[span+1-j];
+            right[j] = m_knots[span+j] - u(0,v);
+            T saved = T(0) ;
 
-      for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
-      {
-        // Strictly lower triangular part: Knot differences of distance j
-        //ndu[j*p1 + r] = right[r+1]+left[j-r] ;
+            for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
+            {
+                // Strictly lower triangular part: Knot differences of distance j
+                //ndu[j*p1 + r] = right[r+1]+left[j-r] ;
 
-        //const T temp = ndu[r*p1 + j-1] / ndu[j*p1 + r] ;
-        const T temp = result(r,v) / ( right[r+1] + left[j-r] );
-        // Upper triangular part: Basis functions of degree j
-        //ndu[r*p1 + j] = saved + right[r+1] * temp ;// r-th function value of degree j
-        result(r,v)     = saved + right[r+1] * temp ;// r-th function value of degree j
-        saved = left[j-r] * temp ;
-      }  
-      //ndu[j*p1 + j] = saved ;// Diagonal: j-th (last) function value of degree j
-      result(j,v)     = saved;
-    }
+                //const T temp = ndu[r*p1 + j-1] / ndu[j*p1 + r] ;
+                const T temp = result(r,v) / ( right[r+1] + left[j-r] );
+                // Upper triangular part: Basis functions of degree j
+                //ndu[r*p1 + j] = saved + right[r+1] * temp ;// r-th function value of degree j
+                result(r,v)     = saved + right[r+1] * temp ;// r-th function value of degree j
+                saved = left[j-r] * temp ;
+            }  
+            //ndu[j*p1 + j] = saved ;// Diagonal: j-th (last) function value of degree j
+            result(j,v)     = saved;
+        }
 
-  }// end for all columns v
+    }// end for all columns v
 //#endif
 }
 
 
 template <class T> 
 void gsTensorBSplineBasis<1,T>::evalSingle_into(unsigned i, 
-                                                       const gsMatrix<T> & u, 
-                                                       gsMatrix<T>& result) const 
+                                                const gsMatrix<T> & u, 
+                                                gsMatrix<T>& result) const 
 {
-  GISMO_ASSERT( i < unsigned(m_knots.size()-m_p-1),"Invalid index of basis function." );
+    GISMO_ASSERT( i < unsigned(m_knots.size()-m_p-1),"Invalid index of basis function." );
 
-  result.resize(1, u.cols() );
-  STACK_ARRAY(T, N, m_p + 1);
+    result.resize(1, u.cols() );
+    STACK_ARRAY(T, N, m_p + 1);
 
-  for (index_t s=0;s<u.cols(); ++s)
-  {
-      //Special cases
+    for (index_t s=0;s<u.cols(); ++s)
+    {
+        //Special cases
 
-      // Periodic basis ?
-      // Note: for periodic, i is understood modulo the basis size
-      if( m_periodic )
-      {
-          // Basis is periodic and i could be among the crossing functions.
-          if( static_cast<int>(i) <= m_periodic )
-          {
-              gsMatrix<T> supp = support(i);
-              if( u(0,s) < supp(0) || u(0,s) > supp(1)) // u is outside the support of B_i
-                  i += size(); // we use the basis function ignored ny the periodic construction
-          }
-      }
+        // Periodic basis ?
+        // Note: for periodic, i is understood modulo the basis size
+        if( m_periodic )
+        {
+            // Basis is periodic and i could be among the crossing functions.
+            if( static_cast<int>(i) <= m_periodic )
+            {
+                gsMatrix<T> supp = support(i);
+                if( u(0,s) < supp(0) || u(0,s) > supp(1)) // u is outside the support of B_i
+                    i += size(); // we use the basis function ignored ny the periodic construction
+            }
+        }
 
-      // Special case of C^{-1} on right end of support
-      if ( (i== unsigned(m_knots.size()-m_p-2)) && 
-           (u(0,s) == m_knots.last()) &&  (u(0,s)== m_knots[m_knots.size()-m_p-1]) )
-     {
-          result(0,s)= T(1.0);
-          continue;
-     }
+        // Special case of C^{-1} on right end of support
+        if ( (i== unsigned(m_knots.size()-m_p-2)) && 
+             (u(0,s) == m_knots.last()) &&  (u(0,s)== m_knots[m_knots.size()-m_p-1]) )
+        {
+            result(0,s)= T(1.0);
+            continue;
+        }
 
-      // Locality property
-      if ( (u(0,s) < m_knots[i]) || (u(0,s) >= m_knots[i+m_p+1]) )
-      {
-          result(0,s)= T(0.0);
-          continue;
-      }
+        // Locality property
+        if ( (u(0,s) < m_knots[i]) || (u(0,s) >= m_knots[i+m_p+1]) )
+        {
+            result(0,s)= T(0.0);
+            continue;
+        }
 
-      //bspline::deBoorTriangle( u(0,s), m_knots.begin() + i, m_p, N );
-      //result(0,s) = N[ m_p ];
+        //bspline::deBoorTriangle( u(0,s), m_knots.begin() + i, m_p, N );
+        //result(0,s) = N[ m_p ];
 
-      // Initialize zeroth degree functions
-      for (int j=0;j<=m_p; ++j)
-          if ( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
-              N[j] = T(1.0);
-          else
-              N[j] = T(0.0);
-      // Compute according to the trangular table
-      for (int k=1;k<=m_p; ++k)
-      {
-          T saved;
-          if (N[0]==0) 
-              saved= 0.0;
-          else
-              saved= ((u(0,s) - m_knots[i] )* N[0]) / (m_knots[k+i] - m_knots[i]);
-          for (int j=0;j<m_p-k+1; ++j)
-          {
-              const T kleft  = m_knots[i+j+1];
-              const T kright = m_knots[i+j+k+1];
-              if ( N[j+1] == 0.0 )
-              {
-                  N[j] = saved; 
-                  saved = 0.0 ;
-              }
-              else
-              {
-                  const T temp = N[j+1] / ( kright - kleft );
-                  N[j]= saved + ( kright-u(0,s) )*temp;
-                  saved= (u(0,s) -kleft ) * temp;
-              }
-          }
-      }
-      result(0,s)= N[0];
-  }
+        // Initialize zeroth degree functions
+        for (int j=0;j<=m_p; ++j)
+            if ( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
+                N[j] = T(1.0);
+            else
+                N[j] = T(0.0);
+        // Compute according to the trangular table
+        for (int k=1;k<=m_p; ++k)
+        {
+            T saved;
+            if (N[0]==0) 
+                saved= 0.0;
+            else
+                saved= ((u(0,s) - m_knots[i] )* N[0]) / (m_knots[k+i] - m_knots[i]);
+            for (int j=0;j<m_p-k+1; ++j)
+            {
+                const T kleft  = m_knots[i+j+1];
+                const T kright = m_knots[i+j+k+1];
+                if ( N[j+1] == 0.0 )
+                {
+                    N[j] = saved; 
+                    saved = 0.0 ;
+                }
+                else
+                {
+                    const T temp = N[j+1] / ( kright - kleft );
+                    N[j]= saved + ( kright-u(0,s) )*temp;
+                    saved= (u(0,s) -kleft ) * temp;
+                }
+            }
+        }
+        result(0,s)= N[0];
+    }
 }
 
 template <class T> 
 void gsTensorBSplineBasis<1,T>::evalDerSingle_into(unsigned i, 
-                                                     const gsMatrix<T> & u, 
-                                                     int n, 
-                                                     gsMatrix<T>& result) const
+                                                   const gsMatrix<T> & u, 
+                                                   int n, 
+                                                   gsMatrix<T>& result) const
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
     // This is a copy of the interior of evalAllDerSingle_into() except for the last for cycle with k.
@@ -484,34 +484,34 @@ void gsTensorBSplineBasis<1,T>::evalDerSingle_into(unsigned i,
         bspline::deBoorTriangle( u(0,s), m_knots.begin() + i, m_p, N );
 
         /*
-        for( int j = 0; j <= m_p; j++ ) // Initialize zeroth-degree functions
-            if( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
-                N[ j*table_size ] = 1;
-            else
-                N[ j*table_size ] = 0;
-        for( int k = 1; k <= m_p; k++ ) // Compute full triangular table
-        {
-            if( N[(k-1)] == 0 )
-                saved = 0;
-            else
-                saved = ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]);
-            for( int j = 0; j < m_p-k+1; j++)
-            {
-                Uleft = m_knots[i+j+1];
-                Uright = m_knots[i+j+k+1];
-                if( N[ (j+1)*table_size + (k-1) ] == 0 )
-                {
-                    N[ j*table_size + k ] = saved;
-                    saved = 0;
-                }
-                else
-                {
-                    temp = N[ (j+1)*table_size + (k-1) ]/(Uright-Uleft);
-                    N[ j*table_size + k ] = saved + (Uright-u(0,s))*temp;
-                    saved = (u(0,s)-Uleft)*temp;
-                }
-            }
-        }*/
+          for( int j = 0; j <= m_p; j++ ) // Initialize zeroth-degree functions
+          if( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
+          N[ j*table_size ] = 1;
+          else
+          N[ j*table_size ] = 0;
+          for( int k = 1; k <= m_p; k++ ) // Compute full triangular table
+          {
+          if( N[(k-1)] == 0 )
+          saved = 0;
+          else
+          saved = ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]);
+          for( int j = 0; j < m_p-k+1; j++)
+          {
+          Uleft = m_knots[i+j+1];
+          Uright = m_knots[i+j+k+1];
+          if( N[ (j+1)*table_size + (k-1) ] == 0 )
+          {
+          N[ j*table_size + k ] = saved;
+          saved = 0;
+          }
+          else
+          {
+          temp = N[ (j+1)*table_size + (k-1) ]/(Uright-Uleft);
+          N[ j*table_size + k ] = saved + (Uright-u(0,s))*temp;
+          saved = (u(0,s)-Uleft)*temp;
+          }
+          }
+          }*/
 
         // Not tested few lines:
         if( n == 0 )
@@ -546,97 +546,100 @@ void gsTensorBSplineBasis<1,T>::evalDerSingle_into(unsigned i,
             }
         }
         result(0,s) = ND[0]; // n-th derivative
-  }
-  // Changes from the book: notation change, stack arrays instead of normal C arrays, changed all 0.0s and 1.0s into 0 and 1. No return in the first check
-  // Warning: Segmentation fault if n > m_p.
+    }
+    // Changes from the book: notation change, stack arrays instead of normal C arrays, changed all 0.0s and 1.0s into 0 and 1. No return in the first check
+    // Warning: Segmentation fault if n > m_p.
 
 }
 
 template <class T> inline
 void gsTensorBSplineBasis<1,T>::evalFunc_into(const gsMatrix<T> &u, 
-                                                 const gsMatrix<T> & coefs, 
-                                                 gsMatrix<T>& result) const 
+                                              const gsMatrix<T> & coefs, 
+                                              gsMatrix<T>& result) const 
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate (got "
                   <<u.rows()<<").");
-  if( m_periodic == 0 )
-      gsDeboor(u, m_knots, m_p, coefs, result); // De Boor's algorithm
-  else
-  {
-      gsDeboor(u, m_knots, m_p, perCoefs(coefs), result); // Make sure that the ghost coefficients agree with the beginning of the curve.
-  }
-  //  return gsBasis<T>::eval(u,coefs); // defalult gsBasis implementation
+    if( m_periodic == 0 )
+        gsDeboor(u, m_knots, m_p, coefs, result); // De Boor's algorithm
+    else
+    {
+        gsDeboor(u, m_knots, m_p, perCoefs(coefs), result); // Make sure that the ghost coefficients agree with the beginning of the curve.
+    }
+    //  return gsBasis<T>::eval(u,coefs); // defalult gsBasis implementation
 }
 
 
 template <class T> inline
 void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const 
 {
-  GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
+    GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
 
-  const int pk = m_p-1 ;
+    const int pk = m_p-1 ;
 
-  STACK_ARRAY(T, ndu  , m_p   );
-  STACK_ARRAY(T, left , m_p+1 );
-  STACK_ARRAY(T, right, m_p+1 );
+    STACK_ARRAY(T, ndu  , m_p   );
+    STACK_ARRAY(T, left , m_p+1 );
+    STACK_ARRAY(T, right, m_p+1 );
 
-  result.resize( m_p + 1, u.cols() ) ;  
+    gsAsVector<T>(left ,m_p+1).setZero();
+    gsAsVector<T>(right,m_p+1).setZero();
 
-  for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
-  {
-      // Check if the point is in the domain
-      if ( ! inDomain( u(0,v) ) )
-      {
-          // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
-          result.col(v).setZero();
-          continue;
-      }
-      
-      // Run evaluation algorithm and keep first derivative
-      
-      // Get span of absissae
-      const unsigned span = m_knots.iFind( u(0,v) ) - m_knots.begin();
+    result.resize( m_p + 1, u.cols() ) ;  
 
-      ndu[0]  = T(1); // 0-th degree function value
-
-    for(int j=1; j<m_p ; j++) // For all degrees
+    for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
     {
-      // Compute knot splits
-      left[j]  = u(0,v) - m_knots[span+1-j];
-      right[j] = m_knots[span+j] - u(0,v);
+        // Check if the point is in the domain
+        if ( ! inDomain( u(0,v) ) )
+        {
+            // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
+            result.col(v).setZero();
+            continue;
+        }
+      
+        // Run evaluation algorithm and keep first derivative
+      
+        // Get span of absissae
+        const unsigned span = m_knots.iFind( u(0,v) ) - m_knots.begin();
 
-    // Compute Basis functions of degree m_p-1 ( ndu[] )
-    T saved = T(0) ; 
-    for(int r=0; r<j ; r++) // For all (except the last) basis functions of degree 1..j
-      {
-        const T temp = ndu[r] / ( right[r+1] + left[j-r] ) ;
-        ndu[r] = saved + right[r+1] * temp ;// r-th function value of degree 1..j
-        saved = left[j-r] * temp ;
-      }  
-      ndu[j] = saved ;// last function value of degree 1..j
-    }
+        ndu[0]  = T(1); // 0-th degree function value
 
-    // Compute last knot split
-    left[m_p]  = u(0,v) - m_knots[span+1-m_p];
-    right[m_p] = m_knots[span+m_p] - u(0,v);
+        for(int j=1; j<m_p ; j++) // For all degrees
+        {
+            // Compute knot splits
+            left[j]  = u(0,v) - m_knots[span+1-j];
+            right[j] = m_knots[span+j] - u(0,v);
 
-    // Compute the first derivatives (using ndu[] and left+right)
-    right[0] = right[1]+left[m_p] ;   
-    result(0  , v) = - m_p * ndu[0]  /  right[0] ;
-    for(int r = 1; r < m_p; r++)
-    { 
-        // Compute knot difference r of distance m_p (overwrite right[])
-        right[r] = right[r+1]+left[m_p-r] ;
-        result(r, v)  = m_p * (  ndu[r-1] / right[r-1] - ndu[r]  /  right[r] );
-    }
-    result(m_p, v) =   m_p * ndu[pk] / right[pk];        
+            // Compute Basis functions of degree m_p-1 ( ndu[] )
+            T saved = T(0) ; 
+            for(int r=0; r<j ; r++) // For all (except the last) basis functions of degree 1..j
+            {
+                const T temp = ndu[r] / ( right[r+1] + left[j-r] ) ;
+                ndu[r] = saved + right[r+1] * temp ;// r-th function value of degree 1..j
+                saved = left[j-r] * temp ;
+            }  
+            ndu[j] = saved ;// last function value of degree 1..j
+        }
 
-  }// end for all columns v
+        // Compute last knot split
+        left[m_p]  = u(0,v) - m_knots[span+1-m_p];
+        right[m_p] = m_knots[span+m_p] - u(0,v);
+
+        // Compute the first derivatives (using ndu[] and left+right)
+        right[0] = right[1]+left[m_p] ;   
+        result(0  , v) = - m_p * ndu[0]  /  right[0] ;
+        for(int r = 1; r < m_p; r++)
+        { 
+            // Compute knot difference r of distance m_p (overwrite right[])
+            right[r] = right[r+1]+left[m_p-r] ;
+            result(r, v)  = m_p * (  ndu[r-1] / right[r-1] - ndu[r]  /  right[r] );
+        }
+        result(m_p, v) =   m_p * ndu[pk] / right[pk];        
+
+    }// end for all columns v
 }
 
 template <class T> inline
 void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, 
-                                                           gsMatrix<T>& result ) const 
+                                            gsMatrix<T>& result ) const 
 {
     std::vector<gsMatrix<T> > ev;
     this->evalAllDers_into(u, 2, ev);
@@ -645,8 +648,8 @@ void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u,
 
 template <class T>  inline
 void gsTensorBSplineBasis<1,T>::derivSingle_into(unsigned i, 
-                                                                const gsMatrix<T> & u, 
-                                                                gsMatrix<T>& result ) const 
+                                                 const gsMatrix<T> & u, 
+                                                 gsMatrix<T>& result ) const 
 {
     // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
     result.resize(1, u.cols() );
@@ -666,9 +669,9 @@ void gsTensorBSplineBasis<1,T>::derivSingle_into(unsigned i,
 template <class T>  inline
 void 
 gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
-                                                                 const gsMatrix<T> & u,
-                                                                 int n,
-                                                                 gsMatrix<T>& result) const
+                                                  const gsMatrix<T> & u,
+                                                  int n,
+                                                  gsMatrix<T>& result) const
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
     //gsWarn << "You're about to use evalAllDersSingle_into(...) that has not been tested at all.\n";
@@ -720,33 +723,33 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
 
         // The following commented area has been replaced by the deBoorTriangle(...); line.
 /*        for( int j = 0; j <= m_p; j++ ) // Initialize zeroth-degree functions
-                 if( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
-            N[ j*table_size ] = 1;
-        else
-            N[ j*table_size ] = 0;
-      for( int k = 1; k <= m_p; k++ ) // Compute full triangular table
-      {
-          if( N[(k-1)] == 0 )
-              saved = 0;
+          if( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
+          N[ j*table_size ] = 1;
           else
-              saved = ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]);
+          N[ j*table_size ] = 0;
+          for( int k = 1; k <= m_p; k++ ) // Compute full triangular table
+          {
+          if( N[(k-1)] == 0 )
+          saved = 0;
+          else
+          saved = ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]);
           for( int j = 0; j < m_p-k+1; j++)
           {
-              Uleft = m_knots[i+j+1];
-              Uright = m_knots[i+j+k+1];
-              if( N[ (j+1)*table_size + (k-1) ] == 0 )
-              {
-                  N[ j*table_size + k ] = saved;
-                  saved = 0;
-              }
-              else
-              {
-                  temp = N[ (j+1)*table_size + (k-1) ]/(Uright-Uleft);
-                  N[ j*table_size + k ] = saved + (Uright-u(0,s))*temp;
-                  saved = (u(0,s)-Uleft)*temp;
-              }
+          Uleft = m_knots[i+j+1];
+          Uright = m_knots[i+j+k+1];
+          if( N[ (j+1)*table_size + (k-1) ] == 0 )
+          {
+          N[ j*table_size + k ] = saved;
+          saved = 0;
           }
-      }
+          else
+          {
+          temp = N[ (j+1)*table_size + (k-1) ]/(Uright-Uleft);
+          N[ j*table_size + k ] = saved + (Uright-u(0,s))*temp;
+          saved = (u(0,s)-Uleft)*temp;
+          }
+          }
+          }
 */
         result(0,s) = N[ m_p ]; // The function value
         for( int k = 1; k <= n; k++ ) // Compute the derivatives
@@ -781,18 +784,18 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
     }
 
     /*
-    if( clamped_end )
-    {
-        m_knots[ m_knots.size() - 1 ] -= 0.001;
-        m_knots[ m_knots.size() - 2 ] -= 0.001;
-    }
-    // Changes from the book: notation change, stack arrays instead of normal C arrays, changed all 0.0s and 1.0s into 0 and 1. No return in the first check
-    // Warning: Segmentation fault if n > m_p.
-    std::cout << "After:" << std::endl;
-    for( int j = 0; j < m_knots.size(); j++ )
-    {
-        std::cout << "m_knots[" << j << "] =" << m_knots[j] << std::endl;
-    }*/
+      if( clamped_end )
+      {
+      m_knots[ m_knots.size() - 1 ] -= 0.001;
+      m_knots[ m_knots.size() - 2 ] -= 0.001;
+      }
+      // Changes from the book: notation change, stack arrays instead of normal C arrays, changed all 0.0s and 1.0s into 0 and 1. No return in the first check
+      // Warning: Segmentation fault if n > m_p.
+      std::cout << "After:" << std::endl;
+      for( int j = 0; j < m_knots.size(); j++ )
+      {
+      std::cout << "m_knots[" << j << "] =" << m_knots[j] << std::endl;
+      }*/
 }
 
 
@@ -876,172 +879,172 @@ void gsTensorBSplineBasis<1,T>::
 evalAllDers_into(const gsMatrix<T> & u, int n, 
                  std::vector<gsMatrix<T> >& result) const
 {
-  // TO DO : Use less memory proportionally to n
-  // Only last n+1 columns and last n rows of ndu are needed
-  // Also a's size is proportional to n
-  GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
+    // TO DO : Use less memory proportionally to n
+    // Only last n+1 columns and last n rows of ndu are needed
+    // Also a's size is proportional to n
+    GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
 
-  const int p1 = m_p + 1;       // degree plus one
+    const int p1 = m_p + 1;       // degree plus one
 
-  STACK_ARRAY(T, ndu,  p1 * p1 );
-  STACK_ARRAY(T, left, p1);
-  STACK_ARRAY(T, right, p1);
-  STACK_ARRAY(T, a, 2 * p1);
+    STACK_ARRAY(T, ndu,  p1 * p1 );
+    STACK_ARRAY(T, left, p1);
+    STACK_ARRAY(T, right, p1);
+    STACK_ARRAY(T, a, 2 * p1);
 
-  result.resize(n+1);
-  for(int k=0; k<=n; k++)
-      result[k].resize(m_p + 1, u.cols());
+    result.resize(n+1);
+    for(int k=0; k<=n; k++)
+        result[k].resize(m_p + 1, u.cols());
 
 #if FALSE
 
-  const int pn = m_p - n;
+    const int pn = m_p - n;
 
-  for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
-  {
-      // Check if the point is in the domain
-      if ( ! inDomain( u(0,v) ) )
-      {
-          // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
-          for(int k=0; k<=n; k++)
-              result[k].col(v).setZero();
-          continue;
-      }
+    for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
+    {
+        // Check if the point is in the domain
+        if ( ! inDomain( u(0,v) ) )
+        {
+            // gsWarn<< "Point "<< u(0,v) <<" not in the BSpline domain.\n";
+            for(int k=0; k<=n; k++)
+                result[k].col(v).setZero();
+            continue;
+        }
 
-    // Run evaluation algorithm and keep the function values triangle & the knot differences
-    unsigned span = m_knots.findspan( u(0,v) ) ;     // Get span of absissae
+        // Run evaluation algorithm and keep the function values triangle & the knot differences
+        unsigned span = m_knots.findspan( u(0,v) ) ;     // Get span of absissae
     
-    for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
-    {
-      // Compute knot splits
-      left[j]  = u(0,v) - m_knots[span+1-j];
-      right[j] = m_knots[span+j] - u(0,v);
-    }
+        for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
+        {
+            // Compute knot splits
+            left[j]  = u(0,v) - m_knots[span+1-j];
+            right[j] = m_knots[span+j] - u(0,v);
+        }
 
-    ndu[0] = T(1) ; // 0-th degree function value
-    T saved = T(0) ;
-    // Compute Basis functions of degree m_p-n ( ndu[] )
-    for(int r=0; r<pn ; r++) // For all (except the last) basis functions of degree m_p-n
-    {
-        const T temp = ndu[r*p1 + pn -1] / ( right[r+1] + left[pn-r] ) ;
-        ndu[r*p1 + pn] = saved + right[r+1] * temp ;// r-th function value of degree j
-        saved = left[pn-r] * temp ;
-    }  
-    ndu[pn*p1 + pn] = saved ;
+        ndu[0] = T(1) ; // 0-th degree function value
+        T saved = T(0) ;
+        // Compute Basis functions of degree m_p-n ( ndu[] )
+        for(int r=0; r<pn ; r++) // For all (except the last) basis functions of degree m_p-n
+        {
+            const T temp = ndu[r*p1 + pn -1] / ( right[r+1] + left[pn-r] ) ;
+            ndu[r*p1 + pn] = saved + right[r+1] * temp ;// r-th function value of degree j
+            saved = left[pn-r] * temp ;
+        }  
+        ndu[pn*p1 + pn] = saved ;
 
 
 // Compute n-th derivative and continue to n-1 ... 0
 
-      for(int r=0; r<pn ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
-      {
-        // Strictly lower triangular part: Knot differences of distance j
-        ndu[j*p1 + r] = right[r+1]+left[j-r] ;
-        const T temp = ndu[r*p1 + j-1] / ndu[j*p1 + r] ;
-        // Upper triangular part: Basis functions of degree j
-        ndu[r*p1 + j] = saved + right[r+1] * temp ;// r-th function value of degree j
-        saved = left[j-r] * temp ;
-      }  
-      // Diagonal: j-th (last) function value of degree j
-      ndu[j*p1 + j] = saved ;
+        for(int r=0; r<pn ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
+        {
+            // Strictly lower triangular part: Knot differences of distance j
+            ndu[j*p1 + r] = right[r+1]+left[j-r] ;
+            const T temp = ndu[r*p1 + j-1] / ndu[j*p1 + r] ;
+            // Upper triangular part: Basis functions of degree j
+            ndu[r*p1 + j] = saved + right[r+1] * temp ;// r-th function value of degree j
+            saved = left[j-r] * temp ;
+        }  
+        // Diagonal: j-th (last) function value of degree j
+        ndu[j*p1 + j] = saved ;
     }
     
 #endif
 
-  for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
-  {
+    for (index_t v = 0; v < u.cols(); ++v) // for all columns of u
+    {
 
-      // Check if the point is in the domain
-      if ( ! inDomain( u(0,v) ) )
-      {
-          // gsWarn<< "Point "<< u(0,s) <<" not in the BSpline domain.\n";
-          for(int k=0; k<=n; k++)
-              result[k].col(v).setZero();
-          continue;
-      }
+        // Check if the point is in the domain
+        if ( ! inDomain( u(0,v) ) )
+        {
+            // gsWarn<< "Point "<< u(0,s) <<" not in the BSpline domain.\n";
+            for(int k=0; k<=n; k++)
+                result[k].col(v).setZero();
+            continue;
+        }
 
-    // Run evaluation algorithm and keep the function values triangle & the knot differences
-    typename KnotVectorType::iterator span=m_knots.iFind( u(0,v) );
+        // Run evaluation algorithm and keep the function values triangle & the knot differences
+        typename KnotVectorType::iterator span=m_knots.iFind( u(0,v) );
 //    unsigned span = m_knots.findspan( u(0,v) ) ;
     
-    ndu[0] = T(1) ; // 0-th degree function value
-    for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
-    {
-      // Compute knot splits
+        ndu[0] = T(1) ; // 0-th degree function value
+        for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
+        {
+            // Compute knot splits
 //      left[j]  = u(0,v) - m_knots[span+1-j];
 //      right[j] = m_knots[span+j] - u(0,v);
-      left[j] = u(0,v) - *(span+1-j);
-      right[j] = *(span+j) - u(0,v);
+            left[j] = u(0,v) - *(span+1-j);
+            right[j] = *(span+j) - u(0,v);
 
-      T saved = T(0) ;
+            T saved = T(0) ;
 
-      for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
-      {
-        // Strictly lower triangular part: Knot differences of distance j
-        ndu[j*p1 + r] = right[r+1]+left[j-r] ;
-        const T temp = ndu[r*p1 + j-1] / ndu[j*p1 + r] ;
-        // Upper triangular part: Basis functions of degree j
-        ndu[r*p1 + j] = saved + right[r+1] * temp ;// r-th function value of degree j
-        saved = left[j-r] * temp ;
-      }  
-      // Diagonal: j-th (last) function value of degree j
-      ndu[j*p1 + j] = saved ;
-    }
-    
-    // Assign 0-derivative equal to function values
-    //result.front().block(0,v, p1,1) = ndu.col(m_p);
-    for (int j=0; j <= m_p ; ++j )
-        result.front()(j,v) = ndu[j*p1 + m_p];
-    
-    // Compute the derivatives
-    for(int r = 0; r <= m_p; r++)
-    {
-      // alternate rows in array a
-      T* a1 = &a[0];
-      T* a2 = &a[p1];
-
-      a1[0] = T(1) ;
-
-      // Compute the k-th derivative of the r-th basis function
-      for(int k=1; k<=n; k++)
-      {
-        int rk,pk,j1,j2 ;
-        T d(0) ;
-        rk = r-k ; pk = m_p-k ;
-        
-        if(r >= k)
-        {
-          a2[0] = a1[0] / ndu[ (pk+1)*p1 + rk] ;
-          d = a2[0] * ndu[rk*p1 + pk] ;
+            for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
+            {
+                // Strictly lower triangular part: Knot differences of distance j
+                ndu[j*p1 + r] = right[r+1]+left[j-r] ;
+                const T temp = ndu[r*p1 + j-1] / ndu[j*p1 + r] ;
+                // Upper triangular part: Basis functions of degree j
+                ndu[r*p1 + j] = saved + right[r+1] * temp ;// r-th function value of degree j
+                saved = left[j-r] * temp ;
+            }  
+            // Diagonal: j-th (last) function value of degree j
+            ndu[j*p1 + j] = saved ;
         }
+    
+        // Assign 0-derivative equal to function values
+        //result.front().block(0,v, p1,1) = ndu.col(m_p);
+        for (int j=0; j <= m_p ; ++j )
+            result.front()(j,v) = ndu[j*p1 + m_p];
+    
+        // Compute the derivatives
+        for(int r = 0; r <= m_p; r++)
+        {
+            // alternate rows in array a
+            T* a1 = &a[0];
+            T* a2 = &a[p1];
+
+            a1[0] = T(1) ;
+
+            // Compute the k-th derivative of the r-th basis function
+            for(int k=1; k<=n; k++)
+            {
+                int rk,pk,j1,j2 ;
+                T d(0) ;
+                rk = r-k ; pk = m_p-k ;
         
-        j1 = ( rk >= -1  ? 1   : -rk     ); 
-        j2 = ( r-1 <= pk ? k-1 : m_p - r );
+                if(r >= k)
+                {
+                    a2[0] = a1[0] / ndu[ (pk+1)*p1 + rk] ;
+                    d = a2[0] * ndu[rk*p1 + pk] ;
+                }
+        
+                j1 = ( rk >= -1  ? 1   : -rk     ); 
+                j2 = ( r-1 <= pk ? k-1 : m_p - r );
 	    
-        for(int j = j1; j <= j2; j++)
-        {
-          a2[j] = (a1[j] - a1[j-1]) / ndu[(pk+1)*p1 + rk+j] ;
-          d += a2[j] * ndu[(rk+j)*p1 + pk] ;
-        }
+                for(int j = j1; j <= j2; j++)
+                {
+                    a2[j] = (a1[j] - a1[j-1]) / ndu[(pk+1)*p1 + rk+j] ;
+                    d += a2[j] * ndu[(rk+j)*p1 + pk] ;
+                }
         
-        if(r <= pk)
-        {
-          a2[k] = -a1[k-1] / ndu[(pk+1)*p1 + r] ;
-          d += a2[k] * ndu[r*p1 + pk] ;
+                if(r <= pk)
+                {
+                    a2[k] = -a1[k-1] / ndu[(pk+1)*p1 + r] ;
+                    d += a2[k] * ndu[r*p1 + pk] ;
+                }
+
+                result[k](r, v) = d;
+
+                std::swap(a1, a2);              // Switch rows
+            }
         }
+    }// end for all columns v
 
-        result[k](r, v) = d;
-
-        std::swap(a1, a2);              // Switch rows
-      }
+    // Multiply through by the factor factorial(m_p)/factorial(m_p-k)
+    int r = m_p ;
+    for(int k=1; k<=n; k++)
+    {
+        result[k].array() *= T(r) ;
+        r *= m_p - k ;
     }
-  }// end for all columns v
-
-  // Multiply through by the factor factorial(m_p)/factorial(m_p-k)
-  int r = m_p ;
-  for(int k=1; k<=n; k++)
-  {
-      result[k].array() *= T(r) ;
-      r *= m_p - k ;
-  }
 }
 
 
@@ -1095,7 +1098,7 @@ template <class T>
 std::ostream & gsTensorBSplineBasis<1,T>::print(std::ostream &os) const
 {
     os << "BSplineBasis: deg=" <<degree()
-        << ", size="<< size() << ", knot vector:\n";
+       << ", size="<< size() << ", knot vector:\n";
     os << this->knots();
     if( m_periodic > 0 )
         os << ",\n m_periodic= " << m_periodic;
@@ -1106,7 +1109,7 @@ std::string gsTensorBSplineBasis<1,T>::detail() const
 {
     std::stringstream os;
     os << "BSplineBasis: deg=" <<degree()
-        << ", size="<< size() << ", knot vector:\n";
+       << ", size="<< size() << ", knot vector:\n";
     os << this->knots().detail();
     if( m_periodic > 0 )
         os << ",\n m_periodic= " << m_periodic;
