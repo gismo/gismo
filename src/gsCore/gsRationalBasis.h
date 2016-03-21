@@ -263,6 +263,8 @@ public:
     
     /// Access to i-th weight
     T & weight(int i)             { return m_weights(i); }
+
+    /// Const access to i-th weight
     const T & weight(int i) const { return m_weights(i); }
     
     /// Set weights
@@ -271,6 +273,40 @@ public:
         GISMO_ASSERT( w.cols() == 1, "Weights should be scalars" ) ;
         m_weights = w;
     }
+
+    /// Returns a matrix of projective coefficients. The input \a
+    /// coefs are affine coefficients for this basis
+    gsMatrix<T> projectiveCoefs(const gsMatrix<T> & coefs) const
+    { return projectiveCoefs(coefs, m_weights); }
+    
+    /// Returns a matrix of projective coefficients. The input \a
+    /// coefs are affine coefficients and weights
+    static gsMatrix<T> projectiveCoefs(const gsMatrix<T> & coefs, const gsMatrix<T> & weights)
+    {
+        GISMO_ASSERT(coefs.rows() == weights.rows(),
+                     "Invalid basis/coefficients ("<<coefs.rows()<<"/"<<weights.rows());
+        const index_t n = coefs.cols();
+        gsMatrix<T> rvo(coefs.rows(), n + 1);
+        // switch from control points (n-dimensional) to
+        // "projective control points" ((n+1)-dimensional),
+        // where the last coordinate is the weight.
+        rvo.leftCols(n).noalias() = weights.asDiagonal() * coefs;
+        rvo.col(n)                = weights;
+        return rvo;
+    }
+
+    /// Sets the weights and the \a coefs to be the affine
+    /// coefficients corresponding to the projective coefficients
+    /// \a pr_coefs
+    static void setFromProjectiveCoefs(const gsMatrix<T> & pr_coefs,
+                                       gsMatrix<T> & coefs, gsMatrix<T> & weights)
+    {
+        const index_t n = pr_coefs.cols() - 1;
+        weights = pr_coefs.col( n );
+        coefs   = pr_coefs.leftCols(n).array().colwise() / weights.col(0).array();
+        // equiv: coefs = pr_coefs.leftCols(n).array() / weights.replicate(1,n).array();
+    }
+
     
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
@@ -513,14 +549,12 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
 template<class SrcT>
 void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots,  int mul)
 {
-    assert( coefs.rows() == this->size() && m_weights.rows() == this->size() );
+    GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
+                  "Invalid dimensions" );
     gsSparseMatrix<T, RowMajor> transfer;
     m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
 
-    for (int i = 0; i < coefs.rows(); ++i) // transform to projective
-        coefs.row(i) *= m_weights(i);
-
-    coefs      = transfer * coefs;
+    coefs     = transfer * m_weights.asDiagonal() * coefs;
     m_weights = transfer * m_weights;
     // Alternative way
     // gsBasis<T> * tmp = m_src->clone();
@@ -538,8 +572,6 @@ void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numK
 template<class SrcT>
 void gsRationalBasis<SrcT>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, int mul)
 {
-    assert( m_weights.rows() == this->size() );
-
     // 1. Get source transfer matrix (while refining m_src)
     m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
 
@@ -572,22 +604,17 @@ void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,
                                                      std::vector<unsigned> const & boxes)
 {
     index_t n( coefs.cols() );
-    gsMatrix<T> rw( coefs.rows(), n+1 );
-
-    // switch from control points (d-dimensional) to
-    // "projective control points" ((d+1)-dimensional),
+    // switch from control points (n-dimensional) to
+    // "projective control points" ((n+1)-dimensional),
     // where the last coordinate is the weight.
-    rw.leftCols(n).noalias() = m_weights.asDiagonal() * coefs;
-    rw.col(n)                = m_weights;
-
+    gsMatrix<T> rw = projectiveCoefs(coefs, m_weights);
+    
     // refine with these projective control points as coefficients.
     m_src->refineElements_withCoefs( rw, boxes );
 
-    // Regain the new d-dimensional control points
-    // and the new weights.
-    m_weights = rw.col( n );
-    coefs = rw.leftCols(n).array().colwise() / m_weights.col(0).array();
-    // equiv: coefs = rw.leftCols(n).array() / m_weights.replicate(1,n).array();
+    // Regain the new n-dimensional control points and the new
+    // weights.
+    setFromProjectiveCoefs(rw, coefs, m_weights);
 }
 
 

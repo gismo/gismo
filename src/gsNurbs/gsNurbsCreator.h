@@ -35,7 +35,13 @@ namespace gismo
 template<class T>
 struct gsNurbsCreator
 {
+    typedef typename gsBSpline<T>::uPtr         BSplinePtr;
+    typedef typename gsNurbs<T>::uPtr           NurbsPtr;
+    typedef typename gsTensorBSpline<2,T>::uPtr TensorBSpline2Ptr;
+    typedef typename gsTensorNurbs<2,T>::uPtr   TensorNurbs2Ptr;
 
+public:
+    
     static gsTensorBSpline<3,T> * lift3D( gsTensorBSpline<2,T> const & geo, T z = 1);
     
     static gsTensorBSpline<4,T> * lift4D( gsTensorBSpline<3,T> const & geo, T z = 1);
@@ -137,6 +143,8 @@ struct gsNurbsCreator
     static gsNurbs<T> *NurbsAmoebaFull(T const & r=1, T const & x=0, T const & y = 0);
 
     static gsBSpline<T> *BSplineLineSegment(gsMatrix<T> const & p0, gsMatrix<T> const & p1 );
+
+    static BSplinePtr BSplineSegment(T const u0 = 0, T const u1 = 1);
 
     /// L-Shaped domain represented as a tensor B-spline of degree 1
     static gsTensorBSpline<2,T> * BSplineLShape_p1(T r = 1.0);

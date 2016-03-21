@@ -150,9 +150,12 @@ void gsBoehmRefine( KnotVectorType & knots,
                     ValIt valBegin, ValIt valEnd, // knot values to insert
                     bool update_knots)
 {
+    if ( valBegin == valEnd ) return;
+        
     typedef typename std::iterator_traits<ValIt>::value_type T;
 
-    GISMO_ASSERT((*valBegin >= knots[p]), "Value is before first knot");// && (val[val.size()-1]<=knots[knots.size()-p-1]));
+    GISMO_ASSERT( (*valBegin >= knots[p]), "Value is before first knot");
+    // && (val[val.size()-1]<=knots[knots.size()-p-1]));
     //assert( knots[knots.size()-p-1]<=val[val.size()-1] );
     const int np= coefs.rows();
     const int nk= std::distance( valBegin, valEnd );

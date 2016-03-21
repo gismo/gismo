@@ -53,6 +53,9 @@ public:
     /// Shared pointer for gsNurbs
     typedef memory::shared_ptr< gsNurbs<T> > Ptr;
 
+    /// Unique pointer for gsNurbs
+    typedef typename memory::unique<gsNurbs>::ptr uPtr;
+
 public:
 
     /// Default empty constructor
@@ -118,6 +121,12 @@ public:
 
     /// Returns the starting value of the domain of the basis
     T domainEnd() const { return this->basis().knots().last(); };
+
+    /// Returns a reference to the knot vector
+    KnotVectorType & knots() { return this->basis().knots(); }
+
+    /// Returns a (const )reference to the knot vector
+    const KnotVectorType & knots() const { return this->basis().knots(); }
 
     /// Access to i-th weight
     T & weight(int i) { return this->basis().weight(i); }
@@ -202,28 +211,21 @@ public:
     /// Insert the given new knot (multiplicity \a i) without changing the curve.
     void insertKnot( T knot, int i = 1 )
     {
-        assert( i>0);
-        // TO DO: There is also Oslo Algorithm and others
-
-        std::cout <<"before \n"<< this->m_coefs.transpose() <<"\n";
-
-        gsMatrix<T> tmp( this->m_coefs.rows(), this->m_coefs.cols()+1 );
-        tmp.leftCols(this->m_coefs.cols()) =  
-            this->weights().asDiagonal() * this->m_coefs;
-        tmp.rightCols(1) = this->weights();
-
-        gsBoehm( this->basis().knots(), tmp, knot, i); 
-
-        int l = tmp.cols() -1;
-        this->basis().setWeights( tmp.rightCols( 1 ) );
-        for ( index_t k = 0; k< this->m_coefs.rows(); ++k)
-            for ( index_t j = 0; j< this->m_coefs.cols(); ++j)
-                tmp(k,j) /= tmp(k,l);           
-        //tmp.col(j).cwiseQuotient( *this->basis().m_weights );
-            
-        this->m_coefs =  tmp.leftCols( this->m_coefs.cols() );
+        if (i==0) return;
+        
+        gsMatrix<T> tmp = basis().projectiveCoefs(m_coefs);
+        gsBoehm(basis().knots(), tmp, knot, i); 
+        basis().setFromProjectiveCoefs(tmp, m_coefs, basis().weights());
     }
 
+    /// Insert the knots in the range [inBegin,inEnd) without changing the curve.
+    template <class It>
+    void insertKnots(It inBegin, It inEnd)
+    {
+        gsMatrix<T> tmp = basis().projectiveCoefs(m_coefs);
+        gsBoehmRefine(basis().knots(), tmp, this->degree(), inBegin, inEnd);
+        basis().setFromProjectiveCoefs(tmp, m_coefs, basis().weights());
+    }
     
     /*
     void degreeElevate(int const i, int const dir = -1)
@@ -246,6 +248,8 @@ protected:
 // Data members
 private:
 
+    using Base::m_coefs;
+    
     bool projective;
 
 }; // class gsNurbs

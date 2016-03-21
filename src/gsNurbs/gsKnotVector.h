@@ -536,17 +536,31 @@ public:
     */
     bool includes(const gsKnotVector<T> & other) const;
 
+    /** \brief Computes the difference between \a this knot-vector and \a other.
+        
+        All knots in \a this  which are not found in \a other (counted
+        with repetitions), are stored in \a result
+    */
+    void difference(const gsKnotVector<T> & other,
+                   std::vector<T>& result) const;
 
-    /** \brief Computes the symmetric difference between this knot-vector and \a other.
+    /** \brief Computes the symmetric difference between \a this knot-vector and \a other.
 
-        All knots which do not exist in both knot-vectors (counted
-        with repetitions) are stored in \a result
+        All knots which do not exist in both knot-vectors, \a this and
+        \a other (counted with repetitions), are stored in \a result
     */
     void symDifference(const gsKnotVector<T> & other,
                        std::vector<T>& result) const;
 
     /** 
         \brief Computes the union of knot-vectors \a this and \a b.
+
+        Example:
+        gsKnotVector<> testKv1(0, 1, 2, 2, 1);		// 0 0 1/3 2/3 1 1
+        gsKnotVector<> testKv2(0, 1, 1, 2, 2);		// 0 0 1/2 1/2 1 1 
+        gsKnotVector<T> kv = kv1.knotUnion(kv2);
+
+        Results in:  0 0 1/3 1/2 1/2 2/3 1 1
     */
     gsKnotVector knotUnion(const gsKnotVector & b) const;
 

@@ -11,16 +11,14 @@
     Author(s): C. Hofreither, A. Mantzaflaris
 */
 
-# pragma once
+#pragma once
 
 #include <memory>
 
 #ifdef TR1_SHARED_PTR_USE_TR1_MEMORY
 #include <tr1/memory>
-#else
-#ifdef BOOST_SHARED_PTR_FOUND
+#elif defined(BOOST_SHARED_PTR_FOUND)
 #include <boost/shared_ptr.hpp>
-#endif
 #endif
 
 namespace gismo {
@@ -38,19 +36,30 @@ namespace memory
 // Use the correct shared_ptr
 #ifdef STD_SHARED_PTR_FOUND
     using std::shared_ptr;
-#else 
-#ifdef TR1_SHARED_PTR_FOUND
+#elif defined(TR1_SHARED_PTR_FOUND)
     using std::tr1::shared_ptr;
-#else 
-#ifdef BOOST_SHARED_PTR_FOUND
+#elif defined(BOOST_SHARED_PTR_FOUND)
     using boost::shared_ptr;
 #else 
     using NOT_FOUND::shared_ptr;
 #endif
-#endif
-#endif
 
-    using std::auto_ptr;
+using std::auto_ptr;
+
+// typename unique<C>::ptr
+template <typename C>
+struct unique
+{
+#ifdef GISMO_BUILD_CPP11
+    typedef std::unique_ptr<C> ptr;
+#else
+    typedef std::auto_ptr<C>   ptr;
+#endif
+};
+
+template <typename C>
+typename unique<C>::ptr make_unique(C * x)
+{ return typename unique<C>::ptr(x); }
 
 }
 
@@ -111,12 +120,13 @@ gsMovable<T> give(T & x) { return gsMovable<T>(x); }
 
 // Small, dynamically sized arrays on the stack.
 // Only use this if the size is guaranteed not to be more than a few
-// hundred bytes!
-#if defined(__GNUC__)
-#define STACK_ARRAY( T, name, sz )    T name[sz];
-#else
+// hundred bytes! Be warned: overflow occurs without any warning
+//#if defined(__GNUC__)
+//
+//#define STACK_ARRAY( T, name, sz )    T name[sz]; // Note: buggy on some compilers/versions
+//#else
 #define STACK_ARRAY( T, name, sz )    T * name = (T*) alloca ( (sz) * sizeof(T) );
-#endif
+//#endif
 
 
 /// \brief Clones all pointers in the range [\a start \a end) and stores new

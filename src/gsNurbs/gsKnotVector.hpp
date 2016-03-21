@@ -123,13 +123,28 @@ bool gsKnotVector<T>::includes(const gsKnotVector<T> & other) const
 }
 
 template<typename T>
+void gsKnotVector<T>::difference(const gsKnotVector<T> & other,
+                                std::vector<T>& result) const
+{
+    result.clear();
+    const int sz = other.size() - size();
+    result.reserve( std::abs(sz) );
+
+    std::set_difference(begin(), end(),
+                        other.begin(), other.end(),
+                        std::back_inserter(result));
+}
+
+template<typename T>
 void gsKnotVector<T>::symDifference(const gsKnotVector<T> & other,
                                     std::vector<T>& result) const
 {
+    result.clear();
     // Next line is ambiguous on MSVC (std does not overload "abs" for size_t)
     // result.reserve(std::abs(other.size()-size()));
-
-    result.clear();
+    const int sz = other.size() - size();
+    result.reserve( std::abs(sz) );
+    
     std::set_symmetric_difference(begin(), end(),
                                   other.begin(), other.end(),
                                   std::back_inserter(result));
@@ -142,7 +157,7 @@ gsKnotVector<T> gsKnotVector<T>::knotUnion(const gsKnotVector<T> & b) const
     knotContainer kv;
     kv.reserve( std::max(a.size(),b.size()) );
     std::set_union(a.m_repKnots.begin(), a.m_repKnots.end(),
-                   b.m_repKnots.begin(), b.m_repKnots.begin(), std::back_inserter(kv) );
+                   b.m_repKnots.begin(), b.m_repKnots.end(), std::back_inserter(kv) );
 
     // const T newStart = math::min(*a.domainBegin(), *b.domainBegin() );
     // const T newEnd   = math::max(*a.domainEnd()  , *b.domainEnd()   );

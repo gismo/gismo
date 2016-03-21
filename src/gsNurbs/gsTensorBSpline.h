@@ -53,6 +53,9 @@ public:
     /// Shared pointer for gsTensorBSpline
     typedef memory::shared_ptr< gsTensorBSpline<d,T> > Ptr;
 
+    /// Unique pointer for gsTensorBSpline
+    typedef typename memory::unique< gsTensorBSpline>::ptr uPtr;
+
     /// Associated Boundary basis type
     typedef typename gsBSplineTraits<d-1,T>::Geometry BoundaryGeometryType;
 

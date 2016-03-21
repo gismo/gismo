@@ -671,7 +671,6 @@ gsNurbsCreator<T>::BSplineE (T const & r, T const & x, T const & y)
     return new gsBSpline<T>(kv, give(C));
 }
 
-
 template<class T> gsNurbs<T> *
 gsNurbsCreator<T>::NurbsAmoebaFull(T const & r, T const & x, T const & y)
 {
@@ -719,6 +718,14 @@ gsNurbsCreator<T>::BSplineLineSegment(gsMatrix<T> const & p0, gsMatrix<T> const 
     return new gsBSpline<T>(kv, give(C));
 }
 
+template<class T>
+typename gsNurbsCreator<T>::BSplinePtr
+gsNurbsCreator<T>::BSplineSegment(T const u0, T const u1)
+{
+    gsKnotVector<T> kv(u0, u1, 0, 2);
+    gsBSplineBasis<T> bsb(kv);    
+    return BSplinePtr(new gsBSpline<T>(bsb, bsb.anchors()->transpose()) );
+}
 
 /// L-Shaped domain represented as a tensor B-spline of degree 1
 template<class T> gsTensorBSpline<2,T> * 

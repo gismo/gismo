@@ -50,6 +50,9 @@ public:
 
     /// Shared pointer for gsBSpline
     typedef memory::shared_ptr< gsBSpline<T> > Ptr;
+
+    /// Unique pointer for gsBSpline
+    typedef typename memory::unique<gsBSpline>::ptr uPtr;
     
 public:
     
@@ -241,7 +244,7 @@ public:
     /// Insert the given new knot (multiplicity \a i) without changing the curve.
     void insertKnot( T knot, int i = 1)
     {
-        assert( i>0);
+        if (i==0) return;
         //if ( i==1)
         //single knot insertion: Boehm's algorithm
         //else
