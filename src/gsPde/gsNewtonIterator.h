@@ -158,13 +158,13 @@ void gsNewtonIterator<T>::solve()
     for (m_numIterations = 1; m_numIterations < m_maxIterations; ++m_numIterations)
     {
         gsInfo << "Newton iteration " << m_numIterations 
-            << " residue " << std::abs(m_residue) 
+            << " residue " << math::abs(m_residue)
             << ".\n";
         nextIteration();
         
         // termination criteria
-        if ( std::abs(m_updnorm / initUpdate)  < m_tolerance || 
-             std::abs(m_residue / initResidue) < m_tolerance )
+        if ( math::abs(m_updnorm / initUpdate)  < m_tolerance ||
+             math::abs(m_residue / initResidue) < m_tolerance )
         {
             m_converged = true;
             break;
