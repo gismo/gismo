@@ -121,12 +121,14 @@ gsMovable<T> give(T & x) { return gsMovable<T>(x); }
 // Small, dynamically sized arrays on the stack.
 // Only use this if the size is guaranteed not to be more than a few
 // hundred bytes! Be warned: overflow occurs without any warning
-//#if defined(__GNUC__)
-//
-//#define STACK_ARRAY( T, name, sz )    T name[sz]; // Note: buggy on some compilers/versions
-//#else
+#if defined(GISMO_WITH_MPQ) || defined(GISMO_WITH_MPQ)
+#define STACK_ARRAY( T, name, sz ) gsVector<T> name(sz);
+#else
+// Note: following line buggy on some compilers/versions, also not
+// nececarily on the stack
+// #define STACK_ARRAY( T, name, sz )    T name[sz];
 #define STACK_ARRAY( T, name, sz )    T * name = (T*) alloca ( (sz) * sizeof(T) );
-//#endif
+#endif
 
 
 /// \brief Clones all pointers in the range [\a start \a end) and stores new
