@@ -575,13 +575,10 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
 
     const int pk = m_p-1 ;
-
-    STACK_ARRAY(T, ndu  , m_p   );
-    STACK_ARRAY(T, left , m_p+1 );
-    STACK_ARRAY(T, right, m_p+1 );
-
-    gsAsVector<T>(left ,m_p+1).setZero();
-    gsAsVector<T>(right,m_p+1).setZero();
+    const int p1 = m_p + 1;       // degree plus one
+    STACK_ARRAY(T, ndu  , m_p);
+    STACK_ARRAY(T, left , p1 );
+    STACK_ARRAY(T, right, p1 );
 
     result.resize( m_p + 1, u.cols() ) ;  
 
@@ -598,15 +595,16 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
         // Run evaluation algorithm and keep first derivative
       
         // Get span of absissae
-        const unsigned span = m_knots.iFind( u(0,v) ) - m_knots.begin();
+        typename KnotVectorType::iterator span = m_knots.iFind( u(0,v) );
 
         ndu[0]  = T(1); // 0-th degree function value
+        left[0] = 0;
 
         for(int j=1; j<m_p ; j++) // For all degrees
         {
             // Compute knot splits
-            left[j]  = u(0,v) - m_knots[span+1-j];
-            right[j] = m_knots[span+j] - u(0,v);
+            left[j]  = u(0,v) - *(span+1-j);
+            right[j] = *(span+j) - u(0,v);
 
             // Compute Basis functions of degree m_p-1 ( ndu[] )
             T saved = T(0) ; 
@@ -620,8 +618,8 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
         }
 
         // Compute last knot split
-        left[m_p]  = u(0,v) - m_knots[span+1-m_p];
-        right[m_p] = m_knots[span+m_p] - u(0,v);
+        left[m_p]  = u(0,v) - *(span+1-m_p);
+        right[m_p] = *(span+m_p) - u(0,v);
 
         // Compute the first derivatives (using ndu[] and left+right)
         right[0] = right[1]+left[m_p] ;   
@@ -931,8 +929,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
         }  
         ndu[pn*p1 + pn] = saved ;
 
-
-// Compute n-th derivative and continue to n-1 ... 0
+        // Compute n-th derivative and continue to n-1 ... 0
 
         for(int r=0; r<pn ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
         {
@@ -962,15 +959,12 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
         }
 
         // Run evaluation algorithm and keep the function values triangle & the knot differences
-        typename KnotVectorType::iterator span=m_knots.iFind( u(0,v) );
-//    unsigned span = m_knots.findspan( u(0,v) ) ;
+        typename KnotVectorType::iterator span = m_knots.iFind( u(0,v) );
     
         ndu[0] = T(1) ; // 0-th degree function value
         for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
         {
             // Compute knot splits
-//      left[j]  = u(0,v) - m_knots[span+1-j];
-//      right[j] = m_knots[span+j] - u(0,v);
             left[j] = u(0,v) - *(span+1-j);
             right[j] = *(span+j) - u(0,v);
 
