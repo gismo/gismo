@@ -340,18 +340,18 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     // curves
     case 11: computeAuxiliaryData<T,1,1>(InOut, info.domainDim, info.targetDim); break;
     case 21: computeAuxiliaryData<T,1,2>(InOut, info.domainDim, info.targetDim); break;
-    case 31: computeAuxiliaryData<T,1,3>(InOut, info.domainDim, info.targetDim); break;
-    case 41: computeAuxiliaryData<T,1,4>(InOut, info.domainDim, info.targetDim); break;
+//    case 31: computeAuxiliaryData<T,1,3>(InOut, info.domainDim, info.targetDim); break;
+//    case 41: computeAuxiliaryData<T,1,4>(InOut, info.domainDim, info.targetDim); break;
     // surfaces
 //  case 12: computeAuxiliaryData<T,2,1>(InOut, info.domainDim, info.targetDim); break;
     case 22: computeAuxiliaryData<T,2,2>(InOut, info.domainDim, info.targetDim); break;
     case 32: computeAuxiliaryData<T,2,3>(InOut, info.domainDim, info.targetDim); break;
-    case 42: computeAuxiliaryData<T,2,4>(InOut, info.domainDim, info.targetDim); break;
+//    case 42: computeAuxiliaryData<T,2,4>(InOut, info.domainDim, info.targetDim); break;
 // volumes
 //  case 13: computeAuxiliaryData<T,3,1>(InOut, info.domainDim, info.targetDim); break;
 //  case 23: computeAuxiliaryData<T,3,2>(InOut, info.domainDim, info.targetDim); break;
     case 33: computeAuxiliaryData<T,3,3>(InOut, info.domainDim, info.targetDim); break;
-    case 43: computeAuxiliaryData<T,3,4>(InOut, info.domainDim, info.targetDim); break;
+//    case 43: computeAuxiliaryData<T,3,4>(InOut, info.domainDim, info.targetDim); break;
 // 4D bulks
 //  case 14: computeAuxiliaryData<T,4,1>(InOut, info.domainDim, info.targetDim); break;
 //  case 24: computeAuxiliaryData<T,4,2>(InOut, info.domainDim, info.targetDim); break;
