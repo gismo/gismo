@@ -222,6 +222,7 @@ gsGeometry<T> * gsBasis<T>::interpolateData( gsMatrix<T> const& vals,
 
     // typename gsSparseSolver<T>::BiCGSTABIdentity solver( Cmat );
     // typename gsSparseSolver<T>::BiCGSTABDiagonal solver( Cmat );
+    // typename gsSparseSolver<T>::QR solver( Cmat );
     typename gsSparseSolver<T>::BiCGSTABILUT solver( Cmat );
 
     // Solves for many right hand side  columns

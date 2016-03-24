@@ -263,7 +263,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
         {
             const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
             T alt_sgn(1);
-            for (int i = 0; i != (tarDim!=-1?tarDim:n); ++i) //for all components of the normal
+            for (int i = 0; i != tarDim; ++i) //for all components of the normal
             {
                 jacT.colMinor(i, minor);
                 InOut.normals(i,p) = alt_sgn * minor.determinant();
@@ -277,28 +277,29 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
     {
         const T   sgn = sideOrientation(InOut.side);
         const int dir = InOut.side.direction();
-        InOut.outNormals.resize(tarDim,numPts);
-        typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
+        InOut.outNormals.resize(n,numPts);
 
-        if (tarDim==domDim && d==n)
+        if (tarDim!=-1 && tarDim==domDim+1)
+        {
+            typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
             for (index_t p=0;  p!=numPts; ++p)
             {
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
                 T alt_sgn = sgn * ( //jacT.rows()==jacT.cols() &&
                                     jacT.determinant()<0 ? -1 : 1);
-                for (int i = 0; i != (tarDim!=-1?tarDim:n); ++i) //for all components of the normal
+                for (int i = 0; i != tarDim; ++i) //for all components of the normal
                 {
                     jacT.firstMinor(dir, i, minor);
                     InOut.outNormals(i,p) = alt_sgn * minor.determinant();
                     alt_sgn  *= -1;
                 }
             }
+        }
         else
         {
             gsMatrix<T,domDim,domDim> metric(d,d);
             gsVector<T,domDim>      param(d);
             typename gsMatrix<T,domDim,domDim>::FirstMinorMatrixType minor;
-            const T   sgn = sideOrientation(InOut.side);
             for (index_t p=0;  p!=numPts; ++p)
             {
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
@@ -310,6 +311,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
                     param(i) = alt_sgn * minor.determinant();
                     alt_sgn  *= -1;
                 }
+                //note: metric.determinant() == InOut.measures.at(p)
                 InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
             }
         }
