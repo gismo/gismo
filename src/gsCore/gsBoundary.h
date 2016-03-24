@@ -77,9 +77,6 @@ struct boxCorner;// defined later
 class GISMO_EXPORT boxSide
 {
 public:
-    enum side { none = 0,
-                west = 1, east = 2, south = 3, north= 4, front=5, back=6 ,
-                left = 1, right= 2, down  = 3, up   = 4   };
 
     /** \brief Index of the side
     *

@@ -273,7 +273,7 @@ public:
      * @param flags what to compute
      */
     explicit gsMapData(unsigned _flags = 0)
-    : Base(_flags), side(boxSide::none)
+    : Base(_flags), side(boundary::none)
     { }
 
 public:
