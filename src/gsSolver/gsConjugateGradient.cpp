@@ -48,6 +48,8 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
 
         gamma.clear();
         gamma.reserve(m_maxIters);
+
+        m_eigsAreCalculated =  true;
     }
 }
 

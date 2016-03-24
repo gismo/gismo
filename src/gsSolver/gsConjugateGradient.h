@@ -59,8 +59,6 @@ public:
             }
             m_error = math::sqrt(residualNorm2 / rhsNorm2);
 
-            if(m_calcEigenvals)
-                m_eigsAreCalculated =  true;
         }
 
     /// Solve system without preconditioner
