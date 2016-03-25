@@ -505,7 +505,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     for (size_t p=0; p < m_pde_ptr->domain().nPatches(); ++p )
     {
         // Reconstruct solution coefficients on patch p
-        const int sz  = m_bases[unk][p].size();
+        const int sz  = m_bases[m_system.colBasis(unk)][p].size();
         gsMatrix<T> coeffs( sz, dim);
 
         for (index_t i = 0; i < sz; ++i)
@@ -520,7 +520,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
             }
         }
 
-        result.addPatch( m_bases[unk][p].makeGeometry( give(coeffs) ) );
+        result.addPatch( m_bases[m_system.colBasis(unk)][p].makeGeometry( give(coeffs) ) );
     }
 
     // AM: result topology ?

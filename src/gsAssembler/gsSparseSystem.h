@@ -357,15 +357,63 @@ public: /* Accessors */
     /// @brief returns a block view of the matrix, easy way to extract single blocks
     matBlockView blockView()
     {
-        gsVector<index_t> rowSizes(m_row.size()), colSizes(m_row.size());
+        gsVector<index_t> rowSizes(m_row.size()), colSizes(m_col.size());
 
         for (index_t r = 0; r != rowSizes.size(); ++r) // for all row-blocks
-            rowSizes[r] = m_mappers[r].freeSize();
+            rowSizes[r] = m_mappers[m_row[r]].freeSize();
 
         for (index_t c = 0; c != colSizes.size(); ++c) // for all col-blocks
-            colSizes[c] = m_mappers[c].freeSize();
+            colSizes[c] = m_mappers[m_col[c]].freeSize();
 
         return m_matrix.blockView(rowSizes,colSizes);
+    }
+
+    /**
+     * @brief returns a block view of the matrix, where you can choose which blocks (of gsSparseSystem) should be combined to one block
+     * @param [numRowBlocksNew] number of row blocks
+     * @param [numColBlocksNew] number of column blocks
+     * @param [rowBlocksNew] a vector defining the row blocks
+     * @param [colBlocksNew] a vector defining the column blocks
+     *
+     * example:
+     * assume in gsSparseSystem we have 4 row blocks
+     *
+     * rowBlocksNew = {0,1,1,2}
+     * yields a block system with only 3 row blocks, where the blocks 1 and 2 of gsSparseSystem are combined to one block
+     */
+
+
+    matBlockView blockView(size_t numRowBlocksNew, size_t numColBlocksNew, const gsVector<index_t>& rowBlocksNew, const gsVector<index_t>& colBlocksNew)
+    {
+        gsVector<index_t> rowSizes(numRowBlocksNew), colSizes(numColBlocksNew);
+        rowSizes.setZero();
+        colSizes.setZero();
+
+        for (index_t r = 0; r != m_row.size(); ++r) // for all row-blocks
+            rowSizes[rowBlocksNew[r]] += m_mappers[m_row[r]].freeSize();
+
+        for (index_t c = 0; c != m_col.size(); ++c) // for all col-blocks
+            colSizes[colBlocksNew[c]] += m_mappers[m_col[c]].freeSize();
+
+        return m_matrix.blockView(rowSizes, colSizes);
+    }
+
+    /**
+     * @brief returns a block view of the rhs, where you can choose which blocks (of gsSparseSystem) should be combined to one block
+     * @param [numRowBlocksNew] number of row blocks
+     * @param [rowBlocksNew] a vector defining the row blocks
+     */
+
+    rhsBlockView blockViewRhs(size_t numRowBlocksNew, const gsVector<index_t>& rowBlocksNew)
+    {
+        gsVector<index_t> rowSizes(numRowBlocksNew), colSizes(1);
+        rowSizes.setZero();
+        colSizes[0]=1;
+
+        for (index_t r = 0; r != m_row.size(); ++r) // for all row-blocks
+            rowSizes[rowBlocksNew[r]] += m_mappers[m_row[r]].freeSize();
+
+        return m_rhs.blockView(rowSizes, colSizes);
     }
 
     /// @brief returns the number of column blocks
@@ -605,7 +653,7 @@ public: /* Add local contributions to system right-hand side */
      * Note: 1) dofs with are eliminated are NOT moved to the rhs, they are just ignored in
      *          the assembly
      *       2) no assembling is done for the matrix
-     * @param[in] localRhs the local right hand side matrix/vectir
+     * @param[in] localRhs the local right hand side matrix/vector
      * @param[in] actives the corresponding mapped index of basis functions without shifts
      * @param[in] c the column block associated to
      */
