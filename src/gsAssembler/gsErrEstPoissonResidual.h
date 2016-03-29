@@ -141,6 +141,8 @@ public:
         return this->m_value;
     }
 
+    inline T takeRoot(const T v) { return math::sqrt(v);}
+
     // like compute, but allowing for m_storeElWiseType == 2
     // in which case more information on the local error estimates is stored
     T compute2(unsigned storeType = 1)
