@@ -15,6 +15,11 @@
 
 #include <memory>
 
+#ifdef __MINGW32__
+//#include <malloc/malloc.h> //xcode
+#include <malloc.h>
+#endif
+
 #ifdef TR1_SHARED_PTR_USE_TR1_MEMORY
 #include <tr1/memory>
 #elif defined(BOOST_SHARED_PTR_FOUND)
