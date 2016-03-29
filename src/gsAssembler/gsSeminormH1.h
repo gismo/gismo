@@ -126,6 +126,8 @@ protected:
         return sum;
     }
     
+    inline T takeRoot(const T v) { return math::sqrt(v);}
+
 private:
     // first derivative of func2:
     const gsFunction<T> * dfunc2; // If this is NULL a numerical approximation will be used

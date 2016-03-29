@@ -60,6 +60,7 @@ public:
         return m_value;
     }
 
+    inline T takeRoot(const T v) { return math::sqrt(v);}
 
 protected:
 

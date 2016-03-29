@@ -19,28 +19,30 @@
 namespace gismo
 {
 
+
 /** @brief The gsNormL2 class provides the functionality
  * to calculate the L2 - norm between a field and a function.
  *
  * \ingroup Assembler
 */
-template <class T>
-class gsNormL2 : public gsNorm<T>
+template <int p, class T = real_t>
+class gsNormL : public gsNorm<T>
 {
+    typedef gsNorm<T> Base;
     friend class gsNorm<T>;
 
 public:
 
-    gsNormL2(const gsField<T> & _field1,
+    gsNormL(const gsField<T> & _field1,
              const gsFunction<T> & _func2,
              bool _f2param = false) 
-    : gsNorm<T>(_field1,_func2), f2param(_f2param)
+    : Base(_field1,_func2), f2param(_f2param)
     { 
         
     }
 
-    gsNormL2(const gsField<T> & _field1)
-    : gsNorm<T>(_field1), f2param(false)
+    gsNormL(const gsField<T> & _field1)
+    : Base(_field1), f2param(false)
     {
 
     }
@@ -98,10 +100,36 @@ protected:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             const T weight = quWeights[k] * geoEval.measure(k);
-            sum +=weight * ( f1vals.col(k) - f2vals.col(k) ).squaredNorm();
+            switch (p)
+            {
+            case 0: // infinity norm
+                sum += weight * ( f1vals.col(k) - f2vals.col(k) ).maxCoeff();
+            case 1:
+                sum += weight * ( f1vals.col(k) - f2vals.col(k) ).template lpNorm<1>();
+                break;
+            case 2:
+                sum += weight * ( f1vals.col(k) - f2vals.col(k) ).squaredNorm();
+                break;
+            default:
+                sum += weight * ( f1vals.col(k) - f2vals.col(k) ).array().pow(p).sum();
+            }
         }
 
         return sum;
+    }
+
+    inline T takeRoot(const T v) 
+    { 
+        switch (p)
+        {
+        case 0: // infinity norm
+        case 1:
+            return v;
+        case 2:
+            return math::sqrt(v);
+        default:
+            return math::pow(v, static_cast<T>(1)/p );
+        }
     }
     
 private:
@@ -110,6 +138,23 @@ private:
 
     bool f2param;
 };
+
+
+template <class T>
+class gsNormL2 : public gsNormL<2,T>
+{
+public:
+    gsNormL2(const gsField<T> & _field1,
+             const gsFunction<T> & _func2,
+             bool _f2param = false) 
+    : gsNormL<2,T>(_field1, _func2, _f2param)
+    { }
+
+    gsNormL2(const gsField<T> & _field1)
+    : gsNormL<2,T>(_field1)
+    { }
+};
+
 
 
 } // namespace gismo

@@ -32,13 +32,13 @@ public:
     /// Constructor using a multipatch domain
     gsNorm(const gsField<T> & _field1,
            const gsFunction<T> & _func2) 
-    : m_zeroFunction(gsConstantFunction<T>(T(0.0),_field1.parDim())), patchesPtr( &_field1.patches() ),
+    : m_zeroFunction(T(0.0),_field1.parDim()), patchesPtr( &_field1.patches() ),
       field1(&_field1), func2(&_func2)
     { }
 
     /// Constructor using a multipatch domain
     gsNorm(const gsField<T> & _field1)
-    : m_zeroFunction(gsConstantFunction<T>(T(0.0),_field1.parDim())), patchesPtr( &_field1.patches() ),
+    : m_zeroFunction(T(0.0),_field1.parDim()), patchesPtr( &_field1.patches() ),
       field1(&_field1), func2(&m_zeroFunction)
     { }
 
@@ -97,11 +97,11 @@ public:
                 const T result = visitor.compute(*domIt, *geoEval, quWeights);
                 m_value += result;
                 if ( storeElWise )
-                    m_elWise.push_back( math::sqrt(result) );
+                    m_elWise.push_back( visitor.takeRoot(result) );
             }
         }
 
-        m_value = math::sqrt(m_value);
+        m_value = visitor.takeRoot(m_value);
     }
     
 public:
