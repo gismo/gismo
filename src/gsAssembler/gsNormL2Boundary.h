@@ -55,6 +55,7 @@ public:
         return this->m_value;
     }
 
+    inline T takeRoot(const T v) { return math::sqrt(v);}
 
 protected:
 
