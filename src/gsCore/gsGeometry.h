@@ -94,11 +94,13 @@ class gsGeometry : public gsFunction<T>
 public: 
     /// Shared pointer for gsGeometry
     typedef memory::shared_ptr< gsGeometry > Ptr;
-//  typedef memory::unique_ptr< gsGeometry > LocalPtr;
+
+    /// Unique pointer for gsGeometry
+    typedef typename memory::unique<gsGeometry>::ptr uPtr;
 
     typedef T Scalar_t;
 
-    typedef memory::auto_ptr<gsGeometryEvaluator<T> > Evaluator;
+    typedef typename memory::unique<gsGeometryEvaluator<T> >::ptr Evaluator;
 
 public:
 

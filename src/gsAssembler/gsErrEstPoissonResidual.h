@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gismo.h>
 
 namespace gismo
 {
