@@ -431,6 +431,11 @@ public:
     /// for all directions
     virtual void degreeElevate(int const i = 1, int const dir = -1);
 
+    /// Reduces the degree by the given amount \a i for the direction
+    /// \a dir. If \a dir is -1 then degree elevation is done for all
+    /// directions
+    virtual void degreeReduce(int const i = 1, int const dir = -1);
+    
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
     virtual typename gsMatrix<T>::uPtr hessian(const gsMatrix<T>& u, unsigned coord) const;

@@ -145,6 +145,29 @@ void gsGeometry<T>::degreeElevate(int const i, int const dir)
 }
 
 template<class T>
+void gsGeometry<T>::degreeReduce(int const i, int const dir)
+{
+    gsBasis<T> * b = m_basis->clone();
+ 
+    if ( dir == -1 )
+        b->degreeReduce(i);
+    else if (dir < parDim() )
+        b->component(dir).degreeReduce(i);        
+    else
+        GISMO_ERROR("Invalid direction "<< dir <<" to degree-reduce.");
+
+    gsMatrix<T> iVals, iPts = b->anchors();
+    this->eval_into(iPts, iVals);
+    gsGeometry<T> * g = b->interpolateData(iVals, iPts);
+
+    std::swap(m_basis, g->m_basis);
+    g->coefs().swap(this->coefs());
+
+    delete g;
+    delete b;
+}
+
+template<class T>
 typename gsMatrix<T>::uPtr
 gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
 {  
