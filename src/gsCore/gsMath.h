@@ -32,7 +32,11 @@ inline mpq_class (min)(const __gmp_expr<mpq_t, U> & a,
                        const __gmp_expr<mpq_t, V> & b)
 {return mpq_class(a < b ? a : b);}
 
-/*// under construction
+template <class U, class Z> inline
+mpq_class pow(const __gmp_expr<mpq_t, U> & a, const Z & b)
+{return std::pow(mpq_class(a).get_d(), b);}
+
+/*
 template <class U, class V>
 inline mpq_class pow(const __gmp_expr<mpq_t, U> & a,
                      const __gmp_expr<mpq_t, V> & b)
@@ -40,9 +44,9 @@ inline mpq_class pow(const __gmp_expr<mpq_t, U> & a,
     mpq_class r;
     const mpq_class aa(a);
     const mpq_class bb(b);
-    mpz_pow_ui(r.get_num(), aa.get_num(), bb.get_num().get_si());
-    mpz_pow_ui(r.get_den(), aa.get_den(), bb.get_num().get_si());
-    if ( bb.get_den() == 1 )
+    mpz_pow_ui(r.get_num().__get_mp(), aa.get_num().__get_mp(), bb.get_num().get_si());
+    mpz_pow_ui(r.get_den().__get_mp(), aa.get_den().__get_mp(), bb.get_num().get_si());
+    if ( 1 == bb.get_den() )
         return r;
     else
         return std::pow(r.get_d(), 1/bb.get_den().get_d());
@@ -69,7 +73,7 @@ GMP_EXTRA_STD_UNARY_FUNCTION(floor)
 GMP_EXTRA_STD_UNARY_FUNCTION(ceil)
 GMP_EXTRA_STD_UNARY_FUNCTION(exp)
 GMP_EXTRA_STD_BINARY_FUNCTION(atan2)
-//GMP_EXTRA_STD_BINARY_FUNCTION(pow)
+GMP_EXTRA_STD_BINARY_FUNCTION(pow)
 #undef GMP_EXTRA_STD_UNARY_FUNCTION
 #undef GMP_EXTRA_STD_BINARY_FUNCTION
 
@@ -227,8 +231,6 @@ inline mpq_class (max)(const mpq_class & a, const mpq_class & b)
 {return mpq_class(a < b ? b : a);}
 inline mpq_class (min)(const mpq_class & a, const mpq_class & b)
 {return mpq_class(a < b ? a : b);}
-inline mpq_class pow(const mpq_class & a, const mpq_class & b) 
-{return  std::pow(a.get_d(),b.get_d()); }
 inline bool isfinite(mpq_class a) {return true; }
 inline bool isnan(mpq_class a)    {return false;}
 inline mpq_class frexp(const mpq_class & a, int* b) {return  a;}

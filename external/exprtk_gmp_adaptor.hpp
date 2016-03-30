@@ -270,7 +270,7 @@ inline T round_impl(const T& v, mpq_type_tag)
 template <typename T>
 inline T roundn_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    const T p10 = pow(T(10),floor(v1));
+    const T p10 = ::pow(T(10),floor(v1));
     if (v0 < T(0))
         return T(ceil ((v0 * p10) - T(0.5)) / p10);
     else
@@ -286,7 +286,7 @@ inline bool is_integer_impl(const T& v, mpq_type_tag)
 template <typename T>
 inline T root_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    return pow(v0,T(1 / v1) );
+    return ::pow(v0,T(1 / v1) );
 }
 
 template <typename T>
@@ -304,13 +304,13 @@ inline T atan2_impl(const T& v0, const T& v1, mpq_type_tag)
 template <typename T>
 inline T shr_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    return v0 * (T(1) / pow(T(2.0),v1));
+    return v0 * (T(1) / ::pow(T(2.0),v1));
 }
 
 template <typename T>
 inline T shl_impl(const T& v0, const T& v1, mpq_type_tag)
 {
-    return v0 * pow(T(2.0),v1);
+    return v0 * ::pow(T(2.0),v1);
 }
 
 template <typename T>
