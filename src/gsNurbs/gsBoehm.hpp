@@ -37,15 +37,26 @@ void gsBoehm(
 
     GISMO_ASSERT( r >= 1, "Must insert at least one knot." );
     if (r==1)
-    return gsBoehmSingle(knots, coefs, val, update_knots);
+        return gsBoehmSingle(knots, coefs, val, update_knots);
 
-    assert( coefs.rows() == index_t(knots.size() - knots.degree()-1) ) ;
+    GISMO_ASSERT( coefs.rows() == index_t(knots.size() - knots.degree()-1),
+                  "Incompatible coefficients("<<coefs.rows()
+                  <<")/knots("<<knots.size()<<")/degree("<<knots.degree()<<")" ) ;
 
-    int k = knots.iFind(val) - knots.begin();
-    int s = knots.multiplicity(val); // current multiplicity of val
-    int p = knots.degree();
+    const int p = knots.degree();
+    typename KnotVectorType::uiterator kit = knots.uFind(val);
+    const int k = kit.lastAppearance();
+    // current multiplicity of val
+    const int s = (*kit == val || *(++kit)==val ? kit.multiplicity() : 0 ); 
+    /*
+      typename KnotVectorType::uiterator kit = knots.uFind(val);
+      int k = knots.iFind(val) - knots.begin();
+      int s = knots.multiplicity(val); // current multiplicity of val
+    */
+
+    GISMO_ASSERT( s + r < p + 2  , "Multiplicity can be at most deg+1 ("<<p+1<<")" );
     int np= coefs.rows()-1;
-
+    
     Mat tmp = coefs.middleRows(k-p, p+1);
     // resize coefficient matrix
     coefs.conservativeResize( coefs.rows()+r, coefs.cols() );
@@ -59,7 +70,7 @@ void gsBoehm(
     int L = 0;
     for( index_t j = 1; j<=r; ++j )
     {
-        L = k - p +j;
+        L = k - p + j;
 
         for( index_t i = 0; i<=p-j-s; ++i )
         {
@@ -71,7 +82,8 @@ void gsBoehm(
     }
     for( index_t i = L+1; i<k-s; ++i )
         coefs.row(i) = tmp.row(i-L);
-
+    //coefs.middleRows(L+1, k-s-L-1) = tmp.
+    
     // Update knot vector
     if ( update_knots )
         knots.insert(val,r);
@@ -87,7 +99,9 @@ void gsBoehmSingle(
     bool update_knots
     )
 {
-    assert( coefs.rows() == index_t(knots.size() - knots.degree()-1) ) ;
+
+    GISMO_ASSERT( coefs.rows() == index_t(knots.size() - knots.degree()-1),
+                  "Incompatible coefficients/knots" ) ;
 
     int k = knots.iFind(val)-knots.begin();
     int p = knots.degree();
@@ -120,7 +134,9 @@ void gsBoehmSingle( iter knot,   // Knot iterator
                     int p,       // degree
                     T val)       // knot value to insert
 {
-    assert( coefs.rows() == p+1 );
+    GISMO_ASSERT( coefs.rows() == p+1,
+                  "Incompatible coefficients/knots" ) ;
+
     knot++;
 
     // resize coefficient matrix by adding one coefficient

@@ -95,8 +95,7 @@ public:
      */
     static inline gsUKnotIterator End(knotVector & KV)
     {   // the past-the-end position occurs for upos=KV.uSize()
-        gsUKnotIterator endit(KV, KV.uSize());
-        return endit;
+        return gsUKnotIterator(KV, KV.uSize());
     }
 
 public:
@@ -377,8 +376,7 @@ public:
      */
     static inline gsKnotIterator End(const gsKnotVector<T> & KV)
     {   // the past-the-end position occurs for upos=KV.uSize()
-        gsKnotIterator endit(KV, KV.uSize());
-        return endit;
+        return gsKnotIterator(KV, KV.uSize());
     }
 
 public:

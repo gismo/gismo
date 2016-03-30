@@ -99,11 +99,7 @@ public:
     typedef memory::shared_ptr< gsMatrix > Ptr;
 
     /// Unique pointer for gsMatrix
-//  #if defined(__cplusplus) && __cplusplus >= 201103L
-//     typedef std::unique_ptr< gsMatrix > uPtr;
-//  #else
-    typedef memory::auto_ptr< gsMatrix > uPtr;
-// #endif
+    typedef typename memory::unique<gsMatrix>::ptr uPtr;
     
     /// Matrix return type, to be used as return type for function
     /// returning matrix objects

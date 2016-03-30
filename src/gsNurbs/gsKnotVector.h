@@ -93,8 +93,9 @@ public: // typedefs
 
     /// This iterator is an iterator over the repeated knots.
     /// Can be obtained by calling [r]begin() and [r]end().
-    typedef typename knotContainer::const_iterator           iterator;
-    typedef typename knotContainer::const_reverse_iterator   reverse_iterator;
+    //typedef const T * iterator;
+    typedef typename std::vector<T>::const_iterator iterator;
+    typedef std::reverse_iterator<iterator> reverse_iterator;
 
     /// This iterator is an iterator over the unique knots. Has additional functions.
     /// Can be obtained by calling [r]ubegin() and [r]uend().
@@ -107,8 +108,9 @@ public: // typedefs
     typedef std::reverse_iterator<smart_iterator>  reverse_smart_iterator;
 
     //compatibility iterator typedefs
-    typedef uiterator const_uiterator;
-    typedef iterator  const_iterator;
+    typedef uiterator        const_uiterator;
+    typedef iterator         const_iterator;
+    typedef reverse_iterator const_reverse_iterator;
     
 public: // iterator ends
 
@@ -742,15 +744,12 @@ public: // things required by gsKnotVector
 
     /// Adds the knots between \a begin and \a end to the knot vector.
     template<typename iterType>
-        void append ( iterType begin, iterType end )
+    void append ( iterType begin, iterType end )
     {
         insert( begin, end );
     }
 
-      void _stretchEndKnots()
-    {
-        // Not necessary, I hope.
-    }
+    //void _stretchEndKnots()
 
     /// Get a reference to the underlying std::vector of knots.
     const knotContainer& get() const // to be removed since we have implicit cast

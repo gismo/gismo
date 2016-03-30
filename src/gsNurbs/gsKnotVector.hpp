@@ -90,30 +90,34 @@ template<typename T>
 typename gsKnotVector<T>::iterator gsKnotVector<T>::begin()  const
 {
     return m_repKnots.begin();
+    //return m_repKnots.data();
 }
 
 template<typename T>
 typename gsKnotVector<T>::iterator gsKnotVector<T>::end()    const
 {
     return m_repKnots.end();
+    //return m_repKnots.data() + m_repKnots.size();
 }
 
 template<typename T>
 typename gsKnotVector<T>::iterator gsKnotVector<T>::beginAt(const mult_t upos)  const
 {
     return m_repKnots.begin() + (0 == upos ? 0 : m_multSum[upos-1]);
+    //return m_repKnots.data() + (0 == upos ? 0 : m_multSum[upos-1]);
 }
 
 template<typename T>
 typename gsKnotVector<T>::iterator gsKnotVector<T>::endAt(const mult_t upos)    const
 {
     return m_repKnots.begin() + m_multSum[upos];
+    //return m_repKnots.data() + m_multSum[upos];
 }
 
 template<typename T>
 typename gsKnotVector<T>::reverse_iterator gsKnotVector<T>::rbegin()  const
 {
-    return reverse_iterator(end());
+    return std::reverse_iterator<iterator>(end());
 }
 
 template<typename T>
@@ -195,7 +199,7 @@ const gsKnotVector<T> & gsKnotVector<T>::trimDomain(const T dbegin, const T dend
 template<typename T>
 typename gsKnotVector<T>::reverse_iterator gsKnotVector<T>::rend()    const
 {
-    return reverse_iterator(begin());
+    return std::reverse_iterator<iterator>(begin());
 }
 
 template<typename T>
@@ -401,8 +405,9 @@ typename gsKnotVector<T>::mult_t gsKnotVector<T>::multiplicityIndex( mult_t knot
                   << m_repKnots.size() << ")." );
 
     iterator it = begin() + knotIndex;
-    iterator L  = std::find_if(it,m_repKnots.end(),std::bind1st(std::not_equal_to<T>(),*it));
-    reverse_iterator F = std::find_if(reverse_iterator(it),m_repKnots.rend(),std::bind1st(std::not_equal_to<T>(),*it));
+    iterator L  = std::find_if(it,end(),std::bind1st(std::not_equal_to<T>(),*it));
+    reverse_iterator F = std::find_if(reverse_iterator(it),rend(),
+                                      std::bind1st(std::not_equal_to<T>(),*it));
     return L-F.base();
     // equivalent:
     //return (sbegin() + knotIndex).multiplicity();
@@ -521,7 +526,7 @@ bool gsKnotVector<T>::isConsistent( const knotContainer & repKnots,
     // check order and multiplicities
     T prev = repKnots.front();
     mult_t uniqPos = 0;
-    for( iterator kit = repKnots.begin();
+    for( typename knotContainer::const_iterator kit = repKnots.begin();
          kit != repKnots.end();
          ++kit )
     {
@@ -589,7 +594,7 @@ gsKnotVector<T>::gsKnotVector( const knotContainer& uKnots,
     m_multSum.push_back( mult_ends );
 
     // We iterate from the one past begin() to one before end().
-    iterator it = uKnots.begin();
+    typename knotContainer::const_iterator it = uKnots.begin();
     for( it += 1; it != uKnots.end() - 1; ++it)
     {
         m_repKnots.insert( m_repKnots.end(), mult_interior, *it );
@@ -698,7 +703,7 @@ typename gsKnotVector<T>::iterator
 gsKnotVector<T>::iFind( const T u ) const
 { 
     // GISMO_ASSERT done in uFind().
-    return  m_repKnots.begin() + uFind(u).lastAppearance();
+    return begin() + uFind(u).lastAppearance();
 
     // equivalent
     /*GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");

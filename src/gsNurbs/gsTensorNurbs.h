@@ -271,9 +271,11 @@ public:
         tbs.size_cwise(sz);
         
         swapTensorDirection(0, dir, sz, m_coefs  );
+        std::swap(sz[0],sz[dir]);
         swapTensorDirection(0, dir, sz, weights());
-        m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
-        weights().resize( sz[0], sz.template tail<d-1>().prod() );
+        const index_t nc = sz.template tail<d-1>().prod();
+        m_coefs  .resize( sz[0], n * nc );
+        weights().resize( sz[0], nc     );
         
         gsBoehm(tbs.knots(dir), weights(), knot, i, false);
         gsBoehm(tbs.knots(dir), m_coefs  , knot, i, true );
@@ -283,6 +285,7 @@ public:
         m_coefs  .resize(ncoef, n );
         weights().resize(ncoef, 1 );
         swapTensorDirection(0, dir, sz, m_coefs  );
+        std::swap(sz[0],sz[dir]);
         swapTensorDirection(0, dir, sz, weights());
     }
 

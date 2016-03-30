@@ -63,7 +63,7 @@ public:
     typedef memory::shared_ptr< gsField >  Ptr;
 
     /// Unique pointer for gsField
-    typedef memory::auto_ptr< gsField >   uPtr;
+    typedef typename memory::unique< gsField >::ptr uPtr;
 
 public:
     
@@ -273,7 +273,10 @@ public:
     /// Attempts to return an Isogeometric function for patch i
     const gsGeometry<T> & igaFunction(int i=0) const
     { 
-        GISMO_ASSERT( parametrized, "Cannot get an IGA function from non-parametric field.");
+        GISMO_ASSERT(parametrized,
+                     "Cannot get an IGA function from non-parametric field.");
+        GISMO_ASSERT(static_cast<size_t>(i)<m_fields.size(),
+                      "gsField: Invalid patch index.");
         return static_cast<gsGeometry<T> &>(*m_fields[i]);
     }
 
