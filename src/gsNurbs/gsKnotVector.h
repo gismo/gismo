@@ -658,14 +658,9 @@ public: // things required by gsKnotVector
     /// knot vector to \a result.
     void greville_into(gsMatrix<T> & result) const;
 
-    /// Deduces and sets the degree from the multiplicities of the
-    /// endpoints.
-    int deduceDegree()
-    {
-        return uSize() == 0 ? -1 :
-            std::max(( ubegin() ).multiplicity(),
-                     ( uend()-1 ).multiplicity()) - 1;
-    }
+    /// Attempts to deduce the degree from the multiplicities of the
+    /// endpoints (assuming clamped knots).
+    int deduceDegree() const;
 
     /// Returns Greville abscissa of the \a i - the B-spline defined
     /// on the knot vector.

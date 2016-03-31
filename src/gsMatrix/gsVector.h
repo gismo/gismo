@@ -105,7 +105,7 @@ public:
 
     ~gsVector () ;
 
-    void clear() { this->resize(0,0); }
+    void clear() { this->resize(0); }
     
     // This constructor allows constructing a gsVector from Eigen expressions
     template<typename OtherDerived>

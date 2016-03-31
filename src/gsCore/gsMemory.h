@@ -93,8 +93,11 @@ class gsMovable
 {
 public:
 
-    // Moves resources to \a x
+    /// Moves resource to \a x
     inline void moveTo(T & x) { m_ref.swap(x); m_ref.clear();}
+
+    /// Read-only access resource
+    const T & get() {return m_ref;}
 
 private:
     template<typename U>

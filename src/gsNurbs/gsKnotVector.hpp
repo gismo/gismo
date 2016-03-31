@@ -629,10 +629,12 @@ void gsKnotVector<T>::initUniform( T first,
                                    unsigned mult_interior,
                                    int degree)
 {
+    m_deg = (degree == - 1 ? mult_ends-1 : degree);
+
     const size_t nKnots = 2 * mult_ends + interior*mult_interior;
     // GISMO_ENSURE( nKnots < std::numeric_limits<mult_t>::max(),
     //               "Knot vector too big." );
-    GISMO_ASSERT( first<last,
+    GISMO_ASSERT( first<last, //&& mult_ends<m_deg+2 && mult_interior<deg+2,
                   "The variable first has to be smaller than the variable last." );
 
     m_repKnots.clear();
@@ -642,10 +644,16 @@ void gsKnotVector<T>::initUniform( T first,
 
     const T h = (last-first) / (interior+1);
 
+    for(int i = m_deg - mult_ends + 1; i!= 0; --i)
+    {   // add left ghost knots
+        m_repKnots.push_back(first-i*h);
+        m_multSum .push_back(1);
+    }
+
     m_repKnots.insert(m_repKnots.begin(), mult_ends, first);
     m_multSum .push_back(mult_ends);
 
-    for( unsigned i=1; i<=interior; i++ )
+    for( unsigned i=1; i<=interior; ++i)
     {
         m_repKnots.insert( m_repKnots.end(), mult_interior, first + i*h );
         m_multSum .push_back( mult_interior + m_multSum.back() );
@@ -654,7 +662,11 @@ void gsKnotVector<T>::initUniform( T first,
     m_repKnots.insert( m_repKnots.end(), mult_ends, last );
     m_multSum .push_back( mult_ends + m_multSum.back() );
 
-    m_deg = (degree == - 1 ? deduceDegree() : degree);
+    for(int i = 1; i!=m_deg - mult_ends + 2; ++i)
+    {   // add right ghost knots
+        m_repKnots.push_back(last+i*h);
+        m_multSum .push_back(1);
+    }
         
     GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
 }
@@ -670,6 +682,14 @@ template<typename T>
 int gsKnotVector<T>::degree() const
 {
     return m_deg;
+}
+
+template<typename T>
+int gsKnotVector<T>::deduceDegree() const
+{
+    return uSize() == 0 ? -1 :
+        std::max(( ubegin() ).multiplicity(),
+                 ( uend()-1 ).multiplicity()) - 1;
 }
 
 template<typename T>
