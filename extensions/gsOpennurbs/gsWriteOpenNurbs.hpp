@@ -55,13 +55,15 @@ bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std:
 
       const gsKnotVector<T> & kv = 
           dynamic_cast<const gsBSplineBasis<T>&>( curve.basis() ).knots();
+
       // ON_NurbsCurve's have order+cv_count-2 knots.
       for (size_t k = 1; k < kv.size()-1; k++ ) 
       {
           wiggle->SetKnot(k-1, kv[k] );
       }
       
-      if ( wiggle->IsValid() ) 
+      ON_TextLog log;
+      if ( wiggle->IsValid(&log) ) 
       {
         ONX_Model_Object& mo = model.m_object_table.AppendNew();
         mo.m_object = wiggle;
@@ -71,10 +73,7 @@ bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std:
         //mo.m_attributes.m_uuid = ON_UUID();
       }
       else
-      {
-          gsInfo<< "Invalid !! \n";      
           delete wiggle;
-      }
 
       return true;
 }
@@ -84,8 +83,7 @@ template<class T>
 bool writeON_NurbsSurface( const gsSurface<T> & surface, 
                            ONX_Model & model, const std::string & name)
 {
-    // write a wiggly cubic surface on the "green NURBS wiggle" layer
-    ON_NurbsSurface* wiggle = new ON_NurbsSurface(
+    ON_NurbsSurface* onsurf = new ON_NurbsSurface(
         3, // dimension
         false, // true if rational
         surface.basis().degree(0)+1,     // order u
@@ -95,11 +93,11 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
         );
     
     int c = 0;
-    for ( int i = 0; i < wiggle->CVCount(0); i++ )
-        for ( int j = 0; j < wiggle->CVCount(1); j++ )
+    for ( int i = 0; i < onsurf->CVCount(0); i++ )
+        for ( int j = 0; j < onsurf->CVCount(1); j++ )
         {
             ON_3dPoint pt( surface.coef(c,0), surface.coef(c,1), surface.coef(c,2)  );
-            wiggle->SetCV( i, j, pt );//Note: j runs faster than i for CP(i,j)
+            onsurf->SetCV( i, j, pt );//Note: j runs faster than i for CP(i,j)
             c++;
         }
     
@@ -108,25 +106,24 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
       const gsKnotVector<T> & kv2 = 
           dynamic_cast<const gsBSplineBasis<T>&>( surface.basis().component(1) ).knots();
       //Note: ON_NurbsSurface's have order+cv_count-2 knots per direction.
-      for (size_t k = 1; k < kv2.size()-1; k++ ) 
-          wiggle->SetKnot(0, k-1, kv2[k] );
       for (size_t k = 1; k < kv1.size()-1; k++ ) 
-          wiggle->SetKnot(1, k-1, kv1[k] );
-      
-      if ( wiggle->IsValid() ) 
+          onsurf->SetKnot(0, k-1, kv1[k] );
+
+      for (size_t k = 1; k < kv2.size()-1; k++ ) 
+          onsurf->SetKnot(1, k-1, kv2[k] );
+
+      ON_TextLog log;
+      if ( onsurf->IsValid(&log) ) 
       {
         ONX_Model_Object& mo = model.m_object_table.AppendNew();
-        mo.m_object = wiggle;
+        mo.m_object = onsurf;
         mo.m_bDeleteObject = true;
         mo.m_attributes.m_layer_index = 0;
         mo.m_attributes.m_name = name.c_str();
         //mo.m_attributes.m_uuid = ON_UUID();
       }
       else
-      {
-          gsInfo<< "Invalid !! \n";      
-          delete wiggle;
-      }
+          delete onsurf;
 
       return true;
 }
@@ -201,7 +198,7 @@ bool writeON_MultiPatch( const gsMultiPatch<T> & patches)
 
   for(std::size_t i = 0; i < patches.nPatches(); ++i)
   {          
-      gsInfo<< "Write patch "<< i << "\n";
+      //gsInfo<< "Write patch "<< i << "\n";
       std::stringstream  nm("patch");
       nm << i ;
       

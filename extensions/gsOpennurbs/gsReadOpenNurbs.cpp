@@ -61,11 +61,13 @@ Returns:
   ON::CloseFile( archive_fp );
   
   if ( ! rc )
-    {
-    gsWarn<< "Error while reading 3dm file.\n";
-    return false;
-    } 
-  else if ( ! model.IsValid() )
+  {
+      gsWarn<< "Error while reading 3dm file.\n";
+      return false;
+  } 
+
+  ON_TextLog log;
+  if ( ! model.IsValid(&log) )
   {
     gsWarn<< "OpenNurbs reported an invalid 3dm file.\n";
     return false;
