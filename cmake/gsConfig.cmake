@@ -20,7 +20,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO ${replacementFlags} CACHE INTERNAL "" FORCE)
 
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   #fixme: enable for Darwin/clang (probably no export explicit template instantiations)
-  set(GISMO_CXX_VISIBILITY_PRESET hidden)
+  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
   set(CMAKE_C_VISIBILITY_PRESET   hidden)
   set(CMAKE_VISIBILITY_INLINES_HIDDEN 1 )
 endif()
@@ -207,6 +207,9 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Intel" AND NOT GISMO_WITH_OPENMP)
    #set_property(TARGET mytarget PROPERTY INTERPROCEDURAL_OPTIMIZATION 1)
 endif()
 
+#CHECK_CXX_SOURCE_COMPILES(
+#"template<typename T> class A {}; extern template class A<int>; int main() {}"
+#GISMO_HAS_EXTERN_TEMPLATES)
 
 #message("CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
 #message("CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG}")
