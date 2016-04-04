@@ -435,7 +435,7 @@ const gsBasis<T>& gsBasis<T>::component(unsigned i) const
 
 template<class T>
 gsBasis<T>& gsBasis<T>::component(unsigned i)
-{ GISMO_NO_IMPLEMENTATION }
+{ return const_cast<gsBasis<T>&>(component(i));}
 
 template<class T>
 void gsBasis<T>::refine(gsMatrix<T> const & boxes, int refExt)

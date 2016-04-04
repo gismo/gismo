@@ -147,7 +147,7 @@ public:
     void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const 
     { m_src->active_into(u, result); }
     
-    virtual gsBasis<T>& component(unsigned i) const { return m_src->component(i); } 
+    virtual const gsBasis<T> & component(unsigned i) const { return m_src->component(i); } 
 
     gsMatrix<unsigned> * allBoundary( ) const {return m_src->allBoundary(); }
     
@@ -201,12 +201,20 @@ public:
 
     void degreeElevate(int const& i = 1, int const dir = -1) 
     {
-        typename SourceBasis::GeometryType tmp(*m_src,m_weights);
+        typename SourceBasis::GeometryType tmp(*m_src,give(m_weights));
         tmp.degreeElevate(i,dir);
         tmp.coefs().swap(m_weights);
         std::swap(*m_src, tmp.basis() );
     }
-    
+
+    void degreeReduce(int const& i = 1, int const dir = -1) 
+    {
+        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
+        tmp.degreeReduce(i,dir);
+        tmp.coefs().swap(m_weights);
+        std::swap(*m_src, tmp.basis() );
+    }
+
     /*
       gsBasis<T> * boundaryBasis(boxSide const & s ) const   
       { 
