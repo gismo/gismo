@@ -279,7 +279,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
         const int dir = InOut.side.direction();
         InOut.outNormals.resize(n,numPts);
 
-        if (tarDim!=-1 && tarDim==domDim+1)
+        if (tarDim!=-1 && tarDim==domDim)
         {
             typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
             for (index_t p=0;  p!=numPts; ++p)
