@@ -711,10 +711,12 @@ public:
             gsWarn << "Warning: Insconsistent "<< *this<< "\n";
     }
 
+/*
     /// Copy Constructor
     gsBSplineBasis( const gsBSplineBasis & o)
     : Base(o)
     { }
+*/
 
     // Look at gsBasis class for a description
     gsBSplineBasis * clone() const;
