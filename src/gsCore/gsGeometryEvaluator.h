@@ -40,7 +40,12 @@ template <typename T>
 class gsGeometryEvaluator
 {
 public:
-
+    /// Shared pointer for gsDomainIterator
+    typedef memory::shared_ptr< gsGeometryEvaluator > Ptr;
+    /// Unique pointer for gsDomainIterator
+    typedef typename memory::unique< gsGeometryEvaluator >::ptr uPtr;
+    
+public:
     /**
        \brief Constructor using the geometry and the flags that define
        what should be evaluated.

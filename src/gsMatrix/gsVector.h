@@ -55,7 +55,7 @@ public:
     typedef memory::shared_ptr< gsVector > Ptr;
 
     /// Unique pointer for gsVector
-    typedef std::auto_ptr< gsVector > uPtr;
+    typedef typename memory::unique< gsVector >::ptr uPtr;
 
     // Type for copying a vector as a permutation matrix
     typedef Eigen::PermutationMatrix<_Rows> Permutation;

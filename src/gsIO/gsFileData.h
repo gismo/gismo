@@ -279,7 +279,7 @@ public:
                 internal::gsXml<Object>::type()<<" "<< 
                 internal::gsXml<Object>::tag() <<". Error.\n";
         }           
-        internal::gsXml<Object>::get_into(node,result);// Using gsXmlUtils
+        internal::gsXml<Object>::get_into(node, result);// Using gsXmlUtils
     }
     
     /// Returns a vector with all Objects found in the XML data

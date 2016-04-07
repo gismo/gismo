@@ -195,7 +195,7 @@ public:
 
     typedef memory::shared_ptr< gsBoundaryConditions > Ptr;
 
-    typedef memory::auto_ptr< gsBoundaryConditions > uPtr;
+    typedef typename memory::unique< gsBoundaryConditions >::ptr uPtr;
 
 public:
 

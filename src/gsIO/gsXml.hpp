@@ -91,7 +91,8 @@ void getMatrixFromXml ( gsXmlNode * node, unsigned const & rows,
  
     for (unsigned i=0; i<rows; ++i)
         for (unsigned j=0; j<cols; ++j)
-            if ( !(str >> result(i,j) ) )
+            //if ( !(str >> result(i,j) ) )
+              if (! gsGetReal(str,result(i,j)) )
             {
                 gsWarn<<"XML Warning: Reading matrix of size "<<rows<<"x"<<cols<<" failed.\n";
                 gsWarn<<"Tag: "<< node->name() <<", Matrix entry: ("<<i<<", "<<j<<").\n";

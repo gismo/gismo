@@ -55,7 +55,7 @@ public:
 
         // Set Geometry evaluation flags
         evFlags = NEED_MEASURE|NEED_GRAD_TRANSFORM;
-        //std::auto_ptr< gsGeometryEvaluator<T> > geoEval ( // -- TODO: Initialize inside visitor
+        //gsGeometryEvaluator<T>::ptr geoEval ( // -- TODO: Initialize inside visitor
         //this->m_patches.patch(patchIndex).evaluator( evFlags ) );
         
     }

@@ -80,7 +80,10 @@ template <class T>
 class gsDomainIterator
 {
 public:
-    typedef std::auto_ptr< gsDomainIterator > uPtr;
+    /// Shared pointer for gsDomainIterator
+    typedef memory::shared_ptr< gsDomainIterator > Ptr;
+    /// Unique pointer for gsDomainIterator
+    typedef typename memory::unique< gsDomainIterator >::ptr uPtr;
 
 public:
 

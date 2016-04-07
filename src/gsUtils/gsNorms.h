@@ -180,7 +180,7 @@ T igaFieldL2Distance(const gsField<T>& u,
                      const gsMultiBasis<T>& B,
                      bool v_isParam = false);
 template <typename T>
-T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
+T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
@@ -189,13 +189,13 @@ T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
 
 // Auxiliary functions for igaL2Distance() and igaL2DistanceEltWiseSq().
 template <typename T>
-T igaL2DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
-                      const std::auto_ptr< gsGeometryEvaluator<T> > & funcEval,
+T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
+                      const typename gsGeometryEvaluator<T>::uPtr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
                       const typename gsBasis<T>::domainIter & domIt);
 template <typename T>
-T igaL2DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
+T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
@@ -250,8 +250,8 @@ gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,
 
 // Auxiliary function for igaH1Distance() and igaH1DistanceEltWiseSq().
 template <typename T>
-T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
-                      const std::auto_ptr< gsGeometryEvaluator<T> > & funcEval,
+T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
+                      const typename gsGeometryEvaluator<T>::uPr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
                       const typename gsBasis<T>::domainIter & domIt,

@@ -49,7 +49,7 @@ public:
     typedef memory::shared_ptr< gsFunctionExpr > Ptr;
 
     /// Auto pointer for gsFunctionExpr
-    typedef typename memory::auto_ptr<gsFunctionExpr> uPtr;
+    typedef typename memory::unique<gsFunctionExpr>::ptr uPtr;
 
 public:
     

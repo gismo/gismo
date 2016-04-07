@@ -60,7 +60,6 @@ namespace rapidxml
 #define TMPLA3(t1,t2,t3) t1,t2,t3
 #define FILE_PRECISION 16
 
-
 #ifdef GISMO_WITH_MPQ
 // Specialize file I/O to floating point format
 #include<sstream>
@@ -105,8 +104,9 @@ template <class U> inline std::ofstream & operator<<
 
 namespace gismo {
 
-/*
-inline bool gsGetValue(std::istream & is, double & var)
+
+template<class T>
+inline bool gsGetReal(std::istream & is, T & var)
 {
     std::string dn;
     if ( !(is >> dn) ) return false;
@@ -122,7 +122,9 @@ inline bool gsGetValue(std::istream & is, double & var)
     return true;
 }
 
-inline bool gsGetValue(std::istream & is, mpq_class & var)
+#ifdef GISMO_WITH_MPQ
+template<>
+inline bool gsGetReal(std::istream & is, mpq_class & var)
 {
     // read as decimal
     std::string dn;
@@ -147,11 +149,14 @@ inline bool gsGetValue(std::istream & is, mpq_class & var)
     var.canonicalize();// remove common factors
     return true;
 }
+#endif
 
-template<class T> cast<T,double>(const T & n) {return n;}
-//cast<std::string,T>
-
-*/
+template<class Z>
+inline bool gsGetInt(std::istream & is, Z & var)
+{
+  GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,INCONSISTENT_INSTANTIZATION);
+  return is >> var;
+}
 
 namespace internal {
 

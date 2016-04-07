@@ -86,7 +86,9 @@ public:
 
     /// Shared pointer for gsBasis
     typedef memory::shared_ptr< gsBasis > Ptr;
-    //typedef memory::unique_ptr< gsBasis > LocalPtr;
+
+    /// Unique pointer for gsBasis   
+    typedef typename memory::unique< gsBasis >::ptr uPtr;
 
     typedef T Scalar_t;
 
@@ -94,7 +96,7 @@ public:
 
     typedef typename gsMatrix<T>::uPtr        uMatrixPtr;
 
-    typedef memory::auto_ptr< gsDomainIterator<T> > domainIter;
+    typedef typename memory::unique< gsDomainIterator<T> >::ptr domainIter;
 
 public:
 

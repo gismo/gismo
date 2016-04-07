@@ -125,8 +125,8 @@ T computeL2Distance(const gsField<T>& u, const gsField<T>& v, int numEvals)
 // iga L2 norm ///////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-T igaL2DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
-                      const std::auto_ptr< gsGeometryEvaluator<T> > & funcEval,
+T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
+                      const typename gsGeometryEvaluator<T>::uPtr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
                       const typename gsBasis<T>::domainIter & domIt)
@@ -155,7 +155,7 @@ T igaL2DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
 }
 
 template <typename T>
-T igaL2DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
+T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
@@ -191,10 +191,10 @@ T igaL2Distance(const gsGeometry<T>& patch,
                 const gsFunction<T>& v,
                 bool v_isParam)
 {
-    std::auto_ptr< gsGeometryEvaluator<T> > geoEval ( patch.evaluator(NEED_VALUE   |
+    typename gsGeometryEvaluator<T>::uPtr geoEval ( patch.evaluator(NEED_VALUE   |
                                                                       NEED_MEASURE ));
     // assuming real-valued function
-    std::auto_ptr< gsGeometryEvaluator<T> > funcEval ( func.evaluator(NEED_VALUE) );
+    typename gsGeometryEvaluator<T>::uPtr funcEval ( func.evaluator(NEED_VALUE) );
     
     // degree of the underlying Gauss rule to use
     gsVector<int> numNodes( func.parDim() );
@@ -219,7 +219,7 @@ T igaL2Distance(const gsGeometry<T>& patch,
                 const gsBasis<T>& B,
                 bool v_isParam)
 {
-    std::auto_ptr< gsGeometryEvaluator<T> > geoEval ( patch.evaluator(NEED_VALUE   |
+   typename gsGeometryEvaluator<T>::uPtr geoEval ( patch.evaluator(NEED_VALUE   |
                                                                       NEED_MEASURE ));
     // degree of the underlying Gauss rule to use
     gsVector<int> numNodes( B.dim() );
@@ -245,10 +245,10 @@ gsMatrix<T> igaL2DistanceEltWiseSq(const gsGeometry<T>& patch,
 {
     const int d = func.parDim();
 
-    std::auto_ptr< gsGeometryEvaluator<T> > geoEval ( patch.evaluator(NEED_VALUE   |
+    typename gsGeometryEvaluator<T>::uPtr geoEval ( patch.evaluator(NEED_VALUE   |
                                                                       NEED_MEASURE ));
     // assuming real-valued function
-    std::auto_ptr< gsGeometryEvaluator<T> > funcEval ( func.evaluator(NEED_VALUE) );
+    typename gsGeometryEvaluator<T>::uPtr funcEval ( func.evaluator(NEED_VALUE) );
 
     // degree of the underlying Gauss rule to use
     gsVector<int> numNodes( func.parDim() );
@@ -347,8 +347,8 @@ gsVector< gsMatrix<T> > igaFieldL2DistanceEltWiseSq(const gsField<T>& u, const g
 
 
 template <typename T>
-T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
-                      const std::auto_ptr< gsGeometryEvaluator<T> > & funcEval,
+T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
+                      const typename gsGeometryEvaluator<T>::uPtr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
                       const typename gsBasis<T>::domainIter & domIt,
@@ -395,11 +395,11 @@ T igaH1Distance(const gsGeometry<T>& patch,
 {
     const int d = func.parDim();
 
-    std::auto_ptr< gsGeometryEvaluator<T> > geoEval ( patch.evaluator(NEED_VALUE    |
+    typename gsGeometryEvaluator<T>::uPtr geoEval ( patch.evaluator(NEED_VALUE    |
                                                                       NEED_GRAD_TRANSFORM  |
                                                                       NEED_MEASURE ));
     // assuming real-valued function
-    std::auto_ptr< gsGeometryEvaluator<T> > funcEval ( func.evaluator(NEED_JACOBIAN) );
+    typename gsGeometryEvaluator<T>::uPtr funcEval ( func.evaluator(NEED_JACOBIAN) );
     
     // degree of the underlying Gauss rule to use
     gsVector<int> numNodes( func.parDim() );
@@ -426,7 +426,7 @@ T igaH1Distance(const gsGeometry<T>& patch,
                 const gsBasis<T>& B,
                 bool v_isParam)
 {
-    std::auto_ptr< gsGeometryEvaluator<T> > geoEval ( patch.evaluator(NEED_VALUE   |
+    typename gsGeometryEvaluator<T>::uPtr geoEval ( patch.evaluator(NEED_VALUE   |
                                                                       NEED_GRAD_TRANSFORM |
                                                                       NEED_MEASURE ));
     // degree of the underlying Gauss rule to use
@@ -463,7 +463,7 @@ T igaFieldH1Distance(const gsField<T>& u, const gsFunction<T>& v, const gsMultiB
     return math::sqrt(dist);
 }
 template <typename T>
-T igaH1DistanceOnElt( const std::auto_ptr< gsGeometryEvaluator<T> > & geoEval ,
+T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
@@ -512,11 +512,11 @@ gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,
 {
     const int d = func.parDim();
 
-    std::auto_ptr< gsGeometryEvaluator<T> > geoEval ( patch.evaluator(NEED_VALUE    |
+    typename gsGeometryEvaluator<T>::uPtr geoEval ( patch.evaluator(NEED_VALUE    |
                                                                       NEED_GRAD_TRANSFORM  |
                                                                       NEED_MEASURE ));
     // assuming real-valued function
-    std::auto_ptr< gsGeometryEvaluator<T> > funcEval ( func.evaluator(NEED_JACOBIAN) );
+    typename gsGeometryEvaluator<T>::uPtr funcEval ( func.evaluator(NEED_JACOBIAN) );
 
     // degree of the underlying Gauss rule to use
     gsVector<int> numNodes( func.parDim() );
@@ -609,15 +609,15 @@ T igaDGDistanceJump(const gsGeometry<T>& patch1, const gsGeometry<T>& patch2,
     const int d = func1.parDim();
     GISMO_ASSERT ( d == patch1.geoDim(), "Dimension mismatch" );
 
-    std::auto_ptr< gsGeometryEvaluator<T> > geoEval1 ( patch1.evaluator(NEED_VALUE   |
+    typename gsGeometryEvaluator<T>::uPtr geoEval1 ( patch1.evaluator(NEED_VALUE   |
                                                                         NEED_MEASURE ));
 
-    std::auto_ptr< gsGeometryEvaluator<T> > geoEval2 ( patch2.evaluator(NEED_VALUE   |
+    typename gsGeometryEvaluator<T>::uPtr geoEval2 ( patch2.evaluator(NEED_VALUE   |
                                                                         NEED_MEASURE ));
     // assuming real-valued function
-    std::auto_ptr< gsGeometryEvaluator<T> > funcEval1 ( func1.evaluator(NEED_VALUE) );
+    typename gsGeometryEvaluator<T>::uPtr funcEval1 ( func1.evaluator(NEED_VALUE) );
     
-    std::auto_ptr< gsGeometryEvaluator<T> > funcEval2 ( func2.evaluator(NEED_VALUE) );
+    typename gsGeometryEvaluator<T>::uPtr funcEval2 ( func2.evaluator(NEED_VALUE) );
     
     const boxSide side1 = bi.first();
     const boxSide side2 = bi.second();

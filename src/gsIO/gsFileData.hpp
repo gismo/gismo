@@ -369,9 +369,9 @@ bool gsFileData<T>::readAxelSurface(gsXmlNode * node )
 };
 
 
-///////////////////////////////////////////////    
+// ******************************** //    
 // GoTools g2 file
-///////////////////////////////////////////////    
+// ******************************** //    
 
 template<class T>
 bool gsFileData<T>::readGoToolsFile( String const & fn )

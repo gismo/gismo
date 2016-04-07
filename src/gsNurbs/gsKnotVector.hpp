@@ -50,7 +50,7 @@ public:
 
         std::istringstream str;
         str.str( node->value() );
-        for (T knot; str >> knot;)
+        for (T knot; gsGetReal(str, knot);)
             knotValues.push_back(knot);
 
         result = gsKnotVector<T>(give(knotValues), p);

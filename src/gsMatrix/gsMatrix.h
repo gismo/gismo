@@ -150,7 +150,7 @@ public:
     gsMatrix(uPtr const & other)
     {
         // NOTE: due to a language edge case, we can not pass the uPtr by value
-        // into this constructor as we should. Assuming that uPtr is an auto_ptr,
+        // into this constructor as we should. Assuming that uPtr is an auto pointer,
         // this fails at least on gcc due to implicit conversion rules (no
         // two user-defined conversions in an initialization).
         this->swap( *other );
