@@ -48,7 +48,7 @@ public:
 
     /// Front
     inline const obj & front() const
-    { return *m_ref.front(); }
+    { return m_ref.front(); }
 
     /// Back
     inline const obj & back () const
