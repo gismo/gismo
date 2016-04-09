@@ -63,11 +63,11 @@ gsMatrix<T> igaL2DistanceEltWiseSq(const gsGeometry<T>& patch,
                 bool v_isParam);
 
 TEMPLATE_INST
-T igaL2DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
-                      const typename gsGeometryEvaluator<T>::uPtr & funcEval,
+T igaL2DistanceOnElt( const gsGeometryEvaluator<T>::uPtr & geoEval ,
+                      const gsGeometryEvaluator<T>::uPtr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
-                      const typename gsBasis<T>::domainIter & domIt);
+                      const gsBasis<T>::domainIter & domIt);
 
 TEMPLATE_INST
 T igaH1Distance(const gsGeometry<T>& patch, 
@@ -87,7 +87,7 @@ T igaH1Distance(const gsGeometry<T>& patch,
                 const gsBasis<T>& B,
                 bool v_isParam);
 TEMPLATE_INST
-T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
+T igaH1DistanceOnElt( const gsGeometryEvaluator<T>::uPtr & geoEval ,
                       const gsFunction<T> & func,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
@@ -107,8 +107,8 @@ T igaFieldH1Distance(const gsField<T>& u,
 
 
 TEMPLATE_INST
-T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
-                      const typename gsGeometryEvaluator<T>::uPtr & funcEval,
+T igaH1DistanceOnElt( const gsGeometryEvaluator<T>::uPtr & geoEval ,
+                      const gsGeometryEvaluator<T>::uPtr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
                       const gsBasis<T>::domainIter & domIt,
