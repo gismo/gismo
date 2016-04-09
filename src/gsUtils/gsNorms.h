@@ -251,7 +251,7 @@ gsMatrix<T> igaH1DistanceEltWiseSq(const gsGeometry<T>& patch,
 // Auxiliary function for igaH1Distance() and igaH1DistanceEltWiseSq().
 template <typename T>
 T igaH1DistanceOnElt( const typename gsGeometryEvaluator<T>::uPtr & geoEval ,
-                      const typename gsGeometryEvaluator<T>::uPr & funcEval,
+                      const typename gsGeometryEvaluator<T>::uPtr & funcEval,
                       const gsFunction<T>& v,
                       const bool & v_isParam,
                       const typename gsBasis<T>::domainIter & domIt,
