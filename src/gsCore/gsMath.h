@@ -61,8 +61,11 @@ inline mpq_class std_fun(const __gmp_expr<mpq_t, U> & a,const __gmp_expr<mpq_t, 
 {return std::std_fun(mpq_class(a).get_d(), mpq_class(b).get_d());}
 GMP_EXTRA_STD_UNARY_FUNCTION(sqrt)
 GMP_EXTRA_STD_UNARY_FUNCTION(sin)
+GMP_EXTRA_STD_UNARY_FUNCTION(sinh)
 GMP_EXTRA_STD_UNARY_FUNCTION(cos)
+GMP_EXTRA_STD_UNARY_FUNCTION(cosh)
 GMP_EXTRA_STD_UNARY_FUNCTION(tan)
+GMP_EXTRA_STD_UNARY_FUNCTION(tanh)
 GMP_EXTRA_STD_UNARY_FUNCTION(acos)
 GMP_EXTRA_STD_UNARY_FUNCTION(asin)
 GMP_EXTRA_STD_UNARY_FUNCTION(sinh)
@@ -216,9 +219,11 @@ using ::pow;
 using ::ceil;
 using ::floor;
 using ::cos;
+using ::cosh;
 using ::acos;
 using ::asin;
 using ::sin;
+using ::sinh;
 using ::tan;
 using ::tanh;
 using ::log;
@@ -244,16 +249,17 @@ template <typename T> int getSign(T val)
 }
 
 /// integer power
-inline int ipow(int x, unsigned p)
+inline int ipow(int x, unsigned exp)
 {
-    if (p == 0) return 1;
-    if (p == 1) return x;
-
-    int tmp = ipow(x, p/2);
-    if (p % 2 == 0)
-        return tmp * tmp;
-    else
-        return x * tmp * tmp;
+    int result = 1;
+    while (exp)
+    {
+        if (exp & 1)
+            result *= x;
+        exp >>= 1;
+        x *= x;
+    }
+    return result;
 }
 
 /// Returns convex combination of \a a and \a b with weight \a t

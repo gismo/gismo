@@ -698,22 +698,25 @@ void gsCurvatureSmoothing<T>::computeApproxError(T & error){
 }
 
 template<class T>
-void gsCurvatureSmoothing<T>::computeApproxErrorL2(T & error){
+void gsCurvatureSmoothing<T>::computeApproxErrorL2(T & error)
+{
     error=0;
     // uses the approximation error. Since the the parameter domain is [0,1] of the function the L^2 error = (approx.error/points)^{1/2}
     computeApproxError(error);
-    error= math::sqrt(error/(m_points.rows()+0.0));
+    error= math::sqrt( error / m_points.rows() );
 }
 
 
 template<class T>
-void gsCurvatureSmoothing<T>::computeApproxErrorLMax(T & error){
+void gsCurvatureSmoothing<T>::computeApproxErrorLMax(T & error)
+{
     gsMatrix<T> results;
     m_curve_smooth->eval_into(m_param_values.transpose(),results); // the points of the curve for the corresponding parameter values
     results.transposeInPlace();
-    error=0;
+    error = 0.0;
     //computing the Lmax approximation error
-    for(index_t k=0;k<m_points.rows();k++){
+    for(index_t k=0;k<m_points.rows();k++)
+    {
         error= math::max(error,math::sqrt(math::pow(m_points(k,0)-results(k,0),2)+math::pow(m_points(k,1)-results(k,1),2)));
     }
 }

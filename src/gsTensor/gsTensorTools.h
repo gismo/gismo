@@ -16,6 +16,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 
 #include <gsUtils/gsCombinatorics.h>
+#include <gsTensor/gsGridIterator.h>
 
 namespace gismo
 {
@@ -127,10 +128,9 @@ void tensorStrides(const gsVector<int,d> & sz, gsVector<int,d> & strides)
 /// \ingroup Tensor
 template <typename T, int d>
 void swapTensorDirection( int k1, int k2,
-                          gsVector<int,d> & sz, 
+                          gsVector<index_t,d> & sz, 
                           gsMatrix<T> & coefs)
 {
-    const int dd = sz.size();
     GISMO_ASSERT( sz.prod()  == coefs.rows(), 
                   "Input error, sizes do not match: "<<sz.prod()<<"!="<< coefs.rows() );
     GISMO_ASSERT( k1<d && k2 < d && k1>=0 && k2>=0,
@@ -146,27 +146,20 @@ void swapTensorDirection( int k1, int k2,
     return;
     */
 
-    gsMatrix<T> tmp(coefs.rows(), coefs.cols() );
-    gsVector<int,d> perstr;
-    std::swap( sz[k1], sz[k2] );
-    tensorStrides<d>(sz, perstr);
-    std::swap( sz[k1], sz[k2] );
+    gsGridIterator<index_t,CUBE,d> it(sz);
     
-    index_t r = 0;
-    gsVector<int,d> v(dd);
-    v.setZero();
-    do 
-    {
-        std::swap( v[k1], v[k2] );
-        tmp.row(perstr.dot(v)) = coefs.row(r++);
-        std::swap( v[k1], v[k2] );
-    } 
-    while (nextLexicographic(v, sz));
+    std::swap( sz[k1], sz[k2] );
+    gsVector<index_t,d> perstr;
+    tensorStrides<d>(sz, perstr);
+    std::swap(perstr[k1], perstr[k2] );
+    
+    gsMatrix<T> tmp(coefs.rows(), coefs.cols() );
+
+    for(index_t r=0; it; ++it, ++r)
+        tmp.row(perstr.dot(*it)) = coefs.row(r);
 
     coefs.swap(tmp);
-    std::swap( sz[k1], sz[k2] );
 }
-
 
 /// Reorders (inplace) the given tensor \a coefs vector (regarded as a
 /// \a sz.prod() x \a d matrix arranged as a flattened \a sz tensor,
@@ -175,64 +168,56 @@ void swapTensorDirection( int k1, int k2,
 /// \ingroup Tensor
 template <typename T, int d>
 void permuteTensorVector( const gsVector<index_t,d> & perm, 
-                          gsVector<int,d> & sz, 
+                          gsVector<index_t,d> & sz, 
                           gsMatrix<T> & coefs)
 {
-    const int dd = sz.size();
     GISMO_ASSERT( sz.prod()  == coefs.rows(), 
                   "Input error, sizes do not match: "<<sz.prod()<<"!="<< coefs.rows() );
-    GISMO_ASSERT( perm.sum() == dd*(dd-1)/2, "Error in the permutation: "<< perm.transpose());
+    GISMO_ASSERT( perm.sum() == sz.size()*(sz.size()-1)/2,
+                  "Error in the permutation: "<< perm.transpose());
 
-    Eigen::PermutationMatrix<d> P(perm);
+    if ( perm == gsVector<index_t>::LinSpaced(sz.size(),0,sz.size()-1) )
+        return; //Nothing to do
+        
+    typename gsVector<index_t>::PermutationWrap P(perm);
+    gsGridIterator<index_t,CUBE,d> it(sz);
 
-    gsVector<int,d> perstr(dd);
-    tensorStrides<d>(P*sz, perstr);
-
+    sz = P * sz;
+    gsVector<index_t,d> perstr;
+    tensorStrides<d>(sz, perstr);
+    perstr = P * perstr;
+        
     // check: is it better to create a big permutation to apply to coefs ?
-    //        otherwise, is the swapping possible without the temporary ?
     gsMatrix<T> tmp(coefs.rows(), coefs.cols() );
 
-    index_t r = 0;
-    gsVector<int,d> v(dd);
-    v.setZero();
-    do 
-    {
-        tmp.row( perstr.dot(P*v) ) = coefs.row( r++ );
-    } 
-    while (nextLexicographic(v, sz));
-
+    for(index_t r=0; it; ++it, ++r)
+        tmp.row(perstr.dot(*it)) = coefs.row(r);
+    
     coefs.swap(tmp);
-    sz = P * sz;
 }
 
 /// \brief Flips tensor directions in place
 /// \ingroup Tensor
 template <typename T, int d>
 void flipTensorVector(const int dir,
-                      const gsVector<int,d> & sz, 
+                      const gsVector<index_t,d> & sz, 
                       gsMatrix<T> & coefs)
 {
     GISMO_ASSERT( sz.prod()  == coefs.rows(), 
                   "Input error, sizes do not match: "<<sz.prod()<<"!="<< coefs.rows() );
 
-    const int dd = sz.size();
+    gsVector<index_t,d> perstr = sz;
+    perstr[dir] /= 2;
+    gsGridIterator<index_t,CUBE,d> it(perstr);
+    tensorStrides<d>(sz, perstr);//reuse
+    const index_t cc = sz[dir] - 1; 
 
-    // compute strides
-    gsVector<int,d> perstr(dd);
-    tensorStrides<d>(sz, perstr);
-
-    gsVector<int,d> v(dd), vend(dd);
-    const int cc = sz[dir] - 1; 
-    vend = sz; vend[dir] /= 2;
-    v.setZero();
-    do
+    for(; it; ++it)
     {
-        const int i1 = perstr.dot(v);
-        const int i2 = i1 + (cc-2*v[dir])*perstr[dir];
-
+        const index_t i1 = perstr.dot(*it);
+        const index_t i2 = i1 + (cc - 2 * it->at(dir)) * perstr[dir];
         coefs.row( i1 ).swap( coefs.row( i2 ) );
     } 
-    while (nextLexicographic(v, vend));
 }
 
 /** \brief Computes the sparse Kronecker product of sparse matrix blocks.

@@ -100,7 +100,11 @@ protected:
             f2ders.resize(quNodes.rows(), quNodes.cols() );
         }
         else
+        {
             dfunc2->eval_into(geoEval.values(), f2ders);
+            // get the gradients to columns
+            f2ders.resize(quNodes.rows(), quNodes.cols() );
+        }
 
         // ** Evaluate function v
         //gsMatrix<T> f2val = func2Param ? func2.deriv(quNodes)
