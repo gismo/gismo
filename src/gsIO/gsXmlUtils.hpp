@@ -89,7 +89,9 @@ public:
         for (int i=0; i<n; ++i)
         {
             ntest++;
-            str >>std::ws>>x>>std::ws>>y>>std::ws>>z>>std::ws;        
+            gsGetReal(str, x);
+            gsGetReal(str, y);
+            gsGetReal(str, z);
             m->addHeVertex(x,y,z);
         }
         GISMO_ASSERT( ntest==n, 
@@ -111,17 +113,18 @@ public:
             {
                 nLoops++;
                 vert.push_back(std::vector< gsSolidHeVertex<T>* >());
-                strf>>std::ws>> nf >>std::ws; // read num vertices on this loop
+                gsGetReal(strf, nf);
+                // read num vertices on this loop
                 for (int ivert=0; ivert<nf; ivert++) // read vertices
                 {
-                    strf>>std::ws>> vertID >>std::ws;
+                    gsGetReal(strf, vertID);
                     vert[nLoops-1].push_back(m->vertex[vertID]);
                 }
                 // next number is either:
                 // * the trim surface id,
                 // * -1 to indicate that the surface is automatically computed, or
                 // * -2 to indicate that there are further internal loops
-                strf>>std::ws>> trimID >>std::ws;
+                gsGetReal(strf, trimID);
             } while(trimID <= -2); // -2 indicates that there are vertices remaining
             if (trimID>-1)
                 m->addFace(vert, getById< gsTrimSurface<T> >( toplevel, trimID ) );
@@ -154,11 +157,11 @@ public:
             {
                 volFaces.clear();
                 int numFaces;
-                strVol >> std::ws >> numFaces;
+                gsGetReal(strVol, numFaces);
                 for(int j = 0; j < numFaces; j++)
                 {
                     int faceId;
-                    strVol >> std::ws >> faceId;
+                    gsGetReal(strVol, faceId);
                     volFaces.push_back(m->face[faceId]);
                 }
                 m->addVolume(volFaces);
@@ -274,19 +277,21 @@ public:
         T x,y, z;
         for (unsigned i=0; i<n; ++i)
         {
-            str >>std::ws>>x>>std::ws>>y>>std::ws>>z>>std::ws;
+            gsGetReal(str, x);
+            gsGetReal(str, y);
+            gsGetReal(str, z);
             m->addVertex(x,y,z);
         }
       
         n  = atoi ( node->first_attribute("faces")->value() ) ;
-        unsigned c;
+        unsigned c = 0;
         std::vector<int> face;
         for (unsigned i=0; i<n; ++i)
         {
-            str >>std::ws>> c ;
+            gsGetReal(str, c);
             face.resize(c);
             for (unsigned j=0; j<c; ++j)
-                str >>std::ws>> face[j] ;
+                gsGetReal(str, face[j]);
             m->addFace(face);
         }
         return m;
@@ -996,7 +1001,8 @@ public:
         if ( ! strcmp( tmp->first_attribute("type")->value(),"id_range") )
         {
             int first, last;
-            str >> std::ws >>  first >>  std::ws >> last >> std::ws ;
+            gsGetReal(str, first);
+            gsGetReal(str, last);
             for ( int i = first; i<=last; ++i )
             {
                 GISMO_ASSERT( searchId(i, toplevel) != NULL, 
@@ -1009,7 +1015,7 @@ public:
         else if ( ! strcmp( tmp->first_attribute("type")->value(),"id_index") )
         {
             int c = 0;
-            for (int pindex; str >> pindex;)
+            for (int pindex; gsGetReal(str, pindex);)
             {
                 GISMO_ASSERT( searchId(pindex, toplevel) != NULL, 
                               "No Geometry with Id "<<pindex<<" found in the XML data.");
@@ -1104,7 +1110,8 @@ public:
         if ( !strcmp( patchNode->first_attribute("type")->value(), "id_range") )
         {
             int first, last;
-            iss >> std::ws >> first >> std::ws >> last >> std::ws;
+            gsGetReal(iss, first);
+            gsGetReal(iss, last);
             for (int i = first; i <= last; ++i)
             {
                 bases.push_back( getById< gsBasis<T> >( topLevel, i ) );
@@ -1114,7 +1121,7 @@ public:
         else if ( !strcmp( patchNode->first_attribute("type")->value(), "id_index") )
         {
             int c = 0;
-            for ( int pindex; iss >> pindex; )
+            for ( int pindex; gsGetReal(iss, pindex); )
             {
                 bases.push_back( getById< gsBasis<T> >( topLevel, pindex ) );
                 ids[pindex] = c++;
@@ -1494,13 +1501,13 @@ public:
         
             if ( !strcmp(child->first_attribute("type")->value(), "dirichlet") )
             {		       
-                for (int side; str >> side;) 
+                for (int side; gsGetReal(str, side);) 
                     bvp->addCondition( static_cast<boxSide>(side),
                                        condition_type::dirichlet, ff);
             }
             else if ( !strcmp(child->first_attribute("type")->value(), "neumann") )
             {		       
-                for (int side; str >> side;) 
+                for (int side; gsGetReal(str, side);) 
                     bvp->addCondition( static_cast<boxSide>(side),
                                        condition_type::neumann, ff);
             }		
