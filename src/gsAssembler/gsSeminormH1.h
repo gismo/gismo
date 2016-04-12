@@ -91,17 +91,17 @@ protected:
         // get the gradients to columns
         f1ders.resize(quNodes.rows(), quNodes.cols() );
 
-        // Evaluate second function (defined of physical domain)
+        // Evaluate second function
         geoEval.evaluateAt(quNodes);
         if(dfunc2==NULL)
         {
-            _func2.deriv_into(geoEval.values(), f2ders);
+            _func2.deriv_into( f2param ? quNodes : geoEval.values() , f2ders);
             // get the gradients to columns
             f2ders.resize(quNodes.rows(), quNodes.cols() );
         }
         else
         {
-            dfunc2->eval_into(geoEval.values(), f2ders);
+            dfunc2->eval_into(f2param ? quNodes : geoEval.values() , f2ders);
             // get the gradients to columns
             f2ders.resize(quNodes.rows(), quNodes.cols() );
         }
@@ -121,11 +121,19 @@ protected:
         {
             // Transform the gradients
             geoEval.transformGradients(k, f1ders, f1pders);
-            //if ( f2Param )
+
+            // If func2 is defined on the parameter space (f2param = true), transform the gradients
+            if(f2param)
+                geoEval.transformGradients(k, f2ders, f2pders);
+            //if ( f2param )
             //f2ders.col(k)=geoEval.gradTransforms().block(0, k*d,d,d) * f2ders.col(k);// to do: generalize
-            
+
             const T weight = quWeights[k] *  geoEval.measure(k);
-            sum += weight * (f1pders - f2ders.col(k)).squaredNorm();
+
+            if(!f2param) // standard case: func2 defined on physical space
+                sum += weight * (f1pders - f2ders.col(k)).squaredNorm();
+            else // case: func2 defined on parameter space
+                sum += weight * (f1pders - f2pders).squaredNorm();
         }
         return sum;
     }
@@ -140,9 +148,9 @@ private:
     using gsNorm<T>::m_elWise;
 
     gsMatrix<T> f1ders, f2ders;
-    gsMatrix<T> f1pders;
+    gsMatrix<T> f1pders, f2pders; // f2pders only needed if f2param = true
 
-    bool f2param;// not used yet
+    bool f2param;
 };
 
 
