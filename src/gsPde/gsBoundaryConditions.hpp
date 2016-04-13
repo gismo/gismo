@@ -138,12 +138,12 @@ public:
             }
         }
         
-        T val;
+        T val(0);
         for (gsXmlNode * child = node->first_node("cv"); 
              child; child = child->next_sibling("cv") )
         {   
             str.clear();
-            str.str( child->value() );       
+            str.str( child->value() );
             GISMO_ENSURE( gsGetReal(str, val), "No value");
             const int uIndex = atoi( child->first_attribute("unknown")->value() );
             const int cIndex = atoi( child->first_attribute("corner")->value() );
