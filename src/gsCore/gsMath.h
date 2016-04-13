@@ -119,7 +119,7 @@ using std::pow;
 // template <typename T> T min(T a, T b) {return  (a < b ? a : b); }
 // template <typename T> T max(T a, T b) {return  (a < b ? b : a); }
 
-template <typename T> inline T exp2(T a) { return 1 << a;}
+template <typename T> inline T exp2(const T a) { return 1U << a;}
 
 template <typename T>
 T round(T a) {return math::floor(a<0.0 ? a-0.5 : a+0.5); }

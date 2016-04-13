@@ -22,7 +22,7 @@ void boxSide::getContainedCorners (int dim, std::vector<boxCorner> &corners) con
 {
     GISMO_ASSERT(dim>=0, "Dimension must be non negative");
     corners.resize(0);
-    corners.reserve(1<<(dim-1));
+    corners.reserve( 1U<<(dim-1) );
     const index_t dir = direction();
     const bool    par = parameter();
     for (boxCorner c=boxCorner::getFirst(dim); c<boxCorner::getEnd(dim);++c)

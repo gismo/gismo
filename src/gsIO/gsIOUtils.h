@@ -270,11 +270,11 @@ void makeMesh(const gsBasis<T>& basis, gsMesh<T> & mesh, int n = 0)
 
     // maps integer representation of a vertex into pointer to the
     // vertex coordinates
-    std::vector<Vertex> map(1 << d);
+    std::vector<Vertex> map(1U<<d);
 
     // neighbour[i] are integer representations of certain neighbours of
     // vertex i (i counts in lexicographics order over all vertices)
-    std::vector<std::vector<unsigned> > neighbour(1 << d,
+    std::vector<std::vector<unsigned> > neighbour(1U<<d,
                                                   std::vector<unsigned>() );
 
     cur.setZero(d);

@@ -123,6 +123,32 @@ inline bool gsGetReal(std::istream & is, T & var)
     return true;
 }
 
+template<class Z>
+inline bool gsGetInt(std::istream & is, Z & var)
+{
+  GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,INCONSISTENT_INSTANTIZATION);
+  return static_cast<bool>(is >> var);
+}
+
+/*
+//Note: automatic deduction of number traits, however using gsGetReal,
+//gsGetInt can reveal type mistakes, so they are preferable
+
+template <typename Z>
+typename internal::enable_if<std::numeric_limits<Z>::is_integer, bool>::type
+gsGetValue(std::istream & is, Z & var)
+{
+    return gsGetInt<Z>(is,var);
+}
+
+template <typename T>
+typename internal::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
+gsGetValue(std::istream & is, T & var)
+{
+    return gsGetReal<T>(is,var);
+}
+*/
+
 #ifdef GISMO_WITH_MPQ
 template<>
 inline bool gsGetReal(std::istream & is, mpq_class & var)
@@ -151,13 +177,6 @@ inline bool gsGetReal(std::istream & is, mpq_class & var)
     return true;
 }
 #endif
-
-template<class Z>
-inline bool gsGetInt(std::istream & is, Z & var)
-{
-  GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,INCONSISTENT_INSTANTIZATION);
-  return static_cast<bool>(is >> var);
-}
 
 namespace internal {
 
