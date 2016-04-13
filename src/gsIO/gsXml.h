@@ -156,7 +156,7 @@ template<class Z>
 inline bool gsGetInt(std::istream & is, Z & var)
 {
   GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,INCONSISTENT_INSTANTIZATION);
-  return is >> var;
+  return (is >> var);
 }
 
 namespace internal {
