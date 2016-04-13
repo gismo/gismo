@@ -108,6 +108,7 @@ namespace gismo {
 template<class T>
 inline bool gsGetReal(std::istream & is, T & var)
 {
+    GISMO_STATIC_ASSERT(!std::numeric_limits<T>::is_integer,INCONSISTENT_INSTANTIZATION);
     std::string dn;
     if ( !(is >> dn) ) return false;
     const std::string::size_type slh( dn.find("/") );

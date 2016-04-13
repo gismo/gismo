@@ -113,18 +113,18 @@ public:
             {
                 nLoops++;
                 vert.push_back(std::vector< gsSolidHeVertex<T>* >());
-                gsGetReal(strf, nf);
+                gsGetInt(strf, nf);
                 // read num vertices on this loop
                 for (int ivert=0; ivert<nf; ivert++) // read vertices
                 {
-                    gsGetReal(strf, vertID);
+                    gsGetInt(strf, vertID);
                     vert[nLoops-1].push_back(m->vertex[vertID]);
                 }
                 // next number is either:
                 // * the trim surface id,
                 // * -1 to indicate that the surface is automatically computed, or
                 // * -2 to indicate that there are further internal loops
-                gsGetReal(strf, trimID);
+                gsGetInt(strf, trimID);
             } while(trimID <= -2); // -2 indicates that there are vertices remaining
             if (trimID>-1)
                 m->addFace(vert, getById< gsTrimSurface<T> >( toplevel, trimID ) );
@@ -157,11 +157,11 @@ public:
             {
                 volFaces.clear();
                 int numFaces;
-                gsGetReal(strVol, numFaces);
+                gsGetInt(strVol, numFaces);
                 for(int j = 0; j < numFaces; j++)
                 {
                     int faceId;
-                    gsGetReal(strVol, faceId);
+                    gsGetInt(strVol, faceId);
                     volFaces.push_back(m->face[faceId]);
                 }
                 m->addVolume(volFaces);
@@ -288,10 +288,10 @@ public:
         std::vector<int> face;
         for (unsigned i=0; i<n; ++i)
         {
-            gsGetReal(str, c);
+            gsGetInt(str, c);
             face.resize(c);
             for (unsigned j=0; j<c; ++j)
-                gsGetReal(str, face[j]);
+                gsGetInt(str, face[j]);
             m->addFace(face);
         }
         return m;
@@ -1001,8 +1001,8 @@ public:
         if ( ! strcmp( tmp->first_attribute("type")->value(),"id_range") )
         {
             int first, last;
-            gsGetReal(str, first);
-            gsGetReal(str, last);
+            gsGetInt(str, first);
+            gsGetInt(str, last);
             for ( int i = first; i<=last; ++i )
             {
                 GISMO_ASSERT( searchId(i, toplevel) != NULL, 
@@ -1015,7 +1015,7 @@ public:
         else if ( ! strcmp( tmp->first_attribute("type")->value(),"id_index") )
         {
             int c = 0;
-            for (int pindex; gsGetReal(str, pindex);)
+            for (int pindex; gsGetInt(str, pindex);)
             {
                 GISMO_ASSERT( searchId(pindex, toplevel) != NULL, 
                               "No Geometry with Id "<<pindex<<" found in the XML data.");
@@ -1110,8 +1110,8 @@ public:
         if ( !strcmp( patchNode->first_attribute("type")->value(), "id_range") )
         {
             int first, last;
-            gsGetReal(iss, first);
-            gsGetReal(iss, last);
+            gsGetInt(iss, first);
+            gsGetInt(iss, last);
             for (int i = first; i <= last; ++i)
             {
                 bases.push_back( getById< gsBasis<T> >( topLevel, i ) );
@@ -1121,7 +1121,7 @@ public:
         else if ( !strcmp( patchNode->first_attribute("type")->value(), "id_index") )
         {
             int c = 0;
-            for ( int pindex; gsGetReal(iss, pindex); )
+            for ( int pindex; gsGetInt(iss, pindex); )
             {
                 bases.push_back( getById< gsBasis<T> >( topLevel, pindex ) );
                 ids[pindex] = c++;
@@ -1501,13 +1501,13 @@ public:
         
             if ( !strcmp(child->first_attribute("type")->value(), "dirichlet") )
             {		       
-                for (int side; gsGetReal(str, side);) 
+                for (int side; gsGetInt(str, side);) 
                     bvp->addCondition( static_cast<boxSide>(side),
                                        condition_type::dirichlet, ff);
             }
             else if ( !strcmp(child->first_attribute("type")->value(), "neumann") )
             {		       
-                for (int side; gsGetReal(str, side);) 
+                for (int side; gsGetInt(str, side);) 
                     bvp->addCondition( static_cast<boxSide>(side),
                                        condition_type::neumann, ff);
             }		

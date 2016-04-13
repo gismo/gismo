@@ -70,8 +70,8 @@ public:
         if ( ! strcmp( tmp->first_attribute("type")->value(), "id_range") )
         {
             int first, last;
-            gsGetReal(str, first);
-            gsGetReal(str, last);
+            gsGetInt(str, first);
+            gsGetInt(str, last);
             for ( int i = first; i<=last; ++i )
             {
                 GISMO_ASSERT( searchId(i, toplevel) != NULL, 
@@ -82,7 +82,7 @@ public:
         else if ( ! strcmp( mp->first_attribute("type")->value(),"id_index") )
         {
             int c = 0;
-            for (int pindex; gsGetReal(str, pindex);)
+            for (int pindex; gsGetInt(str, pindex);)
             {
                 GISMO_ASSERT( searchId(pindex, toplevel) != NULL, 
                               "Invalid reference to node Id");
@@ -124,14 +124,14 @@ public:
             str.str( child->value() );
             if ( !strcmp(child->first_attribute("type")->value(), "dirichlet") )
             {
-                for (int bIndex; gsGetReal(str, bIndex);) 
+                for (int bIndex; gsGetInt(str, bIndex);) 
                     result.addCondition( boundaries[bIndex], 
                                          condition_type::dirichlet, 
                                          func[fIndex], uIndex ); //,parametric
             }
             else if ( !strcmp(child->first_attribute("type")->value(), "neumann") )
             {		       
-                for (int bIndex; gsGetReal(str, bIndex);) 
+                for (int bIndex; gsGetInt(str, bIndex);) 
                     result.addCondition( boundaries[bIndex],
                                          condition_type::neumann, 
                                          func[fIndex], uIndex ); //,parametric
