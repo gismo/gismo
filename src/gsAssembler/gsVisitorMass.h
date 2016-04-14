@@ -88,8 +88,8 @@ public:
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);
 
-        // Add contributions to the system matrix and right-hand side
-        system.pushToMatrix(localMat, actives, 0, 0);
+        // Add contributions to the system matrix
+        system.pushToMatrix(localMat, actives, eliminatedDofs[0], 0, 0);
     }
 
 /* -----------------------  to be removed later*/
