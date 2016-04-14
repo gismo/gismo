@@ -128,7 +128,7 @@ inline bool gsGetInt(std::istream & is, Z & var)
 {
   GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,INCONSISTENT_INSTANTIZATION);
   //return static_cast<bool>(is >> var); //C++11
-  return 0 != (is >> var);
+  return !(is >> var).fail();
 }
 
 /*
