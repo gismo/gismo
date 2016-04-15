@@ -528,7 +528,7 @@ public: /* mapping patch-local to global indices */
      * @param[out] result the mapped indices
      * @param[in] c the considered column block
      */
-    void mapColIndices(gsMatrix<unsigned> & actives,
+    void mapColIndices(const gsMatrix<unsigned> & actives,
                        const index_t patchIndex,
                        gsMatrix<unsigned> & result,
                        const size_t c = 0) const
