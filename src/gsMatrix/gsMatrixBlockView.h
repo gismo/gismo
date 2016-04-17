@@ -169,7 +169,7 @@ public:
         GISMO_ASSERT( i < m_rowSize && j < m_colSize ,
                       "Invalid block requested.");
         
-        return *m_blocks[j*m_colSize+i];
+        return *m_blocks[j*m_rowSize+i];
     }
 
 
