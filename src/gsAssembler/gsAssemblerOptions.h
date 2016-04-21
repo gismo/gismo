@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsCore/gsTransformPure.h>
-
 namespace gismo
 {
 
