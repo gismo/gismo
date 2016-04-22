@@ -52,6 +52,7 @@ namespace internal
 #include <gsCore/gsBoundary.h>
 
 #include <gsCore/gsGeometry.h>
+#include <gsCore/gsGeometrySlice.h>
 #include <gsCore/gsCurve.h>
 #include <gsCore/gsSurface.h>
 #include <gsCore/gsVolume.h>

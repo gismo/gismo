@@ -26,8 +26,9 @@ namespace gismo
 template<class T>
 class gsGeometrySlice : public gsFunction<T>
 {
+    typedef gsFunction<T> Base;
 public:
-    gsGeometrySlice(const gsGeometry<T>* geo, index_t fixed_dir,T par)
+    gsGeometrySlice(const gsFunction<T>* geo, index_t fixed_dir,T par)
     : m_geo(geo),m_fixed_dir(fixed_dir),m_par(par)
     {
         GISMO_ASSERT(fixed_dir>=0 && geo->domainDim()>static_cast<int>(fixed_dir),"Geometry has not big enough dimension to fix the given fixed_dim.");
@@ -73,9 +74,9 @@ public:
     }
 
     /// \brief Gives back the parameterRange of this slice in a Matrix
-    gsMatrix<T> parameterRange() const
+    gsMatrix<T> support() const
     {
-        const gsMatrix<T> fullRange = m_geo->parameterRange();
+        const gsMatrix<T> fullRange = m_geo->support();
         const index_t rows = fullRange.rows()-1;
         const index_t cols = fullRange.cols();
         gsMatrix<T> range(rows,cols);
@@ -84,7 +85,7 @@ public:
         return range;
     }
 
-    inline gsMatrix<T> support() const { return parameterRange();}
+    inline gsMatrix<T> parameterRange() const { return support();}
 
 private:
 
@@ -101,7 +102,7 @@ private:
     }
 
 private:
-    const gsGeometry<T> * m_geo; // pointer to the goemetry object
+    const gsFunction<T> * m_geo; // pointer to the function object
     const index_t m_fixed_dir; // fixed parameter direction
     const T m_par; // value for the fixed direction
 
