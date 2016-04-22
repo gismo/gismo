@@ -101,7 +101,7 @@ protected:
         }
         else
         {
-            dfunc2->eval_into(f2param ? quNodes : geoEval.values() , f2ders);
+            dfunc2->deriv_into(f2param ? quNodes : geoEval.values() , f2ders);
             // get the gradients to columns
             f2ders.resize(quNodes.rows(), quNodes.cols() );
         }
