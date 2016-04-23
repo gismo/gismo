@@ -2,6 +2,6 @@
 <xml>
 <Pde type="PoissonPde" dim="3">
 <rhs>3*pi^2*sin(pi*x)*sin(pi*y)*sin(pi*z)</rhs>
-<solution>sin(pi*x) * sin(pi*y) * sin(pi*z)</solution>
 </Pde>
+<FunctionExpr id="100" dim="3">sin(pi*x) * sin(pi*y) * sin(pi*z)</FunctionExpr>
 </xml>
