@@ -757,7 +757,7 @@ private:
 public:
     GSXML_COMMON_FUNCTIONS(Object);
     static std::string tag ()  { return "Function"; }
-    static std::string type () { return "expr"; }
+    static std::string type () { return "FunctionExpr"; }
 
     GSXML_GET_POINTER(Object);
 
@@ -769,7 +769,7 @@ public:
     static gsXmlNode * put (const Object & obj, 
                             gsXmlTree & data )
     {
-        gsXmlNode * func = makeNode("Function", data);
+        gsXmlNode * func = makeNode("FunctionExpr", data);
         func->append_attribute(makeAttribute("dim", obj.domainDim(), data));
 
         const int tdim = obj.targetDim();
