@@ -100,6 +100,22 @@ public:
     {
         return m_values->domainDim();
     }
+
+
+    /*
+    bool check()
+    {
+        if (m_derivs)
+        {
+
+        }
+        if (m_deriv2)
+        {
+
+        }
+    }
+    */
+    
 private:
 
     gsFunctionWithDerivatives(const gsFunctionWithDerivatives<T> &func);
@@ -119,7 +135,7 @@ private:
         if (m_deriv2)
         {
             ok = ok &&  m_deriv2->domainDim() == parDim;
-            ok = ok &&  m_deriv2->targetDim() == (parDim-1)*parDim*tarDim/2;
+            ok = ok &&  m_deriv2->targetDim() == (parDim+1)*parDim*tarDim/2;
         }
         return ok;
     }
