@@ -32,14 +32,10 @@ public:
         const gsMultiPatch<T>          &domain,
         const gsBoundaryConditions<T>  &bc,
          gsFunction<T>       *force,
-         gsFunction<T>       *velSol = NULL,
-         gsFunction<T>       *preSol = NULL,
-         gsFunction<T>       *source = NULL,
+        gsFunction<T>       *source = NULL,
         const T                    viscosity = 1
         )
-        :
-            gsPde<T>(domain,bc),    m_viscosity(viscosity)
-
+        : gsPde<T>(domain,bc),    m_viscosity(viscosity)
     {
         m_force  = force  ? force->clone()  : NULL;
         m_source = source ? source->clone() : NULL;
