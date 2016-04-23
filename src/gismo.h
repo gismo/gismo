@@ -152,6 +152,7 @@ namespace internal
 /* ----------- Utilities ----------- */
 #include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
+#include <gsUtils/gsFunctionWithDerivatives.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF

@@ -32,24 +32,13 @@ class gsSeminormH2 : public gsNorm<T>
 public:
 
     gsSeminormH2(const gsField<T> & _field1,
-             const gsFunction<T> & _func2,
-             bool _f2param = false) 
-        : gsNorm<T>(_field1,_func2), ddfunc2(NULL), f2param(_f2param)
-    { 
-        
-    }
-
-    gsSeminormH2(const gsField<T> & _field1,
-             const gsFunction<T> & _func2,
-             const gsFunction<T> & _ddfunc2,
-             bool _f2param = false)
-    : gsNorm<T>(_field1,_func2), ddfunc2(&_ddfunc2), f2param(_f2param)
-    {
-
-    }
+                 const gsFunction<T> & _func2,
+                 bool _f2param = false) 
+    : gsNorm<T>(_field1,_func2), f2param(_f2param)
+    { }
 
     gsSeminormH2(const gsField<T> & _field1)
-    : gsNorm<T>(_field1), ddfunc2(NULL), f2param(false)
+    : gsNorm<T>(_field1), f2param(false)
     { }
 
 public:
@@ -96,14 +85,7 @@ protected:
 
         // Evaluate second function (defined of physical domain)
         geoEval.evaluateAt(quNodes);
-        if(ddfunc2==NULL)
-            _func2.deriv2_into(geoEval.values(), f2ders2);
-        else
-            ddfunc2->eval_into(geoEval.values(), f2ders2);
-
-        // ** Evaluate function v
-        //gsMatrix<T> f2val = func2Param ? _func2.deriv(quNodes)
-        //: _func2.eval( geoEval->values() );
+        _func2.deriv2_into(geoEval.values(), f2ders2);
     }
 
     // assemble on element
@@ -129,9 +111,6 @@ protected:
     }
     
 private:
-    // second derivative of func2:
-    const gsFunction<T> * ddfunc2; // If this is NULL a numerical approximation will be used
-
     using gsNorm<T>::m_value;
     using gsNorm<T>::m_elWise;
 

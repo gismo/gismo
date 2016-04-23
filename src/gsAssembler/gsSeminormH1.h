@@ -33,23 +33,11 @@ public:
     gsSeminormH1(const gsField<T> & _field1,
              const gsFunction<T> & _func2,
              bool _f2param = false) 
-    : gsNorm<T>(_field1,_func2), dfunc2(NULL), f2param(_f2param)
-    { 
-        
-    }
-
-    gsSeminormH1(const gsField<T> & _field1,
-             const gsFunction<T> & _func2,
-             const gsFunction<T> & _dfunc2,
-             bool _f2param = false)
-    : gsNorm<T>(_field1,_func2), dfunc2(&_dfunc2), f2param(_f2param)
-    {
-
-    }
-
+    : gsNorm<T>(_field1,_func2), f2param(_f2param)
+    { }
 
     gsSeminormH1(const gsField<T> & _field1) 
-    : gsNorm<T>(_field1), dfunc2(NULL), f2param(false)
+    : gsNorm<T>(_field1), f2param(false)
     { }
 
 public:
@@ -93,22 +81,9 @@ protected:
 
         // Evaluate second function
         geoEval.evaluateAt(quNodes);
-        if(dfunc2==NULL)
-        {
-            _func2.deriv_into( f2param ? quNodes : geoEval.values() , f2ders);
-            // get the gradients to columns
-            f2ders.resize(quNodes.rows(), quNodes.cols() );
-        }
-        else
-        {
-            dfunc2->deriv_into(f2param ? quNodes : geoEval.values() , f2ders);
-            // get the gradients to columns
-            f2ders.resize(quNodes.rows(), quNodes.cols() );
-        }
-
-        // ** Evaluate function v
-        //gsMatrix<T> f2val = func2Param ? func2.deriv(quNodes)
-        //: _func2.eval( geoEval->values() );      
+        _func2.deriv_into( f2param ? quNodes : geoEval.values() , f2ders);
+        // get the gradients to columns
+        f2ders.resize(quNodes.rows(), quNodes.cols() );
     }
 
     // assemble on element
@@ -141,9 +116,6 @@ protected:
     inline T takeRoot(const T v) { return math::sqrt(v);}
 
 private:
-    // first derivative of func2:
-    const gsFunction<T> * dfunc2; // If this is NULL a numerical approximation will be used
-
     using gsNorm<T>::m_value;
     using gsNorm<T>::m_elWise;
 

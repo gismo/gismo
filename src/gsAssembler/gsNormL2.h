@@ -103,7 +103,7 @@ protected:
             switch (p)
             {
             case 0: // infinity norm
-                sum += weight * ( f1vals.col(k) - f2vals.col(k) ).array().abs().maxCoeff();
+                return (f1vals - f2vals).array().abs().maxCoeff();
                 break;
             case 1:
                 sum += weight * ( f1vals.col(k) - f2vals.col(k) ).template lpNorm<1>();
