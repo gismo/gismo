@@ -50,6 +50,13 @@ public:
         @param fn filename string
     */
     gsReadFile(std::string const & fn)
+    : m_id(-1)
+    { 
+        m_data.read(fn);
+    }
+
+    gsReadFile(std::string const & fn, index_t id)
+    : m_id(id)
     { 
         m_data.read(fn);
     }
@@ -69,6 +76,7 @@ public:
     */
     template<class Obj>
     gsReadFile(std::string const & fn, Obj & result)
+    : m_id(-1)
     { 
         m_data.read(fn);
         m_data.getAnyFirst(result);
@@ -82,8 +90,10 @@ private:
     /// File data as a Gismo xml tree
     gsFileData<T> m_data;
 
+    index_t m_id;
+    
 public:
-
+        
     /// Allows to read an Object from a file
     template<class Obj>
     operator Obj * () 
@@ -96,6 +106,12 @@ public:
         return NULL;
     }
 
+    template<class Obj>
+    operator memory::shared_ptr<Obj> () const
+    {
+        return shared<Obj>(*this);
+    }
+        
     /// Allows to read a file into a gsGeometry
     operator gsGeometry<T> * () 
     {
@@ -129,6 +145,22 @@ public:
         return NULL;
     }
     
+    /// Allows to read a function expression
+    operator gsFunctionExpr<T> * () const
+    {
+
+        if ( this->m_data.template hasAny< gsFunctionExpr<T> >() )
+        {
+            if ( -1==m_id )        // Get the first one in the file
+                return  this->m_data.template getAnyFirst< gsFunctionExpr<T> >();
+            else
+                return  this->m_data.template getId<gsFunctionExpr<T> >(m_id);
+        }
+        
+        gsWarn<< "Failed to read gsFunctionExpr from file (not found).\n";
+        return NULL;
+    }
+
     /// Allows to read a file into a gsBasis
     operator gsPlanarDomain<T> * () 
     {
