@@ -47,8 +47,6 @@ public:
     : gsPde<T>(domain,bc), m_rhs(rhs)
     {
         m_unknownDim.setOnes(1);
-        if (sol) 
-            m_solution.push_back(sol->clone());
     }
 
     int m_compat_dim;
@@ -58,7 +56,6 @@ public:
                  const gsFunction<T>  &sol)
     : m_compat_dim(domdim), m_rhs(rhs)
     {
-        m_solution.push_back(sol.clone());
         m_unknownDim.setOnes(1);
 
     }
@@ -100,21 +97,14 @@ public:
     {
 	    os<<"Poisson's equation  -\u0394u = f ,  with:\n";
 	    os<<"Source function f= "<< m_rhs <<".\n";
-	    if ( this->solutionGiven() )
-            os<<"Exact solution g = "<< * this->m_solution[0] <<".\n";
 	    return os; 
 	}
-
 
     virtual gsPde<T>* restrictToPatch(int np) const
     {
         gsBoundaryConditions<T> bc;
         m_boundary_conditions.getConditionsForPatch(np,bc);
-        if(m_solution.size()!=0)
-            return new gsPoissonPde<T>(m_domain.patch(np),bc,m_rhs,m_solution[0]);
-        else
-            return new gsPoissonPde<T>(m_domain.patch(np),bc,m_rhs);
-
+        return new gsPoissonPde<T>(m_domain.patch(np),bc,m_rhs);
     }
 
     virtual T getCoeffForIETI(int np) const {
@@ -124,7 +114,6 @@ public:
     }
 protected:
     using gsPde<T>::m_unknownDim;
-    using gsPde<T>::m_solution;
     using gsPde<T>::m_domain;
     using gsPde<T>::m_boundary_conditions;
 

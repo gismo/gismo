@@ -13,7 +13,7 @@ template <class T> class gsFunction;
     A stationary Stokes PDE.
 
     This class describes a stationary Stokes PDE, with an arbitrary right-hand side
-    function and optionally a known solution.
+    function.
 
     \ingroup Pde
     \ingroup pdeclass
@@ -26,7 +26,6 @@ protected:
     gsStokesPde( ) { }
     using gsPde<T>::m_domain;
     using gsPde<T>::m_unknownDim;
-    using gsPde<T>::m_solution;
 
 public:
     gsStokesPde(
@@ -44,9 +43,6 @@ public:
     {
         m_force  = force  ? force->clone()  : NULL;
         m_source = source ? source->clone() : NULL;
-        m_solution.resize(2);
-        m_solution[0] = velSol ? velSol->clone() : NULL;
-        m_solution[1] = preSol ? preSol->clone() : NULL;
 
         m_unknownDim.resize(2);
         m_unknownDim[0] = m_domain.dim();
@@ -66,10 +62,6 @@ public:
     const gsFunction<T>* source() const
     { return m_source; }
 
-    const gsFunction<T>* velocitySolution() const
-    { return m_solution[0]; }
-    const gsFunction<T>* pressureSolution() const
-    { return m_solution[1]; }
     T viscocity() const                 { return m_viscosity; }
 
 
@@ -84,10 +76,6 @@ public:
         os<<"Force  function f= "<< *m_force <<".\n";
         if ( m_source )
         os<<"Source function g= "<< *m_source <<".\n";
-        if ( m_solution[0] )
-            os<<"Exact solution u = "<< * m_solution[0] <<".\n";
-        if ( m_solution[1] )
-            os<<"Exact solution p = "<< * m_solution[1] <<".\n";
 	    return os; 
 	}
     /// Consistency check

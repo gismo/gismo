@@ -23,7 +23,7 @@ namespace gismo
     A Biharmonic PDE.
 
     This class describes a Biharmonic PDE, with an arbitrary right-hand side
-    function and optionally a known solution.
+    function.
 
     It has an extra gsBoundaryConditions object since the biharmonic has
     two essention (Dirichlet) and two natural (Neumann). The second
@@ -55,13 +55,11 @@ public:
         const gsMultiPatch<T>         &domain,
         const gsBoundaryConditions<T> &bc1,
         const gsBoundaryConditions<T> &bc2,
-        const gsPiecewiseFunction<T>  &rhs,
-        const gsFunction<T>           *sol = NULL
+        const gsPiecewiseFunction<T>  &rhs
          )
     : gsPde<T>(domain,bc1), m_rhs(rhs), m_boundary_conditions_second(bc2)
     {
         m_unknownDim.setOnes(1);
-        if (sol) m_solution.push_back(sol->clone());
     }
 
 
@@ -91,13 +89,11 @@ public:
     {
         os<<"Biharmonic's equation  -\u0394^2 u = f ,  with:\n";
 	    os<<"Source function f= "<< m_rhs[0] <<".\n";
-	    if ( this->solutionGiven() )
-            os<<"Exact solution g = "<< * this->m_solution[0] <<".\n";
 	    return os; 
 	}
 protected:
     using gsPde<T>::m_unknownDim;
-    using gsPde<T>::m_solution;
+
     gsPiecewiseFunction<T> m_rhs;
     /// @brief Boundary conditions of the second kind
     gsBoundaryConditions<T>               m_boundary_conditions_second;

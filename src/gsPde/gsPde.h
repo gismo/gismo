@@ -35,9 +35,6 @@ namespace gismo
 
     The description of the discretization: methods to impose conditions
     or discrete spaces must be provided separately.
-
-    When available, an exact solution is kept as well.
-    PDEs can be read and written to xml files.
     
     \ingroup Pde
     \ingroup pdeclass
@@ -55,18 +52,8 @@ public:
         : m_domain(domain), m_boundary_conditions(bc)
     {}
 
-    /// @brief Constructor with given exact solution.
-    gsPde(const gsMultiPatch<T>               &domain,
-          const gsBoundaryConditions<T>       &bc,
-          const std::vector<gsFunction<T> *>  &solutions
-          )
-        : m_domain(domain), m_boundary_conditions(bc), m_solution(solutions)
-    {}
-
     virtual ~gsPde() 
-    { 
-        freeAll(m_solution);
-    }
+    { }
     
     /**
      * @brief Returns a reference to the Pde domain.
@@ -106,51 +93,6 @@ public:
     virtual std::ostream &print(std::ostream &os) const = 0;
 
     /**
-     * @brief Indicates whether an exact solution is stored.
-     *
-     * @param field_id
-     * @return true, if an exact solution
-     * for the field with index \em field_id was provided.
-     */
-    bool solutionGiven(index_t field_id = 0) const
-    {
-        GISMO_ASSERT(field_id<numUnknowns(),"Asked for presence of exact solution for a non existing field of this PDE type");
-        return m_solution[field_id] != NULL;
-    }
-    /**
-     * @brief Gives the exact solution for the <em>field_id</em>-th field on the <em>patch_id</em>-th patch.
-     *
-     * @param field_id
-     * @return a pointer to the function or NULL depending if the exact solution is provided
-     */
-    gsFunction<T>* solution(index_t field_id = 0) const
-    {
-        GISMO_ASSERT(field_id<numUnknowns(),"Asked for the exact solution for a non existing field of this PDE type");
-        return (m_solution[field_id]);
-    }
-
-    /**
-     * @brief solutions
-     * @return a reference to the vector of solutions for each field
-     */
-    const std::vector<gsFunction<T>*> &solutions() const
-    {
-    return m_solution;
-    }
-
-    /**
-     * @brief Gives the exact solution for the \em field_id-th field.
-     *
-     * @param field_id
-     * @return a pointer to the function or NULL depending if the exact solution is provided
-     */
-    const gsFunction<T>* solutionField(index_t field_id = 0) const
-    {
-        GISMO_ASSERT(field_id<numUnknowns(),"Asked for size of a non existing field of this PDE type");
-        return m_solution[field_id];
-    }
-
-    /**
      * @brief Gives the vector of dimensions of the unknowns
      */
     const gsVector<unsigned> & unknownDim() const
@@ -184,7 +126,16 @@ public:
         GISMO_ASSERT(field_id<numUnknowns(),"Asked for size of an Unknown field for this PDE type");
         return m_unknownDim[field_id];
     }
-
+    
+    GISMO_DEPRECATED bool solutionGiven(index_t field_id = 0) const
+    {return false;}
+    
+    const std::vector<gsFunction<T>*> &solutions() const
+    { GISMO_ERROR("Deprecated"); }
+    
+    gsFunction<T>* solution(index_t field_id = 0) const
+    { return NULL; }
+    
     /**
      * @brief returns the dimension of the domain
      *
@@ -221,8 +172,7 @@ protected:
     gsMultiPatch<T>                       m_domain;
     /// @brief Boundary conditions
     gsBoundaryConditions<T>               m_boundary_conditions;
-    /// @brief Exact solution(s)
-    std::vector<gsFunction<T> *>          m_solution;
+
 }; // class gsPde
 
 /// Print (as string) operator to be used by all derived classes
