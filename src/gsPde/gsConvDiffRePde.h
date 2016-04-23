@@ -35,7 +35,6 @@ template <class T>
 class gsConvDiffRePde : public gsPde<T>
 {
 protected:
-    using gsPde<T>::m_solution;
     using gsPde<T>::m_unknownDim;
 
 public:
