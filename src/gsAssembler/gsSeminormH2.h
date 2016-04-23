@@ -91,7 +91,8 @@ protected:
     // assemble on element
     inline T compute(gsDomainIterator<T>    & element, 
                      gsGeometryEvaluator<T> & geoEval,
-                     gsVector<T> const      & quWeights)
+                     gsVector<T> const      & quWeights,
+                     T & accumulated)
     {
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
@@ -107,6 +108,7 @@ protected:
             sum += weight * ((f1pders2.topRows(parDim) - f2ders2.col(k).topRows(parDim)).squaredNorm() +
                              2*(f1pders2.bottomRows(rest) - f2ders2.col(k).bottomRows(rest)).squaredNorm());
         }
+        accumulated += sum;
         return sum;
     }
     

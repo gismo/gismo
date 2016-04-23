@@ -94,7 +94,8 @@ protected:
     // assemble on element
     T compute(gsDomainIterator<T>    & element, 
               gsGeometryEvaluator<T> & geoEval,
-              gsVector<T> const      & quWeights)
+              gsVector<T> const      & quWeights,
+              T & accumulated)
     {
         T sum(0.0);
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
@@ -103,7 +104,9 @@ protected:
             switch (p)
             {
             case 0: // infinity norm
-                return (f1vals - f2vals).array().abs().maxCoeff();
+                sum = (f1vals - f2vals).array().abs().maxCoeff();
+                accumulated = math::max(accumulated, sum);
+                return sum;
                 break;
             case 1:
                 sum += weight * ( f1vals.col(k) - f2vals.col(k) ).template lpNorm<1>();
@@ -116,10 +119,12 @@ protected:
             }
         }
 
+
+        accumulated += sum;
         return sum;
     }
 
-    inline T takeRoot(const T v) 
+    inline T takeRoot(const T v)
     { 
         switch (p)
         {
@@ -132,7 +137,7 @@ protected:
             return math::pow(v, static_cast<T>(1)/p );
         }
     }
-    
+
 private:
 
     gsMatrix<T> f1vals, f2vals;

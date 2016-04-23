@@ -94,8 +94,7 @@ public:
                 visitor.evaluate(*geoEval, func1, *func2, quNodes);
                 
                 // Accumulate value from the current element (squared)
-                const T result = visitor.compute(*domIt, *geoEval, quWeights);
-                m_value += result;
+                const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
                 if ( storeElWise )
                     m_elWise.push_back( visitor.takeRoot(result) );
             }

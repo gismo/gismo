@@ -235,7 +235,8 @@ protected:
      */
     inline T compute(gsDomainIterator<T>    & element,
                      gsGeometryEvaluator<T> & geoEval,
-                     gsVector<T> const      & quWeights)
+                     gsVector<T> const      & quWeights,
+                     T & accumulated)
     {
 
         unsigned actPatch = geoEval.id();
@@ -410,7 +411,9 @@ protected:
             m_elWiseFull.push_back( tmpStore );
         }
 
-        return hhSq * sumVolSq + math::sqrt( hhSq ) * sumSidesSq;;
+        hhSq = hhSq * sumVolSq + math::sqrt( hhSq ) * sumSidesSq;
+        accumulated += hhSq;
+        return hhSq;
     }
 
 public:

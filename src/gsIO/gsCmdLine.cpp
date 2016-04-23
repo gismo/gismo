@@ -262,12 +262,13 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
 
 void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
 {
+    GISMO_UNUSED(c);
     //gsInfo <<"Executable: "<< c.getProgramName() <<", part of \n\n";
     gsInfo << "\n";
     gsInfo << "                   G+Smo \n";
     gsInfo << "      Geometry plus Simulation modules\n";
     gsInfo << "             version "<< GISMO_VERSION <<"\n";
-    gsInfo << "   Copyright (C) JKU-RICAM-Linz, 2012 - 2015\n";
+    gsInfo << "   Copyright (C) JKU-RICAM-Linz, 2012 - 2016\n";
 }
 
 

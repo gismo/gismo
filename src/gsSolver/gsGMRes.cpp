@@ -79,6 +79,7 @@ void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator
 
 bool gsGMRes::step( VectorType& x, const gsLinearOperator& precond )
 {
+    GISMO_UNUSED(x);
     const index_t k = m_numIter;
     H.setZero(k+2,k+1);
     h_tmp.setZero(k+2,1);

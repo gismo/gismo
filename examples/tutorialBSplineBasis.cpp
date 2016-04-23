@@ -23,7 +23,8 @@ using namespace gismo;
 void print(const gsBSplineBasis<>& bsb, const std::string& name);
 void printToParaview(const gsBSplineBasis<>& bsb, const std::string& name);
 
-int main(int argc, char* argv[])
+//int main(int argc, char* argv[])
+int main()
 {
     // ======================================================================
     // different construction of a knot vector
