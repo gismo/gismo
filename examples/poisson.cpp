@@ -19,6 +19,7 @@ using namespace gismo;
 bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
                   int & Dirichlet, int & DG, bool & plot, int & plot_pts,
                   gsMultiPatch<> * & geo, gsPoissonPde<> * & ppde,
+                  gsFunctionExpr<> * & exactSol,
                   gsMultiBasis<> & bases );
 
 int main(int argc, char *argv[])
@@ -31,12 +32,13 @@ int main(int argc, char *argv[])
     int DG;         // defaults to 0
     bool plot;      // defaults to false
     int plot_pts;   // defaults to 1000
-    gsMultiPatch<> * patches ; // defaults to BSplineCube
-    gsPoissonPde<> * ppde ;
+    gsMultiPatch<> * patches  = NULL; // defaults to BSplineCube
+    gsPoissonPde<> * ppde  = NULL;
+    gsFunctionExpr<> * exactSol = NULL;
     gsMultiBasis<> bases;// not yet given by input
 
     bool success = parse_input(argc, argv, numRefine, numElevate, Dirichlet,
-                               DG, plot, plot_pts, patches, ppde, bases);
+                               DG, plot, plot_pts, patches, ppde, exactSol, bases);
     if ( ! success )
       return 0;
 
@@ -45,7 +47,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Domain: "<< *patches <<"\n";
     gsInfo<< "Number of patches are " << patches->nPatches() << "\n";
     gsInfo<<"Source function "<< *ppde->rhs() << "\n";
-    gsInfo<<"Exact solution "<< *ppde->solution() <<".\n" << "\n";
+    gsInfo<<"Exact solution "<< *exactSol <<".\n" << "\n";
     gsInfo<<"p-refinent steps before solving: "<< numElevate <<"\n";
     gsInfo<<"h-refinent steps before solving: "<< numRefine <<"\n";
 
@@ -61,7 +63,7 @@ int main(int argc, char *argv[])
     for (gsMultiPatch<>::const_biterator
          bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
     {
-        bcInfo.addCondition( *bit, condition_type::dirichlet, ppde->solution() );
+        bcInfo.addCondition( *bit, condition_type::dirichlet, exactSol );
     }
 
 
@@ -154,7 +156,8 @@ int main(int argc, char *argv[])
     gsInfo << "Test is done: Exiting" << "\n";
 
     delete ppde;
-
+    delete exactSol;
+    
     return  result;
 }
 
@@ -162,7 +165,7 @@ int main(int argc, char *argv[])
 bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
                   int & Dirichlet, int & DG, bool & plot, int & plot_pts,
                   gsMultiPatch<> *& geo, gsPoissonPde<> *& ppde,
-                  gsMultiBasis<> &  bases )
+                  gsFunctionExpr<> * & exactSol, gsMultiBasis<> &  bases )
 {
   std::string fn_pde("");
   std::string fn("");
@@ -257,28 +260,29 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
         fn_pde+="/pde/poisson2d_sin.xml";
     }
     ppde = gsReadFile<>(fn_pde);
+    exactSol = gsReadFile<>(fn_pde, 100);
     if ( !ppde )
-      {
-    gsWarn<< "Did not find any PDE in "<< fn<<", quitting.\n";
-    return false;
-      }
-
+    {
+        gsWarn<< "Did not find any PDE in "<< fn<<", quitting.\n";
+        return false;
+    }
+    
     if ( fn.empty() )
     {
-      fn = GISMO_DATA_DIR;
-      switch ( ppde->m_compat_dim )
+        fn = GISMO_DATA_DIR;
+        switch ( ppde->m_compat_dim )
 	    {
 	    case 1:
-	      fn+= "domain1d/bspline1d_01.xml";
-	      break;
+            fn+= "domain1d/bspline1d_01.xml";
+            break;
 	    case 2:
-	      fn+= "domain2d/square.xml";
-	      break;
+            fn+= "domain2d/square.xml";
+            break;
 	    case 3:
-	      fn+= "domain3d/cube.xml";
-	      break;
+            fn+= "domain3d/cube.xml";
+            break;
 	    default:
-	      return false;
+            return false;
 	    }
     }
     geo = gsReadFile<>( fn );
