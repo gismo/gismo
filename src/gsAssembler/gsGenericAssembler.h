@@ -47,8 +47,11 @@ public:
     : m_pde(patches)
     {
         if ( bc != NULL)
+        {
             m_pde.boundaryConditions() = *bc;
-
+            this->m_ddof.resize(1);
+        }
+        
         Base::initialize(m_pde, bases, opt);
         gsGenericAssembler::refresh();
     }
@@ -75,8 +78,9 @@ public:
                              m_options.intStrategy,
                              this->pde().bc(), mapper, 0);
         m_system = gsSparseSystem<T>(mapper);
-        const index_t nz = m_options.numColNz(m_bases[0][0]);
-        m_system.reserve(nz, 1);
+        //note: no allocation here
+        //        const index_t nz = m_options.numColNz(m_bases[0][0]);
+        //        m_system.reserve(nz, 1);
     }
 
     /// Mass assembly routine
@@ -84,8 +88,9 @@ public:
     {
         // Clean the sparse system
         gsGenericAssembler::refresh();
-        //m_system.setZero(); //note: no allocation
-
+        const index_t nz = m_options.numColNz(m_bases[0][0]);
+        m_system.matrix().reservePerColumn(nz);
+        
         // Assemble mass integrals
         //this->template push<gsVisitorMass<T> >();
         this->template push<gsVisitorMass<T> >();
@@ -112,6 +117,8 @@ public:
     {
         // Clean the sparse system
         gsGenericAssembler::refresh();
+        const index_t nz = m_options.numColNz(m_bases[0][0]);
+        m_system.matrix().reservePerColumn(nz);
 
         // Assemble stiffness integrals
         this->template push<gsVisitorGradGrad<T> >();
@@ -125,13 +132,13 @@ public:
     /// Moments assembly routine
     const gsMatrix<T> & assembleMoments(const gsFunction<T> & func)
     {
-        // Clean the right-hand side vector
-        m_system.rhs().setZero();
+        // Reset the right-hand side vector
+        m_system.rhs().setZero(m_system.cols(), 1);
 
         // Assemble moment integrals
         gsVisitorMoments<T> mom(func);
         this->push(mom);
-
+        
         // Assembly is done, compress the matrix
         this->finalize();
 

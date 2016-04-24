@@ -607,10 +607,10 @@ public: /* Add local contributions to system matrix */
                         if ( (!symm) || jj <= ii )
                             m_matrix.coeffRef(ii, jj) += localMat(i, j);
                     }
-                    else
+                    else if(0!=eliminatedDofs.size())
                     {
                         m_rhs.row(ii).noalias() -= localMat(i, j) *
-                                eliminatedDofs.row( rowMap.global_to_bindex(actives.at(j)) );
+                            eliminatedDofs.row( rowMap.global_to_bindex(actives.at(j)) );
                     }
                 }
             }
