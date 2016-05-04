@@ -37,7 +37,7 @@ void gsPoissonAssembler<T>::assemble()
     Base::computeDirichletDofs();
 
     // Clean the sparse system
-    m_system.setZero();
+   // m_system.setZero(); //<< this call leads to a quite significant performance degrade!
 
     // Assemble volume integrals
     Base::template push<gsVisitorPoisson<T> >();
