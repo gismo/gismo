@@ -48,25 +48,32 @@ class gsRichardsonPreconditioner : public gsLinearOperator
 public:
 
     /// @brief Contructor with given matrix
-    gsRichardsonPreconditioner(const MatrixType& _mat, index_t numOfSweeps = 1, real_t tau = 1.)
-        : m_mat(_mat), m_numOfSweeps(numOfSweeps), m_tau(tau) {}
+    gsRichardsonPreconditioner(const MatrixType& _mat, real_t tau = 1.)
+        : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
-        x.setZero(rows(), input.cols());
+        assert( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows() && input.cols() == 1);
 
-        for (index_t k = 0; k < m_numOfSweeps; ++k)
+        // For the first sweep, we do not need to multiply with the matrix
+        x = input;
+        x *= m_tau;
+        
+        for (index_t k = 1; k < m_numOfSweeps; ++k)
         {
-            dampedRichardsonSweep(m_mat,x,input,m_tau);
+            gsMatrix<real_t> temp = input - m_mat * x;
+            x += m_tau * temp;
         }
     }
 
     index_t rows() const {return m_mat.rows();}
-
     index_t cols() const {return m_mat.cols();}
 
-    /// Set number of sweeps of to symmetric Gauss-Seidel perform (default is 1).
-    void setNumOfSweeps(index_t n)    { m_numOfSweeps= n; }
+    /// Set number of sweeps.
+    void setNumOfSweeps(index_t n) {
+        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive. ");
+        m_numOfSweeps=n;
+    }
 
     ///Returns the matrix
     MatrixType matrix() const { return m_mat; }
@@ -86,25 +93,34 @@ class gsJacobiPreconditioner : public gsLinearOperator
 public:
 
     /// @brief Contructor with given matrix
-    gsJacobiPreconditioner(const MatrixType& _mat, index_t numOfSweeps = 1, real_t tau = 1.)
-        : m_mat(_mat), m_numOfSweeps(numOfSweeps), m_tau(tau) {}
+    gsJacobiPreconditioner(const MatrixType& _mat, real_t tau = 1.)
+        : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
-        x.setZero(rows(), input.cols());
+        assert( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows() && input.cols() == 1);
 
-        for (index_t k = 0; k < m_numOfSweeps; ++k)
+        // For the first sweep, we do not need to multiply with the matrix
+        x = input;
+        x.array() /= m_mat.diagonal().array();
+        x *= m_tau;
+        
+        for (index_t k = 1; k < m_numOfSweeps; ++k)
         {
-            dampedJacobiSweep(m_mat,x,input,m_tau);
+            gsMatrix<real_t> temp = input - m_mat * x;
+            temp.array() /= m_mat.diagonal().array();
+            x += m_tau * temp;
         }
     }
 
     index_t rows() const {return m_mat.rows();}
-
     index_t cols() const {return m_mat.cols();}
 
-    /// Set number of sweeps of to symmetric Gauss-Seidel perform (default is 1).
-    void setNumOfSweeps(index_t n)    { m_numOfSweeps= n; }
+    /// Set number of sweeps.
+    void setNumOfSweeps(index_t n) {
+        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive. ");
+        m_numOfSweeps=n;
+    }
 
     ///Returns the matrix
     MatrixType matrix() const { return m_mat; }
@@ -113,6 +129,45 @@ private:
     MatrixType m_mat;
     index_t m_numOfSweeps;
     real_t m_tau;
+};
+
+/// @brief Gauss-Seidel preconditioner
+///
+/// Requires a positive definite matrix.
+template <typename MatrixType, int UpLo = Eigen::Lower>
+class gsGaussSeidelPreconditioner : public gsLinearOperator
+{
+public:
+
+    /// @brief Contructor with given matrix
+    gsGaussSeidelPreconditioner(const MatrixType& _mat)
+        : m_mat(_mat), m_numOfSweeps(1) {}
+
+    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    {
+        x.setZero(rows(), input.cols());
+
+        for (index_t k = 0; k < m_numOfSweeps; ++k)
+        {
+            gaussSeidelSweep(m_mat,x,input);
+        }
+    }
+
+    index_t rows() const {return m_mat.rows();}
+    index_t cols() const {return m_mat.cols();}
+
+    /// Set number of sweeps of to symmetric Gauss-Seidel perform (default is 1).
+    void setNumOfSweeps(index_t n) {
+        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive. ");
+        m_numOfSweeps=n;
+    }
+
+    ///Returns the matrix
+    MatrixType matrix() const { return m_mat; }
+
+private:
+    MatrixType m_mat;
+    index_t m_numOfSweeps;
 };
 
 

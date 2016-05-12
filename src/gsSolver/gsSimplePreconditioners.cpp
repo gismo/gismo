@@ -90,7 +90,6 @@ void dampedJacobiSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x
     x += tau * temp;
 }
 
-
 void dampedPreRichardsonSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::SparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
