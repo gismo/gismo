@@ -63,6 +63,43 @@ gsMatrixOperator<MatrixType>* makeMatrixOperator(const MatrixType& mat, bool sym
 }
 
 
+/// @brief Simple adapter class to use the transpose of a matrix (or matrix-like object) as
+/// a linear operator. This should, of course, be done without transposing the matrix itself.
+///
+/// \ingroup Solver
+
+template <class MatrixType>
+class gsTransposedMatrixOperator : public gsLinearOperator
+{
+public:
+
+    gsTransposedMatrixOperator(const MatrixType& mat)
+        : m_mat(mat)
+    {
+    }
+
+    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    {
+        x.noalias() = m_mat.transpose() * input;
+    }
+
+    index_t rows() const {return m_mat.cols();}
+
+    index_t cols() const {return m_mat.rows();}
+    
+private:
+    const MatrixType& m_mat;
+};
+
+/** This essentially just calls the gsTransposedMatrixOperator constructor, but the
+ * use of a template functions allows us to let the compiler do type inference,
+ * so we don't need to type out the matrix type explicitly.
+ */
+template <class MatrixType>
+gsTransposedMatrixOperator<MatrixType>* makeTransposedMatrixOperator(const MatrixType& mat)
+{
+    return new gsTransposedMatrixOperator<MatrixType>(mat);
+}
 
 
 /// @brief Simple adapter class to use an Eigen solver (having a compute() and a solve() method) as a linear operator.
