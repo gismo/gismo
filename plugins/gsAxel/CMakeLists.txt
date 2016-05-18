@@ -134,6 +134,9 @@ add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_SOURCES}
 )
 
+# This target is a plugin, so we hook it to the grouping target
+add_dependencies(plugins ${PROJECT_NAME})
+
 target_link_libraries(${PROJECT_NAME}
   #${QT_LIBRARIES}
 

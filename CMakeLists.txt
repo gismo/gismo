@@ -167,6 +167,8 @@ add_subdirectory(doc)
 ## Plugins
 ## #################################################################
 
+add_custom_target(plugins)
+
 if(GISMO_BUILD_AXL)
   add_subdirectory(plugins/gsAxel)
 endif(GISMO_BUILD_AXL)
