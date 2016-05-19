@@ -639,7 +639,7 @@ void gsGeometryDialog::insertKnot(void)
 
       gsDebugVar(lvl);
 
-      const gismo::gsTensorBSplineBasis<2,real_t,gismo::gsCompactKnotVector<real_t> > & 
+      const gismo::gsTensorBSplineBasis<2,real_t> & 
       tb = hb->basis().tensorLevel(lvl);
 
       const unsigned ind = hb->basis().flatTensorIndexOf(parameter);

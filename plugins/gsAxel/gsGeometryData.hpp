@@ -145,7 +145,7 @@ void gsGeometryData<axlObj>::eval(axlPoint *point, double u)
     gismo::gsMatrix<double> uv(1,1);
     uv<< u ; 
     m_geometry->eval_into(uv,ev);
-    point->setValues(ev(0,0), ev(1,0), ( ev.rows()>2 ? ev(2,0) : 0 ) );
+    point->setCoordinates(ev(0,0), ev(1,0), ( ev.rows()>2 ? ev(2,0) : 0 ) );
 } 
 
 template <class axlObj>
@@ -155,7 +155,7 @@ void gsGeometryData<axlObj>::eval(axlPoint *point, double u,double v)
     gismo::gsMatrix<double> uv(2,1);
     uv<< u, v ; 
     m_geometry->eval_into(uv,ev);
-    point->setValues(ev(0,0), ev(1,0), ( ev.rows()>2 ? ev(2,0) : 0 ) );
+    point->setCoordinates(ev(0,0), ev(1,0), ( ev.rows()>2 ? ev(2,0) : 0 ) );
 } 
 
 template <class axlObj>
@@ -165,7 +165,7 @@ void gsGeometryData<axlObj>::eval(axlPoint *point, double u, double v, double w)
     gismo::gsMatrix<double> uv(3,1);
     uv<< u, v, w ; 
     m_geometry->eval_into(uv,ev);
-    point->setValues(ev(0,0), ev(1,0), ev(2,0) );
+    point->setCoordinates(ev(0,0), ev(1,0), ev(2,0) );
 } 
 
 template <class axlObj>
@@ -393,7 +393,7 @@ void gsGeometryData<axlObj>::normal(axlPoint *normal, double u,double v)
 	    //tmp = m_geometry->jacobian(uv);
  	    //gismo::gsMatrix<double> ev = tmp->topRows(2).cross(tmp->bottomRows(2) );
  	    //normal->setValues(ev(0,0), ev(1,0),  1 );
-	    normal->setValues(0, 0 , 1 );
+	    normal->setCoordinates(0, 0 , 1 );
 	}
     else
 	{
@@ -402,7 +402,7 @@ void gsGeometryData<axlObj>::normal(axlPoint *normal, double u,double v)
 	    gismo::gsMatrix<double> ev = 
 		tmp.block<3,1>(0,0).cross( tmp.block<3,1>(0,1) );
 	    // 	    gismo::gsMatrix<double> ev = tmp->topRows(2)* tmp->bottomRows(2);
-	    normal->setValues(ev(0,0), ev(1,0), ev(2,0) );
+	    normal->setCoordinates(ev(0,0), ev(1,0), ev(2,0) );
 	}
 
 }
