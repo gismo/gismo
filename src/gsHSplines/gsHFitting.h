@@ -136,20 +136,16 @@ public:
     std::vector<unsigned> getBoxes(const std::vector<T>& errors,
                                    const T threshold);
 
-
-private:
+protected:
+    /// Appends a box around parameter to the boxes only if the box is not
+    /// already in boxes
+    virtual void appendBox(std::vector<unsigned>& boxes,
+                   std::vector<unsigned>& cells,
+                   const gsVector<T>& parameter);
 
     /// Identifies the threshold from where we should refine
     T setRefineThreshold(const std::vector<T>& errors);
-
-
-    /// Appends a box around parameter to the boxes only if the box is not
-    /// already in boxes
-    void appendBox(std::vector<unsigned>& boxes,
-                   std::vector<unsigned>& cells,
-                   const gsVector<T>& parameter);
     
-
     /// Checks if a_cell is already inserted in container of cells
     static bool isCellAlreadyInserted(const gsVector<unsigned, d>& a_cell, 
                                       const std::vector<unsigned>& cells);
@@ -162,7 +158,7 @@ private:
             boxes.push_back(box[col]);
     }
 		    
-private:
+protected:
 
     /// How many % to refine - 0-1 interval
     T m_ref;
@@ -263,9 +259,8 @@ std::vector<unsigned> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
     return boxes;
 }
 
-
 template <unsigned d, class T>
-void  gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
+void gsHFitting<d, T>::appendBox(std::vector<unsigned>& boxes,
                                   std::vector<unsigned>& cells,
                                   const gsVector<T>& parameter)
 {
