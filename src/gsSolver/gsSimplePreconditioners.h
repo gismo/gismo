@@ -47,9 +47,17 @@ class gsRichardsonPreconditioner : public gsLinearOperator
 {
 public:
 
+    /// Shared pointer for gsRichardsonPreconditioner
+    typedef memory::shared_ptr< gsRichardsonPreconditioner > Ptr;
+
+    /// Unique pointer for gsRichardsonPreconditioner   
+    typedef typename memory::unique< gsRichardsonPreconditioner >::ptr uPtr;    
+    
     /// @brief Contructor with given matrix
     gsRichardsonPreconditioner(const MatrixType& _mat, real_t tau = 1.)
         : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
+        
+    static Ptr make(const MatrixType& _mat, real_t tau = 1.) { return shared( new gsRichardsonPreconditioner(_mat,tau) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -92,9 +100,17 @@ class gsJacobiPreconditioner : public gsLinearOperator
 {
 public:
 
+    /// Shared pointer for gsJacobiPreconditioner
+    typedef memory::shared_ptr< gsJacobiPreconditioner > Ptr;
+
+    /// Unique pointer for gsJacobiPreconditioner   
+    typedef typename memory::unique< gsJacobiPreconditioner >::ptr uPtr;    
+
     /// @brief Contructor with given matrix
     gsJacobiPreconditioner(const MatrixType& _mat, real_t tau = 1.)
         : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
+        
+    static Ptr make(const MatrixType& _mat, real_t tau = 1.) { return shared( new gsJacobiPreconditioner(_mat,tau) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -139,9 +155,17 @@ class gsGaussSeidelPreconditioner : public gsLinearOperator
 {
 public:
 
+    /// Shared pointer for gsGaussSeidelPreconditioner
+    typedef memory::shared_ptr< gsGaussSeidelPreconditioner > Ptr;
+
+    /// Unique pointer for gsGaussSeidelPreconditioner   
+    typedef typename memory::unique< gsGaussSeidelPreconditioner >::ptr uPtr;   
+    
     /// @brief Contructor with given matrix
     gsGaussSeidelPreconditioner(const MatrixType& _mat)
         : m_mat(_mat), m_numOfSweeps(1) {}
+        
+    static Ptr make(const MatrixType& _mat) { return shared( new gsGaussSeidelPreconditioner(_mat) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -181,9 +205,17 @@ class gsSymmetricGaussSeidelPreconditioner : public gsLinearOperator
 {
 public:
 
+    /// Shared pointer for gsSymmetricGaussSeidelPreconditioner
+    typedef memory::shared_ptr< gsSymmetricGaussSeidelPreconditioner > Ptr;
+
+    /// Unique pointer for gsSymmetricGaussSeidelPreconditioner   
+    typedef typename memory::unique< gsSymmetricGaussSeidelPreconditioner >::ptr uPtr; 
+    
     /// @brief Contructor with given matrix
     gsSymmetricGaussSeidelPreconditioner(const MatrixType& _mat, index_t numOfSweeps = 1)
         : m_mat(_mat), m_numOfSweeps(numOfSweeps) {}
+        
+    static Ptr make(const MatrixType& _mat, index_t numOfSweeps = 1) { return shared( new gsSymmetricGaussSeidelPreconditioner(_mat,numOfSweeps) ); }
 
     /// @brief Contructor with build the mass matrix from \a patches and \a basis
     //TODO: is this really what a "simple" preconditioner should do?
@@ -197,6 +229,11 @@ public:
         //Get full matrix (not just lower triangular)
         massMatrixBtmp.cols();
         m_mat = massConst.fullMatrix();
+    }
+    
+    //TODO: is this really what a "simple" preconditioner should do?
+    static Ptr make(const gsMultiPatch<real_t> patches, gsMultiBasis<real_t> basis, index_t numOfSweeps = 1) {
+        return shared( new gsSymmetricGaussSeidelPreconditioner(patches,basis,numOfSweeps) );
     }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const

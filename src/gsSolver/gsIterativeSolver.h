@@ -28,13 +28,13 @@ public:
 
     /// Constructor for general linear operator
     gsIterativeSolver(const gsLinearOperator& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : m_mat_ptr(NULL), m_mat(_mat), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
+        : m_mat_ptr(), m_mat(_mat), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
     {
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
     }
 
     /// Constructor for general linear operator, takes ownership of the passed operator
-    gsIterativeSolver(const gsLinearOperator* _mat_ptr, index_t _maxIt=1000, real_t _tol=1e-10)
+    gsIterativeSolver(const gsLinearOperator::Ptr _mat_ptr, index_t _maxIt=1000, real_t _tol=1e-10)
         : m_mat_ptr(_mat_ptr), m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
     {
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
@@ -58,10 +58,7 @@ public:
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
     }
 
-    virtual ~gsIterativeSolver()
-    {
-        delete m_mat_ptr;
-    }
+    virtual ~gsIterativeSolver()    {}
 
     /// @brief Solves the linear system and stores the solution in \a x
     ///
@@ -97,7 +94,7 @@ public:
 
 
 protected:
-    const gsLinearOperator *m_mat_ptr;
+    const gsLinearOperator::Ptr m_mat_ptr;
     const gsLinearOperator &m_mat;
 
     index_t  m_maxIters;

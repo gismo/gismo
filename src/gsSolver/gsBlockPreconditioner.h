@@ -41,7 +41,19 @@ namespace gismo
 class GISMO_EXPORT gsBlockPreconditioner : public gsLinearOperator
 {
 public:
+
+    /// Shared pointer for gsBasis
+    typedef memory::shared_ptr< gsBlockPreconditioner > Ptr;
+
+    /// Unique pointer for gsBasis   
+    typedef typename memory::unique< gsBlockPreconditioner >::ptr uPtr;
+    
+    /// Base class
+    typedef memory::shared_ptr< gsLinearOperator > BasePtr;    
+    
     gsBlockPreconditioner(index_t nRows, index_t nCols);
+    
+    static Ptr make(index_t nRows, index_t nCols) { return shared( new gsBlockPreconditioner(nRows,nCols) ); }
 
     /**
      * @brief Add a preconditioner \f$C_{ij}\f$ to the block structure
@@ -49,7 +61,7 @@ public:
      * @param row row position in the block preconditioner
      * @param col column position in the block preconditioner
      */
-    void addPreconditioner(gsLinearOperator * prec, index_t row, index_t col);
+    void addPreconditioner(const BasePtr& prec, index_t row, index_t col);
 
     /**
      * @brief Apply the correct segment of the input vector on the preconditioners in the block structure and store the result.
@@ -68,7 +80,7 @@ private:
      */
     bool consistencyCheck();
 
-    Eigen::Array<gsLinearOperator *, Dynamic, Dynamic> blockPrec;
+    Eigen::Array<BasePtr, Dynamic, Dynamic> blockPrec;
 
     //Contains the size of the target vector for each block
     gsVector<index_t> blockTargetPositions;

@@ -27,6 +27,12 @@ class gsLinearOperator
 {
 public:
 
+    /// Shared pointer for gsLinearOperator
+    typedef memory::shared_ptr< gsLinearOperator > Ptr;
+
+    /// Unique pointer for gsLinearOperator   
+    typedef typename memory::unique< gsLinearOperator >::ptr uPtr;
+    
     virtual ~gsLinearOperator() {}
 
     /**
@@ -45,7 +51,7 @@ public:
     // NOTE: this is rather inefficient and is only provided for debugging and testing purposes
     void toMatrix(gsMatrix<real_t>& result)
     {
-        GISMO_ASSERT(rows() == cols(), "only implemented for square operators");
+        GISMO_ASSERT(rows() == cols(), "gsLinearOperator::toMatrix is only implemented for square operators");
 
         gsMatrix<real_t> eye = gsMatrix<real_t>::Identity(cols(), cols());
         this->apply(eye, result);
@@ -58,8 +64,16 @@ class gsIdentityPreconditioner : public gsLinearOperator
 {
 public:
 
+    /// Shared pointer for gsIdentityPreconditioner
+    typedef memory::shared_ptr< gsIdentityPreconditioner > Ptr;
+
+    /// Unique pointer for gsIdentityPreconditioner   
+    typedef typename memory::unique< gsIdentityPreconditioner >::ptr uPtr;
+    
+    
     gsIdentityPreconditioner(index_t dim) : m_dim(dim) {}
 
+    static Ptr make(index_t dim) { return shared( new gsIdentityPreconditioner(dim) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {

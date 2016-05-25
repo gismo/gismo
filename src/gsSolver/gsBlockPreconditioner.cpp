@@ -21,15 +21,14 @@ gsBlockPreconditioner::gsBlockPreconditioner(index_t nRows, index_t nCols)
     blockPrec.resize(nRows, nCols);
     blockTargetPositions.setZero(nCols);
     blockInputPositions.setZero(nRows);
-    gsLinearOperator * null_ptr = NULL;
     // Fill up all block entries with null pointers.
     for (index_t i = 0; i < nRows; ++i)
         for (index_t j = 0; j < nCols; ++j)
-            blockPrec(i,j) = null_ptr;
+            blockPrec(i,j).reset();
 }
 
 
-void gsBlockPreconditioner::addPreconditioner(gsLinearOperator * prec, index_t row, index_t col)
+void gsBlockPreconditioner::addPreconditioner(const BasePtr& prec, index_t row, index_t col)
 {
     blockPrec(row, col) = prec;
     blockTargetPositions[row] = prec->rows();
