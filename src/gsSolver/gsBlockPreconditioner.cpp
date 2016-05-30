@@ -30,11 +30,16 @@ gsBlockPreconditioner::gsBlockPreconditioner(index_t nRows, index_t nCols)
 
 void gsBlockPreconditioner::addPreconditioner(const BasePtr& prec, index_t row, index_t col)
 {
+    GISMO_ASSERT( row >= 0 && row < blockPrec.rows(), "The given row is not feasible." );
+    GISMO_ASSERT( col >= 0 && col < blockPrec.cols(), "The given column is not feasible." );
+    GISMO_ASSERT( prec->rows() == blockTargetPositions[row] || blockTargetPositions[row] == 0,
+                  "The size of the given preconditioner does not fit to the other preconditioners in the same row." );
+    GISMO_ASSERT( prec->cols() == blockTargetPositions[col] || blockTargetPositions[col] == 0,
+                  "The size of the given preconditioner does not fit to the other preconditioners in the same column." );
+    
     blockPrec(row, col) = prec;
     blockTargetPositions[row] = prec->rows();
     blockInputPositions[col] = prec->cols();
-    if (!consistencyCheck())
-        GISMO_ERROR("Block preconditioners do not have correct dimension");
 }
 
 
@@ -63,52 +68,6 @@ void gsBlockPreconditioner::apply(const gsMatrix<real_t> & input, gsMatrix<real_
         }
     }
 }
-
-
-bool gsBlockPreconditioner::consistencyCheck()
-{
-    for (index_t i = 0; i < blockPrec.rows(); ++i)
-    {
-        if (!blockPrec(i,0))// if the block is a null pointer
-            continue;
-
-        index_t r = blockPrec(i,0)->rows();
-
-        for (index_t j = 1; j < blockPrec.cols(); ++j)
-        {
-            if (!blockPrec(i,j))// if the block is a null pointer
-                continue;
-
-            if (blockPrec(i,j)->rows() != r)
-            {
-                gsWarn << "Block preconditioners do not have correct dimension" << std::endl;
-                return false;
-            }
-        }
-    }
-    for (index_t j = 0; j < blockPrec.cols(); ++j)
-    {
-        if (!blockPrec(0,j))// if the block is a null pointer
-            continue;
-
-        index_t c = blockPrec(0,j)->cols();
-
-        for (index_t i = 1; i < blockPrec.rows(); ++i)
-        {
-            if (!blockPrec(i,j))// if the block is a null pointer
-                continue;
-
-            if (blockPrec(i,j)->rows() != c)
-            {
-                gsWarn << "Block preconditioners do not have correct dimension" << std::endl;
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
 
 }
 

@@ -75,11 +75,6 @@ public:
 
 private:
 
-    /**
-     * @brief Loops through every preconditioner and checks that the dimensions are correct
-     */
-    bool consistencyCheck();
-
     Eigen::Array<BasePtr, Dynamic, Dynamic> blockPrec;
 
     //Contains the size of the target vector for each block
