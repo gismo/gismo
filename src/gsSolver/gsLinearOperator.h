@@ -31,7 +31,7 @@ public:
     typedef memory::shared_ptr< gsLinearOperator > Ptr;
 
     /// Unique pointer for gsLinearOperator   
-    typedef typename memory::unique< gsLinearOperator >::ptr uPtr;
+    typedef memory::unique< gsLinearOperator >::ptr uPtr;
     
     virtual ~gsLinearOperator() {}
 

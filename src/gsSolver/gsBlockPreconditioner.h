@@ -42,11 +42,11 @@ class GISMO_EXPORT gsBlockPreconditioner : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsBasis
+    /// Shared pointer for gsBlockPreconditioner
     typedef memory::shared_ptr< gsBlockPreconditioner > Ptr;
 
-    /// Unique pointer for gsBasis   
-    typedef typename memory::unique< gsBlockPreconditioner >::ptr uPtr;
+    /// Unique pointer for gsBlockPreconditioner
+    typedef memory::unique< gsBlockPreconditioner >::ptr uPtr;
     
     /// Base class
     typedef memory::shared_ptr< gsLinearOperator > BasePtr;    
