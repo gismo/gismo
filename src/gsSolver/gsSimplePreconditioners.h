@@ -217,25 +217,6 @@ public:
         
     static Ptr make(const MatrixType& _mat, index_t numOfSweeps = 1) { return shared( new gsSymmetricGaussSeidelPreconditioner(_mat,numOfSweeps) ); }
 
-    /// @brief Contructor with build the mass matrix from \a patches and \a basis
-    //TODO: is this really what a "simple" preconditioner should do?
-    gsSymmetricGaussSeidelPreconditioner(const gsMultiPatch<real_t> patches, gsMultiBasis<real_t> basis, index_t numOfSweeps = 1)
-        : m_numOfSweeps(numOfSweeps)
-    {
-        //Assemble the mass matrix for the pressure space
-        gsGenericAssembler<real_t> massConst(patches, basis);
-        const gsSparseMatrix<> & massMatrixBtmp = massConst.assembleMass();
-
-        //Get full matrix (not just lower triangular)
-        massMatrixBtmp.cols();
-        m_mat = massConst.fullMatrix();
-    }
-    
-    //TODO: is this really what a "simple" preconditioner should do?
-    static Ptr make(const gsMultiPatch<real_t> patches, gsMultiBasis<real_t> basis, index_t numOfSweeps = 1) {
-        return shared( new gsSymmetricGaussSeidelPreconditioner(patches,basis,numOfSweeps) );
-    }
-
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
         x.setZero(rows(), input.cols());
