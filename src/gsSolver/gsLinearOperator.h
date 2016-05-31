@@ -68,7 +68,7 @@ public:
     typedef memory::shared_ptr< gsIdentityPreconditioner > Ptr;
 
     /// Unique pointer for gsIdentityPreconditioner   
-    typedef typename memory::unique< gsIdentityPreconditioner >::ptr uPtr;
+    typedef memory::unique< gsIdentityPreconditioner >::ptr uPtr;
     
     
     gsIdentityPreconditioner(index_t dim) : m_dim(dim) {}
