@@ -1,0 +1,58 @@
+======================================================================
+=====                G+Smo deployment instructions               ===== 
+======================================================================
+
+
+Assuming that you have the source tree at /path/to/gismo, here is how
+to use G+Smo in your application:
+
+
+* Choose a folder for building (eg. subfolder ./build inside root
+  source folder):
+
+cd /path/to/gismo 
+mkdir build
+cd build
+
+
+* Configure and install on a predefined location
+  (eg. ./build/install for demonstration):
+
+cmake ../ -DCMAKE_INSTALL_PREFIX=./install -DGISMO_EXAMPLES=OFF
+make -j2 install
+
+
+* Solution 1: use the provided main.cpp and CMakeLists.txt (recommended)
+
+Copy the provided "CMakeLists.txt" and main.cpp to a folder of your
+choice. In that folder issue:
+
+cmake . -Dgismo_DIR=/path/to/gismo/build/install
+
+If can also point directly to the build folder (if install was not executed):
+
+cmake . -Dgismo_DIR=/path/to/gismo/build
+
+If the configuration is successfull, hen typing "make" should create
+the binary file "main", which can be executed as:
+
+$ ./main
+Hello G+Smo.
+
+Note: On Windows, use the graphical too cmake-gui to configure and compile.
+
+
+* Solution 2: use the provided main.cpp and makefile (linux only)
+
+Copy the provided "Makefile" and main.cpp to a folder of your
+choice. You need to update the variable GISMODIR to point to your
+install directory where G+Smo is found:
+
+GISMODIR :=/path/to/gismo/build/install
+
+Then typing "make" should create the binary file "main", which can be
+executed as:
+
+$ ./main
+Hello G+Smo.
+

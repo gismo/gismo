@@ -35,3 +35,5 @@ set(GISMO_LIBRARIES    gismo)
 #set(GISMO_CMAKE_DIRS   "@CONF_CMAKE_DIRS@")
 
 set(GISMO_USE_FILE "@CONF_USE_FILE@")
+
+#message(STATUS "G+Smo is configured at ${GISMO_LIBRARY_DIR}")
