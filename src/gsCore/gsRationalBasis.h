@@ -282,6 +282,15 @@ public:
         m_weights = w;
     }
 
+    virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                           gsMatrix<unsigned> & bndThis, gsMatrix<unsigned> & bndOther) const
+    { 
+        if ( const gsRationalBasis * _other = dynamic_cast<const gsRationalBasis*>(&other) )
+            m_src->matchWith(bi,*_other->m_src,bndThis,bndOther); 
+        else
+            m_src->matchWith(bi,other,bndThis,bndOther); 
+    }
+
     /// Returns a matrix of projective coefficients. The input \a
     /// coefs are affine coefficients for this basis
     gsMatrix<T> projectiveCoefs(const gsMatrix<T> & coefs) const
