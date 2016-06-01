@@ -1253,7 +1253,9 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
     for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertex.begin(); it!=sl.vertex.end(); ++it)
     {
-        file << ((*it)->coords)[0] << " " << ((*it)->coords)[1] << " " << ((*it)->coords)[2] << " \n";
+        file << ((*it)->coords)[0] << " ";
+        file << ((*it)->coords)[1] << " ";
+        file << ((*it)->coords)[2] << " \n";
     }
     
     file << "\n";

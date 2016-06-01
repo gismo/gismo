@@ -398,45 +398,81 @@ public:
             this->sortByColumn( *k ); // stable sort wrt column
     }
 
-/// \brief Transposes in place the matrix block-wise. The matrix is
-//  treated a 1 x (cols()/colBlock) block matrix, and every block
-//  of size rows() x colBlock is transposed in place
-void blockTransposeInPlace(const index_t colBlock)
-{
-    const index_t nc = this->cols();
-    const index_t nr = this->rows();
-    
-    GISMO_ASSERT( nc % colBlock == 0,
-                  "The blocksize is not compatible with number of columns.");
-
-    if (nr == 1 || colBlock == 1)
+    /// \brief Transposes in place the matrix block-wise. The matrix is
+    //  treated a 1 x (cols()/colBlock) block matrix, and every block
+    //  of size rows() x colBlock is transposed in place
+    void blockTransposeInPlace(const index_t colBlock)
     {
-        this->resize(colBlock, this->size()/colBlock);
-    }
-    else if ( nr == colBlock )
-    {
-        for (index_t j = 0; j!= nc; j+=colBlock)
-            this->middleCols(j,colBlock).template triangularView<Eigen::StrictlyUpper>()
-                .swap( this->middleCols(j,colBlock).transpose() );
-    }
-    else
-    {
-        Eigen::Map<Base> m(this->data(), nr, nc);
-        this->resize(colBlock, this->size()/colBlock);
+        const index_t nc = this->cols();
+        const index_t nr = this->rows();
         
-        index_t i = 0;
-        for (index_t j = 0; j!= nc; j+=colBlock, i+=nr)
-            this->middleCols(i,nr) = m.middleCols(j,colBlock).transpose().eval();
+        GISMO_ASSERT( nc % colBlock == 0,
+                      "The blocksize is not compatible with number of columns.");
+        
+        if (nr == 1 || colBlock == 1)
+        {
+            this->resize(colBlock, this->size()/colBlock);
+        }
+        else if ( nr == colBlock )
+        {
+            for (index_t j = 0; j!= nc; j+=colBlock)
+                this->middleCols(j,colBlock).template triangularView<Eigen::StrictlyUpper>()
+                    .swap( this->middleCols(j,colBlock).transpose() );
+        }
+        else
+        {
+            Eigen::Map<Base> m(this->data(), nr, nc);
+            this->resize(colBlock, this->size()/colBlock);
+            
+            index_t i = 0;
+            for (index_t j = 0; j!= nc; j+=colBlock, i+=nr)
+                this->middleCols(i,nr) = m.middleCols(j,colBlock).transpose().eval();
+        }
     }
-}
+    
+    /// Converts the matrix to its Reduced Row Echelon Form (RREF)
+    void rrefInPlace() { rref_impl(*this); }
+
+    /// Converts the matrix to its Reduced Column Echelon Form (RCEF)
+    void rcefInPlace() { rref_impl(this->transpose()); }
+
+private:
+
+    // Implementation of (inplace) Reduced Row Echelon Form computation
+    template <typename Derived>
+    static void rref_impl(const Eigen::MatrixBase<Derived>& Mat)
+    {  
+        // todo: const T tol = 0
+        Eigen::MatrixBase<Derived> & M = const_cast<Eigen::MatrixBase<Derived>& >(Mat);
+        index_t i, piv = 0;
+        const index_t nr = M.rows();
+        const index_t nc = M.cols();
+        for (index_t r=0; r!=nr; ++r)
+        {
+            if (nc <= piv) return;
+            i = r;
+            while (0 == M(i, piv)) //~
+            {
+                ++i;
+                if (nr == i)
+                {
+                    i = r;
+                    ++piv;
+                    if (nc == piv) return;
+                }
+            }
+            M.row(i).swap(M.row(r));
+            if ( 0 != M(r, piv) ) //~
+                M.row(r).array() /= M(r, piv);
+            for (i=0; i !=r; ++i)
+                M.row(i).array() -= M(i, piv) * M.row(r).array();
+            for (++i; i !=nr; ++i)
+                M.row(i).array() -= M(i, piv) * M.row(r).array();
+            ++piv;
+        }
+    }
 
 }; // class gsMatrix
-
-
-
-////////////////////////////////////////////////
-////////////////////////////////////////////////
-
 
 
 
