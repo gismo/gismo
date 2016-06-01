@@ -1,22 +1,16 @@
 ######################################################################
+##
 ## CMakeLists.txt ---
-## Sample project using G+Smo
+## Sample CMake project using G+Smo
+##
+## To ensure that G+Smo is located correctly, set the variable gismo_DIR
+## to a path containing the binary and include files, eg:
+##
+## cmake . -Dgismo_DIR=/path/to/gismo/build
+##
 ######################################################################
 
 cmake_minimum_required(VERSION 2.8.8)
-
-if(POLICY CMP0048)# CMake 3.0
-cmake_policy(SET CMP0011 OLD)
-cmake_policy(SET CMP0048 OLD)
-endif()
-
-if(POLICY CMP0054)# CMake 3.1
-cmake_policy(SET CMP0054 OLD)
-endif()
-
-if(POLICY CMP0063)# CMake 3.3
-cmake_policy(SET CMP0063 NEW)
-endif()
 
 project(main)
 
