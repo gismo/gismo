@@ -29,12 +29,12 @@ public:
     /// Constructor for sparse matrix
     template<typename T, int _Options, typename _Index>
     gsMinimalResidual(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol) {}
+        : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
 
     /// Constructor for dense matrix
     template<class T, int _Rows, int _Cols, int _Options>
     gsMinimalResidual(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol) {}
+        : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
 
     void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator& precond);
 
@@ -54,7 +54,7 @@ public:
     /// Solve system without preconditioner
     void solve(const VectorType& rhs, VectorType& x)
     {
-        gsIdentityPreconditioner preConId(m_mat.rows());
+        gsIdentityOp preConId(m_mat.rows());
         solve(rhs, x, preConId);
     }
 

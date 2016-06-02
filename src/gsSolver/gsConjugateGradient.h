@@ -38,12 +38,12 @@ public:
     /// Constructor for sparse matrix
     template<typename T, int _Options, typename _Index>
     gsConjugateGradient(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
-        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
+        : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
 
     /// Constructor for dense matrix
     template<class T, int _Rows, int _Cols, int _Options>
     gsConjugateGradient(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
-        : gsIterativeSolver(makeMatrixOperator(_mat, true), _maxIt, _tol) ,m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
+        : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) ,m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
 
     void initIteration(const VectorType& rhs, VectorType& x0, const gsLinearOperator& precond);
 
@@ -64,7 +64,7 @@ public:
     /// Solve system without preconditioner
     void solve(const VectorType& rhs, VectorType& x)
     {
-        gsIdentityPreconditioner preConId(m_mat.rows());
+        gsIdentityOp preConId(m_mat.rows());
         solve(rhs, x, preConId);
     }
 

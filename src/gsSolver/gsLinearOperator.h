@@ -60,20 +60,20 @@ public:
 
 
 /// @brief Identity preconditioner ("do nothing"), must be square!
-class gsIdentityPreconditioner : public gsLinearOperator
+class gsIdentityOp : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsIdentityPreconditioner
-    typedef memory::shared_ptr< gsIdentityPreconditioner > Ptr;
+    /// Shared pointer for gsIdentityOp
+    typedef memory::shared_ptr< gsIdentityOp > Ptr;
 
-    /// Unique pointer for gsIdentityPreconditioner   
-    typedef memory::unique< gsIdentityPreconditioner >::ptr uPtr;
+    /// Unique pointer for gsIdentityOp   
+    typedef memory::unique< gsIdentityOp >::ptr uPtr;
     
     
-    gsIdentityPreconditioner(index_t dim) : m_dim(dim) {}
+    gsIdentityOp(index_t dim) : m_dim(dim) {}
 
-    static Ptr make(index_t dim) { return shared( new gsIdentityPreconditioner(dim) ); }
+    static Ptr make(index_t dim) { return shared( new gsIdentityOp(dim) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {

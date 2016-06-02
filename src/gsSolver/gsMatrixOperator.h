@@ -1,4 +1,4 @@
-/** @file gsMatrixOperator.h
+/** @file gsMatrixOp.h
 
     @brief Simple adapter classes to use matrices or linear solvers as gsLinearOperators
 
@@ -23,21 +23,21 @@ namespace gismo
 /// \ingroup Solver
 
 template <class MatrixType>
-class gsMatrixOperator : public gsLinearOperator
+class gsMatrixOp : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsMatrixOperator
-    typedef memory::shared_ptr<gsMatrixOperator> Ptr;
+    /// Shared pointer for gsMatrixOp
+    typedef memory::shared_ptr<gsMatrixOp> Ptr;
 
-    /// Unique pointer for gsMatrixOperator   
-    typedef typename memory::unique<gsMatrixOperator>::ptr uPtr;
+    /// Unique pointer for gsMatrixOp   
+    typedef typename memory::unique<gsMatrixOp>::ptr uPtr;
     
     
-    gsMatrixOperator(const MatrixType& mat, bool sym=false)
+    gsMatrixOp(const MatrixType& mat, bool sym=false)
         : m_mat(mat), m_symmetric(sym) {}
         
-    static Ptr make(const MatrixType& mat, bool sym=false) { return shared( new gsMatrixOperator(mat,sym) ); }
+    static Ptr make(const MatrixType& mat, bool sym=false) { return shared( new gsMatrixOp(mat,sym) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -59,14 +59,14 @@ private:
     bool m_symmetric;
 };
 
-/** This essentially just calls the gsMatrixOperator constructor, but the
+/** This essentially just calls the gsMatrixOp constructor, but the
  * use of a template functions allows us to let the compiler do type inference,
  * so we don't need to type out the matrix type explicitly.
  */
 template <class MatrixType>
-typename gsMatrixOperator<MatrixType>::Ptr makeMatrixOperator(const MatrixType& mat, bool sym=false)
+typename gsMatrixOp<MatrixType>::Ptr makeMatrixOp(const MatrixType& mat, bool sym=false)
 {
-    return shared(new gsMatrixOperator<MatrixType>(mat, sym));
+    return shared(new gsMatrixOp<MatrixType>(mat, sym));
 }
 
 
@@ -76,20 +76,20 @@ typename gsMatrixOperator<MatrixType>::Ptr makeMatrixOperator(const MatrixType& 
 /// \ingroup Solver
 
 template <class MatrixType>
-class gsTransposedMatrixOperator : public gsLinearOperator
+class gsTransposedMatrixOp : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsTransposedMatrixOperator
-    typedef memory::shared_ptr<gsTransposedMatrixOperator> Ptr;
+    /// Shared pointer for gsTransposedMatrixOp
+    typedef memory::shared_ptr<gsTransposedMatrixOp> Ptr;
 
-    /// Unique pointer for gsTransposedMatrixOperator   
-    typedef typename memory::unique<gsTransposedMatrixOperator>::ptr uPtr;
+    /// Unique pointer for gsTransposedMatrixOp   
+    typedef typename memory::unique<gsTransposedMatrixOp>::ptr uPtr;
     
-    gsTransposedMatrixOperator(const MatrixType& mat)
+    gsTransposedMatrixOp(const MatrixType& mat)
         : m_mat(mat) {}
 
-    static Ptr make(const MatrixType& mat) { return shared( new gsTransposedMatrixOperator(mat) ); }
+    static Ptr make(const MatrixType& mat) { return shared( new gsTransposedMatrixOp(mat) ); }
         
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -104,14 +104,14 @@ private:
     const MatrixType& m_mat;
 };
 
-/** This essentially just calls the gsTransposedMatrixOperator constructor, but the
+/** This essentially just calls the gsTransposedMatrixOp constructor, but the
  * use of a template functions allows us to let the compiler do type inference,
  * so we don't need to type out the matrix type explicitly.
  */
 template <class MatrixType>
-typename gsTransposedMatrixOperator<MatrixType>::Ptr makeTransposedMatrixOperator(const MatrixType& mat)
+typename gsTransposedMatrixOp<MatrixType>::Ptr makeTransposedMatrixOp(const MatrixType& mat)
 {
-    return shared(new gsTransposedMatrixOperator<MatrixType>(mat));
+    return shared(new gsTransposedMatrixOp<MatrixType>(mat));
 }
 
 
@@ -120,18 +120,18 @@ typename gsTransposedMatrixOperator<MatrixType>::Ptr makeTransposedMatrixOperato
 /// \ingroup Solver
 
 template <class SolverType>
-class gsSolverOperator : public gsLinearOperator
+class gsSolverOp : public gsLinearOperator
 {
 public:
 
     /// Shared pointer for gsBasis
-    typedef memory::shared_ptr<gsSolverOperator> Ptr;
+    typedef memory::shared_ptr<gsSolverOp> Ptr;
 
     /// Unique pointer for gsBasis   
-    typedef typename memory::unique<gsSolverOperator>::ptr uPtr;
+    typedef typename memory::unique<gsSolverOp>::ptr uPtr;
     
     template <class MatrixType>
-    gsSolverOperator(const MatrixType& mat)
+    gsSolverOp(const MatrixType& mat)
     {
         GISMO_ASSERT(mat.rows() == mat.cols(), "Need square matrix");
         m_size = mat.rows();
@@ -140,7 +140,7 @@ public:
     }
 
     template <class MatrixType>
-    static Ptr make(const MatrixType& mat) { return shared( new gsSolverOperator(mat) ); }    
+    static Ptr make(const MatrixType& mat) { return shared( new gsSolverOp(mat) ); }    
     
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -165,16 +165,16 @@ private:
 
 /// @brief Convenience function to create an LU solver with partial pivoting (for dense matrices) as a gsLinearOperator.
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOperator< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makePartialPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
+typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makePartialPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
-    return shared( new gsSolverOperator< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return shared( new gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 /// @brief Convenience function to create an LU solver with full pivoting (for dense matrices) as a gsLinearOperator.
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOperator< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeFullPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
+typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeFullPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
-    return shared( new gsSolverOperator< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return shared( new gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 
@@ -182,9 +182,9 @@ typename gsSolverOperator< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt
 ///
 /// @note Works only on symmetric (stored in lower half) and positive (semi-)definite matrices.
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOperator< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeCholeskySolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
+typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeCholeskySolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
-    return shared( new gsSolverOperator< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return shared( new gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 
@@ -192,9 +192,9 @@ typename gsSolverOperator< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >
 ///
 /// @note This uses the default COLAMD column ordering.
 template <typename T, int _Opt, typename _Index>
-typename gsSolverOperator< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
+typename gsSolverOp< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
 {
-    return shared( new gsSolverOperator< typename gsSparseSolver<T>::LU >(mat) );
+    return shared( new gsSolverOp< typename gsSparseSolver<T>::LU >(mat) );
 }
 
 
@@ -202,9 +202,9 @@ typename gsSolverOperator< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSo
 ///
 /// @note Works only on sparse, symmetric (stored in lower half) and positive definite matrices.
 template <typename T, int _Opt, typename _Index>
-typename gsSolverOperator< typename gsSparseSolver<T>::SimplicialLDLT >::Ptr  makeSparseCholeskySolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
+typename gsSolverOp< typename gsSparseSolver<T>::SimplicialLDLT >::Ptr  makeSparseCholeskySolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
 {
-    return shared( new gsSolverOperator<typename  gsSparseSolver<T>::SimplicialLDLT >(mat) );
+    return shared( new gsSolverOp<typename  gsSparseSolver<T>::SimplicialLDLT >(mat) );
 }
 
 

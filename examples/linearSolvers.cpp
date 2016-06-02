@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
     //The minimal residual implementation requires a preconditioner.
     //We initialize an identity preconditioner (does nothing).
-    gsIdentityPreconditioner preConMat(N);
+    gsIdentityOp preConMat(N);
 
     //Maximum number of iterations
     index_t maxIters = 3*N;

@@ -1,4 +1,4 @@
-/** @file gsBlockPreconditioner.cpp
+/** @file gsBlockOp.cpp
 
     @brief Simple class create a block preconditioner structure.
 
@@ -16,7 +16,7 @@ namespace gismo
 {
 
 
-gsBlockPreconditioner::gsBlockPreconditioner(index_t nRows, index_t nCols)
+gsBlockOp::gsBlockOp(index_t nRows, index_t nCols)
 {
     blockPrec.resize(nRows, nCols);
     blockTargetPositions.setZero(nCols);
@@ -28,7 +28,7 @@ gsBlockPreconditioner::gsBlockPreconditioner(index_t nRows, index_t nCols)
 }
 
 
-void gsBlockPreconditioner::addPreconditioner(const BasePtr& prec, index_t row, index_t col)
+void gsBlockOp::addOperator(index_t row, index_t col, const BasePtr& prec)
 {
     GISMO_ASSERT( row >= 0 && row < blockPrec.rows(), "The given row is not feasible." );
     GISMO_ASSERT( col >= 0 && col < blockPrec.cols(), "The given column is not feasible." );
@@ -43,7 +43,7 @@ void gsBlockPreconditioner::addPreconditioner(const BasePtr& prec, index_t row, 
 }
 
 
-void gsBlockPreconditioner::apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result) const
+void gsBlockOp::apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result) const
 {
     result.setZero(blockTargetPositions.sum(), input.cols());
     gsVector<index_t> singleCol(1);

@@ -43,21 +43,21 @@ GISMO_EXPORT void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, g
 /// @brief Richardson preconditioner
 ///
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsRichardsonPreconditioner : public gsLinearOperator
+class gsRichardsonOp : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsRichardsonPreconditioner
-    typedef memory::shared_ptr< gsRichardsonPreconditioner > Ptr;
+    /// Shared pointer for gsRichardsonOp
+    typedef memory::shared_ptr< gsRichardsonOp > Ptr;
 
-    /// Unique pointer for gsRichardsonPreconditioner   
-    typedef typename memory::unique< gsRichardsonPreconditioner >::ptr uPtr;    
+    /// Unique pointer for gsRichardsonOp   
+    typedef typename memory::unique< gsRichardsonOp >::ptr uPtr;    
     
     /// @brief Contructor with given matrix
-    gsRichardsonPreconditioner(const MatrixType& _mat, real_t tau = 1.)
+    gsRichardsonOp(const MatrixType& _mat, real_t tau = 1.)
         : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
         
-    static Ptr make(const MatrixType& _mat, real_t tau = 1.) { return shared( new gsRichardsonPreconditioner(_mat,tau) ); }
+    static Ptr make(const MatrixType& _mat, real_t tau = 1.) { return shared( new gsRichardsonOp(_mat,tau) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -96,21 +96,21 @@ private:
 ///
 /// Requires a positive definite matrix.
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsJacobiPreconditioner : public gsLinearOperator
+class gsJacobiOp : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsJacobiPreconditioner
-    typedef memory::shared_ptr< gsJacobiPreconditioner > Ptr;
+    /// Shared pointer for gsJacobiOp
+    typedef memory::shared_ptr< gsJacobiOp > Ptr;
 
-    /// Unique pointer for gsJacobiPreconditioner   
-    typedef typename memory::unique< gsJacobiPreconditioner >::ptr uPtr;    
+    /// Unique pointer for gsJacobiOp   
+    typedef typename memory::unique< gsJacobiOp >::ptr uPtr;    
 
     /// @brief Contructor with given matrix
-    gsJacobiPreconditioner(const MatrixType& _mat, real_t tau = 1.)
+    gsJacobiOp(const MatrixType& _mat, real_t tau = 1.)
         : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
         
-    static Ptr make(const MatrixType& _mat, real_t tau = 1.) { return shared( new gsJacobiPreconditioner(_mat,tau) ); }
+    static Ptr make(const MatrixType& _mat, real_t tau = 1.) { return shared( new gsJacobiOp(_mat,tau) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -151,21 +151,21 @@ private:
 ///
 /// Requires a positive definite matrix.
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsGaussSeidelPreconditioner : public gsLinearOperator
+class gsGaussSeidelOp : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsGaussSeidelPreconditioner
-    typedef memory::shared_ptr< gsGaussSeidelPreconditioner > Ptr;
+    /// Shared pointer for gsGaussSeidelOp
+    typedef memory::shared_ptr< gsGaussSeidelOp > Ptr;
 
-    /// Unique pointer for gsGaussSeidelPreconditioner   
-    typedef typename memory::unique< gsGaussSeidelPreconditioner >::ptr uPtr;   
+    /// Unique pointer for gsGaussSeidelOp   
+    typedef typename memory::unique< gsGaussSeidelOp >::ptr uPtr;   
     
     /// @brief Contructor with given matrix
-    gsGaussSeidelPreconditioner(const MatrixType& _mat)
+    gsGaussSeidelOp(const MatrixType& _mat)
         : m_mat(_mat), m_numOfSweeps(1) {}
         
-    static Ptr make(const MatrixType& _mat) { return shared( new gsGaussSeidelPreconditioner(_mat) ); }
+    static Ptr make(const MatrixType& _mat) { return shared( new gsGaussSeidelOp(_mat) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -201,21 +201,21 @@ private:
 /// one forward Gauss-Seidel sweep then one backward
 /// Gauss-Seidel sweep.
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsSymmetricGaussSeidelPreconditioner : public gsLinearOperator
+class gsSymmetricGaussSeidelOp : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsSymmetricGaussSeidelPreconditioner
-    typedef memory::shared_ptr< gsSymmetricGaussSeidelPreconditioner > Ptr;
+    /// Shared pointer for gsSymmetricGaussSeidelOp
+    typedef memory::shared_ptr< gsSymmetricGaussSeidelOp > Ptr;
 
-    /// Unique pointer for gsSymmetricGaussSeidelPreconditioner   
-    typedef typename memory::unique< gsSymmetricGaussSeidelPreconditioner >::ptr uPtr; 
+    /// Unique pointer for gsSymmetricGaussSeidelOp   
+    typedef typename memory::unique< gsSymmetricGaussSeidelOp >::ptr uPtr; 
     
     /// @brief Contructor with given matrix
-    gsSymmetricGaussSeidelPreconditioner(const MatrixType& _mat, index_t numOfSweeps = 1)
+    gsSymmetricGaussSeidelOp(const MatrixType& _mat, index_t numOfSweeps = 1)
         : m_mat(_mat), m_numOfSweeps(numOfSweeps) {}
         
-    static Ptr make(const MatrixType& _mat, index_t numOfSweeps = 1) { return shared( new gsSymmetricGaussSeidelPreconditioner(_mat,numOfSweeps) ); }
+    static Ptr make(const MatrixType& _mat, index_t numOfSweeps = 1) { return shared( new gsSymmetricGaussSeidelOp(_mat,numOfSweeps) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {

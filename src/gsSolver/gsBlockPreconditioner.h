@@ -1,4 +1,4 @@
-/** @file gsBlockPreconditioner.h
+/** @file gsBlockOp.h
 
     @brief Simple class create a block preconditioner structure.
 
@@ -38,22 +38,22 @@ namespace gismo
  *
  * \ingroup Solver
  */
-class GISMO_EXPORT gsBlockPreconditioner : public gsLinearOperator
+class GISMO_EXPORT gsBlockOp : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsBlockPreconditioner
-    typedef memory::shared_ptr< gsBlockPreconditioner > Ptr;
+    /// Shared pointer for gsBlockOp
+    typedef memory::shared_ptr< gsBlockOp > Ptr;
 
-    /// Unique pointer for gsBlockPreconditioner
-    typedef memory::unique< gsBlockPreconditioner >::ptr uPtr;
+    /// Unique pointer for gsBlockOp
+    typedef memory::unique< gsBlockOp >::ptr uPtr;
     
     /// Base class
     typedef memory::shared_ptr< gsLinearOperator > BasePtr;    
     
-    gsBlockPreconditioner(index_t nRows, index_t nCols);
+    gsBlockOp(index_t nRows, index_t nCols);
     
-    static Ptr make(index_t nRows, index_t nCols) { return shared( new gsBlockPreconditioner(nRows,nCols) ); }
+    static Ptr make(index_t nRows, index_t nCols) { return shared( new gsBlockOp(nRows,nCols) ); }
 
     /**
      * @brief Add a preconditioner \f$C_{ij}\f$ to the block structure
@@ -61,7 +61,7 @@ public:
      * @param row row position in the block preconditioner
      * @param col column position in the block preconditioner
      */
-    void addPreconditioner(const BasePtr& prec, index_t row, index_t col);
+    void addOperator(index_t row, index_t col, const BasePtr& prec);
 
     /**
      * @brief Apply the correct segment of the input vector on the preconditioners in the block structure and store the result.
