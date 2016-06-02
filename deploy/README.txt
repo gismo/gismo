@@ -16,7 +16,7 @@ Note: If you only need to experiment with a small main.cpp file, the
 far easiest way to go is to copy the file "main.cpp" to the source
 folder gismo/examples.  Then issue:
 
-$ cmake ../
+$ cmake /path/to/gismo
 $ make -j2 main
 $ ./bin/main
 Hello G+Smo.
@@ -30,7 +30,7 @@ dependency, then continue reading these instructions.
 * Configure and install on a predefined location
   (eg. ./path/to/install for demonstration):
 
-cmake ../ -DCMAKE_INSTALL_PREFIX=/path/to/install -DGISMO_EXAMPLES=OFF
+cmake /path/to/gismo -DCMAKE_INSTALL_PREFIX=/path/to/install -DGISMO_EXAMPLES=OFF
 make -j2 install
 
 The installation will create the folder /path/to/install, containing:
