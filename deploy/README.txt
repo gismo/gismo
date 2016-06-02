@@ -7,8 +7,7 @@ Assuming that you have the source tree at /path/to/gismo, here is how
 to use G+Smo in your application:
 
 
-* Choose a folder for building (eg. folder /path/to/build inside root
-  source folder):
+* Choose a folder for building (eg. folder /path/to/build for demonstation):
 
 $ mkdir /path/to/build
 $ cd /path/to/build
