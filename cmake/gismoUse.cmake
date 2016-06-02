@@ -26,10 +26,10 @@ macro(add_gismo_pure_executable FILE)
     get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME} )
     #message(STATUS "exec (pure template): ${FNAME}")
-    add_executable(${FNAME} ${FNAME} ${gismo_SOURCES} ${gismo_EXTENSIONS})
+    add_executable(${FNAME} ${FILE} ${gismo_SOURCES} ${gismo_EXTENSIONS})
     target_link_libraries(${FNAME} gismo_static)
     # Allow CMake to follow dependencies on hpp files
-    set_property( TARGET ${FNAME} PROPERTY 
+    set_property(TARGET ${FNAME} PROPERTY 
     IMPLICIT_DEPENDS_INCLUDE_TRANSFORM "GISMO_HPP_HEADER(%)=\"%\"")
     SET_TARGET_PROPERTIES(${FNAME} PROPERTIES COMPILE_FLAGS -UGISMO_BUILD_LIB)
 endmacro(add_gismo_pure_executable)
@@ -39,7 +39,7 @@ macro(add_gismo_shared_executable FILE)
     get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME} )
     #message(STATUS "exec (dynamically linked): ${FNAME}")
-    add_executable(${FNAME} ${FNAME})
+    add_executable(${FNAME} ${FILE})
     target_link_libraries(${FNAME} gismo)
     if (GISMO_BUILD_COVERAGE)
       target_link_libraries(${FNAME} gcov)
@@ -52,7 +52,7 @@ macro(add_gismo_static_executable FILE)
     get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME} )
     #message(STATUS "exec (statically linked): ${FNAME}")
-    add_executable(${FNAME} ${FNAME})
+    add_executable(${FNAME} ${FILE})
     target_link_libraries(${FNAME} gismo_static)
 endmacro(add_gismo_static_executable)
 

@@ -26,5 +26,8 @@ int main()
 
     GISMO_ASSERT( a*b == 6, "This is an error, 2*3 should be 6.");
 
+    // creating the knot-vector: [0, 0, 0, 1, 2, 2, 2]
+    gsKnotVector<> kv((real_t)0, a, 1, b);
+
     return 0;
 }

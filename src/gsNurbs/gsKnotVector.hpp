@@ -886,9 +886,15 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
         {
             result(0,i) = std::accumulate( itr, itr+m_deg, T(0.0) ) / m_deg ;
             if ( result(0,i) == result(0,i-1) )
+            {
                 // perturbe point to remain inside the needed support
+#               ifdef GISMO_WITH_MPQ
+                result(0,i-1) -= mpq_class(1,10000000000);
+#               else
                 result(0,i-1) -= 1e-10;
-            //to try: result(0,i-1) = math::nextafter(result(0,i-1), *result.data() );
+                //to try: result(0,i-1) = math::nextafter(result(0,i-1), *result.data() );
+#               endif
+            }
         }
 
         itr = end()-1;
