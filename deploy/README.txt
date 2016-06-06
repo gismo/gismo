@@ -54,7 +54,7 @@ This will create a "Makefile" (therefore will overwrite any existing makefiles).
 For this solution the installation of G+Smo is not mandatory. We can
 also point directly to the build folder (if install was not executed):
 
-$ cmake . -Dgismo_DIR=/path/to/install
+$ cmake . -Dgismo_DIR=/path/to/build
 
 If the configuration is successfull, then typing "make" should create
 the binary file "main", which can be executed as:
@@ -73,8 +73,8 @@ compile.
 * Solution 2: use the provided main.cpp and Makefile (in unix-based systems)
 
 Copy the provided "Makefile" and main.cpp to a folder of your
-choice. You need to update the variable GISMODIR to point to your
-install directory where G+Smo is found:
+choice. You need to edit the Makefile and update the variable GISMODIR
+to point to your install directory where G+Smo is found:
 
 GISMODIR :=/path/to/install
 

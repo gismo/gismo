@@ -906,6 +906,15 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
         copy_n(m_repKnots.data(), result.size(), result.data() );
 }
 
+template<typename T>
+void gsKnotVector<T>::centers_into(gsMatrix<T> & result) const
+{
+    result.resize(1, numElements());
+    index_t i = 0;
+    for (uiterator it = domainUBegin(); it != domainUEnd(); ++it, ++i)
+        result.at(i) = (*(it+1) + *it) / 2;
+}
+
 template <class T>
 T gsKnotVector<T>::greville(int i) const
 {

@@ -658,6 +658,10 @@ public: // things required by gsKnotVector
     /// knot vector to \a result.
     void greville_into(gsMatrix<T> & result) const;
 
+    /// Writes the center points of each element (knot-span inside the
+    /// domain) to \a result.
+    void centers_into(gsMatrix<T> & result) const;
+
     /// Attempts to deduce the degree from the multiplicities of the
     /// endpoints (assuming clamped knots).
     int deduceDegree() const;

@@ -191,10 +191,7 @@ bool gsCmdLine::getValues(int argc, char *argv[])
             *my->strRes[i] = my->stringVals[i]->getValue();
 
         for( std::size_t i=0; i!=my->switches.size(); ++i)
-        {
-            if (!(*my->swRes[i]))
-                *my->swRes[i] = my->switches[i]->getValue();
-        }
+                *my->swRes[i] |= my->switches[i]->getValue();
 
         if ( my->plainString )
             *my->pstrRes = my->plainString->getValue();
