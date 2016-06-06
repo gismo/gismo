@@ -536,7 +536,7 @@ public:
      * two indices of the upper right corner, see gsHTensorBasis::refineElements() for details.
      */
     void refineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
-    void refineElements_withTransfer(std::vector<unsigned> const & boxes, gsMatrix<T> &transfer);
+    void refineElements_withTransfer(std::vector<unsigned> const & boxes, gsSparseMatrix<T> &transfer);
 
     void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<unsigned> const & boxes);
 
@@ -848,9 +848,9 @@ private:
 
 
     ///returns a transfer matrix using the characteristic matrix of the old and new basis
-    virtual gsMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) = 0;
-    virtual gsMatrix<T> coarsening_direct(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
-    virtual gsMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
+    virtual gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) = 0;
+    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
+    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
 
     /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
     /// @param indices and @param params but fills in only one depending on @param indicesFlag (if true, then it returns indices).
@@ -862,9 +862,9 @@ private:
 public:
     /// \brief Returns transfer matrix betweend the hirarchycal spline given
     /// by the characteristic matrix "old" and this
-    void transfer (const std::vector<gsSortedVector<unsigned> > &old, gsMatrix<T>& result);
+    void transfer (const std::vector<gsSortedVector<unsigned> > &old, gsSparseMatrix<T>& result);
 
-    void transfer2 (const std::vector<gsSortedVector<unsigned> > &old, gsMatrix<T>& result);
+    void transfer2 (const std::vector<gsSortedVector<unsigned> > &old, gsSparseMatrix<T>& result);
 
     /// \brief Creates characteristic matrices for basis where "level" is the
     /// maximum level i.e. ignoring higher level refinements

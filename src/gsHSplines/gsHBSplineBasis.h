@@ -104,7 +104,7 @@ public:
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const;
     ///returns transfer matrices betweend the levels of the given hierarchical spline
-    void transferbyLvl(std::vector<gsMatrix<T> >& result);
+    void transferbyLvl(std::vector<gsSparseMatrix<T> >& result);
 
     GISMO_MAKE_GEOMETRY_NEW
     
@@ -114,10 +114,10 @@ private:
     /// internal bspline representations
     void initialize();
 
-    gsMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer);
-    gsMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
+    gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer);
+    gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
 
-    gsMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
+    gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
 
     using gsHTensorBasis<d,T>::m_bases;
     using gsHTensorBasis<d,T>::m_xmatrix;

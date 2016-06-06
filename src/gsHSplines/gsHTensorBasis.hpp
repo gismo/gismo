@@ -173,7 +173,7 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
 {
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     refine(boxes);
-    gsMatrix<> transf;
+    gsSparseMatrix<> transf;
     this->transfer(OX, transf);
     std::cout<<"tranf orig:\n"<<transf<<std::endl;
     coefs = transf*coefs;
@@ -184,14 +184,14 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vect
 {
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     refineElements(boxes);
-    gsMatrix<> transf;
+    gsSparseMatrix<> transf;
     this->transfer(OX, transf);
     //std::cout<<"tranf orig:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
 
 template<unsigned d, class T>
-void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<unsigned> const & boxes, gsMatrix<T> & tran)
+void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<unsigned> const & boxes, gsSparseMatrix<T> & tran)
 {
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     this->refineElements(boxes);
@@ -204,7 +204,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vec
 {
     std::vector<gsSortedVector<unsigned> > OX = m_xmatrix;
     refineElements(boxes);
-    gsMatrix<> transf;
+    gsSparseMatrix<> transf;
     this->transfer2(OX, transf);
     //std::cout<<"tranf 2:\n"<<transf<<std::endl;
     coefs = transf*coefs;
@@ -1148,7 +1148,7 @@ std::vector< std::vector< std::vector< unsigned int > > > gsHTensorBasis<d,T>::d
 
 
 template<unsigned d, class T>
-void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >& old, gsMatrix<T>& result)
+void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >& old, gsSparseMatrix<T>& result)
 {
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );
@@ -1183,7 +1183,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
 }
 
 template<unsigned d, class T>
-void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> >& old, gsMatrix<T>& result)
+void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<unsigned> >& old, gsSparseMatrix<T>& result)
 {
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );

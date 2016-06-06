@@ -572,7 +572,7 @@ public:
     void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const;
 
    ///returns transfer matrices betweend the levels of the given hierarchical spline
-   void transferbyLvl (std::vector<gsMatrix<T> >& result);
+   void transferbyLvl (std::vector<gsSparseMatrix<T> >& result);
 
     /// @brief Decomposes domain of the THB-Spline-Basis into partitions.
     ///
@@ -620,15 +620,15 @@ private:
     void globalRefinement(const gsMatrix<T> & thbCoefs, int level, 
                           gsMatrix<T> & lvlCoefs) const;
 
-    gsMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old,
+    gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old,
                            const std::vector<gsSortedVector<unsigned> >& n,
                            const gsSparseMatrix<T,RowMajor> & transfer);
 
-    gsMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
+    gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
                                    const std::vector<gsSortedVector<unsigned> >& n, 
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
 
-    gsMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
+    gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
                                    const std::vector<gsSortedVector<unsigned> >& n,
                                    const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
     
