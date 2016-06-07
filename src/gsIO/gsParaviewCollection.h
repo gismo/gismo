@@ -71,18 +71,26 @@ public:
         mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
     }
 
-    /// Adds a part in the collection, with filename \a fn_i and extension \a ext appended
+    /// Adds a part in the collection, with filename \a fni and extension \a ext appended
     void addPart(String const & fn, int i, String const & ext)
     {
         GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<"_"<<i<<ext<<"\"/>\n";
+        mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
     }
     
     // to do: make time collections as well
 	// ! i is not included in the filename, must be in included fn !
-    void addTimestep(String const & fn,int i, String const & ext)
+    void addTimestep(String const & fn, int tstep, String const & ext)
     {
-        mfile << "<DataSet timestep=\""<<i<<"\" file=\""<<fn<<ext<<"\"/>\n";
+        mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
+    }
+
+    void addTimeStep(String const & fn, int part, int tstep, String const & ext)
+    {
+        mfile << "<DataSet part=\""
+              <<part<<"\" timestep=\""
+              <<tstep<<"\" file=\""
+              <<fn<<part<<ext<<"\"/>\n";//<<"_"
     }
 
     /// Finalizes the collection by closing the XML tags, always call

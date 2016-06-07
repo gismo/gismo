@@ -104,7 +104,6 @@ template <class U> inline std::ofstream & operator<<
 
 namespace gismo {
 
-
 template<class T>
 inline bool gsGetReal(std::istream & is, T & var)
 {
@@ -130,25 +129,6 @@ inline bool gsGetInt(std::istream & is, Z & var)
   //return static_cast<bool>(is >> var); //C++11
   return !(is >> var).fail();
 }
-
-/*
-//Note: automatic deduction of number traits, however using gsGetReal,
-//gsGetInt can reveal type mistakes, so they are preferable
-
-template <typename Z>
-typename internal::enable_if<std::numeric_limits<Z>::is_integer, bool>::type
-gsGetValue(std::istream & is, Z & var)
-{
-    return gsGetInt<Z>(is,var);
-}
-
-template <typename T>
-typename internal::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
-gsGetValue(std::istream & is, T & var)
-{
-    return gsGetReal<T>(is,var);
-}
-*/
 
 #ifdef GISMO_WITH_MPQ
 template<>
@@ -178,6 +158,21 @@ inline bool gsGetReal(std::istream & is, mpq_class & var)
     return true;
 }
 #endif
+
+//Note: automatic deduction of number traits, however using gsGetReal,
+//gsGetInt can reveal type mistakes, so they are preferable
+template<bool B, class T = void> struct enable_if {};
+template<class T> struct enable_if<true, T> { typedef T type;};
+
+template <typename Z>
+typename enable_if<std::numeric_limits<Z>::is_integer, bool>::type
+gsGetValue(std::istream & is, Z & var)
+{ return gsGetInt<Z>(is,var); }
+
+template <typename T>
+typename enable_if<!std::numeric_limits<T>::is_integer, bool>::type
+gsGetValue(std::istream & is, T & var)
+{ return gsGetReal<T>(is,var); }
 
 namespace internal {
 
@@ -210,8 +205,11 @@ public:
     static bool     has      (gsXmlNode * node);
     static bool     count    (gsXmlNode * node);
     static Object * getFirst (gsXmlNode * node);
+    //static void     getFirst_into (gsXmlNode * node);
     static Object * getAny   (gsXmlNode * node);
+    //static void     getAny_into   (gsXmlNode * node);
     static Object * getId    (gsXmlNode * node, int id);
+    //static void     getId_into   (gsXmlNode * node, int id, Object & result);
 };
 
 /// Helper to read an object by a given \em id value:
