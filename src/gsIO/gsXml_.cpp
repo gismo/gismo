@@ -43,6 +43,31 @@ TEMPLATE_INST
 gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat, 
                                    gsXmlTree & data, std::string name);
 
+////// instances for int
+
+TEMPLATE_INST
+gsXmlNode * makeNode( const std::string & name,
+                      const gsMatrix<int> & value, gsXmlTree & data,
+                      bool transposed);
+
+TEMPLATE_INST
+void getMatrixFromXml ( gsXmlNode * node,
+                        unsigned const & rows,
+                        unsigned const & cols,
+                        gsMatrix<int> & result );
+
+TEMPLATE_INST
+gsXmlNode * putMatrixToXml ( gsMatrix<int> const & mat,
+                             gsXmlTree & data, std::string name);
+
+TEMPLATE_INST
+void getSparseEntriesFromXml ( gsXmlNode * node,
+                               gsSparseEntries<int> & result );
+
+TEMPLATE_INST
+gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<int> const & mat,
+                                   gsXmlTree & data, std::string name);
+
 
 } // namespace internal
 
