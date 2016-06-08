@@ -259,6 +259,15 @@ inline int ipow(int x, unsigned exp)
     return result;
 }
 
+/// integer square root
+inline unsigned isqrt(unsigned value) 
+{
+    const unsigned sr = static_cast<unsigned>(std::sqrt(static_cast<double>(value)));
+    //do { ++sr; } while(sr * sr  <= value); // pick closest integer
+    //do { --sr; } while(sr * sr   > value);  
+    return sr; 
+}
+
 /// Returns convex combination of \a a and \a b with weight \a t
 template<class T>
 inline T mix(T const & a, T const & b, T const & t)
