@@ -376,10 +376,10 @@ public: /* Accessors */
 
     /**
      * @brief returns a block view of the matrix, where you can choose which blocks (of gsSparseSystem) should be combined to one block
-     * @param [numRowBlocksNew] number of row blocks
-     * @param [numColBlocksNew] number of column blocks
-     * @param [rowBlocksNew] a vector defining the row blocks
-     * @param [colBlocksNew] a vector defining the column blocks
+     * @param[in] numRowBlocksNew number of row blocks
+     * @param[in] numColBlocksNew number of column blocks
+     * @param[in] rowBlocksNew a vector defining the row blocks
+     * @param[in] colBlocksNew a vector defining the column blocks
      *
      * example:
      * assume in gsSparseSystem we have 4 row blocks
@@ -406,8 +406,8 @@ public: /* Accessors */
 
     /**
      * @brief returns a block view of the rhs, where you can choose which blocks (of gsSparseSystem) should be combined to one block
-     * @param [numRowBlocksNew] number of row blocks
-     * @param [rowBlocksNew] a vector defining the row blocks
+     * @param[in] numRowBlocksNew number of row blocks
+     * @param[in] rowBlocksNew a vector defining the row blocks
      */
 
     rhsBlockView blockViewRhs(size_t numRowBlocksNew, const gsVector<index_t>& rowBlocksNew)
@@ -687,8 +687,7 @@ public: /* Add local contributions to system matrix */
                              const size_t r = 0, const size_t c = 0)
     {
         const index_t numActive = actives.rows();
-        const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
-        GISMO_ASSERT( &rowMap == &m_mappers[m_col.at(c)], "Error");
+        GISMO_ASSERT( &m_mappers[m_row.at(r)] == &m_mappers[m_col.at(c)], "Error");
 
         for (index_t i = 0; i != numActive; ++i)
         {

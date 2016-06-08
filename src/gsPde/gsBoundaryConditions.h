@@ -493,7 +493,38 @@ public:
     }
 
     /**
-     * @brief returns the set of all boundary conditions with refer to patch \a np
+     * @brief   getConditionFromSide returns the boundary conditions associated to the given patch side
+     * @param[in] ps patch side
+     * @param[out] result bcContainer containing the boundary conditions associated to ps
+     */
+
+    void getConditionFromSide (patchSide ps, bcContainer& result) const
+    {
+        result.clear();
+        const_iterator begin, end, cur;
+
+        begin=drchlt_sides.begin();
+        end=drchlt_sides.end();
+        for(cur=begin; cur!=end; cur++)
+            if(cur->ps == ps)
+                result.push_back(*cur);
+
+        begin=nmnn_sides.begin();
+        end=nmnn_sides.end();
+        for(cur=begin; cur!=end; cur++)
+            if(cur->ps == ps)
+                result.push_back(*cur);
+
+        begin=robin_sides.begin();
+        end=robin_sides.end();
+        for(cur=begin; cur!=end; cur++)
+            if(cur->ps == ps)
+                result.push_back(*cur);
+    }
+
+
+    /**
+     * @brief returns the set of all boundary conditions which refer to patch \a np
      * @param[in] np the patch index
      * @param[out] result the new set of boundary conditions
      */
