@@ -11,11 +11,11 @@ program.
 \subsection Obtaining01 Obtaining and compiling
 
 The source code can be obtained via subversion or Git.
-See <a href="https://gs.jku.at/trac/gismo/wiki/public/Downloads#Downloads" target="_parent">section downloads of the wiki</a> for downloading information.
+See <a href="http://gs.jku.at/trac/gismo/wiki/public/Downloads#Downloads" target="_parent">section downloads of the wiki</a> for downloading information.
 
 The configuration/compilation is based on the CMake build management
 system. A C++ compiler should be available in the system.
-See <a href="https://gs.jku.at/trac/gismo/wiki/public/Compiling#Compiling" target="_parent">section compiling of the wiki</a> for information on compilation.
+See <a href="http://gs.jku.at/trac/gismo/wiki/public/Compiling#Compiling" target="_parent">section compiling of the wiki</a> for information on compilation.
 
 \subsection Source01 The source folder
 
