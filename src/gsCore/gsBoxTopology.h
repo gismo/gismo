@@ -221,7 +221,10 @@ public:
     bool isInterface(const patchSide& ps) const;
 
     /// Return the vector of boundaries.
-    std::vector< patchSide >        boundaries() const { return m_boundary;   }
+    std::vector< patchSide > boundaries() const { return m_boundary;}
+
+    /// Return the vector of boundaries.
+    std::vector< patchSide >& boundaries() { return m_boundary;}
 
     /// Return the vector of interfaces.
     std::vector< boundaryInterface > interfaces() const { return m_interfaces; }
