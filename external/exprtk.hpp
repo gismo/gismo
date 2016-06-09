@@ -2892,10 +2892,12 @@ namespace exprtk
             {
                token t;
 
-               while (join(g.token_list_[i],g.token_list_[i + 1],t))
+               while (join(g[i],g[i + 1],t))
                {
                   g.token_list_[i] = t;
+
                   g.token_list_.erase(g.token_list_.begin() + (i + 1));
+
                   ++changes;
                }
             }
@@ -2914,9 +2916,10 @@ namespace exprtk
             {
                token t;
 
-               while (join(g.token_list_[i],g.token_list_[i + 1],g.token_list_[i + 2],t))
+               while (join(g[i],g[i + 1],g[i + 2],t))
                {
                   g.token_list_[i] = t;
+
                   g.token_list_.erase(g.token_list_.begin() + (i + 1),
                                       g.token_list_.begin() + (i + 3));
                   ++changes;
@@ -3750,24 +3753,35 @@ namespace exprtk
             return current_token_;
          }
 
-         inline bool token_is(const token_t::token_type& ttype, const bool advance_token = true)
+         enum token_advance_mode
+         {
+            e_hold    = 0,
+            e_advance = 1
+         };
+
+         inline void advance_token(const token_advance_mode mode)
+         {
+            if (e_advance == mode)
+            {
+               next_token();
+            }
+         }
+
+         inline bool token_is(const token_t::token_type& ttype, const token_advance_mode mode = e_advance)
          {
             if (current_token().type != ttype)
             {
                return false;
             }
 
-            if (advance_token)
-            {
-               next_token();
-            }
+            advance_token(mode);
 
             return true;
          }
 
          inline bool token_is(const token_t::token_type& ttype,
                               const std::string& value,
-                              const bool advance_token = true)
+                              const token_advance_mode mode = e_advance)
          {
             if (
                  (current_token().type != ttype) ||
@@ -3777,17 +3791,14 @@ namespace exprtk
                return false;
             }
 
-            if (advance_token)
-            {
-               next_token();
-            }
+            advance_token(mode);
 
             return true;
          }
 
          inline bool token_is_then_assign(const token_t::token_type& ttype,
                                           std::string& token,
-                                          const bool advance_token = true)
+                                          const token_advance_mode mode = e_advance)
          {
             if (current_token_.type != ttype)
             {
@@ -3796,10 +3807,7 @@ namespace exprtk
 
             token = current_token_.value;
 
-            if (advance_token)
-            {
-               next_token();
-            }
+            advance_token(mode);
 
             return true;
          }
@@ -3808,7 +3816,7 @@ namespace exprtk
                    template <typename,typename> class Container>
          inline bool token_is_then_assign(const token_t::token_type& ttype,
                                           Container<std::string,Allocator>& token_list,
-                                          const bool advance_token = true)
+                                          const token_advance_mode mode = e_advance)
          {
             if (current_token_.type != ttype)
             {
@@ -3817,10 +3825,7 @@ namespace exprtk
 
             token_list.push_back(current_token_.value);
 
-            if (advance_token)
-            {
-               next_token();
-            }
+            advance_token(mode);
 
             return true;
          }
@@ -16436,6 +16441,8 @@ namespace exprtk
 
       typedef results_context<T> results_context_t;
 
+      typedef parser_helper prsrhlpr_t;
+
       struct scope_element
       {
          enum element_type
@@ -18495,7 +18502,7 @@ namespace exprtk
 
             if (lexer().finished())
                break;
-            else if (token_is(token_t::e_eof,false))
+            else if (token_is(token_t::e_eof,prsrhlpr_t::e_hold))
             {
                if (lexer().finished())
                   break;
@@ -18771,7 +18778,10 @@ namespace exprtk
             {
                expression = new_expression;
 
-               if (token_is(token_t::e_ternary,false) && (precedence == e_level00))
+               if (
+                    token_is(token_t::e_ternary,prsrhlpr_t::e_hold) &&
+                    (precedence == e_level00)
+                  )
                {
                   expression = parse_ternary_conditional_statement(expression);
                }
@@ -19339,7 +19349,7 @@ namespace exprtk
 
          bool result = true;
 
-         if (token_is(token_t::e_lcrlbracket,false))
+         if (token_is(token_t::e_lcrlbracket,prsrhlpr_t::e_hold))
          {
             if (0 == (consequent = parse_multi_sequence("if-statement-01")))
             {
@@ -19354,7 +19364,7 @@ namespace exprtk
          {
             if (
                  settings_.commutative_check_enabled() &&
-                 token_is(token_t::e_mul,false)
+                 token_is(token_t::e_mul,prsrhlpr_t::e_hold)
                )
             {
                next_token();
@@ -19387,7 +19397,7 @@ namespace exprtk
             {
                next_token();
 
-               if (token_is(token_t::e_lcrlbracket,false))
+               if (token_is(token_t::e_lcrlbracket,prsrhlpr_t::e_hold))
                {
                   if (0 == (alternative = parse_multi_sequence("else-statement-01")))
                   {
@@ -19492,7 +19502,7 @@ namespace exprtk
 
             return error_node();
          }
-         else if (token_is(token_t::e_comma,false))
+         else if (token_is(token_t::e_comma,prsrhlpr_t::e_hold))
          {
             // if (x,y,z)
             return parse_conditional_statement_01(condition);
@@ -19870,13 +19880,13 @@ namespace exprtk
          if (!token_is(token_t::e_eof))
          {
             if (
-                 !token_is(token_t::e_symbol,false) &&
+                 !token_is(token_t::e_symbol,prsrhlpr_t::e_hold) &&
                  details::imatch(current_token().value,"var")
                )
             {
                next_token();
 
-               if (!token_is(token_t::e_symbol,false))
+               if (!token_is(token_t::e_symbol,prsrhlpr_t::e_hold))
                {
                   set_error(
                      make_error(parser_error::e_syntax,
@@ -20158,7 +20168,7 @@ namespace exprtk
 
                expression_node_ptr default_statement = error_node();
 
-               if (token_is(token_t::e_lcrlbracket,false))
+               if (token_is(token_t::e_lcrlbracket,prsrhlpr_t::e_hold))
                   default_statement = parse_multi_sequence("switch-default");
                else
                   default_statement = parse_expression();
@@ -20287,7 +20297,7 @@ namespace exprtk
                arg_list.push_back(consequent);
             }
 
-            if (token_is(token_t::e_rcrlbracket,false))
+            if (token_is(token_t::e_rcrlbracket,prsrhlpr_t::e_hold))
             {
                break;
             }
@@ -20349,6 +20359,7 @@ namespace exprtk
          lodge_symbol(symbol,e_st_function);
 
          next_token();
+
          if (!token_is(token_t::e_lbracket))
          {
             set_error(
@@ -20447,11 +20458,11 @@ namespace exprtk
 
          while
             (
-              (0 != expression)                      &&
-              (i++ < max_rangesize_parses)           &&
-              error_list_.empty()                    &&
-              token_is(token_t::e_lsqrbracket,false) &&
-              is_generally_string_node(expression)
+              (0 != expression)                     &&
+              (i++ < max_rangesize_parses)          &&
+              error_list_.empty()                   &&
+              is_generally_string_node(expression)  &&
+              token_is(token_t::e_lsqrbracket,prsrhlpr_t::e_hold)
             )
          {
             expression = parse_string_range_statement(expression);
@@ -21795,9 +21806,9 @@ namespace exprtk
             }
 
             if (
-                 !token_is(token_t::e_rbracket   ,false) &&
-                 !token_is(token_t::e_rcrlbracket,false) &&
-                 !token_is(token_t::e_rsqrbracket,false)
+                 !token_is(token_t::e_rbracket   ,prsrhlpr_t::e_hold) &&
+                 !token_is(token_t::e_rcrlbracket,prsrhlpr_t::e_hold) &&
+                 !token_is(token_t::e_rsqrbracket,prsrhlpr_t::e_hold)
                )
             {
                if (!token_is(token_t::e_eof))
@@ -22040,11 +22051,11 @@ namespace exprtk
 
             return error_node();
          }
-         else if (token_is(token_t::e_lsqrbracket,false))
+         else if (token_is(token_t::e_lsqrbracket,prsrhlpr_t::e_hold))
          {
             return parse_define_vector_statement(var_name);
          }
-         else if (token_is(token_t::e_lcrlbracket,false))
+         else if (token_is(token_t::e_lcrlbracket,prsrhlpr_t::e_hold))
          {
             return parse_uninitialised_var_statement(var_name);
          }
@@ -22062,12 +22073,12 @@ namespace exprtk
          }
 
          if (
-              !token_is(token_t::e_rbracket   ,false) &&
-              !token_is(token_t::e_rcrlbracket,false) &&
-              !token_is(token_t::e_rsqrbracket,false)
+              !token_is(token_t::e_rbracket   ,prsrhlpr_t::e_hold) &&
+              !token_is(token_t::e_rcrlbracket,prsrhlpr_t::e_hold) &&
+              !token_is(token_t::e_rsqrbracket,prsrhlpr_t::e_hold)
             )
          {
-            if (!token_is(token_t::e_eof,false))
+            if (!token_is(token_t::e_eof,prsrhlpr_t::e_hold))
             {
                set_error(
                   make_error(parser_error::e_syntax,
@@ -22170,7 +22181,7 @@ namespace exprtk
 
             return error_node();
          }
-         else if (!token_is(token_t::e_eof,false))
+         else if (!token_is(token_t::e_eof,prsrhlpr_t::e_hold))
          {
             set_error(
                make_error(parser_error::e_syntax,
@@ -22265,7 +22276,7 @@ namespace exprtk
 
          const std::string var0_name = current_token().value;
 
-         if (!token_is(token_t::e_symbol,false))
+         if (!token_is(token_t::e_symbol,prsrhlpr_t::e_hold))
          {
             set_error(
                make_error(parser_error::e_syntax,
@@ -22338,7 +22349,7 @@ namespace exprtk
 
          const std::string var1_name = current_token().value;
 
-         if (!token_is(token_t::e_symbol,false))
+         if (!token_is(token_t::e_symbol,prsrhlpr_t::e_hold))
          {
             set_error(
                make_error(parser_error::e_syntax,
@@ -22601,21 +22612,23 @@ namespace exprtk
          if (is_generally_string_node(branch))
             return true;
 
+         const lexer::parser_helper::token_advance_mode hold = prsrhlpr_t::e_hold;
+
          switch (token)
          {
-            case token_t::e_lcrlbracket : implied_mul = token_is(token_t::e_lbracket   ,false) ||
-                                                        token_is(token_t::e_lcrlbracket,false) ||
-                                                        token_is(token_t::e_lsqrbracket,false) ;
+            case token_t::e_lcrlbracket : implied_mul = token_is(token_t::e_lbracket   ,hold) ||
+                                                        token_is(token_t::e_lcrlbracket,hold) ||
+                                                        token_is(token_t::e_lsqrbracket,hold) ;
                                           break;
 
-            case token_t::e_lbracket    : implied_mul = token_is(token_t::e_lbracket   ,false) ||
-                                                        token_is(token_t::e_lcrlbracket,false) ||
-                                                        token_is(token_t::e_lsqrbracket,false) ;
+            case token_t::e_lbracket    : implied_mul = token_is(token_t::e_lbracket   ,hold) ||
+                                                        token_is(token_t::e_lcrlbracket,hold) ||
+                                                        token_is(token_t::e_lsqrbracket,hold) ;
                                           break;
 
-            case token_t::e_lsqrbracket : implied_mul = token_is(token_t::e_lbracket   ,false) ||
-                                                        token_is(token_t::e_lcrlbracket,false) ||
-                                                        token_is(token_t::e_lsqrbracket,false) ;
+            case token_t::e_lsqrbracket : implied_mul = token_is(token_t::e_lbracket   ,hold) ||
+                                                        token_is(token_t::e_lcrlbracket,hold) ||
+                                                        token_is(token_t::e_lsqrbracket,hold) ;
                                           break;
 
             default                     : return true;
@@ -23148,7 +23161,7 @@ namespace exprtk
          if (
               branch                    &&
               (e_level00 == precedence) &&
-              token_is(token_t::e_ternary,false)
+              token_is(token_t::e_ternary,prsrhlpr_t::e_hold)
             )
          {
             branch = parse_ternary_conditional_statement(branch);
@@ -33721,9 +33734,9 @@ namespace exprtk
    namespace information
    {
       static const char* library = "Mathematical Expression Toolkit";
-      static const char* version = "2.71828182845904523536028747135266"
-                                   "2497757247093699959574966967627724";
-      static const char* date    = "20160113";
+      static const char* version = "2.7182818284590452353602874713526624"
+                                   "977572470936999595749669676277240766";
+      static const char* date    = "20160606";
 
       static inline std::string data()
       {
