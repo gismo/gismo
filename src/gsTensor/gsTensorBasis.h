@@ -531,8 +531,8 @@ public:
     {
         for ( unsigned i = 0; i < d; ++i )
             if ( ind[i] == static_cast<unsigned>(size(i)-1) )
-                return false;
-        return ( (ind.array() > 0).all() );
+                return true;
+        return ( (ind.array() == 0).any() );
     }
 
     /// \brief Returns true iff the basis function indexed \a m is on

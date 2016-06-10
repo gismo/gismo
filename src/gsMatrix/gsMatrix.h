@@ -313,19 +313,19 @@ public:
     {
         const index_t mrows = this->rows()-1;
         GISMO_ASSERT( i <= mrows, "Invalid row." );
-        result.resize(mrows, Eigen::NoChange);
+        result.resize(mrows, this->cols());
         result.topRows(i)          = this->topRows(i);
         result.bottomRows(mrows-i) = this->bottomRows(mrows-i);
     }
     
-    /// Returns the jth column minor, i.e. the matrix after removing row
+    /// Returns the jth column minor, i.e. the matrix after removing column
     /// \a j from the matrix. After the operation the column size of the
     /// matrix is one less.
     void colMinor(index_t j, ColMinorMatrixType & result ) const
     {
         const index_t mcols = this->cols()-1;
         GISMO_ASSERT( j <= mcols, "Invalid column." );
-        result.resize(Eigen::NoChange, mcols);
+        result.resize(this->rows(), mcols);
         result.leftCols(j)        = this->leftCols(j);
         result.rightCols(mcols-j) = this->rightCols(mcols-j);
     }
@@ -475,7 +475,6 @@ private:
 }; // class gsMatrix
 
 
-
 template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix() { }
  
@@ -499,5 +498,5 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
 { return new gsMatrix<T,_Rows, _Cols, _Options>(*this); }
   
 
-
 } // namespace gismo
+

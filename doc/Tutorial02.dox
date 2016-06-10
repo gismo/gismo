@@ -88,9 +88,20 @@ topological information. These information are the boundaries plus the
 adjacency graph, defining the connections between patches along
 boundaries.
 
-Here is an XML file defining a simple 2-patch rectangle:
+Here is an XML file defining a simple 2-patch rectangle (two_patches.xml):
 
 \include filedata/planar/two_squares.xml
+
+The file contains the patches plus information on the boundaries and
+interfaces between them. A boundary is a side which does not meet with
+another side.  An interface consists of two sides which meet plus
+orientation information. The following illustration describes the
+data:
+
+\image html mp.png "Illustration of file two_patches.xml"
+
+See also gismo::boundary and gismo::boundaryInterface for more
+information on the meaning of the multipatch data.
 
 Analogously to multipatch objects, a gsMultiBasis object is a
 collection of gsBasis classes together with topological information

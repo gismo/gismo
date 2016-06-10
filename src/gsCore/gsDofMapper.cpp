@@ -199,6 +199,7 @@ void gsDofMapper::print() const
 {
     gsInfo<<" Dofs: "<< this->size() <<"\n";
     gsInfo<<" free: "<< this->freeSize() <<"\n";
+    gsInfo<<" coupled: "<< this->coupledSize() <<"\n";
     gsInfo<<" elim: "<< this->boundarySize() <<"\n";
 }
 

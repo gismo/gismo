@@ -135,19 +135,23 @@ template<>
 inline bool gsGetReal(std::istream & is, mpq_class & var)
 {
     // read as decimal
+    bool ok = true;
     std::string dn;
     if ( !(is >> dn) ) return false;
     const std::string::size_type comma( dn.find(".") );
     if( comma != std::string::npos )
-    {   
+    {
         const std::string::size_type exp = dn.size() - comma - 1;
-        const mpz_class num( dn.erase(comma,1), 10);
+        const mpz_class num( dn.erase(comma,1), 10);// will throw on error
         mpz_class den;
         mpz_ui_pow_ui(den.get_mpz_t(),10,exp);
         var = mpq_class(num, den);
     } 
     else // integer or rational
-        var.set_str(dn,10);
+    {
+        if ('+'==dn[0]) dn.erase(0, 1);
+        ok = (0==var.set_str(dn,10));
+    }
 
     // read as machine float
     //double tmp;
@@ -155,7 +159,7 @@ inline bool gsGetReal(std::istream & is, mpq_class & var)
     //var = tmp;
 
     var.canonicalize();// remove common factors
-    return true;
+    return ok;
 }
 #endif
 

@@ -11,13 +11,11 @@
     Author(s): A. Mantzaflaris
 */
 
-
-#include <fstream>
-
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsExport.h>
 
 #include <sstream>
+#include <fstream>
 
 #pragma once
 
@@ -82,13 +80,13 @@ void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
-/// \param Geo a vector of the geometris to be plotted
+/// \param Geo a vector of the geometries to be plotted
 /// \param fn filename where paraview file is written
 /// \param npts number of points used for sampling each geometry
 /// \param mesh if true, the parameter mesh is plotted as well
 /// \param ctrlNet if true, the control net is plotted as well
 template<class T>
-void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, 
+void gsWriteParaview( const gsPtrVector<gsGeometry<T> > & Geo, 
                       std::string const & fn, unsigned npts=NS,
                       bool mesh = false, bool ctrlNet = false);
 

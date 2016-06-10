@@ -58,9 +58,10 @@ set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
                       "${PROJECT_BINARY_DIR}"
                       "${PROJECT_SOURCE_DIR}/extensions" )
 set(CONF_LIB_DIRS     "${CMAKE_BINARY_DIR}/lib")
-set(CONF_USE_FILE     "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake")
+set(CONF_USE_FILE     "${CMAKE_BINARY_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
               "${CMAKE_BINARY_DIR}/gismoConfig.cmake" @ONLY)
+file(COPY ${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake DESTINATION ${CMAKE_BINARY_DIR})
 
 # ... for the install tree
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")

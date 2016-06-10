@@ -70,6 +70,7 @@ GMP_EXTRA_STD_UNARY_FUNCTION(acos)
 GMP_EXTRA_STD_UNARY_FUNCTION(tan)
 GMP_EXTRA_STD_UNARY_FUNCTION(tanh)
 GMP_EXTRA_STD_BINARY_FUNCTION(atan2)
+GMP_EXTRA_STD_UNARY_FUNCTION(atan)
 GMP_EXTRA_STD_UNARY_FUNCTION(exp)
 GMP_EXTRA_STD_UNARY_FUNCTION(log)
 GMP_EXTRA_STD_UNARY_FUNCTION(floor)
@@ -225,6 +226,7 @@ using ::tan;
 using ::tanh;
 using ::log;
 using ::log10;
+using ::atan;
 using ::atan2;
 using ::exp;
 
