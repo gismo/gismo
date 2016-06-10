@@ -86,7 +86,7 @@ void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
 /// \param mesh if true, the parameter mesh is plotted as well
 /// \param ctrlNet if true, the control net is plotted as well
 template<class T>
-void gsWriteParaview( const gsPtrVector<gsGeometry<T> > & Geo, 
+void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, 
                       std::string const & fn, unsigned npts=NS,
                       bool mesh = false, bool ctrlNet = false);
 
