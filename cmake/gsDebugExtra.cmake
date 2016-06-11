@@ -40,7 +40,6 @@ if(GISMO_EXTRA_DEBUG)
     add_definitions(-D_GLIBCXX_DEBUG)
   elseif ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
     # using Intel C++
-        add_definitions(-D_GLIBCXX_DEBUG)
   elseif ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
     # using Visual Studio C++
     # Enable checked iterators
