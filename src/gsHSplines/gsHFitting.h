@@ -101,7 +101,7 @@ public:
      * @param tolerance (>=0) if the maximum error is below the tolerance the refinement stops;
      * @param err_threshold the same as in iterative_refine(...).
      */
-    void nextIteration(T tolerance, T err_threshold);
+    bool nextIteration(T tolerance, T err_threshold);
 
     /// Return the refinement percentage
     T getRefPercentage() const
@@ -182,7 +182,7 @@ protected:
 
 
 template<unsigned d, class T>
-void gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
+bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
 {
     // INVARIANT 
     // look at iterativeRefine
@@ -196,6 +196,8 @@ void gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
             T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
 	    
             std::vector<unsigned> boxes = getBoxes(m_pointErrors, threshold);
+            if(boxes.size()==0)
+                return false;
 	    
             gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
             basis->refineElements(boxes);
@@ -205,12 +207,15 @@ void gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
         else
         {
             gsInfo << "Tolerance reached.\n";
+            return false;
         }
     }
 
     // We run one fitting step and compute the errors
     this->compute(m_lambda);
     this->computeErrors();
+
+    return true;
 }
 
 template<unsigned d, class T>
@@ -219,19 +224,25 @@ void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_thr
     // INVARIANT:
     // m_pointErrors contains the point-wise errors of the fitting
     // therefore: if the size of m_pointErrors is 0, there was no fitting up to this point
-    
+
     if ( m_pointErrors.size() == 0 )
     {
         this->compute(m_lambda);
         this->computeErrors();
     }
 
+    bool newIteration;
     for( int i = 0; i < numIterations; i++ )
     {
-        nextIteration( tolerance, err_threshold );
+        newIteration = nextIteration( tolerance, err_threshold );
         if( m_max_error <= tolerance )
         {
             gsInfo << "Tolerance reached at iteration: " << i << "\n";
+            break;
+        }
+        if( !newIteration )
+        {
+            gsInfo << "No more Boxes to insert at iteration: " << i << "\n";
             break;
         }
     }
