@@ -85,7 +85,7 @@ public:
         mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
     }
 
-    void addTimeStep(String const & fn, int part, int tstep, String const & ext)
+    void addTimestep(String const & fn, int part, int tstep, String const & ext)
     {
         mfile << "<DataSet part=\""
               <<part<<"\" timestep=\""
