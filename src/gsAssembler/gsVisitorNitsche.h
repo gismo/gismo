@@ -55,7 +55,7 @@ public:
         const int dir = side.direction();
         gsVector<int> numQuadNodes ( basis.dim() );
         for (int i = 0; i < basis.dim(); ++i)
-            numQuadNodes[i] = basis.degree(i) + 1;
+            numQuadNodes[i] = 2* basis.degree(i) + 1;
         numQuadNodes[dir] = 1;
         
         // Setup Quadrature
@@ -79,7 +79,7 @@ public:
 
         // Compute penalty parameter
         const int deg = basis.maxDegree();
-        penalty = (deg + basis.dim()) * (deg + 1) * T(2.0);
+        penalty = (deg + basis.dim()) * (deg + 1) * T(2.5);
     }
 
     // Evaluate on element.
