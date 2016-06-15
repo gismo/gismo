@@ -96,6 +96,13 @@ public:
 
 protected:
 
+    virtual void solveLinearProblem(gsMatrix<T> &updateVector);
+
+    virtual void solveLinearProblem(const gsMultiPatch<T> & currentSol, gsMatrix<T> &updateVector);
+
+    virtual T getResidue() {return m_assembler.rhs().norm();}
+protected:
+
     /// \brief gsAssemblerBase object to generate the linear system
     /// for each iteration
     gsAssembler<T> & m_assembler;
@@ -145,6 +152,36 @@ protected:
 namespace gismo
 {
 
+template <class T>
+void gsNewtonIterator<T>::solveLinearProblem(gsMatrix<T>& updateVector)
+{
+    m_assembler.assemble();
+
+  // gsDebugVar( m_assembler.matrix().toDense() );
+  // gsDebugVar( m_assembler.rhs().transpose() );
+
+    // Compute the newton update
+    m_solver.compute( m_assembler.matrix() );
+    updateVector = m_solver.solve( m_assembler.rhs() );
+
+ //  gsDebugVar(updateVector);
+}
+
+template <class T>
+void gsNewtonIterator<T>::solveLinearProblem(const gsMultiPatch<T> & currentSol, gsMatrix<T>& updateVector)
+{
+    m_assembler.assemble(currentSol);
+
+  // gsDebugVar( m_assembler.matrix().toDense() );
+  // gsDebugVar( m_assembler.rhs().transpose() );
+
+    // Compute the newton update
+    m_solver.compute( m_assembler.matrix() );
+    updateVector = m_solver.solve( m_assembler.rhs() );
+
+ //  gsDebugVar(updateVector);
+}
+
 
 template <class T> 
 void gsNewtonIterator<T>::solve()
@@ -180,28 +217,17 @@ void gsNewtonIterator<T>::firstIteration()
     m_converged = false;
 
     // Construct the linear system
-    m_assembler.assemble();
+    solveLinearProblem(m_updateVector);
 
-    //gsDebugVar( m_assembler.matrix() );
-    //gsDebugVar( m_assembler.rhs().transpose() );
-
-    // Compute the newton update
-    m_solver.compute( m_assembler.matrix() );
-    m_updateVector = m_solver.solve( m_assembler.rhs() );
-
-    //gsDebugVar( m_assembler.rhs().transpose() );
 
     // Construct initial solution
     m_assembler.constructSolution(m_updateVector, m_curSolution);
 
-
-
-    // Homogenize Dirichlet dofs (values are now copied in
-    // m_curSolution)
+    // Homogenize Dirichlet dofs (values are now copied in m_curSolution)
     m_assembler.homogenizeFixedDofs(-1);
 
     // Compute initial residue
-    m_residue = m_assembler.rhs().norm();
+    m_residue = getResidue();
     m_updnorm = m_updateVector   .norm();
 
 	gsDebug<<"Iteration: "<< 0
@@ -214,20 +240,13 @@ template <class T>
 void gsNewtonIterator<T>::nextIteration()
 {
     // Construct linear system for next iteration
-    m_assembler.assemble( m_curSolution );
-	
-    // Compute the newton update
-    m_solver.compute( m_assembler.matrix() );
-    m_updateVector = m_solver.solve( m_assembler.rhs() );
-
-    //gsDebugVar( m_assembler.rhs().transpose() );
-    //gsDebugVar( m_updateVector.transpose() );
+    solveLinearProblem(m_curSolution, m_updateVector);
 
     // Update the deformed solution
     m_assembler.updateSolution(m_updateVector, m_curSolution);
     
     // Compute residue
-    m_residue = m_assembler.rhs().norm();
+    m_residue = getResidue();
     m_updnorm = m_updateVector.norm();
     
     gsDebug<<"Iteration: "<< m_numIterations
