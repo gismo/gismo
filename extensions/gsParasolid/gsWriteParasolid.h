@@ -34,6 +34,7 @@
 #include <string>
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
 
 #include <gsParasolid/gsPKSession.h>
 
@@ -62,6 +63,9 @@ namespace extensions {
 
     template<class T>
     bool gsWriteParasolid( const gsTHBSpline<2, T>& thb, std::string const & filename );
+
+    template<class T>
+    bool gsWriteParasolid( const gsTHBSpline<2, T>& thb, const std::vector<T>&par_boxes, std::string const & filename );
 
     /// Translates a gsTensorBSpline to a PK_BSURF_t
     /// \param[in] bsp B-spline surface
@@ -93,6 +97,34 @@ namespace extensions {
     /// \param[out] body Parasolid body
     template<class T> 
     bool exportTHBsurface( const gsTHBSpline<2, T>& surface, PK_ASSEMBLY_t& body );
+
+    /// Translates a THB-Spline surface to PK_BODY_t
+    /// \param[in] surface THB-Spline surface
+    /// \param[in] boxes which give the splitting of the domain
+    /// \param[out] body Parasolid body
+    template<class T>
+    bool exportTHBsurface( const gsTHBSpline<2, T>& surface, const std::vector<T>& par_boxes, PK_ASSEMBLY_t& body );
+
+    template <class T>
+    bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
+                                       const std::vector<T>& par_boxes,
+                                       gsTHBSplineBasis<2>::TrimmingCurves& trimCurves,
+                                       gsTHBSplineBasis<2>::AxisAlignedBoundingBox& boundaryAABB);
+
+    /// Translates a box in the parameter space to a box in index space of the given lvl, which
+    /// contains the parameter box
+    /// \param[in] thb spline basis
+    /// \param[in] lvl
+    /// \param[in] the parameter box of size 4 [lowU,lowV,upU,upV]
+    /// \param[out] the index box of size 5 [lvl,lowIndexU,lowIndexV,upIndexU,upIndexV]
+    template <class T>
+    bool getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, T>& basis,unsigned lvl,
+                                    const std::vector<real_t>& par_box,std::vector<unsigned>& index_box);
+
+    /// Checks if there are intersections in a given vector of par_boxes
+    /// \param[in] vector of real_t, always 4 elements describe a box: [lowU,lowV,upU,upV]
+    template <class T>
+    bool parBoxesIntersect(const std::vector<T>& par_boxes);
 
 
 }//extensions

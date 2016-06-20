@@ -29,6 +29,8 @@
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 
+#include <gsIO/gsWriteParaview.h>
+
 
 namespace gismo {
 
@@ -80,6 +82,21 @@ void getInterval(const bool directionU,
 
 bool validMultiplicities(const std::vector<int>& mult, 
                          const int deg);
+
+template <class T>
+bool exportCheck(const gsTHBSpline<2, T>& surface);
+
+template <class T>
+bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
+                       gsTHBSplineBasis<2>::TrimmingCurves trimCurves,
+                       gsTHBSplineBasis<2>::AxisAlignedBoundingBox boundaryAABB,
+                       PK_ASSEMBLY_t& body );
+
+template <class T>
+void getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
+                                   std::vector<unsigned>& boxes,
+                                   gsTHBSplineBasis<2>::TrimmingCurves& trimCurves,
+                                   gsTHBSplineBasis<2>::AxisAlignedBoundingBox& boundaryAABB);
 
 template<class T>
 bool gsWriteParasolid( const gsMultiPatch<T> & gssurfs, std::string const & filename )
@@ -212,7 +229,7 @@ bool gsWriteParasolid(const gsTHBSpline<2, T>& thb, const std::string& filename)
     PK_SESSION_set_check_self_int(checks);
     
     PK_ASSEMBLY_t assembly;
-    exportTHBsurface<real_t>(thb, assembly);
+    exportTHBsurface<T>(thb, assembly);
     
     PK_PART_transmit_o_t transmit_options;
     PK_PART_transmit_o_m(transmit_options);
@@ -223,6 +240,27 @@ bool gsWriteParasolid(const gsTHBSpline<2, T>& thb, const std::string& filename)
     
     gsPKSession::stop();
     
+    return err;
+}
+
+template<class T>
+bool gsWriteParasolid( const gsTHBSpline<2, T>& thb,const std::vector<T>& par_boxes, const std::string& filename )
+{
+    gsPKSession::start();
+    PK_LOGICAL_t checks(0);
+    PK_SESSION_set_check_continuity(checks);
+    PK_SESSION_set_check_self_int(checks);
+
+    PK_ASSEMBLY_t assembly;
+    exportTHBsurface<T>(thb,par_boxes,assembly);
+
+    PK_PART_transmit_o_t transmit_options;
+    PK_PART_transmit_o_m(transmit_options);
+    transmit_options.transmit_format = PK_transmit_format_text_c;
+
+    PK_ERROR_code_t err = PK_PART_transmit(1, &assembly, filename.c_str(), &transmit_options);
+    PARASOLID_ERROR(PK_PART_transmit, err);
+    gsPKSession::stop();
     return err;
 }
 
@@ -427,24 +465,9 @@ template <class T>
 bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
                       PK_ASSEMBLY_t& assembly)
 {
-    for (index_t dim = 0; dim != 2; dim++)
-    {
-        typedef std::vector< gsTensorBSplineBasis< 2, real_t>* > Bases;
-        const Bases& bases = surface.basis().getBases();
-        const int deg = (bases[0])->degree(dim);
-        std::vector<int> mult = (bases[0])->knots(dim).multiplicities();
-
-        if (!validMultiplicities(mult, deg))
-        {
-            return false;
-        }
-    }
-
-    PK_ERROR_t err = PK_SESSION_set_check_continuity(PK_LOGICAL_false);
-    PARASOLID_ERROR(PK_SESSION_set_check_continuity, err);
-
-    err = PK_ASSEMBLY_create_empty(&assembly);
-    PARASOLID_ERROR(PK_ASSEMBLY_create_empty, err);
+    std::cout << "Hallo Florian." << std::endl; // CHANGE
+    if(!exportCheck(surface))
+        return false;
 
     gsTHBSplineBasis<2>::AxisAlignedBoundingBox boundaryAABB;
     gsTHBSplineBasis<2>::TrimmingCurves trimCurves;
@@ -452,173 +475,30 @@ bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
     const gsTHBSplineBasis<2>& basis= surface.basis();
     
     basis.decomposeDomain(boundaryAABB, trimCurves);
-    
-    for (unsigned level = 0; level != boundaryAABB.size(); level++)
-    {
 
-        for (unsigned box = 0; box != boundaryAABB[level].size(); box++)
-        {
-            gsTensorBSpline<2, T> bspline =
-                basis.getBSplinePatch(boundaryAABB[level][box], level, surface.coefs());
-	    
-            makeValidGeometry(surface, bspline);
+    return exportTHBsurface(surface,trimCurves,boundaryAABB,assembly);
+}
 
-            PK_BSURF_t bsurf;
-            createPK_BSURF<T>(bspline, bsurf); // swap
-	    
-            std::vector<PK_CURVE_t> curves;
-            std::vector<PK_INTERVAL_t> intervals;
-            std::vector<int> trim_loop;
-            std::vector<int> trim_set;
-	    
-            for (unsigned curve = 0; curve != trimCurves[level][box].size(); curve++)
-            {
-                for (unsigned seg = 0; seg != trimCurves[level][box][curve].size(); seg++)
-                {
-                    real_t x1 = trimCurves[level][box][curve][seg][0];
-                    real_t y1 = trimCurves[level][box][curve][seg][1];
-                    real_t x2 = trimCurves[level][box][curve][seg][2];
-                    real_t y2 = trimCurves[level][box][curve][seg][3];
-		    
-                    PK_CURVE_t line;
-                    PK_INTERVAL_t intervalDummy;
-                    PK_INTERVAL_t interval;
-		    
-                    PK_SURF_make_curve_isoparam_o_t options;
-                    PK_SURF_make_curve_isoparam_o_m(options);
-		    
-                    if (x1 == x2)
-                    {	
-                        err = PK_SURF_make_curve_isoparam(bsurf, x1, PK_PARAM_direction_v_c, 
-                                                          &options, &line, &intervalDummy);
-                        PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
-                
-                        getInterval(false, y1, y2, x1, bspline, line, interval);
-                    }
-                    else
-                    {
-                        err = PK_SURF_make_curve_isoparam(bsurf, y1, PK_PARAM_direction_u_c, 
-                                                          &options, &line, &intervalDummy);
-                        PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
-                
-                        getInterval(true, x1, x2,  y1, bspline, line, interval);
-                    }
-		    
-                    curves.push_back(line);
-                    intervals.push_back(interval);
-                    trim_loop.push_back(curve);
-                    trim_set.push_back(0);
+template <class T>
+bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
+                      const std::vector<T>& par_boxes,
+                      PK_ASSEMBLY_t& assembly)
+{
+    if(par_boxes.size()==0)
+        return exportTHBsurface(surface,assembly);
 
-                    // ------------------------------------------------------------
-                    // very usefull for debugging / logging
-// 		    PK_PART_transmit_o_t transmit_options;
-// 		    PK_PART_transmit_o_m(transmit_options);
-// 		    transmit_options.transmit_format = PK_transmit_format_text_c;    
-		    
-// 		    std::string name = "level_" + internal::to_string(level) + 
-// 			"_box_" + internal::to_string(box) + 
-// 			"_curve_" + internal::to_string(curve) + 
-// 			"_seg_" + internal::to_string(seg);
-		    
-// 		    PK_GEOM_copy_o_t copyOptions;
-// 		    PK_GEOM_copy_o_m(copyOptions);
+    if(!exportCheck(surface))
+        return false;
 
-// 		    PK_GEOM_copy_r_t result;
-// 		    err = PK_GEOM_copy(1, &line, &copyOptions, &result);
-// 		    PARASOLID_ERROR(PK_GEOM_copy, err);		    
+    gsTHBSplineBasis<2>::AxisAlignedBoundingBox boundaryAABB;
+    gsTHBSplineBasis<2>::TrimmingCurves trimCurves;
 
-//  		    PK_CURVE_t copyLine = *(result.copied_geoms);
+    bool success = getTrimCurvesAndBoundingBoxes<T>(surface,par_boxes,trimCurves,boundaryAABB);
 
-// 		    PK_BODY_t lineBody;
-// 		    PK_CURVE_make_wire_body_o_t option;
-// 		    PK_CURVE_make_wire_body_o_m(option);
-// 		    int line_new_edges;
-// 		    PK_EDGE_t** edges = NULL;
-// 		    int** edge_index = NULL;
-		      
-// 		    err = PK_CURVE_make_wire_body_2(1, &copyLine, &interval, &option,
-// 						    &lineBody, &line_new_edges, edges, edge_index);
-// 		    PARASOLID_ERROR(PK_CURVE_make_wire_body_2, err);
-						    
-		    
+    if(!success)
+        return false;
 
-// 		    PK_ERROR_code_t err = PK_PART_transmit(1, &lineBody, name.c_str(), &transmit_options);
-// 		    PARASOLID_ERROR(PK_PART_transmit, err);
-                    // ------------------------------------------------------------
-
-                }
-            }
-
-
-            // ----------------------------------------------------------------------
-            // very usefull for debugging / logging
-
-// 	    // copy
-// 	    PK_GEOM_copy_o_t copyOptions;
-// 	    PK_GEOM_copy_o_m(copyOptions);
-// 	    PK_GEOM_copy_r_t result;
-// 	    err = PK_GEOM_copy(1, &bsurf, &copyOptions, &result);
-// 	    PARASOLID_ERROR(PK_GEOM_copy, err);		    
-// 	    PK_BSURF_t copyBsurf = *(result.copied_geoms);
-	    
-	    
-// 	    PK_ASSEMBLY_t part;
-// 	    PK_ASSEMBLY_create_empty(&part);
-// 	    err = PK_PART_add_geoms(part, 1, &copyBsurf);
-// 	    PARASOLID_ERROR(PK_PART_add_geoms, err);  
-	    
-// 	    PK_PART_transmit_o_t transmit_options;
-// 	    PK_PART_transmit_o_m(transmit_options);
-// 	    transmit_options.transmit_format = PK_transmit_format_text_c;    
-	    
-	    
-// 	    std::string name = "level_" + internal::to_string(level) + 
-// 		               "_box_" + internal::to_string(box);
-	    
-// 	    PK_ERROR_code_t err = PK_PART_transmit(1, &part, name.c_str(), &transmit_options);
-// 	    PARASOLID_ERROR(PK_PART_transmit, err);
-
-            // ----------------------------------------------------------------------
-
-
-	    
-            PK_SURF_trim_data_t trim_data;
-            trim_data.n_spcurves = static_cast<int>(curves.size());
-            trim_data.spcurves = curves.data();
-            trim_data.intervals = intervals.data();
-            trim_data.trim_loop = trim_loop.data();
-            trim_data.trim_set = trim_set.data();
-	    
-            PK_SURF_make_sheet_trimmed_o_t options;
-            PK_SURF_make_sheet_trimmed_o_m(options);
-            options.check_loops = PK_LOGICAL_true;
-	    
-            PK_BODY_t trimSurface;
-            PK_check_state_t state;
-            err = PK_SURF_make_sheet_trimmed(bsurf, trim_data, 1e-8, &options, 
-                                             &trimSurface, &state);
-            PARASOLID_ERROR(PK_SURF_make_sheet_trimmed, err);	    
-	    
-            if (state != PK_BODY_state_ok_c)
-            {
-                std::cout << "Something went wrong. state("  << state << ")" << std::endl;
-            }
-	    
-            PK_INSTANCE_sf_t sform;
-            sform.assembly = assembly;
-            sform.transf = PK_ENTITY_null;
-            sform.part = trimSurface;
-
-            PK_INSTANCE_t instance;
-            err = PK_INSTANCE_create(&sform, &instance);
-            PARASOLID_ERROR(PK_INSTANCE_create, err);
-        }
-    }
-
-    err = PK_SESSION_set_check_continuity(PK_LOGICAL_true);
-    PARASOLID_ERROR(PK_SESSION_set_check_continuity, err);
-    
-    return true;
+    return exportTHBsurface(surface,trimCurves,boundaryAABB,assembly);
 }
 
 
@@ -701,6 +581,13 @@ void getInterval(const bool directionU,
         PARASOLID_ERROR(PK_CURVE_parameterise_vector, err);
 
         result.value[i] = p;
+    }
+
+    // try to correct the problem of periodic surfaces
+    if( param1!=param2 && result.value[0]==result.value[1] )
+    {
+        result.value[0]=param1;
+        result.value[1]=param2;
     }
 }
 
@@ -848,6 +735,365 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
     }
 }
 
+template <class T>
+bool exportCheck(const gsTHBSpline<2, T>& surface)
+{
+    for (index_t dim = 0; dim != 2; dim++)
+    {
+        typedef std::vector< gsTensorBSplineBasis< 2, real_t>* > Bases;
+        const Bases& bases = surface.basis().getBases();
+        const int deg = (bases[0])->degree(dim);
+        std::vector<int> mult = (bases[0])->knots(dim).multiplicities();
+
+        if (!validMultiplicities(mult, deg))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+template <class T>
+bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
+                       gsTHBSplineBasis<2>::TrimmingCurves trimCurves,
+                       gsTHBSplineBasis<2>::AxisAlignedBoundingBox boundaryAABB,
+                       PK_ASSEMBLY_t& assembly )
+{
+    const gsTHBSplineBasis<2>& basis= surface.basis();
+
+    PK_ERROR_t err = PK_SESSION_set_check_continuity(PK_LOGICAL_false);
+    PARASOLID_ERROR(PK_SESSION_set_check_continuity, err);
+
+    err = PK_ASSEMBLY_create_empty(&assembly);
+    PARASOLID_ERROR(PK_ASSEMBLY_create_empty, err);
+
+    for (unsigned level = 0; level != boundaryAABB.size(); level++)
+    {
+
+        for (unsigned box = 0; box != boundaryAABB[level].size(); box++)
+        {
+            gsTensorBSpline<2, T> bspline =
+                basis.getBSplinePatch(boundaryAABB[level][box], level, surface.coefs());
+
+            std::cout << "bspline size: " << bspline.basis().size() << std::endl;
+            std::cout << "bspline coef size: " << bspline.coefs().rows() << std::endl;
+            makeValidGeometry(surface, bspline);
+
+            //gsWriteParaview(bspline,"paraviewtest",1000,true,true);
+
+            PK_BSURF_t bsurf;
+            createPK_BSURF<T>(bspline, bsurf); // swap
+
+            std::vector<PK_CURVE_t> curves;
+            std::vector<PK_INTERVAL_t> intervals;
+            std::vector<int> trim_loop;
+            std::vector<int> trim_set;
+
+            for (unsigned loop = 0; loop != trimCurves[level][box].size(); loop++)
+            {
+                for (unsigned seg = 0; seg != trimCurves[level][box][loop].size(); seg++)
+                {
+                    real_t x1 = trimCurves[level][box][loop][seg][0];
+                    real_t y1 = trimCurves[level][box][loop][seg][1];
+                    real_t x2 = trimCurves[level][box][loop][seg][2];
+                    real_t y2 = trimCurves[level][box][loop][seg][3];
+
+                    PK_CURVE_t line;
+                    PK_INTERVAL_t intervalDummy;
+                    PK_INTERVAL_t interval;
+
+                    PK_SURF_make_curve_isoparam_o_t options;
+                    PK_SURF_make_curve_isoparam_o_m(options);
+
+                    if (x1 == x2)
+                    {
+                        err = PK_SURF_make_curve_isoparam(bsurf, x1, PK_PARAM_direction_v_c,
+                                                          &options, &line, &intervalDummy);
+                        PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
+
+                        getInterval(false, y1, y2, x1, bspline, line, interval);
+                    }
+                    else
+                    {
+                        err = PK_SURF_make_curve_isoparam(bsurf, y1, PK_PARAM_direction_u_c,
+                                                          &options, &line, &intervalDummy);
+                        PARASOLID_ERROR(PK_SURF_make_curve_isoparam, err);
+
+                        getInterval(true, x1, x2,  y1, bspline, line, interval);
+                    }
+
+                    curves.push_back(line);
+                    intervals.push_back(interval);
+                    trim_loop.push_back(loop);
+                    trim_set.push_back(0);
+
+                    // ------------------------------------------------------------
+                    // very usefull for debugging / logging
+//            PK_PART_transmit_o_t transmit_options;
+//            PK_PART_transmit_o_m(transmit_options);
+//            transmit_options.transmit_format = PK_transmit_format_text_c;
+
+//            std::string name = "level_" + internal::to_string(level) +
+//            "_box_" + internal::to_string(box) +
+//            "_curve_" + internal::to_string(curve) +
+//            "_seg_" + internal::to_string(seg);
+
+//            PK_GEOM_copy_o_t copyOptions;
+//            PK_GEOM_copy_o_m(copyOptions);
+
+//            PK_GEOM_copy_r_t result;
+//            err = PK_GEOM_copy(1, &line, &copyOptions, &result);
+//            PARASOLID_ERROR(PK_GEOM_copy, err);
+
+//            PK_CURVE_t copyLine = *(result.copied_geoms);
+
+//            PK_BODY_t lineBody;
+//            PK_CURVE_make_wire_body_o_t option;
+//            PK_CURVE_make_wire_body_o_m(option);
+//            int line_new_edges;
+//            PK_EDGE_t** edges = NULL;
+//            int** edge_index = NULL;
+
+//            err = PK_CURVE_make_wire_body_2(1, &copyLine, &interval, &option,
+//                            &lineBody, &line_new_edges, edges, edge_index);
+//            PARASOLID_ERROR(PK_CURVE_make_wire_body_2, err);
+
+
+
+//            PK_ERROR_code_t err = PK_PART_transmit(1, &lineBody, name.c_str(), &transmit_options);
+//            PARASOLID_ERROR(PK_PART_transmit, err);
+                    // ------------------------------------------------------------
+
+                }
+            }
+
+
+            // ----------------------------------------------------------------------
+            // very usefull for debugging / logging
+
+        // copy
+//        PK_GEOM_copy_o_t copyOptions;
+//        PK_GEOM_copy_o_m(copyOptions);
+//        PK_GEOM_copy_r_t result;
+//        err = PK_GEOM_copy(1, &bsurf, &copyOptions, &result);
+//        PARASOLID_ERROR(PK_GEOM_copy, err);
+//        PK_BSURF_t copyBsurf = *(result.copied_geoms);
+
+
+//        PK_ASSEMBLY_t part;
+//        PK_ASSEMBLY_create_empty(&part);
+//        err = PK_PART_add_geoms(part, 1, &copyBsurf);
+//        PARASOLID_ERROR(PK_PART_add_geoms, err);
+
+//        PK_PART_transmit_o_t transmit_options;
+//        PK_PART_transmit_o_m(transmit_options);
+//        transmit_options.transmit_format = PK_transmit_format_text_c;
+
+
+//        std::string name = "level_" + internal::to_string(level) +
+//                       "_box_" + internal::to_string(box);
+
+//        PK_ERROR_code_t err = PK_PART_transmit(1, &part, name.c_str(), &transmit_options);
+//        PARASOLID_ERROR(PK_PART_transmit, err);
+
+            // ----------------------------------------------------------------------
+
+            PK_SURF_trim_data_t trim_data;
+            trim_data.n_spcurves = static_cast<int>(curves.size());
+            trim_data.spcurves = curves.data();
+            trim_data.intervals = intervals.data();
+            trim_data.trim_loop = trim_loop.data();
+            trim_data.trim_set = trim_set.data();
+
+            PK_SURF_make_sheet_trimmed_o_t options;
+            PK_SURF_make_sheet_trimmed_o_m(options);
+            options.check_loops = PK_LOGICAL_true;
+
+            PK_BODY_t trimSurface;
+            PK_check_state_t state;
+            err = PK_SURF_make_sheet_trimmed(bsurf, trim_data, 1e-8, &options,
+                                             &trimSurface, &state);
+            PARASOLID_ERROR(PK_SURF_make_sheet_trimmed, err);
+
+            if (state != PK_BODY_state_ok_c)
+            {
+                std::cout << "Something went wrong. state("  << state << ")" << std::endl;
+            }
+
+            PK_INSTANCE_sf_t sform;
+            sform.assembly = assembly;
+            sform.transf = PK_ENTITY_null;
+            sform.part = trimSurface;
+
+            PK_INSTANCE_t instance;
+            err = PK_INSTANCE_create(&sform, &instance);
+            PARASOLID_ERROR(PK_INSTANCE_create, err);
+        }
+    }
+
+    err = PK_SESSION_set_check_continuity(PK_LOGICAL_true);
+    PARASOLID_ERROR(PK_SESSION_set_check_continuity, err);
+
+    return true;
+}
+
+template <class T>
+bool getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, T>& basis,unsigned lvl,const std::vector<real_t>& par_box,
+                                std::vector<unsigned>& index_box)
+{
+    T lowU=par_box[0];
+    T lowV=par_box[1];
+    T upU=par_box[2];
+    T upV=par_box[3];
+    unsigned lowerIndexU,upperIndexU,lowerIndexV,upperIndexV;
+    const typename gsBSplineTraits<2,T>::Basis & tBasis = *(basis.getBases()[lvl]);
+    const gsKnotVector<T> & tKvU = tBasis.component(0).knots();
+    if( !( *(tKvU.begin())<=lowU && lowU<=upU &&
+           upU<=tKvU.get().end()[-tKvU.degree()-1]) )
+    {
+        std::cout<<"Box in u is not in Range."<<std::endl;
+        return false;
+    }
+    lowerIndexU=(tKvU.uFind(lowU)-tKvU.uFind(0));
+    upperIndexU=(tKvU.uFind(upU)-tKvU.uFind(0))+1;
+
+    const gsKnotVector<T> & tKvV = tBasis.component(1).knots();
+    if( !( *(tKvV.begin())<=lowV && lowV<=upV &&
+           upV<=tKvV.get().end()[-tKvV.degree()-1]) )
+    {
+        std::cout<<"Box in v is not in Range."<<std::endl;
+        return false;
+    }
+    lowerIndexV=(tKvV.uFind(lowV)-tKvV.uFind(0));
+    upperIndexV=(tKvV.uFind(upV)-tKvV.uFind(0))+1;
+    index_box.clear();
+    index_box.push_back(lvl);
+    index_box.push_back(lowerIndexU);
+    index_box.push_back(lowerIndexV);
+    index_box.push_back(upperIndexU);
+    index_box.push_back(upperIndexV);
+    return true;
+}
+
+template <class T>
+bool parBoxesIntersect(const std::vector<T>& par_boxes)
+{
+    T lowerUi,lowerVi,upperUi,upperVi,lowerUj,lowerVj,upperUj,upperVj;
+    unsigned d=2;
+    unsigned boxSize=2*d;
+    for(unsigned i = 0;i<par_boxes.size();i+=boxSize)
+    {
+        lowerUi=par_boxes[i];
+        lowerVi=par_boxes[i+1];
+        upperUi=par_boxes[i+2];
+        upperVi=par_boxes[i+3];
+        for(unsigned j = 0;j<i;j+=boxSize)
+        {
+            lowerUj=par_boxes[j];
+            lowerVj=par_boxes[j+1];
+            upperUj=par_boxes[j+2];
+            upperVj=par_boxes[j+3];
+
+            if(upperUi>lowerUj&&lowerUi<upperUj&&
+                    upperVi>lowerVj&&lowerVi<upperVj)
+                return true;
+        }
+    }
+    return false;
+}
+
+template <class T>
+bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
+                                   const std::vector<T>& par_boxes,
+                                   gsTHBSplineBasis<2>::TrimmingCurves& trimCurves,
+                                   gsTHBSplineBasis<2>::AxisAlignedBoundingBox& boundaryAABB)
+{
+    if(parBoxesIntersect(par_boxes))
+    {
+        std::cout<<"Given boxes have intersections."<<std::endl;
+        return false;
+    }
+
+    const gsTHBSplineBasis<2, T>* basis = static_cast< const gsTHBSplineBasis<2,T>* > (&surface.basis());
+    unsigned maxLevel = basis->tree().getMaxInsLevel();
+    unsigned lvl;
+    std::vector<std::vector<unsigned> > lvlBoxes;
+    std::vector<std::vector<std::vector<std::vector<T> > > > lvlTrimCurves;
+    for(unsigned i = 0;i<=maxLevel;++i)
+    {
+        boundaryAABB.push_back(lvlBoxes);
+        trimCurves.push_back(lvlTrimCurves);
+    }
+    std::vector<std::vector<unsigned> >aabbBoxesForCheck;
+    std::vector<T> par_box;
+    std::vector<unsigned> index_box;
+    unsigned d=2;
+    unsigned boxSize=2*d;
+    bool success;
+    for(unsigned i = 0;i<par_boxes.size();i=i+boxSize)
+    {
+        par_box.clear();
+        par_box.push_back(par_boxes[i]);
+        par_box.push_back(par_boxes[i+1]);
+        par_box.push_back(par_boxes[i+2]);
+        par_box.push_back(par_boxes[i+3]);
+        success=getParBoxAsIndexBoxInLevel(*basis,maxLevel,par_box,index_box);
+
+        gsVector<unsigned,2>lower;
+        lower << index_box[1],index_box[2];
+        gsVector<unsigned,2>upper;
+        upper << index_box[3],index_box[4];
+        lvl=basis->tree().query4(lower, upper, index_box[0]);
+
+        success=getParBoxAsIndexBoxInLevel(*basis,lvl,par_box,index_box);
+        if(!success)
+            return false;
+
+        std::cout << "par-box: "<< par_box[0] << " "<< par_box[1] << " " << par_box[2] << " " << par_box[3] << std::endl;
+        std::cout << "el-box: "<< index_box[1] << " "<< index_box[2] << " "
+                  << index_box[3] << " " << index_box[4] << " in level: " << lvl << std::endl;
+
+        std::vector<unsigned> aabb_box;
+        aabb_box.push_back(index_box[1]<<(maxLevel-lvl));
+        aabb_box.push_back(index_box[2]<<(maxLevel-lvl));
+        aabb_box.push_back(index_box[3]<<(maxLevel-lvl));
+        aabb_box.push_back(index_box[4]<<(maxLevel-lvl));
+        boundaryAABB[lvl].push_back(aabb_box);
+
+        std::vector<std::vector<std::vector<T> > > trimCurveComp;
+        std::vector<std::vector<T> >trimCurveBox;
+        std::vector<T> trimCurve;
+        trimCurve.push_back(par_box[0]);
+        trimCurve.push_back(par_box[1]);
+        trimCurve.push_back(par_box[0]);
+        trimCurve.push_back(par_box[3]);
+        trimCurveBox.push_back(trimCurve);
+        trimCurve.clear();
+        trimCurve.push_back(par_box[0]);
+        trimCurve.push_back(par_box[3]);
+        trimCurve.push_back(par_box[2]);
+        trimCurve.push_back(par_box[3]);
+        trimCurveBox.push_back(trimCurve);
+        trimCurve.clear();
+        trimCurve.push_back(par_box[2]);
+        trimCurve.push_back(par_box[1]);
+        trimCurve.push_back(par_box[2]);
+        trimCurve.push_back(par_box[3]);
+        trimCurveBox.push_back(trimCurve);
+        trimCurve.clear();
+        trimCurve.push_back(par_box[0]);
+        trimCurve.push_back(par_box[1]);
+        trimCurve.push_back(par_box[2]);
+        trimCurve.push_back(par_box[1]);
+        trimCurveBox.push_back(trimCurve);
+        trimCurveComp.push_back(trimCurveBox);
+        trimCurves[lvl].push_back(trimCurveComp);
+
+        aabbBoxesForCheck.push_back(aabb_box);
+    }
+    return true;
+}
 
 
 

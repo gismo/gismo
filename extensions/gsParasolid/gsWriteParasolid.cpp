@@ -29,7 +29,10 @@ TEMPLATE_INST bool
 createPK_BCURVE(const gsBSpline<real_t>& curve, PK_BCURVE_t& bcurve);
 
 TEMPLATE_INST bool
-exportTHBsurface( const gsTHBSpline<2,real_t>& surface, PK_ASSEMBLY_t& body );
+exportTHBsurface<real_t>( const gsTHBSpline<2,real_t>& surface, PK_ASSEMBLY_t& body );
+
+TEMPLATE_INST bool
+exportTHBsurface( const gsTHBSpline<2,real_t>& surface,const std::vector<real_t>&par_boxes, PK_ASSEMBLY_t& body );
 
 TEMPLATE_INST bool
 exportMesh( const gsMesh<real_t>& mesh, PK_BODY_t& body );
@@ -50,6 +53,23 @@ TEMPLATE_INST bool
 gsWriteParasolid<real_t>
 ( const gsTHBSpline<2, real_t>& thb, std::string const & filename);
 
+TEMPLATE_INST bool
+gsWriteParasolid<real_t>
+( const gsTHBSpline<2, real_t>& thb,const std::vector<real_t>&par_boxes, std::string const & filename);
+
+TEMPLATE_INST bool
+getTrimCurvesAndBoundingBoxes<real_t>
+( const gsTHBSpline<2, real_t>& surface,
+  const std::vector<real_t>& par_boxes,
+  gsTHBSplineBasis<2>::TrimmingCurves& trimCurves,
+  gsTHBSplineBasis<2>::AxisAlignedBoundingBox& boundaryAABB);
+
+TEMPLATE_INST bool
+getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, real_t>& basis,unsigned lvl,
+                           const std::vector<real_t>& par_box,std::vector<unsigned>& index_box);
+
+TEMPLATE_INST bool
+parBoxesIntersect(const std::vector<real_t>& par_boxes);
 
 }// extensions
 
