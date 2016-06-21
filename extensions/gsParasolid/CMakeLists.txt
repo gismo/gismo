@@ -1,7 +1,7 @@
- ### CMakeLists.txt ---
+### CMakeLists.txt ---
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2013 - RICAM-Linz.
+## Copyright (C) 2013 - 2016 RICAM-Linz.
 ######################################################################
 
 ## Parasolid extension
@@ -14,7 +14,7 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 #message ("*** ${PROJECT_NAME} sources: ${${PROJECT_NAME}_HEADERS}, ${${PROJECT_NAME}_SOURCES}")
 
 # Look for parasolid library
-FIND_PACKAGE(Parasolid REQUIRED)
+find_package(Parasolid REQUIRED)
 include_directories(${PARASOLID_INCLUDE_DIR})
 
 # Set default schema path  
@@ -38,6 +38,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
+set(gismo_LINKER ${gismo_LINKER} ${PARASOLID_LIBRARY}
+    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 if(GISMO_BUILD_LIB)
 install(FILES   ${CMAKE_CURRENT_SOURCE_DIR}/gsReadParasolid.h

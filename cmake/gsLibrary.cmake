@@ -3,7 +3,7 @@
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2015 RICAM-Linz.
+## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
 #include (GenerateExportHeader)
@@ -36,6 +36,8 @@ endif()
     ${${PROJECT_NAME}_EXTENSIONS}
     )
 
+  #generate_export_header(${PROJECT_NAME})
+
   set_target_properties(${PROJECT_NAME} PROPERTIES 
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h" 
   POSITION_INDEPENDENT_CODE ON
@@ -49,17 +51,9 @@ if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
     target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
 endif()
 
-  if (GISMO_WITH_ONURBS AND "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" )
-    target_link_libraries(${PROJECT_NAME} Rpcrt4)
-  endif()
-
-  if (GISMO_WITH_PSOLID)
-    target_link_libraries(${PROJECT_NAME} ${PARASOLID_LIBRARY})
-  endif()
-
-  if (GISMO_WITH_SUPERLU)
-    target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
-  endif()
+if (GISMO_WITH_SUPERLU)
+  target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
+endif()
 
 if (GISMO_WITH_PARDISO)
    if (PARDISO_USE_MKL)
@@ -71,22 +65,21 @@ if (GISMO_WITH_PARDISO)
    endif()
 endif()
 
+if(${PROJECT_NAME}_LINKER)
+  target_link_libraries(${PROJECT_NAME} "${${PROJECT_NAME}_LINKER}")
+endif()
+
 #  if (GISMO_WITH_OPENMP)
 #    find_package(OpenMP REQUIRED)
 #  endif()
 
-  if (GISMO_WITH_IPOPT)
-     #might be empty before download
-     target_link_libraries(${PROJECT_NAME} ${IPOPT_LIBRARY})
-  endif()
+if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
+  target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY}) 	
+endif() 
 
-  if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
-    target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY}) 	
-  endif() 
+set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
- set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
-
- if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
+if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
     if(CMAKE_CONFIGURATION_TYPES)
       add_custom_command(
       TARGET ${PROJECT_NAME}
@@ -104,7 +97,7 @@ endif()
       COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${PROJECT_NAME}> ${CMAKE_BINARY_DIR}/bin
       COMMAND ${CMAKE_COMMAND} -E echo 'The file $<TARGET_FILE:${PROJECT_NAME}> is copied to the bin folder for convenience.' )
     endif()
-  endif( WIN32 )
+endif( WIN32 )
 
 endif(GISMO_BUILD_LIB)
 
@@ -113,6 +106,8 @@ endif(GISMO_BUILD_LIB)
   ${${PROJECT_NAME}_SOURCES}
   ${${PROJECT_NAME}_EXTENSIONS}
   )
+
+  #generate_export_header(${PROJECT_NAME}_static)
 
   set_target_properties(${PROJECT_NAME}_static PROPERTIES 
   POSITION_INDEPENDENT_CODE ON
@@ -129,7 +124,7 @@ endif(GISMO_BUILD_LIB)
   endif()
 
   IF (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND) 
-     TARGET_LINK_LIBRARIES(${PROJECT_NAME}_static ${DBGHELP_LIBRARY}) 	
+     target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY}) 	
   ENDIF() 
 
   set_target_properties(${PROJECT_NAME}_static 

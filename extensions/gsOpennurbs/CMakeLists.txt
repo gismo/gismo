@@ -330,6 +330,10 @@ COMPILE_DEFINITIONS gismo_EXPORTS
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:gsOpennurbs>
     CACHE INTERNAL "Gismo extensions to be included")
+if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" )
+set(gismo_LINKER ${gismo_LINKER} Rpcrt4
+    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+endif()
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/gsOpennurbs/

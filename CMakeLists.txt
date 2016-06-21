@@ -95,19 +95,20 @@ unset(${PROJECT_NAME}_SOURCES    CACHE)
 unset(${PROJECT_NAME}_EXTENSIONS CACHE)
 unset(${PROJECT_NAME}_MODULES    CACHE)
 unset(${PROJECT_NAME}_optionals  CACHE)
+unset(${PROJECT_NAME}_LINKER     CACHE)
 unset(gismo_TMPL_HEADERS         CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
 set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src;${PROJECT_SOURCE_DIR}/external;${PROJECT_SOURCE_DIR}/extensions"
-     CACHE INTERNAL "${PROJECT_NAME} include directories")
+     CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 # Add externals directory
 add_subdirectory(external)
 
-# Inclusion paths
-get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
-include_directories(SYSTEM ${EXTERNAL_INCLUDE_DIRS})
+# external inclusion paths
+#get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
+#include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/external)
 
 include_directories(${GISMO_INCLUDE_DIRS})
 
@@ -117,9 +118,6 @@ add_subdirectory(src)
 ## #################################################################
 ## Extensions
 ## #################################################################
-
-#if(GISMO_WITH_MPFR)
-#endif(GISMO_WITH_MPFR)
 
 if(GISMO_WITH_PSOLID)
   add_subdirectory(extensions/gsParasolid)
@@ -142,6 +140,10 @@ endif(GISMO_WITH_IPOPT)
 if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
 endif(GISMO_WITH_SUPERLU)
+
+if(GISMO_WITH_TRILINOS)
+  add_subdirectory(extensions/gsTrilinos)
+endif(GISMO_WITH_TRILINOS)
 
 ## #################################################################
 ## Build G+Smo library instantized for GISMO_COEFF_TYPE number type

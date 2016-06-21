@@ -3,7 +3,7 @@
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2015 RICAM-Linz.
+## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
 #macro(print_gismo_option NAME)
@@ -32,6 +32,7 @@ option(GISMO_WITH_IPOPT          "With IpOpt"             false  )
 option(GISMO_WITH_ADIFF          "With auto-diff"         false  )
 option(GISMO_WITH_SUPERLU        "With SuperLU"           false  )
 option(GISMO_WITH_PARDISO        "With PARDISO"           false  )
+option(GISMO_WITH_TRILINOS       "With TRILINOS"          false  )
 option(GISMO_WITH_PASTIX         "With PastiX"            false  )
 
 #Extra options
@@ -77,6 +78,9 @@ message ("  GISMO_WITH_SUPERLU      ${GISMO_WITH_SUPERLU}")
 endif()
 if (${GISMO_WITH_PARDISO})
 message ("  GISMO_WITH_PARDISO      ${GISMO_WITH_PARDISO}")
+endif()
+if (${GISMO_WITH_TRILINOS})
+message ("  GISMO_WITH_TRILINOS      ${GISMO_WITH_TRILINOS}")
 endif()
 if (${GISMO_WITH_OPENMP})
 message ("  GISMO_WITH_OPENMP       ${GISMO_WITH_OPENMP}")
