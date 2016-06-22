@@ -67,12 +67,11 @@ public:
     typedef memory::shared_ptr< gsScaledOp > Ptr;
 
     /// Unique pointer for gsScaledOp
-    typedef memory::unique< gsScaledOp >::ptr uPtr;
+    typedef memory::unique< gsScaledOp>::ptr uPtr;
 
-    /// Takes ownership of the operator
-    gsScaledOp(const gsLinearOperator & linOp, real_t scalar = 1) : m_linOp(&linOp), m_scalar(scalar)    {}
+    gsScaledOp(const gsLinearOperator::Ptr & linOp, real_t scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
 
-    static Ptr make(const gsLinearOperator & linOp, real_t scalar = 1) { return shared( new gsScaledOp(linOp, scalar) ); }
+    static Ptr make(const gsLinearOperator::Ptr & linOp, real_t scalar = 1) { return shared( new gsScaledOp(linOp, scalar) ); }
 
     virtual void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -87,7 +86,7 @@ public:
     index_t cols() const {return m_linOp->cols();}
 
 private:
-    const gsLinearOperator * m_linOp;
+    const gsLinearOperator::Ptr m_linOp;
     const real_t m_scalar;
 }; // gsScaladOp
 
