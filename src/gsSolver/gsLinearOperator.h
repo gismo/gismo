@@ -58,6 +58,39 @@ public:
     }
 }; // gsLinearOperator
 
+/// @brief Allows an operator to be multiplied with a scalar
+class gsScaledOp : public gsLinearOperator
+{
+public:
+
+    /// Shared pointer for gsScaledOp
+    typedef memory::shared_ptr< gsScaledOp > Ptr;
+
+    /// Unique pointer for gsScaledOp
+    typedef memory::unique< gsScaledOp >::ptr uPtr;
+
+    /// Takes ownership of the operator
+    gsScaledOp(const gsLinearOperator & linOp, real_t scalar = 1) : m_linOp(&linOp), m_scalar(scalar)    {}
+
+    static Ptr make(const gsLinearOperator & linOp, real_t scalar = 1) { return shared( new gsScaledOp(linOp, scalar) ); }
+
+    virtual void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    {
+        m_linOp->apply(input, x);
+        x *= m_scalar;
+    }
+
+    ///Returns the number of rows in the preconditioner
+    index_t rows() const {return m_linOp->rows();}
+
+    ///Returns the number of columns in the preconditioner
+    index_t cols() const {return m_linOp->cols();}
+
+private:
+    const gsLinearOperator * m_linOp;
+    const real_t m_scalar;
+}; // gsScaladOp
+
 
 /// @brief Identity preconditioner ("do nothing"), must be square!
 class gsIdentityOp : public gsLinearOperator
