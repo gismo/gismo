@@ -133,7 +133,7 @@ enum Position
     greater= 1,
     smaller=-greater,
     equal  = 1<<5,
-    undef  =-1<<5
+    undef  = 0
 };
 
 template <typename T>
