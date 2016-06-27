@@ -21,9 +21,6 @@ namespace gismo
 /**
   * @brief Simple adapter class to use a matrix (or matrix-like object) as a linear operator. Needed for the iterative method classes.
   *
-  * @note This class stores only a reference to the matrix. Make sure that the matrix is not deleted too early or provide a shared
-  * pointer.
-  *
   * \ingroup Solver
   */
   
@@ -38,54 +35,25 @@ public:
     /// Unique pointer for gsMatrixOp   
     typedef typename memory::unique<gsMatrixOp>::ptr uPtr;
     
+    /// Shared pointer to the matrix type
+    typedef memory::shared_ptr<MatrixType> MatrixPtr;
     
+    /// Constructor taking a reference
+    /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
     gsMatrixOp(const MatrixType& mat, bool sym=false)
+    : m_mat( MatrixPtr(const_cast<MatrixType*>(&mat), null_deleter<MatrixType> ) ), m_symmetric(sym)
+    {}
+    
+    /// Constructor taking a shared pointer
+    gsMatrixOp(const MatrixPtr& mat, bool sym=false)
         : m_mat(mat), m_symmetric(sym) {}
-        
+
+    /// Make function returning a smart pointer
+    /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.    
     static Ptr make(const MatrixType& mat, bool sym=false) { return shared( new gsMatrixOp(mat,sym) ); }
 
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
-    {
-        if (m_symmetric)
-            x.noalias() = m_mat.template selfadjointView<Lower>() * input;
-        else
-            x.noalias() = m_mat * input;
-    }
-
-    index_t rows() const {return m_mat.rows();}
-
-    index_t cols() const {return m_mat.cols();}
-
-    ///Returns the matrix
-    const MatrixType& matrix() const { return m_mat; }
-
-private:
-    const MatrixType& m_mat;
-    bool m_symmetric;
-};
-
-/**
-  * @brief Simple adapter class to use a matrix (or matrix-like object) as a linear operator taking a shared pointer.
-  *
-  * \ingroup Solver
-  */
-
-template <class MatrixType>
-class gsMatrixOp< memory::shared_ptr<MatrixType> > : public gsLinearOperator
-{
-public:
-
-    /// Shared pointer for gsMatrixOp
-    typedef memory::shared_ptr<gsMatrixOp> Ptr;
-
-    /// Unique pointer for gsMatrixOp   
-    typedef typename memory::unique<gsMatrixOp>::ptr uPtr;
-    
-    
-    gsMatrixOp(const memory::shared_ptr<MatrixType>& mat, bool sym=false)
-        : m_mat(mat), m_symmetric(sym) {}
-        
-    static Ptr make(const memory::shared_ptr<MatrixType>& mat, bool sym=false) { return shared( new gsMatrixOp(mat,sym) ); }
+    /// Make function returning a smart pointer
+    static Ptr make(const MatrixPtr& mat, bool sym=false) { return shared( new gsMatrixOp(mat,sym) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -103,7 +71,7 @@ public:
     const MatrixType& matrix() const { return *m_mat; }
 
 private:
-    const memory::shared_ptr<MatrixType> m_mat;
+    const MatrixPtr m_mat;
     bool m_symmetric;
 };
 
@@ -119,15 +87,24 @@ typename gsMatrixOp<MatrixType>::Ptr makeMatrixOp(const MatrixType& mat, bool sy
     return shared(new gsMatrixOp<MatrixType>(mat, sym));
 }
 
+/** @brief This essentially just calls the gsMatrixOp constructor, but the use of a template functions allows us to let the compiler
+  * do type inference, so we don't need to type out the matrix type explicitly.
+  */
+template <class MatrixType>
+typename gsMatrixOp<MatrixType>::Ptr makeMatrixOp(const memory::shared_ptr<MatrixType>& mat, bool sym=false)
+{
+    return shared(new gsMatrixOp<MatrixType>(mat, sym));
+}
+
+
+
 /**
   * @brief Simple adapter class to use the transpose of a matrix as a linear operator.
   * This should, of course, be done without transposing the matrix itself.
   *
-  * @note This class stores only a reference to the matrix. Make sure that the matrix is not deleted too early or provide a shared
-  * pointer.
-  *
   * \ingroup Solver
   */
+  
 template <class MatrixType>
 class gsTransposedMatrixOp : public gsLinearOperator
 {
@@ -139,47 +116,26 @@ public:
     /// Unique pointer for gsTransposedMatrixOp   
     typedef typename memory::unique<gsTransposedMatrixOp>::ptr uPtr;
     
+    /// Shared pointer to the matrix type
+    typedef memory::shared_ptr<MatrixType> MatrixPtr;
+    
+    /// Constructor taking a reference
+    /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
     gsTransposedMatrixOp(const MatrixType& mat)
+    : m_mat( MatrixPtr(const_cast<MatrixType*>(&mat), null_deleter<MatrixType> ) )
+    {}
+    
+    /// Constructor taking a shared pointer
+    gsTransposedMatrixOp(const MatrixPtr& mat)
         : m_mat(mat) {}
 
+    /// Make function returning a smart pointer
+    /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.    
     static Ptr make(const MatrixType& mat) { return shared( new gsTransposedMatrixOp(mat) ); }
-        
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
-    {
-        x.noalias() = m_mat.transpose() * input;
-    }
 
-    index_t rows() const {return m_mat.cols();}
+    /// Make function returning a smart pointer
+    static Ptr make(const MatrixPtr& mat) { return shared( new gsTransposedMatrixOp(mat) ); }
 
-    index_t cols() const {return m_mat.rows();}
-    
-private:
-    const MatrixType& m_mat;
-};
-
-
-/**
-  * @brief Simple adapter class to use the transpose of a matrix as a linear operator taking a shared pointer.
-  * This should, of course, be done without transposing the matrix itself.
-  *
-  * \ingroup Solver
-  */
-template <class MatrixType>
-class gsTransposedMatrixOp< memory::shared_ptr<MatrixType> > : public gsLinearOperator
-{
-public:
-
-    /// Shared pointer for gsTransposedMatrixOp
-    typedef memory::shared_ptr<gsTransposedMatrixOp> Ptr;
-
-    /// Unique pointer for gsTransposedMatrixOp   
-    typedef typename memory::unique<gsTransposedMatrixOp>::ptr uPtr;
-    
-    
-    gsTransposedMatrixOp(const memory::shared_ptr<MatrixType>& mat)
-        : m_mat(mat) {}
-        
-    static Ptr make(const memory::shared_ptr<MatrixType>& mat) { return shared( new gsTransposedMatrixOp(mat) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -191,8 +147,9 @@ public:
     index_t cols() const {return m_mat->rows();}
 
 private:
-    const memory::shared_ptr<MatrixType> m_mat;
+    const MatrixPtr m_mat;
 };
+
 
 /** @brief This essentially just calls the gsTransposedMatrixOp constructor, but the use of a template functions allows us to let the
   * compiler do type inference, so we don't need to type out the matrix type explicitly.
@@ -202,6 +159,16 @@ private:
   */
 template <class MatrixType>
 typename gsTransposedMatrixOp<MatrixType>::Ptr makeTransposedMatrixOp(const MatrixType& mat)
+{
+    return shared(new gsTransposedMatrixOp<MatrixType>(mat));
+}
+
+/** @brief This essentially just calls the gsTransposedMatrixOp constructor, but the use of a template functions allows us to let the
+  * compiler do type inference, so we don't need to type out the matrix type explicitly.
+  * 
+  */
+template <class MatrixType>
+typename gsTransposedMatrixOp<MatrixType>::Ptr makeTransposedMatrixOp(const memory::shared_ptr<MatrixType>& mat)
 {
     return shared(new gsTransposedMatrixOp<MatrixType>(mat));
 }
