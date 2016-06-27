@@ -216,10 +216,10 @@ class gsSolverOp : public gsLinearOperator
 {
 public:
 
-    /// Shared pointer for gsBasis
+    /// Shared pointer for gsSolverOp
     typedef memory::shared_ptr<gsSolverOp> Ptr;
 
-    /// Unique pointer for gsBasis   
+    /// Unique pointer for gsSolverOp   
     typedef typename memory::unique<gsSolverOp>::ptr uPtr;
     
     
