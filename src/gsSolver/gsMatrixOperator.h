@@ -38,7 +38,7 @@ public:
     /// Shared pointer to the matrix type
     typedef memory::shared_ptr<MatrixType> MatrixPtr;
     
-    /// Constructor taking a reference
+    /// @brief Constructor taking a reference
     /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
     gsMatrixOp(const MatrixType& mat, bool sym=false)
     : m_mat( MatrixPtr(const_cast<MatrixType*>(&mat), null_deleter<MatrixType> ) ), m_symmetric(sym)
@@ -48,7 +48,7 @@ public:
     gsMatrixOp(const MatrixPtr& mat, bool sym=false)
         : m_mat(mat), m_symmetric(sym) {}
 
-    /// Make function returning a smart pointer
+    /// @brief Make function returning a smart pointer
     /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.    
     static Ptr make(const MatrixType& mat, bool sym=false) { return shared( new gsMatrixOp(mat,sym) ); }
 
@@ -119,7 +119,7 @@ public:
     /// Shared pointer to the matrix type
     typedef memory::shared_ptr<MatrixType> MatrixPtr;
     
-    /// Constructor taking a reference
+    /// @brief Constructor taking a reference
     /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
     gsTransposedMatrixOp(const MatrixType& mat)
     : m_mat( MatrixPtr(const_cast<MatrixType*>(&mat), null_deleter<MatrixType> ) )
@@ -129,7 +129,7 @@ public:
     gsTransposedMatrixOp(const MatrixPtr& mat)
         : m_mat(mat) {}
 
-    /// Make function returning a smart pointer
+    /// @brief Make function returning a smart pointer
     /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.    
     static Ptr make(const MatrixType& mat) { return shared( new gsTransposedMatrixOp(mat) ); }
 

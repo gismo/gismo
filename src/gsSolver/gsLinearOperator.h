@@ -42,10 +42,10 @@ public:
      */
     virtual void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const = 0;
 
-    ///Returns the number of rows in the preconditioner
+    ///Returns the number of rows of the operator
     virtual index_t rows() const = 0;
 
-    ///Returns the number of columns in the preconditioner
+    ///Returns the number of columns of the operator
     virtual index_t cols() const = 0;
 
     // NOTE: this is rather inefficient and is only provided for debugging and testing purposes
@@ -69,8 +69,10 @@ public:
     /// Unique pointer for gsScaledOp
     typedef memory::unique< gsScaledOp>::ptr uPtr;
 
+    /// Constructor taking a shared pointer to a linear operator and a scalar
     gsScaledOp(const gsLinearOperator::Ptr & linOp, real_t scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
 
+    /// Make command returing a shared pointer
     static Ptr make(const gsLinearOperator::Ptr & linOp, real_t scalar = 1) { return shared( new gsScaledOp(linOp, scalar) ); }
 
     virtual void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
@@ -102,9 +104,10 @@ public:
     /// Unique pointer for gsIdentityOp   
     typedef memory::unique< gsIdentityOp >::ptr uPtr;
     
-    
+    /// Constructor taking the dimension of the identity operator
     gsIdentityOp(index_t dim) : m_dim(dim) {}
 
+    /// Make command returing a shared pointer
     static Ptr make(index_t dim) { return shared( new gsIdentityOp(dim) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
