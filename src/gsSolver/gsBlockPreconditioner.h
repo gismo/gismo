@@ -19,22 +19,23 @@
 namespace gismo
 {
 
-/** \brief Simple class create a block preconditioner structure.
+/** \brief Simple class create a block operator structure.
  *
- * Let \f$C\f$ be a preconditioner for the system of equations \f$ A\mathbf{x} =  \mathbf{f}\f$.
- * We instead wish to solve the preconditioned system \f$ CA\mathbf{x} =  C\mathbf{f}\f$.
- *
- * This class allows \f$C\f$ to be a block structure of preconditioners i.e \f$C\f$:
+ * This class represents a linear operator \f$C\f$ having block structure:
  * \f[
-     \left( \begin{array}{cccc}
-     C_{00} & C_{01} & \ldots & C_{0n}  \\
-     C_{10} & C_{11} & \ldots & C_{1n}  \\
-     \vdots & \vdots & \ddots & \vdots  \\
-     C_{n0} & C_{n1} & \ldots & C_{nn}
-     \end{array}
-     \right)
-     \f]
- * Where \f$C_{ij}\f$ are pre-defined preconditioners which all have the apply(input, dest) function defined.
+ *   C =
+         \left( \begin{array}{cccc}
+         C_{00} & C_{01} & \ldots & C_{0m}  \\
+         C_{10} & C_{11} & \ldots & C_{1m}  \\
+         \vdots & \vdots & \ddots & \vdots  \\
+         C_{n0} & C_{n1} & \ldots & C_{nm}
+         \end{array}
+         \right),
+   \f]
+ * where \f$C_{ij}\f$ are themselves gsLinearOperators.
+ *
+ * The number of blocks (m and n) are specified in the constructor. The blocks \f$C_{ij}\f$ are
+ * defined using addOperator(i,j,...). Unspecified blocks are considered to be 0.
  *
  * \ingroup Solver
  */
@@ -51,17 +52,19 @@ public:
     /// Base class
     typedef memory::shared_ptr< gsLinearOperator > BasePtr;    
     
+    /// Constructor. Takes the number of blocks (nRows, nCols). Provide the contents of the blocks with addOperator
     gsBlockOp(index_t nRows, index_t nCols);
     
+    /// Make function returning a shared pointer
     static Ptr make(index_t nRows, index_t nCols) { return shared( new gsBlockOp(nRows,nCols) ); }
 
     /**
      * @brief Add a preconditioner \f$C_{ij}\f$ to the block structure
-     * @param prec Pointer the preconditioner
-     * @param row row position in the block preconditioner
-     * @param col column position in the block preconditioner
+     * @param row row position in the block operator
+     * @param col column position in the block operator
+     * @param op shared pointer to the operator
      */
-    void addOperator(index_t row, index_t col, const BasePtr& prec);
+    void addOperator(index_t row, index_t col, const BasePtr& op);
 
     /**
      * @brief Apply the correct segment of the input vector on the preconditioners in the block structure and store the result.

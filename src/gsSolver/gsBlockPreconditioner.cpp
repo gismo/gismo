@@ -28,18 +28,18 @@ gsBlockOp::gsBlockOp(index_t nRows, index_t nCols)
 }
 
 
-void gsBlockOp::addOperator(index_t row, index_t col, const BasePtr& prec)
+void gsBlockOp::addOperator(index_t row, index_t col, const BasePtr& op)
 {
     GISMO_ASSERT( row >= 0 && row < blockPrec.rows(), "The given row is not feasible." );
     GISMO_ASSERT( col >= 0 && col < blockPrec.cols(), "The given column is not feasible." );
-    GISMO_ASSERT( prec->rows() == blockTargetPositions[row] || blockTargetPositions[row] == 0,
+    GISMO_ASSERT( op->rows() == blockTargetPositions[row] || blockTargetPositions[row] == 0,
                   "The size of the given preconditioner does not fit to the other preconditioners in the same row." );
-    GISMO_ASSERT( prec->cols() == blockTargetPositions[col] || blockTargetPositions[col] == 0,
+    GISMO_ASSERT( op->cols() == blockTargetPositions[col] || blockTargetPositions[col] == 0,
                   "The size of the given preconditioner does not fit to the other preconditioners in the same column." );
     
-    blockPrec(row, col) = prec;
-    blockTargetPositions[row] = prec->rows();
-    blockInputPositions[col] = prec->cols();
+    blockPrec(row, col) = op;
+    blockTargetPositions[row] = op->rows();
+    blockInputPositions[col] = op->cols();
 }
 
 
