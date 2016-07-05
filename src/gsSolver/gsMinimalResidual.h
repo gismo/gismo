@@ -44,9 +44,9 @@ public:
 
         while(m_numIter < m_maxIters)
         {
+            m_numIter++;
             if (step(x, precond))
                 break;
-            m_numIter++;
         }
         m_error = math::sqrt(residualNorm2 / rhsNorm2);
     }

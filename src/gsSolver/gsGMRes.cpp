@@ -47,9 +47,9 @@ void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator
 
     while(m_numIter < m_maxIters)
     {
+        m_numIter++;
         if (step(x, precond))
             break;
-        m_numIter++;
     }
     //Get the dimention right
     if (m_numIter == m_maxIters)
