@@ -776,8 +776,8 @@ bool exportTHBsurface( const gsTHBSpline<2, T>& surface,
             gsTensorBSpline<2, T> bspline =
                 basis.getBSplinePatch(boundaryAABB[level][box], level, surface.coefs());
 
-            std::cout << "bspline size: " << bspline.basis().size() << std::endl;
-            std::cout << "bspline coef size: " << bspline.coefs().rows() << std::endl;
+            //std::cout << "bspline size: " << bspline.basis().size() << std::endl;
+            //std::cout << "bspline coef size: " << bspline.coefs().rows() << std::endl;
             makeValidGeometry(surface, bspline);
 
             //gsWriteParaview(bspline,"paraviewtest",1000,true,true);
@@ -1050,9 +1050,9 @@ bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
         if(!success)
             return false;
 
-        std::cout << "par-box: "<< par_box[0] << " "<< par_box[1] << " " << par_box[2] << " " << par_box[3] << std::endl;
-        std::cout << "el-box: "<< index_box[1] << " "<< index_box[2] << " "
-                  << index_box[3] << " " << index_box[4] << " in level: " << lvl << std::endl;
+        //std::cout << "par-box: "<< par_box[0] << " "<< par_box[1] << " " << par_box[2] << " " << par_box[3] << std::endl;
+        //std::cout << "el-box: "<< index_box[1] << " "<< index_box[2] << " "
+        //          << index_box[3] << " " << index_box[4] << " in level: " << lvl << std::endl;
 
         std::vector<unsigned> aabb_box;
         aabb_box.push_back(index_box[1]<<(maxLevel-lvl));
