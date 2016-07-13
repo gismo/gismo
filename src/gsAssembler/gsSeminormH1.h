@@ -77,13 +77,13 @@ protected:
         // Evaluate first function
         _func1.deriv_into(quNodes, f1ders);
         // get the gradients to columns
-        f1ders.resize(quNodes.rows(), quNodes.cols() );
+        f1ders.resize(_func1.targetDim() *quNodes.rows(), quNodes.cols() );
 
         // Evaluate second function
         geoEval.evaluateAt(quNodes);
         _func2.deriv_into( f2param ? quNodes : geoEval.values() , f2ders);
         // get the gradients to columns
-        f2ders.resize(quNodes.rows(), quNodes.cols() );
+        f2ders.resize(_func2.targetDim() * quNodes.rows(), quNodes.cols() );
     }
 
     // assemble on element

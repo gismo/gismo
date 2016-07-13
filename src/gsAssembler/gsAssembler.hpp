@@ -249,9 +249,15 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
           it = m_pde_ptr->bc().cornerBegin();
           it != m_pde_ptr->bc().cornerEnd(); ++it )
     {
-        const int i  = mbasis[it->patch].functionAtCorner(it->corner);
-        const int ii = mapper.bindex( i , it->patch );
-        m_ddof[unk].row(ii).setConstant(it->value);
+        if(it->unknown == unk)
+        {
+            const int i  = mbasis[it->patch].functionAtCorner(it->corner);
+            const int ii = mapper.bindex( i , it->patch );
+            m_ddof[unk].row(ii).setConstant(it->value);
+        }
+        else
+            continue;
+
     }
 }
 
@@ -616,9 +622,9 @@ gsField<T> *  gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 //This silently assumes the same basis for all components
 template<class T>
 void gsAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
-                            gsMultiPatch<T>& result, T theta) const
+                                    gsMultiPatch<T>& result, T theta) const
 {
-   // GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
+    // GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
 
     for (size_t p=0; p < m_pde_ptr->domain().nPatches(); ++p )
     {
