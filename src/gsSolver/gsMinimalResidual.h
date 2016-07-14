@@ -36,17 +36,18 @@ public:
     gsMinimalResidual(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
         : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
 
-    void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator& precond);
+    bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator& precond);
 
     void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator& precond)
     {
-        initIteration(rhs, x, precond);
-
+        if(!initIteration(rhs, x, precond))
+        {
         while(m_numIter < m_maxIters)
         {
             m_numIter++;
             if (step(x, precond))
                 break;
+        }
         }
         m_error = math::sqrt(residualNorm2 / rhsNorm2);
     }

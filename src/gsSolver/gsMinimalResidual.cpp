@@ -15,13 +15,22 @@
 namespace gismo
 {
 
-void gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, const gsMinimalResidual::VectorType& x0, const gsLinearOperator& precond)
+bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x0, const gsLinearOperator& precond)
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
 
     int n = m_mat.cols();
     int m = 1;//rhs.cols();
     m_rhs = rhs;
+    rhsNorm2 = rhs.squaredNorm();
+    if (rhsNorm2 == 0)
+    {
+        rhsNorm2 = 1.0;
+        x0 = rhs;
+        residualNorm2=0;
+        return true;
+    }
+
     xPrew = x0;
     vPrew.setZero(n,m); vNew.setZero(n,m);
     wPrew.setZero(n,m); w.setZero(n,m); wNew.setZero(n,m);
@@ -36,12 +45,11 @@ void gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     eta = gamma;
     sPrew = 0; s = 0; sNew = 0;
     cPrew = 1; c = 1; cNew = 1;
-    rhsNorm2 = rhs.squaredNorm();
-    if (rhsNorm2 == 0)
-        rhsNorm2 = 1.0;
+
     residualNorm2 = 0;
     threshold = m_tol*m_tol*rhsNorm2;
     m_numIter = 0;
+    return false;
 }
 
 
