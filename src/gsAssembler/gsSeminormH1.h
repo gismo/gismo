@@ -76,14 +76,10 @@ protected:
     {
         // Evaluate first function
         _func1.deriv_into(quNodes, f1ders);
-        // get the gradients to columns
-        f1ders.resize(_func1.targetDim() *quNodes.rows(), quNodes.cols() );
 
         // Evaluate second function
         geoEval.evaluateAt(quNodes);
         _func2.deriv_into( f2param ? quNodes : geoEval.values() , f2ders);
-        // get the gradients to columns
-        f2ders.resize(_func2.targetDim() * quNodes.rows(), quNodes.cols() );
     }
 
     // assemble on element
@@ -98,16 +94,24 @@ protected:
             // Transform the gradients
             geoEval.transformGradients(k, f1ders, f1pders);
 
-            // If func2 is defined on the parameter space (f2param = true), transform the gradients
+            // Transform the gradients, if func2 is defined on the parameter space (f2param = true)
             if(f2param)
                 geoEval.transformGradients(k, f2ders, f2pders);
+
+            // old
             //if ( f2param )
             //f2ders.col(k)=geoEval.gradTransforms().block(0, k*d,d,d) * f2ders.col(k);// to do: generalize
 
             const T weight = quWeights[k] *  geoEval.measure(k);
 
             if(!f2param) // standard case: func2 defined on physical space
-                sum += weight * (f1pders - f2ders.col(k)).squaredNorm();
+            {
+                // for each k: put the gradients into the columns (as in f1pders)
+                gsMatrix<T> f2dersk = f2ders.col(k);
+                f2dersk.resize(gsNorm<T>::func2->domainDim(), gsNorm<T>::func2->targetDim());
+
+                sum += weight * (f1pders - f2dersk).squaredNorm();
+            }
             else // case: func2 defined on parameter space
                 sum += weight * (f1pders - f2pders).squaredNorm();
         }

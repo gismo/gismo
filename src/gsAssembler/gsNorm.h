@@ -38,9 +38,11 @@ public:
 
     /// Constructor using a multipatch domain
     gsNorm(const gsField<T> & _field1)
-    : m_zeroFunction(T(0.0),_field1.parDim()), patchesPtr( &_field1.patches() ),
+        : m_zeroFunction(gsVector<T>::Constant(_field1.dim(), T(0.0)),_field1.parDim()), patchesPtr( &_field1.patches() ),
       field1(&_field1), func2(&m_zeroFunction)
-    { }
+    {
+
+    }
 
 
     void setField(const gsField<T> & _field1)
