@@ -40,11 +40,8 @@ public:
     gsNorm(const gsField<T> & _field1)
         : m_zeroFunction(gsVector<T>::Zero(_field1.dim()),_field1.parDim()), patchesPtr( &_field1.patches() ),
       field1(&_field1), func2(&m_zeroFunction)
-    {
+    { }
 
-    }
-
-    //m_zeroFunction(gsVector<T>::Constant(_field1.dim(), T(0.0)),_field1.parDim())
 
 
     void setField(const gsField<T> & _field1)
