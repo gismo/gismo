@@ -100,14 +100,14 @@ public:
 	    return os; 
 	}
 
-    virtual gsPde<T>* restrictToPatch(int np) const
+    virtual gsPde<T>* restrictToPatch(unsigned np) const
     {
         gsBoundaryConditions<T> bc;
         m_boundary_conditions.getConditionsForPatch(np,bc);
         return new gsPoissonPde<T>(m_domain.patch(np),bc,m_rhs);
     }
 
-    virtual T getCoeffForIETI(int np) const {
+    virtual T getCoeffForIETI(unsigned np) const {
         if(np==0)
             gsInfo<<"Assume homogeneous coefficient alpha==1\n";
         return 1;

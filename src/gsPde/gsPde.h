@@ -152,7 +152,7 @@ public:
      * @param np the patch index
      * @return a pointer to an allocated gsPDE<T> object.
      */
-    virtual gsPde<T>* restrictToPatch(int np) const{GISMO_NO_IMPLEMENTATION}
+    virtual gsPde<T>* restrictToPatch(unsigned np) const{GISMO_NO_IMPLEMENTATION}
 
     /**
      * @brief getCoeffForIETI returns for a patch \a np the scaling coefficient in order to make
@@ -161,7 +161,7 @@ public:
      * @param np the patch under consideration
      * @return the scaling value for IETI
      */
-    virtual T getCoeffForIETI(int np) const {GISMO_NO_IMPLEMENTATION}
+    virtual T getCoeffForIETI(unsigned np) const {GISMO_NO_IMPLEMENTATION}
 
 protected:
     /// @brief Description of the unknown fields:
