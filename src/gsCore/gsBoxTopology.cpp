@@ -190,6 +190,26 @@ bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorn
     return innerVertex;
 }
 
+int gsBoxTopology::getMaxValence() const
+{
+    patchCorner start;
+    std::vector<patchCorner> cornerList;
+    int valence,maxValence=-1;
+    for(int i = 0;i<nboxes;++i)
+    {
+        for(unsigned j = 1;j<=pow(2,m_dim);++j)
+        {
+            start=patchCorner(i,j);
+            cornerList.clear();
+            getCornerList(start,cornerList);
+            valence=cornerList.size();
+            if(valence>maxValence)
+                maxValence=valence;
+        }
+    }
+    return maxValence;
+}
+
 void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const
 {
     GISMO_ASSERT(m_dim==2,"works only for 2D");

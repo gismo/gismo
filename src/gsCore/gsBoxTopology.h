@@ -271,6 +271,9 @@ public:
     /// that represent the same point in the vector \a cornerList
     bool getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const;
 
+    /// returns the maximal valence of a vertex of this topology.
+    int getMaxValence() const;
+
     /// gives back all the extraordinary vertices (3 faces or more than 4) of the topology
     /// each EV is represented by a vector of patchCorners, which represent the same vertex
     /// all the vectors are put in the vector \a cornerLists. It will only find vertices on
