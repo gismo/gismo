@@ -197,7 +197,7 @@ int gsBoxTopology::getMaxValence() const
     int valence,maxValence=-1;
     for(int i = 0;i<nboxes;++i)
     {
-        for(unsigned j = 1;j<=pow(2,m_dim);++j)
+        for(int j = 1;j<=( 1 << m_dim );++j)
         {
             start=patchCorner(i,j);
             cornerList.clear();
