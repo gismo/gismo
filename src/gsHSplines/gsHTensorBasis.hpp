@@ -407,7 +407,7 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
         }
         insert_box(i1,i2,boxes[i*(2*d+1)]);
     }
-    
+
     update_structure();
 }
 
@@ -526,6 +526,12 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     // Clear previous entries
     cmat.clear();
 
+    // If a level is to be checked which is larger than
+    // the maximum inserted level, nothing need so to be done
+    if ( level > static_cast<int>(m_tree.getMaxInsLevel() ) )
+        return;
+
+
     gsVector<knotIter,d> starts, ends, curr;
     gsVector<unsigned,d> ind;
     ind[0] = 0; // for d==1: warning: may be used uninitialized in this function (snap-ci)
@@ -533,7 +539,7 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     for(unsigned i = 0; i != d; ++i)
     {
         // beginning of the iteration in i-th direction
-        starts[i] = m_bases[level]->knots(i).sbegin() ; 
+        starts[i] = m_bases[level]->knots(i).sbegin() ;
         // end of the iteration in i-th direction
         ends  [i] = m_bases[level]->knots(i).send()-m_deg[i]-1;
     }
@@ -543,17 +549,19 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
     {
         for(unsigned i = 0; i != d; ++i)
         {
-            low[i]  = curr[i].uIndex();  // lower left corner of the support of the function 
+            low[i]  = curr[i].uIndex();  // lower left corner of the support of the function
             upp[i]  = (curr[i]+m_deg[i]+1).uIndex(); // upper right corner of the support
-            ind[i]  = curr[i].index(); // index of the function in the matrix 
+            ind[i]  = curr[i].index(); // index of the function in the matrix
         }
 
         if ( m_tree.query3(low, upp,level) == level) //if active
             cmat.push_unsorted( m_bases[level]->index( ind ) );
+
     }
     while (  nextLexicographic(curr,starts,ends) ); // while there are some functions (i.e., some combinations of iterators) left
 
     cmat.sort();
+
 }
 
 template<unsigned d, class T>
@@ -694,7 +702,6 @@ void gsHTensorBasis<d,T>::insert_box(gsVector<unsigned,d> const & k1,
     // m_boxHistory.push_back( box(k1,k2,lvl) );
 
     m_tree.insertBox(k1,k2, lvl);
-
     needLevel( m_tree.getMaxInsLevel() );
 }
 
@@ -712,7 +719,7 @@ void gsHTensorBasis<d,T>::makeCompressed()
         m_xmatrix.erase( m_xmatrix.begin() );
         m_xmatrix_offset.erase( m_xmatrix_offset.begin() );
     }
-    
+    // Note/to do: cleaning up empty levels at the end as well.
 }
 
 template<unsigned d, class T>
@@ -1154,6 +1161,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
     needLevel( old.size() );
 
     tensorBasis T_0_copy = this->tensorLevel(0);
+
     std::vector< gsSparseMatrix<T,RowMajor> > transfer(m_bases.size()-1);
     std::vector<std::vector<T> > knots(d);
 
@@ -1172,6 +1180,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
             //        << "direction: " << dim << "\n";
             //gsDebugVar(gsAsMatrix<T>(dirKnots));
         }
+
         T_0_copy.refine_withTransfer(transfer[i-1], knots);
     }
 
@@ -1180,6 +1189,19 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
         m_xmatrix.push_back( gsSortedVector<unsigned>() );
 
     result = this->coarsening_direct(old, m_xmatrix, transfer);
+
+    // This function automatically adds additional characteristic matrices,
+    // even if they are not needed.
+    // Check whether the characteristic matrices corresponding to the finest
+    // levels are actually used. If they are empty, i.e., if there are no
+    // active functions on that level, drop them...
+    while( m_xmatrix.back().size() == 0 )
+        m_xmatrix.pop_back();
+
+    // ...similarly, erase/drop all those fine bases which are actually not used.
+    const int sizeDiff = static_cast<int>( m_bases.size() - m_xmatrix.size() );
+    if( sizeDiff > 0 )
+        m_bases.erase( m_bases.end() - sizeDiff, m_bases.end() );
 }
 
 template<unsigned d, class T>
