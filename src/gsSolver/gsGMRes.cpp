@@ -51,25 +51,21 @@ void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator
         if (step(x, precond))
             break;
     }
-    //Get the dimention right
-    if (m_numIter == m_maxIters)
-        m_numIter--;
-
     m_error = math::sqrt(residualNorm2 / rhsNorm2);
 
     //Post processing
     //Remove last row of H and g
-    H.resize(m_numIter+1,m_numIter+1);
-    H = H_prew.block(0,0,m_numIter+1,m_numIter+1);
-    g_tmp.resize(m_numIter+1,1);
-    g_tmp = g.block(0,0,m_numIter+1,1);
+    H.resize(m_numIter,m_numIter);
+    H = H_prew.block(0,0,m_numIter,m_numIter);
+    g_tmp.resize(m_numIter,1);
+    g_tmp = g.block(0,0,m_numIter,1);
 
     //Solve H*y = g;
     solveUpperTriangular(H, g_tmp);
 
     //Create the matrix from the column matrix in v.
-    gsMatrix<real_t> V(m_mat.rows(),m_numIter+1);
-    for (index_t k = 0; k< m_numIter+1; ++k)
+    gsMatrix<real_t> V(m_mat.rows(),m_numIter);
+    for (index_t k = 0; k< m_numIter; ++k)
     {
         V.col(k) = v[k];
     }
@@ -80,7 +76,7 @@ void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator
 bool gsGMRes::step( VectorType& x, const gsLinearOperator& precond )
 {
     GISMO_UNUSED(x);
-    const index_t k = m_numIter;
+    const index_t k = m_numIter-1;
     H.setZero(k+2,k+1);
     h_tmp.setZero(k+2,1);
 
