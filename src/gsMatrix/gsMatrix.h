@@ -350,6 +350,11 @@ public:
         this->row(k+1) = this->row(k);
     }
 
+    void removeNoise(const T tol)
+    {
+        this->noalias() = this->unaryExpr(removeNoise_helper(tol));
+    }
+    
     /// Clone function. Used to make a copy of the matrix
     gsMatrix * clone() const;
 
@@ -471,6 +476,17 @@ private:
             ++piv;
         }
     }
+
+    struct removeNoise_helper
+    {
+        removeNoise_helper(const T & tol)
+        : m_tol(tol) { }
+                                            
+        inline const T operator() (const T & val) const
+        { return ( math::abs(val) < m_tol ? 0 : val ); }
+
+        const T & m_tol;
+    };
 
 }; // class gsMatrix
 
