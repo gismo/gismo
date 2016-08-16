@@ -47,9 +47,7 @@ namespace internal
                       Index *ia, Index *ja, Index *perm, Index nrhs, Index *iparm, Index msglvl, void *b, void *x)
     {
       Index error = 0;
-      ::pardiso(pt, &maxfct, &mnum, &type, &phase, 
-                &n, a, ia, ja, perm, &nrhs, 
-                iparm, &msglvl, b, x, &error);
+      ::pardiso(pt, &maxfct, &mnum, &type, &phase, &n, a, ia, ja, perm, &nrhs, iparm, &msglvl, b, x, &error);
       return error;
     }
   };
@@ -61,9 +59,7 @@ namespace internal
                       Index *ia, Index *ja, Index *perm, Index nrhs, Index *iparm, Index msglvl, void *b, void *x)
     {
       Index error = 0;
-      ::pardiso_64(pt, &maxfct, &mnum, &type, &phase, 
-                   &n, a, ia, ja, perm, &nrhs, 
-                   iparm, &msglvl, b, x, &error);
+      ::pardiso_64(pt, &maxfct, &mnum, &type, &phase, &n, a, ia, ja, perm, &nrhs, iparm, &msglvl, b, x, &error);
       return error;
     }
   };
@@ -215,46 +211,29 @@ class PardisoImpl
     {
       if(m_initialized) // Factorization ran at least once
       {
-        /* Release internal memory. */
-        internal::pardiso_run_selector<Index>::
-            run(m_pt, 1, 1, m_type, -1, m_size, 0, 0, 0, m_perm.data(), 0,
-                m_iparm.data(), m_msglvl, 0, 0);
+        internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, -1, m_size, 0, 0, 0, m_perm.data(), 0,
+                                                   m_iparm.data(), m_msglvl, 0, 0);
       }
     }
 
-    // For Pardiso 5 options see http://www.pardiso-project.org/manual/manual.pdf
-    // For MKL Pardiso options see https://software.intel.com/en-us/articles/pardiso-parameter-table
     void pardisoInit(int type)
     {
-        m_type = type;
-
-        // Number of threads of Eigen
-        m_iparm[2] = Eigen::nbThreads();
-
-        /*
-          // To get the number of threads from the environment
-        const char * nProcs = getenv("OMP_NUM_THREADS");
-        if(nProcs != NULL)
-            sscanf( nProcs, "%d", &m_iparm[2] );
-        else
-            m_iparm[2] = 1; //one OpenMP thread
-        gsDebugVar(m_iparm[2]);
-        */
-
+      m_type = type;
       bool symmetric = std::abs(m_type) < 10;
-      m_iparm[0]  = 1;   // No solver default
-      m_iparm[1]  = 2;   // use Metis for the ordering (MKL: 3 == OMP nested dissection algorithm)
-      m_iparm[3]  = 0;   // No iterative-direct algorithm
-      m_iparm[4]  = 0;   // No user fill-in reducing permutation
-      m_iparm[5]  = 0;   // Write solution into x
-      m_iparm[6]  = 0;   // Not in use
-      m_iparm[7]  = 2;   // Max numbers of iterative refinement steps
-      m_iparm[8]  = 0;   // Not in use
-      m_iparm[9]  = 13;  // Perturb the pivot elements with 1E-13
+      m_iparm[0] = 1;   // No solver default
+      m_iparm[1] = 2;   // use Metis for the ordering
+      m_iparm[2] = 0;   // Reserved. Set to zero. (??Numbers of processors, value of OMP_NUM_THREADS??)
+      m_iparm[3] = 0;   // No iterative-direct algorithm
+      m_iparm[4] = 0;   // No user fill-in reducing permutation
+      m_iparm[5] = 0;   // Write solution into x, b is left unchanged
+      m_iparm[6] = 0;   // Not in use
+      m_iparm[7] = 2;   // Max numbers of iterative refinement steps
+      m_iparm[8] = 0;   // Not in use
+      m_iparm[9] = 13;  // Perturb the pivot elements with 1E-13
       m_iparm[10] = symmetric ? 0 : 1; // Use nonsymmetric permutation and scaling MPS
       m_iparm[11] = 0;  // Not in use
       m_iparm[12] = symmetric ? 0 : 1;  // Maximum weighted matching algorithm is switched-off (default for symmetric).
-      // Try m_iparm[12] = 1 in case of inappropriate accuracy
+                                        // Try m_iparm[12] = 1 in case of inappropriate accuracy
       m_iparm[13] = 0;  // Output: Number of perturbed pivots
       m_iparm[14] = 0;  // Not in use
       m_iparm[15] = 0;  // Not in use
@@ -266,55 +245,10 @@ class PardisoImpl
       m_iparm[20] = 0;  // 1x1 pivoting
       m_iparm[26] = 0;  // No matrix checker
       m_iparm[27] = (sizeof(RealScalar) == 4) ? 1 : 0;
-      //m_iparm[34] = 1;  // C indexing
-      m_iparm[34] = 0;  // chofer/G+Smo: fortran indexing, for compatibility with Pardiso v.5.0
-      m_iparm[59] = 1;  // Automatic switch between In-Core and Out-of-Core modes
+      m_iparm[34] = 1;  // C indexing
+      m_iparm[36] = 0;  // CSR
+      m_iparm[59] = 0;  // 0 - In-Core ; 1 - Automatic switch between In-Core and Out-of-Core modes ; 2 - Out-of-Core
       
-      /*
-          // explanation of Pardiso v5.0 options
-          m_iparm[0] = 1;   // No solver default
-          m_iparm[1] = 2;   // use Metis for the ordering
-          m_iparm[2] = 1;   // Numbers of processors, value of OMP_NUM_THREADS
-          m_iparm[3] = 0;   // No iterative-direct algorithm
-          m_iparm[4] = 0;   // No user fill-in reducing permutation
-          m_iparm[5] = 0;   // Write solution into x
-          m_iparm[6] = 0;   // Not in use
-          m_iparm[7] = 0;   // Max numbers of iterative refinement steps
-          m_iparm[8] = 0;   // Not in use
-          m_iparm[9] = 13;  // Perturb the pivot elements with 1E-13
-          m_iparm[10] = symmetric ? 0 : 1; // Use nonsymmetric permutation and scaling MPS
-          m_iparm[11] = 0;  //Solve with transposed matrix // Not in use
-          m_iparm[12] = symmetric ? 0 : 1;  // Maximum weighted matching algorithm is switched-off (default for symmetric).
-          // Try m_iparm[12] = 1 in case of inappropriate accuracy
-          m_iparm[13] = 0;  // Output: Number of perturbed pivots
-          m_iparm[14] = 0;  // Not in use
-          m_iparm[15] = 0;  // Not in use
-          m_iparm[16] = 0;  // Not in use
-          m_iparm[17] = -1; // Output: Number of nonzeros in the factor LU
-          m_iparm[18] = -1; // Output: Mflops for LU factorization
-          m_iparm[19] = 0;  // Output: Numbers of CG Iterations
-
-          m_iparm[20] = 0;  // 1x1 pivoting
-
-          m_iparm[23] = 1;   //parallel NumFact
-          m_iparm[24] = 1;   //parallel Forward/Backward solve
-          m_iparm[25] = 0;   //partial solve
-          m_iparm[27] = 0;   //parallel Metis
-          m_iparm[28] = (sizeof(RealScalar) == 4) ? 1 : 0;    //   32 bit /64bit
-
-          m_iparm[29] = 0;    //  use default supernode size
-          m_iparm[30] = 0;    // partial solve
-          m_iparm[31] = 0;    // direct solve
-          m_iparm[32] = 0;    // calculate determinant
-          m_iparm[33] = 0;    // identical solutions
-
-          m_iparm[35] = 0;    // selected inversion for Aij^-1
-          m_iparm[36] = 0;    // selected inversion for Aij^-1 (symm)
-          m_iparm[37] = 0;    // calc schur compl
-          m_iparm[50] = 0;    // use OpenMP (or OpenMP/MPI)
-          m_iparm[51] = 0;    // number of distributed mem solver
-      */
-
       memset(m_pt, 0, sizeof(m_pt));
     }
 
@@ -355,18 +289,16 @@ Derived& PardisoImpl<Derived>::compute(const MatrixType& a)
 {
   m_size = a.rows();
   eigen_assert(a.rows() == a.cols());
-  eigen_assert(a.isCompressed() && 
-               "Requires a sparse matrix in compressed mode. Call .makeCompressed() in advance.");
 
   pardisoRelease();
+  memset(m_pt, 0, sizeof(m_pt));
   m_perm.setZero(m_size);
   derived().getMatrix(a);
   
   Index error;
-  error = internal::pardiso_run_selector<Index>::
-      run(m_pt, 1, 1, m_type, 12, m_size,
-          m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
-          m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
+  error = internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, 12, m_size,
+                                                     m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
+                                                     m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
 
   manageErrorCode(error);
   m_analysisIsOk = true;
@@ -380,18 +312,16 @@ Derived& PardisoImpl<Derived>::analyzePattern(const MatrixType& a)
 {
   m_size = a.rows();
   eigen_assert(m_size == a.cols());
-  eigen_assert(a.isCompressed() && 
-               "Requires a sparse matrix in compressed mode. Call .makeCompressed() in advance.");
 
   pardisoRelease();
+  memset(m_pt, 0, sizeof(m_pt));
   m_perm.setZero(m_size);
   derived().getMatrix(a);
   
   Index error;
-  error = internal::pardiso_run_selector<Index>::
-      run(m_pt, 1, 1, m_type, 11, m_size,
-          m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
-          m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
+  error = internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, 11, m_size,
+                                                     m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
+                                                     m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
   
   manageErrorCode(error);
   m_analysisIsOk = true;
@@ -405,16 +335,13 @@ Derived& PardisoImpl<Derived>::factorize(const MatrixType& a)
 {
   eigen_assert(m_analysisIsOk && "You must first call analyzePattern()");
   eigen_assert(m_size == a.rows() && m_size == a.cols());
-  eigen_assert(a.isCompressed() && 
-               "Requires a sparse matrix in compressed mode. Call .makeCompressed() in advance.");
-
+  
   derived().getMatrix(a);
 
   Index error;  
-  error = internal::pardiso_run_selector<Index>::
-      run(m_pt, 1, 1, m_type, 22, m_size,
-          m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
-          m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
+  error = internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, 22, m_size,
+                                                     m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
+                                                     m_perm.data(), 0, m_iparm.data(), m_msglvl, NULL, NULL);
   
   manageErrorCode(error);
   m_factorizationIsOk = true;
@@ -456,12 +383,10 @@ bool PardisoImpl<Base>::_solve(const MatrixBase<BDerived> &b, MatrixBase<XDerive
   }
   
   Index error;
-  error = internal::pardiso_run_selector<Index>::
-      run(m_pt, 1, 1, m_type, 33, m_size,
-          m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
-          m_perm.data(), nrhs, m_iparm.data(), m_msglvl,
-          rhs_ptr, x.derived().data());
-
+  error = internal::pardiso_run_selector<Index>::run(m_pt, 1, 1, m_type, 33, m_size,
+                                                     m_matrix.valuePtr(), m_matrix.outerIndexPtr(), m_matrix.innerIndexPtr(),
+                                                     m_perm.data(), nrhs, m_iparm.data(), m_msglvl,
+                                                     rhs_ptr, x.derived().data());
   return error==0;
 }
 
@@ -474,6 +399,9 @@ bool PardisoImpl<Base>::_solve(const MatrixBase<BDerived> &b, MatrixBase<XDerive
   * using the Intel MKL PARDISO library. The sparse matrix A must be squared and invertible.
   * The vectors or matrices X and B can be either dense or sparse.
   *
+  * By default, it runs in in-core mode. To enable PARDISO's out-of-core feature, set:
+  * \code solver.pardisoParameterArray()[59] = 1; \endcode
+  *
   * \tparam _MatrixType the type of the sparse matrix A, it must be a SparseMatrix<>
   *
   * \sa \ref TutorialSparseDirectSolvers
@@ -484,7 +412,6 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
   protected:
     typedef PardisoImpl< PardisoLU<MatrixType> > Base;
     typedef typename Base::Scalar Scalar;
-    typedef typename Base::Index Index;
     typedef typename Base::RealScalar RealScalar;
     using Base::pardisoInit;
     using Base::m_matrix;
@@ -511,13 +438,6 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
     void getMatrix(const MatrixType& matrix)
     {
       m_matrix = matrix;
-      
-      Index * indPtr = m_matrix.innerIndexPtr();
-      std::transform( indPtr, indPtr + m_matrix.nonZeros(), indPtr,
-                      std::bind2nd(std::plus<Index>(), 1));
-      indPtr = m_matrix.outerIndexPtr();
-      std::transform( indPtr, indPtr + matrix.rows()+1, indPtr,
-                      std::bind2nd(std::plus<Index>(), 1));
     }
     
   private:
@@ -531,6 +451,9 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
   * This class allows to solve for A.X = B sparse linear problems via a LL^T Cholesky factorization
   * using the Intel MKL PARDISO library. The sparse matrix A must be selfajoint and positive definite.
   * The vectors or matrices X and B can be either dense or sparse.
+  *
+  * By default, it runs in in-core mode. To enable PARDISO's out-of-core feature, set:
+  * \code solver.pardisoParameterArray()[59] = 1; \endcode
   *
   * \tparam MatrixType the type of the sparse matrix A, it must be a SparseMatrix<>
   * \tparam UpLo can be any bitwise combination of Upper, Lower. The default is Upper, meaning only the upper triangular part has to be used.
@@ -577,13 +500,6 @@ class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,_UpLo> >
       PermutationMatrix<Dynamic,Dynamic,Index> p_null;
       m_matrix.resize(matrix.rows(), matrix.cols());
       m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>().twistedBy(p_null);
-
-      Index * indPtr = m_matrix.innerIndexPtr();
-      std::transform( indPtr, indPtr + m_matrix.nonZeros(), indPtr,
-                      std::bind2nd(std::plus<Index>(), 1));
-      indPtr = m_matrix.outerIndexPtr();
-      std::transform( indPtr, indPtr + matrix.rows()+1, indPtr,
-                      std::bind2nd(std::plus<Index>(), 1));
     }
     
   private:
@@ -598,6 +514,9 @@ class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,_UpLo> >
   * using the Intel MKL PARDISO library. The sparse matrix A is assumed to be selfajoint and positive definite.
   * For complex matrices, A can also be symmetric only, see the \a Options template parameter.
   * The vectors or matrices X and B can be either dense or sparse.
+  *
+  * By default, it runs in in-core mode. To enable PARDISO's out-of-core feature, set:
+  * \code solver.pardisoParameterArray()[59] = 1; \endcode
   *
   * \tparam MatrixType the type of the sparse matrix A, it must be a SparseMatrix<>
   * \tparam Options can be any bitwise combination of Upper, Lower, and Symmetric. The default is Upper, meaning only the upper triangular part has to be used.
@@ -643,14 +562,6 @@ class PardisoLDLT : public PardisoImpl< PardisoLDLT<MatrixType,Options> >
       PermutationMatrix<Dynamic,Dynamic,Index> p_null;
       m_matrix.resize(matrix.rows(), matrix.cols());
       m_matrix.template selfadjointView<Upper>() = matrix.template selfadjointView<UpLo>().twistedBy(p_null);
-
-
-      Index * indPtr = m_matrix.innerIndexPtr();
-      std::transform( indPtr, indPtr + m_matrix.nonZeros(), indPtr,
-                      std::bind2nd(std::plus<Index>(), 1));
-      indPtr = m_matrix.outerIndexPtr();
-      std::transform( indPtr, indPtr + matrix.rows()+1, indPtr,
-                      std::bind2nd(std::plus<Index>(), 1));
     }
     
   private:

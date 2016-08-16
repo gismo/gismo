@@ -38,6 +38,7 @@ template<typename Derived> class SparseMatrixBase
     typedef typename internal::packet_traits<Scalar>::type PacketScalar;
     typedef typename internal::traits<Derived>::StorageKind StorageKind;
     typedef typename internal::traits<Derived>::Index Index;
+    typedef typename internal::traits<Derived>::Index StorageIndex;
     typedef typename internal::add_const_on_value_type_if_arithmetic<
                          typename internal::packet_traits<Scalar>::type
                      >::type PacketReturnType;
@@ -278,7 +279,7 @@ template<typename Derived> class SparseMatrixBase
 
       if (Flags&RowMajorBit)
       {
-        Nested nm(m.derived()); //G+Smo
+          Nested nm(m.derived()); //G+Smo
         for (Index row=0; row<nm.outerSize(); ++row)
         {
           Index col = 0;

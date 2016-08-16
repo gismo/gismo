@@ -59,7 +59,7 @@ struct dot_nocheck<T, U, true>
   */
 template<typename Derived>
 template<typename OtherDerived>
-typename internal::scalar_product_traits<typename internal::traits<Derived>::Scalar,typename internal::traits<OtherDerived>::Scalar>::ReturnType
+inline typename internal::scalar_product_traits<typename internal::traits<Derived>::Scalar,typename internal::traits<OtherDerived>::Scalar>::ReturnType
 MatrixBase<Derived>::dot(const MatrixBase<OtherDerived>& other) const
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -67,8 +67,9 @@ MatrixBase<Derived>::dot(const MatrixBase<OtherDerived>& other) const
   EIGEN_STATIC_ASSERT_SAME_VECTOR_SIZE(Derived,OtherDerived)
 #if !(defined(EIGEN_NO_STATIC_ASSERT) && defined(EIGEN_NO_DEBUG)) // G+Smo: warning fix
   typedef internal::scalar_conj_product_op<Scalar,typename OtherDerived::Scalar> func;
-  EIGEN_CHECK_BINARY_COMPATIBILIY(func,Scalar,typename OtherDerived::Scalar);
 #endif
+  EIGEN_CHECK_BINARY_COMPATIBILIY(func,Scalar,typename OtherDerived::Scalar);
+
   eigen_assert(size() == other.size());
 
   return internal::dot_nocheck<Derived,OtherDerived>::run(*this, other);
