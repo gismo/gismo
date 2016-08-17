@@ -279,7 +279,8 @@ void gsTensorDeboor_v2(
         for (unsigned dim = 0; dim < d; dim++)
         {
             const KnotVectorType& kv = base.knots(dim);
-            if (u(dim, i) == *(--kv.end()))
+//            if (u(dim, i) == *(--kv.end()))
+            if ( u(dim, i) == kv.last() )
             {
                 is_last[dim] = true;
             }

@@ -585,6 +585,7 @@ struct permut_matrix_product_retval
       // FIXME we need an is_same for expression that is not sensitive to constness. For instance
       // is_same_xpr<Block<const Matrix>, Block<Matrix> >::value should be true.
       const typename Dest::Scalar *dst_data = internal::extract_data(dst);
+      EIGEN_UNUSED_VARIABLE(dst_data);//G+Smo
       if(    is_same<MatrixTypeNestedCleaned,Dest>::value
           && blas_traits<MatrixTypeNestedCleaned>::HasUsableDirectAccess
           && blas_traits<Dest>::HasUsableDirectAccess
