@@ -10,8 +10,6 @@ In the gismo/examples sub-directory we find:
 
 - \subpage fitting_example
 
-- \subpage gsSparseSolvers
-
 - \subpage gsView
 
 - \subpage linearSolvers
