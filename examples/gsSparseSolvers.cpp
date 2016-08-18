@@ -1,4 +1,4 @@
-/** @file gsPardiso_test.cpp
+/** @file gsSparseSolvers.cpp
 
     @brief Testing the use of sparse linear solvers.
 

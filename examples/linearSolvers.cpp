@@ -31,8 +31,7 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsMatrix<> &rhs, index_t N)
     real_t pi = M_PI;
 
     //Reserving space in the sparse matrix (Speeds up the assemble time of the matrix)
-    gsVector<int> reserve = gsVector<int>::Constant(N,3);//Reserve 3 non-zero entry per column
-    mat.reserve( reserve );
+    mat.reservePerColumn( 3 ); //Reserve 3 non-zero entry per column
 
     mat(0,0) = 2;
     mat(0,1) = -1;
@@ -54,7 +53,7 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsMatrix<> &rhs, index_t N)
 }
 
 //Print out information of the iterative solver
-void gsIterativeSolverInfo(const gsIterativeSolver &method, std::string methodName, real_t time)
+void gsIterativeSolverInfo(const gsIterativeSolver &method, std::string methodName, double time)
 {
     gsInfo << methodName +": System size         : " << method.size() << "\n";
     gsInfo << methodName +": Tolerance           : " << method.tolerance() << "\n";
@@ -80,10 +79,18 @@ int main(int argc, char *argv[])
     //We initialize an identity preconditioner (does nothing).
     gsIdentityOp preConMat(N);
 
-    //Maximum number of iterations
-    index_t maxIters = 3*N;
     //Tolerance
     real_t tol = std::pow(10.0, - REAL_DIG * 0.75);
+    gsStopwatch clock;
+
+    //initial guess
+    gsMatrix<> x0;
+    x0.setZero(N,1);
+
+#ifndef GISMO_WITH_MPQ 
+
+    //Maximum number of iterations
+    index_t maxIters = 3*N;
 
     ///----------------------GISMO-SOLVERS----------------------///
     gsInfo << "Testing G+Smo's solvers:\n";
@@ -91,13 +98,9 @@ int main(int argc, char *argv[])
     //Initialize the MinRes solver
     gsMinimalResidual MinRes(mat,maxIters,tol);
 
-    //Create the initial guess
-    gsMatrix<> x0;
-    x0.setZero(N,1);
-
     //Solve system with given preconditioner (solution is stored in x0)
     gsInfo << "\nMinRes: Started solving..."  << "\n";
-    gsStopwatch clock;
+    clock.restart();
     MinRes.solve(rhs,x0,preConMat);
     gsIterativeSolverInfo(MinRes, "MinRes", clock.stop());
 
@@ -213,6 +216,7 @@ int main(int argc, char *argv[])
     x0 = solverQR.solve(rhs);
     gsInfo << "Eigen's QR: Time to solve       : " << clock.stop() << "\n";
 
+#endif
 
     gsSparseSolver<>::LU solverLU;
     gsInfo << "\nEigen's LU: Started solving..."  << "\n";

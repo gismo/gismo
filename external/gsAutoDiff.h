@@ -242,6 +242,12 @@ public:
         return *this;
     }
 
+    inline DScalar1& operator/=(const DScalar1 &v) 
+    {
+        *this = (*this) / v ;
+        return *this;
+    }
+
     /// @}
     // ======================================================================
 
@@ -688,6 +694,13 @@ public:
         hess /= v;
         return *this;
     }
+
+    inline DScalar2& operator/=(const DScalar2 &v) 
+    {
+        *this = (*this) / v ;
+        return *this;
+    }
+
     /// @}
     // ======================================================================
 

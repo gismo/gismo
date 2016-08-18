@@ -99,9 +99,11 @@ int main()
     gsInfo << "Here is the matrix A:\n" << A << "\n";
   
     gsVector<> x;
-    // Computes QR factorization and solved Ax=b for the unknown x using
+    // Computes a factorization (LU,QR) and solves Ax=b for the unknown x using
     // this factorization
-    x= A.colPivHouseholderQr().solve(b);
+    x= A.partialPivLu().solve(b);
+    //x= A.fullPivLu().solve(b);
+    //x= A.colPivHouseholderQr().solve(b);
     gsInfo << "The solution of Ax=b is:\n" << x << "\n";
     gsInfo << "Verification, A*x is:\n" << A*x << "\n";
 
@@ -154,7 +156,7 @@ int main()
     A.firstMinor(2, 2, r);
     gsInfo << r  << "\n";
 
-    r.setRandom(2,2);
+    r.setZero(2,2);
     gsInfo <<"Set matrix to zero setZero():\n"<< r <<"\n";
     r.setOnes();
     gsInfo <<"Set matrix to all ones setOnes():\n"<< r <<"\n";
@@ -162,6 +164,8 @@ int main()
     gsInfo <<"Set matrix to all a constant setConstant(3):\n"<< r <<"\n";
     r.setRandom();
     gsInfo <<"Set matrix to random entires setRandom():\n"<< r <<"\n";
+
+#ifndef GISMO_WITH_MPQ // eigenvalues will not work for rational arithmetic types
 
     gsInfo << " Eigenvalues of non-symmetric matrix: "<< A.eigenvalues().transpose() << "\n";
     gsInfo << " Eigenvectors of non-symmetric matrix: \n"
@@ -173,6 +177,7 @@ int main()
     gsInfo << " Eigenvalues of symmetric matrix (A's upper triangular part): "
          << A.selfadjointView<Upper>().eigenvalues().transpose()  << "\n";
 
+#endif
 
     return 0;
 
