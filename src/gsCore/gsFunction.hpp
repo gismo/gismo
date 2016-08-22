@@ -13,7 +13,6 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFuncData.h>
-
 #pragma once
 
 namespace gismo
@@ -244,9 +243,11 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
         {
             typename gsAsConstMatrix<T,domDim,tarDim>::Tr jac =
                     gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),d, n).transpose();
-            InOut.measures(0,p) = (tarDim == domDim && tarDim!=-1 ?
-                        math::abs(jac.determinant()) :
-                        math::sqrt( ( jac.transpose()*jac  ).determinant() ) );
+            if (tarDim == domDim && tarDim!=-1)
+				InOut.measures(0,p) = math::abs(jac.determinant());
+			else
+				InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  ).determinant() );
+
             
         }
     }

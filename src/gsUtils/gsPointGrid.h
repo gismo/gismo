@@ -102,10 +102,10 @@ void gsPointGrid(CwiseContainer const & cwise, gsMatrix<T>& res)
 }
 
 /// Construct a grid of points by coordinate vectors in the container cwise
-template<class CwiseContainer> inline
-gsMatrix<real_t> gsPointGrid(CwiseContainer const & cwise)
+template<class T, class CwiseContainer> inline
+gsMatrix<T> gsPointGrid(CwiseContainer const & cwise)
 {
-    gsMatrix<real_t> rvo;
+    gsMatrix<T> rvo;
     gsPointGrid(cwise, rvo);
     return rvo;
 }

@@ -58,7 +58,11 @@
 #elif defined(GISMO_WITH_MPQ)
   #include <exprtk_gmp_adaptor.hpp>  // external file
 #else
-  #include <exprtk.hpp>              // external file
+  #ifdef GISMO_WITH_CODIPACK
+    #include <gsCoDiPack/exprtk_codi_rf_adaptor.hpp>
+  #else
+    #include <exprtk.hpp>              // external file
+  #endif
 #endif
 
 #include <gsIO/gsXml.h>

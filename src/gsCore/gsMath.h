@@ -19,6 +19,10 @@
 #define _USE_MATH_DEFINES
 #endif
 
+#ifdef GISMO_WITH_CODIPACK
+  #include <gsCoDiPack/gsCoDiPack.h>
+#endif
+
 #include <cmath>
 
 #ifdef GISMO_WITH_MPQ
@@ -116,6 +120,31 @@ using std::max;
 using std::frexp;
 using std::ldexp;
 using std::pow;
+
+#ifdef GISMO_WITH_CODIPACK
+using codi::abs;
+using codi::sqrt;
+using codi::ceil;
+using codi::floor;
+using codi::cos;
+using codi::cosh;
+using codi::sin;
+using codi::sinh;
+using codi::tan;
+using codi::tanh;
+using codi::acos;
+using codi::asin;
+using codi::log;
+using codi::log10;
+using codi::atan;
+using codi::atan2;
+using codi::exp;
+using codi::min;
+using codi::max;
+//using codi::frexp;
+//using codi::ldexp;
+using codi::pow;
+#endif
 
 // template <typename T> T min(T a, T b) {return  (a < b ? a : b); }
 // template <typename T> T max(T a, T b) {return  (a < b ? b : a); }
