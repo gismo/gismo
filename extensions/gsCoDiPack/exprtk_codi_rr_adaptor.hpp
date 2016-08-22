@@ -15,7 +15,7 @@
 #pragma once
 
 #include <string>
-#include <gsCoDiPack.h>
+#include <gsCoDiPack/gsCoDiPack.h>
 
 namespace exprtk
 {
