@@ -325,7 +325,7 @@ in a .CPP file.
   cls * cls::Cast( ON_Object* p) {return(cls *)Cast((const ON_Object*)p);} \
   const cls * cls::Cast( const ON_Object* p) {return(p&&p->IsKindOf(&cls::m_##cls##_class_id))?(const cls *)p:0;} \
   const ON_ClassId* cls::ClassId() const {return &cls::m_##cls##_class_id;} \
-  ON_Object* cls::DuplicateObject() const {cls* p = new cls(); if (p) *p=*this; return p;} \
+  ON_Object* cls::DuplicateObject() const {cls* p = new cls(); if (p) {*p=*this;}return p;} \
   bool cls::Copy##cls( const ON_Object* src, ON_Object* dst ){cls* d;const cls* s;if (0!=(s=cls::Cast(src))&&0!=(d=cls::Cast(dst))) {d->cls::operator=(*s);return true;}return false;} \
   cls * cls::Duplicate() const {return static_cast<cls *>(DuplicateObject());}
 

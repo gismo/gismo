@@ -14028,9 +14028,9 @@ char* ON_BinaryArchive::ON_TypecodeParse( unsigned int tcode, char* typecode_nam
   sub_name = ON_BinaryArchive::TypecodeName( tcode & TCODE_SHORT );
   if ( sub_name )
   {
-    if ( slen <= 0 ) return 0; *s++ = ' '; slen--;
-    if ( slen <= 0 ) return 0; *s++ = '|'; slen--;
-    if ( slen <= 0 ) return 0; *s++ = ' '; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = ' '; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = '|'; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = ' '; slen--;
     while ( *sub_name )
     {
       if ( slen <= 0 )
@@ -14043,9 +14043,9 @@ char* ON_BinaryArchive::ON_TypecodeParse( unsigned int tcode, char* typecode_nam
   sub_name = ON_BinaryArchive::TypecodeName( tcode & TCODE_CRC );
   if ( sub_name )
   {
-    if ( slen <= 0 ) return 0; *s++ = ' '; slen--;
-    if ( slen <= 0 ) return 0; *s++ = '|'; slen--;
-    if ( slen <= 0 ) return 0; *s++ = ' '; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = ' '; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = '|'; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = ' '; slen--;
     while ( *sub_name )
     {
       if ( slen <= 0 )
@@ -14058,9 +14058,9 @@ char* ON_BinaryArchive::ON_TypecodeParse( unsigned int tcode, char* typecode_nam
   sub_name = ON_BinaryArchive::TypecodeName( tcode & 0x7FFF );
   if ( sub_name )
   {
-    if ( slen <= 0 ) return 0; *s++ = ' '; slen--;
-    if ( slen <= 0 ) return 0; *s++ = '|'; slen--;
-    if ( slen <= 0 ) return 0; *s++ = ' '; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = ' '; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = '|'; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = ' '; slen--;
     while ( *sub_name )
     {
       if ( slen <= 0 )
@@ -14071,11 +14071,11 @@ char* ON_BinaryArchive::ON_TypecodeParse( unsigned int tcode, char* typecode_nam
   }
   else 
   {
-    if ( slen <= 0 ) return 0; *s++ = ' '; slen--;
-    if ( slen <= 0 ) return 0; *s++ = '|'; slen--;
-    if ( slen <= 0 ) return 0; *s++ = ' '; slen--;
-    if ( slen <= 0 ) return 0; *s++ = '0'; slen--;
-    if ( slen <= 0 ) return 0; *s++ = 'x'; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = ' '; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = '|'; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = ' '; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = '0'; slen--;
+    if ( slen <= 0 ) {return 0;} *s++ = 'x'; slen--;
     c = h[((tcode & 0x7000) / 0x1000) & 0xF];
     if ( slen > 0 ) {*s++ = c; slen--;}
     c = h[((tcode & 0xF00) / 0x100) & 0xF];
