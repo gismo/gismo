@@ -49,16 +49,14 @@ namespace memory
     using NOT_FOUND::shared_ptr;
 #endif
 
-using std::auto_ptr;
-
 // typename unique<C>::ptr
 template <typename C>
 struct unique
 {
-#ifdef GISMO_BUILD_CPP11
-    typedef std::unique_ptr<C> ptr;
-#else
+#if(__cplusplus < 201103L)
     typedef std::auto_ptr<C>   ptr;
+#else
+    typedef std::unique_ptr<C> ptr;
 #endif
 };
 
@@ -71,9 +69,9 @@ typename unique<C>::ptr make_unique(C * x)
 /// Takes a T* and wraps it in an auto_ptr. Useful for one-off
 /// function return values to avoid memory leaks.
 template <typename T>
-inline memory::auto_ptr<T> safe(T *x)
+inline typename memory::unique<T>::ptr safe(T *x)
 {
-    return memory::auto_ptr<T>(x);
+    return typename memory::unique<T>::ptr(x);
 }
 
 /// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
