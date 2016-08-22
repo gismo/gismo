@@ -141,6 +141,12 @@ if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
 endif(GISMO_WITH_SUPERLU)
 
+#if(GISMO_WITH_METIS)
+
+if(GISMO_WITH_CODIPACK)
+  add_subdirectory(extensions/gsCoDiPack)
+endif(GISMO_WITH_CODIPACK)
+
 if(GISMO_WITH_TRILINOS)
   add_subdirectory(extensions/gsTrilinos)
 endif(GISMO_WITH_TRILINOS)
