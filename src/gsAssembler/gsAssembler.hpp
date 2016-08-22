@@ -336,9 +336,9 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         // Compute dirichlet values
         gsMatrix<T> fpts;
         if ( it->parametric() )
-            fpts = it->function()->eval( gsPointGrid( rr ) );
+            fpts = it->function()->eval( gsPointGrid<T>( rr ) );
         else
-            fpts = it->function()->eval( m_pde_ptr->domain()[it->patch()].eval(  gsPointGrid( rr ) ) );
+            fpts = it->function()->eval( m_pde_ptr->domain()[it->patch()].eval(  gsPointGrid<T>( rr ) ) );
 
         // Interpolate dirichlet boundary
         gsBasis<T> * h = basis.boundaryBasis(it->side());
