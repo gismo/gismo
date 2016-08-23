@@ -30,7 +30,7 @@
 #  include <Epetra_SerialComm.h>
 #endif // HAVE_MPI
 
-#include "Epetra_Version.h"
+//#include "Epetra_Version.h" // note: contains non-inlined code
 
 #include "Epetra_Map.h"
 #include "Epetra_Vector.h"
