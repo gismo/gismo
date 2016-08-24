@@ -8,6 +8,8 @@ project(gsIpopt)
 
 #unset(IPOPT_INCLUDE_DIR CACHE)
 #unset(IPOPT_LIBRARY     CACHE)
+
+find_package(BLAS REQUIRED)
 find_package(IpOpt QUIET)
 
 set(IPOPT_SOURCES gsOptProblem_.cpp)
