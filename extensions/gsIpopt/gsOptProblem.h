@@ -203,7 +203,8 @@ private:
 
 } // end namespace gismo
 
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsOptProblem.hpp)
-#endif
+// note: statically compiled in header-only mode
+// #ifndef GISMO_BUILD_LIB
+// #include GISMO_HPP_HEADER(gsOptProblem.hpp)
+// #endif
 

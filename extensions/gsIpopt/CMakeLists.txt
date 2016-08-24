@@ -12,18 +12,8 @@ find_package(IpOpt QUIET)
 
 set(IPOPT_SOURCES gsOptProblem_.cpp)
 
-add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    COMPILE_DEFINITIONS gismo_EXPORTS 
-    POSITION_INDEPENDENT_CODE ON
-    LINKER_LANGUAGE CXX
-    CXX_VISIBILITY_PRESET hidden
-    VISIBILITY_INLINES_HIDDEN ON
-    FOLDER "G+Smo extensions"  )
-
 if (NOT IPOPT_FOUND)
-  set(IPOPT_VER "3.12.5")
+  set(IPOPT_VER "3.12.6")
   message("IpOpt not found (define IpOpt_DIR if it exists on the system).")
   message("Will attempt to download and compile IpOpt ${IPOPT_VER} (do: make IpOpt; cmake .")
 include(ExternalProject)
@@ -40,16 +30,31 @@ ExternalProject_Add(IpOpt
           COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib64
           BUILD_COMMAND ${MAKE} 
           UPDATE_COMMAND     ""
+  	  DOWNLOAD_NO_PROGRESS 0
 )
       set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin CACHE INTERNAL "")
       set(IPOPT_LIBRARY ${CMAKE_BINARY_DIR}/lib/libipopt.so  CACHE INTERNAL "")
       
-      add_dependencies(${PROJECT_NAME} IpOpt)
 else()
     #add_custom_target (IpOpt)
 endif(NOT IPOPT_FOUND)
 
 include_directories(${IPOPT_INCLUDE_DIR})
+
+add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
+
+if (NOT IPOPT_FOUND)
+  add_dependencies(${PROJECT_NAME} IpOpt)
+endif(NOT IPOPT_FOUND)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    COMPILE_DEFINITIONS gismo_EXPORTS 
+    POSITION_INDEPENDENT_CODE ON
+    LINKER_LANGUAGE CXX
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON
+    FOLDER "G+Smo extensions"  )
+
 
 # Apply same configuration as G+Smo
 include( gsConfig)
