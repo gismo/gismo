@@ -21,7 +21,7 @@ find_package(LAPACK REQUIRED)
 
 if (NOT TRILINOS_FOUND)
   set(TRILINOS_VER "12-6-3")
-  message("STATUS CMake Will attempt to download and compile Trilinos ${TRILINOS_VER}.")
+  message(STATUS "CMake Will attempt to download and compile Trilinos ${TRILINOS_VER}.")
 include(ExternalProject)
 ExternalProject_Add(Trilinos
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos
@@ -35,7 +35,7 @@ ExternalProject_Add(Trilinos
 		       -DBUILD_SHARED_LIBS:BOOL=ON
                        #-DTrilinos_ENABLE_CXX11=ON
           UPDATE_COMMAND ""
-	  DOWNLOAD_NO_PROGRESS 0
+	  #DOWNLOAD_NO_PROGRESS 0
 )
       set(TRILINOS_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/include CACHE INTERNAL "")
       set(TRILINOS_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libepetra.so;
