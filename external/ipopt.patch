@@ -4,7 +4,7 @@
    fi
  fi
  
-+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
++DIR="$( cd "$( dirname $0 )" && pwd )"
 +
  echo " "
  echo "Running script for downloading the source code for MUMPS"
@@ -42,7 +42,7 @@
    fi
  fi
  
-+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
++DIR="$( cd "$( dirname $0 )" && pwd )"
 +
  echo " "
  echo "Running script for downloading the source code for the METIS"
@@ -67,7 +67,7 @@
  fi
  
  coinblas=blas-20130815.tgz
-+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
++DIR="$( cd "$( dirname $0 )" && pwd )"
  
  echo " "
  echo "Running script for downloading the source code for BLAS"
