@@ -16,6 +16,13 @@
 #include <gsCore/gsExport.h>
 #include <gsCore/gsForwardDeclarations.h>
 
+#include <gsTrilinos/SparseMatrix.h>
+
+
+// FD Trilinos
+class Epetra_Vector;
+class Epetra_BlockMap;
+
 namespace gismo
 {
 
@@ -31,10 +38,28 @@ public:
     
     Vector();
 
+    explicit Vector(const SparseMatrix & _map);
+    
+    Vector(const gsVector<> & gsVec, const SparseMatrix & _map);
+    
+    explicit Vector(Epetra_Vector * v_ptr);
+        
     ~Vector();
 
+    size_t size() const;
+    
+    void setConstant(const double val);
+
+    void setFrom(const SparseMatrix & _map);
+        
     void copyTo(gsVector<real_t> & gsVec);
 
+    Epetra_Vector * get() const;
+
+private:
+    Vector(const Vector& other);
+    Vector& operator=(const Vector& other);
+    
 private:
 
     VectorPrivate * my;

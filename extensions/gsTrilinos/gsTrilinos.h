@@ -30,3 +30,4 @@ namespace trilinos { }
 
 #include "SparseMatrix.h"
 #include "Vector.h"
+#include "gsTrilinosSolvers.h"

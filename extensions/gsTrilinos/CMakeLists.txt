@@ -29,6 +29,8 @@ ExternalProject_Add(Trilinos
 	  CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release   
                        -DTrilinos_ENABLE_TESTS=OFF  
                        -DTrilinos_ENABLE_Epetra=ON
+                       -DTrilinos_ENABLE_Amesos=ON
+                       -DTrilinos_ENABLE_AztecOO=ON
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
 		       -DBUILD_SHARED_LIBS:BOOL=ON
                        #-DTrilinos_ENABLE_CXX11=ON
@@ -45,6 +47,7 @@ ExternalProject_Add(Trilinos
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchoscomm.so;
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchoskokkoscompat.so;
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchosremainder.so
+#      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libamesos.so
       CACHE INTERNAL "")
 
 #      set(TRILINOS_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix CACHE INTERNAL "")

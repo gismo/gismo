@@ -16,6 +16,10 @@
 #include <gsCore/gsExport.h>
 #include <gsCore/gsForwardDeclarations.h>
 
+// FD Trilinos
+class Epetra_CrsMatrix;
+class Epetra_BlockMap;
+
 namespace gismo
 {
 
@@ -31,11 +35,15 @@ public:
 
     SparseMatrix();
     
-    SparseMatrix(const gsSparseMatrix<> & sp);
+    explicit SparseMatrix(const gsSparseMatrix<> & sp);
 
     ~SparseMatrix();
 
-    void copyTo(gsSparseMatrix<> & sp);
+    //Epetra_BlockMap map() const;
+    
+    void copyTo(gsSparseMatrix<> & sp) const;
+
+    Epetra_CrsMatrix * get() const;
     
 private:
 

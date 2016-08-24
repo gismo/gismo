@@ -36,12 +36,13 @@ class SparseMatrixPrivate
     SparseMatrixPrivate(const gsSparseMatrix<real_t> & originalA)
     {
         // get info from gismo/Eigen matrix
-        int outersize = originalA.outerSize();
-        int innersize = originalA.innerSize();
+        const int outersize = originalA.outerSize();
+        const int innersize = originalA.innerSize();
         
         // In gismo sparse matrices are stored as column-major (rows are compressed).
         // In Epetra we work row-wise (compressed columns)
-        assert( outersize==originalA.cols() && innersize==originalA.rows() );
+        GISMO_ASSERT( outersize==originalA.cols() && innersize==originalA.rows(),
+                      "Matrix dimension error");
         
         gsSparseMatrix<real_t> AT = originalA.transpose();
         
@@ -54,7 +55,6 @@ class SparseMatrixPrivate
         
         //const int myRank = comm.MyPID ();
         //const int numProcs = comm.NumProc ();
-        
         
         // The type of global indices.  You could just set this to int,
         // but we want the example to work for Epetra64 as well.
@@ -70,7 +70,8 @@ class SparseMatrixPrivate
 #endif // EPETRA_NO_32BIT_GLOBAL_INDICES
   
         // The number of rows and columns in the matrix.
-        const global_ordinal_type numGlobalElements = static_cast<global_ordinal_type>(originalA.rows());
+        const global_ordinal_type numGlobalElements =
+            static_cast<global_ordinal_type>(originalA.rows());
 
         // Construct a Map that puts approximately the same number of
         // equations on each processor.
@@ -86,31 +87,31 @@ class SparseMatrixPrivate
         // get the list of global indices this process owns.
         const int numMyElements = map.NumMyElements ();
 
-        global_ordinal_type* myGlobalElements = NULL;
+        global_ordinal_type * myGlobalElements = NULL;
 
-#ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
+#       ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
         myGlobalElements = map.MyGlobalElements64 ();
-#else
+#       else
         myGlobalElements = map.MyGlobalElements ();
-#endif // EPETRA_NO_32BIT_GLOBAL_INDICES
+#       endif // EPETRA_NO_32BIT_GLOBAL_INDICES
 
         // In general, tests like this really should synchronize across all
         // processes.  However, the likely cause for this case is a
         // misconfiguration of Epetra, so we expect it to happen on all
         // processes, if it happens at all.
-        if (numMyElements > 0 && myGlobalElements == NULL) {
+        if (numMyElements > 0 && myGlobalElements == NULL)
+        {
             throw std::logic_error ("Failed to get the list of global indices");
         }
 
-
-        // Create a Epetra sparse matrix whose rows have distribution given
-        // by the Map.  The max number of entries per row is given by the numbers in nEntriesPerRow.
-        //global_ordinal_type *nEntriesPerRow = AT.innerNonZeroPtr(); // number of nnz / row-> gives me segm. fault
-        global_ordinal_type* nEntriesPerRow = new global_ordinal_type[numGlobalElements];
-        for(int i=0;i<numGlobalElements;i++  ) nEntriesPerRow[i] = AT.innerVector(i).nonZeros();
-
-
-        Epetra_CrsMatrix A (Copy, map, nEntriesPerRow,true);
+        // Create a Epetra sparse matrix whose rows have distribution
+        // given by the Map.  The max number of entries per row is
+        // given by the numbers in nEntriesPerRow.
+        global_ordinal_type  nEntriesPerRow[numGlobalElements];
+        for(int i=0;i<numGlobalElements;i++  )
+            nEntriesPerRow[i] = AT.innerVector(i).nonZeros();
+        
+        Epetra_CrsMatrix A (Copy, map, nEntriesPerRow, true);
 
         // Local error code for use below.
         int lclerr = 0;
@@ -122,27 +123,27 @@ class SparseMatrixPrivate
         {
             int globalrow = myGlobalElements[i];
 
-            double* tmpValues = new double[ nEntriesPerRow[globalrow]];
-            global_ordinal_type* tmpColumns = new int[ nEntriesPerRow[globalrow]];
-            int c=0;
-            for (gsSparseMatrix<real_t>::InnerIterator it(AT,globalrow); it; ++it){
-                assert(c<nEntriesPerRow[globalrow]);
-                tmpValues[c] = it.value();
+            double tmpValues[nEntriesPerRow[globalrow]];// todo: std::vector
+            global_ordinal_type tmpColumns[nEntriesPerRow[globalrow]];// todo: std::vector
+            
+            int c = 0;
+            for (gsSparseMatrix<real_t>::InnerIterator it(AT,globalrow); it; ++it)
+            {
+                GISMO_ASSERT(c < nEntriesPerRow[globalrow], "Sparse matrix Filling failed");
+                tmpValues[c]  = it.value();
                 tmpColumns[c] = it.col();
                 c++;
             }
 
-
-            if (lclerr == 0) {
-                lclerr = A.InsertGlobalValues (globalrow,c, tmpValues, tmpColumns);
+            if (lclerr == 0)
+            {
+                //gsInfo<<"Insert ("<<globalrow <<"," << c <<")\n"; 
+                lclerr = A.InsertGlobalValues (globalrow, c, tmpValues, tmpColumns);
             }
-            if (lclerr != 0) {
+            else
+            {
                 break;
             }
-
-            delete[] tmpValues;
-            delete[] tmpColumns;
-
         }
 
         // If any process failed to insert at least one entry, throw.
@@ -162,7 +163,7 @@ class SparseMatrixPrivate
             throw std::runtime_error (os.str ());
         }
         
-        m_matrix.reset( new Epetra_CrsMatrix(A) );
+        matrix.reset( new Epetra_CrsMatrix(A) );
     }
             
 /*   
@@ -174,7 +175,7 @@ class SparseMatrixPrivate
 */
     
     /// A sparse matrix object in Trilinos 
-    memory::shared_ptr<Epetra_Matrix> m_matrix;
+    memory::shared_ptr<Epetra_Matrix> matrix;
 };
 
 SparseMatrix::SparseMatrix() : my(new SparseMatrixPrivate)
@@ -187,12 +188,22 @@ SparseMatrix::SparseMatrix(const gsSparseMatrix<> & sp)
     
 SparseMatrix::~SparseMatrix() { delete my; }
 
-
-void SparseMatrix::copyTo(gsSparseMatrix<> & sp)
+/*
+Epetra_BlockMap SparseMatrix::map() const
 {
-    //..
+    return my->matrix->Map();
+}
+*/
+
+void SparseMatrix::copyTo(gsSparseMatrix<> & sp) const
+{
+    // to do
 }
 
+Epetra_CrsMatrix * SparseMatrix::get() const
+{
+    return my->matrix.get();
+}
 
 }//namespace trilinos
 
