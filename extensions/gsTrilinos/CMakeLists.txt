@@ -47,7 +47,9 @@ ExternalProject_Add(Trilinos
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchoscomm.so;
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchoskokkoscompat.so;
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchosremainder.so
-#      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libamesos.so
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libamesos.so
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libaztecoo.so
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libepetraext.so
       CACHE INTERNAL "")
 
 #      set(TRILINOS_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix CACHE INTERNAL "")

@@ -71,7 +71,14 @@ void Vector::setFrom(const SparseMatrix & A)
     my->vec.reset( new Epetra_Vector(A.get()->OperatorDomainMap()) );
 }
 
-size_t Vector::size() const { return (my->vec ? my->vec->GlobalLength64() : 0 ); }
+size_t Vector::size() const 
+{ 
+#ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
+    return (my->vec ? my->vec->GlobalLength64() : 0 ); 
+#else
+    return (my->vec ? my->vec->GlobalLength()   : 0 ); 
+#endif
+}
 
 void Vector::copyTo(gsVector<real_t> & gsVec)
 {

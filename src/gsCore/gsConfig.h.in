@@ -47,6 +47,7 @@
 
 #cmakedefine GISMO_WITH_SUPERLU
 #cmakedefine GISMO_WITH_PARDISO
+#cmakedefine GISMO_WITH_TRILINOS
 #cmakedefine GISMO_WITH_PASTIX
 
 #cmakedefine GISMO_WITH_MPFR

@@ -44,6 +44,10 @@ public:
     void copyTo(gsSparseMatrix<> & sp) const;
 
     Epetra_CrsMatrix * get() const;
+
+private:
+    SparseMatrix(const SparseMatrix& other);
+    SparseMatrix& operator=(const SparseMatrix& other);
     
 private:
 

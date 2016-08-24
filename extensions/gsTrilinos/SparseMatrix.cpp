@@ -108,7 +108,7 @@ class SparseMatrixPrivate
         // given by the Map.  The max number of entries per row is
         // given by the numbers in nEntriesPerRow.
         global_ordinal_type  nEntriesPerRow[numGlobalElements];
-        for(int i=0;i<numGlobalElements;i++  )
+        for(int i=0; i<numGlobalElements; i++)
             nEntriesPerRow[i] = AT.innerVector(i).nonZeros();
         
         Epetra_CrsMatrix A (Copy, map, nEntriesPerRow, true);
@@ -119,12 +119,14 @@ class SparseMatrixPrivate
         // Fill the sparse matrix, one row at a time.  InsertGlobalValues
         // adds entries to the sparse matrix, using global column indices.
         // It changes both the graph structure and the values.
+        std::vector<double> tmpValues;
+        std::vector<global_ordinal_type> tmpColumns;
         for (int i = 0; i < numMyElements; ++i)
         {
             int globalrow = myGlobalElements[i];
 
-            double tmpValues[nEntriesPerRow[globalrow]];// todo: std::vector
-            global_ordinal_type tmpColumns[nEntriesPerRow[globalrow]];// todo: std::vector
+            tmpValues .resize(nEntriesPerRow[globalrow]);
+            tmpColumns.resize(nEntriesPerRow[globalrow]);
             
             int c = 0;
             for (gsSparseMatrix<real_t>::InnerIterator it(AT,globalrow); it; ++it)
@@ -138,7 +140,8 @@ class SparseMatrixPrivate
             if (lclerr == 0)
             {
                 //gsInfo<<"Insert ("<<globalrow <<"," << c <<")\n"; 
-                lclerr = A.InsertGlobalValues (globalrow, c, tmpValues, tmpColumns);
+                lclerr = A.InsertGlobalValues (globalrow, c, 
+                                               tmpValues.data(), tmpColumns.data());
             }
             else
             {
