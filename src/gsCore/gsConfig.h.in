@@ -44,11 +44,11 @@
 #cmakedefine GISMO_WITH_ADIFF
 #cmakedefine GISMO_WITH_CODIPACK
 
-
 #cmakedefine GISMO_WITH_SUPERLU
 #cmakedefine GISMO_WITH_PARDISO
 #cmakedefine GISMO_WITH_TRILINOS
 #cmakedefine GISMO_WITH_PASTIX
+#cmakedefine GISMO_WITH_MPI
 
 #cmakedefine GISMO_WITH_MPFR
 #ifdef GISMO_WITH_MPFR
@@ -62,10 +62,8 @@
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
-#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
+//#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
 
-/* Determine whether gismo warnings (eg. deprecated) should be emitted. */
-#cmakedefine GISMO_WARNINGS
 
 /**
  * @name Eigen options - MUST be defined before Eigen is included
