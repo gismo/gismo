@@ -15,6 +15,7 @@
 
 #include <gsCore/gsExport.h>
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsCore/gsLinearAlgebra.h>
 
 #include <gsTrilinos/SparseMatrix.h>
 
@@ -52,7 +53,15 @@ public:
 
     void setFrom(const SparseMatrix & _map);
         
-    void copyTo(gsVector<real_t> & gsVec);
+    void copyTo(gsVector<real_t> & gsVec) const;
+
+    gsVector<real_t> print() const
+    {
+        gsVector<real_t> tmp;
+        tmp.setConstant(11);
+        copyTo(tmp);
+        return tmp;
+    }
 
     Epetra_Vector * get() const;
 

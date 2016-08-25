@@ -47,7 +47,12 @@ class SparseMatrixPrivate
         gsSparseMatrix<real_t> AT = originalA.transpose();
         
 #ifdef HAVE_MPI
-        MPI_Init (&argc, &argv);
+        //MPI_Init(NULL,NULL);
+        int flag;
+        MPI_Initialized(&flag);
+        GISMO_ASSERT(flag, "MPI is not initialized");
+        // MPI_Finalized(&flag);
+        // GISMO_ASSERT(flag, "MPI is not finalized");
         Epetra_MpiComm comm (MPI_COMM_WORLD);
 #else
         Epetra_SerialComm comm;

@@ -17,6 +17,10 @@
 #include "Amesos.h"
 #include "Amesos_BaseSolver.h"
 
+//#include "Ifpack_ConfigDefs.h"
+//#include "Ifpack.h"
+//#include "Ifpack_AdditiveSchwarz.h"
+
 #include "AztecOO.h"
 #include "AztecOO_Version.h"
 
@@ -70,6 +74,39 @@ void AbstractSolver::getSolution( gsVector<> & sol ) const
 
 void GMRES::solveProblem()
 {
+    /* 1. Preconditionner */
+/*    
+    // allocates an IFPACK factory. No data is associated 
+    Ifpack Factory;
+
+    // create the preconditioner. For valid PrecType values,
+    // please check the documentation
+    std::string PrecType = "ILU"; // incomplete LU
+    int OverlapLevel = 1; // must be >= 0. ignored for Comm.NumProc() == 1
+    Teuchos::RCP<Ifpack_Preconditioner> Prec = Teuchos::rcp( Factory.Create(PrecType, &*A, OverlapLevel) );
+    assert(Prec != Teuchos::null);
+    
+    // specify parameters for ILU
+    List.set("fact: drop tolerance", 1e-9);
+    List.set("fact: level-of-fill", 1);
+    // the combine mode is on the following:
+    // "Add", "Zero", "Insert", "InsertAdd", "Average", "AbsMax"
+    // Their meaning is as defined in file Epetra_CombineMode.h   
+    List.set("schwarz: combine mode", "Add");
+    // sets the parameters
+    IFPACK_CHK_ERR(Prec->SetParameters(List));
+    
+    // initialize the preconditioner. At this point the matrix must
+    // have been FillComplete()'d, but actual values are ignored.
+    IFPACK_CHK_ERR(Prec->Initialize());
+    
+    // Builds the preconditioners, by looking for the values of 
+    // the matrix.
+    IFPACK_CHK_ERR(Prec->Compute());
+    
+*/
+    /* 2. AztecOO solver / GMRES*/
+    
     AztecOO Solver;
     Solver.SetProblem(my->Problem);
     Solver.SetAztecOption(AZ_solver, AZ_gmres);

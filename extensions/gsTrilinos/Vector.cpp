@@ -51,7 +51,8 @@ Vector::Vector(const SparseMatrix & _map)
 Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map)
 : my(new VectorPrivate(_map.get()->OperatorDomainMap()))
 {
-    // todo: fill in from gsVec to my->vec
+    my->vec.reset( new Epetra_Vector(Copy, _map.get()->OperatorDomainMap(),
+                                     const_cast<real_t *>(gsVec.data())) );
 }
 
 Vector::Vector(Epetra_Vector * v_ptr) : my(new VectorPrivate(v_ptr))
@@ -80,7 +81,7 @@ size_t Vector::size() const
 #endif
 }
 
-void Vector::copyTo(gsVector<real_t> & gsVec)
+void Vector::copyTo(gsVector<real_t> & gsVec) const
 {
     gsVec.resize(size());
     my->vec->ExtractCopy(gsVec.data());

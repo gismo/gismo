@@ -19,7 +19,18 @@
 
 #ifdef HAVE_MPI
 // Your code is an existing MPI code, so it presumably includes mpi.h directly.
-#  include <mpi.h>
+//#  include <mpi.h>
+
+#ifndef GISMO_WITH_MPI
+#  ifdef _MSC_VER
+// MSVC and GCC >= 4.4.7
+#    pragma message ("warning: MPI is disabled.")
+#  else
+// GCC
+#    warning "MPI is disabled."
+#  endif
+#endif
+
 // Epetra's wrapper for MPI_Comm.  This header file only exists if
 // Epetra was built with MPI enabled.
 #  include <Epetra_MpiComm.h>
