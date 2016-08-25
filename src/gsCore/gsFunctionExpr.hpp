@@ -59,7 +59,8 @@
   #include <exprtk_gmp_adaptor.hpp>  // external file
 #else
   #ifdef GISMO_WITH_CODIPACK
-    #include <gsCoDiPack/exprtk_codi_rf_adaptor.hpp>
+    //#include <gsCoDiPack/exprtk_codi_rf_adaptor.hpp>
+    #include <gsCoDiPack/exprtk_codi_rr_adaptor.hpp>
   #else
     #include <exprtk.hpp>              // external file
   #endif

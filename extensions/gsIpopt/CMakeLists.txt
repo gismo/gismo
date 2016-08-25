@@ -6,6 +6,10 @@
 
 project(gsIpopt)
 
+if(GISMO_WITH_CODIPACK)
+include_directories(${CODIPACK_INCLUDE_DIR})
+endif()
+
 #unset(IPOPT_INCLUDE_DIR CACHE)
 #unset(IPOPT_LIBRARY     CACHE)
 
