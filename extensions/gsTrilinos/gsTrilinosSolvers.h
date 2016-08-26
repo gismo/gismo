@@ -97,6 +97,22 @@ private:
 };
 
 
+class GISMO_EXPORT SuperLU : public AbstractSolver
+{
+public:
+    typedef AbstractSolver Base;
+    
+public:
+    
+    SuperLU(const SparseMatrix & A )
+    : Base(A)
+    { }
+    
+private:
+    
+    void solveProblem();
+};
+
 
 
 };// namespace solver

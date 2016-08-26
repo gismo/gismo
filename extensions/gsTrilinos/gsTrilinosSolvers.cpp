@@ -24,6 +24,8 @@
 #include "AztecOO.h"
 #include "AztecOO_Version.h"
 
+//#include "Amesos_Superlu.h"
+
 #include <Epetra_LinearProblem.h>
 
 namespace gismo
@@ -117,7 +119,7 @@ void GMRES::solveProblem()
 
 void KLU::solveProblem()
 {
-    static const char * SolverType = "Amesos_KLU";
+    static const char * SolverType = "Klu";
     static Amesos Factory;
     const bool IsAvailable = Factory.Query(SolverType);
     GISMO_ENSURE(IsAvailable, "Amesos KLU is not available.\n");
@@ -128,6 +130,13 @@ void KLU::solveProblem()
     Solver->Solve();
 }
 
+void SuperLU::solveProblem()
+{
+//    Amesos_Superlu Solver(my->Problem);
+//    Solver.SymbolicFactorization();
+//    Solver.NumericFactorization();
+//    Solver.Solve();
+}
 
 
 

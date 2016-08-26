@@ -76,7 +76,9 @@ class SparseMatrixPrivate
   
         // The number of rows and columns in the matrix.
         const global_ordinal_type numGlobalElements =
-            static_cast<global_ordinal_type>(originalA.rows());
+              (comm.MyPID() == 0) ? 
+              static_cast<global_ordinal_type> ( originalA.rows() ) :
+              static_cast<global_ordinal_type> (0);
 
         // Construct a Map that puts approximately the same number of
         // equations on each processor.
