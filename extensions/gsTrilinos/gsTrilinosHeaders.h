@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsCore/gsConfig.h>
+
 // This defines useful macros like HAVE_MPI, which is defined if and
 // only if Epetra was built with MPI enabled.
 #include <Epetra_config.h>
