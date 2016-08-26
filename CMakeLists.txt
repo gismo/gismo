@@ -105,6 +105,8 @@ set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
 			"${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
+include_directories(${GISMO_INCLUDE_DIRS})
+
 ## #################################################################
 ## Extensions
 ## #################################################################
@@ -157,8 +159,6 @@ add_subdirectory(external)
 
 # Add main sources directory
 add_subdirectory(src)
-
-include_directories(${GISMO_INCLUDE_DIRS})
 
 if(GISMO_BUILD_LIB)
 
