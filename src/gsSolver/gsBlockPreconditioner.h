@@ -67,6 +67,13 @@ public:
     void addOperator(index_t row, index_t col, const BasePtr& op);
 
     /**
+    * @brief Returns the pointer to a linear operator of a specific block (if existent)
+    * @param row row position in the block operator
+    * @param col column position in the block operator
+    */
+    const BasePtr & getOperator(index_t row, index_t col) const;
+
+    /**
      * @brief Apply the correct segment of the input vector on the preconditioners in the block structure and store the result.
      * @param input  Input vector
      * @param result Result vector

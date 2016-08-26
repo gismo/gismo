@@ -47,7 +47,7 @@ void gsBlockOp::apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result)
 {
     result.setZero(blockTargetPositions.sum(), input.cols());
     gsVector<index_t> singleCol(1);
-    singleCol << 1;
+    singleCol <<  input.cols();
     gsMatrix<real_t>::BlockView resultBlocks= result.blockView(blockTargetPositions, singleCol);
 
     for (index_t i = 0; i < blockPrec.rows() ; ++i)
@@ -67,6 +67,12 @@ void gsBlockOp::apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result)
             inputIndex += blockInputPositions(j);
         }
     }
+}
+
+const gsBlockOp::BasePtr & gsBlockOp::getOperator(index_t row, index_t col) const
+{
+    GISMO_ASSERT(blockPrec(row, col)!=NULL, "No linear operator exists in this block");
+    return blockPrec(row,col);
 }
 
 }
