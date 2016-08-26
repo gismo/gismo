@@ -100,24 +100,20 @@ unset(gismo_TMPL_HEADERS         CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
-set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src;${PROJECT_SOURCE_DIR}/external;${PROJECT_SOURCE_DIR}/extensions"
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
+     			"${PROJECT_SOURCE_DIR}/external"
+			"${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
-
-# Add externals directory
-add_subdirectory(external)
-
-# external inclusion paths
-#get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
-#include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/external)
-
-include_directories(${GISMO_INCLUDE_DIRS})
-
-# Add main sources directory
-add_subdirectory(src)
 
 ## #################################################################
 ## Extensions
 ## #################################################################
+
+if(GISMO_WITH_CODIPACK)
+  add_subdirectory(extensions/gsCoDiPack)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR} )
+  include_directories(${CODIPACK_INCLUDE_DIR})
+endif(GISMO_WITH_CODIPACK)
 
 if(GISMO_WITH_PSOLID)
   add_subdirectory(extensions/gsParasolid)
@@ -134,7 +130,8 @@ endif(GISMO_WITH_ONURBS)
 
 if(GISMO_WITH_IPOPT)
   add_subdirectory(extensions/gsIpopt)
-  include_directories(${IPOPT_INCLUDE_DIR})
+  #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR} )
+  #include_directories(${IPOPT_INCLUDE_DIR})
 endif(GISMO_WITH_IPOPT)
 
 if(GISMO_WITH_SUPERLU)
@@ -143,10 +140,6 @@ endif(GISMO_WITH_SUPERLU)
 
 #if(GISMO_WITH_METIS)
 
-if(GISMO_WITH_CODIPACK)
-  add_subdirectory(extensions/gsCoDiPack)
-endif(GISMO_WITH_CODIPACK)
-
 if(GISMO_WITH_TRILINOS)
   add_subdirectory(extensions/gsTrilinos)
 endif(GISMO_WITH_TRILINOS)
@@ -154,6 +147,18 @@ endif(GISMO_WITH_TRILINOS)
 ## #################################################################
 ## Build G+Smo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################
+
+# Add externals directory
+add_subdirectory(external)
+
+# external inclusion paths
+#get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
+#include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/external)
+
+# Add main sources directory
+add_subdirectory(src)
+
+include_directories(${GISMO_INCLUDE_DIRS})
 
 if(GISMO_BUILD_LIB)
 
