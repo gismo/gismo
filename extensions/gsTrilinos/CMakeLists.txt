@@ -16,7 +16,8 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 include( gsConfig)
 
 # Look for MPI
-# find_package(MPI REQUIRED)
+find_package(MPI REQUIRED)
+include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
 # Look for trilinos library
 find_package(TRILINOS QUIET)
@@ -97,7 +98,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
-set(gismo_LINKER ${gismo_LINKER} ${LAPACK_LIBRARIES} ${TRILINOS_LIBRARIES}
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPI_INCLUDE_PATH}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+
+set(gismo_LINKER ${gismo_LINKER} ${LAPACK_LIBRARIES} ${TRILINOS_LIBRARIES} ${MPI_CXX_LIBRARIES}
     CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
