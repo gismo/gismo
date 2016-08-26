@@ -11,10 +11,12 @@
     Author(s): A. Mantzaflaris
 */
 
+#include <gsMpi/gsMpiHelper.h>
 #include "gsTrilinosHeaders.h"
 #include "SparseMatrix.h"
 
 #include <gsCore/gsLinearAlgebra.h>
+
 
 namespace gismo
 {
@@ -138,15 +140,18 @@ class SparseMatrixPrivate
             int c = 0;
             for (gsSparseMatrix<real_t>::InnerIterator it(AT,globalrow); it; ++it)
             {
+                //gsInfo<<"Filling "<< AT.row(globalrow).toDense()<<"\n"; 
                 GISMO_ASSERT(c < nEntriesPerRow[globalrow], "Sparse matrix Filling failed");
                 tmpValues[c]  = it.value();
-                tmpColumns[c] = it.col();
+                tmpColumns[c] = it.index();
                 c++;
             }
 
             if (lclerr == 0)
             {
-                //gsInfo<<"Insert ("<<globalrow <<"," << c <<")\n"; 
+                gsInfo<<"Insert ("<<globalrow <<"," << c <<")\n"; 
+                gsInfo<<"values:"<< gsAsVector<double>(tmpValues).transpose()<<")\n"; 
+                gsInfo<<"columns:"<< gsAsVector<global_ordinal_type>(tmpColumns).transpose()<<")\n";
                 lclerr = A.InsertGlobalValues (globalrow, c, 
                                                tmpValues.data(), tmpColumns.data());
             }
@@ -154,6 +159,7 @@ class SparseMatrixPrivate
             {
                 break;
             }
+           
         }
 
         // If any process failed to insert at least one entry, throw.
@@ -213,6 +219,15 @@ void SparseMatrix::copyTo(gsSparseMatrix<> & sp) const
 Epetra_CrsMatrix * SparseMatrix::get() const
 {
     return my->matrix.get();
+}
+
+void SparseMatrix::print() const
+{
+    char** na;
+    gsMPIHelper & mpi_helper = gsMPIHelper::instance(1, na);
+
+    gsInfo << "Processor No. " << mpi_helper.rank() << "\n" << *get();
+    
 }
 
 }//namespace trilinos

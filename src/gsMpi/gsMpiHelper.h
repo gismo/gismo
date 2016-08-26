@@ -54,6 +54,10 @@
 
 #pragma once
 
+#include <gsCore/gsConfig.h>
+#include <gsCore/gsForwardDeclarations.h>
+#include <gsCore/gsMemory.h>
+
 #ifdef GISMO_WITH_MPI
 #include <gsMpi/gsMpiTraits.h>
 #include <gsMpi/gsBinaryFunctions.h>
@@ -230,7 +234,7 @@ namespace gismo
      * @param argc The number of arguments provided to main.
      * @param argv The arguments provided to main.
      */
-    static gsMPIHelper& instance(int& argc, char**& argv)
+    static gsMPIHelper& instance(const int& argc, char**& argv)
     {
       // create singleton instance
       static gsMPIHelper singleton (argc, argv);
@@ -252,7 +256,7 @@ namespace gismo
     void prevent_warning(int){}
 
     //! \brief calls MPI_Init with argc and argv as parameters
-    gsMPIHelper(int& argc, char**& argv)
+    gsMPIHelper(const int& argc, char**& argv)
     {
       int wasInitialized = -1;
       MPI_Initialized( &wasInitialized );
@@ -260,15 +264,15 @@ namespace gismo
       {
         rank_ = -1;
         size_ = -1;
-        static int is_initialized = MPI_Init(&argc, &argv);
+        static int is_initialized = MPI_Init(const_cast<int*>(&argc), &argv);
         prevent_warning(is_initialized);
       }
 
       MPI_Comm_rank(MPI_COMM_WORLD,&rank_);
       MPI_Comm_size(MPI_COMM_WORLD,&size_);
 
-      assert( rank_ >= 0 );
-      assert( size_ >= 1 );
+      GISMO_ASSERT( rank_ >= 0, "Invalid processor rank");
+      GISMO_ASSERT( size_ >= 1, "Invalid size");
 
       gsDebug << "Called  MPI_Init on p=" << rank_ << "!" << std::endl;
     }

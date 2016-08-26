@@ -45,6 +45,8 @@ public:
 
     Epetra_CrsMatrix * get() const;
 
+    void print() const;
+
 private:
     SparseMatrix(const SparseMatrix& other);
     SparseMatrix& operator=(const SparseMatrix& other);

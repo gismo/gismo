@@ -35,10 +35,12 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_Epetra=ON
                        -DTrilinos_ENABLE_Amesos=ON
                        -DTrilinos_ENABLE_AztecOO=ON
+                       #-DTrilinos_ENABLE_Belos=ON
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
 		       -DBUILD_SHARED_LIBS:BOOL=ON
 		       -DTPL_ENABLE_MPI=ON
                        -DTrilinos_ENABLE_CXX11=ON
+		       -DTPL_ENABLE_SuperLU=OFF
 		       ## Point to MPI compiler
 		       #-DCMAKE_CXX_COMPILER=/usr/lib64/mpi/gcc/openmpi/bin/mpic++
 		       #-DCMAKE_C_COMPILER=/usr/lib64/mpi/gcc/openmpi/bin/mpicc
@@ -59,6 +61,7 @@ ExternalProject_Add(Trilinos
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libamesos.so
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libaztecoo.so
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libepetraext.so
+      #${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libbelos.so
       CACHE INTERNAL "")
 
 #      set(TRILINOS_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix CACHE INTERNAL "")
