@@ -111,9 +111,13 @@ include_directories(${GISMO_INCLUDE_DIRS})
 ## Extensions
 ## #################################################################
 
+# Add externals directory
+add_subdirectory(external)
+
 if(GISMO_WITH_CODIPACK)
   add_subdirectory(extensions/gsCoDiPack)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR} )
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
   include_directories(${CODIPACK_INCLUDE_DIR})
 endif(GISMO_WITH_CODIPACK)
 
@@ -132,7 +136,8 @@ endif(GISMO_WITH_ONURBS)
 
 if(GISMO_WITH_IPOPT)
   add_subdirectory(extensions/gsIpopt)
-  #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR} )
+  #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
+  #CACHE INTERNAL "${PROJECT_NAME} include directories")
   #include_directories(${IPOPT_INCLUDE_DIR})
 endif(GISMO_WITH_IPOPT)
 
@@ -149,9 +154,6 @@ endif(GISMO_WITH_TRILINOS)
 ## #################################################################
 ## Build G+Smo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################
-
-# Add externals directory
-add_subdirectory(external)
 
 # external inclusion paths
 #get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
