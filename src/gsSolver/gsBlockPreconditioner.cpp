@@ -71,7 +71,7 @@ void gsBlockOp::apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result)
 
 const gsBlockOp::BasePtr & gsBlockOp::getOperator(index_t row, index_t col) const
 {
-    GISMO_ASSERT(blockPrec(row, col)!=NULL, "No linear operator exists in this block");
+    GISMO_ASSERT((bool)blockPrec(row, col)!=0, "No linear operator exists in this block");
     return blockPrec(row,col);
 }
 
