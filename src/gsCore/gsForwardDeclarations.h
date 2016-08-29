@@ -23,6 +23,7 @@
 
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>
+#include <gsCore/gsExport.h>
 #include <gsCore/gsMemory.h>
 
 namespace gismo 
