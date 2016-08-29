@@ -13,9 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsExport.h>
-
-#include <map>
+#include <gsCore/gsForwardDeclarations.h>
 
 namespace TCLAP
 {

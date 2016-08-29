@@ -11,10 +11,6 @@
     Author(s): A. Mantzaflaris
 */
 
-#include <gsCore/gsConfig.h>
-#include <gsCore/gsDebug.h>
-#include <gsCore/gsMemory.h>
-
 #include <gsIO/gsCmdLine.h>
 //#include <gsIO/gsCmdLineArgs.h>
 
