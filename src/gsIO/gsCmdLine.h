@@ -15,10 +15,13 @@
 
 #include <gsCore/gsExport.h>
 
+#include <map>
+
 namespace TCLAP
 {
 //forward declarations
 class CmdLineInterface;
+class Arg;
 }
 
 
@@ -44,6 +47,9 @@ class gsCmdLinePrivate;
 class GISMO_EXPORT gsCmdLine
 {
 public:
+    typedef std::map<std::string,TCLAP::Arg*> ArgTable;
+
+public:
     /**
      * Command line constructor. Defines how the arguments will be
      * parsed.
@@ -56,6 +62,8 @@ public:
      */
     gsCmdLine(const std::string& message,	const char delimiter = ' ',
               bool helpAndVersion = true);
+
+    gsCmdLine(int argc, char *argv[], const std::string& message);
     
     ~gsCmdLine();
 
@@ -95,10 +103,43 @@ public:
                         const std::string& desc, 
                         std::string & value);
 
+
+    // -----------------
+    
+    int getInt(const std::string& flag, 
+               const std::string& name, 
+               const std::string& desc, 
+               const int & value);
+    
+    real_t getReal(const std::string& flag, 
+                   const std::string& name, 
+                   const std::string& desc, 
+                   const real_t & value);
+
+    std::string getString(const std::string& flag, 
+                          const std::string& name, 
+                          const std::string& desc, 
+                          const std::string & value);
+
+    bool getSwitch(const std::string& flag, 
+                   const std::string& name, 
+                   const std::string& desc, 
+                   const bool & value);
+
+    bool getSwitch(const std::string& name, 
+                   const std::string& desc, 
+                   const bool & value);
+
+    std::string getPlainString(const std::string& name, 
+                               const std::string& desc, 
+                               const std::string & value);
+
+    bool valid() const;
+
 private:
 
     gsCmdLinePrivate * my;
-
+    
 }; // class gsCmdLine
 
 

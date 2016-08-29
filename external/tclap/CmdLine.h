@@ -448,11 +448,10 @@ inline void CmdLine::parse(std::vector<std::string>& args)
 
 	try {
 		_progName = args.front();
-		args.erase(args.begin());
 
 		int requiredCount = 0;
 
-		for (int i = 0; static_cast<unsigned int>(i) < args.size(); i++) 
+		for (int i = 1; static_cast<unsigned int>(i) < args.size(); i++) //G+Smo
 		{
 			bool matched = false;
 			for (ArgListIterator it = _argList.begin();
