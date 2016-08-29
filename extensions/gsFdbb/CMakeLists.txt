@@ -4,8 +4,8 @@
 ## Copyright (C) 2016 - RICAM-Linz.
 ######################################################################
 
-## CoDiPack extension
-project(gsCoDiPackExtension)
+## FDBB extension
+project(gsFdbbExtension)
 
 # Collect file names
 aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HEADERS)
@@ -15,26 +15,19 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 # Apply same configuration as G+Smo
 include( gsConfig)
 
-# Look for CoDiPack library
-#find_package(CODIPACK QUIET)
-#find_package(LAPACK REQUIRED)
-
-#if (NOT CODIPACK_FOUND)
-
-message("STATUS CMake Will attempt to download CoDiPack sources.")
+message("STATUS CMake Will attempt to download FDBB sources.")
 include(ExternalProject)
-ExternalProject_Add(CoDiPack
-          SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CoDiPack
-          URL https://github.com/SciCompKL/CoDiPack/archive/numericExtension.zip
+ExternalProject_Add(FDBB
+          SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/FDBB
+          URL https://gitlab.com/mmoelle1/FDBB/repository/archive.zip
 	  CONFIGURE_COMMAND ""
 	  BUILD_COMMAND ""
           UPDATE_COMMAND ""
           INSTALL_COMMAND ""
 )
-#endif(NOT CODIPACK_FOUND)
 
-set(CODIPACK_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CoDiPack/include CACHE INTERNAL "")
-include_directories(${CODIPACK_INCLUDE_DIR})
+set(FDBB_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/FDBB/src CACHE INTERNAL "")
+include_directories(${FDBB_INCLUDE_DIR})
 
 add_library(${PROJECT_NAME} OBJECT
     ${${PROJECT_NAME}_SOURCES}
@@ -54,11 +47,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
 
-#if (NOT CODIPACK_FOUND)
-  add_dependencies(${PROJECT_NAME} CoDiPack)
-#  set(CODIPACK_FOUND TRUE)
-#endif(NOT CODIPACK_FOUND)
+  add_dependencies(${PROJECT_NAME} FDBB)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
-        DESTINATION include/gismo/gsCoDiPack/
+        DESTINATION include/gismo/gsFDBB/
         FILES_MATCHING PATTERN "*.h")

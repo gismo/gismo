@@ -173,7 +173,45 @@ class gsIpOptTNLP : public Ipopt::TNLP
         }
         
         //@}
+
+
+
+     /** This method is called once per iteration, after the iteration
+         summary output has been printed.  It provides the current
+         information to the user to do with it anything she wants.  It
+         also allows the user to ask for a premature termination of the
+         optimization by returning false, in which case Ipopt will
+         terminate with a corresponding return status.  The basic
+         information provided in the argument list has the quantities
+         values printed in the iteration summary line.  If more
+         information is required, a user can obtain it from the IpData
+         and IpCalculatedQuantities objects.  However, note that the
+         provided quantities are all for the problem that Ipopt sees,
+         i.e., the quantities might be scaled, fixed variables might be
+         sorted out, etc.  The status indicates things like whether the
+         algorithm is in the restoration phase...  In the restoration
+         phase, the dual variables are probably not not changing. 
+
+    virtual bool intermediate_callback(AlgorithmMode mode,
+                                       Index iter, Number obj_value,
+                                       Number inf_pr, Number inf_du,
+                                       Number mu, Number d_norm,
+                                       Number regularization_size,
+                                       Number alpha_du, Number alpha_pr,
+                                       Index ls_trials,
+                                       const IpoptData* ip_data,
+                                       IpoptCalculatedQuantities* ip_cq)
+    {
+        //return callback();
         
+        //SmartPtr< const IteratesVector >  curr  = ip_data->curr ();
+        //SmartPtr< const IteratesVector >  trial = ip_data->trial();
+        //int it = ip_data->iter_count();
+        //Number 	tol = ip_data->tol();
+        return true;
+    }
+     */
+    
         /** @name Solution Methods */
         //@{
         /** This method is called when the algorithm is complete so the TNLP can store/write the solution */

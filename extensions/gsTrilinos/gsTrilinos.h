@@ -28,6 +28,7 @@ namespace trilinos { }
 
 } // namespace gismo
 
-#include "SparseMatrix.h"
-#include "Vector.h"
-#include "gsTrilinosSolvers.h"
+#include <gsTrilinos/SparseMatrix.h>
+#include <gsTrilinos/Vector.h>
+#include <gsTrilinos/gsTrilinosSolvers.h>
+#include <gsTrilinos/gsTrilinosEigenSolvers.h>

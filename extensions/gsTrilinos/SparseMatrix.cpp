@@ -12,8 +12,8 @@
 */
 
 #include <gsMpi/gsMpiHelper.h>
-#include "gsTrilinosHeaders.h"
-#include "SparseMatrix.h"
+#include <gsTrilinos/gsTrilinosHeaders.h>
+#include <gsTrilinos/SparseMatrix.h>
 
 #include <gsCore/gsLinearAlgebra.h>
 
@@ -158,6 +158,11 @@ void SparseMatrix::copyTo(gsSparseMatrix<> & sp) const
 Epetra_CrsMatrix * SparseMatrix::get() const
 {
     return my->matrix.get();
+}
+
+memory::shared_ptr<Epetra_CrsMatrix> SparseMatrix::getPtr()
+{
+    return my->matrix;
 }
 
 void SparseMatrix::print() const

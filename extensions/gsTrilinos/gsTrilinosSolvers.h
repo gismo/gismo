@@ -24,6 +24,11 @@ namespace gismo
 namespace trilinos
 {
 
+/** @namespace gismo::trilinos::solver
+
+    @brief This namespace contains wrappers for Trilinos linear
+    system solvers and eigenvalue solvers
+*/
 namespace solver
 {
 

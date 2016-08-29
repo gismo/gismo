@@ -26,7 +26,6 @@ namespace gismo
 namespace trilinos
 {
 
-
 class SparseMatrixPrivate;
 
 class GISMO_EXPORT SparseMatrix
@@ -45,6 +44,8 @@ public:
 
     Epetra_CrsMatrix * get() const;
 
+    memory::shared_ptr<Epetra_CrsMatrix> getPtr();
+    
     void print() const;
 
 private:

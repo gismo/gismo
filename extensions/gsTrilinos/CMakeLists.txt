@@ -35,6 +35,7 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_Epetra=ON
                        -DTrilinos_ENABLE_Amesos=ON
                        -DTrilinos_ENABLE_AztecOO=ON
+                       -DTrilinos_ENABLE_Anasazi=ON	
                        #-DTrilinos_ENABLE_Belos=ON
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
 		       -DBUILD_SHARED_LIBS:BOOL=ON

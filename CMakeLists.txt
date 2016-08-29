@@ -129,6 +129,12 @@ if(GISMO_WITH_ONURBS)
   add_subdirectory(extensions/gsOpennurbs)
 endif(GISMO_WITH_ONURBS)
 
+if(GISMO_WITH_FDBB)
+  add_subdirectory(extensions/gsFdbb)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${FDBB_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+endif(GISMO_WITH_FDBB)
+
 #if (GISMO_WITH_VTK)
 #  add_subdirectory(extensions/gsVtk)
 #  add_definitions(-DGISMO_WITH_VTK="${GISMO_WITH_VTK}")
