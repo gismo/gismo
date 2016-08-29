@@ -105,7 +105,6 @@ gsCmdLine::gsCmdLine( const std::string& message,
                       bool helpAndVersion)
 : my(new gsCmdLinePrivate(message,delimiter,helpAndVersion))
 {
-    //my->argstr.assign(argv, argv + argc);
 /*
     // Config file
     my->stringVals.push_back(
@@ -137,7 +136,8 @@ void gsCmdLine::addInt( const std::string& flag,
                         const std::string& desc, 
                         int & value)
 {
-    value = getInt(flag,name,desc,value);
+    //value = getInt(flag,name,desc,value);
+    my->intVals.push_back(new TCLAP::ValueArg<int>(flag,name,desc,false,value,"int",my->cmd) );
     my->intRes.push_back(&value);
 }
 
@@ -217,7 +217,9 @@ void gsCmdLine::addString( const std::string& flag,
                            const std::string& desc, 
                            std::string & value)
 {
-    value = getString(flag,name,desc,value);
+    my->stringVals.push_back(
+    new TCLAP::ValueArg<std::string>(flag,name,desc,false,value,"string",my->cmd) );
+    //value = getString(flag,name,desc,value);
     my->strRes.push_back(&value);
 }
 
@@ -257,7 +259,6 @@ void gsCmdLine::addSwitch( const std::string& name,
                            bool & value)
 {
     addSwitch("",name,desc,value);
-    my->swRes.push_back(&value);
 }
 
 void gsCmdLine::addSwitch( const std::string& flag, 
@@ -265,7 +266,8 @@ void gsCmdLine::addSwitch( const std::string& flag,
                            const std::string& desc, 
                            bool & value)
 {
-    value = getSwitch(flag,name,desc,value);
+    my->switches.push_back(new TCLAP::SwitchArg("",name,desc,my->cmd) );
+    //value = getSwitch(flag,name,desc,value);
     my->swRes.push_back(&value);
 }
 
@@ -296,7 +298,7 @@ bool gsCmdLine::getSwitch( const std::string& flag,
     }
 
     a->TCLAP::Arg::reset();
-    return a->getValue();
+    return value | a->getValue();
 }
 
 bool gsCmdLine::getSwitch( const std::string& name, 
@@ -310,7 +312,19 @@ void gsCmdLine::addPlainString( const std::string& name,
                                 const std::string& desc, 
                                 std::string & value)
 {
-    value = getPlainString(name,desc,value);
+    //value = getPlainString(name,desc,value);
+
+    if ( my->plainString )
+    {
+        gsWarn<<"Plain string already added.\n";
+        return;
+    }
+    else
+    {
+        my->plainString = 
+            new TCLAP::UnlabeledValueArg<std::string>(name,desc,false,value,"string",my->cmd);
+        my->pstrRes     = &value;
+    }
     my->pstrRes = &value;
 }
 
@@ -381,8 +395,8 @@ bool gsCmdLine::getValues(int argc, char *argv[])
             *my->strRes[i] = my->stringVals[i]->getValue();
 
         for( std::size_t i=0; i!=my->switches.size(); ++i)
-                *my->swRes[i] |= my->switches[i]->getValue();
-
+            *my->swRes[i] |= my->switches[i]->getValue();
+        
         if ( my->plainString )
             *my->pstrRes = my->plainString->getValue();
     }
