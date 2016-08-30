@@ -84,8 +84,8 @@ void gsOptionList::setInt(const std::string& label,
 void gsOptionList::setReal(const std::string& label,
                            const real_t & value)
 {
-    StringTable::iterator it = m_strings.find(label);
-    if ( it == m_strings.end() )
+    RealTable::iterator it = m_reals.find(label);
+    if ( it == m_reals.end() )
     {
         if ( exists(label) )
         {
