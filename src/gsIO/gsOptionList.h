@@ -79,13 +79,13 @@ private:
     bool exists(const std::string & label);
     
 private:
-    // Format: std::pair<Description,Value>
+    // Format: std::pair<Value,Description>
     typedef std::pair<std::string,std::string> StringOpt;
     typedef std::pair<int        ,std::string> IntOpt;
     typedef std::pair<real_t     ,std::string> RealOpt;
     typedef std::pair<bool       ,std::string> SwitchOpt;
 
-    // Format: std::map<Label, std::pair<Description,Value> >
+    // Format: std::map<Label, std::pair<Value,Description> >
     typedef std::map<std::string,StringOpt> StringTable;
     typedef std::map<std::string,IntOpt>    IntTable;
     typedef std::map<std::string,RealOpt>   RealTable;

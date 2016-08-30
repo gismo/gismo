@@ -12,6 +12,9 @@
     Author(s): A. Mantzaflaris
 */
 
+
+#include <string>
+
 #include <gsIO/gsOptionList.h>
 
 #include <gsIO/gsXml.h>
@@ -233,7 +236,7 @@ private:
 public:
     GSXML_COMMON_FUNCTIONS(gsOptionList)
     GSXML_GET_POINTER(gsOptionList)
-    static std::string tag () { return "KnotVector"; }
+    static std::string tag () { return "OptionList"; }
     static std::string type() { return ""; }
 
     static void get_into(gsXmlNode * node, gsOptionList & result)
