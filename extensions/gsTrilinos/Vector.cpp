@@ -1,12 +1,11 @@
 
 
-#include "Vector.h"
+#include <gsTrilinos/Vector.h>
 
-#include "gsTrilinosHeaders.h"
-#include <gsCore/gsConfig.h>
-#include <gsCore/gsDebug.h>
-#include <gsCore/gsMemory.h>
-#include <gsCore/gsForwardDeclarations.h>
+#include <gsMpi/gsMpiHelper.h>
+#include <gsTrilinos/gsTrilinosHeaders.h>
+
+//#include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsLinearAlgebra.h>
 
 
@@ -19,20 +18,6 @@ namespace trilinos
 class VectorPrivate
 {
     friend class Vector;
-
-    VectorPrivate() { }
-
-    VectorPrivate(Epetra_Vector * v_ptr)
-    : vec(v_ptr, null_deleter<Epetra_Vector>)
-    { }
-            
-    VectorPrivate(const Epetra_BlockMap & Map)
-    : vec(new Epetra_Vector(Map))
-    {
-        // set to zero ?
-        //vec->PutScalar(0.0);
-    }
-
 /*   
     Epetra_SerialComm comm;
     /// Epetra Trilinos mapping of the matrix columns that assigns
@@ -45,18 +30,46 @@ class VectorPrivate
 };
 
 Vector::Vector(const SparseMatrix & _map)
-: my(new VectorPrivate(_map.get()->OperatorDomainMap()))
-{ }
-
-Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map)
-: my(new VectorPrivate(_map.get()->OperatorDomainMap()))
+: my(new VectorPrivate)
 {
-    my->vec.reset( new Epetra_Vector(Copy, _map.get()->OperatorDomainMap(),
-                                     const_cast<real_t *>(gsVec.data())) );
+    my->vec.reset(new Epetra_Vector(_map.get()->OperatorDomainMap()));
 }
 
-Vector::Vector(Epetra_Vector * v_ptr) : my(new VectorPrivate(v_ptr))
-{ }
+Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int rank)
+: my(new VectorPrivate)
+{
+#   ifdef HAVE_MPI
+    Epetra_MpiComm comm (gsMPIHelper::instance().getCommunicator() );
+#   else
+    Epetra_SerialComm comm;
+#   endif
+
+    // The number of rows and columns in the matrix.
+    const index_t locRows = gsVec.rows();
+    index_t glbRows       = gsVec.rows();
+    comm.Broadcast(&glbRows, 1, 0);
+    GISMO_ENSURE( comm.MyPID() == 0 || 0 == locRows,
+                  "Only Processor 0 can fill in entries");
+    
+    // Create a temporary Epetra_Vector on Proc 0
+    Epetra_Map map0(gsVec.rows(), locRows, 0, comm);
+    Epetra_Vector tmp( Copy, map0, const_cast<real_t *>(gsVec.data()) );
+
+    // Initialize the distributed Epetra_Vector
+    const Epetra_Map & map = _map.get()->OperatorRangeMap();
+    my->vec.reset( new Epetra_Vector(map) );
+
+    int err_code = 0;
+    // Redistribute the vector data
+    Epetra_Import importer(map0, map);
+    err_code = my->vec->Export(tmp, importer, Insert);
+    GISMO_ENSURE(0==err_code, "Something went terribly wrong");
+}
+
+Vector::Vector(Epetra_Vector * v_ptr) : my(new VectorPrivate)
+{
+    my->vec.reset(v_ptr, null_deleter<Epetra_Vector> );
+}
 
 Vector::Vector() : my(new VectorPrivate) { }
 
@@ -69,7 +82,7 @@ void Vector::setConstant(const double val)
 
 void Vector::setFrom(const SparseMatrix & A)
 {
-    my->vec.reset( new Epetra_Vector(A.get()->OperatorDomainMap()) );
+    my->vec.reset( new Epetra_Vector(A.get()->OperatorRangeMap()) );
 }
 
 size_t Vector::size() const 
@@ -81,15 +94,34 @@ size_t Vector::size() const
 #endif
 }
 
-void Vector::copyTo(gsVector<real_t> & gsVec) const
+void Vector::copyTo(gsVector<real_t> & gsVec, const int rank) const
 {
-    gsVec.resize(size());
-    my->vec->ExtractCopy(gsVec.data());
+    Epetra_MpiComm comm (gsMPIHelper::instance().getCommunicator());
+    const int myrank = comm.MyPID();
+#ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
+    const long long sz = my->vec->GlobalLength64();
+#else
+    const int sz = my->vec->GlobalLength();
+#endif
+    Epetra_Map map0(sz, rank==myrank ? sz : 0, 0, comm);
+    Epetra_Vector tmp(map0);
+    Epetra_Export exp(my->vec->Map(), map0);
+    (void)tmp.Export(*my->vec, exp, Insert);
+    if ( myrank == rank )
+    {
+        gsVec.resize(sz);
+        tmp.ExtractCopy(gsVec.data());
+    }
 }
 
 Epetra_Vector * Vector::get() const
 {
     return my->vec.get();
+}
+
+void Vector::print() const
+{
+    gsInfo << "Processor No. " << gsMPIHelper::instance().rank() << "\n" << *get();    
 }
 
 

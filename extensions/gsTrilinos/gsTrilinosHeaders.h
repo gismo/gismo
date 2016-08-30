@@ -50,3 +50,5 @@
 #include "Epetra_CrsMatrix.h"
 #include "Epetra_FECrsMatrix.h"
 
+#include <Epetra_Export.h>
+#include <Epetra_Import.h>

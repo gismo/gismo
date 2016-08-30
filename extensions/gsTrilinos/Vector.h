@@ -41,7 +41,7 @@ public:
 
     explicit Vector(const SparseMatrix & _map);
     
-    Vector(const gsVector<> & gsVec, const SparseMatrix & _map);
+    Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int rank = 0);
     
     explicit Vector(Epetra_Vector * v_ptr);
         
@@ -52,19 +52,13 @@ public:
     void setConstant(const double val);
 
     void setFrom(const SparseMatrix & _map);
-        
-    void copyTo(gsVector<real_t> & gsVec) const;
-
-    gsVector<real_t> print() const
-    {
-        gsVector<real_t> tmp;
-        tmp.setConstant(11);
-        copyTo(tmp);
-        return tmp;
-    }
+    
+    void copyTo(gsVector<real_t> & gsVec, const int rank = 0) const;
 
     Epetra_Vector * get() const;
 
+    void print() const;
+    
 private:
     Vector(const Vector& other);
     Vector& operator=(const Vector& other);

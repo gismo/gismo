@@ -11,9 +11,9 @@
     Author(s): A. Mantzaflaris
 */
 
+#include <gsTrilinos/SparseMatrix.h>
 #include <gsMpi/gsMpiHelper.h>
 #include <gsTrilinos/gsTrilinosHeaders.h>
-#include <gsTrilinos/SparseMatrix.h>
 
 #include <gsCore/gsLinearAlgebra.h>
 
@@ -31,17 +31,17 @@ class SparseMatrixPrivate
     //Epetra_FECrsMatrix matrix;
     
     friend class SparseMatrix;
+    
+    /// A sparse matrix object in Trilinos 
+    memory::shared_ptr<Epetra_Matrix> matrix;
+};
 
-    SparseMatrixPrivate() { }
-
-        
-    SparseMatrixPrivate(const gsSparseMatrix<real_t> & A)
-    {
-        // In gismo sparse matrices are stored as column-major (rows
-        // are compressed).  In Epetra we work row-wise (compressed
-        // columns), therefore a transposition is needed
-        gsSparseMatrix<real_t> AT = A.transpose();
-
+SparseMatrix::SparseMatrix() : my(new SparseMatrixPrivate)
+{ }
+    
+SparseMatrix::SparseMatrix(const gsSparseMatrix<> & sp, const int rank)
+: my(new SparseMatrixPrivate)
+{
 #ifdef HAVE_MPI
         Epetra_MpiComm comm (gsMPIHelper::instance().getCommunicator() );
 #else
@@ -60,85 +60,64 @@ class SparseMatrixPrivate
         // support 64-bit indices.
         typedef int global_ordinal_type;
 #endif // EPETRA_NO_32BIT_GLOBAL_INDICES
-        
-        // The number of rows and columns in the matrix.
-        const global_ordinal_type numGlobalElements =
-            static_cast<global_ordinal_type> ( AT.rows() );
-        GISMO_ENSURE( comm.MyPID() == 0 || 0 == numGlobalElements,
-                      "Only Processor 0 can fill in entries");
 
+        // In G+Smo sparse matrices are stored as column-major (rows
+        // are compressed).  In Epetra we work row-wise (compressed
+        // columns), therefore a transposition is needed
+        gsSparseMatrix<real_t> AT = sp.transpose();
+
+        // The number of rows and columns in the matrix.
+        const global_ordinal_type locRows = AT.rows();
+        global_ordinal_type glbRows       = AT.rows();
+        comm.Broadcast(&glbRows, 1, 0);
+        
+        GISMO_ENSURE( comm.MyPID() == 0 || 0 == locRows,
+                      "Only Processor 0 can fill in entries");
+        
         GISMO_ASSERT( AT.isCompressed(), "Need compressed matrix for now"); // todo
+
+        // Construct a map with all the rows on processor 0
+        Epetra_Map map0(glbRows, locRows, 0, comm);
+
+        // Collect the number of nonzero entries per row of AT
+        gsVector<global_ordinal_type>  nnzPerRow(locRows);
+        for(global_ordinal_type i=0; i!=locRows; ++i)
+            nnzPerRow[i] = AT.innerVector(i).nonZeros();
+
+        // This distributed matrix is stored entirely on proccessor 0
+        Epetra_CrsMatrix _A0(Copy, map0, nnzPerRow.data(), true);
+        
+        // Fill in _A0 at processor 0
+        int err_code = 0;
+        for (global_ordinal_type r = 0; r != locRows; ++r)
+        {
+            const index_t oind = *(AT.outerIndexPtr()+r);
+            err_code = _A0.InsertGlobalValues (r, nnzPerRow[r],
+                                               AT.valuePtr()+oind,
+                                               AT.innerIndexPtr()+oind);
+            GISMO_ASSERT(0 == err_code,
+                         "InsertGlobalValues failed with err_code="<<err_code);
+        }
+        
+        err_code = _A0.FillComplete ();
+        GISMO_ASSERT(0 == err_code, "FillComplete failed with err_code="<<err_code);
 
         // Construct a Map that puts approximately the same number of
         // equations on each processor.
-        Epetra_Map map (numGlobalElements, 0, comm);
+        Epetra_Map map(glbRows, 0, comm);
 
-        // Create a Epetra sparse matrix whose rows have distribution
-        // given by the Map.  The max number of entries per row is
-        // given by the numbers in nEntriesPerRow.
-        global_ordinal_type  nEntriesPerRow[numGlobalElements];
-        for(int i=0; i<numGlobalElements; i++)
-            nEntriesPerRow[i] = AT.innerVector(i).nonZeros();
-        matrix.reset( new Epetra_CrsMatrix(Copy, map, nEntriesPerRow, true) );
+        // We've created a sparse matrix _A0 whose rows live entirely on MPI
+        // Process 0.  Now we want to distribute it over all the processes.
+        my->matrix.reset( new Epetra_CrsMatrix(Copy, map, true) );
 
-        int err_code = 0;
-        
-        for (global_ordinal_type r = 0; r != numGlobalElements; ++r )
-        {
-            const int oind = AT.outerIndexPtr()[r];
-            err_code = matrix->InsertGlobalValues (r, nEntriesPerRow[r],
-                                                   AT.valuePtr()+oind,
-                                                   AT.innerIndexPtr()+oind);
-            GISMO_ASSERT(0 == err_code,
-                         "matrix->InsertGlobalValues failed with err_code="<<err_code);
-        }
-        
-        err_code = matrix->FillComplete ();
-
-        // If any process failed to insert at least one entry, throw.
-        int gl_err = 0;
-        (void) comm.MaxAll (&err_code, &gl_err, 1);
-        GISMO_ENSURE(0 == gl_err, "Some process failed constructing Trilinos matrix");
-
-        /*        
-        // Get the list of global indices that this process owns.  In this
-        // case, this is unnecessary, because we know that we created a
-        // contiguous Map (see above).  (Thus, we really only need the min
-        // and max global index on this process.)  However, in general, we
-        // don't know what global indices the Map owns, so if we plan to add
-        // entries into the sparse matrix using global indices, we have to
-        // get the list of global indices this process owns.
-        const int numMyElements = map.NumMyElements ();
-
-        global_ordinal_type * myGlobalElements = NULL;
-
-        #ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
-        myGlobalElements = map.MyGlobalElements64 ();
-        #else
-        myGlobalElements = map.MyGlobalElements ();
-        #endif
-
-        // In general, tests like this really should synchronize across all
-        // processes.  However, the likely cause for this case is a
-        // misconfiguration of Epetra, so we expect it to happen on all
-        // processes, if it happens at all.
-        if (numMyElements > 0 && myGlobalElements == NULL)
-        {
-            throw std::logic_error ("Failed to get the list of global indices");
-        }
-        */
-    }
-    
-    /// A sparse matrix object in Trilinos 
-    memory::shared_ptr<Epetra_Matrix> matrix;
-};
-
-SparseMatrix::SparseMatrix() : my(new SparseMatrixPrivate)
-{ }
-    
-SparseMatrix::SparseMatrix(const gsSparseMatrix<> & sp)
-: my(new SparseMatrixPrivate(sp))
-{ }
+        // Redistribute the data, NOT in place, from matrix _A0 (which lives
+        // entirely on Proc 0) to *matrix (which is distributed evenly over
+        // the processes).
+        Epetra_Export exporter(map0, map);
+        err_code = my->matrix->Export(_A0, exporter, Insert);
+        err_code = my->matrix->FillComplete();
+        err_code = my->matrix->OptimizeStorage();
+}
 
     
 SparseMatrix::~SparseMatrix() { delete my; }
@@ -150,9 +129,27 @@ Epetra_BlockMap SparseMatrix::map() const
 }
 */
 
-void SparseMatrix::copyTo(gsSparseMatrix<> & sp) const
+void SparseMatrix::copyTo(gsSparseMatrix<> & sp, const int rank) const
 {
-    // to do
+/*
+    Epetra_MpiComm comm (gsMPIHelper::instance().getCommunicator() );
+    const int myrank = comm.MyPID();
+#ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
+    const long long sz = my->vec->GlobalLength64();
+#else
+    const int sz = my->vec->GlobalLength();
+#endif
+    Epetra_Map map0(sz, rank==myrank ? sz : 0, 0, comm);
+    Epetra_Vector tmp(map0);
+    Epetra_Export exp(my->vec->Map(), map0);
+    (void)tmp.Export(*my->vec, exp, Insert);
+    if ( myrank == rank )
+    {
+        gsVec.resize(sz);
+        tmp.ExtractCopy(gsVec.data());
+        //my->matrix->ExtractGlobalRowCopy
+    }
+*/
 }
 
 Epetra_CrsMatrix * SparseMatrix::get() const
@@ -167,8 +164,7 @@ memory::shared_ptr<Epetra_CrsMatrix> SparseMatrix::getPtr()
 
 void SparseMatrix::print() const
 {
-    gsMPIHelper & mpi_helper = gsMPIHelper::instance();
-    gsInfo << "Processor No. " << mpi_helper.rank() << "\n" << *get();    
+    gsInfo << "Processor No. " << gsMPIHelper::instance().rank() << "\n" << *get();    
 }
 
 }//namespace trilinos

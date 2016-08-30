@@ -34,13 +34,13 @@ public:
 
     SparseMatrix();
     
-    explicit SparseMatrix(const gsSparseMatrix<> & sp);
+    explicit SparseMatrix(const gsSparseMatrix<> & sp, const int rank = 0);
 
     ~SparseMatrix();
 
     //Epetra_BlockMap map() const;
     
-    void copyTo(gsSparseMatrix<> & sp) const;
+    void copyTo(gsSparseMatrix<> & sp, const int rank = 0) const;
 
     Epetra_CrsMatrix * get() const;
 

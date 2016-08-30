@@ -48,7 +48,7 @@ public:
     
     const Vector & solve( const Vector & b );
 
-    void getSolution(gsVector<> & sol) const;
+    void getSolution(gsVector<> & sol, const int rank = 0) const;
     
 protected:
         virtual void solveProblem() = 0;

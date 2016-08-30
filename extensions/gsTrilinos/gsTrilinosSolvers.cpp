@@ -69,9 +69,9 @@ const Vector & AbstractSolver::solve( const Vector & b )
     return my->solution;
 }
 
-void AbstractSolver::getSolution( gsVector<> & sol ) const
+void AbstractSolver::getSolution( gsVector<> & sol, const int rank) const
 {
-    my->solution.copyTo(sol);
+    my->solution.copyTo(sol,rank);
 }
 
 void GMRES::solveProblem()
