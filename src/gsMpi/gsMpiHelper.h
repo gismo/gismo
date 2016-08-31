@@ -177,6 +177,11 @@ typedef gsFakeMPIHelper gsMPIHelper;
 
 #else
 
+
+class gsMPIHelper;
+// Singleton function
+GISMO_EXPORT gsMPIHelper & gsMpiHelperSingleton(const int& argc, char** argv);
+
 /**
  * @brief A real mpi helper.
  * @ingroup ParallelCommunication
@@ -186,6 +191,9 @@ typedef gsFakeMPIHelper gsMPIHelper;
 class gsMPIHelper
 {
 public:
+    
+    friend gsMPIHelper & gsMpiHelperSingleton(const int& argc, char** argv);
+    
     enum {
         /**
          * @brief Are we fake (i. e. pretend to have MPI support but are compiled
@@ -241,20 +249,11 @@ public:
      * @param argc The number of arguments provided to main.
      * @param argv The arguments provided to main.
      */
-    static gsMPIHelper& instance(const int& argc, char**& argv)
+    static gsMPIHelper& instance(const int& argc = 0, char** argv = NULL)
     {
-        // create singleton instance
-        static gsMPIHelper singleton (argc, argv);
-        return singleton;
+        return gsMpiHelperSingleton(argc,argv);
     }
-
-    static gsMPIHelper& instance()
-    {
-        // create singleton instance
-        static gsMPIHelper singleton;
-        return singleton;
-    }
-
+    
     /**
      * @brief return rank of process
      */
@@ -267,7 +266,6 @@ public:
 private:
     int rank_;
     int size_;
-    static void prevent_warning(int){}
       
     gsMPIHelper()
     {
@@ -275,30 +273,32 @@ private:
     }
       
     //! \brief calls MPI_Init with argc and argv as parameters
-    gsMPIHelper(const int& argc, char**& argv)
+    gsMPIHelper(const int& argc, char** argv)
     {
-        init(&argc, argv);
+        init(const_cast<int*>(&argc), argv);
     }
 
-    void init(const int * argc = NULL, char** argv = NULL)
+    void init(int * argc = NULL, char** argv = NULL)
     {
-        int wasInitialized = -1;
-        MPI_Initialized( &wasInitialized );
-        if(!wasInitialized)
+        int initialized = -1;
+        MPI_Initialized( &initialized );
+        if( 0 == initialized )
         {
             rank_ = -1;
             size_ = -1;
-            static int is_initialized = MPI_Init(const_cast<int*>(argc), &argv);
-            prevent_warning(is_initialized);
+            //Note: valgrind false positive here, see
+            // https://www.open-mpi.org/faq/?category=debugging#valgrind_clean
+            initialized = MPI_Init(argc, &argv);
+            GISMO_ENSURE(MPI_SUCCESS==initialized, "MPI failed to initialize");
         }
 
         MPI_Comm_rank(MPI_COMM_WORLD,&rank_);
         MPI_Comm_size(MPI_COMM_WORLD,&size_);
 
-        GISMO_ASSERT( rank_ >= 0, "Invalid processor rank");
-        GISMO_ASSERT( size_ >= 1, "Invalid size");
+        GISMO_ENSURE( rank_ >= 0, "Invalid processor rank");
+        GISMO_ENSURE( size_ >= 1, "Invalid size");
 
-        gsDebug << "Called  MPI_Init on p=" << rank_ << "!" << std::endl;
+        //gsDebug << "Called  MPI_Init on p=" << rank_ << "!" << std::endl;
     }
     
     //! \brief calls MPI_Finalize
@@ -306,9 +306,10 @@ private:
     {
         int wasFinalized = -1;
         MPI_Finalized( &wasFinalized );
-        if(!wasFinalized) {
+        if( 0 == wasFinalized)
+        {
             MPI_Finalize();
-            gsDebug << "Called MPI_Finalize on p=" << rank_ << "!" <<std::endl;
+            //gsDebug << "Called MPI_Finalize on p=" << rank_ << "!" <<std::endl;
         }
 
     }
