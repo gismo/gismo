@@ -53,10 +53,8 @@ export(PACKAGE gismo)
 # Create the gismoConfig.cmake and gismoConfigVersion.cmake files
 
 # ... for the build tree
-set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" 
-                      "${PROJECT_SOURCE_DIR}/external"
-                      "${PROJECT_BINARY_DIR}"
-                      "${PROJECT_SOURCE_DIR}/extensions" )
+set(CONF_INCLUDE_DIRS "${GISMO_INCLUDE_DIRS}"
+                      "${PROJECT_BINARY_DIR}" )
 set(CONF_LIB_DIRS     "${CMAKE_BINARY_DIR}/lib")
 set(CONF_USE_FILE     "${CMAKE_BINARY_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
