@@ -156,8 +156,8 @@ public:
     bool bContains( const T& t ) const
     {
       if ( !m_bSorted )
-        gsWarn<<"gsSortedVector is not sorted, bContains("<<t<<")"
-              << "is not guarranteed to be correct.\n";
+          gsWarn<<"gsSortedVector is not sorted, bContains("<<t<<")"
+                << "is not guarranteed to be correct.\n";
 
         return std::binary_search( inherited::begin(), inherited::end(), t );
     }
@@ -406,6 +406,11 @@ public:
 protected:
     bool m_bSorted;
 
+private:
+
+    // to do
+    //void push_back( const T& t);
+    
 };
 
 
