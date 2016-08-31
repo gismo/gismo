@@ -65,6 +65,20 @@
 namespace gismo
 {
 
+#ifndef GISMO_WITH_MPI
+class gsNoMpiComm;
+/**
+ * @brief If no MPI is available gsNoMpiComm becomes the gsMpiComm
+ * @ingroup Mpi
+ */
+typedef gsNoMpiComm gsMpiComm;
+#else
+class gsMpiComm;
+#endif
+
+/// Singleton function returning the gsMPiHelper
+GISMO_EXPORT gsMpiComm & gsMpiCommSingleton(const int& argc, char** argv);
+
 /**
  * @brief A fake mpi helper.
  *
@@ -74,6 +88,8 @@ namespace gismo
  */
 class gsNoMpiComm
 {
+    friend gsMpiComm & gsMpiCommSingleton(const int& argc, char** argv);
+
 public:
     enum {
         /**
@@ -152,6 +168,12 @@ public:
 private:
     gsNoMpiComm() {}
     gsNoMpiComm(const gsNoMpiComm&);
+    gsNoMpiComm(const int& argc, char** argv)
+    {
+        (void)argc;
+        (void)argv;
+    }
+
     gsNoMpiComm& operator=(const gsNoMpiComm);
 
 public:
@@ -416,21 +438,7 @@ public:
     }
 };
 
-#ifndef GISMO_WITH_MPI
-
-/**
- * @brief If no MPI is available gsNoMpiComm becomes the gsMpiComm
- * @ingroup Mpi
- */
-typedef gsNoMpiComm gsMpiComm;
-
-#else
-
-
-//class gsMpiComm
-class gsMpiComm;
-/// Singleton function returning the gsMPiHelper
-GISMO_EXPORT gsMpiComm & gsMpiCommSingleton(const int& argc, char** argv);
+#ifdef GISMO_WITH_MPI
 
 /**
  * @brief A real mpi helper.
