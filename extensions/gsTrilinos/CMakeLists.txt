@@ -4,6 +4,8 @@
 ## Copyright (C) 2016 - RICAM-Linz.
 ######################################################################
 
+cmake_minimum_required(VERSION 2.8.10.2)
+
 ## Trilinos extension
 project(gsTrilinosExtension)
 
@@ -14,6 +16,7 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 
 # Apply same configuration as G+Smo
 include( gsConfig)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") # for some reason not set automatically ?
 
 # Look for MPI
 find_package(MPI REQUIRED)
