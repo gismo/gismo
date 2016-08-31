@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gsCore/gsExport.h>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsLinearAlgebra.h>
 
@@ -48,6 +47,8 @@ public:
     ~Vector();
 
     size_t size() const;
+
+    size_t mySize() const;
     
     void setConstant(const double val);
 

@@ -24,7 +24,7 @@ find_package(TRILINOS QUIET)
 find_package(LAPACK REQUIRED)
 
 #if (NOT TRILINOS_FOUND)
-  set(TRILINOS_VER "12-6-3")
+  set(TRILINOS_VER "12-6-4")
   message(STATUS "CMake Will attempt to download and compile Trilinos ${TRILINOS_VER}.")
 include(ExternalProject)
 ExternalProject_Add(Trilinos
@@ -36,7 +36,7 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_Amesos=ON
                        -DTrilinos_ENABLE_AztecOO=ON
                        -DTrilinos_ENABLE_Anasazi=ON	
-                       #-DTrilinos_ENABLE_Belos=ON
+                       -DTrilinos_ENABLE_Belos=ON
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
 		       -DBUILD_SHARED_LIBS:BOOL=ON
 		       -DTPL_ENABLE_MPI=ON
@@ -50,23 +50,23 @@ ExternalProject_Add(Trilinos
 	  #DOWNLOAD_NO_PROGRESS 0
 )
       set(TRILINOS_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/include CACHE INTERNAL "")
-      set(TRILINOS_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libepetra.so;
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchoscore.so;
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchosnumerics.so;
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libkokkoscore.so;
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchoskokkoscomm.so;
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchosparameterlist.so;
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchoscomm.so;
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchoskokkoscompat.so;
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libteuchosremainder.so
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libamesos.so
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libaztecoo.so
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libepetraext.so
-      #${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/libbelos.so
+      set(TRILINOS_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetra${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscore${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosnumerics${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}kokkoscore${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoskokkoscomm${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosparameterlist${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscomm${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoskokkoscompat${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosremainder${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}amesos${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}aztecoo${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetraext${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}belos${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}anasazi${CMAKE_SHARED_LIBRARY_SUFFIX}
       CACHE INTERNAL "")
 
 #      set(TRILINOS_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix CACHE INTERNAL "")
-
 
       #add_library(${LIBNAME} SHARED IMPORTED )
       #set_target_properties(${LIBNAME} PROPERTIES IMPORTED_LOCATION ${install_dir}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX} )

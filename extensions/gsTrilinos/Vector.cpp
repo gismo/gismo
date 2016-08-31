@@ -1,4 +1,15 @@
+/** @file Vector.cpp
 
+    @brief Wrapper for Trilinos/Epetra vector
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris
+*/
 
 #include <gsTrilinos/Vector.h>
 
@@ -45,15 +56,15 @@ Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int ra
 #   endif
 
     // The number of rows and columns in the matrix.
-    const index_t locRows = gsVec.rows();
     index_t glbRows       = gsVec.rows();
-    comm.Broadcast(&glbRows, 1, 0);
-    GISMO_ENSURE( comm.MyPID() == 0 || 0 == locRows,
-                  "Only Processor 0 can fill in entries");
+    const index_t locRows = glbRows;
+    comm.Broadcast(&glbRows, 1, rank);
+    GISMO_ENSURE( comm.MyPID() == rank || 0 == locRows,
+                  "Only Processor "<<rank<<" can fill in entries");
     
-    // Create a temporary Epetra_Vector on Proc 0
+    // Create a temporary Epetra_Vector on Proc "rank"
     Epetra_Map map0(gsVec.rows(), locRows, 0, comm);
-    Epetra_Vector tmp( Copy, map0, const_cast<real_t *>(gsVec.data()) );
+    Epetra_Vector tmp(View, map0, const_cast<real_t *>(gsVec.data()) );
 
     // Initialize the distributed Epetra_Vector
     const Epetra_Map & map = _map.get()->OperatorRangeMap();
@@ -91,6 +102,15 @@ size_t Vector::size() const
     return (my->vec ? my->vec->GlobalLength64() : 0 ); 
 #else
     return (my->vec ? my->vec->GlobalLength()   : 0 ); 
+#endif
+}
+
+size_t Vector::mySize() const 
+{ 
+#ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
+    return (my->vec ? my->vec->MyLength64() : 0 ); 
+#else
+    return (my->vec ? my->vec->MyLength()   : 0 ); 
 #endif
 }
 

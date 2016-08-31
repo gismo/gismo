@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsCore/gsExport.h>
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsCore/gsLinearAlgebra.h>
 
 // FD Trilinos
 class Epetra_CrsMatrix;
@@ -34,7 +34,7 @@ public:
 
     SparseMatrix();
     
-    explicit SparseMatrix(const gsSparseMatrix<> & sp, const int rank = 0);
+    explicit SparseMatrix(const gsSparseMatrix<real_t,RowMajor> & sp, const int rank = 0);
 
     ~SparseMatrix();
 

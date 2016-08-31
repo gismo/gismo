@@ -13,10 +13,7 @@
 
 #pragma once
 
-
-#include "SparseMatrix.h"
-#include "Vector.h"
-
+#include <gsTrilinos/Vector.h>
 
 namespace gismo
 {
