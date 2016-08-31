@@ -112,7 +112,7 @@ void GMRES::solveProblem()
     AztecOO Solver;
     Solver.SetProblem(my->Problem);
     Solver.SetAztecOption(AZ_solver, AZ_gmres);
-    Solver.SetAztecOption(AZ_output,32);
+    Solver.SetAztecOption(AZ_output,AZ_none);//32
     //Solver.SetPrecOperator(Prec);
     Solver.Iterate(m_maxIter, m_tolerance);
 }
