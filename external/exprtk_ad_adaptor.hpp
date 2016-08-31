@@ -370,10 +370,10 @@ namespace helper
 {
 namespace details
 {
-inline void print_type(const std::string&, const DScalar& v, 
+inline void print_type(const std::string& fmt, const DScalar& v, 
                        exprtk::details::numeric::details::ad_type_tag)
 {
-    printf("%f",v.getValue());
+    printf(fmt.c_str(),v.getValue());
 }
 }
 }

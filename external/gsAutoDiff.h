@@ -539,7 +539,11 @@ public:
 
     inline const Scalar     & getValue()    const { return value; }
 
-    inline const Gradient_t & getGradient() const { return grad; }
+    inline const Gradient_t & getGradient() const
+    {
+        //assert(0!=grad.size() && "Gradient is empty");
+        return grad;
+    }
 
     inline const Hessian_t  & getHessian()  const { return hess; }
 
