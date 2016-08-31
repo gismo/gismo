@@ -18,6 +18,10 @@ if(POLICY CMP0054)# CMake 3.1
 cmake_policy(SET CMP0054 OLD)
 endif()
 
+if(POLICY CMP0053)# CMake 3.1.3
+cmake_policy(SET CMP0053 OLD)
+endif()
+
 if(POLICY CMP0063)# CMake 3.3
 cmake_policy(SET CMP0063 NEW)
 endif()
@@ -152,6 +156,15 @@ if(GISMO_WITH_SUPERLU)
 endif(GISMO_WITH_SUPERLU)
 
 #if(GISMO_WITH_METIS)
+
+if(GISMO_WITH_MPI)
+  find_package(MPI REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPI_INCLUDE_PATH}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${MPI_CXX_LIBRARIES}
+    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+endif(GISMO_WITH_MPI)
 
 if(GISMO_WITH_TRILINOS)
   add_subdirectory(extensions/gsTrilinos)

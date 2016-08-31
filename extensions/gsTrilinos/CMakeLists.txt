@@ -6,6 +6,24 @@
 
 cmake_minimum_required(VERSION 2.8.10.2)
 
+if(POLICY CMP0048)# CMake 3.0
+cmake_policy(SET CMP0011 OLD)
+cmake_policy(SET CMP0042 OLD)
+cmake_policy(SET CMP0048 OLD)
+endif()
+
+if(POLICY CMP0054)# CMake 3.1
+cmake_policy(SET CMP0054 OLD)
+endif()
+
+if(POLICY CMP0053)# CMake 3.1.3
+cmake_policy(SET CMP0053 OLD)
+endif()
+
+if(POLICY CMP0063)# CMake 3.3
+cmake_policy(SET CMP0063 NEW)
+endif()
+
 ## Trilinos extension
 project(gsTrilinosExtension)
 
@@ -16,7 +34,6 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 
 # Apply same configuration as G+Smo
 include( gsConfig)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") # for some reason not set automatically ?
 
 # Look for MPI
 find_package(MPI REQUIRED)
@@ -45,7 +62,8 @@ ExternalProject_Add(Trilinos
 		       -DTPL_ENABLE_MPI=ON
                        -DTrilinos_ENABLE_CXX11=ON
 		       -DTPL_ENABLE_SuperLU=OFF
-		       ## Point to MPI compiler
+		       ## Point to specific paths
+		       -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
 		       #-DCMAKE_CXX_COMPILER=/usr/lib64/mpi/gcc/openmpi/bin/mpic++
 		       #-DCMAKE_C_COMPILER=/usr/lib64/mpi/gcc/openmpi/bin/mpicc
 		       #-DCMAKE_Fortran_COMPILER=/usr/lib64/mpi/gcc/openmpi/bin/mpif77
@@ -105,10 +123,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
-set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPI_INCLUDE_PATH}
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
 
-set(gismo_LINKER ${gismo_LINKER} ${LAPACK_LIBRARIES} ${TRILINOS_LIBRARIES} ${MPI_CXX_LIBRARIES}
+set(gismo_LINKER ${gismo_LINKER} ${LAPACK_LIBRARIES} ${TRILINOS_LIBRARIES}
     CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
