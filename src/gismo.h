@@ -132,6 +132,7 @@ namespace internal
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
+#include <gsAssembler/gsHeatEquation.h>
 
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>
