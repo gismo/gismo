@@ -7,8 +7,6 @@
 
 #pragma once
 
-#include <mpi.h>
-
 #include <utility>
 
 namespace gismo

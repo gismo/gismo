@@ -5,7 +5,7 @@
 namespace gismo
 {
 
-// The singleton function
+
 gsMpiComm & gsMpiCommSingleton(const int& argc, char** argv)
 {
     // create singleton instance
@@ -13,5 +13,11 @@ gsMpiComm & gsMpiCommSingleton(const int& argc, char** argv)
     return singleton;
 }
 
-};
+gsSerialComm & gsSerialCommSingleton(const int& argc, char** argv)
+{
+    // create singleton instance
+    static gsSerialComm singleton (argc, argv);
+    return singleton;
+}
 
+};
