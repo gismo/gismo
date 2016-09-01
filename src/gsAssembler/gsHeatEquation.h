@@ -17,6 +17,18 @@
 namespace gismo
 {
 
+/** \brief Constructs the assembler for the discretized isogeometric heat equation.
+    
+    Spatial solution is discretized using Galerkin's
+    approach. Time integration scheme (method of lines) is
+    controlled by the \a theta parameter. In particular
+    
+    - Explicit Euler scheme (theta=0)
+    - Crank-Nicolson semi-implicit scheme (theta=0.5)
+    - implicit Euler scheme (theta=1)
+    
+    \ingroup Assembler
+*/
 template <class T>
 class gsHeatEquation : public gsPoissonAssembler<T>
 {
@@ -25,18 +37,7 @@ public:
 
 public:
 
-    /** \brief Constructs the assembler for the discretized isogeometric heat equation.
-
-        Spatial solution is discretized using Galerkin's
-        approach. Time integration scheme (method of lines) is
-        controlled by the \a theta parameter. In particular
-        
-        - Explicit Euler scheme (theta=0)
-        - Crank-Nicolson semi-implicit scheme (theta=0.5)
-        - implicit Euler scheme (theta=1)
-        
-        \ingroup Assembler
-     */
+    /// Construction receiving all necessary data
     gsHeatEquation( gsMultiPatch<T> const         & patches,
                     gsMultiBasis<T> const         & bases,
                     gsBoundaryConditions<T> const & bconditions,
