@@ -71,7 +71,10 @@ int main(int argc, char *argv[])
     for (int i = 0; i < numRefine; ++i)
         refine_bases.uniformRefine();
 
+    // Determines the theta-scheme used for time integration
+    // (eg. Forward/backward Euler or Crank Nicolson(theta=0.5)
     real_t theta = 0.5;
+
     // Assembler (constructs matrix and right-hand side vector)
     gsHeatEquation<real_t> assembler(patches, refine_bases, bcInfo, f, theta, 
                                      dirichlet::elimination, iFace::glue);
