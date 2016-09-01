@@ -18,13 +18,25 @@ namespace gismo
 {
 
 template <class T>
-class gsHeatEquation : public gsPoissonAssembler2<T>
+class gsHeatEquation : public gsPoissonAssembler<T>
 {
 public:
-    typedef gsPoissonAssembler2<T> Base;
+    typedef gsPoissonAssembler<T> Base;
 
 public:
 
+    /** \brief Constructs the assembler for the discretized isogeometric heat equation.
+
+        Spatial solution is discretized using Galerkin's
+        approach. Time integration scheme (method of lines) is
+        controlled by the \a theta parameter. In particular
+        
+        - Explicit Euler scheme (theta=0)
+        - Crank-Nicolson semi-implicit scheme (theta=0.5)
+        - implicit Euler scheme (theta=1)
+        
+        \ingroup Assembler
+     */
     gsHeatEquation( gsMultiPatch<T> const         & patches,
                     gsMultiBasis<T> const         & bases,
                     gsBoundaryConditions<T> const & bconditions,
@@ -32,10 +44,8 @@ public:
                     const T                       _theta,
                     dirichlet::strategy           dirStrategy,
                     iFace::strategy               intStrategy = iFace::glue)
-    :  Base(patches,bases,bconditions,rhs,dirStrategy,intStrategy)
-    {
-        m_theta = _theta ;
-    }
+    :  Base(patches,bases,bconditions,rhs,dirStrategy,intStrategy), m_theta(_theta)
+    { }
 
 
 public:
@@ -48,53 +58,51 @@ public:
         Base::assemble();
 
         // Store the stiffness matrix
-        m_matrix.swap(m_stiffMat);
-
+        m_system.matrix().swap(m_stiffMat);
+        
         // Assemble mass matrix
         assembleMass();
-
-        // Initializing rhs to zero
-        m_curRhs.setZero(m_dofs,1);
     }
-    
-    //void nextTimeStep(const gsMatrix<T> & curSolution, T Dt);
-    
-    void nextTimeStep(const gsMatrix<T> & curSolution, const gsMatrix<T> & curRhs, T Dt);
 
-    const gsMatrix<T> & curRhs() { return m_curRhs; }
+    /** \brief Computes the matrix and right-hand side for the next timestep.
 
+       \param curSolution The solution of the previous timestep
+
+       \param[in,out] curRhs Input is the right-hand side of the
+       previous timestep. It is overwritten with the right-hand side
+       of the current timestep
+
+       \param Dt Length of time interval of the current time step
+    */
+    void nextTimeStep(const gsMatrix<T> & curSolution, gsMatrix<T> & curRhs, T Dt);
+
+    /// Returns the system matrix for the lastly computed time step.
     const gsSparseMatrix<T> & matrix() { return m_curMat; }
-
-    const gsMatrix<T> &       rhs() { return m_curRhs; }
 
 protected:
 
-    /// Main assembly routine.
+    /// Mass assembly routine
     void assembleMass();
 
 
 protected:
 
-    gsMatrix<T> m_curRhs;
+    /// The mass matrix is stored here, as well as the right-hand side
+    /// (moment) vector corresponding to the source function
+    using Base::m_system;
 
-    gsSparseMatrix<T> m_curMat;
-
+    /// The stiffness matrix
     gsSparseMatrix<T> m_stiffMat;
 
-    T m_theta;
-    using Base::m_rhsFun;
-    using Base::m_bConditions;
+    /// The system matrix at the current timestep
+    gsSparseMatrix<T> m_curMat;
     
-
-    // Members from gsAssemblerBase
-    using Base::m_patches;
+    /// Theta parameter determining the scheme
+    T m_theta;
+    
+    using Base::m_pde_ptr;
     using Base::m_bases;
-    using Base::m_dofMappers;
-    using Base::m_ddof;
-    using Base::m_matrix;
-    using Base::m_rhs;
-    using Base::m_dofs;
-
+    //using Base::m_ddof;
 
 };// end class definition
 
@@ -102,47 +110,47 @@ protected:
 } // namespace gismo
 
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
-
 namespace gismo
 {
 template<class T>
 void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, 
-                                     const gsMatrix<T> & curRhs, T Dt)
+                                     gsMatrix<T> & curRhs, const T Dt)
 {
-    GISMO_ASSERT( curSolution.rows() == m_matrix.rows(), "Wrong size in current solution vector.");
+    GISMO_ASSERT( curSolution.rows() == m_system.matrix().rows(),
+                  "Wrong size in current solution vector.");
   
-    // Theta-Scheme
-    m_curMat           = m_matrix + Dt * m_theta * m_stiffMat;
-    
-    m_curRhs.noalias() = Dt * m_theta * m_rhs + m_matrix * curSolution
-                       + Dt * (1.0 - m_theta) * curRhs 
-                       - Dt * (1.0 - m_theta) * m_stiffMat * curSolution;    
+    const T c1 = Dt * m_theta;
+    m_curMat = m_system.matrix() + c1 * m_stiffMat;
+
+    const T c2 = Dt * (1.0 - m_theta);
+    // note: noalias() still works since curRhs is multiplied by scalar only
+    curRhs.noalias() = c1 * m_system.rhs() + c2 * curRhs + 
+        m_system.matrix() * curSolution - c2 * m_stiffMat * curSolution;    
 }
 
 template<class T>
 void gsHeatEquation<T>::assembleMass()
 {
-    if (m_dofs == 0 ) // Are there any interior dofs ?
+    const index_t m_dofs = this->numDofs();
+    if ( 0  == m_dofs ) // Are there any interior dofs ?
     {
+        gsWarn<<"No interior DogFs for mass compuation.\n";
         return;
     }
 
     // Pre-allocate non-zero elements for each column of the
     // sparse matrix
     int nonZerosPerCol = 1;
-    for (int i = 0; i < m_bases.front().dim(); ++i) // to do: improve
-        nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1; // need more for DG !
+    for (int i = 0; i < m_bases.front().dim(); ++i)
+        nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1;
 
-    m_matrix = gsSparseMatrix<T>(m_dofs, m_dofs); // Clean matrices
-    m_matrix.reserve( gsVector<int>::Constant(m_dofs, nonZerosPerCol) );
-    
+    gsSparseMatrix<T> & m_matrix = m_system.matrix();
+    m_matrix.resize(m_dofs, m_dofs);
+    m_matrix.reservePerColumn(nonZerosPerCol);
+
     // Assemble mass integrals
     gsVisitorMass<T> mass;
-    for (unsigned np=0; np < m_patches.nPatches(); ++np )
+    for (unsigned np=0; np < m_pde_ptr->domain().nPatches(); ++np )
     {
         //Assemble mass matrix for this patch
         this->apply(mass, np);

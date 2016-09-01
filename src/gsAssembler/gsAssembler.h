@@ -338,7 +338,13 @@ public: // *** Accessors ***
     }
 
     /// @brief Returns the number of (free) degrees of freedom
-    int numDofs() const { return m_system.matrix().cols(); }
+    int numDofs() const
+    {
+        index_t sum = 0;
+        for (index_t c = 0; c!= m_system.numColBlocks(); ++c)
+            sum += m_system.colMapper(c).freeSize();
+        return sum;
+    }
 
     /// @brief Returns the options of the assembler
     const gsAssemblerOptions & options() const { return m_options; }

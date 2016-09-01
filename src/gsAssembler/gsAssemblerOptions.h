@@ -119,7 +119,6 @@ struct space
  * the same transformation). Only in the case of HGrad conforming transformation, the transformation applies to all components
  * of the unknown in the same way. Hence, the transformation is connected to the whole unknown.
  *
- */
 class gsAssemblerSetup
 {
 public:
@@ -149,11 +148,12 @@ public:
         }
     }
 
-    /**
-     * initialize the info structure with your settings of the discretization and the PDE.
-     * comp2basis describes a map from every component (sequentially numbered) to each basis
-     * see also SparseSystem. This information is contained in both clases.
-     */
+     // initialize the info structure with your settings of the
+     //  discretization and the PDE.  comp2basis describes a map from
+     //  every component (sequentially numbered) to each basis see
+     //  also SparseSystem. This information is contained in both
+     //  clases.
+     
     template<typename T>
     void init(const gsPde<T>& pde, const gsVector<index_t>& comp2basis)
     {
@@ -189,9 +189,8 @@ public:
 
 
 public:
-    /*
-     * Accessor funtions, to be completed.
-     */
+
+//Accessor funtions, to be completed.
 
     inline bool trialSpaceNotIdentical() const {return usingDifferentTrialSpaces;}
     inline bool isTrialSpace(index_t compWithTrial)   const {return compWithTrial>= nComp ? true: false;}
@@ -236,7 +235,7 @@ private:
 
     bool usingDifferentTrialSpaces;
 };
-
+*/
 
 
 
@@ -259,7 +258,7 @@ public:
     { }
 
 public:
-    gsAssemblerSetup      info;
+    //gsAssemblerSetup      info;
 
     dirichlet::values    dirValues;
 
@@ -288,7 +287,7 @@ public:
     double quA;
     int    quB;
 
-public: /* Utility functions that return values implied by the settings*/
+public: // Utility functions that return values implied by the settings
 
 
     index_t numQuNodes(const gsBasis<real_t> & b) const
