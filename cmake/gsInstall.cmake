@@ -17,6 +17,7 @@ set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
 set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries")
 set(BIN_INSTALL_DIR     bin     CACHE PATH "Installation directory for executables")
 set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header files")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 
 # Set CMake installation directory
 if(WIN32 AND NOT CYGWIN)
@@ -75,9 +76,7 @@ configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfigVersion.cmake.in
 if(GISMO_BUILD_LIB)
 
 set_target_properties(gismo PROPERTIES
-  PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/Gismo/gismo.h"
-  #;${CMAKE_CURRENT_BINARY_DIR}/config.h"
-  )
+  PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/gismo.h")
 
 # For gsExport.h
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
@@ -116,8 +115,13 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
 #        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # For gsConfig.h
-install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig.h
-        DESTINATION include/${PROJECT_NAME}/gsCore/)
+install(DIRECTORY ${GISMO_DATA_DIR} DESTINATION gismodata)
+# todo: search environment variable as well
+set(GISMO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/gismodata/)
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h" )
+install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
+        DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h)
 
 # Install cmake files
 install(FILES
