@@ -131,6 +131,7 @@ protected:
     
 private:
 
+    using Base::m_elWise;
     using Base::m_value;
     using Base::patchesPtr;
     
