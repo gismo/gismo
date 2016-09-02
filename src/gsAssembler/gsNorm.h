@@ -108,9 +108,6 @@ public:
     void apply1(NormVisitor & visitor, bool storeElWise = false,
                 int patchIndex = 0, boxSide side = boundary::none)
     {
-        if ( storeElWise )
-            m_elWise.clear();
-
         gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
         gsVector<T> quWeights; // Temp variable for mapped weights
         gsQuadRule<T> QuRule; // Reference Quadrature rule

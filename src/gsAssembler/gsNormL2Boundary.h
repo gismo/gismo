@@ -53,6 +53,12 @@ public:
     
     T compute(bool storeElWise = false)
     {
+        if ( storeElWise )
+        {
+            // m_elWise.reserve( ..
+            m_elWise.clear();
+        }
+        
         for (typename gsMultiPatch<T>::const_biterator bit =
                  patchesPtr->bBegin(); bit != patchesPtr->bEnd(); ++bit)
         {
