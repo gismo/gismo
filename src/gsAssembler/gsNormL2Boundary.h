@@ -53,7 +53,7 @@ public:
     
     T compute(bool storeElWise = false)
     {
-        for (gsMultiPatch<codi::RealReverse>::const_biterator bit =
+        for (gsMultiPatch<T>::const_biterator bit =
                  patchesPtr->bBegin(); bit != patchesPtr->bEnd(); ++bit)
         {
             this->apply1(*this, bit->patch, storeElWise, bit->side() );
