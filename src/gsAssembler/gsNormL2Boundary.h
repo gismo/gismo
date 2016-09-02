@@ -58,7 +58,9 @@ public:
             // m_elWise.reserve( ..
             m_elWise.clear();
         }
-        
+
+        m_value = T(0.0);
+
         for (typename gsMultiPatch<T>::const_biterator bit =
                  patchesPtr->bBegin(); bit != patchesPtr->bEnd(); ++bit)
         {
@@ -76,7 +78,7 @@ protected:
     void initialize(const gsBasis<T> & basis,
                     gsQuadRule<T> & rule,
                     unsigned      & evFlags) // replace with geoEval ?
-    {
+    {        
         // Setup Quadrature
         const unsigned d = basis.dim();
         const int dir = side.direction();

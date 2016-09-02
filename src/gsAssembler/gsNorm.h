@@ -115,7 +115,6 @@ public:
         // Evaluation flags for the Geometry map
         unsigned evFlags(0);
 
-        m_value = T(0.0);
         const gsGeometry<T> & func1 = field1->igaFunction(patchIndex);
         
         // Initialize visitor
