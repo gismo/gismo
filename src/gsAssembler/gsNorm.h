@@ -103,6 +103,46 @@ public:
 
         m_value = visitor.takeRoot(m_value);
     }
+
+    template <class NormVisitor>
+    void apply1(NormVisitor & visitor, bool storeElWise = false,
+                int patchIndex = 0, boxSide side = boundary::none)
+    {
+        if ( storeElWise )
+            m_elWise.clear();
+
+        gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
+        gsVector<T> quWeights; // Temp variable for mapped weights
+        gsQuadRule<T> QuRule; // Reference Quadrature rule
+
+        // Evaluation flags for the Geometry map
+        unsigned evFlags(0);
+
+        m_value = T(0.0);
+        const gsGeometry<T> & func1 = field1->igaFunction(patchIndex);
+        
+        // Initialize visitor
+        visitor.initialize(func1.basis(), QuRule, evFlags);
+        
+        // Initialize geometry evaluator
+        typename gsGeometry<T>::Evaluator geoEval(
+            patchesPtr->patch(patchIndex).evaluator(evFlags));
+        
+        typename gsBasis<T>::domainIter domIt = func1.basis().makeDomainIterator(side);
+        for (; domIt->good(); domIt->next())
+        {
+            // Map the Quadrature rule to the element
+            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+            
+            // Evaluate on quadrature points
+            visitor.evaluate(*geoEval, func1, *func2, quNodes);
+            
+            // Accumulate value from the current element (squared)
+            const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
+            if ( storeElWise )
+                m_elWise.push_back( visitor.takeRoot(result) );
+        }
+    }
     
 public:
 

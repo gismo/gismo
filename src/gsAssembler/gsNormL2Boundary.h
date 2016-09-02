@@ -30,6 +30,8 @@ class gsNormL2Boundary : public gsNorm<T>
 {
     friend class gsNorm<T>;
 
+    typedef gsNorm<T> Base;
+    
 public:
 
     gsNormL2Boundary(const gsField<T> & _field1,
@@ -51,7 +53,13 @@ public:
     
     T compute(bool storeElWise = false)
     {
-        this->apply(*this,storeElWise, side);
+        for (gsMultiPatch<codi::RealReverse>::const_biterator bit =
+                 patchesPtr->bBegin(); bit != patchesPtr->bEnd(); ++bit)
+        {
+            this->apply1(*this, bit->patch, storeElWise, bit->side() );
+        }
+
+        m_value = takeRoot(m_value);
         return this->m_value;
     }
 
@@ -117,6 +125,9 @@ protected:
     
 private:
 
+    using Base::m_value;
+    using Base::patchesPtr;
+    
     gsMatrix<T> f1vals, f2vals;
     gsVector<T> unormal;
     bool f2param;
