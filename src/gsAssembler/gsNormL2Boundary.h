@@ -64,6 +64,7 @@ public:
         for (typename gsMultiPatch<T>::const_biterator bit =
                  patchesPtr->bBegin(); bit != patchesPtr->bEnd(); ++bit)
         {
+            side = bit->side();
             this->apply1(*this, bit->patch, storeElWise, bit->side() );
         }
 
