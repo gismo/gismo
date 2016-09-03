@@ -33,15 +33,25 @@ class GISMO_EXPORT gsOptionList
 public:
 
     /// \brief Reads value for option \a label from options. If \a
+    /// label is not found, the function throws
+    std::string getString(const std::string & label) const;
+    /// @copydoc gsOptionList::getString
+    int         getInt   (const std::string & label) const;
+    /// @copydoc gsOptionList::getString
+    real_t      getReal  (const std::string & label) const;
+    /// @copydoc gsOptionList::getString
+    bool        getSwitch(const std::string & label) const;
+
+    /// \brief Reads value for option \a label from options. If \a
     /// label is not found, it defaults to \a val (otherwise \a val is
     /// not used)
-    std::string getString(const std::string & label, const std::string& val = "") const;
+    std::string askString(const std::string & label, const std::string& val = "") const;
     /// @copydoc gsOptionList::getString
-    int         getInt   (const std::string & label, const int &        val = 0 ) const;
+    int         askInt   (const std::string & label, const int &        val = 0 ) const;
     /// @copydoc gsOptionList::getString
-    real_t      getReal  (const std::string & label, const real_t &     val = 0 ) const;
+    real_t      askReal  (const std::string & label, const real_t &     val = 0 ) const;
     /// @copydoc gsOptionList::getString
-    bool        getSwitch(const std::string & label, const bool &   val = false ) const;
+    bool        askSwitch(const std::string & label, const bool &   val = false ) const;
 
     /// \brief Sets an existing option \a label to be equal to \a
     /// value
@@ -64,7 +74,7 @@ public:
     void addSwitch(const std::string& label, const std::string& desc, const bool& value);
 
     /// \brief Prints this list of options to stream \a os
-    void print(std::ostream & os);
+    std::ostream & print(std::ostream & os) const;
 
     /// \brief Returns the length of this list of options
     int size() const
@@ -73,10 +83,10 @@ public:
 private:
 
     /// \brief Prints information regarding the option nnamed \a label
-    void printInfo(const std::string & label);
+    void printInfo(const std::string & label) const;
 
     /// \brief Returns true iff an option named \a label exists
-    bool exists(const std::string & label);
+    bool exists(const std::string & label) const;
     
 private:
     // Format: std::pair<Value,Description>
@@ -97,6 +107,10 @@ private:
     SwitchTable m_switches; ///< Switches (ON/OFF) options/parameters
 
 }; // class gsOptionList
+
+/// Print (as string) operator to be used by all derived classes
+inline std::ostream &operator<<(std::ostream &os, const gsOptionList& b)
+{return b.print(os); }
 
 
 }; // namespace gismo
