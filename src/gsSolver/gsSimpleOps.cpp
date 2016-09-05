@@ -1,4 +1,4 @@
-/** @file gsSimplePreconditioners.cpp
+/** @file gsSimpleOps.cpp
 
     @brief Provides Multigrid smoothers.
 
@@ -10,7 +10,7 @@
 
     Author(s): C. Hofreither
 */
-#include <gsSolver/gsSimplePreconditioners.h>
+#include <gsSolver/gsSimpleOps.h>
 #include <gsCore/gsLinearAlgebra.h>
 
 namespace gismo

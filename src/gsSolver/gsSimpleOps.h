@@ -1,4 +1,4 @@
-/** @file gsSimplePreconditioners.h
+/** @file gsSimpleOps.h
 
     @brief Colloction of some simple preconditioners.
 

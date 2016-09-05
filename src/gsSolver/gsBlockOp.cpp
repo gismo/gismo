@@ -10,7 +10,7 @@
 
     Author(s): J. Sogn
 */
-#include <gsSolver/gsBlockPreconditioner.h>
+#include <gsSolver/gsBlockOp.h>
 
 namespace gismo
 {

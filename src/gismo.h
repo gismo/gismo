@@ -139,7 +139,7 @@ namespace internal
 #include <gsSolver/gsMinimalResidual.h>
 #include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsConjugateGradient.h>
-#include <gsSolver/gsSimplePreconditioners.h>
+#include <gsSolver/gsSimpleOps.h>
 
 /* ----------- IO ----------- */
 #include <gsIO/gsCmdLine.h>
