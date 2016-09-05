@@ -36,15 +36,14 @@ public:
 
     gsNormL2Boundary(const gsField<T> & _field1,
                      const gsFunction<T> & _func2,
-                     boxSide s,
                      bool _f2param = false)
-    : gsNorm<T>(_field1,_func2), f2param(_f2param), side(s)
+    : gsNorm<T>(_field1,_func2), f2param(_f2param)
     { 
         
     }
 
-    gsNormL2Boundary(const gsField<T> & _field1, boxSide s)
-    : gsNorm<T>(_field1), f2param(false), side(s)
+    explicit gsNormL2Boundary(const gsField<T> & _field1)
+    : gsNorm<T>(_field1), f2param(false)
     {
 
     }
