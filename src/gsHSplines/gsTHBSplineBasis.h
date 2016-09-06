@@ -570,9 +570,9 @@ public:
        * @brief Return the connected components of domain levels in knot vector indices (the boundary of a CC and the holes in the corresponding component)
        * @param[out] level levels of the boxes (level[i]: level of the i-th box,)
        * @param[out] connectedComponents the connected components in format vector<connected_component<polylines<segments<unsigned int> > > > where the first polyline is the outer curve and the rest are holes
-
-    void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const;
     */
+    void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const;
+
 
    ///returns transfer matrices betweend the levels of the given hierarchical spline
    void transferbyLvl (std::vector<gsSparseMatrix<T> >& result);
