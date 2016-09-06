@@ -62,6 +62,8 @@ public:
     // corner (upp_x, upp_y)
     typedef typename std::vector< std::vector< std::vector<unsigned> > > AxisAlignedBoundingBox;
 
+    //typedef typename std::vector< gsAabb<T> > AxisAlignedBoundingBox;
+
     // trimming curves in parameter domain
     // the stucture is [level [connected componenet [ line [ segments [ x y z w ] ] ] ] ],
     // where x y z w describes segment from (x, y) to (z, w), and first line 
@@ -564,12 +566,13 @@ public:
             const gsMatrix<T>& geom_coef,
             std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const;
 
-    /**
+    /*
        * @brief Return the connected components of domain levels in knot vector indices (the boundary of a CC and the holes in the corresponding component)
        * @param[out] level levels of the boxes (level[i]: level of the i-th box,)
        * @param[out] connectedComponents the connected components in format vector<connected_component<polylines<segments<unsigned int> > > > where the first polyline is the outer curve and the rest are holes
-      */
+
     void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const;
+    */
 
    ///returns transfer matrices betweend the levels of the given hierarchical spline
    void transferbyLvl (std::vector<gsSparseMatrix<T> >& result);
@@ -583,7 +586,7 @@ public:
     /// @param[out] boundaryAABB axis aligned bounding boxes -- "each" trimCurve has it own box
     /// @param[out] trimCurves trimming curves, each trimming curve describes a region of the same level
     void decomposeDomain(typename gsTHBSplineBasis::AxisAlignedBoundingBox& boundaryAABB,
-			 typename gsTHBSplineBasis::TrimmingCurves& trimCurves) const;
+                         typename gsTHBSplineBasis::TrimmingCurves& trimCurves) const;
 
     /// @brief Returns a tensor B-Spline patch defined by boundingBox.
     ///
@@ -591,8 +594,8 @@ public:
     /// level. Geometry of the patch is defined via input coefficients.
     gsTensorBSpline<d, T>
     getBSplinePatch(const std::vector<unsigned>& boundingBox,
-		    const unsigned level,
-		    const gsMatrix<T>& geomCoefs) const;
+                    const unsigned level,
+                    const gsMatrix<T>& geomCoefs) const;
 
 private:
     /**
@@ -622,15 +625,15 @@ private:
 
     gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old,
                            const std::vector<gsSortedVector<unsigned> >& n,
-                           const gsSparseMatrix<T,RowMajor> & transfer);
+                           const gsSparseMatrix<T,RowMajor> & transfer) const;
 
     gsSparseMatrix<T> coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
                                    const std::vector<gsSortedVector<unsigned> >& n, 
-                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
+                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
 
     gsSparseMatrix<T> coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
                                    const std::vector<gsSortedVector<unsigned> >& n,
-                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer);
+                                   const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const;
     
 
     // ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''

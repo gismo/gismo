@@ -530,6 +530,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
     return result;
 }
 
+/*
 template<unsigned d, class T>
 void gsTHBSplineBasis<d,T>::getConnectedComponents(
     std::vector<std::vector<std::vector< std::vector<unsigned int> > > >& connectedComponents, gsVector<unsigned>& level) const
@@ -638,6 +639,7 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
 
 
 }
+//*/
 
 
 //return data for trimming in parasolid
@@ -1543,7 +1545,7 @@ void gsTHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resu
 
 //todo remove
 template<unsigned d, class T>
-gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer)
+gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
 {
     int size1= 0, size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -1612,7 +1614,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedV
 template<unsigned d, class T>
 gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
                                                        const std::vector<gsSortedVector<unsigned> >& n,
-                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
+                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
@@ -1789,7 +1791,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct2( const std::vector<g
 template<unsigned d, class T>
 gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old,
                                                       const std::vector<gsSortedVector<unsigned> >& n,
-                                                      const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
+                                                      const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
     GISMO_ASSERT(old.size() < n.size(), "old,n problem in coarsening.");
 

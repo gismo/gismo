@@ -848,9 +848,9 @@ private:
 
 
     ///returns a transfer matrix using the characteristic matrix of the old and new basis
-    virtual gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) = 0;
-    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
-    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) = 0;
+    virtual gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const = 0;
+    virtual gsSparseMatrix<T> coarsening_direct(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
+    virtual gsSparseMatrix<T> coarsening_direct2(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n,  const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const = 0;
 
     /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
     /// @param indices and @param params but fills in only one depending on @param indicesFlag (if true, then it returns indices).
@@ -868,7 +868,7 @@ public:
 
     /// \brief Creates characteristic matrices for basis where "level" is the
     /// maximum level i.e. ignoring higher level refinements
-    void setActiveToLvl(int level, std::vector<CMatrix>& x_matrix_lvl);
+    void setActiveToLvl(int level, std::vector<CMatrix>& x_matrix_lvl) const;
 
 
 //    void local2globalIndex( gsVector<unsigned,d> const & index,

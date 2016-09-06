@@ -226,7 +226,8 @@ void gsHBSplineBasis<d,T>::transferbyLvl (std::vector<gsSparseMatrix<T> >& resul
 
 
 template<unsigned d, class T>
-gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer){
+gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const
+{
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
     for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis
@@ -287,7 +288,8 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening( const std::vector<gsSortedVe
 }
 
 template<unsigned d, class T>
-gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer){
+gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
+{
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
     for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis
@@ -385,9 +387,9 @@ gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct( const std::vector<gsS
 template<unsigned d, class T>
 gsSparseMatrix<T> gsHBSplineBasis<d,T>::coarsening_direct2( const std::vector<gsSortedVector<unsigned> >& old,
                                                      const std::vector<gsSortedVector<unsigned> >& n,
-                                                     const std::vector<gsSparseMatrix<T,RowMajor> >& transfer)
+                                                     const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
-    int size1= 0;int size2 = 0;
+    int size1 = 0, size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
     for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis
         size1 += old[i].size();
