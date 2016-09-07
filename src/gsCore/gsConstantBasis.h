@@ -72,7 +72,7 @@ public:
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
-        result.setConstant(m_val);
+        result.setConstant(m_val, u.cols());
     }
 
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
@@ -82,7 +82,11 @@ public:
         result = gsMatrix<T>::Zero(m_domainDim, u.cols() );
     }
 
-
+    virtual void anchors_into(gsMatrix<T>& result) const
+    {
+        result.setZero(1,1);
+    }
+    
     std::ostream &print(std::ostream &os) const
     {
         os << m_val; 
