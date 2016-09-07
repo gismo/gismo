@@ -814,7 +814,7 @@ public: /* Add local contributions to system matrix and right-hand side */
         const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
 
         GISMO_ASSERT( &rowMap == &m_mappers[m_col.at(c)], "Error");
-        GISMO_ASSERT( 0 != m_rhs.size(), "gsSparseSystem is not allocated");
+        GISMO_ASSERT( m_matrix.cols() == m_rhs.size(), "gsSparseSystem is not allocated");
         //Assert eliminatedDofs.rows() == rowMap.boundarySize()
 
         for (index_t i = 0; i != numActive; ++i)
@@ -869,6 +869,7 @@ public: /* Add local contributions to system matrix and right-hand side */
         const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
         const gsDofMapper & colMap = m_mappers[m_col.at(c)];
 
+        GISMO_ASSERT( m_matrix.cols() == m_rhs.size(), "gsSparseSystem is not allocated");
         //Assert eliminatedDofs.rows() == rowMap.boundarySize()
 
         for (index_t i = 0; i != numActive_i; ++i)
@@ -954,6 +955,8 @@ public: /* Add local contributions to system matrix and right-hand side */
               const std::vector<gsMatrix<unsigned> >& actives,
               const std::vector<gsMatrix<T> > & eliminatedDofs)
     {
+        GISMO_ASSERT( m_matrix.cols() == m_rhs.size(), "gsSparseSystem is not allocated");
+        
         for (size_t r = 0; r != actives.size(); ++r) // for all row-blocks
         {
             const gsDofMapper & rowMap    = m_mappers[m_row.at(r)];
@@ -1124,6 +1127,8 @@ public: /* Add local contributions to system matrix and right-hand side */
               const gsMatrix<unsigned> & actives,
               const size_t r = 0, const size_t c = 0)
     {
+        GISMO_ASSERT( m_matrix.cols() == m_rhs.size(), "gsSparseSystem is not allocated");
+        
         const index_t numActive = actives.rows();
         const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
         GISMO_ASSERT( &rowMap == &m_mappers[m_col.at(c)], "Error");

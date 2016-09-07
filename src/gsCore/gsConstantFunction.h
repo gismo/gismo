@@ -140,6 +140,9 @@ public:
 
     virtual const gsBasis<T> & basis() const {GISMO_NO_IMPLEMENTATION}
     virtual gsBasis<T> & basis() {GISMO_NO_IMPLEMENTATION}
+
+    void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
+    { gsFunction<T>::compute(in, out); }
     
 private:
 
