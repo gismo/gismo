@@ -33,6 +33,10 @@ void gsPoissonAssembler<T>::assemble()
     GISMO_ASSERT(m_system.initialized(), 
                  "Sparse system is not initialized, call initialize() or refresh()");
 
+    // Reserve sparse system
+    const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
+    m_system.reserve(nz, this->pde().numRhs());
+
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     Base::computeDirichletDofs();
 
@@ -44,19 +48,23 @@ void gsPoissonAssembler<T>::assemble()
 
     // Enforce Neumann boundary conditions
     Base::template push<gsVisitorNeumann<T> >(m_pde_ptr->bc().neumannSides() );
-     
-     // If requested, enforce Dirichlet boundary conditions by Nitsche's method
-     if ( m_options.dirStrategy == dirichlet::nitsche )
-         Base::template push<gsVisitorNitsche<T> >(m_pde_ptr->bc().dirichletSides());
+
+    const int dirStr = m_options.getInt("DirichletStrategy");
+    
+    // If requested, enforce Dirichlet boundary conditions by Nitsche's method
+    if ( dirStr == dirichlet::nitsche )
+        Base::template push<gsVisitorNitsche<T> >(m_pde_ptr->bc().dirichletSides());
+
      // If requested, enforce Dirichlet boundary conditions by diagonal penalization
-     else if ( m_options.dirStrategy == dirichlet::penalize )
+     else if ( dirStr == dirichlet::penalize )
          Base::penalizeDirichletDofs();
-     
-    if ( m_options.intStrategy == iFace::dg )
+
+    if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
         gsWarn <<"DG option is ignored.\n";
     
     // Assembly is done, compress the matrix
     Base::finalize();
 }
+
 
 }// namespace gismo
