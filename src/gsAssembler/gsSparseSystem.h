@@ -814,6 +814,7 @@ public: /* Add local contributions to system matrix and right-hand side */
         const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
 
         GISMO_ASSERT( &rowMap == &m_mappers[m_col.at(c)], "Error");
+        GISMO_ASSERT( 0 != m_rhs.size(), "gsSparseSystem is not allocated");
         //Assert eliminatedDofs.rows() == rowMap.boundarySize()
 
         for (index_t i = 0; i != numActive; ++i)
