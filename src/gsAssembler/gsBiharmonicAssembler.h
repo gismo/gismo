@@ -64,8 +64,8 @@ public:
                            iFace::strategy               intStrategy = iFace::glue)
     : m_ppde(patches,bconditions,bconditions2,rhs)
     {
-        m_options.addInt("DirichletStrategy", "", dirStrategy);
-        m_options.addInt("InterfaceStrategy", "", intStrategy);
+        m_options.setInt("DirichletStrategy", dirStrategy);
+        m_options.setInt("InterfaceStrategy", intStrategy);
 
         Base::initialize(m_ppde, bases, m_options);
     }
