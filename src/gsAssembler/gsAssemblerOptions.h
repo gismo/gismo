@@ -292,21 +292,34 @@ public: // Utility functions that return values implied by the settings
 
     index_t numQuNodes(const gsBasis<real_t> & b) const
     {
+        return numQuNodes(b,quA,quB);
+    }
+
+    static index_t numQuNodes(const gsBasis<real_t> & b,
+                              double _quA, int _quB)
+    {
         index_t res = 1;
         for( int i=0; i<b.domainDim(); ++i )
         {
-            res *= static_cast<index_t>(quA * b.degree(i) + quB + 0.5);
+            res *= static_cast<index_t>(_quA * b.degree(i) + _quB + 0.5);
         }
-
+        
         return res;
     }
 
+
     index_t numColNz(const gsBasis<real_t> & b) const
+    {
+        return numColNz(b,bdA,bdB,memOverhead);
+    }
+
+    static index_t numColNz(const gsBasis<real_t> & b,
+                            double _bdA, int _bdB, double _mem)
     {
         index_t nz = 1;
         for (int i = 0; i != b.dim(); ++i)
-            nz *= static_cast<index_t>(bdA * b.degree(i) + bdB + 0.5);
-        return static_cast<index_t>(nz*(1.0+memOverhead));
+            nz *= static_cast<index_t>(_bdA * b.degree(i) + _bdB + 0.5);
+        return static_cast<index_t>(nz*(1.0+_mem));
     }
 
 };

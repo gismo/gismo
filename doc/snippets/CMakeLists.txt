@@ -30,7 +30,7 @@ enable_testing()
 # Collect source file names
 file(GLOB snippets_SRCS "*.cpp")
 
-add_custom_target(${PROJECT_NAME})
+add_custom_target(${PROJECT_NAME} ALL)
 set_property(TARGET ${PROJECT_NAME} PROPERTY LABELS "${PROJECT_NAME};gismo")
 
 foreach(snippet_src ${snippets_SRCS})

@@ -61,12 +61,12 @@ public:
 
     void initialize(const gsBasis<T> & basis,
                     const index_t patchIndex,
-                    const gsAssemblerOptions & options, 
+                    const gsOptionList & options, 
                     gsQuadRule<T>    & rule,
                     unsigned         & evFlags )
     {
         // Setup Quadrature
-        rule = gsGaussRule<T>(basis, options.quA, options.quB);
+        rule = gsGaussRule<T>(basis, options.getInt("quA"), options.getInt("quB"));
 
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;

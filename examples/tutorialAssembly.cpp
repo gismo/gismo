@@ -13,7 +13,8 @@
 
 # include <gismo.h>
 
-#include <gsAssembler/gsVisitorPoisson.h> // included here for demonstration
+#include <gsAssembler/gsAssembler.h>      // included here for demonstrationw
+#include <gsAssembler/gsVisitorPoisson.h>
 #include <gsAssembler/gsVisitorNitsche.h>
 #include <gsAssembler/gsVisitorNeumann.h>
 
@@ -67,7 +68,6 @@ int main(int argc, char *argv[])
     {
         // Find maximum degree with respect to all the variables
         int max_tmp = splinebasis.minCwiseDegree();
-        
         // Elevate all degrees uniformly
         max_tmp += numElevate;
         splinebasis.setDegree(max_tmp);
@@ -75,12 +75,11 @@ int main(int argc, char *argv[])
 
     // h-refine each basis (4, one for each patch)
     for (int i = 0; i < numRefine; ++i)
-      splinebasis.uniformRefine();
+        splinebasis.uniformRefine();
     //! [Refinement]
 
-
+    
     //! [Poisson Pde]
-
     gsFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
                        //"((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)",
                        2);
@@ -88,16 +87,17 @@ int main(int argc, char *argv[])
     gsPoissonPde<> ppde(*patches, bcInfo, f);
     //! [Poisson Pde]
 
-
+    
     //! [Assembler]
-    gsAssemblerOptions opt;
-    opt.dirValues   = dirichlet::l2Projection;
-    opt.dirStrategy = dirichlet::elimination ;
-    opt.intStrategy = iFace    ::conforming  ;
-    opt.bdA         = 2;
-    opt.bdB         = 1;
-    opt.quA         = 1;
-    opt.quB         = 1;
+    gsOptionList opt = gsAssembler<>::defaultOptions();
+    opt.setInt("DirichletValues"  , dirichlet::l2Projection);
+    opt.setInt("DirichletStrategy", dirichlet::elimination );
+    opt.setInt("InterfaceStrategy", iFace    ::conforming  );
+    opt.setReal("quA", 1.0);
+    opt.setInt ("quB", 1  );
+    opt.setReal("bdA", 2.0);
+    opt.setInt ("bdB", 1  );
+    gsInfo << "Assembler "<< opt;
 
     // Does 3 things: 
     // 1. computes dirichlet dof values (if needed)
@@ -109,7 +109,11 @@ int main(int argc, char *argv[])
 
     //! [Dof mapper]
     gsDofMapper mapper; // Gets the indices mapped from Basis --> Matrix
-    splinebasis.getMapper(opt.dirStrategy, opt.intStrategy, bcInfo, mapper, 0);
+
+    splinebasis.getMapper((dirichlet::strategy)opt.getInt("DirichletStrategy"),
+                          (iFace::    strategy)opt.getInt("InterfaceStrategy"),
+                          bcInfo, mapper, 0);
+
     mapper.print();
     //! [Dof mapper]
 
@@ -141,8 +145,10 @@ int main(int argc, char *argv[])
     //! [Solve]
     // Initialize the conjugate gradient solver
     gsInfo << "Solving...\n";
+
     gsSparseSolver<>::CGDiagonal solver( PA.matrix() );
     gsMatrix<> solVector = solver.solve( PA.rhs() );
+    
     gsInfo << "Solved the system with CG solver.\n";
     //! [Solve]
 
@@ -167,5 +173,5 @@ int main(int argc, char *argv[])
         //! [Plot in Paraview]
     }
 
-   return 0;
+    return 0;
 }

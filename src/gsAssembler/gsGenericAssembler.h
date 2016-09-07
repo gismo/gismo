@@ -42,7 +42,7 @@ public:
     /// Constructor with gsMultiBasis
     gsGenericAssembler( const gsMultiPatch<T>    & patches,
                         const gsMultiBasis<T>    & bases,
-                        const gsAssemblerOptions & opt = gsAssemblerOptions(),
+                        const gsOptionList & opt = Base::defaultOptions(),
                         const gsBoundaryConditions<T> * bc = NULL)
     : m_pde(patches)
     {
@@ -74,9 +74,10 @@ public:
     {
         // Setup sparse system
         gsDofMapper mapper;
-        m_bases[0].getMapper(m_options.dirStrategy,
-                             m_options.intStrategy,
-                             this->pde().bc(), mapper, 0);
+        m_bases[0].getMapper(
+            (dirichlet::strategy)(m_options.getInt("DirichletStrategy")),
+            (iFace::strategy)(m_options.getInt("InterfaceStrategy")),
+            this->pde().bc(), mapper, 0);
         m_system = gsSparseSystem<T>(mapper);
         //note: no allocation here
         //        const index_t nz = m_options.numColNz(m_bases[0][0]);
@@ -88,7 +89,7 @@ public:
     {
         // Clean the sparse system
         gsGenericAssembler::refresh();
-        const index_t nz = m_options.numColNz(m_bases[0][0]);
+        const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
         m_system.matrix().reservePerColumn(nz);
         
         // Assemble mass integrals
@@ -117,7 +118,7 @@ public:
     {
         // Clean the sparse system
         gsGenericAssembler::refresh();
-        const index_t nz = m_options.numColNz(m_bases[0][0]);
+        const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
         m_system.matrix().reservePerColumn(nz);
 
         // Assemble stiffness integrals

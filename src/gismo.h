@@ -142,6 +142,7 @@ namespace internal
 #include <gsSolver/gsSimpleOps.h>
 
 /* ----------- IO ----------- */
+#include <gsIO/gsOptionList.h>
 #include <gsIO/gsCmdLine.h>
 #include <gsIO/gsCmdLineArgs.h>
 #include <gsIO/gsFileData.h>

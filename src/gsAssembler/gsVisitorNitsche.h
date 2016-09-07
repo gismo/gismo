@@ -67,12 +67,13 @@ public:
 
     void initialize(const gsBasis<T> & basis,
                     const index_t patchIndex,
-                    const gsAssemblerOptions & options, 
+                    const gsOptionList & options, 
                     gsQuadRule<T>    & rule,
                     unsigned         & evFlags )
     {
         // Setup Quadrature (harmless slicing occurs)
-        rule = gsGaussRule<T>(basis, options.quA, options.quB, side.direction() );
+        rule = gsGaussRule<T>(basis, options.getInt("quA"), options.getInt("quB"),
+                              side.direction() );
 
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;

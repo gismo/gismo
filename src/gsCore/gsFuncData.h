@@ -121,7 +121,7 @@ public:
     typedef Eigen::Transpose<typename matrixView::Base> matrixTransposeView;
 
 public:
-    unsigned flags;
+    mutable unsigned flags;
     int      patchId; // move to mapdata
 
     gsFuncInfo         info;

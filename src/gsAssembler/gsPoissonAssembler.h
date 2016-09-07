@@ -43,6 +43,9 @@ public:
     gsPoissonAssembler()
     { }
 
+    gsPoissonAssembler(const gsPoissonAssembler & other)
+    { m_ppde = other.m_ppde; }
+
     /** @brief Main Constructor of the assembler object.
 
     \param[in] pde A boundary value Poisson problem
@@ -55,8 +58,8 @@ public:
                         dirichlet::strategy           dirStrategy,
                         iFace::strategy               intStrategy = iFace::glue)
     {
-        m_options.dirStrategy = dirStrategy;
-        m_options.intStrategy = intStrategy;
+        m_options.addInt("DirichletStrategy", "", dirStrategy);
+        m_options.addInt("InterfaceStrategy", "", intStrategy);
 
         Base::initialize(pde, bases, m_options);
     }
@@ -81,8 +84,8 @@ public:
                         iFace::strategy               intStrategy = iFace::glue)
     : m_ppde(patches,bconditions,rhs)
     {
-        m_options.dirStrategy = dirStrategy;
-        m_options.intStrategy = intStrategy;
+        m_options.addInt("DirichletStrategy", "", dirStrategy);
+        m_options.addInt("InterfaceStrategy", "", intStrategy);
         
         Base::initialize(m_ppde, basis, m_options);
     }
@@ -90,7 +93,9 @@ public:
     virtual gsAssembler<T>* clone() const
     {
         const gsPoissonPde<T> * ppde = static_cast<const gsPoissonPde<T>* >(m_pde_ptr);
-        return new gsPoissonAssembler<T>(*ppde,m_bases[0], m_options.dirStrategy,m_options.intStrategy );
+        return new gsPoissonAssembler<T>(*ppde,m_bases[0],
+                                         (dirichlet::strategy)m_options.getInt("DirichletStrategy"),
+                                         (iFace::strategy)m_options.getInt("InterfaceStrategy") );
     }
     virtual gsAssembler<T>* create() const
     {
@@ -102,7 +107,7 @@ public:
 
     // Main assembly routine
     virtual void assemble();
-
+    
     /// Returns an expression of the "full" assembled sparse
     /// matrix. Note that matrix() might return a lower diagonal
     /// matrix, if we exploit possible symmetry during assembly

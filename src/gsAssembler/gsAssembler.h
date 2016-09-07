@@ -27,6 +27,7 @@
 #include <gsAssembler/gsSparseSystem.h>
 
 #include <gsPde/gsPde.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
@@ -58,7 +59,7 @@ protected: // *** Input data members ***
     std::vector< gsMultiBasis<T> > m_bases;
     
     /// Options
-    gsAssemblerOptions m_options;
+    gsOptionList m_options;
 
 protected: // *** Output data members *** 
     
@@ -70,17 +71,14 @@ protected: // *** Output data members ***
     /// must fit m_system.colBlocks().
     std::vector<gsMatrix<T> > m_ddof;
 
-public: /* Constructors and initializers */
-
-    /// @brief default constructor
-    /// \note none of the data fields are inititalized, use
-    /// additionally an appropriate initialize function
-    gsAssembler() { }
+public:
 
     virtual ~gsAssembler()
     { }
 
-
+    /// @brief Returns the list of default options for assembly
+    static gsOptionList defaultOptions();
+    
     /// @brief Create an empty Assembler of the derived type and return a
     /// pointer to it. Call the initialize functions to set the members
     virtual gsAssembler * create() const;
@@ -93,7 +91,7 @@ public: /* Constructors and initializers */
     void initialize(const gsPde<T>                         & pde,
                     const gsStdVectorRef<gsMultiBasis<T> > & bases,
                     //note: merge with initialize(.., const gsMultiBasis<T> ,..) ?
-                    const gsAssemblerOptions & opt = gsAssemblerOptions() )
+                    const gsOptionList & opt = defaultOptions() )
     {
         m_pde_ptr = &pde;
         m_bases = bases;
@@ -106,7 +104,7 @@ public: /* Constructors and initializers */
     /// using the pde, a multi-basis and assembler options.
     void initialize(const gsPde<T>           & pde,
                     const gsMultiBasis<T>    & bases,
-                    const gsAssemblerOptions & opt = gsAssemblerOptions() )
+                    const gsOptionList & opt = defaultOptions() )
     {
         m_pde_ptr = &pde;
         m_bases.clear();
@@ -121,7 +119,7 @@ public: /* Constructors and initializers */
     /// using the pde, a vector of bases and assembler options.
     void initialize(const gsPde<T>           & pde,
                     const gsBasisRefs<T>     & basis,
-                    const gsAssemblerOptions & opt = gsAssemblerOptions() )
+                    const gsOptionList & opt = defaultOptions() )
     {
         GISMO_ASSERT(pde.domain().nPatches() ==1,
                      "You cannot initialize a multipatch domain with bases on a single patch");
@@ -161,6 +159,7 @@ public:  /* Virtual assembly routines*/
     /// current solution
     virtual void assemble(const gsMultiPatch<T> & curSolution);
 
+    gsOptionList & options() {return m_options;}
 
 public: /* Element visitors */
 
@@ -326,10 +325,12 @@ public: // *** Accessors ***
     /// @brief Returns the left-hand side vector(s)
     /// ( multiple right hand sides possible )
     const gsMatrix<T> & rhs() const { return m_system.rhs(); }
-
+    gsMatrix<T> & rhs() { return m_system.rhs(); }
+    
     /// @brief Returns the left-hand global matrix
     const gsSparseSystem<T> & system() const { return m_system; }
-
+    gsSparseSystem<T> & system() { return m_system; }
+    
     /// @brief Swaps the actual sparse system with the given one
     void setSparseSystem(gsSparseSystem<T> & sys)
     {
@@ -345,9 +346,6 @@ public: // *** Accessors ***
             sum += m_system.colMapper(c).freeSize();
         return sum;
     }
-
-    /// @brief Returns the options of the assembler
-    const gsAssemblerOptions & options() const { return m_options; }
 
 protected:
 

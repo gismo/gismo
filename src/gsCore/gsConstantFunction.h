@@ -34,13 +34,13 @@ class gsConstantFunction : public gsFunction<T>
 public:
     gsConstantFunction() { }
 
-    explicit gsConstantFunction(const gsVector<T>& val, int domainDim = 1)
+    explicit gsConstantFunction(const gsVector<T>& val, int domainDim)
         : m_val(val), m_domainDim(domainDim)
     { }
 
 
     ///  Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R \f$
-    explicit gsConstantFunction(T x, int domainDim  = 1)
+    explicit gsConstantFunction(T x, int domainDim)
         : m_domainDim(domainDim)
     {
         m_val.resize(1);

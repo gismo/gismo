@@ -63,9 +63,9 @@ public:
                            dirichlet::strategy           dirStrategy,
                            iFace::strategy               intStrategy = iFace::glue)
     : m_ppde(patches,bconditions,bconditions2,rhs)
-    { 
-        m_options.dirStrategy = dirStrategy;
-        m_options.intStrategy = intStrategy;
+    {
+        m_options.addInt("DirichletStrategy", "", dirStrategy);
+        m_options.addInt("InterfaceStrategy", "", intStrategy);
 
         Base::initialize(m_ppde, bases, m_options);
     }
@@ -114,7 +114,7 @@ void gsBiharmonicAssembler<T,bhVisitor>::assemble()
     Base::template push<gsVisitorNeumannBiharmonic<T> >(
         m_ppde.bcSecondKind().neumannSides() );
 
-    if ( m_options.intStrategy == iFace::dg )
+    if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
         gsWarn <<"DG option ignored.\n";
 
     /*

@@ -25,6 +25,21 @@ namespace gismo
 {
 
 template<class T>
+gsOptionList gsAssembler<T>::defaultOptions()
+{
+    gsOptionList opt;
+    opt.addInt("DirichletStrategy", "Method for enforcement of Dirichlet BCs [11..14]", 11 );
+    opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);
+    opt.addInt("InterfaceStrategy", "Method of treatment of patch interfaces [0..3]", 1  );
+    opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
+    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+    opt.addReal("bdA", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 2.0  );
+    opt.addInt ("bdB", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 1    );
+    opt.addReal("bdO", "Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]", 0.333);
+    return opt;
+}
+
+template<class T>
 void gsAssembler<T>::refresh()
 { }
 
@@ -72,9 +87,11 @@ bool gsAssembler<T>::check()
     if ( m_pde_ptr->domain().nPatches() == 0)
         gsWarn<< "No domain given ! \n";
 
+    // /*
     if ( m_pde_ptr->bc().size() == 0)
         gsWarn<< "No boundary conditions given ! \n";
-
+    //*/
+    
     return true;
 }
 
@@ -89,22 +106,23 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
 
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper mapper;
-    m_bases.front().getMapper(m_options.dirStrategy, m_options.intStrategy,
-                              this->pde().bc(), mapper, 0);
+    m_bases.front().getMapper(
+        (dirichlet::strategy)(m_options.getInt("DirichletStrategy")),
+        (iFace::strategy)(m_options.getInt("InterfaceStrategy")),
+        this->pde().bc(), mapper, 0);
 
     if ( 0 == mapper.freeSize() ) // Are there any interior dofs ?
         gsWarn << " No internal DOFs, zero sized system.\n";
 
     // 2. Create the sparse system
     m_system = gsSparseSystem<T>(mapper);//1,1
-    const index_t nz = m_options.numColNz(m_bases[0][0]);
-    m_system.reserve(nz, this->pde().numRhs());
 }
 
 template<class T>
 void gsAssembler<T>::penalizeDirichletDofs(int unk)
 {
-    GISMO_ASSERT( m_options.dirStrategy == dirichlet::penalize, "Incorrect options");
+    GISMO_ASSERT( m_options.getInt("DirichletStrategy")
+                  == dirichlet::penalize, "Incorrect options");
 
     static const T PP = 1e9; // magic number
 
@@ -112,7 +130,7 @@ void gsAssembler<T>::penalizeDirichletDofs(int unk)
     const gsDofMapper     & mapper = m_system.colMapper(unk);
     // Note: dofs in the system, however dof values need to be computed
     const gsDofMapper & bmap = mbasis.getMapper(dirichlet::elimination,
-                                                m_options.intStrategy,
+                       static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
                                                 m_pde_ptr->bc(), unk) ;
 
     GISMO_ENSURE( m_ddof[unk].rows() == mapper.boundarySize() &&
@@ -154,13 +172,15 @@ void gsAssembler<T>::penalizeDirichletDofs(int unk)
 template<class T>
 void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int patch)
 {
-    GISMO_ASSERT( m_options.dirValues == dirichlet::user, "Incorrect options");
+    GISMO_ASSERT( m_options.getInt("DirichletValues") == dirichlet::user, "Incorrect options");
 
+    const int dirStr = m_options.getInt("DirichletStrategy");
     const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
     const gsDofMapper & mapper =
-            dirichlet::elimination == m_options.dirStrategy ? m_system.colMapper(unk)
-                                                            : mbasis.getMapper(dirichlet::elimination, m_options.intStrategy,
-                                                                               m_pde_ptr->bc(), unk) ;
+        dirichlet::elimination == dirStr ? m_system.colMapper(unk)
+        : mbasis.getMapper(dirichlet::elimination,
+                           static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
+                           m_pde_ptr->bc(), unk) ;
     
     GISMO_ASSERT(m_ddof[unk].rows()==mapper.boundarySize() &&
                  m_ddof[unk].cols() == m_pde_ptr->numRhs(),
@@ -212,16 +232,18 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
     if(m_ddof.size()==0)
         m_ddof.resize(m_system.numColBlocks());
 
-    if ( m_options.dirStrategy == dirichlet::nitsche)
+    if ( m_options.getInt("DirichletStrategy") == dirichlet::nitsche)
         return; // Nothing to compute
 
     const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
     const gsDofMapper & mapper =
-            dirichlet::elimination == m_options.dirStrategy ? m_system.colMapper(unk)
-                                                            : mbasis.getMapper(dirichlet::elimination, m_options.intStrategy,
-                                                                               m_pde_ptr->bc(), unk);
+            dirichlet::elimination == m_options.getInt("DirichletStrategy") ?
+        m_system.colMapper(unk) :
+        mbasis.getMapper(dirichlet::elimination,
+                         static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
+                         m_pde_ptr->bc(), unk);
 
-    switch (m_options.dirValues)
+    switch ( m_options.getInt("DirichletValues") )
     {
     case dirichlet::homogeneous:
         // If we have a homogeneous Dirichlet problem fill boundary

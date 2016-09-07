@@ -162,12 +162,15 @@ template<typename Z, int mode, int d = -1,
 // Pde
 template< class T = real_t>  class gsPde;
 template< class T = real_t>  class gsPoissonPde;
+template< class T = real_t>  class gsConvDiffRePde;
+
+template< class T = real_t>  class gsAssembler;
 template< class T = real_t>  class gsStokesAssembler;
 template< class T = real_t>  class gsGenericAssembler;
 template< class T = real_t>  class gsPoissonAssembler;
+template< class T = real_t>  class gsCRDAssembler;
 template< class T = real_t>  class gsSolverUtils;
 template< class T = real_t, bool symm = false>  class gsSparseSystem;
-template< class T = real_t>  class gsConvDiffRePde;
 
 // More
 template< class T = real_t>  class gsCurveLoop;
@@ -221,6 +224,7 @@ template<class T = real_t> struct gsNurbsCreator;
 
 template<class T = real_t> struct gsFieldCreator;
 
+class gsOptionList;
 
 template<class T = real_t, int _Rows=-1, int _Cols=-1, 
          int _Options  = 0|((_Rows==1 && _Cols!=1)?0x1:0)> class gsMatrix;

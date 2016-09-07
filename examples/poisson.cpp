@@ -66,7 +66,6 @@ int main(int argc, char *argv[])
         bcInfo.addCondition( *bit, condition_type::dirichlet, exactSol );
     }
 
-
     ppde->boundaryConditions() = bcInfo;
 
     /////////////////// Refinement h and p ///////////////////
@@ -98,18 +97,18 @@ int main(int argc, char *argv[])
 
     gsPoissonAssembler<real_t> PoissonAssembler;
 
-    gsAssemblerOptions options;
+    gsOptionList options = PoissonAssembler.defaultOptions();
     //Use Nitsche's method for Dirichlet boundaries
     if ( Dirichlet == 1)
     {
         gsInfo<<"Using Nitsche's method for Dirichlet boundaries.\n";
-        options.dirStrategy = dirichlet::nitsche;
+        options.setInt("DirichletStrategy", dirichlet::nitsche);
     }
 
     if ( DG == 1)
     {
         gsInfo<<"Using DG method for patch interfaces.\n";
-        options.intStrategy = iFace::dg;
+        options.setInt("InterfaceStrategy", iFace::dg);
     }
 
     PoissonAssembler.initialize(*ppde, bases, options);
@@ -141,8 +140,8 @@ int main(int argc, char *argv[])
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>(sol, "poisson2d", plot_pts);
-        //gsField<> exact( PoissonSolver.patches(), g, false );
-        //gsWriteParaview<>( exact, "poisson2d_exact", plot_pts);
+        gsField<> exact(*patches, *exactSol, false );
+        gsWriteParaview<>(exact, "poisson2d_exact", plot_pts);
 
         // Run paraview
         result = system("paraview poisson2d.pvd &");
