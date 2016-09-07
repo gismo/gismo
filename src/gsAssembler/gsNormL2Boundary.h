@@ -64,7 +64,7 @@ public:
                  patchesPtr->bBegin(); bit != patchesPtr->bEnd(); ++bit)
         {
             side = bit->side();
-            this->apply1(*this, bit->patch, storeElWise, bit->side() );
+            this->apply1(*this, storeElWise, bit->patch, bit->side() );
         }
 
         m_value = takeRoot(m_value);
@@ -105,7 +105,7 @@ protected:
         
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
-        
+
         // Evaluate second function (defined of physical domain)
         _func2.eval_into(geoEval.values(), f2vals);
         
