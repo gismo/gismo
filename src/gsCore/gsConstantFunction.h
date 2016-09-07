@@ -29,58 +29,64 @@ namespace gismo
 */
 
 template <class T>
-class gsConstantFunction : public gsFunction<T>
+class gsConstantFunction : public gsGeometry<T>
 {
+    typedef gsGeometry<T> Base;
+    
 public:
     gsConstantFunction() { }
 
     explicit gsConstantFunction(const gsVector<T>& val, int domainDim)
-        : m_val(val), m_domainDim(domainDim)
-    { }
+    :  m_domainDim(domainDim)
+    {
+        m_coefs = val.transpose();
+    }
 
 
     ///  Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R \f$
     explicit gsConstantFunction(T x, int domainDim)
         : m_domainDim(domainDim)
     {
-        m_val.resize(1);
-        m_val(0) = x;
+        m_coefs.resize(1,1);
+        m_coefs.at(0) = x;
     }
 
     /// Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^2 \f$
     gsConstantFunction(T x, T y, int domainDim)
         : m_domainDim(domainDim)
     {
-        m_val.resize(2);
-        m_val(0) = x;
-        m_val(1) = y;
+        m_coefs.resize(1,2);
+        m_coefs.at(0) = x;
+        m_coefs.at(1) = y;
     }
 
     /// Constructs a constant Function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^3 \f$
     gsConstantFunction(T x, T y, T z, int domainDim)
         : m_domainDim(domainDim)
     {
-        m_val.resize(3);
-        m_val(0) = x;
-        m_val(1) = y;
-        m_val(2) = z;
+        m_coefs.resize(1,3);
+        m_coefs.at(0) = x;
+        m_coefs.at(1) = y;
+        m_coefs.at(2) = z;
     }
 
     /// Constructs a constant Function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^4 \f$
     gsConstantFunction(T x, T y, T z, T w,  int domainDim)
         : m_domainDim(domainDim)
     {
-        m_val.resize(4);
-        m_val(0) = x;
-        m_val(1) = y;
-        m_val(2) = z;
-        m_val(3) = w;
+        m_coefs.resize(1,4);
+        m_coefs.at(0) = x;
+        m_coefs.at(1) = y;
+        m_coefs.at(2) = z;
+        m_coefs.at(2) = w;
     }
 
     /// Compatibility constructor
     gsConstantFunction(const gsConstantBasis<T> & cb, const gsMatrix<T> & coef)
-    : m_val( cb.value()*coef ), m_domainDim(1)
-    { }
+    : m_domainDim(1)
+    {
+        m_coefs = cb.value()*coef;
+    }
 
 
     // Documentation in gsFunction class
@@ -90,22 +96,22 @@ public:
     virtual int domainDim() const   { return m_domainDim ; }
 
     // Documentation in gsFunction class
-    virtual int targetDim() const   { return m_val.rows(); }
+    virtual int targetDim() const   { return m_coefs.cols(); }
 
-    const gsVector<T> & value() const { return m_val;}
+    const gsVector<T> & value() const { return m_coefs.transpose();}
 
-    T value(size_t i) const { return m_val[i];}
+    T value(size_t i) const { return m_coefs.at(i);}
 
-    void setValue(T val) { m_val.setConstant(val);}
+    void setValue(T val) { m_coefs.setConstant(val);}
 
-    void setValue(const gsVector<T> & val) { m_val = val;}
+    void setValue(const gsVector<T> & val) { m_coefs = val.transpose();}
 
     // Documentation in gsFunction class
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
-        result = m_val.rowwise().replicate( u.cols() );
+        result = m_coefs.transpose().rowwise().replicate( u.cols() );
     }
 
     // Documentation in gsFunction class
@@ -128,14 +134,17 @@ public:
     // Documentation in gsFunction class
     virtual std::ostream &print(std::ostream &os) const
     {
-        os << m_val; 
+        os << m_coefs.transpose(); 
         return os; 
     }
 
+    virtual const gsBasis<T> & basis() const {GISMO_NO_IMPLEMENTATION}
+    virtual gsBasis<T> & basis() {GISMO_NO_IMPLEMENTATION}
+    
 private:
 
     /// Global value of this function
-    gsVector<T> m_val;
+    using Base::m_coefs;
 
     /// Spatial dimension of the domain of definition of this function
     int m_domainDim;

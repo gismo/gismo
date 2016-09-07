@@ -15,7 +15,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-//#include <gsCore/gsBasis.h>
+#include <gsCore/gsConstantFunction.h>
 
 namespace gismo
 {
@@ -72,7 +72,7 @@ public:
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
-        result.setConstant(m_val, u.cols());
+        result.setConstant(m_val, 1, u.cols());
     }
 
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
@@ -94,10 +94,10 @@ public:
     }
 
     gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs )      const 
-    { GISMO_ERROR("No Geometry"); }
+    { return new gsConstantFunction<T>(m_val*coefs.row(0).transpose(), m_domainDim); }
 
     gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const 
-    { GISMO_ERROR("No Geometry"); }
+    { return new gsConstantFunction<T>(m_val*coefs.get().row(0).transpose(), m_domainDim); }
 
 public:
 
