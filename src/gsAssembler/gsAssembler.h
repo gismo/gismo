@@ -73,6 +73,9 @@ protected: // *** Output data members ***
 
 public:
 
+    gsAssembler() : m_options(defaultOptions())
+    { }
+
     virtual ~gsAssembler()
     { }
 

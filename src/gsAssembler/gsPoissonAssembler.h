@@ -58,8 +58,8 @@ public:
                         dirichlet::strategy           dirStrategy,
                         iFace::strategy               intStrategy = iFace::glue)
     {
-        m_options.addInt("DirichletStrategy", "", dirStrategy);
-        m_options.addInt("InterfaceStrategy", "", intStrategy);
+        m_options.setInt("DirichletStrategy", dirStrategy);
+        m_options.setInt("InterfaceStrategy", intStrategy);
 
         Base::initialize(pde, bases, m_options);
     }
@@ -84,19 +84,17 @@ public:
                         iFace::strategy               intStrategy = iFace::glue)
     : m_ppde(patches,bconditions,rhs)
     {
-        m_options.addInt("DirichletStrategy", "", dirStrategy);
-        m_options.addInt("InterfaceStrategy", "", intStrategy);
+        m_options.setInt("DirichletStrategy", dirStrategy);
+        m_options.setInt("InterfaceStrategy", intStrategy);
         
         Base::initialize(m_ppde, basis, m_options);
     }
 
     virtual gsAssembler<T>* clone() const
     {
-        const gsPoissonPde<T> * ppde = static_cast<const gsPoissonPde<T>* >(m_pde_ptr);
-        return new gsPoissonAssembler<T>(*ppde,m_bases[0],
-                                         (dirichlet::strategy)m_options.getInt("DirichletStrategy"),
-                                         (iFace::strategy)m_options.getInt("InterfaceStrategy") );
+        return new gsPoissonAssembler<T>(*this);
     }
+    
     virtual gsAssembler<T>* create() const
     {
         return new gsPoissonAssembler<T>();

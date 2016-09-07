@@ -243,6 +243,8 @@ void gsAssembler<T>::computeDirichletDofs(int unk)
                          static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
                          m_pde_ptr->bc(), unk);
 
+    gsDebugVar(m_options.getInt("DirichletStragegy"));
+    gsDebugVar(m_options.getInt("DirichletValues"));
     switch ( m_options.getInt("DirichletValues") )
     {
     case dirichlet::homogeneous:

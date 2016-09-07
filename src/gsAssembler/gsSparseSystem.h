@@ -331,16 +331,16 @@ public:
     }
 
     /// @brief the number of matrix columns
-    index_t cols() { return m_matrix.cols(); }
+    index_t cols() const { return m_matrix.cols(); }
 
     /// @brief the number of matrix rows
-    index_t rows() { return m_matrix.rows(); }
+    index_t rows() const { return m_matrix.rows(); }
 
     /// @brief the rows of the right-hand side vector
-    index_t rhsRows() { return m_rhs.rows(); }
+    index_t rhsRows() const { return m_rhs.rows(); }
 
     /// @brief the number of right-hand side vectors
-    index_t rhsCols() { return m_rhs.cols(); }
+    index_t rhsCols() const { return m_rhs.cols(); }
 
 public: /* Accessors */
 
