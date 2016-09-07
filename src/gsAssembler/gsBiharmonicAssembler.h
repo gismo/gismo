@@ -100,6 +100,10 @@ void gsBiharmonicAssembler<T,bhVisitor>::assemble()
 {
     GISMO_ASSERT(m_system.initialized(), "Sparse system is not initialized, call refresh()");
 
+    // Reserve sparse system
+    const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
+    m_system.reserve(nz, this->pde().numRhs());
+
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     Base::computeDirichletDofs();
     
