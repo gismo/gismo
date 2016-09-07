@@ -63,7 +63,7 @@ public:
                     unsigned         & evFlags )
     {
         // Setup Quadrature (harmless slicing occurs)
-        rule = gsGaussRule<T>(basis, options.getInt("quA"),
+        rule = gsGaussRule<T>(basis, options.geReal("quA"),
                               options.getInt("quB"),
                               side.direction() );
 

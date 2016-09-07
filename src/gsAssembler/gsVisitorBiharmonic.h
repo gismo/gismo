@@ -66,7 +66,7 @@ public:
                     unsigned         & evFlags )
     {
         // Setup Quadrature
-        rule = gsGaussRule<T>(basis, options.getInt("quA"), options.getInt("quB"));
+        rule = gsGaussRule<T>(basis, options.getReal("quA"), options.getInt("quB"));
 
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
