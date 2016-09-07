@@ -25,24 +25,28 @@ namespace gismo
 std::string gsOptionList::getString(const std::string & label) const
 {
     StringTable::const_iterator it = m_strings.find(label);
+    GISMO_ASSERT(it!=m_strings.end(), "Invalid request: "<< label <<" is not a string.");
     return it->second.first;
 }
 
 int gsOptionList::getInt(const std::string & label) const
 {
     IntTable::const_iterator it = m_ints.find(label);
+    GISMO_ASSERT(it!=m_ints.end(), "Invalid request: "<< label <<" is not an int.");
     return it->second.first;
 }
 
 bool gsOptionList::getSwitch(const std::string & label) const
 {
     SwitchTable::const_iterator it = m_switches.find(label);
+    GISMO_ASSERT(it!=m_switches.end(), "Invalid request: "<< label <<" is not a switch.");
     return it->second.first;
 }
 
 real_t gsOptionList::getReal(const std::string & label) const
 {
     RealTable::const_iterator it = m_reals.find(label);
+    GISMO_ASSERT(it!=m_reals.end(), "Invalid request: "<< label <<" is not a real.");
     return it->second.first;
 }
 
@@ -149,6 +153,7 @@ void gsOptionList::addString(const std::string& label,
         GISMO_ERROR("Option "<<label<<" already exists.");        
     }
     m_strings[label] = std::make_pair(value,desc);
+    // m_strings.insert(StringOpt(label,std::make_pair(value,desc) ) );
 }
 
 
