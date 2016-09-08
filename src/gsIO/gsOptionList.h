@@ -182,7 +182,7 @@ public:
     			str.str( val );
     			int myVal;
     			gsGetInt(str, myVal);
-    			bool myBoolVal = (bool)myVal;
+    			bool myBoolVal = (myVal != 0);
     			result.addSwitch(label, desc, myBoolVal);
     			//std::cout << "\nresult.addSwitch(label'" << label << "',desc='";
     			//std::cout << desc << "','val='" << myBoolVal << "')\n";
