@@ -9,12 +9,14 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, H. Weiner
 */
 
 #pragma once
 
+#include <list>
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsIO/gsXml.h>
 
 namespace gismo
 {
@@ -80,6 +82,15 @@ public:
     int size() const
     {return m_strings.size()+m_ints.size()+m_reals.size()+m_switches.size();}
 
+    typedef struct {
+    	std::string type;
+    	std::string label;
+    	std::string desc;
+    	std::string val;
+    } OptionListEntry;
+
+    std::list<OptionListEntry> getAllEntries() const;
+
 private:
 
     /// \brief Prints information regarding the option nnamed \a label
@@ -113,4 +124,103 @@ inline std::ostream &operator<<(std::ostream &os, const gsOptionList& b)
 {return b.print(os); }
 
 
-}; // namespace gismo
+namespace internal
+{
+
+/** \brief Read OptionList from XML data
+    \ingroup IO
+*/
+template<>
+class gsXml< gsOptionList >
+{
+private:
+    gsXml() { }
+
+public:
+    GSXML_COMMON_FUNCTIONS(gsOptionList)
+    GSXML_GET_POINTER(gsOptionList)
+    static std::string tag () { return "OptionList"; }
+    static std::string type() { return ""; }
+
+    static void get_into(gsXmlNode * node, gsOptionList & result)
+    {
+        // read in data
+    	//std::string id = node->first_attribute("id");
+
+    	// get all child-nodes
+    	gsXmlNode * tmp = node->first_node();
+    	while ( tmp ) {
+    		const char* name = tmp->name();
+    		//std::cout << "\nFound child node with name='" << name << "'\n";
+
+    		const std::string label = tmp->first_attribute("label")->value();
+    		const std::string desc = tmp->first_attribute("desc")->value();
+    		const std::string val = tmp->first_attribute("value")->value();
+
+    		if (strcmp("int", name) == 0) {
+    			std::istringstream str;
+    			str.str( val );
+    			int myVal;
+    			gsGetInt(str, myVal);
+    			result.addInt(label, desc, myVal);
+    			//std::cout << "\nresult.addInt(label'" << label << "',desc='";
+    			//std::cout<< desc << "','val='" << myVal << "')\n";
+    			//std::cout << "result.getInt(label='" << label << "')='";
+    			//std::cout<< result.getInt(label) << "'\n";
+    		}
+    		else if (strcmp("real", name) == 0) {
+    			std::istringstream str;
+    			str.str( val );
+    			real_t myVal;
+    			gsGetReal(str, myVal);
+    			result.addReal(label, desc, myVal);
+    			//std::cout << "\nresult.addReal(label'" << label << "',desc='";
+    			//std::cout << desc << "','val='" << myVal << "')\n";
+    		}
+    		else if (strcmp("bool", name) == 0) {
+    			std::istringstream str;
+    			str.str( val );
+    			int myVal;
+    			gsGetInt(str, myVal);
+    			bool myBoolVal = (bool)myVal;
+    			result.addSwitch(label, desc, myBoolVal);
+    			//std::cout << "\nresult.addSwitch(label'" << label << "',desc='";
+    			//std::cout << desc << "','val='" << myBoolVal << "')\n";
+    		}
+    		else {
+    			//std::cout << "\nresult.addString(label'" << label << "',desc='";
+    			//std::cout << desc << "','val='" << val << "')\n";
+    			result.addString(label, desc, val);
+    		}
+    		tmp =  tmp->next_sibling();
+    	}
+    }
+
+    static gsXmlNode * put (const gsOptionList & obj, gsXmlTree & data)
+    {
+    	// Append data
+        gsXmlNode * optionList = internal::makeNode("OptionList", data);
+
+        // iterate over all strings
+        std::list<gsOptionList::OptionListEntry> entries = obj.getAllEntries();
+        std::list<gsOptionList::OptionListEntry>::const_iterator it;
+        for (it = entries.begin(); it != entries.end(); it++)
+        {
+        	gsOptionList::OptionListEntry entry = *it;
+        	gsXmlNode * node_str = internal::makeNode(entry.type, data);
+        	gsXmlAttribute * attr_label = internal::makeAttribute("label", entry.label, data);
+        	gsXmlAttribute * attr_desc = internal::makeAttribute("desc", entry.desc, data);
+        	gsXmlAttribute * attr_val = internal::makeAttribute("value", entry.val, data);
+        	node_str->insert_attribute(0, attr_label);
+        	node_str->insert_attribute(0, attr_desc);
+        	node_str->insert_attribute(0, attr_val);
+        	optionList->insert_node(0, node_str);
+        }
+
+        return optionList;
+    }
+};
+
+} // namespace internal
+
+} // namespace gismo

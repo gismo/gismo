@@ -9,11 +9,13 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, H. Weiner
 */
 
 
+#include <cstring>
 #include <string>
+#include <sstream>
 
 #include <gsIO/gsOptionList.h>
 
@@ -206,6 +208,84 @@ bool gsOptionList::exists(const std::string& label) const
     return false;
 }
 
+// TODO: can we implement the loops in a more intelligent way?
+// e.g. re-factor this function by moving the loops into its own function
+// but how to deal with the stupid C++ type system then?
+std::list<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
+{
+	std::list<gsOptionList::OptionListEntry> result;
+	const char * XML_STR = "string";
+	const char * XML_INT = "int";
+	const char * XML_REAL = "real";
+	const char * XML_BOOL = "bool";
+	// add strings to list
+	//std::cout << "StringTable.size()='" << m_strings.size() << "'\n";
+	gsOptionList::StringTable::const_iterator it;
+	for ( it = m_strings.begin(); it != m_strings.end(); it++ )
+	{
+		gsOptionList::OptionListEntry entry;
+		entry.type = XML_STR;
+		entry.label = it->first;
+		std::stringstream str;
+		str.str( it->second.first );
+		entry.val = str.str();
+		entry.desc = it->second.second;
+		//std::cout << "result.push_back(type='"<< entry.type << "', label='";
+		//std::cout << entry.label << "', val='" << entry.val << "', desc='";
+		//std::cout << entry.desc << "')\n";
+		result.push_back(entry);
+	}
+	// add integers to list
+	gsOptionList::IntTable::const_iterator it2;
+	for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
+	{
+		gsOptionList::OptionListEntry entry;
+		entry.type = XML_INT;
+		entry.label = it2->first;
+		std::stringstream str;
+		str << it2->second.first;
+		entry.val = str.str();
+		entry.desc = it2->second.second;
+		//std::cout << "result.push_back(type='"<< entry.type << "', label='";
+		//std::cout << entry.label << "', val='" << entry.val << "', desc='";
+		//std::cout << entry.desc << "')\n";
+		result.push_back(entry);
+	}
+	// add reals to list
+	gsOptionList::RealTable::const_iterator it3;
+	for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
+	{
+		gsOptionList::OptionListEntry entry;
+		entry.type = XML_REAL;
+		entry.label = it3->first;
+		std::stringstream str;
+		str << it3->second.first;
+		entry.val = str.str();
+		entry.desc = it3->second.second;
+		//std::cout << "result.push_back(type='"<< entry.type << "', label='";
+		//std::cout << entry.label << "', val='" << entry.val << "', desc='";
+		//std::cout << entry.desc << "')\n";
+		result.push_back(entry);
+	}
+	// add bools to list
+	gsOptionList::SwitchTable::const_iterator it4;
+	for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
+	{
+		gsOptionList::OptionListEntry entry;
+		entry.type = XML_BOOL;
+		entry.label = it4->first;
+		std::stringstream str;
+		str << it3->second.first;
+		entry.val = str.str();
+		entry.desc = it4->second.second;
+		//std::cout << "result.push_back(type='"<< entry.type << "', label='";
+		//std::cout << entry.label << "', val='" << entry.val << "', desc='";
+		//std::cout << entry.desc << "')\n";
+		result.push_back(entry);
+	}
+	return result;
+}
+
 #define OL_PRINT_INFO(it,type) \
     os<<"* "<<std::setw(17)<<std::left<<it->first <<std::setw(12)<<std::right<<" ("#type") = " \
       <<std::setw(7)<<std::left<<it->second.first<<" "<<it->second.second<<"\n";
@@ -258,42 +338,4 @@ void gsOptionList::printInfo(const std::string& label) const
 
 #undef OL_PRINT_INFO
 
-namespace internal
-{
-
-/** \brief Read OptionList from XML data
-    \ingroup Nurbs
-*/
-template<>
-class gsXml< gsOptionList >
-{
-private:
-    gsXml() { }
-
-public:
-    GSXML_COMMON_FUNCTIONS(gsOptionList)
-    GSXML_GET_POINTER(gsOptionList)
-    static std::string tag () { return "OptionList"; }
-    static std::string type() { return ""; }
-
-    static void get_into(gsXmlNode * node, gsOptionList & result)
-    {
-        // read in data
-        // result.add(..)
-    }
-
-    static gsXmlNode * put (const gsOptionList & obj, gsXmlTree & data)
-    {
-        gsXmlNode * tmp = internal::makeNode("OptionList", data);
-
-        // Append data
-
-        return tmp;
-    }
-};
-
-}// namespace internal
-
-
-};//namespace gismo
-
+} //namespace gismo
