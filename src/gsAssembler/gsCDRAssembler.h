@@ -20,7 +20,7 @@
 #include <gsAssembler/gsVisitorCDR.h> //
 #include <gsAssembler/gsVisitorNeumann.h> // Neumann boundary integrals
 #include <gsAssembler/gsVisitorNitsche.h> // Nitsche boundary integrals
-#include <gsAssembler/gsVisitorDg.h>      // Disc. Galerkin interface integrals
+//#include <gsAssembler/gsVisitorDg.h>      // Disc. Galerkin interface integrals
 #include <gsAssembler/gsVisitorResidual.h>// Residual error estimator
 
 #include <gsPde/gsPoissonPde.h>
