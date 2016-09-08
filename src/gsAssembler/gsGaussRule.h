@@ -38,10 +38,10 @@ public:
         setNodes(numNodes, digits);
     }
     
-    gsGaussRule(const gsBasis<T> & basis, const double quA, const int quB); 
+    gsGaussRule(const gsBasis<T> & basis, const T quA, const int quB); 
                 //const unsigned digits = std::numeric_limits<T>::digits10 );
     
-    gsGaussRule(const gsBasis<T> & basis, const double quA, const int quB, const int fixDir); 
+    gsGaussRule(const gsBasis<T> & basis, const T quA, const int quB, const int fixDir); 
 
     gsGaussRule(index_t numNodes, 
                 const unsigned digits = REAL_DIG )

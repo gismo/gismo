@@ -69,9 +69,8 @@ public:
                     gsQuadRule<T>    & rule,
                     unsigned         & evFlags )
     {
-        
         // Setup Quadrature
-        const index_t quA = options.getReal("quA");
+        const T       quA = options.getReal("quA");
         const index_t quB = options.getInt ("quB");
         rule = gsGaussRule<T>(basis, quA, quB);// harmless slicing occurs here
 

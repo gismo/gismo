@@ -19,7 +19,7 @@ namespace gismo
 {
 
 template<class T>
-gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, const double quA, const int quB)
+gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, const T quA, const int quB)
                           //const unsigned digits)
 {
     const int d  = basis.dim();
@@ -55,7 +55,7 @@ gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, const double quA, const in
 
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
-                            const double quA, const int quB,
+                            const T quA, const int quB,
                             const int fixDir)
                           //const unsigned digits)
 {

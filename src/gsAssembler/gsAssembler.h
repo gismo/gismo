@@ -21,13 +21,15 @@
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsAffineFunction.h>
 
+#include <gsIO/gsOptionList.h>
+
 #include <gsPde/gsPde.h>
 #include <gsPde/gsBoundaryConditions.h>
 
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsSparseSystem.h>
 
-#include <gsIO/gsOptionList.h>
+
 
 namespace gismo
 {

@@ -323,6 +323,32 @@ public:
         }
     }
 
+    /**
+     * @brief Reserves the memory for the sparse matrix and the rhs,
+     * based on the polynomial degree of the first basis-piece in \
+     * mb, as well as the input options bdA, bdB and bdO
+     *
+     * At each column approximately bdA * deg + dbB non-zero entries
+     * are expected. An extra amount of memoryd of bdO percent is
+     * allocated, in order to speedup the process.
+     *
+     * @param [in] numRhs number of columns
+     *
+     */
+    void reserve(const gsMultiBasis<T> & mb, const gsOptionList & opt, 
+                 const index_t numRhs)
+    {
+                // Pick up values from options
+        const T bdA       = opt.getReal("bdA");
+        const index_t bdB = opt.getReal("bdB");
+        const T bdO       = opt.getReal("bdO");
+        const gsBasis<T> & b = mb[0];
+        index_t nz = 1;
+        for (index_t i = 0; i != b.dim(); ++i)
+            nz *= static_cast<index_t>(bdA * b.degree(i) + bdB + 0.5);
+        reserve(nz, numRhs);
+    }
+
     /// @brief set everything to zero
     void setZero()
     {
