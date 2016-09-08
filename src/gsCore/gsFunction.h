@@ -76,6 +76,12 @@ public:
     virtual gsFunction * clone() const // = 0;
     {GISMO_NO_IMPLEMENTATION}
 
+    virtual const gsFunction & piece(const index_t k) const
+    {
+        GISMO_ENSURE(0==k, "Single function is defined on single subdomain, received: "<<k );
+        return *this; 
+    }
+
     /**
         @name Evaluation functions
         @anchor Evaluation_functions

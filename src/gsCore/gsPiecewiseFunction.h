@@ -86,6 +86,9 @@ public:
         return c;
     }
 
+    int domainDim () const {return m_funcs.front()->domainDim();};
+    int targetDim () const {return m_funcs.front()->targetDim();};
+    
     /// Add a piece
     void addPiece(const gsFunction<T> & func)
     { 

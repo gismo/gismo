@@ -122,6 +122,9 @@ public:
     virtual gsFunctionSet * clone() const //= 0;
     {GISMO_NO_IMPLEMENTATION}
 
+    /// @brief Returns the piece of the function at subdomain \a k
+    virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
+
 public:
 
     /*

@@ -29,7 +29,7 @@ namespace gismo
     \ingroup Core
 */
 template <class T>
-class gsPatchwiseFunction
+class gsPatchwiseFunction : public gsFunctionSet<T>
 {
 public:
 

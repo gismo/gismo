@@ -33,7 +33,7 @@ namespace gismo
     \ingroup Core
 */
 template<class T>
-class gsMultiBasis
+class gsMultiBasis : public gsFunctionSet<T>
 {
 public:
     typedef memory::shared_ptr<gsMultiBasis> Ptr;
@@ -165,6 +165,10 @@ public:
 
 public:
 
+    int domainDim () const {return m_bases.front()->domainDim();}
+    
+    int targetDim () const {return m_bases.front()->targetDim();}
+
     /// Swap with another gsMultiBasis.
     void swap(gsMultiBasis& other)
     {
@@ -236,6 +240,13 @@ public:
         GISMO_ASSERT( i < m_bases.size(),
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
         return *m_bases[i];
+    }
+
+    const gsBasis<T> & piece(const index_t i) const 
+    {
+        GISMO_ASSERT( static_cast<size_t>(i) < m_bases.size(),
+                      "Invalid patch index"<<i<<" requested from gsMultiBasis" );
+        return *m_bases[i]; 
     }
 
     /// Return the \a i-th basis block.

@@ -113,6 +113,12 @@ public:
       (override the _into versions in derived classes).
     */
 
+    const gsBasis<T> & piece(const index_t k) const 
+    {
+        GISMO_ENSURE(0==k, "Single basis is defined on single subdomain, received: "<<k );
+        return *this; 
+    }
+    
     /// Returns the \a i-th basis function as a gsFunction.
     //
     /// Note that the gsBasisFun object only holds a reference to the current

@@ -102,7 +102,7 @@ public:
 
 public:
     
-    const gsFunction<T> & piece(const index_t i) const
+    const gsGeometry<T> & piece(const index_t i) const
     { return *m_patches[i]; }
 
     virtual index_t size() const
@@ -140,10 +140,12 @@ public:
         //GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
         return m_dim;
     }
-
+    int domainDim () const {return parDim();}
+    
     /// \brief Dimension of the geometry (must match for all patches).
     int geoDim() const;
-
+    int targetDim () const {return geoDim();}
+    
     /// \brief Co-dimension of the geometry (must match for all patches).
     int coDim() const;
 
