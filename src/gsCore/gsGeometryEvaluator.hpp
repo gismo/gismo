@@ -325,9 +325,56 @@ struct gsGeoTransform<T,ParDim,ParDim>
 };
 
 
-// ////////////////////////////////////////////////
-// ////////////////////////////////////////////////
+template <class T, int ParDim, int codim> void 
+gsGenericGeometryEvaluator<T,ParDim,codim>::
+outerNormal(index_t k, boxSide s, gsVector<T> & result) const
+{
+    GISMO_ASSERT(this->m_flags & NEED_JACOBIAN, "Jacobians not computed");
+    
+    const T   sgn = sideOrientation(s) * m_orientation;
+    const int dir = s.direction();
+    
+    // assumes points u on boundary "s"
+    result.resize(GeoDim);        
+    if (ParDim + 1 == GeoDim) // surface case GeoDim == 3
+    {
+        const gsMatrix<T,GeoDim, ParDim> Jk = 
+            m_jacobians.template block<GeoDim,ParDim>(0, k*ParDim);
+        // fixme: generalize to nD
+        normal(k,result);
+        result = result.normalized().cross( sgn * Jk.template block<GeoDim, 1>(0,!dir) );
+        
+        /*
+          gsDebugVar(result.transpose()); // result 1
+          normal(k,result);
+          Jk.col(dir) = result.normalized();
+          gsMatrix<T, ParDim, ParDim> minor;
+          T alt_sgn = sgn;
+          for (int i = 0; i != GeoDim; ++i) // for all components of the normal
+          {
+          Jk.rowMinor(i, minor);
+          result[i] = alt_sgn * minor.determinant();
+          alt_sgn = -alt_sgn;
+          }
+          gsDebugVar(result.transpose()); // result 2
+        //*/
+    }
+    else // planar case
+    {            
+        GISMO_ASSERT( ParDim == GeoDim, "Codim different than zero/one");
+        const gsMatrix<T, ParDim, ParDim> Jk = 
+            m_jacobians.template block<ParDim,ParDim>(0, k*ParDim);
 
+        T alt_sgn = sgn;
+        typename gsMatrix<T,ParDim,ParDim>::FirstMinorMatrixType minor;
+        for (int i = 0; i != ParDim; ++i) // for all components of the normal
+        {
+            Jk.firstMinor(i, dir, minor);
+            result[i] = alt_sgn * minor.determinant();
+            alt_sgn = -alt_sgn;
+        }
+    }
+}
 
 template <class T, int ParDim, int codim>
 void
@@ -554,7 +601,7 @@ transformDeriv2Hgrad(  index_t k,
     typename gsMatrix<T,ParDim,GeoDim>::constRef JMT =
         m_jacInvs.template block<GeoDim,ParDim>(0, k*ParDim).transpose();
 
-    // First part: J^-T H J^-1
+    // First part: J^-T H(u) J^-1
     gsMatrix<T,ParDim,ParDim> parFuncHessian;
     for (index_t i = 0; i < numGrads ; ++i)
     {
@@ -563,7 +610,7 @@ transformDeriv2Hgrad(  index_t k,
         hessianToSecDer<T,GeoDim>( JM1 * parFuncHessian * JMT, result.row(i) );
     }
 
-    // Second part: J^-T G J^-1 DDG J^-1
+    // Second part: sum_i[  J^-T H(G_i) J^-1 ( e_i^T J^-T grad(u) ) ]
     const typename gsMatrix<T>::constColumn  & secDer = this->deriv2(k);
     gsMatrix<T,ParDim,ParDim> DDG[GeoDim]; // Each matrix is the Hessian of a component of the Geometry
     secDerToTensor<T,ParDim,GeoDim>(secDer, DDG);
@@ -574,6 +621,7 @@ transformDeriv2Hgrad(  index_t k,
     // Lastpart: substract part2 from part1
     const gsAsConstMatrix<T,ParDim> grads_k(funcGrad.col(k).data(), ParDim, numGrads);
     result.noalias() -=  grads_k.transpose() * JM1.transpose() * HGT;
+    // 1 x d * d x d * d x d * d * s -> 1 x s
 }
 
 

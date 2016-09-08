@@ -19,14 +19,14 @@
 #include <gsCore/gsStdVectorRef.h>
 #include <gsCore/gsMultiBasis.h>
 #include <gsCore/gsDomainIterator.h>
-
-#include <gsPde/gsBoundaryConditions.h>
-#include <gsAssembler/gsQuadRule.h>
-#include <gsAssembler/gsAssemblerOptions.h>
-
-#include <gsAssembler/gsSparseSystem.h>
+#include <gsCore/gsAffineFunction.h>
 
 #include <gsPde/gsPde.h>
+#include <gsPde/gsBoundaryConditions.h>
+
+#include <gsAssembler/gsQuadRule.h>
+#include <gsAssembler/gsSparseSystem.h>
+
 #include <gsIO/gsOptionList.h>
 
 namespace gismo
@@ -142,10 +142,33 @@ public:
     /// @brief checks for consistency and legal values of the stored members.
     bool check();
 
-    /// @brief finishes the assembling of the system matrix, i.e. calls its .makeCompressed() method.
-    void finalize()
+    /// @brief finishes the assembling of the system matrix,
+    /// i.e. calls its .makeCompressed() method.
+    void finalize() { m_system.matrix().makeCompressed(); }
+
+    /** @brief Penalty constant for patch \a k, used for Nitsche and
+    / Discontinuous Galerkin methods
+    */
+    T penalty(int k) const
     {
-        m_system.matrix().makeCompressed();
+        const int deg = m_bases[0][k].maxDegree();
+        return (deg + m_bases[0][k].dim()) * (deg + 1) * T(2.0);
+    }
+    
+    /// @brief Provides an estimation of the number of non-zero matrix
+    /// entries per column. This value can be used for sparse matrix
+    /// memory allocation
+    index_t numColNz() const
+    {
+        // Pick up values from options
+        const T bdA       = m_options.getReal("bdA");
+        const index_t bdB = m_options.getReal("bdB");
+        const T bdO       = m_options.getReal("bdO");
+        const gsBasis<T> & b = m_bases.front()[0];
+        index_t nz = 1;
+        for (index_t i = 0; i != b.dim(); ++i)
+            nz *= static_cast<index_t>(bdA * b.degree(i) + bdB + 0.5);
+        return static_cast<index_t>(nz*(1.0+bdO));
     }
 
 public:  /* Virtual assembly routines*/
@@ -205,6 +228,27 @@ public: /* Element visitors */
             apply(curVisitor, np);
         }
     }
+
+    /// @brief Iterates over all elements of interfaces and
+    /// applies the \a InterfaceVisitor
+    template<class InterfaceVisitor>
+    void pushInterface()
+    {
+        InterfaceVisitor visitor(*m_pde_ptr);
+            
+        const gsMultiPatch<T> & mp = m_pde_ptr->domain();
+        for ( typename gsMultiPatch<T>::const_iiterator
+                  it = mp.iBegin(); it != mp.iEnd(); ++it )
+        {
+            const boundaryInterface & iFace = //recover master elemen
+                ( m_bases[0][it->first() .patch].numElements(it->first() .side() ) <
+                  m_bases[0][it->second().patch].numElements(it->second().side() ) ?
+                  it->getInverse() : *it );
+            
+            this->apply(visitor, iFace);
+        }
+    }
+
 
 public:  /* Dirichlet degrees of freedom computation */
 
@@ -368,6 +412,10 @@ protected:
                int patchIndex = 0,
                boxSide side = boundary::none);
 
+    /// @brief Generic assembly routine for patch-interface integrals
+    template<class InterfaceVisitor>
+    void apply(InterfaceVisitor & visitor,
+               const boundaryInterface & bi);
 };
 
 template <class T>
@@ -378,7 +426,7 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
 {
     //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
     
-    const gsBasisRefs<T> bases(m_bases, patchIndex   );
+    const gsBasisRefs<T> bases(m_bases, patchIndex);
     
     gsQuadRule<T> QuRule ; // Quadrature rule
     gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
@@ -391,7 +439,7 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
     //fixme: gsMapData<T> mapData;
     // Initialize geometry evaluator
     typename gsGeometry<T>::Evaluator geoEval(
-                m_pde_ptr->patches()[patchIndex].evaluator(evFlags));
+        m_pde_ptr->patches()[patchIndex].evaluator(evFlags));
     
     // Initialize domain element iterator -- using unknown 0
     typename gsBasis<T>::domainIter domIt = bases[0].makeDomainIterator(side);
@@ -409,10 +457,82 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
         visitor.assemble(*domIt, *geoEval, quWeights);
         
         // Push to global matrix and right-hand side vector
-        //visitor.localToGlobal(mappers, m_ddof, patchIndex, m_system.matrix(), m_system.rhs());
         visitor.localToGlobal(patchIndex, m_ddof, m_system);
     }
 }
+
+
+template <class T>
+template<class InterfaceVisitor>
+void gsAssembler<T>::apply(InterfaceVisitor & visitor,
+                           const boundaryInterface & bi)
+{
+    //gsDebug<<"Apply DG on "<< bi <<".\n";
+    
+    const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
+    
+    const int patch1      = bi.first().patch;
+    const int patch2      = bi.second().patch;
+    const gsBasis<T> & B1 = m_bases[0][patch1];// (!) unknown 0
+    const gsBasis<T> & B2 = m_bases[0][patch2];
+
+    gsQuadRule<T> QuRule ; // Quadrature rule
+    gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
+    gsVector<T> quWeights;         // Mapped weights
+    // Evaluation flags for the Geometry map
+    unsigned evFlags(0);
+    
+    const int bSize1      = B1.numElements( bi.first() .side() );
+    const int bSize2      = B2.numElements( bi.second().side() );
+    const int ratio = bSize1 / bSize2;
+    GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
+                 "DG assumes nested interfaces. Got bSize1="<<
+                 bSize1<<", bSize2="<<bSize2<<"." );
+    
+    // Initialize
+    visitor.initialize(B1, B2, bi, m_options, QuRule, evFlags);
+    
+    // Initialize geometry evaluators
+    typename gsGeometry<T>::Evaluator geoEval1(
+        m_pde_ptr->patches()[patch1].evaluator(evFlags));
+    typename gsGeometry<T>::Evaluator geoEval2(
+        m_pde_ptr->patches()[patch2].evaluator(evFlags));
+    
+    // Initialize domain element iterators
+    typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
+    typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( bi.second().side() );
+    
+    //typename gsBasis<T>::domainIter domIt = B2.makeDomainIterator(B2, bi);
+    
+    int count = 0;
+    // iterate over all boundary grid cells on the "left"
+    for (; domIt1->good(); domIt1->next() )
+    {
+        count++;
+        // Get the element of the other side in domIter2
+        //domIter1->adjacent( bi.orient, *domIter2 );
+        
+        // Compute the quadrature rule on both sides
+        QuRule.mapTo( domIt1->lowerCorner(), domIt1->upperCorner(), quNodes1, quWeights);
+        interfaceMap.eval_into(quNodes1,quNodes2);
+        
+        // Perform required evaluations on the quadrature nodes
+        visitor.evaluate(B1, *geoEval1, B2, *geoEval2, quNodes1, quNodes2);
+        
+        // Assemble on element
+        visitor.assemble(*domIt1,*domIt2, *geoEval1, *geoEval2, quWeights);
+        
+        // Push to global patch matrix (m_rhs is filled in place)
+        visitor.localToGlobal(patch1, patch2, m_ddof, m_system);
+        
+        if ( count % ratio == 0 ) // next master element ?
+        {
+            domIt2->next();
+        }
+        
+    }
+}
+
 
 } // namespace gismo
 
