@@ -50,6 +50,20 @@ public:
 
     \param[in] pde A boundary value Poisson problem
     \param[in] bases a multi-basis that contains patch-wise bases
+    \param[in] opt A set of options for the assembly process
+    */
+    gsPoissonAssembler( const gsPoissonPde<T>          & pde,
+                        const gsMultiBasis<T>          & bases,
+                        const gsOptionList & opt = Base::defaultOptions() )
+    {
+        Base::initialize(pde, bases, m_options);
+    }
+
+    
+    /** @brief Main Constructor of the assembler object.
+
+    \param[in] pde A boundary value Poisson problem
+    \param[in] bases a multi-basis that contains patch-wise bases
     \param[in] dirStrategy option for the treatment of Dirichlet boundary
     \param[in] intStrategy option for the treatment of patch interfaces
     */

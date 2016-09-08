@@ -19,9 +19,9 @@ namespace gismo
 
 /** \brief Constructs the assembler for the discretized isogeometric heat equation.
     
-    Spatial solution is discretized using Galerkin's
-    approach. Time integration scheme (method of lines) is
-    controlled by the \a theta parameter. In particular
+    Spatial solution is discretized using Galerkin's approach. Time
+    integration scheme (method of lines) is controlled by the \a theta
+    parameter (to be set in options)t. In particular
     
     - Explicit Euler scheme (theta=0)
     - Crank-Nicolson semi-implicit scheme (theta=0.5)
@@ -30,39 +30,43 @@ namespace gismo
     \ingroup Assembler
 */
 template <class T>
-class gsHeatEquation : public gsPoissonAssembler<T>
+class gsHeatEquation : public gsAssembler<T>
 {
 public:
-    typedef gsPoissonAssembler<T> Base;
+    typedef gsAssembler<T> Base;
 
 public:
 
     /// Construction receiving all necessary data
-    gsHeatEquation( gsMultiPatch<T> const         & patches,
-                    gsMultiBasis<T> const         & bases,
-                    gsBoundaryConditions<T> const & bconditions,
-                    const gsFunction<T>           & rhs,
-                    const T                       _theta,
-                    dirichlet::strategy           dirStrategy,
-                    iFace::strategy               intStrategy = iFace::glue)
-    :  Base(patches,bases,bconditions,rhs,dirStrategy,intStrategy), m_theta(_theta)
-    { }
-
+    gsHeatEquation(gsAssembler<T> & stationary,
+                   const gsOptionList & opt = Base::defaultOptions() )
+    :  Base(stationary),  // note: unnecessary sliced copy here
+       m_stationary(&stationary)
+    {
+        m_options.addReal("theta",
+        "Theta parameter determining the time integration scheme[0..1]", 0.5);
+    }
 
 public:
-
     
     /// Initial assembly routine.
     void assemble()
     {
-        // Assemble the poisson problem
-        Base::assemble();
+        // Grab theta once and for all
+        m_theta = m_options.getReal("theta");
+        
+        // Assemble the stationary problem
+        m_stationary->assemble();
 
-        // Store the stiffness matrix
-        m_system.matrix().swap(m_stiffMat);
+        //copy the Dirichlet values, to enable calling
+        // the construct solution functions
+        Base::m_ddof = m_stationary->allFixedDofs();
         
         // Assemble mass matrix
         assembleMass();
+
+        GISMO_ASSERT( m_stationary->matrix().rows() == m_mass.rows(),
+                      "Something went terribly wrong.");
     }
 
     /** \brief Computes the matrix and right-hand side for the next timestep.
@@ -77,9 +81,6 @@ public:
     */
     void nextTimeStep(const gsMatrix<T> & curSolution, gsMatrix<T> & curRhs, T Dt);
 
-    /// Returns the system matrix for the lastly computed time step.
-    const gsSparseMatrix<T> & matrix() { return m_curMat; }
-
 protected:
 
     /// Mass assembly routine
@@ -88,22 +89,21 @@ protected:
 
 protected:
 
-    /// The mass matrix is stored here, as well as the right-hand side
-    /// (moment) vector corresponding to the source function
+    using Base::m_options;
+
+    /// The stationary system is stored here
     using Base::m_system;
 
-    /// The stiffness matrix
-    gsSparseMatrix<T> m_stiffMat;
-
-    /// The system matrix at the current timestep
-    gsSparseMatrix<T> m_curMat;
+    gsAssembler<T> * m_stationary;
+    
+    /// The mass matrix
+    gsSparseMatrix<T> m_mass;
     
     /// Theta parameter determining the scheme
     T m_theta;
     
     using Base::m_pde_ptr;
     using Base::m_bases;
-    //using Base::m_ddof;
 
 };// end class definition
 
@@ -117,37 +117,34 @@ template<class T>
 void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, 
                                      gsMatrix<T> & curRhs, const T Dt)
 {
-    GISMO_ASSERT( curSolution.rows() == m_system.matrix().rows(),
+    GISMO_ASSERT( curSolution.rows() == m_mass.cols(),
                   "Wrong size in current solution vector.");
-  
+
     const T c1 = Dt * m_theta;
-    m_curMat = m_system.matrix() + c1 * m_stiffMat;
+    m_system.matrix() = m_mass + c1 * m_stationary->matrix();
 
     const T c2 = Dt * (1.0 - m_theta);
     // note: noalias() still works since curRhs is multiplied by scalar only
-    curRhs.noalias() = c1 * m_system.rhs() + c2 * curRhs + 
-        m_system.matrix() * curSolution - c2 * m_stiffMat * curSolution;    
+    curRhs.noalias() = c1 * m_stationary->rhs() + c2 * curRhs + 
+        m_mass * curSolution - c2 * m_stationary->matrix() * curSolution;
 }
 
 template<class T>
 void gsHeatEquation<T>::assembleMass()
 {
+    // the mass visitor used to need empty variable
+    // Base::m_ddof.resize(1, gsMatrix<T>() );
+
     const index_t m_dofs = this->numDofs();
     if ( 0  == m_dofs ) // Are there any interior dofs ?
     {
-        gsWarn<<"No interior DogFs for mass compuation.\n";
+        gsWarn<<"No interior DoFs for mass compuation.\n";
         return;
     }
 
     // Pre-allocate non-zero elements for each column of the
     // sparse matrix
-    int nonZerosPerCol = 1;
-    for (int i = 0; i < m_bases.front().dim(); ++i)
-        nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1;
-
-    gsSparseMatrix<T> & m_matrix = m_system.matrix();
-    m_matrix.resize(m_dofs, m_dofs);
-    m_matrix.reservePerColumn(nonZerosPerCol);
+    m_system.reserve(m_bases[0], m_options, 0);// zero rhs's
 
     // Assemble mass integrals
     gsVisitorMass<T> mass;
@@ -158,7 +155,10 @@ void gsHeatEquation<T>::assembleMass()
     }
 
     // Assembly is done, compress the matrix
-    m_matrix.makeCompressed();  
+    this->finalize();
+
+    // Store the mass matrix once and for all
+    m_system.matrix().swap(m_mass);
 }
 
 } // namespace gismo

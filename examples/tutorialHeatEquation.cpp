@@ -75,10 +75,15 @@ int main(int argc, char *argv[])
     // (eg. Forward/backward Euler or Crank Nicolson(theta=0.5)
     real_t theta = 0.5;
 
-    // Assembler (constructs matrix and right-hand side vector)
-    gsHeatEquation<real_t> assembler(patches, refine_bases, bcInfo, f, theta, 
-                                     dirichlet::elimination, iFace::glue);
-
+    gsPoissonPde<> pde(patches, bcInfo, f);
+    // Assembler (constructs stationary matrix and right-hand side vector)
+    gsPoissonAssembler<> stationary(pde, refine_bases);
+    stationary.options().setInt("DirichletStrategy", dirichlet::elimination);
+    stationary.options().setInt("InterfaceStrategy", iFace::glue);
+    gsHeatEquation<real_t> assembler(stationary, stationary.options());
+    assembler.options().setReal("theta", theta);
+    gsInfo<<assembler.options()<<"\n";
+    
     // A Conjugate Gradient linear solver with a diagonal (Jacobi) preconditionner
     gsSparseSolver<>::CGDiagonal solver;
 
@@ -102,7 +107,8 @@ int main(int argc, char *argv[])
 
     if ( plot)
     {
-        sol = safe( assembler.constructSolution(Sol) );
+        //sol = safe( assembler.constructSolution(Sol) ); // same as next line
+        sol = safe( stationary.constructSolution(Sol) );
         fileName = baseName + "0";
         gsWriteParaview<>(*sol, fileName, 1000, true);
         collection.addTimestep(fileName,0,"0.vts");
@@ -113,12 +119,13 @@ int main(int argc, char *argv[])
         // Update Rhs to timestep i (while feeding solution from previous step)
         assembler.nextTimeStep(Sol, Rhs, Dt);
         gsInfo<<"Solving timestep "<< i*Dt<<".\n";
-
+        
         // Solve for current timestep, overwrite previous solution
         Sol = solver.compute( assembler.matrix() ).solve(Rhs);
 
         // Obtain current solution as an isogeometric field
-        sol = safe( assembler.constructSolution(Sol) );
+        //sol = safe( assembler.constructSolution(Sol) ); // same as next line
+        sol = safe( stationary.constructSolution(Sol) );
         
         if ( plot)
         {

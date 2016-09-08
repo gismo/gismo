@@ -319,7 +319,8 @@ public:
         if ( 0 != m_matrix.cols() )
         {
             m_matrix.reservePerColumn(nz);
-            m_rhs.setZero(m_matrix.cols(), numRhs);
+            if ( 0 != numRhs )
+                m_rhs.setZero(m_matrix.cols(), numRhs);
         }
     }
 

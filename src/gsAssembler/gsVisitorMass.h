@@ -45,7 +45,7 @@ public:
                     unsigned         & evFlags )
     {
         // Setup Quadrature (harmless slicing occurs)
-        rule = gsGaussRule<T>(basis, options.getReal("quA"), options.getInt("quB"));
+        rule = gsGaussRule<T>(basis, options);
 
         // Set Geometry evaluation flags
         evFlags = NEED_MEASURE;
@@ -89,7 +89,7 @@ public:
         system.mapColIndices(actives, patchIndex, actives);
 
         // Add contributions to the system matrix
-        system.pushToMatrix(localMat, actives, eliminatedDofs[0], 0, 0);
+        system.pushToMatrix(localMat, actives, 0, 0);
     }
 
 /* -----------------------  to be removed later*/
