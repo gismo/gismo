@@ -162,15 +162,7 @@ public:
     /// memory allocation
     index_t numColNz() const
     {
-        // Pick up values from options
-        const T bdA       = m_options.getReal("bdA");
-        const index_t bdB = m_options.getReal("bdB");
-        const T bdO       = m_options.getReal("bdO");
-        const gsBasis<T> & b = m_bases.front()[0];
-        index_t nz = 1;
-        for (index_t i = 0; i != b.dim(); ++i)
-            nz *= static_cast<index_t>(bdA * b.degree(i) + bdB + 0.5);
-        return static_cast<index_t>(nz*(1.0+bdO));
+        return m_system.numColNz(m_bases.front()[0], m_options);
     }
 
 public:  /* Virtual assembly routines*/

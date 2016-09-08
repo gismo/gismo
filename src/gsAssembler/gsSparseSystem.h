@@ -338,7 +338,15 @@ public:
     void reserve(const gsMultiBasis<T> & mb, const gsOptionList & opt, 
                  const index_t numRhs)
     {
-                // Pick up values from options
+        reserve(numColNz(mb,opt), numRhs);
+    }
+
+    /// @brief Provides an estimation of the number of non-zero matrix
+    /// entries per column. This value can be used for sparse matrix
+    /// memory allocation
+    index_t numColNz(const gsMultiBasis<T> & mb, const gsOptionList & opt) const
+    {
+        // Pick up values from options
         const T bdA       = opt.getReal("bdA");
         const index_t bdB = opt.getReal("bdB");
         const T bdO       = opt.getReal("bdO");
@@ -346,7 +354,7 @@ public:
         index_t nz = 1;
         for (index_t i = 0; i != b.dim(); ++i)
             nz *= static_cast<index_t>(bdA * b.degree(i) + bdB + 0.5);
-        reserve(nz, numRhs);
+        return static_cast<index_t>(nz*(1.0+bdO));
     }
 
     /// @brief set everything to zero
