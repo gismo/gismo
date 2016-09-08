@@ -348,7 +348,7 @@ public:
     {
         // Pick up values from options
         const T bdA       = opt.getReal("bdA");
-        const index_t bdB = opt.getReal("bdB");
+        const index_t bdB = opt.getInt("bdB");
         const T bdO       = opt.getReal("bdO");
         const gsBasis<T> & b = mb[0];
         index_t nz = 1;

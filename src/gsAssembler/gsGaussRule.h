@@ -31,25 +31,31 @@ public:
 
     /// Default empty constructor
     gsGaussRule() { }
-    
+
+    /// Initialize a tensor-product Gauss quadrature rule with \a numNodes (direction-wise)
     gsGaussRule(gsVector<index_t> const & numNodes, 
                 const unsigned digits = REAL_DIG )
     { 
         setNodes(numNodes, digits);
     }
-    
-    gsGaussRule(const gsBasis<T> & basis, const T quA, const int quB); 
-                //const unsigned digits = std::numeric_limits<T>::digits10 );
-    
-    gsGaussRule(const gsBasis<T> & basis, const T quA, const int quB, const int fixDir); 
 
-    gsGaussRule(index_t numNodes, 
-                const unsigned digits = REAL_DIG )
+    /// Initialize a 1D Gauss quadrature rule with \a numNodes
+    gsGaussRule(index_t numNodes, const unsigned digits = REAL_DIG )
     { 
         setNodes(numNodes, digits);
     }
 
-    
+    /// Initialize a tensor-product Gauss quadrature rule for \a basis
+    /// using quA *deg_i + quB nodes (direction-wise)
+    gsGaussRule(const gsBasis<T> & basis, const T quA, const int quB, int fixDir = -1); 
+    //const unsigned digits = std::numeric_limits<T>::digits10 );
+
+    /// Initialize a tensor-product Gauss quadrature rule for \a basis
+    /// using quA *deg_i + quB nodes (direction-wise). Values of quA
+    /// and quB are taken from the \a options
+    gsGaussRule(const gsBasis<T> & basis, const gsOptionList & options, int fixDir = -1); 
+    //const unsigned digits = std::numeric_limits<T>::digits10 );
+
     ~gsGaussRule() { }
     
 public:
@@ -66,6 +72,8 @@ public:
     }
     
 private:
+
+    void init(const gsBasis<T> & basis, const T quA, const int quB, int fixDir);
     
     /**
      * @brief Computes the Gauss quadrature rule with \a n nodes in the interval [-1,1].

@@ -14,31 +14,49 @@
 #pragma once
 
 #include <gsCore/gsBasis.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
 
-template<class T>
-gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, const T quA, const int quB)
-                          //const unsigned digits)
+template<class T> void
+gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, int fixDir)
+//const unsigned digits)
 {
     const int d  = basis.dim();
+    GISMO_ASSERT( fixDir < d && fixDir>-2, "Invalid input fixDir = "<<fixDir);
 
     std::vector<gsVector<T> > nodes(d);
     std::vector<gsVector<T> > weights(d);
+    if (-1==fixDir)
+        fixDir = d;
+    else
+    {
+        nodes  [fixDir].setZero(1); // numNodes == 1
+        weights[fixDir].setConstant(1, 2.000000000000000000000000000000);
+    }
 
     // Note: skipping accuracy and lookup tests here (commented)
 
     //if (digits <= 30 )
     //{
-        for( int i=0; i<d; ++i )
-        {
-            const index_t numNodes = static_cast<index_t>(quA * basis.degree(i) + quB + 0.5);//+0.5 for rounding
-            //const bool found = 
-            lookupReference(numNodes, nodes[i], weights[i]);
-            //if (!found)
-            //    computeReference(numNodes, nodes[i], weights[i], digits);
-        }
+    int i;
+    for(i=0; i!=fixDir; ++i )
+    {
+        //note: +0.5 for rounding
+        const index_t numNodes = static_cast<index_t>(quA * basis.degree(i) + quB + 0.5);
+        //const bool found = 
+        lookupReference(numNodes, nodes[i], weights[i]);
+        //if (!found)
+        //    computeReference(numNodes, nodes[i], weights[i], digits);
+    }
+    ++i;// skip fixed direction
+    for(; i<d; ++i )
+    {
+        const index_t numNodes = static_cast<index_t>(quA * basis.degree(i) + quB);
+        lookupReference(numNodes, nodes[i], weights[i]);
+    }
+
     //}
     //else
     //{
@@ -52,35 +70,24 @@ gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, const T quA, const int quB
     this->computeTensorProductRule(nodes, weights);
 }
 
-
 template<class T>
 gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
                             const T quA, const int quB,
                             const int fixDir)
                           //const unsigned digits)
 {
-    const int d  = basis.dim();
-    GISMO_ASSERT( fixDir < d && fixDir>-1, "Invalid input");
+    init(basis, quA, quB, fixDir);
+}
 
-    std::vector<gsVector<T> > nodes(d);
-    std::vector<gsVector<T> > weights(d);
-
-    // Note: skipping accuracy and lookup tests here
-
-    for(int i = 0; i!=fixDir; ++i )
-    {
-        const index_t numNodes = static_cast<index_t>(quA * basis.degree(i) + quB + 0.5);//+0.5 for rounding
-        lookupReference(numNodes, nodes[i], weights[i]);
-    }
-    nodes  [fixDir].setZero(1); // numNodes == 1
-    weights[fixDir].setConstant(1, 2.000000000000000000000000000000);
-    for(int i = fixDir+1; i!=d; ++i )
-    {
-        const index_t numNodes = static_cast<index_t>(quA * basis.degree(i) + quB);
-        lookupReference(numNodes, nodes[i], weights[i]);
-    }
-
-    this->computeTensorProductRule(nodes, weights);
+template<class T>
+gsGaussRule<T>::gsGaussRule(const gsBasis<T> & basis, 
+                            const gsOptionList & options,
+                            const int fixDir)
+                          //const unsigned digits)
+{
+    const T       quA = options.getReal("quA");
+    const index_t quB = options.getInt ("quB");
+    init(basis, quA, quB, fixDir);
 }
 
 
