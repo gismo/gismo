@@ -72,7 +72,7 @@ public:
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
-        result.setConstant(m_val, 1, u.cols());
+        result.setConstant(1, u.cols(), m_val);
     }
 
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
