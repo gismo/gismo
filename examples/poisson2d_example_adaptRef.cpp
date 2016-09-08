@@ -55,10 +55,9 @@ int main(int argc, char *argv[])
   int degree;
 
   // Flag whether final mesh should be plotted in ParaView
-  bool plot;
+  bool plot = false;
   bool dump;
   
-  plot = false;
   RefineLoopMax = 2;
   initUnifRef = 2;
   degree = 2;
@@ -136,6 +135,13 @@ int main(int argc, char *argv[])
   bcInfo.addCondition( boundary::north, condition_type::dirichlet, &g );
   bcInfo.addCondition( boundary::south, condition_type::dirichlet, &g );
 
+  gsDebugVar(bcInfo);
+
+  gsDebugVar(bcInfo.dirichletSides()[0].type() );
+  gsDebugVar(bcInfo.dirichletSides()[1].type() );
+  gsDebugVar(bcInfo.dirichletSides()[2].type() );
+  gsDebugVar(bcInfo.dirichletSides()[2].type() );
+
   gsTensorBSpline<2,real_t> * geo = dynamic_cast< gsTensorBSpline<2,real_t> * >( & patches.patch(0) );
   gsInfo << " --- Geometry:\n" << *geo << "\n";
   gsInfo << "Number of patches: " << patches.nPatches() << "\n";
@@ -169,9 +175,9 @@ int main(int argc, char *argv[])
 
       // Create solver... maybe not the smartest thing to set up a new solver
       // in each iteration loop, but good enough for now.
-      gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f,
-                                    dirichlet::elimination,iFace::glue);
-
+      gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f);
+      pa.options().setInt("DirichletValues", dirichlet::l2Projection);
+      
       // Assemble matrix and rhs
       gsInfo << "Assembling... " << std::flush;
       pa.assemble();

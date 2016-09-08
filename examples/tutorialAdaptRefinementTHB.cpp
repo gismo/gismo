@@ -23,7 +23,7 @@ using namespace gismo;
 int main(int argc, char *argv[]) 
 {
     //! [Parse command line]
-    bool plot = true;
+    bool plot = false;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -144,8 +144,9 @@ int main(int argc, char *argv[])
 
         //! [solverPart]
         // Construct assembler
-        gsPoissonAssembler<real_t> PoissonAssembler(patches,bases,bcInfo,f,dirichlet::elimination, iFace::glue);
-
+        gsPoissonAssembler<real_t> PoissonAssembler(patches,bases,bcInfo,f);
+        PoissonAssembler.options().setInt("DirichletValues", dirichlet::l2Projection);
+        
         // Generate system matrix and load vector
         PoissonAssembler.assemble();
 
