@@ -146,8 +146,6 @@ protected:
 
 } // namespace gismo
 
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 namespace gismo
 {
@@ -155,31 +153,33 @@ namespace gismo
 template <class T>
 void gsNewtonIterator<T>::solveLinearProblem(gsMatrix<T>& updateVector)
 {
+    // Construct the linear system
     m_assembler.assemble();
 
-  // gsDebugVar( m_assembler.matrix().toDense() );
-  // gsDebugVar( m_assembler.rhs().transpose() );
+    // gsDebugVar( m_assembler.matrix().toDense() );
+    // gsDebugVar( m_assembler.rhs().transpose() );
 
     // Compute the newton update
     m_solver.compute( m_assembler.matrix() );
     updateVector = m_solver.solve( m_assembler.rhs() );
-
- //  gsDebugVar(updateVector);
+    
+    // gsDebugVar(updateVector);
 }
 
 template <class T>
 void gsNewtonIterator<T>::solveLinearProblem(const gsMultiPatch<T> & currentSol, gsMatrix<T>& updateVector)
 {
+    // Construct linear system for next iteration
     m_assembler.assemble(currentSol);
 
-  // gsDebugVar( m_assembler.matrix().toDense() );
-  // gsDebugVar( m_assembler.rhs().transpose() );
-
+    // gsDebugVar( m_assembler.matrix().toDense() );
+    // gsDebugVar( m_assembler.rhs().transpose() );
+    
     // Compute the newton update
     m_solver.compute( m_assembler.matrix() );
     updateVector = m_solver.solve( m_assembler.rhs() );
 
- //  gsDebugVar(updateVector);
+    // gsDebugVar(updateVector);
 }
 
 
@@ -216,9 +216,8 @@ void gsNewtonIterator<T>::firstIteration()
     // ----- First iteration -----
     m_converged = false;
 
-    // Construct the linear system
+    // Solve 
     solveLinearProblem(m_updateVector);
-
 
     // Construct initial solution
     m_assembler.constructSolution(m_updateVector, m_curSolution);
@@ -239,7 +238,7 @@ void gsNewtonIterator<T>::firstIteration()
 template <class T> 
 void gsNewtonIterator<T>::nextIteration()
 {
-    // Construct linear system for next iteration
+    // Solve the linaer system of the current iteration
     solveLinearProblem(m_curSolution, m_updateVector);
 
     // Update the deformed solution
