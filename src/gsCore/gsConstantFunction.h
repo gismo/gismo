@@ -106,9 +106,11 @@ public:
 
     T value(size_t i) const { return m_coefs.at(i);}
 
-    void setValue(T val) { m_coefs.setConstant(val);}
+    void setValue(T val, int domainDim)
+    { m_coefs.setConstant(val); m_domainDim = domainDim;}
 
-    void setValue(const gsVector<T> & val) { m_coefs = val.transpose();}
+    void setValue(const gsVector<T> & val, int domainDim)
+    { m_coefs = val.transpose(); m_domainDim = domainDim;}
 
     // Documentation in gsFunction class
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
