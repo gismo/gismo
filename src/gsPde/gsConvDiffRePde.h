@@ -46,6 +46,9 @@ public:
             m_diff(diff), m_conv(conv), m_reac(reac), m_rhs(rhs)
     {
         m_unknownDim.setOnes(1);
+
+        // todo: check dims of coefs
+
     }
 
     // COMPATIBILITY CONSTRUCTOR, DO NOT USE

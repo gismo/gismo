@@ -73,7 +73,8 @@ public:
     gsScaledOp(const gsLinearOperator::Ptr & linOp, real_t scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
 
     /// Make command returing a shared pointer
-    static Ptr make(const gsLinearOperator::Ptr & linOp, real_t scalar = 1) { return shared( new gsScaledOp(linOp, scalar) ); }
+    static Ptr make(const gsLinearOperator::Ptr & linOp, real_t scalar = 1) 
+    { return memory::make_shared( new gsScaledOp(linOp, scalar) ); }
 
     virtual void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {
@@ -108,7 +109,7 @@ public:
     gsIdentityOp(index_t dim) : m_dim(dim) {}
 
     /// Make command returing a shared pointer
-    static Ptr make(index_t dim) { return shared( new gsIdentityOp(dim) ); }
+    static Ptr make(index_t dim) { return memory::make_shared( new gsIdentityOp(dim) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {

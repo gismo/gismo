@@ -452,7 +452,20 @@ public:
      */
     virtual index_t size() const //= 0;
     {GISMO_NO_IMPLEMENTATION}
+
+    /// Prints the object as a string.
+    virtual std::ostream &print(std::ostream &os) const// = 0;
+    {
+        os << "gsFunctionSet\n";
+        return os; 
+    }
+
 };
+
+/// Print (as string) operator to be used by all derived classes
+template<class T>
+std::ostream &operator<<(std::ostream &os, const gsFunctionSet<T>& b)
+{return b.print(os); }
 
 } // namespace gismo
 

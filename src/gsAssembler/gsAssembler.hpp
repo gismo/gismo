@@ -90,7 +90,8 @@ bool gsAssembler<T>::check()
         gsWarn<< "No domain given ! \n";
 
     // /*
-    if ( m_pde_ptr->bc().size() == 0)
+    const int dirStr = m_options.getInt("DirichletStrategy");
+    if ( 0 == m_pde_ptr->bc().size() && dirStr!=dirichlet::none && dirStr==dirichlet::homogeneous )
         gsWarn<< "No boundary conditions given ! \n";
     //*/
     
@@ -529,8 +530,6 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     // fixme: based on \a m_options and \a unk choose the right dof mapper
     const gsDofMapper & mapper = m_system.colMapper(unk);
 
-    GISMO_ASSERT(solVector.rows() == mapper.freeSize(), "Something went wrong, solution vector is not OK.");
-
     result.clear(); // result is cleared first
 
     const index_t dim = m_pde_ptr->numRhs();
@@ -561,7 +560,8 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
 template<class T>
 void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
-                                       gsMultiPatch<T>& result,const gsVector<index_t> & unknowns) const
+                                       gsMultiPatch<T>& result, 
+                                       const gsVector<index_t> & unknowns) const
 {
     // we might need to get a result even without having the system ..
     //GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
@@ -611,40 +611,16 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     // AM: result topology ?
 }
 
+
 template<class T>
-gsField<T> *  gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
+gsField<T> gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
                                                 int unk) const
 {
-    const gsDofMapper & mapper = m_system.colMapper(unk);
-
-    std::vector<gsFunction<T> * > sols ;
-
-    const index_t dim = m_pde_ptr->numRhs();
-    gsMatrix<T> coeffs;
-
-    for (size_t p=0; p < m_pde_ptr->domain().nPatches(); ++p )
-    {
-        // Reconstruct solution coefficients on patch p
-        const int sz  = m_bases[unk][p].size();
-        coeffs.resize( sz, dim);
-
-        for (index_t i = 0; i < sz; ++i)
-        {
-            if ( mapper.is_free(i, p) ) // DoF value is in the solVector
-            {
-                coeffs.row(i) = solVector.row( mapper.index(i, p) );
-            }
-            else // eliminated DoF: fill with Dirichlet data
-            {
-                coeffs.row(i) = m_ddof[unk].row( mapper.bindex(i, p) );
-            }
-        }
-
-        sols.push_back( m_bases[unk][p].makeGeometry( give(coeffs) ) );
-    }
-
-    return new gsField<T>(m_pde_ptr->domain(), sols);
+    gsMultiPatch<T> * result = new gsMultiPatch<T>;
+    constructSolution(solVector,*result, unk);
+    return gsField<T>(m_pde_ptr->domain(), typename gsFunctionSet<T>::Ptr(result), true);
 }
+
 
 //This silently assumes the same basis for all components
 template<class T>

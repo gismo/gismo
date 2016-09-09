@@ -104,7 +104,7 @@ public:
 
     /// @brief Intitialize function for, sets data fields
     /// using the pde, a vector of multi-basis and assembler options.
-    void initialize(memory::shared_ptr<gsPde<T> > pde,
+    void initialize(typename gsPde<T>::Ptr pde,
                     const gsStdVectorRef<gsMultiBasis<T> > & bases,
                     //note: merge with initialize(.., const gsMultiBasis<T> ,..) ?
                     const gsOptionList & opt = defaultOptions() )
@@ -126,7 +126,7 @@ public:
         initialize(_pde,bases,opt);
     }
 
-    void initialize(memory::shared_ptr<gsPde<T> > pde,
+    void initialize(typename gsPde<T>::Ptr pde,
                     const gsMultiBasis<T>    & bases,
                     const gsOptionList & opt = defaultOptions() )
     {
@@ -348,11 +348,9 @@ public:  /* Solution reconstruction */
     /// \param[in] unknows the considered vector of unknowns
     virtual void constructSolution(const gsMatrix<T>& solVector,
                                    gsMultiPatch<T>& result,
-                                   const gsVector<index_t>  & unknows) const;
+                                   const gsVector<index_t>  & unknowns) const;
 
-    // fixme: remove (currently for compatibility)
-    GISMO_DEPRECATED
-    gsField<T> *  constructSolution(const gsMatrix<T>& solVector, int unk = 0) const;
+    gsField<T> constructSolution(const gsMatrix<T>& solVector, int unk = 0) const;
 
     /// @brief Update solution by adding the computed solution vector
     /// to the current solution specified by \par result. This method assumes that all
@@ -373,7 +371,11 @@ public: // *** Accessors ***
     const gsMultiPatch<T> & patches() const { return m_pde_ptr->patches(); }
 
     /// @brief Return the multi-basis
-    const gsMultiBasis<T> & multiBasis(index_t k) const { return m_bases[k]; }
+    const gsMultiBasis<T> & multiBasis(index_t k = 0) const { return m_bases[k]; }
+
+    /// @brief Return the multi-basis. Note: if the basis is altered,
+    /// then refresh() should be called
+    gsMultiBasis<T> & multiBasis(index_t k = 0) { return m_bases[k]; }
 
     /// @brief Returns the number of multi-bases
     std::size_t numMultiBasis() const {return m_bases.size(); }

@@ -124,8 +124,8 @@ int main(int argc, char *argv[])
 
             if (plot_boundary)
             {
-                gsField<>::uPtr nfield = gsFieldCreator<>::boundarySides(mp);
-                gsWriteParaview( *nfield, "gsview", numSamples);
+                gsField<> nfield = gsFieldCreator<>::boundarySides(mp);
+                gsWriteParaview(nfield, "gsview", numSamples);
             }
             else
             {

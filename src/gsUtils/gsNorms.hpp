@@ -108,11 +108,10 @@ template <typename T>
 T computeL2Distance(const gsField<T>& u, const gsField<T>& v, int numEvals)
 {
     T dist = T();
-    assert( u.nPatches() == v.nPatches() );
+    GISMO_ASSERT( u.nPatches() == v.nPatches(), "Fields not matching: "<<u.nPatches()<<" != "<<v.nPatches() );
 
     for (int i = 0; i < u.nPatches(); ++i)
     {
-        assert( &u.patch(i) == &v.patch(i) );
         T curDist = computeL2Distance( u.patch(i), u.function(i), u.isParametrized(), v.function(i), v.isParametrized(), numEvals);
         dist += curDist * curDist;
     }
@@ -332,7 +331,7 @@ gsVector< gsMatrix<T> > igaFieldL2DistanceEltWiseSq(const gsField<T>& u, const g
     for (int i = 0; i < u.nPatches(); ++i)
     {
         // extract the "function"-part of the gsField
-        const gsGeometry<T> & func  = static_cast<gsGeometry<T> &>( u.function(i) );
+        const gsGeometry<T> & func  = static_cast<const gsGeometry<T> &>( u.function(i) );
         // call igaL2DistanceEltWiseSq( patch, func, v, v_isParam)
         // to get the element-wise squared L2-error on patch i
         Errs[i] = igaL2DistanceEltWiseSq( u.patch(i), func, v, v_isParam);
@@ -563,18 +562,13 @@ T igaFieldH1Distance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
 
     for (int i = 0; i < u.nPatches(); ++i)
     {
-        const gsGeometry<T> & func  = static_cast<gsGeometry<T> &>( u.function(i) );
+        const gsGeometry<T> & func  = static_cast<const gsGeometry<T> &>( u.function(i) );
         const T curDist = igaH1Distance( u.patch(i), func, v, v_isParam);
         dist += curDist * curDist;
     }
 
     return math::sqrt(dist);
 }
-
-
-
-
-
 
 template <typename T>
 gsVector< gsMatrix<T> > igaFieldH1DistanceEltWiseSq(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam)
@@ -585,7 +579,7 @@ gsVector< gsMatrix<T> > igaFieldH1DistanceEltWiseSq(const gsField<T>& u, const g
     for (int i = 0; i < u.nPatches(); ++i)
     {
         // extract the "function"-part of the gsField
-        const gsGeometry<T> & func  = static_cast<gsGeometry<T> &>( u.function(i) );
+        const gsGeometry<T> & func  = static_cast<const gsGeometry<T> &>( u.function(i) );
         // call igaL2DistanceEltWiseSq( patch, func, v, v_isParam)
         // to get the element-wise squared L2-error on patch i
         Errs[i] = igaH1DistanceEltWiseSq( u.patch(i), func, v, v_isParam);
@@ -715,8 +709,8 @@ T igaFieldDGDistance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
     for ( typename gsMultiPatch<T>::const_iiterator it = mp.iBegin();
           it != mp.iEnd(); ++it ) // *it ---> interface
     {
-        const gsGeometry<T> & func1  = static_cast<gsGeometry<T> &>( u.function(it->first().patch) );
-        const gsGeometry<T> & func2  = static_cast<gsGeometry<T> &>( u.function(it->second().patch) );
+        const gsGeometry<T> & func1  = static_cast<const gsGeometry<T> &>( u.function(it->first().patch) );
+        const gsGeometry<T> & func2  = static_cast<const gsGeometry<T> &>( u.function(it->second().patch) );
 
         // get penalty parametr
         //const T h1 = math::pow( (T) func1.basis().size(), -1.0 / func1.basis().dim() );

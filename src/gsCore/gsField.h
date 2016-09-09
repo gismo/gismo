@@ -13,10 +13,11 @@
 
 #pragma once
 
+#include <gsCore/gsFunctionSet.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsMultiPatch.h>
-#include <gsUtils/gsNorms.h>
 #include <gsCore/gsMultiBasis.h>
+#include <gsUtils/gsNorms.h>
 
 namespace gismo
 {
@@ -50,63 +51,37 @@ namespace gismo
  *
  * \ingroup Core
  */
-
-
-//A field is a function defined on a geometry, or
-//      over a multipatch collection
-  
 template<class T>
 class gsField
 {
 public:
-    /// Shared pointer for gsField
-    typedef memory::shared_ptr< gsField >  Ptr;
+    typedef typename memory::shared< gsField >::ptr  Ptr;// todo: remove
+    typedef typename memory::unique< gsField >::ptr  uPtr;// todo: remove
 
-    /// Unique pointer for gsField
-    typedef typename memory::unique< gsField >::ptr uPtr;
+    gsField(): m_patches(NULL) { }
 
-public:
-    
-    gsField( const gsMultiPatch<T> & mp, 
-             const std::vector<gsFunction<T> *>& fs, 
-             const bool isparam= true)
-    : m_patches(mp), m_fields(fs), parametrized(isparam), m_owning(true)
+    gsField( const gsFunctionSet<T> & mp, 
+             typename gsFunctionSet<T>::Ptr fs, 
+             const bool isparam)
+    : m_patches(&mp), m_fields(fs), parametrized(isparam)
     { }
-    
-    gsField( const gsMultiPatch<T> & mp, const gsMultiPatch<T> & field)
-    : m_patches(mp), parametrized(true), m_owning(false)
-    { 
-        for (std::size_t i = 0; i< mp.nPatches(); ++i)
-            m_fields.push_back( &field.patch(i) ); 
-    }
 
-    gsField( const gsMultiPatch<T> & mp, gsFunction<T> * f, const bool isparam= true) 
-    : m_patches(mp), parametrized(isparam), m_owning(true)
-    { 
-        for (std::size_t i = 0; i< mp.nPatches(); ++i)
-            m_fields.push_back(f); 
-    }
+    gsField( const gsGeometry<T> & sp, const gsFunctionSet<T> & pf, const bool isparam = false) 
+    : m_patches(&sp), m_fields(shared_not_owned(&pf)), parametrized(isparam)
+    { }
 
-    gsField( const gsMultiPatch<T> & mp, gsFunction<T> & f, const bool isparam= true) 
-    : m_patches(mp), parametrized(isparam), m_owning(false)
-    { 
-        for (size_t i = 0; i< mp.nPatches(); ++i)
-            m_fields.push_back(&f); 
-    }
+    gsField( const gsGeometry<T> & sp, const gsGeometry<T> & pf) 
+    : m_patches(&sp), m_fields(shared_not_owned(&pf)), parametrized(true)
+    { }
 
-    ~gsField()
-    {
-        if (m_owning)
-        {
-            // avoid deleting twice the same pointer
-            typename std::vector<gsFunction<T>*>::iterator itr= 
-                std::unique( m_fields.begin(), m_fields.end() );
-            m_fields.resize( itr - m_fields.begin() ) ;
+    gsField( const gsMultiPatch<T> & mp, const gsFunctionSet<T> & f, const bool isparam = false) 
+    : m_patches(&mp), m_fields(shared_not_owned(&f)), parametrized(isparam)
+    { }
 
-            freeAll( m_fields );
-        }
-    }
-    
+    gsField( const gsMultiPatch<T> & mp, const gsMultiPatch<T> & f) 
+    : m_patches(&mp), m_fields(shared_not_owned(&f)), parametrized(true)
+    { }
+
 public:
     
 // TO DO:
@@ -128,7 +103,7 @@ public:
      */
     typename gsMatrix<T>::uPtr point(const gsMatrix<T>& u, int i = 0) const
     {
-        return m_patches[i].eval(u);
+        return m_patches->piece(i).eval(u);
     }
 
     // Return the value of the Field at parameter value u
@@ -147,8 +122,8 @@ public:
     typename gsMatrix<T>::uPtr value(const gsMatrix<T>& u, int i = 0)  const
     {
         return parametrized
-            ? m_fields[i]->eval(u)
-            : m_fields[i]->eval( *point(u, i) );
+            ? m_fields->piece(i).eval(u)
+            : m_fields->piece(i).eval( *point(u, i) );
     }
 
     // Return the value of the Field at physical value u 
@@ -156,7 +131,7 @@ public:
     typename gsMatrix<T>::uPtr pvalue(const gsMatrix<T>& u, int i)  const
     { 
         assert( !parametrized );
-        return ( m_fields[i]->eval(u) ); 
+        return ( m_fields->piece(i).eval(u) ); 
     }
 
     /// Computes the L2-distance between the two fields, on the physical domain
@@ -240,47 +215,71 @@ public:
     
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
-    { os << "gsField.\n"; return os; }
+    { 
+        os << ( parametrized ? "Parameterized f" : "F") 
+           << "unction field.\n Defined on " << m_patches;
+        return os; 
+    }
     
     /// \brief Returns the dimension of the parameter domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 2).
-    int parDim() const { return m_patches.parDim(); }
+    int parDim() const { return m_patches->domainDim(); }
 
     /// \brief Returns the dimension of the physical domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 3).
-    int geoDim() const { return m_patches.geoDim(); }
+    int geoDim() const { return m_patches->targetDim(); }
 
     /// \brief Returns the dimension of the physical domain
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 3).
-    int dim() const { return m_fields[0]->targetDim(); }
+    int dim() const { return m_fields->targetDim(); }
 
     /// Returns the number of patches.
-    int nPatches()  const { return m_patches.nPatches(); }
+    int nPatches()  const { return m_patches->size(); }
 
     const gsGeometry<T> & geometry() const 
-    { assert(m_patches.size()==1); return m_patches[0]; }
+    {
+        GISMO_ASSERT(dynamic_cast<const gsGeometry<T>*>(m_patches),
+                     "No geometry in field. The domain is"<< *m_patches);
+        return *static_cast<const gsGeometry<T>*>(m_patches);
+    }
 
     /// Returns gsMultiPatch containing the geometric information on the domain.
-    const gsMultiPatch<T> & patches() const    { return m_patches; }
+    const gsMultiPatch<T> & patches() const    
+    { 
+        GISMO_ASSERT(dynamic_cast<const gsMultiPatch<T>*>(m_patches),
+                     "No patches in field. The field domain is "<< *m_patches);
+        return *static_cast<const gsMultiPatch<T>*>(m_patches);
+    }
 
     /// Returns the gsGeometry of patch \a i.
-    const gsGeometry<T> & patch(int i=0) const       { return m_patches[i]; }
+    const gsGeometry<T> & patch(int i=0) const 
+    { 
+        GISMO_ASSERT(static_cast<size_t>(i)<m_patches->size(),
+                      "gsField: Invalid patch index.");
+        GISMO_ASSERT(dynamic_cast<const gsGeometry<T>*>(&m_patches->piece(i)),
+                     "No geometry in field. The domain is"<< m_patches->piece(i));
+        return static_cast<const gsGeometry<T>&>(m_patches->piece(i));
+    }
 
     /// Returns the gsFunction of patch \a i.
-    // const todo
-    gsFunction<T>   & function(int i=0) const  { return *m_fields[i]; }
+    const gsFunction<T> & function(int i=0) const  
+    { 
+        GISMO_ASSERT(dynamic_cast<const gsFunction<T>*>(&m_patches->piece(i)),
+                     "No function in field. The domain is"<< m_patches->piece(i));
+        return static_cast<const gsFunction<T>&>(m_fields->piece(i)); 
+    }
 
     /// Attempts to return an Isogeometric function for patch i
     const gsGeometry<T> & igaFunction(int i=0) const
     { 
         GISMO_ASSERT(parametrized,
                      "Cannot get an IGA function from non-parametric field.");
-        GISMO_ASSERT(static_cast<size_t>(i)<m_fields.size(),
+        GISMO_ASSERT(static_cast<size_t>(i)<m_fields->size(),
                       "gsField: Invalid patch index.");
-        return static_cast<gsGeometry<T> &>(*m_fields[i]);
+        return static_cast<const gsGeometry<T> &>(m_fields->piece(i));
     }
 
-    bool isParametrized() const         { return parametrized; }
+    bool isParametrized() const { return parametrized; }
 
     /** \brief Returns the coefficient vector (if it exists)
         corresponding to the function field for patch \a i.
@@ -292,32 +291,28 @@ public:
     */
     const gsMatrix<T> & coefficientVector(int i=0) const
     {
-        gsGeometry<T> * geo = dynamic_cast<gsGeometry<T> *>( m_fields[i] );
+        gsGeometry<T> * geo = dynamic_cast<gsGeometry<T> *>( m_fields->piece(i) );
 
         GISMO_ASSERT( geo != NULL, "Coefficients do not exist.");
-        GISMO_ASSERT( i < static_cast<int>( m_patches.nPatches() ) , 
+        GISMO_ASSERT( i < static_cast<int>( m_patches->nPatches() ) , 
                       "Index of patch exceeds number of patches.");
         return geo->coefs();
     }
 
-
-private:
-    // disable copying
-    gsField(const gsField& other);
-    gsField& operator=(const gsField& other);
-
 // Data members
 private:
 
-    /// dox to m_patches.
-    const gsMultiPatch<T>& m_patches;
+    /// The isogeometric field is defined on this multipatch domain
+    const gsFunctionSet<T> * m_patches;
 
     // If there are many patches, one field per patch
 
     /// \brief Vector containing "local fields" for each patch/subdomain.
     ///
-    /// For each patch/subdomain, the "local field" is represented by a gsFunction. This local field can be accessed with gsField::function.
-    std::vector< gsFunction<T> *> m_fields;
+    /// For each patch/subdomain, the "local field" is represented by
+    /// a gsFunction. This local field can be accessed with
+    /// gsField::function.
+    typename gsFunctionSet<T>::Ptr m_fields;
 
     /**
      * @brief \a True iff this is an isogeometric field.
@@ -330,13 +325,7 @@ private:
      */
     bool parametrized;// True iff this is an Isogeometric field, living on parameter domain
 
-    bool m_owning;      // whether this field owns its function and should destroy it
-
 }; // class gsField
-
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 
 /// Print (as string) operator to be used by all derived classes

@@ -212,7 +212,8 @@ public:
     gsSymmetricGaussSeidelOp(const MatrixType& _mat, index_t numOfSweeps = 1)
         : m_mat(_mat), m_numOfSweeps(numOfSweeps) {}
         
-    static Ptr make(const MatrixType& _mat, index_t numOfSweeps = 1) { return shared( new gsSymmetricGaussSeidelOp(_mat,numOfSweeps) ); }
+    static Ptr make(const MatrixType& _mat, index_t numOfSweeps = 1) 
+    { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat,numOfSweeps) ); }
 
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
     {

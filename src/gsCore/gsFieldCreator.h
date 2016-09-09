@@ -80,9 +80,7 @@ class gsGradientField : public gsFunction<T>
 public:
     gsGradientField( gsGeometry<T> const & geo, gsFunction<T> const & f)
     : m_geo(geo), m_f(f)
-    { 
-            
-    }
+    { }
 
     gsGradientField * clone() const
     { return new gsGradientField(*this); }
@@ -245,7 +243,7 @@ template<class T>
 class gsBoundaryField : public gsFunction<T> 
 {
 public:
-    gsBoundaryField(gsGeometry<T> const & geo_)
+    explicit gsBoundaryField(gsGeometry<T> const & geo_)
     : geo(geo_), m_supp(geo.support())
     { }
 
@@ -294,74 +292,71 @@ template<class T>
 struct gsFieldCreator
 {
 
-    static typename gsField<T>::uPtr absError(gsField<T> const & field, gsFunction<T> const & f)
+    static gsField<T> absError(gsField<T> const & field, gsFunction<T> const & f)
     {
         const gsMultiPatch<T> & mp = field.patches();
     
-        std::vector<gsFunction<T> *> nFields;
-        nFields.reserve( mp.nPatches() );
+        gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         for (unsigned k=0; k< mp.nPatches(); ++k)
-            nFields.push_back( new gsAbsError<T>(field.function(k), mp.patch(k), f) );
+            nFields->addPiecePointer( new gsAbsError<T>(field.function(k), mp.patch(k), f) );
         
-        return typename gsField<T>::uPtr( new gsField<T>(mp, nFields, true ) );
+        return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
     }
     
     
-    static typename gsField<T>::uPtr gradient(gsMultiPatch<T> const & mp, gsFunction<T> const & f)
+    static gsField<T> gradient(gsMultiPatch<T> const & mp, gsFunction<T> const & f)
     {
-        std::vector<gsFunction<T> *> nFields;
-        nFields.reserve( mp.nPatches() );
+        gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
+        
         
         for (unsigned k=0; k< mp.nPatches(); ++k)
-            nFields.push_back( new gsGradientField<T>(mp.patch(k), f) );
+            nFields->addPiecePointer( new gsGradientField<T>(mp.patch(k), f) );
         
-        return typename gsField<T>::uPtr( new gsField<T>(mp, nFields, true ) );
+        return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
     }
 
-    static typename gsField<T>::uPtr normal(gsMultiPatch<T> const & mp)
+    static gsField<T> normal(gsMultiPatch<T> const & mp)
     {
-        std::vector<gsFunction<T> *> nFields;
-        nFields.reserve( mp.nPatches() );
+        gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
+        
         
         for (unsigned k=0; k< mp.nPatches(); ++k)
-            nFields.push_back( new gsNormalField<T>(mp.patch(k)) );
+            nFields->addPiecePointer( new gsNormalField<T>(mp.patch(k)) );
         
-        return typename gsField<T>::uPtr( new gsField<T>(mp, nFields, true ) );
+        return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
     }
 
 
-    static typename gsField<T>::uPtr jacDet(gsMultiPatch<T> const & mp)
+    static gsField<T> jacDet(gsMultiPatch<T> const & mp)
     {
-        std::vector<gsFunction<T> *> nFields;
-        nFields.reserve( mp.nPatches() );
+        gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
+        
         
         for (unsigned k=0; k< mp.nPatches(); ++k)
-            nFields.push_back( new gsJacDetField<T>(mp.patch(k)) );
-        
-        return typename gsField<T>::uPtr( new gsField<T>(mp, nFields, true ) );
+            nFields->addPiecePointer( new gsJacDetField<T>(mp.patch(k)) );
+
+        return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
     }
 
-    static typename gsField<T>::uPtr parameters(gsMultiPatch<T> const & mp)
+    static gsField<T> parameters(gsMultiPatch<T> const & mp)
     {
-        std::vector<gsFunction<T> *> nFields;
-        nFields.reserve( mp.nPatches() );
+        gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
+        
         
         for (unsigned k=0; k< mp.nPatches(); ++k)
-            nFields.push_back( new gsParamField<T>(mp.patch(k)) );
-        
-        return typename gsField<T>::uPtr( new gsField<T>(mp, nFields, true ) );
+            nFields->addPiecePointer( new gsParamField<T>(mp.patch(k)) );
+
+        return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
     }
 
-    static typename gsField<T>::uPtr boundarySides(gsMultiPatch<T> const & mp)
+    static gsField<T> boundarySides(gsMultiPatch<T> const & mp)
     {
-        std::vector<gsFunction<T> *> nFields;
-        nFields.reserve( mp.nPatches() );
-        
+        gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         for (unsigned k=0; k< mp.nPatches(); ++k)
-            nFields.push_back( new gsBoundaryField<T>(mp.patch(k)) );
+            nFields->addPiecePointer( new gsBoundaryField<T>(mp.patch(k)) );
         
-        return typename gsField<T>::uPtr( new gsField<T>(mp, nFields, true ) );
+        return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
     }
 
 }; // struct gsFieldCreator

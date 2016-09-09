@@ -37,7 +37,8 @@ public:
 
 public:
 
-    gsPiecewiseFunction() { }
+    gsPiecewiseFunction(index_t npieces = 0)
+    { m_funcs.reserve(npieces); }
 
     gsPiecewiseFunction(const gsFunction<T> & func)
     {
@@ -93,6 +94,11 @@ public:
     void addPiece(const gsFunction<T> & func)
     { 
         m_funcs.push_back( func.clone() );
+    }
+
+    void addPiecePointer(gsFunction<T> * func)
+    { 
+        m_funcs.push_back( func );
     }
     
     const gsFunction<T> & piece(const index_t i) const 

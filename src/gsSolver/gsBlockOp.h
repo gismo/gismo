@@ -56,7 +56,8 @@ public:
     gsBlockOp(index_t nRows, index_t nCols);
     
     /// Make function returning a shared pointer
-    static Ptr make(index_t nRows, index_t nCols) { return shared( new gsBlockOp(nRows,nCols) ); }
+    static Ptr make(index_t nRows, index_t nCols) 
+    { return memory::make_shared( new gsBlockOp(nRows,nCols) ); }
 
     /**
      * @brief Add a preconditioner \f$C_{ij}\f$ to the block structure

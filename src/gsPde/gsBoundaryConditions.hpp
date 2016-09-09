@@ -109,7 +109,7 @@ public:
              child; child = child->next_sibling("Function") )
         {
             const int i = atoi( child->first_attribute("index")->value() );
-            func[i]     = shared(new gsFunctionExpr<T>);
+            func[i]     = memory::make_shared(new gsFunctionExpr<T>);
             getFunctionFromXml(child, *func[i]);            
         }
 

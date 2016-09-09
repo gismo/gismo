@@ -156,9 +156,11 @@ int main(int argc, char *argv[])
         // Solve the linear system
         gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
 
-        // Construct the solution as a scalar field
-        gsField<>::uPtr solField;
-        solField = safe( PoissonAssembler.constructSolution(solVector) );
+        // Construct the isogeometric solution
+        gsMultiPatch<> sol;
+        PoissonAssembler.constructSolution(solVector, sol);
+        // Associate the solution to the patches (isogeometric field)
+        gsField<> solField(patches, sol);
         //! [solverPart]
 
         // --------------- error estimation/computation ---------------
@@ -166,7 +168,7 @@ int main(int argc, char *argv[])
         //! [errorComputation]
         // Compute the error in the H1-seminorm ( = energy norm in this example )
         // using the known exact solution.
-        gsSeminormH1<real_t> norm( *solField, g);
+        gsSeminormH1<real_t> norm( solField, g);
         norm.compute(true); // "true" indicates that element-wise norms shall be stored
 
         // Get the element-wise norms.
@@ -199,7 +201,7 @@ int main(int argc, char *argv[])
         if( plot && refLoop == numRefinementLoops )
         {
             // Write the computed solution to paraview files
-            gsWriteParaview<>( *solField, "adaptRef", 1000, true);
+            gsWriteParaview<>(solField, "adaptRef", 1000, true);
         }
         //! [Export to Paraview]
 

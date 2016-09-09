@@ -15,7 +15,7 @@
 #include <gsAssembler/gsVisitorPoisson.h> // Stiffness volume integrals
 #include <gsAssembler/gsVisitorNeumann.h> // Neumann boundary integrals
 #include <gsAssembler/gsVisitorNitsche.h> // Nitsche boundary integrals
-//#include <gsAssembler/gsVisitorDg.h>      // DG interface integrals
+#include <gsAssembler/gsVisitorDg.h>      // DG interface integrals
 
 namespace gismo
 {
@@ -60,8 +60,7 @@ void gsPoissonAssembler<T>::assemble()
          Base::penalizeDirichletDofs();
 
     if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
-        //Base::template pushInterface<gsVisitorDg<T> >();
-        gsWarn <<"DG option is ignored.\n";
+        Base::template pushInterface<gsVisitorDg<T> >();
     
     // Assembly is done, compress the matrix
     Base::finalize();

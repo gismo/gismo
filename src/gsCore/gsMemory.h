@@ -49,6 +49,13 @@ namespace memory
     using NOT_FOUND::shared_ptr;
 #endif
 
+// typename shared<C>::ptr
+template <typename C>
+struct shared
+{
+    typedef shared_ptr<C> ptr;
+};
+
 // typename unique<C>::ptr
 template <typename C>
 struct unique
@@ -64,23 +71,20 @@ template <typename C>
 typename unique<C>::ptr make_unique(C * x)
 { return typename unique<C>::ptr(x); }
 
+/// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
+/// memory leaks.
+template <typename T>
+inline memory::shared_ptr<T> make_shared(T *x)
+{ return memory::shared_ptr<T>(x); }
+
 }
 
 /// Takes a T* and wraps it in an auto_ptr. Useful for one-off
 /// function return values to avoid memory leaks.
 template <typename T>
 inline typename memory::unique<T>::ptr safe(T *x)
-{
-    return typename memory::unique<T>::ptr(x);
-}
+{ return typename memory::unique<T>::ptr(x); }
 
-/// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
-/// memory leaks.
-template <typename T>
-inline memory::shared_ptr<T> shared(T *x)
-{
-    return memory::shared_ptr<T>(x);
-}
 
 /// \brief Deleter function that does not delete an object pointer
 template <typename Obj>
@@ -90,9 +94,9 @@ void null_deleter(Obj *) {}
 /// the underlying raw pointer. Usefull to refer to objects which
 /// should not be destroyed
 template <typename T>
-inline memory::shared_ptr<T> shared_not_owned(T *x)
+inline memory::shared_ptr<T> shared_not_owned(const T *x)
 {
-    return memory::shared_ptr<T>(x, null_deleter<T>);
+    return memory::shared_ptr<T>(const_cast<T*>(x), null_deleter<T>);
 }
 
 /**

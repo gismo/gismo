@@ -102,15 +102,15 @@ int main(int argc, char *argv[])
 
     const std::string baseName("heat_eq_solution");
 	gsParaviewCollection collection(baseName);
-    gsField<>::uPtr sol;
+    
     std::string fileName;
 
     if ( plot)
     {
-        //sol = safe( assembler.constructSolution(Sol) ); // same as next line
-        sol = safe( stationary.constructSolution(Sol) );
+        //sol = assembler.constructSolution(Sol); // same as next line
+        gsField<> sol = stationary.constructSolution(Sol);
         fileName = baseName + "0";
-        gsWriteParaview<>(*sol, fileName, 1000, true);
+        gsWriteParaview<>(sol, fileName, 1000, true);
         collection.addTimestep(fileName,0,"0.vts");
     }
     
@@ -122,16 +122,16 @@ int main(int argc, char *argv[])
         
         // Solve for current timestep, overwrite previous solution
         Sol = solver.compute( assembler.matrix() ).solve(Rhs);
-
+        
         // Obtain current solution as an isogeometric field
-        //sol = safe( assembler.constructSolution(Sol) ); // same as next line
-        sol = safe( stationary.constructSolution(Sol) );
+        //sol = assembler.constructSolution(Sol); // same as next line
+        gsField<> sol = stationary.constructSolution(Sol);
         
         if ( plot)
         {
             // Plot the snapshot to paraview
             fileName = baseName + internal::toString<index_t>(i);
-            gsWriteParaview<>(*sol, fileName, 1000, true);
+            gsWriteParaview<>(sol, fileName, 1000, true);
             collection.addTimestep(fileName,i,"0.vts");
         }
     }

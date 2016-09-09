@@ -109,7 +109,7 @@ public:
     template<class Obj>
     operator memory::shared_ptr<Obj> () const
     {
-        return shared<Obj>(*this);
+        return memory::make_shared<Obj>(*this);
     }
         
     /// Allows to read a file into a gsGeometry

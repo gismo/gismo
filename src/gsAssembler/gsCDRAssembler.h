@@ -68,8 +68,8 @@ public:
                     iFace::strategy               intStrategy = iFace::glue,
                     bool flagStabilization = 0 )
     {
-        m_options.dirStrategy = dirStrategy;
-        m_options.intStrategy = intStrategy;
+        m_options.setInt("DirichletStrategy", dirStrategy);
+        m_options.setInt("InterfaceStrategy", intStrategy);
         m_options.addSwitch("SUPG","SUPG stabilization", flagStabilization);
         
         Base::initialize(pde, bases, m_options);
