@@ -82,6 +82,19 @@ inline memory::shared_ptr<T> shared(T *x)
     return memory::shared_ptr<T>(x);
 }
 
+/// \brief Deleter function that does not delete an object pointer
+template <typename Obj>
+void null_deleter(Obj *) {}
+
+/// \brief Creates a shared pointer which does not eventually delete
+/// the underlying raw pointer. Usefull to refer to objects which
+/// should not be destroyed
+template <typename T>
+inline memory::shared_ptr<T> shared_not_owned(T *x)
+{
+    return memory::shared_ptr<T>(x, null_deleter<T>);
+}
+
 /**
    Wrapper for a reference that can be swapped with another object.
    Used by the give(.) function to implement argument passing
@@ -218,9 +231,5 @@ inline void copy_n(const T * begin, const size_t n, U * result)
 // std::copy_n(begin, n, result);
 #   endif
 }
-
-/// \brief Deleter function that does not delete an object pointer
-template <typename Obj>
-void null_deleter(Obj *) {}
 
 } // namespace gismo

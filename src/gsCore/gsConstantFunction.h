@@ -31,9 +31,13 @@ namespace gismo
 template <class T>
 class gsConstantFunction : public gsGeometry<T>
 {
-    typedef gsGeometry<T> Base;
-    
 public:
+    typedef gsGeometry<T> Base;
+
+    /// Returns a null function 
+    static const gsConstantFunction Zero(int domDim, int tarDim)
+    { return gsConstantFunction(gsVector<T>::Zero(tarDim),domDim); }
+
     gsConstantFunction() { }
 
     explicit gsConstantFunction(const gsVector<T>& val, int domainDim)

@@ -168,7 +168,7 @@ template< class T = real_t>  class gsAssembler;
 template< class T = real_t>  class gsStokesAssembler;
 template< class T = real_t>  class gsGenericAssembler;
 template< class T = real_t>  class gsPoissonAssembler;
-template< class T = real_t>  class gsCRDAssembler;
+template< class T = real_t>  class gsCDRAssembler;
 template< class T = real_t>  class gsSolverUtils;
 template< class T = real_t, bool symm = false>  class gsSparseSystem;
 
