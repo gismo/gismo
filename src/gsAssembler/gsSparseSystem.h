@@ -352,10 +352,10 @@ public:
         const index_t bdB = opt.getInt("bdB");
         const T bdO       = opt.getReal("bdO");
         const gsBasis<T> & b = mb[0];
-        index_t nz = 1;
+        T nz = 1;
         for (index_t i = 0; i != b.dim(); ++i)
-            nz *= static_cast<index_t>(bdA * b.degree(i) + bdB + 0.5);
-        return static_cast<index_t>(nz*(1.0+bdO));
+            nz *= bdA * b.degree(i) + bdB;
+        return cast<T,index_t>(nz*(1.0+bdO));
     }
 
     /// @brief set everything to zero
