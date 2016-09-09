@@ -48,9 +48,23 @@ public:
 
 public:
 
-    gsCDRAssembler( const gsPoissonPde<T>          & pde,
+    /** @brief Main Constructor of the assembler object.
+        \param[in] pde A boundary value Poisson problem
+        \param[in] bases a multi-basis that contains patch-wise bases
+        \param[in] opt A set of options for the assembly process
+    */
+    gsCDRAssembler( const gsConvDiffRePde<T>       & pde,
+                    const gsMultiBasis<T>          & bases)
+    {
+        // enrich options in constructor, refresh to apply options
+        m_options.addSwitch("SUPG","SUPG stabilization", false);
+        Base::initialize(pde, bases, m_options);
+    }
+
+
+    gsCDRAssembler( const gsConvDiffRePde<T>       & pde,
                     const gsMultiBasis<T>          & bases,
-                    dirichlet::strategy           dirStrategy = dirichlet::elimination,
+                    dirichlet::strategy           dirStrategy,
                     iFace::strategy               intStrategy = iFace::glue,
                     bool flagStabilization = 0 )
     {
@@ -75,24 +89,24 @@ public:
     \param[in] intStrategy option for the treatment of patch interfaces
 */
     gsCDRAssembler( gsMultiPatch<T> const         & patches,
-                        gsMultiBasis<T> const         & bases,
-                        gsBoundaryConditions<T> const & bconditions,
-                        const gsFunction<T>           & rhs,
-                        const gsFunction<T>           & coeff_A,
-                        const gsFunction<T>           & coeff_b,
-                        const gsFunction<T>           & coeff_c,
-                        dirichlet::strategy           dirStrategy = dirichlet::elimination,
-                        iFace::strategy               intStrategy = iFace::glue,
-                        bool flagStabilization = 0 )
-    : m_cdrpde(patches, bconditions, &coeff_A, &coeff_b, &coeff_c, &rhs),
-      m_flagStabilization( flagStabilization  )
+                    gsMultiBasis<T> const         & bases,
+                    gsBoundaryConditions<T> const & bconditions,
+                    const gsFunction<T>           & rhs,
+                    const gsFunction<T>           & coeff_A,
+                    const gsFunction<T>           & coeff_b,
+                    const gsFunction<T>           & coeff_c,
+                    dirichlet::strategy           dirStrategy = dirichlet::elimination,
+                    iFace::strategy               intStrategy = iFace::glue,
+                    bool flagStabilization = 0 )
+    : m_flagStabilization( flagStabilization  )
     {
-        m_options = Base::defaultOptions();
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
         m_options.addSwitch("SUPG","SUPG stabilization", flagStabilization);
-        
-        Base::initialize(m_cdrpde, bases, m_options);
+
+        typename gsPde<T>::Ptr pde( new gsConvDiffRePde<T>
+                                    (patches, bconditions, &coeff_A, &coeff_b, &coeff_c, &rhs));
+        Base::initialize(pde, bases, m_options);
     }
 
     /// Main assembly routine
@@ -102,11 +116,7 @@ public:
                      "Sparse system is not initialized, call initialize() or refresh()");
 
         // Reserve sparse system
-        const T bdA   = m_options.getReal("bdA");
-        const int bdB = m_options.getInt("bdB" );
-        const T bdO   = m_options.getReal("bdO");
-        const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0], bdA, bdB, bdO);
-        m_system.reserve(nz, this->pde().numRhs());
+        m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
         
         // Compute the Dirichlet Degrees of freedom (if needed by m_options)
         Base::computeDirichletDofs();
@@ -139,11 +149,6 @@ public:
         // Assembly is done, compress the matrix
         Base::finalize();        
     }
-
-protected:
-    
-    // fixme: remove this
-    gsConvDiffRePde<T> m_cdrpde;
 
 protected:
 

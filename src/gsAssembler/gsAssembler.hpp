@@ -41,7 +41,9 @@ gsOptionList gsAssembler<T>::defaultOptions()
 
 template<class T>
 void gsAssembler<T>::refresh()
-{ }
+{
+    gsWarn <<" gsAssembler<T>::Refresh is an empty call\n";
+}
 
 template<class T>
 void gsAssembler<T>::assemble()

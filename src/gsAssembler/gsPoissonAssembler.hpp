@@ -15,6 +15,7 @@
 #include <gsAssembler/gsVisitorPoisson.h> // Stiffness volume integrals
 #include <gsAssembler/gsVisitorNeumann.h> // Neumann boundary integrals
 #include <gsAssembler/gsVisitorNitsche.h> // Nitsche boundary integrals
+//#include <gsAssembler/gsVisitorDg.h>      // DG interface integrals
 
 namespace gismo
 {
@@ -34,8 +35,7 @@ void gsPoissonAssembler<T>::assemble()
                  "Sparse system is not initialized, call initialize() or refresh()");
 
     // Reserve sparse system
-    const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
-    m_system.reserve(nz, this->pde().numRhs());
+    m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
 
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     Base::computeDirichletDofs();
@@ -60,6 +60,7 @@ void gsPoissonAssembler<T>::assemble()
          Base::penalizeDirichletDofs();
 
     if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
+        //Base::template pushInterface<gsVisitorDg<T> >();
         gsWarn <<"DG option is ignored.\n";
     
     // Assembly is done, compress the matrix

@@ -43,9 +43,6 @@ public:
     gsPoissonAssembler()
     { }
 
-    gsPoissonAssembler(const gsPoissonAssembler & other)
-    { m_ppde = other.m_ppde; }
-
     /** @brief Main Constructor of the assembler object.
 
     \param[in] pde A boundary value Poisson problem
@@ -53,8 +50,7 @@ public:
     \param[in] opt A set of options for the assembly process
     */
     gsPoissonAssembler( const gsPoissonPde<T>          & pde,
-                        const gsMultiBasis<T>          & bases,
-                        const gsOptionList & opt = Base::defaultOptions() )
+                        const gsMultiBasis<T>          & bases)
     {
         Base::initialize(pde, bases, m_options);
     }
@@ -96,12 +92,12 @@ public:
                         const gsFunction<T>           & rhs,
                         dirichlet::strategy           dirStrategy = dirichlet::elimination,
                         iFace::strategy               intStrategy = iFace::glue)
-    : m_ppde(patches,bconditions,rhs)
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
-        
-        Base::initialize(m_ppde, basis, m_options);
+
+        typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rhs) );
+        Base::initialize(pde, basis, m_options);
     }
 
     virtual gsAssembler<T>* clone() const
@@ -129,11 +125,6 @@ public:
         return m_system.matrix().template selfadjointView<Lower>();
     }
 
-
-protected:
-
-    // fixme: remove this
-    gsPoissonPde<T> m_ppde;
 
 protected:
 

@@ -52,7 +52,7 @@ protected: // *** Input data members ***
 
     /// The PDE: contains multi-patch domain, boundary conditions and
     /// coeffcient functions
-    const gsPde<T> * m_pde_ptr;
+    memory::shared_ptr<gsPde<T> > m_pde_ptr;
 
     /// The discretization bases corresponding to the patches and to
     /// the number of solution fields that are to be computed. One
@@ -98,7 +98,18 @@ public:
                     //note: merge with initialize(.., const gsMultiBasis<T> ,..) ?
                     const gsOptionList & opt = defaultOptions() )
     {
-        m_pde_ptr = &pde;
+        typename gsPde<T>::Ptr _pde = shared_not_owned(const_cast<gsPde<T>*>(&pde));
+        initialize(_pde,bases,opt);
+    }
+
+    /// @brief Intitialize function for, sets data fields
+    /// using the pde, a vector of multi-basis and assembler options.
+    void initialize(memory::shared_ptr<gsPde<T> > pde,
+                    const gsStdVectorRef<gsMultiBasis<T> > & bases,
+                    //note: merge with initialize(.., const gsMultiBasis<T> ,..) ?
+                    const gsOptionList & opt = defaultOptions() )
+    {
+        m_pde_ptr = pde;
         m_bases = bases;
         m_options = opt;
         refresh(); // virtual call to derived
@@ -111,7 +122,15 @@ public:
                     const gsMultiBasis<T>    & bases,
                     const gsOptionList & opt = defaultOptions() )
     {
-        m_pde_ptr = &pde;
+        typename gsPde<T>::Ptr _pde = shared_not_owned(const_cast<gsPde<T>*>(&pde));
+        initialize(_pde,bases,opt);
+    }
+
+    void initialize(memory::shared_ptr<gsPde<T> > pde,
+                    const gsMultiBasis<T>    & bases,
+                    const gsOptionList & opt = defaultOptions() )
+    {
+        m_pde_ptr = pde;
         m_bases.clear();
         m_bases.push_back(bases);
         m_options = opt;
@@ -128,8 +147,7 @@ public:
     {
         GISMO_ASSERT(pde.domain().nPatches() ==1,
                      "You cannot initialize a multipatch domain with bases on a single patch");
-
-        m_pde_ptr = &pde;
+        m_pde_ptr = shared_not_owned(const_cast<gsPde<T>*>(&pde));
 
         m_bases.clear();
         m_bases.reserve(basis.size());
@@ -390,8 +408,9 @@ public: // *** Accessors ***
 
 protected:
 
-    /// @brief A prototype of the refresh function for a "standard" scalar problem.
-    /// Creats one mapper based on the set options and initializes the sparse system.
+    /// @brief A prototype of the refresh function for a "standard"
+    /// scalar problem.  Creats one mapper based on the set options
+    /// and initializes the sparse system (without allocating memory.
     void scalarProblemGalerkinRefresh();
 
 protected:

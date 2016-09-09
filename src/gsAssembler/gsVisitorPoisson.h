@@ -31,48 +31,24 @@ class gsVisitorPoisson
 {
 public:
 
+    /** \brief Constructor for gsVisitorPoisson.
+     */
     gsVisitorPoisson(const gsPde<T> & pde)
     { 
-        rhs_ptr = static_cast<const gsPoissonPde<T>*>(&pde)->rhs() ;
+        pde_ptr = static_cast<const gsPoissonPde<T>*>(&pde);
     }
     
-    /** \brief Constructor for gsVisitorPoisson.
-     *
-     * \param[in] rhs Given right-hand-side function/source term that, for
-     */
-    /// Constructor with the right hand side function of the Poisson equation
-    gsVisitorPoisson(const gsFunction<T> & rhs) : 
-    rhs_ptr(&rhs)
-    { }
-
-    gsVisitorPoisson() :     rhs_ptr(NULL) { }
-
-
-    void initialize(const gsBasis<T> & basis, 
-                    gsQuadRule<T>    & rule, 
-                    unsigned         & evFlags )
-    {
-        gsVector<index_t> numQuadNodes( basis.dim() );
-        for (int i = 0; i < basis.dim(); ++i) // to do: improve
-            numQuadNodes[i] = basis.degree(i) + 1;
-        
-        // Setup Quadrature
-        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
-
-        // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
-    }
-
     void initialize(const gsBasis<T> & basis,
                     const index_t patchIndex,
                     const gsOptionList & options,
                     gsQuadRule<T>    & rule,
                     unsigned         & evFlags )
     {
+        // Grab right-hand side for current patch
+        rhs_ptr = &pde_ptr->rhs()->piece(patchIndex);
+        
         // Setup Quadrature
-        const T       quA = options.getReal("quA");
-        const index_t quB = options.getInt ("quB");
-        rule = gsGaussRule<T>(basis, quA, quB);// harmless slicing occurs here
+        rule = gsGaussRule<T>(basis, options);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
@@ -134,50 +110,11 @@ public:
         // Add contributions to the system matrix and right-hand side
         system.push(localMat, localRhs, actives, eliminatedDofs.front(), 0, 0);
     }
-    
-    inline void localToGlobal(const gsDofMapper     & mapper,
-                              const gsMatrix<T>     & eliminatedDofs,
-                              const int patchIndex,
-                              gsSparseMatrix<T>     & sysMatrix,
-                              gsMatrix<T>           & rhsMatrix )
-    {
-        //Assert eliminatedDofs.rows() == mapper.boundarySize()
-
-        // Local DoFs to global DoFs
-        mapper.localToGlobal(actives, patchIndex, actives);
-        //const int numActive = actives.rows();
-        
-        for (index_t i=0; i < numActive; ++i)
-        {
-            const int ii = actives(i);
-            if ( mapper.is_free_index(ii) )
-            {
-                rhsMatrix.row(ii) += localRhs.row(i);
-                
-                for (index_t j=0; j < numActive; ++j)
-                {
-                    const int jj = actives(j);
-                    if ( mapper.is_free_index(jj) )
-                    {
-                        // Matrix is symmetric, so we could store only
-                        // lower triangular part
-                        //if ( jj <= ii ) 
-                        sysMatrix.coeffRef(ii, jj) += localMat(i, j);
-                    }
-                    else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
-                    {
-                        rhsMatrix.row(ii).noalias() -= localMat(i, j) * 
-                            eliminatedDofs.row( mapper.global_to_bindex(jj) );
-                    }
-                }
-            }
-        }
-    }
 
 protected:
-    // Right hand side
-    const gsFunction<T> * rhs_ptr;
-
+    // Pointer to the pde data
+    const gsPoissonPde<T> * pde_ptr;
+    
 protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
@@ -186,6 +123,9 @@ protected:
     index_t numActive;
 
 protected:
+    // Right hand side ptr for current patch
+    const gsFunction<T> * rhs_ptr;
+
     // Local values of the right hand side
     gsMatrix<T> rhsVals;
 
