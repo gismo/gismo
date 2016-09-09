@@ -92,9 +92,7 @@ public:
                     unsigned         & evFlags )
     {
         // Setup Quadrature
-        const real_t quA = options.getReal("quA");
-        const index_t quB = options.getInt ("quB");
-        rule = gsGaussRule<T>(basis, quA, quB);// harmless slicing occurs here
+        rule = gsGaussRule<T>(basis, options);// harmless slicing occurs here
 
         flagStabType = static_cast<unsigned>(options.askSwitch("SUPG", false));
     
