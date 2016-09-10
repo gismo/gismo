@@ -135,13 +135,6 @@ int main(int argc, char *argv[])
   bcInfo.addCondition( boundary::north, condition_type::dirichlet, &g );
   bcInfo.addCondition( boundary::south, condition_type::dirichlet, &g );
 
-  gsDebugVar(bcInfo);
-
-  gsDebugVar(bcInfo.dirichletSides()[0].type() );
-  gsDebugVar(bcInfo.dirichletSides()[1].type() );
-  gsDebugVar(bcInfo.dirichletSides()[2].type() );
-  gsDebugVar(bcInfo.dirichletSides()[2].type() );
-
   gsTensorBSpline<2,real_t> * geo = dynamic_cast< gsTensorBSpline<2,real_t> * >( & patches.patch(0) );
   gsInfo << " --- Geometry:\n" << *geo << "\n";
   gsInfo << "Number of patches: " << patches.nPatches() << "\n";
@@ -177,6 +170,7 @@ int main(int argc, char *argv[])
       // in each iteration loop, but good enough for now.
       gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f);
       pa.options().setInt("DirichletValues", dirichlet::l2Projection);
+      gsInfo << pa.options() <<"\n";
       
       // Assemble matrix and rhs
       gsInfo << "Assembling... " << std::flush;
