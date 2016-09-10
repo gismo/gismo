@@ -165,8 +165,9 @@ void gsOptionList::addInt(const std::string& label,
 {
     if ( exists(label) )
     {
+        /* // allow adding multiple times ?
         IntTable::iterator it = m_ints.find(label);
-        /*if ( it != m_ints.end() )
+        if ( it != m_ints.end() )
         {
             if (it->second.second != desc)
                 gsWarn<< "Description changed for "<<label <<"from:\n"
