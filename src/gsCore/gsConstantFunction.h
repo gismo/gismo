@@ -107,7 +107,7 @@ public:
     T value(size_t i) const { return m_coefs.at(i);}
 
     void setValue(T val, int domainDim)
-    { m_coefs.setConstant(val); m_domainDim = domainDim;}
+    { m_coefs.setConstant(val,1,1); m_domainDim = domainDim;}
 
     void setValue(const gsVector<T> & val, int domainDim)
     { m_coefs = val.transpose(); m_domainDim = domainDim;}

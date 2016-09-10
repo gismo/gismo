@@ -90,6 +90,7 @@ bool gsAssembler<T>::check()
         gsWarn<< "No domain given ! \n";
 
     // /*
+    gsDebugVar(m_options);
     const int dirStr = m_options.getInt("DirichletStrategy");
     if ( 0 == m_pde_ptr->bc().size() && dirStr!=dirichlet::none && dirStr==dirichlet::homogeneous )
         gsWarn<< "No boundary conditions given ! \n";
@@ -106,8 +107,6 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
 
     GISMO_ASSERT(1==m_bases.size(), "Expecting a single discrete space "
                                     "for standard scalar Galerkin");
-
-    gsDebugVar(m_options);
     
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper mapper;

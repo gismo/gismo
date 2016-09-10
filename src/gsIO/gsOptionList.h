@@ -216,7 +216,6 @@ public:
         	gsXmlNode * node_str = internal::makeNode(entry.type, data);
         	gsXmlAttribute * attr_label = internal::makeAttribute("label", entry.label, data);
         	gsXmlAttribute * attr_desc = internal::makeAttribute("desc", entry.desc, data);
-            // next line; BOOL--> writes nan
         	gsXmlAttribute * attr_val = internal::makeAttribute("value", entry.val, data);
         	node_str->insert_attribute(0, attr_label);
         	node_str->insert_attribute(0, attr_desc);

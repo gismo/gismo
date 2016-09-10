@@ -152,7 +152,7 @@ using codi::pow;
 template <typename T> inline T exp2(const T a) { return 1U << a;}
 
 template <typename T>
-T round(T a) {return math::floor(a<0.0 ? a-0.5 : a+0.5); }
+T round(T a) { return math::floor(a+0.5); }
 
 
 /// For numeric types, this function returns the next representable
