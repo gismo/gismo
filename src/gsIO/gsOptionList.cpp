@@ -27,28 +27,28 @@ namespace gismo
 std::string gsOptionList::getString(const std::string & label) const
 {
     StringTable::const_iterator it = m_strings.find(label);
-    GISMO_ASSERT(it!=m_strings.end(), "Invalid request: "<< label <<" is not a string.");
+    GISMO_ASSERT(it!=m_strings.end(), "Invalid request (getString): "<< label <<" is not a string.");
     return it->second.first;
 }
 
 int gsOptionList::getInt(const std::string & label) const
 {
     IntTable::const_iterator it = m_ints.find(label);
-    GISMO_ASSERT(it!=m_ints.end(), "Invalid request: "<< label <<" is not an int.");
+    GISMO_ASSERT(it!=m_ints.end(), "Invalid request (getInt): "<< label <<" is not an int.");
     return it->second.first;
 }
 
 bool gsOptionList::getSwitch(const std::string & label) const
 {
     SwitchTable::const_iterator it = m_switches.find(label);
-    GISMO_ASSERT(it!=m_switches.end(), "Invalid request: "<< label <<" is not a switch.");
+    GISMO_ASSERT(it!=m_switches.end(), "Invalid request (getSwitch): "<< label <<" is not a switch.");
     return it->second.first;
 }
 
 real_t gsOptionList::getReal(const std::string & label) const
 {
     RealTable::const_iterator it = m_reals.find(label);
-    GISMO_ASSERT(it!=m_reals.end(), "Invalid request: "<< label <<" is not a real.");
+    GISMO_ASSERT(it!=m_reals.end(), "Invalid request (getReal): "<< label <<" is not a real.");
     return it->second.first;
 }
 
@@ -86,10 +86,10 @@ void gsOptionList::setString(const std::string& label,
         if ( exists(label) )
         {
             printInfo(label);
-            GISMO_ERROR("Invalid request: "<<label <<" is not a string.");
+            GISMO_ERROR("Invalid request (setString): "<<label <<" is not a string.");
         }
         // m_strings[label] = std::make_pair(value,""); return;
-        GISMO_ERROR("Invalid request: "<<label <<" does not exist.");
+        GISMO_ERROR("Invalid request (setString): "<<label <<" does not exist.");
     }
     it->second.first = value;
 }
@@ -103,10 +103,10 @@ void gsOptionList::setInt(const std::string& label,
         if ( exists(label) )
         {
             printInfo(label);
-            GISMO_ERROR("Invalid request: "<<label <<" is not a string.");
+            GISMO_ERROR("Invalid request (setInt): "<<label <<" is not an int.");
         }
         // m_strings[label] = std::make_pair(value,""); return;
-        GISMO_ERROR("Invalid request: "<<label <<" does not exist.");
+        GISMO_ERROR("Invalid request (setInt): "<<label <<" does not exist.");
     }
     it->second.first = value;
 }
@@ -120,10 +120,10 @@ void gsOptionList::setReal(const std::string& label,
         if ( exists(label) )
         {
             printInfo(label);
-            GISMO_ERROR("Invalid request: "<<label <<" is not a string.");
+            GISMO_ERROR("Invalid request (setReal): "<<label <<" is not a real.");
         }
         // m_strings[label] = std::make_pair(value,""); return;
-        GISMO_ERROR("Invalid request: "<<label <<" does not exist.");
+        GISMO_ERROR("Invalid request (setReal): "<<label <<" does not exist.");
     }
     it->second.first = value;
 }
@@ -137,10 +137,10 @@ void gsOptionList::setSwitch(const std::string& label,
         if ( exists(label) )
         {
             printInfo(label);
-            GISMO_ERROR("Invalid request: "<<label <<" is not a switch.");
+            GISMO_ERROR("Invalid request (setSwitch): "<<label <<" is not a switch.");
         }
         // m_strings[label] = std::make_pair(value,""); return;
-        GISMO_ERROR("Invalid request: "<<label <<" does not exist.");
+        GISMO_ERROR("Invalid request (setSwitch): "<<label <<" does not exist.");
     }
     it->second.first = value;
 }
@@ -165,6 +165,16 @@ void gsOptionList::addInt(const std::string& label,
 {
     if ( exists(label) )
     {
+        IntTable::iterator it = m_ints.find(label);
+        /*if ( it != m_ints.end() )
+        {
+            if (it->second.second != desc)
+                gsWarn<< "Description changed for "<<label <<"from:\n"
+                      << it->second.second <<" to:\n"<< desc <<"\n";
+            // option already exists, so we update the value
+            it->second.first = value;
+            return;
+        } */
         printInfo(label);
         GISMO_ERROR("Option "<<label<<" already exists.");        
     }
@@ -208,18 +218,18 @@ bool gsOptionList::exists(const std::string& label) const
     return false;
 }
 
-// TODO: can we implement the loops in a more intelligent way?
+// /*
+// todo: can we implement the loops in a more intelligent way?
 // e.g. re-factor this function by moving the loops into its own function
-// but how to deal with the stupid C++ type system then?
-std::list<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
+std::vector<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 {
-	std::list<gsOptionList::OptionListEntry> result;
-	const char * XML_STR = "string";
+	std::vector<gsOptionList::OptionListEntry> result;
+    result.reserve(4*size());
+    const char * XML_STR = "string";
 	const char * XML_INT = "int";
 	const char * XML_REAL = "real";
 	const char * XML_BOOL = "bool";
 	// add strings to list
-	//std::cout << "StringTable.size()='" << m_strings.size() << "'\n";
 	gsOptionList::StringTable::const_iterator it;
 	for ( it = m_strings.begin(); it != m_strings.end(); it++ )
 	{
@@ -230,9 +240,6 @@ std::list<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 		str.str( it->second.first );
 		entry.val = str.str();
 		entry.desc = it->second.second;
-		//std::cout << "result.push_back(type='"<< entry.type << "', label='";
-		//std::cout << entry.label << "', val='" << entry.val << "', desc='";
-		//std::cout << entry.desc << "')\n";
 		result.push_back(entry);
 	}
 	// add integers to list
@@ -246,9 +253,6 @@ std::list<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 		str << it2->second.first;
 		entry.val = str.str();
 		entry.desc = it2->second.second;
-		//std::cout << "result.push_back(type='"<< entry.type << "', label='";
-		//std::cout << entry.label << "', val='" << entry.val << "', desc='";
-		//std::cout << entry.desc << "')\n";
 		result.push_back(entry);
 	}
 	// add reals to list
@@ -262,9 +266,6 @@ std::list<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 		str << it3->second.first;
 		entry.val = str.str();
 		entry.desc = it3->second.second;
-		//std::cout << "result.push_back(type='"<< entry.type << "', label='";
-		//std::cout << entry.label << "', val='" << entry.val << "', desc='";
-		//std::cout << entry.desc << "')\n";
 		result.push_back(entry);
 	}
 	// add bools to list
@@ -275,16 +276,14 @@ std::list<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 		entry.type = XML_BOOL;
 		entry.label = it4->first;
 		std::stringstream str;
-		str << it3->second.first;
+		str << it4->second.first;
 		entry.val = str.str();
 		entry.desc = it4->second.second;
-		//std::cout << "result.push_back(type='"<< entry.type << "', label='";
-		//std::cout << entry.label << "', val='" << entry.val << "', desc='";
-		//std::cout << entry.desc << "')\n";
 		result.push_back(entry);
 	}
 	return result;
 }
+//*/
 
 #define OL_PRINT_INFO(it,type) \
     os<<"* "<<std::setw(17)<<std::left<<it->first <<std::setw(12)<<std::right<<" ("#type") = " \
@@ -337,5 +336,6 @@ void gsOptionList::printInfo(const std::string& label) const
 }
 
 #undef OL_PRINT_INFO
+
 
 } //namespace gismo

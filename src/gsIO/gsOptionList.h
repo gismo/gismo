@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <list>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsIO/gsXml.h>
 
@@ -82,15 +81,17 @@ public:
     int size() const
     {return m_strings.size()+m_ints.size()+m_reals.size()+m_switches.size();}
 
+    // /*
     typedef struct {
     	std::string type;
     	std::string label;
     	std::string desc;
     	std::string val;
     } OptionListEntry;
-
-    std::list<OptionListEntry> getAllEntries() const;
-
+    
+    std::vector<OptionListEntry> getAllEntries() const;
+    //*/
+    
 private:
 
     /// \brief Prints information regarding the option nnamed \a label
@@ -100,6 +101,8 @@ private:
     bool exists(const std::string & label) const;
     
 private:
+    friend class internal::gsXml<gsOptionList>;
+    
     // Format: std::pair<Value,Description>
     typedef std::pair<std::string,std::string> StringOpt;
     typedef std::pair<int        ,std::string> IntOpt;
@@ -131,7 +134,7 @@ namespace internal
     \ingroup IO
 */
 template<>
-class gsXml< gsOptionList >
+class gsXml<gsOptionList>
 {
 private:
     gsXml() { }
@@ -144,52 +147,54 @@ public:
 
     static void get_into(gsXmlNode * node, gsOptionList & result)
     {
-        // read in data
-    	//std::string id = node->first_attribute("id");
-
     	// get all child-nodes
     	gsXmlNode * tmp = node->first_node();
-    	while ( tmp ) {
+    	while ( tmp )
+        {
     		const char* name = tmp->name();
-    		//std::cout << "\nFound child node with name='" << name << "'\n";
+    		//gsDebug << "\nFound child node with name='" << name << "'\n";
 
     		const std::string label = tmp->first_attribute("label")->value();
     		const std::string desc = tmp->first_attribute("desc")->value();
     		const std::string val = tmp->first_attribute("value")->value();
 
-    		if (strcmp("int", name) == 0) {
+    		if (strcmp("int", name) == 0)
+            {
     			std::istringstream str;
     			str.str( val );
     			int myVal;
     			gsGetInt(str, myVal);
     			result.addInt(label, desc, myVal);
-    			//std::cout << "\nresult.addInt(label'" << label << "',desc='";
-    			//std::cout<< desc << "','val='" << myVal << "')\n";
-    			//std::cout << "result.getInt(label='" << label << "')='";
-    			//std::cout<< result.getInt(label) << "'\n";
+    			//gsDebug << "\nresult.addInt(label'" << label << "',desc='";
+    			//gsDebug<< desc << "','val='" << myVal << "')\n";
+    			//gsDebug << "result.getInt(label='" << label << "')='";
+    			//gsDebug<< result.getInt(label) << "'\n";
     		}
-    		else if (strcmp("real", name) == 0) {
+    		else if (strcmp("real", name) == 0)
+            {
     			std::istringstream str;
     			str.str( val );
     			real_t myVal;
     			gsGetReal(str, myVal);
     			result.addReal(label, desc, myVal);
-    			//std::cout << "\nresult.addReal(label'" << label << "',desc='";
-    			//std::cout << desc << "','val='" << myVal << "')\n";
+    			//gsDebug << "\nresult.addReal(label'" << label << "',desc='";
+    			//gsDebug << desc << "','val='" << myVal << "')\n";
     		}
-    		else if (strcmp("bool", name) == 0) {
+    		else if (strcmp("bool", name) == 0)
+            {
     			std::istringstream str;
     			str.str( val );
     			int myVal;
     			gsGetInt(str, myVal);
     			bool myBoolVal = (myVal != 0);
     			result.addSwitch(label, desc, myBoolVal);
-    			//std::cout << "\nresult.addSwitch(label'" << label << "',desc='";
-    			//std::cout << desc << "','val='" << myBoolVal << "')\n";
+    			//gsDebug << "\nresult.addSwitch(label'" << label << "',desc='";
+    			//gsDebug << desc << "','val='" << myBoolVal << "')\n";
     		}
-    		else {
-    			//std::cout << "\nresult.addString(label'" << label << "',desc='";
-    			//std::cout << desc << "','val='" << val << "')\n";
+    		else
+            {
+    			//gsDebug << "\nresult.addString(label'" << label << "',desc='";
+    			//gsDebug << desc << "','val='" << val << "')\n";
     			result.addString(label, desc, val);
     		}
     		tmp =  tmp->next_sibling();
@@ -201,22 +206,25 @@ public:
     	// Append data
         gsXmlNode * optionList = internal::makeNode("OptionList", data);
 
+        // /*
         // iterate over all strings
-        std::list<gsOptionList::OptionListEntry> entries = obj.getAllEntries();
-        std::list<gsOptionList::OptionListEntry>::const_iterator it;
+        std::vector<gsOptionList::OptionListEntry> entries = obj.getAllEntries();
+        std::vector<gsOptionList::OptionListEntry>::const_iterator it;
         for (it = entries.begin(); it != entries.end(); it++)
         {
-        	gsOptionList::OptionListEntry entry = *it;
+        	const gsOptionList::OptionListEntry & entry = *it;
         	gsXmlNode * node_str = internal::makeNode(entry.type, data);
         	gsXmlAttribute * attr_label = internal::makeAttribute("label", entry.label, data);
         	gsXmlAttribute * attr_desc = internal::makeAttribute("desc", entry.desc, data);
+            // next line; BOOL--> writes nan
         	gsXmlAttribute * attr_val = internal::makeAttribute("value", entry.val, data);
         	node_str->insert_attribute(0, attr_label);
         	node_str->insert_attribute(0, attr_desc);
         	node_str->insert_attribute(0, attr_val);
         	optionList->insert_node(0, node_str);
         }
-
+        // */
+        
         return optionList;
     }
 };

@@ -107,6 +107,8 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
     GISMO_ASSERT(1==m_bases.size(), "Expecting a single discrete space "
                                     "for standard scalar Galerkin");
 
+    gsDebugVar(m_options);
+    
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper mapper;
     m_bases.front().getMapper(

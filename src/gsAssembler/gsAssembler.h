@@ -98,7 +98,7 @@ public:
                     //note: merge with initialize(.., const gsMultiBasis<T> ,..) ?
                     const gsOptionList & opt = defaultOptions() )
     {
-        typename gsPde<T>::Ptr _pde = shared_not_owned(const_cast<gsPde<T>*>(&pde));
+        typename gsPde<T>::Ptr _pde = shared_not_owned(&pde);
         initialize(_pde,bases,opt);
     }
 
@@ -122,7 +122,7 @@ public:
                     const gsMultiBasis<T>    & bases,
                     const gsOptionList & opt = defaultOptions() )
     {
-        typename gsPde<T>::Ptr _pde = shared_not_owned(const_cast<gsPde<T>*>(&pde));
+        typename gsPde<T>::Ptr _pde = shared_not_owned(&pde);
         initialize(_pde,bases,opt);
     }
 
@@ -147,7 +147,7 @@ public:
     {
         GISMO_ASSERT(pde.domain().nPatches() ==1,
                      "You cannot initialize a multipatch domain with bases on a single patch");
-        m_pde_ptr = shared_not_owned(const_cast<gsPde<T>*>(&pde));
+        m_pde_ptr = shared_not_owned(&pde);
 
         m_bases.clear();
         m_bases.reserve(basis.size());

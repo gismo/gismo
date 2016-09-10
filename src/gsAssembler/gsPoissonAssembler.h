@@ -93,8 +93,6 @@ public:
                         dirichlet::strategy           dirStrategy = dirichlet::elimination,
                         iFace::strategy               intStrategy = iFace::glue)
     {
-        gsDebugVar(m_options);
-        m_options = this->defaultOptions();
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
