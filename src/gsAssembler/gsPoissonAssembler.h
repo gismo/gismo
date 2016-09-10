@@ -40,7 +40,7 @@ public:
 
 public:
 
-    gsPoissonAssembler()
+    gsPoissonAssembler() : Base()
     { }
 
     /** @brief Main Constructor of the assembler object.
@@ -51,6 +51,7 @@ public:
     */
     gsPoissonAssembler( const gsPoissonPde<T>          & pde,
                         const gsMultiBasis<T>          & bases)
+    : Base()
     {
         Base::initialize(pde, bases, m_options);
     }
@@ -67,6 +68,7 @@ public:
                         const gsMultiBasis<T>          & bases,
                         dirichlet::strategy           dirStrategy,
                         iFace::strategy               intStrategy = iFace::glue)
+    : Base()
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
@@ -92,6 +94,7 @@ public:
                         const gsFunction<T>           & rhs,
                         dirichlet::strategy           dirStrategy = dirichlet::elimination,
                         iFace::strategy               intStrategy = iFace::glue)
+    : Base()
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
