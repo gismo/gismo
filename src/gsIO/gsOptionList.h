@@ -32,7 +32,7 @@ namespace gismo
 class GISMO_EXPORT gsOptionList
 {
 public:
-
+    
     /// \brief Reads value for option \a label from options. If \a
     /// label is not found, the function throws
     std::string getString(const std::string & label) const;
@@ -91,7 +91,18 @@ public:
     
     std::vector<OptionListEntry> getAllEntries() const;
     //*/
-    
+
+    gsOptionList& operator=(const gsOptionList& other)
+    {
+        if (this != &other)
+        {
+            m_strings  = other.m_strings;
+            m_ints     = other.m_ints;
+            m_reals    = other.m_reals;
+            m_switches = other.m_switches;            
+        }
+    }
+
 private:
 
     /// \brief Prints information regarding the option nnamed \a label
