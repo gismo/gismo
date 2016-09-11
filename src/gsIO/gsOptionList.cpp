@@ -288,21 +288,21 @@ std::vector<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 
 #define OL_PRINT_INFO(it,type)                                          \
     os<<"* "<<std::setw(17)<<std::left<<it->first <<std::setw(12)<<std::right<<" ("#type") = " \
-    <<std::setw(7)<<std::left<<it->second.first<<" "<<it->second.second<<"\n";
+    <<std::setw(7)<<std::left<<it->second.first<<" "<<it->second.second<<"\n"
 //<<std::boolalpha
 
 std::ostream & gsOptionList::print(std::ostream & os) const
 {
     os<<"Options ("<<size()<<"):\n";
     for (StringTable::const_iterator it1 = m_strings.begin();it1!=m_strings.end();++it1)
-        OL_PRINT_INFO(it1,string)
-            for (IntTable::const_iterator it2 = m_ints.begin();it2!=m_ints.end();++it2)
-                OL_PRINT_INFO(it2,int)
-                    for (RealTable::const_iterator it3 = m_reals.begin();it3!=m_reals.end();++it3)
-                        OL_PRINT_INFO(it3,real)
-                            for (SwitchTable::const_iterator it4 = m_switches.begin();it4!=m_switches.end();++it4)
-                                OL_PRINT_INFO(it4,switch)
-                                    return os;
+        OL_PRINT_INFO(it1,string);
+    for (IntTable::const_iterator it2 = m_ints.begin();it2!=m_ints.end();++it2)
+        OL_PRINT_INFO(it2,int);
+    for (RealTable::const_iterator it3 = m_reals.begin();it3!=m_reals.end();++it3)
+        OL_PRINT_INFO(it3,real);
+    for (SwitchTable::const_iterator it4 = m_switches.begin();it4!=m_switches.end();++it4)
+        OL_PRINT_INFO(it4,switch);
+    return os;
 }
 
 void gsOptionList::printInfo(const std::string& label) const
@@ -311,26 +311,26 @@ void gsOptionList::printInfo(const std::string& label) const
     StringTable::const_iterator it1 = m_strings.find(label);
     if ( it1 != m_strings.end() )
     {
-        OL_PRINT_INFO(it1,string)
-            return;
+        OL_PRINT_INFO(it1,string);
+        return;
     }
     IntTable::const_iterator it2 = m_ints.find(label);
     if ( it2 != m_ints.end() )
     {
-        OL_PRINT_INFO(it2,int)
-            return;
+        OL_PRINT_INFO(it2,int);
+        return;
     }
     RealTable::const_iterator it3 = m_reals.find(label);
     if ( it3 != m_reals.end() )
     {
-        OL_PRINT_INFO(it3,real)
-            return;
+        OL_PRINT_INFO(it3,real);
+        return;
     }
     SwitchTable::const_iterator it4 = m_switches.find(label);
     if ( it4 != m_switches.end() )
     {
-        OL_PRINT_INFO(it4,switch)
-            os<<"* "<<it4->second.second<<" (switch) \n  "<<it4->first <<" = "<<(it4->second.first ? "ON" : "OFF")<<"\n";
+        OL_PRINT_INFO(it4,switch);
+        os<<"* "<<it4->second.second<<" (switch) \n  "<<it4->first <<" = "<<(it4->second.first ? "ON" : "OFF")<<"\n";
         return;
     }
     gsInfo <<"Problem: "<< label <<" does not exist.\n";
