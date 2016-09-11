@@ -156,6 +156,10 @@ int main(int argc, char *argv[])
   for (int i = 0; i < initUnifRef; ++i)
       bases.uniformRefine();
 
+  gsMultiPatch<> mpsol; // holds computed solution
+  gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f);// constructs matrix and rhs
+  pa.options().setInt("DirichletValues", dirichlet::l2Projection);
+
   if (dump)
       gsWrite(bases[0], "adapt_basis_0.xml");
 
@@ -164,13 +168,7 @@ int main(int argc, char *argv[])
   {
       gsInfo << "\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << "\n" << "\n";
 
-      gsInfo <<"Basis: "<< bases[0] <<"\n";
-
-      // Create solver... maybe not the smartest thing to set up a new solver
-      // in each iteration loop, but good enough for now.
-      gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f);
-      pa.options().setInt("DirichletValues", dirichlet::l2Projection);
-      gsInfo << pa.options() <<"\n";
+      gsInfo <<"Basis: "<< pa.multiBasis() <<"\n";
       
       // Assemble matrix and rhs
       gsInfo << "Assembling... " << std::flush;
@@ -183,9 +181,8 @@ int main(int argc, char *argv[])
       gsInfo << "done." << "\n";
       
       // Construct the solution for plotting the mesh later
-      gsMultiPatch<> mpsol;
       pa.constructSolution(solVector, mpsol);
-      gsField<> sol( pa.patches(), mpsol);
+      gsField<> sol(pa.patches(), mpsol);
 
       // Set up and compute the L2-error to the known exact solution...
       gsNormL2<real_t> norm(sol,g);
@@ -211,8 +208,11 @@ int main(int argc, char *argv[])
       gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true);
 
       // Refine the elements of the mesh, based on elMarked.
-      gsRefineMarkedElements( bases, elMarked);
+      gsRefineMarkedElements( pa.multiBasis(), elMarked);
 
+      // Refresh the assembler, since basis is now changed
+      pa.refresh();
+      
       if (dump)
       {
           std::stringstream ss;
