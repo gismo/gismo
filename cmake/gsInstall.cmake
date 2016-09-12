@@ -115,9 +115,9 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
 #        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # For gsConfig.h
-install(DIRECTORY ${GISMO_DATA_DIR} DESTINATION gismodata)
+install(DIRECTORY ${GISMO_DATA_DIR} DESTINATION share/gismodata)
 # todo: search environment variable as well
-set(GISMO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/gismodata/)
+set(GISMO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/share/gismodata/)
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h" )
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
