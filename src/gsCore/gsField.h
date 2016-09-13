@@ -291,12 +291,8 @@ public:
     */
     const gsMatrix<T> & coefficientVector(int i=0) const
     {
-        gsGeometry<T> * geo = dynamic_cast<gsGeometry<T> *>( m_fields->piece(i) );
-
-        GISMO_ASSERT( geo != NULL, "Coefficients do not exist.");
-        GISMO_ASSERT( i < static_cast<int>( m_patches->nPatches() ) , 
-                      "Index of patch exceeds number of patches.");
-        return geo->coefs();
+        const gsGeometry<T> & geo = igaFunction(i);
+        return geo.coefs();
     }
 
 // Data members
