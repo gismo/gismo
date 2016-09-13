@@ -57,7 +57,10 @@ public:
                     const gsMultiBasis<T>          & bases)
     {
         // enrich options in constructor, refresh to apply options
-        m_options.addSwitch("SUPG","SUPG stabilization", false);
+
+        // set to 1 for SUPG:
+        m_options.addInt("Stabilization","no stabilization", 0);
+        m_options.setInt("Stabilization", 0);
         Base::initialize(pde, bases, m_options);
     }
 
@@ -70,7 +73,10 @@ public:
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
-        m_options.addSwitch("SUPG","SUPG stabilization", flagStabilization);
+
+        // set to 1 for SUPG:
+        m_options.addInt("Stabilization","no stabilization", 0);
+        m_options.setInt("Stabilization", 0);
         
         Base::initialize(pde, bases, m_options);
     }
@@ -102,7 +108,10 @@ public:
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
-        m_options.addSwitch("SUPG","SUPG stabilization", flagStabilization);
+
+        // set to 1 for SUPG:
+        m_options.addInt("Stabilization","no stabilization", 0);
+        m_options.setInt("Stabilization", 0);
 
         typename gsPde<T>::Ptr pde( new gsConvDiffRePde<T>
                                     (patches, bconditions, &coeff_A, &coeff_b, &coeff_c, &rhs));

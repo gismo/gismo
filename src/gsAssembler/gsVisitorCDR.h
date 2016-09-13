@@ -66,6 +66,8 @@ public:
         coeff_b_ptr = cdr->convection();
         coeff_c_ptr = cdr->reaction  ();
         rhs_ptr     = cdr->rhs       ();
+
+        flagStabType = 0;
         
         GISMO_ASSERT( rhs_ptr->targetDim() == 1 ,
                       "Not yet tested for multiple right-hand-sides");
@@ -94,7 +96,8 @@ public:
         // Setup Quadrature
         rule = gsGaussRule<T>(basis, options);// harmless slicing occurs here
 
-        flagStabType = static_cast<unsigned>(options.askSwitch("SUPG", false));
+        //flagStabType = static_cast<unsigned>(options.askSwitch("SUPG", false));
+        flagStabType = static_cast<unsigned>(options.askInt("Stabilization", 0));
     
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
@@ -188,7 +191,7 @@ public:
             localMat.noalias() += weight * coeff_c_vals(0,k) * (basisVals.col(k) * basisVals.col(k).transpose());
 
 
-            if( flagStabType == 1 )
+            if( flagStabType == 1 ) // 1: SUPG
             {
 
                 // auxiliary variable, number of second derivatives
@@ -246,7 +249,7 @@ public:
             }
         }
 
-        if( flagStabType == 1 )
+        if( flagStabType == 1 ) // 1: SUPG
         {
             // Calling getSUPGParameter re-evaluates the gsGeometryEvaluator.
             // Thus, it has to be called AFTER geoEval has been used.
