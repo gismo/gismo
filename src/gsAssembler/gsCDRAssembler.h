@@ -58,9 +58,9 @@ public:
     {
         // enrich options in constructor, refresh to apply options
 
-        // set to 1 for SUPG:
-        m_options.addInt("Stabilization","no stabilization", 0);
-        m_options.setInt("Stabilization", 0);
+        // 0: no stabilization
+        // 1: SUPG
+        m_options.addInt("Stabilization","Choice of stabilization method", 0);
         Base::initialize(pde, bases, m_options);
     }
 
@@ -74,9 +74,9 @@ public:
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
-        // set to 1 for SUPG:
-        m_options.addInt("Stabilization","no stabilization", 0);
-        m_options.setInt("Stabilization", 0);
+        // 0: no stabilization
+        // 1: SUPG
+        m_options.addInt("Stabilization","Choice of stabilization method", 0);
         
         Base::initialize(pde, bases, m_options);
     }
@@ -109,9 +109,9 @@ public:
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
-        // set to 1 for SUPG:
-        m_options.addInt("Stabilization","no stabilization", 0);
-        m_options.setInt("Stabilization", 0);
+        // 0: no stabilization
+        // 1: SUPG
+        m_options.addInt("Stabilization","Choice of stabilization method", 0);
 
         typename gsPde<T>::Ptr pde( new gsConvDiffRePde<T>
                                     (patches, bconditions, &coeff_A, &coeff_b, &coeff_c, &rhs));
