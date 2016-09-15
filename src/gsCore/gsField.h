@@ -129,8 +129,8 @@ public:
     // Return the value of the Field at physical value u 
     // TO DO: rename to evalPhys()
     typename gsMatrix<T>::uPtr pvalue(const gsMatrix<T>& u, int i)  const
-    { 
-        assert( !parametrized );
+    {
+        GISMO_ASSERT(!parametrized, "Cannot compute physical value");
         return ( m_fields->piece(i).eval(u) ); 
     }
 
@@ -291,8 +291,7 @@ public:
     */
     const gsMatrix<T> & coefficientVector(int i=0) const
     {
-        const gsGeometry<T> & geo = igaFunction(i);
-        return geo.coefs();
+        return igaFunction(i).coefs();
     }
 
 // Data members

@@ -14,3 +14,9 @@
 inline const internal::adjugate_impl<Derived> adjugate() const;
 
 inline void adjugateInPlace();
+    
+typedef BlockDiag<Derived,Dynamic> BlockDiagReturnType;
+inline const BlockDiagReturnType blockDiag(Index rowFactor) const;
+
+typedef BlockTranspose<Derived,Dynamic> BlockTransposeReturnType;
+inline const BlockTransposeReturnType blockTranspose(Index rowFactor) const;

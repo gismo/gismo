@@ -122,8 +122,16 @@ public:
     virtual gsFunctionSet * clone() const //= 0;
     {GISMO_NO_IMPLEMENTATION}
 
-    /// @brief Returns the piece of the function at subdomain \a k
+    /// @brief Returns the piece(s) of the function(s) at subdomain \a k
     virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
+
+    /// @brief Helper which casts and returns the k-th piece of this
+    /// function set as a gsFunction
+    const gsFunction<T> & function(const index_t k) const;
+
+    /// @brief Helper which casts and returns the k-th piece of this
+    /// function set as a gsBasis
+    const gsBasis<T> & basis(const index_t k) const;
 
 public:
 

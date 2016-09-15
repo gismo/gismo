@@ -14,6 +14,9 @@
 namespace Eigen 
 {
 
+template<typename MatrixType,int RowFactor> class BlockDiag;
+template<typename MatrixType,int RowFactor> class BlockTranspose;
+
 namespace internal 
 {
 template<typename MatrixType> struct adjugate_impl;

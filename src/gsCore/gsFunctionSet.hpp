@@ -12,6 +12,8 @@
 **/
 
 #include <gsCore/gsFuncData.h>
+#include <gsCore/gsFunction.h>
+#include <gsCore/gsBasis.h>
 
 namespace gismo {
 
@@ -34,9 +36,23 @@ gsFunctionSet<T>::~gsFunctionSet ()
 
 }
 
+template <class T>
+const gsFunction<T>& gsFunctionSet<T>::function(const index_t k) const
+{
+    GISMO_ASSERT(dynamic_cast<const gsFunction<T>*>(&piece(k)),
+                 "No function found, instead: "<< piece(k));
+    return static_cast<const gsFunction<T>&>(piece(k)); 
+}
+
+template <class T>
+const gsBasis<T>& gsFunctionSet<T>::basis(const index_t k) const
+{
+    GISMO_ASSERT(dynamic_cast<const gsBasis<T>*>(&piece(k)),
+                 "No basis found, instead: "<< piece(k));
+    return static_cast<const gsBasis<T>&>(piece(k)); 
+}
 
 // support (domain of definition)
-
 template <class T>
 gsMatrix<T> gsFunctionSet<T>::support() const
 { 
@@ -168,9 +184,16 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
     //     convertValue<T>::derivToDiv(out.values[1], out.divs, info());
     // if ( flags & NEED_CURL )
     //     convertValue<T>::derivToCurl(out.values[1], out.curls, info());
-    // if (flags & NEED_LAPLACIAN)
-    //     convertValue<T>::deriv2ToLaplacian(out.values[2], out.laplacians, info());
-
+    if (flags & NEED_LAPLACIAN)
+    {
+        const index_t domDim = info().domainDim;
+        const index_t dsz    = ((domDim+1)*domDim)/2;
+        const index_t numact = out.values[2].rows() / dsz;
+        out.laplacians.resize(numact, in.cols());
+            for (index_t i=0; i!= numact; ++i)
+                out.laplacians.row(i) =
+                    out.values[2].middleRows(dsz*i,domDim).colwise().sum();
+    }
 }
 
 // Always returns quantities on mapped (physical) domain coordinates

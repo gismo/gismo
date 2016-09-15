@@ -1,3 +1,4 @@
+
 /** @file gsEigenAddons.h
 
     @brief Extends functionality of the Eigen library
@@ -167,6 +168,243 @@ template<typename Derived>
 inline void MatrixBase<Derived>::adjugateInPlace()
 {
     derived() = adjugate().eval();
+}
+
+
+/**
+  * \class BlockDiag
+  *
+  * \brief Expression for block diagonal replication of a matrix or vector
+  *
+  * \param MatrixType the type of the object we are replicating
+  *
+  */
+namespace internal {
+template<typename MatrixType,int NumBlocks>
+struct traits<BlockDiag<MatrixType,NumBlocks> >
+ : traits<MatrixType>
+{
+  typedef typename MatrixType::Scalar Scalar;
+  typedef typename traits<MatrixType>::StorageKind StorageKind;
+  typedef typename traits<MatrixType>::XprKind XprKind;
+  enum {
+    Factor = (NumBlocks==Dynamic) ? Dynamic : NumBlocks*NumBlocks
+  };
+  typedef typename nested<MatrixType,Factor>::type MatrixTypeNested;
+  typedef typename remove_reference<MatrixTypeNested>::type _MatrixTypeNested;
+  enum {
+    RowsAtCompileTime = NumBlocks==Dynamic || int(MatrixType::RowsAtCompileTime)==Dynamic
+                      ? Dynamic
+                      : NumBlocks * MatrixType::RowsAtCompileTime,
+    ColsAtCompileTime = NumBlocks==Dynamic || int(MatrixType::ColsAtCompileTime)==Dynamic
+                      ? Dynamic
+                      : NumBlocks * MatrixType::ColsAtCompileTime,
+   //FIXME we don't propagate the max sizes !!!
+    MaxRowsAtCompileTime = RowsAtCompileTime,
+    MaxColsAtCompileTime = ColsAtCompileTime,
+    IsRowMajor = MaxRowsAtCompileTime==1 && MaxColsAtCompileTime!=1 ? 1
+               : MaxColsAtCompileTime==1 && MaxRowsAtCompileTime!=1 ? 0
+               : (MatrixType::Flags & RowMajorBit) ? 1 : 0,
+    Flags = (_MatrixTypeNested::Flags & HereditaryBits & ~RowMajorBit) | (IsRowMajor ? RowMajorBit : 0),
+    CoeffReadCost = _MatrixTypeNested::CoeffReadCost
+  };
+};
+}
+
+template<typename MatrixType,int NumBlocks> class BlockDiag
+  : public internal::dense_xpr_base< BlockDiag<MatrixType,NumBlocks> >::type
+{
+    typedef typename internal::traits<BlockDiag>::MatrixTypeNested MatrixTypeNested;
+    typedef typename internal::traits<BlockDiag>::_MatrixTypeNested _MatrixTypeNested;
+  public:
+
+    typedef typename internal::dense_xpr_base<BlockDiag>::type Base;
+    EIGEN_DENSE_PUBLIC_INTERFACE(BlockDiag)
+
+    template<typename OriginalMatrixType>
+    inline explicit BlockDiag(const OriginalMatrixType& a_matrix)
+      : m_matrix(a_matrix), m_numBlocks(NumBlocks)
+    {
+      EIGEN_STATIC_ASSERT((internal::is_same<typename internal::remove_const<MatrixType>::type,OriginalMatrixType>::value),
+                          THE_MATRIX_OR_EXPRESSION_THAT_YOU_PASSED_DOES_NOT_HAVE_THE_EXPECTED_TYPE)
+      eigen_assert(NumBlocks!=Dynamic);
+    }
+
+    template<typename OriginalMatrixType>
+    inline BlockDiag(const OriginalMatrixType& a_matrix, Index numBlocks)
+      : m_matrix(a_matrix), m_numBlocks(numBlocks)
+    {
+      EIGEN_STATIC_ASSERT((internal::is_same<typename internal::remove_const<MatrixType>::type,OriginalMatrixType>::value),
+                          THE_MATRIX_OR_EXPRESSION_THAT_YOU_PASSED_DOES_NOT_HAVE_THE_EXPECTED_TYPE)
+    }
+
+    inline Index rows() const { return m_matrix.rows() * m_numBlocks.value(); }
+    inline Index cols() const { return m_matrix.cols() * m_numBlocks.value(); }
+
+    inline Scalar coeff(Index rowId, Index colId) const
+    {
+      if ( rowId / m_matrix.rows() !=  colId / m_matrix.cols() )
+        return Scalar(0);
+      // try to avoid using modulo; this is a pure optimization strategy
+      const Index actual_row  = internal::traits<MatrixType>::RowsAtCompileTime==1 ? 0
+                            : NumBlocks==1 ? rowId
+                            : rowId%m_matrix.rows();
+      const Index actual_col  = internal::traits<MatrixType>::ColsAtCompileTime==1 ? 0
+                            : NumBlocks==1 ? colId
+                            : colId%m_matrix.cols();
+
+      return m_matrix.coeff(actual_row, actual_col);
+    }
+    template<int LoadMode>
+    inline PacketScalar packet(Index rowId, Index colId) const
+    {
+     
+      if ( rowId / m_matrix.rows() !=  colId / m_matrix.cols() )
+          GISMO_ERROR("not implemented");
+          
+      const Index actual_row  = internal::traits<MatrixType>::RowsAtCompileTime==1 ? 0
+                            : NumBlocks==1 ? rowId
+                            : rowId%m_matrix.rows();
+      const Index actual_col  = internal::traits<MatrixType>::ColsAtCompileTime==1 ? 0
+                            : NumBlocks==1 ? colId
+                            : colId%m_matrix.cols();
+
+      return m_matrix.template packet<LoadMode>(actual_row, actual_col);
+    }
+
+    const _MatrixTypeNested& nestedExpression() const
+    { 
+      return m_matrix; 
+    }
+
+  protected:
+    MatrixTypeNested m_matrix;
+    const internal::variable_if_dynamic<Index, NumBlocks> m_numBlocks;
+};
+
+/**
+  * \return an expression of the replication of \c *this
+  *
+  * Example: \include MatrixBase_blockDiag_int_int.cpp
+  * Output: \verbinclude MatrixBase_blockDiag_int_int.out
+  *
+  * \sa VectorwiseOp::blockDiag(), DenseBase::blockDiag<int,int>(), class BlockDiag
+  */
+template<typename Derived>
+const typename MatrixBase<Derived>::BlockDiagReturnType
+MatrixBase<Derived>::blockDiag(Index numBlocks) const
+{
+  return BlockDiag<Derived,Dynamic>(derived(),numBlocks);
+}
+
+
+
+
+/**
+  * \class BlockTranspose
+  *
+  * \brief Expression of block-wise transposition of a tiled matrix
+  *
+  * \param MatrixType the type of the object we are replicating
+  *
+  */
+namespace internal {
+template<typename MatrixType,int NumBlocks>
+struct traits<BlockTranspose<MatrixType,NumBlocks> >
+ : traits<MatrixType>
+{
+  typedef typename MatrixType::Scalar Scalar;
+  typedef typename traits<MatrixType>::StorageKind StorageKind;
+  typedef typename traits<MatrixType>::XprKind XprKind;
+  enum {
+    Factor = (NumBlocks==Dynamic) ? Dynamic : NumBlocks*NumBlocks
+  };
+  typedef typename nested<MatrixType,Factor>::type MatrixTypeNested;
+  typedef typename remove_reference<MatrixTypeNested>::type _MatrixTypeNested;
+  enum {
+    RowsAtCompileTime = NumBlocks==Dynamic || int(MatrixType::RowsAtCompileTime)==Dynamic
+                      ? Dynamic
+                      : MatrixType::ColsAtCompileTime / NumBlocks,
+    ColsAtCompileTime = NumBlocks==Dynamic || int(MatrixType::ColsAtCompileTime)==Dynamic
+                      ? Dynamic
+                      : NumBlocks * MatrixType::RowsAtCompileTime,
+   //FIXME we don't propagate the max sizes !!!
+    MaxRowsAtCompileTime = RowsAtCompileTime,
+    MaxColsAtCompileTime = ColsAtCompileTime,
+    IsRowMajor = MaxRowsAtCompileTime==1 && MaxColsAtCompileTime!=1 ? 1
+               : MaxColsAtCompileTime==1 && MaxRowsAtCompileTime!=1 ? 0
+               : (MatrixType::Flags & RowMajorBit) ? 1 : 0,
+    Flags = (_MatrixTypeNested::Flags & HereditaryBits & ~RowMajorBit) | (IsRowMajor ? RowMajorBit : 0),
+    CoeffReadCost = _MatrixTypeNested::CoeffReadCost
+  };
+};
+}
+
+template<typename MatrixType,int NumBlocks> class BlockTranspose
+  : public internal::dense_xpr_base< BlockTranspose<MatrixType,NumBlocks> >::type
+{
+    typedef typename internal::traits<BlockTranspose>::MatrixTypeNested MatrixTypeNested;
+    typedef typename internal::traits<BlockTranspose>::_MatrixTypeNested _MatrixTypeNested;
+  public:
+
+    typedef typename internal::dense_xpr_base<BlockTranspose>::type Base;
+    EIGEN_DENSE_PUBLIC_INTERFACE(BlockTranspose)
+
+    template<typename OriginalMatrixType>
+    inline explicit BlockTranspose(const OriginalMatrixType& a_matrix)
+      : m_matrix(a_matrix), m_numBlocks(NumBlocks)
+    {
+      EIGEN_STATIC_ASSERT((internal::is_same<typename internal::remove_const<MatrixType>::type,OriginalMatrixType>::value),
+                          THE_MATRIX_OR_EXPRESSION_THAT_YOU_PASSED_DOES_NOT_HAVE_THE_EXPECTED_TYPE)
+      eigen_assert(NumBlocks!=Dynamic);
+    }
+
+    template<typename OriginalMatrixType>
+    inline BlockTranspose(const OriginalMatrixType& a_matrix, Index numBlocks)
+      : m_matrix(a_matrix), m_numBlocks(numBlocks)
+    {
+      EIGEN_STATIC_ASSERT((internal::is_same<typename internal::remove_const<MatrixType>::type,OriginalMatrixType>::value),
+                          THE_MATRIX_OR_EXPRESSION_THAT_YOU_PASSED_DOES_NOT_HAVE_THE_EXPECTED_TYPE)
+    }
+
+    inline Index rows() const { return m_matrix.cols() / m_numBlocks.value(); }
+    inline Index cols() const { return m_matrix.rows() * m_numBlocks.value(); }
+
+    inline Scalar coeff(Index rowId, Index colId) const
+    {
+        const Index b = colId / m_numBlocks.value();     // block position
+        const Index r = colId % m_numBlocks.value();     // actual row
+        const Index c = b * m_numBlocks.value() + rowId; // actual col
+        return m_matrix.coeff(r, c);
+    }
+    template<int LoadMode>
+    inline PacketScalar packet(Index rowId, Index colId) const
+    {
+        const Index b = colId / m_numBlocks.value();     // block position
+        const Index r = colId % m_numBlocks.value();     // actual row
+        const Index c = b * m_numBlocks.value() + rowId; // actual col
+        return m_matrix.template packet<LoadMode>(r, c);
+    }
+
+    const _MatrixTypeNested& nestedExpression() const
+    { 
+      return m_matrix; 
+    }
+
+  protected:
+    MatrixTypeNested m_matrix;
+    const internal::variable_if_dynamic<Index, NumBlocks> m_numBlocks;
+};
+
+/**
+  * \return an expression of block-wise transposed tiled matrix
+  *
+  */
+template<typename Derived>
+const typename MatrixBase<Derived>::BlockTransposeReturnType
+MatrixBase<Derived>::blockTranspose(Index numBlocks) const
+{
+  return BlockTranspose<Derived,Dynamic>(derived(),numBlocks);
 }
 
 
