@@ -103,7 +103,22 @@ public:
 
     inline const Scalar     & getValue()    const { return value; }
 
-    inline const Gradient_t & getGradient() const { return grad; }
+    inline const Gradient_t & getGradient() const 
+    { 
+        GISMO_ASSERT(0!=grad.size(), "Gradient is empty (use gradient_into), value= "<< value);
+        return grad; 
+    }
+
+    template <typename Derived>
+    inline void gradient_into(const Eigen::DenseBase<Derived> & res) const
+    {
+        if ( 0==grad.size() )
+            grad.resize( res.rows() );
+
+        // Note: Eigen hack to write on expression
+        const_cast<Eigen::DenseBase<Derived>&>(res) = grad;
+    }
+
 
     inline size_t             numVars()     const { return grad.size(); }
 
@@ -541,11 +556,35 @@ public:
 
     inline const Gradient_t & getGradient() const
     {
-        //assert(0!=grad.size() && "Gradient is empty");
+        GISMO_ASSERT(0!=grad.size(), "Gradient is empty (use gradient_into), value= "<< value);
         return grad;
     }
 
-    inline const Hessian_t  & getHessian()  const { return hess; }
+    template <typename Derived>
+    inline void gradient_into(const Eigen::DenseBase<Derived> & res) const
+    {
+        if ( 0==grad.size() )
+            grad.resize( res.rows() );
+
+        // Note: Eigen hack to write on expression
+        const_cast<Eigen::DenseBase<Derived>&>(res) = grad;
+    }
+
+    inline const Hessian_t  & getHessian()  const 
+    { 
+        GISMO_ASSERT(0!=grad.size(), "Hessian is empty (use hessian_into), value= "<< value);
+        return hess; 
+    }
+
+    template <typename Derived>
+    inline void hessian_into(const Eigen::DenseBase<Derived> & res) const
+    {
+        if ( 0==hess.size() )
+            hess.resize( res.rows(), res.cols() );
+
+        // Note: Eigen hack to write on expression
+        const_cast<Eigen::DenseBase<Derived>&>(res) = hess;
+    }
 
     inline size_t             numVars()     const { return grad.size(); }
 

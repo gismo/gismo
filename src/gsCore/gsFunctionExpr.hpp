@@ -548,7 +548,8 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
         for (index_t k = 0; k!=d; ++k)
             expr.vars[k].setVariable(k,d,u(k,p));
         for (int c = 0; c!= n; ++c) // for all components
-            result.block(c*d,p,d,1) = expr.expression[c].value().getGradient();
+            expr.expression[c].value().gradient_into(result.block(c*d,p,d,1));
+            //result.block(c*d,p,d,1) = expr.expression[c].value().getGradient(); //fails on constants
 #       else
         copy_n(u.col(p).data(), expr.dim, expr.vars);
         for (int c = 0; c!= n; ++c) // for all components
@@ -588,7 +589,7 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
             for (index_t v = 0; v!=d; ++v)
                 expr.vars[v].setVariable(v,d,u(v,p));
             const DScalar &            ads  = expr.expression[c].value();
-            const DScalar::Hessian_t & Hmat = ads.getHessian();
+            const DScalar::Hessian_t & Hmat = ads.getHessian(); // note: can fail
 
             for ( index_t k=0; k!=d; ++k)
             {
@@ -640,7 +641,7 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 #   ifdef GISMO_WITH_ADIFF
     for (index_t v = 0; v!=d; ++v)
         expr.vars[v].setVariable(v, d, u(v,0) );
-    *res = expr.expression[coord].value().getHessian();
+    expr.expression[coord].value().hessian_into(*res);
 #   else
     copy_n(u.data(), expr.dim, expr.vars);
     for( int j=0; j!=d; ++j )
@@ -684,8 +685,7 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
 #           ifdef GISMO_WITH_ADIFF
             for (index_t v = 0; v!=expr.dim; ++v)
                 expr.vars[v].setVariable(v, expr.dim, u(v,p) );
-            expr.expression[c].value().getHessian();
-            (*res)(c,p) = expr.expression[c].value().getHessian()(k,j);
+            (*res)(c,p) = expr.expression[c].value().getHessian()(k,j); //note: can fail
 #           else
             (*res)(c,p) =
                 mixed_derivative<T>( expr.expression[c], expr.vars[k], expr.vars[j], 0.00001 ) ;
