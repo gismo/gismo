@@ -120,6 +120,17 @@ int main(int argc, char *argv[])
     const real_t adaptRefParam = 0.7;
     //! [adaptRefSettings]
 
+
+    //! [constructAssembler]
+    // Construct assembler
+    gsCDRAssembler<real_t> cdrAss( cdrPde, bases);
+    // Set stabilization flag to 1 = SUPG
+    cdrAss.options().setInt("Stabilization", 1);
+    // Compute Dirichlet values by L2-projection
+    // Caution: Interpolation does not work for locally refined (T)HB-splines!
+    cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);
+    //! [constructAssembler]
+
     // --------------- adaptive refinement loop ---------------
 
     //! [beginRefLoop]
@@ -132,14 +143,6 @@ int main(int argc, char *argv[])
         // --------------- solving ---------------
 
         //! [solverPart]
-        // Construct assembler
-        gsCDRAssembler<real_t> cdrAss( cdrPde, bases);
-        // Set stabilization flag to 1 = SUPG
-        cdrAss.options().setInt("Stabilization", 1);
-        // Compute Dirichlet values by L2-projection
-        // Caution: Interpolation does not work for locally refined (T)HB-splines!
-        cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);
-
         // Generate system matrix and load vector
         cdrAss.assemble();
 
@@ -171,19 +174,22 @@ int main(int argc, char *argv[])
         // the refinement-criterion and -parameter.
         std::vector<bool> elMarked( eltErrs.size() );
         gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<"elements.\n";
+        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
         
         // Refine the marked elements with a 1-ring of cells around marked elements
-        gsRefineMarkedElements( bases, elMarked, 1 );
+        gsRefineMarkedElements( cdrAss.multiBasis(), elMarked, 1 );
         //! [adaptRefinementPart]
 
 
         //! [repairInterfaces]
         // Call repair interfaces to make sure that the new meshes
         // match along patch interfaces.
-        bases.repairInterfaces( patches.interfaces() );
+        cdrAss.multiBasis().repairInterfaces( patches.interfaces() );
         //! [repairInterfaces]
 
+        //! [refreshAssembler]
+        cdrAss.refresh();
+        //! [refreshAssembler]
 
         //! [Export to Paraview]
         // Export the final solution
