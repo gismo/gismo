@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 
     //The minimal residual implementation requires a preconditioner.
     //We initialize an identity preconditioner (does nothing).
-    gsIdentityOp preConMat(N);
+    gsIdentityOp<real_t> preConMat(N);
 
     //Tolerance
     real_t tol = std::pow(10.0, - REAL_DIG * 0.75);

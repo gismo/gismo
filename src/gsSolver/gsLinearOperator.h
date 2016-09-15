@@ -23,15 +23,16 @@ namespace gismo
 /// The derived classes have to contain the functions: apply(), cols(), and rows().
 ///
 /// \ingroup Solver
+template<class T>
 class gsLinearOperator
 {
 public:
 
     /// Shared pointer for gsLinearOperator
-    typedef memory::shared_ptr< gsLinearOperator > Ptr;
+    typedef typename memory::shared_ptr< gsLinearOperator > Ptr;
 
     /// Unique pointer for gsLinearOperator   
-    typedef memory::unique< gsLinearOperator >::ptr uPtr;
+    typedef typename memory::unique< gsLinearOperator >::ptr uPtr;
     
     virtual ~gsLinearOperator() {}
 
@@ -40,7 +41,7 @@ public:
      * @param input Input vector
      * @param x     result vector
      */
-    virtual void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const = 0;
+    virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const = 0;
 
     ///Returns the number of rows of the operator
     virtual index_t rows() const = 0;
@@ -49,34 +50,36 @@ public:
     virtual index_t cols() const = 0;
 
     // NOTE: this is rather inefficient and is only provided for debugging and testing purposes
-    void toMatrix(gsMatrix<real_t>& result)
+    void toMatrix(gsMatrix<T>& result)
     {
         GISMO_ASSERT(rows() == cols(), "gsLinearOperator::toMatrix is only implemented for square operators");
 
-        gsMatrix<real_t> eye = gsMatrix<real_t>::Identity(cols(), cols());
+        gsMatrix<T> eye = gsMatrix<T>::Identity(cols(), cols());
         this->apply(eye, result);
     }
 }; // gsLinearOperator
 
 /// @brief Allows an operator to be multiplied with a scalar
-class gsScaledOp : public gsLinearOperator
+template<class T>
+class gsScaledOp : public gsLinearOperator<T>
 {
 public:
-
+    typedef gsLinearOperator<T> Base;
+    
     /// Shared pointer for gsScaledOp
-    typedef memory::shared_ptr< gsScaledOp > Ptr;
+    typedef typename memory::shared_ptr< gsScaledOp > Ptr;
 
     /// Unique pointer for gsScaledOp
-    typedef memory::unique< gsScaledOp>::ptr uPtr;
+    typedef typename memory::unique< gsScaledOp>::ptr uPtr;
 
     /// Constructor taking a shared pointer to a linear operator and a scalar
-    gsScaledOp(const gsLinearOperator::Ptr & linOp, real_t scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
+    gsScaledOp(const typename Base::Ptr & linOp, T scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
 
     /// Make command returing a shared pointer
-    static Ptr make(const gsLinearOperator::Ptr & linOp, real_t scalar = 1) 
+    static Ptr make(const typename Base::Ptr & linOp, T scalar = 1) 
     { return memory::make_shared( new gsScaledOp(linOp, scalar) ); }
 
-    virtual void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         m_linOp->apply(input, x);
         x *= m_scalar;
@@ -89,21 +92,22 @@ public:
     index_t cols() const {return m_linOp->cols();}
 
 private:
-    const gsLinearOperator::Ptr m_linOp;
-    const real_t m_scalar;
+    const typename Base::Ptr m_linOp;
+    const T m_scalar;
 }; // gsScaladOp
 
 
 /// @brief Identity preconditioner ("do nothing"), must be square!
-class gsIdentityOp : public gsLinearOperator
+template<class T>
+class gsIdentityOp : public gsLinearOperator<T>
 {
 public:
 
     /// Shared pointer for gsIdentityOp
-    typedef memory::shared_ptr< gsIdentityOp > Ptr;
+    typedef typename memory::shared_ptr< gsIdentityOp > Ptr;
 
     /// Unique pointer for gsIdentityOp   
-    typedef memory::unique< gsIdentityOp >::ptr uPtr;
+    typedef typename memory::unique< gsIdentityOp >::ptr uPtr;
     
     /// Constructor taking the dimension of the identity operator
     gsIdentityOp(index_t dim) : m_dim(dim) {}
@@ -111,7 +115,7 @@ public:
     /// Make command returing a shared pointer
     static Ptr make(index_t dim) { return memory::make_shared( new gsIdentityOp(dim) ); }
 
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         x = input;
     }

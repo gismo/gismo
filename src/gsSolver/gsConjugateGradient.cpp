@@ -16,7 +16,7 @@
 namespace gismo
 {
 
-void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x0, const gsLinearOperator& precond)
+void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x0, const gsLinearOperator<>& precond)
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single column right hand side matrix");
 
@@ -54,7 +54,7 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
 }
 
 
-bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLinearOperator& precond )
+bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLinearOperator<>& precond )
 {
     m_mat.apply(p,tmp); //apply system matrix
 

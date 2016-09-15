@@ -247,6 +247,8 @@ class gsSparseVector;
 
 template<class T> class gsSparseEntries;
 
+template<class T = real_t> class gsLinearOperator;
+
 /// @endcond
 
 ///@}

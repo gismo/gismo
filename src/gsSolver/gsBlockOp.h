@@ -39,7 +39,7 @@ namespace gismo
  *
  * \ingroup Solver
  */
-class GISMO_EXPORT gsBlockOp : public gsLinearOperator
+class GISMO_EXPORT gsBlockOp : public gsLinearOperator<>
 {
 public:
 
@@ -50,7 +50,7 @@ public:
     typedef memory::unique< gsBlockOp >::ptr uPtr;
     
     /// Base class
-    typedef memory::shared_ptr< gsLinearOperator > BasePtr;    
+    typedef memory::shared_ptr< gsLinearOperator<> > BasePtr;    
     
     /// Constructor. Takes the number of blocks (nRows, nCols). Provide the contents of the blocks with addOperator
     gsBlockOp(index_t nRows, index_t nCols);

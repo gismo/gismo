@@ -32,7 +32,7 @@ public:
     typedef gsMatrix<real_t>    VectorType;
 
     /// Constructor for general linear operator
-    gsConjugateGradient(const gsLinearOperator& _mat, int _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
+    gsConjugateGradient(const gsLinearOperator<>& _mat, int _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
         : gsIterativeSolver(_mat, _maxIt, _tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
 
     /// Constructor for sparse matrix
@@ -45,9 +45,9 @@ public:
     gsConjugateGradient(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
         : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) ,m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
 
-    void initIteration(const VectorType& rhs, VectorType& x0, const gsLinearOperator& precond);
+    void initIteration(const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond);
 
-    void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator& precond)
+    void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond)
         {
             initIteration(rhs, x, precond);
 
@@ -64,11 +64,11 @@ public:
     /// Solve system without preconditioner
     void solve(const VectorType& rhs, VectorType& x)
     {
-        gsIdentityOp preConId(m_mat.rows());
+        gsIdentityOp<real_t> preConId(m_mat.rows());
         solve(rhs, x, preConId);
     }
 
-    bool step( VectorType& x, const gsLinearOperator& precond );
+    bool step( VectorType& x, const gsLinearOperator<>& precond );
 
     /// @brief specify if you want to store data for eigenvalue estimation
     /// @param flag true stores the coefficients of the lancos matrix, false not.

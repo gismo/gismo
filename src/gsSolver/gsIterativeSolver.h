@@ -27,14 +27,14 @@ public:
     typedef gsMatrix<real_t>                VectorType;
 
     /// Constructor for general linear operator
-    gsIterativeSolver(const gsLinearOperator& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
+    gsIterativeSolver(const gsLinearOperator<>& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
         : m_mat_ptr(), m_mat(_mat), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
     {
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
     }
 
     /// Constructor for general linear operator, takes ownership of the passed operator
-    gsIterativeSolver(const gsLinearOperator::Ptr _mat_ptr, index_t _maxIt=1000, real_t _tol=1e-10)
+    gsIterativeSolver(const gsLinearOperator<>::Ptr _mat_ptr, index_t _maxIt=1000, real_t _tol=1e-10)
         : m_mat_ptr(_mat_ptr), m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
     {
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
@@ -68,11 +68,11 @@ public:
     /// \param[in] precond  the preconditioner used (default: identity preconditioner)
     ///
     /// \ingroup Solver
-    virtual void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator & precond) = 0;
+    virtual void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<> & precond) = 0;
 
     //gsIdentityOp preConMat(N);
 
-    virtual bool step( VectorType& x, const gsLinearOperator& precond ) = 0;
+    virtual bool step( VectorType& x, const gsLinearOperator<>& precond ) = 0;
 
     /// Returns the size of the linear system
     index_t size() const {return m_mat.rows();}
@@ -94,8 +94,8 @@ public:
 
 
 protected:
-    const gsLinearOperator::Ptr m_mat_ptr;
-    const gsLinearOperator &m_mat;
+    const gsLinearOperator<>::Ptr m_mat_ptr;
+    const gsLinearOperator<> &m_mat;
 
     index_t  m_maxIters;
     real_t   m_tol;

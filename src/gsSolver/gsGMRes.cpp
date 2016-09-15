@@ -18,7 +18,7 @@
 namespace gismo
 {
 
-void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator& precond)
+void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator<>& precond)
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
     m_rhs = rhs;
@@ -41,7 +41,7 @@ void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const 
     m_numIter = 0;
 }
 
-void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator& precond)
+void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond)
 {
     initIteration(rhs, x, precond);
 
@@ -73,7 +73,7 @@ void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator
     x = xInit + V*y;
 }
 
-bool gsGMRes::step( VectorType& x, const gsLinearOperator& precond )
+bool gsGMRes::step( VectorType& x, const gsLinearOperator<>& precond )
 {
     GISMO_UNUSED(x);
     const index_t k = m_numIter-1;

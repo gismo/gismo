@@ -40,10 +40,11 @@ GISMO_EXPORT void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, g
 /// @brief Richardson preconditioner
 ///
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsRichardsonOp : public gsLinearOperator
+class gsRichardsonOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
 public:
-
+    typedef typename MatrixType::Scalar T;
+    
     /// Shared pointer for gsRichardsonOp
     typedef memory::shared_ptr< gsRichardsonOp > Ptr;
 
@@ -51,22 +52,23 @@ public:
     typedef typename memory::unique< gsRichardsonOp >::ptr uPtr;    
     
     /// @brief Contructor with given matrix
-    gsRichardsonOp(const MatrixType& _mat, real_t tau = 1.)
+    gsRichardsonOp(const MatrixType& _mat, T tau = 1.)
         : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
         
-    static Ptr make(const MatrixType& _mat, real_t tau = 1.) { return shared( new gsRichardsonOp(_mat,tau) ); }
+    static Ptr make(const MatrixType& _mat, T tau = 1.) { return shared( new gsRichardsonOp(_mat,tau) ); }
 
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
-        assert( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows() && input.cols() == 1);
+        GISMO_ASSERT( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows()
+                      && input.cols() == 1, "Dimensions do not match");
 
         // For the first sweep, we do not need to multiply with the matrix
-        x = input;
-        x *= m_tau;
-        
+        x = m_tau * input;
+
+        gsMatrix<T> temp;
         for (index_t k = 1; k < m_numOfSweeps; ++k)
         {
-            gsMatrix<real_t> temp = input - m_mat * x;
+            temp.noalias() = input - m_mat * x;
             x += m_tau * temp;
         }
     }
@@ -75,28 +77,30 @@ public:
     index_t cols() const {return m_mat.cols();}
 
     /// Set number of sweeps.
-    void setNumOfSweeps(index_t n) {
+    void setNumOfSweeps(index_t n)
+    {
         GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive. ");
         m_numOfSweeps=n;
     }
 
     ///Returns the matrix
-    MatrixType matrix() const { return m_mat; }
+    const MatrixType & matrix() const { return m_mat; }
 
 private:
     MatrixType m_mat;
     index_t m_numOfSweeps;
-    real_t m_tau;
+    T m_tau;
 };
 
 /// @brief Jacobi preconditioner
 ///
 /// Requires a positive definite matrix.
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsJacobiOp : public gsLinearOperator
+class gsJacobiOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
 public:
-
+    typedef typename MatrixType::Scalar T;
+    
     /// Shared pointer for gsJacobiOp
     typedef memory::shared_ptr< gsJacobiOp > Ptr;
 
@@ -104,23 +108,24 @@ public:
     typedef typename memory::unique< gsJacobiOp >::ptr uPtr;    
 
     /// @brief Contructor with given matrix
-    gsJacobiOp(const MatrixType& _mat, real_t tau = 1.)
+    gsJacobiOp(const MatrixType& _mat, T tau = 1.)
         : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
         
-    static Ptr make(const MatrixType& _mat, real_t tau = 1.) { return shared( new gsJacobiOp(_mat,tau) ); }
+    static Ptr make(const MatrixType& _mat, T tau = 1.) { return shared( new gsJacobiOp(_mat,tau) ); }
 
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
-        assert( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows() && input.cols() == 1);
+        GISMO_ASSERT( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows() && input.cols() == 1, "Dimensions do not match.");
 
         // For the first sweep, we do not need to multiply with the matrix
         x = input;
         x.array() /= m_mat.diagonal().array();
         x *= m_tau;
-        
+
+        gsMatrix<T> temp;
         for (index_t k = 1; k < m_numOfSweeps; ++k)
         {
-            gsMatrix<real_t> temp = input - m_mat * x;
+            temp.noalias() = input - m_mat * x;
             temp.array() /= m_mat.diagonal().array();
             x += m_tau * temp;
         }
@@ -136,21 +141,22 @@ public:
     }
 
     ///Returns the matrix
-    MatrixType matrix() const { return m_mat; }
+    const MatrixType & matrix() const { return m_mat; }
 
 private:
     MatrixType m_mat;
     index_t m_numOfSweeps;
-    real_t m_tau;
+    T m_tau;
 };
 
 /// @brief Gauss-Seidel preconditioner
 ///
 /// Requires a positive definite matrix.
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsGaussSeidelOp : public gsLinearOperator
+class gsGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
 public:
+    typedef typename MatrixType::Scalar T;
 
     /// Shared pointer for gsGaussSeidelOp
     typedef memory::shared_ptr< gsGaussSeidelOp > Ptr;
@@ -164,7 +170,7 @@ public:
         
     static Ptr make(const MatrixType& _mat) { return shared( new gsGaussSeidelOp(_mat) ); }
 
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         x.setZero(rows(), input.cols());
 
@@ -184,8 +190,8 @@ public:
     }
 
     ///Returns the matrix
-    MatrixType matrix() const { return m_mat; }
-
+    const MatrixType & matrix() const { return m_mat; }
+    
 private:
     MatrixType m_mat;
     index_t m_numOfSweeps;
@@ -198,10 +204,11 @@ private:
 /// one forward Gauss-Seidel sweep then one backward
 /// Gauss-Seidel sweep.
 template <typename MatrixType, int UpLo = Eigen::Lower>
-class gsSymmetricGaussSeidelOp : public gsLinearOperator
+class gsSymmetricGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
 public:
-
+    typedef typename MatrixType::Scalar T;
+    
     /// Shared pointer for gsSymmetricGaussSeidelOp
     typedef memory::shared_ptr< gsSymmetricGaussSeidelOp > Ptr;
 
@@ -215,7 +222,7 @@ public:
     static Ptr make(const MatrixType& _mat, index_t numOfSweeps = 1) 
     { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat,numOfSweeps) ); }
 
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         x.setZero(rows(), input.cols());
 
@@ -235,7 +242,7 @@ public:
     void setNumOfSweeps(index_t n)    { m_numOfSweeps= n; }
 
     ///Returns the matrix
-    MatrixType matrix() const { return m_mat; }
+    const MatrixType & matrix() const { return m_mat; }
 
 private:
     MatrixType m_mat;

@@ -15,7 +15,7 @@
 namespace gismo
 {
 
-bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x0, const gsLinearOperator& precond)
+bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x0, const gsLinearOperator<>& precond)
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
 
@@ -53,7 +53,7 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
 }
 
 
-bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x, const gsLinearOperator& precond )
+bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x, const gsLinearOperator<>& precond )
 {
     z /= gamma;
     m_mat.apply(z,tmp);

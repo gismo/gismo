@@ -25,10 +25,11 @@ namespace gismo
   */
   
 template <class MatrixType>
-class gsMatrixOp : public gsLinearOperator
+class gsMatrixOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
 public:
-
+    typedef typename MatrixType::Scalar T;
+    
     /// Shared pointer for gsMatrixOp
     typedef memory::shared_ptr<gsMatrixOp> Ptr;
 
@@ -41,7 +42,7 @@ public:
     /// @brief Constructor taking a reference
     /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
     gsMatrixOp(const MatrixType& mat, bool sym=false)
-    : m_mat( MatrixPtr(const_cast<MatrixType*>(&mat), null_deleter<MatrixType> ) ), m_symmetric(sym)
+    : m_mat(shared_not_owned(&mat)), m_symmetric(sym)
     {}
     
     /// Constructor taking a shared pointer
@@ -55,7 +56,7 @@ public:
     /// Make function returning a smart pointer
     static Ptr make(const MatrixPtr& mat, bool sym=false) { return shared( new gsMatrixOp(mat,sym) ); }
 
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         if (m_symmetric)
             x.noalias() = (*m_mat).template selfadjointView<Lower>() * input;
@@ -106,10 +107,11 @@ typename gsMatrixOp<MatrixType>::Ptr makeMatrixOp(const memory::shared_ptr<Matri
   */
   
 template <class MatrixType>
-class gsTransposedMatrixOp : public gsLinearOperator
+class gsTransposedMatrixOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
 public:
-
+    typedef typename MatrixType::Scalar T;
+    
     /// Shared pointer for gsTransposedMatrixOp
     typedef memory::shared_ptr<gsTransposedMatrixOp> Ptr;
 
@@ -122,7 +124,7 @@ public:
     /// @brief Constructor taking a reference
     /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
     gsTransposedMatrixOp(const MatrixType& mat)
-    : m_mat( MatrixPtr(const_cast<MatrixType*>(&mat), null_deleter<MatrixType> ) )
+    : m_mat(shared_not_owned(&mat))
     {}
     
     /// Constructor taking a shared pointer
@@ -137,7 +139,7 @@ public:
     static Ptr make(const MatrixPtr& mat) { return memory::make_shared( new gsTransposedMatrixOp(mat) ); }
 
 
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         x.noalias() = (*m_mat).transpose() * input;
     }
@@ -179,10 +181,11 @@ typename gsTransposedMatrixOp<MatrixType>::Ptr makeTransposedMatrixOp(const memo
   * \ingroup Solver
   */
 template <class SolverType>
-class gsSolverOp : public gsLinearOperator
+class gsSolverOp : public gsLinearOperator<typename SolverType::Scalar>
 {
 public:
-
+    typedef typename SolverType::Scalar T;
+    
     /// Shared pointer for gsSolverOp
     typedef memory::shared_ptr<gsSolverOp> Ptr;
 
@@ -214,7 +217,7 @@ public:
     template <class MatrixType>
     static Ptr make(const MatrixType& mat) { return memory::make_shared( new gsSolverOp(mat) ); }    
     
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & x) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         x = m_solver.solve(input);
     }

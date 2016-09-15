@@ -23,7 +23,7 @@ public:
     typedef gsMatrix<real_t>                VectorType;
 
     ///Contructor for general linear operator
-    gsGMRes(const gsLinearOperator& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
+    gsGMRes(const gsLinearOperator<>& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
         : gsIterativeSolver(_mat, _maxIt, _tol) {}
 
     ///Contructor for sparse matrix
@@ -36,18 +36,18 @@ public:
     gsGMRes(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
         : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
 
-    void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator& precond);
+    void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator<>& precond);
 
-    void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator& precond);
+    void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond);
 
     /// Solve system without preconditioner
     void solve(const VectorType& rhs, VectorType& x)
     {
-        gsIdentityOp preConId(m_mat.rows());
+        gsIdentityOp<real_t> preConId(m_mat.rows());
         solve(rhs, x, preConId);
     }
 
-    bool step( VectorType& x, const gsLinearOperator& precond );
+    bool step( VectorType& x, const gsLinearOperator<>& precond );
 
 private:
 
