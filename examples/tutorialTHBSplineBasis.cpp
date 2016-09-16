@@ -24,7 +24,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool plot = true;
+    bool plot = false;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
