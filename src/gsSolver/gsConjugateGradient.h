@@ -64,7 +64,7 @@ public:
     /// Solve system without preconditioner
     void solve(const VectorType& rhs, VectorType& x)
     {
-        gsIdentityOp<real_t> preConId(m_mat.rows());
+        gsIdentityOp<> preConId(m_mat.rows());
         solve(rhs, x, preConId);
     }
 

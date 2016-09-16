@@ -29,7 +29,7 @@ class gsLinearOperator
 public:
 
     /// Shared pointer for gsLinearOperator
-    typedef typename memory::shared_ptr< gsLinearOperator > Ptr;
+    typedef typename memory::shared< gsLinearOperator >::ptr Ptr;
 
     /// Unique pointer for gsLinearOperator   
     typedef typename memory::unique< gsLinearOperator >::ptr uPtr;
@@ -60,25 +60,25 @@ public:
 }; // gsLinearOperator
 
 /// @brief Allows an operator to be multiplied with a scalar
-template<class T = real_t>
+template<class T>
 class gsScaledOp : public gsLinearOperator<T>
 {
 public:
-    typedef gsLinearOperator<T> Base;
-    
     /// Shared pointer for gsScaledOp
-    typedef typename memory::shared_ptr< gsScaledOp > Ptr;
+    typedef typename memory::shared< gsScaledOp >::ptr Ptr;
 
     /// Unique pointer for gsScaledOp
     typedef typename memory::unique< gsScaledOp>::ptr uPtr;
 
+    /// Shared pointer for gsLinearOperator
+    typedef typename gsLinearOperator<T>::Ptr BasePtr;
+
     /// Constructor taking a shared pointer to a linear operator and a scalar
-    gsScaledOp(const typename Base::Ptr & linOp, T scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
+    gsScaledOp(const BasePtr & linOp, T scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
 
     /// Make command returing a shared pointer
-    template<class S>
-    static typename gsScaledOp<S>::Ptr make(const typename gsLinearOperator<S>::Ptr & linOp, S scalar = 1) 
-    { return memory::make_shared( new gsScaledOp<S>(linOp, scalar) ); }
+    static Ptr make(const BasePtr & linOp, T scalar = 1) 
+    { return memory::make_shared( new gsScaledOp(linOp, scalar) ); }
 
     virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
@@ -93,19 +93,19 @@ public:
     index_t cols() const {return m_linOp->cols();}
 
 private:
-    const typename Base::Ptr m_linOp;
+    const BasePtr m_linOp;
     const T m_scalar;
 }; // gsScaladOp
 
 
 /// @brief Identity operator, must be square!
-template<class T = real_t>
+template<class T>
 class gsIdentityOp : public gsLinearOperator<T>
 {
 public:
 
     /// Shared pointer for gsIdentityOp
-    typedef typename memory::shared_ptr< gsIdentityOp > Ptr;
+    typedef typename memory::shared< gsIdentityOp >::ptr Ptr;
 
     /// Unique pointer for gsIdentityOp   
     typedef typename memory::unique< gsIdentityOp >::ptr uPtr;

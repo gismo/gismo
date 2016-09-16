@@ -248,6 +248,9 @@ class gsSparseVector;
 template<class T> class gsSparseEntries;
 
 template<class T = real_t> class gsLinearOperator;
+template<class T = real_t> class gsScaledOp;
+template<class T = real_t> class gsIdentityOp;
+
 
 /// @endcond
 
