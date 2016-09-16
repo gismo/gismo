@@ -60,7 +60,7 @@ public:
 }; // gsLinearOperator
 
 /// @brief Allows an operator to be multiplied with a scalar
-template<class T>
+template<class T = real_t>
 class gsScaledOp : public gsLinearOperator<T>
 {
 public:
@@ -76,8 +76,9 @@ public:
     gsScaledOp(const typename Base::Ptr & linOp, T scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
 
     /// Make command returing a shared pointer
-    static Ptr make(const typename Base::Ptr & linOp, T scalar = 1) 
-    { return memory::make_shared( new gsScaledOp(linOp, scalar) ); }
+    template<class S>
+    static typename gsScaledOp<S>::Ptr make(const typename gsLinearOperator<S>::Ptr & linOp, S scalar = 1) 
+    { return memory::make_shared( new gsScaledOp<S>(linOp, scalar) ); }
 
     virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
@@ -97,8 +98,8 @@ private:
 }; // gsScaladOp
 
 
-/// @brief Identity preconditioner ("do nothing"), must be square!
-template<class T>
+/// @brief Identity operator, must be square!
+template<class T = real_t>
 class gsIdentityOp : public gsLinearOperator<T>
 {
 public:
