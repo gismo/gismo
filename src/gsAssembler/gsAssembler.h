@@ -354,7 +354,7 @@ public:  /* Solution reconstruction */
 
     /// @brief Update solution by adding the computed solution vector
     /// to the current solution specified by \par result. This method assumes that all
-    /// unknows have the same basis.
+    /// unknowns have the same basis.
     /// \param[in] solVector the solution vector obtained from the linear system
     /// \param[out]result the solution in form of a gsMultiBasis, \par solVector is added to the
     ///                   coefficients of result.

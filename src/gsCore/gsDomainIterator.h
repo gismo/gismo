@@ -13,9 +13,8 @@
 
 #pragma once
 
-#include <gsCore/gsBasis.h>
+#include <gsCore/gsBasis.h> // todo: remove
 #include <gsCore/gsDomain.h>
-#include <gsCore/gsDofMapper.h>
 
 namespace gismo
 {
@@ -34,36 +33,23 @@ namespace gismo
  * of how to select the next element depends on the structure of the underlying mesh.\n
  * The function good() indicates whether there still is a "next" element to be found.
  *
- * - <b>Quadrature nodes and weights:</b>\n
- * The quadrature nodes/points and weights on the current element are initialized up by calling
- * computeQuadratureRule() or computeQuadratureRuleDefault(). During the iteration, they are updated by
- * the function next().
- *
- * - <b>Evaluation of basis functions:</b>\n
- * Once the quadrature points have been set up, the basis functions
- * can be evaluated at the quadrature points by calling
- * evaluateBasis(). The function values and/or derivatives can be accessed by
- * basisValues() and basisDerivs().
  *
  * Note that the features of the gsDomainIterator strongly depend on the underlying basis.
  * Hence the gsBasis is given as an input argument to the constructor.
  *
- * An example of the typical use of gsDomainIterator (remark: replace the constructor by the constructor of the actually used derived class):
+ * An example of the typical use of gsDomainIterator (remark: replace
+ * the constructor by the constructor of the actually used derived
+ * class):
  *
  * \verbatim
      gsDomainIterator domIter( basis );         // constructor
-     domIter.computeQuadratureRule( numNodes ); // compute/initialize quad. points and weights
 
      for (; domIter.good(); domIter.next() )    // loop over all elements
      {
-         domIt.evaluateBasis();                 // evaluate basis functions
-                                                // at the quadrature nodes of the
-                                                // current element.
-
          // Your source code using
-         // the domain iterator's functions.
-         // Access function values with domIt.basisValues() and
-         // the k-th derivatives with domIt.basisDerivs( k ).
+         domIter.centerPoint();
+         domIter.lowerCorner();
+         domIter.upperCorner();
 
      }
      \endverbatim
@@ -164,6 +150,7 @@ public:
     /// Returns the number of quadrature points that are used.
     index_t numQuNodes() const  { return quNodes.cols(); }
 
+/*
     // \brief Compute the active DOF on the current element. @@@
     //
     // The global indices of the basis functions which are not identical zero on the
@@ -178,6 +165,7 @@ public:
             activeDofs[i] = dofMapper.index(activeFuncs(i,0), patchIndex);
         return activeDofs;
     }
+*/
 
     /// \brief Returns the number of active basis functions on this element
     ///
@@ -354,11 +342,11 @@ public:
 
     // global dof numbers corresponding to the local element dofs
     // @@@
-    /// \brief Global indices of the local element DOFs. REDUNDANT?
-    ///
-    /// NOTE: Has something to do with the multipatch-geometries
-    ///
-    gsVector<int> activeDofs;
+    // \brief Global indices of the local element DOFs. REDUNDANT?
+    //
+    // NOTE: Has something to do with the multipatch-geometries
+    //
+    //gsVector<int> activeDofs;
 
     /// Matrix vector in which all values (including derivatives) of
     /// the active basis functions at the quadrature nodes of the
@@ -375,7 +363,8 @@ protected:
     /// The basis on which the domain iterator is defined.
     const gsBasis<T> * m_basis;
 
-    /// Flag indicating whether the domain iterator is "good". If it is "good", the iterator can continue to the next element.
+    /// Flag indicating whether the domain iterator is "good". If it
+    /// is "good", the iterator can continue to the next element.
     bool m_isGood;
 
     boxSide m_side;
