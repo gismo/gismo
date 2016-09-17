@@ -183,6 +183,8 @@ class gsSolverOp : public gsLinearOperator<typename SolverType::Scalar>
 {
 public:
     typedef typename SolverType::Scalar T;
+
+    typedef typename SolverType::MatrixType MatrixType;
     
     /// Shared pointer for gsSolverOp
     typedef typename memory::shared<gsSolverOp>::ptr Ptr;
@@ -192,7 +194,6 @@ public:
     
     
     /// Constructor taking a matrix
-    template <class MatrixType>
     gsSolverOp(const MatrixType& mat)
     {
         GISMO_ASSERT(mat.rows() == mat.cols(), "Need square matrix");
@@ -202,7 +203,6 @@ public:
     }
 
     /// Constructor taking a shared pointer
-    template <class MatrixType>
     gsSolverOp(const typename memory::shared<MatrixType>::ptr& mat)
     {
         GISMO_ASSERT(mat->rows() == mat->cols(), "Need square matrix");
@@ -212,7 +212,6 @@ public:
     }
     
     /// Make function taking a matrix OR a shared pointer
-    template <class MatrixType>
     static Ptr make(const MatrixType& mat) { return memory::make_shared( new gsSolverOp(mat) ); }    
     
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
