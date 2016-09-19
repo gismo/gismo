@@ -50,8 +50,8 @@ public:
         isFake = true
     };
 
-    gsSerialComm(const Serial_Comm & _comm)
-    { }
+    gsSerialComm(const Serial_Comm & _comm = Serial_Comm() )
+    { GISMO_UNUSED(_comm); }
 
     /**
      * @brief return rank of process, i.e. zero
@@ -355,6 +355,8 @@ public:
         isFake = false
     };
     
+    gsMpiComm() : rank_(-1), size_(0) { }
+
     gsMpiComm(const MPI_Comm & _comm)
     : m_comm(_comm)
     {
