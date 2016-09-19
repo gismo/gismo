@@ -17,6 +17,13 @@
 
 #ifdef GISMO_WITH_MPI
 #include <mpi.h>
+#if MPI_VERSION < 2
+#  ifdef _MSC_VER
+#    pragma message ("warning: The MPI version is too old: MPI-2 is needed.")
+#  else
+#    warning "The MPI version is too old: MPI-2 is needed."
+#  endif
+#endif
 #include <gsMpi/gsMpiTraits.h>
 #include <gsMpi/gsBinaryFunctions.h>
 #endif
@@ -118,6 +125,30 @@ public:
      * @brief Returns the number of processes
      */
     static int worldSize () { return gsMpiComm(worldComm()).size(); }
+
+    static inline double wallTime()
+    {
+#   ifdef GISMO_WITH_MPI
+        return MPI_Wtime();
+#    else
+        return 0;
+#    endif
+    }
+
+    static inline std::string getProcessorName()
+    {
+#   ifdef GISMO_WITH_MPI
+        char processor_name[MPI_MAX_PROCESSOR_NAME];
+        int name_len;
+        MPI_Get_processor_name(processor_name, &name_len);
+        return std::string(processor_name, name_len);
+#    else
+
+        //linux: gethostname(processor_name, HOST_NAME_MAX);
+        //mswin: GetComputerName(processor_name, &name_len)
+        return "CPU0";
+#    endif
+    }
 
 private:
     gsMpi();

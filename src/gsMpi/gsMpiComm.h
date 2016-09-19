@@ -545,13 +545,11 @@ public:
     template<typename BinaryFunction, typename Type>
     int allreduce(Type* inout, int len) const
     {
-        /*
-          Type* out = new Type[len];
-          int ret = allreduce<BinaryFunction>(inout,out,len);
-          std::copy(out, out+len, inout);
-          delete[] out;
-          return ret;
-        */
+        // Type* out = new Type[len];
+        // int ret = allreduce<BinaryFunction>(inout,out,len);
+        // std::copy(out, out+len, inout);
+        // delete[] out;
+        // return ret;
         return MPI_Allreduce(MPI_IN_PLACE, inout, len, MPITraits<Type>::getType(),
                              (Generic_MPI_Op<Type, BinaryFunction>::get()),m_comm);
     }
