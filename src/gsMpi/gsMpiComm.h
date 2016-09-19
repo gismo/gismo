@@ -1,4 +1,4 @@
-/** @file gsMpicomm.h
+/** @file gsMpiComm.h
     
     @brief A wrapper for MPI communicators.
     
@@ -31,7 +31,13 @@ class gsMpiComm;
 #endif
 
 /** \brief Dummy communication type for serial (ie. no) communication */
-struct Serial_Comm {};
+struct Serial_Comm 
+{
+#ifdef GISMO_WITH_MPI
+    operator MPI_Comm () const { return MPI_COMM_SELF;}
+#endif
+};
+
 
 /**
  * @brief A serial communication class
@@ -42,13 +48,7 @@ struct Serial_Comm {};
 class gsSerialComm
 {
 public:
-    enum {
-        /**
-         * @brief Are we fake (i.e. pretend to have MPI support but are compiled
-         * without.)
-         */
-        isFake = true
-    };
+    //enum { isFake = true };
 
     gsSerialComm(const Serial_Comm & _comm = Serial_Comm() )
     { GISMO_UNUSED(_comm); }
@@ -347,13 +347,7 @@ public:
 class gsMpiComm
 {
 public:
-    enum {
-        /**
-         * @brief Are we fake (i. e. pretend to have MPI support but are compiled
-         * without.
-         */
-        isFake = false
-    };
+    //enum { isFake = false };
     
     gsMpiComm() : rank_(-1), size_(0) { }
 

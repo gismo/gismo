@@ -25,7 +25,7 @@
     \code
     int main(int argc, char** argv){
     typedef gismo::gsMpicomm gsMpicomm;
-    gsMpicomm::instance(argc, argv);
+    gsMpicomm::init(argc, argv);
     typename gsMpicomm::MPICommunicator world =
     gsMpicomm::getCommunicator();
     ...
@@ -136,7 +136,7 @@ public:
      * that the main method of the program was called:
      * \code
      * int main(int argc, char** argv){
-     *   gsMpiComm::instance(argc, argv);
+     *   gsMpi::init(argc, argv);
      *   // program code comes here
      *   ...
      * }
@@ -144,8 +144,9 @@ public:
      * @param argc The number of arguments provided to main.
      * @param argv The arguments provided to main.
      */
-    static gsNoMpi& instance(int argc = 0, char** argv = NULL)
+    static gsNoMpi& init(int argc = 0, char** argv = NULL)
     {
+        GISMO_ASSERT( 0 == argc || NULL!=argv, "Need both argc and argv  (or none)");
         return gsNoMpiSingleton(argc,argv);
     }
 
@@ -163,8 +164,8 @@ private:
     gsNoMpi(const gsNoMpi&);
     gsNoMpi(const int& argc, char** argv)
     {
-        (void)argc;
-        (void)argv;
+        GISMO_UNUSED(argc);
+        GISMO_UNUSED(argv);
     }
 
     gsNoMpi& operator=(const gsNoMpi&);
@@ -227,7 +228,7 @@ public:
      * that the main method of the program was called:
      * \code
      * int main(int argc, char** argv){
-     *   gsMpi::instance(argc, argv);
+     *   gsMpi::init(argc, argv);
      *   // program code comes here
      *   ...
      * }
@@ -235,8 +236,9 @@ public:
      * @param argc The number of arguments provided to main.
      * @param argv The arguments provided to main.
      */
-    static gsMpi& instance(const int& argc = 0, char** argv = NULL)
+    static gsMpi& init(const int& argc = 0, char** argv = NULL)
     {
+        GISMO_ASSERT( 0 == argc || NULL!=argv, "Need both argc and argv (or none)");
         return gsMpiSingleton(argc,argv);
     }
     
@@ -255,10 +257,10 @@ private:
     /// \brief calls MPI_Init with argc and argv as parameters
     gsMpi(const int& argc, char** argv)
     {
-        init(const_cast<int*>(&argc), argv);
+        initMpi(const_cast<int*>(&argc), argv);
     }
 
-    void init(int * argc = NULL, char** argv = NULL)
+    void initMpi(int * argc = NULL, char** argv = NULL)
     {
         int initialized = -1;
         MPI_Initialized( &initialized );
