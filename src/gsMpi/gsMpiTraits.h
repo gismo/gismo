@@ -196,7 +196,7 @@ namespace gismo
                                  MPITraits<T2>::getType()};
         
         using Pair = std::pair<T1, T2>;
-        static_assert(std::is_standard_layout<Pair>::value, "offsetof() is only defined for standard layout types");
+        //static_assert(std::is_standard_layout<Pair>::value, "offsetof() is only defined for standard layout types");
         disp[0] = offsetof(Pair, first);
         disp[1] = offsetof(Pair, second);
         
