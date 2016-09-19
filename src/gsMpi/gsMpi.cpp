@@ -13,11 +13,4 @@ gsMpi & gsMpiSingleton(const int& argc, char** argv)
     return singleton;
 }
 
-gsNoMpi & gsNoMpiSingleton(const int& argc, char** argv)
-{
-    // create singleton instance
-    static gsNoMpi singleton (argc, argv);
-    return singleton;
-}
-
 };

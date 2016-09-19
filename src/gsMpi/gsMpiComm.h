@@ -18,27 +18,6 @@
 namespace gismo
 {
 
-class gsSerialComm;
-
-#ifndef GISMO_WITH_MPI
-/**
- * @brief If no MPI is available gsSerialComm becomes the gsMpiComm
- * @ingroup Mpi
- */
-typedef gsSerialComm gsMpiComm;
-#else
-class gsMpiComm;
-#endif
-
-/** \brief Dummy communication type for serial (ie. no) communication */
-struct Serial_Comm 
-{
-#ifdef GISMO_WITH_MPI
-    operator MPI_Comm () const { return MPI_COMM_SELF;}
-#endif
-};
-
-
 /**
  * @brief A serial communication class
  *
@@ -50,8 +29,10 @@ class gsSerialComm
 public:
     //enum { isFake = true };
 
-    gsSerialComm(const Serial_Comm & _comm = Serial_Comm() )
-    { GISMO_UNUSED(_comm); }
+    gsSerialComm() { }
+
+    gsSerialComm(const gsSerialComm & other)
+    { GISMO_UNUSED(other); }
 
     /**
      * @brief return rank of process, i.e. zero
@@ -61,6 +42,10 @@ public:
      * @brief return rank of process, i.e. one
      */
     static int size () { return 1; }
+
+#ifdef GISMO_WITH_MPI
+    operator MPI_Comm () const  { return MPI_COMM_SELF;}
+#endif
 
 public:
 
@@ -370,6 +355,8 @@ public:
         }
     }
    
+    gsMpiComm(const gsSerialComm &) : m_comm(MPI_COMM_SELF) { }
+    
     /**
      * @brief The type of the mpi communicator.
      */
@@ -383,6 +370,8 @@ public:
      * @brief Returns the number of processes
      */
     int size () const { return size_; }
+
+    operator MPI_Comm () const { return m_comm; }
 
 private:
     int rank_;
@@ -539,9 +528,6 @@ public:
                             root,m_comm);
     }
 
-
-    operator MPI_Comm () const { return m_comm; }
-
     /// @copydoc gsSerialComm::allgather()
     template<typename T, typename T1>
     int allgather(T* sbuf, int count, T1* rbuf) const
@@ -646,6 +632,9 @@ public:
 
 };
 
+#else
+// If we compile without MPI, then all we have is the gsSerialCOmm
+typedef gsSerialComm gsMpiComm;
 #endif
 
 }
