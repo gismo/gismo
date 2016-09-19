@@ -1,120 +1,120 @@
-/** @file gsCollectiveCommunication.h
-
-    \brief Implements an utility class that provides
-    collective communication methods for sequential programs.
-
-
+/** @file gsMpicomm.h
+    
+    @brief A wrapper for MPI communicators.
+    
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): C.Hofer, taken from DUNE
-    Created on: 2016-03-23
+    Author(s): C. Hofer -- Code based on ideas from the DUNE library
 */
 
 
 #pragma once
 
+#include <gsCore/gsForwardDeclarations.h>
+
+#ifdef GISMO_WITH_MPI
+#include <mpi.h>
+#include <gsMpi/gsMpiTraits.h>
+#include <gsMpi/gsBinaryFunctions.h>
+#endif
 
 namespace gismo
 {
 
-/* define some type that definitely differs from MPI_Comm */
-struct No_Comm {};
+class gsSerialComm;
 
-template<typename C> class gsCollectiveCommunication
-{using C::GISMO_ERROR_gsCollectiveCommunication_has_invalid_template_arguments;};
+#ifndef GISMO_WITH_MPI
+/**
+ * @brief If no MPI is available gsSerialComm becomes the gsMpiComm
+ * @ingroup Mpi
+ */
+typedef gsSerialComm gsMpiComm;
+#else
+class gsMpiComm;
+#endif
 
-/*! @brief Collective communication interface and sequential default implementation
+/** \brief Dummy communication type for serial (ie. no) communication */
+struct Serial_Comm {};
 
-  gsCollectiveCommunication offers an abstraction to the basic methods
-  of parallel communication, following the message-passing
-  paradigm. It allows one to switch parallel features on and off, without
-  changing the code. Currently only MPI and sequential code are
-  supported.
-
-  A gsCollectiveCommunication object is returned by all grids (also
-  the sequential ones) in order to allow code to be written in
-  a transparent way for sequential and parallel grids.
-
-  This class provides a default implementation for sequential grids.
-  The number of processes involved is 1, any sum, maximum, etc. returns
-  just its input argument and so on.
-
-  In specializations one can implement the real thing using appropriate
-  communication functions, e.g. there exists an implementation using
-  the Message Passing %Interface (MPI), see gismo::gsCollectiveCommunication<MPI_Comm>.
-
-  \ingroup ParallelCommunication
-*/
-template<>
-class gsCollectiveCommunication<No_Comm>
+/**
+ * @brief A serial communication class
+ *
+ * This communicator can be used if no MPI is available or one wants to run
+ * sequentially even if MPI is available and used.
+ */
+class gsSerialComm
 {
 public:
-    //! Construct default object
-    gsCollectiveCommunication()
-    {
-        // assert C=N
-    }
-    gsCollectiveCommunication (const No_Comm&)
-    {}
+    enum {
+        /**
+         * @brief Are we fake (i.e. pretend to have MPI support but are compiled
+         * without.)
+         */
+        isFake = true
+    };
 
-    //! Return rank, is between 0 and size()-1
-    int rank () const
-    {
-        return 0;
-    }
+    gsSerialComm(const Serial_Comm & _comm)
+    { }
 
-    //! Number of processes in set, is greater than 0
-    int size () const
-    {
-        return 1;
-    }
+    /**
+     * @brief return rank of process, i.e. zero
+     */
+    static int rank () { return 0; }
+    /**
+     * @brief return rank of process, i.e. one
+     */
+    static int size () { return 1; }
+
+public:
 
     /** @brief  Compute the sum of the argument over all processes and
         return the result in every process. Assumes that T has an operator+
     */
     template<typename T>
-    T sum (T& in) const     // MPI does not know about const :-(
+    static T sum (T& in)
     {
         return in;
     }
 
-    /** @brief Compute the sum over all processes for each component of an array and return the result
-        in every process. Assumes that T has an operator+
+    /** @brief Compute the sum over all processes for each component
+        of an array and return the result in every process. Assumes
+        that T has an operator+
     */
     template<typename T>
-    int sum (T* inout, int len) const
+    static int sum (T* inout, int len)
     {
         return 0;
     }
 
-    /** @brief  Compute the product of the argument over all processes and
-        return the result in every process. Assumes that T has an operator*
+    /** @brief Compute the product of the argument over all processes
+        and return the result in every process. Assumes that T has an
+        operator*
     */
     template<typename T>
-    T prod (T& in) const     // MPI does not know about const :-(
+    static T prod (T& in)
     {
         return in;
     }
 
-    /** @brief Compute the product over all processes
-        for each component of an array and return the result
-        in every process. Assumes that T has an operator*
+    /** @brief Compute the product over all processes for each
+        component of an array and return the result in every
+        process. Assumes that T has an operator*
     */
     template<typename T>
-    int prod (T* inout, int len) const
+    static int prod (T* inout, int len)
     {
         return 0;
     }
 
-    /** @brief  Compute the minimum of the argument over all processes and
-        return the result in every process. Assumes that T has an operator<
+    /** @brief Compute the minimum of the argument over all processes
+        and return the result in every process. Assumes that T has an
+        operator<
     */
     template<typename T>
-    T min (T& in) const     // MPI does not know about const :-(
+    static T min (T& in)
     {
         return in;
     }
@@ -124,59 +124,63 @@ public:
         in every process. Assumes that T has an operator<
     */
     template<typename T>
-    int min (T* inout, int len) const
+    static int min (T* inout, int len)
     {
         return 0;
     }
 
-    /** @brief  Compute the maximum of the argument over all processes and
-        return the result in every process. Assumes that T has an operator<
+    /** @brief Compute the maximum of the argument over all processes
+        and return the result in every process. Assumes that T has an
+        operator<
     */
     template<typename T>
-    T max (T& in) const     // MPI does not know about const :-(
+    static T max (T& in)
     {
         return in;
     }
 
-    /** @brief Compute the maximum over all processes
-        for each component of an array and return the result
-        in every process. Assumes that T has an operator<
+    /** @brief Compute the maximum over all processes for each
+        component of an array and return the result in every
+        process. Assumes that T has an operator<
     */
     template<typename T>
-    int max (T* inout, int len) const
+    static int max (T* inout, int len)
     {
         return 0;
     }
 
-    /** @brief Wait until all processes have arrived at this point in the program.
+    /** @brief Wait until all processes have arrived at this point in
+     * the program.
      */
-    int barrier () const
+    static int barrier ()
     {
         return 0;
     }
 
-    /** @brief Distribute an array from the process with rank root to all other processes
+    /** @brief Distribute an array from the process with rank root to
+     * all other processes
      */
     template<typename T>
-    int broadcast (T* inout, int len, int root) const
+    static int broadcast (T* inout, int len, int root)
     {
         return 0;
     }
 
     /** @brief  Gather arrays on root task.
      *
-     * Each process sends its in array of length len to the root process
-     * (including the root itself). In the root process these arrays are stored in rank
-     * order in the out array which must have size len * number of processes.
-     * @param[in] in The send buffer with the data to send.
-     * @param[out] out The buffer to store the received data in. Might have length zero on non-root
-     *                  tasks.
-     * @param[in] len The number of elements to send on each task.
-     * @param[in] root The root task that gathers the data.
+     * Each process sends its in array of length len to the root
+     * process (including the root itself). In the root process these
+     * arrays are stored in rank order in the out array which must
+     * have size len * number of processes.  @param[in] in The send
+     * buffer with the data to send.  @param[out] out The buffer to
+     * store the received data in. Might have length zero on non-root
+     * tasks.  @param[in] len The number of elements to send on each
+     * task.  @param[in] root The root task that gathers the data.
      */
     template<typename T>
-    int gather (T* in, T* out, int len, int root) const     // note out must have same size as in
+    static int gather (T* in, T* out, int len, int root) // note out must have same size as in
     {
+        // copy_n(in, len, out);
         for (int i=0; i<len; i++)
             out[i] = in[i];
         return 0;
@@ -187,6 +191,7 @@ public:
      * Each process sends its in array of length sendlen to the root process
      * (including the root itself). In the root process these arrays are stored in rank
      * order in the out array.
+     *
      * @param[in] in The send buffer with the data to be sent
      * @param[in] sendlen The number of elements to send on each task
      * @param[out] out The buffer to store the received data in. May have length zero on non-root
@@ -201,7 +206,7 @@ public:
      * @param[in] root The root task that gathers the data.
      */
     template<typename T>
-    int gatherv (T* in, int sendlen, T* out, int* recvlen, int* displ, int root) const
+    static int gatherv (T* in, int sendlen, T* out, int* recvlen, int* displ, int root)
     {
         for (int i=*displ; i<sendlen; i++)
             out[i] = in[i];
@@ -210,8 +215,10 @@ public:
 
     /** @brief Scatter array from a root to all other task.
      *
-     * The root process sends the elements with index from k*len to (k+1)*len-1 in its array to
-     * task k, which stores it at index 0 to len-1.
+     * The root process sends the elements with index from k*len to
+     * (k+1)*len-1 in its array to task k, which stores it at index 0
+     * to len-1.
+     *
      * @param[in] send The array to scatter. Might have length zero on non-root
      *                  tasks.
      * @param[out] recv The buffer to store the received data in. Upon completion of the
@@ -221,7 +228,7 @@ public:
      * @param[in] root The root task that gathers the data.
      */
     template<typename T>
-    int scatter (T* send, T* recv, int len, int root) const // note out must have same size as in
+    static int scatter (T* send, T* recv, int len, int root) // note out must have same size as in
     {
         for (int i=0; i<len; i++)
             recv[i] = send[i];
@@ -230,8 +237,10 @@ public:
 
     /** @brief Scatter arrays of variable length from a root to all other tasks.
      *
-     * The root process sends the elements with index from send+displ[k] to send+displ[k]-1 in
-     * its array to task k, which stores it at index 0 to recvlen-1.
+     * The root process sends the elements with index from
+     * send+displ[k] to send+displ[k]-1 in * its array to task k,
+     * which stores it at index 0 to recvlen-1.
+     *
      * @param[in] send The array to scatter. May have length zero on non-root
      *                  tasks.
      * @param[in] sendlen An array with size equal to the number of processes containing the number
@@ -246,7 +255,7 @@ public:
      * @param[in] root The root task that gathers the data.
      */
     template<typename T>
-    int scatterv (T* send, int* sendlen, int* displ, T* recv, int recvlen, int root) const
+    static int scatterv (T* send, int* sendlen, int* displ, T* recv, int recvlen, int root)
     {
         for (int i=*displ; i<*sendlen; i++)
             recv[i] = send[i];
@@ -266,7 +275,7 @@ public:
      *  notasks*count, with notasks being the number of tasks in the communicator.
      */
     template<typename T>
-    int allgather(T* sbuf, int count, T* rbuf) const
+    static int allgather(T* sbuf, int count, T* rbuf)
     {
         for(T* end=sbuf+count; sbuf < end; ++sbuf, ++rbuf)
             *rbuf=*sbuf;
@@ -289,7 +298,7 @@ public:
      *                  process i will be written starting at out+displ[i].
      */
     template<typename T>
-    int allgatherv (T* in, int sendlen, T* out, int* recvlen, int* displ) const
+    static int allgatherv (T* in, int sendlen, T* out, int* recvlen, int* displ)
     {
         for (int i=*displ; i<sendlen; i++)
             out[i] = in[i];
@@ -308,7 +317,7 @@ public:
      * @param len The number of components in the array
      */
     template<typename BinaryFunction, typename Type>
-    int allreduce(Type* inout, int len) const
+    static int allreduce(Type* inout, int len)
     {
         return 0;
     }
@@ -326,7 +335,7 @@ public:
      * @param len The number of components in the array
      */
     template<typename BinaryFunction, typename Type>
-    void allreduce(Type* in, Type* out, int len) const
+    static void allreduce(Type* in, Type* out, int len)
     {
         std::copy(in, in+len, out);
         return;
@@ -335,58 +344,74 @@ public:
 
 #ifdef GISMO_WITH_MPI
 
-//=======================================================
-// use singleton pattern and template specialization to
-// generate MPI operations
-//=======================================================
-
-
-/*! \brief Specialization of gsCollectiveCommunication for MPI
-  \ingroup ParallelCommunication
-*/
-template<>
-class gsCollectiveCommunication<MPI_Comm>
+/**
+ * @brief A parallel communicator class based on MPI
+ *
+ * @ingroup Mpi
+ *
+ */
+class gsMpiComm
 {
 public:
-    //! Instantiation using a MPI communicator
-    gsCollectiveCommunication (const MPI_Comm& c = MPI_COMM_WORLD)
-    : communicator(c)
+    enum {
+        /**
+         * @brief Are we fake (i. e. pretend to have MPI support but are compiled
+         * without.
+         */
+        isFake = false
+    };
+ 
+    gsMpiComm(const MPI_Comm & _comm)
+    : m_comm(_comm)
     {
-        if(communicator!=MPI_COMM_NULL) {
+        if(_comm != MPI_COMM_NULL) 
+        {
             int initialized = 0;
             MPI_Initialized(&initialized);
-            if (!initialized)
-                GISMO_ERROR("You must call gsMPIHelper::instance(argc,argv) in your main() function before using the MPI gsCollectiveCommunication!");
-            MPI_Comm_rank(communicator,&me);
-            MPI_Comm_size(communicator,&procs);
-        }else{
-            procs=0;
-            me=-1;
+            GISMO_ENSURE(1==initialized, 
+                         "You must call gsMpi::instance in your main() function before using gsMpiComm");
+            MPI_Comm_rank(m_comm,&rank_);
+            MPI_Comm_size(m_comm,&size_);
+        }
+        else
+        {
+            size_ = 0;
+            rank_ =-1;
         }
     }
+   
+    /**
+     * @brief The type of the mpi communicator.
+     */
+    typedef MPI_Comm Communicator;
 
-    //! @copydoc gsCollectiveCommunication::rank
-    int rank () const
-    {
-        return me;
-    }
+    /**
+     * @brief Returns the rank of process
+     */
+    int rank () const { return rank_; }
+    /**
+     * @brief Returns the number of processes
+     */
+    int size () const { return size_; }
 
-    //! @copydoc gsCollectiveCommunication::size
-    int size () const
-    {
-        return procs;
-    }
+private:
+    int rank_;
+    int size_;
 
-    //! @copydoc gsCollectiveCommunication::sum
+    MPI_Comm m_comm;
+
+public:
+
+    /// @copydoc gsSerialComm::sum
     template<typename T>
-    T sum (T& in) const     // MPI does not know about const :-(
+    T sum (T& in) const
     {
         T out;
         allreduce<std::plus<T> >(&in,&out,1);
         return out;
     }
 
-    //! @copydoc gsCollectiveCommunication::sum
+    /// @copydoc gsSerialComm::sum
     template<typename T>
     int sum (T* inout, int len) const
     {
@@ -424,32 +449,32 @@ public:
     }
 
 
-    //! @copydoc gsCollectiveCommunication::prod
+    /// @copydoc gsSerialComm::prod
     template<typename T>
-    T prod (T& in) const     // MPI does not know about const :-(
+    T prod (T& in) const
     {
         T out;
         allreduce<std::multiplies<T> >(&in,&out,1);
         return out;
     }
 
-    //! @copydoc gsCollectiveCommunication::prod
+    /// @copydoc gsSerialComm::prod
     template<typename T>
     int prod (T* inout, int len) const
     {
         return allreduce<std::multiplies<T> >(inout,len);
     }
 
-    //! @copydoc gsCollectiveCommunication::min
+    /// @copydoc gsSerialComm::min
     template<typename T>
-    T min (T& in) const     // MPI does not know about const :-(
+    T min (T& in) const
     {
         T out;
         allreduce<Min<T> >(&in,&out,1);
         return out;
     }
 
-    //! @copydoc gsCollectiveCommunication::min
+    /// @copydoc gsSerialComm::min
     template<typename T>
     int min (T* inout, int len) const
     {
@@ -457,98 +482,95 @@ public:
     }
 
 
-    //! @copydoc gsCollectiveCommunication::max
+    /// @copydoc gsSerialComm::max
     template<typename T>
-    T max (T& in) const     // MPI does not know about const :-(
+    T max (T& in) const
     {
         T out;
         allreduce<Max<T> >(&in,&out,1);
         return out;
     }
 
-    //! @copydoc gsCollectiveCommunication::max
+    /// @copydoc gsSerialComm::max
     template<typename T>
     int max (T* inout, int len) const
     {
         return allreduce<Max<T> >(inout,len);
     }
 
-    //! @copydoc gsCollectiveCommunication::barrier
+    /// @copydoc gsSerialComm::barrier
     int barrier () const
     {
-        return MPI_Barrier(communicator);
+        return MPI_Barrier(m_comm);
     }
 
-    //! @copydoc gsCollectiveCommunication::broadcast
+    /// @copydoc gsSerialComm::broadcast
     template<typename T>
     int broadcast (T* inout, int len, int root) const
     {
-        return MPI_Bcast(inout,len,MPITraits<T>::getType(),root,communicator);
+        return MPI_Bcast(inout,len,MPITraits<T>::getType(),root,m_comm);
     }
 
-    //! @copydoc gsCollectiveCommunication::gather()
-    //! @note out must have space for P*len elements
+    /// @copydoc gsSerialComm::gather()
+    /// @note out must have space for P*len elements
     template<typename T>
     int gather (T* in, T* out, int len, int root) const
     {
         return MPI_Gather(in,len,MPITraits<T>::getType(),
                           out,len,MPITraits<T>::getType(),
-                          root,communicator);
+                          root,m_comm);
     }
 
-    //! @copydoc gsCollectiveCommunication::gatherv()
+    /// @copydoc gsSerialComm::gatherv()
     template<typename T>
     int gatherv (T* in, int sendlen, T* out, int* recvlen, int* displ, int root) const
     {
         return MPI_Gatherv(in,sendlen,MPITraits<T>::getType(),
                            out,recvlen,displ,MPITraits<T>::getType(),
-                           root,communicator);
+                           root,m_comm);
     }
 
-    //! @copydoc gsCollectiveCommunication::scatter()
-    //! @note out must have space for P*len elements
+    /// @copydoc gsSerialComm::scatter()
+    /// @note out must have space for P*len elements
     template<typename T>
     int scatter (T* send, T* recv, int len, int root) const
     {
         return MPI_Scatter(send,len,MPITraits<T>::getType(),
                            recv,len,MPITraits<T>::getType(),
-                           root,communicator);
+                           root,m_comm);
     }
 
-    //! @copydoc gsCollectiveCommunication::scatterv()
+    /// @copydoc gsSerialComm::scatterv()
     template<typename T>
     int scatterv (T* send, int* sendlen, int* displ, T* recv, int recvlen, int root) const
     {
         return MPI_Scatterv(send,sendlen,displ,MPITraits<T>::getType(),
                             recv,recvlen,MPITraits<T>::getType(),
-                            root,communicator);
+                            root,m_comm);
     }
 
 
-    operator MPI_Comm () const
-    {
-        return communicator;
-    }
+    operator MPI_Comm () const { return m_comm; }
 
-    //! @copydoc gsCollectiveCommunication::allgather()
+    /// @copydoc gsSerialComm::allgather()
     template<typename T, typename T1>
     int allgather(T* sbuf, int count, T1* rbuf) const
     {
         return MPI_Allgather(sbuf, count, MPITraits<T>::getType(),
                              rbuf, count, MPITraits<T1>::getType(),
-                             communicator);
+                             m_comm);
     }
 
-    //! @copydoc gsCollectiveCommunication::allgatherv()
+    /// @copydoc gsSerialComm::allgatherv()
     template<typename T>
     int allgatherv (T* in, int sendlen, T* out, int* recvlen, int* displ) const
     {
         return MPI_Allgatherv(in,sendlen,MPITraits<T>::getType(),
                               out,recvlen,displ,MPITraits<T>::getType(),
-                              communicator);
+                              m_comm);
     }
 
-    //! @copydoc gsCollectiveCommunication::allreduce(Type* inout,int len) const
+    /// @copydoc gsSerialComm::allreduce(Type* inout,int len) const
     template<typename BinaryFunction, typename Type>
     int allreduce(Type* inout, int len) const
     {
@@ -560,34 +582,34 @@ public:
           return ret;
         */
         return MPI_Allreduce(MPI_IN_PLACE, inout, len, MPITraits<Type>::getType(),
-                             (Generic_MPI_Op<Type, BinaryFunction>::get()),communicator);
+                             (Generic_MPI_Op<Type, BinaryFunction>::get()),m_comm);
     }
 
 
-    //! @copydoc gsCollectiveCommunication::allreduce(Type* in,Type* out,int len) const
+    /// @copydoc gsSerialComm::allreduce(Type* in,Type* out,int len) const
     template<typename BinaryFunction, typename Type>
     int allreduce(Type* in, Type* out, int len) const
     {
         return MPI_Allreduce(in, out, len, MPITraits<Type>::getType(),
-                             (Generic_MPI_Op<Type, BinaryFunction>::get()),communicator);
+                             (Generic_MPI_Op<Type, BinaryFunction>::get()),m_comm);
     }
 
 
 
-    //! @copydoc gsCollectiveCommunication::allreduce(Type* in,Type* out,int len) const
+    /// @copydoc gsSerialComm::allreduce(Type* in,Type* out,int len) const
     template<typename BinaryFunction, typename Type>
     int iallreduce(Type* in, Type* out, int len,MPI_Request* req) const
     {
         return MPI_Iallreduce(in, out, len, MPITraits<Type>::getType(),
-                              (Generic_MPI_Op<Type, BinaryFunction>::get()),communicator,req);
+                              (Generic_MPI_Op<Type, BinaryFunction>::get()),m_comm,req);
     }
 
-    //! @copydoc gsCollectiveCommunication::allreduce(Type* inout,int len) const
+    /// @copydoc gsSerialComm::allreduce(Type* inout,int len) const
     template<typename BinaryFunction, typename Type>
     int iallreduce(Type* inout, int len,MPI_Request* req) const
     {
         return MPI_Iallreduce(MPI_IN_PLACE, inout, len, MPITraits<Type>::getType(),
-                              (Generic_MPI_Op<Type, BinaryFunction>::get()),communicator,req);
+                              (Generic_MPI_Op<Type, BinaryFunction>::get()),m_comm,req);
     }
 
     template<typename BinaryFunction, typename Type>
@@ -596,10 +618,10 @@ public:
         int ret;
         if(root == rank())
             ret = MPI_Reduce(MPI_IN_PLACE, inout, len, MPITraits<Type>::getType(),
-                             (Generic_MPI_Op<Type, BinaryFunction>::get()),root,communicator);
+                             (Generic_MPI_Op<Type, BinaryFunction>::get()),root,m_comm);
         else
             ret = MPI_Reduce(inout, NULL, len, MPITraits<Type>::getType(),
-                             (Generic_MPI_Op<Type, BinaryFunction>::get()),root,communicator);
+                             (Generic_MPI_Op<Type, BinaryFunction>::get()),root,m_comm);
         return ret;
     }
 
@@ -608,7 +630,7 @@ public:
     {
         int ret;
         ret = MPI_Reduce(in, out, len, MPITraits<Type>::getType(),
-                         (Generic_MPI_Op<Type, BinaryFunction>::get()),root,communicator);
+                         (Generic_MPI_Op<Type, BinaryFunction>::get()),root,m_comm);
         return ret;
     }
 
@@ -618,10 +640,10 @@ public:
         int ret;
         if(root == rank())
             ret = MPI_Ireduce(MPI_IN_PLACE, inout, len, MPITraits<Type>::getType(),
-                              (Generic_MPI_Op<Type, BinaryFunction>::get()),root,communicator,req);
+                              (Generic_MPI_Op<Type, BinaryFunction>::get()),root,m_comm,req);
         else
             ret = MPI_Ireduce(inout, inout, len, MPITraits<Type>::getType(),
-                              (Generic_MPI_Op<Type, BinaryFunction>::get()),root,communicator,req);
+                              (Generic_MPI_Op<Type, BinaryFunction>::get()),root,m_comm,req);
         return ret;
     }
 
@@ -629,15 +651,12 @@ public:
     int ireduce(Type* in, Type* out, int len, int root, MPI_Request* req) const
     {
         return MPI_Ireduce(in, out, len, MPITraits<Type>::getType(),
-                           (Generic_MPI_Op<Type, BinaryFunction>::get()),root,communicator,req);
+                           (Generic_MPI_Op<Type, BinaryFunction>::get()),root,m_comm,req);
     }
 
-private:
-    MPI_Comm communicator;
-    int me;
-    int procs;
 };
 
 #endif
 
 }
+

@@ -188,11 +188,14 @@ namespace gismo
   template<typename T1, typename T2>
   MPI_Datatype MPITraits<std::pair<T1,T2> >::getType()
   {
-    if(type==MPI_DATATYPE_NULL) {
+    if(type==MPI_DATATYPE_NULL) 
+    {
       int length[4];
       MPI_Aint disp[4];
+      // warning: MPI_LB and MPI_UP are deprecated in MPI 2.0
       MPI_Datatype types[4] = {MPI_LB, MPITraits<T1>::getType(),
                                MPITraits<T2>::getType(), MPI_UB};
+
       std::pair<T1,T2> rep[2];
       length[0]=length[1]=length[2]=length[3]=1;
       MPI_Get_address(rep, disp); // lower bound of the datatype (deprecated in MPI 2.0)

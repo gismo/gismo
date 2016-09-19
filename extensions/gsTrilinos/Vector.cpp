@@ -13,7 +13,7 @@
 
 #include <gsTrilinos/Vector.h>
 
-#include <gsMpi/gsMpiHelper.h>
+#include <gsMpi/gsMpi.h>
 #include <gsTrilinos/gsTrilinosHeaders.h>
 
 //#include <gsCore/gsForwardDeclarations.h>
@@ -50,7 +50,7 @@ Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int ra
 : my(new VectorPrivate)
 {
 #   ifdef HAVE_MPI
-    Epetra_MpiComm comm (gsMpiComm::instance().worldComm() );
+    Epetra_MpiComm comm (gsMpi::instance().worldComm() );
 #   else
     Epetra_SerialComm comm;
 #   endif
@@ -116,7 +116,7 @@ size_t Vector::mySize() const
 
 void Vector::copyTo(gsVector<real_t> & gsVec, const int rank) const
 {
-    Epetra_MpiComm comm (gsMpiComm::instance().worldComm());
+    Epetra_MpiComm comm (gsMpi::instance().worldComm());
     const int myrank = comm.MyPID();
 #ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
     const long long sz = my->vec->GlobalLength64();
@@ -141,7 +141,7 @@ Epetra_Vector * Vector::get() const
 
 void Vector::print() const
 {
-    gsInfo << "Processor No. " << gsMpiComm::instance().rank() << "\n" << *get();    
+    gsInfo << "Processor No. " << gsMpi::instance().worldRank() << "\n" << *get();    
 }
 
 

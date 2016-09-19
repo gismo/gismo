@@ -12,7 +12,7 @@
 */
 
 #include <gsTrilinos/SparseMatrix.h>
-#include <gsMpi/gsMpiHelper.h>
+#include <gsMpi/gsMpi.h>
 #include <gsTrilinos/gsTrilinosHeaders.h>
 
 
@@ -45,7 +45,7 @@ SparseMatrix::SparseMatrix(const gsSparseMatrix<real_t,RowMajor> & sp, const int
     // columns), therefore any ColMajor sp's have to produce a copy
 
 #ifdef HAVE_MPI
-    Epetra_MpiComm comm (gsMpiComm::instance().worldComm());
+    Epetra_MpiComm comm (gsMpi::instance().worldComm());
 #else
     Epetra_SerialComm comm;
 #endif
@@ -131,7 +131,7 @@ SparseMatrix::~SparseMatrix() { delete my; }
 void SparseMatrix::copyTo(gsSparseMatrix<> & sp, const int rank) const
 {
 /*
-  Epetra_MpiComm comm (gsMpiComm::instance().getCommunicator() );
+  Epetra_MpiComm comm (gsMpi::instance().getCommunicator() );
   const int myrank = comm.MyPID();
   #ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
   const long long sz = my->vec->GlobalLength64();
@@ -163,7 +163,7 @@ memory::shared_ptr<Epetra_CrsMatrix> SparseMatrix::getPtr()
 
 void SparseMatrix::print() const
 {
-    gsInfo << "Processor No. " << gsMpiComm::instance().rank() << "\n" << *get();    
+    gsInfo << "Processor No. " << gsMpi::instance().worldRank() << "\n" << *get();    
 }
 
 }//namespace trilinos
