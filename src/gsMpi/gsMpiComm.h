@@ -15,12 +15,6 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 
-#ifdef GISMO_WITH_MPI
-#include <mpi.h>
-#include <gsMpi/gsMpiTraits.h>
-#include <gsMpi/gsBinaryFunctions.h>
-#endif
-
 namespace gismo
 {
 
@@ -360,7 +354,7 @@ public:
          */
         isFake = false
     };
- 
+    
     gsMpiComm(const MPI_Comm & _comm)
     : m_comm(_comm)
     {

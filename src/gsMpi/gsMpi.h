@@ -76,14 +76,14 @@ typedef gsNoMpi gsMpi;
 class gsMpi;
 #endif
 
-/// Singleton function returning the gsMpicomm
+/// Singleton function returning the gsMpi helper object
 GISMO_EXPORT gsMpi & gsMpiSingleton(const int& argc = 0, char** argv = 0);
 
-/// Singleton function returning the gsNoMpi
+/// Singleton function returning the gsNoMpi helper object
 GISMO_EXPORT gsNoMpi & gsNoMpiSingleton(const int& argc = 0, char** argv = 0);
 
 /**
- * @brief A serial communication class
+ * @brief A helper object for use when no MPI is present
  *
  * This helper can be used if no MPI is available or one wants to run
  * sequentially even if MPI is available and used.
@@ -152,11 +152,11 @@ public:
     /**
      * @brief return rank of process, i.e. zero
      */
-    int rank () const { return 0; }
+    static int worldRank () { return 0; }
     /**
      * @brief return rank of process, i.e. one
      */
-    int size () const { return 1; }
+    static int worldSize () { return 1; }
 
 private:
     gsNoMpi();
