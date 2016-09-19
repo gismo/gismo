@@ -29,11 +29,6 @@ class gsSerialComm
 public:
     //enum { isFake = true };
 
-    gsSerialComm() { }
-
-    gsSerialComm(const gsSerialComm & other)
-    { GISMO_UNUSED(other); }
-
     /**
      * @brief return rank of process, i.e. zero
      */
@@ -633,7 +628,7 @@ public:
 };
 
 #else
-// If we compile without MPI, then all we have is the gsSerialCOmm
+// If we compile without MPI, then all we have is the gsSerialComm
 typedef gsSerialComm gsMpiComm;
 #endif
 
