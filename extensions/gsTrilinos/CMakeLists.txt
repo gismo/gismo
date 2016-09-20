@@ -35,16 +35,16 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 # Apply same configuration as G+Smo
 include( gsConfig)
 
-# Look for MPI
-find_package(MPI REQUIRED)
-include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+# Look for MPI (now: handled by GISMO_WITH_MPI)
+#find_package(MPI REQUIRED)
+#include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
 # Look for trilinos library
 find_package(TRILINOS QUIET)
 find_package(LAPACK REQUIRED)
 
 #if (NOT TRILINOS_FOUND)
-  set(TRILINOS_VER "12-6-4")
+  set(TRILINOS_VER "12-8-1")
   message(STATUS "CMake Will attempt to download and compile Trilinos ${TRILINOS_VER}.")
 include(ExternalProject)
 ExternalProject_Add(Trilinos
@@ -57,10 +57,12 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_AztecOO=ON
                        -DTrilinos_ENABLE_Anasazi=ON	
                        -DTrilinos_ENABLE_Belos=ON
+                       #-DTrilinos_ENABLE_NOX=ON
+		       #-DTrilinos_ENABLE_ML=ON 
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
 		       -DBUILD_SHARED_LIBS:BOOL=ON
-		       -DTPL_ENABLE_MPI=ON
-                       -DTrilinos_ENABLE_CXX11=ON
+		       -DTPL_ENABLE_MPI=${GISMO_WITH_MPI}
+                       -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11}
 		       -DTPL_ENABLE_SuperLU=OFF
 		       ## Point to specific paths
 		       -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}

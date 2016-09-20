@@ -116,7 +116,11 @@ size_t Vector::mySize() const
 
 void Vector::copyTo(gsVector<real_t> & gsVec, const int rank) const
 {
+#ifdef HAVE_MPI
     Epetra_MpiComm comm (gsMpi::init().worldComm());
+#else
+    Epetra_SerialComm comm;
+#endif
     const int myrank = comm.MyPID();
 #ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
     const long long sz = my->vec->GlobalLength64();
