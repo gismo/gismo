@@ -45,12 +45,12 @@ int main(int argc, char **argv)
     int _size = comm.size();
     int _rank = comm.rank();
 
-    gsInfo <<"MPI is "<< (mpi.initialized() ? "" : "NOT ")
-           <<"initialized on process "<< _rank <<"\n";
-    comm.barrier();
-    
     if (0==_rank)
         gsInfo<<"Running on "<<_size<<" processes.\n";
+    comm.barrier();
+
+    gsInfo <<"MPI is "<< (mpi.initialized() ? "" : "NOT ")
+           <<"initialized on process "<< _rank <<"\n";
     comm.barrier();
 
     std::string cpuname = mpi.getProcessorName();

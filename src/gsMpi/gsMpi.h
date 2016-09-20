@@ -30,7 +30,6 @@
 
 #include <gsMpi/gsMpiComm.h>
 
-
 namespace gismo
 {
 
@@ -57,6 +56,7 @@ GISMO_EXPORT gsMpi & gsMpiSingleton(const int& argc, char** argv);
  */
 class gsMpi
 {
+
 public:
       
     friend GISMO_EXPORT gsMpi & gsMpiSingleton(const int& argc, char** argv);
@@ -161,6 +161,7 @@ public:
     }
     
 private:
+
     gsMpi();
     
     /// \brief calls MPI_Init with argc and argv as parameters
@@ -179,6 +180,10 @@ private:
             const int init = MPI_Init(argc, &argv);
             GISMO_ENSURE(MPI_SUCCESS==init, "MPI failed to initialize");
         }
+#       ifndef NDEBUG
+        MPI_Comm_create_errhandler(gsMpiComm::ErrCallBack, &gsMpiComm::ErrHandler);
+        MPI_Comm_set_errhandler(worldComm(), gsMpiComm::ErrHandler);
+#       endif
 #   else
         GISMO_UNUSED(argc);
         GISMO_UNUSED(argv);
@@ -206,4 +211,3 @@ private:
 };
 
 }
-

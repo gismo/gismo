@@ -13,4 +13,8 @@ gsMpi & gsMpiSingleton(const int& argc, char** argv)
     return singleton;
 }
 
+#if !defined(NDEBUG) && defined(GISMO_WITH_MPI)
+MPI_Errhandler gsMpiComm::ErrHandler = MPI_ERRORS_ARE_FATAL;
+#endif
+
 };

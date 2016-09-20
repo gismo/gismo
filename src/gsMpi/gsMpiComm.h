@@ -38,6 +38,12 @@ public:
      */
     static int size () { return 1; }
 
+    /**
+     * @brief Returns the name of the communicator
+     */
+    static std::string name() { return "gsSerialComm"; }
+
+
 #ifdef GISMO_WITH_MPI
     operator MPI_Comm () const  { return MPI_COMM_SELF;}
 #endif
@@ -324,8 +330,10 @@ public:
  * @ingroup Mpi
  *
  */
-class gsMpiComm
+class GISMO_EXPORT gsMpiComm
 {
+    friend class gsMpi;
+
 public:
     //enum { isFake = false };
     
@@ -343,6 +351,9 @@ public:
                          " before using gsMpiComm");
             MPI_Comm_rank(m_comm,&rank_);
             MPI_Comm_size(m_comm,&size_);
+#           ifndef NDEBUG
+            MPI_Comm_set_errhandler(m_comm, ErrHandler);
+#           endif
         }
         else
         {
@@ -362,10 +373,22 @@ public:
      * @brief Returns the rank of process
      */
     int rank () const { return rank_; }
+
     /**
      * @brief Returns the number of processes
      */
     int size () const { return size_; }
+
+    /**
+     * @brief Returns the name of the communicator
+     */
+    std::string name() const 
+    { 
+        char str[MPI_MAX_OBJECT_NAME];
+        int len;
+        MPI_Comm_get_name(m_comm, str, &len);
+        return std::string(str, len);
+    }
 
     operator MPI_Comm () const { return m_comm; }
 
@@ -374,6 +397,32 @@ private:
     int size_;
 
     MPI_Comm m_comm;
+
+#   ifndef NDEBUG
+protected: 
+
+    // Mpi error handling
+    static void ErrCallBack(MPI_Comm *comm, int *err_code, ...)
+    {
+        char err_string[MPI_MAX_ERROR_STRING];
+        int err_length, err_class;
+
+        int rank;
+        MPI_Comm_get_name(*comm, err_string, &err_length);
+        MPI_Comm_rank(*comm, &rank);
+        gsWarn << "MPI error ("<<*err_code<<") at process "<< rank 
+               <<" of "<< err_string <<"\n";
+        MPI_Error_class(*err_code, &err_class);
+        MPI_Error_string(err_class, err_string, &err_length);
+        gsWarn <<"gsMpi error class: "<<err_class <<" ("<< err_string <<")\n";
+        MPI_Error_string(*err_code, err_string, &err_length);
+        gsWarn <<"gsMpi error      : "<<*err_code <<" ("<< err_string <<")\n";
+        throw std::runtime_error("GISMO_ERROR: " + std::string(err_string, err_length));
+        //MPI_Abort(*comm, *err_code);
+    }
+
+    static MPI_Errhandler ErrHandler;
+#   endif
 
 public:
 

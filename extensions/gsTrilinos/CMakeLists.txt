@@ -43,6 +43,10 @@ include( gsConfig)
 find_package(TRILINOS QUIET)
 find_package(LAPACK REQUIRED)
 
+if (NOT GISMO_BUILD_CPP11)
+message(WARNING "GISMO_BUILD_CPP11 must be ON for Trilinos extensions to compile.")
+endif()
+
 #if (NOT TRILINOS_FOUND)
   set(TRILINOS_VER "12-8-1")
   message(STATUS "CMake Will attempt to download and compile Trilinos ${TRILINOS_VER}.")
@@ -57,13 +61,13 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_AztecOO=ON
                        -DTrilinos_ENABLE_Anasazi=ON	
                        -DTrilinos_ENABLE_Belos=ON
-                       #-DTrilinos_ENABLE_NOX=ON
+                       -DTrilinos_ENABLE_NOX=ON
 		       #-DTrilinos_ENABLE_ML=ON 
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
 		       -DBUILD_SHARED_LIBS:BOOL=ON
 		       -DTPL_ENABLE_MPI=${GISMO_WITH_MPI}
-                       -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11}
-		       -DTPL_ENABLE_SuperLU=OFF
+                       -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11} # Note: this must be ON, otherwise Trilinos compilation fails.
+		       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU}
 		       ## Point to specific paths
 		       -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
 		       #-DCMAKE_CXX_COMPILER=/usr/lib64/mpi/gcc/openmpi/bin/mpic++
