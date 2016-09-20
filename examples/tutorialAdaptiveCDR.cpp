@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 
     //! [adaptRefSettings]
     // Number of refinement loops to be done
-    int numRefinementLoops = 3;
+    int numRefinementLoops = 4;
 
     // Specify cell-marking strategy...
     MarkingStrategy adaptRefCrit = PUCA;
@@ -118,6 +118,7 @@ int main(int argc, char *argv[])
 
     // ... and parameter.
     const real_t adaptRefParam = 0.7;
+
     //! [adaptRefSettings]
 
 
@@ -157,9 +158,10 @@ int main(int argc, char *argv[])
         // --------------- error estimation/computation ---------------
 
         //! [errorComputation]
-        // Compute the error in the H1-seminorm ( = energy norm in this example )
+        // Compute the H1-seminorm of the computed solution
+        // ( which is, at least, equivalent to the energy norm in this example )
         // using the known exact solution.
-        gsSeminormH1<real_t> norm( solField, g);
+        gsSeminormH1<real_t> norm( solField );
         norm.compute(true); // "true" indicates that element-wise norms shall be stored
 
         // Get the element-wise norms.
