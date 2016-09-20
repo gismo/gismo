@@ -19,9 +19,9 @@
 #include <mpi.h>
 #if MPI_VERSION < 2
 #  ifdef _MSC_VER
-#    pragma message ("warning: The MPI version is too old: MPI-2 is needed.")
+#    pragma message ("The MPI version is older than MPI-2.")
 #  else
-#    warning "The MPI version is too old: MPI-2 is needed."
+#    warning "The MPI version is older than MPI-2."
 #  endif
 #endif
 #include <gsMpi/gsMpiTraits.h>
@@ -37,7 +37,7 @@ namespace gismo
 class gsMpi;
 
 /// Singleton function returning the gsMpi helper object
-GISMO_EXPORT gsMpi & gsMpiSingleton(const int& argc = 0, char** argv = 0);
+GISMO_EXPORT gsMpi & gsMpiSingleton(const int& argc, char** argv);
 
 /**
   @brief A helper for initializing MPI within G+Smo code
@@ -150,6 +150,16 @@ public:
 #    endif
     }
 
+    bool initialized() const
+    {
+#   ifdef GISMO_WITH_MPI
+        int init = -1;
+        MPI_Initialized( &init );
+        return (0 != init);
+#    endif
+        return false;
+    }
+    
 private:
     gsMpi();
     
@@ -159,19 +169,17 @@ private:
         initMpi(const_cast<int*>(&argc), argv);
     }
 
-    void initMpi(int * argc = NULL, char** argv = NULL)
+    void initMpi(int * argc = NULL, char** argv = NULL) const
     {
 #   ifdef GISMO_WITH_MPI
-        int initialized = -1;
-        MPI_Initialized( &initialized );
-        if( 0 == initialized )
+        if( !initialized() )
         {
             //Note: valgrind false positive here, see
             // https://www.open-mpi.org/faq/?category=debugging#valgrind_clean
-            initialized = MPI_Init(argc, &argv);
-            GISMO_ENSURE(MPI_SUCCESS==initialized, "MPI failed to initialize");
+            const int init = MPI_Init(argc, &argv);
+            GISMO_ENSURE(MPI_SUCCESS==init, "MPI failed to initialize");
         }
-#   else  
+#   else
         GISMO_UNUSED(argc);
         GISMO_UNUSED(argv);
 #   endif

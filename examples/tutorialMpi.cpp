@@ -33,8 +33,8 @@ using namespace gismo;
 int main(int argc, char **argv)
 {  
     // Initialize the MPI environment
-    gsMpi & mpi = gsMpi::init(argc, argv);
-
+    const gsMpi & mpi = gsMpi::init(argc, argv);
+    
     // Get current wall time
     double wtime = mpi.wallTime();
 
@@ -45,15 +45,18 @@ int main(int argc, char **argv)
     int _size = comm.size();
     int _rank = comm.rank();
 
+    gsInfo <<"MPI is "<< (mpi.initialized() ? "" : "NOT ")
+           <<"initialized on process "<< _rank <<"\n";
+    comm.barrier();
+    
     if (0==_rank)
         gsInfo<<"Running on "<<_size<<" processes.\n";
     comm.barrier();
 
     std::string cpuname = mpi.getProcessorName();
-        
-    --_size;
+    
     // Print off a hello world message
-    gsInfo << "Hello G+Smo, my rank is " << _rank <<" of "<<_size <<" on "
+    gsInfo << "Hello G+Smo, from process " << _rank <<" on "
            << cpuname <<", elapsed time is "<< mpi.wallTime()-wtime<< "\n";
 
     return 0;

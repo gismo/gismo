@@ -339,7 +339,8 @@ public:
             int initialized = 0;
             MPI_Initialized(&initialized);
             GISMO_ENSURE(1==initialized, 
-                         "You must call gsMpi::instance in your main() function before using gsMpiComm");
+                         "You must call gsMpi::init(..) in your main() function"
+                         " before using gsMpiComm");
             MPI_Comm_rank(m_comm,&rank_);
             MPI_Comm_size(m_comm,&size_);
         }
@@ -541,6 +542,11 @@ public:
                               m_comm);
     }
 
+#ifndef MPI_IN_PLACE
+ #define inout MPI_IN_PLACE
+ #define MASK_MPI_IN_PLACE
+#endif
+
     /// @copydoc gsSerialComm::allreduce(Type* inout,int len) const
     template<typename BinaryFunction, typename Type>
     int allreduce(Type* inout, int len) const
@@ -616,6 +622,11 @@ public:
         return ret;
     }
 
+#ifdef MASK_MPI_IN_PLACE
+#undef MPI_IN_PLACE
+#undef MASK_MPI_IN_PLACE
+#endif
+    
     template<typename BinaryFunction, typename Type>
     int ireduce(Type* in, Type* out, int len, int root, MPI_Request* req) const
     {
