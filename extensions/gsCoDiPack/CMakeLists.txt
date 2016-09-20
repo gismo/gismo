@@ -51,13 +51,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     FOLDER "G+Smo extensions"
     )
 
+add_dependencies(${PROJECT_NAME} CoDiPack)
+
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
-
-#if (NOT CODIPACK_FOUND)
-  add_dependencies(${PROJECT_NAME} CoDiPack)
-#  set(CODIPACK_FOUND TRUE)
-#endif(NOT CODIPACK_FOUND)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/gsCoDiPack/
