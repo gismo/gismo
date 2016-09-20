@@ -551,7 +551,6 @@ public:
 #    warning "Masking MPI_IN_PLACE (not found in MPI version used)."
 #  endif
 #endif
-#endif
 
     /// @copydoc gsSerialComm::allreduce(Type* inout,int len) const
     template<typename BinaryFunction, typename Type>
@@ -609,10 +608,8 @@ public:
     template<typename BinaryFunction, typename Type>
     int reduce(Type* in,Type* out, int len,int root) const
     {
-        int ret;
-        ret = MPI_Reduce(in, out, len, MPITraits<Type>::getType(),
-                         (Generic_MPI_Op<Type, BinaryFunction>::get()),root,m_comm);
-        return ret;
+        return MPI_Reduce(in, out, len, MPITraits<Type>::getType(),
+                          (Generic_MPI_Op<Type, BinaryFunction>::get()),root,m_comm);
     }
 
     template<typename BinaryFunction, typename Type>

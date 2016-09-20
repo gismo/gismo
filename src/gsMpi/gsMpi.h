@@ -17,13 +17,13 @@
 
 #ifdef GISMO_WITH_MPI
 #include <mpi.h>
-#if MPI_VERSION < 2
+// #if MPI_VERSION < 2
 // #  ifdef _MSC_VER
 // #    pragma message ("The MPI version is older than MPI-2.")
 // #  else
 // #    warning "The MPI version is older than MPI-2."
 // #  endif
-// #endif
+//#endif
 #include <gsMpi/gsMpiTraits.h>
 #include <gsMpi/gsBinaryFunctions.h>
 #endif
