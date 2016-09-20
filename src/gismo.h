@@ -116,6 +116,7 @@ namespace internal
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
+#include <gsPde/gsNewtonIterator.h>
 
 /* ----------- Norms ----------- */
 #include <gsAssembler/gsNorm.h>
@@ -157,6 +158,9 @@ namespace internal
 #include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
+
+/* ----------- MPI ----------- */
+#include <gsMpi/gsMpi.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF

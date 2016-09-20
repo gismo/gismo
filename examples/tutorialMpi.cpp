@@ -26,7 +26,6 @@
 */
 
 #include <gismo.h>
-#include <gsMpi/gsMpi.h>
 
 using namespace gismo;
 
