@@ -41,7 +41,7 @@ public:
     
     /// @brief Constructor taking a reference
     /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
-    gsMatrixOp(const MatrixType& mat, bool sym=false) : m_mat(shared_not_owned(&mat)), m_symmetric(sym)    {}
+    gsMatrixOp(const MatrixType& mat, bool sym=false) : m_mat(memory::make_shared_not_owned(&mat)), m_symmetric(sym)    {}
     
     /// Constructor taking a shared pointer
     gsMatrixOp(const MatrixPtr& mat, bool sym=false) : m_mat(mat), m_symmetric(sym)    {}
@@ -122,7 +122,7 @@ public:
     
     /// @brief Constructor taking a reference
     /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
-    gsTransposedMatrixOp(const MatrixType& mat) : m_mat(shared_not_owned(&mat))    {}
+    gsTransposedMatrixOp(const MatrixType& mat) : m_mat(memory::make_shared_not_owned(&mat))    {}
     
     /// Constructor taking a shared pointer
     gsTransposedMatrixOp(const MatrixPtr& mat) : m_mat(mat)    {}

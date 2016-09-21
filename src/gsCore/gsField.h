@@ -67,19 +67,19 @@ public:
     { }
 
     gsField( const gsGeometry<T> & sp, const gsFunctionSet<T> & pf, const bool isparam = false) 
-    : m_patches(&sp), m_fields(shared_not_owned(&pf)), parametrized(isparam)
+    : m_patches(&sp), m_fields(memory::make_shared_not_owned(&pf)), parametrized(isparam)
     { }
 
     gsField( const gsGeometry<T> & sp, const gsGeometry<T> & pf) 
-    : m_patches(&sp), m_fields(shared_not_owned(&pf)), parametrized(true)
+    : m_patches(&sp), m_fields(memory::make_shared_not_owned(&pf)), parametrized(true)
     { }
 
     gsField( const gsMultiPatch<T> & mp, const gsFunctionSet<T> & f, const bool isparam = false) 
-    : m_patches(&mp), m_fields(shared_not_owned(&f)), parametrized(isparam)
+    : m_patches(&mp), m_fields(memory::make_shared_not_owned(&f)), parametrized(isparam)
     { }
 
     gsField( const gsMultiPatch<T> & mp, const gsMultiPatch<T> & f) 
-    : m_patches(&mp), m_fields(shared_not_owned(&f)), parametrized(true)
+    : m_patches(&mp), m_fields(memory::make_shared_not_owned(&f)), parametrized(true)
     { }
 
 public:

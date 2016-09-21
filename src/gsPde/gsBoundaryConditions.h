@@ -94,7 +94,7 @@ struct boundary_condition
           m_unknown(unknown),
           m_parametric(parametric)
     {
-        m_function = function_ptr(f_ptr, null_deleter<gsFunction<T> >);
+        m_function = function_ptr(f_ptr, memory::null_deleter<gsFunction<T> >);
     }
 
     boundary_condition( int p, boxSide s, const gsFunction<T> & func,

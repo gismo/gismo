@@ -79,7 +79,7 @@ Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int ra
 
 Vector::Vector(Epetra_Vector * v_ptr) : my(new VectorPrivate)
 {
-    my->vec.reset(v_ptr, null_deleter<Epetra_Vector> );
+    my->vec.reset(v_ptr, memory::null_deleter<Epetra_Vector> );
 }
 
 Vector::Vector() : my(new VectorPrivate) { }

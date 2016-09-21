@@ -85,6 +85,8 @@ template <typename T>
 inline typename memory::unique<T>::ptr safe(T *x)
 { return typename memory::unique<T>::ptr(x); }
 
+namespace memory
+{
 
 /// \brief Deleter function that does not delete an object pointer
 template <typename Obj>
@@ -94,10 +96,12 @@ void null_deleter(Obj *) {}
 /// the underlying raw pointer. Usefull to refer to objects which
 /// should not be destroyed
 template <typename T>
-inline memory::shared_ptr<T> shared_not_owned(const T *x)
+inline shared_ptr<T> make_shared_not_owned(const T *x)
 {
-    return memory::shared_ptr<T>(const_cast<T*>(x), null_deleter<T>);
+    return shared_ptr<T>(const_cast<T*>(x), null_deleter<T>);
 }
+
+};
 
 /**
    Wrapper for a reference that can be swapped with another object.
