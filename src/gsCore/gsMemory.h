@@ -75,8 +75,8 @@ void null_deleter(Obj *) {}
 /// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
 /// memory leaks.
 template <typename T>
-inline memory::shared_ptr<T> make_shared(T *x)
-{ return memory::shared_ptr<T>(x); }
+inline shared_ptr<T> make_shared(T *x)
+{ return shared_ptr<T>(x); }
 
 
 /// \brief Creates a shared pointer which does not eventually delete
@@ -92,7 +92,7 @@ inline shared_ptr<T> make_shared_not_owned(const T *x)
 /// Takes a T* and wraps it in an unique_ptr. Useful for one-off
 /// function return values to avoid memory leaks.
 template <typename T>
-typename unique<T>::ptr make_unique(T * x)
+inline typename unique<T>::ptr make_unique(T * x)
 { return typename unique<T>::ptr(x); }
 
 
