@@ -115,6 +115,7 @@ SparseMatrix::SparseMatrix(const gsSparseMatrix<real_t,RowMajor> & sp, const int
     err_code = my->matrix->Export(_sp0, exporter, Insert);
     err_code = my->matrix->FillComplete();
     err_code = my->matrix->OptimizeStorage();
+    GISMO_UNUSED(err_code);
     //*/
 }
 

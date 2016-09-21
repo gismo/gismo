@@ -146,7 +146,7 @@ public:
 
         //linux: gethostname(processor_name, HOST_NAME_MAX);
         //mswin: GetComputerName(processor_name, &name_len)
-        return "CPU0";
+        return "SingleCPU";
 #    endif
     }
 

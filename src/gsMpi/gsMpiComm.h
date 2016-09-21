@@ -19,27 +19,31 @@ namespace gismo
 {
 
 /**
- * @brief A serial communication class
- *
- * This communicator can be used if no MPI is available or one wants to run
- * sequentially even if MPI is available and used.
+  @brief A serial communication class
+ 
+  This communicator can be used if no MPI is available or one wants to run
+  sequentially even if MPI is available and used.
+
+  \ingroup Mpi
  */
 class gsSerialComm
 {
 public:
-    //enum { isFake = true };
+    /**
+      @brief return rank of process, i.e. zero
+      
+      This function is intentionally left non-static to avoid compiler
+      warnings of unused object.
+     */
+    int rank () const { return 0; }
 
     /**
-     * @brief return rank of process, i.e. zero
-     */
-    static int rank () { return 0; }
-    /**
-     * @brief return rank of process, i.e. one
+      @brief return rank of process, i.e. one
      */
     static int size () { return 1; }
 
     /**
-     * @brief Returns the name of the communicator
+      @brief Returns the name of the communicator
      */
     static std::string name() { return "gsSerialComm"; }
 
@@ -325,17 +329,15 @@ public:
 #ifdef GISMO_WITH_MPI
 
 /**
- * @brief A parallel communicator class based on MPI
- *
- * @ingroup Mpi
- *
+  @brief A parallel communicator class based on MPI
+ 
+  @ingroup Mpi
  */
 class GISMO_EXPORT gsMpiComm
 {
     friend class gsMpi;
 
 public:
-    //enum { isFake = false };
     
     gsMpiComm() : rank_(-1), size_(0) { }
 
