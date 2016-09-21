@@ -346,16 +346,16 @@ public:
     {
         if(_comm != MPI_COMM_NULL) 
         {
+#           ifndef NDEBUG
             int initialized = 0;
             MPI_Initialized(&initialized);
             GISMO_ENSURE(1==initialized, 
                          "You must call gsMpi::init(..) in your main() function"
                          " before using gsMpiComm");
-            MPI_Comm_rank(m_comm,&rank_);
-            MPI_Comm_size(m_comm,&size_);
-#           ifndef NDEBUG
             MPI_Comm_set_errhandler(m_comm, ErrHandler);
 #           endif
+            MPI_Comm_rank(m_comm, &rank_);
+            MPI_Comm_size(m_comm, &size_);
         }
         else
         {
@@ -594,15 +594,15 @@ public:
     }
 
 #ifndef MPI_IN_PLACE
- #define inout MPI_IN_PLACE
+ #define MPI_IN_PLACE inout
  #define MASK_MPI_IN_PLACE
 #  ifdef _MSC_VER
 #    pragma message ("Masking MPI_IN_PLACE (not found in MPI version used).")
 #  else
-#    warning "Masking MPI_IN_PLACE (not found in MPI version used)."
+#    warning Masking MPI_IN_PLACE (not found in MPI version used).
 #  endif
 #endif
-
+    
     /// @copydoc gsSerialComm::allreduce(Type* inout,int len) const
     template<typename BinaryFunction, typename Type>
     int allreduce(Type* inout, int len) const

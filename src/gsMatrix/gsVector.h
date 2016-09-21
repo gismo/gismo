@@ -162,10 +162,16 @@ public:
     }
 
     /// \brief Returns the \a i-th element of the vector
-    inline T at (index_t i) const { return *(this->data()+i);}
+    inline T at(index_t i) const { return *(this->data()+i);}
 
     /// \brief Returns the \a i-th element of the vector
-    inline T & at (index_t i)     { return *(this->data()+i);}
+    inline T & at(index_t i)     { return *(this->data()+i);}
+
+    /// \brief Returns the last (bottom) element of the vector
+    inline T last() const { return *(this->data()+this->size()-1);}
+
+    /// \brief Returns the last (bottom) element of the vector
+    inline T & last() { return *(this->data()+this->size()-1);}
 
     /// Return a row-block view of the vector with \a rowSizes
     BlockView blockView(const gsVector<index_t> & rowSizes)

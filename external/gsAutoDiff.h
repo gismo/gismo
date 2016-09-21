@@ -113,7 +113,7 @@ public:
     inline void gradient_into(const Eigen::DenseBase<Derived> & res) const
     {
         if ( 0==grad.size() )
-            grad.resize( res.rows() );
+            grad.setZero( res.rows() );
 
         // Note: Eigen hack to write on expression
         const_cast<Eigen::DenseBase<Derived>&>(res) = grad;
@@ -564,7 +564,7 @@ public:
     inline void gradient_into(const Eigen::DenseBase<Derived> & res) const
     {
         if ( 0==grad.size() )
-            grad.resize( res.rows() );
+            grad.setZero( res.rows() );
 
         // Note: Eigen hack to write on expression
         const_cast<Eigen::DenseBase<Derived>&>(res) = grad;
@@ -580,7 +580,7 @@ public:
     inline void hessian_into(const Eigen::DenseBase<Derived> & res) const
     {
         if ( 0==hess.size() )
-            hess.resize( res.rows(), res.cols() );
+            hess.setZero( res.rows(), res.cols() );
 
         // Note: Eigen hack to write on expression
         const_cast<Eigen::DenseBase<Derived>&>(res) = hess;
