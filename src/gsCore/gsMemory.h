@@ -67,9 +67,10 @@ struct unique
 #endif
 };
 
-template <typename C>
-typename unique<C>::ptr make_unique(C * x)
-{ return typename unique<C>::ptr(x); }
+/// \brief Deleter function that does not delete an object pointer
+template <typename Obj>
+void null_deleter(Obj *) {}
+
 
 /// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
 /// memory leaks.
@@ -77,20 +78,6 @@ template <typename T>
 inline memory::shared_ptr<T> make_shared(T *x)
 { return memory::shared_ptr<T>(x); }
 
-}
-
-/// Takes a T* and wraps it in an auto_ptr. Useful for one-off
-/// function return values to avoid memory leaks.
-template <typename T>
-inline typename memory::unique<T>::ptr safe(T *x)
-{ return typename memory::unique<T>::ptr(x); }
-
-namespace memory
-{
-
-/// \brief Deleter function that does not delete an object pointer
-template <typename Obj>
-void null_deleter(Obj *) {}
 
 /// \brief Creates a shared pointer which does not eventually delete
 /// the underlying raw pointer. Usefull to refer to objects which
@@ -101,7 +88,22 @@ inline shared_ptr<T> make_shared_not_owned(const T *x)
     return shared_ptr<T>(const_cast<T*>(x), null_deleter<T>);
 }
 
-};
+
+/// Takes a T* and wraps it in an unique_ptr. Useful for one-off
+/// function return values to avoid memory leaks.
+template <typename T>
+typename unique<T>::ptr make_unique(T * x)
+{ return typename unique<T>::ptr(x); }
+
+
+} // namespace memory
+
+/// Takes a T* and wraps it in an unique_ptr. Useful for one-off
+/// function return values to avoid memory leaks.
+/// Does the same as memory::make_unique.
+template <typename T>
+inline typename memory::unique<T>::ptr safe(T *x)
+{ return typename memory::unique<T>::ptr(x); }
 
 /**
    Wrapper for a reference that can be swapped with another object.
