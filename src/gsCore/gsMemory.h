@@ -38,6 +38,7 @@ namespace gismo {
 namespace memory 
 {
 
+// /*
 // Use the correct shared_ptr
 #ifdef STD_SHARED_PTR_FOUND
     using std::shared_ptr;
@@ -48,12 +49,21 @@ namespace memory
 #else 
     using NOT_FOUND::shared_ptr;
 #endif
+//*/
 
 // typename shared<C>::ptr
 template <typename C>
 struct shared
 {
-    typedef shared_ptr<C> ptr;
+#ifdef STD_SHARED_PTR_FOUND
+    typedef std::shared_ptr<C> ptr;
+#elif defined(TR1_SHARED_PTR_FOUND)
+    typedef std::tr1::shared_ptr<C> ptr;
+#elif defined(BOOST_SHARED_PTR_FOUND)
+    typedef boost::shared_ptr<C> ptr;
+#else 
+    using NOT_FOUND::shared_ptr;
+#endif
 };
 
 // typename unique<C>::ptr
@@ -75,17 +85,17 @@ void null_deleter(Obj *) {}
 /// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
 /// memory leaks.
 template <typename T>
-inline shared_ptr<T> make_shared(T *x)
-{ return shared_ptr<T>(x); }
+inline typename shared<T>::ptr make_shared(T *x)
+{ return typename shared<T>::ptr(x); }
 
 
 /// \brief Creates a shared pointer which does not eventually delete
 /// the underlying raw pointer. Usefull to refer to objects which
 /// should not be destroyed
 template <typename T>
-inline shared_ptr<T> make_shared_not_owned(const T *x)
+inline typename shared<T>::ptr make_shared_not_owned(const T *x)
 {
-    return shared_ptr<T>(const_cast<T*>(x), null_deleter<T>);
+    return typename shared<T>::ptr(const_cast<T*>(x), null_deleter<T>);
 }
 
 
