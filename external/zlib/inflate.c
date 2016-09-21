@@ -1494,6 +1494,7 @@ int subvert;
     state->sane = !subvert;
     return Z_OK;
 #else
+    (void)subvert;
     state->sane = 1;
     return Z_DATA_ERROR;
 #endif
