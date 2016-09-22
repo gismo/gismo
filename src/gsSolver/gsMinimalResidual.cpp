@@ -46,7 +46,6 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     sPrew = 0; s = 0; sNew = 0;
     cPrew = 1; c = 1; cNew = 1;
 
-    residualNorm2 = 0;
     threshold = m_tol*m_tol*rhsNorm2;
     m_num_iter = 0;
     return false;
@@ -76,6 +75,7 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x, const gsLinearOp
     m_mat->apply(x,tmp2);
     residual = m_rhs - tmp2;
     residualNorm2 = residual.squaredNorm();
+    m_error = math::sqrt(residualNorm2 / rhsNorm2);    
     if(residualNorm2 < threshold)
         return true;
 

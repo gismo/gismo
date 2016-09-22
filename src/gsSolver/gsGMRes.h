@@ -40,34 +40,9 @@ public:
     gsGMRes( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, index_t max_iter=1000, real_t tol=1e-10 )
         : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol) {}
 
-    void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator<>& precond );
-
-    void finalizeIteration( const VectorType& rhs, VectorType& x );
-    
-    void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond )
-    {
-        initIteration(rhs, x, precond);
-
-        while(m_num_iter < m_max_iters)
-        {
-            m_num_iter++;
-            if (step(x, precond))
-                break;
-        }
-        m_error = math::sqrt(residualNorm2 / rhsNorm2);
-        
-        finalizeIteration( rhs, x );
-
-    }
-
-    /// Solve system without preconditioner
-    void solve( const VectorType& rhs, VectorType& x )
-    {
-        gsIdentityOp<> preConId(m_mat->rows());
-        solve(rhs, x, preConId);
-    }
-
+    bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond );
     bool step( VectorType& x, const gsLinearOperator<>& precond );
+    void finalizeIteration( const VectorType& rhs, VectorType& x );
 
 private:
 

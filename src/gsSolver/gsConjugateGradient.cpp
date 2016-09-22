@@ -16,7 +16,7 @@
 namespace gismo
 {
 
-void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x0, const gsLinearOperator<>& precond)
+bool gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x0, const gsLinearOperator<>& precond)
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single column right hand side matrix");
 
@@ -36,7 +36,6 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
     rhsNorm2 = rhs.squaredNorm();
     if (rhsNorm2 == 0)
         rhsNorm2 = 1.0;
-    residualNorm2 = 0;
     threshold = m_tol*m_tol*rhsNorm2;
     m_num_iter = 0;
 
@@ -51,6 +50,7 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
 
         m_eigsAreCalculated =  true;
     }
+    return false;
 }
 
 
@@ -66,6 +66,7 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLine
     residual -= alpha * tmp;              // update residual
 
     residualNorm2 = residual.squaredNorm();
+    m_error = math::sqrt(residualNorm2 / rhsNorm2);
     if(residualNorm2 < threshold)
         return true;
 

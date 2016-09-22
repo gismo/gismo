@@ -41,28 +41,6 @@ public:
         : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol) {}
 
     bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond );
-
-    void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond )
-    {
-        if(!initIteration(rhs, x, precond))
-        {
-            while(m_num_iter < m_max_iters)
-            {
-                m_num_iter++;
-                if (step(x, precond))
-                    break;
-            }
-        }
-        m_error = math::sqrt(residualNorm2 / rhsNorm2);
-    }
-
-    /// Solve system without preconditioner
-    void solve( const VectorType& rhs, VectorType& x )
-    {
-        gsIdentityOp<> preConId(m_mat->rows());
-        solve(rhs, x, preConId);
-    }
-
     bool step( VectorType& x, const gsLinearOperator<>& precond );
 
 

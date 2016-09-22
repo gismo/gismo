@@ -18,7 +18,7 @@
 namespace gismo
 {
 
-void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator<>& precond)
+bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond)
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
     m_rhs = rhs;
@@ -39,6 +39,8 @@ void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const 
     residualNorm2 = 0;
     threshold = m_tol*m_tol*rhsNorm2;
     m_num_iter = 0;
+    
+    return false;
 }
 
 void gsGMRes::finalizeIteration(const VectorType& rhs, VectorType& x)
@@ -110,6 +112,7 @@ bool gsGMRes::step( VectorType& x, const gsLinearOperator<>& precond )
     g = Omega*g_tmp;
 
     residualNorm2 = g(k+1,0)*g(k+1,0);
+    m_error = math::sqrt(residualNorm2 / rhsNorm2);
     if(residualNorm2 < threshold)
         return true;
 
