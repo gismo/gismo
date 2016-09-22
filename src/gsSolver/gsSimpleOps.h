@@ -46,7 +46,7 @@ public:
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsRichardsonOp
-    typedef memory::shared_ptr< gsRichardsonOp > Ptr;
+    typedef typename memory::shared< gsRichardsonOp >::ptr Ptr;
 
     /// Unique pointer for gsRichardsonOp   
     typedef typename memory::unique< gsRichardsonOp >::ptr uPtr;    
@@ -102,7 +102,7 @@ public:
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsJacobiOp
-    typedef memory::shared_ptr< gsJacobiOp > Ptr;
+    typedef typename memory::shared< gsJacobiOp >::ptr Ptr;
 
     /// Unique pointer for gsJacobiOp   
     typedef typename memory::unique< gsJacobiOp >::ptr uPtr;    
@@ -159,7 +159,7 @@ public:
     typedef typename MatrixType::Scalar T;
 
     /// Shared pointer for gsGaussSeidelOp
-    typedef memory::shared_ptr< gsGaussSeidelOp > Ptr;
+    typedef typename memory::shared< gsGaussSeidelOp >::ptr Ptr;
 
     /// Unique pointer for gsGaussSeidelOp   
     typedef typename memory::unique< gsGaussSeidelOp >::ptr uPtr;   
@@ -210,7 +210,7 @@ public:
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsSymmetricGaussSeidelOp
-    typedef memory::shared_ptr< gsSymmetricGaussSeidelOp > Ptr;
+    typedef typename memory::shared< gsSymmetricGaussSeidelOp >::ptr Ptr;
 
     /// Unique pointer for gsSymmetricGaussSeidelOp   
     typedef typename memory::unique< gsSymmetricGaussSeidelOp >::ptr uPtr; 
