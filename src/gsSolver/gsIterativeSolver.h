@@ -30,7 +30,27 @@ public:
     gsIterativeSolver( const gsLinearOperator<>::Ptr& mat, index_t max_iters=1000, real_t tol=1e-10 )
         : m_mat(mat), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
     {
-        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square, current implementation requires this!");
+        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
+    }
+    
+    /// Contructor for sparse matrix
+    ///
+    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted before the solver.
+    template<int _Options, typename _Index>
+    gsIterativeSolver( const gsSparseMatrix<real_t, _Options, _Index > & mat, index_t max_iters=1000, real_t tol=1e-10 )
+        : m_mat(makeMatrixOp(mat)), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
+    {
+        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
+    }
+
+    /// Contructor for dense matrix
+    ///
+    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted before the solver.
+    template<int _Rows, int _Cols, int _Options>
+    gsIterativeSolver( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, index_t max_iters=1000, real_t tol=1e-10 )
+        : m_mat(makeMatrixOp(mat)), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
+    {
+        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
     }
 
     virtual ~gsIterativeSolver()    {}

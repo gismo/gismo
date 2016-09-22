@@ -21,9 +21,6 @@ namespace gismo
 /** The conjugate gradient implementation from Eigen, adapted to allow for more
  *  general preconditioners and better iteration control. Also capable of using
  *  a gsLinearOperator as matrix.
- *
- *
- *  Only implemented for single right hand side!
  */
 
 class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver
@@ -31,23 +28,10 @@ class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver
 public:
     typedef gsMatrix<real_t>    VectorType;
 
-    /// Constructor for general linear operator
-    gsConjugateGradient( const gsLinearOperator<>::Ptr& mat, int max_iter=1000, real_t tol=1e-10, bool calcEigenval=false )
-        : gsIterativeSolver(mat, max_iter, tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
-
-    /// Constructor for sparse matrix
-    ///
-    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
-    template<int _Options, typename _Index>
-    gsConjugateGradient( const gsSparseMatrix<real_t, _Options, _Index > & mat, index_t max_iter=1000, real_t tol=1e-10, bool calcEigenval=false )
-        : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
-
-    /// Constructor for dense matrix
-    ///
-    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
-    template<int _Rows, int _Cols, int _Options>
-    gsConjugateGradient( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, index_t max_iter=1000, real_t tol=1e-10, bool calcEigenval=false )
-        : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
+    /// Contructor. See gsIterativeSolver to find out what you can pass for mat.
+    template< typename OperatorType >
+    gsConjugateGradient( const OperatorType& mat, index_t max_iters=1000, real_t tol=1e-10, bool calcEigenval=false  )
+        : gsIterativeSolver(mat, max_iters, tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
 
     bool initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond );
     bool step( VectorType& x, const gsLinearOperator<>& precond );
