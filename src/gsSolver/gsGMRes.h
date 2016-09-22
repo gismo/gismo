@@ -40,7 +40,7 @@ public:
     gsGMRes( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, index_t max_iter=1000, real_t tol=1e-10 )
         : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol) {}
 
-    bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond );
+    bool initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond );
     bool step( VectorType& x, const gsLinearOperator<>& precond );
     void finalizeIteration( const VectorType& rhs, VectorType& x );
 
@@ -55,16 +55,18 @@ private:
 
 private:
     using gsIterativeSolver::m_mat;
-    using gsIterativeSolver::m_error;
     using gsIterativeSolver::m_max_iters;
-    using gsIterativeSolver::m_num_iter;
     using gsIterativeSolver::m_tol;
+    using gsIterativeSolver::m_num_iter;
+    using gsIterativeSolver::m_initial_error;
+    using gsIterativeSolver::m_error;
+
 
     gsMatrix<real_t> xInit, tmp, g, g_tmp, h_tmp, y, w;
     gsMatrix<real_t> m_rhs, residual;
     gsMatrix<real_t> H_prew, H, Omega, Omega_prew, Omega_tmp, Omega_prew_tmp;
     std::vector<gsMatrix<real_t> > v;
-    real_t residualNorm2, threshold, rhsNorm2, beta;
+    real_t beta;
 };
 
 } // namespace gismo

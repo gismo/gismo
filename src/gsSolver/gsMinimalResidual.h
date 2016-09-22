@@ -40,19 +40,20 @@ public:
     gsMinimalResidual( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, index_t max_iter=1000, real_t tol=1e-10 )
         : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol) {}
 
-    bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond );
+    bool initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond );
     bool step( VectorType& x, const gsLinearOperator<>& precond );
 
 
 private:
     using gsIterativeSolver::m_mat;
-    using gsIterativeSolver::m_error;
     using gsIterativeSolver::m_max_iters;
-    using gsIterativeSolver::m_num_iter;
     using gsIterativeSolver::m_tol;
+    using gsIterativeSolver::m_num_iter;
+    using gsIterativeSolver::m_initial_error;
+    using gsIterativeSolver::m_error;
 
+    
     gsMatrix<real_t> vPrew, v, vNew, wPrew, w, wNew,zNew, z, xPrew, m_rhs, residual, tmp, tmp2;
-    real_t residualNorm2, threshold, rhsNorm2;
     real_t eta, gammaPrew, gamma, gammaNew, sPrew, s, sNew, cPrew, c, cNew;
 };
 

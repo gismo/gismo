@@ -15,28 +15,26 @@
 namespace gismo
 {
 
-bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x0, const gsLinearOperator<>& precond)
+bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x, const gsLinearOperator<>& precond)
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
 
     int n = m_mat->cols();
     int m = 1;//rhs.cols();
     m_rhs = rhs;
-    rhsNorm2 = rhs.squaredNorm();
-    if (rhsNorm2 == 0)
+    m_initial_error = rhs.norm();
+    if (m_initial_error == 0)
     {
-        rhsNorm2 = 1.0;
-        x0 = rhs;
-        residualNorm2=0;
+        x = rhs;
         return true;
     }
 
-    xPrew = x0;
+    xPrew = x;
     vPrew.setZero(n,m); vNew.setZero(n,m);
     wPrew.setZero(n,m); w.setZero(n,m); wNew.setZero(n,m);
     tmp2.setZero(n,1);
 
-    m_mat->apply(x0,tmp2);
+    m_mat->apply(x,tmp2);
     v = m_rhs - tmp2;
 
     precond.apply(v, z);
@@ -46,8 +44,6 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     sPrew = 0; s = 0; sNew = 0;
     cPrew = 1; c = 1; cNew = 1;
 
-    threshold = m_tol*m_tol*rhsNorm2;
-    m_num_iter = 0;
     return false;
 }
 
@@ -74,9 +70,8 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x, const gsLinearOp
     //Test for convergence
     m_mat->apply(x,tmp2);
     residual = m_rhs - tmp2;
-    residualNorm2 = residual.squaredNorm();
-    m_error = math::sqrt(residualNorm2 / rhsNorm2);    
-    if(residualNorm2 < threshold)
+    m_error = residual.norm() / m_initial_error;
+    if (m_error < m_tol)
         return true;
 
     //Update variables

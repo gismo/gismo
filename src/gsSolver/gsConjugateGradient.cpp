@@ -16,7 +16,7 @@
 namespace gismo
 {
 
-bool gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x0, const gsLinearOperator<>& precond)
+bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x, const gsLinearOperator<>& precond )
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single column right hand side matrix");
 
@@ -27,19 +27,20 @@ bool gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
     tmp2.resize(n,m);
     p.resize(n,m);
 
-    m_mat->apply(x0,tmp2);  //apply the system matrix
+    m_mat->apply(x,tmp2);  //apply the system matrix
     residual = rhs - tmp2; //initial residual
 
     precond.apply(residual, p);      //initial search direction
 
     absNew = Eigen::numext::real(residual.col(0).dot(p.col(0)));  // the square of the absolute value of r scaled by invM
-    rhsNorm2 = rhs.squaredNorm();
-    if (rhsNorm2 == 0)
-        rhsNorm2 = 1.0;
-    threshold = m_tol*m_tol*rhsNorm2;
-    m_num_iter = 0;
+    m_initial_error = rhs.norm();
+    if (m_initial_error == 0.)
+    {
+        x = rhs;
+        return true;
+    }
 
-    if(m_calcEigenvals)
+    if (m_calcEigenvals)
     {
         delta.clear();
         delta.resize(1,0);
@@ -59,15 +60,14 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLine
     m_mat->apply(p,tmp); //apply system matrix
 
     real_t alpha = absNew / p.col(0).dot(tmp.col(0));   // the amount we travel on dir
-    if(m_calcEigenvals)
+    if (m_calcEigenvals)
         delta.back()+=(1./alpha);
 
     x += alpha * p;                       // update solution
     residual -= alpha * tmp;              // update residual
 
-    residualNorm2 = residual.squaredNorm();
-    m_error = math::sqrt(residualNorm2 / rhsNorm2);
-    if(residualNorm2 < threshold)
+    m_error = residual.norm() / m_initial_error;
+    if (m_error < m_tol)
         return true;
 
     precond.apply(residual, z);          // approximately solve for "A z = residual"
@@ -78,7 +78,7 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLine
     real_t beta = absNew / absOld;            // calculate the Gram-Schmidt value used to create the new search direction
     p = z + beta * p;                             // update search direction
 
-    if(m_calcEigenvals)
+    if (m_calcEigenvals)
     {
         gamma.push_back(-math::sqrt(beta)/alpha);
         delta.push_back(beta/alpha);

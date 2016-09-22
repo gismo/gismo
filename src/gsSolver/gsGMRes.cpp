@@ -18,12 +18,12 @@
 namespace gismo
 {
 
-bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond)
+bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond )
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
     m_rhs = rhs;
-    xInit = x0;
-    m_mat->apply(x0,tmp);
+    xInit = x;
+    m_mat->apply(x,tmp);
     tmp = m_rhs - tmp;
     precond.apply(tmp, residual);
     beta = residual.norm(); // This is  ||r||
@@ -33,17 +33,18 @@ bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x0, const gsLine
     Omega = gsMatrix<real_t>::Identity(2, 2);
     Omega_prew = gsMatrix<real_t>::Identity(2, 2);
 
-    rhsNorm2 = rhs.squaredNorm(); // This is ||r||²
-    if (rhsNorm2 == 0)
-        rhsNorm2 = 1.0;
-    residualNorm2 = 0;
-    threshold = m_tol*m_tol*rhsNorm2;
+    m_initial_error = rhs.norm(); // This is ||r||
+    if (m_initial_error == 0)
+    {
+        x = rhs;
+        return true;
+    }
     m_num_iter = 0;
     
     return false;
 }
 
-void gsGMRes::finalizeIteration(const VectorType& rhs, VectorType& x)
+void gsGMRes::finalizeIteration( const VectorType& rhs, VectorType& x )
 {
     //Remove last row of H and g
     H.resize(m_num_iter,m_num_iter);
@@ -111,9 +112,9 @@ bool gsGMRes::step( VectorType& x, const gsLinearOperator<>& precond )
         g_tmp = g;
     g = Omega*g_tmp;
 
-    residualNorm2 = g(k+1,0)*g(k+1,0);
-    m_error = math::sqrt(residualNorm2 / rhsNorm2);
-    if(residualNorm2 < threshold)
+    real_t residualNorm2 = g(k+1,0)*g(k+1,0);
+    m_error = math::sqrt(residualNorm2) / m_initial_error;
+    if(m_error < m_tol)
         return true;
 
     //Resize rotation product

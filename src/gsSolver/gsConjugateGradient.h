@@ -49,7 +49,7 @@ public:
     gsConjugateGradient( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, index_t max_iter=1000, real_t tol=1e-10, bool calcEigenval=false )
         : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
 
-    bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond );
+    bool initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond );
     bool step( VectorType& x, const gsLinearOperator<>& precond );
 
     /// @brief specify if you want to store data for eigenvalue estimation
@@ -64,14 +64,16 @@ public:
 
 private:
     using gsIterativeSolver::m_mat;
-    using gsIterativeSolver::m_error;
     using gsIterativeSolver::m_max_iters;
-    using gsIterativeSolver::m_num_iter;
     using gsIterativeSolver::m_tol;
+    using gsIterativeSolver::m_num_iter;
+    using gsIterativeSolver::m_initial_error;
+    using gsIterativeSolver::m_error;
+
 
     VectorType z, tmp, tmp2, p;
     VectorType residual;
-    real_t absNew, residualNorm2, threshold, rhsNorm2;
+    real_t absNew;
 
     bool m_calcEigenvals;
     bool m_eigsAreCalculated;

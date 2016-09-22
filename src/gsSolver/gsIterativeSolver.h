@@ -28,7 +28,7 @@ public:
 
     /// Constructor for general linear operator
     gsIterativeSolver( const gsLinearOperator<>::Ptr& mat, index_t max_iters=1000, real_t tol=1e-10 )
-        : m_mat(mat), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_error(0.)
+        : m_mat(mat), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square, current implementation requires this!");
     }
@@ -45,10 +45,15 @@ public:
     /// \ingroup Solver
     void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<> & precond )
     {
+        m_num_iter = 0;
+        
         if (initIteration(rhs, x, precond))
+        {
+            m_error = 0.;
             return;
+        }
 
-        while(m_num_iter < m_max_iters)
+        while (m_num_iter < m_max_iters)
         {
             m_num_iter++;
             if (step(x, precond))
@@ -66,7 +71,7 @@ public:
         solve(rhs, x, preConId);
     }
     
-    virtual bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond ) = 0;
+    virtual bool initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond ) = 0;
     virtual bool step( VectorType& x, const gsLinearOperator<>& precond ) = 0;
     virtual void finalizeIteration( const VectorType& rhs, VectorType& x ) {}
 
@@ -94,6 +99,7 @@ protected:
     index_t                       m_max_iters;
     real_t                        m_tol;
     index_t                       m_num_iter;
+    real_t                        m_initial_error;
     real_t                        m_error;
 
 };
