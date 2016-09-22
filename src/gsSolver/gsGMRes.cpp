@@ -23,7 +23,7 @@ void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const 
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
     m_rhs = rhs;
     xInit = x0;
-    m_mat.apply(x0,tmp);
+    m_mat->apply(x0,tmp);
     tmp = m_rhs - tmp;
     precond.apply(tmp, residual);
     beta = residual.norm(); // This is  ||r||
@@ -38,16 +38,16 @@ void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const 
         rhsNorm2 = 1.0;
     residualNorm2 = 0;
     threshold = m_tol*m_tol*rhsNorm2;
-    m_numIter = 0;
+    m_num_iter = 0;
 }
 
 void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond)
 {
     initIteration(rhs, x, precond);
 
-    while(m_numIter < m_maxIters)
+    while(m_num_iter < m_max_iters)
     {
-        m_numIter++;
+        m_num_iter++;
         if (step(x, precond))
             break;
     }
@@ -55,17 +55,17 @@ void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator
 
     //Post processing
     //Remove last row of H and g
-    H.resize(m_numIter,m_numIter);
-    H = H_prew.block(0,0,m_numIter,m_numIter);
-    g_tmp.resize(m_numIter,1);
-    g_tmp = g.block(0,0,m_numIter,1);
+    H.resize(m_num_iter,m_num_iter);
+    H = H_prew.block(0,0,m_num_iter,m_num_iter);
+    g_tmp.resize(m_num_iter,1);
+    g_tmp = g.block(0,0,m_num_iter,1);
 
     //Solve H*y = g;
     solveUpperTriangular(H, g_tmp);
 
     //Create the matrix from the column matrix in v.
-    gsMatrix<real_t> V(m_mat.rows(),m_numIter);
-    for (index_t k = 0; k< m_numIter; ++k)
+    gsMatrix<real_t> V(m_mat->rows(),m_num_iter);
+    for (index_t k = 0; k< m_num_iter; ++k)
     {
         V.col(k) = v[k];
     }
@@ -76,7 +76,7 @@ void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator
 bool gsGMRes::step( VectorType& x, const gsLinearOperator<>& precond )
 {
     GISMO_UNUSED(x);
-    const index_t k = m_numIter-1;
+    const index_t k = m_num_iter-1;
     H.setZero(k+2,k+1);
     h_tmp.setZero(k+2,1);
 
@@ -86,7 +86,7 @@ bool gsGMRes::step( VectorType& x, const gsLinearOperator<>& precond )
     }
 
     Omega = gsMatrix<real_t>::Identity(k+2, k+2);
-    m_mat.apply(v[k],tmp);
+    m_mat->apply(v[k],tmp);
     precond.apply(tmp, w);
 
     for (index_t i = 0; i< k+1; ++i)

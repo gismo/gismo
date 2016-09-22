@@ -20,14 +20,14 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
 {
     GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single column right hand side matrix");
 
-    int n = m_mat.cols();
+    int n = m_mat->cols();
     int m = 1; // == rhs.cols();
     z.resize(n,m);
     tmp.resize(n,m);
     tmp2.resize(n,m);
     p.resize(n,m);
 
-    m_mat.apply(x0,tmp2);  //apply the system matrix
+    m_mat->apply(x0,tmp2);  //apply the system matrix
     residual = rhs - tmp2; //initial residual
 
     precond.apply(residual, p);      //initial search direction
@@ -38,16 +38,16 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
         rhsNorm2 = 1.0;
     residualNorm2 = 0;
     threshold = m_tol*m_tol*rhsNorm2;
-    m_numIter = 0;
+    m_num_iter = 0;
 
     if(m_calcEigenvals)
     {
         delta.clear();
         delta.resize(1,0);
-        delta.reserve(m_maxIters);
+        delta.reserve(m_max_iters);
 
         gamma.clear();
-        gamma.reserve(m_maxIters);
+        gamma.reserve(m_max_iters);
 
         m_eigsAreCalculated =  true;
     }
@@ -56,7 +56,7 @@ void gsConjugateGradient::initIteration(const gsConjugateGradient::VectorType& r
 
 bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLinearOperator<>& precond )
 {
-    m_mat.apply(p,tmp); //apply system matrix
+    m_mat->apply(p,tmp); //apply system matrix
 
     real_t alpha = absNew / p.col(0).dot(tmp.col(0));   // the amount we travel on dir
     if(m_calcEigenvals)

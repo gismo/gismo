@@ -23,31 +23,31 @@ public:
     typedef gsMatrix<real_t>    VectorType;
 
     ///Contructor for general linear operator
-    gsGMRes(const gsLinearOperator<>::Ptr _mat_ptr, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(_mat_ptr, _maxIt, _tol) {}
+    gsGMRes( const gsLinearOperator<>::Ptr& mat, index_t max_iter=1000, real_t tol=1e-10 )
+        : gsIterativeSolver(mat, max_iter, tol) {}
 
     ///Contructor for sparse matrix
     ///
     /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
     template<int _Options, typename _Index>
-    gsGMRes(const gsSparseMatrix<real_t, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
+    gsGMRes( const gsSparseMatrix<real_t, _Options, _Index > & mat, index_t max_iter=1000, real_t tol=1e-10 )
+        : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol) {}
 
     ///Contructor for dense matrix
     ///
     /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
     template<int _Rows, int _Cols, int _Options>
-    gsGMRes(const gsMatrix<real_t, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
+    gsGMRes( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, index_t max_iter=1000, real_t tol=1e-10 )
+        : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol) {}
 
-    void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator<>& precond);
+    void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator<>& precond );
 
-    void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond);
+    void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond );
 
     /// Solve system without preconditioner
-    void solve(const VectorType& rhs, VectorType& x)
+    void solve( const VectorType& rhs, VectorType& x )
     {
-        gsIdentityOp<> preConId(m_mat.rows());
+        gsIdentityOp<> preConId(m_mat->rows());
         solve(rhs, x, preConId);
     }
 
@@ -65,8 +65,8 @@ private:
 private:
     using gsIterativeSolver::m_mat;
     using gsIterativeSolver::m_error;
-    using gsIterativeSolver::m_maxIters;
-    using gsIterativeSolver::m_numIter;
+    using gsIterativeSolver::m_max_iters;
+    using gsIterativeSolver::m_num_iter;
     using gsIterativeSolver::m_tol;
 
     gsMatrix<real_t> xInit, tmp, g, g_tmp, h_tmp, y, w;

@@ -27,10 +27,10 @@ public:
     typedef gsMatrix<real_t>    VectorType;
 
     /// Constructor for general linear operator
-    gsIterativeSolver(const gsLinearOperator<>::Ptr _mat_ptr, index_t _maxIt=1000, real_t _tol=1e-10)
-        : m_mat_ptr(_mat_ptr), m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
+    gsIterativeSolver( const gsLinearOperator<>::Ptr& mat, index_t max_iters=1000, real_t tol=1e-10 )
+        : m_mat(mat), m_max_iters(max_iters), m_tol(tol), m_num_iter(0)
     {
-        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
+        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square, current implementation requires this!");
     }
 
     virtual ~gsIterativeSolver()    {}
@@ -43,37 +43,35 @@ public:
     /// \param[in] precond  the preconditioner used (default: identity preconditioner)
     ///
     /// \ingroup Solver
-    virtual void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<> & precond) = 0;
+    virtual void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<> & precond ) = 0;
 
     virtual bool step( VectorType& x, const gsLinearOperator<>& precond ) = 0;
 
     /// Returns the size of the linear system
-    index_t size() const                 { return m_mat.rows(); }
+    index_t size() const                     { return m_mat->rows(); }
 
     /// Set the maximum number of iterations (default: 1000)
-    void setMaxIterations(index_t maxIt) { m_maxIters = maxIt; }
+    void setMaxIterations(index_t max_iters) { m_max_iters = max_iters; }
 
     /// Set the tolerance for the error criteria (default: 1e-10)
-    void setTolerance(real_t tol)        { m_tol = tol; }
+    void setTolerance(real_t tol)            { m_tol = tol; }
 
     /// The number of iterations needed to reach the error criteria
-    int iterations() const               { return m_numIter; }
+    int iterations() const                   { return m_num_iter; }
 
     /// The error of the iterative method
-    real_t error() const                 { return m_error; }
+    real_t error() const                     { return m_error; }
 
     /// The tolerance used in the iterative method
-    real_t tolerance() const             { return m_tol; }
+    real_t tolerance() const                 { return m_tol; }
 
 
 protected:
-    const gsLinearOperator<>::Ptr m_mat_ptr;
-    const gsLinearOperator<> &m_mat;
-
-    index_t  m_maxIters;
-    real_t   m_tol;
-    index_t  m_numIter;
-    real_t   m_error;
+    const gsLinearOperator<>::Ptr m_mat;
+    index_t                       m_max_iters;
+    real_t                        m_tol;
+    index_t                       m_num_iter;
+    real_t                        m_error;
 
 };
 

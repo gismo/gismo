@@ -23,43 +23,43 @@ public:
     typedef gsMatrix<real_t>    VectorType;
 
     /// Constructor for general linear operator
-    gsMinimalResidual(const gsLinearOperator<>::Ptr _mat_ptr, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(_mat_ptr, _maxIt, _tol) {}
+    gsMinimalResidual( const gsLinearOperator<>::Ptr& mat, index_t max_iter=1000, real_t tol=1e-10 )
+        : gsIterativeSolver(mat, max_iter, tol) {}
 
     /// Constructor for sparse matrix
     ///
     /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
     template<int _Options, typename _Index>
-    gsMinimalResidual(const gsSparseMatrix<real_t, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
+    gsMinimalResidual( const gsSparseMatrix<real_t, _Options, _Index > & mat, index_t max_iter=1000, real_t tol=1e-10 )
+        : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol) {}
 
     /// Constructor for dense matrix
     ///
     /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
     template<int _Rows, int _Cols, int _Options>
-    gsMinimalResidual(const gsMatrix<real_t, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
+    gsMinimalResidual( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, index_t max_iter=1000, real_t tol=1e-10 )
+        : gsIterativeSolver(makeMatrixOp(mat, true), max_iter, tol) {}
 
-    bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond);
+    bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond );
 
-    void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond)
+    void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond )
     {
         if(!initIteration(rhs, x, precond))
         {
-        while(m_numIter < m_maxIters)
-        {
-            m_numIter++;
-            if (step(x, precond))
-                break;
-        }
+            while(m_num_iter < m_max_iters)
+            {
+                m_num_iter++;
+                if (step(x, precond))
+                    break;
+            }
         }
         m_error = math::sqrt(residualNorm2 / rhsNorm2);
     }
 
     /// Solve system without preconditioner
-    void solve(const VectorType& rhs, VectorType& x)
+    void solve( const VectorType& rhs, VectorType& x )
     {
-        gsIdentityOp<> preConId(m_mat.rows());
+        gsIdentityOp<> preConId(m_mat->rows());
         solve(rhs, x, preConId);
     }
 
@@ -69,13 +69,13 @@ public:
 private:
     using gsIterativeSolver::m_mat;
     using gsIterativeSolver::m_error;
-    using gsIterativeSolver::m_maxIters;
-    using gsIterativeSolver::m_numIter;
+    using gsIterativeSolver::m_max_iters;
+    using gsIterativeSolver::m_num_iter;
     using gsIterativeSolver::m_tol;
 
-    gsMatrix<real_t> vPrew, v, vNew, wPrew, w, wNew,zNew, z,xPrew, m_rhs, residual, tmp, tmp2;
+    gsMatrix<real_t> vPrew, v, vNew, wPrew, w, wNew,zNew, z, xPrew, m_rhs, residual, tmp, tmp2;
     real_t residualNorm2, threshold, rhsNorm2;
-    real_t eta,gammaPrew,gamma,gammaNew,sPrew,s,sNew,cPrew,c,cNew;
+    real_t eta, gammaPrew, gamma, gammaNew, sPrew, s, sNew, cPrew, c, cNew;
 };
 
 } // namespace gismo
