@@ -28,13 +28,18 @@ class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver
 public:
     typedef gsMatrix<real_t>    VectorType;
 
-    /// Contructor. See gsIterativeSolver to find out what you can pass for mat.
+    /// Contructor. See gsIterativeSolver for details.
     template< typename OperatorType >
-    gsConjugateGradient( const OperatorType& mat, index_t max_iters=1000, real_t tol=1e-10, bool calcEigenval=false  )
+    gsConjugateGradient( const OperatorType& mat, const gsLinearOperator<>::Ptr& precond, index_t max_iters=1000, real_t tol=1e-10, bool calcEigenval=false )
+        : gsIterativeSolver(mat, precond, max_iters, tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
+
+    /// Contructor. See gsIterativeSolver for details.
+    template< typename OperatorType >
+    gsConjugateGradient( const OperatorType& mat, index_t max_iters=1000, real_t tol=1e-10, bool calcEigenval=false )
         : gsIterativeSolver(mat, max_iters, tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
 
-    bool initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond );
-    bool step( VectorType& x, const gsLinearOperator<>& precond );
+    bool initIteration( const VectorType& rhs, VectorType& x );
+    bool step( VectorType& x );
 
     /// @brief specify if you want to store data for eigenvalue estimation
     /// @param flag true stores the coefficients of the lancos matrix, false not.
@@ -48,6 +53,7 @@ public:
 
 private:
     using gsIterativeSolver::m_mat;
+    using gsIterativeSolver::m_precond;
     using gsIterativeSolver::m_max_iters;
     using gsIterativeSolver::m_tol;
     using gsIterativeSolver::m_num_iter;

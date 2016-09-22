@@ -16,7 +16,7 @@
 namespace gismo
 {
 
-bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x, const gsLinearOperator<>& precond )
+bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x )
 {
     int n = m_mat->cols();
     int m = 1; // == rhs.cols();
@@ -28,7 +28,7 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
     m_mat->apply(x,tmp2);  //apply the system matrix
     residual = rhs - tmp2; //initial residual
 
-    precond.apply(residual, p);      //initial search direction
+    m_precond->apply(residual, p);      //initial search direction
 
     absNew = Eigen::numext::real(residual.col(0).dot(p.col(0)));  // the square of the absolute value of r scaled by invM
     m_initial_error = rhs.norm();
@@ -53,7 +53,7 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
 }
 
 
-bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLinearOperator<>& precond )
+bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x )
 {
     m_mat->apply(p,tmp); //apply system matrix
 
@@ -68,7 +68,7 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x, const gsLine
     if (m_error < m_tol)
         return true;
 
-    precond.apply(residual, z);          // approximately solve for "A z = residual"
+    m_precond->apply(residual, z);          // approximately solve for "A z = residual"
 
     real_t absOld = absNew;
 

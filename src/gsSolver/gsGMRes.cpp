@@ -18,13 +18,13 @@
 namespace gismo
 {
 
-bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond )
+bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
 {
     m_rhs = rhs;
     xInit = x;
     m_mat->apply(x,tmp);
     tmp = m_rhs - tmp;
-    precond.apply(tmp, residual);
+    m_precond->apply(tmp, residual);
     beta = residual.norm(); // This is  ||r||
     v.push_back(residual/beta);
     g.setZero(2,1);
@@ -64,7 +64,7 @@ void gsGMRes::finalizeIteration( const VectorType& rhs, VectorType& x )
     x = xInit + V*y;
 }
 
-bool gsGMRes::step( VectorType& x, const gsLinearOperator<>& precond )
+bool gsGMRes::step( VectorType& x )
 {
     GISMO_UNUSED(x);
     const index_t k = m_num_iter-1;
@@ -78,7 +78,7 @@ bool gsGMRes::step( VectorType& x, const gsLinearOperator<>& precond )
 
     Omega = gsMatrix<real_t>::Identity(k+2, k+2);
     m_mat->apply(v[k],tmp);
-    precond.apply(tmp, w);
+    m_precond->apply(tmp, w);
 
     for (index_t i = 0; i< k+1; ++i)
     {

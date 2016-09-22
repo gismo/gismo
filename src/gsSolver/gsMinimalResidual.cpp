@@ -15,7 +15,7 @@
 namespace gismo
 {
 
-bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x, const gsLinearOperator<>& precond)
+bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x )
 {
     int n = m_mat->cols();
     int m = 1;//rhs.cols();
@@ -35,7 +35,7 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     m_mat->apply(x,tmp2);
     v = m_rhs - tmp2;
 
-    precond.apply(v, z);
+    m_precond->apply(v, z);
 
     gammaPrew = 1; gamma = math::sqrt(z.col(0).dot(v.col(0))); gammaNew = 1;
     eta = gamma;
@@ -46,14 +46,14 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
 }
 
 
-bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x, const gsLinearOperator<>& precond )
+bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
 {
     z /= gamma;
     m_mat->apply(z,tmp);
 
     real_t delta = z.col(0).dot(tmp.col(0));
     vNew = tmp - (delta/gamma)*v - (gamma/gammaPrew)*vPrew;
-    precond.apply(vNew, zNew);
+    m_precond->apply(vNew, zNew);
     gammaNew = math::sqrt(zNew.col(0).dot(vNew.col(0)));
     real_t a0 = c*delta - cPrew*s*gamma;
     real_t a1 = math::sqrt(a0*a0 + gammaNew*gammaNew);

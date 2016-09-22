@@ -22,13 +22,18 @@ class GISMO_EXPORT gsGMRes: public gsIterativeSolver
 public:
     typedef gsMatrix<real_t>    VectorType;
 
-    /// Contructor. See gsIterativeSolver to find out what you can pass for mat.
+    /// Contructor. See gsIterativeSolver for details.
+    template< typename OperatorType >
+    gsGMRes( const OperatorType& mat, const gsLinearOperator<>::Ptr& precond, index_t max_iters=1000, real_t tol=1e-10 )
+        : gsIterativeSolver(mat, precond, max_iters, tol) {}
+
+    /// Contructor. See gsIterativeSolver for details.
     template< typename OperatorType >
     gsGMRes( const OperatorType& mat, index_t max_iters=1000, real_t tol=1e-10 )
         : gsIterativeSolver(mat, max_iters, tol) {}
 
-    bool initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond );
-    bool step( VectorType& x, const gsLinearOperator<>& precond );
+    bool initIteration( const VectorType& rhs, VectorType& x );
+    bool step( VectorType& x );
     void finalizeIteration( const VectorType& rhs, VectorType& x );
 
 private:
@@ -42,6 +47,7 @@ private:
 
 private:
     using gsIterativeSolver::m_mat;
+    using gsIterativeSolver::m_precond;
     using gsIterativeSolver::m_max_iters;
     using gsIterativeSolver::m_tol;
     using gsIterativeSolver::m_num_iter;
