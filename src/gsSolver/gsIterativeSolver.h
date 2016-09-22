@@ -24,36 +24,11 @@ namespace gismo
 class gsIterativeSolver
 {
 public:
-    typedef gsMatrix<real_t>                VectorType;
+    typedef gsMatrix<real_t>    VectorType;
 
     /// Constructor for general linear operator
-    gsIterativeSolver(const gsLinearOperator<>& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : m_mat_ptr(), m_mat(_mat), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
-    {
-        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
-    }
-
-    /// Constructor for general linear operator, takes ownership of the passed operator
     gsIterativeSolver(const gsLinearOperator<>::Ptr _mat_ptr, index_t _maxIt=1000, real_t _tol=1e-10)
         : m_mat_ptr(_mat_ptr), m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
-    {
-        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
-    }
-
-    /// Constructor for sparse matrix
-    template<class T, int _Options, typename _Index>
-    gsIterativeSolver(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : m_mat_ptr(makeMatrixOp(_mat)),
-          m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
-    {
-        GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
-    }
-
-    /// Constructor for dense matrix
-    template<class T, int _Rows, int _Cols, int _Options>
-    gsIterativeSolver(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : m_mat_ptr(makeMatrixOp(_mat)),
-          m_mat(*m_mat_ptr), m_maxIters(_maxIt), m_tol(_tol), m_numIter(0)
     {
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(), "Matrix is not square, current implementation requires this!");
     }
@@ -70,27 +45,25 @@ public:
     /// \ingroup Solver
     virtual void solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<> & precond) = 0;
 
-    //gsIdentityOp preConMat(N);
-
     virtual bool step( VectorType& x, const gsLinearOperator<>& precond ) = 0;
 
     /// Returns the size of the linear system
-    index_t size() const {return m_mat.rows();}
+    index_t size() const                 { return m_mat.rows(); }
 
     /// Set the maximum number of iterations (default: 1000)
-    void setMaxIterations(index_t maxIt) {m_maxIters = maxIt;}
+    void setMaxIterations(index_t maxIt) { m_maxIters = maxIt; }
 
-    ///Set the tolerance for the error criteria (default: 1e-10)
-    void setTolerance(real_t tol) {m_tol = tol;}
+    /// Set the tolerance for the error criteria (default: 1e-10)
+    void setTolerance(real_t tol)        { m_tol = tol; }
 
-    ///The number of iterations needed to reach the error criteria
-    int iterations() const { return m_numIter; }
+    /// The number of iterations needed to reach the error criteria
+    int iterations() const               { return m_numIter; }
 
-    ///The error of the iterative method
-    real_t error() const { return m_error; }
+    /// The error of the iterative method
+    real_t error() const                 { return m_error; }
 
-    ///The tolerance used in the iterative method
-    real_t tolerance() const { return m_tol; }
+    /// The tolerance used in the iterative method
+    real_t tolerance() const             { return m_tol; }
 
 
 protected:

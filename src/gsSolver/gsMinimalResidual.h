@@ -20,20 +20,24 @@ namespace gismo
 class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver
 {
 public:
-    typedef gsMatrix<real_t>                VectorType;
+    typedef gsMatrix<real_t>    VectorType;
 
     /// Constructor for general linear operator
-    gsMinimalResidual(const gsLinearOperator<>& _mat, index_t _maxIt=1000, real_t _tol=1e-10)
-        : gsIterativeSolver(_mat, _maxIt, _tol) {}
+    gsMinimalResidual(const gsLinearOperator<>::Ptr _mat_ptr, index_t _maxIt=1000, real_t _tol=1e-10)
+        : gsIterativeSolver(_mat_ptr, _maxIt, _tol) {}
 
     /// Constructor for sparse matrix
-    template<typename T, int _Options, typename _Index>
-    gsMinimalResidual(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
+    ///
+    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
+    template<int _Options, typename _Index>
+    gsMinimalResidual(const gsSparseMatrix<real_t, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
         : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
 
     /// Constructor for dense matrix
-    template<class T, int _Rows, int _Cols, int _Options>
-    gsMinimalResidual(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
+    ///
+    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
+    template<int _Rows, int _Cols, int _Options>
+    gsMinimalResidual(const gsMatrix<real_t, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10)
         : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) {}
 
     bool initIteration( const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond);

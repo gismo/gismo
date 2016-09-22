@@ -32,17 +32,21 @@ public:
     typedef gsMatrix<real_t>    VectorType;
 
     /// Constructor for general linear operator
-    gsConjugateGradient(const gsLinearOperator<>& _mat, int _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
-        : gsIterativeSolver(_mat, _maxIt, _tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
+    gsConjugateGradient(const gsLinearOperator<>::Ptr _mat_ptr, int _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
+        : gsIterativeSolver(_mat_ptr, _maxIt, _tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
 
     /// Constructor for sparse matrix
-    template<typename T, int _Options, typename _Index>
-    gsConjugateGradient(const gsSparseMatrix<T, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
+    ///
+    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
+    template<int _Options, typename _Index>
+    gsConjugateGradient(const gsSparseMatrix<real_t, _Options, _Index > & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
         : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
 
     /// Constructor for dense matrix
-    template<class T, int _Rows, int _Cols, int _Options>
-    gsConjugateGradient(const gsMatrix<T, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
+    ///
+    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted.
+    template<int _Rows, int _Cols, int _Options>
+    gsConjugateGradient(const gsMatrix<real_t, _Rows, _Cols, _Options> & _mat, index_t _maxIt=1000, real_t _tol=1e-10, bool calcEigenval=false)
         : gsIterativeSolver(makeMatrixOp(_mat, true), _maxIt, _tol) ,m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)  {}
 
     void initIteration(const VectorType& rhs, VectorType& x0, const gsLinearOperator<>& precond);
@@ -72,7 +76,7 @@ public:
 
     /// @brief specify if you want to store data for eigenvalue estimation
     /// @param flag true stores the coefficients of the lancos matrix, false not.
-    void setCalcEigenvalues(bool flag) {m_calcEigenvals = flag;}
+    void setCalcEigenvalues(bool flag)     { m_calcEigenvals = flag ;}
 
     /// @brief returns the condition number of the (preconditioned) system matrix
     real_t getConditionNumber();
