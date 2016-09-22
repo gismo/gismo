@@ -20,7 +20,6 @@ namespace gismo
 
 bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond )
 {
-    GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
     m_rhs = rhs;
     xInit = x;
     m_mat->apply(x,tmp);

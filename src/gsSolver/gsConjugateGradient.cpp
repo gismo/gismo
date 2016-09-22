@@ -18,8 +18,6 @@ namespace gismo
 
 bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x, const gsLinearOperator<>& precond )
 {
-    GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single column right hand side matrix");
-
     int n = m_mat->cols();
     int m = 1; // == rhs.cols();
     z.resize(n,m);

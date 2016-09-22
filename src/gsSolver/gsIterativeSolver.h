@@ -65,6 +65,7 @@ public:
     /// \ingroup Solver
     void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<> & precond )
     {
+        GISMO_ASSERT( rhs.cols() == 1, "Iterative solvers only work for single column right hand side." );
         m_num_iter = 0;
         
         if (initIteration(rhs, x, precond))

@@ -17,8 +17,6 @@ namespace gismo
 
 bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x, const gsLinearOperator<>& precond)
 {
-    GISMO_ASSERT(rhs.cols()== 1, "Implemented only for single columns right hand side matrix");
-
     int n = m_mat->cols();
     int m = 1;//rhs.cols();
     m_rhs = rhs;
