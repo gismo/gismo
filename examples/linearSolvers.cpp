@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 
     //The minimal residual implementation requires a preconditioner.
     //We initialize an identity preconditioner (does nothing).
-    gsIdentityOp<> preConMat(N);
+    gsLinearOperator<>::Ptr preConMat = gsIdentityOp<>::make(N);
 
     //Tolerance
     real_t tol = std::pow(10.0, - REAL_DIG * 0.75);
@@ -96,16 +96,16 @@ int main(int argc, char *argv[])
     gsInfo << "Testing G+Smo's solvers:\n";
 
     //Initialize the MinRes solver
-    gsMinimalResidual MinRes(mat,maxIters,tol);
+    gsMinimalResidual MinRes(mat,preConMat,maxIters,tol);
 
     //Solve system with given preconditioner (solution is stored in x0)
     gsInfo << "\nMinRes: Started solving..."  << "\n";
     clock.restart();
-    MinRes.solve(rhs,x0,preConMat);
+    MinRes.solve(rhs,x0);
     gsIterativeSolverInfo(MinRes, "MinRes", clock.stop());
 
     //Initialize the CG solver
-    gsGMRes GMResSolver(mat,maxIters,tol);
+    gsGMRes GMResSolver(mat,preConMat,maxIters,tol);
 
     //Set the initial guess to zero
     x0.setZero(N,1);
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
         //Solve system with given preconditioner (solution is stored in x0)
         gsInfo << "\nGMRes: Started solving..."  << "\n";
         clock.restart();
-        GMResSolver.solve(rhs,x0,preConMat);
+        GMResSolver.solve(rhs,x0);
         gsIterativeSolverInfo(GMResSolver, "GMRes", clock.stop());
     }
     else
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 
 
     //Initialize the CG solver
-    gsConjugateGradient CGSolver(mat,maxIters,tol);
+    gsConjugateGradient CGSolver(mat,preConMat,maxIters,tol);
 
     //Set the initial guess to zero
     x0.setZero(N,1);
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
     //Solve system with given preconditioner (solution is stored in x0)
     gsInfo << "\nCG: Started solving..."  << "\n";
     clock.restart();
-    CGSolver.solve(rhs,x0,preConMat);
+    CGSolver.solve(rhs,x0);
     gsIterativeSolverInfo(CGSolver, "CG", clock.stop());
 
 
