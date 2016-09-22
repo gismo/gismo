@@ -41,19 +41,8 @@ void gsGMRes::initIteration( const VectorType& rhs, const VectorType& x0, const 
     m_num_iter = 0;
 }
 
-void gsGMRes::solve(const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond)
+void gsGMRes::finalizeIteration(const VectorType& rhs, VectorType& x)
 {
-    initIteration(rhs, x, precond);
-
-    while(m_num_iter < m_max_iters)
-    {
-        m_num_iter++;
-        if (step(x, precond))
-            break;
-    }
-    m_error = math::sqrt(residualNorm2 / rhsNorm2);
-
-    //Post processing
     //Remove last row of H and g
     H.resize(m_num_iter,m_num_iter);
     H = H_prew.block(0,0,m_num_iter,m_num_iter);

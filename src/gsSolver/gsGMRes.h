@@ -42,7 +42,23 @@ public:
 
     void initIteration( const VectorType& rhs, const VectorType& x0, const gsLinearOperator<>& precond );
 
-    void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond );
+    void finalizeIteration( const VectorType& rhs, VectorType& x );
+    
+    void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<>& precond )
+    {
+        initIteration(rhs, x, precond);
+
+        while(m_num_iter < m_max_iters)
+        {
+            m_num_iter++;
+            if (step(x, precond))
+                break;
+        }
+        m_error = math::sqrt(residualNorm2 / rhsNorm2);
+        
+        finalizeIteration( rhs, x );
+
+    }
 
     /// Solve system without preconditioner
     void solve( const VectorType& rhs, VectorType& x )
