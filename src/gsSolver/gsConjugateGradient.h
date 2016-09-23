@@ -75,9 +75,10 @@ private:
     using Base::m_error;
 
 
-    VectorType z, tmp, tmp2, p;
-    VectorType residual;
-    real_t absNew;
+    VectorType m_res;
+    VectorType m_update;
+    VectorType m_tmp;
+    real_t m_abs_new;
 
     bool m_calcEigenvals;
     bool m_eigsAreCalculated;

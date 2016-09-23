@@ -19,18 +19,16 @@ namespace gismo
 bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x )
 {
     int n = m_mat->cols();
-    int m = 1; // == rhs.cols();
-    z.resize(n,m);
-    tmp.resize(n,m);
-    tmp2.resize(n,m);
-    p.resize(n,m);
+    int m = 1;                                                          // == rhs.cols();
+    m_tmp.resize(n,m);
+    m_update.resize(n,m);
 
-    m_mat->apply(x,tmp2);  //apply the system matrix
-    residual = rhs - tmp2; //initial residual
+    m_mat->apply(x,m_tmp);                                              // apply the system matrix
+    m_res = rhs - m_tmp;                                                // initial residual
 
-    m_precond->apply(residual, p);      //initial search direction
+    m_precond->apply(m_res,m_update);                                   // initial search direction
 
-    absNew = Eigen::numext::real(residual.col(0).dot(p.col(0)));  // the square of the absolute value of r scaled by invM
+    m_abs_new = Eigen::numext::real(m_res.col(0).dot(m_update.col(0))); // the square of the absolute value of r scaled by invM
     m_initial_error = rhs.norm();
     if (m_initial_error == 0.)
     {
@@ -55,26 +53,26 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
 
 bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x )
 {
-    m_mat->apply(p,tmp); //apply system matrix
+    m_mat->apply(m_update,m_tmp);                                      // apply system matrix
 
-    real_t alpha = absNew / p.col(0).dot(tmp.col(0));   // the amount we travel on dir
+    real_t alpha = m_abs_new / m_update.col(0).dot(m_tmp.col(0));      // the amount we travel on dir
     if (m_calcEigenvals)
         delta.back()+=(1./alpha);
 
-    x += alpha * p;                       // update solution
-    residual -= alpha * tmp;              // update residual
+    x += alpha * m_update;                                             // update solution
+    m_res -= alpha * m_tmp;                                            // update residual
 
-    m_error = residual.norm() / m_initial_error;
+    m_error = m_res.norm() / m_initial_error;
     if (m_error < m_tol)
         return true;
 
-    m_precond->apply(residual, z);          // approximately solve for "A z = residual"
+    m_precond->apply(m_res, m_tmp);                                    // approximately solve for "A tmp = residual"
 
-    real_t absOld = absNew;
+    real_t abs_old = m_abs_new;
 
-    absNew = Eigen::numext::real(residual.col(0).dot(z.col(0)));     // update the absolute value of r
-    real_t beta = absNew / absOld;            // calculate the Gram-Schmidt value used to create the new search direction
-    p = z + beta * p;                             // update search direction
+    m_abs_new = Eigen::numext::real(m_res.col(0).dot(m_tmp.col(0)));   // update the absolute value of r
+    real_t beta = m_abs_new / abs_old;                                 // calculate the Gram-Schmidt value used to create the new search direction
+    m_update = m_tmp + beta * m_update;                                // update search direction
 
     if (m_calcEigenvals)
     {
@@ -99,7 +97,7 @@ void gsConjugateGradient::getEigenvalues(gsMatrix<real_t>& eigs )
    gsLanczosMatrix<real_t> LM(gamma,delta);
    gsSparseMatrix<real_t> L;
    LM.matrixForm(L);
-    //there is probably a better option...
+   // there is probably a better option...
    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<real_t,Dynamic,Dynamic> > eigensolver(L.toDense());
 
    eigs = eigensolver.eigenvalues();
