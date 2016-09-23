@@ -140,11 +140,7 @@ public:
 
     /// Returns the size of the linear system
     index_t size() const                                       { return m_mat->rows(); }
-
-    /// Set the preconditionner. No copy is done, therefore \a precond
-    /// must be a valid object while this iterative solver is used
-    void setPreconditioner(const gsLinearOperator<> & precond) { setPreconditioner( memory::make_shared_not_owned( &precond ) ); }
-    
+   
     /// Set the preconditionner
     void setPreconditioner(const LinOpPtr & precond)           { m_precond = precond; }
 
