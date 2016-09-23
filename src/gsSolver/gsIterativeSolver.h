@@ -91,10 +91,10 @@ public:
         GISMO_ASSERT( rhs.cols() == 1,
                       "Iterative solvers only work for single column right hand side." );
      
-        GISMO_ASSERT( precond->rows() == m_mat->rows(),
+        GISMO_ASSERT( m_precond->rows() == m_mat->rows(),
                       "The preconditionner does not match the matrix." );
 
-        GISMO_ASSERT( precond->cols() == m_mat->cols(),
+        GISMO_ASSERT( m_precond->cols() == m_mat->cols(),
                       "The preconditionner does not match the matrix." );
         
         m_num_iter = 0;
