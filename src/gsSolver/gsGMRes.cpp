@@ -23,7 +23,6 @@ bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
     if (Base::initIteration(rhs,x))
         return true;
     
-    xInit = x;
     m_mat->apply(x,tmp);
     tmp = rhs - tmp;
     m_precond->apply(tmp, residual);
@@ -37,7 +36,7 @@ bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
     return false;
 }
 
-void gsGMRes::finalizeIteration( const VectorType& rhs, VectorType& x )
+void gsGMRes::finalizeIteration( VectorType& x )
 {
     //Remove last row of H and g
     H.resize(m_num_iter,m_num_iter);
@@ -55,12 +54,12 @@ void gsGMRes::finalizeIteration( const VectorType& rhs, VectorType& x )
         V.col(k) = v[k];
     }
     //Update solution
-    x = xInit + V*y;
+    x += V*y;
 }
 
 bool gsGMRes::step( VectorType& x )
 {
-    GISMO_UNUSED(x);// ! 
+    GISMO_UNUSED(x); // The iterate x is never updated! Use finalizeIteration to obtain x.
     const index_t k = m_num_iter-1;
     H.setZero(k+2,k+1);
     h_tmp.setZero(k+2,1);

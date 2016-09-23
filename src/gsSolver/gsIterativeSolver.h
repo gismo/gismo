@@ -100,7 +100,7 @@ public:
                 break;
         }
         
-        finalizeIteration(rhs, x);
+        finalizeIteration(x);
 
     }
 
@@ -137,8 +137,8 @@ public:
         return false; // iteration is not finished
     }
 
-    virtual bool step( VectorType& x ) = 0;                                          ///< Perform one step, requires initIteration
-    virtual void finalizeIteration( const VectorType& rhs, VectorType& x ) {}        ///< Some post-processing might be required
+    virtual bool step( VectorType& x ) = 0;                     ///< Perform one step, requires initIteration
+    virtual void finalizeIteration( VectorType& x ) {}          ///< Some post-processing might be required
 
     /// Returns the size of the linear system
     index_t size() const                                       { return m_mat->rows(); }

@@ -24,7 +24,6 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     int m = 1;//rhs.cols();
     m_rhs = rhs;
 
-    xPrew = x;
     vPrew.setZero(n,m); vNew.setZero(n,m);
     wPrew.setZero(n,m); w.setZero(n,m); wNew.setZero(n,m);
     tmp2.setZero(n,1);
@@ -59,7 +58,7 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     cNew = a0/a1;
     sNew = gammaNew/a1;
     wNew = (z - a3*wPrew - a2*w)/a1;
-    x = xPrew + cNew*eta*wNew;
+    x += cNew*eta*wNew;
     eta = -sNew*eta;
 
     //Test for convergence
@@ -73,7 +72,6 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     vPrew = v; v = vNew;
     wPrew = w; w = wNew;
     z = zNew;
-    xPrew = x;
     gammaPrew = gamma; gamma = gammaNew;
     sPrew = s; s = sNew;
     cPrew = c; c = cNew;

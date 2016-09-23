@@ -47,7 +47,7 @@ private:
     using Base::m_error;
 
     
-    gsMatrix<real_t> vPrew, v, vNew, wPrew, w, wNew,zNew, z, xPrew, m_rhs, residual, tmp, tmp2;
+    gsMatrix<real_t> vPrew, v, vNew, wPrew, w, wNew, zNew, z, m_rhs, residual, tmp, tmp2;
     real_t eta, gammaPrew, gamma, gammaNew, sPrew, s, sNew, cPrew, c, cNew;
 };
 

@@ -33,7 +33,7 @@ public:
 
     bool initIteration( const VectorType& rhs, VectorType& x );
     bool step( VectorType& x );
-    void finalizeIteration( const VectorType& rhs, VectorType& x );
+    void finalizeIteration( VectorType& x );
 
 private:
 
@@ -54,7 +54,7 @@ private:
     using Base::m_error;
 
 
-    gsMatrix<real_t> xInit, tmp, g, g_tmp, h_tmp, y, w;
+    gsMatrix<real_t> tmp, g, g_tmp, h_tmp, y, w;
     gsMatrix<real_t> residual;
     gsMatrix<real_t> H_prew, H, Omega, Omega_prew, Omega_tmp, Omega_prew_tmp;
     std::vector<gsMatrix<real_t> > v;
