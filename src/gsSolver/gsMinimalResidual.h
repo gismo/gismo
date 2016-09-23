@@ -23,9 +23,9 @@ class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver
 public:
     typedef gsIterativeSolver Base;
     
-    typedef gsMatrix<real_t>    VectorType;
+    typedef gsMatrix<real_t>  VectorType;
 
-    typedef typename Base::LinOpPtr LinOpPtr;
+    typedef Base::LinOpPtr LinOpPtr;
         
     /// Contructor. See gsIterativeSolver for details.
     template< typename OperatorType >

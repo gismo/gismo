@@ -22,9 +22,9 @@ class GISMO_EXPORT gsGMRes: public gsIterativeSolver
 public:
     typedef gsIterativeSolver Base;
     
-    typedef gsMatrix<real_t>    VectorType;
-
-    typedef typename Base::LinOpPtr LinOpPtr;
+    typedef gsMatrix<real_t>  VectorType;
+    
+    typedef Base::LinOpPtr LinOpPtr;
 
     /// Constructor using a matrix (operator) and a optionally a preconditionner
     template< typename OperatorType >

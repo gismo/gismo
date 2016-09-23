@@ -28,9 +28,9 @@ class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver
 public:
     typedef gsIterativeSolver Base;
     
-    typedef gsMatrix<real_t>    VectorType;
+    typedef gsMatrix<real_t>  VectorType;
     
-    typedef typename Base::LinOpPtr LinOpPtr;
+    typedef Base::LinOpPtr LinOpPtr;
     
     /// Contructor. See gsIterativeSolver for details.
     template< typename OperatorType >
@@ -83,13 +83,13 @@ public:
     void getEigenvalues( gsMatrix<real_t>& eigs );
 
 private:
-    using gsIterativeSolver::m_mat;
-    using gsIterativeSolver::m_precond;
-    using gsIterativeSolver::m_max_iters;
-    using gsIterativeSolver::m_tol;
-    using gsIterativeSolver::m_num_iter;
-    using gsIterativeSolver::m_initial_error;
-    using gsIterativeSolver::m_error;
+    using Base::m_mat;
+    using Base::m_precond;
+    using Base::m_max_iters;
+    using Base::m_tol;
+    using Base::m_num_iter;
+    using Base::m_initial_error;
+    using Base::m_error;
 
 
     VectorType z, tmp, tmp2, p;

@@ -138,10 +138,17 @@ public:
     /// Set the preconditionner. No copy is done, therefore \a precond
     /// must be a valid object while this iterative solver is used
     void setPreconditioner(const gsLinearOperator<> & precond)
-    { m_precond = memory::make_shared_not_owned( &precond ); }
+    { setPreconditioner( memory::make_shared_not_owned( &precond ) ); }
     
     /// Set the preconditionner
-    void setPreconditioner(const LinOpPtr & precond) { m_precond = precond; }
+    void setPreconditioner(const LinOpPtr & precond)
+    {
+        GISMO_ASSERT( precond->rows() == m_mat->rows(),
+                      "The preconditionner does not match the matrix." );
+        GISMO_ASSERT( precond->cols() == m_mat->cols(),
+                      "The preconditionner does not match the matrix." );
+        m_precond = precond;
+    }
 
     /// Set the maximum number of iterations (default: 1000)
     void setMaxIterations(index_t max_iters) { m_max_iters = max_iters; }
