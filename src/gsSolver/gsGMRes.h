@@ -56,7 +56,7 @@ private:
 
     gsMatrix<real_t> tmp, g, g_tmp, h_tmp, y, w;
     gsMatrix<real_t> residual;
-    gsMatrix<real_t> H_prew, H, Omega, Omega_prew, Omega_tmp, Omega_prew_tmp;
+    gsMatrix<real_t> H_prev, H, Omega, Omega_prev, Omega_tmp, Omega_prev_tmp;
     std::vector<gsMatrix<real_t> > v;
     real_t beta;
 };

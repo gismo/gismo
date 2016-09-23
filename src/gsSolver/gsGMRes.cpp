@@ -31,7 +31,7 @@ bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
     g.setZero(2,1);
     g(0,0) = beta;
     Omega = gsMatrix<real_t>::Identity(2, 2);
-    Omega_prew = gsMatrix<real_t>::Identity(2, 2);
+    Omega_prev = gsMatrix<real_t>::Identity(2, 2);
     
     return false;
 }
@@ -40,7 +40,7 @@ void gsGMRes::finalizeIteration( VectorType& x )
 {
     //Remove last row of H and g
     H.resize(m_num_iter,m_num_iter);
-    H = H_prew.block(0,0,m_num_iter,m_num_iter);
+    H = H_prev.block(0,0,m_num_iter,m_num_iter);
     g_tmp.resize(m_num_iter,1);
     g_tmp = g.block(0,0,m_num_iter,1);
 
@@ -66,7 +66,7 @@ bool gsGMRes::step( VectorType& x )
 
     if (k != 0)
     {
-        H.block(0,0,k+1,k) = H_prew;
+        H.block(0,0,k+1,k) = H_prev;
     }
 
     Omega = gsMatrix<real_t>::Identity(k+2, k+2);
@@ -85,7 +85,7 @@ bool gsGMRes::step( VectorType& x )
 
     v.push_back(w/h_tmp(k+1,0));
 
-    h_tmp = Omega_prew*h_tmp;
+    h_tmp = Omega_prev*h_tmp;
     H.block(0,k,k+2,1) = h_tmp;
 
     //Find coef in rotation matrix
@@ -96,7 +96,7 @@ bool gsGMRes::step( VectorType& x )
 
     //Rotate H and g
     H = Omega*H;
-    H_prew = H;
+    H_prev = H;
     g_tmp.setZero(k+2,1);
     if (k != 0)
         g_tmp.block(0,0,k+1,1) = g;
@@ -110,15 +110,15 @@ bool gsGMRes::step( VectorType& x )
         return true;
 
     //Resize rotation product
-    Omega_prew_tmp.setZero(k+3,k+3);
-    Omega_prew_tmp.block(0,0,k+2,k+2) = Omega_prew;
-    Omega_prew_tmp(k+2,k+2) = 1;
+    Omega_prev_tmp.setZero(k+3,k+3);
+    Omega_prev_tmp.block(0,0,k+2,k+2) = Omega_prev;
+    Omega_prev_tmp(k+2,k+2) = 1;
 
     Omega_tmp.setZero(k+3,k+3);
     Omega_tmp.block(0,0,k+2,k+2) = Omega;
     Omega_tmp(k+2,k+2) = 1;
 
-    Omega_prew = Omega_tmp*Omega_prew_tmp;
+    Omega_prev = Omega_tmp*Omega_prev_tmp;
     return false;
 }
 

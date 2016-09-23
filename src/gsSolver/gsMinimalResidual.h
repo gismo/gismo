@@ -46,15 +46,15 @@ private:
     using Base::m_rhs_norm;
     using Base::m_error;
 
-    gsMatrix<real_t> neg_residual,
-                     vPrew, v, vNew,
-                     wPrew, w, wNew, AwPrew, Aw, AwNew,
+    gsMatrix<real_t> negResidual,
+                     vPrev, v, vNew,
+                     wPrev, w, wNew, AwPrev, Aw, AwNew,
                      zNew, z, Az;
 
     real_t eta,
-           gammaPrew, gamma, gammaNew,
-           sPrew, s, sNew,
-           cPrew, c, cNew;
+           gammaPrev, gamma, gammaNew,
+           sPrev, s, sNew,
+           cPrev, c, cNew;
 };
 
 } // namespace gismo
