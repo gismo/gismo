@@ -516,3 +516,9 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
 
 } // namespace gismo
 
+
+namespace Eigen { namespace internal {
+template<class T, int _Rows, int _Cols, int _Options>
+struct traits<gismo::gsMatrix<T,_Rows,_Cols,_Options> > :
+Eigen::internal::traits<Eigen::Matrix<T,_Rows,_Cols,_Options> > { };
+} }

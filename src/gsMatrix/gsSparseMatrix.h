@@ -308,3 +308,10 @@ gsSparseMatrix<T, _Options,_Index> * gsSparseMatrix<T, _Options, _Index>::clone(
 
 
 } // namespace gismo
+
+
+namespace Eigen { namespace internal {
+template<typename T, int _Options, typename _Index>
+struct traits<gismo::gsSparseMatrix<T,_Options,_Index> >:
+Eigen::internal::traits<Eigen::SparseMatrix<T,_Options,_Index> > { };
+} }
