@@ -90,11 +90,17 @@ public:
     {
         GISMO_ASSERT( rhs.cols() == 1,
                       "Iterative solvers only work for single column right hand side." );
-          
-        m_num_iter = 0;
+     
+        GISMO_ASSERT( precond->rows() == m_mat->rows(),
+                      "The preconditionner does not match the matrix." );
 
+        GISMO_ASSERT( precond->cols() == m_mat->cols(),
+                      "The preconditionner does not match the matrix." );
+        
+        m_num_iter = 0;
+        
         /* // todo: check the following and uncomment
-        m_rhsNorm = rhs.nNorm(); //m_initial_error
+        m_rhsNorm = rhs.norm(); //m_initial_error
         if (0 == m_rhsNorm) // special case of zero rhs
         {
             x.setZero(rhs.rows()); // for sure zero is a solution
@@ -133,37 +139,29 @@ public:
     virtual void finalizeIteration( const VectorType& rhs, VectorType& x ) {}
 
     /// Returns the size of the linear system
-    index_t size() const                     { return m_mat->rows(); }
+    index_t size() const                                       { return m_mat->rows(); }
 
     /// Set the preconditionner. No copy is done, therefore \a precond
     /// must be a valid object while this iterative solver is used
-    void setPreconditioner(const gsLinearOperator<> & precond)
-    { setPreconditioner( memory::make_shared_not_owned( &precond ) ); }
+    void setPreconditioner(const gsLinearOperator<> & precond) { setPreconditioner( memory::make_shared_not_owned( &precond ) ); }
     
     /// Set the preconditionner
-    void setPreconditioner(const LinOpPtr & precond)
-    {
-        GISMO_ASSERT( precond->rows() == m_mat->rows(),
-                      "The preconditionner does not match the matrix." );
-        GISMO_ASSERT( precond->cols() == m_mat->cols(),
-                      "The preconditionner does not match the matrix." );
-        m_precond = precond;
-    }
+    void setPreconditioner(const LinOpPtr & precond)           { m_precond = precond; }
 
     /// Set the maximum number of iterations (default: 1000)
-    void setMaxIterations(index_t max_iters) { m_max_iters = max_iters; }
+    void setMaxIterations(index_t max_iters)                   { m_max_iters = max_iters; }
 
     /// Set the tolerance for the error criteria (default: 1e-10)
-    void setTolerance(real_t tol)            { m_tol = tol; }
+    void setTolerance(real_t tol)                              { m_tol = tol; }
 
     /// The number of iterations needed to reach the error criteria
-    int iterations() const                   { return m_num_iter; }
+    int iterations() const                                     { return m_num_iter; }
 
     /// The error of the iterative method
-    real_t error() const                     { return m_error; }
+    real_t error() const                                       { return m_error; }
 
     /// The tolerance used in the iterative method
-    real_t tolerance() const                 { return m_tol; }
+    real_t tolerance() const                                   { return m_tol; }
 
 
 protected:
