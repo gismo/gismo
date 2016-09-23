@@ -32,27 +32,10 @@ public:
     
     typedef Base::LinOpPtr LinOpPtr;
     
-    /// Contructor. See gsIterativeSolver for details.
+    /// Constructor using a matrix (operator) and a optionally a preconditionner
     template< typename OperatorType >
-    gsConjugateGradient( const OperatorType& mat, const LinOpPtr & precond,
-                         index_t max_iters=1000, real_t tol=1e-10, bool calcEigenval=false )
-        : gsIterativeSolver(mat, precond),
-        m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)
-    {
-        setMaxIterations(max_iters); // todo: remove options from constuctor
-        setTolerance(tol);
-    }
-
-    /// Contructor. See gsIterativeSolver for details.
-    template< typename OperatorType >
-    gsConjugateGradient( const OperatorType& mat, index_t max_iters=1000,
-                         real_t tol=1e-10, bool calcEigenval=false )
-        : gsIterativeSolver(mat, LinOpPtr()),
-        m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)
-    {
-        setMaxIterations(max_iters);
-        setTolerance(tol);
-    }
+    explicit gsConjugateGradient( const OperatorType& mat, const LinOpPtr & precond = LinOpPtr() )
+    : Base(mat, precond) {}
 
     /// @brief Returns a list of default options
     static gsOptionList defaultOptions()
