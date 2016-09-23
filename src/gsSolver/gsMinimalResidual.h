@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Sogn
+    Author(s): J. Sogn, S. Takacs
 */
 #pragma once
 
@@ -46,9 +46,15 @@ private:
     using Base::m_rhs_norm;
     using Base::m_error;
 
-    
-    gsMatrix<real_t> vPrew, v, vNew, wPrew, w, wNew, zNew, z, m_rhs, residual, tmp, tmp2;
-    real_t eta, gammaPrew, gamma, gammaNew, sPrew, s, sNew, cPrew, c, cNew;
+    gsMatrix<real_t> neg_residual,
+                     vPrew, v, vNew,
+                     wPrew, w, wNew, AwPrew, Aw, AwNew,
+                     zNew, z, Az;
+
+    real_t eta,
+           gammaPrew, gamma, gammaNew,
+           sPrew, s, sNew,
+           cPrew, c, cNew;
 };
 
 } // namespace gismo
