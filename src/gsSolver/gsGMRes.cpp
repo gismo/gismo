@@ -20,10 +20,9 @@ namespace gismo
 
 bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
 {
-    m_rhs = rhs;
     xInit = x;
     m_mat->apply(x,tmp);
-    tmp = m_rhs - tmp;
+    tmp = rhs - tmp;
     m_precond->apply(tmp, residual);
     beta = residual.norm(); // This is  ||r||
     v.push_back(residual/beta);
@@ -66,7 +65,7 @@ void gsGMRes::finalizeIteration( const VectorType& rhs, VectorType& x )
 
 bool gsGMRes::step( VectorType& x )
 {
-    GISMO_UNUSED(x);
+    GISMO_UNUSED(x);// ! 
     const index_t k = m_num_iter-1;
     H.setZero(k+2,k+1);
     h_tmp.setZero(k+2,1);

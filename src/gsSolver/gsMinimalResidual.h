@@ -19,32 +19,32 @@ namespace gismo
 
 class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver
 {
+
 public:
+    typedef gsIterativeSolver Base;
+    
     typedef gsMatrix<real_t>    VectorType;
 
+    typedef typename Base::LinOpPtr LinOpPtr;
+        
     /// Contructor. See gsIterativeSolver for details.
     template< typename OperatorType >
-    gsMinimalResidual( const OperatorType& mat, const gsLinearOperator<>::Ptr& precond, index_t max_iters=1000, real_t tol=1e-10 )
-        : gsIterativeSolver(mat, precond, max_iters, tol) {}
-
-    /// Contructor. See gsIterativeSolver for details.
-    template< typename OperatorType >
-    gsMinimalResidual( const OperatorType& mat, index_t max_iters=1000, real_t tol=1e-10 )
-        : gsIterativeSolver(mat, max_iters, tol) {}
-
-
+    explicit gsMinimalResidual( const OperatorType& mat,
+                                const LinOpPtr& precond = LinOpPtr())
+        : Base(mat, precond) { }
+    
     bool initIteration( const VectorType& rhs, VectorType& x );
+
     bool step( VectorType& x );
 
-
 private:
-    using gsIterativeSolver::m_mat;
-    using gsIterativeSolver::m_precond;
-    using gsIterativeSolver::m_max_iters;
-    using gsIterativeSolver::m_tol;
-    using gsIterativeSolver::m_num_iter;
-    using gsIterativeSolver::m_initial_error;
-    using gsIterativeSolver::m_error;
+    using Base::m_mat;
+    using Base::m_precond;
+    using Base::m_max_iters;
+    using Base::m_tol;
+    using Base::m_num_iter;
+    using Base::m_initial_error;
+    using Base::m_error;
 
     
     gsMatrix<real_t> vPrew, v, vNew, wPrew, w, wNew,zNew, z, xPrew, m_rhs, residual, tmp, tmp2;

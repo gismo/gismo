@@ -92,12 +92,17 @@ int main(int argc, char *argv[])
     //Maximum number of iterations
     index_t maxIters = 3*N;
 
+    gsOptionList opt = gsIterativeSolver::defaultOptions();
+    opt.setInt ("MaxIterations", 3*N);
+    opt.setReal("Tolerance"    , tol);
+    
     ///----------------------GISMO-SOLVERS----------------------///
     gsInfo << "Testing G+Smo's solvers:\n";
 
     //Initialize the MinRes solver
-    gsMinimalResidual MinRes(mat,preConMat,maxIters,tol);
-
+    gsMinimalResidual MinRes(mat,preConMat);
+    MinRes.setOptions(opt);
+    
     //Solve system with given preconditioner (solution is stored in x0)
     gsInfo << "\nMinRes: Started solving..."  << "\n";
     clock.restart();
@@ -105,7 +110,8 @@ int main(int argc, char *argv[])
     gsIterativeSolverInfo(MinRes, "MinRes", clock.stop());
 
     //Initialize the CG solver
-    gsGMRes GMResSolver(mat,preConMat,maxIters,tol);
+    gsGMRes GMResSolver(mat,preConMat);
+    GMResSolver.setOptions(opt);
 
     //Set the initial guess to zero
     x0.setZero(N,1);
@@ -123,8 +129,9 @@ int main(int argc, char *argv[])
 
 
     //Initialize the CG solver
-    gsConjugateGradient CGSolver(mat,preConMat,maxIters,tol);
-
+    gsConjugateGradient CGSolver(mat,preConMat);
+    CGSolver.setOptions(opt);
+    
     //Set the initial guess to zero
     x0.setZero(N,1);
 

@@ -20,17 +20,16 @@ namespace gismo
 class GISMO_EXPORT gsGMRes: public gsIterativeSolver
 {
 public:
+    typedef gsIterativeSolver Base;
+    
     typedef gsMatrix<real_t>    VectorType;
 
-    /// Contructor. See gsIterativeSolver for details.
-    template< typename OperatorType >
-    gsGMRes( const OperatorType& mat, const gsLinearOperator<>::Ptr& precond, index_t max_iters=1000, real_t tol=1e-10 )
-        : gsIterativeSolver(mat, precond, max_iters, tol) {}
+    typedef typename Base::LinOpPtr LinOpPtr;
 
-    /// Contructor. See gsIterativeSolver for details.
+    /// Constructor using a matrix (operator) and a optionally a preconditionner
     template< typename OperatorType >
-    gsGMRes( const OperatorType& mat, index_t max_iters=1000, real_t tol=1e-10 )
-        : gsIterativeSolver(mat, max_iters, tol) {}
+    explicit gsGMRes( const OperatorType& mat, const LinOpPtr & precond = LinOpPtr() )
+    : Base(mat, precond) {}
 
     bool initIteration( const VectorType& rhs, VectorType& x );
     bool step( VectorType& x );
@@ -46,17 +45,17 @@ private:
     }
 
 private:
-    using gsIterativeSolver::m_mat;
-    using gsIterativeSolver::m_precond;
-    using gsIterativeSolver::m_max_iters;
-    using gsIterativeSolver::m_tol;
-    using gsIterativeSolver::m_num_iter;
-    using gsIterativeSolver::m_initial_error;
-    using gsIterativeSolver::m_error;
+    using Base::m_mat;
+    using Base::m_precond;
+    using Base::m_max_iters;
+    using Base::m_tol;
+    using Base::m_num_iter;
+    using Base::m_initial_error;
+    using Base::m_error;
 
 
     gsMatrix<real_t> xInit, tmp, g, g_tmp, h_tmp, y, w;
-    gsMatrix<real_t> m_rhs, residual;
+    gsMatrix<real_t> residual;
     gsMatrix<real_t> H_prew, H, Omega, Omega_prew, Omega_tmp, Omega_prew_tmp;
     std::vector<gsMatrix<real_t> > v;
     real_t beta;

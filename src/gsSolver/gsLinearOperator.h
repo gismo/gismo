@@ -33,6 +33,9 @@ public:
 
     /// Unique pointer for gsLinearOperator   
     typedef typename memory::unique<gsLinearOperator>::ptr uPtr;
+
+    /// Identity operator
+    static gsIdentityOp<T> Identity(const index_t dim) {return gsIdentityOp<T>(dim); }
     
     virtual ~gsLinearOperator() {}
 
@@ -52,7 +55,8 @@ public:
     // NOTE: this is rather inefficient and is only provided for debugging and testing purposes
     void toMatrix(gsMatrix<T>& result)
     {
-        GISMO_ASSERT(rows() == cols(), "gsLinearOperator::toMatrix is only implemented for square operators");
+        GISMO_ASSERT(rows() == cols(),
+                     "gsLinearOperator::toMatrix is only implemented for square operators");
 
         gsMatrix<T> eye = gsMatrix<T>::Identity(cols(), cols());
         this->apply(eye, result);

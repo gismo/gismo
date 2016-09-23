@@ -26,17 +26,48 @@ namespace gismo
 class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver
 {
 public:
+    typedef gsIterativeSolver Base;
+    
     typedef gsMatrix<real_t>    VectorType;
+    
+    typedef typename Base::LinOpPtr LinOpPtr;
+    
+    /// Contructor. See gsIterativeSolver for details.
+    template< typename OperatorType >
+    gsConjugateGradient( const OperatorType& mat, const LinOpPtr & precond,
+                         index_t max_iters=1000, real_t tol=1e-10, bool calcEigenval=false )
+        : gsIterativeSolver(mat, precond),
+        m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)
+    {
+        setMaxIterations(max_iters); // todo: remove options from constuctor
+        setTolerance(tol);
+    }
 
     /// Contructor. See gsIterativeSolver for details.
     template< typename OperatorType >
-    gsConjugateGradient( const OperatorType& mat, const gsLinearOperator<>::Ptr& precond, index_t max_iters=1000, real_t tol=1e-10, bool calcEigenval=false )
-        : gsIterativeSolver(mat, precond, max_iters, tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
+    gsConjugateGradient( const OperatorType& mat, index_t max_iters=1000,
+                         real_t tol=1e-10, bool calcEigenval=false )
+        : gsIterativeSolver(mat, LinOpPtr()),
+        m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false)
+    {
+        setMaxIterations(max_iters);
+        setTolerance(tol);
+    }
 
-    /// Contructor. See gsIterativeSolver for details.
-    template< typename OperatorType >
-    gsConjugateGradient( const OperatorType& mat, index_t max_iters=1000, real_t tol=1e-10, bool calcEigenval=false )
-        : gsIterativeSolver(mat, max_iters, tol), m_calcEigenvals(calcEigenval), m_eigsAreCalculated(false) {}
+    /// @brief Returns a list of default options
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList opt = Base::defaultOptions();
+        opt.addSwitch("CalcEigenvalues", "Additionally to solving the system,"
+                      " CG computes the eigenvalues of the Lanczos matrix", false );
+        return opt;
+    }
+    
+    void setOptions(const gsOptionList & opt)
+    {
+        Base::setOptions(opt);
+        m_calcEigenvals = opt.askSwitch("CalcEigenvalues", m_calcEigenvals);
+    }
 
     bool initIteration( const VectorType& rhs, VectorType& x );
     bool step( VectorType& x );

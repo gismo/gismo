@@ -15,6 +15,7 @@
 #include <gsCore/gsExport.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsSolver/gsMatrixOp.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
@@ -26,62 +27,58 @@ class gsIterativeSolver
 public:
     typedef gsMatrix<real_t>    VectorType;
 
-    /// Constructor for general linear operator
-    gsIterativeSolver( const gsLinearOperator<>::Ptr& mat, const gsLinearOperator<>::Ptr& precond, index_t max_iters=1000, real_t tol=1e-10 )
-        : m_mat(mat), m_precond(precond), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
-    {
-        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
-    }
+    typedef typename gsLinearOperator<>::Ptr LinOpPtr;
     
-    /// Contructor for sparse matrix
-    ///
-    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted before the solver.
-    template<int _Options, typename _Index>
-    gsIterativeSolver( const gsSparseMatrix<real_t, _Options, _Index > & mat, const gsLinearOperator<>::Ptr& precond, index_t max_iters=1000, real_t tol=1e-10 )
-        : m_mat(makeMatrixOp(mat)), m_precond(precond), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
+    gsIterativeSolver( const LinOpPtr& mat,
+                       const LinOpPtr& precond)
+    : m_mat(mat),
+      m_precond(precond),
+      m_max_iters(1000),
+      m_tol(1e-10),
+      m_num_iter(0),
+      m_initial_error(0.),
+      m_error(0.)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
+        if (!m_precond) m_precond = gsIdentityOp<>::make(m_mat->rows());
     }
 
-    /// Contructor for dense matrix
+    /// @brief  Contructor using any dense or sparse matrix
     ///
-    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted before the solver.
-    template<int _Rows, int _Cols, int _Options>
-    gsIterativeSolver( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, const gsLinearOperator<>::Ptr& precond, index_t max_iters=1000, real_t tol=1e-10 )
-        : m_mat(makeMatrixOp(mat)), m_precond(precond), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
+    /// @note: This does not copy the matrix. So, make sure that the
+    /// matrix is not deleted before the solver.
+    template<typename Derived>
+    gsIterativeSolver( const Eigen::EigenBase<Derived> & mat,
+                       const LinOpPtr& precond)
+    : m_mat(makeMatrixOp(mat.derived())),
+      m_precond(precond),
+      m_max_iters(1000),
+      m_tol(1e-10),
+      m_num_iter(0),
+      m_initial_error(0.),
+      m_error(0.)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
-    }
-    
-    /// Constructor for general linear operator. No preconditioner means identity preconditioner.
-    gsIterativeSolver( const gsLinearOperator<>::Ptr& mat, index_t max_iters=1000, real_t tol=1e-10 )
-        : m_mat(mat), m_precond(gsIdentityOp<>::make(m_mat->rows())), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
-    {
-        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
-    }
-    
-    /// Contructor for sparse matrix. No preconditioner means identity preconditioner.
-    ///
-    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted before the solver.
-    template<int _Options, typename _Index>
-    gsIterativeSolver( const gsSparseMatrix<real_t, _Options, _Index > & mat, index_t max_iters=1000, real_t tol=1e-10 )
-        : m_mat(makeMatrixOp(mat)), m_precond(gsIdentityOp<>::make(m_mat->rows())), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
-    {
-        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
-    }
-
-    /// Contructor for dense matrix. No preconditioner means identity preconditioner.
-    ///
-    /// @note: This does not copy the matrix. So, make sure that the matrix is not deleted before the solver.
-    template<int _Rows, int _Cols, int _Options>
-    gsIterativeSolver( const gsMatrix<real_t, _Rows, _Cols, _Options> & mat, index_t max_iters=1000, real_t tol=1e-10 )
-        : m_mat(makeMatrixOp(mat)), m_precond(gsIdentityOp<>::make(m_mat->rows())), m_max_iters(max_iters), m_tol(tol), m_num_iter(0), m_initial_error(0.), m_error(0.)
-    {
-        GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
+        if (NULL==m_precond.get()) m_precond = gsIdentityOp<>::make(m_mat->rows());
     }
 
     virtual ~gsIterativeSolver()    {}
 
+    /// @brief Returns a list of default options
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList opt;
+        opt.addInt("MaxIterations", "Maximum number of iterations", 1000 );
+        opt.addReal("Tolerance"   , "Numerical tolerance"         , 1e-10);
+        return opt;
+    }
+
+    virtual void setOptions(const gsOptionList & opt)
+    {
+        m_max_iters = opt.askInt ("MaxIterations", m_max_iters );
+        m_tol       = opt.askReal("Tolerance"    , m_tol       );
+    }
+    
     /// @brief Solves the linear system and stores the solution in \a x
     ///
     /// Solves the linear system of equations
@@ -91,10 +88,29 @@ public:
     /// \ingroup Solver
     void solve( const VectorType& rhs, VectorType& x )
     {
-        GISMO_ASSERT( rhs.cols() == 1, "Iterative solvers only work for single column right hand side." );
-        
+        GISMO_ASSERT( rhs.cols() == 1,
+                      "Iterative solvers only work for single column right hand side." );
+          
         m_num_iter = 0;
+
+        /* // todo: check the following and uncomment
+        m_rhsNorm = rhs.nNorm(); //m_initial_error
+        if (0 == m_rhsNorm) // special case of zero rhs
+        {
+            x.setZero(rhs.rows()); // for sure zero is a solution
+            m_error = 0.;
+            return;
+        }
         
+        if ( 0 == x.size() ) // if no initial solution, start with zeros
+            x.setZero(rhs.rows(), rhs.cols() );
+        else
+        {
+           GISMO_ENSURE(m_mat->cols() == x.rows(), "Invalid initial solution");
+           GISMO_ENSURE(rhs->cols() == x.cols()  , "Initial solution does not match right-hand side");
+        }
+        */
+
         if (initIteration(rhs, x))
         {
             m_error = 0.;
@@ -111,22 +127,21 @@ public:
         finalizeIteration( rhs, x );
 
     }
-    
-    /// Wrapper for the old behavior
-    ///
-    /// This method should not be used
-    GISMO_DEPRECATED void solve( const VectorType& rhs, VectorType& x, const gsLinearOperator<> & precond )
-    {
-        m_precond = memory::make_shared_not_owned( &precond );
-        solve(rhs, x);
-    }
-    
+
     virtual bool initIteration( const VectorType& rhs, VectorType& x ) = 0;
     virtual bool step( VectorType& x ) = 0;
     virtual void finalizeIteration( const VectorType& rhs, VectorType& x ) {}
 
     /// Returns the size of the linear system
     index_t size() const                     { return m_mat->rows(); }
+
+    /// Set the preconditionner. No copy is done, therefore \a precond
+    /// must be a valid object while this iterative solver is used
+    void setPreconditioner(const gsLinearOperator<> & precond)
+    { m_precond = memory::make_shared_not_owned( &precond ); }
+    
+    /// Set the preconditionner
+    void setPreconditioner(const LinOpPtr & precond) { m_precond = precond; }
 
     /// Set the maximum number of iterations (default: 1000)
     void setMaxIterations(index_t max_iters) { m_max_iters = max_iters; }
@@ -145,13 +160,13 @@ public:
 
 
 protected:
-    const gsLinearOperator<>::Ptr m_mat;
-    /*const*/ gsLinearOperator<>::Ptr m_precond;
-    index_t                       m_max_iters;
-    real_t                        m_tol;
-    index_t                       m_num_iter;
-    real_t                        m_initial_error;
-    real_t                        m_error;
+    const LinOpPtr     m_mat;
+    /*const*/ LinOpPtr m_precond;
+    index_t            m_max_iters;
+    real_t             m_tol;
+    index_t            m_num_iter;
+    real_t             m_initial_error;
+    real_t             m_error;
 
 };
 
