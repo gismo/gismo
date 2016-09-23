@@ -27,7 +27,7 @@ public:
 
     typedef Base::LinOpPtr LinOpPtr;
         
-    /// Contructor. See gsIterativeSolver for details.
+    /// Constructor using a matrix (operator) and optionally a preconditionner
     template< typename OperatorType >
     explicit gsMinimalResidual( const OperatorType& mat,
                                 const LinOpPtr& precond = LinOpPtr())

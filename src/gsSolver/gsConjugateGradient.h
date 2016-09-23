@@ -32,7 +32,7 @@ public:
     
     typedef Base::LinOpPtr LinOpPtr;
     
-    /// Constructor using a matrix (operator) and a optionally a preconditionner
+    /// Constructor using a matrix (operator) and optionally a preconditionner
     template< typename OperatorType >
     explicit gsConjugateGradient( const OperatorType& mat, const LinOpPtr & precond = LinOpPtr() )
     : Base(mat, precond) {}

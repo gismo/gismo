@@ -29,6 +29,7 @@ public:
 
     typedef typename gsLinearOperator<>::Ptr LinOpPtr;
     
+    /// @brief  Contructor using a linear operator to be solved for and optionally a preconditioner
     gsIterativeSolver( const LinOpPtr& mat,
                        const LinOpPtr& precond)
     : m_mat(mat),
@@ -43,7 +44,7 @@ public:
         if (!m_precond) m_precond = gsIdentityOp<>::make(m_mat->rows());
     }
 
-    /// @brief  Contructor using any dense or sparse matrix
+    /// @brief  Contructor using any dense or sparse matrix and optionally a preconditioner
     ///
     /// @note: This does not copy the matrix. So, make sure that the
     /// matrix is not deleted before the solver.
@@ -73,6 +74,7 @@ public:
         return opt;
     }
 
+    /// @brief Set the options based on a gsOptionList
     virtual void setOptions(const gsOptionList & opt)
     {
         m_max_iters = opt.askInt ("MaxIterations", m_max_iters );
@@ -134,9 +136,9 @@ public:
 
     }
 
-    virtual bool initIteration( const VectorType& rhs, VectorType& x ) = 0;
-    virtual bool step( VectorType& x ) = 0;
-    virtual void finalizeIteration( const VectorType& rhs, VectorType& x ) {}
+    virtual bool initIteration( const VectorType& rhs, VectorType& x ) = 0;          ///< Init the iteration
+    virtual bool step( VectorType& x ) = 0;                                          ///< Perform one step, requires initIteration
+    virtual void finalizeIteration( const VectorType& rhs, VectorType& x ) {}        ///< Some post-processing might be required
 
     /// Returns the size of the linear system
     index_t size() const                                       { return m_mat->rows(); }
