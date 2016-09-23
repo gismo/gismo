@@ -37,7 +37,7 @@ public:
       m_max_iters(1000),
       m_tol(1e-10),
       m_num_iter(0),
-      m_initial_error(0.),
+      m_rhs_norm(0.),
       m_error(0.)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
@@ -56,7 +56,7 @@ public:
       m_max_iters(1000),
       m_tol(1e-10),
       m_num_iter(0),
-      m_initial_error(0.),
+      m_rhs_norm(0.),
       m_error(0.)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
@@ -90,6 +90,23 @@ public:
     /// \ingroup Solver
     void solve( const VectorType& rhs, VectorType& x )
     {
+        if (initIteration(rhs, x))
+            return;
+
+        while (m_num_iter < m_max_iters)
+        {
+            m_num_iter++;
+            if (step(x))
+                break;
+        }
+        
+        finalizeIteration(rhs, x);
+
+    }
+
+    /// Init the iteration
+    virtual bool initIteration( const VectorType& rhs, VectorType& x )
+    {
         GISMO_ASSERT( rhs.cols() == 1,
                       "Iterative solvers only work for single column right hand side." );
      
@@ -101,13 +118,13 @@ public:
         
         m_num_iter = 0;
         
-        /* // todo: check the following and uncomment
-        m_rhsNorm = rhs.norm(); //m_initial_error
-        if (0 == m_rhsNorm) // special case of zero rhs
+        m_rhs_norm = rhs.norm();
+
+        if (0 == m_rhs_norm) // special case of zero rhs
         {
             x.setZero(rhs.rows()); // for sure zero is a solution
             m_error = 0.;
-            return;
+            return true; // iteration is finished
         }
         
         if ( 0 == x.size() ) // if no initial solution, start with zeros
@@ -115,28 +132,11 @@ public:
         else
         {
            GISMO_ENSURE(m_mat->cols() == x.rows(), "Invalid initial solution");
-           GISMO_ENSURE(rhs->cols() == x.cols()  , "Initial solution does not match right-hand side");
+           GISMO_ENSURE(rhs.cols() == x.cols()   , "Initial solution does not match right-hand side");
         }
-        */
-
-        if (initIteration(rhs, x))
-        {
-            m_error = 0.;
-            return;
-        }
-
-        while (m_num_iter < m_max_iters)
-        {
-            m_num_iter++;
-            if (step(x))
-                break;
-        }
-        
-        finalizeIteration( rhs, x );
-
+        return false; // iteration is not finished
     }
 
-    virtual bool initIteration( const VectorType& rhs, VectorType& x ) = 0;          ///< Init the iteration
     virtual bool step( VectorType& x ) = 0;                                          ///< Perform one step, requires initIteration
     virtual void finalizeIteration( const VectorType& rhs, VectorType& x ) {}        ///< Some post-processing might be required
 
@@ -163,13 +163,13 @@ public:
 
 
 protected:
-    const LinOpPtr     m_mat;
-    /*const*/ LinOpPtr m_precond;
-    index_t            m_max_iters;
-    real_t             m_tol;
-    index_t            m_num_iter;
-    real_t             m_initial_error;
-    real_t             m_error;
+    const LinOpPtr     m_mat;                                   ///< The matrix/operator to be solved for
+    LinOpPtr           m_precond;                               ///< The preconditioner
+    index_t            m_max_iters;                             ///< The upper bound for the number of iterations to be performed
+    real_t             m_tol;                                   ///< The tolerance for m_error to be reached
+    index_t            m_num_iter;                              ///< The number of iterations performed
+    real_t             m_rhs_norm;                              ///< The norm of the right-hand-side
+    real_t             m_error;                                 ///< The relative error as absolute_error/m_rhs_norm
 
 };
 

@@ -17,15 +17,12 @@ namespace gismo
 
 bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x )
 {
+    if (Base::initIteration(rhs,x))
+        return true;
+    
     int n = m_mat->cols();
     int m = 1;//rhs.cols();
     m_rhs = rhs;
-    m_initial_error = rhs.norm();
-    if (m_initial_error == 0)
-    {
-        x = rhs;
-        return true;
-    }
 
     xPrew = x;
     vPrew.setZero(n,m); vNew.setZero(n,m);
@@ -41,7 +38,7 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     eta = gamma;
     sPrew = 0; s = 0; sNew = 0;
     cPrew = 1; c = 1; cNew = 1;
-
+    
     return false;
 }
 
@@ -68,7 +65,7 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     //Test for convergence
     m_mat->apply(x,tmp2);
     residual = m_rhs - tmp2;
-    m_error = residual.norm() / m_initial_error;
+    m_error = residual.norm() / m_rhs_norm;
     if (m_error < m_tol)
         return true;
 

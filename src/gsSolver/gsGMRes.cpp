@@ -20,6 +20,9 @@ namespace gismo
 
 bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
 {
+    if (Base::initIteration(rhs,x))
+        return true;
+    
     xInit = x;
     m_mat->apply(x,tmp);
     tmp = rhs - tmp;
@@ -30,14 +33,6 @@ bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
     g(0,0) = beta;
     Omega = gsMatrix<real_t>::Identity(2, 2);
     Omega_prew = gsMatrix<real_t>::Identity(2, 2);
-
-    m_initial_error = rhs.norm(); // This is ||r||
-    if (m_initial_error == 0)
-    {
-        x = rhs;
-        return true;
-    }
-    m_num_iter = 0;
     
     return false;
 }
@@ -111,7 +106,7 @@ bool gsGMRes::step( VectorType& x )
     g = Omega*g_tmp;
 
     real_t residualNorm2 = g(k+1,0)*g(k+1,0);
-    m_error = math::sqrt(residualNorm2) / m_initial_error;
+    m_error = math::sqrt(residualNorm2) / m_rhs_norm;
     if(m_error < m_tol)
         return true;
 

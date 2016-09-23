@@ -18,6 +18,9 @@ namespace gismo
 
 bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x )
 {
+    if (Base::initIteration(rhs,x))
+        return true;
+    
     int n = m_mat->cols();
     int m = 1;                                                          // == rhs.cols();
     m_tmp.resize(n,m);
@@ -29,12 +32,6 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
     m_precond->apply(m_res,m_update);                                   // initial search direction
 
     m_abs_new = Eigen::numext::real(m_res.col(0).dot(m_update.col(0))); // the square of the absolute value of r scaled by invM
-    m_initial_error = rhs.norm();
-    if (m_initial_error == 0.)
-    {
-        x = rhs;
-        return true;
-    }
 
     if (m_calcEigenvals)
     {
@@ -45,7 +42,7 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
         gamma.clear();
         gamma.reserve(m_max_iters);
 
-        m_eigsAreCalculated =  true;
+        m_eigsAreCalculated = true;
     }
     return false;
 }
@@ -62,7 +59,7 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x )
     x += alpha * m_update;                                             // update solution
     m_res -= alpha * m_tmp;                                            // update residual
 
-    m_error = m_res.norm() / m_initial_error;
+    m_error = m_res.norm() / m_rhs_norm;
     if (m_error < m_tol)
         return true;
 
