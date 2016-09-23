@@ -101,6 +101,84 @@ typename gsMatrixOp<Derived>::Ptr makeMatrixOp(const memory::shared< Eigen::Eige
 
 
 
+/**
+  * @brief Simple adapter class to use the transpose of a matrix as a linear operator.
+  * This should, of course, be done without transposing the matrix itself.
+  *
+  * \ingroup Solver
+  */
+  
+template <class Derived>
+class gsTransposedMatrixOp : public gsLinearOperator<typename Derived::Scalar>
+{
+public:
+    typedef typename Derived::Scalar T;
+    
+    /// Shared pointer for gsTransposedMatrixOp
+    typedef typename memory::shared<gsTransposedMatrixOp>::ptr Ptr;
+
+    /// Unique pointer for gsTransposedMatrixOp   
+    typedef typename memory::unique<gsTransposedMatrixOp>::ptr uPtr;
+    
+    // The matrix type
+    typedef typename Eigen::EigenBase<Derived> MatrixType;
+
+    /// Shared pointer to the matrix type
+    typedef typename memory::shared<MatrixType>::ptr MatrixPtr;
+    
+    /// @brief Constructor taking a reference
+    /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
+    gsTransposedMatrixOp(const MatrixType& mat) : m_mat(memory::make_shared_not_owned(&mat.derived()))    {}
+    
+    /// Constructor taking a shared pointer
+    gsTransposedMatrixOp(const MatrixPtr& mat) : m_mat(mat->derived())    {}
+
+    /// @brief Make function returning a smart pointer
+    /// @note This does not copy the matrix. Make sure that the matrix is not deleted too early or provide a shared pointer.
+    static Ptr make(const MatrixType& mat)
+        { return memory::make_shared( new gsTransposedMatrixOp(mat) ); }
+
+    /// Make function returning a smart pointer
+    static Ptr make(const MatrixPtr& mat)
+        { return memory::make_shared( new gsTransposedMatrixOp(mat) ); }
+
+
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+    {
+        x.noalias() = (*m_mat).transpose() * input;
+    }
+
+    index_t rows() const {return m_mat->cols();}
+
+    index_t cols() const {return m_mat->rows();}
+
+private:
+    const typename memory::shared<Derived>::ptr m_mat;
+};
+
+
+/** @brief This essentially just calls the gsTransposedMatrixOp constructor, but the use of a template functions allows us to let the
+  * compiler do type inference, so we don't need to type out the matrix type explicitly.
+  * 
+  * @note If a matrix is provided, only a reference is stored. Make sure that the matrix is not deleted too early or provide a shared
+  * pointer.
+  */
+template <class Derived>
+typename gsTransposedMatrixOp<Derived>::Ptr makeTransposedMatrixOp(const Eigen::EigenBase<Derived>& mat)
+{
+    return memory::make_shared(new gsTransposedMatrixOp<Derived>(mat));
+}
+
+/** @brief This essentially just calls the gsTransposedMatrixOp constructor, but the use of a template functions allows us to let the
+  * compiler do type inference, so we don't need to type out the matrix type explicitly.
+  * 
+  */
+template <class Derived>
+typename gsTransposedMatrixOp<Derived>::Ptr makeTransposedMatrixOp(const memory::shared< Eigen::EigenBase<Derived> >& mat)
+{
+    return memory::make_shared(new gsTransposedMatrixOp<Derived>(mat));
+}
+
 /** @brief Simple adapter class to use an Eigen solver (having a compute() and a solve() method) as a linear operator.
   *
   * \ingroup Solver
