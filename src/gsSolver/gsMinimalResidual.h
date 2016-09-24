@@ -17,11 +17,11 @@
 namespace gismo
 {
 
-class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver
+class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver<real_t>
 {
 
 public:
-    typedef gsIterativeSolver Base;
+    typedef gsIterativeSolver<real_t> Base;
     
     typedef gsMatrix<real_t>  VectorType;
 
@@ -34,7 +34,8 @@ public:
         : Base(mat, precond) { }
     
     bool initIteration( const VectorType& rhs, VectorType& x );
-
+    void finalizeIteration( VectorType& x );
+    
     bool step( VectorType& x );
 
 private:

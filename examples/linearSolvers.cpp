@@ -53,7 +53,8 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsMatrix<> &rhs, index_t N)
 }
 
 //Print out information of the iterative solver
-void gsIterativeSolverInfo(const gsIterativeSolver &method, std::string methodName, double time)
+void gsIterativeSolverInfo(const gsIterativeSolver<real_t> &method,
+                           std::string methodName, double time)
 {
     gsInfo << methodName +": System size         : " << method.size() << "\n";
     gsInfo << methodName +": Tolerance           : " << method.tolerance() << "\n";
@@ -92,7 +93,7 @@ int main(int argc, char *argv[])
     //Maximum number of iterations
     index_t maxIters = 3*N;
 
-    gsOptionList opt = gsIterativeSolver::defaultOptions();
+    gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
     opt.setInt ("MaxIterations", 3*N);
     opt.setReal("Tolerance"    , tol);
     
@@ -206,7 +207,6 @@ int main(int argc, char *argv[])
     gsInfo << "Eigen's BiCGSTAB: Residual error      : " << EigenBCGILUsolver.error() << "\n";
     gsInfo << "Eigen's BiCGSTAB: Number of iterations: " << EigenBCGILUsolver.iterations() << "\n";
     gsInfo << "Eigen's BiCGSTAB: Time to solve       : " << clock.stop() << "\n";
-
 
     ///----------------------EIGEN-DIRECT-SOLVERS----------------------///
     gsSparseSolver<>::SimplicialLDLT EigenSLDLTsolver;

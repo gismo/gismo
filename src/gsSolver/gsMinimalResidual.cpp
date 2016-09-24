@@ -51,10 +51,10 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     vNew = Az - (delta/gamma)*v - (gamma/gammaPrev)*vPrev;
     m_precond->apply(vNew, zNew);
     gammaNew = math::sqrt(zNew.col(0).dot(vNew.col(0)));
-    real_t a0 = c*delta - cPrev*s*gamma;
-    real_t a1 = math::sqrt(a0*a0 + gammaNew*gammaNew);
-    real_t a2 = s*delta + cPrev*c*gamma;
-    real_t a3 = sPrev*gamma;
+    const real_t a0 = c*delta - cPrev*s*gamma;
+    const real_t a1 = math::sqrt(a0*a0 + gammaNew*gammaNew);
+    const real_t a2 = s*delta + cPrev*c*gamma;
+    const real_t a3 = sPrev*gamma;
     cNew = a0/a1;
     sNew = gammaNew/a1;
     wNew = (z - a3*wPrev - a2*w)/a1;
@@ -78,6 +78,20 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     cPrev = c; c = cNew;
     return false;
 }
+
+
+void gsMinimalResidual::finalizeIteration( VectorType& x )
+{
+    GISMO_UNUSED(x);
+    // cleanup temporaries
+    negResidual.clear();
+    vPrev.clear(); v.clear(); vNew.clear();
+    wPrev.clear(); w.clear(); wNew.clear();
+    AwPrev.clear(); Aw.clear(); AwNew.clear();
+    zNew.clear(); z.clear(); Az.clear();
+}
+
+
 
 }
 

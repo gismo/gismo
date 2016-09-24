@@ -31,7 +31,7 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
 
     m_precond->apply(m_res,m_update);                                   // initial search direction
 
-    m_abs_new = Eigen::numext::real(m_res.col(0).dot(m_update.col(0))); // the square of the absolute value of r scaled by invM
+    m_abs_new = m_res.col(0).dot(m_update.col(0)); // the square of the absolute value of r scaled by invM
 
     if (m_calcEigenvals)
     {
@@ -67,7 +67,7 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x )
 
     real_t abs_old = m_abs_new;
 
-    m_abs_new = Eigen::numext::real(m_res.col(0).dot(m_tmp.col(0)));   // update the absolute value of r
+    m_abs_new = m_res.col(0).dot(m_tmp.col(0));   // update the absolute value of r
     real_t beta = m_abs_new / abs_old;                                 // calculate the Gram-Schmidt value used to create the new search direction
     m_update = m_tmp + beta * m_update;                                // update search direction
 

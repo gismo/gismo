@@ -15,7 +15,6 @@
 
 #include <gismo.h>
 
-
 using namespace gismo;
 
 int main()
@@ -23,20 +22,24 @@ int main()
 #ifdef EIGEN_VECTORIZE
     gsInfo << "Vectorization is enabled in Eigen."<< "\n";
 #endif
+#ifdef EIGEN_HAVE_RVALUE_REFERENCES
+    gsInfo << "Eigen: EIGEN_HAVE_RVALUE_REFERENCES"<< "\n";
+#endif
 
+    
     // A matrix with entries of type real_t, and allocated size 3x3
     gsMatrix<real_t> A (3,3);
     // The comman initializer lets us fill the matrix. Note that the
     // matrix must have the correct size for this to work
     A << 2,2,3,  4,5,6,  7,8,10;
     A(0,0) -= 1 ;
-
+    
     // If the type of the entries of the matrix is not given, the
     // default type is real_t (e.g. double)
     gsMatrix<> E (3,1);
     gsVector<> c (3);
     E << 2,2,3 ;
-  
+
     // Even if two matrices do not have the same size we can assign one
     // to the other and the result will be two identical matrices
     c = E ;
@@ -169,7 +172,7 @@ int main()
 
     gsInfo << " Eigenvalues of non-symmetric matrix: "<< A.eigenvalues().transpose() << "\n";
     gsInfo << " Eigenvectors of non-symmetric matrix: \n"
-         << Eigen::EigenSolver<gsMatrix<>::Base>(A).eigenvectors() << "\n";
+         << Eigen::EigenSolver<gsMatrix<> >(A).eigenvectors() << "\n";
 
     gsInfo << " Eigenvalues of symmetric matrix (A's lower triangular part): "
          << A.selfadjointView<Lower>().eigenvalues().transpose()  << "\n";

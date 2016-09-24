@@ -23,10 +23,10 @@ namespace gismo
  *  a gsLinearOperator as matrix.
  */
 
-class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver
+class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver<real_t>
 {
 public:
-    typedef gsIterativeSolver Base;
+    typedef gsIterativeSolver<real_t> Base;
     
     typedef gsMatrix<real_t>  VectorType;
     

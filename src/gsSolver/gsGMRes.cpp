@@ -55,6 +55,22 @@ void gsGMRes::finalizeIteration( VectorType& x )
     }
     //Update solution
     x += V*y;
+
+    // cleanup temporaries
+    tmp.clear();
+    g.clear();
+    g_tmp.clear();
+    h_tmp.clear();
+    y.clear();
+    w.clear();
+    residual.clear();
+    H_prev.clear();
+    H.clear();
+    Omega.clear();
+    Omega_prev.clear();
+    Omega_tmp.clear();
+    Omega_prev_tmp.clear();
+    v.clear();
 }
 
 bool gsGMRes::step( VectorType& x )
@@ -102,7 +118,7 @@ bool gsGMRes::step( VectorType& x )
         g_tmp.block(0,0,k+1,1) = g;
     else
         g_tmp = g;
-    g = Omega*g_tmp;
+    g.noalias() = Omega * g_tmp;
 
     real_t residualNorm2 = g(k+1,0)*g(k+1,0);
     m_error = math::sqrt(residualNorm2) / m_rhs_norm;

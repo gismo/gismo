@@ -1,3 +1,8 @@
+# G+smo Travis-CI YML script
+# 
+# Author: Angelos Mantzaflaris 2012-2016
+#
+
 #sudo: required
 sudo: false
 
@@ -42,6 +47,7 @@ before_script:
   - cmake .. -DGISMO_WITH_ONURBS=ON -DSITE="travis-ci.org" #-DGISMO_WITH_IPOPT=ON
 
 script:
+  - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi 
   - test $TRAVIS_BRANCH != coverity_scan || exit 0
   - ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
   #- make -j2 Experimental

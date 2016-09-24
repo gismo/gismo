@@ -22,14 +22,16 @@ namespace gismo
 /// @brief Abstract class for iterative solvers.
 ///
 /// \ingroup Solver
+template<class T>
 class gsIterativeSolver
 {
 public:
-    typedef gsMatrix<real_t>    VectorType;
+    typedef gsMatrix<T>    VectorType;
 
-    typedef typename gsLinearOperator<>::Ptr LinOpPtr;
+    typedef typename gsLinearOperator<T>::Ptr LinOpPtr;
     
-    /// @brief  Contructor using a linear operator to be solved for and optionally a preconditioner
+    /// @brief Contructor using a linear operator to be solved for and
+    ///  a preconditioner
     gsIterativeSolver( const LinOpPtr& mat,
                        const LinOpPtr& precond)
     : m_mat(mat),
@@ -41,10 +43,11 @@ public:
       m_error(0.)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
-        if (!m_precond) m_precond = gsIdentityOp<>::make(m_mat->rows());
+        if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
     }
 
-    /// @brief  Contructor using any dense or sparse matrix and optionally a preconditioner
+    /// @brief Contructor using any dense or sparse matrix and a
+    ///  preconditioner
     ///
     /// @note: This does not copy the matrix. So, make sure that the
     /// matrix is not deleted before the solver.
@@ -60,7 +63,7 @@ public:
       m_error(0.)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
-        if (NULL==m_precond.get()) m_precond = gsIdentityOp<>::make(m_mat->rows());
+        if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
     }
 
     virtual ~gsIterativeSolver()    {}
@@ -150,26 +153,26 @@ public:
     void setMaxIterations(index_t max_iters)                   { m_max_iters = max_iters; }
 
     /// Set the tolerance for the error criteria (default: 1e-10)
-    void setTolerance(real_t tol)                              { m_tol = tol; }
+    void setTolerance(T tol)                              { m_tol = tol; }
 
     /// The number of iterations needed to reach the error criteria
     int iterations() const                                     { return m_num_iter; }
 
     /// The error of the iterative method
-    real_t error() const                                       { return m_error; }
+    T error() const                                       { return m_error; }
 
     /// The tolerance used in the iterative method
-    real_t tolerance() const                                   { return m_tol; }
+    T tolerance() const                                   { return m_tol; }
 
 
 protected:
-    const LinOpPtr     m_mat;                                   ///< The matrix/operator to be solved for
-    LinOpPtr           m_precond;                               ///< The preconditioner
-    index_t            m_max_iters;                             ///< The upper bound for the number of iterations to be performed
-    real_t             m_tol;                                   ///< The tolerance for m_error to be reached
-    index_t            m_num_iter;                              ///< The number of iterations performed
-    real_t             m_rhs_norm;                              ///< The norm of the right-hand-side
-    real_t             m_error;                                 ///< The relative error as absolute_error/m_rhs_norm
+    const LinOpPtr m_mat;            ///< The matrix/operator to be solved for
+    LinOpPtr       m_precond;        ///< The preconditioner
+    index_t        m_max_iters;      ///< The upper bound for the number of iterations
+    T              m_tol;            ///< The tolerance for m_error to be reached
+    index_t        m_num_iter;       ///< The number of iterations performed
+    T              m_rhs_norm;       ///< The norm of the right-hand-side
+    T              m_error;          ///< The relative error as absolute_error/m_rhs_norm
 
 };
 

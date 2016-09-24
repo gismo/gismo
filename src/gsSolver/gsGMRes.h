@@ -17,7 +17,7 @@
 namespace gismo
 {
 
-class GISMO_EXPORT gsGMRes: public gsIterativeSolver
+class GISMO_EXPORT gsGMRes: public gsIterativeSolver<real_t>
 {
 public:
     typedef gsIterativeSolver Base;
