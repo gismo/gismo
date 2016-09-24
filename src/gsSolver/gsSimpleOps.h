@@ -39,7 +39,7 @@ GISMO_EXPORT void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, g
 
 /// @brief Richardson preconditioner
 ///
-template <typename MatrixType, int UpLo = Eigen::Lower>
+template <typename MatrixType>
 class gsRichardsonOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
 public:
@@ -87,7 +87,7 @@ public:
     const MatrixType & matrix() const { return m_mat; }
 
 private:
-    MatrixType m_mat;
+    MatrixType m_mat; // expensive copy
     index_t m_numOfSweeps;
     T m_tau;
 };
@@ -95,7 +95,7 @@ private:
 /// @brief Jacobi preconditioner
 ///
 /// Requires a positive definite matrix.
-template <typename MatrixType, int UpLo = Eigen::Lower>
+template <typename MatrixType>
 class gsJacobiOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
 public:
@@ -144,7 +144,7 @@ public:
     const MatrixType & matrix() const { return m_mat; }
 
 private:
-    MatrixType m_mat;
+    MatrixType m_mat; // expensive copy
     index_t m_numOfSweeps;
     T m_tau;
 };
@@ -152,7 +152,7 @@ private:
 /// @brief Gauss-Seidel preconditioner
 ///
 /// Requires a positive definite matrix.
-template <typename MatrixType, int UpLo = Eigen::Lower>
+template <typename MatrixType>
 class gsGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
 public:
@@ -193,7 +193,7 @@ public:
     const MatrixType & matrix() const { return m_mat; }
     
 private:
-    MatrixType m_mat;
+    MatrixType m_mat; // expensive copy
     index_t m_numOfSweeps;
 };
 
@@ -203,9 +203,12 @@ private:
 /// Requires a positive definite matrix. Does first
 /// one forward Gauss-Seidel sweep then one backward
 /// Gauss-Seidel sweep.
-template <typename MatrixType, int UpLo = Eigen::Lower>
+template <typename MatrixType>
 class gsSymmetricGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
+    typedef typename memory::shared<MatrixType>::ptr MatrixPtr;
+    typedef typename MatrixType::Nested     NestedMatrix;
+
 public:
     typedef typename MatrixType::Scalar T;
     
@@ -217,8 +220,8 @@ public:
     
     /// @brief Contructor with given matrix
     gsSymmetricGaussSeidelOp(const MatrixType& _mat, index_t numOfSweeps = 1)
-        : m_mat(_mat), m_numOfSweeps(numOfSweeps) {}
-        
+    : m_mat(), m_expr(_mat.derived()), m_numOfSweeps(numOfSweeps) {}
+    
     static Ptr make(const MatrixType& _mat, index_t numOfSweeps = 1) 
     { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat,numOfSweeps) ); }
 
@@ -228,24 +231,26 @@ public:
 
         for (index_t k = 0; k < m_numOfSweeps; ++k)
         {
-            gaussSeidelSweep(m_mat,x,input);
-            //x.array() *= m_mat.diagonal().array();
-            reverseGaussSeidelSweep(m_mat,x,input);
+            gaussSeidelSweep(m_expr,x,input);
+            //x.array() *= m_expr.diagonal().array();
+            reverseGaussSeidelSweep(m_expr,x,input);
         }
     }
 
-    index_t rows() const {return m_mat.rows();}
+    index_t rows() const {return m_expr.rows();}
 
-    index_t cols() const {return m_mat.cols();}
+    index_t cols() const {return m_expr.cols();}
 
     /// Set number of sweeps of to symmetric Gauss-Seidel perform (default is 1).
     void setNumOfSweeps(index_t n)    { m_numOfSweeps= n; }
 
     ///Returns the matrix
-    const MatrixType & matrix() const { return m_mat; }
+    const NestedMatrix matrix() const { return m_expr; }
 
 private:
-    MatrixType m_mat;
+    const MatrixPtr    m_mat;  ///< Shared pointer to matrix (if needed)
+    const NestedMatrix m_expr; ///< Nested Eigen expression
+
     index_t m_numOfSweeps;
 };
 
