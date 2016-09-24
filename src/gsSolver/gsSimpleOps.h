@@ -219,11 +219,18 @@ public:
     typedef typename memory::unique< gsSymmetricGaussSeidelOp >::ptr uPtr; 
     
     /// @brief Contructor with given matrix
-    gsSymmetricGaussSeidelOp(const MatrixType& _mat, index_t numOfSweeps = 1)
-    : m_mat(), m_expr(_mat.derived()), m_numOfSweeps(numOfSweeps) {}
+    explicit gsSymmetricGaussSeidelOp(const MatrixType& _mat)
+    : m_mat(), m_expr(_mat.derived()), m_numOfSweeps(1) {}
+
+    /// @brief Contructor with shared pointer to matrix
+    explicit gsSymmetricGaussSeidelOp(const MatrixPtr& _mat)
+    : m_mat(_mat), m_expr(m_mat->derived()), m_numOfSweeps(1) {}
     
-    static Ptr make(const MatrixType& _mat, index_t numOfSweeps = 1) 
-    { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat,numOfSweeps) ); }
+    static Ptr make(const MatrixType& _mat) 
+    { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat) ); }
+
+    static Ptr make(const MatrixPtr& _mat) 
+    { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
@@ -241,7 +248,8 @@ public:
 
     index_t cols() const {return m_expr.cols();}
 
-    /// Set number of sweeps of to symmetric Gauss-Seidel perform (default is 1).
+    /// Set number of sweeps of to symmetric Gauss-Seidel perform
+    /// (default is 1).
     void setNumOfSweeps(index_t n)    { m_numOfSweeps= n; }
 
     ///Returns the matrix

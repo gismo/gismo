@@ -20,7 +20,7 @@ namespace gismo
 class GISMO_EXPORT gsGMRes: public gsIterativeSolver<real_t>
 {
 public:
-    typedef gsIterativeSolver Base;
+    typedef gsIterativeSolver<real_t> Base;
     
     typedef gsMatrix<real_t>  VectorType;
     
