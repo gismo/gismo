@@ -212,11 +212,7 @@ public:
 
     /// Default empty constructor
     gsBoundaryConditions()
-    { 
-        m_bc["Dirichlet"];
-        m_bc["Neumann"];
-        m_bc["Robin"];
-    }
+    { }
 
     ~gsBoundaryConditions() // Destructor
     { }
@@ -250,16 +246,16 @@ public:
     }
 
     /// Return a reference to boundary conditions of certain type
-    const bcContainer & sidesOfType(const std::string & label) const {return m_bc.find(label)->second; }
+    const bcContainer & container(const std::string & label) const {return m_bc[label]; }
 
     /// Return a reference to the Dirichlet sides
-    const bcContainer & dirichletSides() const {return m_bc.find("Dirichlet")->second; }
+    const bcContainer & dirichletSides() const {return m_bc["Dirichlet"]; }
 
     /// Return a reference to the Neumann sides
-    const bcContainer & neumannSides()   const {return m_bc.find("Neumann")->second; }
+    const bcContainer & neumannSides()   const {return m_bc["Neumann"]; }
 
     /// Return a reference to the Dirichlet sides
-    const bcContainer & robinSides()     const {return m_bc.find("Robin")->second; }
+    const bcContainer & robinSides()     const {return m_bc["Robin"]; }
 
     const cornerContainer & cornerValues() const  {return corner_values;  }
 
@@ -286,13 +282,13 @@ public:
     }
 
     /// Returns a const-iterator to the beginning of the Bc container of type \a label
-    const_iterator begin(const std::string & label) const {return m_bc.find(label)->second.begin(); }
+    const_iterator begin(const std::string & label) const {return m_bc[label].begin(); }
 
     /// Returns an iterator to the beginning of the Bc container of type \a label
     iterator begin(const std::string & label) { return m_bc[label].begin(); }
 
     /// Returns a const-iterator to the end of the Bc container of type \a label
-    const_iterator end(const std::string & label) const {return m_bc.find(label)->second.end(); }
+    const_iterator end(const std::string & label) const {return m_bc[label].end(); }
 
     /// Returns an iterator to the end of the Bc container of type \a label
     iterator end(const std::string & label) { return m_bc[label].end(); }
@@ -300,12 +296,12 @@ public:
     /// Get a const-iterator to the beginning of the Dirichlet sides
     /// \return an iterator to the beginning of the Dirichlet sides
     const_iterator dirichletBegin() const
-    { return m_bc.find("Dirichlet")->second.begin(); }
+    { return m_bc["Dirichlet"].begin(); }
     
     /// Get a const-iterator to the end of the Dirichlet sides
     /// \return an iterator to the end of the Dirichlet sides
     const_iterator dirichletEnd() const
-    { return m_bc.find("Dirichlet")->second.end(); }
+    { return m_bc["Dirichlet"].end(); }
     
     /// Get an iterator to the beginning of the Dirichlet sides
     /// \return an iterator to the beginning of the Dirichlet sides
@@ -320,12 +316,12 @@ public:
     /// Get a const-iterator to the beginning of the Neumann sides
     /// \return an iterator to the beginning of the Neumann sides
     const_iterator neumannBegin() const
-    { return m_bc.find("Neumann")->second.begin(); }
+    { return m_bc["Neumann"].begin(); }
     
     /// Get a const-iterator to the end of the Neumann sides
     /// \return an iterator to the end of the Neumann sides
     const_iterator neumannEnd() const
-    { return m_bc.find("Neumann")->second.end(); }
+    { return m_bc["Neumann"].end(); }
     
     /// Get an iterator to the beginning of the Neumann sides
     /// \return an iterator to the beginning of the Neumann sides
@@ -340,12 +336,12 @@ public:
     /// Get a const-iterator to the beginning of the Robin sides
     /// \return an iterator to the beginning of the Robin sides
     const_iterator robinBegin() const
-    { return m_bc.find("Robin")->second.begin(); }
+    { return m_bc["Robin"].begin(); }
     
     /// Get a const-iterator to the end of the Robin sides
     /// \return an iterator to the end of the Robin sides
     const_iterator robinEnd() const
-    { return m_bc.find("Robin")->second.end(); }
+    { return m_bc["Robin"].end(); }
 
     /// Get an iterator to the beginning of the corner values
     /// \return an iterator to the beginning of the corner values
@@ -593,7 +589,7 @@ private:
 
     cornerContainer corner_values; ///< List of corners with fixed value
 
-    bcData m_bc;  ///< Containers for BCs of various types
+    mutable bcData m_bc;  ///< Containers for BCs of various types
 
 
     // Pointer to associated multipatch domain
