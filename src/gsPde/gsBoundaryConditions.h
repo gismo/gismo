@@ -83,6 +83,7 @@ struct boundary_condition
           m_function(f_shptr),
           m_type(t),
           m_unknown(unknown),
+          m_unkcomp(-1),
           m_parametric(parametric)
     { }
 
@@ -92,26 +93,26 @@ struct boundary_condition
         : ps(p, s),
           m_type(t),
           m_unknown(unknown),
+          m_unkcomp(-1),
           m_parametric(parametric)
     {
-        m_function = function_ptr(f_ptr, memory::null_deleter<gsFunction<T> >);
+        m_function = memory::make_shared_not_owned(f_ptr);
     }
 
     boundary_condition( int p, boxSide s, const gsFunction<T> & func,
                         condition_type::type t, int unknown = 0,
                         bool parametric = false)
-        : ps(p, s),
-          m_function(func.clone()),
-          m_type(t),
-          m_unknown(unknown),
-          m_parametric(parametric)
-    {
-        //m_function = function_ptr(func.clone());
-    }
+    : ps(p, s),
+      m_function(func.clone()),
+      m_type(t),
+      m_unknown(unknown),
+      m_unkcomp(-1),
+      m_parametric(parametric)
+    { }
 
     boundary_condition( int p, boxSide s, condition_type::type t,
                         int unknown = 0, bool parametric = false)
-        : ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown),m_parametric(parametric)
+    : ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown),m_parametric(parametric)
     { }
     
     /// Returns true if there is no function data (homogeneous condition)
@@ -135,6 +136,9 @@ struct boundary_condition
     /// Returns the unknown to which this boundary condition refers to
     int     unknown()  const { return m_unknown; }
 
+    /// Returns the component of the unknown which this boundary condition refers to
+    int     unkComponent()  const { return m_unkcomp; }
+
     /// Returns true if the function data for this boundary condition
     /// is defined in parametric coordinates
     bool    parametric()  const { return m_parametric; }
@@ -148,7 +152,11 @@ struct boundary_condition
 
     condition_type::type m_type; ///< Type of the boundary condition
 
+    std::string m_label;         ///< Description of type of the boundary condition
+
     int m_unknown;               ///< Unknown to which this boundary condition refers to
+    
+    int m_unkcomp;               ///< Component of unknown to which this boundary condition refers to
 
     bool m_parametric;
 };
@@ -185,6 +193,9 @@ public:
     typedef typename std::vector<boundary_condition<T> > bcContainer;
     typedef typename std::vector<corner_value<T> >       cornerContainer;
 
+    // Format: std::pair<type,bcContainer>
+    typedef std::map<std::string,bcContainer> bcData;
+
     typedef typename bcContainer::iterator iterator;
     typedef typename bcContainer::const_iterator const_iterator;
 
@@ -201,7 +212,11 @@ public:
 
     /// Default empty constructor
     gsBoundaryConditions()
-    { }
+    { 
+        m_bc["Dirichlet"];
+        m_bc["Neumann"];
+        m_bc["Robin"];
+    }
 
     ~gsBoundaryConditions() // Destructor
     { }
@@ -211,39 +226,40 @@ public:
     {
         if ( other.get() != NULL )
         {
-            drchlt_sides.swap( other->drchlt_sides);
-            nmnn_sides  .swap( other->nmnn_sides  );
-            robin_sides .swap( other->robin_sides );
+            m_bc.swap(other->m_bc);
+            corner_values.swap(other->corner_values);
         }
 
         return *this;
     }
-
     
 public:
 
     void clear()
     {
-        drchlt_sides .clear();
-        nmnn_sides   .clear();
-        robin_sides  .clear();
+        m_bc.clear();
         corner_values.clear();
     }
 
     size_t size() const
     {
-        return drchlt_sides.size() + nmnn_sides.size() +
-                robin_sides.size() + corner_values.size();
+        size_t sz = 0;
+        for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end(); ++it)
+            sz += it->second.size();
+        return sz + corner_values.size();
     }
 
+    /// Return a reference to boundary conditions of certain type
+    const bcContainer & sidesOfType(const std::string & label) const {return m_bc.find(label)->second; }
+
     /// Return a reference to the Dirichlet sides
-    const bcContainer & dirichletSides() const {return drchlt_sides; }
+    const bcContainer & dirichletSides() const {return m_bc.find("Dirichlet")->second; }
 
     /// Return a reference to the Neumann sides
-    const bcContainer & neumannSides()   const {return nmnn_sides;   }
+    const bcContainer & neumannSides()   const {return m_bc.find("Neumann")->second; }
 
     /// Return a reference to the Dirichlet sides
-    const bcContainer & robinSides()     const {return robin_sides;  }
+    const bcContainer & robinSides()     const {return m_bc.find("Robin")->second; }
 
     const cornerContainer & cornerValues() const  {return corner_values;  }
 
@@ -263,62 +279,73 @@ public:
     bcContainer allConditions() const
     {
         bcContainer all;
-        all.reserve( drchlt_sides.size()+nmnn_sides.size()+robin_sides.size());
-        all.insert( all.end(), drchlt_sides.begin(), drchlt_sides.end() );
-        all.insert( all.end(), nmnn_sides.begin()  , nmnn_sides.end()   );
-        all.insert( all.end(), robin_sides.begin() , robin_sides.end()  );
+        all.reserve( size() - corner_values.size() );
+        for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end(); ++it)
+            all.insert( all.end(), it->second.begin(), it->second.end() );
         return all;
     }
-    
+
+    /// Returns a const-iterator to the beginning of the Bc container of type \a label
+    const_iterator begin(const std::string & label) const {return m_bc.find(label)->second.begin(); }
+
+    /// Returns an iterator to the beginning of the Bc container of type \a label
+    iterator begin(const std::string & label) { return m_bc[label].begin(); }
+
+    /// Returns a const-iterator to the end of the Bc container of type \a label
+    const_iterator end(const std::string & label) const {return m_bc.find(label)->second.end(); }
+
+    /// Returns an iterator to the end of the Bc container of type \a label
+    iterator end(const std::string & label) { return m_bc[label].end(); }
+
     /// Get a const-iterator to the beginning of the Dirichlet sides
     /// \return an iterator to the beginning of the Dirichlet sides
     const_iterator dirichletBegin() const
-    { return drchlt_sides.begin(); }
+    { return m_bc.find("Dirichlet")->second.begin(); }
     
     /// Get a const-iterator to the end of the Dirichlet sides
     /// \return an iterator to the end of the Dirichlet sides
     const_iterator dirichletEnd() const
-    { return drchlt_sides.end(); }
+    { return m_bc.find("Dirichlet")->second.end(); }
     
     /// Get an iterator to the beginning of the Dirichlet sides
     /// \return an iterator to the beginning of the Dirichlet sides
     iterator dirichletBegin()
-    { return drchlt_sides.begin(); }
+    { return m_bc["Dirichlet"].begin(); }
     
     /// Get an iterator to the end of the Dirichlet sides
     /// \return an iterator to the end of the Dirichlet sides
     iterator dirichletEnd()
-    { return drchlt_sides.end(); }
+    { return m_bc["Dirichlet"].end(); }
 
     /// Get a const-iterator to the beginning of the Neumann sides
     /// \return an iterator to the beginning of the Neumann sides
     const_iterator neumannBegin() const
-    { return nmnn_sides.begin(); }
+    { return m_bc.find("Neumann")->second.begin(); }
     
     /// Get a const-iterator to the end of the Neumann sides
     /// \return an iterator to the end of the Neumann sides
     const_iterator neumannEnd() const
-    { return nmnn_sides.end(); }
+    { return m_bc.find("Neumann")->second.end(); }
     
     /// Get an iterator to the beginning of the Neumann sides
     /// \return an iterator to the beginning of the Neumann sides
     iterator neumannBegin()
-    { return nmnn_sides.begin(); }
+    { return m_bc["Neumann"].begin(); }
     
     /// Get an iterator to the end of the Neumann sides
     /// \return an iterator to the end of the Neumann sides
     iterator neumannEnd()
-    { return nmnn_sides.end(); }
+    { return m_bc["Neumann"].end(); }
 
     /// Get a const-iterator to the beginning of the Robin sides
     /// \return an iterator to the beginning of the Robin sides
     const_iterator robinBegin() const
-    { return robin_sides.begin(); }
+    { return m_bc.find("Robin")->second.begin(); }
     
     /// Get a const-iterator to the end of the Robin sides
     /// \return an iterator to the end of the Robin sides
     const_iterator robinEnd() const
-    { return robin_sides.end(); }
+    { return m_bc.find("Robin")->second.end(); }
 
     /// Get an iterator to the beginning of the corner values
     /// \return an iterator to the beginning of the corner values
@@ -333,12 +360,12 @@ public:
     /// Get an iterator to the beginning of the Robin sides
     /// \return an iterator to the beginning of the Robin sides
     iterator robinBegin()
-    { return robin_sides.begin(); }
+    { return m_bc["Robin"].begin(); }
     
     /// Get an iterator to the end of the Robin sides
     /// \return an iterator to the end of the Robin sides
     iterator robinEnd()
-    { return robin_sides.end(); }
+    { return m_bc["Robin"].end(); }
 
     /// Get an iterator to the beginning of the corner values
     /// \return an iterator to the beginning of the corner values
@@ -351,7 +378,11 @@ public:
     { return corner_values.end(); }
 
 
-
+    void add(int p, boxSide s, const std::string & label,
+             gsFunction<T> * f, int unknown = 0, int comp = -1, bool parametric = false)
+    {
+        //m_bc[label].push_back( boundary_condition<T>(p,s,f,label,unknown,comp, parametric) );
+    }
 
     /** \brief Adds another boundary condition
      *
@@ -373,13 +404,13 @@ public:
     {
         switch (t) {
         case condition_type::dirichlet :
-            drchlt_sides.push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
+            m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
             break;
         case condition_type::neumann :
-            nmnn_sides.push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
+            m_bc["Neumann"].push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
             break;
         case condition_type::robin :
-            robin_sides.push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
+            m_bc["Robin"].push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
             break;
         default:
             std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
@@ -392,13 +423,13 @@ public:
     {
         switch (t) {
         case condition_type::dirichlet :
-            drchlt_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         case condition_type::neumann :
-            nmnn_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            m_bc["Neumann"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         case condition_type::robin :
-            robin_sides.push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
+            m_bc["Robin"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         default:
             std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
@@ -411,13 +442,13 @@ public:
     {
         switch (t) {
         case condition_type::dirichlet :
-            drchlt_sides.push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
+            m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
             break;
         case condition_type::neumann :
-            nmnn_sides.push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
+            m_bc["Neumann"].push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
             break;
         case condition_type::robin :
-            robin_sides.push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
+            m_bc["Robin"].push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
             break;
         default:
             std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
@@ -458,9 +489,9 @@ public:
     std::ostream & print(std::ostream &os) const
     {
         os << "gsBoundaryConditions :\n";
-        os << "* Dirichlet boundaries: "<< drchlt_sides.size() <<"\n";
-        os << "* Neumann boundaries  : "<< nmnn_sides.size() <<"\n";
-        os << "* Corner values       : "<< corner_values.size() <<"\n";
+        for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end(); ++it)
+            os << "* "<<std::setw(13)<<std::left<<it->first<<" : "<< it->second.size() <<"\n";
+        os << "* Corner values : "<< corner_values.size() <<"\n";
         return os;
     }
 
@@ -473,19 +504,19 @@ public:
     {
         typename std::vector<boundary_condition<T> >::const_iterator beg, end, cur;
         patchSideComparison psRef(ps);
-        beg=drchlt_sides.begin();
-        end=drchlt_sides.end();
+        beg = dirichletBegin();
+        end = dirichletEnd();
         cur=std::find_if(beg,end,psRef);
         if (cur != end)
             return &(*cur);
-        beg=nmnn_sides.begin();
-        end=nmnn_sides.end();
+        beg = neumannBegin();
+        end = neumannEnd();
         cur=std::find_if(beg,end,psRef);
         if (cur != end)
             return &(*cur);
-        beg=robin_sides.begin();
-        end=robin_sides.end();
-        cur=std::find_if(beg,end,psRef);
+        beg = robinBegin();
+        end = robinEnd();
+        cur = std::find_if(beg,end,psRef);
         if (cur != end)
             return &(*cur);
 
@@ -501,23 +532,23 @@ public:
     void getConditionFromSide (patchSide ps, bcContainer& result) const
     {
         result.clear();
-        const_iterator begin, end, cur;
+        const_iterator beg, end, cur;
 
-        begin=drchlt_sides.begin();
-        end=drchlt_sides.end();
-        for(cur=begin; cur!=end; cur++)
+        beg = dirichletBegin();
+        end = dirichletEnd();
+        for(cur=beg; cur!=end; cur++)
             if(cur->ps == ps)
                 result.push_back(*cur);
 
-        begin=nmnn_sides.begin();
-        end=nmnn_sides.end();
-        for(cur=begin; cur!=end; cur++)
+        beg = neumannBegin();
+        end = neumannEnd();
+        for(cur=beg; cur!=end; cur++)
             if(cur->ps == ps)
                 result.push_back(*cur);
 
-        begin=robin_sides.begin();
-        end=robin_sides.end();
-        for(cur=begin; cur!=end; cur++)
+        beg = robinBegin();
+        end = robinEnd();
+        for(cur=beg; cur!=end; cur++)
             if(cur->ps == ps)
                 result.push_back(*cur);
     }
@@ -560,19 +591,16 @@ private:
         }
     };
 
-    bcContainer     drchlt_sides;  ///< List of Dirichlet sides
-    bcContainer     nmnn_sides;    ///< List of Neumann sides
-    bcContainer     robin_sides;   ///< List of Robin sides
     cornerContainer corner_values; ///< List of corners with fixed value
+
+    bcData m_bc;  ///< Containers for BCs of various types
+
 
     // Pointer to associated multipatch domain
     //gsMultiPatch<T> * m_patches;
     
 }; // class gsBoundaryConditions
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 /// Print (as string)
 template<class T>
