@@ -131,7 +131,6 @@ int main()
     B.insert(0,0) = 1 ;
     B.insert(1,1) = 2 ;
     B.insert(2,2) = 3 ;
-
     B(1,1) += 3 ;
 
     gsInfo << "Here is a sparse matrix B:\n" << B<< " and B(1,1) is "<< B.coeffRef(1,1) << "\n";
@@ -172,7 +171,7 @@ int main()
 
     gsInfo << " Eigenvalues of non-symmetric matrix: "<< A.eigenvalues().transpose() << "\n";
     gsInfo << " Eigenvectors of non-symmetric matrix: \n"
-         << Eigen::EigenSolver<gsMatrix<> >(A).eigenvectors() << "\n";
+         << gsMatrix<>::EigenSolver(A).eigenvectors() << "\n";
 
     gsInfo << " Eigenvalues of symmetric matrix (A's lower triangular part): "
          << A.selfadjointView<Lower>().eigenvalues().transpose()  << "\n";

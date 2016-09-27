@@ -21,8 +21,8 @@ using namespace gismo;
 template <typename T>
 std::string size(const gsMatrix<T>& matrix)
 {
-    std::string result = "(" + internal::toString(matrix.rows()) + " x " + 
-        internal::toString(matrix.cols()) + ")";
+    std::string result = "(" + util::to_string(matrix.rows()) + " x " + 
+        util::to_string(matrix.cols()) + ")";
 
     return result;
 }
