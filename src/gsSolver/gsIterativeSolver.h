@@ -99,10 +99,14 @@ public:
         while (m_num_iter < m_max_iters)
         {
             m_num_iter++;
+            m_error_hist.push_back(m_error);
+
             if (step(x))
                 break;
         }
-        
+
+        m_error_hist.push_back(m_error);
+
         finalizeIteration(x);
 
     }
@@ -123,10 +127,14 @@ public:
         
         m_rhs_norm = rhs.norm();
 
+        m_error_hist.clear();
+        m_error_hist.reserve(m_max_iters);
+
         if (0 == m_rhs_norm) // special case of zero rhs
         {
-            x.setZero(rhs.rows()); // for sure zero is a solution
+            x.setZero(rhs.rows(),rhs.cols()); // for sure zero is a solution
             m_error = 0.;
+            m_error_hist.push_back(m_error);
             return true; // iteration is finished
         }
         
@@ -164,6 +172,8 @@ public:
     /// The tolerance used in the iterative method
     T tolerance() const                                        { return m_tol; }
 
+    /// The history of errors
+    const std::vector<T>& getErrorHistory() {return m_error_hist;}
 
 protected:
     const LinOpPtr m_mat;            ///< The matrix/operator to be solved for
@@ -174,6 +184,8 @@ protected:
     T              m_rhs_norm;       ///< The norm of the right-hand-side
     T              m_error;          ///< The relative error as absolute_error/m_rhs_norm
 
+protected:
+    std::vector<T> m_error_hist; ///< The history of errors, used for nice output and debugging
 };
 
 } // namespace gismo
