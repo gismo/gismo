@@ -118,8 +118,8 @@ public:
     {
         if (initIteration(rhs, x))
         {
-            error_history.resize(1);
-            error_history[0] = m_error;
+            error_history.resize(1,1); //VectorType is actually gsMatrix
+            error_history(0,0) = m_error;
             return;
         }
 
