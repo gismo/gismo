@@ -85,12 +85,12 @@ public:
     index_t cols() const {return m_expr.cols();}
 
     ///Returns the matrix
-    const typename MatrixType::Nested matrix() const { return m_expr; }
+    NestedMatrix matrix() const { return m_expr; }
 
 private:
-    const MatrixPtr    m_mat;  ///< Shared pointer to matrix (if needed)
-    const NestedMatrix m_expr; ///< Nested Eigen expression
-    bool m_symmetric;
+    const MatrixPtr m_mat; ///< Shared pointer to matrix (if needed)
+    NestedMatrix   m_expr; ///< Nested Eigen expression
+    bool      m_symmetric;
 };
 
 /** @brief This essentially just calls the gsMatrixOp constructor, but

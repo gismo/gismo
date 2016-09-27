@@ -126,7 +126,7 @@ public:
         std::vector<T> tmp_error_hist;
         
         tmp_error_hist.clear();
-        tmp_error_hist.reserve(m_max_iters);
+        tmp_error_hist.reserve(m_max_iters / 3 );
         tmp_error_hist.push_back(m_error);        // store initial error (as provided by initIteration)
 
         while (m_num_iter < m_max_iters)
@@ -140,8 +140,8 @@ public:
 
         finalizeIteration(x);
 
-        error_history = gsAsVector<T>(tmp_error_hist);
-        
+        // move the error history to output variable
+        error_history.swap( gsAsVector<T>(tmp_error_hist) );       
     }
 
     /// Init the iteration
