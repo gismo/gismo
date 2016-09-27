@@ -40,8 +40,7 @@ public:
       m_tol(1e-10),
       m_num_iter(0),
       m_rhs_norm(0.),
-      m_error(0.),
-      m_store_error_hist(false)
+      m_error(0.)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
@@ -61,8 +60,7 @@ public:
       m_tol(1e-10),
       m_num_iter(0),
       m_rhs_norm(0.),
-      m_error(0.),
-      m_store_error_hist(false)
+      m_error(0.)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
@@ -76,7 +74,6 @@ public:
         gsOptionList opt;
         opt.addInt   ("MaxIterations"    , "Maximum number of iterations", 1000 );
         opt.addReal  ("Tolerance"        , "Numerical tolerance"         , 1e-10);
-        opt.addSwitch("StoreErrorHistory", "Stores the error history"    , false);
         return opt;
     }
 
@@ -85,7 +82,6 @@ public:
     {
         m_max_iters        = opt.askInt   ("MaxIterations"    , m_max_iters        );
         m_tol              = opt.askReal  ("Tolerance"        , m_tol              );
-        m_store_error_hist = opt.askSwitch("StoreErrorHistory", m_store_error_hist );
     }
     
     /// @brief Solves the linear system and stores the solution in \a x
@@ -97,10 +93,36 @@ public:
     /// \ingroup Solver
     void solve( const VectorType& rhs, VectorType& x )
     {
+        if (initIteration(rhs, x)) return;
+
+        while (m_num_iter < m_max_iters)
+        {
+            m_num_iter++;
+            if (step(x)) break;
+        }
+
+        finalizeIteration(x);
+
+    }
+
+    /// @brief Solves the linear system and stores the solution in \a x and records
+    /// the error histroy.
+    ///
+    /// Solves the linear system of equations
+    /// \param[in]     rhs              the right hand side of the linear system
+    /// \param[in,out] x                starting value; the solution is stored in here
+    /// \param[out]    error_history    the error history is stored here
+    ///
+    /// \ingroup Solver  
+    void solveDetailed( const VectorType& rhs, VectorType& x, VectorType& error_history )
+    {
         bool finished = initIteration(rhs, x);
 
-        if (m_store_error_hist)
-            m_error_hist.push_back(m_error);        // store initial error (as provided by initIteration)
+        std::vector<T> tmp_error_hist;
+        
+        tmp_error_hist.clear();
+        tmp_error_hist.reserve(m_max_iters);
+        tmp_error_hist.push_back(m_error);        // store initial error (as provided by initIteration)
 
         if (finished) return;
 
@@ -110,12 +132,13 @@ public:
 
             if (step(x)) break;
 
-            if (m_store_error_hist)
-                m_error_hist.push_back(m_error);   // store initial error (as provided by step)
+            tmp_error_hist.push_back(m_error);   // store initial error (as provided by step)
         }
 
         finalizeIteration(x);
 
+        error_history = gsAsVector<T>(tmp_error_hist);
+        
     }
 
     /// Init the iteration
@@ -133,10 +156,6 @@ public:
         m_num_iter = 0;
         
         m_rhs_norm = rhs.norm();
-
-        if (m_store_error_hist)
-            m_error_hist.clear();
-            m_error_hist.reserve(m_max_iters);
 
         if (0 == m_rhs_norm) // special case of zero rhs
         {
@@ -167,9 +186,6 @@ public:
     /// Set the maximum number of iterations (default: 1000)
     void setMaxIterations(index_t max_iters)                   { m_max_iters = max_iters; }
 
-    /// Decice if the error history should be recoreded (default: false)
-    void setStoreErrorHistory(bool store_error_hist)           { m_store_error_hist = store_error_hist; }
-
     /// Set the tolerance for the error criteria (default: 1e-10)
     void setTolerance(T tol)                                   { m_tol = tol; }
 
@@ -182,14 +198,6 @@ public:
     /// The tolerance used in the iterative method
     T tolerance() const                                        { return m_tol; }
 
-    /// The history of errors
-    const std::vector<T>& getErrorHistory()
-    {
-        GISMO_ASSERT(m_store_error_hist, "The error history was not specified to be stored.");
-        return m_error_hist;
-        
-    }
-
 protected:
     const LinOpPtr m_mat;             ///< The matrix/operator to be solved for
     LinOpPtr       m_precond;         ///< The preconditioner
@@ -198,8 +206,6 @@ protected:
     index_t        m_num_iter;        ///< The number of iterations performed
     T              m_rhs_norm;        ///< The norm of the right-hand-side
     T              m_error;           ///< The relative error as absolute_error/m_rhs_norm
-    bool           m_store_error_hist;///< Should m_error_hist be populated?
-    std::vector<T> m_error_hist;      ///< The history of errors, used for nice output and debugging
 };
 
 } // namespace gismo
