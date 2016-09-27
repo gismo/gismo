@@ -27,6 +27,11 @@ bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
     tmp = rhs - tmp;
     m_precond->apply(tmp, residual);
     beta = residual.norm(); // This is  ||r||
+
+    m_error = beta/m_rhs_norm;
+    if(m_error < m_tol)
+        return true;
+
     v.push_back(residual/beta);
     g.setZero(2,1);
     g(0,0) = beta;

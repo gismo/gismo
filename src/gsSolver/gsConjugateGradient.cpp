@@ -29,8 +29,11 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
     m_mat->apply(x,m_tmp);                                              // apply the system matrix
     m_res = rhs - m_tmp;                                                // initial residual
 
-    m_precond->apply(m_res,m_update);                                   // initial search direction
+    m_error = m_res.norm() / m_rhs_norm;
+    if (m_error < m_tol)
+        return true;
 
+    m_precond->apply(m_res,m_update);                                   // initial search direction
     m_abs_new = m_res.col(0).dot(m_update.col(0));                      // the square of the absolute value of r scaled by invM
 
     if (m_calcEigenvals)
@@ -44,6 +47,7 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
 
         m_eigsAreCalculated = true;
     }
+
     return false;
 }
 

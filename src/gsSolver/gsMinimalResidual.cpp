@@ -30,6 +30,10 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     m_mat->apply(x,negResidual);
     negResidual -= rhs;
 
+    m_error = negResidual.norm() / m_rhs_norm;
+    if (m_error < m_tol)
+        return true;
+
     v = -negResidual;
     m_precond->apply(v, z);
 
@@ -66,6 +70,7 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     //Test for convergence
     if(m_sloppy)
     {
+        //see https://eigen.tuxfamily.org/dox-devel/unsupported/MINRES_8h_source.html
         m_error *=  sNew*sNew; //estimated residual
         if(m_error < m_tol) //already divided by m_rhs_norm
             return true;
