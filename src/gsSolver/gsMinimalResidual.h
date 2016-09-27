@@ -38,6 +38,23 @@ public:
     
     bool step( VectorType& x );
 
+    /// @brief Returns a list of default options
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList opt = Base::defaultOptions();
+        opt.addSwitch("sloppy", "Sloppy evaluation of residual,"
+                      "The Residual in MinRes is estimated, not accurately computed", false );
+        return opt;
+    }
+
+    void setOptions(const gsOptionList & opt)
+    {
+        Base::setOptions(opt);
+        m_sloppy = opt.askSwitch("sloppy", m_sloppy);
+    }
+
+    void setSloppyResidual( bool flag )     { m_sloppy = flag ;}
+
 private:
     using Base::m_mat;
     using Base::m_precond;
@@ -56,6 +73,8 @@ private:
            gammaPrev, gamma, gammaNew,
            sPrev, s, sNew,
            cPrev, c, cNew;
+
+    bool m_sloppy;
 };
 
 } // namespace gismo
