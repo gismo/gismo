@@ -210,7 +210,8 @@ public:
                       gsVector<T> & arg,
                       bool withSupport = true, 
                       const T accuracy = 1e-6,
-                      int max_loop = 100 ) const;
+                      int max_loop = 100,
+                      double damping_factor = 1) const;
     
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const

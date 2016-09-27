@@ -147,7 +147,8 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
                                  gsVector<T> & arg,
                                  bool withSupport,
                                  const T accuracy,
-                                 int max_loop) const
+                                 int max_loop,
+                                 double damping_factor) const
 {
     const index_t n = targetDim();
     GISMO_ASSERT( value.rows() == n, "Invalid input values");
@@ -158,10 +159,18 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
         supp = support();
 
     int iter = 0;
+
     do {
+        // clamp x to the support of the function
+        if (withSupport)
+            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
+
         // compute residual: value - f(arg)
         eval_into (arg, delta);
         delta = value - delta;
+
+        if(delta.norm() <= accuracy)
+            return iter;
 
         // compute Jacobian
         jacobian_into(arg, jac);
@@ -173,16 +182,10 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
             delta = jac.colPivHouseholderQr().solve(
                         gsMatrix<T>::Identity(n,n)) * delta;
 
-        // update arg
-        arg += delta;
+        // update arg with damping factor
+        arg += damping_factor * delta;
 
-        // clamp x to the support of the function
-        if (withSupport)
-            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
-
-        if (delta.norm() <= accuracy)
-            return iter;
-    } while (++iter < max_loop);
+    } while (++iter <= max_loop);
 
     // no solution found within max_loop iterations
     return -1;

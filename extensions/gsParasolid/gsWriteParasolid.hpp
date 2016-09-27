@@ -952,8 +952,16 @@ bool getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, T>& basis,unsigned lvl
     if( !( *(tKvU.begin())<=lowU && lowU<=upU &&
            upU<=tKvU.get().end()[-tKvU.degree()-1]) )
     {
-        std::cout<<"Box in u is not in Range."<<std::endl;
-        return false;
+        if( !(lowU<=upU) )
+        {
+            std::cout << "Error in the box." << std::endl;
+            return false;
+        }
+        std::cout<<"Box in u is not in Range, it will be cut at domain boundary."<<std::endl;
+        if( !( *(tKvU.begin())<=lowU) )
+            lowU=*(tKvU.begin());
+        if( !(upU<=tKvU.get().end()[-tKvU.degree()-1]) )
+            upU=tKvU.get().end()[-tKvU.degree()-1];
     }
     lowerIndexU=(tKvU.uFind(lowU)-tKvU.uFind(0));
     upperIndexU=(tKvU.uFind(upU)-tKvU.uFind(0))+1;
@@ -962,8 +970,16 @@ bool getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, T>& basis,unsigned lvl
     if( !( *(tKvV.begin())<=lowV && lowV<=upV &&
            upV<=tKvV.get().end()[-tKvV.degree()-1]) )
     {
-        std::cout<<"Box in v is not in Range."<<std::endl;
-        return false;
+        if( !(lowV<=upV) )
+        {
+            std::cout << "Error in the box." << std::endl;
+            return false;
+        }
+        std::cout<<"Box in v is not in Range, it will be cut at domain boundary."<<std::endl;
+        if( !( *(tKvV.begin())<=lowV) )
+            lowV=*(tKvV.begin());
+        if( !(upV<=tKvV.get().end()[-tKvV.degree()-1]) )
+            upV=tKvV.get().end()[-tKvV.degree()-1];
     }
     lowerIndexV=(tKvV.uFind(lowV)-tKvV.uFind(0));
     upperIndexV=(tKvV.uFind(upV)-tKvV.uFind(0))+1;
@@ -1039,6 +1055,9 @@ bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
         par_box.push_back(par_boxes[i+2]);
         par_box.push_back(par_boxes[i+3]);
         success=getParBoxAsIndexBoxInLevel(*basis,maxLevel,par_box,index_box);
+
+        if(!success)
+            return false;
 
         gsVector<unsigned,2>lower;
         lower << index_box[1],index_box[2];
