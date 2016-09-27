@@ -223,7 +223,8 @@ void getInterfaces(gsXmlNode* node,
                    std::vector< boundaryInterface > & result)
 {
     GISMO_ASSERT( node != NULL, "Node does not exist");
-
+    result.clear();
+    
     // temporaries for interface reading
     gsVector<index_t> dirMap(d);
     gsVector<bool>    dirOrient(d);
@@ -286,6 +287,7 @@ void getBoundaries(gsXmlNode                * node,
                    std::vector< patchSide > & result)
 {
     GISMO_ASSERT( node != NULL, "Node does not exist");
+    result.clear();
     
     std::istringstream iss;
     iss.str( node->value() );

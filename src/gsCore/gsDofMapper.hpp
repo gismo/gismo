@@ -100,7 +100,6 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
          it = bc.dirichletBegin() ; it != bc.dirichletEnd(); ++it )
     {
         if ( unk == -1 || it->unknown() == unk ) // special value -1 eliminates all BCs found
-        //if ( it->unknown() == unk ) // to do
         {
             GISMO_ASSERT( it->ps.patch < static_cast<index_t>(m_offset.size()), 
                           "Problem: a boundary condition is set on a patch id which does not exist.");
@@ -115,7 +114,7 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
     for (typename gsBoundaryConditions<T>::const_citerator
          it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
     {
-        if ( it->unknown == unk )
+        if (  unk == -1 || it->unknown == unk )
         {
             GISMO_ASSERT( it->patch < static_cast<index_t>(m_offset.size()), 
                           "Problem: a corner boundary condition is set on a patch id which does not exist.");

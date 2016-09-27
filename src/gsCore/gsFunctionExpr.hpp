@@ -129,20 +129,6 @@ T mixed_derivative(const exprtk::expression<T>& e,
     return num / ( T(144.0)*h*h );
 }
 
-// replaces appeareances of \a oldStr with \a newStr inside the string
-// \a str
-inline void stringReplace(std::string& str, 
-                          const std::string& oldStr, 
-                          const std::string& newStr)
-{
-    size_t pos = 0;
-    while((pos = str.find(oldStr, pos)) != std::string::npos)
-    {
-        str.replace(pos, oldStr.length(), newStr);
-        pos += newStr.length();
-    }
-}
-
 } //namespace
 
 namespace gismo
@@ -188,7 +174,7 @@ public:
         string.push_back( strExpression );// Keep string data
         std::string & str = string.back();
         str.erase(std::remove(str.begin(), str.end(),' '), str.end() );
-        stringReplace(str, "**", "^");
+        util::string_replace(str, "**", "^");
         
         // String expression
         expression.push_back(Expression_t());

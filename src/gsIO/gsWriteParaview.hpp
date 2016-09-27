@@ -621,7 +621,7 @@ void gsWriteParaview(const gsField<T> & field,
 
     for ( unsigned i=0; i < n; ++i )
     {
-        std::string fileName = fn + internal::toString<unsigned>(i);
+        std::string fileName = fn + util::to_string<unsigned>(i);
         writeSinglePatchField( field, i, fileName, npts );
         collection.addPart(fileName, ".vts");
         if ( mesh ) 
@@ -700,7 +700,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string cons
 
     for ( size_t i=0; i<n ; i++)
     {
-        std::string fnBase = fn + internal::toString<index_t>(i);
+        std::string fnBase = fn + util::to_string<index_t>(i);
         
         if ( Geo.at(i)->domainDim() == 1 )
         {
@@ -879,7 +879,7 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
 
     for ( index_t i=0; i< n; i++)
     {
-        std::string fileName = fn + internal::toString<index_t>(i);
+        std::string fileName = fn + util::to_string<index_t>(i);
         gsWriteParaview_basisFnct<T>(i, basis, fileName, npts ) ;
         collection.addPart(fileName, ".vts");
     }
@@ -1218,7 +1218,7 @@ void gsWriteParaviewSolid(gsSolid<T> const& sl,
 
     for ( size_t i=0; i<n ; i++)
     {
-        std::string fnBase = fn + internal::toString<index_t>(i);
+        std::string fnBase = fn + util::to_string<index_t>(i);
         writeSingleTrimSurface(*sl.face[i]->surf, fnBase, numSamples);
         collection.addPart(fnBase, ".vtp");
     }
@@ -1348,7 +1348,7 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,
 {
     for (unsigned index = 0; index < meshes.size(); index++)
     {
-        std::string file = fn + "Level" + internal::toString<unsigned>(index);
+        std::string file = fn + "Level" + util::to_string<unsigned>(index);
         gsWriteParaview(meshes[index], file, false);
     }
 }
@@ -1387,7 +1387,7 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                      std::string const & fn,
                      unsigned npts)
 {
-    using internal::toString;
+    using util::to_string;
 
     gsParaviewCollection collection(fn);
 
@@ -1410,9 +1410,9 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
             {
                 // file name is fn_curve_Fface_Lloop_Ccurve
                 std::string fileName = fn + "_curve_F";
-                fileName += toString<unsigned>(idFace) + "_L" +
-                            toString<unsigned>(idLoop) + "_C" +
-                            toString<unsigned>(idCurve);
+                fileName += to_string<unsigned>(idFace) + "_L" +
+                            to_string<unsigned>(idLoop) + "_C" +
+                            to_string<unsigned>(idCurve);
 
                 gsWriteParaviewTrimmedCurve(*(face->surf), idLoop, idCurve,
                                             fileName, npts);

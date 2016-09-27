@@ -13,6 +13,7 @@
 
 # pragma once
 
+
 namespace gismo
 {
 
@@ -35,6 +36,8 @@ namespace gismo
 */
 template<class T, int _Rows, int _Cols, int _Options>
 class gsMatrix : public Eigen::Matrix<T,_Rows, _Cols, _Options>
+//i.e. Eigen::PlainObjectBase<Eigen::Matrix>
+//i.e. Eigen::EigenBase<Eigen::Matrix>
 {
 public:
     // Base is the dense matrix class of Eigen
@@ -96,7 +99,7 @@ public:
     typedef const Eigen::Ref<const Base> constRef;
 
     /// Shared pointer for gsMatrix
-    typedef memory::shared_ptr< gsMatrix > Ptr;
+    typedef typename memory::shared<gsMatrix>::ptr Ptr;
 
     /// Unique pointer for gsMatrix
     typedef typename memory::unique<gsMatrix>::ptr uPtr;
@@ -116,6 +119,21 @@ public:
     // type of col minor matrix: cols reduced by one
     typedef gsMatrix< T, _Rows, ChangeDim<_Cols, -1>::D>
         ColMinorMatrixType;
+
+public:  // Solvers related to gsMatrix
+    typedef typename Eigen::EigenSolver<Base> EigenSolver;
+
+    typedef typename Eigen::SelfAdjointEigenSolver<Base> SelfAdjEigenSolver;
+    
+    typedef typename Eigen::GeneralizedSelfAdjointEigenSolver<Base> GenSelfAdjEigenSolver;
+
+    // Jacobi SVD using ColPivHouseholderQRPreconditioner
+    typedef typename Eigen::JacobiSVD<Base> JacobiSVD;
+
+    // Bidiagonal Divide and Conquer SVD 
+    //typedef typename Eigen::BDCSVD<Base> BDCSVD;
+
+    //typedef typename Eigen::CompleteOrthogonalDecomposition CODecomposition;
 
 public:
 
@@ -163,6 +181,18 @@ public:
 
     ~gsMatrix() ;
 
+    /**
+      \brief This function returns a smart pointer to the
+      matrix. After calling it, the matrix object becomes empty, ie
+      the size of the matrix is 0
+     */
+    Ptr moveToPtr()
+    {
+        Ptr m(new gsMatrix<T>);
+        m->swap(*this);
+        return m;
+    }
+    
     void clear() { this->resize(0,0); }
 
     // Using the assignment operators of Eigen
