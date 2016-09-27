@@ -83,7 +83,7 @@ private:
     bool m_calcEigenvals;
     bool m_eigsAreCalculated;
 
-    std::vector<real_t> delta, gamma;
+    std::vector<real_t> m_delta, m_gamma;
 };
 
 } // namespace gismo

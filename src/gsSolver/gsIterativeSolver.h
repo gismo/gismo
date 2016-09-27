@@ -153,16 +153,16 @@ public:
     void setMaxIterations(index_t max_iters)                   { m_max_iters = max_iters; }
 
     /// Set the tolerance for the error criteria (default: 1e-10)
-    void setTolerance(T tol)                              { m_tol = tol; }
+    void setTolerance(T tol)                                   { m_tol = tol; }
 
     /// The number of iterations needed to reach the error criteria
     int iterations() const                                     { return m_num_iter; }
 
     /// The error of the iterative method
-    T error() const                                       { return m_error; }
+    T error() const                                            { return m_error; }
 
     /// The tolerance used in the iterative method
-    T tolerance() const                                   { return m_tol; }
+    T tolerance() const                                        { return m_tol; }
 
 
 protected:
