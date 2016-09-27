@@ -17,9 +17,10 @@
 namespace gismo
 {
     
-/// @brief The minimal residual (MinRes) method.
-///
-/// \ingroup Solver  
+/** @brief The minimal residual (MinRes) method.
+  *
+  * \ingroup Solver
+  */  
 class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver<real_t>
 {
 
@@ -31,6 +32,9 @@ public:
     typedef Base::LinOpPtr LinOpPtr;
         
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond The preconditioner, defaulted to the identity
     template< typename OperatorType >
     explicit gsMinimalResidual( const OperatorType& mat,
                                 const LinOpPtr& precond = LinOpPtr())

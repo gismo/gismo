@@ -46,10 +46,10 @@ public:
      */
     virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const = 0;
 
-    ///Returns the number of rows of the operator
+    /// Returns the number of rows of the operator
     virtual index_t rows() const = 0;
 
-    ///Returns the number of columns of the operator
+    /// Returns the number of columns of the operator
     virtual index_t cols() const = 0;
 
     // NOTE: this is rather inefficient and is only provided for debugging and testing purposes
@@ -64,6 +64,8 @@ public:
 }; // gsLinearOperator
 
 /// @brief Allows an operator to be multiplied with a scalar
+///
+/// \ingroup Solver
 template<class T>
 class gsScaledOp : public gsLinearOperator<T>
 {
@@ -102,7 +104,9 @@ private:
 }; // gsScaladOp
 
 
-/// @brief Identity operator, must be square!
+/// @brief Identity operator
+///
+/// \ingroup Solver
 template<class T>
 class gsIdentityOp : public gsLinearOperator<T>
 {

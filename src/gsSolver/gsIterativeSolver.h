@@ -32,6 +32,10 @@ public:
     
     /// @brief Contructor using a linear operator to be solved for and
     ///  a preconditioner
+    ///
+    /// @param mat     The operator to be solved for as shared pointer to a gsLinearOperator
+    /// @param precond The preconditioneras shared pointer to a gsLinearOperator,
+    ///                a null pointer is defaulted to the identity
     gsIterativeSolver( const LinOpPtr& mat,
                        const LinOpPtr& precond)
     : m_mat(mat),
@@ -49,8 +53,14 @@ public:
     /// @brief Contructor using any dense or sparse matrix and a
     ///  preconditioner
     ///
-    /// @note: This does not copy the matrix. So, make sure that the
-    /// matrix is not deleted before the solver.
+    /// @param mat     The operator to be solved for as a (reference) to a matrix.
+    /// @param precond The preconditioneras shared pointer to a gsLinearOperator,
+    ///                a null pointer is defaulted to the identity
+    ///
+    /// @note This does not copy the matrix in \a mat. So, make sure that the
+    /// matrix is not deleted before the solver. If you have a shared pointer to
+    /// a matrix, you might use \ref makeMatrixOp() to obtaint a gsLinearOperator which
+    /// can be supplied alternatively.
     template<typename Derived>
     gsIterativeSolver( const Eigen::EigenBase<Derived> & mat,
                        const LinOpPtr& precond)
@@ -87,10 +97,8 @@ public:
     /// @brief Solves the linear system and stores the solution in \a x
     ///
     /// Solves the linear system of equations
-    /// \param[in]     rhs      the right hand side of the linear system
-    /// \param[in,out] x        starting value; the solution is stored in here
-    ///
-    /// \ingroup Solver
+    /// @param[in]     rhs      the right hand side of the linear system
+    /// @param[in,out] x        starting value; the solution is stored in here
     void solve( const VectorType& rhs, VectorType& x )
     {
         if (initIteration(rhs, x)) return;
@@ -109,11 +117,9 @@ public:
     /// the error histroy.
     ///
     /// Solves the linear system of equations
-    /// \param[in]     rhs              the right hand side of the linear system
-    /// \param[in,out] x                starting value; the solution is stored in here
-    /// \param[out]    error_history    the error history is stored here
-    ///
-    /// \ingroup Solver  
+    /// @param[in]     rhs              the right hand side of the linear system
+    /// @param[in,out] x                starting value; the solution is stored in here
+    /// @param[out]    error_history    the error history is stored here
     void solveDetailed( const VectorType& rhs, VectorType& x, VectorType& error_history )
     {
         if (initIteration(rhs, x))

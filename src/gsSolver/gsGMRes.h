@@ -30,6 +30,9 @@ public:
     typedef Base::LinOpPtr LinOpPtr;
 
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond The preconditioner, defaulted to the identity
     template< typename OperatorType >
     explicit gsGMRes( const OperatorType& mat, const LinOpPtr & precond = LinOpPtr() )
     : Base(mat, precond) {}
