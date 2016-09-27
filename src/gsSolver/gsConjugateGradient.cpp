@@ -18,9 +18,19 @@ namespace gismo
 
 bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x )
 {
+    if (m_calcEigenvals)
+    {
+        m_delta.clear();
+        m_delta.resize(1,0);
+        m_delta.reserve(m_max_iters / 3);
+
+        m_gamma.clear();
+        m_gamma.reserve(m_max_iters / 3);
+    }
+
     if (Base::initIteration(rhs,x))
         return true;
-    
+
     int n = m_mat->cols();
     int m = 1;                                                          // == rhs.cols();
     m_tmp.resize(n,m);
@@ -35,18 +45,6 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
 
     m_precond->apply(m_res,m_update);                                   // initial search direction
     m_abs_new = m_res.col(0).dot(m_update.col(0));                      // the square of the absolute value of r scaled by invM
-
-    if (m_calcEigenvals)
-    {
-        m_delta.clear();
-        m_delta.resize(1,0);
-        m_delta.reserve(m_max_iters);
-
-        m_gamma.clear();
-        m_gamma.reserve(m_max_iters);
-
-        m_eigsAreCalculated = true;
-    }
 
     return false;
 }
@@ -85,7 +83,8 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x )
 
 real_t gsConjugateGradient::getConditionNumber()
 {
-    GISMO_ASSERT(m_eigsAreCalculated,"No data for eigenvalues was collected, call setCalcEigenvalues(true) and solve with an arbitrary right hand side");
+    GISMO_ASSERT(!m_delta.empty(),
+                 "No data for eigenvalues was collected, call setCalcEigenvalues(true) and solve with an arbitrary right hand side");
     gsLanczosMatrix<real_t> L(m_gamma,m_delta);
 
     return L.maxEigenvalue()/L.minEigenvalue();
@@ -93,7 +92,8 @@ real_t gsConjugateGradient::getConditionNumber()
 
 void gsConjugateGradient::getEigenvalues( gsMatrix<real_t>& eigs )
 {
-   GISMO_ASSERT(m_eigsAreCalculated,"No data for eigenvalues was collected, call setCalcEigenvalues(true) and solve with an arbitrary right hand side");
+    GISMO_ASSERT(!m_delta.empty(),
+                 "No data for eigenvalues was collected, call setCalcEigenvalues(true) and solve with an arbitrary right hand side");
 
    gsLanczosMatrix<real_t> LM(m_gamma,m_delta);
    gsSparseMatrix<real_t> L;

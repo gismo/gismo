@@ -87,7 +87,6 @@ private:
     real_t m_abs_new;
 
     bool m_calcEigenvals;
-    bool m_eigsAreCalculated;
 
     std::vector<real_t> m_delta, m_gamma;
 };
