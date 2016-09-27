@@ -37,7 +37,7 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     eta = gamma;
     sPrev = 0; s = 0; sNew = 0;
     cPrev = 1; c = 1; cNew = 1;
-    
+
     return false;
 }
 
@@ -60,13 +60,23 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     wNew = (z - a3*wPrev - a2*w)/a1;
     AwNew = (Az - a3*AwPrev - a2*Aw)/a1;
     x += cNew*eta*wNew;
-    negResidual += cNew*eta*AwNew;
+
     eta = -sNew*eta;
 
     //Test for convergence
-    m_error = negResidual.norm() / m_rhs_norm;
-    if (m_error < m_tol)
-        return true;
+    if(m_sloppy)
+    {
+        m_error *=  sNew*sNew; //estimated residual
+        if(m_error < m_tol) //already divided by m_rhs_norm
+            return true;
+    }
+    else
+    {
+        negResidual += cNew*eta*AwNew;
+        m_error = negResidual.norm() / m_rhs_norm;
+        if (m_error < m_tol)
+            return true;
+    }
 
     //Update variables
     vPrev.swap(v); v.swap(vNew);     // for us the same as: vPrev = v; v = vNew;
@@ -80,7 +90,7 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
 }
 
 
-void gsMinimalResidual::finalizeIteration( VectorType& x )
+void gsMinimalResidual::finalizeIteration( gsMinimalResidual::VectorType& x )
 {
     GISMO_UNUSED(x);
     // cleanup temporaries
