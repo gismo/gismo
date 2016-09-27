@@ -15,13 +15,30 @@
 
 using namespace gismo;
 
+void report( const gsVector<>& computedSolution, const gsVector<>& exactSolution, bool& succeeded )
+{
+    gsInfo << "  Computed solution: " << computedSolution.transpose() << "\n";
+    if ( (computedSolution-exactSolution).norm() <= 1.e-10 )
+    {
+        gsInfo << "  Test passed.\n";        
+    }
+    else
+    {
+        gsInfo << "  Test faild.\n";
+        succeeded = false;
+    }
+    gsInfo << "\n";
+}
+
 int main()
 {
     index_t mat_size = 10;
 
     gsSparseMatrix<>  Q(mat_size,mat_size);
-    gsVector<>        b(mat_size), x(mat_size);
+    gsVector<>        b(mat_size), x(mat_size), x0(mat_size);
 
+    bool succeeded = true;
+    
     Q.reserve( gsVector<int>::Constant(mat_size,1) ); // Reserve memory for 1 non-zero entry per column
     Q(0,0) = 1;
     Q(1,1) = 2;
@@ -37,82 +54,95 @@ int main()
 
     // fill-in right-hand side
     b << 1, 2, 3, 4, 5, 6, 7, 8, 9, 10; 
+    x0 << 1, 1, 1, 1, 1, 1, 1, 1, 1, 1; 
    
     gsSparseSolver<>::CGIdentity solverCGI;
     solverCGI.compute(Q);
     x = solverCGI.solve(b);
-    gsInfo <<"Solved Ax = b with Eigen's CG identity preconditioner. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with Eigen's CG identity preconditioner.\n";
+    report( x, x0, succeeded );
 
     gsSparseSolver<>::CGDiagonal solverCGD;
     solverCGD.compute(Q);
     x = solverCGD.solve(b);
-    gsInfo <<"Solved Ax = b with Eigen's CG diagonal preconditioner. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with Eigen's CG diagonal preconditioner.\n";
+    report( x, x0, succeeded );
         
     gsSparseSolver<>::BiCGSTABILUT solverBCGILU;
     solverBCGILU.compute(Q);
     x = solverBCGILU.solve(b);
-    gsInfo <<"Solved Ax = b with Eigen's BiCG with ILU preconditioner. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with Eigen's BiCG with ILU preconditioner.\n";
+    report( x, x0, succeeded );
         
     gsSparseSolver<>::BiCGSTABDiagonal solverBCGD;
     solverBCGD.compute(Q);
     x = solverBCGD.solve(b);
-    gsInfo <<"Solved Ax = b with Eigen's BiCG with diagonal preconditioner. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with Eigen's BiCG with diagonal preconditioner.\n";
+    report( x, x0, succeeded );
         
     gsSparseSolver<>::BiCGSTABIdentity solverBCDI;
     solverBCDI.compute(Q);
     x = solverBCDI.solve(b);
-    gsInfo <<"Solved Ax = b with Eigen's BiCG without preconditioner. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with Eigen's BiCG without preconditioner.\n";
+    report( x, x0, succeeded );
 
     gsSparseSolver<>::SimplicialLDLT solverSLDLT;
     solverSLDLT.compute(Q);
     x = solverSLDLT.solve(b);
-    gsInfo <<"Solved Ax = b with Eigen's Simplicial LDLT. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with Eigen's Simplicial LDLT.\n";
+    report( x, x0, succeeded );
 
     gsSparseSolver<>::QR solverQR;
     solverQR.compute(Q);
     x = solverQR.solve(b);
-    gsInfo <<"Solved Ax = b with Eigen's QR factorization. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with Eigen's QR factorization.\n";
+    report( x, x0, succeeded );
 
     gsSparseSolver<>::LU solverLU;
     solverLU.compute(Q);
     x = solverLU.solve(b);
-    gsInfo <<"Solved Ax = b with Eigen's LU factorization. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with Eigen's LU factorization.\n";
+    report( x, x0, succeeded );
 
-    #ifdef GISMO_WITH_PARDISO
+#ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLDLT solverLDLT;
     solverLDLT.compute(Q);
     x = solverLDLT.solve(b);
-    gsInfo <<"Solved Ax = b with PardisoLDLT. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with PardisoLDLT.\n";
+    report( x, x0, succeeded );
 
     gsSparseSolver<>::PardisoLLT solverLLT;
     solverLLT.compute(Q);
     x = solverLLT.solve(b);
-    gsInfo <<"Solved Ax = b with PardisoLLT. Solution: "<< x.transpose() <<"\n";    
+    gsInfo << "Solve Ax = b with PardisoLLT.\n";
+    report( x, x0, succeeded );    
 
     gsSparseSolver<>::PardisoLU solverpLU;
     solverpLU.compute(Q);
     x = solverpLU.solve(b);
-    gsInfo <<"Solved Ax = b with PardisoLU. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with PardisoLU.\n";
+    report( x, x0, succeeded );
 
 #   else
-    gsInfo <<"PARDISO is not available.\n";
+    gsInfo << "PARDISO is not available.\n";
 #   endif
 
-    #ifdef GISMO_WITH_SUPERLU
+#ifdef GISMO_WITH_SUPERLU
     gsSparseSolver<>::SuperLU solverSLU;
     solverSLU.compute(Q);
     x = solverSLU.solve(b);
-    gsInfo <<"Solved Ax = b with Super. Solution: "<< x.transpose() <<"\n";
+    gsInfo << "Solve Ax = b with Super.\n";
+    report( x, x0, succeeded );
 
 #   else
-    gsInfo <<"SuperLU is not available.\n";
+    gsInfo << "SuperLU is not available.\n";
 #   endif
 
     #ifdef GISMO_WITH_PASTIX
-    gsInfo <<"PastiX is not available.\n";
+    gsInfo << "PastiX is not available.\n";
 #   else
-    gsInfo <<"PastiX is not available.\n";
+    gsInfo << "PastiX is not available.\n";
 #   endif
 
-    return 0;
+    return succeeded ? 0 : 1;
 }

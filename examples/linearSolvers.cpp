@@ -53,18 +53,30 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsMatrix<> &rhs, index_t N)
 }
 
 //Print out information of the iterative solver
-void gsIterativeSolverInfo(const gsIterativeSolver<real_t> &method,
-                           std::string methodName, double time)
+template<typename SolverType>
+void gsIterativeSolverInfo(const SolverType &method,
+                           std::string methodName, double time, bool& succeeded )
 {
-    gsInfo << methodName +": System size         : " << method.size() << "\n";
-    gsInfo << methodName +": Tolerance           : " << method.tolerance() << "\n";
-    gsInfo << methodName +": Residual error      : " << method.error() << "\n";
-    gsInfo << methodName +": Number of iterations: " << method.iterations() << "\n";
-    gsInfo << methodName +": Time to solve:      : " << time << "\n";
+    gsInfo << methodName << ": Tolerance           : " << method.tolerance() << "\n";
+    gsInfo << methodName << ": Residual error      : " << method.error() << "\n";
+    gsInfo << methodName << ": Number of iterations: " << method.iterations() << "\n";
+    gsInfo << methodName << ": Time to solve:      : " << time << "\n";
+    if ( method.error() <= method.tolerance() )
+    {
+        gsInfo << methodName << ": Test passed.\n";
+    }
+    else
+    {
+        gsInfo << methodName << ": TEST FAILED!\n";
+        succeeded = false;
+    }
 }
 
 int main(int argc, char *argv[])
 {
+    
+    bool succeeded = true;
+    
     //Size of linear system
     index_t N = 100;
     if (argc >= 2)
@@ -105,10 +117,11 @@ int main(int argc, char *argv[])
     MinRes.setOptions(opt);
     
     //Solve system with given preconditioner (solution is stored in x0)
-    gsInfo << "\nMinRes: Started solving..."  << "\n";
+    gsInfo << "\nMinRes: Started solving... ";
     clock.restart();
     MinRes.solve(rhs,x0);
-    gsIterativeSolverInfo(MinRes, "MinRes", clock.stop());
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(MinRes, "MinRes", clock.stop(), succeeded);
 
     //Initialize the CG solver
     gsGMRes GMResSolver(mat,preConMat);
@@ -120,10 +133,11 @@ int main(int argc, char *argv[])
     if (N < 200)
     {
         //Solve system with given preconditioner (solution is stored in x0)
-        gsInfo << "\nGMRes: Started solving..."  << "\n";
+        gsInfo << "\nGMRes: Started solving... ";
         clock.restart();
         GMResSolver.solve(rhs,x0);
-        gsIterativeSolverInfo(GMResSolver, "GMRes", clock.stop());
+        gsInfo << "done.\n";
+        gsIterativeSolverInfo(GMResSolver, "GMRes", clock.stop(), succeeded);
     }
     else
         gsInfo << "\nSkipping GMRes due to high number of iterations...\n";
@@ -137,101 +151,94 @@ int main(int argc, char *argv[])
     x0.setZero(N,1);
 
     //Solve system with given preconditioner (solution is stored in x0)
-    gsInfo << "\nCG: Started solving..."  << "\n";
+    gsInfo << "\nCG: Started solving... ";
     clock.restart();
     CGSolver.solve(rhs,x0);
-    gsIterativeSolverInfo(CGSolver, "CG", clock.stop());
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(CGSolver, "CG", clock.stop(), succeeded);
 
 
     ///----------------------EIGEN-ITERATIVE-SOLVERS----------------------///
-    gsInfo << "Testing Eigen's interative solvers:\n";
+    gsInfo << "\nTesting Eigen's interative solvers:\n";
 
     gsSparseSolver<>::CGIdentity EigenCGIsolver;
     EigenCGIsolver.setMaxIterations(maxIters);
     EigenCGIsolver.setTolerance(tol);
-    gsInfo << "\nEigen's CG identity preconditioner: Started solving..."  << "\n";
+    gsInfo << "\nEigen's CG identity preconditioner: Started solving... ";
     clock.restart();
     EigenCGIsolver.compute(mat);
     x0 = EigenCGIsolver.solve(rhs);
-    gsInfo << "Eigen's CG: Tolerance           : " << EigenCGIsolver.tolerance() << "\n";
-    gsInfo << "Eigen's CG: Residual error      : " << EigenCGIsolver.error() << "\n";
-    gsInfo << "Eigen's CG: Number of iterations: " << EigenCGIsolver.iterations() << "\n";
-    gsInfo << "Eigen's CG: Time to solve       : " << clock.stop() << "\n";
-
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(EigenCGIsolver, "Eigen's CG", clock.stop(), succeeded);
 
     gsSparseSolver<>::CGDiagonal EigenCGDsolver;
     EigenCGDsolver.setMaxIterations(maxIters);
     EigenCGDsolver.setTolerance(tol);
-    gsInfo << "\nEigen's CG diagonal preconditioner: Started solving..."  << "\n";
+    gsInfo << "\nEigen's CG diagonal preconditioner: Started solving... ";
     clock.restart();
     EigenCGDsolver.compute(mat);
     x0 = EigenCGDsolver.solve(rhs);
-    gsInfo << "Eigen's CG: Tolerance           : " << EigenCGDsolver.tolerance() << "\n";
-    gsInfo << "Eigen's CG: Residual error      : " << EigenCGDsolver.error() << "\n";
-    gsInfo << "Eigen's CG: Number of iterations: " << EigenCGDsolver.iterations() << "\n";
-    gsInfo << "Eigen's CG: Time to solve       : " << clock.stop() << "\n";
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(EigenCGDsolver, "Eigen's CG", clock.stop(), succeeded);
 
     gsSparseSolver<>::BiCGSTABIdentity EigenBCGIsolver;
     EigenBCGIsolver.setMaxIterations(maxIters);
     EigenBCGIsolver.setTolerance(tol);
-    gsInfo << "\nEigen's bi conjugate gradient stabilized solver identity preconditioner: Started solving..."  << "\n";
+    gsInfo << "\nEigen's bi conjugate gradient stabilized solver identity preconditioner: Started solving... ";
     clock.restart();
     EigenBCGIsolver.compute(mat);
     x0 = EigenBCGIsolver.solve(rhs);
-    gsInfo << "Eigen's BiCGSTAB: Tolerance           : " << EigenBCGIsolver.tolerance() << "\n";
-    gsInfo << "Eigen's BiCGSTAB: Residual error      : " << EigenBCGIsolver.error() << "\n";
-    gsInfo << "Eigen's BiCGSTAB: Number of iterations: " << EigenBCGIsolver.iterations() << "\n";
-    gsInfo << "Eigen's BiCGSTAB: Time to solve       : " << clock.stop() << "\n";
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(EigenBCGIsolver, "Eigen's BiCGSTAB", clock.stop(), succeeded);
 
     gsSparseSolver<>::BiCGSTABDiagonal EigenBCGDsolver;
     EigenBCGDsolver.setMaxIterations(maxIters);
     EigenBCGDsolver.setTolerance(tol);
-    gsInfo << "\nEigen's bi conjugate gradient stabilized solver diagonal preconditioner: Started solving..."  << "\n";
+    gsInfo << "\nEigen's bi conjugate gradient stabilized solver diagonal preconditioner: Started solving... ";
     clock.restart();
     EigenBCGDsolver.compute(mat);
     x0 = EigenBCGDsolver.solve(rhs);
-    gsInfo << "Eigen's BiCGSTAB: Tolerance           : " << EigenBCGDsolver.tolerance() << "\n";
-    gsInfo << "Eigen's BiCGSTAB: Residual error      : " << EigenBCGDsolver.error() << "\n";
-    gsInfo << "Eigen's BiCGSTAB: Number of iterations: " << EigenBCGDsolver.iterations() << "\n";
-    gsInfo << "Eigen's BiCGSTAB: Time to solve       : " << clock.stop() << "\n";
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(EigenBCGDsolver, "Eigen's BiCGSTAB", clock.stop(), succeeded);
 
     gsSparseSolver<>::BiCGSTABILUT EigenBCGILUsolver;
     //EigenBCGILUsolver.preconditioner().setFillfactor(1);
     EigenBCGILUsolver.setMaxIterations(maxIters);
     EigenBCGILUsolver.setTolerance(tol);
-    gsInfo << "\nEigen's bi conjugate gradient stabilized solver ILU preconditioner: Started solving..."  << "\n";
+    gsInfo << "\nEigen's bi conjugate gradient stabilized solver ILU preconditioner: Started solving... ";
     clock.restart();
     EigenBCGILUsolver.compute(mat);
     x0 = EigenBCGILUsolver.solve(rhs);
-    gsInfo << "Eigen's BiCGSTAB: Tolerance           : " << EigenBCGILUsolver.tolerance() << "\n";
-    gsInfo << "Eigen's BiCGSTAB: Residual error      : " << EigenBCGILUsolver.error() << "\n";
-    gsInfo << "Eigen's BiCGSTAB: Number of iterations: " << EigenBCGILUsolver.iterations() << "\n";
-    gsInfo << "Eigen's BiCGSTAB: Time to solve       : " << clock.stop() << "\n";
-
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(EigenBCGILUsolver, "Eigen's BiCGSTAB", clock.stop(), succeeded);
+    
     ///----------------------EIGEN-DIRECT-SOLVERS----------------------///
     gsSparseSolver<>::SimplicialLDLT EigenSLDLTsolver;
-    gsInfo << "\nEigen's Simplicial LDLT: Started solving..."  << "\n";
+    gsInfo << "\nEigen's Simplicial LDLT: Started solving... ";
     clock.restart();
     EigenSLDLTsolver.compute(mat);
     x0 = EigenSLDLTsolver.solve(rhs);
+    gsInfo << "done.\n";
     gsInfo << "Eigen's Simplicial LDLT: Time to solve       : " << clock.stop() << "\n";
 
     gsSparseSolver<>::QR solverQR;
-    gsInfo << "\nEigen's QR: Started solving..."  << "\n";
+    gsInfo << "\nEigen's QR: Started solving... ";
     clock.restart();
     solverQR.compute(mat);
     x0 = solverQR.solve(rhs);
+    gsInfo << "done.\n";
     gsInfo << "Eigen's QR: Time to solve       : " << clock.stop() << "\n";
 
 #endif
 
     gsSparseSolver<>::LU solverLU;
-    gsInfo << "\nEigen's LU: Started solving..."  << "\n";
+    gsInfo << "\nEigen's LU: Started solving... ";
     clock.restart();
     solverLU.compute(mat);
     x0 = solverLU.solve(rhs);
+    gsInfo << "done.\n";
     gsInfo << "Eigen's LU: Time to solve       : " << clock.stop() << "\n";
 
 
-    return 0;
+    return succeeded ? 0 : 1;
 }
