@@ -141,7 +141,8 @@ public:
         finalizeIteration(x);
 
         // move the error history to output variable
-        error_history.swap( gsAsVector<T>(tmp_error_hist) );       
+        //error_history.swap( gsAsVector<T>(tmp_error_hist) );       
+        error_history = gsAsVector<T>(tmp_error_hist);
     }
 
     /// Init the iteration
