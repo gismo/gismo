@@ -31,7 +31,7 @@ public:
     template< typename OperatorType >
     explicit gsMinimalResidual( const OperatorType& mat,
                                 const LinOpPtr& precond = LinOpPtr())
-        : Base(mat, precond) { }
+        : Base(mat, precond), m_inexact_residual(false) { }
     
     bool initIteration( const VectorType& rhs, VectorType& x );
     void finalizeIteration( VectorType& x );
@@ -42,18 +42,19 @@ public:
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
-        opt.addSwitch("sloppy", "Sloppy evaluation of residual,"
-                      "The Residual in MinRes is estimated, not accurately computed", false );
+        opt.addSwitch( "InexactResidual",
+                       "If true, the residual is estimated, not accurately computed.",
+                       false );
         return opt;
     }
 
     void setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
-        m_sloppy = opt.askSwitch("sloppy", m_sloppy);
+        m_inexact_residual = opt.askSwitch("InexactResidual", m_inexact_residual);
     }
 
-    void setSloppyResidual( bool flag )     { m_sloppy = flag ;}
+    void setSloppyResidual( bool flag )     { m_inexact_residual = flag ;}
 
 private:
     using Base::m_mat;
@@ -74,7 +75,7 @@ private:
            sPrev, s, sNew,
            cPrev, c, cNew;
 
-    bool m_sloppy;
+    bool m_inexact_residual;
 };
 
 } // namespace gismo

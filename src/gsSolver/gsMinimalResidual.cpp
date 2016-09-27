@@ -25,7 +25,7 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
 
     vPrev.setZero(n,m); vNew.setZero(n,m);
     wPrev.setZero(n,m); w.setZero(n,m); wNew.setZero(n,m);
-    if (!m_sloppy)
+    if (!m_inexact_residual)
         { AwPrev.setZero(n,m); Aw.setZero(n,m); AwNew.setZero(n,m); }
 
     m_mat->apply(x,negResidual);
@@ -63,14 +63,14 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     cNew = a0/a1;
     sNew = gammaNew/a1;
     wNew = (z - a3*wPrev - a2*w)/a1;
-    if (!m_sloppy)
+    if (!m_inexact_residual)
         AwNew = (Az - a3*AwPrev - a2*Aw)/a1;
     x += cNew*eta*wNew;
 
     eta = -sNew*eta;
 
     //Test for convergence
-    if (m_sloppy)
+    if (m_inexact_residual)
     {
         //see https://eigen.tuxfamily.org/dox-devel/unsupported/MINRES_8h_source.html
         m_error *=  sNew*sNew; //estimated residual
@@ -88,7 +88,7 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     //Update variables
     vPrev.swap(v); v.swap(vNew);     // for us the same as: vPrev = v; v = vNew;
     wPrev.swap(w); w.swap(wNew);     // for us the same as: wPrev = w; w = wNew;
-    if (!m_sloppy)
+    if (!m_inexact_residual)
         { AwPrev.swap(Aw); Aw.swap(AwNew); } // for us the same as: AwPrev = Aw; Aw = AwNew;
     z.swap(zNew);                    // for us the same as: z = zNew;
     gammaPrev = gamma; gamma = gammaNew;
