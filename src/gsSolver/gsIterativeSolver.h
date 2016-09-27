@@ -116,15 +116,18 @@ public:
     /// \ingroup Solver  
     void solveDetailed( const VectorType& rhs, VectorType& x, VectorType& error_history )
     {
-        bool finished = initIteration(rhs, x);
+        if (initIteration(rhs, x))
+        {
+            error_history.resize(1);
+            error_history[0] = m_error;
+            return;
+        }
 
         std::vector<T> tmp_error_hist;
         
         tmp_error_hist.clear();
         tmp_error_hist.reserve(m_max_iters);
         tmp_error_hist.push_back(m_error);        // store initial error (as provided by initIteration)
-
-        if (finished) return;
 
         while (m_num_iter < m_max_iters)
         {
