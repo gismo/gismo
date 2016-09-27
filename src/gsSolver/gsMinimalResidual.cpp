@@ -66,24 +66,19 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     if (!m_inexact_residual)
         AwNew = (Az - a3*AwPrev - a2*Aw)/a1;
     x += cNew*eta*wNew;
+    if (!m_inexact_residual)
+        negResidual += cNew*eta*AwNew;
+
+    if (m_inexact_residual)
+        m_error *=  sNew*sNew; // see https://eigen.tuxfamily.org/dox-devel/unsupported/MINRES_8h_source.html
+    else
+        m_error = negResidual.norm() / m_rhs_norm;
 
     eta = -sNew*eta;
-
-    //Test for convergence
-    if (m_inexact_residual)
-    {
-        //see https://eigen.tuxfamily.org/dox-devel/unsupported/MINRES_8h_source.html
-        m_error *=  sNew*sNew; //estimated residual
-        if(m_error < m_tol) //already divided by m_rhs_norm
-            return true;
-    }
-    else
-    {
-        negResidual += cNew*eta*AwNew;
-        m_error = negResidual.norm() / m_rhs_norm;
-        if (m_error < m_tol)
-            return true;
-    }
+    
+    // Test for convergence
+    if (m_error < m_tol)
+        return true;
 
     //Update variables
     vPrev.swap(v); v.swap(vNew);     // for us the same as: vPrev = v; v = vNew;
