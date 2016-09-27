@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Sogn
+    Author(s): C. Hofer, C. Hofreither, A. Manzaflaris, J. Sogn, S. Takacs
 */
 #pragma once
 
@@ -40,7 +40,8 @@ public:
       m_tol(1e-10),
       m_num_iter(0),
       m_rhs_norm(0.),
-      m_error(0.)
+      m_error(0.),
+      m_store_error_hist(false)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
@@ -60,7 +61,8 @@ public:
       m_tol(1e-10),
       m_num_iter(0),
       m_rhs_norm(0.),
-      m_error(0.)
+      m_error(0.),
+      m_store_error_hist(false)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
@@ -72,16 +74,18 @@ public:
     static gsOptionList defaultOptions()
     {
         gsOptionList opt;
-        opt.addInt("MaxIterations", "Maximum number of iterations", 1000 );
-        opt.addReal("Tolerance"   , "Numerical tolerance"         , 1e-10);
+        opt.addInt   ("MaxIterations"    , "Maximum number of iterations", 1000 );
+        opt.addReal  ("Tolerance"        , "Numerical tolerance"         , 1e-10);
+        opt.addSwitch("StoreErrorHistory", "Stores the error history"    , false);
         return opt;
     }
 
     /// @brief Set the options based on a gsOptionList
     virtual void setOptions(const gsOptionList & opt)
     {
-        m_max_iters = opt.askInt ("MaxIterations", m_max_iters );
-        m_tol       = opt.askReal("Tolerance"    , m_tol       );
+        m_max_iters        = opt.askInt   ("MaxIterations"    , m_max_iters        );
+        m_tol              = opt.askReal  ("Tolerance"        , m_tol              );
+        m_store_error_hist = opt.askSwitch("StoreErrorHistory", m_store_error_hist );
     }
     
     /// @brief Solves the linear system and stores the solution in \a x
@@ -98,14 +102,17 @@ public:
 
         while (m_num_iter < m_max_iters)
         {
+            if (m_num_iter > 0 && m_store_error_hist)
+                m_error_hist.push_back(m_error);
+
             m_num_iter++;
-            m_error_hist.push_back(m_error);
 
             if (step(x))
                 break;
         }
 
-        m_error_hist.push_back(m_error);
+        if (m_store_error_hist)
+            m_error_hist.push_back(m_error);
 
         finalizeIteration(x);
 
@@ -127,14 +134,14 @@ public:
         
         m_rhs_norm = rhs.norm();
 
-        m_error_hist.clear();
-        m_error_hist.reserve(m_max_iters);
+        if (m_store_error_hist)
+            m_error_hist.clear();
+            m_error_hist.reserve(m_max_iters);
 
         if (0 == m_rhs_norm) // special case of zero rhs
         {
             x.setZero(rhs.rows(),rhs.cols()); // for sure zero is a solution
             m_error = 0.;
-            m_error_hist.push_back(m_error);
             return true; // iteration is finished
         }
         
@@ -160,6 +167,9 @@ public:
     /// Set the maximum number of iterations (default: 1000)
     void setMaxIterations(index_t max_iters)                   { m_max_iters = max_iters; }
 
+    /// Decice if the error history should be recoreded (default: false)
+    void setStoreErrorHistory(bool store_error_hist)           { m_store_error_hist = store_error_hist; }
+
     /// Set the tolerance for the error criteria (default: 1e-10)
     void setTolerance(T tol)                                   { m_tol = tol; }
 
@@ -173,19 +183,23 @@ public:
     T tolerance() const                                        { return m_tol; }
 
     /// The history of errors
-    const std::vector<T>& getErrorHistory() {return m_error_hist;}
+    const std::vector<T>& getErrorHistory()
+    {
+        GISMO_ASSERT(m_store_error_hist, "The error history was not specified to be stored.");
+        return m_error_hist;
+        
+    }
 
 protected:
-    const LinOpPtr m_mat;            ///< The matrix/operator to be solved for
-    LinOpPtr       m_precond;        ///< The preconditioner
-    index_t        m_max_iters;      ///< The upper bound for the number of iterations
-    T              m_tol;            ///< The tolerance for m_error to be reached
-    index_t        m_num_iter;       ///< The number of iterations performed
-    T              m_rhs_norm;       ///< The norm of the right-hand-side
-    T              m_error;          ///< The relative error as absolute_error/m_rhs_norm
-
-protected:
-    std::vector<T> m_error_hist; ///< The history of errors, used for nice output and debugging
+    const LinOpPtr m_mat;             ///< The matrix/operator to be solved for
+    LinOpPtr       m_precond;         ///< The preconditioner
+    index_t        m_max_iters;       ///< The upper bound for the number of iterations
+    T              m_tol;             ///< The tolerance for m_error to be reached
+    index_t        m_num_iter;        ///< The number of iterations performed
+    T              m_rhs_norm;        ///< The norm of the right-hand-side
+    T              m_error;           ///< The relative error as absolute_error/m_rhs_norm
+    bool           m_store_error_hist;///< Should m_error_hist be populated?
+    std::vector<T> m_error_hist;      ///< The history of errors, used for nice output and debugging
 };
 
 } // namespace gismo
