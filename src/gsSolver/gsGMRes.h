@@ -17,6 +17,9 @@
 namespace gismo
 {
 
+/// @brief The generalized minimal residual (GMRES) method.
+///
+/// \ingroup Solver    
 class GISMO_EXPORT gsGMRes: public gsIterativeSolver<real_t>
 {
 public:
@@ -26,7 +29,7 @@ public:
     
     typedef Base::LinOpPtr LinOpPtr;
 
-    /// Constructor using a matrix (operator) and optionally a preconditionner
+    /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     template< typename OperatorType >
     explicit gsGMRes( const OperatorType& mat, const LinOpPtr & precond = LinOpPtr() )
     : Base(mat, precond) {}

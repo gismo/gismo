@@ -16,7 +16,10 @@
 
 namespace gismo
 {
-
+    
+/// @brief The minimal residual (MinRes) method.
+///
+/// \ingroup Solver  
 class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver<real_t>
 {
 
@@ -27,7 +30,7 @@ public:
 
     typedef Base::LinOpPtr LinOpPtr;
         
-    /// Constructor using a matrix (operator) and optionally a preconditionner
+    /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     template< typename OperatorType >
     explicit gsMinimalResidual( const OperatorType& mat,
                                 const LinOpPtr& precond = LinOpPtr())
@@ -48,13 +51,15 @@ public:
         return opt;
     }
 
+    /// @brief Set the options based on a gsOptionList
     void setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
         m_inexact_residual = opt.askSwitch("InexactResidual", m_inexact_residual);
     }
 
-    void setSloppyResidual( bool flag )     { m_inexact_residual = flag ;}
+    /// @brief If true, the residual is estimated, not accurately computed.
+    void setInexactResidual( bool flag )     { m_inexact_residual = flag; }
 
 private:
     using Base::m_mat;

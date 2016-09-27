@@ -18,11 +18,13 @@
 namespace gismo
 {
 
-/** The conjugate gradient implementation from Eigen, adapted to allow for more
- *  general preconditioners and better iteration control. Also capable of using
- *  a gsLinearOperator as matrix.
- */
-
+/// @brief The conjugate gradient method.
+///
+/// The conjugate gradient implementation from Eigen, adapted to allow for more
+/// general preconditioners and better iteration control. Also capable of using
+/// a gsLinearOperator as matrix.
+///
+/// \ingroup Solver
 class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver<real_t>
 {
 public:
@@ -32,7 +34,7 @@ public:
     
     typedef Base::LinOpPtr LinOpPtr;
     
-    /// Constructor using a matrix (operator) and optionally a preconditionner
+    /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     template< typename OperatorType >
     explicit gsConjugateGradient( const OperatorType& mat, const LinOpPtr & precond = LinOpPtr() )
     : Base(mat, precond) {}
@@ -46,6 +48,7 @@ public:
         return opt;
     }
     
+    /// @brief Set the options based on a gsOptionList
     void setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
