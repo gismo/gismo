@@ -97,22 +97,22 @@ public:
     /// \ingroup Solver
     void solve( const VectorType& rhs, VectorType& x )
     {
-        if (initIteration(rhs, x))
-            return;
+        bool finished = initIteration(rhs, x);
+
+        if (m_store_error_hist)
+            m_error_hist.push_back(m_error);        // store initial error (as provided by initIteration)
+
+        if (finished) return;
 
         while (m_num_iter < m_max_iters)
         {
-            if (m_num_iter > 0 && m_store_error_hist)
-                m_error_hist.push_back(m_error);
-
             m_num_iter++;
 
-            if (step(x))
-                break;
-        }
+            if (step(x)) break;
 
-        if (m_store_error_hist)
-            m_error_hist.push_back(m_error);
+            if (m_store_error_hist)
+                m_error_hist.push_back(m_error);   // store initial error (as provided by step)
+        }
 
         finalizeIteration(x);
 
