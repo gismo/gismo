@@ -1,7 +1,7 @@
 {
    <gismo_Leak_dl_init>
    Memcheck:Leak
-   match-leak-kinds: reachable
+   #match-leak-kinds: reachable
    fun:malloc
    obj:/usr/lib/x86_64-linux-gnu/libstdc++.so.6.?.??
    fun:call_init.part.0
@@ -12,7 +12,7 @@
 {
    <gismo_Leak_Darwin1>
    Memcheck:Leak
-   match-leak-kinds: indirect
+   #match-leak-kinds: indirect
    fun:malloc
    fun:atexit_register
    fun:__cxa_atexit
@@ -29,7 +29,7 @@
 {
    <gismo_Leak_Darwin2>
    Memcheck:Leak
-   match-leak-kinds: indirect
+   #match-leak-kinds: indirect
    fun:malloc
    fun:atexit_register
    fun:__cxa_atexit
@@ -46,7 +46,7 @@
 {
    <gismo_Leak_Darwin3>
    Memcheck:Leak
-   match-leak-kinds: reachable
+   #match-leak-kinds: reachable
    fun:malloc
    fun:__smakebuf
    fun:__swsetup
@@ -61,7 +61,7 @@
 {
    <gismo_Leak_Darwin4>
    Memcheck:Leak
-   match-leak-kinds: reachable
+   #match-leak-kinds: reachable
    fun:malloc
    fun:__Balloc_D2A
    fun:__rv_alloc_D2A
