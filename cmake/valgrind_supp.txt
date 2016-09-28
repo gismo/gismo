@@ -56,7 +56,7 @@
    fun:_ZNSt3__115basic_streambufIcNS_11char_traitsIcEEE6xsputnEPKcl
    fun:_ZNSt3__116__pad_and_outputIcNS_11char_traitsIcEEEENS_19ostreambuf_iteratorIT_T0_EES6_PKS4_S8_S8_RNS_8ios_baseES4_
    fun:_ZNSt3__124__put_character_sequenceIcNS_11char_traitsIcEEEERNS_13basic_ostreamIT_T0_EES7_PKS4_m
-   fun:main
+   ...
 }
 {
    <gismo_Leak_Darwin4>
@@ -64,14 +64,7 @@
    #match-leak-kinds: reachable
    fun:malloc
    fun:__Balloc_D2A
-   fun:__rv_alloc_D2A
-   fun:__nrv_alloc_D2A
-   fun:__dtoa
-   fun:__vfprintf
-   fun:__v2printf
-   fun:_vsnprintf
-   fun:vsnprintf_l
-   fun:snprintf_l
-   fun:_ZNKSt3__17num_putIcNS_19ostreambuf_iteratorIcNS_11char_traitsIcEEEEE6do_putES4_RNS_8ios_baseEcd
+   ...
    fun:_ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEd
+   ...
 }
