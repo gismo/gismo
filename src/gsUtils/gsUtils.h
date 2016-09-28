@@ -11,6 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
+#include <sstream>
 
 namespace gismo
 {
