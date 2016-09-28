@@ -804,7 +804,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
     }
 
     /// Compares with another knot vector.
-    bool operator != (const gsKnotVector<real_t>& other) const
+    bool operator != (const gsKnotVector<T>& other) const
     {
         return ! ((*this)==other);
     }    
