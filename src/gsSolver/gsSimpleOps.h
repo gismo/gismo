@@ -18,27 +18,34 @@
 namespace gismo
 {
     
-/// Update \a x with a Richardson sweep
+/// @brief Update \a x with a Richardson sweep
+/// \ingroup Solver
 GISMO_EXPORT void dampedRichardsonSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau = (real_t)(1.));
 
-/// Update \a x with a Jacobi sweep
+/// @brief Update \a x with a Jacobi sweep
+/// \ingroup Solver
 GISMO_EXPORT void JacobiSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
 
-/// Update \a x with a damped Jacobi sweep
+/// @brief Update \a x with a damped Jacobi sweep
+/// \ingroup Solver
 GISMO_EXPORT void dampedJacobiSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau = (real_t)(0.5));
 
-/// Update \a x with a forward Gauss-Seidel sweep
+/// @brief Update \a x with a forward Gauss-Seidel sweep
+/// \ingroup Solver
 GISMO_EXPORT void gaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
 
-/// Update \a x with a backward Gauss-Seidel sweep
+/// @brief Update \a x with a backward Gauss-Seidel sweep
+/// \ingroup Solver
 GISMO_EXPORT void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
 
-/// Preforms a block Gauss-Seidel on the degrees of freedom in DoFs.
+/// @brief Preforms a block Gauss-Seidel on the degrees of freedom in DoFs.
+/// \inrgoup Solver
 GISMO_EXPORT void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs);
 
 
 /// @brief Richardson preconditioner
 ///
+/// \ingroup Solver
 template <typename MatrixType>
 class gsRichardsonOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
@@ -95,6 +102,8 @@ private:
 /// @brief Jacobi preconditioner
 ///
 /// Requires a positive definite matrix.
+///
+/// \ingroup Solver
 template <typename MatrixType>
 class gsJacobiOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
@@ -152,6 +161,8 @@ private:
 /// @brief Gauss-Seidel preconditioner
 ///
 /// Requires a positive definite matrix.
+///
+/// \ingroup Solver
 template <typename MatrixType>
 class gsGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
@@ -203,6 +214,8 @@ private:
 /// Requires a positive definite matrix. Does first
 /// one forward Gauss-Seidel sweep then one backward
 /// Gauss-Seidel sweep.
+///
+/// \ingroup Solver
 template <typename MatrixType>
 class gsSymmetricGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
