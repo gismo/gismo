@@ -108,7 +108,7 @@ void gsConjugateGradient::getEigenvalues( gsMatrix<real_t>& eigs )
    gsSparseMatrix<real_t> L;
    LM.matrixForm(L);
    // there is probably a better option...
-   gsMatrix<real_t>::EigenSolver eigensolver(L);
+   gsMatrix<real_t>::SelfAdjEigenSolver eigensolver(L);
    eigs = eigensolver.eigenvalues();
 }
 
