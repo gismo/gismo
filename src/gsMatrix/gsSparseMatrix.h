@@ -157,7 +157,10 @@ public:
     typedef gsMatrixBlockView<Base> BlockView;
 
     /// Shared pointer for gsSparseMatrix
-    typedef memory::shared_ptr< gsSparseMatrix > Ptr;
+    typedef typename memory::shared<gsSparseMatrix>::ptr Ptr;
+
+    /// Unique pointer for gsSparseMatrix
+    typedef typename memory::unique<gsSparseMatrix>::ptr uPtr;
 
     /// Type of the full view of the matrix, for the case when only
     /// the lower diagonal part is stored
@@ -220,7 +223,19 @@ public:
 
 
     ~gsSparseMatrix() ;
-
+    
+    /**
+       \brief This function returns a smart pointer to the
+       matrix. After calling it, the matrix object becomes empty, ie
+       the size of the matrix is 0
+    */
+    Ptr moveToPtr()
+    {
+        Ptr m(new gsSparseMatrix<T>);
+        m->swap(*this);
+        return m;
+    }
+    
     /// \brief Returns an iterator to the first non-zero elemenent of
     /// column \ a outer (or row \a outer if the matrix is RowMajor)
     inline iterator begin(const index_t outer) const { return iterator(*this,outer);}

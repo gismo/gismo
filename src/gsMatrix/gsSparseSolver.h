@@ -30,6 +30,9 @@ template<typename T> class gsEigenPardisoLDLT;
 template<typename T> class gsEigenPardisoLLT;
 template<typename T> class gsEigenPardisoLU;
 
+template<typename T> class gsEigenMINRES;
+template<typename T> class gsEigenGMRES;
+template<typename T> class gsEigenDGMRES;
 
 /** @brief Abstract class for solvers.
     The solver interface is base on 3 methods:
@@ -77,6 +80,10 @@ public:
     typedef gsEigenPardisoLLT<T>           PardisoLLT;
     typedef gsEigenPardisoLU<T>            PardisoLU;
 
+    typedef gsEigenMINRES<T>               MINRES;
+    typedef gsEigenGMRES<T>                GMRES;
+    typedef gsEigenDGMRES<T>               DGMRES;
+    
 public:
     typedef gsSparseMatrix<T> MatrixT;
     typedef gsMatrix<T>       VectorT;
@@ -89,8 +96,28 @@ public:
     virtual VectorT   solve   (const VectorT &rhs)    const = 0;
 
     virtual bool      succeed ()                      const = 0;
+
+    /// Prints the object as a string.
+    virtual std::ostream &print(std::ostream &os) const
+    {
+        os << "gsSparseSolver\n";
+        return os;
+    }
+
+    /// Prints the object as a string with extended details.
+    virtual std::string detail() const 
+    {
+        std::ostringstream os;
+        print(os);
+        return os.str();
+    }
+
 };
 
+/// \brief Print (as string) operator for sparse solvers
+template<class T>
+std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
+{return b.print(os); }
 
 #define GISMO_EIGEN_SPARSE_SOLVER(gsname, eigenName)                    \
     template<typename T>                                                \
@@ -125,6 +152,11 @@ public:
         }                                                               \
         index_t rows() const {return m_rows;}                           \
         index_t cols() const {return m_cols;}                           \
+        std::ostream &print(std::ostream &os) const                     \
+        {                                                               \
+            os <<STRINGIGY(gsname)<<"\n";                               \
+            return os;                                                  \
+        }                                                               \
     };
 
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenCGIdentity,     CGIdentity)
@@ -145,6 +177,10 @@ GISMO_EIGEN_SPARSE_SOLVER (gsEigenSimplicialLDLT, SimplicialLDLT)
     GISMO_EIGEN_SPARSE_SOLVER (gsEigenPardisoLLT, PardisoLLT)
     GISMO_EIGEN_SPARSE_SOLVER (gsEigenPardisoLU, PardisoLU)
 #endif
+
+//GISMO_EIGEN_SPARSE_SOLVER (gsEigenMINRES, MINRES)
+//GISMO_EIGEN_SPARSE_SOLVER (gsEigenGMRES,  GMRES)
+//GISMO_EIGEN_SPARSE_SOLVER (gsEigenDGMRES, DGMRES)
 
 
 #undef GISMO_EIGEN_SPARSE_SOLVER

@@ -13,6 +13,9 @@
 
 #include <sstream>
 
+
+#define STRINGIGY(x) #x
+
 namespace gismo
 {
 
