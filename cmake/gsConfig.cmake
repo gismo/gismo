@@ -74,7 +74,7 @@ endforeach()
 #find_program( MEMORYCHECK_COMMAND valgrind )
 #--gen-suppressions=all --trace-children=yes --track-origins=yes
 set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes --gen-suppressions=all" CACHE INTERNAL "")
-#set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/valgrind_supp.txt" CACHE INTERNAL "")
+set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/valgrind_supp.txt" CACHE INTERNAL "")
 
 # Enable C++ 11 features if present
 if(GISMO_BUILD_CPP11 AND NOT MSVC)

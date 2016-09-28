@@ -1,0 +1,77 @@
+{
+   <gismo_Leak_dl_init>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libstdc++.so.6.?.??
+   fun:call_init.part.0
+   fun:call_init
+   fun:_dl_init
+   obj:/lib/x86_64-linux-gnu/ld-2.??.so
+}
+{
+   <gismo_Leak_Darwin1>
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:malloc
+   fun:atexit_register
+   fun:__cxa_atexit
+   fun:_ZN16ImageLoaderMachO18doModInitFunctionsERKN11ImageLoader11LinkContextE
+   fun:_ZN16ImageLoaderMachO16doInitializationERKN11ImageLoader11LinkContextE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListE
+   fun:_ZN11ImageLoader15runInitializersERKNS_11LinkContextERNS_21InitializerTimingListE
+   fun:_ZN4dyld24initializeMainExecutableEv
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_Pm
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKclS2_Pm
+   fun:_dyld_start
+}
+{
+   <gismo_Leak_Darwin2>
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:malloc
+   fun:atexit_register
+   fun:__cxa_atexit
+   fun:_GLOBAL__I_a
+   fun:_ZN16ImageLoaderMachO18doModInitFunctionsERKN11ImageLoader11LinkContextE
+   fun:_ZN16ImageLoaderMachO16doInitializationERKN11ImageLoader11LinkContextE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListE
+   fun:_ZN11ImageLoader23recursiveInitializationERKNS_11LinkContextEjRNS_21InitializerTimingListE
+   fun:_ZN11ImageLoader15runInitializersERKNS_11LinkContextERNS_21InitializerTimingListE
+   fun:_ZN4dyld24initializeMainExecutableEv
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_Pm
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKclS2_Pm
+}
+{
+   <gismo_Leak_Darwin3>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:__smakebuf
+   fun:__swsetup
+   fun:__sfvwrite
+   fun:fwrite
+   fun:_ZNSt3__111__stdoutbufIcE8overflowEi
+   fun:_ZNSt3__115basic_streambufIcNS_11char_traitsIcEEE6xsputnEPKcl
+   fun:_ZNSt3__116__pad_and_outputIcNS_11char_traitsIcEEEENS_19ostreambuf_iteratorIT_T0_EES6_PKS4_S8_S8_RNS_8ios_baseES4_
+   fun:_ZNSt3__124__put_character_sequenceIcNS_11char_traitsIcEEEERNS_13basic_ostreamIT_T0_EES7_PKS4_m
+   fun:main
+}
+{
+   <gismo_Leak_Darwin4>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:__Balloc_D2A
+   fun:__rv_alloc_D2A
+   fun:__nrv_alloc_D2A
+   fun:__dtoa
+   fun:__vfprintf
+   fun:__v2printf
+   fun:_vsnprintf
+   fun:vsnprintf_l
+   fun:snprintf_l
+   fun:_ZNKSt3__17num_putIcNS_19ostreambuf_iteratorIcNS_11char_traitsIcEEEEE6do_putES4_RNS_8ios_baseEcd
+   fun:_ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEd
+}
