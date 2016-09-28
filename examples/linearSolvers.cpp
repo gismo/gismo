@@ -78,10 +78,20 @@ int main(int argc, char *argv[])
     
     bool succeeded = true;
     
-    //Size of linear system
     index_t N = 100;
-    if (argc >= 2)
-        N = atoi(argv[1]);
+    //Tolerance
+    real_t tol = std::pow(10.0, - REAL_DIG * 0.75);
+    
+    gsCmdLine cmd("Solves a 1D PDE with a Courant discretization with several solvers solver.");
+    cmd.addInt("n", "number", "Number of unknowns", N);
+    cmd.addReal("", "tol", "Tolerance for the solvers", tol);
+
+    bool ok = cmd.getValues(argc,argv);
+    if ( !ok )
+    {
+        gsInfo << "Something went wrong when reading the command line. Exiting.\n";
+        return 1;
+    }
 
     gsSparseMatrix<> mat;
     gsMatrix<>       rhs;
@@ -93,8 +103,6 @@ int main(int argc, char *argv[])
     //We initialize an identity preconditioner (does nothing).
     gsLinearOperator<>::Ptr preConMat = gsIdentityOp<>::make(N);
 
-    //Tolerance
-    real_t tol = std::pow(10.0, - REAL_DIG * 0.75);
     gsStopwatch clock;
 
     //initial guess
