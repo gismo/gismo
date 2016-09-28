@@ -70,6 +70,12 @@ foreach(config ${CMAKE_CONFIGURATION_TYPES}) # For Visual studio
     set(${PROJECT_NAME}_LIBRARY_OUTPUT_DIRECTORY_${CONFIG} lib)
 endforeach() 
 
+#Configure Valgrind
+#find_program( MEMORYCHECK_COMMAND valgrind )
+#--gen-suppressions=all --trace-children=yes --track-origins=yes
+set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes --gen-suppressions=all" CACHE INTERNAL "")
+#set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/valgrind_supp.txt" CACHE INTERNAL "")
+
 # Enable C++ 11 features if present
 if(GISMO_BUILD_CPP11 AND NOT MSVC)
   #cmake 3.1: set(CMAKE_CXX_STANDARD 11)
