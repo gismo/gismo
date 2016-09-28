@@ -253,11 +253,11 @@ public:
     void setNumOfSweeps(index_t n)    { m_numOfSweeps= n; }
 
     ///Returns the matrix
-    const NestedMatrix matrix() const { return m_expr; }
+    NestedMatrix matrix() const { return m_expr; }
 
 private:
-    const MatrixPtr    m_mat;  ///< Shared pointer to matrix (if needed)
-    const NestedMatrix m_expr; ///< Nested Eigen expression
+    const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
+    NestedMatrix    m_expr; ///< Nested Eigen expression
 
     index_t m_numOfSweeps;
 };

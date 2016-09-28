@@ -39,8 +39,9 @@ public:
     /// @param mat     The operator to be solved for, see gsIterativeSolver for details
     /// @param precond The preconditioner, defaulted to the identity
     template< typename OperatorType >
-    explicit gsConjugateGradient( const OperatorType& mat, const LinOpPtr & precond = LinOpPtr() )
-    : Base(mat, precond) {}
+    explicit gsConjugateGradient( const OperatorType& mat,
+                                  const LinOpPtr & precond = LinOpPtr() )
+    : Base(mat, precond), m_calcEigenvals(false) { }
 
     /// @brief Returns a list of default options
     static gsOptionList defaultOptions()

@@ -83,28 +83,36 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x )
 
 real_t gsConjugateGradient::getConditionNumber()
 {
-    GISMO_ASSERT(!m_delta.empty(),
-                 "No data for eigenvalues was collected, call setCalcEigenvalues(true) and solve with an arbitrary right hand side");
-    gsLanczosMatrix<real_t> L(m_gamma,m_delta);
+    if ( m_delta.empty() )
+    {
+        gsWarn<< "Condition number needs eigenvalues set setCalcEigenvalues(true)"
+                 " and call solve with an arbitrary right hand side";
+        return -1;
+    }
 
+    gsLanczosMatrix<real_t> L(m_gamma,m_delta);
     return L.maxEigenvalue()/L.minEigenvalue();
 }
 
 void gsConjugateGradient::getEigenvalues( gsMatrix<real_t>& eigs )
 {
-    GISMO_ASSERT(!m_delta.empty(),
-                 "No data for eigenvalues was collected, call setCalcEigenvalues(true) and solve with an arbitrary right hand side");
+    if ( m_delta.empty() )
+    {
+        gsWarn<< "Eigenvalues were not computed, set setCalcEigenvalues(true)"
+                 " and call solve with an arbitrary right hand side";
+        eigs.clear();
+        return;
+    }
 
    gsLanczosMatrix<real_t> LM(m_gamma,m_delta);
    gsSparseMatrix<real_t> L;
    LM.matrixForm(L);
    // there is probably a better option...
-   Eigen::SelfAdjointEigenSolver<Eigen::Matrix<real_t,Dynamic,Dynamic> > eigensolver(L.toDense());
-
+   gsMatrix<real_t>::EigenSolver eigensolver(L);
    eigs = eigensolver.eigenvalues();
 }
 
 
-}
+} // end namespace gismo
 
 

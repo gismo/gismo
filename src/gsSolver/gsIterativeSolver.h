@@ -42,9 +42,9 @@ public:
       m_precond(precond),
       m_max_iters(1000),
       m_tol(1e-10),
-      m_num_iter(0),
-      m_rhs_norm(0.),
-      m_error(0.)
+      m_num_iter(-1),
+      m_rhs_norm(-1),
+      m_error(-1)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
@@ -68,9 +68,9 @@ public:
       m_precond(precond),
       m_max_iters(1000),
       m_tol(1e-10),
-      m_num_iter(0),
-      m_rhs_norm(0.),
-      m_error(0.)
+      m_num_iter(-1),
+      m_rhs_norm(-1),
+      m_error(-1)
     {
         GISMO_ASSERT(m_mat->rows() == m_mat->cols(), "Matrix is not square.");
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
@@ -110,7 +110,6 @@ public:
         }
 
         finalizeIteration(x);
-
     }
 
     /// @brief Solves the linear system and stores the solution in \a x and records
@@ -126,28 +125,34 @@ public:
         {
             error_history.resize(1,1); //VectorType is actually gsMatrix
             error_history(0,0) = m_error;
+            //gsDebug<<"Solution reached at iteration 0, err="<<m_error<<"\n";
             return;
         }
 
-        std::vector<T> tmp_error_hist;
-        
+        std::vector<T> tmp_error_hist;        
         tmp_error_hist.clear();
         tmp_error_hist.reserve(m_max_iters / 3 );
-        tmp_error_hist.push_back(m_error);        // store initial error (as provided by initIteration)
+        tmp_error_hist.push_back(m_error); // store initial error (as provided by initIteration)
 
         while (m_num_iter < m_max_iters)
         {
             m_num_iter++;
-
-            if (step(x)) break;
-
-            tmp_error_hist.push_back(m_error);   // store initial error (as provided by step)
+            //gsDebug<<"Iteration : "<<std::setw(5)<<std::left<< m_num_iter<<"\n";
+                
+            if (step(x))
+            {
+                tmp_error_hist.push_back(m_error);
+                //gsDebug<<"            err = "<<m_error<<" --> Solution reached.\n";
+                break;
+            }
+            
+            tmp_error_hist.push_back(m_error);
+            //gsDebug<<"            err = "<<m_error<<"\n";
         }
 
+        //if (m_num_iter == m_max_iters) gsDebug<<"Maximum number of iterations reached.\n";
+        
         finalizeIteration(x);
-
-        // move the error history to output variable
-        //error_history.swap( gsAsVector<T>(tmp_error_hist) );       
         error_history = gsAsVector<T>(tmp_error_hist);
     }
 
