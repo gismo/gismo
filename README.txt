@@ -230,33 +230,34 @@ Files related to doxygen documentation.
         Antonella Falini
         Michael Haberleitner
         Christoph Hofer
-        ​Clemens Hofreither
+        Clemens Hofreither
         Mario Kapl
-        ​Gabor Kiss
+        Gabor Kiss
         Stefan Kleiss
-        ​Angelos Mantzaflaris
-        ​Stephen Moore
-        ​Dominik Mokris
-        ​Jarle Sogn
+        Angelos Mantzaflaris
+        Stephen Moore
+        Dominik Mokris
+        Jarle Sogn
         Jaka Speh
+        Stefan Takacs
         Harald Weiner 
 
 * Scientific board:
-        ​Bert Juettler
-        ​Ulrich Langer
-        ​Walter Zulehner 
+        Bert Juettler
+        Ulrich Langer
+        Walter Zulehner 
 
 * External contributors:
-        ​Anmol Goyal (TU. Kaiserslautern)
+        Anmol Goyal (TU. Kaiserslautern)
         Andrzej Jaeschke (TU Delft)
-        ​Oliver Weeger (TU. Kaiserslautern)
-        ​Yang Xia (U. Hong Kong) 
+        Oliver Weeger (TU. Kaiserslautern)
+        Yang Xia (U. Hong Kong) 
 
 * Past developers:
-        ​Carlotta Giannelli (U. Florence)
+        Carlotta Giannelli (U. Florence)
         David Mayer
-        ​Manh Dang Nguyen (U. Florida)
-        ​Michael Pauley 
+        Manh Dang Nguyen (U. Florida)
+        Michael Pauley 
 
 ======================================================================
 =====            Acknowledgement and os-licence                  ===== 
