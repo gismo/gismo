@@ -50,6 +50,13 @@ private:
        y = R.triangularView<Eigen::Upper>().solve(gg);
     }
 
+    /// Prints the object as a string.
+    std::ostream &print(std::ostream &os) const
+    {
+        os << "gsGMRes\n";
+        return os;
+    }
+
 private:
     using Base::m_mat;
     using Base::m_precond;

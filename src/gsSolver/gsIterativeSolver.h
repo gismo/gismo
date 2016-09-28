@@ -213,6 +213,20 @@ public:
     /// The tolerance used in the iterative method
     T tolerance() const                                        { return m_tol; }
 
+    /// Prints the object as a string.
+    virtual std::ostream &print(std::ostream &os) const = 0;
+
+    /// Prints the object as a string with extended details.
+    virtual std::string detail() const 
+    {
+        std::ostringstream os;
+        print(os);
+        os << " Tolerance            : " << tolerance() << "\n";
+        os << " Solver error         : " << error() << "\n";
+        os << " Number of iterations : " << iterations() << " (max="<<m_max_iters<<")\n";
+        return os.str();
+    }
+
 protected:
     const LinOpPtr m_mat;             ///< The matrix/operator to be solved for
     LinOpPtr       m_precond;         ///< The preconditioner
@@ -222,5 +236,12 @@ protected:
     T              m_rhs_norm;        ///< The norm of the right-hand-side
     T              m_error;           ///< The relative error as absolute_error/m_rhs_norm
 };
+
+/// \brief Print (as string) operator for iterative solvers
+/// \ingroup Solver
+template<class T>
+std::ostream &operator<<(std::ostream &os, const gsIterativeSolver<T>& b)
+{return b.print(os); }
+
 
 } // namespace gismo

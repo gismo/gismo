@@ -72,6 +72,13 @@ public:
     /// @brief returns the eigenvalues of the Lanczos matrix
     void getEigenvalues( gsMatrix<real_t>& eigs );
 
+    /// Prints the object as a string.
+    std::ostream &print(std::ostream &os) const
+    {
+        os << "gsConjugateGradient\n";
+        return os;
+    }
+
 private:
     using Base::m_mat;
     using Base::m_precond;

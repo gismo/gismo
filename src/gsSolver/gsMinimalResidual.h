@@ -65,6 +65,13 @@ public:
     /// @brief If true, the residual is estimated, not accurately computed.
     void setInexactResidual( bool flag )     { m_inexact_residual = flag; }
 
+    /// Prints the object as a string.
+    std::ostream &print(std::ostream &os) const
+    {
+        os << "gsMinimalResidual\n";
+        return os;
+    }
+
 private:
     using Base::m_mat;
     using Base::m_precond;
