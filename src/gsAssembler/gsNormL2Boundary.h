@@ -96,7 +96,7 @@ protected:
     
     // Evaluate on element.
     inline void evaluate(gsGeometryEvaluator<T> & geoEval,
-                         const gsGeometry<T>    & _func1,
+                         const gsFunction<T>    & _func1,
                          const gsFunction<T>    & _func2,
                          gsMatrix<T>            & quNodes)
     {
