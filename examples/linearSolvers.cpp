@@ -245,5 +245,5 @@ int main(int argc, char *argv[])
     gsInfo << "Eigen's LU: Time to solve       : " << clock.stop() << "\n";
 
 
-    return succeeded ? 0 : 1;
+    return succeeded ? EXIT_SUCCESS : EXIT_FAILURE;
 }
