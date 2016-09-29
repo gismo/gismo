@@ -203,7 +203,7 @@ protected:
      * @param[in] quNodes
      */
     inline void evaluate(gsGeometryEvaluator<T> & geoEval,
-                         const gsGeometry<T>    & discSolution,
+                         const gsFunction<T>    & discSolution,
                          const gsFunction<T>    & rhsFunction,
                          gsMatrix<T>            & quNodes)
     {

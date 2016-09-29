@@ -76,16 +76,17 @@ public:
         m_value = T(0.0);
         for (unsigned pn=0; pn < patchesPtr->nPatches(); ++pn )// for all patches
         {
-            const gsGeometry<T> & func1 = field1->igaFunction(pn);
+            const gsFunction<T> & func1 = field1->function(pn);
+            const gsGeometry<T> & dom   = field1->patch(pn);
 
             // Initialize visitor
-            visitor.initialize(func1.basis(), QuRule, evFlags);
+            visitor.initialize(dom.basis(), QuRule, evFlags);
 
             // Initialize geometry evaluator
             typename gsGeometry<T>::Evaluator geoEval(
                 patchesPtr->patch(pn).evaluator(evFlags));
             
-            typename gsBasis<T>::domainIter domIt = func1.basis().makeDomainIterator(side);
+            typename gsBasis<T>::domainIter domIt = dom.basis().makeDomainIterator(side);
             for (; domIt->good(); domIt->next())
             {
                 // Map the Quadrature rule to the element
