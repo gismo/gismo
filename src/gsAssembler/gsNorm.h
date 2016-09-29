@@ -77,7 +77,9 @@ public:
         for (unsigned pn=0; pn < patchesPtr->nPatches(); ++pn )// for all patches
         {
             const gsFunction<T> & func1 = field1->function(pn);
-            const gsGeometry<T> & dom   = field1->patch(pn);
+            // Obtain an integration domain
+            const gsGeometry<T> & dom = field1->isParametrized() ? 
+                field1->igaFunction(pn) : field1->patch(pn);
 
             // Initialize visitor
             visitor.initialize(dom.basis(), QuRule, evFlags);
@@ -116,16 +118,19 @@ public:
         // Evaluation flags for the Geometry map
         unsigned evFlags(0);
 
-        const gsGeometry<T> & func1 = field1->igaFunction(patchIndex);
-        
+        const gsFunction<T> & func1 = field1->function(patchIndex);
+        // Obtain an integration domain
+        const gsGeometry<T> & dom = field1->isParametrized() ? 
+            field1->igaFunction(patchIndex) : field1->patch(patchIndex);
+
         // Initialize visitor
-        visitor.initialize(func1.basis(), QuRule, evFlags);
+        visitor.initialize(dom.basis(), QuRule, evFlags);
         
         // Initialize geometry evaluator
         typename gsGeometry<T>::Evaluator geoEval(
             patchesPtr->patch(patchIndex).evaluator(evFlags));
         
-        typename gsBasis<T>::domainIter domIt = func1.basis().makeDomainIterator(side);
+        typename gsBasis<T>::domainIter domIt = dom.basis().makeDomainIterator(side);
         for (; domIt->good(); domIt->next())
         {
             // Map the Quadrature rule to the element
