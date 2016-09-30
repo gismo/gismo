@@ -103,7 +103,6 @@ int main(int argc, char *argv[])
 
     //initial guess
     gsMatrix<> x0;
-    x0.setZero(N,1);
 
 #ifndef GISMO_WITH_MPQ 
 
@@ -117,9 +116,14 @@ int main(int argc, char *argv[])
     ///----------------------GISMO-SOLVERS----------------------///
     gsInfo << "Testing G+Smo's solvers:\n";
 
+    
+    
     //Initialize the MinRes solver
     gsMinimalResidual MinRes(mat,preConMat);
     MinRes.setOptions(opt);
+    
+    //Set the initial guess to zero
+    x0.setZero(N,1);
     
     //Solve system with given preconditioner (solution is stored in x0)
     gsInfo << "\nMinRes: Started solving... ";
@@ -128,10 +132,26 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n";
     gsIterativeSolverInfo(MinRes, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
 
-    //Initialize the CG solver
+
+    //Initialize the MinRes solver with inexact residual error norm
+    gsMinimalResidual MinResIR(mat,preConMat);
+    MinResIR.setOptions(opt);
+    MinResIR.setInexactResidual(true);
+    
+    //Set the initial guess to zero
+    x0.setZero(N,1);
+    
+    //Solve system with given preconditioner (solution is stored in x0)
+    gsInfo << "\nMinResIR: Started solving... ";
+    clock.restart();
+    MinResIR.solve(rhs, x0);
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(MinResIR, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
+       
+    //Initialize the GMResSolver solver
     gsGMRes GMResSolver(mat,preConMat);
     GMResSolver.setOptions(opt);
-
+    
     //Set the initial guess to zero
     x0.setZero(N,1);
 
