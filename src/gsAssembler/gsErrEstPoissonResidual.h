@@ -99,19 +99,6 @@ public:
 
         // auxiliary flag, mainly for debugging
         m_storeElWiseType = 0;
-
-        /* ! this is buggy..
-        // In case no boundary conditions are provided, we still
-        // need to initialize m_bcInfo.
-        // Unpretty workaround, setting up m_bcInfo with only
-        // one homogenous Neumann boundary condition.
-        gsBoundaryConditions<T> bcInfo;
-        gsFunctionExpr<T>  g("0", _rhsFunction.domainDim() );
-        boxSide bs(1);
-        bcInfo.addCondition(0, bs, condition_type::neumann, &g, 0);
-
-        m_bcInfo = bcInfo;
-        */
     }
 
 public:
@@ -262,58 +249,7 @@ protected:
             
             geoEval.transformLaplaceHgrad(k,m_discSolDer, m_discSol2ndDer , m_phLaplace);
             geoEval.transformGradients(k, m_discSolDer , m_phdiscSolDer);
-
-            // Compute the APPROXIMATION of the
-            // transformation of the
-            // Laplacian to the physical domain.
-            // Note that the term involving the second
-            // derivative of the inverse geometry mapping is
-            // neglected!
-            //
-            // The transformation is written here explicitly,
-            // because of the special ordering of the second derivatives,
-            // and because it should be easier to extend this to the
-            // convection-diffusion-reaction-equation starting from this.
-
-            /*
-            T sol_Lap(0.0);
-
-            if( m_parDim == 2 )
-            {
-                gsMatrix<T> Jinv = J.inverse();
-
-                for( unsigned i=0; i < m_parDim; i ++ )
-                {
-                    sol_Lap += sol_der2(0,0) * Jinv(0,i) * Jinv(0,i) \
-                        + sol_der2(2,0) * Jinv(0,i) * Jinv(1,i) \
-                        + sol_der2(2,0) * Jinv(1,i) * Jinv(0,i) \
-                        + sol_der2(1,0) * Jinv(1,i) * Jinv(1,i);
-                }
-            }
-            else if( m_parDim == 3 )
-            {
-                gsMatrix<T> Jinv = J.inverse();
-
-                for( unsigned i=0; i < m_parDim; i ++ )
-                {
-                    sol_Lap += \
-                          sol_der2(0,0) * Jinv(0,i) * Jinv(0,i) \
-                        + sol_der2(3,0) * Jinv(0,i) * Jinv(1,i) \
-                        + sol_der2(4,0) * Jinv(0,i) * Jinv(2,i) \
-                        + sol_der2(3,0) * Jinv(1,i) * Jinv(0,i) \
-                        + sol_der2(1,0) * Jinv(1,i) * Jinv(1,i) \
-                        + sol_der2(5,0) * Jinv(1,i) * Jinv(2,i) \
-                        + sol_der2(4,0) * Jinv(2,i) * Jinv(0,i) \
-                        + sol_der2(5,0) * Jinv(2,i) * Jinv(1,i) \
-                        + sol_der2(2,0) * Jinv(2,i) * Jinv(2,i);
-                }
-            }
-
-            // residual squared: Laplace of solution + RHS.
-            sumVolSq += weight * ( sol_Lap + m_rhsFctVals(0,k) ) \
-                    * ( sol_Lap + m_rhsFctVals(0,k) );
-            */      
-            sumVolSq += weight * ( m_phLaplace(0,0) + m_rhsFctVals(0,k) ) \
+            sumVolSq += weight * ( m_phLaplace(0,0) + m_rhsFctVals(0,k) ) 
                     * ( m_phLaplace(0,0) + m_rhsFctVals(0,k) );               
 
         } // quPts volume

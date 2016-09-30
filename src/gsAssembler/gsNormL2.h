@@ -104,6 +104,7 @@ protected:
             switch (p)
             {
             case 0: // infinity norm
+                // .template lpNorm<Eigen::Infinity>();
                 sum = (f1vals - f2vals).array().abs().maxCoeff();
                 accumulated = math::max(accumulated, sum);
                 return sum;
@@ -115,10 +116,10 @@ protected:
                 sum += weight * ( f1vals.col(k) - f2vals.col(k) ).squaredNorm();
                 break;
             default:
-                sum += weight * ( f1vals.col(k) - f2vals.col(k) ).array().pow(p).sum();
+                sum += weight * ( f1vals.col(k) - f2vals.col(k) ).array().abs().pow(p).sum();
+                //sum += weight * ( f1vals.col(k) - f2vals.col(k) ).template lpNorm<p>().squared();
             }
         }
-
 
         accumulated += sum;
         return sum;
