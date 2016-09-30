@@ -70,7 +70,7 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
         negResidual += cNew*eta*AwNew;
 
     if (m_inexact_residual)
-        m_error *= std::fabs(sNew); // see https://eigen.tuxfamily.org/dox-devel/unsupported/MINRES_8h_source.html
+        m_error *= math::abs(sNew); // see https://eigen.tuxfamily.org/dox-devel/unsupported/MINRES_8h_source.html
     else
         m_error = negResidual.norm() / m_rhs_norm;
 
