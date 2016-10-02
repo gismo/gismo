@@ -40,6 +40,7 @@
 #include <complex>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <deque>
 #include <exception>
 #include <functional>
@@ -793,7 +794,7 @@ namespace exprtk
             template <typename T>
             inline T abs_impl(const T v, real_type_tag)
             {
-               return ((v >= T(0)) ? v : -v);
+               return ((v < T(0)) ? -v : v);
             }
 
             template <typename T>
@@ -1111,13 +1112,21 @@ namespace exprtk
                   return T(0);
             }
 
+            #if (defined(_MSC_VER) && (_MSC_VER >= 1900)) || !defined(_MSC_VER)
+            #define exprtk_define_erf(TT,impl)           \
+            inline TT erf_impl(TT v) { return impl(v); } \
+
+            exprtk_define_erf(      float,::erff)
+            exprtk_define_erf(     double,::erf )
+            exprtk_define_erf(long double,::erfl)
+            #undef exprtk_define_erf
+            #endif
+
             template <typename T>
             inline T erf_impl(T v, real_type_tag)
             {
-               #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+               #if defined(_MSC_VER) && (_MSC_VER < 1900)
                // Credits: Abramowitz & Stegun Equations 7.1.25-28
-               const T t = T(1) / (T(1) + T(0.5) * abs_impl(v,real_type_tag()));
-
                static const T c[] = {
                                       T( 1.26551223), T(1.00002368),
                                       T( 0.37409196), T(0.09678418),
@@ -1125,6 +1134,8 @@ namespace exprtk
                                       T(-1.13520398), T(1.48851587),
                                       T(-0.82215223), T(0.17087277)
                                     };
+
+               const T t = T(1) / (T(1) + T(0.5) * abs_impl(v,real_type_tag()));
 
                T result = T(1) - t * std::exp((-v * v) -
                                       c[0] + t * (c[1] + t *
@@ -1135,7 +1146,7 @@ namespace exprtk
 
                return (v >= T(0)) ? result : -result;
                #else
-               return ::erf(v);
+               return erf_impl(v);
                #endif
             }
 
@@ -1145,13 +1156,23 @@ namespace exprtk
                return erf_impl(static_cast<double>(v),real_type_tag());
             }
 
+            #if (defined(_MSC_VER) && (_MSC_VER >= 1900)) || !defined(_MSC_VER)
+            #define exprtk_define_erfc(TT,impl)           \
+            inline TT erfc_impl(TT v) { return impl(v); } \
+
+            exprtk_define_erfc(      float,::erfcf)
+            exprtk_define_erfc(     double,::erfc )
+            exprtk_define_erfc(long double,::erfcl)
+            #undef exprtk_define_erfc
+            #endif
+
             template <typename T>
             inline T erfc_impl(T v, real_type_tag)
             {
-               #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+               #if defined(_MSC_VER) && (_MSC_VER < 1900)
                return T(1) - erf_impl(v,real_type_tag());
                #else
-               return ::erfc(v);
+               return erfc_impl(v);
                #endif
             }
 
@@ -1196,7 +1217,7 @@ namespace exprtk
             template <typename T> inline T  asin_impl(const T v, real_type_tag) { return std::asin (v); }
             template <typename T> inline T asinh_impl(const T v, real_type_tag) { return std::log(v + std::sqrt((v * v) + T(1))); }
             template <typename T> inline T  atan_impl(const T v, real_type_tag) { return std::atan (v); }
-            template <typename T> inline T atanh_impl(const T v, real_type_tag) { return (std::log(T(1) + v) - log(T(1) - v)) / T(2); }
+            template <typename T> inline T atanh_impl(const T v, real_type_tag) { return (std::log(T(1) + v) - std::log(T(1) - v)) / T(2); }
             template <typename T> inline T  ceil_impl(const T v, real_type_tag) { return std::ceil (v); }
             template <typename T> inline T   cos_impl(const T v, real_type_tag) { return std::cos  (v); }
             template <typename T> inline T  cosh_impl(const T v, real_type_tag) { return std::cosh (v); }
@@ -1269,7 +1290,7 @@ namespace exprtk
          template <typename Type>
          struct numeric_info { enum { length = 0, size = 32, bound_length = 0, min_exp = 0, max_exp = 0 }; };
 
-         template<> struct numeric_info<int>         { enum { length = 10, size = 16, bound_length =  9}; };
+         template<> struct numeric_info<int>         { enum { length = 10, size = 16, bound_length = 9}; };
          template<> struct numeric_info<float>       { enum { min_exp =  -38, max_exp =  +38}; };
          template<> struct numeric_info<double>      { enum { min_exp = -308, max_exp = +308}; };
          template<> struct numeric_info<long double> { enum { min_exp = -308, max_exp = +308}; };
@@ -1727,10 +1748,10 @@ namespace exprtk
          bool instate = false;
 
          #define parse_digit_1(d) \
-             if ((digit = (*itr - '0')) < 10) { d = d * T(10) + digit; } else {break;} if (end == ++itr) {break;} \
+         if ((digit = (*itr - '0')) < 10) { d = d * T(10) + digit; } else {break;} if (end == ++itr) break; \
 
          #define parse_digit_2(d) \
-             if ((digit = (*itr - '0')) < 10) { d = d * T(10) + digit; } else {break;} ++itr; \
+         if ((digit = (*itr - '0')) < 10) { d = d * T(10) + digit; } else {break;} ++itr; \
 
          if ('.' != (*itr))
          {
@@ -2976,6 +2997,8 @@ namespace exprtk
          {
          public:
 
+            using lexer::token_inserter::insert;
+
             commutative_inserter()
             : lexer::token_inserter(2)
             {}
@@ -3208,6 +3231,8 @@ namespace exprtk
          {
          public:
 
+            using lexer::token_scanner::operator();
+
             bracket_checker()
             : token_scanner(1),
               state_(true)
@@ -3290,6 +3315,8 @@ namespace exprtk
          class numeric_checker : public lexer::token_scanner
          {
          public:
+
+            using lexer::token_scanner::operator();
 
             numeric_checker()
             : token_scanner (1),
@@ -3423,6 +3450,8 @@ namespace exprtk
             typedef std::set<token_pair_t> set_t;
 
          public:
+
+            using lexer::token_scanner::operator();
 
             sequence_validator()
             : lexer::token_scanner(2)
@@ -3891,6 +3920,81 @@ namespace exprtk
       };
    }
 
+   template <typename T>
+   class vector_view
+   {
+   public:
+
+      typedef T* data_ptr_t;
+
+      vector_view(data_ptr_t data, const std::size_t& size)
+      : size_(size),
+        data_(data),
+        data_ref_(0)
+      {}
+
+      vector_view(const vector_view<T>& vv)
+      : size_(vv.size_),
+        data_(vv.data_),
+        data_ref_(0)
+      {}
+
+      inline void rebase(data_ptr_t data)
+      {
+         data_ = data;
+
+         if (data_ref_)
+         {
+            (*data_ref_) = data;
+         }
+      }
+
+      inline data_ptr_t data() const
+      {
+         return data_;
+      }
+
+      inline std::size_t size() const
+      {
+         return size_;
+      }
+
+      inline const T& operator[](const std::size_t index) const
+      {
+         return data_[index];
+      }
+
+      inline T& operator[](const std::size_t index)
+      {
+         return data_[index];
+      }
+
+      void set_ref(data_ptr_t* data_ref)
+      {
+         data_ref_ = data_ref;
+      }
+
+   private:
+
+      std::size_t size_;
+      data_ptr_t  data_;
+      data_ptr_t* data_ref_;
+   };
+
+   template <typename T>
+   inline vector_view<T> make_vector_view(T* data,
+                                          const std::size_t size, const std::size_t offset = 0)
+   {
+      return vector_view<T>(data + offset,size);
+   }
+
+   template <typename T>
+   inline vector_view<T> make_vector_view(std::vector<T>& v,
+                                          const std::size_t size, const std::size_t offset = 0)
+   {
+      return vector_view<T>(v.data() + offset,size);
+   }
+
    template <typename T> class results_context;
 
    template <typename T>
@@ -4216,6 +4320,249 @@ namespace exprtk
 
          operator_type type;
          unsigned int num_params;
+      };
+
+      namespace loop_unroll
+      {
+         #ifndef exprtk_disable_superscalar_unroll
+         const std::size_t global_loop_batch_size = 16;
+         #else
+         const std::size_t global_loop_batch_size = 4;
+         #endif
+
+         struct details
+         {
+            details(const std::size_t& vsize,
+                    const std::size_t loop_batch_size = global_loop_batch_size)
+            : batch_size(loop_batch_size),
+              remainder (vsize % batch_size),
+              upper_bound(static_cast<int>(vsize - (remainder ? loop_batch_size : 0)))
+            {}
+
+            int  batch_size;
+            int   remainder;
+            int upper_bound;
+         };
+      }
+
+      #ifdef exprtk_enable_debugging
+      inline void dump_ptr(const std::string& s, const void* ptr, const std::size_t size = 0)
+      {
+         if (size)
+            exprtk_debug(("%s - addr: %p\n",s.c_str(),ptr));
+         else
+            exprtk_debug(("%s - addr: %p size: %d\n",
+                          s.c_str(),
+                          ptr,
+                          static_cast<unsigned int>(size)));
+      }
+      #else
+      inline void dump_ptr(const std::string&, const void*) {}
+      inline void dump_ptr(const std::string&, const void*, const std::size_t) {}
+      #endif
+
+      template <typename T>
+      class vec_data_store
+      {
+      public:
+
+         typedef vec_data_store<T> type;
+         typedef T* data_t;
+
+      private:
+
+         struct control_block
+         {
+            control_block()
+            : ref_count(1),
+              size     (0),
+              data     (0),
+              destruct (true)
+            {}
+
+            control_block(const std::size_t& dsize)
+            : ref_count(1),
+              size     (dsize),
+              data     (0),
+              destruct (true)
+            { create_data(); }
+
+            control_block(const std::size_t& dsize, data_t dptr, bool dstrct = false)
+            : ref_count(1),
+              size     (dsize),
+              data     (dptr ),
+              destruct (dstrct)
+            {}
+
+           ~control_block()
+            {
+               if (data && destruct && (0 == ref_count))
+               {
+                  dump_ptr("~control_block() data",data);
+                  delete[] data;
+                  data = 0;
+               }
+            }
+
+            static inline control_block* create(const std::size_t& size, data_t data_ptr = data_t(0), bool dstrct = false)
+            {
+               if (size)
+               {
+                  if (0 == data_ptr)
+                     return new control_block(size);
+                  else
+                     return new control_block(size, data_ptr, dstrct);
+               }
+               else
+                  return new control_block;
+            }
+
+            static inline void destroy(control_block*& cntrl_blck)
+            {
+               if (cntrl_blck)
+               {
+                  if (
+                       (0 !=   cntrl_blck->ref_count) &&
+                       (0 == --cntrl_blck->ref_count)
+                     )
+                  {
+                     delete cntrl_blck;
+                  }
+
+                  cntrl_blck = 0;
+               }
+            }
+
+            std::size_t ref_count;
+            std::size_t size;
+            data_t      data;
+            bool        destruct;
+
+         private:
+
+            control_block(const control_block&);
+            control_block& operator=(const control_block&);
+
+            inline void create_data()
+            {
+               destruct = true;
+               data     = new T[size];
+               std::fill_n(data,size,T(0));
+               dump_ptr("control_block::create_data() - data",data,size);
+            }
+         };
+
+      public:
+
+         vec_data_store()
+         : control_block_(control_block::create(0))
+         {}
+
+         vec_data_store(const std::size_t& size)
+         : control_block_(control_block::create(size,(data_t)(0),true))
+         {}
+
+         vec_data_store(const std::size_t& size, data_t data, bool dstrct = false)
+         : control_block_(control_block::create(size, data, dstrct))
+         {}
+
+         vec_data_store(const type& vds)
+         {
+            control_block_ = vds.control_block_;
+            control_block_->ref_count++;
+         }
+
+        ~vec_data_store()
+         {
+            control_block::destroy(control_block_);
+         }
+
+         type& operator=(const type& vds)
+         {
+            if (this != &vds)
+            {
+               std::size_t final_size = min_size(control_block_, vds.control_block_);
+
+               vds.control_block_->size = final_size;
+                   control_block_->size = final_size;
+
+               if (control_block_->destruct || (0 == control_block_->data))
+               {
+                  control_block::destroy(control_block_);
+
+                  control_block_ = vds.control_block_;
+                  control_block_->ref_count++;
+               }
+            }
+
+            return *this;
+         }
+
+         inline data_t data()
+         {
+            return control_block_->data;
+         }
+
+         inline data_t data() const
+         {
+            return control_block_->data;
+         }
+
+         inline std::size_t size()
+         {
+            return control_block_->size;
+         }
+
+         inline std::size_t size() const
+         {
+            return control_block_->size;
+         }
+
+         inline data_t& ref()
+         {
+            return control_block_->data;
+         }
+
+         inline void dump() const
+         {
+            #ifdef exprtk_enable_debugging
+            exprtk_debug(("size: %d\taddress:%p\tdestruct:%c\n",
+                          size(),
+                          data(),
+                          (control_block_->destruct ? 'T' : 'F')));
+
+            for (std::size_t i = 0; i < size(); ++i)
+            {
+               if (5 == i)
+                  exprtk_debug(("\n"));
+
+               exprtk_debug(("%15.10f ",data()[i]));
+            }
+            exprtk_debug(("\n"));
+            #endif
+         }
+
+         static inline void match_sizes(type& vds0, type& vds1)
+         {
+            std::size_t size = min_size(vds0.control_block_,vds1.control_block_);
+            vds0.control_block_->size = size;
+            vds1.control_block_->size = size;
+         }
+
+      private:
+
+         static inline std::size_t min_size(control_block* cb0, control_block* cb1)
+         {
+            std::size_t size0 = cb0->size;
+            std::size_t size1 = cb1->size;
+
+            if (size0 && size1)
+               return std::min(size0,size1);
+            else
+               return (size0) ? size0 : size1;
+         }
+
+         control_block* control_block_;
       };
 
       namespace numeric
@@ -4712,6 +5059,13 @@ namespace exprtk
                return vector_size();
             }
 
+            inline value_ptr data() const
+            {
+               return value_at(0);
+            }
+
+            virtual void set_ref(value_ptr*) {}
+
          protected:
 
             virtual value_ptr value_at(const std::size_t&) const = 0;
@@ -4781,10 +5135,50 @@ namespace exprtk
             sequence_t& sequence_;
          };
 
+         class vector_view_impl : public vector_holder_base
+         {
+         public:
+
+            typedef exprtk::vector_view<Type> vector_view_t;
+
+            vector_view_impl(vector_view_t& vec_view)
+            : vec_view_(vec_view)
+            {}
+
+            void set_ref(value_ptr* ref)
+            {
+               vec_view_.set_ref(ref);
+            }
+
+         protected:
+
+            value_ptr value_at(const std::size_t& index) const
+            {
+               return (index < vec_view_.size()) ? (&vec_view_[index]) : const_value_ptr(0);
+            }
+
+            std::size_t vector_size() const
+            {
+               return vec_view_.size();
+            }
+
+         private:
+
+            vector_view_impl operator=(const vector_view_impl&);
+
+            vector_view_t& vec_view_;
+         };
+
       public:
+
+         typedef typename details::vec_data_store<Type> vds_t;
 
          vector_holder(Type* vec, const std::size_t& vec_size)
          : vector_holder_base_(new(buffer)array_vector_impl(vec,vec_size))
+         {}
+
+         vector_holder(const vds_t& vds)
+         : vector_holder_base_(new(buffer)array_vector_impl(vds.data(),vds.size()))
          {}
 
          template <typename Allocator>
@@ -4792,9 +5186,8 @@ namespace exprtk
          : vector_holder_base_(new(buffer)sequence_vector_impl<Allocator,std::vector>(vec))
          {}
 
-         template <typename Allocator>
-         vector_holder(std::deque<Type,Allocator>& deq)
-         : vector_holder_base_(new(buffer)sequence_vector_impl<Allocator,std::deque>(deq))
+         vector_holder(exprtk::vector_view<Type>& vec)
+         : vector_holder_base_(new(buffer)vector_view_impl(vec))
          {}
 
          inline value_ptr operator[](const std::size_t& index) const
@@ -4805,6 +5198,16 @@ namespace exprtk
          inline std::size_t size() const
          {
             return vector_holder_base_->size();
+         }
+
+         inline value_ptr data() const
+         {
+            return vector_holder_base_->data();
+         }
+
+         void set_ref(value_ptr* ref)
+         {
+            return vector_holder_base_->set_ref(ref);
          }
 
       private:
@@ -4994,7 +5397,7 @@ namespace exprtk
 
          const char* base() const
          {
-           return value_.data();
+            return value_.data();
          }
 
          std::size_t size() const
@@ -5290,12 +5693,18 @@ namespace exprtk
             switch (operation_)
             {
                case e_inrange : return (arg1 < arg0) ? T(0) : ((arg1 > arg2) ? T(0) : T(1));
+
                case e_clamp   : return (arg1 < arg0) ? arg0 : (arg1 > arg2 ? arg2 : arg1);
+
                case e_iclamp  : if ((arg1 <= arg0) || (arg1 >= arg2))
                                    return arg1;
                                 else
                                    return ((T(2) * arg1  <= (arg2 + arg0)) ? arg0 : arg2);
-               default        : return std::numeric_limits<T>::quiet_NaN();
+
+               default        : {
+                                   exprtk_debug(("trinary_node::value() - Error: Invalid operation\n"));
+                                   return std::numeric_limits<T>::quiet_NaN();
+                                }
             }
          }
 
@@ -6350,16 +6759,23 @@ namespace exprtk
       {
       public:
 
-         typedef vector_node<T>* vector_node_ptr;
+         typedef vector_node<T>*   vector_node_ptr;
+         typedef vec_data_store<T>           vds_t;
 
          virtual ~vector_interface()
          {}
 
+         virtual std::size_t size   () const = 0;
+
          virtual vector_node_ptr vec() const = 0;
 
-         virtual vector_node_ptr vec() = 0;
+         virtual vector_node_ptr vec()       = 0;
 
-         virtual std::size_t size() const = 0;
+         virtual       vds_t& vds   ()       = 0;
+
+         virtual const vds_t& vds   () const = 0;
+
+         virtual bool side_effect   () const { return false; }
       };
 
       template <typename T>
@@ -6371,24 +6787,23 @@ namespace exprtk
          typedef expression_node<T>*  expression_ptr;
          typedef vector_holder<T>    vector_holder_t;
          typedef vector_node<T>*     vector_node_ptr;
+         typedef vec_data_store<T>             vds_t;
 
          vector_node(vector_holder_t* vh)
-         : vector_holder_(vh)
+         : vector_holder_(vh),
+           vds_((*vector_holder_).size(),(*vector_holder_)[0])
+         {
+            vector_holder_->set_ref(&vds_.ref());
+         }
+
+         vector_node(const vds_t& vds, vector_holder_t* vh)
+         : vector_holder_(vh),
+           vds_(vds)
          {}
 
          inline T value() const
          {
-            return *(ref()[0]);
-         }
-
-         inline const vector_holder_t& ref() const
-         {
-            return (*vector_holder_);
-         }
-
-         inline vector_holder_t& ref()
-         {
-            return (*vector_holder_);
+            return vds().data()[0];
          }
 
          vector_node_ptr vec() const
@@ -6408,12 +6823,28 @@ namespace exprtk
 
          std::size_t size() const
          {
-            return ref().size();
+            return vds().size();
+         }
+
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
+         }
+
+         inline vector_holder_t& vec_holder()
+         {
+            return (*vector_holder_);
          }
 
       private:
 
          vector_holder_t* vector_holder_;
+         vds_t                      vds_;
       };
 
       template <typename T>
@@ -6443,7 +6874,7 @@ namespace exprtk
 
          inline T value() const
          {
-           return *(vector_base_ + static_cast<std::size_t>(details::numeric::to_int64(index_->value())));
+            return *(vector_base_ + static_cast<std::size_t>(details::numeric::to_int64(index_->value())));
          }
 
          inline T& ref()
@@ -6614,8 +7045,9 @@ namespace exprtk
       {
       public:
 
-         typedef expression_node<T>* expression_ptr;
+         typedef expression_node<T>*  expression_ptr;
          typedef vector_node<T>*     vector_node_ptr;
+         typedef vec_data_store<T>             vds_t;
 
          swap_vecvec_node(expression_ptr branch0,
                           expression_ptr branch1)
@@ -6623,7 +7055,7 @@ namespace exprtk
            vec0_node_ptr_(0),
            vec1_node_ptr_(0),
            vec_size_     (0),
-           initialised_(false)
+           initialised_  (false)
          {
             if (is_ivector_node(binary_node<T>::branch_[0].first))
             {
@@ -6632,6 +7064,7 @@ namespace exprtk
                if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[0].first)))
                {
                   vec0_node_ptr_ = vi->vec();
+                  vds()          = vi->vds();
                }
             }
 
@@ -6647,8 +7080,8 @@ namespace exprtk
 
             if (vec0_node_ptr_ && vec1_node_ptr_)
             {
-               vec_size_ = std::min(vec0_node_ptr_->ref().size(),
-                                    vec1_node_ptr_->ref().size());
+               vec_size_ = std::min(vec0_node_ptr_->vds().size(),
+                                    vec1_node_ptr_->vds().size());
 
                initialised_ = true;
             }
@@ -6661,12 +7094,12 @@ namespace exprtk
                binary_node<T>::branch_[0].first->value();
                binary_node<T>::branch_[1].first->value();
 
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
-               vector_holder<T>& vec1 = vec1_node_ptr_->ref();
+               T* vec0 = vec0_node_ptr_->vds().data();
+               T* vec1 = vec1_node_ptr_->vds().data();
 
                for (std::size_t i = 0; i < vec_size_; ++i)
                {
-                  std::swap((*vec0[i]),(*vec1[i]));
+                  std::swap(vec0[i],vec1[i]);
                }
 
                return vec1_node_ptr_->value();
@@ -6695,12 +7128,23 @@ namespace exprtk
             return vec_size_;
          }
 
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
+         }
+
       private:
 
          vector_node<T>* vec0_node_ptr_;
          vector_node<T>* vec1_node_ptr_;
          std::size_t     vec_size_;
          bool            initialised_;
+         vds_t           vds_;
       };
 
       #ifndef exprtk_disable_string_capabilities
@@ -6747,7 +7191,7 @@ namespace exprtk
 
          const char* base() const
          {
-           return (*value_).data();
+            return &(*value_)[0];
          }
 
          std::size_t size() const
@@ -6827,7 +7271,7 @@ namespace exprtk
 
          const char* base() const
          {
-           return (*value_).data();
+            return &(*value_)[0];
          }
 
          std::size_t size() const
@@ -6905,7 +7349,7 @@ namespace exprtk
 
          const char* base() const
          {
-           return value_.data();
+            return value_.data();
          }
 
          std::size_t size() const
@@ -7036,7 +7480,7 @@ namespace exprtk
 
          const char* base() const
          {
-           return value_.data();
+            return &value_[0];
          }
 
          std::size_t size() const
@@ -7175,7 +7619,7 @@ namespace exprtk
 
          const char* base() const
          {
-           return value_.data();
+            return &value_[0];
          }
 
          std::size_t size() const
@@ -7291,6 +7735,158 @@ namespace exprtk
          bool initialised_;
          strvar_node_ptr str0_node_ptr_;
          strvar_node_ptr str1_node_ptr_;
+      };
+
+      template <typename T>
+      class swap_genstrings_node : public binary_node<T>
+      {
+      public:
+
+         typedef expression_node <T>* expression_ptr;
+         typedef string_base_node<T>*   str_base_ptr;
+         typedef range_pack      <T>         range_t;
+         typedef range_t*                  range_ptr;
+         typedef range_interface<T>         irange_t;
+         typedef irange_t*                irange_ptr;
+
+         swap_genstrings_node(expression_ptr branch0,
+                              expression_ptr branch1)
+         : binary_node<T>(details::e_default,branch0,branch1),
+           str0_base_ptr_ (0),
+           str1_base_ptr_ (0),
+           str0_range_ptr_(0),
+           str1_range_ptr_(0),
+           initialised_(false)
+         {
+            if (is_generally_string_node(binary_node<T>::branch_[0].first))
+            {
+               str0_base_ptr_ = dynamic_cast<str_base_ptr>(binary_node<T>::branch_[0].first);
+
+               if (0 == str0_base_ptr_)
+                  return;
+
+               irange_ptr range_ptr = dynamic_cast<irange_ptr>(binary_node<T>::branch_[0].first);
+
+               if (0 == range_ptr)
+                  return;
+
+               str0_range_ptr_ = &(range_ptr->range_ref());
+            }
+
+            if (is_generally_string_node(binary_node<T>::branch_[1].first))
+            {
+               str1_base_ptr_ = dynamic_cast<str_base_ptr>(binary_node<T>::branch_[1].first);
+
+               if (0 == str1_base_ptr_)
+                  return;
+
+               irange_ptr range_ptr = dynamic_cast<irange_ptr>(binary_node<T>::branch_[1].first);
+
+               if (0 == range_ptr)
+                  return;
+
+               str1_range_ptr_ = &(range_ptr->range_ref());
+            }
+
+            initialised_ = str0_base_ptr_  &&
+                           str1_base_ptr_  &&
+                           str0_range_ptr_ &&
+                           str1_range_ptr_ ;
+         }
+
+         inline T value() const
+         {
+            if (initialised_)
+            {
+               binary_node<T>::branch_[0].first->value();
+               binary_node<T>::branch_[1].first->value();
+
+               std::size_t str0_r0 = 0;
+               std::size_t str0_r1 = 0;
+
+               std::size_t str1_r0 = 0;
+               std::size_t str1_r1 = 0;
+
+               range_t& range0 = (*str0_range_ptr_);
+               range_t& range1 = (*str1_range_ptr_);
+
+               if (
+                    range0(str0_r0,str0_r1,str0_base_ptr_->size()) &&
+                    range1(str1_r0,str1_r1,str1_base_ptr_->size())
+                  )
+               {
+                  const std::size_t size0    = range0.cache_size();
+                  const std::size_t size1    = range1.cache_size();
+                  const std::size_t max_size = std::min(size0,size1);
+
+                  char* s0 = const_cast<char*>(str0_base_ptr_->base() + str0_r0);
+                  char* s1 = const_cast<char*>(str1_base_ptr_->base() + str1_r0);
+
+                  loop_unroll::details lud(max_size);
+                  const char* upper_bound = s0 + lud.upper_bound;
+
+                  while (s0 < upper_bound)
+                  {
+                     #define exprtk_loop(N)   \
+                     std::swap(s0[N], s1[N]); \
+
+                     exprtk_loop( 0) exprtk_loop( 1)
+                     exprtk_loop( 2) exprtk_loop( 3)
+                     #ifndef exprtk_disable_superscalar_unroll
+                     exprtk_loop( 4) exprtk_loop( 5)
+                     exprtk_loop( 6) exprtk_loop( 7)
+                     exprtk_loop( 8) exprtk_loop( 9)
+                     exprtk_loop(10) exprtk_loop(11)
+                     exprtk_loop(12) exprtk_loop(13)
+                     exprtk_loop(14) exprtk_loop(15)
+                     #endif
+
+                     s0 += lud.batch_size;
+                     s1 += lud.batch_size;
+                  }
+
+                  int i = 0;
+
+                  switch (lud.remainder)
+                  {
+                     #define case_stmt(N)                      \
+                     case N : { std::swap(s0[i],s1[i]); ++i; } \
+
+                     #ifndef exprtk_disable_superscalar_unroll
+                     case_stmt(15) case_stmt(14)
+                     case_stmt(13) case_stmt(12)
+                     case_stmt(11) case_stmt(10)
+                     case_stmt( 9) case_stmt( 8)
+                     case_stmt( 7) case_stmt( 6)
+                     case_stmt( 5) case_stmt( 4)
+                     #endif
+                     case_stmt( 3) case_stmt( 2)
+                     case_stmt( 1)
+                  }
+
+                  #undef exprtk_loop
+                  #undef case_stmt
+               }
+            }
+
+            return std::numeric_limits<T>::quiet_NaN();
+         }
+
+         inline typename expression_node<T>::node_type type() const
+         {
+            return expression_node<T>::e_strswap;
+         }
+
+      private:
+
+         swap_genstrings_node(swap_genstrings_node<T>&);
+         swap_genstrings_node<T>& operator=(swap_genstrings_node<T>&);
+
+         str_base_ptr str0_base_ptr_;
+         str_base_ptr str1_base_ptr_;
+         range_ptr    str0_range_ptr_;
+         range_ptr    str1_range_ptr_;
+         bool         initialised_;
       };
 
       template <typename T>
@@ -7765,7 +8361,7 @@ namespace exprtk
 
          const char* base() const
          {
-           return value_.data();
+            return &value_[0];
          }
 
          std::size_t size() const
@@ -7885,7 +8481,7 @@ namespace exprtk
 
          const char* base() const
          {
-           return value_.data();
+            return &value_[0];
          }
 
          std::size_t size() const
@@ -8441,6 +9037,7 @@ namespace exprtk
             if (var_node_ptr_)
             {
                T& result = var_node_ptr_->ref();
+
                result = binary_node<T>::branch_[1].first->value();
 
                return result;
@@ -8478,6 +9075,7 @@ namespace exprtk
             if (vec_node_ptr_)
             {
                T& result = vec_node_ptr_->ref();
+
                result = binary_node<T>::branch_[1].first->value();
 
                return result;
@@ -8491,28 +9089,6 @@ namespace exprtk
          vector_elem_node<T>* vec_node_ptr_;
       };
 
-      namespace loop_unroll
-      {
-         #ifndef exprtk_disable_superscalar_unroll
-         const std::size_t loop_batch_size = 8;
-         #else
-         const std::size_t loop_batch_size = 4;
-         #endif
-
-         struct details
-         {
-            details(const std::size_t& vsize)
-            : batch_size(loop_batch_size),
-              remainder (vsize % batch_size),
-              upper_bound(static_cast<int>(vsize - (remainder ? loop_batch_size : 0)))
-            {}
-
-            int  batch_size;
-            int   remainder;
-            int upper_bound;
-         };
-      }
-
       template <typename T>
       class assignment_vec_node : public binary_node     <T>,
                                   public vector_interface<T>
@@ -8521,18 +9097,18 @@ namespace exprtk
 
          typedef expression_node<T>* expression_ptr;
          typedef vector_node<T>*    vector_node_ptr;
+         typedef vec_data_store<T>            vds_t;
 
          assignment_vec_node(const operator_type& opr,
                              expression_ptr branch0,
                              expression_ptr branch1)
          : binary_node<T>(opr,branch0,branch1),
-           vec_node_ptr_(0),
-           vec_size_    (0)
+           vec_node_ptr_(0)
          {
             if (is_vector_node(binary_node<T>::branch_[0].first))
             {
                vec_node_ptr_ = static_cast<vector_node<T>*>(binary_node<T>::branch_[0].first);
-               vec_size_     = vec_node_ptr_->ref().size();
+               vds()         = vec_node_ptr_->vds();
             }
          }
 
@@ -8540,38 +9116,51 @@ namespace exprtk
          {
             if (vec_node_ptr_)
             {
-               vector_holder<T>& vec_hldr = vec_node_ptr_->ref();
                const T v = binary_node<T>::branch_[1].first->value();
 
-               loop_unroll::details lud(vec_size_);
-               int i = 0;
+               T* vec = vds().data();
 
-               for (; i < lud.upper_bound; i += lud.batch_size)
+               loop_unroll::details lud(size());
+               const T* upper_bound = vec + lud.upper_bound;
+
+               while (vec < upper_bound)
                {
-                  (*vec_hldr[i    ]) = v;
-                  (*vec_hldr[i + 1]) = v;
-                  (*vec_hldr[i + 2]) = v;
-                  (*vec_hldr[i + 3]) = v;
+                 #define exprtk_loop(N) \
+                  vec[N] = v;           \
+
+                  exprtk_loop( 0) exprtk_loop( 1)
+                  exprtk_loop( 2) exprtk_loop( 3)
                   #ifndef exprtk_disable_superscalar_unroll
-                  (*vec_hldr[i + 4]) = v;
-                  (*vec_hldr[i + 5]) = v;
-                  (*vec_hldr[i + 6]) = v;
-                  (*vec_hldr[i + 7]) = v;
+                  exprtk_loop( 4) exprtk_loop( 5)
+                  exprtk_loop( 6) exprtk_loop( 7)
+                  exprtk_loop( 8) exprtk_loop( 9)
+                  exprtk_loop(10) exprtk_loop(11)
+                  exprtk_loop(12) exprtk_loop(13)
+                  exprtk_loop(14) exprtk_loop(15)
                   #endif
+
+                  vec += lud.batch_size;
                }
 
                switch (lud.remainder)
                {
+                  #define case_stmt(N) \
+                  case N : *vec++ = v; \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 7 : (*vec_hldr[i++]) = v;
-                  case 6 : (*vec_hldr[i++]) = v;
-                  case 5 : (*vec_hldr[i++]) = v;
-                  case 4 : (*vec_hldr[i++]) = v;
+                  case_stmt(15) case_stmt(14)
+                  case_stmt(13) case_stmt(12)
+                  case_stmt(11) case_stmt(10)
+                  case_stmt( 9) case_stmt( 8)
+                  case_stmt( 7) case_stmt( 6)
+                  case_stmt( 5) case_stmt( 4)
                   #endif
-                  case 3 : (*vec_hldr[i++]) = v;
-                  case 2 : (*vec_hldr[i++]) = v;
-                  case 1 : (*vec_hldr[i++]) = v;
+                  case_stmt( 3) case_stmt( 2)
+                  case_stmt( 1)
                }
+
+               #undef exprtk_loop
+               #undef case_stmt
 
                return vec_node_ptr_->value();
             }
@@ -8596,13 +9185,23 @@ namespace exprtk
 
          std::size_t size() const
          {
-            return vec_size_;
+            return vds().size();
+         }
+
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
          }
 
       private:
 
          vector_node<T>* vec_node_ptr_;
-         std::size_t     vec_size_;
+         vds_t           vds_;
       };
 
       template <typename T>
@@ -8611,8 +9210,9 @@ namespace exprtk
       {
       public:
 
-         typedef expression_node<T>* expression_ptr;
+         typedef expression_node<T>*  expression_ptr;
          typedef vector_node<T>*     vector_node_ptr;
+         typedef vec_data_store<T>             vds_t;
 
          assignment_vecvec_node(const operator_type& opr,
                                 expression_ptr branch0,
@@ -8620,17 +9220,19 @@ namespace exprtk
          : binary_node<T>(opr,branch0,branch1),
            vec0_node_ptr_(0),
            vec1_node_ptr_(0),
-           vec_size_     (0),
-           initialised_(false)
+           initialised_(false),
+           src_is_ivec_(false)
          {
             if (is_vector_node(binary_node<T>::branch_[0].first))
             {
                vec0_node_ptr_ = static_cast<vector_node<T>*>(binary_node<T>::branch_[0].first);
+               vds()          = vec0_node_ptr_->vds();
             }
 
             if (is_vector_node(binary_node<T>::branch_[1].first))
             {
                vec1_node_ptr_ = static_cast<vector_node<T>*>(binary_node<T>::branch_[1].first);
+               vds_t::match_sizes(vds(),vec1_node_ptr_->vds());
             }
             else if (is_ivector_node(binary_node<T>::branch_[1].first))
             {
@@ -8639,56 +9241,74 @@ namespace exprtk
                if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[1].first)))
                {
                   vec1_node_ptr_ = vi->vec();
+
+                  if (!vi->side_effect())
+                  {
+                     vi->vds()    = vds();
+                     src_is_ivec_ = true;
+                  }
+                  else
+                     vds_t::match_sizes(vds(),vi->vds());
                }
             }
 
-            if (vec0_node_ptr_ && vec1_node_ptr_)
-            {
-               vec_size_ = std::min(vec0_node_ptr_->ref().size(),
-                                    vec1_node_ptr_->ref().size());
-
-               initialised_ = true;
-            }
+            initialised_ = (vec0_node_ptr_ && vec1_node_ptr_);
          }
 
          inline T value() const
          {
-            binary_node<T>::branch_[1].first->value();
-
             if (initialised_)
             {
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
-               vector_holder<T>& vec1 = vec1_node_ptr_->ref();
+               binary_node<T>::branch_[1].first->value();
 
-               loop_unroll::details lud(vec_size_);
-               int i = 0;
+               if (src_is_ivec_)
+                  return vec0_node_ptr_->value();
 
-               for (; i < lud.upper_bound; i += lud.batch_size)
+               T* vec0 = vec0_node_ptr_->vds().data();
+               T* vec1 = vec1_node_ptr_->vds().data();
+
+               loop_unroll::details lud(size());
+               const T* upper_bound = vec0 + lud.upper_bound;
+
+               while (vec0 < upper_bound)
                {
-                  (*vec0[i    ]) = (*vec1[i    ]);
-                  (*vec0[i + 1]) = (*vec1[i + 1]);
-                  (*vec0[i + 2]) = (*vec1[i + 2]);
-                  (*vec0[i + 3]) = (*vec1[i + 3]);
+                  #define exprtk_loop(N) \
+                  vec0[N] = vec1[N];     \
+
+                  exprtk_loop( 0) exprtk_loop( 1)
+                  exprtk_loop( 2) exprtk_loop( 3)
                   #ifndef exprtk_disable_superscalar_unroll
-                  (*vec0[i + 4]) = (*vec1[i + 4]);
-                  (*vec0[i + 5]) = (*vec1[i + 5]);
-                  (*vec0[i + 6]) = (*vec1[i + 6]);
-                  (*vec0[i + 7]) = (*vec1[i + 7]);
+                  exprtk_loop( 4) exprtk_loop( 5)
+                  exprtk_loop( 6) exprtk_loop( 7)
+                  exprtk_loop( 8) exprtk_loop( 9)
+                  exprtk_loop(10) exprtk_loop(11)
+                  exprtk_loop(12) exprtk_loop(13)
+                  exprtk_loop(14) exprtk_loop(15)
                   #endif
+
+                  vec0 += lud.batch_size;
+                  vec1 += lud.batch_size;
                }
 
                switch (lud.remainder)
                {
+                  #define case_stmt(N)        \
+                  case N : *vec0++ = *vec1++; \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 7 : { (*vec0[i]) = (*vec1[i]); ++i; }
-                  case 6 : { (*vec0[i]) = (*vec1[i]); ++i; }
-                  case 5 : { (*vec0[i]) = (*vec1[i]); ++i; }
-                  case 4 : { (*vec0[i]) = (*vec1[i]); ++i; }
+                  case_stmt(15) case_stmt(14)
+                  case_stmt(13) case_stmt(12)
+                  case_stmt(11) case_stmt(10)
+                  case_stmt( 9) case_stmt( 8)
+                  case_stmt( 7) case_stmt( 6)
+                  case_stmt( 5) case_stmt( 4)
                   #endif
-                  case 3 : { (*vec0[i]) = (*vec1[i]); ++i; }
-                  case 2 : { (*vec0[i]) = (*vec1[i]); ++i; }
-                  case 1 : { (*vec0[i]) = (*vec1[i]); ++i; }
+                  case_stmt( 3) case_stmt( 2)
+                  case_stmt( 1)
                }
+
+               #undef exprtk_loop
+               #undef case_stmt
 
                return vec0_node_ptr_->value();
             }
@@ -8713,15 +9333,26 @@ namespace exprtk
 
          std::size_t size() const
          {
-            return vec_size_;
+            return vds().size();
+         }
+
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
          }
 
       private:
 
          vector_node<T>* vec0_node_ptr_;
          vector_node<T>* vec1_node_ptr_;
-         std::size_t     vec_size_;
          bool            initialised_;
+         bool            src_is_ivec_;
+         vds_t           vds_;
       };
 
       template <typename T, typename Operation>
@@ -8804,20 +9435,20 @@ namespace exprtk
       {
       public:
 
-         typedef expression_node<T>* expression_ptr;
+         typedef expression_node<T>*  expression_ptr;
          typedef vector_node<T>*     vector_node_ptr;
+         typedef vec_data_store<T>             vds_t;
 
          assignment_vec_op_node(const operator_type& opr,
                                 expression_ptr branch0,
                                 expression_ptr branch1)
          : binary_node<T>(opr,branch0,branch1),
-           vec_node_ptr_(0),
-           vec_size_    (0)
+           vec_node_ptr_(0)
          {
             if (is_vector_node(binary_node<T>::branch_[0].first))
             {
                vec_node_ptr_ = static_cast<vector_node<T>*>(binary_node<T>::branch_[0].first);
-               vec_size_     = vec_node_ptr_->ref().size();
+               vds()         = vec_node_ptr_->vds();
             }
          }
 
@@ -8825,38 +9456,51 @@ namespace exprtk
          {
             if (vec_node_ptr_)
             {
-               vector_holder<T>& vec_hldr = vec_node_ptr_->ref();
                const T v = binary_node<T>::branch_[1].first->value();
 
-               loop_unroll::details lud(vec_size_);
-               int i = 0;
+               T* vec = vds().data();
 
-               for (; i < lud.upper_bound; i += lud.batch_size)
+               loop_unroll::details lud(size());
+               const T* upper_bound = vec + lud.upper_bound;
+
+               while (vec < upper_bound)
                {
-                  Operation::assign(*vec_hldr[i    ],v);
-                  Operation::assign(*vec_hldr[i + 1],v);
-                  Operation::assign(*vec_hldr[i + 2],v);
-                  Operation::assign(*vec_hldr[i + 3],v);
+                  #define exprtk_loop(N)       \
+                  Operation::assign(vec[N],v); \
+
+                  exprtk_loop( 0) exprtk_loop( 1)
+                  exprtk_loop( 2) exprtk_loop( 3)
                   #ifndef exprtk_disable_superscalar_unroll
-                  Operation::assign(*vec_hldr[i + 4],v);
-                  Operation::assign(*vec_hldr[i + 5],v);
-                  Operation::assign(*vec_hldr[i + 6],v);
-                  Operation::assign(*vec_hldr[i + 7],v);
+                  exprtk_loop( 4) exprtk_loop( 5)
+                  exprtk_loop( 6) exprtk_loop( 7)
+                  exprtk_loop( 8) exprtk_loop( 9)
+                  exprtk_loop(10) exprtk_loop(11)
+                  exprtk_loop(12) exprtk_loop(13)
+                  exprtk_loop(14) exprtk_loop(15)
                   #endif
+
+                  vec += lud.batch_size;
                }
 
                switch (lud.remainder)
                {
+                  #define case_stmt(N)                  \
+                  case N : Operation::assign(*vec++,v); \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 7 : Operation::assign((*vec_hldr[i++]),v);
-                  case 6 : Operation::assign((*vec_hldr[i++]),v);
-                  case 5 : Operation::assign((*vec_hldr[i++]),v);
-                  case 4 : Operation::assign((*vec_hldr[i++]),v);
+                  case_stmt(15) case_stmt(14)
+                  case_stmt(13) case_stmt(12)
+                  case_stmt(11) case_stmt(10)
+                  case_stmt( 9) case_stmt( 8)
+                  case_stmt( 7) case_stmt( 6)
+                  case_stmt( 5) case_stmt( 4)
                   #endif
-                  case 3 : Operation::assign((*vec_hldr[i++]),v);
-                  case 2 : Operation::assign((*vec_hldr[i++]),v);
-                  case 1 : Operation::assign((*vec_hldr[i++]),v);
+                  case_stmt( 3) case_stmt( 2)
+                  case_stmt( 1)
                }
+
+               #undef exprtk_loop
+               #undef case_stmt
 
                return vec_node_ptr_->value();
             }
@@ -8881,13 +9525,28 @@ namespace exprtk
 
          std::size_t size() const
          {
-            return vec_size_;
+            return vds().size();
+         }
+
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
+         }
+
+         bool side_effect() const
+         {
+            return true;
          }
 
       private:
 
          vector_node<T>* vec_node_ptr_;
-         std::size_t     vec_size_;
+         vds_t           vds_;
       };
 
       template <typename T, typename Operation>
@@ -8896,8 +9555,9 @@ namespace exprtk
       {
       public:
 
-         typedef expression_node<T>* expression_ptr;
+         typedef expression_node<T>*  expression_ptr;
          typedef vector_node<T>*     vector_node_ptr;
+         typedef vec_data_store<T>             vds_t;
 
          assignment_vecvec_op_node(const operator_type& opr,
                                    expression_ptr branch0,
@@ -8905,17 +9565,18 @@ namespace exprtk
          : binary_node<T>(opr,branch0,branch1),
            vec0_node_ptr_(0),
            vec1_node_ptr_(0),
-           vec_size_     (0),
            initialised_(false)
          {
             if (is_vector_node(binary_node<T>::branch_[0].first))
             {
                vec0_node_ptr_ = static_cast<vector_node<T>*>(binary_node<T>::branch_[0].first);
+               vds()          = vec0_node_ptr_->vds();
             }
 
             if (is_vector_node(binary_node<T>::branch_[1].first))
             {
                vec1_node_ptr_ = static_cast<vector_node<T>*>(binary_node<T>::branch_[1].first);
+               vec1_node_ptr_->vds() = vds();
             }
             else if (is_ivector_node(binary_node<T>::branch_[1].first))
             {
@@ -8924,16 +9585,13 @@ namespace exprtk
                if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[1].first)))
                {
                   vec1_node_ptr_ = vi->vec();
+                  vec1_node_ptr_->vds() = vds();
                }
+               else
+                  vds_t::match_sizes(vds(),vec1_node_ptr_->vds());
             }
 
-            if (vec0_node_ptr_ && vec1_node_ptr_)
-            {
-               vec_size_ = std::min(vec0_node_ptr_->ref().size(),
-                                    vec1_node_ptr_->ref().size());
-
-               initialised_ = true;
-            }
+            initialised_ = (vec0_node_ptr_ && vec1_node_ptr_);
          }
 
          inline T value() const
@@ -8943,39 +9601,53 @@ namespace exprtk
                binary_node<T>::branch_[0].first->value();
                binary_node<T>::branch_[1].first->value();
 
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
-               vector_holder<T>& vec1 = vec1_node_ptr_->ref();
+               T* vec0 = vec0_node_ptr_->vds().data();
+               T* vec1 = vec1_node_ptr_->vds().data();
 
-               loop_unroll::details lud(vec_size_);
-               int i = 0;
+               loop_unroll::details lud(size());
+               const T* upper_bound = vec0 + lud.upper_bound;
 
-               #define exprtk_loop(N)                                            \
-               (*vec0[i + N]) = Operation::process((*vec0[i + N]),*vec1[i + N]); \
-
-               for (; i < lud.upper_bound; i += lud.batch_size)
+               while (vec0 < upper_bound)
                {
-                  exprtk_loop(0) exprtk_loop(1)
-                  exprtk_loop(2) exprtk_loop(3)
+                  #define exprtk_loop(N)                         \
+                  vec0[N] = Operation::process(vec0[N],vec1[N]); \
+
+                  exprtk_loop( 0) exprtk_loop( 1)
+                  exprtk_loop( 2) exprtk_loop( 3)
                   #ifndef exprtk_disable_superscalar_unroll
-                  exprtk_loop(4) exprtk_loop(5)
-                  exprtk_loop(6) exprtk_loop(7)
+                  exprtk_loop( 4) exprtk_loop( 5)
+                  exprtk_loop( 6) exprtk_loop( 7)
+                  exprtk_loop( 8) exprtk_loop( 9)
+                  exprtk_loop(10) exprtk_loop(11)
+                  exprtk_loop(12) exprtk_loop(13)
+                  exprtk_loop(14) exprtk_loop(15)
                   #endif
+
+                  vec0 += lud.batch_size;
+                  vec1 += lud.batch_size;
                }
+
+               int i = 0;
 
                switch (lud.remainder)
                {
+                  #define case_stmt(N)                                             \
+                  case N : { vec0[i] = Operation::process(vec0[i],vec1[i]); ++i; } \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 7 : { exprtk_loop(0) ++i; }
-                  case 6 : { exprtk_loop(0) ++i; }
-                  case 5 : { exprtk_loop(0) ++i; }
-                  case 4 : { exprtk_loop(0) ++i; }
+                  case_stmt(15) case_stmt(14)
+                  case_stmt(13) case_stmt(12)
+                  case_stmt(11) case_stmt(10)
+                  case_stmt( 9) case_stmt( 8)
+                  case_stmt( 7) case_stmt( 6)
+                  case_stmt( 5) case_stmt( 4)
                   #endif
-                  case 3 : { exprtk_loop(0) ++i; }
-                  case 2 : { exprtk_loop(0) ++i; }
-                  case 1 : { exprtk_loop(0) ++i; }
+                  case_stmt( 3) case_stmt( 2)
+                  case_stmt( 1)
                }
 
                #undef exprtk_loop
+               #undef case_stmt
 
                return vec0_node_ptr_->value();
             }
@@ -9000,317 +9672,56 @@ namespace exprtk
 
          std::size_t size() const
          {
-            return vec_size_;
+            return vds().size();
+         }
+
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
+         }
+
+         bool side_effect() const
+         {
+            return true;
          }
 
       private:
 
          vector_node<T>* vec0_node_ptr_;
          vector_node<T>* vec1_node_ptr_;
-         std::size_t     vec_size_;
          bool            initialised_;
+         vds_t           vds_;
       };
 
       template <typename T, typename Operation>
-      class eqineq_vecvec_node : public binary_node     <T>,
-                                 public vector_interface<T>
-      {
-      public:
-
-         typedef expression_node<T>*  expression_ptr;
-         typedef vector_node<T>*     vector_node_ptr;
-
-         eqineq_vecvec_node(const operator_type& opr,
-                            expression_ptr branch0,
-                            expression_ptr branch1)
-         : binary_node<T>(opr,branch0,branch1),
-           vec0_node_ptr_(0),
-           vec1_node_ptr_(0),
-           vec_size_     (0),
-           initialised_(false)
-         {
-
-            if (is_vector_node(binary_node<T>::branch_[0].first))
-            {
-               vec0_node_ptr_ = static_cast<vector_node<T>*>(binary_node<T>::branch_[0].first);
-            }
-            else if (is_ivector_node(binary_node<T>::branch_[0].first))
-            {
-               vector_interface<T>* vi = reinterpret_cast<vector_interface<T>*>(0);
-
-               if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[0].first)))
-               {
-                  vec0_node_ptr_ = vi->vec();
-               }
-            }
-
-            if (is_vector_node(binary_node<T>::branch_[1].first))
-            {
-               vec1_node_ptr_ = static_cast<vector_node<T>*>(binary_node<T>::branch_[1].first);
-            }
-            else if (is_ivector_node(binary_node<T>::branch_[1].first))
-            {
-               vector_interface<T>* vi = reinterpret_cast<vector_interface<T>*>(0);
-
-               if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[1].first)))
-               {
-                  vec1_node_ptr_ = vi->vec();
-               }
-            }
-
-            if (vec0_node_ptr_ && vec1_node_ptr_)
-            {
-               vec_size_ = std::min(vec0_node_ptr_->ref().size(),
-                                    vec1_node_ptr_->ref().size());
-
-               initialised_ = true;
-            }
-         }
-
-         inline T value() const
-         {
-            if (initialised_)
-            {
-               binary_node<T>::branch_[0].first->value();
-               binary_node<T>::branch_[1].first->value();
-
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
-               vector_holder<T>& vec1 = vec1_node_ptr_->ref();
-
-               for (std::size_t i = 0; i < vec_size_; ++i)
-               {
-                  if (std::equal_to<T>()(T(0),Operation::process(*vec0[i],*vec1[i])))
-                  {
-                     return T(0);
-                  }
-               }
-
-               return T(1);
-            }
-            else
-               return std::numeric_limits<T>::quiet_NaN();
-         }
-
-         vector_node_ptr vec() const
-         {
-            return vec0_node_ptr_;
-         }
-
-         vector_node_ptr vec()
-         {
-            return vec0_node_ptr_;
-         }
-
-         inline typename expression_node<T>::node_type type() const
-         {
-            return expression_node<T>::e_vecvecineq;
-         }
-
-         std::size_t size() const
-         {
-            return vec_size_;
-         }
-
-      private:
-
-         vector_node<T>* vec0_node_ptr_;
-         vector_node<T>* vec1_node_ptr_;
-         std::size_t     vec_size_;
-         bool            initialised_;
-      };
-
-      template <typename T, typename Operation>
-      class eqineq_vecval_node : public binary_node     <T>,
-                                 public vector_interface<T>
-      {
-      public:
-
-         typedef expression_node<T>*  expression_ptr;
-         typedef vector_node<T>*     vector_node_ptr;
-
-         eqineq_vecval_node(const operator_type& opr,
-                            expression_ptr branch0,
-                            expression_ptr branch1)
-         : binary_node<T>(opr,branch0,branch1),
-           vec_node_ptr_(0),
-           vec_size_    (0)
-         {
-            if (is_vector_node(binary_node<T>::branch_[0].first))
-            {
-               vec_node_ptr_ = static_cast<vector_node_ptr>(binary_node<T>::branch_[0].first);
-            }
-            else if (is_ivector_node(binary_node<T>::branch_[0].first))
-            {
-               vector_interface<T>* vi = reinterpret_cast<vector_interface<T>*>(0);
-
-               if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[0].first)))
-               {
-                  vec_node_ptr_ = vi->vec();
-               }
-            }
-
-            if (vec_node_ptr_)
-            {
-               vec_size_ = vec_node_ptr_->ref().size();
-            }
-         }
-
-         inline T value() const
-         {
-            if (vec_node_ptr_)
-            {
-                     binary_node<T>::branch_[0].first->value();
-               T v = binary_node<T>::branch_[1].first->value();
-
-               vector_holder<T>& vec_hldr = vec_node_ptr_->ref();
-
-               for (std::size_t i = 0; i < vec_size_; ++i)
-               {
-                  if (std::equal_to<T>()(T(0),Operation::process(*vec_hldr[i],v)))
-                  {
-                     return T(0);
-                  }
-               }
-
-               return T(1);
-            }
-            else
-               return std::numeric_limits<T>::quiet_NaN();
-         }
-
-         vector_node_ptr vec() const
-         {
-            return vec_node_ptr_;
-         }
-
-         vector_node_ptr vec()
-         {
-            return vec_node_ptr_;
-         }
-
-         inline typename expression_node<T>::node_type type() const
-         {
-            return expression_node<T>::e_vecvalineq;
-         }
-
-         std::size_t size() const
-         {
-            return vec_size_;
-         }
-
-      private:
-
-         vector_node<T>* vec_node_ptr_;
-         std::size_t     vec_size_;
-      };
-
-      template <typename T, typename Operation>
-      class eqineq_valvec_node : public binary_node     <T>,
-                                 public vector_interface<T>
-      {
-      public:
-
-         typedef expression_node<T>*  expression_ptr;
-         typedef vector_node<T>*     vector_node_ptr;
-
-         eqineq_valvec_node(const operator_type& opr,
-                            expression_ptr branch0,
-                            expression_ptr branch1)
-         : binary_node<T>(opr,branch0,branch1),
-           vec_node_ptr_(0),
-           vec_size_    (0)
-         {
-            if (is_vector_node(binary_node<T>::branch_[1].first))
-            {
-               vec_node_ptr_ = static_cast<vector_node_ptr>(binary_node<T>::branch_[1].first);
-            }
-            else if (is_ivector_node(binary_node<T>::branch_[1].first))
-            {
-               vector_interface<T>* vi = reinterpret_cast<vector_interface<T>*>(0);
-
-               if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[1].first)))
-               {
-                  vec_node_ptr_ = vi->vec();
-               }
-            }
-
-            if (vec_node_ptr_)
-            {
-               vec_size_ = vec_node_ptr_->ref().size();
-            }
-         }
-
-         inline T value() const
-         {
-            if (vec_node_ptr_)
-            {
-               T v = binary_node<T>::branch_[0].first->value();
-                     binary_node<T>::branch_[1].first->value();
-
-               vector_holder<T>& vec_hldr = vec_node_ptr_->ref();
-
-               for (std::size_t i = 0; i < vec_size_; ++i)
-               {
-                  if (std::equal_to<T>()(T(0),Operation::process(v,*vec_hldr[i])))
-                  {
-                     return T(0);
-                  }
-               }
-
-               return T(1);
-            }
-            else
-               return std::numeric_limits<T>::quiet_NaN();
-         }
-
-         vector_node_ptr vec() const
-         {
-            return vec_node_ptr_;
-         }
-
-         vector_node_ptr vec()
-         {
-            return vec_node_ptr_;
-         }
-
-         inline typename expression_node<T>::node_type type() const
-         {
-            return expression_node<T>::e_valvecineq;
-         }
-
-         std::size_t size() const
-         {
-            return vec_size_;
-         }
-
-      private:
-
-         vector_node<T>* vec_node_ptr_;
-         std::size_t     vec_size_;
-      };
-
-      template <typename T, typename Operation>
-      class vecarith_vecvec_node : public binary_node     <T>,
-                                   public vector_interface<T>
+      class vec_binop_vecvec_node : public binary_node     <T>,
+                                    public vector_interface<T>
       {
       public:
 
          typedef expression_node<T>*    expression_ptr;
          typedef vector_node<T>*       vector_node_ptr;
          typedef vector_holder<T>*   vector_holder_ptr;
+         typedef vec_data_store<T>               vds_t;
 
-         vecarith_vecvec_node(const operator_type& opr,
-                              expression_ptr branch0,
-                              expression_ptr branch1)
+         vec_binop_vecvec_node(const operator_type& opr,
+                               expression_ptr branch0,
+                               expression_ptr branch1)
          : binary_node<T>(opr,branch0,branch1),
            vec0_node_ptr_(0),
            vec1_node_ptr_(0),
-           vec_size_     (0),
-           data_         (0),
            temp_         (0),
            temp_vec_node_(0),
            initialised_(false)
          {
+            bool v0_is_ivec = false;
+            bool v1_is_ivec = false;
+
             if (is_vector_node(binary_node<T>::branch_[0].first))
             {
                vec0_node_ptr_ = static_cast<vector_node_ptr>(binary_node<T>::branch_[0].first);
@@ -9322,6 +9733,7 @@ namespace exprtk
                if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[0].first)))
                {
                   vec0_node_ptr_ = vi->vec();
+                  v0_is_ivec     = true;
                }
             }
 
@@ -9336,28 +9748,33 @@ namespace exprtk
                if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[1].first)))
                {
                   vec1_node_ptr_ = vi->vec();
+                  v1_is_ivec     = true;
                }
             }
 
             if (vec0_node_ptr_ && vec1_node_ptr_)
             {
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
-               vector_holder<T>& vec1 = vec1_node_ptr_->ref();
+               vector_holder<T>& vec0 = vec0_node_ptr_->vec_holder();
+               vector_holder<T>& vec1 = vec1_node_ptr_->vec_holder();
 
-               vec_size_      = std::min(vec0.size(),vec1.size());
-               data_          = new T[vec_size_];
-               temp_          = new vector_holder<T>(data_,vec_size_);
-               temp_vec_node_ = new vector_node<T>  (temp_);
+               if (v0_is_ivec && (vec0.size() <= vec1.size()))
+                  vds_ = vds_t(vec0_node_ptr_->vds());
+               else if (v1_is_ivec && (vec1.size() <= vec0.size()))
+                  vds_ = vds_t(vec1_node_ptr_->vds());
+               else
+                  vds_ = vds_t(std::min(vec0.size(),vec1.size()));
+
+               temp_          = new vector_holder<T>(vds().data(),vds().size());
+               temp_vec_node_ = new vector_node<T>  (vds(),temp_);
 
                initialised_ = true;
             }
          }
 
-        ~vecarith_vecvec_node()
+        ~vec_binop_vecvec_node()
          {
-            delete[] data_;
-            delete   temp_;
-            delete   temp_vec_node_;
+            delete temp_;
+            delete temp_vec_node_;
          }
 
          inline T value() const
@@ -9367,42 +9784,57 @@ namespace exprtk
                binary_node<T>::branch_[0].first->value();
                binary_node<T>::branch_[1].first->value();
 
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
-               vector_holder<T>& vec1 = vec1_node_ptr_->ref();
-               vector_holder<T>& vec2 = *temp_;
+               T* vec0 = vec0_node_ptr_->vds().data();
+               T* vec1 = vec1_node_ptr_->vds().data();
+               T* vec2 = vds().data();
 
-               loop_unroll::details lud(vec_size_);
-               int i = 0;
+               loop_unroll::details lud(size());
+               const T* upper_bound = vec2 + lud.upper_bound;
 
-               #define exprtk_loop(N)                                              \
-               (*vec2[i + N]) = Operation::process((*vec0[i + N]),(*vec1[i + N])); \
-
-               for (; i < lud.upper_bound; i += lud.batch_size)
+               while (vec2 < upper_bound)
                {
-                  exprtk_loop(0) exprtk_loop(1)
-                  exprtk_loop(2) exprtk_loop(3)
+                  #define exprtk_loop(N)                         \
+                  vec2[N] = Operation::process(vec0[N],vec1[N]); \
+
+                  exprtk_loop( 0) exprtk_loop( 1)
+                  exprtk_loop( 2) exprtk_loop( 3)
                   #ifndef exprtk_disable_superscalar_unroll
-                  exprtk_loop(4) exprtk_loop(5)
-                  exprtk_loop(6) exprtk_loop(7)
+                  exprtk_loop( 4) exprtk_loop( 5)
+                  exprtk_loop( 6) exprtk_loop( 7)
+                  exprtk_loop( 8) exprtk_loop( 9)
+                  exprtk_loop(10) exprtk_loop(11)
+                  exprtk_loop(12) exprtk_loop(13)
+                  exprtk_loop(14) exprtk_loop(15)
                   #endif
+
+                  vec0 += lud.batch_size;
+                  vec1 += lud.batch_size;
+                  vec2 += lud.batch_size;
                }
+
+               int i = 0;
 
                switch (lud.remainder)
                {
+                  #define case_stmt(N)                                             \
+                  case N : { vec2[i] = Operation::process(vec0[i],vec1[i]); ++i; } \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 7 : { exprtk_loop(0); ++i; }
-                  case 6 : { exprtk_loop(0); ++i; }
-                  case 5 : { exprtk_loop(0); ++i; }
-                  case 4 : { exprtk_loop(0); ++i; }
+                  case_stmt(15) case_stmt(14)
+                  case_stmt(13) case_stmt(12)
+                  case_stmt(11) case_stmt(10)
+                  case_stmt( 9) case_stmt( 8)
+                  case_stmt( 7) case_stmt( 6)
+                  case_stmt( 5) case_stmt( 4)
                   #endif
-                  case 3 : { exprtk_loop(0); ++i; }
-                  case 2 : { exprtk_loop(0); ++i; }
-                  case 1 : { exprtk_loop(0); ++i; }
+                  case_stmt( 3) case_stmt( 2)
+                  case_stmt( 1)
                }
 
                #undef exprtk_loop
+               #undef case_stmt
 
-               return *vec2[0];
+               return (vds().data())[0];
             }
             else
                return std::numeric_limits<T>::quiet_NaN();
@@ -9425,40 +9857,50 @@ namespace exprtk
 
          std::size_t size() const
          {
-            return vec_size_;
+            return vds_.size();
+         }
+
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
          }
 
       private:
 
          vector_node_ptr   vec0_node_ptr_;
          vector_node_ptr   vec1_node_ptr_;
-         std::size_t       vec_size_;
-         T*                data_;
          vector_holder_ptr temp_;
          vector_node_ptr   temp_vec_node_;
          bool              initialised_;
+         vds_t             vds_;
       };
 
       template <typename T, typename Operation>
-      class vecarith_vecval_node : public binary_node     <T>,
-                                   public vector_interface<T>
+      class vec_binop_vecval_node : public binary_node     <T>,
+                                    public vector_interface<T>
       {
       public:
 
          typedef expression_node<T>*    expression_ptr;
          typedef vector_node<T>*       vector_node_ptr;
          typedef vector_holder<T>*   vector_holder_ptr;
+         typedef vec_data_store<T>               vds_t;
 
-         vecarith_vecval_node(const operator_type& opr,
-                              expression_ptr branch0,
-                              expression_ptr branch1)
+         vec_binop_vecval_node(const operator_type& opr,
+                               expression_ptr branch0,
+                               expression_ptr branch1)
          : binary_node<T>(opr,branch0,branch1),
            vec0_node_ptr_(0),
-           vec_size_     (0),
-           data_         (0),
            temp_         (0),
            temp_vec_node_(0)
          {
+            bool v0_is_ivec = false;
+
             if (is_vector_node(binary_node<T>::branch_[0].first))
             {
                vec0_node_ptr_ = static_cast<vector_node_ptr>(binary_node<T>::branch_[0].first);
@@ -9470,25 +9912,26 @@ namespace exprtk
                if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[0].first)))
                {
                   vec0_node_ptr_ = vi->vec();
+                  v0_is_ivec     = true;
                }
             }
 
             if (vec0_node_ptr_)
             {
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
+               if (v0_is_ivec)
+                  vds() = vec0_node_ptr_->vds();
+               else
+                  vds() = vds_t(vec0_node_ptr_->size());
 
-               vec_size_      = vec0.size();
-               data_          = new T[vec_size_];
-               temp_          = new vector_holder<T>(data_,vec_size_);
-               temp_vec_node_ = new vector_node<T>  (temp_);
+               temp_          = new vector_holder<T>(vds());
+               temp_vec_node_ = new vector_node<T>  (vds(),temp_);
             }
          }
 
-        ~vecarith_vecval_node()
+        ~vec_binop_vecval_node()
          {
-            delete[] data_;
-            delete   temp_;
-            delete   temp_vec_node_;
+            delete temp_;
+            delete temp_vec_node_;
          }
 
          inline T value() const
@@ -9498,41 +9941,55 @@ namespace exprtk
                            binary_node<T>::branch_[0].first->value();
                const T v = binary_node<T>::branch_[1].first->value();
 
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
-               vector_holder<T>& vec1 = *temp_;
+               T* vec0 = vec0_node_ptr_->vds().data();
+               T* vec1 = vds().data();
 
-               loop_unroll::details lud(vec_size_);
-               int i = 0;
+               loop_unroll::details lud(size());
+               const T* upper_bound = vec0 + lud.upper_bound;
 
-               #define exprtk_loop(N)                                 \
-               (*vec1[i + N]) = Operation::process((*vec0[i + N]),v); \
-
-               for (; i < lud.upper_bound; i += lud.batch_size)
+               while (vec0 < upper_bound)
                {
-                  exprtk_loop(0) exprtk_loop(1)
-                  exprtk_loop(2) exprtk_loop(3)
+                  #define exprtk_loop(N)                   \
+                  vec1[N] = Operation::process(vec0[N],v); \
+
+                  exprtk_loop( 0) exprtk_loop( 1)
+                  exprtk_loop( 2) exprtk_loop( 3)
                   #ifndef exprtk_disable_superscalar_unroll
-                  exprtk_loop(4) exprtk_loop(5)
-                  exprtk_loop(6) exprtk_loop(7)
+                  exprtk_loop( 4) exprtk_loop( 5)
+                  exprtk_loop( 6) exprtk_loop( 7)
+                  exprtk_loop( 8) exprtk_loop( 9)
+                  exprtk_loop(10) exprtk_loop(11)
+                  exprtk_loop(12) exprtk_loop(13)
+                  exprtk_loop(14) exprtk_loop(15)
                   #endif
+
+                  vec0 += lud.batch_size;
+                  vec1 += lud.batch_size;
                }
+
+               int i = 0;
 
                switch (lud.remainder)
                {
+                  #define case_stmt(N)                                       \
+                  case N : { vec1[i] = Operation::process(vec0[i],v); ++i; } \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 7 : { exprtk_loop(0); ++i; }
-                  case 6 : { exprtk_loop(0); ++i; }
-                  case 5 : { exprtk_loop(0); ++i; }
-                  case 4 : { exprtk_loop(0); ++i; }
+                  case_stmt(15) case_stmt(14)
+                  case_stmt(13) case_stmt(12)
+                  case_stmt(11) case_stmt(10)
+                  case_stmt( 9) case_stmt( 8)
+                  case_stmt( 7) case_stmt( 6)
+                  case_stmt( 5) case_stmt( 4)
                   #endif
-                  case 3 : { exprtk_loop(0); ++i; }
-                  case 2 : { exprtk_loop(0); ++i; }
-                  case 1 : { exprtk_loop(0); ++i; }
+                  case_stmt( 3) case_stmt( 2)
+                  case_stmt( 1)
                }
 
                #undef exprtk_loop
+               #undef case_stmt
 
-               return *vec1[0];
+               return (vds().data())[0];
             }
             else
                return std::numeric_limits<T>::quiet_NaN();
@@ -9555,38 +10012,48 @@ namespace exprtk
 
          std::size_t size() const
          {
-            return vec_size_;
+            return vds().size();
+         }
+
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
          }
 
       private:
 
          vector_node_ptr   vec0_node_ptr_;
-         std::size_t       vec_size_;
-         T*                data_;
          vector_holder_ptr temp_;
          vector_node_ptr   temp_vec_node_;
+         vds_t             vds_;
       };
 
       template <typename T, typename Operation>
-      class vecarith_valvec_node : public binary_node     <T>,
-                                   public vector_interface<T>
+      class vec_binop_valvec_node : public binary_node     <T>,
+                                    public vector_interface<T>
       {
       public:
 
          typedef expression_node<T>*    expression_ptr;
          typedef vector_node<T>*       vector_node_ptr;
          typedef vector_holder<T>*   vector_holder_ptr;
+         typedef vec_data_store<T>               vds_t;
 
-         vecarith_valvec_node(const operator_type& opr,
-                              expression_ptr branch0,
-                              expression_ptr branch1)
+         vec_binop_valvec_node(const operator_type& opr,
+                               expression_ptr branch0,
+                               expression_ptr branch1)
          : binary_node<T>(opr,branch0,branch1),
            vec1_node_ptr_(0),
-           vec_size_     (0),
-           data_         (0),
            temp_         (0),
            temp_vec_node_(0)
          {
+            bool v1_is_ivec = false;
+
             if (is_vector_node(binary_node<T>::branch_[1].first))
             {
                vec1_node_ptr_ = static_cast<vector_node_ptr>(binary_node<T>::branch_[1].first);
@@ -9598,25 +10065,26 @@ namespace exprtk
                if (0 != (vi = dynamic_cast<vector_interface<T>*>(binary_node<T>::branch_[1].first)))
                {
                   vec1_node_ptr_ = vi->vec();
+                  v1_is_ivec     = true;
                }
             }
 
             if (vec1_node_ptr_)
             {
-               vector_holder<T>& vec0 = vec1_node_ptr_->ref();
+               if (v1_is_ivec)
+                  vds() = vec1_node_ptr_->vds();
+               else
+                  vds() = vds_t(vec1_node_ptr_->size());
 
-               vec_size_      = vec0.size();
-               data_          = new T[vec_size_];
-               temp_          = new vector_holder<T>(data_,vec_size_);
-               temp_vec_node_ = new vector_node<T>  (temp_);
+               temp_          = new vector_holder<T>(vds());
+               temp_vec_node_ = new vector_node<T>  (vds(),temp_);
             }
          }
 
-        ~vecarith_valvec_node()
+        ~vec_binop_valvec_node()
          {
-            delete[] data_;
-            delete   temp_;
-            delete   temp_vec_node_;
+            delete temp_;
+            delete temp_vec_node_;
          }
 
          inline T value() const
@@ -9626,41 +10094,55 @@ namespace exprtk
                const T v = binary_node<T>::branch_[0].first->value();
                            binary_node<T>::branch_[1].first->value();
 
-               vector_holder<T>& vec1 = vec1_node_ptr_->ref();
-               vector_holder<T>& vec2 = *temp_;
+               T* vec0 = vds().data();
+               T* vec1 = vec1_node_ptr_->vds().data();
 
-               loop_unroll::details lud(vec_size_);
-               int i = 0;
+               loop_unroll::details lud(size());
+               const T* upper_bound = vec0 + lud.upper_bound;
 
-               #define exprtk_loop(N)                                 \
-               (*vec2[i + N]) = Operation::process(v,(*vec1[i + N])); \
-
-               for (; i < lud.upper_bound; i += lud.batch_size)
+               while (vec0 < upper_bound)
                {
-                  exprtk_loop(0) exprtk_loop(1)
-                  exprtk_loop(2) exprtk_loop(3)
+                  #define exprtk_loop(N)                   \
+                  vec0[N] = Operation::process(v,vec1[N]); \
+
+                  exprtk_loop( 0) exprtk_loop( 1)
+                  exprtk_loop( 2) exprtk_loop( 3)
                   #ifndef exprtk_disable_superscalar_unroll
-                  exprtk_loop(4) exprtk_loop(5)
-                  exprtk_loop(6) exprtk_loop(7)
+                  exprtk_loop( 4) exprtk_loop( 5)
+                  exprtk_loop( 6) exprtk_loop( 7)
+                  exprtk_loop( 8) exprtk_loop( 9)
+                  exprtk_loop(10) exprtk_loop(11)
+                  exprtk_loop(12) exprtk_loop(13)
+                  exprtk_loop(14) exprtk_loop(15)
                   #endif
+
+                  vec0 += lud.batch_size;
+                  vec1 += lud.batch_size;
                }
+
+               int i = 0;
 
                switch (lud.remainder)
                {
+                  #define case_stmt(N)                                       \
+                  case N : { vec0[i] = Operation::process(v,vec1[i]); ++i; } \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 7 : { exprtk_loop(0); ++i; }
-                  case 6 : { exprtk_loop(0); ++i; }
-                  case 5 : { exprtk_loop(0); ++i; }
-                  case 4 : { exprtk_loop(0); ++i; }
+                  case_stmt(15) case_stmt(14)
+                  case_stmt(13) case_stmt(12)
+                  case_stmt(11) case_stmt(10)
+                  case_stmt( 9) case_stmt( 8)
+                  case_stmt( 7) case_stmt( 6)
+                  case_stmt( 5) case_stmt( 4)
                   #endif
-                  case 3 : { exprtk_loop(0); ++i; }
-                  case 2 : { exprtk_loop(0); ++i; }
-                  case 1 : { exprtk_loop(0); ++i; }
+                  case_stmt( 3) case_stmt( 2)
+                  case_stmt( 1)
                }
 
                #undef exprtk_loop
+               #undef case_stmt
 
-               return *vec2[0];
+               return (vds().data())[0];
             }
             else
                return std::numeric_limits<T>::quiet_NaN();
@@ -9683,16 +10165,25 @@ namespace exprtk
 
          std::size_t size() const
          {
-            return vec_size_;
+            return vds().size();
+         }
+
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
          }
 
       private:
 
          vector_node_ptr   vec1_node_ptr_;
-         std::size_t       vec_size_;
-         T*                data_;
          vector_holder_ptr temp_;
          vector_node_ptr   temp_vec_node_;
+         vds_t             vds_;
       };
 
       template <typename T, typename Operation>
@@ -9704,15 +10195,16 @@ namespace exprtk
          typedef expression_node<T>*    expression_ptr;
          typedef vector_node<T>*       vector_node_ptr;
          typedef vector_holder<T>*   vector_holder_ptr;
+         typedef vec_data_store<T>               vds_t;
 
          unary_vector_node(const operator_type& opr, expression_ptr branch0)
          : unary_node<T>(opr,branch0),
            vec0_node_ptr_(0),
-           vec_size_     (0),
-           data_         (0),
            temp_         (0),
            temp_vec_node_(0)
          {
+            bool vec0_is_ivec = false;
+
             if (is_vector_node(unary_node<T>::branch_))
             {
                vec0_node_ptr_ = static_cast<vector_node_ptr>(unary_node<T>::branch_);
@@ -9724,25 +10216,26 @@ namespace exprtk
                if (0 != (vi = dynamic_cast<vector_interface<T>*>(unary_node<T>::branch_)))
                {
                   vec0_node_ptr_ = vi->vec();
+                  vec0_is_ivec   = true;
                }
             }
 
             if (vec0_node_ptr_)
             {
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
+               if (vec0_is_ivec)
+                  vds_ = vec0_node_ptr_->vds();
+               else
+                  vds_ = vds_t(vec0_node_ptr_->size());
 
-               vec_size_      = vec0.size();
-               data_          = new T[vec_size_];
-               temp_          = new vector_holder<T>(data_,vec_size_);
-               temp_vec_node_ = new vector_node<T>  (temp_);
+               temp_          = new vector_holder<T>(vds());
+               temp_vec_node_ = new vector_node<T>  (vds(),temp_);
             }
          }
 
         ~unary_vector_node()
          {
-            delete[] data_;
-            delete   temp_;
-            delete   temp_vec_node_;
+            delete temp_;
+            delete temp_vec_node_;
          }
 
          inline T value() const
@@ -9751,40 +10244,55 @@ namespace exprtk
 
             if (vec0_node_ptr_)
             {
-               vector_holder<T>& vec0 = vec0_node_ptr_->ref();
-               vector_holder<T>& vec1 = *temp_;
+               T* vec0 = vec0_node_ptr_->vds().data();
+               T* vec1 = vds().data();
 
-               loop_unroll::details lud(vec_size_);
-               int i = 0;
+               loop_unroll::details lud(size());
+               const T* upper_bound = vec0 + lud.upper_bound;
 
-               for (; i < lud.upper_bound; i += lud.batch_size)
+               while (vec0 < upper_bound)
                {
-                  (*vec1[i    ]) = Operation::process((*vec0[i    ]));
-                  (*vec1[i + 1]) = Operation::process((*vec0[i + 1]));
-                  (*vec1[i + 2]) = Operation::process((*vec0[i + 2]));
-                  (*vec1[i + 3]) = Operation::process((*vec0[i + 3]));
+                  #define exprtk_loop(N)                 \
+                  vec1[N] = Operation::process(vec0[N]); \
+
+                  exprtk_loop( 0) exprtk_loop( 1)
+                  exprtk_loop( 2) exprtk_loop( 3)
                   #ifndef exprtk_disable_superscalar_unroll
-                  (*vec1[i + 4]) = Operation::process((*vec0[i + 4]));
-                  (*vec1[i + 5]) = Operation::process((*vec0[i + 5]));
-                  (*vec1[i + 6]) = Operation::process((*vec0[i + 6]));
-                  (*vec1[i + 7]) = Operation::process((*vec0[i + 7]));
+                  exprtk_loop( 4) exprtk_loop( 5)
+                  exprtk_loop( 6) exprtk_loop( 7)
+                  exprtk_loop( 8) exprtk_loop( 9)
+                  exprtk_loop(10) exprtk_loop(11)
+                  exprtk_loop(12) exprtk_loop(13)
+                  exprtk_loop(14) exprtk_loop(15)
                   #endif
+
+                  vec0 += lud.batch_size;
+                  vec1 += lud.batch_size;
                }
+
+               int i = 0;
 
                switch (lud.remainder)
                {
+                  #define case_stmt(N)                                     \
+                  case N : { vec1[i] = Operation::process(vec0[i]); ++i; } \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 7 : { (*vec1[i]) = Operation::process((*vec0[i])); ++i; }
-                  case 6 : { (*vec1[i]) = Operation::process((*vec0[i])); ++i; }
-                  case 5 : { (*vec1[i]) = Operation::process((*vec0[i])); ++i; }
-                  case 4 : { (*vec1[i]) = Operation::process((*vec0[i])); ++i; }
+                  case_stmt(15) case_stmt(14)
+                  case_stmt(13) case_stmt(12)
+                  case_stmt(11) case_stmt(10)
+                  case_stmt( 9) case_stmt( 8)
+                  case_stmt( 7) case_stmt( 6)
+                  case_stmt( 5) case_stmt( 4)
                   #endif
-                  case 3 : { (*vec1[i]) = Operation::process((*vec0[i])); ++i; }
-                  case 2 : { (*vec1[i]) = Operation::process((*vec0[i])); ++i; }
-                  case 1 : { (*vec1[i]) = Operation::process((*vec0[i])); ++i; }
+                  case_stmt( 3) case_stmt( 2)
+                  case_stmt( 1)
                }
 
-               return *vec1[0];
+               #undef exprtk_loop
+               #undef case_stmt
+
+               return (vds().data())[0];
             }
             else
                return std::numeric_limits<T>::quiet_NaN();
@@ -9807,16 +10315,25 @@ namespace exprtk
 
          std::size_t size() const
          {
-            return vec_size_;
+            return vds().size();
+         }
+
+         vds_t& vds()
+         {
+            return vds_;
+         }
+
+         const vds_t& vds() const
+         {
+            return vds_;
          }
 
       private:
 
          vector_node_ptr   vec0_node_ptr_;
-         std::size_t       vec_size_;
-         T*                data_;
          vector_holder_ptr temp_;
          vector_node_ptr   temp_vec_node_;
+         vds_t             vds_;
       };
 
       template <typename T>
@@ -10312,7 +10829,7 @@ namespace exprtk
                      return false;
 
                   ts.size = vi->size();
-                  ts.data = vi->vec()->ref()[0];
+                  ts.data = vi->vds().data();
                   ts.type = type_store_t::e_vector;
                }
                else if (is_generally_string_node(arg_list_[i]))
@@ -10359,17 +10876,6 @@ namespace exprtk
 
                   ts.size = 1;
                   ts.data = &var->ref();
-                  ts.type = type_store_t::e_scalar;
-               }
-               else if (is_vector_elem_node(arg_list_[i]))
-               {
-                  vector_elem_node_ptr_t var = vector_elem_node_ptr_t(0);
-
-                  if (0 == (var = dynamic_cast<vector_elem_node_ptr_t>(arg_list_[i])))
-                     return false;
-
-                  ts.size = 1;
-                  ts.data = reinterpret_cast<void*>(&var->ref());
                   ts.type = type_store_t::e_scalar;
                }
                else
@@ -10519,7 +11025,7 @@ namespace exprtk
 
          const char* base() const
          {
-           return ret_string_.data();
+           return &ret_string_[0];
          }
 
          std::size_t size() const
@@ -10756,27 +11262,28 @@ namespace exprtk
          bool               body_deletable_;
       };
 
-      #define exprtk_define_unary_op(OpName)                         \
-      template <typename T>                                          \
-      struct OpName##_op                                             \
-      {                                                              \
-         typedef typename functor_t<T>::Type Type;                   \
-                                                                     \
-         static inline T process(Type v)                             \
-         {                                                           \
-            return numeric:: OpName (v);                             \
-         }                                                           \
-                                                                     \
-         static inline typename expression_node<T>::node_type type() \
-         {                                                           \
-            return expression_node<T>::e_##OpName;                   \
-         }                                                           \
-                                                                     \
-         static inline details::operator_type operation()            \
-         {                                                           \
-            return details::e_##OpName;                              \
-         }                                                           \
-      };                                                             \
+      #define exprtk_define_unary_op(OpName)                    \
+      template <typename T>                                     \
+      struct OpName##_op                                        \
+      {                                                         \
+         typedef typename functor_t<T>::Type Type;              \
+         typedef typename expression_node<T>::node_type node_t; \
+                                                                \
+         static inline T process(Type v)                        \
+         {                                                      \
+            return numeric:: OpName (v);                        \
+         }                                                      \
+                                                                \
+         static inline node_t type()                            \
+         {                                                      \
+            return expression_node<T>::e_##OpName;              \
+         }                                                      \
+                                                                \
+         static inline details::operator_type operation()       \
+         {                                                      \
+            return details::e_##OpName;                         \
+         }                                                      \
+      };                                                        \
 
       exprtk_define_unary_op(abs  )
       exprtk_define_unary_op(acos )
@@ -10839,7 +11346,7 @@ namespace exprtk
          typedef typename opr_base<T>::RefType RefType;
          static inline T process(Type t1, Type t2) { return t1 + t2; }
          static inline T process(Type t1, Type t2, Type t3) { return t1 + t2 + t3; }
-         static inline void assign(RefType& t1, Type t2) { t1 += t2; }
+         static inline void assign(RefType t1, Type t2) { t1 += t2; }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_add; }
          static inline details::operator_type operation() { return details::e_add; }
       };
@@ -10851,7 +11358,7 @@ namespace exprtk
          typedef typename opr_base<T>::RefType RefType;
          static inline T process(Type t1, Type t2) { return t1 * t2; }
          static inline T process(Type t1, Type t2, Type t3) { return t1 * t2 * t3; }
-         static inline void assign(RefType& t1, Type t2) { t1 *= t2; }
+         static inline void assign(RefType t1, Type t2) { t1 *= t2; }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_mul; }
          static inline details::operator_type operation() { return details::e_mul; }
       };
@@ -10863,7 +11370,7 @@ namespace exprtk
          typedef typename opr_base<T>::RefType RefType;
          static inline T process(Type t1, Type t2) { return t1 - t2; }
          static inline T process(Type t1, Type t2, Type t3) { return t1 - t2 - t3; }
-         static inline void assign(RefType& t1, Type t2) { t1 -= t2; }
+         static inline void assign(RefType t1, Type t2) { t1 -= t2; }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_sub; }
          static inline details::operator_type operation() { return details::e_sub; }
       };
@@ -10875,7 +11382,7 @@ namespace exprtk
          typedef typename opr_base<T>::RefType RefType;
          static inline T process(Type t1, Type t2) { return t1 / t2; }
          static inline T process(Type t1, Type t2, Type t3) { return t1 / t2 / t3; }
-         static inline void assign(RefType& t1, Type t2) { t1 /= t2; }
+         static inline void assign(RefType t1, Type t2) { t1 /= t2; }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_div; }
          static inline details::operator_type operation() { return details::e_div; }
       };
@@ -10886,7 +11393,7 @@ namespace exprtk
          typedef typename opr_base<T>::Type Type;
          typedef typename opr_base<T>::RefType RefType;
          static inline T process(Type t1, Type t2) { return numeric::modulus<T>(t1,t2); }
-         static inline void assign(RefType& t1, Type t2) { t1 = numeric::modulus<T>(t1,t2); }
+         static inline void assign(RefType t1, Type t2) { t1 = numeric::modulus<T>(t1,t2); }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_mod; }
          static inline details::operator_type operation() { return details::e_mod; }
       };
@@ -10897,7 +11404,7 @@ namespace exprtk
          typedef typename opr_base<T>::Type Type;
          typedef typename opr_base<T>::RefType RefType;
          static inline T process(Type t1, Type t2) { return numeric::pow<T>(t1,t2); }
-         static inline void assign(RefType& t1, Type t2) { t1 = numeric::pow<T>(t1,t2); }
+         static inline void assign(RefType t1, Type t2) { t1 = numeric::pow<T>(t1,t2); }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_pow; }
          static inline details::operator_type operation() { return details::e_pow; }
       };
@@ -10950,6 +11457,16 @@ namespace exprtk
          static inline T process(const std::string& t1, const std::string& t2) { return ((t1 == t2) ? T(1) : T(0)); }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_eq; }
          static inline details::operator_type operation() { return details::e_eq; }
+      };
+
+      template <typename T>
+      struct equal_op : public opr_base<T>
+      {
+         typedef typename opr_base<T>::Type Type;
+         static inline T process(Type t1, Type t2) { return (numeric::equal<T>(t1,t2) ? T(1) : T(0)); }
+         static inline T process(const std::string& t1, const std::string& t2) { return ((t1 == t2) ? T(1) : T(0)); }
+         static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_eq; }
+         static inline details::operator_type operation() { return details::e_equal; }
       };
 
       template <typename T>
@@ -11357,6 +11874,7 @@ namespace exprtk
                             for (std::size_t i = 1; i < arg_list.size(); ++i)
                             {
                                const T v = value(arg_list[i]);
+
                                if (v > result)
                                   result = v;
                             }
@@ -11679,64 +12197,91 @@ namespace exprtk
 
          static inline T process(const ivector_ptr v)
          {
-            vector_holder<T>& vec = v->vec()->ref();
+            const T* vec = v->vec()->vds().data();
+            const std::size_t vec_size = v->vec()->vds().size();
 
-            loop_unroll::details lud(vec.size());
-            int i = 0;
+            loop_unroll::details lud(vec_size);
 
-            if (vec.size() <= static_cast<std::size_t>(lud.batch_size))
+            if (vec_size <= static_cast<std::size_t>(lud.batch_size))
             {
                T result = T(0);
+               int i    = 0;
 
-               switch (vec.size())
+               switch (vec_size)
                {
+                  #define case_stmt(N)         \
+                  case N : result += vec[i++]; \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 8 : result += (*vec[i++]);
-                  case 7 : result += (*vec[i++]);
-                  case 6 : result += (*vec[i++]);
-                  case 5 : result += (*vec[i++]);
+                  case_stmt(16) case_stmt(15)
+                  case_stmt(14) case_stmt(13)
+                  case_stmt(12) case_stmt(11)
+                  case_stmt(10) case_stmt( 9)
+                  case_stmt( 8) case_stmt( 7)
+                  case_stmt( 6) case_stmt( 5)
                   #endif
-                  case 4 : result += (*vec[i++]);
-                  case 3 : result += (*vec[i++]);
-                  case 2 : result += (*vec[i++]);
-                  case 1 : result += (*vec[i++]);
+                  case_stmt( 4) case_stmt( 3)
+                  case_stmt( 2) case_stmt( 1)
                }
+
+               #undef case_stmt
 
                return result;
             }
 
-            T r[8] = { T(0), T(0), T(0), T(0), T(0), T(0), T(0), T(0) };
+            T r[] = {
+                      T(0), T(0), T(0), T(0), T(0), T(0), T(0), T(0),
+                      T(0), T(0), T(0), T(0), T(0), T(0), T(0), T(0)
+                    };
 
-            for (; i < lud.upper_bound; i += lud.batch_size)
+            const T* upper_bound = vec + lud.upper_bound;
+
+            while (vec < upper_bound)
             {
-               r[0] += (*vec[i    ]);
-               r[1] += (*vec[i + 1]);
-               r[2] += (*vec[i + 2]);
-               r[3] += (*vec[i + 3]);
+               #define exprtk_loop(N) \
+               r[N] += vec[N];        \
+
+               exprtk_loop( 0) exprtk_loop( 1)
+               exprtk_loop( 2) exprtk_loop( 3)
                #ifndef exprtk_disable_superscalar_unroll
-               r[4] += (*vec[i + 4]);
-               r[5] += (*vec[i + 5]);
-               r[6] += (*vec[i + 6]);
-               r[7] += (*vec[i + 7]);
+               exprtk_loop( 4) exprtk_loop( 5)
+               exprtk_loop( 6) exprtk_loop( 7)
+               exprtk_loop( 8) exprtk_loop( 9)
+               exprtk_loop(10) exprtk_loop(11)
+               exprtk_loop(12) exprtk_loop(13)
+               exprtk_loop(14) exprtk_loop(15)
                #endif
+
+               vec += lud.batch_size;
             }
+
+            int i = 0;
 
             switch (lud.remainder)
             {
+               #define case_stmt(N)       \
+               case N : r[0] += vec[i++]; \
+
                #ifndef exprtk_disable_superscalar_unroll
-               case 7 : r[0] += (*vec[i++]);
-               case 6 : r[0] += (*vec[i++]);
-               case 5 : r[0] += (*vec[i++]);
-               case 4 : r[0] += (*vec[i++]);
+               case_stmt(15) case_stmt(14)
+               case_stmt(13) case_stmt(12)
+               case_stmt(11) case_stmt(10)
+               case_stmt( 9) case_stmt( 8)
+               case_stmt( 7) case_stmt( 6)
+               case_stmt( 5) case_stmt( 4)
                #endif
-               case 3 : r[0] += (*vec[i++]);
-               case 2 : r[0] += (*vec[i++]);
-               case 1 : r[0] += (*vec[i++]);
+               case_stmt( 3) case_stmt( 2)
+               case_stmt( 1)
             }
 
-            return (r[0] + r[1] + r[2] + r[3])
+            #undef exprtk_loop
+            #undef case_stmt
+
+            return (r[ 0] + r[ 1] + r[ 2] + r[ 3])
                    #ifndef exprtk_disable_superscalar_unroll
-                 + (r[4] + r[5] + r[6] + r[7])
+                 + (r[ 4] + r[ 5] + r[ 6] + r[ 7])
+                 + (r[ 8] + r[ 9] + r[10] + r[11])
+                 + (r[12] + r[13] + r[14] + r[15])
                    #endif
                    ;
          }
@@ -11749,64 +12294,91 @@ namespace exprtk
 
          static inline T process(const ivector_ptr v)
          {
-            vector_holder<T>& vec = v->vec()->ref();
+            const T* vec = v->vec()->vds().data();
+            const std::size_t vec_size = v->vec()->vds().size();
 
-            loop_unroll::details lud(vec.size());
-            int i = 0;
+            loop_unroll::details lud(vec_size);
 
-            if (vec.size() <= static_cast<std::size_t>(lud.batch_size))
+            if (vec_size <= static_cast<std::size_t>(lud.batch_size))
             {
                T result = T(1);
+               int i    = 0;
 
-               switch (vec.size())
+               switch (vec_size)
                {
+                  #define case_stmt(N)         \
+                  case N : result *= vec[i++]; \
+
                   #ifndef exprtk_disable_superscalar_unroll
-                  case 8 : result *= (*vec[i++]);
-                  case 7 : result *= (*vec[i++]);
-                  case 6 : result *= (*vec[i++]);
-                  case 5 : result *= (*vec[i++]);
+                  case_stmt(16) case_stmt(15)
+                  case_stmt(14) case_stmt(13)
+                  case_stmt(12) case_stmt(11)
+                  case_stmt(10) case_stmt( 9)
+                  case_stmt( 8) case_stmt( 7)
+                  case_stmt( 6) case_stmt( 5)
                   #endif
-                  case 4 : result *= (*vec[i++]);
-                  case 3 : result *= (*vec[i++]);
-                  case 2 : result *= (*vec[i++]);
-                  case 1 : result *= (*vec[i++]);
+                  case_stmt( 4) case_stmt( 3)
+                  case_stmt( 2) case_stmt( 1)
                }
+
+               #undef case_stmt
 
                return result;
             }
 
-            T r[8] = { T(1), T(1), T(1), T(1), T(1), T(1), T(1), T(1) };
+            T r[] = {
+                      T(1), T(1), T(1), T(1), T(1), T(1), T(1), T(1),
+                      T(1), T(1), T(1), T(1), T(1), T(1), T(1), T(1)
+                    };
 
-            for (; i < lud.upper_bound; i += lud.batch_size)
+            const T* upper_bound = vec + lud.upper_bound;
+
+            while (vec < upper_bound)
             {
-               r[0] *= (*vec[i    ]);
-               r[1] *= (*vec[i + 1]);
-               r[2] *= (*vec[i + 2]);
-               r[3] *= (*vec[i + 3]);
+               #define exprtk_loop(N) \
+               r[N] *= vec[N];        \
+
+               exprtk_loop( 0) exprtk_loop( 1)
+               exprtk_loop( 2) exprtk_loop( 3)
                #ifndef exprtk_disable_superscalar_unroll
-               r[4] *= (*vec[i + 4]);
-               r[5] *= (*vec[i + 5]);
-               r[6] *= (*vec[i + 6]);
-               r[7] *= (*vec[i + 7]);
+               exprtk_loop( 4) exprtk_loop( 5)
+               exprtk_loop( 6) exprtk_loop( 7)
+               exprtk_loop( 8) exprtk_loop( 9)
+               exprtk_loop(10) exprtk_loop(11)
+               exprtk_loop(12) exprtk_loop(13)
+               exprtk_loop(14) exprtk_loop(15)
                #endif
+
+               vec += lud.batch_size;
             }
+
+            int i = 0;
 
             switch (lud.remainder)
             {
+               #define case_stmt(N)       \
+               case N : r[0] *= vec[i++]; \
+
                #ifndef exprtk_disable_superscalar_unroll
-               case 7 : r[0] *= (*vec[i++]);
-               case 6 : r[0] *= (*vec[i++]);
-               case 5 : r[0] *= (*vec[i++]);
-               case 4 : r[0] *= (*vec[i++]);
+               case_stmt(15) case_stmt(14)
+               case_stmt(13) case_stmt(12)
+               case_stmt(11) case_stmt(10)
+               case_stmt( 9) case_stmt( 8)
+               case_stmt( 7) case_stmt( 6)
+               case_stmt( 5) case_stmt( 4)
                #endif
-               case 3 : r[0] *= (*vec[i++]);
-               case 2 : r[0] *= (*vec[i++]);
-               case 1 : r[0] *= (*vec[i++]);
+               case_stmt( 3) case_stmt( 2)
+               case_stmt( 1)
             }
 
-            return (r[0] * r[1] * r[2] * r[3])
+            #undef exprtk_loop
+            #undef case_stmt
+
+            return (r[ 0] * r[ 1] * r[ 2] * r[ 3])
                    #ifndef exprtk_disable_superscalar_unroll
-                 * (r[4] * r[5] * r[6] * r[7])
+                 + (r[ 4] * r[ 5] * r[ 6] * r[ 7])
+                 + (r[ 8] * r[ 9] * r[10] * r[11])
+                 + (r[12] * r[13] * r[14] * r[15])
                    #endif
                    ;
          }
@@ -11819,41 +12391,9 @@ namespace exprtk
 
          static inline T process(const ivector_ptr v)
          {
-            vector_holder<T>& vec = v->vec()->ref();
+            const std::size_t vec_size = v->vec()->vds().size();
 
-            T result = T(0);
-
-            loop_unroll::details lud(vec.size());
-            int i = 0;
-
-            for (; i < lud.upper_bound; i += lud.batch_size)
-            {
-               result += (*vec[i]);
-               result += (*vec[i + 1]);
-               result += (*vec[i + 2]);
-               result += (*vec[i + 3]);
-               #ifndef exprtk_disable_superscalar_unroll
-               result += (*vec[i + 4]);
-               result += (*vec[i + 5]);
-               result += (*vec[i + 6]);
-               result += (*vec[i + 7]);
-               #endif
-            }
-
-            switch (lud.remainder)
-            {
-               #ifndef exprtk_disable_superscalar_unroll
-               case 7 : result += (*vec[i++]);
-               case 6 : result += (*vec[i++]);
-               case 5 : result += (*vec[i++]);
-               case 4 : result += (*vec[i++]);
-               #endif
-               case 3 : result += (*vec[i++]);
-               case 2 : result += (*vec[i++]);
-               case 1 : result += (*vec[i++]);
-            }
-
-            return result / vec.size();
+            return vec_add_op<T>::process(v) / vec_size;
          }
       };
 
@@ -11864,16 +12404,17 @@ namespace exprtk
 
          static inline T process(const ivector_ptr v)
          {
-            vector_holder<T>& vec = v->vec()->ref();
+            const T* vec = v->vec()->vds().data();
+            const std::size_t vec_size = v->vec()->vds().size();
 
-            T result = (*vec[0]);
+            T result = vec[0];
 
-            for (std::size_t i = 1; i < vec.size(); ++i)
+            for (std::size_t i = 1; i < vec_size; ++i)
             {
-              T v_i = (*vec[i]);
+               T v_i = vec[i];
 
-              if (v_i < result)
-                result = v_i;
+               if (v_i < result)
+                  result = v_i;
             }
 
             return result;
@@ -11887,15 +12428,17 @@ namespace exprtk
 
          static inline T process(const ivector_ptr v)
          {
-            vector_holder<T>& vec = v->vec()->ref();
+            const T* vec = v->vec()->vds().data();
+            const std::size_t vec_size = v->vec()->vds().size();
 
-            T result = (*vec[0]);
+            T result = vec[0];
 
-            for (std::size_t i = 1; i < vec.size(); ++i)
+            for (std::size_t i = 1; i < vec_size; ++i)
             {
-              T v_i = (*vec[i]);
-              if (v_i > result)
-                result = v_i;
+               T v_i = vec[i];
+
+               if (v_i > result)
+                  result = v_i;
             }
 
             return result;
@@ -14792,6 +15335,8 @@ namespace exprtk
 
       struct freefunc1 : public exprtk::ifunction<T>
       {
+         using exprtk::ifunction<T>::operator();
+
          freefunc1(ff1_functor ff) : exprtk::ifunction<T>(1), f(ff) {}
          inline T operator()(const T& v0)
          { return f(v0); }
@@ -14800,6 +15345,8 @@ namespace exprtk
 
       struct freefunc2 : public exprtk::ifunction<T>
       {
+         using exprtk::ifunction<T>::operator();
+
          freefunc2(ff2_functor ff) : exprtk::ifunction<T>(2), f(ff) {}
          inline T operator()(const T& v0, const T& v1)
          { return f(v0,v1); }
@@ -14808,6 +15355,8 @@ namespace exprtk
 
       struct freefunc3 : public exprtk::ifunction<T>
       {
+         using exprtk::ifunction<T>::operator();
+
          freefunc3(ff3_functor ff) : exprtk::ifunction<T>(3), f(ff) {}
          inline T operator()(const T& v0, const T& v1, const T& v2)
          { return f(v0,v1,v2); }
@@ -14816,6 +15365,8 @@ namespace exprtk
 
       struct freefunc4 : public exprtk::ifunction<T>
       {
+         using exprtk::ifunction<T>::operator();
+
          freefunc4(ff4_functor ff) : exprtk::ifunction<T>(4), f(ff) {}
          inline T operator()(const T& v0, const T& v1, const T& v2, const T& v3)
          { return f(v0,v1,v2,v3); }
@@ -14824,6 +15375,8 @@ namespace exprtk
 
       struct freefunc5 : public exprtk::ifunction<T>
       {
+         using exprtk::ifunction<T>::operator();
+
          freefunc5(ff5_functor ff) : exprtk::ifunction<T>(5), f(ff) {}
          inline T operator()(const T& v0, const T& v1, const T& v2, const T& v3, const T& v4)
          { return f(v0,v1,v2,v3,v4); }
@@ -14832,6 +15385,8 @@ namespace exprtk
 
       struct freefunc6 : public exprtk::ifunction<T>
       {
+         using exprtk::ifunction<T>::operator();
+
          freefunc6(ff6_functor ff) : exprtk::ifunction<T>(6), f(ff) {}
          inline T operator()(const T& v0, const T& v1, const T& v2, const T& v3, const T& v4, const T& v5)
          { return f(v0,v1,v2,v3,v4,v5); }
@@ -14955,6 +15510,14 @@ namespace exprtk
             }
          };
 
+         struct tie_vecview
+         {
+            static inline std::pair<bool,vector_t*> make(exprtk::vector_view<T>& v, const bool is_const = false)
+            {
+               return std::make_pair(is_const,new vector_t(v));
+            }
+         };
+
          struct tie_stddeq
          {
             template <typename Allocator>
@@ -14979,6 +15542,11 @@ namespace exprtk
          inline bool add(const std::string& symbol_name, std::vector<T,Allocator>& v, const bool is_const = false)
          {
             return add_impl<tie_stdvec,std::vector<T,Allocator>&>(symbol_name,v,is_const);
+         }
+
+         inline bool add(const std::string& symbol_name, exprtk::vector_view<T>& v, const bool is_const = false)
+         {
+            return add_impl<tie_vecview,exprtk::vector_view<T>&>(symbol_name,v,is_const);
          }
 
          template <typename Allocator>
@@ -15223,7 +15791,7 @@ namespace exprtk
       static const std::size_t lut_size = 256;
 
       // Symbol Table Holder
-      struct st_holder
+      struct control_block
       {
          struct st_data
          {
@@ -15269,22 +15837,47 @@ namespace exprtk
             std::vector<ifunction<T>*> free_function_list_;
          };
 
-         st_holder()
+         control_block()
          : ref_count(1),
            data_(new st_data)
          {}
 
-         st_holder(st_data* data)
+         control_block(st_data* data)
          : ref_count(1),
            data_(data)
          {}
 
-        ~st_holder()
+        ~control_block()
          {
             if (data_ && (0 == ref_count))
             {
                delete data_;
                data_ = 0;
+            }
+         }
+
+         static inline control_block* create()
+         {
+            return new control_block;
+         }
+
+         template <typename SymTab>
+         static inline void destroy(control_block*& cntrl_blck, SymTab* sym_tab)
+         {
+            if (cntrl_blck)
+            {
+               if (
+                    (0 !=   cntrl_blck->ref_count) &&
+                    (0 == --cntrl_blck->ref_count)
+                  )
+               {
+                  if (sym_tab)
+                     sym_tab->clear();
+
+                  delete cntrl_blck;
+               }
+
+               cntrl_blck = 0;
             }
          }
 
@@ -15295,45 +15888,30 @@ namespace exprtk
    public:
 
       symbol_table()
-      : holder_(new st_holder)
+      : control_block_(control_block::create())
       {
          clear();
       }
 
      ~symbol_table()
       {
-         if (holder_)
-         {
-            if (0 == --holder_->ref_count)
-            {
-               clear();
-               delete holder_;
-            }
-         }
+         control_block::destroy(control_block_,this);
       }
 
       symbol_table(const symbol_table<T>& st)
       {
-         holder_ = st.holder_;
-         holder_->ref_count++;
+         control_block_ = st.control_block_;
+         control_block_->ref_count++;
       }
 
       inline symbol_table<T>& operator=(const symbol_table<T>& st)
       {
          if (this != &st)
          {
-            if (holder_)
-            {
-               if (0 == --holder_->ref_count)
-               {
-                  delete holder_;
-               }
+            control_block::destroy(control_block_,reinterpret_cast<symbol_table<T>*>(0));
 
-               holder_ = 0;
-            }
-
-            holder_ = st.holder_;
-            holder_->ref_count++;
+            control_block_ = st.control_block_;
+            control_block_->ref_count++;
          }
 
          return *this;
@@ -15341,7 +15919,7 @@ namespace exprtk
 
       inline bool operator==(const symbol_table<T>& st)
       {
-         return (this == &st) || (holder_ == st.holder_);
+         return (this == &st) || (control_block_ == st.control_block_);
       }
 
       inline void clear_variables(const bool delete_node = true)
@@ -15831,8 +16409,7 @@ namespace exprtk
             return local_data().vector_store.add(vector_name,v);
       }
 
-      template <typename Allocator>
-      inline bool add_vector(const std::string& vector_name, std::deque<T,Allocator>& v)
+      inline bool add_vector(const std::string& vector_name, exprtk::vector_view<T>& v)
       {
          if (!valid())
             return false;
@@ -15909,6 +16486,12 @@ namespace exprtk
       {
          static const T local_infinity = std::numeric_limits<T>::infinity();
          return add_constant("inf",local_infinity);
+      }
+
+      template <typename Package>
+      inline bool add_package(Package& package)
+      {
+         return package.register_package(*this);
       }
 
       template <typename Allocator,
@@ -16068,7 +16651,7 @@ namespace exprtk
       inline bool valid() const
       {
          // Symbol table sanity check.
-         return holder_ && holder_->data_;
+         return control_block_ && control_block_->data_;
       }
 
       inline void load_from(const symbol_table<T>& st)
@@ -16184,19 +16767,19 @@ namespace exprtk
          return true;
       }
 
-      typedef typename st_holder::st_data local_data_t;
+      typedef typename control_block::st_data local_data_t;
 
       inline local_data_t& local_data()
       {
-         return *(holder_->data_);
+         return *(control_block_->data_);
       }
 
       inline const local_data_t& local_data() const
       {
-         return *(holder_->data_);
+         return *(control_block_->data_);
       }
 
-      st_holder* holder_;
+      control_block* control_block_;
 
       friend class parser<T>;
    };
@@ -16213,7 +16796,7 @@ namespace exprtk
       typedef details::vector_holder<T>* vector_holder_ptr;
       typedef std::vector<symbol_table<T> >  symtab_list_t;
 
-      struct expression_holder
+      struct control_block
       {
          enum data_type
          {
@@ -16247,7 +16830,7 @@ namespace exprtk
          typedef std::vector<data_pack> local_data_list_t;
          typedef results_context<T>     results_context_t;
 
-         expression_holder()
+         control_block()
          : ref_count(0),
            expr     (0),
            results  (0),
@@ -16255,7 +16838,7 @@ namespace exprtk
            return_invoked(&retinv_null)
          {}
 
-         expression_holder(expression_ptr e)
+         control_block(expression_ptr e)
          : ref_count(1),
            expr     (e),
            results  (0),
@@ -16263,7 +16846,7 @@ namespace exprtk
            return_invoked(&retinv_null)
          {}
 
-        ~expression_holder()
+        ~control_block()
          {
             if (expr && details::branch_deletable(expr))
             {
@@ -16302,6 +16885,27 @@ namespace exprtk
             }
          }
 
+         static inline control_block* create(expression_ptr e)
+         {
+            return new control_block(e);
+         }
+
+         static inline void destroy(control_block*& cntrl_blck)
+         {
+            if (cntrl_blck)
+            {
+               if (
+                    (0 !=   cntrl_blck->ref_count) &&
+                    (0 == --cntrl_blck->ref_count)
+                  )
+               {
+                  delete cntrl_blck;
+               }
+
+               cntrl_blck = 0;
+            }
+         }
+
          std::size_t ref_count;
          expression_ptr expr;
          local_data_list_t local_data_list;
@@ -16315,34 +16919,37 @@ namespace exprtk
    public:
 
       expression()
-      : expression_holder_(0)
+      : control_block_(0)
       {
          set_expression(new details::null_node<T>());
       }
 
       expression(const expression<T>& e)
-      : expression_holder_(e.expression_holder_),
+      : control_block_(e.control_block_),
         symbol_table_list_(e.symbol_table_list_)
       {
-         expression_holder_->ref_count++;
+         control_block_->ref_count++;
       }
 
       inline expression<T>& operator=(const expression<T>& e)
       {
          if (this != &e)
          {
-            if (expression_holder_)
+            if (control_block_)
             {
-               if (0 == --expression_holder_->ref_count)
+               if (
+                    (0 !=   control_block_->ref_count) &&
+                    (0 == --control_block_->ref_count)
+                  )
                {
-                  delete expression_holder_;
+                  delete control_block_;
                }
 
-               expression_holder_ = 0;
+               control_block_ = 0;
             }
 
-            expression_holder_ = e.expression_holder_;
-            expression_holder_->ref_count++;
+            control_block_ = e.control_block_;
+            control_block_->ref_count++;
             symbol_table_list_ = e.symbol_table_list_;
          }
 
@@ -16357,40 +16964,26 @@ namespace exprtk
       inline bool operator!() const
       {
          return (
-                  (0 == expression_holder_      ) ||
-                  (0 == expression_holder_->expr)
+                  (0 == control_block_      ) ||
+                  (0 == control_block_->expr)
                 );
       }
 
       inline expression<T>& release()
       {
-         if (expression_holder_)
-         {
-            if (0 == --expression_holder_->ref_count)
-            {
-               delete expression_holder_;
-            }
-
-            expression_holder_ = 0;
-         }
+         control_block::destroy(control_block_);
 
          return *this;
       }
 
      ~expression()
       {
-         if (expression_holder_)
-         {
-            if (0 == --expression_holder_->ref_count)
-            {
-               delete expression_holder_;
-            }
-         }
+         control_block::destroy(control_block_);
       }
 
       inline T value() const
       {
-         return expression_holder_->expr->value();
+         return control_block_->expr->value();
       }
 
       inline T operator()() const
@@ -16427,8 +17020,8 @@ namespace exprtk
 
       inline const results_context_t& results() const
       {
-         if (expression_holder_->results)
-            return (*expression_holder_->results);
+         if (control_block_->results)
+            return (*control_block_->results);
          else
          {
             static const results_context_t null_results;
@@ -16438,7 +17031,7 @@ namespace exprtk
 
       inline bool return_invoked() const
       {
-         return (*expression_holder_->return_invoked);
+         return (*control_block_->return_invoked);
       }
 
    private:
@@ -16452,15 +17045,15 @@ namespace exprtk
       {
          if (expr)
          {
-            if (expression_holder_)
+            if (control_block_)
             {
-               if (0 == --expression_holder_->ref_count)
+               if (0 == --control_block_->ref_count)
                {
-                  delete expression_holder_;
+                  delete control_block_;
                }
             }
 
-            expression_holder_ = new expression_holder(expr);
+            control_block_ = control_block::create(expr);
          }
       }
 
@@ -16468,13 +17061,13 @@ namespace exprtk
       {
          if (expr)
          {
-            if (expression_holder_)
+            if (control_block_)
             {
-               expression_holder_->
+               control_block_->
                   local_data_list.push_back(
-                     typename expression<T>::expression_holder::
+                     typename expression<T>::control_block::
                         data_pack(reinterpret_cast<void*>(expr),
-                                  expression_holder::e_expr));
+                                  control_block::e_expr));
             }
          }
       }
@@ -16483,13 +17076,13 @@ namespace exprtk
       {
          if (vec_holder)
          {
-            if (expression_holder_)
+            if (control_block_)
             {
-               expression_holder_->
+               control_block_->
                   local_data_list.push_back(
-                     typename expression<T>::expression_holder::
+                     typename expression<T>::control_block::
                         data_pack(reinterpret_cast<void*>(vec_holder),
-                                  expression_holder::e_vecholder));
+                                  control_block::e_vecholder));
             }
          }
       }
@@ -16498,55 +17091,55 @@ namespace exprtk
       {
          if (data)
          {
-            if (expression_holder_)
+            if (control_block_)
             {
-               typename expression_holder::data_type dt = expression_holder::e_data;
+               typename control_block::data_type dt = control_block::e_data;
 
                switch (data_mode)
                {
-                  case 0 : dt = expression_holder::e_data;    break;
-                  case 1 : dt = expression_holder::e_vecdata; break;
-                  case 2 : dt = expression_holder::e_string;  break;
+                  case 0 : dt = control_block::e_data;    break;
+                  case 1 : dt = control_block::e_vecdata; break;
+                  case 2 : dt = control_block::e_string;  break;
                }
 
-               expression_holder_->
+               control_block_->
                   local_data_list.push_back(
-                     typename expression<T>::expression_holder::
+                     typename expression<T>::control_block::
                         data_pack(reinterpret_cast<void*>(data),dt,size));
             }
          }
       }
 
-      inline const typename expression_holder::local_data_list_t& local_data_list()
+      inline const typename control_block::local_data_list_t& local_data_list()
       {
-         if (expression_holder_)
+         if (control_block_)
          {
-            return expression_holder_->local_data_list;
+            return control_block_->local_data_list;
          }
          else
          {
-            static typename expression_holder::local_data_list_t null_local_data_list;
+            static typename control_block::local_data_list_t null_local_data_list;
             return null_local_data_list;
          }
       }
 
       inline void register_return_results(results_context_t* rc)
       {
-         if (expression_holder_ && rc)
+         if (control_block_ && rc)
          {
-            expression_holder_->results = rc;
+            control_block_->results = rc;
          }
       }
 
       inline void set_retinvk(bool* retinvk_ptr)
       {
-         if (expression_holder_)
+         if (control_block_)
          {
-            expression_holder_->return_invoked = retinvk_ptr;
+            control_block_->return_invoked = retinvk_ptr;
          }
       }
 
-      expression_holder* expression_holder_;
+      control_block* control_block_;
       symtab_list_t      symbol_table_list_;
 
       friend class parser<T>;
@@ -16561,27 +17154,27 @@ namespace exprtk
 
       static inline bool is_constant(const expression<T>& expr)
       {
-         return details::is_constant_node(expr.expression_holder_->expr);
+         return details::is_constant_node(expr.control_block_->expr);
       }
 
       static inline bool is_variable(const expression<T>& expr)
       {
-         return details::is_variable_node(expr.expression_holder_->expr);
+         return details::is_variable_node(expr.control_block_->expr);
       }
 
       static inline bool is_unary(const expression<T>& expr)
       {
-         return details::is_unary_node(expr.expression_holder_->expr);
+         return details::is_unary_node(expr.control_block_->expr);
       }
 
       static inline bool is_binary(const expression<T>& expr)
       {
-         return details::is_binary_node(expr.expression_holder_->expr);
+         return details::is_binary_node(expr.control_block_->expr);
       }
 
       static inline bool is_function(const expression<T>& expr)
       {
-         return details::is_function(expr.expression_holder_->expr);
+         return details::is_function(expr.control_block_->expr);
       }
    };
 
@@ -19158,15 +19751,15 @@ namespace exprtk
             }
             else
             {
-               expression = new_expression;
-
                if (
                     token_is(token_t::e_ternary,prsrhlpr_t::e_hold) &&
                     (precedence == e_level00)
                   )
                {
-                  expression = parse_ternary_conditional_statement(expression);
+                  expression = parse_ternary_conditional_statement(new_expression);
                }
+               else
+                  expression = new_expression;
 
                parse_pending_string_rangesize(expression);
             }
@@ -19721,7 +20314,7 @@ namespace exprtk
          }
          else
             return expression_generator_
-                     .conditional(condition,consequent,alternative);
+                      .conditional(condition,consequent,alternative);
       }
 
       inline expression_node_ptr parse_conditional_statement_02(expression_node_ptr condition)
@@ -19857,7 +20450,7 @@ namespace exprtk
          }
          else
             return expression_generator_
-                     .conditional(condition,consequent,alternative);
+                      .conditional(condition,consequent,alternative);
       }
 
       inline expression_node_ptr parse_conditional_statement()
@@ -20006,7 +20599,7 @@ namespace exprtk
          }
          else
             return expression_generator_
-                     .conditional(condition,consequent,alternative);
+                      .conditional(condition,consequent,alternative);
       }
 
       inline expression_node_ptr parse_while_loop()
@@ -20438,11 +21031,11 @@ namespace exprtk
          else
          {
             expression_node_ptr result_node =
-                   expression_generator_.for_loop(initialiser,
-                                                  condition,
-                                                  incrementor,
-                                                  loop_body,
-                                                  brkcnt_list_.front());
+               expression_generator_.for_loop(initialiser,
+                                              condition,
+                                              incrementor,
+                                              loop_body,
+                                              brkcnt_list_.front());
             brkcnt_list_.pop_front();
 
             return result_node;
@@ -21185,30 +21778,44 @@ namespace exprtk
       {
          const std::string symbol = current_token().value;
 
-         if (!symtab_store_.is_conststr_stringvar(symbol))
-         {
-            set_error(
-               make_error(parser_error::e_syntax,
-                          current_token(),
-                          "ERR101 - Unknown string symbol"));
-
-            return error_node();
-         }
-
-         expression_node_ptr result = symtab_store_.get_stringvar(symbol);
-
          typedef details::stringvar_node<T>* strvar_node_t;
+
+         expression_node_ptr result   = error_node();
          strvar_node_t const_str_node = static_cast<strvar_node_t>(0);
+         bool is_const_string         = false;
 
-         const bool is_const_string = symtab_store_.is_constant_string(symbol);
+         scope_element& se = sem_.get_active_element(symbol);
 
-         if (is_const_string)
+         if (scope_element::e_string == se.type)
          {
-            const_str_node = static_cast<strvar_node_t>(result);
-            result = expression_generator_(const_str_node->str());
+            se.active = true;
+            result    = se.str_node;
+            lodge_symbol(symbol,e_st_local_string);
          }
+         else
+         {
+            if (!symtab_store_.is_conststr_stringvar(symbol))
+            {
+               set_error(
+                  make_error(parser_error::e_syntax,
+                             current_token(),
+                             "ERR101 - Unknown string symbol"));
 
-         lodge_symbol(symbol,e_st_string);
+               return error_node();
+            }
+
+            result = symtab_store_.get_stringvar(symbol);
+
+            is_const_string = symtab_store_.is_constant_string(symbol);
+
+            if (is_const_string)
+            {
+               const_str_node = static_cast<strvar_node_t>(result);
+               result = expression_generator_(const_str_node->str());
+            }
+
+            lodge_symbol(symbol,e_st_string);
+         }
 
          if (peek_token_is(token_t::e_lsqrbracket))
          {
@@ -21630,7 +22237,7 @@ namespace exprtk
                {
                   invalid_state_ = false;
 
-                  const std::string err_param_seq =  s.substr(start,end - start);
+                  const std::string err_param_seq = s.substr(start,end - start);
 
                   parser_.
                      set_error(
@@ -21651,7 +22258,7 @@ namespace exprtk
                   param_seq_list_ = param_seq_list;
                else
                {
-                  const std::string err_param_seq =  s.substr(start,s.size() - start);
+                  const std::string err_param_seq = s.substr(start,s.size() - start);
 
                   parser_.
                      set_error(
@@ -22126,6 +22733,8 @@ namespace exprtk
          scoped_vec_delete<expression_node_t> svd(*this,vec_initilizer_list);
 
          bool single_value_initialiser = false;
+         bool vec_to_vec_initialiser   = false;
+         bool null_initialisation      = false;
 
          if (!token_is(token_t::e_rsqrbracket))
          {
@@ -22177,12 +22786,50 @@ namespace exprtk
             }
             else if (!token_is(token_t::e_lcrlbracket))
             {
-               set_error(
-                  make_error(parser_error::e_syntax,
-                             current_token(),
-                             "ERR140 - Expected '{' as part of vector initialiser list"));
+               expression_node_ptr initialiser = error_node();
 
-               return error_node();
+               // Is this a vector to vector assignment and initialisation?
+               if (token_t::e_symbol == current_token().type)
+               {
+                  // Is it a locally defined vector?
+                  scope_element& se = sem_.get_active_element(current_token().value);
+
+                  if (scope_element::e_vector == se.type)
+                  {
+                     if (0 != (initialiser = parse_expression()))
+                        vec_initilizer_list.push_back(initialiser);
+                     else
+                        return error_node();
+                  }
+                  // Are we dealing with a user defined vector?
+                  else if (symtab_store_.is_vector(current_token().value))
+                  {
+                     lodge_symbol(current_token().value,e_st_vector);
+
+                     if (0 != (initialiser = parse_expression()))
+                        vec_initilizer_list.push_back(initialiser);
+                     else
+                        return error_node();
+                  }
+                  // Are we dealing with a null initialisation vector definition?
+                  else if (token_is(token_t::e_symbol,"null"))
+                     null_initialisation = true;
+               }
+
+               if (!null_initialisation)
+               {
+                  if (0 == initialiser)
+                  {
+                     set_error(
+                        make_error(parser_error::e_syntax,
+                                   current_token(),
+                                   "ERR140 - Expected '{' as part of vector initialiser list"));
+
+                     return error_node();
+                  }
+                  else
+                     vec_to_vec_initialiser = true;
+               }
             }
             else if (!token_is(token_t::e_rcrlbracket))
             {
@@ -22314,13 +22961,22 @@ namespace exprtk
 
          lodge_symbol(vec_name,e_st_local_vector);
 
-         expression_node_ptr result =
-                node_allocator_
-                   .allocate<details::vector_assignment_node<T> >(
-                      (*vec_holder)[0],
-                      vec_size,
-                      vec_initilizer_list,
-                      single_value_initialiser);
+         expression_node_ptr result = error_node();
+
+         if (null_initialisation)
+            result = expression_generator_(T(0.0));
+         else if (vec_to_vec_initialiser)
+            result = expression_generator_(
+                        details::e_assign,
+                        node_allocator_.allocate<vector_node_t>(vec_holder),
+                        vec_initilizer_list[0]);
+         else
+            result = node_allocator_
+                        .allocate<details::vector_assignment_node<T> >(
+                           (*vec_holder)[0],
+                           vec_size,
+                           vec_initilizer_list,
+                           single_value_initialiser);
 
          svd.delete_ptr = (0 == result);
 
@@ -23122,12 +23778,7 @@ namespace exprtk
                #ifndef exprtk_disable_string_capabilities
                else if (scope_element::e_string == se.type)
                {
-                  se.active = true;
-                  lodge_symbol(symbol,e_st_local_string);
-
-                  next_token();
-
-                  return se.str_node;
+                  return parse_string();
                }
                #endif
             }
@@ -23241,7 +23892,7 @@ namespace exprtk
             }
          }
 
-         // Are we dealing with a vector element?
+         // Are we dealing with a vector?
          if (symtab_store_.is_vector(symbol))
          {
             lodge_symbol(symbol,e_st_vector);
@@ -24231,18 +24882,25 @@ namespace exprtk
                    );
          }
 
-         inline bool is_vector_eqineq_operation(const details::operator_type& operation, expression_node_ptr (&branch)[2])
+         inline bool is_vector_eqineq_logic_operation(const details::operator_type& operation, expression_node_ptr (&branch)[2])
          {
             if (!is_ivector_node(branch[0]) && !is_ivector_node(branch[1]))
                return false;
             else
                return (
-                        (details::e_lt  == operation) ||
-                        (details::e_lte == operation) ||
-                        (details::e_gt  == operation) ||
-                        (details::e_gte == operation) ||
-                        (details::e_eq  == operation) ||
-                        (details::e_ne  == operation)
+                        (details::e_lt     == operation) ||
+                        (details::e_lte    == operation) ||
+                        (details::e_gt     == operation) ||
+                        (details::e_gte    == operation) ||
+                        (details::e_eq     == operation) ||
+                        (details::e_ne     == operation) ||
+                        (details::e_equal  == operation) ||
+                        (details::e_and    == operation) ||
+                        (details::e_nand   == operation) ||
+                        (details::  e_or   == operation) ||
+                        (details:: e_nor   == operation) ||
+                        (details:: e_xor   == operation) ||
+                        (details::e_xnor   == operation)
                       );
          }
 
@@ -24276,8 +24934,8 @@ namespace exprtk
                return synthesize_swap_expression(branch);
             else if (is_assignment_operation(operation))
                return synthesize_assignment_operation_expression(operation,branch);
-            else if (is_vector_eqineq_operation(operation,branch))
-               return synthesize_veceqineq_operation_expression(operation,branch);
+            else if (is_vector_eqineq_logic_operation(operation,branch))
+               return synthesize_veceqineqlogic_operation_expression(operation,branch);
             else if (is_vector_arithmetic_operation(operation,branch))
                return synthesize_vecarithmetic_operation_expression(operation,branch);
             else if (is_shortcircuit_expression(operation))
@@ -24669,7 +25327,7 @@ namespace exprtk
             typedef std::vector<expression_node_ptr> arg_list_t;
 
             #define case_stmt(N) \
-            if (is_true(arg[(2 * N)])) {return arg[(2 * N) + 1]->value();}
+            if (is_true(arg[(2 * N)])) {return arg[(2 * N) + 1]->value(); }
 
             struct switch_1
             {
@@ -25552,7 +26210,7 @@ namespace exprtk
                case e_st_vector   : {
                                        typedef details::vector_holder<T> vector_holder_t;
 
-                                       vector_holder_t& vh = static_cast<vector_node_t*>(node)->ref();
+                                       vector_holder_t& vh = static_cast<vector_node_t*>(node)->vec_holder();
 
                                        symbol_name = parser_->symtab_store_.get_vector_name(&vh);
                                     }
@@ -25726,27 +26384,37 @@ namespace exprtk
             }
          }
 
-         inline expression_node_ptr synthesize_veceqineq_operation_expression(const details::operator_type& operation,
-                                                                              expression_node_ptr (&branch)[2])
+         inline expression_node_ptr synthesize_veceqineqlogic_operation_expression(const details::operator_type& operation,
+                                                                                   expression_node_ptr (&branch)[2])
          {
             const bool is_b0_ivec = details::is_ivector_node(branch[0]);
             const bool is_b1_ivec = details::is_ivector_node(branch[1]);
+
+            #define batch_eqineq_logic_case               \
+            case_stmt(details::   e_lt,details::   lt_op) \
+            case_stmt(details::  e_lte,details::  lte_op) \
+            case_stmt(details::   e_gt,details::   gt_op) \
+            case_stmt(details::  e_gte,details::  gte_op) \
+            case_stmt(details::   e_eq,details::   eq_op) \
+            case_stmt(details::   e_ne,details::   ne_op) \
+            case_stmt(details::e_equal,details::equal_op) \
+            case_stmt(details::  e_and,  details::and_op) \
+            case_stmt(details:: e_nand, details::nand_op) \
+            case_stmt(details::   e_or, details::  or_op) \
+            case_stmt(details::  e_nor, details:: nor_op) \
+            case_stmt(details::  e_xor, details:: xor_op) \
+            case_stmt(details:: e_xnor, details::xnor_op) \
 
             if (is_b0_ivec && is_b1_ivec)
             {
                switch (operation)
                {
-                  #define case_stmt(op0,op1)                                                                  \
-                  case op0 : return node_allocator_->                                                         \
-                                template allocate_rrr<typename details::eqineq_vecvec_node<Type,op1<Type> > > \
-                                   (operation,branch[0],branch[1]);                                           \
+                  #define case_stmt(op0,op1)                                                                     \
+                  case op0 : return node_allocator_->                                                            \
+                                template allocate_rrr<typename details::vec_binop_vecvec_node<Type,op1<Type> > > \
+                                   (operation,branch[0],branch[1]);                                              \
 
-                  case_stmt(details::  e_lt,details::  lt_op)
-                  case_stmt(details:: e_lte,details:: lte_op)
-                  case_stmt(details::  e_gt,details::  gt_op)
-                  case_stmt(details:: e_gte,details:: gte_op)
-                  case_stmt(details::  e_eq,details::  eq_op)
-                  case_stmt(details::  e_ne,details::  ne_op)
+                  batch_eqineq_logic_case
                   #undef case_stmt
                   default : return error_node();
                }
@@ -25755,17 +26423,12 @@ namespace exprtk
             {
                switch (operation)
                {
-                  #define case_stmt(op0,op1)                                                                  \
-                  case op0 : return node_allocator_->                                                         \
-                                template allocate_rrr<typename details::eqineq_vecval_node<Type,op1<Type> > > \
-                                   (operation,branch[0],branch[1]);                                           \
+                  #define case_stmt(op0,op1)                                                                     \
+                  case op0 : return node_allocator_->                                                            \
+                                template allocate_rrr<typename details::vec_binop_vecval_node<Type,op1<Type> > > \
+                                   (operation,branch[0],branch[1]);                                              \
 
-                  case_stmt(details::  e_lt,details::  lt_op)
-                  case_stmt(details:: e_lte,details:: lte_op)
-                  case_stmt(details::  e_gt,details::  gt_op)
-                  case_stmt(details:: e_gte,details:: gte_op)
-                  case_stmt(details::  e_eq,details::  eq_op)
-                  case_stmt(details::  e_ne,details::  ne_op)
+                  batch_eqineq_logic_case
                   #undef case_stmt
                   default : return error_node();
                }
@@ -25774,23 +26437,20 @@ namespace exprtk
             {
                switch (operation)
                {
-                  #define case_stmt(op0,op1)                                                                  \
-                  case op0 : return node_allocator_->                                                         \
-                                template allocate_rrr<typename details::eqineq_valvec_node<Type,op1<Type> > > \
-                                   (operation,branch[0],branch[1]);                                           \
+                  #define case_stmt(op0,op1)                                                                     \
+                  case op0 : return node_allocator_->                                                            \
+                                template allocate_rrr<typename details::vec_binop_valvec_node<Type,op1<Type> > > \
+                                   (operation,branch[0],branch[1]);                                              \
 
-                  case_stmt(details::  e_lt,details::  lt_op)
-                  case_stmt(details:: e_lte,details:: lte_op)
-                  case_stmt(details::  e_gt,details::  gt_op)
-                  case_stmt(details:: e_gte,details:: gte_op)
-                  case_stmt(details::  e_eq,details::  eq_op)
-                  case_stmt(details::  e_ne,details::  ne_op)
+                  batch_eqineq_logic_case
                   #undef case_stmt
                   default : return error_node();
                }
             }
             else
                return error_node();
+
+            #undef batch_eqineq_logic_case
          }
 
          inline expression_node_ptr synthesize_vecarithmetic_operation_expression(const details::operator_type& operation,
@@ -25810,10 +26470,10 @@ namespace exprtk
             {
                switch (operation)
                {
-                  #define case_stmt(op0,op1)                                                                    \
-                  case op0 : return node_allocator_->                                                           \
-                                template allocate_rrr<typename details::vecarith_vecvec_node<Type,op1<Type> > > \
-                                   (operation,branch[0],branch[1]);                                             \
+                  #define case_stmt(op0,op1)                                                                     \
+                  case op0 : return node_allocator_->                                                            \
+                                template allocate_rrr<typename details::vec_binop_vecvec_node<Type,op1<Type> > > \
+                                   (operation,branch[0],branch[1]);                                              \
 
                   vector_ops
                   case_stmt(details::e_pow,details:: pow_op)
@@ -25825,10 +26485,10 @@ namespace exprtk
             {
                switch (operation)
                {
-                  #define case_stmt(op0,op1)                                                                    \
-                  case op0 : return node_allocator_->                                                           \
-                                template allocate_rrr<typename details::vecarith_vecval_node<Type,op1<Type> > > \
-                                   (operation,branch[0],branch[1]);                                             \
+                  #define case_stmt(op0,op1)                                                                     \
+                  case op0 : return node_allocator_->                                                            \
+                                template allocate_rrr<typename details::vec_binop_vecval_node<Type,op1<Type> > > \
+                                   (operation,branch[0],branch[1]);                                              \
 
                   vector_ops
                   case_stmt(details::e_pow,details:: pow_op)
@@ -25840,10 +26500,10 @@ namespace exprtk
             {
                switch (operation)
                {
-                  #define case_stmt(op0,op1)                                                                    \
-                  case op0 : return node_allocator_->                                                           \
-                                template allocate_rrr<typename details::vecarith_valvec_node<Type,op1<Type> > > \
-                                   (operation,branch[0],branch[1]);                                             \
+                  #define case_stmt(op0,op1)                                                                     \
+                  case op0 : return node_allocator_->                                                            \
+                                template allocate_rrr<typename details::vec_binop_valvec_node<Type,op1<Type> > > \
+                                   (operation,branch[0],branch[1]);                                              \
 
                   vector_ops
                   #undef case_stmt
@@ -25895,7 +26555,10 @@ namespace exprtk
             #ifndef exprtk_disable_string_capabilities
             else if (v0_is_str && v1_is_str)
             {
-               result = node_allocator_->allocate<details::swap_string_node<T> >(branch[0],branch[1]);
+               if (is_string_node(branch[0]) && is_string_node(branch[1]))
+                  result = node_allocator_->allocate<details::swap_string_node<T> >(branch[0],branch[1]);
+               else
+                  result = node_allocator_->allocate<details::swap_genstrings_node<T> >(branch[0],branch[1]);
             }
             #endif
             else
@@ -31497,7 +32160,7 @@ namespace exprtk
 
             free_node(*node_allocator_,branch[1]);
 
-            return synthesize_str_xoxr_expression_impl<std::string&,const std::string>(opr,s0,s1,rp1);
+            return synthesize_str_xoxr_expression_impl<std::string&, const std::string>(opr,s0,s1,rp1);
          }
 
          inline expression_node_ptr synthesize_srosr_expression(const details::operator_type& opr, expression_node_ptr (&branch)[2])
@@ -31523,7 +32186,7 @@ namespace exprtk
 
             details::free_node(*node_allocator_,branch[1]);
 
-            return synthesize_sos_expression_impl<std::string&,const std::string>(opr,s0,s1);
+            return synthesize_sos_expression_impl<std::string&, const std::string>(opr,s0,s1);
          }
 
          inline expression_node_ptr synthesize_csos_expression(const details::operator_type& opr, expression_node_ptr (&branch)[2])
@@ -31561,7 +32224,7 @@ namespace exprtk
             details::free_node(*node_allocator_,branch[0]);
             details::free_node(*node_allocator_,branch[1]);
 
-            return synthesize_str_xrox_expression_impl<std::string&,const std::string>(opr,s0,s1,rp0);
+            return synthesize_str_xrox_expression_impl<std::string&, const std::string>(opr,s0,s1,rp0);
          }
 
          inline expression_node_ptr synthesize_srocsr_expression(const details::operator_type& opr, expression_node_ptr (&branch)[2])
@@ -31577,7 +32240,7 @@ namespace exprtk
             details::free_node(*node_allocator_,branch[0]);
             details::free_node(*node_allocator_,branch[1]);
 
-            return synthesize_str_xroxr_expression_impl<std::string&,const std::string>(opr,s0,s1,rp0,rp1);
+            return synthesize_str_xroxr_expression_impl<std::string&, const std::string>(opr,s0,s1,rp0,rp1);
          }
 
          inline expression_node_ptr synthesize_csocs_expression(const details::operator_type& opr, expression_node_ptr (&branch)[2])
@@ -31597,7 +32260,7 @@ namespace exprtk
                result = node_allocator_->allocate_c<details::literal_node<Type> >(details::ilike_op<Type>::process(s0,s1));
             else
             {
-               expression_node_ptr temp = synthesize_sos_expression_impl<const std::string,const std::string>(opr,s0,s1);
+               expression_node_ptr temp = synthesize_sos_expression_impl<const std::string, const std::string>(opr,s0,s1);
                Type v = temp->value();
                details::free_node(*node_allocator_,temp);
                result = node_allocator_->allocate<literal_node_t>(v);
@@ -31619,7 +32282,7 @@ namespace exprtk
             free_node(*node_allocator_,branch[0]);
             free_node(*node_allocator_,branch[1]);
 
-            return synthesize_str_xoxr_expression_impl<const std::string,const std::string>(opr,s0,s1,rp1);
+            return synthesize_str_xoxr_expression_impl<const std::string, const std::string>(opr,s0,s1,rp1);
          }
 
          inline expression_node_ptr synthesize_csros_expression(const details::operator_type& opr, expression_node_ptr (&branch)[2])
@@ -31676,7 +32339,7 @@ namespace exprtk
 
             details::free_all_nodes(*node_allocator_,branch);
 
-            return synthesize_str_xroxr_expression_impl<const std::string,const std::string>(opr,s0,s1,rp0,rp1);
+            return synthesize_str_xroxr_expression_impl<const std::string, const std::string>(opr,s0,s1,rp0,rp1);
          }
 
          inline expression_node_ptr synthesize_strogen_expression(const details::operator_type& opr, expression_node_ptr (&branch)[2])
@@ -32829,6 +33492,8 @@ namespace exprtk
 
    public:
 
+      using ifunction<T>::operator();
+
       polynomial()
       : ifunction<T>((N+2 <= 20) ? (N + 2) : std::numeric_limits<std::size_t>::max())
       {
@@ -33031,6 +33696,8 @@ namespace exprtk
          typedef std::pair<T*,std::size_t> lvarref_t;
          typedef std::vector<lvarref_t>    lvr_vec_t;
 
+         using exprtk::ifunction<T>::operator();
+
          base_func(const std::size_t& pc = 0)
          : exprtk::ifunction<T>(pc),
            local_var_stack_size(0),
@@ -33082,7 +33749,8 @@ namespace exprtk
          {
             expression = expr;
 
-            typedef typename expression_t::expression_holder::local_data_list_t ldl_t;
+            typedef typename expression_t::control_block::local_data_list_t ldl_t;
+
             ldl_t ldl = expr.local_data_list();
 
             std::vector<std::size_t> index_list;
@@ -33235,6 +33903,8 @@ namespace exprtk
 
       struct func_0param : public base_func
       {
+         using exprtk::ifunction<T>::operator();
+
          func_0param() : base_func(0) {}
 
          inline T operator()()
@@ -33261,6 +33931,8 @@ namespace exprtk
 
       struct func_1param : public base_func
       {
+         using exprtk::ifunction<T>::operator();
+
          func_1param() : base_func(1) {}
 
          inline T operator()(type v0)
@@ -33275,6 +33947,8 @@ namespace exprtk
 
       struct func_2param : public base_func
       {
+         using exprtk::ifunction<T>::operator();
+
          func_2param() : base_func(2) {}
 
          inline T operator()(type v0, type v1)
@@ -33289,6 +33963,8 @@ namespace exprtk
 
       struct func_3param : public base_func
       {
+         using exprtk::ifunction<T>::operator();
+
          func_3param() : base_func(3) {}
 
          inline T operator()(type v0, type v1, type v2)
@@ -33303,6 +33979,8 @@ namespace exprtk
 
       struct func_4param : public base_func
       {
+         using exprtk::ifunction<T>::operator();
+
          func_4param() : base_func(4) {}
 
          inline T operator()(type v0, type v1, type v2, type v3)
@@ -33317,6 +33995,8 @@ namespace exprtk
 
       struct func_5param : public base_func
       {
+         using exprtk::ifunction<T>::operator();
+
          func_5param() : base_func(5) {}
 
          inline T operator()(type v0, type v1, type v2, type v3, type v4)
@@ -33331,6 +34011,8 @@ namespace exprtk
 
       struct func_6param : public base_func
       {
+         using exprtk::ifunction<T>::operator();
+
          func_6param() : base_func(6) {}
 
          inline T operator()(type v0, type v1, type v2, type v3, type v4, type v5)
@@ -33850,103 +34532,114 @@ namespace exprtk
       return true;
    }
 
-   namespace helper
+   namespace rtl
    {
-      namespace details
+      namespace io
       {
-         template <typename T>
-         inline void print_type(const std::string& fmt,
-                                const T v,
-                                exprtk::details::numeric::details::real_type_tag)
+         namespace details
          {
-            printf(fmt.c_str(),v);
-         }
-
-         template <typename T>
-         struct print_impl
-         {
-            typedef typename igeneric_function<T>::generic_type generic_type;
-            typedef typename igeneric_function<T>::parameter_list_t parameter_list_t;
-            typedef typename generic_type::scalar_view scalar_t;
-            typedef typename generic_type::vector_view vector_t;
-            typedef typename generic_type::string_view string_t;
-
-            static void process(const std::string& scalar_format, parameter_list_t parameters)
+            template <typename T>
+            inline void print_type(const std::string& fmt,
+                                   const T v,
+                                   exprtk::details::numeric::details::real_type_tag)
             {
-               for (std::size_t i = 0; i < parameters.size(); ++i)
+               printf(fmt.c_str(),v);
+            }
+
+            template <typename T>
+            struct print_impl
+            {
+               typedef typename igeneric_function<T>::generic_type generic_type;
+               typedef typename igeneric_function<T>::parameter_list_t parameter_list_t;
+               typedef typename generic_type::scalar_view scalar_t;
+               typedef typename generic_type::vector_view vector_t;
+               typedef typename generic_type::string_view string_t;
+
+               static void process(const std::string& scalar_format, parameter_list_t parameters)
                {
-                  generic_type& gt = parameters[i];
-
-                  typename exprtk::details::numeric::details::number_type<T>::type num_type;
-
-                  switch (gt.type)
+                  for (std::size_t i = 0; i < parameters.size(); ++i)
                   {
-                     case generic_type::e_scalar : print_type(scalar_format,scalar_t(gt)(),num_type);
-                                                   break;
+                     generic_type& gt = parameters[i];
 
-                     case generic_type::e_vector : {
-                                                      vector_t vector(gt);
+                     typename exprtk::details::numeric::details::number_type<T>::type num_type;
 
-                                                      for (std::size_t x = 0; x < vector.size(); ++x)
-                                                      {
-                                                         print_type(scalar_format,vector[x],num_type);
+                     switch (gt.type)
+                     {
+                        case generic_type::e_scalar : print_type(scalar_format,scalar_t(gt)(),num_type);
+                                                      break;
 
-                                                         if ((x + 1) < vector.size())
-                                                            printf(" ");
+                        case generic_type::e_vector : {
+                                                         vector_t vector(gt);
+
+                                                         for (std::size_t x = 0; x < vector.size(); ++x)
+                                                         {
+                                                            print_type(scalar_format,vector[x],num_type);
+
+                                                            if ((x + 1) < vector.size())
+                                                               printf(" ");
+                                                         }
                                                       }
-                                                   }
-                                                   break;
+                                                      break;
 
-                     case generic_type::e_string : printf("%s",to_str(string_t(gt)).c_str());
-                                                   break;
+                        case generic_type::e_string : printf("%s",to_str(string_t(gt)).c_str());
+                                                      break;
 
-                     default                     : continue;
+                        default                     : continue;
+                     }
                   }
                }
+            };
+
+         } // namespace exprtk::rtl::io::details
+
+         template <typename T>
+         struct print : public exprtk::igeneric_function<T>
+         {
+            typedef typename igeneric_function<T>::parameter_list_t parameter_list_t;
+
+            using exprtk::igeneric_function<T>::operator();
+
+            print(const std::string& scalar_format = "%10.5f")
+            : scalar_format_(scalar_format)
+            {
+               exprtk::enable_zero_parameters(*this);
             }
+
+            inline T operator()(parameter_list_t parameters)
+            {
+               details::print_impl<T>::process(scalar_format_,parameters);
+               return T(0);
+            }
+
+            std::string scalar_format_;
          };
-      }
 
-      template <typename T>
-      struct print : public exprtk::igeneric_function<T>
-      {
-         typedef typename igeneric_function<T>::parameter_list_t parameter_list_t;
-
-         print(const std::string& scalar_format = "%10.5f")
-         : scalar_format_(scalar_format)
+         template <typename T>
+         struct println : public exprtk::igeneric_function<T>
          {
-            exprtk::enable_zero_parameters(*this);
-         }
+            typedef typename igeneric_function<T>::parameter_list_t parameter_list_t;
 
-         inline T operator()(parameter_list_t parameters)
-         {
-            details::print_impl<T>::process(scalar_format_,parameters);
-            return T(0);
-         }
+            using exprtk::igeneric_function<T>::operator();
 
-         std::string scalar_format_;
-      };
+            println(const std::string& scalar_format = "%10.5f")
+            : scalar_format_(scalar_format)
+            {
+               exprtk::enable_zero_parameters(*this);
+            }
 
-      template <typename T>
-      struct println : public exprtk::igeneric_function<T>
-      {
-         typedef typename igeneric_function<T>::parameter_list_t parameter_list_t;
+            inline T operator()(parameter_list_t parameters)
+            {
+               details::print_impl<T>::process(scalar_format_,parameters);
+               printf("\n");
+               return T(0);
+            }
 
-         println(const std::string& scalar_format = "%10.5f")
-         : scalar_format_(scalar_format)
-         {
-            exprtk::enable_zero_parameters(*this);
-         }
+            std::string scalar_format_;
+         };
 
-         inline T operator()(parameter_list_t parameters)
-         {
-            details::print_impl<T>::process(scalar_format_,parameters);
-            printf("\n");
-            return T(0);
-         }
 
-         std::string scalar_format_;
-      };
+
+      }  // namespace exprtk::rtl::io
    }
 }
 
@@ -34061,12 +34754,502 @@ namespace exprtk
       #endif
    };
 
+} // namespace exprtk
+
+#ifndef exprtk_disable_rtl_io_file
+#include <fstream>
+namespace exprtk
+{
+   namespace rtl { namespace io { namespace file { namespace details
+   {
+      enum file_mode
+      {
+         e_error = 0,
+         e_read  = 1,
+         e_write = 2,
+         e_rdwrt = 4
+      };
+
+      struct file_descriptor
+      {
+         file_descriptor(const std::string& fname, const std::string& access)
+         : stream_ptr(0),
+           mode(get_file_mode(access)),
+           file_name(fname)
+         {}
+
+         void*       stream_ptr;
+         file_mode   mode;
+         std::string file_name;
+
+         bool open()
+         {
+            if (e_read == mode)
+            {
+               std::ifstream* stream = new std::ifstream(file_name.c_str(),std::ios::binary);
+
+               if (!(*stream))
+               {
+                  file_name.clear();
+                  delete stream;
+                  return false;
+               }
+               else
+                  stream_ptr = stream;
+
+               return true;
+            }
+            else if (e_write == mode)
+            {
+               std::ofstream* stream = new std::ofstream(file_name.c_str(),std::ios::binary);
+
+               if (!(*stream))
+               {
+                  file_name.clear();
+                  delete stream;
+                  return false;
+               }
+               else
+                  stream_ptr = stream;
+
+               return true;
+            }
+            else if (e_rdwrt == mode)
+            {
+               std::fstream* stream = new std::fstream(file_name.c_str(),std::ios::binary);
+
+               if (!(*stream))
+               {
+                  file_name.clear();
+                  delete stream;
+                  return false;
+               }
+               else
+                  stream_ptr = stream;
+
+               return true;
+            }
+            else
+               return false;
+         }
+
+         template <typename Stream, typename Ptr>
+         void close(Ptr& p)
+         {
+            Stream* stream = reinterpret_cast<Stream*>(p);
+            stream->close();
+            delete stream;
+            p = reinterpret_cast<Ptr>(0);
+         }
+
+         bool close()
+         {
+            switch (mode)
+            {
+               case e_read  : close<std::ifstream>(stream_ptr);
+                              break;
+
+               case e_write : close<std::ofstream>(stream_ptr);
+                              break;
+
+               case e_rdwrt : close<std::fstream> (stream_ptr);
+                              break;
+
+               default      : return false;
+            }
+
+            return true;
+         }
+
+         template <typename View>
+         bool write(const View& view, const std::size_t amount, const std::size_t offset = 0)
+         {
+            switch (mode)
+            {
+               case e_write : reinterpret_cast<std::ofstream*>(stream_ptr)->
+                                 write(reinterpret_cast<const char*>(view.begin() + offset), amount * sizeof(View::value_t));
+                              break;
+
+               case e_rdwrt : reinterpret_cast<std::fstream*>(stream_ptr)->
+                                 write(reinterpret_cast<const char*>(view.begin() + offset) , amount * sizeof(View::value_t));
+                              break;
+
+               default      : return false;
+            }
+
+            return true;
+         }
+
+         template <typename View>
+         bool read(View& view, const std::size_t amount, const std::size_t offset = 0)
+         {
+            switch (mode)
+            {
+               case e_read  : reinterpret_cast<std::ifstream*>(stream_ptr)->
+                                 read(reinterpret_cast<char*>(view.begin() + offset), amount * sizeof(View::value_t));
+                              break;
+
+               case e_rdwrt : reinterpret_cast<std::fstream*>(stream_ptr)->
+                                 read(reinterpret_cast<char*>(view.begin() + offset) , amount * sizeof(View::value_t));
+                              break;
+
+               default      : return false;
+            }
+
+            return true;
+         }
+
+         bool getline(std::string& s)
+         {
+            switch (mode)
+            {
+               case e_read  : return (!!std::getline(*reinterpret_cast<std::ifstream*>(stream_ptr),s));
+               case e_rdwrt : return (!!std::getline(*reinterpret_cast<std::fstream* >(stream_ptr),s));
+               default      : return false;
+            }
+
+            return true;
+         }
+
+         bool eof()
+         {
+            switch (mode)
+            {
+               case e_read  : return reinterpret_cast<std::ifstream*>(stream_ptr)->eof();
+               case e_write : return reinterpret_cast<std::ofstream*>(stream_ptr)->eof();
+               case e_rdwrt : return reinterpret_cast<std::fstream* >(stream_ptr)->eof();
+               default      : return true;
+            }
+         }
+
+         file_mode get_file_mode(const std::string& access)
+         {
+            std::size_t w_cnt = 0;
+            std::size_t r_cnt = 0;
+
+            for (std::size_t i = 0; i < access.size(); ++i)
+            {
+               switch (std::tolower(access[i]))
+               {
+                  case 'r' : r_cnt++; break;
+                  case 'w' : w_cnt++; break;
+               }
+            }
+
+            if ((0 == r_cnt) && (0 == w_cnt))
+               return e_error;
+            else if ((r_cnt > 1) || (w_cnt > 1))
+               return e_error;
+            else if ((1 == r_cnt) && (1 == w_cnt))
+               return e_rdwrt;
+            else if (1 == r_cnt)
+               return e_read;
+            else
+               return e_write;
+         }
+      };
+
+      template <typename T>
+      file_descriptor* make_handle(T v)
+      {
+         file_descriptor* fd = reinterpret_cast<file_descriptor*>(0);
+
+         std::memcpy(reinterpret_cast<char*>(&fd),
+                     reinterpret_cast<const char*>(&v),
+                     sizeof(fd));
+         return fd;
+      }
+
+      template <typename T>
+      void perform_check()
+      {
+         #ifdef _MSC_VER
+         #pragma warning(push)
+         #pragma warning(disable: 4127)
+         #endif
+         if (sizeof(T) < sizeof(void*))
+         {
+            throw std::runtime_error("exprtk::rtl::io::file - Error - pointer size larger than holder.");
+         }
+         #ifdef _MSC_VER
+         #pragma warning(pop)
+         #endif
+      }
+   } // namespace exprtk::rtl::io::file::details
+
+   template <typename T>
+   class open : public exprtk::igeneric_function<T>
+   {
+   public:
+
+      typedef typename exprtk::igeneric_function<T> igfun_t;
+      typedef typename igfun_t::parameter_list_t    parameter_list_t;
+      typedef typename igfun_t::generic_type        generic_type;
+      typedef typename generic_type::string_view    string_t;
+
+      using exprtk::igeneric_function<T>::operator();
+
+      open()
+      : exprtk::igeneric_function<T>("S|SS")
+      { details::perform_check<T>(); }
+
+      inline T operator()(const std::size_t& ps_index, parameter_list_t parameters)
+      {
+         std::string file_name;
+         std::string access;
+
+         file_name = to_str(string_t(parameters[0]));
+
+         if (file_name.empty())
+            return T(0);
+
+         if (0 == ps_index)
+            access = "r";
+         else if (0 == string_t(parameters[1]).size())
+            return T(0);
+         else
+            access = to_str(string_t(parameters[1]));
+
+         details::file_descriptor* fd = new details::file_descriptor(file_name,access);
+
+         if (fd->open())
+         {
+            T t = T(0);
+
+            std::memcpy(reinterpret_cast<char*>(&t),
+                        reinterpret_cast<char*>(&fd),
+                        sizeof(fd));
+            return t;
+         }
+         else
+         {
+            delete fd;
+            return T(0);
+         }
+      }
+   };
+
+   template <typename T>
+   struct close : public exprtk::ifunction<T>
+   {
+      using exprtk::ifunction<T>::operator();
+
+      close()
+      : exprtk::ifunction<T>(1)
+      { details::perform_check<T>(); }
+
+      inline T operator()(const T& v)
+      {
+         details::file_descriptor* fd = details::make_handle(v);
+
+         if (!fd->close())
+            return T(0);
+
+         delete fd;
+
+         return T(1);
+      }
+   };
+
+   template <typename T>
+   class write : public exprtk::igeneric_function<T>
+   {
+   public:
+
+      typedef typename exprtk::igeneric_function<T> igfun_t;
+      typedef typename igfun_t::parameter_list_t    parameter_list_t;
+      typedef typename igfun_t::generic_type        generic_type;
+      typedef typename generic_type::string_view    string_t;
+      typedef typename generic_type::scalar_view    scalar_t;
+      typedef typename generic_type::vector_view    vector_t;
+
+      using exprtk::igeneric_function<T>::operator();
+
+      write()
+      : igfun_t("TS|TST|TV|TVT")
+      { details::perform_check<T>(); }
+
+      inline T operator()(const std::size_t& ps_index, parameter_list_t parameters)
+      {
+         details::file_descriptor* fd = details::make_handle(scalar_t(parameters[0])());
+
+         std::size_t amount = 0;
+
+         switch (ps_index)
+         {
+            case 0  : {
+                         string_t buffer(parameters[1]);
+                         amount = buffer.size();
+                         return T(fd->write(buffer,amount) ? 1 : 0);
+                      }
+
+            case 1  : {
+                         string_t buffer(parameters[1]);
+                         amount = std::min(buffer.size(),
+                                           static_cast<std::size_t>(scalar_t(parameters[2])()));
+                         return T(fd->write(buffer,amount) ? 1 : 0);
+                      }
+
+            case 2  : {
+                         vector_t vec(parameters[1]);
+                         amount = vec.size();
+                         return T(fd->write(vec,amount) ? 1 : 0);
+                      }
+
+            case 3  : {
+                         vector_t vec(parameters[1]);
+                         amount = std::min(vec.size(),
+                                           static_cast<std::size_t>(scalar_t(parameters[2])()));
+                         return T(fd->write(vec,amount) ? 1 : 0);
+                      }
+         }
+
+         return T(0);
+      }
+   };
+
+   template <typename T>
+   class read : public exprtk::igeneric_function<T>
+   {
+   public:
+
+      typedef typename exprtk::igeneric_function<T> igfun_t;
+      typedef typename igfun_t::parameter_list_t    parameter_list_t;
+      typedef typename igfun_t::generic_type        generic_type;
+      typedef typename generic_type::string_view    string_t;
+      typedef typename generic_type::scalar_view    scalar_t;
+      typedef typename generic_type::vector_view    vector_t;
+
+      using exprtk::igeneric_function<T>::operator();
+
+      read()
+      : igfun_t("TS|TST|TV|TVT")
+      { details::perform_check<T>(); }
+
+      inline T operator()(const std::size_t& ps_index, parameter_list_t parameters)
+      {
+         details::file_descriptor* fd = details::make_handle(scalar_t(parameters[0])());
+
+         std::size_t amount = 0;
+
+         switch (ps_index)
+         {
+            case 0  : {
+                         string_t buffer(parameters[1]);
+                         amount = buffer.size();
+                         return T(fd->read(buffer,amount) ? 1 : 0);
+                      }
+
+            case 1  : {
+                         string_t buffer(parameters[1]);
+                         amount = std::min(buffer.size(),
+                                           static_cast<std::size_t>(scalar_t(parameters[2])()));
+                         return T(fd->read(buffer,amount) ? 1 : 0);
+                      }
+
+            case 2  : {
+                         vector_t vec(parameters[1]);
+                         amount = vec.size();
+                         return T(fd->read(vec,amount) ? 1 : 0);
+                      }
+
+            case 3  : {
+                         vector_t vec(parameters[1]);
+                         amount = std::min(vec.size(),
+                                           static_cast<std::size_t>(scalar_t(parameters[2])()));
+                         return T(fd->read(vec,amount) ? 1 : 0);
+                      }
+         }
+
+         return T(0);
+      }
+   };
+
+   template <typename T>
+   class getline : public exprtk::igeneric_function<T>
+   {
+   public:
+
+      typedef typename exprtk::igeneric_function<T> igfun_t;
+      typedef typename igfun_t::parameter_list_t    parameter_list_t;
+      typedef typename igfun_t::generic_type        generic_type;
+      typedef typename generic_type::string_view    string_t;
+      typedef typename generic_type::scalar_view    scalar_t;
+
+      using exprtk::igeneric_function<T>::operator();
+
+      getline()
+      : igfun_t("T",igfun_t::e_rtrn_string)
+      { details::perform_check<T>(); }
+
+      inline T operator()(std::string& result,
+                          parameter_list_t parameters)
+      {
+         details::file_descriptor* fd = details::make_handle(scalar_t(parameters[0])());
+         return T(fd->getline(result) ? 1 : 0);
+      }
+   };
+
+   template <typename T>
+   struct eof : public exprtk::ifunction<T>
+   {
+      using exprtk::ifunction<T>::operator();
+
+      eof()
+      : exprtk::ifunction<T>(1)
+      { details::perform_check<T>(); }
+
+      inline T operator()(const T& v)
+      {
+         details::file_descriptor* fd = details::make_handle(v);
+
+         return (fd->eof() ? T(1) : T(0));
+      }
+   };
+
+   template <typename T>
+   struct package
+   {
+      open   <T> o;
+      close  <T> c;
+      write  <T> w;
+      read   <T> r;
+      getline<T> g;
+      eof    <T> e;
+
+      bool register_package(exprtk::symbol_table<T>& symtab)
+      {
+              if (!symtab.add_function("open"   ,o))
+            return false;
+         else if (!symtab.add_function("close"  ,c))
+            return false;
+         else if (!symtab.add_function("write"  ,w))
+            return false;
+         else if (!symtab.add_function("read"   ,r))
+            return false;
+         else if (!symtab.add_function("getline",g))
+            return false;
+         else if (!symtab.add_function("eof"    ,e))
+            return false;
+         else
+            return true;
+      }
+   };
+
+   } // namespace exprtk::rtl::io::file
+   } // namespace exprtk::rtl::io
+   } // namespace exprtk::rtl
+}    // namespace exprtk
+#endif
+
+namespace exprtk
+{
    namespace information
    {
       static const char* library = "Mathematical Expression Toolkit";
-      static const char* version = "2.7182818284590452353602874713526624"
-                                   "977572470936999595749669676277240766";
-      static const char* date    = "20160606";
+      static const char* version = "2.71828182845904523536028747135266249775"
+                                   "7247093699959574966967627724076630353547";
+      static const char* date    = "20161010";
 
       static inline std::string data()
       {
