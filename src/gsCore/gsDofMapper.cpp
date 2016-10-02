@@ -30,11 +30,49 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
 {
     GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals");
     const index_t numActive = locals.rows();
-    
     globals.resize(numActive,1);
+
+    /* //Testing second overload of localToGlobal
+    index_t nf;
+    gsMatrix<unsigned> tmp;
+    localToGlobal(locals, patchIndex, tmp, nf);
+    for (index_t i = 0; i != numActive; ++i)
+        globals.at(tmp(i,0)) = tmp(i,1);
+    return;
+    */
     
     for (index_t i = 0; i < numActive; ++i)
         globals(i,0) = MAPPER_PATCH_DOF(locals(i,0), patchIndex)+m_shift;
+}
+
+void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
+                                index_t patchIndex,
+                                gsMatrix<unsigned>& globals,
+                                index_t & numFree) const
+{
+    GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals");
+    GISMO_ASSERT( &locals != &globals, "localToGlobal: Inplace not supported");    
+    const index_t numActive = locals.rows();
+    globals.resize(numActive, 2);
+
+    numFree = 0;
+    index_t bot = numActive;
+    for (index_t i = 0; i != numActive; ++i)
+    {
+        const index_t ii = MAPPER_PATCH_DOF(locals(i,0), patchIndex)+m_shift;
+        if ( is_free_index(ii) )
+        {
+            globals(numFree  , 0) = i ;
+            globals(numFree++, 1) = ii;
+        }
+        else // is_boundary_index(ii)
+        {
+            globals(--bot, 0) = i ;
+            globals(  bot, 1) = ii;
+        }
+    }
+    
+    //GISMO_ASSERT(numFree == bot, "Something went wrong in localToGlobal");
 }
 
 void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b )

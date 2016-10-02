@@ -237,7 +237,18 @@ public:
     void localToGlobal(const gsMatrix<unsigned>& locals,
                        index_t patchIndex,
                        gsMatrix<unsigned>& globals) const;
-
+    
+    /** \brief Computes the global indices of the input local indices
+     *
+     * \param[in] locals a column matrix with the local indices
+     * \param[in] patchIndex the index of the patch where the local indices belong to
+     * \param[out] globals the local-global correspondance
+     * \param[out] numFree the number of free indices in \a local
+     */
+    void localToGlobal(const gsMatrix<unsigned>& locals,
+                       index_t patchIndex,
+                       gsMatrix<unsigned>& globals,
+                       index_t & numFree) const;
 
     /** \brief Returns the index associated to local dof \a i of patch \a k without shifts.
      *
