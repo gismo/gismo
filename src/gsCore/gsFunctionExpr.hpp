@@ -434,33 +434,6 @@ void gsFunctionExpr<T>::set_u (T const & v) const { my->vars[4]= v; }
 template<typename T>
 void gsFunctionExpr<T>::set_v (T const & v) const { my->vars[5]= v; } 
 
-/*
-// to do: remove
-template<typename T>
-void gsFunctionExpr<T>::set_x_der (std::string expression_string)
-{ 
-    my->der_exp[0].register_symbol_table(my->symbol_table);
-    exprtk::parser<T> parser;
-    bool success = parser.compile(expression_string, my->der_exp[0] );        
-    if ( ! success )
-        std::cout<<"gsFunctionExpr set_x_der(.) error: " <<parser.error() <<std::endl;
-    else
-        my->der_flag[0]=true;
-}
-
-template<typename T>
-void gsFunctionExpr<T>::set_y_der (std::string expression_string)
-{ 
-    my->der_exp[1].register_symbol_table(my->symbol_table);
-    exprtk::parser<T> parser;
-    bool success = parser.compile(expression_string, my->der_exp[1] );        
-    if ( ! success )
-        std::cout<<"gsFunctionExpr set_x_der(.) error: " <<parser.error() <<std::endl;
-    else
-        my->der_flag[1]=true;
-}
-//*/
-
 template<typename T>
 void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {

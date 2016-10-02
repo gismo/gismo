@@ -238,7 +238,7 @@ bool checkVectorPtrCast(std::vector<Base*> pVec)
    \a result. The latter is expected to have been allocated in advance
 */
 template <class T, class U>
-inline void copy_n(const T * begin, const size_t n, U * result)
+inline void copy_n(const T begin, const size_t n, U* result)
 {
     std::copy(begin, begin+n,
 #   ifdef _MSC_VER
