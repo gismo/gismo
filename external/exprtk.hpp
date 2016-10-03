@@ -1747,11 +1747,18 @@ namespace exprtk
 
          bool instate = false;
 
-         #define parse_digit_1(d) \
-         if ((digit = (*itr - '0')) < 10) { d = d * T(10) + digit; } else {break;} if (end == ++itr) break; \
+         #define parse_digit_1(d)         \
+         if ((digit = (*itr - '0')) < 10) \
+            { d = d * T(10) + digit; }    \
+         else                             \
+            { break; }                    \
+         if (end == ++itr) break;         \
 
-         #define parse_digit_2(d) \
-         if ((digit = (*itr - '0')) < 10) { d = d * T(10) + digit; } else {break;} ++itr; \
+         #define parse_digit_2(d)         \
+         if ((digit = (*itr - '0')) < 10) \
+            { d = d * T(10) + digit; }    \
+         else { break; }                  \
+            ++itr;                        \
 
          if ('.' != (*itr))
          {
@@ -11463,7 +11470,7 @@ namespace exprtk
       struct equal_op : public opr_base<T>
       {
          typedef typename opr_base<T>::Type Type;
-         static inline T process(Type t1, Type t2) { return (numeric::equal<T>(t1,t2) ? T(1) : T(0)); }
+          static inline T process(Type t1, Type t2) { return (details::is_true(numeric::equal<T>(t1,t2)) ? T(1) : T(0)); }
          static inline T process(const std::string& t1, const std::string& t2) { return ((t1 == t2) ? T(1) : T(0)); }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_eq; }
          static inline details::operator_type operation() { return details::e_equal; }
@@ -25326,8 +25333,8 @@ namespace exprtk
          {
             typedef std::vector<expression_node_ptr> arg_list_t;
 
-            #define case_stmt(N) \
-            if (is_true(arg[(2 * N)])) {return arg[(2 * N) + 1]->value(); }
+            #define case_stmt(N)                                             \
+            if (is_true(arg[(2 * N)])) { return arg[(2 * N) + 1]->value(); } \
 
             struct switch_1
             {
@@ -34867,11 +34874,11 @@ namespace exprtk
             switch (mode)
             {
                case e_write : reinterpret_cast<std::ofstream*>(stream_ptr)->
-                                 write(reinterpret_cast<const char*>(view.begin() + offset), amount * sizeof(View::value_t));
+                                 write(reinterpret_cast<const char*>(view.begin() + offset), amount * sizeof(typename View::value_t));
                               break;
 
                case e_rdwrt : reinterpret_cast<std::fstream*>(stream_ptr)->
-                                 write(reinterpret_cast<const char*>(view.begin() + offset) , amount * sizeof(View::value_t));
+                                 write(reinterpret_cast<const char*>(view.begin() + offset) , amount * sizeof(typename View::value_t));
                               break;
 
                default      : return false;
@@ -34886,11 +34893,11 @@ namespace exprtk
             switch (mode)
             {
                case e_read  : reinterpret_cast<std::ifstream*>(stream_ptr)->
-                                 read(reinterpret_cast<char*>(view.begin() + offset), amount * sizeof(View::value_t));
+                                 read(reinterpret_cast<char*>(view.begin() + offset), amount * sizeof(typename View::value_t));
                               break;
 
                case e_rdwrt : reinterpret_cast<std::fstream*>(stream_ptr)->
-                                 read(reinterpret_cast<char*>(view.begin() + offset) , amount * sizeof(View::value_t));
+                                 read(reinterpret_cast<char*>(view.begin() + offset) , amount * sizeof(typename View::value_t));
                               break;
 
                default      : return false;
