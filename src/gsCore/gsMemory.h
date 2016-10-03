@@ -234,11 +234,12 @@ bool checkVectorPtrCast(std::vector<Base*> pVec)
 
 /**
    \brief Small wrapper for std::copy mimicking memcpy (or
-   std::copy_n), copies \a n positions starting from \a begin into
-   \a result. The latter is expected to have been allocated in advance
+   std::copy_n) for a raw pointer destination, copies \a n positions
+   starting from \a begin into \a result. The latter is expected to
+   have been allocated in advance
 */
 template <class T, class U>
-inline void copy_n(const T begin, const size_t n, U* result)
+inline void copy_n(T begin, const size_t n, U* result)
 {
     std::copy(begin, begin+n,
 #   ifdef _MSC_VER
@@ -250,6 +251,29 @@ inline void copy_n(const T begin, const size_t n, U* result)
 // Note: in C++11 there is:
 // std::copy_n(begin, n, result);
 #   endif
+}
+
+namespace util
+{
+/**
+   \brief Small wrapper for std::copy mimicking std::copy for a raw
+   pointer destination, copies \a n positions starting from \a begin
+   into \a result. The latter is expected to have been allocated in
+   advance
+*/
+template <class T, class U>
+inline void copy(T begin, T end, U* result)
+{
+    std::copy(begin, end,
+#   ifdef _MSC_VER
+              // Take care of C4996 warning
+              //stdext::checked_array_iterator<U*>(result,n));
+              stdext::unchecked_array_iterator<U*>(result));
+#   else
+    result);
+#   endif
+}
+
 }
 
 } // namespace gismo
