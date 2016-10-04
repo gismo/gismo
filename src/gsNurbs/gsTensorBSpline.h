@@ -51,7 +51,7 @@ public:
     typedef gsBSplineBasis<T>  Family_t;
 
     /// Shared pointer for gsTensorBSpline
-    typedef memory::shared_ptr< gsTensorBSpline<d,T> > Ptr;
+    typedef typename memory::shared< gsTensorBSpline<d,T> >::ptr Ptr;
 
     /// Unique pointer for gsTensorBSpline
     typedef typename memory::unique< gsTensorBSpline>::ptr uPtr;

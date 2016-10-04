@@ -43,7 +43,7 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
     
-    typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
+    typedef typename memory::shared< gsTHBSplineBasis >::ptr Ptr;
 
     typedef typename
     choose<d==1, gsConstantBasis<T>, gsTHBSplineBasis<d-1,T>

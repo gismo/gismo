@@ -44,7 +44,7 @@ public:
     typedef gsMatrixBlockView<Base> BlockView;
     
     /// Shared pointer for gsSparseVector
-    typedef memory::shared_ptr< gsSparseVector > Ptr;
+    typedef typename memory::shared< gsSparseVector >::ptr Ptr;
     
 public:
     gsSparseVector() : Base() { }

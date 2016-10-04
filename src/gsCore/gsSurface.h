@@ -32,7 +32,7 @@ class gsSurface : public gsGeometry<T>
 
 public: 
   /// Shared pointer for gsSurface
-    typedef memory::shared_ptr< gsSurface > Ptr;
+    typedef typename memory::shared< gsSurface >::ptr Ptr;
 //  typedef memory::unique_ptr< gsSurface > LocalPtr;
 
     typedef T Scalar_t;

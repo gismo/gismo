@@ -46,7 +46,7 @@ public:
     typedef T Scalar_t;
 
     /// Shared pointer for gsFunctionExpr
-    typedef memory::shared_ptr< gsFunctionExpr > Ptr;
+    typedef typename memory::shared< gsFunctionExpr >::ptr Ptr;
 
     /// Auto pointer for gsFunctionExpr
     typedef typename memory::unique<gsFunctionExpr>::ptr uPtr;

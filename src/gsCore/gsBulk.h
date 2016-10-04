@@ -32,7 +32,7 @@ class gsBulk : public gsGeometry<T>
 
 public: 
   /// Shared pointer for gsBulk
-    typedef memory::shared_ptr< gsBulk > Ptr;
+    typedef typename memory::shared< gsBulk >::ptr Ptr;
 //  typedef memory::unique_ptr< gsBulk > LocalPtr;
 
     typedef T Scalar_t;

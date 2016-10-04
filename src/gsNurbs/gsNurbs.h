@@ -51,7 +51,7 @@ public:
     typedef gsNurbsBasis<T> Basis;
 
     /// Shared pointer for gsNurbs
-    typedef memory::shared_ptr< gsNurbs<T> > Ptr;
+    typedef typename memory::shared< gsNurbs<T> >::ptr Ptr;
 
     /// Unique pointer for gsNurbs
     typedef typename memory::unique<gsNurbs>::ptr uPtr;

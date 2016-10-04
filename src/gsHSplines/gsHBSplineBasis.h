@@ -46,7 +46,7 @@ public:
     choose<d==1, gsConstantBasis<T>, gsHBSplineBasis<d-1,T>
            >::type BoundaryBasisType;
 
-    typedef memory::shared_ptr< gsHBSplineBasis > Ptr;
+    typedef typename memory::shared< gsHBSplineBasis >::ptr Ptr;
 
 public:
 

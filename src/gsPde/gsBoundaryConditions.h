@@ -204,7 +204,7 @@ public:
 
     typedef typename boundary_condition<T>::function_ptr function_ptr;
 
-    typedef memory::shared_ptr< gsBoundaryConditions > Ptr;
+    typedef typename memory::shared< gsBoundaryConditions >::ptr Ptr;
 
     typedef typename memory::unique< gsBoundaryConditions >::ptr uPtr;
 

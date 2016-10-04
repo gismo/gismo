@@ -60,7 +60,7 @@ public:
     /// Associated Boundary basis type
     typedef typename gsBSplineTraits<d-1,T>::RatBasis BoundaryBasisType;
 
-    typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;
+    typedef typename memory::shared< gsTensorNurbsBasis >::ptr Ptr;
     
     //typedef typename Base::iterator iterator;
     //typedef typename Base::const_iterator const_iterator;

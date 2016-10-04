@@ -52,7 +52,7 @@ public:
     typedef gsMatrixBlockView<Base> BlockView;
 
     /// Shared pointer for gsVector
-    typedef memory::shared_ptr< gsVector > Ptr;
+    typedef typename memory::shared< gsVector >::ptr Ptr;
 
     /// Unique pointer for gsVector
     typedef typename memory::unique< gsVector >::ptr uPtr;
@@ -209,7 +209,7 @@ public:
     typedef Eigen::Matrix<T,3,1> Base ;
 
     /// Shared pointer for gsVector3d
-    typedef memory::shared_ptr< gsVector3d > Ptr;
+    typedef typename memory::shared< gsVector3d >::ptr Ptr;
 
 public:
 

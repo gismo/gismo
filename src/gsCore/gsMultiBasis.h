@@ -36,7 +36,7 @@ template<class T>
 class gsMultiBasis : public gsFunctionSet<T>
 {
 public:
-    typedef memory::shared_ptr<gsMultiBasis> Ptr;
+    typedef typename memory::shared<gsMultiBasis>::ptr Ptr;
 
     typedef std::vector<gsBasis<T> *> BasisContainer;
 

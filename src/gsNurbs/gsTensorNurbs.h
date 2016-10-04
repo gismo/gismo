@@ -56,7 +56,7 @@ public:
     typedef gsTensorNurbsBasis<d,T>   Basis;
     
     /// Shared pointer for gsTensorNurbs
-    typedef memory::shared_ptr< gsTensorNurbs<d,T> > Ptr;
+    typedef typename memory::shared< gsTensorNurbs<d,T> >::ptr Ptr;
 
 public:
 

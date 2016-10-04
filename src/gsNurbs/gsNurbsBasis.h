@@ -54,7 +54,7 @@ public:
     /// Associated Boundary basis type
     typedef gsConstantBasis<T> BoundaryBasisType;
 
-    typedef memory::shared_ptr< gsNurbsBasis > Ptr;
+    typedef typename memory::shared< gsNurbsBasis >::ptr Ptr;
 
     /// Dimension of the parameter domain
     static const int Dim = 1;

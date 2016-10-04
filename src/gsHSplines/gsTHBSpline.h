@@ -47,7 +47,7 @@ public:
     typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
     /// Shared pointer for gsHBSpline
-    typedef memory::shared_ptr< gsTHBSpline<d,T> > Ptr;
+    typedef typename memory::shared< gsTHBSpline<d,T> >::ptr Ptr;
 
     typedef typename
     choose<d==1, gsConstantFunction<T>, gsTHBSpline<d-1,T>

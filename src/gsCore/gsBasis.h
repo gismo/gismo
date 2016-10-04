@@ -85,7 +85,7 @@ public:
     typedef gsFunctionSet<T> Base;
 
     /// Shared pointer for gsBasis
-    typedef memory::shared_ptr< gsBasis > Ptr;
+    typedef typename memory::shared< gsBasis >::ptr Ptr;
 
     /// Unique pointer for gsBasis   
     typedef typename memory::unique< gsBasis >::ptr uPtr;
