@@ -82,8 +82,9 @@ public:
     static gsOptionList defaultOptions()
     {
         gsOptionList opt;
-        opt.addInt   ("MaxIterations"    , "Maximum number of iterations", 1000 );
-        opt.addReal  ("Tolerance"        , "Numerical tolerance"         , 1e-10);
+        opt.addInt   ("MaxIterations"    , "Maximum number of iterations", 1000       );
+        opt.addReal  ("Tolerance"        , "Tolerance for the error criteria on the "
+                                           "relative residual error",      1e-10      );
         return opt;
     }
 
@@ -201,16 +202,19 @@ public:
     /// Set the maximum number of iterations (default: 1000)
     void setMaxIterations(index_t max_iters)                   { m_max_iters = max_iters; }
 
-    /// Set the tolerance for the error criteria (default: 1e-10)
+    /// Set the tolerance for the error criteria on the relative residual error (default: 1e-10)
     void setTolerance(T tol)                                   { m_tol = tol; }
 
     /// The number of iterations needed to reach the error criteria
     int iterations() const                                     { return m_num_iter; }
 
-    /// The error of the iterative method
+    /// @brief The relative residual error of the current iterate
+    ///
+    /// This is the Euclidean norm of the residual, devided by the Euclidean
+    /// norm of the right-hand side.
     T error() const                                            { return m_error; }
 
-    /// The tolerance used in the iterative method
+    /// The chosen tolerance for the error criteria on the relative residual error
     T tolerance() const                                        { return m_tol; }
 
     /// Prints the object as a string.
