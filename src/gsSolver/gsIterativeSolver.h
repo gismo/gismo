@@ -59,8 +59,8 @@ public:
     ///
     /// @note This does not copy the matrix in \a mat. So, make sure that the
     /// matrix is not deleted before the solver. If you have a shared pointer to
-    /// a matrix, you might use \ref makeMatrixOp() to obtaint a gsLinearOperator which
-    /// can be supplied alternatively.
+    /// the matrix, you might use \ref makeMatrixOp() to obtain a shared pointer
+    /// to a gsLinearOperator which can be supplied alternatively.
     template<typename Derived>
     gsIterativeSolver( const Eigen::EigenBase<Derived> & mat,
                        const LinOpPtr& precond)
