@@ -13,6 +13,7 @@
 
 #include <gsIO/gsXml.h>
 #include <gsCore/gsFunctionExpr.h>
+#include <gsUtils/gsSortedVector.h>
 
 namespace gismo
 {
@@ -38,33 +39,12 @@ public:
     {
         GISMO_ASSERT( !strcmp( node->name(), tag().c_str() ),
                       "Something went wrong. Expected tag "<< tag() );
-        
-        // There should exist a sibling of type MultiPatch
-        gsXmlNode * toplevel = node->parent();
-        gsXmlNode * mp       = NULL;
 
-        const gsXmlAttribute * mp_at = node->first_attribute("multipatch");
-        if ( mp_at )
-        {
-            const int d = atoi( mp_at->value() );
-            mp = searchId(d, toplevel);
-        }
-        else
-        {
-            // multipatch not referenced, grab the first one in the
-            // file
-            mp = toplevel->first_node("MultiPatch");
-        }
-
-        if ( mp == NULL || strcmp( mp->name(), "MultiPatch" ) )
-            gsWarn <<"Did not find a mulitpatch object.\n";
-
-        gsXmlNode * tmp = mp->first_node("patches");
+        gsXmlNode * tmp = node->first_node("patches");
         GISMO_ASSERT(tmp, "No pathes tag");
 
         std::istringstream str;
         str.str( tmp->value() );
-
         // Resolve ID numbers
         std::map<int,int> ids;
         if ( ! strcmp( tmp->first_attribute("type")->value(), "id_range") )
@@ -73,36 +53,20 @@ public:
             gsGetInt(str, first);
             gsGetInt(str, last);
             for ( int i = first; i<=last; ++i )
-            {
-                GISMO_ASSERT( searchId(i, toplevel) != NULL, 
-                              "Invalid reference to node Id");
                 ids[i] = i - first;
-            }
         }
-        else if ( ! strcmp( mp->first_attribute("type")->value(),"id_index") )
+        else if ( ! strcmp( tmp->first_attribute("type")->value(),"id_index") )
         {
             int c = 0;
             for (int pindex; gsGetInt(str, pindex);)
-            {
-                GISMO_ASSERT( searchId(pindex, toplevel) != NULL, 
-                              "Invalid reference to node Id");
                 ids[pindex] = c++;
-            }
         }
         else
         {
-            gsWarn<<"Unknown tag in XML multipatch object.\n";
+            gsWarn<<"Incomplete tag \"patch\" in boundaryConditions.\n";
         }
 
-        // Read boundary
-        gsXmlNode * boundaryNode = mp->first_node("boundary");
-        std::vector< patchSide > boundaries;
-        if (boundaryNode)
-        {
-            getBoundaries(boundaryNode, ids, boundaries);
-        }
-
-        // Read function data
+        // Read function inventory
         int count = countByTag("Function", node);
         std::vector<typename gsFunctionExpr<T>::Ptr> func(count);// todo: gsFunction::Ptr
         for (gsXmlNode * child = node->first_node("Function"); 
@@ -110,32 +74,28 @@ public:
         {
             const int i = atoi( child->first_attribute("index")->value() );
             func[i]     = memory::make_shared(new gsFunctionExpr<T>);
-            getFunctionFromXml(child, *func[i]);            
+            getFunctionFromXml(child, *func[i]);
         }
 
         // Read boundary conditions
+        std::vector< patchSide > boundaries;
         for (gsXmlNode * child = node->first_node("bc"); 
              child; child = child->next_sibling("bc") )
         {
             const int uIndex = atoi( child->first_attribute("unknown")->value() );
             const int fIndex = atoi( child->first_attribute("function")->value() );
-        
-            str.clear(); //str.str("");
-            str.str( child->value() );
-            if ( !strcmp(child->first_attribute("type")->value(), "dirichlet") )
-            {
-                for (int bIndex; gsGetInt(str, bIndex);) 
-                    result.addCondition( boundaries[bIndex], 
-                                         condition_type::dirichlet, 
-                                         func[fIndex], uIndex ); //,parametric
-            }
-            else if ( !strcmp(child->first_attribute("type")->value(), "neumann") )
-            {		       
-                for (int bIndex; gsGetInt(str, bIndex);) 
-                    result.addCondition( boundaries[bIndex],
-                                         condition_type::neumann, 
-                                         func[fIndex], uIndex ); //,parametric
-            }
+            //const int cIndex = atoi( child->first_attribute("comp")->value() );
+
+            getBoundaries(child, ids, boundaries);
+            
+            const gsXmlAttribute * bcat = child->first_attribute("type");
+            GISMO_ASSERT( NULL != bcat, "No type provided");
+            const char * bctype = bcat->value();
+            for (std::vector<patchSide>::const_iterator it = boundaries.begin();
+                 it != boundaries.end(); ++it )
+                result.add(it->patch, it->side(),
+                           bctype, func[fIndex],
+                           uIndex, false );//parametric
         }
         
         T val(0);
@@ -158,17 +118,55 @@ public:
                             gsXmlTree & data )
     {
         // Check if the last node is a multipatch
-        //gsXmlNode * mp = deta.getRoot()->last_node("MultiPatch");
+        //gsXmlNode * mp = data.getRoot()->last_node("MultiPatch");
 
         gsWarn<<"To do\n";
-
+            
         gsXmlNode * BCs = internal::makeNode("boundaryConditions" , data);
         data.appendToRoot(BCs);
 
-        // collect function pointers
+        // inventory of functions
+        typedef typename Object::const_bciterator bctype_it;
+        typedef typename Object::const_iterator   bc_it;
+        typedef typename gsSortedVector<typename gsFunction<T>::Ptr>::const_iterator fun_it;
+        gsSortedVector<typename gsFunction<T>::Ptr> fun;
+        typedef typename std::map<int,std::vector<const boundary_condition<T>*> >
+            ::const_iterator inv_it;
+        typedef typename std::vector<const boundary_condition<T>*>::const_iterator bcptr_it;
 
+        std::map<int,std::vector<const boundary_condition<T>*> > fi;
+        for (bctype_it it = obj.beginAll(); it!=obj.endAll(); ++it)
+            for (bc_it bc = it->second.begin(); bc != it->second.end(); ++bc)
+            {
+                fun.push_sorted_unique(bc->function());
+                fi[fun.getIndex(bc->function()) ].push_back(&(*bc));
+            }
+        
+        int c = 0;        
+        for (fun_it fit = fun.begin(); fit!=fun.end(); ++fit)
+        {
+            //gsXmlNode * ff = putFunctionFromXml(BCs, **fit);
+            //ff index = c
+            ++c;
+        }
+        
         // for all bcs, append bc, cv
-
+        std::ostringstream oss;
+        c = 0;
+        for (inv_it it = fi.begin(); it!=fi.end(); ++it)
+        {
+            bcptr_it bc = it->second.begin();
+            const std::string & label = (*bc)->ctype();
+            for (; bc!=it->second.end(); ++it)
+            {
+            
+            //unknown=, type, function=c
+            //ps
+//            oss << it->patch << " " << int(it->side()) << "\n";
+            }
+            //node->append_node(internal::makeNode("boundary", oss.str(), data));
+        }
+                    
         return BCs;
     }
 };

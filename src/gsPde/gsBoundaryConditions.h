@@ -39,7 +39,7 @@ struct condition_type
 
 // Print (as string) a boundary type
 inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
-{
+{    
     switch (o)
     {
     case condition_type::dirichlet:
@@ -54,11 +54,11 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
     }
     case condition_type::robin:
     {
-        os<< "Mixed";
+        os<< "Robin";
         break;
     }
     default:
-        gsInfo<<"condition type not known.\n";
+        gsInfo<< "condition type not known.\n";
     };
     return os;
 }
@@ -77,43 +77,51 @@ struct boundary_condition
     typedef typename gsFunction<T>::Ptr function_ptr;
 
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
-                        condition_type::type t, int unknown = 0,
-                        bool parametric = false)
-        : ps(p, s),
-          m_function(f_shptr),
-          m_type(t),
-          m_unknown(unknown),
-          m_unkcomp(-1),
-          m_parametric(parametric)
-    { }
-
-    boundary_condition( int p, boxSide s, gsFunction<T> * f_ptr,
-                        condition_type::type t, int unknown = 0,
-                        bool parametric = false)
-        : ps(p, s),
-          m_type(t),
-          m_unknown(unknown),
-          m_unkcomp(-1),
-          m_parametric(parametric)
-    {
-        m_function = memory::make_shared_not_owned(f_ptr);
-    }
-
-    boundary_condition( int p, boxSide s, const gsFunction<T> & func,
-                        condition_type::type t, int unknown = 0,
-                        bool parametric = false)
+                        const std::string & label, int unknown,
+                        int unkcomp, bool parametric)
     : ps(p, s),
-      m_function(func.clone()),
+      m_function(f_shptr),
+      m_label(label),
+      m_unknown(unknown),
+      m_unkcomp(unkcomp),
+      m_parametric(parametric)
+    {
+        if (m_label == "Dirichlet") m_type = condition_type::dirichlet;
+        if (m_label == "Neumann")   m_type = condition_type::neumann;
+        if (m_label == "Robin")     m_type = condition_type::robin;
+    }
+    
+    boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
+                        condition_type::type t, int unknown, bool parametric)
+    : ps(p, s),
+      m_function(f_shptr),
       m_type(t),
       m_unknown(unknown),
       m_unkcomp(-1),
       m_parametric(parametric)
-    { }
-
-    boundary_condition( int p, boxSide s, condition_type::type t,
-                        int unknown = 0, bool parametric = false)
-    : ps(p, s), m_function(NULL), m_type(t), m_unknown(unknown),m_parametric(parametric)
-    { }
+    {
+        switch (t)
+        {
+        case condition_type::dirichlet:
+        {
+            m_label = "Dirichlet";
+            break;
+        }
+        case condition_type::neumann:
+        {
+            m_label = "Neumann";
+            break;
+        }
+        case condition_type::robin:
+        {
+            m_label = "Robin";
+            break;
+        }
+        default:
+            m_label = "Unknown";
+            break;
+        };
+    }
     
     /// Returns true if there is no function data (homogeneous condition)
     bool isHomogeneous() const { return m_function.get() == NULL; }
@@ -126,6 +134,9 @@ struct boundary_condition
 
     /// Returns the type of the boundary condition
     condition_type::type  type() const { return m_type; }
+
+    /// Returns the type of the boundary condition
+    const std::string & ctype() const { return m_label; }
     
     /// Returns the patch to which this boundary condition refers to
     int     patch()    const { return ps.patch; }
@@ -191,42 +202,41 @@ class gsBoundaryConditions
 public:
 
     typedef typename std::vector<boundary_condition<T> > bcContainer;
-    typedef typename std::vector<corner_value<T> >       cornerContainer;
-
-    // Format: std::pair<type,bcContainer>
-    typedef std::map<std::string,bcContainer> bcData;
-
     typedef typename bcContainer::iterator iterator;
     typedef typename bcContainer::const_iterator const_iterator;
 
+    typedef typename std::vector<corner_value<T> >       cornerContainer;
     typedef typename cornerContainer::iterator citerator;
     typedef typename cornerContainer::const_iterator const_citerator;
 
+    // Format: std::pair<type,bcContainer>
+    typedef std::map<std::string,bcContainer> bcData;
+    typedef typename bcData::iterator bciterator;
+    typedef typename bcData::const_iterator const_bciterator;
+
+    typedef typename memory::shared<gsBoundaryConditions>::ptr Ptr;
+    typedef typename memory::unique<gsBoundaryConditions>::ptr uPtr;
+
     typedef typename boundary_condition<T>::function_ptr function_ptr;
-
-    typedef typename memory::shared< gsBoundaryConditions >::ptr Ptr;
-
-    typedef typename memory::unique< gsBoundaryConditions >::ptr uPtr;
 
 public:
 
-    /// Default empty constructor
-    gsBoundaryConditions()
-    { }
-
-    ~gsBoundaryConditions() // Destructor
-    { }
-
-
+    /*
     gsBoundaryConditions & operator= (uPtr other)
     {
         if ( other.get() != NULL )
         {
-            m_bc.swap(other->m_bc);
-            corner_values.swap(other->corner_values);
+            this->swap(*other);
+            other.reset();
         }
-
         return *this;
+    }
+    */
+    
+    void swap(gsBoundaryConditions & other)
+    {
+        m_bc.swap(other.m_bc);
+        corner_values.swap(other.corner_values);
     }
     
 public:
@@ -292,6 +302,12 @@ public:
 
     /// Returns an iterator to the end of the Bc container of type \a label
     iterator end(const std::string & label) { return m_bc[label].end(); }
+
+    const_bciterator beginAll() const {return m_bc.begin(); }
+    bciterator beginAll() {return m_bc.end(); }
+
+    const_bciterator endAll() const {return m_bc.end(); }
+    bciterator endAll() {return m_bc.end(); }
 
     /// Get a const-iterator to the beginning of the Dirichlet sides
     /// \return an iterator to the beginning of the Dirichlet sides
@@ -375,9 +391,11 @@ public:
 
 
     void add(int p, boxSide s, const std::string & label,
-             gsFunction<T> * f, int unknown = 0, int comp = -1, bool parametric = false)
+             const function_ptr & f_ptr, int unknown = 0,
+             int comp = -1, bool parametric = false)
     {
-        //m_bc[label].push_back( boundary_condition<T>(p,s,f,label,unknown,comp, parametric) );
+        m_bc[label].push_back(
+            boundary_condition<T>(p, s, f_ptr, label, unknown, comp, parametric) );
     }
 
     /** \brief Adds another boundary condition
@@ -398,26 +416,16 @@ public:
     void addCondition(int p, boxSide s, condition_type::type t,
                       gsFunction<T> * f, int unknown = 0, bool parametric = false)
     {
-        switch (t) {
-        case condition_type::dirichlet :
-            m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
-            break;
-        case condition_type::neumann :
-            m_bc["Neumann"].push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
-            break;
-        case condition_type::robin :
-            m_bc["Robin"].push_back( boundary_condition<T>(p,s,f,t,unknown,parametric) );
-            break;
-        default:
-            std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
-        }
+        function_ptr fun = memory::make_shared_not_owned(f);
+        addCondition(p,s,t,fun,unknown,parametric);
     }
 
     void addCondition(int p, boxSide s, condition_type::type t,
                       const function_ptr & f_shptr, int unknown = 0,
                       bool parametric = false)
     {
-        switch (t) {
+        switch (t)
+        {
         case condition_type::dirichlet :
             m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
@@ -428,7 +436,7 @@ public:
             m_bc["Robin"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,parametric) );
             break;
         default:
-            std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
+            gsWarn<<"gsBoundaryConditions: Unknown boundary condition.\n";
         }
     }
 
@@ -436,19 +444,8 @@ public:
                       const gsFunction<T> & func, int unknown = 0,
                       bool parametric = false)
     {
-        switch (t) {
-        case condition_type::dirichlet :
-            m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
-            break;
-        case condition_type::neumann :
-            m_bc["Neumann"].push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
-            break;
-        case condition_type::robin :
-            m_bc["Robin"].push_back( boundary_condition<T>(p,s,func,t,unknown,parametric) );
-            break;
-        default:
-            std::cout<<"gsBoundaryConditions: Unknown boundary condition.\n";
-        }
+        function_ptr fun(func.clone());
+        addCondition(p,s,t,fun,unknown,parametric);
     }
 
     void addCondition( boxSide s, condition_type::type t,
@@ -494,7 +491,16 @@ public:
     /**
      * @brief   getSideCondition
      * @param   ps the patch side
-     * @return  the boundary condition associated to ps or NULL if no condition is associated to ps
+
+     * @return the boundary condition associated to ps or NULL if no
+     * condition is associated to ps
+
+     It is the task of the user of this function to check if the
+     returned pointer is NULL.
+     
+     Do not use this function if you want to apply boundary conditions during matrix assembly.
+     Instead, iterate over all conditions of the type you need (eg. Neumann, Dirichlet) 
+     
      */
     const boundary_condition<T>* getConditionFromSide (patchSide ps) const
     {
