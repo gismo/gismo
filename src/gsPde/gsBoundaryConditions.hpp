@@ -156,7 +156,7 @@ public:
         for (inv_it it = fi.begin(); it!=fi.end(); ++it)
         {
             bcptr_it bc = it->second.begin();
-            const std::string & label = (*bc)->ctype();
+//            const std::string & label = (*bc)->ctype();
             for (; bc!=it->second.end(); ++it)
             {
             
