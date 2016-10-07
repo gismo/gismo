@@ -39,6 +39,9 @@ endif()
   #generate_export_header(${PROJECT_NAME})
 
   set_target_properties(${PROJECT_NAME} PROPERTIES 
+  #https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
+  VERSION ${${PROJECT_NAME}_VERSION}
+  SOVERSION ${${PROJECT_NAME}_MAJOR_VERSION}
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h" 
   POSITION_INDEPENDENT_CODE ON
   #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
