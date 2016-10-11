@@ -7,6 +7,10 @@ namespace gismo {
 This tutorial provides a basic motivation for <b>truncated hierarchical B-splines (THB-splines)</b> and a brief introduction to some basic features of gsTHBSplineBasis.<br>
 See also \ref tutorialBasis and \ref tutorialBSplineBasis.
 
+More details on the hierarchical splines can be found in
+\ref tutorialAdaptRefinementTHB as well as in the \ref HSplines
+description.
+
 \section sIntro Introduction
 
 Two simple examples are provided for illustrating the construction of a THB-spline basis. The formal definition is given only for the sake of completeness (see \ref ssFormalDef), see the \ref sReferences for further details.

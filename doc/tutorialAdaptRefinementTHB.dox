@@ -6,6 +6,9 @@ namespace gismo {
 
 This tutorial, shows how to use some functions for adaptive refinement. It is based on \ref tutorialPoisson, see there for details.
 
+More details on the hierarchical splines can be found in \ref
+tutorialTHBSplineBasis as well as in the \ref HSplines description.
+
 \section sSetup Setting up the problem
 
 As in \ref tutorialPoisson, we include the gismo namespace...
