@@ -40,17 +40,19 @@ include( gsConfig)
 #include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
 # Look for trilinos library
+#find_package(TRILINOS REQUIRED) # for testing user-provided mode
 find_package(TRILINOS QUIET)
-find_package(LAPACK REQUIRED)
+#find_package(BLAS REQUIRED)   # needs .._DIR on MS windows
+#find_package(LAPACK REQUIRED) # needs LAPACK_DIR on MS windows
 
 if (NOT GISMO_BUILD_CPP11)
-message(WARNING "GISMO_BUILD_CPP11 must be ON for Trilinos extensions to compile.")
+message(WARNING "GISMO_BUILD_CPP11 must be ON for Trilinos extensions to compile ?.")
 endif()
 
 # Note: might need export FC=/usr/bin/gfortran
 #enable_language(Fortran)
 
-#if (NOT TRILINOS_FOUND)
+if (NOT TRILINOS_FOUND)
   set(TRILINOS_VER "12-8-1")
   message(STATUS "CMake Will attempt to download and compile Trilinos ${TRILINOS_VER}.")
 include(ExternalProject)
@@ -66,14 +68,16 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_Anasazi=ON	
                        -DTrilinos_ENABLE_Belos=ON
                        -DTrilinos_ENABLE_NOX=ON
-		       #-DTrilinos_ENABLE_ML=ON 
+                       #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
+		       #-DTrilinos_ENABLE_ML=ON # multigrid
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
 		       -DBUILD_SHARED_LIBS:BOOL=ON
 		       -DTPL_ENABLE_MPI=${GISMO_WITH_MPI}
-                       -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11} # Note: this must be ON, otherwise Trilinos compilation fails.
+                       -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11} # Note: this must be ON, otherwise Trilinos compilation fails. Must be OFF on MS Windows
 		       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU}
 	 	       ## Point to specific paths (! no space after "=")
 		       -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
+      		       -DTPL_BLAS_LIBRARIES=${LAPACK_LIBRARIES}
 		       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
 		       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
 		       #-DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
@@ -103,8 +107,7 @@ ExternalProject_Add(Trilinos
       #set_target_properties(${LIBNAME} PROPERTIES IMPORTED_LOCATION ${install_dir}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX} )
   
 #else()
-#
-#endif(NOT TRILINOS_FOUND)
+endif(NOT TRILINOS_FOUND)
 
 #include_directories(${EPETRA_INCLUDE_PATH})
 include_directories(${TRILINOS_INCLUDE_DIR})
@@ -117,10 +120,10 @@ ${${PROJECT_NAME}_HPPFILES}
 #${TRILINOS_LIBRARIES}
 )
 
-#if (NOT TRILINOS_FOUND)
+if (NOT TRILINOS_FOUND)
   add_dependencies(${PROJECT_NAME} Trilinos)
   set(TRILINOS_FOUND TRUE)
-#endif(NOT TRILINOS_FOUND)
+endif(NOT TRILINOS_FOUND)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     COMPILE_DEFINITIONS gismo_EXPORTS 
