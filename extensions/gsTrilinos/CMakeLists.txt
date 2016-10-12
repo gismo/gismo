@@ -47,12 +47,16 @@ if (NOT GISMO_BUILD_CPP11)
 message(WARNING "GISMO_BUILD_CPP11 must be ON for Trilinos extensions to compile.")
 endif()
 
+# Note: might need export FC=/usr/bin/gfortran
+#enable_language(Fortran)
+
 #if (NOT TRILINOS_FOUND)
   set(TRILINOS_VER "12-8-1")
   message(STATUS "CMake Will attempt to download and compile Trilinos ${TRILINOS_VER}.")
 include(ExternalProject)
 ExternalProject_Add(Trilinos
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos
+          URL_MD5=01c0026f1e2050842857db941060ecd5
           URL https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
 	  CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release   
                        -DTrilinos_ENABLE_TESTS=OFF  
@@ -68,11 +72,11 @@ ExternalProject_Add(Trilinos
 		       -DTPL_ENABLE_MPI=${GISMO_WITH_MPI}
                        -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11} # Note: this must be ON, otherwise Trilinos compilation fails.
 		       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU}
-		       ## Point to specific paths
+	 	       ## Point to specific paths (! no space after "=")
 		       -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
-		       #-DCMAKE_CXX_COMPILER=/usr/lib64/mpi/gcc/openmpi/bin/mpic++
-		       #-DCMAKE_C_COMPILER=/usr/lib64/mpi/gcc/openmpi/bin/mpicc
-		       #-DCMAKE_Fortran_COMPILER=/usr/lib64/mpi/gcc/openmpi/bin/mpif77
+		       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+		       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+		       #-DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
           UPDATE_COMMAND ""
 	  #DOWNLOAD_NO_PROGRESS 0
 )
