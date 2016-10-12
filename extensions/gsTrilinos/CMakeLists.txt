@@ -56,7 +56,7 @@ endif()
 include(ExternalProject)
 ExternalProject_Add(Trilinos
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos
-          URL_MD5=01c0026f1e2050842857db941060ecd5
+          URL_MD5 01c0026f1e2050842857db941060ecd5
           URL https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
 	  CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release   
                        -DTrilinos_ENABLE_TESTS=OFF  
