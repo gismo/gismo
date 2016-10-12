@@ -140,7 +140,7 @@ typename gsMatrixOp<Derived>::Ptr makeMatrixOp(const Eigen::EigenBase<Derived>& 
   * \ingroup Solver
   */
 template <class Derived>
-typename gsMatrixOp<Derived>::Ptr makeMatrixOp(memory::shared_ptr<Derived>& mat, bool sym=false)
+typename gsMatrixOp<Derived>::Ptr makeMatrixOp(typename memory::shared<Derived>::ptr & mat, bool sym=false)
 {
     return memory::make_shared(new gsMatrixOp<Derived>(mat, sym));
 }

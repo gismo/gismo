@@ -33,11 +33,11 @@ class VectorPrivate
     Epetra_SerialComm comm;
     /// Epetra Trilinos mapping of the matrix columns that assigns
     /// parts of the matrix to the individual processes.
-    memory::shared_ptr<Epetra_Map> column_space_map;
+    memory::shared<Epetra_Map>::ptr column_space_map;
 */
     
     /// A vector object in Trilinos 
-    memory::shared_ptr<Epetra_Vector> vec;
+    memory::shared<Epetra_Vector>::ptr vec;
 };
 
 Vector::Vector(const SparseMatrix & _map)

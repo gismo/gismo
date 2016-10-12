@@ -44,7 +44,7 @@ public:
 
     Epetra_CrsMatrix * get() const;
 
-    memory::shared_ptr<Epetra_CrsMatrix> getPtr();
+    memory::shared<Epetra_CrsMatrix>::ptr getPtr();
     
     void print() const;
 

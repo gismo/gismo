@@ -31,7 +31,7 @@ class SparseMatrixPrivate
     friend class SparseMatrix;
     
     /// A sparse matrix object in Trilinos 
-    memory::shared_ptr<Epetra_Matrix> matrix;
+    memory::shared<Epetra_Matrix>::ptr matrix;
 };
 
 SparseMatrix::SparseMatrix() : my(new SparseMatrixPrivate)
@@ -157,7 +157,7 @@ Epetra_CrsMatrix * SparseMatrix::get() const
     return my->matrix.get();
 }
 
-memory::shared_ptr<Epetra_CrsMatrix> SparseMatrix::getPtr()
+memory::shared<Epetra_CrsMatrix>::ptr SparseMatrix::getPtr()
 {
     return my->matrix;
 }
