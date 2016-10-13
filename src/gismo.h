@@ -43,6 +43,7 @@ namespace internal
 // #include <gsCore/gsMemory.h>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsExport.h>
+#include <gsCore/gsJITCompiler.h>
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFunctionSet.h>
