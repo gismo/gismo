@@ -106,6 +106,9 @@ public:
     /// The unit cube represented as a tensor B-spline of degree \a deg
     static gsTensorBSpline<3,T> * BSplineCube(int deg);
 
+    static gsMultiPatch<T> * BSplineCubeGrid(int n, int m,int p, T const & r = 1,
+                                               T const & lx = 0, T const & ly = 0, T const & lz = 0);
+
     static gsTensorBSpline<3,T> * BSplineHalfCube( T const & r = 1, T const & x = 0,
                                                    T const & y = 0, T const & z = 0  );
     

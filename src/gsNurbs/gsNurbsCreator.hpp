@@ -331,6 +331,25 @@ gsNurbsCreator<T>::BSplineCube(int deg)
     return new gsTensorBSpline<3,T>(KV,KV,KV, give(C));
 }
 
+template<class T> gsMultiPatch<T> *
+gsNurbsCreator<T>::BSplineCubeGrid(int n, int m,int p,
+                                     T const & r,
+                                     T const & lx,
+                                     T const & ly,
+                                     T const & lz)
+{
+    gsMultiPatch<T> * mp = new gsMultiPatch<T>;
+
+    for(int i = 0; i < n; i++)
+        for(int j = 0; j < m; j++)
+            for(int k = 0; k < p; k++)
+        {
+            mp->addPatch(BSplineCube(r,lx + r*i ,ly + r*j,lz+r*k)) ;
+        }
+    mp->computeTopology();
+    return mp;
+}
+
 
 template<class T> gsTensorBSpline<3,T> * 
 gsNurbsCreator<T>::BSplineHalfCube( T const & r, T const & x,
