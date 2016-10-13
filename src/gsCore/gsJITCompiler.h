@@ -38,6 +38,8 @@
 #include <dlfcn.h>
 #endif
 
+#if __cplusplus >= 201103L
+
 namespace gismo {
 
 /**
@@ -391,8 +393,8 @@ public:
             
             gsDebug << "Compiling dynamic library: " << systemcall.str() << "\n";
             
-            GISMO_ENSURE(std::system(systemcall.str().c_str()) == 0,
-                         "An error occured while compiling the kernel source code");
+            if(std::system(systemcall.str().c_str()) != 0)
+                throw std::runtime_error("An error occured while compiling the kernel source code");
         }
 
         // Open library
@@ -496,3 +498,5 @@ public:
 } // namespace util
 
 } // namespace gismo
+
+#endif
