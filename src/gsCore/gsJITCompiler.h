@@ -38,8 +38,6 @@
 #include <dlfcn.h>
 #endif
 
-#if __cplusplus >= 201103L
-
 namespace gismo {
 
 /**
@@ -70,11 +68,6 @@ struct gsJITCompilerConfig
     : cmd(other.cmd), flags(other.flags), lang(other.lang)
     {}
 
-    /// Constructor (move)
-    gsJITCompilerConfig(gsJITCompilerConfig && other)
-    : cmd(std::move(other.cmd)), flags(std::move(other.flags)), lang(std::move(other.lang))
-    {}
-
     /// Assignment operator (copy)
     gsJITCompilerConfig& operator=(gsJITCompilerConfig const& other)
     {
@@ -83,7 +76,13 @@ struct gsJITCompilerConfig
         lang  = other.lang;
         return *this;
     }
-    
+
+    /*
+    /// Constructor (move)
+    gsJITCompilerConfig(gsJITCompilerConfig && other)
+    : cmd(std::move(other.cmd)), flags(std::move(other.flags)), lang(std::move(other.lang))
+    {}
+
     /// Assignment operator (move)
     gsJITCompilerConfig& operator=(gsJITCompilerConfig && other)
     {
@@ -92,6 +91,7 @@ struct gsJITCompilerConfig
         lang  = std::move(other.lang);
         return *this;
     }
+    */
     
     /// Constructor (passing arguments as strings)
     gsJITCompilerConfig(const std::string& cmd, const std::string& flags, const std::string& lang)
@@ -130,7 +130,7 @@ struct gsJITCompilerConfig
     static gsJITCompilerConfig gcc()
     {
         return gsJITCompilerConfig("/usr/bin/g++",
-                                   "-O3 -shared",
+                                   "-fPIC -O3 -shared",
                                    "cxx");
     }
 
@@ -222,18 +222,14 @@ public:
     : handle(other.handle)
     {}
 
-    /// Constructor (move)
-    gsDynamicLibrary(gsDynamicLibrary && other)
-    : handle(std::move(other.handle))
-    {}
-
     /// Assignment operator (copy)
     gsDynamicLibrary& operator=(gsDynamicLibrary const& other)
     {
         handle = other.handle;
         return *this;
     }
-    
+
+    /*
     /// Assignment operator (move)
     gsDynamicLibrary& operator=(gsDynamicLibrary && other)
     {
@@ -241,18 +237,28 @@ public:
         return *this;
     }
 
+    /// Constructor (move)
+    gsDynamicLibrary(gsDynamicLibrary && other)
+    : handle(std::move(other.handle))
+    {}
+    */
+    
     /// Constructor (using file name)
-    explicit gsDynamicLibrary(const char* filename, int flag)
+    gsDynamicLibrary(const char* filename, int flag)
+    {
 #if defined(_WIN32)
-    : handle(LoadLibrary(filename), [](HMODULE handle){ FreeLibrary(handle); })
-#elif defined(__APPLE__) || defined(__linux__) || defined(__unix)
-      : handle(::dlopen(filename, flag), [](void* handle){ ::dlclose(handle); })
+        HMODULE dl = LoadLibrary(filename);
+        if (!dl)
+            throw std::runtime_error("LoadLibrary error");
+        handle.reset(dl, [](HMODULE _dl){ FreeLibrary(_dl);} );
+#elif defined(__APPLE__) || defined(__linux__) || defined(__unix)        
+        void * dl = ::dlopen(filename, flag);
+        if (!dl)
+            throw std::runtime_error( ::dlerror() );
+        handle.reset(dl, [](void* _dl){ ::dlclose(_dl);} );
 #else
 #error("Unsupported operating system")
 #endif
-    {
-        if (!handle)
-            throw std::runtime_error("An error occured while loading the dynamic library");
     }
 
     /// Get symbol from dynamic library
@@ -281,9 +287,9 @@ private:
 
     /// Handle to dynamic library object
 #if defined(_WIN32)
-    std::shared_ptr<HMODULE> handle;
+    memory::shared<HMODULE>::ptr handle;
 #elif defined(__APPLE__) || defined(__linux__) || defined(__unix)
-    std::shared_ptr<void> handle;
+    memory::shared<void>::ptr handle;
 #endif
 };
 
@@ -308,12 +314,6 @@ public:
     : kernel(other.kernel.str()), config(other.config)
     {}
 
-    /// Constructor (cmove)
-    gsJITCompiler(gsJITCompiler && other)
-    : kernel(std::move(other.kernel)),
-      config(std::move(other.config))
-    {}
-
     /// Assignment operator (copy)
     gsJITCompiler& operator=(gsJITCompiler const& other)
     {
@@ -322,6 +322,15 @@ public:
         return *this;
     }
 
+    /*
+    /// Constructor (move)
+    gsJITCompiler(gsJITCompiler && other) :
+    //kernel(std::move(other.kernel)),
+    kernel(other.kernel.str()),
+    config(std::move(other.config))
+    {}
+
+
     /// Assignment operator (move)
     gsJITCompiler& operator=(gsJITCompiler && other)
     {
@@ -329,10 +338,11 @@ public:
         config = std::move(other.config);
         return *this;
     }
-
+    */
+    
     /// Constructor (using compiler configuration)
-    explicit gsJITCompiler(const gsJITCompilerConfig &config)
-    : kernel(), config(std::make_shared<gsJITCompilerConfig>(config))
+    explicit gsJITCompiler(const gsJITCompilerConfig & _config)
+    : kernel(), config(_config)
     {
         gsInfo << config << "\n";
     }
@@ -355,8 +365,12 @@ public:
     /// (determine filename from hash of kernel source code)
     gsDynamicLibrary build(bool force=false)
     {
+        #if __cplusplus >= 201103L
         std::size_t h = std::hash<std::string>()(getKernel().str());
         return build(std::to_string(h), force);
+        #else
+        return build("JIT", force);
+        #endif
     }
     
     /// Compile kernel source code into dynamic library
@@ -364,30 +378,31 @@ public:
     gsDynamicLibrary build(const std::string &name, bool force=false)
     {
         // Prepare library name
+        memory::unique<char>::ptr path(::get_current_dir_name());
         std::stringstream libName;
 #if   defined(_WIN32)
         libName << ".lib" << name << ".dll";
 #elif defined(__APPLE__)
         libName << ".lib" << name << ".dylib";
 #elif defined(__unix)
-        libName << ".lib" << name << ".so";
+        libName << path.get() << "/.lib" << name << ".so";
 #endif
         
         // Compile library (if required)
         std::ifstream libfile(libName.str());
-        if(!libfile || force) {
-        
+        if(!libfile || force)
+        {
             // Write kernel source code to file
             std::stringstream srcName;
-            srcName << "." << name << "." << config.get()->getLang();
+            srcName<< path.get() << "/." << name << "." << config.getLang();
             std::ofstream file(srcName.str());
             file << getKernel().str();
             file.close();
             
             // Compile kernel source code into library
             std::stringstream systemcall;
-            systemcall << config.get()->getCmd() << " "
-                       << config.get()->getFlags() << " "
+            systemcall << config.getCmd() << " "
+                       << config.getFlags() << " "
                        << srcName.str() << " -o "
                        << libName.str();
             
@@ -399,7 +414,7 @@ public:
 
         // Open library
         gsDebug << "Loading dynamic library: " << libName.str() << "\n";
-
+        
         return gsDynamicLibrary( libName.str().c_str(), RTLD_LAZY );
     }
 
@@ -433,8 +448,8 @@ private:
     /// Kernel source code
     std::ostringstream kernel;
     
-    /// Shared pointer to compiler configuration
-    std::shared_ptr<gsJITCompilerConfig> config;
+    /// Compiler configuration
+    gsJITCompilerConfig config;
 };
 
 /// Print (as string) operator to be used by all derived classes
@@ -486,8 +501,8 @@ public:
 #ifdef __GNUC__ 
         std::size_t len = 0;
         int status = 0;
-        std::unique_ptr< char, decltype(&std::free) > ptr(
-                                                          __cxxabiv1::__cxa_demangle( typeid(T).name(), nullptr, &len, &status ), &std::free );
+        memory::unique<char>::ptr ptr(
+            __cxxabiv1::__cxa_demangle( typeid(T).name(), nullptr, &len, &status ) );
         return ptr.get();
 #else
         return typeid(T).name();
@@ -498,5 +513,3 @@ public:
 } // namespace util
 
 } // namespace gismo
-
-#endif
