@@ -108,16 +108,16 @@ struct gsJITCompilerConfig
     virtual const std::string& getLang() const { return lang; }
 
     /// Set compiler command
-    void setCmd(const std::string& cmd)
-    { this->cmd = cmd; }
+    void setCmd(const std::string& _cmd)
+    { this->cmd = _cmd; }
 
     /// Set compiler flags
-    void setFlags(const std::string& flags)
-    { this->flags = flags; }
+    void setFlags(const std::string& _flags)
+    { this->flags = _flags; }
 
     /// Set compiler language
-    void setLang(const std::string& lang)
-    { this->lang = lang; }
+    void setLang(const std::string& _lang)
+    { this->lang = _lang; }
     
     /// Prints the object as a string
     std::ostream& print(std::ostream &os) const
@@ -378,13 +378,16 @@ public:
     gsDynamicLibrary build(const std::string &name, bool force=false)
     {
         // Prepare library name
-        memory::unique<char>::ptr path(::get_current_dir_name());
         std::stringstream libName;
 #if   defined(_WIN32)
+        TCHAR NPath[MAX_PATH];
+        memory::shared<char>::ptr path = memory::make_shared_not_owned(GetCurrentDirectory(MAX_PATH, NPath););
         libName << ".lib" << name << ".dll";
 #elif defined(__APPLE__)
+        memory::unique<char>::ptr path(::get_current_dir_name());
         libName << ".lib" << name << ".dylib";
 #elif defined(__unix)
+        memory::unique<char>::ptr path(::get_current_dir_name());
         libName << path.get() << "/.lib" << name << ".so";
 #endif
         
@@ -502,7 +505,7 @@ public:
         std::size_t len = 0;
         int status = 0;
         memory::unique<char>::ptr ptr(
-            __cxxabiv1::__cxa_demangle( typeid(T).name(), nullptr, &len, &status ) );
+            __cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, &len, &status ) );
         return ptr.get();
 #else
         return typeid(T).name();
