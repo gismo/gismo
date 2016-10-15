@@ -304,7 +304,7 @@ public:
     }
     
     /// Check if handle is assigned
-    explicit operator bool() const { return (bool)handle; }
+    operator bool() const { return (bool)handle; }
     
 private:
 
@@ -415,13 +415,13 @@ public:
 #endif
         
         // Compile library (if required)
-        std::ifstream libfile(libName.str());
+        std::ifstream libfile(libName.str().c_str());
         if(!libfile || force)
         {
             // Write kernel source code to file
             std::stringstream srcName;
             srcName<< path.get() << "/." << name << "." << config.getLang();
-            std::ofstream file(srcName.str());
+            std::ofstream file(srcName.str().c_str());
             file << getKernel().str();
             file.close();
             
