@@ -202,6 +202,28 @@ public:
 
 } // namespace internal
 
+namespace util {
+
+template<typename T>
+struct type
+{
+public:
+    static std::string name()
+    {
+#ifdef __GNUC__ 
+        std::size_t len = 0;
+        int status = 0;
+        memory::unique<char>::ptr ptr(
+            __cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, &len, &status ) );
+        return ptr.get();
+#else
+        return typeid(T).name();
+#endif
+    }
+};
+
+} // namespace util
+
 /**
    @brief Class defining a dynamic library.
 
@@ -247,15 +269,16 @@ public:
     gsDynamicLibrary(const char* filename, int flag)
     {
 #if defined(_WIN32)
+        GISMO_UNUSED(flag);
         HMODULE dl = LoadLibrary(filename);
         if (!dl)
             throw std::runtime_error("LoadLibrary error");
-        handle.reset(dl, [](HMODULE _dl){ FreeLibrary(_dl);} );
+        handle.reset(dl, FreeLibrary);
 #elif defined(__APPLE__) || defined(__linux__) || defined(__unix)        
         void * dl = ::dlopen(filename, flag);
         if (!dl)
             throw std::runtime_error( ::dlerror() );
-        handle.reset(dl, [](void* _dl){ ::dlclose(_dl);} );
+        handle.reset(dl, ::dlclose);
 #else
 #error("Unsupported operating system")
 #endif
@@ -496,27 +519,5 @@ public:
 };
 
 } // namespace internal
-
-namespace util {
-
-template<typename T>
-struct type
-{
-public:
-    static std::string name()
-    {
-#ifdef __GNUC__ 
-        std::size_t len = 0;
-        int status = 0;
-        memory::unique<char>::ptr ptr(
-            __cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, &len, &status ) );
-        return ptr.get();
-#else
-        return typeid(T).name();
-#endif
-    }
-};
-
-} // namespace util
 
 } // namespace gismo
