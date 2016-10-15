@@ -417,8 +417,12 @@ public:
 
         // Open library
         gsDebug << "Loading dynamic library: " << libName.str() << "\n";
-        
+
+#ifdef(_WIN32)
+        return gsDynamicLibrary( libName.str().c_str(), 0 );
+#else
         return gsDynamicLibrary( libName.str().c_str(), RTLD_LAZY );
+#endif
     }
 
     /// Clear kernel source code
