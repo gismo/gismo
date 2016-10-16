@@ -16,6 +16,7 @@
  
 #pragma once
 
+/*
 #include <cstdlib>
 #include <cstring>
 #include <exception>
@@ -24,17 +25,18 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+*/
 
 #ifdef __GNUC__ 
 #include <cxxabi.h>
-#include <memory>
 #endif
 
 #include <gsIO/gsXml.h>
 
 #if defined(_WIN32)
 #include <windows.h>
-#elif defined(__APPLE__) || defined(__linux__) ||  defined(__unix)
+#include <direct.h>
+#else //if defined(__APPLE__) || defined(__linux__) ||  defined(__unix)
 #include <dlfcn.h>
 #endif
 
