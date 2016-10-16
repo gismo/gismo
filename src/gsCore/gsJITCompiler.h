@@ -65,38 +65,9 @@ struct gsJITCompilerConfig
         if(env!=NULL) lang = env;
     }
 
-    /// Constructor (copy)
-    gsJITCompilerConfig(gsJITCompilerConfig const& other)
-    : cmd(other.cmd), flags(other.flags), lang(other.lang)
-    {}
-
-    /// Assignment operator (copy)
-    gsJITCompilerConfig& operator=(gsJITCompilerConfig const& other)
-    {
-        cmd   = other.cmd;
-        flags = other.flags;
-        lang  = other.lang;
-        return *this;
-    }
-
-    /*
-    /// Constructor (move)
-    gsJITCompilerConfig(gsJITCompilerConfig && other)
-    : cmd(std::move(other.cmd)), flags(std::move(other.flags)), lang(std::move(other.lang))
-    {}
-
-    /// Assignment operator (move)
-    gsJITCompilerConfig& operator=(gsJITCompilerConfig && other)
-    {
-        cmd   = std::move(other.cmd);
-        flags = std::move(other.flags);
-        lang  = std::move(other.lang);
-        return *this;
-    }
-    */
-    
     /// Constructor (passing arguments as strings)
-    gsJITCompilerConfig(const std::string& cmd, const std::string& flags, const std::string& lang)
+    gsJITCompilerConfig(const std::string& cmd, const std::string& flags,
+                        const std::string& lang)
     : cmd(cmd), flags(flags), lang(lang)
     {}
     
@@ -236,37 +207,6 @@ struct gsDynamicLibrary
 {
 public:
 
-    /// Constructor (default)
-    gsDynamicLibrary()
-    : handle()
-    {}
-
-    /// Constructor (copy)
-    gsDynamicLibrary(gsDynamicLibrary const& other)
-    : handle(other.handle)
-    {}
-
-    /// Assignment operator (copy)
-    gsDynamicLibrary& operator=(gsDynamicLibrary const& other)
-    {
-        handle = other.handle;
-        return *this;
-    }
-
-    /*
-    /// Assignment operator (move)
-    gsDynamicLibrary& operator=(gsDynamicLibrary && other)
-    {
-        handle = std::move(other.handle);
-        return *this;
-    }
-
-    /// Constructor (move)
-    gsDynamicLibrary(gsDynamicLibrary && other)
-    : handle(std::move(other.handle))
-    {}
-    */
-    
     /// Constructor (using file name)
     gsDynamicLibrary(const char* filename, int flag)
     {
@@ -295,7 +235,7 @@ public:
         
         T *symbol;
 #if defined(_WIN32)
-        *(void **)(&symbol) = GetProcAddress( handle.get(), name );
+        *(void **)(&symbol) = GetProcAddress( *handle, name );
 #elif defined(__APPLE__) || defined(__linux__) || defined(__unix)
         *(void **)(&symbol) = ::dlsym( handle.get(), name );
 #endif
@@ -313,7 +253,7 @@ private:
     /// Handle to dynamic library object
 #if defined(_WIN32)
     memory::shared<HMODULE>::ptr handle;
-#elif defined(__APPLE__) || defined(__linux__) || defined(__unix)
+#else //if defined(__APPLE__) || defined(__linux__) || defined(__unix)
     memory::shared<void>::ptr handle;
 #endif
 };
@@ -336,13 +276,15 @@ public:
 
     /// Constructor (copy)
     gsJITCompiler(gsJITCompiler const& other)
-    : kernel(other.kernel.str()), config(other.config)
-    {}
+    : config(other.config)
+    {
+        kernel << other.kernel.rdbuf();
+    }
 
     /// Assignment operator (copy)
     gsJITCompiler& operator=(gsJITCompiler const& other)
     {
-        kernel << other.kernel.str();
+        kernel << other.kernel.rdbuf();
         config = other.config;
         return *this;
     }
@@ -369,7 +311,7 @@ public:
     explicit gsJITCompiler(const gsJITCompilerConfig & _config)
     : kernel(), config(_config)
     {
-        gsInfo << config << "\n";
+        //gsInfo << config << "\n";
     }
     
     /// Input kernel source code from string
@@ -394,13 +336,13 @@ public:
         std::size_t h = std::hash<std::string>()(getKernel().str());
         return build(std::to_string(h), force);
         #else
-        return build("JIT", force);
+        return build("JIT", true);
         #endif
     }
     
     /// Compile kernel source code into dynamic library
     /// (use given filename)
-    gsDynamicLibrary build(const std::string &name, bool force=false)
+    gsDynamicLibrary build(const std::string &name, bool force = false)
     {
         // Prepare library name
         std::stringstream libName;
