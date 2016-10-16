@@ -63,12 +63,14 @@ struct gsJITCompilerConfig
 
         env = getenv ("JIT_COMPILER_LANG");
         if(env!=NULL) lang = env;
+
+        out = "-o ";
     }
 
     /// Constructor (passing arguments as strings)
-    gsJITCompilerConfig(const std::string& cmd, const std::string& flags,
-                        const std::string& lang)
-    : cmd(cmd), flags(flags), lang(lang)
+    gsJITCompilerConfig(const std::string& _cmd, const std::string& _flags,
+                        const std::string& _lang, const std::string& _out)
+    : cmd(_cmd), flags(_flags), lang(_lang), out(_out)
     {}
     
     /// Return compiler command
@@ -79,6 +81,9 @@ struct gsJITCompilerConfig
 
     /// Return compiler language
     virtual const std::string& getLang() const { return lang; }
+
+    /// Return compiler output flag
+    virtual const std::string& getOut() const { return out; }
 
     /// Set compiler command
     void setCmd(const std::string& _cmd)
@@ -92,6 +97,10 @@ struct gsJITCompilerConfig
     void setLang(const std::string& _lang)
     { this->lang = _lang; }
     
+    /// Set compiler output flag
+    void setOut(const std::string& _out)
+    { this->out = _out; }
+
     /// Prints the object as a string
     std::ostream& print(std::ostream &os) const
     {
@@ -102,24 +111,58 @@ struct gsJITCompilerConfig
     /// Initialize to default GCC compiler
     static gsJITCompilerConfig gcc()
     {
-        return gsJITCompilerConfig("/usr/bin/g++",
+        return gsJITCompilerConfig("g++", // /usr/bin/g++
                                    "-fPIC -O3 -shared",
-                                   "cxx");
+                                   "cxx", "-o ");
     }
 
     /// Initialize to default Clang compiler
     static gsJITCompilerConfig clang()
     {
-        return gsJITCompilerConfig("/usr/bin/clang++",
+        return gsJITCompilerConfig("clang++", // /usr/bin/clang++
                                    "-O3 -shared",
-                                   "cxx");
+                                   "cxx", "-o ");
     }
     
+    /// Initialize to default Intel compiler
+    static gsJITCompilerConfig intel()
+    {
+        return gsJITCompilerConfig("icpc",
+                                   "-O3 -shared",
+                                   "cxx", "-o ");
+    }
+
+    /// Initialize to default Clang compiler
+    static gsJITCompilerConfig msvc()
+    {
+        //cl.exe /LD <files-to-compile> /OUT:<desired-dll-name>.dll
+        return gsJITCompilerConfig("cl.exe",
+                                   "/LD /OUT:",
+                                   "cxx", "/OUT:");
+    }
+
+    /// Try to initialize compiler automatically based on the context
+    static gsJITCompilerConfig guess()
+    {        
+#if defined(_INTEL_COMPILER)
+        return intel();
+#elif  defined(_MSC_VER)
+        return msvc();
+#elif defined(__clang__)
+        return clang();
+#elif defined(__GNUC__) || defined(__GNUG__)
+        return gcc();
+#else
+        GISMO_ERROR("Compiler not known");
+#endif
+    }
+
 protected:
     /// Members variables
     std::string cmd;
     std::string flags;
     std::string lang;
+    std::string out;
 };
 
 /// Print (as string) operator to be used by all derived classes
@@ -157,6 +200,10 @@ public:
         tmp = node->first_attribute("lang");
         if (tmp!=NULL)
             result.setLang(tmp->value());
+
+        tmp = node->first_attribute("out");
+        if (tmp!=NULL)
+            result.setOut(tmp->value());
     }
 
     static gsXmlNode * put (const gsJITCompilerConfig & obj, gsXmlTree & data)
@@ -165,29 +212,23 @@ public:
         gsXmlNode * tmp = internal::makeNode("JITCompilerConfig", data);
 
         // Append the attributes
-        tmp->append_attribute( makeAttribute("cmd", obj.getCmd().c_str(), data) );
-        tmp->append_attribute( makeAttribute("flags", obj.getFlags().c_str(), data) );
-        tmp->append_attribute( makeAttribute("lang", obj.getLang().c_str(), data) );
-
+        tmp->append_attribute( makeAttribute("cmd"  , obj.getCmd()  , data) );
+        tmp->append_attribute( makeAttribute("flags", obj.getFlags(), data) );
+        tmp->append_attribute( makeAttribute("lang" , obj.getLang() , data) );
+        tmp->append_attribute( makeAttribute("out"  , obj.getOut() , data) );
+        
         return tmp;
     }
 };
 
 } // namespace internal
 
-namespace util {
-
-template<typename T>
-struct remove_pointer
+namespace util
 {
-    typedef T type;
-};
 
-template<typename T>
-struct remove_pointer<T*>
-{
-    typedef typename remove_pointer<T>::type type;
-};
+template<typename T> struct remove_pointer {typedef T type;};
+template<typename T> struct remove_pointer<T*> {typedef typename remove_pointer<T>::type type;};
+
 
 template<typename T>
 struct type
@@ -382,10 +423,10 @@ public:
             
             // Compile kernel source code into library
             std::stringstream systemcall;
-            systemcall << config.getCmd() << " "
+            systemcall << config.getCmd()   << " "
                        << config.getFlags() << " "
-                       << srcName.str() << " -o "
-                       << libName.str();
+                       << srcName.str()     << " "
+                       << config.getOut()   << libName.str();
             
             gsDebug << "Compiling dynamic library: " << systemcall.str() << "\n";
             
