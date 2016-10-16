@@ -137,7 +137,7 @@ struct gsJITCompilerConfig
     {
         //cl.exe /LD <files-to-compile> /OUT:<desired-dll-name>.dll
         return gsJITCompilerConfig("cl.exe",
-                                   "/LD /OUT:",
+                                   "/LD",
                                    "cxx", "/OUT:");
     }
 
