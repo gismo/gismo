@@ -111,7 +111,8 @@ struct gsJITCompilerConfig
     /// Initialize to default GCC compiler
     static gsJITCompilerConfig gcc()
     {
-        return gsJITCompilerConfig("g++", // /usr/bin/g++
+        return gsJITCompilerConfig(
+                                   "g++", // /usr/bin/g++
                                    "-fPIC -O3 -shared",
                                    "cxx", "-o ");
     }
@@ -127,34 +128,34 @@ struct gsJITCompilerConfig
     /// Initialize to default Intel compiler
     static gsJITCompilerConfig intel()
     {
-        return gsJITCompilerConfig("icpc",
-                                   "-O3 -shared",
-                                   "cxx", "-o ");
+        return gsJITCompilerConfig(
+                                  "icpc",
+                                  "-O3 -shared",
+                                  "cxx", "-o ");
     }
 
     /// Initialize to default Clang compiler
     static gsJITCompilerConfig msvc()
     {
-        //cl.exe /LD <files-to-compile> /OUT:<desired-dll-name>.dll
         return gsJITCompilerConfig("cl.exe",
-                                   "/LD",
-                                   "cxx", "/OUT:");
+                                   "/EHsc /LD",
+                                   "cxx", "/Fe");//no space
     }
 
     /// Try to initialize compiler automatically based on the context
     static gsJITCompilerConfig guess()
     {        
-#if defined(_INTEL_COMPILER)
+#       if defined(_INTEL_COMPILER)
         return intel();
-#elif  defined(_MSC_VER)
+#       elif  defined(_MSC_VER)
         return msvc();
-#elif defined(__clang__)
+#       elif defined(__clang__)
         return clang();
-#elif defined(__GNUC__) || defined(__GNUG__)
+#       elif defined(__GNUC__) || defined(__GNUG__)
         return gcc();
-#else
+#       else
         GISMO_ERROR("Compiler not known");
-#endif
+#       endif
     }
 
 protected:
@@ -215,7 +216,7 @@ public:
         tmp->append_attribute( makeAttribute("cmd"  , obj.getCmd()  , data) );
         tmp->append_attribute( makeAttribute("flags", obj.getFlags(), data) );
         tmp->append_attribute( makeAttribute("lang" , obj.getLang() , data) );
-        tmp->append_attribute( makeAttribute("out"  , obj.getOut() , data) );
+        tmp->append_attribute( makeAttribute("out"  , obj.getOut()  , data) );
         
         return tmp;
     }
@@ -263,11 +264,17 @@ public:
     /// Constructor (using file name)
     gsDynamicLibrary(const char* filename, int flag)
     {
+        gsDebug << "Loading dynamic library: " << filename << "\n";
+        
 #if defined(_WIN32)
         GISMO_UNUSED(flag);
         HMODULE dl = LoadLibrary(filename);
         if (!dl)
-            throw std::runtime_error("LoadLibrary error");
+        {
+            std::ostringstream err;
+            err <<"LoadLibrary - error: " << GetLastError();
+            throw std::runtime_error( err.str() );
+        }
         handle.reset(dl, FreeLibrary);
 #elif defined(__APPLE__) || defined(__linux__) || defined(__unix)        
         void * dl = ::dlopen(filename, flag);
@@ -325,7 +332,7 @@ public:
     /// Constructor (default)
     gsJITCompiler()
     : kernel(), config()
-    {}
+    { }
 
     /// Constructor (copy)
     gsJITCompiler(gsJITCompiler const& other)
@@ -399,16 +406,16 @@ public:
     {
         // Prepare library name
         std::stringstream libName;
-#if   defined(_WIN32)
+#       if   defined(_WIN32)
         memory::unique<char>::ptr path(_getcwd(NULL,0));
-        libName << path.get() << "/.lib" << name << ".dll";
-#elif defined(__APPLE__)
+        libName << path.get() << "\\." << name << ".dll";
+#       elif defined(__APPLE__)
         memory::unique<char>::ptr path(getcwd(NULL,0));
         libName << path.get() << "/.lib" << name << ".dylib";
-#elif defined(__unix)
+#       elif defined(__unix)
         memory::unique<char>::ptr path(getcwd(NULL,0));
         libName << path.get() << "/.lib" << name << ".so";
-#endif
+#       endif
         
         // Compile library (if required)
         std::ifstream libfile(libName.str().c_str());
@@ -416,26 +423,35 @@ public:
         {
             // Write kernel source code to file
             std::stringstream srcName;
+#           ifdef _WIN32
+            srcName<< path.get() << "\\." << name << "." << config.getLang();
+            std::ofstream file(srcName.str().c_str());
+            file   << "#define EXPORT extern \"C\" __declspec(dllexport)\n";
+#           else
             srcName<< path.get() << "/." << name << "." << config.getLang();
             std::ofstream file(srcName.str().c_str());
-            file << getKernel().str();
+            file   << "#define EXPORT extern \"C\"\n";
+#           endif
+            file << getKernel().str() <<"\n";
             file.close();
             
             // Compile kernel source code into library
             std::stringstream systemcall;
+            /*
+            systemcall << "del \""<< libName.str() <<"\"";
+            (void)std::system(systemcall.str().c_str());
+            systemcall.clear();systemcall.str("");
+            //*/
+
             systemcall << config.getCmd()   << " "
-                       << config.getFlags() << " "
-                       << srcName.str()     << " "
-                       << config.getOut()   << libName.str();
-            
+                       << config.getFlags() << " \""
+                       << srcName.str()     << "\" "
+                       << config.getOut()   <<"\""<< libName.str()<<"\"";
+
             gsDebug << "Compiling dynamic library: " << systemcall.str() << "\n";
-            
             if(std::system(systemcall.str().c_str()) != 0)
                 throw std::runtime_error("An error occured while compiling the kernel source code");
         }
-
-        // Open library
-        gsDebug << "Loading dynamic library: " << libName.str() << "\n";
 
 #ifdef _WIN32
         return gsDynamicLibrary( libName.str().c_str(), 0 );
