@@ -403,12 +403,11 @@ public:
         // Prepare library name
         std::stringstream libName;
 #if   defined(_WIN32)
-        TCHAR NPath[MAX_PATH];
-        memory::shared<char>::ptr path = memory::make_shared_not_owned(GetCurrentDirectory(MAX_PATH, NPath););
-        libName << ".lib" << name << ".dll";
+        memory::unique<char>::ptr path(_getcwd(NULL,0));
+        libName << path.get() << "/.lib" << name << ".dll";
 #elif defined(__APPLE__)
         memory::unique<char>::ptr path(::get_current_dir_name());
-        libName << ".lib" << name << ".dylib";
+        libName << path.get() << "/.lib" << name << ".dylib";
 #elif defined(__unix)
         memory::unique<char>::ptr path(::get_current_dir_name());
         libName << path.get() << "/.lib" << name << ".so";
