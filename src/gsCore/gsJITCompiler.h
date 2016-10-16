@@ -178,6 +178,18 @@ public:
 namespace util {
 
 template<typename T>
+struct remove_pointer
+{
+    typedef T type;
+};
+
+template<typename T>
+struct remove_pointer<T*>
+{
+    typedef typename remove_pointer<T>::type type;
+};
+
+template<typename T>
 struct type
 {
 public:
@@ -235,7 +247,7 @@ public:
         
         T *symbol;
 #if defined(_WIN32)
-        *(void **)(&symbol) = GetProcAddress( *handle, name );
+        *(void **)(&symbol) = GetProcAddress(handle.get(), name );
 #elif defined(__APPLE__) || defined(__linux__) || defined(__unix)
         *(void **)(&symbol) = ::dlsym( handle.get(), name );
 #endif
@@ -252,7 +264,7 @@ private:
 
     /// Handle to dynamic library object
 #if defined(_WIN32)
-    memory::shared<HMODULE>::ptr handle;
+    memory::shared< util::remove_pointer<HMODULE>::type >::ptr handle;
 #else //if defined(__APPLE__) || defined(__linux__) || defined(__unix)
     memory::shared<void>::ptr handle;
 #endif
@@ -350,10 +362,10 @@ public:
         memory::unique<char>::ptr path(_getcwd(NULL,0));
         libName << path.get() << "/.lib" << name << ".dll";
 #elif defined(__APPLE__)
-        memory::unique<char>::ptr path(::get_current_dir_name());
+        memory::unique<char>::ptr path(getcwd(NULL,0));
         libName << path.get() << "/.lib" << name << ".dylib";
 #elif defined(__unix)
-        memory::unique<char>::ptr path(::get_current_dir_name());
+        memory::unique<char>::ptr path(getcwd(NULL,0));
         libName << path.get() << "/.lib" << name << ".so";
 #endif
         
