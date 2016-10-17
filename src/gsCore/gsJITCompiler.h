@@ -297,7 +297,7 @@ public:
         
         T *symbol;
 #if defined(_WIN32)
-        *(void **)(&symbol) = GetProcAddress(handle.get(), name );
+        *(void **)(&symbol) = (void*)GetProcAddress(handle.get(), name );
 #elif defined(__APPLE__) || defined(__linux__) || defined(__unix)
         *(void **)(&symbol) = ::dlsym( handle.get(), name );
 #endif
