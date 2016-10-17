@@ -36,8 +36,10 @@
 #if defined(_WIN32)
 #include <windows.h>
 #include <direct.h>
+#define getcwd _getcwd 
 #else //if defined(__APPLE__) || defined(__linux__) ||  defined(__unix)
 #include <dlfcn.h>
+#include <unistd.h>
 #endif
 
 namespace gismo {
@@ -138,7 +140,7 @@ struct gsJITCompilerConfig
     static gsJITCompilerConfig msvc()
     {
         return gsJITCompilerConfig("cl.exe",
-                                   "/EHsc /LD",
+                                   "/EHsc /Ox /LD",
                                    "cxx", "/Fe");//no space
     }
 
@@ -390,7 +392,7 @@ public:
 
     /// Compile kernel source code into dynamic library
     /// (determine filename from hash of kernel source code)
-    gsDynamicLibrary build(bool force=false)
+    gsDynamicLibrary build(bool force = false)
     {
         #if __cplusplus >= 201103L
         std::size_t h = std::hash<std::string>()(getKernel().str());
@@ -406,14 +408,16 @@ public:
     {
         // Prepare library name
         std::stringstream libName;
+        memory::unique<char>::ptr path(getcwd(NULL,0));
 #       if   defined(_WIN32)
-        memory::unique<char>::ptr path(_getcwd(NULL,0));
+        // DWORD psz = GetTempPath(MAX_PATH,// length of the buffer
+        //                        path);    // buffer for path
         libName << path.get() << "\\." << name << ".dll";
 #       elif defined(__APPLE__)
-        memory::unique<char>::ptr path(getcwd(NULL,0));
         libName << path.get() << "/.lib" << name << ".dylib";
 #       elif defined(__unix)
-        memory::unique<char>::ptr path(getcwd(NULL,0));
+        // char const * path = getenv("TMPDIR");
+        // if (0 == folder) path = "/tmp";
         libName << path.get() << "/.lib" << name << ".so";
 #       endif
         
