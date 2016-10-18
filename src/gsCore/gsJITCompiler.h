@@ -240,11 +240,14 @@ public:
     static std::string name()
     {
 #ifdef __GNUC__ 
-        std::size_t len = 0;
         int status = 0;
-        memory::unique<char>::ptr ptr(
-            __cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, &len, &status ) );
-        return ptr.get();
+        // Note: C++11 style:
+        //std::unique_ptr<char,decltype(std::free)*> dm(__cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, NULL, &status ), std::free);
+        char * dm = __cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, NULL, &status );
+        GISMO_ASSERT(0==status, "Demangling failed");
+        std::string res(dm);
+        free(dm);
+        return res;
 #else
         return typeid(T).name();
 #endif
@@ -408,17 +411,17 @@ public:
     {
         // Prepare library name
         std::stringstream libName;
-        memory::unique<char>::ptr path(getcwd(NULL,0));
+        char * path = getcwd(NULL,0);
 #       if   defined(_WIN32)
         // DWORD psz = GetTempPath(MAX_PATH,// length of the buffer
         //                        path);    // buffer for path
-        libName << path.get() << "\\." << name << ".dll";
+        libName << path << "\\." << name << ".dll";
 #       elif defined(__APPLE__)
-        libName << path.get() << "/.lib" << name << ".dylib";
+        libName << path << "/.lib" << name << ".dylib";
 #       elif defined(__unix)
         // char const * path = getenv("TMPDIR");
         // if (0 == folder) path = "/tmp";
-        libName << path.get() << "/.lib" << name << ".so";
+        libName << path << "/.lib" << name << ".so";
 #       endif
         
         // Compile library (if required)
@@ -428,17 +431,18 @@ public:
             // Write kernel source code to file
             std::stringstream srcName;
 #           ifdef _WIN32
-            srcName<< path.get() << "\\." << name << "." << config.getLang();
+            srcName<< path << "\\." << name << "." << config.getLang();
             std::ofstream file(srcName.str().c_str());
             file   << "#define EXPORT extern \"C\" __declspec(dllexport)\n";
 #           else
-            srcName<< path.get() << "/." << name << "." << config.getLang();
+            srcName<< path << "/." << name << "." << config.getLang();
             std::ofstream file(srcName.str().c_str());
             file   << "#define EXPORT extern \"C\"\n";
 #           endif
             file << getKernel().str() <<"\n";
             file.close();
-            
+            free(path);
+
             // Compile kernel source code into library
             std::stringstream systemcall;
             /*

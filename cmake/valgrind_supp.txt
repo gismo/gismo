@@ -60,3 +60,13 @@
    fun:strtod_l
    ...
 }
+
+{
+   <dlopen still reachable>
+   Memcheck:Leak
+   #match-leak-kinds: reachable
+   ...
+   fun:_dlerror_run
+   fun:dlopen
+   ...
+}
