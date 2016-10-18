@@ -274,6 +274,8 @@ public:
     { 
         GISMO_ASSERT(parametrized,
                      "Cannot get an IGA function from non-parametric field.");
+        GISMO_ASSERT(dynamic_cast<const gsGeometry<T>*>(&m_fields->piece(i)),
+                     "Cannot return an igaFunction from a function of type: "<< m_fields->piece(i) );
         GISMO_ASSERT(i<m_fields->size(),
                       "gsField: Invalid patch index.");
         return static_cast<const gsGeometry<T> &>(m_fields->piece(i));
