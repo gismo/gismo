@@ -368,21 +368,24 @@ template<typename MatrixType,int NumBlocks> class BlockTranspose
     }
 
     inline Index rows() const { return m_matrix.cols() / m_numBlocks.value(); }
+    // return m_rows;
+
     inline Index cols() const { return m_matrix.rows() * m_numBlocks.value(); }
 
+    inline Index numBlocks() const { return m_numBlocks.value(); }
+    // return m_matrix.cols() / rows();
+    
     inline Scalar coeff(Index rowId, Index colId) const
     {
-        const Index b = colId / m_numBlocks.value();     // block position
-        const Index r = colId % m_numBlocks.value();     // actual row
-        const Index c = b * m_numBlocks.value() + rowId; // actual col
+        const Index r = colId % m_matrix.rows();                  // actual row
+        const Index c = (colId/m_matrix.rows()) * rows() + rowId; // actual col
         return m_matrix.coeff(r, c);
     }
     template<int LoadMode>
     inline PacketScalar packet(Index rowId, Index colId) const
     {
-        const Index b = colId / m_numBlocks.value();     // block position
-        const Index r = colId % m_numBlocks.value();     // actual row
-        const Index c = b * m_numBlocks.value() + rowId; // actual col
+        const Index r = colId % m_matrix.rows();                  // actual row
+        const Index c = (colId/m_matrix.rows()) * rows() + rowId; // actual col
         return m_matrix.template packet<LoadMode>(r, c);
     }
 
