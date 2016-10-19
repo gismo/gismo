@@ -988,8 +988,96 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
     file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     file <<"<PolyData>\n";
     file <<"<Piece NumberOfPoints=\""<<np<<"\" NumberOfVerts=\"1\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\"0\">\n";
-    file <<"<PointData>\n";
+    file <<"<PointData>\n"; //empty
     file <<"</PointData>\n";
+    file <<"<CellData>\n";
+    file <<"</CellData>\n";
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\" RangeMin=\""<<X.minCoeff()<<"\" RangeMax=\""<<X.maxCoeff()<<"\">\n";
+
+    for (index_t i = 0; i < np; ++i)
+    {
+        file << X(0, i) << " " << Y(0, i) << " " << Z(0, i) << "\n";
+    }
+
+    file <<"\n</DataArray>\n";
+    file <<"</Points>\n";
+    file <<"<Verts>\n";
+    file <<"<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\" RangeMin=\""<<0<<"\" RangeMax=\""<<np-1<<"\">\n";
+
+    for (index_t i=0; i< np; ++i )
+    {
+        file << i << " ";
+    }
+
+    file <<"\n</DataArray>\n";
+    file <<"<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\" RangeMin=\""<<np<<"\" RangeMax=\""<<np<<"\">\n"<<np<<"\n";
+    file <<"</DataArray>\n";
+    file <<"</Verts>\n";
+    file <<"<Lines>\n";
+    file <<"<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\" RangeMin=\"0\" RangeMax=\""<<np-1<<"\">\n";
+    file <<"</DataArray>\n";
+    file <<"<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\" RangeMin=\""<<np<<"\" RangeMax=\""<<np<<"\">\n";
+    file <<"</DataArray>\n";
+    file <<"</Lines>\n";
+    file <<"<Strips>\n";
+    file <<"<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\" RangeMin=\"0\" RangeMax=\""<<np-1<<"\">\n";
+    file <<"</DataArray>\n";
+    file <<"<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\" RangeMin=\""<<np<<"\" RangeMax=\""<<np<<"\">\n";
+    file <<"</DataArray>\n";
+    file <<"</Strips>\n";
+    file <<"<Polys>\n";
+    file <<"<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\" RangeMin=\"0\" RangeMax=\""<<np-1<<"\">\n";
+    file <<"</DataArray>\n";
+    file <<"<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\" RangeMin=\""<<np<<"\" RangeMax=\""<<np<<"\">\n";
+    file <<"</DataArray>\n";
+    file <<"</Polys>\n";
+    file <<"</Piece>\n";
+    file <<"</PolyData>\n";
+    file <<"</VTKFile>\n";
+    file.close();
+
+    makeCollection(fn, ".vtp"); // make also a pvd file
+}
+
+template<class T>
+void gsWriteParaviewPoints(gsMatrix<T> const& X,
+                           gsMatrix<T> const& Y,
+                           gsMatrix<T> const& Z,
+                           gsMatrix<T> const& V,
+                           std::string const & fn)
+{
+    GISMO_ASSERT(X.cols() == Y.cols() && X.cols() == Z.cols(),
+                 "X, Y and Z must have the same size of columns!");
+    GISMO_ASSERT(X.rows() == 1 && Y.rows() == 1 && Z.cols(),
+                 "X, Y and Z must be row matrices!");
+    index_t np = X.cols();
+
+    std::string mfn(fn);
+    mfn.append(".vtp");
+    std::ofstream file(mfn.c_str());
+
+    if (!file.is_open())
+    {
+        gsWarn << "Problem opening " << fn << " Aborting..." << std::endl;
+        return;
+    }
+
+    file << std::fixed; // no exponents
+    file << std::setprecision (PLOT_PRECISION);
+
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    file <<"<PolyData>\n";
+    file <<"<Piece NumberOfPoints=\""<<np<<"\" NumberOfVerts=\"1\" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\"0\">\n";
+    //---------
+    file <<"<PointData "<< "Scalars=\"PointInfo\">\n";
+    file <<"<DataArray type=\"Float32\" Name=\"PointInfo\" format=\"ascii\" NumberOfComponents=\"1\">\n";
+    for ( index_t j=0; j<np; ++j)
+        file<< V(0,j) <<" ";
+    file <<"</DataArray>\n";
+    file <<"</PointData>\n";
+    //---------
     file <<"<CellData>\n";
     file <<"</CellData>\n";
     file <<"<Points>\n";
@@ -1054,6 +1142,9 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn)
         break;
     case 3:
         gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), fn);
+        break;
+    case 4:
+        gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), points.row(3), fn);
         break;
     default:
         GISMO_ERROR("Point plotting is implemented just for 2D and 3D (rows== 1, 2 or 3).");

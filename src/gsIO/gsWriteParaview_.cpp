@@ -43,6 +43,9 @@ TEMPLATE_INST
 void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, gsMatrix<T> const& z, std::string const & fn);
 
 TEMPLATE_INST
+void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, gsMatrix<T> const& z, gsMatrix<T> const& v, std::string const & fn);
+
+TEMPLATE_INST
 void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn);
 
 TEMPLATE_INST
