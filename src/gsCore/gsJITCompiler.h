@@ -242,13 +242,13 @@ private:
         TCHAR _temp[MAX_PATH];
         (void)GetTempPath(MAX_PATH, // length of the buffer
                           _temp);    // buffer for path
-        return str::string(temp);
+        return str::string(_temp);
 #       else
         char * _temp;
 #       if defined(__APPLE__)
         _temp = getenv ("TMPDIR");
 #       elif defined(__unix)
-        temp = getenv ("TEMP");
+        _temp = getenv ("TEMP");
 #       endif
 
         std::string path;
