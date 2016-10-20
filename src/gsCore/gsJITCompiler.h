@@ -16,17 +16,6 @@
  
 #pragma once
 
-/*
-#include <cstdlib>
-#include <cstring>
-#include <exception>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <sstream>
-#include <string>
-*/
-
 #ifdef __GNUC__ 
 #include <cxxabi.h>
 #endif
@@ -37,10 +26,12 @@
 #include <windows.h>
 #include <direct.h>
 #define getcwd _getcwd 
-#else //if defined(__APPLE__) || defined(__linux__) ||  defined(__unix)
+#else
 #include <dlfcn.h>
 #include <unistd.h>
 #endif
+
+#include "gsMemory.h"
 
 namespace gismo {
 
@@ -54,7 +45,7 @@ struct gsJITCompilerConfig
 {
     /// Constructor (default)
     gsJITCompilerConfig()
-    : cmd("missing"), flags("missing"), lang("missing")
+    : cmd("missing"), flags("missing"), lang("missing"), out("-o "), temp(detectTemp())
     {
         char *env;
         env = getenv ("JIT_COMPILER_CMD");
@@ -66,14 +57,58 @@ struct gsJITCompilerConfig
         env = getenv ("JIT_COMPILER_LANG");
         if(env!=NULL) lang = env;
 
-        out = "-o ";
+        env = getenv ("JIT_COMPILER_TEMP");
+        if(env!=NULL) temp = env;
     }
 
-    /// Constructor (passing arguments as strings)
+    /// Constructor (passing arguments as strings, autodetect temp directory)
     gsJITCompilerConfig(const std::string& _cmd, const std::string& _flags,
                         const std::string& _lang, const std::string& _out)
-    : cmd(_cmd), flags(_flags), lang(_lang), out(_out)
+    : cmd(_cmd), flags(_flags), lang(_lang), out(_out), temp(detectTemp())
     {}
+    
+    /// Constructor (passing arguments as strings)
+    gsJITCompilerConfig(const std::string& _cmd, const std::string& _flags,
+                        const std::string& _lang, const std::string& _out,
+                        const std::string& _temp)
+    : cmd(_cmd), flags(_flags), lang(_lang), out(_out), temp(_temp)
+    {}
+
+    /// Constructor (copy)
+    gsJITCompilerConfig(gsJITCompilerConfig const& other)
+    : cmd(other.cmd), flags(other.flags), lang(other.lang), out(other.out), temp(other.temp)
+    {}
+
+    /// Assignment operator (copy)
+    gsJITCompilerConfig& operator=(gsJITCompilerConfig const& other)
+    {
+        cmd   = other.cmd;
+        flags = other.flags;
+        lang  = other.lang;
+        out   = other.out;
+        temp  = other.temp;
+        return *this;
+    }
+
+#   if __cplusplus >= 201103L
+    /// Constructor (move)
+    gsJITCompilerConfig(gsJITCompilerConfig && other)
+    : cmd(std::move(other.cmd)), flags(std::move(other.flags)),
+      lang(std::move(other.lang)), out(std::move(other.out)),
+      temp(std::move(other.temp))
+    {}
+
+    /// Assignment operator (move)
+    gsJITCompilerConfig& operator=(gsJITCompilerConfig && other)
+    {
+        cmd   = std::move(other.cmd);
+        flags = std::move(other.flags);
+        lang  = std::move(other.lang);
+        out   = std::move(other.out);
+        temp  = std::move(other.temp);
+        return *this;
+    }
+#   endif
     
     /// Return compiler command
     virtual const std::string& getCmd() const { return cmd; }
@@ -86,6 +121,9 @@ struct gsJITCompilerConfig
 
     /// Return compiler output flag
     virtual const std::string& getOut() const { return out; }
+    
+    /// Return compiler temporal directory
+    virtual const std::string& getTemp() const { return temp; }
 
     /// Set compiler command
     void setCmd(const std::string& _cmd)
@@ -98,45 +136,54 @@ struct gsJITCompilerConfig
     /// Set compiler language
     void setLang(const std::string& _lang)
     { this->lang = _lang; }
-    
+
     /// Set compiler output flag
     void setOut(const std::string& _out)
     { this->out = _out; }
+    
+    /// Set compiler temporal directory
+    void setTemp(const std::string& _temp)
+    { this->temp = _temp; }
 
     /// Prints the object as a string
     std::ostream& print(std::ostream &os) const
     {
-        os << "JITCompiler: " << cmd << ", flags: " << flags << ", language: " << lang <<"\n";
+        os << "JITCompiler: " << cmd
+           << ", flags: "     << flags
+           << ", language: "  << lang
+           << ", output flag: " << out
+           << ", temporal directory: " << temp
+           << "\n";
+        
         return os;
+    }
+
+    /// Initialize to default Clang compiler
+    static gsJITCompilerConfig clang()
+    {
+        return gsJITCompilerConfig("clang++",
+                                   "-O3 -shared",
+                                   "cxx", "-o ");
     }
 
     /// Initialize to default GCC compiler
     static gsJITCompilerConfig gcc()
     {
         return gsJITCompilerConfig(
-                                   "g++", // /usr/bin/g++
+                                   "g++",
                                    "-fPIC -O3 -shared",
-                                   "cxx", "-o ");
-    }
-
-    /// Initialize to default Clang compiler
-    static gsJITCompilerConfig clang()
-    {
-        return gsJITCompilerConfig("clang++", // /usr/bin/clang++
-                                   "-O3 -shared",
                                    "cxx", "-o ");
     }
     
     /// Initialize to default Intel compiler
     static gsJITCompilerConfig intel()
     {
-        return gsJITCompilerConfig(
-                                  "icpc",
-                                  "-O3 -shared",
-                                  "cxx", "-o ");
+        return gsJITCompilerConfig("icpc",
+                                   "-O3 -shared",
+                                   "cxx", "-o ");
     }
 
-    /// Initialize to default Clang compiler
+    /// Initialize to default Microsoft Visual Studio compiler
     static gsJITCompilerConfig msvc()
     {
         return gsJITCompilerConfig("cl.exe",
@@ -144,9 +191,25 @@ struct gsJITCompilerConfig
                                    "cxx", "/Fe");//no space
     }
 
+    /// Initialize to default NVIDIA nvcc compiler
+    static gsJITCompilerConfig nvcc()
+    {
+        return gsJITCompilerConfig("nvcc",
+                                   "-O3 -shared",
+                                   "cu", "-o ");
+    }
+
+    /// Initialize to default Oracle/SunStudio compiler
+    static gsJITCompilerConfig sun()
+    {
+        return gsJITCompilerConfig("sunstudio",
+                                   "-O3 -shared",
+                                   "cxx", "-o ");
+    }
+    
     /// Try to initialize compiler automatically based on the context
     static gsJITCompilerConfig guess()
-    {        
+    {
 #       if defined(_INTEL_COMPILER)
         return intel();
 #       elif  defined(_MSC_VER)
@@ -155,6 +218,8 @@ struct gsJITCompilerConfig
         return clang();
 #       elif defined(__GNUC__) || defined(__GNUG__)
         return gcc();
+#       elif  defined(__SUNPRO_CC)
+        return sun()
 #       else
         GISMO_ERROR("Compiler not known");
 #       endif
@@ -165,7 +230,28 @@ protected:
     std::string cmd;
     std::string flags;
     std::string lang;
+    std::string temp;
     std::string out;
+
+private:
+    /// Auto-detect temp directory
+    char * detectTemp()
+    {
+        char *path = getcwd(NULL,0);
+        char *temp;
+#       if   defined(_WIN32)
+        DWORD psz = GetTempPath(MAX_PATH, // length of the buffer
+                                temp);    // buffer for path
+#       elif defined(__APPLE__)
+        temp = getenv ("TMPDIR");
+        if(temp!=NULL) return temp;
+#       elif defined(__unix)
+        temp = getenv ("TEMP");
+        if(temp!=NULL) return temp;
+#       endif
+
+        return path;
+    }
 };
 
 /// Print (as string) operator to be used by all derived classes
@@ -207,6 +293,10 @@ public:
         tmp = node->first_attribute("out");
         if (tmp!=NULL)
             result.setOut(tmp->value());
+
+        tmp = node->first_attribute("temp");
+        if (tmp!=NULL)
+            result.setTemp(tmp->value());
     }
 
     static gsXmlNode * put (const gsJITCompilerConfig & obj, gsXmlTree & data)
@@ -219,6 +309,7 @@ public:
         tmp->append_attribute( makeAttribute("flags", obj.getFlags(), data) );
         tmp->append_attribute( makeAttribute("lang" , obj.getLang() , data) );
         tmp->append_attribute( makeAttribute("out"  , obj.getOut()  , data) );
+        tmp->append_attribute( makeAttribute("temp" , obj.getTemp() , data) );
         
         return tmp;
     }
@@ -231,7 +322,6 @@ namespace util
 
 template<typename T> struct remove_pointer {typedef T type;};
 template<typename T> struct remove_pointer<T*> {typedef typename remove_pointer<T>::type type;};
-
 
 template<typename T>
 struct type
@@ -346,6 +436,11 @@ public:
         kernel << other.kernel.rdbuf();
     }
 
+    /// Constructor (using compiler configuration)
+    explicit gsJITCompiler(const gsJITCompilerConfig & _config)
+    : kernel(), config(_config)
+    {}
+    
     /// Assignment operator (copy)
     gsJITCompiler& operator=(gsJITCompiler const& other)
     {
@@ -354,14 +449,12 @@ public:
         return *this;
     }
 
-    /*
+#   if __cplusplus >= 201103L
     /// Constructor (move)
-    gsJITCompiler(gsJITCompiler && other) :
-    //kernel(std::move(other.kernel)),
-    kernel(other.kernel.str()),
-    config(std::move(other.config))
+    gsJITCompiler(gsJITCompiler && other)
+    : kernel(std::move(other.kernel)),
+      config(std::move(other.config))
     {}
-
 
     /// Assignment operator (move)
     gsJITCompiler& operator=(gsJITCompiler && other)
@@ -370,14 +463,7 @@ public:
         config = std::move(other.config);
         return *this;
     }
-    */
-    
-    /// Constructor (using compiler configuration)
-    explicit gsJITCompiler(const gsJITCompilerConfig & _config)
-    : kernel(), config(_config)
-    {
-        //gsInfo << config << "\n";
-    }
+#   endif
     
     /// Input kernel source code from string
     gsJITCompiler & operator<<(const std::string & s)
@@ -397,12 +483,12 @@ public:
     /// (determine filename from hash of kernel source code)
     gsDynamicLibrary build(bool force = false)
     {
-        #if __cplusplus >= 201103L
+#       if __cplusplus >= 201103L
         std::size_t h = std::hash<std::string>()(getKernel().str());
         return build(std::to_string(h), force);
-        #else
+#       else
         return build("JIT", true);
-        #endif
+#       endif
     }
     
     /// Compile kernel source code into dynamic library
@@ -411,17 +497,13 @@ public:
     {
         // Prepare library name
         std::stringstream libName;
-        char * path = getcwd(NULL,0);
+
 #       if   defined(_WIN32)
-        // DWORD psz = GetTempPath(MAX_PATH,// length of the buffer
-        //                        path);    // buffer for path
-        libName << path << "\\." << name << ".dll";
+        libName << config.getTemp() << "\\." << name << ".dll";
 #       elif defined(__APPLE__)
-        libName << path << "/.lib" << name << ".dylib";
+        libName << config.getTemp() << "/.lib" << name << ".dylib";
 #       elif defined(__unix)
-        // char const * path = getenv("TMPDIR");
-        // if (0 == folder) path = "/tmp";
-        libName << path << "/.lib" << name << ".so";
+        libName << config.getTemp() << "/.lib" << name << ".so";
 #       endif
         
         // Compile library (if required)
@@ -431,25 +513,19 @@ public:
             // Write kernel source code to file
             std::stringstream srcName;
 #           ifdef _WIN32
-            srcName<< path << "\\." << name << "." << config.getLang();
+            srcName<< config.getTemp() << "\\." << name << "." << config.getLang();
             std::ofstream file(srcName.str().c_str());
-            file   << "#define EXPORT extern \"C\" __declspec(dllexport)\n";
+            file << "#define EXPORT extern \"C\" __declspec(dllexport)\n";
 #           else
-            srcName<< path << "/." << name << "." << config.getLang();
+            srcName<< config.getTemp() << "/." << name << "." << config.getLang();
             std::ofstream file(srcName.str().c_str());
-            file   << "#define EXPORT extern \"C\"\n";
+            file << "#define EXPORT extern \"C\"\n";
 #           endif
             file << getKernel().str() <<"\n";
             file.close();
-            free(path);
 
             // Compile kernel source code into library
             std::stringstream systemcall;
-            /*
-            systemcall << "del \""<< libName.str() <<"\"";
-            (void)std::system(systemcall.str().c_str());
-            systemcall.clear();systemcall.str("");
-            //*/
 
             systemcall << config.getCmd()   << " "
                        << config.getFlags() << " \""
