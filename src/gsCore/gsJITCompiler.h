@@ -239,29 +239,29 @@ private:
     static std::string detectTemp()
     {
 #       if   defined(_WIN32)
-        TCHAR temp[MAX_PATH];
-        DWORD psz = GetTempPath(MAX_PATH, // length of the buffer
-                                temp);    // buffer for path
+        TCHAR _temp[MAX_PATH];
+        (void)GetTempPath(MAX_PATH, // length of the buffer
+                          _temp);    // buffer for path
         return str::string(temp);
 #       else
-        char * temp;
+        char * _temp;
 #       if defined(__APPLE__)
-        temp = getenv ("TMPDIR");
+        _temp = getenv ("TMPDIR");
 #       elif defined(__unix)
         temp = getenv ("TEMP");
 #       endif
 
         std::string path;
-        if(temp!=NULL)
+        if(_temp!=NULL)
         {
-            path = temp;
-            free(temp);                
+            path = _temp;
+            free(_temp);                
             return path;
         }
 
-        temp = getcwd(NULL,0);
-        path = temp;
-        free(temp);                
+        _temp = getcwd(NULL,0);
+        path = _temp;
+        free(_temp);                
         return path;
 #       endif
     }
