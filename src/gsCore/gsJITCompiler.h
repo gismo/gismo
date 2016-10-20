@@ -230,8 +230,8 @@ protected:
     std::string cmd;
     std::string flags;
     std::string lang;
-    std::string temp;
     std::string out;
+    std::string temp;
 
 private:
     /// Auto-detect temp directory
