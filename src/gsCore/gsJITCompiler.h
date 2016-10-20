@@ -452,14 +452,16 @@ public:
 #   if __cplusplus >= 201103L
     /// Constructor (move)
     gsJITCompiler(gsJITCompiler && other)
-    : kernel(std::move(other.kernel)),
+    : //kernel(std::move(other.kernel)),
       config(std::move(other.config))
-    {}
+    {
+        kernel << other.kernel.rdbuf();
+    }
 
     /// Assignment operator (move)
     gsJITCompiler& operator=(gsJITCompiler && other)
     {
-        kernel = std::move(other.kernel);
+        kernel << other.kernel.rdbuf();
         config = std::move(other.config);
         return *this;
     }
