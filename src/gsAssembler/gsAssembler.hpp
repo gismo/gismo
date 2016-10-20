@@ -532,10 +532,12 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
     result.clear(); // result is cleared first
 
-    GISMO_ASSERT(solVector.rows() == mapper.freeSize(),
+    /*
+    GISMO_ASSERT(solVector.rows() == m_dofs,
                  "The provided solution vector does not match the system."
                  " Expected: "<<mapper.freeSize()<<", Got:"<<solVector.rows() );
-
+    */
+    
     const index_t dim = ( 0!=solVector.cols() ? solVector.cols() :  m_ddof[unk].cols() );
     
     // to do: test unknown_dim == dim
