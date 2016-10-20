@@ -234,23 +234,36 @@ protected:
     std::string temp;
 
 private:
+
     /// Auto-detect temp directory
-    char * detectTemp()
+    static std::string detectTemp()
     {
-        char *path = getcwd(NULL,0);
-        char *temp;
 #       if   defined(_WIN32)
+        TCHAR temp[MAX_PATH];
         DWORD psz = GetTempPath(MAX_PATH, // length of the buffer
                                 temp);    // buffer for path
-#       elif defined(__APPLE__)
+        return str::string(temp);
+#       else
+        char * temp;
+#       if defined(__APPLE__)
         temp = getenv ("TMPDIR");
-        if(temp!=NULL) return temp;
 #       elif defined(__unix)
         temp = getenv ("TEMP");
-        if(temp!=NULL) return temp;
 #       endif
 
+        std::string path;
+        if(temp!=NULL)
+        {
+            path = temp;
+            free(temp);                
+            return path;
+        }
+
+        temp = getcwd(NULL,0);
+        path = temp;
+        free(temp);                
         return path;
+#       endif
     }
 };
 
