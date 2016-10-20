@@ -532,13 +532,20 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
     result.clear(); // result is cleared first
 
-    const index_t dim = m_pde_ptr->numRhs();
+    GISMO_ASSERT(solVector.rows() == mapper.freeSize(),
+                 "The provided solution vector does not match the system."
+                 " Expected: "<<mapper.freeSize()<<", Got:"<<solVector.rows() );
+        
+    const index_t dim = solVector.cols();
 
+    // to do: test unknown_dim == dim
+    
+    gsMatrix<T> coeffs;
     for (size_t p=0; p < m_pde_ptr->domain().nPatches(); ++p )
     {
         // Reconstruct solution coefficients on patch p
         const int sz  = m_bases[m_system.colBasis(unk)][p].size();
-        gsMatrix<T> coeffs( sz, dim);
+        coeffs.resize(sz, dim);
 
         for (index_t i = 0; i < sz; ++i)
         {
@@ -576,9 +583,9 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     for(index_t unk = 0; unk<dim;++unk)
         mappers[unk] = m_system.colMapper(unknowns[unk]);
 
-
     result.clear(); // result is cleared first
 
+    gsMatrix<T> coeffs;
     gsVector<index_t> basisIndices(dim);
     for(index_t unk = 0; unk<dim;++unk)
         basisIndices[unk] = m_system.colBasis(unknowns[unk]);
@@ -586,8 +593,8 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     for (size_t p=0; p < m_pde_ptr->domain().nPatches(); ++p )
     {
         const int sz  = m_bases[basisIndices[0]][p].size(); //must be equal for all unk
-        gsMatrix<T> coeffs(sz, dim);
-
+        coeffs.resize(sz, dim);
+        
         for(index_t unk = 0; unk<dim;++unk)
         {
             // Reconstruct solution coefficients on patch p
