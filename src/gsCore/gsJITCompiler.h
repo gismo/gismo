@@ -31,7 +31,7 @@
 #include <unistd.h>
 #endif
 
-#include "gsMemory.h"
+#include <gsCore/gsMemory.h>
 
 namespace gismo {
 
