@@ -457,11 +457,6 @@ void writeSingleGeometry(gsFunction<T> const& func,
             eval_func.topRows(d) = pts;
         }
     }
-    else if (n > 3)
-    {
-        gsWarn<< "Data is more than 3 dimensions, projecting to first 3 coordinates.\n";
-        eval_func.conservativeResize(3,eval_func.cols() );
-    }
 
     std::string mfn(fn);
     mfn.append(".vts");
@@ -482,10 +477,24 @@ void writeSingleGeometry(gsFunction<T> const& func,
     // file <<"</DataArray>\n";
     // file <<"</PointData>\n";
     // end norm
+
+    //---------
+    if (n > 3)
+    {
+        //gsWarn<< "4th dimension as scalar data.\n";
+        file <<"<PointData "<< "Scalars=\"Coordinate4\">\n";
+        file <<"<DataArray type=\"Float32\" Name=\"Coordinate4\" format=\"ascii\" NumberOfComponents=\"1\">\n";
+        for ( index_t j=0; j!=eval_func.cols(); ++j)
+            file<< eval_func(3,j) <<" ";
+        file <<"</DataArray>\n";
+        file <<"</PointData>\n";
+    }
+    //---------
+
     file <<"<Points>\n";
-    file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<eval_func.rows()<<"\">\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\">\n";
     for ( index_t j=0; j<eval_func.cols(); ++j)
-        for ( index_t i=0; i<eval_func.rows(); ++i)
+        for ( index_t i=0; i!=3; ++i)
             file<< eval_func(i,j) <<" ";
     file <<"</DataArray>\n";
     file <<"</Points>\n";
