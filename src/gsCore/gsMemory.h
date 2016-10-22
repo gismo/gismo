@@ -38,6 +38,18 @@ namespace gismo {
 namespace memory 
 {
 
+// using shared_ptr 
+#ifdef STD_SHARED_PTR_FOUND 
+using std::shared_ptr; 
+#elif defined(TR1_SHARED_PTR_FOUND) 
+using std::tr1::shared_ptr; 
+#elif defined(BOOST_SHARED_PTR_FOUND) 
+using boost::shared_ptr; 
+#else  
+using NOT_FOUND::shared_ptr; 
+#endif 
+//*/
+
 /** \brief Adaptor for a shared pointer
 
 usage:
