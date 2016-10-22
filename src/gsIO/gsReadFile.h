@@ -107,7 +107,7 @@ public:
     }
 
     template<class Obj>
-    operator typename memory::shared<Obj>::ptr () const
+    operator memory::shared_ptr<Obj> () const
     {
         return memory::make_shared<Obj>(*this);
     }
