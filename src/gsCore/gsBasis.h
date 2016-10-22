@@ -889,16 +889,6 @@ protected:
 }; // class gsBasis
 
 
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
-
-/// Print (as string) operator to be used by all derived classes
-template<class T>
-std::ostream &operator<<(std::ostream &os, const gsBasis<T>& b)
-{return b.print(os); }
-
-
 } // namespace gismo
 
 

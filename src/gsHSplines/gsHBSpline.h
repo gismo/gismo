@@ -45,8 +45,8 @@ public:
     typedef typename memory::shared< gsHBSpline<d,T> >::ptr Ptr;
     
     typedef typename 
-    choose<d==1, gsConstantFunction<T>, gsHBSpline<d-1,T>
-           >::type BoundaryGeometryType;
+    conditional<d==1, gsConstantFunction<T>, gsHBSpline<d-1,T>
+                >::type BoundaryGeometryType;
 
     typedef typename gsHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;
     

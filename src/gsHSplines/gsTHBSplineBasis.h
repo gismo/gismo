@@ -46,8 +46,8 @@ public:
     typedef typename memory::shared< gsTHBSplineBasis >::ptr Ptr;
 
     typedef typename
-    choose<d==1, gsConstantBasis<T>, gsTHBSplineBasis<d-1,T>
-        >::type BoundaryBasisType;
+    conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<d-1,T>
+                >::type BoundaryBasisType;
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
 

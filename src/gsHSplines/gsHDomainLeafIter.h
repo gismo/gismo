@@ -30,8 +30,8 @@ class gsHDomainLeafIter
 {
 public:
     //typedef kdnode<d, unsigned> node;
-    typedef typename choose<isconst, const node&, node&>::type reference;
-    typedef typename choose<isconst, const node*, node*>::type pointer;
+    typedef typename conditional<isconst, const node&, node&>::type reference;
+    typedef typename conditional<isconst, const node*, node*>::type pointer;
 
     typedef typename node::point point;
 

@@ -91,11 +91,8 @@ public:
     const gsSparseMatrix<T> & stationaryMatrix() const { return m_stationary->matrix(); }
     const gsSparseMatrix<T> & stationaryRhs() const { return m_stationary->rhs(); }
     
-protected:
-
     /// Mass assembly routine
     void assembleMass();
-
 
 protected:
 
@@ -153,11 +150,11 @@ void gsHeatEquation<T>::nextTimeStep(const gsSparseMatrix<T> & sysMatrix,
                                      gsMatrix<T> & curRhs,
                                      const T Dt)
 {
-    GISMO_ASSERT( curSolution.rows() == m_mass.cols(),
+    GISMO_ASSERT( curSolution.rows() == massMatrix.cols(),
                   "Wrong size in current solution vector.");
 
     const T c1 = Dt * m_theta;
-    m_system.matrix() = m_mass + c1 * sysMatrix;
+    m_system.matrix() = massMatrix + c1 * sysMatrix;
 
     const T c2 = Dt * (1.0 - m_theta);
     // note: noalias() still works since curRhs is multiplied by scalar only

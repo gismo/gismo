@@ -38,20 +38,16 @@ namespace gismo {
 namespace memory 
 {
 
-// /*
-// Use the correct shared_ptr
-#ifdef STD_SHARED_PTR_FOUND
-    using std::shared_ptr;
-#elif defined(TR1_SHARED_PTR_FOUND)
-    using std::tr1::shared_ptr;
-#elif defined(BOOST_SHARED_PTR_FOUND)
-    using boost::shared_ptr;
-#else 
-    using NOT_FOUND::shared_ptr;
-#endif
-//*/
+/** \brief Adaptor for a shared pointer
 
-// typename shared<C>::ptr
+usage:
+\code
+// For template C
+typename shared<C>::ptr A;
+//for concrete type
+shared<int>::ptr B;
+\endcode
+*/
 template <typename C>
 struct shared
 {
@@ -66,7 +62,16 @@ struct shared
 #endif
 };
 
-// typename unique<C>::ptr
+/** \brief Adaptor for a unique pointer
+
+usage:
+\code
+// For template C
+typename unique<C>::ptr A;
+// for concrete type
+unique<int>::ptr B;
+\endcode
+*/
 template <typename C>
 struct unique
 {

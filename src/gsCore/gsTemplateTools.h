@@ -22,20 +22,20 @@ namespace gismo
   Compile time type switching.
   Example: The type
 
-  gismo::choose<k==1,double, gsVector<double> >::type
+  gismo::conditional<k==1,double, gsVector<double> >::type
 
   evaluates (at compile time) to "double" if k is equal to 1, 
   and to "gsVector<double>" otherwise
 */
 
 template <bool flag, class IsTrue, class IsFalse>
-struct choose;
+struct conditional;
 
 template <class IsTrue, class IsFalse>
-struct choose<true, IsTrue, IsFalse> { typedef IsTrue type; };
+struct conditional<true, IsTrue, IsFalse> { typedef IsTrue type; };
 
 template <class IsTrue, class IsFalse>
-struct choose<false, IsTrue, IsFalse> {
+struct conditional<false, IsTrue, IsFalse> {
    typedef IsFalse type;
 };
 

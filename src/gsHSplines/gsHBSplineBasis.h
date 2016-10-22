@@ -43,8 +43,8 @@ public:
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
 
     typedef typename 
-    choose<d==1, gsConstantBasis<T>, gsHBSplineBasis<d-1,T>
-           >::type BoundaryBasisType;
+    conditional<d==1, gsConstantBasis<T>, gsHBSplineBasis<d-1,T>
+                >::type BoundaryBasisType;
 
     typedef typename memory::shared< gsHBSplineBasis >::ptr Ptr;
 
