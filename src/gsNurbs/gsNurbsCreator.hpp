@@ -101,7 +101,7 @@ template<class T> gsTensorBSpline<4,T> * gsNurbsCreator<T>::lift4D( gsTensorBSpl
     gsMatrix<T>     ControlPoints;
 
     const T theta = (EndAngle - StartAngle) / static_cast<T>(Segments);
-    const T weight = std::cos(std::fabs(theta) * 0.5);
+    const T weight = math::cos(math::abs(theta) * 0.5);
 
     Knots.clear();
     Knots.insert(Knots.end(), 3, 0);
