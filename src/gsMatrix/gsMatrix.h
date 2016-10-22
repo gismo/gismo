@@ -471,6 +471,12 @@ public:
     /// Converts the matrix to its Reduced Column Echelon Form (RCEF)
     void rcefInPlace() { rref_impl(this->transpose()); }
 
+    /// Converts the matrix to a Row Echelon Form (REF)
+    void refInPlace() { ref_impl(*this); }
+
+    /// Converts the matrix to a Column Echelon Form (CEF)
+    void cefInPlace() { ref_impl(this->transpose()); }
+
 private:
 
     // Implementation of (inplace) Reduced Row Echelon Form computation
@@ -496,13 +502,61 @@ private:
                     if (nc == piv) return;
                 }
             }
-            M.row(i).swap(M.row(r));
-            if ( 0 != M(r, piv) ) //~
-                M.row(r).array() /= M(r, piv);
-            for (i=0; i !=r; ++i)
-                M.row(i).array() -= M(i, piv) * M.row(r).array();
-            for (++i; i !=nr; ++i)
-                M.row(i).array() -= M(i, piv) * M.row(r).array();
+
+            if (i != r) M.row(i).swap(M.row(r));
+            const index_t br = nr-r-1;
+            const index_t bc = nc-piv-1;
+
+            // pivot row
+            M.row(r).tail(bc).array() /= M(r, piv);
+            M(r, piv) = T(1);
+            
+            // upper block
+            M.block(0, piv+1, r, bc).noalias() -=
+                M.col(piv).head(r) * M.row(r).tail(bc);
+            M.col(piv).head(r).setZero();
+            
+            // lower block
+            M.block(r+1, piv+1, br, bc).noalias() -= M.col(piv).tail(br) * M.row(r).tail(bc);
+            M.col(piv).tail(br).setZero();
+            
+            ++piv;
+        }
+    }
+
+    // Implementation of (inplace) Row Echelon Form computation
+    template <typename Derived>
+    static void ref_impl(const Eigen::MatrixBase<Derived>& Mat)
+    {  
+        // todo: const T tol = 0
+        Eigen::MatrixBase<Derived> & M = const_cast<Eigen::MatrixBase<Derived>& >(Mat);
+        index_t i, piv = 0;
+        const index_t nr = M.rows();
+        const index_t nc = M.cols();
+        for (index_t r=0; r!=nr; ++r)
+        {
+            if (nc <= piv) return;
+            i = r;
+            while (0 == M(i, piv)) //~
+            {
+                ++i;
+                if (nr == i)
+                {
+                    i = r;
+                    ++piv;
+                    if (nc == piv) return;
+                }
+            }
+
+            if (i != r) M.row(i).swap(M.row(r));
+            const index_t br = nr-r-1;
+            const index_t bc = nc-piv-1;
+
+            // lower block
+            M.block(r+1, piv+1, br, bc).noalias() -=
+                M.col(piv).tail(br) * M.row(r).tail(bc) / M(r, piv);
+            M.col(piv).tail(br).setZero();
+            
             ++piv;
         }
     }

@@ -20,3 +20,26 @@ inline const BlockDiagReturnType blockDiag(Index rowFactor) const;
 
 typedef BlockTranspose<Derived,Dynamic> BlockTransposeReturnType;
 inline const BlockTransposeReturnType blockTranspose(Index rowFactor) const;
+
+/**
+  * \brief Simple (inplace) Gauss elimination without any pivoting
+  */
+void gaussElim()
+{
+    Derived & M = derived();
+    index_t piv = 0;
+    const index_t nr = M.rows();
+    const index_t nc = M.cols();
+    for (index_t r=0; r!=nr; ++r)
+    {
+        piv = 0;
+        while (piv!= nc && 0 == M(r, piv)) ++piv;               
+        if (piv == nc ) continue;
+        
+        const index_t br = nr-r-1;
+        const index_t bc = nc-piv-1;
+        M.block(r+1, piv+1, br, bc).noalias() -=
+            M.col(piv).tail(br) * M.row(r).tail(bc) / M(r, piv);
+        M.col(piv).tail(br).setZero();
+    }
+}
