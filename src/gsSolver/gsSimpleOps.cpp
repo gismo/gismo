@@ -18,7 +18,7 @@ namespace gismo
 
 // smoothers
 
-void dampedRichardsonSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
+void dampedRichardsonSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -27,7 +27,7 @@ void dampedRichardsonSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t
     x += tau * temp;
 }
 
-void dampedRichardsonSweepBoundary(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, int numBdNodes)
+void dampedRichardsonSweepBoundary(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, int numBdNodes)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -41,7 +41,7 @@ void dampedRichardsonSweepBoundary(const Eigen::SparseMatrix<real_t>& A, gsMatri
 }
 
 // assumes symmetric matrix
-void kaczmarzSweepBoundary(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, int numBdNodes)
+void kaczmarzSweepBoundary(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, int numBdNodes)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -54,7 +54,7 @@ void kaczmarzSweepBoundary(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t
         real_t Asq = 0;
         real_t Aeqx = 0;
 
-        for (Eigen::SparseMatrix<real_t>::InnerIterator it(A,eq); it; ++it)
+        for (gsSparseMatrix<real_t>::InnerIterator it(A,eq); it; ++it)
         {
             Asq += it.value() * it.value();         // compute squared norm of A_eq
             Aeqx += it.value() * x(it.index());     // compute A_eq . x
@@ -62,7 +62,7 @@ void kaczmarzSweepBoundary(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t
 
         const real_t beta = (f(eq) - Aeqx) / Asq;
 
-        for (Eigen::SparseMatrix<real_t>::InnerIterator it(A,eq); it; ++it)
+        for (gsSparseMatrix<real_t>::InnerIterator it(A,eq); it; ++it)
         {
             x(it.index()) += beta * it.value();     // add beta * A_eq
         }
@@ -70,7 +70,7 @@ void kaczmarzSweepBoundary(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t
 }
 
 
-void jacobiSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
+void jacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -80,7 +80,7 @@ void jacobiSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, cons
     x += temp;
 }
 
-void dampedJacobiSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
+void dampedJacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -90,7 +90,7 @@ void dampedJacobiSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x
     x += tau * temp;
 }
 
-void dampedPreRichardsonSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::SparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
+void dampedPreRichardsonSweep(const gsSparseMatrix<real_t>& A, const gsSparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -104,7 +104,7 @@ void dampedPreRichardsonSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen:
 }
 
 
-void dampedPreJacobiSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::SparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau = (real_t)(1.0/2.0))
+void dampedPreJacobiSweep(const gsSparseMatrix<real_t>& A, const gsSparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau = (real_t)(1.0/2.0))
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -139,7 +139,7 @@ void dampedPreJacobiSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spa
 }
 
 
-void gaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
+void gaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -150,7 +150,7 @@ void gaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x,
         real_t diag = 0.0;
         real_t sum  = 0.0;
 
-        for (Eigen::SparseMatrix<real_t>::InnerIterator it(A,i); it; ++it)
+        for (gsSparseMatrix<real_t>::InnerIterator it(A,i); it; ++it)
         {
             sum += it.value() * x( it.index() );        // compute A.x
             if (it.index() == i)
@@ -161,7 +161,7 @@ void gaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x,
     }
 }
 
-void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
+void reverseGaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -172,7 +172,7 @@ void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real
         real_t diag = 0.0;
         real_t sum = 0.0;
 
-        for (Eigen::SparseMatrix<real_t>::InnerIterator it(A,i); it; ++it)
+        for (gsSparseMatrix<real_t>::InnerIterator it(A,i); it; ++it)
         {
             sum += it.value() * x( it.index() );        // compute A.x
             if (it.index() == i)
@@ -184,7 +184,7 @@ void reverseGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real
 }
 
 //Assumes A is symmetric (not needed)!
-void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs)
+void gaussSeidelSingleBlock(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs)
 {
     //Sorting from lowest to highest
     DoFs.sortByColumn(0);
@@ -209,7 +209,7 @@ void gaussSeidelSingleBlock(const Eigen::SparseMatrix<real_t>& A, gsMatrix<real_
        x(DoFs(i),0) += residual(i,0);
 }
 
-void preGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::SparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, bool reverse)
+void preGaussSeidelSweep(const gsSparseMatrix<real_t>& A, const gsSparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, bool reverse)
 {
     assert( A.rows() == x.rows() && x.rows() == f.rows() );
     assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
@@ -227,7 +227,7 @@ void preGaussSeidelSweep(const Eigen::SparseMatrix<real_t>& A, const Eigen::Spar
         real_t diag = 0.0;
         real_t sum  = 0.0;
 
-        for (Eigen::SparseMatrix<real_t>::InnerIterator it(A,i); it; ++it)
+        for (gsSparseMatrix<real_t>::InnerIterator it(A,i); it; ++it)
         {
             sum += it.value() * (x( it.index() ) + corr( it.index() ));        // compute A.x
             if (it.index() == i)
