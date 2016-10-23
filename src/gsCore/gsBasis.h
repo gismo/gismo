@@ -728,7 +728,7 @@ public:
     */
 
     /// @brief The number of basis functions in this basis.
-    virtual int size() const = 0;
+    virtual index_t size() const = 0;
 
     /// @brief The number of elements.
     virtual int numElements() const;

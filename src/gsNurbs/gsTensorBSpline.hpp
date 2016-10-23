@@ -153,7 +153,7 @@ template<unsigned d, class T>
 void gsTensorBSpline<d,T>::reverse(unsigned k)
 { 
     gsTensorBSplineBasis<d,T> & tbsbasis = this->basis();
-    gsVector<int,d> sz;
+    gsVector<index_t,d> sz;
     tbsbasis.size_cwise(sz);
     flipTensorVector(k, sz, m_coefs);
     tbsbasis.component(k).reverse();
@@ -164,7 +164,7 @@ template<unsigned d, class T>
 void gsTensorBSpline<d,T>::
 swapDirections(const unsigned i, const unsigned j)
 {
-    gsVector<int,d> sz;
+    gsVector<index_t,d> sz;
     this->basis().size_cwise(sz);
     swapTensorDirection(i, j, sz, m_coefs);
     this->basis().swapDirections(i,j);

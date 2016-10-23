@@ -981,7 +981,7 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         const gsVector<index_t> & bMap  = bi.dirMap();
         
         // Compute the tensor structure of bndThis
-        gsVector<int>  bSize(d-1);
+        gsVector<index_t>  bSize(d-1);
         index_t c = 0;
         for (unsigned k = 0; k<d; ++k )
         {
@@ -993,7 +993,7 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
 
         // Apply flips to bndThis and bndOther so that they have the
         // same orientation
-        gsVector<int>  bPerm(d-1);
+        gsVector<index_t>  bPerm(d-1);
         c = 0;
         for (unsigned k = 0; k<d; ++k )
         {

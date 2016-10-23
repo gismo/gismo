@@ -112,7 +112,7 @@ void tensorCombineTransferMatrices(
 
 /// \brief Helper to compute the strides of a d-tensor
 template<int d>
-void tensorStrides(const gsVector<int,d> & sz, gsVector<int,d> & strides) 
+void tensorStrides(const gsVector<index_t,d> & sz, gsVector<index_t,d> & strides) 
 {
     strides.resize(sz.size());
     strides[0] = 1;
@@ -186,7 +186,7 @@ void permuteTensorVector( const gsVector<index_t,d> & perm,
     gsVector<index_t,d> perstr;
     tensorStrides<d>(sz, perstr);
     perstr = P * perstr;
-        
+    
     // check: is it better to create a big permutation to apply to coefs ?
     gsMatrix<T> tmp(coefs.rows(), coefs.cols() );
 

@@ -233,13 +233,10 @@ public:
      */
     virtual void computeMap(gsMapData<T> & InOut) const;
 
-    int size() const { return 1;}
+    index_t size() const { return 1;}
 
 }; // class gsFunction
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 /// Print (as string) operator to be used by all derived classes
 template<class T>

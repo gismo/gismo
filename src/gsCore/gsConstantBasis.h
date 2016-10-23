@@ -61,7 +61,7 @@ public:
 
     int dim() const   { return m_domainDim; }
 
-    int size() const   { return 1; }
+    index_t size() const   { return 1; }
 
     void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
     {

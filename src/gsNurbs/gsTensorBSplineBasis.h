@@ -340,7 +340,7 @@ public:
 
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
-    template <index_t _Rows>
+    template <int _Rows>
     void elementSupport_into(const unsigned& i,
                              gsMatrix<unsigned, _Rows, 2> & result) const
     {
@@ -366,7 +366,7 @@ public:
 
     /// \brief Returns the indices of active basis functions in the
     /// given input element box
-    template <index_t _Rows>
+    template <int _Rows>
     void elementActive_into(const gsMatrix<unsigned,_Rows,2> & box,
                              gsMatrix<unsigned> & result) const
     {

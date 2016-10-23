@@ -418,7 +418,7 @@ public:
     int size(int k) const { return m_bases[k]->size(); }
 
     /// The number of basis functions in the direction of the k-th parameter component
-    template<index_t s>
+    template<int s>
     void size_cwise(gsVector<index_t,s> & result) const
     {
         result.resize(d);
@@ -725,11 +725,11 @@ public:
     // overload with size(k) automatically hides it in this class
     // Note that MSVC 2010 produces compilation error if we just
     // do a "using gsBasis<T>::size"
-    int size() const = 0;
+    index_t size() const = 0;
 
     /// \brief The number of basis functions in the direction of the k-th
     /// parameter component
-    int size(int k) const 
+    index_t size(int k) const 
     {
         GISMO_ASSERT(k==0, "Invalid direction");
         return this->size();

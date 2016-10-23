@@ -483,7 +483,7 @@ public:
     virtual gsHTensorBasis * clone() const = 0;
 
     /// The number of basis functions in this basis
-    int size() const;
+    index_t size() const;
 
     /// The number of nodes in the tree representation
     int treeSize() const

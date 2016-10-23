@@ -164,7 +164,7 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
 }
 
 template<unsigned d, class T>
-int gsHTensorBasis<d,T>::size() const 
+index_t gsHTensorBasis<d,T>::size() const 
 {
     return m_xmatrix_offset.back();
 }

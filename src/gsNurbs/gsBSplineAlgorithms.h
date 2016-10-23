@@ -259,7 +259,8 @@ void degreeElevateBSpline(Basis_t &basis,
         }
 
     // loop over unique knot values (exept last one)
-    const std::vector<int> mult = knots.multiplicities(); // vector of mulitplicities
+    const typename gsKnotVector<T>::multContainer &
+        mult = knots.multiplicities(); // vector of mulitplicities
 
     // degree elevate basis
     basis.degreeElevate(m);

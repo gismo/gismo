@@ -138,7 +138,7 @@ public:
 
     int dim() const { return Dim; }
     
-    int size() const { return m_src->size(); }
+    index_t size() const { return m_src->size(); }
 
     int size(int const& k) const{ return m_src->size(k); }
 

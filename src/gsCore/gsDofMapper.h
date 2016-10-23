@@ -278,7 +278,10 @@ public:
     ///
     /// Produces undefined results if local dof (i,k) does not lie on the boundary.
     inline index_t bindex( index_t i, index_t k = 0 ) const 
-    { return MAPPER_PATCH_DOF(i,k) - freeSize() + m_bshift;}
+    {
+        GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        return MAPPER_PATCH_DOF(i,k) - freeSize() + m_bshift;
+    }
 
     /// @brief Returns the coupled dof index
     inline index_t cindex( index_t i, index_t k = 0 ) const
