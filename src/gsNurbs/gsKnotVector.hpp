@@ -831,7 +831,7 @@ void gsKnotVector<T>::reduceMultiplicity(const mult_t i, bool boundary)
     ktmp.reserve(uSize());
 
     // fixme: should treat all boundary knots
-    mult_t bm = boundary ? math::max(1,m_multSum.front()-i) : m_multSum.front();
+    mult_t bm = boundary ? (std::max<mult_t>)(1,m_multSum.front()-i) : m_multSum.front();
     mtmp.push_back(bm); // first knot
     ktmp.insert(ktmp.end(), bm, m_repKnots.front());
 
@@ -846,7 +846,7 @@ void gsKnotVector<T>::reduceMultiplicity(const mult_t i, bool boundary)
         }
     }
     // last knot
-    bm = boundary ? math::max(1,uit.multiplicity()-i) : uit.multiplicity();
+    bm = boundary ? (std::max<mult_t>)(1,uit.multiplicity()-i) : uit.multiplicity();
     mtmp.push_back( bm + mtmp.back() );
     ktmp.insert(ktmp.end(), bm, *uit);
 

@@ -144,7 +144,7 @@ public:
     using Base::size;
 
     // Look at gsBasis class for a description
-    int size() const { return m_knots.size() - m_p - 1 - m_periodic; }
+    index_t size() const { return m_knots.size() - m_p - 1 - m_periodic; }
 
     // Look at gsBasis class for a description
     int numElements() const { return m_knots.numElements(); }

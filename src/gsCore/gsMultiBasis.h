@@ -391,7 +391,7 @@ public:
      *
      * Is called by repairInterface(), templated over dimension.
      */
-    template<unsigned d>
+    template<int d>
     bool repairInterfaceFindElements( const boundaryInterface & bi,
                                       std::vector<unsigned> & refEltsFirst,
                                       std::vector<unsigned> & refEltsSecond );

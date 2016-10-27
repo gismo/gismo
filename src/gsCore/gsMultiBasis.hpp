@@ -227,7 +227,7 @@ bool gsMultiBasis<T>::repairInterface( const boundaryInterface & bi )
 }
 
 template<class T>
-template<unsigned d>
+template<int d>
 bool gsMultiBasis<T>::repairInterfaceFindElements(
         const boundaryInterface & bi,
         std::vector<unsigned> & refEltsFirst,
