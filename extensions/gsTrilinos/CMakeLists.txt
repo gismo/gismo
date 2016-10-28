@@ -67,7 +67,7 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_Amesos=ON
                        -DTrilinos_ENABLE_AztecOO=ON
                        -DTrilinos_ENABLE_Anasazi=ON  
-                       -DTrilinos_ENABLE_Belos=ON
+                       -DTrilinos_ENABLE_Belos=${GISMO_BUILD_CPP11}
                        -DTrilinos_ENABLE_NOX=ON
                        #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
 		       #-DTrilinos_ENABLE_ML=ON # multigrid
