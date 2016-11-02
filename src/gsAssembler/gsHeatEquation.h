@@ -41,13 +41,20 @@ public:
     gsHeatEquation(gsAssembler<T> & stationary,
                    const gsOptionList & opt = Base::defaultOptions() )
     :  Base(stationary),  // note: unnecessary sliced copy here
-       m_stationary(&stationary)
+       m_stationary(&stationary), m_theta(0.5)
     {
         m_options.addReal("theta",
-        "Theta parameter determining the time integration scheme[0..1]", 0.5);
+        "Theta parameter determining the time integration scheme[0..1]", m_theta);
     }
 
 public:
+
+    void setTheta(const T th)
+    {
+        GISMO_ASSERT(th<=1 && th>=0, "Invalid value");
+        m_theta= th;
+        m_options.setReal("theta", m_theta);
+    }
     
     /// Initial assembly routine.
     void assemble()
@@ -71,21 +78,26 @@ public:
 
     /** \brief Computes the matrix and right-hand side for the next timestep.
 
-       \param curSolution The solution of the previous timestep
+        The right-hand side function is assumed constant with respect to time
 
-       \param[in,out] curRhs Input is the right-hand side of the
-       previous timestep. It is overwritten with the right-hand side
-       of the current timestep
+       \param curSolution The solution of the previous timestep
 
        \param Dt Length of time interval of the current time step
     */
-    void nextTimeStep(const gsMatrix<T> & curSolution, gsMatrix<T> & curRhs, T Dt);
-
+    void nextTimeStep(const gsMatrix<T> & curSolution, const T Dt);
+    
     void nextTimeStep(const gsSparseMatrix<T> & sysMatrix,
-                      const gsMatrix<T> & sysThs,
                       const gsSparseMatrix<T> & massMatrix,
-                      const gsMatrix<T> & curSolution, gsMatrix<T> & curRhs, T Dt);
-
+                      const gsMatrix<T> & rhs0,
+                      const gsMatrix<T> & rhs1,                                  
+                      const gsMatrix<T> & curSolution,
+                      const T Dt);
+    
+    void nextTimeStepFixedRhs(const gsSparseMatrix<T> & sysMatrix,
+                              const gsSparseMatrix<T> & massMatrix,
+                              const gsMatrix<T> & rhs,
+                              const gsMatrix<T> & curSolution,
+                              const T Dt);
 
     const gsSparseMatrix<T> & mass() const { return m_mass; }
     const gsSparseMatrix<T> & stationaryMatrix() const { return m_stationary->matrix(); }
@@ -122,32 +134,36 @@ namespace gismo
 {
 
 template<class T>
-void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, 
-                                     gsMatrix<T> & curRhs, const T Dt)
+void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, const T Dt)
 {
-    nextTimeStep(m_stationary->matrix(),
-                 m_stationary->rhs(),
-                 m_mass, curSolution, curRhs, Dt);
-    /*
-      GISMO_ASSERT( curSolution.rows() == m_mass.cols(),
-      "Wrong size in current solution vector.");
-
-    const T c1 = Dt * m_theta;
-    m_system.matrix() = m_mass + c1 * m_stationary->matrix();
-
-    const T c2 = Dt * (1.0 - m_theta);
-    // note: noalias() still works since curRhs is multiplied by scalar only
-    curRhs.noalias() = c1 * m_stationary->rhs() + c2 * curRhs + 
-        m_mass * curSolution - c2 * m_stationary->matrix() * curSolution;
-    */
+    nextTimeStepFixedRhs(m_stationary->matrix(), m_mass,
+                         m_stationary->rhs(), curSolution, Dt);
 }
+
+/*
+template<class T>
+void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, const T Dt)
+{
+    // Keep previous time
+    m_prevRhs.swap(m_stationary->rhs());
+    // Get current time
+    m_time += Dt;
+    m_stationary->rhs(m_time);
+
+    // note: m_stationary->matrix() assumed constant in time
+        
+    nextTimeStep(m_stationary->matrix(), m_mass,
+                 m_prevRhs, m_stationary->rhs(), curSolution, Dt);
+    m_prevRhs.swap(m_stationary->rhs());
+}
+//*/
 
 template<class T>
 void gsHeatEquation<T>::nextTimeStep(const gsSparseMatrix<T> & sysMatrix,
-                                     const gsMatrix<T> & sysRhs,
                                      const gsSparseMatrix<T> & massMatrix,
+                                     const gsMatrix<T> & rhs0,
+                                     const gsMatrix<T> & rhs1,
                                      const gsMatrix<T> & curSolution,
-                                     gsMatrix<T> & curRhs,
                                      const T Dt)
 {
     GISMO_ASSERT( curSolution.rows() == massMatrix.cols(),
@@ -157,9 +173,24 @@ void gsHeatEquation<T>::nextTimeStep(const gsSparseMatrix<T> & sysMatrix,
     m_system.matrix() = massMatrix + c1 * sysMatrix;
 
     const T c2 = Dt * (1.0 - m_theta);
-    // note: noalias() still works since curRhs is multiplied by scalar only
-    curRhs.noalias() = c1 * sysRhs + c2 * curRhs + 
-        massMatrix * curSolution - c2 * sysMatrix * curSolution;
+    m_system.rhs().noalias() = c1 * rhs1 + c2 * rhs0 + (massMatrix - c2 * sysMatrix) * curSolution;
+}
+
+template<class T>
+void gsHeatEquation<T>::nextTimeStepFixedRhs(const gsSparseMatrix<T> & sysMatrix,
+                                             const gsSparseMatrix<T> & massMatrix,
+                                             const gsMatrix<T> & rhs,
+                                             const gsMatrix<T> & curSolution,
+                                             const T Dt)
+{
+    GISMO_ASSERT( curSolution.rows() == massMatrix.cols(),
+                  "Wrong size in current solution vector.");
+
+    const T c1 = Dt * m_theta;
+    m_system.matrix() = massMatrix + c1 * sysMatrix;
+
+    const T c2 = Dt * (1.0 - m_theta);
+    m_system.rhs().noalias() = Dt * rhs + (massMatrix - c2 * sysMatrix) * curSolution;
 }
 
 

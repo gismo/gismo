@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     stationary.options().setInt("DirichletStrategy", dirichlet::elimination);
     stationary.options().setInt("InterfaceStrategy", iFace::glue);
     gsHeatEquation<real_t> assembler(stationary, stationary.options());
-    assembler.options().setReal("theta", theta);
+    assembler.setTheta(theta);
     gsInfo<<assembler.options()<<"\n";
     
     // A Conjugate Gradient linear solver with a diagonal (Jacobi) preconditionner
@@ -90,13 +90,12 @@ int main(int argc, char *argv[])
     // Generate system matrix and load vector
     gsInfo<<"Assembling mass and stiffness...\n";
     assembler.assemble();
-
+    
     gsMatrix<> Sol, Rhs;
     int ndof = assembler.numDofs();
     real_t endTime = 0.1;
     int numSteps = 40;
     Sol.setZero(ndof, 1); // Initial solution
-    Rhs.setZero(ndof, 1); // Initializing rhs
     
     real_t Dt = endTime / numSteps ;
 
@@ -104,7 +103,7 @@ int main(int argc, char *argv[])
 	gsParaviewCollection collection(baseName);
     
     std::string fileName;
-
+    
     if ( plot)
     {
         //sol = assembler.constructSolution(Sol); // same as next line
@@ -113,15 +112,15 @@ int main(int argc, char *argv[])
         gsWriteParaview<>(sol, fileName, 1000, true);
         collection.addTimestep(fileName,0,"0.vts");
     }
-    
+
     for ( int i = 1; i<=numSteps; ++i) // for all timesteps
     {
-        // Update Rhs to timestep i (while feeding solution from previous step)
-        assembler.nextTimeStep(Sol, Rhs, Dt);
+        // Compute the system for the timestep i (rhs is assumed constant wrt time)
+        assembler.nextTimeStep(Sol, Dt);
         gsInfo<<"Solving timestep "<< i*Dt<<".\n";
-        
+
         // Solve for current timestep, overwrite previous solution
-        Sol = solver.compute( assembler.matrix() ).solve(Rhs);
+        Sol = solver.compute( assembler.matrix() ).solve( assembler.rhs() );
         
         // Obtain current solution as an isogeometric field
         //sol = assembler.constructSolution(Sol); // same as next line
