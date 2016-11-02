@@ -122,7 +122,7 @@ public:
             field1->igaFunction(patchIndex).basis() : field1->patch(patchIndex).basis();
 
         // Initialize visitor
-        visitor.initialize(dom.basis(), QuRule, evFlags);
+        visitor.initialize(dom, QuRule, evFlags);
         
         // Initialize geometry evaluator
         typename gsGeometry<T>::Evaluator geoEval(
