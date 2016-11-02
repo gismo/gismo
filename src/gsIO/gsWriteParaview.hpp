@@ -619,25 +619,30 @@ void gsWriteParaview(const gsField<T> & field,
                      std::string const & fn, 
                      unsigned npts, bool mesh)
 {
+    /*
     if (mesh && (!field.isParametrized()) )
     {
         gsWarn<< "Cannot plot mesh from non-parametric field.";
         mesh = false;
     }
-
+    */
+    
     const unsigned n = field.nPatches();
     gsParaviewCollection collection(fn);
+    std::string fileName;
 
     for ( unsigned i=0; i < n; ++i )
     {
-        std::string fileName = fn + util::to_string<unsigned>(i);
+        const gsBasis<T> & dom = field.isParametrized() ? 
+            field.igaFunction(i).basis() : field.patch(i).basis();
+        
+        fileName = fn + util::to_string<unsigned>(i);
         writeSinglePatchField( field, i, fileName, npts );
         collection.addPart(fileName, ".vts");
         if ( mesh ) 
         {
             fileName+= "_mesh";
-            writeSingleCompMesh(field.igaFunction(i).basis(), 
-                                field.patch(i), fileName);
+            writeSingleCompMesh(dom, field.patch(i), fileName);
 
             collection.addPart(fileName, ".vtp");
         }
