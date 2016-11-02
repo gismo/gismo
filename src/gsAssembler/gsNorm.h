@@ -76,8 +76,8 @@ public:
         {
             const gsFunction<T> & func1 = field1->function(pn);
             // Obtain an integration domain
-            const gsGeometry<T> & dom = field1->isParametrized() ? 
-                field1->igaFunction(pn) : field1->patch(pn);
+            const gsBasis<T> & dom = field1->isParametrized() ? 
+                field1->igaFunction(pn).basis() : field1->patch(pn).basis();
 
             // Initialize visitor
             visitor.initialize(dom.basis(), QuRule, evFlags);
@@ -86,7 +86,7 @@ public:
             typename gsGeometry<T>::Evaluator geoEval(
                 patchesPtr->patch(pn).evaluator(evFlags));
             
-            typename gsBasis<T>::domainIter domIt = dom.basis().makeDomainIterator(side);
+            typename gsBasis<T>::domainIter domIt = dom.makeDomainIterator(side);
             for (; domIt->good(); domIt->next())
             {
                 // Map the Quadrature rule to the element
@@ -118,8 +118,8 @@ public:
 
         const gsFunction<T> & func1 = field1->function(patchIndex);
         // Obtain an integration domain
-        const gsGeometry<T> & dom = field1->isParametrized() ? 
-            field1->igaFunction(patchIndex) : field1->patch(patchIndex);
+        const gsBasis<T> & dom = field1->isParametrized() ? 
+            field1->igaFunction(patchIndex).basis() : field1->patch(patchIndex).basis();
 
         // Initialize visitor
         visitor.initialize(dom.basis(), QuRule, evFlags);
@@ -128,7 +128,7 @@ public:
         typename gsGeometry<T>::Evaluator geoEval(
             patchesPtr->patch(patchIndex).evaluator(evFlags));
         
-        typename gsBasis<T>::domainIter domIt = dom.basis().makeDomainIterator(side);
+        typename gsBasis<T>::domainIter domIt = dom.makeDomainIterator(side);
         for (; domIt->good(); domIt->next())
         {
             // Map the Quadrature rule to the element
