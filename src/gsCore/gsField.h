@@ -23,7 +23,7 @@ namespace gismo
 {
 
 /**
- * \brief A scalar of vector field defined on a parametrized geometry.
+ * \brief A scalar of vector field defined on a m_parametric geometry.
  *
  * A gsField is, generally speaking, some mathematical function that is defined on a domain of interest
  * (the name "field" is motivated by, e.g., "scalar field" or "vector field").
@@ -63,23 +63,23 @@ public:
     gsField( const gsFunctionSet<T> & mp, 
              typename gsFunctionSet<T>::Ptr fs, 
              const bool isparam)
-    : m_patches(&mp), m_fields(fs), parametrized(isparam)
+    : m_patches(&mp), m_fields(fs), m_parametric(isparam)
     { }
 
     gsField( const gsGeometry<T> & sp, const gsFunctionSet<T> & pf, const bool isparam = false) 
-    : m_patches(&sp), m_fields(memory::make_shared_not_owned(&pf)), parametrized(isparam)
+    : m_patches(&sp), m_fields(memory::make_shared_not_owned(&pf)), m_parametric(isparam)
     { }
 
     gsField( const gsGeometry<T> & sp, const gsGeometry<T> & pf) 
-    : m_patches(&sp), m_fields(memory::make_shared_not_owned(&pf)), parametrized(true)
+    : m_patches(&sp), m_fields(memory::make_shared_not_owned(&pf)), m_parametric(true)
     { }
 
     gsField( const gsMultiPatch<T> & mp, const gsFunctionSet<T> & f, const bool isparam = false) 
-    : m_patches(&mp), m_fields(memory::make_shared_not_owned(&f)), parametrized(isparam)
+    : m_patches(&mp), m_fields(memory::make_shared_not_owned(&f)), m_parametric(isparam)
     { }
 
     gsField( const gsMultiPatch<T> & mp, const gsMultiPatch<T> & f) 
-    : m_patches(&mp), m_fields(memory::make_shared_not_owned(&f)), parametrized(true)
+    : m_patches(&mp), m_fields(memory::make_shared_not_owned(&f)), m_parametric(true)
     { }
 
 public:
@@ -121,7 +121,7 @@ public:
      */
     typename gsMatrix<T>::uPtr value(const gsMatrix<T>& u, int i = 0)  const
     {
-        return parametrized
+        return m_parametric
             ? m_fields->piece(i).eval(u)
             : m_fields->piece(i).eval( *point(u, i) );
     }
@@ -130,7 +130,7 @@ public:
     // TO DO: rename to evalPhys()
     typename gsMatrix<T>::uPtr pvalue(const gsMatrix<T>& u, int i)  const
     {
-        GISMO_ASSERT(!parametrized, "Cannot compute physical value");
+        GISMO_ASSERT(!m_parametric, "Cannot compute physical value");
         return ( m_fields->piece(i).eval(u) ); 
     }
 
@@ -145,7 +145,7 @@ public:
                  bool isFunc_param = false,
                  int numEvals=1000) const 
     {
-        if ( parametrized ) // isogeometric field
+        if ( m_parametric ) // isogeometric field
             return igaFieldL2Distance(*this, func, isFunc_param);
         else
             return computeL2Distance(*this, func, isFunc_param,  numEvals);
@@ -158,7 +158,7 @@ public:
                  bool isFunc_param = false,
                  int numEvals=1000) const
     {
-        if ( parametrized ) // isogeometric field
+        if ( m_parametric ) // isogeometric field
             return igaFieldL2Distance(*this, func, B,isFunc_param);
         else
             return computeL2Distance(*this, func, isFunc_param,  numEvals);
@@ -170,7 +170,7 @@ public:
                  bool isFunc_param = false,
                  int numEvals=1000) const 
     {
-        if ( parametrized ) // isogeometric field
+        if ( m_parametric ) // isogeometric field
             return igaFieldH1Distance(*this, func, isFunc_param);
         else
         {
@@ -187,7 +187,7 @@ public:
                  bool isFunc_param = false,
                  int numEvals=1000) const
     {
-        if ( parametrized ) // isogeometric field
+        if ( m_parametric ) // isogeometric field
             return igaFieldH1Distance(*this, func, B,isFunc_param);
         else
         {
@@ -203,7 +203,7 @@ public:
                  bool isFunc_param = false,
                  int numEvals=1000) const 
     {
-        if ( parametrized ) // isogeometric field
+        if ( m_parametric ) // isogeometric field
             return igaFieldDGDistance(*this, func, isFunc_param);
         else
         {
@@ -216,7 +216,7 @@ public:
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
     { 
-        os << ( parametrized ? "Parameterized f" : "F") 
+        os << ( m_parametric ? "Parameterized f" : "F") 
            << "unction field.\n Defined on " << m_patches;
         return os; 
     }
@@ -274,14 +274,22 @@ public:
     {
         GISMO_ASSERT(i<m_fields->size(),
                      "gsField: Invalid patch index.");
-        GISMO_ASSERT(parametrized,
+        GISMO_ASSERT(m_parametric,
                      "Cannot get an IGA function from non-parametric field.");
         GISMO_ASSERT(dynamic_cast<const gsGeometry<T>*>(&m_fields->piece(i)),
                      "Cannot return an igaFunction from a function of type: "<< m_fields->piece(i) );
         return static_cast<const gsGeometry<T> &>(m_fields->piece(i));
     }
 
-    bool isParametrized() const { return parametrized; }
+    /// True if the field function is defined on parametric
+    /// coordinates (i.e. the same coordinate system as the patches)
+    bool isParametric() const { return m_parametric; }
+    
+    /// True if the field function is parametrized by a set of basis
+    /// functions in parametric coordinates (i.e. the same coordinate
+    /// system as the patches)
+    bool isParametrized() const 
+    { return m_parametric && dynamic_cast<const gsGeometry<T>*>(&m_fields->piece(0));}
 
     /** \brief Returns the coefficient vector (if it exists)
         corresponding to the function field for patch \a i.
@@ -314,13 +322,13 @@ private:
     /**
      * @brief \a True iff this is an isogeometric field.
      *
-     * If \a parametrized is \a true, the evaluation points for calling gsField::value have to be placed in the
+     * If \a m_parametric is \a true, the evaluation points for calling gsField::value have to be placed in the
      * \a parameter domain.
      *
-     * If \a parametrized is \a false, then the evaluation points are in the \a physical domain.
+     * If \a m_parametric is \a false, then the evaluation points are in the \a physical domain.
      * This applies to, e.g., given exact solutions which are defined on the physical domain.
      */
-    bool parametrized;// True iff this is an Isogeometric field, living on parameter domain
+    bool m_parametric;// True iff this is an Isogeometric field, living on parameter domain
 
 }; // class gsField
 
