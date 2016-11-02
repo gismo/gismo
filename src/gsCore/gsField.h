@@ -253,7 +253,7 @@ public:
 
     /// Returns the gsGeometry of patch \a i.
     const gsGeometry<T> & patch(int i=0) const 
-    { 
+    {
         GISMO_ASSERT( i<m_patches->size(),
                       "gsField: Invalid patch index.");
         GISMO_ASSERT(dynamic_cast<const gsGeometry<T>*>(&m_patches->piece(i)),
@@ -271,13 +271,13 @@ public:
 
     /// Attempts to return an Isogeometric function for patch i
     const gsGeometry<T> & igaFunction(int i=0) const
-    { 
+    {
+        GISMO_ASSERT(i<m_fields->size(),
+                     "gsField: Invalid patch index.");
         GISMO_ASSERT(parametrized,
                      "Cannot get an IGA function from non-parametric field.");
         GISMO_ASSERT(dynamic_cast<const gsGeometry<T>*>(&m_fields->piece(i)),
                      "Cannot return an igaFunction from a function of type: "<< m_fields->piece(i) );
-        GISMO_ASSERT(i<m_fields->size(),
-                      "gsField: Invalid patch index.");
         return static_cast<const gsGeometry<T> &>(m_fields->piece(i));
     }
 
