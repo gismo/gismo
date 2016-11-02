@@ -80,7 +80,7 @@ public:
                 field1->igaFunction(pn).basis() : field1->patch(pn).basis();
 
             // Initialize visitor
-            visitor.initialize(dom.basis(), QuRule, evFlags);
+            visitor.initialize(dom, QuRule, evFlags);
 
             // Initialize geometry evaluator
             typename gsGeometry<T>::Evaluator geoEval(
