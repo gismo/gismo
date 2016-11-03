@@ -83,10 +83,10 @@ public:
      */
     virtual int numRhs() const
     {
-        return m_rhs[0].targetDim();
+        return m_rhs.piece(0).targetDim();
     }
 
-    const gsFunction<T> *    rhs()      const { return &m_rhs[0]; }
+    const gsFunction<T> *    rhs()      const { return &m_rhs.piece(0); }
 
     virtual int numUnknowns() const     {return 1;}
 

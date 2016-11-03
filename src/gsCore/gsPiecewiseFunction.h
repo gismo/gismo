@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsCore/gsPatchwiseFunction.h>
-
 namespace gismo
 {
 
@@ -27,10 +25,10 @@ namespace gismo
 */
 
 template <class T>
-class gsPiecewiseFunction : public gsPatchwiseFunction<T>
+class gsPiecewiseFunction : public gsFunctionSet<T>
 {
 public:
-    typedef gsPatchwiseFunction<T>                     Base;
+    typedef gsFunctionSet<T>                           Base;
     typedef typename std::vector<gsFunction<T>*>       FunctionContainer;
     typedef typename FunctionContainer::iterator       fiterator;
     typedef typename FunctionContainer::const_iterator const_fiterator;

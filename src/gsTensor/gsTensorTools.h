@@ -23,12 +23,12 @@ namespace gismo
 
 ///
 /// @brief Helper function to compute a lexicographically numbered index from tensor indices.
-template <unsigned d>
+template <int d>
 int fromTensorIndex(const gsVector<unsigned, d>& idx, const gsVector<unsigned, d>& sz)
 {
     int result = 0;
     unsigned stride = 1;
-    for (unsigned i = 0; i < d; ++i)
+    for (index_t i = 0; i < idx.size(); ++i)
     {
         result += stride * idx[i];
         stride *= sz[i];

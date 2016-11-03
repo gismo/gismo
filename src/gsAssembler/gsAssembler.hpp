@@ -221,8 +221,8 @@ void gsAssembler<T>::setFixedDofVector(gsMatrix<T> & vals, int unk)
     m_ddof[unk].swap(vals);
     vals.resize(0,0);
     // Assuming that the DoFs are already set by the user
-    GISMO_ENSURE( m_ddof[unk].rows() == m_system.colMapper(unk).boundarySize() &&
-                  m_ddof[unk].cols() == m_pde_ptr->numRhs(),
+    GISMO_ENSURE( m_ddof[unk].rows() == m_system.colMapper(unk).boundarySize()
+                  , //&& m_ddof[unk].cols() == m_pde_ptr->numRhs(),
                   "The Dirichlet DoFs were not provided correctly.");
 }
 

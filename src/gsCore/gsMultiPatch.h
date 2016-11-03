@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gsCore/gsPatchwiseFunction.h>
 #include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsGeometry.h>
 
@@ -31,7 +30,7 @@ namespace gismo
     \ingroup Core
 */
 template<class T>
-class gsMultiPatch : public gsBoxTopology, public gsPatchwiseFunction<T>
+class gsMultiPatch : public gsBoxTopology, public gsFunctionSet<T>
 {
 
 public:
@@ -210,6 +209,15 @@ public:
     /// \brief Elevate the degree of all patches by \a elevationSteps.
     void degreeElevate(int elevationSteps = 1);
 
+    void embed(const index_t N)
+    {
+        for ( typename PatchContainer::const_iterator it = m_patches.begin();
+              it != m_patches.end(); ++it )
+        {
+            ( *it )->embed(N);
+        }
+    }
+    
     /// \brief Attempt to compute interfaces and boundaries
     /// automatically.
     /// \param tol The tolerance to test for matching points
