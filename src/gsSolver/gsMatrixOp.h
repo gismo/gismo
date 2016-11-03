@@ -122,7 +122,7 @@ private:
 template <class Derived>
 typename gsMatrixOp<Derived>::Ptr makeMatrixOp(const Eigen::EigenBase<Derived>& mat, bool sym=false)
 {
-    return memory::make_shared(new gsMatrixOp<Derived>(mat.derived(), sym));
+    return gsMatrixOp<Derived>::make(mat.derived(), sym);
 }
 
 /** @brief This essentially just calls the gsMatrixOp constructor, but

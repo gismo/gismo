@@ -62,7 +62,8 @@ public:
     gsRichardsonOp(const MatrixType& _mat, T tau = 1.)
         : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
         
-    static Ptr make(const MatrixType& _mat, T tau = 1.) { return shared( new gsRichardsonOp(_mat,tau) ); }
+    static Ptr make(const MatrixType& _mat, T tau = 1.)
+    { return memory::make_shared( new gsRichardsonOp(_mat,tau) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
@@ -120,24 +121,18 @@ public:
     gsJacobiOp(const MatrixType& _mat, T tau = 1.)
         : m_mat(_mat), m_numOfSweeps(1), m_tau(tau) {}
         
-    static Ptr make(const MatrixType& _mat, T tau = 1.) { return shared( new gsJacobiOp(_mat,tau) ); }
+    static Ptr make(const MatrixType& _mat, T tau = 1.)
+    { return memory::make_shared( new gsJacobiOp(_mat,tau) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         GISMO_ASSERT( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows() && input.cols() == 1, "Dimensions do not match.");
 
         // For the first sweep, we do not need to multiply with the matrix
-        x = input;
-        x.array() /= m_mat.diagonal().array();
-        x *= m_tau;
-
-        gsMatrix<T> temp;
+        x.array() = m_tau * input.array() / m_mat.diagonal().array();
+        
         for (index_t k = 1; k < m_numOfSweeps; ++k)
-        {
-            temp.noalias() = input - m_mat * x;
-            temp.array() /= m_mat.diagonal().array();
-            x += m_tau * temp;
-        }
+            x.array() += m_tau * ( input - m_mat * x ).array() / m_mat.diagonal().array();
     }
 
     index_t rows() const {return m_mat.rows();}
@@ -157,6 +152,12 @@ private:
     index_t m_numOfSweeps;
     T m_tau;
 };
+
+template <class Derived>
+typename gsJacobiOp<Derived>::Ptr makeJacobiOp(const Eigen::EigenBase<Derived>& mat,
+                                               typename Derived::Scalar tau = 1)
+{ return gsJacobiOp<Derived>::make(mat.derived(), tau); }
+
 
 /// @brief Gauss-Seidel preconditioner
 ///
@@ -179,7 +180,8 @@ public:
     gsGaussSeidelOp(const MatrixType& _mat)
         : m_mat(_mat), m_numOfSweeps(1) {}
         
-    static Ptr make(const MatrixType& _mat) { return shared( new gsGaussSeidelOp(_mat) ); }
+    static Ptr make(const MatrixType& _mat)
+    { return memory::make_shared( new gsGaussSeidelOp(_mat) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
