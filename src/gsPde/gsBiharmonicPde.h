@@ -71,10 +71,10 @@ public:
      */
     virtual int numRhs() const
     {
-        return m_rhs[0].targetDim();
+        return m_rhs.piece(0).targetDim();
     }
 
-    const gsFunction<T> *    rhs()      const { return &m_rhs[0]; }
+    const gsFunction<T> *    rhs()      const { return &m_rhs.piece(0); }
 
     const gsBoundaryConditions<T> & bcFirstKind()  const {return this->bc();}
 
@@ -88,7 +88,7 @@ public:
     std::ostream &print(std::ostream &os) const
     {
         os<<"Biharmonic's equation  -\u0394^2 u = f ,  with:\n";
-	    os<<"Source function f= "<< m_rhs[0] <<".\n";
+	    os<<"Source function f= "<< m_rhs.piece(0) <<".\n";
 	    return os; 
 	}
 protected:
@@ -96,7 +96,7 @@ protected:
 
     gsPiecewiseFunction<T> m_rhs;
     /// @brief Boundary conditions of the second kind
-    gsBoundaryConditions<T>               m_boundary_conditions_second;
+    gsBoundaryConditions<T> m_boundary_conditions_second;
 }; // class gsBiharmonicPde
 
 } // namespace gismo
