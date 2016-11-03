@@ -31,7 +31,7 @@ public:
 
     /// Constructor using a multipatch domain
     gsNorm(const gsField<T> & _field1,
-           const gsFunction<T> & _func2) 
+           const gsFunctionSet<T> & _func2) 
     : m_zeroFunction(T(0.0),_field1.parDim()), patchesPtr( &_field1.patches() ),
       field1(&_field1), func2(&_func2)
     { }
@@ -75,6 +75,7 @@ public:
         for (unsigned pn=0; pn < patchesPtr->nPatches(); ++pn )// for all patches
         {
             const gsFunction<T> & func1 = field1->function(pn);
+            const gsFunction<T> & func2p = func2->function(pn);
             // Obtain an integration domain
             const gsBasis<T> & dom = field1->isParametrized() ? 
                 field1->igaFunction(pn).basis() : field1->patch(pn).basis();
@@ -93,7 +94,7 @@ public:
                 QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
                 // Evaluate on quadrature points
-                visitor.evaluate(*geoEval, func1, *func2, quNodes);
+                visitor.evaluate(*geoEval, func1, func2p, quNodes);
                 
                 // Accumulate value from the current element (squared)
                 const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
@@ -116,7 +117,9 @@ public:
         // Evaluation flags for the Geometry map
         unsigned evFlags(0);
 
-        const gsFunction<T> & func1 = field1->function(patchIndex);
+        const gsFunction<T> & func1  = field1->function(patchIndex);
+        const gsFunction<T> & func2p = func2->function(patchIndex);
+
         // Obtain an integration domain
         const gsBasis<T> & dom = field1->isParametrized() ? 
             field1->igaFunction(patchIndex).basis() : field1->patch(patchIndex).basis();
@@ -135,7 +138,7 @@ public:
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
             
             // Evaluate on quadrature points
-            visitor.evaluate(*geoEval, func1, *func2, quNodes);
+            visitor.evaluate(*geoEval, func1, func2p, quNodes);
             
             // Accumulate value from the current element (squared)
             const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
@@ -182,7 +185,7 @@ protected:
 
     const gsField<T>    * field1;
 
-    const gsFunction<T> * func2;
+    const gsFunctionSet<T> * func2;
   
 protected:
 
