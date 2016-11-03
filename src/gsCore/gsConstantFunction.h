@@ -92,9 +92,15 @@ public:
         m_coefs = cb.value()*coef;
     }
 
-
     // Documentation in gsFunction class
     virtual gsConstantFunction * clone() const { return new gsConstantFunction(*this); }
+
+    const gsConstantFunction<T> & piece(const index_t k) const
+    {
+        // same on all pieces
+        GISMO_UNUSED(k);
+        return *this; 
+    }
 
     // Documentation in gsFunction class
     virtual int domainDim() const   { return m_domainDim ; }
