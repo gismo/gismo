@@ -347,7 +347,7 @@ template<class T>
 void writeSinglePatchField(const gsField<T> & field, int patchNr, 
                            std::string const & fn, unsigned npts)
 {
-    writeSinglePatchField(field.patch(patchNr), field.function(patchNr), field.isParametrized(), fn, npts);
+    writeSinglePatchField(field.patch(patchNr), field.function(patchNr), field.isParametric(), fn, npts);
 /*
     const int n = field.geoDim();
     const int d = field.parDim();
