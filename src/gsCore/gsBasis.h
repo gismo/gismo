@@ -690,6 +690,14 @@ public:
     /// Return a tensor basis of \a this and \a other
     virtual gsBasis * tensorize(const gsBasis & other) const;
 
+    /// Applicable for rational bases: returns the underlying "source"
+    /// (non-rational) basis
+    virtual const gsBasis & source () const { return *this; }
+
+    /// Applicable for rational bases: returns the underlying "source"
+    /// (non-rational) basis    
+    virtual gsBasis & source () { return *this; }
+
     /// Clone the source of this basis in case of rational basis, same
     /// as clone() otherwise
     virtual gsBasis<T> * makeNonRational() const { return clone(); }
