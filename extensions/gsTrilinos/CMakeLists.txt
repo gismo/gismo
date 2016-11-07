@@ -69,13 +69,15 @@ ExternalProject_Add(Trilinos
           URL https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
           CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release   
                        -DTrilinos_ENABLE_TESTS=OFF  
-                       -DTrilinos_ENABLE_Epetra=ON
-                       -DTrilinos_ENABLE_Amesos=ON
-                       -DTrilinos_ENABLE_AztecOO=ON
-                       -DTrilinos_ENABLE_Anasazi=ON  
+                       -DTrilinos_ENABLE_Epetra=ON # parallel linear algebra
+                       -DTrilinos_ENABLE_Amesos=ON # direct solvers
+                       -DTrilinos_ENABLE_AztecOO=ON # direct solvers
+		       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU} # SuperLU solvers
+                       -DTrilinos_ENABLE_Anasazi=ON # eigensolver
                        -DTrilinos_ENABLE_Belos=${GISMO_BUILD_CPP11}
-                       -DTrilinos_ENABLE_NOX=OFF
-                       #-DTrilinos_ENABLE_ML=ON # multigrid
+                       -DTrilinos_ENABLE_NOX=ON # non-linear solver
+                       -DTrilinos_ENABLE_ML=ON # multigrid
+                       -DTrilinos_ENABLE_Pamgen=OFF # parallel mesh generation (buggy cmake)
                        #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                        -DBUILD_SHARED_LIBS:BOOL=ON
@@ -85,7 +87,6 @@ ExternalProject_Add(Trilinos
                        #-DMPI_BASE_DIR=${TPL_MPI_BASE_DIR}
                        #-DTPL_MPI_LIBRARIES=${MPI_CXX_LIBRARIES} # bug ? 2 elements
                        -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11} # Note: this must be ON, otherwise Trilinos compilation fails. Must be OFF on MS Windows
-		       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU}
 	 	       ## Point to specific paths (! no space after "=")
 		       -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
       		       -DTPL_BLAS_LIBRARIES=${LAPACK_LIBRARIES}
