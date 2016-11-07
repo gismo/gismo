@@ -45,6 +45,12 @@ find_package(TRILINOS QUIET)
 #find_package(BLAS REQUIRED)   # needs .._DIR on MS windows
 #find_package(LAPACK REQUIRED) # needs LAPACK_DIR on MS windows
 
+#
+find_path(TPL_MPI_INCLUDE_DIRS mpi.h ${MPI_INCLUDE_PATH})
+list(GET MPI_CXX_LIBRARIES 0 TPL_MPI_LIBRARY_DIRS)
+get_filename_component(TPL_MPI_LIBRARY_DIRS ${TPL_MPI_LIBRARY_DIRS} DIRECTORY)
+get_filename_component(TPL_MPI_BASE_DIR ${TPL_MPI_LIBRARY_DIRS} DIRECTORY)
+
 if (NOT GISMO_BUILD_CPP11)
 message(WARNING "GISMO_BUILD_CPP11 must be ON for Trilinos extensions to compile ?.")
 endif()
@@ -68,12 +74,16 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_AztecOO=ON
                        -DTrilinos_ENABLE_Anasazi=ON  
                        -DTrilinos_ENABLE_Belos=${GISMO_BUILD_CPP11}
-                       -DTrilinos_ENABLE_NOX=ON
+                       -DTrilinos_ENABLE_NOX=OFF
+                       #-DTrilinos_ENABLE_ML=ON # multigrid
                        #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
-		       #-DTrilinos_ENABLE_ML=ON # multigrid
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                        -DBUILD_SHARED_LIBS:BOOL=ON
                        -DTPL_ENABLE_MPI=${GISMO_WITH_MPI}
+                       -DTPL_MPI_INCLUDE_DIRS=${TPL_MPI_INCLUDE_DIRS}
+                       -DTPL_MPI_LIBRARY_DIRS=${TPL_MPI_LIBRARY_DIRS}
+                       #-DMPI_BASE_DIR=${TPL_MPI_BASE_DIR}
+                       #-DTPL_MPI_LIBRARIES=${MPI_CXX_LIBRARIES} # bug ? 2 elements
                        -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11} # Note: this must be ON, otherwise Trilinos compilation fails. Must be OFF on MS Windows
 		       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU}
 	 	       ## Point to specific paths (! no space after "=")
