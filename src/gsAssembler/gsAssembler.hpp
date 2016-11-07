@@ -557,7 +557,7 @@ void gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
             }
             else // eliminated DoF: fill with Dirichlet data
             {
-                coeffs.row(i) = m_ddof[unk].row( mapper.bindex(i, p) );
+                coeffs.row(i) = m_ddof[unk].row( mapper.bindex(i, p) ).head(dim);
             }
         }
 
