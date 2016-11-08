@@ -21,11 +21,12 @@
 #endif
 
 #include <gsIO/gsXml.h>
+#include <gsUtils/gsUtils.h>
 
 #if defined(_WIN32)
 #include <windows.h>
 #include <direct.h>
-#define getcwd _getcwd 
+#define getcwd _getcwd
 #else
 #include <dlfcn.h>
 #include <unistd.h>
@@ -238,32 +239,7 @@ private:
     /// Auto-detect temp directory
     static std::string detectTemp()
     {
-#       if   defined(_WIN32)
-        TCHAR _temp[MAX_PATH];
-        (void)GetTempPath(MAX_PATH, // length of the buffer
-                          _temp);    // buffer for path
-        return std::string(_temp);
-#       else
-        char * _temp;
-#       if defined(__APPLE__)
-        _temp = getenv ("TMPDIR");
-#       elif defined(__unix)
-        _temp = getenv ("TEMP");
-#       endif
-
-        std::string path;
-        if(_temp!=NULL)
-        {
-            path = _temp;
-            free(_temp);                
-            return path;
-        }
-
-        _temp = getcwd(NULL,0);
-        path = _temp;
-        free(_temp);                
-        return path;
-#       endif
+        return util::getTempPath();
     }
 };
 

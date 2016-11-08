@@ -8,11 +8,14 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+ Author(s): A. Mantzaflaris, Harald Weiner
 */
+
+#pragma once
 
 #include <sstream>
 
+#include <gsCore/gsExport.h>
 
 #define STRINGIGY(x) #x
 
@@ -56,6 +59,10 @@ inline void string_replace(std::string& str,
     }
 }
 
+/// \brief Auto-detect temp directory
+/// \ingroup Utils
+GISMO_EXPORT
+std::string getTempPath();
 
 } // end namespace util
 
