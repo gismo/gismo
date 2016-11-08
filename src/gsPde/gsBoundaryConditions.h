@@ -304,7 +304,7 @@ public:
     iterator end(const std::string & label) { return m_bc[label].end(); }
 
     const_bciterator beginAll() const {return m_bc.begin(); }
-    bciterator beginAll() {return m_bc.end(); }
+    bciterator beginAll() {return m_bc.begin(); }
 
     const_bciterator endAll() const {return m_bc.end(); }
     bciterator endAll() {return m_bc.end(); }

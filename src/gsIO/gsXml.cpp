@@ -282,22 +282,24 @@ void getInterfaces(gsXmlNode* node,
     }
 }
 
-void getBoundaries(gsXmlNode                * node, 
-                   std::map<int, int>       & ids,
-                   std::vector< patchSide > & result)
+void getBoundaries(gsXmlNode * node, std::map<int, int> & ids,
+        std::vector<patchSide> & result)
 {
-    GISMO_ASSERT( node != NULL, "Node does not exist");
+    GISMO_ASSERT(node != NULL, "Node does not exist");
     result.clear();
     
     std::istringstream iss;
-    iss.str( node->value() );
+    iss.str(node->value());
     int patch, side;
     
-    while ( iss >> std::ws >> patch  )
+    while (iss >> std::ws >> patch)
     {
-        patch = ids[ patch ];
+        if (ids.size() != 0)
+        {
+            patch = ids[patch];
+        }
         iss >> std::ws >> side;
-        result.push_back( patchSide(patch, side) );
+        result.push_back(patchSide(patch, side));
     }
 }
 
