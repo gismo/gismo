@@ -49,7 +49,6 @@ find_package(TRILINOS QUIET)
 find_path(TPL_MPI_INCLUDE_DIRS mpi.h ${MPI_INCLUDE_PATH})
 list(GET MPI_CXX_LIBRARIES 0 TPL_MPI_LIBRARY_DIRS)
 get_filename_component(TPL_MPI_LIBRARY_DIRS ${TPL_MPI_LIBRARY_DIRS} DIRECTORY)
-get_filename_component(TPL_MPI_BASE_DIR ${TPL_MPI_LIBRARY_DIRS} DIRECTORY)
 
 if (NOT GISMO_BUILD_CPP11)
 message(WARNING "GISMO_BUILD_CPP11 must be ON for Trilinos extensions to compile ?.")
