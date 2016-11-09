@@ -161,13 +161,13 @@ public:
             fi.insert(pair);
         }
 
-        int c = 0;
+        int count = 0;
         typedef typename std::vector<typename gsFunction<T>::Ptr>::const_iterator fun_it;
         for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
         {
-            gsXmlNode * ff = putFunctionFromXml(*fit, data, c);
+            gsXmlNode * ff = putFunctionFromXml(*fit, data, count);
             BCs->append_node(ff);
-            ++c;
+            ++count;
         }
 
         // for all bcs, append bc, cv
@@ -175,7 +175,7 @@ public:
         typedef typename std::map<int, bctype_vec>::const_iterator bctype_iv_it;
         typedef typename bctype_vec::const_iterator bctype_vec_it;
 
-        c = 0;
+        count = 0;
         for (bctype_map_it it = fi.begin(); it != fi.end(); ++it)
         {
             std::string label = it->first;
@@ -218,7 +218,7 @@ public:
                 char * value = data.allocate_string(oss.str().c_str());
                 bcNode->value(value);
                 BCs->append_node(bcNode);
-                ++c;
+                ++count;
             }
         }
         typename gsBoundaryConditions<T>::const_citerator ci;
