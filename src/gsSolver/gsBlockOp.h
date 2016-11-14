@@ -81,6 +81,11 @@ public:
      */
     void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result) const;
 
+    /// Number of row blocks
+    index_t rowBlocks() const {return blockPrec.rows();}
+    /// Number of col blocks
+    index_t colBlocks() const {return blockPrec.cols();}
+
     index_t rows() const {return blockTargetPositions.sum();}
     index_t cols() const {return blockInputPositions.sum() ;}
 

@@ -19,8 +19,8 @@ namespace gismo
 gsBlockOp::gsBlockOp(index_t nRows, index_t nCols)
 {
     blockPrec.resize(nRows, nCols);
-    blockTargetPositions.setZero(nCols);
-    blockInputPositions.setZero(nRows);
+    blockTargetPositions.setZero(nRows);
+    blockInputPositions.setZero(nCols);
     // Fill up all block entries with null pointers.
     for (index_t i = 0; i < nRows; ++i)
         for (index_t j = 0; j < nCols; ++j)
@@ -34,7 +34,7 @@ void gsBlockOp::addOperator(index_t row, index_t col, const BasePtr& op)
     GISMO_ASSERT( col >= 0 && col < blockPrec.cols(), "The given column is not feasible." );
     GISMO_ASSERT( op->rows() == blockTargetPositions[row] || blockTargetPositions[row] == 0,
                   "The size of the given preconditioner does not fit to the other preconditioners in the same row." );
-    GISMO_ASSERT( op->cols() == blockTargetPositions[col] || blockTargetPositions[col] == 0,
+    GISMO_ASSERT( op->cols() == blockInputPositions[col] || blockInputPositions[col] == 0,
                   "The size of the given preconditioner does not fit to the other preconditioners in the same column." );
     
     blockPrec(row, col) = op;
