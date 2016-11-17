@@ -20,8 +20,8 @@ namespace gismo
 
 void dampedRichardsonSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
 
     gsMatrix<real_t> temp = f - A * x;
     x += tau * temp;
@@ -29,8 +29,10 @@ void dampedRichardsonSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x,
 
 void dampedRichardsonSweepBoundary(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, int numBdNodes)
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     gsMatrix<real_t> temp = f - A * x;
     for (int i = 0; i < A.outerSize(); ++i)
@@ -43,8 +45,10 @@ void dampedRichardsonSweepBoundary(const gsSparseMatrix<real_t>& A, gsMatrix<rea
 // assumes symmetric matrix
 void kaczmarzSweepBoundary(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, int numBdNodes)
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     for (int eq = 0; eq < A.outerSize(); ++eq)
     {
@@ -72,8 +76,10 @@ void kaczmarzSweepBoundary(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x,
 
 void jacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     gsMatrix<real_t> temp = f - A * x;
     temp.array() /= A.diagonal().array();
@@ -82,8 +88,10 @@ void jacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsM
 
 void dampedJacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     gsMatrix<real_t> temp = f - A * x;
     temp.array() /= A.diagonal().array();
@@ -92,8 +100,10 @@ void dampedJacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, con
 
 void dampedPreRichardsonSweep(const gsSparseMatrix<real_t>& A, const gsSparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau)
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     gsSparseSolver<real_t>::CGDiagonal solver;
     gsMatrix<real_t> corr;
@@ -106,8 +116,10 @@ void dampedPreRichardsonSweep(const gsSparseMatrix<real_t>& A, const gsSparseMat
 
 void dampedPreJacobiSweep(const gsSparseMatrix<real_t>& A, const gsSparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau = (real_t)(1.0/2.0))
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     //gsMatrix<real_t> temp = f - A * x;
     //temp.array() /= A.diagonal().array();
@@ -141,8 +153,10 @@ void dampedPreJacobiSweep(const gsSparseMatrix<real_t>& A, const gsSparseMatrix<
 
 void gaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     // A is supposed to be symmetric, so it doesn't matter if it's stored in row- or column-major order
     for (int i = 0; i < A.outerSize(); ++i)
@@ -163,8 +177,10 @@ void gaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, cons
 
 void reverseGaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f)
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     // A is supposed to be symmetric, so it doesn't matter if it's stored in row- or column-major order
     for (int i = A.outerSize() - 1; i >= 0; --i)
@@ -186,6 +202,11 @@ void reverseGaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& 
 //Assumes A is symmetric (not needed)!
 void gaussSeidelSingleBlock(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs)
 {
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );    
+    
     //Sorting from lowest to highest
     DoFs.sortByColumn(0);
     const index_t size = DoFs.rows();
@@ -211,8 +232,10 @@ void gaussSeidelSingleBlock(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x
 
 void preGaussSeidelSweep(const gsSparseMatrix<real_t>& A, const gsSparseMatrix<real_t>& P, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau, bool reverse)
 {
-    assert( A.rows() == x.rows() && x.rows() == f.rows() );
-    assert( A.cols() == A.rows() && x.cols() == 1 && f.cols() == 1);
+    GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
+        "Dimensions do not match.");
+    
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     gsMatrix<real_t> corr;
     corr.setZero( x.rows(), 1 );

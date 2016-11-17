@@ -77,8 +77,8 @@ public:
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
-        GISMO_ASSERT( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows()
-                      && input.cols() == 1, "Dimensions do not match");
+        GISMO_ASSERT( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows(),
+                      "Dimensions do not match.");
 
         // For the first sweep, we do not need to multiply with the matrix
         x.noalias() = m_tau * input;
@@ -93,7 +93,7 @@ public:
     /// Set number of sweeps.
     void setNumOfSweeps(index_t n)
     {
-        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive. ");
+        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive." );
         m_numOfSweeps=n;
     }
 
@@ -154,8 +154,10 @@ public:
         
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
-        GISMO_ASSERT( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows()
-                      && input.cols() == 1, "Dimensions do not match.");
+        GISMO_ASSERT( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows(),
+                      "Dimensions do not match.");
+        
+        GISMO_ASSERT( input.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
         // For the first sweep, we do not need to multiply with the matrix
         x.array() = m_tau * input.array() / m_expr.diagonal().array();
@@ -170,7 +172,7 @@ public:
     /// Set number of sweeps.
     void setNumOfSweeps(index_t n)
     {
-        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive. ");
+        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive." );
         m_numOfSweeps = n;
     }
 
