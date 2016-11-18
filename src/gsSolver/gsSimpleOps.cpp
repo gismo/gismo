@@ -1,6 +1,6 @@
 /** @file gsSimpleOps.cpp
 
-    @brief Provides Multigrid smoothers.
+    @brief Collection of some simple preconditioners.
 
     This file is part of the G+Smo library.
 
