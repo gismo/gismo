@@ -31,7 +31,8 @@ class SparseMatrixPrivate
     friend class SparseMatrix;
     
     /// A sparse matrix object in Trilinos 
-    memory::shared<Epetra_Matrix>::ptr matrix;
+    //memory::shared<Epetra_Matrix>::ptr matrix;
+    Teuchos::RCP<Epetra_Matrix> matrix;
 };
 
 SparseMatrix::SparseMatrix() : my(new SparseMatrixPrivate)
@@ -88,17 +89,24 @@ SparseMatrix::SparseMatrix(const gsSparseMatrix<real_t,RowMajor> & sp, const int
         
     // Fill in _sp0 at processor "rank"
     int err_code = 0;
+    std::vector<global_ordinal_type> tmp;
     for (global_ordinal_type r = 0; r != locRows; ++r)
     {
         const index_t oind = *(sp.outerIndexPtr()+r);
-        err_code = _sp0.InsertGlobalValues (r, nnzPerRow[r],
+        tmp.resize(nnzPerRow[r]);
+        // convert index_t to global_ordinal_type
+        copy_n(sp.innerIndexPtr()+oind, nnzPerRow[r], tmp.data());
+        err_code = _sp0.InsertGlobalValues(r, nnzPerRow[r],
                                            sp.valuePtr()+oind,
-                                           sp.innerIndexPtr()+oind);
+                                           // in case global_ordinal_type == index_t
+                                           //sp.innerIndexPtr()+oind
+                                           tmp.data()
+                                          );
         GISMO_ASSERT(0 == err_code,
                      "InsertGlobalValues failed with err_code="<<err_code);
     }
         
-    err_code = _sp0.FillComplete ();
+    err_code = _sp0.FillComplete();
     GISMO_ASSERT(0 == err_code, "FillComplete failed with err_code="<<err_code);
 
     // Construct a Map that puts approximately the same number of
@@ -157,7 +165,7 @@ Epetra_CrsMatrix * SparseMatrix::get() const
     return my->matrix.get();
 }
 
-memory::shared<Epetra_CrsMatrix>::ptr SparseMatrix::getPtr()
+Teuchos::RCP<Epetra_CrsMatrix> SparseMatrix::getRCP()
 {
     return my->matrix;
 }

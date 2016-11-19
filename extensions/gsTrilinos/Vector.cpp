@@ -36,8 +36,8 @@ class VectorPrivate
     memory::shared<Epetra_Map>::ptr column_space_map;
 */
     
-    /// A vector object in Trilinos 
-    memory::shared<Epetra_Vector>::ptr vec;
+    /// A vector object in Trilinos
+    Teuchos::RCP<Epetra_MultiVector> vec;
 };
 
 Vector::Vector(const SparseMatrix & _map)
@@ -55,15 +55,21 @@ Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int ra
     Epetra_SerialComm comm;
 #   endif
 
+#ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
+    typedef long long global_ordinal_type;
+#else
+    typedef int global_ordinal_type;
+#endif
+    
     // The number of rows and columns in the matrix.
-    index_t glbRows       = gsVec.rows();
-    const index_t locRows = glbRows;
+    global_ordinal_type glbRows = gsVec.rows();
+    const int locRows = glbRows;
     comm.Broadcast(&glbRows, 1, rank);
     GISMO_ENSURE( comm.MyPID() == rank || 0 == locRows,
                   "Only Processor "<<rank<<" can fill in entries");
     
     // Create a temporary Epetra_Vector on Proc "rank"
-    Epetra_Map map0(gsVec.rows(), locRows, 0, comm);
+    Epetra_Map map0(glbRows, locRows, 0, comm);
     Epetra_Vector tmp(View, map0, const_cast<real_t *>(gsVec.data()) );
 
     // Initialize the distributed Epetra_Vector
@@ -79,7 +85,7 @@ Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int ra
 
 Vector::Vector(Epetra_Vector * v_ptr) : my(new VectorPrivate)
 {
-    my->vec.reset(v_ptr, memory::null_deleter<Epetra_Vector> );
+    my->vec.reset(v_ptr, false ); // has_ownership==false
 }
 
 Vector::Vector() : my(new VectorPrivate) { }
@@ -99,18 +105,18 @@ void Vector::setFrom(const SparseMatrix & A)
 size_t Vector::size() const 
 { 
 #ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
-    return (my->vec ? my->vec->GlobalLength64() : 0 ); 
+    return (my->vec.is_null() ? 0 : my->vec->GlobalLength64() ); 
 #else
-    return (my->vec ? my->vec->GlobalLength()   : 0 ); 
+    return (my->vec.is_null() ? 0 : my->vec->GlobalLength() ); 
 #endif
 }
 
 size_t Vector::mySize() const 
 { 
 #ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
-    return (my->vec ? my->vec->MyLength64() : 0 ); 
+    return (my->vec.is_null() ? 0 : my->vec->MyLength64() ); 
 #else
-    return (my->vec ? my->vec->MyLength()   : 0 ); 
+    return (my->vec.is_null() ? 0 : my->vec->MyLength() ); 
 #endif
 }
 
@@ -138,7 +144,7 @@ void Vector::copyTo(gsVector<real_t> & gsVec, const int rank) const
     }
 }
 
-Epetra_Vector * Vector::get() const
+Epetra_MultiVector * Vector::get() const
 {
     return my->vec.get();
 }

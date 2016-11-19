@@ -18,11 +18,6 @@
 
 #include <gsTrilinos/SparseMatrix.h>
 
-
-// FD Trilinos
-class Epetra_Vector;
-class Epetra_BlockMap;
-
 namespace gismo
 {
 
@@ -56,7 +51,7 @@ public:
     
     void copyTo(gsVector<real_t> & gsVec, const int rank = 0) const;
 
-    Epetra_Vector * get() const;
+    Epetra_MultiVector * get() const;
 
     void print() const;
     

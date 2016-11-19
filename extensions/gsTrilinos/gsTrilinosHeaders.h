@@ -52,3 +52,5 @@
 
 #include <Epetra_Export.h>
 #include <Epetra_Import.h>
+
+#include "Teuchos_RCP.hpp"

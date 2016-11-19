@@ -15,10 +15,7 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsLinearAlgebra.h>
-
-// FD Trilinos
-class Epetra_CrsMatrix;
-class Epetra_BlockMap;
+#include <gsTrilinos/gsTrilinosForwardDecl.h>
 
 namespace gismo
 {
@@ -44,7 +41,7 @@ public:
 
     Epetra_CrsMatrix * get() const;
 
-    memory::shared<Epetra_CrsMatrix>::ptr getPtr();
+    Teuchos::RCP<Epetra_CrsMatrix> getRCP();
     
     void print() const;
 
