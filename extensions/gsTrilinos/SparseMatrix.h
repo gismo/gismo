@@ -37,7 +37,7 @@ public:
 
     //Epetra_BlockMap map() const;
     
-    void copyTo(gsSparseMatrix<> & sp, const int rank = 0) const;
+    void copyTo(gsSparseMatrix<real_t,RowMajor> & sp, const int rank = 0) const;
 
     Epetra_CrsMatrix * get() const;
 

@@ -137,10 +137,11 @@ SparseMatrix::~SparseMatrix() { delete my; }
   }
 */
 
-void SparseMatrix::copyTo(gsSparseMatrix<> & sp, const int rank) const
+void SparseMatrix::copyTo(gsSparseMatrix<real_t,RowMajor> & sp, const int rank) const
 {
 /*
   Epetra_MpiComm comm (gsMpi::init().worldComm() );
+
   const int myrank = comm.MyPID();
   #ifdef EPETRA_NO_32BIT_GLOBAL_INDICES
   const long long sz = my->vec->GlobalLength64();
@@ -153,7 +154,7 @@ void SparseMatrix::copyTo(gsSparseMatrix<> & sp, const int rank) const
   (void)tmp.Export(*my->vec, exp, Insert);
   if ( myrank == rank )
   {
-  gsVec.resize(sz);
+  
   tmp.ExtractCopy(gsVec.data());
   //my->matrix->ExtractGlobalRowCopy
   }
