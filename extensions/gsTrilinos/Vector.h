@@ -53,6 +53,8 @@ public:
 
     Epetra_MultiVector * get() const;
 
+    Teuchos::RCP<Epetra_MultiVector> getRCP();
+    
     void print() const;
     
 private:

@@ -15,8 +15,6 @@
 
 #include <gsMpi/gsMpi.h>
 #include <gsTrilinos/gsTrilinosHeaders.h>
-
-//#include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsLinearAlgebra.h>
 
 
@@ -148,6 +146,12 @@ Epetra_MultiVector * Vector::get() const
 {
     return my->vec.get();
 }
+
+Teuchos::RCP<Epetra_MultiVector> Vector::getRCP()
+{
+    return my->vec;
+}
+
 
 void Vector::print() const
 {

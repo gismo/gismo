@@ -1,6 +1,6 @@
 /** @file SparseMatrix.h
 
-    @brief Wrapper for Trilinos/Epetra sparse matrix
+    @brief Wrapper for Trilinos/Epetra operators
 
     This file is part of the G+Smo library.
 
@@ -15,10 +15,7 @@
 
 #include <gsCore/gsExport.h>
 #include <gsCore/gsForwardDeclarations.h>
-
-// FD Trilinos
-class Epetra_Operator;
-class Epetra_BlockMap;
+#include <gsTrilinos/gsTrilinosForwardDecl.h>
 
 namespace gismo
 {

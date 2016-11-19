@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-#pragma once;
+#pragma once
 
 // FD Trilinos
 class Epetra_MultiVector;

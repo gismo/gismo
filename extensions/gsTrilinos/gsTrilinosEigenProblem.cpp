@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-#include <gsMpi/gsMpiHelper.h>
+#include <gsMpi/gsMpi.h>
 #include <gsTrilinos/SparseMatrix.h>
 #include <gsTrilinos/Vector.h>
 
@@ -142,7 +142,7 @@ void EigenProblem::solve() const
     const Epetra_Map & Map = my->problem->getA()->OperatorDomainMap();
     
 #ifdef HAVE_MPI
-        Epetra_MpiComm comm (gsMpiComm::instance().worldComm() );
+        Epetra_MpiComm comm (gsMpi::init().worldComm() );
 #else
         Epetra_SerialComm comm;
 #endif

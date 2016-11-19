@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-#include <gsMpi/gsMpiHelper.h>
+#include <gsMpi/gsMpi.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include "gsTrilinosHeaders.h"
 
@@ -32,7 +32,7 @@ namespace trilinos
 */
 class SparseMatrixEPetraOp : public Epetra_Operator
 {
-    typedef memory::shared_ptr<Epetra_CrsMatrix> EpetraMatrixPtr;
+    typedef Teuchos::RCP<Epetra_CrsMatrix> EpetraMatrixPtr;
 public:
 
     SparseMatrixEPetraOp() { }
@@ -42,7 +42,7 @@ public:
     /* Methods required to support the Epetra_Operator interface */
     
     //! Returns a character string describing the operator
-    const char* Label() const {return("trilinos::SparseMatrix");}
+    const char* Label() const {return("trilinos::Operator");}
 
     //! If set true, transpose of this operator will be applied.
     /*! This flag allows the transpose of the given operator to be used implicitly.  Setting this flag
@@ -112,13 +112,13 @@ class OperatorPrivate
 {
     friend class Operator;
 
-    memory::shared_ptr<Epetra_Operator> op;
+    Teuchos::RCP<Epetra_Operator> op;
 };
     
 Operator::Operator(const gsSparseMatrix<> & sp)
 : my(new OperatorPrivate)
 {
-    my->op.reset( new SparseMatrixEPetraOp( SparseMatrix(sp).getPtr() ) );
+    my->op.reset( new SparseMatrixEPetraOp( SparseMatrix(sp).getRCP() ) );
 }
 
 Operator::~Operator() { delete my; }
@@ -127,7 +127,7 @@ Epetra_Operator * Operator::get() const { return my->op.get(); }
 
 void Operator::print() const
 {
-    gsMpiComm & mpi_helper = gsMpiComm::instance();
+    gsMpiComm mpi_helper = gsMpi::init().worldComm();
     gsInfo << "Processor No. " << mpi_helper.rank() << "operator \n";    
 }
 
