@@ -154,6 +154,9 @@ namespace internal
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
 
+/* ----------- MPI ----------- */
+#include <gsMpi/gsMpi.h>
+
 /* ----------- Utilities ----------- */
 #include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>

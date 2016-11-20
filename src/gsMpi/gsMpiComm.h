@@ -596,11 +596,13 @@ public:
 #ifndef MPI_IN_PLACE
  #define MPI_IN_PLACE inout
  #define MASK_MPI_IN_PLACE
+/*
 #  ifdef _MSC_VER
 #    pragma message ("Masking MPI_IN_PLACE (not found in MPI version used).")
 #  else
 #    warning Masking MPI_IN_PLACE (not found in MPI version used).
 #  endif
+*/
 #endif
     
     /// @copydoc gsSerialComm::allreduce(Type* inout,int len) const
