@@ -26,7 +26,7 @@
 
 //#include "Amesos_Superlu.h"
 
-#include <Epetra_LinearProblem.h>
+
 
 namespace gismo
 {
@@ -69,7 +69,7 @@ const Vector & AbstractSolver::solve( const Vector & b )
     return my->solution;
 }
 
-void AbstractSolver::getSolution( gsVector<> & sol, const int rank) const
+void AbstractSolver::getSolution( gsVector<real_t> & sol, const int rank) const
 {
     my->solution.copyTo(sol,rank);
 }

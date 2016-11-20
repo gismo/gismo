@@ -31,7 +31,6 @@ class SparseMatrixPrivate
     friend class SparseMatrix;
     
     /// A sparse matrix object in Trilinos 
-    //memory::shared<Epetra_Matrix>::ptr matrix;
     Teuchos::RCP<Epetra_Matrix> matrix;
 };
 
@@ -166,7 +165,7 @@ Epetra_CrsMatrix * SparseMatrix::get() const
     return my->matrix.get();
 }
 
-Teuchos::RCP<Epetra_CrsMatrix> SparseMatrix::getRCP()
+Teuchos::RCP<Epetra_CrsMatrix> SparseMatrix::getRCP() const
 {
     return my->matrix;
 }

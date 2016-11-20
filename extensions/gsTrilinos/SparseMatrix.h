@@ -41,7 +41,7 @@ public:
 
     Epetra_CrsMatrix * get() const;
 
-    Teuchos::RCP<Epetra_CrsMatrix> getRCP();
+    Teuchos::RCP<Epetra_CrsMatrix> getRCP() const;
     
     void print() const;
 

@@ -39,13 +39,13 @@ class GISMO_EXPORT AbstractSolver
 {
 public:
     
-    AbstractSolver(const SparseMatrix & A );
+    explicit AbstractSolver(const SparseMatrix & A );
 
     ~AbstractSolver();
     
     const Vector & solve( const Vector & b );
 
-    void getSolution(gsVector<> & sol, const int rank = 0) const;
+    void getSolution(gsVector<real_t> & sol, const int rank = 0) const;
     
 protected:
         virtual void solveProblem() = 0;

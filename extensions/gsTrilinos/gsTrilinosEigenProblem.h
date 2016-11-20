@@ -27,7 +27,7 @@ namespace solver
 {
 
 
-enum AnasaziMethod { BlockDavidson = 1, LOBPCG = 2 };
+enum AnasaziMethod { BlockDavidson = 1, LOBPCG = 2, BlockKrylovSchur = 3 };
 
 class EigenProblemPrivate;
 
@@ -47,8 +47,9 @@ public:
 
 public:
     
-    EigenProblem(const SparseMatrix & A,
-                 const AnasaziMethod & method = BlockDavidson);
+    explicit EigenProblem(const SparseMatrix & A,
+                          const AnasaziMethod & method = BlockKrylovSchur);
+    // BlockDavidson
 
     ~EigenProblem();
     

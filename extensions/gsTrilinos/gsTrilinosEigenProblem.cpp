@@ -18,8 +18,9 @@
 #include <gsTrilinos/gsTrilinosEigenProblem.h>
 
 // Include eigensolvers 
-#include "AnasaziBlockDavidsonSolMgr.hpp" // block Davidson eigensolver
-#include "AnasaziLOBPCGSolMgr.hpp" // LOBPCG eigensolver
+#include "AnasaziBlockDavidsonSolMgr.hpp"
+#include "AnasaziLOBPCGSolMgr.hpp"
+#include "AnasaziBlockKrylovSchurSolMgr.hpp"
 
 // Include header to define eigenproblem Ax = \lambda*x
 #include "AnasaziBasicEigenproblem.hpp"
@@ -76,56 +77,61 @@ EigenProblem::EigenProblem(const SparseMatrix & A,
     using Teuchos::RCP;
     using Teuchos::rcp;
 
-    const Epetra_Map & Map = A.get()->OperatorDomainMap();
-        
     // Set eigensolver parameters.
     const double tol = 1.0e-8; // convergence tolerance
-    const int nev = 4; // number of eigenvalues for which to solve
-    const int blockSize = 5; // block size (number of eigenvectors processed at once)
-    const int numBlocks = 8; // restart length
+    const int nev = 1; // number of eigenvalues for which to solve
+    const int blockSize = 1; // block size (number of eigenvectors processed at once)
+    const int numBlocks = 5; // restart length
     const int maxRestarts = 100; // maximum number of restart cycles
 
     // Pass parameters list into the eigensolver.
-    my->params.set ("Which", "LM");
+    my->params.set ("Which", "SM"); //LM
     my->params.set ("Block Size",  blockSize);
     my->params.set ("Num Blocks", numBlocks);
     my->params.set ("Maximum Restarts", maxRestarts);
     my->params.set ("Convergence Tolerance", tol);
     my->params.set ("Verbosity", Anasazi::Errors + Anasazi::Warnings +
                     Anasazi::TimingDetails + Anasazi::FinalSummary);
-
+    
     // Create a set of initial vectors to start the eigensolver.
     // This needs to have the same number of columns as the block size.
+    const Epetra_Map & Map = A.get()->OperatorDomainMap();
     RCP<MV> ivec = rcp (new MV (Map, blockSize));
-    ivec->Random ();
+    ivec->Random();
 
     // Create the eigenproblem.  This object holds all the stuff about
     // your problem that Anasazi will see (matrix A and inital vectors)
     my->problem.reset( new EigenProblemPrivate::
-                       BasicEigenProblem( rcp(A.get()), ivec) );
+                       BasicEigenProblem( A.getRCP(), ivec) );
 
     // Tell the eigenproblem that the operator A is symmetric.
     my->problem->setHermitian (true);
 
     // Set the number of eigenvalues requested
-    my->problem->setNEV (nev);
+    my->problem->setNEV(nev);
 
     // Tell the eigenproblem that you are finishing passing it information.
-    const bool boolret = my->problem->setProblem();
-    GISMO_ENSURE(boolret, "Anasazi::BasicEigenproblem::setProblem() returned an error.");
+    GISMO_ENSURE(my->problem->setProblem(),
+                 "Anasazi::BasicEigenproblem::setProblem() returned an error.");
 
     // Create the eigensolver
     switch (method)
     {
     case LOBPCG:
         my->manager.reset(new Anasazi::
-                          LOBPCGSolMgr<double, MV, OP>(my->problem, my->params) );        
+                          LOBPCGSolMgr<double, MV, OP>(my->problem, my->params) );
+        break;
     case BlockDavidson:
-    default:
         my->manager.reset(new Anasazi::
                           BlockDavidsonSolMgr<double, MV, OP>(my->problem, my->params) );
+
+    case BlockKrylovSchur:
+        my->manager.reset(new Anasazi::
+                          BlockKrylovSchurSolMgr<double, MV, OP>(my->problem, my->params) );        
+        break;
+    default:
+        GISMO_ERROR("Error, method choice "<< method);
     break;
-            
     }
 }
 
@@ -138,8 +144,6 @@ void EigenProblem::solve() const
 {
     typedef Anasazi::MultiVecTraits<double, Epetra_MultiVector> MVT;
     using Teuchos::RCP;
-    
-    const Epetra_Map & Map = my->problem->getA()->OperatorDomainMap();
     
 #ifdef HAVE_MPI
         Epetra_MpiComm comm (gsMpi::init().worldComm() );
@@ -160,6 +164,8 @@ void EigenProblem::solve() const
     // Get the eigenvalues and eigenvectors from the eigenproblem.
     Anasazi::Eigensolution<double,MV> sol = my->problem->getSolution();
 
+    gsInfo << "GOT SOLUTUIONS.\n";
+    
     // Anasazi returns eigenvalues as Anasazi::Value, so that if
     // Anasazi's Scalar type is real-valued (as it is in this case), but
     // some eigenvalues are complex, you can still access the
@@ -173,12 +179,15 @@ void EigenProblem::solve() const
     if (sol.numVecs > 0)
     {
         Teuchos::SerialDenseMatrix<int,double> T (sol.numVecs, sol.numVecs);
+
+        // getA(), getM()
+        const Epetra_Map & Map = my->problem->getOperator()->OperatorDomainMap();
         MV tempAevec (Map, sol.numVecs);
         T.putScalar (0.0);
         for (int i=0; i<sol.numVecs; ++i)
             T(i,i) = evals[i].realpart;
 
-        my->problem->getA()->Apply (*evecs, tempAevec);
+        my->problem->getOperator()->Apply (*evecs, tempAevec);
         MVT::MvTimesMatAddMv (-1.0, *evecs, T, 1.0, tempAevec);
         MVT::MvNorm (tempAevec, normR);
     }

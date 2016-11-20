@@ -147,7 +147,7 @@ Epetra_MultiVector * Vector::get() const
     return my->vec.get();
 }
 
-Teuchos::RCP<Epetra_MultiVector> Vector::getRCP()
+Teuchos::RCP<Epetra_MultiVector> Vector::getRCP() const
 {
     return my->vec;
 }

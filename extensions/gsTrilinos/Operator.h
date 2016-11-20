@@ -30,7 +30,7 @@ class GISMO_EXPORT Operator
 {
 public:
 
-    explicit Operator(const gsSparseMatrix<> & sp);
+    explicit Operator(const gsSparseMatrix<real_t> & sp);
 
     ~Operator();
     

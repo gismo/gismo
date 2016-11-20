@@ -30,5 +30,6 @@ namespace trilinos { }
 
 #include <gsTrilinos/SparseMatrix.h>
 #include <gsTrilinos/Vector.h>
+#include <gsTrilinos/Operator.h>
 #include <gsTrilinos/gsTrilinosSolvers.h>
-//#include <gsTrilinos/gsTrilinosEigenSolvers.h>
+#include <gsTrilinos/gsTrilinosEigenProblem.h>
