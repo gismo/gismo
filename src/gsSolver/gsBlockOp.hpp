@@ -1,4 +1,4 @@
-/** @file gsBlockOp.cpp
+/** @file gsBlockOp.hpp
 
     @brief Simple class create a block preconditioner structure.
 
@@ -15,8 +15,8 @@
 namespace gismo
 {
 
-
-gsBlockOp::gsBlockOp(index_t nRows, index_t nCols)
+template<typename T>
+gsBlockOp<T>::gsBlockOp(index_t nRows, index_t nCols)
 {
     blockPrec.resize(nRows, nCols);
     blockTargetPositions.setZero(nRows);
@@ -27,8 +27,8 @@ gsBlockOp::gsBlockOp(index_t nRows, index_t nCols)
             blockPrec(i,j).reset();
 }
 
-
-void gsBlockOp::addOperator(index_t row, index_t col, const BasePtr& op)
+template<typename T>
+void gsBlockOp<T>::addOperator(index_t row, index_t col, const BasePtr& op)
 {
     GISMO_ASSERT( row >= 0 && row < blockPrec.rows(), "The given row is not feasible." );
     GISMO_ASSERT( col >= 0 && col < blockPrec.cols(), "The given column is not feasible." );
@@ -43,12 +43,13 @@ void gsBlockOp::addOperator(index_t row, index_t col, const BasePtr& op)
 }
 
 
-void gsBlockOp::apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result) const
+template<typename T>
+void gsBlockOp<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & result) const
 {
     result.setZero(blockTargetPositions.sum(), input.cols());
     gsVector<index_t> singleCol(1);
     singleCol <<  input.cols();
-    gsMatrix<real_t>::BlockView resultBlocks= result.blockView(blockTargetPositions, singleCol);
+    typename gsMatrix<T>::BlockView resultBlocks = result.blockView(blockTargetPositions, singleCol);
 
     for (index_t i = 0; i < blockPrec.rows() ; ++i)
     {
@@ -61,7 +62,7 @@ void gsBlockOp::apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result)
                 continue;
             }
 
-            gsMatrix<real_t> tmp_result;
+            gsMatrix<T> tmp_result;
             blockPrec(i,j)->apply(input.block(inputIndex,0,blockInputPositions(j),input.cols()),tmp_result);
             resultBlocks(i) += tmp_result;
             inputIndex += blockInputPositions(j);
@@ -69,7 +70,8 @@ void gsBlockOp::apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result)
     }
 }
 
-const gsBlockOp::BasePtr & gsBlockOp::getOperator(index_t row, index_t col) const
+template<typename T>
+const typename gsBlockOp<T>::BasePtr & gsBlockOp<T>::getOperator(index_t row, index_t col) const
 {
     GISMO_ASSERT((bool)blockPrec(row, col)!=0, "No linear operator exists in this block");
     return blockPrec(row,col);

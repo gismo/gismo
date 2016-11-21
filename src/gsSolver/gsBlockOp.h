@@ -39,18 +39,19 @@ namespace gismo
  *
  * \ingroup Solver
  */
-class GISMO_EXPORT gsBlockOp : public gsLinearOperator<>
+template<typename T = real_t>
+class GISMO_EXPORT gsBlockOp : public gsLinearOperator<T>
 {
 public:
 
     /// Shared pointer for gsBlockOp
-    typedef memory::shared< gsBlockOp >::ptr Ptr;
+    typedef typename memory::shared< gsBlockOp<T> >::ptr Ptr;
 
     /// Unique pointer for gsBlockOp
-    typedef memory::unique< gsBlockOp >::ptr uPtr;
+    typedef typename memory::unique< gsBlockOp<T> >::ptr uPtr;
     
     /// Base class
-    typedef memory::shared< gsLinearOperator<> >::ptr BasePtr;    
+    typedef typename memory::shared< gsLinearOperator<T> >::ptr BasePtr;    
     
     /// Constructor. Takes the number of blocks (nRows, nCols). Provide the contents of the blocks with addOperator
     gsBlockOp(index_t nRows, index_t nCols);
@@ -79,7 +80,7 @@ public:
      * @param input  Input vector
      * @param result Result vector
      */
-    void apply(const gsMatrix<real_t> & input, gsMatrix<real_t> & result) const;
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & result) const;
 
     /// Number of row blocks
     index_t rowBlocks() const {return blockPrec.rows();}
@@ -101,4 +102,8 @@ private:
 };
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsBlockOp.hpp)
+#endif
 
