@@ -4454,7 +4454,14 @@ namespace exprtk
             {
                destruct = true;
                data     = new T[size];
-               std::fill_n(data,size,T(0));
+               std::fill_n(
+#              ifdef _MSC_VER
+               // Take care of C4996 warning
+               stdext::unchecked_array_iterator<T*>(data),
+#              else
+               data,
+#              endif
+               size,T(0));
                dump_ptr("control_block::create_data() - data",data,size);
             }
          };

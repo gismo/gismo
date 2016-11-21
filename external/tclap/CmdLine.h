@@ -505,6 +505,14 @@ inline void CmdLine::parse(std::vector<std::string>& args)
 
 	if (shouldExit)
 		exit(estat);
+// [  314s] libgismo0.i586: W: shared-lib-calls-exit /usr/lib/libgismo.so.0.8.1 exit@GLIBC_2.0
+// [  314s] This library package calls exit() or _exit(), probably in a non-fork()
+// [  314s] context. Doing so from a library is strongly discouraged - when a library
+// [  314s] function calls exit(), it prevents the calling program from handling the
+// [  314s] error, reporting it to the user, closing files properly, and cleaning up any
+// [  314s] state that the program has. It is preferred for the library to return an
+// [  314s] actual error code and let the calling program decide how to handle the
+// [  314s] situation.
 }
 
 inline bool CmdLine::_emptyCombined(const std::string& s)
