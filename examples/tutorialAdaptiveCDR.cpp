@@ -148,7 +148,8 @@ int main(int argc, char *argv[])
         cdrAss.assemble();
 
         // Solve the system
-        gsMatrix<real_t> solVector = Eigen::BiCGSTAB< gsSparseMatrix<real_t>, Eigen::IncompleteLUT<real_t> >( cdrAss.matrix() ).solve( cdrAss.rhs() );
+        gsMatrix<real_t> solVector =
+            gsSparseSolver<>::BiCGSTABILUT( cdrAss.matrix() ).solve( cdrAss.rhs() );
 
         // Construct the solution as a scalar field
         gsField<> solField;
