@@ -15,15 +15,12 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 
-#ifdef _MSC_VER
-#define _USE_MATH_DEFINES
-#endif
+//#define _USE_MATH_DEFINES
+#include <cmath>
 
 #ifdef GISMO_WITH_CODIPACK
   #include <gsCoDiPack/gsCoDiPack.h>
 #endif
-
-#include <cmath>
 
 #ifdef GISMO_WITH_MPQ
 template <class U, class V>

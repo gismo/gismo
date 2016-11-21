@@ -167,7 +167,7 @@ T conditionedAngle(gsVector3d<T> vec1, gsVector3d<T> vec2)
     if ( dotp<-1 ) {
         dotp = -1;
         gsWarn<<"gsModelingUtils: truncations done for std::acos \n";
-        return M_PI;}
+        return EIGEN_PI;}
     if ( dotp>1 ) {dotp = 1;
         gsWarn<<"gsModelingUtils: truncations done for std::acos \n";
         return 0;}
@@ -182,7 +182,7 @@ template <class T>
 T conditionedAngle(gsVector3d<T> vec1, gsVector3d<T> vec2, gsVector3d<T> normal)
 {
     T ag = conditionedAngle<T>(vec1,vec2);
-    T cag = ( normal.dot( vec1.cross( vec2 ) ) >= 0 ) ? ag: 2*M_PI-ag;
+    T cag = ( normal.dot( vec1.cross( vec2 ) ) >= 0 ) ? ag: 2*EIGEN_PI-ag;
     return cag;
 }
 

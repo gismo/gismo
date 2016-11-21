@@ -501,7 +501,7 @@ void gsTriMeshToSolid<T>::getFaces(std::vector<std::vector<VertexHandle> > & iPo
 
             for (std::size_t j=0;j<angle.size();j++)
             {
-                isConvex.push_back(angle[j]<M_PI);
+                isConvex.push_back(angle[j]<EIGEN_PI);
             }
             //first vertex is added 2 times -> delete last one
             vertexVec.pop_back();

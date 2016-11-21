@@ -124,7 +124,7 @@ public:
 //        gsVector3d<T> vec1 = B - A ;
 //        gsVector3d<T> vec2 = C - B ;
 //        gsVector3d<T> normal = vec2.cross( vec1 ) ;
-//        if (conditionedAngle( vec1,  vec2,  normal) >= M_PI)
+//        if (conditionedAngle( vec1,  vec2,  normal) >= EIGEN_PI)
 //        {
 //            return 1;
 //        }

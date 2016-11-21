@@ -297,11 +297,11 @@ bool gsCurveLoop<T>::approximatingPolygon(const std::vector<T> &signedAngles, co
     }
     // Scale the turning angles so they add to 2 * pi. These will be the
     // angles we use at each vertex in the domain.
-    T angleScale = 2.0 * M_PI / totalAngle;
+    T angleScale = 2.0 * EIGEN_PI / totalAngle;
     for(size_t i = 0; i < n; i++)
     {
         scaledAngles[i] *= angleScale;
-        if(math::abs(scaledAngles[i]) >= M_PI)
+        if(math::abs(scaledAngles[i]) >= EIGEN_PI)
         {
             gsWarn << "Scaled turning angle exceeded pi, treatment of this has not been implemented.\n";
             return false;
@@ -520,7 +520,7 @@ void gsCurveLoop<T>::initFromIsConvex(const std::vector<bool> isConvex, T margin
     gsMatrix<T> corners(np, 2);
     for(size_t i = 0; i < np; i++)
     {
-        T angle = (T)i * (T)M_PI * 2 / np;
+        T angle = (T)i * (T)EIGEN_PI * 2 / np;
         corners(i, 0) = math::cos(angle);
         corners(i, 1) = math::sin(angle);
     }
