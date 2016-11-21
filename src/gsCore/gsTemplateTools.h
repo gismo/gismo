@@ -39,4 +39,17 @@ struct conditional<false, IsTrue, IsFalse> {
    typedef IsFalse type;
 };
 
+namespace util {
+
+template<class T, class U>
+struct is_same {
+    enum { value = 0 };
+};
+
+template<class T>
+struct is_same<T, T> {
+    enum { value = 1 };
+};
+} // end namespace internal
+
 } // end namespace gismo
