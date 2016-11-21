@@ -77,7 +77,7 @@ public:
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
-        GISMO_ASSERT( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows(),
+        GISMO_ASSERT( m_expr.rows() == input.rows() && m_expr.cols() == m_expr.rows(),
                       "Dimensions do not match.");
 
         // For the first sweep, we do not need to multiply with the matrix
@@ -87,8 +87,8 @@ public:
             x += m_tau * ( input - m_expr * x );
     }
 
-    index_t rows() const {return m_mat.rows();}
-    index_t cols() const {return m_mat.cols();}
+    index_t rows() const {return m_expr.rows();}
+    index_t cols() const {return m_expr.cols();}
 
     /// Set number of sweeps.
     void setNumOfSweeps(index_t n)
@@ -154,7 +154,7 @@ public:
         
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
-        GISMO_ASSERT( m_mat.rows() == input.rows() && m_mat.cols() == m_mat.rows(),
+        GISMO_ASSERT( m_expr.rows() == input.rows() && m_expr.cols() == m_expr.rows(),
                       "Dimensions do not match.");
         
         GISMO_ASSERT( input.cols() == 1, "This operator is only implemented for a single right-hand side." );
@@ -237,12 +237,12 @@ public:
 
         for (index_t k = 0; k < m_numOfSweeps; ++k)
         {
-            gaussSeidelSweep(m_mat,x,input);
+            gaussSeidelSweep(m_expr,x,input);
         }
     }
 
-    index_t rows() const {return m_mat.rows();}
-    index_t cols() const {return m_mat.cols();}
+    index_t rows() const {return m_expr.rows();}
+    index_t cols() const {return m_expr.cols();}
 
     /// Set number of sweeps of to symmetric Gauss-Seidel perform (default is 1).
     void setNumOfSweeps(index_t n)
