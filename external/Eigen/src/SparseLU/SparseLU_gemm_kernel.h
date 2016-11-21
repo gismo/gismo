@@ -114,12 +114,12 @@ void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const 
                     KMADD(c0, a1, b10, t0)      \
                     KMADD(c1, a1, b11, t1)       \
                     a1 = pload<Packet>(A1+i+(I+1)*PacketSize); \
-          if(RK==4) KMADD(c0, a2, b20, t0)       \
-          if(RK==4) KMADD(c1, a2, b21, t1)       \
-          if(RK==4) a2 = pload<Packet>(A2+i+(I+1)*PacketSize); \
-          if(RK==4) KMADD(c0, a3, b30, t0)       \
-          if(RK==4) KMADD(c1, a3, b31, t1)       \
-          if(RK==4) a3 = pload<Packet>(A3+i+(I+1)*PacketSize); \
+                    if(RK==4) {KMADD(c0, a2, b20, t0)}          \
+                    if(RK==4) {KMADD(c1, a2, b21, t1)}           \
+                    if(RK==4) {a2 = pload<Packet>(A2+i+(I+1)*PacketSize);} \
+                    if(RK==4) {KMADD(c0, a3, b30, t0)}                    \
+                    if(RK==4) {KMADD(c1, a3, b31, t1)}      \
+                    if(RK==4) {a3 = pload<Packet>(A3+i+(I+1)*PacketSize);} \
                     pstore(C0+i+(I)*PacketSize, c0);           \
                     pstore(C1+i+(I)*PacketSize, c1)
         
@@ -129,8 +129,8 @@ void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const 
           EIGEN_ASM_COMMENT("SPARSELU_GEMML_KERNEL1");
                     prefetch((A0+i+(5)*PacketSize));
                     prefetch((A1+i+(5)*PacketSize));
-          if(RK==4) prefetch((A2+i+(5)*PacketSize));
-          if(RK==4) prefetch((A3+i+(5)*PacketSize));
+                    if(RK==4) prefetch((A2+i+(5)*PacketSize));
+                    if(RK==4) prefetch((A3+i+(5)*PacketSize));
                     WORK(0);
                     WORK(1);
                     WORK(2);
@@ -208,10 +208,10 @@ void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const 
                   a0 = pload<Packet>(A0+i+(I+1)*PacketSize); \
                   KMADD(c0, a1, b10, t0)       \
                   a1 = pload<Packet>(A1+i+(I+1)*PacketSize); \
-        if(RK==4) KMADD(c0, a2, b20, t0)       \
-        if(RK==4) a2 = pload<Packet>(A2+i+(I+1)*PacketSize); \
-        if(RK==4) KMADD(c0, a3, b30, t0)       \
-        if(RK==4) a3 = pload<Packet>(A3+i+(I+1)*PacketSize); \
+                  if(RK==4) {KMADD(c0, a2, b20, t0)}                     \
+                  if(RK==4) {a2 = pload<Packet>(A2+i+(I+1)*PacketSize);} \
+                  if(RK==4) {KMADD(c0, a3, b30, t0)}                    \
+                  if(RK==4) {a3 = pload<Packet>(A3+i+(I+1)*PacketSize);} \
                   pstore(C0+i+(I)*PacketSize, c0);
         
         // agressive vectorization and peeling
