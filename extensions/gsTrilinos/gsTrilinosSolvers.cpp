@@ -19,6 +19,11 @@
 #include "AztecOO.h"
 #include "AztecOO_Version.h"
 
+	 	 
+//#include "Ifpack_ConfigDefs.h" 
+//#include "Ifpack.h" 
+//#include "Ifpack_AdditiveSchwarz.h" 
+
 //#include "Amesos_Superlu.h"
 
 #include "gsTrilinosHeaders.h"
@@ -38,107 +43,39 @@ namespace solver
 
 struct AbstractSolverPrivate
 {
-
     Epetra_LinearProblem Problem;
     Vector solution;
 };
 
-class AbstractSolverBelosPrivate
+AbstractSolver::AbstractSolver() : my(NULL)
 {
-public:
 
-    AbstractSolverBelosPrivate() {}
-    AbstractSolverBelosPrivate(const SparseMatrix & A)
-    {
-      solution.setFrom(A);
-    }
-    ~AbstractSolverBelosPrivate() {}
-
-    Teuchos::RCP< Belos::LinearProblem<double,Epetra_MultiVector,
-                                              Epetra_Operator> > Problem;
-    Vector solution;
-};
+}
 
 
-AbstractSolver::AbstractSolver(const SparseMatrix & A, const Vector & b)
+AbstractSolver::AbstractSolver(const SparseMatrix & A)
 : my(new AbstractSolverPrivate)
 {
     my->Problem.SetOperator(A.get());
     my->solution.setFrom(A); // i.e. A.get()->OperatorDomainMap()
     my->Problem.SetLHS(my->solution.get());
-    my->Problem.SetRHS(b.get());
-}
-
-AbstractSolver::AbstractSolver(const SparseMatrix & A, const Vector & b,
-                               const std::string solverteuchosUser)
-                               : myBelos(new AbstractSolverBelosPrivate(A))
-{
-    // Note: By default the string variable SolverTeuchosUser = "Belos".
-    // This can be adapted to get different values if other solvers with
-    // similar implementation structures are considered later on.
-
-    SolverTeuchosUser = solverteuchosUser;
-
-    myBelos->Problem = Teuchos::rcp(new Belos::LinearProblem
-                       <double, Epetra_MultiVector, Epetra_Operator> 
-                       (A.getRCP(), myBelos->solution.getRCP(), b.getRCP()));
-
-//!!!!!!// If the matrix is symmetric, specify this in the linear problem.
-//!!!!!!my->Problem->setHermitian();
-
-      // Tell the program that setting of the linear problem is done.
-      // Throw an error if failed.
-      bool err_set = myBelos->Problem->setProblem();
-   
-      GISMO_ASSERT(true == err_set, "Error: Belos Problem couldn't be"
-                   " initialized.");
-
 }
 
 AbstractSolver::~AbstractSolver()
 {
-    if ( my != NULL)
-      delete my;
-
-    if (myBelos != NULL)
-      delete myBelos;
+    delete my;
 }
 
-const Vector & AbstractSolver::solve()
+const Vector & AbstractSolver::solve(const Vector & b)
 {
+    my->Problem.SetRHS(b.get());
     solveProblem(); // virtual call
-
-    if( SolverTeuchosUser == "Belos" )
-    {
-      return myBelos->solution;
-    }
-    else if( SolverTeuchosUser == "")
-    {
-      //Epetra_MultiVector & MV = *my->Problem.GetLHS();
-      //return Vector(MV(0));
-      return my->solution;
-    }
-    else
-    {
-      GISMO_ERROR("Fatal error: something went wrong with solver.");
-    }
+    return my->solution; 
 }
 
 void AbstractSolver::getSolution( gsVector<real_t> & sol, const int rank) const
 {
-
-    if( SolverTeuchosUser == "Belos" )
-    {
-      myBelos->solution.copyTo(sol,rank);
-    }
-    else if( SolverTeuchosUser == "")
-    {
-      my->solution.copyTo(sol,rank);
-    }
-    else
-    {
-      GISMO_ERROR("Fatal error: something went wrong with solver.");
-    }
+    my->solution.copyTo(sol, rank);
 }
 
 void GMRES::solveProblem()
@@ -205,8 +142,50 @@ void SuperLU::solveProblem()
 //    Solver.Solve();
 }
 
-void Belos_solver::solveProblem()
+
+
+/*   --- Belos--- */
+
+struct BelosSolverPrivate
 {
+    Belos::LinearProblem<real_t,Epetra_MultiVector,Epetra_Operator> Problem;
+};
+
+BelosSolver::BelosSolver(const SparseMatrix & A
+                         //, const std::string solver_teuchosUser
+    )
+: Base(A), myBelos(new BelosSolverPrivate), blocksize(1), maxiters(500)
+{ 
+    // Note: By default the string variable SolverTeuchosUser = "Belos". 
+    // This can be adapted to get different values if other solvers with 
+    // similar implementation structures are considered later on. 
+    //SolverTeuchosUser = solver_teuchosUser; 
+
+    myBelos->Problem.setOperator(A.getRCP());
+    my->solution.setFrom(A); // i.e. A.get()->OperatorDomainMap()
+    myBelos->Problem.setLHS(my->solution.getRCP());
+    
+	//!!!!!!// If the matrix is symmetric, specify this in the linear problem. 
+	//!!!!!!my->Problem->setHermitian(); 
+}
+
+BelosSolver::~BelosSolver()
+{
+    delete myBelos;
+}
+
+
+void BelosSolver::solveProblem()
+{
+    // Grab right-hand side
+    myBelos->Problem.setRHS( Teuchos::rcp(my->Problem.GetRHS(), false) );
+
+    // Tell the program that setting of the linear problem is done. 
+    // Throw an error if failed. 
+    bool err_set = myBelos->Problem.setProblem(); 
+    
+    GISMO_ASSERT(true == err_set, "Error: Belos Problem couldn't be" 
+                 " initialized."); 
 
     // Teuchos::ScalarTraits<double>::magnitudeType tol = 1.0e-5;
 
@@ -217,13 +196,13 @@ void Belos_solver::solveProblem()
     belosList.set( "Maximum Iterations", maxiters );  // Maximum number of iterations allowed
     belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
 
-  // Create an iterative solver manager.
-
-  Teuchos::RCP< Belos::SolverManager
-              <double, Epetra_MultiVector, Epetra_Operator> > Solver = 
-              Teuchos::rcp( new Belos::BlockCGSolMgr
-              <double,Epetra_MultiVector,Epetra_Operator>
-              ((myBelos->Problem), Teuchos::rcp(&belosList,false)) );
+    // Create an iterative solver manager.
+    typedef Belos::SolverManager<double, Epetra_MultiVector, Epetra_Operator> SolManager;
+    typedef Belos::BlockCGSolMgr<double, Epetra_MultiVector, Epetra_Operator> BlockCGSolManager;
+    
+    Teuchos::RCP<SolManager> Solver = Teuchos::rcp( 
+        new BlockCGSolManager(Teuchos::rcp(&myBelos->Problem, false), 
+                              Teuchos::rcp(&belosList,false)     ) );
 
   // Perform solve
 
