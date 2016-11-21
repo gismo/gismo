@@ -37,7 +37,10 @@
 #include <Eigen/StdVector>
 
 // Extra Eigen code
-#include <gsMatrix/gsEigenAddons.h>
+#include <gsMatrix/Adjugate.h>
+#include <gsMatrix/BlockDiag.h>
+#include <gsMatrix/BlockTranspose.h>
+//#include <gsMatrix/RowSelection.h>
 
 #ifdef GISMO_WITH_SUPERLU
 #include <Eigen/SuperLUSupport>

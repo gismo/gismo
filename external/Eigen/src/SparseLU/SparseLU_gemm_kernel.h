@@ -21,7 +21,7 @@ namespace internal {
   *  - lda and ldc must be multiples of the respective packet size
   *  - C must have the same alignment as A
   */
-template<typename Scalar,typename Index>
+template<typename Scalar>
 EIGEN_DONT_INLINE
 void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const Scalar* B, Index ldb, Scalar* C, Index ldc)
 {
@@ -39,9 +39,9 @@ void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const 
   };
   Index d_end = (d/RK)*RK;    // number of columns of A (rows of B) suitable for full register blocking
   Index n_end = (n/RN)*RN;    // number of columns of B-C suitable for processing RN columns at once
-  Index i0 = internal::first_aligned(A,m);
+  Index i0 = internal::first_default_aligned(A,m);
   
-  eigen_internal_assert(((lda%PacketSize)==0) && ((ldc%PacketSize)==0) && (i0==internal::first_aligned(C,m)));
+  eigen_internal_assert(((lda%PacketSize)==0) && ((ldc%PacketSize)==0) && (i0==internal::first_default_aligned(C,m)));
   
   // handle the non aligned rows of A and C without any optimization:
   for(Index i=0; i<i0; ++i)
@@ -72,14 +72,14 @@ void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const 
         
         // load and expand a RN x RK block of B
         Packet b00, b10, b20, b30, b01, b11, b21, b31;
-                  b00 = pset1<Packet>(Bc0[0]);
-                  b10 = pset1<Packet>(Bc0[1]);
-                  if(RK==4) {b20 = pset1<Packet>(Bc0[2]);}
-                  if(RK==4) {b30 = pset1<Packet>(Bc0[3]);}
-                  b01 = pset1<Packet>(Bc1[0]);
-                  b11 = pset1<Packet>(Bc1[1]);
-                  if(RK==4) {b21 = pset1<Packet>(Bc1[2]);}
-                  if(RK==4) {b31 = pset1<Packet>(Bc1[3]);}
+                  { b00 = pset1<Packet>(Bc0[0]); }
+                  { b10 = pset1<Packet>(Bc0[1]); }
+        if(RK==4) { b20 = pset1<Packet>(Bc0[2]); }
+        if(RK==4) { b30 = pset1<Packet>(Bc0[3]); }
+                  { b01 = pset1<Packet>(Bc1[0]); }
+                  { b11 = pset1<Packet>(Bc1[1]); }
+        if(RK==4) { b21 = pset1<Packet>(Bc1[2]); }
+        if(RK==4) { b31 = pset1<Packet>(Bc1[3]); }
         
         Packet a0, a1, a2, a3, c0, c1, t0, t1;
         
@@ -114,12 +114,12 @@ void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const 
                     KMADD(c0, a1, b10, t0)      \
                     KMADD(c1, a1, b11, t1)       \
                     a1 = pload<Packet>(A1+i+(I+1)*PacketSize); \
-          if(RK==4) KMADD(c0, a2, b20, t0)        \
-          if(RK==4) KMADD(c1, a2, b21, t1)        \
-          if(RK==4) {a2 = pload<Packet>(A2+i+(I+1)*PacketSize);} \
+          if(RK==4) KMADD(c0, a2, b20, t0)       \
+          if(RK==4) KMADD(c1, a2, b21, t1)       \
+          if(RK==4) a2 = pload<Packet>(A2+i+(I+1)*PacketSize); \
           if(RK==4) KMADD(c0, a3, b30, t0)       \
           if(RK==4) KMADD(c1, a3, b31, t1)       \
-          if(RK==4) {a3 = pload<Packet>(A3+i+(I+1)*PacketSize);} \
+          if(RK==4) a3 = pload<Packet>(A3+i+(I+1)*PacketSize); \
                     pstore(C0+i+(I)*PacketSize, c0);           \
                     pstore(C1+i+(I)*PacketSize, c1)
         
@@ -129,8 +129,8 @@ void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const 
           EIGEN_ASM_COMMENT("SPARSELU_GEMML_KERNEL1");
                     prefetch((A0+i+(5)*PacketSize));
                     prefetch((A1+i+(5)*PacketSize));
-                    if(RK==4) {prefetch((A2+i+(5)*PacketSize));}
-                    if(RK==4) {prefetch((A3+i+(5)*PacketSize));}
+          if(RK==4) prefetch((A2+i+(5)*PacketSize));
+          if(RK==4) prefetch((A3+i+(5)*PacketSize));
                     WORK(0);
                     WORK(1);
                     WORK(2);
@@ -165,7 +165,7 @@ void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const 
         Bc1 += RK;
       } // peeled loop on k
     } // peeled loop on the columns j
-    // process the last column (we now perform a matrux-vector product)
+    // process the last column (we now perform a matrix-vector product)
     if((n-n_end)>0)
     {
       const Scalar* Bc0 = B+(n-1)*ldb;
@@ -208,10 +208,10 @@ void sparselu_gemm(Index m, Index n, Index d, const Scalar* A, Index lda, const 
                   a0 = pload<Packet>(A0+i+(I+1)*PacketSize); \
                   KMADD(c0, a1, b10, t0)       \
                   a1 = pload<Packet>(A1+i+(I+1)*PacketSize); \
-        if(RK==4) KMADD(c0, a2, b20, t0)                      \
-        if(RK==4) {a2 = pload<Packet>(A2+i+(I+1)*PacketSize);} \
+        if(RK==4) KMADD(c0, a2, b20, t0)       \
+        if(RK==4) a2 = pload<Packet>(A2+i+(I+1)*PacketSize); \
         if(RK==4) KMADD(c0, a3, b30, t0)       \
-        if(RK==4) {a3 = pload<Packet>(A3+i+(I+1)*PacketSize);} \
+        if(RK==4) a3 = pload<Packet>(A3+i+(I+1)*PacketSize); \
                   pstore(C0+i+(I)*PacketSize, c0);
         
         // agressive vectorization and peeling

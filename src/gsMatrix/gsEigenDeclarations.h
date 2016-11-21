@@ -22,4 +22,6 @@ namespace internal
 template<typename MatrixType> struct adjugate_impl;
 }
 
+template<typename XprType, typename IndicesType> class RowSelection;
+
 }

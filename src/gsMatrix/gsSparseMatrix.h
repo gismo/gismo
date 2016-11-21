@@ -257,11 +257,11 @@ public:
 
     void setFrom( gsSparseEntries<T> const & entries) ;
 
-    inline T   at (_Index i, _Index j = 0) const { return this->coeff(i,j); }
-    inline T & at (_Index i, _Index j = 0) { return this->coeffRef(i,j); }
+    inline T   at (_Index i, _Index j ) const { return this->coeff(i,j); }
+    inline T & at (_Index i, _Index j ) { return this->coeffRef(i,j); }
 
-    inline T    operator () (_Index i, _Index j = 0) const { return this->coeff(i,j); }
-    inline T  & operator () (_Index i, _Index j = 0) { return this->coeffRef(i,j); }
+    inline T    operator () (_Index i, _Index j ) const { return this->coeff(i,j); }
+    inline T  & operator () (_Index i, _Index j ) { return this->coeffRef(i,j); }
 
     /// Clone function. Used to make a copy of the matrix
     gsSparseMatrix * clone() const ;

@@ -21,6 +21,10 @@ inline const BlockDiagReturnType blockDiag(Index rowFactor) const;
 typedef BlockTranspose<Derived,Dynamic> BlockTransposeReturnType;
 inline const BlockTransposeReturnType blockTranspose(Index rowFactor) const;
 
+template<typename IndicesType>
+const RowSelection<Derived,IndicesType> selectRows(const IndicesType & ind) const;
+
+
 /**
   * \brief Simple (inplace) Gauss elimination without any pivoting
   */
