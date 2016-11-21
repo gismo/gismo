@@ -162,7 +162,6 @@ BelosSolver::BelosSolver(const SparseMatrix & A
     //SolverTeuchosUser = solver_teuchosUser; 
 
     myBelos->Problem.setOperator(A.getRCP());
-    my->solution.setFrom(A); // i.e. A.get()->OperatorDomainMap()
     myBelos->Problem.setLHS(my->solution.getRCP());
     
 	//!!!!!!// If the matrix is symmetric, specify this in the linear problem. 
