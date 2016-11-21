@@ -164,8 +164,6 @@ void EigenProblem::solve() const
     // Get the eigenvalues and eigenvectors from the eigenproblem.
     Anasazi::Eigensolution<double,MV> sol = my->problem->getSolution();
 
-    gsInfo << "GOT SOLUTUIONS.\n";
-    
     // Anasazi returns eigenvalues as Anasazi::Value, so that if
     // Anasazi's Scalar type is real-valued (as it is in this case), but
     // some eigenvalues are complex, you can still access the

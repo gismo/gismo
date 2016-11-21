@@ -33,7 +33,8 @@ struct NonLinearPrivate;
 class GISMO_EXPORT NonLinear
 {
 public:
-    
+
+    // https://trilinos.org/docs/dev/packages/nox/doc/html/nox_epetra_tutorial.html
     NonLinear(const SparseMatrix & A );
 
     ~NonLinear();

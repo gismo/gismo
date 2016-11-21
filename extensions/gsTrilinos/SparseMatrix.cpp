@@ -23,15 +23,17 @@ namespace trilinos
 {
 
 
-class SparseMatrixPrivate
+struct SparseMatrixPrivate
 {
-    typedef Epetra_CrsMatrix Epetra_Matrix;
+    typedef real_t Scalar;
+    typedef conditional<util::is_same<Scalar,double>::value, Epetra_CrsMatrix,
+                        Tpetra::CrsMatrix<Scalar,int,int> >::type Matrix;
     //Epetra_FECrsMatrix matrix;
     
-    friend class SparseMatrix;
+    typedef Epetra_CrsMatrix Epetra_Matrix;
     
     /// A sparse matrix object in Trilinos 
-    Teuchos::RCP<Epetra_Matrix> matrix;
+    Teuchos::RCP<Matrix> matrix;
 };
 
 SparseMatrix::SparseMatrix() : my(new SparseMatrixPrivate)

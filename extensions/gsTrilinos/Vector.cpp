@@ -24,24 +24,20 @@ namespace gismo
 namespace trilinos
 {
 
-class VectorPrivate
+struct VectorPrivate
 {
-    friend class Vector;
-/*   
-    Epetra_SerialComm comm;
-    /// Epetra Trilinos mapping of the matrix columns that assigns
-    /// parts of the matrix to the individual processes.
-    memory::shared<Epetra_Map>::ptr column_space_map;
-*/
+    typedef real_t Scalar;
+    typedef conditional<util::is_same<Scalar,double>::value, Epetra_MultiVector,
+                        Tpetra::MultiVector<Scalar,int,int> >::type MVector;
     
     /// A vector object in Trilinos
-    Teuchos::RCP<Epetra_MultiVector> vec;
+    Teuchos::RCP<MVector> vec;
 };
 
 Vector::Vector(const SparseMatrix & _map)
 : my(new VectorPrivate)
 {
-    my->vec.reset(new Epetra_MultiVector(_map.get()->OperatorDomainMap(), 1));
+    my->vec.reset(new VectorPrivate::MVector(_map.get()->OperatorDomainMap(), 1));
 }
 
 Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int rank)
@@ -69,10 +65,10 @@ Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int ra
     // Create a temporary Epetra_Vector on Proc "rank"
     Epetra_Map map0(glbRows, locRows, 0, comm);
     Epetra_Vector tmp(View, map0, const_cast<real_t *>(gsVec.data()) );
-
+    
     // Initialize the distributed Epetra_Vector
     const Epetra_Map & map = _map.get()->OperatorRangeMap();
-    my->vec.reset( new Epetra_MultiVector(map, 1) );
+    my->vec.reset( new VectorPrivate::MVector(map, 1) );
 
     int err_code = 0;
     // Redistribute the vector data
@@ -97,7 +93,7 @@ void Vector::setConstant(const double val)
 
 void Vector::setFrom(const SparseMatrix & A)
 {
-    my->vec.reset( new Epetra_MultiVector(A.get()->OperatorRangeMap(), 1) );
+    my->vec.reset( new VectorPrivate::MVector(A.get()->OperatorRangeMap(), 1) );
 }
 
 size_t Vector::size() const 

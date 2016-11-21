@@ -35,7 +35,7 @@ public:
 
     explicit Vector(const SparseMatrix & _map);
     
-    Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int rank = 0);
+    Vector(const gsVector<real_t> & gsVec, const SparseMatrix & _map, const int rank = 0);
     
     explicit Vector(Epetra_Vector * v_ptr);
         

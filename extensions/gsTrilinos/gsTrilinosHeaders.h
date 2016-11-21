@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsConfig.h>
+#include <gsCore/gsTemplateTools.h>
 
 // This defines useful macros like HAVE_MPI, which is defined if and
 // only if Epetra was built with MPI enabled.
@@ -57,3 +58,8 @@
 
 #include "Teuchos_RCP.hpp"
 #include "Teuchos_ParameterList.hpp"
+
+#include <Tpetra_Operator.hpp>
+#include <Tpetra_MultiVector_decl.hpp>
+#include <Tpetra_CrsMatrix_decl.hpp>
+//#include <Tpetra_RowMatrix_decl.hpp>

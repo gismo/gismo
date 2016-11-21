@@ -19,7 +19,6 @@
 #include "AztecOO.h"
 #include "AztecOO_Version.h"
 
-	 	 
 //#include "Ifpack_ConfigDefs.h" 
 //#include "Ifpack.h" 
 //#include "Ifpack_AdditiveSchwarz.h" 
@@ -43,7 +42,18 @@ namespace solver
 
 struct AbstractSolverPrivate
 {
+    typedef real_t Scalar;
+                                 
+    typedef conditional<util::is_same<Scalar,double>::value, Epetra_MultiVector,
+                        Tpetra::MultiVector<Scalar,int,int> >::type MVector;
+    
+    typedef conditional<util::is_same<Scalar,double>::value,Epetra_Operator,
+                        Tpetra::Operator<Scalar,int,int> >::type    Operator;
+
+    // Problem
     Epetra_LinearProblem Problem;
+
+    // Solution vector
     Vector solution;
 };
 
@@ -148,7 +158,26 @@ void SuperLU::solveProblem()
 
 struct BelosSolverPrivate
 {
-    Belos::LinearProblem<real_t,Epetra_MultiVector,Epetra_Operator> Problem;
+    typedef real_t Scalar;
+                                 
+    typedef conditional<util::is_same<Scalar,double>::value, Epetra_MultiVector,
+                        Tpetra::MultiVector<Scalar,int,int> >::type MVector;
+    
+    typedef conditional<util::is_same<Scalar,double>::value,Epetra_Operator,
+                        Tpetra::Operator<Scalar,int,int> >::type    Operator;
+    
+    // Solvers
+    typedef Belos::BlockCGSolMgr<Scalar, MVector, Operator> BlockCGSolMgr;
+
+    // Problem and settings
+    typedef Belos::SolverManager<Scalar, MVector, Operator> SolManager;
+
+    
+    Teuchos::RCP<SolManager> Solver;
+
+    Teuchos::ParameterList belosList;
+    
+    Belos::LinearProblem<real_t,MVector,Operator> Problem;
 };
 
 BelosSolver::BelosSolver(const SparseMatrix & A
@@ -164,8 +193,8 @@ BelosSolver::BelosSolver(const SparseMatrix & A
     myBelos->Problem.setOperator(A.getRCP());
     myBelos->Problem.setLHS(my->solution.getRCP());
     
-	//!!!!!!// If the matrix is symmetric, specify this in the linear problem. 
-	//!!!!!!my->Problem->setHermitian(); 
+	// If the matrix is symmetric, specify this in the linear problem. 
+	// my->Problem->setHermitian(); 
 }
 
 BelosSolver::~BelosSolver()
@@ -190,34 +219,29 @@ void BelosSolver::solveProblem()
 
     double tol = 1.0e-5;
 
-    Teuchos::ParameterList belosList;
-    belosList.set( "Block Size", blocksize );         // Blocksize to be used by iterative solver
-    belosList.set( "Maximum Iterations", maxiters );  // Maximum number of iterations allowed
-    belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
+    myBelos->belosList.set( "Block Size", blocksize );         // Blocksize to be used by iterative solver
+    myBelos->belosList.set( "Maximum Iterations", maxiters );  // Maximum number of iterations allowed
+    myBelos->belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
 
     // Create an iterative solver manager.
-    typedef Belos::SolverManager<double, Epetra_MultiVector, Epetra_Operator> SolManager;
-    typedef Belos::BlockCGSolMgr<double, Epetra_MultiVector, Epetra_Operator> BlockCGSolManager;
+    myBelos->Solver = Teuchos::rcp( new BelosSolverPrivate::BlockCGSolMgr );
+    myBelos->Solver->setProblem   (Teuchos::rcp(&myBelos->Problem  , false));
+    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
+    // Perform solve
+
+    Belos::ReturnType ret = myBelos->Solver->solve();
     
-    Teuchos::RCP<SolManager> Solver = Teuchos::rcp( 
-        new BlockCGSolManager(Teuchos::rcp(&myBelos->Problem, false), 
-                              Teuchos::rcp(&belosList,false)     ) );
-
-  // Perform solve
-
-  Belos::ReturnType ret = Solver->solve();
-
-  // Get the number of iterations for this solve.
-  
-//  int numIters = Solver->getNumIters();
-
+    // Get the number of iterations for this solve.
+    
+//  int numIters = myBelos->Solver->getNumIters();
+    
 //  // Compute actual residuals.
-
+    
 //  bool badRes = false;
 //  std::vector<double> actual_resids( numrhs );
 //  std::vector<double> rhs_norm( numrhs );
-//  Epetra_MultiVector resid(*Map, numrhs);
-
+//  MVector resid(*Map, numrhs);
+    
     GISMO_ENSURE(ret == Belos::Converged , "Error: Belos Problem couldn't be"
                  " initialized.");
 }
