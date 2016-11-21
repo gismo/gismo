@@ -10,7 +10,6 @@
 
     Author(s): J. Sogn
 */
-#pragma once
 
 #include <gsSolver/gsBlockOp.hpp>
 

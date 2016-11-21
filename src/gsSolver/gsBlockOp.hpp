@@ -10,6 +10,8 @@
 
     Author(s): J. Sogn
 */
+#pragma once
+
 #include <gsSolver/gsBlockOp.h>
 
 namespace gismo
