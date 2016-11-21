@@ -41,7 +41,7 @@ class VectorPrivate
 Vector::Vector(const SparseMatrix & _map)
 : my(new VectorPrivate)
 {
-    my->vec.reset(new Epetra_Vector(_map.get()->OperatorDomainMap()));
+    my->vec.reset(new Epetra_MultiVector(_map.get()->OperatorDomainMap(), 1));
 }
 
 Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int rank)
@@ -72,7 +72,7 @@ Vector::Vector(const gsVector<> & gsVec, const SparseMatrix & _map, const int ra
 
     // Initialize the distributed Epetra_Vector
     const Epetra_Map & map = _map.get()->OperatorRangeMap();
-    my->vec.reset( new Epetra_Vector(map) );
+    my->vec.reset( new Epetra_MultiVector(map, 1) );
 
     int err_code = 0;
     // Redistribute the vector data
@@ -97,7 +97,7 @@ void Vector::setConstant(const double val)
 
 void Vector::setFrom(const SparseMatrix & A)
 {
-    my->vec.reset( new Epetra_Vector(A.get()->OperatorRangeMap()) );
+    my->vec.reset( new Epetra_MultiVector(A.get()->OperatorRangeMap(), 1) );
 }
 
 size_t Vector::size() const 

@@ -29,8 +29,8 @@ namespace trilinos
 namespace solver
 {
 
-
 struct AbstractSolverPrivate;
+struct AbstractSolverBelosPrivate;
 
 /** 
     
@@ -39,11 +39,14 @@ class GISMO_EXPORT AbstractSolver
 {
 public:
     
-    explicit AbstractSolver(const SparseMatrix & A );
+     AbstractSolver();
+     AbstractSolver(const SparseMatrix & A, const Vector & b);
+     AbstractSolver(const SparseMatrix & A, const Vector & b, 
+                    const std::string solver_teuchosUser);
 
     ~AbstractSolver();
     
-    const Vector & solve( const Vector & b );
+    const Vector & solve();
 
     void getSolution(gsVector<real_t> & sol, const int rank = 0) const;
     
@@ -51,9 +54,10 @@ protected:
         virtual void solveProblem() = 0;
     
 protected:
-        AbstractSolverPrivate * my;
+        AbstractSolverPrivate        * my = NULL;
+        AbstractSolverBelosPrivate   * myBelos = NULL;
+        std::string SolverTeuchosUser = "";
 };
-
 
 /** 
     
@@ -65,8 +69,8 @@ public:
     
 public:
     
-    GMRES(const SparseMatrix & A )
-    : Base(A), m_tolerance(10e-6), m_maxIter(50)
+    GMRES(const SparseMatrix & A, const Vector & b)
+    : Base(A, b), m_tolerance(10e-6), m_maxIter(50)
     { }
     
 private:
@@ -89,8 +93,8 @@ public:
     
 public:
     
-    KLU(const SparseMatrix & A )
-    : Base(A)
+    KLU(const SparseMatrix & A, const Vector & b)
+    : Base(A, b)
     { }
     
 private:
@@ -106,8 +110,8 @@ public:
     
 public:
     
-    SuperLU(const SparseMatrix & A )
-    : Base(A)
+    SuperLU(const SparseMatrix & A, const Vector & b)
+    : Base(A, b)
     { }
     
 private:
@@ -115,6 +119,24 @@ private:
     void solveProblem();
 };
 
+class GISMO_EXPORT Belos_solver : public AbstractSolver
+{
+public:
+    typedef AbstractSolver Base;
+
+    Belos_solver(const SparseMatrix & A, const Vector & b, 
+                 const std::string solver_teuchosUser = "Belos")
+                 : Base(A, b, solver_teuchosUser), blocksize(1), maxiters(500)
+    { }
+
+private:
+
+    int blocksize;   // blocksize
+    int maxiters;  // maximum number of iterations allowed per linear system
+
+    void solveProblem();
+
+};
 
 
 };// namespace solver
