@@ -67,6 +67,7 @@ void boundaryInterface::cornerMap(gsVector<index_t> & cmap) const
 void boundaryInterface::reorderCorners(gsMatrix<unsigned> & boundary) const
 {
     gsVector<index_t> cmap;
+    cornerMap(cmap);
     boundary = cmap.asPermutation() * boundary;
 }
 
