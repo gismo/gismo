@@ -720,7 +720,7 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
     }
     
     A.makeCompressed();
-    Eigen::BiCGSTAB< gsSparseMatrix<>,  Eigen::IncompleteLUT<real_t> > solver(A);
+    gsSparseSolver<real_t>::BiCGSTABILUT solver(A);
     if (solver.preconditioner().info() != Eigen::Success)
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
