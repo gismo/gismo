@@ -4,7 +4,10 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Angelos Mantzaflaris, 2015
+// Warning: GNU GMP C++ is licensed under GPL/LGPL.
+//
+// Angelos Mantzaflaris, 2015-2016
+
 
 #pragma once
 
@@ -12,6 +15,25 @@
 
 namespace Eigen 
 {  	
+
+/*
+  // Specialize for mpq_class
+  namespace numext 
+  {
+  EIGEN_DEVICE_FUNC
+  EIGEN_ALWAYS_INLINE mpq_class mini(const mpq_class& x, const mpq_class& y)
+  { return ::min(x,y); }
+  
+  EIGEN_DEVICE_FUNC
+  EIGEN_ALWAYS_INLINE mpq_class maxi(const mpq_class& x, const mpq_class& y)
+  { return ::max(x,y); }
+  }
+*/
+
+// AM: to do
+//template <class U>
+//template<> struct NumTraits<__gmp_expr<mpq_t, U> >
+
   template<> struct NumTraits<mpq_class>
     : GenericNumTraits<mpq_class>
   {
@@ -20,14 +42,17 @@ namespace Eigen
       IsSigned  = 1,
       IsComplex = 0,
       RequireInitialization = 1,
-      ReadCost = 10,
-      AddCost  = 10,
-      MulCost  = 40
+      ReadCost = HugeCost,
+      AddCost  = HugeCost,
+      MulCost  = HugeCost,
     };
 
     typedef mpq_class Real;
     typedef mpq_class NonInteger;
     
+    // Constants
+    static inline Real Pi () { return Real(static_cast<double>(EIGEN_PI)); }
+
     inline static Real epsilon  ()              { return 0; }
     inline static Real epsilon  (const Real& x) { return 0; }
     inline static Real dummy_precision()        { return 0; }
@@ -87,63 +112,55 @@ namespace Eigen
     public:
       typedef mpq_class ResScalar;
       enum {
-        nr = 2, // must be 2 for proper packing...
+        Vectorizable = false,
+        LhsPacketSize = 1,
+        RhsPacketSize = 1,
+        ResPacketSize = 1,
+        NumberOfRegisters = 1,
+        nr = 1,
         mr = 1,
-        WorkSpaceFactor = nr,
         LhsProgress = 1,
         RhsProgress = 1
       };
+      typedef ResScalar LhsPacket;
+      typedef ResScalar RhsPacket;
+      typedef ResScalar ResPacket;
+
     };
 
-    template<typename Index, int mr, int nr, bool ConjugateLhs, bool ConjugateRhs>
-    struct gebp_kernel<mpq_class,mpq_class,Index,mr,nr,ConjugateLhs,ConjugateRhs>
+    template<typename Index, typename DataMapper, bool ConjugateLhs, bool ConjugateRhs>
+    struct gebp_kernel<mpq_class,mpq_class,Index,DataMapper,1,1,ConjugateLhs,ConjugateRhs>
     {
       typedef mpq_class num_t;
 
       EIGEN_DONT_INLINE
-      void operator()(num_t* res, Index resStride, const num_t* blockA, const num_t* blockB, 
-                      Index rows, Index depth, Index cols, num_t alpha,
-                      Index strideA=-1, Index strideB=-1, Index offsetA=0, 
-                      Index offsetB=0, num_t* /*unpackedB*/ = 0)
+      void operator()(const DataMapper& res, const num_t* blockA, const num_t* blockB, 
+                      Index rows, Index depth, Index cols, const num_t& alpha,
+                      Index strideA=-1, Index strideB=-1, Index offsetA=0, Index offsetB=0)
       {
-        num_t acc1, acc2, tmp;
-        
+        if(rows==0 || cols==0 || depth==0)
+          return;
+
+        num_t  acc1(0), tmp(0);        
+
         if(strideA==-1) strideA = depth;
         if(strideB==-1) strideB = depth;
 
-        for(Index j=0; j<cols; j+=nr)
+        for(Index i=0; i<rows; ++i)
         {
-          Index actual_nr = (std::min<Index>)(nr,cols-j);
-          num_t *C1 = res + j*resStride;
-          num_t *C2 = res + (j+1)*resStride;
-          for(Index i=0; i<rows; i++)
+          for(Index j=0; j<cols; ++j)
           {
-            num_t *B = const_cast<num_t*>(blockB) + j*strideB + offsetB*actual_nr;
-            num_t *A = const_cast<num_t*>(blockA) + i*strideA + offsetA;
+            const num_t *A = blockA + i*strideA + offsetA;
+            const num_t *B = blockB + j*strideB + offsetB;
             acc1 = 0;
-            acc2 = 0;
             for(Index k=0; k<depth; k++)
             {
-              mpq_mul(tmp.__get_mp(), A[k].__get_mp(), B[0].__get_mp());
-              mpq_add(acc1.__get_mp(), acc1.__get_mp(), tmp.__get_mp());
-              
-              if(actual_nr==2) 
-              {
-                mpq_mul(tmp.__get_mp(), A[k].__get_mp(), B[1].__get_mp());
-                mpq_add(acc2.__get_mp(), acc2.__get_mp(), tmp.__get_mp());
-              }
-              
-              B+=actual_nr;
+              mpq_mul(tmp.__get_mp() , A[k].__get_mp(), B[0].__get_mp());
+              mpq_add(acc1.__get_mp(), acc1.__get_mp(), tmp.__get_mp() );
             }
             
-            mpq_mul(acc1.__get_mp(), acc1.__get_mp(), alpha.__get_mp());
-            mpq_add(C1[i].__get_mp(), C1[i].__get_mp(), acc1.__get_mp());
-            
-            if(actual_nr==2) 
-            {
-              mpq_mul(acc2.__get_mp(), acc2.__get_mp(), alpha.__get_mp());
-              mpq_add(C2[i].__get_mp(), C2[i].__get_mp(), acc2.__get_mp());
-            }
+            mpq_mul(acc1.__get_mp()    , acc1.__get_mp() , alpha.__get_mp());
+            mpq_add(res(i,j).__get_mp(), res(i,j).__get_mp(), acc1.__get_mp() );
           }
         }
       }
