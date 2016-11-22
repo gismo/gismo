@@ -25,11 +25,8 @@
 
 #if defined(_WIN32)
 #include <windows.h>
-#include <direct.h>
-#define getcwd _getcwd
 #else
 #include <dlfcn.h>
-#include <unistd.h>
 #endif
 
 #include <gsCore/gsMemory.h>

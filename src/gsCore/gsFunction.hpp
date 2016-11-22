@@ -285,6 +285,8 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 
         if (tarDim!=-1 && tarDim==domDim)
         {
+            if ( 1==tarDim ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
+
             typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
             for (index_t p=0;  p!=numPts; ++p)
             {

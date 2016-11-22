@@ -335,7 +335,7 @@ outerNormal(index_t k, boxSide s, gsVector<T> & result) const
     const int dir = s.direction();
     
     // assumes points u on boundary "s"
-    result.resize(GeoDim);        
+    result.resize(GeoDim);
     if (ParDim + 1 == GeoDim) // surface case GeoDim == 3
     {
         const gsMatrix<T,GeoDim, ParDim> Jk = 
@@ -360,8 +360,11 @@ outerNormal(index_t k, boxSide s, gsVector<T> & result) const
         //*/
     }
     else // planar case
-    {            
+    {
         GISMO_ASSERT( ParDim == GeoDim, "Codim different than zero/one");
+
+        if ( 1==GeoDim ) { result[0] = sgn; return; } // 1D case
+
         const gsMatrix<T, ParDim, ParDim> Jk = 
             m_jacobians.template block<ParDim,ParDim>(0, k*ParDim);
 
