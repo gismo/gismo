@@ -28,7 +28,7 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsMatrix<> &rhs, index_t N)
     mat.resize(N,N);
     mat.setZero();
     real_t meshSize = 1./(N+1);
-    real_t pi = M_PI;
+    real_t pi = EIGEN_PI;
 
     //Reserving space in the sparse matrix (Speeds up the assemble time of the matrix)
     mat.reservePerColumn( 3 ); //Reserve 3 non-zero entry per column
