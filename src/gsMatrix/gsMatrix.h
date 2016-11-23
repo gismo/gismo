@@ -274,39 +274,44 @@ public:
     gsAsConstMatrix<T, 1, Dynamic> asRowVector() const
     { return gsAsConstMatrix<T, 1, Dynamic>(this->data(), 1, this->rows()*this->cols() ); }
 
-    /// Returns a submatrix consisting of the columns indexed by the vector \a colInd
-    void submatrixCols(const gsMatrix<unsigned> & colInd, gsMatrix<T> & result) const
+    /// Returns a submatrix consisting of the columns indexed by the
+    /// vector container \a colInd
+    template<class container>
+    void submatrixCols(const container & colInd, gsMatrix<T> & result) const
     {
-        GISMO_ASSERT(colInd.cols() == 1, "Invalid column index vector");
-        const index_t nc = colInd.rows();
+        //GISMO_ASSERT(colInd.cols() == 1, "Invalid column index vector");
+        const index_t nc = colInd.size();
         result.resize(this->rows(), nc );
         for ( index_t i = 0; i!= nc; ++i )
-            result.col(i) = this->col( colInd.at(i) );
+            result.col(i) = this->col( colInd[i] );
     }
 
-    /// Returns a submatrix consisting of the rows indexed by the vector \a rowInd
-    void submatrixRows(const gsMatrix<unsigned> & rowInd, gsMatrix<T> & result) const
+    /// Returns a submatrix consisting of the rows indexed by the
+    /// vector container \a rowInd
+    template<class container>
+    void submatrixRows(const container & rowInd, gsMatrix<T> & result) const
     {
-        GISMO_ASSERT(rowInd.cols() == 1, "Invalid row index vector");
-        const index_t nr = rowInd.rows();
+        //GISMO_ASSERT(rowInd.cols() == 1, "Invalid row index vector");
+        const index_t nr = rowInd.size();
         result.resize(nr, this->cols() );
         for ( index_t i = 0; i!= nr; ++i )
-            result.row(i) = this->row( rowInd.at(i) );
+            result.row(i) = this->row( rowInd[i] );
     }
 
     /// Returns a submatrix consisting of the rows and columns indexed
-    /// by the vectors \a rowInd and \a colInd respectively
-    void submatrix(const gsMatrix<unsigned> & rowInd, 
-                   const gsMatrix<unsigned> & colInd, 
+    /// by the vector containers \a rowInd and \a colInd respectively
+    template<class container>
+    void submatrix(const container & rowInd, 
+                   const container & colInd, 
                    gsMatrix<T> & result) const
     {
-        GISMO_ASSERT(rowInd.cols() == 1 && colInd.cols() == 1, "Invalid index vector");
-        const index_t nr = rowInd.rows();
-        const index_t nc = colInd.rows();
+        //GISMO_ASSERT(rowInd.cols() == 1 && colInd.cols() == 1, "Invalid index vector");
+        const index_t nr = rowInd.size();
+        const index_t nc = colInd.size();
         result.resize(nr, nc );
         for ( index_t i = 0; i!= nr; ++i )
             for ( index_t j = 0; j!= nc; ++j )
-                result(i,j) = this->coeff(rowInd.at(i), colInd.at(j) );
+                result(i,j) = this->coeff(rowInd[i], colInd[j] );
     }
 
     /// Removes column \a i from the matrix. After the operation the
@@ -396,12 +401,12 @@ public:
     }
 
     /// Sorts rows of matrix by column \em j.
-    void sortByColumn( index_t j )
+    void sortByColumn(const index_t j )
     {
         GISMO_ASSERT( j < this->cols(), "Invalid column.");
 
-        unsigned lastSwapDone = this->rows() - 1;
-        unsigned lastCheckIdx = lastSwapDone;
+        index_t lastSwapDone = this->rows() - 1;
+        index_t lastCheckIdx = lastSwapDone;
 
         bool didSwap;
         gsMatrix<T> tmp(1, this->cols() );
@@ -409,7 +414,7 @@ public:
             didSwap = false;
             lastCheckIdx = lastSwapDone;
 
-            for( unsigned i=0; i < lastCheckIdx; i++)
+            for( index_t i=0; i < lastCheckIdx; i++)
                 if( this->coeff(i,j) > this->coeff(i+1,j) )
                 {
                     tmp.row(0) = this->row(i);
