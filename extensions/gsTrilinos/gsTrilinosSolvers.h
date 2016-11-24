@@ -21,6 +21,12 @@ namespace gismo
 namespace trilinos
 {
 
+enum BelosSolverMode
+{
+    BlockGmres = 1, ///< Block GMRES solver
+    BlockCG    = 2 ///< Block GC solver
+};
+
 /** @namespace gismo::trilinos::solver
 
     @brief This namespace contains wrappers for Trilinos linear
@@ -116,7 +122,8 @@ private:
 
 struct BelosSolverPrivate;
 
-class GISMO_EXPORT BelosSolver : public AbstractSolver
+template<int mode>
+class BelosSolver : public AbstractSolver
 {
 public:
     typedef AbstractSolver Base;
@@ -133,7 +140,7 @@ private:
 
 private:
 
-    BelosSolverPrivate   * myBelos;
+    BelosSolverPrivate * myBelos;
 
     int blocksize;   // blocksize
     int maxiters;  // maximum number of iterations allowed per linear system

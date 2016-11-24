@@ -29,6 +29,7 @@
 #include "BelosConfigDefs.hpp"
 #include "BelosLinearProblem.hpp"
 #include "BelosEpetraAdapter.hpp"
+#include "BelosBlockGmresSolMgr.hpp"
 #include "BelosBlockCGSolMgr.hpp"
 
 namespace gismo
@@ -156,7 +157,7 @@ void SuperLU::solveProblem()
 
 /*   --- Belos--- */
 
-struct BelosSolverPrivate
+struct BelosTypes // General types for use in all solvers
 {
     typedef real_t Scalar;
                                  
@@ -165,22 +166,34 @@ struct BelosSolverPrivate
     
     typedef conditional<util::is_same<Scalar,double>::value,Epetra_Operator,
                         Tpetra::Operator<Scalar,int,int> >::type    Operator;
-    
-    // Solvers
-    typedef Belos::BlockCGSolMgr<Scalar, MVector, Operator> BlockCGSolMgr;
 
-    // Problem and settings
     typedef Belos::SolverManager<Scalar, MVector, Operator> SolManager;
 
-    
-    Teuchos::RCP<SolManager> Solver;
+    typedef Belos::LinearProblem<Scalar, MVector, Operator> LinearProblem;
+};
+
+template<int mode> // mode values define different solvers
+struct BelosSolManager { BelosSolManager() {GISMO_STATIC_ASSERT(mode!=mode,INCONSISTENT_INSTANTIZATION)} };
+
+template<>
+struct BelosSolManager<BlockCG> 
+{ typedef Belos::BlockCGSolMgr<BelosTypes::Scalar , BelosTypes::MVector, BelosTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<BlockGmres> 
+{ typedef Belos::BlockGmresSolMgr<BelosTypes::Scalar , BelosTypes::MVector, BelosTypes::Operator> type; };
+
+struct BelosSolverPrivate
+{
+    Teuchos::RCP<BelosTypes::SolManager> Solver;
 
     Teuchos::ParameterList belosList;
     
-    Belos::LinearProblem<real_t,MVector,Operator> Problem;
+    BelosTypes::LinearProblem Problem;
 };
 
-BelosSolver::BelosSolver(const SparseMatrix & A
+template<int mode>
+BelosSolver<mode>::BelosSolver(const SparseMatrix & A
                          //, const std::string solver_teuchosUser
     )
 : Base(A), myBelos(new BelosSolverPrivate), blocksize(1), maxiters(500)
@@ -197,13 +210,14 @@ BelosSolver::BelosSolver(const SparseMatrix & A
 	// my->Problem->setHermitian(); 
 }
 
-BelosSolver::~BelosSolver()
+template<int mode>
+BelosSolver<mode>::~BelosSolver()
 {
     delete myBelos;
 }
 
-
-void BelosSolver::solveProblem()
+template<int mode>
+void BelosSolver<mode>::solveProblem()
 {
     // Grab right-hand side
     myBelos->Problem.setRHS( Teuchos::rcp(my->Problem.GetRHS(), false) );
@@ -224,7 +238,7 @@ void BelosSolver::solveProblem()
     myBelos->belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
 
     // Create an iterative solver manager.
-    myBelos->Solver = Teuchos::rcp( new BelosSolverPrivate::BlockCGSolMgr );
+    myBelos->Solver = Teuchos::rcp( new typename BelosSolManager<mode>::type );
     myBelos->Solver->setProblem   (Teuchos::rcp(&myBelos->Problem  , false));
     myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
     // Perform solve
@@ -246,6 +260,8 @@ void BelosSolver::solveProblem()
                  " initialized.");
 }
 
+CLASS_TEMPLATE_INST BelosSolver<BlockGmres>;
+CLASS_TEMPLATE_INST BelosSolver<BlockCG>;
 
 };// namespace solver
 };// namespace trilinos
