@@ -38,10 +38,7 @@ namespace gismo
 namespace trilinos
 {
 
-namespace solver
-{
-
-struct AbstractSolverPrivate
+struct DataTypes // General types for use in all solvers
 {
     typedef real_t Scalar;
                                  
@@ -51,8 +48,22 @@ struct AbstractSolverPrivate
     typedef conditional<util::is_same<Scalar,double>::value,Epetra_Operator,
                         Tpetra::Operator<Scalar,int,int> >::type    Operator;
 
+    typedef Belos::SolverManager<Scalar, MVector, Operator> SolManager;
+
+    typedef Belos::LinearProblem<Scalar, MVector, Operator> BelosLp;
+
+    typedef Epetra_LinearProblem EpetraLp;
+
+    //typedef Teuchos::ParameterList
+};
+
+namespace solver
+{
+
+struct AbstractSolverPrivate
+{
     // Problem
-    Epetra_LinearProblem Problem;
+    DataTypes::EpetraLp Problem;
 
     // Solution vector
     Vector solution;
@@ -157,39 +168,24 @@ void SuperLU::solveProblem()
 
 /*   --- Belos--- */
 
-struct BelosTypes // General types for use in all solvers
-{
-    typedef real_t Scalar;
-                                 
-    typedef conditional<util::is_same<Scalar,double>::value, Epetra_MultiVector,
-                        Tpetra::MultiVector<Scalar,int,int> >::type MVector;
-    
-    typedef conditional<util::is_same<Scalar,double>::value,Epetra_Operator,
-                        Tpetra::Operator<Scalar,int,int> >::type    Operator;
-
-    typedef Belos::SolverManager<Scalar, MVector, Operator> SolManager;
-
-    typedef Belos::LinearProblem<Scalar, MVector, Operator> LinearProblem;
-};
-
-template<int mode> // mode values define different solvers
-struct BelosSolManager { BelosSolManager() {GISMO_STATIC_ASSERT(mode!=mode,INCONSISTENT_INSTANTIZATION)} };
+// mode values define different solvers
+template<int mode> struct BelosSolManager { };
 
 template<>
 struct BelosSolManager<BlockCG> 
-{ typedef Belos::BlockCGSolMgr<BelosTypes::Scalar , BelosTypes::MVector, BelosTypes::Operator> type; };
+{ typedef Belos::BlockCGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
 
 template<>
 struct BelosSolManager<BlockGmres> 
-{ typedef Belos::BlockGmresSolMgr<BelosTypes::Scalar , BelosTypes::MVector, BelosTypes::Operator> type; };
+{ typedef Belos::BlockGmresSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
 
 struct BelosSolverPrivate
 {
-    Teuchos::RCP<BelosTypes::SolManager> Solver;
+    Teuchos::RCP<DataTypes::SolManager> Solver;
 
     Teuchos::ParameterList belosList;
     
-    BelosTypes::LinearProblem Problem;
+    DataTypes::BelosLp Problem;
 };
 
 template<int mode>
@@ -202,6 +198,9 @@ BelosSolver<mode>::BelosSolver(const SparseMatrix & A
     // This can be adapted to get different values if other solvers with 
     // similar implementation structures are considered later on. 
     //SolverTeuchosUser = solver_teuchosUser; 
+
+    // Initialize solver manager
+    myBelos->Solver = Teuchos::rcp( new typename BelosSolManager<mode>::type );
 
     myBelos->Problem.setOperator(A.getRCP());
     myBelos->Problem.setLHS(my->solution.getRCP());
@@ -232,17 +231,15 @@ void BelosSolver<mode>::solveProblem()
     // Teuchos::ScalarTraits<double>::magnitudeType tol = 1.0e-5;
 
     double tol = 1.0e-5;
-
     myBelos->belosList.set( "Block Size", blocksize );         // Blocksize to be used by iterative solver
     myBelos->belosList.set( "Maximum Iterations", maxiters );  // Maximum number of iterations allowed
     myBelos->belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
 
-    // Create an iterative solver manager.
-    myBelos->Solver = Teuchos::rcp( new typename BelosSolManager<mode>::type );
+    // Set the solver manager data.
     myBelos->Solver->setProblem   (Teuchos::rcp(&myBelos->Problem  , false));
     myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
-    // Perform solve
 
+    // Perform solve
     Belos::ReturnType ret = myBelos->Solver->solve();
     
     // Get the number of iterations for this solve.
