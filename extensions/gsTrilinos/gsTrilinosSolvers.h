@@ -137,6 +137,7 @@ public:
 
     /// Blocksize to be used by iterative solver
     void setBlockSize(int bs);
+    void getBlockSize() const {return blocksize;}
     
 private:
 
