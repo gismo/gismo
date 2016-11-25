@@ -137,7 +137,7 @@ public:
 
     /// Blocksize to be used by iterative solver
     void setBlockSize(int bs);
-    void getBlockSize() const {return blocksize;}
+    void getBlockSize() const;
     
 private:
 
@@ -147,7 +147,6 @@ private:
 
     BelosSolverPrivate * myBelos;
 
-    int blocksize;   // blocksize
     int maxiters;  // maximum number of iterations allowed per linear system
 
     //std::string            SolverTeuchosUser;

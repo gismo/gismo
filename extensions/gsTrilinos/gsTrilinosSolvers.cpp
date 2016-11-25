@@ -192,7 +192,7 @@ template<int mode>
 BelosSolver<mode>::BelosSolver(const SparseMatrix & A
                          //, const std::string solver_teuchosUser
     )
-: Base(A), myBelos(new BelosSolverPrivate), blocksize(1), maxiters(500)
+: Base(A), myBelos(new BelosSolverPrivate), maxiters(500)
 { 
     // Note: By default the string variable SolverTeuchosUser = "Belos". 
     // This can be adapted to get different values if other solvers with 
@@ -204,6 +204,9 @@ BelosSolver<mode>::BelosSolver(const SparseMatrix & A
 
     myBelos->Problem.setOperator(A.getRCP());
     myBelos->Problem.setLHS(my->solution.getRCP());
+
+    // Add default Options
+    myBelos->belosList.set( "Block Size", 1);
     
 	// If the matrix is symmetric, specify this in the linear problem. 
 	// my->Problem->setHermitian(); 
@@ -231,7 +234,7 @@ void BelosSolver<mode>::solveProblem()
     // Teuchos::ScalarTraits<double>::magnitudeType tol = 1.0e-5;
 
     double tol = 1.0e-5;
-    myBelos->belosList.set( "Block Size", blocksize );         // Blocksize to be used by iterative solver
+
     myBelos->belosList.set( "Maximum Iterations", maxiters );  // Maximum number of iterations allowed
     myBelos->belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
 
@@ -260,7 +263,13 @@ void BelosSolver<mode>::solveProblem()
 template<int mode>
 void BelosSolver<mode>::setBlockSize(int bs)
 {
-    myBelos->belosList.set( "Block Size", blocksize );
+    myBelos->belosList.set( "Block Size", bs);
+}
+
+template<int mode>
+int BelosSolver<mode>::getBlockSize() const
+{
+    return myBelos->belosList.get<int>("Block Size", 1);
 }
 
 //------------------------------------------
