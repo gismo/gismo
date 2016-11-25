@@ -257,6 +257,14 @@ void BelosSolver<mode>::solveProblem()
                  " initialized.");
 }
 
+template<int mode>
+void BelosSolver<mode>::setBlockSize(int bs)
+{
+    myBelos->belosList.set( "Block Size", blocksize );
+}
+
+//------------------------------------------
+
 CLASS_TEMPLATE_INST BelosSolver<BlockGmres>;
 CLASS_TEMPLATE_INST BelosSolver<BlockCG>;
 

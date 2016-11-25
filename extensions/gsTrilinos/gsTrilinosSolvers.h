@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsTrilinos/Vector.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
@@ -134,6 +135,9 @@ public:
 
     ~BelosSolver();
 
+    /// Blocksize to be used by iterative solver
+    void setBlockSize(int bs);
+    
 private:
 
     void solveProblem();
