@@ -269,7 +269,7 @@ void BelosSolver<mode>::setBlockSize(int bs)
 template<int mode>
 int BelosSolver<mode>::getBlockSize() const
 {
-    return myBelos->belosList.get<int>("Block Size", 1);
+    return myBelos->belosList.get<int>("Block Size");
 }
 
 //------------------------------------------
