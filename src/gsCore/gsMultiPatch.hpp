@@ -420,6 +420,7 @@ bool gsMultiPatch<T>::matchVerticesOnSide (
 template<class T> 
 void gsMultiPatch<T>::closeGaps(T tol)
 {
+    const T tol2 = tol*tol;
     //GISMO_UNUSED(tol);
     gsMatrix<unsigned> bdr1, bdr2; // indices of the boundary control points
 
@@ -443,7 +444,7 @@ void gsMultiPatch<T>::closeGaps(T tol)
         //mapper.matchDofs(it->first().patch, bdr1, it->second().patch, bdr2);
         for (index_t i = 0; i!= bdr1.size(); ++i )
         {
-            if ( ( p1.coef(bdr1(i)) - p2.coef(bdr2(i)) ).squaredNorm() > tol )
+            if ( ( p1.coef(bdr1(i)) - p2.coef(bdr2(i)) ).squaredNorm() > tol2 )
                 gsWarn<<"Big gap detected between patches "<< it->first().patch 
                       <<" and "<<it->second().patch <<"\n";
 
