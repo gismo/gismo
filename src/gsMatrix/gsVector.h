@@ -58,7 +58,7 @@ public:
     typedef typename memory::unique< gsVector >::ptr uPtr;
 
     // Type for copying a vector as a permutation matrix
-    typedef Eigen::PermutationMatrix<_Rows> Permutation;
+    typedef Eigen::PermutationMatrix<_Rows,Base::SizeAtCompileTime,index_t> Permutation;
 
     // Type for treating a vector as a permutation matrix
     typedef Eigen::PermutationWrapper<Base> PermutationWrap;
@@ -179,15 +179,16 @@ public:
         return BlockView(*this, rowSizes);
     }
 
+    PermutationWrap asPermutation() const { return PermutationWrap(*this);}
+
     /// Removes row \a i from the vector. After the operation the
     /// vector has size one less.
-    void removeElement( index_t i )
+    void removeElement(const index_t i )
     {
-        const index_t cc  = this->cols();
-        const index_t cci = cc - i;
-        GISMO_ASSERT( i < cc, "Invalid column." );
-        this->block(i,0,cci,1) = this->block(i+1,0,cci,1);
-        this->conservativeResize(cc-1,Eigen::NoChange);
+        GISMO_ASSERT( i < this->size(), "Invalid vector element." );
+        const T * ce = this->data() + this->size();
+        for ( T * c = this->data()+i+1; c!= ce; ++c ) *(c-1) = *c;
+        this->conservativeResize(this->size()-1,Eigen::NoChange);
     }
 
 }; // class gsVector

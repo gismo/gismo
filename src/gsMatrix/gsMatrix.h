@@ -246,6 +246,11 @@ public:
     gsAsMatrix<T, Dynamic, Dynamic> reshape(index_t n, index_t m )
     { return gsAsMatrix<T, Dynamic, Dynamic>(this->data(), n, m); }
 
+    /// \brief Returns the matrix resized to n x m matrix (data is not copied)
+    /// This function assumes that the matrix is size n*m, ie. already allocated
+    gsAsConstMatrix<T, Dynamic, Dynamic> reshape(index_t n, index_t m ) const
+    { return gsAsConstMatrix<T, Dynamic, Dynamic>(this->data(), n, m); }
+
     /// \brief Returns column \a c of the matrix resized to n x m matrix
     /// This function assumes that the matrix is size n*m, ie. already allocated
     gsAsMatrix<T, Dynamic, Dynamic> reshapeCol( index_t c, index_t n, index_t m )
@@ -481,6 +486,20 @@ public:
 
     /// Converts the matrix to a Column Echelon Form (CEF)
     void cefInPlace() { ref_impl(this->transpose()); }
+    
+    std::string printSparsity() const
+    {
+        std::ostringstream os;
+        os <<", sparsity: "<< std::fixed << std::setprecision(2)<<"nnz: "<<this->size()
+           <<(double)100*(this->array() != 0).count()/this->size() <<'%'<<"\n";
+        for (index_t i = 0; i!=this->rows(); ++i)
+        {
+            for (index_t j = 0; j!=this->cols(); ++j)
+                os<< ( 0 == this->coeff(i,j) ? "\u00B7" : "x");
+            os<<"  "<<(this->row(i).array()!=0).count()<<"\n";
+        }
+        return os.str();
+    }
 
 private:
 
