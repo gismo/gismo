@@ -132,7 +132,7 @@ public:
     /// where \a d is the dimension of the parameter space.
     ///
     ///
-    virtual void computeQuadratureRule(const gsVector<int>& numIntNodes) = 0;
+    virtual void computeQuadratureRule(const gsVector<index_t>& numIntNodes) = 0;
 
     /// \brief Compute the (patch-local) active basis function indices.
     ///

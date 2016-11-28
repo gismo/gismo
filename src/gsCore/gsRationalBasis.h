@@ -571,7 +571,7 @@ void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numK
     gsSparseMatrix<T, RowMajor> transfer;
     m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
 
-    coefs     = transfer * m_weights.asDiagonal() * coefs;
+    coefs     = transfer * ( m_weights.asDiagonal() * coefs);
     m_weights = transfer * m_weights;
     // Alternative way
     // gsBasis<T> * tmp = m_src->clone();
