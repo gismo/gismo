@@ -164,7 +164,7 @@ int main()
     gsInfo <<"Set matrix to all ones setOnes():\n"<< r <<"\n";
     r.setConstant(3);
     gsInfo <<"Set matrix to all a constant setConstant(3):\n"<< r <<"\n";
-    r.setRandom();
+    r.setRandom(2,2); // SLE_11_SP4
     gsInfo <<"Set matrix to random entires setRandom():\n"<< r <<"\n";
 
 #ifndef GISMO_WITH_MPQ // eigenvalues will not work for rational arithmetic types
