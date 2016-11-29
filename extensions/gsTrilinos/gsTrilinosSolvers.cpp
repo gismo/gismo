@@ -29,8 +29,23 @@
 #include "BelosConfigDefs.hpp"
 #include "BelosLinearProblem.hpp"
 #include "BelosEpetraAdapter.hpp"
-#include "BelosBlockGmresSolMgr.hpp"
+
+#include "BelosBiCGStabSolMgr.hpp"
 #include "BelosBlockCGSolMgr.hpp"
+/* #include "BelosBlockGCRODRSolMgr.hpp" */
+#include "BelosBlockGmresSolMgr.hpp"
+#include "BelosFixedPointSolMgr.hpp"
+#include "BelosGCRODRSolMgr.hpp"
+#include "BelosGmresPolySolMgr.hpp"
+#include "BelosLSQRSolMgr.hpp"
+#include "BelosMinresSolMgr.hpp"
+#include "BelosPCPGSolMgr.hpp"
+#include "BelosPseudoBlockCGSolMgr.hpp"
+#include "BelosPseudoBlockGmresSolMgr.hpp"
+#include "BelosPseudoBlockStochasticCGSolMgr.hpp"
+#include "BelosPseudoBlockTFQMRSolMgr.hpp"
+#include "BelosRCGSolMgr.hpp"
+#include "BelosTFQMRSolMgr.hpp"
 
 namespace gismo
 {
@@ -172,12 +187,68 @@ void SuperLU::solveProblem()
 template<int mode> struct BelosSolManager { };
 
 template<>
+struct BelosSolManager<BiCGStab> 
+{ typedef Belos::BiCGStabSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
 struct BelosSolManager<BlockCG> 
 { typedef Belos::BlockCGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+// template<>
+// struct BelosSolManager<BlockGCRODR> 
+// { typedef Belos::BlockGCRODRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
 
 template<>
 struct BelosSolManager<BlockGmres> 
 { typedef Belos::BlockGmresSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<FixedPoint> 
+{ typedef Belos::FixedPointSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<GCRODR> 
+{ typedef Belos::GCRODRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<GmresPoly> 
+{ typedef Belos::GmresPolySolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<LSQR> 
+{ typedef Belos::LSQRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<Minres> 
+{ typedef Belos::MinresSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<PCPG> 
+{ typedef Belos::PCPGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<PseudoBlockCG> 
+{ typedef Belos::PseudoBlockCGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<PseudoBlockGmres> 
+{ typedef Belos::PseudoBlockGmresSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<PseudoBlockStochasticCG> 
+{ typedef Belos::PseudoBlockStochasticCGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<PseudoBlockTFQMR> 
+{ typedef Belos::PseudoBlockTFQMRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<RCG> 
+{ typedef Belos::RCGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+
+template<>
+struct BelosSolManager<TFQMR> 
+{ typedef Belos::TFQMRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
 
 struct BelosSolverPrivate
 {
@@ -208,8 +279,8 @@ BelosSolver<mode>::BelosSolver(const SparseMatrix & A
     // Add default Options
     myBelos->belosList.set( "Block Size", 1);
     
-	// If the matrix is symmetric, specify this in the linear problem. 
-	// my->Problem->setHermitian(); 
+  // If the matrix is symmetric, specify this in the linear problem. 
+  // my->Problem->setHermitian(); 
 }
 
 template<int mode>
@@ -274,8 +345,22 @@ int BelosSolver<mode>::getBlockSize() const
 
 //------------------------------------------
 
-CLASS_TEMPLATE_INST BelosSolver<BlockGmres>;
+CLASS_TEMPLATE_INST BelosSolver<BiCGStab>;
 CLASS_TEMPLATE_INST BelosSolver<BlockCG>;
+// CLASS_TEMPLATE_INST BelosSolver<BlockGCRODR;
+CLASS_TEMPLATE_INST BelosSolver<BlockGmres>;
+CLASS_TEMPLATE_INST BelosSolver<FixedPoint>;
+CLASS_TEMPLATE_INST BelosSolver<GCRODR>;
+CLASS_TEMPLATE_INST BelosSolver<GmresPoly>;
+CLASS_TEMPLATE_INST BelosSolver<LSQR>;
+CLASS_TEMPLATE_INST BelosSolver<Minres>;
+CLASS_TEMPLATE_INST BelosSolver<PCPG>;
+CLASS_TEMPLATE_INST BelosSolver<PseudoBlockCG>;
+CLASS_TEMPLATE_INST BelosSolver<PseudoBlockGmres>;
+CLASS_TEMPLATE_INST BelosSolver<PseudoBlockStochasticCG>;
+CLASS_TEMPLATE_INST BelosSolver<PseudoBlockTFQMR>;
+CLASS_TEMPLATE_INST BelosSolver<RCG>;
+CLASS_TEMPLATE_INST BelosSolver<TFQMR>;
 
 };// namespace solver
 };// namespace trilinos

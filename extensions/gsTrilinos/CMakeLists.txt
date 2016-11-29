@@ -71,7 +71,7 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_Epetra=ON # parallel linear algebra
                        -DTrilinos_ENABLE_Amesos=ON # direct solvers
                        -DTrilinos_ENABLE_AztecOO=ON # direct solvers
-		       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU} # SuperLU solvers
+                       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU} # SuperLU solvers
                        -DTrilinos_ENABLE_Anasazi=ON # eigensolver
                        -DTrilinos_ENABLE_Belos=${GISMO_BUILD_CPP11}
                        -DTrilinos_ENABLE_NOX=ON # non-linear solver
@@ -86,15 +86,15 @@ ExternalProject_Add(Trilinos
                        #-DMPI_BASE_DIR=${TPL_MPI_BASE_DIR}
                        #-DTPL_MPI_LIBRARIES=${MPI_CXX_LIBRARIES} # bug ? 2 elements
                        -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11} # Note: this must be ON, otherwise Trilinos compilation fails. Must be OFF on MS Windows
-	 	       ## Point to specific paths (! no space after "=")
-		       -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
-      		       -DTPL_BLAS_LIBRARIES=${LAPACK_LIBRARIES}
-		       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-		       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-		       #-DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
-          UPDATE_COMMAND ""
-	  #DOWNLOAD_NO_PROGRESS 0
-)
+                       ## Point to specific paths (! no space after "=")
+                       -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
+                       -DTPL_BLAS_LIBRARIES=${LAPACK_LIBRARIES}
+                       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                       #-DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
+                       UPDATE_COMMAND ""
+                       #DOWNLOAD_NO_PROGRESS 0
+      )
       set(TRILINOS_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/include CACHE INTERNAL "")
       set(TRILINOS_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetra${CMAKE_SHARED_LIBRARY_SUFFIX};
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscore${CMAKE_SHARED_LIBRARY_SUFFIX};

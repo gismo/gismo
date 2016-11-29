@@ -24,8 +24,23 @@ namespace trilinos
 
 enum BelosSolverMode
 {
-    BlockGmres = 1, ///< Block GMRES solver
-    BlockCG    = 2 ///< Block GC solver
+    BiCGStab                =  1, ///< BiCGStab solver
+    BlockCG                 =  2, ///< Block GC solver
+/// BlockGCRODR             =  3, ///< Block Recycling GMRES solver
+    BlockGmres              =  4, ///< Block GMRES solver
+    FixedPoint              =  5, ///< Fixed-point solver
+    GCRODR                  =  6, ///< Recycling GMRES solver
+    GmresPoly               =  7, ///< Hybrid block GMRES solver
+    LSQR                    =  8, ///< LSQR solver
+    Minres                  =  9, ///< Minres solver
+    PCPG                    = 10, ///< PCPG solver
+    PseudoBlockCG           = 11, ///< Pseudo Block CG solver
+    PseudoBlockGmres        = 12, ///< Pseudo Block GMRES solver
+    PseudoBlockStochasticCG = 13, ///< Pseudo Block CG solver
+    PseudoBlockTFQMR        = 14, ///< Pseudo Block TFQMR solver
+    RCG                     = 15, ///< RCG solver
+    TFQMR                   = 16  ///< TFQMR solver
+    
 };
 
 /** @namespace gismo::trilinos::solver
