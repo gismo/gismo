@@ -43,6 +43,13 @@ enum BelosSolverMode
     
 };
 
+enum BelosOrthoScheme
+{
+    DGKS = 1, ///< DGKS orthogonalization scheme for iterative solver
+    ICGS = 2, ///< ICGS orthogonalization scheme for iterative solver
+    IMGS = 3  ///< IMGS orthogonalization scheme for iterative solver
+};
+
 /** @namespace gismo::trilinos::solver
 
     @brief This namespace contains wrappers for Trilinos linear
@@ -153,7 +160,40 @@ public:
     /// Blocksize to be used by iterative solver
     void setBlockSize(int bs);
     int getBlockSize() const;
-    
+
+    /// Maximum number of iterations to be used by iterative solver
+    void setMaxIters(int mi);
+    int getMaxIters() const;
+
+    /// Convergence tolerance used to be by iterative solver
+    void setConvTol(double ct);
+    double getConvTol() const;
+
+    /// Deflation Quorum (<= BlockSize) to be used by BiCGStab iterative solver
+    /// : number of converged systems before deflation is allowed
+    void setDeflationQuorum(int dq);
+    int getDeflationQuorum() const;
+
+    /// Hermitian problem type used to be by iterative solver
+    /// : if matrix is symmetric, specifies it in the linear problem
+    void setHermitian();
+
+    /// Adaptive block size to be used used by iterative solver
+    /// : specifying whether the block size can be modified throughout the solve
+    void setAdaptBlockSize(bool bsa);
+    bool getAdaptBlockSize() const;
+   
+    /// Orthogonalization to be used by iterative solver
+    template<int modeOS>
+    void setOrthoScheme();
+
+//    double getOrthoScheme() const;
+
+
+//    /// to be used by iterative solver
+//    void set(double ct);
+//    double get() const;
+   
 private:
 
     void solveProblem();
