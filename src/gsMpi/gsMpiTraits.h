@@ -196,7 +196,7 @@ namespace gismo
         MPI_Datatype types[2] = {MPITraits<T1>::getType(),
                                  MPITraits<T2>::getType()};
         
-        using Pair = std::pair<T1, T2>;
+        typedef std::pair<T1, T2> Pair;
         //static_assert(std::is_standard_layout<Pair>::value, "offsetof() is only defined for standard layout types");
         disp[0] = offsetof(Pair, first);
         disp[1] = offsetof(Pair, second);
