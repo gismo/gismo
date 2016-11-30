@@ -4,7 +4,7 @@
 ## Copyright (C) 2016 - RICAM-Linz.
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.10.2)
+cmake_minimum_required(VERSION 2.8.11)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 OLD)
@@ -48,7 +48,7 @@ find_package(TRILINOS QUIET)
 #
 find_path(TPL_MPI_INCLUDE_DIRS mpi.h ${MPI_INCLUDE_PATH})
 list(GET MPI_CXX_LIBRARIES 0 TPL_MPI_LIBRARY_DIRS)
-get_filename_component(TPL_MPI_LIBRARY_DIRS ${TPL_MPI_LIBRARY_DIRS} DIRECTORY)
+get_filename_component(TPL_MPI_LIBRARY_DIRS ${TPL_MPI_LIBRARY_DIRS} PATH)
 
 if (NOT GISMO_BUILD_CPP11)
 message(WARNING "GISMO_BUILD_CPP11 must be ON for Trilinos extensions to compile ?.")
@@ -58,9 +58,9 @@ endif()
 #enable_language(Fortran)
 
 if (NOT TRILINOS_FOUND)
-set(TRILINOS_VER "12-8-1")
-set(TRILINOS_MD5 "01c0026f1e2050842857db941060ecd5")
-message(STATUS "CMake Will attempt to download and compile Trilinos ${TRILINOS_VER}.")
+set(TRILINOS_VER "12-10-1")
+set(TRILINOS_MD5 "40f28628b63310f9bd17c26d9ebe32b1")
+message(STATUS "Using Trilinos version ${TRILINOS_VER} as an external package.")
 include(ExternalProject)
 ExternalProject_Add(Trilinos
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos

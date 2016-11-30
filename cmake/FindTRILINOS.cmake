@@ -155,15 +155,9 @@ IF(LEN GREATER 1)
 ENDIF(LEN GREATER 1)
 
 
-IF(NOT EPETRA_FOUND)
-	MESSAGE(STATUS "Epetra not found.")
-ENDIF()
-IF(NOT TEUCHOS_FOUND)
-	MESSAGE(STATUS "Epetra not found.")
-ENDIF()
-IF(NOT AZTECOO_FOUND)
-	MESSAGE(STATUS "AztecOO not found.")
-ENDIF()
+#IF(NOT EPETRA_FOUND)
+#	MESSAGE(STATUS "Epetra not found.")
+#ENDIF()
 
 IF(EPETRA_FOUND AND TEUCHOS_FOUND AND AZTECOO_FOUND)
 	SET(TRILINOS_FOUND TRUE)
@@ -190,7 +184,7 @@ IF(TRILINOS_FOUND)
 #	message("here is LIBS: ${TRILINOS_LIBRARIES}")
 #	mark_as_advanced (TRILINOS_LIBRARIES)
 ELSE (TRILINOS_FOUND)
-	MESSAGE(STATUS "Trilinos packages NOT found (define TRILINOS_DIR if installed)")
+	MESSAGE(STATUS "Trilinos packages NOT found in the system (define TRILINOS_DIR if installed)")
 	IF (TRILINOS_FIND_REQUIRED)
  	 MESSAGE(  FATAL_ERROR 
       	 "Could not find Trilinos or one of its packages. 
