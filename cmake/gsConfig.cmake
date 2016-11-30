@@ -47,9 +47,6 @@ if(NOT GISMO_INDEX_TYPE)
    )
 endif()
 
-# Shared pointer
-find_package (TR1 QUIET)
-
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
@@ -91,6 +88,9 @@ if(GISMO_BUILD_CPP11 AND NOT MSVC)
     endif()
   endif()
 endif()
+
+# Shared pointer
+find_package (TR1 QUIET)
 
 # Print compilation statistics (these flags work on GCC compiler only)
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftime-report")

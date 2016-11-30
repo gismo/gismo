@@ -29,8 +29,7 @@ check_cxx_source_compiles(
 
 if (STD_SHARED_PTR_FOUND)
    mark_as_advanced (STD_SHARED_PTR_FOUND)
-   return()
-endif()
+else()
 
 check_cxx_source_compiles(
     "
@@ -44,8 +43,7 @@ check_cxx_source_compiles(
 
 if (TR1_SHARED_PTR_FOUND)
    mark_as_advanced (TR1_SHARED_PTR_FOUND)
-   return()
-endif()
+else()
 
 check_cxx_source_compiles(
     "
@@ -61,8 +59,7 @@ if (TR1_SHARED_PTR_USE_TR1_MEMORY)
    set (TR1_SHARED_PTR_FOUND TRUE)
    mark_as_advanced (TR1_SHARED_PTR_FOUND) 
    mark_as_advanced (TR1_SHARED_PTR_USE_TR1_MEMORY)
-   return()
-endif()
+else()
 
 
 check_cxx_source_compiles(
@@ -77,9 +74,75 @@ check_cxx_source_compiles(
 
 if (BOOST_SHARED_PTR_FOUND)
    mark_as_advanced (BOOST_SHARED_PTR_FOUND)
-   return()
-endif()
+endif(BOOST_SHARED_PTR_FOUND)
+endif(TR1_SHARED_PTR_USE_TR1_MEMORY)
+endif(TR1_SHARED_PTR_FOUND)
+endif(STD_SHARED_PTR_FOUND)
 
+# ---------------------------------------------------------------------------
+# std::unique_ptr<T>
+# ---------------------------------------------------------------------------
+check_cxx_source_compiles(
+    "
+        #include <memory>
+        int main() {
+            std::unique_ptr<int> ptr;
+            return 0;
+        }
+    "
+    STD_UNIQUE_PTR_FOUND)
+
+if (STD_UNIQUE_PTR_FOUND)
+   mark_as_advanced (STD_UNIQUE_PTR_FOUND)
+else()
+
+# TR1 does not define a unique_ptr
+#check_cxx_source_compiles(
+#    "
+#        #include <memory>
+#        int main() {
+#            std::tr1::unique_ptr<int> ptr;
+#            return 0;
+#        }
+#    "
+#    TR1_UNIQUE_PTR_FOUND)
+#
+#if (TR1_UNIQUE_PTR_FOUND)
+#   mark_as_advanced (TR1_UNIQUE_PTR_FOUND)
+#else()
+#
+#check_cxx_source_compiles(
+#    "
+#        #include <tr1/memory>
+#        int main() {
+#            std::tr1::unique_ptr<int> ptr;
+#            return 0;
+#        }
+#    "
+#    TR1_UNIQUE_PTR_USE_TR1_MEMORY)
+#
+#if (TR1_UNIQUE_PTR_USE_TR1_MEMORY)
+#   set (TR1_UNIQUE_PTR_FOUND TRUE)
+#   mark_as_advanced (TR1_UNIQUE_PTR_FOUND) 
+#   mark_as_advanced (TR1_UNIQUE_PTR_USE_TR1_MEMORY)
+#else()
+
+check_cxx_source_compiles(
+    "
+        #include <boost/move/unique_ptr.hpp>
+        int main() {
+            boost::movelib::unique_ptr<int> ptr;
+            return 0;
+        }
+    "
+    BOOST_UNIQUE_PTR_FOUND)
+
+if (BOOST_UNIQUE_PTR_FOUND)
+   mark_as_advanced (BOOST_UNIQUE_PTR_FOUND)
+endif(BOOST_UNIQUE_PTR_FOUND)
+#endif(TR1_UNIQUE_PTR_USE_TR1_MEMORY)
+#endif(TR1_UNIQUE_PTR_FOUND)
+endif(STD_UNIQUE_PTR_FOUND)
 
 # ---------------------------------------------------------------------------
 # std::tr1::unordered_map<K, V>
