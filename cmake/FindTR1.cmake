@@ -63,7 +63,7 @@ else()
 
 
 check_cxx_source_compiles(
-    "
+    "        
         #include <boost/shared_ptr.hpp>
         int main() {
             boost::shared_ptr<int> ptr;
@@ -96,37 +96,11 @@ if (STD_UNIQUE_PTR_FOUND)
    mark_as_advanced (STD_UNIQUE_PTR_FOUND)
 else()
 
-# TR1 does not define a unique_ptr
-#check_cxx_source_compiles(
-#    "
-#        #include <memory>
-#        int main() {
-#            std::tr1::unique_ptr<int> ptr;
-#            return 0;
-#        }
-#    "
-#    TR1_UNIQUE_PTR_FOUND)
-#
-#if (TR1_UNIQUE_PTR_FOUND)
-#   mark_as_advanced (TR1_UNIQUE_PTR_FOUND)
-#else()
-#
-#check_cxx_source_compiles(
-#    "
-#        #include <tr1/memory>
-#        int main() {
-#            std::tr1::unique_ptr<int> ptr;
-#            return 0;
-#        }
-#    "
-#    TR1_UNIQUE_PTR_USE_TR1_MEMORY)
-#
-#if (TR1_UNIQUE_PTR_USE_TR1_MEMORY)
-#   set (TR1_UNIQUE_PTR_FOUND TRUE)
-#   mark_as_advanced (TR1_UNIQUE_PTR_FOUND) 
-#   mark_as_advanced (TR1_UNIQUE_PTR_USE_TR1_MEMORY)
-#else()
+# TR1 does not define unique_ptr
+# ...
 
+# boost::movelib::unique_ptr requires boost libraries >= 1.57.0
+# see https://dieboostcppbibliotheken.de/boost.smartpointers (German)
 check_cxx_source_compiles(
     "
         #include <boost/move/unique_ptr.hpp>
