@@ -29,10 +29,10 @@ class gsLinearOperator
 public:
 
     /// Shared pointer for gsLinearOperator
-    typedef typename memory::shared<gsLinearOperator>::ptr Ptr;
+    typedef typename memory::shared_ptr<gsLinearOperator> Ptr;
 
     /// Unique pointer for gsLinearOperator   
-    typedef typename memory::unique<gsLinearOperator>::ptr uPtr;
+    typedef memory::unique_ptr<gsLinearOperator> uPtr;
 
     /// Identity operator
     static gsIdentityOp<T> Identity(const index_t dim) {return gsIdentityOp<T>(dim); }
@@ -71,10 +71,10 @@ class gsScaledOp : public gsLinearOperator<T>
 {
 public:
     /// Shared pointer for gsScaledOp
-    typedef typename memory::shared<gsScaledOp>::ptr Ptr;
+    typedef typename memory::shared_ptr<gsScaledOp> Ptr;
 
     /// Unique pointer for gsScaledOp
-    typedef typename memory::unique<gsScaledOp>::ptr uPtr;
+    typedef memory::unique_ptr<gsScaledOp> uPtr;
 
     /// Shared pointer for gsLinearOperator
     typedef typename gsLinearOperator<T>::Ptr BasePtr;
@@ -113,10 +113,10 @@ class gsIdentityOp : public gsLinearOperator<T>
 public:
 
     /// Shared pointer for gsIdentityOp
-    typedef typename memory::shared<gsIdentityOp>::ptr Ptr;
+    typedef typename memory::shared_ptr<gsIdentityOp> Ptr;
 
     /// Unique pointer for gsIdentityOp   
-    typedef typename memory::unique<gsIdentityOp>::ptr uPtr;
+    typedef memory::unique_ptr<gsIdentityOp> uPtr;
     
     /// Constructor taking the dimension of the identity operator
     gsIdentityOp(index_t dim) : m_dim(dim) {}

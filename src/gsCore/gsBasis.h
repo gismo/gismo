@@ -85,10 +85,10 @@ public:
     typedef gsFunctionSet<T> Base;
 
     /// Shared pointer for gsBasis
-    typedef typename memory::shared< gsBasis >::ptr Ptr;
+    typedef memory::shared_ptr< gsBasis > Ptr;
 
     /// Unique pointer for gsBasis   
-    typedef typename memory::unique< gsBasis >::ptr uPtr;
+    typedef memory::unique_ptr< gsBasis > uPtr;
 
     typedef T Scalar_t;
 
@@ -96,7 +96,7 @@ public:
 
     typedef typename gsMatrix<T>::uPtr        uMatrixPtr;
 
-    typedef typename memory::unique< gsDomainIterator<T> >::ptr domainIter;
+    typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
 
 public:
 

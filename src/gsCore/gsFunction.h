@@ -61,10 +61,10 @@ public:
     typedef gsFunctionSet<T> Base;
 
     /// Shared pointer for gsFunction
-    typedef typename memory::shared< gsFunction >::ptr Ptr;
+    typedef memory::shared_ptr< gsFunction > Ptr;
 
     /// Autopointer for gsFunction
-    typedef typename memory::shared< gsFunction >::ptr uPtr;
+    typedef memory::shared_ptr< gsFunction > uPtr;
 
     typedef typename gsMatrix<T>::uPtr       uMatrixPtr;
 

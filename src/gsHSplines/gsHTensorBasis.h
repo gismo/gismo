@@ -77,7 +77,7 @@ class gsHTensorBasis: public gsBasis<T>
 
 public:
     /// Shared pointer for gsHTensorBasis
-    typedef typename memory::shared< gsHTensorBasis >::ptr Ptr;
+    typedef memory::shared_ptr< gsHTensorBasis > Ptr;
 
     typedef gsHTensorBasis<d,T> Self_t;
     

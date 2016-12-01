@@ -90,7 +90,7 @@ public:
     static const int Dim = 1;
 
     /// Shared pointer for gsTensorBSplineBasis
-    typedef typename memory::shared< Self_t >::ptr Ptr;
+    typedef memory::shared_ptr< Self_t > Ptr;
 
     static Ptr makeShared ( const KnotVectorType & KV )
     { return Ptr( new Self_t(KV) ); }

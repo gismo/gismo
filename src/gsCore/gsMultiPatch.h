@@ -35,8 +35,8 @@ class gsMultiPatch : public gsBoxTopology, public gsFunctionSet<T>
 
 public:
     /// Shared pointer for gsMultiPatch
-    typedef typename memory::shared< gsMultiPatch >::ptr Ptr;
-    typedef typename memory::unique<gsMultiPatch>::ptr uPtr;
+    typedef memory::shared_ptr< gsMultiPatch > Ptr;
+    typedef memory::unique_ptr<gsMultiPatch> uPtr;
     typedef gsBoxTopology Base;
     typedef std::vector<gsGeometry<T> *> PatchContainer;
 

@@ -49,10 +49,10 @@ public:
     typedef gsBSplineBasis<T> Basis;
 
     /// Shared pointer for gsBSpline
-    typedef typename memory::shared< gsBSpline<T> >::ptr Ptr;
+    typedef memory::shared_ptr< gsBSpline<T> > Ptr;
 
     /// Unique pointer for gsBSpline
-    typedef typename memory::unique<gsBSpline>::ptr uPtr;
+    typedef memory::unique_ptr<gsBSpline> uPtr;
     
 public:
     

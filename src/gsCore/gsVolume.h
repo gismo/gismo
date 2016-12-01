@@ -32,7 +32,7 @@ class gsVolume : public gsGeometry<T>
 
 public: 
   /// Shared pointer for gsVolume
-    typedef typename memory::shared< gsVolume >::ptr Ptr;
+    typedef memory::shared_ptr< gsVolume > Ptr;
 //  typedef memory::unique_ptr< gsVolume > LocalPtr;
 
     typedef T Scalar_t;

@@ -214,8 +214,8 @@ public:
     typedef typename bcData::iterator bciterator;
     typedef typename bcData::const_iterator const_bciterator;
 
-    typedef typename memory::shared<gsBoundaryConditions>::ptr Ptr;
-    typedef typename memory::unique<gsBoundaryConditions>::ptr uPtr;
+    typedef memory::shared_ptr<gsBoundaryConditions> Ptr;
+    typedef memory::unique_ptr<gsBoundaryConditions> uPtr;
 
     typedef typename boundary_condition<T>::function_ptr function_ptr;
 

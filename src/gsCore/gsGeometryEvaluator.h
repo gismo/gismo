@@ -41,9 +41,9 @@ class gsGeometryEvaluator
 {
 public:
     /// Shared pointer for gsDomainIterator
-    typedef typename memory::shared< gsGeometryEvaluator >::ptr Ptr;
+    typedef memory::shared_ptr< gsGeometryEvaluator > Ptr;
     /// Unique pointer for gsDomainIterator
-    typedef typename memory::unique< gsGeometryEvaluator >::ptr uPtr;
+    typedef memory::unique_ptr< gsGeometryEvaluator > uPtr;
     
 public:
     /**

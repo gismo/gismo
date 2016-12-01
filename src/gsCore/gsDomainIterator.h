@@ -67,9 +67,9 @@ class gsDomainIterator
 {
 public:
     /// Shared pointer for gsDomainIterator
-    typedef typename memory::shared< gsDomainIterator >::ptr Ptr;
+    typedef memory::shared_ptr< gsDomainIterator > Ptr;
     /// Unique pointer for gsDomainIterator
-    typedef typename memory::unique< gsDomainIterator >::ptr uPtr;
+    typedef memory::unique_ptr< gsDomainIterator > uPtr;
 
 public:
 

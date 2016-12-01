@@ -55,8 +55,8 @@ template<class T>
 class gsField
 {
 public:
-    typedef typename memory::shared< gsField >::ptr  Ptr;// todo: remove
-    typedef typename memory::unique< gsField >::ptr  uPtr;// todo: remove
+    typedef memory::shared_ptr< gsField >  Ptr;// todo: remove
+    typedef memory::unique_ptr< gsField >  uPtr;// todo: remove
 
     gsField(): m_patches(NULL) { }
 

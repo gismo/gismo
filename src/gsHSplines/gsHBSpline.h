@@ -42,7 +42,7 @@ public:
     typedef gsHBSplineBasis<d,T> Basis;
     
     /// Shared pointer for gsHBSpline
-    typedef typename memory::shared< gsHBSpline<d,T> >::ptr Ptr;
+    typedef memory::shared_ptr< gsHBSpline<d,T> > Ptr;
     
     typedef typename 
     conditional<d==1, gsConstantFunction<T>, gsHBSpline<d-1,T>

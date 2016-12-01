@@ -133,6 +133,7 @@ public:
         typedef typename Object::const_iterator bc_it;
 
         std::vector<typename gsFunction<T>::Ptr> fun;
+        //gsSortedVector<typename gsFunction<T>::Ptr> fun;
         typedef typename std::vector<const boundary_condition<T>*> bctype_vec;
         typedef typename std::map<int, bctype_vec> bctype_map;
         std::map<std::string, bctype_map> fi;
@@ -152,6 +153,8 @@ public:
                 }
                 int index = std::find(fun.begin(), fun.end(), ptr)
                         - fun.begin();
+//                fun.push_sorted_unique(ptr);
+//                int index = fun.getIndex(ptr);
                 std::vector<const boundary_condition<T>*> vec = map[index];
                 const boundary_condition<T>* b = &(*bc);
                 vec.push_back(b);

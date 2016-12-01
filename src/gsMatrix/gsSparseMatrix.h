@@ -157,10 +157,10 @@ public:
     typedef gsMatrixBlockView<Base> BlockView;
 
     /// Shared pointer for gsSparseMatrix
-    typedef typename memory::shared<gsSparseMatrix>::ptr Ptr;
+    typedef memory::shared_ptr<gsSparseMatrix> Ptr;
 
     /// Unique pointer for gsSparseMatrix
-    typedef typename memory::unique<gsSparseMatrix>::ptr uPtr;
+    typedef memory::unique_ptr<gsSparseMatrix> uPtr;
 
     /// Type of the full view of the matrix, for the case when only
     /// the lower diagonal part is stored

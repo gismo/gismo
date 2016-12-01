@@ -32,17 +32,17 @@ namespace gismo
 template <class MatrixType>
 class gsMatrixOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
-    typedef typename memory::shared<MatrixType>::ptr MatrixPtr;
+    typedef memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested           NestedMatrix;
 
 public:
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsMatrixOp
-    typedef typename memory::shared<gsMatrixOp>::ptr Ptr;
+    typedef memory::shared_ptr<gsMatrixOp> Ptr;
 
     /// Unique pointer for gsMatrixOp   
-    typedef typename memory::unique<gsMatrixOp>::ptr uPtr;
+    typedef memory::unique_ptr<gsMatrixOp> uPtr;
     
     /// @brief Constructor taking a reference
     ///
@@ -159,10 +159,10 @@ public:
     typedef typename SolverType::MatrixType MatrixType;
     
     /// Shared pointer for gsSolverOp
-    typedef typename memory::shared<gsSolverOp>::ptr Ptr;
+    typedef memory::shared_ptr<gsSolverOp> Ptr;
 
     /// Unique pointer for gsSolverOp   
-    typedef typename memory::unique<gsSolverOp>::ptr uPtr;
+    typedef memory::unique_ptr<gsSolverOp> uPtr;
     
     
     /// Constructor taking a matrix

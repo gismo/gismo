@@ -80,7 +80,7 @@ public:
 
     /// Shared pointer for gsTemplate
     typedef gsBoxTopology Base;
-    typedef typename memory::shared< gsTemplate >::ptr Ptr;
+    typedef memory::shared_ptr< gsTemplate > Ptr;
     //typedef memory::unique_ptr< gsTemplate > LocalPtr;
 
 public:

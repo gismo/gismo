@@ -49,17 +49,17 @@ GISMO_EXPORT void gaussSeidelSingleBlock(const gsSparseMatrix<real_t>& A, gsMatr
 template <typename MatrixType>
 class gsRichardsonOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
-    typedef typename memory::shared<MatrixType>::ptr MatrixPtr;
+    typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
 
 public:
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsRichardsonOp
-    typedef typename memory::shared< gsRichardsonOp >::ptr Ptr;
+    typedef typename memory::shared_ptr< gsRichardsonOp > Ptr;
 
     /// Unique pointer for gsRichardsonOp   
-    typedef typename memory::unique< gsRichardsonOp >::ptr uPtr;    
+    typedef memory::unique_ptr< gsRichardsonOp > uPtr;    
 
     /// @brief Constructor with given matrix
     explicit gsRichardsonOp(const MatrixType& _mat)
@@ -126,17 +126,17 @@ typename gsRichardsonOp<Derived>::Ptr makeRichardsonOp(const Eigen::EigenBase<De
 template <typename MatrixType>
 class gsJacobiOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
-    typedef typename memory::shared<MatrixType>::ptr MatrixPtr;
+    typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
 
 public:
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsJacobiOp
-    typedef typename memory::shared< gsJacobiOp >::ptr Ptr;
+    typedef typename memory::shared_ptr< gsJacobiOp > Ptr;
 
     /// Unique pointer for gsJacobiOp   
-    typedef typename memory::unique< gsJacobiOp >::ptr uPtr;    
+    typedef memory::unique_ptr< gsJacobiOp > uPtr;    
 
     /// @brief Constructor with given matrix
     explicit gsJacobiOp(const MatrixType& _mat)
@@ -205,17 +205,17 @@ typename gsJacobiOp<Derived>::Ptr makeJacobiOp(const Eigen::EigenBase<Derived>& 
 template <typename MatrixType>
 class gsGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
-    typedef typename memory::shared<MatrixType>::ptr MatrixPtr;
+    typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
 
 public:
     typedef typename MatrixType::Scalar T;
 
     /// Shared pointer for gsGaussSeidelOp
-    typedef typename memory::shared< gsGaussSeidelOp >::ptr Ptr;
+    typedef typename memory::shared_ptr< gsGaussSeidelOp > Ptr;
 
     /// Unique pointer for gsGaussSeidelOp   
-    typedef typename memory::unique< gsGaussSeidelOp >::ptr uPtr;   
+    typedef memory::unique_ptr< gsGaussSeidelOp > uPtr;   
     
     /// @brief Constructor with given matrix
     explicit gsGaussSeidelOp(const MatrixType& _mat)
@@ -277,17 +277,17 @@ typename gsGaussSeidelOp<Derived>::Ptr makeGaussSeidelOp(const Eigen::EigenBase<
 template <typename MatrixType>
 class gsSymmetricGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
-    typedef typename memory::shared<MatrixType>::ptr MatrixPtr;
+    typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested          NestedMatrix;
 
 public:
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsSymmetricGaussSeidelOp
-    typedef typename memory::shared< gsSymmetricGaussSeidelOp >::ptr Ptr;
+    typedef typename memory::shared_ptr< gsSymmetricGaussSeidelOp > Ptr;
 
     /// Unique pointer for gsSymmetricGaussSeidelOp   
-    typedef typename memory::unique< gsSymmetricGaussSeidelOp >::ptr uPtr; 
+    typedef memory::unique_ptr< gsSymmetricGaussSeidelOp > uPtr; 
     
     /// @brief Constructor with given matrix
     explicit gsSymmetricGaussSeidelOp(const MatrixType& _mat)

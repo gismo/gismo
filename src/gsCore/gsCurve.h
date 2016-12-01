@@ -32,7 +32,7 @@ class gsCurve : public gsGeometry<T>
     
 public: 
     /// Shared pointer for gsCurve
-    typedef typename memory::shared< gsCurve >::ptr Ptr;
+    typedef memory::shared_ptr< gsCurve > Ptr;
     //typedef memory::unique_ptr< gsCurve > LocalPtr;
     
     typedef T Scalar_t;

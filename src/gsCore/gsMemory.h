@@ -24,6 +24,7 @@
 #include <tr1/memory>
 #elif defined(BOOST_SHARED_PTR_FOUND)
 #include <boost/shared_ptr.hpp>
+#include <boost/move/unique_ptr.hpp>
 #endif
 
 namespace gismo {
@@ -50,6 +51,32 @@ using NOT_FOUND::shared_ptr;
 #endif 
 //*/
 
+#ifdef STD_UNIQUE_PTR_FOUND
+using std::unique_ptr;
+//#elif defined(TR1_UNIQUE_PTR_FOUND)
+//#using std::tr1::unique_ptr;
+#elif defined(BOOST_UNIQUE_PTR_FOUND)
+using boost::movelib::unique_ptr;
+#else
+template<typename T>
+class unique_ptr : public std::auto_ptr<T>
+{
+    typedef std::auto_ptr<T> Base;
+    typedef std::auto_ptr_ref<T> unique_ptr_ref;
+public :
+    typedef T X;
+
+    explicit unique_ptr(X* p = 0):Base(p) { }
+
+    unique_ptr(unique_ptr& r ):Base(r) { }
+
+    unique_ptr(unique_ptr_ref m):Base(m) { }
+
+    using Base::operator=;
+
+};
+#endif
+
 /** \brief Adaptor for a shared pointer
 
 usage:
@@ -63,15 +90,7 @@ shared<int>::ptr B;
 template <typename C>
 struct shared
 {
-#ifdef STD_SHARED_PTR_FOUND
-    typedef std::shared_ptr<C> ptr;
-#elif defined(TR1_SHARED_PTR_FOUND)
-    typedef std::tr1::shared_ptr<C> ptr;
-#elif defined(BOOST_SHARED_PTR_FOUND)
-    typedef boost::shared_ptr<C> ptr;
-#else 
-    using NOT_FOUND::shared_ptr;
-#endif
+    typedef shared_ptr<C> ptr;
 };
 
 /** \brief Adaptor for a unique pointer
@@ -87,11 +106,7 @@ unique<int>::ptr B;
 template <typename C>
 struct unique
 {
-#if(__cplusplus < 201103L)
-    typedef std::auto_ptr<C>   ptr;
-#else
-    typedef std::unique_ptr<C> ptr;
-#endif
+    typedef unique_ptr<C> ptr;
 };
 
 /// \brief Deleter function that does not delete an object pointer

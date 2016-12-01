@@ -46,10 +46,10 @@ public:
     typedef T Scalar_t;
 
     /// Shared pointer for gsFunctionExpr
-    typedef typename memory::shared< gsFunctionExpr >::ptr Ptr;
+    typedef memory::shared_ptr< gsFunctionExpr > Ptr;
 
     /// Auto pointer for gsFunctionExpr
-    typedef typename memory::unique<gsFunctionExpr>::ptr uPtr;
+    typedef memory::unique_ptr<gsFunctionExpr> uPtr;
 
 public:
     
@@ -169,6 +169,12 @@ public:
     
     // see gsFunction for documentation  
     std::ostream &print(std::ostream &os) const;
+
+    // enable sorting of gsFunctionExpr objects
+    //bool operator < (const gsFunctionExpr<T>& other) const;
+
+    // enable comparison of gsFunctionExpr objects
+    //bool operator != (const gsFunctionExpr<T>& other) const;
   
 // Data members
 private:

@@ -99,10 +99,10 @@ public:
     typedef const Eigen::Ref<const Base> constRef;
 
     /// Shared pointer for gsMatrix
-    typedef typename memory::shared<gsMatrix>::ptr Ptr;
+    typedef memory::shared_ptr<gsMatrix> Ptr;
 
     /// Unique pointer for gsMatrix
-    typedef typename memory::unique<gsMatrix>::ptr uPtr;
+    typedef memory::unique_ptr<gsMatrix> uPtr;
     
     /// Matrix return type, to be used as return type for function
     /// returning matrix objects

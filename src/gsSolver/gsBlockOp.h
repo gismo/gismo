@@ -45,13 +45,13 @@ class GISMO_EXPORT gsBlockOp : public gsLinearOperator<T>
 public:
 
     /// Shared pointer for gsBlockOp
-    typedef typename memory::shared< gsBlockOp<T> >::ptr Ptr;
+    typedef memory::shared_ptr< gsBlockOp<T> > Ptr;
 
     /// Unique pointer for gsBlockOp
-    typedef typename memory::unique< gsBlockOp<T> >::ptr uPtr;
+    typedef memory::unique_ptr< gsBlockOp<T> > uPtr;
     
     /// Base class
-    typedef typename memory::shared< gsLinearOperator<T> >::ptr BasePtr;    
+    typedef memory::shared_ptr< gsLinearOperator<T> > BasePtr;
     
     /// Constructor. Takes the number of blocks (nRows, nCols). Provide the contents of the blocks with addOperator
     gsBlockOp(index_t nRows, index_t nCols);

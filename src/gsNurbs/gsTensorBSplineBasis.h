@@ -63,7 +63,7 @@ public:
     typedef typename Base::const_iterator  const_iterator;
 
     /// Shared pointer for gsTensorBSplineBasis
-    typedef typename memory::shared< Self_t >::ptr Ptr;
+    typedef memory::shared_ptr< Self_t > Ptr;
 
 public:
 

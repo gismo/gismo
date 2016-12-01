@@ -52,10 +52,10 @@ public:
     typedef gsMatrixBlockView<Base> BlockView;
 
     /// Shared pointer for gsVector
-    typedef typename memory::shared< gsVector >::ptr Ptr;
+    typedef memory::shared_ptr< gsVector > Ptr;
 
     /// Unique pointer for gsVector
-    typedef typename memory::unique< gsVector >::ptr uPtr;
+    typedef memory::unique_ptr< gsVector > uPtr;
 
     // Type for copying a vector as a permutation matrix
     typedef Eigen::PermutationMatrix<_Rows,Base::SizeAtCompileTime,index_t> Permutation;
@@ -210,7 +210,7 @@ public:
     typedef Eigen::Matrix<T,3,1> Base ;
 
     /// Shared pointer for gsVector3d
-    typedef typename memory::shared< gsVector3d >::ptr Ptr;
+    typedef memory::shared_ptr< gsVector3d > Ptr;
 
 public:
 
