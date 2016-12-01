@@ -24,6 +24,9 @@
 #include <tr1/memory>
 #elif defined(BOOST_SHARED_PTR_FOUND)
 #include <boost/shared_ptr.hpp>
+#endif
+
+#ifdef BOOST_UNIQUE_PTR_FOUND
 #include <boost/move/unique_ptr.hpp>
 #endif
 
@@ -77,7 +80,7 @@ public :
 };
 #endif
 
-/** \brief Adaptor for a shared pointer
+/* \brief Adaptor for a shared pointer
 
 usage:
 \code
@@ -93,7 +96,7 @@ struct shared
     typedef shared_ptr<C> ptr;
 };
 
-/** \brief Adaptor for a unique pointer
+/* \brief Adaptor for a unique pointer
 
 usage:
 \code
