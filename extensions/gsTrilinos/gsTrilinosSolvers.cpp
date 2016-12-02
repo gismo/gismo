@@ -263,7 +263,7 @@ template<int mode>
 BelosSolver<mode>::BelosSolver(const SparseMatrix & A
                          //, const std::string solver_teuchosUser
     )
-: Base(A), myBelos(new BelosSolverPrivate), maxiters(500)
+: Base(A), myBelos(new BelosSolverPrivate), maxiters(200)
 { 
     // Note: By default the string variable SolverTeuchosUser = "Belos". 
     // This can be adapted to get different values if other solvers with 
@@ -279,19 +279,12 @@ BelosSolver<mode>::BelosSolver(const SparseMatrix & A
   // If the matrix is symmetric, specify this in the linear problem. 
   // myBelos->Problem.setHermitian();
   
-    // Print the valid parameters for the solver.
-    Teuchos::RCP<Teuchos::ParameterList> PL = 
-             Teuchos::parameterList(*myBelos->Solver->getValidParameters());
-    std::cout << "\n\nValid parameters of the current Belos solver: \n" 
-              << *PL << std::endl;
-
-//    // Add default Options
-//    myBelos->belosList.set( "Block Size", 1);
-//    // Teuchos::ScalarTraits<double>::magnitudeType tol = 1.0e-5;
-//    double tol = 1.0e-5;
-//    myBelos->belosList.set( "Maximum Iterations", maxiters );  // Maximum number of iterations allowed
-//    myBelos->belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
-
+    // Add default Options
+    myBelos->belosList.set( "Block Size", 1);
+    // Teuchos::ScalarTraits<double>::magnitudeType tol = 1.0e-5;
+    double tol = 1.0e-5;
+    myBelos->belosList.set( "Maximum Iterations", maxiters );  // Maximum number of iterations allowed
+    myBelos->belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
 }
 
 template<int mode>
@@ -336,51 +329,31 @@ void BelosSolver<mode>::solveProblem()
 }
 
 template<int mode>
-void BelosSolver<mode>::setBlockSize(int bs)
+void BelosSolver<mode>::print_ValidParams()
 {
-    myBelos->belosList.set( "Block Size", bs);
+    // Print the valid parameters for the solver.
+    Teuchos::RCP<Teuchos::ParameterList> PL = Teuchos::parameterList(
+                                    *myBelos->Solver->getValidParameters());
+    gsInfo << "\nValid parameters of the current Belos solver: \n" << *PL << "\n";
+}
+
+
+template<int mode>
+void BelosSolver<mode>::set(const std::string & name, const int & value)
+{
+    myBelos->belosList.set( name, value );
 }
 
 template<int mode>
-int BelosSolver<mode>::getBlockSize() const
+void BelosSolver<mode>::set(const std::string & name, const double & value)
 {
-    return myBelos->belosList.get<int>("Block Size");
+    myBelos->belosList.set( name, value );
 }
 
 template<int mode>
-void BelosSolver<mode>::setMaxIters(int mi)
+void BelosSolver<mode>::set(const std::string & name, const std::string & value)
 {
-    myBelos->belosList.set( "Maximum Iterations", mi );
-}
-
-template<int mode>
-int BelosSolver<mode>::getMaxIters() const
-{
-    return myBelos->belosList.get<int>("Maximum Iterations");
-}
-
-template<int mode>
-void BelosSolver<mode>::setConvTol(double ct)
-{
-    myBelos->belosList.set( "Convergence Tolerance", ct);
-}
-
-template<int mode>
-double BelosSolver<mode>::getConvTol() const
-{
-    return myBelos->belosList.get<double>("Convergence Tolerance");
-}
-
-template<int mode>
-void BelosSolver<mode>::setDeflationQuorum(int dq)
-{
-    myBelos->belosList.set( "Deflation Quorum", dq);
-}
-
-template<int mode>
-int BelosSolver<mode>::getDeflationQuorum() const
-{
-    return myBelos->belosList.get<int>("Deflation Quorum");
+    myBelos->belosList.set( name, value );
 }
 
 template<int mode>
@@ -389,52 +362,18 @@ void BelosSolver<mode>::setHermitian()
     myBelos->Problem.setHermitian();
 }
 
-template<int mode>
-void BelosSolver<mode>::setAdaptBlockSize(bool bsa)
-{
-    myBelos->belosList.set( "Adaptive Block Size", bsa);
-}
-
-template<int mode>
-bool BelosSolver<mode>::getAdaptBlockSize() const
-{
-    return myBelos->belosList.get<bool>("Adaptive Block Size");
-}
-
-template<int mode> struct OrthoSchemeMode 
-{ const static std::string OrthoScheme_str; };
-
-template<>
-const std::string OrthoSchemeMode<DGKS>::OrthoScheme_str = "DGKS"; 
-
-template<>
-const std::string OrthoSchemeMode<ICGS>::OrthoScheme_str = "ICGS"; 
-
-template<>
-const std::string OrthoSchemeMode<IMGS>::OrthoScheme_str = "IMGS"; 
-
-template<int mode>
-template<int modeOS>
-void BelosSolver<mode>::setOrthoScheme()
-{
-    myBelos->belosList.set( "Orthogonalization", 
-                            OrthoSchemeMode<modeOS>::OrthoScheme_str);
-}
-
-
 //template<int mode>
-//void BelosSolver<mode>::
+//int BelosSolver<mode>::getNumIters()
 //{
-//    myBelos->belosList.set( "", );
-//}
-//
-//template<int mode>
-// BelosSolver<mode>:: const
-//{
-//    return myBelos->belosList.get<>("");
+//    return myBelos->Solver->getNumIters();
 //}
 
-
+template<int mode>
+void BelosSolver<mode>::print_NumIters()
+{
+    gsInfo << "Number of iterations performed: " 
+           << myBelos->Solver->getNumIters() << "\n";
+}
 
 //------------------------------------------
 
@@ -454,10 +393,6 @@ CLASS_TEMPLATE_INST BelosSolver<PseudoBlockStochasticCG>;
 CLASS_TEMPLATE_INST BelosSolver<PseudoBlockTFQMR>;
 CLASS_TEMPLATE_INST BelosSolver<RCG>;
 CLASS_TEMPLATE_INST BelosSolver<TFQMR>;
-
-TEMPLATE_INST void BelosSolver<BlockCG>::setOrthoScheme<DGKS>();
-TEMPLATE_INST void BelosSolver<BlockCG>::setOrthoScheme<ICGS>();
-TEMPLATE_INST void BelosSolver<BlockCG>::setOrthoScheme<IMGS>();
 
 };// namespace solver
 };// namespace trilinos
