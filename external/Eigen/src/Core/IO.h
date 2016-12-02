@@ -105,7 +105,6 @@ class WithFormat
     }
 
   protected:
-    //const  G+smo warning fix
     typename ExpressionType::Nested m_matrix;
     IOFormat m_format;
 };

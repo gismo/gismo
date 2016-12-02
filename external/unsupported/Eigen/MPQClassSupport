@@ -16,23 +16,17 @@
 namespace Eigen 
 {  	
 
-/*
-  // Specialize for mpq_class
   namespace numext 
   {
-  EIGEN_DEVICE_FUNC
-  EIGEN_ALWAYS_INLINE mpq_class mini(const mpq_class& x, const mpq_class& y)
-  { return ::min(x,y); }
-  
-  EIGEN_DEVICE_FUNC
-  EIGEN_ALWAYS_INLINE mpq_class maxi(const mpq_class& x, const mpq_class& y)
-  { return ::max(x,y); }
+    // Specialize for mpq_class
+   template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE
+   mpq_class mini(const mpq_class& x, const mpq_class& y)
+   { return ::min(x,y); }
+    // Specialize for mpq_class
+   template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE 
+   mpq_class maxi(const mpq_class& x, const mpq_class& y)
+   { return ::max(x,y); }
   }
-*/
-
-// AM: to do
-//template <class U>
-//template<> struct NumTraits<__gmp_expr<mpq_t, U> >
 
   template<> struct NumTraits<mpq_class>
     : GenericNumTraits<mpq_class>
@@ -98,7 +92,6 @@ namespace Eigen
   template<> inline int cast<mpq_class,int>(const mpq_class& x)
   { return x.get_d(); }
 
-  // G+Smo
   template<> inline size_t cast<mpq_class,size_t>(const mpq_class& x)
   { return x.get_d(); }
 
@@ -176,7 +169,6 @@ cdiv(const __gmp_expr<mpq_t, U> & xr,
      const __gmp_expr<mpq_t, W> & yr,
      const __gmp_expr<mpq_t, Y> & yi)
 {
-  //using std::abs;
   mpq_class r,d;
   if (abs(yr) > abs(yi))
   {

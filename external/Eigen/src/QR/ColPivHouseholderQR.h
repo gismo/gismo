@@ -506,7 +506,6 @@ void ColPivHouseholderQR<MatrixType>::computeInPlace()
     m_colNormsUpdated.coeffRef(k) = m_colNormsDirect.coeffRef(k);
   }
 
-  // G+Smo
   RealScalar threshold_helper =  numext::abs2<Scalar>(m_colNormsUpdated.maxCoeff() * NumTraits<Scalar>::epsilon()) / RealScalar(rows);
   RealScalar norm_downdate_threshold = numext::sqrt(NumTraits<Scalar>::epsilon());
 
@@ -558,7 +557,7 @@ void ColPivHouseholderQR<MatrixType>::computeInPlace()
         RealScalar temp = abs(m_qr.coeffRef(k, j)) / m_colNormsUpdated.coeffRef(j);
         temp = (RealScalar(1) + temp) * (RealScalar(1) - temp);
         temp = temp < 0 ? 0 : temp;
-        RealScalar temp2 = temp * numext::abs2<Scalar>(m_colNormsUpdated.coeffRef(j) /   // G+Smo
+        RealScalar temp2 = temp * numext::abs2<Scalar>(m_colNormsUpdated.coeffRef(j) /
                                                        m_colNormsDirect.coeffRef(j));
         if (temp2 <= norm_downdate_threshold) {
           // The updated norm has become too inaccurate so re-compute the column

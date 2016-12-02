@@ -29,7 +29,7 @@
 #endif
 
 #if defined(GISMO_WITH_MPQ)
-#include <unsupported/Eigen/MPGmpqSupport.h>
+#include <unsupported/Eigen/MPQClassSupport>
 #endif
 
 #include <Eigen/Dense>
@@ -166,7 +166,7 @@ public:
     /// Sparse QR solver
     typedef Eigen::SparseQR<Eigen::SparseMatrix<T,0,index_t>,
                             Eigen::COLAMDOrdering<index_t> > SparseQR;
-
+    
     #ifdef GISMO_WITH_SUPERLU
     /// SuperLU (if enabled)
     typedef Eigen::SuperLU<Eigen::SparseMatrix<T,0,index_t> > SuperLU;

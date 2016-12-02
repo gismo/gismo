@@ -12,7 +12,7 @@
 
 // source: http://www.geom.uiuc.edu/~huberty/math5337/groupe/digits.html
 // TODO this should better be moved to NumTraits
-#define EIGEN_PI 3.141592653589793238462643383279502884197169399375105820974944592307816406 //L // G+Smo (for mpq_class)
+#define EIGEN_PI 3.141592653589793238462643383279502884197169399375105820974944592307816406
 
 
 namespace Eigen {
@@ -842,18 +842,6 @@ EIGEN_ALWAYS_INLINE T maxi(const T& x, const T& y)
   EIGEN_USING_STD_MATH(max);
   return max EIGEN_NOT_A_MACRO (x,y);
 }
-
-//---Specialize for mpq_class -- G+Smo
-#ifdef __GMP_PLUSPLUS__
-template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE
-mpq_class mini<mpq_class>(const mpq_class& x, const mpq_class& y)
-{ return ::min(x,y); }
-template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE 
-mpq_class maxi(const mpq_class& x, const mpq_class& y)
-{ return ::max(x,y); }
-#endif
-//---
-
 #else
 template<typename T>
 EIGEN_DEVICE_FUNC
