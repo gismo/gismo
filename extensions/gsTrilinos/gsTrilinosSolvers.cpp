@@ -324,12 +324,12 @@ void BelosSolver<mode>::solveProblem()
 }
 
 template<int mode>
-void BelosSolver<mode>::print_ValidParams()
+std::string BelosSolver<mode>::printValidParams() const
 {
-    // Print the valid parameters for the solver.
-    Teuchos::RCP<Teuchos::ParameterList> PL = Teuchos::parameterList(
-                                    *myBelos->Solver->getValidParameters());
-    gsInfo << "\nValid parameters of the current Belos solver: \n" << *PL << "\n";
+    std::ostringstream os;
+    os << "Valid parameters of the current Belos solver: \n" 
+       << *myBelos->Solver->getValidParameters() << "\n";
+    return os.str();
 }
 
 
@@ -357,17 +357,10 @@ void BelosSolver<mode>::setHermitian()
     myBelos->Problem.setHermitian();
 }
 
-//template<int mode>
-//int BelosSolver<mode>::getNumIters()
-//{
-//    return myBelos->Solver->getNumIters();
-//}
-
 template<int mode>
-void BelosSolver<mode>::print_NumIters()
+int BelosSolver<mode>::numIterations() const
 {
-    gsInfo << "Number of iterations performed: " 
-           << myBelos->Solver->getNumIters() << "\n";
+    return myBelos->Solver->getNumIters();
 }
 
 //------------------------------------------

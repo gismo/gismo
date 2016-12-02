@@ -153,14 +153,12 @@ public:
     void set(const std::string & name, const double & value);
     void set(const std::string & name, const std::string & value);
 
-//    int getNumIters() const;
-
     /// Hermitian problem type used to be by iterative solver
     /// : if matrix is symmetric, specifies it in the linear problem
     void setHermitian();
 
-    void print_ValidParams();
-    void print_NumIters();
+    std::string printValidParams() const;
+    int numIterations() const;
 
 private:
 
