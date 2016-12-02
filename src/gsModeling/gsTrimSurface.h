@@ -109,9 +109,9 @@ public:
 
     typename gsMatrix<T>::uPtr sampleLoop(int loopNumber, int npoints = 100) const
     {
-        typename gsMatrix<T>::uPtr u ( new gsMatrix<T>() );
+        gsMatrix<T> * u = new gsMatrix<T>;
         sampleLoop_into(loopNumber, npoints, *u);
-        return u;
+        return typename gsMatrix<T>::uPtr(u);
     }
     
     typename gsMatrix<T>::uPtr sampleBoundary( int npoints = 100) const
@@ -121,9 +121,9 @@ public:
 
     typename gsMatrix<T>::uPtr sampleCurve( int loopNumber, int curveNumber, int npoints = 100) const
     {
-        typename gsMatrix<T>::uPtr u ( new gsMatrix<T>() );
+        gsMatrix<T> * u = new gsMatrix<T>();
         sampleCurve_into(loopNumber, curveNumber, npoints, *u);
-        return u;
+        return typename gsMatrix<T>::uPtr(u);
     }
 
     /// Evaluates curveNumber-th curve from loopNumber-th loop.
@@ -150,9 +150,9 @@ public:
                                          int curveNumber,
                                          const gsMatrix<T>& u) const
     {
-        typename gsMatrix<T>::uPtr result( new gsMatrix<T>() );
+        gsMatrix<T> * result = new gsMatrix<T>;
         evalCurve_into(loopNumber, curveNumber, u, *result);
-        return result;
+        return typename gsMatrix<T>::uPtr(result);
     }
 
 
@@ -179,9 +179,9 @@ public:
     /// \return points on surface at parameter u
     typename gsMatrix<T>::uPtr evalSurface(const gsMatrix<T>& u) const
     {
-        typename gsMatrix<T>::uPtr result(new gsMatrix<T>());
+        gsMatrix<T> * result = new gsMatrix<T>;
         evalSurface_into(u, *result);
-        return result;
+        return typename gsMatrix<T>::uPtr(result);
     }
 
 
@@ -260,7 +260,7 @@ public:
       assert( (curveNumber>=0) && (curveNumber < m_domain->loop(loopNumber).size() ) );
       //gsMatrix<T> u( this->geoDim(), npoints );
 
-      typename gsMatrix<T>::uPtr u ( new gsMatrix<T>(3, npoints) );
+      gsMatrix<T> *  u = new gsMatrix<T>(3, npoints);
       
       gsMatrix<T> pts = m_domain->sampleCurve(loopNumber, curveNumber, npoints);
       gsMatrix<T> nm(3,1);
@@ -270,7 +270,7 @@ public:
           u->col(i) = unitNormal(pts.col(i));
       }
       
-      return u;
+      return typename gsMatrix<T>::uPtr(u);
     }      
     
     /// Return the tangent vectors of the trimming curve \a curveNumber in trimming loop \a loopNumber    
@@ -283,12 +283,13 @@ public:
       gsMatrix<T> trimCurDev = m_domain->curve(loopN,curveN).jacobian(tval);
       gsMatrix<T> trimCurJac = m_surface->jacobian( trimCur );
       //gsMatrix<T> tangents(this->geoDim(),npoints);
-      typename gsMatrix<T>::uPtr tangents ( new gsMatrix<T>(3,npoints) );
+      gsMatrix<T> * tangents = new gsMatrix<T>(3,npoints);
+      
       for (size_t i=0; i<=npoints-1; i++)
       {
         tangents->col(i) = trimCurJac.middleCols( 2*i,2 )*trimCurDev.col(i);
       }
-      return tangents;
+      return typename gsMatrix<T>::uPtr(tangents);
     }
 
 

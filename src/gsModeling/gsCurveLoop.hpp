@@ -231,7 +231,7 @@ typename gsMatrix<T>::uPtr gsCurveLoop<T>::sample(int npoints, int numEndPoints)
         break;
     }   
     
-    typename gsMatrix<T>::uPtr u ( new gsMatrix<T>(2, m_curves.size() * np) );
+    gsMatrix<T> * u = new gsMatrix<T>(2, m_curves.size() * np);
     int i=0;
     gsMatrix<T> interval;
     gsMatrix<T> pts(1,np);
@@ -251,7 +251,7 @@ typename gsMatrix<T>::uPtr gsCurveLoop<T>::sample(int npoints, int numEndPoints)
         u->middleCols( i * np,np ) = uCols;
         i++ ;
     };
-    return u;
+    return typename gsMatrix<T>::uPtr(u);
 }
   
 template <class T>

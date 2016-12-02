@@ -266,7 +266,7 @@ typename gsMatrix<unsigned>::uPtr gsTensorBasis<d,T>::coefSlice(int dir, int k) 
     upp(dir) = k + 1;
     low(dir) = k;
 
-    typename gsMatrix<unsigned>::uPtr res ( new gsMatrix<unsigned>(sliceSize,1) );
+    gsMatrix<unsigned> * res = new gsMatrix<unsigned>(sliceSize,1);
 
     // iterate over all tensor product basis indices
     gsVector<unsigned,d> v = low;
@@ -275,7 +275,7 @@ typename gsMatrix<unsigned>::uPtr gsTensorBasis<d,T>::coefSlice(int dir, int k) 
         (*res)(r++,0) = this->index(v);
     } while ( nextLexicographic(v, low, upp) );
 
-    return res;
+    return gsMatrix<unsigned>::uPtr(res);
 }
 
 

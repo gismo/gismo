@@ -318,9 +318,9 @@ public:
     /// \sa active_into()
     typename gsMatrix<unsigned>::uPtr active(const gsMatrix<T> & u) const
     {
-        typename gsMatrix<unsigned>::uPtr result ( new gsMatrix<unsigned> );
-        this->active_into(u, *result);
-        return result;
+        gsMatrix<unsigned> * ptr = new gsMatrix<unsigned>;
+        this->active_into(u, *ptr);
+        return gsMatrix<unsigned>::uPtr(ptr);
     }
 
     /*

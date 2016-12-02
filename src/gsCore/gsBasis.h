@@ -160,9 +160,9 @@ public:
      */
     typename gsVector<unsigned>::uPtr numActive(const gsMatrix<T> & u) const
     {
-        typename gsVector<unsigned>::uPtr result ( new gsVector<unsigned> );
-        this->numActive_into(u, *result);
-        return result;
+        gsVector<unsigned> * ptr = new gsVector<unsigned>;
+        this->numActive_into(u, *ptr);
+        return gsVector<unsigned>::uPtr(ptr);
     }
 
     /// @}

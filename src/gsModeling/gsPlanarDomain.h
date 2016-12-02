@@ -202,18 +202,18 @@ public:
 
     typename gsMatrix<T>::uPtr sampleLoop( int loopID, int npoints=50, int numEndPoints=2)
     {
-        typename gsMatrix<T>::uPtr u ( new gsMatrix<T>() );
+        gsMatrix<T> * u = new gsMatrix<T>;
         sampleLoop_into( loopID, npoints, numEndPoints, *u );
-        return u;
+        return typename gsMatrix<T>::uPtr(u);
     }
 
     void sampleCurve_into( int loopID, int curveID, int npoints, gsMatrix<T> & u );
 
     typename gsMatrix<T>::uPtr sampleCurve(int loopID, int curveID, int npoints = 50)
     {
-        typename gsMatrix<T>::uPtr u ( new gsMatrix<T>() );
+        gsMatrix<T> * u = new gsMatrix<T>;
         sampleCurve_into( loopID, curveID, npoints, *u );
-        return u;
+        return typename gsMatrix<T>::uPtr(u);
     }
 
     /// Return a triangulation of the planar domain

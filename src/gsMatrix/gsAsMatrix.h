@@ -301,11 +301,11 @@ private:
 template<class T, class iterator>
 typename gsMatrix<T>::uPtr makeMatrix(iterator it, index_t n, index_t m)
 {
-    typename gsMatrix<T>::uPtr result ( new gsMatrix<T>(n,m) );
+    gsMatrix<T> * result = new gsMatrix<T>(n,m);
     for ( index_t i = 0; i!=n; ++i)
         for ( index_t j = 0; j!=m; ++j)
             (*result)(i,j)= *(it++);
-    return result;
+    return typename gsMatrix<T>::uPtr(result);
 }
 
 
