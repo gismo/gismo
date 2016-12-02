@@ -260,9 +260,7 @@ struct BelosSolverPrivate
 };
 
 template<int mode>
-BelosSolver<mode>::BelosSolver(const SparseMatrix & A
-                         //, const std::string solver_teuchosUser
-    )
+BelosSolver<mode>::BelosSolver(const SparseMatrix & A)
 : Base(A), myBelos(new BelosSolverPrivate), maxiters(200)
 { 
     // Note: By default the string variable SolverTeuchosUser = "Belos". 
@@ -272,6 +270,8 @@ BelosSolver<mode>::BelosSolver(const SparseMatrix & A
 
     // Initialize solver manager
     myBelos->Solver = Teuchos::rcp( new typename BelosSolManager<mode>::type );
+    myBelos->Solver->setProblem   (Teuchos::rcp(&myBelos->Problem  , false));
+    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
 
     myBelos->Problem.setOperator(A.getRCP());
     myBelos->Problem.setLHS(my->solution.getRCP());
@@ -298,17 +298,12 @@ void BelosSolver<mode>::solveProblem()
 {
     // Grab right-hand side
     myBelos->Problem.setRHS( Teuchos::rcp(my->Problem.GetRHS(), false) );
-
     // Tell the program that setting of the linear problem is done. 
     // Throw an error if failed. 
     bool err_set = myBelos->Problem.setProblem(); 
     
     GISMO_ASSERT(true == err_set, "Error: Belos Problem couldn't be" 
                  " initialized."); 
-
-    // Set the solver manager data.
-    myBelos->Solver->setProblem   (Teuchos::rcp(&myBelos->Problem  , false));
-    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
 
     // Perform solve
     Belos::ReturnType ret = myBelos->Solver->solve();

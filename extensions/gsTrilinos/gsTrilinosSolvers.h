@@ -144,9 +144,7 @@ class BelosSolver : public AbstractSolver
 public:
     typedef AbstractSolver Base;
 
-    explicit BelosSolver(const SparseMatrix & A
-                //, const std::string solver_teuchosUser = "Belos"
-        );
+    explicit BelosSolver(const SparseMatrix & A);
 
     ~BelosSolver();
 
@@ -173,8 +171,6 @@ private:
     BelosSolverPrivate * myBelos;
 
     int maxiters;  // maximum number of iterations allowed per linear system
-
-    //std::string            SolverTeuchosUser;
 };
 
 
