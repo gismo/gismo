@@ -71,10 +71,5 @@ if(GISMO_WITH_ONURBS)
   set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "MY_ZCALLOC")
 endif()
 
-if (GISMO_BUILD_PCH)
-  include(cotire)
-  cotire(${PROJECT_NAME})
-endif(GISMO_BUILD_PCH)
-
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:zlib>
     CACHE INTERNAL "Gismo extensions to be included")
