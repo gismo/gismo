@@ -11,8 +11,8 @@
     Author(s): A. Mantzaflaris
 */
 
-
-#pragma once
+#ifndef __GISMO_H__
+#define __GISMO_H__
 
 /** @namespace gismo
 
@@ -170,7 +170,7 @@ namespace internal
 #include <gsAutoDiff.h>
 #endif
 
-
+/*
 #if defined(gismo_EXPORTS) || defined(gismo_dev_EXPORTS)
 #  ifdef _MSC_VER
 // MSVC and GCC >= 4.4.7
@@ -180,3 +180,6 @@ namespace internal
 #    warning "The gismo.h header is for clients using the library."
 #  endif
 #endif
+*/
+
+#endif // __GISMO_H__

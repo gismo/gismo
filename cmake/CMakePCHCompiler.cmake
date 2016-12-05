@@ -19,8 +19,7 @@ function(add_precompiled_header pch_target header)
 		NOT CMAKE_${lang}_COMPILER_ID STREQUAL "AppleClang"
 		)
 		message(WARNING
-			"Precompiled headers not supported for ${CMAKE_${lang}_COMPILER_ID}"
-			)
+			"Precompiled headers not supported for ${CMAKE_${lang}_COMPILER_ID}")
 		return()
 	endif()
 
@@ -45,8 +44,7 @@ function(add_precompiled_header pch_target header)
 		# ensure pdb goes to the same location, otherwise we get C2859
 		file(TO_NATIVE_PATH
 			"${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${pch_target}.dir"
-			pdb_dir
-			)
+			pdb_dir )
 		# /Yc - create precompiled header
 		# /Fd - specify directory for pdb output
 		set(flags "/Yc /Fd${pdb_dir}\\")
@@ -60,8 +58,7 @@ function(add_precompiled_header pch_target header)
 		${header}
 		PROPERTIES
 		LANGUAGE ${lang}PCH
-		COMPILE_FLAGS ${flags}
-		)
+		COMPILE_FLAGS ${flags} )
 endfunction()
 
 # Use precompiled header
@@ -74,16 +71,19 @@ function(target_precompiled_header target pch_target)
 		NOT CMAKE_${lang}_COMPILER_ID STREQUAL "AppleClang"
 		)
 		message(WARNING
-			"Precompiled headers not supported for ${CMAKE_${lang}_COMPILER_ID}"
-			)
+			"Precompiled headers not supported for ${CMAKE_${lang}_COMPILER_ID}" )
 		return()
 	endif()
         add_dependencies(${target} ${pch_target})
 	get_target_property(target_hdr ${pch_target} SOURCES)
 	get_target_property(target_dir ${pch_target} LIBRARY_OUTPUT_DIRECTORY)
+        # Note: modification in pch file will not trigger target
+	# re-compilation without the next lines:
+        #add_custom_target(${target}-pch DEPENDS ${target_hdr})
+        #add_dependencies(${target} ${target}-pch)
 	if(MSVC)
 		get_filename_component(win_header "${target_hdr}" NAME)
-		file(TO_NATIVE_PATH "${target_dir}/${pch_header}" win_pch)
+		file(TO_NATIVE_PATH "${target_dir}/${target_hdr}" win_pch)
 		# /Yu - use given include as precompiled header
 		# /Fp - exact location for precompiled header
 		# /FI - force include of precompiled header
@@ -120,8 +120,7 @@ macro(__define_pch_compiler lang)
 	# setup compiler & platform specific flags same way C/CXX does
 	if(CMAKE_${lang}_COMPILER_ID)
 		include(Platform/${CMAKE_SYSTEM_NAME}-${CMAKE_${lang}_COMPILER_ID}-${lang}PCH
-			OPTIONAL
-			)
+			OPTIONAL )
 	endif()
 
 	# just use all settings from C/CXX compiler
@@ -136,39 +135,32 @@ macro(__define_pch_compiler lang)
 		# /Fp - specify location for precompiled header
 		string(REPLACE " /Fo" " /FoNUL /Fp"
 			CMAKE_${lang}PCH_COMPILE_OBJECT
-			${CMAKE_${lang}PCH_COMPILE_OBJECT}
-			)
+			${CMAKE_${lang}PCH_COMPILE_OBJECT} )
 		# disable pdb, we point to later to different location
 		string(REPLACE " /Fd<TARGET_COMPILE_PDB>" ""
 			CMAKE_${lang}PCH_COMPILE_OBJECT
-			${CMAKE_${lang}PCH_COMPILE_OBJECT}
-			)
+			${CMAKE_${lang}PCH_COMPILE_OBJECT} )
 	endif()
 
 	# copy all initial settings for C/CXXPCH from C/CXX & watch them
 	set(CMAKE_${lang}PCH_FLAGS "${CMAKE_${lang}_FLAGS_INIT}"
 		CACHE STRING
-		"Flags used by the compiler during all build types."
-		)
+		"Flags used by the compiler during all build types." )
 	variable_watch(CMAKE_${lang}_FLAGS __watch_pch_variable)
 
 	if(NOT CMAKE_NOT_USING_CONFIG_FLAGS)
 		set(CMAKE_${lang}PCH_FLAGS_DEBUG "${CMAKE_${lang}_FLAGS_DEBUG_INIT}"
 			CACHE STRING
-			"Flags used by the compiler during debug builds."
-			)
+			"Flags used by the compiler during debug builds." )
 		set(CMAKE_${lang}PCH_FLAGS_MINSIZEREL "${CMAKE_${lang}_FLAGS_MINSIZEREL_INIT}"
 			CACHE STRING
-			"Flags used by the compiler during release builds for minimum size."
-			)
+			"Flags used by the compiler during release builds for minimum size." )
 		set(CMAKE_${lang}PCH_FLAGS_RELEASE "${CMAKE_${lang}_FLAGS_RELEASE_INIT}"
 			CACHE STRING
-			"Flags used by the compiler during release builds."
-			)
+			"Flags used by the compiler during release builds." )
 		set(CMAKE_${lang}PCH_FLAGS_RELWITHDEBINFO "${CMAKE_${lang}_FLAGS_RELWITHDEBINFO_INIT}"
 			CACHE STRING
-			"Flags used by the compiler during release builds with debug info."
-			)
+			"Flags used by the compiler during release builds with debug info." )
 		variable_watch(CMAKE_${lang}_FLAGS_DEBUG          __watch_pch_variable)
 		variable_watch(CMAKE_${lang}_FLAGS_MINSIZEREL     __watch_pch_variable)
 		variable_watch(CMAKE_${lang}_FLAGS_RELEASE        __watch_pch_variable)
@@ -183,36 +175,3 @@ macro(__watch_pch_variable variable access value)
 	string(REPLACE _CXX_ _CXXPCH_ pchvariable ${pchvariable})
 	set(${pchvariable} ${${variable}}) # because ${value} expands backslashes
 endmacro()
-
-macro(__configure_pch_compiler lang)
-	set(CMAKE_${lang}PCH_COMPILER_ENV_VAR "${lang}PCH")
-	set(CMAKE_${lang}PCH_COMPILER ${CMAKE_${lang}_COMPILER})
-
-	if(SET_MSVC_${lang}PCH_ARCHITECTURE_ID)
-		string(REPLACE _${lang}_ _${lang}PCH_
-			${SET_MSVC_${lang}_ARCHITECTURE_ID}
-			SET_MSVC_${lang}PCH_ARCHITECTURE_ID
-			)
-	endif()
-	if(CMAKE_${lang}_SYSROOT_FLAG_CODE)
-		string(REPLACE _${lang}_ _${lang}PCH_
-			${CMAKE_${lang}_SYSROOT_FLAG_CODE}
-			CMAKE_${lang}PCH_SYSROOT_FLAG_CODE
-			)
-	endif()
-	if(CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG_CODE)
-		string(REPLACE _${lang}_ _${lang}PCH_
-			${CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG_CODE}
-			CMAKE_${lang}PCH_OSX_DEPLOYMENT_TARGET_FLAG_CODE
-			)
-	endif()
-
-	configure_file(
-		${CMAKE_CURRENT_LIST_DIR}/CMake${lang}PCHCompiler.cmake.in
-		${CMAKE_PLATFORM_INFO_DIR}/CMake${lang}PCHCompiler.cmake
-		)
-endmacro()
-
-
-# Defines compiler command templates based on existing C++ compiler.
-__define_pch_compiler(CXX)

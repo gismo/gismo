@@ -26,7 +26,9 @@ if(POLICY CMP0063)# CMake 3.3
 cmake_policy(SET CMP0063 NEW)
 endif()
 
-project(gismo)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+project(gismo CXX CXXPCH)
 
 if(NOT GISMO_INSOURCE_BUILD AND "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
    message(FATAL_ERROR "In-source G+Smo builds are not permitted. \n How to fix this:\n 1. Please make a separate folder for building, otherwise type \nmake\nthat will create a ./build folder and will compile in that folder. Cmake has created garbage files/dirs (you may manually remove them):\n CMakeCache.txt CMakeFiles \n 2. If your source folder contains these two files please remove them first!")
@@ -35,8 +37,6 @@ endif()
 ## #################################################################
 ## Cmake Inclusions and configuration options
 ## #################################################################
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(CTest)
 enable_testing()
@@ -124,6 +124,10 @@ if(GISMO_WITH_CODIPACK)
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   include_directories(${CODIPACK_INCLUDE_DIR})
 endif(GISMO_WITH_CODIPACK)
+
+#include_directories(${METIS_INCLUDE_DIR})
+#set(gismo_LINKER ${gismo_LINKER} ${METIS_LIBRARIES}
+#    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 if(GISMO_WITH_PSOLID)
   add_subdirectory(extensions/gsParasolid)

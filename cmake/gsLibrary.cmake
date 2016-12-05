@@ -8,9 +8,6 @@
 
 #include (GenerateExportHeader)
 
-#include(cotire)
-#cotire(${${PROJECT_NAME}_MODULES})
-
 ## #################################################################
 ## Add library targets
 ## #################################################################

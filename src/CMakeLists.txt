@@ -16,6 +16,10 @@ SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 #LIST( REMOVE_ITEM SUBDIRS misc)
 LIST( APPEND SUBDIRS gsUtils/gsMesh)
 
+if (GISMO_BUILD_PCH)
+  add_precompiled_header(gsPrecompiledHeader misc/gsPrecompiledHeader.h)
+endif()
+
 FOREACH(subdir ${SUBDIRS})
 
   get_filename_component(GM_NAME ${subdir} NAME)
@@ -49,6 +53,10 @@ FOREACH(subdir ${SUBDIRS})
     #EXCLUDE_FROM_DEFAULT_BUILD 1
     )
 
+  if (GISMO_BUILD_PCH)
+    target_precompiled_header(${GM_NAME} gsPrecompiledHeader)
+  endif()
+
   set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}>
       CACHE INTERNAL "G+Smo modules" )
 
@@ -60,29 +68,3 @@ FOREACH(subdir ${SUBDIRS})
   endif()
 
 ENDFOREACH()
-
-if (GISMO_BUILD_PCH)
-
-  include(cotire)
-
-  #set(CMAKE_C_FLAGS    "${CMAKE_CXX_FLAGS} -H") # for GCC: test if PCH is used
-
-  set_property(DIRECTORY PROPERTY COTIRE_ADD_UNITY_BUILD FALSE)
-  LIST( REMOVE_ITEM SUBDIRS gsCore)
-  set_target_properties(gsCore PROPERTIES
-    COTIRE_PREFIX_HEADER_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/gsCore/gsLinearAlgebra.h"
-  )
-  cotire(gsCore)
-  get_target_property(gismo_prefixHeader gsCore COTIRE_CXX_PREFIX_HEADER)
-
-
-  FOREACH(subdir ${SUBDIRS})
-    get_filename_component(GM_NAME ${subdir} NAME)
-    add_dependencies(${GM_NAME} gsCore_pch)
-    set_target_properties(${GM_NAME} PROPERTIES
-      COTIRE_CXX_PREFIX_HEADER_INIT "${gismo_prefixHeader}")
-    cotire(${GM_NAME})
-  ENDFOREACH()
-
-endif(GISMO_BUILD_PCH)
-
