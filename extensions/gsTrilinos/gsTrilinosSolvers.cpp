@@ -290,15 +290,10 @@ BelosSolver<mode>::~BelosSolver()
     delete myBelos;
 }
 
-//struct PrecPrivate
-//{
-//    Teuchos::ParameterList ifpackList;
-//};
-
 template<int mode>
 int BelosSolver<mode>::setPreconditioner(
                           const std::string & PrecType, const SparseMatrix &A,
-                          const bool leftprec ) //: myPrec(new PrecPrivate)
+                          const bool & leftprec, const int & OverlapLevel ) 
 {
     // allocates an IFPACK factory. No data is associated
     // to this object (only method Create()).
@@ -306,9 +301,6 @@ int BelosSolver<mode>::setPreconditioner(
 
     // create the preconditioner. For valid PrecType values,
     // please check the documentation
-
-    int OverlapLevel = 0; // must be >= 0. If Comm.NumProc() == 1,
-                          // it is ignored.
 
     Teuchos::RCP<Epetra_RowMatrix> AA = A.getRCP();
 
