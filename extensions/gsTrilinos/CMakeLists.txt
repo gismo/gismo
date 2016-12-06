@@ -76,6 +76,7 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_Belos=${GISMO_BUILD_CPP11}
                        -DTrilinos_ENABLE_NOX=ON # non-linear solver
                        -DTrilinos_ENABLE_ML=ON # multigrid
+                       -DTrilinos_ENABLE_Ifpack=ON # Ifpack
                        -DTrilinos_ENABLE_Pamgen=OFF # parallel mesh generation (buggy cmake)
                        #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -111,6 +112,7 @@ ExternalProject_Add(Trilinos
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}belos${CMAKE_SHARED_LIBRARY_SUFFIX}
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}anasazi${CMAKE_SHARED_LIBRARY_SUFFIX}
       ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}belosepetra${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ifpack${CMAKE_SHARED_LIBRARY_SUFFIX}
       CACHE INTERNAL "")
 
 #      set(TRILINOS_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix CACHE INTERNAL "")

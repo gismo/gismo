@@ -19,9 +19,9 @@
 #include "AztecOO.h"
 #include "AztecOO_Version.h"
 
-//#include "Ifpack_ConfigDefs.h" 
-//#include "Ifpack.h" 
-//#include "Ifpack_AdditiveSchwarz.h" 
+#include "Ifpack_ConfigDefs.h" 
+#include "Ifpack.h" 
+#include "Ifpack_AdditiveSchwarz.h"
 
 //#include "Amesos_Superlu.h"
 
@@ -262,7 +262,7 @@ struct BelosSolverPrivate
 template<int mode>
 BelosSolver<mode>::BelosSolver(const SparseMatrix & A)
 : Base(A), myBelos(new BelosSolverPrivate), maxiters(200)
-{ 
+{
     // Note: By default the string variable SolverTeuchosUser = "Belos". 
     // This can be adapted to get different values if other solvers with 
     // similar implementation structures are considered later on. 
@@ -276,9 +276,6 @@ BelosSolver<mode>::BelosSolver(const SparseMatrix & A)
     myBelos->Problem.setOperator(A.getRCP());
     myBelos->Problem.setLHS(my->solution.getRCP());
 
-  // If the matrix is symmetric, specify this in the linear problem. 
-  // myBelos->Problem.setHermitian();
-  
     // Add default Options
     myBelos->belosList.set( "Block Size", 1);
     // Teuchos::ScalarTraits<double>::magnitudeType tol = 1.0e-5;
@@ -292,6 +289,72 @@ BelosSolver<mode>::~BelosSolver()
 {
     delete myBelos;
 }
+
+//struct PrecPrivate
+//{
+//    Teuchos::ParameterList ifpackList;
+//};
+
+template<int mode>
+int BelosSolver<mode>::setPreconditioner(
+                          const std::string & PrecType, const SparseMatrix &A,
+                          const bool leftprec ) //: myPrec(new PrecPrivate)
+{
+    // allocates an IFPACK factory. No data is associated
+    // to this object (only method Create()).
+    Ifpack Factory;
+
+    // create the preconditioner. For valid PrecType values,
+    // please check the documentation
+
+    int OverlapLevel = 0; // must be >= 0. If Comm.NumProc() == 1,
+                          // it is ignored.
+
+    Teuchos::RCP<Epetra_RowMatrix> AA = A.getRCP();
+
+    Teuchos::RCP<Ifpack_Preconditioner> Prec = Teuchos::rcp( Factory.Create
+                                             (PrecType, &*AA, OverlapLevel) );
+
+    assert(Prec != Teuchos::null);
+
+//    // specify parameters for ICT
+//    myBelos->belosList.set("fact: drop tolerance", 1e-9);
+//    myBelos->belosList.set("fact: ict level-of-fill", 1.0);
+//
+//    // the combine mode is on the following:
+//    // "Add", "Zero", "Insert", "InsertAdd", "Average", "AbsMax"
+//    // Their meaning is as defined in file Epetra_CombineMode.h
+//    myBelos->belosList.set("schwarz: combine mode", "Add");
+
+    // sets the parameters
+    IFPACK_CHK_ERR(Prec->SetParameters(myBelos->belosList));
+
+    // initialize the preconditioner. At this point the matrix must
+    // have been FillComplete()'d, but actual values are ignored.
+    IFPACK_CHK_ERR(Prec->Initialize());
+
+    // Builds the preconditioners, by looking for the values of
+    // the matrix.
+    IFPACK_CHK_ERR(Prec->Compute());
+
+    // Create the Belos preconditioned operator from the Ifpack preconditioner.
+    // NOTE:  This is necessary because Belos expects an operator to apply the
+    //        preconditioner with Apply() NOT ApplyInverse().
+    Teuchos::RCP<Belos::EpetraPrecOp> belosPrec = 
+                              Teuchos::rcp( new Belos::EpetraPrecOp( Prec ) );
+
+    if (leftprec)
+    {
+      myBelos->Problem.setLeftPrec( belosPrec );
+    }
+    else 
+    {
+      myBelos->Problem.setRightPrec( belosPrec );
+    }
+
+    return 0;
+}
+
 
 template<int mode>
 void BelosSolver<mode>::solveProblem()

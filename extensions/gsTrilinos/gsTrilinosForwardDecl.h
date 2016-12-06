@@ -17,6 +17,7 @@ class Epetra_CrsMatrix;
 class Epetra_FECrsMatrix;
 class Epetra_BlockMap;
 class Epetra_Operator;
+class Epetra_RowMatrix;
 
 namespace Teuchos
 {

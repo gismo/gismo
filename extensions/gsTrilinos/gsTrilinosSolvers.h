@@ -160,6 +160,9 @@ public:
     std::string printValidParams() const;
     int numIterations() const;
 
+    int setPreconditioner(const std::string & precType, const SparseMatrix &A,
+                          const bool leftprec);
+
 private:
 
     void solveProblem();
