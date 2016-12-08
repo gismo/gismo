@@ -19,6 +19,8 @@
 namespace gismo {
 namespace extensions {
 
+CLASS_TEMPLATE_INST gsTrimData<real_t> ;
+
 TEMPLATE_INST bool
 createPK_BSURF( const gsTensorBSpline< 2, real_t> & bsp, 
                 PK_BSURF_t & bsurf,
@@ -61,8 +63,7 @@ TEMPLATE_INST bool
 getTrimCurvesAndBoundingBoxes<real_t>
 ( const gsTHBSpline<2, real_t>& surface,
   const std::vector<real_t>& par_boxes,
-  gsTHBSplineBasis<2>::TrimmingCurves& trimCurves,
-  gsTHBSplineBasis<2>::AxisAlignedBoundingBox& boundaryAABB);
+  std::vector<gsTrimData<real_t> >& trimdata);
 
 TEMPLATE_INST bool
 getParBoxAsIndexBoxInLevel(const gsTHBSplineBasis<2, real_t>& basis,unsigned lvl,

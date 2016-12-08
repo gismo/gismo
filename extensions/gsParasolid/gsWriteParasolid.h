@@ -48,6 +48,9 @@ struct PK_UVBOX_s;
 namespace gismo {
 
 namespace extensions {
+
+    template<class T>
+    class gsTrimData;
     
     /// Writes a gsSurface to a parasolid file
     /// \param gssurf a surface
@@ -108,8 +111,7 @@ namespace extensions {
     template <class T>
     bool getTrimCurvesAndBoundingBoxes(const gsTHBSpline<2, T>& surface,
                                        const std::vector<T>& par_boxes,
-                                       gsTHBSplineBasis<2>::TrimmingCurves& trimCurves,
-                                       gsTHBSplineBasis<2>::AxisAlignedBoundingBox& boundaryAABB);
+                                       std::vector<gsTrimData<T> >& trimdata);
 
     /// Translates a box in the parameter space to a box in index space of the given lvl, which
     /// contains the parameter box
