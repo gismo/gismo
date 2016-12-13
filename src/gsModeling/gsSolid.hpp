@@ -19,7 +19,6 @@
 #include <gsCore/gsMultiPatch.h>
 #include <gsModeling/gsCurveLoop.h>
 #include <gsModeling/gsTrimSurface.h>
-
 #include <gsModeling/gsPlanarDomain.h>
 
 #include <gsNurbs/gsKnotVector.h>

@@ -12,6 +12,12 @@
 */
 
 #include <gsModeling/gsModelingUtils.hpp>
+#include <gsModeling/gsCurveLoop.h>
+#include <gsModeling/gsPlanarDomain.h>
+#include <gsModeling/gsTrimSurface.h>
+ #include <gsModeling/gsSolid.h>
+ #include <gsNurbs/gsBSpline.h>
+
 #include <fstream>
 
 namespace gismo
