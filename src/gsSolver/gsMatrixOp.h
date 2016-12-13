@@ -140,7 +140,7 @@ typename gsMatrixOp<Derived>::Ptr makeMatrixOp(const Eigen::EigenBase<Derived>& 
   * \ingroup Solver
   */
 template <class Derived>
-typename gsMatrixOp<Derived>::Ptr makeMatrixOp(typename memory::shared<Derived>::ptr & mat, bool sym=false)
+typename gsMatrixOp<Derived>::Ptr makeMatrixOp(memory::shared_ptr<Derived> & mat, bool sym=false)
 {
     return memory::make_shared(new gsMatrixOp<Derived>(mat, sym));
 }
@@ -175,7 +175,7 @@ public:
     }
 
     /// Constructor taking a shared pointer
-    gsSolverOp(const typename memory::shared<MatrixType>::ptr& mat)
+    gsSolverOp(const typename memory::shared_ptr<MatrixType>& mat)
     {
         GISMO_ASSERT(mat->rows() == mat->cols(), "Need square matrix");
         m_size = mat->rows();
@@ -223,7 +223,7 @@ typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> >
 ///
 /// \ingroup Solver
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makePartialPivLUSolver(const typename memory::shared< gsMatrix<T, _Rows, _Cols, _Opt> >::ptr & mat)
+typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makePartialPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
 {
     return memory::make_shared( new gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
@@ -245,7 +245,7 @@ typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >:
 ///
 /// \ingroup Solver
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeFullPivLUSolver(const typename memory::shared< gsMatrix<T, _Rows, _Cols, _Opt> >::ptr & mat)
+typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeFullPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
 {
     return memory::make_shared( new gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
@@ -273,7 +273,7 @@ typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr 
 ///
 /// \ingroup Solver
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeCholeskySolver(const typename memory::shared< gsMatrix<T, _Rows, _Cols, _Opt> >::ptr & mat)
+typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeCholeskySolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
 {
     return memory::make_shared( new gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
@@ -298,7 +298,7 @@ typename gsSolverOp< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSolver(c
 ///
 /// \ingroup Solver
 template <typename T, int _Opt, typename _Index>
-typename gsSolverOp< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSolver(const typename memory::shared< gsSparseMatrix<T,_Opt,_Index> >::ptr & mat)
+typename gsSolverOp< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSolver(const memory::shared_ptr< gsSparseMatrix<T,_Opt,_Index> > & mat)
 {
     return memory::make_shared( new gsSolverOp< typename gsSparseSolver<T>::LU >(mat) );
 }
@@ -325,7 +325,7 @@ typename gsSolverOp< typename gsSparseSolver<T>::SimplicialLDLT >::Ptr  makeSpar
 ///
 /// \ingroup Solver
 template <typename T, int _Opt, typename _Index>
-typename gsSolverOp< typename gsSparseSolver<T>::SimplicialLDLT >::Ptr  makeSparseCholeskySolver(const typename memory::shared< gsSparseMatrix<T,_Opt,_Index> >::ptr & mat)
+typename gsSolverOp< typename gsSparseSolver<T>::SimplicialLDLT >::Ptr  makeSparseCholeskySolver(const memory::shared_ptr< gsSparseMatrix<T,_Opt,_Index> > & mat)
 {
     return memory::make_shared( new gsSolverOp<typename  gsSparseSolver<T>::SimplicialLDLT >(mat) );
 }

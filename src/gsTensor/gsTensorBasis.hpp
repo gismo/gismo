@@ -883,7 +883,7 @@ gsTensorBasis<d,T>::makeDomainIterator() const
 template<class T>
 template<unsigned d, class T>
 gsDomainIterator<T>::ptr
-//typename memory::unique<gsDomainIterator<T>::ptr
+//memory::unique_ptr<gsDomainIterator<T>
 //typename gsBasis<T>::domainIter
 gsTensorBasis<d,T>::makeDomainIterator(const boxSide & s) const
 {

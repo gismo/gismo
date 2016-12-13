@@ -52,7 +52,7 @@ protected: // *** Input data members ***
 
     /// The PDE: contains multi-patch domain, boundary conditions and
     /// coeffcient functions
-    typename memory::shared<gsPde<T> >::ptr m_pde_ptr;
+    memory::shared_ptr<gsPde<T> > m_pde_ptr;
 
     /// The discretization bases corresponding to the patches and to
     /// the number of solution fields that are to be computed. One

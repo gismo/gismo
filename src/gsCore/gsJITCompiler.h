@@ -393,9 +393,9 @@ private:
 
     /// Handle to dynamic library object
 #if defined(_WIN32)
-    memory::shared< util::remove_pointer<HMODULE>::type >::ptr handle;
+    memory::shared_ptr< util::remove_pointer<HMODULE>::type > handle;
 #else //if defined(__APPLE__) || defined(__linux__) || defined(__unix)
-    memory::shared<void>::ptr handle;
+    memory::shared_ptr<void> handle;
 #endif
 };
 

@@ -53,7 +53,7 @@ public:
     {
         if (!op) // if op is null then create new op
         {
-            op = typename memory::shared<MPI_Op>::ptr(new MPI_Op);
+            op = memory::shared_ptr<MPI_Op>(new MPI_Op);
             MPI_Op_create((void (*)(void*, void*, int*, MPI_Datatype*))&operation,true,op.get());
         }
         return *op;
@@ -71,12 +71,12 @@ private:
     }
     Generic_MPI_Op () {}
     Generic_MPI_Op (const Generic_MPI_Op& ) {}
-    static typename memory::shared<MPI_Op>::ptr op;     // to check: can do with static MPI_Op ?
+    static memory::shared_ptr<MPI_Op> op;     // to check: can do with static MPI_Op ?
 };
 
 
 template<typename Type, typename BinaryFunction>
-typename memory::shared<MPI_Op>::ptr Generic_MPI_Op<Type,BinaryFunction>::op = typename memory::shared<MPI_Op>::ptr(static_cast<MPI_Op*>(0));
+memory::shared_ptr<MPI_Op> Generic_MPI_Op<Type,BinaryFunction>::op = memory::shared_ptr<MPI_Op>(static_cast<MPI_Op*>(0));
 
 #define ComposeMPIOp(type,func,op)              \
     template<>                                  \

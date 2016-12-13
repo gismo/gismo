@@ -42,7 +42,13 @@ namespace gismo {
 namespace memory 
 {
 
-// using shared_ptr 
+/* \brief Adaptor for a shared pointer
+
+usage:
+\code
+memory::shared_ptr<int> B;
+\endcode
+*/
 #ifdef STD_SHARED_PTR_FOUND 
 using std::shared_ptr; 
 #elif defined(TR1_SHARED_PTR_FOUND) 
@@ -52,8 +58,14 @@ using boost::shared_ptr;
 #else  
 using NOT_FOUND::shared_ptr; 
 #endif 
-//*/
 
+/* \brief Adaptor for a unique pointer
+
+usage:
+\code
+memory::unique_ptr<int> B;
+\endcode
+*/
 #ifdef STD_UNIQUE_PTR_FOUND
 using std::unique_ptr;
 //#elif defined(TR1_UNIQUE_PTR_FOUND)
@@ -80,32 +92,14 @@ public :
 };
 #endif
 
-/* \brief Adaptor for a shared pointer
-
-usage:
-\code
-// For template C
-typename shared<C>::ptr A;
-//for concrete type
-shared<int>::ptr B;
-\endcode
-*/
+// Should not be used anymore
 template <typename C>
 struct shared
 {
     typedef shared_ptr<C> ptr;
 };
 
-/* \brief Adaptor for a unique pointer
-
-usage:
-\code
-// For template C
-typename unique<C>::ptr A;
-// for concrete type
-unique<int>::ptr B;
-\endcode
-*/
+// Should not be used anymore
 template <typename C>
 struct unique
 {
@@ -120,25 +114,23 @@ void null_deleter(Obj *) {}
 /// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
 /// memory leaks.
 template <typename T>
-inline typename shared<T>::ptr make_shared(T *x)
-{ return typename shared<T>::ptr(x); }
-
+inline shared_ptr<T> make_shared(T *x)
+{ return shared_ptr<T>(x); }
 
 /// \brief Creates a shared pointer which does not eventually delete
 /// the underlying raw pointer. Usefull to refer to objects which
 /// should not be destroyed
 template <typename T>
-inline typename shared<T>::ptr make_shared_not_owned(const T *x)
+inline shared_ptr<T> make_shared_not_owned(const T *x)
 {
-    return typename shared<T>::ptr(const_cast<T*>(x), null_deleter<T>);
+    return shared_ptr<T>(const_cast<T*>(x), null_deleter<T>);
 }
-
 
 /// Takes a T* and wraps it in an unique_ptr. Useful for one-off
 /// function return values to avoid memory leaks.
 template <typename T>
-inline typename unique<T>::ptr make_unique(T * x)
-{ return typename unique<T>::ptr(x); }
+inline unique_ptr<T> make_unique(T * x)
+{ return unique_ptr<T>(x); }
 
 
 } // namespace memory
@@ -147,8 +139,8 @@ inline typename unique<T>::ptr make_unique(T * x)
 /// function return values to avoid memory leaks.
 /// Does the same as memory::make_unique.
 template <typename T>
-inline typename memory::unique<T>::ptr safe(T *x)
-{ return typename memory::unique<T>::ptr(x); }
+inline memory::unique_ptr<T> safe(T *x)
+{ return memory::unique_ptr<T>(x); }
 
 /**
    Wrapper for a reference that can be swapped with another object.

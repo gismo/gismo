@@ -39,8 +39,8 @@ class GISMO_EXPORT gsBoxTopology
 
 public:
     /// Shared pointer for gsBoxTopology
-    typedef memory::shared< gsBoxTopology >::ptr Ptr;
-    //typedef memory::unique_ptr< gsBoxTopology > LocalPtr;
+    typedef memory::shared_ptr< gsBoxTopology > Ptr;
+    typedef memory::unique_ptr< gsBoxTopology > uPtr;
 
     typedef std::vector< patchSide >::iterator biterator;
     typedef std::vector< patchSide >::const_iterator const_biterator;
