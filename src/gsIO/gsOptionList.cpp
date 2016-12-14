@@ -224,67 +224,99 @@ bool gsOptionList::exists(const std::string& label) const
 // e.g. re-factor this function by moving the loops into its own function
 std::vector<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 {
-	std::vector<gsOptionList::OptionListEntry> result;
+    std::vector<gsOptionList::OptionListEntry> result;
     result.reserve(4*size());
     const char * XML_STR = "string";
-	const char * XML_INT = "int";
-	const char * XML_REAL = "real";
-	const char * XML_BOOL = "bool";
-	// add strings to list
-	gsOptionList::StringTable::const_iterator it;
-	for ( it = m_strings.begin(); it != m_strings.end(); it++ )
-	{
-		gsOptionList::OptionListEntry entry;
-		entry.type = XML_STR;
-		entry.label = it->first;
-		std::stringstream str;
-		str.str( it->second.first );
-		entry.val = str.str();
-		entry.desc = it->second.second;
-		result.push_back(entry);
-	}
-	// add integers to list
-	gsOptionList::IntTable::const_iterator it2;
-	for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
-	{
-		gsOptionList::OptionListEntry entry;
-		entry.type = XML_INT;
-		entry.label = it2->first;
-		std::stringstream str;
-		str << it2->second.first;
-		entry.val = str.str();
-		entry.desc = it2->second.second;
-		result.push_back(entry);
-	}
-	// add reals to list
-	gsOptionList::RealTable::const_iterator it3;
-	for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
-	{
-		gsOptionList::OptionListEntry entry;
-		entry.type = XML_REAL;
-		entry.label = it3->first;
-		std::stringstream str;
-		str << it3->second.first;
-		entry.val = str.str();
-		entry.desc = it3->second.second;
-		result.push_back(entry);
-	}
-	// add bools to list
-	gsOptionList::SwitchTable::const_iterator it4;
-	for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
-	{
-		gsOptionList::OptionListEntry entry;
-		entry.type = XML_BOOL;
-		entry.label = it4->first;
-		std::stringstream str;
-		str << it4->second.first;
-		entry.val = str.str();
-		entry.desc = it4->second.second;
-		result.push_back(entry);
-	}
-	return result;
+    const char * XML_INT = "int";
+    const char * XML_REAL = "real";
+    const char * XML_BOOL = "bool";
+    // add strings to list
+    gsOptionList::StringTable::const_iterator it;
+    for ( it = m_strings.begin(); it != m_strings.end(); it++ )
+    {
+        gsOptionList::OptionListEntry entry;
+        entry.type = XML_STR;
+        entry.label = it->first;
+        std::stringstream str;
+        str.str( it->second.first );
+        entry.val = str.str();
+        entry.desc = it->second.second;
+        result.push_back(entry);
+    }
+    // add integers to list
+    gsOptionList::IntTable::const_iterator it2;
+    for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
+    {
+        gsOptionList::OptionListEntry entry;
+        entry.type = XML_INT;
+        entry.label = it2->first;
+        std::stringstream str;
+        str << it2->second.first;
+        entry.val = str.str();
+        entry.desc = it2->second.second;
+        result.push_back(entry);
+    }
+    // add reals to list
+    gsOptionList::RealTable::const_iterator it3;
+    for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
+    {
+        gsOptionList::OptionListEntry entry;
+        entry.type = XML_REAL;
+        entry.label = it3->first;
+        std::stringstream str;
+        str << it3->second.first;
+        entry.val = str.str();
+        entry.desc = it3->second.second;
+        result.push_back(entry);
+    }
+    // add bools to list
+    gsOptionList::SwitchTable::const_iterator it4;
+    for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
+    {
+        gsOptionList::OptionListEntry entry;
+        entry.type = XML_BOOL;
+        entry.label = it4->first;
+        std::stringstream str;
+        str << it4->second.first;
+        entry.val = str.str();
+        entry.desc = it4->second.second;
+        result.push_back(entry);
+    }
+    return result;
 }
 //*/
+
+void gsOptionList::update(const gsOptionList& other)
+{
+    // add strings to list
+    gsOptionList::StringTable::const_iterator it;
+    for ( it = other.m_strings.begin(); it != other.m_strings.end(); it++ )
+    {
+        if (exists(it->first)) setString(it->first,it->second.first);
+    }
+    
+    // add integers to list
+    gsOptionList::IntTable::const_iterator it2;
+    for ( it2 = other.m_ints.begin(); it2 != other.m_ints.end(); it2++ )
+    {
+        if (exists(it2->first)) setInt(it2->first,it2->second.first);
+    }
+    
+    // add reals to list
+    gsOptionList::RealTable::const_iterator it3;
+    for ( it3 = other.m_reals.begin(); it3 != other.m_reals.end(); it3++ )
+    {
+        if (exists(it3->first)) setReal(it3->first,it3->second.first);
+    }
+    
+    // add bools to list
+    gsOptionList::SwitchTable::const_iterator it4;
+    for ( it4 = other.m_switches.begin(); it4 != other.m_switches.end(); it4++ )
+    {
+        if (exists(it4->first)) setSwitch(it4->first,it4->second.first);
+    }
+}
+
 
 #define OL_PRINT_INFO(it,type)                                          \
     os<<"* "<<std::setw(17)<<std::left<<it->first <<std::setw(12)<<std::right<<" ("#type") = " \
