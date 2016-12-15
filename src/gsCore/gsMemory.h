@@ -140,6 +140,13 @@ public:
     /// Moves resource to \a x
     inline void moveTo(T & x) { m_ref.swap(x); m_ref.clear();}
 
+    operator typename memory::shared_ptr<T>()
+    {
+        T* ptr = new T();
+        ptr->swap(m_ref); m_ref.clear();
+        return memory::shared_ptr<T>(ptr);
+    }
+    
     /// Read-only access resource
     const T & get() {return m_ref;}
 
