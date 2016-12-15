@@ -92,20 +92,6 @@ public :
 };
 #endif
 
-// Should not be used anymore
-template <typename C>
-struct shared
-{
-    typedef shared_ptr<C> ptr;
-};
-
-// Should not be used anymore
-template <typename C>
-struct unique
-{
-    typedef unique_ptr<C> ptr;
-};
-
 /// \brief Deleter function that does not delete an object pointer
 template <typename Obj>
 void null_deleter(Obj *) {}
