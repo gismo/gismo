@@ -567,6 +567,8 @@ public:
             return gsXml< gsHBSpline<2,T> >::get(node); 
         if ( s == "HBSpline3"  )  
             return gsXml< gsHBSpline<3,T> >::get(node); 
+        if ( s == "THBSpline1" )  
+            return gsXml< gsTHBSpline<1,T> >::get(node);
         if ( s == "THBSpline2" )  
             return gsXml< gsTHBSpline<2,T> >::get(node);
         if ( s == "THBSpline3" )
