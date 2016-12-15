@@ -136,6 +136,13 @@ typename gsMatrixOp<Derived>::Ptr makeMatrixOp(const Eigen::EigenBase<Derived>& 
   * M->setRandom(10,10);
   * gsLinearOperator<>::Ptr op  = makeMatrixOp(M);
   * \endcode
+  *
+  * Alternatively:
+  * \code
+  * gsMatrix<> M;
+  * M.setRandom(10,10);
+  * gsLinearOperator<>::Ptr op = makeMatrixOp(M.moveToPtr());
+  * \endcode
   * 
   * \ingroup Solver
   */
@@ -143,26 +150,6 @@ template <class Derived>
 typename gsMatrixOp<Derived>::Ptr makeMatrixOp(const memory::shared_ptr<Derived> & mat, bool sym=false)
 {
     return memory::make_shared(new gsMatrixOp<Derived>(mat, sym));
-}
-
-/** @brief This essentially just calls the gsMatrixOp constructor, but
-  * the use of a template functions allows us to let the compiler do
-  * type inference, so we don't need to type out the matrix type
-  * explicitly.
-  *
-  * Example:
-  * \code
-  * gsMatrix<> M;
-  * M.setRandom(10,10);
-  * gsLinearOperator<>::Ptr op = makeMatrixOp(give(M));
-  * \endcode
-  * 
-  * \ingroup Solver
-  */
-template <class Derived>
-typename gsMatrixOp<Derived>::Ptr makeMatrixOp(gsMovable<Derived> mat, bool sym=false)
-{
-    return memory::make_shared(new gsMatrixOp<Derived>(typename memory::shared_ptr<Derived>(mat), sym));
 }
 
 /** @brief Simple adapter class to use an Eigen solver (having a
