@@ -73,7 +73,7 @@ using std::unique_ptr;
 #elif defined(BOOST_UNIQUE_PTR_FOUND)
 using boost::movelib::unique_ptr;
 #else
-template<typename T>
+template <typename T>
 class unique_ptr : public std::auto_ptr<T>
 {
     typedef std::auto_ptr<T> Base;
@@ -93,8 +93,8 @@ public :
 #endif
 
 /// \brief Deleter function that does not delete an object pointer
-template <typename Obj>
-void null_deleter(Obj *) {}
+template <typename T>
+void null_deleter(T *) {}
 
 
 /// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
@@ -166,7 +166,7 @@ private:
     similar to the use of std::move (C++11) for passing arguments by
     rvalue reference.
  */
-template<typename T> inline
+template <typename T> inline
 gsMovable<T> give(T & x) { return gsMovable<T>(x); }
 
 
