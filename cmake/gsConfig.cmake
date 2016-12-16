@@ -12,6 +12,8 @@
 
 include(CheckCXXCompilerFlag)
 
+#find_package(Metis REQUIRED)
+
 #Remove NDEBUG from RelWithDebInfo builds
 string(REPLACE "-DNDEBUG" "" replacementFlags ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO ${replacementFlags} CACHE INTERNAL "" FORCE)
@@ -40,11 +42,12 @@ set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
 "float" "double" "long double" "mpfr::mpreal" "mpq_class")
 
 if(NOT GISMO_INDEX_TYPE)
-  set (GISMO_INDEX_TYPE "int" CACHE STRING
+   set (GISMO_INDEX_TYPE "int" CACHE STRING
+   #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
+   #set (GISMO_INDEX_TYPE "int${BITSZ_VOID_P}_t" CACHE STRING
    "Index type(int, unsigned, size_t)" FORCE)
    set_property(CACHE GISMO_INDEX_TYPE PROPERTY STRINGS
-   "int" "unsigned" "size_t"
-   )
+   "int" "int32_t" "int64_t" "unsigned" "size_t" )
 endif()
 
 # Set a default build type if none was specified
@@ -70,7 +73,7 @@ endforeach()
 #Configure Valgrind
 #find_program( MEMORYCHECK_COMMAND valgrind )
 #--gen-suppressions=all --trace-children=yes --track-origins=yes
-set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes --gen-suppressions=all" CACHE INTERNAL "")
+set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes" CACHE INTERNAL "")
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
 
@@ -131,16 +134,16 @@ if (CMAKE_VERSION VERSION_LESS "3.1" AND
 endif()#cmake<3.1
 
 # Smart pointers (depending on CMAKE_CXX_STANDARD)
-if( (NOT CMAKE_CXX_STANDARD EQUAL 98 AND NOT STD_UNIQUE_PTR_FOUND ) OR
-    (CMAKE_CXX_STANDARD EQUAL     98 AND STD_UNIQUE_PTR_FOUND)    ) #xor
-  unset(TR1_SHARED_PTR_FOUND CACHE)
-  unset(TR1_SHARED_PTR_USE_TR1_MEMORY CACHE)
-  unset(TR1_SHARED_PTR_USE_MEMORY CACHE)
-  unset(BOOST_UNIQUE_PTR_FOUND CACHE)
+if(CMAKE_CXX_STANDARD EQUAL 98 AND STD_UNIQUE_PTR_FOUND)
   unset(STD_UNIQUE_PTR_FOUND CACHE)
   unset(STD_SHARED_PTR_FOUND CACHE)
+  find_package (TR1 QUIET)
+elseif(NOT CMAKE_CXX_STANDARD EQUAL 98)
+  set(STD_UNIQUE_PTR_FOUND 1 CACHE INTERNAL "")
+  set(STD_SHARED_PTR_FOUND 1 CACHE INTERNAL "")
+else()
+  find_package (TR1 QUIET)
 endif()
-find_package (TR1 QUIET)
 
 # Print compilation statistics (these flags work on GCC compiler only)
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftime-report")
@@ -207,7 +210,7 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Update if necessary
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wattributes") 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wattributes") # -Wno-ignored-attributes
   # -Woverloaded-virtual -Wconversion -Wextra -pedantic
   if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftrack-macro-expansion=0")
