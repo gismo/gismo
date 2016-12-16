@@ -104,14 +104,12 @@ if(CMAKE_CXX_STANDARD EQUAL "11" AND (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMP
       message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support.")
     endif()
   endif()
-#else()#if gcc ver >= 6.1
 endif()
 endif()
 
 # Smart pointers (depending on CMAKE_CXX_STANDARD)
 if( (NOT CMAKE_CXX_STANDARD EQUAL 98 AND NOT STD_UNIQUE_PTR_FOUND ) OR
     (CMAKE_CXX_STANDARD EQUAL     98 AND STD_UNIQUE_PTR_FOUND)    ) #xor
-message("11111111111111")
   unset(TR1_SHARED_PTR_FOUND CACHE)
   unset(TR1_SHARED_PTR_USE_TR1_MEMORY CACHE)
   unset(TR1_SHARED_PTR_USE_MEMORY CACHE)
