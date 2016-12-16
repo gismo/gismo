@@ -10,14 +10,6 @@
 ## Configuration
 ## #################################################################
 
-if(GISMO_BUILD_CPP11) # B.B.
-  set(CMAKE_CXX_STANDARD 11)
-else()
-  set(CMAKE_CXX_STANDARD 98) # 98, 11, 14
-endif()
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 include(CheckCXXCompilerFlag)
 
 #Remove NDEBUG from RelWithDebInfo builds
@@ -82,30 +74,61 @@ set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes --gen-s
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
 
-if (CMAKE_VERSION VERSION_LESS "3.1")
-# Enable C++ 11 features if present
-if(CMAKE_CXX_STANDARD EQUAL "11" AND (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.1))
-  CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-  if(COMPILER_SUPPORTS_CXX11)
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
-    else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-    endif()
+if(DEFINED GISMO_BUILD_CPP11) # B.C.
+  if(${GISMO_BUILD_CPP11}) # B.C.
+    set(CMAKE_CXX_STANDARD 11 CACHE INTERNAL "")
   else()
-    CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-    if(COMPILER_SUPPORTS_CXX0X)
+    set(CMAKE_CXX_STANDARD 98 CACHE INTERNAL "")
+  endif()
+  unset(GISMO_BUILD_CPP11 CACHE)
+endif()
+set(CMAKE_CXX_STANDARD_DEFAULT 98)
+if (NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 98 CACHE INTERNAL "")
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+if (CMAKE_VERSION VERSION_LESS "3.1" AND 
+   (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.1))
+
+  if(CMAKE_CXX_STANDARD EQUAL "14")
+    CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
+    if(COMPILER_SUPPORTS_CXX14)
       if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -stdlib=libc++")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -stdlib=libc++")
       else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
       endif()
     else()
-      message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support.")
+      message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support.")
+      set(CMAKE_CXX_STANDARD 11 CACHE INTERNAL "")
     endif()
   endif()
-endif()
-endif()
+
+  if(CMAKE_CXX_STANDARD EQUAL "11")
+      CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+      if(COMPILER_SUPPORTS_CXX11)
+        if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
+        else()
+          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+        endif()
+      else()
+        CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+        if(COMPILER_SUPPORTS_CXX0X)
+          if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -stdlib=libc++")
+          else()
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+          endif()
+        else()
+          message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support.")
+          set(CMAKE_CXX_STANDARD 98 CACHE INTERNAL "")
+        endif()
+     endif()
+   endif()
+endif()#cmake<3.1
 
 # Smart pointers (depending on CMAKE_CXX_STANDARD)
 if( (NOT CMAKE_CXX_STANDARD EQUAL 98 AND NOT STD_UNIQUE_PTR_FOUND ) OR
