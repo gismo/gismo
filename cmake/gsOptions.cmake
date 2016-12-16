@@ -113,3 +113,6 @@ endif()
 
 #https://www.threadingbuildingblocks.org/documentation
 #message ("  GISMO_WITH_ITBB          ${GISMO_WITH_ITBB}")
+
+
+#message(STATUS "Type cmake -LAH to see all variables")

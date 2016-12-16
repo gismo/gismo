@@ -10,6 +10,14 @@
 ## Configuration
 ## #################################################################
 
+if(GISMO_BUILD_CPP11) # B.B.
+  set(CMAKE_CXX_STANDARD 11)
+else()
+  set(CMAKE_CXX_STANDARD 98) # 98, 11, 14
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 include(CheckCXXCompilerFlag)
 
 #Remove NDEBUG from RelWithDebInfo builds
@@ -73,23 +81,44 @@ endforeach()
 set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes --gen-suppressions=all" CACHE INTERNAL "")
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
+
+if (CMAKE_VERSION VERSION_LESS "3.1")
 # Enable C++ 11 features if present
-if(GISMO_BUILD_CPP11 AND NOT MSVC)
-  #cmake 3.1: set(CMAKE_CXX_STANDARD 11)
+if(CMAKE_CXX_STANDARD EQUAL "11" AND (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.1))
   CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
   if(COMPILER_SUPPORTS_CXX11)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    endif()
   else()
     CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
     if(COMPILER_SUPPORTS_CXX0X)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+      if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -stdlib=libc++")
+      else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+      endif()
     else()
       message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support.")
     endif()
   endif()
+#else()#if gcc ver >= 6.1
+endif()
 endif()
 
-# Shared pointer
+# Smart pointers (depending on CMAKE_CXX_STANDARD)
+if( (NOT CMAKE_CXX_STANDARD EQUAL 98 AND NOT STD_UNIQUE_PTR_FOUND ) OR
+    (CMAKE_CXX_STANDARD EQUAL     98 AND STD_UNIQUE_PTR_FOUND)    ) #xor
+message("11111111111111")
+  unset(TR1_SHARED_PTR_FOUND CACHE)
+  unset(TR1_SHARED_PTR_USE_TR1_MEMORY CACHE)
+  unset(TR1_SHARED_PTR_USE_MEMORY CACHE)
+  unset(BOOST_UNIQUE_PTR_FOUND CACHE)
+  unset(STD_UNIQUE_PTR_FOUND CACHE)
+  unset(STD_SHARED_PTR_FOUND CACHE)
+endif()
 find_package (TR1 QUIET)
 
 # Print compilation statistics (these flags work on GCC compiler only)
