@@ -573,9 +573,6 @@ private:
 };
 
 
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
 template <class T, int ParDim, int codim>
 class gsGenericGeometryEvaluator : public gsGeometryEvaluator<T>
 {

@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <iterator>
-
 #include <gsCore/gsMultiPatch.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsUtils/gsCombinatorics.h>

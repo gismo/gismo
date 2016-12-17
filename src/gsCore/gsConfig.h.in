@@ -31,14 +31,6 @@
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
 
-/* Define the shared_ptr to that found on the system. */
-#cmakedefine STD_SHARED_PTR_FOUND
-#cmakedefine TR1_SHARED_PTR_FOUND
-#cmakedefine TR1_SHARED_PTR_USE_TR1_MEMORY
-#cmakedefine BOOST_SHARED_PTR_FOUND
-#cmakedefine STD_UNIQUE_PTR_FOUND
-#cmakedefine BOOST_UNIQUE_PTR_FOUND
-
 /* Enabled Extensions */
 #cmakedefine GISMO_WITH_PSOLID
 #cmakedefine GISMO_WITH_ONURBS

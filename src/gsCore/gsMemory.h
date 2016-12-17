@@ -18,7 +18,7 @@
 #include <malloc.h>
 #endif
 
-#if defined(_LIBCPP_VERSION) || (_MSC_VER >= 1700) // libstdc++ ?
+#if defined(_LIBCPP_VERSION) || defined(_MSC_VER) // libstdc++ ?
 #include <memory>
 #else // stdc++ (__GLIBCXX__)
 //Assume GCC or a GCC-compliant compiler with TR1
@@ -45,7 +45,7 @@ memory::shared_ptr<int> B;
 \endcode
 */
 
-#if defined(_LIBCPP_VERSION) || (_MSC_VER >= 1700)
+#if defined(_LIBCPP_VERSION) || defined(_MSC_VER)
 using std::shared_ptr;
 using std::weak_ptr;
 #else
