@@ -509,10 +509,9 @@ RELATED FUNCTIONS:
 {
   unsigned char stack_buffer[4*64*sizeof(double)];
   double delta_t;
-  register double alpha0;
-  register double alpha1;
-  register double *cv0, *cv1;
-  register int i, j, k; 
+  double alpha0,  alpha1;
+  double *cv0, *cv1;
+  int i, j, k; 
   double* CV, *tmp;
   void* free_me = 0;
   const int degree = order-1;
