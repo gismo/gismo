@@ -5383,8 +5383,8 @@ namespace exprtk
          explicit string_literal_node(const std::string& v)
          : value_(v)
          {
-            rp_.n0_c = std::make_pair<bool,std::size_t>(true,0);
-            rp_.n1_c = std::make_pair<bool,std::size_t>(true,v.size() - 1);
+            rp_.n0_c = std::pair<bool,std::size_t>(true,0);
+            rp_.n1_c = std::pair<bool,std::size_t>(true,v.size() - 1);
             rp_.cache.first  = rp_.n0_c.second;
             rp_.cache.second = rp_.n1_c.second;
          }
@@ -7180,8 +7180,8 @@ namespace exprtk
          explicit stringvar_node(std::string& v)
          : value_(&v)
          {
-            rp_.n0_c = std::make_pair<bool,std::size_t>(true,0);
-            rp_.n1_c = std::make_pair<bool,std::size_t>(true,v.size() - 1);
+            rp_.n0_c = std::pair<bool,std::size_t>(true,0);
+            rp_.n1_c = std::pair<bool,std::size_t>(true,v.size() - 1);
             rp_.cache.first  = rp_.n0_c.second;
             rp_.cache.second = rp_.n1_c.second;
          }
@@ -7422,8 +7422,8 @@ namespace exprtk
            str_range_ptr_(0),
            base_range_(brange)
          {
-            range_.n0_c = std::make_pair<bool,std::size_t>(true,0);
-            range_.n1_c = std::make_pair<bool,std::size_t>(true,0);
+            range_.n0_c = std::pair<bool,std::size_t>(true,0);
+            range_.n1_c = std::pair<bool,std::size_t>(true,0);
             range_.cache.first  = range_.n0_c.second;
             range_.cache.second = range_.n1_c.second;
 
@@ -7553,8 +7553,8 @@ namespace exprtk
            str0_range_ptr_(0),
            str1_range_ptr_(0)
          {
-            range_.n0_c = std::make_pair<bool,std::size_t>(true,0);
-            range_.n1_c = std::make_pair<bool,std::size_t>(true,0);
+            range_.n0_c = std::pair<bool,std::size_t>(true,0);
+            range_.n1_c = std::pair<bool,std::size_t>(true,0);
 
             range_.cache.first  = range_.n0_c.second;
             range_.cache.second = range_.n1_c.second;
@@ -8281,8 +8281,8 @@ namespace exprtk
            consequent_  (consequent),
            alternative_(alternative)
          {
-            range_.n0_c = std::make_pair<bool,std::size_t>(true,0);
-            range_.n1_c = std::make_pair<bool,std::size_t>(true,0);
+            range_.n0_c = std::pair<bool,std::size_t>(true,0);
+            range_.n1_c = std::pair<bool,std::size_t>(true,0);
 
             range_.cache.first  = range_.n0_c.second;
             range_.cache.second = range_.n1_c.second;
@@ -8436,8 +8436,8 @@ namespace exprtk
            test_      (test),
            consequent_(consequent)
          {
-            range_.n0_c = std::make_pair<bool,std::size_t>(true,0);
-            range_.n1_c = std::make_pair<bool,std::size_t>(true,0);
+            range_.n0_c = std::pair<bool,std::size_t>(true,0);
+            range_.n1_c = std::pair<bool,std::size_t>(true,0);
 
             range_.cache.first  = range_.n0_c.second;
             range_.cache.second = range_.n1_c.second;
@@ -10993,8 +10993,8 @@ namespace exprtk
                               const std::vector<typename gen_function_t::expression_ptr>& arg_list)
          : gen_function_t(arg_list,func)
          {
-            range_.n0_c = std::make_pair<bool,std::size_t>(true,0);
-            range_.n1_c = std::make_pair<bool,std::size_t>(true,0);
+            range_.n0_c = std::pair<bool,std::size_t>(true,0);
+            range_.n1_c = std::pair<bool,std::size_t>(true,0);
             range_.cache.first  = range_.n0_c.second;
             range_.cache.second = range_.n1_c.second;
          }
