@@ -92,9 +92,9 @@ endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if (CMAKE_VERSION VERSION_LESS "3.1" AND 
-   (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.1))
+if (CMAKE_VERSION VERSION_LESS "3.1" AND CMAKE_COMPILER_IS_GNUCC)
 
+if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.1)
   if(CMAKE_CXX_STANDARD EQUAL "14")
     CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
     if(COMPILER_SUPPORTS_CXX14)
@@ -105,7 +105,6 @@ if (CMAKE_VERSION VERSION_LESS "3.1" AND
       endif()
     else()
       message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support.")
-      set(CMAKE_CXX_STANDARD 11 CACHE INTERNAL "")
     endif()
   endif()
 
@@ -127,23 +126,20 @@ if (CMAKE_VERSION VERSION_LESS "3.1" AND
           endif()
         else()
           message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support.")
-          set(CMAKE_CXX_STANDARD 98 CACHE INTERNAL "")
         endif()
      endif()
    endif()
+else() #gcc 6.1
+  if(CMAKE_CXX_STANDARD EQUAL "98")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98")
+  endif() 
+endif() 
 endif()#cmake<3.1
 
-# Smart pointers (depending on CMAKE_CXX_STANDARD)
-if(CMAKE_CXX_STANDARD EQUAL 98 AND STD_UNIQUE_PTR_FOUND)
-  unset(STD_UNIQUE_PTR_FOUND CACHE)
-  unset(STD_SHARED_PTR_FOUND CACHE)
-  find_package (TR1 QUIET)
-elseif(NOT CMAKE_CXX_STANDARD EQUAL 98)
-  set(STD_UNIQUE_PTR_FOUND 1 CACHE INTERNAL "")
-  set(STD_SHARED_PTR_FOUND 1 CACHE INTERNAL "")
-else()
-  find_package (TR1 QUIET)
-endif()
+# Find smart pointers just in case
+if(CMAKE_CXX_STANDARD EQUAL "98")
+  find_package (TR1 REQUIRED)
+endif() 
 
 # Print compilation statistics (these flags work on GCC compiler only)
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftime-report")
