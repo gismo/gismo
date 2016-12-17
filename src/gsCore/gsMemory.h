@@ -13,21 +13,16 @@
 
 #pragma once
 
-#include <memory>
-
 #ifdef __MINGW32__
 //#include <malloc/malloc.h> //xcode
 #include <malloc.h>
 #endif
 
-#ifdef TR1_SHARED_PTR_USE_TR1_MEMORY
+#if defined(_LIBCPP_VERSION) || (_MSC_VER >= 1700) // libstdc++ ?
+#include <memory>
+#else // stdc++ (__GLIBCXX__)
+//Assume GCC or a GCC-compliant compiler with TR1
 #include <tr1/memory>
-#elif defined(BOOST_SHARED_PTR_FOUND)
-#include <boost/shared_ptr.hpp>
-#endif
-
-#ifdef BOOST_UNIQUE_PTR_FOUND
-#include <boost/move/unique_ptr.hpp>
 #endif
 
 namespace gismo {
@@ -49,14 +44,13 @@ usage:
 memory::shared_ptr<int> B;
 \endcode
 */
-#ifdef STD_SHARED_PTR_FOUND 
-using std::shared_ptr; 
-#elif defined(TR1_SHARED_PTR_FOUND) 
-using std::tr1::shared_ptr; 
-#elif defined(BOOST_SHARED_PTR_FOUND) 
-using boost::shared_ptr; 
-#else  
-using NOT_FOUND::shared_ptr; 
+
+#if defined(_LIBCPP_VERSION) || (_MSC_VER >= 1700)
+using std::shared_ptr;
+using std::weak_ptr;
+#else
+using std::tr1::shared_ptr;
+using std::tr1::weak_ptr; 
 #endif 
 
 /* \brief Adaptor for a unique pointer
@@ -66,12 +60,8 @@ usage:
 memory::unique_ptr<int> B;
 \endcode
 */
-#ifdef STD_UNIQUE_PTR_FOUND
+#if __cplusplus >= 201103
 using std::unique_ptr;
-//#elif defined(TR1_UNIQUE_PTR_FOUND)
-//#using std::tr1::unique_ptr;
-#elif defined(BOOST_UNIQUE_PTR_FOUND)
-using boost::movelib::unique_ptr;
 #else
 template <typename T>
 class unique_ptr : public std::auto_ptr<T>
