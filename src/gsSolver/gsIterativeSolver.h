@@ -164,7 +164,8 @@ public:
                       "Iterative solvers only work for single column right hand side." );
      
         GISMO_ASSERT( m_precond->rows() == m_mat->rows(),
-                      "The preconditionner does not match the matrix." );
+                      "The preconditionner does not match the matrix. "
+                      << m_precond->rows() <<"!="<< m_mat->rows() );
 
         GISMO_ASSERT( m_precond->cols() == m_mat->cols(),
                       "The preconditionner does not match the matrix." );

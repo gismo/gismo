@@ -15,7 +15,7 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsUtils/gsMesh/gsMesh.h>
-//#include <gsCore/gsBoundary.h>
+#include <gsCore/gsFuncData.h>
 
 #include <gsCore/gsGeometrySlice.h>
 
@@ -227,8 +227,8 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
     this->basis().compute(in, tmp);
     
     out.values.resize(out.maxDeriv()+1);
-    out.info.targetDim = numCo;
-    out.info.domainDim = tmp.info.domainDim;
+    out.dim.first  = tmp.info.first;
+    out.dim.second = numCo;
     if ( flags & SAME_ELEMENT )
     {
         gsMatrix<T> coefM;
@@ -238,14 +238,14 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
             out.values[0]=coefM.transpose()*tmp.values[0];
         if (flags & NEED_DERIV)
         {
-            const index_t derS = tmp.info.derivSize();
+            const index_t derS = tmp.derivSize();
             out.values[1].resize(derS*numCo,numPt);
             for (index_t p=0; p< numPt; ++p)
                 out.values[1].reshapeCol(p, derS, numCo) = tmp.deriv(p)*coefM;
         }
         if (flags & NEED_DERIV2)
         {
-            const index_t derS = tmp.info.deriv2Size();
+            const index_t derS = tmp.deriv2Size();
             out.values[2].resize(derS*numCo,numPt);
             for (index_t p=0; p< numPt; ++p)
                 out.values[2].reshapeCol(p, derS, numCo) = tmp.deriv2(p)*coefM;
@@ -253,8 +253,8 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
     } else
     {
         gsMatrix<T> coefM;
-        const index_t derS = tmp.info.derivSize();
-        const index_t der2S = tmp.info.deriv2Size();
+        const index_t derS = tmp.derivSize();
+        const index_t der2S = tmp.deriv2Size();
 
         if (flags & NEED_VALUE)  out.values[0].resize(numCo,numPt);
         if (flags & NEED_DERIV)  out.values[1].resize(numCo*derS,numPt);

@@ -408,7 +408,6 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 {return fd.print(os); }
 
-
 } // namespace gismo
 
 

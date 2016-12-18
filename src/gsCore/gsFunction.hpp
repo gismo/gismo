@@ -339,33 +339,33 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     this->compute(InOut.points, InOut);
     
     // Fill extra data
-    const gsFuncInfo info = this->info();
+    typename gsFunctionSet<T>::dim_t Dim = this->dimensions();
 
-    GISMO_ASSERT(info.domainDim<10,             "Domain dimension is too big");
-    GISMO_ASSERT(info.domainDim<=info.targetDim, "Singular map: target dimensions is lower then the domain dimension");
-    switch (10 * info.targetDim + info.domainDim)
+    GISMO_ASSERT(Dim.first<10,             "Domain dimension is too big");
+    GISMO_ASSERT(Dim.first<=Dim.second, "Singular map: target dimension is lower then the domain dimension");
+    switch (10 * Dim.second + Dim.first)
     {
     // curves
-    case 11: computeAuxiliaryData<T,1,1>(InOut, info.domainDim, info.targetDim); break;
-    case 21: computeAuxiliaryData<T,1,2>(InOut, info.domainDim, info.targetDim); break;
-//    case 31: computeAuxiliaryData<T,1,3>(InOut, info.domainDim, info.targetDim); break;
-//    case 41: computeAuxiliaryData<T,1,4>(InOut, info.domainDim, info.targetDim); break;
+    case 11: computeAuxiliaryData<T,1,1>(InOut, Dim.first, Dim.second); break;
+    case 21: computeAuxiliaryData<T,1,2>(InOut, Dim.first, Dim.second); break;
+//    case 31: computeAuxiliaryData<T,1,3>(InOut, Dim.first, Dim.second); break;
+//    case 41: computeAuxiliaryData<T,1,4>(InOut, Dim.first, Dim.second); break;
     // surfaces
-//  case 12: computeAuxiliaryData<T,2,1>(InOut, info.domainDim, info.targetDim); break;
-    case 22: computeAuxiliaryData<T,2,2>(InOut, info.domainDim, info.targetDim); break;
-    case 32: computeAuxiliaryData<T,2,3>(InOut, info.domainDim, info.targetDim); break;
-//    case 42: computeAuxiliaryData<T,2,4>(InOut, info.domainDim, info.targetDim); break;
+//  case 12: computeAuxiliaryData<T,2,1>(InOut, Dim.first, Dim.second); break;
+    case 22: computeAuxiliaryData<T,2,2>(InOut, Dim.first, Dim.second); break;
+    case 32: computeAuxiliaryData<T,2,3>(InOut, Dim.first, Dim.second); break;
+//    case 42: computeAuxiliaryData<T,2,4>(InOut, Dim.first, Dim.second); break;
 // volumes
-//  case 13: computeAuxiliaryData<T,3,1>(InOut, info.domainDim, info.targetDim); break;
-//  case 23: computeAuxiliaryData<T,3,2>(InOut, info.domainDim, info.targetDim); break;
-    case 33: computeAuxiliaryData<T,3,3>(InOut, info.domainDim, info.targetDim); break;
-//    case 43: computeAuxiliaryData<T,3,4>(InOut, info.domainDim, info.targetDim); break;
+//  case 13: computeAuxiliaryData<T,3,1>(InOut, Dim.first, Dim.second); break;
+//  case 23: computeAuxiliaryData<T,3,2>(InOut, Dim.first, Dim.second); break;
+    case 33: computeAuxiliaryData<T,3,3>(InOut, Dim.first, Dim.second); break;
+//    case 43: computeAuxiliaryData<T,3,4>(InOut, Dim.first, Dim.second); break;
 // 4D bulks
-//  case 14: computeAuxiliaryData<T,4,1>(InOut, info.domainDim, info.targetDim); break;
-//  case 24: computeAuxiliaryData<T,4,2>(InOut, info.domainDim, info.targetDim); break;
-//  case 34: computeAuxiliaryData<T,4,3>(InOut, info.domainDim, info.targetDim); break;
-    case 44: computeAuxiliaryData<T,4,4>(InOut, info.domainDim, info.targetDim); break;
-    default: computeAuxiliaryData<T,-1,-1>(InOut, info.domainDim, info.targetDim); break;
+//  case 14: computeAuxiliaryData<T,4,1>(InOut, Dim.first, Dim.second); break;
+//  case 24: computeAuxiliaryData<T,4,2>(InOut, Dim.first, Dim.second); break;
+//  case 34: computeAuxiliaryData<T,4,3>(InOut, Dim.first, Dim.second); break;
+    case 44: computeAuxiliaryData<T,4,4>(InOut, Dim.first, Dim.second); break;
+    default: computeAuxiliaryData<T,-1,-1>(InOut, Dim.first, Dim.second); break;
     }
 
 }

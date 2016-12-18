@@ -18,8 +18,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-
-#include <gsCore/gsFuncData.h>
+#include <gsCore/gsForwardDeclarations.h>
 
 namespace gismo {
 
@@ -81,16 +80,14 @@ namespace gismo {
    1) overload the virtual function int size() that returns the
    number of functions in the set;
 
-   2) fill in the gsFuncInfo data in a meaningful way.
-
-   3) overload the neede evaluation functions with gsMatrix
+   2) overload the needed evaluation functions with gsMatrix
    argument: eval_into, deriv_into, deriv2_into; the one that
    are not implemented will fail at runtime printing which
    function need implementing to the console
 
    and possibly:
 
-   4) write optimized versions of div, curl, laplacian
+   3) write optimized versions of div, curl, laplacian
    ... evaluation. By default they are computed by evaluating
    the derivatives and applying the definition.
 
@@ -110,6 +107,7 @@ public:
 
     typedef typename gsMatrix<T>::uPtr       uMatrixPtr;
 
+    typedef std::pair<int,int> dim_t;
 public:
 
     gsFunctionSet();
@@ -443,11 +441,11 @@ public:
     virtual int targetDim () const {return 1;}
 
     /*
-       @brief info
-       @return a gsFuncInfo struct containing domainDim() and targetDim()
-     */
-    gsFuncInfo info() const {return gsFuncInfo(domainDim(),targetDim());}
-
+      @brief Dimension of domain and target
+      @return the pair of integers domainDim() and targetDim()
+    */
+    dim_t dimensions() const {return std::make_pair(domainDim(),targetDim());}
+    
     /**
       @brief size
      

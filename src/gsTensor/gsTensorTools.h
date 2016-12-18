@@ -111,15 +111,14 @@ void tensorCombineTransferMatrices(
 }
 
 /// \brief Helper to compute the strides of a d-tensor
-template<int d>
-void tensorStrides(const gsVector<index_t,d> & sz, gsVector<index_t,d> & strides) 
+template<typename VectIn, typename VectOut> inline
+void tensorStrides(const VectIn & sz, VectOut & strides) 
 {
-    strides.resize(sz.size());
+    strides.derived().resize(sz.size());
     strides[0] = 1;
-    for ( index_t i=1; i< sz.size(); ++i )
+    for ( index_t i=1; i != sz.size(); ++i )
         strides[i] = strides[i-1] * sz[i-1];
 }
-
 
 /// Reorders (inplace) the given tensor \a coefs vector (regarded as a
 /// \a sz.prod() x \a d matrix arranged as a flattened \a sz tensor,
@@ -150,7 +149,7 @@ void swapTensorDirection( int k1, int k2,
     
     std::swap( sz[k1], sz[k2] );
     gsVector<index_t,d> perstr;
-    tensorStrides<d>(sz, perstr);
+    tensorStrides(sz, perstr);
     std::swap(perstr[k1], perstr[k2] );
     
     gsMatrix<T> tmp(coefs.rows(), coefs.cols() );
@@ -184,7 +183,7 @@ void permuteTensorVector( const gsVector<index_t,d> & perm,
 
     sz = P * sz;
     gsVector<index_t,d> perstr;
-    tensorStrides<d>(sz, perstr);
+    tensorStrides(sz, perstr);
     perstr = P * perstr;
     
     // check: is it better to create a big permutation to apply to coefs ?
@@ -209,7 +208,7 @@ void flipTensorVector(const int dir,
     gsVector<index_t,d> perstr = sz;
     perstr[dir] /= 2;
     gsGridIterator<index_t,CUBE,d> it(perstr);
-    tensorStrides<d>(sz, perstr);//reuse
+    tensorStrides(sz, perstr);//reuse
     const index_t cc = sz[dir] - 1; 
 
     for(; it; ++it)

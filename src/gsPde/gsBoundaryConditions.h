@@ -196,7 +196,7 @@ struct corner_value
     \ingroup Pde
 */
 template<class T>
-class gsBoundaryConditions 
+class GISMO_EXPORT gsBoundaryConditions 
 {
     
 public:

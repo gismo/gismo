@@ -47,6 +47,7 @@ namespace internal
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFunctionSet.h>
+#include <gsCore/gsFuncData.h>
 #include <gsCore/gsFunction.h>
 #include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsBoundary.h>

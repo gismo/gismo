@@ -146,7 +146,7 @@ struct unary_evaluator<BlockTranspose<ArgType, NumBlocks> >
       m_argImpl(m_arg),
       m_rows(xpr.nestedExpression().rows()),
       m_cols(xpr.nestedExpression().cols()),
-      m_str(m_cols / xpr.numBlocks())
+      m_str(m_cols.value() / xpr.numBlocks())
   {}
  
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE

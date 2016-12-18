@@ -170,7 +170,8 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
 {
     const unsigned flags = out.flags;
     
-    out.info = info();
+    out.dim = this->dimensions();
+    
     const int md = out.maxDeriv();
     if (md != -1)
         evalAllDers_into(in, md, out.values);
@@ -186,13 +187,12 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
     //     convertValue<T>::derivToCurl(out.values[1], out.curls, info());
     if (flags & NEED_LAPLACIAN)
     {
-        const index_t domDim = info().domainDim;
-        const index_t dsz    = ((domDim+1)*domDim)/2;
+        const index_t dsz    = out.derivSize();
         const index_t numact = out.values[2].rows() / dsz;
         out.laplacians.resize(numact, in.cols());
-            for (index_t i=0; i!= numact; ++i)
-                out.laplacians.row(i) =
-                    out.values[2].middleRows(dsz*i,domDim).colwise().sum();
+        for (index_t i=0; i!= numact; ++i)
+            out.laplacians.row(i) =
+                out.values[2].middleRows(dsz*i,out.dim.first).colwise().sum();
     }
 }
 
