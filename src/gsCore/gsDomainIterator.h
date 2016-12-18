@@ -15,6 +15,7 @@
 
 #include <gsCore/gsBasis.h> // todo: remove
 #include <gsCore/gsDomain.h>
+#include <gsCore/gsBoundary.h>
 
 namespace gismo
 {

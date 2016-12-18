@@ -227,7 +227,7 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
     this->basis().compute(in, tmp);
     
     out.values.resize(out.maxDeriv()+1);
-    out.dim.first  = tmp.info.first;
+    out.dim.first  = tmp.dim.first;
     out.dim.second = numCo;
     if ( flags & SAME_ELEMENT )
     {
