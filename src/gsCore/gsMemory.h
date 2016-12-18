@@ -18,12 +18,17 @@
 #include <malloc.h>
 #endif
 
-#if defined(_LIBCPP_VERSION) || defined(_MSC_VER) // libstdc++ ?
-#include <memory>
-#else // stdc++ (__GLIBCXX__)
-//Assume GCC or a GCC-compliant compiler with TR1
-#include <tr1/memory>
+#ifdef __GLIBCXX__
+#  ifdef __INTEL_COMPILER
+#    include <boost/shared_ptr.hpp>
+#    include <boost/weak_ptr.hpp>
+#  else
+#    include <tr1/memory>
+#  endif
+#else // libc++ or other
+#  include <memory>
 #endif
+
 
 namespace gismo {
 
@@ -45,12 +50,17 @@ memory::shared_ptr<int> B;
 \endcode
 */
 
-#if defined(_LIBCPP_VERSION) || defined(_MSC_VER)
-using std::shared_ptr;
-using std::weak_ptr;
-#else
+#ifdef __GLIBCXX__
+#  ifdef __INTEL_COMPILER
+using boost::shared_ptr;
+using boost::weak_ptr;
+#  else
 using std::tr1::shared_ptr;
 using std::tr1::weak_ptr; 
+#  endif
+#else
+using std::shared_ptr;
+using std::weak_ptr;
 #endif 
 
 /* \brief Adaptor for a unique pointer

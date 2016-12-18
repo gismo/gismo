@@ -76,7 +76,6 @@ endforeach()
 set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes" CACHE INTERNAL "")
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
-
 if(DEFINED GISMO_BUILD_CPP11) # B.C.
   if(${GISMO_BUILD_CPP11}) # B.C.
     set(CMAKE_CXX_STANDARD 11 CACHE INTERNAL "")
@@ -134,9 +133,9 @@ if (CMAKE_VERSION VERSION_LESS "3.1" AND CMAKE_COMPILER_IS_GNUCC)
 endif()#cmake<3.1
 
 # Find smart pointers just in case
-if(CMAKE_CXX_STANDARD EQUAL "98")
-  find_package (TR1 REQUIRED)
-endif() 
+#if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+#  find_package (BoostPtr REQUIRED)
+#endif() 
 
 # Print compilation statistics (these flags work on GCC compiler only)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftime-report")
