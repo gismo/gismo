@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Sogn
+    Author(s): J. Sogn, A. Manzaflaris, C. Hofreither, S. Takacs, C. Hofer
 */
 #pragma once
 
@@ -109,12 +109,14 @@ public:
             step(input,x);
     }
     
+    /// Set the number of sweeps to be applied in the member function \a apply
     void setNumOfSweeps( index_t n )
     {
         GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive." );
         m_num_of_sweeps = n;
     }
     
+    /// Get the number of sweeps to be applied in the member function \a apply
     index_t getNumOfSweeps()
     {
         return m_num_of_sweeps;
