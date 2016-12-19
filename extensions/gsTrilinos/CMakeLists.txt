@@ -50,8 +50,11 @@ find_path(TPL_MPI_INCLUDE_DIRS mpi.h ${MPI_INCLUDE_PATH})
 list(GET MPI_CXX_LIBRARIES 0 TPL_MPI_LIBRARY_DIRS)
 get_filename_component(TPL_MPI_LIBRARY_DIRS ${TPL_MPI_LIBRARY_DIRS} PATH)
 
-if (NOT GISMO_BUILD_CPP11)
+if(CMAKE_CXX_STANDARD EQUAL "98")
+set(Trilinos_ENABLE_CXX11 OFF)
 message(WARNING "GISMO_BUILD_CPP11 must be ON for Trilinos extensions to compile ?.")
+else()
+set(Trilinos_ENABLE_CXX11 ON)
 endif()
 
 # Note: might need export FC=/usr/bin/gfortran
@@ -86,7 +89,8 @@ ExternalProject_Add(Trilinos
                        -DTPL_MPI_LIBRARY_DIRS=${TPL_MPI_LIBRARY_DIRS}
                        #-DMPI_BASE_DIR=${TPL_MPI_BASE_DIR}
                        #-DTPL_MPI_LIBRARIES=${MPI_CXX_LIBRARIES} # bug ? 2 elements
-                       -DTrilinos_ENABLE_CXX11=${GISMO_BUILD_CPP11} # Note: this must be ON, otherwise Trilinos compilation fails. Must be OFF on MS Windows
+ 		       # Note: this must be ON, otherwise Trilinos compilation fails. Must be OFF on MS Windows
+                       -DTrilinos_ENABLE_CXX11=${Trilinos_ENABLE_CXX11}
                        ## Point to specific paths (! no space after "=")
                        -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
                        -DTPL_BLAS_LIBRARIES=${LAPACK_LIBRARIES}
