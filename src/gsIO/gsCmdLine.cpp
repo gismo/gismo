@@ -68,23 +68,23 @@ public:
     
     // Stores integer arguments
     std::vector<TCLAP::ValueArg<int>*    > intVals ;
-    std::vector<int*>               intRes ;
+    std::vector<int*>                      intRes ;
 
     // Stores real_t arguments
     std::vector<TCLAP::ValueArg<real_t>*> realVals;
-    std::vector<real_t*>           realRes ;
+    std::vector<real_t*>                  realRes ;
 
     // Stores string arguments
     std::vector<TCLAP::ValueArg<std::string>*> stringVals;
-    std::vector<std::string*>           strRes ;
+    std::vector<std::string*>                     strRes ;
 
     // Stores switch arguments
     std::vector<TCLAP::SwitchArg*      > switches;
-    std::vector<bool*>              swRes ;
+    std::vector<bool*>                     swRes ;
 
     // Stores plain string argument
     TCLAP::UnlabeledValueArg<std::string> * plainString;
-    std::string *                pstrRes;
+    std::string *                               pstrRes;
 
     // Stores config filename
     //std::string config;
@@ -134,7 +134,7 @@ std::string & gsCmdLine::getMessage()
 void gsCmdLine::addInt( const std::string& flag, 
                         const std::string& name, 
                         const std::string& desc, 
-                        int & value)
+                        int              & value)
 {
     //value = getInt(flag,name,desc,value);
     my->intVals.push_back(new TCLAP::ValueArg<int>(flag,name,desc,false,value,"int",my->cmd) );
@@ -144,7 +144,7 @@ void gsCmdLine::addInt( const std::string& flag,
 int gsCmdLine::getInt( const std::string& flag,
                        const std::string& name, 
                        const std::string& desc, 
-                       const int & value)
+                       const int        & value)
 {
     ArgTable::const_iterator it = my->args.find(name);
     if ( it != my->args.end() )
@@ -471,8 +471,53 @@ void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
     gsInfo << "\n";
     gsInfo << "                   G+Smo \n";
     gsInfo << "      Geometry plus Simulation modules\n";
-    gsInfo << "             version "<< GISMO_VERSION <<"\n";
-    gsInfo << "   Copyright (C) JKU-RICAM-Linz, 2012 - 2016\n";
+    gsInfo << "               version "<< GISMO_VERSION<<"\n";
+    gsInfo << "   Compiled by ";
+//https://sourceforge.net/p/predef/wiki/Compilers, see also boost/predef.h
+#if defined(_MSC_VER)
+    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<__cplusplus <<", ";
+#elif defined(__clang__ )
+    gsInfo << "Clang "<<"XX" <<" ("<<__cplusplus <<", ";
+#elif defined(_INTEL_COMPILER)
+    gsInfo << "Intel C++ "<<__INTEL_COMPILER<<" ("<<__cplusplus <<", ";
+#elif defined(__MINGW64__)
+    gsInfo << "MinGW "<<__MINGW64_VERSION_MAJOR<<"."<<__MINGW64_VERSION_MINOR<<" ("<<__cplusplus <<", ";
+#elif defined(__SUNPRO_CC)
+    gsInfo << "Solaris Studio "<<__SUNPRO_CC<<" ("<<__cplusplus <<", ";
+#elif defined(__GNUG__)
+    gsInfo << "GNU GCC "<<__GNUC__<<"."<<__GNUC_MINOR__<<" ("<<__cplusplus <<", ";
+#else
+    gsInfo << "C++ ("<<__cplusplus <<", ";
+#endif
+
+#ifdef __INTEL_MKL__
+    gsInfo << "MKL "<<INTEL_MKL_VERSION<<", ";
+#endif
+
+#ifdef _LIBCPP_VERSION
+    gsInfo << "libc++ "<<_LIBCPP_VERSION <<")\n";
+#  elif defined(__GLIBCXX__)
+    gsInfo << "glibstdc++ "<< __GLIBCXX__ <<")\n";
+#  elif defined(__GLIBCPP__)
+    gsInfo << "glibstdc++ "<< __GLIBCPP__ <<")\n";
+#elif defined(__LIBCOMO__)
+    gsInfo << "Comeau STL "<< __LIBCOMO__ <<")\n";
+#  elif defined(__STL_CONFIG_H)
+    gsInfo << "SGI STL)\n";
+#  elif defined(__MSL_CPP__)
+    gsInfo << "MSL standard lib)\n";
+#  elif defined(__IBMCPP__)
+    gsInfo << "VACPP STL)\n";
+#  elif defined(MSIPL_COMPILE_H)
+    gsInfo << "Modena C++ STL)\n";
+#  elif (defined(_YVALS) && !defined(__IBMCPP__)) || defined(_CPPLIB_VER)
+    gsInfo << "Dinkumware STL)\n";
+#  elif defined(__STD_RWCOMPILER_H__) || defined(_RWSTD_VER)
+    gsInfo << "Rogue Wave lib)\n";
+#else
+    gsInfo << "Unknown-STD)\n";
+#endif
+    gsInfo << "   RICAM-Linz 2012 - 2017, http://gs.jku.at/gismo\n";
 }
 
 

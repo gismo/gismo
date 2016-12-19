@@ -76,7 +76,7 @@ public:
     void addInt(const std::string& flag, 
                 const std::string& name, 
                 const std::string& desc, 
-                int & value);
+                int              & value);
 
     void addReal(const std::string& flag, 
                  const std::string& name, 
@@ -107,7 +107,7 @@ public:
     int getInt(const std::string& flag, 
                const std::string& name, 
                const std::string& desc, 
-               const int & value);
+               const int        & value);
     
     real_t getReal(const std::string& flag, 
                    const std::string& name, 
