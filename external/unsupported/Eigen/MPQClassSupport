@@ -9,7 +9,8 @@
 // Angelos Mantzaflaris, 2015-2016
 
 
-#pragma once
+#ifndef EIGEN_MPQCLASSSUPPORT_MODULE_H
+#define EIGEN_MPQCLASSSUPPORT_MODULE_H
 
 #include <gmpxx.h>
 
@@ -22,14 +23,14 @@ namespace Eigen
    template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE
    mpq_class mini(const mpq_class& x, const mpq_class& y)
    { return ::min(x,y); }
+  
     // Specialize for mpq_class
    template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE 
    mpq_class maxi(const mpq_class& x, const mpq_class& y)
    { return ::max(x,y); }
   }
 
-  template<> struct NumTraits<mpq_class>
-    : GenericNumTraits<mpq_class>
+  template<> struct NumTraits<mpq_class> : GenericNumTraits<mpq_class>
   {
     enum {
       IsInteger = 0,
@@ -161,28 +162,6 @@ namespace Eigen
 
   } // end namespace internal
 
-// Complex scalar division.
-template <class U, class V, class W, class Y>
-std::complex<mpq_class> 
-cdiv(const __gmp_expr<mpq_t, U> & xr,
-     const __gmp_expr<mpq_t, V> & xi,
-     const __gmp_expr<mpq_t, W> & yr,
-     const __gmp_expr<mpq_t, Y> & yi)
-{
-  mpq_class r,d;
-  if (abs(yr) > abs(yi))
-  {
-      r = yi/yr;
-      d = yr + r*yi;
-      return std::complex<mpq_class>(mpq_class((xr + r*xi)/d), mpq_class((xi - r*xr)/d));
-  }
-  else
-  {
-      r = yr/yi;
-      d = yi + r*yr;
-      return std::complex<mpq_class>(mpq_class((r*xr + xi)/d), mpq_class((r*xi - xr)/d));
-  }
-}
+} //namespace Eigen
 
-}//namaspace Eigen
-
+#endif
