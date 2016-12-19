@@ -66,8 +66,12 @@ public:
 /// @brief Simple abstract class for Steppable discrete operators.
 ///
 /// The class represents an iteration method in the form x_new = x_old + P^{-1}(f - A*x_old).
-/// The member apply represents the application of P^{-1}.
-/// The member step represents one step of the above iteration method.
+/// The member function \a apply represents the application of P^{-1}.
+/// The member function \a step represents one step of the above iteration method.
+///
+/// If \a setNumOfSweeps is used to set the number of sweeps to some tau>0, the member
+/// function \a apply represents I-(I-P^{-1}A)^{tau} A^{-1}.
+///
 /// Usually, the step operation can be performed in an optimized way.
 ///
 /// The derived classes have to contain the functions: step(), cols(), and rows().
@@ -86,7 +90,9 @@ public:
 
     /// Base class
     typedef gsLinearOperator<T> Base;
-
+    
+    gsSteppableOperator() : m_num_of_sweeps(1) {}
+    
     virtual ~gsSteppableOperator() {}
 
     /**
@@ -99,9 +105,24 @@ public:
     virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         x.setZero(this->rows(),input.cols()); // we assume quadratic matrices
-        step(input,x);
+        for ( index_t i = 0; i < m_num_of_sweeps; ++i )
+            step(input,x);
+    }
+    
+    void setNumOfSweeps( index_t n )
+    {
+        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive." );
+        m_num_of_sweeps = n;
+    }
+    
+    index_t getNumOfSweeps()
+    {
+        return m_num_of_sweeps;
     }
 
+protected:
+    index_t m_num_of_sweeps;
+    
 }; // gsSteppableOperator
 
 /// @brief Allows an operator to be multiplied with a scalar

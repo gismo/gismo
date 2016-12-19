@@ -47,7 +47,7 @@ GISMO_EXPORT void gaussSeidelSingleBlock(const gsSparseMatrix<real_t>& A, gsMatr
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsRichardsonOp : public gsLinearOperator<typename MatrixType::Scalar>
+class gsRichardsonOp : public gsSteppableOperator<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
@@ -63,11 +63,11 @@ public:
 
     /// @brief Constructor with given matrix
     explicit gsRichardsonOp(const MatrixType& _mat)
-    : m_mat(), m_expr(_mat.derived()), m_numOfSweeps(1), m_tau(1) {}
+    : m_mat(), m_expr(_mat.derived()), m_tau(1) {}
     
     /// @brief Constructor with shared pointer to matrix
     explicit gsRichardsonOp(const MatrixPtr& _mat)
-    : m_mat(_mat), m_expr(m_mat->derived()), m_numOfSweeps(1), m_tau(1) { }
+    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
     
     static Ptr make(const MatrixType& _mat) 
     { return memory::make_shared( new gsRichardsonOp(_mat) ); }
@@ -75,6 +75,16 @@ public:
     static Ptr make(const MatrixPtr& _mat) 
     { return memory::make_shared( new gsRichardsonOp(_mat) ); }
 
+    void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        GISMO_ASSERT( m_expr.rows() == rhs.rows() && m_expr.cols() == m_expr.rows(),
+                      "Dimensions do not match.");
+
+        x += m_tau * ( rhs - m_expr * x );
+    }
+
+    // We use our own apply implementation as we can save one multiplication. This is important if the number
+    // of sweeps is 1: Then we can save *all* multiplications.
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         GISMO_ASSERT( m_expr.rows() == input.rows() && m_expr.cols() == m_expr.rows(),
@@ -83,19 +93,12 @@ public:
         // For the first sweep, we do not need to multiply with the matrix
         x.noalias() = m_tau * input;
         
-        for (index_t k = 1; k < m_numOfSweeps; ++k)
+        for (index_t k = 1; k < m_num_of_sweeps; ++k)
             x += m_tau * ( input - m_expr * x );
     }
 
     index_t rows() const {return m_expr.rows();}
     index_t cols() const {return m_expr.cols();}
-
-    /// Set number of sweeps.
-    void setNumOfSweeps(index_t n)
-    {
-        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive." );
-        m_numOfSweeps=n;
-    }
 
     /// Set scaling parameter
     void setScaling(const T tau) { m_tau = tau; }
@@ -107,7 +110,7 @@ private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
     NestedMatrix    m_expr; ///< Nested Eigen expression
 
-    index_t m_numOfSweeps;
+    using gsLinearOperator<T>::m_num_of_sweeps;
     T m_tau;
 };
 
@@ -124,7 +127,7 @@ typename gsRichardsonOp<Derived>::Ptr makeRichardsonOp(const Eigen::EigenBase<De
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsJacobiOp : public gsLinearOperator<typename MatrixType::Scalar>
+class gsJacobiOp : public gsSteppableOperator<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
@@ -140,18 +143,30 @@ public:
 
     /// @brief Constructor with given matrix
     explicit gsJacobiOp(const MatrixType& _mat)
-    : m_mat(), m_expr(_mat.derived()), m_numOfSweeps(1), m_tau(1) {}
+    : m_mat(), m_expr(_mat.derived()), m_tau(1) {}
     
     /// @brief Constructor with shared pointer to matrix
     explicit gsJacobiOp(const MatrixPtr& _mat)
-    : m_mat(_mat), m_expr(m_mat->derived()), m_numOfSweeps(1), m_tau(1) { }
+    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
     
     static Ptr make(const MatrixType& _mat) 
     { return memory::make_shared( new gsJacobiOp(_mat) ); }
 
     static Ptr make(const MatrixPtr& _mat) 
     { return memory::make_shared( new gsJacobiOp(_mat) ); }
+  
+    void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        GISMO_ASSERT( m_expr.rows() == rhs.rows() && m_expr.cols() == m_expr.rows(),
+                      "Dimensions do not match.");
         
+        GISMO_ASSERT( rhs.cols() == 1, "This operator is only implemented for a single right-hand side." );
+
+        x.array() += m_tau * ( rhs - m_expr * x ).array() / m_expr.diagonal().array();
+    }
+  
+    // We use our own apply implementation as we can save one multiplication. This is important if the number
+    // of sweeps is 1: Then we can save *all* multiplications.
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         GISMO_ASSERT( m_expr.rows() == input.rows() && m_expr.cols() == m_expr.rows(),
@@ -162,19 +177,12 @@ public:
         // For the first sweep, we do not need to multiply with the matrix
         x.array() = m_tau * input.array() / m_expr.diagonal().array();
         
-        for (index_t k = 1; k < m_numOfSweeps; ++k)
+        for (index_t k = 1; k < m_num_of_sweeps; ++k)
             x.array() += m_tau * ( input - m_expr * x ).array() / m_expr.diagonal().array();
     }
 
     index_t rows() const {return m_expr.rows();}
     index_t cols() const {return m_expr.cols();}
-
-    /// Set number of sweeps.
-    void setNumOfSweeps(index_t n)
-    {
-        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive." );
-        m_numOfSweeps = n;
-    }
 
     /// Set scaling parameter
     void setScaling(const T tau) { m_tau = tau; }
@@ -185,7 +193,7 @@ public:
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
     NestedMatrix    m_expr; ///< Nested Eigen expression
-    index_t m_numOfSweeps;
+    using gsLinearOperator<T>::m_num_of_sweeps;
     T m_tau;
 };
 
@@ -203,7 +211,7 @@ typename gsJacobiOp<Derived>::Ptr makeJacobiOp(const Eigen::EigenBase<Derived>& 
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
+class gsGaussSeidelOp : public gsSteppableOperator<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
@@ -219,11 +227,11 @@ public:
     
     /// @brief Constructor with given matrix
     explicit gsGaussSeidelOp(const MatrixType& _mat)
-    : m_mat(), m_expr(_mat.derived()), m_numOfSweeps(1) {}
+    : m_mat(), m_expr(_mat.derived()) {}
     
     /// @brief Constructor with shared pointer to matrix
     explicit gsGaussSeidelOp(const MatrixPtr& _mat)
-    : m_mat(_mat), m_expr(m_mat->derived()), m_numOfSweeps(1) { }
+    : m_mat(_mat), m_expr(m_mat->derived()) { }
     
     static Ptr make(const MatrixType& _mat) 
     { return memory::make_shared( new gsGaussSeidelOp(_mat) ); }
@@ -231,25 +239,13 @@ public:
     static Ptr make(const MatrixPtr& _mat) 
     { return memory::make_shared( new gsGaussSeidelOp(_mat) ); }
 
-    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+    void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
-        x.setZero(rows(), input.cols());
-
-        for (index_t k = 0; k < m_numOfSweeps; ++k)
-        {
-            gaussSeidelSweep(m_expr,x,input);
-        }
+        gaussSeidelSweep(m_expr,x,rhs);
     }
 
     index_t rows() const {return m_expr.rows();}
     index_t cols() const {return m_expr.cols();}
-
-    /// Set number of sweeps of to symmetric Gauss-Seidel perform (default is 1).
-    void setNumOfSweeps(index_t n)
-    {
-        GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive. ");
-        m_numOfSweeps=n;
-    }
 
     ///Returns the matrix
     const MatrixType & matrix() const { return m_mat; }
@@ -257,7 +253,6 @@ public:
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
     NestedMatrix    m_expr; ///< Nested Eigen expression
-    index_t m_numOfSweeps;
 };
 
 /**
@@ -275,7 +270,7 @@ typename gsGaussSeidelOp<Derived>::Ptr makeGaussSeidelOp(const Eigen::EigenBase<
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsSymmetricGaussSeidelOp : public gsLinearOperator<typename MatrixType::Scalar>
+class gsSymmetricGaussSeidelOp : public gsSteppableOperator<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested          NestedMatrix;
@@ -291,11 +286,11 @@ public:
     
     /// @brief Constructor with given matrix
     explicit gsSymmetricGaussSeidelOp(const MatrixType& _mat)
-    : m_mat(), m_expr(_mat.derived()), m_numOfSweeps(1) {}
+    : m_mat(), m_expr(_mat.derived()) {}
 
     /// @brief Constructor with shared pointer to matrix
     explicit gsSymmetricGaussSeidelOp(const MatrixPtr& _mat)
-    : m_mat(_mat), m_expr(m_mat->derived()), m_numOfSweeps(1) {}
+    : m_mat(_mat), m_expr(m_mat->derived()) {}
     
     static Ptr make(const MatrixType& _mat) 
     { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat) ); }
@@ -303,25 +298,17 @@ public:
     static Ptr make(const MatrixPtr& _mat) 
     { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat) ); }
 
-    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+    void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
-        x.setZero(rows(), input.cols());
-
-        for (index_t k = 0; k < m_numOfSweeps; ++k)
-        {
-            gaussSeidelSweep(m_expr,x,input);
-            //x.array() *= m_expr.diagonal().array();
-            reverseGaussSeidelSweep(m_expr,x,input);
-        }
+        gaussSeidelSweep(m_expr,x,rhs);
+        //x.array() *= m_expr.diagonal().array();
+        reverseGaussSeidelSweep(m_expr,x,rhs);
     }
 
     index_t rows() const {return m_expr.rows();}
 
     index_t cols() const {return m_expr.cols();}
 
-    /// Set number of sweeps of to symmetric Gauss-Seidel perform
-    /// (default is 1).
-    void setNumOfSweeps(index_t n)    { m_numOfSweeps= n; }
 
     ///Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
@@ -330,7 +317,6 @@ private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
     NestedMatrix    m_expr; ///< Nested Eigen expression
 
-    index_t m_numOfSweeps;
 };
 
 /**
