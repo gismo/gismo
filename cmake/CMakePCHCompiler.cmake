@@ -175,3 +175,32 @@ macro(__watch_pch_variable variable access value)
 	string(REPLACE _CXX_ _CXXPCH_ pchvariable ${pchvariable})
 	set(${pchvariable} ${${variable}}) # because ${value} expands backslashes
 endmacro()
+
+macro(__configure_pch_compiler lang)
+	set(CMAKE_${lang}PCH_COMPILER_ENV_VAR "${lang}PCH")
+	set(CMAKE_${lang}PCH_COMPILER ${CMAKE_${lang}_COMPILER})
+
+	if(SET_MSVC_${lang}PCH_ARCHITECTURE_ID)
+		string(REPLACE _${lang}_ _${lang}PCH_
+			${SET_MSVC_${lang}_ARCHITECTURE_ID}
+			SET_MSVC_${lang}PCH_ARCHITECTURE_ID
+			)
+	endif()
+	if(CMAKE_${lang}_SYSROOT_FLAG_CODE)
+		string(REPLACE _${lang}_ _${lang}PCH_
+			${CMAKE_${lang}_SYSROOT_FLAG_CODE}
+			CMAKE_${lang}PCH_SYSROOT_FLAG_CODE
+			)
+	endif()
+	if(CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG_CODE)
+		string(REPLACE _${lang}_ _${lang}PCH_
+			${CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG_CODE}
+			CMAKE_${lang}PCH_OSX_DEPLOYMENT_TARGET_FLAG_CODE
+			)
+	endif()
+
+	configure_file(
+		${CMAKE_CURRENT_LIST_DIR}/CMake${lang}PCHCompiler.cmake.in
+		${CMAKE_PLATFORM_INFO_DIR}/CMake${lang}PCHCompiler.cmake
+		)
+endmacro()
