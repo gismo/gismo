@@ -63,6 +63,47 @@ public:
     }
 }; // gsLinearOperator
 
+/// @brief Simple abstract class for Steppable discrete operators.
+///
+/// The class represents an iteration method in the form x_new = x_old + P^{-1}(f - A*x_old).
+/// The member apply represents the application of P^{-1}.
+/// The member step represents one step of the above iteration method.
+/// Usually, the step operation can be performed in an optimized way.
+///
+/// The derived classes have to contain the functions: step(), cols(), and rows().
+///
+/// \ingroup Solver
+template<class T>
+class gsSteppableOperator : public gsLinearOperator<T>
+{
+public:
+
+    /// Shared pointer for gsLinearOperator
+    typedef typename memory::shared_ptr<gsSteppableOperator> Ptr;
+
+    /// Unique pointer for gsLinearOperator
+    typedef memory::unique_ptr<gsSteppableOperator> uPtr;
+
+    /// Base class
+    typedef gsLinearOperator<T> Base;
+
+    virtual ~gsSteppableOperator() {}
+
+    /**
+     * @brief apply the method on given right hand side and current iterate
+     * @param rhs Right hand side vector
+     * @param x   Current iterate vector
+     */
+    virtual void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const = 0;
+
+    virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+    {
+        x.setZero(this->rows(),input.cols()); // we assume quadratic matrices
+        step(input,x);
+    }
+
+}; // gsSteppableOperator
+
 /// @brief Allows an operator to be multiplied with a scalar
 ///
 /// \ingroup Solver
