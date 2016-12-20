@@ -49,17 +49,21 @@ GISMO_EXPORT void gaussSeidelSingleBlock(const gsSparseMatrix<real_t>& A, gsMatr
 template <typename MatrixType>
 class gsRichardsonOp : public gsSteppableOperator<typename MatrixType::Scalar>
 {
-    typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
+    typedef typename memory::shared_ptr<MatrixType>  MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
 
 public:
+    /// Scalar type
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsRichardsonOp
     typedef typename memory::shared_ptr< gsRichardsonOp > Ptr;
 
     /// Unique pointer for gsRichardsonOp   
-    typedef memory::unique_ptr< gsRichardsonOp > uPtr;    
+    typedef memory::unique_ptr< gsRichardsonOp > uPtr;
+    
+    /// Base class
+    typedef gsSteppableOperator<T> Base;
 
     /// @brief Constructor with given matrix
     explicit gsRichardsonOp(const MatrixType& _mat)
@@ -101,9 +105,27 @@ public:
     index_t cols() const {return m_expr.cols();}
 
     /// Set scaling parameter
-    void setScaling(const T tau) { m_tau = tau; }
+    void setScaling(const T tau) { m_tau = tau;  }
+    
+    /// Get scaling parameter
+    void getScaling()            { return m_tau; }
 
-    ///Returns the matrix
+    /// Get the default options as gsOptionList object
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList opt = Base::defaultOptions();
+        opt.addReal( "Scaling", "Scaling parameter of the Richardson iteration", 1 );
+        return opt;
+    }
+
+    /// Set options based on a gsOptionList object
+    virtual void setOptions(const gsOptionList & opt)
+    {
+        Base::setOptions(opt);
+        m_tau = opt.askReal( "Scaling", m_tau );
+    }
+    
+    /// Returns the matrix
     const MatrixType & matrix() const { return m_mat; }
 
 private:
@@ -133,6 +155,7 @@ class gsJacobiOp : public gsSteppableOperator<typename MatrixType::Scalar>
     typedef typename MatrixType::Nested              NestedMatrix;
 
 public:
+    /// Scalar type
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsJacobiOp
@@ -140,6 +163,9 @@ public:
 
     /// Unique pointer for gsJacobiOp   
     typedef memory::unique_ptr< gsJacobiOp > uPtr;    
+
+    /// Base class
+    typedef gsSteppableOperator<T> Base;
 
     /// @brief Constructor with given matrix
     explicit gsJacobiOp(const MatrixType& _mat)
@@ -185,9 +211,27 @@ public:
     index_t cols() const {return m_expr.cols();}
 
     /// Set scaling parameter
-    void setScaling(const T tau) { m_tau = tau; }
+    void setScaling(const T tau) { m_tau = tau;  }
+    
+    /// Get scaling parameter
+    void getScaling()            { return m_tau; }
 
-    ///Returns the matrix
+    /// Get the default options as gsOptionList object
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList opt = Base::defaultOptions();
+        opt.addReal( "Scaling", "Scaling parameter of the Jacobi iteration", 1 );
+        return opt;
+    }
+
+    /// Set options based on a gsOptionList object
+    virtual void setOptions(const gsOptionList & opt)
+    {
+        Base::setOptions(opt);
+        m_tau = opt.askReal( "Scaling", m_tau );
+    }
+
+    /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
 
 private:
@@ -217,6 +261,7 @@ class gsGaussSeidelOp : public gsSteppableOperator<typename MatrixType::Scalar>
     typedef typename MatrixType::Nested              NestedMatrix;
 
 public:
+    /// Scalar type
     typedef typename MatrixType::Scalar T;
 
     /// Shared pointer for gsGaussSeidelOp
@@ -225,6 +270,9 @@ public:
     /// Unique pointer for gsGaussSeidelOp   
     typedef memory::unique_ptr< gsGaussSeidelOp > uPtr;   
     
+    /// Base class
+    typedef gsSteppableOperator<T> Base;
+
     /// @brief Constructor with given matrix
     explicit gsGaussSeidelOp(const MatrixType& _mat)
     : m_mat(), m_expr(_mat.derived()) {}
@@ -247,7 +295,7 @@ public:
     index_t rows() const {return m_expr.rows();}
     index_t cols() const {return m_expr.cols();}
 
-    ///Returns the matrix
+    /// Returns the matrix
     const MatrixType & matrix() const { return m_mat; }
     
 private:
@@ -276,14 +324,18 @@ class gsSymmetricGaussSeidelOp : public gsSteppableOperator<typename MatrixType:
     typedef typename MatrixType::Nested          NestedMatrix;
 
 public:
+    /// Scalar type
     typedef typename MatrixType::Scalar T;
     
     /// Shared pointer for gsSymmetricGaussSeidelOp
     typedef typename memory::shared_ptr< gsSymmetricGaussSeidelOp > Ptr;
 
     /// Unique pointer for gsSymmetricGaussSeidelOp   
-    typedef memory::unique_ptr< gsSymmetricGaussSeidelOp > uPtr; 
+    typedef memory::unique_ptr< gsSymmetricGaussSeidelOp > uPtr;
     
+    /// Base class
+    typedef gsSteppableOperator<T> Base;
+
     /// @brief Constructor with given matrix
     explicit gsSymmetricGaussSeidelOp(const MatrixType& _mat)
     : m_mat(), m_expr(_mat.derived()) {}
@@ -301,7 +353,6 @@ public:
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
         gaussSeidelSweep(m_expr,x,rhs);
-        //x.array() *= m_expr.diagonal().array();
         reverseGaussSeidelSweep(m_expr,x,rhs);
     }
 
@@ -309,8 +360,7 @@ public:
 
     index_t cols() const {return m_expr.cols();}
 
-
-    ///Returns the matrix
+    /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
 
 private:

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
@@ -61,6 +62,15 @@ public:
         gsMatrix<T> eye = gsMatrix<T>::Identity(cols(), cols());
         this->apply(eye, result);
     }
+    
+    /// Get the default options as gsOptionList object
+    // This implementation provides an empty object
+    static gsOptionList defaultOptions()               { return gsOptionList(); }
+
+    /// Set options based on a gsOptionList object
+    // This implementation does not read any input
+    virtual void setOptions(const gsOptionList & opt)  {}
+    
 }; // gsLinearOperator
 
 /// @brief Simple abstract class for Steppable discrete operators.
@@ -121,6 +131,22 @@ public:
     {
         return m_num_of_sweeps;
     }
+
+    /// Get the default options as gsOptionList object
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList opt = Base::defaultOptions();
+        opt.addInt( "NumOfSweeps", "Number of sweeps to be applied in the member function \a apply", 1 );
+        return opt;
+    }
+
+    /// Set options based on a gsOptionList object
+    virtual void setOptions(const gsOptionList & opt)
+    {
+        Base::setOptions(opt);
+        m_num_of_sweeps = opt.askInt( "NumOfSweeps", m_num_of_sweeps );
+    }
+    
 
 protected:
     index_t m_num_of_sweeps;
