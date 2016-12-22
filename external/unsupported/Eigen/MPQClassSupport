@@ -17,17 +17,22 @@
 namespace Eigen 
 {  	
 
+  // Specializations for mpq_class
   namespace numext 
   {
-    // Specialize for mpq_class
+
    template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE
    mpq_class mini(const mpq_class& x, const mpq_class& y)
    { return ::min(x,y); }
   
-    // Specialize for mpq_class
    template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE 
    mpq_class maxi(const mpq_class& x, const mpq_class& y)
    { return ::max(x,y); }
+
+   template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE 
+   bool isfinite(const std::complex<mpq_class>& x)
+   { return true; }
+
   }
 
   template<> struct NumTraits<mpq_class> : GenericNumTraits<mpq_class>
