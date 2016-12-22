@@ -23,6 +23,9 @@
 #include "Ifpack.h" 
 #include "Ifpack_AdditiveSchwarz.h"
 
+#include "ml_include.h"
+#include "ml_MultiLevelPreconditioner.h"
+
 //#include "Amesos_Superlu.h"
 
 #include "gsTrilinosHeaders.h"
@@ -347,7 +350,6 @@ int BelosSolver<mode>::setPreconditioner(
     return 0;
 }
 
-
 template<int mode>
 void BelosSolver<mode>::solveProblem()
 {
@@ -416,6 +418,80 @@ template<int mode>
 int BelosSolver<mode>::numIterations() const
 {
     return myBelos->Solver->getNumIters();
+}
+
+//------------------------------------------
+
+/*   --- Multi Level (ML) --- */
+
+struct MLSolverPrivate
+{
+    ML_Epetra::MultiLevelPreconditioner* MLPrec;
+
+    AztecOO solver;
+
+    Teuchos::ParameterList MLList;
+};
+
+MLSolver::MLSolver( const SparseMatrix &A )
+: Base(A), myML(new MLSolverPrivate), tolerance(10e-6), maxIter(100)
+{
+    ML_Epetra::SetDefaults("SA", myML->MLList);
+
+    // Set ML preconditioner
+
+  ML_Epetra::SetDefaults("SA",myML->MLList);
+
+    Teuchos::RCP<Epetra_RowMatrix> AA = A.getRCP();
+
+    myML->MLPrec = new ML_Epetra::MultiLevelPreconditioner
+                                     (*AA.get(), myML->MLList, true);
+
+    myML->MLPrec->PrintUnused(0);
+//    std::cout << *(myML->MLPrec) << std::endl;
+
+    // set CG solver.
+//    myML->solver.SetAztecOption(AZ_solver, AZ_cg);
+//    myML->solver.SetAztecOption(AZ_solver, AZ_gmres);
+
+    myML->solver.SetAztecOption(AZ_output, 32);
+
+}
+
+MLSolver::~MLSolver()
+{ 
+    delete myML;
+}
+
+void MLSolver::solveProblem()
+{
+    myML->solver.SetProblem(my->Problem);
+
+    myML->solver.CheckInput();
+
+    myML->solver.SetPrecOperator(myML->MLPrec);
+
+    myML->solver.Iterate(maxIter, tolerance);
+}
+
+void MLSolver::set(const int & option, const int & value)
+{
+    myML->solver.SetAztecOption(option, value);
+}
+
+void MLSolver::set(const std::string & name, const int & value)
+{
+    myML->MLList.set( name, value );
+}
+
+void MLSolver::set(const std::string & name, const double & value)
+{
+    myML->MLList.set( name, value );
+}
+
+void MLSolver::set(const std::string & name, const std::string & value)
+{
+    myML->MLList.set( name, value );
 }
 
 //------------------------------------------

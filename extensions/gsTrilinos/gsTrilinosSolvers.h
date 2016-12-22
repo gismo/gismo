@@ -139,7 +139,7 @@ private:
 struct BelosSolverPrivate;
 
 template<int mode>
-class BelosSolver : public AbstractSolver
+class GISMO_EXPORT BelosSolver : public AbstractSolver
 {
 public:
     typedef AbstractSolver Base;
@@ -148,7 +148,8 @@ public:
 
     ~BelosSolver();
 
-    /// Blocksize to be used by iterative solver
+    /// Set functions that can be used to specify parameters required by 
+    /// Belos solvers and preconditioners.
     void set(const std::string & name, const int & value);
     void set(const std::string & name, const double & value);
     void set(const std::string & name, const std::string & value);
@@ -164,6 +165,8 @@ public:
     int setPreconditioner(const std::string & precType, const SparseMatrix &A,
                           const bool & leftprec, const int & OverlapLevel=0);
 
+//    void setMLPreconditioner(const SparseMatrix &A);
+
 private:
 
     void solveProblem();
@@ -173,6 +176,37 @@ private:
     BelosSolverPrivate * myBelos;
 
     int maxiters;  // maximum number of iterations allowed per linear system
+};
+
+struct MLSolverPrivate;
+
+class GISMO_EXPORT MLSolver : public AbstractSolver
+{
+
+public:
+    typedef AbstractSolver Base;
+    
+    explicit MLSolver(const SparseMatrix &A);
+
+    ~MLSolver();
+
+    /// Set functions to specify parameters required by ML and AztecOO solvers.
+    void set(const int & option, const int & value); // For AztecOO solvers
+    void set(const std::string & name, const int & value);
+    void set(const std::string & name, const double & value);
+    void set(const std::string & name, const std::string & value);
+
+private:
+    
+    void solveProblem();
+
+private:
+
+    MLSolverPrivate * myML;
+
+    double tolerance;
+    int    maxIter;
+
 };
 
 
