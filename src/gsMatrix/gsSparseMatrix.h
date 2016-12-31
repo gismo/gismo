@@ -300,7 +300,7 @@ public:
         return os.str();
     }
 
-    void reducedEchelonFormInPlace();
+    void rrefInPlace();
         
 }; // class gsSparseMatrix
 
@@ -338,7 +338,7 @@ gsSparseMatrix<T, _Options,_Index> * gsSparseMatrix<T, _Options, _Index>::clone(
 
 
 template<typename T, int _Options, typename _Index> void
-gsSparseMatrix<T, _Options, _Index>::reducedEchelonFormInPlace()
+gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
 {
     gsMatrix<T,1,Dynamic> R;
     index_t c_i, c_j;
