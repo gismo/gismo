@@ -50,8 +50,10 @@
 #endif
 
 #cmakedefine GISMO_WITH_MPQ
+
 #ifdef GISMO_WITH_MPQ
 #include <gmpxx.h>
+#include <unsupported/Eigen/MPQClassExtra>
 #endif
 
 /* Determine if only header files should be used. */

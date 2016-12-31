@@ -22,65 +22,6 @@
   #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
-#ifdef GISMO_WITH_MPQ
-template <class U, class V>
-inline mpq_class (max)(const __gmp_expr<mpq_t, U> & a,
-                       const __gmp_expr<mpq_t, V> & b)
-{return mpq_class(a < b ? b : a);}
-
-template <class U, class V>
-inline mpq_class (min)(const __gmp_expr<mpq_t, U> & a,
-                       const __gmp_expr<mpq_t, V> & b)
-{return mpq_class(a < b ? a : b);}
-
-template <class U, class Z> inline
-mpq_class pow(const __gmp_expr<mpq_t, U> & a, const Z & b)
-{return std::pow(mpq_class(a).get_d(), b);}
-
-/*
-template <class U, class V>
-inline mpq_class pow(const __gmp_expr<mpq_t, U> & a,
-                     const __gmp_expr<mpq_t, V> & b)
-{
-    mpq_class r;
-    const mpq_class aa(a);
-    const mpq_class bb(b);
-    mpz_pow_ui(r.get_num().__get_mp(), aa.get_num().__get_mp(), bb.get_num().get_si());
-    mpz_pow_ui(r.get_den().__get_mp(), aa.get_den().__get_mp(), bb.get_num().get_si());
-    if ( 1 == bb.get_den() )
-        return r;
-    else
-        return std::pow(r.get_d(), 1/bb.get_den().get_d());
-}
-*/
-
-#define GMP_EXTRA_STD_UNARY_FUNCTION(std_fun) template <class U> \
-inline mpq_class std_fun(const __gmp_expr<mpq_t, U> & expr)      \
-{return std::std_fun(mpq_class(expr).get_d());}
-#define GMP_EXTRA_STD_BINARY_FUNCTION(std_fun) template <class U, class V>              \
-inline mpq_class std_fun(const __gmp_expr<mpq_t, U> & a,const __gmp_expr<mpq_t, V> & b) \
-{return std::std_fun(mpq_class(a).get_d(), mpq_class(b).get_d());}
-GMP_EXTRA_STD_UNARY_FUNCTION(sqrt)
-GMP_EXTRA_STD_BINARY_FUNCTION(pow)
-GMP_EXTRA_STD_UNARY_FUNCTION(sin)
-GMP_EXTRA_STD_UNARY_FUNCTION(asin)
-GMP_EXTRA_STD_UNARY_FUNCTION(sinh)
-GMP_EXTRA_STD_UNARY_FUNCTION(cos)
-GMP_EXTRA_STD_UNARY_FUNCTION(cosh)
-GMP_EXTRA_STD_UNARY_FUNCTION(acos)
-GMP_EXTRA_STD_UNARY_FUNCTION(tan)
-GMP_EXTRA_STD_UNARY_FUNCTION(tanh)
-GMP_EXTRA_STD_BINARY_FUNCTION(atan2)
-GMP_EXTRA_STD_UNARY_FUNCTION(atan)
-GMP_EXTRA_STD_UNARY_FUNCTION(exp)
-GMP_EXTRA_STD_UNARY_FUNCTION(log)
-GMP_EXTRA_STD_UNARY_FUNCTION(floor)
-GMP_EXTRA_STD_UNARY_FUNCTION(ceil)
-#undef GMP_EXTRA_STD_UNARY_FUNCTION
-#undef GMP_EXTRA_STD_BINARY_FUNCTION
-
-#endif
-
 namespace gismo {
 
 /** @namespace gismo::math

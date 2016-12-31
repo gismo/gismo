@@ -50,14 +50,14 @@ public:
 
 public:
     gsAsMatrix( std::vector<T> & v, index_t n, index_t m)
-    : Base( &v[0], n, m)
+    : Base( v.data(), n, m)
     { 
         //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
         GISMO_ASSERT( m*n <= index_t(v.size()), "Not enough coefficients in vector to map." ); 
     }
 
     gsAsMatrix( std::vector<T> & v)
-    : Base( &v[0], 1, v.size() ) 
+    : Base( v.data(), 1, v.size() ) 
     {  
         //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
     }

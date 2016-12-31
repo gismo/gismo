@@ -708,32 +708,6 @@ std::ostream & gsFunctionExpr<T>::print(std::ostream &os) const
     return os;
 }
 
-/*
-template<typename T>
-bool gsFunctionExpr<T>::operator < (const gsFunctionExpr<T>& other) const
-{
-    std::ostringstream stream1;
-    std::ostringstream stream2;
-    print(stream1);
-    other.print(stream2);
-    std::string string1 = stream1.str();
-    std::string string2 = stream2.str();
-    return (string1 < string2);
-}
-
-template<typename T>
-bool gsFunctionExpr<T>::operator != (const gsFunctionExpr<T>& other) const
-{
-    std::ostringstream stream1;
-    std::ostringstream stream2;
-    print(stream1);
-    other.print(stream2);
-    std::string string1 = stream1.str();
-    std::string string2 = stream2.str();
-    return (string1 != string2);
-}
-*/
-
 namespace internal
 {
 

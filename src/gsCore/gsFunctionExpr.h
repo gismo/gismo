@@ -169,12 +169,6 @@ public:
     
     // see gsFunction for documentation  
     std::ostream &print(std::ostream &os) const;
-
-    // enable sorting of gsFunctionExpr objects
-    //bool operator < (const gsFunctionExpr<T>& other) const;
-
-    // enable comparison of gsFunctionExpr objects
-    //bool operator != (const gsFunctionExpr<T>& other) const;
   
 // Data members
 private:
@@ -187,9 +181,6 @@ private:
 
 } // namespace gismo
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsFunctionExpr.hpp)
