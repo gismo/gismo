@@ -286,6 +286,22 @@ public:
         return gsAsConstVector<_Index>(this->innerNonZeroPtr(),this->innerSize());
     }
 
+    std::string printSparsity() const
+    {
+        std::ostringstream os;
+        os <<", sparsity: "<< std::fixed << std::setprecision(2)<<"nnz: "<<this->size()
+           <<(double)100*(this->array() != 0).count()/this->size() <<'%'<<"\n";
+        for (index_t i = 0; i!=this->rows(); ++i)
+        {
+            for (index_t j = 0; j!=this->cols(); ++j)
+                os<< ( 0 == this->coeff(i,j) ? "\u00B7" : "x");
+            os<<"  "<<(this->row(i).array()!=0).count()<<"\n";
+        }
+        return os.str();
+    }
+
+    void reducedEchelonFormInPlace();
+        
 }; // class gsSparseMatrix
 
 
@@ -320,6 +336,77 @@ template<typename T, int _Options, typename _Index> inline
 gsSparseMatrix<T, _Options,_Index> * gsSparseMatrix<T, _Options, _Index>::clone() const
 { return new gsSparseMatrix(*this); }
 
+
+template<typename T, int _Options, typename _Index> void
+gsSparseMatrix<T, _Options, _Index>::reducedEchelonFormInPlace()
+{
+    gsMatrix<T,1,Dynamic> R;
+    index_t c_i, c_j;
+    const index_t nr = this->rows();
+    const index_t nc = this->cols();
+    
+    gsVector<index_t> piv(nr);
+        
+    for (index_t i = 0; i!=nr; ++i)
+    {
+        // pull row(i)
+        R = this->row(i);
+        for (index_t j = 0; j!=i; ++j)
+        {
+            c_j = piv[j];
+            if (c_j != nc )
+                R.tail(nc-c_j) -= R.at(c_j) * this->row(j).tail(nc-c_j);
+        }
+        
+            // store row pivot
+            c_i = 0; while (c_i!= nc && 0 == R.at(c_i)) ++c_i;
+            piv[i] = c_i;
+            if (c_i == nc ) continue;
+            R.tail(nc-c_i-1).array() /= R.at(c_i);
+            R.at(c_i) = 1;
+            // push row(i)
+            this->row(i) = R.sparseView();
+        }
+
+        // sort rows wrt pivots
+        bool didSwap;
+        c_i = nr - 1; // last swap done
+        c_j = c_j;    // last ckeck id
+        do
+        {
+            didSwap = false;
+            c_j = c_i;
+            
+            for( index_t i=0; i != c_j; i++)
+                if( piv[i] > piv[i+1] )
+                {
+                    std::swap(piv[i], piv[i+1]);
+                    this->row(i).swap(this->row(i+1));
+                    didSwap = true;
+                    c_i = i;
+                }
+        } while(didSwap);
+
+        // todo: precompute nz (piv[nz])
+        
+        // lower part
+        for (index_t i = 0; i!=nr; ++i)
+        {
+            // pull row(i)
+            R = this->row(i);
+            c_i = piv[i];
+            if (c_i == nc ) break;
+
+            for (index_t j = i+1; j!=nr; ++j) // nr - zr
+            {
+                c_j = piv[j];
+                if ( c_j == nc ) break;
+                R.tail(nc-c_j) -= R.at(c_j) * this->row(j).tail(nc-c_j);
+            }
+            // push row(i)
+            this->row(i) = R.sparseView();
+        }    
+}
 
 
 } // namespace gismo
