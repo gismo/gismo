@@ -159,6 +159,7 @@ namespace internal
 #include <gsMpi/gsMpi.h>
 
 /* ----------- Utilities ----------- */
+#include <gsUtils/gsUtils.h>
 #include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>

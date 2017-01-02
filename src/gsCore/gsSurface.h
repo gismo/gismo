@@ -70,6 +70,8 @@ public:
 
     virtual gsSurface * clone() const = 0;
 
+    int domainDim() const { return 2; }
+
     void toMesh(gsMesh<T> & msh, int npoints = 625) const;
 
     virtual gsGeometryEvaluator<Scalar_t> * evaluator(unsigned flags) const;

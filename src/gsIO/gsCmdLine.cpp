@@ -497,9 +497,9 @@ void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
 #ifdef _LIBCPP_VERSION
     gsInfo << "libc++ "<<_LIBCPP_VERSION <<")\n";
 #  elif defined(__GLIBCXX__)
-    gsInfo << "glibstdc++ "<< __GLIBCXX__ <<")\n";
+    gsInfo << "glibc++ "<< __GLIBCXX__ <<")\n";
 #  elif defined(__GLIBCPP__)
-    gsInfo << "glibstdc++ "<< __GLIBCPP__ <<")\n";
+    gsInfo << "glibc++ "<< __GLIBCPP__ <<")\n";
 #elif defined(__LIBCOMO__)
     gsInfo << "Comeau STL "<< __LIBCOMO__ <<")\n";
 #  elif defined(__STL_CONFIG_H)

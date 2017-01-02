@@ -84,7 +84,7 @@ public:
     
 public:
     
-    int dim() const { return d; }
+    int domainDim() const { return d; }
     
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 

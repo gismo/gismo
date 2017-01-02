@@ -222,30 +222,30 @@ public:
     /// \note This function will return the derived concrete type of the basis.
     virtual       gsBasis<T> & basis()       = 0;
 
-    /// Dimension \em n of the absent physical space
-    virtual int geoDim() const { return this->m_coefs.cols(); }
+    /// Dimension of the ambient physical space (overriding gsFunction::targetDim())
+    int targetDim() const { return this->coefDim(); }
 
     /// Dimension \em n of the coefficients (control points)
     int coefDim() const { return m_coefs.cols(); }
-    
-    /// Dimension of the absent physical space (overriding gsFunction::targetDim())
-    int targetDim() const { return this->geoDim(); }
 
-    /// Dimension \em d of the parameter domain.
-    virtual int parDim() const { return this->basis().domainDim(); }
-
-    /// Co-dimension of the geometric object
-    int coDim() const { return geoDim()-this->basis().domainDim(); }
+    /// Dimension \em n of the absent physical space
+    int geoDim() const { return this->coefDim(); }
 
     /// Dimension \em d of the parameter domain (overriding gsFunction::domainDim()).
-    int domainDim() const { return this->basis().domainDim(); }
+    virtual int domainDim() const { return this->basis().domainDim(); }
 
-    /// Returns the range of parameters as a matrix with two columns, [lower upper]
-    virtual gsMatrix<T> parameterRange() const
-    { return this->basis().support(); }
+    /// Dimension \em d of the parameter domain (same as domainDim()).
+    int parDim() const { return this->basis().domainDim(); }
+
+    /// Co-dimension of the geometric object
+    int coDim() const { return coefDim()-this->basis().domainDim(); }
 
     /// Returns the range of parameters (same as parameterRange())
-    virtual gsMatrix<T> support() const
+    gsMatrix<T> support() const
+    { return this->basis().support(); }
+
+    /// Returns the range of parameters as a matrix with two columns, [lower upper]
+    gsMatrix<T> parameterRange() const
     { return this->basis().support(); }
 
     /// Returns a "central" point inside inside the parameter domain
@@ -273,11 +273,13 @@ public:
     /// Coefficient matrix of size coefsSize() x geoDim()
     // todo: coefsSize() x (geoDim() + 1) if projective
           gsMatrix<T> & coefs()       { return this->m_coefs; }
+
     /// Returns the coefficient matrix of  the geometry
     const gsMatrix<T> & coefs() const { return this->m_coefs; }
 
     /// Returns the i-th coefficient of the geometry as a row expression
     typename gsMatrix<T>::RowXpr       coef(index_t i)       { return m_coefs.row(i); }
+
     /// Returns the i-th coefficient of the geometry as a row expression
     typename gsMatrix<T>::ConstRowXpr  coef(index_t i) const { return m_coefs.row(i); }
 

@@ -137,7 +137,7 @@ public:
 /* Virtual member functions required by the base class */
 
     // Look at gsBasis class for a description
-    int dim() const { return Dim; }
+    int domainDim() const { return Dim; }
 
     // Unhide/forward gsTensorBasis<1,T>::size(k), since the overload
     // with size() automatically hides it in this class

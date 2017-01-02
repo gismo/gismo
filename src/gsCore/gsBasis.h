@@ -409,18 +409,11 @@ public:
 
     /// @}
 
+    inline int dim() const {return this->domainDim();}
 
     /*
       Member functions that need to be redefined in the derived class.
     */
-
-    /// Returns the dimension \em d of the parameter space.
-    virtual int dim() const = 0;
-
-    int domainDim() const {return dim();}
-
-    /// Returns the dimension \em d of the target space
-    virtual int targetDim() const {return 1;}
 
     /**
      * @brief
@@ -683,6 +676,14 @@ public:
     /// @brief Clone this basis, making a deep copy.
     virtual gsBasis * clone() const = 0;
 
+    /// @brief Create a gsGeometry of proper type for this basis with the
+    /// given coefficient matrix.
+    virtual gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs ) const = 0;
+
+    /// @brief Create a gsGeometry of proper type for this basis,
+    /// taking ownership of the coefficient matrix.
+    virtual gsGeometry<T> * makeGeometry(gsMovable< gsMatrix<T> > coefs ) const = 0;
+
     /// @brief Create an empty basis of the derived type and return a
     /// pointer to it
     virtual gsBasis * create() const;
@@ -701,14 +702,6 @@ public:
     /// Clone the source of this basis in case of rational basis, same
     /// as clone() otherwise
     virtual gsBasis<T> * makeNonRational() const { return clone(); }
-
-    /// @brief Create a gsGeometry of proper type for this basis with the
-    /// given coefficient matrix.
-    virtual gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs ) const = 0;
-
-    /// @brief Create a gsGeometry of proper type for this basis,
-    /// taking ownership of the coefficient matrix.
-    virtual gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const = 0;
 
     /// @brief Create a domain iterator for the computational mesh of
     /// this basis, that points to the first element of the domain
@@ -734,9 +727,6 @@ public:
     /*
       Member functions that may be implemented or not in the derived class
     */
-
-    /// @brief The number of basis functions in this basis.
-    virtual index_t size() const = 0;
 
     /// @brief The number of elements.
     virtual int numElements() const;

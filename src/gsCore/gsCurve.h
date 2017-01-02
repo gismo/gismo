@@ -66,6 +66,8 @@ public:
 
     virtual gsCurve * clone() const = 0;
 
+    int domainDim() const { return 1; }
+    
     int degree() const;
 
     void toMesh(gsMesh<T> & msh, int npoints = 100) const;

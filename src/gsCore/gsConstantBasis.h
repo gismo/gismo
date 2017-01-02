@@ -59,7 +59,7 @@ public:
 
 public:
 
-    int dim() const   { return m_domainDim; }
+    int domainDim() const   { return m_domainDim; }
 
     index_t size() const   { return 1; }
 

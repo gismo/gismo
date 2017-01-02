@@ -92,9 +92,7 @@ public:
 // ////////////////////////////////////////////////
 
     // Returns the dimension of the basis
-    int dim() const { 
-        return Dim; 
-    }
+    int domainDim() const { return Dim; }
 
     /// Returns the number of elements in the basis
     index_t size() const 

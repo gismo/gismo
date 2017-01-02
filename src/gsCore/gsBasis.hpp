@@ -186,7 +186,7 @@ inline gsMatrix<T> * gsBasis<T>::laplacian(const gsMatrix<T> & u ) const
 template<class T> inline
 void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & result) const 
 {
-    result.resize( u.cols(), size() );
+    result.resize( u.cols(), this->size() );
     gsMatrix<T> ev;
     gsMatrix<unsigned> act;
 
@@ -213,12 +213,12 @@ gsGeometry<T> * gsBasis<T>::interpolateData( gsMatrix<T> const& vals,
 {
     GISMO_ASSERT (dim()  == pts.rows() , "Wrong dimension of the points("<<
                   pts.rows()<<", expected "<<dim() <<").");
-    GISMO_ASSERT (size() == pts.cols() , "Expecting as many points as the basis functions." );
-    GISMO_ASSERT (size() == vals.cols(), "Expecting as many values as the number of points." );
+    GISMO_ASSERT (this->size() == pts.cols() , "Expecting as many points as the basis functions." );
+    GISMO_ASSERT (this->size() == vals.cols(), "Expecting as many values as the number of points." );
 
     gsSparseMatrix<T>  Cmat;
     collocationMatrix(pts, Cmat);
-    gsMatrix<T> x ( size(), vals.rows());
+    gsMatrix<T> x ( this->size(), vals.rows());
 
     // typename gsSparseSolver<T>::BiCGSTABIdentity solver( Cmat );
     // typename gsSparseSolver<T>::BiCGSTABDiagonal solver( Cmat );

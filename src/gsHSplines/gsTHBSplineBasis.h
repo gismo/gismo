@@ -495,10 +495,7 @@ private:
 public:
 
   /// Returns the dimension of the parameter space
-  int dim() const 
-  { return d; }
-
-
+  int domainDim() const { return d; }
 
   virtual gsTHBSplineBasis* clone() const
     { return new gsTHBSplineBasis(*this); }
