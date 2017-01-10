@@ -159,6 +159,7 @@ public:
     void setHermitian();
 
     std::string printValidParams() const;
+    std::string printCurrentParams() const;
     int numIterations() const;
 
     //OverlapLevel: must be >= 0. If Comm.NumProc() == 1, it is ignored.

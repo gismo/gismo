@@ -273,18 +273,20 @@ BelosSolver<mode>::BelosSolver(const SparseMatrix & A)
 
     // Initialize solver manager
     myBelos->Solver = Teuchos::rcp( new typename BelosSolManager<mode>::type );
-    myBelos->Solver->setProblem   (Teuchos::rcp(&myBelos->Problem  , false));
-    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
 
+    // Initialize problem
+    myBelos->Solver->setProblem   (Teuchos::rcp(&myBelos->Problem  , false));
     myBelos->Problem.setOperator(A.getRCP());
     myBelos->Problem.setLHS(my->solution.getRCP());
-
-    // Add default Options
-    myBelos->belosList.set( "Block Size", 1);
-    // Teuchos::ScalarTraits<double>::magnitudeType tol = 1.0e-5;
+    
+    // Add default options
+    //myBelos->belosList.set( "Block Size", 1);
     double tol = 1.0e-5;
     myBelos->belosList.set( "Maximum Iterations", maxiters );  // Maximum number of iterations allowed
     myBelos->belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
+
+    // Initialize options
+    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
 }
 
 template<int mode>
@@ -389,23 +391,34 @@ std::string BelosSolver<mode>::printValidParams() const
     return os.str();
 }
 
+template<int mode>
+std::string BelosSolver<mode>::printCurrentParams() const
+{
+    std::ostringstream os;
+    os << "Current parameters of the current Belos solver: \n" 
+       << *myBelos->Solver->getCurrentParameters() << "\n";
+    return os.str();
+}
 
 template<int mode>
 void BelosSolver<mode>::set(const std::string & name, const int & value)
 {
     myBelos->belosList.set( name, value );
+    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
 }
 
 template<int mode>
 void BelosSolver<mode>::set(const std::string & name, const double & value)
 {
     myBelos->belosList.set( name, value );
+    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
 }
 
 template<int mode>
 void BelosSolver<mode>::set(const std::string & name, const std::string & value)
 {
     myBelos->belosList.set( name, value );
+    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
 }
 
 template<int mode>
