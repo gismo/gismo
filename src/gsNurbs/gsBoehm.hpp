@@ -78,7 +78,7 @@ void gsBoehm(
             tmp.row(i) = a * tmp.row(i+1) + (1.0-a) * tmp.row(i);
         }
         coefs.row(L)= tmp.row(0);
-        coefs.row(k+r-j-s)= tmp.row(p-j-s);
+        coefs.row(k+r-j-s)= tmp.row(math::max(p-j-s,0));
     }
     for( index_t i = L+1; i<k-s; ++i )
         coefs.row(i) = tmp.row(i-L);
