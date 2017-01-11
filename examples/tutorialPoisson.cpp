@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     // For single patch unit square of quadratic elements use (Note:
     //you need to update the bounadry conditions section for this to
     //work properly!) :
-    //patches = safe( new gsMultiPatch<>(*safe(gsNurbsCreator<>::BSplineSquare(2))));
+    //patches = safe( new gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare(2)));
 
     // Geometry can also be read from file (full path needed, or
     // GISMO_DATA_DIR macro which leads to the "filedata" directory

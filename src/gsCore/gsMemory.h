@@ -103,6 +103,13 @@ template <typename T>
 inline shared_ptr<T> make_shared(T *x)
 { return shared_ptr<T>(x); }
 
+/// Takes a unique_ptr and wraps it in a shared_ptr. Useful for avoiding
+/// memory leaks.
+template <typename T>
+inline shared_ptr<T> make_shared(const unique_ptr<T>& x)
+{ return shared_ptr<T>(const_cast<unique_ptr<T>&>(x).release()); }
+
+
 /// \brief Creates a shared pointer which does not eventually delete
 /// the underlying raw pointer. Usefull to refer to objects which
 /// should not be destroyed

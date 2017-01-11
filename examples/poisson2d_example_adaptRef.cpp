@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
   gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-0.6)^2 < 0.2^2, 1, 0 )",2);
   //gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-1.6)^2 < 0.2^2, 1, 0 )",2);
   gsFunctionExpr<>  g("0",2);
-  gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineRectangle(0.0,0.0,2.0,1.0) ));
+  gsMultiPatch<> patches( *gsNurbsCreator<>::BSplineRectangle(0.0,0.0,2.0,1.0) );
   //gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0)) );
 
   //RefineLoopMax = 6;

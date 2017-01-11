@@ -107,6 +107,8 @@ public:
     /// \brief Updates the object using the data from \a other. Fieleds unkown to \a other,
     /// are kept unchanged. Fields in \a other unknown to this are ignored.
     void update(const gsOptionList& other);
+    
+    void addScoped(const std::string& scope, const gsOptionList& other);
 
 private:
 

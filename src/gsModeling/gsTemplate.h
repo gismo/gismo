@@ -99,21 +99,21 @@ public:
     {
         
       // TO DO: add copy constructor and assignmnet operator in gsPlanarDomain
-      m_pdomain.insertHole( new gsCurveLoop<T>(gsNurbsCreator<T>::BSplineFatCircle()) );  
+      m_pdomain.insertHole( new gsCurveLoop<T>(gsNurbsCreator<T>::BSplineFatCircle().release()) );  
       
      m_pdomain.outer().reverse();
       // gsDebug<<"\n Does your template has the right orientation ? ";
       // gsDebug<< "m_domain:\n"<< m_pdomain;
 	//m_pdomain.check() ;
 
-     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0),0.5*xi.col(0))  );
-     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(1),0.5*xi.col(1))  );
-     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(2),0.5*xi.col(2))  );
-     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(3),0.5*xi.col(3))  );
-    addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(0.5*xi.col(0), 0.5*xi.col(1))  );
-    addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(0.5*xi.col(1), 0.5*xi.col(2))  );
-    addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(0.5*xi.col(2), 0.5*xi.col(3))  );
-    addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(0.5*xi.col(3), 0.5*xi.col(0))  );
+     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0),0.5*xi.col(0)).release()  );
+     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(1),0.5*xi.col(1)).release()  );
+     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(2),0.5*xi.col(2)).release()  );
+     addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(3),0.5*xi.col(3)).release()  );
+    addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(0.5*xi.col(0), 0.5*xi.col(1)).release()  );
+    addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(0.5*xi.col(1), 0.5*xi.col(2)).release()  );
+    addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(0.5*xi.col(2), 0.5*xi.col(3)).release()  );
+    addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(0.5*xi.col(3), 0.5*xi.col(0)).release()  );
 
     }
     else if ( i == 1 )//template with one point removed
@@ -122,23 +122,23 @@ public:
         
         // TO DO: add copy constructor and assignmnet operator in gsPlanarDomain
       
-     m_pdomain = gsPlanarDomain<T>( gsNurbsCreator<T>::BSplineFatCircle() );
+     m_pdomain = gsPlanarDomain<T>( gsNurbsCreator<T>::BSplineFatCircle().release() );
       
      // ************** RIGHT THINGS for amoeba_lake1_pdomain.xml:
-                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0),-0.534694*xi.col(0)+0*xi.col(1))  );
-                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(1),-0.534694*xi.col(0)+0*xi.col(1))  );
-                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(2),-0.534694*xi.col(0)+0*xi.col(1))  );
-                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(3),-0.534694*xi.col(0)+0*xi.col(1))  );
+                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0),-0.534694*xi.col(0)+0*xi.col(1)).release()  );
+                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(1),-0.534694*xi.col(0)+0*xi.col(1)).release()  );
+                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(2),-0.534694*xi.col(0)+0*xi.col(1)).release()  );
+                 addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(3),-0.534694*xi.col(0)+0*xi.col(1)).release()  );
     }
     else if(i==2)
      {
-        m_pdomain = gsPlanarDomain<T>( gsNurbsCreator<T>::BSplineFatCircle() );
+        m_pdomain = gsPlanarDomain<T>( gsNurbsCreator<T>::BSplineFatCircle().release() );
 
         //First 4 curves around upper puncture
 
         //1
         addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.25) +
-                                                           xi.col(1)*(0.732),(0.25)*xi.col(0)+xi.col(1)*(0.55)));
+                                                           xi.col(1)*(0.732),(0.25)*xi.col(0)+xi.col(1)*(0.55)).release());
 
         //2
 
@@ -154,10 +154,10 @@ public:
 
         // 3
         addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.25) +
-                                                           xi.col(1)*(0.363),( 0.25)*xi.col(0)+xi.col(1)*(0.55)));
+                                                           xi.col(1)*(0.363),( 0.25)*xi.col(0)+xi.col(1)*(0.55)).release());
         //4
         addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.064) +
-                                                           xi.col(1)*(0.55),( 0.25)*xi.col(0)+xi.col(1)*(0.55)));
+                                                           xi.col(1)*(0.55),( 0.25)*xi.col(0)+xi.col(1)*(0.55)).release());
 
         //5  Arc up left
 
@@ -195,7 +195,7 @@ public:
 
         //9 Arc up
         addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.25) +
-                                                           xi.col(1)*(0.986),( 0.25)*xi.col(0)+xi.col(1)*(0.732)));
+                                                           xi.col(1)*(0.986),( 0.25)*xi.col(0)+xi.col(1)*(0.732)).release());
 
         //10 Arc up right
 
@@ -209,17 +209,17 @@ public:
 
         //11
         addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.10) +
-                                                           xi.col(1)*(-0.366),(0.10)*xi.col(0)+xi.col(1)*(-0.55)));
+                                                           xi.col(1)*(-0.366),(0.10)*xi.col(0)+xi.col(1)*(-0.55)).release());
         //12
         addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.288) +
-                                                           xi.col(1)*(-0.55),(0.10)*xi.col(0)+xi.col(1)*(-0.55)));
+                                                           xi.col(1)*(-0.55),(0.10)*xi.col(0)+xi.col(1)*(-0.55)).release());
 
         //13
         addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.10) +
-                                                           xi.col(1)*(-0.993),(0.10)*xi.col(0)+xi.col(1)*(-0.55)));
+                                                           xi.col(1)*(-0.993),(0.10)*xi.col(0)+xi.col(1)*(-0.55)).release());
         //14
         addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(-0.078) +
-                                                           xi.col(1)*(-0.55),(0.10)*xi.col(0)+xi.col(1)*(-0.55)));
+                                                           xi.col(1)*(-0.55),(0.10)*xi.col(0)+xi.col(1)*(-0.55)).release());
 
         // 15 Arc low left
         coeff<< -0.638,-0.837, //-0.623, -0.842
@@ -230,7 +230,7 @@ public:
 
         //16 Arc low
         addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(xi.col(0)*(0.10) +
-                                                           xi.col(1)*(-0.990),(0.10)*xi.col(0)+xi.col(1)*(-0.718)));
+                                                           xi.col(1)*(-0.990),(0.10)*xi.col(0)+xi.col(1)*(-0.718)).release());
 
 
         //17 Arc low right
@@ -355,16 +355,16 @@ public:
       //construct a square
       //boundaryB= bottom side of the square
 
-      gsBSpline<T>* boundaryB = gsNurbsCreator<T>::BSplineLineSegment(r*Bb.col(0),r*Bb.col(1));
+      gsBSpline<T>* boundaryB = gsNurbsCreator<T>::BSplineLineSegment(r*Bb.col(0),r*Bb.col(1)).release();
 
       //boundaryU = upper side of the square
-      gsBSpline<T>* boundaryU = gsNurbsCreator<T>::BSplineLineSegment(r*Bb.col(3),r*Bb.col(2));
+      gsBSpline<T>* boundaryU = gsNurbsCreator<T>::BSplineLineSegment(r*Bb.col(3),r*Bb.col(2)).release();
 
       //boundaryL = left side of the square
-      gsBSpline<T>* boundaryL = gsNurbsCreator<T>::BSplineLineSegment(r*Bb.col(2),r*Bb.col(0));
+      gsBSpline<T>* boundaryL = gsNurbsCreator<T>::BSplineLineSegment(r*Bb.col(2),r*Bb.col(0)).release();
 
       //boundaryR = right side of the square
-      gsBSpline<T>* boundaryR = gsNurbsCreator<T>::BSplineLineSegment(r*Bb.col(1),r*Bb.col(3));
+      gsBSpline<T>* boundaryR = gsNurbsCreator<T>::BSplineLineSegment(r*Bb.col(1),r*Bb.col(3)).release();
 
       //generating points on the four boundaries
       //label 0 : boundaryB
@@ -393,8 +393,8 @@ public:
 
       for(int i=1; i<storage0.cols()-1;++i)
       {
-       addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(storage0.col(i),storage1.col(i)));
-       addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(storage2.col(i),storage3.col(i)));
+       addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(storage0.col(i),storage1.col(i)).release());
+       addSkeleton( gsNurbsCreator<T>::BSplineLineSegment(storage2.col(i),storage3.col(i)).release());
 
       }
         //join boundary curves in one single curve

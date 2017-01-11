@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
                               " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
     
-    gsMultiPatch<> geo( *safe(gsNurbsCreator<>::BSplineFatQuarterAnnulus()) );
+    gsMultiPatch<> geo( *gsNurbsCreator<>::BSplineFatQuarterAnnulus() );
     gsMultiBasis<> basis(geo);
 
     //p-refine to get equal polynomial degree s,t directions (for Annulus)
