@@ -59,6 +59,11 @@ void gsGeometry<T>::evaluateMesh(gsMesh<T>& mesh) const
         mesh.vertex[i]->coords.topRows( gDim ) = tmp;
     }
 }
+template<class T>
+std::vector<gsGeometry<T>* >  gsGeometry<T>::uniformSplit(index_t dir) const
+{
+    GISMO_NO_IMPLEMENTATION
+}
 
 template<class T>
 gsGeometrySlice<T> gsGeometry<T>::getIsoParametricSlice(index_t dir_fixed, T par) const

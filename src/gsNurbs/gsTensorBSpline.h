@@ -2,7 +2,7 @@
 
     @brief Represents a tensor-product B-spline patch
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,7 +10,7 @@
     
     Author(s): A. Mantzaflaris
 */
- 
+
 #pragma once
 
 #include <gsCore/gsGeometry.h>
@@ -21,7 +21,7 @@ namespace gismo
 
 namespace internal
 {
-  using Eigen::internal::enable_if;
+    using Eigen::internal::enable_if;
 }
 
 /** \brief
@@ -73,12 +73,12 @@ public:
 
     /// Construct B-Spline by basis functions and coefficient matrix
     gsTensorBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
-    Base( basis, coefs ) 
+        Base( basis, coefs )
     { }
 
     /// Construct B-Spline by basis functions and coefficient matrix
     gsTensorBSpline( const Basis & basis, gsMovable< gsMatrix<T> > coefs ) :
-    Base( basis, coefs ) 
+        Base( basis, coefs )
     { }
     
     /// Construct 2D tensor B-Spline by knot vectors, degrees and coefficient matrix
@@ -97,7 +97,7 @@ public:
         
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
-        GISMO_ASSERT(tbasis->size()==m_coefs.rows(), 
+        GISMO_ASSERT(tbasis->size()==m_coefs.rows(),
                      "Coefficient matrix for the tensor B-spline does not have "
                      "the expected number of control points (rows)." );
     }
@@ -117,7 +117,7 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV2) );
         Basis * tbasis = Basis::New(cbases); //d==2
         
-        GISMO_ASSERT(tbasis->size()==tcoefs.rows(), 
+        GISMO_ASSERT(tbasis->size()==tcoefs.rows(),
                      "Coefficient matrix for the tensor B-spline does not have "
                      "the expected number of control points (rows)." );
         
@@ -128,13 +128,13 @@ public:
     /// Construct 2D tensor B-Spline by knot vectors, degrees and 4 corner vertices,
     /// the four boundary curves are linear interpolations of the corners,
     /// the size of the matrix *corner* is 4 by 3
-    gsTensorBSpline(gsMatrix<T> const    & corner, 
-                    gsKnotVector<T> const & KV1, 
+    gsTensorBSpline(gsMatrix<T> const    & corner,
+                    gsKnotVector<T> const & KV1,
                     gsKnotVector<T> const & KV2);
 
     /// Construct 3D tensor B-Spline by knot vectors, degrees and coefficient matrix
-    gsTensorBSpline( gsKnotVector<T> const & KV1, 
-                     gsKnotVector<T> const & KV2, 
+    gsTensorBSpline( gsKnotVector<T> const & KV1,
+                     gsKnotVector<T> const & KV2,
                      gsKnotVector<T> const & KV3,
                      gsMovable< gsMatrix<T> > tcoefs)
     {
@@ -150,15 +150,15 @@ public:
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
         
-        GISMO_ASSERT(tbasis->size()==m_coefs.rows(), 
+        GISMO_ASSERT(tbasis->size()==m_coefs.rows(),
                      "Coefficient matrix for the tensor B-spline does not have "
                      "the expected number of control points (rows)." );
     }
 
     /// Construct 3D tensor B-Spline by knot vectors, degrees and
     /// coefficient matrix (copying coefficient matrix)
-    gsTensorBSpline( gsKnotVector<T> const & KV1, 
-                     gsKnotVector<T> const & KV2, 
+    gsTensorBSpline( gsKnotVector<T> const & KV1,
+                     gsKnotVector<T> const & KV2,
                      gsKnotVector<T> const & KV3,
                      const gsMatrix<T> & tcoefs )
     {
@@ -171,7 +171,7 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV3) );
         Basis * tbasis = Basis::New(cbases); //d==3
         
-        GISMO_ASSERT(tbasis->size()==tcoefs.rows(), 
+        GISMO_ASSERT(tbasis->size()==tcoefs.rows(),
                      "Coefficient matrix for the tensor B-spline does not have "
                      "the expected number of control points (rows)." );
         
@@ -180,8 +180,8 @@ public:
     }
 
     /// Construct 4D tensor B-Spline by knot vectors, degrees and coefficient matrix
-    gsTensorBSpline( gsKnotVector<T> const & KV1, 
-                     gsKnotVector<T> const & KV2, 
+    gsTensorBSpline( gsKnotVector<T> const & KV1,
+                     gsKnotVector<T> const & KV2,
                      gsKnotVector<T> const & KV3,
                      gsKnotVector<T> const & KV4,
                      gsMovable< gsMatrix<T> > tcoefs )
@@ -196,18 +196,18 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV3) );
         cbases.push_back(new gsBSplineBasis<T>(KV4) );
         Basis * tbasis = Basis::New(cbases); //d==4
-            
+
         this->m_basis = tbasis;
         this->m_coefs = tcoefs;
-        GISMO_ASSERT(tbasis->size()==m_coefs.rows(), 
+        GISMO_ASSERT(tbasis->size()==m_coefs.rows(),
                      "Coefficient matrix for the tensor B-spline does not have "
                      "the expected number of control points (rows)." );
     }
 
     /// Construct 4D tensor B-Spline by knot vectors, degrees and
     /// coefficient matrix (copying coefficient matrix)
-    gsTensorBSpline( gsKnotVector<T> const & KV1, 
-                     gsKnotVector<T> const & KV2, 
+    gsTensorBSpline( gsKnotVector<T> const & KV1,
+                     gsKnotVector<T> const & KV2,
                      gsKnotVector<T> const & KV3,
                      gsKnotVector<T> const & KV4,
                      const gsMatrix<T> & tcoefs )
@@ -223,7 +223,7 @@ public:
         cbases.push_back(new gsBSplineBasis<T>(KV4) );
         Basis * tbasis = Basis::New(cbases); //d==4
         
-        GISMO_ASSERT(tbasis->size()==tcoefs.rows(), 
+        GISMO_ASSERT(tbasis->size()==tcoefs.rows(),
                      "Coefficient matrix for the tensor B-spline does not have "
                      "the expected number of control points (rows)." );
         
@@ -233,7 +233,7 @@ public:
     
     /// Clone function. Used to make a copy of the geometry
     gsTensorBSpline * clone() const
-    { 
+    {
         return new gsTensorBSpline( *this );
     }
 
@@ -261,7 +261,7 @@ public:
     /*** Additional members for tensor B-Splines ***/
 
     /// Returns the degree of the basis wrt direction i
-    unsigned degree(const unsigned & i) const 
+    unsigned degree(const unsigned & i) const
     { return this->basis().component(i).degree(); }
 
     /// Toggle orientation wrt coordinate k
@@ -279,7 +279,7 @@ public:
     /// \brief returns the tensor-index \a curr of the corner control
     /// point \a v, or an invalid index if the corner is not found
     /// within the tolerance \a tol
-    void findCorner(const gsMatrix<T>   & v, 
+    void findCorner(const gsMatrix<T>   & v,
                     gsVector<index_t,d> & curr,
                     T tol = 1e-3);
 
@@ -322,6 +322,16 @@ public:
     /// \a par in direction \a dir_fixed. The resulting tensorBSpline has
     /// one less dimension and is given back in \a result.
     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const;
+
+    /// Splits the geometry either two parts in direction \a dir, or if \a dir = -1
+    /// in 2^d parts, by calling splitAt() for each direction.
+    /// The function automatically searches for the midpoint the corresponding knot vector.
+    std::vector<gsGeometry<T>* > uniformSplit(index_t dir = -1) const;
+
+    /// Splits the geometry into two pieces (\a left, \a right) along direction \a dir at \a xi. The splitting
+    /// is performed by increasing the multiplicity of knot \a xi to p+1, or if \a xi does not exist as knot,
+    /// it is inserted p+1 times.
+    void splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left,  gsTensorBSpline<d,T>& right) const;
 
 protected:
     // TODO Check function

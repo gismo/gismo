@@ -232,6 +232,23 @@ void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const
     }
 }
 
+template<class T>
+gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
+{
+    int n = math::exp2(parDim());
+    std::vector<gsGeometry<T>* > result;
+    result.reserve(nPatches()*n);
+
+    for(size_t np = 0; np<nPatches();++np)
+    {
+        std::vector<gsGeometry<T>* > result_temp = m_patches[np]->uniformSplit();
+        result.insert(result.end(),result_temp.begin(),result_temp.end());
+    }
+    gsMultiPatch<T> mp(result);
+    mp.computeTopology();
+    return mp;
+}
+
 
 /*
   This is based on comparing a set of reference points of the patch

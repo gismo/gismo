@@ -3,7 +3,7 @@
     @brief Provides implementation of a tensor-product B-spline patch
     of arbitrary dimension
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -24,7 +24,6 @@
 #include <gsIO/gsXmlGenericUtils.hpp>
 
 #include <gsTensor/gsTensorTools.h>
-
 
 namespace gismo
 {
@@ -361,29 +360,172 @@ void gsTensorBSpline<d,T>::constructCoefsForSlice(unsigned dir_fixed,T par,
 template<unsigned d, class T>
 std::ostream & gsTensorBSpline<d,T>::print(std::ostream &os) const
 { 
-    os << "Tensor BSpline geometry "<< "R^"<< d << 
+    os << "Tensor BSpline geometry "<< "R^"<< d <<
         " --> R^"<< this->geoDim()
        << ", #control pnts= "<< this->coefsSize();
     if ( m_coefs.size() )
         os << ": "<< this->coef(0) <<" ... "<< this->coef(this->coefsSize()-1);
     if ( m_basis )
         os<<"\nBasis:\n" << this->basis() ;
-    return os; 
+    return os;
 }
 
-
-/*
 template<unsigned d, class T>
-std::vector<gsGeometry<T>*> splitAt(const T knot, int dir = -1) const
+std::vector<gsGeometry<T>* > gsTensorBSpline<d,T>::uniformSplit(index_t dir) const
 {
-// compute mult of insertion
-// probably make a copy of m_coefs
-// insertKnot(knot, dir, mult) (without swap dir)
-// get the left and right part
-// swap back (0,dir)
-// give left and right part as new gsGeometries
+    GISMO_ASSERT( (dir > -2) && (dir < static_cast<index_t>(d)),
+                  "Invalid basis component "<< dir <<" requested for geometry splitting" );
+    std::vector<gsGeometry<T>* > result_temp, result;
+    gsVector<T> midpoints;
+    if(dir==-1)
+    {
+        result.reserve(math::exp2(d));
+        midpoints.setZero(d);
+
+        for(unsigned i=0; i<d;++i)
+            midpoints(i)= (basis().knots(i).sbegin().value() + (--basis().knots(i).send()).value())/T(2);
+
+        for(unsigned i=0; i<d;++i)
+        {
+            result_temp.clear();
+
+            //one could uniform the if-statement and the for-loop by setting result[0] = this,
+            //however, the const prevents this.
+            if(result.size()==0)
+            {
+                gsTensorBSpline<d,T>* left = new gsTensorBSpline<d,T>();
+                gsTensorBSpline<d,T>* right = new gsTensorBSpline<d,T>();
+                this->splitAt(i,midpoints(i),*left,*right);
+                result_temp.push_back(left);
+                result_temp.push_back(right);
+            }
+            for(size_t j=0; j<result.size();j++)
+            {
+                gsTensorBSpline<d,T>* left = new gsTensorBSpline<d,T>();
+                gsTensorBSpline<d,T>* right = new gsTensorBSpline<d,T>();
+                static_cast<gsTensorBSpline<d,T>*>(result[j])->splitAt(i,midpoints(i),*left,*right);
+
+                result_temp.push_back(left);
+                result_temp.push_back(right);
+            }
+
+
+            freeAll(result);
+            result = result_temp;
+        }
+    }
+    else
+    {
+        result.reserve(2);
+        T xi =  (basis().knots(dir).sbegin().value() + (--basis().knots(dir).send()).value())/T(2);
+        gsTensorBSpline<d,T>* left = new gsTensorBSpline<d,T>();
+        gsTensorBSpline<d,T>* right = new gsTensorBSpline<d,T>();
+
+        splitAt(dir,xi,*left,*right);
+
+        result.push_back(left);
+        result.push_back(right);
+    }
+    return result;
+
 }
-*/
+
+
+template<unsigned d, class T>
+void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left,  gsTensorBSpline<d,T>& right) const
+{
+    GISMO_ASSERT( (dir >= 0) && (dir < static_cast<index_t>(d)),
+                  "Invalid basis component "<< dir <<" requested for geometry splitting" );
+
+    GISMO_ASSERT(basis().knots(dir).sbegin().value()<xi && xi< (--basis().knots(dir).send()).value() , "splitting point "<<xi<<" not in the knotvector");
+
+    //First make a copy of the actual object, to allow const
+    gsTensorBSpline<d,T>* copy = clone();
+
+    // Extract a reference to the knots, the basis and coefs of the copy
+    KnotVectorType& knots = copy->basis().knots(dir);
+    gsTensorBSplineBasis<d,T>& base = copy->basis();
+    gsMatrix<T>& coefs =copy->coefs();
+
+    // some constants
+    typename KnotVectorType::mult_t mult = knots.multiplicity(xi); // multiplicity
+    int p = base.degree(dir);                                      // degree
+
+    //insert the knot, such that its multiplicity is p+1
+    copy->insertKnot(xi,dir,base.degree(dir)+1-mult);
+
+    //swap the direction dir with 0, to be able to extract the coefs.
+    copy->swapDirections(0,dir);
+
+    //some more constants
+    gsVector<int,d> sizes;                 // number of coefs in each dir
+    base.size_cwise(sizes);
+    size_t sz = sizes.prod();              //total number of coefs
+
+    //find the number of coefs left from xi (in direction 0)
+    size_t nL=0;
+    gsAsConstMatrix<T> kn = knots.asMatrix();
+    for(; nL<kn.cols();++nL)
+        if(kn(0,nL)==xi)
+            break;
+    size_t nR = base.size(0) - nL;
+
+    //Split the coefficients
+    gsMatrix<T> coefL, coefR;
+    coefL.setZero(sizes.tail(d-1).prod()*(nL),d);
+    coefR.setZero(sz-coefL.rows(),d);
+
+    index_t kL,kR,i;
+    i=kL=kR=0;
+    while(i<sz)
+    {
+        coefL.block(kL,0,nL,d) = coefs.block(i,0,nL,d);
+        coefR.block(kR,0,nR,d) = coefs.block(i+nL,0,nR,d);
+
+        kL+=nL;
+        kR+=nR;
+
+        i+= nL + nR;
+    }
+
+    //build up the new geometries
+
+    //build the knot vector for direction 0 (swapped!)
+    typename KnotVectorType::iterator it = knots.iFind(xi);
+    typename KnotVectorType::knotContainer matL(knots.begin(),++it);
+    it-=p+1; // move the iterator to the beginning of the inserted knots
+    typename KnotVectorType::knotContainer matR(it, knots.end());
+    KnotVectorType knotsL(matL,p);
+    KnotVectorType knotsR(matR,p);
+
+    //rescale the splitted knot vector
+    knotsL.affineTransformTo(0,1);
+    knotsR.affineTransformTo(0,1);
+
+    //collect the other directions
+    std::vector<KnotVectorType> KVL,KVR;
+    KVL.push_back(knotsL);
+    KVR.push_back(knotsR);
+    for(int i=1; i<d;++i)
+    {
+        KVL.push_back(base.knots(i));
+        KVR.push_back(base.knots(i));
+    }
+
+    //build the two bases
+    typename gsBSplineTraits<d,T>::Basis* baseL = new  typename gsBSplineTraits<d,T>::Basis(KVL);
+    typename gsBSplineTraits<d,T>::Basis* baseR = new  typename gsBSplineTraits<d,T>::Basis(KVR);
+
+    //finally the two new geometries
+    left.setBasis(baseL);
+    left.setCoefs(coefL);
+    left.swapDirections(0,dir);
+
+    right.setBasis(baseR);
+    right.setCoefs(coefR);
+    right.swapDirections(0,dir);
+}
+
 
 namespace internal
 {

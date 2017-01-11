@@ -309,6 +309,8 @@ public:
     unsigned coefsSize() const { return m_coefs.rows(); }
     // Warning: This can cause some clash while using periodic basis, since the ghost coefs are stored but ignored.
 
+
+
     /// @}
 
     /*************************************************************************/
@@ -489,6 +491,12 @@ public:
     ///
     void evaluateMesh(gsMesh<T>& mesh) const;
 
+
+    /// Splits the geometry 2^d parts, where each direction is divided into two parts in
+    /// in a uniform way, i.e., in the middle of the corresponding side. This method
+    /// allocated new space for each new geometry, the original one stays unchanged.
+    virtual std::vector<gsGeometry<T>* > uniformSplit(index_t dir =-1 ) const;
+
     /// @}
 
     /// Gives back an isoParametric slice of the geometry with fixed
@@ -506,6 +514,16 @@ public:
 
     /// Returns the patch index for this patch
     size_t id() const { return m_id; }
+
+    /// Set a new basis, this is an auxiliary function for geometries, created by the
+    /// default constructor. If allocated, the old basis is deleted and the new one
+    /// is put there.
+    void setBasis( gsBasis<T>* newBasis)
+    {
+        if(m_basis!=NULL)
+            delete m_basis;
+        m_basis = newBasis;
+    }
 
 protected:
 

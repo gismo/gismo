@@ -244,6 +244,11 @@ public:
     /// to two points: the lower and upper corner of the bounding box.
     void boundingBox(gsMatrix<T> & result) const;
 
+    /// \brief Splits each patch uniformly in each direction into two new patches,
+    /// giving a total number of 2^d new patches. This method allocated new
+    /// space for each new geometry, the original one stays unchanged.
+    gsMultiPatch<T> uniformSplit() const;
+
 
     /** @brief Checks if all patch-interfaces are fully matching, and if not, repairs them, i.e., makes them fully matching.
     *
