@@ -460,15 +460,15 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     //some more constants
     gsVector<int,d> sizes;                 // number of coefs in each dir
     base.size_cwise(sizes);
-    size_t sz = sizes.prod();              //total number of coefs
+    index_t sz = sizes.prod();              //total number of coefs
 
     //find the number of coefs left from xi (in direction 0)
-    size_t nL=0;
+    index_t nL=0;
     gsAsConstMatrix<T> kn = knots.asMatrix();
     for(; nL<kn.cols();++nL)
         if(kn(0,nL)==xi)
             break;
-    size_t nR = base.size(0) - nL;
+    index_t nR = base.size(0) - nL;
 
     //Split the coefficients
     gsMatrix<T> coefL, coefR;
@@ -506,7 +506,7 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     std::vector<KnotVectorType> KVL,KVR;
     KVL.push_back(knotsL);
     KVR.push_back(knotsR);
-    for(int i=1; i<d;++i)
+    for(unsigned i=1; i<d;++i)
     {
         KVL.push_back(base.knots(i));
         KVR.push_back(base.knots(i));
