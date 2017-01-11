@@ -108,8 +108,6 @@ public:
     /// are kept unchanged. Fields in \a other unknown to this are ignored.
     void update(const gsOptionList& other);
     
-    void addScoped(const std::string& scope, const gsOptionList& other);
-
 private:
 
     /// \brief Prints information regarding the option nnamed \a label

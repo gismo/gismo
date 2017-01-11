@@ -99,12 +99,17 @@ void null_deleter(T *) {}
 
 /// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
 /// memory leaks.
+///
+/// This has a move semantics: the shared_ptr object takes
+/// the ownership.
 template <typename T>
 inline shared_ptr<T> make_shared(T *x)
 { return shared_ptr<T>(x); }
 
-/// Takes a unique_ptr and wraps it in a shared_ptr. Useful for avoiding
-/// memory leaks.
+/// Takes a unique_ptr and "converts" it to a shared_ptr.
+///
+/// This has a move semantics: the unique_ptr is set to NULL,
+/// the shared_ptr takes the ownership.
 template <typename T>
 inline shared_ptr<T> make_shared(const unique_ptr<T>& x)
 { return shared_ptr<T>(const_cast<unique_ptr<T>&>(x).release()); }
@@ -112,7 +117,9 @@ inline shared_ptr<T> make_shared(const unique_ptr<T>& x)
 
 /// \brief Creates a shared pointer which does not eventually delete
 /// the underlying raw pointer. Usefull to refer to objects which
-/// should not be destroyed
+/// should not be destroyed.
+///
+/// The caller keeps the ownership.
 template <typename T>
 inline shared_ptr<T> make_shared_not_owned(const T *x)
 {
@@ -121,6 +128,9 @@ inline shared_ptr<T> make_shared_not_owned(const T *x)
 
 /// Takes a T* and wraps it in an unique_ptr. Useful for one-off
 /// function return values to avoid memory leaks.
+///
+/// This has a move semantics: the unique_ptr object takes
+/// the ownership.
 template <typename T>
 inline unique_ptr<T> make_unique(T * x)
 { return unique_ptr<T>(x); }
@@ -130,6 +140,10 @@ inline unique_ptr<T> make_unique(T * x)
 
 /// Takes a T* and wraps it in an unique_ptr. Useful for one-off
 /// function return values to avoid memory leaks.
+///
+/// This has a move semantics: the unique_ptr object take
+/// the ownership.
+///
 /// Does the same as memory::make_unique.
 template <typename T>
 inline memory::unique_ptr<T> safe(T *x)
