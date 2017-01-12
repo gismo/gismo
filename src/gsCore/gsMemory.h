@@ -50,14 +50,12 @@ memory::shared_ptr<int> B;
 \endcode
 */
 
-#ifdef __GLIBCXX__
-#  ifdef __INTEL_COMPILER
+#ifdef __INTEL_COMPILER
 using boost::shared_ptr;
 using boost::weak_ptr;
-#  else
+#elif __cplusplus < 201103 && defined( __GLIBCXX__ )
 using std::tr1::shared_ptr;
 using std::tr1::weak_ptr; 
-#  endif
 #else
 using std::shared_ptr;
 using std::weak_ptr;
@@ -86,7 +84,13 @@ public :
     unique_ptr(unique_ptr& r ):Base(r) { }
 
     unique_ptr(unique_ptr_ref m):Base(m) { }
-
+    
+    template <typename Other>
+    operator shared_ptr<Other>()
+    {
+        return shared_ptr<Other>(this->release());
+    }
+    
     using Base::operator=;
 
 };
