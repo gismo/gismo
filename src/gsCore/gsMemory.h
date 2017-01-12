@@ -110,15 +110,6 @@ template <typename T>
 inline shared_ptr<T> make_shared(T *x)
 { return shared_ptr<T>(x); }
 
-/// Takes a unique_ptr and "converts" it to a shared_ptr.
-///
-/// This has a move semantics: the unique_ptr is set to NULL,
-/// the shared_ptr takes the ownership.
-template <typename T>
-inline shared_ptr<T> make_shared(const unique_ptr<T>& x)
-{ return shared_ptr<T>(const_cast<unique_ptr<T>&>(x).release()); }
-
-
 /// \brief Creates a shared pointer which does not eventually delete
 /// the underlying raw pointer. Usefull to refer to objects which
 /// should not be destroyed.
