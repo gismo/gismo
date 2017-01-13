@@ -73,11 +73,11 @@ public:
     explicit gsRichardsonOp(const MatrixPtr& _mat)
     : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
     
-    static Ptr make(const MatrixType& _mat) 
-    { return memory::make_shared( new gsRichardsonOp(_mat) ); }
+    static uPtr make(const MatrixType& _mat) 
+    { return memory::make_unique( new gsRichardsonOp(_mat) ); }
 
-    static Ptr make(const MatrixPtr& _mat) 
-    { return memory::make_shared( new gsRichardsonOp(_mat) ); }
+    static uPtr make(const MatrixPtr& _mat) 
+    { return memory::make_unique( new gsRichardsonOp(_mat) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
@@ -137,10 +137,10 @@ private:
 };
 
 /**
-   \brief Returns a shared pointer to a Richardson operator referring on \a mat
+   \brief Returns a smart pointer to a Richardson operator referring on \a mat
 */
 template <class Derived>
-typename gsRichardsonOp<Derived>::Ptr makeRichardsonOp(const Eigen::EigenBase<Derived>& mat)
+typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<Derived>& mat)
 { return gsRichardsonOp<Derived>::make(mat.derived()); }
 
 /// @brief Jacobi preconditioner
@@ -175,11 +175,11 @@ public:
     explicit gsJacobiOp(const MatrixPtr& _mat)
     : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
     
-    static Ptr make(const MatrixType& _mat) 
-    { return memory::make_shared( new gsJacobiOp(_mat) ); }
+    static uPtr make(const MatrixType& _mat) 
+    { return memory::make_unique( new gsJacobiOp(_mat) ); }
 
-    static Ptr make(const MatrixPtr& _mat) 
-    { return memory::make_shared( new gsJacobiOp(_mat) ); }
+    static uPtr make(const MatrixPtr& _mat) 
+    { return memory::make_unique( new gsJacobiOp(_mat) ); }
   
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
@@ -242,10 +242,10 @@ private:
 };
 
 /**
-   \brief Returns a shared pointer to a Jacobi operator referring on \a mat
+   \brief Returns a smart pointer to a Jacobi operator referring on \a mat
 */
 template <class Derived>
-typename gsJacobiOp<Derived>::Ptr makeJacobiOp(const Eigen::EigenBase<Derived>& mat)
+typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>& mat)
 { return gsJacobiOp<Derived>::make(mat.derived()); }
 
 
@@ -281,11 +281,11 @@ public:
     explicit gsGaussSeidelOp(const MatrixPtr& _mat)
     : m_mat(_mat), m_expr(m_mat->derived()) { }
     
-    static Ptr make(const MatrixType& _mat) 
-    { return memory::make_shared( new gsGaussSeidelOp(_mat) ); }
+    static uPtr make(const MatrixType& _mat) 
+    { return memory::make_unique( new gsGaussSeidelOp(_mat) ); }
 
-    static Ptr make(const MatrixPtr& _mat) 
-    { return memory::make_shared( new gsGaussSeidelOp(_mat) ); }
+    static uPtr make(const MatrixPtr& _mat) 
+    { return memory::make_unique( new gsGaussSeidelOp(_mat) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
@@ -304,10 +304,10 @@ private:
 };
 
 /**
-   \brief Returns a shared pointer to a Gauss-Seidel operator referring on \a mat
+   \brief Returns a smart pointer to a Gauss-Seidel operator referring on \a mat
 */
 template <class Derived>
-typename gsGaussSeidelOp<Derived>::Ptr makeGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
+typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived>::make(mat.derived()); }
 
 /// @brief Symmetric Gauss-Seidel preconditioner
@@ -344,11 +344,11 @@ public:
     explicit gsSymmetricGaussSeidelOp(const MatrixPtr& _mat)
     : m_mat(_mat), m_expr(m_mat->derived()) {}
     
-    static Ptr make(const MatrixType& _mat) 
-    { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat) ); }
+    static uPtr make(const MatrixType& _mat) 
+    { return memory::make_unique( new gsSymmetricGaussSeidelOp(_mat) ); }
 
-    static Ptr make(const MatrixPtr& _mat) 
-    { return memory::make_shared( new gsSymmetricGaussSeidelOp(_mat) ); }
+    static uPtr make(const MatrixPtr& _mat) 
+    { return memory::make_unique( new gsSymmetricGaussSeidelOp(_mat) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
@@ -370,10 +370,10 @@ private:
 };
 
 /**
-   \brief Returns a shared pointer to a Symmetric Gauss-Seidel operator referring on \a mat
+   \brief Returns a smart pointer to a Symmetric Gauss-Seidel operator referring on \a mat
 */
 template <class Derived>
-typename gsSymmetricGaussSeidelOp<Derived>::Ptr
+typename gsSymmetricGaussSeidelOp<Derived>::uPtr
 makeSymmetricGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
 { return gsSymmetricGaussSeidelOp<Derived>::make(mat.derived()); }
 

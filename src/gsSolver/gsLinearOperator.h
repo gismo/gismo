@@ -172,9 +172,9 @@ public:
     /// Constructor taking a shared pointer to a linear operator and a scalar
     gsScaledOp(const BasePtr & linOp, T scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
 
-    /// Make command returing a shared pointer
-    static Ptr make(const BasePtr & linOp, T scalar = 1) 
-    { return memory::make_shared( new gsScaledOp(linOp, scalar) ); }
+    /// Make function returning a smart pointer
+    static uPtr make(const BasePtr & linOp, T scalar = 1) 
+    { return memory::make_unique( new gsScaledOp(linOp, scalar) ); }
 
     virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
@@ -211,8 +211,8 @@ public:
     /// Constructor taking the dimension of the identity operator
     gsIdentityOp(index_t dim) : m_dim(dim) {}
 
-    /// Make command returing a shared pointer
-    static Ptr make(index_t dim) { return memory::make_shared( new gsIdentityOp(dim) ); }
+    /// Make function returning a smart pointer
+    static uPtr make(index_t dim) { return memory::make_unique( new gsIdentityOp(dim) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {

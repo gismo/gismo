@@ -56,9 +56,9 @@ public:
     /// Constructor. Takes the number of blocks (nRows, nCols). Provide the contents of the blocks with addOperator
     gsBlockOp(index_t nRows, index_t nCols);
     
-    /// Make function returning a shared pointer
-    static Ptr make(index_t nRows, index_t nCols) 
-    { return memory::make_shared( new gsBlockOp(nRows,nCols) ); }
+    /// Make function returning a smart pointer
+    static uPtr make(index_t nRows, index_t nCols) 
+    { return memory::make_unique( new gsBlockOp(nRows,nCols) ); }
 
     /**
      * @brief Add a preconditioner \f$C_{ij}\f$ to the block structure

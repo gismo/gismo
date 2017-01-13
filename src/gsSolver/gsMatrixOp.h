@@ -64,12 +64,12 @@ public:
     ///
     /// @note This does not copy the matrix. Make sure that the matrix
     /// is not deleted too early or provide a shared pointer.
-    static Ptr make(const MatrixType& mat, bool sym=false)
-    { return memory::make_shared( new gsMatrixOp(mat,sym) ); }
+    static uPtr make(const MatrixType& mat, bool sym=false)
+    { return memory::make_unique( new gsMatrixOp(mat,sym) ); }
 
     /// Make function returning a smart pointer
-    static Ptr make(const MatrixPtr& mat, bool sym=false)
-    { return memory::make_shared( new gsMatrixOp(mat,sym) ); }
+    static uPtr make(const MatrixPtr& mat, bool sym=false)
+    { return memory::make_unique( new gsMatrixOp(mat,sym) ); }
     
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
@@ -120,7 +120,7 @@ private:
   * \ingroup Solver
   */
 template <class Derived>
-typename gsMatrixOp<Derived>::Ptr makeMatrixOp(const Eigen::EigenBase<Derived>& mat, bool sym=false)
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>& mat, bool sym=false)
 {
     return gsMatrixOp<Derived>::make(mat.derived(), sym);
 }
@@ -147,9 +147,9 @@ typename gsMatrixOp<Derived>::Ptr makeMatrixOp(const Eigen::EigenBase<Derived>& 
   * \ingroup Solver
   */
 template <class Derived>
-typename gsMatrixOp<Derived>::Ptr makeMatrixOp(const memory::shared_ptr<Derived> & mat, bool sym=false)
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const memory::shared_ptr<Derived> & mat, bool sym=false)
 {
-    return memory::make_shared(new gsMatrixOp<Derived>(mat, sym));
+    return memory::make_unique(new gsMatrixOp<Derived>(mat, sym));
 }
 
 /** @brief Simple adapter class to use an Eigen solver (having a
@@ -191,7 +191,7 @@ public:
     }
     
     /// Make function taking a matrix OR a shared pointer
-    static Ptr make(const MatrixType& mat) { return memory::make_shared( new gsSolverOp(mat) ); }    
+    static uPtr make(const MatrixType& mat) { return memory::make_unique( new gsSolverOp(mat) ); }    
     
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
@@ -219,9 +219,9 @@ private:
 ///
 /// \ingroup Solver
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makePartialPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
+typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makePartialPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
-    return memory::make_shared( new gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 /// @brief Convenience function to create an LU solver with partial
@@ -230,9 +230,9 @@ typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> >
 ///
 /// \ingroup Solver
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makePartialPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
+typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makePartialPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
 {
-    return memory::make_shared( new gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 
@@ -241,9 +241,9 @@ typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> >
 ///
 /// \ingroup Solver
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeFullPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
+typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeFullPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
-    return memory::make_shared( new gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 /// @brief Convenience function to create an LU solver with full
@@ -252,9 +252,9 @@ typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >:
 ///
 /// \ingroup Solver
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeFullPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
+typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeFullPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
 {
-    return memory::make_shared( new gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 
@@ -266,9 +266,9 @@ typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >:
 ///
 /// \ingroup Solver
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeCholeskySolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
+typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeCholeskySolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
-    return memory::make_shared( new gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 /// @brief Convenience function to create a Cholesky (LDL^T) solver
@@ -280,9 +280,9 @@ typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr 
 ///
 /// \ingroup Solver
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr  makeCholeskySolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
+typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeCholeskySolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
 {
-    return memory::make_shared( new gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 
@@ -293,9 +293,9 @@ typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::Ptr 
 ///
 /// \ingroup Solver
 template <typename T, int _Opt, typename _Index>
-typename gsSolverOp< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
+typename gsSolverOp< typename gsSparseSolver<T>::LU >::uPtr  makeSparseLUSolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
 {
-    return memory::make_shared( new gsSolverOp< typename gsSparseSolver<T>::LU >(mat) );
+    return memory::make_unique( new gsSolverOp< typename gsSparseSolver<T>::LU >(mat) );
 }
 
 /// @brief Convenience function to create a sparse LU solver as a
@@ -305,9 +305,9 @@ typename gsSolverOp< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSolver(c
 ///
 /// \ingroup Solver
 template <typename T, int _Opt, typename _Index>
-typename gsSolverOp< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSolver(const memory::shared_ptr< gsSparseMatrix<T,_Opt,_Index> > & mat)
+typename gsSolverOp< typename gsSparseSolver<T>::LU >::uPtr  makeSparseLUSolver(const memory::shared_ptr< gsSparseMatrix<T,_Opt,_Index> > & mat)
 {
-    return memory::make_shared( new gsSolverOp< typename gsSparseSolver<T>::LU >(mat) );
+    return memory::make_unique( new gsSolverOp< typename gsSparseSolver<T>::LU >(mat) );
 }
 
 
@@ -319,9 +319,9 @@ typename gsSolverOp< typename gsSparseSolver<T>::LU >::Ptr  makeSparseLUSolver(c
 ///
 /// \ingroup Solver
 template <typename T, int _Opt, typename _Index>
-typename gsSolverOp< typename gsSparseSolver<T>::SimplicialLDLT >::Ptr  makeSparseCholeskySolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
+typename gsSolverOp< typename gsSparseSolver<T>::SimplicialLDLT >::uPtr  makeSparseCholeskySolver(const gsSparseMatrix<T,_Opt,_Index> & mat)
 {
-    return memory::make_shared( new gsSolverOp<typename  gsSparseSolver<T>::SimplicialLDLT >(mat) );
+    return memory::make_unique( new gsSolverOp<typename  gsSparseSolver<T>::SimplicialLDLT >(mat) );
 }
 
 /// @brief Convenience function to create a sparse Cholesky
@@ -332,9 +332,9 @@ typename gsSolverOp< typename gsSparseSolver<T>::SimplicialLDLT >::Ptr  makeSpar
 ///
 /// \ingroup Solver
 template <typename T, int _Opt, typename _Index>
-typename gsSolverOp< typename gsSparseSolver<T>::SimplicialLDLT >::Ptr  makeSparseCholeskySolver(const memory::shared_ptr< gsSparseMatrix<T,_Opt,_Index> > & mat)
+typename gsSolverOp< typename gsSparseSolver<T>::SimplicialLDLT >::uPtr  makeSparseCholeskySolver(const memory::shared_ptr< gsSparseMatrix<T,_Opt,_Index> > & mat)
 {
-    return memory::make_shared( new gsSolverOp<typename  gsSparseSolver<T>::SimplicialLDLT >(mat) );
+    return memory::make_unique( new gsSolverOp<typename  gsSparseSolver<T>::SimplicialLDLT >(mat) );
 }
 
 
