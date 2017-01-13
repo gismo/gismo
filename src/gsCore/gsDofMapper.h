@@ -216,6 +216,9 @@ public:
     /// been marked to set up the dof numbering.
     void finalize();
 
+    /// \brief Checks whether finalize() has been called.
+    bool isFinalized() { return m_curElimId==0; }
+
     /// \brief Print summary to cout
     void print() const;
 
@@ -224,6 +227,12 @@ public:
 
     ///\brief Set the shift amount for the global numbering
     void setShift(index_t shift);
+
+    ///\brief Returns the smallest value of the indices
+    index_t firstIndex() const { return m_shift; }
+
+    ///\brief Returns one past the biggest value of the indices
+    index_t lastIndex() const { return m_shift + freeSize(); }
 
     ///\brief Set the shift amount for the boundary numbering
     void setBoundaryShift(index_t shift);
@@ -350,6 +359,8 @@ public:
         GISMO_ENSURE(m_curElimId==0, "finalize() was not called on gsDofMapper");
         return m_numElimDofs; 
     }
+    
+    index_t boundarySizeWithDuplicates() const;
 
     /// Returns the offset corresponding to patch \a k
     std::size_t offset(int k) const
@@ -421,8 +432,6 @@ private:
 
 } // namespace gismo
 
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsDofMapper.hpp)

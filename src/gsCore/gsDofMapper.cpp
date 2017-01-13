@@ -42,7 +42,7 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
     */
     
     for (index_t i = 0; i < numActive; ++i)
-        globals(i,0) = MAPPER_PATCH_DOF(locals(i,0), patchIndex)+m_shift;
+        globals(i,0) = index(locals(i,0), patchIndex);
 }
 
 void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
@@ -59,7 +59,7 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
     index_t bot = numActive;
     for (index_t i = 0; i != numActive; ++i)
     {
-        const index_t ii = MAPPER_PATCH_DOF(locals(i,0), patchIndex)+m_shift;
+        const index_t ii = index(locals(i,0), patchIndex);
         if ( is_free_index(ii) )
         {
             globals(numFree  , 0) = i ;
@@ -315,6 +315,14 @@ void gsDofMapper::preImage(const index_t gl,
     }
 }
 
+index_t gsDofMapper::boundarySizeWithDuplicates() const
+{ 
+    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+
+    const index_t s = m_numFreeDofs + m_shift - 1;
+    return std::count_if(m_dofs.begin(), m_dofs.end(),
+                         std::bind2nd(std::greater<index_t>(), s) );
+}
 
 
 index_t gsDofMapper::coupledSize() const
