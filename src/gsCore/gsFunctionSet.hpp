@@ -64,8 +64,9 @@ gsMatrix<T> gsFunctionSet<T>::support() const
 template <typename T>
 void gsFunctionSet<T>::active_into     (const gsMatrix<T> &u, gsMatrix<unsigned> &result) const
 {
-    // this default implementation assumes a single function 0 is active always 
-    result.setConstant(1,u.cols(),0);
+    GISMO_NO_IMPLEMENTATION
+    // Single function 0 globally active:
+    // result.setConstant(1,u.cols(),0);
 }
 
 // evaluation

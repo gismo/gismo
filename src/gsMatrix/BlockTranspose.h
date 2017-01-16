@@ -167,7 +167,7 @@ struct unary_evaluator<BlockTranspose<ArgType, NumBlocks> >
   }
    
 protected:
-  const ArgTypeNested m_arg;
+  ArgTypeNested m_arg;
   evaluator<ArgTypeNestedCleaned> m_argImpl;
   const variable_if_dynamic<Index, ArgType::RowsAtCompileTime> m_rows;
   const variable_if_dynamic<Index, ArgType::ColsAtCompileTime> m_cols;

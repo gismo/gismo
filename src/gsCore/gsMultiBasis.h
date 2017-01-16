@@ -258,7 +258,7 @@ public:
     }
 
     /// @brief Add a basis (ownership of the pointer is also acquired)
-    void addBasis( gsBasis<T> * & g );
+    void addBasis( gsBasis<T> * g );
 
     /// @brief Search for the given basis and return its index.
     int findBasisIndex( gsBasis<T>* g ) const;
@@ -555,9 +555,6 @@ private:
 
 }; // class gsMultiBasis
 
-
-// ////////////////////////////////////////////////
-// ////////////////////////////////////////////////
 
 /// Print (as string) a multibasis structure
 template<class T>

@@ -359,7 +359,8 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         }
 
         GISMO_ASSERT(it->function()->targetDim() == m_pde_ptr->numRhs(),
-                     "Given Dirichlet boundary function does not match problem dimension.\n");
+                     "Given Dirichlet boundary function does not match problem dimension."
+                     <<it->function()->targetDim()<<" != "<<m_pde_ptr->numRhs()<<"\n");
 
         // Compute dirichlet values
         gsMatrix<T> fpts;

@@ -61,9 +61,9 @@ std::ostream& gsMultiBasis<T>::print( std::ostream& os ) const
 
  
 template<class T>
-void gsMultiBasis<T>::addBasis( gsBasis<T> * & g ) 
+void gsMultiBasis<T>::addBasis( gsBasis<T> * g ) 
 {
-    gsDebug<< "TO DO\n";
+    //gsDebug<< "TO DO\n";
     if ( m_topology.dim() == -1 ) 
     {
         m_topology.setDim( g->dim() );

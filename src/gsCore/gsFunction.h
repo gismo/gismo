@@ -68,6 +68,8 @@ public:
 
     typedef typename gsMatrix<T>::uPtr       uMatrixPtr;
 
+    typedef typename Base::dim_t dim_t;
+    
     using Base::support;
     using Base::domainDim;
     using Base::targetDim;
@@ -82,6 +84,9 @@ public:
         return *this; 
     }
 
+    void active_into (const gsMatrix<T>  & u, gsMatrix<unsigned> &result) const
+    { result.setConstant(1,u.cols(),0); }
+    
     /**
         @name Evaluation functions
         @anchor Evaluation_functions

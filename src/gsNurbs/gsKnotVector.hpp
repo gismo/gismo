@@ -301,7 +301,7 @@ void gsKnotVector<T>::insert( T knot, mult_t mult )
 
     uiterator uit = std::lower_bound(ubegin(), uend(), knot);
     const mult_t fa = uit.firstAppearance();
-
+    
     // update multiplicity sums
     nonConstMultIterator upos = m_multSum.begin() + uit.uIndex();
     if (upos==m_multSum.end() || *uit != knot) // knot value does not exist ?
@@ -310,7 +310,7 @@ void gsKnotVector<T>::insert( T knot, mult_t mult )
 
     // insert repeated knots
     m_repKnots.insert(m_repKnots.begin() + fa, mult, knot);
-
+    
     GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
 }
 
@@ -838,13 +838,14 @@ void gsKnotVector<T>::reduceMultiplicity(const mult_t i, bool boundary)
     uiterator uit = ubegin() + 1;
     for (; uit != uend()-1; ++uit) // for all interior knots
     {
-        const mult_t m = uit.multiplicity();
-        if ( m > i )
+        const mult_t m = uit.multiplicity() - i;
+        if ( m > 0 )
         {
             mtmp.push_back( m + mtmp.back() );
-            ktmp.insert(ktmp.end(), m - i, *uit);
+            ktmp.insert(ktmp.end(), m, *uit);
         }
     }
+
     // last knot
     bm = boundary ? (std::max<mult_t>)(1,uit.multiplicity()-i) : uit.multiplicity();
     mtmp.push_back( bm + mtmp.back() );

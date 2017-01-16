@@ -310,7 +310,7 @@ public:  /* Dirichlet degrees of freedom computation */
     GISMO_DEPRECATED
     const gsMatrix<T> & dirValues(int unk=0) const { return m_ddof[unk]; }//remove
 
-private:  /* Helpers for Dirichlet degrees of freedom computation */
+protected:  /* Helpers for Dirichlet degrees of freedom computation */
 
     /// @brief calculates the values of the eliminated dofs based on Interpolation.
     /// \param[in] mapper the dofMapper for the considered unknown
