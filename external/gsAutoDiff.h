@@ -410,6 +410,33 @@ public:
         return DScalar1(math::atan(y.value), y.grad / ((Scalar)1.0 + y.value*y.value) );
     }
 
+    friend DScalar1 tanh(const DScalar1 &y) 
+    {
+        const Scalar th = math::tanh(y.value);
+        // vn = tanh(y)
+        // Dvn = (1 - tanh(y)^2)*Dy
+        return DScalar2(th, (1-th*th) * y.grad );
+    }
+
+    friend DScalar1 cosh(const DScalar1 &y) 
+    {
+        const Scalar ch = math::cosh(y.value);
+        const Scalar sh = math::sinh(y.value);
+        // vn = cosh(y)
+        // Dvn = sinh(y)*Dy
+        return DScalar1(ch, sh * y.grad );
+    }
+
+    friend DScalar1 sinh(const DScalar1 &y) 
+    {
+        const Scalar ch = math::cosh(y.value);
+        const Scalar sh = math::sinh(y.value);
+        // vn = cosh(y)
+        // Dvn = sinh(y)*Dy
+        return DScalar1(sh, ch * y.grad );
+    }
+
+
     /// @}
     // ======================================================================
 
@@ -993,6 +1020,37 @@ public:
         // D^2vn = D^2y / (1+y^2) - [ 2*y * Dy*Dy^T] / (1+y^2)^2
         return DScalar2(math::atan(y.value), y.grad / denom, 
                (y.hess - 2.0 * y.value * y.grad * y.grad.transpose() / denom ) / denom );
+    }
+
+    friend DScalar2 tanh(const DScalar2 &y) 
+    {
+        const Scalar th = math::tanh(y.value);
+        const Scalar tmp =  1 -  th*th;
+        // vn = tanh(y)
+        // Dvn = (1 - tanh(y)^2)*Dy
+        // D^2vn = (1-tanh(y)^2) * [ D^2y - 2*tanh(y)* Dy*Dy^T ]
+        return DScalar2(th, tmp * y.grad,
+               tmp * (y.hess - 2.0 * th * y.grad * y.grad.transpose()) );
+    }
+
+    friend DScalar2 cosh(const DScalar2 &y) 
+    {
+        const Scalar ch = math::cosh(y.value);
+        const Scalar sh = math::sinh(y.value);
+        // vn = cosh(y)
+        // Dvn = sinh(y)*Dy
+        // D^2vn = cosh(y)*Dy*Dy^T + sinh(y)*D^2y
+        return DScalar2(ch, sh * y.grad, ch * y.grad * y.grad.transpose() + sh * y.hess );
+    }
+
+    friend DScalar2 sinh(const DScalar2 &y) 
+    {
+        const Scalar ch = math::cosh(y.value);
+        const Scalar sh = math::sinh(y.value);
+        // vn = cosh(y)
+        // Dvn = sinh(y)*Dy
+        // D^2vn = cosh(y)*Dy*Dy^T + sinh(y)*D^2y
+        return DScalar2(sh, ch * y.grad, sh * y.grad * y.grad.transpose() + ch * y.hess );
     }
 
     /// @}
