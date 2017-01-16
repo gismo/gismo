@@ -13,7 +13,7 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_SOURCES)
 aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 
 # Apply same configuration as G+Smo
-include( gsConfig)
+include(gsConfig)
 
 # Look for CoDiPack library
 #find_package(CODIPACK QUIET)
@@ -26,8 +26,8 @@ include(ExternalProject)
 ExternalProject_Add(CoDiPack
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CoDiPack
           URL https://github.com/SciCompKL/CoDiPack/archive/numericExtension.zip
-	  CONFIGURE_COMMAND ""
-	  BUILD_COMMAND ""
+          CONFIGURE_COMMAND ""
+          BUILD_COMMAND ""
           UPDATE_COMMAND ""
           INSTALL_COMMAND ""
 )

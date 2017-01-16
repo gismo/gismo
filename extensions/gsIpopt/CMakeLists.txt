@@ -36,7 +36,7 @@ ExternalProject_Add(IpOpt
           COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib64
           BUILD_COMMAND ${MAKE} 
           UPDATE_COMMAND     ""
-  	  #DOWNLOAD_NO_PROGRESS 0
+          #DOWNLOAD_NO_PROGRESS 0
 )
       set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin CACHE INTERNAL "")
       set(IPOPT_LIBRARY ${CMAKE_BINARY_DIR}/lib/libipopt.so  CACHE INTERNAL "")

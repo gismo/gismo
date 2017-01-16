@@ -89,7 +89,7 @@ ExternalProject_Add(Trilinos
                        -DTPL_MPI_LIBRARY_DIRS=${TPL_MPI_LIBRARY_DIRS}
                        #-DMPI_BASE_DIR=${TPL_MPI_BASE_DIR}
                        #-DTPL_MPI_LIBRARIES=${MPI_CXX_LIBRARIES} # bug ? 2 elements
- 		       # Note: this must be ON, otherwise Trilinos compilation fails. Must be OFF on MS Windows
+                       # Note: this must be ON, otherwise Trilinos compilation fails. Must be OFF on MS Windows
                        -DTrilinos_ENABLE_CXX11=${Trilinos_ENABLE_CXX11}
                        ## Point to specific paths (! no space after "=")
                        -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
