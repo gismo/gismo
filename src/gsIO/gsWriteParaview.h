@@ -90,6 +90,11 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
                       std::string const & fn, unsigned npts=NS,
                       bool mesh = false, bool ctrlNet = false);
 
+/// \brief Export a computational mesh to paraview file
+template<class T>
+void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
+                     std::string const & fn, unsigned npts);
+
 /// \brief Export a composite Geometry to paraview file
 ///
 /// \param Geo a composite geometry

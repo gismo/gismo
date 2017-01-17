@@ -690,6 +690,26 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
     collection.save();
 }
 
+// Export a multibasis mesh
+template<class T>
+void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
+                     std::string const & fn, unsigned npts)
+{
+    // GISMO_ASSERT sizes
+
+    gsParaviewCollection collection(fn);
+
+    for (unsigned i = 0; i!= domain.nPatches(); ++i)
+    {
+        const std::string fileName = fn + util::to_string(i) + "_mesh";
+        writeSingleCompMesh(mb[i], domain.patch(i), fileName, npts);
+        collection.addPart(fileName, ".vtp");
+    }
+
+    // Write out the collection file
+    collection.save();
+}
+
 /// Export a Geometry without scalar information
 template<class T>
 void gsWriteParaview(const gsGeometrySlice<T> & Geo, 
