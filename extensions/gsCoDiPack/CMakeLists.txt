@@ -42,6 +42,8 @@ add_library(${PROJECT_NAME} OBJECT
     ${${PROJECT_NAME}_HPPFILES}
 )
 
+add_dependencies(${PROJECT_NAME} CoDiPack)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
     COMPILE_DEFINITIONS gismo_EXPORTS 
     POSITION_INDEPENDENT_CODE ON
@@ -50,8 +52,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     VISIBILITY_INLINES_HIDDEN ON
     FOLDER "G+Smo extensions"
     )
-
-add_dependencies(${PROJECT_NAME} CoDiPack)
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")

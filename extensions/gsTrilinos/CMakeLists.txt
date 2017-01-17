@@ -33,7 +33,7 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_SOURCES)
 aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 
 # Apply same configuration as G+Smo
-include( gsConfig)
+include(gsConfig)
 
 # Look for MPI (now: handled by GISMO_WITH_MPI)
 #find_package(MPI REQUIRED)
