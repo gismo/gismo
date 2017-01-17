@@ -16,24 +16,6 @@ namespace gismo
     // Should be done inside gsHDomain
     #define HDOMAIN1 gsHDomain<1,unsigned> 
     TEMPLATE_INST 
-    HDOMAIN1::query1_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query1_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
-    HDOMAIN1::query2_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query2_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
-    HDOMAIN1::query3_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query3_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
     HDOMAIN1::numLeaves_visitor::return_type
     HDOMAIN1::leafSearch<HDOMAIN1::numLeaves_visitor>() const;
     TEMPLATE_INST 
@@ -54,24 +36,6 @@ namespace gismo
 
     #undef HDOMAIN1
     #define HDOMAIN1 gsHDomain<2,unsigned> 
-    TEMPLATE_INST 
-    HDOMAIN1::query1_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query1_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
-    HDOMAIN1::query2_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query2_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
-    HDOMAIN1::query3_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query3_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
     TEMPLATE_INST 
     HDOMAIN1::numLeaves_visitor::return_type
     HDOMAIN1::leafSearch<HDOMAIN1::numLeaves_visitor>() const;
@@ -94,24 +58,6 @@ namespace gismo
     #undef HDOMAIN1
     #define HDOMAIN1 gsHDomain<3,unsigned> 
     TEMPLATE_INST 
-    HDOMAIN1::query1_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query1_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
-    HDOMAIN1::query2_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query2_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
-    HDOMAIN1::query3_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query3_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
     HDOMAIN1::numLeaves_visitor::return_type
     HDOMAIN1::leafSearch<HDOMAIN1::numLeaves_visitor>() const;
     TEMPLATE_INST 
@@ -132,24 +78,6 @@ namespace gismo
 
     #undef HDOMAIN1
     #define HDOMAIN1 gsHDomain<4,unsigned> 
-    TEMPLATE_INST 
-    HDOMAIN1::query1_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query1_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
-    HDOMAIN1::query2_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query2_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
-    TEMPLATE_INST 
-    HDOMAIN1::query3_visitor::return_type
-    HDOMAIN1::boxSearch<HDOMAIN1::query3_visitor>
-    (HDOMAIN1::point const & k1, 
-     HDOMAIN1::point const & k2, 
-     int level, node  *leaf ) const;
     TEMPLATE_INST 
     HDOMAIN1::numLeaves_visitor::return_type
     HDOMAIN1::leafSearch<HDOMAIN1::numLeaves_visitor>() const;

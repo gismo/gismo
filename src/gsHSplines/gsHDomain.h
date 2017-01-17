@@ -81,10 +81,6 @@ public:
     template <class U, unsigned dd> friend class gsHDomainIterator;
 
 private:
-    struct query1_visitor;
-    struct query2_visitor;
-    struct query3_visitor;
-    struct query4_visitor;
 
     struct numLeaves_visitor;
     struct numNodes_visitor;
@@ -278,9 +274,7 @@ public:
     that cannot be reached from \em _node.
     */
     bool query1 (point const & lower, point const & upper,
-                 int level, node * _node ) const
-        { return boxSearch< query1_visitor >(upper,lower,level,_node); }
-
+                 int level, node * _node ) const;
 
     /** \brief Returns true if the box defined by \em lower and \em upper
     * is completely contained in \em level and
@@ -324,8 +318,7 @@ public:
     * where \f$\omega\f$ is the box defined by \em lower and \em upper.
     */
     bool query1 (point const & lower, point const & upper,
-                 int level) const
-        { return boxSearch< query1_visitor >(lower,upper,level,m_root); }
+                 int level) const;
 
     /* \brief Returns true if the box defined by \em lower and \em upper
      is contained in a domain with a higher level than \em level
@@ -340,8 +333,7 @@ public:
     that cannot be reached from \em _node.
     */
     bool query2 (point const & lower, point const & upper,
-                 int level, node *_node ) const
-    { return boxSearch< query2_visitor >(lower,upper,level,_node); }
+                 int level, node *_node ) const;
 
     /** \brief Returns true if the box defined by \em lower and \em upper
      * is completely contained in a Om-domain with a level different to \em level.
@@ -354,8 +346,7 @@ public:
      * where \f$\omega\f$ is the box defined by \em lower and \em upper.
      */
     bool query2 (point const & lower, point const & upper,
-                 int level) const
-    { return boxSearch< query2_visitor >(lower,upper,level,m_root); }
+                 int level) const;
 
     // query3 is used if both query1 and query2 are false to decide if the
     // coresponding basis function is active or not.  it returns the
@@ -365,9 +356,7 @@ public:
     // true or false value we remember the lowest level, which is returned
     // at the end.
     int query3(point const & k1, point const & k2, 
-               int level, node *_node ) const
-    { return boxSearch< query3_visitor >(k1,k2,level,_node); }
-
+               int level, node *_node ) const;
 
     /** \brief Returns the lowest level \f$\ell\f$ s.t.
      * \f$\omega \subseteq \Omega^\ell \land \omega
@@ -382,15 +371,12 @@ public:
      *
      */
     int query3(point const & lower, point const & upper,
-               int level) const
-    { return boxSearch< query3_visitor >(lower,upper,level,m_root); }
-
+               int level) const;
 
     // query4 returns the highest level with which box [k1, k2]
     // overlaps
     int query4(point const & lower, point const & upper,
-               int level, node  *_node) const
-    { return boxSearch< query4_visitor >(lower,upper,level,_node); }
+               int level, node  *_node) const;
 
     /** \brief Returns the highest level with which
      * the box defined by \em lower and \em upper
@@ -402,8 +388,7 @@ public:
      *
      */
     int query4(point const & lower, point const & upper,
-               int level) const
-    { return boxSearch< query4_visitor >(lower,upper,level,m_root); }
+               int level) const;
 
     /// Returns the level of the point \a p
     int levelOf(point const & p, int level) const
@@ -652,91 +637,6 @@ private:
     /// considered half-open, i.e. in 2D they are of the form
     /// [a_1,b_1) x [a_2,b_2)
     node * pointSearch(const point & p, int level, node  *_node) const;
-
-    // Query 1
-    struct query1_visitor
-    {
-        typedef bool return_type;
-        
-        // initialize result as true
-        static const return_type init = true;
-        
-        static void visitLeaf(kdnode<d,T> * leafNode , int level, return_type & res)
-        {
-            // If we hit a leaf, then it overlaps qBox, so take
-            // minimum with current result
-            // (assumes that no degenerate leaves exist in the tree)
-            GISMO_ASSERT( !isDegenerate(*leafNode->box), "Encountered an empty leaf");
-            
-            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level != level )
-            if ( leafNode->level != level )
-                // if (leafNode->level != level )
-                res = false;
-        }
-    };
-    
-    // Query 2
-    struct query2_visitor
-    {
-        typedef bool return_type;
-        
-        // initialize result as true
-        static const return_type init = true;
-        
-        static void visitLeaf(kdnode<d,T> * leafNode , int level, return_type & res)
-        {
-            // If we hit a leaf, then it overlaps qBox, so 
-            // we checj the level of this leaf
-            // (assumes that no degenerate leaves exist in the tree)
-            GISMO_ASSERT( !isDegenerate(*leafNode->box), "Encountered an empty leaf");
-            
-            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level <= level )
-            if ( leafNode->level <= level )
-                res = false;
-        }
-    };
-    
-    // Query 3
-    struct query3_visitor
-    {
-        typedef int return_type;
-        
-        // initialize result as a max possible value, since we are looking
-        // for a minimum
-        static const return_type init = 1000000;
-        
-        static void visitLeaf(kdnode<d,T> * leafNode , int level, return_type & res)
-        {
-            // If we hit a leaf, then it overlaps qBox, so take
-            // minimum with current result
-            // (assumes that no degenerate leaves exist in the tree)
-            GISMO_ASSERT( !isDegenerate(*leafNode->box), "Encountered an empty leaf");
-            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level < res )
-            if ( leafNode->level < res )
-                res = leafNode->level;
-        }
-    };
-    
-    // Query 4
-    struct query4_visitor
-    {
-        typedef int return_type;
-        
-        // initialize result as a minimum possible value, since we are
-        // looking for a maximum
-        static const return_type init = -1;
-        
-        static void visitLeaf(kdnode<d,T> * leafNode , int level, return_type & res)
-        {
-            // If we hit a leaf, then it overlaps qBox, so take
-            // minimum with current result
-            // (assumes that no degenerate leaves exist in the tree)
-            GISMO_ASSERT( !isDegenerate(*leafNode->box), "Encountered an empty leaf");
-            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level > res )
-            if ( leafNode->level > res )
-                res = leafNode->level;
-        }
-    };
     
     // Increases the level by 1 for all leaves
     struct levelUp_visitor

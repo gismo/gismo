@@ -37,6 +37,82 @@ inline unsigned translateIndex( unsigned const & i,
 
 #include <queue>
 
+namespace {
+
+
+    // Query 1
+    struct query1_visitor
+    {
+        typedef bool return_type;
+        
+        // initialize result as true
+        static const return_type init = true;
+
+        template<unsigned d, class T >
+        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        {
+            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level != level )
+            if ( leafNode->level != level )
+                // if (leafNode->level != level )
+                res = false;
+        }
+    };
+    
+    // Query 2
+    struct query2_visitor
+    {
+        typedef bool return_type;
+        
+        // initialize result as true
+        static const return_type init = true;
+
+        template<unsigned d, class T >
+        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        {
+            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level <= level )
+            if ( leafNode->level <= level )
+                res = false;
+        }
+    };
+    
+    // Query 3
+    struct query3_visitor
+    {
+        typedef int return_type;
+        
+        // initialize result as a max possible value, since we are looking
+        // for a minimum
+        static const return_type init = 1000000;
+
+        template<unsigned d, class T >
+        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        {
+            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level < res )
+            if ( leafNode->level < res )
+                res = leafNode->level;
+        }
+    };
+    
+    // Query 4
+    struct query4_visitor
+    {
+        typedef int return_type;
+        
+        // initialize result as a minimum possible value, since we are
+        // looking for a maximum
+        static const return_type init = -1;
+
+        template<unsigned d, class T >
+        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        {
+            //if ( (!isDegenerate(*leafNode->box)) && leafNode->level > res )
+            if ( leafNode->level > res )
+                res = leafNode->level;
+        }
+    };
+
+}
+
 namespace gismo {
 
 
@@ -335,6 +411,45 @@ gsHDomain<d,T>::makeCompressed()
     m_maxPath = minMaxPath().second;
 }
 
+template<unsigned d, class T >
+bool gsHDomain<d,T>::query1(point const & lower, point const & upper,
+               int level, node  *_node) const
+{ return boxSearch< query1_visitor >(upper,lower,level,_node); }
+
+template<unsigned d, class T >
+bool gsHDomain<d,T>::query1(point const & lower, point const & upper,
+               int level) const
+{ return boxSearch< query1_visitor >(upper,lower,level,m_root); }
+
+template<unsigned d, class T >
+bool gsHDomain<d,T>::query2(point const & lower, point const & upper,
+               int level, node  *_node) const
+{ return boxSearch< query2_visitor >(lower,upper,level,_node); }
+
+template<unsigned d, class T >
+bool gsHDomain<d,T>::query2 (point const & lower, point const & upper,
+                 int level) const
+{ return boxSearch< query2_visitor >(lower,upper,level,m_root); }
+
+template<unsigned d, class T >
+int gsHDomain<d,T>::query3(point const & lower, point const & upper,
+               int level, node  *_node) const
+{ return boxSearch< query3_visitor >(lower,upper,level,_node); }
+
+template<unsigned d, class T >
+int gsHDomain<d,T>::query3(point const & lower, point const & upper,
+               int level) const
+{ return boxSearch< query3_visitor >(lower,upper,level,m_root); }
+
+template<unsigned d, class T >
+int gsHDomain<d,T>::query4(point const & lower, point const & upper,
+               int level, node  *_node) const
+{ return boxSearch< query4_visitor >(lower,upper,level,_node); }
+
+template<unsigned d, class T >
+int gsHDomain<d,T>::query4(point const & lower, point const & upper,
+               int level) const
+{ return boxSearch< query4_visitor >(lower,upper,level,m_root); }
 
 template<unsigned d, class T >
 std::pair<typename gsHDomain<d,T>::point, typename gsHDomain<d,T>::point>
@@ -376,9 +491,9 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
     local2globalIndex( qBox.first , static_cast<unsigned>(level), qBox.first );
     local2globalIndex( qBox.second, static_cast<unsigned>(level), qBox.second);
 
-    if( isDegenerate(qBox) )
-        GISMO_ERROR("boxSearch: Wrong order of points defining the box (or empty box): "
-                    << qBox.first.transpose() <<", "<< qBox.second.transpose() <<".\n" );
+    GISMO_ASSERT( !isDegenerate(qBox),
+                  "boxSearch: Wrong order of points defining the box (or empty box): "
+                  << qBox.first.transpose() <<", "<< qBox.second.transpose() <<".\n" );
 
     typename visitor::return_type res = visitor::init;
 
@@ -465,6 +580,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
         if ( curNode->isLeaf() )
         {
             // Visit the leaf
+            GISMO_ASSERT( !isDegenerate(*curNode->box), "Encountered an empty leaf");
             visitor::visitLeaf(curNode, level, res );
         }
         else // this is a split-node
