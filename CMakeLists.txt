@@ -86,7 +86,7 @@ configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
 file(COPY "${PROJECT_SOURCE_DIR}/CTestConfig.cmake"
-	  DESTINATION "${PROJECT_BINARY_DIR}")
+    DESTINATION "${PROJECT_BINARY_DIR}")
 
 include_directories(${PROJECT_BINARY_DIR})
 
@@ -106,8 +106,8 @@ set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
 set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
-     			"${PROJECT_SOURCE_DIR}/external"
-			"${PROJECT_SOURCE_DIR}/extensions"
+           "${PROJECT_SOURCE_DIR}/external"
+      "${PROJECT_SOURCE_DIR}/extensions"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 include_directories(${GISMO_INCLUDE_DIRS})
@@ -142,6 +142,7 @@ if(GISMO_WITH_FDBB)
   add_subdirectory(extensions/gsFdbb)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${FDBB_INCLUDE_DIR}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
+  include_directories(${FDBB_INCLUDE_DIR})
 endif(GISMO_WITH_FDBB)
 
 #if (GISMO_WITH_VTK)
@@ -173,6 +174,9 @@ endif(GISMO_WITH_MPI)
 
 if(GISMO_WITH_TRILINOS)
   add_subdirectory(extensions/gsTrilinos)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  include_directories(${TRILINOS_INCLUDE_DIR})
 endif(GISMO_WITH_TRILINOS)
 
 ## #################################################################

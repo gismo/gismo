@@ -13,15 +13,15 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_SOURCES)
 aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 
 # Apply same configuration as G+Smo
-include( gsConfig)
+include(gsConfig)
 
 message("STATUS CMake Will attempt to download FDBB sources.")
 include(ExternalProject)
 ExternalProject_Add(FDBB
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/FDBB
           URL https://gitlab.com/mmoelle1/FDBB/repository/archive.zip
-	  CONFIGURE_COMMAND ""
-	  BUILD_COMMAND ""
+          CONFIGURE_COMMAND ""
+          BUILD_COMMAND ""
           UPDATE_COMMAND ""
           INSTALL_COMMAND ""
 )
@@ -47,7 +47,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
 
-  add_dependencies(${PROJECT_NAME} FDBB)
+add_dependencies(${PROJECT_NAME} FDBB)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/gsFDBB/
