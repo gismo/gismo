@@ -358,8 +358,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 
         for(index_t j = 0; j < k1.size();j++)
         {
-            k1[j] = m_bases.back()->knots(j).uFind(boxes(j,2*i  )).uIndex() ;
-            k2[j] = m_bases.back()->knots(j).uFind(boxes(j,2*i+1)).uIndex() ;
+            k1[j] = m_bases.back()->knots(j).uFind(boxes(j,2*i  )).uIndex()    ;
+            k2[j] = m_bases.back()->knots(j).uFind(boxes(j,2*i+1)).uIndex() + 1;
 
             // Boxes are half-open, trivial boxes trigger at least one box refined
             if ( k1[j] == k2[j] ) ++k2[j];
@@ -411,6 +411,16 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<unsigned> const & boxes)
     update_structure();
 }
 
+template<unsigned d, class T>
+void gsHTensorBasis<d,T>::refineSide(const boxSide side, index_t lvl)
+{
+    const index_t dir = side.direction();
+    const index_t par = side.parameter();
+    gsMatrix<T> rf = this->support();
+    rf(dir,!par) = rf(dir,par);
+    for (index_t i = 0; i!=lvl; ++i) // lazy impl., this can be more efficient
+        this->refine(rf);
+}
 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
