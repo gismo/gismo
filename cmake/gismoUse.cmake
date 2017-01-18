@@ -38,13 +38,13 @@ endmacro(add_gismo_pure_executable)
 macro(add_gismo_shared_executable FILE)
     get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME} )
-    #message(STATUS "exec (dynamically linked): ${FNAME}")
+    #message(STATUS "exec (dynamically linked): ${FNAME}") 	
     add_executable(${FNAME} ${FILE})
     target_link_libraries(${FNAME} gismo)
     if (GISMO_BUILD_COVERAGE)
       target_link_libraries(${FNAME} gcov)
     endif(GISMO_BUILD_COVERAGE)
-	set_property(TARGET ${FNAME} PROPERTY FOLDER "tests-gismo")
+	#set_property(TARGET ${FNAME} PROPERTY FOLDER "tests-gismo")
 endmacro(add_gismo_shared_executable)
 
 # add an executable compiled statically with the library
