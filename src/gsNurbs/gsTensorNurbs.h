@@ -88,7 +88,7 @@ public:
 
     /// Construct 2D tensor NURBS by knot vectors, degrees, weights and coefficient matrix
     gsTensorNurbs( gsKnotVector<T> const& KV1, gsKnotVector<T> const & KV2,
-                   gsMatrix<T> tcoefs, const gsMatrix<T> wgts)
+                   gsMatrix<T> tcoefs, gsMatrix<T> wgts)
     {
         GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d
                      <<"D NURBS using 2 knot-vectors.");
