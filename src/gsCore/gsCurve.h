@@ -48,8 +48,8 @@ public:
     /// coefs.
     gsCurve(const gsBasis<T> & basis, gsMatrix<T> coefs ) :
     gsGeometry<T>(basis, give(coefs))
-    { 
-        GISMO_ASSERT( coefs.cols() >= 1, 
+    {
+        GISMO_ASSERT( this->m_coefs.size() >= 1,
         "Coefficient matrix cannot be empty.\n");
     }
 
