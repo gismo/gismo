@@ -70,11 +70,6 @@ public:
     template<typename OtherDerived> 
     gsSparseVector(const Eigen::ReturnByValue<OtherDerived>& other)  : Base(other) { } 
     
-    gsSparseVector(gsMovable< gsSparseVector > other)
-    {
-        this->swap( other.ref() );
-    }
-
     ~gsSparseVector() { }
     
     // Using the assignment operators of Eigen
@@ -89,14 +84,6 @@ public:
 #else
     using Base::operator=;
 #endif
-
-    gsSparseVector& operator=(gsMovable< gsSparseVector > other) 
-    { 
-        this->resize(0,0); 
-        this->swap( other.ref() ); 
-        return *this; 
-    } 
-    
 
     inline T   at (_Index i ) const { return this->coeff(i); }
     inline T & at (_Index i ) { return this->coeffRef(i); }

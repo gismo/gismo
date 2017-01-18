@@ -39,10 +39,10 @@ public:
     { }
 
     // compatibility constructor for gsRationalBasis
-    gsConstantBasis(const gsBasis<T> * b, const gsMovable<gsMatrix<T> >& weight)
-    : m_val( 1.0 ), m_domainDim(b->dim())
+    gsConstantBasis(const gsBasis<T> * b, gsMatrix<T> weight)
+    : m_val( weight.value() ), m_domainDim(b->dim())
     {
-        GISMO_ASSERT(weight.ref().size() == 1, "Something seems wrong.");
+        GISMO_ASSERT(weight.size() == 1, "Something seems wrong.");
     }
 
     // compatibility constructor for gsTensorBasis

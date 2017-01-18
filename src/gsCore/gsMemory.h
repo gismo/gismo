@@ -143,9 +143,6 @@ inline unique_ptr<T> make_unique(T * x)
 
 } // namespace memory
 
-template <typename T>
-struct gsMovable { void moveTo(T & x) {GISMO_ERROR("Error");} };
-
 #if __cplusplus >= 201103
 /** 
     Alias for std::move, to be used instead of writing std::move for

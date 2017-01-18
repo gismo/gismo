@@ -195,11 +195,6 @@ public:
     template<typename OtherDerived>
     gsSparseMatrix(const Eigen::ReturnByValue<OtherDerived>& other)  : Base(other) { }
 
-    gsSparseMatrix(gsMovable< gsSparseMatrix > other)
-    {
-        this->swap( other.ref() );
-    }
-
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER
@@ -212,15 +207,6 @@ public:
 #else
     using Base::operator=;
 #endif
-
-    /// This method allows to swap with another vector
-    gsSparseMatrix& operator=(gsMovable< gsSparseMatrix > other)
-    {
-        this->resize(0,0);
-        this->swap( other.ref() );
-        return *this;
-    }
-
 
     ~gsSparseMatrix() ;
     

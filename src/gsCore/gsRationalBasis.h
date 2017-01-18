@@ -79,21 +79,13 @@ public:
     }
     
     /// Construct a rational counterpart of basis
-    gsRationalBasis(SrcT * basis, const gsMatrix<T> & w)
-    : m_src (basis), m_weights(w)
+    gsRationalBasis(SrcT * basis, gsMatrix<T> w)
+    : m_src (basis), m_weights(give(w))
     { 
         GISMO_ASSERT(m_weights.rows() == m_src->size(),
                      "Invalid basis/weights ("<<m_weights.rows()<<"/"<<m_src->size());
     }
-    
-    /// Construct a rational counterpart of basis
-    gsRationalBasis(SrcT * basis, gsMovable< gsMatrix<T> > w)
-    : m_src(basis), m_weights(w)
-    { 
-        GISMO_ASSERT(m_weights.rows() == m_src->size(), 
-                     "Invalid basis/weights ("<<m_weights.rows()<<"/"<<m_src->size());
-    }
-    
+        
     /// Copy Constructor
     gsRationalBasis(const gsRationalBasis & o) : Base(o)
     { 

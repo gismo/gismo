@@ -257,9 +257,9 @@ typename gsKnotVector<T>::reverse_smart_iterator gsKnotVector<T>::rsend()   cons
 
 
 template<typename T>
-gsKnotVector<T>::gsKnotVector( gsMovable< knotContainer > knots, int degree)
+gsKnotVector<T>::gsKnotVector( knotContainer knots, int degree)
 {
-    knots.moveTo(m_repKnots);
+    knots.swap(m_repKnots);
     rebuildMultSum();
 
     m_deg = (degree == - 1 ? deduceDegree() : degree);
@@ -610,17 +610,6 @@ gsKnotVector<T>::gsKnotVector( const knotContainer& uKnots,
     m_deg = (degree == - 1 ? deduceDegree() : degree);
 }
 
-template<typename T>
-gsKnotVector<T>::gsKnotVector(const knotContainer& knots, int degree)
-{
-    m_repKnots = knots;
-    rebuildMultSum();
-
-    m_deg = (degree == - 1 ? deduceDegree() : degree);
-
-    GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
-}
-
 template <typename T>
 void gsKnotVector<T>::initUniform( T first,
                                    T last,
@@ -716,6 +705,22 @@ gsKnotVector<T>::uFind( const T u ) const
         return --dend;
     else 
         return std::upper_bound( domainUBegin(), dend, u ) - 1;
+}
+
+template<typename T>
+typename gsKnotVector<T>::uiterator
+gsKnotVector<T>::uUpperBound( const T u ) const
+{
+    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+    return std::upper_bound( ubegin(), uend(), u );
+}
+
+template<typename T>
+typename gsKnotVector<T>::uiterator
+gsKnotVector<T>::uLowerBound( const T u ) const
+{
+    GISMO_ASSERT(inDomain(u), "Point outside active area of the knot vector");
+    return std::lower_bound( ubegin(), uend(), u );
 }
 
 template<typename T>

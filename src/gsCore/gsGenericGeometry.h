@@ -38,16 +38,12 @@ public:
 
 public:
     gsGenericGeometry(const gsBasis<T> & basis, 
-                            const gsMatrix<T> & coefs)
-    : Base (basis,coefs)
+                      gsMatrix<T> coefs)
+    : Base (basis, give(coefs))
     { 
         GISMO_ASSERT( this->m_basis->dim() == static_cast<int>(d), 
                       "Incoherent basis dimension in gsGenericGeometry");
     }
-
-    gsGenericGeometry(const Basis & basis, gsMovable< gsMatrix<T> > coefs ) :
-    Base( basis, coefs ) 
-    { }
 
     gsGenericGeometry * clone() const
     { return new gsGenericGeometry(*this); }

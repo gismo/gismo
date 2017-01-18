@@ -119,11 +119,6 @@ public:
     template<typename OtherDerived>
     gsVector(const Eigen::ReturnByValue<OtherDerived>& other) : gsBase(other) { }
 
-    gsVector(gsMovable< gsVector > other)
-    {
-        other.moveTo(*this);
-    }
-
     static gsVector<T,2> vec( T x, T y)
     {
         return typename gsVector<T,2>::Base(x, y);
@@ -147,17 +142,10 @@ public:
     using Base::operator=;
 #endif
 
-    /// This method allows to swap with another vector
-    gsVector & operator=(gsMovable< gsVector > other)
-    {
-        other.moveTo(*this);
-        return *this;
-    }
-
     // implicitly deleted in C++11
-    gsVector & operator=(const gsVector & other)
+    gsVector & operator=(gsVector other)
     {
-        this->Base::operator=(other);
+        this->swap(other);
         return *this;
     }
 

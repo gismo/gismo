@@ -78,12 +78,8 @@ public:
     gsNurbsBasis() : Base() { }
 
     /// Construct NURBS basis by a Bspline basis plus weights
-    gsNurbsBasis( gsBSplineBasis<T> *bs, const gsMatrix<T> & w) :
-    Base( bs, w )  { }
-
-    /// Construct NURBS basis by a Bspline basis plus weights
-    gsNurbsBasis( gsBSplineBasis<T> *bs, gsMovable< gsMatrix<T> > w) :
-    Base( bs, w )  { }
+    gsNurbsBasis( gsBSplineBasis<T> *bs, gsMatrix<T> w) :
+    Base( bs, give(w) )  { }
 
     /// Construct NURBS basis of a knot vector
     gsNurbsBasis( const gsKnotVector<T> & KV ) :
@@ -91,12 +87,8 @@ public:
     { }
 
     /// Construct a rational counterpart of B-spline basis given by knots and weights
-    gsNurbsBasis(const gsKnotVector<T> & KV, const gsMatrix<T> & w) :
-    Base( new gsBSplineBasis<T>(KV), w ) { }
-
-    /// Construct a rational counterpart of B-spline basis given by knots and weights
-    gsNurbsBasis(const gsKnotVector<T> & KV, gsMovable< gsMatrix<T> > w) :
-    Base( new gsBSplineBasis<T>(KV), w ) { }
+    gsNurbsBasis(const gsKnotVector<T> & KV, gsMatrix<T> w) :
+    Base( new gsBSplineBasis<T>(KV), give(w) ) { }
 
     /// Copy Constructor 
     gsNurbsBasis( const gsNurbsBasis & o) : Base(o) { }

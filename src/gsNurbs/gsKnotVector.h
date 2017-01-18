@@ -160,7 +160,7 @@ public: // constructors
     /// Constructs knot vector from the given \a knots (repeated
     /// according to multiplicities) and deduces the degree from the
     /// multiplicity of the endknots.
-    explicit gsKnotVector( gsMovable<knotContainer > knots, int degree = -1 );
+    explicit gsKnotVector(knotContainer knots, int degree = -1 );
 
     /// Swaps with \a other knot vector.
     void swap( gsKnotVector& other );
@@ -270,7 +270,7 @@ public: // getters
     /// multiplicities.
     const mult_t * multSumData() const {return m_multSum.data(); }
 
-public: // findspan stuff
+public: // Findspan and value query
 
     /** \brief Returns the uiterator pointing to the knot at the
      * beginning of the _knot interval_ containing \a u.
@@ -284,6 +284,23 @@ public: // findspan stuff
      * `domainEnd() - 1`. Cf. \ref knotInterval "knot interval". */
     iterator iFind( const T u ) const;
 
+    /** \brief Returns an iterator pointing to the first knot which
+     * compares greater than \a u.
+     *
+     *  Unlike uLowerBound, the value pointed by the iterator returned
+     *  by this function cannot be equal to \a u, only greater.
+     */
+    uiterator uUpperBound( const T u ) const;
+
+    /** \brief Returns a uiterator pointing to the first knot which
+     * does not compare less than \a u.
+     * 
+     *  Unlike uUpperBound, the value pointed by the iterator returned
+     *  by this function may also be equivalent to \a u, and not only
+     *  greater.
+     */
+    uiterator uLowerBound( const T u ) const;
+    
 public: // miscellaneous
 
     /// Print the knot vector to the given stream.
@@ -410,12 +427,6 @@ public: // Deprecated functions required by gsKnotVector.
                   mult_t mult_ends=1,
                   mult_t mult_interior=1,
                   int degree = -1 );
-    
-    /// \param knots knots (sorted) including repetitions.
-    /// Copies \a knots to the internal storage.
-    /// To avoid the copy use gsKnotVector(give(knots)) and keep
-    /// in mind that this will destroy knots.
-    gsKnotVector(const knotContainer& knots,  int degree = -1);
 
     /// Constructs knot vector from the given degree and iterators marking its endpoints.
     /// \param begOfKnots iterator pointing to the beginning of the knots,
