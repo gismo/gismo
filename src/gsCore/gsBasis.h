@@ -16,11 +16,8 @@
 #include <gsCore/gsFunctionSet.h>
 
 #define GISMO_MAKE_GEOMETRY_NEW                                         \
-    virtual gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs ) const \
-    { return new GeometryType(*this, coefs); }                          \
-    virtual gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const \
-    { return new GeometryType(*this, coefs); }
-
+    virtual gsGeometry<T> * makeGeometry( gsMatrix<T>coefs ) const      \
+    { return new GeometryType(*this, give(coefs)); }
 
 namespace gismo
 {
@@ -678,11 +675,7 @@ public:
 
     /// @brief Create a gsGeometry of proper type for this basis with the
     /// given coefficient matrix.
-    virtual gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs ) const = 0;
-
-    /// @brief Create a gsGeometry of proper type for this basis,
-    /// taking ownership of the coefficient matrix.
-    virtual gsGeometry<T> * makeGeometry(gsMovable< gsMatrix<T> > coefs ) const = 0;
+    virtual gsGeometry<T> * makeGeometry(gsMatrix<T> coefs) const = 0;
 
     /// @brief Create an empty basis of the derived type and return a
     /// pointer to it

@@ -29,7 +29,6 @@
 #  include <memory>
 #endif
 
-
 namespace gismo {
 
 /** @namespace gismo::memory
@@ -71,29 +70,40 @@ memory::unique_ptr<int> B;
 #if __cplusplus >= 201103
 using std::unique_ptr;
 #else
+
 template <typename T>
 class unique_ptr : public std::auto_ptr<T>
 {
     typedef std::auto_ptr<T> Base;
     typedef std::auto_ptr_ref<T> unique_ptr_ref;
+
+    //struct Cannot_Convert_Pointer;
+    
 public :
-    typedef T X;
+    explicit unique_ptr(T* p = 0) : Base(p) { }
 
-    explicit unique_ptr(X* p = 0):Base(p) { }
+    unique_ptr( unique_ptr& r ) : Base(r) { }
 
-    unique_ptr(unique_ptr& r ):Base(r) { }
+    unique_ptr(unique_ptr_ref m) : Base(m) { }
 
-    unique_ptr(unique_ptr_ref m):Base(m) { }
-    
-    template <typename Other>
-    operator shared_ptr<Other>()
-    {
-        return shared_ptr<Other>(this->release());
-    }
-    
+    template<typename U>
+    unique_ptr(unique_ptr<U> & r
+               // unique_ptr<typename conditional<is_base_of<U,T>::value, U,
+               //                      Cannot_Convert_Pointer >::type>
+        )
+    : Base(r) { }
+
     using Base::operator=;
 
+    //operator shared_ptr<T> () { return shared_ptr<T>(this->release()); }
+
+    template<class U> operator
+    shared_ptr<U>()
+    // shared_ptr<typename conditional<is_base_of<U,T>::value, U,
+    //                      Cannot_Convert_Pointer >::type> ()
+    { return shared_ptr<U>(this->release()); }
 };
+
 #endif
 
 /// \brief Deleter function that does not delete an object pointer
@@ -133,6 +143,37 @@ inline unique_ptr<T> make_unique(T * x)
 
 } // namespace memory
 
+template <typename T>
+struct gsMovable { void moveTo(T & x) {GISMO_ERROR("Error");} };
+
+#if __cplusplus >= 201103
+/** 
+    Alias for std::move, to be used instead of writing std::move for
+    keeping backward c++98 compatibility
+*/
+template <class T> inline
+auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
+{ return std::move(std::forward<T>(t)); }
+#else
+/** 
+    Alias for std::move, to be used instead of std::move for backward
+    c++98 compatibility
+
+    Based on swapping and copy elision.
+*/
+template <typename S> inline S give(S & x)
+{ S t; t.swap(x); return t; }
+
+template <typename T> inline
+memory::unique_ptr<T> give(memory::unique_ptr<T> & x)
+{ return memory::unique_ptr<T>(x.release()); }
+
+template <typename T> inline
+memory::unique_ptr<T> give(memory::shared_ptr<T> & x)
+{ return memory::unique_ptr<T>(x.release()); }
+
+#endif
+
 /// Takes a T* and wraps it in an unique_ptr. Useful for one-off
 /// function return values to avoid memory leaks.
 ///
@@ -143,48 +184,6 @@ inline unique_ptr<T> make_unique(T * x)
 template <typename T>
 inline memory::unique_ptr<T> safe(T *x)
 { return memory::unique_ptr<T>(x); }
-
-/**
-   Wrapper for a reference that can be swapped with another object.
-   Used by the give(.) function to implement argument passing
-*/
-template <typename T>
-class gsMovable
-{
-public:
-
-    /// Moves resource to \a x
-    inline void moveTo(T & x) { m_ref.swap(x); m_ref.clear();}
-
-    /// Read-only access resource
-    const T & get() {return m_ref;}
-
-private:
-    template<typename U>
-    friend gsMovable<U> give(U & x);
-
-    // Only give(.) can create the wrapper
-    explicit gsMovable(T & x) : m_ref(x) { }
-    
-    // disable default constructor
-    gsMovable();
-
-    // disable assignment operator
-    gsMovable& operator= (const gsMovable& other);
-
-private:
-    T & m_ref;
-};
-
-/** 
-    Helper function for reference types which are allowed to be "moved
-    from", i.e., which the caller does not need anymore. This is very
-    similar to the use of std::move (C++11) for passing arguments by
-    rvalue reference.
- */
-template <typename T> inline
-gsMovable<T> give(T & x) { return gsMovable<T>(x); }
-
 
 // Small, dynamically sized arrays on the stack, for POD types.
 // Only use this if the size is guaranteed not to be more than a few

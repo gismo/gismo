@@ -60,26 +60,18 @@ public:
     gsBSpline() { }
     
     /// Construct B-Spline by basis and coefficient matrix.
-    gsBSpline( const Basis & basis, const gsMatrix<T> & coefs ) :
-        Base( basis, coefs )
+    gsBSpline( const Basis & basis, gsMatrix<T> coefs )
+    : Base( basis, give(coefs) )
     {
         if( this->basis().isPeriodic() )
             this->basis().expandCoefs(m_coefs);
     }
-        
-    /// Construct B-Spline by basis and coefficient matrix.
-    gsBSpline( const Basis & basis, gsMovable< gsMatrix<T> >  coefs ) :
-        Base( basis, coefs )
-    {
-        if( this->basis().isPeriodic() )
-            this->basis().expandCoefs(m_coefs);
-    }
-        
+    
     /// Construct B-Spline by a knot vector and coefficient matrix.
-    gsBSpline( const KnotVectorType & KV, const gsMatrix<T> & coefs, bool periodic = false )
+    gsBSpline( const KnotVectorType & KV, gsMatrix<T> coefs, bool periodic = false )
     {
         this->m_basis = new Basis(KV);
-        m_coefs = coefs;
+        m_coefs.swap(coefs);
             
         if( periodic )
         {
@@ -106,39 +98,8 @@ public:
                 gsWarn << "gsBSpline Warning: #Knots="<< KV.size()<< ", #coefs="<< this->m_coefs.rows() <<"\n";
         }
     }
-        
-    /// Construct B-Spline by a knot vector and coefficient matrix.
-    gsBSpline( const KnotVectorType & KV, gsMovable< gsMatrix<T> > coefs, bool periodic = false )
-    {
-        this->m_basis = new Basis(KV);
-        m_coefs = coefs;
-
-        if( periodic )
-        {
-            const index_t sz = this->basis().size();
-
-            this->basis().setPeriodic();
-
-            if ( m_coefs.rows() == sz )
-            {
-                this->basis().trimCoefs(m_coefs);
-            }
-            else if  ( m_coefs.rows() == this->basis().size() )
-            {
-                this->basis().expandCoefs(m_coefs);
-            }
-            else
-            {
-                GISMO_ERROR("Wrong number of coefficients for periodic basis.");
-            }
-        }
-        else // non-periodic
-        {
-            if( this->m_coefs.rows() + KV.degree() + 1 != int( KV.size() ) )
-                gsWarn << "gsBSpline Warning: #Knots="<< KV.size()<< ", #coefs="<< this->m_coefs.rows() <<"\n";
-        }
-    }
     
+
     /// @brief Construct a B-spline from an interval and knot vector specification.
     /// \param u0 starting parameter
     /// \param u1 end parameter
@@ -149,7 +110,7 @@ public:
     /// \param periodic specifies whether the B-spline is periodic
     ///
     /// \ingroup Nurbs
-    gsBSpline(T u0, T u1, unsigned interior, int degree, gsMovable< gsMatrix<T> > coefs, unsigned mult_interior=1, bool periodic = false)
+    gsBSpline(T u0, T u1, unsigned interior, int degree, gsMatrix<T> coefs, unsigned mult_interior=1, bool periodic = false)
     {
         this->m_basis = new Basis(u0, u1, interior, degree, mult_interior, periodic );
         if( periodic )
@@ -165,7 +126,7 @@ public:
         }
         else // non-periodic
         {
-            this->m_coefs = coefs;
+            this->m_coefs.swap(coefs);
             GISMO_ASSERT( this->m_coefs.rows() == this->basis().size(),
                           "Number of coefficients does not match the size of the basis.");
         }

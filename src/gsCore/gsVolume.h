@@ -46,23 +46,12 @@ public:
     
     /// Constructor which copies the given coefficient matrix \a
     /// coefs.
-    gsVolume(const gsBasis<T> & basis, const gsMatrix<T> & coefs ) :
-    gsGeometry<T>(basis, coefs )
+    gsVolume(const gsBasis<T> & basis, gsMatrix<T> coefs ) :
+    gsGeometry<T>(basis, give(coefs) )
     { 
         GISMO_ASSERT( this->m_coefs.size() >= 1,
         "Coefficient matrix cannot be empty.\n");
         // GISMO_ASSERT( coefs.cols() >= 2, 
-        // "Surface must be embedded in dimension at least two.\n");
-    }
-
-    /// Constructor which takes ownership of the given coefficient
-    /// matrix \a coefs.
-    gsVolume(const gsBasis<T> & basis, gsMovable< gsMatrix<T> > coefs ) :
-    gsGeometry<T>(basis, coefs )
-    { 
-        GISMO_ASSERT( this->m_coefs.size() >= 1,
-        "Coefficient matrix cannot be empty.\n");
-        // GISMO_ASSERT( this->m_coefs.size() >= 2,
         // "Surface must be embedded in dimension at least two.\n");
     }
 

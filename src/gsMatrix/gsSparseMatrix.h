@@ -251,7 +251,7 @@ public:
 
     void reservePerColumn(const index_t nz)
     {
-        this->setZero();
+        //this->setZero();
         this->reserve(gsVector<index_t>::Constant(this->cols(), nz));
     }
 
@@ -289,13 +289,13 @@ public:
     std::string printSparsity() const
     {
         std::ostringstream os;
-        os <<", sparsity: "<< std::fixed << std::setprecision(2)<<"nnz: "<<this->size()
-           <<(double)100*(this->array() != 0).count()/this->size() <<'%'<<"\n";
+        os <<"Sparsity: "<< std::fixed << std::setprecision(2)
+           <<(double)100*this->nonZeros()/this->size() <<"\%, nnz: "<<this->size() <<"\n";
         for (index_t i = 0; i!=this->rows(); ++i)
         {
             for (index_t j = 0; j!=this->cols(); ++j)
                 os<< ( 0 == this->coeff(i,j) ? "\u00B7" : "x");
-            os<<"  "<<(this->row(i).array()!=0).count()<<"\n";
+            os<<"\n";
         }
         return os.str();
     }

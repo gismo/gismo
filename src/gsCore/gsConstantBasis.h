@@ -93,11 +93,11 @@ public:
         return os; 
     }
 
-    gsGeometry<T> * makeGeometry( const gsMatrix<T> & coefs )      const 
-    { return new gsConstantFunction<T>(m_val*coefs.row(0).transpose(), m_domainDim); }
-
-    gsGeometry<T> * makeGeometry( gsMovable< gsMatrix<T> > coefs ) const 
-    { return new gsConstantFunction<T>(m_val*coefs.get().row(0).transpose(), m_domainDim); }
+    gsGeometry<T> * makeGeometry( gsMatrix<T> coefs ) const 
+    {
+        coefs *= m_val;
+        return new gsConstantFunction<T>(coefs.transpose(), m_domainDim);
+    }
 
 public:
 

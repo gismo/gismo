@@ -118,19 +118,10 @@ public:
     ///
     /// Coefficients are given by \em{give(coefs) and they are
     /// consumed, i.e. the \coefs variable will be empty after the call
-    gsGeometry( const gsBasis<T> & basis, gsMovable< gsMatrix<Scalar_t> > coefs) :
-    m_coefs(coefs), m_basis( basis.clone() ), m_id(0)
-    { 
-        GISMO_ASSERT( basis.size() == m_coefs.rows(), 
-                      "The coefficient matrix of the geometry (rows="<<m_coefs.rows()
-                      <<") does not match the number of basis functions in its basis("
-                      << basis.size() <<").");
-    }
-
-    /// @brief Constructor by a basis and coefficient vector
-    gsGeometry( const gsBasis<T> & basis, const gsMatrix<Scalar_t> & coefs ) :
-    m_coefs(coefs), m_basis( basis.clone() ), m_id(0)
-    { 
+    gsGeometry( const gsBasis<T> & basis, gsMatrix<Scalar_t> coefs) :
+    m_basis( basis.clone() ), m_id(0)
+    {
+        m_coefs.swap(coefs);
         GISMO_ASSERT( basis.size() == m_coefs.rows(), 
                       "The coefficient matrix of the geometry (rows="<<m_coefs.rows()
                       <<") does not match the number of basis functions in its basis("
@@ -142,7 +133,7 @@ public:
     {
         m_coefs = o.m_coefs;
         m_basis = o.m_basis != NULL ? o.basis().clone() : NULL;
-        m_id = o.m_id;
+        m_id    = o.m_id;
     }
 
     /// @}
@@ -299,11 +290,8 @@ public:
         return m_coefs(i,j);
     }
 
-    /// Set the coefficient matrix of the geometry
-    void setCoefs( const gsMatrix<T> & cc) { this->m_coefs = cc; }
-
     /// Set the coefficient matrix of the geometry, taking ownership of the matrix
-    void setCoefs( gsMovable< gsMatrix<T> > cc) { this->m_coefs = cc; }
+    void setCoefs(gsMatrix<T> cc) { this->m_coefs.swap(cc); }
 
     /// Return the number of coefficients (control points)
     unsigned coefsSize() const { return m_coefs.rows(); }

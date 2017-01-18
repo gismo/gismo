@@ -158,12 +158,6 @@ public:
     template<typename OtherDerived>
     gsMatrix(const Eigen::ReturnByValue<OtherDerived>& other) : Base(other) { }
 
-    /// move constructor
-    gsMatrix(gsMovable< gsMatrix > other)
-    {
-        other.moveTo(*this);
-    }
-
     /// constructor by swapping a unique pointer
     gsMatrix(uPtr const & other)
     {
@@ -188,9 +182,7 @@ public:
      */
     Ptr moveToPtr()
     {
-        Ptr m(new gsMatrix<T>);
-        m->swap(*this);
-        return m;
+        return Ptr(new gsMatrix<T>(give(*this)));
     }
     
     void clear() { this->resize(0,0); }
@@ -207,18 +199,11 @@ public:
 #else
     using Base::operator=;
 #endif
-    
-    // implicitly deleted in C++11
-    gsMatrix & operator=(const gsMatrix & other)
-    {
-        this->Base::operator=(other);
-        return *this;
-    }
 
-    /// This method allows to swap with another matrix
-    gsMatrix& operator= (gsMovable< gsMatrix > other)
+    // implicitly deleted in c++11
+    gsMatrix& operator= (gsMatrix other)
     {
-        other.moveTo(*this);
+        this->swap(other);
         return *this;
     }
 

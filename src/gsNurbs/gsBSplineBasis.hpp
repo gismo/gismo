@@ -861,15 +861,9 @@ gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const
 }
 
 template <class T>
-gsGeometry<T> * gsBSplineBasis<T>::makeGeometry( const gsMatrix<T> & coefs ) const
+gsGeometry<T> * gsBSplineBasis<T>::makeGeometry( gsMatrix<T> coefs ) const
 {
-    return new GeometryType(*this, coefs);
-}
-
-template <class T>
-gsGeometry<T> * gsBSplineBasis<T>::makeGeometry( gsMovable< gsMatrix<T> > coefs ) const
-{
-    return new GeometryType(*this, coefs);
+    return new GeometryType(*this, give(coefs));
 }
 
 template <class T>

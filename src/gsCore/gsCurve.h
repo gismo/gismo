@@ -46,19 +46,10 @@ public:
 
     /// Constructor which copies the given coefficient matrix \a
     /// coefs.
-    gsCurve(const gsBasis<T> & basis, const gsMatrix<T> & coefs ) :
-    gsGeometry<T>(basis, coefs)
+    gsCurve(const gsBasis<T> & basis, gsMatrix<T> coefs ) :
+    gsGeometry<T>(basis, give(coefs))
     { 
         GISMO_ASSERT( coefs.cols() >= 1, 
-        "Coefficient matrix cannot be empty.\n");
-    }
-
-    /// Constructor which takes ownership of the given coefficient
-    /// matrix \a coefs.
-    gsCurve( const gsBasis<T> & basis, gsMovable< gsMatrix<T> > coefs ) :
-    gsGeometry<T>(basis, coefs)
-    { 
-        GISMO_ASSERT( this->m_coefs.size() >= 1,
         "Coefficient matrix cannot be empty.\n");
     }
 
