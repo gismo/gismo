@@ -142,7 +142,10 @@ public:
     gsMatrix(const Base& a) ;
 
     // implicitly deleted in C++11
-    gsMatrix(const gsMatrix& a) : Base(a) { }
+    gsMatrix(const gsMatrix& a) : Base(a)
+    {
+        gsInfo<<"Copy "<< a.rows() << " x "<< a.cols() <<".\n";
+    }
 
     gsMatrix(int rows, int cols) ;
 
@@ -180,9 +183,12 @@ public:
       matrix. After calling it, the matrix object becomes empty, ie
       the size of the matrix is 0
      */
-    Ptr moveToPtr()
+    uPtr moveToPtr()
     {
-        return Ptr(new gsMatrix<T>(give(*this)));
+        uPtr m(new gsMatrix<T>); 
+        m->swap(*this); 
+        return m; 
+        //return uPtr(new gsMatrix<T>(give(*this))); 
     }
     
     void clear() { this->resize(0,0); }
@@ -201,7 +207,8 @@ public:
 #endif
 
     // implicitly deleted in c++11
-    gsMatrix& operator= (gsMatrix other)
+    gsMatrix & operator=(typename Eigen::internal::conditional<
+                         -1==_Rows,gsMatrix, const gsMatrix &>::type other)
     {
         this->swap(other);
         return *this;

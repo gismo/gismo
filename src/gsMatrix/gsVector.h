@@ -143,7 +143,8 @@ public:
 #endif
 
     // implicitly deleted in C++11
-    gsVector & operator=(gsVector other)
+    gsVector & operator=(typename Eigen::internal::conditional<
+                         -1==_Rows,gsVector, const gsVector &>::type other)
     {
         this->swap(other);
         return *this;
