@@ -53,6 +53,10 @@ FOREACH(subdir ${SUBDIRS})
     #EXCLUDE_FROM_DEFAULT_BUILD 1
     )
 
+  if(GISMO_WITH_CODIPACK)
+    add_dependencies(${GM_NAME} gsCoDiPackExtension)
+  endif()
+
   if (GISMO_BUILD_PCH)
     target_precompiled_header(${GM_NAME} gsPrecompiledHeader)
   endif()

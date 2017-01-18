@@ -174,9 +174,6 @@ endif(GISMO_WITH_MPI)
 
 if(GISMO_WITH_TRILINOS)
   add_subdirectory(extensions/gsTrilinos)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  include_directories(${TRILINOS_INCLUDE_DIR})
 endif(GISMO_WITH_TRILINOS)
 
 ## #################################################################
