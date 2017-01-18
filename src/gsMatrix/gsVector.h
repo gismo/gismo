@@ -95,7 +95,7 @@ public:
     gsVector(const Base& a) ;
 
     // implicitly deleted in C++11
-    gsVector(const gsVector& a) : gsBase(a) { }
+    //gsVector(const gsVector& a) : gsBase(a) { }
 
     explicit gsVector(int dimension) ;
 
@@ -103,7 +103,7 @@ public:
 
     inline operator const ConstRef () { return ConstRef(*this); }
 
-    ~gsVector () ;
+    //~gsVector () ;
 
     void clear() { this->resize(0); }
     
@@ -129,6 +129,7 @@ public:
         return typename gsVector<T,3>::Base(x, y, z);
     }
 
+/*
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER
@@ -141,12 +142,15 @@ public:
 #else
     using Base::operator=;
 #endif
-
-    // implicitly deleted in C++11
+*/
+    // swap assignment operator
     gsVector & operator=(typename Eigen::internal::conditional<
                          -1==_Rows,gsVector, const gsVector &>::type other)
     {
-        this->swap(other);
+        if (-1==_Rows)
+            this->swap(other);
+        else
+            this->Base::operator=(other);
         return *this;
     }
 
@@ -208,16 +212,17 @@ public:
     gsVector3d(scalar_t x, scalar_t y, scalar_t z = 0 );
 
     // implcitly declared deleted in C++11
-    gsVector3d(const gsVector3d& a) : Base(a) { }
+    //gsVector3d(const gsVector3d& a) : Base(a) { }
 
     gsVector3d(const Base& a) ;
 
-    ~gsVector3d () ;
+    //~gsVector3d () ;
 
     /// This constructor allows constructing a gsVector3d from Eigen expressions
     template<typename OtherDerived>
     gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
 
+    /*
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER
@@ -230,7 +235,8 @@ public:
 #else
     using Base::operator=;
 #endif
-
+    */
+    
     // implicitly deleted in C++11
     gsVector3d & operator=(const gsVector3d & other)
     {
@@ -259,10 +265,8 @@ gsVector<T,_Rows,_Options>::gsVector(const Base& a): gsBase(a) { }
 template<class T, int _Rows, int _Options> inline
 gsVector<T,_Rows,_Options>::gsVector(int dimension): gsBase(dimension,1) { }
 
-template<class T, int _Rows, int _Options> inline
-gsVector<T,_Rows,_Options>::~gsVector () { }
-    
-
+//template<class T, int _Rows, int _Options> inline
+//gsVector<T,_Rows,_Options>::~gsVector () { }
 
 template<class T> inline
 gsVector3d<T>::gsVector3d() : Base() { }
@@ -278,9 +282,11 @@ gsVector3d<T>::gsVector3d(scalar_t x, scalar_t y,scalar_t z )
 template<class T> inline
 gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 
+/*
 template<class T> inline
 gsVector3d<T>::~gsVector3d () { }
-    
+*/
+
 // template<class T>   
 // template<typename OtherDerived> inline
 // gsVector3d<T>::gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }

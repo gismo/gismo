@@ -137,15 +137,12 @@ public:  // Solvers related to gsMatrix
 
 public:
 
-    gsMatrix() ;
+    gsMatrix() { }
 
     gsMatrix(const Base& a) ;
 
     // implicitly deleted in C++11
-    gsMatrix(const gsMatrix& a) : Base(a)
-    {
-        gsInfo<<"Copy "<< a.rows() << " x "<< a.cols() <<".\n";
-    }
+    //gsMatrix(const gsMatrix& a) : Base(a) { }
 
     gsMatrix(int rows, int cols) ;
 
@@ -176,8 +173,6 @@ public:
 
     inline operator const constRef () { return constRef(*this); }
 
-    ~gsMatrix() ;
-
     /**
       \brief This function returns a smart pointer to the
       matrix. After calling it, the matrix object becomes empty, ie
@@ -192,7 +187,7 @@ public:
     }
     
     void clear() { this->resize(0,0); }
-
+/*
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER // && !__INTEL_COMPILER
@@ -205,12 +200,16 @@ public:
 #else
     using Base::operator=;
 #endif
+*/
 
-    // implicitly deleted in c++11
+    // swap assignment operator
     gsMatrix & operator=(typename Eigen::internal::conditional<
                          -1==_Rows,gsMatrix, const gsMatrix &>::type other)
     {
-        this->swap(other);
+        if (-1==_Rows)
+            this->swap(other);
+        else
+            this->Base::operator=(other);
         return *this;
     }
 
@@ -387,8 +386,8 @@ public:
         this->noalias() = this->unaryExpr(removeNoise_helper(tol));
     }
     
-    /// Clone function. Used to make a copy of the matrix
-    gsMatrix * clone() const;
+    // Clone function. Used to make a copy of the matrix
+    //gsMatrix * clone() const;
 
     /// Return a block view of the matrix with \a rowSizes and \a colSizes
     BlockView blockView(const gsVector<index_t> & rowSizes, 
@@ -591,9 +590,11 @@ private:
 }; // class gsMatrix
 
 
+/*
 template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix() { }
- 
+*/
+
 template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(const Base& a) : Base(a) { }
 
@@ -603,16 +604,18 @@ gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(int rows, int cols) : Base(rows,col
 // template<class T, int _Rows, int _Cols, int _Options>
 //  template<typename OtherDerived> 
 // gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
-    
 
+
+/*
 template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options>::~gsMatrix() { }
-  
-/// Clone function. Used to make a copy of the matrix
+*/
+
+/* Clone function. Used to make a copy of the matrix
 template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone() const
 { return new gsMatrix<T,_Rows, _Cols, _Options>(*this); }
-  
+*/
 
 } // namespace gismo
 
