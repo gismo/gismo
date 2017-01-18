@@ -55,9 +55,9 @@ template<class T>
 gsMultiPatch<T>::gsMultiPatch( PatchContainer& patches,
                                const std::vector<patchSide>& boundary,
                                const std::vector<boundaryInterface>& interfaces )
-    : gsBoxTopology( patches[0]->parDim(), patches.size(), boundary, interfaces ),
-      m_patches( patches ) // patches are consumed
-{ 
+    : gsBoxTopology( patches[0]->parDim(), patches.size(), boundary, interfaces )
+{
+    m_patches.swap(patches); // patches are consumed
     setIds();
 }
 
@@ -164,6 +164,12 @@ void gsMultiPatch<T>::addPatch( gsGeometry<T>* g )
     g->setId( m_patches.size() );
     m_patches.push_back( g ) ;
     addBox();
+}
+
+template<class T>
+void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g) 
+{
+    addPatch(g.release());
 }
 
 template<class T>
@@ -519,6 +525,67 @@ gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface 
     }
 
     return gsAffineFunction<T>(bi.dirMap(bi.first()),bi.dirOrientation(bi.first()) ,box1,box2);
+}
+
+template<class T>
+void gsMultiPatch<T>::repairInterfaces()
+{
+    // A bit crude to create a new gsMultiBasis, but this is the fastest
+    // way to re-use the already existing functions of gsMultiBasis
+    gsMultiBasis<T> multiBasis(*this);
+    std::vector< boundaryInterface > bivec = interfaces();
+
+    size_t kmax = 2*bivec.size();
+    size_t k = 0;
+    bool sthChanged = false;
+    bool changed = false;
+
+    do
+    {
+        sthChanged = false;
+        //...keep repairing until nothing changes any more
+
+        // loop over all interfaces
+        for( size_t i = 0; i < size_t( bivec.size() ); i++ )
+        {
+            changed = false;
+
+            std::vector<unsigned> refEltsFirst;
+            std::vector<unsigned> refEltsSecond;
+
+            // For each interface, find the areas/elements that do not match...
+            switch( this->dim() )
+            {
+            case 2:
+                changed = multiBasis.template repairInterfaceFindElements<2>( bivec[i], refEltsFirst, refEltsSecond );
+                break;
+            case 3:
+                changed = multiBasis.template repairInterfaceFindElements<3>( bivec[i], refEltsFirst, refEltsSecond );
+                break;
+            default:
+                GISMO_ASSERT(false,"wrong dimension");
+            }
+
+            // ...and if there are any found, refine the bases accordingly
+            if( changed )
+            {
+                if( refEltsFirst.size() > 0 )
+                {
+                    int pi( bivec[i].first().patch );
+                    patch(pi).basis().refineElements_withCoefs( patch(pi).coefs(), refEltsFirst );
+                }
+                if( refEltsSecond.size() > 0 )
+                {
+                    int pi( bivec[i].second().patch );
+                    patch(pi).basis().refineElements_withCoefs( patch(pi).coefs(), refEltsSecond );
+                }
+            }
+
+            sthChanged = sthChanged || changed;
+        }
+        k++; // just to be sure this loop cannot go on infinitely
+    }
+    while( sthChanged && k <= kmax );
 }
 
 
