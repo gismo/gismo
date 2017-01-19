@@ -50,8 +50,8 @@ public:
     typedef memory::shared_ptr< gsTHBSpline<d,T> > Ptr;
 
     typedef typename
-    conditional<d==1, gsConstantFunction<T>, gsTHBSpline<d-1,T>
-                >::type BoundaryGeometryType;
+    util::conditional<d==1, gsConstantFunction<T>, gsTHBSpline<d-1,T>
+                      >::type BoundaryGeometryType;
 
     typedef typename gsTHBSplineBasis<d,T>::BoundaryBasisType BoundaryBasisType;
 

@@ -38,9 +38,6 @@ public:
 
     typedef typename Base::iterator       iterator;
 public:
-    gsSparseEntries() ;
-
-    ~gsSparseEntries();
 
     inline void add( int i, int j, T value )
     { this->push_back( Triplet(i,j,value) ); }
@@ -181,7 +178,8 @@ public:
 
     /// This constructor allows constructing a gsSparseMatrix from a selfadjoint view
     template<typename OtherDerived, unsigned int UpLo>
-    gsSparseMatrix(const Eigen::SparseSelfAdjointView<OtherDerived, UpLo>& other)  : Base(other) { }
+    gsSparseMatrix(const Eigen::SparseSelfAdjointView<OtherDerived, UpLo>& other)
+    : Base(other) { }
 
     /// This constructor allows constructing a gsSparseMatrix from Eigen expressions
     template<typename OtherDerived>
@@ -195,21 +193,33 @@ public:
     template<typename OtherDerived>
     gsSparseMatrix(const Eigen::ReturnByValue<OtherDerived>& other)  : Base(other) { }
 
-    // Using the assignment operators of Eigen
-    // Note: using Base::operator=; is ambiguous in MSVC
-#ifdef _MSC_VER
+#if !EIGEN_HAS_RVALUE_REFERENCES
+    // swap assignment operator
+    gsSparseMatrix & operator=(gsSparseMatrix other)
+    {
+        this->swap(other);
+        return *this;
+    }
+
+    template<typename OtherDerived, int a>
+    gsSparseMatrix & operator=(const Eigen::SparseSymmetricPermutationProduct<OtherDerived, a>& other)
+    {
+        this->operator=(other);
+        return *this;
+    }
+#else
+#  ifdef _MSC_VER
     template <class EigenExpr>
     gsSparseMatrix& operator= (const EigenExpr & other) 
     {
         this->Base::operator=(other);
         return *this;
     }
-#else
+#  else
     using Base::operator=;
+#  endif
 #endif
 
-    ~gsSparseMatrix() ;
-    
     /**
        \brief This function returns a smart pointer to the
        matrix. After calling it, the matrix object becomes empty, ie
@@ -248,9 +258,6 @@ public:
 
     inline T    operator () (_Index i, _Index j ) const { return this->coeff(i,j); }
     inline T  & operator () (_Index i, _Index j ) { return this->coeffRef(i,j); }
-
-    /// Clone function. Used to make a copy of the matrix
-    gsSparseMatrix * clone() const ;
 
     /// Return a block view of the matrix with \a rowSizes and \a colSizes
     BlockView blockView(const gsVector<index_t> & rowSizes, 
@@ -291,12 +298,6 @@ public:
 }; // class gsSparseMatrix
 
 
-template<typename T> inline
-gsSparseEntries<T>::gsSparseEntries() : Base() { }
-
-template<typename T> inline
-gsSparseEntries<T>::~gsSparseEntries() {  }
-
 //template<class T>
 //inline void gsSparseEntries<T>::add( int const& i, int const& j, const T & value)
 //        { this->push_back( Triplet(i,j,value) ); }
@@ -312,16 +313,8 @@ template<typename T, int _Options, typename _Index> inline
 gsSparseMatrix<T, _Options, _Index>::gsSparseMatrix(_Index rows, _Index cols) : Base(rows,cols) { }
 
 template<typename T, int _Options, typename _Index> inline
-gsSparseMatrix<T, _Options, _Index>::~gsSparseMatrix() { }
-
-template<typename T, int _Options, typename _Index> inline
 void gsSparseMatrix<T, _Options, _Index>::setFrom( gsSparseEntries<T> const & entries) 
 { this->setFromTriplets(entries.begin(),entries.end() ); }
-
-template<typename T, int _Options, typename _Index> inline
-gsSparseMatrix<T, _Options,_Index> * gsSparseMatrix<T, _Options, _Index>::clone() const
-{ return new gsSparseMatrix(*this); }
-
 
 template<typename T, int _Options, typename _Index> void
 gsSparseMatrix<T, _Options, _Index>::rrefInPlace()

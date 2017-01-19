@@ -19,11 +19,6 @@
 namespace gismo
 {
 
-namespace internal
-{
-    using Eigen::internal::enable_if;
-}
-
 /** \brief
     A tensor product of \em d B-spline functions, with arbitrary target dimension.
 
@@ -81,7 +76,7 @@ public:
     template<typename U>
     gsTensorBSpline( gsKnotVector<T> const & KV1, gsKnotVector<U> const & KV2,
                      gsMatrix<T> tcoefs,
-                     typename internal::enable_if<d==2,U>::type * = NULL)
+                     typename util::enable_if<d==2,U>::type * = NULL)
     {
         GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "
                      << d<<"D tensor B-spline using 2 knot-vectors.");

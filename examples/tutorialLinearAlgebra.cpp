@@ -20,10 +20,10 @@ using namespace gismo;
 int main()
 {
 #ifdef EIGEN_VECTORIZE
-    gsDebug << "Vectorization is enabled in Eigen."<< "\n";
+    gsDebug << "Vectorization is enabled in Eigen.\n";
 #endif
-#ifdef EIGEN_HAS_RVALUE_REFERENCES
-    gsDebug << "Eigen has rvalue references"<< "\n";
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsDebug << "Eigen has rvalue references.\n";
 #endif
     
     // A matrix with entries of type real_t, and allocated size 3x3

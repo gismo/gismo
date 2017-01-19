@@ -202,7 +202,7 @@ public:
 #endif
 */
 
-#ifndef EIGEN_HAS_RVALUE_REFERENCES
+#if !EIGEN_HAS_RVALUE_REFERENCES
     // swap assignment operator
     gsMatrix & operator=(typename Eigen::internal::conditional<
                          -1==_Rows,gsMatrix, const gsMatrix &>::type other)

@@ -14,32 +14,38 @@
 #pragma once
 
 #include <gsCore/gsExport.h>
+#include <utility>
 
 namespace gismo
 {
 
-/*
-  Compile time type switching.
-  Example: The type
+namespace util {
 
-  gismo::conditional<k==1,double, gsVector<double> >::type
-
-  evaluates (at compile time) to "double" if k is equal to 1, 
-  and to "gsVector<double>" otherwise
-*/
-
-template <bool flag, class IsTrue, class IsFalse>
-struct conditional;
-
-template <class IsTrue, class IsFalse>
-struct conditional<true, IsTrue, IsFalse> { typedef IsTrue type; };
-
-template <class IsTrue, class IsFalse>
-struct conditional<false, IsTrue, IsFalse> {
-   typedef IsFalse type;
+#if __cplusplus >= 201103
+//see also http://lists.boost.org/Archives/boost/2009/04/151209.php
+template <typename T> struct has_move_constructor
+{
+    typedef char yes[1];
+    typedef char no[2];
+    
+    struct AmbiguousConverter
+    {
+        operator T&& ();
+        operator const T& ();
+    };
+    template <typename C> static no& test(decltype( new C( AmbiguousConverter{} )));
+    template <typename> static yes& test(...);
+    enum { value = (sizeof(test<T>(0)) == sizeof(yes)) };
 };
 
-namespace util {
+using std::conditional;
+using std::enable_if;
+using std::is_same;
+using std::is_base_of;
+
+#else
+
+// template <typename T> struct has_move_constructor { enum { value = 0 }; };
 
 template<bool B, class T, class F> struct conditional { typedef T type; };
 template<class T, class F> struct conditional<false, T, F> { typedef F type; };
@@ -51,39 +57,16 @@ template<class T, class U> struct is_same { enum { value = 0 }; };
 template<class T>          struct is_same<T, T> { enum { value = 1 }; };
 
 template <typename B, typename D> struct Host
-{
-    operator B*() const;
-    operator D*();
-};
-
+{ operator B*() const; operator D*(); };
 template <typename B, typename D>
 struct is_base_of
 {
     typedef char (&yes)[1];
     typedef char (&no)[2];
-    template <typename T> 
-    static yes check(D*, T);
+    template <typename T> static yes check(D*, T);
     static no check(B*, int);
     static const bool value = sizeof(check(Host<B,D>(), int())) == sizeof(yes);
 };
-
-#if __cplusplus >= 201103
-//see also http://lists.boost.org/Archives/boost/2009/04/151209.php
-template <typename T>
-struct has_move_constructor {
-  typedef char yes[1];
-  typedef char no[2];
-
-  struct AmbiguousConverter {
-    operator T&& ();
-    operator const T& ();
-  };
-  template <typename C> static no& test(decltype( new C( AmbiguousConverter{} )));
-  template <typename> static yes& test(...);
-  static const bool value = sizeof(test<T>(0)) == sizeof(yes);
-};
-#else
-template <typename T> struct has_move_constructor { static const bool value = 0; };
 #endif
 
 } // end namespace util

@@ -165,16 +165,13 @@ inline bool gsGetReal(std::istream & is, mpq_class & var)
 
 //Note: automatic deduction of number traits, however using gsGetReal,
 //gsGetInt can reveal type mistakes, so they are preferable
-template<bool B, class T = void> struct enable_if {};
-template<class T> struct enable_if<true, T> { typedef T type;};
-
 template <typename Z>
-typename enable_if<std::numeric_limits<Z>::is_integer, bool>::type
+typename util::enable_if<std::numeric_limits<Z>::is_integer, bool>::type
 gsGetValue(std::istream & is, Z & var)
 { return gsGetInt<Z>(is,var); }
 
 template <typename T>
-typename enable_if<!std::numeric_limits<T>::is_integer, bool>::type
+typename util::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
 gsGetValue(std::istream & is, T & var)
 { return gsGetReal<T>(is,var); }
 
