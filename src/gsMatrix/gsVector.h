@@ -103,8 +103,6 @@ public:
 
     inline operator const ConstRef () { return ConstRef(*this); }
 
-    //~gsVector () ;
-
     void clear() { this->resize(0); }
     
     // This constructor allows constructing a gsVector from Eigen expressions
@@ -143,7 +141,7 @@ public:
     using Base::operator=;
 #endif
 */
-    // swap assignment operator
+#ifndef EIGEN_HAS_RVALUE_REFERENCES
     gsVector & operator=(typename Eigen::internal::conditional<
                          -1==_Rows,gsVector, const gsVector &>::type other)
     {
@@ -153,7 +151,8 @@ public:
             this->Base::operator=(other);
         return *this;
     }
-
+#endif
+    
     /// \brief Returns the \a i-th element of the vector
     inline T at(index_t i) const { return *(this->data()+i);}
 
@@ -216,8 +215,6 @@ public:
 
     gsVector3d(const Base& a) ;
 
-    //~gsVector3d () ;
-
     /// This constructor allows constructing a gsVector3d from Eigen expressions
     template<typename OtherDerived>
     gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
@@ -265,9 +262,6 @@ gsVector<T,_Rows,_Options>::gsVector(const Base& a): gsBase(a) { }
 template<class T, int _Rows, int _Options> inline
 gsVector<T,_Rows,_Options>::gsVector(int dimension): gsBase(dimension,1) { }
 
-//template<class T, int _Rows, int _Options> inline
-//gsVector<T,_Rows,_Options>::~gsVector () { }
-
 template<class T> inline
 gsVector3d<T>::gsVector3d() : Base() { }
 
@@ -281,11 +275,6 @@ gsVector3d<T>::gsVector3d(scalar_t x, scalar_t y,scalar_t z )
 
 template<class T> inline
 gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
-
-/*
-template<class T> inline
-gsVector3d<T>::~gsVector3d () { }
-*/
 
 // template<class T>   
 // template<typename OtherDerived> inline

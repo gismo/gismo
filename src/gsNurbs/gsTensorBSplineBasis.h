@@ -106,11 +106,11 @@ public:
     : Base( new Basis_t(KV1), new Basis_t(KV2), new Basis_t(KV3), new Basis_t(KV4) )
     { m_isPeriodic = -1; }
 
-    gsTensorBSplineBasis(const std::vector<KnotVectorType> & KV)
+    explicit gsTensorBSplineBasis(std::vector<KnotVectorType> KV)
     { 
         GISMO_ENSURE(d == KV.size(), "Invalid number of knot-vectors given." );
         for(unsigned i = 0; i!=d; ++i)
-            this->m_bases[i] = new Basis_t(KV[i]);
+            this->m_bases[i] = new Basis_t( give(KV[i]) );
         m_isPeriodic = -1; 
     }
 

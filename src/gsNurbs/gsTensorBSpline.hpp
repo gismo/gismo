@@ -373,6 +373,8 @@ std::ostream & gsTensorBSpline<d,T>::print(std::ostream &os) const
 template<unsigned d, class T>
 std::vector<gsGeometry<T>* > gsTensorBSpline<d,T>::uniformSplit(index_t dir) const
 {
+    // 1. insert p+1 in all directions
+    // 2. recover 2^d patches
     GISMO_ASSERT( (dir > -2) && (dir < static_cast<index_t>(d)),
                   "Invalid basis component "<< dir <<" requested for geometry splitting" );
     std::vector<gsGeometry<T>* > result_temp, result;
@@ -440,47 +442,45 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     GISMO_ASSERT(basis().knots(dir).sbegin().value()<xi && xi< (--basis().knots(dir).send()).value() , "splitting point "<<xi<<" not in the knotvector");
 
     //First make a copy of the actual object, to allow const
-    gsTensorBSpline<d,T>* copy = clone();
+    gsTensorBSpline<d,T> copy(*this);
 
     // Extract a reference to the knots, the basis and coefs of the copy
-    KnotVectorType& knots = copy->basis().knots(dir);
-    gsTensorBSplineBasis<d,T>& base = copy->basis();
-    gsMatrix<T>& coefs =copy->coefs();
+    KnotVectorType & knots = copy.basis().knots(dir);
+    gsTensorBSplineBasis<d,T>& base = copy.basis();
 
     // some constants
     typename KnotVectorType::mult_t mult = knots.multiplicity(xi); // multiplicity
     int p = base.degree(dir);                                      // degree
 
     //insert the knot, such that its multiplicity is p+1
-    copy->insertKnot(xi,dir,base.degree(dir)+1-mult);
+    copy.insertKnot(xi,dir,base.degree(dir)+1-mult);
 
     //swap the direction dir with 0, to be able to extract the coefs.
-    copy->swapDirections(0,dir);
+    copy.swapDirections(0,dir);
 
+    gsMatrix<T> & coefs = copy.coefs();
+    const index_t tDim  = coefs.cols();
+    
     //some more constants
-    gsVector<int,d> sizes;                 // number of coefs in each dir
+    gsVector<int,d> sizes;                    // number of coefs in each dir
     base.size_cwise(sizes);
-    index_t sz = sizes.prod();              //total number of coefs
+    const index_t sz = sizes.prod();          // total number of coefs
 
     //find the number of coefs left from xi (in direction 0)
-    index_t nL=0;
-    gsAsConstMatrix<T> kn = knots.asMatrix();
-    for(; nL<kn.cols();++nL)
-        if(kn(0,nL)==xi)
-            break;
+    const index_t nL = knots.uFind(xi).firstAppearance();
     index_t nR = base.size(0) - nL;
 
     //Split the coefficients
     gsMatrix<T> coefL, coefR;
-    coefL.setZero(sizes.tail(d-1).prod()*(nL),d);
-    coefR.setZero(sz-coefL.rows(),d);
+    coefL.setZero(sizes.tail(d-1).prod()*(nL), tDim);
+    coefR.setZero(sz-coefL.rows(), tDim);
 
     index_t kL,kR,i;
     i=kL=kR=0;
     while(i<sz)
     {
-        coefL.block(kL,0,nL,d) = coefs.block(i,0,nL,d);
-        coefR.block(kR,0,nR,d) = coefs.block(i+nL,0,nR,d);
+        coefL.block(kL,0,nL, tDim) = coefs.block(i,0,nL, tDim);
+        coefR.block(kR,0,nR, tDim) = coefs.block(i+nL,0,nR, tDim);
 
         kL+=nL;
         kR+=nR;
@@ -489,7 +489,6 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     }
 
     //build up the new geometries
-
     //build the knot vector for direction 0 (swapped!)
     typename KnotVectorType::iterator it = knots.iFind(xi);
     typename KnotVectorType::knotContainer matL(knots.begin(),++it);
@@ -498,31 +497,24 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     KnotVectorType knotsL(matL,p);
     KnotVectorType knotsR(matR,p);
 
-    //rescale the splitted knot vector
-    knotsL.affineTransformTo(0,1);
-    knotsR.affineTransformTo(0,1);
+    // rescale the splitted knot vector (not mandatory)
+    // knotsL.affineTransformTo(0,1);
+    // knotsR.affineTransformTo(0,1);
 
     //collect the other directions
     std::vector<KnotVectorType> KVL,KVR;
     KVL.push_back(knotsL);
     KVR.push_back(knotsR);
-    for(unsigned i=1; i<d;++i)
+    for(i=1; i<static_cast<index_t>(d);++i)
     {
         KVL.push_back(base.knots(i));
         KVR.push_back(base.knots(i));
     }
 
-    //build the two bases
-    typename gsBSplineTraits<d,T>::Basis* baseL = new  typename gsBSplineTraits<d,T>::Basis(KVL);
-    typename gsBSplineTraits<d,T>::Basis* baseR = new  typename gsBSplineTraits<d,T>::Basis(KVR);
-
     //finally the two new geometries
-    left.setBasis(baseL);
-    left.setCoefs(coefL);
+    left = gsTensorBSpline<d,T>(typename gsBSplineTraits<d,T>::Basis(give(KVL)), give(coefL));
     left.swapDirections(0,dir);
-
-    right.setBasis(baseR);
-    right.setCoefs(coefR);
+    right = gsTensorBSpline<d,T>(typename gsBSplineTraits<d,T>::Basis(give(KVR)), give(coefR));
     right.swapDirections(0,dir);
 }
 

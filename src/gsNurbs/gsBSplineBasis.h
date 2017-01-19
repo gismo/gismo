@@ -665,10 +665,10 @@ public:
     }
 
     /// Construct BSpline basis of a knot vector
-    gsBSplineBasis( const KnotVectorType & KV, const bool periodic = false)
+    gsBSplineBasis(KnotVectorType KV, const bool periodic = false)
     { 
         m_p        = KV.degree();
-        m_knots    = KV;
+        m_knots.swap(KV);
         m_periodic = 0;
 
         if( periodic )
@@ -680,12 +680,12 @@ public:
 
     /// Compatibility constructor with input an std::vector containing
     /// a single knotvector
-    gsBSplineBasis(const std::vector<KnotVectorType> & KV)
+    explicit gsBSplineBasis(std::vector<KnotVectorType> KV)
     { 
         GISMO_ASSERT(1 == KV.size(), "Expecting a single knotvector." );
 
         m_p        = KV.front().degree();
-        m_knots    = KV.front();
+        m_knots.swap(KV.front());
         m_periodic = 0;
     }
 

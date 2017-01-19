@@ -310,8 +310,6 @@ public: // miscellaneous
     /// Checks whether the knot vector is in a consistent state
     bool check() const;
 
-private: // iterator typedefs and getters
-
     typedef typename knotContainer::iterator nonConstIterator    ;
     typedef typename multContainer::iterator nonConstMultIterator;
 

@@ -202,6 +202,7 @@ public:
 #endif
 */
 
+#ifndef EIGEN_HAS_RVALUE_REFERENCES
     // swap assignment operator
     gsMatrix & operator=(typename Eigen::internal::conditional<
                          -1==_Rows,gsMatrix, const gsMatrix &>::type other)
@@ -212,7 +213,8 @@ public:
             this->Base::operator=(other);
         return *this;
     }
-
+#endif
+    
     gsMatrix& operator= (uPtr other)
     {
         this->resize(0,0);
@@ -604,12 +606,6 @@ gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(int rows, int cols) : Base(rows,col
 // template<class T, int _Rows, int _Cols, int _Options>
 //  template<typename OtherDerived> 
 // gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
-
-
-/*
-template<class T, int _Rows, int _Cols, int _Options> inline
-gsMatrix<T,_Rows, _Cols, _Options>::~gsMatrix() { }
-*/
 
 /* Clone function. Used to make a copy of the matrix
 template<class T, int _Rows, int _Cols, int _Options> inline

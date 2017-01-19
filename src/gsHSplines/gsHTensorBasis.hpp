@@ -241,7 +241,7 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
             boxes.push_back( u(i) * 2);
     }
 
-    safe(this->clone())->refineElements_withCoefs(coefs, boxes);
+    memory::make_unique(this->clone())->refineElements_withCoefs(coefs, boxes);
     this->uniformRefine(numKnots, mul);
     //this->m_xmatrix.erase(this->m_xmatrix.begin(),this->m_xmatrix.begin()+1);
     //coefs = transf*coefs;
@@ -305,16 +305,17 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
             for(index_t j = 0; j < boxes.rows();j++)
             {
                 // Convert the parameter coordinates to (unique) knot indices
-                int k1 = m_bases[refLevel]->knots(j).uFind(boxes(j,2*i )).uIndex();
-                int k2 = m_bases[refLevel]->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
+                const gsKnotVector<T> & kv = m_bases.back()->knots(j);
+                int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                                           boxes(j,2*i  ) ) - 1).uIndex();
+                int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                                           boxes(j,2*i+1) ) - 1).uIndex();
 
                 // If applicable, add the refinement extension.
                 // Note that extending by one cell on level L means
                 // extending by two cells in level L+1
                 ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
-
                 const index_t maxKtIndex = m_bases[refLevel]->knots(j).size();
-
                 ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
 
                 // Store the data...
@@ -358,11 +359,18 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 
         for(index_t j = 0; j < k1.size();j++)
         {
-            k1[j] = m_bases.back()->knots(j).uFind(boxes(j,2*i  )).uIndex()    ;
-            k2[j] = m_bases.back()->knots(j).uFind(boxes(j,2*i+1)).uIndex() + 1;
+            const gsKnotVector<T> & kv = m_bases.back()->knots(j);
+            k1[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                                      boxes(j,2*i  ) ) - 1).uIndex();
+            k2[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                                      boxes(j,2*i+1) ) - 1).uIndex();
 
-            // Boxes are half-open, trivial boxes trigger at least one box refined
-            if ( k1[j] == k2[j] ) ++k2[j];
+            // Trivial boxes trigger some refinement
+            if ( k1[j] == k2[j])
+            {
+                if (0!=k1[j]) {--k1[j];}
+                ++k2[j];
+            }
         }
 
         // 2. Find the smallest level in which the box is completely contained
