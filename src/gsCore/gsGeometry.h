@@ -503,16 +503,6 @@ public:
     /// Returns the patch index for this patch
     size_t id() const { return m_id; }
 
-    /// Set a new basis, this is an auxiliary function for geometries, created by the
-    /// default constructor. If allocated, the old basis is deleted and the new one
-    /// is put there.
-    void setBasis( gsBasis<T>* newBasis)
-    {
-        if(m_basis!=NULL)
-            delete m_basis;
-        m_basis = newBasis;
-    }
-
 protected:
 
     /// Coefficient matrix of size coefsSize() x geoDim()

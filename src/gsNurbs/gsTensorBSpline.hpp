@@ -449,11 +449,12 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     gsTensorBSplineBasis<d,T>& base = copy.basis();
 
     // some constants
-    typename KnotVectorType::mult_t mult = knots.multiplicity(xi); // multiplicity
-    int p = base.degree(dir);                                      // degree
+    const index_t mult = base.degree(dir)+1-knots.multiplicity(xi); // multiplicity
+    int p = base.degree(dir);                                       // degree
 
     //insert the knot, such that its multiplicity is p+1
-    copy.insertKnot(xi,dir,base.degree(dir)+1-mult);
+    if (mult>0)
+        copy.insertKnot(xi, dir, mult);
 
     //swap the direction dir with 0, to be able to extract the coefs.
     copy.swapDirections(0,dir);
