@@ -30,11 +30,18 @@ namespace gismo
 template<class T>
 class gsDomain
 {
-
 public:
 
-    virtual ~gsDomain() { };
+    virtual ~gsDomain() { }
 
+#if EIGEN_HAS_RVALUE_REFERENCES 
+    // defaulted declaration required at least in Gcc 4.7.2
+    gsDomain() = default;
+    gsDomain(const gsDomain&) = default;
+    gsDomain(gsDomain&&) = default;
+    gsDomain & operator=(const gsDomain&) = default;
+    gsDomain & operator=(gsDomain&&) = default;
+#endif
 
 public:
 
