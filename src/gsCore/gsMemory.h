@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsCore/gsTemplateTools.h>
+
 #ifdef __MINGW32__
 //#include <malloc/malloc.h> //xcode
 #include <malloc.h>
@@ -150,7 +152,10 @@ inline unique_ptr<T> make_unique(T * x)
 */
 template <class T> inline
 auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
-{ return std::move(std::forward<T>(t)); }
+{
+    //GISMO_STATIC_ASSERT( util::has_move_constructor<typename std::remove_reference<T>::type>::value, "There is no move constructor. Copy would be created." ); 
+    return std::move(std::forward<T>(t));
+}
 #else
 /** 
     Alias for std::move, to be used instead of std::move for backward

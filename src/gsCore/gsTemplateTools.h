@@ -67,6 +67,25 @@ struct is_base_of
     static const bool value = sizeof(check(Host<B,D>(), int())) == sizeof(yes);
 };
 
-} // end namespace internal
+#if __cplusplus >= 201103
+//see also http://lists.boost.org/Archives/boost/2009/04/151209.php
+template <typename T>
+struct has_move_constructor {
+  typedef char yes[1];
+  typedef char no[2];
+
+  struct AmbiguousConverter {
+    operator T&& ();
+    operator const T& ();
+  };
+  template <typename C> static no& test(decltype( new C( AmbiguousConverter{} )));
+  template <typename> static yes& test(...);
+  static const bool value = sizeof(test<T>(0)) == sizeof(yes);
+};
+#else
+template <typename T> struct has_move_constructor { static const bool value = 0; };
+#endif
+
+} // end namespace util
 
 } // end namespace gismo
