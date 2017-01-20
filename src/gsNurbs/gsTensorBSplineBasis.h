@@ -483,7 +483,7 @@ protected:
 // *****************************************************************
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
-// /*
+/*
 #else
 #ifdef gsTensorBSplineBasis_EXPORT
 #undef  EXTERN_CLASS_TEMPLATE
