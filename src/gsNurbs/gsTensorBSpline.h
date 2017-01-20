@@ -62,6 +62,13 @@ public:
     /// Default empty constructor
     gsTensorBSpline() { }
 
+    using gsGeometry<T>::swap;
+
+#if !EIGEN_HAS_RVALUE_REFERENCES
+    gsTensorBSpline & operator=(gsTensorBSpline other)
+    { this->swap(other); return *this;}
+#endif
+
     // Construct B-Spline by basis functions and coefficient matrix
     //gsTensorBSpline( const gsConstantBasis<T> & basis, const gsMatrix<T> & coefs )
     //{ }
@@ -74,7 +81,7 @@ public:
     /// Construct 2D tensor B-Spline by knot vectors, degrees and
     /// coefficient matrix (copying coefficient matrix)
     template<typename U>
-    gsTensorBSpline( gsKnotVector<T> const & KV1, gsKnotVector<U> const & KV2,
+    gsTensorBSpline( KnotVectorType KV1, gsKnotVector<U> KV2, 
                      gsMatrix<T> tcoefs,
                      typename util::enable_if<d==2,U>::type * = NULL)
     {
@@ -82,8 +89,8 @@ public:
                      << d<<"D tensor B-spline using 2 knot-vectors.");
 
         std::vector<Family_t*> cbases;
-        cbases.push_back(new gsBSplineBasis<T>(KV1) );
-        cbases.push_back(new gsBSplineBasis<T>(KV2) );
+        cbases.push_back(new gsBSplineBasis<T>(give(KV1)) );
+        cbases.push_back(new gsBSplineBasis<T>(give(KV2)) );
         Basis * tbasis = Basis::New(cbases); //d==2
         
         GISMO_ASSERT(tbasis->size()==tcoefs.rows(),
@@ -91,30 +98,30 @@ public:
                      "the expected number of control points (rows)." );
         
         this->m_basis = tbasis;
-        this->m_coefs.swap(tcoefs);
+        this->m_coefs = give(tcoefs);
     }
     
     /// Construct 2D tensor B-Spline by knot vectors, degrees and 4 corner vertices,
     /// the four boundary curves are linear interpolations of the corners,
     /// the size of the matrix *corner* is 4 by 3
-    gsTensorBSpline(gsMatrix<T> const    & corner,
-                    gsKnotVector<T> const & KV1,
-                    gsKnotVector<T> const & KV2);
+    gsTensorBSpline(gsMatrix<T> const & corner,
+                    KnotVectorType KV1,
+                    KnotVectorType KV2);
 
     /// Construct 3D tensor B-Spline by knot vectors, degrees and
     /// coefficient matrix (copying coefficient matrix)
-    gsTensorBSpline( gsKnotVector<T> const & KV1,
-                     gsKnotVector<T> const & KV2,
-                     gsKnotVector<T> const & KV3,
+    gsTensorBSpline( KnotVectorType KV1,
+                     KnotVectorType KV2,
+                     KnotVectorType KV3,
                      gsMatrix<T> tcoefs )
     {
         GISMO_ASSERT(d==3, "Wrong dimension: tried to make a "
                      << d<<"D tensor B-spline using 3 knot-vectors.");
 
         std::vector<Family_t*> cbases;
-        cbases.push_back(new gsBSplineBasis<T>(KV1) );
-        cbases.push_back(new gsBSplineBasis<T>(KV2) );
-        cbases.push_back(new gsBSplineBasis<T>(KV3) );
+        cbases.push_back(new gsBSplineBasis<T>(give(KV1)) );
+        cbases.push_back(new gsBSplineBasis<T>(give(KV2)) );
+        cbases.push_back(new gsBSplineBasis<T>(give(KV3)) );
         Basis * tbasis = Basis::New(cbases); //d==3
         
         GISMO_ASSERT(tbasis->size()==tcoefs.rows(),
@@ -122,15 +129,15 @@ public:
                      "the expected number of control points (rows)." );
         
         this->m_basis = tbasis;
-        this->m_coefs.swap(tcoefs);
+        this->m_coefs = give(tcoefs);
     }
 
     /// Construct 4D tensor B-Spline by knot vectors, degrees and
     /// coefficient matrix (copying coefficient matrix)
-    gsTensorBSpline( gsKnotVector<T> const & KV1,
-                     gsKnotVector<T> const & KV2,
-                     gsKnotVector<T> const & KV3,
-                     gsKnotVector<T> const & KV4,
+    gsTensorBSpline( KnotVectorType KV1,
+                     KnotVectorType KV2,
+                     KnotVectorType KV3,
+                     KnotVectorType KV4,
                      gsMatrix<T> tcoefs )
     {
         GISMO_ASSERT(d==4, "Wrong dimension: tried to make a "
@@ -138,10 +145,10 @@ public:
 
         std::vector<Family_t*> cbases;
         cbases.reserve(4);
-        cbases.push_back(new gsBSplineBasis<T>(KV1) );
-        cbases.push_back(new gsBSplineBasis<T>(KV2) );
-        cbases.push_back(new gsBSplineBasis<T>(KV3) );
-        cbases.push_back(new gsBSplineBasis<T>(KV4) );
+        cbases.push_back(new gsBSplineBasis<T>(give(KV1)) );
+        cbases.push_back(new gsBSplineBasis<T>(give(KV2)) );
+        cbases.push_back(new gsBSplineBasis<T>(give(KV3)) );
+        cbases.push_back(new gsBSplineBasis<T>(give(KV4)) );
         Basis * tbasis = Basis::New(cbases); //d==4
         
         GISMO_ASSERT(tbasis->size()==tcoefs.rows(),
@@ -149,7 +156,7 @@ public:
                      "the expected number of control points (rows)." );
         
         this->m_basis = tbasis;
-        this->m_coefs.swap(tcoefs);
+        this->m_coefs = give(tcoefs);
     }
     
     /// Clone function. Used to make a copy of the geometry
@@ -169,10 +176,10 @@ public:
     void insertKnot( T knot, int dir, int i = 1);
 
     /// Returns a reference to the knot vector in direction \a i
-    gsKnotVector<T> & knots(const int i) { return this->basis().knots(i); }
+    KnotVectorType & knots(const int i) { return this->basis().knots(i); }
 
     /// Returns a reference to the knot vector \a i
-    const gsKnotVector<T> & knots(const int i) const { return this->basis().knots(i); }
+    const KnotVectorType & knots(const int i) const { return this->basis().knots(i); }
 
     /*** Virtual member functions required by the base class ***/
 
@@ -264,9 +271,6 @@ protected:
 }; // class gsBSpline
 
 } // namespace gismo
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSpline.hpp)

@@ -745,7 +745,6 @@ private:
 #include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
 #else
 #ifdef gsBSplineBasis_EXPORT
-#include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
 #undef  EXTERN_CLASS_TEMPLATE
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif

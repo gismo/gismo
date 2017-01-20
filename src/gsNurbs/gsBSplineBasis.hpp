@@ -1255,7 +1255,8 @@ public:
         gsXmlNode * tmp = node->first_node("KnotVector");
         // if type: == Plain, == Compact .. 
         GISMO_ASSERT(tmp, "Did not find a KnotVector tag in the Xml file.");
-        gsKnotVector<T> kv = * safe( gsXml<gsKnotVector<T> >::get (tmp) );
+        gsKnotVector<T> kv;
+        gsXml<gsKnotVector<T> >::get_into(tmp, kv);
         
         return new gsBSplineBasis<T>( kv );
     }

@@ -68,12 +68,23 @@ public:
 public:
 
     /// \brief Default constructor
-    gsTensorBSplineBasis()
+    gsTensorBSplineBasis() : Base()
     {
         for(unsigned i = 0; i!=d; ++i)
             this->m_bases[i] = new Basis_t();
     }
 
+    void swap(gsTensorBSplineBasis & other)
+    {
+        this->Base::swap(static_cast<Base&>(other));
+        std::swap(m_isPeriodic, other.m_isPeriodic);
+    }
+    
+#if !EIGEN_HAS_RVALUE_REFERENCES
+    gsTensorBSplineBasis & operator=(gsTensorBSplineBasis other)
+    { this->swap(other); return *this;}
+#endif
+    
     /**
        \brief Constructs a 2D tensor product B-spline basis. Assumes
        that the tamplate parameter \a d is equal to 2.
@@ -81,8 +92,10 @@ public:
        \param KV1 knot-vector with respect to the first parameter dimension
        \param KV2 knot-vector with respect to the second parameter dimension
      */
-    gsTensorBSplineBasis( const KnotVectorType& KV1, const KnotVectorType& KV2 )
-    : Base( new Basis_t(KV1), new Basis_t(KV2) )
+    template<typename U>
+    gsTensorBSplineBasis( KnotVectorType KV1, gsKnotVector<U> KV2,
+                          typename util::enable_if<d==2,U>::type * = NULL )
+    : Base( new Basis_t(give(KV1)), new Basis_t(give(KV2)) )
     { m_isPeriodic = -1; }
 
     /**
@@ -93,17 +106,18 @@ public:
        \param KV2 knot-vector with respect to the second dimension
        \param KV3 knot-vector with respect to the third dimension
      */
-    gsTensorBSplineBasis( const KnotVectorType& KV1, 
-                          const KnotVectorType& KV2, 
-                          const KnotVectorType& KV3 )
-    : Base( new Basis_t(KV1), new Basis_t(KV2), new Basis_t(KV3) )
+    gsTensorBSplineBasis( KnotVectorType KV1, 
+                          KnotVectorType KV2, 
+                          KnotVectorType KV3 )
+    : Base( new Basis_t(give(KV1)), new Basis_t(give(KV2)), new Basis_t(give(KV3)) )
     { m_isPeriodic = -1; }
 
-    gsTensorBSplineBasis( const KnotVectorType& KV1, 
-                          const KnotVectorType& KV2, 
-                          const KnotVectorType& KV3,
-                          const KnotVectorType& KV4)
-    : Base( new Basis_t(KV1), new Basis_t(KV2), new Basis_t(KV3), new Basis_t(KV4) )
+    gsTensorBSplineBasis( KnotVectorType KV1, 
+                          KnotVectorType KV2, 
+                          KnotVectorType KV3,
+                          KnotVectorType KV4)
+    : Base( new Basis_t(give(KV1)), new Basis_t(give(KV2)),
+            new Basis_t(give(KV3)), new Basis_t(give(KV4)) )
     { m_isPeriodic = -1; }
 
     explicit gsTensorBSplineBasis(std::vector<KnotVectorType> KV)
@@ -141,26 +155,12 @@ public:
         setIsPeriodic();
     }
     
-    gsTensorBSplineBasis(std::vector< Basis_t*> & bb ) 
+    explicit gsTensorBSplineBasis(std::vector< Basis_t*> & bb ) 
     : Base( castVectorPtr<gsBasis<T> >(bb).data() )
     {
         GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
         bb.clear();
         setIsPeriodic();
-    }
-
-    gsTensorBSplineBasis( const gsTensorBSplineBasis & o) : Base(o)
-    {
-        m_isPeriodic = o.periodicDirection();
-    }
-
-    /// \brief Converter to univariate B-spline basis
-    operator const Basis_t &() const
-    {
-        if ( d==1 )
-            return static_cast<const Basis_t &>(component(0));
-        else
-            GISMO_ERROR("Cannot convert to gsBSplineBasis.");
     }
 
     BoundaryBasisType * boundaryBasis(boxSide const & s ) const 
@@ -254,9 +254,12 @@ public:
     }
 
     /**
-     * \brief
-     * Takes a vector of coordinate wise knot values and inserts these values to the basis.
-     * Also constructs and returns the transfer matrix that transfers coefficients to the new basis.
+     * \brief Takes a vector of coordinate wise knot values and
+     * inserts these values to the basis.  
+     *
+     * Also constructs and returns
+     * the transfer matrix that transfers coefficients to the new
+     * basis.
      *
      * \param[out]  transfer Transfer matrix
      * \param[in] refineKnots Coordinate-wise knot values to be inserted
@@ -265,7 +268,8 @@ public:
 
 
     /**
-     * \brief Takes a vector of coordinate wise knot values and inserts these values to the basis.
+     * \brief Takes a vector of coordinate wise knot values and
+     * inserts these values to the basis.
      *
      * Also takes the old coefficients and changes them to reflect the new coefficients.
      *
@@ -276,9 +280,14 @@ public:
      */
     void refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots);
 
+    /// Inserts the knot \em knot with multiplicity \mult in the knot
+    /// vector of direction \a dir.
+    void insertKnot(T knot, index_t dir, int mult=1)
+    { this->knots(dir).insert( knot, mult); }
+
     /**
-     * \brief
-     * Takes a vector of coordinate wise knot values and inserts these values to the basis.
+     * \brief Takes a vector of coordinate wise knot values and
+     * inserts these values to the basis.
      *
      * \param refineKnots Coordinate-wise knot values to be inserted
      */
@@ -474,10 +483,9 @@ protected:
 // *****************************************************************
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
-/*
+// /*
 #else
 #ifdef gsTensorBSplineBasis_EXPORT
-#include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
 #undef  EXTERN_CLASS_TEMPLATE
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif

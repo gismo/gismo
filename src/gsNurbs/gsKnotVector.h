@@ -901,7 +901,6 @@ std::ostream& operator << (std::ostream& out, const gsKnotVector<T> KV )
 #include GISMO_HPP_HEADER(gsKnotVector.hpp)
 #else
 #ifdef gsKnotVector_EXPORT
-#include GISMO_HPP_HEADER(gsKnotVector.hpp)
 #undef  EXTERN_CLASS_TEMPLATE
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif

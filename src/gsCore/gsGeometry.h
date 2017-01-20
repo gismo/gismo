@@ -313,7 +313,6 @@ public:
     /// Apply the given square matrix to every control point.
     void linearTransform(const gsMatrix<T>& mat)
     {
-        assert( mat.rows() == geoDim() && mat.cols() == geoDim() );
         this->m_coefs = this->m_coefs * mat.transpose();
     }
 
@@ -331,7 +330,7 @@ public:
     /// Apply 2D Rotation by \a angle radians
     void rotate(T angle)
     {
-        assert( geoDim() == 2 );
+        GISMO_ASSERT( geoDim() == 2, "Only for 2D");
         Eigen::Rotation2D<T> rot(angle);
         this->m_coefs *= rot.matrix().transpose();
     }
@@ -502,6 +501,15 @@ public:
 
     /// Returns the patch index for this patch
     size_t id() const { return m_id; }
+
+
+protected:
+    void swap(gsGeometry & other)
+    {
+        std::swap(m_basis, other.m_basis);
+        m_coefs.swap(other.m_coefs);
+        std::swap(m_id, other.m_id);
+    }
 
 protected:
 

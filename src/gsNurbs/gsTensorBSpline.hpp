@@ -29,13 +29,14 @@ namespace gismo
 {
 
 template<unsigned d, class T>
-gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner, KnotVectorType const& KV1, KnotVectorType const & KV2)
+gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
+                                      KnotVectorType KV1, KnotVectorType KV2)
 {
     GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
 
     std::vector<Family_t*> cbases;
-    cbases.push_back(new gsBSplineBasis<T>(KV1) );
-    cbases.push_back(new gsBSplineBasis<T>(KV2) );
+    cbases.push_back(new gsBSplineBasis<T>(give(KV1)) );
+    cbases.push_back(new gsBSplineBasis<T>(give(KV2)) );
     Basis * tbasis = Basis::New(cbases); //d==2
 
     int n1 = KV1.size() - KV1.degree() - 1;
@@ -98,7 +99,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner, KnotVectorType
 // todo: move to hpp
 template<unsigned d, class T>
 void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
-                                                BoundaryGeometryType & result) const
+                                 BoundaryGeometryType & result) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
     GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
@@ -160,8 +161,7 @@ void gsTensorBSpline<d,T>::reverse(unsigned k)
 
 
 template<unsigned d, class T>
-void gsTensorBSpline<d,T>::
-swapDirections(const unsigned i, const unsigned j)
+void gsTensorBSpline<d,T>::swapDirections(const unsigned i, const unsigned j)
 {
     gsVector<index_t,d> sz;
     this->basis().size_cwise(sz);
@@ -189,8 +189,8 @@ bool gsTensorBSpline<d,T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
 
 template<unsigned d, class T>
 void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v, 
-                                                     gsVector<index_t,d> & curr,
-                                                     T tol)
+                                      gsVector<index_t,d> & curr,
+                                      T tol)
 {
     gsVector<index_t,d> str , // Tensor strides
         vupp; // Furthest corner
@@ -446,11 +446,11 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
 
     // Extract a reference to the knots, the basis and coefs of the copy
     KnotVectorType & knots = copy.basis().knots(dir);
-    gsTensorBSplineBasis<d,T>& base = copy.basis();
+    gsTensorBSplineBasis<d,T> & base = copy.basis();
 
     // some constants
-    const index_t mult = base.degree(dir)+1-knots.multiplicity(xi); // multiplicity
-    int p = base.degree(dir);                                       // degree
+    const int p = base.degree(dir);                      // degree
+    const index_t mult = p + 1 - knots.multiplicity(xi); // multiplicity
 
     //insert the knot, such that its multiplicity is p+1
     if (mult>0)
@@ -495,15 +495,15 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     typename KnotVectorType::knotContainer matL(knots.begin(),++it);
     it-=p+1; // move the iterator to the beginning of the inserted knots
     typename KnotVectorType::knotContainer matR(it, knots.end());
-    KnotVectorType knotsL(matL,p);
-    KnotVectorType knotsR(matR,p);
+    KnotVectorType knotsL(give(matL),p);
+    KnotVectorType knotsR(give(matR),p);
 
     // rescale the splitted knot vector (not mandatory)
     // knotsL.affineTransformTo(0,1);
     // knotsR.affineTransformTo(0,1);
 
     //collect the other directions
-    std::vector<KnotVectorType> KVL,KVR;
+    std::vector<KnotVectorType> KVL, KVR;
     KVL.push_back(knotsL);
     KVR.push_back(knotsR);
     for(i=1; i<static_cast<index_t>(d);++i)

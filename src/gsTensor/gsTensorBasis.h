@@ -51,15 +51,19 @@ public:
 
 public:
     
-    /// Default empty constructor
     gsTensorBasis() : m_bases() { }
 
+    ~gsTensorBasis() { freeAll(m_bases, m_bases+d); }
+
+    gsTensorBasis( const gsTensorBasis & o);
+    gsTensorBasis& operator=( const gsTensorBasis & o);
+    
     /// Constructor 2D (takes ownership of the passed bases)
     gsTensorBasis( Basis_t* x,  Basis_t* y);
     // template<class U> gsTensorBasis(   
     // typename enable_if<d==2 && is_same<U,Basis_t*>::value,U>::type x, U y) 
     // { m_bases[0] = x; m_bases[1] = y; }
-    
+
     /// Constructor 3D (takes ownership of the passed bases)
     gsTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z ) ;
     
@@ -73,18 +77,6 @@ public:
             m_bases[i] = *(it++);
     }
 
-    /// Copy Constructor
-    gsTensorBasis( const gsTensorBasis & o);
-
-    /// Assignment opearator
-    gsTensorBasis& operator=( const gsTensorBasis & o);
-    
-    /// Destructor
-    ~gsTensorBasis() 
-    { 
-        freeAll(m_bases, m_bases+d);
-    }
-    
 public:
 
 // ////////////////////////////////////////////////
@@ -587,6 +579,9 @@ public:
 // Data members
 protected:
 
+    void swap(gsTensorBasis& o)
+    { std::swap(m_bases, o.m_bases); }
+    
     Basis_t* m_bases[d];
 
 }; // class gsTensorBasis

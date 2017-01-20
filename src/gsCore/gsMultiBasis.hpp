@@ -76,7 +76,14 @@ void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
     m_topology.addBox();
     g = NULL;
 }
-  
+
+/// @brief Add a basis (ownership of the pointer is also acquired)
+template<class T>
+void gsMultiBasis<T>::addBasis(typename gsBasis<T>::uPtr g)
+{
+    addBasis(g.release());
+}
+
 template<class T>
 int gsMultiBasis<T>::findBasisIndex( gsBasis<T>* g ) const {
     typename BasisContainer::const_iterator it
