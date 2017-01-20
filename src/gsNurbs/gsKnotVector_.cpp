@@ -8,7 +8,7 @@
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsKnotVector<real_t>;
+//CLASS_TEMPLATE_INST gsKnotVector<real_t>;
 CLASS_TEMPLATE_INST internal::gsXml< gsKnotVector<real_t> >;
 
 }

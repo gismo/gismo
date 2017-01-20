@@ -4,7 +4,7 @@
 
 #include <gsIO/gsXml.h>
 #include <gsNurbs/gsBSplineBasis.h>
-#include <gsNurbs/gsBSplineBasis.hpp>//dependancy
+#include <gsNurbs/gsBSplineBasis.hpp> //dependency (otherwise already included)
 
 namespace gismo
 {

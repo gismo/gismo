@@ -483,9 +483,9 @@ protected:
 // *****************************************************************
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
-/*
 #else
 #ifdef gsTensorBSplineBasis_EXPORT
+#include GISMO_HPP_HEADER(gsTensorBSplineBasis.hpp)
 #undef  EXTERN_CLASS_TEMPLATE
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif
@@ -495,6 +495,5 @@ EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<2,real_t>;
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<3,real_t>;
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<4,real_t>;
 }
-//*/
 #endif
 // *****************************************************************
