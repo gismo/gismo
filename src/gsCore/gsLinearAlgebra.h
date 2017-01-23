@@ -159,6 +159,9 @@ public:
     /// Direct LDLt factorization
     typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<T,0,index_t> > SimplicialLDLT;
 
+    /// Direct LLt factorization
+    typedef Eigen::SimplicialLLT<Eigen::SparseMatrix<T,0,index_t> > SimplicialLLT;
+
     /// Sparse LU solver
     typedef Eigen::SparseLU<Eigen::SparseMatrix<T,0,index_t>,
                             Eigen::COLAMDOrdering<index_t> > SparseLU;

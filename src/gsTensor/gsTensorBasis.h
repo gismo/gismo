@@ -58,6 +58,21 @@ public:
     gsTensorBasis( const gsTensorBasis & o);
     gsTensorBasis& operator=( const gsTensorBasis & o);
     
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsTensorBasis(gsTensorBasis&& other)
+    {
+        *this=std::forward<gsTensorBasis>(other);
+    }
+    gsTensorBasis & operator=(gsTensorBasis&&other)
+    {
+        util::copy(other.m_bases, other.m_bases+d, m_bases);
+        std::fill (other.m_bases, other.m_bases+d, nullptr);
+        return *this;
+    }
+#endif
+    bool isValid() const { return std::find(m_bases,m_bases+d,
+                                            static_cast<Basis_t*>(0)) == m_bases+d; }
+    
     /// Constructor 2D (takes ownership of the passed bases)
     gsTensorBasis( Basis_t* x,  Basis_t* y);
     // template<class U> gsTensorBasis(   
@@ -76,7 +91,7 @@ public:
         for (unsigned i = 0; i < d; ++i)
             m_bases[i] = *(it++);
     }
-
+    
 public:
 
 // ////////////////////////////////////////////////

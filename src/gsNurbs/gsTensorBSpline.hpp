@@ -513,9 +513,9 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     }
 
     //finally the two new geometries
-    left = gsTensorBSpline<d,T>(typename gsBSplineTraits<d,T>::Basis(give(KVL)), give(coefL));
+    left  = gsTensorBSpline<d,T>(Basis(give(KVL)), give(coefL));
     left.swapDirections(0,dir);
-    right = gsTensorBSpline<d,T>(typename gsBSplineTraits<d,T>::Basis(give(KVR)), give(coefR));
+    right = gsTensorBSpline<d,T>(Basis(give(KVR)), give(coefR));
     right.swapDirections(0,dir);
 }
 

@@ -155,6 +155,18 @@ public:
         delete m_basis;
     }
 
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsGeometry(gsGeometry&& other)
+    {
+        *this=std::forward<gsGeometry>(other);
+    }
+    gsGeometry & operator=(gsGeometry&& other)
+    {
+        m_coefs.swap(other.m_coefs); other.m_coefs.clear();
+        m_basis = other.m_basis; other.m_basis = NULL;
+        return *this;
+    }
+#endif
 
 public:
 

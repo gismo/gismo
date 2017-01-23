@@ -82,7 +82,7 @@ public:
     
 #if !EIGEN_HAS_RVALUE_REFERENCES
     gsTensorBSplineBasis & operator=(gsTensorBSplineBasis other)
-    { this->swap(other); return *this;}
+    { gsTensorBSplineBasis::swap(other); return *this;}
 #endif
     
     /**

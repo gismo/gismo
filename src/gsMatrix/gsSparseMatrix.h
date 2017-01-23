@@ -218,6 +218,22 @@ public:
 #  else
     using Base::operator=;
 #  endif
+
+    gsSparseMatrix(const gsSparseMatrix& other) = default;
+    gsSparseMatrix& operator= (const gsSparseMatrix & other) = default;
+        
+    gsSparseMatrix(gsSparseMatrix&& other)
+    {
+        operator=(std::forward<gsSparseMatrix>(other));
+    }
+    
+    gsSparseMatrix & operator=(gsSparseMatrix&& other)
+    {
+        this->swap(other);
+        other.clear();
+        return *this;
+    }    
+
 #endif
 
     /**
@@ -360,7 +376,7 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
                 if( piv[i] > piv[i+1] )
                 {
                     std::swap(piv[i], piv[i+1]);
-                    this->row(i).swap(this->row(i+1));
+                    //this->row(i).swap(this->row(i+1));
                     didSwap = true;
                     c_i = i;
                 }
@@ -396,3 +412,17 @@ template<typename T, int _Options, typename _Index>
 struct traits<gismo::gsSparseMatrix<T,_Options,_Index> >:
 Eigen::internal::traits<Eigen::SparseMatrix<T,_Options,_Index> > { };
 } }
+
+/* *****************************************************************
+#ifdef GISMO_BUILD_LIB
+#ifdef gsMatrix_EXPORT
+#undef  EXTERN_CLASS_TEMPLATE
+#define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
+#endif
+namespace gismo
+{
+EXTERN_CLASS_TEMPLATE gsSparseMatrix<real_t>;
+}
+#endif
+// *****************************************************************
+*/

@@ -67,6 +67,8 @@ public:
 
     operator TCLAP::CmdLineInterface &();
 
+    static void printVersion();
+    
 public:
 
     bool getValues(int argc, char *argv[]);

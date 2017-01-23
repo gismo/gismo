@@ -650,7 +650,7 @@ public:
 
 public:
 
-    /// Default empty constructor
+    // Default empty constructor
     explicit gsBSplineBasis(const bool periodic = false )
     { 
         m_p = 0;
@@ -665,7 +665,7 @@ public:
     }
 
     /// Construct BSpline basis of a knot vector
-    gsBSplineBasis(KnotVectorType KV, const bool periodic = false)
+    explicit gsBSplineBasis(KnotVectorType KV, const bool periodic = false)
     { 
         m_p        = KV.degree();
         m_knots.swap(KV);
@@ -745,7 +745,7 @@ private:
 #include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
 #else
 #ifdef gsBSplineBasis_EXPORT
-#include GISMO_HPP_HEADER(gsBSplineBasis.hpp)
+#include GISMO_HPP_HEADER(gsBSplineBasis.hpp) // needed on thebrain?
 #undef  EXTERN_CLASS_TEMPLATE
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif

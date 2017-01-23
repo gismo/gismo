@@ -58,6 +58,9 @@ public:
     
     /// Default empty constructor.
     gsBSpline() { }
+
+    // enable swap
+    using gsGeometry<T>::swap;
     
     /// Construct B-Spline by basis and coefficient matrix.
     gsBSpline( const Basis & basis, gsMatrix<T> coefs )
@@ -68,9 +71,9 @@ public:
     }
     
     /// Construct B-Spline by a knot vector and coefficient matrix.
-    gsBSpline( const KnotVectorType & KV, gsMatrix<T> coefs, bool periodic = false )
+    gsBSpline(KnotVectorType KV, gsMatrix<T> coefs, bool periodic = false )
     {
-        this->m_basis = new Basis(KV);
+        this->m_basis = new Basis(give(KV));
         m_coefs.swap(coefs);
             
         if( periodic )
@@ -110,7 +113,8 @@ public:
     /// \param periodic specifies whether the B-spline is periodic
     ///
     /// \ingroup Nurbs
-    gsBSpline(T u0, T u1, unsigned interior, int degree, gsMatrix<T> coefs, unsigned mult_interior=1, bool periodic = false)
+    gsBSpline(T u0, T u1, unsigned interior, int degree,
+              gsMatrix<T> coefs, unsigned mult_interior=1, bool periodic = false)
     {
         this->m_basis = new Basis(u0, u1, interior, degree, mult_interior, periodic );
         if( periodic )
@@ -136,18 +140,9 @@ public:
     virtual gsBSpline * clone() const
         { return new gsBSpline(*this); }
     
-
-    gsBSpline( gsBSpline const & o ) : Base(o) { }
-    
-    ~gsBSpline() { } //destructor
-
     GISMO_BASIS_ACCESSORS    
     
 public:
-    
-//////////////////////////////////////////////////
-// Virtual member functions required by the base class
-//////////////////////////////////////////////////
     
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -159,10 +154,6 @@ public:
         return os;
     }
     
-//////////////////////////////////////////////////
-// Additional members for univariate B-Splines
-//////////////////////////////////////////////////
-
     /// Returns the starting value of the domain of the basis
     T domainStart() const { return this->basis().knots().first(); }
     
@@ -400,6 +391,8 @@ protected:
 }; // class gsBSpline
 
 
+/*
+// Product of spline functions
 template<class T>
 gsBSpline<T> operator*(const gsBSpline<T> & lhs, const gsBSpline<T> & rhs) 
 {
@@ -414,7 +407,7 @@ gsBSpline<T> operator*(const gsBSpline<T> & lhs, const gsBSpline<T> & rhs)
     // fixme: avoid temporaries here
     return *safe(static_cast<gsBSpline<T>*>(gsBSplineBasis<T>(kv).interpolateData(ev,pts)));
 }
-    
+*/
 
 } // namespace gismo
 

@@ -467,12 +467,18 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
 void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
 {
     GISMO_UNUSED(c);
+    gsCmdLine::printVersion();
+}
+
+
+void gsCmdLine::printVersion()
+{
     //gsInfo <<"Executable: "<< c.getProgramName() <<", part of \n\n";
     gsInfo << "\n";
     gsInfo << "                   G+Smo \n";
     gsInfo << "      Geometry plus Simulation modules\n";
     gsInfo << "               version "<< GISMO_VERSION<<"\n";
-    gsInfo << "   Compiled by ";
+    gsInfo << "Compiled by ";
 //https://sourceforge.net/p/predef/wiki/Compilers, see also boost/predef.h
 #if defined(_MSC_VER)
     gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<__cplusplus <<", ";
@@ -517,8 +523,8 @@ void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
 #else
     gsInfo << "Unknown-STD)\n";
 #endif
-    gsInfo << "   RICAM-Linz 2012 - 2017, http://gs.jku.at/gismo\n";
+    gsInfo << "RICAM-Linz 2012 - 2017, http://gs.jku.at/gismo\n";
 }
 
-
+                      
 } //namespace gismo
