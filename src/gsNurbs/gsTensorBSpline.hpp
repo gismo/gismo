@@ -35,12 +35,13 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
 
     std::vector<Family_t*> cbases;
+    const int n1 = KV1.size() - KV1.degree() - 1;
+    const int n2 = KV2.size() - KV2.degree() - 1;
+
     cbases.push_back(new gsBSplineBasis<T>(give(KV1)) );
     cbases.push_back(new gsBSplineBasis<T>(give(KV2)) );
     Basis * tbasis = Basis::New(cbases); //d==2
 
-    int n1 = KV1.size() - KV1.degree() - 1;
-    int n2 = KV2.size() - KV2.degree() - 1;
     
     GISMO_ASSERT( (corner.rows()==4) && (corner.cols()==3),
                   "gsTensorBSpline: Please make sure that the size of *corner* is 4-by-3");
