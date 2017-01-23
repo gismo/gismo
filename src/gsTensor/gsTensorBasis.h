@@ -60,9 +60,7 @@ public:
     
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsTensorBasis(gsTensorBasis&& other)
-    {
-        *this=std::forward<gsTensorBasis>(other);
-    }
+    { gsTensorBasis::operator=(std::forward<gsTensorBasis>(other)); }
     gsTensorBasis & operator=(gsTensorBasis&&other)
     {
         util::copy(other.m_bases, other.m_bases+d, m_bases);
@@ -643,27 +641,6 @@ public:
     gsTensorBasis() : Base()
     { m_address = this;}
 
-    /// \brief Constructor by basis pointers (takes ownership of the
-    /// passed bases)
-    explicit gsTensorBasis(Base * x) 
-    : Base(*x)
-    {
-        m_address = this; 
-        delete x;
-        x = NULL;
-    }
-    
-    /// \brief Constructor by basis pointers (takes ownership of the
-    /// passed bases)
-    explicit gsTensorBasis(base_iterator it) 
-    //: Basis_t(*static_cast<Basis_t*>(*it))
-    : Basis_t(**it)
-    {
-        m_address = this; 
-        delete *it;
-        *it = NULL;
-    }
-        
     /// \brief Copy Constructor
     gsTensorBasis( const gsTensorBasis & o) 
     : Basis_t(o)
@@ -683,6 +660,39 @@ public:
     ~gsTensorBasis() 
     { 
         m_address = NULL;
+    }
+
+    #if EIGEN_HAS_RVALUE_REFERENCES
+    gsTensorBasis(gsTensorBasis&& other)
+    { gsTensorBasis::operator=(std::forward<gsTensorBasis>(other)); }
+    gsTensorBasis & operator=(gsTensorBasis&&other)
+    {
+        other.m_address = m_address;
+        other.m_address = nullptr;
+        return *this;
+    }
+#endif
+    bool isValid() const { return static_cast<Basis_t*>(0) != m_address; }
+    
+    /// \brief Constructor by basis pointers (takes ownership of the
+    /// passed bases)
+    explicit gsTensorBasis(Base * x) 
+    : Base(*x)
+    {
+        m_address = this; 
+        delete x;
+        x = NULL;
+    }
+    
+    /// \brief Constructor by basis pointers (takes ownership of the
+    /// passed bases)
+    explicit gsTensorBasis(base_iterator it) 
+    //: Basis_t(*static_cast<Basis_t*>(*it))
+    : Basis_t(**it)
+    {
+        m_address = this; 
+        delete *it;
+        *it = NULL;
     }
     
 public:

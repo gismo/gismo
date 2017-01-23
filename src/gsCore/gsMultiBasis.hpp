@@ -77,7 +77,6 @@ void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
     g = NULL;
 }
 
-/// @brief Add a basis (ownership of the pointer is also acquired)
 template<class T>
 void gsMultiBasis<T>::addBasis(typename gsBasis<T>::uPtr g)
 {
