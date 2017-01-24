@@ -209,6 +209,14 @@ void cloneAll(It start, It end, ItOut out)
         *out++ = (*i)->clone();
 }
 
+/// \brief Clones all pointers in the container \a in and stores them in contrainer \a out
+template <typename ContIn, typename ContOut>
+void cloneAll(const ContIn& in, ContOut& out)
+{
+    out.resize(in.size());
+    cloneAll(in.begin(), in.end(), out.begin());
+}
+
 /// \brief Frees all pointers in the range [\a begin \a end)
 template <typename It>
 void freeAll(It begin, It end)
@@ -224,8 +232,7 @@ void freeAll(It begin, It end)
 template <typename Cont>
 void freeAll(Cont& cont)
 {
-    for (typename Cont::iterator it = cont.begin(); 
-         it != cont.end(); ++it)
+    for (typename Cont::iterator it = cont.begin(); it != cont.end(); ++it)
         delete (*it);
     cont.clear();
 }
@@ -255,8 +262,7 @@ std::vector<Base*> castVectorPtr(std::vector<Derived*> pVec)
 template <typename Derived, typename Base>
 bool checkVectorPtrCast(std::vector<Base*> pVec)
 {
-    for (typename std::vector<Base*>::iterator it = pVec.begin();
-         it != pVec.end(); ++it)
+    for (typename std::vector<Base*>::iterator it = pVec.begin(); it != pVec.end(); ++it)
         if ( ! dynamic_cast<Derived*>(*it) )
             return false;
     return true;
