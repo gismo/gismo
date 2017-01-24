@@ -104,12 +104,12 @@ void gsConjugateGradient::getEigenvalues( gsMatrix<real_t>& eigs )
         return;
     }
 
-   gsLanczosMatrix<real_t> LM(m_gamma,m_delta);
-   gsSparseMatrix<real_t> L;
-   LM.matrixForm(L);
-   // there is probably a better option...
-   gsMatrix<real_t>::SelfAdjEigenSolver eigensolver(L);
-   eigs = eigensolver.eigenvalues();
+    gsLanczosMatrix<real_t> LM(m_gamma,m_delta);
+    gsSparseMatrix<real_t> L;
+    LM.matrixForm(L);
+    // there is probably a better option...
+    gsMatrix<real_t>::SelfAdjEigenSolver eigensolver(L);
+    eigs = eigensolver.eigenvalues();
 }
 
 
