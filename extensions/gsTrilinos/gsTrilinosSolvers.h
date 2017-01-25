@@ -16,7 +16,7 @@
 #include <gsTrilinos/Vector.h>
 #include <gsIO/gsOptionList.h>
 
-#include "az_aztec_defs.h"
+#include <az_aztec_defs.h> // in external
 
 namespace gismo
 {
