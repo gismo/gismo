@@ -87,14 +87,18 @@ public:
 #endif
     
 #else
-    gsSparseVector(const gsSparseVector& other) = default;
-    gsSparseVector& operator= (const gsSparseVector & other) = default;
+    
+    // Avoid default keyword for MSVC<2013 
+    // https://msdn.microsoft.com/en-us/library/hh567368.aspx
+    gsSparseVector(const gsSparseVector& other)
+    { Base::operator=(other); }
+
+    gsSparseVector& operator= (const gsSparseVector & other)
+    { Base::operator=(other); return *this; }
         
     gsSparseVector(gsSparseVector&& other)
-    {
-        operator=(std::forward<gsSparseVector>(other));
-    }
-    
+    { operator=(std::forward<gsSparseVector>(other)); }
+
     gsSparseVector & operator=(gsSparseVector&& other)
     {
         this->swap(other);
