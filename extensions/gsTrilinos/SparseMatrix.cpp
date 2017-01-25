@@ -26,8 +26,8 @@ namespace trilinos
 struct SparseMatrixPrivate
 {
     typedef real_t Scalar;
-    typedef conditional<util::is_same<Scalar,double>::value, Epetra_CrsMatrix,
-                        Tpetra::CrsMatrix<Scalar,int,int> >::type Matrix;
+    typedef util::conditional<util::is_same<Scalar,double>::value, Epetra_CrsMatrix,
+                              Tpetra::CrsMatrix<Scalar,int,int> >::type Matrix;
     //Epetra_FECrsMatrix matrix;
     
     typedef Epetra_CrsMatrix Epetra_Matrix;
@@ -137,6 +137,61 @@ SparseMatrix::~SparseMatrix() { delete my; }
   return my->matrix->Map();
   }
 */
+
+std::pair<index_t,index_t> SparseMatrix::dim() const
+{
+    if (util::is_same<index_t,int>::value)
+        return std::make_pair(my->matrix->NumGlobalRows(),
+                              my->matrix->NumGlobalCols());
+    else
+        return std::make_pair(my->matrix->NumGlobalRows64(),
+                              my->matrix->NumGlobalCols64());
+}
+
+std::pair<index_t,index_t> SparseMatrix::mydim() const
+{
+    return std::make_pair(my->matrix->NumMyRows(),
+                          my->matrix->NumMyCols());
+}
+
+index_t SparseMatrix::cols() const
+{
+    if (util::is_same<index_t,int>::value)
+        return my->matrix->NumGlobalCols();
+    else
+        return my->matrix->NumGlobalCols64();
+}
+
+index_t SparseMatrix::mycols() const
+{
+    return my->matrix->NumMyCols();
+}
+
+index_t SparseMatrix::rows() const
+{
+    if (util::is_same<index_t,int>::value)
+        return my->matrix->NumGlobalRows();
+    else
+        return my->matrix->NumGlobalRows64();
+}
+
+index_t SparseMatrix::myrows() const
+{
+    return my->matrix->NumMyRows();
+}
+
+index_t SparseMatrix::nonzeros() const
+{
+    if (util::is_same<index_t,int>::value)
+        return my->matrix->NumGlobalNonzeros();
+    else
+        return my->matrix->NumGlobalNonzeros64();
+}
+
+index_t SparseMatrix::mynonzeros() const
+{
+    return my->matrix->NumMyNonzeros();
+}
 
 void SparseMatrix::copyTo(gsSparseMatrix<real_t,RowMajor> & sp, const int rank) const
 {

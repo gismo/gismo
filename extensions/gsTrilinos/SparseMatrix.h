@@ -35,7 +35,21 @@ public:
 
     ~SparseMatrix();
 
-    //Epetra_BlockMap map() const;
+    std::pair<index_t,index_t> dim() const;
+
+    std::pair<index_t,index_t> mydim() const;
+
+    index_t cols() const;
+    
+    index_t mycols() const;
+
+    index_t rows() const;
+    
+    index_t myrows() const;
+
+    index_t nonzeros() const;
+
+    index_t mynonzeros() const;
     
     void copyTo(gsSparseMatrix<real_t,RowMajor> & sp, const int rank = 0) const;
 

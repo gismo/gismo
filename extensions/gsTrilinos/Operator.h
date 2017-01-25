@@ -37,12 +37,6 @@ public:
     Epetra_Operator * get() const;
 
     void print() const;
-
-public:
-
-    // int apply(Vector & X, Vector & Y) const;
-    // ..
-
     
 private:
     Operator(const Operator& other);

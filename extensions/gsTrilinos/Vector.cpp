@@ -27,8 +27,8 @@ namespace trilinos
 struct VectorPrivate
 {
     typedef real_t Scalar;
-    typedef conditional<util::is_same<Scalar,double>::value, Epetra_MultiVector,
-                        Tpetra::MultiVector<Scalar,int,int> >::type MVector;
+    typedef util::conditional<util::is_same<Scalar,double>::value, Epetra_MultiVector,
+                              Tpetra::MultiVector<Scalar,int,int> >::type MVector;
     
     /// A vector object in Trilinos
     Teuchos::RCP<MVector> vec;
