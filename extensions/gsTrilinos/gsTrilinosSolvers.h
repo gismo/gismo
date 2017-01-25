@@ -196,7 +196,7 @@ class GISMO_EXPORT AbstractDirectSolver : public AbstractSolver
 {
  public:
 
-    using AbstractSolver::AbstractSolver;
+    // default constructor inherited by default
 };
 
 /** @brief Abstract iterative solver base class
