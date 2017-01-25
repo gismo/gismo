@@ -72,6 +72,7 @@ public:
     
     ~gsSparseVector() { }
     
+#if !EIGEN_HAS_RVALUE_REFERENCES
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER
@@ -84,6 +85,30 @@ public:
 #else
     using Base::operator=;
 #endif
+    
+#else
+    gsSparseVector(const gsSparseVector& other) = default;
+    gsSparseVector& operator= (const gsSparseVector & other) = default;
+        
+    gsSparseVector(gsSparseVector&& other)
+    {
+        operator=(std::forward<gsSparseVector>(other));
+    }
+    
+    gsSparseVector & operator=(gsSparseVector&& other)
+    {
+        this->swap(other);
+        other.clear();
+        return *this;
+    }    
+
+#endif
+
+    void clear()
+    {
+        this->resize(0);
+        this->data().squeeze();
+    }
 
     inline T   at (_Index i ) const { return this->coeff(i); }
     inline T & at (_Index i ) { return this->coeffRef(i); }
