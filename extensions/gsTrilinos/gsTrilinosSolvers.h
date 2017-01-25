@@ -16,7 +16,7 @@
 #include <gsTrilinos/Vector.h>
 #include <gsIO/gsOptionList.h>
 
-#include <az_aztec_defs.h> // in external
+
 
 namespace gismo
 {
@@ -53,6 +53,46 @@ struct AmesosSolvers
         Dscpack                  = 9                 ///< Dscpack (parallel)
     };
 };
+
+//constants for solver types - from az_aztec_defs.h
+#define AZ_cg               0 /* preconditioned conjugate gradient method     */
+#define AZ_gmres            1 /* preconditioned gmres method                  */
+#define AZ_cgs              2 /* preconditioned cg squared method             */
+#define AZ_tfqmr            3 /* preconditioned transpose-free qmr method     */
+#define AZ_bicgstab         4 /* preconditioned stabilized bi-cg method       */
+#define AZ_slu              5 /* super LU direct method.                      */
+#define AZ_symmlq           6 /* indefinite symmetric like symmlq             */
+#define AZ_GMRESR           7 /* recursive GMRES (not supported)              */
+#define AZ_fixed_pt         8 /* fixed point iteration                        */
+#define AZ_analyze          9 /* fixed point iteration                        */
+#define AZ_lu              10 /* sparse LU direct method. Also used for a     */
+#define AZ_cg_condnum      11
+#define AZ_gmres_condnum   12
+
+//constants for preconditioners - from az_aztec_defs.h
+#define AZ_none             0 /* no preconditioning. Note: also used for      */
+/* scaling, output, overlap options options     */
+#define AZ_Jacobi           1 /* Jacobi preconditioning. Note: also used for  */
+/* scaling options                              */
+#define AZ_sym_GS           2 /* symmetric Gauss-Siedel preconditioning       */
+#define AZ_Neumann          3 /* Neumann series polynomial preconditioning    */
+#define AZ_ls               4 /* least-squares polynomial preconditioning     */
+#define AZ_ilu              6 /* domain decomp with  ilu in subdomains        */
+#define AZ_bilu             7 /* domain decomp with block ilu in subdomains   */
+/* #define AZ_lu           10    domain decomp with   lu in subdomains        */
+#define AZ_icc              8 /* domain decomp with incomp Choleski in domains*/
+#define AZ_ilut             9 /* domain decomp with ilut in subdomains        */
+#define AZ_rilu            11 /* domain decomp with rilu in subdomains        */
+#define AZ_recursive       12 /* Recursive call to AZ_iterate()               */
+#define AZ_smoother        13 /* Recursive call to AZ_iterate()               */
+#define AZ_dom_decomp      14 /* Domain decomposition using subdomain solver  */
+/* given by options[AZ_subdomain_solve]         */
+#define AZ_multilevel      15 /* Do multiplicative domain decomp with coarse  */
+/* grid (not supported).                        */
+#define AZ_user_precond    16 /*  user's preconditioning */
+/* Begin Aztec 2.1 mheroux mod */
+#define AZ_bilu_ifp        17 /* dom decomp with bilu using ifpack in subdom  */
+/* End Aztec 2.1 mheroux mod */
 
 /// Aztec solvers
 struct AztecSolvers
@@ -94,6 +134,38 @@ struct AztecSubdomainSolvers
         ICC                      = AZ_icc            ///< Sparse ICC(k) decomposition
     };
 };
+
+#undef AZ_cg
+#undef AZ_gmres
+#undef AZ_cgs
+#undef AZ_tfqmr
+#undef AZ_bicgstab
+#undef AZ_slu
+#undef AZ_symmlq
+#undef AZ_GMRESR
+#undef AZ_fixed_pt
+#undef AZ_analyze
+#undef AZ_lu
+#undef AZ_cg_condnum
+#undef AZ_gmres_condnum
+//
+#undef AZ_none
+#undef AZ_Jacobi
+#undef AZ_sym_GS
+#undef AZ_Neumann
+#undef AZ_ls
+#undef AZ_ilu
+#undef AZ_bilu
+#undef AZ_icc
+#undef AZ_ilut
+#undef AZ_rilu
+#undef AZ_recursive
+#undef AZ_smoother
+#undef AZ_dom_decomp
+#undef AZ_multilevel
+#undef AZ_user_precond
+#undef AZ_bilu_ifp
+
 
 /// Belos solvers
 struct BelosSolvers
