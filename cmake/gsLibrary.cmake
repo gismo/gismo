@@ -55,6 +55,14 @@ if (GISMO_WITH_SUPERLU)
   target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
 endif()
 
+if (GISMO_WITH_TAUCS)
+  target_link_libraries(${PROJECT_NAME} ${TAUCS_LIBRARIES})
+endif()
+
+if (GISMO_WITH_UMFPACK)
+  target_link_libraries(${PROJECT_NAME} ${UMFPACK_LIBRARIES})
+endif()
+
 if (GISMO_WITH_PARDISO)
    if (PARDISO_USE_MKL)
      find_package(MKL REQUIRED)

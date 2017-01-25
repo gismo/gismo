@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, F. Khatami, M. Moeller
 */
 
 #include <gsTrilinos/gsTrilinosSolvers.h>
@@ -16,6 +16,7 @@
 
 #include "Amesos.h"
 #include "Amesos_BaseSolver.h"
+
 #include "AztecOO.h"
 #include "AztecOO_Version.h"
 
@@ -26,16 +27,12 @@
 #include "ml_include.h"
 #include "ml_MultiLevelPreconditioner.h"
 
-//#include "Amesos_Superlu.h"
-
-#include "gsTrilinosHeaders.h"
 #include "BelosConfigDefs.hpp"
 #include "BelosLinearProblem.hpp"
 #include "BelosEpetraAdapter.hpp"
 
 #include "BelosBiCGStabSolMgr.hpp"
 #include "BelosBlockCGSolMgr.hpp"
-/* #include "BelosBlockGCRODRSolMgr.hpp" */
 #include "BelosBlockGmresSolMgr.hpp"
 #include "BelosFixedPointSolMgr.hpp"
 #include "BelosGCRODRSolMgr.hpp"
@@ -49,6 +46,9 @@
 #include "BelosPseudoBlockTFQMRSolMgr.hpp"
 #include "BelosRCGSolMgr.hpp"
 #include "BelosTFQMRSolMgr.hpp"
+#ifdef Belos_ENABLE_Experimental
+#include "BelosBlockGCRODRSolMgr.hpp"
+#endif
 
 namespace gismo
 {
@@ -56,27 +56,37 @@ namespace gismo
 namespace trilinos
 {
 
-struct DataTypes // General types for use in all solvers
+/// General types for use in all solvers
+struct DataTypes 
 {
-    typedef real_t Scalar;
-                                 
-    typedef conditional<util::is_same<Scalar,double>::value, Epetra_MultiVector,
-                        Tpetra::MultiVector<Scalar,int,int> >::type MVector;
-    
-    typedef conditional<util::is_same<Scalar,double>::value,Epetra_Operator,
-                        Tpetra::Operator<Scalar,int,int> >::type    Operator;
+    /// Data and index types
+    typedef real_t  Scalar;
+    typedef index_t Index;
 
-    typedef Belos::SolverManager<Scalar, MVector, Operator> SolManager;
+    /// Multi vector type
+    typedef util::conditional<util::is_same<Scalar,double>::value,
+                              Epetra_MultiVector,
+                              Tpetra::MultiVector<Scalar,Index,Index> >::type MVector;
 
-    typedef Belos::LinearProblem<Scalar, MVector, Operator> BelosLp;
+    /// Operator type
+    typedef util::conditional<util::is_same<Scalar,double>::value,
+                              Epetra_Operator,
+                              Tpetra::Operator<Scalar,Index,Index> >::type    Operator;
 
-    typedef Epetra_LinearProblem EpetraLp;
+    /// Belos solver manager type
+    typedef Belos::SolverManager<Scalar, MVector, Operator>                   SolManager;
 
-    //typedef Teuchos::ParameterList
+    /// Belos linear problem type
+    typedef Belos::LinearProblem<Scalar, MVector, Operator>                   BelosLp;
+
+    /// Epetra linear problem type
+    typedef Epetra_LinearProblem                                              EpetraLp;
 };
 
 namespace solver
 {
+
+/*    --- Abstract solver ---    */
 
 struct AbstractSolverPrivate
 {
@@ -84,221 +94,732 @@ struct AbstractSolverPrivate
     DataTypes::EpetraLp Problem;
 
     // Solution vector
-    Vector solution;
+    Vector Solution;
 };
 
+/// Constructor (default)
 AbstractSolver::AbstractSolver() : my(NULL)
-{
+{ }
 
-}
-
-
+/// Constructor (sparse matrix)
 AbstractSolver::AbstractSolver(const SparseMatrix & A)
 : my(new AbstractSolverPrivate)
 {
     my->Problem.SetOperator(A.get());
-    my->solution.setFrom(A); // i.e. A.get()->OperatorDomainMap()
-    my->Problem.SetLHS(my->solution.get());
+    my->Solution.setFrom(A); // i.e. A.get()->OperatorDomainMap()
+    my->Problem.SetLHS(my->Solution.get());
 }
 
+/// Destructor
 AbstractSolver::~AbstractSolver()
 {
     delete my;
 }
 
+/// Solves problem for the given a right-hand side vector
 const Vector & AbstractSolver::solve(const Vector & b)
 {
     my->Problem.SetRHS(b.get());
     solveProblem(); // virtual call
-    return my->solution; 
+    return my->Solution; 
 }
 
-void AbstractSolver::getSolution( gsVector<real_t> & sol, const int rank) const
+/// Returns solution vector
+void AbstractSolver::getSolution(gsVector<real_t> & sol, const int rank) const
 {
-    my->solution.copyTo(sol, rank);
+    my->Solution.copyTo(sol, rank);
 }
 
-void GMRES::solveProblem()
+/// Sets parameters from option list
+void AbstractSolver::setOptions(const gsOptionList & opt)
 {
-    /* 1. Preconditionner */
-/*    
-    // allocates an IFPACK factory. No data is associated 
-    Ifpack Factory;
+    std::vector<gsOptionList::OptionListEntry> options = opt.getAllEntries();
+    for(std::vector<gsOptionList::OptionListEntry>::iterator it = options.begin();
+        it != options.end(); ++it) {        
+        if (it->type == "string") {
+            set(it->label, it->val);
+        }
+        else if (it->type == "int") {
+            set(it->label, atoi(it->val.c_str()));
+        }
+        else if (it->type == "real") {
+            set(it->label, atof(it->val.c_str()));
+            
+        }
+        else if (it->type == "bool") {
+            set(it->label, (it->val != "0"));
+        }
+        else {
+            GISMO_ERROR("Error : Invalid parameter type.");
+        }
+    }
+}
 
-    // create the preconditioner. For valid PrecType values,
-    // please check the documentation
-    std::string PrecType = "ILU"; // incomplete LU
-    int OverlapLevel = 1; // must be >= 0. ignored for Comm.NumProc() == 1
-    Teuchos::RCP<Ifpack_Preconditioner> Prec = Teuchos::rcp( Factory.Create(PrecType, &*A, OverlapLevel) );
-    assert(Prec != Teuchos::null);
+/*    --- Abstract direct solver ---    */
+
+/// No difference to AbstractSolver
+
+/*    --- Abstract iterative solver ---    */
+
+/// Constructor (default)
+AbstractIterativeSolver::AbstractIterativeSolver()
+: AbstractSolver::AbstractSolver(), tolerance(1e-6), maxIter(100)
+{ }
+
+/// Constructor (sparse matrix)
+AbstractIterativeSolver::AbstractIterativeSolver(const SparseMatrix & A)
+: AbstractSolver::AbstractSolver(A), tolerance(1e-6), maxIter(100)
+{ }
+
+/*    --- Amesos solver ---    */
+
+struct AmesosSolverPrivate
+{
+    // Amesos solver
+    Amesos_BaseSolver * Solver;
+
+    // Parameter list
+    Teuchos::ParameterList AmesosList;
+
+    // Solver status
+    int Status;
     
-    // specify parameters for ILU
-    List.set("fact: drop tolerance", 1e-9);
-    List.set("fact: level-of-fill", 1);
-    // the combine mode is on the following:
-    // "Add", "Zero", "Insert", "InsertAdd", "Average", "AbsMax"
-    // Their meaning is as defined in file Epetra_CombineMode.h   
-    List.set("schwarz: combine mode", "Add");
-    // sets the parameters
-    IFPACK_CHK_ERR(Prec->SetParameters(List));
+    // Constructor
+    AmesosSolverPrivate(int solver)
+    : solver(solver)
+    { }
+
+    // Destructor
+    ~AmesosSolverPrivate()
+    { }
+
+    // Returns SolverType as std::string
+    const std::string SolverType() const
+    {
+        switch(solver) {
+        case AmesosSolvers::Lapack :
+            return "Amesos_Lapack";
+        case AmesosSolvers::KLU :
+            return "Amesos_Klu";
+        case AmesosSolvers::Umfpack :
+            return "Amesos_Umfpack";
+        case AmesosSolvers::Pardiso :
+            return "Amesos_Pardiso";
+        case AmesosSolvers::Taucs :
+            return "Amesos_Taucs";
+        case AmesosSolvers::SuperLU :
+            return "Amesos_Superlu";
+        case AmesosSolvers::SuperLUDist :
+            return "Amesos_Superludist";
+        case AmesosSolvers::Mumps :
+            return "Amesos_Mumps";
+        case AmesosSolvers::Dscpack :
+            return "Amesos_Superlu";
+        default :
+            GISMO_ERROR("Error : Invalid Amesos solver");
+        }
+    }
+
+    // Returns SolverList sublist
+    Teuchos::ParameterList & SolverList()
+    {
+        switch(solver) {
+        case AmesosSolvers::Lapack :
+            return AmesosList.sublist("Lapack");
+        case AmesosSolvers::KLU :
+            return AmesosList.sublist("Klu");
+        case AmesosSolvers::Umfpack :
+            return AmesosList.sublist("Umfpack");
+        case AmesosSolvers::Pardiso :
+            return AmesosList.sublist("Pardiso");
+        case AmesosSolvers::Taucs :
+            return AmesosList.sublist("Taucs");
+        case AmesosSolvers::SuperLU :
+            return AmesosList.sublist("Superlu");
+        case AmesosSolvers::SuperLUDist :
+            return AmesosList.sublist("Superludist");
+        case AmesosSolvers::Mumps :
+            return AmesosList.sublist("Mumps");
+        case AmesosSolvers::Dscpack :
+            return AmesosList.sublist("Superlu");
+        default :
+            GISMO_ERROR("Error : Invalid Amesos solver");
+        }
+    }
     
-    // initialize the preconditioner. At this point the matrix must
-    // have been FillComplete()'d, but actual values are ignored.
-    IFPACK_CHK_ERR(Prec->Initialize());
+private:
+
+    // Solver type
+    int solver;
+};
+
+/// Constructor (sparse matrix)
+AmesosSolver::AmesosSolver(const SparseMatrix & A, const int solver)
+: Base(A), myAmesos(new AmesosSolverPrivate(solver))
+{
+    Amesos Factory;
+    const std::string SolverType = myAmesos->SolverType();
+
+    // Check availability of solver
+    GISMO_ENSURE(Factory.Query(SolverType.c_str()),
+                "Error: Amesos solver " + SolverType + " is not available")
+
+    // Create solver
+    myAmesos->Solver = Factory.Create(SolverType.c_str(), my->Problem);
     
-    // Builds the preconditioners, by looking for the values of 
-    // the matrix.
-    IFPACK_CHK_ERR(Prec->Compute());
+    // Initialize parameter list by default values
+    myAmesos->Solver->setParameterList(Teuchos::RCP<Teuchos::ParameterList>(
+                                           &myAmesos->AmesosList, false));
+}
+
+/// Destructor
+AmesosSolver::~AmesosSolver()
+{
+    delete myAmesos;
+}
+
+/// Solves problem
+void AmesosSolver::solveProblem()
+{
+    myAmesos->Status = myAmesos->Solver->SymbolicFactorization();
+    if (myAmesos->Status != 0)
+    {
+        gsWarn << "Error: Amesos solver failed in symbolic factorization.\n";
+        return;
+    }
+
+    myAmesos->Status = myAmesos->Solver->NumericFactorization();
+    if (myAmesos->Status != 0)
+    {
+        gsWarn << "Error: Amesos solver failed in numeric factorization.\n";
+        return;
+    }
+
+    myAmesos->Status = myAmesos->Solver->Solve();
+    if (myAmesos->Status != 0)
+    {
+        gsWarn << "Error: Amesos solver failed.\n";
+    }
+}
+
+/// Solves problem (overwrite default behaviour of factorization)
+void AmesosSolver::solveProblem(const bool noSymbolicFactorization,
+                                const bool noNumericFactorization)
+{
+    if (!noSymbolicFactorization)
+        if (myAmesos->Status != 0)
+        {
+            gsWarn << "Error: Amesos solver failed in symbolic factorization.\n";
+            return;
+        }
     
-*/
-    /* 2. AztecOO solver / GMRES*/
+    if (!noNumericFactorization)
+        if (myAmesos->Status != 0)
+        {
+            gsWarn << "Error: Amesos solver failed in numeric factorization.\n";
+            return;
+        }
+
+    myAmesos->Status = myAmesos->Solver->Solve();
+    if (myAmesos->Status != 0)
+    {
+        gsWarn << "Error: Amesos solver failed.\n";
+    }
+}
+
+/// Returns valid parameters
+std::string AmesosSolver::validParams() const
+{
+    // Create temporal Amesos solver
+    Teuchos::ParameterList AmesosList;
+    Amesos Factory;
+    Amesos_BaseSolver * Solver = Factory.Create(myAmesos->SolverType().c_str(), my->Problem);
     
+    // Set default values
+    Solver->setParameterList(Teuchos::RCP<Teuchos::ParameterList>(
+                                 &AmesosList, false));
+
+    // Return valid parameters
+    std::ostringstream os;
+    os << "Valid parameters of the current "
+        + myAmesos->SolverType() + " solver: \n"
+       << AmesosList;
+    return os.str();
+}
+
+/// Returns current parameters
+std::string AmesosSolver::currentParams() const
+{ 
+    std::ostringstream os;
+    os << "Current parameters of the current "
+        + myAmesos->SolverType() + " solver: \n"
+       << myAmesos->AmesosList;
+    return os.str();
+}
+
+/// Sets integer parameters
+void AmesosSolver::set(const std::string & name, const int & value)
+{
+    myAmesos->SolverList().set( name, value );
+    myAmesos->Solver->setParameterList(Teuchos::RCP<Teuchos::ParameterList>(
+                                           &myAmesos->AmesosList, false));
+}
+
+/// Sets bool parameters
+void AmesosSolver::set(const std::string & name, const bool & value)
+{
+    myAmesos->SolverList().set( name, value );
+    myAmesos->Solver->setParameterList(Teuchos::RCP<Teuchos::ParameterList>(
+                                           &myAmesos->AmesosList, false));
+}
+
+/// Sets double parameters
+void AmesosSolver::set(const std::string & name, const double & value)
+{
+    myAmesos->SolverList().set( name, value );
+    myAmesos->Solver->setParameterList(Teuchos::RCP<Teuchos::ParameterList>(
+                                           &myAmesos->AmesosList, false));
+}
+
+/// Sets string parameters
+void AmesosSolver::set(const std::string & name, const std::string & value)
+{
+    myAmesos->SolverList().set( name, value );
+    myAmesos->Solver->setParameterList(Teuchos::RCP<Teuchos::ParameterList>(
+                                           &myAmesos->AmesosList, false));
+}
+
+/// Returns status of the solver
+std::string AmesosSolver::status() const
+{
+    // Redirect the output of Amesos::PrintStatus() from std::cout to
+    // an output stream buffer, convert to string and return it
+    std::streambuf *old = std::cout.rdbuf();
+    std::ostringstream os;
+
+    std::cout.rdbuf(os.rdbuf());
+    myAmesos->Solver->PrintStatus();
+    std::cout.rdbuf(old);
+
+    std::string s = os.str();
+    return s;
+}
+
+/// Returns timing of the solver
+std::string AmesosSolver::timing() const
+{
+    // Redirect the output of Amesos::PrintTiming() from std::cout to
+    // an output stream buffer, convert to string and return it
+    std::streambuf *old = std::cout.rdbuf();
+    std::ostringstream os;
+
+    std::cout.rdbuf(os.rdbuf());
+    myAmesos->Solver->PrintTiming();
+    std::cout.rdbuf(old);
+
+    std::string s = os.str();
+    return s;
+}
+
+/*    --- Aztec solver ---    */
+
+struct AztecSolverPrivate
+{
+    // Aztec solver
     AztecOO Solver;
-    Solver.SetProblem(my->Problem);
-    Solver.SetAztecOption(AZ_solver, AZ_gmres);
-    Solver.SetAztecOption(AZ_output,AZ_none);//32
-    //Solver.SetPrecOperator(Prec);
-    Solver.Iterate(m_maxIter, m_tolerance);
-}
-
-void KLU::solveProblem()
-{
-    static const char * SolverType = "Klu";
-    static Amesos Factory;
-    const bool IsAvailable = Factory.Query(SolverType);
-    GISMO_ENSURE(IsAvailable, "Amesos KLU is not available.\n");
     
-    Amesos_BaseSolver * Solver = Factory.Create(SolverType, my->Problem);
-    Solver->SymbolicFactorization();
-    Solver->NumericFactorization();
-    Solver->Solve();
-}
+    // Returns option as std::string
+    std::string AztecOptionName(const int option)
+    {
+        switch(option) {
+        case(AZ_solver)            : return "AZ_solver";
+        case(AZ_scaling)           : return "AZ_scaling";
+        case(AZ_precond)           : return "AZ_precond";
+        case(AZ_conv)              : return "AZ_conv";
+        case(AZ_output)            : return "AZ_output";
+        case(AZ_pre_calc)          : return "AZ_pre_calc";
+        case(AZ_max_iter)          : return "AZ_max_iter";
+        case(AZ_poly_ord)          : return "AZ_poly_ord";
+        case(AZ_overlap)           : return "AZ_overlap";
+        case(AZ_type_overlap)      : return "AZ_type_overlap";
+        case(AZ_kspace)            : return "AZ_kspace";
+        case(AZ_orthog)            : return "AZ_orthog";
+        case(AZ_aux_vec)           : return "AZ_aux_vec";
+        case(AZ_reorder)           : return "AZ_reorder";
+        case(AZ_keep_info)         : return "AZ_keep_info";
+        case(AZ_recursion_level)   : return "AZ_recursion_level";
+        case(AZ_print_freq)        : return "AZ_print_freq";
+        case(AZ_graph_fill)        : return "AZ_graph_fill";
+        case(AZ_subdomain_solve)   : return "AZ_subdomain_solve";
+        case(AZ_init_guess)        : return "AZ_init_guess";
+        case(AZ_keep_kvecs)        : return "AZ_keep_kvecs";
+        case(AZ_apply_kvecs)       : return "AZ_apply_kvecs";
+        case(AZ_orth_kvecs)        : return "AZ_orth_kvecs";
+        case(AZ_ignore_scaling)    : return "AZ_ignore_scaling";
+        case(AZ_check_update_size) : return "AZ_check_update_size";
+        case(AZ_extreme)           : return "AZ_extreme";
+        case(AZ_diagnostics)       : return "AZ_diagnostics";
+            
+        default :
+            GISMO_ERROR("Error : Invalid Aztec option");
+        }
+    }
 
-void SuperLU::solveProblem()
+    // Returns parameters as std::string
+    std::string AztecParamName(const int param)
+    {
+        switch(param) {
+        case(AZ_tol)              : return "AZ_tol";
+        case(AZ_drop)             : return "AZ_drop";
+        case(AZ_ilut_fill)        : return "AZ_ilut_fill";
+        case(AZ_omega)            : return "AZ_omega";
+        case(AZ_rthresh)          : return "AZ_rthresh";
+        case(AZ_athresh)          : return "AZ_athresh";
+        case(AZ_update_reduction) : return "AZ_update_reduction";
+        case(AZ_temp)             : return "AZ_temp";
+        case(AZ_ill_cond_thresh)  : return "AZ_ill_cond_thresh";
+        case(AZ_weights)          : return "AZ_weights";
+
+        default :
+            GISMO_ERROR("Error : Invalid Aztec parameter");
+        }
+    }
+};
+
+/// Constructor (sparse matrix)
+AztecSolver::AztecSolver( const SparseMatrix &A,
+                          const int solver,
+                          const int precond,
+                          const int subdomain_solver )
+: Base(A), myAztec(new AztecSolverPrivate)
 {
-//    Amesos_Superlu Solver(my->Problem);
-//    Solver.SymbolicFactorization();
-//    Solver.NumericFactorization();
-//    Solver.Solve();
+    // Set linear problem (yet without RHS)
+    myAztec->Solver.SetProblem(my->Problem);
+    
+    // Set solver
+    set(AZ_solver,  solver);
+
+    // Set preconditioner
+    set(AZ_precond, precond);
+
+    // Set subdomain solver
+    set(AZ_subdomain_solve, subdomain_solver);
+    
+    // Set default parameters
+    set(AZ_max_iter, maxIter);
+    set(AZ_tol, tolerance);
 }
 
+/// Destructor
+AztecSolver::~AztecSolver()
+{ 
+    delete myAztec;
+}
 
+/// Sets Belos preconditioner
+void AztecSolver::setPreconditioner(const BelosSolver & Belos)
+{
+    myAztec->Solver.SetPrecOperator(Belos.getPrecOperator());
+}
 
-/*   --- Belos--- */
+/// Sets ML preconditioner
+void AztecSolver::setPreconditioner(const MLSolver & ML)
+{
+    myAztec->Solver.SetPrecOperator(ML.getPrecOperator());
+}
 
-// mode values define different solvers
-template<int mode> struct BelosSolManager { };
+/// Solves the problem
+void AztecSolver::solveProblem()
+{
+    // Grab right-hand side
+    myAztec->Solver.SetRHS(my->Problem.GetRHS());
 
-template<>
-struct BelosSolManager<BiCGStab> 
-{ typedef Belos::BiCGStabSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+    // Solve linear problem
+    myAztec->Solver.Iterate(maxIter, tolerance);
+}
 
-template<>
-struct BelosSolManager<BlockCG> 
-{ typedef Belos::BlockCGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+/// Returns valid parameters
+std::string AztecSolver::validParams() const
+{
+    // Create temporal Aztec solver with default options/parameters
+    AztecOO Solver;
+    
+    const int *options = Solver.GetAllAztecOptions();
+    const double *params = Solver.GetAllAztecParams();
 
-// template<>
-// struct BelosSolManager<BlockGCRODR> 
-// { typedef Belos::BlockGCRODRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+    std::ostringstream os;
+    os << "Valid parameters of the current Aztec solver: \n";
+                                                                
+    for (int AZ_def=0; AZ_def<AZ_FIRST_USER_OPTION; AZ_def++)
+        os << myAztec->AztecOptionName(AZ_def) << " = " << options[AZ_def] << "\n";
 
-template<>
-struct BelosSolManager<BlockGmres> 
-{ typedef Belos::BlockGmresSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+    for (int AZ_def=0; AZ_def<AZ_FIRST_USER_PARAM; AZ_def++)
+        os << myAztec->AztecParamName(AZ_def) << " = " << params[AZ_def] << "\n";
+            
+    return os.str();
+}
 
-template<>
-struct BelosSolManager<FixedPoint> 
-{ typedef Belos::FixedPointSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+/// Returns current parameters
+std::string AztecSolver::currentParams() const
+{
+    const int *options = myAztec->Solver.GetAllAztecOptions();
+    const double *params = myAztec->Solver.GetAllAztecParams();
+    
+    std::ostringstream os;
+    os << "Current parameters of the current Aztec solver: \n";
 
-template<>
-struct BelosSolManager<GCRODR> 
-{ typedef Belos::GCRODRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+    for (int AZ_def=0; AZ_def<AZ_FIRST_USER_OPTION; AZ_def++)
+        os << myAztec->AztecOptionName(AZ_def) << " = " << options[AZ_def] << "\n";
 
-template<>
-struct BelosSolManager<GmresPoly> 
-{ typedef Belos::GmresPolySolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+    for (int AZ_def=0; AZ_def<AZ_FIRST_USER_PARAM; AZ_def++)
+        os << myAztec->AztecParamName(AZ_def) << " = " << params[AZ_def] << "\n";
 
-template<>
-struct BelosSolManager<LSQR> 
-{ typedef Belos::LSQRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+    return os.str();
+}
 
-template<>
-struct BelosSolManager<Minres> 
-{ typedef Belos::MinresSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+/// Returns status of the solver
+std::string AztecSolver::status() const
+{
+    const double *status = myAztec->Solver.GetAztecStatus();
+    const int solver = myAztec->Solver.GetAztecOption(AZ_solver);
+    
+    std::string prefix = std::string("Aztec_")
+        + std::string(solver == AZ_cg ? "CG" :
+                      solver == AZ_cg_condnum ? "CG_condnum" :
+                      solver == AZ_gmres ? "Gmres" :
+                      solver == AZ_gmres_condnum ? "Gmres_condnum" :
+                      solver == AZ_GMRESR ? "Gmres_recursive" :
+                      solver == AZ_cgs ? "CGS" :
+                      solver == AZ_tfqmr ? "TFQMR" :
+                      solver == AZ_bicgstab ? "BiCGStab" :
+                      solver == AZ_lu ? "LU" :
+                      solver == AZ_slu ? "SuperLU" :
+                      solver == AZ_symmlq ? "SymmLQ" :
+                      solver == AZ_fixed_pt ? "Fixed_point" :
+                      solver == AZ_analyze ? "Analyze" :
+                      "unknown")
+        +  std::string(" : ");
 
-template<>
-struct BelosSolManager<PCPG> 
-{ typedef Belos::PCPGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+    std::ostringstream os;
+    os << "----------------------------------------------------------------------------\n"
+       << prefix << "Number if iterations AZ_its = " << status[AZ_its] << "\n"
+       << prefix << "Iteration termination AZ_why = "
+       << (status[AZ_why] == AZ_normal ? "normally" :
+           status[AZ_why] == AZ_param ? "invalid option" :
+           status[AZ_why] == AZ_breakdown ? "numerical breakdown" :
+           status[AZ_why] == AZ_loss ? "precision loss" :
+           status[AZ_why] == AZ_ill_cond ? "ill-conditioned Hessenberg matrix in GMRES" :
+           status[AZ_why] == AZ_maxits ? "maximum number of iterations reached" :
+           "unknown") << "\n"
+       << prefix << "Absolute residual AZ_r = " << status[AZ_r] << "\n"
+       << prefix << "True scaled residual AZ_scaled_r = " << status[AZ_scaled_r] << "\n"
+       << prefix << "Estimated scaled residual AZ_rec_r = " << status[AZ_rec_r] << "\n"
+       << "----------------------------------------------------------------------------\n";
+    return os.str();
+}
 
-template<>
-struct BelosSolManager<PseudoBlockCG> 
-{ typedef Belos::PseudoBlockCGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+/// Returns timing of the solver
+std::string AztecSolver::timing() const
+{
+    const double *status = myAztec->Solver.GetAztecStatus();
+    const int solver = myAztec->Solver.GetAztecOption(AZ_solver);
 
-template<>
-struct BelosSolManager<PseudoBlockGmres> 
-{ typedef Belos::PseudoBlockGmresSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+    std::string prefix = std::string("Aztec_")
+        + std::string(solver == AZ_cg ? "CG" :
+                      solver == AZ_cg_condnum ? "CG_condnum" :
+                      solver == AZ_gmres ? "Gmres" :
+                      solver == AZ_gmres_condnum ? "Gmres_condnum" :
+                      solver == AZ_GMRESR ? "Gmres_recursive" :
+                      solver == AZ_cgs ? "CGS" :
+                      solver == AZ_tfqmr ? "TFQMR" :
+                      solver == AZ_bicgstab ? "BiCGStab" :
+                      solver == AZ_lu ? "LU" :
+                      solver == AZ_slu ? "SuperLU" :
+                      solver == AZ_symmlq ? "SymmLQ" :
+                      solver == AZ_fixed_pt ? "Fixed_point" :
+                      solver == AZ_analyze ? "Analyze" :
+                      "unknown")
+        +  std::string(" : ");
 
-template<>
-struct BelosSolManager<PseudoBlockStochasticCG> 
-{ typedef Belos::PseudoBlockStochasticCGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+    std::ostringstream os;
+    os << "----------------------------------------------------------------------------\n"
+       << prefix << "Total time spent in Aztec = " << status[AZ_solve_time] << " (s)\n"
+       << "----------------------------------------------------------------------------\n";
+    return os.str();
+}
 
-template<>
-struct BelosSolManager<PseudoBlockTFQMR> 
-{ typedef Belos::PseudoBlockTFQMRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+/// Sets integer paramters
+void AztecSolver::set(const std::string & name, const int & value)
+{
+    Teuchos::ParameterList AztecList;
+    AztecList.set( name, value );
+    myAztec->Solver.SetParameters(AztecList);
+}
 
-template<>
-struct BelosSolManager<RCG> 
-{ typedef Belos::RCGSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+/// Sets bool parameters
+void AztecSolver::set(const std::string & name, const bool & value)
+{
+    Teuchos::ParameterList AztecList;
+    AztecList.set( name, value );
+    myAztec->Solver.SetParameters(AztecList);
+}
 
-template<>
-struct BelosSolManager<TFQMR> 
-{ typedef Belos::TFQMRSolMgr<DataTypes::Scalar , DataTypes::MVector, DataTypes::Operator> type; };
+/// Sets double parameters
+void AztecSolver::set(const std::string & name, const double & value)
+{
+    Teuchos::ParameterList AztecList;
+    AztecList.set( name, value );
+    myAztec->Solver.SetParameters(AztecList);
+}
+
+/// Sets string parameters
+void AztecSolver::set(const std::string & name, const std::string & value)
+{
+    Teuchos::ParameterList AztecList;
+    AztecList.set( name, value );
+    myAztec->Solver.SetParameters(AztecList);
+}
+
+/// Sets Aztec option directly
+void AztecSolver::set(const int & option, const int & value)
+{
+    myAztec->Solver.SetAztecOption( option, value );
+}
+
+/// Sets Aztec parameter directly
+void AztecSolver::set(const int & param, const double & value)
+{
+    myAztec->Solver.SetAztecParam( param, value );
+}
+
+/// Returns number of iterations
+int AztecSolver::numIterations() const
+{
+    return myAztec->Solver.NumIters();
+}
+
+/*   --- Belos solver ---    */
 
 struct BelosSolverPrivate
 {
+    // Belos solver
     Teuchos::RCP<DataTypes::SolManager> Solver;
 
-    Teuchos::ParameterList belosList;
+    // Parameter list
+    Teuchos::ParameterList BelosList;
     
+    // Belos problem    
     DataTypes::BelosLp Problem;
+
+    // Belos status
+    Belos::ReturnType Status;
+    
+    // !!!NOTE!!! : Belos solvers are configured by parameter
+    // lists. However, the solver manager stores an internal copy of
+    // all parameters so that it makes no sense to keep a separate
+    // parameter list. The most efficient way to set parameters is to
+    // create a temporal parameter list when needed and pass only the
+    // parameters needed.
 };
 
-template<int mode>
-BelosSolver<mode>::BelosSolver(const SparseMatrix & A)
-: Base(A), myBelos(new BelosSolverPrivate), maxiters(200)
+/// Constructor (sparse matrix)
+BelosSolver::BelosSolver(const SparseMatrix & A,
+                               const int solver)
+: Base(A), myBelos(new BelosSolverPrivate)
 {
-    // Note: By default the string variable SolverTeuchosUser = "Belos". 
-    // This can be adapted to get different values if other solvers with 
-    // similar implementation structures are considered later on. 
-    //SolverTeuchosUser = solver_teuchosUser; 
-
     // Initialize solver manager
-    myBelos->Solver = Teuchos::rcp( new typename BelosSolManager<mode>::type );
+    switch(solver) {
+    case BelosSolvers::BiCGStab :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::BiCGStabSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::BlockCG :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::BlockCGSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+#ifdef Belos_ENABLE_Experimental
+    case BelosSolvers::BlockGCRODR :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::BlockGCRODRSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+#endif
+    case BelosSolvers::BlockGmres :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::BlockGmresSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::FixedPoint :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::FixedPointSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::GCRODR :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::GCRODRSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::GmresPoly :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::GmresPolySolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::LSQR :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::LSQRSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::Minres :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::MinresSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::PCPG :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::PCPGSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::PseudoBlockCG :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::PseudoBlockCGSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::PseudoBlockGmres :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::PseudoBlockGmresSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::PseudoBlockStochasticCG :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::PseudoBlockStochasticCGSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::PseudoBlockTFQMR :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::PseudoBlockTFQMRSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::RCG :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::RCGSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+    case BelosSolvers::TFQMR :
+        myBelos->Solver = Teuchos::rcp( new typename Belos::TFQMRSolMgr<DataTypes::Scalar ,
+                                        DataTypes::MVector, DataTypes::Operator> );
+        break;
+        
+    default :
+        GISMO_ERROR("Error : Invalid Belos solver");
+    }
 
     // Initialize problem
-    myBelos->Solver->setProblem   (Teuchos::rcp(&myBelos->Problem  , false));
+    myBelos->Solver->setProblem(Teuchos::rcp(&myBelos->Problem  , false));
     myBelos->Problem.setOperator(A.getRCP());
-    myBelos->Problem.setLHS(my->solution.getRCP());
+    myBelos->Problem.setLHS(my->Solution.getRCP());
     
-    // Add default options
-    //myBelos->belosList.set( "Block Size", 1);
-    double tol = 1.0e-5;
-    myBelos->belosList.set( "Maximum Iterations", maxiters );  // Maximum number of iterations allowed
-    myBelos->belosList.set( "Convergence Tolerance", tol );    // Relative convergence tolerance requested
-
-    // Initialize options
-    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
+    // Set default parameters (via temporal parameter list)
+    myBelos->BelosList.set( "Maximum Iterations", maxIter );
+    myBelos->BelosList.set( "Convergence Tolerance", tolerance );
+    myBelos->Solver->setParameters(Teuchos::RCP<Teuchos::ParameterList>(&myBelos->BelosList, false));
 }
 
-template<int mode>
-BelosSolver<mode>::~BelosSolver()
+/// Destructor
+BelosSolver::~BelosSolver()
 {
     delete myBelos;
 }
 
-template<int mode>
-int BelosSolver<mode>::setPreconditioner(
-                          const std::string & PrecType, const SparseMatrix &A,
-                          const bool & leftprec, const int & OverlapLevel ) 
+int BelosSolver::setPreconditioner(
+    const std::string & PrecType, const SparseMatrix &A,
+    const bool & leftprec, const int & OverlapLevel ) 
 {
     // allocates an IFPACK factory. No data is associated
     // to this object (only method Create()).
@@ -324,7 +845,7 @@ int BelosSolver<mode>::setPreconditioner(
 //    myBelos->belosList.set("schwarz: combine mode", "Add");
 
     // sets the parameters
-    IFPACK_CHK_ERR(Prec->SetParameters(myBelos->belosList));
+    //IFPACK_CHK_ERR(Prec->SetParameters(myBelos->belosList));
 
     // initialize the preconditioner. At this point the matrix must
     // have been FillComplete()'d, but actual values are ignored.
@@ -352,38 +873,22 @@ int BelosSolver<mode>::setPreconditioner(
     return 0;
 }
 
-template<int mode>
-void BelosSolver<mode>::solveProblem()
+/// Solves problem
+void BelosSolver::solveProblem()
 {
     // Grab right-hand side
     myBelos->Problem.setRHS( Teuchos::rcp(my->Problem.GetRHS(), false) );
-    // Tell the program that setting of the linear problem is done. 
-    // Throw an error if failed. 
-    bool err_set = myBelos->Problem.setProblem(); 
-    
-    GISMO_ASSERT(true == err_set, "Error: Belos Problem couldn't be" 
-                 " initialized."); 
+
+    // Set problem
+    GISMO_ASSERT(myBelos->Problem.setProblem(),
+                 "Error: Belos solver failed in initialization."); 
 
     // Perform solve
-    Belos::ReturnType ret = myBelos->Solver->solve();
-    
-    // Get the number of iterations for this solve.
-    
-//  int numIters = myBelos->Solver->getNumIters();
-    
-//  // Compute actual residuals.
-    
-//  bool badRes = false;
-//  std::vector<double> actual_resids( numrhs );
-//  std::vector<double> rhs_norm( numrhs );
-//  MVector resid(*Map, numrhs);
-    
-    GISMO_ENSURE(ret == Belos::Converged , "Error: Belos Problem couldn't be"
-                 " initialized.");
+    myBelos->Status = myBelos->Solver->solve();
 }
 
-template<int mode>
-std::string BelosSolver<mode>::printValidParams() const
+/// Returns valid parameters
+std::string BelosSolver::validParams() const
 {
     std::ostringstream os;
     os << "Valid parameters of the current Belos solver: \n" 
@@ -391,8 +896,8 @@ std::string BelosSolver<mode>::printValidParams() const
     return os.str();
 }
 
-template<int mode>
-std::string BelosSolver<mode>::printCurrentParams() const
+/// Returns current parameters
+std::string BelosSolver::currentParams() const
 {
     std::ostringstream os;
     os << "Current parameters of the current Belos solver: \n" 
@@ -400,131 +905,220 @@ std::string BelosSolver<mode>::printCurrentParams() const
     return os.str();
 }
 
-template<int mode>
-void BelosSolver<mode>::set(const std::string & name, const int & value)
+/// Returns status of the solver
+std::string BelosSolver::status() const
 {
-    myBelos->belosList.set( name, value );
-    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
+    std::ostringstream os;
+    os << "----------------------------------------------------------------------------\n"
+       << "Belos : Number of iterations = " << myBelos->Solver->getNumIters() << "\n"
+       << "Belos : Iteration converged = " << (myBelos->Status==Belos::Converged) << "\n"
+       << "Belos : Absolute residual = " << myBelos->Solver->achievedTol() << "\n"
+       << "Belos : Loss of accuracy detected = " << myBelos->Solver->isLOADetected() << "\n"
+       << "----------------------------------------------------------------------------\n";
+    return os.str();
 }
 
-template<int mode>
-void BelosSolver<mode>::set(const std::string & name, const double & value)
+/// Returns timing of the solver
+std::string BelosSolver::timing() const
 {
-    myBelos->belosList.set( name, value );
-    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
+    return "Timing for Belos solver not yet implemented\n";
 }
 
-template<int mode>
-void BelosSolver<mode>::set(const std::string & name, const std::string & value)
+/// Sets integer paramters
+void BelosSolver::set(const std::string & name, const int & value)
 {
-    myBelos->belosList.set( name, value );
-    myBelos->Solver->setParameters(Teuchos::rcp(&myBelos->belosList, false));
+    myBelos->BelosList.set( name, value );
+    myBelos->Solver->setParameters(Teuchos::RCP<Teuchos::ParameterList>(&myBelos->BelosList, false));
 }
 
-template<int mode>
-void BelosSolver<mode>::setHermitian()
+/// Sets bool paramters
+void BelosSolver::set(const std::string & name, const bool & value)
+{
+    myBelos->BelosList.set( name, value );
+    myBelos->Solver->setParameters(Teuchos::RCP<Teuchos::ParameterList>(&myBelos->BelosList, false));
+}
+
+/// Sets double paramters
+void BelosSolver::set(const std::string & name, const double & value)
+{
+    myBelos->BelosList.set( name, value );
+    myBelos->Solver->setParameters(Teuchos::RCP<Teuchos::ParameterList>(&myBelos->BelosList, false));
+}
+
+/// Sets string paramters
+void BelosSolver::set(const std::string & name, const std::string & value)
+{
+    myBelos->BelosList.set( name, value );
+    myBelos->Solver->setParameters(Teuchos::RCP<Teuchos::ParameterList>(&myBelos->BelosList, false));
+}
+
+/// Sets Hermitian problem type
+void BelosSolver::setHermitian()
 {
     myBelos->Problem.setHermitian();
 }
 
-template<int mode>
-int BelosSolver<mode>::numIterations() const
+/// Returns number of iterations
+int BelosSolver::numIterations() const
 {
     return myBelos->Solver->getNumIters();
 }
 
-//------------------------------------------
+/// Returns pointer to internal preconditioner
+Epetra_Operator * BelosSolver::getPrecOperator() const
+{
+    //TODO   return myBelos->Problem.getOperator().get();
+}
 
-/*   --- Multi Level (ML) --- */
+/*    --- Multi Level (ML) ---    */
 
 struct MLSolverPrivate
 {
+    // Multi-level preconditioner
     ML_Epetra::MultiLevelPreconditioner* MLPrec;
 
-    AztecOO solver;
+    // Aztec solver
+    AztecOO Solver;
 
+    // Parameter list
     Teuchos::ParameterList MLList;
 };
 
-MLSolver::MLSolver( const SparseMatrix &A )
-: Base(A), myML(new MLSolverPrivate), tolerance(10e-6), maxIter(100)
+/// Constructor (sparse matrix)
+MLSolver::MLSolver( const SparseMatrix &A,
+                    const int solver )
+: Base(A), myML(new MLSolverPrivate)
 {
-    ML_Epetra::SetDefaults("SA", myML->MLList);
+    // Initialize parameter list
+    switch(solver) {
+    case MLSolvers::SA :
+        ML_Epetra::SetDefaults("SA", myML->MLList);
+        break;
+    case MLSolvers::NSSA :
+        ML_Epetra::SetDefaults("NSSA", myML->MLList);
+        break;
+    case MLSolvers::DD :
+        ML_Epetra::SetDefaults("DD", myML->MLList);
+        break;
+    case MLSolvers::DDLU :
+        ML_Epetra::SetDefaults("DDLU", myML->MLList);
+        break;
+    case MLSolvers::DDML :
+        ML_Epetra::SetDefaults("DDML", myML->MLList);
+        break;
+    default :
+        GISMO_ERROR("Error : Invalid ML solver");
+    }
 
-    // Set ML preconditioner
-
-  ML_Epetra::SetDefaults("SA",myML->MLList);
-
+    // Attach preconditioner but do not compute it yet
     Teuchos::RCP<Epetra_RowMatrix> AA = A.getRCP();
-
     myML->MLPrec = new ML_Epetra::MultiLevelPreconditioner
-                                     (*AA.get(), myML->MLList, true);
-
-    myML->MLPrec->PrintUnused(0);
-//    std::cout << *(myML->MLPrec) << std::endl;
-
-    // set CG solver.
-//    myML->solver.SetAztecOption(AZ_solver, AZ_cg);
-//    myML->solver.SetAztecOption(AZ_solver, AZ_gmres);
-
-    myML->solver.SetAztecOption(AZ_output, 32);
-
+                                     (*AA.get(), myML->MLList, false);
 }
 
+/// Destructor
 MLSolver::~MLSolver()
 { 
     delete myML;
 }
 
+/// Solves problem
 void MLSolver::solveProblem()
 {
-    myML->solver.SetProblem(my->Problem);
+    myML->Solver.SetProblem(my->Problem);
 
-    myML->solver.CheckInput();
-
-    myML->solver.SetPrecOperator(myML->MLPrec);
-
-    myML->solver.Iterate(maxIter, tolerance);
+    if (!myML->MLPrec->IsPreconditionerComputed())
+        myML->MLPrec->ComputePreconditioner();
+    
+    myML->Solver.SetPrecOperator(myML->MLPrec);
+    myML->Solver.Iterate(maxIter, tolerance);
 }
 
+/// Returns valid parameters
+std::string MLSolver::validParams() const
+{
+    // Temporal parameter list
+    Teuchos::ParameterList MLList;
+    ML_Epetra::SetDefaults("SA", MLList);
+    
+    std::ostringstream os;
+    os << "Valid parameters of the current ML solver: \n";
+    MLList.print(os);
+    return os.str();
+}
+
+/// Returns current parameters
+std::string MLSolver::currentParams() const
+{
+    std::ostringstream os;
+    os << "Current parameters of the current ML solver: \n";
+    myML->MLList.print(os);
+    return os.str();
+}
+
+/// Returns status of the solver
+std::string MLSolver::status() const
+{
+    myML->MLPrec->ReportTime();
+    return "";
+}
+
+/// Returns timing of the solver
+std::string MLSolver::timing() const
+{
+    return "";
+}
+
+/// Sets integer paramters
 void MLSolver::set(const int & option, const int & value)
 {
-    myML->solver.SetAztecOption(option, value);
+    myML->Solver.SetAztecOption(option, value);
 }
 
+/// Sets integer parameters
 void MLSolver::set(const std::string & name, const int & value)
 {
     myML->MLList.set( name, value );
+    myML->MLPrec->SetParameterList(myML->MLList);
 }
 
+/// Sets bool parameters
+void MLSolver::set(const std::string & name, const bool & value)
+{
+    myML->MLList.set( name, value );
+    myML->MLPrec->SetParameterList(myML->MLList);
+}
+
+/// Sets double parameters
 void MLSolver::set(const std::string & name, const double & value)
 {
     myML->MLList.set( name, value );
+    myML->MLPrec->SetParameterList(myML->MLList);
 }
 
+/// Sets string parameters
 void MLSolver::set(const std::string & name, const std::string & value)
 {
     myML->MLList.set( name, value );
+    myML->MLPrec->SetParameterList(myML->MLList);
 }
 
-//------------------------------------------
+/// Returns number of iterations
+int MLSolver::numIterations() const
+{
+    return 0;
+}
 
-CLASS_TEMPLATE_INST BelosSolver<BiCGStab>;
-CLASS_TEMPLATE_INST BelosSolver<BlockCG>;
-// CLASS_TEMPLATE_INST BelosSolver<BlockGCRODR;
-CLASS_TEMPLATE_INST BelosSolver<BlockGmres>;
-CLASS_TEMPLATE_INST BelosSolver<FixedPoint>;
-CLASS_TEMPLATE_INST BelosSolver<GCRODR>;
-CLASS_TEMPLATE_INST BelosSolver<GmresPoly>;
-CLASS_TEMPLATE_INST BelosSolver<LSQR>;
-CLASS_TEMPLATE_INST BelosSolver<Minres>;
-CLASS_TEMPLATE_INST BelosSolver<PCPG>;
-CLASS_TEMPLATE_INST BelosSolver<PseudoBlockCG>;
-CLASS_TEMPLATE_INST BelosSolver<PseudoBlockGmres>;
-CLASS_TEMPLATE_INST BelosSolver<PseudoBlockStochasticCG>;
-CLASS_TEMPLATE_INST BelosSolver<PseudoBlockTFQMR>;
-CLASS_TEMPLATE_INST BelosSolver<RCG>;
-CLASS_TEMPLATE_INST BelosSolver<TFQMR>;
+/// Returns pointer to internal preconditioner
+Epetra_Operator * MLSolver::getPrecOperator() const
+{
+    if (!myML->MLPrec->IsPreconditionerComputed())
+         myML->MLPrec->ComputePreconditioner();
+    
+    return myML->MLPrec;
+}
+    
+//------------------------------------------
 
 };// namespace solver
 };// namespace trilinos

@@ -1,6 +1,6 @@
 ### CMakeLists.txt ---
-## 
-## Author: Angelos Mantzaflaris 
+##
+## Author: Angelos Mantzaflaris
 ## Copyright (C) 2016 - RICAM-Linz.
 ######################################################################
 
@@ -69,34 +69,44 @@ ExternalProject_Add(Trilinos
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos
           URL_MD5 ${TRILINOS_MD5}
           URL https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
-          CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release   
-                       -DTrilinos_ENABLE_TESTS=OFF  
-                       -DTrilinos_ENABLE_Epetra=ON # parallel linear algebra
-                       -DTrilinos_ENABLE_Amesos=ON # direct solvers
-                       -DTrilinos_ENABLE_AztecOO=ON # direct solvers
-                       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU} # SuperLU solvers
-                       -DTrilinos_ENABLE_Anasazi=ON # eigensolver
-                       -DTrilinos_ENABLE_Belos=${GISMO_BUILD_CPP11}
-                       -DTrilinos_ENABLE_NOX=ON # non-linear solver
-                       -DTrilinos_ENABLE_ML=ON # multigrid
-                       -DTrilinos_ENABLE_Ifpack=ON # Ifpack
-                       -DTrilinos_ENABLE_Pamgen=OFF # parallel mesh generation (buggy cmake)
-                       #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
+          CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release
+                       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                       #-DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                        -DBUILD_SHARED_LIBS:BOOL=ON
+                       -DTrilinos_ENABLE_CXX11=${Trilinos_ENABLE_CXX11}
+                       -DTrilinos_ENABLE_TESTS=OFF
+                       -DTrilinos_ENABLE_Amesos=ON # direct solvers
+                       -DTrilinos_ENABLE_Anasazi=ON # eigensolver
+                       -DTrilinos_ENABLE_AztecOO=ON # direct solvers
+                       -DTrilinos_ENABLE_Belos=${GISMO_BUILD_CPP11}
+                       -DTrilinos_ENABLE_Epetra=ON # parallel linear algebra
+                       -DTrilinos_ENABLE_Ifpack=ON # Ifpack
+                       -DTrilinos_ENABLE_ML=ON # multigrid
+                       -DTrilinos_ENABLE_NOX=ON # non-linear solver
+                       -DTrilinos_ENABLE_Pamgen=OFF # parallel mesh generation (buggy cmake)
+                       -DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF
+                       # Note: below are options that are required for fine-gained
+                       # control of individual packages enabled above
+                       -DNOX_ENABLE_ThyraCore=ON
+                       -DNOX_ENABLE_ThyraEpetraAdapters=ON
+                       -DNOX_ENABLE_ThyraEpetraExtAdapters=ON
+                       # Note: we disable all optional packages by default and
+                       # enable individual packages below
                        -DTPL_ENABLE_MPI=${GISMO_WITH_MPI}
                        -DTPL_MPI_INCLUDE_DIRS=${TPL_MPI_INCLUDE_DIRS}
                        -DTPL_MPI_LIBRARY_DIRS=${TPL_MPI_LIBRARY_DIRS}
                        #-DMPI_BASE_DIR=${TPL_MPI_BASE_DIR}
                        #-DTPL_MPI_LIBRARIES=${MPI_CXX_LIBRARIES} # bug ? 2 elements
                        # Note: this must be ON, otherwise Trilinos compilation fails. Must be OFF on MS Windows
-                       -DTrilinos_ENABLE_CXX11=${Trilinos_ENABLE_CXX11}
                        ## Point to specific paths (! no space after "=")
                        -DTPL_LAPACK_LIBRARIES=${LAPACK_LIBRARIES}
                        -DTPL_BLAS_LIBRARIES=${LAPACK_LIBRARIES}
-                       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                       #-DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
+                       -DTPL_ENABLE_PADISO=${GISMO_WITH_PARDISO} # Pardiso solvers
+                       -DTPL_ENABLE_SuperLU=${GISMO_WITH_SUPERLU} # SuperLU solvers
+                       -DTPL_SuperLU_INCLUDE_DIRS=${SUPERLU_INCLUDES}
+                       #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
                        UPDATE_COMMAND ""
                        #DOWNLOAD_NO_PROGRESS 0
       )
@@ -124,7 +134,7 @@ ExternalProject_Add(Trilinos
 
       #add_library(${LIBNAME} SHARED IMPORTED )
       #set_target_properties(${LIBNAME} PROPERTIES IMPORTED_LOCATION ${install_dir}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX} )
-  
+
 #else()
 endif(NOT TRILINOS_FOUND)
 
@@ -145,7 +155,7 @@ if (NOT TRILINOS_FOUND)
 endif(NOT TRILINOS_FOUND)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    COMPILE_DEFINITIONS gismo_EXPORTS 
+    COMPILE_DEFINITIONS gismo_EXPORTS
     POSITION_INDEPENDENT_CODE ON
     LINKER_LANGUAGE CXX
     CXX_VISIBILITY_PRESET hidden
