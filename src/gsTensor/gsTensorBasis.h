@@ -209,11 +209,11 @@ public:
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> * allBoundary( ) const ;
+    gsMatrix<unsigned> allBoundary( ) const ;
 
     /// Returns the indices of the basis functions that touch the domain
     /// boundary
-    gsMatrix<unsigned> * boundaryOffset(boxSide const & s, unsigned offset) const;
+    gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset) const;
 
     unsigned functionAtCorner(boxCorner const & c) const;
 

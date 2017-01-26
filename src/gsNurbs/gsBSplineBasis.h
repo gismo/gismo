@@ -195,10 +195,10 @@ public:
     bool isActive(const unsigned i, const gsVector<T> & u) const;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> * allBoundary( ) const ;
+    gsMatrix<unsigned> allBoundary( ) const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> * boundaryOffset(boxSide const & s,unsigned offset) const;
+    gsMatrix<unsigned> boundaryOffset(boxSide const & s,unsigned offset) const;
 
     // Look at gsBasis class for a description
     gsConstantBasis<T> * boundaryBasis(boxSide const & s ) const;

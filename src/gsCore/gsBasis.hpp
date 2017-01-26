@@ -302,12 +302,12 @@ void gsBasis<T>::activeCoefs_into(const gsVector<T> & u, const gsMatrix<T> & coe
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<unsigned> *
+gsMatrix<unsigned>
 gsBasis<T>::allBoundary( ) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-gsMatrix<unsigned> *
+gsMatrix<unsigned>
 gsBasis<T>::boundaryOffset(boxSide const & s,unsigned offset) const
 { GISMO_NO_IMPLEMENTATION }
 

@@ -450,11 +450,11 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
 
         // get the global indices of the basis functions which are
         // active on the interface
-        bndThis = safe( this->boundary( bi.first().side() ) );
+        bndThis = this->boundary( bi.first().side() );
 
         // this is only for checking whether, at least, both involved
         // bases have the same number of DOF on the interface.
-        bndOther= safe( _other->boundary( bi.second().side() ));
+        bndOther= _other->boundary( bi.second().side() );
         GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
                       "Input error, sizes do not match: "
                       <<bndThis.rows()<<"!="<<bndOther.rows() );
@@ -794,15 +794,15 @@ void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,co
 {
     needLevel( level );
 
-    const gsMatrix<unsigned> * bound = m_bases[level]->boundary(s);
-    const index_t sz = bound->rows();
+    const gsMatrix<unsigned> bound = m_bases[level]->boundary(s);
+    const index_t sz = bound.rows();
     //gsSortedVector< int > indexes(bound->data(),bound->data()+sz);
     gsSortedVector< int > indexes;
     indexes.resize(sz,-1);
     if(level<=maxLevel())
     {
         for(index_t i = 0;i<sz;++i)
-            indexes[i]=(*bound)(i,0);
+            indexes[i]=(bound)(i,0);
         flatTensorIndexesToHierachicalIndexes(indexes,level);
     }
     actives.resize(indexes.size(),false);
@@ -810,7 +810,6 @@ void gsHTensorBasis<d,T>::activeBoundaryFunctionsOfLevel(const unsigned level,co
     for(unsigned i = 0;i<indexes.size();i++)
         if(indexes[i]!=-1)
             actives[i]=true;
-    delete bound;
 }
 
 template<unsigned d, class T>
@@ -963,7 +962,7 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
 }
 
 template<unsigned d, class T>
-gsMatrix<unsigned> *  gsHTensorBasis<d,T>::allBoundary( ) const
+gsMatrix<unsigned>  gsHTensorBasis<d,T>::allBoundary( ) const
 {
     std::vector<unsigned> temp;
     gsVector<unsigned,d>  ind;
@@ -979,11 +978,11 @@ gsMatrix<unsigned> *  gsHTensorBasis<d,T>::allBoundary( ) const
                     break;
                 }
         }
-    return makeMatrix<unsigned>(temp.begin(),temp.size(),1 ).release();
+    return (*(makeMatrix<unsigned>(temp.begin(),temp.size(),1 ).release()));
 }
 
 template<unsigned d, class T>
-gsMatrix<unsigned> *  gsHTensorBasis<d,T>::
+gsMatrix<unsigned>  gsHTensorBasis<d,T>::
 boundaryOffset(boxSide const & s,unsigned offset) const
 { 
     //get information on the side
@@ -1010,7 +1009,7 @@ boundaryOffset(boxSide const & s,unsigned offset) const
                     );
         }
     }
-    return makeMatrix<unsigned>(temp.begin(),temp.size(),1 ).release();
+    return (*(makeMatrix<unsigned>(temp.begin(),temp.size(),1 ).release()));
 }
 
 /*

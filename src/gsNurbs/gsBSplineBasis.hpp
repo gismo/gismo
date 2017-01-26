@@ -139,31 +139,35 @@ bool gsTensorBSplineBasis<1,T>::isActive(const unsigned i, const gsVector<T>& u)
 }
 
 template <class T> 
-gsMatrix<unsigned> * gsTensorBSplineBasis<1,T>::allBoundary() const
+gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::allBoundary() const
 {
     if( m_periodic ) // Periodic basis does not have such things as boundaries.
     {
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
-        return NULL;
+        // return NULL;
+        gsMatrix<unsigned> matrix;
+        return matrix;
     }
     else
     {
         gsMatrix<unsigned> * res = new gsMatrix<unsigned>(2,1);
         (*res)(0,0)= 0;
         (*res)(1,0)= m_knots.size()-m_p-2;
-        return res;
+        return *res;
     }
 }
 
 
 template <class T> 
-gsMatrix<unsigned> * gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
+gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
                                                                unsigned offset ) const
 {
     if( m_periodic )
     {
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
-        return NULL;
+        // return NULL;
+        gsMatrix<unsigned> matrix;
+        return matrix;
     }
     else
     {
@@ -180,7 +184,7 @@ gsMatrix<unsigned> * gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s
         default:
             GISMO_ERROR("gsBSplineBasis: valid sides is left(west) and right(east).");
         };
-        return res;
+        return *res;
     }
 }
 

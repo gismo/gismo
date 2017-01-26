@@ -23,18 +23,16 @@ namespace gismo
 {
 
 template<class T>
-gsGeometry<T> * 
+gsGeometry<T> *
 gsGeometry<T>::boundary(boxSide const& s) const
 {
-    gsMatrix<unsigned> *ind = this->basis().boundary(s); // get indices of the boundary DOF
-    gsMatrix<T> coeffs (ind->size(), geoDim()); // create matrix for boundary coefficients
+    gsMatrix<unsigned> ind = this->basis().boundary(s); // get indices of the boundary DOF
+    gsMatrix<T> coeffs (ind.size(), geoDim()); // create matrix for boundary coefficients
     
-    for (index_t i=0; i != ind->size(); i++ )
+    for (index_t i=0; i != ind.size(); i++ )
     {
-        coeffs.row(i) = m_coefs.row( (*ind)(i,0) );
+        coeffs.row(i) = m_coefs.row( (ind)(i,0) );
     }
-
-    delete ind;
 
     gsBasis<T> *Bs = this->basis().boundaryBasis(s);  // Basis for boundary side s
     gsGeometry *bgeo = Bs->makeGeometry( give(coeffs) );

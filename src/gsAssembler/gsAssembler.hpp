@@ -147,7 +147,7 @@ void gsAssembler<T>::penalizeDirichletDofs(int unk)
     {
         const gsBasis<T> & basis = mbasis[it->patch()];
 
-        gsMatrix<unsigned> bnd = safe( basis.boundary(it->side() ) );
+        gsMatrix<unsigned> bnd = basis.boundary(it->side() );
         for (index_t k=0; k!= bnd.size(); ++k)
         {
             // free dof position
@@ -199,7 +199,7 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, int p
         {
             // Get indices in the patch on this boundary
             const gsMatrix<unsigned> boundary =
-                    safe(mbasis[k].boundary(it->side()));
+                    mbasis[k].boundary(it->side());
             
             //gsInfo <<"Setting the value for: "<< boundary.transpose() <<"\n";
             
@@ -323,7 +323,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         const gsBasis<T> & basis = mbasis[k];
 
         // Get dofs on this boundary
-        const gsMatrix<unsigned> boundary = safe(basis.boundary(it->side()));
+        const gsMatrix<unsigned> boundary = basis.boundary(it->side());
 
         // If the condition is homogeneous then fill with zeros
         if ( it->isHomogeneous() )
@@ -354,7 +354,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             }
             else
             {
-                rr.push_back( basis.component(i).anchors()->transpose() );
+                rr.push_back( basis.component(i).anchors().transpose() );
             }
         }
 

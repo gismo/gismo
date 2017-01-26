@@ -422,11 +422,11 @@ public:
      * In general, evaluating a function at the anchor points should provide
      * enough information to interpolate that function using this basis.
      */
-    uMatrixPtr anchors() const
+    gsMatrix<T> anchors() const
     {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        this->anchors_into(*result);
-        return uMatrixPtr(result);
+        gsMatrix<T> result;
+        this->anchors_into(result);
+        return result;
     }
 
     /**
@@ -487,16 +487,16 @@ public:
     /// @}
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
-    virtual gsMatrix<unsigned> * allBoundary( ) const;
+    virtual gsMatrix<unsigned> allBoundary( ) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
     /// If an offset is provided (the default is zero), it will return the indizes of the basis
     /// functions having this offset to the provided boxSide. Note that the offset cannot be
     /// bigger than the size of the basis in the direction orthogonal to boxSide.
-    virtual gsMatrix<unsigned> * boundaryOffset(boxSide const & s, unsigned offset) const;
+    virtual gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary as single-column-matrix.
-    gsMatrix<unsigned> * boundary(boxSide const & s) const
+    gsMatrix<unsigned> boundary(boxSide const & s) const
     { return this->boundaryOffset(s,0); }
 
     virtual unsigned functionAtCorner(boxCorner const & c) const;

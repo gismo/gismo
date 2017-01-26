@@ -740,7 +740,7 @@ gsNurbsCreator<T>::BSplineSegment(T const u0, T const u1)
 {
     gsKnotVector<T> kv(u0, u1, 0, 2);
     gsBSplineBasis<T> bsb(kv);    
-    return BSplinePtr(new gsBSpline<T>(bsb, bsb.anchors()->transpose()) );
+    return BSplinePtr(new gsBSpline<T>(bsb, bsb.anchors().transpose()) );
 }
 
 /// L-Shaped domain represented as a tensor B-spline of degree 1

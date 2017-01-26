@@ -119,13 +119,12 @@ public:
     BoundaryBasisType * boundaryBasis(boxSide const & s ) const   
     { 
         typename Src_t::BoundaryBasisType * bb = m_src->boundaryBasis(s);
-        gsMatrix<unsigned> * ind = m_src->boundary(s);
+        gsMatrix<unsigned> ind = m_src->boundary(s);
         
-        gsMatrix<T> ww( ind->size(),1);
-        for ( index_t i=0; i<ind->size(); ++i)
-            ww(i,0) = m_weights( (*ind)(i,0), 0);
+        gsMatrix<T> ww( ind.size(),1);
+        for ( index_t i=0; i<ind.size(); ++i)
+            ww(i,0) = m_weights( (ind)(i,0), 0);
         
-        delete ind;
         return new BoundaryBasisType(bb, give(ww));// note: constructor consumes the pointer
     }
 

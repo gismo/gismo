@@ -280,7 +280,7 @@ typename gsMatrix<unsigned>::uPtr gsTensorBasis<d,T>::coefSlice(int dir, int k) 
 
 
 template<unsigned d, class T>
-gsMatrix<unsigned> * gsTensorBasis<d,T>::allBoundary() const
+gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
 {
     gsMatrix<unsigned> bd;
     std::set<unsigned> bdofs;
@@ -296,7 +296,7 @@ gsMatrix<unsigned> * gsTensorBasis<d,T>::allBoundary() const
             bdofs.insert( bd(i) );
     }
 
-    return makeMatrix<unsigned>(bdofs.begin(), bdofs.size(), 1 ).release();
+    return (*(makeMatrix<unsigned>(bdofs.begin(), bdofs.size(), 1 ).release()));
 
     /* // returns boundary with repetitions
        unsigned sz(0), i(0), r(0);
@@ -325,13 +325,13 @@ gsMatrix<unsigned> * gsTensorBasis<d,T>::allBoundary() const
 
 
 template<unsigned d, class T>
-gsMatrix<unsigned> * gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,unsigned offset) const
+gsMatrix<unsigned> gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,unsigned offset) const
 {
     //get m_bases index and start or end case
     int k = s.direction();
     int r = s.parameter();
     GISMO_ASSERT(static_cast<int>(offset) < size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
-    return this->coefSlice(k, (r ? size(k) - 1 -offset : offset) ).release();
+    return (*(this->coefSlice(k, (r ? size(k) - 1 -offset : offset) ).release()));
 }
 
 template<unsigned d, class T>
@@ -967,8 +967,8 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
     if ( const Self_t * _other = dynamic_cast<const Self_t*>(&other) )
     {
         // Grab the indices to be matched
-        bndThis = safe(  this->boundary( bi.first() .side() ));
-        bndOther= safe(_other->boundary( bi.second().side() ));
+        bndThis = this->boundary( bi.first() .side() );
+        bndOther= _other->boundary( bi.second().side() );
         GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
                       "Input error, sizes do not match: "
                       <<bndThis.rows()<<"!="<<bndOther.rows() );

@@ -141,9 +141,9 @@ public:
     
     virtual const gsBasis<T> & component(unsigned i) const { return m_src->component(i); } 
 
-    gsMatrix<unsigned> * allBoundary( ) const {return m_src->allBoundary(); }
+    gsMatrix<unsigned> allBoundary( ) const {return m_src->allBoundary(); }
     
-    gsMatrix<unsigned> * boundaryOffset(boxSide const & s, unsigned offset ) const
+    gsMatrix<unsigned> boundaryOffset(boxSide const & s, unsigned offset ) const
     { return m_src->boundaryOffset(s,offset); }
     
     // Look at gsBasis class for a description
@@ -211,13 +211,12 @@ public:
       gsBasis<T> * boundaryBasis(boxSide const & s ) const   
       { 
       typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
-      gsMatrix<unsigned> * ind = m_src->boundary(s);
+      gsMatrix<unsigned> ind = m_src->boundary(s);
       
-      gsMatrix<T> ww( ind->size(),1);
-      for ( index_t i=0; i<ind->size(); ++i)
+      gsMatrix<T> ww( ind.size(),1);
+      for ( index_t i=0; i<ind.size(); ++i)
       ww(i,0) = m_weights( (*ind)(i,0), 0);
         
-      delete ind;
       return new BoundaryBasisType(*safe(bb), give(ww));
       return 0;
       }
