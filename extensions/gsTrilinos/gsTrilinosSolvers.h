@@ -303,7 +303,7 @@ protected:
 
 /*    --- Amesos solver ---    */
 
-class AmesosSolverPrivate;
+struct AmesosSolverPrivate;
 
 /** @brief Amesos solver class
 
