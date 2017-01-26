@@ -33,8 +33,8 @@ namespace solver
 {
 
 /// Forward declaration
-struct AmesosSolver;
-struct AztecSolver;
+class AmesosSolver;
+class AztecSolver;
 struct BelosSolver;
 struct MLSolver;
 
@@ -268,7 +268,10 @@ class GISMO_EXPORT AbstractDirectSolver : public AbstractSolver
 {
  public:
 
-    // default constructor inherited by default
+    AbstractDirectSolver() { }
+    explicit AbstractDirectSolver(const SparseMatrix & A)
+        : AbstractSolver(A) { }
+
 };
 
 /** @brief Abstract iterative solver base class
@@ -300,7 +303,7 @@ protected:
 
 /*    --- Amesos solver ---    */
 
-struct AmesosSolverPrivate;
+class AmesosSolverPrivate;
 
 /** @brief Amesos solver class
 

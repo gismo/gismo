@@ -185,7 +185,7 @@ struct AmesosSolverPrivate
     int Status;
     
     // Constructor
-    AmesosSolverPrivate(int solver)
+    AmesosSolverPrivate(Amesos_BaseSolver * solver)
     : solver(solver)
     { }
 
@@ -968,6 +968,7 @@ int BelosSolver::numIterations() const
 Epetra_Operator * BelosSolver::getPrecOperator() const
 {
     //TODO   return myBelos->Problem.getOperator().get();
+    GISMO_NO_IMPLEMENTATION
 }
 
 /*    --- Multi Level (ML) ---    */
