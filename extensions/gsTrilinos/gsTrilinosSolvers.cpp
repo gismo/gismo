@@ -185,7 +185,7 @@ struct AmesosSolverPrivate
     int Status;
     
     // Constructor
-    AmesosSolverPrivate(Amesos_BaseSolver * solver)
+    AmesosSolverPrivate(int solver)
     : solver(solver)
     { }
 
@@ -250,7 +250,7 @@ struct AmesosSolverPrivate
 private:
 
     // Solver type
-    int solver;
+    const int solver;
 };
 
 /// Constructor (sparse matrix)

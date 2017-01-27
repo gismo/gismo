@@ -102,10 +102,15 @@ struct AztecSolvers
         CGCondNum                = AZ_cg_condnum,    ///< CG solver with cond. num. estimation
         Gmres                    = AZ_gmres,         ///< GMRES solver
         GmresCondNum             = AZ_gmres_condnum, ///< GMRES solver with cond.num. estimation
+        GmresR                   = AZ_GMRESR,        ///< recursive GMRES
         CGS                      = AZ_cgs,           ///< CG squared solver
         TFQMR                    = AZ_tfqmr,         ///< TFQMR solver
         BiCGStab                 = AZ_bicgstab,      ///< BiCGStab solver
-        LU                       = AZ_lu             ///< sparse direct LU solver
+        LU                       = AZ_lu,            ///< Sparse direct LU solver
+        SLU                      = AZ_slu,           ///< Super LU direct solver
+        SymmLQ                   = AZ_symmlq,        ///< Indefinite symmetric like SymmLQ
+        FixedPoint               = AZ_fixed_pt,      ///< Fixed-point iteration
+        Analyze                  = AZ_analyze        ///< Fixed-point iteration
     };
 };
 
@@ -118,7 +123,17 @@ struct AztecPreconds
         Neumann                  = AZ_Neumann,       ///< Neumann series polynomial
         LS                       = AZ_ls,            ///< Least-squares polynomial
         GS                       = AZ_sym_GS,        ///< Symmetric Gauss-Seidel
-        DD                       = AZ_dom_decomp     ///< Non-overlapping domain decomposition
+        DD                       = AZ_dom_decomp,    ///< Non-overlapping domain decomposition
+        ILU                      = AZ_ilu,           ///< DD with ILU in subdomains
+        BILU                     = AZ_bilu,          ///< DD with block-ILU in subdomains
+        ICC                      = AZ_icc,           ///< DD with incomplete Choleski in subdomains
+        ILUT                     = AZ_ilut,          ///< DD with ILUT in subdomains
+        RILU                     = AZ_rilu,          ///< DD with RILU in subdomains
+        Recursive                = AZ_recursive,     ///< Recursive call to iteration
+        Smoother                 = AZ_smoother,      ///< Recursive call to iteration
+        Multilevel               = AZ_multilevel,    ///< DD with coarse grid
+        UserDefined              = AZ_user_precond,  ///< User defined preconditioner
+        IfpackBILU               = AZ_bilu_ifp       ///< DD with BILU (Ifpack version)
     };
 };
 
@@ -173,7 +188,9 @@ struct BelosSolvers
     enum {
         BiCGStab                =  1, ///< BiCGStab solver
         BlockCG                 =  2, ///< Block GC solver
-        /// BlockGCRODR             =  3, ///< Block Recycling GMRES solver
+#ifdef Belos_ENABLE_Experimental
+        BlockGCRODR             =  3, ///< Block Recycling GMRES solver
+#endif
         BlockGmres              =  4, ///< Block GMRES solver
         FixedPoint              =  5, ///< Fixed-point solver
         GCRODR                  =  6, ///< Recycling GMRES solver
@@ -196,7 +213,7 @@ struct MLSolvers
         SA                      =  1, ///< classical smoothed aggregation preconditioners
         NSSA                    =  2, ///< Petrov-Galerkin preconditioner for nonsymmetric systems
         DD                      =  3, ///< 2-level domain decomposition preconditioners
-        ///< based on aggregation
+                                      ///< based on aggregation
         DDLU                    =  4, ///< DD with exact LU decompositions on each subdomain
         DDML                    =  5  ///< 3-level domain decomposition preconditioners,
                                       ///< with coarser spaces defined by aggregation;
