@@ -71,18 +71,6 @@ public:
                   const std::vector<patchSide>& boundary,
                   const std::vector<boundaryInterface>& interfaces );
     
-    
-    static gsMultiPatch::uPtr make(PatchContainer & patches)
-    { return memory::make_unique(new gsMultiPatch(patches)); }
-
-    static gsMultiPatch::uPtr make(const gsGeometry<T> & geo)
-    { return memory::make_unique(new gsMultiPatch(geo)); }
-    
-    static gsMultiPatch::uPtr make(PatchContainer & patches,
-                  const std::vector<patchSide>& boundary,
-                  const std::vector<boundaryInterface>& interfaces)
-    { return memory::make_unique(new gsMultiPatch(patches,boundary,interfaces)); }
-
     /// Destructor
     ~gsMultiPatch();
 
