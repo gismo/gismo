@@ -108,7 +108,6 @@ gsTensorBasis<d,T>& gsTensorBasis<d,T>::operator=( const gsTensorBasis & o)
 {
     if ( this == &o )
         return *this;
-
     gsBasis<T>::operator=(o);
 
     for (unsigned i = 0; i < d; ++i)
@@ -296,7 +295,7 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
             bdofs.insert( bd(i) );
     }
 
-    return (*(makeMatrix<unsigned>(bdofs.begin(), bdofs.size(), 1 ).release()));
+    return (*(makeMatrix<unsigned>(bdofs.begin(), bdofs.size(), 1 )));
 
     /* // returns boundary with repetitions
        unsigned sz(0), i(0), r(0);
@@ -331,7 +330,7 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,unsigned 
     int k = s.direction();
     int r = s.parameter();
     GISMO_ASSERT(static_cast<int>(offset) < size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
-    return (*(this->coefSlice(k, (r ? size(k) - 1 -offset : offset) ).release()));
+    return (*(this->coefSlice(k, (r ? size(k) - 1 -offset : offset) )));
 }
 
 template<unsigned d, class T>
