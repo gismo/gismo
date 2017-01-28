@@ -30,19 +30,66 @@ namespace gismo
 namespace util
 {
 
+#if __cplusplus > 199711L
+using std::to_string;
+using std::iota;
+using std::stod;
+using std::stoi;
+#else
 /// \brief Converts value to string
 /// \ingroup Utils
 template<typename C>
 std::string to_string(const C & value)
 {
-#if __cplusplus > 199711L
-    return std::to_string(value);
-#else
     std::ostringstream convert;
     convert << value;
     return convert.str();
-#endif
 }
+
+// Fills the range [first, last) with sequentially increasing values,
+// starting with value and rep//etitively evaluating ++value.             
+template<class ForwardIterator, class T>
+void iota(ForwardIterator first, ForwardIterator last, T value)
+{
+    while(first != last) {
+        *first++ = value;
+        ++value;
+    }
+}
+
+inline int stoi(const std::string& str)
+{
+    std::istringstream ss(str);
+    int i;
+    if (!(ss >> std::noskipws >> i))
+        //Extracting an int failed
+        return 0;
+
+    char c;
+    if (ss >> c)
+        //There was something after the number
+        return 0;
+    
+    return i;
+}
+
+inline double stod(const std::string& str)
+{
+    std::istringstream ss(str);
+    double i;
+    if (!(ss >> std::noskipws >> i))
+        //Extracting double failed
+        return 0;
+
+    char c;
+    if (ss >> c)
+        //There was something after the number
+        return 0;
+
+    return i;
+}
+
+#endif
 
 /// \brief Replaces appeareances of \a oldStr with \a newStr inside the
 /// string \a str

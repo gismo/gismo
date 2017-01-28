@@ -491,7 +491,7 @@ void gsCmdLine::printVersion()
 #elif defined(__SUNPRO_CC)
     gsInfo << "Solaris Studio "<<__SUNPRO_CC<<" ("<<__cplusplus <<", ";
 #elif defined(__GNUG__)
-    gsInfo << "GNU GCC "<<__GNUC__<<"."<<__GNUC_MINOR__<<" ("<<__cplusplus <<", ";
+    gsInfo << "GNU GCC "<<__GNUC__<<"."<<__GNUC_MINOR__<<"."<<__GNUC_PATCHLEVEL__<<" ("<<__cplusplus <<", ";
 #else
     gsInfo << "C++ ("<<__cplusplus <<", ";
 #endif
@@ -517,9 +517,9 @@ void gsCmdLine::printVersion()
 #  elif defined(MSIPL_COMPILE_H)
     gsInfo << "Modena C++ STL)\n";
 #  elif (defined(_YVALS) && !defined(__IBMCPP__)) || defined(_CPPLIB_VER)
-    gsInfo << "Dinkumware STL)\n";
+    gsInfo << "Dinkumware STL "<< _CPPLIB_VER<<")\n";
 #  elif defined(__STD_RWCOMPILER_H__) || defined(_RWSTD_VER)
-    gsInfo << "Rogue Wave lib)\n";
+    gsInfo << "Rogue Wave lib "<<_RWSTD_VER<<")\n";
 #else
     gsInfo << "Unknown-STD)\n";
 #endif

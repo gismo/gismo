@@ -170,7 +170,8 @@ void gsBoehmRefine( KnotVectorType & knots,
         
     typedef typename std::iterator_traits<ValIt>::value_type T;
 
-    GISMO_ASSERT( (*valBegin >= knots[p]), "Value is before first knot");
+    GISMO_ASSERT( (*valBegin >= knots[p]), "Value is before first knot: "
+                  << *valBegin <<" < " <<knots[p] );
     // && (val[val.size()-1]<=knots[knots.size()-p-1]));
     //assert( knots[knots.size()-p-1]<=val[val.size()-1] );
     const int np= coefs.rows();
