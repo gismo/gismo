@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
         if ( plot)
         {
             // Plot the snapshot to paraview
-            fileName = baseName + util::to_string<index_t>(i);
+            fileName = baseName + util::to_string(i);
             gsWriteParaview<>(sol, fileName, 1000, true);
             collection.addTimestep(fileName,i,"0.vts");
         }
