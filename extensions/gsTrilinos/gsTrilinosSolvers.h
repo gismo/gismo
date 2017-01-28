@@ -35,8 +35,8 @@ namespace solver
 /// Forward declaration
 class AmesosSolver;
 class AztecSolver;
-struct BelosSolver;
-struct MLSolver;
+class BelosSolver;
+class MLSolver;
 
 /// Amesos sparse direct solvers
 struct AmesosSolvers
