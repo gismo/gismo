@@ -14,6 +14,7 @@
 #pragma once
 
 #include <sstream>
+#include <numeric>
 
 #include <gsCore/gsExport.h>
 
