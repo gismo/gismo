@@ -215,8 +215,11 @@ struct MLSolvers
         DD                      =  3, ///< 2-level domain decomposition preconditioners
                                       ///< based on aggregation
         DDLU                    =  4, ///< DD with exact LU decompositions on each subdomain
-        DDML                    =  5  ///< 3-level domain decomposition preconditioners,
-                                      ///< with coarser spaces defined by aggregation;
+        DDML                    =  5, ///< 3-level domain decomposition preconditioners,
+                                      ///< with coarser spaces defined by aggregation
+        DDMLLU                  =  6  ///< 3-level domain decomposition preconditioners,
+                                      ///< with coarser spaces defined by aggregation
+                                      ///< and exact LU decomposition on each subdomain
     };
 };
 

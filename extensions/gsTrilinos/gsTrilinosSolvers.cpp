@@ -534,8 +534,12 @@ void AztecSolver::solveProblem()
     // Grab right-hand side
     myAztec->Solver.SetRHS(my->Problem.GetRHS());
 
+    // Get configuration from internal arrays
+    const int *options = myAztec->Solver.GetAllAztecOptions();
+    const double *params = myAztec->Solver.GetAllAztecParams();
+        
     // Solve linear problem
-    myAztec->Solver.Iterate(maxIter, tolerance);
+    myAztec->Solver.Iterate(options[AZ_max_iter], params[AZ_tol]);
 }
 
 /// Returns valid parameters
@@ -1002,10 +1006,13 @@ MLSolver::MLSolver( const SparseMatrix &A,
         ML_Epetra::SetDefaults("DD", myML->MLList);
         break;
     case MLSolvers::DDLU :
-        ML_Epetra::SetDefaults("DDLU", myML->MLList);
+        ML_Epetra::SetDefaults("DD-LU", myML->MLList);
         break;
     case MLSolvers::DDML :
-        ML_Epetra::SetDefaults("DDML", myML->MLList);
+        ML_Epetra::SetDefaults("DD-ML", myML->MLList);
+        break;
+    case MLSolvers::DDMLLU :
+        ML_Epetra::SetDefaults("DD-ML-LU", myML->MLList);
         break;
     default :
         GISMO_ERROR("Error : Invalid ML solver");
@@ -1032,7 +1039,13 @@ void MLSolver::solveProblem()
         myML->MLPrec->ComputePreconditioner();
     
     myML->Solver.SetPrecOperator(myML->MLPrec);
-    myML->Solver.Iterate(maxIter, tolerance);
+
+    // Get configuration from internal arrays
+    const int *options = myML->Solver.GetAllAztecOptions();
+    const double *params = myML->Solver.GetAllAztecParams();
+        
+    // Solve linear problem
+    myML->Solver.Iterate(options[AZ_max_iter], params[AZ_tol]);
 }
 
 /// Returns valid parameters
