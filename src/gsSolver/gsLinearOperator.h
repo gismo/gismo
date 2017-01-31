@@ -30,7 +30,7 @@ class gsLinearOperator
 public:
 
     /// Shared pointer for gsLinearOperator
-    typedef typename memory::shared_ptr<gsLinearOperator> Ptr;
+    typedef memory::shared_ptr<gsLinearOperator> Ptr;
 
     /// Unique pointer for gsLinearOperator   
     typedef memory::unique_ptr<gsLinearOperator> uPtr;
@@ -93,7 +93,7 @@ class gsSteppableOperator : public gsLinearOperator<T>
 public:
 
     /// Shared pointer for gsLinearOperator
-    typedef typename memory::shared_ptr<gsSteppableOperator> Ptr;
+    typedef memory::shared_ptr<gsSteppableOperator> Ptr;
 
     /// Unique pointer for gsLinearOperator
     typedef memory::unique_ptr<gsSteppableOperator> uPtr;
@@ -119,7 +119,7 @@ public:
             step(input,x);
     }
     
-    /// Set the number of sweeps to be applied in the member function \a apply
+    /// Set the number of sweeps to be applied in the member function apply
     void setNumOfSweeps( index_t n )
     {
         GISMO_ASSERT ( n > 0, "Number of sweeps needs to be positive." );
@@ -127,7 +127,7 @@ public:
     }
     
     /// Get the number of sweeps to be applied in the member function \a apply
-    index_t getNumOfSweeps()
+    index_t numOfSweeps()
     {
         return m_num_of_sweeps;
     }
@@ -136,7 +136,7 @@ public:
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
-        opt.addInt( "NumOfSweeps", "Number of sweeps to be applied in the member function \a apply", 1 );
+        opt.addInt( "NumOfSweeps", "Number of sweeps to be applied in the member function apply", 1 );
         return opt;
     }
 
@@ -161,7 +161,7 @@ class gsScaledOp : public gsLinearOperator<T>
 {
 public:
     /// Shared pointer for gsScaledOp
-    typedef typename memory::shared_ptr<gsScaledOp> Ptr;
+    typedef memory::shared_ptr<gsScaledOp> Ptr;
 
     /// Unique pointer for gsScaledOp
     typedef memory::unique_ptr<gsScaledOp> uPtr;
@@ -203,7 +203,7 @@ class gsIdentityOp : public gsLinearOperator<T>
 public:
 
     /// Shared pointer for gsIdentityOp
-    typedef typename memory::shared_ptr<gsIdentityOp> Ptr;
+    typedef memory::shared_ptr<gsIdentityOp> Ptr;
 
     /// Unique pointer for gsIdentityOp   
     typedef memory::unique_ptr<gsIdentityOp> uPtr;
