@@ -34,6 +34,19 @@
 namespace gismo {
 
 /**
+   @brief Supported languages
+*/
+struct Lang
+{
+    enum {
+        C       = 1, ///< C
+        CXX     = 2, ///< C++
+        CU      = 3, ///< Cuda
+        FORTRAN = 4  ///< Fortran
+    };
+};
+
+/**
    @brief Struct definig a compiler configuration
    
    This class defines a compiler configuration that is used by the
@@ -60,16 +73,20 @@ struct gsJITCompilerConfig
     }
 
     /// Constructor (passing arguments as strings, autodetect temp directory)
-    gsJITCompilerConfig(const std::string& _cmd, const std::string& _flags,
-                        const std::string& _lang, const std::string& _out)
-    : cmd(_cmd), flags(_flags), lang(_lang), out(_out), temp(detectTemp())
+    gsJITCompilerConfig(const std::string& cmd,
+                        const std::string& flags,
+                        const std::string& lang,
+                        const std::string& out)
+    : cmd(cmd), flags(flags), lang(lang), out(out), temp(detectTemp())
     {}
     
     /// Constructor (passing arguments as strings)
-    gsJITCompilerConfig(const std::string& _cmd, const std::string& _flags,
-                        const std::string& _lang, const std::string& _out,
-                        const std::string& _temp)
-    : cmd(_cmd), flags(_flags), lang(_lang), out(_out), temp(_temp)
+    gsJITCompilerConfig(const std::string& cmd,
+                        const std::string& flags,
+                        const std::string& lang,
+                        const std::string& out,
+                        const std::string& temp)
+    : cmd(cmd), flags(flags), lang(lang), out(out), temp(temp)
     {}
 
     /// Constructor (copy)
@@ -124,24 +141,24 @@ struct gsJITCompilerConfig
     virtual const std::string& getTemp() const { return temp; }
 
     /// Set compiler command
-    void setCmd(const std::string& _cmd)
-    { this->cmd = _cmd; }
+    void setCmd(const std::string& cmd)
+    { this->cmd = cmd; }
 
     /// Set compiler flags
-    void setFlags(const std::string& _flags)
-    { this->flags = _flags; }
+    void setFlags(const std::string& flags)
+    { this->flags = flags; }
 
     /// Set compiler language
-    void setLang(const std::string& _lang)
-    { this->lang = _lang; }
+    void setLang(const std::string& lang)
+    { this->lang = lang; }
 
     /// Set compiler output flag
-    void setOut(const std::string& _out)
-    { this->out = _out; }
+    void setOut(const std::string& out)
+    { this->out = out; }
     
     /// Set compiler temporal directory
-    void setTemp(const std::string& _temp)
-    { this->temp = _temp; }
+    void setTemp(const std::string& temp)
+    { this->temp = temp; }
 
     /// Prints the object as a string
     std::ostream& print(std::ostream &os) const
@@ -157,67 +174,215 @@ struct gsJITCompilerConfig
     }
 
     /// Initialize to default Clang compiler
-    static gsJITCompilerConfig clang()
+    static gsJITCompilerConfig clang(const int lang = Lang::CXX)
     {
-        return gsJITCompilerConfig("clang++",
-                                   "-O3 -shared",
-                                   "cxx", "-o ");
+        switch(lang)
+        {
+        case (Lang::C) :
+            return gsJITCompilerConfig("clang",
+                                       "-O3 -shared",
+                                       "c",
+                                       "-o ");
+            break;
+        case (Lang::CXX) :
+            return gsJITCompilerConfig("clang++",
+                                       "-O3 -shared",
+                                       "cxx",
+                                       "-o ");
+            break;
+        case (Lang::FORTRAN) :
+            GISMO_ERROR("Error : Clang does not provide any Fortran compiler.")
+            break;
+        default :
+            GISMO_ERROR("Error : Invalid compiler language.");
+        }
     }
-
+    
     /// Initialize to default GCC compiler
-    static gsJITCompilerConfig gcc()
+    static gsJITCompilerConfig gcc(const int lang = Lang::CXX)
     {
-        return gsJITCompilerConfig(
-                                   "g++",
-                                   "-fPIC -O3 -shared",
-                                   "cxx", "-o ");
+        switch(lang)
+        {
+        case (Lang::C) :
+            return gsJITCompilerConfig("gcc",
+                                       "-fPIC -O3 -shared",
+                                       "c",
+                                       "-o ");
+            break;
+        case (Lang::CXX) :
+            return gsJITCompilerConfig("g++",
+                                       "-fPIC -O3 -shared",
+                                       "cxx",
+                                       "-o ");
+            break;
+        case (Lang::FORTRAN) :
+            return gsJITCompilerConfig("gfortran",
+                                       "-fPIC -O3 -shared",
+                                       "F90",
+                                       "-o ");
+            break;
+        default :
+            GISMO_ERROR("Error : Invalid compiler language.");
+        }
     }
     
     /// Initialize to default Intel compiler
-    static gsJITCompilerConfig intel()
+    static gsJITCompilerConfig intel(const int lang = Lang::CXX)
     {
-        return gsJITCompilerConfig("icpc",
-                                   "-O3 -shared",
-                                   "cxx", "-o ");
+        switch(lang)
+        {
+        case (Lang::C) :
+            return gsJITCompilerConfig("icc",
+                                       "-O3 -shared",
+                                       "c",
+                                       "-o ");
+            break;
+        case (Lang::CXX) :
+            return gsJITCompilerConfig("icpc",
+                                       "-O3 -shared",
+                                       "cxx",
+                                       "-o ");
+            break;
+        case (Lang::FORTRAN) :
+            return gsJITCompilerConfig("ifort",
+                                       "-O3 -shared",
+                                       "F90",
+                                       "-o ");
+            break;
+        default :
+            GISMO_ERROR("Error : Invalid compiler language.");
+        }
     }
 
     /// Initialize to default Microsoft Visual Studio compiler
-    static gsJITCompilerConfig msvc()
+    static gsJITCompilerConfig msvc(const int lang = Lang::CXX)
     {
-        return gsJITCompilerConfig("cl.exe",
-                                   "/EHsc /Ox /LD",
-                                   "cxx", "/Fe");//no space
+        switch(lang)
+        {
+        case (Lang::C) :
+            return gsJITCompilerConfig("cl.exe",
+                                       "/EHsc /Ox /LD",
+                                       "c",
+                                       "/Fe");//no space
+            break;
+        case (Lang::CXX) :
+            return gsJITCompilerConfig("cl.exe",
+                                       "/EHsc /Ox /LD",
+                                       "cxx",
+                                       "/Fe");//no space
+            break;
+        default :
+            GISMO_ERROR("Error : Invalid compiler language.");
+        }   
     }
 
     /// Initialize to default NVIDIA nvcc compiler
-    static gsJITCompilerConfig nvcc()
+    static gsJITCompilerConfig nvcc(const int lang = Lang::CU)
     {
-        return gsJITCompilerConfig("nvcc",
-                                   "-O3 -shared",
-                                   "cu", "-o ");
+        switch(lang)
+        {
+        case (Lang::CU) :
+            return gsJITCompilerConfig("nvcc",
+                                       "-O3 -shared",
+                                       "cu",
+                                       "-o ");
+            break;
+        default :
+            GISMO_ERROR("Error : Invalid compiler language.");
+        }
+    }
+
+    /// Initialize to default PGI compiler
+    static gsJITCompilerConfig pgi(const int lang = Lang::CXX)
+    {
+        switch(lang)
+        {
+        case (Lang::C) :
+            return gsJITCompilerConfig("pgcc",
+                                       "-O3 -shared",
+                                       "c",
+                                       "-o ");
+            break;
+        case (Lang::CXX) :
+            return gsJITCompilerConfig("pgc++",
+                                       "-O3 -shared",
+                                       "cxx",
+                                       "-o ");
+            break;
+        case (Lang::FORTRAN) :
+            return gsJITCompilerConfig("pgf90",
+                                       "-O3 -shared",
+                                       "F90",
+                                       "-o ");
+            break;
+        default :
+            GISMO_ERROR("Error : Invalid compiler language.");
+        }
     }
 
     /// Initialize to default Oracle/SunStudio compiler
-    static gsJITCompilerConfig sun()
+    static gsJITCompilerConfig sunstudio(const int lang = Lang::CXX)
     {
-        return gsJITCompilerConfig("sunstudio",
-                                   "-O3 -shared",
-                                   "cxx", "-o ");
+        switch(lang)
+        {
+        case (Lang::C) :
+            return gsJITCompilerConfig("sunstudio",
+                                       "-O3 -shared",
+                                       "c",
+                                       "-o ");
+            break;
+        case (Lang::CXX) :
+            return gsJITCompilerConfig("sunstudio",
+                                       "-O3 -shared",
+                                       "cxx",
+                                       "-o ");
+            break;
+        case (Lang::FORTRAN) :
+            return gsJITCompilerConfig("sunstudio",
+                                       "-O3 -shared",
+                                       "F90",
+                                       "-o ");
+            break;
+        default :
+            GISMO_ERROR("Error : Invalid compiler language.");
+        }
     }
     
     /// Try to initialize compiler automatically based on the context
     static gsJITCompilerConfig guess()
     {
-#       if defined(_INTEL_COMPILER)
-        return intel();
+#       if defined(__INTEL_COMPILER)
+#       if defined(__ICC)
+        return intel(Lang::CXX);
+#       else
+        return intel(Lang::FORTRAN);
+#       endif
+        
 #       elif  defined(_MSC_VER)
         return msvc();
+        
 #       elif defined(__clang__)
         return clang();
-#       elif defined(__GNUC__) || defined(__GNUG__)
-        return gcc();
-#       elif  defined(__SUNPRO_CC)
-        return sun()
+        
+#       elif defined(__GNUC__)
+#       if defined(__cplusplus)
+        return gcc(Lang::CXX);
+#       elif defined(__GFORTRAN__)
+        return gcc(Lang::FORTRAN);
+#       else
+        return gcc(Lang::C);
+#       endif
+
+#       elif defined(__PGIC__)
+        return pgi();
+        
+#       elif defined(__SUNPRO_C)
+        return sunstudio(Lang::C)
+#       elif defined(__SUNPRO_CC)
+        return sunstudio(Lang::CXX)
+#       elif defined(__SUNPRO_F90) || defined(__SUNPRO_F95)
+            return sunstudio(Lang::FORTRAN)
+            
 #       else
         GISMO_ERROR("Compiler not known");
 #       endif
