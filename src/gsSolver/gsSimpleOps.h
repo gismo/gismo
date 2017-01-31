@@ -20,27 +20,33 @@ namespace gismo
     
 /// @brief Update \a x with a Richardson sweep
 /// \ingroup Solver
-GISMO_EXPORT void dampedRichardsonSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau = (real_t)(1.));
+template<typename T>
+GISMO_EXPORT void dampedRichardsonSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f, T tau = (T)(1.));
 
 /// @brief Update \a x with a Jacobi sweep
 /// \ingroup Solver
-GISMO_EXPORT void JacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+template<typename T>
+GISMO_EXPORT void jacobiSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f);
 
 /// @brief Update \a x with a damped Jacobi sweep
 /// \ingroup Solver
-GISMO_EXPORT void dampedJacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau = (real_t)(0.5));
+template<typename T>
+GISMO_EXPORT void dampedJacobiSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f, T tau = (T)(0.5));
 
 /// @brief Update \a x with a forward Gauss-Seidel sweep
 /// \ingroup Solver
-GISMO_EXPORT void gaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+template<typename T>
+GISMO_EXPORT void gaussSeidelSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f);
 
 /// @brief Update \a x with a backward Gauss-Seidel sweep
 /// \ingroup Solver
-GISMO_EXPORT void reverseGaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+template<typename T>
+GISMO_EXPORT void reverseGaussSeidelSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f);
 
 /// @brief Preforms a block Gauss-Seidel on the degrees of freedom in DoFs.
-/// \inrgoup Solver
-GISMO_EXPORT void gaussSeidelSingleBlock(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs);
+/// \ingroup Solver
+template<typename T>
+GISMO_EXPORT void gaussSeidelSingleBlock(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f, gsVector<index_t>& DoFs);
 
 
 /// @brief Richardson preconditioner
@@ -289,7 +295,7 @@ public:
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
-        gaussSeidelSweep(m_expr,x,rhs);
+        gaussSeidelSweep<T>(m_expr,x,rhs);
     }
 
     index_t rows() const {return m_expr.rows();}
@@ -352,8 +358,8 @@ public:
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
-        gaussSeidelSweep(m_expr,x,rhs);
-        reverseGaussSeidelSweep(m_expr,x,rhs);
+        gaussSeidelSweep<T>(m_expr,x,rhs);
+        reverseGaussSeidelSweep<T>(m_expr,x,rhs);
     }
 
     index_t rows() const {return m_expr.rows();}
@@ -379,3 +385,7 @@ makeSymmetricGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
 
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsSimpleOps.hpp)
+#endif
