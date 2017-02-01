@@ -159,7 +159,30 @@ endif(GISMO_WITH_IPOPT)
 
 if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SUPERLU_INCLUDES}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${SUPERLU_LIBRARIES}
+    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${SUPERLU_INCLUDES})
 endif(GISMO_WITH_SUPERLU)
+
+if(GISMO_WITH_TAUCS)
+  find_package(Taucs REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TAUCS_INCLUDES}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${TAUCS_LIBRARIES}
+    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${SUPERLU_INCLUDES})
+endif(GISMO_WITH_TAUCS)
+
+if(GISMO_WITH_UMFPACK)
+  find_package(Umfpack REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UMFPACK_INCLUDES}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${UMFPACK_LIBRARIES}
+    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${UMFPACK_INCLUDES})
+endif(GISMO_WITH_UMFPACK)
 
 #if(GISMO_WITH_METIS)
 
@@ -174,6 +197,9 @@ endif(GISMO_WITH_MPI)
 
 if(GISMO_WITH_TRILINOS)
   add_subdirectory(extensions/gsTrilinos)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR} 
+    CACHE INTERNAL "${PROJECT_NAME} include directories") 
+  include_directories(${TRILINOS_INCLUDE_DIR})
 endif(GISMO_WITH_TRILINOS)
 
 ## #################################################################
