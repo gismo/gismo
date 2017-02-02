@@ -578,6 +578,17 @@ public:
         }
     }
 
+    size_t numPeriodic() { return m_periodic_pairs.size(); }
+
+    /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2.
+    void addPeriodic(int p1, boxSide s1, int p2, boxSide s2, int dim)
+    { m_periodic_pairs.push_back( boundaryInterface(patchSide(p1,s1),patchSide(p2,s2), dim) ); } 
+    /// Return a reference to the periodic sides
+    const std::vector<boundaryInterface> & periodicPairs() const {return m_periodic_pairs; }
+
+    /// Removes all periodic pairs
+    void clearPeriodicPairs() { m_periodic_pairs.clear(); }
+
     // Data members
 private:
     struct patchSideComparison
@@ -597,12 +608,13 @@ private:
 
     mutable bcData m_bc;  ///< Containers for BCs of various types
 
-
+    std::vector<boundaryInterface> m_periodic_pairs; // TODO: add read from xml
+    // gsMatrix<T> trm_tr_matrix;
+      
     // Pointer to associated multipatch domain
     //gsMultiPatch<T> * m_patches;
     
 }; // class gsBoundaryConditions
-
 
 /// Print (as string)
 template<class T>
