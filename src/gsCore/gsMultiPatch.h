@@ -202,6 +202,8 @@ public:
     GISMO_DEPRECATED void addInterface( gsGeometry<T>* g1, boxSide s1,
             gsGeometry<T>* g2, boxSide s2 );
 
+    using Base::addInterface; // unhide base function
+    
     /// Add side s of patch g to the outer boundary of the domain
     void addPatchBoundary( gsGeometry<T>* g, boxSide s ) {
         int p = findPatchIndex( g );

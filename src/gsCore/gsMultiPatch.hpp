@@ -190,7 +190,8 @@ int gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const
 
 template<class T>
 void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
-                                    gsGeometry<T>* g2, boxSide s2 ) {
+                                    gsGeometry<T>* g2, boxSide s2 )
+{
     int p1 = findPatchIndex( g1 );
     int p2 = findPatchIndex( g2 );
     gsBoxTopology::addInterface( p1, s1, p2, s2 );
