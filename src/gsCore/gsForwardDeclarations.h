@@ -241,7 +241,7 @@ class gsSparseMatrix;
 template<typename T=real_t, int _Options=0, typename _Index = index_t>
 class gsSparseVector;
 
-template<class T> class gsSparseEntries;
+template<class T = real_t> class gsSparseEntries;
 
 template<class T = real_t> class gsLinearOperator;
 template<class T = real_t> class gsSteppableOperator;
