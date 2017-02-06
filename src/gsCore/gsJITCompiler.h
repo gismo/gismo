@@ -163,12 +163,12 @@ struct gsJITCompilerConfig
     /// Prints the object as a string
     std::ostream& print(std::ostream &os) const
     {
-        os << "JITCompiler: " << cmd
-           << ", flags: "     << flags
-           << ", language: "  << lang
-           << ", output flag: " << out
-           << ", temporal directory: " << temp
-           << "\n";
+        os << "JIT Compiler.\n"
+           << "  cmd:                " << cmd << "\n"
+           << "  flags:              " << flags << "\n"
+           << "  language:           " << lang << "\n"
+           << "  output flag:        " << out << "\n"
+           << "  temporal directory: " << temp << "\n";
         
         return os;
     }
@@ -602,8 +602,8 @@ public:
     }
 
     /// Constructor (using compiler configuration)
-    explicit gsJITCompiler(const gsJITCompilerConfig & _config)
-    : kernel(), config(_config)
+    explicit gsJITCompiler(const gsJITCompilerConfig & config)
+    : kernel(), config(config)
     {}
     
     /// Assignment operator (copy)
