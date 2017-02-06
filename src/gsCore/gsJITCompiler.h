@@ -36,13 +36,13 @@ namespace gismo {
 /**
    @brief Supported languages
 */
-struct Lang
+struct gsJITLang
 {
     enum {
-        C       = 1, ///< C
-        CXX     = 2, ///< C++
-        CU      = 3, ///< Cuda
-        FORTRAN = 4  ///< Fortran
+        C       = 0, ///< C
+        CXX     = 1, ///< C++
+        CUDA    = 2, ///< Cuda
+        Fortran = 3  ///< Fortran
     };
 };
 
@@ -173,24 +173,38 @@ struct gsJITCompilerConfig
         return os;
     }
 
+    /// Reads compiler configuration from XML file
+    void load(const std::string filename,
+              const int lang = gsJITLang::CXX)
+    {
+        GISMO_ENSURE(lang >= gsJITLang::C && lang <= gsJITLang::Fortran,
+            "Error: Invalid compiler language.");
+
+        gsFileData<real_t> f(filename);        
+        gsJITCompilerConfig *cc = f.getId<gsJITCompilerConfig>(lang);
+
+        std::swap(*cc, *this);
+        if (this->temp.empty()) this->temp=detectTemp();
+    }
+    
     /// Initialize to default Clang compiler
-    static gsJITCompilerConfig clang(const int lang = Lang::CXX)
+    static gsJITCompilerConfig clang(const int lang = gsJITLang::CXX)
     {
         switch(lang)
         {
-        case (Lang::C) :
+        case (gsJITLang::C) :
             return gsJITCompilerConfig("clang",
                                        "-O3 -shared",
                                        "c",
                                        "-o ");
             break;
-        case (Lang::CXX) :
+        case (gsJITLang::CXX) :
             return gsJITCompilerConfig("clang++",
                                        "-O3 -shared",
                                        "cxx",
                                        "-o ");
             break;
-        case (Lang::FORTRAN) :
+        case (gsJITLang::Fortran) :
             GISMO_ERROR("Error : Clang does not provide any Fortran compiler.")
             break;
         default :
@@ -199,23 +213,23 @@ struct gsJITCompilerConfig
     }
     
     /// Initialize to default GCC compiler
-    static gsJITCompilerConfig gcc(const int lang = Lang::CXX)
+    static gsJITCompilerConfig gcc(const int lang = gsJITLang::CXX)
     {
         switch(lang)
         {
-        case (Lang::C) :
+        case (gsJITLang::C) :
             return gsJITCompilerConfig("gcc",
                                        "-fPIC -O3 -shared",
                                        "c",
                                        "-o ");
             break;
-        case (Lang::CXX) :
+        case (gsJITLang::CXX) :
             return gsJITCompilerConfig("g++",
                                        "-fPIC -O3 -shared",
                                        "cxx",
                                        "-o ");
             break;
-        case (Lang::FORTRAN) :
+        case (gsJITLang::Fortran) :
             return gsJITCompilerConfig("gfortran",
                                        "-fPIC -O3 -shared",
                                        "F90",
@@ -227,23 +241,23 @@ struct gsJITCompilerConfig
     }
     
     /// Initialize to default Intel compiler
-    static gsJITCompilerConfig intel(const int lang = Lang::CXX)
+    static gsJITCompilerConfig intel(const int lang = gsJITLang::CXX)
     {
         switch(lang)
         {
-        case (Lang::C) :
+        case (gsJITLang::C) :
             return gsJITCompilerConfig("icc",
                                        "-O3 -shared",
                                        "c",
                                        "-o ");
             break;
-        case (Lang::CXX) :
+        case (gsJITLang::CXX) :
             return gsJITCompilerConfig("icpc",
                                        "-O3 -shared",
                                        "cxx",
                                        "-o ");
             break;
-        case (Lang::FORTRAN) :
+        case (gsJITLang::Fortran) :
             return gsJITCompilerConfig("ifort",
                                        "-O3 -shared",
                                        "F90",
@@ -255,17 +269,17 @@ struct gsJITCompilerConfig
     }
 
     /// Initialize to default Microsoft Visual Studio compiler
-    static gsJITCompilerConfig msvc(const int lang = Lang::CXX)
+    static gsJITCompilerConfig msvc(const int lang = gsJITLang::CXX)
     {
         switch(lang)
         {
-        case (Lang::C) :
+        case (gsJITLang::C) :
             return gsJITCompilerConfig("cl.exe",
                                        "/EHsc /Ox /LD",
                                        "c",
                                        "/Fe");//no space
             break;
-        case (Lang::CXX) :
+        case (gsJITLang::CXX) :
             return gsJITCompilerConfig("cl.exe",
                                        "/EHsc /Ox /LD",
                                        "cxx",
@@ -277,11 +291,11 @@ struct gsJITCompilerConfig
     }
 
     /// Initialize to default NVIDIA nvcc compiler
-    static gsJITCompilerConfig nvcc(const int lang = Lang::CU)
+    static gsJITCompilerConfig nvcc(const int lang = gsJITLang::CUDA)
     {
         switch(lang)
         {
-        case (Lang::CU) :
+        case (gsJITLang::CUDA) :
             return gsJITCompilerConfig("nvcc",
                                        "-O3 -shared",
                                        "cu",
@@ -293,23 +307,23 @@ struct gsJITCompilerConfig
     }
 
     /// Initialize to default PGI compiler
-    static gsJITCompilerConfig pgi(const int lang = Lang::CXX)
+    static gsJITCompilerConfig pgi(const int lang = gsJITLang::CXX)
     {
         switch(lang)
         {
-        case (Lang::C) :
+        case (gsJITLang::C) :
             return gsJITCompilerConfig("pgcc",
                                        "-O3 -shared",
                                        "c",
                                        "-o ");
             break;
-        case (Lang::CXX) :
+        case (gsJITLang::CXX) :
             return gsJITCompilerConfig("pgc++",
                                        "-O3 -shared",
                                        "cxx",
                                        "-o ");
             break;
-        case (Lang::FORTRAN) :
+        case (gsJITLang::Fortran) :
             return gsJITCompilerConfig("pgf90",
                                        "-O3 -shared",
                                        "F90",
@@ -321,23 +335,23 @@ struct gsJITCompilerConfig
     }
 
     /// Initialize to default Oracle/SunStudio compiler
-    static gsJITCompilerConfig sunstudio(const int lang = Lang::CXX)
+    static gsJITCompilerConfig sunstudio(const int lang = gsJITLang::CXX)
     {
         switch(lang)
         {
-        case (Lang::C) :
+        case (gsJITLang::C) :
             return gsJITCompilerConfig("sunstudio",
                                        "-O3 -shared",
                                        "c",
                                        "-o ");
             break;
-        case (Lang::CXX) :
+        case (gsJITLang::CXX) :
             return gsJITCompilerConfig("sunstudio",
                                        "-O3 -shared",
                                        "cxx",
                                        "-o ");
             break;
-        case (Lang::FORTRAN) :
+        case (gsJITLang::Fortran) :
             return gsJITCompilerConfig("sunstudio",
                                        "-O3 -shared",
                                        "F90",
@@ -353,9 +367,9 @@ struct gsJITCompilerConfig
     {
 #       if defined(__INTEL_COMPILER)
 #       if defined(__ICC)
-        return intel(Lang::CXX);
+        return intel(gsJITLang::CXX);
 #       else
-        return intel(Lang::FORTRAN);
+        return intel(gsJITLang::Fortran);
 #       endif
         
 #       elif  defined(_MSC_VER)
@@ -366,28 +380,28 @@ struct gsJITCompilerConfig
         
 #       elif defined(__GNUC__)
 #       if defined(__cplusplus)
-        return gcc(Lang::CXX);
-#       elif defined(__GFORTRAN__)
-        return gcc(Lang::FORTRAN);
+        return gcc(gsJITLang::CXX);
+#       elif defined(__GFortran__)
+        return gcc(gsJITLang::Fortran);
 #       else
-        return gcc(Lang::C);
+        return gcc(gsJITLang::C);
 #       endif
 
 #       elif defined(__PGIC__)
         return pgi();
         
 #       elif defined(__SUNPRO_C)
-        return sunstudio(Lang::C)
+        return sunstudio(gsJITLang::C)
 #       elif defined(__SUNPRO_CC)
-        return sunstudio(Lang::CXX)
+        return sunstudio(gsJITLang::CXX)
 #       elif defined(__SUNPRO_F90) || defined(__SUNPRO_F95)
-            return sunstudio(Lang::FORTRAN)
+            return sunstudio(gsJITLang::Fortran)
             
 #       else
         GISMO_ERROR("Compiler not known");
 #       endif
     }
-
+    
 protected:
     /// Members variables
     std::string cmd;
