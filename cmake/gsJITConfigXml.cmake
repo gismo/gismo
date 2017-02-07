@@ -72,6 +72,9 @@ macro(gsJITConfigXml source_file target_file)
   # Set JIT compiler includes
   string(REPLACE ";" " -I" JIT_INCLUDE_DIRS "-I${GISMO_INCLUDE_DIRS}")
 
+  # Set JIT compiler libraries
+  string(REPLACE ";" " -L" JIT_LINKER "-L${GISMO_LIBRARY_DIR} ${GISMO_LIBRARIES}")
+  
   # Generate config XML file
   configure_file(${source_file} ${target_file})
   
