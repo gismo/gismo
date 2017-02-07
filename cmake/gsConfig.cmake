@@ -150,10 +150,6 @@ if(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_EXE_LINKER_FLAGS "-fprofile-arcs -ftest-coverage")
 endif(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
 
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-include( OptimizeForArchitecture )
-endif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
     if(${MSVC_VERSION} EQUAL 1800 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 18.00.31101.0)
@@ -269,3 +265,12 @@ endif()
 #message("CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 #string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
 #message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")
+
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+  include( OptimizeForArchitecture )
+  OptimizeForArchitecture()
+  foreach (flag ${GISMO_ARCHITECTURE_FLAGS})
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flag}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
+  endforeach()
+endif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
