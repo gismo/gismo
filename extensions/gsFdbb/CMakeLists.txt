@@ -44,6 +44,14 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     FOLDER "G+Smo extensions"
     )
 
+if(${CMAKE_CXX_STANDARD} EQUAL "11")
+  add_definitions(-DSUPPORT_CXX11)
+elseif(${CMAKE_CXX_STANDARD} EQUAL "14")
+  add_definitions(-DSUPPORT_CXX14)
+else()
+  message(FATAL_ERROR "FDDB requires C++11 or C++14 standard")
+endif()
+
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
 
