@@ -978,7 +978,7 @@ gsMatrix<unsigned>  gsHTensorBasis<d,T>::allBoundary( ) const
                     break;
                 }
         }
-    return (*(makeMatrix<unsigned>(temp.begin(),temp.size(),1 ).release()));
+    return (*(makeMatrix<unsigned>(temp.begin(),temp.size(),1 )));
 }
 
 template<unsigned d, class T>
@@ -1009,7 +1009,7 @@ boundaryOffset(boxSide const & s,unsigned offset) const
                     );
         }
     }
-    return (*(makeMatrix<unsigned>(temp.begin(),temp.size(),1 ).release()));
+    return (*(makeMatrix<unsigned>(temp.begin(),temp.size(),1 )));
 }
 
 /*
