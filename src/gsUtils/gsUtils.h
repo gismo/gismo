@@ -31,13 +31,7 @@ namespace gismo
 namespace util
 {
 
-#if __cplusplus > 199711L
-using std::to_string;
-using std::iota;
-using std::stod;
-using std::stoi;
-#else
-/// \brief Converts value to string
+/// \brief Converts value to string, assuming "operator<<" defined on C
 /// \ingroup Utils
 template<typename C>
 std::string to_string(const C & value)
@@ -46,6 +40,14 @@ std::string to_string(const C & value)
     convert << value;
     return convert.str();
 }
+
+#if __cplusplus > 199711L
+using std::to_string;
+using std::iota;
+using std::stod;
+using std::stoi;
+
+#else
 
 // Fills the range [first, last) with sequentially increasing values,
 // starting with value and rep//etitively evaluating ++value.             
