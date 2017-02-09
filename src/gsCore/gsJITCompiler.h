@@ -141,24 +141,24 @@ struct gsJITCompilerConfig
     virtual const std::string& getTemp() const { return temp; }
 
     /// Set compiler command
-    void setCmd(const std::string& cmd)
-    { this->cmd = cmd; }
+    void setCmd(const std::string& _cmd)
+    { this->cmd = _cmd; }
 
     /// Set compiler flags
-    void setFlags(const std::string& flags)
-    { this->flags = flags; }
+    void setFlags(const std::string& _flags)
+    { this->flags = _flags; }
 
     /// Set compiler language
-    void setLang(const std::string& lang)
-    { this->lang = lang; }
+    void setLang(const std::string& _lang)
+    { this->lang = _lang; }
 
     /// Set compiler output flag
-    void setOut(const std::string& out)
-    { this->out = out; }
+    void setOut(const std::string& _out)
+    { this->out = _out; }
     
     /// Set compiler temporal directory
-    void setTemp(const std::string& temp)
-    { this->temp = temp; }
+    void setTemp(const std::string& _temp)
+    { this->temp = _temp; }
 
     /// Prints the object as a string
     std::ostream& print(std::ostream &os) const
