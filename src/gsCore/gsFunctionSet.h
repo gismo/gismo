@@ -52,7 +52,7 @@ namespace gismo {
    on the parametric domain. In the second case the evaluator will fetch the appropriate points
    depending on whether it is defined on the parametric or in the physical space.
    In complex situations: in particular when the physical domain of a function is the parametric
-   domain of another the autamatic mechanism is not guaranteed to work.
+   domain of another the automatic mechanism is not guaranteed to work.
 
    The result is a matrix in which the i-th column contains the requested values
    or derivatives at the i-th point, i.e. the point whose coordinate are the i-th column

@@ -11,7 +11,7 @@ See also \ref tutorialTHBSplineBasis and \ref tutorialAdaptRefinementTHB.
 \section THB-splines Tutorial
 
 We will now have a closer look at the \c gsThbs_test.cpp file. After parsing the command line arguments it either reads the hierarchical basis from the file given by the user or runs a default example. To understand how the hierarchical basis is specified you can look into the file with the default example. This you do by
-> cat ./filedata/basis_thbs.xml
+> cat ./filedata/thbbasis/simple.xml
 in your \c gismo-build directory. This should give something like
 
 ~~~~~
@@ -50,11 +50,11 @@ The triple knots at the domain boundary are shown with spaces for illustration. 
 
 The active basis functions (those that are in the hierarchical basis) are printed in the console as the output of \c gsThbs_test.cpp starting with
 > Characteristic matrix:
-There should be 36, 3 and 15 basis functions in levels 0, 1 and 2, respectively. The basis functions are given as pairs \f$(x,y)\f$, where \f$x\f$ is the number of this basis function in the horizontal direction counted from the left (note that the functions in each level has their own numbering, since the size of their support is different) and \f$y\f$ is its number in the vertical numbering starting from below. Consult Figure 2 for the numbering of the basis functions.
+There should be 36, 3 and 16 basis functions in levels 0, 1 and 2, respectively. The basis functions are given as pairs \f$(x,y)\f$, where \f$x\f$ is the number of this basis function in the horizontal direction counted from the left (note that the functions in each level has their own numbering, since the size of their support is different) and \f$y\f$ is its number in the vertical numbering starting from below. Consult Figure 2 for the numbering of the basis functions.
 
 \image html hierarchical_mesh_basis.png "Figure 2. Basis functions."
 
-You can see the mesh specified in \c ~gismo/filedata/basis_thbs.xml together with the Greville points (center points of supports) of the basis functions. Basis functions from levels 0, 1 and 2 are marked by black, red and turqoise dots, respectively. The axes show the numbering of the basis functions from the three levels.
+You can see the mesh specified in \c ~gismo/filedata/thbbasis/simple.xml together with the Greville points (center points of supports) of the basis functions. Basis functions from levels 0, 1 and 2 are marked by black, red and turqoise dots, respectively. The axes show the numbering of the basis functions from the three levels.
 
 
 */
