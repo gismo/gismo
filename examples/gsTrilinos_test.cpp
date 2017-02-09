@@ -569,7 +569,6 @@ int main(int argc, char**argv)
         gsWarn << "-p \"Aztec:LS\"\n";
         gsWarn << "-p \"Aztec:Neumann\"\n";
         gsWarn << "-p \"Aztec:Sym_GS\"\n";
-        gsWarn << "-p \"ML\"\n";
         gsWarn << "-p \"ML:SA\"\n";
         gsWarn << "-p \"ML:NSSA\"\n";
         gsWarn << "-p \"ML:DD\"\n";
