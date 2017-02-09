@@ -17,6 +17,7 @@
 #include <numeric>
 
 #include <gsCore/gsExport.h>
+#include <gsCore/gsDebug.h>
 
 #define STRINGIGY(x) #x
 
@@ -94,7 +95,7 @@ inline double stod(const std::string& str)
 
 #endif
 
-/// \brief Replaces appeareances of \a oldStr with \a newStr inside the
+/// \brief Replaces appearance of \a oldStr with \a newStr inside the
 /// string \a str
 /// \ingroup Utils
 inline void string_replace(std::string& str, 
@@ -113,6 +114,27 @@ inline void string_replace(std::string& str,
 /// \ingroup Utils
 GISMO_EXPORT
 std::string getTempPath();
+
+/// \brief Returns the \a i-th token of the string \a str using delimiter \a delim
+/// \ingroup Utils
+inline std::string tokenize(const std::string& str,
+                            const std::string& delim,
+                            const std::size_t token)
+{
+    std::size_t token_begin = 0;
+    std::size_t token_end   = str.find_first_of(delim);
+    
+    for (std::size_t i=0; i<token; i++) {
+        
+        GISMO_ENSURE(token_end < std::string::npos,
+                     "Requested token exceeds the number of tokens");
+        
+        token_begin += ++token_end;
+        token_end    = str.substr(token_begin).find_first_of(delim);
+    }
+    
+    return str.substr(token_begin,token_end);
+}
 
 } // end namespace util
 
