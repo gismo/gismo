@@ -70,13 +70,13 @@ macro(gsJITConfigXml source_file target_file)
   endif()
   
   # Set includes
-  string(REPLACE ";" " -I" JIT_INCLUDES "-I${GISMO_DEV_INCLUDE_DIRS} -I${GISMO_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR} -I${CMAKE_CURRENT_SOURCE_DIR}/src")
+  string(REPLACE ";" " -I" JIT_INCLUDES "-I${GISMO_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR} -I${CMAKE_CURRENT_SOURCE_DIR}/src")
 
   # Set library directories
-  string(REPLACE ";" " -L" JIT_LIBRARIES "-L${GISMO_LIBRARY_DIR} -L${GISMO_DEV_LIBRARY_DIR}")
+  string(REPLACE ";" " -L" JIT_LIBRARIES "-L${GISMO_LIBRARY_DIR}")
 
   # Set libraries
-  string(REPLACE ";" " -l" JIT_LIBRARIES "${JIT_LIBRARIES} -l${GISMO_LIBRARIES} -l${GISMO_DEV_LIBRARIES}")
+  string(REPLACE ";" " -l" JIT_LIBRARIES "${JIT_LIBRARIES} -l${GISMO_LIBRARIES}")
   
   # Set extra libraries
   if (DEFINED gismo_LINKER)
