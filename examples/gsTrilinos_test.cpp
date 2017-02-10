@@ -22,8 +22,8 @@ using namespace gismo;
  *  The config string must have the form "NAME:TYPE=VALUE", where NAME
  *  is the name of the option, TYPE denotes its type, and VALUE is the
  *  value. Admissible values for TYPE are BOOL, INT, DOUBLE, and
- *  STRING. Multiple config triples are separated by ",", e.g.
- *  "NAME1:TYPE1=VALUE1,NAME2:TYPE2=VALUE2".
+ *  STRING. Multiple config triples are separated by ";", e.g.
+<64;213;26M *  "NAME1:TYPE1=VALUE1;NAME2:TYPE2=VALUE2".
  */
 template<typename Solver>
 void configureSolver(Solver & solver, const std::string & config);
@@ -62,9 +62,9 @@ void poissonDiscretization(gsSparseMatrix<> & mat, gsVector<> & rhs, index_t N);
  *
  *  This will set the convergence tolerance to 1e-12 of type
  *  double. The expression follows the CMake pattern
- *  NAME:TYPE=VALUE. Multiple parameters can be separated by ",", e.g.
+ *  NAME:TYPE=VALUE. Multiple parameters can be separated by ";", e.g.
  *
- *  ./gsTrilinos_test -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12,Maximum Iterations:INT=100"
+ *  ./gsTrilinos_test -s "Belos:BiCGStab" -B "Convergence Tolerance:DOUBLE=1e-12;Maximum Iterations:INT=100"
  */
 int main(int argc, char**argv)
 {
@@ -620,8 +620,8 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsVector<> &rhs, index_t N)
  *  The config string must have the form "NAME:TYPE=VALUE", where NAME
  *  is the name of the option, TYPE denotes its type, and VALUE is the
  *  value. Admissible values for TYPE are BOOL, INT, DOUBLE, and
- *  STRING. Multiple config triples are separated by ",", e.g.
- *  "NAME1:TYPE1=VALUE1,NAME2:TYPE2=VALUE2".
+ *  STRING. Multiple config triples are separated by ";", e.g.
+ *  "NAME1:TYPE1=VALUE1;NAME2:TYPE2=VALUE2".
  */
 template<typename Solver>
 void configureSolver(Solver & solver, const std::string & str)
@@ -630,7 +630,7 @@ void configureSolver(Solver & solver, const std::string & str)
     while (nlen < str.length())
     {
         // Get token NAME:TYPE=VALUE
-        nlen = str.substr(npos).find(",");
+        nlen = str.substr(npos).find(";");
         std::string token = str.substr(npos,nlen);
         npos+=nlen+1;
             
