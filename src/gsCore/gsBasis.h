@@ -323,20 +323,20 @@ public:
      * ...i.e., evaluates a linear combination of
      * \em coefs * <em>(2nd derivatives of basis functions)</em>, into \a result.
      *
-     * <b>Evaluation points \em u</b> are given as gsMatrix of size \em ParDim x \em N, where\n
-     * \em ParDim is the dimension of the parameter domain and\n
+     * <b>Evaluation points \em u</b> are given as gsMatrix of size \em d x \em N, where\n
+     * \em d is the dimension of the parameter domain and\n
      * \em N is the number of evaluation points.\n
      * Each column of \em u corresponds to the coordinates of one evaluation point.\n
      * \n
-     * The <b>coefficients \em coefs</b> are given as gsMatrix of size \em N x \em PhysDim, where\n
+     * The <b>coefficients \em coefs</b> are given as gsMatrix of size \em N x \em n, where\n
      * \em N is the number of points = number of basis functions and\n
-     * \em PhysDim is the dimension of the physical domain.\n
+     * \em n is the dimension of the physical domain.\n
      * Each row of \em coefs corresponds to the coordinates of one control point.
      *
      * Let the function \f$ f: \mathbb R^3 \to \mathbb R^3\f$ be given by
      * \f[ f = ( f_1, f_2, f_3)^T = \sum_{i=1}^N c_i B_i(x,y,z), \f]
      * where \f$ B_i(x,y,z)\f$ are scalar basis functions and \f$c_i\f$ are the
-     * corresponding (<em>PhysDim</em>-dimensional) control points.
+     * corresponding (<em>m</em>-dimensional) control points.
      * Then, for each column in \em u, the corresponding column in <b>\em result</b> represents
      * \f[ (
      * \partial_{xx}\ f_1, \partial_{yy}\ f_1, \partial_{zz}\ f_1,
@@ -361,14 +361,14 @@ public:
     /**
      * @brief Evaluates all derivatives up to order \em n of the function described by \a coefs at points \a u.
      *
-     * <b>Evaluation points \em u</b> are given as gsMatrix of size \em ParDim x \em N, where\n
-     * \em ParDim is the dimension of the parameter domain and\n
+     * <b>Evaluation points \em u</b> are given as gsMatrix of size \em d x \em N, where\n
+     * \em d is the dimension of the parameter domain and\n
      * \em N is the number of evaluation points.\n
      * Each column of \em u corresponds to the coordinates of one evaluation point.\n
      * \n
-     * The <b>coefficients \em coefs</b> are given as gsMatrix of size \em K x \em PhysDim, where\n
-     * \em K is the number of basis functions (=size()) and\n
-     * \em PhysDim is the dimension of the physical domain.\n
+     * The <b>coefficients \em coefs</b> are given as gsMatrix of size \em K x \em n, where\n
+     * \em K is the number of (active) basis functions (=size()) and\n
+     * \em n is the dimension of the physical domain.\n
      * Each row of \em coefs corresponds to the coordinates of one control point.
      *
      * \em result is a std::vector, where the entry <em>result[i]</em> contains the
@@ -530,10 +530,10 @@ public:
     
     Let...\n
     \a d denote the dimension of the parameter domain.\n
-    \a k denote the number of active (i.e., non-zero) basis functions (see active_into()).
-    \a n denote the number of evaluation points.\n
+    \a K denote the number of active (i.e., non-zero) basis functions (see active_into()).
+    \a N denote the number of evaluation points.\n
     
-    The \a n <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>n</em>.
+    The \a n <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>N</em>.
     Each column of \a u represents one evaluation point.\n
     \n
     The gsMatrix <b>\a result</b> contains the computed function values in the following form:\n
@@ -541,12 +541,12 @@ public:
     The column contains the values of all active functions "above" each other.\n
     
     For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
-    (B1, B2, ... , Bn)^T,\n
+    (B1, B2, ... , BN)^T,\n
     where the order the basis functions \a Bi is as returned by active() and active_into().
     
-    \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>n</em>.
+    \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>N</em>.
     See above for details.
-    \param[in,out] result gsMatrix of size <em>k</em> x <em>n</em>.
+    \param[in,out] result gsMatrix of size <em>K</em> x <em>N</em>.
     See above for details.
     */    
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
@@ -559,10 +559,10 @@ public:
     
     Let...\n
     \a d denote the dimension of the parameter domain.\n
-    \a k denote the number of active (i.e., non-zero) basis functions (see active_into()).
-    \a n denote the number of evaluation points.\n
+    \a K denote the number of active (i.e., non-zero) basis functions (see active_into()).
+    \a N denote the number of evaluation points.\n
     
-    The \a n <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>n</em>.
+    The \a N <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>N</em>.
     Each column of \a u represents one evaluation point.\n
     \n
     The gsMatrix <b>\a result</b> contains the computed derivatives in the following form:\n
@@ -570,12 +570,12 @@ public:
     The column contains the gradients of all active functions "above" each other.\n
     
     For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
-    (dx B1, dy B1, dz B1, dx B2, dy B2, dz B2, ... , dx Bn, dy Bn, dz Bn)^T,\n
+    (dx B1, dy B1, dz B1, dx B2, dy B2, dz B2, ... , dx Bn, dy BN, dz BN)^T,\n
     where the order the basis functions \a Bi is as returned by active() and active_into().
     
-    \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>n</em>.
+    \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>N</em>.
     See above for details.
-    \param[in,out] result gsMatrix of size <em>(k*d)</em> x <em>n</em>.
+    \param[in,out] result gsMatrix of size <em>(K*d)</em> x <em>N</em>.
     See above for details.
     
     \todo Rename to _ grad_into
@@ -594,25 +594,25 @@ public:
 
     /** \brief Evaluate the second derivatives of all active basis function at points \a u.
      *
-     * Input parameter \em u is a gsMatrix of size \em d x \em n, where\n
+     * Input parameter \em u is a gsMatrix of size \em d x \em N, where\n
      * \em d is the dimension of the parameter domain and\n
-     * \em n is the number of evaluation points.\n
+     * \em N is the number of evaluation points.\n
      * Each column of \em u corresponds to the coordinates of one evaluation point.\n
      * \n
-     * \em result is a gsMatrix of size <em>(N * d)</em> x \em n, where\n
-     * \em N is the number of active basis functions at the evaluation point.\n
+     * \em result is a gsMatrix of size <em>(K * d)</em> x \em N, where\n
+     * \em K is the number of active basis functions at the evaluation point.\n
      * Each column of \em result corresponds to a column of \em u. It contains the
      * "pure" and the mixed derivatives for each active basis function, "above" each other.\n
      * \n
-     ** <b>Example (bivariate):</b> Let \f$B_i(x,y)\f$ be bivariate basis functions,
-     * and let the functions with indices <em>3,4,7, and 8</em> be active at an evaluation
+     ** <b>Example (bivariate):</b> Let \f$B_i(x,y)\f$, $d = 2$ be bivariate basis functions,
+     * and let the functions with indices <em>3,4,7, and 8</em> (K = 4) be active at an evaluation
      * point \em u. Then, the corresponding column of \em result represents:\n
      * \f$ (
      * \partial_{xx}\, B_3(u), \partial_{yy}\, B_3(u), \partial_{xy}\, B_3(u),
      * \partial_{xx}\, B_4(u), \partial_{yy}\, B_4(u), \partial_{xy}\, B_4(u),
      * \partial_{xx}\, B_7(u), ... , \partial_{xy}\, B_8(u) )^T \f$\n
      * \n
-     * <b>Example (trivariate):</b> Let \f$B_i(x,y,z)\f$ be trivariate basis functions,
+     * <b>Example (trivariate):</b> Let \f$B_i(x,y,z)\f$, $d = 3$ be trivariate basis functions,
      * and let the functions with indices <em>3,4,7, and 8</em> be active at an evaluation
      * point \em u. Then, the corresponding column of \em result represents:\n
      * \f$(

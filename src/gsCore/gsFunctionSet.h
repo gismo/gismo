@@ -23,7 +23,8 @@
 namespace gismo {
 
 /**
-   \brief Interface for set of functions defined on a domain
+   \brief Interface for the set of functions defined on a domain
+   (the total number of functions in the set equals to $S$ )
 
    All G+Smo objects that evaluate function[s] derive from this object.
    Examples are gsMatrix, gsFunction and gsGeometry.
@@ -47,7 +48,7 @@ namespace gismo {
    1) a matrix;\n
    2) a gsTransform object representing the parametrization of the domain.
 
-   In the first case the the matrix specifies a set of points (one point per column) and it
+   In the first case the the matrix specifies a set of points of a size $N$ (one point per column) and it
    is the caller responsibility to distinguish between functions defined on the physical and
    on the parametric domain. In the second case the evaluator will fetch the appropriate points
    depending on whether it is defined on the parametric or in the physical space.
@@ -59,18 +60,19 @@ namespace gismo {
    of the input matrix or of the matrix supplied by the gsTransform object.
    On each column the data is grouped in blocks corresponding to different functions,
    so that that if the requested evaluation contains s values
-   \f$ v_1,\ldots,v_s \f$ for each pair \f$ (f_i,p_j) \f$ of (function,point) the output matrix looks like
+   \f$ v_1, \ldots, v_s \f$ for each pair \f$ (f_i, p_j) \f$, $i = 1, \ldots, S$, $j = 1, \ldots, N$,
+   of (function,point) the output matrix looks like
 
    \f[
    \left[
    \begin{array}{ccccc}
-   v_1(f_1,p_1) & v_1(f_1,p_2) & \ldots & v_1(f_1,p_n)\\
-   v_2(f_1,p_1) & v_2(f_1,p_2) & \ldots & v_2(f_1,p_n)\\
+   v_1(f_1,p_1) & v_1(f_1,p_2) & \ldots & v_1(f_1,p_N)\\
+   v_2(f_1,p_1) & v_2(f_1,p_2) & \ldots & v_2(f_1,p_N)\\
    \vdots       & \vdots       &        & \vdots\\
-   v_s(f_1,p_1) & v_s(f_1,p_2) & \ldots & v_s(f_1,p_n)\\
-   v_1(f_2,p_1) & v_1(f_2,p_2) & \ldots & v_1(f_2,p_n)\\
+   v_s(f_1,p_1) & v_s(f_1,p_2) & \ldots & v_s(f_1,p_N)\\
+   v_1(f_2,p_1) & v_1(f_2,p_2) & \ldots & v_1(f_2,p_N)\\
    \vdots       & \vdots       &        & \vdots\\
-   v_s(f_m,p_1) & v_s(f_m,p_2) & \ldots & v_s(f_m,p_n)
+   v_s(f_S,p_1) & v_s(f_S,p_2) & \ldots & v_s(f_S,p_N)
    \end{array}
    \right]
    \f]
@@ -82,13 +84,13 @@ namespace gismo {
 
    2) overload the needed evaluation functions with gsMatrix
    argument: eval_into, deriv_into, deriv2_into; the one that
-   are not implemented will fail at runtime printing which
+   are not implemented will fail at runtime printing, which
    function need implementing to the console
 
    and possibly:
 
-   3) write optimized versions of div, curl, laplacian
-   ... evaluation. By default they are computed by evaluating
+   3) write optimized versions of div, curl, laplacian, and ect.
+   evaluation. By default they are computed by evaluating
    the derivatives and applying the definition.
 
    \tparam T type for real numbers
@@ -161,32 +163,32 @@ public:
     /**
        @brief Evaluates the function(s).
 
-       For scalar valued functions \f$f_1, \ldots, f_m\f$ from \f$\mathbb{R}^k\rightarrow\mathbb{R}\f$ format is:
+       For scalar valued functions \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}\f$ format is:
        \f[
        \left[
        \begin{array}{ccccc}
-       f_1(p_1) & f_1(p_2) & \ldots & f_1(p_n)\\
-       f_2(p_1) & f_2(p_2) & \ldots & f_2(p_n)\\
+       f_1(p_1) & f_1(p_2) & \ldots & f_1(p_N)\\
+       f_2(p_1) & f_2(p_2) & \ldots & f_2(p_N)\\
        \vdots       & \vdots       &        & \vdots\\
-       f_m(p_1) & f_m(p_2) & \ldots & f_m(p_n)
+       f_S(p_1) & f_S(p_2) & \ldots & f_S(p_N)
        \end{array}
        \right]
        \f]
-       For vector valued functions function \f$f_1, \ldots, f_m\f$ from \f$\mathbb{R}^k\rightarrow\mathbb{R}^s\f$ the format is:
+       For vector valued functions function \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}^m\f$ the format is:
        \f[
        \left[
        \begin{array}{ccccc}
-       f_1^1(p_1) & f_1^1(p_2) & \ldots & f_1^1(p_n)\\
-       f_1^2(p_1) & f_1^2(p_2) & \ldots & f_1^2(p_n)\\
+       f_1^1(p_1) & f_1^1(p_2) & \ldots & f_1^1(p_N)\\
+       f_1^2(p_1) & f_1^2(p_2) & \ldots & f_1^2(p_N)\\
        \vdots     & \vdots     &        & \vdots\\
-       f_1^s(p_1) & f_1^s(p_2) & \ldots & f_1^s(p_n)\\
-       f_2^1(p_1) & f_2^1(p_2) & \ldots & f_2^1(p_n)\\
+       f_1^{(m)}(p_1) & f_1^{(m)}(p_2) & \ldots & f_1^{(m)}(p_N)\\
+       f_2^1(p_1) & f_2^1(p_2) & \ldots & f_2^1(p_N)\\
        \vdots     & \vdots     &        & \vdots\\
-       f_m^s(p_1) & f_m^s(p_2) & \ldots & f_m^s(p_n)
+       f_S^{(m)}(p_1) & f_S^{(m)}(p_2) & \ldots & f_S^{(m)}(p_N)
        \end{array}
        \right]
        \f]
-       where \f$f^i_j\f$ is the i-th component of function \f$f_j\f$.
+       where \f$f^{(i)}_j\f$ is the $i$-th component of function \f$f_j\f$ of the set.
        @param u
        @param result
     */
@@ -195,38 +197,38 @@ public:
     /**
        @brief First derivatives.
 
-       For scalar valued functions \f$f_1, \ldots, f_m\f$ from \f$\mathbb{R}^k\rightarrow\mathbb{R}\f$ format is:
+       For scalar valued functions \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}\f$ format is:
        \f[
        \left[
        \begin{array}{ccccc}
-       \partial_{1}f_1(p_1) & \partial_{1}f_1(p_2) & \ldots & \partial_{1}f_1(p_n)\\
-       \partial_{2}f_1(p_1) & \partial_{2}f_1(p_2) & \ldots & \partial_{2}f_1(p_n)\\
+       \partial_{1}f_1(p_1) & \partial_{1}f_1(p_2) & \ldots & \partial_{1}f_1(p_N)\\
+       \partial_{2}f_1(p_1) & \partial_{2}f_1(p_2) & \ldots & \partial_{2}f_1(p_N)\\
        \vdots       & \vdots       &        & \vdots\\
-       \partial_{k}f_1(p_1) & \partial_{k}f_1(p_2) & \ldots & \partial_{k}f_1(p_n)\\
-       \partial_{1}f_2(p_1) & \partial_{1}f_2(p_2) & \ldots & \partial_{1}f_2(p_n)\\
+       \partial_{k}f_1(p_1) & \partial_{k}f_1(p_2) & \ldots & \partial_{k}f_1(p_N)\\
+       \partial_{1}f_2(p_1) & \partial_{1}f_2(p_2) & \ldots & \partial_{1}f_2(p_N)\\
        \vdots       & \vdots       &        & \vdots\\
-       \partial_{k}f_m(p_1) & \partial_{k}f_m(p_2) & \ldots & \partial_{k}f_m(p_n)\\
+       \partial_{k}f_S(p_1) & \partial_{k}f_S(p_2) & \ldots & \partial_{k}f_S(p_N)\\
        \end{array}
        \right]
        \f]
-       For vector valued functions function \f$f_1, \ldots, f_m\f$ from \f$\mathbb{R}^k\rightarrow\mathbb{R}^s\f$ the format is:
+       For vector valued functions function \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}^{m}\f$ the format is:
        \f[
        \left[
        \begin{array}{ccccc}
-       \partial_{1}f_1^1(p_1) & \partial_{1}f_1^1(p_2) & \ldots & \partial_{1}f_1^1(p_n)\\
-       \partial_{2}f_1^1(p_1) & \partial_{1}f_2^1(p_2) & \ldots & \partial_{1}f_2^1(p_n)\\
+       \partial_{1}f_1^1(p_1) & \partial_{1}f_1^1(p_2) & \ldots & \partial_{1}f_1^1(p_N)\\
+       \partial_{2}f_1^1(p_1) & \partial_{1}f_2^1(p_2) & \ldots & \partial_{1}f_2^1(p_N)\\
        \vdots     & \vdots     &        & \vdots\\
-       \partial_{k}f_1^1(p_1) & \partial_{k}f_1^1(p_2) & \ldots & \partial_{k}f_1^1(p_n)\\
-       \partial_{1}f_1^2(p_1) & \partial_{1}f_1^2(p_2) & \ldots & \partial_{1}f_1^2(p_n)\\
+       \partial_{k}f_1^1(p_1) & \partial_{k}f_1^1(p_2) & \ldots & \partial_{k}f_1^1(p_N)\\
+       \partial_{1}f_1^2(p_1) & \partial_{1}f_1^2(p_2) & \ldots & \partial_{1}f_1^2(p_N)\\
        \vdots     & \vdots     &        & \vdots\\
-       \partial_{k}f_1^2(p_1) & \partial_{k}f_1^2(p_2) & \ldots & \partial_{k}f_1^2(p_n)\\
-       \partial_{1}f_2^1(p_1) & \partial_{1}f_2^1(p_2) & \ldots & \partial_{1}f_2^1(p_n)\\
+       \partial_{k}f_1^2(p_1) & \partial_{k}f_1^2(p_2) & \ldots & \partial_{k}f_1^2(p_N)\\
+       \partial_{1}f_2^1(p_1) & \partial_{1}f_2^1(p_2) & \ldots & \partial_{1}f_2^1(p_N)\\
        \vdots     & \vdots     &        & \vdots\\
-       \partial_{k}f_m^s(p_1) & \partial_{k}f_m^s(p_2) & \ldots & \partial_{k}f_m^s(p_n)
+       \partial_{k}f_S^{(m)}(p_1) & \partial_{k}f_S^{(m)}(p_2) & \ldots & \partial_{k}f_S^{(m)}(p_N)
        \end{array}
        \right]
        \f]
-       where \f$f^i_j\f$ is the i-th component of function \f$f_j\f$.
+       where \f$f^{(i)}_j\f$ is the $i$-th component of function \f$f_j\f$ of the set.
        @param u
        @param result
     */
@@ -235,51 +237,51 @@ public:
     /**
      * @brief Second derivatives.
      *
-     For scalar valued functions \f$f_1, \ldots, f_m\f$ from \f$\mathbb{R}^k\rightarrow\mathbb{R}\f$ format is:
+     For scalar valued functions \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}\f$ format is:
      \f[
      \left[
      \begin{array}{ccccc}
-     \partial_{1}\partial_{1}f_1(p_1) & \partial_{1}\partial_{1}f_1(p_2) & \ldots & \partial_{1}\partial_{1}f_1(p_n)\\
-     \partial_{2}\partial_{2}f_1(p_1) & \partial_{2}\partial_{2}f_1(p_2) & \ldots & \partial_{2}\partial_{2}f_1(p_n)\\
+     \partial_{1}\partial_{1}f_1(p_1) & \partial_{1}\partial_{1}f_1(p_2) & \ldots & \partial_{1}\partial_{1}f_1(p_N)\\
+     \partial_{2}\partial_{2}f_1(p_1) & \partial_{2}\partial_{2}f_1(p_2) & \ldots & \partial_{2}\partial_{2}f_1(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k}\partial_{k}f_1(p_1) & \partial_{k}\partial_{k}f_1(p_2) & \ldots & \partial_{k}\partial_{k}f_1(p_n)\\
-     \partial_{1}\partial_{2}f_1(p_1) & \partial_{1}\partial_{2}f_1(p_2) & \ldots & \partial_{1}\partial_{2}f_1(p_n)\\
-     \partial_{1}\partial_{3}f_1(p_1) & \partial_{1}\partial_{3}f_1(p_2) & \ldots & \partial_{1}\partial_{3}f_1(p_n)\\
+     \partial_{k}\partial_{k}f_1(p_1) & \partial_{k}\partial_{k}f_1(p_2) & \ldots & \partial_{k}\partial_{k}f_1(p_N)\\
+     \partial_{1}\partial_{2}f_1(p_1) & \partial_{1}\partial_{2}f_1(p_2) & \ldots & \partial_{1}\partial_{2}f_1(p_N)\\
+     \partial_{1}\partial_{3}f_1(p_1) & \partial_{1}\partial_{3}f_1(p_2) & \ldots & \partial_{1}\partial_{3}f_1(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{1}\partial_{k}f_1(p_1) & \partial_{1}\partial_{k}f_1(p_2) & \ldots & \partial_{1}\partial_{k}f_1(p_n)\\
-     \partial_{2}\partial_{3}f_1(p_1) & \partial_{2}\partial_{3}f_1(p_2) & \ldots & \partial_{2}\partial_{3}f_1(p_n)\\
+     \partial_{1}\partial_{k}f_1(p_1) & \partial_{1}\partial_{k}f_1(p_2) & \ldots & \partial_{1}\partial_{k}f_1(p_N)\\
+     \partial_{2}\partial_{3}f_1(p_1) & \partial_{2}\partial_{3}f_1(p_2) & \ldots & \partial_{2}\partial_{3}f_1(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{2}\partial_{k}f_1(p_1) & \partial_{2}\partial_{k}f_1(p_2) & \ldots & \partial_{2}\partial_{k}f_1(p_n)\\
-     \partial_{3}\partial_{4}f_1(p_1) & \partial_{3}\partial_{4}f_1(p_2) & \ldots & \partial_{3}\partial_{4}f_1(p_n)\\
+     \partial_{2}\partial_{k}f_1(p_1) & \partial_{2}\partial_{k}f_1(p_2) & \ldots & \partial_{2}\partial_{k}f_1(p_N)\\
+     \partial_{3}\partial_{4}f_1(p_1) & \partial_{3}\partial_{4}f_1(p_2) & \ldots & \partial_{3}\partial_{4}f_1(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_1(p_1) & \partial_{k-1}\partial_{k}f_1(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1(p_n)\\
-     \partial_{1}\partial_{1}f_2(p_1) & \partial_{1}\partial_{1}f_2(p_2) & \ldots & \partial_{1}\partial_{1}f_2(p_n)\\
+     \partial_{k-1}\partial_{k}f_1(p_1) & \partial_{k-1}\partial_{k}f_1(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1(p_N)\\
+     \partial_{1}\partial_{1}f_2(p_1) & \partial_{1}\partial_{1}f_2(p_2) & \ldots & \partial_{1}\partial_{1}f_2(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_m(p_1) & \partial_{k-1}\partial_{k}f_m(p_2) & \ldots & \partial_{k-1}\partial_{k}f_m(p_n)\\
+     \partial_{k-1}\partial_{k}f_S(p_1) & \partial_{k-1}\partial_{k}f_S(p_2) & \ldots & \partial_{k-1}\partial_{k}f_S(p_N)\\
      \end{array}
      \right]
      \f]
-     For vector valued functions function \f$f_1, \ldots, f_m\f$ from \f$\mathbb{R}^k\rightarrow\mathbb{R}^s\f$ the format is:
+     For vector valued functions function \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}^{(m)}\f$ the format is:
      \f[
      \left[
      \begin{array}{ccccc}
-     \partial_{1}\partial_{1}f_1^1(p_1) & \partial_{1}\partial_{1}f_1^1(p_2) & \ldots & \partial_{1}\partial_{1}f_1^1(p_n)\\
-     \partial_{2}\partial_{2}f_1^1(p_1) & \partial_{2}\partial_{2}f_1^1(p_2) & \ldots & \partial_{2}\partial_{2}f_1^1(p_n)\\
+     \partial_{1}\partial_{1}f_1^1(p_1) & \partial_{1}\partial_{1}f_1^1(p_2) & \ldots & \partial_{1}\partial_{1}f_1^1(p_N)\\
+     \partial_{2}\partial_{2}f_1^1(p_1) & \partial_{2}\partial_{2}f_1^1(p_2) & \ldots & \partial_{2}\partial_{2}f_1^1(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k}\partial_{k}f_1^1(p_1) & \partial_{k}\partial_{k}f_1^1(p_2) & \ldots & \partial_{k}\partial_{k}f_1^1(p_n)\\
-     \partial_{1}\partial_{2}f_1^1(p_1) & \partial_{1}\partial_{2}f_1^1(p_2) & \ldots & \partial_{1}\partial_{2}f_1^1(p_n)\\
-     \partial_{1}\partial_{3}f_1^1(p_1) & \partial_{1}\partial_{3}f_1^1(p_2) & \ldots & \partial_{1}\partial_{3}f_1^1(p_n)\\
+     \partial_{k}\partial_{k}f_1^1(p_1) & \partial_{k}\partial_{k}f_1^1(p_2) & \ldots & \partial_{k}\partial_{k}f_1^1(p_N)\\
+     \partial_{1}\partial_{2}f_1^1(p_1) & \partial_{1}\partial_{2}f_1^1(p_2) & \ldots & \partial_{1}\partial_{2}f_1^1(p_N)\\
+     \partial_{1}\partial_{3}f_1^1(p_1) & \partial_{1}\partial_{3}f_1^1(p_2) & \ldots & \partial_{1}\partial_{3}f_1^1(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_1^1(p_1) & \partial_{k-1}\partial_{k}f_1^1(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1^1(p_n)\\
-     \partial_{1}\partial_{1}f_1^2(p_1) & \partial_{1}\partial_{1}f_1^2(p_2) & \ldots & \partial_{1}\partial_{1}f_1^2(p_n)\\
+     \partial_{k-1}\partial_{k}f_1^1(p_1) & \partial_{k-1}\partial_{k}f_1^1(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1^1(p_N)\\
+     \partial_{1}\partial_{1}f_1^2(p_1) & \partial_{1}\partial_{1}f_1^2(p_2) & \ldots & \partial_{1}\partial_{1}f_1^2(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_1^s(p_1) & \partial_{k-1}\partial_{k}f_1^s(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1^s(p_n)\\
+     \partial_{k-1}\partial_{k}f_1^{(m)}(p_1) & \partial_{k-1}\partial_{k}f_1^{(m)}(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1^{(m)}(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_m^s(p_1) & \partial_{k-1}\partial_{k}f_m^s(p_2) & \ldots & \partial_{k-1}\partial_{k}f_m^s(p_n)\\
+     \partial_{k-1}\partial_{k}f_S^{(m)}(p_1) & \partial_{k-1}\partial_{k}f_S^{(m)}(p_2) & \ldots & \partial_{k-1}\partial_{k}f_S^{(m)}(p_N)\\
      \end{array}
      \right]
      \f]
-     where \f$ f^i_j\f$ is the i-th component of function \f$ f_j\f$.
+     where \f$ f^{(i)}_j\f$ is the $i$-th component of function \f$ f_j\f$ of the set.
 
      @param u
      @param result
@@ -327,10 +329,10 @@ public:
        This makes sense only for vector valued functions whose target dimension is a multiple of the domain dimension
        \f[\left[
        \begin{array}{ccccc}
-       \text{div} f_1(p_1) & \text{div} f_1(p_2) & \ldots & \text{div} f_1(p_n)\\
-       \text{div} f_2(p_1) & \text{div} f_2(p_2) & \ldots & \text{div} f_2(p_n)\\
+       \text{div} f_1(p_1) & \text{div} f_1(p_2) & \ldots & \text{div} f_1(p_N)\\
+       \text{div} f_2(p_1) & \text{div} f_2(p_2) & \ldots & \text{div} f_2(p_N)\\
        \vdots       & \vdots       &        & \vdots\\
-       \text{div} f_m(p_1) & \text{div} f_m(p_2) & \ldots & \text{div} f_m(p_n)
+       \text{div} f_S(p_1) & \text{div} f_S(p_2) & \ldots & \text{div} f_S(p_N)
        \end{array}
        \right]
        \f]
@@ -353,10 +355,10 @@ public:
        This makes sense only for vector-valued functions whose target dimension is a multiple of the domain dimension.
        \f[\left[
        \begin{array}{ccccc}
-       \text{curl} f_1(p_1) & \text{curl} f_1(p_2) & \ldots & \text{curl} f_1(p_n)\\
-       \text{curl} f_2(p_1) & \text{curl} f_2(p_2) & \ldots & \text{curl} f_2(p_n)\\
+       \text{curl} f_1(p_1) & \text{curl} f_1(p_2) & \ldots & \text{curl} f_1(p_N)\\
+       \text{curl} f_2(p_1) & \text{curl} f_2(p_2) & \ldots & \text{curl} f_2(p_N)\\
        \vdots       & \vdots       &        & \vdots\\
-       \text{curl} f_m(p_1) & \text{curl} f_m(p_2) & \ldots & \text{curl} f_m(p_n)
+       \text{curl} f_S(p_1) & \text{curl} f_S(p_2) & \ldots & \text{curl} f_S(p_N)
        \end{array}
        \right]
        \f]
@@ -377,10 +379,10 @@ public:
 
        \f[\left[
        \begin{array}{ccccc}
-       \Delta f_1(p_1) & \Delta f_1(p_2) & \ldots & \Delta f_1(p_n)\\
-       \Delta f_2(p_1) & \Delta f_2(p_2) & \ldots & \Delta f_2(p_n)\\
+       \Delta f_1(p_1) & \Delta f_1(p_2) & \ldots & \Delta f_1(p_N)\\
+       \Delta f_2(p_1) & \Delta f_2(p_2) & \ldots & \Delta f_2(p_N)\\
        \vdots       & \vdots       &        & \vdots\\
-       \Delta f_m(p_1) & \Delta f_m(p_2) & \ldots & \Delta f_m(p_n)
+       \Delta f_S(p_1) & \Delta f_S(p_2) & \ldots & \Delta f_S(p_N)
        \end{array}
        \right]
        \f]

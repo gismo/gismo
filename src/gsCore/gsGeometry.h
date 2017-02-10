@@ -31,7 +31,8 @@ namespace gismo
 
     The combination of a basis with a coefficient matrix of the proper
     size describes a function. Such objects are called geometries.
-    
+
+
     Note that geometries are, essentially, functions mapping from the
     parameter domain to the physical space,
 
@@ -62,7 +63,7 @@ namespace gismo
     The dimension \em n of the resulting geometry,
     i.e., of the image of the geometry map, is defined by the
     size of the given coefficients, and may be larger than \em d
-    (see gsGeometry::geoDim()).
+    (see gsGeometry::geoDim()). $\,$
 
     For instance, for a B-spline basis (<em>d = 1</em>), we could
     have coefficients of dimension <em>n = 1</em>, which results
@@ -177,14 +178,88 @@ public:
         @{
     */
 
+    /** \brief Evaluate the function at points \a u into \a result.
+     *
+     * Let \em d be the dimension of the source space ( d = domainDim() ).\n
+     * Let \em n be the dimension of the image/target space ( n = targetDim() ).\n
+     * Let \em N denote the number of evaluation points.
+     *
+     * \param[in] u gsMatrix of size <em>d</em> x <em>N</em>, where each
+     * column of \em u represents one evaluation point.
+     * \param[out] result gsMatrix of size <em>n</em> x <em>N</em>, where each
+     * column of \em u represents the result of the function at the
+     * respective valuation point.
+     */
     // Look at gsFunction class for documentation
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().evalFunc_into(u, m_coefs, result); }
 
+    /** \brief Evaluate derivatives of the function
+     * \f$f:\mathbb{R}^d\rightarrow\mathbb{R}^n\f$
+     * at points \a u into \a result.
+     *
+     * Let \em d be the dimension of the source space ( d = domainDim() ).\n
+     * Let \em n be the dimension of the image/target space ( n = targetDim() ).\n
+     * Let \em N denote the number of evaluation points.
+     *
+     * Let \f$ f:\mathbb R^2 \rightarrow \mathbb R^3 \f$, i.e.,
+     * \f$ f(x,y) = ( f^{(1)}(x,y), f^{(2)}(x,y), f^{(3)}(x,y) )^T\f$,\n
+     * and let
+     * \f$ u = ( u_1, \ldots, u_N) = ( (x_1,y_1)^T, \ldots, (x_N, y_N)^T )\f$.\n
+     * Then, \em result is of the form
+     * \f[
+     \left[
+     \begin{array}{cccc}
+        \partial_x f^{(1)}(u_1) & \partial_x f^{(1)}(u_2)
+           & \ldots & \partial_x f^{(1)}(u_N) \\
+        \partial_y f^{(1)}(u_1) & \partial_y f^{(1)}(u_2)
+           & \ldots & \partial_y f^{(1)}(u_N) \\
+        \partial_x f^{(2)}(u_1) & \partial_x f^{(2)}(u_2)
+           & \ldots & \partial_x f^{(2)}(u_N) \\
+        \partial_y f^{(2)}(u_1) & \partial_y f^{(2)}(u_2)
+           & \ldots & \partial_x f^{(2)}(u_N) \\
+        \partial_x f^{(3)}(u_1) & \partial_x f^{(3)}(u_2)
+           & \ldots & \partial_x f^{(3)}(u_N)\\
+        \partial_y f^{(3)}(u_1) & \partial_y f^{(3)}(u_2)
+           & \ldots & \partial_y f^{(3)}(u_N)
+     \end{array}
+     \right]
+     \f]
+     *
+     * \param[in] u gsMatrix of size <em>d</em> x <em>N</em>, where each
+     * column of \em u represents one evaluation point.
+     * \param[out] result gsMatrix of size <em>(d * n)</em> x <em>N</em>.
+     * Each row of \em result corresponds to one component in the target
+     * space and contains the gradients for each evaluation point,
+     * as row vectors, one after the other (see above for details on the format).
+     *
+     * \warning By default, gsFunction uses central finite differences
+     * with h=0.00001! One must override this function in derived
+     * classes to get proper results.
+     */
     // Look at gsFunction class for documentation
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().derivFunc_into(u, m_coefs, result); }
 
+
+    /** @brief Evaluate second derivatives of the function at points \a u into \a result.
+     *
+     * Let \em n be the dimension of the source space ( d = domainDim() ).\n
+     * Let \em m be the dimension of the image/target space ( n = targetDim() ).\n
+     * Let \em N denote the number of evaluation points.
+     *
+     * \param[in] u gsMatrix of size <em>d</em> x <em>N</em>, where each
+     * column of \em u represents one evaluation point.
+     * \param[out] result gsMatrix of size <em>(S*n)</em> x <em>N</em>,
+     * where <em>S=d*(d+1)/2</em>.\n
+     * Each column in \em result corresponds to one point (i.e., one column in \em u)\n
+     * and contains the following values (for <em>d=3</em>, <em>n=3</em>):\n
+     * \f$ (\partial_{xx} f^{(1)}, \partial_{yy} f^{(1)}, \partial_{zz} f^{(1)}, \partial_{xy} f^{(1)},
+       \partial_{xz} f^{(1)}, \partial_{yz} f^{(1)}, \partial_{xx} f^{(2)},\ldots,\partial_{yz} f^{(3)} )^T\f$
+     * \warning By default uses central finite differences with h=0.00001!
+     * One must override this function in derived
+     * classes to get proper results.
+     */
     // Look at gsFunctionSet class for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().deriv2Func_into(u, m_coefs, result); }

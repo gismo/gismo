@@ -18,8 +18,9 @@
 namespace gismo
 {
 
-/** \brief A function from a <em>d</em>-dimensional domain to an
-    <em>m</em>-dimensional image.
+/** \brief A function \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$
+ * from a <em>n</em>-dimensional domain to an
+    <em>d</em>-dimensional image.
 
     Implementations of gsFunction must at the very least implement the evaluation
     function gsFunction::eval_into(). It is also recommended to specify the
@@ -104,13 +105,13 @@ public:
 
     /** \brief Evaluate the function at points \a u into \a result.
      *
-     * Let \em d be the dimension of the source space ( d = domainDim() ).\n
-     * Let \em D be the dimension of the image/target space ( D = targetDim() ).\n
-     * Let \em n denote the number of evaluation points.
+     * Let \em n be the dimension of the source space ( n = domainDim() ).\n
+     * Let \em m be the dimension of the image/target space ( m = targetDim() ).\n
+     * Let \em N denote the number of evaluation points.
      *
-     * \param[in] u gsMatrix of size <em>d</em> x <em>n</em>, where each
+     * \param[in] u gsMatrix of size <em>n</em> x <em>N</em>, where each
      * column of \em u represents one evaluation point.
-     * \param[out] result gsMatrix of size <em>D</em> x <em>n</em>, where each
+     * \param[out] result gsMatrix of size <em>m</em> x <em>N</em>, where each
      * column of \em u represents the result of the function at the
      * respective valuation point.
      */
@@ -121,39 +122,41 @@ public:
                                      const index_t comp, 
                                      gsMatrix<T>& result) const;
 
-    /** \brief Evaluate derivatives of the function at points \a u into \a result.
+    /** \brief Evaluate derivatives of the function
+     * \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$
+     * at points \a u into \a result.
      *
-     * Let \em d be the dimension of the source space ( d = domainDim() ).\n
-     * Let \em D be the dimension of the image/target space ( D = targetDim() ).\n
-     * Let \em n denote the number of evaluation points.
+     * Let \em n be the dimension of the source space ( n = domainDim() ).\n
+     * Let \em m be the dimension of the image/target space ( m = targetDim() ).\n
+     * Let \em N denote the number of evaluation points.
      *
      * Let \f$ f:\mathbb R^2 \rightarrow \mathbb R^3 \f$, i.e.,
-     * \f$ f(x,y) = ( f_1(x,y), f_2(x,y), f_3(x,y) )^T\f$,\n
+     * \f$ f(x,y) = ( f^{(1)}(x,y), f^{(2)}(x,y), f^{(3)}(x,y) )^T\f$,\n
      * and let
-     * \f$ u = ( u_1, \ldots, u_n) = ( (x_1,y_1)^T, \ldots, (x_n,y_n)^T )\f$.\n
+     * \f$ u = ( u_1, \ldots, u_N) = ( (x_1,y_1)^T, \ldots, (x_N, y_N)^T )\f$.\n
      * Then, \em result is of the form
      * \f[
      \left[
      \begin{array}{cccc}
-        \partial_x f_1(u_1) & \partial_x f_1(u_2)
-           & \ldots & \partial_x f_1(u_n) \\
-        \partial_y f_1(u_1) & \partial_y f_1(u_2)
-           & \ldots & \partial_y f_1(u_n) \\
-        \partial_x f_2(u_1) & \partial_x f_2(u_2)
-           & \ldots & \partial_x f_2(u_n) \\
-        \partial_y f_2(u_1) & \partial_y f_2(u_2)
-           & \ldots & \partial_x f_2(u_n) \\
-        \partial_x f_3(u_1) & \partial_x f_3(u_2)
-           & \ldots & \partial_x f_3(u_n)\\
-        \partial_y f_3(u_1) & \partial_y f_3(u_2)
-           & \ldots & \partial_y f_3(u_n)
+        \partial_x f^{(1)}(u_1) & \partial_x f^{(1)}(u_2)
+           & \ldots & \partial_x f^{(1)}(u_N) \\
+        \partial_y f^{(1)}(u_1) & \partial_y f^{(1)}(u_2)
+           & \ldots & \partial_y f^{(1)}(u_N) \\
+        \partial_x f^{(2)}(u_1) & \partial_x f^{(2)}(u_2)
+           & \ldots & \partial_x f^{(2)}(u_N) \\
+        \partial_y f^{(2)}(u_1) & \partial_y f^{(2)}(u_2)
+           & \ldots & \partial_x f^{(2)}(u_N) \\
+        \partial_x f^{(3)}(u_1) & \partial_x f^{(3)}(u_2)
+           & \ldots & \partial_x f^{(3)}(u_N)\\
+        \partial_y f^{(3)}(u_1) & \partial_y f^{(3)}(u_2)
+           & \ldots & \partial_y f^{(3)}(u_N)
      \end{array}
      \right]
      \f]
      *
-     * \param[in] u gsMatrix of size <em>d</em> x <em>n</em>, where each
+     * \param[in] u gsMatrix of size <em>n</em> x <em>N</em>, where each
      * column of \em u represents one evaluation point.
-     * \param[out] result gsMatrix of size <em>(D*d)</em> x <em>n</em>.
+     * \param[out] result gsMatrix of size <em>(n * m)</em> x <em>N</em>.
      * Each row of \em result corresponds to one component in the target
      * space and contains the gradients for each evaluation point,
      * as row vectors, one after the other (see above for details on the format).
@@ -169,22 +172,27 @@ public:
      */
     void jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
+    /** @brief Computes for each point \a u a block of \a result
+     * containing the divergence matrix
+     */
+    void div_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+
     uMatrixPtr jacobian(const gsMatrix<T>& u) const;
 
     /** @brief Evaluate second derivatives of the function at points \a u into \a result.
      *
-     * Let \em d be the dimension of the source space ( d = domainDim() ).\n
-     * Let \em D be the dimension of the image/target space ( D = targetDim() ).\n
-     * Let \em n denote the number of evaluation points.
+     * Let \em n be the dimension of the source space ( n = domainDim() ).\n
+     * Let \em m be the dimension of the image/target space ( m = targetDim() ).\n
+     * Let \em N denote the number of evaluation points.
      *
-     * \param[in] u gsMatrix of size <em>d</em> x <em>n</em>, where each
+     * \param[in] u gsMatrix of size <em>n</em> x <em>N</em>, where each
      * column of \em u represents one evaluation point.
-     * \param[out] result gsMatrix of size <em>(S*D)</em> x <em>n</em>,
-     * where <em>S=d*(d+1)/2</em>.\n
+     * \param[out] result gsMatrix of size <em>(S*m)</em> x <em>N</em>,
+     * where <em>S=n*(n+1)/2</em>.\n
      * Each column in \em result corresponds to one point (i.e., one column in \em u)\n
-     * and contains the following values (for <em>d=3</em>, <em>D=3</em>):\n
-     * \f$ (\partial_{xx} f_1, \partial_{yy} f_1, \partial_{zz} f_1, \partial_{xy} f_1,
-       \partial_{xz} f_1, \partial_{yz} f_1, \partial_{xx} f_2,\ldots,\partial_{yz} f_3 )^T\f$
+     * and contains the following values (for <em>n=3</em>, <em>m=3</em>):\n
+     * \f$ (\partial_{xx} f^{(1)}, \partial_{yy} f^{(1)}, \partial_{zz} f^{(1)}, \partial_{xy} f^{(1)},
+       \partial_{xz} f^{(1)}, \partial_{yz} f^{(1)}, \partial_{xx} f^{(2)},\ldots,\partial_{yz} f^{(3)} )^T\f$
      * \warning By default uses central finite differences with h=0.00001!
      * One must override this function in derived
      * classes to get proper results.
