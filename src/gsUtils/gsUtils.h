@@ -136,6 +136,22 @@ inline std::string tokenize(const std::string& str,
     return str.substr(token_begin,token_end);
 }
 
+/// \brief Capitalize string in situ
+/// \ingroup Utils
+inline void capitalize(std::string& str)
+{
+    str[0] = static_cast<char>(toupper(str[0]));
+}
+
+/// \brief Capitalize string
+/// \ingroup Utils
+inline std::string capitalize(const std::string& str)
+{
+    std::string newStr = str;
+    capitalize(newStr);
+    return newStr;
+}
+
 } // end namespace util
 
 } // end namespace gismo
