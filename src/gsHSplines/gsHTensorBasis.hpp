@@ -253,7 +253,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
     GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
     GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied refine() with them.");
 
-
+#ifndef NDEBUG
     gsMatrix<T> para = support();
     for(int i = 0; i < boxes.cols()/2; i++)
     {
@@ -265,7 +265,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
                           "In refine() the second corner is outside the computational domain." );
         }
     }
-
+#endif
+    
     if( refExt == 0 )
     {
         // If there is no refinement-extension, just use the
@@ -292,7 +293,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
         // Loop over all boxes:
         for(index_t i = 0; i < boxes.cols()/2; i++)
         {
-            ctr = ( boxes.col( 2*i ) + boxes.col( 2*i+1) )*0.5;
+            ctr = ( boxes.col( 2*i ) + boxes.col( 2*i+1) )/2;
 
             // Compute the level we want to refine to.
             // Note that, if the box extends over several elements,
@@ -305,17 +306,17 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
             for(index_t j = 0; j < boxes.rows();j++)
             {
                 // Convert the parameter coordinates to (unique) knot indices
-                const gsKnotVector<T> & kv = m_bases.back()->knots(j);
+                const gsKnotVector<T> & kv = m_bases[refLevel]->knots(j);
                 int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
                                            boxes(j,2*i  ) ) - 1).uIndex();
-                int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
                                            boxes(j,2*i+1) ) - 1).uIndex();
 
                 // If applicable, add the refinement extension.
                 // Note that extending by one cell on level L means
                 // extending by two cells in level L+1
                 ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
-                const index_t maxKtIndex = m_bases[refLevel]->knots(j).size();
+                const index_t maxKtIndex = kv.size();
                 ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
 
                 // Store the data...
@@ -339,6 +340,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
     GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provide refine() with them.");
 
+#ifndef NDEBUG
     gsMatrix<T> para = support();
     for(int i = 0; i < boxes.cols()/2; i++)
     {
@@ -350,7 +352,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
                           "In refine() the second corner is outside the computational domain." );
         }
     }
-
+#endif
+    
     gsVector<unsigned,d> k1, k2;
     for(index_t i = 0; i < boxes.cols()/2; i++)
     {
@@ -362,7 +365,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
             const gsKnotVector<T> & kv = m_bases.back()->knots(j);
             k1[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
                                       boxes(j,2*i  ) ) - 1).uIndex();
-            k2[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+            k2[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
                                       boxes(j,2*i+1) ) - 1).uIndex();
 
             // Trivial boxes trigger some refinement
