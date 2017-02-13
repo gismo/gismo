@@ -13,25 +13,120 @@
 
 #pragma once
 
-namespace gismo {
+#include <gsUtils/gsCombinatorics.h>
+#include <gsCore/gsDomainIterator.h>
 
+namespace gismo
+{
 
 template<class T>
 gsMesh<T>::~gsMesh()
 {
     // Delete vertices
     typename std::vector<VertexHandle>::iterator vIter;
-    for(vIter = vertex.begin(); vIter != vertex.end(); vIter++) {
+    for(vIter = vertex.begin(); vIter != vertex.end(); vIter++)
+    {
         delete *vIter;
     }
     vertex.clear();
 
     // Delete Faces
     typename std::vector<FaceHandle>::iterator fIter;
-    for(fIter = face.begin(); fIter != face.end(); fIter++) {
+    for(fIter = face.begin(); fIter != face.end(); fIter++)
+    {
         delete *fIter;
     }
     face.clear();
+}
+
+template<class T>
+gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
+: MeshElement(), numVertices(0), numEdges(0), numFaces(0) 
+{
+    const unsigned d = basis.dim();
+
+    typedef typename gsMesh<T>::VertexHandle Vertex;
+    typename gsBasis<T>::domainIter domIter = basis.makeDomainIterator();
+
+    // variables for iterating over a cube (element is a cube)
+    const gsVector<unsigned> zeros = gsVector<unsigned>::Zero(d);
+    const gsVector<unsigned> ones  = gsVector<unsigned>::Ones(d);
+    gsVector<unsigned> cur;
+
+    // maps integer representation of a vertex into pointer to the
+    // vertex coordinates
+    std::vector<Vertex> map(1ULL<<d);
+
+    // neighbour[i] are integer representations of certain neighbours of
+    // vertex i (i counts in lexicographics order over all vertices)
+    std::vector<std::vector<unsigned> > neighbour(1ULL<<d,
+                                                  std::vector<unsigned>() );
+
+    cur.setZero(d);
+    int counter = 0;
+    do
+    {
+        // set neighbour
+        for (unsigned dim = 0; dim < d; dim++)
+        {
+            if (cur(dim) == 0)
+            {
+                const unsigned tmp =  counter | (1<< dim) ;
+                neighbour[counter].push_back(tmp);
+            }
+        }
+        counter++;
+
+    } while (nextCubePoint<gsVector<unsigned> >(cur, zeros, ones));
+
+    gsVector<T> vertex(d);
+
+    for (; domIter->good(); domIter->next())
+    {
+        const gsVector<T>& low = domIter->lowerCorner();
+        const gsVector<T>& upp = domIter->upperCorner();
+        const T vol = domIter->volume();
+
+        vertex.setZero();
+        cur.setZero();
+        counter = 0;
+
+        // add points to the mesh
+        do
+        {
+            // get appropriate coordinate of a point
+            for (unsigned dim = 0; dim < d; dim++)
+            {
+                vertex(dim) = ( cur(dim) ?  upp(dim) : low(dim) );
+            }
+
+            Vertex v = addVertex(vertex);
+            v->data  = vol;
+            map[counter++] = v;
+
+        } while (nextCubePoint<gsVector<unsigned> >(cur, zeros, ones));
+
+
+        // add edges to the mesh (connect points)
+        for (std::size_t index = 0; index != neighbour.size(); index++)
+        {
+            const std::vector<unsigned> & v = neighbour[index];
+
+            for (std::size_t ngh = 0; ngh != v.size(); ngh++)
+            {
+                // add more vertices (n) for better physical resolution
+                addLine( map[index], map[v[ngh]], n );
+                //addEdge( map[index], map[v[ngh]] );
+            }
+        }
+
+        // idea: instead of edges add the faces to the mesh
+        // addFace( mesh.vertex.back(), 
+        //                *(vertex.end()-3), 
+        //                *(vertex.end()-4),
+        //                *(vertex.end()-2) 
+        //     );
+    }
 }
 
 

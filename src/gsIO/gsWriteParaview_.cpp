@@ -53,6 +53,12 @@ TEMPLATE_INST
 void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn);
 
 TEMPLATE_INST
+void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+                           gsMatrix<T> const& data,
+                           const gsVector<index_t> & np,
+                           std::string const & fn);
+
+TEMPLATE_INST
 void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numPoints_for_eachCurve, int vol_Num,
                      T edgeThick, gsVector3d<T> const & translate, int color_convex,
                      int color_nonconvex, int color_eloop, std::vector<unsigned> const & eloop);

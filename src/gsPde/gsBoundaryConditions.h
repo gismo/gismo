@@ -389,11 +389,19 @@ public:
     citerator cornerEnd()
     { return corner_values.end(); }
 
-
     void add(int p, boxSide s, const std::string & label,
              const function_ptr & f_ptr, int unknown = 0,
              int comp = -1, bool parametric = false)
     {
+        m_bc[label].push_back(
+            boundary_condition<T>(p, s, f_ptr, label, unknown, comp, parametric) );
+    }
+
+    void add(int p, boxSide s, const std::string & label,
+             gsFunction<T> * f, int unknown = 0,
+             int comp = -1, bool parametric = false)
+    {
+        function_ptr f_ptr = memory::make_shared_not_owned(f);
         m_bc[label].push_back(
             boundary_condition<T>(p, s, f_ptr, label, unknown, comp, parametric) );
     }

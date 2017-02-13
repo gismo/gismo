@@ -212,8 +212,7 @@ template<class T>
 void writeSingleBasisMesh(const gsBasis<T> & basis,
                          std::string const & fn)
 {
-    gsMesh<T> msh;
-    makeMesh<T>(basis, msh);
+    gsMesh<T> msh(basis, 0);
     if ( basis.dim() == 3)
         writeSingleBasisMesh3D(msh,fn);
     else if ( basis.dim() == 2)
@@ -227,9 +226,7 @@ template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo, 
                          std::string const & fn, unsigned resolution = 8)
 {
-    gsMesh<T> msh;
-    makeMesh<T>(basis, msh, resolution);
-    //makeMesh<T>(basis, msh, 0);
+    gsMesh<T> msh(basis, resolution);
     Geo.evaluateMesh(msh);
 
     // if ( basis.dim() == 3)
@@ -264,6 +261,64 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
     gsWriteParaview(msh, fn, false);
 }
 
+template<class T>
+void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
+                           const gsMatrix<T> & eval_field,
+                           const gsVector<index_t> & np,
+                           std::string const & fn)
+{
+    const int n = eval_geo.rows();
+    GISMO_ASSERT(eval_geo.cols()==eval_field.cols()
+                 && static_cast<index_t>(np.prod())==eval_geo.cols(),
+                 "Data do not match");
+    
+    std::string mfn(fn);
+    mfn.append(".vts");
+    std::ofstream file(mfn.c_str());
+    file << std::fixed; // no exponents
+    file << std::setprecision (PLOT_PRECISION);
+
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
+    file <<"<StructuredGrid WholeExtent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "
+         << (np.size()>2 ? np(2)-1 : 0) <<"\">\n";
+    file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "
+         << (np.size()>2 ? np(2)-1 : 0) <<"\">\n";
+    file <<"<PointData "<< ( eval_field.rows()==1 ?"Scalars":"Vectors")<<"=\"SolutionField\">\n";
+    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< ( eval_field.rows()==1 ? 1 : 3) <<"\">\n";
+    if ( eval_field.rows()==1 )
+        for ( index_t j=0; j<eval_field.cols(); ++j)
+            file<< eval_field.at(j) <<" ";
+    else
+    {
+        for ( index_t j=0; j<eval_field.cols(); ++j)
+        {
+            for ( index_t i=0; i!=eval_field.rows(); ++i)
+                file<< eval_field(i,j) <<" ";
+            for ( index_t i=eval_field.rows(); i<3; ++i)
+                file<<"0 ";
+        }
+    }
+    file <<"</DataArray>\n";
+    file <<"</PointData>\n";
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\">\n";
+    for ( index_t j=0; j<eval_geo.cols(); ++j)
+    {
+        for ( index_t i=0; i!=n; ++i)
+            file<< eval_geo(i,j) <<" ";
+        for ( index_t i=n; i<3; ++i)
+            file<<"0 ";
+    }
+    file <<"</DataArray>\n";
+    file <<"</Points>\n";
+    file <<"</Piece>\n";
+    file <<"</StructuredGrid>\n";
+    file <<"</VTKFile>\n";
+
+    file.close();
+}
+    
 template<class T>
 void writeSinglePatchField(const gsFunction<T> & geometry,
                            const gsFunction<T> & parField,
@@ -310,36 +365,8 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
         eval_field.conservativeResize(3,eval_geo.cols() );
         eval_field.bottomRows( 3-d ).setZero();
     }
-    
-    std::string mfn(fn);
-    mfn.append(".vts");
-    std::ofstream file(mfn.c_str());
-    file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
 
-    file <<"<?xml version=\"1.0\"?>\n";
-    file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
-    file <<"<StructuredGrid WholeExtent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
-    file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
-    file <<"<PointData "<< ( eval_field.rows()==1 ?"Scalars":"Vectors")<<"=\"SolutionField\">\n";
-    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< eval_field.rows() <<"\">\n";
-    for ( index_t j=0; j<eval_field.cols(); ++j)
-        for ( index_t i=0; i<eval_field.rows(); ++i)
-            file<< eval_field(i,j) <<" ";
-    file <<"</DataArray>\n";
-    file <<"</PointData>\n";
-    file <<"<Points>\n";
-    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\">\n";
-    for ( index_t j=0; j<eval_geo.cols(); ++j)
-        for ( index_t i=0; i<3; ++i)
-            file<< eval_geo(i,j) <<" ";
-    file <<"</DataArray>\n";
-    file <<"</Points>\n";
-    file <<"</Piece>\n";
-    file <<"</StructuredGrid>\n";
-    file <<"</VTKFile>\n";
-
-    file.close();
+    gsWriteParaviewTPgrid(eval_geo, eval_field, np.template cast<index_t>(), fn);
 }
 
 /// Write a file containing a solution field over a single geometry

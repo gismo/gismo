@@ -183,6 +183,15 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
 template<class T>
 void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn);
 
+/// \brief Export tensor-structured point set with field data to Paraview file
+///
+/// \param points matrix that contain 2D or 3D points, points are columns
+/// \param fn filename where paraview file is written
+template<class T>
+void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+                           gsMatrix<T> const& data,
+                           const gsVector<index_t> & np,
+                           std::string const & fn);
 
 /// \brief Depicting edge graph of each volume of one gsSolid with a segmenting loop
 ///

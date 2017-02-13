@@ -45,6 +45,8 @@ public:
     gsMesh() : MeshElement(), numVertices(0), numEdges(0), numFaces(0) 
     { }
 
+    gsMesh(const gsBasis<T> & basis, int n = 0);
+
     virtual ~gsMesh();
 
     // void addVertex(gsVertexHandle v){

@@ -391,6 +391,18 @@ public:
         m_iter.reset();
     }
 
+    gsMatrix<T> toMatrix() const
+    {
+        gsMatrix<T> res(m_cur.rows(), numPoints());
+        integer_iterator iter = m_iter;
+        iter.reset();
+
+        for(index_t c = 0; iter; ++iter, ++c)
+            update(*iter,res.col(c).data());
+        
+        return res;
+    }
+    
     // See http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
     //EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF( (sizeof(point)%16)==0 );
 
@@ -404,7 +416,7 @@ public:
 
     inline gsGridIterator & operator++()
     {
-        if ( ++m_iter ) update(*m_iter, m_cur);
+        if ( ++m_iter ) update(*m_iter, m_cur.data());
         return *this;        
     }
 
@@ -476,24 +488,23 @@ public:
     */
     inline const gsMatrix<T> operator [] (const point_index & ti) const
     {
-        gsMatrix<T> res;
-        update(ti, res);
+        gsMatrix<T> res(m_low.rows(),1);
+        update(ti, res.data());
         return res;
     }
 
 private:
     
     // Update the point \a pt to the position \a ti
-    inline void update(const point_index & ti, gsMatrix<T> & pt)
+    inline void update(const point_index & ti, T * pt) const
     {
-        pt.resizeLike(m_low);
-        for (index_t i = 0; i != pt.size(); ++i)
+        for (index_t i = 0; i != m_low.size(); ++i)
             if ( ti[i] == m_iter.lower()[i] )
-                pt.at(i) = m_low[i]; // avoid numerical error at first val
+                *(pt++) = m_low[i]; // avoid numerical error at first val
             else if ( ti[i] == m_iter.upper()[i] )
-                pt.at(i) = m_upp[i]; // avoid numerical error at last val
+                *(pt++) = m_upp[i]; // avoid numerical error at last val
             else
-                pt.at(i) = m_low[i] + ti[i] * m_step[i];
+                *(pt++) = m_low[i] + ti[i] * m_step[i];
     }
 
 private:
@@ -559,7 +570,7 @@ public:
         //    m_cur.derived().resize(1, npts.size());
         //else
         //m_cur.derived().resize(npts.size(), 1);
-        update(*m_iter, m_cur);
+        update(*m_iter, m_cur.data());
     }
 
     template<class Matrix_t>
@@ -574,16 +585,16 @@ public:
             GISMO_ASSERT(cwise[i]->cols()==1 || cwise[i]->rows()==1, "Invalid input");
         }
         m_iter = integer_iterator(npts, 0);
-        update(*m_iter, m_cur);
+        update(*m_iter, m_cur.data());
     }
 
     /**
        \brief Resets the iterator, so that a new iteration over the
        points may start
     */
-    void reset() { m_iter.reset(); update(*m_iter, m_cur);}
+    void reset() { m_iter.reset(); update(*m_iter, m_cur.data());}
 
-    //void restart() { m_iter.reset(); update(*m_iter, m_cur);}
+    //void restart() { m_iter.reset(); update(*m_iter, m_cur.data());}
 
 public:
 
@@ -595,7 +606,7 @@ public:
     
     inline gsGridIterator & operator++()
     {
-        if (++m_iter) update(*m_iter, m_cur);
+        if (++m_iter) update(*m_iter, m_cur.data());
         return *this;
     }
 
@@ -652,19 +663,18 @@ public:
     */
     inline const gsMatrix<T> operator [] (const point_index & ti) const
     {
-        gsMatrix<T> res;
-        update(*m_iter, res);
+        gsMatrix<T> res(m_cur.rows(),1);
+        update(ti, res.data());
         return res;
     }
 
 private:
 
     // Update the point \a pt to the position \a ti
-    inline void update(const point_index & ti, gsMatrix<T> & pt)
+    inline void update(const point_index & ti, T * pt)
     {
-        pt.resizeLike(m_cur);
-        for (index_t i = 0; i != pt.rows(); ++i)
-            pt.at(i) = m_cwise[i][ti[i]];
+        for (index_t i = 0; i != m_cur.rows(); ++i)
+            *(pt++) = m_cwise[i][ti[i]];
     }
 
 private:
