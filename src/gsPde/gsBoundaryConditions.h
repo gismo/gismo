@@ -209,6 +209,10 @@ public:
     typedef typename cornerContainer::iterator citerator;
     typedef typename cornerContainer::const_iterator const_citerator;
 
+    typedef typename std::vector<boundaryInterface> ppContainer;
+    typedef typename ppContainer::iterator ppiterator;
+    typedef typename ppContainer::const_iterator const_ppiterator;
+
     // Format: std::pair<type,bcContainer>
     typedef std::map<std::string,bcContainer> bcData;
     typedef typename bcData::iterator bciterator;
@@ -237,6 +241,7 @@ public:
     {
         m_bc.swap(other.m_bc);
         corner_values.swap(other.corner_values);
+        m_periodicPairs.swap(other.m_periodicPairs);
     }
     
 public:
@@ -245,6 +250,7 @@ public:
     {
         m_bc.clear();
         corner_values.clear();
+        m_periodicPairs.clear();
     }
 
     size_t size() const
@@ -264,7 +270,7 @@ public:
     /// Return a reference to the Neumann sides
     const bcContainer & neumannSides()   const {return m_bc["Neumann"]; }
 
-    /// Return a reference to the Dirichlet sides
+    /// Return a reference to the Robin sides
     const bcContainer & robinSides()     const {return m_bc["Robin"]; }
 
     const cornerContainer & cornerValues() const  {return corner_values;  }
@@ -586,16 +592,52 @@ public:
         }
     }
 
-    size_t numPeriodic() { return m_periodic_pairs.size(); }
+    // Periodic conditions
 
-    /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2.
-    void addPeriodic(int p1, boxSide s1, int p2, boxSide s2, int dim)
-    { m_periodic_pairs.push_back( boundaryInterface(patchSide(p1,s1),patchSide(p2,s2), dim) ); } 
+    /// Get number of periodic pairs
+    const size_t numPeriodic() const { return m_periodicPairs.size(); }
+
     /// Return a reference to the periodic sides
-    const std::vector<boundaryInterface> & periodicPairs() const {return m_periodic_pairs; }
+    const ppContainer & periodicPairs() const {return m_periodicPairs; }
+
+    /// Get a const-iterator to the beginning of the periodic sides
+    /// \return an iterator to the beginning of the periodic sides
+    const_ppiterator periodicBegin() const
+    { return m_periodicPairs.begin(); }
+
+    /// Get a const-iterator to the end of the periodic sides
+    /// \return an iterator to the end of the periodic sides
+    const_ppiterator periodicEnd() const
+    { return m_periodicPairs.end(); }
+
+    /// Get an iterator to the beginning of the periodic sides
+    /// \return an iterator to the beginning of the periodic sides
+    ppiterator periodicBegin()
+    { return m_periodicPairs.begin(); }
+
+    /// Get an iterator to the end of the periodic sides
+    /// \return an iterator to the end of the periodic sides
+    ppiterator periodicEnd()
+    { return m_periodicPairs.end(); }
+
+    /// Add a periodic condition between side \a s1 of box \a p1 and side \a s2 of box \a p2.
+    void addPeriodic(int p1, boxSide s1, int p2, boxSide s2, int dim)
+    { m_periodicPairs.push_back( boundaryInterface(patchSide(p1,s1), patchSide(p2,s2), dim) ); } 
 
     /// Removes all periodic pairs
-    void clearPeriodicPairs() { m_periodic_pairs.clear(); }
+    void clearPeriodicPairs() { m_periodicPairs.clear(); }
+
+    /// Set transformation matrix for the periodic pairs of sides
+    void setTransformMatrix(gsMatrix<T> trMatrix)
+    { m_trMatrix = trMatrix; }
+
+    /// Set identity transformation matrix for the periodic pairs of sides
+    void setIdentityMatrix(int dim)
+    { m_trMatrix = gsMatrix<T>::Identity(dim, dim); }
+
+    /// Get transformation matrix for the periodic pairs of sides
+    gsMatrix<T> getTransformMatrix() const
+    { return m_trMatrix; }
 
     // Data members
 private:
@@ -616,8 +658,8 @@ private:
 
     mutable bcData m_bc;  ///< Containers for BCs of various types
 
-    std::vector<boundaryInterface> m_periodic_pairs; // TODO: add read from xml
-    // gsMatrix<T> trm_tr_matrix;
+    std::vector<boundaryInterface> m_periodicPairs; // TODO: add read from xml
+    gsMatrix<T> m_trMatrix;
       
     // Pointer to associated multipatch domain
     //gsMultiPatch<T> * m_patches;
