@@ -244,8 +244,8 @@ public:
 
     /** @brief Evaluate second derivatives of the function at points \a u into \a result.
      *
-     * Let \em n be the dimension of the source space ( d = domainDim() ).\n
-     * Let \em m be the dimension of the image/target space ( n = targetDim() ).\n
+     * Let \em d be the dimension of the source space ( d = domainDim() ).\n
+     * Let \em n be the dimension of the image/target space ( n = targetDim() ).\n
      * Let \em N denote the number of evaluation points.
      *
      * \param[in] u gsMatrix of size <em>d</em> x <em>N</em>, where each

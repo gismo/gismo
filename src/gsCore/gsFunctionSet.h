@@ -61,7 +61,7 @@ namespace gismo {
    On each column the data is grouped in blocks corresponding to different functions,
    so that that if the requested evaluation contains s values
    \f$ v_1, \ldots, v_s \f$ for each pair \f$ (f_i, p_j) \f$, $i = 1, \ldots, S$, $j = 1, \ldots, N$,
-   of (function,point) the output matrix looks like
+   of (function, point) the output matrix looks like
 
    \f[
    \left[
@@ -178,11 +178,11 @@ public:
        \f[
        \left[
        \begin{array}{ccccc}
-       f_1^1(p_1) & f_1^1(p_2) & \ldots & f_1^1(p_N)\\
-       f_1^2(p_1) & f_1^2(p_2) & \ldots & f_1^2(p_N)\\
+       f_1^1(p_1) & f_1^{(1)}(p_2) & \ldots & f_1^{(1)}(p_N)\\
+       f_1^2(p_1) & f_1^{(2)}(p_2) & \ldots & f_1^{(2)}(p_N)\\
        \vdots     & \vdots     &        & \vdots\\
        f_1^{(m)}(p_1) & f_1^{(m)}(p_2) & \ldots & f_1^{(m)}(p_N)\\
-       f_2^1(p_1) & f_2^1(p_2) & \ldots & f_2^1(p_N)\\
+       f_2^{(1)}(p_1) & f_2^{(1)}(p_2) & \ldots & f_2^{(1)}(p_N)\\
        \vdots     & \vdots     &        & \vdots\\
        f_S^{(m)}(p_1) & f_S^{(m)}(p_2) & \ldots & f_S^{(m)}(p_N)
        \end{array}
@@ -261,19 +261,19 @@ public:
      \end{array}
      \right]
      \f]
-     For vector valued functions function \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}^{(m)}\f$ the format is:
+     For vector valued functions function \f$f_1, \ldots, f_S\f$ from \f$\mathbb{R}^n\rightarrow\mathbb{R}^{m}\f$ the format is:
      \f[
      \left[
      \begin{array}{ccccc}
-     \partial_{1}\partial_{1}f_1^1(p_1) & \partial_{1}\partial_{1}f_1^1(p_2) & \ldots & \partial_{1}\partial_{1}f_1^1(p_N)\\
-     \partial_{2}\partial_{2}f_1^1(p_1) & \partial_{2}\partial_{2}f_1^1(p_2) & \ldots & \partial_{2}\partial_{2}f_1^1(p_N)\\
+     \partial_{1}\partial_{1}f_1^{(1)}(p_1) & \partial_{1}\partial_{1}f_1^{(1)}(p_2) & \ldots & \partial_{1}\partial_{1}f_1^{(1)}(p_N)\\
+     \partial_{2}\partial_{2}f_1^{(1)}(p_1) & \partial_{2}\partial_{2}f_1^{(1)}(p_2) & \ldots & \partial_{2}\partial_{2}f_1^{(1)}(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k}\partial_{k}f_1^1(p_1) & \partial_{k}\partial_{k}f_1^1(p_2) & \ldots & \partial_{k}\partial_{k}f_1^1(p_N)\\
-     \partial_{1}\partial_{2}f_1^1(p_1) & \partial_{1}\partial_{2}f_1^1(p_2) & \ldots & \partial_{1}\partial_{2}f_1^1(p_N)\\
-     \partial_{1}\partial_{3}f_1^1(p_1) & \partial_{1}\partial_{3}f_1^1(p_2) & \ldots & \partial_{1}\partial_{3}f_1^1(p_N)\\
+     \partial_{k}\partial_{k}f_1^{(1)}(p_1) & \partial_{k}\partial_{k}f_1^{(1)}(p_2) & \ldots & \partial_{k}\partial_{k}f_1^{(1)}(p_N)\\
+     \partial_{1}\partial_{2}f_1^{(1)}(p_1) & \partial_{1}\partial_{2}f_1^{(1)}(p_2) & \ldots & \partial_{1}\partial_{2}f_1^{(1)}(p_N)\\
+     \partial_{1}\partial_{3}f_1^{(1)}(p_1) & \partial_{1}\partial_{3}f_1^{(1)}(p_2) & \ldots & \partial_{1}\partial_{3}f_1^{(1)}(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
-     \partial_{k-1}\partial_{k}f_1^1(p_1) & \partial_{k-1}\partial_{k}f_1^1(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1^1(p_N)\\
-     \partial_{1}\partial_{1}f_1^2(p_1) & \partial_{1}\partial_{1}f_1^2(p_2) & \ldots & \partial_{1}\partial_{1}f_1^2(p_N)\\
+     \partial_{k-1}\partial_{k}f_1{(1)}(p_1) & \partial_{k-1}\partial_{k}f_1^{(1)}(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1^{(1)}(p_N)\\
+     \partial_{1}\partial_{1}f_1^{(2)}(p_1) & \partial_{1}\partial_{1}f_1^{(2)}(p_2) & \ldots & \partial_{1}\partial_{1}f_1^{(2)}(p_N)\\
      \vdots       & \vdots       &        & \vdots\\
      \partial_{k-1}\partial_{k}f_1^{(m)}(p_1) & \partial_{k-1}\partial_{k}f_1^{(m)}(p_2) & \ldots & \partial_{k-1}\partial_{k}f_1^{(m)}(p_N)\\
      \vdots       & \vdots       &        & \vdots\\

@@ -201,9 +201,9 @@ public:
      * This function has a default implementation that may be overridden
      * in derived classes for higher performance.
      * 
-     * \param u     evaluation points as \em m column vectors
+     * \param u     evaluation points as \em N column vectors
      * \param coefs coefficient matrix describing the geometry in this basis, \em n columns
-     * \param[out] result  a matrix of size <em>n x m</em> with one function value as a column vector
+     * \param[out] result  a matrix of size <em>n x N</em> with one function value as a column vector
      *              per evaluation point
      */
     virtual void evalFunc_into(const gsMatrix<T> & u, 
@@ -213,11 +213,11 @@ public:
 
     /** @brief Evaluate the derivatives of the function described by \a coefs at points \a u.
      * 
-     * \param u     evaluation points as \em m column vectors
+     * \param u     evaluation points as \em N column vectors
      * \param coefs coefficient matrix describing the geometry in this basis, \em n columns
      * \return   For every column of \a u, the result matrix will contain
-     *   one Jacobian matrix of size <em>n x d</em>, such that the total size of
-     *   the result is <em>n x (d * m)</em>
+     *   one Jacobian matrix of size <em>d * n</em>, such that the total size of
+     *   the result is <em>n x (d * n) x N</em>
      */
     uMatrixPtr derivFunc(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
@@ -557,9 +557,9 @@ public:
     /**
     \brief Evaluates the first partial derivatives of the nonzero basis function.
     
-    Let...\n
+    Let \n
     \a d denote the dimension of the parameter domain.\n
-    \a K denote the number of active (i.e., non-zero) basis functions (see active_into()).
+    \a K denote the number of active (i.e., non-zero) basis functions (see active_into()).\n
     \a N denote the number of evaluation points.\n
     
     The \a N <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>N</em>.
@@ -569,9 +569,9 @@ public:
     Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
     The column contains the gradients of all active functions "above" each other.\n
     
-    For example, for scalar basis functions \a Bi : (x,y,z)-> R, a column represents\n
-    (dx B1, dy B1, dz B1, dx B2, dy B2, dz B2, ... , dx Bn, dy BN, dz BN)^T,\n
-    where the order the basis functions \a Bi is as returned by active() and active_into().
+    For example, for scalar basis functions \a \f$B_i : (x,y,z)-> R\f$, a column represents\n
+    \f$(dx B_1, dy B_1, dz B_1, dx B_2, dy B_2, dz B_2, ... , dx B_n, dy B_N, dz B_N)^T\f$,\n
+    where the order the basis functions \a \f$B_i\f$ is as returned by active() and active_into().
     
     \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>N</em>.
     See above for details.

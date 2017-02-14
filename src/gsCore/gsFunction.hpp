@@ -31,7 +31,7 @@ template <class T>
 void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
     // Compute component gradients as columns of result
-    deriv_into(u,result);
+    deriv_into(u, result);
 
     // Reshape the matrix to get one Jacobian block per evaluation point
     const index_t d = domainDim();     // dimension of domain
@@ -40,8 +40,37 @@ void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
 }
 
 template <class T>
+void gsFunction<T>::div_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{
+
+    // Compute component gradients as columns of result
+    deriv_into(u, result);
+    //gsInfo << "deriv_into result:\n"   << result << "\n";
+
+
+    const index_t numPts = u.cols();    // number of points to compute at
+    const index_t d = domainDim();      // dimension of domain
+
+    gsVector<T> tmp_div(numPts);        // tmp. divergence storage
+    tmp_div.setZero();                  // initialize by zeros
+    gsVector<T> resCol(d * d);
+
+    for ( index_t p = 0; p < numPts; p++ ) { // for all evaluation points
+        resCol = result.col(p);
+        for ( index_t i = 0; i < d; i++ ) { tmp_div(p) += resCol(i * d + i); }
+    }
+    // Resizing the result to store the
+    result.resize(1, numPts);
+    result = tmp_div.transpose();
+
+    //gsInfo << "div_into:\n"   << result << "\n";
+
+}
+
+template <class T>
 void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
+
     //gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
     const index_t parDim = u.rows();                // dimension of domain
     const index_t tarDim = targetDim();             // dimension of codomain
@@ -51,7 +80,7 @@ void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     gsVector<T> tmp(tarDim);
 
     gsMatrix<T> ev, uc(parDim,4);
-    result.resize( parDim *tarDim,  numPts );
+    result.resize( parDim * tarDim,  numPts );
 
     for ( index_t p = 0; p < numPts; p++ ) // for all evaluation points
     {
@@ -64,6 +93,7 @@ void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
             delta(j)  = T(0.00002);
             uc.col(2) = u.col(p)+delta;
             uc.col(3) = u.col(p)-delta;
+            //m_geo.eval_into(u, tmp);
             this->eval_into(uc, ev );
             tmp=(8*( ev.col(0)- ev.col(1)) + ev.col(3) - ev.col(2) ) / T(0.00012);
 
