@@ -19,6 +19,10 @@
 #include <gsCore/gsExport.h>
 #include <gsCore/gsDebug.h>
 
+#ifdef __GNUC__ 
+#include <cxxabi.h>
+#endif
+
 #define STRINGIGY(x) #x
 
 namespace gismo
@@ -151,6 +155,35 @@ inline std::string capitalize(const std::string& str)
     capitalize(newStr);
     return newStr;
 }
+
+/// \brief Remove pointer from type
+/// \ingroup Utils
+template<typename T> struct remove_pointer {typedef T type;};
+template<typename T> struct remove_pointer<T*> {typedef typename remove_pointer<T>::type type;};
+
+/// \brief Print name of template type as a string
+/// \ingroup Utils
+template<typename T>
+struct type
+{
+public:
+    static std::string name()
+    {
+#ifdef __GNUC__ 
+        int status = 0;
+        // Note: C++11 style:
+        //std::unique_ptr<char,decltype(std::free)*> dm(__cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, NULL, &status ), std::free);
+        char * dm = __cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, NULL, &status );
+        GISMO_ASSERT(0==status, "Demangling failed");
+        std::string res(dm);
+        free(dm);
+        return res;
+#else
+        return typeid(T).name();
+#endif
+    }
+};
+
 
 } // end namespace util
 
