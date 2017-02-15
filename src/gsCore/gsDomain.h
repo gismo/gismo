@@ -34,7 +34,7 @@ public:
 
     virtual ~gsDomain() { }
 
-#if EIGEN_HAS_RVALUE_REFERENCES && EIGEN_GNUC_AT_MOST(4,7)
+#if EIGEN_HAS_RVALUE_REFERENCES && EIGEN_GNUC_AT_MOST(4,7) && !EIGEN_COMP_PGI
     // defaulted declaration required at least in Gcc 4.7.2
     gsDomain() = default;
     gsDomain(const gsDomain&) = default;
