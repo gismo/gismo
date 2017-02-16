@@ -96,57 +96,57 @@ public:
         
     /// Allows to read an Object from a file
     template<class Obj>
-    operator Obj * () 
+    operator memory::unique_ptr<Obj> () 
     {
         // Get the first object in the file
         if ( this->m_data.template hasAny< Obj >() )
             return  this->m_data.template getAnyFirst< Obj >();
 
         gsWarn<< "Failed to read object from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr<Obj>();
     }
 
     template<class Obj>
-    operator memory::shared_ptr<Obj> () const
+    operator memory::unique_ptr<Obj> () const
     {
-        return memory::make_shared<Obj>(*this);
+        return memory::make_unique<Obj>(*this);
     }
         
     /// Allows to read a file into a gsGeometry
-    operator gsGeometry<T> * () 
+    operator memory::unique_ptr< gsGeometry<T> > () 
     {
         // Get the first geometry in the file
         if ( this->m_data.template hasAny< gsGeometry<T>  >() )
             return  this->m_data.template getAnyFirst< gsGeometry<T>  >();
 
         gsWarn<< "Failed to read gsGeometry from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr< gsGeometry<T> >();
     }
     
     /// Allows to read a file into a gsCurve
-    operator gsCurve<T> * () 
+    operator memory::unique_ptr< gsCurve<T> > () 
     {
         // Get the first curve in the file
         if ( this->m_data.template hasAny< gsCurve<T>  >() )
             return  this->m_data.template getAnyFirst< gsCurve<T>  >();
 
         gsWarn<< "Failed to read gsCurve from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr< gsCurve<T> >();
     }
     
     /// Allows to read a file into a gsBasis
-    operator gsBasis<T> * () 
+    operator memory::unique_ptr< gsBasis<T> > () 
     {
         // Get the first basis in the file
         if ( this->m_data.template hasAny< gsBasis<T>  >() )
             return  this->m_data.template getAnyFirst< gsBasis<T> >();
 
         gsWarn<< "Failed to read gsBasis from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr< gsBasis<T> >();
     }
     
     /// Allows to read a function expression
-    operator gsFunctionExpr<T> * () const
+    operator memory::unique_ptr< gsFunctionExpr<T> > () const
     {
 
         if ( this->m_data.template hasAny< gsFunctionExpr<T> >() )
@@ -158,77 +158,92 @@ public:
         }
         
         gsWarn<< "Failed to read gsFunctionExpr from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr< gsFunctionExpr<T> >();
     }
 
     /// Allows to read a file into a gsBasis
-    operator gsPlanarDomain<T> * () 
+    operator memory::unique_ptr< gsPlanarDomain<T> > () 
     {
         // Get the first basis in the file
         if ( this->m_data.template hasAny< gsPlanarDomain<T>  >() )
             return  this->m_data.template getAnyFirst< gsPlanarDomain<T> >();
 
         gsWarn<< "Failed to read gsPlanarDomain from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr< gsPlanarDomain<T> >();
     }
     
     /// Allows to convert a gsReadFile to a gsMultipatch
-    operator gsMultiPatch<T> * () 
+    operator memory::unique_ptr< gsMultiPatch<T> > () 
     {
         // Get the first MultiPatch tag, if one exists -- TO DO
-        if ( this->m_data.template has< gsMultiPatch<T>  >() )
-            return  this->m_data.template getFirst< gsMultiPatch<T>  >();
+        if ( this->m_data.template has< gsMultiPatch<T> >() )
+            return  this->m_data.template getFirst< gsMultiPatch<T> >();
         
         // Else get all geometries and make a multipatch out of that
-        if ( this->m_data.template has< gsGeometry<T>  >() )
+        if ( this->m_data.template has< gsGeometry<T> >() )
         {
-            std::vector<gsGeometry<T>* > patches = 
-                this->m_data.template getAll< gsGeometry<T>  >();
-            return new gsMultiPatch<T>( patches );
+            std::vector< typename gsGeometry<T>::uPtr > patches = 
+                this->m_data.template getAll< gsGeometry<T> >();
+            std::vector< gsGeometry<T>* > releasedPatches = memory::release(patches);
+            return memory::make_unique(new gsMultiPatch<T>( releasedPatches ));
         }
         
         gsWarn<< "Failed to read gsMultiPatch from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr< gsMultiPatch<T> >();
+    }
+    
+    /// Allows to convert a gsReadFile to a gsMultipatch
+    operator gsMultiPatch<T> ()
+    {
+        memory::unique_ptr< gsMultiPatch<T> > mp = *this;
+        if (!mp) return gsMultiPatch<T>();
+        return *mp;
     }
     
     /// Allows to read a gsMesh
-    operator gsMesh<T> * () 
+    operator memory::unique_ptr< gsMesh<T> > () 
     {
         // Get the first Mesh, if one exists
         if ( this->m_data.template has< gsMesh<T>  >() )
             return  this->m_data.template getFirst< gsMesh<T>  >();
         
         gsWarn<< "Failed to read gsMesh from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr< gsMesh<T> >();
     }
     
     /// Allows to read a file into a vector of gsBasis
-    operator std::vector< gsBasis<T> * > () 
+    operator std::vector< memory::unique_ptr< gsBasis<T> > > () 
     {
         // Get all bases
         return  this->m_data.template getAll< gsBasis<T> >();
     }
     
     /// Allows to read a PDE
-    operator gsPde<T> * () 
+    operator memory::unique_ptr< gsPde<T> > () 
     {
         if ( this->m_data.template has< gsPde<T>  >() )
             return  this->m_data.template getFirst< gsPde<T>  >();
 
         gsWarn<< "Failed to read gsPde from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr< gsPde<T> >();
     }
     
     /// Read a poisson PDE
-    operator gsPoissonPde<T> * () 
+    operator memory::unique_ptr< gsPoissonPde<T> > () 
     {
         if ( this->m_data.template has< gsPoissonPde<T>  >() )
             return  this->m_data.template getFirst< gsPoissonPde<T>  >();
 
         gsWarn<< "Failed to read gsPoissonPde from file (not found).\n";
-        return NULL;
+        return memory::unique_ptr< gsPoissonPde<T> >();
     }
-    
+
+    /// Allows to convert a gsReadFile to a sharead pointer
+    template<class Obj>
+    operator memory::shared_ptr<Obj> ()
+    {
+        return (memory::unique_ptr<Obj>)(*this);
+    }
    
 };  // class gsReadFile
 

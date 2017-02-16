@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     
     gsFileData<> fileData(input);
     
-    gsBasis<>* pBasis = NULL;
+    gsBasis<>::uPtr pBasis = NULL;
     if (fileData.has< gsBasis<> >())
     {
         pBasis = fileData.getFirst< gsBasis<> >();
@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
     }
 
         
-    if (pBasis == NULL)
+    if (!pBasis)
     {
         gsInfo << "Didn't find any basis." << "\n";
         return -1;
@@ -200,7 +200,6 @@ int main(int argc, char* argv[])
         gsWriteParaview(*pBasis, output);
     }
     
-    delete pBasis;
     return 0;
 }
 

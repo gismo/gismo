@@ -177,7 +177,7 @@ struct gsJITCompilerConfig
             "Error: Invalid compiler language.");
 
         gsFileData<real_t> f(filename);        
-        gsJITCompilerConfig *cc = f.getId<gsJITCompilerConfig>(lang);
+        memory::unique_ptr<gsJITCompilerConfig> cc = f.getId<gsJITCompilerConfig>(lang);
 
         std::swap(*cc, *this);
         if (this->temp.empty()) this->temp=detectTemp();

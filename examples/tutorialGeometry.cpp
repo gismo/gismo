@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
 
     gsFileData<> fileData(input);
     
-    gsGeometry<>* pGeom = NULL;
+    gsGeometry<>::uPtr pGeom = NULL;
     if (fileData.has< gsGeometry<> >())
     {
         pGeom = fileData.getFirst< gsGeometry<> >();
@@ -181,7 +181,6 @@ int main(int argc, char* argv[])
         //! [write to paraview]
     }
 
-    delete pGeom;
     return 0;
 }
 

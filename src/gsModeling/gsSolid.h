@@ -31,7 +31,10 @@ namespace gismo {
 template <class T>
 class gsSolid : public gsSolidElement<T>
 {
-public:  
+public: 
+    typedef memory::shared_ptr<gsSolid> Ptr;
+    typedef memory::unique_ptr<gsSolid> uPtr;
+ 
     typedef gsSolidElement<T> SolidElement;
     typedef typename gsSolidElement<T>::scalar_t scalar_t;    
     typedef typename gsSolidElement<T>::gsSolidHeVertexHandle gsSolidHeVertexHandle;

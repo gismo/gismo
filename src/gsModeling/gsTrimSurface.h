@@ -38,6 +38,9 @@ class gsTrimSurface
 
 public:
 
+    typedef memory::shared_ptr<gsTrimSurface> Ptr;
+    typedef memory::unique_ptr<gsTrimSurface> uPtr;
+
     /// Default empty constructor
     gsTrimSurface() : m_domain(NULL) { }
     
