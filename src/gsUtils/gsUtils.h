@@ -177,7 +177,7 @@ public:
         char * dm = __cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, NULL, &status );
         GISMO_ASSERT(0==status, "Demangling failed");
         std::string res(dm);
-        free(dm);
+        std::free(dm);
         return res;
 #else
         return typeid(T).name();
