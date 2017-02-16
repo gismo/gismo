@@ -47,7 +47,6 @@ public:
                       >::type BoundaryBasisType;
 
     typedef memory::shared_ptr< gsHBSplineBasis > Ptr;
-    typedef memory::unique_ptr< gsHBSplineBasis > uPtr;
 
 public:
 

@@ -37,7 +37,6 @@ class gsMultiBasis : public gsFunctionSet<T>
 {
 public:
     typedef memory::shared_ptr<gsMultiBasis> Ptr;
-    typedef memory::unique_ptr<gsMultiBasis> uPtr;
 
     typedef std::vector<gsBasis<T> *> BasisContainer;
 

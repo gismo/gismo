@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
     //! [Read geometry]       
     gsFileData<> fileData(input);
     
-    gsGeometry<>::uPtr pGeom;
+    gsGeometry<>* pGeom = NULL;
     if (fileData.has< gsGeometry<> >())
     {
         pGeom = fileData.getFirst< gsGeometry<> >();
@@ -73,6 +73,7 @@ int main(int argc, char* argv[])
     gsInfo << "Wrote G+Smo file: " << output << ".xml \n";
     //! [Write geometry]    
     
+    delete pGeom;
     return 0;
 }
 

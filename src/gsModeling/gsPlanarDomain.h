@@ -43,9 +43,6 @@ template<class T>
 class gsPlanarDomain
 {
 public:
-
-    typedef memory::shared_ptr<gsPlanarDomain> Ptr;
-    typedef memory::unique_ptr<gsPlanarDomain> uPtr;
     
     /// Default empty constructor
     gsPlanarDomain() { }

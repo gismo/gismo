@@ -142,38 +142,6 @@ template <typename T>
 inline unique_ptr<T> make_unique(T * x)
 { return unique_ptr<T>(x); }
 
-/// Takes a vector of smart pointers and returns the corresponding raw pointers.
-template <typename T>
-inline std::vector<T*> get_raw(const std::vector< unique_ptr<T> >& cont)
-{
-    std::vector<T*> result;
-    for (typename std::vector< unique_ptr<T> >::const_iterator it = cont.begin(); it != cont.end(); ++it)
-        result.push_back(const_cast<T*>( (*it).get() ));
-    return result;
-}
-
-/// Takes a vector of smart pointers and returns the corresponding raw pointers.
-template <typename T>
-inline std::vector<T*> get_raw(const std::vector< shared_ptr<T> >& cont)
-{
-    std::vector<T*> result;
-    for (typename std::vector< shared_ptr<T> >::const_iterator it = cont.begin(); it != cont.end(); ++it)
-        result.push_back(const_cast<T*>( (*it).get() ));
-    return result;
-}
-
-/// Takes a vector of smart pointers, releases them and returns the corresponding raw pointers.
-template <typename T>
-inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
-{
-    std::vector<T*> result;
-    for (typename std::vector< unique_ptr<T> >::iterator it = cont.begin(); it != cont.end(); ++it)
-        result.push_back( (*it).release() );
-    cont.clear();
-    return result;
-}
-
-
 
 } // namespace memory
 
@@ -182,12 +150,14 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
     Alias for std::move, to be used instead of writing std::move for
     keeping backward c++98 compatibility
 */
+
 template <class T> inline
 auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
 {
-    //GISMO_STATIC_ASSERT( util::has_move_constructor<typename std::remove_reference<T>::type>::value, "There is no move constructor. Copy would be created." ); 
+    GISMO_STATIC_ASSERT( util::has_move_constructor<typename std::remove_reference<T>::type>::value, "There is no move constructor. Copy would be created." ); 
     return std::move(std::forward<T>(t));
 }
+
 #else
 /** 
     Alias for std::move, to be used instead of std::move for backward

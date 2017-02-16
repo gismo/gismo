@@ -18,8 +18,8 @@ using namespace gismo;
 // Getting the input (defined after the main function)
 bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
                   int & Dirichlet, int & DG, bool & plot, int & plot_pts,
-                  gsMultiPatch<>::uPtr & geo, memory::unique_ptr< gsPoissonPde<> > & ppde,
-                  gsFunctionExpr<>::uPtr & exactSol,
+                  gsMultiPatch<> * & geo, gsPoissonPde<> * & ppde,
+                  gsFunctionExpr<> * & exactSol,
                   gsMultiBasis<> & bases );
 
 int main(int argc, char *argv[])
@@ -32,9 +32,9 @@ int main(int argc, char *argv[])
     int DG;         // defaults to 0
     bool plot;      // defaults to false
     int plot_pts;   // defaults to 1000
-    gsMultiPatch<>::uPtr patches  = NULL; // defaults to BSplineCube
-    memory::unique_ptr< gsPoissonPde<> > ppde  = NULL;
-    gsFunctionExpr<>::uPtr exactSol = NULL;
+    gsMultiPatch<> * patches  = NULL; // defaults to BSplineCube
+    gsPoissonPde<> * ppde  = NULL;
+    gsFunctionExpr<> * exactSol = NULL;
     gsMultiBasis<> bases;// not yet given by input
 
     bool success = parse_input(argc, argv, numRefine, numElevate, Dirichlet,
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     for (gsMultiPatch<>::const_biterator
          bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
     {
-        bcInfo.addCondition( *bit, condition_type::dirichlet, exactSol.get() );
+        bcInfo.addCondition( *bit, condition_type::dirichlet, exactSol );
     }
 
     ppde->boundaryConditions() = bcInfo;
@@ -150,16 +150,21 @@ int main(int argc, char *argv[])
 
     gsInfo << "Test is done: Cleaning up..." << "\n"; //freeAll(m_bconditions);
 
+    delete patches;
+
     gsInfo << "Test is done: Exiting" << "\n";
+
+    delete ppde;
+    delete exactSol;
     
-    return result;
+    return  result;
 }
 
 
 bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
                   int & Dirichlet, int & DG, bool & plot, int & plot_pts,
-                  gsMultiPatch<>::uPtr & geo, memory::unique_ptr< gsPoissonPde<> > & ppde,
-                  gsFunctionExpr<>::uPtr & exactSol, gsMultiBasis<> &  bases )
+                  gsMultiPatch<> *& geo, gsPoissonPde<> *& ppde,
+                  gsFunctionExpr<> * & exactSol, gsMultiBasis<> &  bases )
 {
   std::string fn_pde("");
   std::string fn("");
@@ -207,9 +212,9 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
 
     if ( ! fn_basis.empty() )
     {
-    gsBasis<>::uPtr bb = gsReadFile<>( fn_basis );
+    gsBasis<> * bb = gsReadFile<>( fn_basis );
     gsInfo << "Got basis: "<< * bb<<"\n";
-    bases.addBasis(bb.release());
+    bases.addBasis(bb);
     //gsInfo << "Warning: basis ignored.\n";
     }
 

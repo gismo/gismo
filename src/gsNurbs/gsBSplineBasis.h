@@ -92,8 +92,6 @@ public:
     /// Shared pointer for gsTensorBSplineBasis
     typedef memory::shared_ptr< Self_t > Ptr;
 
-    typedef memory::unique_ptr< Self_t > uPtr;
-
     static Ptr makeShared ( const KnotVectorType & KV )
     { return Ptr( new Self_t(KV) ); }
   
@@ -640,9 +638,6 @@ template<class T>
 class gsBSplineBasis : public gsTensorBSplineBasis<1,T>
 {
 public:
-    typedef memory::shared_ptr< gsBSplineBasis > Ptr;
-    typedef memory::unique_ptr< gsBSplineBasis > uPtr;
-
     typedef gsKnotVector<T> KnotVectorType;
     typedef gsTensorBSplineBasis<1,T> Base;
     typedef gsBSplineBasis<T> Self_t;

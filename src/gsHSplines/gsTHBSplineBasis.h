@@ -45,7 +45,6 @@ public:
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
     
     typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
-    typedef memory::unique_ptr< gsTHBSplineBasis > uPtr;
 
     typedef typename
     util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<d-1,T>

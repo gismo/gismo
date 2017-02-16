@@ -34,9 +34,6 @@ template <class T>
 class gsConstantBasis : public gsBasis<T>
 {
 public:
-    typedef memory::shared_ptr< gsConstantBasis > Ptr;
-    typedef memory::unique_ptr< gsConstantBasis > uPtr;
-
     gsConstantBasis(T x , int domainDim  = 1)
     : m_val(x), m_domainDim(domainDim)
     { }

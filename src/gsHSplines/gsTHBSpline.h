@@ -48,7 +48,6 @@ public:
 
     /// Shared pointer for gsHBSpline
     typedef memory::shared_ptr< gsTHBSpline<d,T> > Ptr;
-    typedef memory::unique_ptr< gsTHBSpline<d,T> > uPtr;
 
     typedef typename
     util::conditional<d==1, gsConstantFunction<T>, gsTHBSpline<d-1,T>

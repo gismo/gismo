@@ -33,9 +33,6 @@ template<unsigned d, class T>
 class gsTensorBasis : public gsBasis<T>  
 {
 public: 
-    typedef memory::shared_ptr< gsTensorBasis > Ptr;
-    typedef memory::unique_ptr< gsTensorBasis > uPtr;
-
     typedef gsTensorBasis<d,T> Self_t;
 
     typedef gsBasis<T> Basis_t;
@@ -619,8 +616,6 @@ template<class T>
 class gsTensorBasis<1,T> : public gsBasis<T>
 {
 public: 
-    typedef memory::shared_ptr< gsTensorBasis<1,T> > Ptr;
-    typedef memory::unique_ptr< gsTensorBasis<1,T> > uPtr;
 
     static const int Dim = 1;
 
