@@ -21,6 +21,7 @@
 
 #ifdef __GNUC__ 
 #include <cxxabi.h>
+#include <cstdlib>
 #endif
 
 #define STRINGIGY(x) #x
