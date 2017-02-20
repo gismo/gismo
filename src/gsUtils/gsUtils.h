@@ -193,6 +193,15 @@ public:
     }
 };
 
+/// \brief Create hash key for a rangle of (integral) numbers
+template<typename T>
+std::size_t hash_range(T const * start, const T * const end)
+{
+    std::size_t seed = end - start;
+    for(; start!=end; ++start) 
+        seed ^= *start + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
+}
 
 } // end namespace util
 
