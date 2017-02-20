@@ -101,15 +101,22 @@ int main()
 
   namespace internal {
 
-  template<> inline mpfr::mpreal random<mpfr::mpreal>()
+/*
+template<>
+struct random_impl<mpq_class>
+{
+  typedef mpfr::mpreal Scalar;
+  static inline Scalar run(const Scalar& x, const Scalar& y)
   {
-    return mpfr::random();
+    return x + (y-x) * Scalar(std::rand()) / Scalar(RAND_MAX);
   }
-
-  template<> inline mpfr::mpreal random<mpfr::mpreal>(const mpfr::mpreal& a, const mpfr::mpreal& b)
+  static inline Scalar run()
   {
-    return a + (b-a) * random<mpfr::mpreal>();
+    return run(Scalar(NumTraits<Scalar>::IsSigned ? -1 : 0), Scalar(1));
+    //return mpfr::random();
   }
+};
+//*/
 
   inline bool isMuchSmallerThan(const mpfr::mpreal& a, const mpfr::mpreal& b, const mpfr::mpreal& eps)
   {
