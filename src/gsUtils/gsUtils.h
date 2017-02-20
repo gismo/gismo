@@ -173,7 +173,7 @@ public:
 #ifdef  __GNUC__ 
         int status = 0;
 #if     __cplusplus > 199711L
-        std::unique_ptr<char,decltype(std::free)*>
+        memory::unique_ptr<char,decltype(std::free)*>
             dm(__cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, NULL, &status ), std::free);
         return (status==0) ? dm.get() : typeid(T).name();
 #else

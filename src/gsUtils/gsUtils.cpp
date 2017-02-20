@@ -11,6 +11,7 @@
  Author(s): A. Mantzaflaris, Harald Weiner
  */
 
+#include <gsCore/gsForwardDeclarations.h>
 #include <gsUtils/gsUtils.h>
 
 #include <cstdlib>
