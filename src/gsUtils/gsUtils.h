@@ -170,15 +170,23 @@ struct type
 public:
     static std::string name()
     {
-#ifdef __GNUC__ 
+#ifdef  __GNUC__ 
         int status = 0;
-        // Note: C++11 style:
-        //std::unique_ptr<char,decltype(std::free)*> dm(__cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, NULL, &status ), std::free);
+#if     __cplusplus > 199711L
+        std::unique_ptr<char,decltype(std::free)*>
+            dm(__cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, NULL, &status ), std::free);
+        return (status==0) ? dm.get() : typeid(T).name();
+#else
         char * dm = __cxxabiv1::__cxa_demangle( typeid(T).name(), NULL, NULL, &status );
-        GISMO_ASSERT(0==status, "Demangling failed");
+        if (status!=0)
+        {
+            std::free(dm);
+            return typeid(T).name();
+        }
         std::string res(dm);
         std::free(dm);
         return res;
+#endif
 #else
         return typeid(T).name();
 #endif
