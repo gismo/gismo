@@ -55,8 +55,16 @@ macro(gsJITConfigXml source_file target_file)
   set(JIT_C_FLAGS       "${JIT_C_FLAGS} ${CMAKE_C_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS}")
   set(JIT_CXX_FLAGS     "${JIT_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS}")
   set(JIT_CUDA_FLAGS    "${JIT_CUDA_FLAGS} ${CUDA_NVCC_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS}")
-  set(JIT_Fortran_FLAGS "${JIT_Fortran_FLAGS} ${CMAKE_Fortran_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_Fortran_FLAGS}")
-
+  
+  # Create a set of shared library variable specific to Fortran
+  # For 90% of the systems, these are the same flags as the C versions
+  # so if these are not set just copy the flags from the c version
+  if(NOT DEFINED CMAKE_SHARED_LIBRARY_CREATE_Fortran_FLAGS)
+    set(JIT_Fortran_FLAGS "${JIT_Fortran_FLAGS} ${CMAKE_Fortran_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS}")
+  else()
+    set(JIT_Fortran_FLAGS "${JIT_Fortran_FLAGS} ${CMAKE_Fortran_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_Fortran_FLAGS}")
+  endif()
+  
   # Add C++ standard
   if(CMAKE_CXX_STANDARD EQUAL "98")
     set(JIT_CXX_FLAGS "${JIT_CXX_FLAGS} ${CMAKE_CXX98_STANDARD_COMPILE_OPTION}")

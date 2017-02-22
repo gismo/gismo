@@ -649,11 +649,15 @@ public:
 #           ifdef _WIN32
             srcName<< config.getTemp() << "\\." << name << "." << config.getLang();
             std::ofstream file(srcName.str().c_str());
+            file << "#ifdef __cplusplus\n";
             file << "#define EXPORT extern \"C\" __declspec(dllexport)\n";
+            file << "#endif\n";
 #           else
             srcName<< config.getTemp() << "/." << name << "." << config.getLang();
             std::ofstream file(srcName.str().c_str());
+            file << "#ifdef __cplusplus\n";
             file << "#define EXPORT extern \"C\"\n";
+            file << "#endif\n";
 #           endif
             file << getKernel().str() <<"\n";
             file.close();
