@@ -80,6 +80,15 @@ include( gsOptions )
 # Data directory
 include ( gsDataDir )
 
+## #################################################################
+## JIT compiler
+## #################################################################
+
+include(gsJITConfigXml)
+gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
+  ${CMAKE_BINARY_DIR}/config/jit.xml)
+add_definitions(-DGISMO_CONFIG_DIR="${CMAKE_BINARY_DIR}/config/")
+
 # Configure
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
@@ -269,12 +278,3 @@ if (NOT gismo_optionals STREQUAL "")
   string (REPLACE ";" ", " gismo_optionals "${gismo_optionals}")
   message(STATUS "Optional compile list: ${gismo_optionals}")
 endif()
-
-## #################################################################
-## JIT compiler
-## #################################################################
-
-include(gsJITConfigXml)
-gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
-  ${CMAKE_BINARY_DIR}/config/jit.xml)
-add_definitions(-DGISMO_CONFIG_DIR="${CMAKE_BINARY_DIR}/config/")
