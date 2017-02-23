@@ -31,6 +31,9 @@
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
 
+/** Define the file configuration directory. */
+#define GISMO_CONFIG_DIR "@GISMO_CONFIG_DIR@"
+
 /* Enabled Extensions */
 #cmakedefine GISMO_WITH_PSOLID
 #cmakedefine GISMO_WITH_ONURBS

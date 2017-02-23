@@ -28,6 +28,12 @@ macro(gsJITConfigXml source_file target_file)
   set(JIT_CUDA_COMPILER    ${CUDA_NVCC_EXECUTABLE})
   set(JIT_Fortran_COMPILER ${CMAKE_Fortran_COMPILER})
 
+
+
+  #CMAKE_C_COMPILE_OPTIONS_PIC
+#  get_target_property(HELLO gismo )
+#  message(${HELLO})
+  
   # Set JIT compiler flags (build-type dependent)
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(JIT_C_FLAGS       ${CMAKE_C_FLAGS_DEBUG})
@@ -52,9 +58,18 @@ macro(gsJITConfigXml source_file target_file)
   endif()
 
   # Add JIT compiler flags (all build types)
-  set(JIT_C_FLAGS       "${JIT_C_FLAGS} ${CMAKE_C_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS}")
-  set(JIT_CXX_FLAGS     "${JIT_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS}")
-  set(JIT_CUDA_FLAGS    "${JIT_CUDA_FLAGS} ${CUDA_NVCC_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS}")
+  set(JIT_C_FLAGS "${JIT_C_FLAGS} ${CMAKE_C_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS}")
+
+  if(NOT DEFINED CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS)
+    set(JIT_CXX_FLAGS "${JIT_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS}")
+  else()
+    set(JIT_CXX_FLAGS "${JIT_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS}")
+  endif()
+
+  if(NOT DEFINED CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS)
+  else()
+    set(JIT_CUDA_FLAGS    "${JIT_CUDA_FLAGS} ${CUDA_NVCC_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS}")
+  endif()
   
   # Create a set of shared library variable specific to Fortran
   # For 90% of the systems, these are the same flags as the C versions
