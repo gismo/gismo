@@ -270,3 +270,11 @@ if (NOT gismo_optionals STREQUAL "")
   message(STATUS "Optional compile list: ${gismo_optionals}")
 endif()
 
+## #################################################################
+## JIT compiler
+## #################################################################
+
+include(gsJITConfigXml)
+gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
+  ${CMAKE_BINARY_DIR}/config/jit.xml)
+-add_definitions(-DGISMO_CONFIG_DIR="${CMAKE_BINARY_DIR}/config/")
