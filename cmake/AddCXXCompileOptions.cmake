@@ -226,4 +226,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "SunPro")
     
   endif()
 
+else() # MSVC or others
+     set(CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION "")
+     set(CMAKE_CXX${CMAKE_CXX_STANDARD}_EXTENSION_COMPILE_OPTION "")     
 endif()
