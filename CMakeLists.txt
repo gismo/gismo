@@ -87,7 +87,6 @@ include ( gsDataDir )
 include(gsJITConfigXml)
 gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
   ${CMAKE_BINARY_DIR}/config/jit.xml)
-add_definitions(-DGISMO_CONFIG_DIR="${CMAKE_BINARY_DIR}/config/")
 
 # Configure
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
