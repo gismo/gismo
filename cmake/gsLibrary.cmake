@@ -22,7 +22,8 @@ if(GISMO_BUILD_LIB)
 #  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-implicit-templates")
 #endif()
 
-if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
+   "x${CMAKE_GENERATOR}" STREQUAL "xXcode")
  set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} 
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
