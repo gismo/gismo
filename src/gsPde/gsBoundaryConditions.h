@@ -595,7 +595,7 @@ public:
     // Periodic conditions
 
     /// Get number of periodic pairs
-    const size_t numPeriodic() const { return m_periodicPairs.size(); }
+    size_t numPeriodic() const { return m_periodicPairs.size(); }
 
     /// Return a reference to the periodic sides
     const ppContainer & periodicPairs() const {return m_periodicPairs; }

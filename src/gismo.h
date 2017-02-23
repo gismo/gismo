@@ -40,9 +40,9 @@ namespace internal
 /* ----------- Core ----------- */
 // #include <gsCore/gsConfig.h>
 // #include <gsCore/gsDebug.h>
+// #include <gsCore/gsExport.h>
 // #include <gsCore/gsMemory.h>
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsCore/gsExport.h>
 //#include <gsCore/gsJITCompiler.h>
 
 #include <gsCore/gsLinearAlgebra.h>
@@ -74,6 +74,8 @@ namespace internal
 #include <gsCore/gsFieldCreator.h>
 
 #include <gsCore/gsDomainIterator.h>
+
+#include <gsCore/gsTemplateTools.h>
 
 // Tensors
 #include <gsTensor/gsTensorDomainIterator.h>
@@ -159,7 +161,7 @@ namespace internal
 #include <gsMpi/gsMpi.h>
 
 /* ----------- Utilities ----------- */
-#include <gsUtils/gsUtils.h>
+//#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
 #include <gsUtils/gsNorms.h>
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
