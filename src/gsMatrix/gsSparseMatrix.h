@@ -263,10 +263,11 @@ public:
     std::pair<index_t,index_t> dim() const 
     { return std::make_pair(this->rows(), this->cols() ); }
 
+    //enable_if
     void reservePerColumn(const index_t nz)
     {
         //this->setZero();
-        this->reserve(gsVector<index_t>::Constant(this->cols(), nz));
+        this->reserve(gsVector<index_t>::Constant(this->outerSize(), nz));
     }
 
     void setFrom( gsSparseEntries<T> const & entries) ;
@@ -368,7 +369,6 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
         // sort rows wrt pivots
         bool didSwap;
         c_i = nr - 1; // last swap done
-        c_j = c_j;    // last ckeck id
         do
         {
             didSwap = false;
