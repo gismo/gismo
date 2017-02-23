@@ -14,3 +14,7 @@ if (DEFINED EMSCRIPTEN)
 else()
 	set (GISMO_DATA_DIR   "${PROJECT_SOURCE_DIR}/filedata/") 
 endif()
+
+# Config-files directory
+set(GISMO_CONFIG_DIR "${CMAKE_BINARY_DIR}/config/")
+
