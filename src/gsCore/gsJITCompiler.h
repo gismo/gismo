@@ -171,13 +171,13 @@ struct gsJITCompilerConfig
 
     /// Reads compiler configuration from XML file
     void load(const std::string filename,
-              const int lang = gsJITLang::CXX)
+              const int _lang = gsJITLang::CXX)
     {
-        GISMO_ENSURE(lang >= gsJITLang::C && lang <= gsJITLang::Fortran,
+        GISMO_ENSURE(_lang >= gsJITLang::C && _lang <= gsJITLang::Fortran,
             "Error: Invalid compiler language.");
 
         gsFileData<real_t> f(filename);        
-        gsJITCompilerConfig *cc = f.getId<gsJITCompilerConfig>(lang);
+        gsJITCompilerConfig *cc = f.getId<gsJITCompilerConfig>(_lang);
 
         std::swap(*cc, *this);
         if (this->temp.empty()) this->temp=detectTemp();
