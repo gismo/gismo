@@ -423,7 +423,7 @@ macro(OptimizeForArchitecture)
       _enable_or_disable(AVX512IFMA "avx512ifma" "Use AVX512IFMA." false)
       _enable_or_disable(AVX512VBMI "avx512vbmi" "Use AVX512VBMI." false)
 
-      if(MSVC)
+      if(MSVC AND MSVC_VERSION GREATER 1700) # G+Smo: VS 11
          # MSVC on 32 bit can select /arch:SSE2 (since 2010 also /arch:AVX)
          # MSVC on 64 bit cannot select anything (should have changed with MSVC 2010)
          _my_find(_enable_vector_unit_list "avx2" _found)
