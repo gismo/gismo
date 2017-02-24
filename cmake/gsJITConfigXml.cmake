@@ -92,6 +92,11 @@ macro(gsJITConfigXml source_file target_file)
     set(JIT_CUDA_FLAGS "${JIT_CXX_FLAGS} ${CUDA_CXX14_STANDARD_COMPILE_OPTION}")
   endif()
   
+  # PIC for 64bit machines
+  if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+      set(JIT_CXX_FLAGS "${JIT_CXX_FLAGS} -fPIC")
+  endif()
+
   # Set includes
   string(REPLACE ";" " -I" JIT_INCLUDES "-I${GISMO_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR} -I${CMAKE_CURRENT_SOURCE_DIR}/src")
 
