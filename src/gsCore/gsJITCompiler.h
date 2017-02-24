@@ -527,7 +527,7 @@ public:
         *(void **)(&symbol) = ::dlsym( handle.get(), name );
 #endif
         if (!symbol)
-            throw std::runtime_error("An error occured while getting symbolc from the dynamic library");
+            throw std::runtime_error("An error occured while getting symbol from the dynamic library");
         
         return symbol;
     }
@@ -634,6 +634,8 @@ public:
 
 #       if   defined(_WIN32)
         libName << config.getTemp() << "\\." << name << ".dll";
+        //(void)std::system("del /f " + libName);
+        //force = true;
 #       elif defined(__APPLE__)
         libName << config.getTemp() << "/.lib" << name << ".dylib";
 #       elif defined(__unix)
@@ -665,11 +667,19 @@ public:
             // Compile kernel source code into library
             std::stringstream systemcall;
 
-			systemcall << "\""  << "\"" << config.getCmd() << "\" "
+#           ifdef _WIN32
+            // double quotes are better than single quotes..
+            systemcall << "\"\"" << config.getCmd() << "\" "
                        << config.getFlags() << " \""
                        << srcName.str()     << "\" "
-					   << config.getOut() << "\"" << libName.str() << "\"" << "\"";
-
+					   << config.getOut() << "\"" << libName.str() << "\"\"";
+#           else
+			systemcall << "\"" << config.getCmd() << "\" "
+                       << config.getFlags() << " \""
+                       << srcName.str()     << "\" "
+					   << config.getOut() << "\"" << libName.str() << "\"";
+#           endif
+            
             gsInfo << "Compiling dynamic library: " << systemcall.str() << "\n";
             if(std::system(systemcall.str().c_str()) != 0)
                 throw std::runtime_error("An error occured while compiling the kernel source code");
