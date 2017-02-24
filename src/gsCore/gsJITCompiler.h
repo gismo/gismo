@@ -665,12 +665,12 @@ public:
             // Compile kernel source code into library
             std::stringstream systemcall;
 
-            systemcall << config.getCmd()   << " "
+			systemcall << "\""  << "\"" << config.getCmd() << "\" "
                        << config.getFlags() << " \""
                        << srcName.str()     << "\" "
-                       << config.getOut()   <<"\""<< libName.str()<<"\"";
+					   << config.getOut() << "\"" << libName.str() << "\"" << "\"";
 
-            gsDebug << "Compiling dynamic library: " << systemcall.str() << "\n";
+            gsInfo << "Compiling dynamic library: " << systemcall.str() << "\n";
             if(std::system(systemcall.str().c_str()) != 0)
                 throw std::runtime_error("An error occured while compiling the kernel source code");
         }
