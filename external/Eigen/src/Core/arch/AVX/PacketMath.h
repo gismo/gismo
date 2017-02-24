@@ -334,8 +334,9 @@ template<> EIGEN_STRONG_INLINE Packet4d preverse(const Packet4d& a)
    __m256d tmp = _mm256_shuffle_pd(a,a,5);
   return _mm256_permute2f128_pd(tmp, tmp, 1);
 
-  __m256d swap_halves = _mm256_permute2f128_pd(a,a,1);
-    return _mm256_permute_pd(swap_halves,5);
+// G+Smo UC
+//  __m256d swap_halves = _mm256_permute2f128_pd(a,a,1);
+//    return _mm256_permute_pd(swap_halves,5);
 }
 
 // pabs should be ok

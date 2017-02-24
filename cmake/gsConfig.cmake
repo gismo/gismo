@@ -76,7 +76,6 @@ endforeach()
 set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes" CACHE INTERNAL "")
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
-set(CMAKE_CXX_STANDARD_DEFAULT 11)
 set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(AddCXXCompileOptions)

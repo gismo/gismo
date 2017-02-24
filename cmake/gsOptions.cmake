@@ -51,7 +51,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
  option(GISMO_BUILD_COVERAGE      "Build with coverage"    false )
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
-message ("Configuration:")
+message ("Configuration (cmake ${CMAKE_VERSION}):")
 message ("  Source folder:          ${CMAKE_SOURCE_DIR}")
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")
 message ("  GISMO_COEFF_TYPE        ${GISMO_COEFF_TYPE}")

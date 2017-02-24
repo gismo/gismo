@@ -593,7 +593,7 @@ public:
 protected:
 
     void swap(gsTensorBasis& o)
-    { std::swap(m_bases, o.m_bases); }
+    { std::swap_ranges(m_bases, m_bases+d, o.m_bases); }
     
     Basis_t* m_bases[d];
 

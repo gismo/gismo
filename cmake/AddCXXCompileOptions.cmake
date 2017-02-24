@@ -2,6 +2,8 @@
 # This file is a backport from CMake version 3.7.x. Therefore, 
 #
 
+set(CMAKE_CXX_STANDARD_DEFAULT 11)
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "PGI")
 
   # CMake does not yet provide flags for the Portland Group compiler
@@ -22,7 +24,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "PGI")
 endif()
 
 if (CMAKE_VERSION VERSION_LESS "3.1")
-  
+
 if ((CMAKE_SYSTEM_NAME STREQUAL "Darwin") AND (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
     
     # Apple Clang
@@ -71,7 +73,8 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     elseif(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.4)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++1y")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++1y")
-      set(CMAKE_CXX_STANDARD_DEFAULT 14)
+      # .. additionally requires gnu libstdc++  greater than 4.6
+      # set(CMAKE_CXX_STANDARD_DEFAULT 14)
     endif()
 
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -172,19 +175,18 @@ endif()
 
 if (NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD_DEFAULT} CACHE INTERNAL "")
-else()
-  if ( NOT "x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
-    if ( ${CMAKE_CXX_STANDARD} LESS ${CMAKE_CXX_STANDARD_DEFAULT})
-         message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++${CMAKE_CXX_STANDARD}.")
-    endif()
-  endif()
 endif()
 
 # Apply for Cmake less than 3.1
 if (CMAKE_VERSION VERSION_LESS "3.1")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+
+  if ( NOT "x${CMAKE_CXX_STANDARD}" STREQUAL "x98" AND
+       ${CMAKE_CXX_STANDARD} LESS ${CMAKE_CXX_STANDARD_DEFAULT})
+      message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++${CMAKE_CXX_STANDARD}.")
+  endif()
+
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
 endif()#cmake<3.1
-#         message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++${CMAKE_CXX_STANDARD}.")
 
 
 # Bugfix for windows/msvc systems
