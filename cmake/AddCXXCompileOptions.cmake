@@ -2,10 +2,6 @@
 # This file is a backport from CMake version 3.7.x. Therefore, 
 #
 
-set(CMAKE_CXX_STANDARD_DEFAULT 11)
-set(CMAKE_CXX_STANDARD_REQUIRED OFF)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 if (CMAKE_CXX_COMPILER_ID STREQUAL "PGI")
 
   # CMake does not yet provide flags for the Portland Group compiler

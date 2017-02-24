@@ -76,7 +76,10 @@ endforeach()
 set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes" CACHE INTERNAL "")
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
-include(AddCXXCompileOptions)
+set(CMAKE_CXX_STANDARD_DEFAULT 11)
+set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+set(CMAKE_CXX_EXTENSIONS OFF)
+#include(AddCXXCompileOptions)
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
   # message(STATUS "Using Boost for smart pointers")
