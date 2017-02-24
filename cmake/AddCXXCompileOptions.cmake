@@ -2,137 +2,115 @@
 # This file is a backport from CMake version 3.7.x. Therefore, 
 #
 
-# CMake version 3.1 and below does not set this flag
-if (CMAKE_VERSION VERSION_LESS "3.1")
-  set(CMAKE_CXX_STANDARD_COMPUTED_DEFAULT ON)
+set(CMAKE_CXX_STANDARD_DEFAULT 11)
+set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "PGI")
+
+  # CMake does not yet provide flags for the Portland Group compiler
+  
+  # The Portland Group
+  if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15.0.0)
+    set(CMAKE_CXX98_STANDARD_COMPILE_OPTION "$std=c++98")
+    set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "$std=c++98")
+    set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++11")
+    set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=c++11")
+    set(CMAKE_CXX_STANDARD_DEFAULT 11)
+  else()
+    set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++0x")
+    set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=c++0x")
+    set(CMAKE_CXX_STANDARD_DEFAULT 98)
+  endif()
+  
 endif()
 
+if (CMAKE_VERSION VERSION_LESS "3.1")
+  
 if ((CMAKE_SYSTEM_NAME STREQUAL "Darwin") AND (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
-
-  # Ignore backport if CMake version is more recent
-  if (CMAKE_VERSION VERSION_LESS "3.8")
     
     # Apple Clang
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.0)
       set(CMAKE_CXX98_STANDARD_COMPILE_OPTION "-std=c++98")
-      set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "-std=gnu++98")
-      
+      set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "-std=gnu++98")      
       set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++11")
       set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=gnu++11")
+      set(CMAKE_CXX_STANDARD_DEFAULT 11)
     endif()
     
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.1)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++14")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++14")
+      set(CMAKE_CXX_STANDARD_DEFAULT 14)
     elseif(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.1)
       # AppleClang 5.0 knows this flag, but does not set a __cplusplus macro greater than 201103L
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++1y")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++1y")
+      set(CMAKE_CXX_STANDARD_DEFAULT 14)
     endif()
-    
-    if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.0)
-      if (NOT CMAKE_CXX_COMPILER_FORCED)
-        if (NOT CMAKE_CXX_STANDARD_COMPUTED_DEFAULT)
-          message(FATAL_ERROR "CMAKE_CXX_STANDARD_COMPUTED_DEFAULT should be set for ${CMAKE_CXX_COMPILER_ID} (${CMAKE_CXX_COMPILER}) version ${CMAKE_CXX_COMPILER_VERSION}")
-        endif()
-        set(CMAKE_CXX_STANDARD_DEFAULT ${CMAKE_CXX_STANDARD_COMPUTED_DEFAULT})
-      elseif(NOT DEFINED CMAKE_CXX_STANDARD_DEFAULT)
-        # Compiler id was forced so just guess the default standard level.
-        set(CMAKE_CXX_STANDARD_DEFAULT 98)
-      endif()
-    endif()
-
-  endif()
-    
+        
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-
-  # Ignore backport if CMake version is more recent
-  if (CMAKE_VERSION VERSION_LESS "3.8")
     
     # LLVM Clang
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 2.1)
       set(CMAKE_CXX98_STANDARD_COMPILE_OPTION "-std=c++98")
       set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "-std=gnu++98")
+      set(CMAKE_CXX_STANDARD_DEFAULT 98)
     endif()
     
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.1)
       set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++11")
       set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=gnu++11")
+      set(CMAKE_CXX_STANDARD_DEFAULT 11)
     elseif(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 2.1)
       set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++0x")
       set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=gnu++0x")
+      set(CMAKE_CXX_STANDARD_DEFAULT 11)
     endif()
     
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.5)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++14")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++14")
+      set(CMAKE_CXX_STANDARD_DEFAULT 14)
     elseif(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.4)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++1y")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++1y")
-    endif()
-    
-    if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.4)
-      if (NOT CMAKE_CXX_COMPILER_FORCED)
-        if (NOT CMAKE_CXX_STANDARD_COMPUTED_DEFAULT)
-          message(FATAL_ERROR "CMAKE_CXX_STANDARD_COMPUTED_DEFAULT should be set for ${CMAKE_CXX_COMPILER_ID} (${CMAKE_CXX_COMPILER}) version ${CMAKE_CXX_COMPILER_VERSION}")
-        endif()
-        set(CMAKE_CXX_STANDARD_DEFAULT ${CMAKE_CXX_STANDARD_COMPUTED_DEFAULT})
-      elseif(NOT DEFINED CMAKE_CXX_STANDARD_DEFAULT)
-        # Compiler id was forced so just guess the default standard level.
-        set(CMAKE_CXX_STANDARD_DEFAULT 98)
-      endif()
+      set(CMAKE_CXX_STANDARD_DEFAULT 14)
     endif()
 
-  endif()
-  
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 
-  # Ignore backport if CMake version is more recent
-  if (CMAKE_VERSION VERSION_LESS "3.8")
-    
     # GNU Compiler Collection
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.4)
       # Supported since 4.3
       set(CMAKE_CXX98_STANDARD_COMPILE_OPTION "-std=c++98")
       set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "-std=gnu++98")
+      set(CMAKE_CXX_STANDARD_DEFAULT 98)
     endif()
     
     if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.7)
       set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++11")
       set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=gnu++11")
+      set(CMAKE_CXX_STANDARD_DEFAULT 11)
     elseif (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.4)
       # 4.3 supports 0x variants
       set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++0x")
       set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=gnu++0x")
+      set(CMAKE_CXX_STANDARD_DEFAULT 14)
     endif()
     
     if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++14")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++14")
+      set(CMAKE_CXX_STANDARD_DEFAULT 14)
     elseif (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++1y")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++1y")
+      set(CMAKE_CXX_STANDARD_DEFAULT 14)
     endif()
-    
-    if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.4)
-      if (NOT CMAKE_CXX_COMPILER_FORCED)
-        if (NOT CMAKE_CXX_STANDARD_COMPUTED_DEFAULT)
-          message(FATAL_ERROR "CMAKE_CXX_STANDARD_COMPUTED_DEFAULT should be set for ${CMAKE_CXX_COMPILER_ID} (${CMAKE_CXX_COMPILER}) version ${CMAKE_CXX_COMPILER_VERSION}")
-        endif()
-        set(CMAKE_CXX_STANDARD_DEFAULT ${CMAKE_CXX_STANDARD_COMPUTED_DEFAULT})
-      elseif(NOT DEFINED CMAKE_CXX_STANDARD_DEFAULT)
-        # Compiler id was forced so just guess the default standard level.
-        set(CMAKE_CXX_STANDARD_DEFAULT 98)
-      endif()
-    endif()
-
-  endif()
-    
+   
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 
-  # Ignore backport if CMake version is more recent
-  if (CMAKE_VERSION VERSION_LESS "3.8")
-    
     # Intel compiler 
     if("x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC")
       set(_std -Qstd)
@@ -141,92 +119,119 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
       set(_std -std)
       set(_ext gnu++)
     endif()
-    
+
+    if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12.1)
+      set(CMAKE_CXX98_STANDARD_COMPILE_OPTION "${_std}=c++98")
+      set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "${_std}=${_ext}98")
+      set(CMAKE_CXX_STANDARD_DEFAULT 98)
+    endif()
+
+    if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.0)
+      set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "${_std}=c++11")
+      set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "${_std}=${_ext}11")
+      set(CMAKE_CXX_STANDARD_DEFAULT 11)
+    elseif (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12.1)
+      set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "${_std}=c++0x")
+      set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "${_std}=${_ext}0x")
+      set(CMAKE_CXX_STANDARD_DEFAULT 11)
+    endif()
+
     if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15.0.2)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "${_std}=c++14")
       # todo: there is no gnu++14 value supported; figure out what to do
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "${_std}=c++14")
+      set(CMAKE_CXX_STANDARD_DEFAULT 14)
     elseif (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15.0.0)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "${_std}=c++1y")
       # todo: there is no gnu++14 value supported; figure out what to do
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "${_std}=c++1y")
+      set(CMAKE_CXX_STANDARD_DEFAULT 14)
     endif()
-    
-    if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.0)
-      set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "${_std}=c++11")
-      set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "${_std}=${_ext}11")
-    elseif (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12.1)
-      set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "${_std}=c++0x")
-      set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "${_std}=${_ext}0x")
-    endif()
-    
-    if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12.1)
-      set(CMAKE_CXX98_STANDARD_COMPILE_OPTION "${_std}=c++98")
-      set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "${_std}=${_ext}98")
-    endif()
-    
-    if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12.1)
-      if (NOT CMAKE_CXX_COMPILER_FORCED)
-        if (NOT CMAKE_CXX_STANDARD_COMPUTED_DEFAULT)
-          message(FATAL_ERROR "CMAKE_CXX_STANDARD_COMPUTED_DEFAULT should be set for ${CMAKE_CXX_COMPILER_ID} (${CMAKE_CXX_COMPILER}) version ${CMAKE_CXX_COMPILER_VERSION}")
-        else()
-          set(CMAKE_CXX_STANDARD_DEFAULT ${CMAKE_CXX_STANDARD_COMPUTED_DEFAULT})
-        endif()
-      elseif (NOT CMAKE_CXX_STANDARD_COMPUTED_DEFAULT)
-        # Compiler id was forced so just guess the default standard level.
-        set(CMAKE_CXX_STANDARD_DEFAULT 98)
-      endif()
-    endif()
-    
+           
     unset(_std)
     unset(_ext)
-
-  endif()
-  
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "PGI")
-
-  # CMake does not yet provide flags for the Portland Group compiler
-  
-  # The Portland Group
-  if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15.0.0)
-    set(CMAKE_CXX98_STANDARD_COMPILE_OPTION "$std=c++98")
-    set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "$std=c++98")
-  endif()
-
-  if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15.0.0)
-    set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++11")
-    set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=c++11")
-  else()
-    set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++0x")
-    set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=c++0x")
-  endif()
-  
+    
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "SunPro")
-
-  # Ignore backport if CMake version is more recent
-  if (CMAKE_VERSION VERSION_LESS "3.8")
     
     # Oracle Solaris Studio
     if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.13)
       set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++11")
       set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=c++11")
+      set(CMAKE_CXX_STANDARD_DEFAULT 11)
     endif()
-    
-    if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.13)
-      if (NOT CMAKE_CXX_COMPILER_FORCED)
-        if (NOT CMAKE_CXX_STANDARD_COMPUTED_DEFAULT)
-          message(FATAL_ERROR "CMAKE_CXX_STANDARD_COMPUTED_DEFAULT should be set for ${CMAKE_CXX_COMPILER_ID} (${CMAKE_CXX_COMPILER}) version ${CMAKE_CXX_COMPILER_VERSION}")
-        endif()
-        set(CMAKE_CXX_STANDARD_DEFAULT ${CMAKE_CXX_STANDARD_COMPUTED_DEFAULT})
-      elseif(NOT DEFINED CMAKE_CXX_STANDARD_DEFAULT)
-        # Compiler id was forced so just guess the default standard level.
-        set(CMAKE_CXX_STANDARD_DEFAULT 98)
-      endif()
-    endif()
-    
-  endif()
 
-else() # MSVC or others
-     set(CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION "")
-     set(CMAKE_CXX${CMAKE_CXX_STANDARD}_EXTENSION_COMPILE_OPTION "")     
 endif()
+
+endif() # cmake 3.1
+
+# Set C++ standard
+if(DEFINED GISMO_BUILD_CPP11) # B.C.
+  if(${GISMO_BUILD_CPP11}) # B.C.
+    set(CMAKE_CXX_STANDARD 11 CACHE INTERNAL "")
+  else()
+    set(CMAKE_CXX_STANDARD 98 CACHE INTERNAL "")
+  endif()
+  unset(GISMO_BUILD_CPP11 CACHE)
+endif()
+
+if (NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD_DEFAULT} CACHE INTERNAL "")
+else()
+  if ( "x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
+    if ( ${CMAKE_CXX_STANDARD} LESS ${CMAKE_CXX_STANDARD_DEFAULT})
+         message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++${CMAKE_CXX_STANDARD}.")
+    endif()
+  endif()
+endif()
+
+# Apply for Cmake less than 3.1
+if (CMAKE_VERSION VERSION_LESS "3.1")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+endif()#cmake<3.1
+#         message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++${CMAKE_CXX_STANDARD}.")
+
+
+
+
+
+
+# if(NOT DEFINED CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION) 
+#   if((CMAKE_SYSTEM_NAME STREQUAL "Darwin") AND (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
+#     # set(CMAKE_CXX_FLAGS "-stdlib=libc++")
+#     set(CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION "-std=c++${CMAKE_CXX_STANDARD}")
+#     set(CMAKE_CXX${CMAKE_CXX_STANDARD}_EXTENSION_COMPILE_OPTION "-std=gnu++${CMAKE_CXX_STANDARD}")
+#   elseif((CMAKE_SYSTEM_NAME STREQUAL "Windows") AND MSVC)
+#     set(CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION "")
+#     set(CMAKE_CXX${CMAKE_CXX_STANDARD}_EXTENSION_COMPILE_OPTION "")
+#   endif()
+# endif()
+
+# if (CMAKE_VERSION VERSION_LESS "3.1" AND CMAKE_COMPILER_IS_GNUCC)
+#   if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.1)
+#     CHECK_CXX_COMPILER_FLAG("-std=c++${CMAKE_CXX_STANDARD}"
+#       COMPILER_SUPPORTS_CXX${CMAKE_CXX_STANDARD})
+#     if(COMPILER_SUPPORTS_CXX${CMAKE_CXX_STANDARD})
+#       if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+#         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CMAKE_CXX_STANDARD} -stdlib=libc++")
+#       else()
+#         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CMAKE_CXX_STANDARD}")
+#       endif()
+#     else()
+#       CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+#       if(COMPILER_SUPPORTS_CXX0X)
+#         if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+#           set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -stdlib=libc++")
+#         else()
+#           set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+#         endif()
+#       else()
+#         message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++${CMAKE_CXX_STANDARD}.")
+#       endif()
+#     endif()
+#   else() #gcc 6.1
+#     if(CMAKE_CXX_STANDARD EQUAL "98")
+#       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98")
+#     endif() 
+#   endif() 
+# endif()#cmake<3.1
+
