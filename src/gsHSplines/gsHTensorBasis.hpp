@@ -1218,10 +1218,13 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<unsigned> >
     while( m_xmatrix.back().size() == 0 )
         m_xmatrix.pop_back();
 
-    // ...similarly, erase/drop all those fine bases which are actually not used.
+    // ...similarly, erase all those fine bases which are actually not used.
     const int sizeDiff = static_cast<int>( m_bases.size() - m_xmatrix.size() );
     if( sizeDiff > 0 )
-        m_bases.erase( m_bases.end() - sizeDiff, m_bases.end() );
+    {
+        freeAll(m_bases.end() - sizeDiff, m_bases.end());
+        m_bases.resize(m_xmatrix.size());
+    }
 }
 
 template<unsigned d, class T>
