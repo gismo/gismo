@@ -42,8 +42,8 @@ macro(gsJITConfigXml source_file target_file)
 
   # Add JIT compiler flags (all build types)
   set(JIT_C_FLAGS "${JIT_C_FLAGS} ${CMAKE_C_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS}")
-  string(REPLACE "-fvisibility=hidden"         "" JIT_C_FLAGS ${JIT_CXX_FLAGS})
-  string(REPLACE "-fvisibility-inlines-hidden" "" JIT_C_FLAGS ${JIT_CXX_FLAGS})
+  string(REPLACE "-fvisibility=hidden"         "" JIT_C_FLAGS ${JIT_C_FLAGS})
+  string(REPLACE "-fvisibility-inlines-hidden" "" JIT_C_FLAGS ${JIT_C_FLAGS})
 
   if(NOT DEFINED CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS)
     set(JIT_CXX_FLAGS "${JIT_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS}")
