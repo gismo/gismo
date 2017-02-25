@@ -50,13 +50,13 @@ std::string getTempPath()
     if (_temp != NULL)
     {
         path = _temp;
-        /// free(_temp);
+        std::free(_temp);
         return path;
     }
 
     _temp = getcwd(NULL, 0);
     path = _temp;
-    /// free(_temp);
+    std::free(_temp);
     return path;
 #       endif
 }
