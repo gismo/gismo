@@ -136,8 +136,8 @@ int main(int argc, char**argv)
             gsInfo << "Matrix: "<< A.rows() << " x " << A.cols() << "\n";
         
         // Solving with Eigen-Cholesky:
-        gsSparseSolver<>::SimplicialLDLT solver(A);
-        x = solver.solve(b);
+        gsSparseSolver<>::SimplicialLDLT LDTL(A);
+        x = LDTL.solve(b);
     
         if ( n < 100 )
             gsInfo << "x = "<< x.transpose() <<"\n\n";
