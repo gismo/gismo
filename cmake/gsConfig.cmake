@@ -100,9 +100,9 @@ endif(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
-    if(${MSVC_VERSION} EQUAL 1800 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 18.00.31101.0)
-       message(WARNING "Visual Studio 2013 without Update 4 detected. Update your compiler to avoid G+Smo compilation problems.")
-    endif()
+    #if(${MSVC_VERSION} EQUAL 1800 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 18.00.31101.0)
+    #   message(WARNING "Visual Studio 2013 without Update 4 detected. Update your compiler to avoid G+Smo compilation problems.")
+    #endif()
 
     # Disable checked iterators and irrelevant warnings
     #wd4351: regards old behaviour before MSVC2005
