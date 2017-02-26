@@ -21,7 +21,7 @@ namespace gismo {
 template <class T>  class gsSolidHalfEdge;
 
 template <class T> 
-class gsSolidHeVertex  : public gsSolidElement<T>
+class GISMO_EXPORT gsSolidHeVertex  : public gsSolidElement<T>
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW

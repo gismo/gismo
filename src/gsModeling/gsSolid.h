@@ -29,7 +29,7 @@ namespace gismo {
 ///
 /// \ingroup Modeling
 template <class T>
-class gsSolid : public gsSolidElement<T>
+class GISMO_EXPORT gsSolid : public gsSolidElement<T>
 {
 public:  
     typedef gsSolidElement<T> SolidElement;
