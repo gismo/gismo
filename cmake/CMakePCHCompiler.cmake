@@ -13,14 +13,12 @@ include(CMakeParseArguments)
 function(add_precompiled_header pch_target header)
        set(lang ${CMAKE_PCH_COMPILER_LANGUAGE})
        if(NOT MSVC AND
-		NOT CMAKE_COMPILER_IS_GNU${lang} AND
-		NOT CMAKE_${lang}_COMPILER_ID STREQUAL "GNU" AND
-		NOT CMAKE_${lang}_COMPILER_ID STREQUAL "Clang" AND
-		NOT CMAKE_${lang}_COMPILER_ID STREQUAL "AppleClang"
-		)
-		message(WARNING
-			"Precompiled headers not supported for ${CMAKE_${lang}_COMPILER_ID}")
-		return()
+	  NOT CMAKE_COMPILER_IS_GNU${lang} AND
+	  NOT CMAKE_${lang}_COMPILER_ID STREQUAL "GNU" AND
+	  NOT CMAKE_${lang}_COMPILER_ID STREQUAL "Clang" AND
+	  NOT CMAKE_${lang}_COMPILER_ID STREQUAL "AppleClang" )
+	  message(WARNING "Precompiled headers not supported for ${CMAKE_${lang}_COMPILER_ID}")
+	  return()
 	endif()
 
 	if(ARGS_TYPE)
@@ -51,7 +49,7 @@ function(add_precompiled_header pch_target header)
 	else()
 		set(flags "-x ${header_type}")
 		set_target_properties(${pch_target} PROPERTIES
-			COMPILE_FLAGS "-fPIC" )
+		COMPILE_FLAGS "${CMAKE_CXX_COMPILE_OPTIONS_PIC} ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}" )
 	endif()
 
         set_source_files_properties(
@@ -90,6 +88,7 @@ function(target_precompiled_header target pch_target)
 		set(flags "/Yu${win_header} /Fp${win_pch} /FI${win_header}")
 	else()
 		#Note: ${target_dir}/${target_hdr} does not exist, so PCH is used
+		# -H: "!" used OK, "x" not used
 		set(flags "-Winvalid-pch -include ${target_dir}/${target_hdr}") # -H
 	endif()
 	set_target_properties(${target} PROPERTIES COMPILE_FLAGS "${flags}")
