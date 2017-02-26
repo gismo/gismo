@@ -45,7 +45,7 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
 {
     const unsigned d = basis.dim();
 
-    typedef typename gsMesh<T>::VertexHandle Vertex;
+    typedef typename gsMesh<T>::VertexHandle vtx;
     typename gsBasis<T>::domainIter domIter = basis.makeDomainIterator();
 
     // variables for iterating over a cube (element is a cube)
@@ -55,7 +55,7 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
 
     // maps integer representation of a vertex into pointer to the
     // vertex coordinates
-    std::vector<Vertex> map(1ULL<<d);
+    std::vector<vtx> map(1ULL<<d);
 
     // neighbour[i] are integer representations of certain neighbours of
     // vertex i (i counts in lexicographics order over all vertices)
@@ -79,7 +79,7 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
 
     } while (nextCubePoint<gsVector<unsigned> >(cur, zeros, ones));
 
-    gsVector<T> vertex(d);
+    gsVector<T> vv(d);
 
     for (; domIter->good(); domIter->next())
     {
@@ -87,7 +87,7 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
         const gsVector<T>& upp = domIter->upperCorner();
         const T vol = domIter->volume();
 
-        vertex.setZero();
+        vv.setZero();
         cur.setZero();
         counter = 0;
 
@@ -97,10 +97,10 @@ gsMesh<T>::gsMesh(const gsBasis<T> & basis, int n)
             // get appropriate coordinate of a point
             for (unsigned dim = 0; dim < d; dim++)
             {
-                vertex(dim) = ( cur(dim) ?  upp(dim) : low(dim) );
+                vv(dim) = ( cur(dim) ?  upp(dim) : low(dim) );
             }
 
-            Vertex v = addVertex(vertex);
+            vtx v = addVertex(vv);
             v->data  = vol;
             map[counter++] = v;
 
