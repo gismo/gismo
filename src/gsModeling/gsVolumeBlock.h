@@ -25,7 +25,7 @@
 namespace gismo {
 
 template <class T>
-class GISMO_EXPORT gsVolumeBlock : public gsSolidElement<T>
+class gsVolumeBlock : public gsSolidElement<T>
 {
 public:
     // to do change all types in gsModeling
