@@ -11,6 +11,10 @@ include(CMakeParseArguments)
 
 # Create precompiled header
 function(add_precompiled_header pch_target header)
+       # Relocate file
+       configure_file(${header} ${CMAKE_CURRENT_BINARY_DIR}/${pch_target}.h COPYONLY)
+       set(header ${CMAKE_CURRENT_BINARY_DIR}/${pch_target}.h)
+       
        set(lang ${CMAKE_PCH_COMPILER_LANGUAGE})
        if(NOT MSVC AND
 	  NOT CMAKE_COMPILER_IS_GNU${lang} AND
@@ -34,9 +38,10 @@ function(add_precompiled_header pch_target header)
 
 	add_library(${pch_target} OBJECT ${header})
 	set_target_properties(${pch_target} PROPERTIES
-        COMPILE_DEFINITIONS gismo_EXPORTS
+	#COMPILE_DEFINITIONS ${preDefs} # exports
 	POSITION_INDEPENDENT_CODE ON # bug: no effect, need fPIC later
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${pch_target}.dir")
+	LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${pch_target}.dir"
+	)
 	
 	if(MSVC)
 		# ensure pdb goes to the same location, otherwise we get C2859
@@ -52,11 +57,8 @@ function(add_precompiled_header pch_target header)
 		COMPILE_FLAGS "${CMAKE_CXX_COMPILE_OPTIONS_PIC} ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}" )
 	endif()
 
-        set_source_files_properties(
-		${header}
-		PROPERTIES
-		LANGUAGE ${lang}PCH
-		COMPILE_FLAGS ${flags} )
+        set_source_files_properties(${header} PROPERTIES
+		LANGUAGE ${lang}PCH COMPILE_FLAGS ${flags} )
 endfunction()
 
 # Use precompiled header
@@ -73,23 +75,27 @@ function(target_precompiled_header target pch_target)
 		return()
 	endif()
         add_dependencies(${target} ${pch_target})
-	get_target_property(target_hdr ${pch_target} SOURCES)
+	get_target_property(header_name ${pch_target} SOURCES)
+	get_filename_component(header_name "${header_name}" NAME)
+
+	get_target_property(pre_defs ${target} COMPILE_DEFINITIONS)
+	set_target_properties(${pch_target} PROPERTIES COMPILE_DEFINITIONS "${pre_defs}")
+		
 	get_target_property(target_dir ${pch_target} LIBRARY_OUTPUT_DIRECTORY)
         # Note: modification in pch file will not trigger target
 	# re-compilation without the next lines:
         #add_custom_target(${target}-pch DEPENDS ${target_hdr})
         #add_dependencies(${target} ${target}-pch)
 	if(MSVC)
-		get_filename_component(win_header "${target_hdr}" NAME)
-		file(TO_NATIVE_PATH "${target_dir}/${target_hdr}" win_pch)
+		file(TO_NATIVE_PATH "${target_dir}/${header_name}" win_pch)
 		# /Yu - use given include as precompiled header
 		# /Fp - exact location for precompiled header
 		# /FI - force include of precompiled header
-		set(flags "/Yu${win_header} /Fp${win_pch} /FI${win_header}")
+		set(flags "/Yu${header_name} /Fp${win_pch} /FI${heaeder_name}")
 	else()
-		#Note: ${target_dir}/${target_hdr} does not exist, so PCH is used
+		#Note: ${target_dir}/${header_name} does not exist, so PCH is used
 		# -H: "!" used OK, "x" not used
-		set(flags "-Winvalid-pch -include ${target_dir}/${target_hdr}") # -H
+		set(flags "-Winvalid-pch -include ${target_dir}/${header_name} -H")
 	endif()
 	set_target_properties(${target} PROPERTIES COMPILE_FLAGS "${flags}")
 endfunction()
