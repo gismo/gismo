@@ -1,6 +1,10 @@
-#
-# This file is a backport from CMake version 3.7.x. Therefore, 
-#
+######################################################################
+## CMakeLists.txt ---
+## This file is part of the G+Smo library. 
+##
+## Authors: M. Moeller and A. Mantzaflaris 
+## Copyright (C) 2012 - 2017 RICAM-Linz.
+######################################################################
 
 set(CMAKE_CXX_STANDARD_DEFAULT 11)
 
@@ -177,8 +181,8 @@ endif()
 if (CMAKE_VERSION VERSION_LESS "3.1")
 
   if ( NOT "x${CMAKE_CXX_STANDARD}" STREQUAL "x98" AND
-       ${CMAKE_CXX_STANDARD} LESS ${CMAKE_CXX_STANDARD_DEFAULT})
-      message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++${CMAKE_CXX_STANDARD}.")
+       ${CMAKE_CXX_STANDARD_DEFAULT} LESS ${CMAKE_CXX_STANDARD})
+      message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} supports at most C++${CMAKE_CXX_STANDARD_DEFAULT} (requested: ${CMAKE_CXX_STANDARD}).")
   endif()
 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
