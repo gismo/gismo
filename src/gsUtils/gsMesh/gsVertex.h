@@ -15,8 +15,9 @@
 
 #include <gsUtils/gsMesh/gsMeshElement.h>
 #include <gsCore/gsLinearAlgebra.h>
-#include <set>
-namespace gismo {
+
+namespace gismo
+{
 
 template <class T> 
 class gsVertex  : public gsMeshElement<T> 

@@ -28,7 +28,7 @@ namespace gismo {
    \ingroup Utils
 */
 template <class T>
-class gsMesh : public gsMeshElement<T>
+class GISMO_EXPORT gsMesh : public gsMeshElement<T>
 {
 public:
     typedef gsMeshElement<T> MeshElement;

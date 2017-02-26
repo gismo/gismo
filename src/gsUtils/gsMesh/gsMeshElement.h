@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <vector>
-
 #include <gsCore/gsForwardDeclarations.h>
 
 
