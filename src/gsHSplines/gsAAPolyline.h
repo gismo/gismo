@@ -13,11 +13,6 @@
 
 #pragma once
 
-//#include <gsHSplines/gsSegment.h>
-#include <utility> // std::pair
-#include <list>
-#include <vector>
-
 namespace gismo
 {
 /** \brief

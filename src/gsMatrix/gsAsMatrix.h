@@ -65,6 +65,13 @@ public:
     gsAsMatrix( T * pt, unsigned n, unsigned m)
     : Base( pt, n, m) {  }
 
+    gsMatrix<T> move()
+    {
+        gsMatrix<T> a;
+        a.swap(*this);
+        return a;
+    }
+    
 #ifdef _MSC_VER
     template <class EigenExpr>
     gsAsMatrix& operator= (const EigenExpr & other) 
@@ -117,7 +124,7 @@ public:
     }
 
 private:
-    gsAsMatrix() { }
+    gsAsMatrix();
 };
 
 /** \brief Creates a mapped object or data pointer to a const matrix without

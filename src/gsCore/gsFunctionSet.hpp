@@ -15,8 +15,8 @@
 #include <gsCore/gsFunction.h>
 #include <gsCore/gsBasis.h>
 
-namespace gismo {
-
+namespace gismo
+{
 
 template <class T>
 gsFunctionSet<T>::gsFunctionSet()

@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <ostream>
-
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsGeometry.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
@@ -71,12 +69,12 @@ public:
     { }
 
     /// Construct B-Spline from a Tensor B-Spline
-    gsTHBSpline( const gsTensorBSpline<d,T> & tbsp )
+    explicit gsTHBSpline( const gsTensorBSpline<d,T> & tbsp )
     {
         this->m_basis = new Basis( tbsp.basis() );
         this->m_coefs = tbsp.coefs();
     }
-
+    
     /// Clone the gsHBspline
     virtual gsTHBSpline * clone() const
     { return new gsTHBSpline(*this); }

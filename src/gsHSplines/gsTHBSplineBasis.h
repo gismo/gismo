@@ -104,9 +104,6 @@ public:
         : gsHTensorBasis<d,T>(tbasis)
     {  representBasis(); }
 
-    ~gsTHBSplineBasis()
-    { }
-
     /// Gives back the boundary basis at boxSide s
     BoundaryBasisType * boundaryBasis(boxSide const & s ) const
     {

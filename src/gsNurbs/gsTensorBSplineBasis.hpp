@@ -57,7 +57,7 @@ refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
         this->component(i).refine_withTransfer( B[i], refineKnots[i] );
     }
     
-        tensorCombineTransferMatrices<d, T>( B, transfer );
+    tensorCombineTransferMatrices<d, T>( B, transfer );
 }
 
 template<unsigned d, class T>
@@ -204,11 +204,11 @@ public:
     {
         if (d>1)
         {
-        GISMO_ASSERT( ( !strcmp( node->name(),"Basis") )
-                      &&  ( !strcmp(node->first_attribute("type")->value(),
-                                    internal::gsXml<Object>::type().c_str() ) ),
-                      "Something is wrong with the XML data: There should be a node with a "
-                      <<internal::gsXml<Object>::type().c_str()<<" Basis.");
+            GISMO_ASSERT( ( !strcmp( node->name(),"Basis") )
+                          &&  ( !strcmp(node->first_attribute("type")->value(),
+                                        internal::gsXml<Object>::type().c_str() ) ),
+                          "Something is wrong with the XML data: There should be a node with a "
+                          <<internal::gsXml<Object>::type().c_str()<<" Basis.");
         }
         else
         {
