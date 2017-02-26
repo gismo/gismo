@@ -15,12 +15,6 @@
 
 #include <gsCore/gsFunction.h>
 
-
-namespace
-{
-template<typename T> class gsFunctionExprPrivate;
-}
-
 namespace gismo
 {
 
@@ -176,7 +170,8 @@ public:
   
 // Data members
 private:
-    typedef gsFunctionExprPrivate<T> PrivateData_t;
+    class gsFunctionExprPrivate;
+    typedef gsFunctionExprPrivate PrivateData_t;
 
     PrivateData_t * my;
 

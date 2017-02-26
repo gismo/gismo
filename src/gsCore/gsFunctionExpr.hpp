@@ -129,7 +129,12 @@ T mixed_derivative(const exprtk::expression<T>& e,
     return num / ( T(144.0)*h*h );
 }
 
-template<typename T> class gsFunctionExprPrivate 
+} //namespace
+
+namespace gismo
+{
+
+template<typename T> class gsFunctionExpr<T>::gsFunctionExprPrivate 
 {
 public:
 
@@ -224,11 +229,6 @@ private:
     gsFunctionExprPrivate();
     gsFunctionExprPrivate operator= (const gsFunctionExprPrivate & other); 
 };
-
-} //namespace
-
-namespace gismo
-{
 
 /* / /AM: under construction
 template<typename T> class gsSymbolListPrivate 
@@ -442,9 +442,9 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
     const int n = targetDim();
     result.resize(n, u.cols());
 
-    const gsFunctionExprPrivate<T> & expr = 
+    const PrivateData_t & expr = 
 #   ifdef _OPENMP
-        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+        omp_in_parallel() ? PrivateData_t(*my) : 
 #   endif
         *my;
 
@@ -494,9 +494,9 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
     const int n = targetDim();
     result.resize(d*n, u.cols());
 
-    const gsFunctionExprPrivate<T> & expr = 
+    const PrivateData_t & expr = 
 #   ifdef _OPENMP
-        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+        omp_in_parallel() ? PrivateData_t(*my) : 
 #   endif
         *my;
     
@@ -529,9 +529,9 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
     const unsigned stride = d + d*(d-1)/2;
     result.resize(stride*n, u.cols() );
 
-    const gsFunctionExprPrivate<T> & expr = 
+    const PrivateData_t & expr = 
 #   ifdef _OPENMP
-        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+        omp_in_parallel() ? PrivateData_t(*my) : 
 #   endif
         *my;    
 
@@ -590,9 +590,9 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     
     gsMatrix<T> * res = new gsMatrix<T>(d,d);
 
-    const gsFunctionExprPrivate<T> & expr = 
+    const PrivateData_t & expr = 
 #   ifdef _OPENMP
-        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+        omp_in_parallel() ? PrivateData_t(*my) : 
 #   endif
         *my;
 
@@ -626,9 +626,9 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
     const int n = targetDim();
     gsMatrix<T> * res= new gsMatrix<T>(n,u.cols()) ;
     
-    const gsFunctionExprPrivate<T> & expr = 
+    const PrivateData_t & expr = 
 #   ifdef _OPENMP
-        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+        omp_in_parallel() ? PrivateData_t(*my) : 
 #   endif
         *my;
 
@@ -661,9 +661,9 @@ gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
     const int n = targetDim();
     gsMatrix<T> * res= new gsMatrix<T>(n,u.cols()) ;
     
-    const gsFunctionExprPrivate<T> & expr = 
+    const PrivateData_t & expr = 
 #   ifdef _OPENMP
-        omp_in_parallel() ? gsFunctionExprPrivate<T>(*my) : 
+        omp_in_parallel() ? PrivateData_t(*my) : 
 #   endif
         *my;
 
