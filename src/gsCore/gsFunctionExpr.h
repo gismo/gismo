@@ -15,10 +15,14 @@
 
 #include <gsCore/gsFunction.h>
 
+
+namespace
+{
+template<typename T> class gsFunctionExprPrivate;
+}
+
 namespace gismo
 {
-
-template<typename T> class gsFunctionExprPrivate;
 
 /** 
     @brief Class defining a multivariate (real or vector) function

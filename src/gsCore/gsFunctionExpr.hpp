@@ -129,11 +129,6 @@ T mixed_derivative(const exprtk::expression<T>& e,
     return num / ( T(144.0)*h*h );
 }
 
-} //namespace
-
-namespace gismo
-{
-
 template<typename T> class gsFunctionExprPrivate 
 {
 public:
@@ -174,7 +169,7 @@ public:
         string.push_back( strExpression );// Keep string data
         std::string & str = string.back();
         str.erase(std::remove(str.begin(), str.end(),' '), str.end() );
-        util::string_replace(str, "**", "^");
+        gismo::util::string_replace(str, "**", "^");
         
         // String expression
         expression.push_back(Expression_t());
@@ -230,6 +225,10 @@ private:
     gsFunctionExprPrivate operator= (const gsFunctionExprPrivate & other); 
 };
 
+} //namespace
+
+namespace gismo
+{
 
 /* / /AM: under construction
 template<typename T> class gsSymbolListPrivate 
