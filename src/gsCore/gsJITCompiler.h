@@ -68,30 +68,34 @@ struct gsJITCompilerConfig
         if(env!=NULL) temp = env;
     }
 
-    /// Constructor (passing arguments as strings, autodetect temp directory)
-    gsJITCompilerConfig(const std::string& cmd,
-                        const std::string& flags,
-                        const std::string& lang,
-                        const std::string& out)
-    : cmd(cmd), flags(flags), lang(lang), out(out), temp(detectTemp())
-    {}
+    virtual ~gsJITCompilerConfig() { }
     
     /// Constructor (passing arguments as strings)
     gsJITCompilerConfig(const std::string& cmd,
                         const std::string& flags,
                         const std::string& lang,
                         const std::string& out,
-                        const std::string& temp)
+                        const std::string& temp = detectTemp())
     : cmd(cmd), flags(flags), lang(lang), out(out), temp(temp)
     {}
 
+    void swap(gsJITCompilerConfig & other)
+    {
+        std::swap(cmd  , other.cmd  );
+        std::swap(flags, other.flags);
+        std::swap(lang , other.lang );
+        std::swap(out  , other.out  );
+        std::swap(temp , other.temp );
+    }
+            
+#   if __cplusplus >= 201103L
+
     /// Constructor (copy)
     gsJITCompilerConfig(gsJITCompilerConfig const& other)
-    : cmd(other.cmd), flags(other.flags), lang(other.lang), out(other.out), temp(other.temp)
-    {}
+    { operator=(other);}
 
-    /// Assignment operator (copy)
-    gsJITCompilerConfig& operator=(gsJITCompilerConfig const& other)
+    /// Assignment operator
+    gsJITCompilerConfig& operator=(const gsJITCompilerConfig & other)
     {
         cmd   = other.cmd;
         flags = other.flags;
@@ -101,14 +105,13 @@ struct gsJITCompilerConfig
         return *this;
     }
 
-#   if __cplusplus >= 201103L
     /// Constructor (move)
     gsJITCompilerConfig(gsJITCompilerConfig && other)
     : cmd(std::move(other.cmd)), flags(std::move(other.flags)),
       lang(std::move(other.lang)), out(std::move(other.out)),
       temp(std::move(other.temp))
     {}
-
+    
     /// Assignment operator (move)
     gsJITCompilerConfig& operator=(gsJITCompilerConfig && other)
     {
@@ -119,6 +122,13 @@ struct gsJITCompilerConfig
         temp  = std::move(other.temp);
         return *this;
     }
+#else
+    /// Assignment operator
+    gsJITCompilerConfig& operator=(gsJITCompilerConfig other)
+    {
+        this->swap(other);
+        return *this;
+    }        
 #   endif
     
     /// Return compiler command
@@ -177,10 +187,11 @@ struct gsJITCompilerConfig
             "Error: Invalid compiler language.");
 
         gsFileData<real_t> f(filename);        
-        gsJITCompilerConfig *cc = f.getId<gsJITCompilerConfig>(_lang);
+        gsJITCompilerConfig * cc = f.getId<gsJITCompilerConfig>(_lang);
 
         std::swap(*cc, *this);
         if (this->temp.empty()) this->temp=detectTemp();
+        delete cc;
     }
     
     /// Initialize to default Clang compiler
