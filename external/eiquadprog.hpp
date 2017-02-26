@@ -1,6 +1,5 @@
-#ifndef _EIGEN_QUADSOLVE_HPP_
-#define _EIGEN_QUADSOLVE_HPP_
 
+#pragma once
 
 /*
  FILE eiquadprog.hh
@@ -80,8 +79,6 @@ along with uquadprog; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 */
-
-#include <Eigen/Dense>
 
 #define TEMPLATE_T template<typename Scalar>
 #define VectorXd gsVector<Scalar>
@@ -602,9 +599,6 @@ void delete_constraint(MatrixXd& R, MatrixXd& J, Eigen::VectorXi& A, VectorXd& u
 }
 
 }
-
-#endif
-
 
 #undef TEMPLATE_T
 #undef VectorXd
