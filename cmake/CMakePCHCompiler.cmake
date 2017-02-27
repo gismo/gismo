@@ -15,7 +15,7 @@ function(add_precompiled_header pch_target header)
        configure_file(${header} ${CMAKE_CURRENT_BINARY_DIR}/${pch_target}.h COPYONLY)
        set(header ${CMAKE_CURRENT_BINARY_DIR}/${pch_target}.h)
        
-       set(lang ${CMAKE_PCH_COMPILER_LANGUAGE})
+       set(lang ${CMAKE_PCH_COMPILER_LANGUAGE}) #!
        if(NOT MSVC AND
 	  NOT CMAKE_COMPILER_IS_GNU${lang} AND
 	  NOT CMAKE_${lang}_COMPILER_ID STREQUAL "GNU" AND
@@ -45,18 +45,15 @@ function(add_precompiled_header pch_target header)
 	
 	if(MSVC)
 		# ensure pdb goes to the same location, otherwise we get C2859
-		file(TO_NATIVE_PATH
-			"${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${pch_target}.dir"
-			pdb_dir )
+		# file(TO_NATIVE_PATH "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${pch_target}.dir" pdb_dir)
 		# /Yc - create precompiled header
 		# /Fd - specify directory for pdb output
-		set(flags "/Yc /Fd${pdb_dir}\\")
+		set(flags "/Yc") #  /Fd${pdb_dir}\\
 	else()
 		set(flags "-x ${header_type}")
-		set_target_properties(${pch_target} PROPERTIES
+		set_target_properties(${pch_target} PROPERTIES LINKER_LANGUAGE CXX
 		COMPILE_FLAGS "${CMAKE_CXX_COMPILE_OPTIONS_PIC} ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}" )
 	endif()
-
         set_source_files_properties(${header} PROPERTIES
 		LANGUAGE ${lang}PCH COMPILE_FLAGS ${flags} )
 endfunction()
@@ -74,7 +71,7 @@ function(target_precompiled_header target pch_target)
 			"Precompiled headers not supported for ${CMAKE_${lang}_COMPILER_ID}" )
 		return()
 	endif()
-        add_dependencies(${target} ${pch_target})
+    add_dependencies(${target} ${pch_target})
 	get_target_property(header_name ${pch_target} SOURCES)
 	get_filename_component(header_name "${header_name}" NAME)
 
@@ -83,19 +80,19 @@ function(target_precompiled_header target pch_target)
 		
 	get_target_property(target_dir ${pch_target} LIBRARY_OUTPUT_DIRECTORY)
         # Note: modification in pch file will not trigger target
-	# re-compilation without the next lines:
+        # re-compilation without the next lines:
         #add_custom_target(${target}-pch DEPENDS ${target_hdr})
         #add_dependencies(${target} ${target}-pch)
 	if(MSVC)
-		file(TO_NATIVE_PATH "${target_dir}/${header_name}" win_pch)
-		# /Yu - use given include as precompiled header
-		# /Fp - exact location for precompiled header
-		# /FI - force include of precompiled header
-		set(flags "/Yu${header_name} /Fp${win_pch} /FI${heaeder_name}")
+		file(TO_NATIVE_PATH "${target_dir}/${header_name}.pch" win_pch)
+		# /Yu - use the given .h as a precompiled header
+		# /Fp - exact location for precompiled header .h.pch
+		# /FI - force include of the .h
+		set(flags "/Yu${header_name} /Fp${win_pch} /FI${header_name}")
 	else()
 		#Note: ${target_dir}/${header_name} does not exist, so PCH is used
 		# -H: "!" used OK, "x" not used
-		set(flags "-Winvalid-pch -include ${target_dir}/${header_name} -H")
+		set(flags "-Winvalid-pch -include ${target_dir}/${header_name}")
 	endif()
 	set_target_properties(${target} PROPERTIES COMPILE_FLAGS "${flags}")
 endfunction()
@@ -148,7 +145,7 @@ macro(__define_pch_compiler lang)
 	endif()
 
 	# copy all initial settings for C/CXXPCH from C/CXX & watch them
-	set(CMAKE_${lang}PCH_FLAGS "${CMAKE_${lang}_FLAGS_INIT}"
+	set(CMAKE_${lang}PCH_FLAGS "${CMAKE_${lang}_FLAGS_INIT}" #init?
 		CACHE STRING
 		"Flags used by the compiler during all build types." )
 	variable_watch(CMAKE_${lang}_FLAGS __watch_pch_variable)
