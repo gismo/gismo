@@ -39,23 +39,23 @@ std::string getTempPath()
             _temp);// buffer for path
     return std::string(_temp);
 #       else
-    char * _temp;
+    char * _temp = NULL;
 #       if defined(__APPLE__)
     _temp = getenv ("TMPDIR");
 #       elif defined(__unix)
     _temp = getenv("TEMP");
 #       endif
 
-    std::string path;
-    if (_temp != NULL)
+    if (_temp != NULL && _temp[0] != '\0')
     {
-        path = _temp;
-        std::free(_temp);
-        return path;
+        // note: env variable needs no free
+        return std::string(_temp);
     }
-
+    
+    // use current directory
     _temp = getcwd(NULL, 0);
-    path = _temp;
+    GISMO_ASSERT(NULL!=_temp, "getcwd returned NULL.");
+    std::string path(_temp);
     std::free(_temp);
     return path;
 #       endif
