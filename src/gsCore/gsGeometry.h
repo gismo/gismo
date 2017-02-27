@@ -155,7 +155,8 @@ public:
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsGeometry(gsGeometry&& other) 
-    : m_coefs(std::move(other.m_coefs)), m_basis(other.m_basis)
+    : m_coefs(std::move(other.m_coefs)), m_basis(other.m_basis), 
+      m_id(std::move(other.m_id))
     {
         other.m_basis = NULL;
     }
