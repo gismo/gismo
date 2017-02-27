@@ -60,7 +60,10 @@ public:
     
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsTensorBasis(gsTensorBasis&& other)
-    { gsTensorBasis::operator=(std::forward<gsTensorBasis>(other)); }
+    { 
+        util::copy(other.m_bases, other.m_bases+d, m_bases);
+        std::fill (other.m_bases, other.m_bases+d, nullptr);
+    }
     gsTensorBasis & operator=(gsTensorBasis&&other)
     {
         freeAll(m_bases, m_bases+d);

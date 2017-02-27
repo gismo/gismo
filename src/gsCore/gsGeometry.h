@@ -130,12 +130,9 @@ public:
     }
 
     /// @brief Copy Constructor
-    gsGeometry(const gsGeometry & o)
-    {
-        m_coefs = o.m_coefs;
-        m_basis = o.m_basis != NULL ? o.basis().clone() : NULL;
-        m_id    = o.m_id;
-    }
+    gsGeometry(const gsGeometry & o) 
+    : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone() : NULL), m_id(o.m_id)
+    { }
 
     /// @}
 
@@ -157,9 +154,10 @@ public:
     }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
-    gsGeometry(gsGeometry&& other)
+    gsGeometry(gsGeometry&& other) 
+    : m_coefs(std::move(other.m_coefs)), m_basis(other.m_basis)
     {
-        *this=std::forward<gsGeometry>(other);
+        other.m_basis = NULL;
     }
     gsGeometry & operator=(gsGeometry&& other)
     {
