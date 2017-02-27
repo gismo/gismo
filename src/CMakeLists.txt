@@ -27,7 +27,7 @@ FOREACH(subdir ${SUBDIRS})
 
   ## Collect files
   aux_header_directory     (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_H  )
-  aux_source_directory     (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_CPP)
+  aux_cpp_directory        (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_CPP)
   aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_HPP)
 
   if( (NOT GISMO_BUILD_LIB) )

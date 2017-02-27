@@ -164,6 +164,7 @@ public:
     gsGeometry & operator=(gsGeometry&& other)
     {
         m_coefs.swap(other.m_coefs); other.m_coefs.clear();
+        delete m_basis; 
         m_basis = other.m_basis; other.m_basis = NULL;
         return *this;
     }

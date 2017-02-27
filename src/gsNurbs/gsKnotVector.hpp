@@ -769,8 +769,7 @@ template<typename T>
 void gsKnotVector<T>::uniformRefine( mult_t numKnots, mult_t mult )
 {
     //GISMO_ASSERT( numKnots>=0, "Expecting non-negative number");
-    if( numKnots < 0 )
-        return;
+    if( numKnots <= 0 ) return;
 
     const mult_t l = ( domainUBegin() - ubegin() ) * numKnots * mult;
     const mult_t r = (uend() - domainUEnd() - 1  ) * numKnots * mult;
