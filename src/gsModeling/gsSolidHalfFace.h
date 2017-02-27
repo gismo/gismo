@@ -21,7 +21,7 @@ namespace gismo {
 
 
 template <class T>
-class GISMO_EXPORT gsSolidHalfFace : public gsSolidElement<T>
+class gsSolidHalfFace : public gsSolidElement<T>
 {
 public:
     typedef gsSolidElement<T> SolidElement;
