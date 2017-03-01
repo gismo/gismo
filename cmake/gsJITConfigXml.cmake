@@ -39,15 +39,21 @@ macro(gsJITConfigXml source_file target_file)
   string(REPLACE "-fvisibility=hidden"         "" JIT_C_FLAGS ${JIT_C_FLAGS})
   string(REPLACE "-fvisibility-inlines-hidden" "" JIT_C_FLAGS ${JIT_C_FLAGS})
 
+  # Create a set of shared library variable specific to C++
+  # For 90% of the systems, these are the same flags as the C versions
+  # so if these are not set just copy the flags from the c version
   if(NOT DEFINED CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS)
     set(JIT_CXX_FLAGS "${JIT_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS}")
   else()
     set(JIT_CXX_FLAGS "${JIT_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS}")
   endif()
 
+  # Create a set of shared library variable specific to CUDA
+  # For 90% of the systems, these are the same flags as the C versions
+  # so if these are not set just copy the flags from the c version
   if(NOT DEFINED CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS)
   else()
-    set(JIT_CUDA_FLAGS    "${JIT_CUDA_FLAGS} ${CUDA_NVCC_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS}")
+    set(JIT_CUDA_FLAGS "${JIT_CUDA_FLAGS} ${CUDA_NVCC_FLAGS} ${CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS}")
   endif()
   
   # Create a set of shared library variable specific to Fortran
