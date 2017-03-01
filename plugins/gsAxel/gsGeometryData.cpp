@@ -47,7 +47,7 @@ axlAbstractData * newGeometryData ( gsGeometryPointer gsData )
 	    return new gsAxelCurve(gsData);
 	    break;
 	case 2:
-	    if ( dynamic_cast<gismo::gsTrimSurface<double>*>(gsData) )
+	    if ( dynamic_cast<gismo::gsTrimSurface<double>*>(gsData.get()) )
 		return new gsAxelTrimSurf(gsData);
 	    else
 		return new gsAxelSurface(gsData);

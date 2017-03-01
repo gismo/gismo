@@ -33,7 +33,7 @@ namespace gismo
 
 template <class axlObj> class gsGeometryData;
 
-typedef gismo::gsGeometry<double> * gsGeometryPointer;
+typedef gismo::gsGeometry<double>::Ptr gsGeometryPointer;
 
 // Short names for different objects
 typedef gsGeometryData<axlAbstractCurveBSpline>   gsAxelCurve;
@@ -110,7 +110,7 @@ public:
     gsGeometryData(gsGeometryPointer geo);
     
     /// Virtual destructor, enables safe inheritance.
-    virtual ~gsGeometryData(void);
+    virtual ~gsGeometryData(void) { }
     
     axlObj * toAxel() {return static_cast<axlObj*>(this); }
 

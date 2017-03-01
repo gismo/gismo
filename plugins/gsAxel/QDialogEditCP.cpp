@@ -25,7 +25,7 @@ QDialogEditCP::QDialogEditCP(gsGeometryDialog * _dialog, QWidget *parent)
 {
     label = new QLabel(tr("Coordinates:"));
 
-    gismo::gsGeometry<> * g = getGeometryPointer(dialog->data());
+    gismo::gsGeometry<> * g = getGeometryPointer(dialog->data()).get();
     const int cp = dialog->selectedCp();
 
     coordinatePoint_x = new QDoubleSpinBox(this);

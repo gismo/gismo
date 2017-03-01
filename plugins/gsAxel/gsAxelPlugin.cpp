@@ -42,7 +42,7 @@
 class gsAxelPluginPrivate 
 {
 public:
-    // Class variables go here.
+    QMenu * gismoMenu;
 };
 
 // /////////////////////////////////////////////////////////////////
@@ -108,21 +108,31 @@ bool gsAxelPlugin::initialize(void)
 
 void gsAxelPlugin::setupGismoMenu(void)
 {
-    QMenu * gismoMenu = new QMenu("G+Smo"); 
+    d->gismoMenu = new QMenu("G+Smo"); 
 
     QAction * a;
     
     a = new QAction(tr("Refine at selection"), this);
-    gismoMenu->addAction(a);
+    d->gismoMenu->addAction(a);
     a->setEnabled(false);
     
-    gismoMenu->addSeparator();
+    d->gismoMenu->addSeparator();
     a = new QAction(tr("A&bout G+Smo"), this);
-    //newAct->setShortcuts(QKeySequence::New);
-    gismoMenu->addAction(a);
-    //connect(newAct, SIGNAL(triggered()), this, SLOT(newFile()));
+    a->setShortcuts(QKeySequence::New);
+    d->gismoMenu->addAction(a);
+    connect(a, SIGNAL(triggered()), this, SLOT(aboutGismo()));
 
-    axlMenuFactory::instance()->registerMenu(gismoMenu);
+    axlMenuFactory::instance()->registerMenu(d->gismoMenu);
+}
+
+void gsAxelPlugin::aboutGismo(void)
+{
+    QString gs("\n"
+               " G+Smo \n\n"
+               "Geometry plus Simulation modules\n"
+               "Version " GISMO_VERSION "\n"
+               "http://gs.jku.at/gismo \n");
+    QMessageBox::about(d->gismoMenu, trUtf8("About G+Smo plugin"), gs);
 }
 
 bool gsAxelPlugin::uninitialize(void)

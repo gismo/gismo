@@ -138,6 +138,7 @@ add_library(${PROJECT_NAME} SHARED
 add_dependencies(plugins ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME}
+  ${gismo_LINKER}
   #${QT_LIBRARIES}
 
   #dtkGui

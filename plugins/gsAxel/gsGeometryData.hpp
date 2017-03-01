@@ -46,11 +46,13 @@ gsGeometryData<axlObj>::gsGeometryData(gsGeometryPointer geo)
     updateControlGrid();
 }
 
+/*
 template <class axlObj>
 gsGeometryData<axlObj>::~gsGeometryData(void)
 {
-    delete m_geometry;
+
 }
+*/
 
 template <class axlObj>
 bool gsGeometryData<axlObj>::registered(void)

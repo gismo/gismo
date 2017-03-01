@@ -56,6 +56,10 @@ protected:
     void setupGismoMenu(void);
     
     
+private slots:
+
+    void aboutGismo();
+
 private:
     gsAxelPluginPrivate *d;
 };

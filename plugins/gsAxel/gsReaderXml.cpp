@@ -79,8 +79,7 @@ bool gsReaderXml::read(const QString& file)
       
         if ( filedata.has< gismo::gsGeometry<double> >() )
         {
-            gsGeometryPointer myGismoData = 
-                filedata.getFirst<gismo::gsGeometry<double> >();
+            gsGeometryPointer myGismoData( filedata.getFirst<gismo::gsGeometry<double> >() );
             if ( myGismoData )
             {
                 gsInfo << "Opened "<< * myGismoData <<"\n";

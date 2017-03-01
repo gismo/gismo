@@ -109,7 +109,12 @@ public:
     template<class Obj>
     operator memory::shared_ptr<Obj> () const
     {
-        return memory::make_shared<Obj>(*this);
+        // Get the first object in the file
+        if ( this->m_data.template hasAny< Obj >() )
+            return  memory::make_shared( this->m_data.template getAnyFirst< Obj >() );
+
+        gsWarn<< "Failed to read object from file (not found).\n";
+        return  memory::shared_ptr<Obj>();
     }
         
     /// Allows to read a file into a gsGeometry

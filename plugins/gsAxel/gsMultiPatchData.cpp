@@ -45,7 +45,8 @@ sampling.setConstant(DEFAULT_SAMPLES);
 for ( gismo::gsMultiPatch<double>::const_iterator it = m_mpatch->begin(); 
       it != m_mpatch->end(); ++it )
 {
-    axlAbstractData * myData = newGeometryData(*it);
+    
+    axlAbstractData * myData = newGeometryData( gismo::memory::make_shared_not_owned(*it) );
     myData->setColor(QColor("#0080ff"));   
     this->add( myData );
 }

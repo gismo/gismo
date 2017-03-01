@@ -632,7 +632,7 @@ void gsGeometryDialog::insertKnot(void)
     // knot coordinates
     real_t u, v;
 
-    if ( gismo::gsTHBSpline<2> * hb = dynamic_cast<gismo::gsTHBSpline<2>*>(myGismoData) )
+    if ( gismo::gsTHBSpline<2> * hb = dynamic_cast<gismo::gsTHBSpline<2>*>(myGismoData.get()) )
     {
       // get level of basis function
       const int lvl = hb->basis().levelOf(parameter);
@@ -692,7 +692,7 @@ void gsGeometryDialog::onEditCP(void)
     const int ret = cpEdit.exec();
     if ( ret == QDialog::Accepted)
     {
-        gismo::gsGeometry<> * g = getGeometryPointer(d->data);
+        gismo::gsGeometry<> * g = getGeometryPointer(d->data).get();
         const int cp  = d->cpIndex->value();
         const int gdim = g->geoDim();
         g->coef(cp,0) = cpEdit.xCoord();
@@ -726,7 +726,7 @@ void gsGeometryDialog::refineGeometry(void)
     // Get index of the selected control point
     const int parameter = surf->getParameter(); // to do: replace by signal
 
-    if ( gismo::gsTHBSpline<2> * hb = dynamic_cast<gismo::gsTHBSpline<2>*>(myGismoData) )
+    if ( gismo::gsTHBSpline<2> * hb = dynamic_cast<gismo::gsTHBSpline<2>*>(myGismoData.get()) )
     {
          gismo::gsMatrix<unsigned, 2, 2> elements;
          hb->basis().elementSupport_into(parameter, elements);
