@@ -330,7 +330,7 @@ public:
      * mb, as well as the input options bdA, bdB and bdO
      *
      * At each column approximately bdA * deg + dbB non-zero entries
-     * are expected. An extra amount of memoryd of bdO percent is
+     * are expected. An extra amount of memory of bdO percent is
      * allocated, in order to speedup the process.
      *
      * @param [in] numRhs number of columns
