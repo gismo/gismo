@@ -112,9 +112,9 @@ public:
         m_maxPath = 0;
     }
     
-    gsHDomain(point const & upp, unsigned index_level = 10 )
+    gsHDomain(point const & upp)
     { 
-        init( upp, index_level); 
+        init( upp); 
     }
 
 /*
@@ -155,7 +155,7 @@ public:
     }
 
     /// Initialize the tree
-    void init(point const & upp, unsigned index_level = 10) 
+    void init(point const & upp, unsigned index_level = 14) 
     { 
         m_indexLevel = index_level;
         m_maxInsLevel = 0;
