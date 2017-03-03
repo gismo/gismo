@@ -372,6 +372,7 @@ public:
     }
 
     virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const;
+	virtual void connectivity(const gsMatrix<T> & nodes, int level, gsMesh<T> & mesh) const;
 
     // Prints the characteristic matrices (ie. the indices of all basis
     // functions in the basis)
@@ -848,7 +849,8 @@ private:
     // \brief Computes the set of active basis functions in the basis
     void setActive();
 
-
+	// \brief Computes the connectivity for a level on a mesh that has all vertices
+	void addConnectivity(int level, gsMesh<T> & mesh) const;
 
     ///returns a transfer matrix using the characteristic matrix of the old and new basis
     virtual gsSparseMatrix<T> coarsening(const std::vector<gsSortedVector<unsigned> >& old, const std::vector<gsSortedVector<unsigned> >& n, const gsSparseMatrix<T,RowMajor> & transfer) const = 0;
