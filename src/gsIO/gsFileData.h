@@ -270,7 +270,7 @@ public:
             gsWarn<<"gsFileData: getFirst: Didn't find any "<<
                 internal::gsXml<Object>::type()<<" "<< 
                 internal::gsXml<Object>::tag() <<". Error.\n";
-            return NULL;
+            return memory::unique_ptr<Object>();
         }           
         return memory::make_unique( internal::gsXml<Object>::get(node) );// Using gsXmlUtils
     }
@@ -316,7 +316,7 @@ public:
             gsWarn <<"gsFileData: getAnyFirst: Didn't find any "<<
                 internal::gsXml<Object>::type()<<" "<< 
                 internal::gsXml<Object>::tag() <<". Error.\n";
-            return NULL;
+            return memory::unique_ptr<Object>();
       }           
         return memory::make_unique( internal::gsXml<Object>::get(node) );// Using gsXmlUtils
     }
