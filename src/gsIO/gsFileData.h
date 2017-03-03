@@ -149,9 +149,16 @@ public:
     
     /// Searches and fetches the Gismo object with a given id
     template<class Object>
-    inline Object * getId( const int & id)  const
+    inline memory::unique_ptr<Object> getId( const int & id)  const
     {
-        return internal::gsXml<Object>::getId( getXmlRoot(), id );
+        return memory::make_unique( internal::gsXml<Object>::getId( getXmlRoot(), id ) );
+    }
+    
+    /// Searches and fetches the Gismo object with a given id
+    template<class Object>
+    inline void getId( const int & id, Object& result)  const
+    {
+        result = *getId(id);
     }
     
     /// Prints the XML tag of a Gismo object
@@ -254,7 +261,7 @@ public:
   
     /// Returns the first Object found in the XML data
     template<class Object> 
-    inline Object * getFirst() const
+    inline memory::unique_ptr<Object> getFirst() const
     {
         gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(), 
                                        internal::gsXml<Object>::type() );
@@ -265,7 +272,7 @@ public:
                 internal::gsXml<Object>::tag() <<". Error.\n";
             return NULL;
         }           
-        return internal::gsXml<Object>::get(node);// Using gsXmlUtils
+        return memory::make_unique( internal::gsXml<Object>::get(node) );// Using gsXmlUtils
     }
 
     template<class Object> 
@@ -284,23 +291,23 @@ public:
     
     /// Returns a vector with all Objects found in the XML data
     template<class Object>
-    inline std::vector<Object *> getAll()  const
+    inline std::vector< memory::unique_ptr<Object> > getAll()  const
     {
-        std::vector<Object *> result;
+        std::vector< memory::unique_ptr<Object> > result;
         
         for (gsXmlNode * child = getFirstNode( internal::gsXml<Object>::tag(), 
                                                internal::gsXml<Object>::type() ) ; 
              child; child = getNextSibling(child, internal::gsXml<Object>::tag(), 
                                            internal::gsXml<Object>::type() ))
         {
-            result.push_back( internal::gsXml<Object>::get(child) );
+            result.push_back( memory::make_unique(internal::gsXml<Object>::get(child)) );
         }
         return result;
     }
     
     /// Returns the first Object found in the XML data
     template<class Object> 
-    inline Object * getAnyFirst() const
+    inline memory::unique_ptr<Object> getAnyFirst() const
     {
         gsXmlNode* node = getAnyFirstNode(internal::gsXml<Object>::tag(), 
                                           internal::gsXml<Object>::type() );
@@ -311,7 +318,7 @@ public:
                 internal::gsXml<Object>::tag() <<". Error.\n";
             return NULL;
       }           
-        return internal::gsXml<Object>::get(node);// Using gsXmlUtils
+        return memory::make_unique( internal::gsXml<Object>::get(node) );// Using gsXmlUtils
     }
 
     /// Returns the first Object found in the XML data

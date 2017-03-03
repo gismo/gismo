@@ -81,8 +81,8 @@ int main(int argc, char *argv[])
     // id 0:  u,v   -- parametric coordinates, size 2 x N
     // id 1:  x,y,z -- corresponding mapped values, size 3 x N
     gsFileData<> fd_in(fn);
-    gsMatrix<> uv      = safe( fd_in.getId<gsMatrix<> >(0) );
-    gsMatrix<> xyz     = safe( fd_in.getId<gsMatrix<> >(1) );
+    gsMatrix<> uv      = fd_in.getId<gsMatrix<> >(0);
+    gsMatrix<> xyz     = fd_in.getId<gsMatrix<> >(1);
     //! [Read data]       
 
     // This is for outputing an XML file, if requested

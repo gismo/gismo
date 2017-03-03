@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     else gsInfo << "Will NOT create paraview plot\n";
     gsInfo << "----------------\n";
 
-    gsMesh<> * m = gsReadFile<>(filename);
+    gsMesh<>::uPtr m = gsReadFile<>(filename);
     if (m)
       gsInfo<< "Got "<< *m <<"\n";
     else
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
     std::vector< std::vector< bool > > oPointsConvexFlag;
     
     // set up the gsTriMeshToSolid class to perform the feature detection
-    gsTriMeshToSolid<> tmts(m);
+    gsTriMeshToSolid<> tmts(m.get());
     bool non_manifold, warning_borders;
     
     // compute the features
@@ -187,7 +187,6 @@ int main(int argc, char *argv[])
 
         gsWriteParaview( *m, "output");
     }
-    delete m;
     delete sl;
 
     // free meshes

@@ -31,6 +31,8 @@ template <class T>
 class GISMO_EXPORT gsMesh : public gsMeshElement<T>
 {
 public:
+    typedef memory::shared_ptr<gsMesh> Ptr;
+    typedef memory::unique_ptr<gsMesh> uPtr;
     typedef gsMeshElement<T> MeshElement;
     typedef typename MeshElement::scalar_t scalar_t;
     typedef typename MeshElement::gsVertexHandle VertexHandle;

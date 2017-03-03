@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     {
     case 3:
     {
-        gsBasis<> * bb = filedata.getAnyFirst< gsBasis<> >();
+        gsBasis<>::uPtr bb = filedata.getAnyFirst< gsBasis<> >();
         if (bb)
             gsInfo<< "Got "<< *bb <<"\n";
         else
@@ -80,12 +80,11 @@ int main(int argc, char *argv[])
         
         gsWriteParaview( *bb , "gsview", numSamples, true);
         
-        delete bb;
         break;
     }
     case 4:
     {
-        gsMesh<> * msh = filedata.getAnyFirst< gsMesh<> >();
+        gsMesh<>::uPtr msh = filedata.getAnyFirst< gsMesh<> >();
         if (msh)
             gsInfo<< "Got "<< *msh <<"\n";
         else
@@ -94,13 +93,12 @@ int main(int argc, char *argv[])
             return 0;
         }
         gsWriteParaview( *msh, "gsview");
-        delete msh;
         
         break;
     }
     case 5:
     {
-        gsGeometry<> * geo = filedata.getAnyFirst< gsGeometry<> >();
+        gsGeometry<>::uPtr geo = filedata.getAnyFirst< gsGeometry<> >();
         if (geo)
             gsInfo<< "Got "<< *geo <<"\n";
         else
@@ -110,7 +108,6 @@ int main(int argc, char *argv[])
         }
 
         gsWriteParaview( *geo , "gsview", numSamples, plot_mesh, plot_net);
-        delete geo;
         break;
     }
     default:
@@ -136,7 +133,7 @@ int main(int argc, char *argv[])
         }
         if ( filedata.has< gsGeometry<> >() )
         {
-            std::vector<gsGeometry<>* > geo = filedata.getAll< gsGeometry<> >();
+            std::vector<gsGeometry<>::uPtr> geo = filedata.getAll< gsGeometry<> >();
             if ( ! geo.empty() )
                 gsInfo<< "Got "<< geo.size() <<" patch"<<(geo.size() == 1 ? "." : "es.") <<"\n";
             else
@@ -145,16 +142,14 @@ int main(int argc, char *argv[])
                 return 0;
             }
             
-            gsWriteParaview( geo , "gsview", numSamples, plot_mesh, plot_net);
+            gsWriteParaview(memory::get_raw(geo), "gsview", numSamples, plot_mesh, plot_net);
             
-            freeAll( geo );
-
             break;
         }
         
         if ( filedata.has< gsMesh<> >() )
         {
-            gsMesh<> * msh = filedata.getFirst< gsMesh<> >();
+            gsMesh<>::uPtr msh = filedata.getFirst< gsMesh<> >();
             if (msh)
                 gsInfo<< "Got "<< *msh <<"\n";
             else
@@ -164,13 +159,12 @@ int main(int argc, char *argv[])
             }
             
             gsWriteParaview( *msh, "gsview");
-            delete msh;
             break;
         }
 
         if ( filedata.has< gsBasis<> >() )
         {
-            gsBasis<> * bb = filedata.getFirst< gsBasis<> >();
+            gsBasis<>::uPtr bb = filedata.getFirst< gsBasis<> >();
             //bb->uniformRefine(3);
         
             if (bb)
@@ -183,13 +177,12 @@ int main(int argc, char *argv[])
         
             gsWriteParaview( *bb , "gsview", numSamples, plot_mesh);
         
-            delete bb;
             break;
         }
 
         if ( filedata.has< gsSolid<> >() )
         {
-            gsSolid<> * bb = filedata.getFirst< gsSolid<> >();
+            gsSolid<>::uPtr bb = filedata.getFirst< gsSolid<> >();
 
             if (bb)
                 gsInfo<< "Got "<< *bb <<"\n";
@@ -202,13 +195,12 @@ int main(int argc, char *argv[])
             gsWriteParaviewSolid( *bb, "gsview", numSamples);
             //gsWriteParaview( *bb, "gsview", numSamples, 0, 0.02);
         
-            delete bb;
             break;
         }
 
         if ( filedata.has< gsTrimSurface<> >() )
         {
-            gsTrimSurface<> * bb = filedata.getFirst< gsTrimSurface<> >();
+            gsTrimSurface<>::uPtr bb = filedata.getFirst< gsTrimSurface<> >();
             //bb->uniformRefine(3);
 
             if (bb)
@@ -221,13 +213,12 @@ int main(int argc, char *argv[])
 
             gsWriteParaview( *bb, "gsview", numSamples);
         
-            delete bb;
             break;
         }
 
         if ( filedata.has< gsPlanarDomain<> >() )
         {
-            gsPlanarDomain<> * bb = filedata.getFirst< gsPlanarDomain<> >();
+            gsPlanarDomain<>::uPtr bb = filedata.getFirst< gsPlanarDomain<> >();
             //bb->uniformRefine(3);
 
             if (bb)
@@ -238,12 +229,10 @@ int main(int argc, char *argv[])
                 return 0;
             }
         
-            gsMesh<> * msh = bb->toMesh(numSamples);
+            gsMesh<>::uPtr msh = safe(bb->toMesh(numSamples));
 
             gsWriteParaview( *msh , "gsview");
         
-            delete bb;
-            delete msh;
             break;
         }
         

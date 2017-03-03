@@ -45,6 +45,8 @@ template<class SrcT>
 class gsRationalBasis : public gsBasis< typename SrcT::Scalar_t >
 {
 public:
+    typedef memory::shared_ptr< gsRationalBasis > Ptr;
+    typedef memory::unique_ptr< gsRationalBasis > uPtr;
     
     typedef typename SrcT::Scalar_t Scalar_t;
     typedef Scalar_t T;

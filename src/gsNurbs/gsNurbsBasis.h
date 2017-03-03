@@ -39,6 +39,7 @@ template<class T>
 class gsNurbsBasis : public gsRationalBasis<gsBSplineBasis<T> >
 {
 public:
+
     typedef gsKnotVector<T> KnotVectorType;
 
     /// The family type
@@ -55,6 +56,7 @@ public:
     typedef gsConstantBasis<T> BoundaryBasisType;
 
     typedef memory::shared_ptr< gsNurbsBasis > Ptr;
+    typedef memory::unique_ptr< gsNurbsBasis > uPtr;
 
     /// Dimension of the parameter domain
     static const int Dim = 1;
