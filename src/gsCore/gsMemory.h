@@ -96,6 +96,9 @@ public :
     : Base(r) { }
 
     using Base::operator=;
+    
+    unique_ptr<T>& operator=(const unique_ptr<T>& other)
+    { return this->operator=( const_cast< unique_ptr<T>& >( other ) ); }
 
     //operator shared_ptr<T> () { return shared_ptr<T>(this->release()); }
 
