@@ -86,6 +86,8 @@ public :
 
     unique_ptr( unique_ptr& r ) : Base(r) { }
 
+    unique_ptr( const unique_ptr& r ) : Base( const_cast<unique_ptr&>(r) ) { }
+
     unique_ptr(unique_ptr_ref m) : Base(m) { }
 
     template<typename U>
@@ -96,9 +98,13 @@ public :
     : Base(r) { }
 
     using Base::operator=;
-    
-    unique_ptr<T>& operator=(const unique_ptr<T>& other)
-    { return this->operator=( const_cast< unique_ptr<T>& >( other ) ); }
+   
+    template<class U> 
+    std::auto_ptr<T>& operator=(const std::auto_ptr<U>& other)
+    { return this->operator=( const_cast< std::auto_ptr<U>& >( other ) ); }
+
+    std::auto_ptr<T>& operator=(const std::auto_ptr<T>& other)
+    { return this->operator=( const_cast< std::auto_ptr<T>& >( other ) ); }
 
     //operator shared_ptr<T> () { return shared_ptr<T>(this->release()); }
 

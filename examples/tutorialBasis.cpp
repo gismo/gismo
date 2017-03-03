@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     
     gsFileData<> fileData(input);
     
-    gsBasis<>::uPtr pBasis = NULL;
+    gsBasis<>::uPtr pBasis;
     if (fileData.has< gsBasis<> >())
     {
         pBasis = fileData.getFirst< gsBasis<> >();

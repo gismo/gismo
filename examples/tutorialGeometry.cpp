@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
 
     gsFileData<> fileData(input);
     
-    gsGeometry<>::uPtr pGeom = NULL;
+    gsGeometry<>::uPtr pGeom;
     if (fileData.has< gsGeometry<> >())
     {
         pGeom = fileData.getFirst< gsGeometry<> >();
@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
     }
 
         
-    if (pGeom == NULL)
+    if (!pGeom)
     {
         gsInfo << "Didn't find any geometry." << "\n";
         return -1;
