@@ -103,6 +103,65 @@ void gsHTensorBasis<d,T>::numActive(const gsMatrix<T> & u, gsVector<unsigned>& r
     }
 }
 
+template<unsigned d, class T>
+void gsHTensorBasis<d, T>::addConnectivity(int lvl, gsMesh<T> & mesh) const
+{
+	const gsVector<unsigned, d> & low = gsVector<unsigned, d>::Zero();
+
+	const gsTensorBSplineBasis<d, T> & bb = *m_bases[lvl];
+	const CMatrix & cmat = m_xmatrix[lvl];
+
+	// Last tensor-index in level lvl
+	gsVector<unsigned, d> end(d);
+	for (unsigned i = 0; i < d; ++i)
+		end(i) = bb.component(i).size() - 1;
+
+	unsigned k, s;
+	gsVector<unsigned, d> v, upp;
+	for (unsigned i = 0; i < d; ++i) // For all axes
+	{
+		s = bb.stride(i);
+		v = low;
+		upp = end;
+		upp[i] = 0; // suppress to face v[i]==0
+
+		do // Insert all edges normal to axis i
+		{
+			k = bb.index(v);
+			for (unsigned j = 0; j != end[i]; ++j)
+			{
+				if (cmat.bContains(k) && cmat.bContains(k + s))
+				{
+					// inefficient for now
+					const index_t kInd = m_xmatrix_offset[lvl] +
+						(std::lower_bound(cmat.begin(), cmat.end(), k)
+							- cmat.begin());
+
+					// inefficient for now
+					const index_t kNextInd = m_xmatrix_offset[lvl] +
+						(std::lower_bound(cmat.begin(), cmat.end(), k + s)
+							- cmat.begin());
+
+					mesh.addEdge(kInd, kNextInd);
+				}
+				k += s;
+			}
+		} while (nextCubePoint(v, low, upp));
+	}
+}
+template<unsigned d, class T>
+void gsHTensorBasis<d, T>::connectivity(const gsMatrix<T> & nodes, int level, gsMesh<T> & mesh) const
+{
+	const index_t sz = size();
+	GISMO_ASSERT(nodes.rows() == sz, "Invalid input.");
+
+	// Add all vertices
+	for (index_t i = 0; i< sz; ++i)
+		mesh.addVertex(nodes.row(i).transpose());
+
+	addConnectivity(level, mesh);
+}
+
 
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const 
@@ -114,52 +173,10 @@ void gsHTensorBasis<d,T>::connectivity(const gsMatrix<T> & nodes, gsMesh<T> & me
     for(index_t i = 0; i< sz; ++i )
         mesh.addVertex( nodes.row(i).transpose() );
 
-    const gsVector<unsigned,d> & low = gsVector<unsigned,d>::Zero();
-
     // For all levels
     for(unsigned lvl = 0; lvl <= maxLevel(); lvl++)
     {
-        const gsTensorBSplineBasis<d,T> & bb = *m_bases[lvl];
-        const CMatrix & cmat = m_xmatrix[lvl];
-        
-        // Last tensor-index in level lvl
-        gsVector<unsigned, d> end(d);
-        for (unsigned i = 0; i < d; ++i)
-            end(i) = bb.component(i).size() - 1;
-
-        unsigned k, s;
-        gsVector<unsigned,d> v, upp;
-        for (unsigned i = 0; i < d; ++i) // For all axes
-        {
-            s      = bb.stride(i);
-            v      = low;
-            upp    = end;
-            upp[i] = 0; // suppress to face v[i]==0
-            
-            do // Insert all edges normal to axis i
-            {
-                k = bb.index(v);
-                for (unsigned j = 0; j != end[i]; ++j)
-                {
-                    if ( cmat.bContains( k )  && cmat.bContains( k+s ) )
-                    {
-                        // inefficient for now
-                        const index_t kInd =  m_xmatrix_offset[lvl] +
-                            (std::lower_bound(cmat.begin(), cmat.end(), k )
-                             - cmat.begin() );
-                        
-                        // inefficient for now
-                        const index_t kNextInd =  m_xmatrix_offset[lvl] +
-                            (std::lower_bound(cmat.begin(), cmat.end(), k+s )
-                             - cmat.begin() );
-                        
-                        mesh.addEdge(kInd, kNextInd );
-                    }
-                    k += s ;
-                }
-            }
-            while ( nextCubePoint(v, low, upp) );
-        }
+		addConnectivity(lvl, mesh);
     }
 }
 
