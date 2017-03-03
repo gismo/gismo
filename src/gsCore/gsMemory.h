@@ -82,27 +82,33 @@ class unique_ptr : public std::auto_ptr<T>
     //struct Cannot_Convert_Pointer;
     
 public :
-    explicit unique_ptr(T* p = 0) : Base(p) { }
+	explicit unique_ptr(T* p = 0)  throw() : Base(p) { }
+
+	//unique_ptr(unique_ptr& r)  throw() : Base(r) { }
 
     unique_ptr( const unique_ptr& r ) : Base( const_cast<unique_ptr&>(r) ) { }
 
-    unique_ptr(unique_ptr_ref m) : Base(m) { }
+	unique_ptr(unique_ptr_ref m)  throw() : Base(m) { }
 
     template<typename U>
-    unique_ptr(const unique_ptr<U> & r
+    unique_ptr(unique_ptr<U> & r
                // unique_ptr<typename conditional<is_base_of<U,T>::value, U,
                //                      Cannot_Convert_Pointer >::type>
-        )
-    : Base( const_cast<unique_ptr<U>&>(r) ) { }
+			   )  throw()
+    : Base(r) { }
 
-    using Base::operator=;
-   
-    template<class U> 
-    unique_ptr<T>& operator=(const unique_ptr<U>& other)
-    { return this->operator=( const_cast< unique_ptr<U>& >( other ) ); }
+	unique_ptr & operator=(const unique_ptr& other)  throw()
+	{
+		Base::operator=(const_cast<unique_ptr&>(other));
+		return *this;
+	}
 
-    unique_ptr<T>& operator=(const unique_ptr<T>& other)
-    { return this->operator=( const_cast< unique_ptr<T>& >( other ) ); }
+	template<class U>
+	unique_ptr & operator=(const unique_ptr<U> & other) throw()
+	{
+		Base::operator=(const_cast<std::auto_ptr<U>&>(other));
+		return *this;
+	}
 
     //operator shared_ptr<T> () { return shared_ptr<T>(this->release()); }
 
@@ -110,11 +116,9 @@ public :
     shared_ptr<U>()
     // shared_ptr<typename conditional<is_base_of<U,T>::value, U,
     //                      Cannot_Convert_Pointer >::type> ()
-    { return shared_ptr<U>(this->release()); }
+    { return shared_ptr<U>(Base::release()); }
     
-    operator bool() const
-    { return this->get() != NULL; }
-    
+    explicit operator bool() const { return Base::get() != NULL; }    
 };
 
 #endif
