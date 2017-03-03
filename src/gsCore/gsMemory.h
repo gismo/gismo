@@ -82,45 +82,44 @@ class unique_ptr : public std::auto_ptr<T>
     //struct Cannot_Convert_Pointer;
     
 public :
-	explicit unique_ptr(T* p = 0)  throw() : Base(p) { }
-
-	//unique_ptr(unique_ptr& r)  throw() : Base(r) { }
-
-    unique_ptr( const unique_ptr& r ) : Base( const_cast<unique_ptr&>(r) ) { }
-
-	unique_ptr(unique_ptr_ref m)  throw() : Base(m) { }
-
-    template<typename U>
-    unique_ptr(unique_ptr<U> & r
-               // unique_ptr<typename conditional<is_base_of<U,T>::value, U,
-               //                      Cannot_Convert_Pointer >::type>
-			   )  throw()
-    : Base(r) { }
-
-	unique_ptr & operator=(const unique_ptr& other)  throw()
-	{
-		Base::operator=(const_cast<unique_ptr&>(other));
-		return *this;
-	}
-
-	template<class U>
-	unique_ptr & operator=(const unique_ptr<U> & other) throw()
-	{
-		Base::operator=(const_cast<std::auto_ptr<U>&>(other));
-		return *this;
-	}
-
-    //operator shared_ptr<T> () { return shared_ptr<T>(this->release()); }
-
-    template<class U> operator
-    shared_ptr<U>()
-    // shared_ptr<typename conditional<is_base_of<U,T>::value, U,
-    //                      Cannot_Convert_Pointer >::type> ()
-    { return shared_ptr<U>(Base::release()); }
+    explicit unique_ptr(T* p = 0)  throw() : Base(p) { }
     
-    explicit operator bool() const { return Base::get() != NULL; }    
-};
-
+    //unique_ptr(unique_ptr& r)  throw() : Base(r) { }
+    
+ unique_ptr( const unique_ptr& r ) : Base( const_cast<unique_ptr&>(r) ) { }
+    
+    unique_ptr(unique_ptr_ref m)  throw() : Base(m) { }
+    
+    template<typename U>
+      unique_ptr(unique_ptr<U> & r
+		 // unique_ptr<typename conditional<is_base_of<U,T>::value, U,
+		 //                      Cannot_Convert_Pointer >::type>
+		 )  throw()
+      : Base(r) { }
+    
+    unique_ptr & operator=(const unique_ptr& other)  throw()
+      {
+	Base::operator=(const_cast<unique_ptr&>(other));
+	return *this;
+      }
+    
+    template<class U>
+      unique_ptr & operator=(const unique_ptr<U> & other) throw()
+      {
+	Base::operator=(const_cast<std::auto_ptr<U>&>(other));
+	return *this;
+      }
+    
+    //operator shared_ptr<T> () { return shared_ptr<T>(this->release()); }
+    
+    template<class U> operator shared_ptr<U>()
+      // shared_ptr<typename conditional<is_base_of<U,T>::value, U,
+      //                      Cannot_Convert_Pointer >::type> ()
+      { return shared_ptr<U>(Base::release()); }
+    
+    operator bool() const { return Base::get() != NULL; }    
+ };
+ 
 #endif
 
 /// \brief Deleter function that does not delete an object pointer
