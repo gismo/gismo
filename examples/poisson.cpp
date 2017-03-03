@@ -32,9 +32,9 @@ int main(int argc, char *argv[])
     int DG;         // defaults to 0
     bool plot;      // defaults to false
     int plot_pts;   // defaults to 1000
-    gsMultiPatch<>::uPtr patches  = NULL; // defaults to BSplineCube
-    memory::unique_ptr< gsPoissonPde<> > ppde  = NULL;
-    gsFunctionExpr<>::uPtr exactSol = NULL;
+    gsMultiPatch<>::uPtr patches; // defaults to BSplineCube
+    memory::unique_ptr< gsPoissonPde<> > ppde;
+    gsFunctionExpr<>::uPtr exactSol;
     gsMultiBasis<> bases;// not yet given by input
 
     bool success = parse_input(argc, argv, numRefine, numElevate, Dirichlet,
@@ -207,21 +207,21 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
 
     if ( ! fn_basis.empty() )
     {
-    gsBasis<>::uPtr bb = gsReadFile<>( fn_basis );
-    gsInfo << "Got basis: "<< * bb<<"\n";
-    bases.addBasis(bb.release());
-    //gsInfo << "Warning: basis ignored.\n";
+        gsBasis<>::uPtr bb = gsReadFile<>( fn_basis );
+        gsInfo << "Got basis: "<< * bb<<"\n";
+        bases.addBasis(bb.release());
+        //gsInfo << "Warning: basis ignored.\n";
     }
 
     if (numRefine<0)
     {
-      gsInfo << "Number of refinements must be non-negative, setting to zero.\n";
-      numRefine = 0;
+        gsInfo << "Number of refinements must be non-negative, setting to zero.\n";
+        numRefine = 0;
     }
     if (numElevate<-1)
     {
-      gsInfo << "Number of elevations must be non-negative, ignoring parameter.\n";
-      numElevate = -1;
+        gsInfo << "Number of elevations must be non-negative, ignoring parameter.\n";
+        numElevate = -1;
     }
 
     if ( fn_pde.empty() )
@@ -230,11 +230,11 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
         if ( !fn.empty() )
         {
             geo = gsReadFile<>( fn );
-            if ( ! geo )
-              {
-            gsWarn<< "Did not find any geometry in "<<fn<<", quitting.\n";
-            return false;
-              }
+            if ( !(bool)geo )
+            {
+                gsWarn<< "Did not find any geometry in "<<fn<<", quitting.\n";
+                return false;
+            }
             switch ( geo->geoDim() )
             {
             case 1:
@@ -255,7 +255,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     }
     ppde = gsReadFile<>(fn_pde);
     exactSol = gsReadFile<>(fn_pde, 100);
-    if ( !ppde )
+    if ( !(bool)ppde )
     {
         gsWarn<< "Did not find any PDE in "<< fn<<", quitting.\n";
         return false;
@@ -280,11 +280,11 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
 	    }
     }
     geo = gsReadFile<>( fn );
-    if ( !geo )
-      {
-    gsInfo << "Did not find any geometries in "<< fn<<", quitting.\n";
-    return false;
-      }
+    if ( !(bool)geo )
+    {
+        gsInfo << "Did not find any geometries in "<< fn<<", quitting.\n";
+        return false;
+    }
 
  
   return true;
