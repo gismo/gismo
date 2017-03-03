@@ -230,7 +230,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
         if ( !fn.empty() )
         {
             geo = gsReadFile<>( fn );
-            if ( !(bool)geo )
+            if ( !geo )
             {
                 gsWarn<< "Did not find any geometry in "<<fn<<", quitting.\n";
                 return false;
@@ -255,7 +255,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
     }
     ppde = gsReadFile<>(fn_pde);
     exactSol = gsReadFile<>(fn_pde, 100);
-    if ( !(bool)ppde )
+    if ( !ppde )
     {
         gsWarn<< "Did not find any PDE in "<< fn<<", quitting.\n";
         return false;
@@ -280,7 +280,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
 	    }
     }
     geo = gsReadFile<>( fn );
-    if ( !(bool)geo )
+    if ( !geo )
     {
         gsInfo << "Did not find any geometries in "<< fn<<", quitting.\n";
         return false;
