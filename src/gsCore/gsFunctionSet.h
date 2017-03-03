@@ -24,7 +24,7 @@ namespace gismo {
 
 /**
    \brief Interface for the set of functions defined on a domain
-   (the total number of functions in the set equals to $S$ )
+   (the total number of functions in the set equals to \f$S\f$ )
 
    All G+Smo objects that evaluate function[s] derive from this object.
    Examples are gsMatrix, gsFunction and gsGeometry.
@@ -60,7 +60,7 @@ namespace gismo {
    of the input matrix or of the matrix supplied by the gsTransform object.
    On each column the data is grouped in blocks corresponding to different functions,
    so that that if the requested evaluation contains s values
-   \f$ v_1, \ldots, v_s \f$ for each pair \f$ (f_i, p_j) \f$, $i = 1, \ldots, S$, $j = 1, \ldots, N$,
+   \f$ v_1, \ldots, v_s \f$ for each pair \f$ (f_i, p_j) \f$, \f$i = 1, \ldots, S\f$, $j = 1, \ldots, N$,
    of (function, point) the output matrix looks like
 
    \f[
@@ -188,7 +188,7 @@ public:
        \end{array}
        \right]
        \f]
-       where \f$f^{(i)}_j\f$ is the $i$-th component of function \f$f_j\f$ of the set.
+       where \f$f^{(i)}_j\f$ is the \f$i\f$-th component of function \f$f_j\f$ of the set.
        @param u
        @param result
     */
@@ -228,7 +228,7 @@ public:
        \end{array}
        \right]
        \f]
-       where \f$f^{(i)}_j\f$ is the $i$-th component of function \f$f_j\f$ of the set.
+       where \f$f^{(i)}_j\f$ is the \f$i\f$-th component of function \f$f_j\f$ of the set.
        @param u
        @param result
     */
@@ -281,7 +281,7 @@ public:
      \end{array}
      \right]
      \f]
-     where \f$ f^{(i)}_j\f$ is the $i$-th component of function \f$ f_j\f$ of the set.
+     where \f$ f^{(i)}_j\f$ is the \f$i\f$-th component of function \f$ f_j\f$ of the set.
 
      @param u
      @param result
