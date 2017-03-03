@@ -105,8 +105,8 @@ public :
     //                      Cannot_Convert_Pointer >::type> ()
     { return shared_ptr<U>(this->release()); }
     
-    explicit operator bool() const
-    { return this->get() != NULL; } }
+    operator bool() const
+    { return this->get() != NULL; }
     
 };
 
