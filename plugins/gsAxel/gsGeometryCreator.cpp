@@ -147,13 +147,13 @@ void gsGeometryCreator::loadGeometry(void) {
 
     if ( fileName.size() )
     {
-        gsGeometry<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() );
+        gismo::gsGeometry<double>::Ptr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() );
 	if ( myGismoData )
 	    {
 		std::cout << "Loaded a "<< * myGismoData <<"\n";
 		
 		// Create Axel object
-		axlAbstractData * myData = newGeometryData(myGismoData.release());	
+		axlAbstractData * myData = newGeometryData(myGismoData);	
 		myData->setColor(QColor("#0080ff"));
 		double opacity = 1.0 - 0.01 * d->sliderOpacity->value();
 		myData->setOpacity(opacity);
@@ -165,12 +165,11 @@ void gsGeometryCreator::loadGeometry(void) {
 
 void gsGeometryCreator::loadBasis(void) 
 {
-
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open File with G+Smo"),"~/",tr("Gismo files (*.xml);;GeoPDE files (*.txt);;Axel files (*.axl);;All files (*.*)"));
 
     if ( fileName.size() )
     {
-        gsBasis<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ).release() ;
+        gismo::gsBasis<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
         if ( myGismoData )
 	    {
             
@@ -188,8 +187,8 @@ void gsGeometryCreator::loadBasis(void)
     }
 }
 
-void gsGeometryCreator::loadMultiPatch(void) {
-
+void gsGeometryCreator::loadMultiPatch(void) 
+{
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open File with G+Smo"),"~/",tr("Gismo files (*.xml);;GeoPDE files (*.txt);;Axel files (*.axl);;All files (*.*)"));
 
 /* // SmoothPatch checkbox
@@ -217,7 +216,7 @@ void gsGeometryCreator::loadMultiPatch(void) {
 
     if ( fileName.size() )
     {
-        gsMultiPatch<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
+        gismo::gsMultiPatch<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
         if ( myGismoData)
 	    {
             /* // SmoothPatches
@@ -257,46 +256,46 @@ void gsGeometryCreator::loadMultiPatch(void) {
 void gsGeometryCreator::run(void) 
 {
 
- gsGeometry<double>::uPtr myGismoData;
+    gismo::gsGeometry<double>::Ptr myGismoData;
    
- std::string filename;
- switch ( d->geometry )
-  {
-  case 1:
-      filename = GISMO_DATA_DIR;
-      filename+= "sphere.xml"; //default example
-      myGismoData = gismo::gsReadFile<double>(filename);
-     //gismo::gsNurbsCreator<>::NurbsSphere();// some error in the coefs
-    break;
-  case 2:
-    myGismoData = gismo::gsNurbsCreator<>::BSplineSquare(d->degree);
-    break;
-  case 3:
-    myGismoData = gismo::gsNurbsCreator<>::BSplineCube(d->degree);
-    break;
-  case 4:
-    myGismoData = gismo::gsNurbsCreator<>::BSplineHalfCube();
-    myGismoData->coefs().array() += 2;
-    break;
-  case 5:
-    myGismoData = gismo::gsNurbsCreator<>::NurbsQuarterAnnulus();
-    myGismoData->coefs().array() -= 2.5;
-    break;
-  case 6:
-    myGismoData = gismo::gsNurbsCreator<>::NurbsCircle();
-    break;
-  case 7:
-    myGismoData = gismo::gsNurbsCreator<>::BSplineQuarterAnnulus(d->degree);
-    break;
-
-  default : // = 0
-      myGismoData = gismo::gsNurbsCreator<>::NurbsDisk();
-    break;
-
-  };
-
+    std::string filename;
+    switch ( d->geometry )
+    {
+    case 1:
+        filename = GISMO_DATA_DIR;
+        filename+= "sphere.xml"; //default example
+        myGismoData = gismo::gsReadFile<double>(filename);
+        //gismo::gsNurbsCreator<>::NurbsSphere();// some error in the coefs
+        break;
+    case 2:
+        myGismoData = gismo::gsNurbsCreator<>::BSplineSquare(d->degree);
+        break;
+    case 3:
+        myGismoData = gismo::gsNurbsCreator<>::BSplineCube(d->degree);
+        break;
+    case 4:
+        myGismoData = gismo::gsNurbsCreator<>::BSplineHalfCube();
+        myGismoData->coefs().array() += 2;
+        break;
+    case 5:
+        myGismoData = gismo::gsNurbsCreator<>::NurbsQuarterAnnulus();
+        myGismoData->coefs().array() -= 2.5;
+        break;
+    case 6:
+        myGismoData = gismo::gsNurbsCreator<>::NurbsCircle();
+        break;
+    case 7:
+        myGismoData = gismo::gsNurbsCreator<>::BSplineQuarterAnnulus(d->degree);
+        break;
+        
+    default : // = 0
+        myGismoData = gismo::gsNurbsCreator<>::NurbsDisk();
+        break;
+        
+    };
+    
     // Create Axel object
-    axlAbstractData * myData = newGeometryData(myGismoData.release());
+    axlAbstractData * myData = newGeometryData(myGismoData);
     std::cout << "gsGeometryCreator created a "<< * myGismoData <<"\n";
     
     myData->setColor(d->colorButton->color());
