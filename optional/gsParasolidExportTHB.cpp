@@ -44,12 +44,9 @@ int main(int argc, char *argv[])
 	      << "--------------------------------------------------\n" << std::endl;
 
 
-    gsTHBSpline<2>* thb = gsReadFile<>(input);
+    memory::unique_ptr< gsTHBSpline<2> > thb = gsReadFile<>(input);
     
     extensions::gsWriteParasolid(*thb, output);
-    
-    delete thb;
-    
     
     return 0;
 }

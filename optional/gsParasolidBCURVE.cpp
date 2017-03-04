@@ -43,11 +43,9 @@ int main(int argc, char *argv[])
 	      << "output: " << output << "\n\n"
 	      << "--------------------------------------------------\n" << std::endl;
 
-    gsBSpline<>* curve = gsReadFile<>(input);
+    memory::unique_ptr< gsBSpline<> > curve = gsReadFile<>(input);
 
     extensions::gsWriteParasolid(*curve, output);
-
-    delete curve;
 
     return 0;
 }

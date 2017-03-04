@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	      << "output: " << output << "\n\n"
 	      << "--------------------------------------------------\n" << std::endl;
     
-    gsGeometry<>* geom = gsReadFile<>(input);
+    gsGeometry<>::uPtr geom = gsReadFile<>(input);
     
     gsMesh<> mesh;
     
@@ -52,8 +52,6 @@ int main(int argc, char *argv[])
     geom->evaluateMesh(mesh);
     
     extensions::gsWriteParasolid(mesh, output);
-
-    delete geom;
     
     return 0;
 }

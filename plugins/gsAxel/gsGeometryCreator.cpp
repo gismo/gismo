@@ -147,14 +147,13 @@ void gsGeometryCreator::loadGeometry(void) {
 
     if ( fileName.size() )
     {
-        gsGeometryPointer myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
+        gsGeometry<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() );
 	if ( myGismoData )
 	    {
 		std::cout << "Loaded a "<< * myGismoData <<"\n";
 		
 		// Create Axel object
-		axlAbstractData * myData = newGeometryData(myGismoData);
-		
+		axlAbstractData * myData = newGeometryData(myGismoData.release());	
 		myData->setColor(QColor("#0080ff"));
 		double opacity = 1.0 - 0.01 * d->sliderOpacity->value();
 		myData->setOpacity(opacity);
@@ -171,14 +170,14 @@ void gsGeometryCreator::loadBasis(void)
 
     if ( fileName.size() )
     {
-        gsBasisPointer myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
+        gsBasis<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ).release() ;
         if ( myGismoData )
 	    {
             
             std::cout << "Loaded a "<< * myGismoData <<"\n";
             
             // Create Axel object
-            gsBasisData * myData = new gsBasisData(myGismoData);
+            gsBasisData * myData = new gsBasisData(myGismoData.release());
 		
             myData->setColor(QColor("#0080ff"));
             double opacity = 1.0 - 0.01 * d->sliderOpacity->value();
@@ -218,7 +217,7 @@ void gsGeometryCreator::loadMultiPatch(void) {
 
     if ( fileName.size() )
     {
-        gsMultiPatchPointer myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
+        gsMultiPatch<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
         if ( myGismoData)
 	    {
             /* // SmoothPatches
@@ -243,7 +242,7 @@ void gsGeometryCreator::loadMultiPatch(void) {
                 std::cout << "Loading a "<< * myGismoData <<"\n";
 
                 // Create Axel multipatch object
-                gsMultiPatchData * myData = new gsMultiPatchData(myGismoData);
+                gsMultiPatchData * myData = new gsMultiPatchData(myGismoData.release());
 
                 myData->setColor(QColor("#0080ff"));
                 double opacity = 1.0 - 0.01 * d->sliderOpacity->value();
@@ -258,7 +257,7 @@ void gsGeometryCreator::loadMultiPatch(void) {
 void gsGeometryCreator::run(void) 
 {
 
-    gsGeometryPointer myGismoData;
+ gsGeometry<double>::uPtr myGismoData;
    
  std::string filename;
  switch ( d->geometry )
@@ -297,7 +296,7 @@ void gsGeometryCreator::run(void)
   };
 
     // Create Axel object
-    axlAbstractData * myData = newGeometryData(myGismoData);
+    axlAbstractData * myData = newGeometryData(myGismoData.release());
     std::cout << "gsGeometryCreator created a "<< * myGismoData <<"\n";
     
     myData->setColor(d->colorButton->color());

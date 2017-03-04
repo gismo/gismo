@@ -79,7 +79,7 @@ bool gsReaderXml::read(const QString& file)
       
         if ( filedata.has< gismo::gsGeometry<double> >() )
         {
-            gsGeometryPointer myGismoData( filedata.getFirst<gismo::gsGeometry<double> >() );
+            gsGeometryPointer myGismoData( filedata.getFirst<gismo::gsGeometry<double> >().release() );
             if ( myGismoData )
             {
                 gsInfo << "Opened "<< * myGismoData <<"\n";
@@ -93,7 +93,7 @@ bool gsReaderXml::read(const QString& file)
         if ( filedata.has< gismo::gsMultiPatch<double> >() )
 	    {
             gsMultiPatchPointer myGismoData = 
-                filedata.getFirst<gismo::gsMultiPatch<double> >();
+                filedata.getFirst<gismo::gsMultiPatch<double> >().release();
             if ( myGismoData )
             {
                 gsInfo << "Opened "<< * myGismoData <<"\n";
@@ -107,7 +107,7 @@ bool gsReaderXml::read(const QString& file)
         if ( filedata.has< gismo::gsBasis<double> >() )
         {
             gsBasisPointer myGismoData = 
-                filedata.getFirst<gismo::gsBasis<double> >();
+                filedata.getFirst<gismo::gsBasis<double> >().release();
             if ( myGismoData )
             {
                 gsInfo << "Opened "<< * myGismoData <<"\n";

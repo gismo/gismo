@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     
     // Read in a surface
     cout << "Read in "<< gsFileData<>::getFilename(fn) <<"\n";
-    gsMultiPatch<> * mp = gsReadFile<>(fn);
+    memory::unique_ptr< gsMultiPatch<> > mp = gsReadFile<>(fn);
     cout << *mp <<"\n";
     
     // Get filename and extension
@@ -63,8 +63,6 @@ int main(int argc, char *argv[])
         fd<< *mp;
         fd.dump(name);
     }
-
-    delete mp;
     
     return 0;
 }
