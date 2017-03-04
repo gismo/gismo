@@ -117,7 +117,20 @@ public :
       //                      Cannot_Convert_Pointer >::type> ()
       { return shared_ptr<U>(Base::release()); }
     
-    operator bool() const { return Base::get() != NULL; }    
+	bool operator!() const { return Base::get() == NULL; }
+	
+private:
+
+    struct SafeBool
+    { SafeBool(int) {}
+       void dummy() {} };
+
+    typedef void (SafeBool::*bool_cast_type)();
+
+public:
+
+    operator bool_cast_type() const
+    { return !Base::get() ? 0 : &SafeBool::dummy; }
  };
  
 #endif
