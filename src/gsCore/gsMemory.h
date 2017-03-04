@@ -106,7 +106,7 @@ public :
     template<class U>
       unique_ptr & operator=(const unique_ptr<U> & other) throw()
       {
-	Base::operator=(const_cast<std::auto_ptr<U>&>(other));
+	Base::operator=(const_cast<unique_ptr<U>&>(other));
 	return *this;
       }
     
