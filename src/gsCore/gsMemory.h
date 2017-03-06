@@ -84,38 +84,36 @@ class unique_ptr : public std::auto_ptr<T>
 public :
     explicit unique_ptr(T* p = 0)  throw() : Base(p) { }
     
-    //unique_ptr(unique_ptr& r)  throw() : Base(r) { }
-    
- unique_ptr( const unique_ptr& r ) : Base( const_cast<unique_ptr&>(r) ) { }
+    unique_ptr(const unique_ptr& r ) : Base( const_cast<unique_ptr&>(r) ) { }
     
     unique_ptr(unique_ptr_ref m)  throw() : Base(m) { }
     
     template<typename U>
-      unique_ptr(unique_ptr<U> & r
-		 // unique_ptr<typename conditional<is_base_of<U,T>::value, U,
-		 //                      Cannot_Convert_Pointer >::type>
-		 )  throw()
-      : Base(r) { }
+    unique_ptr(unique_ptr<U> & r
+               // unique_ptr<typename conditional<is_base_of<U,T>::value, U,
+               //                      Cannot_Convert_Pointer >::type>
+        )  throw()
+    : Base(r) { }
     
     unique_ptr & operator=(const unique_ptr& other)  throw()
-      {
-	Base::operator=(const_cast<unique_ptr&>(other));
-	return *this;
-      }
+    {
+        Base::operator=(const_cast<unique_ptr&>(other));
+        return *this;
+    }
     
     template<class U>
-      unique_ptr & operator=(const unique_ptr<U> & other) throw()
-      {
-	Base::operator=(const_cast<unique_ptr<U>&>(other));
-	return *this;
-      }
+    unique_ptr & operator=(const unique_ptr<U> & other) throw()
+    {
+        Base::operator=(const_cast<unique_ptr<U>&>(other));
+        return *this;
+    }
     
     //operator shared_ptr<T> () { return shared_ptr<T>(this->release()); }
     
     template<class U> operator shared_ptr<U>()
-      // shared_ptr<typename conditional<is_base_of<U,T>::value, U,
-      //                      Cannot_Convert_Pointer >::type> ()
-      { return shared_ptr<U>(Base::release()); }
+    // shared_ptr<typename conditional<is_base_of<U,T>::value, U,
+    //                      Cannot_Convert_Pointer >::type> ()
+    { return shared_ptr<U>(Base::release()); }
     
 	bool operator!() const { return Base::get() == NULL; }
 	
@@ -131,8 +129,27 @@ public:
 
     operator bool_cast_type() const
     { return !Base::get() ? 0 : &SafeBool::dummy; }
- };
- 
+};
+
+template<class T>
+operator==(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+{ return p1.get()==p2.get(); }
+template<class T>
+operator!=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+{ return p1.get()!=p2.get(); }
+template<class T>
+operator<(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+{ return p1.get()<p2.get(); }
+template<class T>
+operator>(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+{ return p1.get()>p2.get(); }
+template<class T>
+operator<=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+{ return p1.get()<=p2.get(); }
+template<class T>
+operator>=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+{ return p1.get()>=p2.get(); }
+
 #endif
 
 /// \brief Deleter function that does not delete an object pointer
