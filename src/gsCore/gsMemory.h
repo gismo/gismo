@@ -132,22 +132,22 @@ public:
 };
 
 template<class T>
-operator==(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+bool operator==(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
 { return p1.get()==p2.get(); }
 template<class T>
-operator!=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+bool operator!=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
 { return p1.get()!=p2.get(); }
 template<class T>
-operator<(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+bool operator<(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
 { return p1.get()<p2.get(); }
 template<class T>
-operator>(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+bool operator>(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
 { return p1.get()>p2.get(); }
 template<class T>
-operator<=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+bool operator<=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
 { return p1.get()<=p2.get(); }
 template<class T>
-operator>=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
+bool  operator>=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
 { return p1.get()>=p2.get(); }
 
 #endif
