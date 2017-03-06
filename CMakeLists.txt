@@ -250,6 +250,10 @@ if(GISMO_BUILD_AXL)
   add_subdirectory(plugins/gsAxel)
 endif(GISMO_BUILD_AXL)
 
+if(GISMO_BUILD_RHINOPLUGINS)
+  add_subdirectory(plugins/RhinoTHBSplines)
+endif(GISMO_BUILD_RHINOPLUGINS)
+
 if(GISMO_BUILD_MEX)
   add_subdirectory(plugins/gsMex)
 endif(GISMO_BUILD_MEX)
