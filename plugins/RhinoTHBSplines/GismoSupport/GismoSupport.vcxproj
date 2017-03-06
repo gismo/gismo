@@ -1,0 +1,182 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{B82C7689-BEA8-428E-8424-4CFB4BAA3C40}</ProjectGuid>
+    <RootNamespace>GismoSupport</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <Keyword>MFCDLLProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Dynamic</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Dynamic</UseOfMfc>
+  </PropertyGroup>
+  <Import Project="$(SolutionDir)\Platform.targets" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>DO_EXPORTS;WIN64;_WINDOWS;_DEBUG;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\Program Files\gismo\include\gismo\</AdditionalIncludeDirectories>
+      <AdditionalOptions>/Zm300 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ModuleDefinitionFile>.\GismoSupport.def</ModuleDefinitionFile>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Rhino 5.0 x64 SDK\lib64;C:\Program Files\gismo\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>gismo.lib</AdditionalDependencies>
+    </Link>
+    <Midl>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>DO_EXPORTS;WIN64;_WINDOWS;NDEBUG;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\Program Files\gismo\include\gismo\</AdditionalIncludeDirectories>
+      <AdditionalOptions>/Zm300 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ModuleDefinitionFile>.\GismoSupport.def</ModuleDefinitionFile>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Rhino 5.0 x64 SDK\lib64;C:\Program Files\gismo\lib\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>gismo.lib</AdditionalDependencies>
+    </Link>
+    <Midl>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Text Include="GismoIssues.txt" />
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ActiveLevelCommandImplementation.cpp" />
+    <ClCompile Include="GismoExportImplementation.cpp" />
+    <ClCompile Include="GismoImportImplementation.cpp" />
+    <ClCompile Include="gsStreamData.cpp" />
+    <ClCompile Include="RefineNurbsAtSpanCommandImplementation.cpp" />
+    <ClCompile Include="RhinoGetThbSurfaceObject.cpp" />
+    <ClCompile Include="TestCommandImplementation.cpp" />
+    <ClCompile Include="ThbControlNetDrawer.cpp" />
+    <ClCompile Include="ThbFitCommandImplementation.cpp" />
+    <ClCompile Include="ThbGripsState.cpp" />
+    <ClCompile Include="ThbSurfaceDrawer.cpp" />
+    <ClCompile Include="ThbSurfaceGrip.cpp" />
+    <ClCompile Include="ThbSurfaceGrips.cpp" />
+    <ClCompile Include="ThbSurfaceObject.cpp" />
+    <ClCompile Include="ThbSurfaceUserData.cpp" />
+    <ClCompile Include="ThbSurfaceUtils.cpp" />
+    <ClCompile Include="ThbSurfaceWatcher.cpp" />
+    <ClCompile Include="RefineNurbsCommandImplementation.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ToNurbsImplementation.cpp" />
+    <ClCompile Include="ToPatchesImplementation.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ActiveLevelCommandImplementation.h" />
+    <ClInclude Include="CommandImplementation.h" />
+    <ClInclude Include="FileExportImplementation.h" />
+    <ClInclude Include="FileImportImplementation.h" />
+    <ClInclude Include="GismoExportImplementation.h" />
+    <ClInclude Include="GismoImportImplementation.h" />
+    <ClInclude Include="gsStreamData.h" />
+    <ClInclude Include="RefineNurbsAtSpanCommandImplementation.h" />
+    <ClInclude Include="RhinoGetThbSurfaceObject.h" />
+    <ClInclude Include="TestCommandImplementation.h" />
+    <ClInclude Include="ThbControlNetDrawer.h" />
+    <ClInclude Include="ThbFitCommandImplementation.h" />
+    <ClInclude Include="ThbGripsState.h" />
+    <ClInclude Include="ThbSurfaceDrawer.h" />
+    <ClInclude Include="ThbSurfaceGrip.h" />
+    <ClInclude Include="ThbSurfaceGrips.h" />
+    <ClInclude Include="ThbSurfaceObject.h" />
+    <ClInclude Include="ThbSurfaceUserData.h" />
+    <ClInclude Include="ThbSurfaceUtils.h" />
+    <ClInclude Include="ThbSurfaceWatcher.h" />
+    <ClInclude Include="RefineNurbsCommandImplementation.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="ToNurbsImplementation.h" />
+    <ClInclude Include="ToPatchesImplementation.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GismoSupport.def" />
+    <None Include="res\GismoSupport.rc2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="GismoSupport.rc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
