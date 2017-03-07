@@ -84,16 +84,16 @@ class unique_ptr : public std::auto_ptr<T>
 public :
     explicit unique_ptr(T* p = 0)  throw() : Base(p) { }
     
-    unique_ptr(const unique_ptr& r ) : Base( const_cast<unique_ptr&>(r) ) { }
+    unique_ptr(const unique_ptr& r) : Base( const_cast<unique_ptr&>(r) ) { }
     
     unique_ptr(unique_ptr_ref m)  throw() : Base(m) { }
     
     template<typename U>
-    unique_ptr(unique_ptr<U> & r
+    unique_ptr(const unique_ptr<U> & r
                // unique_ptr<typename conditional<is_base_of<U,T>::value, U,
                //                      Cannot_Convert_Pointer >::type>
         )  throw()
-    : Base(r) { }
+    : Base( const_cast<unique_ptr<U>&>(r) ) { }
     
     unique_ptr & operator=(const unique_ptr& other)  throw()
     {
@@ -115,7 +115,7 @@ public :
     //                      Cannot_Convert_Pointer >::type> ()
     { return shared_ptr<U>(Base::release()); }
     
-	bool operator!() const { return Base::get() == NULL; }
+    bool operator!() const { return Base::get() == NULL; }
 	
 private:
 
