@@ -62,8 +62,11 @@ public:
     typedef typename Base::iterator        iterator;
     typedef typename Base::const_iterator  const_iterator;
 
-    /// Shared pointer for gsTensorBSplineBasis
+    /// Smart pointer for gsTensorBSplineBasis
     typedef memory::shared_ptr< Self_t > Ptr;
+
+    /// Smart pointer for gsTensorBSplineBasis
+    typedef memory::unique_ptr< Self_t > uPtr;
 
 public:
 
@@ -179,6 +182,12 @@ public:
     static Self_t * New(std::vector<Basis_t*> & bb )
     { return new Self_t(bb); }
 
+    static uPtr make(std::vector<gsBasis<T>*> & bb )
+    { return uPtr( new Self_t(bb) ); }
+
+    static uPtr make(std::vector<Basis_t*> & bb )
+    { return uPtr( new Self_t(bb) ); }
+    
 public:
 
     KnotVectorType & knots (int i)

@@ -89,9 +89,10 @@ public:
     /// Dimension of the parameter domain
     static const int Dim = 1;
 
-    /// Shared pointer for gsTensorBSplineBasis
+    /// Smart pointer for gsTensorBSplineBasis
     typedef memory::shared_ptr< Self_t > Ptr;
 
+    /// Smart pointer for gsTensorBSplineBasis
     typedef memory::unique_ptr< Self_t > uPtr;
 
     static Ptr makeShared ( const KnotVectorType & KV )
@@ -123,6 +124,16 @@ public:
         return new Self_t(*bb.front());
     }
 
+    static uPtr make(std::vector<gsBasis<T>*> & bb )
+    {
+        return uPtr(New(bb));
+    }
+
+    static uPtr make(std::vector<Self_t*> & bb )
+    { 
+        return uPtr(new Self_t(*bb.front()));
+    }
+    
     // Note: these casts can be dangerous
     // operator Self_t &() { return dynamic_cast<Self_t&>(*this);}
     // operator const Self_t &() const { return dynamic_cast<const Self_t&>(*this);}
