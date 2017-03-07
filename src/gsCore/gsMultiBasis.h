@@ -69,7 +69,6 @@ public:
     /// Create a single-basis instance
     gsMultiBasis( const gsBasis<T> & geo );
 
-
     /// Create from bases and boundary/interface information
     gsMultiBasis( BasisContainer & bases,
                   const std::vector<patchSide>& boundary,
@@ -84,6 +83,15 @@ public:
 
     /// Copy constructor (makes deep copy)
     gsMultiBasis( const gsMultiBasis& other );
+    
+#if EIGEN_HAS_RVALUE_REFERENCES
+    /// Move constructor
+    gsMultiBasis(gsMultiBasis&& other)
+    {
+        m_bases.swap(other.m_bases);
+        m_topology.swap(other.m_topology);
+    }
+#endif
 
     /// Assignment operator (uses copy-and-swap idiom)
     gsMultiBasis& operator= ( gsMultiBasis other )
