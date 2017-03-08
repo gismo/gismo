@@ -86,20 +86,27 @@ public:
     
 #if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
-    gsMultiBasis(gsMultiBasis&& other)
-    {
-        m_bases.swap(other.m_bases);
-        m_topology.swap(other.m_topology);
-    }
-#endif
+    gsMultiBasis(gsMultiBasis&& other) : m_bases(give(other.m_bases)), m_topology(give(other.m_topology)) {}
 
+    /// Assignment operator
+    gsMultiBasis& operator= ( const gsMultiBasis& other );
+    
+    /// Move assignment operator
+    gsMultiBasis& operator= ( gsMultiBasis&& other )
+    {
+        m_bases = give(other.m_bases);
+        m_topology = give(other.m_topology);
+        return *this;
+    }
+#else
     /// Assignment operator (uses copy-and-swap idiom)
     gsMultiBasis& operator= ( gsMultiBasis other )
     {
         this->swap( other );
         return *this;
     }
-
+#endif
+    
     /// Clone function. Used to make a copy of the object
     gsMultiBasis* clone() const {
         return new gsMultiBasis( *this );

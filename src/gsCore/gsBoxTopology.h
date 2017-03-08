@@ -63,10 +63,7 @@ public:
     //gsBoxTopology(const gsBoxTopology & other) : dim(other.dim), nboxes(other.nboxes), 
     //    m_boundary(other.m_boundary), m_interfaces(other.m_interfaces)
     // { }
-
-    ~gsBoxTopology()
-    { }
-
+    
     /// Clone function. Used to make a copy of the object
     gsBoxTopology * clone() const
     {
