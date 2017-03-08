@@ -251,8 +251,8 @@ memory::unique_ptr<T> give(memory::unique_ptr<T> & x)
 { return memory::unique_ptr<T>(x.release()); }
 
 template <typename T> inline
-memory::unique_ptr<T> give(memory::shared_ptr<T> & x)
-{ return memory::unique_ptr<T>(x.release()); }
+memory::shared_ptr<T> give(memory::shared_ptr<T> & x)
+{ memory::shared_ptr<T> result = x; x.reset(); return result; }
 
 #endif
 
