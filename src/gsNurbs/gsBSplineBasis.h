@@ -94,9 +94,6 @@ public:
 
     /// Smart pointer for gsTensorBSplineBasis
     typedef memory::unique_ptr< Self_t > uPtr;
-
-    static Ptr makeShared ( const KnotVectorType & KV )
-    { return Ptr( new Self_t(KV) ); }
   
 public:
 
@@ -132,6 +129,11 @@ public:
     static uPtr make(std::vector<Self_t*> & bb )
     { 
         return uPtr(new Self_t(*bb.front()));
+    }
+
+    static uPtr make( const KnotVectorType & KV )
+    {
+        return uPtr(new Self_t(KV));
     }
     
     // Note: these casts can be dangerous
