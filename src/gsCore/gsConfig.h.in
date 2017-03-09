@@ -63,6 +63,9 @@
 #cmakedefine GISMO_BUILD_LIB
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
 
+/* Debug settings. */
+#cmakedefine GISMO_EXTRA_DEBUG
+#cmakedefine GISMO_WARNINGS
 
 /**
  * @name Eigen options - MUST be defined before Eigen is included
