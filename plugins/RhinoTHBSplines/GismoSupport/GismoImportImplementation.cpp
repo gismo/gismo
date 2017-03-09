@@ -31,12 +31,11 @@ BOOL CGismoImportImplementation::ReadFile(const wchar_t* filename, int index, CR
 
     fd.read(fn);
 
-    std::vector<gsTHBSpline<2>*> thbs = fd.getAll<gsTHBSpline<2> >();
+    std::vector<gsTHBSpline<2>::uPtr> thbs = fd.getAll<gsTHBSpline<2> >();
     for (auto it = thbs.begin(); it != thbs.end(); ++it)
     {
-        gsTHBSpline<2>* thb = *it;
         auto obj = new CThbSurfaceObject();
-    gsTHBSpline2* temp = new gsTHBSpline2(*thb);
+        gsTHBSpline2* temp = new gsTHBSpline2(**it);
         obj->SetHierarchicalSurface(temp);
 
         if (!doc.AddObject(obj))
@@ -46,13 +45,11 @@ BOOL CGismoImportImplementation::ReadFile(const wchar_t* filename, int index, CR
         obj = nullptr;
     }
 
-    std::vector<gsTensorBSpline2*> nurbs = fd.getAll<gsTensorBSpline2 >();
+    std::vector<gsTensorBSpline2::uPtr> nurbs = fd.getAll<gsTensorBSpline2 >();
     for (auto it = nurbs.begin(); it != nurbs.end(); ++it)
     {
-        gsTensorBSpline2* nurb = *it;
         ON_NurbsSurface ns;
-        ON_GismoUtils::NurbForm(*nurb, ns);
-        delete nurb;
+        ON_GismoUtils::NurbForm(**it, ns);
         ON_wString err;
         ON_TextLog log(err);
         if (!ns.IsValid(&log))
@@ -62,13 +59,11 @@ BOOL CGismoImportImplementation::ReadFile(const wchar_t* filename, int index, CR
         }
         doc.AddSurfaceObject(ns);    
     }
-    std::vector<gsTensorNurbs<2>*> rnurbs = fd.getAll<gsTensorNurbs<2> >();
+    std::vector<gsTensorNurbs<2>::uPtr> rnurbs = fd.getAll<gsTensorNurbs<2> >();
     for (auto it = rnurbs.begin(); it != rnurbs.end(); ++it)
     {
-        gsTensorNurbs<2>* rnurb = *it;
         ON_NurbsSurface ns;
-        ON_GismoUtils::NurbForm(*rnurb, ns);
-        delete rnurb;
+        ON_GismoUtils::NurbForm(**it, ns);
         ON_wString err;
         ON_TextLog log(err);
         if (!ns.IsValid(&log))
@@ -128,14 +123,12 @@ BOOL CGismoImportImplementation::ReadFile(const wchar_t* filename, int index, CR
     //    delete p;
     //}// end iterate multi-patch
 
-    std::vector<gsBSpline<>*> curves = fd.getAll<gsBSpline<> >();
+    std::vector<gsBSpline<>::uPtr> curves = fd.getAll<gsBSpline<> >();
     for (auto it = curves.begin(); it != curves.end(); ++it)
     {
-        gsBSpline<>* c = *it;
         ON_NurbsCurve crv;
-        ON_GismoUtils::NurbForm(*c, crv);
+        ON_GismoUtils::NurbForm(**it, crv);
         doc.AddCurveObject(crv);
-        delete c;
     }
     // PlanarDomain
 

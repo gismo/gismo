@@ -58,6 +58,9 @@ public:
     /// Shared pointer for gsTensorNurbs
     typedef memory::shared_ptr< gsTensorNurbs<d,T> > Ptr;
 
+    /// Unique pointer for gsTensorNurbs
+    typedef memory::unique_ptr<gsTensorNurbs> uPtr;
+
 public:
 
     /// Default empty constructor

@@ -1,5 +1,6 @@
 
-if(true)
+#if(true)
+if(false)
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GismoSupport.rc.in"
                "${CMAKE_CURRENT_SOURCE_DIR}/GismoSupport.rc") # sets version value
@@ -8,6 +9,9 @@ include_external_msproject (GismoSupport
                            ${CMAKE_CURRENT_SOURCE_DIR}/GismoSupport.vcxproj )
 
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+
+set_target_properties(GismoSupport PROPERTIES
+    FOLDER "Rhino THB plug-ins"  )
 
 #---- Native cmake
 else()
@@ -25,6 +29,10 @@ cmake_policy(SET CMP0043 OLD)
 endif()
 
 project(GismoSupport CXX RC)
+
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+
+include_directories(${GISMO_INCLUDE_DIRS})
 
 set(${PROJECT_NAME}_HEADERS
     ActiveLevelCommandImplementation.h
@@ -53,8 +61,8 @@ set(${PROJECT_NAME}_HEADERS
     targetver.h
     ToNurbsImplementation.h
     ToPatchesImplementation.h
-)
-
+    )
+		
 set(${PROJECT_NAME}_SOURCES
     ActiveLevelCommandImplementation.cpp
     GismoExportImplementation.cpp
@@ -79,9 +87,16 @@ set(${PROJECT_NAME}_SOURCES
     ToPatchesImplementation.cpp
     GismoSupport.rc
     )
+	
+set(RHINO_SDK C:/Program\ Files\\Rhino\ 6.0\ SDK)
 
-add_definitions(-D_AFXDLL)
-set(CMAKE_MFC_FLAG 2)
+#set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1) #cmake>=3.4, maybe problematic
+
+include_directories(${RHINO_SDK}/inc)
+	
+add_definitions(-D_UNICODE -DUNICODE -D_USRDLL -DWIN64 -UWIN32 -DDO_EXPORTS) # -DRHINO_V6_READY
+
+#set(CMAKE_MFC_FLAG 2)
 
 add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_HEADERS}
@@ -89,7 +104,20 @@ add_library(${PROJECT_NAME} SHARED
   GismoSupport.rc
   )
 
-target_link_libraries(${PROJECT_NAME} gismo_static ${gismo_LINKER} )
+set_target_properties (${PROJECT_NAME} PROPERTIES
+        COMPILE_DEFINITIONS _AFXDLL;_BIND_TO_CURRENT_CRT_VERSION;_BIND_TO_CURRENT_MFC_VERSION
+        LINK_FLAGS "/ENTRY:\"wWinMainCRTStartup\""
+)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+target_link_libraries(${PROJECT_NAME}  
+${RHINO_SDK}/lib/Release/rhino.lib
+${RHINO_SDK}/lib/Release/rdk.lib
+#${RHINO_SDK}/lib/Release/opennurbs.lib
+)
+
+target_link_libraries(${PROJECT_NAME} gismo ${gismo_LINKER} )
 
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plRhino)
 
@@ -101,8 +129,8 @@ install(TARGETS ${PROJECT_NAME}
 # This target is a plugin, so we hook it to the grouping target
 add_dependencies(plugins ${PROJECT_NAME})
 
-endif() #native cmake
-
-
 set_target_properties(${PROJECT_NAME} PROPERTIES
     FOLDER "Rhino THB plug-ins"  )
+
+endif() #native cmake
+
