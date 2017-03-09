@@ -85,7 +85,6 @@ set(${PROJECT_NAME}_SOURCES
     stdafx.cpp
     ToNurbsImplementation.cpp
     ToPatchesImplementation.cpp
-    GismoSupport.rc
     )
 	
 set(RHINO_SDK C:/Program\ Files\\Rhino\ 6.0\ SDK)
@@ -101,7 +100,7 @@ add_definitions(-D_UNICODE -DUNICODE -D_USRDLL -DWIN64 -UWIN32 -DDO_EXPORTS) # -
 add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_HEADERS}
   ${${PROJECT_NAME}_SOURCES}
-  GismoSupport.rc
+  ${PROJECT_NAME}.rc
   )
 
 set_target_properties (${PROJECT_NAME} PROPERTIES
