@@ -1,5 +1,5 @@
 
-if(true)
+if(false)
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/PluginVersion.h.in"
                "${CMAKE_CURRENT_SOURCE_DIR}/PluginVersion.h")
@@ -27,7 +27,7 @@ if(POLICY CMP0043)# CMake 3.1
 cmake_policy(SET CMP0043 OLD)
 endif()
 
-project(GismoSupport CXX RC)
+project(THBSplines CXX RC)
 
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
@@ -59,7 +59,7 @@ set(RHINO_SDK C:/Program\ Files/Rhino\ 6.0\ SDK)
 #set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1) #cmake>=3.4, maybe problematic
 
 include_directories(${RHINO_SDK}/inc)
-	
+
 add_definitions(-D_UNICODE -DUNICODE -D_USRDLL -DWIN64 -UWIN32 -DDO_EXPORTS) # -DRHINO_V6_READY
 
 #set(CMAKE_MFC_FLAG 2)
@@ -79,7 +79,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(${PROJECT_NAME}  
 ${RHINO_SDK}/lib/Release/rhino.lib
-${RHINO_SDK}/lib/Release/rdk.lib
+#${RHINO_SDK}/lib/Release/rdk.lib
 #${RHINO_SDK}/lib/Release/opennurbs.lib
 GismoSupport
 )

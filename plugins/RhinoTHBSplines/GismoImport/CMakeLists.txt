@@ -1,5 +1,5 @@
 
-if(true)
+if(false)
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/PluginVersion.h.in"
                "${CMAKE_CURRENT_SOURCE_DIR}/PluginVersion.h")
@@ -29,7 +29,7 @@ if(POLICY CMP0043)# CMake 3.1
 cmake_policy(SET CMP0043 OLD)
 endif()
 
-project(GismoSupport CXX RC)
+project(GismoImport CXX RC)
 
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
@@ -74,7 +74,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(${PROJECT_NAME}  
 ${RHINO_SDK}/lib/Release/rhino.lib
-${RHINO_SDK}/lib/Release/rdk.lib
+#${RHINO_SDK}/lib/Release/rdk.lib
 #${RHINO_SDK}/lib/Release/opennurbs.lib
 GismoSupport
 )
