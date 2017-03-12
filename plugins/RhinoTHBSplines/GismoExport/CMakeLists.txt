@@ -1,5 +1,8 @@
 
-if(false)
+if(USE_VCXPROJ)
+
+message(STATUS "Importing MSVC project GismoExport.")
+
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/PluginVersion.h.in"
                "${CMAKE_CURRENT_SOURCE_DIR}/PluginVersion.h")
@@ -49,8 +52,6 @@ set(${PROJECT_NAME}_SOURCES
     GismoExportPlugIn.cpp
     stdafx.cpp
     )
-	
-set(RHINO_SDK C:/Program\ Files/Rhino\ 6.0\ SDK)
 
 #set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1) #cmake>=3.4, maybe problematic
 
@@ -68,7 +69,7 @@ add_library(${PROJECT_NAME} SHARED
 
 set_target_properties (${PROJECT_NAME} PROPERTIES
         COMPILE_DEFINITIONS _AFXDLL;_BIND_TO_CURRENT_CRT_VERSION;_BIND_TO_CURRENT_MFC_VERSION
-        LINK_FLAGS "/ENTRY:\"wWinMainCRTStartup\""
+        #LINK_FLAGS "/ENTRY:\"wWinMainCRTStartup\""
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)

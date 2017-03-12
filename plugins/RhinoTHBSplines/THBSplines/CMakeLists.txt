@@ -1,5 +1,7 @@
 
-if(false)
+if(USE_VCXPROJ)
+
+message(STATUS "Importing MSVC project THBSplines.")
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/PluginVersion.h.in"
                "${CMAKE_CURRENT_SOURCE_DIR}/PluginVersion.h")
@@ -54,15 +56,11 @@ set(${PROJECT_NAME}_SOURCES
     THBSplinesPlugIn.cpp
     )
 	
-set(RHINO_SDK C:/Program\ Files/Rhino\ 6.0\ SDK)
-
 #set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1) #cmake>=3.4, maybe problematic
 
 include_directories(${RHINO_SDK}/inc)
 
 add_definitions(-D_UNICODE -DUNICODE -D_USRDLL -DWIN64 -UWIN32 -DDO_EXPORTS) # -DRHINO_V6_READY
-
-#set(CMAKE_MFC_FLAG 2)
 
 add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_HEADERS}
@@ -72,13 +70,16 @@ add_library(${PROJECT_NAME} SHARED
 
 set_target_properties (${PROJECT_NAME} PROPERTIES
         COMPILE_DEFINITIONS _AFXDLL;_BIND_TO_CURRENT_CRT_VERSION;_BIND_TO_CURRENT_MFC_VERSION
-        LINK_FLAGS "/ENTRY:\"wWinMainCRTStartup\""
+        #LINK_FLAGS "/ENTRY:\"wWinMainCRTStartup\""
 )
+
+# set "link library dependencies" to true
+#set_target_properties(${PROJECT_NAME} PROPERTIES STATIC_LIBRARY_FLAGS "\" LinkLibraryDependencies=\"true")
 
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(${PROJECT_NAME}  
-${RHINO_SDK}/lib/Release/rhino.lib
+#${RHINO_SDK}/lib/Release/rhino.lib
 #${RHINO_SDK}/lib/Release/rdk.lib
 #${RHINO_SDK}/lib/Release/opennurbs.lib
 GismoSupport
