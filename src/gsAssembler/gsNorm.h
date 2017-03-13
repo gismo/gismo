@@ -36,7 +36,9 @@ public:
       field1(&_field1), func2(&_func2)
     { }
 
-    // Constructor using a multipatch domain
+    virtual ~gsNorm() {}
+        
+    /// Constructor using a multipatch domain
     explicit gsNorm(const gsField<T> & _field1)
     : m_zeroFunction(gsVector<T>::Zero(_field1.dim()),_field1.parDim()), patchesPtr( &_field1.patches() ),
       field1(&_field1), func2(&m_zeroFunction)
