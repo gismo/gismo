@@ -552,7 +552,7 @@ transformValuesHdiv( index_t k,
 //            // tGrad.colwise() += gradDetJrec[i];
 //            for (int i=0; i<ParDim; ++i) // result column
 //            {
-//                tGrad.col(i).array()   += gradDetJrec[i];
+//                tGrad.col(i).array()   += gradDetJrec[i];  //JS2: I think this is incorrect!
 
 //                tGrad.col(i) += ( allValues[comp](j,k) / det ) * DJac[i].col(j);
 //                }

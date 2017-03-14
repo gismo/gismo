@@ -26,7 +26,7 @@ namespace gismo
     function.
 
     It has an extra gsBoundaryConditions object since the biharmonic has
-    two essention (Dirichlet) and two natural (Neumann). The second
+    two essential (Dirichlet) and two natural (Neumann). The second
     gsBoundaryConditions contains the second kind of BC.
 
     The first kind of BCs
