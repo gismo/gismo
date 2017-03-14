@@ -21,7 +21,7 @@ cleancmake:
 	@- $(RM) CMakeFiles
 	@- $(RM) cmake_install.cmake
 
-distclean: cleancmake
+distclean:
 	@- (cd build >/dev/null 2>&1 && cmake .. >/dev/null 2>&1)
 	@- $(MAKE) --silent -C build clean || true
 	@- $(RM) ./build/Makefile
