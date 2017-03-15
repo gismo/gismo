@@ -31,11 +31,13 @@ public:
 
     /// Constructor using a multipatch domain
     gsNorm(const gsField<T> & _field1,
-           const gsFunctionSet<T> & _func2) 
+           const gsFunctionSet<T> & _func2)
     : m_zeroFunction(T(0.0),_field1.parDim()), patchesPtr( &_field1.patches() ),
       field1(&_field1), func2(&_func2)
     { }
-    
+
+    virtual ~gsNorm() {}
+        
     /// Constructor using a multipatch domain
     explicit gsNorm(const gsField<T> & _field1)
     : m_zeroFunction(gsVector<T>::Zero(_field1.dim()),_field1.parDim()), patchesPtr( &_field1.patches() ),
@@ -46,6 +48,32 @@ public:
     {
         field1 = &_field1;
     }
+    /*
+    * Methods compute, initialize, evaluate, compute, takeRoot have been added in order
+    * to provide the opportunity to use the polymorphism of the gsNorm and classes
+    * gsErrEstPoissonResidual and gsErrEstDualMajorant
+    * inherited from the gsNorm
+    */
+    virtual T compute(bool storeElWise = false)
+    {
+        this->apply(*this,storeElWise);
+        return m_value;
+    }
+    virtual void initialize(const gsBasis<T> & basis,
+                        gsQuadRule<T> & rule,
+                        unsigned      & evFlags) = 0;
+
+    virtual void evaluate(gsGeometryEvaluator<T> & geoEval,
+                  const gsFunction<T>    & _func1,
+                  const gsFunction<T>    & _func2,
+                  gsMatrix<T>            & quNodes) = 0;
+
+    virtual T compute(gsDomainIterator<T>    & element,
+                 gsGeometryEvaluator<T> & geoEval,
+                 gsVector<T> const      & quWeights,
+                 T & accumulated) = 0;
+
+    virtual T takeRoot(const T v) { return math::sqrt(v); }
 
     /** \brief Main function for norm-computation.
      *
@@ -80,7 +108,7 @@ public:
             const gsBasis<T> & dom = field1->isParametrized() ? 
                 field1->igaFunction(pn).basis() : field1->patch(pn).basis();
 
-            // Initialize visitor
+             // Initialize visitor
             visitor.initialize(dom, QuRule, evFlags);
 
             // Initialize geometry evaluator
@@ -145,6 +173,7 @@ public:
             if ( storeElWise )
                 m_elWise.push_back( visitor.takeRoot(result) );
         }
+
     }
     
 public:
@@ -189,9 +218,10 @@ protected:
   
 protected:
 
-    std::vector<T> m_elWise;
-    T              m_value;
-};
+    std::vector<T> m_elWise;    // vector of the element-wise values of the norm
+    T              m_value;     // the total value of the norm
+
+    };
 
 } // namespace gismo
 

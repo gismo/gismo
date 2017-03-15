@@ -47,7 +47,7 @@ std::string to_string(const C & value)
     return convert.str();
 }
 
-#if __cplusplus > 199711L
+#if __cplusplus > 199711L || (defined(_MSC_VER) && _MSC_VER >= 1600)
 using std::to_string;
 using std::iota;
 using std::stod;
