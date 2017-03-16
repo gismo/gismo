@@ -56,10 +56,11 @@ public:
     }
 
     /// @brief Set the options based on a gsOptionList
-    void setOptions(const gsOptionList & opt)
+    gsMinimalResidual& setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
         m_inexact_residual = opt.askSwitch("InexactResidual", m_inexact_residual);
+        return *this;
     }
 
     /// @brief If true, the residual is estimated, not accurately computed.
