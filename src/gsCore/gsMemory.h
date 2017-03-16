@@ -217,8 +217,6 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
     return result;
 }
 
-
-
 } // namespace memory
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1600)
@@ -230,7 +228,8 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 template <class T> inline
 auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
 {
-#ifdef GISMO_EXTRA_DEBUG
+#if defined(GISMO_EXTRA_DEBUG) && ! defined(_MSC_VER)
+    // TODO: is there way that also MS can check this?
     GISMO_STATIC_ASSERT( util::has_move_constructor<typename std::remove_reference<T>::type>::value, "There is no move constructor. Copy would be created." );
 #endif
     return std::move(std::forward<T>(t));
