@@ -286,34 +286,38 @@ std::vector<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 }
 //*/
 
-void gsOptionList::update(const gsOptionList& other)
+void gsOptionList::update(const gsOptionList& other, gsOptionList::updateType type)
 {
     // add strings to list
     gsOptionList::StringTable::const_iterator it;
     for ( it = other.m_strings.begin(); it != other.m_strings.end(); it++ )
     {
-        if (exists(it->first)) setString(it->first,it->second.first);
+        if (exists(it->first))                        setString(it->first,it->second.first);
+        else if(type == gsOptionList::addIfUnknown)   addString(it->first,it->second.second,it->second.first);
     }
-    
+
     // add integers to list
     gsOptionList::IntTable::const_iterator it2;
     for ( it2 = other.m_ints.begin(); it2 != other.m_ints.end(); it2++ )
     {
-        if (exists(it2->first)) setInt(it2->first,it2->second.first);
+        if (exists(it2->first))                       setInt(it2->first,it2->second.first);
+        else if(type == gsOptionList::addIfUnknown)   addInt(it2->first,it2->second.second,it2->second.first);
     }
-    
+
     // add reals to list
     gsOptionList::RealTable::const_iterator it3;
     for ( it3 = other.m_reals.begin(); it3 != other.m_reals.end(); it3++ )
     {
-        if (exists(it3->first)) setReal(it3->first,it3->second.first);
+        if (exists(it3->first))                       setReal(it3->first,it3->second.first);
+        else if(type == gsOptionList::addIfUnknown)   addReal(it3->first,it3->second.second,it3->second.first);
     }
-    
+
     // add bools to list
     gsOptionList::SwitchTable::const_iterator it4;
     for ( it4 = other.m_switches.begin(); it4 != other.m_switches.end(); it4++ )
     {
-        if (exists(it4->first)) setSwitch(it4->first,it4->second.first);
+        if (exists(it4->first))                       setSwitch(it4->first,it4->second.first);
+        else if(type == gsOptionList::addIfUnknown)   addSwitch(it4->first,it4->second.second,it4->second.first);
     }
 }
 

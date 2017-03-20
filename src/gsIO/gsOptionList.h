@@ -88,7 +88,7 @@ public:
         std::string desc;
         std::string val;
     } OptionListEntry;
-    
+
     std::vector<OptionListEntry> getAllEntries() const;
     //*/
 
@@ -99,15 +99,20 @@ public:
             m_strings  = other.m_strings;
             m_ints     = other.m_ints;
             m_reals    = other.m_reals;
-            m_switches = other.m_switches;            
+            m_switches = other.m_switches;
         }
         return *this;
     }
-    
+
+    enum updateType {
+        ignoreIfUnknwon,
+        addIfUnknown
+    };
+
     /// \brief Updates the object using the data from \a other. Fieleds unkown to \a other,
-    /// are kept unchanged. Fields in \a other unknown to this are ignored.
-    void update(const gsOptionList& other);
-    
+    /// are kept unchanged or. Fields in \a other unknown to this are either ignored or added.
+    void update(const gsOptionList& other, updateType type = ignoreIfUnknwon);
+
 private:
 
     /// \brief Prints information regarding the option nnamed \a label
