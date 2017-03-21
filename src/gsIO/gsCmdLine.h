@@ -136,6 +136,8 @@ public:
 
     bool valid() const;
 
+    gsOptionList getOptionList();
+
 private:
 
     gsCmdLinePrivate * my;

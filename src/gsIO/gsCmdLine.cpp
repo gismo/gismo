@@ -24,6 +24,7 @@
 //#include <tclap/MultiSwitchArg.h>
 // --- end External files
 
+#include <gsIO/gsOptionList.h>
 
 
 namespace gismo
@@ -49,8 +50,8 @@ public:
         cmd.setOutput( &cmdout );
     }
 
-	~gsCmdLinePrivate()  
-	{  
+    ~gsCmdLinePrivate()  
+    {  
         freeAll( intVals   ); 
         freeAll( realVals  ); 
         freeAll( stringVals); 
@@ -410,6 +411,20 @@ bool gsCmdLine::getValues(int argc, char *argv[])
     return true;
 }
 
+
+gsOptionList gsCmdLine::getOptionList()
+{
+    gsOptionList result;
+    for( std::size_t i=0; i!=my->intVals.size(); ++i)
+        result.addInt( my->intVals[i]->getName(), my->intVals[i]->getDescription(), my->intVals[i]->getValue() );
+    for( std::size_t i=0; i!=my->realVals.size(); ++i)
+        result.addReal( my->realVals[i]->getName(), my->realVals[i]->getDescription(), my->realVals[i]->getValue() );
+    for( std::size_t i=0; i!=my->stringVals.size(); ++i)
+        result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), my->stringVals[i]->getValue() );
+    for( std::size_t i=0; i!=my->switches.size(); ++i)
+        result.addSwitch( my->switches[i]->getName(), my->switches[i]->getDescription(), my->switches[i]->getValue() );
+    return result;
+}
 
 gsCmdLine::~gsCmdLine() 
 { 
