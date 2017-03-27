@@ -47,6 +47,20 @@ std::string to_string(const C & value)
     return convert.str();
 }
 
+/// \brief Checks if a string \a haystack begins with the string \a needle
+/// \ingroup Utils
+inline bool starts_with( const std::string & haystack, const std::string & needle )
+{
+    std::string::const_iterator it1 = haystack.begin();
+    std::string::const_iterator it2 = needle.begin();
+    while ( it2!=needle.end() )
+    {
+        if ( it1 == haystack.end() || *it1 != *it2) return false;
+        it1++; it2++;
+    }
+    return true;
+}
+
 #if __cplusplus > 199711L || (defined(_MSC_VER) && _MSC_VER >= 1600)
 using std::to_string;
 using std::iota;

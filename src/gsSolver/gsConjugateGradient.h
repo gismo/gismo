@@ -53,10 +53,11 @@ public:
     }
     
     /// @brief Set the options based on a gsOptionList
-    void setOptions(const gsOptionList & opt)
+    gsConjugateGradient& setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
         m_calcEigenvals = opt.askSwitch("CalcEigenvalues", m_calcEigenvals);
+        return *this;
     }
 
     bool initIteration( const VectorType& rhs, VectorType& x );

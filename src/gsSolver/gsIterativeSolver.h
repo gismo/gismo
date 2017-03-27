@@ -89,10 +89,11 @@ public:
     }
 
     /// @brief Set the options based on a gsOptionList
-    virtual void setOptions(const gsOptionList & opt)
+    virtual gsIterativeSolver& setOptions(const gsOptionList & opt)
     {
         m_max_iters        = opt.askInt   ("MaxIterations"    , m_max_iters        );
         m_tol              = opt.askReal  ("Tolerance"        , m_tol              );
+        return *this;
     }
     
     /// @brief Solves the linear system and stores the solution in \a x
