@@ -283,25 +283,25 @@ gsOptionList gsOptionList::getGroup(const std::string & gn) const
     // add strings to list
     gsOptionList::StringTable::const_iterator it1;
     for ( it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
-        if ( 0 == it1->first.find(search) )
+        if ( util::starts_with(it1->first,search) )
             result.addString(it1->first.substr(len),it1->second.second,it1->second.first);
 
     // add integers to list
     gsOptionList::IntTable::const_iterator it2;
     for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
-        if ( 0 == it2->first.find(search) )
+        if ( util::starts_with(it2->first,search) )
             result.addInt(it2->first.substr(len),it2->second.second,it2->second.first);
 
     // add reals to list
     gsOptionList::RealTable::const_iterator it3;
     for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
-        if ( 0 == it3->first.find(search) )
+        if ( util::starts_with(it3->first,search) )
             result.addReal(it3->first.substr(len),it3->second.second,it3->second.first);
 
     // add bools to list
     gsOptionList::SwitchTable::const_iterator it4;
     for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
-        if ( 0 == it4->first.find(search) )
+        if ( util::starts_with(it4->first,search) )
             result.addSwitch(it4->first.substr(len),it4->second.second,it4->second.first);
 
     return result;
@@ -334,19 +334,19 @@ bool gsOptionList::hasGroup(const std::string & gn) const
 
     gsOptionList::StringTable::const_iterator it1;
     for ( it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
-        if ( 0 == it1->first.find(search) ) return true;
+        if ( util::starts_with(it1->first,search) ) return true;
 
     gsOptionList::IntTable::const_iterator it2;
     for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
-        if ( 0 == it2->first.find(search) ) return true;
+        if ( util::starts_with(it2->first,search) ) return true;
 
     gsOptionList::RealTable::const_iterator it3;
     for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
-        if ( 0 == it3->first.find(search) ) return true;
+        if ( util::starts_with(it3->first,search) ) return true;
 
     gsOptionList::SwitchTable::const_iterator it4;
     for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
-        if ( 0 == it4->first.find(search) ) return true;
+        if ( util::starts_with(it4->first,search) ) return true;
 
     return false;
 }
