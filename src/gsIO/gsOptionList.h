@@ -33,8 +33,9 @@ class GISMO_EXPORT gsOptionList
 {
 public:
 
-    /// \brief Reads value for option \a label from options. If \a label
-    /// is not found, the function throws.
+    /// \brief Reads value for option \a label from options.
+    ///
+    /// If \a label is not found, the function throws.
     std::string getString(const std::string & label) const;
     /// @copydoc gsOptionList::getString
     int         getInt   (const std::string & label) const;
@@ -43,9 +44,9 @@ public:
     /// @copydoc gsOptionList::getString
     bool        getSwitch(const std::string & label) const;
 
-    /// \brief Reads value for option \a label from options. If \a label
-    /// is not found, it defaults to \a val (otherwise \a val is
-    /// not used).
+    /// \brief Reads value for option \a label from options.
+    ///
+    /// If \a label is not found, it defaults to \a val (otherwise \a val is not used).
     std::string askString(const std::string & label, const std::string & val = ""    ) const;
     /// @copydoc gsOptionList::getString
     int         askInt   (const std::string & label, const int &         val = 0     ) const;
@@ -55,6 +56,8 @@ public:
     bool        askSwitch(const std::string & label, const bool &        val = false ) const;
 
     /// \brief Sets an existing option \a label to be equal to \a value.
+    ///
+    /// If \a label is not found, the function throws.
     void setString(const std::string & label, const std::string & value);
     /// @copydoc gsOptionList::setString
     void setInt   (const std::string & label, const int & res          );
@@ -64,7 +67,11 @@ public:
     void setSwitch(const std::string & label, const bool & res         );
 
     /// \brief Adds a option named \a label, with description \a desc
-    /// and current value \a value. An existing value is overwritten.
+    /// and value \a value.
+    ///
+    /// If an option with \a label already exists with the same type,
+    /// the function overwrites it. If it has another type, the function
+    /// throws.
     void addString(const std::string & label, const std::string & desc, const std::string & value );
     /// @copydoc gsOptionList::addString
     void addInt   (const std::string & label, const std::string & desc, const int & value         );
@@ -83,6 +90,7 @@ public:
     };
 
     /// \brief Updates the object using the data from \a other.
+    ///
     /// Options which do not exist in \a other, are kept unchanged.
     /// Options in \a other which do not exist in this, are kept unchanged if
     /// \a type is set to gsOptionList::ignoreIfUnknwon (default) or are added
@@ -90,25 +98,26 @@ public:
     void update(const gsOptionList& other, updateType type = ignoreIfUnknwon);
 
     /// \brief Creates a new gsOptionList where all labels are wrapped into a groupname \a gn.
-    /// Wrapping means, that the label is prepended with the groupname and a dot.
     ///
-    /// If the groupname is "IterativeSolver", then a label "Tolerance" becomes "InterativeSolver.Tolerance"
+    /// Wrapping means that the label is prepended with the groupname and a dot. So, the label
+    /// "Tolerance" wrapped into the group "IterativeSolver" is "InterativeSolver.Tolerance"
     gsOptionList wrapIntoGroup(const std::string & gn) const;
 
     /// \brief Creates a new gsOptionList, whre only the options from the group \a gn are taken.
-    /// In the result, the groupname and the corresponding dot are removed
-    /// Wrapping means, that the label is prepended with the groupname and a dot.
+    /// In the result, the groupname and the corresponding dot are removed.
     ///
-    /// If the groupname is "IterativeSolver", then a label "InterativeSolver.Tolerance" becomes "Tolerance"
-    /// and a label "Basis.Degree" is ignored.
+    /// If the groupname is "IterativeSolver", then a label "InterativeSolver.Tolerance" becomes
+    /// "Tolerance" and a label "Basis.Degree" is ignored.
     gsOptionList getGroup(const std::string & gn) const;
 
     /// \brief Checks if there are labels that do not belong to a group.
-    /// This is the case if it does not contain a dot.
+    ///
+    /// This is the case if there is a label which does not contain a dot.
     bool hasGlobals() const;
 
     /// \brief Checks if there are labels that belong to the group \a gn.
-    /// This is the case if the label starts with the groupname and a dot.
+    ///
+    /// This is the case if there is a label which starts with the groupname and a dot.
     bool hasGroup(const std::string & gn) const;
 
     /// \brief Prints this list of options to stream \a os
