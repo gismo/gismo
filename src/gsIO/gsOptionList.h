@@ -129,7 +129,6 @@ public:
     std::vector<OptionListEntry> getAllEntries() const;
     //*/
 
-    // TODO: This breaks the move semantics.
     gsOptionList& operator=(const gsOptionList & other)
     { // Note: implcitly degerated operator was buggy on some platforms
         if (this != &other)
@@ -141,6 +140,13 @@ public:
         }
         return *this;
     }
+
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsOptionList() {}
+    gsOptionList(const gsOptionList & other) = default;
+    gsOptionList(gsOptionList && other) = default;
+    gsOptionList& operator=(gsOptionList && other) = default;
+#endif
 
 private:
 
