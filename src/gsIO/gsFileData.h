@@ -16,7 +16,15 @@
 #include <iostream>
 #include <string>
 
+#include <fstream>//TODO
+
 #include <gsIO/gsXml.h>
+
+#if defined _WIN32
+    #define GISMO_PATH_SEPERATOR '\\'
+#else
+    #define GISMO_PATH_SEPERATOR '/'
+#endif
 
 namespace gismo 
 {
@@ -24,6 +32,8 @@ namespace gismo
 /**
    \brief This class represents an XML data tree which can be read
    from or written to a (file) stream
+
+   \ingroup IO
  */
 template<class T>
 class gsFileData
@@ -414,6 +424,70 @@ private:
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 {return fd.print(os); }
+
+/**
+   \brief Checks if the file exists
+   \ingroup IO
+ */
+
+inline bool fileExists(const std::string& name)
+{
+    std::ifstream f(name.c_str());
+    return f.good();
+}
+
+/**
+   \brief This class checks if the given filename can be found
+   in one of the pre-defined search pathes. It is possible to
+   register additional search pathes.
+
+   \ingroup IO
+ */
+
+class gsFileRepo
+{
+public:
+    /// \brief Default constructor. Registers the default pathes.
+    gsFileRepo()
+    {
+        m_pathes.push_back(std::string()+'.'+GISMO_PATH_SEPERATOR);
+        m_pathes.push_back(GISMO_DATA_DIR);
+    }
+
+    /// \brief Register an additional search path,
+    gsFileRepo& registerPath( const std::string& p )
+    {
+        if (p.back() == GISMO_PATH_SEPERATOR)
+            m_pathes.push_back(p);
+        else
+            m_pathes.push_back(p+GISMO_PATH_SEPERATOR);
+        return *this;
+    }
+
+    /// \brief Find a file.
+    ///
+    /// \param fn[in|out]  The filename
+    ///
+    /// If the file can be found, returns true and replaces \a fn by the full path.
+    /// Otherwiese, returns false and keeps the name unchanged.
+    bool find( std::string& fn )
+    {
+        for (std::vector<std::string>::const_iterator it = m_pathes.begin();
+                it < m_pathes.end(); ++it)
+        {
+            const std::string tmp = (*it) + fn;
+            if ( fileExists( tmp ) )
+            {
+                fn = tmp;
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    std::vector<std::string> m_pathes;
+};
 
 } // namespace gismo
 
