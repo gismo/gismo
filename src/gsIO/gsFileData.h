@@ -20,12 +20,6 @@
 
 #include <gsIO/gsXml.h>
 
-#if defined _WIN32
-    #define GISMO_PATH_SEPERATOR '\\'
-#else
-    #define GISMO_PATH_SEPERATOR '/'
-#endif
-
 namespace gismo 
 {
 
@@ -438,8 +432,8 @@ inline bool fileExists(const std::string& name)
 
 /**
    \brief This class checks if the given filename can be found
-   in one of the pre-defined search pathes. It is possible to
-   register additional search pathes.
+   in one of the pre-defined search paths. It is possible to
+   register additional search paths.
 
    \ingroup IO
  */
@@ -447,20 +441,34 @@ inline bool fileExists(const std::string& name)
 class gsFileRepo
 {
 public:
-    /// \brief Default constructor. Registers the default pathes.
-    gsFileRepo()
-    {
-        m_pathes.push_back(std::string()+'.'+GISMO_PATH_SEPERATOR);
-        m_pathes.push_back(GISMO_DATA_DIR);
-    }
+    /// \brief Default constructor. Registers the default paths.
+    gsFileRepo() { registerPaths(GISMO_SEARCH_PATHS); }
 
-    /// \brief Register an additional search path,
-    gsFileRepo& registerPath( const std::string& p )
+    /// \brief Register additional search paths.
+    /// They have to be seperated by semicolons (";")
+    gsFileRepo& registerPaths( const std::string& paths )
     {
-        if ( *p.rbegin() == GISMO_PATH_SEPERATOR)
-            m_pathes.push_back(p);
-        else
-            m_pathes.push_back(p+GISMO_PATH_SEPERATOR);
+        std::string::const_iterator a;
+        std::string::const_iterator b = paths.begin();
+        while (true)
+        {
+            a = b;
+            while (b != paths.end() && (*b) != ';') { ++b; }
+
+            std::string p(a,b);
+
+            if (!p.empty())
+            {
+                if (*p.rbegin() != GISMO_PATH_SEPERATOR)
+                    p.push_back(GISMO_PATH_SEPERATOR);
+
+                m_paths.push_back(p);
+            }
+
+            if ( b == paths.end() ) break;
+
+            ++b;
+        }
         return *this;
     }
 
@@ -470,10 +478,18 @@ public:
     ///
     /// If the file can be found, returns true and replaces \a fn by the full path.
     /// Otherwiese, returns false and keeps the name unchanged.
+    ///
+    /// If the name starts with "/", "./" or "../", it is considered as a fully qualified
+    /// path.
     bool find( std::string& fn )
     {
-        for (std::vector<std::string>::const_iterator it = m_pathes.begin();
-                it < m_pathes.end(); ++it)
+        if ( fn[0] == GISMO_PATH_SEPERATOR
+            || ( fn[0] == '.' && fn[1] == GISMO_PATH_SEPERATOR )
+            || ( fn[0] == '.' && fn[1] == '.' && fn[2] == GISMO_PATH_SEPERATOR )
+        ) return fileExists(fn);
+
+        for (std::vector<std::string>::const_iterator it = m_paths.begin();
+                it < m_paths.end(); ++it)
         {
             const std::string tmp = (*it) + fn;
             if ( fileExists( tmp ) )
@@ -486,7 +502,7 @@ public:
     }
 
 private:
-    std::vector<std::string> m_pathes;
+    std::vector<std::string> m_paths;
 };
 
 } // namespace gismo
