@@ -442,11 +442,14 @@ class gsFileRepo
 {
 public:
     /// \brief Default constructor. Registers the default paths.
-    gsFileRepo() { registerPaths(GISMO_SEARCH_PATHS); }
+    gsFileRepo() { registerPaths("" GISMO_SEARCH_PATHS); }
 
-    /// \brief Register additional search paths.
+    /// \brief Constructor with search paths given
     /// They have to be seperated by semicolons (";")
-    gsFileRepo& registerPaths( const std::string& paths )
+    gsFileRepo(const std::string& paths) { registerPaths(paths); }
+
+private:
+    void registerPaths( const std::string& paths )
     {
         std::string::const_iterator a;
         std::string::const_iterator b = paths.begin();
@@ -469,8 +472,22 @@ public:
 
             ++b;
         }
-        return *this;
     }
+
+public:
+
+    // For debug:
+    std::string getPaths() const
+    {
+        std::string result;
+        for (std::vector<std::string>::const_iterator it = m_paths.begin();
+                it < m_paths.end(); ++it)
+        {
+            result += (*it) + ";";
+        }
+        return result;
+    }
+
 
     /// \brief Find a file.
     ///
@@ -483,10 +500,13 @@ public:
     /// path.
     bool find( std::string& fn )
     {
+        if ( fileExists(fn) ) return true;
+
+        // If we have a fully qualified path, do not search any further
         if ( fn[0] == GISMO_PATH_SEPERATOR
             || ( fn[0] == '.' && fn[1] == GISMO_PATH_SEPERATOR )
             || ( fn[0] == '.' && fn[1] == '.' && fn[2] == GISMO_PATH_SEPERATOR )
-        ) return fileExists(fn);
+        ) return false;
 
         for (std::vector<std::string>::const_iterator it = m_paths.begin();
                 it < m_paths.end(); ++it)
