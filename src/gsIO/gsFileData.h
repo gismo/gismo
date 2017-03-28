@@ -457,7 +457,7 @@ public:
     /// \brief Register an additional search path,
     gsFileRepo& registerPath( const std::string& p )
     {
-        if (p.back() == GISMO_PATH_SEPERATOR)
+        if ( *p.rbegin() == GISMO_PATH_SEPERATOR)
             m_pathes.push_back(p);
         else
             m_pathes.push_back(p+GISMO_PATH_SEPERATOR);
@@ -491,6 +491,7 @@ private:
 
 } // namespace gismo
 
+#undef GISMO_PATH_SEPERATOR
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsFileData.hpp)
