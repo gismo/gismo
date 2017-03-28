@@ -25,7 +25,7 @@ enum MarkingStrategy
 {
     GARU=1,
     PUCA=2,
-    errorFraction=3
+    BULK=3
 };
 
 template <class T>
@@ -171,7 +171,7 @@ void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector
  * For example, if \f$\rho = 0.8\f$, those 20% of all elements which have the
  * largest local errors are marked for refinement.
  *
- * <b>refCriterion = 3 = errorFraction</b> ("Doerfler-marking"):\n
+ * <b>refCriterion = 3 = errorFraction, BULK-criterion</b> ("Doerfler-marking"):\n
  * The threshold is chosen in such a manner that the local
  * errors on the marked cells sum up to a certain fraction of the
  * global error:
@@ -197,7 +197,7 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
     case PUCA:
         gsMarkPercentage(elError,refParameter,elMarked);
         break;
-    case errorFraction:
+    case BULK:
         gsMarkFraction(elError,refParameter,elMarked);
         break;
     default:
