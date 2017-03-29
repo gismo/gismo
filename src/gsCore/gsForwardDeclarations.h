@@ -177,6 +177,7 @@ template< class T = real_t>  class gsMesh;
 template< class T = real_t>  class gsHeMesh;
 
 template< class T = real_t>  class gsFileData;
+class gsFileManager;
 
 template< class T = real_t>  class gsSolid;
 template< class T = real_t>  class gsSolidVertex;

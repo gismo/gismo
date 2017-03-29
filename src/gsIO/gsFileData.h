@@ -1,4 +1,4 @@
-/** @file gsFiledata.h
+/** @file gsFileData.h
 
     @brief Utility class which holds I/O XML data to read/write to/from files
 
@@ -15,8 +15,6 @@
 
 #include <iostream>
 #include <string>
-
-#include <fstream>
 
 #include <gsIO/gsXml.h>
 
@@ -419,115 +417,7 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 {return fd.print(os); }
 
-/**
-   \brief Checks if the file exists
-   \ingroup IO
- */
-
-inline bool fileExists(const std::string& name)
-{
-    std::ifstream f(name.c_str());
-    return f.good();
-}
-
-/**
-   \brief This class checks if the given filename can be found
-   in one of the pre-defined search paths. It is possible to
-   register additional search paths.
-
-   \ingroup IO
- */
-
-class gsFileRepo
-{
-public:
-    /// \brief Default constructor. Registers the default paths.
-    gsFileRepo() { registerPaths("" GISMO_SEARCH_PATHS); }
-
-    /// \brief Constructor with search paths given
-    /// They have to be seperated by semicolons (";")
-    gsFileRepo(const std::string& paths) { registerPaths(paths); }
-
-private:
-    void registerPaths( const std::string& paths )
-    {
-        std::string::const_iterator a;
-        std::string::const_iterator b = paths.begin();
-        while (true)
-        {
-            a = b;
-            while (b != paths.end() && (*b) != ';') { ++b; }
-
-            std::string p(a,b);
-
-            if (!p.empty())
-            {
-                if (*p.rbegin() != GISMO_PATH_SEPERATOR)
-                    p.push_back(GISMO_PATH_SEPERATOR);
-
-                m_paths.push_back(p);
-            }
-
-            if ( b == paths.end() ) break;
-
-            ++b;
-        }
-    }
-
-public:
-
-    // For debug:
-    std::string getPaths() const
-    {
-        std::string result;
-        for (std::vector<std::string>::const_iterator it = m_paths.begin();
-                it < m_paths.end(); ++it)
-        {
-            result += (*it) + ";";
-        }
-        return result;
-    }
-
-
-    /// \brief Find a file.
-    ///
-    /// \param fn[in|out]  The filename
-    ///
-    /// If the file can be found, returns true and replaces \a fn by the full path.
-    /// Otherwiese, returns false and keeps the name unchanged.
-    ///
-    /// If the name starts with "/", "./" or "../", it is considered as a fully qualified
-    /// path.
-    bool find( std::string& fn )
-    {
-        if ( fileExists(fn) ) return true;
-
-        // If we have a fully qualified path, do not search any further
-        if ( fn[0] == GISMO_PATH_SEPERATOR
-            || ( fn[0] == '.' && fn[1] == GISMO_PATH_SEPERATOR )
-            || ( fn[0] == '.' && fn[1] == '.' && fn[2] == GISMO_PATH_SEPERATOR )
-        ) return false;
-
-        for (std::vector<std::string>::const_iterator it = m_paths.begin();
-                it < m_paths.end(); ++it)
-        {
-            const std::string tmp = (*it) + fn;
-            if ( fileExists( tmp ) )
-            {
-                fn = tmp;
-                return true;
-            }
-        }
-        return false;
-    }
-
-private:
-    std::vector<std::string> m_paths;
-};
-
 } // namespace gismo
-
-#undef GISMO_PATH_SEPERATOR
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsFileData.hpp)
