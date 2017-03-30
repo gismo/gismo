@@ -58,7 +58,7 @@ std::string gsOptionList::askString(const std::string & label,
     StringTable::const_iterator it = m_strings.find(label);
 #if defined(GISMO_EXTRA_DEBUG)
     if ( it == m_strings.end() && exists(label) )
-        gsWarn << "Invalid request (askString): "<<label<<" is given, but not a string.\n";
+        gsWarn << "Invalid request (askString): "<<label<<" is given, but not a string; it is "<<getInfo(label)<<".\n";
 #endif
     return ( it == m_strings.end() ? val : it->second.first);
 }
@@ -68,7 +68,7 @@ int gsOptionList::askInt(const std::string & label, const int & val) const
     IntTable::const_iterator it = m_ints.find(label);
 #if defined(GISMO_EXTRA_DEBUG)
     if ( it == m_ints.end() && exists(label) )
-        gsWarn << "Invalid request (askInt): "<<label<<" is given, but not an int.\n";
+        gsWarn << "Invalid request (askInt): "<<label<<" is given, but not an int; it is "<<getInfo(label)<<".\n";
 #endif
     return ( it == m_ints.end() ? val : it->second.first);
 }
@@ -78,7 +78,7 @@ bool gsOptionList::askSwitch(const std::string & label, const bool & res) const
     SwitchTable::const_iterator it = m_switches.find(label);
 #if defined(GISMO_EXTRA_DEBUG)
     if ( it == m_switches.end() && exists(label) )
-        gsWarn << "Invalid request (askSwitch): "<<label<<" is given, but not a switch.\n";
+        gsWarn << "Invalid request (askSwitch): "<<label<<" is given, but not a switch; it is "<<getInfo(label)<<".\n";
 #endif
     return ( it == m_switches.end() ? res : it->second.first);
 }
@@ -88,7 +88,7 @@ real_t gsOptionList::askReal(const std::string & label, const real_t & val) cons
     RealTable::const_iterator it = m_reals.find(label);
 #if defined(GISMO_EXTRA_DEBUG)
     if ( it == m_reals.end() && exists(label) )
-        gsWarn << "Invalid request (askReal): "<<label<<" is given, but not a real.\n";
+        gsWarn << "Invalid request (askReal): "<<label<<" is given, but not a real; it is "<<getInfo(label)<<".\n";
 #endif
     return ( it == m_reals.end() ? val : it->second.first);
 }
@@ -100,10 +100,7 @@ void gsOptionList::setString(const std::string & label,
     if ( it == m_strings.end() )
     {
         if ( exists(label) )
-        {
-            printInfo(label);
-            GISMO_ERROR("Invalid request (setString): "<<label<<" is not a string.");
-        }
+            GISMO_ERROR("Invalid request (setString): "<<label<<" is not a string; it is "<<getInfo(label)<<".");
         GISMO_ERROR("Invalid request (setString): "<<label<<" does not exist.");
     }
     it->second.first = value;
@@ -116,10 +113,7 @@ void gsOptionList::setInt(const std::string & label,
     if ( it == m_ints.end() )
     {
         if ( exists(label) )
-        {
-            printInfo(label);
-            GISMO_ERROR("Invalid request (setInt): "<<label<<" is not an int.");
-        }
+            GISMO_ERROR("Invalid request (setInt): "<<label<<" is not an int; it is "<<getInfo(label)<<".");
         GISMO_ERROR("Invalid request (setInt): "<<label<<" does not exist.");
     }
     it->second.first = value;
@@ -132,10 +126,7 @@ void gsOptionList::setReal(const std::string & label,
     if ( it == m_reals.end() )
     {
         if ( exists(label) )
-        {
-            printInfo(label);
-            GISMO_ERROR("Invalid request (setReal): "<<label<<" is not a real.");
-        }
+            GISMO_ERROR("Invalid request (setReal): "<<label<<" is not a real; it is "<<getInfo(label)<<".");
         GISMO_ERROR("Invalid request (setReal): "<<label<<" does not exist.");
     }
     it->second.first = value;
@@ -148,10 +139,7 @@ void gsOptionList::setSwitch(const std::string & label,
     if ( it == m_switches.end() )
     {
         if ( exists(label) )
-        {
-            printInfo(label);
-            GISMO_ERROR("Invalid request (setSwitch): "<<label<<" is not a switch.");
-        }
+            GISMO_ERROR("Invalid request (setSwitch): "<<label<<" is not a switch; it is "<<getInfo(label)<<".");
         GISMO_ERROR("Invalid request (setSwitch): "<<label<<" does not exist.");
     }
     it->second.first = value;
@@ -161,8 +149,8 @@ void gsOptionList::addString(const std::string & label,
                              const std::string & desc,
                              const std::string & value)
 {
-    GISMO_ASSERT( !( isInt(label) || isReal(label) || isSwitch(label) ),
-        "Invalid request (addString): Option "<<label<<" already exists, but not as a string." );
+    GISMO_ENSURE( !( isInt(label) || isReal(label) || isSwitch(label) ),
+        "Invalid request (addString): Option "<<label<<" already exists, but not as a string; it is "<<getInfo(label)<<"." );
     //GISMO_ASSERT( !exists(label), "Option "<<label<<" already exists." );
     m_strings[label] = std::make_pair(value,desc);
 }
@@ -172,8 +160,8 @@ void gsOptionList::addInt(const std::string & label,
                           const std::string & desc,
                           const int & value)
 {
-    GISMO_ASSERT( !( isString(label) || isReal(label) || isSwitch(label) ),
-        "Invalid request (addInt): Option "<<label<<" already exists, but not as an int." );
+    GISMO_ENSURE( !( isString(label) || isReal(label) || isSwitch(label) ),
+        "Invalid request (addInt): Option "<<label<<" already exists, but not as an int; it is "<<getInfo(label)<<"." );
     //GISMO_ASSERT( !exists(label), "Option "<<label<<" already exists." );
     m_ints[label] = std::make_pair(value,desc);
 }
@@ -182,8 +170,8 @@ void gsOptionList::addReal(const std::string & label,
                            const std::string & desc,
                            const real_t & value)
 {
-    GISMO_ASSERT( !( isString(label) || isInt(label) || isSwitch(label) ),
-         "Invalid request (addReal): Option "<<label<<" already exists, but not as a real." );
+    GISMO_ENSURE( !( isString(label) || isInt(label) || isSwitch(label) ),
+         "Invalid request (addReal): Option "<<label<<" already exists, but not as a real; it is "<<getInfo(label)<<"." );
     //GISMO_ASSERT( !exists(label), "Option "<<label<<" already exists." );
     m_reals[label] = std::make_pair(value,desc);
 }
@@ -192,8 +180,8 @@ void gsOptionList::addSwitch(const std::string & label,
                              const std::string & desc,
                              const bool & value)
 {
-    GISMO_ASSERT( !( isString(label) || isInt(label) || isReal(label) ),
-         "Invalid request (addSwitch): Option "<<label<<" already exists, but not as a switch." );
+    GISMO_ENSURE( !( isString(label) || isInt(label) || isReal(label) ),
+         "Invalid request (addSwitch): Option "<<label<<" already exists, but not as a switch; it is "<<getInfo(label)<<"." );
     //GISMO_ASSERT( !exists(label), "Option "<<label<<" already exists." );
     m_switches[label] = std::make_pair(value,desc);
 }
@@ -438,38 +426,24 @@ std::ostream & gsOptionList::print(std::ostream & os) const
     return os;
 }
 
-void gsOptionList::printInfo(const std::string& label) const
+#undef OL_PRINT_INFO
+
+std::string gsOptionList::getInfo(const std::string& label) const
 {
-    std::ostream & os = gsInfo;
     StringTable::const_iterator it1 = m_strings.find(label);
     if ( it1 != m_strings.end() )
-    {
-        OL_PRINT_INFO(it1,string);
-        return;
-    }
+        return "a string (value:\"" + it1->second.first + "\")";
     IntTable::const_iterator it2 = m_ints.find(label);
     if ( it2 != m_ints.end() )
-    {
-        OL_PRINT_INFO(it2,int);
-        return;
-    }
+        return "an int (value:" + util::to_string(it2->second.first) + ")";
     RealTable::const_iterator it3 = m_reals.find(label);
     if ( it3 != m_reals.end() )
-    {
-        OL_PRINT_INFO(it3,real);
-        return;
-    }
+        return "a real (value:" + util::to_string(it3->second.first) + ")";
     SwitchTable::const_iterator it4 = m_switches.find(label);
     if ( it4 != m_switches.end() )
-    {
-        OL_PRINT_INFO(it4,switch);
-        os<<"* "<<it4->second.second<<" (switch) \n  "<<it4->first <<" = "<<(it4->second.first ? "ON" : "OFF")<<"\n";
-        return;
-    }
-    gsInfo <<"Problem: "<< label <<" does not exist.\n";
+        return "a switch (value:" + util::to_string(it4->second.first) + ")";
+    return "undefined";
 }
-
-#undef OL_PRINT_INFO
 
 bool gsOptionList::exists(const std::string & label) const
 {
