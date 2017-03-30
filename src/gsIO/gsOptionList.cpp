@@ -27,28 +27,28 @@ namespace gismo
 std::string gsOptionList::getString(const std::string & label) const
 {
     StringTable::const_iterator it = m_strings.find(label);
-    GISMO_ASSERT(it!=m_strings.end(), "Invalid request (getString): "<<label<<" is not given or not a string.");
+    GISMO_ENSURE(it!=m_strings.end(), "Invalid request (getString): "<<label<<" is not a string; it is "<<getInfo(label)<<".");
     return it->second.first;
 }
 
 int gsOptionList::getInt(const std::string & label) const
 {
     IntTable::const_iterator it = m_ints.find(label);
-    GISMO_ASSERT(it!=m_ints.end(), "Invalid request (getInt): "<<label<<" is not given or not an int.");
-    return it->second.first;
-}
-
-bool gsOptionList::getSwitch(const std::string & label) const
-{
-    SwitchTable::const_iterator it = m_switches.find(label);
-    GISMO_ASSERT(it!=m_switches.end(), "Invalid request (getSwitch): "<<label<<" is not given or not a switch.");
+    GISMO_ENSURE(it!=m_ints.end(), "Invalid request (getInt): "<<label<<" is not not an int; it is "<<getInfo(label)<<".");
     return it->second.first;
 }
 
 real_t gsOptionList::getReal(const std::string & label) const
 {
     RealTable::const_iterator it = m_reals.find(label);
-    GISMO_ASSERT(it!=m_reals.end(), "Invalid request (getReal): "<<label<<" is not given or not a real.");
+    GISMO_ENSURE(it!=m_reals.end(), "Invalid request (getReal): "<<label<<" is not a real; it is "<<getInfo(label)<<".");
+    return it->second.first;
+}
+
+bool gsOptionList::getSwitch(const std::string & label) const
+{
+    SwitchTable::const_iterator it = m_switches.find(label);
+    GISMO_ENSURE(it!=m_switches.end(), "Invalid request (getSwitch): "<<label<<" is not not a switch; it is "<<getInfo(label)<<".");
     return it->second.first;
 }
 
@@ -97,12 +97,7 @@ void gsOptionList::setString(const std::string & label,
                              const std::string & value)
 {
     StringTable::iterator it = m_strings.find(label);
-    if ( it == m_strings.end() )
-    {
-        if ( exists(label) )
-            GISMO_ERROR("Invalid request (setString): "<<label<<" is not a string; it is "<<getInfo(label)<<".");
-        GISMO_ERROR("Invalid request (setString): "<<label<<" does not exist.");
-    }
+    GISMO_ENSURE(it!=m_strings.end(), "Invalid request (setString): "<<label<<" is not a string; it is "<<getInfo(label)<<".");
     it->second.first = value;
 }
 
@@ -110,12 +105,7 @@ void gsOptionList::setInt(const std::string & label,
                           const int & value)
 {
     IntTable::iterator it = m_ints.find(label);
-    if ( it == m_ints.end() )
-    {
-        if ( exists(label) )
-            GISMO_ERROR("Invalid request (setInt): "<<label<<" is not an int; it is "<<getInfo(label)<<".");
-        GISMO_ERROR("Invalid request (setInt): "<<label<<" does not exist.");
-    }
+    GISMO_ENSURE(it!=m_ints.end(), "Invalid request (setInt): "<<label<<" is not a int; it is "<<getInfo(label)<<".");
     it->second.first = value;
 }
 
@@ -123,12 +113,7 @@ void gsOptionList::setReal(const std::string & label,
                            const real_t & value)
 {
     RealTable::iterator it = m_reals.find(label);
-    if ( it == m_reals.end() )
-    {
-        if ( exists(label) )
-            GISMO_ERROR("Invalid request (setReal): "<<label<<" is not a real; it is "<<getInfo(label)<<".");
-        GISMO_ERROR("Invalid request (setReal): "<<label<<" does not exist.");
-    }
+    GISMO_ENSURE(it!=m_reals.end(), "Invalid request (setReal): "<<label<<" is not a real; it is "<<getInfo(label)<<".");
     it->second.first = value;
 }
 
@@ -136,12 +121,7 @@ void gsOptionList::setSwitch(const std::string & label,
                              const bool & value)
 {
     SwitchTable::iterator it = m_switches.find(label);
-    if ( it == m_switches.end() )
-    {
-        if ( exists(label) )
-            GISMO_ERROR("Invalid request (setSwitch): "<<label<<" is not a switch; it is "<<getInfo(label)<<".");
-        GISMO_ERROR("Invalid request (setSwitch): "<<label<<" does not exist.");
-    }
+    GISMO_ENSURE(it!=m_switches.end(), "Invalid request (setSwitch): "<<label<<" is not a switch; it is "<<getInfo(label)<<".");
     it->second.first = value;
 }
 
@@ -197,35 +177,31 @@ void gsOptionList::remove(const std::string & label)
 void gsOptionList::update(const gsOptionList & other, gsOptionList::updateType type)
 {
     // add strings to list
-    gsOptionList::StringTable::const_iterator it1;
-    for ( it1 = other.m_strings.begin(); it1 != other.m_strings.end(); it1++ )
+    for ( StringTable::const_iterator it1 = other.m_strings.begin(); it1 != other.m_strings.end(); it1++ )
     {
-        if (exists(it1->first))                        setString(it1->first,it1->second.first);
-        else if(type == gsOptionList::addIfUnknown)    addString(it1->first,it1->second.second,it1->second.first);
+        if (exists(it1->first))          setString(it1->first,it1->second.first);
+        else if(type == addIfUnknown)    addString(it1->first,it1->second.second,it1->second.first);
     }
 
     // add integers to list
-    gsOptionList::IntTable::const_iterator it2;
-    for ( it2 = other.m_ints.begin(); it2 != other.m_ints.end(); it2++ )
+    for ( IntTable::const_iterator it2 = other.m_ints.begin(); it2 != other.m_ints.end(); it2++ )
     {
-        if (exists(it2->first))                       setInt(it2->first,it2->second.first);
-        else if(type == gsOptionList::addIfUnknown)   addInt(it2->first,it2->second.second,it2->second.first);
+        if (exists(it2->first))         setInt(it2->first,it2->second.first);
+        else if(type == addIfUnknown)   addInt(it2->first,it2->second.second,it2->second.first);
     }
 
     // add reals to list
-    gsOptionList::RealTable::const_iterator it3;
-    for ( it3 = other.m_reals.begin(); it3 != other.m_reals.end(); it3++ )
+    for ( RealTable::const_iterator it3 = other.m_reals.begin(); it3 != other.m_reals.end(); it3++ )
     {
-        if (exists(it3->first))                       setReal(it3->first,it3->second.first);
-        else if(type == gsOptionList::addIfUnknown)   addReal(it3->first,it3->second.second,it3->second.first);
+        if (exists(it3->first))         setReal(it3->first,it3->second.first);
+        else if(type == addIfUnknown)   addReal(it3->first,it3->second.second,it3->second.first);
     }
 
     // add bools to list
-    gsOptionList::SwitchTable::const_iterator it4;
-    for ( it4 = other.m_switches.begin(); it4 != other.m_switches.end(); it4++ )
+    for ( SwitchTable::const_iterator it4 = other.m_switches.begin(); it4 != other.m_switches.end(); it4++ )
     {
-        if (exists(it4->first))                       setSwitch(it4->first,it4->second.first);
-        else if(type == gsOptionList::addIfUnknown)   addSwitch(it4->first,it4->second.second,it4->second.first);
+        if (exists(it4->first))         setSwitch(it4->first,it4->second.first);
+        else if(type == addIfUnknown)   addSwitch(it4->first,it4->second.second,it4->second.first);
     }
 }
 
@@ -237,23 +213,19 @@ gsOptionList gsOptionList::wrapIntoGroup(const std::string & gn) const
     gsOptionList result;
 
     // add strings to list
-    gsOptionList::StringTable::const_iterator it1;
-    for ( it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
+    for ( StringTable::const_iterator it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
         result.addString(prepend+it1->first,it1->second.second,it1->second.first);
 
     // add integers to list
-    gsOptionList::IntTable::const_iterator it2;
-    for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
+    for ( IntTable::const_iterator it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
         result.addInt(prepend+it2->first,it2->second.second,it2->second.first);
 
     // add reals to list
-    gsOptionList::RealTable::const_iterator it3;
-    for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
+    for ( RealTable::const_iterator it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
         result.addReal(prepend+it3->first,it3->second.second,it3->second.first);
 
     // add bools to list
-    gsOptionList::SwitchTable::const_iterator it4;
-    for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
+    for ( SwitchTable::const_iterator it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
         result.addSwitch(prepend+it4->first,it4->second.second,it4->second.first);
 
     return result;
@@ -269,26 +241,22 @@ gsOptionList gsOptionList::getGroup(const std::string & gn) const
     const index_t len = search.length();
 
     // add strings to list
-    gsOptionList::StringTable::const_iterator it1;
-    for ( it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
+    for ( StringTable::const_iterator it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
         if ( util::starts_with(it1->first,search) )
             result.addString(it1->first.substr(len),it1->second.second,it1->second.first);
 
     // add integers to list
-    gsOptionList::IntTable::const_iterator it2;
-    for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
+    for ( IntTable::const_iterator it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
         if ( util::starts_with(it2->first,search) )
             result.addInt(it2->first.substr(len),it2->second.second,it2->second.first);
 
     // add reals to list
-    gsOptionList::RealTable::const_iterator it3;
-    for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
+    for ( RealTable::const_iterator it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
         if ( util::starts_with(it3->first,search) )
             result.addReal(it3->first.substr(len),it3->second.second,it3->second.first);
 
     // add bools to list
-    gsOptionList::SwitchTable::const_iterator it4;
-    for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
+    for ( SwitchTable::const_iterator it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
         if ( util::starts_with(it4->first,search) )
             result.addSwitch(it4->first.substr(len),it4->second.second,it4->second.first);
 
@@ -297,20 +265,20 @@ gsOptionList gsOptionList::getGroup(const std::string & gn) const
 
 bool gsOptionList::hasGlobals() const
 {
-    gsOptionList::StringTable::const_iterator it1;
-    for ( it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
+    // check strings
+    for ( StringTable::const_iterator it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
         if ( std::string::npos == it1->first.find('.') ) return true;
 
-    gsOptionList::IntTable::const_iterator it2;
-    for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
+    // check integers
+    for ( IntTable::const_iterator it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
         if ( std::string::npos == it2->first.find('.') ) return true;
 
-    gsOptionList::RealTable::const_iterator it3;
-    for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
+    // check reals
+    for ( RealTable::const_iterator it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
         if ( std::string::npos == it3->first.find('.') ) return true;
 
-    gsOptionList::SwitchTable::const_iterator it4;
-    for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
+    // check bools
+    for ( SwitchTable::const_iterator it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
         if ( std::string::npos == it4->first.find('.') ) return true;
 
     return false;
@@ -320,166 +288,146 @@ bool gsOptionList::hasGroup(const std::string & gn) const
 {
     const std::string search = gn+".";
 
-    gsOptionList::StringTable::const_iterator it1;
-    for ( it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
+    // check strings
+    for ( StringTable::const_iterator it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
         if ( util::starts_with(it1->first,search) ) return true;
 
-    gsOptionList::IntTable::const_iterator it2;
-    for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
+    // check integers
+    for ( IntTable::const_iterator it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
         if ( util::starts_with(it2->first,search) ) return true;
 
-    gsOptionList::RealTable::const_iterator it3;
-    for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
+    // check reals
+    for ( RealTable::const_iterator it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
         if ( util::starts_with(it3->first,search) ) return true;
 
-    gsOptionList::SwitchTable::const_iterator it4;
-    for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
+    // check bools
+    for ( SwitchTable::const_iterator it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
         if ( util::starts_with(it4->first,search) ) return true;
 
     return false;
 }
 
-// /*
-// todo: can we implement the loops in a more intelligent way?
-// e.g. re-factor this function by moving the loops into its own function
+template <typename It>
+inline gsOptionList::OptionListEntry _makeEntry(const char * type, It it)
+{
+    gsOptionList::OptionListEntry entry;
+    entry.type = type;
+    entry.label = it->first;
+    entry.val = util::to_string(it->second.first);
+    entry.desc = it->second.second;
+    return entry;
+}
+
 std::vector<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 {
-    std::vector<gsOptionList::OptionListEntry> result;
-    result.reserve(4*size());
+    std::vector<OptionListEntry> result;
+    result.reserve(size());
     const char * XML_STR = "string";
     const char * XML_INT = "int";
     const char * XML_REAL = "real";
     const char * XML_BOOL = "bool";
-    // add strings to list
-    gsOptionList::StringTable::const_iterator it1;
-    for ( it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
-    {
-        gsOptionList::OptionListEntry entry;
-        entry.type = XML_STR;
-        entry.label = it1->first;
-        std::stringstream str;
-        str.str( it1->second.first );
-        entry.val = str.str();
-        entry.desc = it1->second.second;
-        result.push_back(entry);
-    }
-    // add integers to list
-    gsOptionList::IntTable::const_iterator it2;
-    for ( it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
-    {
-        gsOptionList::OptionListEntry entry;
-        entry.type = XML_INT;
-        entry.label = it2->first;
-        std::stringstream str;
-        str << it2->second.first;
-        entry.val = str.str();
-        entry.desc = it2->second.second;
-        result.push_back(entry);
-    }
-    // add reals to list
-    gsOptionList::RealTable::const_iterator it3;
-    for ( it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
-    {
-        gsOptionList::OptionListEntry entry;
-        entry.type = XML_REAL;
-        entry.label = it3->first;
-        std::stringstream str;
-        str << it3->second.first;
-        entry.val = str.str();
-        entry.desc = it3->second.second;
-        result.push_back(entry);
-    }
-    // add bools to list
-    gsOptionList::SwitchTable::const_iterator it4;
-    for ( it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
-    {
-        gsOptionList::OptionListEntry entry;
-        entry.type = XML_BOOL;
-        entry.label = it4->first;
-        std::stringstream str;
-        str << it4->second.first;
-        entry.val = str.str();
-        entry.desc = it4->second.second;
-        result.push_back(entry);
-    }
+
+    // handle strings
+    for ( StringTable::const_iterator it1 = m_strings.begin(); it1 != m_strings.end(); it1++ )
+        result.push_back( _makeEntry(XML_STR, it1) );
+
+    // handle integers
+    for ( IntTable::const_iterator it2 = m_ints.begin(); it2 != m_ints.end(); it2++ )
+        result.push_back( _makeEntry(XML_INT, it2) );
+
+    // handle reals
+    for ( RealTable::const_iterator it3 = m_reals.begin(); it3 != m_reals.end(); it3++ )
+        result.push_back( _makeEntry(XML_REAL, it3) );
+
+    // handle bools
+    for ( SwitchTable::const_iterator it4 = m_switches.begin(); it4 != m_switches.end(); it4++ )
+        result.push_back( _makeEntry(XML_BOOL, it4) );
+
     return result;
 }
-//*/
 
-
-#define OL_PRINT_INFO(it,type)                                          \
-    os<<"* "<<std::setw(17)<<std::left<<it->first <<std::setw(12)<<std::right<<" ("#type") = " \
-    <<std::setw(7)<<std::left<<it->second.first<<" "<<it->second.second<<"\n"
-//<<std::boolalpha
+template <typename It>
+inline void _print(std::ostream & os, const char * type, It it)
+{
+    os <<"* "<<std::setw(17)<<std::left<<it->first <<std::setw(12)<<std::right<<" ("<<type<<") = "
+        <<std::setw(7)<<std::left<<it->second.first<<" "<<it->second.second<<"\n";
+}
 
 std::ostream & gsOptionList::print(std::ostream & os) const
 {
     os<<"Options ("<<size()<<"):\n";
+
+    // handle strings
     for (StringTable::const_iterator it1 = m_strings.begin();it1!=m_strings.end();++it1)
-        OL_PRINT_INFO(it1,string);
+        _print(os,"string",it1);
+
+    // handle integers
     for (IntTable::const_iterator it2 = m_ints.begin();it2!=m_ints.end();++it2)
-        OL_PRINT_INFO(it2,int);
+        _print(os,"int",it2);
+
+    // handle reals
     for (RealTable::const_iterator it3 = m_reals.begin();it3!=m_reals.end();++it3)
-        OL_PRINT_INFO(it3,real);
+        _print(os,"real",it3);
+
+    // handle bools
     for (SwitchTable::const_iterator it4 = m_switches.begin();it4!=m_switches.end();++it4)
-        OL_PRINT_INFO(it4,switch);
+        _print(os,"switch",it4);
+
     return os;
 }
 
-#undef OL_PRINT_INFO
-
 std::string gsOptionList::getInfo(const std::string& label) const
 {
+    // find in strings
     StringTable::const_iterator it1 = m_strings.find(label);
     if ( it1 != m_strings.end() )
         return "a string (value:\"" + it1->second.first + "\")";
+
+    // find in integers
     IntTable::const_iterator it2 = m_ints.find(label);
     if ( it2 != m_ints.end() )
         return "an int (value:" + util::to_string(it2->second.first) + ")";
+
+    // find in reals
     RealTable::const_iterator it3 = m_reals.find(label);
     if ( it3 != m_reals.end() )
         return "a real (value:" + util::to_string(it3->second.first) + ")";
+
+    // find in bools
     SwitchTable::const_iterator it4 = m_switches.find(label);
     if ( it4 != m_switches.end() )
         return "a switch (value:" + util::to_string(it4->second.first) + ")";
+
     return "undefined";
 }
 
 bool gsOptionList::exists(const std::string & label) const
 {
-    StringTable::const_iterator it1 = m_strings.find(label);
-    if ( it1 != m_strings.end() )   return true;
-    IntTable::const_iterator it2 = m_ints.find(label);
-    if ( it2 != m_ints.end() )      return true;
-    RealTable::const_iterator it3 = m_reals.find(label);
-    if ( it3 != m_reals.end() )     return true;
-    SwitchTable::const_iterator it4 = m_switches.find(label);
-    if ( it4 != m_switches.end() )  return true;
+    if ( m_strings.find(label)  != m_strings.end()  )  return true;
+    if ( m_ints.find(label)     != m_ints.end()     )  return true;
+    if ( m_reals.find(label)    != m_reals.end()    )  return true;
+    if ( m_switches.find(label) != m_switches.end() )  return true;
     return false;
 }
 
 bool gsOptionList::isString(const std::string & label) const
 {
-    StringTable::const_iterator it = m_strings.find(label);
-    return it != m_strings.end();
+    return m_strings.find(label) != m_strings.end();
 }
 
 bool gsOptionList::isInt(const std::string & label) const
 {
-    IntTable::const_iterator it = m_ints.find(label);
-    return it != m_ints.end();
+    return m_ints.find(label) != m_ints.end();
 }
 
 bool gsOptionList::isReal(const std::string & label) const
 {
-    RealTable::const_iterator it = m_reals.find(label);
-    return it != m_reals.end();
+    return m_reals.find(label) != m_reals.end();
 }
 
 bool gsOptionList::isSwitch(const std::string & label) const
 {
-    SwitchTable::const_iterator it = m_switches.find(label);
-    return it != m_switches.end();
+    return m_switches.find(label) != m_switches.end();
 }
 
 
