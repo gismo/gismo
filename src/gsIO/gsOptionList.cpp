@@ -349,7 +349,7 @@ std::vector<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
 template <typename It>
 inline void _print(std::ostream & os, const char * type, It it)
 {
-    os <<"* "<<std::setw(17)<<std::left<<it->first <<std::setw(12)<<std::right<<" ("<<type<<") = "
+    os <<"* "<<std::setw(19)<<std::left<<it->first <<std::setw(14)<<std::right<<(std::string(" (")+type+") = ")
         <<std::setw(7)<<std::left<<it->second.first<<" "<<it->second.second<<"\n";
 }
 
