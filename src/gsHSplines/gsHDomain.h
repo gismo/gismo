@@ -107,14 +107,14 @@ public:
 
     gsHDomain() : m_indexLevel(0)
     {
-        m_root=NULL; 
+        m_root=NULL;
         m_maxInsLevel = 0;
         m_maxPath = 0;
     }
     
     gsHDomain(point const & upp)
-    { 
-        init( upp); 
+    {
+        init(upp);
     }
 
 /*
@@ -129,7 +129,7 @@ public:
 */
 
     /// Copy constructor (makes a deep copy)
-    gsHDomain( const gsHDomain & o) : 
+    gsHDomain( const gsHDomain & o) :
         m_upperIndex(o.m_upperIndex),
         m_indexLevel(o.m_indexLevel),
         m_maxInsLevel(o.m_maxInsLevel),
@@ -155,8 +155,8 @@ public:
     }
 
     /// Initialize the tree
-    void init(point const & upp, unsigned index_level = 14) 
-    { 
+    void init(point const & upp, unsigned index_level = 13)
+    {
         m_indexLevel = index_level;
         m_maxInsLevel = 0;
 
@@ -250,7 +250,7 @@ public:
     void internalIndex (point const & point_idx, int lvl, point & internal_idx)
     {
         for ( unsigned i = 0; i!=d; ++i )
-            internal_idx[i] = point_idx[i] << (m_indexLevel-lvl) ;
+            internal_idx[i] = point_idx[i] << (m_indexLevel-lvl);
     }
 
 
@@ -409,7 +409,7 @@ public:
     void multiplyByTwo()
     {
         m_upperIndex *= 2;
-        nodeSearch< liftCoordsOneLevel_visitor >(); 
+        nodeSearch< liftCoordsOneLevel_visitor >();
     }
 
     // to do: move to the hpp file do avoid need for instantization
