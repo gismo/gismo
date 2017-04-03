@@ -64,7 +64,6 @@ public:
     TCLAP::CmdLine cmd;
 
     std::map<std::string,TCLAP::Arg*> args;
-
     std::vector<std::string>        argstr;
     
     // Stores integer arguments
@@ -379,6 +378,7 @@ bool gsCmdLine::valid() const
 
 bool gsCmdLine::getValues(int argc, char *argv[])
 {
+    // TODO: this can never happen:
     if (argc == 0)
         gsInfo << "Add \"-h\" to see a list of available command-line arguments.\n\n";
 
