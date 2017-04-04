@@ -133,7 +133,7 @@ public:
                    TCLAP::Visitor* v = NULL );
     */
 
-	const std::vector<C>& getValue();
+    const std::vector<C>& getValue();
 
     operator TCLAP::MultiArg<C> &();
 

@@ -1,6 +1,18 @@
 
 #pragma once
 
+#include <gsCore/gsConfig.h>
+
+#ifndef SUPPORT_EIGEN
 #define SUPPORT_EIGEN
-#define FDBB_WITH_CXX11
+#endif
+
+#if __cplusplus == 201103L
+#define SUPPORT_CXX11
+#elif __cplusplus == 201402L
+#define SUPPORT_CXX14
+#else
+#error "FDBB requires C++11 or C++14 support enabled"
+#endif
+
 #include <fdbb.h>

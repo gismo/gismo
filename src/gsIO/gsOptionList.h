@@ -159,8 +159,8 @@ public:
 
 private:
 
-    /// \brief Prints information regarding the option nnamed \a label
-    void printInfo(const std::string & label) const;
+    /// \brief Gives information regarding the option named \a label
+    std::string getInfo(const std::string & label) const;
 
     /// \brief Returns true iff an option named \a label exists
     bool exists(const std::string & label) const;

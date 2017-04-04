@@ -1,4 +1,4 @@
-/** @file gsFiledata.h
+/** @file gsFileData.h
 
     @brief Utility class which holds I/O XML data to read/write to/from files
 
@@ -24,6 +24,8 @@ namespace gismo
 /**
    \brief This class represents an XML data tree which can be read
    from or written to a (file) stream
+
+   \ingroup IO
  */
 template<class T>
 class gsFileData
@@ -416,7 +418,6 @@ std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 {return fd.print(os); }
 
 } // namespace gismo
-
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsFileData.hpp)

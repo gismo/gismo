@@ -64,7 +64,6 @@ public:
     TCLAP::CmdLine cmd;
 
     std::map<std::string,TCLAP::Arg*> args;
-
     std::vector<std::string>        argstr;
     
     // Stores integer arguments
@@ -379,6 +378,7 @@ bool gsCmdLine::valid() const
 
 bool gsCmdLine::getValues(int argc, char *argv[])
 {
+    // TODO: this can never happen:
     if (argc == 0)
         gsInfo << "Add \"-h\" to see a list of available command-line arguments.\n\n";
 
@@ -402,9 +402,9 @@ bool gsCmdLine::getValues(int argc, char *argv[])
             *my->pstrRes = my->plainString->getValue();
     }
     catch ( TCLAP::ArgException& e )
-    { 
-        gsWarn << "\nSomething went wrong when reading the command line.\n";
-        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n"; 
+    {
+        //gsWarn << "\nSomething went wrong when reading the command line.\n";
+        //gsWarn << "Error: " << e.error() << " " << e.argId() << "\n"; 
         return false; 
     }
     
@@ -433,9 +433,10 @@ gsCmdLine::~gsCmdLine()
 
 void gsCmdLinePrivate::GismoCmdOut::failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e)
 {
-    gsInfo << e.what() << "\n";
+    gsInfo << " ERROR: " << e.what() << "\n";
     gsInfo <<"\n USAGE: \n";
-    _longUsage( c, gsInfo );
+    //_longUsage( c, gsInfo );
+    this->usage(c);
     throw;
 }
 
