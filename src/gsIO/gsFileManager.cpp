@@ -70,11 +70,11 @@ char gsFileManager::getLocalPathSeperator()
 bool gsFileManager::isFullyQualified(const std::string& fn)
 {
 #if defined _WIN32
-    return fn[0] == '/'
-        || fn[0] == '\\'
+    return util::starts_with(fn,"/")
+        || util::starts_with(fn,"\\")
         || ( fn.size() > 2 && fn[1] == ':' && ( fn[2] == '/' || fn[2] == '\\' ) );
 #else
-    return fn[0] == '/';
+    return util::starts_with(fn,"/");
 #endif
 }
 
@@ -89,6 +89,12 @@ bool gsFileManager::isRelative(const std::string& fn)
     return util::starts_with(fn,"./")
         || util::starts_with(fn,"../");
 #endif
+}
+
+void _replace_slash_by_basckslash(std::string& str)
+{
+    for ( std::string::iterator it=str.begin(); it!=str.end(); it++ )
+        if ( *it=='/' ) *it = '\\';
 }
 
 void gsFileManager::setSearchPaths(const std::string& paths)
@@ -109,11 +115,15 @@ void gsFileManagerData::setSearchPaths(const std::string& paths)
 
         std::string p(a,b);
 
+#if defined _WIN32
+        _replace_slash_by_basckslash(p);
+#endif
+
         if (!p.empty())
         {
 #if defined _WIN32
-            if (*p.rbegin() != '/' && *p.rbegin() != '\\')
-                p.push_back('/');
+            if (*p.rbegin() != '\\')
+                p.push_back('\\');
 #else
             if (*p.rbegin() != '/')
                 p.push_back('/');
@@ -142,6 +152,10 @@ std::string gsFileManager::getSearchPaths()
 
 bool gsFileManager::find( std::string& fn )
 {
+#if defined _WIN32
+        _replace_slash_by_basckslash(p);
+#endif
+
     if ( fileExists(fn) ) return true;
 
     if ( isFullyQualified(fn) || isRelative(fn) ) return false;
