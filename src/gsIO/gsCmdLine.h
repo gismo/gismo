@@ -79,7 +79,7 @@ public:
     /// The options that are allowed in the command line have to be defined
     /// using the member functions \a addInt, \a add Real, \a addString,
     /// \a addSwitch and \a addPlainString. Finally, the parsing is invoked
-    /// by calling \a getValues
+    /// by calling \a getValues.
     gsCmdLine(const std::string& message,
               const char delimiter = ' ',
               bool helpAndVersion = true);
@@ -99,13 +99,13 @@ public:
     /// @brief Register an int option for the command line
     ///
     /// @param flag       One character flag for using the option.
-    ///                   If empty, no such flag can be used
-    /// @param name       Long form of the flag
+    ///                   If empty, no such flag can be used.
+    /// @param name       Long form of the flag.
     /// @param desc       Description (printed if --help is invoked)
     /// @param value      This should be a non-const variable, initialized
-    ///                   with the default value. If \a getValues is
-    ///                   invoked, the user-provided value is written
-    ///                   to that variable.
+    ///                   with the default value. When \a getValues is
+    ///                   invoked and the user provided a value, it is
+    ///                   written to that variable.
     ///
     /// If the flag is "n", the user might call "-n 10" at the command line.
     /// It the name is "size", the user might call "--size 10" at the command line.
@@ -121,9 +121,9 @@ public:
     /// @param name       Long form of the flag
     /// @param desc       Description (printed if --help is invoked)
     /// @param value      This should be a non-const variable, initialized
-    ///                   with the default value. If \a getValues is
-    ///                   invoked, the user-provided value is written
-    ///                   to that variable.
+    ///                   with the default value. When \a getValues is
+    ///                   invoked and the user provided a value, it is
+    ///                   written to that variable.
     ///
     /// If the flag is "t", the user might call "-t .5" at the command line.
     /// It the name is "tau", the user might call "--tau .5" at the command line.
@@ -135,13 +135,13 @@ public:
     /// @brief Register a string option for the command line
     ///
     /// @param flag       One character flag for using the option.
-    ///                   If empty, no such flag can be used
-    /// @param name       Long form of the flag
+    ///                   If empty, no such flag can be used.
+    /// @param name       Long form of the flag.
     /// @param desc       Description (printed if --help is invoked)
     /// @param value      This should be a non-const variable, initialized
-    ///                   with the default value. If \a getValues is
-    ///                   invoked, the user-provided value is written
-    ///                   to that variable.
+    ///                   with the default value. When \a getValues is
+    ///                   invoked and the user provided a value, it is
+    ///                   written to that variable.
     ///
     /// If the flag is "f", the user might call "-f foo.xml" at the command line.
     /// If the name is "file", the user might call "--file foo.xml" at the command line.
@@ -158,13 +158,13 @@ public:
     /// @brief Register a switch option for the command line
     ///
     /// @param flag       One character flag for using the option.
-    ///                   If empty, no such flag can be used
-    /// @param name       Long form of the flag
+    ///                   If empty, no such flag can be used.
+    /// @param name       Long form of the flag.
     /// @param desc       Description (printed if --help is invoked)
     /// @param value      This should be a non-const bool variable with
-    ///                   value "false". If \a getValues is invoked and
-    ///                   the user has called the swich, the variable is
-    ///                   set to true
+    ///                   value "false". When \a getValues is invoked and
+    ///                   the user has added the swich on the command line,
+    ///                   the variable is set to true.
     ///
     /// If the flag is "l", the user might call "-l" at the command line.
     /// If the name is "log", the user might call "--log" at the command line.
@@ -175,15 +175,22 @@ public:
 
     /// @brief Register a string parameter that has to be given directly (not
     /// as an option, i.e., not after a flag starting with "-" or "--")
+    ///
+    /// @param name       Name of the option.
+    /// @param desc       Description (printed if --help is invoked)
+    /// @param value      This should be a non-const variable. When
+    ///                   \a getValues is invoked, the user-provided value
+    ///                   is written to that variable.
+    ///
+    /// You must not declare more than one plain string.
     void addPlainString(const std::string& name, 
                         const std::string& desc, 
                         std::string      & value);
 
 
-    /// Writes all given options (as specified by \a addInt
-    /// \a addReal, \a addString or \a addSwitch) into a
-    /// gsOptionList object. The values from \a addPlainString
-    /// are not copied.
+    /// Writes all given options (as specified by \a addInt, \a addReal,
+    /// \a addString or \a addSwitch or \a addPlainString ) into a
+    /// gsOptionList object.
     ///
     /// Must be invoked after \a getValues
     gsOptionList getOptionList();

@@ -423,6 +423,8 @@ gsOptionList gsCmdLine::getOptionList()
         result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), my->stringVals[i]->getValue() );
     for( std::size_t i=0; i!=my->switches.size(); ++i)
         result.addSwitch( my->switches[i]->getName(), my->switches[i]->getDescription(), my->switches[i]->getValue() );
+    if ( my->plainString )
+        result.addString( my->plainString->getName(), my->plainString->getDescription(), my->plainString->getValue() );
     return result;
 }
 
