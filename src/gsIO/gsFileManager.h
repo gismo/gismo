@@ -19,18 +19,9 @@
 namespace gismo 
 {
 
-
-/// @brief Returns the instance of \a gsFileManager
-///
-/// @ingroup IO
-GISMO_EXPORT gsFileManager& gsFileManagerSingleton();
-
 /// @brief This class checks if the given filename can be found
 ///  in one of the pre-defined search paths. It is possible to
 ///  register additional search paths.
-///
-/// This class is a singleton, which can only be instanciated with
-/// \a gsFileManagerSingleton
 ///
 /// @ingroup IO
 class GISMO_EXPORT gsFileManager
@@ -40,23 +31,22 @@ public:
     /// Checks if the file exists
     static bool fileExists(const std::string& name);
 
+    /// Get local path seperator
+    static char getLocalPathSeperator();
+
     /// Checks if the path is fully qualified
     /// If a name starts with "/", it is considered fully qualfied
-    static bool isFullyQualified(const std::string& fn) { return fn[0] == GISMO_PATH_SEPERATOR; }
+    static bool isFullyQualified(const std::string& fn);
 
     /// Checks if the path is a relative path
     /// If a name starts with "./" or "../", it is considered fully qualfied
-    static bool isRelative(const std::string& fn)
-    {
-        return ( fn[0] == '.' && fn[1] == GISMO_PATH_SEPERATOR )
-            || ( fn[0] == '.' && fn[1] == '.' && fn[2] == GISMO_PATH_SEPERATOR );
-    }
+    static bool isRelative(const std::string& fn);
 
     /// Set the search paths
-    void setSearchPaths(const std::string& paths);
+    static void setSearchPaths(const std::string& paths);
 
     /// Get the defined search path
-    std::string getSearchPaths() const;
+    static std::string getSearchPaths();
 
     /// \brief Find a file.
     ///
@@ -66,14 +56,9 @@ public:
     /// Otherwiese, returns false and keeps the name unchanged.
     ///
     /// If \a fn satisfied \a isFullyQualified or \a isRelative, it is kept unchanged
-    bool find( std::string& fn );
+    static bool find( std::string& fn );
 
-private:
-    GISMO_EXPORT friend gsFileManager& gsFileManagerSingleton();
-    gsFileManager();
-    gsFileManager(const gsFileManager&);
-    gsFileManager& operator= (const gsFileManager&);
-    std::vector<std::string> m_paths;
 };
+
 
 } // namespace gismo
