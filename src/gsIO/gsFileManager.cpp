@@ -186,7 +186,7 @@ bool gsFileManager::mkdir( std::string fn )
 {
 #if defined _WIN32
     _replace_slash_by_basckslash(fn); 
-    return CreateDirectory(fn.c_str(),NULL);
+    return 0!=CreateDirectory(fn.c_str(),NULL);
 #else
     return ::mkdir(fn.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 #endif
