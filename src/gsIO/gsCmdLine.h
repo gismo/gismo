@@ -77,8 +77,9 @@ public:
     ///                       Version switches. Defaults to true.
     ///
     /// The options that are allowed in the command line have to be defined
-    /// using the member functions \a addInt, \a add Real, \a addString,
-    /// \a addSwitch and \a addPlainString. Finally, the parsing is invoked
+    /// using the member functions \a addInt, \a addMultiInt, \a addReal,
+    /// \a addMultiReal, \a addString, \a addMultiString, \a addSwitch and
+    /// \a addPlainString. Finally, the parsing is invoked
     /// by calling \a getValues.
     gsCmdLine(const std::string& message,
               const char delimiter = ' ',
@@ -86,8 +87,9 @@ public:
 
     /// @brief Parses the command line based on the specified parameters
     ///
-    /// The specification has to be done using \a addInt, \a add Real
-    /// \a addString, \a addSwitch and \a addPlainString before calling
+    /// The specification has to be done using \a addInt, \a addMultiInt,
+    /// \a addReal, \a addMultiReal, \a addString, \a addMultiString,
+    /// \a addSwitch and \a addPlainString before calling
     /// this member function.
     ///
     /// The parameters \a argc and \a argv are those of the main function.
@@ -109,10 +111,27 @@ public:
     ///
     /// If the flag is "n", the user might call "-n 10" at the command line.
     /// It the name is "size", the user might call "--size 10" at the command line.
-    void addInt(const std::string& flag, 
-                const std::string& name, 
-                const std::string& desc, 
+    void addInt(const std::string& flag,
+                const std::string& name,
+                const std::string& desc,
                 int              & value);
+
+    /// @brief Register an int option for the command line, which can be assigned more than once
+    ///
+    /// @param flag       One character flag for using the option.
+    ///                   If empty, no such flag can be used.
+    /// @param name       Long form of the flag.
+    /// @param desc       Description (printed if --help is invoked)
+    /// @param value      This should be a non-const vector. When \a getValues is
+    ///                   invoked, the vector is filled with that values. Pre-existing
+    ///                   values are deleted
+    ///
+    /// If the flag is "n", the user might call "-n 10" at the command line.
+    /// It the name is "size", the user might call "--size 10" at the command line.
+    void addMultiInt(const std::string& flag,
+                     const std::string& name,
+                     const std::string& desc,
+                     std::vector<int> & value);
 
     /// @brief Register a real option for the command line
     ///
@@ -127,10 +146,27 @@ public:
     ///
     /// If the flag is "t", the user might call "-t .5" at the command line.
     /// It the name is "tau", the user might call "--tau .5" at the command line.
-     void addReal(const std::string& flag, 
-                  const std::string& name, 
-                  const std::string& desc, 
+     void addReal(const std::string& flag,
+                  const std::string& name,
+                  const std::string& desc,
                   real_t           & value);
+
+    /// @brief Register a real option for the command line, which can be assigned more than once
+    ///
+    /// @param flag       One character flag for using the option.
+    ///                   If empty, no such flag can be used.
+    /// @param name       Long form of the flag.
+    /// @param desc       Description (printed if --help is invoked)
+    /// @param value      This should be a non-const vector. When \a getValues is
+    ///                   invoked, the vector is filled with that values. Pre-existing
+    ///                   values are deleted
+    ///
+    /// If the flag is "t", the user might call "-t .5" at the command line.
+    /// It the name is "tau", the user might call "--tau .5" at the command line.
+    void addMultiReal(const std::string  & flag,
+                      const std::string  & name,
+                      const std::string  & desc,
+                      std::vector<real_t>& value);
 
     /// @brief Register a string option for the command line
     ///
@@ -145,15 +181,27 @@ public:
     ///
     /// If the flag is "f", the user might call "-f foo.xml" at the command line.
     /// If the name is "file", the user might call "--file foo.xml" at the command line.
-    void addString(const std::string& flag, 
-                   const std::string& name, 
-                   const std::string& desc, 
+    void addString(const std::string& flag,
+                   const std::string& name,
+                   const std::string& desc,
                    std::string      & value);
 
-    // TODO: do we need this variant?
-    void addSwitch(const std::string& name, 
-                   const std::string& desc, 
-                   bool             & value);
+    /// @brief Register a string option for the command line, which can be assigned more than once
+    ///
+    /// @param flag       One character flag for using the option.
+    ///                   If empty, no such flag can be used.
+    /// @param name       Long form of the flag.
+    /// @param desc       Description (printed if --help is invoked)
+    /// @param value      This should be a non-const vector. When \a getValues is
+    ///                   invoked, the vector is filled with that values. Pre-existing
+    ///                   values are deleted
+    ///
+    /// If the flag is "f", the user might call "-f foo.xml" at the command line.
+    /// If the name is "file", the user might call "--file foo.xml" at the command line.
+    void addMultiString(const std::string      & flag,
+                       const std::string       & name,
+                       const std::string       & desc,
+                       std::vector<std::string>& value);
 
     /// @brief Register a switch option for the command line
     ///
@@ -168,10 +216,15 @@ public:
     ///
     /// If the flag is "l", the user might call "-l" at the command line.
     /// If the name is "log", the user might call "--log" at the command line.
-    void addSwitch(const std::string& flag, 
-                   const std::string& name, 
-                   const std::string& desc, 
+    void addSwitch(const std::string& flag,
+                   const std::string& name,
+                   const std::string& desc,
                    bool             & value);
+
+    // TODO: do we need this variant?
+    void addSwitch(const std::string& name,
+                   const std::string& desc,
+                   bool             & value) { addSwitch("",name,desc,value); }
 
     /// @brief Register a string parameter that has to be given directly (not
     /// as an option, i.e., not after a flag starting with "-" or "--")
@@ -183,13 +236,13 @@ public:
     ///                   is written to that variable.
     ///
     /// You must not declare more than one plain string.
-    void addPlainString(const std::string& name, 
-                        const std::string& desc, 
+    void addPlainString(const std::string& name,
+                        const std::string& desc,
                         std::string      & value);
 
 
     /// Writes all given options (as specified by \a addInt, \a addReal,
-    /// \a addString or \a addSwitch or \a addPlainString ) into a
+    /// \a addString or \a addSwitch or \a addPlainString) into a
     /// gsOptionList object.
     ///
     /// Must be invoked after \a getValues
@@ -204,36 +257,36 @@ public:
     std::string& getMessage();
 
     // ----------------- TODO: do we really need these functions?
-   
+
     gsCmdLine(int argc, char *argv[], const std::string& message);
 
-    int getInt(const std::string& flag, 
-               const std::string& name, 
-               const std::string& desc, 
+    int getInt(const std::string& flag,
+               const std::string& name,
+               const std::string& desc,
                const int        & value);
-    
-    real_t getReal(const std::string& flag, 
-                   const std::string& name, 
-                   const std::string& desc, 
+ 
+    real_t getReal(const std::string& flag,
+                   const std::string& name,
+                   const std::string& desc,
                    const real_t & value);
 
-    std::string getString(const std::string& flag, 
-                          const std::string& name, 
-                          const std::string& desc, 
-                          const std::string & value);
+    std::string getString(const std::string& flag,
+                          const std::string& name,
+                          const std::string& desc,
+                          const std::string& value);
 
-    bool getSwitch(const std::string& flag, 
-                   const std::string& name, 
-                   const std::string& desc, 
+    bool getSwitch(const std::string& flag,
+                   const std::string& name,
+                   const std::string& desc,
                    const bool & value);
 
-    bool getSwitch(const std::string& name, 
-                   const std::string& desc, 
-                   const bool & value);
+    bool getSwitch(const std::string& name,
+                   const std::string& desc,
+                   const bool & value) { return getSwitch("",name,desc,value); }
 
-    std::string getPlainString(const std::string& name, 
-                               const std::string& desc, 
-                               const std::string & value);
+    std::string getPlainString(const std::string& name,
+                               const std::string& desc,
+                               const std::string& value);
 
     bool valid() const;
 
@@ -241,7 +294,7 @@ public:
 private:
 
     gsCmdLinePrivate * my;
-    
+
 }; // class gsCmdLine
 
 
