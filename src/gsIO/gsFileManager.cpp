@@ -17,6 +17,12 @@
 #include <gsCore/gsConfig.h>
 #include <gsUtils/gsUtils.h> 
 
+#if defined _WIN32
+#include <windows.h>
+#else
+#include <sys/stat.h>
+#endif
+
 namespace gismo
 {
 
@@ -153,7 +159,7 @@ std::string gsFileManager::getSearchPaths()
 bool gsFileManager::find( std::string& fn )
 {
 #if defined _WIN32
-        _replace_slash_by_basckslash(fn);
+    _replace_slash_by_basckslash(fn);
 #endif
 
     if ( fileExists(fn) ) return true;
@@ -174,6 +180,16 @@ bool gsFileManager::find( std::string& fn )
     }
 
     return false;
+}
+
+bool gsFileManager::mkdir( std::string fn )
+{
+#if defined _WIN32
+    _replace_slash_by_basckslash(fn); 
+    return CreateDirectory(fn.c_str(),NULL);
+#else
+    return ::mkdir(fn.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+#endif
 }
 
 } //namespace gismo

@@ -58,6 +58,9 @@ public:
     /// If \a fn satisfied \a isFullyQualified or \a isRelative, it is kept unchanged
     static bool find( std::string& fn );
 
+    /// Make directory
+    static bool mkdir( std::string fn );
+
 };
 
 
