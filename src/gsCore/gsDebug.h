@@ -78,7 +78,7 @@
     do {                                                                \
         if (! (condition) ) {                                           \
             gsDebug << "Assertion `" #condition "` failed in " << __FILE__ \
-                    << " line " << __LINE__ << "\nMESSAGE :" << message << "\n"; \
+                    << " line " << __LINE__ << ".\nMESSAGE: " << message << "\n"; \
                 throw std::runtime_error("GISMO_ASSERT failure");       \
         }                                                               \
     } while (false)
@@ -94,7 +94,7 @@
 #   define GISMO_ENSURE(condition, message) \
         if (! (condition) ) {                                           \
             gsWarn  << "Condition `" #condition "` failed in " << __FILE__ \
-                    << " line " << __LINE__ << ". MESSAGE:" << message << "\n"; \
+                    << " line " << __LINE__ << ".\nMESSAGE: " << message << "\n"; \
             throw std::runtime_error("GISMO_ENSURE failure"); \
         }
 
@@ -112,7 +112,7 @@
 #   define GISMO_ERROR(message)                 \
     {                                                                \
         gsInfo  << "Error in " << __FILE__                      \
-                << " line " << __LINE__ << ". MESSAGE: " << message << "\n"; \
+                << " line " << __LINE__ << ".\nMESSAGE: " << message << "\n"; \
         throw std::runtime_error("GISMO_ERROR");	\
     }
 
