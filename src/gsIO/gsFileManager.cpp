@@ -153,7 +153,7 @@ std::string gsFileManager::getSearchPaths()
 bool gsFileManager::find( std::string& fn )
 {
 #if defined _WIN32
-        _replace_slash_by_basckslash(p);
+        _replace_slash_by_basckslash(fn);
 #endif
 
     if ( fileExists(fn) ) return true;
