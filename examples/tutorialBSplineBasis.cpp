@@ -1,6 +1,6 @@
 /** @file tutorialBSplineBasis.cpp
 
-    @brief Tutorial on gsBSplineBasis class.
+    @brief Tutorial on the gsBSplineBasis class.
 
     This file is part of the G+Smo library.
 
@@ -23,22 +23,32 @@ using namespace gismo;
 void print(const gsBSplineBasis<>& bsb, const std::string& name);
 void printToParaview(const gsBSplineBasis<>& bsb, const std::string& name);
 
-//int main(int argc, char* argv[])
-int main()
+int main(int argc, char* argv[])
 {
     // ======================================================================
     // different construction of a knot vector
     // ======================================================================
     
-    gsInfo << "------------- Constructions -----------------------------\n";
 
     real_t a = 0; // starting knot
     real_t b = 1; // ending knot
-    unsigned interior = 4; // number of interior knots
-    unsigned multEnd = 3; // multiplicity at the two end knots
+    index_t interior = 4; // number of interior knots
+    index_t multEnd = 3; // multiplicity at the two end knots
+    bool paraview = false;
+
+    gsCmdLine cmd("This is a tutorial on the gsBSplineBasis class.");
+    cmd.addReal("","starting","Starting knot",a);
+    cmd.addReal("","ending","Ending knot",b);
+    cmd.addInt("n","interior","Number of interior knots",interior);
+    cmd.addInt("m","mult","Multiplicity at the two end knots",multEnd);
+    cmd.addSwitch("","plot","Plot with paraview",paraview);
+    if (!cmd.getValues(argc,argv)) return 1;
+
+    gsInfo << "------------- Constructions -----------------------------\n";
+
     int degree = multEnd - 1;
     gsKnotVector<> kv(a, b, interior, multEnd);
-    
+   
     gsBSplineBasis<> bsb0(kv);
     print(bsb0, "bsb0");
     
@@ -69,15 +79,18 @@ int main()
     knots.print(gsInfo);
     gsInfo << "\n\n";
 
-    printToParaview(bsb0, "basis");
+    if (paraview)
+        printToParaview(bsb0, "basis");
     
     gsInfo << "bsb0.uniformRefine()\n";
     bsb0.uniformRefine();
-    printToParaview(bsb0, "basisRefined");
+    if (paraview)
+        printToParaview(bsb0, "basisRefined");
     
     gsInfo << "bsb0.degreeElevate()\n";
     bsb0.degreeElevate();
-    printToParaview(bsb0, "basisElevated");
+    if (paraview)
+        printToParaview(bsb0, "basisElevated");
         
     return 0;
 }

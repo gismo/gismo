@@ -30,9 +30,15 @@ void report( const gsVector<>& computedSolution, const gsVector<>& exactSolution
     gsInfo << "\n";
 }
 
-int main()
+int main(int argc, char** argv)
 {
     index_t mat_size = 10;
+
+    gsCmdLine cmd("Testing the use of sparse linear solvers.");
+
+    cmd.addInt("n", "size", "Size of the matrices", mat_size);
+
+    if ( !cmd.getValues(argc,argv) ) return 1;
 
     gsSparseMatrix<>  Q(mat_size,mat_size);
     gsVector<>        b(mat_size), x(mat_size), x0(mat_size);
