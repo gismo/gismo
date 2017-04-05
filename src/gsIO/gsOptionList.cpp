@@ -365,7 +365,7 @@ inline void printOptionListElement(std::ostream & os, const char * type, It it)
     const std::string val = convert.str();
     const index_t sz_val = val.size();
 
-    if (it->first.size()<=slot_label && sz_val <= slot_val)
+    if ((index_t)it->first.size()<=slot_label && sz_val <= slot_val)
         os <<"* "<<std::setw(slot_label)<<std::left<<it->first <<" "<<std::setw(8)<<std::right<<type<<" = "
             <<val<<" "<<it->second.second<<"\n";
     else
