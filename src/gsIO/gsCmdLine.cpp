@@ -403,6 +403,7 @@ bool gsCmdLine::getValues(int argc, char *argv[])
     }
     catch ( TCLAP::ArgException& e )
     {
+        GISMO_UNUSED(e);
         //gsWarn << "\nSomething went wrong when reading the command line.\n";
         //gsWarn << "Error: " << e.error() << " " << e.argId() << "\n"; 
         return false; 
