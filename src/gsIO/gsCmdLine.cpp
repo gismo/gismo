@@ -225,7 +225,7 @@ void gsCmdLine::addSwitch( const std::string& flag,
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     //value = getSwitch(flag,name,desc,value);
-    my->switches.push_back(new TCLAP::SwitchArg("",name,desc,my->cmd) );
+    my->switches.push_back(new TCLAP::SwitchArg(flag,name,desc,my->cmd) );
     my->swRes.push_back(&value);
 }
 
