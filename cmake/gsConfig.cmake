@@ -15,9 +15,9 @@ include(CheckCXXCompilerFlag)
 #find_package(Metis REQUIRED)
 
 #Remove NDEBUG from RelWithDebInfo builds
-string(REPLACE "-DNDEBUG" "" replacementFlags ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+string(REPLACE "-DNDEBUG" "" replacementFlags "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO ${replacementFlags} CACHE INTERNAL "" FORCE)
-string(REPLACE "-DNDEBUG" "" replacementFlags ${CMAKE_C_FLAGS_RELWITHDEBINFO})
+string(REPLACE "-DNDEBUG" "" replacementFlags "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO ${replacementFlags} CACHE INTERNAL "" FORCE)
 
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
