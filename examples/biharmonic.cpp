@@ -22,6 +22,14 @@ int main(int argc, char *argv[])
 
     index_t numRefine = 5;
     index_t numDegree = 1;
+
+    gsCmdLine cmd("Example for solving the biharmonic problem.");
+
+    cmd.addInt("r", "refine", "Number of refinement steps", numRefine);
+    cmd.addInt("p", "degree", "Polynomial degree", numDegree);
+
+    if ( !cmd.getValues(argc,argv) ) return 1;
+
     dirichlet::strategy dirStrategy = dirichlet::elimination;
     iFace::strategy intStrategy = iFace::glue;
 

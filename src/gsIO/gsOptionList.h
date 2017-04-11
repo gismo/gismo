@@ -46,25 +46,25 @@ public:
 
     /// \brief Reads value for option \a label from options.
     ///
-    /// If \a label is not found, it defaults to \a val (otherwise \a val is not used).
-    std::string askString(const std::string & label, const std::string & val = ""    ) const;
-    /// @copydoc gsOptionList::getString
-    int         askInt   (const std::string & label, const int &         val = 0     ) const;
-    /// @copydoc gsOptionList::getString
-    real_t      askReal  (const std::string & label, const real_t &      val = 0     ) const;
-    /// @copydoc gsOptionList::getString
-    bool        askSwitch(const std::string & label, const bool &        val = false ) const;
+    /// If \a label is not found, it defaults to \a value (otherwise \a value is not used).
+    std::string askString(const std::string & label, const std::string & value = ""    ) const;
+    /// @copydoc gsOptionList::askString
+    int         askInt   (const std::string & label, const int &         value = 0     ) const;
+    /// @copydoc gsOptionList::askString
+    real_t      askReal  (const std::string & label, const real_t &      value = 0     ) const;
+    /// @copydoc gsOptionList::askString
+    bool        askSwitch(const std::string & label, const bool &        value = false ) const;
 
     /// \brief Sets an existing option \a label to be equal to \a value.
     ///
     /// If \a label is not found, the function throws.
-    void setString(const std::string & label, const std::string & value);
+    void setString(const std::string & label, const std::string & value );
     /// @copydoc gsOptionList::setString
-    void setInt   (const std::string & label, const int & res          );
+    void setInt   (const std::string & label, const int &         value );
     /// @copydoc gsOptionList::setString
-    void setReal  (const std::string & label, const real_t & res       );
+    void setReal  (const std::string & label, const real_t &      value );
     /// @copydoc gsOptionList::setString
-    void setSwitch(const std::string & label, const bool & res         );
+    void setSwitch(const std::string & label, const bool &        value );
 
     /// \brief Adds a option named \a label, with description \a desc
     /// and value \a value.
@@ -74,11 +74,11 @@ public:
     /// throws.
     void addString(const std::string & label, const std::string & desc, const std::string & value );
     /// @copydoc gsOptionList::addString
-    void addInt   (const std::string & label, const std::string & desc, const int & value         );
+    void addInt   (const std::string & label, const std::string & desc, const int &         value );
     /// @copydoc gsOptionList::addString
-    void addReal  (const std::string & label, const std::string & desc, const real_t & value      );
+    void addReal  (const std::string & label, const std::string & desc, const real_t &      value );
     /// @copydoc gsOptionList::addString
-    void addSwitch(const std::string & label, const std::string & desc, const bool & value        );
+    void addSwitch(const std::string & label, const std::string & desc, const bool &        value );
 
     /// \brief Removes the option named \a label (if it exists).
     void remove(const std::string& label);

@@ -17,8 +17,11 @@
 
 using namespace gismo;
 
-int main()
+int main(int argc, char**argv)
 {
+    gsCmdLine cmd("Tutorial on matrix operations and linear algebra.");
+    if (!cmd.getValues(argc,argv)) return 1;
+
 #ifdef EIGEN_VECTORIZE
     gsDebug << "Vectorization is enabled in Eigen.\n";
 #endif

@@ -25,24 +25,26 @@ int main(int argc, char* argv[])
 {
 
     //! [Parse command line]   
-    std::string input(GISMO_DATA_DIR "/curves3d/bspline3d_curve_01.xml");
+    std::string input("curves3d/bspline3d_curve_01.xml");
     std::string output("out");
     
     gsCmdLine cmd("Tutorial Input Output");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
     cmd.addString("o", "output", "Name of the output file", output);
-    bool ok = cmd.getValues(argc,argv);
-
-    if (!ok)
-    {
-        gsWarn << "Error during parsing the command line!";
-        return 1;
-    }
+    if (!cmd.getValues(argc,argv)) return 1;
     //! [Parse command line]   
     
-    //! [Read geometry]       
+    //! [Read geometry]
+    if (!gsFileManager::find(input))
+    {
+        gsWarn << "The file cannot be found!\n";
+        return 1;
+    }
+
+    gsInfo << "Read file \"" << input << "\"\n";
+
     gsFileData<> fileData(input);
-    
+
     gsGeometry<>::uPtr pGeom;
     if (fileData.has< gsGeometry<> >())
     {

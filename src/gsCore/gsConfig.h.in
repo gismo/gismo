@@ -31,13 +31,6 @@
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
 
-/** Define the search path type. */
-#if defined _WIN32
-#  define GISMO_PATH_SEPERATOR '\\'
-#else
-#  define GISMO_PATH_SEPERATOR '/'
-#endif
-
 /** Define the search paths. */
 #define GISMO_SEARCH_PATHS "@GISMO_SEARCH_PATHS@"
 

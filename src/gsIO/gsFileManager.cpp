@@ -15,15 +15,48 @@
 #include <iostream>
 #include <fstream>
 #include <gsCore/gsConfig.h>
+#include <gsUtils/gsUtils.h> 
+
+#if defined _WIN32
+#include <windows.h>
+#else
+#include <sys/stat.h>
+#endif
 
 namespace gismo
 {
 
-gsFileManager& gsFileManagerSingleton()
+class gsFileManagerData;
+
+// Use a singleton to store data:
+class GISMO_EXPORT gsFileManagerData
 {
-    static gsFileManager singleton;
+public:
+
+    friend gsFileManagerData& gsFileManagerDataSingleton();
+    friend class gsFileManager;
+
+    void setSearchPaths(const std::string& paths);
+
+private:
+    gsFileManagerData()
+    {
+#ifdef GISMO_SEARCH_PATHS
+        setSearchPaths("" GISMO_SEARCH_PATHS);
+#endif
+    }
+
+    gsFileManagerData(const gsFileManagerData&);
+    gsFileManagerData& operator= (const gsFileManagerData&);
+    std::vector<std::string> m_paths;
+};
+
+gsFileManagerData& gsFileManagerDataSingleton()
+{
+    static gsFileManagerData singleton;
     return singleton;
 }
+
 
 bool gsFileManager::fileExists(const std::string& name)
 {
@@ -31,7 +64,51 @@ bool gsFileManager::fileExists(const std::string& name)
     return f.good();
 }
 
+char gsFileManager::getLocalPathSeperator()
+{
+#if defined _WIN32
+    return '\\';
+#else
+    return '/';
+#endif
+}
+
+bool gsFileManager::isFullyQualified(const std::string& fn)
+{
+#if defined _WIN32
+    return util::starts_with(fn,"/")
+        || util::starts_with(fn,"\\")
+        || ( fn.size() > 2 && fn[1] == ':' && ( fn[2] == '/' || fn[2] == '\\' ) );
+#else
+    return util::starts_with(fn,"/");
+#endif
+}
+
+bool gsFileManager::isRelative(const std::string& fn)
+{
+#if defined _WIN32
+    return util::starts_with(fn,"./")
+        || util::starts_with(fn,".\\")
+        || util::starts_with(fn,"../")
+        || util::starts_with(fn,"..\\");
+#else
+    return util::starts_with(fn,"./")
+        || util::starts_with(fn,"../");
+#endif
+}
+
+void _replace_slash_by_basckslash(std::string& str)
+{
+    for ( std::string::iterator it=str.begin(); it!=str.end(); it++ )
+        if ( *it=='/' ) *it = '\\';
+}
+
 void gsFileManager::setSearchPaths(const std::string& paths)
+{
+    gsFileManagerDataSingleton().setSearchPaths(paths);
+}
+
+void gsFileManagerData::setSearchPaths(const std::string& paths)
 {
     m_paths.clear();
 
@@ -44,10 +121,19 @@ void gsFileManager::setSearchPaths(const std::string& paths)
 
         std::string p(a,b);
 
+#if defined _WIN32
+        _replace_slash_by_basckslash(p);
+#endif
+
         if (!p.empty())
         {
-            if (*p.rbegin() != GISMO_PATH_SEPERATOR)
-                p.push_back(GISMO_PATH_SEPERATOR);
+#if defined _WIN32
+            if (*p.rbegin() != '\\')
+                p.push_back('\\');
+#else
+            if (*p.rbegin() != '/')
+                p.push_back('/');
+#endif
 
             m_paths.push_back(p);
         }
@@ -58,11 +144,12 @@ void gsFileManager::setSearchPaths(const std::string& paths)
     }
 }
 
-std::string gsFileManager::getSearchPaths() const
+std::string gsFileManager::getSearchPaths()
 {
     std::string result;
-    for (std::vector<std::string>::const_iterator it = m_paths.begin();
-            it < m_paths.end(); ++it)
+    gsFileManagerData& dat = gsFileManagerDataSingleton();
+    for (std::vector<std::string>::const_iterator it = dat.m_paths.begin();
+            it < dat.m_paths.end(); ++it)
     {
         result += (*it) + ";";
     }
@@ -71,12 +158,18 @@ std::string gsFileManager::getSearchPaths() const
 
 bool gsFileManager::find( std::string& fn )
 {
+#if defined _WIN32
+    _replace_slash_by_basckslash(fn);
+#endif
+
     if ( fileExists(fn) ) return true;
 
     if ( isFullyQualified(fn) || isRelative(fn) ) return false;
 
-    for (std::vector<std::string>::const_iterator it = m_paths.begin();
-            it < m_paths.end(); ++it)
+    gsFileManagerData& dat = gsFileManagerDataSingleton();
+
+    for (std::vector<std::string>::const_iterator it = dat.m_paths.begin();
+            it < dat.m_paths.end(); ++it)
     {
         const std::string tmp = (*it) + fn;
         if ( fileExists( tmp ) )
@@ -89,10 +182,13 @@ bool gsFileManager::find( std::string& fn )
     return false;
 }
 
-gsFileManager::gsFileManager()
+bool gsFileManager::mkdir( std::string fn )
 {
-#ifdef GISMO_SEARCH_PATHS
-    setSearchPaths("" GISMO_SEARCH_PATHS);
+#if defined _WIN32
+    _replace_slash_by_basckslash(fn); 
+    return 0!=CreateDirectory(fn.c_str(),NULL);
+#else
+    return ::mkdir(fn.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 #endif
 }
 

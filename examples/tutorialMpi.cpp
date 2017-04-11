@@ -3,19 +3,14 @@
     @brief Testing MPI with G+Smo
 
     Execute (eg. with 10 processes):
-
-    mpirun -np 10 ./bin/gsMpiTest
+       mpirun -np 10 ./bin/tutorialMpi
 
     or provide a hosts file on a cluster:
-
-    mpirun -hostfile hosts.txt ./bin/gsMpiTest
+       mpirun -hostfile hosts.txt ./bin/tutorialMpi
     
-    If your cluster is using srun then issue
-
-    srun -N 10 ./bin/gsMpiTest
+    If your cluster is using srun:
+       srun -N 10 ./bin/tutorialMpi
     
-    to run on 10 nodes.
-
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -32,6 +27,18 @@ using namespace gismo;
 
 int main(int argc, char **argv)
 {  
+    gsCmdLine cmd("An example for testing MPI with G+Smo.\n"
+        "Execute (eg. with 10 processes):                                      "
+        "  *  mpirun -np 10 ./bin/tutorialMpi\n"
+        "or provide a hosts file on a cluster:                                 "
+        "  *  mpirun -hostfile hosts.txt ./bin/tutorialMpi\n"
+        "If your cluster is using srun:                                        "
+        "  *  srun -N 10 ./bin/tutorialMpi"
+    );
+    if ( !cmd.getValues(argc,argv) ) return 1;
+
+
+
     // Initialize the MPI environment
     const gsMpi & mpi = gsMpi::init(argc, argv);
     
