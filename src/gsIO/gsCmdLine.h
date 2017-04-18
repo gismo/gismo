@@ -40,7 +40,7 @@ class gsCmdLinePrivate;
  *      // we parse the command line. If the return value is false, we exit.
  *      // At this point, the variable "name" is updated to the value given
  *      // by the user.
- *      if (!cmd.getValues(argc, argv)) return 1;
+ *      cmd.getValues(argc, argv);
  *
  *      // Here, no more of the addXxxx function are allowed to follow.
  *
@@ -226,9 +226,8 @@ public:
     ///
     /// The parameters \a argc and \a argv are those of the main function.
     ///
-    /// The function returns true if the parsing succeeded. Oterwise,
-    /// it prints an error message and returns false.
-    bool getValues(int argc, char *argv[]);
+    /// If the parsing did non succeed, the function throws.
+    void getValues(int argc, char *argv[]);
 
     /// Writes all given options (as specified by \a addInt, \a addReal,
     /// \a addString or \a addSwitch or \a addPlainString) into a

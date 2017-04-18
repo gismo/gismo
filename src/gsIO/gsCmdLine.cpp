@@ -252,7 +252,7 @@ bool gsCmdLine::valid(int argc, char *argv[]) const
 }
 
 
-bool gsCmdLine::getValues(int argc, char *argv[])
+void gsCmdLine::getValues(int argc, char *argv[])
 {
     GISMO_ASSERT( !my->didParseCmdLine, "gsCmdLine::getValues must not be called twice." );
 #ifndef NDEBUG
@@ -285,7 +285,6 @@ bool gsCmdLine::getValues(int argc, char *argv[])
     if ( my->plainStringVal )
             *my->plainStringRes = my->plainStringVal->getValue();
 
-    return true;
 }
 
 void gsCmdLine::setExceptionHandling(const bool state)
