@@ -61,6 +61,7 @@ public:
         freeAll( stringVals     );
         freeAll( multiStringVals);
         freeAll( switchVals     );
+        freeAll( switchOffVals  );
         delete plainStringVal;
     }
 
@@ -95,6 +96,10 @@ public:
     // Stores switch arguments
     std::vector<TCLAP::SwitchArg*>             switchVals;
     std::vector<bool*>                         switchRes;
+
+    // Stores switch off arguments
+    std::vector<TCLAP::ValueArg<bool>*>        switchOffVals;
+    std::vector<bool*>                         switchOffRes;
 
     // Stores plain string argument
     TCLAP::UnlabeledValueArg<std::string> *    plainStringVal;
@@ -205,8 +210,16 @@ void gsCmdLine::addSwitch( const std::string& flag,
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    my->switchVals.push_back(new TCLAP::SwitchArg(flag,name,desc,my->cmd) );
-    my->switchRes.push_back(&value);
+    if (!value)
+    {
+        my->switchVals.push_back(new TCLAP::SwitchArg(flag,name,desc,my->cmd) );
+        my->switchRes.push_back(&value);
+    }
+    else
+    {
+        my->switchOffVals.push_back(new TCLAP::ValueArg<bool>(flag,name,desc,false,1,"bool",my->cmd) );
+        my->switchOffRes.push_back(&value);
+    }
 }
 
 void gsCmdLine::addPlainString( const std::string& name, 
@@ -284,10 +297,13 @@ void gsCmdLine::getValues(int argc, char *argv[])
         *my->multiStringRes[i] = my->multiStringVals[i]->getValue();
 
     for( std::size_t i=0; i!=my->switchVals.size(); ++i)
-        *my->switchRes[i] |= my->switchVals[i]->getValue();
+        *my->switchRes[i] = my->switchVals[i]->getValue();
+
+    for( std::size_t i=0; i!=my->switchOffVals.size(); ++i)
+        *my->switchOffRes[i] = my->switchOffVals[i]->getValue();
 
     if ( my->plainStringVal )
-            *my->plainStringRes = my->plainStringVal->getValue();
+        *my->plainStringRes = my->plainStringVal->getValue();
 
 }
 
@@ -324,6 +340,8 @@ gsOptionList gsCmdLine::getOptionList()
         result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), my->stringVals[i]->getValue() );
     for( std::size_t i=0; i!=my->switchVals.size(); ++i)
         result.addSwitch( my->switchVals[i]->getName(), my->switchVals[i]->getDescription(), my->switchVals[i]->getValue() );
+    for( std::size_t i=0; i!=my->switchOffVals.size(); ++i)
+        result.addSwitch( my->switchOffVals[i]->getName(), my->switchOffVals[i]->getDescription(), my->switchOffVals[i]->getValue() );
     for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(index_t,my->multiIntVals[i],addInt)
     for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
