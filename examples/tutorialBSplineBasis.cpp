@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
     cmd.addInt("n","interior","Number of interior knots",interior);
     cmd.addInt("m","mult","Multiplicity at the two end knots",multEnd);
     cmd.addSwitch("","plot","Plot with paraview",paraview);
-    if (!cmd.getValues(argc,argv)) return 1;
+    cmd.getValues(argc,argv);
 
     gsInfo << "------------- Constructions -----------------------------\n";
 

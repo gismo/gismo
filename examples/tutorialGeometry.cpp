@@ -40,13 +40,7 @@ int main(int argc, char* argv[])
     gsCmdLine cmd("Tutorial on gsGeometry class.");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
     cmd.addString("o", "output", "Name of the output file", output);
-    bool ok = cmd.getValues(argc,argv);
-   
-    if (!ok)
-    {
-        gsWarn << "Error during parsing command line!";
-        return 1;
-    }
+    cmd.getValues(argc,argv);
     
     // ======================================================================
     // reading the geometry

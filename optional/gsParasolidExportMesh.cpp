@@ -31,12 +31,7 @@ int main(int argc, char *argv[])
     cmd.addString("i", "input", "Input file", input);
     cmd.addString("o", "output", "Output file", output);
 
-    bool ok = cmd.getValues(argc, argv);
-
-    if (!ok)
-    {
-	gsWarn << "Something went wrong with command line arguments.\n";
-    }
+    cmd.getValues(argc,argv);
 
     std::cout << " \n\nInput arguments: \n\n"
 	      << "input: " << input << "\n\n"

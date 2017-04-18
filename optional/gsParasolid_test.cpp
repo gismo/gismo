@@ -31,12 +31,7 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Hi, give me a file and I will read the contents to/from Parasolid.");
     cmd.addPlainString("filename", "G+SMO or Parasolid file", fn);
-    const bool ok = cmd.getValues(argc,argv);
-    if ( !ok )
-    {
-        gsWarn << "Something went wrong when reading the command line. Exiting.\n";
-        return 1;
-    }
+    cmd.getValues(argc,argv);
     
     // Read in a surface
     cout << "Read in "<< gsFileData<>::getFilename(fn) <<"\n";

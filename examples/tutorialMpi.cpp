@@ -35,7 +35,7 @@ int main(int argc, char **argv)
         "If your cluster is using srun:                                        "
         "  *  srun -N 10 ./bin/tutorialMpi"
     );
-    if ( !cmd.getValues(argc,argv) ) return 1;
+    cmd.getValues(argc,argv);
 
 
 

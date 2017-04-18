@@ -82,12 +82,7 @@ int main(int argc, char *argv[])
     cmd.addInt("n", "number", "Number of unknowns", N);
     cmd.addReal("", "tol", "Tolerance for the solvers", tol);
 
-    bool ok = cmd.getValues(argc,argv);
-    if ( !ok )
-    {
-        gsInfo << "Something went wrong when reading the command line. Exiting.\n";
-        return 1;
-    }
+    cmd.getValues(argc,argv);
 
     gsSparseMatrix<> mat;
     gsMatrix<>       rhs;
