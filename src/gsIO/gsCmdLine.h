@@ -186,16 +186,13 @@ public:
     ///                   If empty, no such flag can be used.
     /// @param name       Long form of the flag.
     /// @param desc       Description (printed if --help is invoked)
-    /// @param value      This should be a non-const bool variable, initialized
-    ///                   with the default value. When \a getValues is invoked and
+    /// @param value      This should be a non-const bool variable with
+    ///                   value "false". When \a getValues is invoked and
     ///                   the user has added the swich on the command line,
     ///                   the variable is set to true.
     ///
     /// If the flag is "l", the user might call "-l" at the command line.
     /// If the name is "log", the user might call "--log" at the command line.
-    ///
-    /// When the default value is already true, the flag takes a boolean variable (0 or 1),
-    /// so in the above example "-l 0" or "--log 0" would set the variable to false.
     void addSwitch(const std::string& flag,
                    const std::string& name,
                    const std::string& desc,
