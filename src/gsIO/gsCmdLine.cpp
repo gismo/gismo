@@ -1,18 +1,17 @@
 /** @file gsCmdLine.cpp
-    
+
     @brief Provides implemementation of input command line arguments.
-    
+
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, S. Takacs
 */
 
 #include <gsIO/gsCmdLine.h>
-//#include <gsIO/gsCmdLineArgs.h>
 
 // --- start External files
 #include <tclap/CmdLine.h>   
@@ -45,7 +44,10 @@ public:
     gsCmdLinePrivate(const std::string& message,	
                      const char delimiter = ' ',
                      bool helpAndVersion = true)
-        : cmd(message,delimiter,GISMO_VERSION,helpAndVersion), plainString(NULL), didParseCmdLine(false)
+        : cmd(message,delimiter,GISMO_VERSION,helpAndVersion), plainString(NULL)
+#ifndef NDEBUG
+          , didParseCmdLine(false)
+#endif
     {
         cmd.setOutput( &cmdout );
     }
@@ -113,11 +115,12 @@ public:
     };
 
     GismoCmdOut cmdout;
-
+#ifndef NDEBUG
     bool didParseCmdLine;
+#endif
 };
 
-gsCmdLine::gsCmdLine( const std::string& message,	
+gsCmdLine::gsCmdLine( const std::string& message,
                       const char delimiter,
                       bool helpAndVersion)
 : my(new gsCmdLinePrivate(message,delimiter,helpAndVersion))
@@ -132,22 +135,6 @@ gsCmdLine::gsCmdLine( const std::string& message,
     */
 }
 
-gsCmdLine::gsCmdLine(int argc, char *argv[], const std::string& message)
-: my(new gsCmdLinePrivate(message,' ', true))
-{
-    my->argstr.assign(argv, argv + argc);
-}
-
-gsCmdLine::operator TCLAP::CmdLineInterface &()
-{
-    return my->cmd;
-}
-
-std::string & gsCmdLine::getMessage()
-{
-    return my->cmd.getMessage();
-}
-
 void gsCmdLine::addInt( const std::string& flag, 
                         const std::string& name, 
                         const std::string& desc, 
@@ -155,7 +142,6 @@ void gsCmdLine::addInt( const std::string& flag,
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    //value = getInt(flag,name,desc,value);
     my->intVals.push_back(new TCLAP::ValueArg<int>(flag,name,desc,false,value,"int",my->cmd) );
     my->intRes.push_back(&value);
 }
@@ -178,7 +164,6 @@ void gsCmdLine::addReal( const std::string& flag,
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    //value = getReal(flag,name,desc,value);
     my->realVals.push_back(new TCLAP::ValueArg<real_t>(flag,name,desc,false,value,"float",my->cmd) );
     my->realRes.push_back(&value);
 }
@@ -201,7 +186,6 @@ void gsCmdLine::addString( const std::string& flag,
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    //value = getString(flag,name,desc,value);
     my->stringVals.push_back(new TCLAP::ValueArg<std::string>(flag,name,desc,false,value,"string",my->cmd));
     my->strRes.push_back(&value);
 }
@@ -224,7 +208,6 @@ void gsCmdLine::addSwitch( const std::string& flag,
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    //value = getSwitch(flag,name,desc,value);
     my->switches.push_back(new TCLAP::SwitchArg(flag,name,desc,my->cmd) );
     my->swRes.push_back(&value);
 }
@@ -235,7 +218,6 @@ void gsCmdLine::addPlainString( const std::string& name,
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    //value = getPlainString(name,desc,value);
 
     GISMO_ENSURE( !my->plainString, "Plain string already added." );
 
@@ -245,188 +227,12 @@ void gsCmdLine::addPlainString( const std::string& name,
     my->pstrRes = &value;
 }
 
-// ----------------------
-
-
-int gsCmdLine::getInt( const std::string& flag,
-                       const std::string& name, 
-                       const std::string& desc, 
-                       const int        & value)
-{
-    ArgTable::const_iterator it = my->args.find(name);
-    if ( it != my->args.end() )
-    {
-        gsWarn<< "Value already defined.\n";
-        return value;
-    }
-    TCLAP::ValueArg<int> * a = 
-        new TCLAP::ValueArg<int>(flag,name,desc,false,value,"int",my->cmd);
-    my->intVals.push_back( a );
-    my->args[name] = a;
-    try 
-    {
-        for (int i = 1; static_cast<std::size_t>(i) < my->argstr.size(); i++) 
-            if ( a->processArg( &i, my->argstr ) )
-                break;
-    }
-    catch ( TCLAP::ArgException& e )
-    { 
-        gsWarn << "\nSomething went wrong when reading the command line.\n";
-        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
-    }
-
-    a->TCLAP::Arg::reset();
-    return a->getValue();
-}
-
-real_t gsCmdLine::getReal( const std::string& flag,
-                           const std::string& name, 
-                           const std::string& desc, 
-                           const real_t & value)
-{
-    ArgTable::const_iterator it = my->args.find(name);
-    if ( it != my->args.end() )
-    {
-        gsWarn<< "Value already defined.\n";
-        return value;
-    }
-    TCLAP::ValueArg<real_t> * a = 
-        new TCLAP::ValueArg<real_t>(flag,name,desc,false,value,"float",my->cmd);
-    my->realVals.push_back( a );
-    my->args[name] = my->realVals.back();
-    try 
-    {
-        for (int i = 1; static_cast<std::size_t>(i) < my->argstr.size(); i++) 
-            if ( a->processArg( &i, my->argstr ) )
-                break;
-    }
-    catch ( TCLAP::ArgException& e )
-    { 
-        gsWarn << "\nSomething went wrong when reading the command line.\n";
-        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
-    }
-
-    a->TCLAP::Arg::reset();
-    return my->realVals.back()->getValue();
-}
-
-std::string gsCmdLine::getString( const std::string& flag,
-                                  const std::string& name, 
-                                  const std::string& desc, 
-                                  const std::string & value)
-{
-    ArgTable::const_iterator it = my->args.find(name);
-    if ( it != my->args.end() )
-    {
-        gsWarn<< "Value already defined.\n";
-        return value;
-    }
-    TCLAP::ValueArg<std::string> * a =
-        new TCLAP::ValueArg<std::string>(flag,name,desc,false,value,"string",my->cmd);
-    my->stringVals.push_back( a );
-    my->args[name] = a;
-    try 
-    {
-        for (int i = 1; static_cast<std::size_t>(i) < my->argstr.size(); i++) 
-            if ( a->processArg( &i, my->argstr ) )
-                break;
-    }
-    catch ( TCLAP::ArgException& e )
-    { 
-        gsWarn << "\nSomething went wrong when reading the command line.\n";
-        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
-    }
-
-    a->TCLAP::Arg::reset();
-    return my->stringVals.back()->getValue();
-}
-
-bool gsCmdLine::getSwitch( const std::string& flag,
-                           const std::string& name, 
-                           const std::string& desc, 
-                           const bool & value)
-{
-    ArgTable::const_iterator it = my->args.find(name);
-    if ( it != my->args.end() )
-    {
-        gsWarn<< "Value already defined.\n";
-        return value;
-    }
-    TCLAP::SwitchArg * a = new TCLAP::SwitchArg(flag,name,desc,my->cmd);
-    my->switches.push_back(a);
-    my->args[name] = a;
-    try 
-    {
-        for (int i = 1; static_cast<std::size_t>(i) < my->argstr.size(); i++) 
-            if ( a->processArg( &i, my->argstr ) )
-                break;
-    }
-    catch ( TCLAP::ArgException& e )
-    { 
-        gsWarn << "\nSomething went wrong when reading the command line.\n";
-        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
-    }
-
-    a->TCLAP::Arg::reset();
-    return value | a->getValue();
-}
-
-std::string gsCmdLine::getPlainString( const std::string& name, 
-                                       const std::string& desc, 
-                                       const std::string & value)
-{
-    if ( my->plainString && my->plainString->getValue() !=  name)
-    {
-        gsWarn<<"Plain string "<<my->plainString->getValue()<<" pre-exists.\n";
-        return value;
-    }
-
-    my->plainString = 
-        new TCLAP::UnlabeledValueArg<std::string>(name,desc,false,value,"string",my->cmd);
-    my->args[name] = my->plainString;
-
-    try 
-    {
-        for (int i = 1; static_cast<std::size_t>(i) < my->argstr.size(); i++) 
-            if ( my->plainString->processArg( &i, my->argstr ) )
-                break;
-    }
-    catch ( TCLAP::ArgException& e )
-    { 
-        gsWarn << "\nSomething went wrong when reading the command line.\n";
-        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
-    }
-
-    my->plainString->TCLAP::Arg::reset();
-    return my->plainString->getValue();
-}
-
-
-
-
-bool gsCmdLine::valid() const 
-{
-    try
-    {
-        my->cmd.parse(my->argstr);
-    }
-    catch ( TCLAP::ArgException& e )
-    {
-        gsWarn << "\nSomething went wrong when reading the command line.\n";
-        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
-        return false;
-    }
-    return true;
-}
-
-
-// ----------------
-
 bool gsCmdLine::getValues(int argc, char *argv[])
 {
     GISMO_ASSERT( !my->didParseCmdLine, "gsCmdLine::getValues must not be called twice." );
-
+#ifndef NDEBUG
     my->didParseCmdLine = true;
+#endif
 
     try
     {
@@ -453,8 +259,6 @@ bool gsCmdLine::getValues(int argc, char *argv[])
     catch ( TCLAP::ArgException& e )
     {
         GISMO_UNUSED(e);
-        //gsWarn << "\nSomething went wrong when reading the command line.\n";
-        //gsWarn << "Error: " << e.error() << " " << e.argId() << "\n"; 
         return false; 
     }
 
@@ -559,7 +363,6 @@ void gsCmdLinePrivate::GismoCmdOut::version(TCLAP::CmdLineInterface& c)
     gsCmdLine::printVersion();
 }
 
-
 void gsCmdLine::printVersion()
 {
     //gsInfo <<"Executable: "<< c.getProgramName() <<", part of \n\n";
@@ -615,5 +418,9 @@ void gsCmdLine::printVersion()
     gsInfo << "RICAM-Linz 2012 - 2017, http://gs.jku.at/gismo\n";
 }
 
-                      
+std::string & gsCmdLine::getMessage()
+{
+    return my->cmd.getMessage();
+}
+
 } //namespace gismo

@@ -3,32 +3,25 @@
     @brief Provides input command line arguments.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, S. Takacs
 */
 
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
 
-namespace TCLAP
-{
-//forward declarations
-class CmdLineInterface;
-class Arg;
-}
-
-
 namespace gismo
 {
 
+// Forward declaration
 class gsCmdLinePrivate;
 
-/** 
+/**
  *  @brief Class for command-line argument parsing
  *
  *  A typical setup looks as follows:
@@ -62,9 +55,6 @@ class gsCmdLinePrivate;
 class GISMO_EXPORT gsCmdLine
 {
 public:
-    typedef std::map<std::string,TCLAP::Arg*> ArgTable;
-
-public:
     ///
     /// @brief Command line constructor. Defines how the arguments will be
     /// parsed.
@@ -84,19 +74,6 @@ public:
     gsCmdLine(const std::string& message,
               const char delimiter = ' ',
               bool helpAndVersion = true);
-
-    /// @brief Parses the command line based on the specified parameters
-    ///
-    /// The specification has to be done using \a addInt, \a addMultiInt,
-    /// \a addReal, \a addMultiReal, \a addString, \a addMultiString,
-    /// \a addSwitch and \a addPlainString before calling
-    /// this member function.
-    ///
-    /// The parameters \a argc and \a argv are those of the main function.
-    ///
-    /// The function returns true if the parsing succeeded. Oterwise,
-    /// it prints an error message and returns false.
-    bool getValues(int argc, char *argv[]);
 
     /// @brief Register an int option for the command line
     ///
@@ -240,6 +217,18 @@ public:
                         const std::string& desc,
                         std::string      & value);
 
+    /// @brief Parses the command line based on the specified parameters
+    ///
+    /// The specification has to be done using \a addInt, \a addMultiInt,
+    /// \a addReal, \a addMultiReal, \a addString, \a addMultiString,
+    /// \a addSwitch and \a addPlainString before calling
+    /// this member function.
+    ///
+    /// The parameters \a argc and \a argv are those of the main function.
+    ///
+    /// The function returns true if the parsing succeeded. Oterwise,
+    /// it prints an error message and returns false.
+    bool getValues(int argc, char *argv[]);
 
     /// Writes all given options (as specified by \a addInt, \a addReal,
     /// \a addString or \a addSwitch or \a addPlainString) into a
@@ -250,46 +239,9 @@ public:
 
     ~gsCmdLine();
 
-    operator TCLAP::CmdLineInterface &();
-
     static void printVersion();
 
     std::string& getMessage();
-
-    // ----------------- TODO: do we really need these functions?
-
-    gsCmdLine(int argc, char *argv[], const std::string& message);
-
-    int getInt(const std::string& flag,
-               const std::string& name,
-               const std::string& desc,
-               const int        & value);
- 
-    real_t getReal(const std::string& flag,
-                   const std::string& name,
-                   const std::string& desc,
-                   const real_t & value);
-
-    std::string getString(const std::string& flag,
-                          const std::string& name,
-                          const std::string& desc,
-                          const std::string& value);
-
-    bool getSwitch(const std::string& flag,
-                   const std::string& name,
-                   const std::string& desc,
-                   const bool & value);
-
-    bool getSwitch(const std::string& name,
-                   const std::string& desc,
-                   const bool & value) { return getSwitch("",name,desc,value); }
-
-    std::string getPlainString(const std::string& name,
-                               const std::string& desc,
-                               const std::string& value);
-
-    bool valid() const;
-
 
 private:
 
