@@ -186,10 +186,11 @@ public:
     ///                   If empty, no such flag can be used.
     /// @param name       Long form of the flag.
     /// @param desc       Description (printed if --help is invoked)
-    /// @param value      This should be a non-const bool variable with
-    ///                   value "false". When \a getValues is invoked and
-    ///                   the user has added the swich on the command line,
-    ///                   the variable is set to true.
+    /// @param value      This should be a non-const bool variable.  
+    ///                   When \ref getValues is invoked and the user
+    ///                   has added the switch on the command line,
+    ///                   the \a value is toggled (i.e. if false it
+    ///                   becomes true, if true it becomes false)
     ///
     /// If the flag is "l", the user might call "-l" at the command line.
     /// If the name is "log", the user might call "--log" at the command line.
@@ -198,7 +199,10 @@ public:
                    const std::string& desc,
                    bool             & value);
 
-    // TODO: do we need this variant?
+    /// @brief Register a switch option for the command line without flag
+    ///
+    /// \see gsCmdLine::addSwitch
+    ///
     void addSwitch(const std::string& name,
                    const std::string& desc,
                    bool             & value) { addSwitch("",name,desc,value); }

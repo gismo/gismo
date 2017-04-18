@@ -62,6 +62,9 @@ public:
         freeAll( multiStringVals);
         freeAll( switchVals     );
         delete plainStringVal;
+        GISMO_ASSERT(didParseCmdLine, 
+                     "gsCmdLine::getValues was never called. "
+                     "Arguments were not parsed from command line.");
     }
 
 public:
@@ -111,11 +114,25 @@ public:
         void version(TCLAP::CmdLineInterface& c);
     };
 
-    GismoCmdOut cmdout;
+    class GismoNullOut : public TCLAP::CmdLineOutput
+    {
+    public:
+        void failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e) { }
+        void usage(TCLAP::CmdLineInterface& c)  { }
+        void version(TCLAP::CmdLineInterface& c) { }
+    };
+
+
+    static GismoCmdOut cmdout;
+    static GismoNullOut cmdNullOut;
+
 #ifndef NDEBUG
     bool didParseCmdLine;
 #endif
 };
+
+gsCmdLinePrivate::GismoCmdOut gsCmdLinePrivate::cmdout;
+gsCmdLinePrivate::GismoNullOut gsCmdLinePrivate::cmdNullOut;
 
 gsCmdLine::gsCmdLine( const std::string& message,
                       const char delimiter,
@@ -226,33 +243,22 @@ void gsCmdLine::addPlainString( const std::string& name,
 bool gsCmdLine::valid(int argc, char *argv[]) const 
 {
     const bool eh = my->cmd.getExceptionHandling();
+    TCLAP::CmdLineOutput * o = my->cmd.getOutput();
     my->cmd.setExceptionHandling(false);
-    std::cout.flush();
-    std::cout.setstate(std::ios_base::failbit);
+    my->cmd.setOutput( &my->cmdNullOut );
+    bool result = true;
     try
     {
         my->cmd.parse(argc,argv);
     }
-    catch ( TCLAP::ArgException& e )
-    {
-        my->cmd.setExceptionHandling(eh);
-        std::cout.clear();
-        //gsWarn << "\nArgument exception when reading the command line.\n";
-        //gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
-        return false;
-    }
-    catch ( TCLAP::ExitException &ee )
-    {
-        my->cmd.setExceptionHandling(eh);
-        std::cout.clear();
-        //gsWarn << "\nExit exception when reading the command line.\n";
-        //gsWarn << "Exit status: " << ee.getExitStatus() << "\n";
-        return false;
-    }
+    catch ( TCLAP::ExitException &e ) { /*result = true */; }
+    //catch ( TCLAP::ArgException& e  ) { result = false; }
+    catch (...)                       { result = false; }
 
+    my->cmd.reset();
     my->cmd.setExceptionHandling(eh);
-    std::cout.clear();
-    return true;
+    my->cmd.setOutput(o);
+    return result;
 }
 
 
@@ -268,27 +274,30 @@ void gsCmdLine::getValues(int argc, char *argv[])
     for( std::size_t i=0; i!=my->intVals.size(); ++i)
         *my->intRes[i] = my->intVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
-        *my->multiIntRes[i] = my->multiIntVals[i]->getValue();
-
     for( std::size_t i=0; i!=my->realVals.size(); ++i)
         *my->realRes[i] = my->realVals[i]->getValue();
-
-    for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
-        *my->multiRealRes[i] = my->multiRealVals[i]->getValue();
 
     for( std::size_t i=0; i!=my->stringVals.size(); ++i)
         *my->stringRes[i] = my->stringVals[i]->getValue();
 
-    for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
-        *my->multiStringRes[i] = my->multiStringVals[i]->getValue();
-
     for( std::size_t i=0; i!=my->switchVals.size(); ++i)
-        *my->switchRes[i] |= my->switchVals[i]->getValue();
+        // Toggle switch-result if switch is present
+        *my->switchRes[i] ^= my->switchVals[i]->getValue();
 
     if ( my->plainStringVal )
             *my->plainStringRes = my->plainStringVal->getValue();
 
+    for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
+        if( my->multiIntVals[i]->isSet() )
+            *my->multiIntRes[i] = my->multiIntVals[i]->getValue();
+
+    for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
+        if( my->multiRealVals[i]->isSet() )
+            *my->multiRealRes[i] = my->multiRealVals[i]->getValue();
+
+    for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
+        if( my->multiStringVals[i]->isSet() )
+            *my->multiStringRes[i] = my->multiStringVals[i]->getValue();
 }
 
 void gsCmdLine::setExceptionHandling(const bool state)
