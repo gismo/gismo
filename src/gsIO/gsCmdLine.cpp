@@ -462,12 +462,19 @@ bool gsCmdLine::getValues(int argc, char *argv[])
 }
 
 
+#define ADD_OPTION_LIST_ENTRY(type,iterate,addFct)                                        \
+{                                                                                         \
+    std::string nm = iterate->getName() + ".";                                            \
+    const std::vector<type>& vec = iterate->getValue();                                   \
+    std::size_t sz = vec.size();                                                          \
+    for ( std::size_t j=0; j<sz; ++j )                                                    \
+        result.addFct( nm+util::to_string(j), iterate->getDescription(), vec[j] );        \
+    result.addInt( nm+"Size", iterate->getDescription(), sz );                            \
+}
+
 gsOptionList gsCmdLine::getOptionList()
 {
     GISMO_ASSERT( my->didParseCmdLine, "gsCmdLine::getOptionList can be called only after gsCmdLine::getValues." );
-
-    GISMO_ASSERT( my->multiIntVals.size() == 0 && my->multiRealVals.size() == 0 && my->multiStringVals.size() == 0,
-                  "gsCmdLine::getOptionList is not implemented for multiargs" );
 
     gsOptionList result;
     for( std::size_t i=0; i!=my->intVals.size(); ++i)
@@ -478,10 +485,18 @@ gsOptionList gsCmdLine::getOptionList()
         result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), my->stringVals[i]->getValue() );
     for( std::size_t i=0; i!=my->switches.size(); ++i)
         result.addSwitch( my->switches[i]->getName(), my->switches[i]->getDescription(), my->switches[i]->getValue() );
+    for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
+        ADD_OPTION_LIST_ENTRY(index_t,my->multiIntVals[i],addInt)
+    for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
+        ADD_OPTION_LIST_ENTRY(real_t,my->multiRealVals[i],addReal)
+    for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
+        ADD_OPTION_LIST_ENTRY(std::string,my->multiStringVals[i],addString)
     if ( my->plainString )
         result.addString( my->plainString->getName(), my->plainString->getDescription(), my->plainString->getValue() );
     return result;
 }
+
+#undef ADD_OPTION_LIST_ENTRY
 
 gsCmdLine::~gsCmdLine() 
 {
