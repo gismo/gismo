@@ -41,10 +41,10 @@ public:
     typedef TCLAP::UnlabeledValueArg<std::string>  PlainStrArg;
     */
 
-    gsCmdLinePrivate(const std::string& message,	
+    gsCmdLinePrivate(const std::string& message,
                      const char delimiter = ' ',
                      bool helpAndVersion = true)
-        : cmd(message,delimiter,GISMO_VERSION,helpAndVersion), plainString(NULL)
+        : cmd(message,delimiter,GISMO_VERSION,helpAndVersion), plainStringVal(NULL)
 #ifndef NDEBUG
           , didParseCmdLine(false)
 #endif
@@ -60,8 +60,8 @@ public:
         freeAll( multiRealVals  );
         freeAll( stringVals     );
         freeAll( multiStringVals);
-        freeAll( switches       );
-        delete plainString;
+        freeAll( switchVals     );
+        delete plainStringVal;
     }
 
 public:
@@ -86,19 +86,19 @@ public:
 
     // Stores string arguments
     std::vector<TCLAP::ValueArg<std::string>*> stringVals;
-    std::vector<std::string*>                  strRes;
+    std::vector<std::string*>                  stringRes;
 
     // Stores multi string arguments
     std::vector<TCLAP::MultiArg<std::string>*> multiStringVals;
-    std::vector<std::vector<std::string>*>     multiStrRes;
+    std::vector<std::vector<std::string>*>     multiStringRes;
 
     // Stores switch arguments
-    std::vector<TCLAP::SwitchArg*>             switches;
-    std::vector<bool*>                         swRes;
+    std::vector<TCLAP::SwitchArg*>             switchVals;
+    std::vector<bool*>                         switchRes;
 
     // Stores plain string argument
-    TCLAP::UnlabeledValueArg<std::string> *    plainString;
-    std::string *                              pstrRes;
+    TCLAP::UnlabeledValueArg<std::string> *    plainStringVal;
+    std::string *                              plainStringRes;
 
     // Stores config filename
     //std::string config;
@@ -127,7 +127,7 @@ gsCmdLine::gsCmdLine( const std::string& message,
     my->stringVals.push_back(
         new TCLAP::ValueArg<std::string>("","config",
         "File containing configuration options",false,my->config,"string",my->cmd) );
-    my->strRes.push_back(&config);
+    my->stringRes.push_back(&config);
     //my->parsed = false;
     */
 }
@@ -184,7 +184,7 @@ void gsCmdLine::addString( const std::string& flag,
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->stringVals.push_back(new TCLAP::ValueArg<std::string>(flag,name,desc,false,value,"string",my->cmd));
-    my->strRes.push_back(&value);
+    my->stringRes.push_back(&value);
 }
 
 void gsCmdLine::addMultiString( const std::string       & flag, 
@@ -195,7 +195,7 @@ void gsCmdLine::addMultiString( const std::string       & flag,
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
     my->multiStringVals.push_back(new TCLAP::MultiArg<std::string>(flag,name,desc,false,"string",my->cmd) );
-    my->multiStrRes.push_back(&value);
+    my->multiStringRes.push_back(&value);
 }
 
 void gsCmdLine::addSwitch( const std::string& flag, 
@@ -205,8 +205,8 @@ void gsCmdLine::addSwitch( const std::string& flag,
 {
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    my->switches.push_back(new TCLAP::SwitchArg(flag,name,desc,my->cmd) );
-    my->swRes.push_back(&value);
+    my->switchVals.push_back(new TCLAP::SwitchArg(flag,name,desc,my->cmd) );
+    my->switchRes.push_back(&value);
 }
 
 void gsCmdLine::addPlainString( const std::string& name, 
@@ -216,12 +216,10 @@ void gsCmdLine::addPlainString( const std::string& name,
     GISMO_ASSERT( !name.empty(), "The name (long form of the flag) must not be empty." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
 
-    GISMO_ENSURE( !my->plainString, "Plain string already added." );
+    GISMO_ENSURE( !my->plainStringVal, "Plain string already added." );
 
-    my->plainString =
-        new TCLAP::UnlabeledValueArg<std::string>(name,desc,false,value,"string",my->cmd);
-
-    my->pstrRes = &value;
+    my->plainStringVal = new TCLAP::UnlabeledValueArg<std::string>(name,desc,false,value,"string",my->cmd);
+    my->plainStringRes = &value;
 }
 
 
@@ -265,7 +263,7 @@ bool gsCmdLine::getValues(int argc, char *argv[])
 
     for( std::size_t i=0; i!=my->intVals.size(); ++i)
         *my->intRes[i] = my->intVals[i]->getValue();
-    
+
     for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
         *my->multiIntRes[i] = my->multiIntVals[i]->getValue();
 
@@ -274,19 +272,18 @@ bool gsCmdLine::getValues(int argc, char *argv[])
 
     for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
         *my->multiRealRes[i] = my->multiRealVals[i]->getValue();
-    
+
     for( std::size_t i=0; i!=my->stringVals.size(); ++i)
-        *my->strRes[i] = my->stringVals[i]->getValue();
+        *my->stringRes[i] = my->stringVals[i]->getValue();
 
     for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
-        *my->multiStrRes[i] = my->multiStringVals[i]->getValue();
+        *my->multiStringRes[i] = my->multiStringVals[i]->getValue();
 
-    
-    for( std::size_t i=0; i!=my->switches.size(); ++i)
-        *my->swRes[i] |= my->switches[i]->getValue();
+    for( std::size_t i=0; i!=my->switchVals.size(); ++i)
+        *my->switchRes[i] |= my->switchVals[i]->getValue();
 
-    if ( my->plainString )
-            *my->pstrRes = my->plainString->getValue();
+    if ( my->plainStringVal )
+            *my->plainStringRes = my->plainStringVal->getValue();
 
     return true;
 }
@@ -322,16 +319,16 @@ gsOptionList gsCmdLine::getOptionList()
         result.addReal( my->realVals[i]->getName(), my->realVals[i]->getDescription(), my->realVals[i]->getValue() );
     for( std::size_t i=0; i!=my->stringVals.size(); ++i)
         result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), my->stringVals[i]->getValue() );
-    for( std::size_t i=0; i!=my->switches.size(); ++i)
-        result.addSwitch( my->switches[i]->getName(), my->switches[i]->getDescription(), my->switches[i]->getValue() );
+    for( std::size_t i=0; i!=my->switchVals.size(); ++i)
+        result.addSwitch( my->switchVals[i]->getName(), my->switchVals[i]->getDescription(), my->switchVals[i]->getValue() );
     for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(index_t,my->multiIntVals[i],addInt)
     for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(real_t,my->multiRealVals[i],addReal)
     for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(std::string,my->multiStringVals[i],addString)
-    if ( my->plainString )
-        result.addString( my->plainString->getName(), my->plainString->getDescription(), my->plainString->getValue() );
+    if ( my->plainStringVal )
+        result.addString( my->plainStringVal->getName(), my->plainStringVal->getDescription(), my->plainStringVal->getValue() );
     return result;
 }
 
