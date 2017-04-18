@@ -227,27 +227,31 @@ bool gsCmdLine::valid(int argc, char *argv[]) const
 {
     const bool eh = my->cmd.getExceptionHandling();
     my->cmd.setExceptionHandling(false);
-
+    std::cout.flush();
+    std::cout.setstate(std::ios_base::failbit);
     try
     {
         my->cmd.parse(argc,argv);
     }
     catch ( TCLAP::ArgException& e )
     {
-        gsWarn << "\nArgument exception when reading the command line.\n";
-        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
         my->cmd.setExceptionHandling(eh);
+        std::cout.clear();
+        //gsWarn << "\nArgument exception when reading the command line.\n";
+        //gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
         return false;
     }
     catch ( TCLAP::ExitException &ee )
     {
-        gsWarn << "\nExit exception when reading the command line.\n";
-        gsWarn << "Exit status: " << ee.getExitStatus() << "\n";
         my->cmd.setExceptionHandling(eh);
+        std::cout.clear();
+        //gsWarn << "\nExit exception when reading the command line.\n";
+        //gsWarn << "Exit status: " << ee.getExitStatus() << "\n";
         return false;
     }
 
     my->cmd.setExceptionHandling(eh);
+    std::cout.clear();
     return true;
 }
 
@@ -344,7 +348,7 @@ void gsCmdLinePrivate::GismoCmdOut::failure(TCLAP::CmdLineInterface& c, TCLAP::A
     gsInfo <<"\n USAGE: \n";
     //_longUsage( c, gsInfo );
     this->usage(c);
-    throw;
+    throw TCLAP::ExitException(1);
 }
 
 void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)

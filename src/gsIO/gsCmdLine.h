@@ -236,19 +236,27 @@ public:
     /// Must be invoked after \a getValues
     gsOptionList getOptionList();
 
-    ~gsCmdLine();
-
+    /// Prints the version information
     static void printVersion();
 
+    /// Returns the program's description (as specified in the constructor)
     std::string& getMessage();
 
-    bool valid(int argc, char *argv[]) const ;
+    /// Parses the command line and returns true iff everything is okey.
+    /// This function should be called *after* the parameters have been registered.
+    ///
+    /// If the user has invoked --help or --version, the result is false.
+    /// TODO: Is this what we want?
+    bool valid(int argc, char *argv[]) const;
 
     /// Sets exception handling (true/false)
     void setExceptionHandling(const bool state);
 
     /// Gets the exception handling status (true/false)
     bool getExceptionHandling() const;
+
+    // Destructor
+    ~gsCmdLine();
 
 private:
 
