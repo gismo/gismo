@@ -243,6 +243,14 @@ public:
 
     std::string& getMessage();
 
+    bool valid(int argc, char *argv[]) const ;
+
+    /// Sets exception handling (true/false)
+    void setExceptionHandling(const bool state);
+
+    /// Gets the exception handling status (true/false)
+    bool getExceptionHandling() const;
+
 private:
 
     gsCmdLinePrivate * my;

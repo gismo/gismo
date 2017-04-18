@@ -68,9 +68,6 @@ public:
 
     TCLAP::CmdLine cmd;
 
-    std::map<std::string,TCLAP::Arg*> args;
-    std::vector<std::string>        argstr;
-
     // Stores integer arguments
     std::vector<TCLAP::ValueArg<int>*>         intVals;
     std::vector<int*>                          intRes;
@@ -227,6 +224,36 @@ void gsCmdLine::addPlainString( const std::string& name,
     my->pstrRes = &value;
 }
 
+
+bool gsCmdLine::valid(int argc, char *argv[]) const 
+{
+    const bool eh = my->cmd.getExceptionHandling();
+    my->cmd.setExceptionHandling(false);
+
+    try
+    {
+        my->cmd.parse(argc,argv);
+    }
+    catch ( TCLAP::ArgException& e )
+    {
+        gsWarn << "\nArgument exception when reading the command line.\n";
+        gsWarn << "Error: " << e.error() << " " << e.argId() << "\n";
+        my->cmd.setExceptionHandling(eh);
+        return false;
+    }
+    catch ( TCLAP::ExitException &ee )
+    {
+        gsWarn << "\nExit exception when reading the command line.\n";
+        gsWarn << "Exit status: " << ee.getExitStatus() << "\n";
+        my->cmd.setExceptionHandling(eh);
+        return false;
+    }
+
+    my->cmd.setExceptionHandling(eh);
+    return true;
+}
+
+
 bool gsCmdLine::getValues(int argc, char *argv[])
 {
     GISMO_ASSERT( !my->didParseCmdLine, "gsCmdLine::getValues must not be called twice." );
@@ -234,37 +261,45 @@ bool gsCmdLine::getValues(int argc, char *argv[])
     my->didParseCmdLine = true;
 #endif
 
-    try
-    {
-        my->cmd.parse(argc,argv);
+    my->cmd.parse(argc,argv);
 
-        for( std::size_t i=0; i!=my->intVals.size(); ++i)
-            *my->intRes[i] = my->intVals[i]->getValue();
+    for( std::size_t i=0; i!=my->intVals.size(); ++i)
+        *my->intRes[i] = my->intVals[i]->getValue();
+    
+    for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
+        *my->multiIntRes[i] = my->multiIntVals[i]->getValue();
 
-        for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
-            *my->multiIntRes[i] = my->multiIntVals[i]->getValue();
+    for( std::size_t i=0; i!=my->realVals.size(); ++i)
+        *my->realRes[i] = my->realVals[i]->getValue();
 
-        for( std::size_t i=0; i!=my->realVals.size(); ++i)
-            *my->realRes[i] = my->realVals[i]->getValue();
+    for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
+        *my->multiRealRes[i] = my->multiRealVals[i]->getValue();
+    
+    for( std::size_t i=0; i!=my->stringVals.size(); ++i)
+        *my->strRes[i] = my->stringVals[i]->getValue();
 
-        for( std::size_t i=0; i!=my->stringVals.size(); ++i)
-            *my->strRes[i] = my->stringVals[i]->getValue();
+    for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
+        *my->multiStrRes[i] = my->multiStringVals[i]->getValue();
 
-        for( std::size_t i=0; i!=my->switches.size(); ++i)
-            *my->swRes[i] |= my->switches[i]->getValue();
+    
+    for( std::size_t i=0; i!=my->switches.size(); ++i)
+        *my->swRes[i] |= my->switches[i]->getValue();
 
-        if ( my->plainString )
+    if ( my->plainString )
             *my->pstrRes = my->plainString->getValue();
-    }
-    catch ( TCLAP::ArgException& e )
-    {
-        GISMO_UNUSED(e);
-        return false; 
-    }
 
     return true;
 }
 
+void gsCmdLine::setExceptionHandling(const bool state)
+{
+    my->cmd.setExceptionHandling(state);
+}
+
+bool gsCmdLine::getExceptionHandling() const
+{
+    return my->cmd.getExceptionHandling();
+}
 
 #define ADD_OPTION_LIST_ENTRY(type,iterate,addFct)                                        \
 {                                                                                         \
