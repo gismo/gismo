@@ -78,9 +78,7 @@
     do {                                                                \
         if (! (condition) ) {                                           \
             gsDebug << "Assertion `" #condition "` failed in " << __FILE__ \
-                    << " line " << __LINE__ << ".\nMESSAGE: " << message << "\n"; \
-                throw std::runtime_error("GISMO_ASSERT failure");       \
-        }                                                               \
+                    << " line " << __LINE__ <<" ("<<__FUNCTION__<< ").\nMESSAGE: " << message << "\n"; abort(); } \
     } while (false)
 #else
 #   define GISMO_ASSERT(condition, message)

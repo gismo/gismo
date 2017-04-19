@@ -52,7 +52,7 @@ public:
         cmd.setOutput( &cmdout );
     }
 
-    ~gsCmdLinePrivate() throw()
+    ~gsCmdLinePrivate()
     {
         freeAll( intVals        );
         freeAll( multiIntVals   );
