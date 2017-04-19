@@ -49,6 +49,9 @@
 // in a compilation failure.
 #define exprtk_disable_string_capabilities
 
+#define exprtk_disable_rtl_io_file
+#define exprtk_disable_rtl_vecops
+
 #ifdef GISMO_WITH_ADIFF
   /* Optional automatic differentiation */
   #define DScalar gismo::ad::DScalar2<real_t,-1>
