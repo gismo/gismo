@@ -101,7 +101,7 @@ public:
     /// @param desc       Description (printed if --help is invoked)
     /// @param value      This should be a non-const vector. When \a getValues is
     ///                   invoked, the vector is filled with that values. Pre-existing
-    ///                   values are deleted
+    ///                   values are kept only if the option has been used zero times.
     ///
     /// If the flag is "n", the user might call "-n 10" at the command line.
     /// It the name is "size", the user might call "--size 10" at the command line.
@@ -136,7 +136,7 @@ public:
     /// @param desc       Description (printed if --help is invoked)
     /// @param value      This should be a non-const vector. When \a getValues is
     ///                   invoked, the vector is filled with that values. Pre-existing
-    ///                   values are deleted
+    ///                   values are kept only if the option has been used zero times.
     ///
     /// If the flag is "t", the user might call "-t .5" at the command line.
     /// It the name is "tau", the user might call "--tau .5" at the command line.
@@ -171,7 +171,7 @@ public:
     /// @param desc       Description (printed if --help is invoked)
     /// @param value      This should be a non-const vector. When \a getValues is
     ///                   invoked, the vector is filled with that values. Pre-existing
-    ///                   values are deleted
+    ///                   values are kept only if the option has been used zero times.
     ///
     /// If the flag is "f", the user might call "-f foo.xml" at the command line.
     /// If the name is "file", the user might call "--file foo.xml" at the command line.
@@ -237,7 +237,9 @@ public:
     /// \a addString or \a addSwitch or \a addPlainString) into a
     /// gsOptionList object.
     ///
-    /// Must be invoked after \a getValues
+    /// Must be invoked after \a getValues. This function takes its values
+    /// from the registered variables, so changes in thoes are taken into
+    /// account.
     gsOptionList getOptionList();
 
     /// Prints the version information
@@ -249,8 +251,7 @@ public:
     /// Parses the command line and returns true iff everything is okey.
     /// This function should be called *after* the parameters have been registered.
     ///
-    /// If the user has invoked --help or --version, the result is false.
-    /// TODO: Is this what we want?
+    /// If the user has invoked --help or --version, the result is true.
     bool valid(int argc, char *argv[]) const;
 
     /// Sets exception handling (true/false)
