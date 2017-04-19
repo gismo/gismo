@@ -52,7 +52,7 @@ public:
         cmd.setOutput( &cmdout );
     }
 
-    ~gsCmdLinePrivate()
+    ~gsCmdLinePrivate() throw()
     {
         freeAll( intVals        );
         freeAll( multiIntVals   );
@@ -315,7 +315,7 @@ bool gsCmdLine::getExceptionHandling() const
     std::string nm = (vals)->getName() + ".";                                       \
     std::size_t sz = (res).size();                                                  \
     for ( std::size_t j=0; j<sz; ++j )                                              \
-        result.addFct( nm+util::to_string(j), (vals)->getDescription(), (res)[j] ); \
+    { result.addFct( nm+util::to_string(j), (vals)->getDescription(), (res)[j] ); } \
     result.addInt( nm+"Size", (vals)->getDescription(), sz );                       \
 }
 
