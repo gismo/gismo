@@ -285,7 +285,7 @@ void gsCmdLine::getValues(int argc, char *argv[])
         *my->switchRes[i] ^= my->switchVals[i]->getValue();
 
     if ( my->plainStringVal )
-            *my->plainStringRes = my->plainStringVal->getValue();
+        *my->plainStringRes = my->plainStringVal->getValue();
 
     for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
         if( my->multiIntVals[i]->isSet() )
@@ -310,14 +310,13 @@ bool gsCmdLine::getExceptionHandling() const
     return my->cmd.getExceptionHandling();
 }
 
-#define ADD_OPTION_LIST_ENTRY(type,iterate,addFct)                                        \
-{                                                                                         \
-    std::string nm = iterate->getName() + ".";                                            \
-    const std::vector<type>& vec = iterate->getValue();                                   \
-    std::size_t sz = vec.size();                                                          \
-    for ( std::size_t j=0; j<sz; ++j )                                                    \
-        result.addFct( nm+util::to_string(j), iterate->getDescription(), vec[j] );        \
-    result.addInt( nm+"Size", iterate->getDescription(), sz );                            \
+#define ADD_OPTION_LIST_ENTRY(res,vals,addFct)                                      \
+{                                                                                   \
+    std::string nm = (vals)->getName() + ".";                                       \
+    std::size_t sz = (res).size();                                                  \
+    for ( std::size_t j=0; j<sz; ++j )                                              \
+        result.addFct( nm+util::to_string(j), (vals)->getDescription(), (res)[j] ); \
+    result.addInt( nm+"Size", (vals)->getDescription(), sz );                       \
 }
 
 gsOptionList gsCmdLine::getOptionList()
@@ -326,21 +325,21 @@ gsOptionList gsCmdLine::getOptionList()
 
     gsOptionList result;
     for( std::size_t i=0; i!=my->intVals.size(); ++i)
-        result.addInt( my->intVals[i]->getName(), my->intVals[i]->getDescription(), my->intVals[i]->getValue() );
+        result.addInt( my->intVals[i]->getName(), my->intVals[i]->getDescription(), *my->intRes[i] );
     for( std::size_t i=0; i!=my->realVals.size(); ++i)
-        result.addReal( my->realVals[i]->getName(), my->realVals[i]->getDescription(), my->realVals[i]->getValue() );
+        result.addReal( my->realVals[i]->getName(), my->realVals[i]->getDescription(), *my->realRes[i] );
     for( std::size_t i=0; i!=my->stringVals.size(); ++i)
-        result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), my->stringVals[i]->getValue() );
+        result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), *my->stringRes[i] );
     for( std::size_t i=0; i!=my->switchVals.size(); ++i)
-        result.addSwitch( my->switchVals[i]->getName(), my->switchVals[i]->getDescription(), my->switchVals[i]->getValue() );
+        result.addSwitch( my->switchVals[i]->getName(), my->switchVals[i]->getDescription(), *my->switchRes[i] );
     for( std::size_t i=0; i!=my->multiIntVals.size(); ++i)
-        ADD_OPTION_LIST_ENTRY(index_t,my->multiIntVals[i],addInt)
+        ADD_OPTION_LIST_ENTRY(*my->multiIntRes[i],my->multiIntVals[i],addInt)
     for( std::size_t i=0; i!=my->multiRealVals.size(); ++i)
-        ADD_OPTION_LIST_ENTRY(real_t,my->multiRealVals[i],addReal)
+        ADD_OPTION_LIST_ENTRY(*my->multiRealRes[i],my->multiRealVals[i],addReal)
     for( std::size_t i=0; i!=my->multiStringVals.size(); ++i)
-        ADD_OPTION_LIST_ENTRY(std::string,my->multiStringVals[i],addString)
+        ADD_OPTION_LIST_ENTRY(*my->multiStringRes[i],my->multiStringVals[i],addString)
     if ( my->plainStringVal )
-        result.addString( my->plainStringVal->getName(), my->plainStringVal->getDescription(), my->plainStringVal->getValue() );
+        result.addString( my->plainStringVal->getName(), my->plainStringVal->getDescription(), *my->plainStringRes );
     return result;
 }
 
