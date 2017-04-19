@@ -41,11 +41,7 @@ int main(int argc, char* argv[])
     cmd.addPlainString("input", "G+Smo input basis file.", input);
     cmd.addString("o", "output", "Name of the output file.", output);
     
-    bool ok = cmd.getValues(argc,argv);
-    if (!ok) {
-        gsInfo << "Error during parsing command line!";
-        return 1;
-    }
+    cmd.getValues(argc,argv);
     
     // ======================================================================
     // reading the basis

@@ -78,11 +78,7 @@ int main(int argc, char *argv[])
   cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files", 
                 dump);
   
-  bool ok = cmd.getValues(argc,argv);
-  if (!ok) {
-    gsInfo << "Error during parsing!";
-    return 1;
-  }
+  cmd.getValues(argc,argv);
 
   // ****** Prepared test examples ******
   //

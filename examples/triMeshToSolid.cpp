@@ -45,12 +45,7 @@ int main(int argc, char *argv[])
                 innerAngle);
     cmd.addReal("c", "cutoff","Cutoff angle (degrees).", cutoffAngle);
                   
-    bool ok = cmd.getValues(argc,argv);
-    if (!ok) 
-    {
-        gsInfo << "Error during parsing";
-        return 1;
-    }
+    cmd.getValues(argc,argv);
     
     if (filename.empty() )
     {

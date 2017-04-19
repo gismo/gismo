@@ -89,13 +89,7 @@ int main(int argc, char* argv[])
     // -----------------------------------------------------------------
     // Reading the arguments: values string, number, flNumber, boolean
     // are updated with the inputs, if given. If "true" is returned, then reading succeeded.
-    bool ok = cmd.getValues(argc,argv);
-
-    if ( !ok ) 
-    {
-        gsWarn << "Something went wrong when reading the command line. Exiting.\n";
-        return 1;
-    }
+    cmd.getValues(argc,argv);
 
     gsInfo << "Printing command line arguments:\n\n\n"
            << "Plain string: " << plainString << "\n\n"

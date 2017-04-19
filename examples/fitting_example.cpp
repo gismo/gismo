@@ -49,12 +49,7 @@ int main(int argc, char *argv[])
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("d", "data", "Input sample data", fn);
     
-    bool ok = cmd.getValues(argc,argv);
-    if (!ok) 
-    {
-      gsInfo << "Something went wrong when reading the command line. Exiting.\n";
-      return 1;
-    }
+    cmd.getValues(argc,argv);
     
     if (deg_x < 1)
     { gsInfo << "Degree x must be positive.\n";  return 0;}

@@ -28,8 +28,7 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Tutorial on assemblying a Poisson problem.");
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    const bool ok = cmd.getValues(argc,argv);
-    if (!ok) { gsWarn << "Error during parsing the command line!\n"; return 0;}
+    cmd.getValues(argc,argv);
     //! [Parse command line]
 
 

@@ -528,17 +528,19 @@ of a matrix by a number. Here are some equivalent ways to do this:
   // Task: multiply the rows of M by the corresponding scalars in v
   gsVector<> v(4);
   gsMatrix<> M(4,6);
+  v.setRandom();
+  M.setRandom();
 
   // Manually
   gsMatrix<> R1(4,6);
   for (index_t i = 0; i<4; ++i) // for all rows
-    for (index_t j = 0; j<6; ++i) // for all columns
+    for (index_t j = 0; j<6; ++j) // for all columns
       R1(i,j) = M(i,j) * v[i];
 
     // Using row-blocks
     gsMatrix<> R2(4,6);
     for (index_t i = 0; i<4; ++i) // for all rows
-      R1.row(i).noalias() = M.row(i) * v[i]; // matrix x scalar
+      R2.row(i).noalias() = M.row(i) * v[i]; // matrix x scalar
 
     // Using only one line
     gsMatrix<> R3;

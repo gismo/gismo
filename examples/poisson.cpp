@@ -184,11 +184,7 @@ bool parse_input( int argc, char *argv[], int & numRefine, int & numElevate,
              numRefine);
   cmd.addString("b","basis","File containing basis for discretization (.xml)", fn_basis);
   cmd.addString("g","geometry","File containing Geometry (.xml, .axl, .txt)", fn);
-  bool ok = cmd.getValues(argc,argv);
-  if (!ok) {
-    gsInfo << "Error parsing command line!\n";
-    return false; 
-  }
+  cmd.getValues(argc,argv);
     
     if ( arg_dirich )
         Dirichlet  = 1;

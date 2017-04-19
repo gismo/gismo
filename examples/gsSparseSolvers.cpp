@@ -38,7 +38,7 @@ int main(int argc, char** argv)
 
     cmd.addInt("n", "size", "Size of the matrices", mat_size);
 
-    if ( !cmd.getValues(argc,argv) ) return 1;
+    cmd.getValues(argc,argv);
 
     gsSparseMatrix<>  Q(mat_size,mat_size);
     gsVector<>        b(mat_size), x(mat_size), x0(mat_size);
