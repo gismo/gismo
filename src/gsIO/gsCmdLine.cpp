@@ -251,9 +251,9 @@ bool gsCmdLine::valid(int argc, char *argv[]) const
     {
         my->cmd.parse(argc,argv);
     }
-    catch ( TCLAP::ExitException &e ) { /*result = true */; }
-    //catch ( TCLAP::ArgException& e  ) { result = false; }
-    catch (...)                       { result = false; }
+    catch ( TCLAP::ExitException& )   { /*result = true;*/  }
+    //catch ( TCLAP::ArgException&  ) { result = false;     }
+    catch (...)                       { result = false;     }
 
     my->cmd.reset();
     my->cmd.setExceptionHandling(eh);
