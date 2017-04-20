@@ -156,7 +156,7 @@ void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, const T Dt
                  m_prevRhs, m_stationary->rhs(), curSolution, Dt);
     m_prevRhs.swap(m_stationary->rhs());
 }
-//*/
+*/
 
 template<class T>
 void gsHeatEquation<T>::nextTimeStep(const gsSparseMatrix<T> & sysMatrix,

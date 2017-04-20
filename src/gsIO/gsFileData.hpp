@@ -1,4 +1,4 @@
-/** @file gsFiledata.hpp
+/** @file gsFileData.hpp
 
     @brief Implementation of utility class which holds I/O XML data to
            read/write to/from files

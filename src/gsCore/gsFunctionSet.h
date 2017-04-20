@@ -401,7 +401,7 @@ public:
        This function evaluates the functions and their derivatives at
        the points \a in and writes them in the corresponding fields of \a out.
        Which field to write (and what to compute) is controlled
-       by the \a out.flags (see also \link gsFuncData).
+       by the \a out.flags (see also gsFuncData).
      
        The input points \a in are expected to be compatible with the
        implementation/representation of the function, i.e. they should
@@ -419,7 +419,7 @@ public:
        the points contained in the gsMapData geo. The computed values
        are written in the corresponding fields of \a result.  Which
        field to write (and what to compute) is controlled by the \a
-       out.flags (see also \link gsFuncData).  Contrarily to
+       out.flags (see also gsFuncData).  Contrarily to
        compute(const gsMatrix<T> &, gsFuncData<T> &) where the caller
        must provide either parametric or physical points this call
        differenciate automatically.  

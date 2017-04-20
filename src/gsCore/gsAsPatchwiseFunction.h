@@ -33,7 +33,7 @@ private:
 public:
 
     gsAsPatchwiseFunction(const gsFunction<T> & func, index_t numPieces)
-    : m_numPieces(numPieces), m_func_ptr(func);
+    : m_numPieces(numPieces), m_func_ptr(func)
     { }
 
 public:

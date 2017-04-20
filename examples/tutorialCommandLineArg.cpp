@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
     
     // -----------------------------------------------------------------
     // General syntax to add an argument:
-    // cmd.addType("f", "--flag", "Description", destination)
+    // cmd.addType("f", "flag", "Description", destination)
     // "f"    is the short flag: -f
     // "flag" is the long  flag: --flag (same effect as "-f")
     // "Description" describes what this argument is about
