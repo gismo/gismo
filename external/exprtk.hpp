@@ -11978,7 +11978,7 @@ namespace exprtk
       struct equal_op : public opr_base<T>
       {
          typedef typename opr_base<T>::Type Type;
-         static inline T process(Type t1, Type t2) { return (numeric::equal<T>(t1,t2) ? T(1) : T(0)); }
+         static inline T process(Type t1, Type t2) { return (0!=numeric::equal<T>(t1,t2) ? T(1) : T(0)); }
          static inline T process(const std::string& t1, const std::string& t2) { return ((t1 == t2) ? T(1) : T(0)); }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_eq; }
          static inline details::operator_type operation() { return details::e_equal; }
