@@ -82,13 +82,15 @@ int main(int argc, char* argv[])
     std::string value = "default_plain_value"; 
     cmd.addPlainString("plain", "Description of the plain command line argument.", plainString);
 
-    // Note: Another manually defined argument is
-    //   gsArgMultiVal
-    // which reads several values (i.e. a vector) with one flag
+    // Each flag can only called once. The commands
+    // cmd.addMultiString, cmd.addMultiInt and cmd.addMultiReal
+    // allow to register flags that can be used several times.
+    // They store the data in a vector.
 
     // -----------------------------------------------------------------
-    // Reading the arguments: values string, number, flNumber, boolean
-    // are updated with the inputs, if given. If "true" is returned, then reading succeeded.
+    // Read the arguments and update with the inputs, if given.
+    // The program stopps here if there was an error in the command line
+    // or the user invoked "--help" or "--version"
     cmd.getValues(argc,argv);
 
     gsInfo << "Printing command line arguments:\n\n\n"
