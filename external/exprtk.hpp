@@ -4716,8 +4716,8 @@ namespace exprtk
                   case e_xnor   : return xnor_opr<T>(arg0,arg1);
                   case e_root   : return root<T>    (arg0,arg1);
                   case e_roundn : return roundn<T>  (arg0,arg1);
-                  case e_equal  : return equal<T>   (arg0,arg1);
-                  case e_nequal : return nequal<T>  (arg0,arg1);
+                  case e_equal  : return equal      (arg0,arg1);
+                  case e_nequal : return nequal     (arg0,arg1);
                   case e_hypot  : return hypot<T>   (arg0,arg1);
                   case e_shr    : return shr<T>     (arg0,arg1);
                   case e_shl    : return shl<T>     (arg0,arg1);
@@ -11978,7 +11978,7 @@ namespace exprtk
       struct equal_op : public opr_base<T>
       {
          typedef typename opr_base<T>::Type Type;
-         static inline T process(Type t1, Type t2) { return (0!=numeric::equal<T>(t1,t2) ? T(1) : T(0)); }
+         static inline T process(Type t1, Type t2) { return numeric::equal(t1,t2); }
          static inline T process(const std::string& t1, const std::string& t2) { return ((t1 == t2) ? T(1) : T(0)); }
          static inline typename expression_node<T>::node_type type() { return expression_node<T>::e_eq; }
          static inline details::operator_type operation() { return details::e_equal; }
