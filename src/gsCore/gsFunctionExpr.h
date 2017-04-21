@@ -133,11 +133,11 @@ public:
     void set_y (T const & v) const;
     /// Sets the symbol "z" to a value
     void set_z (T const & v) const;
-    /// Sets the symbol "u" to a value
-    void set_w (T const & v) const;
-    /// Sets the symbol "v" to a value
-    void set_u (T const & v) const;
     /// Sets the symbol "w" to a value
+    void set_w (T const & v) const;
+    /// Sets the symbol "u" to a value
+    void set_u (T const & v) const;
+    /// Sets the symbol "v" to a value
     void set_v (T const & v) const;
   
     // see gsFunction for documentation
