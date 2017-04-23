@@ -33740,6 +33740,12 @@ namespace exprtk
          register_sf3(24) register_sf3(25) register_sf3(26) register_sf3(27)
          register_sf3(28) register_sf3(29) register_sf3(30)
          #undef register_sf3
+
+         #define register_sf3_extid(Id, Op)                                        \
+         sf3_map[Id] = pair_t(details::sf##Op##_op<T>::process,details::e_sf##Op); \
+
+         register_sf3_extid("(t-t)-t",23)  // (t-t)-t --> t-(t+t)
+         #undef register_sf3_extid
       }
 
       inline void load_sf4_map(sf4_map_t& sf4_map)
