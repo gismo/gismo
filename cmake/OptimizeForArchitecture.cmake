@@ -198,17 +198,8 @@ macro(AutodetectHostArchitecture)
       endif()
    endif(_vendor_id STREQUAL "GenuineIntel")
 endmacro()
-
 macro(OptimizeForArchitecture)
-   set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
-Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
-Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
-Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
-\"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
-\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \
-\"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
-\"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
-\"AMD 14h\", \"AMD 16h\".")
+   set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \"AMD 14h\", \"AMD 16h\".")
    set(_force)
    if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
       message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
@@ -455,7 +446,8 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       _enable_or_disable(AVX512IFMA "avx512ifma" "Use AVX512IFMA." false)
       _enable_or_disable(AVX512VBMI "avx512vbmi" "Use AVX512VBMI." false)
 
-      if(MSVC)
+      #if(MSVC)
+      if(MSVC AND MSVC_VERSION GREATER 1700) # G+Smo: VS 11
          # MSVC on 32 bit can select /arch:SSE2 (since 2010 also /arch:AVX)
          # MSVC on 64 bit cannot select anything (should have changed with MSVC 2010)
          _my_find(_enable_vector_unit_list "avx2" _found)
