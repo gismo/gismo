@@ -57,6 +57,8 @@ message ("  Source folder:          ${CMAKE_SOURCE_DIR}")
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")
 message ("  GISMO_COEFF_TYPE        ${GISMO_COEFF_TYPE}")
 message ("  GISMO_BUILD_LIB         ${GISMO_BUILD_LIB}")
+message ("  CMAKE_C_COMPILER        ${CMAKE_C_COMPILER}")
+message ("  CMAKE_CXX_COMPILER      ${CMAKE_CXX_COMPILER}")
 message ("  CMAKE_CXX_STANDARD      ${CMAKE_CXX_STANDARD}")
 
 if (${GISMO_BUILD_PCH})
