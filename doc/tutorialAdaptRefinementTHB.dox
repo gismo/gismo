@@ -132,7 +132,7 @@ Plot the solution in Paraview
 \image html tutAdaRefTHB_LSres4.png "Mesh (left, coloured by patch-index) and solution after 4 adaptive refinement steps."
 
 
-\section sAnnotated Annotated source file
+\section tutorialAdaptRefinementTHBAnnotated Annotated source file
 
 Here is the full file \c examples/tutorialAdaptRefinementTHB.cpp. Clicking on a function
 or class name will lead you to its reference documentation.

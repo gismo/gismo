@@ -424,7 +424,7 @@ Mathematical Methods for Curves and Surfaces. Ed. by M. Floater et al. Vol. 8177
 <a href="http://link.springer.com/chapter/10.1007/978-3-642-54382-1_18">[Link]</a>
 <a href="http://www.ag.jku.at/pubs/2013kgj.pdf">[Technical&nbsp;Report]</a>
 
-\section sAnnotated Annotated source file
+\section tutorialTHBSplineBasisAnnotated Annotated source file
 
 Here is the full file \c examples/tutorialTHBSplineBasis.cpp. Clicking on a function
 or class name will lead you to its reference documentation.

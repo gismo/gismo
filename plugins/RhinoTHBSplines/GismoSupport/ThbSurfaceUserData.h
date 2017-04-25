@@ -1,4 +1,4 @@
-/** @file  ThBsurfaceUserData.h
+/** @file  ThbSurfaceUserData.h
     @brief The user data attached to the CThbSurfaceObject's geometry. 
     This is used to facilitate reading and writing of the 
     THB surface definition to 3dm file.

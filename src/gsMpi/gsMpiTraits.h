@@ -1,5 +1,5 @@
 /**
- * @file gsMpiTest.cpp
+ * @file gsMpiTraits.h
  *
  * @brief Traits classes for mapping types onto MPI_Datatype.
  * @author C.Hofer, taken from DUNE - author Markus Blatt

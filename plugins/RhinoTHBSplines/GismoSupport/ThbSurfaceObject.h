@@ -1,4 +1,4 @@
-/** @file  ThBsurfaceObject.h
+/** @file  ThbSurfaceObject.h
     @brief The custom object to manage a Truncated Hierarchical B-Spline surface in Rhino.
 */
 #pragma once
