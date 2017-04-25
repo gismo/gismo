@@ -418,11 +418,6 @@ and returned to the user.
 As the name of the get function suggests, the returned object is the
 first object which was encountered in the XML tree.
 
-\note
-The raw pointer which is created has to be deleted manually be the
-user. If you prefer to use a smart pointer, you can create a
-gsGeometry::Ptr instead.
-
 To see what is the gsGeometry data that have been obtained, we can
 stream it to gsInfo:
 
@@ -440,11 +435,13 @@ matrix is fetched again by its id=1. this way there is no ambiguity
 which object is being read from the tree (as long as we use unique ids).
 
 Another command which appears in the above example is the \a safe
-macro.  This macro takes a pointer to a matrix (which is the returned
+function.  This macro takes a pointer to a matrix (which is the returned
 type of getId, and produces a smart pointer. The smart pointer is then
 transferred to uv/xyz matrices. This is an emulation of the move
 semantics of C++11, which we do not use yet, for the sake of
 compatibility.
+
+\todo Update this paragraph
 
 \subsection write01 Writing files
 
