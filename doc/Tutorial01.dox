@@ -133,7 +133,7 @@ There source folder contains the following sub-folders:
 
 - \b doc
 
-   Contains files related to doxygen documentation pages.
+   Contains files related to Doxygen documentation pages.
 
 
 \subsection BuildFolder01 The build (compilation) folder
@@ -173,7 +173,7 @@ The build folder has the following subfolders and files:
   $
   ~~~~~
   Note that on Linux you need to provide correctly the path (starting
-  with dot-slash-bin), in order to execute a file. Similary on Windows
+  with dot-slash-bin), in order to execute a file. Similarly on Windows
   you should execute (eg. from a command line) the file \a gsView.exe
   
 
@@ -188,7 +188,7 @@ The build folder has the following subfolders and files:
   [100%] Built target doc
   $ firefox doc/html/index.html
   ~~~~~  
-  then the resulting main doxygen page will be created in
+  then the resulting main Doxygen page will be created in
   <strong>doc/html/index.html</strong> and can be opened with a
   web-browser.
 
@@ -236,7 +236,7 @@ checking level, with the cost that the performance is reduced.
 The Debug mode is often too slow. However, as a last resort for
 chasing bugs this mode should be tried. Several times RelWithDebInfo
 inlines functions, and causes the debug information to point to the
-wring line in the code.
+wrong line in the code.
 
 The Release mode is the fully optimized, production code.
 
@@ -265,9 +265,9 @@ All the objects of the library are found inside the \a gismo namespace.
 
 \subsection str01 Streaming text messages
 
-There are pre-defined streams that should be prefered:
+There are pre-defined streams that should be preferred:
 
-- \b gsInfo This stream is an alias for std::cout and should be prefered over it.
+- \b gsInfo This stream is an alias for \c std::cout and should be preferred over it.
 
 - \b gsWarn This stream prints the word "Warning" before your message,
   and should be used to warn of any important events.
@@ -280,7 +280,7 @@ There are pre-defined streams that should be prefered:
   file of the code which emitted the message. This macro is used for
   easy printing and inspecting the contents of a variable.
 
-Note that the end-of-line character "\n" should be prefered over std::endl.
+Note that the end-of-line character \c "\n" should be preferred over \c std::endl .
 
 \subsection deb01 Assertion macros
 
@@ -300,8 +300,8 @@ GISMO_ERROR("You reached a line in the code which indicated a serious error")
 
 \subsection art1 Arithmetic types
 
-Common arithmetic types are defind by macros in \gismo, and should be
-prefered:
+Common arithmetic types are defined by macros in \gismo, and should be
+preferred:
 - \b real_t This type defaults to \a double
 - \b index_t This is the number type used for all matrix and vector indices and sizes (eg. number of rows).
 - \b size_t This is the type used in the standard library, eg. for the size of an std::vector.
@@ -309,7 +309,7 @@ prefered:
 Note that index_t and size_t might be different types, therefore case
 should be taken when comparing their value.
 
-Many templated classes (for instance matrices) have a default first
+Many template classes (for instance matrices) have a default first
 argument which is in most cases \b real_t.
 
 
@@ -322,7 +322,7 @@ programs.  Adding options to a program makes it more friendly to the
 users, while allowing you to execute many different scenarios without
 having to change the source code and re-compile the source file.
 
-Command-line arguments are usefull to avoid re-compiling your code
+Command-line arguments are useful to avoid re-compiling your code
 every time a small parameter is altered, as well as to make your
 program easily accessible by others. In \gismo there is an easy way to
 add command-line arguments, which come automatically with a small help
@@ -333,12 +333,12 @@ for parsing the command line:
 
 \snippet gsView.cpp Parse Command line
 
-The last argument of each "add" command is, as expected, a boolead
-(for the addSwitch), an an integer (for the addInt).  the
+The last argument of each "add" command is, as expected, a boolean
+(for the addSwitch), or an integer (for the addInt). The
 gsCmdLine::getValues command parses all the user's input and updates
 the variables with new values.
 Therefore, after this command, the value of all the variables can be
-different,
+different.
 If an argument is not provided by the user, then the value of the
 variable does not change.
 
@@ -347,7 +347,7 @@ After compiling the program we can issue:
 $ ./bin/gsView -h 
 ~~~~~
 and we obtain a list of the arguments together with the short
-expaination that we provided in the definition of the argument.  Note
+explanation that we provided in the definition of the argument. Note
 that all arguments are checked automatically during parsing,
 eg. duplicate arguments and other subtle errors are detected.
 
@@ -369,7 +369,7 @@ in the code. As a first example the file square.xml is:
 The space between the numbers and line breaks do not matter.
 The plain text files can become big in size, when the data is a lot. For
 this reason, a compressed XML format is also supported, which can also
-be read/writted directly.
+be read/written directly.
 
 All the tags in the XML tree of a \gismo XML file must be contained
 inside the \b \<\p xml \> tag. Arbitrary data can be contained inside an XML
@@ -407,9 +407,9 @@ object from the file:
 \snippet tutorialInputOutput.cpp Read geometry
 
 When creating the gsFileData object, all the XML data in the file are
-loadind into memory as an XML tree.
+loading into memory as an XML tree.
 This XML tree can contain many different objects. In the above, the
-gsFileData::has helper searches the tree for the existance of a
+gsFileData::has helper searches the tree for the existence of a
 gsGeometry tag. This tag corresponds to a polymorphic geometry object
 (which can be a polynomial curve, surface or volume or a rational
 NURBS patch, or a different type of geometry/patch).
@@ -442,7 +442,7 @@ which object is being read from the tree (as long as we use unique ids).
 Another command which appears in the above example is the \a safe
 macro.  This macro takes a pointer to a matrix (which is the returned
 type of getId, and produces a smart pointer. The smart pointer is then
-transfered to uv/xyz matrices. This is an emulation of the move
+transferred to uv/xyz matrices. This is an emulation of the move
 semantics of C++11, which we do not use yet, for the sake of
 compatibility.
 
@@ -455,14 +455,14 @@ save them as a file in the disk:
 
 the \<\< operator translates the object into an XML tag. Then the save
 command creates a file with all the contents of the \a fd XML
-tree. Since we only pushed one object in the tree upto now, only one
+tree. Since we only pushed one object in the tree up to now, only one
 gsGeometry tag will be found in the resulting file.
 
 Apart from the native XML format of the library, a number of third
-party formats can be imported or exported. One usefull such format is
+party formats can be imported or exported. One such useful format is
 Rhino's 3DM file format (note: the GISMO_WITH_ONURBS compilation
 parameter must be set). Also, the Siemens' NX (Parasolid) file format
-is supported, if the the Parasolid library is available in the system
+is supported, if the Parasolid library is available in the system
 (note: GISMO_WITH_PSOLID compilation parameter). Other formats include
 the GeoPDE (Matlab/octave) text format, the GoTools format and OBJ,
 OFF and STL mesh files. The IGES file format is under development.
@@ -495,7 +495,7 @@ The quick reference pages give a summary of the functionality:
 
 There is also a list with the [correspondance to matlab
 functions](http://eigen.tuxfamily.org/dox/AsciiQuickReference.txt). However,
-note theat some operations of Matlab are not mirrored (yet) with
+note that some operations of Matlab are not mirrored (yet) with
 functionality in Eigen. For example, a \em reshape function does not
 exist. The \ref TopicAliasing is also important to learn how to avoid
 bugs and write more efficient code.
@@ -516,7 +516,7 @@ whenever possible.
 The sources of the Eigen linear algebra library are included in the
 code repository of \gismo, for your convenience.
 
-Matrix operations of Eigen should be prefered over using for loops or
+Matrix operations of Eigen should be preferred over using for loops or
 manual functions. One reason for this is the clarity of the code, the
 reduction of lines of code and last but not least the fact that the
 provided operations are vectorized therefore they are more efficient
@@ -528,9 +528,9 @@ of a matrix by a number. Here are some equivalent ways to do this:
 \include bspline_vecxmat.cpp
 Output: \verbinclude bspline_vecxmat.out
 
-  From these 3 versions, the last one is prefered, since we know well
+  From these 3 versions, the last one is preferred, since we know well
   from linear algebra that left multiplication by a diagonal matrix
-  corresponds to multipling the rows by the diagonal elements. Note
+  corresponds to multiplying the rows by the diagonal elements. Note
   that v.asDiagonal() does not make a copy of the vector \a v, but only
   returns an expression of the \a v as a diagonal matrix. Also note
   the noalias() function to avoid \ref TopicAliasing, eg. an un-needed
@@ -542,7 +542,7 @@ Output: \verbinclude bspline_vecxmat.out
 One of the most basic objects in \gismo are the ones representing
 functions. There are several implementations of functions, or sets of
 functions. They all derive by a common class, gsFunctionSet. The main
-decendants of gsFunctionSet are two:
+descendants of gsFunctionSet are two:
 
 \subsection Function01 gsFunction
 
@@ -557,7 +557,7 @@ decendants of gsFunctionSet are two:
   function. It makes it very easy ad efficient to define and work with
   complicated mathematical function with minimal effort.
 
-  The main attribures of functions (and bases) are the dimension of the
+  The main attributes of functions (and bases) are the dimension of the
   parameter domain and the target domain, as well as their support.  The
   main functionality is the ability to evaluate the function and its
   derivatives at given points inside the support.
