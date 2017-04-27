@@ -138,7 +138,7 @@ private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
     NestedMatrix    m_expr; ///< Nested Eigen expression
 
-    using gsLinearOperator<T>::m_num_of_sweeps;
+    using Base::m_num_of_sweeps;
     T m_tau;
 };
 
@@ -243,7 +243,7 @@ public:
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
     NestedMatrix    m_expr; ///< Nested Eigen expression
-    using gsLinearOperator<T>::m_num_of_sweeps;
+    using Base::m_num_of_sweeps;
     T m_tau;
 };
 
