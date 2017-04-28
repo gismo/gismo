@@ -289,7 +289,7 @@ public:
      */
     void refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots);
 
-    /// Inserts the knot \em knot with multiplicity \mult in the knot
+    /// Inserts the knot \em knot with multiplicity \em mult in the knot
     /// vector of direction \a dir.
     void insertKnot(T knot, index_t dir, int mult=1)
     { this->knots(dir).insert( knot, mult); }

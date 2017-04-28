@@ -39,24 +39,6 @@ class gsVisitorCDR
 {
 public:
 
-        /** \brief Constructor for gsVisitorCDR, convection-diffusion-reaction
-     *
-     * \param[in] rhs Given right-hand-side function/source term that, for
-     * each evaluation point, returns a scalar.
-     * \param[in] coeff_A gsFunction that, for each evaluation point,
-     * returns a vector of size \f$d^2\f$.
-     * The entries of \f$A\f$ should appear in the order (for \f$d=3\f$)
-     * \f$ (A_{11},A_{21},A_{31},A_{12},A_{22},A_{32},A_{13},A_{23},A_{33})^T\f$,
-     * such that A.resize(d,d) returns the correct matrix.
-     * \param[in] coeff_b gsFunction that, for each evaluation point,
-     * returns a vector of size \f$d\f$.
-     * \param[in] coeff_c gsFunction that, for each evaluation point,
-     * returns a scalar.
-     * \param[in] flagStabilization Specifies stabilization for the convection term.\n
-     * 0: no stabilization\n
-     * 1: SUPG-stabilization
-     *
-     */
     gsVisitorCDR(const gsPde<T> & pde)
     { 
         const gsConvDiffRePde<T>* cdr =
@@ -73,6 +55,23 @@ public:
                       "Not yet tested for multiple right-hand-sides");
     }
 
+    /** \brief Constructor for gsVisitorCDR, convection-diffusion-reaction
+    *
+    * \param[in] rhs Given right-hand-side function/source term that, for
+    * each evaluation point, returns a scalar.
+    * \param[in] coeff_A gsFunction that, for each evaluation point,
+    * returns a vector of size \f$d^2\f$.
+    * The entries of \f$A\f$ should appear in the order (for \f$d=3\f$)
+    * \f$ (A_{11},A_{21},A_{31},A_{12},A_{22},A_{32},A_{13},A_{23},A_{33})^T\f$,
+    * such that A.resize(d,d) returns the correct matrix.
+    * \param[in] coeff_b gsFunction that, for each evaluation point,
+    * returns a vector of size \f$d\f$.
+    * \param[in] coeff_c gsFunction that, for each evaluation point,
+    * returns a scalar.
+    * \param[in] flagStabilization Specifies stabilization for the convection term.\n
+    * 0: no stabilization\n
+    * 1: SUPG-stabilization
+    */
     gsVisitorCDR(const gsFunction<T> & rhs,
                  const gsFunction<T> & coeff_A,
                  const gsFunction<T> & coeff_b,
@@ -84,7 +83,6 @@ public:
     {
         GISMO_ASSERT( rhs.targetDim() == 1 ,"Not yet tested for multiple right-hand-sides");
         GISMO_ASSERT( flagStabilization == 0 || flagStabilization == 1, "flagStabilization not known");
-
     }
 
     void initialize(const gsBasis<T> & basis,

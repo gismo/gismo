@@ -73,8 +73,8 @@ public:
      * @param flags what to compute
      * @param patch in case of multipatch structures, on which patch to compute
      */
-    explicit gsFuncData(unsigned _flags = 0, int patch = 0)
-    : flags(_flags), patchId(0)
+    explicit gsFuncData(unsigned flags = 0, int patch = 0)
+    : flags(flags), patchId(0)
     { }
 
 public:
@@ -214,8 +214,8 @@ public:
      * @brief Main constructor
      * @param flags what to compute
      */
-    explicit gsMapData(unsigned _flags = 0)
-    : Base(_flags), side(boundary::none)
+    explicit gsMapData(unsigned flags = 0)
+    : Base(flags), side(boundary::none)
     { }
 
 public:

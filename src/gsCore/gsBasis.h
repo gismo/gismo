@@ -382,6 +382,7 @@ public:
      *
      * @param[in] u
      * @param[in] coefs
+     * @param[in] n
      * @param[out] result
      */
     virtual void evalAllDersFunc_into(const gsMatrix<T> & u,

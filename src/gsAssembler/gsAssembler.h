@@ -304,7 +304,7 @@ public:  /* Dirichlet degrees of freedom computation */
     const std::vector<gsMatrix<T> > & allFixedDofs() const { return m_ddof; }
 
     /// @brief Returns the Dirichlet values for a unknown (if applicable)
-    /// \param[in] unk_the considered unknown
+    /// \param[in] unk the considered unknown
     const gsMatrix<T> & fixedDofs(int unk=0) const { return m_ddof[unk]; }
 
     GISMO_DEPRECATED
@@ -339,13 +339,13 @@ public:  /* Solution reconstruction */
 
 
 
-    /// @brief Construct solution from computed solution vector for a set of unknows.
+    /// @brief Construct solution from computed solution vector for a set of unknowns.
     /// The result is a vectorfield, where each component is given the corresponding
-    /// entry of \par unknowns. This method assumes that the specified unknows have the
+    /// entry of \par unknowns. This method assumes that the specified unknowns have the
     /// same basis.
     /// \param[in] solVector the solution vector obtained from the linear system
     /// \param[out] result the solution seen as vectorfield in form of a gsMultiBasis
-    /// \param[in] unknows the considered vector of unknowns
+    /// \param[in] unknowns the considered vector of unknowns
     virtual void constructSolution(const gsMatrix<T>& solVector,
                                    gsMultiPatch<T>& result,
                                    const gsVector<index_t>  & unknowns) const;
@@ -356,7 +356,7 @@ public:  /* Solution reconstruction */
     /// to the current solution specified by \par result. This method assumes that all
     /// unknowns have the same basis.
     /// \param[in] solVector the solution vector obtained from the linear system
-    /// \param[out]result the solution in form of a gsMultiBasis, \par solVector is added to the
+    /// \param[out] result the solution in form of a gsMultiBasis, \par solVector is added to the
     ///                   coefficients of result.
     /// \param[in] theta damping factor for update, theta = 1 corresponds to a full step.
     virtual void updateSolution(const gsMatrix<T>& solVector,

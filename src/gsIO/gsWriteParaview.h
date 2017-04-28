@@ -186,6 +186,8 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn);
 /// \brief Export tensor-structured point set with field data to Paraview file
 ///
 /// \param points matrix that contain 2D or 3D points, points are columns
+/// \param data
+/// \param np
 /// \param fn filename where paraview file is written
 template<class T>
 void gsWriteParaviewTPgrid(gsMatrix<T> const& points,

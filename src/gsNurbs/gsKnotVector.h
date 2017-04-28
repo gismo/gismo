@@ -419,6 +419,7 @@ public: // Deprecated functions required by gsKnotVector.
     /// \param interior number of interior knots
     /// \param mult_ends multiplicity at the two end knots
     /// \param mult_interior multiplicity at the interior knots
+    /// \param degree Degree of the knot. (default: -1)
     gsKnotVector( T first,
                   T last,
                   unsigned interior,
@@ -427,9 +428,10 @@ public: // Deprecated functions required by gsKnotVector.
                   int degree = -1 );
 
     /// Constructs knot vector from the given degree and iterators marking its endpoints.
+    /// \param deg Degree of the knot.
     /// \param begOfKnots iterator pointing to the beginning of the knots,
     /// \param endOfKnots iterator pointing past the end of the knots.
-    /// The knots between \a begOfKnots and \endOfKnots are assumed to be repeated
+    /// The knots between \a begOfKnots and \a endOfKnots are assumed to be repeated
     /// according to their multiplicities and sorted.
     template<typename iterType>
     gsKnotVector(int deg, const iterType begOfKnots, const iterType endOfKnots)

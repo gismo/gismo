@@ -235,10 +235,10 @@ public:
             gsBoehm( this->basis().knots(), this->coefs() , knot, i);
     }
 
-    /// Insert the given new knots in the range \a [begin..end)
+    /// Insert the given new knots in the range \a [\em inBegin .. \em inEend )
     /// without changing the curve.
-    /// \param begin iterator pointing to the first knot to be inserted
-    /// \param end iterator pointing to one position after the last
+    /// \param inBegin iterator pointing to the first knot to be inserted
+    /// \param inEnd iterator pointing to one position after the last
     /// knot to be inserted
     template <class It>
     void insertKnots( It inBegin, It inEnd)

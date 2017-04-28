@@ -60,7 +60,7 @@ namespace gismo {
    of the input matrix or of the matrix supplied by the gsTransform object.
    On each column the data is grouped in blocks corresponding to different functions,
    so that that if the requested evaluation contains s values
-   \f$ v_1, \ldots, v_s \f$ for each pair \f$ (f_i, p_j) \f$, \f$i = 1, \ldots, S\f$, $j = 1, \ldots, N$,
+   \f$ v_1, \ldots, v_s \f$ for each pair \f$ (f_i, p_j) \f$ , \f$ i = 1, \ldots, S \f$, \f$ j = 1, \ldots, N \f$ ,
    of (function, point) the output matrix looks like
 
    \f[

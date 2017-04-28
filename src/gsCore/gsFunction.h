@@ -238,7 +238,7 @@ public:
        This function evaluates the functions and their derivatives at
        the points \a InOut.points and writes them in the corresponding
        fields of \a InOut. Which field to write (and what to compute)
-       is controlled by the \a InOut.flags (see also \link gsMapData ).
+       is controlled by the \a InOut.flags (see also gsMapData).
        This is intended for parametrizations only and it works on
        functions sets of cardinality 1 only.
 

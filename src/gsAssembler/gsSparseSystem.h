@@ -326,15 +326,15 @@ public:
 
     /**
      * @brief Reserves the memory for the sparse matrix and the rhs,
-     * based on the polynomial degree of the first basis-piece in \
-     * mb, as well as the input options bdA, bdB and bdO
+     * based on the polynomial degree of the first basis-piece in
+     * /em mb, as well as the input options bdA, bdB and bdO
      *
      * At each column approximately bdA * deg + dbB non-zero entries
      * are expected. An extra amount of memory of bdO percent is
      * allocated, in order to speedup the process.
-     *
+     * @param mb
+     * @param opt
      * @param [in] numRhs number of columns
-     *
      */
     void reserve(const gsMultiBasis<T> & mb, const gsOptionList & opt, 
                  const index_t numRhs)
@@ -713,7 +713,6 @@ public: /* Add local contributions to system matrix */
      *       3) no assembling is done for the rhs
      * @param[in] localMat the local matrix
      * @param[in] actives the mapped index of basis functions, without shifts!
-     * @param[in] eliminatedDofs the values for the dofs, which are removed from the system
      * @param[in] r the row block
      * @param[in] c the column block
      */
@@ -1039,8 +1038,7 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] localMat a vector local system matrices
      * @param[in] localRhs a vector local rhs vector/matrices
      * @param[in] actives a vector of index sets (one per block)
-     * @param[in] eliminatedDofs a vector of values for the dofs (corresponding to the columns), which are
-     *           removed from the system, (one per block)
+     * @param[in] fixedDofs
      * @param[in] r the row blocks where the matrices should be pushed
      * @param[in] c the colum blocks where the matrices shouldbe pushed
      */
@@ -1067,7 +1065,6 @@ public: /* Add local contributions to system matrix and right-hand side */
      *
      * @param[in] localMat the local matrix
      * @param[in] actives the mapped index of basis functions, without shifts!
-     * @param[in] eliminatedDofs the values for the dofs, which are removed from the system
      * @param[in] r the row block
      * @param[in] c the column block
      */
@@ -1109,8 +1106,6 @@ public: /* Add local contributions to system matrix and right-hand side */
      * @param[in] localMat the local matrix
      * @param[in] actives_i the mapped index of row - basis functions, without shifts!
      * @param[in] actives_j the mapped index of column - basis functions, without shifts!
-     * @param[in] eliminatedDofs_j the values for the dofs (corresponding to the columns), which are
-     *            removed from the system
      * @param[in] r the row block
      * @param[in] c the column block
      */

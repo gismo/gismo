@@ -50,7 +50,6 @@ public:
     /** @brief Main Constructor of the assembler object.
         \param[in] pde A boundary value Poisson problem
         \param[in] bases a multi-basis that contains patch-wise bases
-        \param[in] opt A set of options for the assembly process
     */
     gsCDRAssembler( const gsConvDiffRePde<T>       & pde,
                     const gsMultiBasis<T>          & bases)
@@ -80,19 +79,19 @@ public:
         Base::initialize(pde, bases, m_options);
     }
 
-/** @brief
-    Constructor of the assembler object.
+    /** @brief Constructor of the assembler object.
 
-    \param[in] patches is a gsMultiPatch object describing the geometry.
-    \param[in] bases a multi-basis that contains patch-wise bases
-    \param[in] bconditions is a gsBoundaryConditions object that holds all boundary conditions.
-    \param[in] rhs is the right-hand side of the equation, \f$\mathbf{f}\f$.
-    \param[in] coeff_A diffusion coefficient.
-    \param[in] coeff_b convection velocity.
-    \param[in] coeff_c reaction coefficient.
-    \param[in] dirStrategy option for the treatment of Dirichlet boundary
-    \param[in] intStrategy option for the treatment of patch interfaces
-*/
+        \param[in] patches is a gsMultiPatch object describing the geometry.
+        \param[in] bases a multi-basis that contains patch-wise bases
+        \param[in] bconditions is a gsBoundaryConditions object that holds all boundary conditions.
+        \param[in] rhs is the right-hand side of the equation, \f$\mathbf{f}\f$.
+        \param[in] coeff_A diffusion coefficient.
+        \param[in] coeff_b convection velocity.
+        \param[in] coeff_c reaction coefficient.
+        \param[in] dirStrategy option for the treatment of Dirichlet boundary
+        \param[in] intStrategy option for the treatment of patch interfaces
+        \param[in] flagStabilization (default: 0)
+    */
     gsCDRAssembler( gsMultiPatch<T> const         & patches,
                     gsMultiBasis<T> const         & bases,
                     gsBoundaryConditions<T> const & bconditions,

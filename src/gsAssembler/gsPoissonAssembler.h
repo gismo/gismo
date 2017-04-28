@@ -47,7 +47,6 @@ public:
 
     \param[in] pde A boundary value Poisson problem
     \param[in] bases a multi-basis that contains patch-wise bases
-    \param[in] opt A set of options for the assembly process
     */
     gsPoissonAssembler( const gsPoissonPde<T>          & pde,
                         const gsMultiBasis<T>          & bases)

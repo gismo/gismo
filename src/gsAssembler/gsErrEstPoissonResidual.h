@@ -216,9 +216,10 @@ protected:
      * @param[in] geoEval gsGeometryEvaluator as evaluated in evaluate().
      * @param[in] quWeights Quadrature weights \em before transformation the the
      * element, i.e., the sum of the weights should be 1.
+     * @param[in,out] accumulated The accumulated squared estimate. (It's by
+     * implementation the incoming value plus the return value of this function.)
      * @return The \em squared estimate \f$ \eta_K^2 \f$ of local error on
      * element \f$ K \f$.
-
      */
     inline T compute(gsDomainIterator<T>    & element,
                      gsGeometryEvaluator<T> & geoEval,

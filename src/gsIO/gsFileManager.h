@@ -50,7 +50,7 @@ public:
 
     /// \brief Find a file.
     ///
-    /// \param fn[in|out]  The filename
+    /// \param[in,out] fn The filename
     ///
     /// If the file can be found, returns true and replaces \a fn by the full path.
     /// Otherwiese, returns false and keeps the name unchanged.

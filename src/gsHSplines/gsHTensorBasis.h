@@ -591,7 +591,7 @@ public:
     /// \em n is the number of evaluation points.\n
     /// Each column of \em Pts represents one evaluation point.
     /// \param[out] lvl gsVector of length \em n with the levels of the respective points.
-    /// \param[out] lo  gsMatrix of size <em>d</em> x <em>n</em>.\n
+    /// \param[out] loIdx  gsMatrix of size <em>d</em> x <em>n</em>.\n
     /// Each column contains
     /// the lower corner of the knot span containing <em>i</em>-th point. The corner is given
     /// in unique knot span indices of level lvl[i].
