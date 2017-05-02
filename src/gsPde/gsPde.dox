@@ -9,7 +9,6 @@ namespace gismo {
 
 
 
-}
 
 
 
@@ -23,3 +22,4 @@ namespace gismo {
 
   \anchor pdeclass_classes  
 */
+}

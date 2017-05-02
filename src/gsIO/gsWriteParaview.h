@@ -197,6 +197,15 @@ void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
 
 /// \brief Depicting edge graph of each volume of one gsSolid with a segmenting loop
 ///
+/// \param sl a gsMesh obect
+/// \param fn filename where paraview file is written
+/// \param numPoints_for_eachCurve number of points used for sampling each curve
+/// \param vol_Num ID of face(s), that should be written
+/// \param edgeThick thickness of edges
+/// \param translate "translate" vector, toward the volume is translated
+/// \param color_convex Color, if face is convex and not eloop.
+/// \param color_nonconvex Color, if face is not convex
+/// \param color_eloop Color, if is in heSet and convex
 /// \param eloop     a vector of ID numbers of vertices, often for representing a segmenting loop
 /// \todo please document
 template <class T>
