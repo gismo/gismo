@@ -62,7 +62,6 @@ inline bool starts_with( const std::string & haystack, const std::string & needl
 }
 
 #if __cplusplus > 199711L || (defined(_MSC_VER) && _MSC_VER >= 1600)
-using std::to_string;
 using std::iota;
 using std::stod;
 using std::stoi;
