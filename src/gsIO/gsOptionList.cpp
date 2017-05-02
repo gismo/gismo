@@ -352,48 +352,29 @@ std::vector<gsOptionList::OptionListEntry> gsOptionList::getAllEntries() const
     return result;
 }
 
-namespace internal
-{
-template <typename It>
-inline void printOptionListElement(std::ostream & os, const char * type, It it)
+std::ostream & gsOptionList::OptionListEntry::print(std::ostream & os) const
 {
     const index_t slot_label = 19;
-    const index_t slot_val = 7;
-
-    std::ostringstream convert;
-    convert << std::setw(slot_val)<<std::left<<it->second.first;
-    const std::string val = convert.str();
+    const index_t slot_val = 8;
+    const index_t sz_label = label.size();
     const index_t sz_val = val.size();
-
-    if ((index_t)it->first.size()<=slot_label && sz_val <= slot_val)
-        os <<"* "<<std::setw(slot_label)<<std::left<<it->first <<" "<<std::setw(8)<<std::right<<type<<" = "
-            <<val<<" "<<it->second.second<<"\n";
+    if (sz_label<=slot_label && sz_val<=slot_val)
+        os <<"* "<<std::setw(slot_label)<<std::left<<label<<std::setw(8)<<std::right<<("("+type)<<") = "
+            <<std::setw(slot_val)<<std::left<<val<<" "<<desc<<"\n";
     else
-        os <<"* "<<std::setw(slot_label)<<std::left<<it->first <<" "<<std::setw(8)<<std::right<<type<<" = "
-            <<val<<"\n"<<std::setw(slot_label+slot_val+8+7)<<" "<<it->second.second<<"\n";
+        os <<"* "<<std::setw(slot_label)<<std::left<<label<<std::setw(8)<<std::right<<("("+type)<<") = "
+            <<val<<"\n"<<std::setw(slot_label+slot_val+15)<<" "<<desc<<"\n";
+    return os;
 }
-} //namespace internal
 
 std::ostream & gsOptionList::print(std::ostream & os) const
 {
-    os<<"Options ("<<size()<<"):\n";
-
-    // handle strings
-    for (StringTable::const_iterator it1 = m_strings.begin();it1!=m_strings.end();++it1)
-        internal::printOptionListElement(os,"(string)",it1);
-
-    // handle integers
-    for (IntTable::const_iterator it2 = m_ints.begin();it2!=m_ints.end();++it2)
-        internal::printOptionListElement(os,"(int)",it2);
-
-    // handle reals
-    for (RealTable::const_iterator it3 = m_reals.begin();it3!=m_reals.end();++it3)
-        internal::printOptionListElement(os,"(real)",it3);
-
-    // handle bools
-    for (SwitchTable::const_iterator it4 = m_switches.begin();it4!=m_switches.end();++it4)
-        internal::printOptionListElement(os,"(switch)",it4);
-
+    typedef std::vector<OptionListEntry> DataTable;
+    DataTable data = getAllEntries();
+    os<<"Options ("<<data.size()<<"):\n";
+    std::sort( data.begin(), data.end() );
+    for ( DataTable::const_iterator it = data.begin(); it != data.end(); it++ )
+        it->print(os);
     return os;
 }
 
@@ -523,7 +504,7 @@ gsXml<gsOptionList>::put (const gsOptionList & obj, gsXmlTree & data)
         optionList->insert_node(0, node_str);
     }
     // */
-        
+
     /*
       gsXmlNode * tmp;
       gsXmlAttribute * atr;

@@ -127,16 +127,19 @@ public:
     int size() const
     {return m_strings.size()+m_ints.size()+m_reals.size()+m_switches.size();}
 
-    // /*
-    typedef struct {
-        std::string type;
-        std::string label;
-        std::string desc;
-        std::string val;
-    } OptionListEntry;
+    /// getAllEntries() returns a vector of those. Contains the name of its type
+    /// (\a type), its label (\a label), its description (\a desc) and the string
+    /// representation of its value (\a val).
+    struct OptionListEntry {
+        std::string type;                               ///< Type (as string)
+        std::string label;                              ///< Label
+        std::string desc;                               ///< Description
+        std::string val;                                ///< Value (as string)
+        std::ostream & print(std::ostream & os) const;
+    };
 
+    /// Provides a list of all entries as vector of gsOptionList::OptionListEntry structs
     std::vector<OptionListEntry> getAllEntries() const;
-    //*/
 
     gsOptionList& operator=(const gsOptionList & other)
     { // Note: implcitly degerated operator was buggy on some platforms
@@ -216,9 +219,18 @@ private:
 
 }; // class gsOptionList
 
-/// Print (as string) operator to be used by all derived classes
+/// Objects of class gsOptionList can be printed using the standard io-streams
 inline std::ostream &operator<<(std::ostream &os, const gsOptionList& b)
-{return b.print(os); }
+{ return b.print(os); }
+
+/// Objects of class gsOptionList::OptionListEntry can be printed using the standard io-streams
+inline std::ostream &operator<<(std::ostream &os, const gsOptionList::OptionListEntry& b)
+{ return b.print(os); }
+
+/// Objects of class gsOptionList::OptionListEntry can be ordered by label
+inline bool operator< ( const gsOptionList::OptionListEntry& a, const gsOptionList::OptionListEntry& b )
+{ return a.label < b.label; }
+
 
 namespace internal
 {
@@ -242,5 +254,6 @@ public:
 };
 
 }
+
 
 } // namespace gismo
