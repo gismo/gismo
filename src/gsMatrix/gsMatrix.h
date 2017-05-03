@@ -180,7 +180,7 @@ public:
      */
     Ptr moveToPtr() //todo: should be uPtr
     {
-        Ptr m(new gsMatrix<T>); 
+        Ptr m(new gsMatrix); 
         m->swap(*this); 
         return m; 
         //return uPtr(new gsMatrix<T>(give(*this))); 

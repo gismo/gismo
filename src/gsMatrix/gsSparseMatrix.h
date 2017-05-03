@@ -243,9 +243,9 @@ public:
        matrix. After calling it, the matrix object becomes empty, ie
        the size of the matrix is 0
     */
-    Ptr moveToPtr()
+    Ptr moveToPtr() //todo: should be uPtr
     {
-        Ptr m(new gsSparseMatrix<T>);
+        Ptr m(new gsSparseMatrix);
         m->swap(*this);
         return m;
     }
