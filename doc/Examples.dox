@@ -10,21 +10,29 @@ In the gismo/examples sub-directory we find:
 
 - \subpage fitting_example
 
+- \subpage gsInterpolateMap
+
+- \subpage gsSparseSolvers
+
+- \subpage gsTrilinos_test
+
 - \subpage gsView
 
 - \subpage linearSolvers
 
-- \subpage poisson2d_example_adaptRef
-
 - \subpage poisson
 
-- \subpage tutorialAssembly
+- \subpage poisson2d_example_adaptRef
 
 - \subpage thbRefinement
 
 - \subpage triMeshToSolid
 
+- \subpage tutorialAdaptiveCDR
+
 - \subpage tutorialAdaptRefinementTHB
+
+- \subpage tutorialAssembly
 
 - \subpage tutorialBasis
 
@@ -38,11 +46,15 @@ In the gismo/examples sub-directory we find:
 
 - \subpage tutorialGeometry
 
+- \subpage tutorialHeatEquation
+
 - \subpage tutorialInputOutput
 
 - \subpage tutorialKnotVector
 
 - \subpage tutorialLinearAlgebra
+
+- \subpage tutorialMpi
 
 - \subpage tutorialPoisson
 
