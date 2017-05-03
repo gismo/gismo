@@ -163,7 +163,7 @@ inline void capitalize(std::string& str)
 
 /// \brief Capitalize string
 /// \ingroup Utils
-inline std::string capitalize(const std::string& str)
+inline std::string returnCapitalized(const std::string& str)
 {
     std::string newStr = str;
     capitalize(newStr);
