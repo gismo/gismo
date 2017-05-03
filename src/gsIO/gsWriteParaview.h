@@ -291,23 +291,6 @@ void plot_errors(const gsMatrix<T> & orig,
                  std::string const & fn);
 
 
-namespace internal
-{
-
-/// Converts value to string
-template<typename T>
-std::string toString(T value)
-{
-    std::ostringstream convert;
-
-    convert << value;
-
-    return convert.str();
-}
-
-} // end namespace internal
-
-
 } // namespace gismo
 
 
