@@ -26,6 +26,9 @@ template<class T>
 class gsIterativeSolver
 {
 public:
+    typedef memory::shared_ptr<gsIterativeSolver> Ptr;
+    typedef memory::unique_ptr<gsIterativeSolver> uPtr;
+
     typedef gsMatrix<T>    VectorType;
 
     typedef typename gsLinearOperator<T>::Ptr LinOpPtr;

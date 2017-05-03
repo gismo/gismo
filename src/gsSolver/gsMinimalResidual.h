@@ -30,6 +30,9 @@ public:
     typedef gsMatrix<real_t>  VectorType;
 
     typedef Base::LinOpPtr LinOpPtr;
+    
+    typedef memory::shared_ptr<gsMinimalResidual> Ptr;
+    typedef memory::unique_ptr<gsMinimalResidual> uPtr;
         
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     ///

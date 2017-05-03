@@ -29,6 +29,9 @@ public:
     
     typedef Base::LinOpPtr LinOpPtr;
 
+    typedef memory::shared_ptr<gsGMRes> Ptr;
+    typedef memory::unique_ptr<gsGMRes> uPtr;
+
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     ///
     /// @param mat     The operator to be solved for, see gsIterativeSolver for details
