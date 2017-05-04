@@ -33,7 +33,7 @@ template <class MatrixType>
 class gsMatrixOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
     typedef memory::shared_ptr<MatrixType> MatrixPtr;
-    typedef typename MatrixType::Nested           NestedMatrix;
+    typedef typename MatrixType::Nested NestedMatrix;
 
 public:
     typedef typename MatrixType::Scalar T;
@@ -150,6 +150,13 @@ template <class Derived>
 typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const memory::shared_ptr<Derived> & mat, bool sym=false)
 {
     return memory::make_unique(new gsMatrixOp<Derived>(mat, sym));
+}
+
+// We need an additional guide for the compiler to be able to work well with unique ptrs
+template <class Derived>
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat, bool sym=false)
+{
+    return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release()), sym));
 }
 
 /** @brief Simple adapter class to use an Eigen solver (having a

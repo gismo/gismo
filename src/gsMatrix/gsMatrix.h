@@ -178,9 +178,9 @@ public:
       matrix. After calling it, the matrix object becomes empty, ie
       the size of the matrix is 0
      */
-    Ptr moveToPtr() //todo: should be uPtr
+    uPtr moveToPtr()
     {
-        Ptr m(new gsMatrix); 
+        uPtr m(new gsMatrix); 
         m->swap(*this); 
         return m; 
         //return uPtr(new gsMatrix<T>(give(*this))); 
