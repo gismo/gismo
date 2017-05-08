@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page tutorialHeatEquation tutorialHeatEquation.cpp
+
+
+<!-- more info on the file examples/tutorialHeatEquation.cpp go here -->
+
+
+\section tutorialHeatEquationAnnotated Annotated source file
+
+Here is the full file \c examples/tutorialHeatEquation.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include tutorialHeatEquation.cpp
+
+*/
+
+}

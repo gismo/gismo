@@ -478,36 +478,24 @@ available, demonstrated in \ref gsSparseSolvers.  The main information
 about the matrix manipulations can be found in the Eigen documentation
 pages. We link to the most important chapters:
 
-- <a target="_blank"
-href="https://eigen.tuxfamily.org/dox/group__DenseMatrixManipulation__chapter.html"
->DenseMatrixManipulation</a>
+- \ref DenseMatrixManipulation_chapter
 
-- <a target="_blank"
-href="https://eigen.tuxfamily.org/dox/group__DenseLinearSolvers__chapter.html"
->DenseLinearSolvers</a>
+- \ref DenseLinearSolvers_chapter
 
-- <a target="_blank"
-href="https://eigen.tuxfamily.org/dox/group__Sparse__chapter.html"
->Sparse</a>
+- \ref Sparse_chapter
 
 The quick reference pages give a summary of the functionality:
 
-- <a target="_blank"
-href="http://eigen.tuxfamily.org/dox/group__QuickRefPage.html"
->QuickRefPage (for dense matrices)</a>
+- \ref QuickRefPage (for dense matrices)
 
-- <a target="_blank"
-href="http://eigen.tuxfamily.org/dox/group__SparseQuickRefPage.html"
->SparseQuickRefPage</a>
+- \ref SparseQuickRefPage
 
 There is also a list with the [correspondance to matlab
 functions](http://eigen.tuxfamily.org/dox/AsciiQuickReference.txt). However,
 note that some operations of Matlab are not mirrored (yet) with
 functionality in Eigen. For example, a \em reshape function does not
-exist. The Topic <a target="_blank"
-href="https://eigen.tuxfamily.org/dox/group__TopicAliasing.html"
->Aliasing</a> is also important to learn how to avoid bugs and write
-more efficient code.
+exist. The Topic \ref TopicAliasing is also important to learn how to avoid
+bugs and write more efficient code.
 
 \note
 You do not need to care about headers and inclusion of Eigen
@@ -529,7 +517,7 @@ Matrix operations of Eigen should be preferred over using for loops or
 manual functions. One reason for this is the clarity of the code, the
 reduction of lines of code and last but not least the fact that the
 provided operations are vectorized therefore they are more efficient
-than manual coding. 
+than manual coding.
 
 As a simple example, consider that you would like to multiply each row
 of a matrix by a number. Here are some equivalent ways to do this:
@@ -542,10 +530,8 @@ Output: \verbinclude bspline_vecxmat.out
   corresponds to multiplying the rows by the diagonal elements. Note
   that v.asDiagonal() does not make a copy of the vector \a v, but only
   returns an expression of the \a v as a diagonal matrix. Also note
-  the noalias() function to avoid
-  <a target="_blank"
-  href="https://eigen.tuxfamily.org/dox/group__TopicAliasing.html"
-  >Aliasing</a>, eg. an un-needed temporary copy of \a R3.
+  the noalias() function to avoid \ref TopicAliasing, eg. an un-needed
+  temporary copy of \a R3.
 
 
 \section main01 Functions and bases

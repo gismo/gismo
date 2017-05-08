@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page tutorialAdaptiveCDR tutorialAdaptiveCDR.cpp
+
+
+<!-- more info on the file examples/tutorialAdaptiveCDR.cpp go here -->
+
+
+\section tutorialAdaptiveCDRAnnotated Annotated source file
+
+Here is the full file \c examples/tutorialAdaptiveCDR.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include tutorialAdaptiveCDR.cpp
+
+*/
+
+}

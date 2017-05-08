@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page gsTrilinos_test gsTrilinos_test.cpp
+
+
+<!-- more info on the file examples/gsTrilinos_test.cpp go here -->
+
+
+\section gsTrilinos_testAnnotated Annotated source file
+
+Here is the full file \c examples/gsTrilinos_test.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include gsTrilinos_test.cpp
+
+*/
+
+}
