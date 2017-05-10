@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): C. Hofreither
+    Author(s): C. Hofreither, J. Vogl
 */
 
 #pragma once
@@ -16,7 +16,9 @@
 #include <ostream>
 
 // includes for wall clocks
-#if defined(__linux__)
+#if __cplusplus >= 201103L
+#  include <chrono>
+#elif defined(__linux__)
 #  include <sys/time.h>
 #elif defined(_MSC_VER) || defined(__MINGW32__)
 #  include <sys/timeb.h>
@@ -74,24 +76,37 @@ public:
 
     /// Start taking the time
     void restart() { m_start = Clock::getTime(); }
-  
-    /// Return elapsed time 
+
+    /// Return elapsed time
     double stop() const { return Clock::getTime() - m_start; }
 
     friend std::ostream& operator<< (std::ostream& os, const gsGenericStopwatch& sw)
     { return formatTime(os, sw.stop()); }
-  
+
 private:
     gsGenericStopwatch (const gsGenericStopwatch&);
     gsGenericStopwatch& operator=(const gsGenericStopwatch&);
-  
+
     double m_start;
 }; // class gsGenericStopwatch
 
 
 // SYSTEM-SPECIFIC WALL CLOCKS /////////////////////////////////////////////////
 
-#if defined(__linux__) // || defined(TARGET_OS_MAC)                     // LINUX //
+#if __cplusplus >= 201103L                                          // C++11 //
+// highest-resolution wall clock time
+struct CXX11WallClock
+{
+    static double getTime()
+    {
+        return ((std::chrono::duration<double>)std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+    }
+};
+
+/// @brief A stop-watch measuring real (wall) time
+typedef gsGenericStopwatch<CXX11WallClock> gsStopwatch;
+
+#elif defined(__linux__) // || defined(TARGET_OS_MAC)               // LINUX //
 
 // higher resolution wall clock time
 struct LinuxWallClock
