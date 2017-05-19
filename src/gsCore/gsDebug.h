@@ -242,8 +242,8 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
    Compile-time assertions: 
   
   - in GISMO_STATIC_ASSERT(CONDITION,MSG) the parameter CONDITION
-     must be a compile time boolean expression, and MSG an enum
-    listed in struct internal::static_assertion<true>
+     must be a compile time boolean expression, and MSG an error
+     message (string)
  
    - define GISMO_NO_STATIC_ASSERT to disable them (and save
      compilation time) in that case, the static assertion is
@@ -258,26 +258,15 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
     // Native static_assert is available
     #define GISMO_STATIC_ASSERT(X,MSG) static_assert(X,#MSG);
 
-  #else // not CXX0X
+  #else // not C++11
 
     namespace gismo {
     namespace internal {
 
-    template<bool condition>
-    struct static_assertion {};
-
-    template<>
-    struct static_assertion<true>
-    {
-      enum {
-          INCONSISTENT_INSTANTIZATION,
-          INVALID_CONSTRUCTOR,
-          TOO_BIG_OBJECT_ALLOCATED_ON_STACK
-      };
-    };
+    template<bool condition> struct static_assertion {};
+    template<> struct static_assertion<true> { enum { STATIC_ASSERTION_FAILED }; };
 
     } // end namespace internal
-
     } // end namespace gismo
 
     // Specialized implementation for MSVC to avoid "conditional
@@ -286,16 +275,16 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
     #ifdef _MSC_VER
 
       #define GISMO_STATIC_ASSERT(CONDITION,MSG) \
-        {gismo::internal::static_assertion<bool(CONDITION)>::MSG;}
+        {gismo::internal::static_assertion<bool(CONDITION)>::STATIC_ASSERTION_FAILED;}
 
     #else
 
       #define GISMO_STATIC_ASSERT(CONDITION,MSG) \
-        if (gismo::internal::static_assertion<bool(CONDITION)>::MSG) {}
+        if (gismo::internal::static_assertion<bool(CONDITION)>::STATIC_ASSERTION_FAILED) {}
 
     #endif
 
-  #endif // not CXX0X
+  #endif // not C++11
 
 #else // GISMO_NO_STATIC_ASSERT
 

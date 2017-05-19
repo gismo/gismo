@@ -107,7 +107,8 @@ namespace gismo {
 template<class T>
 inline bool gsGetReal(std::istream & is, T & var)
 {
-    GISMO_STATIC_ASSERT(!std::numeric_limits<T>::is_integer,INCONSISTENT_INSTANTIZATION);
+    GISMO_STATIC_ASSERT(!std::numeric_limits<T>::is_integer,
+        "The second parameter needs to be an integer type.");
     std::string dn;
     if ( !(is >> dn) ) return false;
     const std::string::size_type slh( dn.find("/") );
@@ -125,7 +126,8 @@ inline bool gsGetReal(std::istream & is, T & var)
 template<class Z>
 inline bool gsGetInt(std::istream & is, Z & var)
 {
-  GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,INCONSISTENT_INSTANTIZATION);
+  GISMO_STATIC_ASSERT(std::numeric_limits<Z>::is_integer,
+        "The second parameter needs to be an integer type.");
   //return static_cast<bool>(is >> var); //C++11
   return !(is >> var).fail();
 }
