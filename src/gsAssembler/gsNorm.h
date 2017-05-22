@@ -132,7 +132,7 @@ public:
 
                 // Accumulate value from the current element (squared)
                 const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
-                if (storeElWise) m_elWise.emplace_back(visitor.takeRoot(result));
+                if (storeElWise) m_elWise.push_back(visitor.takeRoot(result));
             }
 
         }
@@ -181,7 +181,7 @@ public:
 
                 // Accumulate value from the current element (squared)
                 const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
-                if (storeElWise) m_elWise.emplace_back(visitor.takeRoot(result));
+                if (storeElWise) m_elWise.push_back(visitor.takeRoot(result));
             }
 
         }
@@ -226,7 +226,7 @@ public:
             // Accumulate value from the current element (squared)
             const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
             if ( storeElWise )
-                m_elWise.emplace_back( visitor.takeRoot(result) );
+                m_elWise.push_back( visitor.takeRoot(result) );
         }
 
     }
@@ -270,7 +270,7 @@ protected:
     const gsField<T>    * field1;
 
     const gsFunctionSet<T> * func2;
-  
+
 protected:
 
     std::vector<T> m_elWise;    // vector of the element-wise values of the norm
