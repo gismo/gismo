@@ -77,7 +77,7 @@ public:
     /// Start taking the time
     void restart() { m_start = Clock::getTime(); }
 
-    /// Return elapsed time
+    /// Return elapsed time in seconds.
     double stop() const { return Clock::getTime() - m_start; }
 
     friend std::ostream& operator<< (std::ostream& os, const gsGenericStopwatch& sw)
