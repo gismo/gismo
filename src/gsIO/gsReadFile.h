@@ -82,6 +82,12 @@ public:
         m_data.getAnyFirst(result);
     }
 
+    gsReadFile(std::string const & fn, gsMultiPatch<T> & result)
+    : m_id(-1)
+    { 
+        m_data.read(fn);
+        result = this->operator gsMultiPatch<T>();
+    }
 
     ~gsReadFile() { m_data.clear(); }
    
