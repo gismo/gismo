@@ -408,11 +408,26 @@ gsNurbsCreator<T>::NurbsQuarterAnnulus( T const & r0, T const & r1)
     return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KVx,KVy, give(C), give(ww)));
 }
 
-template<class T> typename gsNurbsCreator<T>::TensorNurbs3Ptr
-gsNurbsCreator<T>::BSplineSaddle()
+template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
+gsNurbsCreator<T>::NurbsQuarterAnnulusEqualDegree( T const & r0, T const & r1)
 {
-    return TensorNurbs3Ptr(); //TODO
+    gsKnotVector<T> KVx (0,1,0,3) ;
+    gsKnotVector<T> KVy (0,1,0,3) ;
+    gsMatrix<T> C(9,2) ;
+    C <<  r0, 0, (r0 + r1)/2, 0, r1, 0
+    , r0, r0, (r0 + r1)/2, r1, r1
+    , 0, r0,  0, (r0 + r1)/2, 0, r1;
+
+    // Set weights
+    gsMatrix<T> ww(9,1) ;
+    ww.setOnes();
+    ww.at(3)= 0.707106781186548 ;
+    ww.at(4)= 0.707106781186548 ;
+    ww.at(5)= 0.707106781186548 ;
+
+    return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KVx,KVy, give(C), give(ww)));
 }
+
 
 /// Inexact annulus using B-splines
 template<class T> typename gsNurbsCreator<T>::GeometryPtr
@@ -427,6 +442,69 @@ gsNurbsCreator<T>::BSplineQuarterAnnulus(int const & deg)
     const gsMatrix<T> pts = tbsp.anchors();
     return GeometryPtr(tbsp.interpolateData(quann->eval(pts),pts));
 }
+
+template<class T> typename gsNurbsCreator<T>::GeometryPtr
+gsNurbsCreator<T>::BSplineQuarterAnnulusEqualDegree(int const & deg)
+{
+    GeometryPtr quann = gsNurbsCreator<T>::NurbsQuarterAnnulus();
+
+    gsKnotVector<T> KV1(0,1, deg-2, deg+1);
+    gsKnotVector<T> KV2(0,1, deg-2, deg+1);
+
+    gsTensorBSplineBasis<2,T> tbsp (new gsBSplineBasis<T>(KV1), new gsBSplineBasis<T>(KV2));
+    const gsMatrix<T> pts = tbsp.anchors();
+    return GeometryPtr(tbsp.interpolateData(quann->eval(pts),pts));
+}
+
+template<class T> typename gsNurbsCreator<T>::TensorNurbs3Ptr
+gsNurbsCreator<T>::BSplineSaddle()
+{
+    return TensorNurbs3Ptr(); //TODO
+}
+
+
+/*
+template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
+gsNurbsCreator<T>::NurbsQuarterAnnulusMixedWithLShape()
+{
+    gsKnotVector<T> KVx (0,1,0,2) ;
+    gsKnotVector<T> KVy (0,1,0,4) ;
+
+    //gsKnotVector<T> KVx(0,1,1,2,1);
+    //gsKnotVector<T> KVy(0,1,0,2);
+
+    gsMatrix<T> C(8,2) ;
+    C << -1.0,1.0,
+        -1.0,0.0,
+        -1.0,-1.0,
+        0.0,-1.0,
+        1.0,-1.0,
+        0.0,1.0,
+        0.0,0.0,
+        1.0,0.0;
+
+    // Set weights
+    gsMatrix<T> ww(8,1) ;
+    ww.setOnes();
+    ww.at(2)= 0.707106781186548 ;
+
+    return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KVx, KVy, give(C), give(ww)));
+}
+
+
+/// Inexact annulus using B-splines
+template<class T> typename gsNurbsCreator<T>::GeometryPtr
+gsNurbsCreator<T>::BSplineQuarterAnnulusMixedWithLShape(int const & deg) {
+    GeometryPtr quann = gsNurbsCreator<T>::NurbsQuarterAnnulusMixedWithLShape();
+
+    gsKnotVector<T> KV1(0, 1, 0, 2);
+    gsKnotVector<T> KV2(0, 1, deg - 2, deg + 1);
+
+    gsTensorBSplineBasis<2, T> tbsp(new gsBSplineBasis<T>(KV1), new gsBSplineBasis<T>(KV2));
+    const gsMatrix<T> pts = tbsp.anchors();
+    return GeometryPtr(tbsp.interpolateData(quann->eval(pts), pts));
+}
+*/
 
 /// Fat annulus using B-splines, discarding the weights of the exact NURBS
 /// Analytical formulation (when r0 = 1 and r1 = 2):
