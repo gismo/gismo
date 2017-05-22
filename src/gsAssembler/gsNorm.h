@@ -59,6 +59,11 @@ public:
         this->apply(*this,storeElWise);
         return m_value;
     }
+    virtual T compute(bool storeElWise, int elemNum)
+    {
+        this->applyElem(*this, storeElWise, elemNum);
+        return m_value;
+    }
     virtual void initialize(const gsBasis<T> & basis,
                         gsQuadRule<T> & rule,
                         unsigned      & evFlags) = 0;
@@ -116,19 +121,69 @@ public:
                 patchesPtr->patch(pn).evaluator(evFlags));
             
             typename gsBasis<T>::domainIter domIt = dom.makeDomainIterator(side);
-            for (; domIt->good(); domIt->next())
-            {
+
+            // TODO: optimization of the assembling routine, it's too slow for now
+            for(; domIt->good(); domIt->next()) {
                 // Map the Quadrature rule to the element
-                QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+                QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                 // Evaluate on quadrature points
                 visitor.evaluate(*geoEval, func1, func2p, quNodes);
-                
+
                 // Accumulate value from the current element (squared)
                 const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
-                if ( storeElWise )
-                    m_elWise.push_back( visitor.takeRoot(result) );
+                if (storeElWise) m_elWise.emplace_back(visitor.takeRoot(result));
             }
+
+        }
+
+        m_value = visitor.takeRoot(m_value);
+    }
+
+    template <class NormVisitor>
+    void applyElem(NormVisitor & visitor, bool storeElWise, int elemNum, boxSide side = boundary::none)
+    {
+        if ( storeElWise )
+            m_elWise.reserve(elemNum);
+
+        gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
+        gsVector<T> quWeights; // Temp variable for mapped weights
+        gsQuadRule<T> QuRule; // Reference Quadrature rule
+
+        // Evaluation flags for the Geometry map
+        unsigned evFlags(0);
+
+        m_value = T(0.0);
+        for (unsigned pn=0; pn < patchesPtr->nPatches(); ++pn )// for all patches
+        {
+            const gsFunction<T> & func1 = field1->function(pn);
+            const gsFunction<T> & func2p = func2->function(pn);
+            // Obtain an integration domain
+            const gsBasis<T> & dom = field1->isParametrized() ?
+                                     field1->igaFunction(pn).basis() : field1->patch(pn).basis();
+
+            // Initialize visitor
+            visitor.initialize(dom, QuRule, evFlags);
+
+            // Initialize geometry evaluator
+            typename gsGeometry<T>::Evaluator geoEval(
+                    patchesPtr->patch(pn).evaluator(evFlags));
+
+            typename gsBasis<T>::domainIter domIt = dom.makeDomainIterator(side);
+
+            // TODO: optimization of the assembling routine, it's too slow for now
+            for(; domIt->good(); domIt->next()) {
+                // Map the Quadrature rule to the element
+                QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+
+                // Evaluate on quadrature points
+                visitor.evaluate(*geoEval, func1, func2p, quNodes);
+
+                // Accumulate value from the current element (squared)
+                const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
+                if (storeElWise) m_elWise.emplace_back(visitor.takeRoot(result));
+            }
+
         }
 
         m_value = visitor.takeRoot(m_value);
@@ -171,7 +226,7 @@ public:
             // Accumulate value from the current element (squared)
             const T result = visitor.compute(*domIt, *geoEval, quWeights, m_value);
             if ( storeElWise )
-                m_elWise.push_back( visitor.takeRoot(result) );
+                m_elWise.emplace_back( visitor.takeRoot(result) );
         }
 
     }
