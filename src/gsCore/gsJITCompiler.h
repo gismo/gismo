@@ -649,8 +649,10 @@ public:
         //force = true;
 #       elif defined(__APPLE__)
         libName << config.getTemp() << "/.lib" << name << ".dylib";
-#       elif defined(__unix)
+#       elif defined(unix) || defined(__unix__) || defined(__unix)
         libName << config.getTemp() << "/.lib" << name << ".so";
+#       else
+#       error("Unrecognized OS")
 #       endif
         
         // Compile library (if required)
