@@ -120,14 +120,11 @@ public:
                                            T const & y = 0, T const & z = 0 );
 
     static TensorNurbs2Ptr NurbsQuarterAnnulus( T const & r0 =1, T const & r1 =2);
-    static TensorNurbs2Ptr NurbsQuarterAnnulusEqualDegree( T const & r0 =1, T const & r1 =2);
     static TensorNurbs3Ptr BSplineSaddle();
     /// Inexact annulus using B-splines
     static GeometryPtr BSplineQuarterAnnulus(int const & deg = 2);
-    static GeometryPtr BSplineQuarterAnnulusEqualDegree(int const & deg = 2);
 
-    static TensorNurbs2Ptr NurbsQuarterAnnulusMixedWithLShape();
-    /// Inexact annulus using B-splines
+    //static TensorNurbs2Ptr NurbsQuarterAnnulusMixedWithLShape();
     //static GeometryPtr BSplineQuarterAnnulusMixedWithLShape(int const & deg = 2);
 
     /// Fat annulus using B-splines, discarding the weights of the exact NURBS
