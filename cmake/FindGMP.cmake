@@ -12,12 +12,15 @@
 ## GMPXX_LIBRARY   - Libraries needed to use GMP C++
 ######################################################################
 
+#unset(GMP_LIBRARY CACHE)
+#unset(GMPXX_LIBRARY CACHE)
+
 if (GMP_INCLUDE_DIR AND GMP_LIBRARY AND GMPXX_LIBRARY)
    set(GMP_FIND_QUIETLY TRUE)
 endif ()
 
 find_path(GMP_INCLUDE_DIR NAMES gmp.h )
-find_library(GMP_LIBRARY   NAMES gmp   libgmp   )
+find_library(GMP_LIBRARY   NAMES gmp libgmp) # for static add first libgmp.a
 find_library(GMPXX_LIBRARY NAMES gmpxx libgmpxx )
 MESSAGE(STATUS "Found GMP: " ${GMP_LIBRARY} " " ${GMPXX_LIBRARY} )
 

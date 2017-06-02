@@ -93,10 +93,12 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
         );
     
     int c = 0;
-    for ( int i = 0; i < onsurf->CVCount(0); i++ )
-        for ( int j = 0; j < onsurf->CVCount(1); j++ )
+
+    for ( int j = 0; j < onsurf->CVCount(1); j++ )
+        for ( int i = 0; i < onsurf->CVCount(0); i++ )
         {
-            ON_3dPoint pt( surface.coef(c,0), surface.coef(c,1), surface.coef(c,2)  );
+            ON_3dPoint pt(surface.coef(c,0), surface.coef(c,1), surface.coef(c,2) );
+            //ON_3dPoint pt( surface.coef(c,0), surface.coef(c,1), 0 );
             onsurf->SetCV( i, j, pt );//Note: j runs faster than i for CP(i,j)
             c++;
         }
