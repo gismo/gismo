@@ -35,7 +35,7 @@ namespace gismo
 template<class T>
 struct gsNurbsCreator
 {
-    typedef typename gsGeometry<T>::uPtr        GeometryPtr;
+    typedef memory::unique_ptr<gsGeometry<T> >        GeometryPtr;
     typedef typename gsBSpline<T>::uPtr         BSplinePtr;
     typedef typename gsNurbs<T>::uPtr           NurbsPtr;
     typedef typename gsTensorBSpline<2,T>::uPtr TensorBSpline2Ptr;

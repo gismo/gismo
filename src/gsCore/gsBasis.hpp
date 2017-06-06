@@ -16,6 +16,7 @@
 #include <gsCore/gsBasisFun.h>
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsBoundary.h>
+#include <gsCore/gsGeometry.h>
 
 namespace gismo
 {
@@ -208,7 +209,7 @@ void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & re
 }
 
 template<class T> inline
-gsGeometry<T> * gsBasis<T>::interpolateData( gsMatrix<T> const& vals,
+memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> const& vals,
                                          gsMatrix<T> const& pts) const
 {
     GISMO_ASSERT (dim()  == pts.rows() , "Wrong dimension of the points("<<
@@ -242,7 +243,7 @@ gsGeometry<T> * gsBasis<T>::interpolateAtAnchors(gsMatrix<T> const & vals) const
                   "Expecting as many values as the number of basis functions." );
     gsMatrix<T> pts;
     anchors_into(pts);
-    return interpolateData(vals, pts);
+    return interpolateData(vals, pts).release();
 }
 
 /*

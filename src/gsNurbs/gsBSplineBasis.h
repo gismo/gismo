@@ -745,7 +745,7 @@ public:
     // Look at gsBasis class for a description
     const Self_t & component(unsigned i) const;
 
-    gsGeometry<T> * makeGeometry( gsMatrix<T> coefs ) const;
+    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const;
             
 private:
     

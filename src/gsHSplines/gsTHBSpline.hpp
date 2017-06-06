@@ -46,7 +46,7 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
     gsTensorBSplineBasis<2,T> newtpBasis(tpBasis.knots(0), tpBasis.knots(1)); 
     // makeGeometry returns an abstract class, so we need to cast to the particular.
     gsTensorBSpline<d,T> *newGeo = 
-        static_cast< gsTensorBSpline<d,T> *>(newtpBasis.makeGeometry(this->coefs()));
+        static_cast< gsTensorBSpline<d,T> *>(newtpBasis.makeGeometry(this->coefs()).release());
 
     result = *newGeo;
     // Don't forget:
@@ -358,7 +358,7 @@ void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,
         anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
         this->eval_into(anchorsInGeom,vals);
         THBBoundary* geom = 
-            dynamic_cast<THBBoundary*>(bBasis->interpolateData(vals,anchorsSlice));
+            dynamic_cast<THBBoundary*>(bBasis->interpolateData(vals,anchorsSlice).release());
         GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
         result = *geom;
         delete geom;

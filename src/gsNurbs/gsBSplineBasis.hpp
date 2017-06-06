@@ -858,9 +858,9 @@ gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const
 }
 
 template <class T>
-gsGeometry<T> * gsBSplineBasis<T>::makeGeometry( gsMatrix<T> coefs ) const
+memory::unique_ptr<gsGeometry<T> > gsBSplineBasis<T>::makeGeometry( gsMatrix<T> coefs ) const
 {
-    return new GeometryType(*this, give(coefs));
+    return memory::unique_ptr<gsGeometry<T> >(new GeometryType(*this, give(coefs)));
 }
 
 template <class T>

@@ -308,7 +308,7 @@ public:
     /// Interpolates values on a tensor-grid of points, given in
     /// tensor form (d coordinate-wise vectors). Samples \a vals
     /// should be ordered as the tensor-basis coefficients
-    gsGeometry<T> * interpolateGrid(gsMatrix<T> const& vals,
+    memory::unique_ptr<gsGeometry<T> > interpolateGrid(gsMatrix<T> const& vals,
                                     std::vector<gsMatrix<T> >const& grid) const;
 
     /// Prints the object as a string, pure virtual function of gsTensorBasis.

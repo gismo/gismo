@@ -98,7 +98,12 @@ public:
     { 
         m_funcs.push_back( func );
     }
-    
+
+    void addPiecePointer(typename gsFunction<T>::uPtr func)
+    {
+        m_funcs.push_back(func.release());
+    }
+
     const gsFunction<T> & piece(const index_t i) const 
     { 
         GISMO_ASSERT(static_cast<size_t>(i) < m_funcs.size(), "Wrong piece index");

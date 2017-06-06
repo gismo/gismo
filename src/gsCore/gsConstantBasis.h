@@ -96,10 +96,10 @@ public:
         return os; 
     }
 
-    gsGeometry<T> * makeGeometry( gsMatrix<T> coefs ) const 
+    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const
     {
         coefs *= m_val;
-        return new gsConstantFunction<T>(coefs.transpose(), m_domainDim);
+        return memory::unique_ptr<gsGeometry<T> >(new gsConstantFunction<T>(coefs.transpose(), m_domainDim));
     }
 
 public:

@@ -293,7 +293,7 @@ void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
 
 
 template<unsigned d, class T>
-gsGeometry<T> * gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & u) const
+memory::unique_ptr<gsGeometry<T> > gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & u) const
 {
     std::vector<KnotVectorType> kv(d); // the local knot-vectors
     gsVector<index_t,d> cfirst, clast; // tensor-indices of local coefficients

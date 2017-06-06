@@ -419,7 +419,7 @@ gsNurbsCreator<T>::BSplineQuarterAnnulus(int const & deg)
 
     gsTensorBSplineBasis<2,T> tbsp (new gsBSplineBasis<T>(KV1), new gsBSplineBasis<T>(KV2));
     const gsMatrix<T> pts = tbsp.anchors();
-    return GeometryPtr(tbsp.interpolateData(quann->eval(pts),pts));
+    return tbsp.interpolateData(quann->eval(pts),pts);
 }
 
 template<class T> typename gsNurbsCreator<T>::TensorNurbs3Ptr

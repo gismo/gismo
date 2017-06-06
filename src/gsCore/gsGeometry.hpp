@@ -35,10 +35,10 @@ gsGeometry<T>::boundary(boxSide const& s) const
     }
 
     gsBasis<T> *Bs = this->basis().boundaryBasis(s);  // Basis for boundary side s
-    gsGeometry *bgeo = Bs->makeGeometry( give(coeffs) );
+    gsGeometry::uPtr bgeo = Bs->makeGeometry( give(coeffs) );
 
     delete Bs;
-    return bgeo;
+    return bgeo.release();
 }
 
 template<class T>
@@ -138,12 +138,11 @@ void gsGeometry<T>::degreeElevate(int const i, int const dir)
 
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
-    gsGeometry<T> * g = b->interpolateData(iVals, iPts);
+    memory::unique_ptr<gsGeometry<T> > g = b->interpolateData(iVals, iPts);
 
     std::swap(m_basis, g->m_basis);
     g->coefs().swap(this->coefs());
 
-    delete g;
     delete b;
 }
 
@@ -161,12 +160,11 @@ void gsGeometry<T>::degreeReduce(int const i, int const dir)
 
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
-    gsGeometry<T> * g = b->interpolateData(iVals, iPts);
+    memory::unique_ptr<gsGeometry<T> > g = b->interpolateData(iVals, iPts);
 
     std::swap(m_basis, g->m_basis);
     g->coefs().swap(this->coefs());
 
-    delete g;
     delete b;
 }
 

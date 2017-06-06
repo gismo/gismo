@@ -19,6 +19,7 @@
 
 #include <gsCore/gsBoundary.h>
 #include <gsUtils/gsMesh/gsMesh.h>
+#include <gsCore/gsGeometry.h>
 //#include <gsUtils/gsSortedVector.h>
 
 
@@ -900,12 +901,12 @@ gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
     for (unsigned i = 0; i < d; ++i) // for all coordinate bases
         m_bases[i]->anchors_into(grid[i]);
     
-    return interpolateGrid(vals,grid);
+    return interpolateGrid(vals,grid).release();
 }
 
 
 template<unsigned d, class T>
-gsGeometry<T> * 
+memory::unique_ptr<gsGeometry<T> >
 gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
                                           std::vector<gsMatrix<T> >const& grid) const
 {

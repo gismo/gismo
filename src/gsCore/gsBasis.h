@@ -15,9 +15,9 @@
 
 #include <gsCore/gsFunctionSet.h>
 
-#define GISMO_MAKE_GEOMETRY_NEW                                         \
-    virtual gsGeometry<T> * makeGeometry( gsMatrix<T>coefs ) const      \
-    { return new GeometryType(*this, give(coefs)); }
+#define GISMO_MAKE_GEOMETRY_NEW    \
+virtual memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T>coefs ) const      \
+    { return memory::unique_ptr<gsGeometry<T> >(new GeometryType(*this, give(coefs))); }
 
 namespace gismo
 {
@@ -676,7 +676,7 @@ public:
 
     /// @brief Create a gsGeometry of proper type for this basis with the
     /// given coefficient matrix.
-    virtual gsGeometry<T> * makeGeometry(gsMatrix<T> coefs) const = 0;
+    virtual memory::unique_ptr<gsGeometry<T> > makeGeometry(gsMatrix<T> coefs) const = 0;
 
     /// @brief Create an empty basis of the derived type and return a
     /// pointer to it
@@ -838,7 +838,7 @@ public:
 
     /// @brief Applies interpolation given the parameter values \a pts
     /// and values \a vals.
-    gsGeometry<T> * interpolateData(gsMatrix<T> const& vals,
+    memory::unique_ptr<gsGeometry<T> > interpolateData(gsMatrix<T> const& vals,
                                     gsMatrix<T> const& pts ) const;
 
     /// @brief Applies interpolation of values \a pts using the

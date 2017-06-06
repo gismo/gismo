@@ -65,7 +65,7 @@ public:
     typedef memory::shared_ptr< gsFunction > Ptr;
 
     /// Unique pointer for gsFunction
-    typedef memory::shared_ptr< gsFunction > uPtr;
+    typedef memory::unique_ptr< gsFunction > uPtr;
 
     typedef typename gsMatrix<T>::uPtr       uMatrixPtr;
 
