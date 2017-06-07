@@ -906,7 +906,7 @@ gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
 
 
 template<unsigned d, class T>
-memory::unique_ptr<gsGeometry<T> >
+typename gsGeometry<T>::uPtr
 gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
                                           std::vector<gsMatrix<T> >const& grid) const
 {
@@ -942,7 +942,7 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
             gsWarn<< "Failed LU decomposition for:\n";//<< Cmat.toDense() <<"\n";
             gsWarn<< "Points:\n"<< grid[i] <<"\n";
             gsWarn<< "Knots:\n"<< m_bases[i]->detail() <<"\n";
-            return 0;
+            return typename gsGeometry<T>::uPtr();
         }
         #endif
         // Transpose solution component-wise
