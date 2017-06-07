@@ -195,7 +195,7 @@ public:
     /// Allows to convert a gsReadFile to a gsMultipatch
     operator gsMultiPatch<T> ()
     {
-        memory::unique_ptr< gsMultiPatch<T> > mp = *this;
+        memory::unique_ptr< gsMultiPatch<T> > mp(*this);
         if (!mp) return gsMultiPatch<T>();
         return *mp;
     }
