@@ -74,7 +74,7 @@ gsTrimSurface<T>::gsTrimSurface(gsMatrix<T> const & corner, int patchDeg1, int p
 }
 
 template <class T>
-typename gsMatrix<T>::uPtr gsTrimSurface<T>::derivatives(int sourceID) const
+gsMatrix<T> gsTrimSurface<T>::derivatives(int sourceID) const
 {
   std::vector< gsCurve<T>* >  trimLoop = m_domain->outer().curves();
   //edges of the angle in the parameter domain

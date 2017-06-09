@@ -107,8 +107,6 @@ public:
     /// Unique pointer for gsFunction
     typedef memory::unique_ptr< gsFunctionSet > uPtr;
 
-    typedef typename gsMatrix<T>::uPtr       uMatrixPtr;
-
     typedef std::pair<int,int> dim_t;
 public:
 
@@ -294,10 +292,10 @@ public:
                                   std::vector<gsMatrix<T> > & result) const;
 
     /// Evaluate the function, \see eval_into()
-    uMatrixPtr eval(const gsMatrix<T>& u) const;
+    gsMatrix<T> eval(const gsMatrix<T>& u) const;
 
     /// Evaluate the derivatives, \see deriv_into()
-    uMatrixPtr deriv(const gsMatrix<T>& u) const;
+    gsMatrix<T> deriv(const gsMatrix<T>& u) const;
 
     /** \brief Evaluates the second derivatives of active (i.e., non-zero) basis at points \a u.
      
@@ -310,7 +308,7 @@ public:
         \return  For every column of \a u, a column containing the second derivatives.
         See documentation for deriv2_into() (the one without input parameter \em coefs) for details.
     */
-    uMatrixPtr deriv2(const gsMatrix<T>& u) const;
+    gsMatrix<T> deriv2(const gsMatrix<T>& u) const;
 
 
     /// @brief Returns the indices of active (nonzero) functions at

@@ -67,8 +67,6 @@ public:
     /// Unique pointer for gsFunction
     typedef memory::unique_ptr< gsFunction > uPtr;
 
-    typedef typename gsMatrix<T>::uPtr       uMatrixPtr;
-
     typedef typename Base::dim_t dim_t;
     
     using Base::support;
@@ -177,7 +175,7 @@ public:
      */
     void div_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
-    uMatrixPtr jacobian(const gsMatrix<T>& u) const;
+    gsMatrix<T> jacobian(const gsMatrix<T>& u) const;
 
     /** @brief Evaluate second derivatives of the function at points \a u into \a result.
      *
@@ -201,7 +199,7 @@ public:
   
     /// Evaluates the Hessian (matrix of second partial derivatives) of
     /// coordinate \a coord at points \a u.
-    virtual uMatrixPtr hess(const gsMatrix<T>& u, unsigned coord = 0) const;
+    virtual gsMatrix<T> hess(const gsMatrix<T>& u, unsigned coord = 0) const;
 
     /// @brief Evaluate the Laplacian at points \a u.
     ///

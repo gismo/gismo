@@ -47,7 +47,7 @@ public:
     {
         gsMatrix<T> tmp;
         m_geo.eval_into(u, tmp);
-        result.noalias() = ( *m_f1.eval(u) - *m_f2.eval(tmp) ).cwiseAbs();
+        result.noalias() = ( m_f1.eval(u) - m_f2.eval(tmp) ).cwiseAbs();
     }
 
     int domainDim() const { return m_f1.domainDim(); }
@@ -128,7 +128,7 @@ public:
         result.resize(1, u.cols() );
         gsMatrix<T> tmp;
         for (index_t k=0; k!= u.cols(); ++k)
-            result(0,k) = m_geo.deriv(u.col(k))->reshape(m_dim,m_dim).determinant();
+            result(0,k) = m_geo.deriv(u.col(k)).reshape(m_dim,m_dim).determinant();
     }
 
     int domainDim() const { return m_geo.parDim(); }

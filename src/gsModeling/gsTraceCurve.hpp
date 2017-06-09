@@ -81,8 +81,8 @@ void gsTraceLine( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
       count++;
       //std::cout<< "Point "<<count <<"= "<< current.transpose() <<"\n";
       
-      Jmap.row(0) =  *map.first->jacobian(current );
-      Jmap.row(1) =  *map.second->jacobian(current);
+      Jmap.row(0) =  map.first->jacobian(current );
+      Jmap.row(1) =  map.second->jacobian(current);
       
       if ( math::abs( Jmap.determinant() ) < 0.0001) //0.025 amoeba_hole,austria_hole
             {
@@ -187,8 +187,8 @@ void gsTraceCurve( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
  
 
   // TO DO: transpose the result of  gsFunction::grad and add transpose()
-  Jmap.row(0) =  *map.first->jacobian(current);
-  Jmap.row(1) =  *map.second->jacobian(current);
+  Jmap.row(0) =  map.first->jacobian(current);
+  Jmap.row(1) =  map.second->jacobian(current);
 
   
    delta = Jmap.inverse()*(next.col(0)-line.col(0));
@@ -277,8 +277,8 @@ void gsTraceCurvePart(std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
         do
         {
             // TO DO: transpose the result of  gsFunction::grad and add transpose()
-            Jmap.row(0) =  *map.first->jacobian(current);
-            Jmap.row(1) =  *map.second->jacobian(current);
+            Jmap.row(0) =  map.first->jacobian(current);
+            Jmap.row(1) =  map.second->jacobian(current);
             
             //std::cout<<"jacobian matrix is \n"<< Jmap<<"\n";
             if ( math::abs( Jmap.determinant() ) < 0.01) //0.025 amoeba_hole,austria_hole

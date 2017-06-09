@@ -91,8 +91,6 @@ public:
 
     static const bool IsRational = false;
 
-    typedef typename gsMatrix<T>::uPtr        uMatrixPtr;
-
     typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
 
 public:
@@ -126,27 +124,27 @@ public:
     /// @{
 
     /// Evaluate a single basis function \a i at points \a u.
-    uMatrixPtr evalSingle(unsigned i, const gsMatrix<T> & u) const
+    gsMatrix<T> evalSingle(unsigned i, const gsMatrix<T> & u) const
     {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        this->evalSingle_into(i, u, *result);
-        return uMatrixPtr(result);
+        gsMatrix<T> result;
+        this->evalSingle_into(i, u, result);
+        return result;
     }
 
     /// Evaluate a single basis function \a i derivative at points \a u.
-    uMatrixPtr derivSingle(unsigned i, const gsMatrix<T> & u) const
+    gsMatrix<T> derivSingle(unsigned i, const gsMatrix<T> & u) const
     {
-        gsMatrix<T> *result = new gsMatrix<T>;
-        this->derivSingle_into(i, u, *result);
-        return uMatrixPtr(result);
+        gsMatrix<T> result;
+        this->derivSingle_into(i, u, result);
+        return result;
     }
 
     /// Evaluate the second derivative of a single basis function \a i at points \a u.
-    uMatrixPtr deriv2Single(unsigned i, const gsMatrix<T> & u) const
+    gsMatrix<T> deriv2Single(unsigned i, const gsMatrix<T> & u) const
     {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        this->deriv2Single_into(i, u, *result);
-        return uMatrixPtr(result);
+        gsMatrix<T> result;
+        this->deriv2Single_into(i, u, result);
+        return result;
     }
 
     /** \brief Number of active basis functions at an arbitrary parameter value.
@@ -188,11 +186,11 @@ public:
      * \return      a matrix of size <em>n x m</em> with one function value as a column vector
      *              per evaluation point
      */
-    uMatrixPtr evalFunc(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
+    gsMatrix<T> evalFunc(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        this->evalFunc_into(u, coefs, *result);
-        return uMatrixPtr(result);
+        gsMatrix<T> result;
+        this->evalFunc_into(u, coefs, result);
+        return result;
     }
 
     /** \brief Evaluate the function described by \a coefs at points \a u,
@@ -219,11 +217,11 @@ public:
      *   one Jacobian matrix of size <em>d * n</em>, such that the total size of
      *   the result is <em>n x (d * n) x N</em>
      */
-    uMatrixPtr derivFunc(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
+    gsMatrix<T> derivFunc(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        this->derivFunc_into(u, coefs, *result);
-        return uMatrixPtr(result);
+        gsMatrix<T> result;
+        this->derivFunc_into(u, coefs, result);
+        return result;
     }
 
     /** \brief Evaluate the derivatives of the function described by \a coefs at points \a u.
@@ -311,11 +309,11 @@ public:
      */
     //  second derivatives as follows (eg. for a surface (x,y) --> (f_1, f_2, f_3):
     //     *   ( dxxf_1 dyyf_1 dxyf_1 dxxf_2 dyyf_2 dxy2f_2 dxxf_3 dyyf_3 dxyf_3 )^T
-    uMatrixPtr deriv2Func(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
+    gsMatrix<T> deriv2Func(const gsMatrix<T> & u, const gsMatrix<T> & coefs) const
     {
-        gsMatrix<T> *result = new gsMatrix<T>;
-        this->deriv2Func_into(u, coefs, *result);
-        return uMatrixPtr(result);
+        gsMatrix<T> result;
+        this->deriv2Func_into(u, coefs, result);
+        return result;
     }
 
     /** \brief Evaluates the second derivatives of the function described by \a coefs at points \a u.

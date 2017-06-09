@@ -402,7 +402,7 @@ gsBSpline<T> operator*(const gsBSpline<T> & lhs, const gsBSpline<T> & rhs)
 
     gsMatrix<T> pts;
     kv.greville_into(pts);
-    const gsMatrix<T> ev = (*lhs.eval(pts)).array() * (*rhs.eval(pts)).array();
+    const gsMatrix<T> ev = (lhs.eval(pts)).array() * (rhs.eval(pts)).array();
     
     // fixme: avoid temporaries here
     return *safe(static_cast<gsBSpline<T>*>(gsBSplineBasis<T>(kv).interpolateData(ev,pts)));

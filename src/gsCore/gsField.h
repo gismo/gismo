@@ -101,7 +101,7 @@ public:
      * @returns uPtr The <em>j</em>-th column of \a uPtr corresponds
      * to the image of the point \a u_j (which is defined by the \a j-th column of the input parameter \a u).
      */
-    typename gsMatrix<T>::uPtr point(const gsMatrix<T>& u, int i = 0) const
+     gsMatrix<T> point(const gsMatrix<T>& u, int i = 0) const
     {
         return m_patches->piece(i).eval(u);
     }
@@ -119,16 +119,16 @@ public:
      * @returns uPtr The <em>j</em>-th column of \a uPtr corresponds
      * to the value of the field at the point \a u_j (which is defined by the \a j-th column of the input parameter \a u).
      */
-    typename gsMatrix<T>::uPtr value(const gsMatrix<T>& u, int i = 0)  const
+    gsMatrix<T> value(const gsMatrix<T>& u, int i = 0)  const
     {
         return m_parametric
             ? m_fields->piece(i).eval(u)
-            : m_fields->piece(i).eval( *point(u, i) );
+            : m_fields->piece(i).eval( point(u, i) );
     }
 
     // Return the value of the Field at physical value u 
     // TO DO: rename to evalPhys()
-    typename gsMatrix<T>::uPtr pvalue(const gsMatrix<T>& u, int i)  const
+    gsMatrix<T> pvalue(const gsMatrix<T>& u, int i)  const
     {
         GISMO_ASSERT(!m_parametric, "Cannot compute physical value");
         return ( m_fields->piece(i).eval(u) ); 

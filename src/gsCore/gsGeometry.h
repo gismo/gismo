@@ -279,7 +279,7 @@ public:
     {
         if ( parDim() == geoDim() )
         {
-            const T val = gsFunction<T>::jacobian( parameterCenter() )->determinant();
+            const T val = gsFunction<T>::jacobian( parameterCenter() ).determinant();
             return (T(0) < val) - (val < T(0));
         }
         return 1;

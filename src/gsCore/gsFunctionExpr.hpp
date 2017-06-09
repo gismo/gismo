@@ -581,7 +581,7 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 }
 
 template<typename T>
-typename gsFunction<T>::uMatrixPtr
+gsMatrix<T>
 gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const 
 { 
     //gsDebug<< "Using finite differences (gsFunctionExpr::hess) for Hessian.\n";
@@ -591,7 +591,7 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
                    << my->dim <<", got "<< u.rows() <<")");
     
-    gsMatrix<T> * res = new gsMatrix<T>(d,d);
+    gsMatrix<T> res(d, d);
 
     const PrivateData_t & expr = 
 #   ifdef _OPENMP
@@ -607,17 +607,17 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
     copy_n(u.data(), expr.dim, expr.vars);
     for( int j=0; j!=d; ++j )
     {
-        (*res)(j,j) = exprtk::
+        res(j,j) = exprtk::
             second_derivative<T>( expr.expression[coord], expr.vars[j], 0.00001);
 
         for( int k = 0; k!=j; ++k )
-            (*res)(k,j) = (*res)(j,k) =
+            res(k,j) = res(j,k) =
                 mixed_derivative<T>( expr.expression[coord], expr.vars[k], 
                                      expr.vars[j], 0.00001 );
     }
 #   endif
 
-    return typename gsFunction<T>::uMatrixPtr(res); 
+    return res;
 }
 
 template<typename T>

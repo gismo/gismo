@@ -200,7 +200,7 @@ public:
     
     /// Compute the partial derivatives of the surface parametrization at a corner point of a trimmed patch 
     /// specified by the index of the trimming curve \a sourceID emanating from the corner point
-    typename gsMatrix<T>::uPtr derivatives(int sourceID) const;
+    gsMatrix<T> derivatives(int sourceID) const;
     
     /// Compute the surface normal at a corner.
     gsVector3d<T> cornerNormal(int const & sourceID) const;           

@@ -157,7 +157,7 @@ public:
                              gsMatrix<T>& result) const;
 
     // see gsFunction for documentation  
-    typename gsFunction<T>::uMatrixPtr hess(const gsMatrix<T>& u, unsigned coord = 0) const;
+    gsMatrix<T> hess(const gsMatrix<T>& u, unsigned coord = 0) const;
   
     // see gsFunction for documentation  
     gsMatrix<T> * laplacian(const gsMatrix<T>& u) const;

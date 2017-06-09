@@ -19,12 +19,12 @@ namespace gismo
 {
 
 template <class T>
-typename gsFunction<T>::uMatrixPtr
+gsMatrix<T>
 gsFunction<T>::jacobian(const gsMatrix<T>& u) const
 {
-    gsMatrix<T>* result = new gsMatrix<T>;
-    this->jacobian_into( u, *result );
-    return uMatrixPtr(result);
+    gsMatrix<T> result;
+    this->jacobian_into( u, result );
+    return result;
 }
 
 template <class T>
@@ -161,12 +161,12 @@ gsMatrix<T>* gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
     {
         tmp.setZero();
         tmp( j, 0 )    = T( 0.0000000001 );
-        res->row( j )  = 16 * ( *this->eval(u.colwise() + tmp ) +
-                                *this->eval(u.colwise() - tmp ) ) -
-                30 * ( *this->eval( u ) );
+        res->row( j )  = 16 * ( this->eval(u.colwise() + tmp ) +
+                                this->eval(u.colwise() - tmp ) ) -
+                30 * ( this->eval( u ) );
         tmp( j, 0 )    = T( 0.0000000002 );
-        res->row( j ) -=  ( *this->eval( u.colwise() - tmp ) +
-                            *this->eval( u.colwise() + tmp ) ) ;
+        res->row( j ) -=  ( this->eval( u.colwise() - tmp ) +
+                            this->eval( u.colwise() + tmp ) ) ;
         res->row( j ) /= T( 0.0000000012 ) ;
     }
     return res;
@@ -238,7 +238,7 @@ void gsFunction<T>::eval_component_into(const gsMatrix<T>& u,
 { GISMO_NO_IMPLEMENTATION }
 
 template <class T>
-typename gsFunction<T>::uMatrixPtr
+gsMatrix<T>
 gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const    
 { GISMO_NO_IMPLEMENTATION }
 

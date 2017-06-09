@@ -110,30 +110,30 @@ void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
 }
 
 template <class T>
-typename gsFunctionSet<T>::uMatrixPtr
+gsMatrix<T>
 gsFunctionSet<T>::eval(const gsMatrix<T>& u) const
 {
-    gsMatrix<T>* result = new gsMatrix<T>;
-    this->eval_into( u, *result );
-    return uMatrixPtr(result);
+    gsMatrix<T> result;
+    this->eval_into( u, result );
+    return result;
 }
 
 template <class T>
-typename gsFunctionSet<T>::uMatrixPtr
+gsMatrix<T>
 gsFunctionSet<T>::deriv(const gsMatrix<T>& u) const
 {
-    gsMatrix<T>* result = new gsMatrix<T>;
-    this->deriv_into( u, *result );
-    return uMatrixPtr(result);
+    gsMatrix<T> result;
+    this->deriv_into( u, result );
+    return result;
 }
 
 template <class T>
-typename gsFunctionSet<T>::uMatrixPtr
+gsMatrix<T>
 gsFunctionSet<T>::deriv2(const gsMatrix<T>& u) const
 {
-    gsMatrix<T>* result = new gsMatrix<T>;
-    this->deriv2_into( u, *result );
-    return uMatrixPtr(result);
+    gsMatrix<T> result;
+    this->deriv2_into( u, result );
+    return result;
 }
 
 /*
