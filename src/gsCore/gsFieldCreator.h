@@ -34,8 +34,9 @@ class gsAbsError : public gsFunction<T>
 public:
     gsAbsError( gsFunction<T> const & f1, 
                 gsGeometry<T> const & geo, 
-                gsFunction<T> const & f2 )
-    : m_geo(geo), m_f1(f1), m_f2(f2)
+                gsFunction<T> const & f2,
+                bool _f2param = false)
+    : m_geo(geo), m_f1(f1), m_f2(f2), f2param(_f2param)
     { 
             
     }
@@ -47,7 +48,12 @@ public:
     {
         gsMatrix<T> tmp;
         m_geo.eval_into(u, tmp);
-        result.noalias() = ( m_f1.eval(u) - m_f2.eval(tmp) ).cwiseAbs();
+
+        if(!f2param)
+            result.noalias() = ( m_f1.eval(u) - m_f2.eval(tmp) ).cwiseAbs();
+        else
+            result.noalias() = ( m_f1.eval(u) - m_f2.eval(u) ).cwiseAbs(); // f2 parametric function
+
     }
 
     int domainDim() const { return m_f1.domainDim(); }
@@ -61,6 +67,8 @@ private:
 
     const gsFunction<T> & m_f1;
     const gsFunction<T> & m_f2;
+
+    bool f2param;
 
 private:
 //    gsAbsError() { }
@@ -292,14 +300,14 @@ template<class T>
 struct gsFieldCreator
 {
 
-    static gsField<T> absError(gsField<T> const & field, gsFunction<T> const & f)
+    static gsField<T> absError(gsField<T> const & field, gsFunction<T> const & f, bool fparam = false)
     {
         const gsMultiPatch<T> & mp = field.patches();
     
         gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
         
         for (unsigned k=0; k< mp.nPatches(); ++k)
-            nFields->addPiecePointer( new gsAbsError<T>(field.function(k), mp.patch(k), f) );
+            nFields->addPiecePointer( new gsAbsError<T>(field.function(k), mp.patch(k), f, fparam) );
         
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
     }
