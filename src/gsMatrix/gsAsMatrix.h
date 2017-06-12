@@ -308,7 +308,7 @@ private:
 template<class T, class iterator>
 gsMatrix<T> makeMatrix(iterator it, index_t n, index_t m)
 {
-    gsMatrix<T> result = new gsMatrix<T>(n,m);
+    gsMatrix<T> result(n,m);
     for ( index_t i = 0; i!=n; ++i)
         for ( index_t j = 0; j!=m; ++j)
             result(i,j)= *(it++);
