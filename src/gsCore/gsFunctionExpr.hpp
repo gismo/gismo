@@ -602,7 +602,7 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 #   ifdef GISMO_WITH_ADIFF
     for (index_t v = 0; v!=d; ++v)
         expr.vars[v].setVariable(v, d, u(v,0) );
-    expr.expression[coord].value().hessian_into(*res);
+    expr.expression[coord].value().hessian_into(res);
 #   else
     copy_n(u.data(), expr.dim, expr.vars);
     for( int j=0; j!=d; ++j )

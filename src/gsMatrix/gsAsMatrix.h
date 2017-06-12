@@ -306,13 +306,13 @@ private:
 
 /// Utility to make a matrix out of an iterator to values
 template<class T, class iterator>
-typename gsMatrix<T>::uPtr makeMatrix(iterator it, index_t n, index_t m)
+gsMatrix<T> makeMatrix(iterator it, index_t n, index_t m)
 {
-    gsMatrix<T> * result = new gsMatrix<T>(n,m);
+    gsMatrix<T> result = new gsMatrix<T>(n,m);
     for ( index_t i = 0; i!=n; ++i)
         for ( index_t j = 0; j!=m; ++j)
-            (*result)(i,j)= *(it++);
-    return typename gsMatrix<T>::uPtr(result);
+            result(i,j)= *(it++);
+    return result;
 }
 
 

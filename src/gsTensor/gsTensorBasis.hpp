@@ -296,7 +296,7 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
             bdofs.insert( bd(i) );
     }
 
-    return (*(makeMatrix<unsigned>(bdofs.begin(), bdofs.size(), 1 )));
+    return makeMatrix<unsigned>(bdofs.begin(), bdofs.size(), 1 );
 
     /* // returns boundary with repetitions
        unsigned sz(0), i(0), r(0);
