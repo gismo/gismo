@@ -91,6 +91,20 @@ public:
 
         return this->m_isGood;
     }
+
+    // ---> Documentation in gsDomainIterator.h
+    bool next(index_t increment)
+    {
+        for (index_t i = 0; i < increment; i++)
+            this->m_isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+
+        if (this->m_isGood) // new element in m_leaf
+            updateElement();
+        else // went through all elements in m_leaf
+            this->m_isGood = nextLeaf();
+
+        return this->m_isGood;
+    }
     
     /// Resets the iterator so that it can be used for another
     /// iteration through all boundary elements.

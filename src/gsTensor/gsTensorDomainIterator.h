@@ -108,6 +108,16 @@ public:
     }
 
     // Documentation in gsDomainIterator.h
+    bool next(index_t increment)
+    {
+        for (index_t i = 0; i < increment; i++)
+            m_isGood = m_isGood && nextLexicographic(curElement, meshStart, meshEnd);
+        if (m_isGood)
+            update();
+        return m_isGood;
+    }
+
+    // Documentation in gsDomainIterator.h
     void reset()
     {
         curElement = meshStart;

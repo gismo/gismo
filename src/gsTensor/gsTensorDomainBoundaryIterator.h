@@ -110,6 +110,18 @@ public:
         return m_isGood;
     }
 
+    // ---> Documentation in gsDomainIterator.h
+    // proceed to the next element (skipping #increment elements);
+    // returns true if end not reached yet
+    bool next(index_t increment)
+    {
+        for (index_t i = 0; i < increment; i++)
+            m_isGood = m_isGood && nextLexicographic(curElement, meshBegin, meshEnd);
+        if (m_isGood)
+            update();
+        return m_isGood;
+    }
+
     /// Resets the iterator implementation copied from the constructor
     /// note that it fails for sides containing 1 element in any direction
     /// do not know the rationale for it
