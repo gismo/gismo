@@ -412,6 +412,14 @@ public:
             boundary_condition<T>(p, s, f_ptr, label, unknown, comp, parametric) );
     }
 
+    void add(int p, boxSide s, const std::string & label,
+             const gsFunction<T> & f, int unknown = 0,
+             int comp = -1, bool parametric = false)
+    {
+        function_ptr fun(f.clone());
+        add(p,s,label,fun,unknown,comp,parametric);
+    }
+
     /** \brief Adds another boundary condition
      *
      * Creates an object of type boundary_condition and adds is to
