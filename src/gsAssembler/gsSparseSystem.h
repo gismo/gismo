@@ -336,7 +336,7 @@ public:
      * @param opt
      * @param [in] numRhs number of columns
      */
-    void reserve(const gsMultiBasis<T> & mb, const gsOptionList & opt, 
+    void reserve(const gsMultiBasis<T> & mb, const gsOptionList & opt,
                  const index_t numRhs)
     {
         reserve(numColNz(mb,opt), numRhs);
@@ -1052,9 +1052,6 @@ public: /* Add local contributions to system matrix and right-hand side */
     }
 
 
-
-
-
     GISMO_DEPRECATED
     /**
      * @brief pushToMatrix pushes the local matrix for an element to the global system,
@@ -1186,7 +1183,49 @@ public: /* Add local contributions to system matrix and right-hand side */
     }
 
 
+public:
+    void pushSparse(const gsSparseMatrix<T> & localMat,
+                    const gsMatrix<T> & localRhs,
+                    const gsMatrix<unsigned> & actives_i,
+                    const gsMatrix<unsigned> & actives_j,
+                    const gsMatrix<T> & eliminatedDofs_j,
+                    const size_t r = 0, const size_t c = 0)
+    {
+        const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
+        const gsDofMapper & colMap = m_mappers[m_col.at(c)];
 
+        GISMO_ASSERT( m_matrix.cols() == m_rhs.rows(), "gsSparseSystem is not allocated");
+        //Assert eliminatedDofs.rows() == rowMap.boundarySize()
+
+        for (index_t i = 0; i<localMat.outerSize(); ++i)
+          for (gsSparseMatrix<double>::InnerIterator it(localMat,i); it; ++it)
+          {
+              const int ii =  m_rstr.at(r) + actives_i.at(it.row());
+              if ( rowMap.is_free_index(actives_i.at(it.row())) )
+              {
+                  const int jj =  m_cstr.at(c) + actives_j.at(it.col());
+                  if ( colMap.is_free_index(actives_j.at(it.col())) )
+                  {
+                      // If matrix is symmetric, we store only lower
+                      // triangular part
+                      if ( (!symm) || jj <= ii )
+                          m_matrix.coeffRef(ii, jj) += it.value();
+                  }
+                  else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
+                  {
+                      m_rhs.row(ii).noalias() -= it.value() *
+                              eliminatedDofs_j.row( colMap.global_to_bindex(jj) );
+                  }
+              }
+         }
+
+        for(index_t i=0; i<actives_i.rows();++i)
+        {
+            const int ii =  m_rstr.at(r) + actives_i.at(i);
+            if ( rowMap.is_free_index(actives_i.at(i)) )
+                m_rhs.row(ii) += localRhs.row(i);
+        }
+    }
 
 };  // class gsSparseSystem
 
