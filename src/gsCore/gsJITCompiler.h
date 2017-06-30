@@ -179,7 +179,7 @@ struct gsJITCompilerConfig
         return os;
     }
 
-    /// Reads compiler configuration from XML file
+    /// Reads compiler configuration from XML file by language
     void load(const std::string filename,
               const int _lang = gsJITLang::CXX)
     {
@@ -188,6 +188,18 @@ struct gsJITCompilerConfig
 
         gsFileData<real_t> f(filename);        
         gsJITCompilerConfig * cc = f.getId<gsJITCompilerConfig>(_lang).release();
+
+        std::swap(*cc, *this);
+        if (this->temp.empty()) this->temp=detectTemp();
+        delete cc;
+    }
+
+    /// Reads compiler configuration from XML file by ID
+    void load_id(const std::string filename,
+                 const int id)
+    {
+        gsFileData<real_t> f(filename);        
+        gsJITCompilerConfig * cc = f.getId<gsJITCompilerConfig>(id).release();
 
         std::swap(*cc, *this);
         if (this->temp.empty()) this->temp=detectTemp();
@@ -685,12 +697,12 @@ public:
             systemcall << "\"\"" << config.getCmd() << "\" "
                        << config.getFlags() << " \""
                        << srcName.str()     << "\" "
-					   << config.getOut() << "\"" << libName.str() << "\"\"";
+             << config.getOut() << "\"" << libName.str() << "\"\"";
 #           else
-			systemcall << "\"" << config.getCmd() << "\" "
+      systemcall << "\"" << config.getCmd() << "\" "
                        << config.getFlags() << " \""
                        << srcName.str()     << "\" "
-					   << config.getOut() << "\"" << libName.str() << "\"";
+             << config.getOut() << "\"" << libName.str() << "\"";
 #           endif
             
             gsInfo << "Compiling dynamic library: " << systemcall.str() << "\n";
