@@ -326,13 +326,13 @@ public:
         }
 
     /// Sample \a npoints uniformly distributed (in parameter domain) points on the curve.
-    typename gsMatrix<T>::uPtr sample(int npoints = 50) const
+    gsMatrix<T> sample(int npoints = 50) const
     {      
-        gsMatrix<T> * images = new gsMatrix<T>();
+        gsMatrix<T> images;
         gsMatrix<T> interval = this->parameterRange();
         const gsMatrix<T> pts = gsPointGrid(interval, npoints );
-        this->eval_into( pts, *images );
-        return typename gsMatrix<T>::uPtr(images);
+        this->eval_into( pts, images );
+        return images;
     }
 
     /// Tries to convert the curve into periodic.

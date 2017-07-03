@@ -257,27 +257,27 @@ public:
     }
     
     /// sample standard unit normals along a trimming curve
-    typename gsMatrix<T>::uPtr sampleNormal(int loopNumber, int curveNumber, size_t npoints) const
+    gsMatrix<T> sampleNormal(int loopNumber, int curveNumber, size_t npoints) const
     {
       assert( (loopNumber>=0) && (loopNumber < m_domain->numLoops()) );
       assert( (curveNumber>=0) && (curveNumber < m_domain->loop(loopNumber).size() ) );
       //gsMatrix<T> u( this->geoDim(), npoints );
 
-      gsMatrix<T> *  u = new gsMatrix<T>(3, npoints);
+      gsMatrix<T> u(3, npoints);
       
       gsMatrix<T> pts = m_domain->sampleCurve(loopNumber, curveNumber, npoints);
       gsMatrix<T> nm(3,1);
       
       for (size_t i=0; i < npoints; i++)
       {
-          u->col(i) = unitNormal(pts.col(i));
+          u.col(i) = unitNormal(pts.col(i));
       }
       
-      return typename gsMatrix<T>::uPtr(u);
+      return u;
     }      
     
     /// Return the tangent vectors of the trimming curve \a curveNumber in trimming loop \a loopNumber    
-    typename gsMatrix<T>::uPtr trimCurTangents(int loopN, int curveN, size_t npoints) const
+    gsMatrix<T> trimCurTangents(int loopN, int curveN, size_t npoints) const
     {      
       gsMatrix<T> interval = m_domain->curve(loopN,curveN).parameterRange();
       // sample parameter points 
@@ -286,13 +286,13 @@ public:
       gsMatrix<T> trimCurDev = m_domain->curve(loopN,curveN).jacobian(tval);
       gsMatrix<T> trimCurJac = m_surface->jacobian( trimCur );
       //gsMatrix<T> tangents(this->geoDim(),npoints);
-      gsMatrix<T> * tangents = new gsMatrix<T>(3,npoints);
+      gsMatrix<T> tangents(3,npoints);
       
       for (size_t i=0; i<=npoints-1; i++)
       {
-        tangents->col(i) = trimCurJac.middleCols( 2*i,2 )*trimCurDev.col(i);
+        tangents.col(i) = trimCurJac.middleCols( 2*i,2 )*trimCurDev.col(i);
       }
-      return typename gsMatrix<T>::uPtr(tangents);
+      return tangents;
     }
 
 
