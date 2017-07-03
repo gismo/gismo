@@ -99,7 +99,7 @@ public:
     virtual bool next() = 0;
 
     /// \brief Proceeds to the next element (skipping #increment elements).
-    virtual bool next(index_t increment) { return false; }; // TODO: Make this PURE
+    virtual bool next(index_t increment) = 0;
 
     /// Resets the iterator so that it points to the first element
     virtual void reset()
