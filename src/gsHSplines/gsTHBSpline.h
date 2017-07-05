@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsGeometry.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsCore/gsForwardDeclarations.h>
 

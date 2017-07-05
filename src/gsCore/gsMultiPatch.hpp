@@ -167,7 +167,7 @@ void gsMultiPatch<T>::addPatch( gsGeometry<T>* g )
 }
 
 template<class T>
-void gsMultiPatch<T>::addPatch(memory::unique_ptr<gsGeometry<T> > g) 
+void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
 {
     addPatch(g.release());
 }

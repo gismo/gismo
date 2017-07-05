@@ -232,7 +232,7 @@ public:
     
     /// Returns a local representation of the geometry in the cell
     /// containing the point \a u
-    memory::unique_ptr<gsGeometry<T> > localRep(const gsMatrix<T> & u) const;
+    typename gsGeometry<T>::uPtr localRep(const gsMatrix<T> & u) const;
 
 private:
 

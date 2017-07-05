@@ -187,7 +187,7 @@ public:
     void addPatch( gsGeometry<T> * g );
 
     ///\brief Add a patch (pointer is invalid after this call)
-    void addPatch( memory::unique_ptr<gsGeometry<T> > g);
+    void addPatch(typename gsGeometry<T>::uPtr g);
     
     /// Add a patch by copying argument
     void addPatch(const gsGeometry<T> & g);

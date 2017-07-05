@@ -138,7 +138,7 @@ void gsGeometry<T>::degreeElevate(int const i, int const dir)
 
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
-    memory::unique_ptr<gsGeometry<T> > g = b->interpolateData(iVals, iPts);
+    typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
 
     std::swap(m_basis, g->m_basis);
     g->coefs().swap(this->coefs());
@@ -160,7 +160,7 @@ void gsGeometry<T>::degreeReduce(int const i, int const dir)
 
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
-    memory::unique_ptr<gsGeometry<T> > g = b->interpolateData(iVals, iPts);
+    typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
 
     std::swap(m_basis, g->m_basis);
     g->coefs().swap(this->coefs());
