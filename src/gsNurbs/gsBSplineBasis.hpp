@@ -842,18 +842,18 @@ gsMatrix<T> * gsTensorBSplineBasis<1,T>::laplacian(const gsMatrix<T> & u ) const
 }
 
 template <class T>
-gsBasis<T> * 
+typename gsBasis<T>::uPtr
 gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const 
 { 
     Self_t * ptr1 = dynamic_cast<Self_t*>(other. clone());
     Self_t * ptr2 =  static_cast<Self_t*>( this->clone());
 
     if ( ptr1 )
-        return new gsTensorBSplineBasis<2,T>( ptr1, ptr2 );
+        return typename gsBasis<T>::uPtr(new gsTensorBSplineBasis<2,T>( ptr1, ptr2 ));
     else
     {
         gsInfo<<"Invalid basis "<< other <<"\n";
-        return 0;
+        return typename gsBasis<T>::uPtr();
     }
 }
 

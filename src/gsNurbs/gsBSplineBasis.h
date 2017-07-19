@@ -260,7 +260,7 @@ public:
     gsMatrix<T> * laplacian(const gsMatrix<T> & u ) const ;
 
     // Look at gsBasis class for a description
-    gsBasis<T> * tensorize(const gsBasis<T> & other) const;
+    typename gsBasis<T>::uPtr tensorize(const gsBasis<T> & other) const;
     
     /// Check the BSplineBasis for consistency
     bool check() const

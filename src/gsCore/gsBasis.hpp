@@ -400,12 +400,12 @@ void gsBasis<T>::evalDerSingle_into(unsigned i, const
 
 
 template<class T>
-gsBasis<T> * gsBasis<T>::create() const
+typename gsBasis<T>::uPtr gsBasis<T>::create() const
 { GISMO_NO_IMPLEMENTATION }
 
 
 template<class T>
-gsBasis<T> * gsBasis<T>::tensorize(const gsBasis & other) const 
+typename gsBasis<T>::uPtr gsBasis<T>::tensorize(const gsBasis & other) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
