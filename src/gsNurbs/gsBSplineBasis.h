@@ -412,7 +412,9 @@ public:
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
                              const std::vector<std::vector<T> >& knots)
     {
-        GISMO_NO_IMPLEMENTATION
+        GISMO_ASSERT(knots.size()==1, "the knots you want to insert do not have the right dimension");
+        refine_withTransfer(transfer,knots.front());
+        //GISMO_NO_IMPLEMENTATION
     }
 
     /// \brief Increases the degree without adjusting the smoothness at inner
