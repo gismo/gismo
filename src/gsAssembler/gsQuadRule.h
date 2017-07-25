@@ -110,7 +110,7 @@ public:
      * the <em>d</em>-dimensional hypercube specified by \a lower and
      * \a upper.\n For example, for <em>d=2</em>, the square
      * <em>[a,b]x[c,d]</em> is defined by <em>lower = [a,c]</em>,
-     * <em>upper = [b,c]</em>.  \param[in] lower vector of length \a
+     * <em>upper = [b,d]</em>.  \param[in] lower vector of length \a
      * d, defining the coordinates of the lower corner of the
      * hypercube.  \param[in] upper vector of length \a d, defining
      * the coordinates of the upper corner of the hypercube.
