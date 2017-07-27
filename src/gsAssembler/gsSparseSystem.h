@@ -1198,7 +1198,7 @@ public:
         //Assert eliminatedDofs.rows() == rowMap.boundarySize()
 
         for (index_t i = 0; i<localMat.outerSize(); ++i)
-          for (gsSparseMatrix<double>::InnerIterator it(localMat,i); it; ++it)
+          for (typename gsSparseMatrix<T>::iterator it(localMat,i); it; ++it)
           {
               const int ii =  m_rstr.at(r) + actives_i.at(it.row());
               if ( rowMap.is_free_index(actives_i.at(it.row())) )
