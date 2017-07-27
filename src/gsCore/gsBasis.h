@@ -678,10 +678,10 @@ public:
 
     /// @brief Create an empty basis of the derived type and return a
     /// pointer to it
-    virtual gsBasis::uPtr create() const;
+    virtual typename gsBasis::uPtr create() const;
 
     /// Return a tensor basis of \a this and \a other
-    virtual gsBasis::uPtr tensorize(const gsBasis & other) const;
+    virtual typename gsBasis::uPtr tensorize(const gsBasis & other) const;
 
     /// Applicable for rational bases: returns the underlying "source"
     /// (non-rational) basis
