@@ -23,7 +23,7 @@ namespace gismo
 {
 
 template<class T>
-gsGeometry<T> *
+typename gsGeometry<T>::uPtr
 gsGeometry<T>::boundary(boxSide const& s) const
 {
     gsMatrix<unsigned> ind = this->basis().boundary(s); // get indices of the boundary DOF
@@ -38,7 +38,7 @@ gsGeometry<T>::boundary(boxSide const& s) const
     gsGeometry::uPtr bgeo = Bs->makeGeometry( give(coeffs) );
 
     delete Bs;
-    return bgeo.release();
+    return bgeo;
 }
 
 template<class T>
