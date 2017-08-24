@@ -793,21 +793,21 @@ public: /* Add local contributions to system matrix */
     void pushToMatrix(const gsMatrix<T> & localMat,
                       const std::vector<gsMatrix<unsigned> >& actives_vec,
                       const std::vector<gsMatrix<T> > & eliminatedDofs,
-                      const gsVector<index_t> & r_vec,
-                      const gsVector<index_t> & c_vec)
+                      const gsVector<size_t> & r_vec,
+                      const gsVector<size_t> & c_vec)
     {
         int rstrLocal = 0;
         int cstrLocal = 0;
 
-        for (size_t r_ind = 0; r_ind != r_vec.size(); ++r_ind) // for row-blocks
+        for (index_t r_ind = 0; r_ind != r_vec.size(); ++r_ind) // for row-blocks
         {
-            index_t r = r_vec(r_ind);
+            size_t r = r_vec(r_ind);
             const gsDofMapper & rowMap    = m_mappers[m_row.at(r)];
             const index_t numActive_i = actives_vec[r].rows();
 
-            for (size_t c_ind = 0; c_ind != c_vec.size(); ++c_ind) // for col-blocks
+            for (index_t c_ind = 0; c_ind != c_vec.size(); ++c_ind) // for col-blocks
             {
-                index_t c = c_vec(c_ind);
+                size_t c = c_vec(c_ind);
                 const gsDofMapper & colMap    = m_mappers[m_col.at(c)];
                 const index_t numActive_j = actives_vec[c].rows();
                 const gsMatrix<T> & eliminatedDofs_j = eliminatedDofs[c];
@@ -906,13 +906,13 @@ public: /* Add local contributions to system right-hand side */
 
     void pushToRhs(const gsMatrix<T> & localRhs,
                    const std::vector<gsMatrix<unsigned> >& actives_vec,
-                   const gsVector<index_t> & r_vec)
+                   const gsVector<size_t> & r_vec)
     {
         int rstrLocal = 0;
 
-        for (size_t r_ind = 0; r_ind != r_vec.size(); ++r_ind) // for row-blocks
+        for (index_t r_ind = 0; r_ind != r_vec.size(); ++r_ind) // for row-blocks
         {
-            index_t r = r_vec(r_ind);
+            size_t r = r_vec(r_ind);
             const gsDofMapper & rowMap    = m_mappers[m_row.at(r)];
             const index_t numActive_i = actives_vec[r].rows();
 
@@ -1095,21 +1095,21 @@ public: /* Add local contributions to system matrix and right-hand side */
               const gsMatrix<T> & localRhs,
               const std::vector<gsMatrix<unsigned> >& actives_vec,
               const std::vector<gsMatrix<T> > & eliminatedDofs,
-              const gsVector<index_t> & r_vec,
-              const gsVector<index_t> & c_vec)
+              const gsVector<size_t> & r_vec,
+              const gsVector<size_t> & c_vec)
     {
         int rstrLocal = 0;
         int cstrLocal = 0;
 
-        for (size_t r_ind = 0; r_ind != r_vec.size(); ++r_ind) // for row-blocks
+        for (index_t r_ind = 0; r_ind != r_vec.size(); ++r_ind) // for row-blocks
         {
-            index_t r = r_vec(r_ind);
+            size_t r = r_vec(r_ind);
             const gsDofMapper & rowMap    = m_mappers[m_row.at(r)];
             const index_t numActive_i = actives_vec[r].rows();
 
-            for (size_t c_ind = 0; c_ind != c_vec.size(); ++c_ind) // for col-blocks
+            for (index_t c_ind = 0; c_ind != c_vec.size(); ++c_ind) // for col-blocks
             {
-                index_t c = c_vec(c_ind);
+                size_t c = c_vec(c_ind);
                 const gsDofMapper & colMap    = m_mappers[m_col.at(c)];
                 const index_t numActive_j = actives_vec[c].rows();
                 const gsMatrix<T> & eliminatedDofs_j = eliminatedDofs[c];
