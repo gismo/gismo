@@ -645,7 +645,10 @@ public:
 
     /// Get transformation matrix for the periodic pairs of sides
     gsMatrix<T> getTransformMatrix() const
-    { return m_trMatrix; }
+    { 
+        GISMO_ASSERT(m_trMatrix.rows() > 0, "Transformation matrix for periodic conditions not set!");
+        return m_trMatrix; 
+    }
 
     // Data members
 private:
