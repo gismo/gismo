@@ -11,6 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
+#include <gsCore/gsGeometry.h>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsExport.h>
 

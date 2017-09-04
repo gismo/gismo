@@ -24,7 +24,7 @@
 
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>
-#include <gsCore/gsExport.h>
+//#include <gsCore/gsExport.h>  // included by gsMemory.h
 #include <gsCore/gsMemory.h>
 #include <gsUtils/gsUtils.h>
 

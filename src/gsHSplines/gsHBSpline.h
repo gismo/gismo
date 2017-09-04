@@ -104,7 +104,7 @@ public:
             anchorsInGeom.bottomRows(anchorsSlice.rows()-dir_fixed)=anchorsSlice.bottomRows(anchorsSlice.rows()-dir_fixed);
             this->eval_into(anchorsInGeom,vals);
             BoundaryGeometryType* geom =
-                    dynamic_cast<BoundaryGeometryType *>(bBasis->interpolateAtAnchors(vals));
+                    dynamic_cast<BoundaryGeometryType *>(bBasis->interpolateAtAnchors(vals).release()); //todo make it better
             GISMO_ASSERT(geom!=NULL,"bBasis should have BoundaryGeometryType.");
             result = *geom;
             delete geom;

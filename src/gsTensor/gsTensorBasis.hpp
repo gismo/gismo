@@ -893,7 +893,7 @@ gsTensorBasis<d,T>::makeDomainIterator(const boxSide & s) const
 
 
 template<unsigned d, class T>
-gsGeometry<T> * 
+typename gsGeometry<T>::uPtr
 gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
 {
     std::vector<gsMatrix<T> > grid(d);
@@ -901,7 +901,7 @@ gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
     for (unsigned i = 0; i < d; ++i) // for all coordinate bases
         m_bases[i]->anchors_into(grid[i]);
     
-    return interpolateGrid(vals,grid).release();
+    return interpolateGrid(vals,grid);
 }
 
 

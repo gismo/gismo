@@ -371,7 +371,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
 
         // Interpolate dirichlet boundary
         gsBasis<T> * h = basis.boundaryBasis(it->side());
-        gsGeometry<T> * geo = h->interpolateAtAnchors(fpts);
+        typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
         const gsMatrix<T> & dVals =  geo->coefs();
 
         // Save corresponding boundary dofs
@@ -383,7 +383,6 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         }
 
         delete h;
-        delete geo;
     }
 }
 

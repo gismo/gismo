@@ -143,7 +143,7 @@ int main(int argc, char* argv[])
     // Returns a geometry with basis = tBasis 
     // and coefficients being
     // computed as the interpolant of \a funct
-    gsGeometry<> * interpolant = tBasis->interpolateAtAnchors(fValues);
+    typename gsGeometry<>::uPtr interpolant = tBasis->interpolateAtAnchors(fValues);
 
     gsInfo << "Result :"<< *interpolant <<"\n";
 
@@ -164,7 +164,6 @@ int main(int argc, char* argv[])
     //gsWriteParaview( *interpolant, support, "interpolant", s );
 
     // Cleanup: deleting the raw pointer
-    delete interpolant;
     delete tBasis;
     return 0;
 }

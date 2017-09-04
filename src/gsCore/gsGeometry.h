@@ -532,7 +532,7 @@ public:
     /// Get boundary of this geometry as a vector of new gsGeometry instances
     std::vector<gsGeometry *> boundary() const;
 
-    /// Get parametrization of boundary side \a s as a new gsGeometry
+    /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
 
     /// Clone function. Makes a deep copy of the geometry object.

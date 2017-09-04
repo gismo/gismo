@@ -843,7 +843,7 @@ public:
     /// anchors as parameter points.  May be reimplemented in derived
     /// classes with more efficient algorithms. (by default uses
     /// interpolateData(pts,vals)
-    virtual gsGeometry<T> * interpolateAtAnchors(gsMatrix<T> const& vals) const;
+    virtual memory::unique_ptr<gsGeometry<T> > interpolateAtAnchors(gsMatrix<T> const& vals) const;
     
     //gsGeometry<T> * projectL2(gsFunction<T> const & func) const;
 

@@ -237,13 +237,13 @@ memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> cons
 }
 
 template<class T> inline
-gsGeometry<T> * gsBasis<T>::interpolateAtAnchors(gsMatrix<T> const & vals) const
+memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateAtAnchors(gsMatrix<T> const & vals) const
 {
     GISMO_ASSERT (this->size() == vals.cols(), 
                   "Expecting as many values as the number of basis functions." );
     gsMatrix<T> pts;
     anchors_into(pts);
-    return interpolateData(vals, pts).release();
+    return interpolateData(vals, pts);
 }
 
 /*

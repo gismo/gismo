@@ -303,7 +303,7 @@ public:
     }
 
     // Look at gsBasis class for documentation 
-    virtual gsGeometry<T> * interpolateAtAnchors(gsMatrix<T> const& vals) const;
+    virtual typename gsGeometry<T>::uPtr interpolateAtAnchors(gsMatrix<T> const& vals) const;
 
     /// Interpolates values on a tensor-grid of points, given in
     /// tensor form (d coordinate-wise vectors). Samples \a vals

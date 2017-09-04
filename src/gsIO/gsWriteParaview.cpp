@@ -11,7 +11,6 @@
     Author(s): G. Kiss
 */
 
-
 #include <gsCore/gsTemplateTools.h>
 #include <gsCore/gsLinearAlgebra.h>
 

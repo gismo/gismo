@@ -18,7 +18,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsForwardDeclarations.h>
+//#include <gsCore/gsForwardDeclarations.h> // included by gsLinearAlgebra.h
 
 namespace gismo {
 
