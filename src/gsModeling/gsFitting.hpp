@@ -13,6 +13,7 @@
 
 */
 
+#include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsTensor/gsTensorDomainIterator.h>
