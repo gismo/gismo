@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
- Author(s): A. Mantzaflaris, Harald Weiner
+ Author(s): A. Mantzaflaris, Harald Weiner, J. Vogl
 */
 
 #pragma once
@@ -215,6 +215,15 @@ std::size_t hash_range(T const * start, const T * const end)
         seed ^= *start + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;
 }
+
+/// \brief Systemspecific path-separator symbol
+/// \ingroup Utils
+const char SEPARATOR =
+#if defined _WIN32 || defined __CYGWIN__
+    '\\';
+#else
+    '/';
+#endif
 
 } // end namespace util
 
