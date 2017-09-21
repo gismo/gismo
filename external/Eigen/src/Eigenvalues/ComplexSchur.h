@@ -284,7 +284,7 @@ typename ComplexSchur<MatrixType>::ComplexScalar ComplexSchur<MatrixType>::compu
   if (iter == 10 || iter == 20) 
   {
     // exceptional shift, taken from http://www.netlib.org/eispack/comqr.f
-    return abs(numext::real(m_matT.coeff(iu,iu-1))) + abs(numext::real(m_matT.coeff(iu-1,iu-2)));
+    return ComplexScalar( abs(numext::real(m_matT.coeff(iu,iu-1))) + abs(numext::real(m_matT.coeff(iu-1,iu-2))) );
   }
 
   // compute the shift as one of the eigenvalues of t, the 2x2
