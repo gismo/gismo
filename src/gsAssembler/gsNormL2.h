@@ -34,7 +34,7 @@ class gsNormL : public gsNorm<T>
 public:
 
     gsNormL(const gsField<T> & _field1,
-             const gsFunctionSet<T> & _func2,
+             const gsFunction<T> & _func2,
              bool _f2param = false) 
     : Base(_field1,_func2), f2param(_f2param)
     { 
@@ -78,7 +78,7 @@ protected:
     // Evaluate on element.
     void evaluate(gsGeometryEvaluator<T> & geoEval,
                   const gsFunction<T>    & _func1,
-                  const gsFunctionSet<T>    & _func2,
+                  const gsFunction<T>    & _func2,
                   gsMatrix<T>            & quNodes)
     {
         // Evaluate first function
@@ -152,7 +152,7 @@ class gsNormL2 : public gsNormL<2,T>
 {
 public:
     gsNormL2(const gsField<T> & _field1,
-             const gsFunctionSet<T> & _func2,
+             const gsFunction<T> & _func2,
              bool _f2param = false) 
     : gsNormL<2,T>(_field1, _func2, _f2param)
     { }

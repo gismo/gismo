@@ -31,7 +31,7 @@ class gsSeminormH1 : public gsNorm<T>
 public:
 
     gsSeminormH1(const gsField<T> & _field1,
-             const gsFunctionSet<T> & _func2,
+             const gsFunction<T> & _func2,
              bool _f2param = false) 
     : gsNorm<T>(_field1,_func2), f2param(_f2param)
     { }
@@ -71,7 +71,7 @@ protected:
     // Evaluate on element.
     void evaluate(gsGeometryEvaluator<T> & geoEval,
                   const gsFunction<T>    & _func1,
-                  const gsFunctionSet<T>    & _func2,
+                  const gsFunction<T>    & _func2,
                   gsMatrix<T>            & quNodes)
     {
         // Evaluate first function
