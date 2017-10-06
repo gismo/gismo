@@ -132,7 +132,7 @@ void gsGeometry<T>::degreeElevate(int const i, int const dir)
     if ( dir == -1 )
         b->degreeElevate(i);
     else if (dir < parDim() )
-        b->component(dir).degreeElevate(i);        
+        b->degreeElevate(i, dir);
     else
         GISMO_ERROR("Invalid direction "<< dir <<" to elevate.");
 
