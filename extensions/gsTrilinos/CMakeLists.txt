@@ -61,8 +61,8 @@ endif()
 #enable_language(Fortran)
 
 if (NOT TRILINOS_FOUND)
-set(TRILINOS_VER "12-10-1")
-set(TRILINOS_MD5 "40f28628b63310f9bd17c26d9ebe32b1")
+set(TRILINOS_VER "12-12-1")
+set(TRILINOS_MD5 "ecd4606fa332212433c98bf950a69cc7")
 message(STATUS "Using Trilinos version ${TRILINOS_VER} as an external package.")
 include(ExternalProject)
 ExternalProject_Add(Trilinos
@@ -81,7 +81,8 @@ ExternalProject_Add(Trilinos
                        # Linear algebra backends
                        -DTrilinos_ENABLE_Epetra=ON # non-templated version
                        -DTrilinos_ENABLE_Tpetra=ON # templated version
-                       
+                       -DTrilinos_ENABLE_COMPLEX_DOUBLE=ON # needed by Anasazi
+
                        # Direct solvers
                        -DTrilinos_ENABLE_Amesos=ON
 
