@@ -82,6 +82,7 @@ ExternalProject_Add(Trilinos
                        -DTrilinos_ENABLE_Epetra=ON # non-templated version
                        -DTrilinos_ENABLE_Tpetra=ON # templated version
                        -DTrilinos_ENABLE_COMPLEX_DOUBLE=ON # needed by Anasazi
+                       -DTpetra_INST_COMPLEX_DOUBLE=ON
 
                        # Direct solvers
                        -DTrilinos_ENABLE_Amesos=ON
