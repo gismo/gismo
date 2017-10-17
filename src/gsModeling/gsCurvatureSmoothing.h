@@ -51,7 +51,7 @@ public:
   gsCurvatureSmoothing(const gsBSpline<T> & init_curve, const gsMatrix<T>& param_values, const gsMatrix<T>& points)
   {
       m_curve_original= &init_curve;
-      m_curve_smooth = init_curve.clone();
+      m_curve_smooth = dynamic_cast<gsBSpline<T> *>(init_curve.clone().release());
       m_param_values=param_values;
       m_points=points;
   }

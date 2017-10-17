@@ -416,7 +416,7 @@ public:
              const gsFunction<T> & f, int unknown = 0,
              int comp = -1, bool parametric = false)
     {
-        function_ptr fun(f.clone());
+        function_ptr fun((gsFunction<T>*)f.clone().release());
         add(p,s,label,fun,unknown,comp,parametric);
     }
 
@@ -466,7 +466,7 @@ public:
                       const gsFunction<T> & func, int unknown = 0,
                       bool parametric = false)
     {
-        function_ptr fun(func.clone());
+        function_ptr fun((gsFunction<T>*)func.clone().release());
         addCondition(p,s,t,fun,unknown,parametric);
     }
 

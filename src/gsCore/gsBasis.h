@@ -670,7 +670,7 @@ public:
     /// @}
 
     /// @brief Clone this basis, making a deep copy.
-    virtual gsBasis * clone() const = 0;
+    virtual typename Base::uPtr clone() const = 0;
 
     /// @brief Create a gsGeometry of proper type for this basis with the
     /// given coefficient matrix.
@@ -693,7 +693,7 @@ public:
 
     /// Clone the source of this basis in case of rational basis, same
     /// as clone() otherwise
-    virtual gsBasis<T> * makeNonRational() const { return clone(); }
+    virtual gsBasis<T> * makeNonRational() const { return dynamic_cast<gsBasis<T> *>(clone().release()); }
 
     /// @brief Create a domain iterator for the computational mesh of
     /// this basis, that points to the first element of the domain

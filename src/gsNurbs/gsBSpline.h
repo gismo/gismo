@@ -49,10 +49,10 @@ public:
     typedef gsBSplineBasis<T> Basis;
 
     /// Shared pointer for gsBSpline
-    typedef memory::shared_ptr< gsBSpline<T> > Ptr;
+    typedef memory::shared_ptr< gsBSpline > Ptr;
 
     /// Unique pointer for gsBSpline
-    typedef memory::unique_ptr<gsBSpline> uPtr;
+    typedef memory::unique_ptr< gsBSpline > uPtr;
     
 public:
     
@@ -137,8 +137,8 @@ public:
     }
     
     /// Clone function. Used to make a copy of the (derived) geometry
-    virtual gsBSpline * clone() const
-        { return new gsBSpline(*this); }
+    virtual typename gsFunctionSet<T>::uPtr clone() const
+        { return gsBSpline::uPtr(new gsBSpline(*this)); }
     
     GISMO_BASIS_ACCESSORS    
     

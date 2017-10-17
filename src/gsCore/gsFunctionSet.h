@@ -101,10 +101,10 @@ template <typename T>
 class gsFunctionSet
 {
 public:
-    /// Shared pointer for gsFunction
+    /// Shared pointer for gsFunctionSet
     typedef memory::shared_ptr< gsFunctionSet > Ptr;
 
-    /// Unique pointer for gsFunction
+    /// Unique pointer for gsFunctionSet
     typedef memory::unique_ptr< gsFunctionSet > uPtr;
 
     typedef std::pair<int,int> dim_t;
@@ -117,7 +117,7 @@ public:
     virtual ~gsFunctionSet();
 
     /// @brief Clone this basis, making a deep copy.
-    virtual gsFunctionSet * clone() const //= 0;
+    virtual gsFunctionSet::uPtr clone() const //= 0;
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k

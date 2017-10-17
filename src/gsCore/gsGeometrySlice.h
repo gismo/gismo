@@ -28,6 +28,12 @@ class gsGeometrySlice : public gsFunction<T>
 {
     typedef gsFunction<T> Base;
 public:
+    /// Shared pointer for gsGeometrySlice
+    typedef memory::shared_ptr< gsGeometrySlice > Ptr;
+
+    /// Unique pointer for gsGeometrySlice
+    typedef memory::unique_ptr< gsGeometrySlice > uPtr;
+
     gsGeometrySlice(const gsFunction<T>* geo, index_t fixed_dir,T par)
     : m_geo(geo),m_fixed_dir(fixed_dir),m_par(par)
     {
@@ -52,9 +58,9 @@ public:
     }
 
     /// Clone function. Makes a deep copy of the geometry object.
-    gsGeometrySlice * clone() const
+    typename Base::Base::uPtr clone() const
     {
-        return new gsGeometrySlice(m_geo,m_fixed_dir,m_par);
+        return gsGeometrySlice::uPtr(new gsGeometrySlice(m_geo,m_fixed_dir,m_par));
     }
 
     /// \brief Gives back the values of this slice at points \a u in \a result

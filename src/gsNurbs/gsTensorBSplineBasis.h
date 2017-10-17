@@ -172,9 +172,9 @@ public:
         this->getComponentsForSide(s,rr);
         return BoundaryBasisType::New(rr);
     }
-    
-    gsTensorBSplineBasis * clone() const
-    { return new gsTensorBSplineBasis(*this); }
+
+    typename Base::Base::uPtr clone() const
+    { return typename gsTensorBSplineBasis::uPtr(new gsTensorBSplineBasis(*this)); }
     
     static Self_t * New(std::vector<gsBasis<T>*> & bb )
     { return new Self_t(bb); }

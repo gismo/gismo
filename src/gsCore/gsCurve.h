@@ -30,9 +30,13 @@ template<class T>
 class gsCurve : public gsGeometry<T>
 {
     
-public: 
+public:
+    typedef gsFunctionSet<T> Base;
+
     /// Shared pointer for gsCurve
     typedef memory::shared_ptr< gsCurve > Ptr;
+
+    /// Unique pointer for gsCurve
     typedef memory::unique_ptr< gsCurve > uPtr;
     
     typedef T Scalar_t;
@@ -55,7 +59,7 @@ public:
 
     /// @}
 
-    virtual gsCurve * clone() const = 0;
+    virtual typename Base::uPtr clone() const = 0;
 
     int domainDim() const { return 1; }
     

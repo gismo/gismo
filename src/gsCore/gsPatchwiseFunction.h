@@ -32,11 +32,12 @@ template <class T>
 class gsPatchwiseFunction : public gsFunctionSet<T>
 {
 public:
+    typedef gsFunctionSet<T> Base;
 
     virtual ~gsPatchwiseFunction() { }    
 
     /// Clones the function object, making a deep copy.
-    virtual gsPatchwiseFunction * clone() const = 0;
+    virtual typename Base::uPtr clone() const = 0;
 
     operator const gsFunction<T> & ()
     { 

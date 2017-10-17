@@ -40,10 +40,12 @@ public:
     typedef typename gsGeoTraits<d,T>::GeometryBase Base;
 
     typedef gsHBSplineBasis<d,T> Basis;
-    
+
     /// Shared pointer for gsHBSpline
-    typedef memory::shared_ptr< gsHBSpline<d,T> > Ptr;
-    typedef memory::unique_ptr< gsHBSpline<d,T> > uPtr;
+    typedef memory::shared_ptr< gsHBSpline > Ptr;
+
+    /// Unique pointer for gsHBSpline
+    typedef memory::unique_ptr< gsHBSpline > uPtr;
     
     typedef typename 
     util::conditional<d==1, gsConstantFunction<T>, gsHBSpline<d-1,T>
@@ -72,8 +74,8 @@ public:
     }
   
     /// Clone the gsHBspline
-    virtual gsHBSpline * clone() const
-    { return new gsHBSpline(*this); };
+    virtual typename gsFunctionSet<T>::uPtr clone() const
+    { return gsHBSpline::uPtr(new gsHBSpline(*this)); };
 
     GISMO_BASIS_ACCESSORS
   

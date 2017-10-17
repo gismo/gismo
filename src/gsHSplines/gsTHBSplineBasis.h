@@ -43,8 +43,13 @@ public:
     typedef typename gsHTensorBasis<d,T>::cmatIterator cmatIterator;
     
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
-    
+
+    typedef gsFunctionSet<T> Base;
+
+    /// Shared pointer for gsTHBSplineBasis
     typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
+
+    /// Unique pointer for gsTHBSplineBasis
     typedef memory::unique_ptr< gsTHBSplineBasis > uPtr;
 
     typedef typename
@@ -496,8 +501,8 @@ public:
   /// Returns the dimension of the parameter space
   int domainDim() const { return d; }
 
-  virtual gsTHBSplineBasis* clone() const
-    { return new gsTHBSplineBasis(*this); }
+  virtual typename Base::uPtr clone() const
+    { return gsTHBSplineBasis::uPtr(new gsTHBSplineBasis(*this)); }
 
   /// Prints the object as a string.
   std::ostream &print(std::ostream &os) const

@@ -46,10 +46,10 @@ public:
     typedef gsBSplineBasis<T>  Family_t;
 
     /// Shared pointer for gsTensorBSpline
-    typedef memory::shared_ptr< gsTensorBSpline<d,T> > Ptr;
+    typedef memory::shared_ptr< gsTensorBSpline > Ptr;
 
     /// Unique pointer for gsTensorBSpline
-    typedef memory::unique_ptr< gsTensorBSpline> uPtr;
+    typedef memory::unique_ptr< gsTensorBSpline > uPtr;
 
     /// Associated Boundary basis type
     typedef typename gsBSplineTraits<d-1,T>::Geometry BoundaryGeometryType;
@@ -160,9 +160,9 @@ public:
     }
     
     /// Clone function. Used to make a copy of the geometry
-    gsTensorBSpline * clone() const
+    typename gsFunctionSet<T>::uPtr clone() const
     {
-        return new gsTensorBSpline( *this );
+        return gsTensorBSpline::uPtr(new gsTensorBSpline( *this ));
     }
 
     GISMO_BASIS_ACCESSORS

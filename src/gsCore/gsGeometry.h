@@ -92,14 +92,14 @@ template<class T>
 class gsGeometry : public gsFunction<T>
 {
 
-public: 
+public:
+    typedef gsFunctionSet<T> Base;
+
     /// Shared pointer for gsGeometry
-    //typedef memory::shared_ptr<gsGeometry> Ptr;
-    typedef memory::shared_ptr<gsGeometry> Ptr; //todo
+    typedef memory::shared_ptr< gsGeometry > Ptr;
 
     /// Unique pointer for gsGeometry
-    //typedef memory::unique_ptr<gsGeometry> uPtr;
-    typedef memory::unique_ptr<gsGeometry> uPtr; //todo
+    typedef memory::unique_ptr< gsGeometry > uPtr;
 
     typedef T Scalar_t;
 
@@ -120,7 +120,7 @@ public:
     /// Coefficients are given by \em{give(coefs) and they are
     /// consumed, i.e. the \coefs variable will be empty after the call
     gsGeometry( const gsBasis<T> & basis, gsMatrix<Scalar_t> coefs) :
-    m_basis( basis.clone() ), m_id(0)
+    m_basis(dynamic_cast<gsBasis<T> *>(basis.clone().release())), m_id(0)
     {
         m_coefs.swap(coefs);
         GISMO_ASSERT( basis.size() == m_coefs.rows(), 
@@ -131,7 +131,7 @@ public:
 
     /// @brief Copy Constructor
     gsGeometry(const gsGeometry & o) 
-    : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone() : NULL), m_id(o.m_id)
+    : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? dynamic_cast<gsBasis<T> *>(o.basis().clone().release()) : NULL), m_id(o.m_id)
     { }
 
     /// @}
@@ -142,7 +142,7 @@ public:
         {
             m_coefs = o.m_coefs;
             delete m_basis;
-            m_basis = o.basis().clone() ;
+            m_basis = dynamic_cast<gsBasis<T> *>(o.basis().clone().release()) ;
             m_id = o.m_id;
         }
         return *this;
@@ -536,7 +536,7 @@ public:
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
 
     /// Clone function. Makes a deep copy of the geometry object.
-    virtual gsGeometry * clone() const = 0;
+    virtual typename Base::uPtr clone() const = 0;
 
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const

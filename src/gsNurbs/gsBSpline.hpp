@@ -34,7 +34,7 @@ void gsBSpline<T>::merge( gsGeometry<T> * otherG )
     // check if the type of other is BSpline
     gsBSpline *  other = dynamic_cast<gsBSpline *>( otherG );
     GISMO_ASSERT( other!=NULL, "Can only merge with B-spline curves.");
-    other=other->clone();
+    other= dynamic_cast<gsBSpline *>(other->clone().release());
 
     GISMO_ASSERT( this ->basis().isPeriodic() == false &&
                   other->basis().isPeriodic() == false,

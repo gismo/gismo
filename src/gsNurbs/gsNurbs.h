@@ -51,10 +51,10 @@ public:
     typedef gsNurbsBasis<T> Basis;
 
     /// Shared pointer for gsNurbs
-    typedef memory::shared_ptr< gsNurbs<T> > Ptr;
+    typedef memory::shared_ptr< gsNurbs > Ptr;
 
     /// Unique pointer for gsNurbs
-    typedef memory::unique_ptr<gsNurbs> uPtr;
+    typedef memory::unique_ptr< gsNurbs > uPtr;
 
 public:
 
@@ -80,8 +80,8 @@ public:
     }
     
     /// Clone function. Used to make a copy of the (derived) geometry
-    virtual gsNurbs * clone() const
-    { return new gsNurbs(*this); }
+    virtual typename gsFunctionSet<T>::uPtr clone() const
+    { return gsNurbs::uPtr(new gsNurbs(*this)); }
 
     GISMO_BASIS_ACCESSORS
 
@@ -145,9 +145,9 @@ public:
                      << this->geoDim() << ", R^" << otherG->geoDim() << " ).");
 
         // check if the type of other is BSpline
-        gsNurbs *  other = dynamic_cast<gsNurbs *>( otherG );
+        gsNurbs *  other = dynamic_cast<gsNurbs *>( otherG );   // TODO: to uPtr
         GISMO_ASSERT( other!=NULL, "Can only merge with B-spline curves.");
-        other=other->clone();
+        other= dynamic_cast<gsNurbs *>(other->clone().release());
 
         // TODO: check for periodic
 

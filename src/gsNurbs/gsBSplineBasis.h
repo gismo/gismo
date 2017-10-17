@@ -99,7 +99,7 @@ public:
 
     // Look at gsBasis class for a description
     // Note: Specializing pointer type at return
-    TensorSelf_t * clone() const = 0;
+    typename Base::Base::Base::uPtr clone() const = 0;
     
     // gsTensorBSplineBasis( const Base & o)
     // { 
@@ -739,7 +739,7 @@ public:
 */
 
     // Look at gsBasis class for a description
-    gsBSplineBasis * clone() const;
+    typename gsFunctionSet<T>::uPtr clone() const;
 
     // Look at gsBasis class for a description
     Self_t & component(unsigned i);

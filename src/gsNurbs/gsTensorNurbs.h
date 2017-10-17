@@ -56,10 +56,10 @@ public:
     typedef gsTensorNurbsBasis<d,T>   Basis;
     
     /// Shared pointer for gsTensorNurbs
-    typedef memory::shared_ptr< gsTensorNurbs<d,T> > Ptr;
+    typedef memory::shared_ptr< gsTensorNurbs > Ptr;
 
     /// Unique pointer for gsTensorNurbs
-    typedef memory::unique_ptr<gsTensorNurbs> uPtr;
+    typedef memory::unique_ptr< gsTensorNurbs > uPtr;
 
 public:
 
@@ -165,8 +165,8 @@ public:
 // ***********************************************
 
     /// Clone function. Used to make a copy of the (derived) geometry
-    virtual gsTensorNurbs * clone() const
-    { return new gsTensorNurbs(*this); }
+    virtual typename gsFunctionSet<T>::uPtr clone() const
+    { return gsTensorNurbs::uPtr(new gsTensorNurbs(*this)); }
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const

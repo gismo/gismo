@@ -74,10 +74,13 @@ struct lvl_coef
 template<unsigned d, class T>
 class gsHTensorBasis: public gsBasis<T>
 {
-
 public:
+    typedef gsFunctionSet<T> Base;
+
     /// Shared pointer for gsHTensorBasis
     typedef memory::shared_ptr< gsHTensorBasis > Ptr;
+
+    /// Unique pointer for gsHTensorBasis
     typedef memory::unique_ptr< gsHTensorBasis > uPtr;
 
     typedef gsHTensorBasis<d,T> Self_t;
@@ -482,7 +485,7 @@ public:
     }
 
     /// Clone function. Used to make a copy of a derived basis
-    virtual gsHTensorBasis * clone() const = 0;
+    virtual typename Base::uPtr clone() const = 0;
 
     /// The number of basis functions in this basis
     index_t size() const;

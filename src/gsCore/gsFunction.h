@@ -74,7 +74,7 @@ public:
     using Base::targetDim;
 public:
 
-    virtual gsFunction * clone() const // = 0;
+    virtual typename Base::uPtr clone() const // = 0;
     {GISMO_NO_IMPLEMENTATION}
 
     virtual const gsFunction & piece(const index_t k) const

@@ -43,6 +43,8 @@ class gsFunctionExpr : public gsFunction<T>
 public:
     typedef T Scalar_t;
 
+    typedef gsFunctionSet<T> Base;
+
     /// Shared pointer for gsFunctionExpr
     typedef memory::shared_ptr< gsFunctionExpr > Ptr;
 
@@ -96,9 +98,9 @@ public:
     ~gsFunctionExpr();
   
     gsFunctionExpr& operator=(gsFunctionExpr other);
-  
-    gsFunctionExpr * clone() const
-    { return new gsFunctionExpr(*this); }
+
+    typename Base::uPtr clone() const
+    { return gsFunctionExpr::uPtr(new gsFunctionExpr(*this)); }
 
     /// \brief Adds another component to this (vector) function
     void addComponent(const std::string & strExpression);

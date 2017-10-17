@@ -32,6 +32,14 @@ template<class T>
 class gsAbsError : public gsFunction<T> 
 {
 public:
+    typedef gsFunctionSet<T> Base;
+
+    /// Shared pointer for gsAbsError
+    typedef memory::shared_ptr< gsAbsError > Ptr;
+
+    /// Unique pointer for gsAbsError
+    typedef memory::unique_ptr< gsAbsError > uPtr;
+
     gsAbsError( gsFunction<T> const & f1, 
                 gsGeometry<T> const & geo, 
                 gsFunction<T> const & f2,
@@ -41,8 +49,8 @@ public:
             
     }
 
-    gsAbsError * clone() const
-    { return new gsAbsError(*this); }
+    typename Base::uPtr clone() const
+    { return gsAbsError::uPtr(new gsAbsError(*this)); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -86,12 +94,20 @@ template<class T>
 class gsGradientField : public gsFunction<T> 
 {
 public:
+    typedef gsFunctionSet<T> Base;
+
+    /// Shared pointer for gsGradientField
+    typedef memory::shared_ptr< gsGradientField > Ptr;
+
+    /// Unique pointer for gsGradientField
+    typedef memory::unique_ptr< gsGradientField > uPtr;
+
     gsGradientField( gsGeometry<T> const & geo, gsFunction<T> const & f)
     : m_geo(geo), m_f(f)
     { }
 
-    gsGradientField * clone() const
-    { return new gsGradientField(*this); }
+    typename Base::uPtr clone() const
+    { return gsGradientField::uPtr(new gsGradientField(*this)); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -122,14 +138,22 @@ template<class T>
 class gsJacDetField : public gsFunction<T> 
 {
 public:
+    typedef gsFunctionSet<T> Base;
+
+    /// Shared pointer for gsJacDetField
+    typedef memory::shared_ptr< gsJacDetField > Ptr;
+
+    /// Unique pointer for gsJacDetField
+    typedef memory::unique_ptr< gsJacDetField > uPtr;
+
     gsJacDetField( gsGeometry<T> const & geo)
     : m_geo(geo), m_dim(m_geo.parDim())
     { 
         GISMO_ENSURE(m_dim == m_geo.geoDim(), "Not extended to surface case yet." );
     }
 
-    gsJacDetField * clone() const
-    { return new gsJacDetField(*this); }
+    typename Base::uPtr clone() const
+    { return gsJacDetField::uPtr(new gsJacDetField(*this)); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -161,13 +185,21 @@ template<class T>
 class gsNormalField : public gsFunction<T> 
 {
 public:
+    typedef gsFunctionSet<T> Base;
+
+    /// Shared pointer for gsNormalField
+    typedef memory::shared_ptr< gsNormalField > Ptr;
+
+    /// Unique pointer for gsNormalField
+    typedef memory::unique_ptr< gsNormalField > uPtr;
+
     gsNormalField( gsGeometry<T> const & geo) : m_geo(geo)
     { 
             
     }
 
-    gsNormalField * clone() const
-    { return new gsNormalField(*this); }
+    typename Base::uPtr clone() const
+    { return gsNormalField::uPtr(new gsNormalField(*this)); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -215,14 +247,22 @@ template<class T>
 class gsParamField : public gsFunction<T> 
 {
 public:
+    typedef gsFunctionSet<T> Base;
+
+    /// Shared pointer for gsParamField
+    typedef memory::shared_ptr< gsParamField > Ptr;
+
+    /// Unique pointer for gsParamField
+    typedef memory::unique_ptr< gsParamField > uPtr;
+
     gsParamField(gsGeometry<T> const & geo)
     : m_geo(geo)
     { 
             
     }
 
-    gsParamField * clone() const
-    { return new gsParamField(*this); }
+    typename Base::uPtr clone() const
+    { return gsParamField::uPtr(new gsParamField(*this)); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { result = u; }
@@ -251,12 +291,20 @@ template<class T>
 class gsBoundaryField : public gsFunction<T> 
 {
 public:
+    typedef gsFunctionSet<T> Base;
+
+    /// Shared pointer for gsBoundaryField
+    typedef memory::shared_ptr< gsBoundaryField > Ptr;
+
+    /// Unique pointer for gsBoundaryField
+    typedef memory::unique_ptr< gsBoundaryField > uPtr;
+
     explicit gsBoundaryField(gsGeometry<T> const & geo_)
     : geo(geo_), m_supp(geo.support())
     { }
 
-    gsBoundaryField * clone() const
-    { return new gsBoundaryField(*this); }
+    typename Base::uPtr clone() const
+    { return gsBoundaryField::uPtr(new gsBoundaryField(*this)); }
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { 

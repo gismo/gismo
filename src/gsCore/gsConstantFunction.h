@@ -34,6 +34,12 @@ class gsConstantFunction : public gsGeometry<T>
 public:
     typedef gsGeometry<T> Base;
 
+    /// Shared pointer for gsConstantFunction
+    typedef memory::shared_ptr< gsConstantFunction > Ptr;
+
+    /// Unique pointer for gsConstantFunction
+    typedef memory::unique_ptr< gsConstantFunction > uPtr;
+
     /// Returns a null function 
     static const gsConstantFunction Zero(int domDim, int tarDim)
     { return gsConstantFunction(gsVector<T>::Zero(tarDim),domDim); }
@@ -93,7 +99,7 @@ public:
     }
 
     // Documentation in gsFunction class
-    virtual gsConstantFunction * clone() const { return new gsConstantFunction(*this); }
+    virtual typename Base::Base::uPtr clone() const { return gsConstantFunction::uPtr(new gsConstantFunction(*this)); }
 
     const gsConstantFunction<T> & piece(const index_t k) const
     {

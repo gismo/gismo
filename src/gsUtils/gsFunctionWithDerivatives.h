@@ -26,6 +26,7 @@ protected:
     const gsFunction<T> *m_derivs;
     const gsFunction<T> *m_deriv2;
 public:
+    typedef gsFunctionSet<T> Base;
 
     gsFunctionWithDerivatives()
     : m_values(NULL),
@@ -93,8 +94,8 @@ public:
         GISMO_UNUSED(k);
         return *this; 
     }
-    
-    gsFunction<T>* clone() const
+
+    typename Base::uPtr clone() const
     {
         GISMO_ERROR("gsFunctionWithDerivatives cannot be cloned");
     }

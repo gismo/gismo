@@ -38,7 +38,13 @@ template<class T> class gsCurveLoop
 public:
     typedef typename std::vector< gsCurve<T> * >::iterator       iterator;
     typedef typename std::vector< gsCurve<T> * >::const_iterator const_iterator;
-      
+
+    /// Shared pointer for gsCurveLoop
+    typedef memory::shared_ptr< gsCurveLoop > Ptr;
+
+    /// Unique pointer for gsCurveLoop
+    typedef memory::unique_ptr< gsCurveLoop > uPtr;
+
 public:
       
       /// Default empty constructor
@@ -82,9 +88,9 @@ public:
           freeAll( m_curves );
       }
       
-      gsCurveLoop * clone() const
+      gsCurveLoop::uPtr clone() const
       {
-          return new gsCurveLoop(*this);
+          return gsCurveLoop::uPtr(new gsCurveLoop(*this));
       }
       
 public:

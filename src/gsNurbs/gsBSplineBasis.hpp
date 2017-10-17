@@ -845,8 +845,8 @@ template <class T>
 typename gsBasis<T>::uPtr
 gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const 
 { 
-    Self_t * ptr1 = dynamic_cast<Self_t*>(other. clone());
-    Self_t * ptr2 =  static_cast<Self_t*>( this->clone());
+    Self_t * ptr1 = dynamic_cast<Self_t*>(other.clone().release());
+    Self_t * ptr2 =  static_cast<Self_t*>(this->clone().release());
 
     if ( ptr1 )
         return typename gsBasis<T>::uPtr(new gsTensorBSplineBasis<2,T>( ptr1, ptr2 ));
@@ -1205,9 +1205,9 @@ void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 /* ********************************************** */
 
 template <class T>
-gsBSplineBasis<T> * gsBSplineBasis<T>::clone() const
+typename gsFunctionSet<T>::uPtr gsBSplineBasis<T>::clone() const
 { 
-    return new gsBSplineBasis(*this); 
+    return gsBSplineBasis::uPtr(new gsBSplineBasis(*this));
 }
 
 template <class T>

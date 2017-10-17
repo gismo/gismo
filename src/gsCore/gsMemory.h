@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): C. Hofreither, A. Mantzaflaris
+    Author(s): C. Hofreither, A. Mantzaflaris, J. Vogl
 */
 
 #pragma once
@@ -116,7 +116,7 @@ public :
     { return shared_ptr<U>(Base::release()); }
     
     bool operator!() const { return Base::get() == NULL; }
-	
+
 private:
 
     struct SafeBool
@@ -236,7 +236,7 @@ auto give(T&& t) -> decltype(std::move(std::forward<T>(t)))
 }
 
 #else
-/** 
+/**
     Alias for std::move, to be used instead of std::move for backward
     c++98 compatibility
 
@@ -280,15 +280,16 @@ inline memory::unique_ptr<T> safe(T *x)
 
 
 /// \brief Clones all pointers in the range [\a start \a end) and stores new
-/// pointers in iterator \a out
+/// raw pointers in iterator \a out.
 template <typename It, typename ItOut>
 void cloneAll(It start, It end, ItOut out)
 {
     for (It i = start; i != end; ++i)
-        *out++ = (*i)->clone();
+        *out++ = dynamic_cast<typename std::iterator_traits<ItOut>::value_type>((*i)->clone().release());
 }
 
-/// \brief Clones all pointers in the container \a in and stores them in contrainer \a out
+/// \brief Clones all pointers in the container \a in and stores them as raw
+/// pointers in container \a out
 template <typename ContIn, typename ContOut>
 void cloneAll(const ContIn& in, ContOut& out)
 {

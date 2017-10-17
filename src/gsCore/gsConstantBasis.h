@@ -34,7 +34,12 @@ template <class T>
 class gsConstantBasis : public gsBasis<T>
 {
 public:
+    typedef gsFunctionSet<T> Base;
+
+    /// Shared pointer for gsConstantBasis
     typedef memory::shared_ptr< gsConstantBasis > Ptr;
+
+    /// Unique pointer for gsConstantBasis
     typedef memory::unique_ptr< gsConstantBasis > uPtr;
 
     gsConstantBasis(T x , int domainDim  = 1)
@@ -53,7 +58,7 @@ public:
     : m_val( 1.0 ), m_domainDim(1)
     { }
       
-    gsConstantBasis * clone() const { return new gsConstantBasis(*this); }
+    typename Base::uPtr clone() const { return typename gsConstantBasis::uPtr(new gsConstantBasis(*this)); }
 
     static gsConstantBasis * New(std::vector<gsBasis<T>*> & bb )
     { 
