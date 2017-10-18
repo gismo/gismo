@@ -117,7 +117,7 @@ public:
     virtual ~gsFunctionSet();
 
     /// @brief Clone this basis, making a deep copy.
-    virtual gsFunctionSet::uPtr clone() const //= 0;
+    virtual uPtr clone() const //= 0;
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k

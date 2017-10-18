@@ -589,7 +589,7 @@ bool gsCurveLoop<T>::initFrom3DByAngles(const std::vector<T>& angles3D, const st
     std::vector<T> signedAngles(n);
     for(size_t i = 0; i < n; i++)
     {
-        signedAngles[i] = (isConvex[i]? angles3D[i]: -angles3D[i]);
+        signedAngles[i] = (isConvex[i]? 1: -1) * angles3D[i];
     }
     
     gsMatrix<T> corners;
