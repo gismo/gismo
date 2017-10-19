@@ -88,9 +88,9 @@ public:
           freeAll( m_curves );
       }
       
-      gsCurveLoop::uPtr clone() const
+      uPtr clone() const
       {
-          return gsCurveLoop::uPtr(new gsCurveLoop(*this));
+          return uPtr(new gsCurveLoop(*this));
       }
       
 public:
