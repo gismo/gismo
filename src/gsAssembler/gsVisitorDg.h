@@ -32,9 +32,9 @@ public:
  * interior penalty method of the poisson problem.
  * 
  * This visitor adds the following term to the left-hand side (bilinear form).
- * \f[ -\{\nabla u \cdot \mathbf{n}\}[ v\cdot \mathbf{n} ] -
- * \{\nabla v \cdot \mathbf{n}\}[\ u \cdot \mathbf{n}] 
- * + \alpha [ u ][  v ] \f].
+ * \f[ - \{\nabla u\} \cdot \mathbf{n} [ v ]
+ *     - \{\nabla v\} \cdot \mathbf{n} [ u ]
+ *     + \alpha [ u ][  v ] \f].
  * Where \f[v\f] is the test function and \f[ u \f] is trial function.
  */
 
