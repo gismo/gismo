@@ -164,9 +164,7 @@ public:
 // Virtual member functions required by the base class
 // ***********************************************
 
-    /// Clone function. Used to make a copy of the (derived) geometry
-    virtual typename gsFunctionSet<T>::uPtr clone() const
-    { return gsTensorNurbs::uPtr(new gsTensorNurbs(*this)); }
+    GISMO_CLONE_FUNCTION(gsTensorNurbs, virtual)
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const

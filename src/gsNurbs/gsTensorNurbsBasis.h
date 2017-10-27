@@ -101,9 +101,7 @@ public:
 
     gsTensorNurbsBasis(const gsTensorNurbsBasis & o) : Base(o) { }
 
-    /// Clone function. Used to make a copy of the object
-    typename Base::Base::Base::uPtr clone() const
-    { return gsTensorNurbsBasis::uPtr(new gsTensorNurbsBasis(*this)); }
+    GISMO_CLONE_FUNCTION(gsTensorNurbsBasis)
   
     GISMO_MAKE_GEOMETRY_NEW
 

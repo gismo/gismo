@@ -98,8 +98,7 @@ public:
         m_coefs = cb.value()*coef;
     }
 
-    // Documentation in gsFunction class
-    virtual typename Base::Base::uPtr clone() const { return gsConstantFunction::uPtr(new gsConstantFunction(*this)); }
+    GISMO_CLONE_FUNCTION(gsConstantFunction, virtual)
 
     const gsConstantFunction<T> & piece(const index_t k) const
     {

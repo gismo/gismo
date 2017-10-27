@@ -34,8 +34,6 @@ template <class T>
 class gsConstantBasis : public gsBasis<T>
 {
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsConstantBasis
     typedef memory::shared_ptr< gsConstantBasis > Ptr;
 
@@ -57,8 +55,8 @@ public:
     gsConstantBasis(const std::vector<gsBasis<T>*> & rr)
     : m_val( 1.0 ), m_domainDim(1)
     { }
-      
-    typename Base::uPtr clone() const { return typename gsConstantBasis::uPtr(new gsConstantBasis(*this)); }
+
+    GISMO_CLONE_FUNCTION(gsConstantBasis)
 
     static gsConstantBasis * New(std::vector<gsBasis<T>*> & bb )
     { 

@@ -31,8 +31,6 @@ class gsBulk : public gsGeometry<T>
 {
 
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsBulk
     typedef memory::shared_ptr< gsBulk > Ptr;
 
@@ -61,7 +59,7 @@ public:
 
     /// @}
 
-    virtual typename Base::uPtr clone() const = 0;
+    GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsBulk)
 
     int domainDim() const { return 4; }
 

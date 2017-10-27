@@ -186,6 +186,12 @@ template <typename T>
 inline unique_ptr<T> make_unique(T * x)
 { return unique_ptr<T>(x); }
 
+/// \brief Converts a uPtr \a p to an uPtr
+/// of class \a C and gives it back as return value.
+template<class C, typename from>
+inline unique_ptr<C> convert_ptr(from p)
+{ return unique_ptr<C>( dynamic_cast<C*>(p.release()) ); }
+
 /// Takes a vector of smart pointers and returns the corresponding raw pointers.
 template <typename T>
 inline std::vector<T*> get_raw(const std::vector< unique_ptr<T> >& cont)

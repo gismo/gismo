@@ -93,8 +93,6 @@ class gsGeometry : public gsFunction<T>
 {
 
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsGeometry
     typedef memory::shared_ptr< gsGeometry > Ptr;
 
@@ -120,7 +118,7 @@ public:
     /// Coefficients are given by \em{give(coefs) and they are
     /// consumed, i.e. the \coefs variable will be empty after the call
     gsGeometry( const gsBasis<T> & basis, gsMatrix<Scalar_t> coefs) :
-    m_basis(dynamic_cast<gsBasis<T> *>(basis.clone().release())), m_id(0)
+    m_basis(basis.clone().release()), m_id(0)
     {
         m_coefs.swap(coefs);
         GISMO_ASSERT( basis.size() == m_coefs.rows(), 
@@ -131,7 +129,7 @@ public:
 
     /// @brief Copy Constructor
     gsGeometry(const gsGeometry & o) 
-    : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? dynamic_cast<gsBasis<T> *>(o.basis().clone().release()) : NULL), m_id(o.m_id)
+    : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id)
     { }
 
     /// @}
@@ -142,7 +140,7 @@ public:
         {
             m_coefs = o.m_coefs;
             delete m_basis;
-            m_basis = dynamic_cast<gsBasis<T> *>(o.basis().clone().release()) ;
+            m_basis = o.basis().clone().release() ;
             m_id = o.m_id;
         }
         return *this;
@@ -163,7 +161,7 @@ public:
     gsGeometry & operator=(gsGeometry&& other)
     {
         m_coefs.swap(other.m_coefs); other.m_coefs.clear();
-        delete m_basis; 
+        delete m_basis;
         m_basis = other.m_basis; other.m_basis = NULL;
         return *this;
     }
@@ -535,8 +533,7 @@ public:
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
 
-    /// Clone function. Makes a deep copy of the geometry object.
-    virtual typename Base::uPtr clone() const = 0;
+    GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsGeometry)
 
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const

@@ -35,9 +35,6 @@ class gsMultiPatch : public gsBoxTopology, public gsFunctionSet<T>
 
 public:
     typedef gsBoxTopology Base;
-
-    typedef gsFunctionSet<T> FSBase;
-
     /// Shared pointer for gsMultiPatch
     typedef memory::shared_ptr< gsMultiPatch > Ptr;
     /// Unique pointer for gsMultiPatch
@@ -45,7 +42,6 @@ public:
 
     typedef std::vector<gsGeometry<T> *> PatchContainer;
 
-public:
     typedef typename PatchContainer::size_type size_t;
     typedef typename PatchContainer::iterator iterator;
     typedef typename PatchContainer::const_iterator const_iterator;
@@ -79,9 +75,7 @@ public:
     /// Destructor
     ~gsMultiPatch();
 
-    /// Clone function. Used to make a copy of the object
-    typename FSBase::uPtr clone() const
-    { return gsMultiPatch::uPtr(new gsMultiPatch(*this)); }
+    GISMO_CLONE_FUNCTION(gsMultiPatch)
 
 public:
 
@@ -193,9 +187,6 @@ public:
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     void addPatch(typename gsGeometry<T>::uPtr g);
-
-    ///\brief Add a patch from a gsFunctionSet<T>::uPtr
-    void addPatch(typename gsFunctionSet<T>::uPtr g);
 
     /// Add a patch by copying argument
     void addPatch(const gsGeometry<T> & g);

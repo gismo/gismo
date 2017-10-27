@@ -1205,9 +1205,9 @@ void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 /* ********************************************** */
 
 template <class T>
-typename gsFunctionSet<T>::uPtr gsBSplineBasis<T>::clone() const
-{ 
-    return gsBSplineBasis::uPtr(new gsBSplineBasis(*this));
+gsBSplineBasis<T> * gsBSplineBasis<T>::doClone() const
+{
+    return new gsBSplineBasis(*this);
 }
 
 template <class T>

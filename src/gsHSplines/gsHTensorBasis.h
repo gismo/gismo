@@ -75,8 +75,6 @@ template<unsigned d, class T>
 class gsHTensorBasis: public gsBasis<T>
 {
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsHTensorBasis
     typedef memory::shared_ptr< gsHTensorBasis > Ptr;
 
@@ -484,8 +482,7 @@ public:
                                           result);
     }
 
-    /// Clone function. Used to make a copy of a derived basis
-    virtual typename Base::uPtr clone() const = 0;
+    GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsHTensorBasis)
 
     /// The number of basis functions in this basis
     index_t size() const;

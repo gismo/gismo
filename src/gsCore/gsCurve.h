@@ -31,8 +31,6 @@ class gsCurve : public gsGeometry<T>
 {
     
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsCurve
     typedef memory::shared_ptr< gsCurve > Ptr;
 
@@ -59,7 +57,9 @@ public:
 
     /// @}
 
-    virtual typename Base::uPtr clone() const = 0;
+    //GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsCurve)
+private: virtual gsCurve * doClone() const = 0;
+public: inline uPtr clone() const { return uPtr(doClone()); }
 
     int domainDim() const { return 1; }
     

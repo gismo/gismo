@@ -31,8 +31,6 @@ class gsVolume : public gsGeometry<T>
 {
 
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsVolume
     typedef memory::shared_ptr< gsVolume > Ptr;
 
@@ -61,7 +59,9 @@ public:
 
     /// @}
 
-    virtual typename Base::uPtr clone() const = 0;
+    //GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsVolume)
+private: virtual gsVolume * doClone() const = 0; \
+public: inline uPtr clone() const { return uPtr(doClone()); }
 
     int domainDim() const { return 3; }
 

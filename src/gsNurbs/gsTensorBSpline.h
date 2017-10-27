@@ -159,11 +159,7 @@ public:
         this->m_coefs = give(tcoefs);
     }
     
-    /// Clone function. Used to make a copy of the geometry
-    typename gsFunctionSet<T>::uPtr clone() const
-    {
-        return gsTensorBSpline::uPtr(new gsTensorBSpline( *this ));
-    }
+    GISMO_CLONE_FUNCTION(gsTensorBSpline)
 
     GISMO_BASIS_ACCESSORS
 

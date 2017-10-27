@@ -100,8 +100,7 @@ public:
 public:
 
     /// Clone function. Used to make a copy of a derived basis
-    typename Base::Base::Base::uPtr clone() const
-    { return gsNurbsBasis::uPtr(new gsNurbsBasis(*this)); }
+    GISMO_CLONE_FUNCTION(gsNurbsBasis)
   
     GISMO_MAKE_GEOMETRY_NEW
 

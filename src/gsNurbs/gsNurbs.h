@@ -79,9 +79,7 @@ public:
         // TO DO: divide pcoefs by the weights
     }
     
-    /// Clone function. Used to make a copy of the (derived) geometry
-    virtual typename gsFunctionSet<T>::uPtr clone() const
-    { return gsNurbs::uPtr(new gsNurbs(*this)); }
+    GISMO_CLONE_FUNCTION(gsNurbs, virtual)
 
     GISMO_BASIS_ACCESSORS
 
@@ -147,7 +145,7 @@ public:
         // check if the type of other is BSpline
         gsNurbs *  other = dynamic_cast<gsNurbs *>( otherG );   // TODO: to uPtr
         GISMO_ASSERT( other!=NULL, "Can only merge with B-spline curves.");
-        other= dynamic_cast<gsNurbs *>(other->clone().release());
+        other= other->clone().release();
 
         // TODO: check for periodic
 

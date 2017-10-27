@@ -32,8 +32,6 @@ template<class T>
 class gsAbsError : public gsFunction<T> 
 {
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsAbsError
     typedef memory::shared_ptr< gsAbsError > Ptr;
 
@@ -49,8 +47,7 @@ public:
             
     }
 
-    typename Base::uPtr clone() const
-    { return gsAbsError::uPtr(new gsAbsError(*this)); }
+    GISMO_CLONE_FUNCTION(gsAbsError)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -94,8 +91,6 @@ template<class T>
 class gsGradientField : public gsFunction<T> 
 {
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsGradientField
     typedef memory::shared_ptr< gsGradientField > Ptr;
 
@@ -106,8 +101,7 @@ public:
     : m_geo(geo), m_f(f)
     { }
 
-    typename Base::uPtr clone() const
-    { return gsGradientField::uPtr(new gsGradientField(*this)); }
+    GISMO_CLONE_FUNCTION(gsGradientField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -138,8 +132,6 @@ template<class T>
 class gsJacDetField : public gsFunction<T> 
 {
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsJacDetField
     typedef memory::shared_ptr< gsJacDetField > Ptr;
 
@@ -152,8 +144,7 @@ public:
         GISMO_ENSURE(m_dim == m_geo.geoDim(), "Not extended to surface case yet." );
     }
 
-    typename Base::uPtr clone() const
-    { return gsJacDetField::uPtr(new gsJacDetField(*this)); }
+    GISMO_CLONE_FUNCTION(gsJacDetField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -185,8 +176,6 @@ template<class T>
 class gsNormalField : public gsFunction<T> 
 {
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsNormalField
     typedef memory::shared_ptr< gsNormalField > Ptr;
 
@@ -198,8 +187,7 @@ public:
             
     }
 
-    typename Base::uPtr clone() const
-    { return gsNormalField::uPtr(new gsNormalField(*this)); }
+    GISMO_CLONE_FUNCTION(gsNormalField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -247,8 +235,6 @@ template<class T>
 class gsParamField : public gsFunction<T> 
 {
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsParamField
     typedef memory::shared_ptr< gsParamField > Ptr;
 
@@ -261,8 +247,7 @@ public:
             
     }
 
-    typename Base::uPtr clone() const
-    { return gsParamField::uPtr(new gsParamField(*this)); }
+    GISMO_CLONE_FUNCTION(gsParamField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { result = u; }
@@ -291,8 +276,6 @@ template<class T>
 class gsBoundaryField : public gsFunction<T> 
 {
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsBoundaryField
     typedef memory::shared_ptr< gsBoundaryField > Ptr;
 
@@ -303,8 +286,7 @@ public:
     : geo(geo_), m_supp(geo.support())
     { }
 
-    typename Base::uPtr clone() const
-    { return gsBoundaryField::uPtr(new gsBoundaryField(*this)); }
+    GISMO_CLONE_FUNCTION(gsBoundaryField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { 

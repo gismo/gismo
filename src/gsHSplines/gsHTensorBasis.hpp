@@ -258,7 +258,7 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
             boxes.push_back( u(i) * 2);
     }
 
-    memory::make_unique(dynamic_cast<gsHTensorBasis *>(this->clone().release()))->refineElements_withCoefs(coefs, boxes);
+    this->clone()->refineElements_withCoefs(coefs, boxes);
     this->uniformRefine(numKnots, mul);
     //this->m_xmatrix.erase(this->m_xmatrix.begin(),this->m_xmatrix.begin()+1);
     //coefs = transf*coefs;
@@ -870,7 +870,7 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 
     for ( int i = 0; i < extraLevels; ++i )
     {
-        tensorBasis * next_basis = dynamic_cast<tensorBasis *>(m_bases.back()->clone().release());
+        tensorBasis * next_basis = m_bases.back()->clone().release();
         next_basis->uniformRefine(1);
         m_bases.push_back (next_basis); //note: m_bases is mutable
     }
@@ -889,7 +889,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
     if ( const tensorBasis * tb2 =
               dynamic_cast<const tensorBasis*>(&tbasis) )
     {
-        m_bases.push_back(dynamic_cast<tensorBasis *>(tb2->clone().release()) );
+        m_bases.push_back(tb2->clone().release());
     }
     else
     {
@@ -907,8 +907,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
     m_bases.reserve(3);
     for(unsigned int i = 1; i <= 2; i++)
     {
-        tensorBasis
-            * next_basis = dynamic_cast<tensorBasis *>(m_bases[i-1]->clone().release());
+        tensorBasis* next_basis = m_bases[i-1]->clone().release();
         next_basis->uniformRefine(1);
         m_bases.push_back( next_basis );
     }
@@ -1056,8 +1055,7 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
     m_bases.erase( m_bases.begin() );
 
     // Keep consistency of finest level
-    tensorBasis * last_basis
-        = dynamic_cast<tensorBasis *>(m_bases.back()->clone().release());
+    tensorBasis * last_basis = m_bases.back()->clone().release();
     last_basis->uniformRefine(1,mul);
     m_bases.push_back( last_basis );
 

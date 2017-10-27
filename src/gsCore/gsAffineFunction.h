@@ -32,8 +32,6 @@ protected:
     gsMatrix<T> m_mat;
     gsVector<T> m_trans;
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsAffineFunction
     typedef memory::shared_ptr< gsAffineFunction > Ptr;
 
@@ -47,7 +45,7 @@ public:
         : m_mat(other.m_mat), m_trans(other.m_trans)
     {}
 
-    typename Base::uPtr clone() const { return gsAffineFunction::uPtr(new gsAffineFunction(*this));}
+    GISMO_CLONE_FUNCTION(gsAffineFunction)
 
     /**
      * @brief all fine maps are the composition of a linear map with a translation

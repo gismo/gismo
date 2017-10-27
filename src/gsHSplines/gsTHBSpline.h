@@ -76,10 +76,8 @@ public:
         this->m_basis = new Basis( tbsp.basis() );
         this->m_coefs = tbsp.coefs();
     }
-    
-    /// Clone the gsHBspline
-    virtual typename gsFunctionSet<T>::uPtr clone() const
-    { return gsTHBSpline::uPtr(new gsTHBSpline(*this)); }
+
+    GISMO_CLONE_FUNCTION(gsTHBSpline, virtual)
 
     GISMO_BASIS_ACCESSORS
 

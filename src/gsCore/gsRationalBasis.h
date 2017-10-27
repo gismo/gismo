@@ -75,7 +75,7 @@ public:
     
     /// Construct a rational counterpart of basis
     gsRationalBasis(const SrcT & basis)
-    : m_src(dynamic_cast<SrcT*>(basis.clone().release()) )
+    : m_src(basis.clone().release())
     { 
         m_weights.setOnes(basis.size(), 1);
     }
@@ -91,7 +91,7 @@ public:
     /// Copy Constructor
     gsRationalBasis(const gsRationalBasis & o) : Base(o)
     { 
-        m_src= dynamic_cast<SrcT *>(o.source().clone().release());
+        m_src= o.source().clone().release();
         m_weights = o.weights()  ; 
     }
     
@@ -122,7 +122,7 @@ public:
     }
     
     gsBasis<T> * makeNonRational() const
-    { return dynamic_cast<gsBasis<T>*>(m_src->clone().release()); }
+    { return m_src->clone().release(); }
     
 public:
     

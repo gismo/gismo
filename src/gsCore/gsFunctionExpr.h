@@ -43,8 +43,6 @@ class gsFunctionExpr : public gsFunction<T>
 public:
     typedef T Scalar_t;
 
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsFunctionExpr
     typedef memory::shared_ptr< gsFunctionExpr > Ptr;
 
@@ -99,9 +97,8 @@ public:
   
     gsFunctionExpr& operator=(gsFunctionExpr other);
 
-    typename Base::uPtr clone() const
-    { return gsFunctionExpr::uPtr(new gsFunctionExpr(*this)); }
-
+    GISMO_CLONE_FUNCTION(gsFunctionExpr)
+    
     /// \brief Adds another component to this (vector) function
     void addComponent(const std::string & strExpression);
 

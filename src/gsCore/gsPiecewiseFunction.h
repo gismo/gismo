@@ -46,7 +46,7 @@ public:
 
     gsPiecewiseFunction(const gsFunction<T> & func)
     {
-        m_funcs.push_back(dynamic_cast<gsFunction<T>*>(func.clone().release()));
+        m_funcs.push_back(func.clone().release());
         //m_funcs.resize(n, func.clone());
     }
 
@@ -80,16 +80,7 @@ public:
         m_funcs.swap( other.m_funcs );
     }
 
-public:
-
-    /// Clones the function object, making a deep copy.
-    typename Base::uPtr clone() const
-    {
-        gsPiecewiseFunction* c= new gsPiecewiseFunction();
-        for(size_t i=0; i<m_funcs.size();i++)
-            c->addPiece(piece(i));
-        return typename gsPiecewiseFunction<T>::uPtr(c);
-    }
+    GISMO_CLONE_FUNCTION(gsPiecewiseFunction)
 
     int domainDim () const {return m_funcs.front()->domainDim();};
     int targetDim () const {return m_funcs.front()->targetDim();};
@@ -97,7 +88,7 @@ public:
     /// Add a piece
     void addPiece(const gsFunction<T> & func)
     { 
-        m_funcs.push_back( dynamic_cast<gsFunction<T>*>(func.clone().release()) );
+        m_funcs.push_back( func.clone().release() );
     }
 
     void addPiecePointer(gsFunction<T> * func)

@@ -127,7 +127,7 @@ std::vector<gsGeometry<T> *> gsGeometry<T>:: boundary() const
 template<class T>
 void gsGeometry<T>::degreeElevate(int const i, int const dir)
 {
-    gsBasis<T> * b = dynamic_cast<gsBasis<T> *>(m_basis->clone().release());
+    typename gsBasis<T>::uPtr b = m_basis->clone();
  
     if ( dir == -1 )
         b->degreeElevate(i);
@@ -142,14 +142,12 @@ void gsGeometry<T>::degreeElevate(int const i, int const dir)
 
     std::swap(m_basis, g->m_basis);
     g->coefs().swap(this->coefs());
-
-    delete b;
 }
 
 template<class T>
 void gsGeometry<T>::degreeReduce(int const i, int const dir)
 {
-    gsBasis<T> * b = dynamic_cast<gsBasis<T> *>(m_basis->clone().release());
+    typename gsBasis<T>::uPtr b = m_basis->clone();
  
     if ( dir == -1 )
         b->degreeReduce(i);
@@ -164,8 +162,6 @@ void gsGeometry<T>::degreeReduce(int const i, int const dir)
 
     std::swap(m_basis, g->m_basis);
     g->coefs().swap(this->coefs());
-
-    delete b;
 }
 
 template<class T>

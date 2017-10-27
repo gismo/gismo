@@ -26,7 +26,11 @@ protected:
     const gsFunction<T> *m_derivs;
     const gsFunction<T> *m_deriv2;
 public:
-    typedef gsFunctionSet<T> Base;
+    /// Shared pointer for gsFunctionWithDerivatives
+    typedef memory::shared_ptr< gsFunctionWithDerivatives > Ptr;
+
+    /// Unique pointer for gsFunctionWithDerivatives
+    typedef memory::unique_ptr< gsFunctionWithDerivatives > uPtr;
 
     gsFunctionWithDerivatives()
     : m_values(NULL),
@@ -95,10 +99,9 @@ public:
         return *this; 
     }
 
-    typename Base::uPtr clone() const
-    {
-        GISMO_ERROR("gsFunctionWithDerivatives cannot be cloned");
-    }
+    //GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunction, GISMO_ERROR("gsFunctionWithDerivatives cannot be cloned");)
+private: gsFunction<T> * doClone() const { GISMO_ERROR("gsFunctionWithDerivatives cannot be cloned"); } \
+public: inline uPtr clone() const { return uPtr(doClone()); }
  
     int targetDim () const
     {

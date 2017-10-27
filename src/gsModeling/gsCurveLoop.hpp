@@ -130,7 +130,7 @@ gsCurve<T> * gsCurveLoop<T>::singleCurve() const
     GISMO_ASSERT( m_curves.size(), "CurveLoop is empty.\n");
     GISMO_ASSERT( m_curves.front(), "Something went wrong. Invalid pointer in gsCurveLoop member.\n");
     
-    gsCurve<T> * loop = dynamic_cast<gsCurve<T>*>(m_curves.front()->clone().release()) ;
+    gsCurve<T> * loop = m_curves.front()->clone().release() ;   // TODO: return uPtr
     
     for ( it= m_curves.begin()+1; it!= m_curves.end() ; it++ )
     {

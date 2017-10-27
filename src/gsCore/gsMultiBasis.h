@@ -36,7 +36,6 @@ template<class T>
 class gsMultiBasis : public gsFunctionSet<T>
 {
 public:
-    typedef gsFunctionSet<T> Base;
     typedef memory::shared_ptr<gsMultiBasis> Ptr;
     typedef memory::unique_ptr<gsMultiBasis> uPtr;
 
@@ -107,11 +106,8 @@ public:
         return *this;
     }
 #endif
-    
-    /// Clone function. Used to make a copy of the object
-    typename Base::uPtr clone() const {
-        return gsMultiBasis::uPtr(new gsMultiBasis( *this ));
-    }
+
+    GISMO_CLONE_FUNCTION(gsMultiBasis)
 
 public:
 
@@ -281,9 +277,6 @@ public:
 
     /// @brief Add a basis (ownership of the pointer is also acquired)
     void addBasis(typename gsBasis<T>::uPtr g);
-
-    /// @brief Add a basis (ownership of the pointer is also acquired)
-    void addBasis(typename gsFunctionSet<T>::uPtr g);
 
     /// @brief Search for the given basis and return its index.
     int findBasisIndex( gsBasis<T>* g ) const;

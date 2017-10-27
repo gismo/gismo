@@ -173,8 +173,7 @@ public:
         return BoundaryBasisType::New(rr);
     }
 
-    typename Base::Base::uPtr clone() const
-    { return typename gsTensorBSplineBasis::uPtr(new gsTensorBSplineBasis(*this)); }
+    GISMO_CLONE_FUNCTION(gsTensorBSplineBasis)
     
     static Self_t * New(std::vector<gsBasis<T>*> & bb )
     { return new Self_t(bb); }

@@ -37,8 +37,8 @@ public:
         )
         : gsPde<T>(domain,bc),    m_viscosity(viscosity)
     {
-        m_force  = force  ? dynamic_cast<gsFunction<T>*>(force->clone().release())  : NULL;
-        m_source = source ? dynamic_cast<gsFunction<T>*>(source->clone().release()) : NULL;
+        m_force  = force  ? force->clone().release()  : NULL;
+        m_source = source ? source->clone().release() : NULL;
 
         m_unknownDim.resize(2);
         m_unknownDim[0] = m_domain.dim();

@@ -44,8 +44,6 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
 
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsTHBSplineBasis
     typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
 
@@ -501,8 +499,7 @@ public:
   /// Returns the dimension of the parameter space
   int domainDim() const { return d; }
 
-  virtual typename Base::uPtr clone() const
-    { return gsTHBSplineBasis::uPtr(new gsTHBSplineBasis(*this)); }
+    GISMO_CLONE_FUNCTION(gsTHBSplineBasis, virtual)
 
   /// Prints the object as a string.
   std::ostream &print(std::ostream &os) const

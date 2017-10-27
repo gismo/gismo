@@ -72,10 +72,8 @@ public:
     using Base::support;
     using Base::domainDim;
     using Base::targetDim;
-public:
 
-    virtual typename Base::uPtr clone() const // = 0;
-    {GISMO_NO_IMPLEMENTATION}
+    GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunction, GISMO_NO_IMPLEMENTATION, virtual)
 
     virtual const gsFunction & piece(const index_t k) const
     {

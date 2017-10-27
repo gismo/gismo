@@ -24,7 +24,7 @@ template<class T>
 gsMultiBasis<T>::gsMultiBasis( const gsBasis<T> & bb )
 : m_topology( bb.dim() )
 {
-    m_bases.push_back(dynamic_cast<gsBasis<T> *>(bb.clone().release()) );
+    m_bases.push_back( bb.clone().release() );
     m_topology.addBox();
     m_topology.addAutoBoundaries();
 }
@@ -92,12 +92,6 @@ template<class T>
 void gsMultiBasis<T>::addBasis(typename gsBasis<T>::uPtr g)
 {
     addBasis(g.release());
-}
-
-template<class T>
-void gsMultiBasis<T>::addBasis(typename gsFunctionSet<T>::uPtr g)
-{
-    addBasis((gsBasis<T>*)g.release());
 }
 
 template<class T>

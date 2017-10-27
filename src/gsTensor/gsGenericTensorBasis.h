@@ -69,13 +69,12 @@ public:
     gsGenericTensorBasis( Basis_t* x,  Basis_t*  y) : Base(x,y) { }
 
     gsGenericTensorBasis( const Basis_t & x, const Basis_t & y) :
-    Base(dynamic_cast<Basis_t *>(x.clone().release()), dynamic_cast<Basis_t *>(y.clone().release())) { }
+    Base(x.clone().release(), y.clone().release()) { }
 
     gsGenericTensorBasis( Basis_t* x,  Basis_t* y, Basis_t* z ) : Base(x,y,z) { }
 
     gsGenericTensorBasis( const Basis_t & x, const Basis_t & y, const Basis_t & z ) :
-        Base(dynamic_cast<Basis_t *>(x.clone().release()), dynamic_cast<Basis_t *>(y.clone().release()),
-             dynamic_cast<Basis_t *>(z.clone().release())) { }
+        Base(x.clone().release(), y.clone().release(), z.clone().release()) { }
 
     gsGenericTensorBasis( std::vector<Basis_t*> & bb ) : Base(bb.data()) 
     { 
@@ -96,9 +95,7 @@ public:
         return os;
     }
 
-    /// Clone function. Used to make a copy of the object
-    typename gsFunctionSet<T>::uPtr clone() const
-    { return gsGenericTensorBasis::uPtr(new gsGenericTensorBasis(*this)); }
+    GISMO_CLONE_FUNCTION(gsGenericTensorBasis)
 
 };
 

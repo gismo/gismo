@@ -100,7 +100,7 @@ gsTensorBasis<d,T>::gsTensorBasis( const gsTensorBasis & o)
 : gsBasis<T>(o)
 {
     for (unsigned i = 0; i < d; ++i)
-        m_bases[i] = dynamic_cast<Basis_t *>(o.m_bases[i]->clone().release());
+        m_bases[i] = o.m_bases[i]->clone().release();
 }
 
 
@@ -114,7 +114,7 @@ gsTensorBasis<d,T>& gsTensorBasis<d,T>::operator=( const gsTensorBasis & o)
     for (unsigned i = 0; i < d; ++i)
     {
         delete m_bases[i];
-        m_bases[i] = dynamic_cast<Basis_t *>(o.m_bases[i]->clone().release());
+        m_bases[i] = o.m_bases[i]->clone().release();
     }
     return *this;
 }
@@ -406,7 +406,7 @@ gsTensorBasis<d,T>::getComponentsForSide(boxSide const& s, std::vector<Basis_t*>
     rr.reserve( d - 1 );
     for ( unsigned i=0; i < d; ++i )
         if (i != dir)
-            rr.push_back(dynamic_cast<Basis_t *>(m_bases[i]->clone().release()) );
+            rr.push_back(m_bases[i]->clone().release());
 }
 
 

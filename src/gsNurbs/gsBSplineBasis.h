@@ -76,6 +76,7 @@ public:
     typedef gsBSplineBasis<T> Self_t;
 
     typedef gsTensorBSplineBasis TensorSelf_t;
+    typedef gsTensorBSplineBasis<1,T> TensorSelf_tt;
 
     /// Coefficient type
     typedef T Scalar_t;
@@ -99,7 +100,9 @@ public:
 
     // Look at gsBasis class for a description
     // Note: Specializing pointer type at return
-    typename Base::Base::Base::uPtr clone() const = 0;
+    //GISMO_PURE_VIRTUAL_CLONE_FUNCTION(TensorSelf_tt)
+    private: virtual gsTensorBSplineBasis * doClone() const = 0;
+    public: uPtr clone() const { return uPtr(dynamic_cast<Self_t*>(doClone())); }
     
     // gsTensorBSplineBasis( const Base & o)
     // { 
@@ -739,7 +742,7 @@ public:
 */
 
     // Look at gsBasis class for a description
-    typename gsFunctionSet<T>::uPtr clone() const;
+    GISMO_CLONE_FUNCTION_CONST(gsBSplineBasis)
 
     // Look at gsBasis class for a description
     Self_t & component(unsigned i);

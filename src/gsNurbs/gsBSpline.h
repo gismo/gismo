@@ -135,10 +135,8 @@ public:
                           "Number of coefficients does not match the size of the basis.");
         }
     }
-    
-    /// Clone function. Used to make a copy of the (derived) geometry
-    virtual typename gsFunctionSet<T>::uPtr clone() const
-        { return gsBSpline::uPtr(new gsBSpline(*this)); }
+
+    GISMO_CLONE_FUNCTION(gsBSpline, virtual)
     
     GISMO_BASIS_ACCESSORS    
     

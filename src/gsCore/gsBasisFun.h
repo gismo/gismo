@@ -41,8 +41,6 @@ private:
     gsBasisFun() { }
     
 public:
-    typedef gsFunctionSet<T> Base;
-
     /// Shared pointer for gsBasisFun
     typedef memory::shared_ptr< gsBasisFun > Ptr;
 
@@ -54,8 +52,7 @@ public:
 
     ~gsBasisFun() { } //destructor
 
-    typename Base::uPtr clone() const
-    { return gsBasisFun::uPtr(new gsBasisFun(*this)); }
+    GISMO_CLONE_FUNCTION(gsBasisFun)
 
 public:
   
