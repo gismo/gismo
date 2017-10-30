@@ -143,7 +143,7 @@ int main(int argc, char* argv[])
     // Returns a geometry with basis = tBasis 
     // and coefficients being
     // computed as the interpolant of \a funct
-    typename gsGeometry<>::uPtr interpolant = tBasis->interpolateAtAnchors(fValues);
+    gsGeometry<>::uPtr interpolant = tBasis->interpolateAtAnchors(fValues);
 
     gsInfo << "Result :"<< *interpolant <<"\n";
 
