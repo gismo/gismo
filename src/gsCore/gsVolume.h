@@ -59,7 +59,7 @@ public:
 
     /// @}
 
-    //GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsVolume)
+    //GISMO_CLONE_FUNCTION_FORWARD(gsVolume)
 private: virtual gsVolume * doClone() const = 0; \
 public: inline uPtr clone() const { return uPtr(doClone()); }
 

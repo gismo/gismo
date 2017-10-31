@@ -59,7 +59,7 @@ public:
 
     /// @}
 
-    //GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsSurface)
+    //GISMO_CLONE_FUNCTION_FORWARD(gsSurface)
 private: virtual gsSurface * doClone() const = 0; \
 public: inline uPtr clone() const { return uPtr(doClone()); }
 

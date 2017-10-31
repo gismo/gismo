@@ -99,9 +99,7 @@ public:
         return *this; 
     }
 
-    //GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunction, GISMO_ERROR("gsFunctionWithDerivatives cannot be cloned");)
-private: gsFunction<T> * doClone() const { GISMO_ERROR("gsFunctionWithDerivatives cannot be cloned"); } \
-public: inline uPtr clone() const { return uPtr(doClone()); }
+    GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunction<T>)
  
     int targetDim () const
     {

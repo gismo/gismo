@@ -669,7 +669,7 @@ public:
 
     /// @}
 
-    GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsBasis)
+    GISMO_CLONE_FUNCTION_FORWARD(gsBasis)
 
     /// @brief Create a gsGeometry of proper type for this basis with the
     /// given coefficient matrix.

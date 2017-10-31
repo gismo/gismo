@@ -482,7 +482,7 @@ public:
                                           result);
     }
 
-    GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsHTensorBasis)
+    GISMO_CLONE_FUNCTION_FORWARD(gsHTensorBasis)
 
     /// The number of basis functions in this basis
     index_t size() const;

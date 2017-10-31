@@ -1205,12 +1205,6 @@ void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
 /* ********************************************** */
 
 template <class T>
-gsBSplineBasis<T> * gsBSplineBasis<T>::doClone() const
-{
-    return new gsBSplineBasis(*this);
-}
-
-template <class T>
 gsBSplineBasis<T> & gsBSplineBasis<T>::component(unsigned i)
 {
     GISMO_ASSERT(i==0,"gsBSplineBasis has only one component");

@@ -73,7 +73,7 @@ public:
     using Base::domainDim;
     using Base::targetDim;
 
-    GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunction, GISMO_NO_IMPLEMENTATION, virtual)
+    GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunction, virtual)
 
     virtual const gsFunction & piece(const index_t k) const
     {

@@ -59,7 +59,7 @@ public:
 
     /// @}
 
-    GISMO_PURE_VIRTUAL_CLONE_FUNCTION(gsBulk)
+    GISMO_CLONE_FUNCTION_FORWARD(gsBulk)
 
     int domainDim() const { return 4; }
 

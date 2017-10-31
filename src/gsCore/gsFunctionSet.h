@@ -25,20 +25,15 @@
 private: __VA_ARGS__ x * doClone() const { return new x(*this); } \
 public: inline uPtr clone() const { return uPtr(doClone()); }
 
-// Declaration (2nd argument for virtual)
-#define GISMO_CLONE_FUNCTION_CONST(x, ...) \
-public: __VA_ARGS__ x * doClone() const; \
-public: inline uPtr clone() const { return uPtr(doClone()); }
-
 // Declaration of pure virtual
-#define GISMO_PURE_VIRTUAL_CLONE_FUNCTION(x) \
+#define GISMO_CLONE_FUNCTION_FORWARD(x) \
 private: virtual x * doClone() const = 0; \
 public: inline uPtr clone() const { return uPtr(doClone()); }
 
 // Declaration and definition with (throw of) message
-// (2nd argument for codeblock, 3nd argument for virtual)
-#define GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(x, message, ...) \
-private: __VA_ARGS__ x * doClone() const { message } \
+// (2nd argument for virtual)
+#define GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(x, ...) \
+private: __VA_ARGS__ x * doClone() const { GISMO_NO_IMPLEMENTATION } \
 public: inline uPtr clone() const { return uPtr(doClone()); }
 
 namespace gismo {
@@ -137,7 +132,7 @@ public:
 
     virtual ~gsFunctionSet();
 
-    GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, GISMO_NO_IMPLEMENTATION, virtual)
+    GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, virtual)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
     virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
