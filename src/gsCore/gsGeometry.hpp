@@ -35,7 +35,7 @@ gsGeometry<T>::boundary(boxSide const& s) const
     }
 
     gsBasis<T> *Bs = this->basis().boundaryBasis(s);  // Basis for boundary side s
-    gsGeometry::uPtr bgeo = Bs->makeGeometry( give(coeffs) );
+    uPtr bgeo = Bs->makeGeometry( give(coeffs) );
 
     delete Bs;
     return bgeo;
