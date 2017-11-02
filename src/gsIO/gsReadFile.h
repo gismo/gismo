@@ -195,9 +195,10 @@ public:
     /// Allows to convert a gsReadFile to a gsMultipatch
     operator gsMultiPatch<T> ()
     {
-        memory::unique_ptr< gsMultiPatch<T> > mp(*this);
+        memory::unique_ptr< gsMultiPatch<T> > mp = 
+            this->operator memory::unique_ptr< gsMultiPatch<T> >();
         if (!mp) return gsMultiPatch<T>();
-        return *mp;
+        return give(*mp);
     }
     
     /// Allows to read a gsMesh
