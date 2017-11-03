@@ -575,6 +575,25 @@ public:
                             root,m_comm);
     }
 
+    /// @copydoc gsSerialComm::scatter()
+    /// @note out must have space for P*len elements
+    template<typename T>
+    int alltoall (T* send, T* recv, int sendcount, int recvcount) const
+    {
+        return MPI_Scatter(send,sendcount,MPITraits<T>::getType(),
+                           recv,recvcount,MPITraits<T>::getType(),
+                           m_comm);
+    }
+
+    /// @copydoc gsSerialComm::scatterv()
+    template<typename T>
+    int alltoallv (T* send, int* sendcount, int* senddispl, T* recv, int* recvcount, int* recvdispl) const
+    {
+        return MPI_Alltoallv(send,sendcount,senddispl,MPITraits<T>::getType(),
+                            recv,recvcount,recvdispl,MPITraits<T>::getType(),
+                            m_comm);
+    }
+
     /// @copydoc gsSerialComm::allgather()
     template<typename T, typename T1>
     int allgather(T* sbuf, int count, T1* rbuf) const
