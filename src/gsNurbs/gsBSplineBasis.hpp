@@ -845,11 +845,11 @@ template <class T>
 typename gsBasis<T>::uPtr
 gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const 
 { 
-    Self_t * ptr1 = dynamic_cast<Self_t*>(other.clone().release());
-    Self_t * ptr2 =  static_cast<Self_t*>(this->clone().release());
+    typename Self_t::uPtr ptr1 = memory::convert_ptr<Self_t>(other.clone());
+    //Self_t * ptr2 =  static_cast<Self_t*>(this->clone().release());
 
     if ( ptr1 )
-        return typename gsBasis<T>::uPtr(new gsTensorBSplineBasis<2,T>( ptr1, ptr2 ));
+        return typename gsBasis<T>::uPtr(new gsTensorBSplineBasis<2,T>( ptr1.release(), this->clone().release() ));
     else
     {
         gsInfo<<"Invalid basis "<< other <<"\n";
