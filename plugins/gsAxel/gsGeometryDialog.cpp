@@ -586,7 +586,7 @@ QColor gsGeometryDialog::initColorValue(void)
 void gsGeometryDialog::showBasis(void)
 {
     gsBasisPointer myGismoData = 
-	    getGeometryPointer(d->data)->basis().clone();
+	    getGeometryPointer(d->data)->basis().clone().release();
 	std::cout << "Plotting basis "<< * myGismoData <<"\n";
     
 	// Create basis object and add it in the object list
