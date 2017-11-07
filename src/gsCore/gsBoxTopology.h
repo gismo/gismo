@@ -219,9 +219,11 @@ public:
 
     /// Return the vector of boundaries.
     const std::vector<patchSide> & boundaries() const { return m_boundary;}
+    std::vector<patchSide> & boundaries() { return m_boundary;}
 
     /// Return the vector of interfaces.
     const std::vector<boundaryInterface> & interfaces() const { return m_interfaces; }
+    std::vector<boundaryInterface> & interfaces() { return m_interfaces; }
 
     /// Check that boundaries and interfaces are consistent.
     void checkConsistency() const;
