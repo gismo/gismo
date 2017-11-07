@@ -1089,12 +1089,15 @@ class gsXml< gsMultiBasis<T> >
 {
 private:
     gsXml() { }
+    typedef gsMultiBasis<T> Object;
+
 public:
-    GSXML_COMMON_FUNCTIONS(gsMultiBasis<T>);
+    GSXML_COMMON_FUNCTIONS(Object);
+    GSXML_GET_POINTER(Object);
     static std::string tag() { return "MultiBasis"; }
     static std::string type() { return ""; }
 
-    static gsMultiBasis<T>* get(gsXmlNode* node)
+    static void get_into(gsXmlNode* node, Object & result)
     {
         GISMO_ASSERT( !strcmp( node->name(), "MultiBasis" ),
                       "Something went wrong. Expected MultiBasis tag." );
@@ -1148,10 +1151,8 @@ public:
 
         gsBoxTopology topology( d, bases.size(), boundaries, interfaces);
 
-        gsMultiBasis<T> * result = new gsMultiBasis<T> (bases, topology);
+        result = gsMultiBasis<T>(bases, topology);
         freeAll(bases);
-        return result;
-
     }
 
     static gsXmlNode* put(const gsMultiBasis<T>& obj,

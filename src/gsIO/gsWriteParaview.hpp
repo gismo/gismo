@@ -256,7 +256,13 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
             msh.vertex[i]->coords.topRows(d) = anch.col(i);
         }
     }
-
+    else if (n>3)
+    {
+        gsInfo<<"Writing 4th coordinate\n";
+        const gsMatrix<T> & cp = Geo.coefs();
+        gsWriteParaviewPoints<T>(cp.transpose(), fn );
+        return;
+    }
 
     gsWriteParaview(msh, fn, false);
 }
