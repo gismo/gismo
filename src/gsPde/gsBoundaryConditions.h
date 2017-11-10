@@ -27,6 +27,7 @@ struct condition_type
     /// Specifies the type of boundary condition
     enum type
     {
+        unknownType = -1,
         dirichlet = 0, ///< Dirichlet type
         neumann   = 1, ///< Neumann type
         robin     = 2  ///< Robin type
@@ -87,8 +88,9 @@ struct boundary_condition
       m_parametric(parametric)
     {
         if (m_label == "Dirichlet") m_type = condition_type::dirichlet;
-        if (m_label == "Neumann")   m_type = condition_type::neumann;
-        if (m_label == "Robin")     m_type = condition_type::robin;
+        else if (m_label == "Neumann")   m_type = condition_type::neumann;
+        else if (m_label == "Robin")     m_type = condition_type::robin;
+        else m_type = condition_type::unknownType;
     }
     
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
@@ -590,7 +592,12 @@ public:
         for(typename std::vector<boundary_condition<T> >::const_iterator it = bc_all.begin(); it!= bc_all.end();it++)
         {
             if((*it).patch()==np)
-                result.addCondition(0,(*it).side(),(*it).type(),(*it).function(),(*it).unknown());
+            {
+                if(it->type() == condition_type::dirichlet || it->type() == condition_type::neumann || it->type() == condition_type::robin)
+                    result.addCondition(0,(*it).side(),(*it).type(),(*it).function(),(*it).unknown());
+                else
+                   result.add(0,(*it).side(),it->ctype(),(*it).function(),(*it).unknown());
+            }
         }
 
         for(const_citerator it = cornerBegin(); it!= cornerEnd();it++)
