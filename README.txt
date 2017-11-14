@@ -19,19 +19,19 @@ http://gs.jku.at/gismo
 
 The latest revision of the code can be obtained from github:
 
-https://github.com/filiatra/gismo
+https://github.com/gismo/gismo
 
 Using subversion:
 
-svn co https://github.com/filiatra/gismo/trunk gismo
+svn co https://github.com/gismo/gismo/trunk gismo
 
 or using git:
 
-git clone git@github.com:filiatra/gismo.git
+git clone git@github.com:gismo/gismo.git
 
 or as a zip file:
 
-https://github.com/filiatra/gismo/archive/stable.zip
+https://github.com/gismo/gismo/archive/stable.zip
 
 If you prefer an updatable copy and you do not have a GitHub account, there is also an anonymous SVN repository 
 
@@ -216,7 +216,7 @@ Files related to doxygen documentation.
 
 * Bug reports: 
 
-  https://github.com/filiatra/gismo/issues
+  https://github.com/gismo/gismo/issues
 
 ======================================================================
 =====                             People                         ===== 
