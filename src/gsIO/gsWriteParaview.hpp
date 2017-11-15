@@ -365,11 +365,10 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
         gsWarn<< "Data is more than 3 dimensions.\n";
     }
 
-    //GISMO_ASSERT( eval_field.rows() == field.dim(), "Error in field dimension");
-    if ( eval_field.rows() > 1 )
+   if ( eval_field.rows() == 2)
     {
         eval_field.conservativeResize(3,eval_geo.cols() );
-        eval_field.bottomRows( 3-d ).setZero();
+        eval_field.bottomRows(1).setZero(); // 3-field.dim()
     }
 
     gsWriteParaviewTPgrid(eval_geo, eval_field, np.template cast<index_t>(), fn);
