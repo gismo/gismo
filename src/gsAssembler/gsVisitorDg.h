@@ -162,15 +162,13 @@ public:
         system.mapColIndices(actives1, patch1, actives1);
         system.mapColIndices(actives2, patch2, actives2);
 
-        gsMatrix<T> localRhs1,localRhs2;
-        localRhs1.setZero(actives1.rows(),1);
-        localRhs2.setZero(actives2.rows(),1);
+        m_localRhs1.setZero(actives1.rows(),system.rhsCols());
+        m_localRhs2.setZero(actives2.rows(),system.rhsCols());
 
-        system.push(-B11 - B11.transpose() + E11, localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
-        system.push(-B21 - B12.transpose() - E21, localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
-        system.push(-B12 - B21.transpose() - E12, localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
-        system.push(-B22 - B22.transpose() + E22, localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
-
+        system.push(-B11 - B11.transpose() + E11, m_localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
+        system.push(-B21 - B12.transpose() - E21, m_localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
+        system.push(-B12 - B21.transpose() - E12, m_localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
+        system.push(-B22 - B22.transpose() + E22, m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
 
     }
 
@@ -194,7 +192,10 @@ private:
 
     // Auxiliary element matrices
     gsMatrix<T> B11, B12, E11, E12, N1,
-    B22, B21, E22, E21, N2;
+                B22, B21, E22, E21, N2;
+                
+    gsMatrix<T> m_localRhs1, m_localRhs2;
+    
 };
 
 
