@@ -311,7 +311,7 @@ SUITE(gsBoundaryConditions_test)
      */
     TEST(gsBoundaryConditions_load_from_bc_xml)
     {
-        std::string path = GISMO_DDATA_DIR;
+        std::string path = GISMO_DATA_DIR;
         path += "gsBoundaryConditions/bc.xml";
         gsBoundaryConditions<real_t> sut = gsBoundaryConditions_loadFromFile(path);
         checkGsBoundaryCondition(sut);
@@ -325,7 +325,7 @@ SUITE(gsBoundaryConditions_test)
      */
     TEST(gsBoundaryConditions_save_load_bc_xml)
     {
-        std::string path1 = GISMO_DDATA_DIR;
+        std::string path1 = GISMO_DATA_DIR;
         path1 += "/gsBoundaryConditions/bc.xml";
         std::string path2 = gismo::util::getTempPath();
         path2 += "/bc2.xml";

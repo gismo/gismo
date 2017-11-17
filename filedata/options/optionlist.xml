@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+  <OptionList id="0">
+    
+    <bool label="boundary" desc="Plot boundary"
+	  value="1"/>
+
+    <!-- Valid values are 11...14-->
+    <int label="strategy" desc="Method of enforcement of Dirichlet BCs [11..14]"
+	 value="11"/>
+
+    <real label="tolerance" desc="Error tolerance" value="0.00001"/>
+
+    <string label="geometry" desc="File containing geometry data"
+	    value="/path/to/square.xml"/>
+
+  </OptionList>
+</xml>
+

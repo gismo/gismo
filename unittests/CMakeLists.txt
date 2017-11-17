@@ -46,7 +46,6 @@ enable_testing()
 FILE (GLOB unittests_SRCS *.cpp)
 
 get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} PATH)
-add_definitions(-DGISMO_DDATA_DIR="${PARENT_DIR}/devel/filedata/")
 
 add_executable(unittests ${unittests_SRCS} common/main.cpp common/test.h
   common/CheckFiles.h common/CheckFiles.cpp 
