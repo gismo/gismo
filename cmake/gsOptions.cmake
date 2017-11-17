@@ -20,8 +20,9 @@
 #Standard options
 option(GISMO_EXTRA_DEBUG         "Extra debug features"      false  )
 option(GISMO_BUILD_LIB           "Build shared library"      true   )
-option(GISMO_BUILD_PCH           "Build precompiled headers" false)
+option(GISMO_BUILD_PCH           "Build precompiled headers" false  )
 option(GISMO_BUILD_EXAMPLES      "Build examples"            true   )
+option(GISMO_BUILD_UNITTESTS     "Build unittests"           true   )
 option(GISMO_BUILD_AXL           "Build Axel Plugin"         false  )
 option(GISMO_BUILD_RHINOPLUGINS  "Build Rhino THB Plugins"   false  )
 option(GISMO_BUILD_PVIEW         "Build Paraview Plugin"     false  )
