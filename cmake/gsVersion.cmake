@@ -25,7 +25,7 @@
 
 set(${PROJECT_NAME}_MAJOR_VERSION "0")
 set(${PROJECT_NAME}_MINOR_VERSION "8")
-set(${PROJECT_NAME}_PATCH_VERSION "2")
+set(${PROJECT_NAME}_PATCH_VERSION "3")
 #set(${PROJECT_NAME}_VERSION_TYPE  "alpha")
 
 # Construct version info
