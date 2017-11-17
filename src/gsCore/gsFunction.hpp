@@ -151,23 +151,23 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
 
 
 template <class T>
-gsMatrix<T>* gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
+gsMatrix<T> gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
 {
     //gsDebug << "Using finite differences (gsFunction::laplacian) for computing Laplacian.\n";
     int d = u.rows();
     gsVector<T> tmp( d );
-    gsMatrix<T>* res = new gsMatrix<T>( d, u.cols() );
+    gsMatrix<T> res( d, u.cols());
     for ( int j = 0; j < d; j++ )
     {
         tmp.setZero();
         tmp( j, 0 )    = T( 0.0000000001 );
-        res->row( j )  = 16 * ( this->eval(u.colwise() + tmp ) +
+        res.row( j )  = 16 * ( this->eval(u.colwise() + tmp ) +
                                 this->eval(u.colwise() - tmp ) ) -
                 30 * ( this->eval( u ) );
         tmp( j, 0 )    = T( 0.0000000002 );
-        res->row( j ) -=  ( this->eval( u.colwise() - tmp ) +
+        res.row( j ) -=  ( this->eval( u.colwise() - tmp ) +
                             this->eval( u.colwise() + tmp ) ) ;
-        res->row( j ) /= T( 0.0000000012 ) ;
+        res.row( j ) /= T( 0.0000000012 ) ;
     }
     return res;
 }

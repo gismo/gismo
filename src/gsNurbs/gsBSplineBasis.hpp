@@ -833,12 +833,11 @@ void gsTensorBSplineBasis<1,T>::deriv2Single_into(unsigned i, const gsMatrix<T> 
 }
 
 template <class T> inline
-gsMatrix<T> * gsTensorBSplineBasis<1,T>::laplacian(const gsMatrix<T> & u ) const 
+gsMatrix<T> gsTensorBSplineBasis<1,T>::laplacian(const gsMatrix<T> & u ) const
 {
     std::vector<gsMatrix<T> > ev;
     this->evalAllDers_into(u, 2, ev);
-    gsMatrix<T> * res = new gsMatrix<T>( ev[2].colwise().sum() );
-    return res;
+    return ev[2].colwise().sum();
 }
 
 template <class T>
@@ -846,7 +845,6 @@ typename gsBasis<T>::uPtr
 gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const 
 { 
     typename Self_t::uPtr ptr1 = memory::convert_ptr<Self_t>(other.clone());
-    //Self_t * ptr2 =  static_cast<Self_t*>(this->clone().release());
 
     if ( ptr1 )
         return typename gsBasis<T>::uPtr(new gsTensorBSplineBasis<2,T>( ptr1.release(), this->clone().release() ));

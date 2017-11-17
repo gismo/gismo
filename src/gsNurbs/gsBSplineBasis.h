@@ -260,7 +260,7 @@ public:
     void deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<T> * laplacian(const gsMatrix<T> & u ) const ;
+    gsMatrix<T> laplacian(const gsMatrix<T> & u ) const ;
 
     // Look at gsBasis class for a description
     typename gsBasis<T>::uPtr tensorize(const gsBasis<T> & other) const;

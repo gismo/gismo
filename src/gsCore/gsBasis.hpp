@@ -176,12 +176,11 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
 
 
 template<class T>
-inline gsMatrix<T> * gsBasis<T>::laplacian(const gsMatrix<T> & u ) const 
+inline gsMatrix<T> gsBasis<T>::laplacian(const gsMatrix<T> & u ) const
 {
     gsMatrix<T> tmp;
     this->deriv2_into(u,tmp);
-    gsMatrix<T> * res = new gsMatrix<T>(tmp.colwise().sum());
-    return res;
+    return tmp.colwise().sum();
 }
 
 template<class T> inline

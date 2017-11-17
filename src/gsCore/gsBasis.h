@@ -665,7 +665,7 @@ public:
                                     gsMatrix<T>& result) const;
 
     /// Compute the Laplacian of all nonzero basis functions at points \a u.
-    virtual gsMatrix<T> * laplacian(const gsMatrix<T> & u ) const;
+    virtual gsMatrix<T> laplacian(const gsMatrix<T> & u ) const;
 
     /// @}
 

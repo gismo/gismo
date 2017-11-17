@@ -74,13 +74,11 @@ public:
         m_deriv2->eval_into(u,result);
     }
 
-    gsMatrix<T>* laplacian(const gsMatrix<T> &u) const
+    gsMatrix<T> laplacian(const gsMatrix<T> &u) const
     {
-        gsMatrix<T> *result=new gsMatrix<T>();
         gsMatrix<T>  secDer;
         deriv2_into(u,secDer);
-        *result = secDer.topRows(m_values->domainDim()).colwise().sum();
-        return result;
+        return secDer.topRows(m_values->domainDim()).colwise().sum();
     }
 
     const gsFunction<T> & getDeriv () const

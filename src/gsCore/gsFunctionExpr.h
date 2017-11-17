@@ -159,7 +159,7 @@ public:
     gsMatrix<T> hess(const gsMatrix<T>& u, unsigned coord = 0) const;
   
     // see gsFunction for documentation  
-    gsMatrix<T> * laplacian(const gsMatrix<T>& u) const;
+    gsMatrix<T> laplacian(const gsMatrix<T>& u) const;
   
     ///Mixed derivative wrt variables k and j
     gsMatrix<T> * mderiv(const gsMatrix<T>& u, const index_t k, const index_t j) const;

@@ -202,7 +202,7 @@ public:
     /// @brief Evaluate the Laplacian at points \a u.
     ///
     /// By default uses central finite differences with h=0.00001
-    virtual gsMatrix<T>* laplacian( const gsMatrix<T>& u ) const;
+    virtual gsMatrix<T> laplacian( const gsMatrix<T>& u ) const;
   
     /// @}
 

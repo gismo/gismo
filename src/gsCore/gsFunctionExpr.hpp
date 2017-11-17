@@ -657,12 +657,12 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
 }
 
 template<typename T>
-gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
+gsMatrix<T> gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 {
     //gsDebug<< "Using finite differences (gsFunction::laplacian) for Laplacian.\n";
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point size.");
     const int n = targetDim();
-    gsMatrix<T> * res= new gsMatrix<T>(n,u.cols()) ;
+    gsMatrix<T> res(n,u.cols());
     
     const PrivateData_t & expr = 
 #   ifdef _OPENMP
@@ -670,7 +670,7 @@ gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 #   endif
         *my;
 
-    for( index_t p = 0; p != res->cols(); ++p )
+    for( index_t p = 0; p != res.cols(); ++p )
     {
 #       ifndef GISMO_WITH_ADIFF
         copy_n(u.col(p).data(), expr.dim, expr.vars);
@@ -681,16 +681,16 @@ gsMatrix<T> * gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
 #           ifdef GISMO_WITH_ADIFF
             for (index_t v = 0; v!=expr.dim; ++v)
                 expr.vars[v].setVariable(v, expr.dim, u(v,p) );
-            (*res)(c,p) = expr.expression[c].value().getHessian().trace();
+            res(c,p) = expr.expression[c].value().getHessian().trace();
 #           else
-            T & val = (*res)(c,p);
+            T & val = res(c,p);
             for ( index_t j = 0; j!=expr.dim; ++j )
                 val += exprtk::
                     second_derivative<T>( expr.expression[c], expr.vars[j], 0.00001 );
 #           endif
         }
     }
-        return  res;
+    return  res;
 }
 
 template<typename T>
