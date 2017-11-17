@@ -123,8 +123,8 @@ macro(run_ctests)
   ctest_submit(PARTS Update Notes Configure)
   ctest_build()
   ctest_submit(PARTS Build)
-  #ctest_build(TARGET doc-snippets APPEND) # TODO: they are not built by default!
-  #ctest_submit(PARTS Build)
+  ctest_build(TARGET doc-snippets APPEND)
+  ctest_submit(PARTS Build)
   ctest_test()
   ctest_submit(PARTS Test)
 
