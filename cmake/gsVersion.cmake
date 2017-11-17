@@ -25,10 +25,10 @@
 
 set(${PROJECT_NAME}_MAJOR_VERSION "0")
 set(${PROJECT_NAME}_MINOR_VERSION "8")
-set(${PROJECT_NAME}_PATCH_VERSION "1")
+set(${PROJECT_NAME}_PATCH_VERSION "3")
 #set(${PROJECT_NAME}_VERSION_TYPE  "alpha")
 
-# Constuct version info
+# Construct version info
 if( "${${PROJECT_NAME}_PATCH_VERSION}" STREQUAL "0")
     set(${PROJECT_NAME}_VERSION
         "${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}$" #{${PROJECT_NAME}_VERSION_TYPE}
@@ -43,25 +43,25 @@ endif()
 ##########################################
 # Try to detect SVN revision
 ##########################################
-
-IF (EXISTS ${PROJECT_SOURCE_DIR}/.svn) 
-    #Determine revision level 
-    FIND_PACKAGE(Subversion 1.6) 
-    IF(Subversion_FOUND)
-      Subversion_WC_INFO(${PROJECT_SOURCE_DIR} GISMO) #
-    ELSE(Subversion_FOUND) 
-      set(GISMO_WC_REVISION "??")
-    ENDIF(Subversion_FOUND)
-ELSE (EXISTS ${PROJECT_SOURCE_DIR}/.svn)
-    IF (EXISTS ${PROJECT_SOURCE_DIR}/../.svn) 
-       #Determine revision level 
-          FIND_PACKAGE(Subversion 1.6) 
-          IF(Subversion_FOUND)
-            Subversion_WC_INFO(${PROJECT_SOURCE_DIR}/../ GISMO) 
-          ELSE(Subversion_FOUND) 
-            set(GISMO_WC_REVISION "??")
-          ENDIF(Subversion_FOUND)
-ELSE (EXISTS ${PROJECT_SOURCE_DIR}/../.svn)
-     set(GISMO_WC_REVISION "??")
-ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/../.svn) 
-ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/.svn) 
+#
+#IF (EXISTS ${PROJECT_SOURCE_DIR}/.svn) 
+#    #Determine revision level 
+#    FIND_PACKAGE(Subversion 1.6) 
+#    IF(Subversion_FOUND)
+#      Subversion_WC_INFO(${PROJECT_SOURCE_DIR} GISMO) #
+#    ELSE(Subversion_FOUND) 
+#      set(GISMO_WC_REVISION "??")
+#    ENDIF(Subversion_FOUND)
+#ELSE (EXISTS ${PROJECT_SOURCE_DIR}/.svn)
+#    IF (EXISTS ${PROJECT_SOURCE_DIR}/../.svn) 
+#       #Determine revision level 
+#          FIND_PACKAGE(Subversion 1.6) 
+#          IF(Subversion_FOUND)
+#            Subversion_WC_INFO(${PROJECT_SOURCE_DIR}/../ GISMO) 
+#          ELSE(Subversion_FOUND) 
+#            set(GISMO_WC_REVISION "??")
+#          ENDIF(Subversion_FOUND)
+#ELSE (EXISTS ${PROJECT_SOURCE_DIR}/../.svn)
+#     set(GISMO_WC_REVISION "??")
+#ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/../.svn) 
+#ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/.svn)

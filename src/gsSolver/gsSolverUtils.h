@@ -43,7 +43,7 @@ public:
     /// \param[in] h_list list of the elements sizes (in decreasing order)
     /// PS: This method of finding convergence rate require some initial refinements
     static T convergenceRateLS(std::vector<T> const & error_list, 
-			       std::vector<T> const & h_list)
+                               std::vector<T> const & h_list)
     {
         if (error_list.size() != h_list.size())
         {
