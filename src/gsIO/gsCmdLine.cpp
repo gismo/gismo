@@ -25,7 +25,6 @@
 
 #include <gsIO/gsOptionList.h>
 
-
 namespace gismo
 {
 
@@ -458,6 +457,7 @@ void gsCmdLine::printVersion()
 #else
     gsInfo << "Unknown-STD)\n";
 #endif
+    //gsInfo << "Eigen "<< EIGEN_WORLD_VERSION<<"."<<EIGEN_MAJOR_VERSION<<"."<<EIGEN_MINOR_VERSION<<"\n";
     gsInfo << "RICAM-Linz 2012 - 2017, http://gs.jku.at/gismo\n";
 }
 
