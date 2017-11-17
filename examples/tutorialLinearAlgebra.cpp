@@ -28,6 +28,10 @@ int main(int argc, char**argv)
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsDebug << "Eigen has rvalue references.\n";
 #endif
+
+    gsInfo << "G+Smo uses Eigen v"<< EIGEN_WORLD_VERSION<<"."
+           <<EIGEN_MAJOR_VERSION<<"."<<EIGEN_MINOR_VERSION
+           <<" for matrix computations.\n";
     
     // A matrix with entries of type real_t, and allocated size 3x3
     gsMatrix<real_t> A (3,3);

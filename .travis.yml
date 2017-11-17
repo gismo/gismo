@@ -6,6 +6,11 @@
 #sudo: required
 sudo: false
 
+branches:
+  only:
+  - stable
+  - coverity_scan
+
 os:
   - linux
   - osx
