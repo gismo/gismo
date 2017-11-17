@@ -32,7 +32,6 @@
 #include "SuppressOutput.h"
 
 #include <gismo.h>
-#include <gismo_dev.h>
 
 using namespace gismo;
 

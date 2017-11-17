@@ -31,10 +31,6 @@ include_directories( ${GISMO_INCLUDE_DIRS})
 link_directories   ( ${GISMO_LIBRARY_DIR} )
 include( ${GISMO_USE_FILE})
 
-find_package (gismo_dev REQUIRED)
-include_directories( ${GISMO_DEV_INCLUDE_DIRS} )
-link_directories   ( ${GISMO_DEV_LIBRARY_DIR} )
-
 add_subdirectory(UnitTest++)
 
 # to do UnitTestPPConfig.cmake
