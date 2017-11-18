@@ -262,7 +262,6 @@ Derived& PardisoImpl<Derived>::compute(const MatrixType& a)
   eigen_assert(a.rows() == a.cols());
 
   pardisoRelease();
-  //memset(m_pt, 0, sizeof(m_pt));
   m_perm.setZero(m_size);
   derived().getMatrix(a);
   
@@ -284,7 +283,6 @@ Derived& PardisoImpl<Derived>::analyzePattern(const MatrixType& a)
   eigen_assert(m_size == a.cols());
 
   pardisoRelease();
-  //memset(m_pt, 0, sizeof(m_pt));
   m_perm.setZero(m_size);
   derived().getMatrix(a);
   

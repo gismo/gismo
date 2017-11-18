@@ -12,7 +12,7 @@
 
 // source: http://www.geom.uiuc.edu/~huberty/math5337/groupe/digits.html
 // TODO this should better be moved to NumTraits
-#define EIGEN_PI 3.141592653589793238462643383279502884197169399375105820974944592307816406
+#define EIGEN_PI 3.141592653589793238462643383279502884197169399375105820974944592307816406L
 
 
 namespace Eigen {
@@ -1061,10 +1061,23 @@ double log(const double &x) { return ::log(x); }
 
 template<typename T>
 EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE
-typename NumTraits<T>::Real abs(const T &x) {
+typename internal::enable_if<NumTraits<T>::IsSigned || NumTraits<T>::IsComplex,typename NumTraits<T>::Real>::type
+abs(const T &x) {
   EIGEN_USING_STD_MATH(abs);
   return abs(x);
 }
+
+template<typename T>
+EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE
+typename internal::enable_if<!(NumTraits<T>::IsSigned || NumTraits<T>::IsComplex),typename NumTraits<T>::Real>::type
+abs(const T &x) {
+  return x;
+}
+
+#if defined(__SYCL_DEVICE_ONLY__)
+EIGEN_ALWAYS_INLINE float   abs(float x) { return cl::sycl::fabs(x); }
+EIGEN_ALWAYS_INLINE double  abs(double x) { return cl::sycl::fabs(x); }
+#endif // defined(__SYCL_DEVICE_ONLY__)
 
 #ifdef __CUDACC__
 template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE

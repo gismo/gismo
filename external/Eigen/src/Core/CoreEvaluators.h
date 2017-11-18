@@ -1243,7 +1243,7 @@ struct unary_evaluator<Replicate<ArgType, RowFactor, ColFactor> >
   }
  
 protected:
-  ArgTypeNested m_arg;
+  const ArgTypeNested m_arg;
   evaluator<ArgTypeNestedCleaned> m_argImpl;
   const variable_if_dynamic<Index, ArgType::RowsAtCompileTime> m_rows;
   const variable_if_dynamic<Index, ArgType::ColsAtCompileTime> m_cols;
@@ -1556,9 +1556,7 @@ struct evaluator<Diagonal<ArgType, DiagIndex> >
   { }
  
   typedef typename XprType::Scalar Scalar;
-  // FIXME having to check whether ArgType is sparse here i not very nice.
-  typedef typename internal::conditional<!internal::is_same<typename ArgType::StorageKind,Sparse>::value,
-                                         typename XprType::CoeffReturnType,Scalar>::type CoeffReturnType;
+  typedef typename XprType::CoeffReturnType CoeffReturnType;
 
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
   CoeffReturnType coeff(Index row, Index) const

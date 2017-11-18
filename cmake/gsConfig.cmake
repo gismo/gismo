@@ -215,6 +215,7 @@ endif()
 #message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+  #https://github.com/VcDevel/Vc/blob/master/cmake/OptimizeForArchitecture.cmake
   include( OptimizeForArchitecture )
   OptimizeForArchitecture()
   foreach (flag ${Vc_ARCHITECTURE_FLAGS})

@@ -1581,13 +1581,13 @@ void gebp_kernel<LhsScalar,RhsScalar,Index,DataMapper,mr,nr,ConjugateLhs,Conjuga
             if(SwappedTraits::LhsProgress==8)
             {
               // Special case where we have to first reduce the accumulation register C0
-                typedef typename conditional<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SResPacket>::half,SResPacket>::type SResPacketHalf2; // G+Smo
+              typedef typename conditional<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SResPacket>::half,SResPacket>::type _SResPacketHalf;
               typedef typename conditional<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SLhsPacket>::half,SLhsPacket>::type SLhsPacketHalf;
               typedef typename conditional<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SLhsPacket>::half,SRhsPacket>::type SRhsPacketHalf;
               typedef typename conditional<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SAccPacket>::half,SAccPacket>::type SAccPacketHalf;
 
-              SResPacketHalf2 R = res.template gatherPacket<SResPacketHalf2>(i, j2);
-              SResPacketHalf2 alphav = pset1<SResPacketHalf2>(alpha);
+              _SResPacketHalf R = res.template gatherPacket<_SResPacketHalf>(i, j2);
+              _SResPacketHalf alphav = pset1<_SResPacketHalf>(alpha);
 
               if(depth-endk>0)
               {
