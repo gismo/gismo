@@ -124,6 +124,11 @@ created but not compiled by default.
 If enabled the programs in the examples folder are compiled, and
 executables are created in build-folder/bin.
 
+* GISMO_BUILD_UNITTESTS   OFF
+
+If enabled the tests in the unittests folder are compiled, and an
+executable is created in build-folder/bin.
+
 * GISMO_BUILD_AXL         OFF
 
 If enabled the plugin for Axel modeler is compiled (requires Axel).
@@ -170,6 +175,10 @@ eleven modules are present as sub-folders:
 * examples
 
 Examples of usage, small programs and tutorials.
+
+* unittests
+
+Unittests for some parts of the codebase.
 
 * filedata
 

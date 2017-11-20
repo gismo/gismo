@@ -49,7 +49,7 @@ before_install:
 before_script:
   - mkdir build
   - cd build
-  - cmake .. -DGISMO_WITH_ONURBS=ON -DSITE="travis-ci.org" #-DGISMO_WITH_IPOPT=ON
+  - cmake .. -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="travis-ci.org" #-DGISMO_WITH_IPOPT=ON
 
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi 

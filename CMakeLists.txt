@@ -237,6 +237,7 @@ include(gsLibrary)
 ## Documentation
 ## #################################################################
 
+add_subdirectory(doc/snippets EXCLUDE_FROM_ALL)
 add_subdirectory(doc)
 
 ## #################################################################
@@ -276,6 +277,17 @@ if(GISMO_BUILD_EXAMPLES)
 else()
   add_subdirectory(examples EXCLUDE_FROM_ALL)
 endif(GISMO_BUILD_EXAMPLES)
+
+## #################################################################
+## Unittests
+## #################################################################
+
+if(GISMO_BUILD_UNITTESTS)
+  add_subdirectory(unittests)
+else()
+  add_subdirectory(unittests EXCLUDE_FROM_ALL)
+endif(GISMO_BUILD_UNITTESTS)
+
 
 add_subdirectory(optional)
 

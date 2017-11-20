@@ -17,3 +17,4 @@ CTEST_CURL_OPTIONS
 set(CTEST_DROP_SITE "cdash.ricam.oeaw.ac.at")
 set(CTEST_DROP_LOCATION "/submit.php?project=Gismo-stable")
 set(CTEST_DROP_SITE_CDASH TRUE)
+set(CTEST_PROJECT_SUBPROJECTS unittests)
