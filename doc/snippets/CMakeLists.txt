@@ -50,12 +50,14 @@ foreach(snippet_src ${snippets_SRCS})
     target_link_libraries(${snippet_target} gismo)
   endif()
 
+if(DOXYGEN_FOUND)
   add_custom_command(
     TARGET ${snippet_target}
     POST_BUILD
     COMMAND ${snippet_target}
     ARGS >${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.out
   )
+endif(DOXYGEN_FOUND)
 
   add_dependencies(${PROJECT_NAME} ${snippet_target})
 

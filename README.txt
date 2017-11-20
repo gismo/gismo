@@ -8,8 +8,8 @@
 
 ======================================================================
 =====             Geometry plus Simulation modules               =====
-=====                      version 0.8.1 Alpha                   ===== 
-=====          Copyright (C) JKU-RICAM-Linz, 2012 - 2015         =====
+=====                      version 0.8.3 Alpha                   =====
+=====          Copyright (C) JKU-RICAM-Linz, 2012 - 2018         =====
 ======================================================================
 
 This README file contains brief information. More details are found in
