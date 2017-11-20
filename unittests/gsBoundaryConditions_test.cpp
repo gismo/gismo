@@ -85,8 +85,8 @@ gsBoundaryConditions<real_t> createSimpleGsBoundaryConditiions()
 
 gsFunctionExpr<real_t> getFunctionExpr(boundary_condition<real_t> bc)
 {
-    bool funcTypeSame1 = (typeid(*bc.m_function)
-            == typeid(gsFunctionExpr<real_t> ));
+    bool funcTypeSame1 = 
+        dynamic_cast<gsFunctionExpr<real_t>*>(bc.m_function.get());
     CHECK(funcTypeSame1);
     gsFunction<real_t>::Ptr ptr = bc.m_function;
     gsFunctionExpr<real_t> * ptr2 =
