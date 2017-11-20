@@ -13,7 +13,6 @@ set_directory_properties(PROPERTIES EXCLUDE_FROM_ALL TRUE)
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
 
-project(GismoDoc)
 
 # Detect GraphViz dot
 find_program(DOT_EXECUTABLE dot)
@@ -106,10 +105,7 @@ add_custom_target(
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-if ( NOT NOSNIPPETS) # drop the snippets
-  add_subdirectory(snippets)
-  add_dependencies(doc-gismo-prerequisites doc-snippets)
-endif()
+add_dependencies(doc-gismo-prerequisites doc-snippets)
 
 add_custom_target(doc #ALL
   COMMAND doxygen

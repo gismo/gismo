@@ -46,3 +46,5 @@ foreach(file ${unittests_SRCS})
 endforeach(file ${FILES})
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
+
+add_dependencies(unittests doc-snippets)
