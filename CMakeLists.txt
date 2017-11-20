@@ -281,9 +281,6 @@ endif(GISMO_BUILD_EXAMPLES)
 ## Unittests
 ## #################################################################
 
-# Note: if the shared libs are created, examples are linked against the
-#  shared lib, otherwise targets are not linked against anything, only
-#  templated code is used.
 if(GISMO_BUILD_UNITTESTS)
   add_subdirectory(unittests)
 else()

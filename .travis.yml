@@ -55,5 +55,5 @@ script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi 
   - test $TRAVIS_BRANCH != coverity_scan || exit 0
   - ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
-  - make -j2 Experimental
+  #- make -j2 Experimental
   #- make -j2 ExperimentalMemCheck

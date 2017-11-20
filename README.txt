@@ -124,7 +124,7 @@ created but not compiled by default.
 If enabled the programs in the examples folder are compiled, and
 executables are created in build-folder/bin.
 
-* GISMO_BUILD_UNITTESTS   ON
+* GISMO_BUILD_UNITTESTS   OFF
 
 If enabled the tests in the unittests folder are compiled, and an
 executable is created in build-folder/bin.

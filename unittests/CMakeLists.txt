@@ -6,30 +6,9 @@
 ## Copyright (C) 2012 - RICAM-Linz.
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.8)
-
-if(POLICY CMP0048)# CMake 3.0
-cmake_policy(SET CMP0011 OLD)
-cmake_policy(SET CMP0048 OLD)
-endif()
-
-if(POLICY CMP0054)# CMake 3.1
-cmake_policy(SET CMP0054 OLD)
-endif()
-
-if(POLICY CMP0063)# CMake 3.3
-cmake_policy(SET CMP0063 NEW)
-endif()
-
 project(unittests)
 
-# TO DO: Use file
-include( ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/gsConfig.cmake)
-
-find_package(gismo REQUIRED)
-include_directories( ${GISMO_INCLUDE_DIRS})
-link_directories   ( ${GISMO_LIBRARY_DIR} )
-include( ${GISMO_USE_FILE})
+include(gsConfig)
 
 add_subdirectory(UnitTest++)
 
@@ -52,7 +31,7 @@ add_executable(unittests ${unittests_SRCS} common/main.cpp common/test.h
   common/CheckMacros.h common/CheckMatrix.h 
   common/SuppressOutput.h common/SuppressOutput.cpp 
   common/random_refinement.h)
-target_link_libraries(unittests ${UnitTestPP_LIBRARIES} ${GISMO_LIBRARIES} ${GISMO_DEV_LIBRARIES})
+target_link_libraries(unittests ${UnitTestPP_LIBRARIES} gismo)
 set_property(TARGET unittests PROPERTY LABELS unittests)
 
 foreach(file ${unittests_SRCS})
