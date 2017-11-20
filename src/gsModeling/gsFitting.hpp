@@ -59,8 +59,8 @@ void gsFitting<T>::compute(T lambda)
     //column can be given here
     int nonZerosPerCol = 1;
     for (int i = 0; i < m_basis->dim(); ++i) // to do: improve
-        nonZerosPerCol *= m_basis->degree(i) + 1;
-        // nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;
+        // nonZerosPerCol *= m_basis->degree(i) + 1;
+        nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;
     A_mat.reservePerColumn( nonZerosPerCol );
 
     //right side vector (more dimensional!)
