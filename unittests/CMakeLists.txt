@@ -20,7 +20,7 @@ ExternalProject_Add(gsUnitTest
                        -DCMAKE_BUILD_TYPE=Release
 )
 set(GSUNITTEST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest CACHE INTERNAL "")
-set(GSUNITTEST_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest-prefix/lib/libUnitTestPP.a CACHE INTERNAL "")
+set(GSUNITTEST_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest-prefix/lib/${CMAKE_STATIC_LIBRARY_PREFIX}UnitTestPP${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
 
 include_directories(${GSUNITTEST_INCLUDE_DIR})
 
@@ -47,4 +47,6 @@ endforeach(file ${FILES})
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
 
-add_dependencies(unittests doc-snippets)
+if (NOT NOSNIPPETS)
+  add_dependencies(unittests doc-snippets)
+endif()

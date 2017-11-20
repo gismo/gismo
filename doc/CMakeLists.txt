@@ -105,7 +105,9 @@ add_custom_target(
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_dependencies(doc-gismo-prerequisites doc-snippets)
+if (NOT NOSNIPPETS)
+  add_dependencies(doc-gismo-prerequisites doc-snippets)
+endif()
 
 add_custom_target(doc #ALL
   COMMAND doxygen
