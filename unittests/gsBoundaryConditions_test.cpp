@@ -11,7 +11,7 @@
  Author(s): A. Mantzaflaris,  H. Weiner
  **/
 
-#include "common/test.h"
+#include "test.h"
 #include <typeinfo>
 #include <memory>
 

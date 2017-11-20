@@ -11,7 +11,7 @@
     Author(s): D. Mokris
 **/
 
-#include "common/test.h"
+#include "test.h"
 
 SUITE(gsKnotVector)
 {

@@ -12,7 +12,7 @@
 **/
 
 
-#include "common/test.h"
+#include "test.h"
 
 
 template <int dim>

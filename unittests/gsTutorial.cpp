@@ -27,7 +27,7 @@
  *
  */
  
-#include "common/test.h"  // Brings in G+Smo and the UnitTest++ framework
+#include "test.h"  // Brings in G+Smo and the UnitTest++ framework
  
 TEST(tutorial_check) // Declares a test named "tutorial_check"
 {

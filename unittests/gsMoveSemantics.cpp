@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
  
-#include "common/test.h"  // Brings in G+Smo and the UnitTest++ framework
+#include "test.h"  // Brings in G+Smo and the UnitTest++ framework
 
 SUITE(gsMoveSemantics)
 {

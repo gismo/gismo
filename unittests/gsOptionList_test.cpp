@@ -11,7 +11,7 @@
  Author(s): A. Mantzaflaris,  H. Weiner, J. Vogl
  **/
 
-#include "common/test.h"
+#include "test.h"
 
 const std::string LABEL_STR_1 = "LABEL_STR_1";
 const std::string LABEL_STR_2 = "LABEL_STR_2";

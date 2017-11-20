@@ -11,7 +11,7 @@
  Author(s): A. Mantzaflaris,  H. Weiner
  **/
 
-#include "common/test.h"
+#include "test.h"
 
 // general declarations/definitions
 void push_unique(std::vector<std::string>& vector, std::string& string)

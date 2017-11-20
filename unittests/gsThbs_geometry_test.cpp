@@ -16,8 +16,8 @@ Parameter to change for different test cases:
     box_num - maximum number of boxes inserted into one level of hierarchy
 */
 
-#include "common/test.h"  // Brings in G+Smo and the UnitTest++ framework
-#include "common/random_refinement.h"
+#include "test.h"  // Brings in G+Smo and the UnitTest++ framework
+#include "gs/random_refinement.h"
 
 using namespace gismo;
 
