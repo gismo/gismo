@@ -59,16 +59,14 @@ void gsFitting<T>::compute(T lambda)
     //column can be given here
     int nonZerosPerCol = 1;
     for (int i = 0; i < m_basis->dim(); ++i) // to do: improve
-        //nonZerosPerCol *= 2 * m_basis->degree(i) + 1;
-        nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;//AM: Related to bandwidth of basis
-    A_mat.reserve( gsVector<index_t>::Constant(num_basis, nonZerosPerCol ) );
-    //gsDebugVar( nonZerosPerCol );
+        nonZerosPerCol *= m_basis->degree(i) + 1;
+        // nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;
+    A_mat.reservePerColumn( nonZerosPerCol );
 
-    A_mat.setZero(); // ensure that all entries are zero in the beginning
     //right side vector (more dimensional!)
     gsMatrix<T> m_B(num_basis, dimension);
-    // enusure that all entries are zero in the beginning
-    m_B.setZero(); 
+    m_B.setZero(); // enusure that all entries are zero in the beginning
+
     // building the matrix A and the vector b of the system of linear
     // equations A*x==b
     
@@ -106,18 +104,17 @@ void gsFitting<T>::compute(T lambda)
 
 template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
-				  gsMatrix<T>& m_B)
+                                  gsMatrix<T>& m_B)
 {
     const int num_points = m_points.rows();    
 
     //for computing the value of the basis function
-    gsMatrix<T> value;
+    gsMatrix<T> value, curr_point;
     gsMatrix<unsigned> actives;
 
-
-    for(index_t k = 0; k < num_points; k++)
+    for(index_t k = 0; k != num_points; ++k)
     {
-        const gsMatrix<T>& curr_point = m_param_values.col(k);
+        curr_point = m_param_values.col(k);
 
         //computing the values of the basis functions at the current point
         m_basis->eval_into(curr_point, value);
@@ -125,14 +122,14 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
         // which functions have been computed i.e. which are active
         m_basis->active_into(curr_point, actives);
         
-	const index_t numActive = actives.rows();
+        const index_t numActive = actives.rows();
 
         for (index_t i = 0; i != numActive; ++i)
         {
-            const int ii = actives(i, 0);
-            m_B.row(ii) += value(i, 0) * m_points.row(k);
+            const int ii = actives.at(i);
+            m_B.row(ii) += value.at(i) * m_points.row(k);
             for (index_t j = 0; j != numActive; ++j)
-                A_mat(ii, actives(j, 0)) += value(i, 0) * value(j, 0);
+                A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
         }
     }
 }
