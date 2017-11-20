@@ -11,7 +11,7 @@
  Author(s): A. Mantzaflaris,  H. Weiner
  **/
 
-#include "test.h"
+#include "gismo_unittest.h"
 #include <typeinfo>
 #include <memory>
 

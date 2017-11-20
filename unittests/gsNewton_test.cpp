@@ -6,7 +6,7 @@
 //#define TEST_INFO
  
 
-#include "test.h" // Brings in G+Smo and the UnitTest++ framework
+#include "gismo_unittest.h" // Brings in G+Smo and the UnitTest++ framework
 
 TEST(newton_check) // Declares test
 {

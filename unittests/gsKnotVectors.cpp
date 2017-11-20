@@ -11,7 +11,7 @@
     Author(s): D. Mokris
 **/
 
-#include "test.h"
+#include "gismo_unittest.h"
 
 SUITE(gsKnotVector)
 {

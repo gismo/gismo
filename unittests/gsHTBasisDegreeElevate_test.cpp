@@ -12,7 +12,7 @@
 **/
 
 
-#include "test.h"
+#include "gismo_unittest.h"
 
 
 template <int dim>

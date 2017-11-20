@@ -11,7 +11,7 @@
     Author(s): J. Sogn, S. Takacs
 */
 
-#include "test.h"
+#include "gismo_unittest.h"
 
 
 //Create a tri-diagonal matrix with -1 of the off diagonals and 2 in the diagonal.

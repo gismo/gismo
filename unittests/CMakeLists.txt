@@ -14,7 +14,7 @@ include(ExternalProject)
 ExternalProject_Add(gsUnitTest
           SOURCE_DIR        ${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest
           URL https://github.com/gismo/gsUnitTest/archive/master.zip
-          URL_MD5 "a20cd363fa98760a097ab5f56d54774c"
+          URL_MD5 "913dc7cc931c89ff3e561f7f43644eee"
           #DOWNLOAD_NO_PROGRESS 0
           CMAKE_ARGS   -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                        -DCMAKE_BUILD_TYPE=Release

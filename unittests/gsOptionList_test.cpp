@@ -11,7 +11,7 @@
  Author(s): A. Mantzaflaris,  H. Weiner, J. Vogl
  **/
 
-#include "test.h"
+#include "gismo_unittest.h"
 
 const std::string LABEL_STR_1 = "LABEL_STR_1";
 const std::string LABEL_STR_2 = "LABEL_STR_2";
