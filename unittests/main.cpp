@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
         UnitTest::TestReporterStdout reporter;
         UnitTest::TestRunner runner(reporter);
         Selector sel(argc,argv);
-        bool result = runner.RunTestsIf(UnitTest::Test::GetTestList(), NULL, sel, 0);
+        int result = runner.RunTestsIf(UnitTest::Test::GetTestList(), NULL, sel, 0);
         if (!sel.didRunAnyTests())
         {
             gsInfo << "Did not find any matching test.\n";
