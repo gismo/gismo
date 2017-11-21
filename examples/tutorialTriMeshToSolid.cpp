@@ -8,7 +8,7 @@
 using namespace gismo;
 
 int main(int argc, char *argv[])
-{ 
+{
     bool plot = 1; // If user gives --plot as argiment, paraview file is generated and launched on exit
     bool toxml =1;
     bool noSmooth = false;
@@ -44,19 +44,19 @@ int main(int argc, char *argv[])
     cmd.addReal("y", "innerangle","Cutoff angle (degrees) for second pass.",
                 innerAngle);
     cmd.addReal("c", "cutoff","Cutoff angle (degrees).", cutoffAngle);
-                  
+
     cmd.getValues(argc,argv);
-    
+
     if (filename.empty() )
     {
         gsInfo<< "Waiting for file input.\n";
         return 0;
     }
-        
+
 
     // decide on the base filename
     size_t nameStartIdx = filename.rfind('/');
-    if ( nameStartIdx == std::string::npos) 
+    if ( nameStartIdx == std::string::npos)
         nameStartIdx = 0;
     else
         nameStartIdx+= 1;
@@ -90,49 +90,49 @@ int main(int argc, char *argv[])
     std::vector< std::vector< std::vector<gsVertex<>* > > >  innerBdrys;
     std::vector< std::vector< gsVertex<> > > innerBdrysMassP;
     std::vector< std::vector< bool > > oPointsConvexFlag;
-    
+
     // set up the gsTriMeshToSolid class to perform the feature detection
     gsTriMeshToSolid<> tmts(m.get());
     bool non_manifold, warning_borders;
-    
+
     // compute the features
     tmts.getFeatures(cutoffAngle, non_manifold, warning_borders);
     m->cleanStlMesh();
-    
+
     // give every face a patch number
     tmts.calcPatchNumbers();
-    
+
     // improve quality by further dividing and merging patches according to more complex rules
     tmts.storeNeighboringFaces();
     tmts.divideAndMergePatches(innerAngle, patchAreaWeight, mergeSmallPatches);
-    
+
     // recompute patch numbers
     tmts.calcPatchNumbers();
-    
+
     // write patch numbers
     gsInfo << "Writing patch numbers...\n";
     if(writePatchNumbers)
     {
         std::ofstream pn("patchnumbers.txt");
-        
+
         for(std::vector<gsMeshElement<>::gsFaceHandle >::iterator it(m->face.begin());it!=m->face.end();++it)
         {
             pn << (**it).faceIdentity << "\n";
         }
     }
-    
+
     // get the patches
     tmts.getFaces(iPoints, oPoints, innerBdrys, innerBdrysMassP, oPointsConvexFlag);
-    
+
     gsSolid<> * sl = new gsSolid<>();
     //if you need a higher number of interior points when fitting the surface increase the 8th input variiable(now 5)
     tmts.toSolid(*sl,iPoints,oPoints,innerBdrys,innerBdrysMassP,oPointsConvexFlag,paraMeshes,fitMeshes,patchMeshes,degree,interiorPts,1,300,1,wEdge,wInterior,1, noSmooth);
     gsInfo<<*sl<<'\n';
-    
+
     if (toxml)
     {
         gsInfo << "Writing xml file..." << "\n";
-        
+
         gsFileData<> newdata;
         newdata << *sl;
         newdata.dump(baseName);

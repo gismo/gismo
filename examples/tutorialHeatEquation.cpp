@@ -16,7 +16,7 @@
 
 using namespace gismo;
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     bool plot = false;
     gsCmdLine cmd("Testing the heat equation.");
@@ -26,11 +26,11 @@ int main(int argc, char *argv[])
     // Source function
     gsConstantFunction<> f(0,2);
     gsInfo<<"Source function is: "<< f << "\n";
-  
+
     // Define Geometry, must be a gsMultiPatch object
     gsMultiPatch<> patches(*gsNurbsCreator<>::BSplineSquare(2));
     patches.computeTopology();
-    
+
     // Boundary conditions
     gsBoundaryConditions<> bcInfo;
     gsConstantFunction<> g_N(1,2); // Neumann
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     gsMultiBasis<> refine_bases( patches );
     // Number for h-refinement of the computational (trial/test) basis.
     int numRefine  = 2;
-    
+
     // Number for p-refinement of the computational (trial/test) basis.
     int numElevate = 0;
 
@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
         int tmp = refine_bases.maxDegree(0);
         for (index_t j = 1; j < patches.parDim(); ++j )
             if ( tmp < refine_bases.maxDegree(j) )
-                tmp = refine_bases.maxDegree(j);                
-        
+                tmp = refine_bases.maxDegree(j);
+
         // Elevate all degrees uniformly
         tmp += numElevate;
         refine_bases.setDegree(tmp);
@@ -78,27 +78,27 @@ int main(int argc, char *argv[])
     gsHeatEquation<real_t> assembler(stationary, stationary.options());
     assembler.setTheta(theta);
     gsInfo<<assembler.options()<<"\n";
-    
+
     // A Conjugate Gradient linear solver with a diagonal (Jacobi) preconditionner
     gsSparseSolver<>::CGDiagonal solver;
 
     // Generate system matrix and load vector
     gsInfo<<"Assembling mass and stiffness...\n";
     assembler.assemble();
-    
+
     gsMatrix<> Sol, Rhs;
     int ndof = assembler.numDofs();
     real_t endTime = 0.1;
     int numSteps = 40;
     Sol.setZero(ndof, 1); // Initial solution
-    
+
     real_t Dt = endTime / numSteps ;
 
     const std::string baseName("heat_eq_solution");
-	gsParaviewCollection collection(baseName);
-    
+    gsParaviewCollection collection(baseName);
+
     std::string fileName;
-    
+
     if ( plot)
     {
         //sol = assembler.constructSolution(Sol); // same as next line
@@ -116,11 +116,11 @@ int main(int argc, char *argv[])
 
         // Solve for current timestep, overwrite previous solution
         Sol = solver.compute( assembler.matrix() ).solve( assembler.rhs() );
-        
+
         // Obtain current solution as an isogeometric field
         //sol = assembler.constructSolution(Sol); // same as next line
         gsField<> sol = stationary.constructSolution(Sol);
-        
+
         if ( plot)
         {
             // Plot the snapshot to paraview

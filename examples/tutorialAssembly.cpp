@@ -21,7 +21,7 @@
 
 using namespace gismo;
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     // Grab a pre-defined grid of patches
     gsMultiPatch<> ::uPtr patches = safe ( gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5) );
     gsInfo << "The domain is: "<< *patches <<"\n";
-    
+
     //! [Boundary conditions]
     gsFunctionExpr<> g("sin(pi*x*1)*sin(pi*y*2)+pi/10",
                        //"sin(pi*x*3)*sin(pi*y*4)-pi/10",
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bcInfo;
 
-    for (gsMultiPatch<>::const_biterator 
+    for (gsMultiPatch<>::const_biterator
              bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
     {
         bcInfo.addCondition( *bit, condition_type::dirichlet, &g );
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
         splinebasis.uniformRefine();
     //! [Refinement]
 
-    
+
     //! [Poisson Pde]
     gsFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
                        //"((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)",
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     gsPoissonPde<> ppde(*patches, bcInfo, f);
     //! [Poisson Pde]
 
-    
+
     //! [Assembler]
     gsOptionList opt = gsAssembler<>::defaultOptions();
     opt.setInt("DirichletValues"  , dirichlet::l2Projection);
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     opt.setInt ("bdB", 1  );
     gsInfo << "Assembler "<< opt;
 
-    // Does 3 things: 
+    // Does 3 things:
     // 1. computes dirichlet dof values (if needed)
     // 2. Provides some routines that can be called for system assembly
     // 3. reconstructs the solution as a function, given a solution vector
@@ -132,10 +132,10 @@ int main(int argc, char *argv[])
     PA.push<gsVisitorNeumann<real_t> >(ppde.bc().neumannSides() );
 
     PA.finalize();
-  
+
     // try this for small matrices
     //gsInfo<< PA.matrix().toDense() <<"\n"
- 
+
     //! [Fill matrix manually]
 
     gsInfo << "Assembled a system (matrix and load vector) with "
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 
     gsSparseSolver<>::CGDiagonal solver( PA.matrix() );
     gsMatrix<> solVector = solver.solve( PA.rhs() );
-    
+
     gsInfo << "Solved the system with CG solver.\n";
     //! [Solve]
 

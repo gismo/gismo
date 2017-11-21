@@ -17,7 +17,7 @@
 
 using namespace gismo;
 
-void refineMode(int rf, int lvl, unsigned meshSize, 
+void refineMode(int rf, int lvl, unsigned meshSize,
                 unsigned extent, std::vector<unsigned> & boxes);
 
 int main(int argc, char *argv[])
@@ -27,16 +27,16 @@ int main(int argc, char *argv[])
     int numknots  = 3;
     int degree    = 2;
     bool plot     = false;
-    
+
     gsCmdLine cmd("Create standard refined TH>B meshes.");
-    cmd.addInt("l","levels", 
+    cmd.addInt("l","levels",
                "Number of refinement levels", refLevels);
-    cmd.addInt("m","mode", 
+    cmd.addInt("m","mode",
                "Refinement mode (0, 1, 2 3 4)", refmode);
-    cmd.addInt("p","degree", 
+    cmd.addInt("p","degree",
                "Spline degree", degree);
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
-    
+
     cmd.getValues(argc,argv);
 
     // Create a tensot-producte basis
@@ -64,19 +64,19 @@ int main(int argc, char *argv[])
         gsInfo<< thb.tensorLevel(l).size() <<", ";
     }
     gsInfo<<"\n";
-    
+
     // Count the number of truncated functions
     const int numTr = thb.numTruncated();
     gsVector<int> trcount;
     trcount.setZero(thb.maxLevel()+1);
-    if (numTr < 1000) 
+    if (numTr < 1000)
         gsInfo <<"\nCoefficient count for each truncated function: \n";
     unsigned ccount = 0;
     typedef std::map<unsigned, gsSparseVector<> >::const_iterator trIter;
     for( trIter it = thb.truncatedBegin(); it != thb.truncatedEnd(); ++it)
     {
         const int lvl = thb.levelOf(it->first);
-        if (numTr < 1000) 
+        if (numTr < 1000)
             gsInfo << it->second.nonZeros() <<", ";
         trcount[lvl]++;
         ccount += it->second.nonZeros();
@@ -86,20 +86,20 @@ int main(int argc, char *argv[])
     // Print statistics
     gsInfo <<"Truncated functions: "<< numTr <<"\n";
     gsInfo <<"          per level: "<< trcount.transpose() <<"\n";
-    gsInfo <<"Total coeffs stored: "<< ccount 
+    gsInfo <<"Total coeffs stored: "<< ccount
          <<" ("<< (sizeof(real_t)*ccount >> 20) <<"MB)\n";
-    gsInfo <<"Total knots stored : "<< kcount 
+    gsInfo <<"Total knots stored : "<< kcount
          <<" ("<< ( (sizeof(real_t)+sizeof(unsigned))*kcount >> 20) <<"MB)\n";
 
     // Output paraview plot of the basis
     if ( plot)
         gsWriteParaview( thb , "thb_refined", 1000, true);
-    
+
     return 0;
 }
 
 // Provides boxes for refinement
-void refineMode(int rf, int lvl, unsigned meshSize, 
+void refineMode(int rf, int lvl, unsigned meshSize,
                 unsigned extent, std::vector<unsigned> & boxes)
 {
     boxes.clear();
@@ -131,7 +131,7 @@ void refineMode(int rf, int lvl, unsigned meshSize,
         for ( unsigned i = 0; i!= nb; ++i)
         {
             for ( unsigned k = 0; k!= 2; ++k)
-            {   
+            {
                 boxes[k*bpd+5*i  ] = lvl;
                 boxes[k*bpd+5*i+1] = boxes[k*bpd+5*i+2] = i-extent/2;
                 boxes[k*bpd+5*i+3] = boxes[k*bpd+5*i+4] = i+extent/2;

@@ -18,7 +18,7 @@
 using namespace gismo;
 //! [Include namespace]
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Source function "<< f << "\n";
     gsInfo<<"Exact solution "<< g <<"\n\n";
     //! [Function data]
-  
+
     //! [Geometry data]
     // Define Geometry, must be a gsMultiPatch object
     gsMultiPatch<> ::uPtr patches;
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     // "free", eg. if no condition is defined, then it is a natural
     // boundary (zero Neumann condition)
     // Also, remember that a pure Neumann problem has no unique
-    // solution, thereforer implies a singular matrix. In this case 
+    // solution, thereforer implies a singular matrix. In this case
     // a corner DoF can be fixed to a given value to obtain a unique solution.
     // (example: bcInfo.addCornerValue(boundary::southwest, value, patch);)
 
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
       //conditions using one function (the exact solution) for all
       //boundaries like this:
 
-    for (gsMultiPatch<>::const_biterator 
+    for (gsMultiPatch<>::const_biterator
              bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
     {
         bcInfo.addCondition( *bit, condition_type::dirichlet, &g );
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
     {
         // Find maximum degree with respect to all the variables
         int max_tmp = refine_bases.minCwiseDegree();
-        
+
         // Elevate all degrees uniformly
         max_tmp += numElevate;
         refine_bases.setDegree(max_tmp);
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView " 
+        gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
                 "file containing Plotting image data.\n";
         return 0;
     }

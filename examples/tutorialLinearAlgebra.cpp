@@ -32,14 +32,14 @@ int main(int argc, char**argv)
     gsInfo << "G+Smo uses Eigen v"<< EIGEN_WORLD_VERSION<<"."
            <<EIGEN_MAJOR_VERSION<<"."<<EIGEN_MINOR_VERSION
            <<" for matrix computations.\n";
-    
+
     // A matrix with entries of type real_t, and allocated size 3x3
     gsMatrix<real_t> A (3,3);
     // The comman initializer lets us fill the matrix. Note that the
     // matrix must have the correct size for this to work
     A << 2,2,3,  4,5,6,  7,8,10;
     A(0,0) -= 1 ;
-    
+
     // If the type of the entries of the matrix is not given, the
     // default type is real_t (e.g. double)
     gsMatrix<> E (3,1);
@@ -61,7 +61,7 @@ int main(int argc, char**argv)
     w= F.row(1);
 
     gsInfo << "vector c:\n" << c <<"\n"<< E << "\n";
-  
+
     gsInfo << "vector as diagonal:\n" << gsMatrix<>( c.asDiagonal() ) << "\n";
 
     gsInfo << "E.sum():\n" << E.sum() << "\n";
@@ -73,7 +73,7 @@ int main(int argc, char**argv)
 
     gsInfo << "Here is the matrix A:\n" << A << "\n";
     gsInfo << "Here is the vector b:\n" << b << "\n";
- 
+
     gsInfo << "Size of A: " << A.rows() << " x " << A.cols()  << "\n";
     gsInfo << "Determinant of A: "<< A.determinant()  << "\n";
     gsInfo << "Transpose of A:\n"<< A.transpose()  << "\n";
@@ -96,17 +96,17 @@ int main(int argc, char**argv)
     AAA.blockTransposeInPlace(3);
     gsInfo << "Block-wise transposition of the above:\n"<< AAA  << "\n";
     AAA.blockTransposeInPlace(6);
-    gsInfo << "Block-wise transposition of the above seen as 3x6 blocks:\n"<< AAA  << "\n";  
+    gsInfo << "Block-wise transposition of the above seen as 3x6 blocks:\n"<< AAA  << "\n";
 
     gsVector<index_t> perm(3);
     perm << 2,1,0;
-    gsInfo << "Here is the row permutation ("<<perm.transpose()<<") of matrix A:\n" 
+    gsInfo << "Here is the row permutation ("<<perm.transpose()<<") of matrix A:\n"
          << perm.asPermutation() * A << "\n";
-    gsInfo << "Here is the column permutation ("<<perm.transpose()<<") of matrix A:\n" 
+    gsInfo << "Here is the column permutation ("<<perm.transpose()<<") of matrix A:\n"
          <<  A * perm.asPermutation() << "\n";
 
     gsInfo << "Here is the matrix A:\n" << A << "\n";
-  
+
     gsVector<> x;
     // Computes a factorization (LU,QR) and solves Ax=b for the unknown x using
     // this factorization
@@ -150,7 +150,7 @@ int main(int argc, char**argv)
 
     gsInfo << " dot product: "<< v1.dot(v2) << "\n";
     gsInfo << " cross product: "<< v1.cross(v2) << "\n";
- 
+
     gsInfo << " dot product of matrix columns: "<< A.col(0).adjoint() * A.col(1) << "\n";
     gsInfo << " Another way: converts 1x1 matrix to value: "<< (A.col(0).transpose() * A.col(1) ).value() << "\n";
 

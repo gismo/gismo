@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     // ======================================================================
     // different construction of a knot vector
     // ======================================================================
-    
+
 
     real_t a = 0; // starting knot
     real_t b = 1; // ending knot
@@ -48,21 +48,21 @@ int main(int argc, char* argv[])
 
     int degree = multEnd - 1;
     gsKnotVector<> kv(a, b, interior, multEnd);
-   
+
     gsBSplineBasis<> bsb0(kv);
     print(bsb0, "bsb0");
-    
+
     gsBSplineBasis<> bsb1(a, b, interior, degree);
     print(bsb1, "bsb1");
 
-    
+
     // ======================================================================
     // some properties
     // ======================================================================
 
 
     gsInfo << "------------- Some properties    -----------------------\n\n";
-    
+
     gsInfo << "bsb0.size(): " << bsb0.size() << "\n\n"
               << "bsb0.numElements(): " << bsb0.numElements() << "\n\n"
               << "bsb0.degree(): " << bsb0.degree() << "\n\n";
@@ -81,17 +81,17 @@ int main(int argc, char* argv[])
 
     if (paraview)
         printToParaview(bsb0, "basis");
-    
+
     gsInfo << "bsb0.uniformRefine()\n";
     bsb0.uniformRefine();
     if (paraview)
         printToParaview(bsb0, "basisRefined");
-    
+
     gsInfo << "bsb0.degreeElevate()\n";
     bsb0.degreeElevate();
     if (paraview)
         printToParaview(bsb0, "basisElevated");
-        
+
     return 0;
 }
 

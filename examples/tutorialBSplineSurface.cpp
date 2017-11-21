@@ -27,11 +27,11 @@ int main(int argc, char* argv[])
     int m = 5;
     int degree = 3;
     std::string output("");
-    
+
     gsCmdLine cmd("Tutorial on gsTensorBSpline class.");
     cmd.addInt   ("n", "n", "Number of basis function in one direction"  , n);
-    cmd.addInt   ("m", "m", "Number of basis function in other direction", m); 
-    cmd.addInt   ("d", "degree", "Degree of a surface", degree); 
+    cmd.addInt   ("m", "m", "Number of basis function in other direction", m);
+    cmd.addInt   ("d", "degree", "Degree of a surface", degree);
     cmd.addString("o", "output", "Name of the output file.", output);
     cmd.getValues(argc,argv);
 
@@ -46,14 +46,14 @@ int main(int argc, char* argv[])
               << "degree: " << degree << "\n\n"
               << "output: " << output << "\n\n"
               << "----------------------\n\n";
-    
+
     // 1. construction of a knot vector for each direction
     gsKnotVector<> kv1(0, 1, n - degree - 1, degree + 1);
     gsKnotVector<> kv2(0, 1, m - degree - 1, degree + 1);
-    
+
     // 2. construction of a basis
     gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
-    
+
     // 3. construction of a coefficients
     gsMatrix<> greville = basis.anchors();
     gsMatrix<> coefs (greville.cols(), 3);
@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
         coefs(col, 1) = y;
         coefs(col, 2) = math::sin(x * 2 * PI) * math::sin(y * 2 * PI);
     }
-    
+
     // 4. putting basis and coefficients toghether
     gsTensorBSpline<2, real_t>  surface(basis, coefs);
 
@@ -76,23 +76,23 @@ int main(int argc, char* argv[])
     if (output != "")
     {
         std::string out = output + "Geometry";
-        gsInfo << "Writing the surface to a paraview file: " << out 
+        gsInfo << "Writing the surface to a paraview file: " << out
                   << "\n\n";
-        
+
         gsWriteParaview(surface, out);
-        
+
         out = output + "Basis";
-        gsInfo << "Writing the basis to a paraview file: " << out 
+        gsInfo << "Writing the basis to a paraview file: " << out
                   << "\n\n";
-        
+
         gsWriteParaview(basis, out);
-        
+
 
         out = output + "ContolNet";
-        gsInfo << "Writing the control net to a paraview file: " << out 
+        gsInfo << "Writing the control net to a paraview file: " << out
                   << "\n" << "\n";
 
-        gsMesh<> mesh; 
+        gsMesh<> mesh;
         surface.controlNet(mesh);
         gsWriteParaview(mesh, out);
     }

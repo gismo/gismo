@@ -7,10 +7,10 @@
 
     or provide a hosts file on a cluster:
        mpirun -hostfile hosts.txt ./bin/tutorialMpi
-    
+
     If your cluster is using srun:
        srun -N 10 ./bin/tutorialMpi
-    
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -26,7 +26,7 @@ using namespace gismo;
 
 
 int main(int argc, char **argv)
-{  
+{
     gsCmdLine cmd("An example for testing MPI with G+Smo.\n"
         "Execute (eg. with 10 processes):                                      "
         "  *  mpirun -np 10 ./bin/tutorialMpi\n"
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 
     // Initialize the MPI environment
     const gsMpi & mpi = gsMpi::init(argc, argv);
-    
+
     // Get current wall time
     double wtime = mpi.wallTime();
 
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     comm.barrier();
 
     std::string cpuname = mpi.getProcessorName();
-    
+
     // Print off a hello world message
     gsInfo << "Hello G+Smo, from process " << _rank <<" on "
            << cpuname <<", elapsed time is "<< mpi.wallTime()-wtime<< "\n";

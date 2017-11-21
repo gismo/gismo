@@ -57,17 +57,17 @@ int main(int argc, char *argv[])
   // Flag whether final mesh should be plotted in ParaView
   bool plot = false;
   bool dump;
-  
+
   RefineLoopMax = 2;
   initUnifRef = 2;
   degree = 2;
   refCriterion = PUCA;
   refParameter = 0.85;
   dump = false;
-  
+
   gsCmdLine cmd("Solving a PDE with adaptive refinement using THB-splines.");
   cmd.addSwitch("plot", "Plot resulting mesh in ParaView", plot);
-  cmd.addInt("r", "refine", "Maximum number of adaptive refinement steps to perform", 
+  cmd.addInt("r", "refine", "Maximum number of adaptive refinement steps to perform",
              RefineLoopMax);
   cmd.addInt("i", "initial-ref", "Initial number of uniform refinement steps to perform",
              initUnifRef);
@@ -75,9 +75,9 @@ int main(int argc, char *argv[])
   cmd.addInt("c", "criterion",  "Criterion to be used for adaptive refinement (1-3, see documentation)",
              refCriterion);
   cmd.addReal("p", "parameter", "Parameter for adaptive refinement", refParameter);
-  cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files", 
+  cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files",
                 dump);
-  
+
   cmd.getValues(argc,argv);
 
   // ****** Prepared test examples ******
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 
   // Finally, create a vector (of length one) of this gsTHBSplineBasis
   gsMultiBasis<real_t> bases(THB);
-  
+
   for (int i = 0; i < initUnifRef; ++i)
       bases.uniformRefine();
 
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
       gsInfo << "\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << "\n" << "\n";
 
       gsInfo <<"Basis: "<< pa.multiBasis() <<"\n";
-      
+
       // Assemble matrix and rhs
       gsInfo << "Assembling... " << std::flush;
       pa.assemble();
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
       gsInfo << "Solving... " << std::flush;
       gsMatrix<> solVector = gsSparseSolver<>::CGDiagonal(pa.matrix() ).solve( pa.rhs() );
       gsInfo << "done." << "\n";
-      
+
       // Construct the solution for plotting the mesh later
       pa.constructSolution(solVector, mpsol);
       gsField<> sol(pa.patches(), mpsol);
@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
 
       // Refresh the assembler, since basis is now changed
       pa.refresh();
-      
+
       if (dump)
       {
           std::stringstream ss;

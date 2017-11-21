@@ -71,13 +71,13 @@ void gsIterativeSolverInfo(const SolverType &method,
 
 int main(int argc, char *argv[])
 {
-    
+
     bool succeeded = true;
-    
+
     index_t N = 100;
     //Tolerance
     real_t tol = std::pow(10.0, - REAL_DIG * 0.75);
-    
+
     gsCmdLine cmd("Solves a 1D PDE with a Courant discretization with several solvers solver.");
     cmd.addInt("n", "number", "Number of unknowns", N);
     cmd.addReal("", "tol", "Tolerance for the solvers", tol);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     //initial guess
     gsMatrix<> x0;
 
-#ifndef GISMO_WITH_MPQ 
+#ifndef GISMO_WITH_MPQ
 
     //Maximum number of iterations
     index_t maxIters = 3*N;
@@ -107,19 +107,19 @@ int main(int argc, char *argv[])
     gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
     opt.setInt ("MaxIterations", 3*N);
     opt.setReal("Tolerance"    , tol);
-    
+
     ///----------------------GISMO-SOLVERS----------------------///
     gsInfo << "Testing G+Smo's solvers:\n";
 
-    
-    
+
+
     //Initialize the MinRes solver
     gsMinimalResidual MinRes(mat,preConMat);
     MinRes.setOptions(opt);
-    
+
     //Set the initial guess to zero
     x0.setZero(N,1);
-    
+
     //Solve system with given preconditioner (solution is stored in x0)
     gsInfo << "\nMinRes: Started solving... ";
     clock.restart();
@@ -132,21 +132,21 @@ int main(int argc, char *argv[])
     gsMinimalResidual MinResIR(mat,preConMat);
     MinResIR.setOptions(opt);
     MinResIR.setInexactResidual(true);
-    
+
     //Set the initial guess to zero
     x0.setZero(N,1);
-    
+
     //Solve system with given preconditioner (solution is stored in x0)
     gsInfo << "\nMinResIR: Started solving... ";
     clock.restart();
     MinResIR.solve(rhs, x0);
     gsInfo << "done.\n";
     gsIterativeSolverInfo(MinResIR, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
-       
+
     //Initialize the GMResSolver solver
     gsGMRes GMResSolver(mat,preConMat);
     GMResSolver.setOptions(opt);
-    
+
     //Set the initial guess to zero
     x0.setZero(N,1);
 
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
     //Initialize the CG solver
     gsConjugateGradient CGSolver(mat,preConMat);
     CGSolver.setOptions(opt);
-    
+
     //Set the initial guess to zero
     x0.setZero(N,1);
 

@@ -11,7 +11,7 @@
     Author(s): J. Speh
 */
 
-// For detailed options about visualization look at gsView.cpp example. 
+// For detailed options about visualization look at gsView.cpp example.
 
 
 
@@ -24,16 +24,16 @@ using namespace gismo;
 int main(int argc, char* argv[])
 {
 
-    //! [Parse command line]   
+    //! [Parse command line]
     std::string input("curves3d/bspline3d_curve_01.xml");
     std::string output("out");
-    
+
     gsCmdLine cmd("Tutorial Input Output");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
     cmd.addString("o", "output", "Name of the output file", output);
     cmd.getValues(argc,argv);
-    //! [Parse command line]   
-    
+    //! [Parse command line]
+
     //! [Read geometry]
     if (!gsFileManager::find(input))
     {
@@ -56,25 +56,25 @@ int main(int argc, char* argv[])
         return -1;
     }
     //! [Read geometry]
-    
+
     //! [Print geometry]
     gsInfo << "The file contains: \n" << *pGeom << "\n";
     //! [Print geometry]
-    
+
     // writing a paraview file
     const std::string out = output + "Paraview";
     gsWriteParaview(*pGeom, out);
     gsInfo << "Wrote a paraview file: " << out << "\n";
 
-    //! [Write geometry]    
-    // writing a G+Smo .xml file            
+    //! [Write geometry]
+    // writing a G+Smo .xml file
     gsFileData<> fd;
     fd << *pGeom;
     // output is a string. The extention .xml is added automatically
-    fd.save(output); 
+    fd.save(output);
     gsInfo << "Wrote G+Smo file: " << output << ".xml \n";
-    //! [Write geometry]    
-    
+    //! [Write geometry]
+
     return 0;
 }
 

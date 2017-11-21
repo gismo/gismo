@@ -34,9 +34,12 @@ int main(int argc, char *argv[])
     int extension = 2;
     real_t refPercent = 0.1;
     std::string fn = GISMO_DATA_DIR "/fitting/deepdrawingC.xml";
-    
+
     // Reading options from the command line
-    gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a 3 x N matrix. Every column represents a point (x,y,z) in space.");
+    gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
+            "file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. "
+            "Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a "
+            "3 x N matrix. Every column represents a point (x,y,z) in space.");
     cmd.addSwitch("save", "Save result in XML format", save);
     cmd.addInt("i", "iter", "number of iterations", iter);
     cmd.addInt("x", "deg_x", "degree in x direction", deg_x);
@@ -48,9 +51,9 @@ int main(int argc, char *argv[])
     cmd.addInt("r", "urefine", "initial uniform refinement steps", numURef);
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("d", "data", "Input sample data", fn);
-    
+
     cmd.getValues(argc,argv);
-    
+
     if (deg_x < 1)
     { gsInfo << "Degree x must be positive.\n";  return 0;}
     if (deg_y < 1)
@@ -59,18 +62,18 @@ int main(int argc, char *argv[])
     { gsInfo << "Extension must be non negative.\n"; return 0;}
 
     if ( tolerance < 0 )
-    { 
+    {
         gsInfo << "Error tolerance cannot be negative, setting it to default value.\n";
         tolerance = 1e-02;
     }
 
     if (threshold > 0 && threshold > tolerance )
-    { 
+    {
         gsInfo << "Refinement threshold is over tolerance, setting it the same as tolerance.\n";
         threshold = tolerance;
     }
 
-    //! [Read data]       
+    //! [Read data]
     // Surface fitting
     // Expected input is a file with matrices with:
     // id 0:  u,v   -- parametric coordinates, size 2 x N
@@ -78,7 +81,7 @@ int main(int argc, char *argv[])
     gsFileData<> fd_in(fn);
     gsMatrix<> uv      = fd_in.getId<gsMatrix<> >(0);
     gsMatrix<> xyz     = fd_in.getId<gsMatrix<> >(1);
-    //! [Read data]       
+    //! [Read data]
 
     // This is for outputing an XML file, if requested
     gsFileData<> fd;
@@ -97,12 +100,12 @@ int main(int argc, char *argv[])
     gsKnotVector<> u_knots (u_min, u_max, 0, deg_x+1 ) ;
     gsKnotVector<> v_knots (v_min, v_max, 0, deg_y+1 ) ;
 
-    // Create a tensor-basis nad apply initial uniform refinement    
+    // Create a tensor-basis nad apply initial uniform refinement
     gsTensorBSplineBasis<2> T_tbasis( u_knots, v_knots );
     T_tbasis.uniformRefine( (1<<numURef)-1 );
 
     // Create Initial hierarchical basis
-    
+
     gsTHBSplineBasis<2>  THB ( T_tbasis ) ;
     //gsHBSplineBasis<2>  THB ( T_tbasis ) ;
 
@@ -113,7 +116,7 @@ int main(int argc, char *argv[])
 
     // Create hierarchical refinement object
     gsHFitting<2, real_t> ref( uv, xyz, THB, refPercent, ext, lambda);
-    
+
     const std::vector<real_t> & errors = ref.pointWiseErrors();
 
     // Print settings summary
@@ -133,7 +136,7 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"----------------\n";
         gsInfo<<"Iteration "<<i<<".."<<"\n";
-        
+
         time.restart();
         ref.nextIteration(tolerance, threshold);
         const double clock = time.stop();

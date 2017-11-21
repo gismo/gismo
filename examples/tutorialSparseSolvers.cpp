@@ -20,7 +20,7 @@ void report( const gsVector<>& computedSolution, const gsVector<>& exactSolution
     gsInfo << "  Computed solution: " << computedSolution.transpose() << "\n";
     if ( (computedSolution-exactSolution).norm() <= 1.e-10 )
     {
-        gsInfo << "  Test passed.\n";        
+        gsInfo << "  Test passed.\n";
     }
     else
     {
@@ -44,7 +44,7 @@ int main(int argc, char** argv)
     gsVector<>        b(mat_size), x(mat_size), x0(mat_size);
 
     bool succeeded = true;
-    
+
     Q.reserve( gsVector<int>::Constant(mat_size,1) ); // Reserve memory for 1 non-zero entry per column
     Q(0,0) = 1;
     Q(1,1) = 2;
@@ -59,9 +59,9 @@ int main(int argc, char** argv)
     Q.makeCompressed(); // always call makeCompressed after sparse matrix has been filled
 
     // fill-in right-hand side
-    b << 1, 2, 3, 4, 5, 6, 7, 8, 9, 10; 
-    x0 << 1, 1, 1, 1, 1, 1, 1, 1, 1, 1; 
-   
+    b << 1, 2, 3, 4, 5, 6, 7, 8, 9, 10;
+    x0 << 1, 1, 1, 1, 1, 1, 1, 1, 1, 1;
+
     gsSparseSolver<>::CGIdentity solverCGI;
     solverCGI.compute(Q);
     x = solverCGI.solve(b);
@@ -73,19 +73,19 @@ int main(int argc, char** argv)
     x = solverCGD.solve(b);
     gsInfo << "Solve Ax = b with Eigen's CG diagonal preconditioner.\n";
     report( x, x0, succeeded );
-        
+
     gsSparseSolver<>::BiCGSTABILUT solverBCGILU;
     solverBCGILU.compute(Q);
     x = solverBCGILU.solve(b);
     gsInfo << "Solve Ax = b with Eigen's BiCG with ILU preconditioner.\n";
     report( x, x0, succeeded );
-        
+
     gsSparseSolver<>::BiCGSTABDiagonal solverBCGD;
     solverBCGD.compute(Q);
     x = solverBCGD.solve(b);
     gsInfo << "Solve Ax = b with Eigen's BiCG with diagonal preconditioner.\n";
     report( x, x0, succeeded );
-        
+
     gsSparseSolver<>::BiCGSTABIdentity solverBCDI;
     solverBCDI.compute(Q);
     x = solverBCDI.solve(b);
@@ -121,7 +121,7 @@ int main(int argc, char** argv)
     solverLLT.compute(Q);
     x = solverLLT.solve(b);
     gsInfo << "Solve Ax = b with PardisoLLT.\n";
-    report( x, x0, succeeded );    
+    report( x, x0, succeeded );
 
     gsSparseSolver<>::PardisoLU solverpLU;
     solverpLU.compute(Q);

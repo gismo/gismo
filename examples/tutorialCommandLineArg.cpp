@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
     // Displays usage information for all other arguments and exits.
     //
     gsCmdLine cmd("Tutorial Command Line Arguments");
-    
+
     // -----------------------------------------------------------------
     // General syntax to add an argument:
     // cmd.addType("f", "flag", "Description", destination)
@@ -53,33 +53,33 @@ int main(int argc, char* argv[])
     // -----------------------------------------------------------------
     // Adding a string argument, given by the "-s" (or "--stringArg") flag
     // If set, string is updated to the input value, otherwise string remains untouched
-    cmd.addString("s", "stringArg", 
+    cmd.addString("s", "stringArg",
                   "Description of string command line argument.",
                   string);
 
     // -----------------------------------------------------------------
     // Adding a string argument, given by the "-i" (or "--num") flag
     // If set, number is updated to the input value, otherwise number remains untouched
-    cmd.addInt   ("i", "num", 
-                  "Description of int command line argument", 
+    cmd.addInt   ("i", "num",
+                  "Description of int command line argument",
                   number);
 
     // -----------------------------------------------------------------
     // Adding a float argument, given by the "-r" (or "--real") flag
     // If set, flNumber is updated to the input value, otherwise flNumber remains untouched
-    cmd.addReal  ("r", "real", 
-                  "Description of float command line argument", 
+    cmd.addReal  ("r", "real",
+                  "Description of float command line argument",
                   flNumber);
 
     // -----------------------------------------------------------------
     // Adding a switch argument, given by the "--bool" flag
     // If set, boolean is updated to the input value, otherwise boolean remains untouched
     cmd.addSwitch("bool","Description of the switch argument.", boolean);
-                
+
     // -----------------------------------------------------------------
     // Extra plain argument (manually defined):
     // Plain arguments are given without a flag.
-    std::string value = "default_plain_value"; 
+    std::string value = "default_plain_value";
     cmd.addPlainString("plain", "Description of the plain command line argument.", plainString);
 
     // Each flag can only called once. The commands
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
            << "Float:        " << flNumber << "\n\n"
            << "Integer:      " << number << "\n\n"
            << "Switch:       " << boolean << "\n\n";
-    
+
     return 0;
 }
 

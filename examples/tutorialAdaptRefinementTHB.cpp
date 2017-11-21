@@ -20,7 +20,7 @@ using namespace std;
 using namespace gismo;
 //! [Include namespace]
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
         // Construct assembler
         gsPoissonAssembler<real_t> PoissonAssembler(patches,bases,bcInfo,f);
         PoissonAssembler.options().setInt("DirichletValues", dirichlet::l2Projection);
-        
+
         // Generate system matrix and load vector
         PoissonAssembler.assemble();
 
@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
     //! [Plot in Paraview]
     else
     {
-        gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView " 
+        gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
                 "file containing Plotting image data.\n";
         return 0;
     }

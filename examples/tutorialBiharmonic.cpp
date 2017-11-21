@@ -22,12 +22,12 @@ int main(int argc, char *argv[])
 
     index_t numRefine = 5;
     index_t numDegree = 1;
+    bool plot = false;
 
     gsCmdLine cmd("Example for solving the biharmonic problem.");
-
     cmd.addInt("r", "refine", "Number of refinement steps", numRefine);
     cmd.addInt("p", "degree", "Polynomial degree", numDegree);
-
+    cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
     cmd.getValues(argc,argv);
 
     dirichlet::strategy dirStrategy = dirichlet::elimination;
@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
                               "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
                               " 16*pi^2*sin(4*pi*x)*sin(4*pi*y)", 2);
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
-    
+
     gsMultiPatch<> geo( *gsNurbsCreator<>::BSplineFatQuarterAnnulus() );
     gsMultiBasis<> basis(geo);
 
@@ -105,7 +105,6 @@ int main(int argc, char *argv[])
 
 
     // Plot solution in paraview
-    bool plot = false;
     if (plot)
     {
         // Write approximate and exact solution to paraview files

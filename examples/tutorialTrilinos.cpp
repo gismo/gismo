@@ -81,12 +81,12 @@ int main(int argc, char**argv)
 
     // Command line argument parser
     gsCmdLine cmd("This file tests the Trilinos integration");
-    
+
     // Add command line arguments
     cmd.addSwitch("verbose", "Verbose output", verbose);
     cmd.addSwitch("status", "Status output", status);
     cmd.addSwitch("timing", "Timing output", timing);
-    
+
     cmd.addString("p", "preconditioner", "Type of external preconditioner", preconditioner);
     cmd.addString("s", "solver", "Type of solver", solver);
 
@@ -94,10 +94,10 @@ int main(int argc, char**argv)
     cmd.addString("B", "belos",  "Additional options for Belos solver", belos_options);
     cmd.addString("M", "ml",     "Additional options for ML solver", ml_options);
     cmd.addString("Z", "aztec",  "Additional options for Aztec solver", aztec_options);
-    
+
     // Read parameters from command line
     cmd.getValues(argc,argv);
-    
+
     // Initialize the MPI environment and obtain the world communicator
     gsMpiComm comm = gsMpi::init(argc,argv).worldComm();
 
@@ -113,7 +113,7 @@ int main(int argc, char**argv)
     if (0==_rank)
     {
         gsInfo << "Running on "<< comm.size() <<" processes.\n";
-    
+
         // System size
         n = 10 * comm.size();
 
@@ -121,7 +121,7 @@ int main(int argc, char**argv)
 
         // Fill in A and b
         poissonDiscretization(A,b,n);
-    
+
         if ( n < 15 )
         {
             gsInfo << "Matrix:\n" << A.toDense() << "\n";
@@ -130,11 +130,11 @@ int main(int argc, char**argv)
         }
         else
             gsInfo << "Matrix: "<< A.rows() << " x " << A.cols() << "\n";
-        
+
         // Solving with Eigen-Cholesky:
         gsSparseSolver<>::SimplicialLDLT LDTL(A);
         x = LDTL.solve(b);
-    
+
         if ( n < 100 )
             gsInfo << "x = "<< x.transpose() <<"\n\n";
     }
@@ -162,7 +162,7 @@ int main(int argc, char**argv)
         /// Sparse direct solver: Amesos
         ///
         /// Valid solver options are:
-        /// 
+        ///
         /// -s "Amesos:Lapack"
         /// -s "Amesos:KLU"
         /// -s "Amesos:Umfpack"
@@ -199,7 +199,7 @@ int main(int argc, char**argv)
         configureSolver(t_solver, amesos_options);
 
         if (verbose) gsInfo << t_solver.currentParams();
-      
+
         /// Compute solution
         const trilinos::Vector & t_vx = t_solver.solve(t_b);
 
@@ -212,7 +212,7 @@ int main(int argc, char**argv)
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
-      
+
         if (0==_rank)
         {
             const real_t err = (x-t_x).norm();
@@ -221,7 +221,7 @@ int main(int argc, char**argv)
             if ( n < 100 )
                 gsInfo << "t_x = "<< t_x.transpose() <<"\n";
         }
-      
+
         comm.broadcast(&OK, 1, 0);
         OK_ALL = OK_ALL && OK;
         gsInfo << "Trilinos Amesos solver: " << (OK ? "succeeded\n" : "failed\n");
@@ -234,7 +234,7 @@ int main(int argc, char**argv)
         ///
         /// Valid solver options are:
         ///
-        /// -s "Aztec" -> Use option "AZ_solver" 
+        /// -s "Aztec" -> Use option "AZ_solver"
         ///               to specify solver and internal preconditioner
         /// -s "Aztec:Analyze"
         /// -s "Aztec:BiCGStab"
@@ -252,7 +252,7 @@ int main(int argc, char**argv)
         ///
         /// Valid preconditioner options are:
         ///
-        /// -s "Aztec" -> Use option "AZ_precond" 
+        /// -s "Aztec" -> Use option "AZ_precond"
         ///               to specify solver and internal preconditioner
         /// -p "Aztec:Dom_Decomp"
         /// -p "Aztec:Jacobi"
@@ -271,7 +271,7 @@ int main(int argc, char**argv)
         if (preconditioner.length() > 5) {
             t_solver.set("AZ_precond", preconditioner.substr(6));
         }
-        
+
         if (verbose) gsInfo << t_solver.currentParams();
 
         /// Compute solution
@@ -286,7 +286,7 @@ int main(int argc, char**argv)
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
-      
+
         if (0==_rank)
         {
             const real_t err = (x-t_x).norm();
@@ -295,7 +295,7 @@ int main(int argc, char**argv)
             if ( n < 100 )
                 gsInfo << "t_x = "<< t_x.transpose() <<"\n";
         }
-      
+
         comm.broadcast(&OK, 1, 0);
         OK_ALL = OK_ALL && OK;
         gsInfo << "Trilinos Aztec solver: " << (OK ? "succeeded\n" : "failed\n");
@@ -329,9 +329,9 @@ int main(int argc, char**argv)
         if (solver.length() > 5) {
             t_solver.set("AZ_solver", solver.substr(6));
         }
-        
+
         if (verbose) gsInfo << t_solver.currentParams();
-      
+
         /// Multilevel preconditioner
         ///
         /// Valid preconditioner options are:
@@ -359,7 +359,7 @@ int main(int argc, char**argv)
         configureSolver(t_precond, ml_options);
 
         if (verbose) gsInfo << t_precond.currentParams();
-      
+
         /// Set ML-preconditioner
         t_solver.setPreconditioner(t_precond);
 
@@ -369,7 +369,7 @@ int main(int argc, char**argv)
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
         if (timing) gsInfo << t_solver.timing();
-      
+
         if (status) gsInfo << t_precond.status();
         if (timing) gsInfo << t_precond.timing();
 
@@ -378,7 +378,7 @@ int main(int argc, char**argv)
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
-      
+
         if (0==_rank)
         {
             const real_t err = (x-t_x).norm();
@@ -387,7 +387,7 @@ int main(int argc, char**argv)
             if ( n < 100 )
                 gsInfo << "t_x = "<< t_x.transpose() <<"\n";
         }
-      
+
         comm.broadcast(&OK, 1, 0);
         OK_ALL = OK_ALL && OK;
         gsInfo << "Trilinos Aztec solver with ML preconditioner: " << (OK ? "succeeded\n" : "failed\n");
@@ -450,14 +450,14 @@ int main(int argc, char**argv)
                                                solver.substr(6) == "TFQMR" ?
                                                trilinos::solver::BelosSolvers::TFQMR :
                                                0);
-                                             
+
         configureSolver(t_solver, belos_options);
 
         if (verbose) gsInfo << t_solver.currentParams();
 
         /// Compute solution
         const trilinos::Vector & t_vx = t_solver.solve(t_b);
-      
+
         /// Get solver status and timing
         if (status) gsInfo << t_solver.status();
         if (timing) gsInfo << t_solver.timing();
@@ -467,7 +467,7 @@ int main(int argc, char**argv)
         bool OK = false;
         gsVector<> t_x;
         t_solver.getSolution(t_x); // collect solution at Proc 0
-      
+
         if (0==_rank)
         {
             const real_t err = (x-t_x).norm();
@@ -476,7 +476,7 @@ int main(int argc, char**argv)
             if ( n < 100 )
                 gsInfo << "t_x = "<< t_x.transpose() <<"\n";
         }
-      
+
         comm.broadcast(&OK, 1, 0);
         OK_ALL = OK_ALL && OK;
         gsInfo << "Trilinos Belos solver: " << (OK ? "succeeded\n" : "failed\n");
@@ -491,7 +491,7 @@ int main(int argc, char**argv)
 
     //     /// Compute solution
     //     const trilinos::Vector & t_vx = t_solver.solve(t_b);
-      
+
     //     /// Get solver status and timing
     //     if (status) gsInfo << t_solver.status();
     //     if (timing) gsInfo << t_solver.timing();
@@ -501,7 +501,7 @@ int main(int argc, char**argv)
     //     bool OK = false;
     //     gsVector<> t_x;
     //     t_solver.getSolution(t_x); // collect solution at Proc 0
-      
+
     //     if (0==_rank)
     //     {
     //         const real_t err = (x-t_x).norm();
@@ -510,7 +510,7 @@ int main(int argc, char**argv)
     //         if ( n < 100 )
     //             gsInfo << "t_x = "<< t_x.transpose() <<"\n";
     //     }
-      
+
     //     comm.broadcast(&OK, 1, 0);
     //     OK_ALL = OK_ALL && OK;
     //     gsInfo << "Trilinos ML solver: " << (OK ? "succeeded\n" : "failed\n");
@@ -571,16 +571,16 @@ int main(int argc, char**argv)
         gsWarn << "-p \"ML:DDLU\"\n";
         gsWarn << "-p \"ML:DDML\"\n";
         gsWarn << "-p \"ML:DDMLLU\"\n";
-        
+
         return 1;
     }
- 
+
     return OK_ALL ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
 #else
-    
+
     return 0;
-    
+
 #endif
 }
 
@@ -605,7 +605,7 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsVector<> &rhs, index_t N)
     const real_t meshSize = (real_t)1/(N+1);
     for (index_t k = 0; k < N; ++k)
         rhs(k) = EIGEN_PI*EIGEN_PI*meshSize*meshSize*math::cos(meshSize*(1+k)*EIGEN_PI);
-    
+
     //Compress the matrix
     mat.makeCompressed();
 }
@@ -622,27 +622,27 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsVector<> &rhs, index_t N)
 template<typename Solver>
 void configureSolver(Solver & solver, const std::string & str)
 {
-    std::size_t npos=0, nlen=0;    
+    std::size_t npos=0, nlen=0;
     while (nlen < str.length())
     {
         // Get token NAME:TYPE=VALUE
         nlen = str.substr(npos).find(";");
         std::string token = str.substr(npos,nlen);
         npos+=nlen+1;
-            
+
         // Split token into NAME
         std::size_t mlen = token.find_last_of(":");
         std::string name = token.substr(0,mlen);
         std::size_t mpos = mlen+1;
-            
+
         /// ... TYPE
         mlen = token.substr(mpos).find_last_of("=");
         std::string type = token.substr(mpos,mlen);
         mpos+= mlen+1;
-            
+
         /// ... and VALUE
         std::string value = token.substr(mpos);
-            
+
         if (type == "BOOL")
             solver.set(name, value != "0");
         else if (type == "INT")
@@ -652,6 +652,6 @@ void configureSolver(Solver & solver, const std::string & str)
         else if (type == "STRING")
             solver.set(name, value);
         else
-            GISMO_ERROR("Error : Invalid parameter in solver configuration.");    
+            GISMO_ERROR("Error : Invalid parameter in solver configuration.");
     }
 }

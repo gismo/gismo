@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
     //! [beginRefLoop]
         gsInfo << "====== Loop " << refLoop << " of "
                <<numRefinementLoops<< " ======" << "\n";
-        
+
         // --------------- solving ---------------
 
         //! [solverPart]
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
         std::vector<bool> elMarked( eltErrs.size() );
         gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
         gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
-        
+
         // Refine the marked elements with a 1-ring of cells around marked elements
         gsRefineMarkedElements( cdrAss.multiBasis(), elMarked, 1 );
         //! [adaptRefinementPart]
