@@ -73,7 +73,7 @@ SUITE(gsLinearSolvers)
 
         CHECK( (mat*x-rhs).norm()/rhs.norm() <= tol );
     }
- 
+
     TEST(MinRes_test)
     {
         index_t          N = 100;

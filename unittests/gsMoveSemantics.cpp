@@ -10,7 +10,7 @@
 
     Author(s): A. Mantzaflaris
 */
- 
+
 #include "gismo_unittest.h"  // Brings in G+Smo and the UnitTest++ framework
 
 SUITE(gsMoveSemantics)

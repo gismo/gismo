@@ -23,8 +23,8 @@ using namespace gismo;
 
 //lvl- max level of domain refinement, max number of boxes inserted
 //per level, basis, alignement with the prewious level
-std::vector<unsigned int> random_refinement(int lvl, int max_nb, 
-                                            gismo::gsHTensorBasis<2> *bas, 
+std::vector<unsigned int> random_refinement(int lvl, int max_nb,
+                                            gismo::gsHTensorBasis<2> *bas,
                                             bool aligned = false)
 {
 
@@ -68,8 +68,8 @@ std::vector<unsigned int> random_refinement(int lvl, int max_nb,
 
                 i2[0] = math::max( i2[0], i1[0] + (bas->degree(1)+2)*(1 << lvl) );
                 i2[1] = math::max( i2[1], i1[1] + (bas->degree(1)+2)*(1 << lvl) );
-                
- 
+
+
                 //std::cout<<"\naligned box inserted ["<< i1[0]<<" , "<< i1[1]<<"] ["<< i2[0]<<" , "<< i2[1]<<"]"<< " to level "<<i+1 <<"\n";
                 boxes_new.push_back(i1);
                 boxes_new.push_back(i2);

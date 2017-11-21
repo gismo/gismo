@@ -135,7 +135,7 @@ TEST(HBasisDegreeElevate)
 // or test (for HB and THB) that interpolation of a polynomial
 // function of the same degree is accurate upto machine precision
 
-/* 
+/*
     for (index_t deg=0; deg<4;++deg)
     {
         for (index_t mult=1; mult<=deg; ++mult)
