@@ -192,6 +192,28 @@ bool gsFileManager::mkdir( std::string fn )
 #endif
 }
 
+
+bool gsFileManager::pathEqual( const std::string& p1, const std::string& p2 )
+{
+    const size_t sz = p1.size();
+
+    if (sz != p2.size())
+        return false;
+
+    for (size_t i=0; i<sz; ++i)
+    {
+        if (!(
+            p1[i] == p2[i]
+            || ( p1[i] == '/' && p2[i] == '\\' )
+            || ( p1[i] == '\\' && p2[i] == '/' )
+        )) return false;
+
+    }
+    return true;
+
+}
+
+
 } //namespace gismo
 
 

@@ -61,6 +61,8 @@ public:
     /// Make directory
     static bool mkdir( std::string fn );
 
+    /// Checks paths for equality, ignoring slash vs. backslash
+    static bool pathEqual( const std::string& p1, const std::string& p2 );
 };
 
 

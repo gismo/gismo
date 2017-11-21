@@ -33,7 +33,7 @@ public:
             const size_t n = strlen(m_argv[i]); 
             toRun |= !strncmp(testCase->m_details.suiteName, m_argv[i], n);// prefix match
             toRun |= !strncmp(testCase->m_details.testName , m_argv[i], n);// prefix match
-            toRun |= !strcmp(testCase->m_details.filename  , m_argv[i]   );// exact match
+            toRun |= gsFileManager::pathEqual(testCase->m_details.filename, m_argv[i]);// exact match up to path sep.
         }
         m_did_run |= toRun;
         return toRun;
