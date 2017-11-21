@@ -28,11 +28,11 @@ include(CTest)
 enable_testing()
 
 # Collect source file names
-FILE (GLOB unittests_SRCS *.cpp)
+aux_gs_cpp_directory(${PROJECT_SOURCE_DIR} unittests_SRCS)
 
 get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} PATH)
 
-add_executable(unittests ${unittests_SRCS} main.cpp)
+add_executable(unittests gismo_unittest.h ${unittests_SRCS} main.cpp)
 target_link_libraries(unittests ${GSUNITTEST_LIBRARY} gismo)
 set_property(TARGET unittests PROPERTY LABELS unittests)
 

@@ -92,6 +92,11 @@ macro(aux_cpp_directory DIR VAR)
 	FILE(GLOB ${ARGV1} ${DIR}/[^.]*.cpp)
 endmacro(aux_cpp_directory)
 
+# collect gs*.cpp files
+macro(aux_gs_cpp_directory DIR VAR)
+	FILE(GLOB ${ARGV1} ${DIR}/gs*.cpp)
+endmacro(aux_gs_cpp_directory)
+
 # collect .h files
 macro(aux_header_directory DIR VAR)
 	FILE(GLOB ${ARGV1} ${DIR}/[^.]*.h)
