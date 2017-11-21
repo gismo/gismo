@@ -201,7 +201,7 @@ void checkGsBoundaryCondition(const gsBoundaryConditions<real_t> & sut)
     CHECK_EQUAL(elems4, bcc4.size());
     CHECK_EQUAL(elems4, bcc5.size());
     // check bctype_iterator
-    typedef typename gismo::gsBoundaryConditions<real_t>::const_bciterator bctype_it;
+    typedef gismo::gsBoundaryConditions<real_t>::const_bciterator bctype_it;
     int c = 0;
     for (bctype_it it = sut.beginAll(); it != sut.endAll(); ++it)
     {
