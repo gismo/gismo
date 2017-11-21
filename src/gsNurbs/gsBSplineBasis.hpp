@@ -150,10 +150,10 @@ gsMatrix<unsigned> gsTensorBSplineBasis<1,T>::allBoundary() const
     }
     else
     {
-        gsMatrix<unsigned> * res = new gsMatrix<unsigned>(2,1);
-        (*res)(0,0)= 0;
-        (*res)(1,0)= m_knots.size()-m_p-2;
-        return *res;
+        gsMatrix<unsigned> res(2,1);
+        res(0,0) = 0;
+        res(1,0) = m_knots.size()-m_p-2;
+        return res;
     }
 }
 
