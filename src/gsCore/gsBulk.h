@@ -59,7 +59,7 @@ public:
 
     /// @}
 
-    GISMO_CLONE_FUNCTION_FORWARD(gsBulk)
+    GISMO_UPTR_FUNCTION_FORWARD(gsBulk, clone)
 
     int domainDim() const { return 4; }
 

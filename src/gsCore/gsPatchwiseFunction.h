@@ -35,7 +35,7 @@ public:
 
     virtual ~gsPatchwiseFunction() { }    
 
-    GISMO_CLONE_FUNCTION_FORWARD(gsPatchwiseFunction)
+    GISMO_UPTR_FUNCTION_FORWARD(gsPatchwiseFunction, clone)
 
     operator const gsFunction<T> & ()
     { 

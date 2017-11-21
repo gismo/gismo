@@ -80,7 +80,7 @@ public:
         m_funcs.swap( other.m_funcs );
     }
 
-    GISMO_CLONE_FUNCTION(gsPiecewiseFunction)
+    GISMO_UPTR_FUNCTION(gsPiecewiseFunction, clone)
 
     int domainDim () const {return m_funcs.front()->domainDim();};
     int targetDim () const {return m_funcs.front()->targetDim();};

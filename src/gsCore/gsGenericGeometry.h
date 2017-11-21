@@ -51,7 +51,7 @@ public:
                       "Incoherent basis dimension in gsGenericGeometry");
     }
 
-    GISMO_CLONE_FUNCTION(gsGenericGeometry)
+    GISMO_UPTR_FUNCTION(gsGenericGeometry, clone)
 
     GISMO_BASIS_ACCESSORS
 

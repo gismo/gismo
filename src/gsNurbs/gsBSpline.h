@@ -136,7 +136,7 @@ public:
         }
     }
 
-    GISMO_CLONE_FUNCTION(gsBSpline, virtual)
+    GISMO_UPTR_FUNCTION(gsBSpline, clone, virtual)
     
     GISMO_BASIS_ACCESSORS    
     

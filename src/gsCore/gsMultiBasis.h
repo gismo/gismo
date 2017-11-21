@@ -107,7 +107,7 @@ public:
     }
 #endif
 
-    GISMO_CLONE_FUNCTION(gsMultiBasis)
+    GISMO_UPTR_FUNCTION(gsMultiBasis, clone)
 
 public:
 

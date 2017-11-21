@@ -20,21 +20,21 @@
 #include <gsCore/gsLinearAlgebra.h>
 //#include <gsCore/gsForwardDeclarations.h> // included by gsLinearAlgebra.h
 
-// Declaration and definition (2nd argument for virtual)
-#define GISMO_CLONE_FUNCTION(x, ...) \
-private: __VA_ARGS__ x * doClone() const { return new x(*this); } \
-public: inline uPtr clone() const { return uPtr(doClone()); }
+// Declaration and definition (1st is type, 2nd function name, 3rd argument for virtual)
+#define GISMO_UPTR_FUNCTION(x, y, ...) \
+private: __VA_ARGS__ x * y##_impl() const { return new x(*this); } \
+public: inline uPtr y() const { return uPtr(y##_impl()); }
 
-// Declaration of pure virtual
-#define GISMO_CLONE_FUNCTION_FORWARD(x) \
-private: virtual x * doClone() const = 0; \
-public: inline uPtr clone() const { return uPtr(doClone()); }
+// Declaration of pure virtual  (1st type, 2nd function name)
+#define GISMO_UPTR_FUNCTION_FORWARD(x, y) \
+private: virtual x * y##_impl() const = 0; \
+public: inline uPtr clone() const { return uPtr(y##_impl()); }
 
 // Declaration and definition with (throw of) message
-// (2nd argument for virtual)
-#define GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(x, ...) \
-private: __VA_ARGS__ x * doClone() const { GISMO_NO_IMPLEMENTATION } \
-public: inline uPtr clone() const { return uPtr(doClone()); }
+// (1st type, 2nd function name, 3rd argument for virtual)
+#define GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(x, y, ...) \
+private: __VA_ARGS__ x * y##_impl() const { GISMO_NO_IMPLEMENTATION } \
+public: inline uPtr clone() const { return uPtr(y##_impl()); }
 
 namespace gismo {
 
@@ -132,7 +132,7 @@ public:
 
     virtual ~gsFunctionSet();
 
-    GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, virtual)
+    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone, virtual)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
     virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
