@@ -37,7 +37,7 @@ target_link_libraries(unittests ${GSUNITTEST_LIBRARY} gismo)
 set_property(TARGET unittests PROPERTY LABELS unittests)
 
 add_dependencies(${PROJECT_NAME} gsUnitTest)
-
+add_dependencies(Experimental ${PROJECT_NAME})
 
 foreach(file ${unittests_SRCS})
     get_filename_component(testname ${file} NAME_WE) # name without extension
