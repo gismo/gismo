@@ -30,8 +30,8 @@ enable_testing()
 # Collect source file names
 file(GLOB snippets_SRCS "*.cpp")
 
-add_custom_target(${PROJECT_NAME} ALL)
-set_property(TARGET ${PROJECT_NAME} PROPERTY LABELS "${PROJECT_NAME};gismo")
+add_custom_target(${PROJECT_NAME})
+set_property(TARGET ${PROJECT_NAME} PROPERTY LABELS "${PROJECT_NAME}")
 
 foreach(snippet_src ${snippets_SRCS})
 
@@ -44,7 +44,7 @@ foreach(snippet_src ${snippets_SRCS})
 
   add_executable(${snippet_target}  ${CMAKE_CURRENT_BINARY_DIR}/${snippet_target}.cpp)
   add_test(${snippet_target} ${CMAKE_CURRENT_BINARY_DIR}/${snippet_target})
-  set_property(TEST ${snippet_target} PROPERTY LABELS "${PROJECT_NAME};gismo")
+  set_property(TEST ${snippet_target} PROPERTY LABELS "${PROJECT_NAME};unittests")
 
   if(GISMO_BUILD_LIB)
     target_link_libraries(${snippet_target} gismo)
