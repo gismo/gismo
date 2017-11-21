@@ -54,12 +54,28 @@ public:
     /// Copy constructor (makes deep copy)
     gsMultiPatch( const gsMultiPatch& other );
 
+#if ! EIGEN_HAS_RVALUE_REFERENCES
+
     /// Assignment operator (uses copy-and-swap idiom)
     gsMultiPatch& operator= ( gsMultiPatch other )
     {
         this->swap( other );
         return *this;
     }
+
+#else
+
+    gsMultiPatch& operator= ( const gsMultiPatch& other )
+    {
+        gsMultiPatch tmp(other);
+        this->swap( tmp );
+        return *this;
+    }
+
+    gsMultiPatch( gsMultiPatch&& other ) = default;
+    gsMultiPatch& operator= ( gsMultiPatch&& other ) = default;
+
+#endif
 
     /// Create from a vector of patches
     explicit gsMultiPatch( PatchContainer & patches );
