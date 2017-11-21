@@ -669,7 +669,7 @@ public:
 
     /// @}
 
-    GISMO_CLONE_FUNCTION_FORWARD(gsBasis)
+    GISMO_UPTR_FUNCTION_FORWARD(gsBasis, clone)
 
     /// @brief Create a gsGeometry of proper type for this basis with the
     /// given coefficient matrix.

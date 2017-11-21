@@ -97,7 +97,7 @@ public:
         return *this; 
     }
 
-    GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunction<T>)
+    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunction<T>, clone)
  
     int targetDim () const
     {

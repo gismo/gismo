@@ -98,7 +98,7 @@ public:
         m_coefs = cb.value()*coef;
     }
 
-    GISMO_CLONE_FUNCTION(gsConstantFunction, virtual)
+    GISMO_UPTR_FUNCTION(gsConstantFunction, clone, virtual)
 
     const gsConstantFunction<T> & piece(const index_t k) const
     {

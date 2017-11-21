@@ -101,7 +101,7 @@ public:
 
     gsTensorNurbsBasis(const gsTensorNurbsBasis & o) : Base(o) { }
 
-    GISMO_CLONE_FUNCTION(gsTensorNurbsBasis)
+    GISMO_UPTR_FUNCTION(gsTensorNurbsBasis, clone)
   
     GISMO_MAKE_GEOMETRY_NEW
 

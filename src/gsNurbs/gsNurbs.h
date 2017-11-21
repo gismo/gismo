@@ -79,7 +79,7 @@ public:
         // TO DO: divide pcoefs by the weights
     }
     
-    GISMO_CLONE_FUNCTION(gsNurbs, virtual)
+    GISMO_UPTR_FUNCTION(gsNurbs, clone, virtual)
 
     GISMO_BASIS_ACCESSORS
 
