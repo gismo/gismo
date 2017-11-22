@@ -59,21 +59,21 @@ public:
     /// Assignment operator (uses copy-and-swap idiom)
     gsMultiPatch& operator= ( gsMultiPatch other )
     {
-        this->swap( other );
+        this->swap(other);
         return *this;
     }
 
 #else
+    /// Move constructor
+    gsMultiPatch( gsMultiPatch&& other )
+        : gsBoxTopology( give(other) ), m_patches( give(other.m_patches) )
+    {}
 
-    gsMultiPatch& operator= ( const gsMultiPatch& other )
-    {
-        gsMultiPatch tmp(other);
-        this->swap( tmp );
-        return *this;
-    }
+    /// Assignment operator 
+    gsMultiPatch& operator= ( const gsMultiPatch& other );
 
-    gsMultiPatch( gsMultiPatch&& other ) = default;
-    gsMultiPatch& operator= ( gsMultiPatch&& other ) = default;
+    /// Move assignment operator 
+    gsMultiPatch& operator= ( gsMultiPatch&& other );
 
 #endif
 
