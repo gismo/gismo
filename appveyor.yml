@@ -82,7 +82,6 @@ for:
   branches:
     only:
     - stable
-    - filiatra
 
   environment:
     CTEST_OUTPUT_ON_FAILURE: 1
