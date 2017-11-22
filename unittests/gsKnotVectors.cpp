@@ -241,18 +241,18 @@ SUITE(gsKnotVector2)
     {
         {
             gsKnotVector<real_t> KV( 0, 1, 3, 3, 1 );
-            
-            CHECK( KV.uFind(0.00).uIndex() == 0 ); 
- 	        CHECK( KV.uFind(0.49).uIndex() == 1 ); 
-            CHECK( KV.uFind(0.50).uIndex() == 2 ); 
-            CHECK( KV.uFind(0.55).uIndex() == 2 ); 
-            CHECK( KV.uFind(1.00).uIndex() == 3 ); 
-	 	 
-            CHECK( KV.uFind(0.00).multSum() == 3 ); 
-            CHECK( KV.uFind(0.49).multSum() == 4 ); 
-            CHECK( KV.uFind(0.50).multSum() == 5 ); 
-            CHECK( KV.uFind(0.55).multSum() == 5 ); 
-            CHECK( KV.uFind(1.00).multSum() == 6 ); 
+
+            CHECK( KV.uFind(0.00).uIndex() == 0 );
+            CHECK( KV.uFind(0.49).uIndex() == 1 );
+            CHECK( KV.uFind(0.50).uIndex() == 2 );
+            CHECK( KV.uFind(0.55).uIndex() == 2 );
+            CHECK( KV.uFind(1.00).uIndex() == 3 );
+
+            CHECK( KV.uFind(0.00).multSum() == 3 );
+            CHECK( KV.uFind(0.49).multSum() == 4 );
+            CHECK( KV.uFind(0.50).multSum() == 5 );
+            CHECK( KV.uFind(0.55).multSum() == 5 );
+            CHECK( KV.uFind(1.00).multSum() == 6 );
         }
         {
             real_t data[]={-0.1, 0.0, 0.0, 0.2 ,0.3, 0.3, 0.5, 0.7, 1.0, 1.1, 1.2};
