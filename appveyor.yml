@@ -78,25 +78,24 @@ build_script:
 for:
 
 # Stable branch
- branches:
-   only:
-     - stable
+  branches:
+    only:
+    - stable
 
- environment:
-   CTEST_OUTPUT_ON_FAILURE: 1
-   matrix:
-   - BUILD: msvc2015
-     configuration: Release
-     generator: "Visual Studio 14 2015"
-
+  environment:
+    CTEST_OUTPUT_ON_FAILURE: 1
+    matrix:
+    - BUILD: msvc2015
+      configuration: Release
+      generator: "Visual Studio 14 2015"
 
 
 # Full tests
- branches:
-  only:
+  branches:
+    only:
     - coverity_scan
 
- environment:
+  environment:
     # custom environment variables, see http://www.appveyor.com/docs/installed-software
     CTEST_OUTPUT_ON_FAILURE: 1
     #BOOST_ROOT: c:\Libraries\boost
@@ -106,7 +105,7 @@ for:
       configuration: Release
       generator: "Visual Studio 14 2015"
 
-   - BUILD: msvc2015
+    - BUILD: msvc2015
       configuration: Release
       generator: "Visual Studio 14 2015 Win64"
 
