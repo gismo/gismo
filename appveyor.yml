@@ -78,7 +78,8 @@ build_script:
 for: 
 
 # Full tests
-branches:
+-
+ branches:
   only:
     - coverity_scan
 
@@ -143,9 +144,10 @@ environment:
 # Stable branch
 
 # Stable branch
-branches:
-  only:
-    - stable
+-
+ branches:
+   only:
+     - stable
 
 environment:
   CTEST_OUTPUT_ON_FAILURE: 1
