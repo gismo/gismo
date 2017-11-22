@@ -42,6 +42,35 @@ gsMultiPatch<T>::gsMultiPatch( const gsMultiPatch& other )
               this->m_patches.begin());
 }
 
+#if EIGEN_HAS_RVALUE_REFERENCES
+
+template<class T>
+gsMultiPatch<T>& gsMultiPatch<T>::operator=( const gsMultiPatch& other )
+{
+    if (this!=&other)
+    {
+        freeAll(m_patches);
+        Base::operator=(other);
+        m_patches.resize(other.m_patches.size());
+        // clone all geometries
+        cloneAll( other.m_patches.begin(), other.m_patches.end(),
+                this->m_patches.begin());
+    }
+    return *this;
+}
+
+template<class T>
+gsMultiPatch<T>& gsMultiPatch<T>::operator=( gsMultiPatch&& other )
+{
+    freeAll(m_patches);
+    Base::operator=(give(other));
+    m_patches = give(other.m_patches);
+    return *this;
+}
+
+
+#endif
+
 template<class T>
 gsMultiPatch<T>::gsMultiPatch(PatchContainer & patches )
     : gsBoxTopology( patches[0]->parDim(), patches.size() )
