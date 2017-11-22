@@ -78,6 +78,7 @@ build_script:
 for:
 
 # Stable branch
+-
   branches:
     only:
     - stable
@@ -92,6 +93,7 @@ for:
 
 
 # Full tests
+-
   branches:
     only:
     - coverity_scan
