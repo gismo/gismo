@@ -96,7 +96,7 @@ for:
   only:
     - coverity_scan
 
-  environment:
+ environment:
     # custom environment variables, see http://www.appveyor.com/docs/installed-software
     CTEST_OUTPUT_ON_FAILURE: 1
     #BOOST_ROOT: c:\Libraries\boost
