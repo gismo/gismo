@@ -82,12 +82,12 @@ for:
    only:
      - stable
 
-  environment:
-    CTEST_OUTPUT_ON_FAILURE: 1
-    matrix:
-    - BUILD: msvc2015
-      configuration: Release
-      generator: "Visual Studio 14 2015"
+ environment:
+   CTEST_OUTPUT_ON_FAILURE: 1
+   matrix:
+   - BUILD: msvc2015
+     configuration: Release
+     generator: "Visual Studio 14 2015"
 
 
 
