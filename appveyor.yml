@@ -10,63 +10,6 @@ os:
 #  - Visual Studio 2014 CTP4
   - Visual Studio 2015
 
-environment:
-  # custom environment variables, see http://www.appveyor.com/docs/installed-software
-  CTEST_OUTPUT_ON_FAILURE: 1
-  #BOOST_ROOT: c:\Libraries\boost
-  #BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
-  matrix:
-  - BUILD: msvc2015
-    configuration: Release
-    generator: "Visual Studio 14 2015"
-
-  - BUILD: msvc2015
-    configuration: Release
-    generator: "Visual Studio 14 2015 Win64"
-
-  - BUILD: msvc2015
-    configuration: Debug
-    generator: "Visual Studio 14 2015 Win64"
-
-  - BUILD: mingw
-    envpath: C:\mingw64\bin
-    configuration: Release 
-    generator: "MinGW Makefiles"
-    #MSYS Makefiles
-
-  - BUILD: msvc2013
-    configuration: Release
-    generator: "Visual Studio 12"
-
-  - BUILD: msvc2012
-    configuration: Release
-    generator: "Visual Studio 11"
-
-  - BUILD: msvc2010
-    configuration: Release
-    generator: "Visual Studio 10"
-
-#  - BUILD: msvc2008
-#  Note:  error C2039: 'data' : is not a member of 'std::vector<_Ty>' 
-#  ( &std::vector<_Ty>::front() would work)
-#    configuration: Release
-#    generator: "Visual Studio 9 2008"
-
-#configuration:
-#  - Debug
-#  - RelWithDebInfo
-#  - Release
-
-# build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
-#platform: 
-#  - Win32
-#  - x64
-
-#artifacts:
-#  - path: tt
-#    name: ipopt
-#    type: dll
-
 #clone_depth: 5 # clone entire repository history if not defined
 shallow_clone: true
 
@@ -129,3 +72,84 @@ build_script:
 #include_nuget_references: true
 #test_script:
 #- cmd: ctest -j2 -D ExperimentalMemCheck
+
+
+##############################################################
+for: 
+
+# Full tests
+branches:
+  only:
+    - coverity_scan
+
+environment:
+  # custom environment variables, see http://www.appveyor.com/docs/installed-software
+  CTEST_OUTPUT_ON_FAILURE: 1
+  #BOOST_ROOT: c:\Libraries\boost
+  #BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
+  matrix:
+  - BUILD: msvc2015
+    configuration: Release
+    generator: "Visual Studio 14 2015"
+
+  - BUILD: msvc2015
+    configuration: Release
+    generator: "Visual Studio 14 2015 Win64"
+
+  - BUILD: msvc2015
+    configuration: Debug
+    generator: "Visual Studio 14 2015 Win64"
+
+  - BUILD: mingw
+    envpath: C:\mingw64\bin
+    configuration: Release 
+    generator: "MinGW Makefiles"
+    #MSYS Makefiles
+
+  - BUILD: msvc2013
+    configuration: Release
+    generator: "Visual Studio 12"
+
+  - BUILD: msvc2012
+    configuration: Release
+    generator: "Visual Studio 11"
+
+  - BUILD: msvc2010
+    configuration: Release
+    generator: "Visual Studio 10"
+
+#  - BUILD: msvc2008
+#  Note:  error C2039: 'data' : is not a member of 'std::vector<_Ty>' 
+#  ( &std::vector<_Ty>::front() would work)
+#    configuration: Release
+#    generator: "Visual Studio 9 2008"
+
+#configuration:
+#  - Debug
+#  - RelWithDebInfo
+#  - Release
+
+# build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
+#platform: 
+#  - Win32
+#  - x64
+
+#artifacts:
+#  - path: tt
+#    name: ipopt
+#    type: dll
+
+
+# Stable branch
+
+# Stable branch
+branches:
+  only:
+    - stable
+
+environment:
+  CTEST_OUTPUT_ON_FAILURE: 1
+  matrix:
+  - BUILD: msvc2015
+    configuration: Release
+    generator: "Visual Studio 14 2015"

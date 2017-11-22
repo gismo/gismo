@@ -23,6 +23,8 @@ endif()
 
 project(doc-snippets)
 
+include(gsConfig)
+
 include(CTest)
 enable_testing()
 
