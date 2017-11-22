@@ -36,10 +36,8 @@ add_executable(unittests gismo_unittest.h ${unittests_SRCS} main.cpp)
 target_link_libraries(unittests ${GSUNITTEST_LIBRARY} gismo)
 set_property(TARGET unittests PROPERTY LABELS unittests)
 
+#CTEST_BUILD_TARGET=ALL
 add_dependencies(${PROJECT_NAME} gsUnitTest)
-add_dependencies(ExperimentalBuild ${PROJECT_NAME})
-add_dependencies(NightlyBuild      ${PROJECT_NAME})
-add_dependencies(ContinuousBuild   ${PROJECT_NAME})
 add_dependencies(unittests doc-snippets) # doc-snippets are tests as well
 
 foreach(file ${unittests_SRCS})
