@@ -41,8 +41,10 @@ target_link_libraries(${PROJECT_NAME} gsUnitTest_lib gismo)
 set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 
 #CTEST_BUILD_TARGET=ALL
-add_dependencies(${PROJECT_NAME} gsUnitTest_lib)
-add_dependencies(${PROJECT_NAME} doc-snippets) # doc-snippets are tests as well
+add_dependencies(${PROJECT_NAME}  gsUnitTest) # gsUnitTest_lib
+if (NOT NOSNIPPETS)
+  add_dependencies(${PROJECT_NAME} doc-snippets) # doc-snippets are tests as well
+endif()
 
 foreach(file ${unittests_SRCS})
     get_filename_component(testname ${file} NAME_WE) # name without extension
@@ -51,7 +53,3 @@ foreach(file ${unittests_SRCS})
 endforeach(file ${FILES})
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
-
-if (NOT NOSNIPPETS)
-  add_dependencies(unittests doc-snippets)
-endif()
