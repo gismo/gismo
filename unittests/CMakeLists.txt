@@ -18,12 +18,13 @@ ExternalProject_Add(gsUnitTest
           #DOWNLOAD_NO_PROGRESS 0
           CMAKE_ARGS   -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+          #BUILD_BYPRODUCTS <INSTALL_DIR>/lib/${CMAKE_STATIC_LIBRARY_PREFIX}UnitTestPP${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
-set(GSUNITTEST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest CACHE INTERNAL "")
-#set(GSUNITTEST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest-prefix/include CACHE INTERNAL "") # todo
-set(GSUNITTEST_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest-prefix/lib/${CMAKE_STATIC_LIBRARY_PREFIX}UnitTestPP${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
-
-include_directories(${GSUNITTEST_INCLUDE_DIR})
+ExternalProject_Get_Property(gsUnitTest INSTALL_DIR)
+add_library(gsUnitTest_lib STATIC IMPORTED GLOBAL)
+set_property(TARGET gsUnitTest_lib PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}UnitTestPP${CMAKE_STATIC_LIBRARY_SUFFIX})
+#include_directories(${INSTALL_DIR}/include/UnitTest++) to do
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest)
 
 include(CTest)
 enable_testing()
@@ -35,12 +36,13 @@ get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} PATH)
 
 
 add_executable(${PROJECT_NAME} gismo_unittest.h ${unittests_SRCS} main.cpp)
-target_link_libraries(${PROJECT_NAME} ${GSUNITTEST_LIBRARY} gismo)
+#target_link_libraries(${PROJECT_NAME} ${GSUNITTEST_LIBRARY} gismo)
+target_link_libraries(${PROJECT_NAME} gsUnitTest_lib gismo)
 set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 
 #CTEST_BUILD_TARGET=ALL
-add_dependencies(${PROJECT_NAME} gsUnitTest)
-add_dependencies(unittests doc-snippets) # doc-snippets are tests as well
+add_dependencies(${PROJECT_NAME} gsUnitTest_lib)
+add_dependencies(${PROJECT_NAME} doc-snippets) # doc-snippets are tests as well
 
 foreach(file ${unittests_SRCS})
     get_filename_component(testname ${file} NAME_WE) # name without extension
