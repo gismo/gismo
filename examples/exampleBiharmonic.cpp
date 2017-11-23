@@ -1,4 +1,4 @@
-/** @file biharmonic.cpp
+/** @file exampleBiharmonic.cpp
 
     @brief A Biharmonic example.
 

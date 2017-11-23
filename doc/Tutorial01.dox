@@ -474,7 +474,7 @@ starting examples for using matrices.
 
 The sparse matrix class is gsSparseMatrix and is derived from
 Eigen::SparseMatrix class. Several sparse linear solvers are
-available, demonstrated in \ref gsSparseSolvers.  The main information
+available, demonstrated in \ref exampleSparseSolvers. The main information
 about the matrix manipulations can be found in the Eigen documentation
 pages. We link to the most important chapters:
 

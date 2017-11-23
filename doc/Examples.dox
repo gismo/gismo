@@ -6,13 +6,13 @@ namespace gismo {
 
 In the gismo/examples sub-directory we find:
 
-- \subpage biharmonic
+- \subpage exampleBiharmonic
 
-- \subpage fitting_example
+- \subpage exampleFitting
 
-- \subpage gsInterpolateMap
+- \subpage exampleInterpolateMap
 
-- \subpage gsSparseSolvers
+- \subpage exampleSparseSolvers
 
 - \subpage gsTrilinos_test
 
