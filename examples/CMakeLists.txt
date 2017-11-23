@@ -17,7 +17,7 @@ project(examples)
 # Add a grouping target that builds all tests this is equivalent to
 # running "make" inside the tests build folder
 add_custom_target(${PROJECT_NAME})
-set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}-gismo")
+set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 
 #find_package(gismo REQUIRED)
 #include_directories( ${GISMO_INCLUDE_DIRS})
@@ -33,7 +33,7 @@ foreach(file ${FILES})
     add_gismo_executable(${file})
     get_filename_component(tarname ${file} NAME_WE) # name without extension
     set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
-	set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}-gismo")
+	set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
     add_dependencies(${PROJECT_NAME} ${tarname})
 
     # install the example executables
