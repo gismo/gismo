@@ -14,19 +14,19 @@ In the gismo/examples sub-directory we find:
 
 - \subpage exampleSparseSolvers
 
-- \subpage gsTrilinos_test
+- \subpage exampleTrilinos
 
-- \subpage gsView
+- \subpage exampleView
 
-- \subpage linearSolvers
+- \subpage exampleLinearSolvers
 
-- \subpage poisson
+- \subpage examplePoisson2
 
-- \subpage poisson2d_example_adaptRef
+- \subpage examplePoissonThb
 
-- \subpage thbRefinement
+- \subpage exampleThbRefinement
 
-- \subpage triMeshToSolid
+- \subpage exampleTriMeshToSolid
 
 - \subpage tutorialAdaptiveCDR
 

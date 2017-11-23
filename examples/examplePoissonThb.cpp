@@ -1,4 +1,4 @@
-/** @file poisson2d_example_adaptRef.cpp
+/** @file examplePoissonThb.cpp
 
     @brief Example for using the gsPoissonSolver with adaptive refinement with THB-splines.
 

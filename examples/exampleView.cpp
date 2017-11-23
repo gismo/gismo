@@ -1,4 +1,4 @@
-/** @file gsView.cpp
+/** @file exampleView.cpp
 
     @brief Produce Paraview file output from XML input, fo Visualizing  G+Smo objects
 
@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     cmd.getValues(argc,argv);
     //! [Parse Command line]
 
-    if (fn.empty() )
+    if ( fn.empty() )
     {
         gsInfo<< cmd.getMessage();
         gsInfo<<"\nType "<< argv[0]<< " -h, to get the list of command line options.\n";
@@ -52,11 +52,11 @@ int main(int argc, char *argv[])
     }
 
     if (get_basis)
-        choice= 3;
+        choice = 3;
     else if (get_mesh)
-        choice= 4;
+        choice = 4;
     else if (get_geo)
-        choice= 5;
+        choice = 5;
 
     gsFileData<>  filedata(fn);
 

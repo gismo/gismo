@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page poisson examplePoisson2.cpp
+
+
+<!-- more info on the file examples/examplePoisson2.cpp goes here -->
+
+
+\section examplePoisson2Annotated Annotated source file
+
+Here is the full file \c examples/examplePoisson2.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include examplePoisson2.cpp
+
+*/
+
+}

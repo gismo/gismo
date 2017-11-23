@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page exampleTrilinos exampleTrilinos.cpp
+
+
+<!-- more info on the file examples/exampleTrilinos.cpp goes here -->
+
+
+\section exampleTrilinosAnnotated Annotated source file
+
+Here is the full file \c examples/exampleTrilinos.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include exampleTrilinos.cpp
+
+*/
+
+}

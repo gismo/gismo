@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page exampleLinearSolvers exampleLinearSolvers.cpp
+
+
+<!-- more info on the file examples/exampleLinearSolvers.cpp goes here -->
+
+
+\section exampleLinearSolversAnnotated Annotated source file
+
+Here is the full file \c examples/exampleLinearSolvers.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include exampleLinearSolvers.cpp
+
+*/
+
+}

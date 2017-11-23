@@ -1,4 +1,4 @@
-/** @file poisson.cpp
+/** @file examplePoisson2.cpp
 
     @brief Poisson example with command line arguments.
 

@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page exampleView exampleView.cpp
+
+
+<!-- more info on the file examples/exampleView.cpp goes here -->
+
+
+\section exampleViewAnnotated Annotated source file
+
+Here is the full file \c examples/exampleView.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include exampleView.cpp
+
+*/
+
+}

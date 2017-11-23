@@ -1,4 +1,4 @@
-/** @file thbRefinement.cpp
+/** @file exampleThbRefinement.cpp
 
     @brief Demonstates THB refinement and provides info on the resulting basis
 

@@ -1,6 +1,6 @@
-/** @file gsTrilinos_test.cpp
+/** @file exampleTrilinos.cpp
 
-    @brief Test Trilinos integration
+    @brief Trilinos integration
 
     This file is part of the G+Smo library.
 

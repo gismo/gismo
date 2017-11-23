@@ -160,21 +160,21 @@ The build folder has the following subfolders and files:
   build folder to trigger the compilation.
 
   On a command line, you can compile (and execute) specific examples,
-  for instance to execute the executable coming from examples/gsView.cpp
+  for instance to execute the executable coming from examples/exampleView.cpp
   it suffices to issue inside the build folder: 
   ~~~~~
-  $ make gsView
-  [100%] Building CXX object stable/examples/CMakeFiles/gsView.dir/gsView.cpp.o
-  [100%] Linking CXX executable ../../bin/gsView
-  [100%] Built target gsView
-  $ ./bin/gsView
+  $ make exampleView
+  [100%] Building CXX object stable/examples/CMakeFiles/exampleView.dir/exampleView.cpp.o
+  [100%] Linking CXX executable ../../bin/exampleView
+  [100%] Built target exampleView
+  $ ./bin/exampleView
   Hi, give me a file (eg: .xml) and I will try to draw it!
-  Type ./bin/gsView -h, to get the list of command line options.
+  Type ./bin/exampleView -h, to get the list of command line options.
   $
   ~~~~~
   Note that on Linux you need to provide correctly the path (starting
   with dot-slash-bin), in order to execute a file. Similarly on Windows
-  you should execute (eg. from a command line) the file \a gsView.exe
+  you should execute (eg. from a command line) the file \a exampleView.exe
   
 
 - \b doc
@@ -328,10 +328,10 @@ program easily accessible by others. In \gismo there is an easy way to
 add command-line arguments, which come automatically with a small help
 message and error checking, see \ref tutorialCommandLineArg.
 
-In the file \ref gsView for instance, we find the following code
+In the file \ref exampleView for instance, we find the following code
 for parsing the command line:
 
-\snippet gsView.cpp Parse Command line
+\snippet exampleView.cpp Parse Command line
 
 The last argument of each "add" command is, as expected, a boolean
 (for the addSwitch), or an integer (for the addInt). The
@@ -344,7 +344,7 @@ variable does not change.
 
 After compiling the program we can issue:
 ~~~~~
-$ ./bin/gsView -h 
+$ ./bin/exampleView -h 
 ~~~~~
 and we obtain a list of the arguments together with the short
 explanation that we provided in the definition of the argument. Note

@@ -11,7 +11,7 @@
     Author(s): J. Speh
 */
 
-// For detailed options about visualization look at gsView.cpp example.
+// For detailed options about visualization look at exampleView.cpp example.
 
 
 
