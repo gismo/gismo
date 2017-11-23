@@ -4,7 +4,7 @@
 using namespace gismo;
 
 
-int main(int argc, char *argv[])
+int main(int, char**)
 {
 
     gsKnotVector<>   kv (-1, 0, 3,3, 1 );
