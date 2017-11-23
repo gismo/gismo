@@ -1,4 +1,4 @@
-/** @file tutorialAdaptiveCDR.cpp
+/** @file exampleAdaptiveCDR.cpp
 
     @brief Tutorial on how to use G+Smo to solve a convection-diffusion-reaction problem.
 

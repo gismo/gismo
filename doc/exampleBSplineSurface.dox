@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page exampleBSplineSurface exampleBSplineSurface.cpp
+
+
+<!-- more info on the file examples/exampleBSplineSurface.cpp go here -->
+
+
+\section exampleBSplineSurfaceAnnotated Annotated source file
+
+Here is the full file \c examples/exampleBSplineSurface.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include exampleBSplineSurface.cpp
+
+*/
+
+}

@@ -1,4 +1,4 @@
-/** @file tutorialPoisson.cpp
+/** @file examplePoisson.cpp
 
     @brief Tutorial on how to use G+Smo to solve the Poisson equation,
     see the \ref PoissonTutorial

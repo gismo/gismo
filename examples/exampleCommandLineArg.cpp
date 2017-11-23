@@ -1,4 +1,4 @@
-/** @file tutorialCommandLineArg.cpp
+/** @file exampleCommandLineArg.cpp
 
     @brief Tutorial on how to use command line parser in G+Smo.
 

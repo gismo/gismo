@@ -5,7 +5,7 @@ namespace gismo {
 
 This module implements hierarchical and truncated hierarchical tensor-product B-splines.
 
-See also \ref tutorialTHBSplineBasis and \ref tutorialAdaptRefinementTHB.
+See also \ref exampleTHBSplineBasis and \ref exampleAdaptRefinementTHB.
 
 
 \section THB-splines Tutorial

@@ -2,13 +2,13 @@ namespace gismo {
 
 /**
 
-\page tutorialTHBSplineBasis tutorialTHBSplineBasis.cpp
+\page exampleTHBSplineBasis exampleTHBSplineBasis.cpp
 
 This tutorial provides a basic motivation for <b>truncated hierarchical B-splines (THB-splines)</b> and a brief introduction to some basic features of gsTHBSplineBasis.<br>
-See also \ref tutorialBasis and \ref tutorialBSplineBasis.
+See also \ref exampleBasis and \ref exampleBSplineBasis.
 
 More details on the hierarchical splines can be found in
-\ref tutorialAdaptRefinementTHB as well as in the \ref HSplines
+\ref exampleAdaptRefinementTHB as well as in the \ref HSplines
 description.
 
 \section sIntro Introduction
@@ -106,7 +106,7 @@ Remark: gsTHBSplineBasis and gsHBSplineBasis are derived from gsHTensorBasis
 
 Constructor using a gsTensorBSplineBasis as argument.
 
-\snippet tutorialTHBSplineBasis.cpp constBasis
+\snippet exampleTHBSplineBasis.cpp constBasis
 
 \subsection ssConstXml From xml
 
@@ -141,7 +141,7 @@ See gsHTensorBasis::refineElements(). The argument is a std::vector<unsigned> co
 
 The green are marked in the 2D-example above has lower corner (2,0) and upper corner (8,4) in unique knot indices at level 1. We can refine this area as follows:
 
-\snippet tutorialTHBSplineBasis.cpp refViaStdVec
+\snippet exampleTHBSplineBasis.cpp refViaStdVec
 
 This method is the recommended one, since the corners of the refinement areas are specified by unsigned integers, which is numerically stable. Also, since the level is specified explicitly, double calls by mistake will not result in double refinement.
 
@@ -191,7 +191,7 @@ This refinement function uses numerical values, which could cause problems, espe
 
 Just like with the other bases. For example, displaying information via std::cout,<br>
 
-\snippet tutorialTHBSplineBasis.cpp stdOpsCout
+\snippet exampleTHBSplineBasis.cpp stdOpsCout
 
 will return the following:
 
@@ -211,7 +211,7 @@ gsHTensorBasis::deriv_into(), and also <br>
 gsHTensorBasis::uniformRefine() work as usual.
 
 Example:
-\snippet tutorialTHBSplineBasis.cpp stdOpsStd
+\snippet exampleTHBSplineBasis.cpp stdOpsStd
 
 \image html figs/tutTHB_2d_Tm1_evalPts.png "evaluation points"<br>
 
@@ -267,7 +267,7 @@ The index that a certain function has within the tensor-product B-spline basis o
 
 To get the flat index and the level of a certain basis function, use gsHTensorBasis::flatTensorIndexOf() and gsHTensorBasis::levelOf().
 
-\snippet tutorialTHBSplineBasis.cpp indexTransfForw
+\snippet exampleTHBSplineBasis.cpp indexTransfForw
 
 will, in our example, print
 
@@ -288,7 +288,7 @@ global/hier.index  ->  flat tensor index (on level)
 To compute the global/hierarchical index from a given flat index and a given level, use 
 gsHTensorBasis::flatTensorIndexToHierachicalIndex().
 
-\snippet tutorialTHBSplineBasis.cpp indexTransfBack
+\snippet exampleTHBSplineBasis.cpp indexTransfBack
 
 will, in our example, print
 
@@ -310,7 +310,7 @@ flat tensor index (on level)  ->  global/hier.index
 
 gsHTensorBasis::getLevelUniqueSpanAtPoints() will tell you the levels of certain points, as well as the knot span containing these points:
 
-\snippet tutorialTHBSplineBasis.cpp stdOpsHTens
+\snippet exampleTHBSplineBasis.cpp stdOpsHTens
 
 In our example, this will return
 
@@ -327,7 +327,7 @@ These indices are given on the respective level.
 
 The gsHTensorBasis are based on a gsHDomain. The tree-structure (see references at the bottom) can be accessed by the member function gsHTensorBasis::tree(). For example, this is how to take a look at the underlying tree-structure:
 
-\snippet tutorialTHBSplineBasis.cpp stdOpsHTensTree
+\snippet exampleTHBSplineBasis.cpp stdOpsHTensTree
 
 In our example, this will return
 
@@ -366,7 +366,7 @@ The hierarchical mesh and the corresponding THB-Spline basis:
 
 Applying this refinement to the basis and printing the basis...
 
-\snippet tutorialTHBSplineBasis.cpp refViaStdVec2
+\snippet exampleTHBSplineBasis.cpp refViaStdVec2
 
 ...will return
 
@@ -424,12 +424,12 @@ Mathematical Methods for Curves and Surfaces. Ed. by M. Floater et al. Vol. 8177
 <a href="http://link.springer.com/chapter/10.1007/978-3-642-54382-1_18">[Link]</a>
 <a href="http://www.ag.jku.at/pubs/2013kgj.pdf">[Technical&nbsp;Report]</a>
 
-\section tutorialTHBSplineBasisAnnotated Annotated source file
+\section exampleTHBSplineBasisAnnotated Annotated source file
 
-Here is the full file \c examples/tutorialTHBSplineBasis.cpp. Clicking on a function
+Here is the full file \c examples/exampleTHBSplineBasis.cpp. Clicking on a function
 or class name will lead you to its reference documentation.
 
-\include tutorialTHBSplineBasis.cpp
+\include exampleTHBSplineBasis.cpp
 
 */
 

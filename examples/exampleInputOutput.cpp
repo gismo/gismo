@@ -1,4 +1,4 @@
-/** @file tutorialInputOutput.cpp
+/** @file exampleInputOutput.cpp
 
     @brief Tutorial on how to use input output facilities of G+Smo library.
 

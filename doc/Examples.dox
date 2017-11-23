@@ -6,59 +6,60 @@ namespace gismo {
 
 In the gismo/examples sub-directory we find:
 
+- \subpage exampleAdaptiveCDR
+
+- \subpage exampleAdaptRefinementTHB
+
+- \subpage exampleAssembly
+
+- \subpage exampleBasis
+
 - \subpage exampleBiharmonic
+
+- \subpage exampleBSplineBasis
+
+- \subpage exampleBSplineCurve
+
+- \subpage exampleBSplineSurface
+
+- \subpage exampleCommandLineArg
 
 - \subpage exampleFitting
 
+- \subpage exampleGeometry
+
+- \subpage exampleHeatEquation
+
+- \subpage exampleInputOutput
+
 - \subpage exampleInterpolateMap
 
-- \subpage exampleSparseSolvers
+- \subpage exampleKnotVector
 
-- \subpage exampleTrilinos
-
-- \subpage exampleView
+- \subpage exampleLinearAlgebra
 
 - \subpage exampleLinearSolvers
+
+- \subpage exampleMpi
+
+- \subpage examplePoisson
 
 - \subpage examplePoisson2
 
 - \subpage examplePoissonThb
 
+- \subpage exampleSparseSolvers
+
 - \subpage exampleThbRefinement
+
+- \subpage exampleTHBSplineBasis
+
+- \subpage exampleTrilinos
 
 - \subpage exampleTriMeshToSolid
 
-- \subpage tutorialAdaptiveCDR
+- \subpage exampleView
 
-- \subpage tutorialAdaptRefinementTHB
-
-- \subpage tutorialAssembly
-
-- \subpage tutorialBasis
-
-- \subpage tutorialBSplineBasis
-
-- \subpage tutorialBSplineCurve
-
-- \subpage tutorialBSplineSurface
-
-- \subpage tutorialCommandLineArg
-
-- \subpage tutorialGeometry
-
-- \subpage tutorialHeatEquation
-
-- \subpage tutorialInputOutput
-
-- \subpage tutorialKnotVector
-
-- \subpage tutorialLinearAlgebra
-
-- \subpage tutorialMpi
-
-- \subpage tutorialPoisson
-
-- \subpage tutorialTHBSplineBasis
 
 */
 }

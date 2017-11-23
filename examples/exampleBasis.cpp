@@ -1,6 +1,6 @@
-/** @file tutorialBasis.cpp
+/** @file exampleBasis.cpp
 
-    @brief Tutorial on gsBasis abstract class.
+    @brief Tutorial on gsBasis class.
 
     This file is part of the G+Smo library.
 
@@ -34,10 +34,7 @@ int main(int argc, char* argv[])
     std::string input(GISMO_DATA_DIR "bspbasis/tpBSpline2_02.xml");
     std::string output("");
 
-    // for information about command line arguments
-    // look at tutorialCommandLineArg.cpp
-
-    gsCmdLine cmd("Tutorial about gsBasis class.");
+    gsCmdLine cmd("Tutorial on gsBasis class.");
     cmd.addPlainString("input", "G+Smo input basis file.", input);
     cmd.addString("o", "output", "Name of the output file.", output);
 

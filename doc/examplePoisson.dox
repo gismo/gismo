@@ -2,7 +2,7 @@ namespace gismo {
 
 /**
 
-\page tutorialPoisson tutorialPoisson.cpp
+\page examplePoisson examplePoisson.cpp
 
 The Poisson equation: \f{eqnarray*}{
               	      -\Delta\mathbf{u} &=&\mathbf{f} \quad \text{in} \quad \Omega,\\
@@ -19,20 +19,20 @@ to get up a list of solver options. To specify the source term and analytic solu
 
 \n
 
-We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial we explain how to do this. As an example we will use the \c tutorialPoisson.cpp file in the example folder. We will go through essentials of the code in details (For more detail of the solver see the documentation for \ref gsPoissonAssembler, \ref gsAssemblerBase, and \ref gsVisitorPoisson.) 
+We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial we explain how to do this. As an example we will use the \c examplePoisson.cpp file in the example folder. We will go through essentials of the code in details (For more detail of the solver see the documentation for \ref gsPoissonAssembler, \ref gsAssemblerBase, and \ref gsVisitorPoisson.) 
 
 First we include the library and use the gismo namespace.
 
-\snippet tutorialPoisson.cpp Include namespace
+\snippet examplePoisson.cpp Include namespace
 
 We add a command-line argument which allows the user to create a
 Paraview visualization file.
 
-\snippet tutorialPoisson.cpp Parse command line
+\snippet examplePoisson.cpp Parse command line
 
 Our Poisson problem is defined by source (right-hand side) function and Dirichlet function data:
 
-\snippet tutorialPoisson.cpp Function data
+\snippet examplePoisson.cpp Function data
 
 \section TPGeometry Geometry
 
@@ -40,7 +40,7 @@ Inside the main function we declare the geometry. Note that we use
 this even if we only have a single patch geometry. The \ref
 gsNurbsCreator class creates several simple geometries:
 
-\snippet tutorialPoisson.cpp Geometry data
+\snippet examplePoisson.cpp Geometry data
 
 The chosen geometry represents the unit square consisting of 2 x 2
 squares, which all have side-length 0.5, i.e., the computational
@@ -63,7 +63,7 @@ geometries). The boundary conditions must be specified for each
 patch. In this example we have 4 patches forming a unit square, hence
 we need to specify 8 boundary conditions:
 
-\snippet tutorialPoisson.cpp Boundary conditions
+\snippet examplePoisson.cpp Boundary conditions
 
 Note that the first argument in the \c addCondition is the patch number. 
 
@@ -72,7 +72,7 @@ Note that the first argument in the \c addCondition is the patch number.
 We now need a discretization basis. We use the basis from the patches.
 We can h or/and p refine this basis (in any order).
 
-\snippet tutorialPoisson.cpp Refinement
+\snippet examplePoisson.cpp Refinement
 
 \section solver Setting up and using the Assembler
 
@@ -80,7 +80,7 @@ We can h or/and p refine this basis (in any order).
 
 We use \ref gsPoissonAssembler class to assemble and the Poisson equation. First we initialize the class object by giving the geometry (patches), discretization basis, boundary condition, source function, and the strategies for treating Dirichlet boundary conditions and patch interfaces:
 
-\snippet tutorialPoisson.cpp Assemble
+\snippet examplePoisson.cpp Assemble
 
 With \c dirichlet::elimination, we specify that the degrees of freedom (DOF) on the Dirichlet bondary should be eliminated already during the assembling process.
 
@@ -105,27 +105,27 @@ this example of the Poisson problem, where we have a symmetric and
 positive definite system matrix, we can, for example, use the
 CG-solver of the Eigen library, with a diagonal preconditioner.
 
-\snippet tutorialPoisson.cpp Solve
+\snippet examplePoisson.cpp Solve
 
 The \c solVector contains the computed coefficients \em without the
 Dirichlet DOFs (which were eliminated). In order to obtain the
 discrete solution as a \ref gsField, we call
 
-\snippet tutorialPoisson.cpp Construct solution
+\snippet examplePoisson.cpp Construct solution
 
 Finally we want to evaluate the (exact and approximate) solutions and
 write to a file:
 
-\snippet tutorialPoisson.cpp Plot in Paraview
+\snippet examplePoisson.cpp Plot in Paraview
 
 the solutions can now opened and viewed in paraview.
 
-\section tutorialPoissonAnnotated Annotated source file
+\section examplePoissonAnnotated Annotated source file
 
-Here is the full file \c examples/tutorialPoisson.cpp. Clicking on a function
+Here is the full file \c examples/examplePoisson.cpp. Clicking on a function
 or class name will lead you to its reference documentation.
 
-\include tutorialPoisson.cpp
+\include examplePoisson.cpp
 
 */
 

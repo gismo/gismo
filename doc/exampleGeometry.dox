@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page exampleGeometry exampleGeometry.cpp
+
+
+<!-- more info on the file examples/exampleGeometry.cpp go here -->
+
+
+\section exampleGeometryAnnotated Annotated source file
+
+Here is the full file \c examples/exampleGeometry.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include exampleGeometry.cpp
+
+*/
+
+}

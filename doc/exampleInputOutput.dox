@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page exampleInputOutput exampleInputOutput.cpp
+
+
+<!-- more info on the file examples/exampleInputOutput.cpp go here -->
+
+
+\section exampleInputOutputAnnotated Annotated source file
+
+Here is the full file \c examples/exampleInputOutput.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include exampleInputOutput.cpp
+
+*/
+
+}

@@ -1,4 +1,4 @@
-/** @file tutorialGeometry.cpp
+/** @file exampleGeometry.cpp
 
     @brief Tutorial on gsGeometry abstract class.
 
@@ -33,9 +33,6 @@ int main(int argc, char* argv[])
 
     std::string input(GISMO_DATA_DIR "surfaces/simple.xml");
     std::string output("");
-
-    // for information about command line arguments
-    // look at tutorialCommandLineArg.cpp
 
     gsCmdLine cmd("Tutorial on gsGeometry class.");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);

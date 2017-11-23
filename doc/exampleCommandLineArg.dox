@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page exampleCommandLineArg exampleCommandLineArg.cpp
+
+
+<!-- more info on the file examples/exampleCommandLineArg.cpp go here -->
+
+
+\section exampleCommandLineArgAnnotated Annotated source file
+
+Here is the full file \c examples/exampleCommandLineArg.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include exampleCommandLineArg.cpp
+
+*/
+
+}

@@ -1,4 +1,4 @@
-/** @file tutorialAssembly.cpp
+/** @file exampleAssembly.cpp
 
     @brief Tutorial on how to use the gsAssembler class
 

@@ -3,13 +3,13 @@
     @brief Testing MPI with G+Smo
 
     Execute (eg. with 10 processes):
-       mpirun -np 10 ./bin/tutorialMpi
+       mpirun -np 10 ./bin/exampleMpi
 
     or provide a hosts file on a cluster:
-       mpirun -hostfile hosts.txt ./bin/tutorialMpi
+       mpirun -hostfile hosts.txt ./bin/exampleMpi
 
     If your cluster is using srun:
-       srun -N 10 ./bin/tutorialMpi
+       srun -N 10 ./bin/exampleMpi
 
     This file is part of the G+Smo library.
 
@@ -29,11 +29,11 @@ int main(int argc, char **argv)
 {
     gsCmdLine cmd("An example for testing MPI with G+Smo.\n"
         "Execute (eg. with 10 processes):                                      "
-        "  *  mpirun -np 10 ./bin/tutorialMpi\n"
+        "  *  mpirun -np 10 ./bin/exampleMpi\n"
         "or provide a hosts file on a cluster:                                 "
-        "  *  mpirun -hostfile hosts.txt ./bin/tutorialMpi\n"
+        "  *  mpirun -hostfile hosts.txt ./bin/exampleMpi\n"
         "If your cluster is using srun:                                        "
-        "  *  srun -N 10 ./bin/tutorialMpi"
+        "  *  srun -N 10 ./bin/exampleMpi"
     );
     cmd.getValues(argc,argv);
 

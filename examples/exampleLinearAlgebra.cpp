@@ -1,4 +1,4 @@
-/** @file tutorialLinearAlgebra.cpp
+/** @file exampleLinearAlgebra.cpp
 
     @brief Tutorial on matrix operations and linear algebra
 

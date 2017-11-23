@@ -1,4 +1,4 @@
-/** @file tutorialTHBSplineBasis.cpp
+/** @file exampleTHBSplineBasis.cpp
 
     @brief Tutorial on gsTHBSplineBasis class.
 
@@ -11,7 +11,7 @@
     Author(s): S. Kleiss
 */
 
-// Look also in tuturialBasis and tutorialBSplineBasis.
+// Look also in exampleBasis and exampleBSplineBasis.
 
 //! [Include namespace]
 #include <string>
