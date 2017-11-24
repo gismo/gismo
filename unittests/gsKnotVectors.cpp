@@ -1,4 +1,4 @@
-/** @file gsKnotVectors_test.cpp
+/** @file gsKnotVectors.cpp
 
     @brief test knot vectors
 
@@ -1285,3 +1285,5 @@ SUITE( gsKnotIterator )
         }
     }
 }
+
+

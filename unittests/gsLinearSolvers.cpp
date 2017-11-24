@@ -1,4 +1,4 @@
-/** @file gsLinearSolvers_test.cpp
+/** @file gsLinearSolvers.cpp
 
     @brief Tests for iterative solvers.
 
