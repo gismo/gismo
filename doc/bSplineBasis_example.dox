@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page bSplineBasis_example bSplineBasis_example.cpp
+
+
+<!-- more info on the file examples/bSplineBasis_example.cpp go here -->
+
+
+\section bSplineBasis_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/bSplineBasis_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include bSplineBasis_example.cpp
+
+*/
+
+}

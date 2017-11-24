@@ -16,7 +16,7 @@ The classes/naming convention regarding B-splines is as follows:
   (the weights if we regard them as NURBS are all equal to 1,
   therefore not stored). 
   The main ingredient for constructing a
-  B-spline basis is a knot vector, see \ref tutorialKnotVector
+  B-spline basis is a knot vector, see \ref knotVector_example
 
 - gsBSpline 
 
@@ -57,7 +57,7 @@ These B-spline related classes are implemented in the \ref Nurbs.
 
 Several basic operations are available: degree elevation, knot
 insertion, uniform refinement, interpolation, and so on, see 
-\ref tutorialBSplineBasis for a few of them.
+\ref bSplineBasis_example for a few of them.
 
 Since all parametric curves, surfaces or volumes are geometric
 objects, all these derive from gsGeometry, which in turn derives from
@@ -65,12 +65,12 @@ gsFunction.
 
 We can obtain the control net of a geometry by
 
-\snippet tutorialGeometry.cpp control net
+\snippet geometry_example.cpp control net
 
 Finally, we can export tesselations (meshes) as files for
 visualization in Paraview as follows:
 
-\snippet tutorialGeometry.cpp write to paraview
+\snippet geometry_example.cpp write to paraview
 
 
 \subsection crgeo02 Creating simple geometries

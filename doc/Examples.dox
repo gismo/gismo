@@ -6,59 +6,60 @@ namespace gismo {
 
 In the gismo/examples sub-directory we find:
 
-- \subpage biharmonic
+- \subpage adaptiveConvectionDiffusionReaction_example
+
+- \subpage adaptRefinementThb_example
+
+- \subpage assembly_example
+
+- \subpage basis_example
+
+- \subpage biharmonic_example
+
+- \subpage bSplineBasis_example
+
+- \subpage bSplineCurve_example
+
+- \subpage bSplineSurface_example
+
+- \subpage commandLineArg_example
 
 - \subpage fitting_example
 
+- \subpage geometry_example
+
+- \subpage heatEquation_example
+
+- \subpage inputOutput_example
+
 - \subpage gsInterpolateMap
 
-- \subpage gsSparseSolvers
+- \subpage knotVector_example
 
-- \subpage gsTrilinos_test
+- \subpage linearAlgebra_example
+
+- \subpage linearSolvers_example
+
+- \subpage mpi_example
+
+- \subpage poisson_example
+
+- \subpage poisson2_example
+
+- \subpage poisson_exampleThb
+
+- \subpage sparseSolvers_example
+
+- \subpage thbRefinement_example
+
+- \subpage thbSplineBasis_example
+
+- \subpage trilinos_example
+
+- \subpage triangulatedMeshToSolid_example
 
 - \subpage gsView
 
-- \subpage linearSolvers
-
-- \subpage poisson
-
-- \subpage poisson2d_example_adaptRef
-
-- \subpage thbRefinement
-
-- \subpage triMeshToSolid
-
-- \subpage tutorialAdaptiveCDR
-
-- \subpage tutorialAdaptRefinementTHB
-
-- \subpage tutorialAssembly
-
-- \subpage tutorialBasis
-
-- \subpage tutorialBSplineBasis
-
-- \subpage tutorialBSplineCurve
-
-- \subpage tutorialBSplineSurface
-
-- \subpage tutorialCommandLineArg
-
-- \subpage tutorialGeometry
-
-- \subpage tutorialHeatEquation
-
-- \subpage tutorialInputOutput
-
-- \subpage tutorialKnotVector
-
-- \subpage tutorialLinearAlgebra
-
-- \subpage tutorialMpi
-
-- \subpage tutorialPoisson
-
-- \subpage tutorialTHBSplineBasis
 
 */
 }
