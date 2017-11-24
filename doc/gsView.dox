@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page gsView gsView.cpp
+
+
+<!-- more info on the file examples/gsView.cpp goes here -->
+
+
+\section gsViewAnnotated Annotated source file
+
+Here is the full file \c examples/gsView.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include gsView.cpp
+
+*/
+
+}

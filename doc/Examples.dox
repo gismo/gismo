@@ -6,59 +6,59 @@ namespace gismo {
 
 In the gismo/examples sub-directory we find:
 
-- \subpage exampleAdaptiveCDR
+- \subpage adaptiveConvectionDiffusionReaction_example
 
-- \subpage exampleAdaptRefinementTHB
+- \subpage adaptRefinementThb_example
 
-- \subpage exampleAssembly
+- \subpage assembly_example
 
-- \subpage exampleBasis
+- \subpage basis_example
 
-- \subpage exampleBiharmonic
+- \subpage biharmonic_example
 
-- \subpage exampleBSplineBasis
+- \subpage bSplineBasis_example
 
-- \subpage exampleBSplineCurve
+- \subpage bSplineCurve_example
 
-- \subpage exampleBSplineSurface
+- \subpage bSplineSurface_example
 
-- \subpage exampleCommandLineArg
+- \subpage commandLineArg_example
 
-- \subpage exampleFitting
+- \subpage fitting_example
 
-- \subpage exampleGeometry
+- \subpage geometry_example
 
-- \subpage exampleHeatEquation
+- \subpage heatEquation_example
 
-- \subpage exampleInputOutput
+- \subpage inputOutput_example
 
-- \subpage exampleInterpolateMap
+- \subpage gsInterpolateMap
 
-- \subpage exampleKnotVector
+- \subpage knotVector_example
 
-- \subpage exampleLinearAlgebra
+- \subpage linearAlgebra_example
 
-- \subpage exampleLinearSolvers
+- \subpage linearSolvers_example
 
-- \subpage exampleMpi
+- \subpage mpi_example
 
-- \subpage examplePoisson
+- \subpage poisson_example
 
-- \subpage examplePoisson2
+- \subpage poisson2_example
 
-- \subpage examplePoissonThb
+- \subpage poisson_exampleThb
 
-- \subpage exampleSparseSolvers
+- \subpage sparseSolvers_example
 
-- \subpage exampleThbRefinement
+- \subpage thbRefinement_example
 
-- \subpage exampleTHBSplineBasis
+- \subpage thbSplineBasis_example
 
-- \subpage exampleTrilinos
+- \subpage trilinos_example
 
-- \subpage exampleTriMeshToSolid
+- \subpage triangulatedMeshToSolid_example
 
-- \subpage exampleView
+- \subpage gsView
 
 
 */

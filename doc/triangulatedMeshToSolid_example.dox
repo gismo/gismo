@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page triangulatedMeshToSolid_example triangulatedMeshToSolid_example.cpp
+
+
+<!-- more info on the file examples/triangulatedMeshToSolid_example.cpp goes here -->
+
+
+\section triangulatedMeshToSolid_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/triangulatedMeshToSolid_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include triangulatedMeshToSolid_example.cpp
+
+*/
+
+}

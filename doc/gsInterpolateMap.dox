@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page gsInterpolateMap gsInterpolateMap.cpp
+
+
+<!-- more info on the file examples/gsInterpolateMap.cpp goes here -->
+
+
+\section gsInterpolateMapAnnotated Annotated source file
+
+Here is the full file \c examples/gsInterpolateMap.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include gsInterpolateMap.cpp
+
+*/
+
+}

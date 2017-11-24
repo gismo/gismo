@@ -1,0 +1,19 @@
+namespace gismo {
+/**
+
+\page sparseSolvers_example sparseSolvers_example.cpp
+
+
+<!-- more info on the file examples/sparseSolvers_example.cpp goes here -->
+
+
+\section sparseSolvers_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/sparseSolvers_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include sparseSolvers_example.cpp
+
+*/
+
+}
