@@ -47,7 +47,7 @@ public:
             
     }
 
-    GISMO_UPTR_FUNCTION(gsAbsError, clone)
+    GISMO_CLONE_FUNCTION(gsAbsError)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -101,7 +101,7 @@ public:
     : m_geo(geo), m_f(f)
     { }
 
-    GISMO_UPTR_FUNCTION(gsGradientField, clone)
+    GISMO_CLONE_FUNCTION(gsGradientField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -144,7 +144,7 @@ public:
         GISMO_ENSURE(m_dim == m_geo.geoDim(), "Not extended to surface case yet." );
     }
 
-    GISMO_UPTR_FUNCTION(gsJacDetField, clone)
+    GISMO_CLONE_FUNCTION(gsJacDetField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -187,7 +187,7 @@ public:
             
     }
 
-    GISMO_UPTR_FUNCTION(gsNormalField, clone)
+    GISMO_CLONE_FUNCTION(gsNormalField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -247,7 +247,7 @@ public:
             
     }
 
-    GISMO_UPTR_FUNCTION(gsParamField, clone)
+    GISMO_CLONE_FUNCTION(gsParamField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { result = u; }
@@ -286,7 +286,7 @@ public:
     : geo(geo_), m_supp(geo.support())
     { }
 
-    GISMO_UPTR_FUNCTION(gsBoundaryField, clone)
+    GISMO_CLONE_FUNCTION(gsBoundaryField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { 

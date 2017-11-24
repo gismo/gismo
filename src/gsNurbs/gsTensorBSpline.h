@@ -159,7 +159,7 @@ public:
         this->m_coefs = give(tcoefs);
     }
     
-    GISMO_UPTR_FUNCTION(gsTensorBSpline, clone)
+    GISMO_CLONE_FUNCTION(gsTensorBSpline)
 
     GISMO_BASIS_ACCESSORS
 

@@ -499,7 +499,7 @@ public:
   /// Returns the dimension of the parameter space
   int domainDim() const { return d; }
 
-    GISMO_UPTR_FUNCTION(gsTHBSplineBasis, clone, virtual)
+    GISMO_CLONE_FUNCTION(gsTHBSplineBasis)
 
   /// Prints the object as a string.
   std::ostream &print(std::ostream &os) const

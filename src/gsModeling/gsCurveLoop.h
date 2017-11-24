@@ -88,7 +88,7 @@ public:
           freeAll( m_curves );
       }
 
-      //GISMO_UPTR_FUNCTION(gsCurveLoop, clone)
+      //GISMO_CLONE_FUNCTION(gsCurveLoop)
       uPtr clone() const
       {
           return uPtr(new gsCurveLoop(*this));

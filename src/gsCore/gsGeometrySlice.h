@@ -65,7 +65,7 @@ public:
         return m_geo->targetDim();
     }
 
-    GISMO_UPTR_FUNCTION(gsGeometrySlice, clone)
+    GISMO_CLONE_FUNCTION(gsGeometrySlice)
 
     /// \brief Gives back the values of this slice at points \a u in \a result
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const

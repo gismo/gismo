@@ -56,7 +56,7 @@ public:
     : m_val( 1.0 ), m_domainDim(1)
     { }
 
-    GISMO_UPTR_FUNCTION(gsConstantBasis, clone)
+    GISMO_CLONE_FUNCTION(gsConstantBasis)
 
     static gsConstantBasis * New(std::vector<gsBasis<T>*> & bb )
     { 
