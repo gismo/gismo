@@ -30,14 +30,14 @@ class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver<T>
 {
 public:
     typedef gsIterativeSolver<T> Base;
-    
+
     typedef gsMatrix<T>  VectorType;
-    
+
     typedef typename Base::LinOpPtr LinOpPtr;
 
     typedef memory::shared_ptr<gsConjugateGradient> Ptr;
     typedef memory::unique_ptr<gsConjugateGradient> uPtr;
-    
+
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     ///
     /// @param mat     The operator to be solved for, see gsIterativeSolver for details
@@ -55,7 +55,7 @@ public:
                       " CG computes the eigenvalues of the Lanczos matrix", false );
         return opt;
     }
-    
+
     /// @brief Set the options based on a gsOptionList
     gsConjugateGradient& setOptions(const gsOptionList & opt)
     {

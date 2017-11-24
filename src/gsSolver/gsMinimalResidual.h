@@ -16,7 +16,7 @@
 
 namespace gismo
 {
-    
+
 /** @brief The minimal residual (MinRes) method.
   *
   * \ingroup Solver
@@ -27,14 +27,14 @@ class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver<T>
 
 public:
     typedef gsIterativeSolver<T> Base;
-    
+
     typedef gsMatrix<T>  VectorType;
 
     typedef typename Base::LinOpPtr LinOpPtr;
-    
+
     typedef memory::shared_ptr<gsMinimalResidual> Ptr;
     typedef memory::unique_ptr<gsMinimalResidual> uPtr;
-        
+
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     ///
     /// @param mat     The operator to be solved for, see gsIterativeSolver for details
@@ -43,10 +43,10 @@ public:
     explicit gsMinimalResidual( const OperatorType& mat,
                                 const LinOpPtr& precond = LinOpPtr())
         : Base(mat, precond), m_inexact_residual(false) { }
-    
+
     bool initIteration( const VectorType& rhs, VectorType& x );
     void finalizeIteration( VectorType& x );
-    
+
     bool step( VectorType& x );
 
     /// @brief Returns a list of default options

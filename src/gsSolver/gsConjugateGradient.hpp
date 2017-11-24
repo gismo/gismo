@@ -117,5 +117,3 @@ void gsConjugateGradient<T>::getEigenvalues( gsConjugateGradient::VectorType& ei
 
 
 } // end namespace gismo
-
-

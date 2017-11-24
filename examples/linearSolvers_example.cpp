@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
     gsIterativeSolverInfo(MinResIR, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
 
     //Initialize the GMResSolver solver
-    gsGMRes GMResSolver(mat,preConMat);
+    gsGMRes<> GMResSolver(mat,preConMat);
     GMResSolver.setOptions(opt);
 
     //Set the initial guess to zero

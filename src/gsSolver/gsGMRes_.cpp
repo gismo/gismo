@@ -1,6 +1,6 @@
-/** @file gsConjugateGradient_.cpp
+/** @file gsGMRes_.cpp
 
-    @brief Conjugate gradient solver.
+    @brief Preconditioned iterative solver using the generalized minimal residual method.
 
     This file is part of the G+Smo library.
 
@@ -8,14 +8,14 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): C. Hofreither, S. Takacs
+    Author(s): J. Sogn, S. Takacs
 */
 
-#include <gsSolver/gsConjugateGradient.hpp>
+#include <gsSolver/gsGMRes.hpp>
 
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsConjugateGradient<real_t>;
+CLASS_TEMPLATE_INST gsGMRes<real_t>;
 
 } // namespace gismo

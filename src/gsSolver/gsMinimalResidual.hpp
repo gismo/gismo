@@ -20,7 +20,7 @@ bool gsMinimalResidual<T>::initIteration( const gsMinimalResidual::VectorType& r
 {
     if (Base::initIteration(rhs,x))
         return true;
-    
+
     int n = m_mat->cols();
     int m = 1; // = rhs.cols();
 
@@ -76,7 +76,7 @@ bool gsMinimalResidual<T>::step( gsMinimalResidual::VectorType& x )
         m_error = negResidual.norm() / m_rhs_norm;
 
     eta = -sNew*eta;
-    
+
     // Test for convergence
     if (m_error < m_tol)
         return true;
@@ -108,4 +108,3 @@ void gsMinimalResidual<T>::finalizeIteration( gsMinimalResidual::VectorType& x )
 
 
 }
-
