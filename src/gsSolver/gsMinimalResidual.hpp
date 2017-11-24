@@ -16,7 +16,7 @@ namespace gismo
 {
 
 template<class T>
-bool gsMinimalResidual<T>::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x )
+bool gsMinimalResidual<T>::initIteration( const typename gsMinimalResidual<T>::VectorType& rhs, typename gsMinimalResidual<T>::VectorType& x )
 {
     if (Base::initIteration(rhs,x))
         return true;
@@ -48,7 +48,7 @@ bool gsMinimalResidual<T>::initIteration( const gsMinimalResidual::VectorType& r
 }
 
 template<class T>
-bool gsMinimalResidual<T>::step( gsMinimalResidual::VectorType& x )
+bool gsMinimalResidual<T>::step( typename gsMinimalResidual<T>::VectorType& x )
 {
     z /= gamma;
     m_mat->apply(z,Az);
@@ -94,7 +94,7 @@ bool gsMinimalResidual<T>::step( gsMinimalResidual::VectorType& x )
 }
 
 template<class T>
-void gsMinimalResidual<T>::finalizeIteration( gsMinimalResidual::VectorType& x )
+void gsMinimalResidual<T>::finalizeIteration( typename gsMinimalResidual<T>::VectorType& x )
 {
     GISMO_UNUSED(x);
     // cleanup temporaries

@@ -17,7 +17,8 @@ namespace gismo
 {
 
 template<class T>
-bool gsConjugateGradient<T>::initIteration( const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x )
+bool gsConjugateGradient<T>::initIteration( const typename gsConjugateGradient<T>::VectorType& rhs, 
+                                            typename gsConjugateGradient<T>::VectorType& x )
 {
     if (m_calcEigenvals)
     {
@@ -51,7 +52,7 @@ bool gsConjugateGradient<T>::initIteration( const gsConjugateGradient::VectorTyp
 }
 
 template<class T>
-bool gsConjugateGradient<T>::step( gsConjugateGradient::VectorType& x )
+bool gsConjugateGradient<T>::step( typename gsConjugateGradient<T>::VectorType& x )
 {
     m_mat->apply(m_update,m_tmp);                                      // apply system matrix
 
@@ -97,7 +98,7 @@ T gsConjugateGradient<T>::getConditionNumber()
 }
 
 template<class T>
-void gsConjugateGradient<T>::getEigenvalues( gsConjugateGradient::VectorType& eigs )
+void gsConjugateGradient<T>::getEigenvalues( typename gsConjugateGradient<T>::VectorType& eigs )
 {
     if ( m_delta.empty() )
     {

@@ -18,7 +18,8 @@ namespace gismo
 {
 
 template<class T>
-bool gsGMRes<T>::initIteration( const VectorType& rhs, VectorType& x )
+bool gsGMRes<T>::initIteration( const typename gsGMRes<T>::VectorType& rhs, 
+                                typename gsGMRes<T>::VectorType& x )
 {
     if (Base::initIteration(rhs,x))
         return true;
@@ -42,7 +43,7 @@ bool gsGMRes<T>::initIteration( const VectorType& rhs, VectorType& x )
 }
 
 template<class T>
-void gsGMRes<T>::finalizeIteration( VectorType& x )
+void gsGMRes<T>::finalizeIteration( typename gsGMRes<T>::VectorType& x )
 {
     //Remove last row of H and g
     H.resize(m_num_iter,m_num_iter);
@@ -80,7 +81,7 @@ void gsGMRes<T>::finalizeIteration( VectorType& x )
 }
 
 template<class T>
-bool gsGMRes<T>::step( VectorType& x )
+bool gsGMRes<T>::step( typename gsGMRes<T>::VectorType& x )
 {
     GISMO_UNUSED(x); // The iterate x is never updated! Use finalizeIteration to obtain x.
     const index_t k = m_num_iter-1;
