@@ -65,7 +65,7 @@ SUITE(gsLinearSolvers)
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
-        gsConjugateGradient solver(mat);
+        gsConjugateGradient<> solver(mat);
         solver.setOptions(opt);
 
         x.setZero(N,1);
@@ -89,7 +89,7 @@ SUITE(gsLinearSolvers)
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
-        gsMinimalResidual solver(mat);
+        gsMinimalResidual<> solver(mat);
         solver.setOptions(opt);
 
         x.setZero(N,1);
@@ -113,7 +113,7 @@ SUITE(gsLinearSolvers)
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
-        gsMinimalResidual solver(mat);
+        gsMinimalResidual<> solver(mat);
         solver.setOptions(opt);
         solver.setInexactResidual(true);
 
@@ -138,7 +138,7 @@ SUITE(gsLinearSolvers)
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
-        gsGMRes solver(mat);
+        gsGMRes<> solver(mat);
         solver.setOptions(opt);
 
         x.setZero(N,1);
@@ -163,7 +163,7 @@ SUITE(gsLinearSolvers)
         opt.setReal("Tolerance"    , tol);
 
         gsLinearOperator<>::Ptr preConMat = makeJacobiOp(mat);
-        gsConjugateGradient solver(mat,preConMat);
+        gsConjugateGradient<> solver(mat,preConMat);
         solver.setOptions(opt);
 
         x.setZero(N,1);
@@ -188,7 +188,7 @@ SUITE(gsLinearSolvers)
         opt.setReal("Tolerance"    , tol);
 
         gsLinearOperator<>::Ptr precon = makeSymmetricGaussSeidelOp(mat);
-        gsConjugateGradient solver(mat,precon);
+        gsConjugateGradient<> solver(mat,precon);
         solver.setOptions(opt);
 
         x.setZero(N,1);
@@ -213,7 +213,7 @@ SUITE(gsLinearSolvers)
         opt.setReal("Tolerance"    , tol);
 
         gsLinearOperator<>::Ptr precon = makeGaussSeidelOp(mat);
-        gsGMRes solver(mat,precon);
+        gsGMRes<> solver(mat,precon);
         solver.setOptions(opt);
 
         x.setZero(N,1);
@@ -238,7 +238,7 @@ SUITE(gsLinearSolvers)
         opt.setReal("Tolerance"    , tol);
 
         gsLinearOperator<>::Ptr precon = makeReverseGaussSeidelOp(mat);
-        gsGMRes solver(mat,precon);
+        gsGMRes<> solver(mat,precon);
         solver.setOptions(opt);
 
         x.setZero(N,1);
@@ -266,7 +266,7 @@ SUITE(gsLinearSolvers)
         precon->setNumOfSweeps(3);
         precon->setScaling((real_t)1/5);
 
-        gsMinimalResidual solver(mat,precon);
+        gsMinimalResidual<> solver(mat,precon);
         solver.setOptions(opt);
 
         x.setZero(N,1);
