@@ -32,10 +32,24 @@
 
 // Helper macros for counting arguments, works till highest number in __RSEQ_N
 // Call with __VA_NARG__(__VA_ARGS__)
-#define __VA_NARG__(...) __VA_NARG_(_0, ## __VA_ARGS__, __RSEQ_N())
-#define __VA_NARG_(...) __VA_ARG_N(__VA_ARGS__)
-#define __VA_ARG_N(_1, _2, _3, _4, N,...) N
-#define __RSEQ_N() 3, 2, 1, 0
+//#define __VA_NARG__(...) __VA_NARG_(_0, ## __VA_ARGS__, __RSEQ_N())
+//#define __VA_NARG_(...) __VA_ARG_N(__VA_ARGS__)
+//#define __VA_ARG_N(_1, _2, _3, _4, N,...) N
+//#define __RSEQ_N() 3, 2, 1, 0
+
+#define __VA_NARG__(...) PP_NARG(__VA_ARGS__)
+#define PP_ARG_N(_1,_2,_3,N,...) N
+#define PP_RSEQ_N() 3,2,1,0
+#define PP_NARG_(...) PP_ARG_N(__VA_ARGS__)
+#define PP_COMMASEQ_N()  1,1,0,0
+#define PP_COMMA(...) ,
+#define PP_HASCOMMA(...) PP_NARG_(__VA_ARGS__,PP_COMMASEQ_N())
+#define PP_NARG(...) PP_NARG_HELPER1(PP_HASCOMMA(__VA_ARGS__),PP_HASCOMMA(PP_COMMA __VA_ARGS__ ()),PP_NARG_(__VA_ARGS__, PP_RSEQ_N()))
+#define PP_NARG_HELPER1(a,b,N) PP_NARG_HELPER2(a, b, N)
+#define PP_NARG_HELPER2(a,b,N) PP_NARG_HELPER3_ ## a ## b(N)
+#define PP_NARG_HELPER3_01(N) 0
+#define PP_NARG_HELPER3_00(N) 1
+#define PP_NARG_HELPER3_11(N) N
 
 // Declaration prototypes. Followed by: { ";" , "= 0;" , "{ ... }" }
 #define DECn(n, type, name, ...)    DEC ## n(type, name, __VA_ARGS__)
