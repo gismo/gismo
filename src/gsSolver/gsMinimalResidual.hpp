@@ -1,4 +1,4 @@
-/** @file gsMinimalResidual.cpp
+/** @file gsMinimalResidual.hpp
 
     @brief Preconditioned iterative solver using the minimal residual method.
 
@@ -15,7 +15,8 @@
 namespace gismo
 {
 
-bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x )
+template<class T>
+bool gsMinimalResidual<T>::initIteration( const gsMinimalResidual::VectorType& rhs, gsMinimalResidual::VectorType& x )
 {
     if (Base::initIteration(rhs,x))
         return true;
@@ -46,20 +47,20 @@ bool gsMinimalResidual::initIteration( const gsMinimalResidual::VectorType& rhs,
     return false;
 }
 
-
-bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
+template<class T>
+bool gsMinimalResidual<T>::step( gsMinimalResidual::VectorType& x )
 {
     z /= gamma;
     m_mat->apply(z,Az);
 
-    real_t delta = z.col(0).dot(Az.col(0));
+    T delta = z.col(0).dot(Az.col(0));
     vNew = Az - (delta/gamma)*v - (gamma/gammaPrev)*vPrev;
     m_precond->apply(vNew, zNew);
     gammaNew = math::sqrt(zNew.col(0).dot(vNew.col(0)));
-    const real_t a0 = c*delta - cPrev*s*gamma;
-    const real_t a1 = math::sqrt(a0*a0 + gammaNew*gammaNew);
-    const real_t a2 = s*delta + cPrev*c*gamma;
-    const real_t a3 = sPrev*gamma;
+    const T a0 = c*delta - cPrev*s*gamma;
+    const T a1 = math::sqrt(a0*a0 + gammaNew*gammaNew);
+    const T a2 = s*delta + cPrev*c*gamma;
+    const T a3 = sPrev*gamma;
     cNew = a0/a1;
     sNew = gammaNew/a1;
     wNew = (z - a3*wPrev - a2*w)/a1;
@@ -92,8 +93,8 @@ bool gsMinimalResidual::step( gsMinimalResidual::VectorType& x )
     return false;
 }
 
-
-void gsMinimalResidual::finalizeIteration( gsMinimalResidual::VectorType& x )
+template<class T>
+void gsMinimalResidual<T>::finalizeIteration( gsMinimalResidual::VectorType& x )
 {
     GISMO_UNUSED(x);
     // cleanup temporaries

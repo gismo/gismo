@@ -22,7 +22,7 @@ namespace gismo
 /// @brief Abstract class for iterative solvers.
 ///
 /// \ingroup Solver
-template<class T>
+template<class T=real_t>
 class gsIterativeSolver
 {
 public:

@@ -20,16 +20,17 @@ namespace gismo
 /** @brief The minimal residual (MinRes) method.
   *
   * \ingroup Solver
-  */  
-class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver<real_t>
+  */
+template<class T=real_t>
+class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver<T>
 {
 
 public:
-    typedef gsIterativeSolver<real_t> Base;
+    typedef gsIterativeSolver<T> Base;
     
-    typedef gsMatrix<real_t>  VectorType;
+    typedef gsMatrix<T>  VectorType;
 
-    typedef Base::LinOpPtr LinOpPtr;
+    typedef typename Base::LinOpPtr LinOpPtr;
     
     typedef memory::shared_ptr<gsMinimalResidual> Ptr;
     typedef memory::unique_ptr<gsMinimalResidual> uPtr;
@@ -85,12 +86,12 @@ private:
     using Base::m_rhs_norm;
     using Base::m_error;
 
-    gsMatrix<real_t> negResidual,
+    gsMatrix<T> negResidual,
                      vPrev, v, vNew,
                      wPrev, w, wNew, AwPrev, Aw, AwNew,
                      zNew, z, Az;
 
-    real_t eta,
+    T eta,
            gammaPrev, gamma, gammaNew,
            sPrev, s, sNew,
            cPrev, c, cNew;
@@ -100,3 +101,6 @@ private:
 
 } // namespace gismo
 
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsMinimalResidual.hpp)
+#endif

@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     
     
     //Initialize the MinRes solver
-    gsMinimalResidual MinRes(mat,preConMat);
+    gsMinimalResidual<> MinRes(mat,preConMat);
     MinRes.setOptions(opt);
     
     //Set the initial guess to zero
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 
 
     //Initialize the MinRes solver with inexact residual error norm
-    gsMinimalResidual MinResIR(mat,preConMat);
+    gsMinimalResidual<> MinResIR(mat,preConMat);
     MinResIR.setOptions(opt);
     MinResIR.setInexactResidual(true);
     
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 
 
     //Initialize the CG solver
-    gsConjugateGradient CGSolver(mat,preConMat);
+    gsConjugateGradient<> CGSolver(mat,preConMat);
     CGSolver.setOptions(opt);
     
     //Set the initial guess to zero
