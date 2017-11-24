@@ -38,13 +38,13 @@
 #define __RSEQ_N() 3, 2, 1, 0
 
 // Declaration prototypes. Followed by: { ";" , "= 0;" , "{ ... }" }
-#define DECn(n, type, name, ...)    DEF ## n(type, name, ...)
+#define DECn(n, type, name, ...)    DEC ## n(type, name, __VA_ARGS__)
 #define DEC0(type, name, void)      private: virtual type * name##_impl() const
 #define DEC1(type, name, t1)        private: virtual type * name##_impl(t1) const
 #define DEC2(type, name, t1, t2)    private: virtual type * name##_impl(t1, t2) const
 
 // Definition prototypes
-#define DEFn(n, name, ...)          DEF ## n(name, ...)
+#define DEFn(n, name, ...)          DEF ## n(name, __VA_ARGS__)
 #define DEF0(name, void)            public:  inline uPtr name() const { return uPtr(name##_impl()); }
 #define DEF1(name, t1)              public:  inline uPtr name(t1 n1) const { return uPtr(name##_impl(n1)); }
 #define DEF2(name, t1, t2)          public:  inline uPtr name(t1 n1, t2 n2) const { return uPtr(name##_impl(n1, n2)); }
@@ -71,17 +71,17 @@
         GISMO_UPTR_FUNCTION_DEF_(__VA_NARG__(__VA_ARGS__), type, name, __VA_ARGS__)
 #define GISMO_UPTR_FUNCTION_DEF_(n, type, name, ...) \
         DEFn(n, name, __VA_ARGS__) \
-        DECn(n, type, name, __VA_ARGS__)
+        DECn(n, type, name, __VA_ARGS__) // { return type * your code }
 */
 
-// Declaration of pure virtual
+// Declaration of pure virtual function
 // 1st: return type
 // 2nd: function name
 // 3rd: types of parameter arguments
 #define GISMO_UPTR_FUNCTION_FORWARD(type, name, ...) \
         GISMO_UPTR_FUNCTION_FORWARD_(__VA_NARG__(__VA_ARGS__), type, name, __VA_ARGS__)
 #define GISMO_UPTR_FUNCTION_FORWARD_(n, type, name, ...) \
-        DECn(n, type, name, __VA_ARGS__); \
+        DECn(n, type, name, __VA_ARGS__) = 0; \
         DEFn(n, name, __VA_ARGS__)
 
 // Declaration and definition with GISMO_NO_IMPLEMENTATION
@@ -97,8 +97,8 @@
 // Declaration, definition and implementation of clone function
 // 1st: return type
 #define GISMO_CLONE_FUNCTION(type) \
-        DEC0(type, clone) { return new type(*this); } \
-        DEF0(clone,void)
+        DEC0(type, clone, void) { return new type(*this); } \
+        DEF0(clone, void)
 
 namespace gismo {
 
@@ -196,7 +196,7 @@ public:
 
     virtual ~gsFunctionSet();
 
-    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone, virtual)
+    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
     virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
