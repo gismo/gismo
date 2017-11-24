@@ -326,7 +326,7 @@ Command-line arguments are useful to avoid re-compiling your code
 every time a small parameter is altered, as well as to make your
 program easily accessible by others. In \gismo there is an easy way to
 add command-line arguments, which come automatically with a small help
-message and error checking, see \ref tutorialCommandLineArg.
+message and error checking, see \ref commandLineArg_example.
 
 In the file \ref gsView for instance, we find the following code
 for parsing the command line:
@@ -389,7 +389,7 @@ To read a file in your program the recommended solution is to first
 define an input argument for your program which will be a string
 holding the name of the filename. For instance
 
-\snippet tutorialInputOutput.cpp Parse command line
+\snippet inputOutput_example.cpp Parse command line
 
 In the above code note the default value of the input string: The
 macro GISMO_DATA_DIR always points to the \a filedata folder inside
@@ -404,7 +404,7 @@ The main class which allows you to read data from the file is the
 gsFileData object. In the following we read a polymorphic gsGeometry
 object from the file:
 
-\snippet tutorialInputOutput.cpp Read geometry
+\snippet inputOutput_example.cpp Read geometry
 
 When creating the gsFileData object, all the XML data in the file are
 loading into memory as an XML tree.
@@ -421,7 +421,7 @@ first object which was encountered in the XML tree.
 To see what is the gsGeometry data that have been obtained, we can
 stream it to gsInfo:
 
-\snippet tutorialInputOutput.cpp Print geometry
+\snippet inputOutput_example.cpp Print geometry
 
 You can have better control of which data is read from the file by
 reading using the ID of the tag. For instance, the following:
@@ -448,7 +448,7 @@ compatibility.
 Similarly to reading XML data, we are able to create XML tree data and
 save them as a file in the disk:
 
-\snippet tutorialInputOutput.cpp Write geometry
+\snippet inputOutput_example.cpp Write geometry
 
 the \<\< operator translates the object into an XML tag. Then the save
 command creates a file with all the contents of the \a fd XML
@@ -469,12 +469,12 @@ OFF and STL mesh files. The IGES file format is under development.
 The matrices in \gismo are obtained from the %Eigen linear algebra library.
 
 All the functionality of Eigen::Matrix is available in the (inherited)
-class gsMatrix. The \ref tutorialLinearAlgebra contains
+class gsMatrix. The \ref linearAlgebra_example contains
 starting examples for using matrices.
 
 The sparse matrix class is gsSparseMatrix and is derived from
 Eigen::SparseMatrix class. Several sparse linear solvers are
-available, demonstrated in \ref gsSparseSolvers.  The main information
+available, demonstrated in \ref sparseSolvers_example. The main information
 about the matrix manipulations can be found in the Eigen documentation
 pages. We link to the most important chapters:
 
@@ -565,7 +565,7 @@ descendants of gsFunctionSet are two:
   This class represent an (abstract) function basis, that is, a set of
   basis functions. The functions are usually local, that is, they take
   non-zero value only at a small portion of the support of the basis.
-  See \ref tutorialBasis
+  See \ref basis_example
   
 \subsection Geometry01 gsGeometry
   
@@ -575,13 +575,13 @@ descendants of gsFunctionSet are two:
   fall in this category.
 
   Printing the geometry:
-  \snippet tutorialGeometry.cpp printing the geometry
+  \snippet geometry_example.cpp printing the geometry
 
   Printing the main properties:
-  \snippet tutorialGeometry.cpp printing properties
+  \snippet geometry_example.cpp printing properties
 
   Computing values and derivatives:
-  \snippet tutorialGeometry.cpp values and derivatives
+  \snippet geometry_example.cpp values and derivatives
 
 */
 }
