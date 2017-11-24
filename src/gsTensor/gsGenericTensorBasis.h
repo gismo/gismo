@@ -95,7 +95,7 @@ public:
         return os;
     }
 
-    GISMO_UPTR_FUNCTION(gsGenericTensorBasis, clone)
+    GISMO_UPTR_FUNCTION_DEC(gsGenericTensorBasis, clone)
 
 };
 

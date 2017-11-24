@@ -742,7 +742,7 @@ public:
 */
 
     // Look at gsBasis class for a description
-    GISMO_UPTR_FUNCTION(gsBSplineBasis, clone)
+    GISMO_UPTR_FUNCTION_DEC(gsBSplineBasis, clone)
 
     // Look at gsBasis class for a description
     Self_t & component(unsigned i);

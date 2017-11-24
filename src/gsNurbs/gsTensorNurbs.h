@@ -164,7 +164,7 @@ public:
 // Virtual member functions required by the base class
 // ***********************************************
 
-    GISMO_UPTR_FUNCTION(gsTensorNurbs, clone, virtual)
+    GISMO_UPTR_FUNCTION_DEC(gsTensorNurbs, clone)
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const

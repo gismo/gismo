@@ -97,7 +97,7 @@ public:
   
     gsFunctionExpr& operator=(gsFunctionExpr other);
 
-    GISMO_UPTR_FUNCTION(gsFunctionExpr, clone)
+    GISMO_UPTR_FUNCTION_DEC(gsFunctionExpr, clone)
     
     /// \brief Adds another component to this (vector) function
     void addComponent(const std::string & strExpression);

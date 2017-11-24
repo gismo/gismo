@@ -77,7 +77,7 @@ public:
         this->m_coefs = tbsp.coefs();
     }
 
-    GISMO_UPTR_FUNCTION(gsTHBSpline, clone, virtual)
+    GISMO_UPTR_FUNCTION_DEC(gsTHBSpline, clone)
 
     GISMO_BASIS_ACCESSORS
 
