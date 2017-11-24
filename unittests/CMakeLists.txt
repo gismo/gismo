@@ -14,7 +14,7 @@ include(ExternalProject)
 ExternalProject_Add(gsUnitTest
           SOURCE_DIR        ${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest
           URL https://github.com/gismo/gsUnitTest/archive/master.zip
-          URL_MD5 "913dc7cc931c89ff3e561f7f43644eee"
+          URL_MD5 "c52d210f08cecd3c6def52ff019d3e44"
           #DOWNLOAD_NO_PROGRESS 0
           CMAKE_ARGS   -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
@@ -23,8 +23,8 @@ ExternalProject_Add(gsUnitTest
 ExternalProject_Get_Property(gsUnitTest INSTALL_DIR)
 add_library(gsUnitTest_lib STATIC IMPORTED GLOBAL)
 set_property(TARGET gsUnitTest_lib PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}UnitTestPP${CMAKE_STATIC_LIBRARY_SUFFIX})
-#include_directories(${INSTALL_DIR}/include/UnitTest++) to do
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/gsUnitTest)
+set(GSUNITTEST_INCLUDE_DIR ${INSTALL_DIR}/include/UnitTest++)
+include_directories(${GSUNITTEST_INCLUDE_DIR})
 
 include(CTest)
 enable_testing()
