@@ -1,4 +1,4 @@
-/** @file gsKnotVectors.cpp
+/** @file gsMoveSemantics_test.cpp
 
     @brief test move sematics
 
