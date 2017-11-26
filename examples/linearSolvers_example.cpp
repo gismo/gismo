@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
     //Maximum number of iterations
     index_t maxIters = 3*N;
 
-    gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+    gsOptionList opt = gsIterativeSolver<>::defaultOptions();
     opt.setInt ("MaxIterations", 3*N);
     opt.setReal("Tolerance"    , tol);
 

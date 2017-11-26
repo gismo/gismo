@@ -61,7 +61,7 @@ SUITE(gsLinearSolvers)
 
         poissonDiscretization(mat, rhs, N);
 
-        gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+        gsOptionList opt = gsIterativeSolver<>::defaultOptions();
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
@@ -85,7 +85,7 @@ SUITE(gsLinearSolvers)
 
         poissonDiscretization(mat, rhs, N);
 
-        gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+        gsOptionList opt = gsIterativeSolver<>::defaultOptions();
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
@@ -109,7 +109,7 @@ SUITE(gsLinearSolvers)
 
         poissonDiscretization(mat, rhs, N);
 
-        gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+        gsOptionList opt = gsIterativeSolver<>::defaultOptions();
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
@@ -134,7 +134,7 @@ SUITE(gsLinearSolvers)
 
         poissonDiscretization(mat, rhs, N);
 
-        gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+        gsOptionList opt = gsIterativeSolver<>::defaultOptions();
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
@@ -158,7 +158,7 @@ SUITE(gsLinearSolvers)
 
         poissonDiscretization(mat, rhs, N);
 
-        gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+        gsOptionList opt = gsIterativeSolver<>::defaultOptions();
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
@@ -183,7 +183,7 @@ SUITE(gsLinearSolvers)
 
         poissonDiscretization(mat, rhs, N);
 
-        gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+        gsOptionList opt = gsIterativeSolver<>::defaultOptions();
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
@@ -208,7 +208,7 @@ SUITE(gsLinearSolvers)
 
         poissonDiscretization(mat, rhs, N);
 
-        gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+        gsOptionList opt = gsIterativeSolver<>::defaultOptions();
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
@@ -233,7 +233,7 @@ SUITE(gsLinearSolvers)
 
         poissonDiscretization(mat, rhs, N);
 
-        gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+        gsOptionList opt = gsIterativeSolver<>::defaultOptions();
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
@@ -258,7 +258,7 @@ SUITE(gsLinearSolvers)
 
         poissonDiscretization(mat, rhs, N);
 
-        gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+        gsOptionList opt = gsIterativeSolver<>::defaultOptions();
         opt.setInt ("MaxIterations", N  );
         opt.setReal("Tolerance"    , tol);
 
