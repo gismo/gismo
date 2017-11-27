@@ -1,4 +1,4 @@
-/** @file gsConjugateGradient.cpp
+/** @file gsConjugateGradient.hpp
 
     @brief Conjugate gradient solver
 
@@ -16,7 +16,9 @@
 namespace gismo
 {
 
-bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& rhs, gsConjugateGradient::VectorType& x )
+template<class T>
+bool gsConjugateGradient<T>::initIteration( const typename gsConjugateGradient<T>::VectorType& rhs, 
+                                            typename gsConjugateGradient<T>::VectorType& x )
 {
     if (m_calcEigenvals)
     {
@@ -49,12 +51,12 @@ bool gsConjugateGradient::initIteration( const gsConjugateGradient::VectorType& 
     return false;
 }
 
-
-bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x )
+template<class T>
+bool gsConjugateGradient<T>::step( typename gsConjugateGradient<T>::VectorType& x )
 {
     m_mat->apply(m_update,m_tmp);                                      // apply system matrix
 
-    real_t alpha = m_abs_new / m_update.col(0).dot(m_tmp.col(0));      // the amount we travel on dir
+    T alpha = m_abs_new / m_update.col(0).dot(m_tmp.col(0));      // the amount we travel on dir
     if (m_calcEigenvals)
         m_delta.back()+=(1./alpha);
 
@@ -67,10 +69,10 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x )
 
     m_precond->apply(m_res, m_tmp);                                    // approximately solve for "A tmp = residual"
 
-    real_t abs_old = m_abs_new;
+    T abs_old = m_abs_new;
 
     m_abs_new = m_res.col(0).dot(m_tmp.col(0));                        // update the absolute value of r
-    real_t beta = m_abs_new / abs_old;                                 // calculate the Gram-Schmidt value used to create the new search direction
+    T beta = m_abs_new / abs_old;                                 // calculate the Gram-Schmidt value used to create the new search direction
     m_update = m_tmp + beta * m_update;                                // update search direction
 
     if (m_calcEigenvals)
@@ -81,7 +83,8 @@ bool gsConjugateGradient::step( gsConjugateGradient::VectorType& x )
     return false;
 }
 
-real_t gsConjugateGradient::getConditionNumber()
+template<class T>
+T gsConjugateGradient<T>::getConditionNumber()
 {
     if ( m_delta.empty() )
     {
@@ -90,11 +93,12 @@ real_t gsConjugateGradient::getConditionNumber()
         return -1;
     }
 
-    gsLanczosMatrix<real_t> L(m_gamma,m_delta);
+    gsLanczosMatrix<T> L(m_gamma,m_delta);
     return L.maxEigenvalue()/L.minEigenvalue();
 }
 
-void gsConjugateGradient::getEigenvalues( gsMatrix<real_t>& eigs )
+template<class T>
+void gsConjugateGradient<T>::getEigenvalues( typename gsConjugateGradient<T>::VectorType& eigs )
 {
     if ( m_delta.empty() )
     {
@@ -104,15 +108,13 @@ void gsConjugateGradient::getEigenvalues( gsMatrix<real_t>& eigs )
         return;
     }
 
-    gsLanczosMatrix<real_t> LM(m_gamma,m_delta);
-    gsSparseMatrix<real_t> L;
+    gsLanczosMatrix<T> LM(m_gamma,m_delta);
+    gsSparseMatrix<T> L;
     LM.matrixForm(L);
     // there is probably a better option...
-    gsMatrix<real_t>::SelfAdjEigenSolver eigensolver(L);
+    typename gsMatrix<T>::SelfAdjEigenSolver eigensolver(L);
     eigs = eigensolver.eigenvalues();
 }
 
 
 } // end namespace gismo
-
-

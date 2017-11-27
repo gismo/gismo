@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
     //Maximum number of iterations
     index_t maxIters = 3*N;
 
-    gsOptionList opt = gsIterativeSolver<real_t>::defaultOptions();
+    gsOptionList opt = gsIterativeSolver<>::defaultOptions();
     opt.setInt ("MaxIterations", 3*N);
     opt.setReal("Tolerance"    , tol);
 
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 
 
     //Initialize the MinRes solver
-    gsMinimalResidual MinRes(mat,preConMat);
+    gsMinimalResidual<> MinRes(mat,preConMat);
     MinRes.setOptions(opt);
 
     //Set the initial guess to zero
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 
 
     //Initialize the MinRes solver with inexact residual error norm
-    gsMinimalResidual MinResIR(mat,preConMat);
+    gsMinimalResidual<> MinResIR(mat,preConMat);
     MinResIR.setOptions(opt);
     MinResIR.setInexactResidual(true);
 
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
     gsIterativeSolverInfo(MinResIR, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
 
     //Initialize the GMResSolver solver
-    gsGMRes GMResSolver(mat,preConMat);
+    gsGMRes<> GMResSolver(mat,preConMat);
     GMResSolver.setOptions(opt);
 
     //Set the initial guess to zero
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 
 
     //Initialize the CG solver
-    gsConjugateGradient CGSolver(mat,preConMat);
+    gsConjugateGradient<> CGSolver(mat,preConMat);
     CGSolver.setOptions(opt);
 
     //Set the initial guess to zero

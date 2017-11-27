@@ -12,17 +12,18 @@
 */
 #include <gsSolver/gsGMRes.h>
 
-// TODO
-// Fix matrices sizes such that we don't resize on every iteration! (default can be 100 + 100 +...)
-//
+// TODO: Fix matrices sizes such that we don't resize on every iteration! (default can be 100 + 100 +...)
+
 namespace gismo
 {
 
-bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
+template<class T>
+bool gsGMRes<T>::initIteration( const typename gsGMRes<T>::VectorType& rhs, 
+                                typename gsGMRes<T>::VectorType& x )
 {
     if (Base::initIteration(rhs,x))
         return true;
-    
+
     m_mat->apply(x,tmp);
     tmp = rhs - tmp;
     m_precond->apply(tmp, residual);
@@ -35,13 +36,14 @@ bool gsGMRes::initIteration( const VectorType& rhs, VectorType& x )
     v.push_back(residual/beta);
     g.setZero(2,1);
     g(0,0) = beta;
-    Omega = gsMatrix<real_t>::Identity(2, 2);
-    Omega_prev = gsMatrix<real_t>::Identity(2, 2);
-    
+    Omega = gsMatrix<T>::Identity(2, 2);
+    Omega_prev = gsMatrix<T>::Identity(2, 2);
+
     return false;
 }
 
-void gsGMRes::finalizeIteration( VectorType& x )
+template<class T>
+void gsGMRes<T>::finalizeIteration( typename gsGMRes<T>::VectorType& x )
 {
     //Remove last row of H and g
     H.resize(m_num_iter,m_num_iter);
@@ -53,7 +55,7 @@ void gsGMRes::finalizeIteration( VectorType& x )
     solveUpperTriangular(H, g_tmp);
 
     //Create the matrix from the column matrix in v.
-    gsMatrix<real_t> V(m_mat->rows(),m_num_iter);
+    gsMatrix<T> V(m_mat->rows(),m_num_iter);
     for (index_t k = 0; k< m_num_iter; ++k)
     {
         V.col(k) = v[k];
@@ -78,7 +80,8 @@ void gsGMRes::finalizeIteration( VectorType& x )
     v.clear();
 }
 
-bool gsGMRes::step( VectorType& x )
+template<class T>
+bool gsGMRes<T>::step( typename gsGMRes<T>::VectorType& x )
 {
     GISMO_UNUSED(x); // The iterate x is never updated! Use finalizeIteration to obtain x.
     const index_t k = m_num_iter-1;
@@ -90,7 +93,7 @@ bool gsGMRes::step( VectorType& x )
         H.block(0,0,k+1,k) = H_prev;
     }
 
-    Omega = gsMatrix<real_t>::Identity(k+2, k+2);
+    Omega = gsMatrix<T>::Identity(k+2, k+2);
     m_mat->apply(v[k],tmp);
     m_precond->apply(tmp, w);
 
@@ -110,8 +113,8 @@ bool gsGMRes::step( VectorType& x )
     H.block(0,k,k+2,1) = h_tmp;
 
     //Find coef in rotation matrix
-    real_t sk = H(k+1,k)/(math::sqrt(H(k,k)*H(k,k) + H(k+1,k)*H(k+1,k)));
-    real_t ck = H(k,  k)/(math::sqrt(H(k,k)*H(k,k) + H(k+1,k)*H(k+1,k)));
+    T sk = H(k+1,k)/(math::sqrt(H(k,k)*H(k,k) + H(k+1,k)*H(k+1,k)));
+    T ck = H(k,  k)/(math::sqrt(H(k,k)*H(k,k) + H(k+1,k)*H(k+1,k)));
     Omega(k,k)   = ck; Omega(k,k+1)   = sk;
     Omega(k+1,k) =-sk; Omega(k+1,k+1) = ck;
 
@@ -125,7 +128,7 @@ bool gsGMRes::step( VectorType& x )
         g_tmp = g;
     g.noalias() = Omega * g_tmp;
 
-    real_t residualNorm2 = g(k+1,0)*g(k+1,0);
+    T residualNorm2 = g(k+1,0)*g(k+1,0);
     m_error = math::sqrt(residualNorm2) / m_rhs_norm;
     if(m_error < m_tol)
         return true;

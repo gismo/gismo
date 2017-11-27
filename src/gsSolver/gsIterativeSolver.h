@@ -22,7 +22,7 @@ namespace gismo
 /// @brief Abstract class for iterative solvers.
 ///
 /// \ingroup Solver
-template<class T>
+template<class T=real_t>
 class gsIterativeSolver
 {
 public:
@@ -32,7 +32,7 @@ public:
     typedef gsMatrix<T>    VectorType;
 
     typedef typename gsLinearOperator<T>::Ptr LinOpPtr;
-    
+
     /// @brief Contructor using a linear operator to be solved for and
     ///  a preconditioner
     ///
@@ -98,7 +98,7 @@ public:
         m_tol              = opt.askReal  ("Tolerance"        , m_tol              );
         return *this;
     }
-    
+
     /// @brief Solves the linear system and stores the solution in \a x
     ///
     /// Solves the linear system of equations
@@ -134,7 +134,7 @@ public:
             return;
         }
 
-        std::vector<T> tmp_error_hist;        
+        std::vector<T> tmp_error_hist;
         tmp_error_hist.clear();
         tmp_error_hist.reserve(m_max_iters / 3 );
         tmp_error_hist.push_back(m_error); // store initial error (as provided by initIteration)
@@ -143,20 +143,20 @@ public:
         {
             m_num_iter++;
             //gsDebug<<"Iteration : "<<std::setw(5)<<std::left<< m_num_iter<<"\n";
-                
+
             if (step(x))
             {
                 tmp_error_hist.push_back(m_error);
                 //gsDebug<<"            err = "<<m_error<<" --> Solution reached.\n";
                 break;
             }
-            
+
             tmp_error_hist.push_back(m_error);
             //gsDebug<<"            err = "<<m_error<<"\n";
         }
 
         //if (m_num_iter == m_max_iters) gsDebug<<"Maximum number of iterations reached.\n";
-        
+
         finalizeIteration(x);
         error_history = gsAsVector<T>(tmp_error_hist);
     }
@@ -166,16 +166,16 @@ public:
     {
         GISMO_ASSERT( rhs.cols() == 1,
                       "Iterative solvers only work for single column right hand side." );
-     
+
         GISMO_ASSERT( m_precond->rows() == m_mat->rows(),
                       "The preconditionner does not match the matrix. "
                       << m_precond->rows() <<"!="<< m_mat->rows() );
 
         GISMO_ASSERT( m_precond->cols() == m_mat->cols(),
                       "The preconditionner does not match the matrix." );
-        
+
         m_num_iter = 0;
-        
+
         m_rhs_norm = rhs.norm();
 
         if (0 == m_rhs_norm) // special case of zero rhs
@@ -184,7 +184,7 @@ public:
             m_error = 0.;
             return true; // iteration is finished
         }
-        
+
         if ( 0 == x.size() ) // if no initial solution, start with zeros
             x.setZero(rhs.rows(), rhs.cols() );
         else
@@ -200,7 +200,7 @@ public:
 
     /// Returns the size of the linear system
     index_t size() const                                       { return m_mat->rows(); }
-   
+
     /// Set the preconditionner
     void setPreconditioner(const LinOpPtr & precond)           { m_precond = precond; }
 
@@ -226,7 +226,7 @@ public:
     virtual std::ostream &print(std::ostream &os) const = 0;
 
     /// Prints the object as a string with extended details.
-    virtual std::string detail() const 
+    virtual std::string detail() const
     {
         std::ostringstream os;
         print(os);
