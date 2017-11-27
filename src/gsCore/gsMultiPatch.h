@@ -75,11 +75,7 @@ public:
     /// Destructor
     ~gsMultiPatch();
 
-<<<<<<< HEAD
     GISMO_CLONE_FUNCTION(gsMultiPatch)
-=======
-    GISMO_UPTR_FUNCTION_DEC(gsMultiPatch, clone)
->>>>>>> 0d573bf0b53cc73e6cad3046e56c9ca8def1a56a
 
 public:
 

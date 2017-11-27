@@ -45,11 +45,7 @@ public:
         : m_mat(other.m_mat), m_trans(other.m_trans)
     {}
 
-<<<<<<< HEAD
     GISMO_CLONE_FUNCTION(gsAffineFunction)
-=======
-    GISMO_UPTR_FUNCTION_DEC(gsAffineFunction, clone)
->>>>>>> 0d573bf0b53cc73e6cad3046e56c9ca8def1a56a
 
     /**
      * @brief all fine maps are the composition of a linear map with a translation

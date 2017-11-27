@@ -73,11 +73,7 @@ public:
         this->m_coefs = tbsp->coefs();
     }
 
-<<<<<<< HEAD
     GISMO_CLONE_FUNCTION(gsHBSpline)
-=======
-    GISMO_UPTR_FUNCTION_DEC(gsHBSpline, clone)
->>>>>>> 0d573bf0b53cc73e6cad3046e56c9ca8def1a56a
 
     GISMO_BASIS_ACCESSORS
   

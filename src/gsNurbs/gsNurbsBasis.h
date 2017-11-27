@@ -100,11 +100,7 @@ public:
 public:
 
     /// Clone function. Used to make a copy of a derived basis
-<<<<<<< HEAD
     GISMO_CLONE_FUNCTION(gsNurbsBasis)
-=======
-    GISMO_UPTR_FUNCTION_DEC(gsNurbsBasis, clone)
->>>>>>> 0d573bf0b53cc73e6cad3046e56c9ca8def1a56a
   
     GISMO_MAKE_GEOMETRY_NEW
 
