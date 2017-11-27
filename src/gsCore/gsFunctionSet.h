@@ -51,16 +51,16 @@
 #define PP_NARG_HELPER3_11(N) N
 
 // Declaration prototypes. Followed by: { ";" , "= 0;" , "{ ... }" }
-#define __DECn__(n, type, name, ...)    __DEC ## n ## __(type, name, __VA_ARGS__)
-#define __DEC0__(type, name, void)      private: virtual type * name##_impl() const
-#define __DEC1__(type, name, t1)        private: virtual type * name##_impl(t1) const
-#define __DEC2__(type, name, t1, t2)    private: virtual type * name##_impl(t1, t2) const
+#define __DECn(n, type, name, ...)    __DEC ## n(type, name, __VA_ARGS__)
+#define __DEC0(type, name, void)      private: virtual type * name##_impl() const
+#define __DEC1(type, name, t1)        private: virtual type * name##_impl(t1) const
+#define __DEC2(type, name, t1, t2)    private: virtual type * name##_impl(t1, t2) const
 
 // Definition prototypes
-#define __DEFn__(n, name, ...)          __DEF ## n ## __(name, __VA_ARGS__)
-#define __DEF0__(name, void)            public:  inline uPtr name() const { return uPtr(name##_impl()); }
-#define __DEF1__(name, t1)              public:  inline uPtr name(t1 n1) const { return uPtr(name##_impl(n1)); }
-#define __DEF2__(name, t1, t2)          public:  inline uPtr name(t1 n1, t2 n2) const { return uPtr(name##_impl(n1, n2)); }
+#define __DEFn(n, name, ...)          __DEF ## n(name, __VA_ARGS__)
+#define __DEF0(name, void)            public:  inline uPtr name() const { return uPtr(name##_impl()); }
+#define __DEF1(name, t1)              public:  inline uPtr name(t1 n1) const { return uPtr(name##_impl(n1)); }
+#define __DEF2(name, t1, t2)          public:  inline uPtr name(t1 n1, t2 n2) const { return uPtr(name##_impl(n1, n2)); }
 
 // Declaration of virtual function
 // 1st: return type
@@ -71,8 +71,8 @@
 #define GISMO_UPTR_FUNCTION_DEC(type, name, ...) \
         GISMO_UPTR_FUNCTION_DEC_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
 #define GISMO_UPTR_FUNCTION_DEC_(n, type, name, ...) \
-        __DECn__(n, type, name, __VA_ARGS__); \
-        __DEFn__(n, name, __VA_ARGS__)
+        __DECn(n, type, name, __VA_ARGS__); \
+        __DEFn(n, name, __VA_ARGS__)
 
 // Declaration and start of definition of virtual function
 // 1st: return type
@@ -82,8 +82,8 @@
 #define GISMO_UPTR_FUNCTION_DEF(type, name, ...) \
         GISMO_UPTR_FUNCTION_DEF_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
 #define GISMO_UPTR_FUNCTION_DEF_(n, type, name, ...) \
-        __DEFn__(n, name, __VA_ARGS__) \
-        __DECn__(n, type, name, __VA_ARGS__)
+        __DEFn(n, name, __VA_ARGS__) \
+        __DECn(n, type, name, __VA_ARGS__)
 
 // Declaration of pure virtual function
 // 1st: return type
@@ -92,8 +92,8 @@
 #define GISMO_UPTR_FUNCTION_FORWARD(type, name, ...) \
         GISMO_UPTR_FUNCTION_FORWARD_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
 #define GISMO_UPTR_FUNCTION_FORWARD_(n, type, name, ...) \
-        __DECn__(n, type, name, __VA_ARGS__) = 0; \
-        __DEFn__(n, name, __VA_ARGS__)
+        __DECn(n, type, name, __VA_ARGS__) = 0; \
+        __DEFn(n, name, __VA_ARGS__)
 
 // Declaration and definition with GISMO_NO_IMPLEMENTATION
 // 1st: return type
@@ -102,14 +102,14 @@
 #define GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(type, name, ...) \
         GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
 #define GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION_(n, type, name, ...) \
-        __DECn__(n, type, name, __VA_ARGS__) { GISMO_NO_IMPLEMENTATION } \
-        __DEFn__(n, name, __VA_ARGS__)
+        __DECn(n, type, name, __VA_ARGS__) { GISMO_NO_IMPLEMENTATION } \
+        __DEFn(n, name, __VA_ARGS__)
 
 // Declaration, definition and implementation of clone function
 // 1st: return type
 #define GISMO_CLONE_FUNCTION(type) \
-        __DEC0__(type, clone, void) { return new type(*this); } \
-        __DEF0__(clone, void)
+        __DEC0(type, clone, void) { return new type(*this); } \
+        __DEF0(clone, void)
 
 namespace gismo {
 
