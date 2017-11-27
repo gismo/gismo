@@ -87,7 +87,7 @@ SUITE(gsOptionList_test)
         CHECK_EQUAL(STR_2, myList.askString(LABEL_STR_1, STR_2));
         CHECK_EQUAL(STR_2, myList.askString(LABEL_STR_1, STR_2));
     }
-    
+
     /***
      * test what we get if the gsOptionList is empty and getString is invoked.
      * should throw an exception!
@@ -337,7 +337,7 @@ SUITE(gsOptionList_test)
 
         CHECK_EQUAL(true, myList.getSwitch("boundary"));
         CHECK_EQUAL(11, myList.getInt("strategy"));
-        CHECK_EQUAL(0.00001, myList.getReal("tolerance"));
+        CHECK_EQUAL((real_t)1/100000, myList.getReal("tolerance"));
         CHECK_EQUAL("/path/to/square.xml", myList.getString("geometry"));
     }
 

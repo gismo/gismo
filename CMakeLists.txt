@@ -28,6 +28,16 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+if(NOT CMAKE_BUILD_TYPE)
+   # Set default build type to RelWithDebInfo
+   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+   "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
+   if(NOT CMAKE_CONFIGURATION_TYPES)
+   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+     "RelWithDebInfo" "MinSizeRel")
+   endif()
+endif()
+
 if (GISMO_BUILD_PCH)
 project(gismo C CXX CXXPCH)
 else()
@@ -48,12 +58,9 @@ enable_testing()
 #Use solution folders for Visual Studio
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-   # Set default build type to RelWithDebInfo
-   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
-   "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
-   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-     "RelWithDebInfo" "MinSizeRel")
+# Remove NDEBUG flag from RelWithDebInfo builds
+if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 endif()
 
 include( gsVersion )

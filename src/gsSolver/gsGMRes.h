@@ -19,15 +19,16 @@ namespace gismo
 
 /// @brief The generalized minimal residual (GMRES) method.
 ///
-/// \ingroup Solver    
-class GISMO_EXPORT gsGMRes: public gsIterativeSolver<real_t>
+/// \ingroup Solver
+template<class T = real_t>
+class GISMO_EXPORT gsGMRes: public gsIterativeSolver<T>
 {
 public:
-    typedef gsIterativeSolver<real_t> Base;
-    
-    typedef gsMatrix<real_t>  VectorType;
-    
-    typedef Base::LinOpPtr LinOpPtr;
+    typedef gsIterativeSolver<T> Base;
+
+    typedef gsMatrix<T>  VectorType;
+
+    typedef typename Base::LinOpPtr LinOpPtr;
 
     typedef memory::shared_ptr<gsGMRes> Ptr;
     typedef memory::unique_ptr<gsGMRes> uPtr;
@@ -37,8 +38,16 @@ public:
     /// @param mat     The operator to be solved for, see gsIterativeSolver for details
     /// @param precond The preconditioner, defaulted to the identity
     template< typename OperatorType >
-    explicit gsGMRes( const OperatorType& mat, const LinOpPtr & precond = LinOpPtr() )
+    explicit gsGMRes( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
     : Base(mat, precond) {}
+
+    /// @brief Make function using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond The preconditioner, defaulted to the identity
+    template< typename OperatorType >
+    static uPtr make( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
+    { return uPtr( new gsGMRes(mat, precond) ); }
 
     bool initIteration( const VectorType& rhs, VectorType& x );
     bool step( VectorType& x );
@@ -48,9 +57,9 @@ private:
 
     /// Solves the Upper triangular system Ry = gg
     /// and stores the solution in the private member y.
-    void solveUpperTriangular(const gsMatrix<real_t> & R, const gsMatrix<real_t> & gg)
+    void solveUpperTriangular(const VectorType& R, const VectorType& gg)
     {
-       y = R.triangularView<Eigen::Upper>().solve(gg);
+       y = R.template triangularView<Eigen::Upper>().solve(gg);
     }
 
     /// Prints the object as a string.
@@ -70,11 +79,15 @@ private:
     using Base::m_error;
 
 
-    gsMatrix<real_t> tmp, g, g_tmp, h_tmp, y, w;
-    gsMatrix<real_t> residual;
-    gsMatrix<real_t> H_prev, H, Omega, Omega_prev, Omega_tmp, Omega_prev_tmp;
-    std::vector<gsMatrix<real_t> > v;
-    real_t beta;
+    gsMatrix<T> tmp, g, g_tmp, h_tmp, y, w;
+    gsMatrix<T> residual;
+    gsMatrix<T> H_prev, H, Omega, Omega_prev, Omega_tmp, Omega_prev_tmp;
+    std::vector< gsMatrix<T> > v;
+    T beta;
 };
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsGMRes.hpp)
+#endif

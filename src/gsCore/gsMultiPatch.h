@@ -54,12 +54,28 @@ public:
     /// Copy constructor (makes deep copy)
     gsMultiPatch( const gsMultiPatch& other );
 
+#if ! EIGEN_HAS_RVALUE_REFERENCES
+
     /// Assignment operator (uses copy-and-swap idiom)
     gsMultiPatch& operator= ( gsMultiPatch other )
     {
-        this->swap( other );
+        this->swap(other);
         return *this;
     }
+
+#else
+    /// Move constructor
+    gsMultiPatch( gsMultiPatch&& other )
+        : gsBoxTopology( give(other) ), m_patches( give(other.m_patches) )
+    {}
+
+    /// Assignment operator 
+    gsMultiPatch& operator= ( const gsMultiPatch& other );
+
+    /// Move assignment operator 
+    gsMultiPatch& operator= ( gsMultiPatch&& other );
+
+#endif
 
     /// Create from a vector of patches
     explicit gsMultiPatch( PatchContainer & patches );
