@@ -207,7 +207,7 @@ public:
 
     virtual ~gsFunctionSet();
 
-    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet)
+    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
     virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
