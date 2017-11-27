@@ -102,7 +102,11 @@ public:
     
     void deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
+<<<<<<< HEAD
     GISMO_CLONE_FUNCTION(gsHBSplineBasis)
+=======
+    GISMO_UPTR_FUNCTION_DEC(gsHBSplineBasis, clone)
+>>>>>>> 0d573bf0b53cc73e6cad3046e56c9ca8def1a56a
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const;

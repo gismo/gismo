@@ -52,7 +52,11 @@ public:
 
     ~gsBasisFun() { } //destructor
 
+<<<<<<< HEAD
     GISMO_CLONE_FUNCTION(gsBasisFun)
+=======
+    GISMO_UPTR_FUNCTION_DEC(gsBasisFun, clone)
+>>>>>>> 0d573bf0b53cc73e6cad3046e56c9ca8def1a56a
 
 public:
   

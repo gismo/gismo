@@ -173,7 +173,11 @@ public:
         return BoundaryBasisType::New(rr);
     }
 
+<<<<<<< HEAD
     GISMO_CLONE_FUNCTION(gsTensorBSplineBasis)
+=======
+    GISMO_UPTR_FUNCTION_DEC(gsTensorBSplineBasis, clone)
+>>>>>>> 0d573bf0b53cc73e6cad3046e56c9ca8def1a56a
     
     static Self_t * New(std::vector<gsBasis<T>*> & bb )
     { return new Self_t(bb); }
