@@ -38,8 +38,16 @@ public:
     /// @param mat     The operator to be solved for, see gsIterativeSolver for details
     /// @param precond The preconditioner, defaulted to the identity
     template< typename OperatorType >
-    explicit gsGMRes( const OperatorType& mat, const LinOpPtr & precond = LinOpPtr() )
+    explicit gsGMRes( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
     : Base(mat, precond) {}
+
+    /// @brief Make function using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond The preconditioner, defaulted to the identity
+    template< typename OperatorType >
+    static uPtr make( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
+    { return uPtr( new gsGMRes(mat, precond) ); }
 
     bool initIteration( const VectorType& rhs, VectorType& x );
     bool step( VectorType& x );
@@ -49,7 +57,7 @@ private:
 
     /// Solves the Upper triangular system Ry = gg
     /// and stores the solution in the private member y.
-    void solveUpperTriangular(const VectorType & R, const VectorType & gg)
+    void solveUpperTriangular(const VectorType& R, const VectorType& gg)
     {
        y = R.template triangularView<Eigen::Upper>().solve(gg);
     }
