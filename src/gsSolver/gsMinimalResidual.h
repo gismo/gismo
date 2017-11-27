@@ -42,7 +42,15 @@ public:
     template< typename OperatorType >
     explicit gsMinimalResidual( const OperatorType& mat,
                                 const LinOpPtr& precond = LinOpPtr())
-        : Base(mat, precond), m_inexact_residual(false) { }
+        : Base(mat, precond), m_inexact_residual(false) {}
+
+    /// @brief Make function using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond The preconditioner, defaulted to the identity
+    template< typename OperatorType >
+    static uPtr make( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
+    { return uPtr( new gsMinimalResidual(mat, precond) ); }
 
     bool initIteration( const VectorType& rhs, VectorType& x );
     void finalizeIteration( VectorType& x );

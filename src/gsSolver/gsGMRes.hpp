@@ -18,7 +18,7 @@ namespace gismo
 {
 
 template<class T>
-bool gsGMRes<T>::initIteration( const typename gsGMRes<T>::VectorType& rhs, 
+bool gsGMRes<T>::initIteration( const typename gsGMRes<T>::VectorType& rhs,
                                 typename gsGMRes<T>::VectorType& x )
 {
     if (Base::initIteration(rhs,x))

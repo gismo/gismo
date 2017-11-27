@@ -44,8 +44,16 @@ public:
     /// @param precond The preconditioner, defaulted to the identity
     template< typename OperatorType >
     explicit gsConjugateGradient( const OperatorType& mat,
-                                  const LinOpPtr & precond = LinOpPtr() )
-    : Base(mat, precond), m_calcEigenvals(false) { }
+                                  const LinOpPtr& precond = LinOpPtr() )
+    : Base(mat, precond), m_calcEigenvals(false) {}
+
+    /// @brief Make function using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond The preconditioner, defaulted to the identity
+    template< typename OperatorType >
+    static uPtr make( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
+    { return uPtr( new gsConjugateGradient(mat, precond) ); }
 
     /// @brief Returns a list of default options
     static gsOptionList defaultOptions()
@@ -57,7 +65,7 @@ public:
     }
 
     /// @brief Set the options based on a gsOptionList
-    gsConjugateGradient& setOptions(const gsOptionList & opt)
+    gsConjugateGradient& setOptions(const gsOptionList& opt)
     {
         Base::setOptions(opt);
         m_calcEigenvals = opt.askSwitch("CalcEigenvalues", m_calcEigenvals);

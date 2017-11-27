@@ -17,7 +17,7 @@ namespace gismo
 {
 
 template<class T>
-bool gsConjugateGradient<T>::initIteration( const typename gsConjugateGradient<T>::VectorType& rhs, 
+bool gsConjugateGradient<T>::initIteration( const typename gsConjugateGradient<T>::VectorType& rhs,
                                             typename gsConjugateGradient<T>::VectorType& x )
 {
     if (m_calcEigenvals)
@@ -56,7 +56,7 @@ bool gsConjugateGradient<T>::step( typename gsConjugateGradient<T>::VectorType& 
 {
     m_mat->apply(m_update,m_tmp);                                      // apply system matrix
 
-    T alpha = m_abs_new / m_update.col(0).dot(m_tmp.col(0));      // the amount we travel on dir
+    T alpha = m_abs_new / m_update.col(0).dot(m_tmp.col(0));           // the amount we travel on dir
     if (m_calcEigenvals)
         m_delta.back()+=(1./alpha);
 
@@ -72,7 +72,7 @@ bool gsConjugateGradient<T>::step( typename gsConjugateGradient<T>::VectorType& 
     T abs_old = m_abs_new;
 
     m_abs_new = m_res.col(0).dot(m_tmp.col(0));                        // update the absolute value of r
-    T beta = m_abs_new / abs_old;                                 // calculate the Gram-Schmidt value used to create the new search direction
+    T beta = m_abs_new / abs_old;                                      // calculate the Gram-Schmidt value used to create the new search direction
     m_update = m_tmp + beta * m_update;                                // update search direction
 
     if (m_calcEigenvals)
