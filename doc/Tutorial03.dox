@@ -8,7 +8,7 @@ namespace gismo {
   Instances of PDE classes are collected in the \ref pdeclass "The PDE group".
 
 
-see \ref tutorialPoisson and \ref tutorialAssembly
+see \ref poisson_example and \ref assembly_example
 - Setting up the discrete spaces
 
 - The domain iterator

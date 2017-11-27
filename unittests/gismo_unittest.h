@@ -28,7 +28,7 @@
  */
 
 #include <gismo.h>
- 
+
 #include "UnitTest++.h"
 #include "gs/CheckMacros.h"
 #include "gs/SuppressOutput.h"

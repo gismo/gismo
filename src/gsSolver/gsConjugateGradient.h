@@ -25,26 +25,35 @@ namespace gismo
 /// a gsLinearOperator as matrix.
 ///
 /// \ingroup Solver
-class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver<real_t>
+template<class T = real_t>
+class GISMO_EXPORT gsConjugateGradient : public gsIterativeSolver<T>
 {
 public:
-    typedef gsIterativeSolver<real_t> Base;
-    
-    typedef gsMatrix<real_t>  VectorType;
-    
-    typedef Base::LinOpPtr LinOpPtr;
+    typedef gsIterativeSolver<T> Base;
+
+    typedef gsMatrix<T>  VectorType;
+
+    typedef typename Base::LinOpPtr LinOpPtr;
 
     typedef memory::shared_ptr<gsConjugateGradient> Ptr;
     typedef memory::unique_ptr<gsConjugateGradient> uPtr;
-    
+
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     ///
     /// @param mat     The operator to be solved for, see gsIterativeSolver for details
     /// @param precond The preconditioner, defaulted to the identity
     template< typename OperatorType >
     explicit gsConjugateGradient( const OperatorType& mat,
-                                  const LinOpPtr & precond = LinOpPtr() )
-    : Base(mat, precond), m_calcEigenvals(false) { }
+                                  const LinOpPtr& precond = LinOpPtr() )
+    : Base(mat, precond), m_calcEigenvals(false) {}
+
+    /// @brief Make function using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond The preconditioner, defaulted to the identity
+    template< typename OperatorType >
+    static uPtr make( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
+    { return uPtr( new gsConjugateGradient(mat, precond) ); }
 
     /// @brief Returns a list of default options
     static gsOptionList defaultOptions()
@@ -54,9 +63,9 @@ public:
                       " CG computes the eigenvalues of the Lanczos matrix", false );
         return opt;
     }
-    
+
     /// @brief Set the options based on a gsOptionList
-    gsConjugateGradient& setOptions(const gsOptionList & opt)
+    gsConjugateGradient& setOptions(const gsOptionList& opt)
     {
         Base::setOptions(opt);
         m_calcEigenvals = opt.askSwitch("CalcEigenvalues", m_calcEigenvals);
@@ -71,10 +80,10 @@ public:
     void setCalcEigenvalues( bool flag )     { m_calcEigenvals = flag ;}
 
     /// @brief returns the condition number of the (preconditioned) system matrix
-    real_t getConditionNumber();
+    T getConditionNumber();
 
     /// @brief returns the eigenvalues of the Lanczos matrix
-    void getEigenvalues( gsMatrix<real_t>& eigs );
+    void getEigenvalues( VectorType& eigs );
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -96,12 +105,15 @@ private:
     VectorType m_res;
     VectorType m_update;
     VectorType m_tmp;
-    real_t m_abs_new;
+    T m_abs_new;
 
     bool m_calcEigenvals;
 
-    std::vector<real_t> m_delta, m_gamma;
+    std::vector<T> m_delta, m_gamma;
 };
 
 } // namespace gismo
 
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsConjugateGradient.hpp)
+#endif

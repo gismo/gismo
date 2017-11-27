@@ -16,24 +16,25 @@
 
 namespace gismo
 {
-    
+
 /** @brief The minimal residual (MinRes) method.
   *
   * \ingroup Solver
-  */  
-class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver<real_t>
+  */
+template<class T=real_t>
+class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver<T>
 {
 
 public:
-    typedef gsIterativeSolver<real_t> Base;
-    
-    typedef gsMatrix<real_t>  VectorType;
+    typedef gsIterativeSolver<T> Base;
 
-    typedef Base::LinOpPtr LinOpPtr;
-    
+    typedef gsMatrix<T>  VectorType;
+
+    typedef typename Base::LinOpPtr LinOpPtr;
+
     typedef memory::shared_ptr<gsMinimalResidual> Ptr;
     typedef memory::unique_ptr<gsMinimalResidual> uPtr;
-        
+
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     ///
     /// @param mat     The operator to be solved for, see gsIterativeSolver for details
@@ -41,11 +42,19 @@ public:
     template< typename OperatorType >
     explicit gsMinimalResidual( const OperatorType& mat,
                                 const LinOpPtr& precond = LinOpPtr())
-        : Base(mat, precond), m_inexact_residual(false) { }
-    
+        : Base(mat, precond), m_inexact_residual(false) {}
+
+    /// @brief Make function using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond The preconditioner, defaulted to the identity
+    template< typename OperatorType >
+    static uPtr make( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
+    { return uPtr( new gsMinimalResidual(mat, precond) ); }
+
     bool initIteration( const VectorType& rhs, VectorType& x );
     void finalizeIteration( VectorType& x );
-    
+
     bool step( VectorType& x );
 
     /// @brief Returns a list of default options
@@ -85,12 +94,12 @@ private:
     using Base::m_rhs_norm;
     using Base::m_error;
 
-    gsMatrix<real_t> negResidual,
+    gsMatrix<T> negResidual,
                      vPrev, v, vNew,
                      wPrev, w, wNew, AwPrev, Aw, AwNew,
                      zNew, z, Az;
 
-    real_t eta,
+    T eta,
            gammaPrev, gamma, gammaNew,
            sPrev, s, sNew,
            cPrev, c, cNew;
@@ -100,3 +109,6 @@ private:
 
 } // namespace gismo
 
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsMinimalResidual.hpp)
+#endif

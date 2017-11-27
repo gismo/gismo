@@ -5,13 +5,13 @@
     Input is coordinate functions X(x,y,z), Y(x,y,z). Z(x,y,z), or
     X(x,y), Y(x,y). Z(x,y), or X(x), Y(x). Z(x). This is controlled by
     the dimension parameter d. The parameters take values in the interval [0,1]
-    
+
     For instance, we may interpolate:
 
     - a circle
     ./bin/gsInterpolateMap -d 1 -X "cos(2*pi*x)" -Y "sin(2*pi*x)" -Z "0"
 
-    - a helical curve 
+    - a helical curve
     ./bin/gsInterpolateMap -d 1 -X "cos(2*pi*x)" -Y "sin(2*pi*x)" -Z "x"
 
     - a helical surface
@@ -40,7 +40,7 @@
 
     - Torus
     ./bin/gsInterpolateMap -d 2 -X "(3+cos(2*pi*y))*cos(2*pi*x)" -Y "(3+cos(2*pi*y))*sin(2*pi*x)" -Z "sin(2*pi*y)" -k 8
-    
+
     - Cone
     ./bin/gsInterpolateMap -d 2 -X "cosh(2*pi*x)*cos(2*pi*y)" -Y "cosh(2*pi*x)*sin(2*pi*y)" -Z "sinh(2*pi*x)"
 
@@ -104,19 +104,19 @@ int main(int argc, char* argv[])
 
     // Define a B-spline space of dimension 2
     // start, end, numInt, multiplicities at end-points
-    gsKnotVector<> KV(0.0, 1.0, k, p+1); 
-    gsBasis<> * tBasis = NULL;
+    gsKnotVector<> KV(0.0, 1.0, k, p+1);
+    gsBasis<>::uPtr tBasis;
 
-    switch (d) // static dispatch.. 
+    switch (d) // static dispatch..
     {
     case 1:
-        tBasis = new gsBSplineBasis<>(KV);
+        tBasis = gsBSplineBasis<>::make(KV);
         break;
     case 2:
-        tBasis = new gsTensorBSplineBasis<2>(KV,KV);
+        tBasis = safe( new gsTensorBSplineBasis<2>(KV,KV) );
         break;
     case 3:
-        tBasis = new gsTensorBSplineBasis<3>(KV,KV,KV);
+        tBasis = safe( new gsTensorBSplineBasis<3>(KV,KV,KV) );
         break;
     default:
     {
@@ -127,11 +127,11 @@ int main(int argc, char* argv[])
 
     gsInfo <<"We are going to interpolate "<< func <<"\n";
 
-    // Support: 2x2 matrix, first column is the lower left 
+    // Support: 2x2 matrix, first column is the lower left
     // point of the parametric domain (eg. 0,0)
     // second column is the upper right corner of the support (eg. 1,1)
     // gsMatrix<> support = tBasis->support();
-    
+
     // Points to interpolate at (Greville points):
     gsMatrix<> intGrid = tBasis->anchors();
     gsInfo <<"Int. grid dim: "<< intGrid.dim() <<"\n";
@@ -140,7 +140,7 @@ int main(int argc, char* argv[])
     gsMatrix<> fValues = func.eval(intGrid);
     gsInfo <<"Function values dim: "<< fValues.dim() <<"\n";
 
-    // Returns a geometry with basis = tBasis 
+    // Returns a geometry with basis = tBasis
     // and coefficients being
     // computed as the interpolant of \a funct
     gsGeometry<>::uPtr interpolant = tBasis->interpolateAtAnchors(fValues);
@@ -159,12 +159,10 @@ int main(int argc, char* argv[])
     fd.addComment( remark );
     fd.save("interpolant_spline");
     gsInfo <<"Result saved as interpolant_spline.xml \n";
-    
+
     // Produce Paraview file for the interpolant
     //gsWriteParaview( *interpolant, support, "interpolant", s );
 
-    // Cleanup: deleting the raw pointer
-    delete tBasis;
     return 0;
 }
 

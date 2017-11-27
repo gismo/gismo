@@ -28,9 +28,9 @@ public:
     bool operator()(const UnitTest::Test * const testCase) const
     {
         bool toRun = false;
-        for (int i=1; i<m_argc; ++i) 
+        for (int i=1; i<m_argc; ++i)
         {
-            const size_t n = strlen(m_argv[i]); 
+            const size_t n = strlen(m_argv[i]);
             toRun |= !strncmp(testCase->m_details.suiteName, m_argv[i], n);// prefix match
             toRun |= !strncmp(testCase->m_details.testName , m_argv[i], n);// prefix match
             toRun |= gsFileManager::pathEqual(testCase->m_details.filename, m_argv[i]);// exact match up to path sep.

@@ -28,10 +28,10 @@ int main(int argc, char *argv[])
     bool get_basis = false;
     bool get_mesh = false;
     bool get_geo = false;
- 
-    //! [Parse Command line]   
-    gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");  
-    
+
+    //! [Parse Command line]
+    gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");
+
     cmd.addSwitch("geometry", "Try to find and plot a geometry contained in the file", get_geo);
     cmd.addSwitch("mesh"    , "Try to find and plot a mesh contained in the file", get_mesh);
     cmd.addSwitch("basis"   , "Try to find and plot a basis contained in the file", get_basis);
@@ -40,11 +40,11 @@ int main(int argc, char *argv[])
     cmd.addSwitch("controlNet", "Plot the control net (when applicable)", plot_net);
     cmd.addSwitch("boundary"  , "Plot the boundaries and interfaces of patches with colors", plot_boundary);
     cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
-    
+
     cmd.getValues(argc,argv);
     //! [Parse Command line]
-    
-    if (fn.empty() )
+
+    if ( fn.empty() )
     {
         gsInfo<< cmd.getMessage();
         gsInfo<<"\nType "<< argv[0]<< " -h, to get the list of command line options.\n";
@@ -52,14 +52,14 @@ int main(int argc, char *argv[])
     }
 
     if (get_basis)
-        choice= 3;
+        choice = 3;
     else if (get_mesh)
-        choice= 4;
+        choice = 4;
     else if (get_geo)
-        choice= 5;
-    
+        choice = 5;
+
     gsFileData<>  filedata(fn);
-    
+
     switch ( choice )
     {
     case 3:
@@ -72,9 +72,9 @@ int main(int argc, char *argv[])
             gsInfo<< "Did not find any basis to plot in "<<fn<<", quitting."<<"\n";
             return 0;
         }
-        
+
         gsWriteParaview( *bb , "gsview", numSamples, true);
-        
+
         break;
     }
     case 4:
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
             return 0;
         }
         gsWriteParaview( *msh, "gsview");
-        
+
         break;
     }
     case 5:
@@ -136,12 +136,12 @@ int main(int argc, char *argv[])
                 gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
                 return 0;
             }
-            
+
             gsWriteParaview(memory::get_raw(geo), "gsview", numSamples, plot_mesh, plot_net);
-            
+
             break;
         }
-        
+
         if ( filedata.has< gsMesh<> >() )
         {
             gsMesh<>::uPtr msh = filedata.getFirst< gsMesh<> >();
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
                 gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
                 return 0;
             }
-            
+
             gsWriteParaview( *msh, "gsview");
             break;
         }
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
         {
             gsBasis<>::uPtr bb = filedata.getFirst< gsBasis<> >();
             //bb->uniformRefine(3);
-        
+
             if (bb)
                 gsInfo<< "Got "<< *bb <<"\n";
             else
@@ -169,9 +169,9 @@ int main(int argc, char *argv[])
                 gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
                 return 0;
             }
-        
+
             gsWriteParaview( *bb , "gsview", numSamples, plot_mesh);
-        
+
             break;
         }
 
@@ -186,10 +186,10 @@ int main(int argc, char *argv[])
                 gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
                 return 0;
             }
-        
+
             gsWriteParaviewSolid( *bb, "gsview", numSamples);
             //gsWriteParaview( *bb, "gsview", numSamples, 0, 0.02);
-        
+
             break;
         }
 
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
             }
 
             gsWriteParaview( *bb, "gsview", numSamples);
-        
+
             break;
         }
 
@@ -223,14 +223,14 @@ int main(int argc, char *argv[])
                 gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
                 return 0;
             }
-        
+
             gsMesh<>::uPtr msh = safe(bb->toMesh(numSamples));
 
             gsWriteParaview( *msh , "gsview");
-        
+
             break;
         }
-        
+
         if ( filedata.has< gsMatrix<> >() )
         {
             gsMatrix<> bb;
@@ -239,10 +239,10 @@ int main(int argc, char *argv[])
             gsInfo<< "Plot "<< bb.rows() <<"D points.\n";
             gsWriteParaviewPoints<real_t>( bb, "gsview");
             break;
-        }        
+        }
         gsInfo<< "Did not find anything to plot in "<<fn<<", quitting."<<"\n";
         return 0;
     }
-    
+
         return system("paraview gsview.pvd &");
 }
