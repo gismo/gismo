@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     cmd.getValues(argc,argv);
 
     // Conditional compilation
-#if GISMO_WITH_MPI
+#ifdef GISMO_WITH_MPI
     gsInfo << "Gismo was compiled with MPI support.\n";
 #else
     gsInfo << "Gismo was compiled without MPI support.\n";
