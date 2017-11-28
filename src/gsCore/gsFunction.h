@@ -73,7 +73,7 @@ public:
     using Base::domainDim;
     using Base::targetDim;
 
-    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(0, gsFunction, clone)
+    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunction, clone)
 
     virtual const gsFunction & piece(const index_t k) const
     {

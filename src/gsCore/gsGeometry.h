@@ -533,7 +533,7 @@ public:
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
 
-    GISMO_UPTR_FUNCTION_FORWARD(0, gsGeometry, clone)
+    GISMO_UPTR_FUNCTION_FORWARD(gsGeometry, clone)
 
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const

@@ -37,18 +37,20 @@
 #define __VA_ARG_N(_1, _2, _3, _4, N,...) N
 #define __RSEQ_N() 3, 2, 1, 0
 
-//#define PP_ARG_N(_1,_2,_3,N,...) N
-//#define PP_RSEQ_N() 3,2,1,0
-//#define PP_NARG_(...) PP_ARG_N(__VA_ARGS__)
-//#define PP_COMMASEQ_N()  1,1,0,0
-//#define PP_COMMA(...) ,
-//#define PP_HASCOMMA(...) PP_NARG_(__VA_ARGS__,PP_COMMASEQ_N())
-//#define PP_NARG(...) PP_NARG_HELPER1(PP_HASCOMMA(__VA_ARGS__),PP_HASCOMMA(PP_COMMA __VA_ARGS__ ()),PP_NARG_(__VA_ARGS__, PP_RSEQ_N()))
-//#define PP_NARG_HELPER1(a,b,N) PP_NARG_HELPER2(a, b, N)
-//#define PP_NARG_HELPER2(a,b,N) PP_NARG_HELPER3_ ## a ## b(N)
-//#define PP_NARG_HELPER3_01(N) 0
-//#define PP_NARG_HELPER3_00(N) 1
-//#define PP_NARG_HELPER3_11(N) N
+#define PP_ARG_N(_1,_2,_3,N,...) N
+#define PP_RSEQ_N() 3,2,1,0
+#define PP_NARG_(...) PP_ARG_N(__VA_ARGS__)
+#define PP_COMMASEQ_N()  1,1,0,0
+#define PP_COMMA(...) ,
+#define PP_HASCOMMA(...) PP_NARG_(__VA_ARGS__,PP_COMMASEQ_N())
+#define PP_NARG(...) PP_NARG_HELPER1(PP_HASCOMMA(__VA_ARGS__),PP_HASCOMMA(PP_COMMA __VA_ARGS__ ()),PP_NARG_(__VA_ARGS__, PP_RSEQ_N()))
+#define PP_NARG_HELPER1(a,b,N) PP_NARG_HELPER2(a, b, N)
+#define PP_NARG_HELPER2(a,b,N) PP_NARG_HELPER2 ## a(b,N)
+#define PP_NARG_HELPER20(b,N) PP_NARG_HELPER3_0 ## b(N)
+#define PP_NARG_HELPER21(b,N) PP_NARG_HELPER3_1 ## b(N)
+#define PP_NARG_HELPER3_01(N) 0
+#define PP_NARG_HELPER3_00(N) 1
+#define PP_NARG_HELPER3_11(N) N
 
 // Declaration prototypes. Followed by: { ";" , "= 0;" , "{ ... }" }
 #define __DECn(n, type, name, ...)    __DEC ## n(type, name, __VA_ARGS__)
@@ -68,9 +70,9 @@
 // 3rd: types of parameter arguments
 // Definition of real the implementation in the form "type * name_impl(...)"
 // should be done in the corresponding .hpp file.
-//#define GISMO_UPTR_FUNCTION_DEC(0, type, name, ...) \
-//        GISMO_UPTR_FUNCTION_DEC_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
-#define GISMO_UPTR_FUNCTION_DEC(n, type, name, ...) \
+#define GISMO_UPTR_FUNCTION_DEC(type, name, ...) \
+        GISMO_UPTR_FUNCTION_DEC_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
+#define GISMO_UPTR_FUNCTION_DEC_(n, type, name, ...) \
         __DECn(n, type, name, __VA_ARGS__); \
         __DEFn(n, name, __VA_ARGS__)
 
@@ -89,9 +91,9 @@
 // 1st: return type
 // 2nd: function name
 // 3rd: types of parameter arguments
-//#define GISMO_UPTR_FUNCTION_FORWARD(0, type, name, ...) \
-//        GISMO_UPTR_FUNCTION_FORWARD_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
-#define GISMO_UPTR_FUNCTION_FORWARD(n, type, name, ...) \
+#define GISMO_UPTR_FUNCTION_FORWARD(type, name, ...) \
+        GISMO_UPTR_FUNCTION_FORWARD_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
+#define GISMO_UPTR_FUNCTION_FORWARD_(n, type, name, ...) \
         __DECn(n, type, name, __VA_ARGS__) = 0; \
         __DEFn(n, name, __VA_ARGS__)
 
@@ -99,9 +101,9 @@
 // 1st: return type
 // 2nd: function name
 // 3rd: types of parameter arguments
-//#define GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(0, type, name, ...) \
-//        GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
-#define GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(n, type, name, ...) \
+#define GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(type, name, ...) \
+        GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
+#define GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION_(n, type, name, ...) \
         __DECn(n, type, name, __VA_ARGS__) { GISMO_NO_IMPLEMENTATION } \
         __DEFn(n, name, __VA_ARGS__)
 
@@ -207,7 +209,7 @@ public:
 
     virtual ~gsFunctionSet();
 
-    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(0, gsFunctionSet, clone)
+    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
     virtual const gsFunctionSet & piece(const index_t k) const {return *this;}

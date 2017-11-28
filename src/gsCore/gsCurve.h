@@ -57,7 +57,7 @@ public:
 
     /// @}
 
-//    GISMO_UPTR_FUNCTION_FORWARD(0, gsCurve, clone)
+//    GISMO_UPTR_FUNCTION_FORWARD(gsCurve, clone)
 private: virtual gsCurve * clone_impl() const = 0;
 public: inline uPtr clone() const { return uPtr(clone_impl()); }
 

@@ -100,7 +100,7 @@ public:
 
     // Look at gsBasis class for a description
     // Note: Specializing pointer type at return
-    //GISMO_UPTR_FUNCTION_FORWARD(0, TensorSelf_tt, clone)
+    //GISMO_UPTR_FUNCTION_FORWARD(TensorSelf_tt, clone)
     private: virtual gsTensorBSplineBasis * clone_impl() const = 0;
     public: uPtr clone() const { return uPtr(dynamic_cast<Self_t*>(clone_impl())); }
     
