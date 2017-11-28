@@ -33,11 +33,11 @@
 // Helper macros for counting arguments, works till highest number in PP_RSEQ_N
 // Call with PP_NARG(__VA_ARGS__)
 // For upgrade, add values to PP_ARG_N, PP_RSEQ_N and PP_COMMASEQ_N
-#define EXPAND(x) x
+#define PP_EXPAND(x) x
 
 #define PP_ARG_N(_1,_2,_3,N,...) N
 #define PP_RSEQ_N() 3,2,1,0
-#define PP_NARG_(...) EXPAND(PP_ARG_N(__VA_ARGS__))
+#define PP_NARG_(...) PP_EXPAND(PP_ARG_N(__VA_ARGS__))
 #define PP_COMMASEQ_N()  1,1,0,0
 #define PP_COMMA(...) ,
 #define PP_HASCOMMA(...) PP_NARG_(__VA_ARGS__,PP_COMMASEQ_N())
