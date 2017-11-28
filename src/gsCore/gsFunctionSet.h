@@ -12,7 +12,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Bressan, A. Mantzaflaris
+    Author(s): A. Bressan, A. Mantzaflaris, J. Vogl
 */
 
 #pragma once
@@ -20,21 +20,98 @@
 #include <gsCore/gsLinearAlgebra.h>
 //#include <gsCore/gsForwardDeclarations.h> // included by gsLinearAlgebra.h
 
-// Declaration and definition (2nd argument for virtual)
-#define GISMO_CLONE_FUNCTION(x, ...) \
-private: __VA_ARGS__ x * doClone() const { return new x(*this); } \
-public: inline uPtr clone() const { return uPtr(doClone()); }
+// The following macros are a design pattern to solve the problem with
+// unique::memory pointers as return value of virtual functions in base/derived
+// classes. It is expected that a class where this macros are used is derived
+// from gsFunctionSet or its derivatives. It assumes that a concrete
+// implementation has the suffix "_impl", and that there is a uPtr type
+// definition inside the class. From outside that class, some can call that
+// function by its name and get back a pointer inside a uPtr of the correct
+// type. If casts are needed afterward, use memory::convert_ptr<toType>(from).
 
-// Declaration of pure virtual
-#define GISMO_CLONE_FUNCTION_FORWARD(x) \
-private: virtual x * doClone() const = 0; \
-public: inline uPtr clone() const { return uPtr(doClone()); }
 
-// Declaration and definition with (throw of) message
-// (2nd argument for virtual)
-#define GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(x, ...) \
-private: __VA_ARGS__ x * doClone() const { GISMO_NO_IMPLEMENTATION } \
-public: inline uPtr clone() const { return uPtr(doClone()); }
+// Helper macros for counting arguments, works till highest number in __RSEQ_N
+// Call with __VA_NARG__(__VA_ARGS__)
+#define __VA_NARG__(...) __VA_NARG_(_0, ## __VA_ARGS__, __RSEQ_N())
+#define __VA_NARG_(...) __VA_ARG_N(__VA_ARGS__)
+#define __VA_ARG_N(_1, _2, _3, _4, N,...) N
+#define __RSEQ_N() 3, 2, 1, 0
+
+#define PP_ARG_N(_1,_2,_3,N,...) N
+#define PP_RSEQ_N() 3,2,1,0
+#define PP_NARG_(...) PP_ARG_N(__VA_ARGS__)
+#define PP_COMMASEQ_N()  1,1,0,0
+#define PP_COMMA(...) ,
+#define PP_HASCOMMA(...) PP_NARG_(__VA_ARGS__,PP_COMMASEQ_N())
+#define PP_NARG(...) PP_NARG_HELPER1(PP_HASCOMMA(__VA_ARGS__),PP_HASCOMMA(PP_COMMA __VA_ARGS__ ()),PP_NARG_(__VA_ARGS__, PP_RSEQ_N()))
+#define PP_NARG_HELPER1(a,b,N) PP_NARG_HELPER2(a, b, N)
+#define PP_NARG_HELPER2(a,b,N) PP_NARG_HELPER2 ## a(b,N)
+#define PP_NARG_HELPER20(b,N) PP_NARG_HELPER3_0 ## b(N)
+#define PP_NARG_HELPER21(b,N) PP_NARG_HELPER3_1 ## b(N)
+#define PP_NARG_HELPER3_01(N) 0
+#define PP_NARG_HELPER3_00(N) 1
+#define PP_NARG_HELPER3_11(N) N
+
+// Declaration prototypes. Followed by: { ";" , "= 0;" , "{ ... }" }
+#define __DECn(n, type, name, ...)    __DEC ## n(type, name, __VA_ARGS__)
+#define __DEC0(type, name, void)      private: virtual type * name##_impl() const
+#define __DEC1(type, name, t1)        private: virtual type * name##_impl(t1) const
+#define __DEC2(type, name, t1, t2)    private: virtual type * name##_impl(t1, t2) const
+
+// Definition prototypes
+#define __DEFn(n, name, ...)          __DEF ## n(name, __VA_ARGS__)
+#define __DEF0(name, void)            public:  inline uPtr name() const { return uPtr(name##_impl()); }
+#define __DEF1(name, t1)              public:  inline uPtr name(t1 n1) const { return uPtr(name##_impl(n1)); }
+#define __DEF2(name, t1, t2)          public:  inline uPtr name(t1 n1, t2 n2) const { return uPtr(name##_impl(n1, n2)); }
+
+// Declaration of virtual function
+// 1st: return type
+// 2nd: function name
+// 3rd: types of parameter arguments
+// Definition of real the implementation in the form "type * name_impl(...)"
+// should be done in the corresponding .hpp file.
+#define GISMO_UPTR_FUNCTION_DEC(type, name, ...) \
+        GISMO_UPTR_FUNCTION_DEC_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
+#define GISMO_UPTR_FUNCTION_DEC_(n, type, name, ...) \
+        __DECn(n, type, name, __VA_ARGS__); \
+        __DEFn(n, name, __VA_ARGS__)
+
+// Declaration and start of definition of virtual function
+// 1st: return type
+// 2nd: function name
+// 3rd: types of parameter arguments
+// must be finished with a block of { return type * your implementation }
+//#define GISMO_UPTR_FUNCTION_DEF(type, name, ...) \
+//        GISMO_UPTR_FUNCTION_DEF_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
+//#define GISMO_UPTR_FUNCTION_DEF_(n, type, name, ...) \
+//        __DEFn(n, name, __VA_ARGS__) \
+//        __DECn(n, type, name, __VA_ARGS__)
+
+// Declaration of pure virtual function
+// 1st: return type
+// 2nd: function name
+// 3rd: types of parameter arguments
+#define GISMO_UPTR_FUNCTION_FORWARD(type, name, ...) \
+        GISMO_UPTR_FUNCTION_FORWARD_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
+#define GISMO_UPTR_FUNCTION_FORWARD_(n, type, name, ...) \
+        __DECn(n, type, name, __VA_ARGS__) = 0; \
+        __DEFn(n, name, __VA_ARGS__)
+
+// Declaration and definition with GISMO_NO_IMPLEMENTATION
+// 1st: return type
+// 2nd: function name
+// 3rd: types of parameter arguments
+#define GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(type, name, ...) \
+        GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
+#define GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION_(n, type, name, ...) \
+        __DECn(n, type, name, __VA_ARGS__) { GISMO_NO_IMPLEMENTATION } \
+        __DEFn(n, name, __VA_ARGS__)
+
+// Declaration, definition and implementation of clone function
+// 1st: return type
+#define GISMO_CLONE_FUNCTION(type) \
+        __DEC0(type, clone, void) { return new type(*this); } \
+        __DEF0(clone, void)
 
 namespace gismo {
 
@@ -132,7 +209,7 @@ public:
 
     virtual ~gsFunctionSet();
 
-    GISMO_CLONE_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, virtual)
+    GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsFunctionSet, clone)
 
     /// @brief Returns the piece(s) of the function(s) at subdomain \a k
     virtual const gsFunctionSet & piece(const index_t k) const {return *this;}
