@@ -166,9 +166,6 @@ namespace internal
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
 
-/* ----------- MPI ----------- */
-#include <gsMpi/gsMpi.h>
-
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF
 #include <gsAutoDiff.h>
