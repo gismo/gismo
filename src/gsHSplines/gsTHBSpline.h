@@ -77,7 +77,7 @@ public:
         this->m_coefs = tbsp.coefs();
     }
 
-    GISMO_CLONE_FUNCTION(gsTHBSpline, virtual)
+    GISMO_CLONE_FUNCTION(gsTHBSpline)
 
     GISMO_BASIS_ACCESSORS
 

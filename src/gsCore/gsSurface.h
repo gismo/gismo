@@ -59,9 +59,9 @@ public:
 
     /// @}
 
-    //GISMO_CLONE_FUNCTION_FORWARD(gsSurface)
-private: virtual gsSurface * doClone() const = 0; \
-public: inline uPtr clone() const { return uPtr(doClone()); }
+//    GISMO_UPTR_FUNCTION_FORWARD(gsSurface, clone)
+private: virtual gsSurface * clone_impl() const = 0;
+public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
     int domainDim() const { return 2; }
 
