@@ -59,7 +59,7 @@ public:
 
     /// @}
 
-//    GISMO_UPTR_FUNCTION_FORWARD(gsSurface, clone)
+//    GISMO_UPTR_FUNCTION_FORWARD(0, gsSurface, clone)
 private: virtual gsSurface * clone_impl() const = 0;
 public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
