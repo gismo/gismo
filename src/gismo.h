@@ -113,6 +113,10 @@ namespace internal
 #include <gsModeling/gsFitting.h>
 #include <gsModeling/gsCurveFitting.h>
 
+#include <gsModeling/gsSpringPatch.h>
+#include <gsModeling/gsCoonsPatch.h>
+#include <gsModeling/gsCrossApPatch.h>
+
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsPde/gsConvDiffRePde.h>
