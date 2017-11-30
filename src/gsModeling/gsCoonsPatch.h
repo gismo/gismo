@@ -121,7 +121,7 @@ void gsCoonsPatch<T>::compute_impl()
     // Check whether there are any interior points to fill in
     if ( (vend.array() < 2).any() )
     {
-        gsWarn<<"There where no interior control points.\n";
+        gsWarn<<"There were no interior control points.\n";
         m_result = resultBasis.makeGeometry( give(coefs) ).release();
         return;
     }

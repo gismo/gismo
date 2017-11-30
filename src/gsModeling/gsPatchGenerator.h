@@ -62,7 +62,7 @@ public:
     const gsGeometry<T> & compute(const gsMultiPatch<T> & boundary)
     {
         m_boundary = boundary;
-        compute();
+        return compute();
     }
     
     /// \brief Returns the resulting patch. Assumes that compute() has
@@ -240,13 +240,13 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
         {
             if ( input[k]->basis().degree(l) !=  input[k+1]->basis().degree(l) )
                 // to do
-                gsInfo<< "*** Degrees: "<< input[k]->basis().degree(l) <<", "
+                gsWarn<< "*** Degrees: "<< input[k]->basis().degree(l) <<", "
                       << input[k+1]->basis().degree(l) << "differ.\n";
         
             if ( input[k]->knots(l) !=  input[k+1]->knots(l) )
             {
                 // to do
-                gsInfo<< "*** Knots differ.\n";
+                gsWarn<< "*** Knots differ.\n";
                 //1. Normalize both and check again
                 //2. Merge
             }
