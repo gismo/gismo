@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
     // Read input from command line arguments
     gsCmdLine cmd("Constructs a patch given a domain boundary.");
     cmd.addPlainString("filename", "File containing boundary data", fn);
-    cmd.addInt("m","method" ,"Method: 0 Coons' patch (default), 1 Spring patch", method);
+    cmd.addInt("m","method" ,"Method: 0 Coons' patch (default), 1 Spring patch, 2: Cross-Ap. patch", method);
     cmd.addReal  ("t","tolerance","Tolerance for identifing patch interfaces", tol);
     cmd.addSwitch("save", "Save result in XML format", save);
     cmd.getValues(argc,argv);
