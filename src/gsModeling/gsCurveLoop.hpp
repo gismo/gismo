@@ -13,6 +13,7 @@
 
 #pragma once
 
+# include <gsModeling/gsCurveLoop.h>
 # include <gsNurbs/gsKnotVector.h>
 # include <gsNurbs/gsBSpline.h>
 # include <gsNurbs/gsBSplineSolver.h>

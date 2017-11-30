@@ -1,7 +1,6 @@
-/** @file gsCurveLoop_.cpp
+/** @file gsCoonsPatch_.cpp
 
-    @brief Interface for gsCurveLoop class, representing a loop of curves, in
-    anticlockwise order.
+    @brief Provides Coons's patch construction from boundary data.
 
     This file is part of the G+Smo library.
 
@@ -9,15 +8,15 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Falini, A. Mantzaflaris, D.-M. Nguyen, M. Pauley
+    Author(s): M. Haberleitner, A. Mantzaflaris
 */
 
 #include <gsCore/gsTemplateTools.h>
-#include <gsModeling/gsCurveLoop.hpp>
+#include <gsModeling/gsCoonsPatch.hpp>
 
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsCurveLoop<real_t> ;
+CLASS_TEMPLATE_INST gsCoonsPatch<real_t>;
 
-}
+} // namespace gismo

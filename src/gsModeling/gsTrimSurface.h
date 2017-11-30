@@ -15,11 +15,8 @@
 #pragma once
 
 #include <iostream>
-
 #include <gsCore/gsSurface.h>
-
 #include <gsModeling/gsPlanarDomain.h>
-
 #include <gsUtils/gsPointGrid.h>
 
 namespace gismo
@@ -493,9 +490,6 @@ private:
 
 
 }// namespace gismo
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsTrimSurface.hpp)
