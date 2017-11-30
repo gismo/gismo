@@ -78,7 +78,7 @@ public:
     /// \brief Returns the input boundaries
     const gsMultiPatch<T> & input() 
     {
-        return *m_boundary;
+        return m_boundary;
     }
 
 protected:
