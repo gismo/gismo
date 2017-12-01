@@ -83,11 +83,10 @@ public:
         return basisSlice(n1.direction(),n1.parameter());
     }
 
+public:
     /// Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
-    
-public:
-    
+
     int domainDim() const { return d; }
     
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
