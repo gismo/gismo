@@ -166,15 +166,6 @@ public:
         setIsPeriodic();
     }
 
-    /*
-    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
-    {
-        std::vector<gsBasis<T>*> rr;
-        this->getComponentsForSide(n1,rr);
-        return BoundaryBasisType::New(rr);
-    }
-     */
-
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         std::vector<gsBasis<T>*> rr;
