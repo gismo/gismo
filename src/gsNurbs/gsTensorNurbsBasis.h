@@ -117,10 +117,13 @@ public:
         return os;
     }
 
-    BoundaryBasisType * boundaryBasis(boxSide const & s ) const   
-    { 
-        typename Src_t::BoundaryBasisType * bb = m_src->boundaryBasis(s);
-        gsMatrix<unsigned> ind = m_src->boundary(s);
+public:
+    virtual typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s) { return typename BoundaryBasisType::uPtr(boundaryBasis_impl(s)); }
+private:
+    BoundaryBasisType * boundaryBasis_impl(boxSide const & n1) const
+    {
+        typename Src_t::BoundaryBasisType * bb = (typename Src_t::BoundaryBasisType*)m_src->boundaryBasis(n1).release();
+        gsMatrix<unsigned> ind = m_src->boundary(n1);
         
         gsMatrix<T> ww( ind.size(),1);
         for ( index_t i=0; i<ind.size(); ++i)

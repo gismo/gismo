@@ -466,7 +466,7 @@ public:
 
 
     /// Returns the boundary basis for side s
-    // virtual gsHTensorBasis<d,T> * boundaryBasis(boxSide const & s ) const 
+    // GISMO_UPTR_FUNCTION_DEC(gsHTensorBasis<d,T>, boundaryBasis, boxSide const &)
 
     /// Returns a bounding box for the basis' domain
     gsMatrix<T> support() const;

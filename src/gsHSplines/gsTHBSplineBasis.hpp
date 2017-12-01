@@ -32,7 +32,7 @@ typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basis
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
     GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     const boxSide side(dir_fixed,0);
-    const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType * bBSplineBasis =
+    const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType::uPtr bBSplineBasis =
         this->m_bases[0]->boundaryBasis(side);
     typename gsTHBSplineBasis<d,T>::BoundaryBasisType* bBasis =
         new typename gsTHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);//,this->m_tree.getMaxInsLevel()+1);
@@ -43,8 +43,6 @@ typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basis
         this->getBoxesAlongSlice(dir_fixed,par,boxes);
         bBasis->refineElements(boxes);
     }
-
-    delete bBSplineBasis;
     return bBasis;
 }
 

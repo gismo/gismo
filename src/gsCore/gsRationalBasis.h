@@ -209,8 +209,8 @@ public:
         std::swap(*m_src, tmp.basis() );
     }
 
-    /*
-      gsBasis<T> * boundaryBasis(boxSide const & s ) const   
+    /* if ever be reused, change to actual and current GISMO_UPTR_FUNCTION stuff und uPtr
+      GISMO_UPTR_FUNCTION_DEF(gsBasis<T>, boundaryBasis, boxSide const &)
       { 
       typename SrcT::BoundaryBasisType * bb = m_src->boundaryBasis(s);
       gsMatrix<unsigned> ind = m_src->boundary(s);

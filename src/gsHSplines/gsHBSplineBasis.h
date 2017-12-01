@@ -78,9 +78,9 @@ public:
     }
 
     /// Gives back the boundary basis at boxSide s
-    BoundaryBasisType * boundaryBasis(boxSide const & s ) const
+    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
-        return basisSlice(s.direction(),s.parameter());
+        return basisSlice(n1.direction(),n1.parameter());
     }
 
     /// Gives back the basis at a slice in \a dir_fixed at \a par

@@ -109,15 +109,17 @@ public:
     {  representBasis(); }
 
     /// Gives back the boundary basis at boxSide s
-    BoundaryBasisType * boundaryBasis(boxSide const & s ) const
+    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
+    //memory::unique_ptr<BoundaryBasisType> boundaryBasis(boxSide const & s) { return memory::unique_ptr<BoundaryBasisType>(boundaryBasis_impl(s)); }
+    //BoundaryBasisType * boundaryBasis_impl(boxSide const & n1 ) const
     {
-        return basisSlice(s.direction(),s.parameter());
+        return basisSlice(n1.direction(),n1.parameter());
     }
 
+public:
     /// Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
 
-public:
 
     // Look at gsBasis class for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const;

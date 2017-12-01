@@ -106,7 +106,7 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
     GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     // construct the d-1 basis
     boxSide side(dir_fixed,0);
-    BoundaryBasisType *tbasis = this->basis().boundaryBasis(side) ;
+    typename BoundaryBasisType::uPtr tbasis = this->basis().boundaryBasis(side);
 
     if(d==1)
     {
@@ -147,7 +147,6 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
         //result = BoundaryGeometry(*tbasis, give(coefs) );
         result = BoundaryGeometryType(*tbasis, coefs );
     }
-    delete tbasis;
 }
 
 template<unsigned d, class T>

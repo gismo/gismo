@@ -370,7 +370,7 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             fpts = it->function()->eval( m_pde_ptr->domain()[it->patch()].eval(  gsPointGrid<T>( rr ) ) );
 
         // Interpolate dirichlet boundary
-        gsBasis<T> * h = basis.boundaryBasis(it->side());
+        gsBasis<T> * h = basis.boundaryBasis(it->side()).release(); // TODO: uPtr
         typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
         const gsMatrix<T> & dVals =  geo->coefs();
 
