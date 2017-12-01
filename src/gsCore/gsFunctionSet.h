@@ -56,9 +56,9 @@
 
 // Definition prototypes
 #define __DEFn(n, type, name, ...)          __DEF ## n(type, name, __VA_ARGS__)
-#define __DEF0(type, name, void)            public:  inline memory::unique_ptr< type > name() const { return uPtr(name##_impl()); }
-#define __DEF1(type, name, t1)              public:  inline memory::unique_ptr< type > name(t1 n1) const { return uPtr(name##_impl(n1)); }
-#define __DEF2(type, name, t1, t2)          public:  inline memory::unique_ptr< type > name(t1 n1, t2 n2) const { return uPtr(name##_impl(n1, n2)); }
+#define __DEF0(type, name, void)            public:  inline memory::unique_ptr< type > name() const { return memory::unique_ptr< type >(name##_impl()); }
+#define __DEF1(type, name, t1)              public:  inline memory::unique_ptr< type > name(t1 n1) const { return memory::unique_ptr< type >(name##_impl(n1)); }
+#define __DEF2(type, name, t1, t2)          public:  inline memory::unique_ptr< type > name(t1 n1, t2 n2) const { return memory::unique_ptr< type >(name##_impl(n1, n2)); }
 
 // Declaration of virtual function
 // 1st: return type
