@@ -49,16 +49,16 @@
 #define PP_NARG_HELPER3_11(N) N
 
 // Declaration prototypes. Followed by: { ";" , "= 0;" , "{ ... }" }
-#define __DECn(n, type, name, ...)    __DEC ## n(type, name, __VA_ARGS__)
-#define __DEC0(type, name, void)      private: virtual type * name##_impl() const
-#define __DEC1(type, name, t1)        private: virtual type * name##_impl(t1 n1) const
-#define __DEC2(type, name, t1, t2)    private: virtual type * name##_impl(t1 n1, t2 n2) const
+#define __DECn(n, type, name, ...)  __DEC ## n(type, name, __VA_ARGS__)
+#define __DEC0(type, name, void)    private: virtual type * name##_impl() const
+#define __DEC1(type, name, t1)      private: virtual type * name##_impl(t1 n1) const
+#define __DEC2(type, name, t1, t2)  private: virtual type * name##_impl(t1 n1, t2 n2) const
 
 // Definition prototypes
-#define __DEFn(n, type, name, ...)          __DEF ## n(type, name, __VA_ARGS__)
-#define __DEF0(type, name, void)            public:  inline memory::unique_ptr< type > name() const { return memory::unique_ptr< type >(name##_impl()); }
-#define __DEF1(type, name, t1)              public:  inline memory::unique_ptr< type > name(t1 n1) const { return memory::unique_ptr< type >(name##_impl(n1)); }
-#define __DEF2(type, name, t1, t2)          public:  inline memory::unique_ptr< type > name(t1 n1, t2 n2) const { return memory::unique_ptr< type >(name##_impl(n1, n2)); }
+#define __DEFn(n, type, name, ...)  __DEF ## n(type, name, __VA_ARGS__)
+#define __DEF0(type, name, void)    public:  inline memory::unique_ptr< type > name() const { return memory::unique_ptr< type >(name##_impl()); }
+#define __DEF1(type, name, t1)      public:  inline memory::unique_ptr< type > name(t1 n1) const { return memory::unique_ptr< type >(name##_impl(n1)); }
+#define __DEF2(type, name, t1, t2)  public:  inline memory::unique_ptr< type > name(t1 n1, t2 n2) const { return memory::unique_ptr< type >(name##_impl(n1, n2)); }
 
 // Declaration of virtual function
 // 1st: return type
