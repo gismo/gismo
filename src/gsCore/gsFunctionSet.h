@@ -24,10 +24,10 @@
 // unique::memory pointers as return value of virtual functions in base/derived
 // classes. It is expected that a class where this macros are used is derived
 // from gsFunctionSet or its derivatives. It assumes that a concrete
-// implementation has the suffix "_impl", and that there is a uPtr type
-// definition inside the class. From outside that class, some can call that
-// function by its name and get back a pointer inside a uPtr of the correct
-// type. If casts are needed afterward, use memory::convert_ptr<toType>(from).
+// implementation has the suffix "_impl". From outside that class, some can
+// call that function by its name and get back a pointer inside a
+// memory::unique_ptr (aka. uPtr) of the correct type. If casts are needed
+// afterward, use memory::convert_ptr<toType>(from).
 
 
 // Helper macros for counting arguments, works till highest number in PP_RSEQ_N
