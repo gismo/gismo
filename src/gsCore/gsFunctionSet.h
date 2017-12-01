@@ -24,10 +24,10 @@
 // unique::memory pointers as return value of virtual functions in base/derived
 // classes. It is expected that a class where this macros are used is derived
 // from gsFunctionSet or its derivatives. It assumes that a concrete
-// implementation has the suffix "_impl", and that there is a uPtr type
-// definition inside the class. From outside that class, some can call that
-// function by its name and get back a pointer inside a uPtr of the correct
-// type. If casts are needed afterward, use memory::convert_ptr<toType>(from).
+// implementation has the suffix "_impl". From outside that class, some can
+// call that function by its name and get back a pointer inside a
+// memory::unique_ptr (aka. uPtr) of the correct type. If casts are needed
+// afterward, use memory::convert_ptr<toType>(from).
 
 
 // Helper macros for counting arguments, works till highest number in PP_RSEQ_N
@@ -49,16 +49,16 @@
 #define PP_NARG_HELPER3_11(N) N
 
 // Declaration prototypes. Followed by: { ";" , "= 0;" , "{ ... }" }
-#define __DECn(n, type, name, ...)    __DEC ## n(type, name, __VA_ARGS__)
-#define __DEC0(type, name, void)      public: virtual type * name##_impl() const
-#define __DEC1(type, name, t1)        public: virtual type * name##_impl(t1 n1) const
-#define __DEC2(type, name, t1, t2)    public: virtual type * name##_impl(t1 n1, t2 n2) const
+#define __DECn(n, type, name, ...)  __DEC ## n(type, name, __VA_ARGS__)
+#define __DEC0(type, name, void)    private: virtual type * name##_impl() const
+#define __DEC1(type, name, t1)      private: virtual type * name##_impl(t1 n1) const
+#define __DEC2(type, name, t1, t2)  private: virtual type * name##_impl(t1 n1, t2 n2) const
 
 // Definition prototypes
-#define __DEFn(n, type, name, ...)          __DEF ## n(type, name, __VA_ARGS__)
-#define __DEF0(type, name, void)            public:  inline memory::unique_ptr< type > name() const { return memory::unique_ptr< type >(name##_impl()); }
-#define __DEF1(type, name, t1)              public:  inline memory::unique_ptr< type > name(t1 n1) const { return memory::unique_ptr< type >(name##_impl(n1)); }
-#define __DEF2(type, name, t1, t2)          public:  inline memory::unique_ptr< type > name(t1 n1, t2 n2) const { return memory::unique_ptr< type >(name##_impl(n1, n2)); }
+#define __DEFn(n, type, name, ...)  __DEF ## n(type, name, __VA_ARGS__)
+#define __DEF0(type, name, void)    public:  inline memory::unique_ptr< type > name() const { return memory::unique_ptr< type >(name##_impl()); }
+#define __DEF1(type, name, t1)      public:  inline memory::unique_ptr< type > name(t1 n1) const { return memory::unique_ptr< type >(name##_impl(n1)); }
+#define __DEF2(type, name, t1, t2)  public:  inline memory::unique_ptr< type > name(t1 n1, t2 n2) const { return memory::unique_ptr< type >(name##_impl(n1, n2)); }
 
 // Declaration of virtual function
 // 1st: return type

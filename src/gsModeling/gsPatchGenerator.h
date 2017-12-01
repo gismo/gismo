@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include<gsCore/gsMultiPatch.h>
+
 namespace gismo
 {
 
@@ -76,7 +78,7 @@ public:
     /// \brief Returns the input boundaries
     const gsMultiPatch<T> & input() 
     {
-        return *m_boundary;
+        return m_boundary;
     }
 
 protected:
