@@ -219,15 +219,8 @@ public:
     gsMatrix<unsigned> boundaryOffset(boxSide const & s,unsigned offset) const;
 
     // Look at gsBasis class for a description
-    //GISMO_UPTR_FUNCTION_DEC(gsConstantBasis<T>, boundaryBasis, boxSide const &)
-    inline typename gsConstantBasis<T>::uPtr boundaryBasis(boxSide const & s) const
-    {
-        return typename gsConstantBasis<T>::uPtr(boundaryBasis_impl(s));
-    }
-private:
-    virtual gsConstantBasis<T> * boundaryBasis_impl(boxSide const &) const;
+    GISMO_UPTR_FUNCTION_DEC(gsConstantBasis<T>, boundaryBasis, boxSide const &)
 
-public:
     // Look at gsBasis class for a description
     gsMatrix<T> support() const ;
 

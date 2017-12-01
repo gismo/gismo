@@ -110,8 +110,6 @@ public:
 
     /// Gives back the boundary basis at boxSide s
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
-    //memory::unique_ptr<BoundaryBasisType> boundaryBasis(boxSide const & s) { return memory::unique_ptr<BoundaryBasisType>(boundaryBasis_impl(s)); }
-    //BoundaryBasisType * boundaryBasis_impl(boxSide const & n1 ) const
     {
         return basisSlice(n1.direction(),n1.parameter());
     }

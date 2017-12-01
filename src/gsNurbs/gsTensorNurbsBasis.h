@@ -117,10 +117,7 @@ public:
         return os;
     }
 
-public:
-    virtual typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s) { return typename BoundaryBasisType::uPtr(boundaryBasis_impl(s)); }
-private:
-    BoundaryBasisType * boundaryBasis_impl(boxSide const & n1) const
+    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         typename Src_t::BoundaryBasisType * bb = (typename Src_t::BoundaryBasisType*)m_src->boundaryBasis(n1).release();
         gsMatrix<unsigned> ind = m_src->boundary(n1);
