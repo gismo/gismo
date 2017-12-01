@@ -119,14 +119,14 @@ public:
 
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
-        typename Src_t::BoundaryBasisType * bb = (typename Src_t::BoundaryBasisType*)m_src->boundaryBasis(n1).release();
+        typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(n1);
         gsMatrix<unsigned> ind = m_src->boundary(n1);
         
         gsMatrix<T> ww( ind.size(),1);
         for ( index_t i=0; i<ind.size(); ++i)
             ww(i,0) = m_weights( (ind)(i,0), 0);
         
-        return new BoundaryBasisType(bb, give(ww));// note: constructor consumes the pointer
+        return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
     }
 
 protected:
