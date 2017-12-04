@@ -482,7 +482,7 @@ public:
                                           result);
     }
 
-    GISMO_UPTR_FUNCTION_FORWARD(gsHTensorBasis, clone)
+    GISMO_UPTR_FUNCTION_PURE(gsHTensorBasis, clone)
 
     /// The number of basis functions in this basis
     index_t size() const;
