@@ -59,7 +59,7 @@ public:
 
     /// @}
 
-//    GISMO_UPTR_FUNCTION_FORWARD(gsVolume, clone)
+//    GISMO_UPTR_FUNCTION_PURE(gsVolume, clone)
 private: virtual gsVolume * clone_impl() const = 0;
 public: inline uPtr clone() const { return uPtr(clone_impl()); }
 

@@ -88,9 +88,9 @@
 // 1st: return type
 // 2nd: function name
 // 3rd: types of parameter arguments
-#define GISMO_UPTR_FUNCTION_FORWARD(type, name, ...) \
-        GISMO_UPTR_FUNCTION_FORWARD_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
-#define GISMO_UPTR_FUNCTION_FORWARD_(n, type, name, ...) \
+#define GISMO_UPTR_FUNCTION_PURE(type, name, ...) \
+        GISMO_UPTR_FUNCTION_PURE_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
+#define GISMO_UPTR_FUNCTION_PURE_(n, type, name, ...) \
         __DECn(n, type, name, __VA_ARGS__) = 0; \
         __DEFn(n, type, name, __VA_ARGS__)
 
