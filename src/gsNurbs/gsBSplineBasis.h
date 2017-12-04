@@ -219,7 +219,7 @@ public:
     gsMatrix<unsigned> boundaryOffset(boxSide const & s,unsigned offset) const;
 
     // Look at gsBasis class for a description
-    gsConstantBasis<T> * boundaryBasis(boxSide const & s ) const;
+    GISMO_UPTR_FUNCTION_DEC(gsConstantBasis<T>, boundaryBasis, boxSide const &)
 
     // Look at gsBasis class for a description
     gsMatrix<T> support() const ;

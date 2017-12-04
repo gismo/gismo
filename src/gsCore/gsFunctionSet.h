@@ -77,6 +77,7 @@
 // 2nd: function name
 // 3rd: types of parameter arguments
 // must be finished with a block of { return type * your implementation }
+// don't forget that your in "private:" afterward
 #define GISMO_UPTR_FUNCTION_DEF(type, name, ...) \
         GISMO_UPTR_FUNCTION_DEF_(PP_NARG(__VA_ARGS__), type, name, __VA_ARGS__)
 #define GISMO_UPTR_FUNCTION_DEF_(n, type, name, ...) \
