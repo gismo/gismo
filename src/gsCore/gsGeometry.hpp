@@ -34,10 +34,9 @@ gsGeometry<T>::boundary(boxSide const& s) const
         coeffs.row(i) = m_coefs.row( (ind)(i,0) );
     }
 
-    gsBasis<T> *Bs = this->basis().boundaryBasis(s);  // Basis for boundary side s
+    typename gsBasis<T>::uPtr Bs = this->basis().boundaryBasis(s);  // Basis for boundary side s
     uPtr bgeo = Bs->makeGeometry( give(coeffs) );
 
-    delete Bs;
     return bgeo;
 }
 

@@ -501,7 +501,7 @@ public:
     virtual unsigned functionAtCorner(boxCorner const & c) const;
 
     /// Returns the boundary basis for side s.
-    virtual gsBasis<T> * boundaryBasis(boxSide const & s) const;
+    GISMO_UPTR_FUNCTION_DEC(gsBasis<T>, boundaryBasis, boxSide const &)
 
     /// @brief Returns (a bounding box for) the domain of the whole basis.
     ///
@@ -669,7 +669,7 @@ public:
 
     /// @}
 
-    GISMO_UPTR_FUNCTION_FORWARD(gsBasis, clone)
+    GISMO_UPTR_FUNCTION_PURE(gsBasis, clone)
 
     /// @brief Create a gsGeometry of proper type for this basis with the
     /// given coefficient matrix.

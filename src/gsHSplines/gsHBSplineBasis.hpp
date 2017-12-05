@@ -41,7 +41,7 @@ typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSl
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
     GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
     const boxSide side(dir_fixed,0);
-    const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType * bBSplineBasis =
+    const typename gsTensorBSplineBasis<d,T>::BoundaryBasisType::uPtr bBSplineBasis =
             this->m_bases[0]->boundaryBasis(side);
     typename gsHBSplineBasis<d,T>::BoundaryBasisType* bBasis =
             new typename gsHBSplineBasis<d,T>::BoundaryBasisType(*bBSplineBasis);
@@ -53,7 +53,6 @@ typename gsHBSplineBasis<d,T>::BoundaryBasisType * gsHBSplineBasis<d,T>::basisSl
         bBasis->refineElements(boxes);
     }
 
-    delete bBSplineBasis;
     return bBasis;
 }
 

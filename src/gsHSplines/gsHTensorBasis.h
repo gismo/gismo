@@ -466,7 +466,7 @@ public:
 
 
     /// Returns the boundary basis for side s
-    // virtual gsHTensorBasis<d,T> * boundaryBasis(boxSide const & s ) const 
+    // GISMO_UPTR_FUNCTION_DEC(gsHTensorBasis<d,T>, boundaryBasis, boxSide const &)
 
     /// Returns a bounding box for the basis' domain
     gsMatrix<T> support() const;
@@ -482,7 +482,7 @@ public:
                                           result);
     }
 
-    GISMO_UPTR_FUNCTION_FORWARD(gsHTensorBasis, clone)
+    GISMO_UPTR_FUNCTION_PURE(gsHTensorBasis, clone)
 
     /// The number of basis functions in this basis
     index_t size() const;

@@ -100,7 +100,7 @@ public:
 
     // Look at gsBasis class for a description
     // Note: Specializing pointer type at return
-    //GISMO_UPTR_FUNCTION_FORWARD(TensorSelf_tt, clone)
+    //GISMO_UPTR_FUNCTION_PURE(TensorSelf_tt, clone)
     private: virtual gsTensorBSplineBasis * clone_impl() const = 0;
     public: uPtr clone() const { return uPtr(dynamic_cast<Self_t*>(clone_impl())); }
     
@@ -219,7 +219,7 @@ public:
     gsMatrix<unsigned> boundaryOffset(boxSide const & s,unsigned offset) const;
 
     // Look at gsBasis class for a description
-    gsConstantBasis<T> * boundaryBasis(boxSide const & s ) const;
+    GISMO_UPTR_FUNCTION_DEC(gsConstantBasis<T>, boundaryBasis, boxSide const &)
 
     // Look at gsBasis class for a description
     gsMatrix<T> support() const ;
