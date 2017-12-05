@@ -47,8 +47,33 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsMatrix<> &rhs, index_t N)
     mat.makeCompressed();
 }
 
-SUITE(gsLinearSolvers)
+SUITE(gsIterativeSolvers_test)
 {
+
+    TEST(Gradient_test)
+    {
+        index_t          N = 10;
+        real_t           tol = std::pow(10.0, - REAL_DIG * 0.25);
+
+        gsSparseMatrix<> mat;
+        gsMatrix<>       rhs;
+        gsMatrix<>       x;
+
+        poissonDiscretization(mat, rhs, N);
+
+        gsOptionList opt = gsGradientMethod<>::defaultOptions();
+        opt.setInt ("MaxIterations", 200 );
+        opt.setReal("Tolerance"    , tol );
+        opt.setReal("Damping"      , (real_t)1/2 );
+
+        gsGradientMethod<> solver(mat);
+        solver.setOptions(opt);
+
+        x.setZero(N,1);
+        solver.solve(rhs,x);
+
+        CHECK( (mat*x-rhs).norm()/rhs.norm() <= tol );
+    }
 
     TEST(CG_test)
     {
