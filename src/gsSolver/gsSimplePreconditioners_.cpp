@@ -1,4 +1,4 @@
-/** @file gsSimpleOps_.cpp
+/** @file gsSimplePreconditioners_.cpp
 
     @brief Collection of some simple preconditioners.
 
@@ -11,11 +11,11 @@
     Author(s): J. Sogn, C. Hofreither, A. Mantzaflaris, S. Takacs
 */
 
-#include <gsSolver/gsSimpleOps.hpp>
+#include <gsSolver/gsSimplePreconditioners.hpp>
 
 namespace gismo
 {
-    
+
 TEMPLATE_INST void dampedRichardsonSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau);
 
 TEMPLATE_INST void jacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);

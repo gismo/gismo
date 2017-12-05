@@ -1,4 +1,4 @@
-/** @file gsSimpleOps.h
+/** @file gsSimplePreconditioners.h
 
     @brief Collection of some simple preconditioners.
 
@@ -8,16 +8,16 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Sogn, C. Hofreither, A. Mantzaflaris
+    Author(s): J. Sogn, C. Hofreither, A. Mantzaflaris, S. Takacs
 */
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsSolver/gsLinearOperator.h>
+#include <gsSolver/gsPreconditioner.h>
 
 namespace gismo
 {
-    
+
 /// @brief Update \a x with a Richardson sweep
 /// \ingroup Solver
 template<typename T>
@@ -53,7 +53,7 @@ GISMO_EXPORT void gaussSeidelSingleBlock(const gsSparseMatrix<T>& A, gsMatrix<T>
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsRichardsonOp : public gsSteppableOperator<typename MatrixType::Scalar>
+class gsRichardsonOp : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType>  MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
@@ -67,9 +67,9 @@ public:
 
     /// Unique pointer for gsRichardsonOp
     typedef memory::unique_ptr< gsRichardsonOp > uPtr;
- 
+
     /// Base class
-    typedef gsSteppableOperator<T> Base;
+    typedef gsPreconditionerOp<T> Base;
 
     /// @brief Constructor with given matrix
     explicit gsRichardsonOp(const MatrixType& _mat)
@@ -79,10 +79,10 @@ public:
     explicit gsRichardsonOp(const MatrixPtr& _mat)
     : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
 
-    static uPtr make(const MatrixType& _mat) 
+    static uPtr make(const MatrixType& _mat)
     { return memory::make_unique( new gsRichardsonOp(_mat) ); }
 
-    static uPtr make(const MatrixPtr& _mat) 
+    static uPtr make(const MatrixPtr& _mat)
     { return memory::make_unique( new gsRichardsonOp(_mat) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
@@ -132,7 +132,9 @@ public:
     }
 
     /// Returns the matrix
-    const MatrixType & matrix() const { return m_mat; }
+    NestedMatrix matrix() const { return m_expr; }
+
+    typename gsPreconditionerOp<T>::Ptr & underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
@@ -155,7 +157,7 @@ typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<D
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsJacobiOp : public gsSteppableOperator<typename MatrixType::Scalar>
+class gsJacobiOp : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested             NestedMatrix;
@@ -167,11 +169,11 @@ public:
     /// Shared pointer for gsJacobiOp
     typedef memory::shared_ptr< gsJacobiOp > Ptr;
 
-    /// Unique pointer for gsJacobiOp   
+    /// Unique pointer for gsJacobiOp
     typedef memory::unique_ptr< gsJacobiOp > uPtr;
 
     /// Base class
-    typedef gsSteppableOperator<T> Base;
+    typedef gsPreconditionerOp<T> Base;
 
     /// @brief Constructor with given matrix
     explicit gsJacobiOp(const MatrixType& _mat)
@@ -181,12 +183,12 @@ public:
     explicit gsJacobiOp(const MatrixPtr& _mat)
     : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
 
-    static uPtr make(const MatrixType& _mat) 
+    static uPtr make(const MatrixType& _mat)
     { return memory::make_unique( new gsJacobiOp(_mat) ); }
 
-    static uPtr make(const MatrixPtr& _mat) 
+    static uPtr make(const MatrixPtr& _mat)
     { return memory::make_unique( new gsJacobiOp(_mat) ); }
- 
+
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
         GISMO_ASSERT( m_expr.rows() == rhs.rows() && m_expr.cols() == m_expr.rows(),
@@ -240,6 +242,8 @@ public:
     /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
 
+    typename gsPreconditionerOp<T>::Ptr & underlyingOp() const { return makeMatrixOp(m_mat); }
+
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
     NestedMatrix    m_expr; ///< Nested Eigen expression
@@ -258,11 +262,16 @@ typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>&
 
 namespace gsGaussSeidel
 {
+    /// @brief Gauss-Seidel preconditioner
+    ///
+    /// Specify the ordering of Gauss Seidel
+    ///
+    /// \ingroup Solver
     enum ordering
     {
-        forward = 0,
-        reverse = 1,
-        symmetric = 2
+        forward = 0,    ///< standard forward ordering
+        reverse = 1,    ///< reverse ordering
+        symmetric = 2   ///< one total step is = one forward + one backward
     };
 }
 
@@ -272,7 +281,7 @@ namespace gsGaussSeidel
 ///
 /// \ingroup Solver
 template <typename MatrixType, gsGaussSeidel::ordering ordering = gsGaussSeidel::forward>
-class gsGaussSeidelOp : public gsSteppableOperator<typename MatrixType::Scalar>
+class gsGaussSeidelOp : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested             NestedMatrix;
@@ -288,7 +297,7 @@ public:
     typedef memory::unique_ptr< gsGaussSeidelOp > uPtr;
 
     /// Base class
-    typedef gsSteppableOperator<T> Base;
+    typedef gsPreconditionerOp<T> Base;
 
     /// @brief Constructor with given matrix
     explicit gsGaussSeidelOp(const MatrixType& _mat)
@@ -298,10 +307,10 @@ public:
     explicit gsGaussSeidelOp(const MatrixPtr& _mat)
     : m_mat(_mat), m_expr(m_mat->derived()) { }
 
-    static uPtr make(const MatrixType& _mat) 
+    static uPtr make(const MatrixType& _mat)
     { return memory::make_unique( new gsGaussSeidelOp(_mat) ); }
 
-    static uPtr make(const MatrixPtr& _mat) 
+    static uPtr make(const MatrixPtr& _mat)
     { return memory::make_unique( new gsGaussSeidelOp(_mat) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
@@ -317,11 +326,26 @@ public:
         }
     }
 
+    void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        if (ordering == gsGaussSeidel::forward )
+            reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+        if (ordering == gsGaussSeidel::reverse )
+            gaussSeidelSweep<T>(m_expr,x,rhs);
+        if (ordering == gsGaussSeidel::symmetric )
+        {
+            gaussSeidelSweep<T>(m_expr,x,rhs);
+            reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+        }
+    }
+
     index_t rows() const {return m_expr.rows();}
     index_t cols() const {return m_expr.cols();}
 
     /// Returns the matrix
-    const MatrixType & matrix() const { return m_mat; }
+    NestedMatrix matrix() const { return m_expr; }
+
+    typename gsPreconditionerOp<T>::Ptr & underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
@@ -352,5 +376,5 @@ typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGa
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsSimpleOps.hpp)
+#include GISMO_HPP_HEADER(gsSimplePreconditioners.hpp)
 #endif

@@ -1,4 +1,4 @@
-/** @file gsSimpleOps.hpp
+/** @file gsSimplePreconditioners.hpp
 
     @brief Collection of some simple preconditioners.
 
@@ -10,7 +10,7 @@
 
     Author(s): C. Hofreither
 */
-#include <gsSolver/gsSimpleOps.h>
+#include <gsSolver/gsSimplePreconditioners.h>
 #include <gsCore/gsLinearAlgebra.h>
 
 namespace gismo
@@ -31,7 +31,7 @@ void jacobiSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& 
 {
     GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
         "Dimensions do not match.");
-    
+
     GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     gsMatrix<T> temp = f - A * x;
@@ -44,7 +44,7 @@ void dampedJacobiSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatri
 {
     GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
         "Dimensions do not match.");
-    
+
     GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     gsMatrix<T> temp = f - A * x;
@@ -57,7 +57,7 @@ void gaussSeidelSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix
 {
     GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
         "Dimensions do not match.");
-    
+
     GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     // A is supposed to be symmetric, so it doesn't matter if it's stored in row- or column-major order
@@ -82,7 +82,7 @@ void reverseGaussSeidelSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const g
 {
     GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
         "Dimensions do not match.");
-    
+
     GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     // A is supposed to be symmetric, so it doesn't matter if it's stored in row- or column-major order
@@ -108,9 +108,9 @@ void gaussSeidelSingleBlock(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gs
 {
     GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
         "Dimensions do not match.");
-    
-    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );    
-    
+
+    GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
+
     //Sorting from lowest to highest
     DoFs.sortByColumn(0);
     const index_t size = DoFs.rows();
@@ -135,4 +135,3 @@ void gaussSeidelSingleBlock(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gs
 }
 
 } // namespace gismo
-
