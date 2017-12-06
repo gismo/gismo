@@ -1,14 +1,19 @@
-/* @file newton_check.cpp
+/** @file gsNewton_test.cpp
 
-   Tests the newton iteration
-*/
+    @brief Tests the newton iteration
 
-//#define TEST_INFO
+    This file is part of the G+Smo library.
 
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "gismo_unittest.h" // Brings in G+Smo and the UnitTest++ framework
+    Author(s):
+ **/
 
-TEST(newton_check) // Declares test
+#include "gismo_unittest.h"
+
+TEST(gsNewton_test) // Declares test
 {
     UNITTEST_TIME_CONSTRAINT(1000);// this will produce failure if test takes more than 1 sec
 

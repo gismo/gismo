@@ -125,7 +125,7 @@ void testImplementation(index_t deg,index_t mult)
 
 
 
-TEST(HBasisDegreeElevate)
+TEST(gsHTBasisDegreeElevate)
 {
 // Disabled: expensive test (due to the function setMultiplicity which
 // is highly inefficient) which does not help: it computes the same
