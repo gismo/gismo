@@ -340,6 +340,8 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
 
     }
 
+    return false;
+/*
     if ( n == 9 )
     {
         x[0] = -0.968160239507626089835576203;
@@ -4221,6 +4223,7 @@ gsGaussRule<T>::lookupReference(index_t n,       // Number of points
         return false;
     }
     return true;
+*/
 }
 
 } // namespace gismo
