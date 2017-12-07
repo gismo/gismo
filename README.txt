@@ -194,7 +194,7 @@ Plugins for exporting functionality of G+Smo to third party software.
 
 * cmake
 
-Cmake configuration files
+Cmake configuration files.
 
 * doc
 
