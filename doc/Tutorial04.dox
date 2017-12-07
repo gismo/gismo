@@ -145,7 +145,7 @@ Cxx(11)                             | Gismo
 ----------------------------------- | -----------------------------------
 std::move(...)                      | give(...)
 double                              | real_t
-int                                 | size_t
+int                                 | index_t
 std::unique_ptr                     | memory::unique_ptr or gs...::uPtr
 std::shared_ptr                     | memory::shared_ptr or gs...::Ptr
 std::to_string                      | util::to_string
