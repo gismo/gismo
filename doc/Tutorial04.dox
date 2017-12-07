@@ -131,6 +131,30 @@ inside the build folder. After building and executing all programs, a
 log file will be posted on the CDash server, under the section
 Experimental.
 
+\section cxx Gismo and Cxx Standards
+
+Gismo should be able to compile with C++98 (C99) and on different machines
+with different datatypes and maybe architectures.
+To ensure this, and still be able to use some of the benefits of newer
+compilers like C++11, there are some helping functions inside gsUtils and
+gsMemory that should be used instead of native C++11 calls. It is helpful
+to keep in mind, that real_t and size_t are definitions, that will be
+exchanged by cmake and should be used instead of double and int.
+
+Cxx(11)                             | Gismo
+----------------------------------- | -----------------------------------
+std::move(...)                      | give(...)
+double                              | real_t
+int                                 | size_t
+std::unique_ptr                     | memory::unique_ptr or gs...::uPtr
+std::shared_ptr                     | memory::shared_ptr or gs...::Ptr
+std::to_string                      | util::to_string
+
+Also keep in mind, that C++98 std::ios doesn't like "strings". Therefore,
+just call .c_str() if you give a string to a fstream (like ofstream::open).
+
+And please don't use auto and the fancy new foreach loop.
+
 \section tips04 Quick Tips
 
 - Find intuitive names for your classes, prefix the names with "gs"
