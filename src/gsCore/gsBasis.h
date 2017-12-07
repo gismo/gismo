@@ -155,9 +155,9 @@ public:
      */
     gsVector<unsigned> numActive(const gsMatrix<T> & u) const
     {
-        gsVector<unsigned> ptr;
-        this->numActive_into(u, ptr);
-        return ptr;
+        gsVector<unsigned> result;
+        this->numActive_into(u, result);
+        return result;
     }
 
     /// @}
