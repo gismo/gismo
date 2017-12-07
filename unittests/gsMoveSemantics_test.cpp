@@ -11,9 +11,9 @@
     Author(s): A. Mantzaflaris
 */
 
-#include "gismo_unittest.h"  // Brings in G+Smo and the UnitTest++ framework
+#include "gismo_unittest.h"
 
-SUITE(gsMoveSemantics)
+SUITE(gsMoveSemantics_test)
 {
 
 #if __cplusplus >=201103 && EIGEN_HAS_RVALUE_REFERENCES

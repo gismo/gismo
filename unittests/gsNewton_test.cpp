@@ -1,50 +1,60 @@
-/* @file newton_check.cpp
+/** @file gsNewton_test.cpp
 
-   Tests the newton iteration
-*/
+    @brief Tests the newton iteration
 
-//#define TEST_INFO
+    This file is part of the G+Smo library.
 
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "gismo_unittest.h" // Brings in G+Smo and the UnitTest++ framework
+    Author(s):
+ **/
 
-TEST(newton_check) // Declares test
+#include "gismo_unittest.h"
+
+SUITE(gsNewton_test)
 {
-    UNITTEST_TIME_CONSTRAINT(1000);// this will produce failure if test takes more than 1 sec
 
-    gsGeometry<>::Ptr f = gsNurbsCreator<>::NurbsQuarterAnnulus();
-    gsVector<> x = gsVector<>::vec(0.5, 0.5),
-               y = gsVector<>::vec(0.1, 1.9);
+    TEST(test) // Declares test
+    {
+        UNITTEST_TIME_CONSTRAINT(1000);// this will produce failure if test takes more than 1 sec
 
-    // For any function
-    int iter = f->newtonRaphson(y, x, true);
+        gsGeometry<>::Ptr f = gsNurbsCreator<>::NurbsQuarterAnnulus();
+        gsVector<> x = gsVector<>::vec(0.5, 0.5),
+                y = gsVector<>::vec(0.1, 1.9);
 
-    gsMatrix<> fx = f->eval(x);
+        // For any function
+        int iter = f->newtonRaphson(y, x, true);
 
-    gsTestInfo << "Result:     " << x .transpose() << "\n";
-    gsTestInfo << "Value:      " << fx.transpose() << "\n";
-    real_t res = (fx - y).norm();
-    gsTestInfo << "Res.norm:   " <<  res << "\n";
-    gsTestInfo << "Iterations: " << iter << "\n";
+        gsMatrix<> fx = f->eval(x);
 
-    CHECK( iter >= 0   );
-    CHECK( res <= 1e-5 );
+        gsTestInfo << "Result:     " << x .transpose() << "\n";
+        gsTestInfo << "Value:      " << fx.transpose() << "\n";
+        real_t res = (fx - y).norm();
+        gsTestInfo << "Res.norm:   " <<  res << "\n";
+        gsTestInfo << "Iterations: " << iter << "\n";
 
-    // For a gsGeometry
-    gsTestInfo << "-- Invert point on geometry.\n";
-    gsMatrix<> points(2,2);
-    points.col(0) = gsVector<>::vec(0.2, 1.7);
-    points.col(1) = gsVector<>::vec(2.0, 0.0);
+        CHECK( iter >= 0   );
+        CHECK( res <= 1e-5 );
 
-    gsMatrix<> params;
-    f->invertPoints(points, params);
+        // For a gsGeometry
+        gsTestInfo << "-- Invert point on geometry.\n";
+        gsMatrix<> points(2,2);
+        points.col(0) = gsVector<>::vec(0.2, 1.7);
+        points.col(1) = gsVector<>::vec(2.0, 0.0);
 
-    fx = f->eval(params);
+        gsMatrix<> params;
+        f->invertPoints(points, params);
 
-    gsTestInfo << "Result:     " << params.asRowVector() << "\n";
-    gsTestInfo << "Value:      " << fx    .asRowVector() << "\n";
-    res = (fx - points).norm();
-    gsTestInfo << "Res.norm:   " << res << "\n";
+        fx = f->eval(params);
 
-    CHECK( res <= 1e-5 );
+        gsTestInfo << "Result:     " << params.asRowVector() << "\n";
+        gsTestInfo << "Value:      " << fx    .asRowVector() << "\n";
+        res = (fx - points).norm();
+        gsTestInfo << "Res.norm:   " << res << "\n";
+
+        CHECK( res <= 1e-5 );
+    }
+
 }
