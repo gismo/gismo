@@ -131,85 +131,81 @@ std::vector<unsigned int> random_refinement(int lvl, int max_nb,
 }
 
 
-TEST(gsThbs_geometry_test)
+SUITE(gsThbs_geometry_test)
 {
-  gsVector<unsigned int> iv1;
-  gsVector<unsigned int> iv2;
-  iv1.resize(2);
-  iv2.resize(2);
 
-  ////////THB spline tests///////////////////////
+    TEST(gsThbs_geometry_test)
+    {
+    gsVector<unsigned int> iv1;
+    gsVector<unsigned int> iv2;
+    iv1.resize(2);
+    iv2.resize(2);
 
-
-    //gsInfo << " ----- Test THBSplineBasis ----------  \n";
-    //gsInfo << " Uniform knots with different multiplicities and d+1 multiplicity at the boundary.\n";
-    srand((unsigned)time(NULL));//seed the random alg.
-    int test_num = 1;
-    int point_num = 10;
-    int max_deg_x = 2;
-    int max_deg_y = 2;
-    int num_knots_x = 2;
-    int num_knots_y = 2;
-    int rand_knot_num = 0;
-    int max_level = 2;
-    int box_num = 5;
-    // gsInfo << " Number of tests: "<< test_num <<"\n";
-    // gsInfo << " Number of points: "<< point_num <<"\n";
-    for(int i =0; i < test_num;i++){
-        //gsInfo << " ------------------------------------------------------------------------------ test number "<<i<<" \n";
-        int deg_x = (rand()%max_deg_x)+1;
-        int deg_y = (rand()%max_deg_y)+1;
-        int kn = (rand()%num_knots_x)+1;
-        gsKnotVector<> T_KV (0, 1, kn , deg_x+1, 1 ) ;
-        kn = (rand()%num_knots_y)+1;
-        gsKnotVector<> T_KV1 (0, 1,kn,deg_y+1,1) ;
-        //gsInfo<<"Knot Vector"<<T_KV<<"\n";
-        //gsInfo<<"Knot Vector"<<T_KV1<<"\n";
-        for (int i2 = 0; i2 < rand_knot_num; i2 ++){
-            int kn2 = rand()%T_KV.size();
-            if(T_KV.multiplicity(T_KV[kn2]) < deg_x ){
-                T_KV.insert(T_KV[kn2]);
+        srand((unsigned)time(NULL));//seed the random alg.
+        int test_num = 1;
+        int point_num = 10;
+        int max_deg_x = 2;
+        int max_deg_y = 2;
+        int num_knots_x = 2;
+        int num_knots_y = 2;
+        int rand_knot_num = 0;
+        int max_level = 2;
+        int box_num = 5;
+        for(int i =0; i < test_num;i++){
+            int deg_x = (rand()%max_deg_x)+1;
+            int deg_y = (rand()%max_deg_y)+1;
+            int kn = (rand()%num_knots_x)+1;
+            gsKnotVector<> T_KV (0, 1, kn , deg_x+1, 1 ) ;
+            kn = (rand()%num_knots_y)+1;
+            gsKnotVector<> T_KV1 (0, 1,kn,deg_y+1,1) ;
+            //gsInfo<<"Knot Vector"<<T_KV<<"\n";
+            //gsInfo<<"Knot Vector"<<T_KV1<<"\n";
+            for (int i2 = 0; i2 < rand_knot_num; i2 ++){
+                int kn2 = rand()%T_KV.size();
+                if(T_KV.multiplicity(T_KV[kn2]) < deg_x ){
+                    T_KV.insert(T_KV[kn2]);
+                }
             }
-        }
-        for (int i3 = 0; i3 < rand_knot_num; i3 ++){
-            int kn3 = rand()%T_KV1.size();
-            if(T_KV1.multiplicity(T_KV1[kn3]) < deg_y ){
-                T_KV1.insert(T_KV1[kn3]);
+            for (int i3 = 0; i3 < rand_knot_num; i3 ++){
+                int kn3 = rand()%T_KV1.size();
+                if(T_KV1.multiplicity(T_KV1[kn3]) < deg_y ){
+                    T_KV1.insert(T_KV1[kn3]);
+                }
             }
+            //gsInfo<<"Knot Vector"<<T_KV<<"\n";
+            //gsInfo<<"Knot Vector"<<T_KV1<<"\n";
+            gsTensorBSplineBasis<2> T_tbasis( T_KV, T_KV1 );
+
+            int T_nlevels =(rand()%max_level)+2;
+            gsTHBSplineBasis<2>  TT ( T_tbasis ); //necessary to create the refinement
+            gsTHBSplineBasis<2>  THB ( T_tbasis, random_refinement(T_nlevels-1, box_num, &TT )) ;
+
+            //gsInfo<<"knot vector"<< THB.m_cvs[0][0]<<"\n";
+            //gsInfo<<"knot vector"<< THB.m_cvs[1][0]<<"\n";
+            //gsInfo<<"Basis has degree "<< deg_x <<" and "<< deg_y <<". The number of levels is "<< T_nlevels<<"\n";
+
+            //gsInfo<<"The tree has "<< THB.tree().size() << " nodes.\n" << "\n";
+
+            // THB.printCharMatrix();
+
+            gsMatrix<> T_para  = THB.support();
+            gsVector<> T_c0 = T_para.col(0);
+            gsVector<> T_c1 = T_para.col(1);
+            gsMatrix<> T_pts = uniformPointGrid(T_c0,T_c1, point_num) ;
+
+            //gsInfo<<"\n"<< "The parameter range is: "<< "\n" << T_para <<"\n";
+            ////////coefficient matrix creation///////////
+            gsMatrix<> anch = THB.anchors();
+
+            //gsInfo<<"anchors"<< anch<<"\n";
+            gsMatrix<> eye = gsMatrix<>::Identity(THB.size(), THB.size());
+            gsTHBSpline<2> THB_geometry ( THB, eye);
+            gsMatrix<>   T_ev_geom  = THB_geometry.eval(anch);
+            gsMatrix<>   T_ev  = THB.eval(anch) ;
+            //gsInfo<<"eval  geometry \n"<<  T_ev_geom <<"\n";
+            CHECK_MATRIX_PARTITION_OF_UNIT_CLOSE(T_ev, (real_t)0.0000001);
         }
-        //gsInfo<<"Knot Vector"<<T_KV<<"\n";
-        //gsInfo<<"Knot Vector"<<T_KV1<<"\n";
-        gsTensorBSplineBasis<2> T_tbasis( T_KV, T_KV1 );
 
-        int T_nlevels =(rand()%max_level)+2;
-        gsTHBSplineBasis<2>  TT ( T_tbasis ) ;//necessary to create the refinement
-        gsTHBSplineBasis<2>  THB ( T_tbasis , random_refinement(T_nlevels-1, box_num, &TT )) ;
-
-        //gsInfo<<"knot vector"<< THB.m_cvs[0][0]<<"\n";
-        //gsInfo<<"knot vector"<< THB.m_cvs[1][0]<<"\n";
-        //gsInfo<<"Basis has degree "<< deg_x <<" and "<< deg_y <<". The number of levels is "<< T_nlevels<<"\n";
-
-        //gsInfo<<"The tree has "<< THB.tree().size() << " nodes.\n" << "\n";
-
-        // THB.printCharMatrix();
-
-        gsMatrix<> T_para  = THB.support();
-        gsVector<> T_c0 = T_para.col(0);
-        gsVector<> T_c1 = T_para.col(1);
-        gsMatrix<> T_pts = uniformPointGrid(T_c0,T_c1, point_num) ;
-
-        //gsInfo<<"\n"<< "The parameter range is: "<< "\n" << T_para <<"\n";
-        ////////coefficient matrix creation///////////
-        gsMatrix<> anch = THB.anchors();
-
-        //gsInfo<<"anchors"<< anch<<"\n";
-        gsMatrix<> eye = gsMatrix<>::Identity(THB.size(), THB.size());
-        gsTHBSpline<2> THB_geometry ( THB, eye);
-        gsMatrix<>   T_ev_geom  = THB_geometry.eval(anch);
-        gsMatrix<>   T_ev  = THB.eval(anch) ;
-        //gsInfo<<"eval  geometry \n"<<  T_ev_geom <<"\n";
-        CHECK_MATRIX_PARTITION_OF_UNIT_CLOSE(T_ev, (real_t)0.0000001);
     }
 
 }
-

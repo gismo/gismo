@@ -143,20 +143,20 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
 }
 
 
-SUITE(gsPoissonSolver)
+SUITE(gsPoissonSolver_test)
 {
 
-    TEST(gsPoissonSolver_test)
+    TEST(Galerkin_test)
     {
         runPoissonSolverTest(dirichlet::elimination, iFace::glue);
     }
 
-    TEST(gsPoissonSolver_dG_test)
+    TEST(dG_test)
     {
         runPoissonSolverTest(dirichlet::elimination, iFace::dg);
     }
 
-    TEST(gsPoissonSolver_nitsche_dG_test)
+    TEST(Nitsche_dG_test)
     {
         runPoissonSolverTest(dirichlet::nitsche, iFace::dg);
     }

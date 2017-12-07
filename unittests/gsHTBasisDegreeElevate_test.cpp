@@ -1,4 +1,4 @@
-/** @file HTBasisDegreeElevate.cpp
+/** @file HTBasisDegreeElevate_test.cpp
 
     @brief Test that
 
@@ -124,36 +124,40 @@ void testImplementation(index_t deg,index_t mult)
 }
 
 
-
-TEST(gsHTBasisDegreeElevate)
+SUITE(HTBasisDegreeElevate_test)
 {
-// Disabled: expensive test (due to the function setMultiplicity which
-// is highly inefficient) which does not help: it computes the same
-// thing with 2 identical ways.
 
-// TO DO: a good test would be to test the partition of unity for THB,
-// or test (for HB and THB) that interpolation of a polynomial
-// function of the same degree is accurate upto machine precision
-
-/*
-    for (index_t deg=0; deg<4;++deg)
+    TEST(test)
     {
-        for (index_t mult=1; mult<=deg; ++mult)
-        {
-            try
-            {
-                testImplementation<gsHBSplineBasis<2> >(deg,mult);
-                testImplementation<gsHBSplineBasis<3> >(deg,mult);
+    // Disabled: expensive test (due to the function setMultiplicity which
+    // is highly inefficient) which does not help: it computes the same
+    // thing with 2 identical ways.
 
-                testImplementation<gsTHBSplineBasis<2> >(deg,mult);
-                testImplementation<gsTHBSplineBasis<3> >(deg,mult);
-            }
-            catch(...)
+    // TO DO: a good test would be to test the partition of unity for THB,
+    // or test (for HB and THB) that interpolation of a polynomial
+    // function of the same degree is accurate upto machine precision
+
+    /*
+        for (index_t deg=0; deg<4;++deg)
+        {
+            for (index_t mult=1; mult<=deg; ++mult)
             {
-                std::cout<<"error at deg"<<deg<<" mult "<<mult<<std::endl;
-                throw;
+                try
+                {
+                    testImplementation<gsHBSplineBasis<2> >(deg,mult);
+                    testImplementation<gsHBSplineBasis<3> >(deg,mult);
+
+                    testImplementation<gsTHBSplineBasis<2> >(deg,mult);
+                    testImplementation<gsTHBSplineBasis<3> >(deg,mult);
+                }
+                catch(...)
+                {
+                    std::cout<<"error at deg"<<deg<<" mult "<<mult<<std::endl;
+                    throw;
+                }
             }
         }
+    //*/
     }
-//*/
+
 }

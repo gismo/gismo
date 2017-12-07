@@ -75,7 +75,7 @@ SUITE(gsOptionList_test)
     /***
      * test what we get if the gsOptionList is empty
      */
-    TEST(gsOptionList_get_items_from_empty_list)
+    TEST(get_items_from_empty_list)
     {
         gsOptionList myList;
         CHECK_EQUAL(0, myList.size());
@@ -92,7 +92,7 @@ SUITE(gsOptionList_test)
      * test what we get if the gsOptionList is empty and getString is invoked.
      * should throw an exception!
      */
-    TEST(gsOptionList_get_items_from_empty_list_and_throw_exception)
+    TEST(get_items_from_empty_list_and_throw_exception)
     {
         gsOptionList myList;
         CHECK_EQUAL(0, myList.size());
@@ -104,7 +104,7 @@ SUITE(gsOptionList_test)
     /***
      * test adding and asking/getting strings
      */
-    TEST(gsOptionList_add_and_get_something)
+    TEST(add_and_get_something)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
@@ -121,7 +121,7 @@ SUITE(gsOptionList_test)
     /***
      * testing add/ask/get for multiple types
      */
-    TEST(gsOptionList_add_more_and_get_something)
+    TEST(add_more_and_get_something)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
@@ -158,7 +158,7 @@ SUITE(gsOptionList_test)
     /***
      * test addString and then invoke askSwitch for the same label
      */
-    TEST(gsOptionList_add_and_get_of_different_type)
+    TEST(add_and_get_of_different_type)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
@@ -174,7 +174,7 @@ SUITE(gsOptionList_test)
     /***
      * test what happens when we invoke addString for the same label twice
      */
-    TEST(gsOptionList_add_and_add)
+    TEST(add_and_add)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
@@ -209,7 +209,7 @@ SUITE(gsOptionList_test)
     /***
      * test add/get/set/get
      */
-    TEST(gsOptionList_add_get_set_get)
+    TEST(add_get_set_get)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
@@ -283,7 +283,7 @@ SUITE(gsOptionList_test)
     /***
      * Test what happens if we invoke set before add
      */
-    TEST(gsOptionList_set_before_add)
+    TEST(set_before_add)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
@@ -308,7 +308,7 @@ SUITE(gsOptionList_test)
     /***
      * test default options
      */
-    TEST(gsOptionList_test_default_options)
+    TEST(test_default_options)
     {
         gsOptionList myList = gsAssembler<real_t>::defaultOptions();
         checkAssemblerOptions(myList);
@@ -317,7 +317,7 @@ SUITE(gsOptionList_test)
     /***
      * test loading from assembler_options.xml
      */
-    TEST(gsOptionList_load_from_assembler_options_xml)
+    TEST(load_from_assembler_options_xml)
     {
         std::string path(GISMO_DATA_DIR);
         path += util::to_string("options") + util::SEPARATOR + util::to_string("assembler_options.xml");
@@ -328,7 +328,7 @@ SUITE(gsOptionList_test)
     /***
      * test loading from optionlist.xml
      */
-    TEST(gsOptionList_load_from_optionlist_xml)
+    TEST(load_from_optionlist_xml)
     {
         std::string path(GISMO_DATA_DIR);
         path += util::to_string("options") + util::SEPARATOR + util::to_string("optionlist.xml");
@@ -344,7 +344,7 @@ SUITE(gsOptionList_test)
     /***
      * test saving/loading to/from test.xml
      */
-    TEST(gsOptionList_save_load_from_test_xml)
+    TEST(save_load_from_test_xml)
     {
         std::string path = gismo::util::getTempPath();
         path += util::SEPARATOR + util::to_string("test.xml");
@@ -374,7 +374,7 @@ SUITE(gsOptionList_test)
      * test adding a value with the same label but a different type
      * -> should throw an exception
      */
-    TEST(gsOptionList_same_label_different_type)
+    TEST(same_label_different_type)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
@@ -387,7 +387,7 @@ SUITE(gsOptionList_test)
      * test loading/saving/loading from/to/from assembler_options.xml/
      * assembler_options2.xml/assembler_options2.xml
      */
-    TEST(gsOptionList_loading_saving_loading_assembler_options)
+    TEST(loading_saving_loading_assembler_options)
     {
         // loading
         std::string path(GISMO_DATA_DIR);
@@ -410,7 +410,7 @@ SUITE(gsOptionList_test)
      *
      */
 
-    TEST(gsOptionList_test_remove)
+    TEST(test_remove)
     {
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
@@ -427,7 +427,7 @@ SUITE(gsOptionList_test)
      *
      */
 
-    TEST(gsOptionList_test_groups)
+    TEST(test_groups)
     {
         gsOptionList myList;
         myList.addString("LABEL_STR_1", DESC_1, STR_1);
