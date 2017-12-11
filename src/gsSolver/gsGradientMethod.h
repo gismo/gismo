@@ -40,37 +40,69 @@ public:
 
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     ///
-    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
-    /// @param precond The preconditioner, defaulted to the identity
-    /// @param damping The damping parameter (step width)
+    /// @param mat       The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond   The preconditioner, defaulted to the identity
+    ///
+    /// In each step, the step width is chosen such that the residual is minimized (adaptive
+    /// step sizes)
     template< typename OperatorType >
     explicit gsGradientMethod( const OperatorType& mat,
-                               const LinOpPtr& precond = LinOpPtr(),
-                               T damping = (T)1 )
-    : Base(mat, precond), m_damping(damping) {}
+                               const LinOpPtr& precond = LinOpPtr())
+    : Base(mat, precond), m_adapt_step_size(true), m_step_size(0) {}
 
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     ///
-    /// @param mat     The operator to be solved for, see gsIterativeSolver for details
-    /// @param precond The preconditioner, defaulted to the identity
-    /// @param damping The damping parameter (step width)
+    /// @param mat       The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond   The preconditioner, defaulted to the identity
+    /// @param step_size The step size
+    template< typename OperatorType >
+    explicit gsGradientMethod( const OperatorType& mat,
+                               const LinOpPtr& precond,
+                               T step_size )
+    : Base(mat, precond), m_adapt_step_size(false), m_step_size(step_size) {}
+
+    /// @brief Constructor using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat       The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond   The preconditioner, defaulted to the identity
+    ///
+    /// In each step, the step width is chosen such that the residual is minimized (adaptive
+    /// step sizes)
     template< typename OperatorType >
     static uPtr make( const OperatorType& mat,
-                      const LinOpPtr& precond = LinOpPtr(),
-                      T damping = (T)1 )
-    { return uPtr( new gsGradientMethod(mat, precond, damping) ); }
+                      const LinOpPtr& precond = LinOpPtr())
+    { return uPtr( new gsGradientMethod(mat, precond) ); }
 
-    /// @brief Returns the chosen damping parameter (step width)
-    T getDamping() { return m_damping; }
+    /// @brief Constructor using a matrix (operator) and optionally a preconditionner
+    ///
+    /// @param mat       The operator to be solved for, see gsIterativeSolver for details
+    /// @param precond   The preconditioner, defaulted to the identity
+    /// @param step_size The step size
+    template< typename OperatorType >
+    static uPtr make( const OperatorType& mat,
+                      const LinOpPtr& precond,
+                      T step_size )
+    { return uPtr( new gsGradientMethod(mat, precond, step_size) ); }
 
-    /// @brief Set the damping parameter (step width)
-    void setDamping(T damping) { m_damping = damping; }
+    /// @brief Returns true iff adaptive step sizes are activated
+    bool adaptiveDamping() { return m_adapt_step_size; }
+
+    /// @brief Returns the chosen step size
+    T stepSize()           { return m_step_size;       }
+
+    /// @brief Activate adaptive step size. Then in each step, the step size
+    /// is chosen such that the norm of the residual is minimized.
+    void setAdaptiveStepSize()    { m_adapt_step_size = false; m_step_size = 0;         }
+
+    /// @brief Set the step size
+    void setStepSize(T step_size) { m_adapt_step_size = true;  m_step_size = step_size; }
 
     /// @brief Returns a list of default options
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
-        opt.addReal("Damping", "Damping (step width)", 1 );
+        opt.addSwitch("AdaptiveStepSize", "Adaptive step sizes (to minimize residual)", true );
+        opt.addReal  ("StepSize", "Step size (requires AdaptiveStepSize to be false)" , 0    );
         return opt;
     }
 
@@ -78,7 +110,9 @@ public:
     gsGradientMethod& setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
-        m_damping = opt.askReal("Damping", m_damping);
+        m_adapt_step_size = opt.askSwitch("AdaptiveStepSize", m_adapt_step_size);
+        m_step_size       = opt.askReal  ("StepSize",         m_step_size      );
+        if (m_adapt_step_size) m_step_size = 0; // for consistency of output, see above
         return *this;
     }
 
@@ -104,7 +138,8 @@ private:
     VectorType m_res;
     VectorType m_tmp;
     VectorType m_update;
-    T m_damping;
+    bool m_adapt_step_size;
+    T m_step_size;
 
 };
 
