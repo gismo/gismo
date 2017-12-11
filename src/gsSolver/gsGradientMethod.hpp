@@ -36,8 +36,15 @@ bool gsGradientMethod<T>::step( typename gsGradientMethod<T>::VectorType& x )
 {
     m_precond->apply(m_res,m_update);
     m_mat->apply(m_update,m_tmp);
-    x += m_damping * m_update;
-    m_res -= m_damping * m_tmp;
+
+    T step_size;
+    if (m_adapt_step_size)
+        step_size = m_tmp.col(0).dot(m_res.col(0)) / m_tmp.col(0).dot(m_tmp.col(0));
+    else
+        step_size = m_step_size;
+
+    x += step_size * m_update;
+    m_res -= step_size * m_tmp;
     m_error = m_res.norm() / m_rhs_norm;
     return m_error < m_tol;
 }
