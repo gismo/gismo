@@ -34,7 +34,13 @@ typedef DScalar::Scalar DScalarValue;
 
 namespace details
 {
-namespace numeric { namespace details { struct ad_type_tag; } }
+namespace numeric { namespace details {
+
+struct ad_type_tag;
+
+template <typename T> inline T const_pi_impl(ad_type_tag);
+template <typename T> inline T const_e_impl (ad_type_tag);
+} }
 
 inline bool is_true (const DScalar& v);
 inline bool is_false(const DScalar& v);
@@ -44,13 +50,13 @@ inline bool string_to_real(Iterator& itr_external, const Iterator end, DScalar& 
 
 }
 
-namespace helper
+namespace rtl { namespace io {
 {
 namespace details
 {
 inline void print_type(const std::string&, const DScalar& v, exprtk::details::numeric::details::ad_type_tag);
 }
-}
+} }
 
 using details::is_true;
 }
@@ -144,6 +150,9 @@ template <typename T> inline T   g2d_impl(const T& v, ad_type_tag) { return (v  
 template <typename T> inline T  notl_impl(const T& v, ad_type_tag) { return (v != DScalar(0) ? DScalar(0) : DScalar(1)); }
 template <typename T> inline T  frac_impl(const T& v, ad_type_tag) { return frac (v); }
 template <typename T> inline T trunc_impl(const T& v, ad_type_tag) { return trunc(v); }
+
+template <typename T> inline T const_pi_impl(ad_type_tag) { return exprtk::details::constant::pi; }
+template <typename T> inline T const_e_impl (ad_type_tag) { return exprtk::details::constant::e; }
 
 inline bool is_true_impl (const DScalar& v)
 {
@@ -366,7 +375,7 @@ inline bool is_false(const DScalar& v)
 { return details::numeric::details::is_false_impl(v); }
 }
 
-namespace helper
+namespace rtl { namespace io {
 {
 namespace details
 {
@@ -377,4 +386,5 @@ inline void print_type(const std::string& fmt, const DScalar& v,
 }
 }
 }
-}
+} }
+
