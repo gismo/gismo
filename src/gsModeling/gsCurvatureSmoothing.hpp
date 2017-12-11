@@ -24,17 +24,17 @@ namespace gismo
 {
 
 template<class T>
-void gsCurvatureSmoothing<T>::smoothTotalVariation(const T omega1, const T omega2, const T lamda, const T tau,const unsigned iter)
+void gsCurvatureSmoothing<T>::smoothTotalVariation(const T omega1, const T omega2, const T lamda, const T tau, const unsigned iter)
 {
     gsKnotVector<T> m_knots=m_curve_smooth->knots(); // take the knots of the current smooth curve
-    int m_degree=m_curve_smooth->degree(); // degree of the smooth curve
+    index_t m_degree=m_curve_smooth->degree(); // degree of the smooth curve
 
     gsMatrix<T> current_coefs=m_curve_smooth->coefs(); // the coefficients of the current smooth curve
 
     gsMatrix<T> different_coefs;  //later needed for current selection of the coefficients for the decreasing lamdas
 
-    int num_rows=current_coefs.rows()-m_degree; //number of rows of the coefficients
-    int num_cols=current_coefs.cols();  // number of columns of the coefficients
+    index_t num_rows=current_coefs.rows()-m_degree; //number of rows of the coefficients
+    index_t num_cols=current_coefs.cols();  // number of columns of the coefficients
 
     gsMatrix<T> deriv_coefs1; //needed later for numerical differentiation to construct the gradient (upper value)
     gsMatrix<T> deriv_coefs2; //needed later for numerical differentiation to construct the gradient (lower value)
@@ -203,14 +203,14 @@ template<class T>
 void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, const T omega2, const gsMatrix<T> listlamdas, const unsigned iter)
 {
     gsKnotVector<T> m_knots=m_curve_smooth->knots(); // take the knots of the current smooth curve
-    int m_degree=m_curve_smooth->degree(); // degree of the smooth curve
+    index_t m_degree=m_curve_smooth->degree(); // degree of the smooth curve
 
     gsMatrix<T> current_coefs=m_curve_smooth->coefs(); // the coefficients of the current smooth curve
 
     gsMatrix<T> different_coefs;
 
-    int num_rows=current_coefs.rows()-m_degree; //number of rows of the coefficients
-    int num_cols=current_coefs.cols();  // number of columns of the coefficients
+    index_t num_rows=current_coefs.rows()-m_degree; //number of rows of the coefficients
+    index_t num_cols=current_coefs.cols();  // number of columns of the coefficients
 
     gsMatrix<T> deriv_coefs1; //needed later for numerical differentiation to construct the gradient (upper value)
     gsMatrix<T> deriv_coefs2; //needed later for numerical differentiation to construct the gradient (lower value)
@@ -313,12 +313,12 @@ template<class T>
 void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, const T omega2, const T lamda, const unsigned iter)
 {
     gsKnotVector<T> m_knots=m_curve_smooth->knots(); // take the knots of the current smooth curve
-    int m_degree=m_curve_smooth->degree(); // degree of the smooth curve
+    index_t m_degree=m_curve_smooth->degree(); // degree of the smooth curve
 
     gsMatrix<T> current_coefs=m_curve_smooth->coefs(); // the coefficients of the current smooth curve
 
-    int num_rows=current_coefs.rows()-m_degree; //number of rows of the coefficients
-    int num_cols=current_coefs.cols();  // number of columns of the coefficients
+    index_t num_rows=current_coefs.rows()-m_degree; //number of rows of the coefficients
+    index_t num_cols=current_coefs.cols();  // number of columns of the coefficients
 
     gsMatrix<T> deriv_coefs1; //needed later for numerical differentiation to construct the gradient (upper value)
     gsMatrix<T> deriv_coefs2; //needed later for numerical differentiation to construct the gradient (lower value)
@@ -339,7 +339,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, co
     // here computed for the first iteration step - for the next steps it will be computed already in the end of the loop
     compute_ObjectiveFunction(basis,&current_coefs,omega1,omega2,m_value0);
 
-    for(index_t i=0;i<iter;i++){
+    for(unsigned i=0;i<iter;i++){
         // gradient descent method
         //computes the gradient with the help of numerical differentiation (2 point formula)
         for(index_t j=0;j<num_rows;j++){
@@ -385,17 +385,17 @@ void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, co
 
 
 template<class T>
-void gsCurvatureSmoothing<T>::smoothHadenfeld(const unsigned smooth_degree, const T delta, const int iter_step, const int iter_total, gsVector<int> &iterated, const bool original)
+void gsCurvatureSmoothing<T>::smoothHadenfeld(const unsigned smooth_degree, const T delta, const index_t iter_step, const index_t iter_total, gsVector<index_t> &iterated, const bool original)
 {
     using std::min;
 
-    int m_degree=m_curve_smooth->degree(); // degree of the curve
+    index_t m_degree=m_curve_smooth->degree(); // degree of the curve
     gsMatrix<T> m_coefs=m_curve_smooth->coefs(); // get the coefficients they will be changed
-    int num_rows=m_coefs.rows()-m_degree; // the last for coefficients are equal
+    index_t num_rows=m_coefs.rows()-m_degree; // the last for coefficients are equal
     m_coefs.conservativeResize(num_rows,2); // the coefficients without the last equal points
 
     //iter_total could be too high chosen compared with the iter_step -- maximal allowed iter_step*num_roes <= iter_total - otherwise there could be unwanted effects for the resulting curve!!
-    int m_iter_total= min(iter_total,iter_step*num_rows);
+    index_t m_iter_total= min(iter_total,iter_step*num_rows);
 
     //construct coefficients which will be not changed - from which type the should be compared original or first smoothed one
     gsMatrix<T> m_coefs_original;
@@ -409,11 +409,11 @@ void gsCurvatureSmoothing<T>::smoothHadenfeld(const unsigned smooth_degree, cons
     }
 
     // describes later how often a coefficient has been already changed!! changing iterator
-    gsVector<int> m_iterated(num_rows);
+    gsVector<index_t> m_iterated(num_rows);
     m_iterated.setZero();
 
     T max_value,coef0,coef1,current0,current1,dist_value,m_smooth1,m_smooth2,m_smooth3,m_smooth4;
-    int index=0;
+    index_t index=0;
 
     // the degree of smoothing inplies the smoother (i.e. the mask for smoothing)
     if(smooth_degree==2){
@@ -437,7 +437,7 @@ void gsCurvatureSmoothing<T>::smoothHadenfeld(const unsigned smooth_degree, cons
 
 
     // Hadenfelds algorithm (for more detail see his PhD thesis)
-    for(int j=0;j<m_iter_total;j++){
+    for(index_t j=0;j<m_iter_total;j++){
         max_value=-100;
         coef0=0;
         coef1=0;
@@ -497,11 +497,11 @@ void gsCurvatureSmoothing<T>::smoothHadenfeld(const unsigned smooth_degree, cons
 }
 
 template<class T>
-void gsCurvatureSmoothing<T>::smoothAllHadenfeld(const unsigned smooth_degree,const unsigned iter)
+void gsCurvatureSmoothing<T>::smoothAllHadenfeld(const unsigned smooth_degree, const unsigned iter)
 {
-    int m_degree=m_curve_smooth->degree(); // degree of the curve
+    index_t m_degree=m_curve_smooth->degree(); // degree of the curve
     gsMatrix<T> m_coefs=m_curve_smooth->coefs(); // get the coefficients
-    int num_rows=m_coefs.rows()-m_degree; // the last for coefficients are equal
+    index_t num_rows=m_coefs.rows()-m_degree; // the last for coefficients are equal
     m_coefs.conservativeResize(num_rows,2); // the coefficients without the last equal points
     gsMatrix<T> m_A(num_rows,num_rows);
     m_A.setZero(); // ensure that all entries are zero in the beginning
@@ -540,8 +540,8 @@ void gsCurvatureSmoothing<T>::smoothAllHadenfeld(const unsigned smooth_degree,co
         m_A(i,(i+4)%num_rows)=m_smooth4;
     }
 
-   // smoothing
-    for(index_t k=0;k<iter;k++){
+    // smoothing
+    for(unsigned k=0;k<iter;k++){
         m_coefs=m_A*m_coefs;
     }
 
@@ -562,9 +562,10 @@ void gsCurvatureSmoothing<T>::smoothAllHadenfeld(const unsigned smooth_degree,co
 };
 
 template< class T>
-void gsCurvatureSmoothing<T>::write(std::ostream &os){
+void gsCurvatureSmoothing<T>::write(std::ostream &os)
+{
    gsMatrix<T> m_coefs=m_curve_smooth->coefs(); // get the coefficients
-   int num_rows=m_coefs.rows();
+   index_t num_rows=m_coefs.rows();
    os << "{";
    for(index_t k=0;k<num_rows-1;k++){
        os << "{" << m_coefs(k,0) << "," << m_coefs(k,1) << "},";
@@ -574,7 +575,8 @@ void gsCurvatureSmoothing<T>::write(std::ostream &os){
 };
 
 template<class T>
-void gsCurvatureSmoothing<T>::computeApproxError(T & error){
+void gsCurvatureSmoothing<T>::computeApproxError(T & error)
+{
     gsMatrix<T> results;
     m_curve_smooth->eval_into(m_param_values.transpose(),results); // the points of the curve for the corresponding parameter values
     results.transposeInPlace();
@@ -645,7 +647,8 @@ void gsCurvatureSmoothing<T>::computeCurvatureError(T & error)
 }
 
 template<class T>
-void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T> * basis, gsMatrix<T> u, gsMatrix<T> *coefs, gsMatrix<T> & values0, gsMatrix<T> & values1, gsMatrix<T> & values2, gsMatrix<T> & values3){
+void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T> * basis, gsMatrix<T> u, gsMatrix<T> *coefs, gsMatrix<T> & values0, gsMatrix<T> & values1, gsMatrix<T> & values2, gsMatrix<T> & values3)
+{
 
     std::vector<gsMatrix<T> > m_results;
     gsMatrix<T> m_results1;
@@ -664,7 +667,7 @@ void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T> * basis, gsMat
     values3.setZero();
 
     // how many actives for one parameter value (i.e degree + 1)
-    int num=actives.rows();
+    index_t num=actives.rows();
 
     //computes the values and the derivatives at the parameter values for the coefs
     for(index_t i=0;i<u.cols();i++)
@@ -680,7 +683,8 @@ void gsCurvatureSmoothing<T>::compute_AllValues(gsBSplineBasis<T> * basis, gsMat
 
 
 template<class T>
-void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T> *basis, gsMatrix<T> *coefs, const T omega1, const T omega2, T & value){
+void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T> *basis, gsMatrix<T> *coefs, const T omega1, const T omega2, T & value)
+{
 
     gsMatrix<T> m_values0;
     gsMatrix<T> m_values1;
