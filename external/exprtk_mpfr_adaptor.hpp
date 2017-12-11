@@ -9,8 +9,8 @@
  * Copyright notice:                                          *
  * Free use of the Mathematical Expression Toolkit Library is *
  * permitted under the guidelines and in accordance with the  *
- * most current version of the Common Public License.         *
- * http://www.opensource.org/licenses/cpl1.0.php              *
+ * most current version of the MIT License.                   *
+ * http://www.opensource.org/licenses/MIT                     *
  *                                                            *
  **************************************************************
 */
@@ -28,7 +28,13 @@ namespace exprtk
 {
    namespace details
    {
-      namespace numeric { namespace details { struct mpfrreal_type_tag; } }
+      namespace numeric { namespace details
+      {
+         struct mpfrreal_type_tag;
+
+         template <typename T> inline T const_pi_impl(mpfrreal_type_tag);
+         template <typename T> inline T const_e_impl (mpfrreal_type_tag);
+      }}
 
       inline bool is_true (const mpfr::mpreal& v);
       inline bool is_false(const mpfr::mpreal& v);
@@ -38,13 +44,13 @@ namespace exprtk
 
    }
 
-   namespace helper
+   namespace rtl { namespace io
    {
       namespace details
       {
          inline void print_type(const std::string&, const mpfr::mpreal& v, exprtk::details::numeric::details::mpfrreal_type_tag);
       }
-   }
+   }}
 
    using details::is_true;
 }
@@ -145,6 +151,9 @@ namespace exprtk
             template <typename T> inline T  notl_impl(const T& v, mpfrreal_type_tag) { return (v != mpfr::mpreal(0) ? mpfr::mpreal(0) : mpfr::mpreal(1)); }
             template <typename T> inline T  frac_impl(const T& v, mpfrreal_type_tag) { return mpfr::frac (v); }
             template <typename T> inline T trunc_impl(const T& v, mpfrreal_type_tag) { return mpfr::trunc(v); }
+
+            template <typename T> inline T const_pi_impl(mpfrreal_type_tag) { return mpfr::const_pi   (1024, exprtk::details::constant::mpfr_round); }
+            template <typename T> inline T const_e_impl (mpfrreal_type_tag) { return mpfr::const_euler(1024, exprtk::details::constant::mpfr_round); }
 
             inline bool is_true_impl (const mpfr::mpreal& v)
             {
@@ -360,18 +369,16 @@ namespace exprtk
       inline bool is_false(const mpfr::mpreal& v) { return details::numeric::details::is_false_impl(v); }
    }
 
-   namespace helper
+   namespace rtl { namespace io
    {
       namespace details
       {
-         inline void print_type(const std::string& fmt,
-                                const mpfr::mpreal& v,
-                                exprtk::details::numeric::details::mpfrreal_type_tag)
+         inline void print_type(const std::string&, const mpfr::mpreal& v, exprtk::details::numeric::details::mpfrreal_type_tag)
          {
-            printf(fmt.c_str(), v.toString().c_str());
+            printf("%s",v.toString().c_str());
          }
       }
-   }
+   }}
 }
 
 #endif
