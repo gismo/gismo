@@ -20,7 +20,7 @@ else()
 cmake_minimum_required(VERSION 2.8.8)
 
 if(POLICY CMP0048)# CMake 3.0
-cmake_policy(SET CMP0011 OLD)
+cmake_policy(SET CMP0011 NEW)
 cmake_policy(SET CMP0042 OLD)
 cmake_policy(SET CMP0048 OLD)
 endif()
