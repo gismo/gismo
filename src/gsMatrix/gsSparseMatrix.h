@@ -263,11 +263,9 @@ public:
     std::pair<index_t,index_t> dim() const 
     { return std::make_pair(this->rows(), this->cols() ); }
 
-    //enable_if
     void reservePerColumn(const index_t nz)
     {
-        //this->setZero();
-        this->reserve(gsVector<index_t>::Constant(this->outerSize(), nz));
+        Base::reserve(gsVector<index_t>::Constant(this->outerSize(), nz));
     }
 
     void setFrom( gsSparseEntries<T> const & entries) ;
@@ -277,6 +275,13 @@ public:
 
     inline T    operator () (_Index i, _Index j ) const { return this->coeff(i,j); }
     inline T  & operator () (_Index i, _Index j ) { return this->coeffRef(i,j); }
+
+    /// Add to entry (\a i, \a j) the value \a val, but not an
+    /// explicit zero
+    inline void addTo(_Index i, _Index j, const T val)
+    {
+        if (0!=val) this->coeffRef(i,j) += val;
+    }
 
     /// Return a block view of the matrix with \a rowSizes and \a colSizes
     BlockView blockView(const gsVector<index_t> & rowSizes, 
@@ -313,7 +318,18 @@ public:
     }
 
     void rrefInPlace();
-        
+
+private:
+    
+    /*
+      The inherited setZero() destroys column-nonzeros structure and
+      can make further computations very slow.  Almost equivalent to
+      M.setZero() is:
+      M = gsSparseMatrix(M.rows(), M.cols());
+
+      void setZero();
+    */
+
 }; // class gsSparseMatrix
 
 
