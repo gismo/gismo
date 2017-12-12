@@ -13,7 +13,7 @@
 
 #include "gismo_unittest.h"
 
-SUITE(gsKnotVector)
+SUITE(gsKnotVectors_test)
 {
     struct data
     {
@@ -203,7 +203,7 @@ SUITE(gsKnotVector)
     }
 }
 
-SUITE(gsKnotVector2)
+SUITE(gsKnotVectors_test_2)
 {
 
     typedef gsKnotVector<real_t>::uiterator uniqIter;
@@ -237,7 +237,7 @@ SUITE(gsKnotVector2)
         CHECK(KV.degree() == corrDeg);
     }
 
-    TEST(uFind)
+    TEST( uFind )
     {
         {
             gsKnotVector<real_t> KV( 0, 1, 3, 3, 1 );
@@ -294,7 +294,7 @@ SUITE(gsKnotVector2)
             CHECK( correctUIndices[i] == uit.uIndex() );
         }
     }
-    TEST(uniformRefine)
+    TEST( uniformRefine )
     {
         {
             gsKnotVector<real_t> KV( 0, 1, 3, 3, 2 );
@@ -835,7 +835,7 @@ SUITE(gsKnotVector2)
 
 }
 
-SUITE( uniqIter )
+SUITE(gsKnotVectors_test_uniqIter)
 {
     typedef gsKnotVector<real_t>::uiterator uniqIter;
     TEST(firstAppearance_and_multSum)
@@ -1039,7 +1039,7 @@ SUITE( uniqIter )
 
 }
 
-SUITE( gsKnotIterator )
+SUITE(gsKnotVectors_test_gsKnotIterator)
 {
     typedef gsKnotVector<real_t>::smart_iterator iter;
     typedef gsKnotVector<real_t>::mult_t mult_t;

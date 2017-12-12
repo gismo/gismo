@@ -1,15 +1,16 @@
 /** @file gsBoundaryConditions_test.cpp
 
- @brief test gsPde/gsBoundaryConditions
+    @brief test gsPde/gsBoundaryConditions
 
- This file is part of the G+Smo library.
+    This file is part of the G+Smo library.
 
- This Source Code Form is subject to the terms of the Mozilla Public
- License, v. 2.0. If a copy of the MPL was not distributed with this
- file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
- Author(s): A. Mantzaflaris,  H. Weiner
- **/
+    Author(s): A. Mantzaflaris,  H. Weiner
+
+**/
 
 #include "gismo_unittest.h"
 #include <typeinfo>
@@ -210,14 +211,14 @@ void checkGsBoundaryCondition(const gsBoundaryConditions<real_t> & sut)
 
 SUITE(gsBoundaryConditions_test)
 {
-    TEST(gsBoundaryConditions_test_condition_type)
+    TEST(test_condition_type)
     {
         gismo::condition_type::type myType = gismo::condition_type::neumann;
         CHECK_EQUAL(gismo::condition_type::neumann, myType);
         CHECK_EQUAL(1, myType);
     }
 
-    TEST(gsBoundaryConditions_test_function_expr)
+    TEST(test_function_expr)
     {
         int dim1 = 1;
         std::string funcName1 = "tan(x)";
@@ -237,7 +238,7 @@ SUITE(gsBoundaryConditions_test)
         CHECK_EQUAL(expectedName2, actualName2);
     }
 
-    TEST(gsBoundaryConditions_test_box_side)
+    TEST(test_box_side)
     {
         int index1 = 1;
         gismo::boxSide boxSide1 = gismo::boxSide(index1);
@@ -253,7 +254,7 @@ SUITE(gsBoundaryConditions_test)
         CHECK_EQUAL(expect2, actual2);
     }
 
-    TEST(gsBoundaryConditions_test_boundary_condition)
+    TEST(test_boundary_condition)
     {
         int dim1 = 1;
         std::string funcName1 = "tan(x)";
@@ -281,14 +282,14 @@ SUITE(gsBoundaryConditions_test)
         CHECK_EQUAL(unkcomp1, bound.m_unkcomp);
     }
 
-    TEST(gsBoundaryConditions_test_box_corner)
+    TEST(test_box_corner)
     {
         int index1 = 3;
         gismo::boxCorner c1 = gismo::boxCorner(index1);
         CHECK_EQUAL(index1, c1.m_index);
     }
 
-    TEST(gsBoundaryConditions_test_corner_value)
+    TEST(test_corner_value)
     {
         int index1 = 3;
         gismo::boxCorner c1 = gismo::boxCorner(index1);
@@ -307,7 +308,7 @@ SUITE(gsBoundaryConditions_test)
     /***
      * test loading from bc.xml
      */
-    TEST(gsBoundaryConditions_load_from_bc_xml)
+    TEST(load_from_bc_xml)
     {
         std::string path = GISMO_DATA_DIR;
         path += "gsBoundaryConditions/bc.xml";
@@ -321,7 +322,7 @@ SUITE(gsBoundaryConditions_test)
      * and ensure that bc.xml and bc2.xml have
      * the same content
      */
-    TEST(gsBoundaryConditions_save_load_bc_xml)
+    TEST(save_load_bc_xml)
     {
         std::string path1 = GISMO_DATA_DIR;
         path1 += "/gsBoundaryConditions/bc.xml";

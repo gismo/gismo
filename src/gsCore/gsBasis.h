@@ -153,11 +153,11 @@ public:
      *  element, assuming that this number doesn't change for different
      *  parameters inside the element.
      */
-    typename gsVector<unsigned>::uPtr numActive(const gsMatrix<T> & u) const
+    gsVector<unsigned> numActive(const gsMatrix<T> & u) const
     {
-        gsVector<unsigned> * ptr = new gsVector<unsigned>;
-        this->numActive_into(u, *ptr);
-        return gsVector<unsigned>::uPtr(ptr);
+        gsVector<unsigned> result;
+        this->numActive_into(u, result);
+        return result;
     }
 
     /// @}

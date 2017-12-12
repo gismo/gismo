@@ -1,14 +1,14 @@
 /** @file gsSortedVector_test.cpp
 
- @brief test gsUtils/gsSortedVector
+    @brief test gsUtils/gsSortedVector
 
- This file is part of the G+Smo library.
+    This file is part of the G+Smo library.
 
- This Source Code Form is subject to the terms of the Mozilla Public
- License, v. 2.0. If a copy of the MPL was not distributed with this
- file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
- Author(s): A. Mantzaflaris,  H. Weiner
+    Author(s): A. Mantzaflaris,  H. Weiner
  **/
 
 #include "gismo_unittest.h"
@@ -114,7 +114,7 @@ FUNC_PTR getFunctionPtrFor(gsFunctionExpr<real_t> & func)
 SUITE(gsSortedVector_test)
 {
 
-    TEST(gsSortedVector_gsSortedVector_with_string)
+    TEST(gsSortedVector_with_string)
     {
         std::string gismo = "Hello G+smo";
         std::string world = "Hello World!";
@@ -138,7 +138,7 @@ SUITE(gsSortedVector_test)
         CHECK_EQUAL(1, (int )vector.getIndex(string2b));
     }
 
-    TEST(gsSortedVector_gsSortedVector_with_string_2)
+    TEST(gsSortedVector_with_string_2)
     {
         std::string world = "Hello World!";
         std::string gismo = "Hello G+smo";
@@ -186,7 +186,7 @@ SUITE(gsSortedVector_test)
         CHECK_EQUAL(1, getIndex(vector, string2b));
     }
 
-    /*TEST(gsSortedVector_gsSortedVector_with_my_clazz_first)
+    /*TEST(gsSortedVector_with_my_clazz_first)
     {
         my_comparable_first* comparable_first = new my_comparable_first();
         my_clazz clazzA;
@@ -210,7 +210,7 @@ SUITE(gsSortedVector_test)
         delete(comparable_first);
     }
 
-    TEST(gsSortedVector_gsSortedVector_with_my_clazz_second)
+    TEST(gsSortedVector_with_my_clazz_second)
     {
         my_comparable_second* comparable_second = new my_comparable_second();
 

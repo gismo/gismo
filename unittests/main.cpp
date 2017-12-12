@@ -1,9 +1,20 @@
-/*
-  This file includes the magic necessary in order to get your unit tests
-  that you create with UnitTest++ to automatically run. There should
-  never be a reason to modify this file.
-  For a reference on creating tests, see gsTutorial.cpp
- */
+/** @file main.cpp
+
+    @brief Main file for unittests
+
+    This file includes the magic necessary in order to get your unit tests
+    that you create with UnitTest++ to automatically run. There should
+    never be a reason to modify this file.
+    For a reference on creating tests, see gsTutorial.cpp
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris,  H. Weiner, J. Vogl
+ **/
 
 #include "gismo_unittest.h"
 #include "TestReporterStdout.h"

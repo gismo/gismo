@@ -147,6 +147,7 @@ namespace internal
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMinimalResidual.h>
 #include <gsSolver/gsGMRes.h>
+#include <gsSolver/gsGradientMethod.h>
 #include <gsSolver/gsConjugateGradient.h>
 #include <gsSolver/gsPreconditioner.h>
 #include <gsSolver/gsSimplePreconditioners.h>
