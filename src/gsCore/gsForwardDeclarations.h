@@ -250,6 +250,10 @@ template<class T = real_t> class gsIdentityOp;
 
 template<class T = real_t> class gsPreconditioner;
 
+template<class T = real_t> class gsOperatorMultiGridOp;
+template<class T = real_t> class gsMultiGridOp;
+
+
 /// @endcond
 
 ///@}

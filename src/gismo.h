@@ -125,6 +125,9 @@ namespace internal
 #include <gsPde/gsStokesPde.h>
 //#include <gsPde/gsNewtonIterator.h>
 
+/* ----------- MultiGrid ----------- */
+#include <gsMultiGrid/gsMultiGrid.h>
+
 /* ----------- Norms ----------- */
 #include <gsAssembler/gsNorm.h>
 #include <gsAssembler/gsNormL2.h>

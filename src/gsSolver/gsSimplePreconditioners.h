@@ -134,7 +134,7 @@ public:
     /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
 
-    typename gsPreconditionerOp<T>::Ptr & underlyingOp() const { return makeMatrixOp(m_mat); }
+    typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
@@ -242,7 +242,7 @@ public:
     /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
 
-    typename gsPreconditionerOp<T>::Ptr & underlyingOp() const { return makeMatrixOp(m_mat); }
+    typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
@@ -345,7 +345,7 @@ public:
     /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
 
-    typename gsPreconditionerOp<T>::Ptr & underlyingOp() const { return makeMatrixOp(m_mat); }
+    typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
