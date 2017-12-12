@@ -275,7 +275,7 @@ public:
     /// @brief Add a basis (ownership of the pointer is also acquired)
     void addBasis( gsBasis<T> * g );
 
-    /// @brief Add a basis (ownership of the pointer is also acquired)
+    /// @brief Add a basis
     void addBasis(typename gsBasis<T>::uPtr g);
 
     /// @brief Search for the given basis and return its index.

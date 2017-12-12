@@ -91,11 +91,22 @@ void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
 template<class T>
 void gsMultiBasis<T>::addBasis(typename gsBasis<T>::uPtr g)
 {
-    addBasis(g.release());
+    if ( m_topology.dim() == -1 ) 
+    {
+        m_topology.setDim( g->dim() );
+    } 
+    else 
+    {
+        GISMO_ASSERT( g->dim() == m_topology.dim(), "Dimensions do not match.");
+    }
+
+    m_bases.push_back( g.release() ) ;
+    m_topology.addBox();
 }
 
 template<class T>
-int gsMultiBasis<T>::findBasisIndex( gsBasis<T>* g ) const {
+int gsMultiBasis<T>::findBasisIndex( gsBasis<T>* g ) const
+{
     typename BasisContainer::const_iterator it
         = std::find( m_bases.begin(), m_bases.end(), g );
     assert( it != m_bases.end() );

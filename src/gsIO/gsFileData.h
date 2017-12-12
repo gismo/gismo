@@ -160,7 +160,8 @@ public:
     template<class Object>
     inline void getId( const int & id, Object& result)  const
     {
-        result = *getId(id);
+        memory::unique_ptr<Object> obj = getId<Object>(id);
+        result = give(*obj);
     }
     
     /// Prints the XML tag of a Gismo object
