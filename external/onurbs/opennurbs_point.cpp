@@ -2246,7 +2246,8 @@ int ON_3fPoint::MaximumCoordinateIndex() const
 
 double ON_3fPoint::MaximumCoordinate() const
 {
-  double c = fabs(x); if (fabs(y)>c) c=fabs(y); if (fabs(z)>c) c=fabs(z);
+  double c = fabs(x); if (fabs(y)>c) c=fabs(y);
+  if (fabs(z)>c) c=fabs(z);
   return c;
 }
 
@@ -2608,13 +2609,17 @@ int ON_4fPoint::MaximumCoordinateIndex() const
 {
   const float* a = &x;
   int i = ( fabs(y) > fabs(x) ) ? 1 : 0;
-  if (fabs(z) > fabs(a[i])) i = 2; if (fabs(w) > fabs(a[i])) i = 3;
+  if (fabs(z) > fabs(a[i])) i = 2;
+  if (fabs(w) > fabs(a[i])) i = 3;
   return i;
 }
 
 double ON_4fPoint::MaximumCoordinate() const
 {
-  double c = fabs(x); if (fabs(y)>c) c=fabs(y); if (fabs(z)>c) c=fabs(z); if (fabs(w)>c) c=fabs(w);
+  double c = fabs(x);
+  if (fabs(y)>c) c=fabs(y);
+  if (fabs(z)>c) c=fabs(z);
+  if (fabs(w)>c) c=fabs(w);
   return c;
 }
 
@@ -3529,7 +3534,8 @@ int ON_3fVector::MaximumCoordinateIndex() const
 
 double ON_3fVector::MaximumCoordinate() const
 {
-  double c = fabs(x); if (fabs(y)>c) c=fabs(y); if (fabs(z)>c) c=fabs(z);
+  double c = fabs(x); if (fabs(y)>c) c=fabs(y);
+  if (fabs(z)>c) c=fabs(z);
   return c;
 }
 
@@ -4527,7 +4533,8 @@ int ON_3dPoint::MaximumCoordinateIndex() const
 
 double ON_3dPoint::MaximumCoordinate() const
 {
-  double c = fabs(x); if (fabs(y)>c) c=fabs(y); if (fabs(z)>c) c=fabs(z);
+  double c = fabs(x); if (fabs(y)>c) c=fabs(y);
+  if (fabs(z)>c) c=fabs(z);
   return c;
 }
 
@@ -4538,7 +4545,8 @@ int ON_3dPoint::MinimumCoordinateIndex() const
 
 double ON_3dPoint::MinimumCoordinate() const
 {
-  double c = fabs(x); if (fabs(y)<c) c=fabs(y); if (fabs(z)<c) c=fabs(z);
+  double c = fabs(x); if (fabs(y)<c) c=fabs(y);
+  if (fabs(z)<c) c=fabs(z);
   return c;
 }
 
@@ -4903,13 +4911,17 @@ int ON_4dPoint::MaximumCoordinateIndex() const
 {
   const double* a = &x;
   int i = ( fabs(y) > fabs(x) ) ? 1 : 0;
-  if (fabs(z) > fabs(a[i])) i = 2; if (fabs(w) > fabs(a[i])) i = 3;
+  if (fabs(z) > fabs(a[i])) i = 2;
+  if (fabs(w) > fabs(a[i])) i = 3;
   return i;
 }
 
 double ON_4dPoint::MaximumCoordinate() const
 {
-  double c = fabs(x); if (fabs(y)>c) c=fabs(y); if (fabs(z)>c) c=fabs(z); if (fabs(w)>c) c=fabs(w);
+  double c = fabs(x); 
+  if (fabs(y)>c) c=fabs(y);
+  if (fabs(z)>c) c=fabs(z);
+  if (fabs(w)>c) c=fabs(w);
   return c;
 }
 
@@ -4917,13 +4929,17 @@ int ON_4dPoint::MinimumCoordinateIndex() const
 {
   const double* a = &x;
   int i = ( fabs(y) < fabs(x) ) ? 1 : 0;
-  if (fabs(z) < fabs(a[i])) i = 2; if (fabs(w) < fabs(a[i])) i = 3;
+  if (fabs(z) < fabs(a[i])) i = 2;
+  if (fabs(w) < fabs(a[i])) i = 3;
   return i;
 }
 
 double ON_4dPoint::MinimumCoordinate() const
 {
-  double c = fabs(x); if (fabs(y)<c) c=fabs(y); if (fabs(z)<c) c=fabs(z); if (fabs(w)<c) c=fabs(w);
+  double c = fabs(x);
+  if (fabs(y)<c) c=fabs(y);
+  if (fabs(z)<c) c=fabs(z); 
+  if (fabs(w)<c) c=fabs(w);
   return c;
 }
 
@@ -5908,7 +5924,8 @@ int ON_3dVector::MaximumCoordinateIndex() const
 
 double ON_3dVector::MaximumCoordinate() const
 {
-  double c = fabs(x); if (fabs(y)>c) c=fabs(y); if (fabs(z)>c) c=fabs(z);
+  double c = fabs(x); if (fabs(y)>c) c=fabs(y);
+  if (fabs(z)>c) c=fabs(z);
   return c;
 }
 
@@ -5919,7 +5936,8 @@ int ON_3dVector::MinimumCoordinateIndex() const
 
 double ON_3dVector::MinimumCoordinate() const
 {
-  double c = fabs(x); if (fabs(y)<c) c=fabs(y); if (fabs(z)<c) c=fabs(z);
+  double c = fabs(x); if (fabs(y)<c) c=fabs(y);
+  if (fabs(z)<c) c=fabs(z);
   return c;
 }
 
