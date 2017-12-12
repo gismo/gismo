@@ -147,8 +147,8 @@ template <typename T> inline T  notl_impl(const T& v, ad_type_tag) { return (v !
 template <typename T> inline T  frac_impl(const T& v, ad_type_tag) { return frac (v); }
 template <typename T> inline T trunc_impl(const T& v, ad_type_tag) { return trunc(v); }
 
-template <typename T> inline T const_pi_impl(ad_type_tag) { return exprtk::details::constant::pi; }
-template <typename T> inline T const_e_impl (ad_type_tag) { return exprtk::details::constant::e; }
+template <typename T> inline T const_pi_impl(ad_type_tag) { return DScalar(exprtk::details::constant::pi); }
+template <typename T> inline T const_e_impl (ad_type_tag) { return DScalar(exprtk::details::constant::e ); }
 
 inline bool is_true_impl (const DScalar& v)
 {
