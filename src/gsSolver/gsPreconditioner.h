@@ -221,7 +221,7 @@ public:
         m_tau = opt.askReal( "Scaling", m_tau );
     }
 
-    virtual BasePtr getUnderlying() const { return m_underlying; }
+    virtual BasePtr underlyingOp() const { return m_underlying; }
 
 protected:
     BasePtr m_underlying;
