@@ -72,7 +72,7 @@ public:
      */
     virtual void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const { step( rhs, x); } // Assume symmetry.
 
-    virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         x.setZero(this->rows(),input.cols()); // we assume quadratic matrices
         for ( index_t i = 0; i < m_num_of_sweeps; ++i )
@@ -169,7 +169,7 @@ public:
     static uPtr make( const BasePtr& underlying, const BasePtr& preconditioner, T tau = (T)1)
     { return uPtr( new gsOperatorPreconditionerOp(underlying, preconditioner, tau) ); }
 
-    virtual void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
         GISMO_ASSERT( m_underlying->rows() == x.rows() && x.rows() == rhs.rows() && x.cols() == rhs.cols(),
             "The dimensions do not agree." );
@@ -182,7 +182,7 @@ public:
 
     // virtual void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const { step( rhs, x); } // Assume symmetry.
 
-    virtual void apply(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    void apply(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
         GISMO_ASSERT( m_underlying->rows() == rhs.rows(), "The dimensions do not agree." );
 
@@ -215,13 +215,15 @@ public:
     }
 
     /// Set options based on a gsOptionList object
-    virtual void setOptions(const gsOptionList & opt)
+    void setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
         m_tau = opt.askReal( "Scaling", m_tau );
     }
 
-    virtual BasePtr underlyingOp() const { return m_underlying; }
+    BasePtr underlyingOp() const { return m_underlying; }
+    index_t rows() const { return m_preconditioner->rows(); }
+    index_t cols() const { return m_preconditioner->cols(); }
 
 protected:
     BasePtr m_underlying;
@@ -229,7 +231,7 @@ protected:
     T m_tau;
     mutable gsMatrix<T> m_res;
     mutable gsMatrix<T> m_corr;
-    using Base::m_num_of_sweeps;
+    using gsPreconditionerOp<T>::m_num_of_sweeps;
 }; // gsOperatorPreconditionerOp
 
 } // namespace gismo
