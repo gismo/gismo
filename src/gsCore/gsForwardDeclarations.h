@@ -252,7 +252,7 @@ template<class T = real_t> class gsPreconditionerOp;
 
 template<class T = real_t> class gsOperatorMultiGridOp;
 template<class T = real_t> class gsMultiGridOp;
-
+template<class T = real_t> class gsGridHierarchy;
 
 /// @endcond
 
