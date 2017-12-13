@@ -200,17 +200,17 @@ public:
         }
     }
 
-    /// Set scaling parameter
-    void setScaling(const T tau) { m_tau = tau;  }
+    /// Set damping parameter
+    void setDamping(const T tau) { m_tau = tau;  }
 
     /// Get scaling parameter
-    void getScaling()            { return m_tau; }
+    void getDamping()            { return m_tau; }
 
     /// Get the default options as gsOptionList object
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
-        opt.addReal( "Scaling", "Scaling parameter of the operator preconditioner", 1 );
+        opt.addReal( "Damping", "Damping parameter of the operator preconditioner", 1 );
         return opt;
     }
 
@@ -218,7 +218,7 @@ public:
     void setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
-        m_tau = opt.askReal( "Scaling", m_tau );
+        m_tau = opt.askReal( "Damping", m_tau );
     }
 
     BasePtr underlyingOp() const { return m_underlying; }

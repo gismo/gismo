@@ -314,7 +314,7 @@ SUITE(gsIterativeSolvers_test)
 
         gsRichardsonOp< gsSparseMatrix<> >::Ptr precon = gsRichardsonOp< gsSparseMatrix<> >::make(mat);
         precon->setNumOfSweeps(3);
-        precon->setScaling((real_t)1/5);
+        precon->setDamping((real_t)1/5);
 
         gsMinimalResidual<> solver(mat,precon);
         solver.setOptions(opt);
