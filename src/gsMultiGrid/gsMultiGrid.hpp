@@ -180,34 +180,6 @@ void gsOperatorMultiGridOp<T>::setSmoother(index_t lvl, const PrecondPtr& sm)
     m_smoother[lvl] = sm;
 }
 
-/*template<class T>
-void gsOperatorMultiGridOp<T>::setSmoother(index_t lvl, const gsSmootherFactory& sm)
-{
-    GISMO_ASSERT ( 0 <= lvl && lvl < n_levels, "The given level is not feasible." );
-    m_smoother[lvl] = sm.getSmootherForLevel(lvl,op(lvl));
-}
-
-template<class T>
-void gsMultiGridOp<T>::setSmoother(index_t lvl, const gsSmootherFactory& sm)
-{
-    GISMO_ASSERT ( 0 <= lvl && lvl < n_levels, "The given level is not feasible." );
-    m_smoother[lvl] = sm.getSmootherForLevel(lvl,matrixPtr(lvl));
-}
-
-template<class T>
-void gsOperatorMultiGridOp<T>::setAllSmoothers(const gsSmootherFactory& sm)
-{
-    for ( index_t lvl = 0; lvl < n_levels; ++lvl )
-        m_smoother[lvl] = sm.getSmootherForLevel(lvl,op(lvl));
-}
-
-template<class T>
-void gsMultiGridOp<T>::setAllSmoothers(const gsSmootherFactory& sm)
-{
-    for ( index_t lvl = 0; lvl < n_levels; ++lvl )
-        m_smoother[lvl] = sm.getSmootherForLevel(lvl,matrixPtr(lvl));
-}*/
-
 template<class T>
 void gsOperatorMultiGridOp<T>::smoothingStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const
 {

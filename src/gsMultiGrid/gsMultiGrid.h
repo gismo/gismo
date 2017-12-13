@@ -10,13 +10,12 @@
 
     Author(s): C. Hofreither, S. Takacs
 */
- 
+
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsSolver/gsPreconditioner.h>
 #include <gsIO/gsOptionList.h>
-//#include <gsMultiGrid/gsSmootherFactory.h> //TODO
 
 namespace gismo
 {
@@ -64,7 +63,7 @@ public:
     /// Shared pointer for gsOperatorMultiGridOp
     typedef memory::shared_ptr<gsOperatorMultiGridOp> Ptr;
 
-    /// Unique pointer for gsOperatorMultiGridOp   
+    /// Unique pointer for gsOperatorMultiGridOp
     typedef memory::unique_ptr<gsOperatorMultiGridOp> uPtr;
 
     /// Base class
@@ -75,7 +74,7 @@ public:
 
     /// Shared pointer to gsPreconditionerOp
     typedef typename gsPreconditionerOp<T>::Ptr PrecondPtr;
-    
+
     /// Constructor
     gsOperatorMultiGridOp( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolong, const std::vector<OpPtr>& restrict, OpPtr coarseSolver = OpPtr() );
 
@@ -87,7 +86,7 @@ public:
 
     /// Apply smoothing step
     void smoothingStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const;
-    
+
     /// Apply smoothing step on finest grid
     void smoothingStep(const gsMatrix<T>& rhs, gsMatrix<T>& x) const
     { smoothingStep(finestLevel(), rhs, x); }
@@ -104,7 +103,7 @@ public:
         std::swap(m_numPreSmooth,m_numPostSmooth);
         step(rhs,x);
         std::swap(m_numPreSmooth,m_numPostSmooth);
-    } 
+    }
 
     /// Perform one full multigrid cycle and store the resulting solution vector in \a result.
     void fullMultiGrid(const std::vector< gsMatrix<T> >& rhs, const std::vector< gsMatrix<T> >& dirichletIntp, gsMatrix<T>& result) const;
@@ -141,12 +140,11 @@ public:
     index_t rows() const { return underlyingOp()->rows(); }
     index_t cols() const { return underlyingOp()->cols(); }
 
-    /// Set the smoother
-    void setSmoother(index_t lvl, const PrecondPtr& sm);
-    /// Set the smoother using a factory
-    //virtual void setSmoother(index_t lvl, const gsSmootherFactory& sm); //TODO
-    /// Set the smoother using a factory    
-    //virtual void setAllSmoothers(const gsSmootherFactory& sm); //TODO
+    void setSmoother(index_t lvl, const PrecondPtr& sm);                     ///< Set the smoother
+    PrecondPtr smoother(index_t lvl)             { return m_smoother[lvl]; } ///< Get the smoother
+
+    void setCoarseSolver(const OpPtr& sol)       { m_coarseSolver = sol;   } ///< Get the coarse solver
+    OpPtr coarseSolver()                         { return m_coarseSolver;  } ///< Get the coarse solver
 
     void setNumPreSmooth(index_t n)                 { m_numPreSmooth = n;  } ///< Set number of pre-smoothing steps to perform.
     void setNumPostSmooth(index_t n)                { m_numPostSmooth = n; } ///< Set number of post-smoothing steps to perform.
@@ -159,7 +157,7 @@ public:
     virtual void setOptions(const gsOptionList & opt);                       ///< Set the options based on a gsOptionList
 
     /// Estimates for a smoother I - S^{-1} A the largest eigenvalue of S^{-1} A. Can be used to adjust the damping parameters.
-    T estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter = 100); 
+    T estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter = 100);
 
 protected:
 
@@ -240,7 +238,7 @@ public:
 
     /// Base class
     typedef gsOperatorMultiGridOp<T> Base;
-    
+
     /// Shared pointer to gsLinearOperator
     typedef typename gsLinearOperator<T>::Ptr OpPtr;
 
@@ -301,10 +299,6 @@ public:
 
     /// Set the smoother
     void setSmoother(index_t lvl, const PrecondPtr& sm)  { Base::setSmoother(lvl, sm); }
-    /// Set the smoother using a factory    
-    //virtual void setSmoother(index_t lvl, const gsSmootherFactory& sm); //TODO
-    /// Set the smoother using a factory    
-    //virtual void setAllSmoothers(const gsSmootherFactory& sm); //TODO
 
 private:
 
@@ -320,7 +314,7 @@ private:
     using Base::m_numCycles;
     using Base::m_damping;
 
-    
+
 }; // class gsMultiGridOp
 
 }  // namespace gismo
