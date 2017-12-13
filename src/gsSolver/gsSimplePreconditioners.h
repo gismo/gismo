@@ -72,18 +72,18 @@ public:
     typedef gsPreconditionerOp<T> Base;
 
     /// @brief Constructor with given matrix
-    explicit gsRichardsonOp(const MatrixType& _mat)
-    : m_mat(), m_expr(_mat.derived()), m_tau(1) {}
+    explicit gsRichardsonOp(const MatrixType& _mat, T _tau = 1)
+    : m_mat(), m_expr(_mat.derived()), m_tau(_tau) {}
 
     /// @brief Constructor with shared pointer to matrix
-    explicit gsRichardsonOp(const MatrixPtr& _mat)
-    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
+    explicit gsRichardsonOp(const MatrixPtr& _mat, T _tau = 1)
+    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(_tau) { }
 
-    static uPtr make(const MatrixType& _mat)
-    { return memory::make_unique( new gsRichardsonOp(_mat) ); }
+    static uPtr make(const MatrixType& _mat, T _tau = 1)
+    { return memory::make_unique( new gsRichardsonOp(_mat, _tau) ); }
 
-    static uPtr make(const MatrixPtr& _mat)
-    { return memory::make_unique( new gsRichardsonOp(_mat) ); }
+    static uPtr make(const MatrixPtr& _mat, T _tau = 1)
+    { return memory::make_unique( new gsRichardsonOp(_mat, _tau) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
@@ -110,17 +110,17 @@ public:
     index_t rows() const {return m_expr.rows();}
     index_t cols() const {return m_expr.cols();}
 
-    /// Set scaling parameter
-    void setScaling(const T tau) { m_tau = tau;  }
+    /// Set damping parameter
+    void setDamping(const T tau) { m_tau = tau;  }
 
-    /// Get scaling parameter
-    void getScaling()            { return m_tau; }
+    /// Get damping parameter
+    void getDamping()            { return m_tau; }
 
     /// Get the default options as gsOptionList object
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
-        opt.addReal( "Scaling", "Scaling parameter of the Richardson iteration", 1 );
+        opt.addReal( "Damping", "Damping parameter of the Richardson iteration", 1 );
         return opt;
     }
 
@@ -128,7 +128,7 @@ public:
     virtual void setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
-        m_tau = opt.askReal( "Scaling", m_tau );
+        m_tau = opt.askReal( "Damping", m_tau );
     }
 
     /// Returns the matrix
@@ -176,18 +176,18 @@ public:
     typedef gsPreconditionerOp<T> Base;
 
     /// @brief Constructor with given matrix
-    explicit gsJacobiOp(const MatrixType& _mat)
-    : m_mat(), m_expr(_mat.derived()), m_tau(1) {}
+    explicit gsJacobiOp(const MatrixType& _mat, T _tau = 1)
+    : m_mat(), m_expr(_mat.derived()), m_tau(_tau) {}
 
     /// @brief Constructor with shared pointer to matrix
-    explicit gsJacobiOp(const MatrixPtr& _mat)
-    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
+    explicit gsJacobiOp(const MatrixPtr& _mat, T _tau = 1)
+    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(_tau) { }
 
-    static uPtr make(const MatrixType& _mat)
-    { return memory::make_unique( new gsJacobiOp(_mat) ); }
+    static uPtr make(const MatrixType& _mat, T _tau = 1)
+    { return memory::make_unique( new gsJacobiOp(_mat, _tau) ); }
 
-    static uPtr make(const MatrixPtr& _mat)
-    { return memory::make_unique( new gsJacobiOp(_mat) ); }
+    static uPtr make(const MatrixPtr& _mat, T _tau = 1)
+    { return memory::make_unique( new gsJacobiOp(_mat, _tau) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
@@ -218,17 +218,17 @@ public:
     index_t rows() const {return m_expr.rows();}
     index_t cols() const {return m_expr.cols();}
 
-    /// Set scaling parameter
-    void setScaling(const T tau) { m_tau = tau;  }
+    /// Set damping parameter
+    void setDamping(const T tau) { m_tau = tau;  }
 
-    /// Get scaling parameter
-    void getScaling()            { return m_tau; }
+    /// Get damping parameter
+    void getDamping()            { return m_tau; }
 
     /// Get the default options as gsOptionList object
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
-        opt.addReal( "Scaling", "Scaling parameter of the Jacobi iteration", 1 );
+        opt.addReal( "Damping", "Damping parameter of the Jacobi iteration", 1 );
         return opt;
     }
 
@@ -236,7 +236,7 @@ public:
     virtual void setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
-        m_tau = opt.askReal( "Scaling", m_tau );
+        m_tau = opt.askReal( "Damping", m_tau );
     }
 
     /// Returns the matrix
