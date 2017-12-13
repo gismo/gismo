@@ -1,8 +1,8 @@
-/** @file gsMultiGridTutorial.cpp
+/** @file multiGrid_example.cpp
 
-    @brief Provides test examples for multigrid algorithms
+    @brief Provides an examples for the multigrid solver.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
     /**************** Setup solver and solve ****************/
 
     gsInfo << "Setup solver and solve... " << std::flush;
-    
+
     std::vector< gsSparseMatrix<real_t,RowMajor> > transferMatrices;
 
     gsGridHierarchy<>::buildByCoarsening(give(mb), bc, opt.getGroup("MG"))
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 
     gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( assembler.matrix(), transferMatrices );
     mg->setOptions( opt.getGroup("MG") );
-    
+
     for (index_t i = 1; i < mg->numLevels(); ++i)
     {
         gsPreconditionerOp<>::Ptr smoother;
