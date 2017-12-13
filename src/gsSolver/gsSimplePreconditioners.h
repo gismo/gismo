@@ -148,8 +148,8 @@ private:
    \brief Returns a smart pointer to a Richardson operator referring on \a mat
 */
 template <class Derived>
-typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<Derived>& mat)
-{ return gsRichardsonOp<Derived>::make(mat.derived()); }
+typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
+{ return gsRichardsonOp<Derived>::make(mat.derived(), tau); }
 
 /// @brief Jacobi preconditioner
 ///
@@ -256,8 +256,8 @@ private:
    \brief Returns a smart pointer to a Jacobi operator referring on \a mat
 */
 template <class Derived>
-typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>& mat)
-{ return gsJacobiOp<Derived>::make(mat.derived()); }
+typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
+{ return gsJacobiOp<Derived>::make(mat.derived(), tau); }
 
 
 namespace gsGaussSeidel
