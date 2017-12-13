@@ -27,10 +27,6 @@ namespace gismo
     To use it, pass the operators representing the stiffness matrix on ALL levels
     and the transfer matrices. The smoother HAS TO BE set with setSmoother().
 
-    It is also possible to use solve() to solve using pure multigrid
-    iteration without CG, however, this can be quite slow for high-dimensional
-    problems with high spline degrees. Using CG iteration is usually recommended.
-
     \par Additional options
 
     The solver can be configured to use V- or W-cycles using setNumCycles().
@@ -44,12 +40,6 @@ namespace gismo
     Full multigrid (FMG) and cascadic multigrid are supported and sometimes
     extremely efficient. It should however be considered
     experimental since the theory is not well understood at this point.
-
-    \par Nonsymmetric problems
-
-    Nonsymmetric problems are partially supported. Things left to do:
-      - the Gauss-Seidel smoother assumes a symmetric matrix right now, a bit more
-        care has to be taken there. In the meanwhile, use the Jacobi smoother.
 
     \ingroup Solver
 */
@@ -199,10 +189,6 @@ protected:
     To use it, pass the matrix on the finest grid level and the transfer matrices.
     The smoother HAS TO BE set with setSmoother().
 
-    It is also possible to use solve() to solve using pure multigrid
-    iteration without CG, however, this can be quite slow for high-dimensional
-    problems with high spline degrees. Using CG iteration is usually recommended.
-
     \par Additional options
 
     The solver can be configured to use V- or W-cycles using setNumCycles().
@@ -216,12 +202,6 @@ protected:
     Full multigrid (FMG) and cascadic multigrid are supported and sometimes
     extremely efficient. It should however be considered
     experimental since the theory is not well understood at this point.
-
-    \par Nonsymmetric problems
-
-    Nonsymmetric problems are partially supported. Things left to do:
-      - the Gauss-Seidel smoother assumes a symmetric matrix right now, a bit more
-        care has to be taken there. In the meanwhile, use the Jacobi smoother.
 
     \ingroup Solver
 */
