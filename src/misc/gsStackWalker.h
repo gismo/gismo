@@ -68,7 +68,6 @@ GISMO_EXPORT bool gsExceptionHandler();
 
 /// Initialize exception handler for stack backtrace
 static const bool gismoExceptionHandler = gsExceptionHandler();
-GISMO_UNUSED(gismoExceptionHandler);
 
 } // end namespace internal
 
