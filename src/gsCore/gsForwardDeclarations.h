@@ -249,6 +249,7 @@ template<class T = real_t> class gsScaledOp;
 template<class T = real_t> class gsIdentityOp;
 
 template<class T = real_t> class gsPreconditionerOp;
+template<class T = real_t> class gsOperatorPreconditionerOp;
 
 template<class T = real_t> class gsOperatorMultiGridOp;
 template<class T = real_t> class gsMultiGridOp;

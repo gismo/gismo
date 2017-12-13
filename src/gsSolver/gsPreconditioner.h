@@ -14,6 +14,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsIO/gsOptionList.h>
+#include <gsSolver/gsLinearOperator.h>
 
 namespace gismo
 {

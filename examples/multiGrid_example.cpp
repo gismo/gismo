@@ -151,20 +151,20 @@ int main(int argc, char *argv[])
 
     for (index_t i = 1; i < mg->numLevels(); ++i)
     {
-        gsPreconditionerOp<>::Ptr smoother;
+        gsPreconditionerOp<>::Ptr smootherOp;
         if ( opt.getString("MG.Smoother") == "Richardson" )
-            smoother = makeRichardsonOp(mg->matrix(i),(real_t)1/2);
+            smootherOp = makeRichardsonOp(mg->matrix(i),(real_t)1/2);
         else if ( opt.getString("MG.Smoother") == "Jacobi" )
-            smoother = makeJacobiOp(mg->matrix(i),(real_t)1/2);
+            smootherOp = makeJacobiOp(mg->matrix(i),(real_t)1/2);
         else if ( opt.getString("MG.Smoother") == "GaussSeidel" )
-            smoother = makeGaussSeidelOp(mg->matrix(i));
+            smootherOp = makeGaussSeidelOp(mg->matrix(i));
         else
         {
             gsInfo << "The chosen smoother is unknown.\n\n";
             return 1;
         }
-        smoother->setOptions( opt.getGroup("MG") );
-        mg->setSmoother(i, smoother);
+        smootherOp->setOptions( opt.getGroup("MG") );
+        mg->setSmoother(i, smootherOp);
     }
 
     gsMatrix<> x, history;
