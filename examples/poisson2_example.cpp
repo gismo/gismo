@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
             if ( !geo )
             {
                 gsWarn<< "Did not find any geometry in "<<fn<<", quitting.\n";
-                return false;
+                return -1;
             }
             switch ( geo->geoDim() )
             {
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
             fn+= "domain3d/cube.xml";
             break;
         default:
-            return false;
+            return -1;
         }
     }
 
