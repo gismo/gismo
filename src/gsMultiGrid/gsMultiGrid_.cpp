@@ -16,7 +16,6 @@
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsOperatorMultiGridOp<real_t>;
 CLASS_TEMPLATE_INST gsMultiGridOp<real_t>;
 
 }

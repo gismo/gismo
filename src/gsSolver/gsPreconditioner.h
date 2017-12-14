@@ -130,15 +130,15 @@ protected:
 ///
 /// \ingroup Solver
 template<class T>
-class gsOperatorPreconditionerOp : public gsPreconditionerOp<T>
+class gsPreconditionerFromOp : public gsPreconditionerOp<T>
 {
 public:
 
     /// Shared pointer for gsLinearOperator
-    typedef memory::shared_ptr<gsOperatorPreconditionerOp> Ptr;
+    typedef memory::shared_ptr<gsPreconditionerFromOp> Ptr;
 
     /// Unique pointer for gsLinearOperator
-    typedef memory::unique_ptr<gsOperatorPreconditionerOp> uPtr;
+    typedef memory::unique_ptr<gsPreconditionerFromOp> uPtr;
 
     /// Base class
     typedef gsLinearOperator<T> Base;
@@ -152,7 +152,7 @@ public:
      * @param preconditioner  The underlying preconditioner \f$ P \f$.
      * @param tau             A scaling parameter, defaulted to 1.
      */
-    gsOperatorPreconditionerOp( const BasePtr& underlying, const BasePtr& preconditioner, T tau = (T)1)
+    gsPreconditionerFromOp( const BasePtr& underlying, const BasePtr& preconditioner, T tau = (T)1)
         : m_underlying(underlying), m_preconditioner(preconditioner), m_tau(tau)
     {
         GISMO_ASSERT( m_underlying->rows() == m_underlying->cols()
@@ -168,7 +168,7 @@ public:
      * @param scaling         A scaling parameter, defaulted to 1.
      */
     static uPtr make( const BasePtr& underlying, const BasePtr& preconditioner, T tau = (T)1)
-    { return uPtr( new gsOperatorPreconditionerOp(underlying, preconditioner, tau) ); }
+    { return uPtr( new gsPreconditionerFromOp(underlying, preconditioner, tau) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
@@ -233,6 +233,6 @@ protected:
     mutable gsMatrix<T> m_res;
     mutable gsMatrix<T> m_corr;
     using gsPreconditionerOp<T>::m_num_of_sweeps;
-}; // gsOperatorPreconditionerOp
+}; // gsPreconditionerFromOp
 
 } // namespace gismo

@@ -2,7 +2,7 @@
 
     @brief Coarsening algorithms for knot vectors and bases.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -178,7 +178,7 @@ private:
 
 /// @brief This function refines a gsMultiBasis uniformly and provides the transfer matrix.
 ///
-/// @param mBasis[in]                          The gsMultiBasis to be refined 
+/// @param mBasis[in]                          The gsMultiBasis to be refined
 /// @param boundaryConditions[in]              The boundary conditions
 /// @param assemblerOptions[in]                A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
 /// @param numberOfKnotsToBeInserted[in]       The number of knots to be inserted (typically 1), cf. the corresponding parameter in gsBasis
@@ -232,7 +232,7 @@ inline void uniformRefine_withTransfer(
 /// @brief This function refines a gsMultiBasis uniformly and provides the transfer matrix.
 /// with \a refinedKnots = 1 and \a mult = 1
 ///
-/// @param mBasis[in]                    The gsMultiBasis to be refined 
+/// @param mBasis[in]                    The gsMultiBasis to be refined
 /// @param boundaryConditions[in]              The boundary conditions
 /// @param assemblerOptions[in]                A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
 /// @param refinedMBasis[out]                  The refined gsMultiBasis
@@ -253,7 +253,7 @@ inline void uniformRefine_withTransfer(
 
 /// @brief This function coarsens a knot vector
 ///
-/// @param kv[in]                        The initial knot vector 
+/// @param kv[in]                        The initial knot vector
 /// @param removedKnots[out]             The remoed knots
 /// @return                              The coarsened knot vector
 ///
@@ -293,7 +293,7 @@ typename gsBasis<T>::uPtr coarsenBasis_withTransfer(const gsBasis<T>& b, gsSpars
 
 /// @brief This function coarsens the bases of a gsMultiBasis and provides the transfer matrix.
 ///
-/// @param mBasis[in]                          The gsMultiBasis to be refined 
+/// @param mBasis[in]                          The gsMultiBasis to be refined
 /// @param boundaryConditions[in]              The boundary conditions
 /// @param assemblerOptions[in]                A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
 /// @param coarsenedMBasis[out]                A pointer to the coarsened gsMultiBasis
@@ -313,7 +313,7 @@ void coarsenMultiBasis_withTransfer(
 
 /// @brief This function coarsens the bases of a gsMultiBasis and provides the transfer matrix.
 ///
-/// @param mBasis[in]                          The gsMultiBasis to be refined 
+/// @param mBasis[in]                          The gsMultiBasis to be refined
 /// @param boundaryConditions[in]              The boundary conditions
 /// @param assemblerOptions[in]                A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
 /// @param coarsenedMBasis[out]                A pointer to the coarsened gsMultiBasis
@@ -338,7 +338,7 @@ inline void coarsenMultiBasis_withTransfer(
 /// function restricts the matrices to the free dofs, e.g., Dirichlet dofs might be
 /// eliminated
 ///
-/// @param localTransferMatrices[in]     The local and full (also non-free dofs) transfer matrices per patch 
+/// @param localTransferMatrices[in]     The local and full (also non-free dofs) transfer matrices per patch
 /// @param coarseMapper[in]              The DofMapper on the coarse grid
 /// @param fineMapper[in]                The DofMapper on the fine grid
 /// @param transferMatrix[out]           The combined transfer matrix restricted to the free dofs
@@ -356,7 +356,7 @@ void combineTransferMatrices(
 /// @brief Copy items from \a data into \a result unless their index is in \a indices. Order is preserved.
 ///
 /// If an item's index is contained in \a indices, then it is dropped, otherwise it is copied into \a result.
-/// 
+///
 /// @param data[in]                    Container to copy from
 /// @param indices[in]                 Vector of indices. The vector MUST be sorted in increasing order.
 /// @param result[out]                 Container to copy to

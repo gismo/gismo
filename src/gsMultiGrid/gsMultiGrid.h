@@ -45,19 +45,16 @@ namespace gismo
 */
 
 template<class T>
-class gsOperatorMultiGridOp : public gsPreconditionerOp<T>
+class gsMultiGridOp : public gsPreconditionerOp<T>
 {
 
 public:
 
-    /// Shared pointer for gsOperatorMultiGridOp
-    typedef memory::shared_ptr<gsOperatorMultiGridOp> Ptr;
+    /// Shared pointer for gsMultiGridOp
+    typedef memory::shared_ptr<gsMultiGridOp> Ptr;
 
-    /// Unique pointer for gsOperatorMultiGridOp
-    typedef memory::unique_ptr<gsOperatorMultiGridOp> uPtr;
-
-    /// Base class
-    typedef gsPreconditionerOp<T> Base;
+    /// Unique pointer for gsMultiGridOp
+    typedef memory::unique_ptr<gsMultiGridOp> uPtr;
 
     /// Shared pointer to gsLinearOperator
     typedef typename gsLinearOperator<T>::Ptr OpPtr;
@@ -65,13 +62,78 @@ public:
     /// Shared pointer to gsPreconditionerOp
     typedef typename gsPreconditionerOp<T>::Ptr PrecondPtr;
 
-    /// Constructor
-    gsOperatorMultiGridOp( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolong, const std::vector<OpPtr>& restrict, OpPtr coarseSolver = OpPtr() );
+    /// Direct base class
+    typedef gsPreconditionerOp<T> Base;
 
-    /// Constructor
+    /// Matrix type
+    typedef gsSparseMatrix<T> SpMatrix;
+
+    /// Matrix type
+    typedef gsSparseMatrix<T, RowMajor> SpMatrixRowMajor;
+
+    /// Smart pointer to matrix type
+    typedef memory::shared_ptr<SpMatrix> SpMatrixPtr;
+
+    /// Smart pointer to matrix type
+    typedef memory::shared_ptr<SpMatrixRowMajor> SpMatrixRowMajorPtr;
+
+    /// @brief Constructor
+    ///
+    /// @param fineMatrix                Stiffness matrix on the finest grid
+    /// @param transferMatrices          Intergrid transfer matrices representing restriction and prolongation operators
+    /// @param coarseSolver              Linear operator representing the exact solver on the coarsest grid level,
+    ///                                  defaulted to a direct solver (PartialPivLUSolver)
+    gsMultiGridOp( SpMatrix fineMatrix, std::vector< SpMatrixRowMajor > transferMatrices, OpPtr coarseSolver = OpPtr() );
+
+    /// @brief Constructor
+    ///
+    /// @param fineMatrix                Stiffness matrix (as smart pointers) on the finest grid
+    /// @param transferMatrices          Intergrid transfer matrices representing restriction and prolongation operators
+    /// @param coarseSolver              Linear operator representing the exact solver on the coarsest grid level,
+    ///                                  defaulted to a direct solver (PartialPivLUSolver)
+    gsMultiGridOp( SpMatrixPtr fineMatrix, std::vector< SpMatrixRowMajorPtr > transferMatrices, OpPtr coarseSolver = OpPtr() );
+
+    /// @brief Constructor for a matix-free variant
+    ///
+    /// @param ops                       Linear operators representing the stiffness matrix on all levels
+    /// @param prolong                   Linear operators representing the prolongation operators
+    /// @param restrict                  Linear operators representing the restriction operators
+    /// @param coarseSolver              Linear operator representing the exact solver on the coarsest grid level,
+    ///                                  defaulted to a direct solver (PartialPivLUSolver)
+    gsMultiGridOp( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolong, const std::vector<OpPtr>& restrict, OpPtr coarseSolver = OpPtr() );
+
+    /// Make function returning smart pointer
+    ///
+    /// @param fineMatrix                Stiffness matrix on the finest grid
+    /// @param transferMatrices          Intergrid transfer matrices representing restriction and prolongation operators
+    /// @param coarseSolver              Linear operator representing the exact solver on the coarsest grid level,
+    ///                                  defaulted to a direct solver (PartialPivLUSolver)
+    static uPtr make( SpMatrix fineMatrix, std::vector< SpMatrixRowMajor > transferMatrices, OpPtr coarseSolver = OpPtr() )
+        { return uPtr( new gsMultiGridOp( give(fineMatrix), give(transferMatrices), give(coarseSolver) ) ); }
+
+    /// Make function returning smart pointer
+    ///
+    /// @param fineMatrix                Stiffness matrix (as smart pointers) on the finest grid
+    /// @param transferMatrices          Intergrid transfer matrices representing restriction and prolongation operators
+    /// @param coarseSolver              Linear operator representing the exact solver on the coarsest grid level,
+    ///                                  defaulted to a direct solver (PartialPivLUSolver)
+    static uPtr make( SpMatrixPtr fineMatrix, std::vector< SpMatrixRowMajorPtr > transferMatrices, OpPtr coarseSolver = OpPtr() )
+        { return uPtr( new gsMultiGridOp( give(fineMatrix), give(transferMatrices), give(coarseSolver) ) ); }
+
+    /// Make function returning a shared pointer for a matix-free variant
+    ///
+    /// @param ops                       Linear operators representing the stiffness matrix on all levels
+    /// @param prolong                   Linear operators representing the prolongation operators
+    /// @param restrict                  Linear operators representing the restriction operators
+    /// @param coarseSolver              Linear operator representing the exact solver on the coarsest grid level,
+    ///                                  defaulted to a direct solver (PartialPivLUSolver)
     static uPtr make( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolong, const std::vector<OpPtr>& restrict, OpPtr coarseSolver = OpPtr() )
-    { return uPtr( new gsOperatorMultiGridOp( ops, prolong, restrict, give(coarseSolver) ) ); }
+    { return uPtr( new gsMultiGridOp( ops, prolong, restrict, give(coarseSolver) ) ); }
 
+private:
+    // Init function that is used by matrix based constructors
+    void init( SpMatrixPtr fineMatrix, std::vector< SpMatrixRowMajorPtr > transferMatrices, OpPtr coarseSolver );
+    void initCoarseSolver();
 public:
 
     /// Apply smoothing step
@@ -80,6 +142,9 @@ public:
     /// Apply smoothing step on finest grid
     void smoothingStep(const gsMatrix<T>& rhs, gsMatrix<T>& x) const
     { smoothingStep(finestLevel(), rhs, x); }
+
+    /// Estimates for a smoother I - S^{-1} A the largest eigenvalue of S^{-1} A. Can be used to adjust the damping parameters.
+    T estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter = 100);
 
     /// Perform one multigrid cycle on the iterate \a x with right-hand side \a f at the given \a level.
     void multiGridStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const;
@@ -111,50 +176,52 @@ public:
     void solveCoarse(const gsMatrix<T>& rhs, gsMatrix<T>& result) const
     { m_coarseSolver->apply( rhs, result ); }
 
-    index_t numLevels() const    { return n_levels; }                        ///< Number of levels in the multigrid construction.
+    index_t numLevels() const               { return n_levels;               } ///< Number of levels in the multigrid construction.
+    index_t finestLevel() const             { return n_levels - 1;           } ///< The index of the finest level (0-based).
 
-    index_t finestLevel() const  { return n_levels - 1; }                    ///< The index of the finest level (0-based).
+    OpPtr underlyingOp(index_t lvl) const   { return m_ops[lvl];             } ///< Underlying operator (=stiffness matrix) for given level.
+    OpPtr underlyingOp() const              { return m_ops[finestLevel()];   } ///< Underlying operator (=stiffness matrix) for finest level.
 
-    /// Underlying operator (=stiffness matrix)r at given level.
-    OpPtr underlyingOp(index_t lvl) const
+    /// Set underlying operator (=stiffness matrix) for certain level
+    void setUnderlyingOp(index_t lvl, OpPtr op)
     {
         GISMO_ASSERT ( lvl >= 0 && lvl < n_levels, "The given level is not feasible." );
-        return m_ops[lvl];
+        m_ops[lvl] = op;
     }
-    /// Underlying operator (=stiffness matrix) at finest level.
-    OpPtr underlyingOp() const       { return m_ops[finestLevel()]; }
 
-    index_t nDofs(index_t lvl) const { return underlyingOp(lvl)->cols(); }   ///< Number of dofs at the given level.
-    index_t nDofs()            const { return nDofs( finestLevel() ); }      ///< Number of dofs at the finest level.
+    /// Stiffness matrix for given level.
+    SpMatrixPtr matrix(index_t lvl) const;
 
-    index_t rows() const { return underlyingOp()->rows(); }
-    index_t cols() const { return underlyingOp()->cols(); }
+    /// Stiffness matrix for finest level.
+    SpMatrixPtr matrix() const            { return matrix(finestLevel());     }
 
-    void setSmoother(index_t lvl, const PrecondPtr& sm);                     ///< Set the smoother
-    PrecondPtr smoother(index_t lvl)             { return m_smoother[lvl]; } ///< Get the smoother
+    index_t nDofs(index_t lvl) const      { return underlyingOp(lvl)->cols(); } ///< Number of dofs for the given level.
+    index_t nDofs()            const      { return nDofs( finestLevel() );    } ///< Number of dofs for the finest level.
 
-    void setCoarseSolver(const OpPtr& sol)       { m_coarseSolver = sol;   } ///< Get the coarse solver
-    OpPtr coarseSolver()                         { return m_coarseSolver;  } ///< Get the coarse solver
+    index_t rows() const                  { return underlyingOp()->rows();    }
+    index_t cols() const                  { return underlyingOp()->cols();    }
 
-    void setNumPreSmooth(index_t n)                 { m_numPreSmooth = n;  } ///< Set number of pre-smoothing steps to perform.
-    void setNumPostSmooth(index_t n)                { m_numPostSmooth = n; } ///< Set number of post-smoothing steps to perform.
-    void setNumCycles(index_t n)                    { m_numCycles = n;     } ///< Set number of cycles (usually 1 for V-cycle or 2 for W-cycle).
-    void setMaxIters(index_t n)                     { m_maxIters = n;      } ///< Set the maximum number of iterations for the member function \a solve
-    void setTol(T tol)                              { m_tol = tol;         } ///< Set the error bound for the member function \a solve
-    void setCorarseGridCorrectionDamping(T damping) { m_damping = damping; } ///<Set the damping of for the coarse-grid correction
+    void setSmoother(index_t lvl, const PrecondPtr& sm);                        ///< Set the smoother
+    PrecondPtr smoother(index_t lvl)                { return m_smoother[lvl]; } ///< Get the smoother
 
-    static gsOptionList defaultOptions();                                    ///< Returns a list of default options
-    virtual void setOptions(const gsOptionList & opt);                       ///< Set the options based on a gsOptionList
+    void setCoarseSolver(const OpPtr& sol)          { m_coarseSolver = sol;   } ///< Get the coarse solver
+    OpPtr coarseSolver()                            { return m_coarseSolver;  } ///< Get the coarse solver
 
-    /// Estimates for a smoother I - S^{-1} A the largest eigenvalue of S^{-1} A. Can be used to adjust the damping parameters.
-    T estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter = 100);
+    void setNumPreSmooth(index_t n)                 { m_numPreSmooth = n;     } ///< Set number of pre-smoothing steps to perform.
+    void setNumPostSmooth(index_t n)                { m_numPostSmooth = n;    } ///< Set number of post-smoothing steps to perform.
+    void setNumCycles(index_t n)                    { m_numCycles = n;        } ///< Set number of cycles (usually 1 for V-cycle or 2 for W-cycle).
+    void setMaxIters(index_t n)                     { m_maxIters = n;         } ///< Set the maximum number of iterations for the member function \a solve
+    void setTol(T tol)                              { m_tol = tol;            } ///< Set the error bound for the member function \a solve
+    void setCorarseGridCorrectionDamping(T damping) { m_damping = damping;    } ///<Set the damping of for the coarse-grid correction
 
-protected:
-
-    gsOperatorMultiGridOp() {}
-    void initCoarseSolver();
+    static gsOptionList defaultOptions();                                       ///< Returns a list of default options
+    virtual void setOptions(const gsOptionList & opt);                          ///< Set the options based on a gsOptionList
 
 protected:
+
+    gsMultiGridOp() {}
+
+private:
 
     // Number of levels
     index_t n_levels;
@@ -178,122 +245,6 @@ protected:
     index_t m_maxIters;
     T m_tol;
     T m_damping;
-
-}; // class gsOperatorMultiGridOp
-
-
-/** @brief
-    Multigrid solver isogeometric problems.
-
-    This class implements geometric multigrid for isogeometric patches.
-    To use it, pass the matrix on the finest grid level and the transfer matrices.
-    The smoother HAS TO BE set with setSmoother().
-
-    \par Additional options
-
-    The solver can be configured to use V- or W-cycles using setNumCycles().
-
-    The smoother to use can be set with setSmoother(). Here, a pointer
-    to the gsPreconditionerOp object has to be provided for each grid level.
-
-    The number of pre- and post-smoothing steps can be configured with
-    setNumPreSmooth() and setNumPostSmooth(), respectively.
-
-    Full multigrid (FMG) and cascadic multigrid are supported and sometimes
-    extremely efficient. It should however be considered
-    experimental since the theory is not well understood at this point.
-
-    \ingroup Solver
-*/
-
-template<class T>
-class gsMultiGridOp : public gsOperatorMultiGridOp<T>
-{
-public:
-    /// Shared pointer for gsMultiGridOp
-    typedef memory::shared_ptr<gsMultiGridOp> Ptr;
-
-    /// Unique pointer for gsMultiGridOp
-    typedef memory::unique_ptr<gsMultiGridOp> uPtr;
-
-    /// Base class
-    typedef gsOperatorMultiGridOp<T> Base;
-
-    /// Shared pointer to gsLinearOperator
-    typedef typename gsLinearOperator<T>::Ptr OpPtr;
-
-    /// Shared pointer to gsPreconditionerOp
-    typedef typename gsPreconditionerOp<T>::Ptr PrecondPtr;
-
-    /// Matrix type
-    typedef gsSparseMatrix<T> SpMatrix;
-
-    /// Matrix type
-    typedef gsSparseMatrix<T, RowMajor> SpMatrixRowMajor;
-
-    /// Smart pointer to matrix type
-    typedef memory::shared_ptr<SpMatrix> SpMatrixPtr;
-
-    /// Smart pointer to matrix type
-    typedef memory::shared_ptr<SpMatrixRowMajor> SpMatrixRowMajorPtr;
-
-    /// Constructor taking matrices
-    gsMultiGridOp( SpMatrix fineMatrix, std::vector< SpMatrixRowMajor > transferMatrices, OpPtr coarseSolver = OpPtr() );
-
-    /// Constructor taking smart pointers
-    gsMultiGridOp( SpMatrixPtr fineMatrix, std::vector< SpMatrixRowMajorPtr > transferMatrices, OpPtr coarseSolver = OpPtr() );
-
-    /// Make function returning smart pointer
-    static uPtr make( SpMatrix fineMatrix, std::vector< SpMatrixRowMajor > transferMatrices, OpPtr coarseSolver = OpPtr() )
-        { return uPtr( new gsMultiGridOp( give(fineMatrix), give(transferMatrices), give(coarseSolver) ) ); }
-
-    /// Make function returning smart pointer
-    static uPtr make( SpMatrixPtr fineMatrix, std::vector< SpMatrixRowMajorPtr > transferMatrices, OpPtr coarseSolver = OpPtr() )
-        { return uPtr( new gsMultiGridOp( give(fineMatrix), give(transferMatrices), give(coarseSolver) ) ); }
-
-private:
-    void init( SpMatrixPtr fineMatrix, std::vector< SpMatrixRowMajorPtr > transferMatrices, OpPtr coarseSolver );
-public:
-
-    /// Stiffness matrix at given level.
-    const SpMatrix& matrix(index_t lvl) const
-    {
-        GISMO_ASSERT ( lvl >= 0 && lvl < n_levels, "The given level is not feasible." );
-        return *(m_matrices[lvl]);
-    }
-
-    void setMatrix(index_t lvl, SpMatrix mat);
-
-    /// Stiffness matrix at finest level.
-    const SpMatrix& matrix() const  { return matrix(Base::finestLevel()); }
-
-    /// Shared pointer to stiffness matrix at given level.
-    const SpMatrixPtr& matrixPtr(index_t lvl) const
-    {
-        GISMO_ASSERT ( lvl >= 0 && lvl < n_levels, "The given level is not feasible." );
-        return m_matrices[lvl];
-    }
-
-    /// Shared pointer to stiffness matrix at finest level.
-    const SpMatrixPtr& matrixPtr() const                 { return matrixPtr(Base::finestLevel()); }
-
-    /// Set the smoother
-    void setSmoother(index_t lvl, const PrecondPtr& sm)  { Base::setSmoother(lvl, sm); }
-
-private:
-
-    std::vector<SpMatrixPtr> m_matrices;
-    using Base::n_levels;
-    using Base::m_ops;
-    using Base::m_smoother;
-    using Base::m_prolong;
-    using Base::m_restrict;
-    using Base::m_coarseSolver;
-    using Base::m_numPreSmooth;
-    using Base::m_numPostSmooth;
-    using Base::m_numCycles;
-    using Base::m_damping;
-
 
 }; // class gsMultiGridOp
 

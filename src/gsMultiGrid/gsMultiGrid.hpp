@@ -18,22 +18,6 @@ namespace gismo
 {
 
 template<class T>
-gsOperatorMultiGridOp<T>::gsOperatorMultiGridOp( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolong,
-                                          const std::vector<OpPtr>& restrict, OpPtr coarseSolver)
-    : n_levels( ops.size() ), m_ops(ops), m_smoother(n_levels), m_prolong(prolong), m_restrict(restrict),
-      m_numPreSmooth(1), m_numPostSmooth(1), m_numCycles(1), m_damping(1)
-{
-    GISMO_ASSERT ( prolong.size() == restrict.size(), "The number of prolongation and restriction operators differ." );
-    GISMO_ASSERT ( ops.size() == prolong.size()+1, "The number of prolongation and restriction operators do not fit to the number of operators." );
-
-    if (coarseSolver)
-        m_coarseSolver = coarseSolver;
-    else
-        initCoarseSolver();
-}
-
-
-template<class T>
 gsMultiGridOp<T>::gsMultiGridOp(SpMatrix fineMatrix, std::vector< SpMatrixRowMajor > transferMatrices, OpPtr coarseSolver )
 {
     const index_t sz = transferMatrices.size();
@@ -51,16 +35,29 @@ gsMultiGridOp<T>::gsMultiGridOp(SpMatrixPtr fineMatrix, std::vector< SpMatrixRow
 }
 
 template<class T>
+gsMultiGridOp<T>::gsMultiGridOp( const std::vector<OpPtr>& ops, const std::vector<OpPtr>& prolong,
+                                          const std::vector<OpPtr>& restrict, OpPtr coarseSolver)
+    : n_levels( ops.size() ), m_ops(ops), m_smoother(n_levels), m_prolong(prolong), m_restrict(restrict),
+      m_numPreSmooth(1), m_numPostSmooth(1), m_numCycles(1), m_damping(1)
+{
+    GISMO_ASSERT ( prolong.size() == restrict.size(), "The number of prolongation and restriction operators differ." );
+    GISMO_ASSERT ( ops.size() == prolong.size()+1, "The number of prolongation and restriction operators do not fit to the number of operators." );
+
+    if (coarseSolver)
+        m_coarseSolver = coarseSolver;
+    else
+        initCoarseSolver();
+}
+
+template<class T>
 void gsMultiGridOp<T>::init(SpMatrixPtr fineMatrix, std::vector<SpMatrixRowMajorPtr> transferMatrices, OpPtr coarseSolver)
 {
-
     GISMO_ASSERT ( fineMatrix->rows() == fineMatrix->cols(), "gsMultiGridOp need quadratic matrices." );
 
     const index_t sz = transferMatrices.size();
 
     n_levels = sz+1;
     m_ops.resize(n_levels);
-    m_matrices.resize(n_levels);
     m_smoother.resize(n_levels);
     m_prolong.resize(sz);
     m_restrict.resize(sz);
@@ -69,13 +66,16 @@ void gsMultiGridOp<T>::init(SpMatrixPtr fineMatrix, std::vector<SpMatrixRowMajor
     m_numCycles = 1;
     m_damping = 1;
 
-    m_matrices[n_levels-1] = give(fineMatrix);
-    m_ops[n_levels-1] = makeMatrixOp(m_matrices[n_levels-1]);
+    SpMatrixPtr mat = fineMatrix;
+    m_ops[n_levels-1] = makeMatrixOp(mat);
 
     for ( index_t i = n_levels - 2; i >= 0; --i )
     {
-        m_matrices[i] = memory::make_shared( new SpMatrix(transferMatrices[i]->transpose() * *(m_matrices[i+1]) * *(transferMatrices[i])) );
-        m_ops[i] = makeMatrixOp(m_matrices[i]);
+        SpMatrixPtr newMat = SpMatrixPtr(new SpMatrix(
+            transferMatrices[i]->transpose() * *mat * *(transferMatrices[i])
+        ));
+        m_ops[i] = makeMatrixOp(newMat);
+        mat = newMat; // copies just the smart pointers
     }
 
     for ( index_t i=0; i<sz; ++i )
@@ -90,12 +90,12 @@ void gsMultiGridOp<T>::init(SpMatrixPtr fineMatrix, std::vector<SpMatrixRowMajor
     if (coarseSolver)
         m_coarseSolver = coarseSolver;
     else
-        gsOperatorMultiGridOp<T>::initCoarseSolver();
+        gsMultiGridOp<T>::initCoarseSolver();
 
 }
 
 template<class T>
-void gsOperatorMultiGridOp<T>::initCoarseSolver()
+void gsMultiGridOp<T>::initCoarseSolver()
 {
     if (n_levels > 1)
     {
@@ -106,82 +106,7 @@ void gsOperatorMultiGridOp<T>::initCoarseSolver()
 }
 
 template<class T>
-void gsOperatorMultiGridOp<T>::fullMultiGrid(const std::vector< gsMatrix<T> >& rhs, const std::vector< gsMatrix<T> >& dirichletIntp, gsMatrix<T>& result) const
-{
-
-    GISMO_ASSERT (dirichletIntp.size() == (unsigned)n_levels, "The number of dirichletIntp does not correspond to the number of levels!");
-    GISMO_ASSERT (rhs.size() == (unsigned)n_levels, "The number of rhs does not correspond to the number of levels!");
-
-    std::vector< gsMatrix<T> > u(n_levels);
-
-    // solve coarse problem
-    solveCoarse( rhs[0], u[0] );
-
-    for (index_t i = 1; i <= finestLevel(); ++i)
-    {
-        // transfer result from previous level
-        prolongVector(i-1, u[i-1], u[i]);
-        u[i] += dirichletIntp[i];
-
-        // run one multigrid step
-        multiGridStep(i, rhs[i], u[i]);
-    }
-
-    result = u[ finestLevel() ];
-}
-
-template<class T>
-void gsOperatorMultiGridOp<T>::cascadicMultiGrid(const std::vector< gsMatrix<T> >& rhs, const std::vector< gsMatrix<T> >& dirichletIntp, gsMatrix<T>& result) const
-{
-
-    GISMO_ASSERT (dirichletIntp.size() == (unsigned)n_levels, "The number of dirichletIntp does not correspond to the number of levels!");
-    GISMO_ASSERT (rhs.size() == (unsigned)n_levels, "The number of rhs does not correspond to the number of levels!");
-
-    std::vector< gsMatrix<T> > u(n_levels);
-
-    // solve coarse problem
-    solveCoarse( rhs[0], u[0] );
-
-    for (index_t i = 1; i <= finestLevel(); ++i)
-    {
-        // transfer result from previous level
-        prolongVector(i-1, u[i-1], u[i]);
-        u[i] += dirichletIntp[i];
-
-        // smooth
-        smoothingStep(i, rhs[i], u[i]);
-    }
-
-    result = u[ finestLevel() ];
-}
-
-template<class T>
-void gsOperatorMultiGridOp<T>::restrictVector(index_t lf, const gsMatrix<T>& fine, gsMatrix<T>& coarse) const
-{
-    GISMO_ASSERT ( 0 < lf && lf < n_levels, "The given level is not feasible." );
-    GISMO_ASSERT ( fine.rows() == nDofs(lf), "The dimensions do not fit." );
-
-    m_restrict[lf-1]->apply( fine, coarse );
-}
-
-template<class T>
-void gsOperatorMultiGridOp<T>::prolongVector(index_t lc, const gsMatrix<T>& coarse, gsMatrix<T>& fine) const
-{
-    GISMO_ASSERT ( 0 <= lc && lc < n_levels - 1, "The given level is not feasible." );
-    GISMO_ASSERT ( coarse.rows() == nDofs(lc), "The dimensions do not fit." );
-
-    m_prolong[lc]->apply( coarse, fine );
-}
-
-template<class T>
-void gsOperatorMultiGridOp<T>::setSmoother(index_t lvl, const PrecondPtr& sm)
-{
-    GISMO_ASSERT ( 0 <= lvl && lvl < n_levels, "The given level is not feasible." );
-    m_smoother[lvl] = sm;
-}
-
-template<class T>
-void gsOperatorMultiGridOp<T>::smoothingStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const
+void gsMultiGridOp<T>::smoothingStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const
 {
     GISMO_ASSERT (m_smoother[level], "Smoother is not defined. Define it using setSmoother." );
 
@@ -200,7 +125,23 @@ void gsOperatorMultiGridOp<T>::smoothingStep(index_t level, const gsMatrix<T>& r
 }
 
 template<class T>
-void gsOperatorMultiGridOp<T>::multiGridStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const
+T gsMultiGridOp<T>::estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter)
+{
+    gsMatrix<T> rhs, x, tmp;
+    rhs.setZero(nDofs(level),1);
+    x.setRandom(nDofs(level),1);
+    for (index_t i=0; i<iter; ++i )
+    {
+        x.array() /= math::sqrt( x.row(0).dot(x.row(0)) );
+        tmp = x;
+        m_smoother[level]->step(rhs, tmp);
+        x -= tmp;
+    }
+    return math::sqrt( x.row(0).dot(x.row(0)) );
+}
+
+template<class T>
+void gsMultiGridOp<T>::multiGridStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const
 {
     GISMO_ASSERT ( 0 <= level && level < n_levels, "The given level is not feasible." );
     GISMO_ASSERT ( n_levels > 1, "Multigrid is only avaliable if at least two grids are present. Use smoothingStep for running the smoother only." );
@@ -253,31 +194,90 @@ void gsOperatorMultiGridOp<T>::multiGridStep(index_t level, const gsMatrix<T>& r
 }
 
 template<class T>
-T gsOperatorMultiGridOp<T>::estimateLargestEigenvalueOfSmoothedOperator(index_t level, index_t iter)
+void gsMultiGridOp<T>::fullMultiGrid(const std::vector< gsMatrix<T> >& rhs, const std::vector< gsMatrix<T> >& dirichletIntp, gsMatrix<T>& result) const
 {
-    gsMatrix<T> rhs, x, tmp;
-    rhs.setZero(nDofs(level),1);
-    x.setRandom(nDofs(level),1);
-    for (index_t i=0; i<iter; ++i )
+
+    GISMO_ASSERT (dirichletIntp.size() == (unsigned)n_levels, "The number of dirichletIntp does not correspond to the number of levels!");
+    GISMO_ASSERT (rhs.size() == (unsigned)n_levels, "The number of rhs does not correspond to the number of levels!");
+
+    std::vector< gsMatrix<T> > u(n_levels);
+
+    // solve coarse problem
+    solveCoarse( rhs[0], u[0] );
+
+    for (index_t i = 1; i <= finestLevel(); ++i)
     {
-        x.array() /= math::sqrt( x.row(0).dot(x.row(0)) );
-        tmp = x;
-        m_smoother[level]->step(rhs, tmp);
-        x -= tmp;
+        // transfer result from previous level
+        prolongVector(i-1, u[i-1], u[i]);
+        u[i] += dirichletIntp[i];
+
+        // run one multigrid step
+        multiGridStep(i, rhs[i], u[i]);
     }
-    return math::sqrt( x.row(0).dot(x.row(0)) );
+
+    result = u[ finestLevel() ];
 }
 
 template<class T>
-void gsMultiGridOp<T>::setMatrix(index_t lvl, SpMatrix mat)
+void gsMultiGridOp<T>::cascadicMultiGrid(const std::vector< gsMatrix<T> >& rhs, const std::vector< gsMatrix<T> >& dirichletIntp, gsMatrix<T>& result) const
 {
-    GISMO_ASSERT ( lvl >= 0 && lvl < n_levels, "The given level is not feasible." );
-    m_matrices[lvl] = mat.moveToPtr();
-    gsOperatorMultiGridOp<T>::m_ops[lvl] = makeMatrixOp(m_matrices[lvl]);
+
+    GISMO_ASSERT (dirichletIntp.size() == (unsigned)n_levels, "The number of dirichletIntp does not correspond to the number of levels!");
+    GISMO_ASSERT (rhs.size() == (unsigned)n_levels, "The number of rhs does not correspond to the number of levels!");
+
+    std::vector< gsMatrix<T> > u(n_levels);
+
+    // solve coarse problem
+    solveCoarse( rhs[0], u[0] );
+
+    for (index_t i = 1; i <= finestLevel(); ++i)
+    {
+        // transfer result from previous level
+        prolongVector(i-1, u[i-1], u[i]);
+        u[i] += dirichletIntp[i];
+
+        // smooth
+        smoothingStep(i, rhs[i], u[i]);
+    }
+
+    result = u[ finestLevel() ];
 }
 
 template<class T>
-gsOptionList gsOperatorMultiGridOp<T>::defaultOptions()
+void gsMultiGridOp<T>::restrictVector(index_t lf, const gsMatrix<T>& fine, gsMatrix<T>& coarse) const
+{
+    GISMO_ASSERT ( 0 < lf && lf < n_levels, "The given level is not feasible." );
+    GISMO_ASSERT ( fine.rows() == nDofs(lf), "The dimensions do not fit." );
+
+    m_restrict[lf-1]->apply( fine, coarse );
+}
+
+template<class T>
+void gsMultiGridOp<T>::prolongVector(index_t lc, const gsMatrix<T>& coarse, gsMatrix<T>& fine) const
+{
+    GISMO_ASSERT ( 0 <= lc && lc < n_levels - 1, "The given level is not feasible." );
+    GISMO_ASSERT ( coarse.rows() == nDofs(lc), "The dimensions do not fit." );
+
+    m_prolong[lc]->apply( coarse, fine );
+}
+
+template<class T>
+void gsMultiGridOp<T>::setSmoother(index_t lvl, const PrecondPtr& sm)
+{
+    GISMO_ASSERT ( 0 <= lvl && lvl < n_levels, "The given level is not feasible." );
+    m_smoother[lvl] = sm;
+}
+
+template<class T>
+typename gsMultiGridOp<T>::SpMatrixPtr gsMultiGridOp<T>::matrix(index_t lvl) const
+{
+    const gsMatrixOp<SpMatrix>* matrOp = dynamic_cast< const gsMatrixOp<SpMatrix>* >( m_ops[lvl].get() );
+    GISMO_ASSERT( matrOp, "Matrices are not available for matrix-free multigrid solvers." );
+    return matrOp->matrixPtr();
+}
+
+template<class T>
+gsOptionList gsMultiGridOp<T>::defaultOptions()
 {
     gsOptionList opt = Base::defaultOptions();
     opt.addInt   ("NumPreSmooth"                , "Number of pre-smoothing steps",                             1      );
@@ -288,7 +288,7 @@ gsOptionList gsOperatorMultiGridOp<T>::defaultOptions()
 }
 
 template<class T>
-void gsOperatorMultiGridOp<T>::setOptions(const gsOptionList & opt)
+void gsMultiGridOp<T>::setOptions(const gsOptionList & opt)
 {
     Base::setOptions(opt);
     m_numPreSmooth     = opt.askInt   ("NumPreSmooth"                , m_numPreSmooth    );

@@ -37,13 +37,13 @@ class gsMatrixOp : public gsLinearOperator<typename MatrixType::Scalar>
 
 public:
     typedef typename MatrixType::Scalar T;
-    
+
     /// Shared pointer for gsMatrixOp
     typedef memory::shared_ptr<gsMatrixOp> Ptr;
 
-    /// Unique pointer for gsMatrixOp   
+    /// Unique pointer for gsMatrixOp
     typedef memory::unique_ptr<gsMatrixOp> uPtr;
-    
+
     /// @brief Constructor taking a reference
     ///
     /// @note This does not copy the matrix. Make sure that the matrix
@@ -54,7 +54,7 @@ public:
     {
         //gsDebug<<typeid(m_expr).name()<<" Ref: "<<is_ref<NestedMatrix>::value<<"\n";
     }
-    
+
     /// @brief Constructor taking a shared pointer
     gsMatrixOp(const MatrixPtr& mat, bool sym=false)
     : m_mat(mat), m_expr(m_mat->derived()), m_symmetric(sym)
@@ -70,7 +70,7 @@ public:
     /// Make function returning a smart pointer
     static uPtr make(const MatrixPtr& mat, bool sym=false)
     { return memory::make_unique( new gsMatrixOp(mat,sym) ); }
-    
+
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         if (m_symmetric)
@@ -79,12 +79,18 @@ public:
             x.noalias() = m_expr * input;
     }
 
-    index_t rows() const {return m_expr.rows();}
+    index_t rows() const { return m_expr.rows(); }
 
-    index_t cols() const {return m_expr.cols();}
+    index_t cols() const { return m_expr.cols(); }
 
     ///Returns the matrix
-    NestedMatrix matrix() const { return m_expr; }
+    NestedMatrix matrix() const    { return m_expr; }
+
+    ///Returns a shared pinter to the matrix
+    MatrixPtr    matrixPtr() const {
+        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsMatrixOp." );
+        return m_mat;
+    }
 
 private:
     const MatrixPtr m_mat; ///< Shared pointer to matrix (if needed)
@@ -112,11 +118,11 @@ private:
   * \endcode
   * will re-compute the inverse of the matrix every time the operator
   * opInv is applied, so this is not advised.
-  * 
+  *
   * @note If a matrix is provided, only a reference is stored. Make
   * sure that the matrix is not deleted too early or provide a shared
   * pointer.
-  * 
+  *
   * \ingroup Solver
   */
 template <class Derived>
@@ -143,7 +149,7 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>&
   * M.setRandom(10,10);
   * gsLinearOperator<>::Ptr op = makeMatrixOp(M.moveToPtr());
   * \endcode
-  * 
+  *
   * \ingroup Solver
   */
 template <class Derived>
@@ -171,14 +177,14 @@ public:
     typedef typename SolverType::Scalar T;
 
     typedef typename SolverType::MatrixType MatrixType;
-    
+
     /// Shared pointer for gsSolverOp
     typedef memory::shared_ptr<gsSolverOp> Ptr;
 
-    /// Unique pointer for gsSolverOp   
+    /// Unique pointer for gsSolverOp
     typedef memory::unique_ptr<gsSolverOp> uPtr;
-    
-    
+
+
     /// Constructor taking a matrix
     gsSolverOp(const MatrixType& mat)
     {
@@ -196,10 +202,10 @@ public:
 
         m_solver.compute(*mat);
     }
-    
+
     /// Make function taking a matrix OR a shared pointer
-    static uPtr make(const MatrixType& mat) { return memory::make_unique( new gsSolverOp(mat) ); }    
-    
+    static uPtr make(const MatrixType& mat) { return memory::make_unique( new gsSolverOp(mat) ); }
+
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         x = m_solver.solve(input);

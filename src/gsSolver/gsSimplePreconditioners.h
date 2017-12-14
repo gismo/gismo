@@ -134,6 +134,12 @@ public:
     /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
 
+    /// Returns a shared pinter to the matrix
+    MatrixPtr    matrixPtr() const {
+        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsRichardsonOp." );
+        return m_mat;
+    }
+
     typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
@@ -150,6 +156,13 @@ private:
 template <class Derived>
 typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsRichardsonOp<Derived>::make(mat.derived(), tau); }
+
+/**
+   \brief Returns a smart pointer to a Richardson operator referring on \a mat
+*/
+template <class Derived>
+typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const typename memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
+{ return gsRichardsonOp<Derived>::make(mat, tau); }
 
 /// @brief Jacobi preconditioner
 ///
@@ -242,6 +255,12 @@ public:
     /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
 
+    /// Returns a shared pinter to the matrix
+    MatrixPtr    matrixPtr() const {
+        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsJacobiOp." );
+        return m_mat;
+    }
+
     typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
@@ -259,6 +278,12 @@ template <class Derived>
 typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsJacobiOp<Derived>::make(mat.derived(), tau); }
 
+/**
+   \brief Returns a smart pointer to a Jacobi operator referring on \a mat
+*/
+template <class Derived>
+typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const typename memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
+{ return gsJacobiOp<Derived>::make(mat, tau); }
 
 namespace gsGaussSeidel
 {
@@ -345,6 +370,12 @@ public:
     /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
 
+    /// Returns a shared pinter to the matrix
+    MatrixPtr    matrixPtr() const {
+        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsGaussSeidelOp." );
+        return m_mat;
+    }
+
     typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
@@ -360,6 +391,13 @@ typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const Eigen::EigenBase
 { return gsGaussSeidelOp<Derived>::make(mat.derived()); }
 
 /**
+   \brief Returns a smart pointer to a Jacobi operator referring on \a mat
+*/
+template <class Derived>
+typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const typename memory::shared_ptr<Derived>& mat)
+{ return gsGaussSeidelOp<Derived>::make(mat); }
+
+/**
    \brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
 */
 template <class Derived>
@@ -367,11 +405,25 @@ typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussS
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::make(mat.derived()); }
 
 /**
+   \brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
+*/
+template <class Derived>
+typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussSeidelOp(const typename memory::shared_ptr<Derived>& mat)
+{ return gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::make(mat); }
+
+/**
    \brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
 */
 template <class Derived>
 typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::make(mat.derived()); }
+
+/**
+   \brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
+*/
+template <class Derived>
+typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const typename memory::shared_ptr<Derived>& mat)
+{ return gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::make(mat); }
 
 } // namespace gismo
 
