@@ -55,13 +55,13 @@ int main(int argc, char *argv[])
     if (numRefine<0)
     {
         gsInfo << "Number of refinements must be non-negative.\n";
-        return -1;
+        return EXIT_FAILURE;
     }
 
     if (numElevate<-1)
     {
         gsInfo << "Number of elevations must be non-negative.\n";
-        return -1;
+        return EXIT_FAILURE;
     }
 
     gsMultiPatch<>::uPtr geo;
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
             if ( !geo )
             {
                 gsWarn<< "Did not find any geometry in "<<fn<<", quitting.\n";
-                return false;
+                return EXIT_FAILURE;
             }
             switch ( geo->geoDim() )
             {
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
                 fn_pde+="/pde/poisson3d_sin.xml";
                 break;
             default:
-                return -1;
+                return EXIT_FAILURE;
             }
         }
         else
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     if ( !ppde )
     {
         gsWarn<< "Did not find any PDE in "<< fn<<", quitting.\n";
-        return -1;
+        return EXIT_FAILURE;
     }
 
     if ( fn.empty() )
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
             fn+= "domain3d/cube.xml";
             break;
         default:
-            return false;
+            return EXIT_FAILURE;
         }
     }
 
@@ -127,14 +127,14 @@ int main(int argc, char *argv[])
     if ( !geo )
     {
         gsInfo << "Did not find any geometries in "<< fn<<", quitting.\n";
-        return -1;
+        return EXIT_FAILURE;
     }
 
     /////////////////// Print info ///////////////////
     gsInfo<<"Domain: "<< *geo <<"\n";
     gsInfo<<"Number of patches are " << geo->nPatches() << "\n";
     gsInfo<<"Source function "<< *ppde->rhs() << "\n";
-    gsInfo<<"Exact solution "<< *exactSol <<".\n" << "\n";
+    gsInfo<<"Exact solution "<< *exactSol << "\n\n";
     gsInfo<<"p-refinent steps before solving: "<< numElevate <<"\n";
     gsInfo<<"h-refinent steps before solving: "<< numRefine <<"\n";
 
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
         for (int i = 0; i < numRefine; ++i)
             bases[j].uniformRefine();
 
-    gsInfo << "Discrete. Space 0: "<< bases[0] << "\n";
+    gsInfo << "Discrete space 0: "<< bases[0] << "\n";
 
 
     /////////////////// Setup solver ///////////////////
@@ -218,10 +218,10 @@ int main(int argc, char *argv[])
     PoissonAssembler.constructSolution(solVector, mpsol);
     gsField<> sol( PoissonAssembler.patches(), mpsol);
 
-    gsInfo <<"Sol:"<< mpsol <<"\n";
+    gsInfo <<"Solution: "<< mpsol <<"\n";
 
     // Plot solution in paraview
-    int result = 0;
+    int result = EXIT_SUCCESS;
     if (plot)
     {
         // Write approximate and exact solution to paraview files
@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
         result = system("paraview poisson2d.pvd &");
     }
 
-    gsInfo << "Test is done: Exiting" << "\n";
+    gsInfo << "Done." << "\n";
 
     return result;
 }
