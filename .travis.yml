@@ -70,7 +70,7 @@ matrix:
         apt:
           packages: g++-6
           sources:
-	    - ubuntu-toolchain-r-test
+            - ubuntu-toolchain-r-test
 
     - env: COMPILER=g++-5 BUILD_TYPE=Release
       if: branch = ci_test
@@ -78,7 +78,7 @@ matrix:
         apt:
           packages: g++-5
           sources:
-	    - ubuntu-toolchain-r-test
+            - ubuntu-toolchain-r-test
     
 ##################
 
