@@ -37,13 +37,23 @@ matrix:
         - BUILD_TYPE=Release
 
     - os: osx
-      if: branch = covertiy_scan
+      if: branch = coverity_scan
       osx_image: xcode9.1  # xcode8.3
       compiler: gcc
       env:
         - COMPILER=clang++
         - BUILD_TYPE=Release
-      
+
+      addons:
+        coverity_scan:
+          project:
+            name: "filiatra/gismo"
+            description: "Build submitted via Travis CI"
+            notification_email: filiatra@gmail.com
+            #build_command_prepend: "cmake . -DCMAKE_BUILD_TYPE=Release"
+            #build_command:   "make -j 4"
+            branch_pattern: coverity_scan
+    
 ##################
     
 before_install:
@@ -58,9 +68,4 @@ before_script:
 
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi 
-  - if [ $TRAVIS_BRANCH == stable ]; then
-    #test $TRAVIS_OS_NAME == osx || exit 0
-    ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
-    else #coverity_scan
-    ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
-    fi
+  - if [ $TRAVIS_BRANCH == stable ]; then ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit else ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit fi
