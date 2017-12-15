@@ -20,7 +20,7 @@ namespace internal
 {
 
 template<typename T>
-void gaussSeidelSweep(const typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f)
+void gaussSeidelSweep(typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f)
 {
     GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
         "Dimensions do not match.");
@@ -45,7 +45,7 @@ void gaussSeidelSweep(const typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& 
 }
 
 template<typename T>
-void reverseGaussSeidelSweep(const typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f)
+void reverseGaussSeidelSweep(typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f)
 {
     GISMO_ASSERT( A.rows() == x.rows() && x.rows() == f.rows() && A.cols() == A.rows() && x.cols() == f.cols(),
         "Dimensions do not match.");

@@ -21,9 +21,9 @@ namespace gismo
 namespace internal
 {
 template<typename T>
-GISMO_EXPORT void gaussSeidelSweep(const typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f);
+GISMO_EXPORT void gaussSeidelSweep(typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f);
 template<typename T>
-GISMO_EXPORT void reverseGaussSeidelSweep(const typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f);
+GISMO_EXPORT void reverseGaussSeidelSweep(typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f);
 } // namespace internal
 
 /// @brief Richardson preconditioner
