@@ -1,4 +1,4 @@
-/** @file gsSimpleOps.h
+/** @file gsSimplePreconditioners.h
 
     @brief Collection of some simple preconditioners.
 
@@ -8,52 +8,29 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Sogn, C. Hofreither, A. Mantzaflaris
+    Author(s): J. Sogn, C. Hofreither, A. Mantzaflaris, S. Takacs
 */
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsSolver/gsLinearOperator.h>
+#include <gsSolver/gsPreconditioner.h>
 
 namespace gismo
 {
-    
-/// @brief Update \a x with a Richardson sweep
-/// \ingroup Solver
-template<typename T>
-GISMO_EXPORT void dampedRichardsonSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f, T tau = (T)(1.));
 
-/// @brief Update \a x with a Jacobi sweep
-/// \ingroup Solver
+namespace internal
+{
 template<typename T>
-GISMO_EXPORT void jacobiSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f);
-
-/// @brief Update \a x with a damped Jacobi sweep
-/// \ingroup Solver
+GISMO_EXPORT void gaussSeidelSweep(const typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f);
 template<typename T>
-GISMO_EXPORT void dampedJacobiSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f, T tau = (T)(0.5));
-
-/// @brief Update \a x with a forward Gauss-Seidel sweep
-/// \ingroup Solver
-template<typename T>
-GISMO_EXPORT void gaussSeidelSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f);
-
-/// @brief Update \a x with a backward Gauss-Seidel sweep
-/// \ingroup Solver
-template<typename T>
-GISMO_EXPORT void reverseGaussSeidelSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f);
-
-/// @brief Preforms a block Gauss-Seidel on the degrees of freedom in DoFs.
-/// \ingroup Solver
-template<typename T>
-GISMO_EXPORT void gaussSeidelSingleBlock(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f, gsVector<index_t>& DoFs);
-
+GISMO_EXPORT void reverseGaussSeidelSweep(const typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f);
+} // namespace internal
 
 /// @brief Richardson preconditioner
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsRichardsonOp : public gsSteppableOperator<typename MatrixType::Scalar>
+class gsRichardsonOp : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType>  MatrixPtr;
     typedef typename MatrixType::Nested              NestedMatrix;
@@ -67,23 +44,23 @@ public:
 
     /// Unique pointer for gsRichardsonOp
     typedef memory::unique_ptr< gsRichardsonOp > uPtr;
- 
+
     /// Base class
-    typedef gsSteppableOperator<T> Base;
+    typedef gsPreconditionerOp<T> Base;
 
     /// @brief Constructor with given matrix
-    explicit gsRichardsonOp(const MatrixType& _mat)
-    : m_mat(), m_expr(_mat.derived()), m_tau(1) {}
+    explicit gsRichardsonOp(const MatrixType& _mat, T _tau = 1)
+    : m_mat(), m_expr(_mat.derived()), m_tau(_tau) {}
 
     /// @brief Constructor with shared pointer to matrix
-    explicit gsRichardsonOp(const MatrixPtr& _mat)
-    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
+    explicit gsRichardsonOp(const MatrixPtr& _mat, T _tau = 1)
+    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(_tau) { }
 
-    static uPtr make(const MatrixType& _mat) 
-    { return memory::make_unique( new gsRichardsonOp(_mat) ); }
+    static uPtr make(const MatrixType& _mat, T _tau = 1)
+    { return memory::make_unique( new gsRichardsonOp(_mat, _tau) ); }
 
-    static uPtr make(const MatrixPtr& _mat) 
-    { return memory::make_unique( new gsRichardsonOp(_mat) ); }
+    static uPtr make(const MatrixPtr& _mat, T _tau = 1)
+    { return memory::make_unique( new gsRichardsonOp(_mat, _tau) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
@@ -110,17 +87,17 @@ public:
     index_t rows() const {return m_expr.rows();}
     index_t cols() const {return m_expr.cols();}
 
-    /// Set scaling parameter
-    void setScaling(const T tau) { m_tau = tau;  }
+    /// Set damping parameter
+    void setDamping(const T tau) { m_tau = tau;  }
 
-    /// Get scaling parameter
-    void getScaling()            { return m_tau; }
+    /// Get damping parameter
+    void getDamping()            { return m_tau; }
 
     /// Get the default options as gsOptionList object
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
-        opt.addReal( "Scaling", "Scaling parameter of the Richardson iteration", 1 );
+        opt.addReal( "Damping", "Damping parameter of the Richardson iteration", 1 );
         return opt;
     }
 
@@ -128,11 +105,19 @@ public:
     virtual void setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
-        m_tau = opt.askReal( "Scaling", m_tau );
+        m_tau = opt.askReal( "Damping", m_tau );
     }
 
     /// Returns the matrix
-    const MatrixType & matrix() const { return m_mat; }
+    NestedMatrix matrix() const { return m_expr; }
+
+    /// Returns a shared pinter to the matrix
+    MatrixPtr    matrixPtr() const {
+        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsRichardsonOp." );
+        return m_mat;
+    }
+
+    typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
@@ -146,8 +131,15 @@ private:
    \brief Returns a smart pointer to a Richardson operator referring on \a mat
 */
 template <class Derived>
-typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<Derived>& mat)
-{ return gsRichardsonOp<Derived>::make(mat.derived()); }
+typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
+{ return gsRichardsonOp<Derived>::make(mat.derived(), tau); }
+
+/**
+   \brief Returns a smart pointer to a Richardson operator referring on \a mat
+*/
+template <class Derived>
+typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const typename memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
+{ return gsRichardsonOp<Derived>::make(mat, tau); }
 
 /// @brief Jacobi preconditioner
 ///
@@ -155,7 +147,7 @@ typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<D
 ///
 /// \ingroup Solver
 template <typename MatrixType>
-class gsJacobiOp : public gsSteppableOperator<typename MatrixType::Scalar>
+class gsJacobiOp : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested             NestedMatrix;
@@ -167,26 +159,26 @@ public:
     /// Shared pointer for gsJacobiOp
     typedef memory::shared_ptr< gsJacobiOp > Ptr;
 
-    /// Unique pointer for gsJacobiOp   
+    /// Unique pointer for gsJacobiOp
     typedef memory::unique_ptr< gsJacobiOp > uPtr;
 
     /// Base class
-    typedef gsSteppableOperator<T> Base;
+    typedef gsPreconditionerOp<T> Base;
 
     /// @brief Constructor with given matrix
-    explicit gsJacobiOp(const MatrixType& _mat)
-    : m_mat(), m_expr(_mat.derived()), m_tau(1) {}
+    explicit gsJacobiOp(const MatrixType& _mat, T _tau = 1)
+    : m_mat(), m_expr(_mat.derived()), m_tau(_tau) {}
 
     /// @brief Constructor with shared pointer to matrix
-    explicit gsJacobiOp(const MatrixPtr& _mat)
-    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(1) { }
+    explicit gsJacobiOp(const MatrixPtr& _mat, T _tau = 1)
+    : m_mat(_mat), m_expr(m_mat->derived()), m_tau(_tau) { }
 
-    static uPtr make(const MatrixType& _mat) 
-    { return memory::make_unique( new gsJacobiOp(_mat) ); }
+    static uPtr make(const MatrixType& _mat, T _tau = 1)
+    { return memory::make_unique( new gsJacobiOp(_mat, _tau) ); }
 
-    static uPtr make(const MatrixPtr& _mat) 
-    { return memory::make_unique( new gsJacobiOp(_mat) ); }
- 
+    static uPtr make(const MatrixPtr& _mat, T _tau = 1)
+    { return memory::make_unique( new gsJacobiOp(_mat, _tau) ); }
+
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
         GISMO_ASSERT( m_expr.rows() == rhs.rows() && m_expr.cols() == m_expr.rows(),
@@ -216,17 +208,17 @@ public:
     index_t rows() const {return m_expr.rows();}
     index_t cols() const {return m_expr.cols();}
 
-    /// Set scaling parameter
-    void setScaling(const T tau) { m_tau = tau;  }
+    /// Set damping parameter
+    void setDamping(const T tau) { m_tau = tau;  }
 
-    /// Get scaling parameter
-    void getScaling()            { return m_tau; }
+    /// Get damping parameter
+    void getDamping()            { return m_tau; }
 
     /// Get the default options as gsOptionList object
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
-        opt.addReal( "Scaling", "Scaling parameter of the Jacobi iteration", 1 );
+        opt.addReal( "Damping", "Damping parameter of the Jacobi iteration", 1 );
         return opt;
     }
 
@@ -234,11 +226,19 @@ public:
     virtual void setOptions(const gsOptionList & opt)
     {
         Base::setOptions(opt);
-        m_tau = opt.askReal( "Scaling", m_tau );
+        m_tau = opt.askReal( "Damping", m_tau );
     }
 
     /// Returns the matrix
     NestedMatrix matrix() const { return m_expr; }
+
+    /// Returns a shared pinter to the matrix
+    MatrixPtr    matrixPtr() const {
+        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsJacobiOp." );
+        return m_mat;
+    }
+
+    typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
@@ -252,19 +252,30 @@ private:
    \brief Returns a smart pointer to a Jacobi operator referring on \a mat
 */
 template <class Derived>
-typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>& mat)
-{ return gsJacobiOp<Derived>::make(mat.derived()); }
+typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
+{ return gsJacobiOp<Derived>::make(mat.derived(), tau); }
 
+/**
+   \brief Returns a smart pointer to a Jacobi operator referring on \a mat
+*/
+template <class Derived>
+typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const typename memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
+{ return gsJacobiOp<Derived>::make(mat, tau); }
 
-namespace gsGaussSeidel
+struct gsGaussSeidel
 {
+    /// @brief Gauss-Seidel preconditioner
+    ///
+    /// Specify the ordering of Gauss Seidel
+    ///
+    /// \ingroup Solver
     enum ordering
     {
-        forward = 0,
-        reverse = 1,
-        symmetric = 2
+        forward = 0,    ///< standard forward ordering
+        reverse = 1,    ///< reverse ordering
+        symmetric = 2   ///< one total step is = one forward + one backward
     };
-}
+};
 
 /// @brief Gauss-Seidel preconditioner
 ///
@@ -272,7 +283,7 @@ namespace gsGaussSeidel
 ///
 /// \ingroup Solver
 template <typename MatrixType, gsGaussSeidel::ordering ordering = gsGaussSeidel::forward>
-class gsGaussSeidelOp : public gsSteppableOperator<typename MatrixType::Scalar>
+class gsGaussSeidelOp : public gsPreconditionerOp<typename MatrixType::Scalar>
 {
     typedef typename memory::shared_ptr<MatrixType> MatrixPtr;
     typedef typename MatrixType::Nested             NestedMatrix;
@@ -288,7 +299,7 @@ public:
     typedef memory::unique_ptr< gsGaussSeidelOp > uPtr;
 
     /// Base class
-    typedef gsSteppableOperator<T> Base;
+    typedef gsPreconditionerOp<T> Base;
 
     /// @brief Constructor with given matrix
     explicit gsGaussSeidelOp(const MatrixType& _mat)
@@ -298,22 +309,35 @@ public:
     explicit gsGaussSeidelOp(const MatrixPtr& _mat)
     : m_mat(_mat), m_expr(m_mat->derived()) { }
 
-    static uPtr make(const MatrixType& _mat) 
+    static uPtr make(const MatrixType& _mat)
     { return memory::make_unique( new gsGaussSeidelOp(_mat) ); }
 
-    static uPtr make(const MatrixPtr& _mat) 
+    static uPtr make(const MatrixPtr& _mat)
     { return memory::make_unique( new gsGaussSeidelOp(_mat) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
         if (ordering == gsGaussSeidel::forward )
-            gaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
         if (ordering == gsGaussSeidel::reverse )
-            reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
         if (ordering == gsGaussSeidel::symmetric )
         {
-            gaussSeidelSweep<T>(m_expr,x,rhs);
-            reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+        }
+    }
+
+    void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    {
+        if ( ordering == gsGaussSeidel::forward )
+            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+        if ( ordering == gsGaussSeidel::reverse )
+            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
+        if ( ordering == gsGaussSeidel::symmetric )
+        {
+            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
         }
     }
 
@@ -321,7 +345,15 @@ public:
     index_t cols() const {return m_expr.cols();}
 
     /// Returns the matrix
-    const MatrixType & matrix() const { return m_mat; }
+    NestedMatrix matrix() const { return m_expr; }
+
+    /// Returns a shared pinter to the matrix
+    MatrixPtr    matrixPtr() const {
+        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsGaussSeidelOp." );
+        return m_mat;
+    }
+
+    typename gsLinearOperator<T>::Ptr underlyingOp() const { return makeMatrixOp(m_mat); }
 
 private:
     const MatrixPtr m_mat;  ///< Shared pointer to matrix (if needed)
@@ -336,11 +368,25 @@ typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const Eigen::EigenBase
 { return gsGaussSeidelOp<Derived>::make(mat.derived()); }
 
 /**
+   \brief Returns a smart pointer to a Jacobi operator referring on \a mat
+*/
+template <class Derived>
+typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const typename memory::shared_ptr<Derived>& mat)
+{ return gsGaussSeidelOp<Derived>::make(mat); }
+
+/**
    \brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
 */
 template <class Derived>
 typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::make(mat.derived()); }
+
+/**
+   \brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
+*/
+template <class Derived>
+typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussSeidelOp(const typename memory::shared_ptr<Derived>& mat)
+{ return gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::make(mat); }
 
 /**
    \brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
@@ -349,8 +395,15 @@ template <class Derived>
 typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::make(mat.derived()); }
 
+/**
+   \brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
+*/
+template <class Derived>
+typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const typename memory::shared_ptr<Derived>& mat)
+{ return gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::make(mat); }
+
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsSimpleOps.hpp)
+#include GISMO_HPP_HEADER(gsSimplePreconditioners.hpp)
 #endif

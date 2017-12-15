@@ -125,6 +125,10 @@ namespace internal
 #include <gsPde/gsStokesPde.h>
 //#include <gsPde/gsNewtonIterator.h>
 
+/* ----------- MultiGrid ----------- */
+#include <gsMultiGrid/gsMultiGrid.h>
+#include <gsMultiGrid/gsGridHierarchy.h>
+
 /* ----------- Norms ----------- */
 #include <gsAssembler/gsNorm.h>
 #include <gsAssembler/gsNormL2.h>
@@ -149,7 +153,8 @@ namespace internal
 #include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsGradientMethod.h>
 #include <gsSolver/gsConjugateGradient.h>
-#include <gsSolver/gsSimpleOps.h>
+#include <gsSolver/gsPreconditioner.h>
+#include <gsSolver/gsSimplePreconditioners.h>
 
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
