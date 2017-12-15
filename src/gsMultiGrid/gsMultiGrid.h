@@ -32,7 +32,7 @@ namespace gismo
     The solver can be configured to use V- or W-cycles using setNumCycles().
 
     The smoother to use can be set with setSmoother(). Here, a pointer
-    to the gsSmoother object has to be provided for each grid level.
+    to the gsPreconditioner object has to be provided for each grid level.
 
     The number of pre- and post-smoothing steps can be configured with
     setNumPreSmooth() and setNumPostSmooth(), respectively.
