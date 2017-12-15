@@ -106,7 +106,7 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
     # Disable checked iterators and irrelevant warnings
     #wd4351: regards old behaviour before MSVC2005
-    set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS}  /bigobj /D_SECURE_SCL=0  /wd4351")
+    set(CMAKE_CXX_FLAGS    "${CMAKE_CXX_FLAGS}  /bigobj /D_SECURE_SCL=0  /wd4351 /MP")
     # See http://msdn.microsoft.com/en-us/library/hh697468.aspx
     #add_definitions(-D_HAS_ITERATOR_DEBUGGING=0)
     #add_definitions(-D_SECURE_SCL=0)
