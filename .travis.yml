@@ -6,40 +6,45 @@
 #sudo: required
 sudo: false
 
+language: cpp
+
+notifications:
+  email: false
+
 branches:
   only:
   - stable
   - coverity_scan
 
-os:
-  - linux
-  - osx
-
-language: cpp
+os: linux  # unless specified otherwise
+dist: trusty
 
 env:
   global:
+   - MAKEFLAGS=-j2
    - secure: "JU9XIrFb6n1IqFt5hxNldvLVYLStfippytPsUWP5OxSjlwh3KtZ1kYLOzjGy6BHgVLCk/N7rWBKPeYS/nA4bKrcTC/uFml1NU58uQQMWsLaI17XRV96tWOhfT4FCfD+3RW9B0IO9T8WAUggC1aiP/Ft0qUxdb8yQN3QNQpU7bQJtDbPhfsWI81fMEEAeeqHjHb3bG9LXuFdCQN378b0t6fLs+48G4ECmwD48UAmFfI4Ral5a89dOR3yi2eQNtDoBNjLAC/oaimpmK//V/UYlHkZDsg+K0W04UcDgh173Pa/JAlx+aROICkmhs+n8YndB3qsXgT0iI/yiAaeUgkssjBh3Cs/r21C2tv2S7hs9nfiIsCc8bToxPg1QMCMENvjaNt5ZKmeCsqSaHQkS7RhiNnSvDS0qw/q89dpApcxfslDP72GTvOruqGdruQfcenBaJpdqMgijfIY9lBlsmwp0YX7Knq0zbSjL7CaDF6TpIPLRIt2njcfTr+IzVjIoS/Yv8rAFMCBPkbZG61E5GA6d77R+gzSHjYe0SAm+1HHV4MfvS4kLrfRbAR0k7mArOXlm2f87rCaf5rX1TBt7kaJOT2nmkeFbm8PkvbG05Iv2Hx2yXC4PvK0o/riy3uI6CipK84sO066detTbHRfMvMbVjNl/68VuFcGeNaa6YyshpVE="
 
-compiler:
-  - clang
-  - gcc
+###################
+matrix:
+  fast_finish: true
+  include:
+  
+    - os: osx
+      osx_image: xcode9.1  # xcode8.3
+      compiler: clang
+      env:
+        - COMPILER=clang++
+        - BUILD_TYPE=Release
 
-addons:
-  apt:
-    sources:
-    - kalakris-cmake
-    packages:
-    - cmake
-    - valgrind
-  coverity_scan:
-    project:
-      name: "filiatra/gismo"
-      description: "Build submitted via Travis CI"
-    notification_email: filiatra@gmail.com
-    build_command_prepend: "cmake . -DCMAKE_BUILD_TYPE=Release"
-    build_command:   "make -j 4"
-    branch_pattern: coverity_scan
+    - os: osx
+      if: branch = covertiy_scan
+      osx_image: xcode9.1  # xcode8.3
+      compiler: gcc
+      env:
+        - COMPILER=clang++
+        - BUILD_TYPE=Release
+      
+##################
     
 before_install:
   - test $TRAVIS_BRANCH != coverity_scan -o ${TRAVIS_JOB_NUMBER##*.} = 1 || exit 0
@@ -49,11 +54,13 @@ before_install:
 before_script:
   - mkdir build
   - cd build
-  - cmake .. -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="travis-ci.org" #-DGISMO_WITH_IPOPT=ON
+  - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="travis-ci.org" #-DGISMO_WITH_IPOPT=ON
 
 script:
   - if [ -e "cov-int/scm_log.txt" ]; then cat cov-int/scm_log.txt; fi 
-  - test $TRAVIS_BRANCH != coverity_scan || exit 0
-  - ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
-  #- make -j2 Experimental
-  #- make -j2 ExperimentalMemCheck
+  - if [ $TRAVIS_BRANCH == stable ]; then
+    #test $TRAVIS_OS_NAME == osx || exit 0
+    ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
+    else #coverity_scan
+    ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
+    fi
