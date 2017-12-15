@@ -69,7 +69,4 @@ void combineTransferMatrices(
     gsSparseMatrix<real_t, RowMajor>& transferMatrix
     );
 
-TEMPLATE_INST
-void copyIfNotIndexed(const std::vector<real_t>& data, const std::vector<index_t>& indices, std::vector<real_t>& result);
-
 } // namespace gismo

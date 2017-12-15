@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     {
         gsInfo << "Geometry file " << geometry << " could not be found.\n";
         gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
-        return -1;
+        return EXIT_FAILURE;
     }
 
     opt.setString( "Geometry", geometry );  // Write complete path back...
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     if (!fileData.has< gsMultiPatch<> >())
     {
         gsInfo << "No multipatch object found in file " << geometry << ".\n";
-        return -1;
+        return EXIT_FAILURE;
     }
     fileData.getFirst< gsMultiPatch<> >(mp);
 
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
         else
         {
             gsInfo << "The chosen smoother is unknown.\n\n";
-            return 1;
+            return EXIT_FAILURE;
         }
         smootherOp->setOptions( opt.getGroup("MG") );
         mg->setSmoother(i, smootherOp);
@@ -186,5 +186,5 @@ int main(int argc, char *argv[])
         gsInfo << "Did not reach desired tolerance after " << history.rows()-1 << " iterates.\n";
 
 
-    return 0;
+    return EXIT_SUCCESS;
 };

@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <vector>
 #include <gsCore/gsDofMapper.h>
 #include <gsNurbs/gsKnotVector.h>
 #include <gsIO/gsOptionList.h>
@@ -142,30 +141,25 @@ public:
     }
 
     /// Get the vector of multi bases (by reference)
-    std::vector< gsMultiBasis<T> >& getMultiBases() { return m_mBases; }
-    /// Get the vector of multi bases (by reference)
-    const std::vector< gsMultiBasis<T> >& getMultiBases() const { return m_mBases; }
+    const std::vector< gsMultiBasis<T> >& getMultiBases() const
+    { return m_mBases; }
     /// Get the vector of multi bases
-    gsGridHierarchy& moveMultiBasesTo( std::vector< gsMultiBasis<T> >& o ) { o = give(m_mBases); return *this; }
+    gsGridHierarchy& moveMultiBasesTo( std::vector< gsMultiBasis<T> >& o )
+    { o = give(m_mBases); return *this; }
 
     /// Get the vector of transfer matrices (by reference)
-    std::vector< gsSparseMatrix<T, RowMajor> >& getTransferMatrices() { return m_transferMatrices; }
-    /// Get the vector of transfer matrices (by reference)
-    const std::vector< gsSparseMatrix<T, RowMajor> >& getTransferMatrices() const { return m_transferMatrices; }
+    const std::vector< gsSparseMatrix<T, RowMajor> >& getTransferMatrices() const
+    { return m_transferMatrices; }
     /// Get the vector of transfer matrices
-    gsGridHierarchy& moveTransferMatricesTo( std::vector< gsSparseMatrix<T, RowMajor> >& o ) { o = give(m_transferMatrices); return *this; }
+    gsGridHierarchy& moveTransferMatricesTo( std::vector< gsSparseMatrix<T, RowMajor> >& o )
+    { o = give(m_transferMatrices); return *this; }
 
     /// Get the vector of local transfer matrices (by reference)
-    std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& getLocalTransferMatrices() { return m_localTransferMatrices; }
-    /// Get the vector of local transfer matrices (by reference)
-    const std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& getLocalTransferMatrices() const { return m_localTransferMatrices; }
+    const std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& getLocalTransferMatrices() const
+    { return m_localTransferMatrices; }
     /// Get the vector of local transfer matrices
-    gsGridHierarchy& moveLocalTransferMatricesTo( std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& o ) { o = give(m_localTransferMatrices); return *this; }
-
-    /// Setup a multigrid object based on the available data
-    //typename gsMultiGridOp<T>::uPtr getMultiGrid( gsSparseMatrix<T> systemMatrix, const gsOptionList& opt, const gsMultiPatch<T>* mp = NULL );
-    /// Setup a multigrid object based on the available data
-    //typename gsMultiGridOp<T>::uPtr getMultiGrid( typename gsSparseMatrix<T>::Ptr systemMatrix, const gsOptionList& opt, const gsMultiPatch<T>* mp = NULL );
+    gsGridHierarchy& moveLocalTransferMatricesTo( std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& o )
+    { o = give(m_localTransferMatrices); return *this; }
 
 private:
     gsBoundaryConditions<T> m_boundaryConditions;
@@ -351,19 +345,6 @@ void combineTransferMatrices(
     const gsDofMapper& fineMapper,
     gsSparseMatrix<T, RowMajor>& transferMatrix
     );
-
-
-/// @brief Copy items from \a data into \a result unless their index is in \a indices. Order is preserved.
-///
-/// If an item's index is contained in \a indices, then it is dropped, otherwise it is copied into \a result.
-///
-/// @param data[in]                    Container to copy from
-/// @param indices[in]                 Vector of indices. The vector MUST be sorted in increasing order.
-/// @param result[out]                 Container to copy to
-///
-/// \ingroup Solver
-template <typename Cont>
-void copyIfNotIndexed(const Cont& data, const std::vector<index_t>& indices, Cont& result);
 
 
 } // namespace gismo

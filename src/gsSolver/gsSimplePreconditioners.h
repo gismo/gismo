@@ -18,36 +18,13 @@
 namespace gismo
 {
 
-/// @brief Update \a x with a Richardson sweep
-/// \ingroup Solver
+namespace internal
+{
 template<typename T>
-GISMO_EXPORT void dampedRichardsonSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f, T tau = (T)(1.));
-
-/// @brief Update \a x with a Jacobi sweep
-/// \ingroup Solver
+GISMO_EXPORT void gaussSeidelSweep(const typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f);
 template<typename T>
-GISMO_EXPORT void jacobiSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f);
-
-/// @brief Update \a x with a damped Jacobi sweep
-/// \ingroup Solver
-template<typename T>
-GISMO_EXPORT void dampedJacobiSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f, T tau = (T)(0.5));
-
-/// @brief Update \a x with a forward Gauss-Seidel sweep
-/// \ingroup Solver
-template<typename T>
-GISMO_EXPORT void gaussSeidelSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f);
-
-/// @brief Update \a x with a backward Gauss-Seidel sweep
-/// \ingroup Solver
-template<typename T>
-GISMO_EXPORT void reverseGaussSeidelSweep(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f);
-
-/// @brief Preforms a block Gauss-Seidel on the degrees of freedom in DoFs.
-/// \ingroup Solver
-template<typename T>
-GISMO_EXPORT void gaussSeidelSingleBlock(const gsSparseMatrix<T>& A, gsMatrix<T>& x, const gsMatrix<T>& f, gsVector<index_t>& DoFs);
-
+GISMO_EXPORT void reverseGaussSeidelSweep(const typename gsSparseMatrix<T>::Nested& A, gsMatrix<T>& x, const gsMatrix<T>& f);
+} // namespace internal
 
 /// @brief Richardson preconditioner
 ///
@@ -285,7 +262,7 @@ template <class Derived>
 typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const typename memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsJacobiOp<Derived>::make(mat, tau); }
 
-namespace gsGaussSeidel
+struct gsGaussSeidel
 {
     /// @brief Gauss-Seidel preconditioner
     ///
@@ -298,7 +275,7 @@ namespace gsGaussSeidel
         reverse = 1,    ///< reverse ordering
         symmetric = 2   ///< one total step is = one forward + one backward
     };
-}
+};
 
 /// @brief Gauss-Seidel preconditioner
 ///
@@ -341,26 +318,26 @@ public:
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
         if (ordering == gsGaussSeidel::forward )
-            gaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
         if (ordering == gsGaussSeidel::reverse )
-            reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
         if (ordering == gsGaussSeidel::symmetric )
         {
-            gaussSeidelSweep<T>(m_expr,x,rhs);
-            reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
         }
     }
 
     void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
-        if (ordering == gsGaussSeidel::forward )
-            reverseGaussSeidelSweep<T>(m_expr,x,rhs);
-        if (ordering == gsGaussSeidel::reverse )
-            gaussSeidelSweep<T>(m_expr,x,rhs);
-        if (ordering == gsGaussSeidel::symmetric )
+        if ( ordering == gsGaussSeidel::forward )
+            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+        if ( ordering == gsGaussSeidel::reverse )
+            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
+        if ( ordering == gsGaussSeidel::symmetric )
         {
-            gaussSeidelSweep<T>(m_expr,x,rhs);
-            reverseGaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::gaussSeidelSweep<T>(m_expr,x,rhs);
+            internal::reverseGaussSeidelSweep<T>(m_expr,x,rhs);
         }
     }
 

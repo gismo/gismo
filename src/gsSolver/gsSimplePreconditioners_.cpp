@@ -16,17 +16,12 @@
 namespace gismo
 {
 
-TEMPLATE_INST void dampedRichardsonSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau);
+namespace internal
+{
 
-TEMPLATE_INST void jacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+TEMPLATE_INST void gaussSeidelSweep(const gsSparseMatrix<real_t>::Nested& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
+TEMPLATE_INST void reverseGaussSeidelSweep(const gsSparseMatrix<real_t>::Nested& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
 
-TEMPLATE_INST void dampedJacobiSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, real_t tau);
-
-TEMPLATE_INST void gaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
-
-TEMPLATE_INST void reverseGaussSeidelSweep(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f);
-
-TEMPLATE_INST void gaussSeidelSingleBlock(const gsSparseMatrix<real_t>& A, gsMatrix<real_t>& x, const gsMatrix<real_t>& f, gsVector<index_t>& DoFs);
-
+} // namespace internal
 
 } // namespace gismo

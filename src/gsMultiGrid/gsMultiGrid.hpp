@@ -269,11 +269,12 @@ void gsMultiGridOp<T>::setSmoother(index_t lvl, const PrecondPtr& sm)
 }
 
 template<class T>
-typename gsMultiGridOp<T>::SpMatrixPtr gsMultiGridOp<T>::matrix(index_t lvl) const
+const typename gsMultiGridOp<T>::SpMatrix& gsMultiGridOp<T>::matrix(index_t lvl) const
 {
     const gsMatrixOp<SpMatrix>* matrOp = dynamic_cast< const gsMatrixOp<SpMatrix>* >( m_ops[lvl].get() );
     GISMO_ASSERT( matrOp, "Matrices are not available for matrix-free multigrid solvers." );
-    return matrOp->matrixPtr();
+    //return matrOp->matrix(); does not work because we must not return a temporary
+    return *(matrOp->matrixPtr());
 }
 
 template<class T>

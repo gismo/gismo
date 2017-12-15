@@ -22,9 +22,6 @@
 #include <gsAssembler/gsAssemblerOptions.h>
 #include <gsCore/gsMultiBasis.h>
 
-#include <vector>
-#include <iterator>
-
 namespace gismo
 {
 
@@ -60,16 +57,6 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
 }
 
 template <typename T>
-index_t sizeOfMultiBasis( const gsMultiBasis<T>& mb )
-{
-    const index_t nBases = mb.nBases();
-    index_t result = 0;
-    for (index_t i = 0; i<nBases; ++i)
-        result += mb[i].size();
-    return result;
-}
-
-template <typename T>
 gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
     gsMultiBasis<T> mBasis,
     const gsBoundaryConditions<T>& boundaryConditions,
@@ -84,7 +71,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
 
     result.m_mBases.push_back(give(mBasis));
 
-    index_t lastSize = sizeOfMultiBasis(result.m_mBases[0]);
+    index_t lastSize = result.m_mBases[0].totalSize();
 
     for (int i = 0; i < levels && lastSize > degreesOfFreedom; ++i)
     {
@@ -100,7 +87,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
             localTransferMatrices
         );
 
-        index_t newSize = sizeOfMultiBasis(coarseMBasis);
+        index_t newSize = coarseMBasis.totalSize();
         // If the number of dofs could not be decreased, then cancel. However, if only the number
         // of levels was specified, then this should be ignored (the caller might need to have a
         // fixed number of levels).
@@ -119,40 +106,6 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
 
     return result;
 }
-
-/*template <typename T>
-typename gsMultiGridOp<T>::uPtr gsGridHierarchy<T>::getMultiGrid( gsSparseMatrix<T> systemMatrix, const gsOptionList& opt, const gsMultiPatch<T>* mp )
-    { return getMultiGrid( systemMatrix.moveToPtr(), opt, mp ); }
-
-template <typename T>
-typename gsMultiGridOp<T>::uPtr gsGridHierarchy<T>::getMultiGrid( typename gsSparseMatrix<T>::Ptr systemMatrix, const gsOptionList& opt, const gsMultiPatch<T>* mp )
-{
-    GISMO_ASSERT( m_mBases.size() > 0 && m_mBases.size() == m_transferMatrices.size() + 1,
-                    "There is a problem with the number of multi bases or the number of transfer matrices.");
-
-    typedef typename gsSparseMatrix<T, RowMajor>::Ptr TransferMatrixPtr;
-
-    const size_t sz = m_transferMatrices.size();
-
-    // TODO: This makes a copy, which is not a big deal, but could be avoided if shared pointers were
-    // used internally
-    std::vector<TransferMatrixPtr> transferMatrixPtrs(sz);
-    for (size_t i = 0; i < sz; ++i)
-        transferMatrixPtrs[i] = TransferMatrixPtr(new gsSparseMatrix<T, RowMajor>(m_transferMatrices[i]));
-
-    typename gsMultiGridOp<T>::uPtr mg = gsMultiGridOp<T>::make( give(systemMatrix), give(transferMatrixPtrs) );
-    mg->setOptions(opt);
-    gsSmootherFactory smf;
-    smf.setOptions(opt);
-    for (index_t i = 1; i < mg->numLevels(); ++i)
-    {
-        mg->setSmoother(
-            i,
-            smf.getSmootherForLevel( i, mg->matrixPtr(i), &(m_mBases[i]), mp, &m_boundaryConditions, &m_assemblerOptions )
-        );
-    }
-    return mg;
-}*/
 
 template <typename T>
 void uniformRefine_withTransfer(
@@ -213,19 +166,17 @@ gsKnotVector<T> coarsenKnotVector(const gsKnotVector<T>& kv, std::vector<T>& rem
 
     removedKnots.clear();
     removedKnots.reserve( kv.size() / 2 );
-    removeIdx.reserve( kv.size() / 2 );
 
     // determine indices and values of knots to be removed
     const int first = kv.degree() + 1;              // first non-boundary knot
     const int last  = kv.size() - kv.degree() - 2;  // last non-boundary knot
     for (int i = first; i <= last; i += 2)
-    {
-        removeIdx.push_back( i );
         removedKnots.push_back( kv[i] );
-    }
 
     // copy non-removed knots into coarseKnots
-    copyIfNotIndexed( kv.get(), removeIdx, coarseKnots );
+    std::set_difference( kv.get().begin(), kv.get().end(),
+                         removedKnots.begin(), removedKnots.end(),
+                         std::inserter(coarseKnots, coarseKnots.begin()) );
 
     return gsKnotVector<T>( give(coarseKnots), kv.degree() );
 }
@@ -385,27 +336,6 @@ void combineTransferMatrices(
     transferMatrix.resize(fineMapper.freeSize(), coarseMapper.freeSize());
     transferMatrix.setFromTriplets(entries.begin(), entries.end(), take_first<T>());
     transferMatrix.makeCompressed();
-}
-
-
-template <typename Cont>
-void copyIfNotIndexed(const Cont& data, const std::vector<index_t>& indices, Cont& result)
-{
-    result.clear();
-    result.reserve( data.size() - indices.size() );
-
-    // Copy blocks between two indices at a time.
-    typename Cont::const_iterator itBlockBegin = data.begin();
-    for (std::vector<index_t>::const_iterator idxit = indices.begin(); idxit != indices.end(); ++idxit)
-    {
-        typename Cont::const_iterator itBlockEnd = data.begin() + *idxit;
-        GISMO_ASSERT( itBlockBegin <= itBlockEnd, "Indices are not in increasing order." );
-        std::copy(itBlockBegin, itBlockEnd, std::back_inserter(result));
-        itBlockBegin = itBlockEnd + 1;
-    }
-
-    // Copy last block.
-    std::copy(itBlockBegin, data.end(), std::back_inserter(result));
 }
 
 } // namespace gismo

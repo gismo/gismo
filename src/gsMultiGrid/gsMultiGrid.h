@@ -189,11 +189,8 @@ public:
         m_ops[lvl] = op;
     }
 
-    /// Stiffness matrix for given level.
-    SpMatrixPtr matrix(index_t lvl) const;
-
-    /// Stiffness matrix for finest level.
-    SpMatrixPtr matrix() const            { return matrix(finestLevel());     }
+    const SpMatrix& matrix(index_t lvl) const;                                  ///< Stiffness matrix for given level.
+    const SpMatrix& matrix() const        { return matrix(finestLevel());     } ///< Stiffness matrix for finest level.
 
     index_t nDofs(index_t lvl) const      { return underlyingOp(lvl)->cols(); } ///< Number of dofs for the given level.
     index_t nDofs()            const      { return nDofs( finestLevel() );    } ///< Number of dofs for the finest level.

@@ -12,7 +12,6 @@
 */
 #pragma once
 
-#include <gsCore/gsLinearAlgebra.h>
 #include <gsIO/gsOptionList.h>
 #include <gsSolver/gsLinearOperator.h>
 
@@ -70,8 +69,12 @@ public:
      *        side and current iterate
      * @param rhs Right hand side vector
      * @param x   Current iterate vector
+     *
+     * @warning Derived classes *must* overwrite this virtual function if the
+     * preconditioner is not symmetric.
      */
-    virtual void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const { step( rhs, x); } // Assume symmetry.
+    virtual void stepT(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
+    { step(rhs, x); } // Assume symmetry.
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
@@ -80,11 +83,7 @@ public:
             step(input,x);
     }
 
-    /**
-     * @brief Return the underlying operator \f$ A \f$.
-     * @param rhs Right hand side vector
-     * @param x   Current iterate vector
-     */
+    /// Return the underlying operator \f$ A \f$.
     virtual BasePtr underlyingOp() const = 0;
 
     /// Set the number of sweeps to be applied in the member function apply
@@ -128,6 +127,8 @@ protected:
 ///
 /// \f$ x_{new} = x_{old} + \tau P (f - A*x_{old}).\f$
 ///
+/// @warning: The implemenation pf stepT assumes that P is symmetric.
+///
 /// \ingroup Solver
 template<class T>
 class gsPreconditionerFromOp : public gsPreconditionerOp<T>
@@ -149,8 +150,8 @@ public:
     /**
      * @brief Constructor
      * @param underlying      The underlying operator \f$ A \f$.
-     * @param preconditioner  The underlying preconditioner \f$ P \f$.
-     * @param tau             A scaling parameter, defaulted to 1.
+     * @param preconditioner  The operator \f$ P \f$ to be used as preconditioner.
+     * @param tau             A damping parameter, defaulted to 1.
      */
     gsPreconditionerFromOp( const BasePtr& underlying, const BasePtr& preconditioner, T tau = (T)1)
         : m_underlying(underlying), m_preconditioner(preconditioner), m_tau(tau)
@@ -165,7 +166,7 @@ public:
      * @brief Make function returning a smart pointer
      * @param underlying      The underlying operator \f$ A \f$.
      * @param preconditioner  The underlying preconditioner \f$ P \f$.
-     * @param scaling         A scaling parameter, defaulted to 1.
+     * @param tau             A damping parameter, defaulted to 1.
      */
     static uPtr make( const BasePtr& underlying, const BasePtr& preconditioner, T tau = (T)1)
     { return uPtr( new gsPreconditionerFromOp(underlying, preconditioner, tau) ); }
