@@ -5,7 +5,7 @@ general:
 
 machine:
   environment:
-    MAKEFLAGS: "-j4"
+    MAKEFLAGS: "-j8"
 
 dependencies:
   pre:
@@ -14,4 +14,4 @@ dependencies:
     - mkdir build; cd build; cmake .. -DSITE="circleci.com" -DGISMO_BUILD_UNITTESTS=ON
 test:
   override:
-    - cd build; ctest -j2 -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
+    - cd build; ctest $MAKEFLAGS -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit

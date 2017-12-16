@@ -24,10 +24,9 @@ shallow_clone: true
 # clone directory
 clone_folder: C:\projects\gismo
 
-# branches to build
-branches:
-  only:
-    - stable
+build:
+  verbosity: minimal
+  parallel: true
 
 # Do not build on tags (GitHub only)
 skip_tags: true
@@ -86,7 +85,6 @@ for:
 
   environment:
     CTEST_OUTPUT_ON_FAILURE: 1
-    CXXFLAGS: /verbosity:minimal
     matrix:
     - BUILD: msvc2015
       configuration: Release
@@ -96,7 +94,7 @@ for:
 -
   branches:
     only:
-    - coverity_scan
+    - ci_test
 
   environment:
     # custom environment variables, see http://www.appveyor.com/docs/installed-software
