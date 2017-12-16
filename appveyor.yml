@@ -76,6 +76,7 @@ build_script:
 
 ##############################################################
 for:
+##############################################################
 
 # Stable branch
 -
@@ -85,13 +86,13 @@ for:
 
   environment:
     CTEST_OUTPUT_ON_FAILURE: 1
+    CMAKE_CXX_FLAGS: /verbosity:minimal
     matrix:
     - BUILD: msvc2015
       configuration: Release
       generator: "Visual Studio 14 2015"
 
-
-# Full tests
+####################
 -
   branches:
     only:
