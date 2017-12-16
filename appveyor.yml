@@ -86,7 +86,7 @@ for:
 
   environment:
     CTEST_OUTPUT_ON_FAILURE: 1
-    CMAKE_CXX_FLAGS: /verbosity:minimal
+    CXXFLAGS: /verbosity:minimal
     matrix:
     - BUILD: msvc2015
       configuration: Release
