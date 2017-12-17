@@ -1,50 +1,51 @@
+```
      GGGGGGGGG      GGGG      GGGGGGGGG  GGGGGG   GGGGGG  GGGGGGGGGG
     GGGG            GGGG     GGGG        GGGGGG  GGGGGG  GGGG   GGGG
    GGGG         GGGGGGGGGGGG GGGGGGGGG   G GGGG  G GGGG GGGG    GGGG
    GGGG GGGGGG GGGGGGGGGGGGG GGGGGGGGGG GG GGGG GG GGGG GGGG   GGGGG
-  GGGGG  GGGGG GGGGGGGGGGGG  GGGGGGGGG  GG GGGGGG GGGG  GGGG   GGGG 
-  GGGG   GGGG      GGGG           GGGG  GG  GGGG  GGGG  GGGG   GGGG 
+  GGGGG  GGGGG GGGGGGGGGGGG  GGGGGGGGG  GG GGGGGG GGGG  GGGG   GGGG
+  GGGG   GGGG      GGGG           GGGG  GG  GGGG  GGGG  GGGG   GGGG
    GGGGGGGGGG      GGGG     GGGGGGGGG  GG   GGG   GGGG  GGGGGGGGGG  
 
 ======================================================================
 =====             Geometry plus Simulation modules               =====
 =====                      version 0.8.3 Alpha                   =====
+=====                   https://github.com/gismo                 =====
 =====          Copyright (C) JKU-RICAM-Linz, 2012 - 2018         =====
 ======================================================================
+```
+
+
+|&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://cdash.ricam.oeaw.ac.at/index.php?project=Gismo-stable"> <img src="https://www.kitware.com/cdash/img/CDash-logo.png" width="30" height="30" /></a> |Linux|macOS|Windows|
+|--------------|--------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+|Build Status|  [ ![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://app.codeship.com/projects/123289) [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://circleci.com/gh/gismo/gismo)| [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://travis-ci.org/gismo/gismo/branches) | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://ci.appveyor.com/project/gismo/gismo)
+
 
 This README file contains brief information. More details are found in
-the Wiki pages: 
+the [Wiki pages](http://gs.jku.at/gismo).
 
-http://gs.jku.at/gismo
+The latest revision of the code can be obtained using subversion:
 
-The latest revision of the code can be obtained from github:
-
-https://github.com/gismo/gismo
-
-Using subversion:
-
-svn co https://github.com/gismo/gismo/trunk gismo
+```svn co https://github.com/gismo/gismo/trunk gismo```
 
 or using git:
 
-git clone git@github.com:gismo/gismo.git
+```git clone git@github.com:gismo/gismo.git```
 
 or as a zip file:
 
 https://github.com/gismo/gismo/archive/stable.zip
 
-======================================================================
-=====                      Prerequisites                         ===== 
-======================================================================
+# Prerequisites
 
-* Operating systems: 
+* Operating systems:
   - MS Windows
   - Linux
   - MacOSX
 
-* Configuration: CMake 2.8.8 or newer.
+* Configuration: [CMake 2.8.8](https://cmake.org) or newer.
 
-* Compilers tested include recent versions of 
+* Compilers tested include recent versions of
   - GNU GCC
   - MS Visual C++
   - Clang
@@ -52,11 +53,9 @@ https://github.com/gismo/gismo/archive/stable.zip
   - Mingw64
 
 * Recommended:
-   - Paraview for visualization.
+   - [Paraview](https://www.paraview.org) for visualization.
 
-======================================================================
-=====                        Compilation                         ===== 
-======================================================================
+# Compilation
 
 The compilation requires configuration using CMake at a new, empty
 folder (in-source builds are disabled).
@@ -81,7 +80,7 @@ the build folder.
 Additionally, if Doxygen is available on the system one can execute
 (eg. on Linux):
 
-make doc
+```make doc```
 
 to obtain the Doxygen documentation in HTML format. The main doxygen
 page is at ./doc/html/index.html.
@@ -89,120 +88,113 @@ page is at ./doc/html/index.html.
 More information at
 http://gs.jku.at/gismo
 
-======================================================================
-=====                   Configuration Options                    ===== 
-======================================================================
+# Configuration Options
 
 The available options are displayed at CMake configuration.  Short
 description and default setting follows:
 
-* CMAKE_BUILD_TYPE        RelWithDebInfo
+* CMAKE_BUILD_TYPE        *Release*
 
-Available values are the standard CMake build configurations: Debug,
+  Available values are the standard CMake build configurations: Debug,
 Release, RelWithDebInfo, MinSizeRel.
 
-* GISMO_COEFF_TYPE        double
+* GISMO_COEFF_TYPE        *double*
 
-The arithmetic type to be used for all computations. Available options
+  The arithmetic type to be used for all computations. Available options
 include double, long double, float.
 
-* GISMO_EXTRA_DEBUG       OFF
+* GISMO_EXTRA_DEBUG       *OFF*
 
-If set to ON additional debugging tools are enabled during
+  If set to ON additional debugging tools are enabled during
 compilation. These include checked iterators for GCC and MSVC
 compilers and call stack back-trace printout when a runtime exception
 occurs.
 
-* GISMO_BUILD_LIB         ON
+* GISMO_BUILD_LIB         *ON*
 
-If enabled a dynamic library is created using GISMO_COEFF_TYPE
+  If enabled a dynamic library is created using GISMO_COEFF_TYPE
 arithmetic. A target for a static library named gismo_static is also
 created but not compiled by default.
 
-* GISMO_BUILD_EXAMPLES    ON
+* GISMO_BUILD_EXAMPLES    *ON*
 
-If enabled the programs in the examples folder are compiled, and
+  If enabled the programs in the examples folder are compiled, and
 executables are created in build-folder/bin.
 
-* GISMO_BUILD_UNITTESTS   OFF
+* GISMO_BUILD_UNITTESTS   *OFF*
 
-If enabled the tests in the unittests folder are compiled, and an
+  If enabled the tests in the unittests folder are compiled, and an
 executable is created in build-folder/bin.
 
-* GISMO_BUILD_AXL         OFF
+* GISMO_BUILD_AXL         *OFF*
 
 If enabled the plugin for Axel modeler is compiled (requires Axel).
 
-* GISMO_WITH_PSOLID       OFF
+* GISMO_WITH_PSOLID       *OFF*
 
-If enabled the extensions using functionalities of Parasolid geometric
+  If enabled the extensions using functionalities of Parasolid geometric
+
 kernel are compiled.(requires Parasolid).
 
-* GISMO_WITH_ONURBS       OFF
+* GISMO_WITH_ONURBS       *OFF*
 
-If enabled the extension for reading and writing of Rhinoceros' 3DM is
+  If enabled the extension for reading and writing of Rhinoceros' 3DM is
 compiled.
 
 * CMAKE_INSTALL_PREFIX   (system dependent)
 
-The location for installation of the library, e.g. /usr/local on some
+  The location for installation of the library, e.g. /usr/local on some
 Linux systems.
 
 
-======================================================================
-=====                   Directory structure                      ===== 
-======================================================================
+# Directory structure
+
 
 The source tree consists of the following sub-folders:
 
-* src
+* **src**
 
 Contains all source files. Code is partitioned into modules. Currently
 eleven modules are present as sub-folders:
-       
-   - gsCore
-   - gsMatrix
-   - gsNurbs
-   - gsHSplines
-   - gsModeling
-   - gsAssembler
-   - gsSolver
-   - gsPde
-   - gsTensor
-   - gsIO
-   - gsUtils
 
-* examples
+   - **gsCore**
+   - **gsMatrix**
+   - **gsNurbs**
+   - **gsHSplines**
+   - **gsModeling**
+   - **gsAssembler**
+   - **gsSolver**
+   - **gsPde**
+   - **gsTensor**
+   - **gsIO**
+   - **gsUtils**
 
-Examples of usage, small programs and tutorials.
+* **examples**
 
-* unittests
+  Examples of usage, small programs and tutorials.
 
-Unittests for some parts of the codebase.
+* **unittests**
+  Unittests for some parts of the codebase.
 
-* filedata
+* **filedata**
 
-Data files in the XML format the G+Smo can read and write.
+  Data files in the XML format the G+Smo can read and write.
 
-* extensions
+* **extensions**
 
-Optional additional features that can be compiled along G+Smo.
+  Optional additional features that can be compiled along G+Smo.
 
-* plugins
+* **plugins**
 
-Plugins for exporting functionality of G+Smo to third party software.
+* **cmake**
 
-* cmake
+  Cmake configuration files.
 
-Cmake configuration files.
+* **doc**
 
-* doc
+  Files related to doxygen documentation.
 
-Files related to doxygen documentation.
-
-======================================================================
-=====                    Contact and support                     ===== 
-======================================================================
+# Contact and support
 
 * Wiki pages:
 
@@ -210,58 +202,22 @@ Files related to doxygen documentation.
 
 * Mailing list: gismo@ricam.oeaw.ac.at
 
-* Subscribe to the mailing list at: 
+* Subscribe to the mailing list at:
 
   https://list.ricam.oeaw.ac.at/lists/listinfo/gismo
 
-* Bug reports: 
+* Bug reports:
 
   https://github.com/gismo/gismo/issues
 
-======================================================================
-=====                             People                         ===== 
-======================================================================
 
-* Coordinator and maintainer: Angelos Mantzaflaris
+# People
 
-* Current Developers:
-        Andrea Bressan
-        Florian Buchegger
-        Antonella Falini
-        Michael Haberleitner
-        Christoph Hofer
-        Clemens Hofreither
-        Mario Kapl
-        Gabor Kiss
-        Stefan Kleiss
-        Angelos Mantzaflaris
-        Stephen Moore
-        Dominik Mokris
-        Jarle Sogn
-        Jaka Speh
-        Stefan Takacs
-        Harald Weiner 
+Coordinator and maintainer: Angelos Mantzaflaris
 
-* Scientific board:
-        Bert Juettler
-        Ulrich Langer
-        Walter Zulehner 
+See full list in [our wiki pages](http://gs.jku.at/trac/gismo/wiki/public/About#People)
 
-* External contributors:
-        Anmol Goyal (TU. Kaiserslautern)
-        Andrzej Jaeschke (TU Delft)
-        Oliver Weeger (TU. Kaiserslautern)
-        Yang Xia (U. Hong Kong) 
-
-* Past developers:
-        Carlotta Giannelli (U. Florence)
-        David Mayer
-        Manh Dang Nguyen (U. Florida)
-        Michael Pauley 
-
-======================================================================
-=====            Acknowledgement and os-licesce                  ===== 
-======================================================================
+# Acknowledgement and os-license
 
 G+Smo library for isogeometric analysis is supported by the Research
 Network ``Geometry + Simulation'' (NFN S117), funded by the Austrian
