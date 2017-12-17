@@ -21,8 +21,6 @@
    fun:_ZN16ImageLoaderMachO??doInitializationERKN??ImageLoader??LinkContextE
    ...
    fun:_ZN11ImageLoader??runInitializersERKNS_??LinkContextERNS_??InitializerTimingListE
-   fun:_ZN4dyld24initializeMainExecutableEv
-   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_Pm
    ...
 }
 {
@@ -58,6 +56,16 @@
    fun:__Balloc_D2A
    ...
    fun:strtod_l
+   ...
+}
+
+{
+   <gismo_Leak_Darwin6>
+   Memcheck:Leak
+   #match-leak-kinds: reachable
+   ...
+   fun:NXCreateMapTableFromZone
+   fun:NXCreateMapTable
    ...
 }
 
