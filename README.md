@@ -16,7 +16,7 @@
 ```
 
 
-|&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://cdash.ricam.oeaw.ac.at/index.php?project=Gismo-stable"> <img src="https://www.kitware.com/cdash/img/CDash-logo.png" width="30" height="30" /></a> |Linux|macOS|Windows|
+|&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://cdash.ricam.oeaw.ac.at/index.php?project=Gismo-stable" target="_blank"> <img src="https://www.kitware.com/cdash/img/CDash-logo.png" width="30" height="30" /></a> |Linux|macOS|Windows|
 |--------------|--------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
 |Build Status|  [ ![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://app.codeship.com/projects/123289) [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://circleci.com/gh/gismo/gismo)| [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://travis-ci.org/gismo/gismo/branches) | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://ci.appveyor.com/project/gismo/gismo)
 
