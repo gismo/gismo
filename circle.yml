@@ -12,7 +12,7 @@ dependencies:
     - sudo add-apt-repository ppa:kalakris/cmake -y; sudo apt-get update -qq; sudo apt-get install cmake valgrind
   override:
     - mkdir build_clang; cd build_clang; CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake .. -DSITE="circleci.com" -DGISMO_BUILD_UNITTESTS=ON
-    - mkdir build; cd build; cmake .. -DSITE="circleci.com" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98
+    - mkdir build; cd build; CC=/usr/bin/cc CXX=/usr/bin/g++ cmake .. -DSITE="circleci.com" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98
 test:
   override:
     - cd build_clang; ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
