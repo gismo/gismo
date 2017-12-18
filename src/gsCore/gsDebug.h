@@ -225,14 +225,20 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 #elif defined __clang__
 // -Wconstant-logical-operand - warning: use of logical && with constant operand; switch to bitwise & or remove constant
 // -Wbind-to-temporary-copy - warning: Warn about an unusable copy constructor when binding a reference to a temporary
-    #pragma clang diagnostic push
+  #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wconstant-logical-operand"
   #pragma clang diagnostic ignored "-Wbind-to-temporary-copy"
 
-#elif defined __GNUC__ // major version
+#elif defined __GNUC__ // major version >=4
 // typedef locally defined but not used [-Wunused-local-typedefs]
-#if __GNUC_MINOR__ > 7
+#if ( __GNUC__>4 || (__GNUC__==4 && __GNUC_MINOR__>7) )
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+#endif
+
+#if (__cplusplus < 201402L && __GNUC__==7)
+// mangled name will change in C++17 because the exception
+// specification is part of a function type [-Wnoexcept-type]
+#pragma GCC diagnostic ignored "-Wnoexcept-type"
 #endif
 
 #endif

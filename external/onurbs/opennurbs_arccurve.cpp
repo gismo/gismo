@@ -1073,7 +1073,7 @@ ON_BOOL32 ON_ArcCurve::GetCurveParameterFromNurbFormParameter(
       double* curve_t
       ) const
 {
-  double radians;
+  double radians = 0;
 
   double arcnurb_t = m_arc.DomainRadians().ParameterAt(m_t.NormalizedParameterAt(nurbs_t));
 
