@@ -130,11 +130,15 @@ public:
         return opt;
     }
 
+    /// Get the stored options
+    const gsOptionList& getOptions() const
+    { return m_options; }
+
     /// Reset the object (to save memory)
     void clear()
     {
         //m_boundaryConditions.clear();
-        //m_assemblerOptions.clear();
+        //m_options.clear();
         m_mBases.clear();
         m_transferMatrices.clear();
         m_localTransferMatrices.clear();
@@ -161,9 +165,13 @@ public:
     gsGridHierarchy& moveLocalTransferMatricesTo( std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& o )
     { o = give(m_localTransferMatrices); return *this; }
 
+    /// Get the boundary conditions
+    const gsBoundaryConditions<T>& getBoundaryConditions() const
+    { return m_boundaryConditions; }
+
 private:
     gsBoundaryConditions<T> m_boundaryConditions;
-    gsOptionList m_assemblerOptions;
+    gsOptionList m_options;
 
     std::vector< gsMultiBasis<T> > m_mBases;
     std::vector< gsSparseMatrix<T, RowMajor> > m_transferMatrices;
