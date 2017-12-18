@@ -245,16 +245,6 @@ inline void uniformRefine_withTransfer(
     uniformRefine_withTransfer( mBasis, boundaryConditions, assemblerOptions, 1, 1, refinedMBasis, transferMatrix );
 }
 
-/// @brief This function coarsens a knot vector
-///
-/// @param kv[in]                        The initial knot vector
-/// @param removedKnots[out]             The remoed knots
-/// @return                              The coarsened knot vector
-///
-/// \ingroup Solver
-template <typename T>
-gsKnotVector<T> coarsenKnotVector(const gsKnotVector<T>& kv, std::vector<T>& removedKnots);
-
 /// @brief This function coarsens a tensor B-spline basis
 ///
 /// @param b[in]                         The initial basis

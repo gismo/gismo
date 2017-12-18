@@ -158,29 +158,6 @@ void uniformRefine_withTransfer(
 
 }
 
-template <typename T>
-gsKnotVector<T> coarsenKnotVector(const gsKnotVector<T>& kv, std::vector<T>& removedKnots)
-{
-    std::vector<int> removeIdx;
-    std::vector<T> coarseKnots;
-
-    removedKnots.clear();
-    removedKnots.reserve( kv.size() / 2 );
-
-    // determine indices and values of knots to be removed
-    const int first = kv.degree() + 1;              // first non-boundary knot
-    const int last  = kv.size() - kv.degree() - 2;  // last non-boundary knot
-    for (int i = first; i <= last; i += 2)
-        removedKnots.push_back( kv[i] );
-
-    // copy non-removed knots into coarseKnots
-    std::set_difference( kv.get().begin(), kv.get().end(),
-                         removedKnots.begin(), removedKnots.end(),
-                         std::inserter(coarseKnots, coarseKnots.begin()) );
-
-    return gsKnotVector<T>( give(coarseKnots), kv.degree() );
-}
-
 // Helper function allowing coarsenBasis doing its work
 template <unsigned d, typename T>
 typename gsTensorBSplineBasis<d, T>::uPtr coarsenTensorBasis(const gsTensorBSplineBasis<d, T>& b, std::vector< std::vector<T> > & removedKnots)
@@ -190,7 +167,11 @@ typename gsTensorBSplineBasis<d, T>::uPtr coarsenTensorBasis(const gsTensorBSpli
     std::vector< gsBasis<T>* > coarseB(d);
 
     for (unsigned i = 0; i < d; ++i)
-        coarseB[i] = new gsBSplineBasis<T>( coarsenKnotVector( b.component(i).knots(), removedKnots[i] ) );
+    {
+        gsKnotVector<T> kv = b.component(i).knots();
+        removedKnots[i] = kv.coarsen(2);
+        coarseB[i] = new gsBSplineBasis<T>( give(kv) );
+    }
 
     return gsTensorBSplineBasis<d,T>::make( coarseB );
 }

@@ -873,6 +873,33 @@ void gsKnotVector<T>::degreeReduce(int const & i)
     m_deg -= i;
 }
 
+template <typename T>
+std::vector<T> gsKnotVector<T>::coarsen(index_t factor)
+{
+    std::vector<T> coarseKnots, removedKnots;
+
+    removedKnots.clear();
+    removedKnots.reserve( this->size() / factor + m_deg );
+
+    // determine indices and values of knots to be removed
+    const int first = m_deg + 1;              // first non-boundary knot
+    const int last  = this->size() - m_deg - factor;  // last non-boundary knot
+    for (int i = first; i <= last; i += factor)
+        removedKnots.push_back( m_repKnots[i] );
+
+    // copy non-removed knots into coarseKnots
+    std::set_difference( m_repKnots.begin(), m_repKnots.end(),
+                         removedKnots.begin(), removedKnots.end(),
+                         std::inserter(coarseKnots, coarseKnots.begin()) );
+
+    coarseKnots.swap(m_repKnots);
+    rebuildMultSum();
+
+    GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
+
+    return removedKnots;
+}
+
 template<typename T>
 void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
 {
