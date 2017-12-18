@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): D. Mokris, A. Bressan, A. Mantzaflaris, C. Hofreither, S. Takacs
+    Author(s): D. Mokris, A. Bressan, A. Mantzaflaris
 */
 
 #pragma once
@@ -877,17 +877,17 @@ template <typename T>
 std::vector<T> gsKnotVector<T>::coarsen(index_t factor)
 {
     std::vector<T> coarseKnots, removedKnots;
-
-    removedKnots.clear();
-    removedKnots.reserve( this->size() / factor + m_deg );
-
-    // determine indices and values of knots to be removed
-    const int first = m_deg + 1;              // first non-boundary knot
-    const int last  = this->size() - m_deg - factor;  // last non-boundary knot
-    for (int i = first; i <= last; i += factor)
-        removedKnots.push_back( m_repKnots[i] );
-
+    
+    removedKnots.reserve( this->uSize() / factor );
+    
+    // determine knots to be removed
+    uiterator it   = domainUBegin() + 1;
+    uiterator last = domainUEnd();
+    for(; it<last; it+=factor)
+        removedKnots.push_back( it.value() );
+    
     // copy non-removed knots into coarseKnots
+    coarseKnots.reserve(m_repKnots.size()-removedKnots.size());
     std::set_difference( m_repKnots.begin(), m_repKnots.end(),
                          removedKnots.begin(), removedKnots.end(),
                          std::inserter(coarseKnots, coarseKnots.begin()) );
