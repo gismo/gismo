@@ -29,7 +29,7 @@ template <typename T>
 gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
     gsMultiBasis<T> mBasis,
     const gsBoundaryConditions<T>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
+    const gsOptionList& options,
     index_t levels,
     index_t numberOfKnotsToBeInserted,
     index_t multiplicityOfKnotsToBeInserted
@@ -37,7 +37,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
 {
     gsGridHierarchy<T> result;
     result.m_boundaryConditions = boundaryConditions,
-    result.m_assemblerOptions = assemblerOptions,
+    result.m_options = options,
     result.m_mBases.resize(levels);
     result.m_transferMatrices.resize(levels-1);
     result.m_localTransferMatrices.resize(levels-1);
@@ -46,7 +46,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
         uniformRefine_withTransfer(
             result.m_mBases[i-1],
             result.m_boundaryConditions,
-            result.m_assemblerOptions,
+            result.m_options,
             numberOfKnotsToBeInserted,
             multiplicityOfKnotsToBeInserted,
             result.m_mBases[i],
@@ -60,14 +60,14 @@ template <typename T>
 gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
     gsMultiBasis<T> mBasis,
     const gsBoundaryConditions<T>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
+    const gsOptionList& options,
     index_t levels,
     index_t degreesOfFreedom
     )
 {
     gsGridHierarchy<T> result;
     result.m_boundaryConditions = boundaryConditions,
-    result.m_assemblerOptions = assemblerOptions,
+    result.m_options = options,
 
     result.m_mBases.push_back(give(mBasis));
 
@@ -81,7 +81,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
         coarsenMultiBasis_withTransfer(
             result.m_mBases[i],
             boundaryConditions,
-            assemblerOptions,
+            options,
             coarseMBasis,
             transferMatrix,
             localTransferMatrices
