@@ -24,10 +24,9 @@ shallow_clone: true
 # clone directory
 clone_folder: C:\projects\gismo
 
-# branches to build
-branches:
-  only:
-    - stable
+build:
+  verbosity: minimal
+  parallel: true
 
 # Do not build on tags (GitHub only)
 skip_tags: true
@@ -60,7 +59,7 @@ before_build:
 
 build_script:
   #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
-  - cmd: ctest -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-V
+  - cmd: ctest --output-on-failure -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-V
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln
@@ -76,6 +75,7 @@ build_script:
 
 ##############################################################
 for:
+##############################################################
 
 # Stable branch
 -
@@ -90,12 +90,11 @@ for:
       configuration: Release
       generator: "Visual Studio 14 2015"
 
-
-# Full tests
+####################
 -
   branches:
     only:
-    - coverity_scan
+    - ci_test
 
   environment:
     # custom environment variables, see http://www.appveyor.com/docs/installed-software
