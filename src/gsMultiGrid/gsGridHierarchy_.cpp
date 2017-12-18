@@ -31,9 +31,6 @@ void uniformRefine_withTransfer(
     );
 
 TEMPLATE_INST
-gsKnotVector<real_t> coarsenKnotVector(const gsKnotVector<real_t>& kv, std::vector<real_t>& removedKnots);
-
-TEMPLATE_INST
 gsTensorBSplineBasis<1, real_t>::uPtr coarsenTensorBasis(const gsTensorBSplineBasis<1, real_t>& b, std::vector< std::vector<real_t> > & removedKnots);
 
 TEMPLATE_INST
