@@ -73,7 +73,8 @@ endforeach()
 #Configure Valgrind
 #find_program( MEMORYCHECK_COMMAND valgrind )
 #--gen-suppressions=all --trace-children=yes --track-origins=yes
-set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes" CACHE INTERNAL "")
+#set( MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --show-reachable=yes" CACHE INTERNAL "")
+set( MEMORYCHECK_COMMAND_OPTIONS "-q" CACHE INTERNAL "") #note: empty defaults to "-q --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=50
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
 set(CMAKE_CXX_STANDARD_REQUIRED OFF)

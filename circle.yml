@@ -15,6 +15,5 @@ dependencies:
     - mkdir build; cd build; CC=/usr/bin/cc CXX=/usr/bin/g++ cmake .. -DSITE="circleci.com" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98
 test:
   override:
-    - cd build_clang; ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
-    - cd build;       ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit
- 
+    - cd build_clang; ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+    - cd build;       ctest -j2 --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalMemCheck -D ExperimentalSubmit

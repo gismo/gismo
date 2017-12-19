@@ -120,12 +120,12 @@ int main(int argc, char *argv[])
     // recompute patch numbers
     tmts.calcPatchNumbers();
 
-    // write patch numbers
-    gsInfo << "Writing patch numbers...\n";
     if(writePatchNumbers)
     {
+        // write patch numbers
+        gsInfo << "Writing patch numbers...\n";
         std::ofstream pn("patchnumbers.txt");
-
+        
         for(std::vector<gsMeshElement<>::gsFaceHandle >::iterator it(m->face.begin());it!=m->face.end();++it)
         {
             pn << (**it).faceIdentity << "\n";
@@ -135,17 +135,17 @@ int main(int argc, char *argv[])
     // get the patches
     tmts.getFaces(iPoints, oPoints, innerBdrys, innerBdrysMassP, oPointsConvexFlag);
 
-    gsSolid<> * sl = new gsSolid<>();
+    gsSolid<> sl;
     //if you need a higher number of interior points when fitting the surface increase the 8th input variiable(now 5)
-    tmts.toSolid(*sl,iPoints,oPoints,innerBdrys,innerBdrysMassP,oPointsConvexFlag,paraMeshes,fitMeshes,patchMeshes,degree,interiorPts,1,300,1,wEdge,wInterior,1, noSmooth);
-    gsInfo<<*sl<<'\n';
+    tmts.toSolid(sl,iPoints,oPoints,innerBdrys,innerBdrysMassP,oPointsConvexFlag,paraMeshes,fitMeshes,patchMeshes,degree,interiorPts,1,300,1,wEdge,wInterior,1, noSmooth);
+    gsInfo<<sl<<'\n';
 
     if (toxml)
     {
         gsInfo << "Writing xml file..." << "\n";
 
         gsFileData<> newdata;
-        newdata << *sl;
+        newdata << sl;
         newdata.dump(baseName);
     }
 
@@ -193,7 +193,6 @@ int main(int argc, char *argv[])
 
         gsWriteParaview( *m, "output");
     }
-    delete sl;
 
     // free meshes
     freeAll(fitMeshes);

@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 
     //! [adaptRefSettings]
     // Number of refinement loops to be done
-    int numRefinementLoops = 4;
+    int numRefinementLoops = 3;
 
     // Specify cell-marking strategy...
     MarkingStrategy adaptRefCrit = PUCA;
