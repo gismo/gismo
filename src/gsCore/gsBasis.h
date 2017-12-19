@@ -788,6 +788,39 @@ public:
     virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
                                             int numKnots = 1, int mul=1);
 
+    /// @brief Coarsen the basis uniformly by removing groups of \a
+    /// numKnots consecutive knots, each knot removed \a mul times
+    ///
+    /// This function is the oposite of gsBasis::uniformRefine
+    ///
+    /// The execution of
+    /// \code
+    /// basis->uniformRefine (nKnots, mul)
+    /// basis->uniformCoarsen(nKnots);
+    /// \code
+    /// results in no overall change in "basis". However,
+    /// \code
+    /// basis->uniformCoarsen(nKnots);
+    /// basis->uniformRefine (nKnots, mul)
+    /// \code
+    /// is not guaranteed to keep "basis" unchanged.
+    ///
+    /// \sa gsBasis::uniformRefine
+    virtual void uniformCoarsen(int numKnots = 1);
+
+    /// @brief Coarsen the basis uniformly and adjust the given matrix
+    /// of coefficients accordingly
+    ///
+    /// \sa gsBasis::uniformCoarsen
+    virtual void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
+
+    /// @brief Coarsen the basis uniformly and produce a sparse matrix which
+    /// maps coarse coefficient vectors to refined ones
+    ///
+    /// \sa gsBasis::uniformCoarsen
+    virtual void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
+                                             int numKnots = 1);
+
     /// @brief Elevate the degree of the basis by the given amount, preserve smoothness.
     virtual void degreeElevate(int const & i = 1, int const dir = -1);
 
