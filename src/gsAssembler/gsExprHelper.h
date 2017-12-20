@@ -194,18 +194,26 @@ public:
 
         //mapData.side
         if ( mapVar.isValid() ) // list ?
+        {
             mapVar.source().function(patchIndex).computeMap(mapData);
-
+            mapData.patchId = patchIndex;
+        }
         if ( mutVar.isValid() )
             //mutVar.source().piece(patchIndex).compute(mapData.points, mutData);
             mutVar.source().piece(patchIndex)
                 .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
         
         for (ftIterator it = flist.begin(); it != flist.end(); ++it)
+        {
             it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
-
+            it->second.patchId = patchIndex;
+        }
+        
         for (ftIterator it = flist2.begin(); it != flist2.end(); ++it)
+        {
             it->first->piece(patchIndex).compute(mapData.values[0], it->second);
+            it->second.patchId = patchIndex;
+        }
     }
 
     template<class E1, class E2>

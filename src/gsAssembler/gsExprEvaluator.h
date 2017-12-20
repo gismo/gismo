@@ -37,6 +37,8 @@ private:
 private:
     std::vector<T> m_elWise;
     T              m_value;
+
+    gsOptionList m_options;
     
 public:
 	typedef std::vector< boundaryInterface > intContainer;
@@ -47,12 +49,24 @@ public:
 
 public:
 
-    gsExprEvaluator() : m_exprdata(gsExprHelper<T>::New()), mesh_ptr(NULL) { }
+    gsExprEvaluator() : m_exprdata(gsExprHelper<T>::New()), mesh_ptr(NULL),
+    m_options(defaultOptions()) { }
 
     gsExprEvaluator(const gsExprAssembler<T> & o)
-    : m_exprdata(o.exprData()), mesh_ptr(&o.integrationElements())
+    : m_exprdata(o.exprData()), mesh_ptr(&o.integrationElements()),
+      m_options(defaultOptions())
     { }
 
+    gsOptionList defaultOptions()
+    {
+        gsOptionList opt;
+        opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
+        opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+        return opt;
+    }
+
+    gsOptionList & options() {return m_options;}
+    
 public:
     
     T value() const { return m_value; }
@@ -275,7 +289,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     for (unsigned patchInd=0; patchInd < mesh_ptr->nBases(); ++patchInd)
     {
         // Quadrature rule
-        QuRule = gsGaussRule<T>(mesh_ptr->piece(patchInd), 1, 1);
+        QuRule = gsGaussRule<T>(mesh_ptr->basis(patchInd), m_options);
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
@@ -330,8 +344,9 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
              mesh_ptr->topology().bBegin(); bit != mesh_ptr->topology().bEnd(); ++bit)
     {
         // Quadrature rule
-        QuRule = gsGaussRule<T>(mesh_ptr->piece(bit->patch), 1, 1, bit->direction());
-
+        QuRule = gsGaussRule<T>(mesh_ptr->basis(bit->patch), m_options,
+                                bit->direction());
+        
         m_exprdata->mapData.side = bit->side();
         
         // Initialize domain element iterator
@@ -390,7 +405,8 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 		const int patch1 = iFace.first().patch;
 		const int patch2 = iFace.second().patch;
         // Quadrature rule
-        QuRule = gsGaussRule<T>(mesh_ptr->basis(patch1), 1, 1, iFace.first().side().direction());
+        QuRule = gsGaussRule<T>(mesh_ptr->basis(patch1), m_options,
+                                iFace.first().side().direction());
 
         m_exprdata->mapData.side = iFace.first().side();
         

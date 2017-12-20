@@ -701,7 +701,7 @@ public:
 
     void getCoeffs(gsMatrix<T> & result, const index_t p = 0) const
     {
-        GISMO_ASSERT(NULL!=_Sv, "Solution sector not set, call setSolutionVector");
+        GISMO_ASSERT(NULL!=_Sv, "Solution vector not set, call setSolutionVector");
         _u.getCoeffs(*_Sv, result, p);
     }
 
@@ -712,12 +712,12 @@ public:
 		const gsMultiBasis<T>* basis = dynamic_cast<const gsMultiBasis<T>* >(&_u.source());
 		for (size_t i = 0; i < basis->nBases(); i++)
 		{
-			memory::unique_ptr<gsGeometry<T> > p(this->extract(i));
+			memory::unique_ptr<gsGeometry<T> > p(this->extractPiece(i));
 			result.addPatch(*p);
 		}
     }
 
-    memory::unique_ptr<gsGeometry<T> > extract(const index_t p) const
+    memory::unique_ptr<gsGeometry<T> > extractPiece(const index_t p) const
     {
         if ( const gsBasis<T> * b = dynamic_cast<const gsBasis<T>*>(&_u.source().piece(p)) )
         {
