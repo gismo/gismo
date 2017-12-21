@@ -145,7 +145,9 @@ void gsSpAcc(
             if ( rowMap.is_free_index(rowInd.at(i)) )
             {
                 if (right)
+                {
                     m_rhs.row(ii) += localRhs.row(rls+i);
+                }
                 
                 if (left)
                     for (index_t c = 0; c != cd; ++c)
@@ -1000,7 +1002,7 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
             gsMatrix<T> tmp(u.dim(), fpts.cols());
             tmp.setZero();
             gsDebugVar(!dir);
-            tmp.row(!dir) = (param ? 1 : -1) * fpts;
+            tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
             fpts.swap(tmp);
         }
         
