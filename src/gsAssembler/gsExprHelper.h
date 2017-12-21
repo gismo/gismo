@@ -140,6 +140,19 @@ public:
         return var;
     }
 
+    bool exists(variable a)
+    {
+        typedef typename std::deque<expr::gsFeSpace<T> >::const_iterator siter;
+        for (siter it = slist.begin(); it!=slist.end(); ++it)
+            if ( &a == &(*it) ) return true;
+
+        typedef typename std::deque<expr::gsFeVariable<T> >::const_iterator viter;
+        for (viter it = vlist.begin(); it!=vlist.end(); ++it)
+            if ( &a == &(*it) ) return true;
+
+        return false;
+    }
+        
     variable getMutVar() const { return mutVar; }
     
     void setMutSource(const gsFunction<T> & func, bool param)
