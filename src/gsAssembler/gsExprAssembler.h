@@ -513,7 +513,9 @@ public:
     {
         //GISMO_ASSERT(dynamic_cast<space>(exprLhs.colVar()), "Cannot deduce columns");
         space rvar = static_cast<space>(exprLhs.rowVar());
+        GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
         space cvar = static_cast<space>(exprLhs.colVar());
+        GISMO_ASSERT(m_exprdata->exists(cvar), "Error - inexistent variable.");
         GISMO_ASSERT(&rvar==&exprRhs.rowVar(), "Inconsistent left and right hand side");
         assembleLhsRhs_impl<true,true>(exprLhs, exprRhs, rvar, cvar);
     }
@@ -522,7 +524,9 @@ public:
     void assembleLhs(const expr::_expr<E1> & exprLhs)
     {
         space rvar = static_cast<space>(exprLhs.rowVar());
+        GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
         space cvar = static_cast<space>(exprLhs.colVar());
+        GISMO_ASSERT(m_exprdata->exists(cvar), "Error - inexistent variable.");        
         assembleLhsRhs_impl<true,false>(exprLhs, nullExpr(), rvar, cvar);
     }
 
@@ -539,7 +543,9 @@ public:
                           const bcContainer & BCs)
     {
         space rvar = static_cast<space>(exprLhs.rowVar());
+        GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
         space cvar = static_cast<space>(exprLhs.colVar());
+        GISMO_ASSERT(m_exprdata->exists(cvar), "Error - inexistent variable.");
         GISMO_ASSERT(&rvar==&exprRhs.rowVar(), "Inconsistent left and right hand side");
         assembleLhsRhsBc_impl<true,true>(exprLhs, exprRhs, rvar, cvar, BCs);
     }
@@ -548,6 +554,7 @@ public:
     void assembleRhsBc(const expr::_expr<E1> & exprRhs, const bcContainer & BCs)
     {
         space var = static_cast<space>(exprRhs.rowVar());
+        GISMO_ASSERT(m_exprdata->exists(var), "Error - inexistent variable.");
         assembleLhsRhsBc_impl<false,true>(nullExpr(), exprRhs, var, var, BCs);
     }
 
@@ -563,6 +570,7 @@ public:
     void assembleRhsInterface(const expr::_expr<E1> & exprInt, const intContainer & iFaces)
     {
         space rvar = static_cast<space>(exprInt.rowVar());
+        GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
         assembleInterface_impl<false,true>(nullExpr(), exprInt, rvar, rvar, iFaces);
     }
 
