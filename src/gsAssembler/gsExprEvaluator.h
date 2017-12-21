@@ -190,15 +190,16 @@ public:
 
     template<class E>
     void writeParaview(const expr::_expr<E> & expr,
+                       geometryMap G,
                        std::string const & fn, 
                        unsigned nPts = 3000, bool mesh = true)
     {
         //embed topology
-        const index_t n = mesh_ptr->nPieces();
+        const index_t n = mesh_ptr->nBases();
         gsParaviewCollection collection(fn);
         std::string fileName;
 
-        gsMatrix<T> vals, ab;
+        gsMatrix<T> pts, vals, ab;
         
         for ( index_t i=0; i != n; ++i )
         {
@@ -208,16 +209,22 @@ public:
             gsGridIterator<T,CUBE> pt(ab, nPts);
             eval(expr, pt, i);
             nPts = pt.numPoints();
-            vals = allValues(m_elWise.size()/nPts, nPts); // give ?
+            vals = allValues(m_elWise.size()/nPts, nPts);
+
+            // Forward the points
+            eval(G, pt, i);
+            pts = allValues(m_elWise.size()/nPts, nPts); // give ?
             
-            gsWriteParaviewTPgrid(pt.toMatrix(), vals,
+            gsWriteParaviewTPgrid(pts, //pt.toMatrix(), // parameters
+                                  vals,
                                   pt.numPointsCwise(), fileName );
             collection.addPart(fileName, ".vts");
 
             if ( mesh ) 
             {
                 fileName+= "_mesh";
-                gsMesh<T> msh(mesh_ptr->basis(0), 0);
+                gsMesh<T> msh(mesh_ptr->basis(i), 2);
+                static_cast<const gsGeometry<>&>(G.source().piece(i)).evaluateMesh(msh);
                 gsWriteParaview(msh, fileName, false);
                 collection.addPart(fileName, ".vtp");
             }

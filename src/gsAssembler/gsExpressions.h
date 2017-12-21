@@ -284,6 +284,16 @@ public:
 
     void print(std::ostream &os) const { os << "G"; }
 
+    // was protected
+    MatExprType eval(const index_t k) const { return m_fd->values[0].col(k); }
+
+    // was protected
+    void setFlag() const
+    {
+        GISMO_ASSERT(NULL!=m_fd, "GeometryMap not registered");
+        m_fd->flags |= NEED_VALUE;
+    }
+
 protected:
     
     gsGeometryMap() : m_fs(NULL), m_fd(NULL) { }
@@ -296,8 +306,6 @@ protected:
 
     bool isValid() const { return NULL!=m_fs; }
     
-    MatExprType eval(const index_t k) const { return m_fd->values[0].col(k); }
-    
     index_t rows() const { return m_fd->dim.second; }
     index_t cols() const { return 1; }
     
@@ -306,12 +314,6 @@ protected:
     
     const gsFeVariable<T> & rowVar() const { GISMO_ERROR("GeometryMap: rowVar"); }
     const gsFeVariable<T> & colVar() const { GISMO_ERROR("GeometryMap: colVar"); }
-
-    void setFlag() const
-    {
-        GISMO_ASSERT(NULL!=m_fd, "GeometryMap not registered");
-        m_fd->flags |= NEED_VALUE;
-    }
 
     void parse(gsSortedVector<const gsFunctionExpr<T>*> & evList) const 
     { 
