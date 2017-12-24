@@ -155,7 +155,7 @@ std::string gsFileManager::getSearchPaths()
     return result;
 }
 
-std::string gsFileManager::find(const std::string fn)
+std::string gsFileManager::find(std::string fn)
 {
 #if defined _WIN32
     _replace_slash_by_basckslash(fn);

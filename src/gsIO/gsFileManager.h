@@ -56,7 +56,7 @@ public:
     /// Otherwiese, returns empty string.
     ///
     /// If \a fn satisfied \a isFullyQualified or \a isRelative, it is kept unchanged
-    static std::string find(const std::string fn );
+    static std::string find(std::string fn);
 
     /// Make directory
     static bool mkdir( std::string fn );
