@@ -1,7 +1,6 @@
-/** @file tutorialPoisson.cpp
+/** @file poisson_example.cpp
 
-    @brief Tutorial on how to use G+Smo to solve the Poisson equation,
-    see the \ref PoissonTutorial
+    @brief Tutorial on how to use G+Smo to solve the Poisson equation
 
     This file is part of the G+Smo library.
 
@@ -13,9 +12,7 @@
 */
 
 //! [Include namespace]
-# include <gismo.h>
-# include <gsAssembler/gsExprEvaluator.h>
-# include <gsAssembler/gsExprAssembler.h>
+#include <gismo.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -25,70 +22,51 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     // Number for h-refinement of the computational (trial/test) basis.
-    int numRefine  = 1;
+    int numRefine  = 5;
     // Number for p-refinement of the computational (trial/test) basis.
     int numElevate = 0;
+
+    bool last = false;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
+    cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
-    //! [Parse command line]
     cmd.getValues(argc,argv);
+    //! [Parse command line]
 
-    // Load input file
-    gsFileData<> fd(GISMO_DATA_DIR "pde/poisson2d_bvp.xml");
+    //! [Read input file]
 
-    gsMultiPatch<> mp;
-
-    // topology is OK
-    //gsReadFile<>(GISMO_DATA_DIR "planar/quarter_annulus_2p.xml", mp);
-
-    fd.getId(0, mp);
-    mp.computeTopology();
-
-    gsInfo<<"Computational domain: "<< mp << "\n";
+    gsFileData<> fd("pde/poisson2d_bvp.xml");
+    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     
+    gsMultiPatch<> mp;
+    fd.getId(0, mp);
+    //gsInfo<<"Computational domain: "<< mp << "\n";
+    //gsInfo<<"Topology:\n"<< mp.topology() <<"\n";
 
-    //! [Function data]
-    gsFunctionExpr<> f, g_N, g_D;
-
-    // Read source function
+    gsFunctionExpr<> f;
     fd.getId(1, f);
-    gsInfo<<"Source function "<< f << "\n";
+    //gsInfo<<"Source function "<< f << "\n";
 
-    // // Dirichlet data
-    // fd.getId(0, g_D);
-    // gsInfo<<"Dirichlet data:"<< g_D <<"\n\n";
-
-    // // Neumann data
-    // fd.getId(0, g_N);
-    // gsInfo<<"Neumann data"<< g_N <<"\n\n";
-
-    //! [Function data]
-  
-    //! [Boundary conditions]
     gsBoundaryConditions<> bc;
     fd.getId(200, bc);
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-    //! [Boundary conditions]
+    //gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+
+    //! [Read input file]
 
     //! [Refinement]
-    
     gsMultiBasis<> dbasis;
     for (unsigned i = 0; i < mp.nPatches(); ++i)
         dbasis.addBasis( mp.patch(i).basis().source().clone() );
+        //dbasis.addBasis( mp.patch(i).basis().clone() );
+    
+    dbasis.degreeElevate(1,0);
     dbasis.setTopology(mp);
-    gsInfo<<"B0:\n"<< dbasis.basis(0) <<"\n";
-    gsInfo<<"B1:\n"<< dbasis.basis(1) <<"\n";
-    gsInfo<<"Topology:\n"<< mp.topology() <<"\n";
-
-
-    // h-refine each basis (4, one for each patch)
-    for (int i = 0; i < numRefine; ++i)
-        dbasis.uniformRefine();
+    //gsInfo<<"Topology:\n"<< mp.topology() <<"\n";
 
     // Elevate and p-refine the basis to order k + numElevate
     // where k is the highest degree in the bases
@@ -102,101 +80,129 @@ int main(int argc, char *argv[])
         dbasis.setDegree(max_tmp);
     }
 
-    gsInfo<<"Discretization basis: "<< dbasis.basis(0) <<"\n";
+    // h-refine each basis
+    if (last)
+    {
+        for (int r =0; r < numRefine-1; ++r)
+            dbasis.uniformRefine();
+        numRefine = 0;
+    }
     
-    //! [Assemble]
-    gsExprAssembler<real_t> assembler(1,1);
+    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+    //! [Refinement]
+    
+    //! [Problem setup]
+    gsExprAssembler<real_t> A(1,1);
+    //gsInfo<<"Active options:\n"<< A.options() <<"\n";
     typedef gsExprAssembler<real_t>::geometryMap geometryMap;
     typedef gsExprAssembler<real_t>::variable    variable;
-    typedef gsExprAssembler<real_t>::space       space;
-    typedef gsExprAssembler<real_t>::element     element;
     typedef gsExprAssembler<real_t>::solution    solution;
 
     // Elements used for numerical integration
-    assembler.setIntegrationElements(dbasis);
-
+    A.setIntegrationElements(dbasis);
+    gsExprEvaluator<real_t> ev(A);
+    
     // Set the geometry map
-    geometryMap G = assembler.setMap(mp);
+    geometryMap G = A.setMap(mp);
 
-    // Set the discretization basis
-    variable    u  = assembler.setSpace(dbasis, bc);
+    // Set the discretization space
+    variable    u  = A.setSpace(dbasis, bc);
 
     // Set the source term
-    variable    ff = assembler.setCoeff(f, G);
-    
-    // Initialize the system
-    assembler.initSystem();
-    //gsInfo<<"Active options:\n"<< assembler.options() <<"\n";
+    variable    ff = A.setCoeff(f, G);
 
-    // Compute the system matrix and right-hand side
-    assembler.assembleLhsRhs( igrad(u, G) * igrad(u, G).tr() * meas(G),
-                              u * ff * meas(G) );
-
-    if ( assembler.numDofs() < 20 )
-    {
-        gsInfo<<"Sparse Matrix:\n"<< assembler.matrix().toDense() <<"\n";
-        gsInfo<<"Rhs vector:\n"<< assembler.rhs().transpose() <<"\n";
-    }
-    else
-        gsInfo<<"Number of degrees of freedom: "<< assembler.numDofs() <<"\n";
-
-    /*
-    // Accumulate the Neumann BC contributions to the right-hand side
-    variable gg = assembler.getBdrFunction();
-    assembler.assembleRhsBc( u * gg, bc.neumannSides() );
-    */
-
-    gsInfo<<"Solving...\n";
-    gsSparseSolver<>::CGDiagonal solver( assembler.matrix() );
-    gsMatrix<> solVector = solver.solve( assembler.rhs()    );
-
-    solution u_sol = assembler.getSolution(u, solVector);
-    
-    gsExprEvaluator<real_t> ev(assembler);
-
+    // Recover manufactured solution
     gsFunctionExpr<> ms;
     fd.getId(100, ms);
-    gsInfo<<"Mf: "<< ms << "\n";
-    variable u_ex = ev.setVariable(ms, G);
+    //gsInfo<<"Exact solution: "<< ms << "\n";
+    variable u_ex = ev.setVariable(ms, G);    
+
+    // Solution vector and solution variable
+    gsMatrix<> solVector;
+    solution u_sol = A.getSolution(u, solVector);
+
+    gsSparseSolver<>::CGDiagonal solver;
     
-    // real_t l2norm = ev.integral( (u_ex).sqr() * meas(G) );
-    // gsInfo<< "* The squared L2 norm [ u.sqr() * meas(G) ]: "<<l2norm<<"\n"; 
-    l2norm = math::sqrt( ev.integral( (u_sol).sqr() * meas(G) ) );
-    gsInfo<< "* The squared L2 norm [ u.sqr() * meas(G) ]: "<<l2norm<<"\n";    
-    l2norm = ev.integral( (u_sol-u_ex).sqNorm() * meas(G) );
-    gsInfo<< "* The squared L2 norm [ u.sqr() * meas(G) ]: "<<l2norm<<"\n";    
-    gsMultiPatch<> ss;
-    u_sol.extract(ss);
-    gsField<> sf(mp, ss, true);
+    //! [Problem setup]
 
-    gsNormL<2> norm2(sf);
-    gsInfo<< "* The squared norm of disc. solution [ gsNorm ]: "<<norm2.compute()<<"\n";    
-
-    gsNormL<2> norm(sf,ms, false);
-    gsInfo<< "* The squared L2 norm [ gsNorm ]: "<<norm.compute()<<"\n";    
-
-
-    if (plot)
+    //! [Solver loop]
+    gsVector<> l2err(numRefine+1), h1err(numRefine+1);
+    gsInfo<< "\nDoFs: ";
+    for (int r=0; r<=numRefine; ++r)
     {
-        // Read exact solution
-        fd.getId(100, f);
+        dbasis.uniformRefine();
+            
+        // Initialize the system
+        A.initSystem();
+        
+        gsInfo<< A.numDofs() <<std::flush;
+            
+        // Compute the system matrix and right-hand side
+        A.assembleLhsRhs( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
+        
+        // Enforce Neumann conditions to right-hand side
+        variable g_N = A.getBdrFunction();
+        A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
+        
+        gsInfo<< "." <<std::flush;
+        
+        //gsInfo<<"Sparse Matrix:\n"<< A.matrix().toDense() <<"\n";
+        //gsInfo<<"Rhs vector:\n"<< A.rhs().transpose() <<"\n";
+        //gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n";
+        
+        solver.compute( A.matrix() );
+        solVector = solver.solve(A.rhs());
 
-        gsInfo<<"Plotting in Paraview...\n";
-        gsMultiPatch<> ss;
-        u_sol.extract(ss);
-        gsField<> sf(mp, ss, true);
-        gsWriteParaview<>(sf, "solField");
-        gsField<> sfe(mp, ms, false );
-        gsWriteParaview<>(sfe, "solField_ex");
+        gsInfo<< "." <<std::flush;
+        
+        //solution u_sol = A.getSolution(u, solVector); // solVector is not copied
+        
+        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
+        //gsInfo<< "* The L2 error: "<< l2err[r] <<"\n";
+        
+        h1err[r]= //l2err[r] +
+            math::sqrt( ev.integral( ( grad(u_ex) - grad(u_sol)*jac(G).inv() ).sqNorm() * meas(G) ) );
+        //gsInfo<< "* The H1 error: "<< h1err[r] <<"\n";
 
-/*
-        variable    u_ex = assembler.setCoeff(f, G);
-        ev.writeParaview( u   , "solution"   , 3000, true);
-        ev.writeParaview( u_ex, "solution_ex", 3000, true);
-        return system("paraview solution.pvd &");
-*/
+        gsInfo<< ". " <<std::flush;        
+
+    } //for loop
+
+    //! [Solver loop]
+
+    //! [Error and convergence rates]
+    gsInfo<< "\n\nL2 error: " <<std::scientific<< l2err.transpose() <<"\n";
+    gsInfo<< "H1 error: " <<std::scientific<< h1err.transpose() <<"\n";
+
+    if (!last)
+    {
+        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
+              << ( l2err.head(numRefine).array() /
+                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+        
+        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
+              <<( h1err.head(numRefine).array() /
+                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+    }
+    //! [Error and convergence rates]
+    
+    // if (save)
+    {
+        
     }
 
+    //! [Export visualiuation in ParaView]
+    if (plot)
+    {
+        gsInfo<<"Plotting in Paraview...\n";
+        ev.writeParaview( u_sol   , G, "solution"   , 3000, true);
+        ev.writeParaview( u_ex    , G, "solution_ex", 3000, true);
+        
+        //ev.writeParaview( u, G, "aa", 3000, true); ???
+        return system("paraview solution.pvd &");
+    }
+    //! [Export visualiuation in ParaView]
+    
     return EXIT_SUCCESS;
 
 }// end main

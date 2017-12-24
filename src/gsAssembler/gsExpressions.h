@@ -507,14 +507,25 @@ public:
     {
         GISMO_ASSERT(NULL!=m_fs, "FeVariable: Function member not registered");
         GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+
+        //gsDebugVar(*m_fd);
+        /*
+        gsDebugVar(m_fd->flags & NEED_VALUE);
+        gsDebugVar(m_fd->values[0].rows());
+
+        gsDebugVar(m_fd->flags & NEED_ACTIVE);
+        gsDebugVar(m_fd->actives.rows());
+
+        gsDebugVar(m_fd->flags & NEED_DERIV);
+        */
         
         // note: precomputation is needed
         if (m_fd->flags & NEED_VALUE)
-            return m_d * m_fd->values[0].rows();
+        {return m_d * m_fd->values[0].rows();}
         if (m_fd->flags & NEED_ACTIVE) // coeffs ??
-            return m_d * m_fd->actives.rows();
+        {return m_d * m_fd->actives.rows();}
         if (m_fd->flags & NEED_DERIV)
-            return m_d * m_fd->values[0].rows();
+        {return m_d * m_fd->values[0].rows();}
         GISMO_ERROR("Cannot deduce row size.");
     }
     
@@ -597,7 +608,7 @@ public:
             
             if ( m_mapper.is_free_index(ii) ) // DoF value is in the solVector
             {
-                for (index_t k = 0; k < dim; ++k)
+                for (index_t k = 0; k != dim; ++k)
                 {
                     const index_t cgs = k * m_mapper.freeSize(); //global stride
                     result(i,k) = solVector.at( cgs + ii );
@@ -642,7 +653,7 @@ public:
         const gsDofMapper & map = _u.mapper();
         for (index_t i = 0; i!=_u.data().actives.size(); ++i)
         {
-            const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId );
+            const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId);
             if ( map.is_free_index(ii) ) // DoF value is in the solVector
             {
                 for (index_t r = 0; r != res.rows(); ++r)
@@ -668,7 +679,7 @@ public:
     {
         _u.data().flags |= NEED_VALUE | NEED_ACTIVE;
     }
-
+        
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
@@ -775,38 +786,55 @@ public:
     const gsMatrix<T> & eval(index_t k) const
     {
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-        
+            
         res.setZero(_u.dim(), _u.parDim());
         const gsDofMapper & map = _u.mapper();
         for (index_t i = 0; i!=_u.data().actives.size(); ++i)
         {
-            const index_t ii = map.index(_u.data().actives.at(i), 0);
+            const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId);
             if ( map.is_free_index(ii) ) // DoF value is in the solVector
             {
                 for (index_t r = 0; r != res.rows(); ++r)
                 {
                     const index_t cgs = r * map.freeSize();
                     res.row(r) += _u.solutionVector().at(cgs+ii) *
-                        _u.data().values[1].col(k)
-                        .segment(i*_u.parDim(), _u.parDim()).transpose();
+                        _u.data().values[1].block(i*_u.parDim(),k,_u.parDim(),1).transpose();
+                        //col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
                 }
             }
             else
-                res.noalias() += //transpose().
+            {
+                const index_t j = map.global_to_bindex(ii);
+                for (index_t r = 0; r != res.rows(); ++r)
+                {
+                    res.row(r) += _u.fixedPart()(j,r) *
+                        _u.data().values[1].block(i*_u.parDim(),k,_u.parDim(),1).transpose();
+                        //.col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
+                }
+                
+                /*
+                res.noalias() +=
                     _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
                     _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
                     .transpose().replicate(_u.dim(),1);
+                */
+            }
         }
         return res;
     }
 
-    bool rowSpan() const {return false; }
+    bool rowSpan() const {return false;}
     bool colSpan() const {return false;}
 
-    index_t rows() const {return _u.dim();    }
+    index_t rows() const {return _u.dim();}
+
     index_t cols() const {return _u.parDim(); }
 
-    void setFlag() const { _u.data().flags |= NEED_GRAD; }
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_ACTIVE;
+        _u.data().flags |= NEED_GRAD | NEED_VALUE;
+    }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
@@ -1232,14 +1260,18 @@ public:
     }
 
     index_t rows() const { return _u.data().values[0].rows(); }
+    //index_t rows() const { return _u.data().actives.size(); }
+    //index_t rows() const { return _u.rows(); }
+    //index_t rows() const { return _u.data().dim.second; }
+
     index_t cols() const { return _u.data().dim.first; }
-    void setFlag() const { _u.data().flags |= NEED_GRAD; }
+    void setFlag() const { _u.data().flags |= NEED_GRAD|NEED_ACTIVE; }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD;
+        _u.data().flags |= NEED_GRAD|NEED_ACTIVE;
     }
 
     const gsFeVariable<T> & rowVar() const { return _u.rowVar(); }
