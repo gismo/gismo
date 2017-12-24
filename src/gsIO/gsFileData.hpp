@@ -15,14 +15,9 @@
 #pragma once
 
 
-#include <string>
-#include <iostream>
-#include <fstream>
-
-#include <gsCore/gsGeometry.h>
-#include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsFunction.h>
-#include <gsCore/gsFunctionExpr.h>
+//#include <string>
+//#include <iostream>
+//#include <fstream>
 
 #include <gsNurbs/gsKnotVector.h>
 
@@ -39,7 +34,7 @@
 
 
 #include <zlib/gzstream.h>
-
+#include <gsIO/gsFileManager.h>
 
 namespace gismo {
 
@@ -56,7 +51,11 @@ gsFileData<T>::gsFileData(String const & fn)
     data = new FileData; 
     data->makeRoot();
 
-    this->read(fn); 
+    m_lastPath = gsFileManager::find(fn);
+    if ( m_lastPath.empty() )
+        gsWarn<<"gsFileData: Input file Problem: "<<fn<<" not found\n";
+
+    this->read(m_lastPath);
 }
 
 template<class T>
@@ -113,7 +112,9 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
         tmp = fname + ".xml";
     else
         tmp = fname;
-    
+
+    m_lastPath = tmp;
+
     std::ofstream fn( tmp.c_str() ); 
     fn << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
     //rapidxml::print_no_indenting
@@ -135,6 +136,8 @@ gsFileData<T>::saveCompressed(std::string const & fname)  const
     }
     else
         tmp = fname;
+
+    m_lastPath = tmp;
 
     ogzstream fn( tmp.c_str() ); 
     fn << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";

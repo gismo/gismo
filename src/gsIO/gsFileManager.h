@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <string>
 
 namespace gismo 
 {
@@ -28,18 +27,18 @@ class GISMO_EXPORT gsFileManager
 {
 public:
 
-    /// Checks if the file exists
+    /// Checks if the file exists (also in the search paths)
     static bool fileExists(const std::string& name);
 
     /// Get local path seperator
     static char getLocalPathSeperator();
 
     /// Checks if the path is fully qualified
-    /// If a name starts with "/", it is considered fully qualfied
+    /// If a name starts with "/", it is considered fully qualified
     static bool isFullyQualified(const std::string& fn);
 
     /// Checks if the path is a relative path
-    /// If a name starts with "./" or "../", it is considered fully qualfied
+    /// If a name starts with "./" or "../", it is considered fully qualified
     static bool isRelative(const std::string& fn);
 
     /// Set the search paths
@@ -50,13 +49,14 @@ public:
 
     /// \brief Find a file.
     ///
-    /// \param[in,out] fn The filename
+    /// \param[in] fn The filename
+    /// \param[out] the full path or empty string
     ///
-    /// If the file can be found, returns true and replaces \a fn by the full path.
-    /// Otherwiese, returns false and keeps the name unchanged.
+    /// If the file can be found, returns the full path.
+    /// Otherwiese, returns empty string.
     ///
     /// If \a fn satisfied \a isFullyQualified or \a isRelative, it is kept unchanged
-    static bool find( std::string& fn );
+    static std::string find(const std::string fn );
 
     /// Make directory
     static bool mkdir( std::string fn );

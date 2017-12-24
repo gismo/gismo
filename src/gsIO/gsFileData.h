@@ -65,22 +65,25 @@ public:
     int numData() const { return data->numNodes();}
 
     /// \brief Save file contents to an xml file
-    void save(std::string const & fname = "dump", bool compress = false) const;
+    void save(String const & fname = "dump", bool compress = false) const;
 
     /// \brief Save file contents to compressed xml file
-    void saveCompressed(std::string const & fname = "dump") const;
+    void saveCompressed(String const & fname = "dump") const;
     
     /// \brief Dump file contents to an xml file
-    void dump(std::string const & fname = "dump") const;
+    void dump(String const & fname = "dump") const;
     
-    void addComment(std::string const & message);
+    void addComment(String const & message);
 
+    String lastPath() const { return m_lastPath; }
 private:
     /// File data as an xml tree
     FileData * data;
     
     // Used to hold parsed data of native gismo XML files
     std::vector<char> m_buffer;
+
+    mutable String m_lastPath;
     
 protected:
     
@@ -134,7 +137,7 @@ protected:
 #endif
 
     // Show the line number where something went wrong
-    void ioError(int lineNumber,const std::string& str);
+    void ioError(int lineNumber,const String& str);
 
 public:
 
@@ -160,7 +163,8 @@ public:
     template<class Object>
     inline void getId( const int & id, Object& result)  const
     {
-        result = *getId(id);
+        memory::unique_ptr<Object> obj = getId<Object>(id);
+        result = give(*obj);
     }
     
     /// Prints the XML tag of a Gismo object
@@ -347,7 +351,7 @@ public:
     /// Returns the extension of the filename \a fn
     static String getExtension(String const & fn)
     {
-        if(fn.find_last_of(".") != std::string::npos)
+        if(fn.find_last_of(".") != String::npos)
         {
             String ext = fn.substr(fn.rfind(".")+1);
             std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower); 
@@ -366,7 +370,7 @@ public:
     /// Returns the base name without extension of the filename \a fn
     static String getBasename(String const & fn)
     {
-        if(fn.find_last_of(".") != std::string::npos)
+        if(fn.find_last_of(".") != String::npos)
         {
             std::size_t pos1 = fn.find_last_of("/\\");
             std::size_t pos2 = fn.rfind(".");
@@ -380,7 +384,7 @@ public:
     static String getFilename(String const & fn)
     {
         std::size_t pos1 = fn.find_last_of("/\\");
-        if(pos1 != std::string::npos)
+        if(pos1 != String::npos)
         {
             String      name = fn.substr(pos1+1);
             return name;
@@ -394,17 +398,17 @@ private:
     static void deleteXmlSubtree (gsXmlNode* node);
 
     // getFirst ? (tag and or type)
-    gsXmlNode * getFirstNode  ( const std::string & name = "",
-                                const std::string & type = "" ) const;
+    gsXmlNode * getFirstNode  ( const String & name = "",
+                                const String & type = "" ) const;
 
     // getAny
-    gsXmlNode * getAnyFirstNode( const std::string & name = "",
-                                 const std::string & type = "" ) const;
+    gsXmlNode * getAnyFirstNode( const String & name = "",
+                                 const String & type = "" ) const;
 
     // getNext
-    static gsXmlNode * getNextSibling( gsXmlNode* const & node, 
-                                       const std::string & name = "", 
-                                       const std::string & type = "" );
+    static gsXmlNode * getNextSibling( gsXmlNode* const & node,
+                                       const String & name = "",
+                                       const String & type = "" );
     
     // Helpers for X3D files
     void addX3dShape(gsXmlNode * shape);
