@@ -26,7 +26,7 @@ class gsExprHelper
 private:
     gsExprHelper(const gsExprHelper &);
 
-    gsExprHelper()
+    gsExprHelper() : mesh_ptr(NULL)
     { mutVar.setData(mutData); }
 
 private:
@@ -39,8 +39,9 @@ private:
     std::deque<expr::gsFeSpace<T> >    slist;
 
     // background functions
-    FunctionTable flist;
-    FunctionTable flist2;
+    FunctionTable v_map;
+    FunctionTable s_map;
+    //FunctionTable i_map;
     
     // geometry map
     expr::gsGeometryMap<T> mapVar;
@@ -56,8 +57,10 @@ private:
 
     gsSortedVector<const gsFunctionSet<T>*> evList;
 
-    //expr::gsFeVariable<T> * mutVar; (either on flist or flist2)
-    
+    //expr::gsFeVariable<T> * mutVar; (either on s_map or s_map)
+
+    const gsMultiBasis<T> * mesh_ptr;
+
 public:
     typedef const expr::gsGeometryMap<T> & geometryMap;
     typedef const expr::gsFeElement<T>   & element;
@@ -65,27 +68,37 @@ public:
     typedef const expr::gsFeSpace<T>     & space;
     typedef const expr::gsNullExpr<T>      nullExpr;
 
-
     typedef expr::gsFeVariable<T>  & nonConstVariable;
     typedef expr::gsFeSpace<T>     & nonConstSpace;
 
     typedef memory::shared_ptr<gsExprHelper> Ptr;
 public:
-
+        
     gsMatrix<T> & points() { return mapData.points; }
 
     static Ptr New() { return Ptr(new gsExprHelper()); }
     
     void reset()
     {
-        flist.clear();
-        flist2.clear();
+        s_map.clear();
+        v_map.clear();
         points().clear();
         vlist .clear();
         slist .clear();
         //mapVar.reset();
     }
 
+    void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
+
+    bool multiBasisSet() { return NULL!=mesh_ptr;}
+    
+    const gsMultiBasis<T> & multiBasis()
+    {
+        GISMO_ASSERT(multiBasisSet(), "Integration elements not set.");
+        return *mesh_ptr;
+    }
+
+    
     geometryMap setMap(const gsFunction<T> & mp)
     {
         //mapData.clear();
@@ -110,9 +123,10 @@ public:
     
     nonConstVariable setVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
+
         vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsFeVariable<T> & var = vlist.back();
-        gsFuncData<T> & fd = flist[&mp];
+        gsFuncData<T> & fd = v_map[&mp];
         fd.dim = mp.dimensions();
         var.registerData(mp, fd, dim);
         return var;
@@ -122,7 +136,7 @@ public:
     {
         slist.push_back( expr::gsFeSpace<T>() );
         expr::gsFeSpace<T> & var = slist.back();
-        gsFuncData<T> & fd = flist[&mp];
+        gsFuncData<T> & fd = s_map[&mp];
         fd.dim = mp.dimensions();
         var.registerData(mp, fd, dim);
         return var;
@@ -134,12 +148,14 @@ public:
         vlist.push_back( expr::gsFeVariable<T>() ); 
         expr::gsFeVariable<T> & var = vlist.back();
         mapData.flags |= NEED_VALUE;
-        gsFuncData<T> & fd = flist2[&mp];
+        gsFuncData<T> & fd = v_map[&mp];
         fd.dim = mp.dimensions();
         var.registerData(mp, fd, 1);
         return var;
     }
 
+    //void rmVar(
+        
     bool exists(variable a)
     {
         typedef typename std::deque<expr::gsFeSpace<T> >::const_iterator siter;
@@ -165,9 +181,9 @@ public:
     void check(const expr::_expr<E> & testExpr) const
     {
         if ( testExpr.isVector() )
-            GISMO_ENSURE(flist.find(&testExpr.rowVar().source())!=flist.end(), "Check failed");
+            GISMO_ENSURE(s_map.find(&testExpr.rowVar().source())!=s_map.end(), "Check failed");
         if ( testExpr.isMatrix() )
-            GISMO_ENSURE(flist.find(&testExpr.colVar().source())!=flist.end(), "Check failed");
+            GISMO_ENSURE(s_map.find(&testExpr.colVar().source())!=s_map.end(), "Check failed");
 
         // todo: varlist ?
     }
@@ -177,12 +193,12 @@ public:
     {
         mapData.flags = mflag;
         mutData.flags = fflag;
-        for (ftIterator it = flist.begin(); it != flist.end(); ++it)
+        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
             it->second.flags = fflag;
-        for (ftIterator it = flist2.begin(); it != flist2.end(); ++it)
+        for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
             it->second.flags = fflag;
 
-        if ( !flist2.empty() ) // check appearances ?
+        if ( !s_map.empty() ) // check appearances ?
             mapData.flags |= NEED_VALUE;
     }
 
@@ -192,7 +208,7 @@ public:
                   const unsigned mflag = 0)
     {
         // todo:
-        //testExpr.variables_into(flist);
+        //testExpr.variables_into(s_map);
         // plus auto-registration
 
         initFlags(fflag, mflag);
@@ -216,13 +232,13 @@ public:
             mutVar.source().piece(patchIndex)
                 .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
         
-        for (ftIterator it = flist.begin(); it != flist.end(); ++it)
+        for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
         {
             it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
             it->second.patchId = patchIndex;
         }
         
-        for (ftIterator it = flist2.begin(); it != flist2.end(); ++it)
+        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
         {
             it->first->piece(patchIndex).compute(mapData.values[0], it->second);
             it->second.patchId = patchIndex;
@@ -232,7 +248,7 @@ public:
     template<class E1, class E2>
     void parse(const expr::_expr<E1> & expr1, const expr::_expr<E2> & expr2)
     {
-        //evList.reserve(flist.size()+flist2.size());
+        //evList.reserve(s_map.size()+v_map.size());
         evList.clear();
         expr1.parse(evList);
         expr2.parse(evList);
@@ -252,10 +268,10 @@ public:
             mutVar.source().piece(patchIndex)
                 .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
         
-        for (ftIterator it = flist.begin(); it != flist.end(); ++it)
+        for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
             it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
 
-        for (ftIterator it = flist2.begin(); it != flist2.end(); ++it)
+        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
             it->first->piece(patchIndex).compute(mapData.values[0], it->second);
     }
 //*/

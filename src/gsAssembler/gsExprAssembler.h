@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include<gsAssembler/gsAssembler.h>
 #include<gsAssembler/gsExprHelper.h>
 #include <gsUtils/gsPointGrid.h>
 
@@ -190,12 +189,11 @@ void gsSpAcc(
 template<class T>
 class gsExprAssembler
 {
+private:
     typename gsExprHelper<T>::Ptr m_exprdata;
 
     gsOptionList m_options;
     
-    const gsMultiBasis<T> * mesh_ptr;
-
     expr::gsFeElement<T> m_element;
 
     gsSparseMatrix<T> m_matrix;
@@ -207,7 +205,7 @@ class gsExprAssembler
 public:
 
     typedef typename gsSparseMatrix<T>::BlockView matBlockView;
-        
+    
     typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
     
     typedef std::vector< boundaryInterface > intContainer;
@@ -223,7 +221,7 @@ public:
 
     gsExprAssembler(int _rBlocks = 1, int _cBlocks = 1)
     : m_exprdata(gsExprHelper<T>::New()), m_options(defaultOptions()), 
-      mesh_ptr(NULL), m_vrow(_rBlocks,NULL), m_vcol(_cBlocks,NULL)
+      m_vrow(_rBlocks,NULL), m_vcol(_cBlocks,NULL)
     { }
 
     /// @brief Returns the list of default options for assembly
@@ -261,11 +259,13 @@ public:
     /// @brief Returns the right-hand side vector(s)
     const gsMatrix<T> & rhs() const { return m_rhs; }
 
-    void setIntegrationElements(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
+    void setIntegrationElements(const gsMultiBasis<T> & mesh)
+    { m_exprdata->setMultiBasis(mesh); }
+    
+    const gsMultiBasis<T> & integrationElements() const
+    { return m_exprdata->multiBasis(); }
 
-    const gsMultiBasis<T> & integrationElements() const { return *mesh_ptr; }
-
-    const typename gsExprHelper<T>::Ptr & exprData() const { return m_exprdata; }
+    const typename gsExprHelper<T>::Ptr exprData() const { return m_exprdata; }
     
     geometryMap setMap(const gsMultiPatch<T> & mp) //conv->tmp->error
     { return m_exprdata->setMap(mp); }
@@ -336,7 +336,6 @@ public:
     void initSystem()
     {
         // Check spaces.nPatches==mesh.patches
-
         initMatrix();
         m_rhs.setZero(numDofs(), 1);
 
@@ -348,28 +347,26 @@ public:
     {
         resetDimensions();
         m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
-
-        GISMO_ASSERT(NULL!=mesh_ptr, "Integration elements not set.");
         
-        // Pick up values from options
-        const T bdA       = m_options.getReal("bdA");
-        const index_t bdB = m_options.getInt("bdB");
-        const T bdO       = m_options.getReal("bdO");
-        const gsBasis<T> & b = (*mesh_ptr)[0];
-        T nz = 1;
-        for (index_t i = 0; i != b.dim(); ++i)
-            nz *= bdA * b.degree(i) + bdB;
-
         if ( 0 == m_matrix.size() )
             gsWarn << " No internal DOFs, zero sized system.\n";
         else
+        {
+            // Pick up values from options
+            const T bdA       = m_options.getReal("bdA");
+            const index_t bdB = m_options.getInt("bdB");
+            const T bdO       = m_options.getReal("bdO");
+            T nz = 1;
+            const index_t dim = m_exprdata->multiBasis().domainDim();
+            for (index_t i = 0; i != dim; ++i)
+                nz *= bdA * m_exprdata->multiBasis().maxDegree(i) + bdB;
+
             m_matrix.reservePerColumn(numBlocks()*cast<T,index_t>(nz*(1.0+bdO)) );
+        }
     }
     
     void initVector(const index_t numRhs = 1)
     {
-        GISMO_ASSERT(NULL!=mesh_ptr, "Integration elements not set.");
-        
         resetDimensions();
         m_rhs.setZero(numDofs(), numRhs);
     }
@@ -390,10 +387,7 @@ public:
                     (dirichlet::strategy)(m_options.getInt("DirichletStrategy")),
                     (iFace::strategy)(m_options.getInt("InterfaceStrategy")),
                     ubc, u.mapper(), u.id(), true);
-
-                gsInfo<<" --- "<<m_options.getInt("DirichletStrategy")<<"\n";
-                gsInfo<<" --- "<<m_options.getInt("InterfaceStrategy")<<"\n";
-                u.mapper().print();
+                //u.mapper().print();
             }
             else if (const gsBasis<T> * b =
                 dynamic_cast<const gsBasis<T>*>(&u.source()) )
@@ -563,7 +557,7 @@ public:
     {
         space rvar = static_cast<space>(exprInt.rowVar());
         space cvar = static_cast<space>(exprInt.colVar());
-        assembleInterface_impl<true,false>(exprInt, nullExpr(), rvar, rvar, mesh_ptr->topology().interfaces() );
+        assembleInterface_impl<true,false>(exprInt, nullExpr(), rvar, rvar, m_exprdata->multiBasis().topology().interfaces() );
     }
 
     template<class E1>
@@ -736,13 +730,13 @@ void gsExprAssembler<T>::assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
                                              const expr::_expr<E2> & exprRhs,
                                              space rvar, space cvar)
 {
-    //space rvar = exprLhs.rowVar();
-    //space rvar = exprRhs.rowVar();
-    
     //GISMO_ASSERT( exprLhs.isMatrix(), "Expecting matrix expression"); // or null
     //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
+
+    /*
     exprLhs.print(gsInfo);
     if (right) exprRhs.print(gsInfo);
+    */
 
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
     
@@ -755,13 +749,13 @@ void gsExprAssembler<T>::assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
     
-    for (unsigned patchInd = 0; patchInd < mesh_ptr->nBases(); ++patchInd) //**1
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) //**1
     {
-        QuRule = gsGaussRule<T>(mesh_ptr->basis(patchInd), m_options);
+        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patchInd), m_options);
 		
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            mesh_ptr->basis(patchInd).makeDomainIterator(); 
+            m_exprdata->multiBasis().basis(patchInd).makeDomainIterator(); 
         m_element.set(*domIt);
         
         // Start iteration over elements of patchInd
@@ -818,7 +812,7 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
 
     for (typename bcContainer::const_iterator it = BCs.begin(); it!= BCs.end(); ++it)
     {
-        QuRule = gsGaussRule<T>(mesh_ptr->basis(it->patch()), m_options,
+        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(it->patch()), m_options,
                                 it->side().direction());
 
         m_exprdata->mapData.side = it->side();
@@ -828,7 +822,7 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
         //mutVar.registerVariable(func, mutData);
         
         typename gsBasis<T>::domainIter domIt =
-            mesh_ptr->basis(it->patch()).makeDomainIterator(it->side());
+            m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
         m_element.set(*domIt);
         
         // Start iteration over elements
@@ -889,13 +883,13 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
         const int patch2 = iFace.second().patch;
         //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
 
-        QuRule = gsGaussRule<T>(mesh_ptr->basis(patch1), m_options,
+        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patch1), m_options,
                                 iFace.first().side().direction());
 
         m_exprdata->mapData.side = iFace.first().side(); // (!)
         
         typename gsBasis<T>::domainIter domIt =
-            mesh_ptr->basis(patch1).makeDomainIterator(iFace.first().side());
+            m_exprdata->multiBasis().basis(patch1).makeDomainIterator(iFace.first().side());
         m_element.set(*domIt);
         
         // Start iteration over elements

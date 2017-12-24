@@ -30,8 +30,6 @@ class gsExprEvaluator
 private:
     typename gsExprHelper<T>::Ptr m_exprdata;
     
-    const gsMultiBasis<T> * mesh_ptr;
-    
     expr::gsFeElement<T> m_element;
     
 private:
@@ -49,12 +47,11 @@ public:
 
 public:
 
-    gsExprEvaluator() : m_exprdata(gsExprHelper<T>::New()), mesh_ptr(NULL),
+    gsExprEvaluator() : m_exprdata(gsExprHelper<T>::New()),
     m_options(defaultOptions()) { }
 
     gsExprEvaluator(const gsExprAssembler<T> & o)
-    : m_exprdata(o.exprData()), mesh_ptr(&o.integrationElements()),
-      m_options(defaultOptions())
+    : m_exprdata(o.exprData()), m_options(defaultOptions()) //++
     { }
 
     gsOptionList defaultOptions()
@@ -76,7 +73,8 @@ public:
     gsAsConstMatrix<T> allValues(index_t nR, index_t nC) const
     { return gsAsConstMatrix<T>(m_elWise, nR, nC); }
     
-    void setIntegrationElements(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
+    void setIntegrationElements(const gsMultiBasis<T> & mesh)
+    { m_exprdata->setMultiBasis(mesh); }
 
     geometryMap setMap(const gsMultiPatch<T> & mp) //conv->tmp->error
     { return m_exprdata->setMap(mp); }
@@ -125,7 +123,7 @@ public:
 
 	template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr)
-    { return computeInterface_impl<E,plus_op>(expr, mesh_ptr->topology().interfaces()); }
+    { return computeInterface_impl<E,plus_op>(expr, m_exprdata.multiBasis().topology().interfaces()); }
 
 	template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr, const intContainer & iFaces)
@@ -195,7 +193,7 @@ public:
                        unsigned nPts = 3000, bool mesh = true)
     {
         //embed topology
-        const index_t n = mesh_ptr->nBases();
+        const index_t n = m_exprdata->multiBasis().nBases();
         gsParaviewCollection collection(fn);
         std::string fileName;
 
@@ -205,7 +203,7 @@ public:
         {
             fileName = fn + util::to_string(i);
 
-            ab = mesh_ptr->piece(i).support();
+            ab = m_exprdata->multiBasis().piece(i).support();
             gsGridIterator<T,CUBE> pt(ab, nPts);
             eval(expr, pt, i);
             nPts = pt.numPoints();
@@ -223,7 +221,7 @@ public:
             if ( mesh ) 
             {
                 fileName+= "_mesh";
-                gsMesh<T> msh(mesh_ptr->basis(i), 2);
+                gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
                 static_cast<const gsGeometry<>&>(G.source().piece(i)).evaluateMesh(msh);
                 gsWriteParaview(msh, fileName, false);
                 collection.addPart(fileName, ".vtp");
@@ -286,6 +284,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     gsVector<T> quWeights; // quadrature weights
 
     // initialize flags
+    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
     m_exprdata->setFlags(expr, SAME_ELEMENT, SAME_ELEMENT);
 
     // Computed value
@@ -293,14 +292,14 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     m_value = _op::init();
     m_elWise.clear();
         
-    for (unsigned patchInd=0; patchInd < mesh_ptr->nBases(); ++patchInd)
+    for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         // Quadrature rule
-        QuRule = gsGaussRule<T>(mesh_ptr->basis(patchInd), m_options);
+        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
-            mesh_ptr->piece(patchInd).makeDomainIterator();
+            m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
         m_element.set(*domIt);
         
         // Start iteration over elements
@@ -348,17 +347,17 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
     m_elWise.clear();
     
     for (typename gsBoxTopology::const_biterator bit = //!! not multipatch!
-             mesh_ptr->topology().bBegin(); bit != mesh_ptr->topology().bEnd(); ++bit)
+             m_exprdata->multiBasis().topology().bBegin(); bit != m_exprdata->multiBasis().topology().bEnd(); ++bit)
     {
         // Quadrature rule
-        QuRule = gsGaussRule<T>(mesh_ptr->basis(bit->patch), m_options,
+        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(bit->patch), m_options,
                                 bit->direction());
         
         m_exprdata->mapData.side = bit->side();
         
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
-            mesh_ptr->piece(bit->patch).makeDomainIterator(bit->side());
+            m_exprdata->multiBasis().piece(bit->patch).makeDomainIterator(bit->side());
         m_element.set(*domIt);
             
         // Start iteration over elements
@@ -412,14 +411,14 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 		const int patch1 = iFace.first().patch;
 		const int patch2 = iFace.second().patch;
         // Quadrature rule
-        QuRule = gsGaussRule<T>(mesh_ptr->basis(patch1), m_options,
+        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patch1), m_options,
                                 iFace.first().side().direction());
 
         m_exprdata->mapData.side = iFace.first().side();
         
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
-            mesh_ptr->basis(patch1).makeDomainIterator(iFace.first().side());
+            m_exprdata->multiBasis().basis(patch1).makeDomainIterator(iFace.first().side());
         m_element.set(*domIt);
             
         // Start iteration over elements
@@ -505,6 +504,7 @@ typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
 gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
                          const index_t patchInd)
 {
+    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE);
     m_exprdata->setFlags(expr);
     m_elWise.clear();
     m_exprdata->points() = pt;
