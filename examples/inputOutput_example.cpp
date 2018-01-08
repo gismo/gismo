@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
     //! [Parse command line]
 
     //! [Read geometry]
-    if (!gsFileManager::find(input))
+    if (!gsFileManager::fileExists(input))
     {
         gsWarn << "The file cannot be found!\n";
         return 1;
