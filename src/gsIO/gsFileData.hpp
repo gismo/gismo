@@ -52,8 +52,8 @@ gsFileData<T>::gsFileData(String const & fn)
     data->makeRoot();
 
     m_lastPath = gsFileManager::find(fn);
-    if ( m_lastPath.empty() )
-        gsWarn<<"gsFileData: Input file Problem: "<<fn<<" not found\n";
+    GISMO_ENSURE( !m_lastPath.empty(),
+                  "gsFileData: Input file problem: "<<fn<<" not found\n");
 
     this->read(m_lastPath);
 }
