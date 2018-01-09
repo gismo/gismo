@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     bool toxml =1;
     bool noSmooth = false;
     bool writePatchNumbers = false;
-    std::string filename = "/off/mushroom_triangulated.off";
+    std::string filename = "off/mushroom_triangulated.off";
     real_t cutoffAngle = 40.0;
     real_t innerAngle = 15.0;
     real_t patchAreaWeight = 0.2;

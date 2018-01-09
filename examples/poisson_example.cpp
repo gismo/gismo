@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     //patches = safe( new gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare(2)));
 
     // Geometry can also be read from file :
-    //patches = gsReadFile<>("/planar/lshape_p2.xml");
+    //patches = gsReadFile<>("planar/lshape_p2.xml");
 
     // Define Boundary conditions. Note that if one boundary is
     // "free", eg. if no condition is defined, then it is a natural

@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
     //! [GetGeometryData]
     // Read xml and create gsMultiPatch
-    string fileSrc( "/planar/lshape2d_3patches_thb.xml" );
+    string fileSrc( "planar/lshape2d_3patches_thb.xml" );
     gsMultiPatch<real_t> patches;
     gsReadFile<real_t>( fileSrc, patches);
     //! [GetGeometryData]
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
 
     //! [GetGeometryDataTens]
-    string fileSrcTens( "/planar/lshape2d_3patches_tens.xml" );
+    string fileSrcTens( "planar/lshape2d_3patches_tens.xml" );
     gsMultiPatch<real_t> patchesTens;
     gsReadFile<real_t>( fileSrcTens, patchesTens);
     patchesTens.computeTopology();

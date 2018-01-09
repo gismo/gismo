@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     // Read geometry from file
     //! [GetGeometryData]
     // Read xml and create gsMultiPatch
-    string fileSrc( "/planar/lshape2d_3patches_thb.xml" );
+    string fileSrc( "planar/lshape2d_3patches_thb.xml" );
     gsMultiPatch<real_t> patches;
     gsReadFile<real_t>( fileSrc, patches);
     //! [GetGeometryData]
