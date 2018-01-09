@@ -797,12 +797,12 @@ public:
     /// \code
     /// basis->uniformRefine (nKnots, mul)
     /// basis->uniformCoarsen(nKnots);
-    /// \code
+    /// \endcode
     /// results in no overall change in "basis". However,
     /// \code
     /// basis->uniformCoarsen(nKnots);
     /// basis->uniformRefine (nKnots, mul)
-    /// \code
+    /// \endcode
     /// is not guaranteed to keep "basis" unchanged.
     ///
     /// \sa gsBasis::uniformRefine
