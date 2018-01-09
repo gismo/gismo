@@ -877,7 +877,7 @@ void gsTensorBasis<d,T>::uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKno
     // Could be done more efficiently if needed.
     gsSparseMatrix<T, RowMajor> transfer;
     this->uniformCoarsen_withTransfer( transfer, numKnots );
-    coefs = transfer * coefs;
+    coefs = transfer.transpose() * coefs;
 }
 
 

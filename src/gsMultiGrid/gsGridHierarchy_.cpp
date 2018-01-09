@@ -31,24 +31,6 @@ void uniformRefine_withTransfer(
     );
 
 TEMPLATE_INST
-gsTensorBSplineBasis<1, real_t>::uPtr coarsenTensorBasis(const gsTensorBSplineBasis<1, real_t>& b, std::vector< std::vector<real_t> > & removedKnots);
-
-TEMPLATE_INST
-gsTensorBSplineBasis<2, real_t>::uPtr coarsenTensorBasis(const gsTensorBSplineBasis<2, real_t>& b, std::vector< std::vector<real_t> > & removedKnots);
-
-TEMPLATE_INST
-gsTensorBSplineBasis<3, real_t>::uPtr coarsenTensorBasis(const gsTensorBSplineBasis<3, real_t>& b, std::vector< std::vector<real_t> > & removedKnots);
-
-TEMPLATE_INST
-gsTensorBSplineBasis<4, real_t>::uPtr coarsenTensorBasis(const gsTensorBSplineBasis<4, real_t>& b, std::vector< std::vector<real_t> > & removedKnots);
-
-TEMPLATE_INST
-gsBasis<real_t>::uPtr coarsenBasis(const gsBasis<real_t> & b, std::vector< std::vector<real_t> >& removedKnots);
-
-TEMPLATE_INST
-gsBasis<real_t>::uPtr _coarsenBasis_withTransfer(const gsBasis<real_t>& b, gsSparseMatrix<real_t, RowMajor>& transferMatrix);
-
-TEMPLATE_INST
 void coarsenMultiBasis_withTransfer(
     const gsMultiBasis<real_t>& mBasis,
     const gsBoundaryConditions<real_t>& boundaryConditions,

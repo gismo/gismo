@@ -1077,18 +1077,17 @@ void gsTensorBSplineBasis<1,T>::uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int
     // Could be done more efficiently if needed.
     gsSparseMatrix<T, RowMajor> transfer;
     this->uniformCoarsen_withTransfer( transfer, numKnots );
-    coefs = transfer * coefs;
+    coefs = transfer.transpose() * coefs;
 }
 
 
 template <class T>
 void gsTensorBSplineBasis<1,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots)
 {
-    // Simple implementation: coarsen and refine again
+    // Simple implementation: coarsen and refine again.
+    // Could be done more efficiently if needed.
     std::vector<T> removedKnots = m_knots.coarsen(numKnots);
-    gsSparseMatrix<T,RowMajor> tmp;
-    this->refine_withTransfer( tmp, removedKnots );
-    transfer = tmp.transpose();
+    this->clone()->refine_withTransfer( transfer, removedKnots );
 }
 
 template <class T>

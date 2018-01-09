@@ -886,15 +886,18 @@ coarsen(index_t knotRemove, index_t knotSkip, mult_t mul)
     if (0==knotRemove) return removedKnots;
     
     // knots to be removed
-    removedKnots.reserve( this->uSize() / (knotRemove+knotSkip) );
+    removedKnots.reserve( knotRemove * this->uSize() / (knotRemove+knotSkip) );
     
     uiterator it   = domainUBegin() + 1;
     uiterator last = domainUEnd();
 
     for(; it<last; it += knotSkip)
         for(index_t c = 0; it!=last && c!=knotRemove; ++c, ++it)
-            removedKnots.insert(removedKnots.end(), it.value(),
-                                (std::min<mult_t>)(mul, it.multiplicity() ) );
+            for(index_t d=0; d<mul && d<it.multiplicity(); ++d)
+                removedKnots.push_back(it.value());
+    //TODO: the following code does seamingly not work:
+    //      removedKnots.insert(removedKnots.end(), it.value(),
+    //                    (std::min<mult_t>)(mul, it.multiplicity() ) );
     
     // copy non-removed knots into coarseKnots
     coarseKnots.reserve(m_repKnots.size()-removedKnots.size());

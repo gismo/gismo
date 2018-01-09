@@ -253,32 +253,6 @@ inline void uniformRefine_withTransfer(
     uniformRefine_withTransfer( mBasis, boundaryConditions, assemblerOptions, 1, 1, refinedMBasis, transferMatrix );
 }
 
-/// @brief This function coarsens a tensor B-spline basis
-///
-/// @param b[in]                         The initial basis
-/// @param transferMatrix[out]           The transfer matrix
-/// @return                              The coarsened basis
-///
-/// \ingroup Solver
-template <typename T>
-typename gsBasis<T>::uPtr _coarsenBasis_withTransfer(const gsBasis<T>& b, gsSparseMatrix<T, RowMajor>& transferMatrix);
-
-template <typename T>
-typename gsBasis<T>::uPtr coarsenBasis_withTransfer(const gsBasis<T>& b, gsSparseMatrix<T, RowMajor>& transferMatrix)
-{
-    typename gsBasis<T>::uPtr result1 = _coarsenBasis_withTransfer(b, transferMatrix);
-    
-    
-    typename gsBasis<T>::uPtr result2 = b.clone();
-    gsSparseMatrix<T, RowMajor> transferMatrix2;
-    result2->uniformCoarsen_withTransfer(transferMatrix2);
-    
-    GISMO_ENSURE((transferMatrix - transferMatrix2).norm() < 1.e-10, "Transfer matrices do not agree" );
-    //TODO: GISMO_ENSURE(*result1 == *result2, "Kot vectors do not agree" );
-    
-    return result1;
-}
-
 
 /// @brief This function coarsens the bases of a gsMultiBasis and provides the transfer matrix.
 ///
@@ -341,6 +315,15 @@ void combineTransferMatrices(
     gsSparseMatrix<T, RowMajor>& transferMatrix
     );
 
+
+/// COMPATABILITY WRAPPER
+template <typename T>
+GISMO_DEPRECATED typename gsBasis<T>::uPtr coarsenBasis_withTransfer(const gsBasis<T>& b, gsSparseMatrix<T, RowMajor>& transferMatrix)
+{
+    typename gsBasis<T>::uPtr result = b.clone();
+    result->uniformCoarsen_withTransfer(transferMatrix);
+    return result;
+}
 
 } // namespace gismo
 
