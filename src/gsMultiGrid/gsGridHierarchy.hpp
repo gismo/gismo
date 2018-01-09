@@ -175,7 +175,10 @@ void coarsenMultiBasis_withTransfer(
 
     // setup patchwise without boundary conditions
     for (index_t i=0; i<nBases; ++i )
-        coarsenedBases[i] = coarsenBasis_withTransfer( mBasis[i], localTransferMatrices[i] ).release();
+    {
+        coarsenedBases[i] = mBasis[i].clone().release();
+        coarsenedBases[i]->uniformCoarsen_withTransfer(localTransferMatrices[i]);
+    }
 
     // setup the new multibasis object with coarsened bases and old topology
     coarsenedMBasis = gsMultiBasis<>(coarsenedBases, mBasis.topology());

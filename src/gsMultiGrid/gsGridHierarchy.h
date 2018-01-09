@@ -315,16 +315,6 @@ void combineTransferMatrices(
     gsSparseMatrix<T, RowMajor>& transferMatrix
     );
 
-
-/// COMPATABILITY WRAPPER
-template <typename T>
-GISMO_DEPRECATED typename gsBasis<T>::uPtr coarsenBasis_withTransfer(const gsBasis<T>& b, gsSparseMatrix<T, RowMajor>& transferMatrix)
-{
-    typename gsBasis<T>::uPtr result = b.clone();
-    result->uniformCoarsen_withTransfer(transferMatrix);
-    return result;
-}
-
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
