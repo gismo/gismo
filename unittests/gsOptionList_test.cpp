@@ -319,8 +319,7 @@ SUITE(gsOptionList_test)
      */
     TEST(load_from_assembler_options_xml)
     {
-        std::string path(GISMO_DATA_DIR);
-        path += util::to_string("options") + util::SEPARATOR + util::to_string("assembler_options.xml");
+        std::string path = gsFileManager::find( "options/assembler_options.xml" );
         gsOptionList myList = loadFromFile(path);
         checkAssemblerOptions(myList);
     }
@@ -330,8 +329,7 @@ SUITE(gsOptionList_test)
      */
     TEST(load_from_optionlist_xml)
     {
-        std::string path(GISMO_DATA_DIR);
-        path += util::to_string("options") + util::SEPARATOR + util::to_string("optionlist.xml");
+        std::string path = gsFileManager::find( "options/optionlist.xml" );
         gsOptionList myList = loadFromFile(path);
         CHECK_EQUAL(4, myList.size());
 
@@ -390,8 +388,7 @@ SUITE(gsOptionList_test)
     TEST(loading_saving_loading_assembler_options)
     {
         // loading
-        std::string path(GISMO_DATA_DIR);
-        path += util::to_string("options") + util::SEPARATOR + util::to_string("assembler_options.xml");
+        std::string path = gsFileManager::find( "options/assembler_options.xml" );
         gsOptionList myList = loadFromFile(path);
         // saving
         std::string actual = gismo::util::getTempPath();

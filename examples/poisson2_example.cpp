@@ -67,7 +67,6 @@ int main(int argc, char *argv[])
     gsMultiPatch<>::uPtr geo;
     if ( fn_pde.empty() )
     {
-        fn_pde = GISMO_DATA_DIR;
         if ( !fn.empty() )
         {
             geo = gsReadFile<>( fn );
@@ -79,20 +78,20 @@ int main(int argc, char *argv[])
             switch ( geo->geoDim() )
             {
             case 1:
-                fn_pde+="/pde/poisson1d_sin.xml";
+                fn_pde="pde/poisson1d_sin.xml";
                 break;
             case 2:
-                fn_pde+="/pde/poisson2d_sin.xml";
+                fn_pde="pde/poisson2d_sin.xml";
                 break;
             case 3:
-                fn_pde+="/pde/poisson3d_sin.xml";
+                fn_pde="pde/poisson3d_sin.xml";
                 break;
             default:
                 return EXIT_FAILURE;
             }
         }
         else
-        fn_pde+="/pde/poisson2d_sin.xml";
+            fn_pde="pde/poisson2d_sin.xml";
     }
 
     memory::unique_ptr< gsPoissonPde<> > ppde = gsReadFile<>(fn_pde);
@@ -100,23 +99,22 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>::uPtr exactSol = gsReadFile<>(fn_pde, 100);
     if ( !ppde )
     {
-        gsWarn<< "Did not find any PDE in "<< fn<<", quitting.\n";
+        gsWarn<< "Did not find any PDE in "<<fn<<", quitting.\n";
         return EXIT_FAILURE;
     }
 
     if ( fn.empty() )
     {
-        fn = GISMO_DATA_DIR;
         switch ( ppde->m_compat_dim )
         {
         case 1:
-            fn+= "domain1d/bspline1d_01.xml";
+            fn= "domain1d/bspline1d_01.xml";
             break;
         case 2:
-            fn+= "domain2d/square.xml";
+            fn= "domain2d/square.xml";
             break;
         case 3:
-            fn+= "domain3d/cube.xml";
+            fn= "domain3d/cube.xml";
             break;
         default:
             return EXIT_FAILURE;

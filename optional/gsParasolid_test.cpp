@@ -27,7 +27,7 @@ using extensions::gsWriteParasolid;
 
 int main(int argc, char *argv[])
 {
-    std::string fn = GISMO_DATA_DIR "surfaces/simple.xml";
+    std::string fn = "surfaces/simple.xml";
 
     gsCmdLine cmd("Hi, give me a file and I will read the contents to/from Parasolid.");
     cmd.addPlainString("filename", "G+SMO or Parasolid file", fn);

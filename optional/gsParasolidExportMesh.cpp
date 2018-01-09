@@ -24,7 +24,7 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
 
-    std::string input(GISMO_DATA_DIR "/surfaces/thbs_face_3levels.xml");
+    std::string input("surfaces/thbs_face_3levels.xml");
     std::string output("out");
 
     gsCmdLine cmd("Ploting a geometry to paradolid wire geometry.");
