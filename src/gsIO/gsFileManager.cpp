@@ -60,8 +60,7 @@ gsFileManagerData& gsFileManagerDataSingleton()
 
 bool gsFileManager::fileExists(const std::string& name)
 {
-    std::ifstream f(name.c_str());
-    return f.good();
+    return !find(name).empty();
 }
 
 char gsFileManager::getLocalPathSeperator()
@@ -156,30 +155,28 @@ std::string gsFileManager::getSearchPaths()
     return result;
 }
 
-bool gsFileManager::find( std::string& fn )
+std::string gsFileManager::find(std::string fn)
 {
 #if defined _WIN32
     _replace_slash_by_basckslash(fn);
 #endif
 
-    if ( fileExists(fn) ) return true;
+    if ( std::ifstream(fn.c_str()).good() ) return fn;
 
-    if ( isFullyQualified(fn) || isRelative(fn) ) return false;
+    if ( isFullyQualified(fn) || isRelative(fn) ) return std::string();
 
     gsFileManagerData& dat = gsFileManagerDataSingleton();
 
+    std::string tmp;
     for (std::vector<std::string>::const_iterator it = dat.m_paths.begin();
             it < dat.m_paths.end(); ++it)
     {
-        const std::string tmp = (*it) + fn;
-        if ( fileExists( tmp ) )
-        {
-            fn = tmp;
-            return true;
-        }
+        tmp = (*it) + fn;
+        if ( std::ifstream(tmp.c_str()).good() )
+            return tmp;
     }
 
-    return false;
+    return std::string();
 }
 
 bool gsFileManager::mkdir( std::string fn )

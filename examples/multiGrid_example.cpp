@@ -56,10 +56,10 @@ int main(int argc, char *argv[])
     if (dg)         { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::dg         ); opt.remove( "DG" ); }
     else            { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::conforming ); opt.remove( "DG" ); }
 
-
-    if ( ! gsFileManager::find(geometry) )
+    geometry = gsFileManager::find(geometry);
+    if ( geometry.empty() )
     {
-        gsInfo << "Geometry file " << geometry << " could not be found.\n";
+        gsInfo << "Geometry file could not be found.\n";
         gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
         return EXIT_FAILURE;
     }

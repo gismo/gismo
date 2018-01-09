@@ -402,11 +402,11 @@ public:
     /// @brief Returns the indices of active (nonzero) functions at
     /// points \a u, as a list of indices.
     /// \sa active_into()
-    typename gsMatrix<unsigned>::uPtr active(const gsMatrix<T> & u) const
+    gsMatrix<unsigned> active(const gsMatrix<T> & u) const
     {
-        gsMatrix<unsigned> * ptr = new gsMatrix<unsigned>;
-        this->active_into(u, *ptr);
-        return gsMatrix<unsigned>::uPtr(ptr);
+        gsMatrix<unsigned> rvo;
+        this->active_into(u, rvo);
+        return rvo;
     }
 
     /*
