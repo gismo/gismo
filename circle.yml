@@ -12,10 +12,11 @@ machine:
 
 dependencies:
   pre:
-    #- sudo add-apt-repository ppa:kalakris/cmake -y; sudo apt-get update -qq; sudo apt-get install cmake valgrind
-    - sudo apt-get install cmake valgrind clang-3.5
+    #- sudo add-apt-repository ppa:kalakris/cmake -y; sudo apt-get update -qq; sudo apt-get install cmake valgrind # for U.Precise
+    - sudo apt-get install valgrind clang-3.5
+    - sudo ln -fs /usr/lib/libcurl.so.4 /usr/local/lib/
   override:
-    - mkdir build_clang; cd build_clang; CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake .. -DSITE="circleci.com" -DGISMO_BUILD_UNITTESTS=ON
+    - mkdir build_clang; cd build_clang; CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake .. -DSITE="circleci.com" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11
     - mkdir build; cd build; CC=/usr/bin/cc CXX=/usr/bin/g++ cmake .. -DSITE="circleci.com" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98
 test:
   override:
