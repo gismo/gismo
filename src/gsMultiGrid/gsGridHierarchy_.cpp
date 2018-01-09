@@ -18,34 +18,4 @@ namespace gismo
 
 CLASS_TEMPLATE_INST gsGridHierarchy<real_t>;
 
-TEMPLATE_INST
-void uniformRefine_withTransfer(
-    const gsMultiBasis<real_t>& mBasis,
-    const gsBoundaryConditions<real_t>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
-    index_t numberOfKnotsToBeInserted,
-    index_t multiplicityOfKnotsToBeInserted,
-    gsMultiBasis<real_t> & refinedMBasis,
-    gsSparseMatrix<real_t, RowMajor>& transferMatrix,
-    std::vector< gsSparseMatrix<real_t, RowMajor> >& localTransferMatrices
-    );
-
-TEMPLATE_INST
-void coarsenMultiBasis_withTransfer(
-    const gsMultiBasis<real_t>& mBasis,
-    const gsBoundaryConditions<real_t>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
-    gsMultiBasis<real_t> & refinedMBasis,
-    gsSparseMatrix<real_t, RowMajor>& transferMatrix,
-    std::vector< gsSparseMatrix<real_t, RowMajor> >& localTransferMatrices
-    );
-
-TEMPLATE_INST
-void combineTransferMatrices(
-    const std::vector< gsSparseMatrix<real_t, RowMajor> >& localTransferMatrices,
-    const gsDofMapper& coarseMapper,
-    const gsDofMapper& fineMapper,
-    gsSparseMatrix<real_t, RowMajor>& transferMatrix
-    );
-
 } // namespace gismo
