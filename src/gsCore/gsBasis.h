@@ -812,7 +812,7 @@ public:
     /// of coefficients accordingly
     ///
     /// \sa gsBasis::uniformCoarsen
-    virtual void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
+    virtual void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1); //TODO: there is a semantic issue that has to be discussed!
 
     /// @brief Coarsen the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
