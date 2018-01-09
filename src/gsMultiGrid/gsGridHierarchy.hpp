@@ -40,7 +40,6 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
     result.m_options = options,
     result.m_mBases.resize(levels);
     result.m_transferMatrices.resize(levels-1);
-    result.m_localTransferMatrices.resize(levels-1);
     result.m_mBases[0] = give(mBasis);
     for ( index_t i=1; i<levels; ++i )
         uniformRefine_withTransfer(
@@ -50,8 +49,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
             numberOfKnotsToBeInserted,
             multiplicityOfKnotsToBeInserted,
             result.m_mBases[i],
-            result.m_transferMatrices[i-1],
-            result.m_localTransferMatrices[i-1]
+            result.m_transferMatrices[i-1]
         );
     return result;
 }
@@ -77,14 +75,12 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
     {
         gsMultiBasis<T> coarseMBasis;
         gsSparseMatrix<T, RowMajor> transferMatrix;
-        std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices;
         coarsenMultiBasis_withTransfer(
             result.m_mBases[i],
             boundaryConditions,
             options,
             coarseMBasis,
-            transferMatrix,
-            localTransferMatrices
+            transferMatrix
         );
 
         index_t newSize = coarseMBasis.totalSize();
@@ -97,12 +93,10 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
 
         result.m_mBases.push_back(give(coarseMBasis));
         result.m_transferMatrices.push_back(give(transferMatrix));
-        result.m_localTransferMatrices.push_back(give(localTransferMatrices));
     }
 
     std::reverse( result.m_mBases.begin(), result.m_mBases.end() );
     std::reverse( result.m_transferMatrices.begin(), result.m_transferMatrices.end() );
-    std::reverse( result.m_localTransferMatrices.begin(), result.m_localTransferMatrices.end() );
 
     return result;
 }

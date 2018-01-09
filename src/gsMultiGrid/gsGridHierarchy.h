@@ -141,7 +141,6 @@ public:
         //m_options.clear();
         m_mBases.clear();
         m_transferMatrices.clear();
-        m_localTransferMatrices.clear();
     }
 
     /// Get the vector of multi bases (by reference)
@@ -158,13 +157,6 @@ public:
     gsGridHierarchy& moveTransferMatricesTo( std::vector< gsSparseMatrix<T, RowMajor> >& o )
     { o = give(m_transferMatrices); return *this; }
 
-    /// Get the vector of local transfer matrices (by reference)
-    const std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& getLocalTransferMatrices() const
-    { return m_localTransferMatrices; }
-    /// Get the vector of local transfer matrices
-    gsGridHierarchy& moveLocalTransferMatricesTo( std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& o )
-    { o = give(m_localTransferMatrices); return *this; }
-
     /// Get the boundary conditions
     const gsBoundaryConditions<T>& getBoundaryConditions() const
     { return m_boundaryConditions; }
@@ -175,34 +167,8 @@ private:
 
     std::vector< gsMultiBasis<T> > m_mBases;
     std::vector< gsSparseMatrix<T, RowMajor> > m_transferMatrices;
-    std::vector< std::vector< gsSparseMatrix<T, RowMajor> > > m_localTransferMatrices;
 };
 
-// incomplete COMPATABILITY WRAPPER
-template <typename T>
-void uniformRefine_withTransfer(
-    const gsMultiBasis<T>& mBasis,
-    const gsBoundaryConditions<T>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
-    index_t numberOfKnotsToBeInserted,
-    index_t multiplicityOfKnotsToBeInserted,
-    gsMultiBasis<T> & refinedMBasis,
-    gsSparseMatrix<T, RowMajor>& transferMatrix,
-    std::vector< gsSparseMatrix<T, RowMajor> >& localTransferMatrices
-    )
-{
-    localTransferMatrices.resize(0); // We cannot provide that (TODO)
-    refinedMBasis = mBasis;
-    refinedMBasis.uniformRefine_withTransfer(
-        transferMatrix,
-        boundaryConditions,
-        assemblerOptions,
-        numberOfKnotsToBeInserted,
-        multiplicityOfKnotsToBeInserted
-    );
-    
-}
-
 // COMPATABILITY WRAPPER
 template <typename T>
 inline void uniformRefine_withTransfer(
@@ -244,26 +210,6 @@ inline void uniformRefine_withTransfer(
 }
 
 
-// incomplete COMPATABILITY WRAPPER
-template <typename T>
-void coarsenMultiBasis_withTransfer(
-    const gsMultiBasis<T>& mBasis,
-    const gsBoundaryConditions<T>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
-    gsMultiBasis<T> & coarsenedMBasis,
-    gsSparseMatrix<T, RowMajor>& transferMatrix,
-    std::vector< gsSparseMatrix<T, RowMajor> >& localTransferMatrices
-    )
-{
-    localTransferMatrices.resize(0); // We cannot provide that (TODO)
-    coarsenedMBasis = mBasis;
-    coarsenedMBasis.uniformCoarsen_withTransfer(
-        transferMatrix,
-        boundaryConditions,
-        assemblerOptions
-    );
-    
-}
 
 // COMPATABILITY WRAPPER
 template <typename T>
