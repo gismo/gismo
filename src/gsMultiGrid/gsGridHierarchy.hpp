@@ -42,15 +42,16 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
     result.m_transferMatrices.resize(levels-1);
     result.m_mBases[0] = give(mBasis);
     for ( index_t i=1; i<levels; ++i )
-        uniformRefine_withTransfer(
-            result.m_mBases[i-1],
+    {
+        result.m_mBases[i] = result.m_mBases[i-1];
+        result.m_mBases[i].uniformRefine_withTransfer(
+            result.m_transferMatrices[i-1],
             result.m_boundaryConditions,
             result.m_options,
             numberOfKnotsToBeInserted,
-            multiplicityOfKnotsToBeInserted,
-            result.m_mBases[i],
-            result.m_transferMatrices[i-1]
+            multiplicityOfKnotsToBeInserted
         );
+    }
     return result;
 }
 
@@ -73,15 +74,14 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
 
     for (int i = 0; i < levels && lastSize > degreesOfFreedom; ++i)
     {
-        gsMultiBasis<T> coarseMBasis;
         gsSparseMatrix<T, RowMajor> transferMatrix;
-        coarsenMultiBasis_withTransfer(
-            result.m_mBases[i],
+        gsMultiBasis<T> coarseMBasis = result.m_mBases[i];
+        coarseMBasis.uniformCoarsen_withTransfer(
+            transferMatrix,
             boundaryConditions,
-            options,
-            coarseMBasis,
-            transferMatrix
+            options
         );
+
 
         index_t newSize = coarseMBasis.totalSize();
         // If the number of dofs could not be decreased, then cancel. However, if only the number
