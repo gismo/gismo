@@ -30,10 +30,10 @@ gsMultiBasis<T>::gsMultiBasis( const gsBasis<T> & bb )
 }
 
 template<class T>
-gsMultiBasis<T>::gsMultiBasis( const gsMultiPatch<T> & mpatch )
-: m_topology( mpatch )
+gsMultiBasis<T>::gsMultiBasis( const gsMultiPatch<T> & mpatch, bool NoRational)
+: m_topology( mpatch.topology() )
 {
-    m_bases = mpatch.basesCopy();
+    m_bases = mpatch.basesCopy(NoRational);
 }
   
 template<class T>

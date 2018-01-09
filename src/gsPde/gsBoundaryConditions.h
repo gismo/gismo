@@ -505,10 +505,13 @@ public:
     /// Prints the object as a string.
     std::ostream & print(std::ostream &os) const
     {
-        os << "gsBoundaryConditions :\n";
+        //os << "gsBoundaryConditions :\n";
         for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end(); ++it)
             os << "* "<<std::setw(13)<<std::left<<it->first<<" : "<< it->second.size() <<"\n";
-        os << "* Corner values : "<< corner_values.size() <<"\n";
+
+        if (!corner_values.empty())
+            os << "* Corner values : "<< corner_values.size() <<"\n";
+
         return os;
     }
 
