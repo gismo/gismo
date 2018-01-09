@@ -1,3 +1,4 @@
+
 /** @file gsBasis.h
 
     @brief Provides declaration of Basis abstract interface.
@@ -801,7 +802,7 @@ public:
     virtual void degreeDecrease(int const & i = 1, int const dir = -1); 
 
     /// @brief Set the degree of the basis (either elevate or
-    /// reduce) in order to have degree equal to \a i
+    /// reduce) in order to have degree equal to \a i wrt to each variable
     void setDegree(int const& i);
     
     /// @brief Set the degree of the basis (either increase or

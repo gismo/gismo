@@ -480,8 +480,22 @@ void gsBasis<T>::degreeDecrease(int const & i, int dir)
 
 template<class T>
 void gsBasis<T>::setDegree(int const& i)
-{ 
-    //TODO: If the degree is not the same in all directions, then this does not what is specified
+{
+    const int dm = this->dim();
+    for (int k = 0; k!=dm; ++k)
+    {
+        const int p = this->degree(k);
+        if ( i > p )
+        {
+            this->degreeElevate(i-p, k);
+        }
+        else if  ( i < p )
+        {
+            //this->degreeReduce(p-i, k); // todo
+            this->degreeReduce(p-i);
+        }
+    }
+    /*
     const int p = maxDegree();
     if ( i > p )
     {
@@ -491,6 +505,7 @@ void gsBasis<T>::setDegree(int const& i)
     {
         degreeReduce(p-i); 
     }
+    */
 }
 
 template<class T>
