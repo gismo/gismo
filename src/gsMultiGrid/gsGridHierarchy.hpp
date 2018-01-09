@@ -213,7 +213,7 @@ typename gsTensorBSplineBasis<d, T>::uPtr coarsenTensorBasis_withTransfer(const 
 }
 
 template <typename T>
-typename gsBasis<T>::uPtr coarsenBasis_withTransfer(const gsBasis<T>& b, gsSparseMatrix<T, RowMajor>& transferMatrix)
+typename gsBasis<T>::uPtr _coarsenBasis_withTransfer(const gsBasis<T>& b, gsSparseMatrix<T, RowMajor>& transferMatrix)
 {
     switch (b.dim())
     {

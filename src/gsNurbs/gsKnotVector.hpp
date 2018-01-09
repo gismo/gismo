@@ -877,7 +877,7 @@ template <typename T>
 std::vector<T> gsKnotVector<T>::
 coarsen(index_t knotRemove, index_t knotSkip, mult_t mul)
 {
-    GISMO_ASSERT(knotRemove>=0 && knotKeep>0, "Invalid parameters to knot-coarsening.");
+    GISMO_ASSERT(knotRemove>=0 && knotSkip>0, "Invalid parameters to knot-coarsening.");
 
     // Special value -1
     if (-1==mul) mul = m_deg+1;

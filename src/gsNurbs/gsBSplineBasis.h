@@ -397,6 +397,16 @@ public:
 
     // Look at gsBasis class for a description
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
+    
+    // Look at gsBasis class for a description
+    void uniformCoarsen(int numKnots = 1)
+    { m_knots.coarsen(numKnots); }
+
+    // Look at gsBasis class for a description
+    void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
+
+    // Look at gsBasis class for a description
+    void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1);
 
     /// Refine the basis by inserting the given knots and perform knot
     /// refinement for the given coefficient matrix.

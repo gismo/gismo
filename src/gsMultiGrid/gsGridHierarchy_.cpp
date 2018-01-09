@@ -46,7 +46,7 @@ TEMPLATE_INST
 gsBasis<real_t>::uPtr coarsenBasis(const gsBasis<real_t> & b, std::vector< std::vector<real_t> >& removedKnots);
 
 TEMPLATE_INST
-gsBasis<real_t>::uPtr coarsenBasis_withTransfer(const gsBasis<real_t>& b, gsSparseMatrix<real_t, RowMajor>& transferMatrix);
+gsBasis<real_t>::uPtr _coarsenBasis_withTransfer(const gsBasis<real_t>& b, gsSparseMatrix<real_t, RowMajor>& transferMatrix);
 
 TEMPLATE_INST
 void coarsenMultiBasis_withTransfer(
