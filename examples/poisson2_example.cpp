@@ -1,6 +1,6 @@
-/** @file poisson2_example.cpp
+/** @file poisson_example.cpp
 
-    @brief Poisson example with command line arguments.
+    @brief Tutorial on how to use G+Smo to solve the Poisson equation
 
     This file is part of the G+Smo library.
 
@@ -8,233 +8,202 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris, J. Sogn
+    Author(s): A. Mantzaflaris
 */
 
-# include <gismo.h>
+//! [Include namespace]
+#include <gismo.h>
 
 using namespace gismo;
+//! [Include namespace]
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[]) 
 {
-
-    /////////////////// Input ///////////////////
-    std::string fn_pde("");
-    bool Nitsche  = false;
-    bool dG = false;
+    //! [Parse command line]
     bool plot = false;
-    index_t plot_pts = 1000;
-    index_t numElevate = -1;
-    index_t numRefine = 2;
-    std::string fn_basis("");
-    std::string fn("");
+    // Number for h-refinement of the computational (trial/test) basis.
+    int numRefine  = 5;
+    // Number for p-refinement of the computational (trial/test) basis.
+    int numElevate = 0;
 
-    gsCmdLine cmd( "Solves Poisson's equation with an isogeometric discretization." );
-    cmd.addString( "p", "pde", "File containing a poisson PDE (.xml)", fn_pde );
-    cmd.addSwitch( "nitsche", "Use the Nitsche's method for Dirichlet sides", Nitsche );
-    cmd.addSwitch( "discGalerkin", "Use Discontiouous Galerkin method for patch interfaces", dG );
-    cmd.addSwitch( "plot", "Plot result in ParaView format", plot );
-    cmd.addInt( "s", "plotSamples", "Number of sample points to use for plotting", plot_pts );
+    bool last = false;
+
+    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)",
-                numElevate );
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",
-                numRefine );
-    cmd.addString( "b", "basis", "File containing basis for discretization (.xml)", fn_basis );
-    cmd.addString( "g", "geometry", "File containing Geometry (.xml, .axl, .txt)", fn );
+                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
+    cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
+    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+
     cmd.getValues(argc,argv);
+    //! [Parse command line]
 
-    gsMultiBasis<> bases;
-    if ( ! fn_basis.empty() )
-    {
-        gsBasis<>::uPtr bb = gsReadFile<>( fn_basis );
-        gsInfo << "Got basis: "<< * bb<<"\n";
-        bases.addBasis(bb.release());
-    }
+    //! [Read input file]
 
-    if (numRefine<0)
-    {
-        gsInfo << "Number of refinements must be non-negative.\n";
-        return EXIT_FAILURE;
-    }
+    gsFileData<> fd("pde/poisson2d_bvp.xml");
+    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+    
+    gsMultiPatch<> mp;
+    fd.getId(0, mp);
+    //gsInfo<<"Computational domain: "<< mp << "\n";
+    //gsInfo<<"Topology:\n"<< mp.topology() <<"\n";
 
-    if (numElevate<-1)
-    {
-        gsInfo << "Number of elevations must be non-negative.\n";
-        return EXIT_FAILURE;
-    }
+    gsFunctionExpr<> f;
+    fd.getId(1, f);
+    //gsInfo<<"Source function "<< f << "\n";
 
-    gsMultiPatch<>::uPtr geo;
-    if ( fn_pde.empty() )
-    {
-        fn_pde = GISMO_DATA_DIR;
-        if ( !fn.empty() )
-        {
-            geo = gsReadFile<>( fn );
-            if ( !geo )
-            {
-                gsWarn<< "Did not find any geometry in "<<fn<<", quitting.\n";
-                return EXIT_FAILURE;
-            }
-            switch ( geo->geoDim() )
-            {
-            case 1:
-                fn_pde+="/pde/poisson1d_sin.xml";
-                break;
-            case 2:
-                fn_pde+="/pde/poisson2d_sin.xml";
-                break;
-            case 3:
-                fn_pde+="/pde/poisson3d_sin.xml";
-                break;
-            default:
-                return EXIT_FAILURE;
-            }
-        }
-        else
-        fn_pde+="/pde/poisson2d_sin.xml";
-    }
+    gsBoundaryConditions<> bc;
+    fd.getId(200, bc);
+    //gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
-    memory::unique_ptr< gsPoissonPde<> > ppde = gsReadFile<>(fn_pde);
+    //! [Read input file]
 
-    gsFunctionExpr<>::uPtr exactSol = gsReadFile<>(fn_pde, 100);
-    if ( !ppde )
-    {
-        gsWarn<< "Did not find any PDE in "<< fn<<", quitting.\n";
-        return EXIT_FAILURE;
-    }
+    //! [Refinement]
+    gsMultiBasis<> dbasis;
+    for (unsigned i = 0; i < mp.nPatches(); ++i)
+        dbasis.addBasis( mp.patch(i).basis().source().clone() );
+        //dbasis.addBasis( mp.patch(i).basis().clone() );
+    
+    dbasis.degreeElevate(1,0);
+    dbasis.setTopology(mp);
+    //gsInfo<<"Topology:\n"<< mp.topology() <<"\n";
 
-    if ( fn.empty() )
-    {
-        fn = GISMO_DATA_DIR;
-        switch ( ppde->m_compat_dim )
-        {
-        case 1:
-            fn+= "domain1d/bspline1d_01.xml";
-            break;
-        case 2:
-            fn+= "domain2d/square.xml";
-            break;
-        case 3:
-            fn+= "domain3d/cube.xml";
-            break;
-        default:
-            return EXIT_FAILURE;
-        }
-    }
-
-    geo = gsReadFile<>( fn );
-    if ( !geo )
-    {
-        gsInfo << "Did not find any geometries in "<< fn<<", quitting.\n";
-        return EXIT_FAILURE;
-    }
-
-    /////////////////// Print info ///////////////////
-    gsInfo<<"Domain: "<< *geo <<"\n";
-    gsInfo<<"Number of patches are " << geo->nPatches() << "\n";
-    gsInfo<<"Source function "<< *ppde->rhs() << "\n";
-    gsInfo<<"Exact solution "<< *exactSol << "\n\n";
-    gsInfo<<"p-refinent steps before solving: "<< numElevate <<"\n";
-    gsInfo<<"h-refinent steps before solving: "<< numRefine <<"\n";
-
-    gsInfo<< * ppde <<"\n";
-
-    /////////////////// Setup boundary conditions ///////////////////
-    // Define Boundary conditions
-    gsBoundaryConditions<> bcInfo;
-
-    ppde->patches() = *geo;
-
-    // Create Dirichlet boundary conditions for all boundaries
-    for (gsMultiPatch<>::const_biterator
-         bit = geo->bBegin(); bit != geo->bEnd(); ++bit)
-    {
-        bcInfo.addCondition( *bit, condition_type::dirichlet, exactSol.get() );
-    }
-
-    ppde->boundaryConditions() = bcInfo;
-
-    /////////////////// Refinement h and p ///////////////////
-    if ( bases.nBases() == 0 )
-        bases = gsMultiBasis<>(*geo);
-
-    // Elevate and refine the solution space
+    // Elevate and p-refine the basis to order k + numElevate
+    // where k is the highest degree in the bases
     if ( numElevate > -1 )
     {
-        // get maximum degree
-        int tmp = bases.maxDegree(0);
-
+        // Find maximum degree with respect to all the variables
+        int max_tmp = dbasis.maxCwiseDegree();
+        
         // Elevate all degrees uniformly
-        tmp += numElevate;
-        for (size_t j = 0; j < bases.nBases(); ++j )
-                bases[j].setDegree(tmp);
+        max_tmp += numElevate;
+        dbasis.setDegree(max_tmp);
     }
 
-    // Refining the basis
-    for (size_t j = 0; j < bases.nBases(); ++j )
-        for (int i = 0; i < numRefine; ++i)
-            bases[j].uniformRefine();
-
-    gsInfo << "Discrete space 0: "<< bases[0] << "\n";
-
-
-    /////////////////// Setup solver ///////////////////
-    //Initialize Solver
-
-    gsPoissonAssembler<real_t> PoissonAssembler;
-
-    gsOptionList options = PoissonAssembler.defaultOptions();
-    //Use Nitsche's method for Dirichlet boundaries
-    if ( Nitsche )
+    // h-refine each basis
+    if (last)
     {
-        gsInfo<<"Using Nitsche's method for Dirichlet boundaries.\n";
-        options.setInt("DirichletStrategy", dirichlet::nitsche);
+        for (int r =0; r < numRefine-1; ++r)
+            dbasis.uniformRefine();
+        numRefine = 0;
     }
+    
+    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+    //! [Refinement]
+    
+    //! [Problem setup]
+    gsExprAssembler<real_t> A(1,1);
+    //gsInfo<<"Active options:\n"<< A.options() <<"\n";
+    typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+    typedef gsExprAssembler<real_t>::variable    variable;
+    typedef gsExprAssembler<real_t>::solution    solution;
 
-    if ( dG )
+    // Elements used for numerical integration
+    A.setIntegrationElements(dbasis);
+    gsExprEvaluator<real_t> ev(A);
+    
+    // Set the geometry map
+    geometryMap G = A.setMap(mp);
+
+    // Set the discretization space
+    variable    u  = A.setSpace(dbasis, bc);
+
+    // Set the source term
+    variable    ff = A.setCoeff(f, G);
+
+    // Recover manufactured solution
+    gsFunctionExpr<> ms;
+    fd.getId(100, ms);
+    //gsInfo<<"Exact solution: "<< ms << "\n";
+    variable u_ex = ev.setVariable(ms, G);    
+
+    // Solution vector and solution variable
+    gsMatrix<> solVector;
+    solution u_sol = A.getSolution(u, solVector);
+
+    gsSparseSolver<>::CGDiagonal solver;
+    
+    //! [Problem setup]
+
+    //! [Solver loop]
+    gsVector<> l2err(numRefine+1), h1err(numRefine+1);
+    gsInfo<< "\nDoFs: ";
+    for (int r=0; r<=numRefine; ++r)
     {
-        gsInfo<<"Using dG method for patch interfaces.\n";
-        options.setInt("InterfaceStrategy", iFace::dg);
+        dbasis.uniformRefine();
+            
+        // Initialize the system
+        A.initSystem();
+        
+        gsInfo<< A.numDofs() <<std::flush;
+            
+        // Compute the system matrix and right-hand side
+        A.assembleLhsRhs( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
+        
+        // Enforce Neumann conditions to right-hand side
+        variable g_N = A.getBdrFunction();
+        A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
+        
+        gsInfo<< "." <<std::flush;
+        
+        //gsInfo<<"Sparse Matrix:\n"<< A.matrix().toDense() <<"\n";
+        //gsInfo<<"Rhs vector:\n"<< A.rhs().transpose() <<"\n";
+        //gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n";
+        
+        solver.compute( A.matrix() );
+        solVector = solver.solve(A.rhs());
+
+        gsInfo<< "." <<std::flush;
+        
+        //solution u_sol = A.getSolution(u, solVector); // solVector is not copied
+        
+        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
+        //gsInfo<< "* The L2 error: "<< l2err[r] <<"\n";
+        
+        h1err[r]= //l2err[r] +
+            math::sqrt( ev.integral( ( grad(u_ex) - grad(u_sol)*jac(G).inv() ).sqNorm() * meas(G) ) );
+        //gsInfo<< "* The H1 error: "<< h1err[r] <<"\n";
+
+        gsInfo<< ". " <<std::flush;        
+
+    } //for loop
+
+    //! [Solver loop]
+
+    //! [Error and convergence rates]
+    gsInfo<< "\n\nL2 error: " <<std::scientific<< l2err.transpose() <<"\n";
+    gsInfo<< "H1 error: " <<std::scientific<< h1err.transpose() <<"\n";
+
+    if (!last)
+    {
+        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
+              << ( l2err.head(numRefine).array() /
+                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+        
+        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
+              <<( h1err.head(numRefine).array() /
+                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+    }
+    //! [Error and convergence rates]
+    
+    // if (save)
+    {
+        
     }
 
-    PoissonAssembler.initialize(*ppde, bases, options);
-
-    // Generate system matrix and load vector
-    gsInfo<<"Assembling...\n";
-    PoissonAssembler.assemble();
-
-    // gsDebugVar(PoissonAssembler.matrix().rows());
-    // gsDebugVar(PoissonAssembler.matrix().cols());
-    // gsDebugVar(PoissonAssembler.rhs().rows());
-
-    // Initialize the conjugate gradient solver
-    gsInfo<<"Solving...\n";
-    gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
-    gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs()    );
-
-    // Construct the solution as a scalar field
-    gsMultiPatch<> mpsol;
-    PoissonAssembler.constructSolution(solVector, mpsol);
-    gsField<> sol( PoissonAssembler.patches(), mpsol);
-
-    gsInfo <<"Solution: "<< mpsol <<"\n";
-
-    // Plot solution in paraview
-    int result = EXIT_SUCCESS;
+    //! [Export visualiuation in ParaView]
     if (plot)
     {
-        // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>(sol, "poisson2d", plot_pts);
-        gsField<> exact(*geo, *exactSol, false );
-        gsWriteParaview<>(exact, "poisson2d_exact", plot_pts);
-
-        // Run paraview
-        result = system("paraview poisson2d.pvd &");
+        ev.writeParaview( u_sol   , G, "solution"   , 3000, true);
+        ev.writeParaview( u_ex    , G, "solution_ex", 3000, true);
+        
+        //ev.writeParaview( u, G, "aa", 3000, true); ???
+        return system("paraview solution.pvd &");
     }
+    //! [Export visualiuation in ParaView]
+    
+    return EXIT_SUCCESS;
 
-    gsInfo << "Done." << "\n";
+}// end main
 
-    return result;
-}
