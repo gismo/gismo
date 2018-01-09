@@ -3,7 +3,8 @@
 general:
   branches:
     only:
-     - stable
+     #- stable
+     - expr_classes
 
 machine:
   environment:
