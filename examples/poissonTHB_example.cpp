@@ -11,19 +11,11 @@
     Author(s): S. Kleiss
 */
 
-
-
-
-#include <iostream>
-
 #include <gismo.h>
-
 #include <gsAssembler/gsAdaptiveRefUtils.h>
-
 #include <gsAssembler/gsErrEstPoissonResidual.h>
 
 using namespace gismo;
-
 
 //S.Kleiss
 //

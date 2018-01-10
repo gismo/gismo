@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
                 "file containing Plotting image data.\n";
-        return 0;
+        return EXIT_SUCCESS;
     }
 
 }// end main

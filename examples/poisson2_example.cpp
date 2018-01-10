@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     index_t numElevate = -1;
     index_t numRefine = 2;
     std::string fn_basis("");
-    std::string fn("");
+    std::string fn_geo("");
 
     gsCmdLine cmd( "Solves Poisson's equation with an isogeometric discretization." );
     cmd.addString( "p", "pde", "File containing a poisson PDE (.xml)", fn_pde );
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",
                 numRefine );
     cmd.addString( "b", "basis", "File containing basis for discretization (.xml)", fn_basis );
-    cmd.addString( "g", "geometry", "File containing Geometry (.xml, .axl, .txt)", fn );
+    cmd.addString( "g", "geometry", "File containing Geometry (.xml, .axl, .txt)", fn_geo );
     cmd.getValues(argc,argv);
 
     gsMultiBasis<> bases;
@@ -67,12 +67,12 @@ int main(int argc, char *argv[])
     gsMultiPatch<>::uPtr geo;
     if ( fn_pde.empty() )
     {
-        if ( !fn.empty() )
+        if ( !fn_geo.empty() )
         {
-            geo = gsReadFile<>( fn );
+            geo = gsReadFile<>( fn_geo );
             if ( !geo )
             {
-                gsWarn<< "Did not find any geometry in "<<fn<<", quitting.\n";
+                gsWarn<< "Did not find any geometry in "<<fn_geo<<", quitting.\n";
                 return EXIT_FAILURE;
             }
             switch ( geo->geoDim() )
@@ -99,32 +99,32 @@ int main(int argc, char *argv[])
     gsFunctionExpr<>::uPtr exactSol = gsReadFile<>(fn_pde, 100);
     if ( !ppde )
     {
-        gsWarn<< "Did not find any PDE in "<<fn<<", quitting.\n";
+        gsWarn<< "Did not find any PDE in "<<fn_geo<<", quitting.\n";
         return EXIT_FAILURE;
     }
 
-    if ( fn.empty() )
+    if ( fn_geo.empty() )
     {
         switch ( ppde->m_compat_dim )
         {
         case 1:
-            fn= "domain1d/bspline1d_01.xml";
+            fn_geo= "domain1d/bspline1d_01.xml";
             break;
         case 2:
-            fn= "domain2d/square.xml";
+            fn_geo= "domain2d/square.xml";
             break;
         case 3:
-            fn= "domain3d/cube.xml";
+            fn_geo= "domain3d/cube.xml";
             break;
         default:
             return EXIT_FAILURE;
         }
     }
 
-    geo = gsReadFile<>( fn );
+    geo = gsReadFile<>( fn_geo );
     if ( !geo )
     {
-        gsInfo << "Did not find any geometries in "<< fn<<", quitting.\n";
+        gsInfo << "Did not find any geometries in "<<fn_geo<<", quitting.\n";
         return EXIT_FAILURE;
     }
 

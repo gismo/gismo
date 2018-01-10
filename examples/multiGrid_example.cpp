@@ -56,15 +56,12 @@ int main(int argc, char *argv[])
     if (dg)         { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::dg         ); opt.remove( "DG" ); }
     else            { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::conforming ); opt.remove( "DG" ); }
 
-    geometry = gsFileManager::find(geometry);
-    if ( geometry.empty() )
+    if ( ! gsFileManager::fileExists(geometry) )
     {
         gsInfo << "Geometry file could not be found.\n";
         gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
         return EXIT_FAILURE;
     }
-
-    opt.setString( "Geometry", geometry );  // Write complete path back...
 
     gsInfo << "Run gsMultiGridTutorial with options:\n" << opt << std::endl;
 

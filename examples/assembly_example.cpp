@@ -13,7 +13,7 @@
 
 # include <gismo.h>
 
-#include <gsAssembler/gsAssembler.h>      // included here for demonstrationw
+#include <gsAssembler/gsAssembler.h>      // included here for demonstration
 #include <gsAssembler/gsVisitorPoisson.h>
 #include <gsAssembler/gsVisitorNitsche.h>
 #include <gsAssembler/gsVisitorNeumann.h>
