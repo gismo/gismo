@@ -107,7 +107,7 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
         return;
     }
     
-    String tmp = getExtension(fname);
+    String tmp = gsFileManager::getExtension(fname);
     if (tmp != "xml" )
         tmp = fname + ".xml";
     else
@@ -126,7 +126,7 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
 template<class T> void
 gsFileData<T>::saveCompressed(std::string const & fname)  const
 { 
-    String tmp = getExtension(fname);
+    String tmp = gsFileManager::getExtension(fname);
     if (tmp != "gz" )
     {
         if (tmp != "xml" )
@@ -157,11 +157,11 @@ template<class T>
 void gsFileData<T>::read(String const & fn)  
 { 
     // Identify filetype by extension
-    String ext = getExtension(fn);
+    String ext = gsFileManager::getExtension(fn);
 
     if (ext== "xml") 
         readXmlFile(fn);
-    else if (ext== "gz" && ends_with(fn, ".xml.gz") )
+    else if (ext== "gz" && util::ends_with(fn, ".xml.gz") )
         readXmlGzFile(fn);
     else if (ext== "txt") 
         readGeompFile(fn);
