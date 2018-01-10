@@ -31,7 +31,7 @@ std::string size(const gsMatrix<T>& matrix)
 int main(int argc, char* argv[])
 {
 
-    std::string input(GISMO_DATA_DIR "bspbasis/tpBSpline2_02.xml");
+    std::string input("bspbasis/tpBSpline2_02.xml");
     std::string output("");
 
     gsCmdLine cmd("Tutorial on gsBasis class.");

@@ -291,7 +291,8 @@ void gsOptProblem<T>::solve()
     Ipopt::SmartPtr<Ipopt::IpoptApplication> app = IpoptApplicationFactory();
     
     Ipopt::ApplicationReturnStatus status;
-    status = app->Initialize( GISMO_DATA_DIR "options/ipopt.opt");
+    std::string path = gsFileManager::findInDataDir( "options/ipopt.opt" );
+    status = app->Initialize( path );
     
     if (status != Ipopt::Solve_Succeeded) 
     {

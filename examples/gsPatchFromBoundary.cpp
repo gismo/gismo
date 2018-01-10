@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
     bool save      = false;
     int method     = 0;
     real_t tol = 1e-4;
-    std::string fn = GISMO_DATA_DIR "curves3d/curve_boundary.xml";
+    std::string fn = "curves3d/curve_boundary.xml";
 
     // Read input from command line arguments
     gsCmdLine cmd("Constructs a patch given a domain boundary.");

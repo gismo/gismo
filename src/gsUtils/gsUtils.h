@@ -225,15 +225,6 @@ std::size_t hash_range(T const * start, const T * const end)
     return seed;
 }
 
-/// \brief Systemspecific path-separator symbol
-/// \ingroup Utils
-const char SEPARATOR =
-#if defined _WIN32 || defined __CYGWIN__
-    '\\';
-#else
-    '/';
-#endif
-
 } // end namespace util
 
 } // end namespace gismo

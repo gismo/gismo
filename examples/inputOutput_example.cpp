@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 
     //! [Parse command line]
     std::string input("curves3d/bspline3d_curve_01.xml");
-    std::string output("out");
+    std::string output("");
 
     gsCmdLine cmd("Tutorial Input Output");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
     if (!gsFileManager::fileExists(input))
     {
         gsWarn << "The file cannot be found!\n";
-        return 1;
+        return EXIT_FAILURE;
     }
 
     gsInfo << "Read file \"" << input << "\"\n";
@@ -52,8 +52,8 @@ int main(int argc, char* argv[])
     }
     else
     {
-        gsWarn << "Input file doesn't have a geometry inside.\n";
-        return -1;
+        gsWarn << "Input file doesn't have a geometry.\n";
+        return EXIT_FAILURE;
     }
     //! [Read geometry]
 
@@ -61,10 +61,17 @@ int main(int argc, char* argv[])
     gsInfo << "The file contains: \n" << *pGeom << "\n";
     //! [Print geometry]
 
+    if ( output.empty() )
+    {
+        gsInfo << "Call program with option -o <basename> to write data to files\n";
+        gsInfo << "<basename>Paraview.vtp, <basename>Paraview.pvd, <basename>.xml\n";
+        return EXIT_SUCCESS;
+    }
+
     // writing a paraview file
     const std::string out = output + "Paraview";
     gsWriteParaview(*pGeom, out);
-    gsInfo << "Wrote a paraview file: " << out << "\n";
+    gsInfo << "Wrote paraview files: " << out << ".vtp, " << out << ".pvd\n";
 
     //! [Write geometry]
     // writing a G+Smo .xml file
@@ -72,11 +79,8 @@ int main(int argc, char* argv[])
     fd << *pGeom;
     // output is a string. The extention .xml is added automatically
     fd.save(output);
-    gsInfo << "Wrote G+Smo file: " << output << ".xml \n";
+    gsInfo << "Wrote G+Smo file:     " << output << ".xml \n";
     //! [Write geometry]
 
-    return 0;
+    return EXIT_SUCCESS;
 }
-
-
-
