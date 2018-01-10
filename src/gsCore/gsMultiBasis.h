@@ -295,8 +295,9 @@ public:
         m_topology.addBoundary( patchSide( p, s ) );
     }
     
-    /// @brief Refine every basis uniformly by inserting \a numKnots
-    /// new knots on each knot span
+    /// @brief Refine every basis uniformly
+    ///
+    /// This calls \a gsBasis::uniformRefine(\a numKnots,\a mul) for all patches
     void uniformRefine(int numKnots = 1, int mul = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
@@ -321,8 +322,16 @@ public:
         gsSparseMatrix<T, RowMajor>& transferMatrix
     );
 
-    /// @brief Refine every basis uniformly by inserting \a numKnots
-    /// new knots on each knot span
+    /// @brief Refine every basis uniformly
+    ///
+    /// The function writes a sparse matrix into the variable \a transfer that indicates
+    /// how the functions on the coarse grid are represented as linear combinations as fine
+    /// grid functions.
+    ///
+    /// For computing the transfer matrix (but not for refinement), the \a boundaryConditions and
+    /// the \a assemblerOptions have to be provided
+    ///
+    /// \sa gsMultiBasis::uniformRefine
     void uniformRefine_withTransfer(
         gsSparseMatrix<T, RowMajor>& transfer,
         const gsBoundaryConditions<T>& boundaryConditions,
@@ -367,7 +376,9 @@ public:
         m_bases[k]->refine( boxes, refExt);
     }
 
-    /// @brief Coarsen every basis uniformly. See \a gsBasis::uniformCoarsen()
+    /// @brief Coarsen every basis uniformly
+    ///
+    /// This calls \a gsBasis::uniformCoarsen(\a numKnots) for all patches
     void uniformCoarsen(int numKnots = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
@@ -376,7 +387,16 @@ public:
         }
     }
     
-    /// @brief Coarsen every basis uniformly. See \a gsBasis::uniformCoarsen()
+    /// @brief Coarsen every basis uniformly
+    ///
+    /// The function writes a sparse matrix into the variable \a transfer that indicates
+    /// how the functions on the coarse grid are represented as linear combinations as fine
+    /// grid functions.
+    ///
+    /// For computing the transfer matrix (but not for refinement), the \a boundaryConditions and
+    /// the \a assemblerOptions have to be provided
+    ///
+    /// \sa gsMultiBasis::uniformCoarsen
     void uniformCoarsen_withTransfer(
         gsSparseMatrix<T, RowMajor>& transfer,
         const gsBoundaryConditions<T>& boundaryConditions,

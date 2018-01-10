@@ -353,9 +353,6 @@ public:
     }
 
     // Look at gsBasis class for documentation
-    void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots=1);
-
-    // Look at gsBasis class for documentation
     void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1);
 
     // Look at gsBasis class for documentation 

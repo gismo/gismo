@@ -893,11 +893,11 @@ coarsen(index_t knotRemove, index_t knotSkip, mult_t mul)
 
     for(; it<last; it += knotSkip)
         for(index_t c = 0; it!=last && c!=knotRemove; ++c, ++it)
-            for(index_t d=0; d<mul && d<it.multiplicity(); ++d)
-                removedKnots.push_back(it.value());
-    //TODO: the following code does seamingly not work:
-    //      removedKnots.insert(removedKnots.end(), it.value(),
-    //                    (std::min<mult_t>)(mul, it.multiplicity() ) );
+            removedKnots.insert(
+                removedKnots.end(),
+                (std::min<mult_t>)( mul, it.multiplicity() ),
+                it.value()
+            );
     
     // copy non-removed knots into coarseKnots
     coarseKnots.reserve(m_repKnots.size()-removedKnots.size());

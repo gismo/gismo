@@ -403,9 +403,6 @@ public:
     { m_knots.coarsen(numKnots); }
 
     // Look at gsBasis class for a description
-    void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
-
-    // Look at gsBasis class for a description
     void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1);
 
     /// Refine the basis by inserting the given knots and perform knot

@@ -870,16 +870,6 @@ void gsTensorBasis<d,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> &
     tensorCombineTransferMatrices<d, T>( B, transfer );
 }
 
-template<unsigned d, class T>
-void gsTensorBasis<d,T>::uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots)
-{
-    // Simple implementation: get the transfer matrix and apply it.
-    // Could be done more efficiently if needed.
-    gsSparseMatrix<T, RowMajor> transfer;
-    this->uniformCoarsen_withTransfer( transfer, numKnots );
-    coefs = transfer.transpose() * coefs;
-}
-
 
 template<unsigned d, class T>
 void gsTensorBasis<d,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots)
