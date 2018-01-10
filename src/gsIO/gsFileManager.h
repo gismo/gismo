@@ -33,8 +33,8 @@ public:
     /// Checks if the file exists in GISMO_DATA_DIR
     static bool fileExistsInDataDir(const std::string& name);
 
-    /// Get local path seperator
-    static char getLocalPathSeperator();
+    /// Get native path seperator
+    static char getNativePathSeparator();
 
     /// Checks if the path is fully qualified
     /// If a name starts with "/", it is considered fully qualified
@@ -58,7 +58,9 @@ public:
     /// If the file can be found, returns the full path.
     /// Otherwiese, returns empty string.
     ///
-    /// If \a fn satisfied \a isFullyQualified or \a isRelative, it is kept unchanged
+    /// If \a fn satisfied \a isFullyQualified or \a isRelative, it is kept unchanged.
+    ///
+    /// In any case, slashes are replaced by the native path separator.
     static std::string find(std::string fn);
 
     /// \brief Find a file in GISMO_DATA_DIR
@@ -68,6 +70,8 @@ public:
     ///
     /// If the file can be found, returns the full path.
     /// Otherwiese, returns empty string.
+    ///
+    /// In any case, slashes are replaced by the native path separator.
     static std::string findInDataDir(std::string fn);
 
     /// Make directory

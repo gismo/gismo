@@ -68,9 +68,9 @@ bool gsFileManager::fileExistsInDataDir(const std::string& name)
     return !findInDataDir(name).empty();
 }
 
-char gsFileManager::getLocalPathSeperator()
+char gsFileManager::getNativePathSeparator()
 {
-#if defined _WIN32
+#if defined _WIN32 || defined __CYGWIN__
     return '\\';
 #else
     return '/';
