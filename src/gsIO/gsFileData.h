@@ -347,50 +347,6 @@ public:
 
     /// Counts the number of Objects/tags in the filedata
     int numTags () const;
-
-    /// Returns the extension of the filename \a fn
-    static String getExtension(String const & fn)
-    {
-        if(fn.find_last_of(".") != String::npos)
-        {
-            String ext = fn.substr(fn.rfind(".")+1);
-            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower); 
-            return ext;
-        }
-        return "";
-    }
-    
-    static bool ends_with(String const & value, String const & ending)
-    {
-        if (ending.size() > value.size()) return false;
-        //std::transform(value.begin(), value.end(), tmp.begin(), ::tolower); 
-        return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
-    }
-
-    /// Returns the base name without extension of the filename \a fn
-    static String getBasename(String const & fn)
-    {
-        if(fn.find_last_of(".") != String::npos)
-        {
-            std::size_t pos1 = fn.find_last_of("/\\");
-            std::size_t pos2 = fn.rfind(".");
-            String      name = fn.substr(pos1+1, pos2-pos1-1);
-            return name;
-        }
-        return fn;
-    }
-
-    /// Returns the filename without the path of \a fn
-    static String getFilename(String const & fn)
-    {
-        std::size_t pos1 = fn.find_last_of("/\\");
-        if(pos1 != String::npos)
-        {
-            String      name = fn.substr(pos1+1);
-            return name;
-        }
-        return fn;
-    }
     
 private:
 
