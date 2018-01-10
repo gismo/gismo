@@ -63,6 +63,11 @@ bool gsFileManager::fileExists(const std::string& name)
     return !find(name).empty();
 }
 
+bool gsFileManager::fileExistsInDataDir(const std::string& name)
+{
+    return !findInDataDir(name).empty();
+}
+
 char gsFileManager::getLocalPathSeperator()
 {
 #if defined _WIN32
@@ -175,6 +180,23 @@ std::string gsFileManager::find(std::string fn)
         if ( std::ifstream(tmp.c_str()).good() )
             return tmp;
     }
+
+    return std::string();
+}
+
+std::string gsFileManager::findInDataDir(std::string fn)
+{
+#if defined _WIN32
+    _replace_slash_by_basckslash(fn);
+#endif
+
+    // We know that GISMO_DATA_DIR ends with a path seperator, but
+    // maybe the user does not know it.
+    if ( fn[0] == '/' || fn[0] == '\\' ) fn.erase(0,1);
+
+    std::string fn_out = GISMO_DATA_DIR + fn;
+
+    if ( std::ifstream(fn_out.c_str()).good() ) return fn_out;
 
     return std::string();
 }

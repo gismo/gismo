@@ -30,6 +30,9 @@ public:
     /// Checks if the file exists (also in the search paths)
     static bool fileExists(const std::string& name);
 
+    /// Checks if the file exists in GISMO_DATA_DIR
+    static bool fileExistsInDataDir(const std::string& name);
+
     /// Get local path seperator
     static char getLocalPathSeperator();
 
@@ -49,14 +52,23 @@ public:
 
     /// \brief Find a file.
     ///
-    /// \param[in] fn The filename
-    /// \param[out] the full path or empty string
+    /// \param fn The filename
+    /// \returns  The full path or empty string
     ///
     /// If the file can be found, returns the full path.
     /// Otherwiese, returns empty string.
     ///
     /// If \a fn satisfied \a isFullyQualified or \a isRelative, it is kept unchanged
     static std::string find(std::string fn);
+
+    /// \brief Find a file in GISMO_DATA_DIR
+    ///
+    /// \param fn The filename
+    /// \returns  The full path or empty string
+    ///
+    /// If the file can be found, returns the full path.
+    /// Otherwiese, returns empty string.
+    static std::string findInDataDir(std::string fn);
 
     /// Make directory
     static bool mkdir( std::string fn );
