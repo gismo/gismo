@@ -61,6 +61,15 @@ inline bool starts_with( const std::string & haystack, const std::string & needl
     return true;
 }
 
+/// \brief Checks if a string \a haystack ends with the string \a needle
+/// \ingroup Utils
+inline bool ends_with( const std::string & haystack, const std::string & needle )
+{
+    if (needle.size() > haystack.size()) return false;
+    //std::transform(haystack.begin(), value.end(), tmp.begin(), ::tolower); 
+    return std::equal(needle.rbegin(), needle.rend(), haystack.rbegin());
+}
+
 #if __cplusplus > 199711L || (defined(_MSC_VER) && _MSC_VER >= 1600)
 using std::iota;
 using std::stod;
