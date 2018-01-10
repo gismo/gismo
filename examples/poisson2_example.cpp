@@ -21,17 +21,16 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    // Number for h-refinement of the computational (trial/test) basis.
     int numRefine  = 5;
-    // Number for p-refinement of the computational (trial/test) basis.
     int numElevate = 0;
-
     bool last = false;
-
+    std::string fn("pde/poisson2d_bvp.xml");
+    
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
+    cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
@@ -40,46 +39,29 @@ int main(int argc, char *argv[])
 
     //! [Read input file]
 
-    gsFileData<> fd("pde/poisson2d_bvp.xml");
+    gsFileData<> fd(fn);
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     
     gsMultiPatch<> mp;
-    fd.getId(0, mp);
-    //gsInfo<<"Computational domain: "<< mp << "\n";
-    //gsInfo<<"Topology:\n"<< mp.topology() <<"\n";
-
+    fd.getId(0, mp); // id=0: Multipatch domain
+     
     gsFunctionExpr<> f;
-    fd.getId(1, f);
-    //gsInfo<<"Source function "<< f << "\n";
+    fd.getId(1, f); // id=1: source function
+     gsInfo<<"Source function "<< f << "\n";
 
     gsBoundaryConditions<> bc;
-    fd.getId(200, bc);
-    //gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+    fd.getId(2, bc); // id=2: boundary conditions
+    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     //! [Read input file]
 
     //! [Refinement]
-    gsMultiBasis<> dbasis;
-    for (unsigned i = 0; i < mp.nPatches(); ++i)
-        dbasis.addBasis( mp.patch(i).basis().source().clone() );
-        //dbasis.addBasis( mp.patch(i).basis().clone() );
-    
-    dbasis.degreeElevate(1,0);
-    dbasis.setTopology(mp);
-    //gsInfo<<"Topology:\n"<< mp.topology() <<"\n";
+    gsMultiBasis<> dbasis(mp);
 
-    // Elevate and p-refine the basis to order k + numElevate
-    // where k is the highest degree in the bases
-    if ( numElevate > -1 )
-    {
-        // Find maximum degree with respect to all the variables
-        int max_tmp = dbasis.maxCwiseDegree();
+    // Elevate and p-refine the basis to order p + numElevate
+    // where p is the highest degree in the bases
+    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
         
-        // Elevate all degrees uniformly
-        max_tmp += numElevate;
-        dbasis.setDegree(max_tmp);
-    }
-
     // h-refine each basis
     if (last)
     {
@@ -96,6 +78,7 @@ int main(int argc, char *argv[])
     //gsInfo<<"Active options:\n"<< A.options() <<"\n";
     typedef gsExprAssembler<real_t>::geometryMap geometryMap;
     typedef gsExprAssembler<real_t>::variable    variable;
+    typedef gsExprAssembler<real_t>::space       space;
     typedef gsExprAssembler<real_t>::solution    solution;
 
     // Elements used for numerical integration
@@ -106,14 +89,15 @@ int main(int argc, char *argv[])
     geometryMap G = A.setMap(mp);
 
     // Set the discretization space
-    variable    u  = A.setSpace(dbasis, bc);
-
+    space u = A.setSpace(dbasis, bc);
+    u.setInterfaceCont(0);
+    
     // Set the source term
     variable    ff = A.setCoeff(f, G);
-
+    
     // Recover manufactured solution
     gsFunctionExpr<> ms;
-    fd.getId(100, ms);
+    fd.getId(3, ms); // id=3: reference solution
     //gsInfo<<"Exact solution: "<< ms << "\n";
     variable u_ex = ev.setVariable(ms, G);    
 
@@ -127,7 +111,8 @@ int main(int argc, char *argv[])
 
     //! [Solver loop]
     gsVector<> l2err(numRefine+1), h1err(numRefine+1);
-    gsInfo<< "\nDoFs: ";
+    gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
+        "\nDoFs: ";
     for (int r=0; r<=numRefine; ++r)
     {
         dbasis.uniformRefine();
@@ -155,15 +140,12 @@ int main(int argc, char *argv[])
 
         gsInfo<< "." <<std::flush;
         
-        //solution u_sol = A.getSolution(u, solVector); // solVector is not copied
-        
         l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-        //gsInfo<< "* The L2 error: "<< l2err[r] <<"\n";
         
-        h1err[r]= //l2err[r] +
+        h1err[r]= l2err[r] +
             math::sqrt( ev.integral( ( grad(u_ex) - grad(u_sol)*jac(G).inv() ).sqNorm() * meas(G) ) );
-        //gsInfo<< "* The H1 error: "<< h1err[r] <<"\n";
-
+            //math::sqrt( ev.integral( ( grad(u_ex) - igrad(u_sol, G) ).sqNorm() * meas(G) ) );
+        
         gsInfo<< ". " <<std::flush;        
 
     } //for loop
@@ -171,8 +153,8 @@ int main(int argc, char *argv[])
     //! [Solver loop]
 
     //! [Error and convergence rates]
-    gsInfo<< "\n\nL2 error: " <<std::scientific<< l2err.transpose() <<"\n";
-    gsInfo<< "H1 error: " <<std::scientific<< h1err.transpose() <<"\n";
+    gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
 
     if (!last)
     {
@@ -190,18 +172,19 @@ int main(int argc, char *argv[])
     {
         
     }
-
-    //! [Export visualiuation in ParaView]
+    
+    //! [Export visualization in ParaView]
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
-        ev.writeParaview( u_sol   , G, "solution"   , 3000, true);
-        ev.writeParaview( u_ex    , G, "solution_ex", 3000, true);
+        ev.options().setSwitch("plot.elements", true);
+        ev.writeParaview( u_sol   , G, "solution");
+        ev.writeParaview( u_ex    , G, "solution_ex");
         
         //ev.writeParaview( u, G, "aa", 3000, true); ???
         return system("paraview solution.pvd &");
     }
-    //! [Export visualiuation in ParaView]
+    //! [Export visualization in ParaView]
     
     return EXIT_SUCCESS;
 

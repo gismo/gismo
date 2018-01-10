@@ -566,6 +566,9 @@ protected:
 
     const gsBoundaryConditions<T> * m_bc;
     index_t             m_id;
+
+    // C^r coupling
+    mutable index_t m_r;
     
     gsDofMapper m_mapper;
     gsMatrix<T> m_fixedDofs;
@@ -585,6 +588,13 @@ public:
 
     index_t   id() const {return m_id;}
     index_t & setId(const index_t _id) {return m_id = _id;}
+
+    index_t   interfaceCont() const {return m_r;}
+    index_t & setInterfaceCont(const index_t _r) const
+    {
+        GISMO_ASSERT(_r>-2 && _r<1, "Invalid or not implemented (r="<<_r<<").");
+        return m_r = _r;
+    }
 
     //void getFunction(const gsMatrix<T>& solVector, gsMultiPatch<T>& result);
     //gsAsFunction<T> asFunction (const gsMatrix<T>& solVector);
@@ -623,7 +633,7 @@ public:
         
 protected:
     friend class gismo::gsExprHelper<T>;    
-    explicit gsFeSpace(index_t _d = 1) : Base(_d), m_bc(NULL), m_id(-1)
+    explicit gsFeSpace(index_t _d = 1) : Base(_d), m_bc(NULL), m_id(-1), m_r(-1)
     { }
 };
 
@@ -638,8 +648,13 @@ protected:
 public:
     typedef T Scalar;
 
-    explicit gsFeSolution(const gsFeSpace<T> & u) : _u(u), _Sv(NULL)
-    { }
+    explicit gsFeSolution(const gsFeSpace<T> & u)
+    : //Base(u.dim())
+      //Base(u)
+      _u(u), _Sv(NULL)
+    {
+        //registerData(u.source(), u.data());
+    }
     
     gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> & Sv) : _u(u), _Sv(&Sv)
     { }

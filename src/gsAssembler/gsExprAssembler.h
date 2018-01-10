@@ -273,8 +273,8 @@ public:
     geometryMap setMap(const gsGeometry<T> & mp)
     { return m_exprdata->setMap(mp); }
 
-    variable setSpace(const gsFunctionSet<T> & mp, const gsBoundaryConditions<T> & bc,
-                      index_t dim = 1, index_t id = 0)
+    space setSpace(const gsFunctionSet<T> & mp, const gsBoundaryConditions<T> & bc,
+                   index_t dim = 1, index_t id = 0)
     {
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
         GISMO_ASSERT(static_cast<size_t>(id)<m_vrow.size(),
@@ -286,7 +286,7 @@ public:
         return u;
     }
 
-    variable setSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
+    space setSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
     {
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");        
         GISMO_ASSERT(static_cast<size_t>(id)<m_vrow.size(),
@@ -304,7 +304,7 @@ public:
 	void setFixedDofs(const gsMatrix<T> & coefMatrix, int unk = 0, int patch = 0);
     
     // for Petrov-Galerkin
-    variable setTestSpace(variable u, const gsFunctionSet<T> & mp)
+    space setTestSpace(variable u, const gsFunctionSet<T> & mp)
     {
         //GISMO_ASSERT(0!=u.mapper(), "Not a space"); // done on initSystem
         expr::gsFeSpace<T> & s = m_exprdata->setSpace(mp,u.dim());
@@ -382,10 +382,10 @@ public:
             
             if (const gsMultiBasis<T> * mb =
                 dynamic_cast<const gsMultiBasis<T>*>(&u.source()) )
-            {	
+            {
 				mb->getMapper(
-                    (dirichlet::strategy)(m_options.getInt("DirichletStrategy")),
-                    (iFace::strategy)(m_options.getInt("InterfaceStrategy")),
+                    dirichlet::elimination,
+                    0==u.interfaceCont() ? iFace::conforming : iFace::none,
                     ubc, u.mapper(), u.id(), true);
                 //u.mapper().print();
             }
@@ -394,15 +394,15 @@ public:
             {
                 gsMultiBasis<T> mbb(*b);
                 mbb.getMapper(
-                    (dirichlet::strategy)(m_options.getInt("DirichletStrategy")),
-                    (iFace::strategy)(m_options.getInt("InterfaceStrategy")),
+                    dirichlet::elimination,
+                    0==u.interfaceCont() ? iFace::conforming : iFace::none,
                     ubc, u.mapper(), u.id(), true);
             }
             else
             {
                 gsWarn<<"Problem initializing.\n";
             }
-            
+
             if ( m_vcol[i] != m_vrow[i] )
             {
                 GISMO_ASSERT(NULL!=m_vrow[i], "Not set.");

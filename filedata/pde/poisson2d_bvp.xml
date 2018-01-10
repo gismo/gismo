@@ -15,11 +15,8 @@
   <!-- Right-hand side function -->
   <Function type="FunctionExpr" id="1" dim="2">2*pi^2*sin(pi*x)*sin(pi*y)</Function>
 
-  <!-- The manufactured exact solution (for comparison) -->
-  <Function type="FunctionExpr" id="100" dim="2">sin(pi*x) * sin(pi*y)</Function>
-
   <!-- The boundary conditions (multipatch=number of patches)-->
-  <boundaryConditions id="200" multipatch="2">
+  <boundaryConditions id="2" multipatch="2">
     <Function type="FunctionExpr" dim="2" index="0">sin(pi*x) * sin(pi*y)</Function>
     <Function type="FunctionExpr" dim="2" index="1">0</Function>
     
@@ -34,8 +31,11 @@
     </bc>
   </boundaryConditions>
 
+  <!-- The manufactured exact solution (for reference) -->
+  <Function type="FunctionExpr" id="3" dim="2">sin(pi*x) * sin(pi*y)</Function>
+
   <!-- Assembler options -->
- <OptionList id="300">
+ <OptionList id="4">
   <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
   <int label="DirichletValues" desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
   <int label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>

@@ -59,6 +59,9 @@ public:
         gsOptionList opt;
         opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
         opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+        opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
+        opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
+        //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
         return opt;
     }
 
@@ -189,8 +192,7 @@ public:
     template<class E>
     void writeParaview(const expr::_expr<E> & expr,
                        geometryMap G,
-                       std::string const & fn, 
-                       unsigned nPts = 3000, bool mesh = true)
+                       std::string const & fn)
     {
         //embed topology
         const index_t n = m_exprdata->multiBasis().nBases();
@@ -198,11 +200,13 @@ public:
         std::string fileName;
 
         gsMatrix<T> pts, vals, ab;
-        
+
+        const bool mesh = m_options.askSwitch("plot.elements");
+
         for ( index_t i=0; i != n; ++i )
         {
             fileName = fn + util::to_string(i);
-
+            unsigned nPts = m_options.askInt("plot.npts", 3000);
             ab = m_exprdata->multiBasis().piece(i).support();
             gsGridIterator<T,CUBE> pt(ab, nPts);
             eval(expr, pt, i);
@@ -222,7 +226,7 @@ public:
             {
                 fileName+= "_mesh";
                 gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
-                static_cast<const gsGeometry<>&>(G.source().piece(i)).evaluateMesh(msh);
+                static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
                 gsWriteParaview(msh, fileName, false);
                 collection.addPart(fileName, ".vtp");
             }
@@ -230,7 +234,7 @@ public:
         collection.save();
     }
 
-        
+
 private:
     
     template<class E, bool storeElWise, class _op>
