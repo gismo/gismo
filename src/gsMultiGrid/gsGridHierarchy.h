@@ -141,7 +141,6 @@ public:
         //m_options.clear();
         m_mBases.clear();
         m_transferMatrices.clear();
-        m_localTransferMatrices.clear();
     }
 
     /// Get the vector of multi bases (by reference)
@@ -158,13 +157,6 @@ public:
     gsGridHierarchy& moveTransferMatricesTo( std::vector< gsSparseMatrix<T, RowMajor> >& o )
     { o = give(m_transferMatrices); return *this; }
 
-    /// Get the vector of local transfer matrices (by reference)
-    const std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& getLocalTransferMatrices() const
-    { return m_localTransferMatrices; }
-    /// Get the vector of local transfer matrices
-    gsGridHierarchy& moveLocalTransferMatricesTo( std::vector< std::vector< gsSparseMatrix<T, RowMajor> > >& o )
-    { o = give(m_localTransferMatrices); return *this; }
-
     /// Get the boundary conditions
     const gsBoundaryConditions<T>& getBoundaryConditions() const
     { return m_boundaryConditions; }
@@ -175,175 +167,7 @@ private:
 
     std::vector< gsMultiBasis<T> > m_mBases;
     std::vector< gsSparseMatrix<T, RowMajor> > m_transferMatrices;
-    std::vector< std::vector< gsSparseMatrix<T, RowMajor> > > m_localTransferMatrices;
 };
-
-/// @brief This function refines a gsMultiBasis uniformly and provides the transfer matrix.
-///
-/// @param mBasis[in]                          The gsMultiBasis to be refined
-/// @param boundaryConditions[in]              The boundary conditions
-/// @param assemblerOptions[in]                A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
-/// @param numberOfKnotsToBeInserted[in]       The number of knots to be inserted (typically 1), cf. the corresponding parameter in gsBasis
-/// @param multiplicityOfKnotsToBeInserted[in] The multiplicity of the knots to be inserted (typically 1), cf. the corresponding parameter in gsBasis
-/// @param refinedMBasis[out]                  The refined gsMultiBasis
-/// @param transferMatrix[out]                 The transfer matrix for the free dofs
-/// @param localTransferMatrices[out]          A vector of the local transfer matrices
-///
-/// \ingroup Solver
-template <typename T>
-void uniformRefine_withTransfer(
-    const gsMultiBasis<T>& mBasis,
-    const gsBoundaryConditions<T>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
-    index_t numberOfKnotsToBeInserted,
-    index_t multiplicityOfKnotsToBeInserted,
-    gsMultiBasis<T> & refinedMBasis,
-    gsSparseMatrix<T, RowMajor>& transferMatrix,
-    std::vector< gsSparseMatrix<T, RowMajor> >& localTransferMatrices
-    );
-
-/// @brief This function refines a gsMultiBasis uniformly and provides the transfer matrix.
-///
-/// @param mBasis[in]                          The gsMultiBasis to be refined
-/// @param boundaryConditions[in]              The boundary conditions
-/// @param assemblerOptions[in]                A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
-/// @param numberOfKnotsToBeInserted[in]       The number of knots to be inserted (typically 1), cf. the corresponding parameter in gsBasis
-/// @param multiplicityOfKnotsToBeInserted[in] The multiplicity of the knots to be inserted (typically 1), cf. the corresponding parameter in gsBasis
-/// @param refinedMBasis[out]                  The refined gsMultiBasis
-/// @param transferMatrix[out]                 The transfer matrix for the free dofs
-///
-/// \ingroup Solver
-template <typename T>
-inline void uniformRefine_withTransfer(
-    const gsMultiBasis<T>& mBasis,
-    const gsBoundaryConditions<T>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
-    index_t numberOfKnotsToBeInserted,
-    index_t multiplicityOfKnotsToBeInserted,
-    gsMultiBasis<T> & refinedMBasis,
-    gsSparseMatrix<T, RowMajor>& transferMatrix
-    )
-{
-    std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices;
-    uniformRefine_withTransfer(
-        mBasis, boundaryConditions, assemblerOptions, numberOfKnotsToBeInserted, multiplicityOfKnotsToBeInserted,
-        refinedMBasis, transferMatrix, localTransferMatrices
-    );
-}
-
-/// @brief This function refines a gsMultiBasis uniformly and provides the transfer matrix.
-/// with \a refinedKnots = 1 and \a mult = 1
-///
-/// @param mBasis[in]                    The gsMultiBasis to be refined
-/// @param boundaryConditions[in]              The boundary conditions
-/// @param assemblerOptions[in]                A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
-/// @param refinedMBasis[out]                  The refined gsMultiBasis
-/// @param transferMatrix[out]                 The transfer matrix for the free dofs
-///
-/// \ingroup Solver
-template <typename T>
-inline void uniformRefine_withTransfer(
-    const gsMultiBasis<T>& mBasis,
-    const gsBoundaryConditions<T>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
-    gsMultiBasis<T> & refinedMBasis,
-    gsSparseMatrix<T, RowMajor>& transferMatrix
-    )
-{
-    uniformRefine_withTransfer( mBasis, boundaryConditions, assemblerOptions, 1, 1, refinedMBasis, transferMatrix );
-}
-
-/// @brief This function coarsens a tensor B-spline basis
-///
-/// @param b[in]                         The initial basis
-/// @param removedKnots[out]             The remoed knots
-/// @return                              The coarsened basis
-///
-/// \ingroup Solver
-template <unsigned d, typename T>
-typename gsTensorBSplineBasis<d, T>::uPtr coarsenTensorBasis(const gsTensorBSplineBasis<d, T>& b, std::vector< std::vector<T> > & removedKnots);
-
-/// @brief This function coarsens a tensor B-spline basis
-///
-/// @param b[in]                         The initial basis
-/// @param removedKnots[out]             The remoed knots
-/// @return                              The coarsened basis
-///
-/// \ingroup Solver
-template <typename T>
-typename gsBasis<T>::uPtr coarsenBasis(const gsBasis<T> & b, std::vector< std::vector<T> >& removedKnots);
-
-/// @brief This function coarsens a tensor B-spline basis
-///
-/// @param b[in]                         The initial basis
-/// @param transferMatrix[out]           The transfer matrix
-/// @return                              The coarsened basis
-///
-/// \ingroup Solver
-template <typename T>
-typename gsBasis<T>::uPtr coarsenBasis_withTransfer(const gsBasis<T>& b, gsSparseMatrix<T, RowMajor>& transferMatrix);
-
-/// @brief This function coarsens the bases of a gsMultiBasis and provides the transfer matrix.
-///
-/// @param mBasis[in]                          The gsMultiBasis to be refined
-/// @param boundaryConditions[in]              The boundary conditions
-/// @param assemblerOptions[in]                A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
-/// @param coarsenedMBasis[out]                A pointer to the coarsened gsMultiBasis
-/// @param transferMatrix[out]                 The transfer matrix for the free dofs
-/// @param localTransferMatrices[out]          A vector of the local transfer matrices
-///
-/// \ingroup Solver
-template <typename T>
-void coarsenMultiBasis_withTransfer(
-    const gsMultiBasis<T>& mBasis,
-    const gsBoundaryConditions<T>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
-    gsMultiBasis<T> & coarsenedMBasis,
-    gsSparseMatrix<T, RowMajor>& transferMatrix,
-    std::vector< gsSparseMatrix<T, RowMajor> >& localTransferMatrices
-    );
-
-/// @brief This function coarsens the bases of a gsMultiBasis and provides the transfer matrix.
-///
-/// @param mBasis[in]                          The gsMultiBasis to be refined
-/// @param boundaryConditions[in]              The boundary conditions
-/// @param assemblerOptions[in]                A gsOptionList defining a "DirichletStrategy" and a "InterfaceStrategy"
-/// @param coarsenedMBasis[out]                A pointer to the coarsened gsMultiBasis
-/// @param transferMatrix[out]                 The transfer matrix for the free dofs
-///
-/// \ingroup Solver
-template <typename T>
-inline void coarsenMultiBasis_withTransfer(
-    const gsMultiBasis<T>& mBasis,
-    const gsBoundaryConditions<T>& boundaryConditions,
-    const gsOptionList& assemblerOptions,
-    gsMultiBasis<T> & coarsenedMBasis,
-    gsSparseMatrix<T, RowMajor>& transferMatrix
-    )
-{
-    std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices;
-    coarsenMultiBasis_withTransfer( mBasis, boundaryConditions, assemblerOptions, coarsenedMBasis, transferMatrix, localTransferMatrices );
-}
-
-/// @brief This function takes local transfer matrices (per patch) and combines them
-/// using given DofMappers to a global transfer matrix. Simultanously, this
-/// function restricts the matrices to the free dofs, e.g., Dirichlet dofs might be
-/// eliminated
-///
-/// @param localTransferMatrices[in]     The local and full (also non-free dofs) transfer matrices per patch
-/// @param coarseMapper[in]              The DofMapper on the coarse grid
-/// @param fineMapper[in]                The DofMapper on the fine grid
-/// @param transferMatrix[out]           The combined transfer matrix restricted to the free dofs
-///
-/// \ingroup Solver
-template <typename T>
-void combineTransferMatrices(
-    const std::vector< gsSparseMatrix<T, RowMajor> >& localTransferMatrices,
-    const gsDofMapper& coarseMapper,
-    const gsDofMapper& fineMapper,
-    gsSparseMatrix<T, RowMajor>& transferMatrix
-    );
-
 
 } // namespace gismo
 

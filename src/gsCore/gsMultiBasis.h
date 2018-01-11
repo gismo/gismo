@@ -295,9 +295,10 @@ public:
         m_topology.addBoundary( patchSide( p, s ) );
     }
     
-    /// @brief Refine every basis uniformly by inserting \a numKnots
-    /// new knots on each knot span
-    void uniformRefine(int numKnots = 1, int mul=1)
+    /// @brief Refine every basis uniformly
+    ///
+    /// This calls \a gsBasis::uniformRefine(\a numKnots,\a mul) for all patches
+    void uniformRefine(int numKnots = 1, int mul = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
         {
@@ -305,9 +306,43 @@ public:
         }
     }
 
+    /// @brief This function takes local transfer matrices (per patch) and combines them
+    /// using given DofMappers to a global transfer matrix. Simultanously, this
+    /// function restricts the matrices to the free dofs, e.g., Dirichlet dofs might be
+    /// eliminated
+    ///
+    /// @param localTransferMatrices[in]     The local and full (also non-free dofs) transfer matrices per patch
+    /// @param coarseMapper[in]              The DofMapper on the coarse grid
+    /// @param fineMapper[in]                The DofMapper on the fine grid
+    /// @param transferMatrix[out]           The combined transfer matrix restricted to the free dofs
+    static void combineTransferMatrices(
+        const std::vector< gsSparseMatrix<T, RowMajor> >& localTransferMatrices,
+        const gsDofMapper& coarseMapper,
+        const gsDofMapper& fineMapper,
+        gsSparseMatrix<T, RowMajor>& transferMatrix
+    );
+
+    /// @brief Refine every basis uniformly
+    ///
+    /// The function writes a sparse matrix into the variable \a transfer that indicates
+    /// how the functions on the coarse grid are represented as linear combinations as fine
+    /// grid functions.
+    ///
+    /// For computing the transfer matrix (but not for refinement), the \a boundaryConditions and
+    /// the \a assemblerOptions have to be provided
+    ///
+    /// \sa gsMultiBasis::uniformRefine
+    void uniformRefine_withTransfer(
+        gsSparseMatrix<T, RowMajor>& transfer,
+        const gsBoundaryConditions<T>& boundaryConditions,
+        const gsOptionList& assemblerOptions,
+        int numKnots = 1,
+        int mul = 1
+        );
+    
     /// @brief Refine the component \a comp of every basis uniformly
     /// by inserting \a numKnots new knots on each knot span
-    void uniformRefineComponent(int comp, int numKnots = 1, int mul=1)
+    void uniformRefineComponent(int comp, int numKnots = 1, int mul = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
         {
@@ -341,6 +376,34 @@ public:
         m_bases[k]->refine( boxes, refExt);
     }
 
+    /// @brief Coarsen every basis uniformly
+    ///
+    /// This calls \a gsBasis::uniformCoarsen(\a numKnots) for all patches
+    void uniformCoarsen(int numKnots = 1)
+    {
+        for (size_t k = 0; k < m_bases.size(); ++k)
+        {
+            m_bases[k]->uniformCoarsen(numKnots);
+        }
+    }
+    
+    /// @brief Coarsen every basis uniformly
+    ///
+    /// The function writes a sparse matrix into the variable \a transfer that indicates
+    /// how the functions on the coarse grid are represented as linear combinations as fine
+    /// grid functions.
+    ///
+    /// For computing the transfer matrix (but not for refinement), the \a boundaryConditions and
+    /// the \a assemblerOptions have to be provided
+    ///
+    /// \sa gsMultiBasis::uniformCoarsen
+    void uniformCoarsen_withTransfer(
+        gsSparseMatrix<T, RowMajor>& transfer,
+        const gsBoundaryConditions<T>& boundaryConditions,
+        const gsOptionList& assemblerOptions,
+        int numKnots = 1
+        );
+    
     /** @brief Checks if the interfaces \em bivec are fully matching, and if not, repairs them, i.e., makes them fully matching.
     *
     * \remarks Designed for gsHTensorBasis and derived bases.

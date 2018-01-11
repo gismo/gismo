@@ -344,6 +344,16 @@ public:
     /// Refine the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1, int mul=1);
+    
+    // Look at gsBasis class for documentation 
+    virtual void uniformCoarsen(int numKnots = 1)
+    {
+        for (unsigned j = 0; j < d; ++j)
+            m_bases[j]->uniformCoarsen(numKnots);
+    }
+
+    // Look at gsBasis class for documentation
+    void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots=1);
 
     // Look at gsBasis class for documentation 
     virtual void degreeElevate(int const & i = 1, int const dir = -1)

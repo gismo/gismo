@@ -159,13 +159,13 @@ gsKnotVector<T> gsKnotVector<T>::knotUnion(const gsKnotVector<T> & b) const
 {
     const gsKnotVector<T> & a = *this;
     knotContainer kv;
-    kv.reserve( std::max(a.size(),b.size()) );
+    kv.reserve( (std::max)(a.size(),b.size()) );
     std::set_union(a.m_repKnots.begin(), a.m_repKnots.end(),
                    b.m_repKnots.begin(), b.m_repKnots.end(), std::back_inserter(kv) );
 
     // const T newStart = math::min(*a.domainBegin(), *b.domainBegin() );
     // const T newEnd   = math::max(*a.domainEnd()  , *b.domainEnd()   );
-    return gsKnotVector<T>( give(kv), std::max(a.m_deg, b.m_deg) );
+    return gsKnotVector<T>( give(kv), (std::max)(a.m_deg, b.m_deg) );
 }
 
 template<typename T>
@@ -173,10 +173,10 @@ gsKnotVector<T> gsKnotVector<T>::knotIntersection(const gsKnotVector<T> & b) con
 {
     const gsKnotVector<T> & a = *this;
     knotContainer kv;
-    kv.reserve( std::min(a.size(),b.size()) );
+    kv.reserve( (std::min)(a.size(),b.size()) );
     std::set_intersection(a.m_repKnots.begin(), a.m_repKnots.end(),
                           b.m_repKnots.begin(), b.m_repKnots.begin(), std::back_inserter(kv) );
-    return gsKnotVector<T>( give(kv), std::min(a.m_deg, b.m_deg) );
+    return gsKnotVector<T>( give(kv), (std::min)(a.m_deg, b.m_deg) );
 }
 
 /*
@@ -321,7 +321,7 @@ void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
                   "The iterator is invalid for this knot vector." );
 
     mult_t knotMult = uit.multiplicity();
-    mult_t toRemove = std::min(mult, knotMult);
+    mult_t toRemove = (std::min<mult_t>)(mult, knotMult);
     nonConstMultIterator upos = m_multSum.begin()  + uit.uIndex();
 
     nonConstIterator pos = m_repKnots.begin() + uit.firstAppearance(); 
@@ -677,8 +677,8 @@ template<typename T>
 int gsKnotVector<T>::deduceDegree() const
 {
     return uSize() == 0 ? -1 :
-        std::max(( ubegin() ).multiplicity(),
-                 ( uend()-1 ).multiplicity()) - 1;
+        (std::max)(( ubegin() ).multiplicity(),
+                   ( uend()-1 ).multiplicity()) - 1;
 }
 
 template<typename T>
@@ -874,23 +874,36 @@ void gsKnotVector<T>::degreeReduce(int const & i)
 }
 
 template <typename T>
-std::vector<T> gsKnotVector<T>::coarsen(index_t factor)
+std::vector<T> gsKnotVector<T>::
+coarsen(index_t knotRemove, index_t knotSkip, mult_t mul)
 {
+    GISMO_ASSERT(knotRemove>=0 && knotSkip>0, "Invalid parameters to knot-coarsening.");
+
+    // Special value -1
+    if (-1==mul) mul = m_deg+1;
+        
     std::vector<T> coarseKnots, removedKnots;
+    if (0==knotRemove) return removedKnots;
     
-    removedKnots.reserve( this->uSize() / factor );
+    // knots to be removed
+    removedKnots.reserve( knotRemove * this->uSize() / (knotRemove+knotSkip) );
     
-    // determine knots to be removed
     uiterator it   = domainUBegin() + 1;
     uiterator last = domainUEnd();
-    for(; it<last; it+=factor)
-        removedKnots.push_back( it.value() );
+
+    for(; it<last; it += knotSkip)
+        for(index_t c = 0; it!=last && c!=knotRemove; ++c, ++it)
+            removedKnots.insert(
+                removedKnots.end(),
+                (std::min<mult_t>)( mul, it.multiplicity() ),
+                it.value()
+            );
     
     // copy non-removed knots into coarseKnots
     coarseKnots.reserve(m_repKnots.size()-removedKnots.size());
     std::set_difference( m_repKnots.begin(), m_repKnots.end(),
                          removedKnots.begin(), removedKnots.end(),
-                         std::inserter(coarseKnots, coarseKnots.begin()) );
+                         std::back_inserter(coarseKnots) );
 
     coarseKnots.swap(m_repKnots);
     rebuildMultSum();
