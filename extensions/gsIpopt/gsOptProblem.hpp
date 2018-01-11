@@ -17,6 +17,7 @@
 #include "IpSolveStatistics.hpp"
 #endif
 
+#include <gsIO/gsFileManager.h>
 
 namespace gismo
 {

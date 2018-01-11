@@ -22,6 +22,7 @@
 #include <gsHSplines/gsHDomainIterator.h>
 
 #include <gsIO/gsFileData.h>
+#include <gsIO/gsFileManager.h>
 
 namespace gismo {
 
@@ -144,7 +145,7 @@ void gsWriteGoTools(const gsGeometry<T>& geom,
     std::string fn(fileName);
 
     // check the extension
-    std::string ext = gsFileData<T>::getExtension(fileName);
+    std::string ext = gsFileManager::getExtension(fileName);
     if (ext != "g2")
     {
          fn += ".g2";
@@ -223,7 +224,7 @@ void gsWriteGoTools(const gsMultiPatch<T>& multiPatch,
     std::string fn(fileName);
 
     // check the extension
-    std::string ext = gsFileData<T>::getExtension(fileName);
+    std::string ext = gsFileManager::getExtension(fileName);
     if (ext != "g2")
     {
         fn += ".g2";
