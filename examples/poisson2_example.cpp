@@ -1,6 +1,6 @@
-/** @file poisson_example.cpp
+/** @file poisson2_example.cpp
 
-    @brief Tutorial on how to use G+Smo to solve the Poisson equation
+    @brief Tutorial on how to use expression assembler to solve the Poisson equation
 
     This file is part of the G+Smo library.
 
