@@ -69,6 +69,11 @@ struct is_base_of
 };
 #endif
 
+/// \brief Remove pointer from type
+/// \ingroup Utils
+template<typename T> struct remove_pointer {typedef T type;};
+template<typename T> struct remove_pointer<T*> {typedef typename remove_pointer<T>::type type;};
+
 } // end namespace util
 
 } // end namespace gismo
