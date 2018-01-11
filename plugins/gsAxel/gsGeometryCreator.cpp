@@ -262,8 +262,7 @@ void gsGeometryCreator::run(void)
     switch ( d->geometry )
     {
     case 1:
-        filename = GISMO_DATA_DIR;
-        filename+= "sphere.xml"; //default example
+        filename = "sphere.xml"; //default example
         myGismoData = gismo::gsReadFile<double>(filename);
         //gismo::gsNurbsCreator<>::NurbsSphere();// some error in the coefs
         break;

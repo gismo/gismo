@@ -50,12 +50,7 @@ gsFileData<T>::gsFileData(String const & fn)
 { 
     data = new FileData; 
     data->makeRoot();
-
-    m_lastPath = gsFileManager::find(fn);
-    GISMO_ENSURE( !m_lastPath.empty(),
-                  "gsFileData: Input file problem: "<<fn<<" not found\n");
-
-    this->read(m_lastPath);
+    this->read(fn);
 }
 
 template<class T>
@@ -107,7 +102,7 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
         return;
     }
     
-    String tmp = getExtension(fname);
+    String tmp = gsFileManager::getExtension(fname);
     if (tmp != "xml" )
         tmp = fname + ".xml";
     else
@@ -126,7 +121,7 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
 template<class T> void
 gsFileData<T>::saveCompressed(std::string const & fname)  const
 { 
-    String tmp = getExtension(fname);
+    String tmp = gsFileManager::getExtension(fname);
     if (tmp != "gz" )
     {
         if (tmp != "xml" )
@@ -155,44 +150,49 @@ gsFileData<T>::ioError(int lineNumber,const std::string& str)
 
 template<class T>
 void gsFileData<T>::read(String const & fn)  
-{ 
+{
+
+    m_lastPath = gsFileManager::find(fn);
+    GISMO_ENSURE( !m_lastPath.empty(),
+                  "gsFileData: Input file problem: "<<fn<<" not found\n");
+
     // Identify filetype by extension
-    String ext = getExtension(fn);
+    String ext = gsFileManager::getExtension(fn);
 
     if (ext== "xml") 
-        readXmlFile(fn);
-    else if (ext== "gz" && ends_with(fn, ".xml.gz") )
-        readXmlGzFile(fn);
+        readXmlFile(m_lastPath);
+    else if (ext== "gz" && util::ends_with(m_lastPath, ".xml.gz") )
+        readXmlGzFile(m_lastPath);
     else if (ext== "txt") 
-        readGeompFile(fn);
+        readGeompFile(m_lastPath);
     else if (ext== "g2") 
-        readGoToolsFile(fn);
+        readGoToolsFile(m_lastPath);
     else if (ext== "axl") 
-        readAxelFile(fn);
+        readAxelFile(m_lastPath);
     else if (ext== "off") 
-        readOffFile(fn);
+        readOffFile(m_lastPath);
 #ifdef GISMO_WITH_ONURBS
     else if (ext== "3dm") 
-        read3dmFile(fn);
+        read3dmFile(m_lastPath);
 #endif
 #ifdef GISMO_WITH_PSOLID
     else if (ext== "xmt_txt")
-        readParasolidFile(fn);
+        readParasolidFile(m_lastPath);
     else if (ext== "x_t")
-        readParasolidFile(fn);
+        readParasolidFile(m_lastPath);
     else if (ext== "xmt_bin")
-        readParasolidFile(fn);
+        readParasolidFile(m_lastPath);
 #endif
     else if (ext== "obj") 
-        readObjFile(fn);
+        readObjFile(m_lastPath);
     else if (ext== "stl") 
-        readStlFile(fn);
+        readStlFile(m_lastPath);
     else if (ext=="igs" || ext== "iges") 
-        readIgesFile(fn);
+        readIgesFile(m_lastPath);
 //    else if (ext=="bv") 
-//        readBezierView(fn);
+//        readBezierView(m_lastPath);
     else if (ext=="x3d") 
-        readX3dFile(fn);
+        readX3dFile(m_lastPath);
     else
         gsWarn<< "gsFileData: Unknown extension \"."<<ext<<"\"\n";
 }

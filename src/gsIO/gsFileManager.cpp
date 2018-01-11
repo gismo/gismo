@@ -15,7 +15,7 @@
 #include <iostream>
 #include <fstream>
 #include <gsCore/gsConfig.h>
-#include <gsUtils/gsUtils.h> 
+#include <gsUtils/gsUtils.h>
 
 #if defined _WIN32
 #include <windows.h>
@@ -63,9 +63,14 @@ bool gsFileManager::fileExists(const std::string& name)
     return !find(name).empty();
 }
 
-char gsFileManager::getLocalPathSeperator()
+bool gsFileManager::fileExistsInDataDir(const std::string& name)
 {
-#if defined _WIN32
+    return !findInDataDir(name).empty();
+}
+
+char gsFileManager::getNativePathSeparator()
+{
+#if defined _WIN32 || defined __CYGWIN__
     return '\\';
 #else
     return '/';
@@ -179,10 +184,27 @@ std::string gsFileManager::find(std::string fn)
     return std::string();
 }
 
+std::string gsFileManager::findInDataDir(std::string fn)
+{
+#if defined _WIN32
+    _replace_slash_by_basckslash(fn);
+#endif
+
+    // We know that GISMO_DATA_DIR ends with a path seperator, but
+    // maybe the user does not know it.
+    if ( fn[0] == '/' || fn[0] == '\\' ) fn.erase(0,1);
+
+    std::string fn_out = GISMO_DATA_DIR + fn;
+
+    if ( std::ifstream(fn_out.c_str()).good() ) return fn_out;
+
+    return std::string();
+}
+
 bool gsFileManager::mkdir( std::string fn )
 {
 #if defined _WIN32
-    _replace_slash_by_basckslash(fn); 
+    _replace_slash_by_basckslash(fn);
     return 0!=CreateDirectory(fn.c_str(),NULL);
 #else
     return ::mkdir(fn.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -212,5 +234,3 @@ bool gsFileManager::pathEqual( const std::string& p1, const std::string& p2 )
 
 
 } //namespace gismo
-
-

@@ -46,11 +46,9 @@ int main(int argc, char *argv[])
 
     // --------------- read geometry from file ---------------
 
-    // Read geometry from file (full path needed, or
-    // GISMO_DATA_DIR macro which leads to the "filedata" directory
     //! [GetGeometryData]
     // Read xml and create gsMultiPatch
-    string fileSrc( GISMO_DATA_DIR "/planar/lshape2d_3patches_thb.xml" );
+    string fileSrc( "planar/lshape2d_3patches_thb.xml" );
     gsMultiPatch<real_t> patches;
     gsReadFile<real_t>( fileSrc, patches);
     //! [GetGeometryData]
@@ -63,7 +61,7 @@ int main(int argc, char *argv[])
 
 
     //! [GetGeometryDataTens]
-    string fileSrcTens( GISMO_DATA_DIR "/planar/lshape2d_3patches_tens.xml" );
+    string fileSrcTens( "planar/lshape2d_3patches_tens.xml" );
     gsMultiPatch<real_t> patchesTens;
     gsReadFile<real_t>( fileSrcTens, patchesTens);
     patchesTens.computeTopology();

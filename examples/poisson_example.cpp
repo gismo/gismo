@@ -65,12 +65,8 @@ int main(int argc, char *argv[])
     //work properly!) :
     //patches = safe( new gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare(2)));
 
-    // Geometry can also be read from file (full path needed, or
-    // GISMO_DATA_DIR macro which leads to the "filedata" directory
-    // (Note: you need to update the bounadry conditions section for
-    // this to work properly!) :
-    //patches = safe ((gsMultiPatch<>*)gsReadFile<>(GISMO_DATA_DIR "/planar/lshape_p2.xml" ) );
-
+    // Geometry can also be read from file :
+    //patches = gsReadFile<>("planar/lshape_p2.xml");
 
     // Define Boundary conditions. Note that if one boundary is
     // "free", eg. if no condition is defined, then it is a natural
@@ -203,7 +199,7 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
                 "file containing Plotting image data.\n";
-        return 0;
+        return EXIT_SUCCESS;
     }
 
 }// end main

@@ -1071,6 +1071,15 @@ void gsTensorBSplineBasis<1,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowM
 }
 
 template <class T>
+void gsTensorBSplineBasis<1,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots)
+{
+    // Simple implementation: coarsen and refine again.
+    // Could be done more efficiently if needed.
+    std::vector<T> removedKnots = m_knots.coarsen(numKnots);
+    this->clone()->refine_withTransfer( transfer, removedKnots );
+}
+
+template <class T>
 unsigned gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
 {
     GISMO_ASSERT(c<3,"Invalid corner for 1D basis.");

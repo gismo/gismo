@@ -61,6 +61,15 @@ inline bool starts_with( const std::string & haystack, const std::string & needl
     return true;
 }
 
+/// \brief Checks if a string \a haystack ends with the string \a needle
+/// \ingroup Utils
+inline bool ends_with( const std::string & haystack, const std::string & needle )
+{
+    if (needle.size() > haystack.size()) return false;
+    //std::transform(haystack.begin(), value.end(), tmp.begin(), ::tolower); 
+    return std::equal(needle.rbegin(), needle.rend(), haystack.rbegin());
+}
+
 #if __cplusplus > 199711L || (defined(_MSC_VER) && _MSC_VER >= 1600)
 using std::iota;
 using std::stod;
@@ -215,15 +224,6 @@ std::size_t hash_range(T const * start, const T * const end)
         seed ^= *start + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;
 }
-
-/// \brief Systemspecific path-separator symbol
-/// \ingroup Utils
-const char SEPARATOR =
-#if defined _WIN32 || defined __CYGWIN__
-    '\\';
-#else
-    '/';
-#endif
 
 } // end namespace util
 

@@ -882,12 +882,15 @@ public: // others
     /// Converse to degreeElevate.
     void degreeReduce(int const & i);
 
-    /// Coarsen the knot vector: For every \a factor -th unique knot, its multiplicity
-    /// is reduced by one.
+    /// Coarsen the knot vector: for each group of \a knotRemove
+    /// consecutive interior unique knots, reduce their multiplicity
+    /// by \a mul (or remove completely, if \a mul = -1), then skip
+    /// \a knotSkip consecutive unique knots and go on
     ///
-    /// @param factor        Coarsening factor
-    /// @return              The removed knots
-    std::vector<T> coarsen(index_t factor = 2);
+    /// @param knotRemove    Number of consecutive knots to remove
+    /// @param knotSkip      Number of consecutive knots which stay untouched in between
+    /// @param mRemove       Multiplicity drop for each processed knot (or -1, full remove)
+    std::vector<T> coarsen(index_t knotRemove = 1, index_t knotSkip = 1, mult_t  mul = -1);
 
 public: // members
 

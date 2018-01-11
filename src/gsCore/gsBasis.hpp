@@ -463,6 +463,15 @@ void gsBasis<T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfe
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::uniformCoarsen(int numKnots)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
+                                            int numKnots)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::degreeElevate(int const & i, int dir)
 { GISMO_NO_IMPLEMENTATION }
 

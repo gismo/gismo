@@ -24,7 +24,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    std::string input(GISMO_DATA_DIR "/curves3d/bspline3d_curve_01.xml");
+    std::string input("curves3d/bspline3d_curve_01.xml");
     std::string output("out");
 
     gsCmdLine cmd("Ploting a G+Smo B-spline curve to parasolid PK_BCURVE.");

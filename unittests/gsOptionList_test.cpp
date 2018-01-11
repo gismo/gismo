@@ -319,8 +319,7 @@ SUITE(gsOptionList_test)
      */
     TEST(load_from_assembler_options_xml)
     {
-        std::string path(GISMO_DATA_DIR);
-        path += util::to_string("options") + util::SEPARATOR + util::to_string("assembler_options.xml");
+        std::string path = gsFileManager::findInDataDir( "options/assembler_options.xml" );
         gsOptionList myList = loadFromFile(path);
         checkAssemblerOptions(myList);
     }
@@ -330,8 +329,7 @@ SUITE(gsOptionList_test)
      */
     TEST(load_from_optionlist_xml)
     {
-        std::string path(GISMO_DATA_DIR);
-        path += util::to_string("options") + util::SEPARATOR + util::to_string("optionlist.xml");
+        std::string path = gsFileManager::findInDataDir( "options/optionlist.xml" );
         gsOptionList myList = loadFromFile(path);
         CHECK_EQUAL(4, myList.size());
 
@@ -346,8 +344,8 @@ SUITE(gsOptionList_test)
      */
     TEST(save_load_from_test_xml)
     {
-        std::string path = gismo::util::getTempPath();
-        path += util::SEPARATOR + util::to_string("test.xml");
+        std::string path = gismo::util::getTempPath()
+            + gsFileManager::getNativePathSeparator() + util::to_string("test.xml");
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
         myList.addInt(LABEL_INT_1, DESC_1, INT_1);
@@ -390,12 +388,11 @@ SUITE(gsOptionList_test)
     TEST(loading_saving_loading_assembler_options)
     {
         // loading
-        std::string path(GISMO_DATA_DIR);
-        path += util::to_string("options") + util::SEPARATOR + util::to_string("assembler_options.xml");
+        std::string path = gsFileManager::findInDataDir( "options/assembler_options.xml" );
         gsOptionList myList = loadFromFile(path);
         // saving
-        std::string actual = gismo::util::getTempPath();
-        actual += gismo::util::SEPARATOR + util::to_string("assembler_options2.xml");
+        std::string actual = gismo::util::getTempPath()
+            + gsFileManager::getNativePathSeparator() + util::to_string("assembler_options2.xml");
         saveToFile(actual, myList);
         // loading
         gsOptionList myList2 = loadFromFile(actual);

@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     real_t tolerance = 1e-02;
     int extension = 2;
     real_t refPercent = 0.1;
-    std::string fn = GISMO_DATA_DIR "/fitting/deepdrawingC.xml";
+    std::string fn = "fitting/deepdrawingC.xml";
 
     // Reading options from the command line
     gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "

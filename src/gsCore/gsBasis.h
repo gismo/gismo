@@ -780,14 +780,61 @@ public:
     /// knots with multiplicity \a mul on each knot span
     virtual void uniformRefine(int numKnots = 1, int mul=1);
 
-    /// @brief Refine the basis uniformly and adjust the given matrix
-    /// of coefficients accordingly
-    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul=1);
+    /// @brief Refine the basis uniformly
+    ///
+    /// The function simultainously updates the vector \a coefs, representing a function
+    /// in the bases, such that its new version represents the same function.
+    ///
+    /// This function is equivalent to
+    /// \code
+    /// gsSparseMatrix<T,RowMajor> transfer;
+    /// basis->uniformRefine_withTransfer(transfer, numKnots, mul);
+    /// coefs = transfer * coefs;
+    /// \endcode
+    ///
+    /// \sa gsBasis::uniformRefine
+    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1);
 
-    /// @brief Refine the basis uniformly and produce a sparse matrix which
+    /// @brief Refine the basis uniformly
+    ///
+    /// The function writes a sparse matrix into the variable \a transfer that indicates
+    /// how the functions on the coarse grid are represented as linear combinations as fine
+    /// grid functions
+    ///
+    /// \sa gsBasis::uniformRefine
+    virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor>& transfer,
+                                            int numKnots = 1, int mul = 1);
+
+    /// @brief Coarsen the basis uniformly by removing groups of \a
+    /// numKnots consecutive knots, each knot removed \a mul times
+    ///
+    /// This function is the oposite of gsBasis::uniformRefine
+    ///
+    /// The execution of
+    /// \code
+    /// basis->uniformRefine (nKnots, mul)
+    /// basis->uniformCoarsen(nKnots);
+    /// \endcode
+    /// results in no overall change in "basis". However,
+    /// \code
+    /// basis->uniformCoarsen(nKnots);
+    /// basis->uniformRefine (nKnots, mul)
+    /// \endcode
+    /// is not guaranteed to keep "basis" unchanged.
+    ///
+    /// \sa gsBasis::uniformRefine
+    virtual void uniformCoarsen(int numKnots = 1);
+
+    /// @brief Coarsen the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
-    virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
-                                            int numKnots = 1, int mul=1);
+    ///
+    /// The function writes a sparse matrix into the variable \a transfer that indicates
+    /// how the functions on the coarse grid are represented as linear combinations as fine
+    /// grid functions
+    ///
+    /// \sa gsBasis::uniformCoarsen
+    virtual void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor>& transfer,
+                                             int numKnots = 1);
 
     /// @brief Elevate the degree of the basis by the given amount, preserve smoothness.
     virtual void degreeElevate(int const & i = 1, int const dir = -1);
