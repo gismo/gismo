@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-        
+
     // h-refine each basis
     if (last)
     {
@@ -89,24 +89,24 @@ int main(int argc, char *argv[])
     geometryMap G = A.setMap(mp);
 
     // Set the discretization space
-    space u = A.setSpace(dbasis, bc);
+    space u = A.setSpace(dbasis, bc); // bc.get("Dirichlet", 0); ??????
     u.setInterfaceCont(0);
     
     // Set the source term
-    variable    ff = A.setCoeff(f, G);
+    variable ff = A.setCoeff(f, G);
     
     // Recover manufactured solution
     gsFunctionExpr<> ms;
     fd.getId(3, ms); // id=3: reference solution
     //gsInfo<<"Exact solution: "<< ms << "\n";
-    variable u_ex = ev.setVariable(ms, G);    
+    variable u_ex = ev.setVariable(ms, G);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
     solution u_sol = A.getSolution(u, solVector);
 
     gsSparseSolver<>::CGDiagonal solver;
-    
+
     //! [Problem setup]
 
     //! [Solver loop]
@@ -116,37 +116,33 @@ int main(int argc, char *argv[])
     for (int r=0; r<=numRefine; ++r)
     {
         dbasis.uniformRefine();
-            
+
         // Initialize the system
         A.initSystem();
-        
+
         gsInfo<< A.numDofs() <<std::flush;
-            
+
         // Compute the system matrix and right-hand side
         A.assembleLhsRhs( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
-        
+
         // Enforce Neumann conditions to right-hand side
         variable g_N = A.getBdrFunction();
         A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
-        
-        gsInfo<< "." <<std::flush;
-        
         //gsInfo<<"Sparse Matrix:\n"<< A.matrix().toDense() <<"\n";
         //gsInfo<<"Rhs vector:\n"<< A.rhs().transpose() <<"\n";
-        //gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n";
-        
+
+        gsInfo<< "." <<std::flush;// Assemblying done
+
         solver.compute( A.matrix() );
         solVector = solver.solve(A.rhs());
 
-        gsInfo<< "." <<std::flush;
-        
+        gsInfo<< "." <<std::flush; // Linear solving done
+
         l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-        
         h1err[r]= l2err[r] +
-            math::sqrt( ev.integral( ( grad(u_ex) - grad(u_sol)*jac(G).inv() ).sqNorm() * meas(G) ) );
-            //math::sqrt( ev.integral( ( grad(u_ex) - igrad(u_sol, G) ).sqNorm() * meas(G) ) );
+        math::sqrt(ev.integral( ( grad(u_ex) - grad(u_sol)*jac(G).inv() ).sqNorm() * meas(G) ));
         
-        gsInfo<< ". " <<std::flush;        
+        gsInfo<< ". " <<std::flush; // Error computations done
 
     } //for loop
 
@@ -169,9 +165,6 @@ int main(int argc, char *argv[])
     //! [Error and convergence rates]
     
     // if (save)
-    {
-        
-    }
     
     //! [Export visualization in ParaView]
     if (plot)
@@ -179,9 +172,9 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         ev.options().setSwitch("plot.elements", true);
         ev.writeParaview( u_sol   , G, "solution");
-        ev.writeParaview( u_ex    , G, "solution_ex");
+        //ev.writeParaview( u_ex    , G, "solution_ex");
         
-        //ev.writeParaview( u, G, "aa", 3000, true); ???
+        //ev.writeParaview( u, G, "aa");
         return system("paraview solution.pvd &");
     }
     //! [Export visualization in ParaView]

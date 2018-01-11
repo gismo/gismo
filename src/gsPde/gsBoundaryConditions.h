@@ -163,7 +163,7 @@ struct boundary_condition
 
     // TO DO : robin coefficients?
 
-    condition_type::type m_type; ///< Type of the boundary condition
+    condition_type::type m_type;// todo: remove
 
     std::string m_label;         ///< Description of type of the boundary condition
 
@@ -203,6 +203,7 @@ class GISMO_EXPORT gsBoundaryConditions
     
 public:
 
+    // todo: std::deque
     typedef typename std::vector<boundary_condition<T> > bcContainer;
     typedef typename bcContainer::iterator iterator;
     typedef typename bcContainer::const_iterator const_iterator;

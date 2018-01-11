@@ -273,19 +273,6 @@ public:
     geometryMap setMap(const gsGeometry<T> & mp)
     { return m_exprdata->setMap(mp); }
 
-    space setSpace(const gsFunctionSet<T> & mp, const gsBoundaryConditions<T> & bc,
-                   index_t dim = 1, index_t id = 0)
-    {
-        GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
-        GISMO_ASSERT(static_cast<size_t>(id)<m_vrow.size(),
-                     "Given ID "<<id<<" exceeds "<<m_vrow.size() );
-        expr::gsFeSpace<T> & u = m_exprdata->setSpace(mp,dim);
-        u.setId(id);
-        u.setBc(bc);
-        m_vrow[id] = m_vcol[id] = &u;
-        return u;
-    }
-
     space setSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
     {
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");        
@@ -294,6 +281,14 @@ public:
         expr::gsFeSpace<T> & u = m_exprdata->setSpace(mp,dim);
         u.setId(id);
         m_vrow[id] = m_vcol[id] = &u;
+        return u;
+    }
+    
+    space setSpace(const gsFunctionSet<T> & mp, const gsBoundaryConditions<T> & bc,
+                   index_t dim = 1, index_t id = 0)
+    {
+        expr::gsFeSpace<T> & u = const_cast<expr::gsFeSpace<T>&>(setSpace(mp,dim,id));
+        u.setBc(bc);
         return u;
     }
 
