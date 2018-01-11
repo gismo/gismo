@@ -34,13 +34,13 @@ int main(int argc, char *argv[])
     cmd.getValues(argc,argv);
     
     // Read in a surface
-    cout << "Read in "<< gsFileData<>::getFilename(fn) <<"\n";
+    cout << "Read in "<< gsFileManager::getFilename(fn) <<"\n";
     memory::unique_ptr< gsMultiPatch<> > mp = gsReadFile<>(fn);
     cout << *mp <<"\n";
     
     // Get filename and extension
-    std::string name = gsFileData<>::getBasename (fn);
-    std::string ext  = gsFileData<>::getExtension(fn);
+    std::string name = gsFileManager::getBasename (fn);
+    std::string ext  = gsFileManager::getExtension(fn);
 
     if ( ext == "xml" )
     {
