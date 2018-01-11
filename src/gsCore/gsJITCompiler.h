@@ -17,7 +17,7 @@
 #pragma once
 
 #include <gsIO/gsXml.h>
-#include <gsUtils/gsUtils.h>
+#include <gsIO/gsFileManager.h>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -434,7 +434,7 @@ private:
     /// Auto-detect temp directory
     static std::string detectTemp()
     {
-        return util::getTempPath();
+        return gsFileManager::getTempPath();
     }
 };
 

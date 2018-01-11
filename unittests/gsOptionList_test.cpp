@@ -344,7 +344,7 @@ SUITE(gsOptionList_test)
      */
     TEST(save_load_from_test_xml)
     {
-        std::string path = gismo::util::getTempPath()
+        std::string path = gsFileManager::getTempPath()
             + gsFileManager::getNativePathSeparator() + util::to_string("test.xml");
         gsOptionList myList;
         myList.addString(LABEL_STR_1, DESC_1, STR_1);
@@ -391,7 +391,7 @@ SUITE(gsOptionList_test)
         std::string path = gsFileManager::findInDataDir( "options/assembler_options.xml" );
         gsOptionList myList = loadFromFile(path);
         // saving
-        std::string actual = gismo::util::getTempPath()
+        std::string actual = gsFileManager::getTempPath()
             + gsFileManager::getNativePathSeparator() + util::to_string("assembler_options2.xml");
         saveToFile(actual, myList);
         // loading

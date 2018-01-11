@@ -324,8 +324,7 @@ SUITE(gsBoundaryConditions_test)
     TEST(save_load_bc_xml)
     {
         std::string path1 = gsFileManager::findInDataDir( "gsBoundaryConditions/bc.xml" );
-        std::string path2 = gismo::util::getTempPath();
-        path2 += "/bc2.xml";
+        std::string path2 = gsFileManager::getTempPath() + "/bc2.xml";
 
         gsBoundaryConditions<real_t> sut = gsBoundaryConditions_loadFromFile(path1);
         gsBoundaryConditions_saveToFile(path2, sut);
