@@ -61,6 +61,30 @@ gsFileManagerData& gsFileManagerDataSingleton()
     return singleton;
 }
 
+bool gsFileManager::fileExists(const std::string& name)
+{
+    return !find(name).empty();
+}
+
+bool gsFileManager::fileExistsInDataDir(const std::string& name)
+{
+    return !findInDataDir(name).empty();
+}
+
+bool gsFileManager::fileNotPathExists(const std::string& fn)
+{
+   // Note:
+   //   std::ifstream s(fn.c_str()); return s.good() && ! s.eof();
+   // is also possible; however that treats empty files as non-existing.
+#if defined _WIN32
+    DWORD dwAttrib = GetFileAttributes( fn.c_str() );
+    return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+#else
+    struct stat buf;
+    return ( (0==stat(fn.c_str(), &buf)) && (0!=S_ISREG(buf.st_mode)) );
+#endif
+}
+
 char gsFileManager::getNativePathSeparator()
 {
 #if defined _WIN32 || defined __CYGWIN__
@@ -159,7 +183,7 @@ std::string gsFileManager::find(std::string fn)
     _replace_slash_by_basckslash(fn);
 #endif
 
-    if ( std::ifstream(fn.c_str()).good() ) return fn;
+    if ( fileNotPathExists(fn) ) return fn;
 
     if ( isFullyQualified(fn) || isRelative(fn) ) return std::string();
 
@@ -170,16 +194,11 @@ std::string gsFileManager::find(std::string fn)
             it < dat.m_paths.end(); ++it)
     {
         tmp = (*it) + fn;
-        if ( std::ifstream(tmp.c_str()).good() )
+        if ( fileNotPathExists(tmp) )
             return tmp;
     }
 
     return std::string();
-}
-
-bool gsFileManager::fileExists(const std::string& name)
-{
-    return !find(name).empty();
 }
 
 std::string gsFileManager::findInDataDir(std::string fn)
@@ -194,14 +213,9 @@ std::string gsFileManager::findInDataDir(std::string fn)
 
     std::string fn_out = GISMO_DATA_DIR + fn;
 
-    if ( std::ifstream(fn_out.c_str()).good() ) return fn_out;
+    if ( fileNotPathExists(fn_out) ) return fn_out;
 
     return std::string();
-}
-
-bool gsFileManager::fileExistsInDataDir(const std::string& name)
-{
-    return !findInDataDir(name).empty();
 }
 
 bool gsFileManager::mkdir( std::string fn )
