@@ -116,6 +116,11 @@ public:
         }
         return fn;
     }
+
+private:
+
+    // Return true iff file \a fn exists on the hard disk
+    static bool fileNotPathExists(const std::string & fn);
 };
 
 
