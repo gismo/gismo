@@ -27,12 +27,6 @@ class GISMO_EXPORT gsFileManager
 {
 public:
 
-    /// Checks if the file exists (also in the search paths)
-    static bool fileExists(const std::string& name);
-
-    /// Checks if the file exists in GISMO_DATA_DIR
-    static bool fileExistsInDataDir(const std::string& name);
-
     /// Get native path seperator
     static char getNativePathSeparator();
 
@@ -62,6 +56,9 @@ public:
     ///
     /// In any case, slashes are replaced by the native path separator.
     static std::string find(std::string fn);
+    
+    /// Checks if the file exists (also in the search paths)
+    static bool fileExists(const std::string& name);
 
     /// \brief Find a file in GISMO_DATA_DIR
     ///
@@ -73,6 +70,12 @@ public:
     ///
     /// In any case, slashes are replaced by the native path separator.
     static std::string findInDataDir(std::string fn);
+    
+    /// Checks if the file exists in GISMO_DATA_DIR
+    static bool fileExistsInDataDir(const std::string& name);
+    
+    /// \brief Auto-detect temp directory
+    static std::string getTempPath();
 
     /// Make directory
     static bool mkdir( std::string fn );

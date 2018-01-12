@@ -137,11 +137,6 @@ inline void string_replace(std::string& str,
     }
 }
 
-/// \brief Auto-detect temp directory
-/// \ingroup Utils
-GISMO_EXPORT
-std::string getTempPath();
-
 /// \brief Returns the \a i-th token of the string \a str using delimiter \a delim
 /// \ingroup Utils
 inline std::string tokenize(const std::string& str,
@@ -178,11 +173,6 @@ inline std::string returnCapitalized(const std::string& str)
     capitalize(newStr);
     return newStr;
 }
-
-/// \brief Remove pointer from type
-/// \ingroup Utils
-template<typename T> struct remove_pointer {typedef T type;};
-template<typename T> struct remove_pointer<T*> {typedef typename remove_pointer<T>::type type;};
 
 /// \brief Print name of template type as a string
 /// \ingroup Utils
