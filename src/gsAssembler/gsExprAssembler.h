@@ -101,8 +101,13 @@ for_each_expr(const Tuple& tuple, Func func) { __for_each<0, Tuple,Func>(tuple, 
 namespace gismo
 {
 
+
+/*
+  Internal function which accumulates the local element matrices to global
+  sparse matrix and right-hand side
+ */
 template<class T, bool left, bool right>
-void gsSpAcc(
+void gsAccumulateLocalToGlobal(
     gsSparseMatrix<T> & m_matrix,
     gsMatrix<T> & m_rhs,
     const gsMatrix<T> & localMat,
@@ -713,7 +718,7 @@ void gsExprAssembler<T>::assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
             //gsDebugVar(localRhs.transpose() );
             
             // Add contributions to the system matrix and right-hand side
-            gsSpAcc<T,left,right>(m_matrix, m_rhs,
+            gsAccumulateLocalToGlobal<T,left,right>(m_matrix, m_rhs,
                                   localMat, localRhs, rvar, cvar, patchInd);
         }
     }
@@ -774,7 +779,7 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
             }
             
             // Add contributions to the system matrix and right-hand side
-            gsSpAcc<T,left,right>(m_matrix, m_rhs,
+            gsAccumulateLocalToGlobal<T,left,right>(m_matrix, m_rhs,
                                   localMat, localRhs, rvar, cvar, it->patch() );
         }
     }
@@ -848,8 +853,8 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
             }
             
             // Add contributions to the system matrix and right-hand side
-            gsSpAcc<T,left,right>(m_matrix, m_rhs,
-                                  localMat, localRhs, rvar, cvar, patch1);
+            gsAccumulateLocalToGlobal<T,left,right>(m_matrix, m_rhs,
+                                          localMat, localRhs, rvar, cvar, patch1);
         }
     }
     

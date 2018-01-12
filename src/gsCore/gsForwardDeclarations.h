@@ -169,6 +169,9 @@ template< class T = real_t>  class gsCDRAssembler;
 template< class T = real_t>  class gsSolverUtils;
 template< class T = real_t, bool symm = false>  class gsSparseSystem;
 
+template< class T = real_t>  class gsExprAssembler;
+template< class T = real_t>  class gsExprEvaluator;
+
 // More
 template< class T = real_t>  class gsCurveLoop;
 template< class T = real_t>  class gsPlanarDomain;

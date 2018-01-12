@@ -74,16 +74,16 @@ int main(int argc, char *argv[])
     //! [Refinement]
     
     //! [Problem setup]
-    gsExprAssembler<real_t> A(1,1);
+    gsExprAssembler<> A(1,1);
     //gsInfo<<"Active options:\n"<< A.options() <<"\n";
-    typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-    typedef gsExprAssembler<real_t>::variable    variable;
-    typedef gsExprAssembler<real_t>::space       space;
-    typedef gsExprAssembler<real_t>::solution    solution;
+    typedef gsExprAssembler<>::geometryMap geometryMap;
+    typedef gsExprAssembler<>::variable    variable;
+    typedef gsExprAssembler<>::space       space;
+    typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
-    gsExprEvaluator<real_t> ev(A);
+    gsExprEvaluator<> ev(A);
     
     // Set the geometry map
     geometryMap G = A.getMap(mp);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     fd.getId(3, ms); // id=3: reference solution
     //gsInfo<<"Exact solution: "<< ms << "\n";
     variable u_ex = ev.getVariable(ms, G);
-
+    
     // Solution vector and solution variable
     gsMatrix<> solVector;
     solution u_sol = A.getSolution(u, solVector);
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
     gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
 
-    if (!last)
+    if (!last && numRefine>0)
     {
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
               << ( l2err.head(numRefine).array() /
