@@ -198,11 +198,6 @@ std::string gsFileManager::find(std::string fn)
     return std::string();
 }
 
-bool gsFileManager::fileExists(const std::string& name)
-{
-    return !find(name).empty();
-}
-
 std::string gsFileManager::findInDataDir(std::string fn)
 {
 #if defined _WIN32
