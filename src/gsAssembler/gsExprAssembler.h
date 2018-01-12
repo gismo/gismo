@@ -267,28 +267,20 @@ public:
 
     const typename gsExprHelper<T>::Ptr exprData() const { return m_exprdata; }
     
-    geometryMap setMap(const gsMultiPatch<T> & mp) //conv->tmp->error
-    { return m_exprdata->setMap(mp); }
+    geometryMap getMap(const gsMultiPatch<T> & mp) //conv->tmp->error
+    { return m_exprdata->getMap(mp); }
 
-    geometryMap setMap(const gsGeometry<T> & mp)
-    { return m_exprdata->setMap(mp); }
+    geometryMap getMap(const gsGeometry<T> & mp)
+    { return m_exprdata->getMap(mp); }
 
-    space setSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
+    space getSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
     {
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");        
         GISMO_ASSERT(static_cast<size_t>(id)<m_vrow.size(),
                      "Given ID "<<id<<" exceeds "<<m_vrow.size()-1 );
-        expr::gsFeSpace<T> & u = m_exprdata->setSpace(mp,dim);
+        expr::gsFeSpace<T> & u = m_exprdata->getSpace(mp,dim);
         u.setId(id);
         m_vrow[id] = m_vcol[id] = &u;
-        return u;
-    }
-    
-    space setSpace(const gsFunctionSet<T> & mp, const gsBoundaryConditions<T> & bc,
-                   index_t dim = 1, index_t id = 0)
-    {
-        expr::gsFeSpace<T> & u = const_cast<expr::gsFeSpace<T>&>(setSpace(mp,dim,id));
-        u.setBc(bc);
         return u;
     }
 
@@ -311,10 +303,10 @@ public:
     }
 
     variable setCoeff(const gsFunctionSet<T> & func)
-    { return m_exprdata->setVar(func, 1); }
+    { return m_exprdata->getVar(func, 1); }
 
     variable setCoeff(const gsFunctionSet<T> & func, geometryMap G)
-    { return m_exprdata->setVar(func,G); }
+    { return m_exprdata->getVar(func,G); }
 
     solution getSolution(variable u, gsMatrix<T> & cf) const
     {
@@ -368,80 +360,28 @@ public:
 
     void resetDimensions()
     {
-        for (size_t i = 0; i!=m_vcol.size(); ++i)
+        for (std::size_t i = 0; i!=m_vcol.size(); ++i)
         {
             GISMO_ASSERT(NULL!=m_vcol[i], "Not set.");
-            expr::gsFeSpace<T> & u = *m_vcol[i];
-
-            const gsBoundaryConditions<> & ubc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
+            m_vcol[i]->reset();
             
-            if (const gsMultiBasis<T> * mb =
-                dynamic_cast<const gsMultiBasis<T>*>(&u.source()) )
-            {
-				mb->getMapper(
-                    dirichlet::elimination,
-                    0==u.interfaceCont() ? iFace::conforming : iFace::none,
-                    ubc, u.mapper(), u.id(), true);
-                //u.mapper().print();
-            }
-            else if (const gsBasis<T> * b =
-                dynamic_cast<const gsBasis<T>*>(&u.source()) )
-            {
-                gsMultiBasis<T> mbb(*b);
-                mbb.getMapper(
-                    dirichlet::elimination,
-                    0==u.interfaceCont() ? iFace::conforming : iFace::none,
-                    ubc, u.mapper(), u.id(), true);
-            }
-            else
-            {
-                gsWarn<<"Problem initializing.\n";
-            }
-
             if ( m_vcol[i] != m_vrow[i] )
             {
                 GISMO_ASSERT(NULL!=m_vrow[i], "Not set.");
-                expr::gsFeSpace<T> & v = *m_vrow[i];
-                
-                const gsBoundaryConditions<> & vbc = v.hasBc() ? v.bc() : gsBoundaryConditions<>();
-                
-                if (const gsMultiBasis<T> * mb =
-                    dynamic_cast<const gsMultiBasis<T>*>(&v.source()) )
-                {
-                    mb->getMapper(
-                        (dirichlet::strategy)(m_options.getInt("DirichletStrategy")),
-                        (iFace::strategy)(m_options.getInt("InterfaceStrategy")),
-                        vbc, v.mapper(), v.id(), true);
-                }
-                else if (const gsBasis<T> * b =
-                         dynamic_cast<const gsBasis<T>*>(&v.source()) )
-                {
-                    gsMultiBasis<T> mbb(*b);
-                    mbb.getMapper(
-                        (dirichlet::strategy)(m_options.getInt("DirichletStrategy")),
-                        (iFace::strategy)(m_options.getInt("InterfaceStrategy")),
-                        vbc, v.mapper(), v.id(), true);
-                }
-                else
-                {
-                    gsWarn<<"Problem initializing.\n";
-                }
-
+                m_vrow[i]->reset();
             }
-//            GISMO_ASSERT(m_vrow[i]==m_vcol[i], "to do"); // OK
-        }
-
+        }    
         for (size_t i = 1; i!=m_vcol.size(); ++i)
         {
             m_vcol[i]->mapper().setShift(m_vcol[i-1]->mapper().firstIndex() + 
                                          m_vcol[i-1]->dim()*m_vcol[i-1]->mapper().freeSize() );
-                
+            
             if ( m_vcol[i] != m_vrow[i] )
                 m_vrow[i]->mapper().setShift(m_vrow[i-1]->mapper().firstIndex() +
                                              m_vrow[i-1]->dim()*m_vrow[i-1]->mapper().freeSize() );
         }
     }
-
+    
     matBlockView matrixBlockView()
     {
         GISMO_ASSERT( m_vcol.back()->mapper().isFinalized(),
@@ -588,9 +528,7 @@ template<class T>
 gsOptionList gsExprAssembler<T>::defaultOptions()
 {
     gsOptionList opt;
-    opt.addInt("DirichletStrategy", "Method for enforcement of Dirichlet BCs [11..14]", 11 );
     opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);
-    opt.addInt("InterfaceStrategy", "Method of treatment of patch interfaces [0..3]", 1  );
     opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
     opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
     opt.addReal("bdA", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 2.0  );
@@ -604,20 +542,13 @@ void gsExprAssembler<T>::computeDirichletDofs2(int unk)
 {
     expr::gsFeSpace<T> & u = *m_vcol[unk];
     
-    if ( m_options.getInt("DirichletStrategy") == dirichlet::nitsche)
-        return; // Nothing to compute
-
-    const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
+    //if ( m_options.getInt("DirichletStrategy") == dirichlet::nitsche)
+    //    return; // Nothing to compute
     
-    const gsMultiBasis<T> & mbasis = dynamic_cast<const gsMultiBasis<T>&>(u.source());
+    //const gsMultiBasis<T> & mbasis = dynamic_cast<const gsMultiBasis<T>&>(u.source());
 
     // eg. not penalize
-    const gsDofMapper & mapper = 
-            dirichlet::elimination == m_options.getInt("DirichletStrategy") ?
-        u.mapper():
-        mbasis.getMapper(dirichlet::elimination,
-                         static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
-                         bbc, u.id());
+    const gsDofMapper & mapper = u.mapper();
 
     switch ( m_options.getInt("DirichletValues") )
     {
@@ -642,7 +573,7 @@ void gsExprAssembler<T>::computeDirichletDofs2(int unk)
         GISMO_ERROR("Something went wrong with Dirichlet values.");
     }
     
-    // Corner values
+    /* Corner values -- todo
     for ( typename gsBoundaryConditions<T>::const_citerator
               it = bbc.cornerBegin();
           it != bbc.cornerEnd(); ++it )
@@ -656,6 +587,7 @@ void gsExprAssembler<T>::computeDirichletDofs2(int unk)
         else
             continue;
     }
+    */
 }
 
 template<class T>
@@ -677,16 +609,17 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
     GISMO_ASSERT( m_options.getInt("DirichletValues") == dirichlet::user, "Incorrect options");
 
 	expr::gsFeSpace<T> & u = *m_vcol[unk];
-    const int dirStr = m_options.getInt("DirichletStrategy");
+    //const int dirStr = m_options.getInt("DirichletStrategy");
     const gsMultiBasis<T> & mbasis = *dynamic_cast<const gsMultiBasis<T>* >(&(u).source());
 
-	const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
-	
-    const gsDofMapper & mapper =
-        dirichlet::elimination == dirStr ? u.mapper()
-        : mbasis.getMapper(dirichlet::elimination,
-                           static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
-                           bbc, u.id()) ;
+	//const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
+
+    const gsDofMapper & mapper = u.mapper();
+//    const gsDofMapper & mapper =
+//        dirichlet::elimination == dirStr ? u.mapper()
+//        : mbasis.getMapper(dirichlet::elimination,
+//                           static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
+//                           bbc, u.id()) ;
 
 	gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>& >(u).fixedPart();
 	GISMO_ASSERT(fixedDofs.rows() == mapper.boundarySize() &&
@@ -694,9 +627,12 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
 				 "Fixed DoFs were not initialized.");
 
     // for every side with a Dirichlet BC
-    for ( typename gsBoundaryConditions<T>::const_iterator
-          it =  bbc.dirichletBegin();
-          it != bbc.dirichletEnd()  ; ++it )
+    // for ( typename gsBoundaryConditions<T>::const_iterator
+    //       it =  bbc.dirichletBegin();
+    //       it != bbc.dirichletEnd()  ; ++it )
+    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
+    for ( typename bcRefList::const_iterator it =  u.bc().dirichletBegin();
+          it != u.bc().dirichletEnd()  ; ++it )
     {
         const int k = it->patch();
         if ( k == patch )
@@ -781,8 +717,7 @@ void gsExprAssembler<T>::assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
                                   localMat, localRhs, rvar, cvar, patchInd);
         }
     }
-    
-    //this->finalize();
+
     m_matrix.makeCompressed();
 }
 
@@ -929,16 +864,21 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
     gsMatrix<T>        & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
     fixedDofs.resize(mapper.boundarySize(), u.dim() );
     const index_t parDim = u.source().domainDim();
-        
+    
     const gsMultiBasis<T> & mbasis =
         *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
                     
-    const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
+    //const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
     
     // Iterate over all patch-sides with Dirichlet-boundary conditions
-    for ( typename gsBoundaryConditions<T>::const_iterator
-          it = bbc.dirichletBegin(); it != bbc.dirichletEnd(); ++it )
+    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
+    for ( typename bcRefList::const_iterator iit =  u.bc().begin();
+          iit != u.bc().end()  ; ++iit )
+    // for ( typename gsBoundaryConditions<T>::const_iterator
+    //       it = bbc.dirichletBegin(); it != bbc.dirichletEnd(); ++it )
     {
+        const boundary_condition<T> * it = &iit->get();
+        
         const int k = it->patch();
         if( it->unknown()!=u.id() )
             continue;
@@ -1110,7 +1050,7 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
 
 	const gsMultiBasis<T> & mbasis = *dynamic_cast<const gsMultiBasis<T>* >(&u.source());
 
-	const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>(); 
+	//const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>(); 
 
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
@@ -1129,10 +1069,12 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
 	const gsMultiPatch<T> * mp = (const gsMultiPatch<T>*)(& m_exprdata->getMap().source());	
 	
     // Iterate over all patch-sides with Dirichlet-boundary conditions
-    for ( typename gsBoundaryConditions<T>::const_iterator
-          iter = bbc.dirichletBegin();
-          iter != bbc.dirichletEnd(); ++iter )
+    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
+    for ( typename bcRefList::const_iterator iit =  u.bc().begin();
+          iit != u.bc().end()  ; ++iit )
     {
+        const boundary_condition<T> * iter = &iit->get();
+
         const int unk = iter->unknown();
         if(unk != u.id())
             continue;

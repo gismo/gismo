@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
      
     gsFunctionExpr<> f;
     fd.getId(1, f); // id=1: source function
-     gsInfo<<"Source function "<< f << "\n";
+    gsInfo<<"Source function "<< f << "\n";
 
     gsBoundaryConditions<> bc;
     fd.getId(2, bc); // id=2: boundary conditions
@@ -86,11 +86,12 @@ int main(int argc, char *argv[])
     gsExprEvaluator<real_t> ev(A);
     
     // Set the geometry map
-    geometryMap G = A.setMap(mp);
+    geometryMap G = A.getMap(mp);
 
     // Set the discretization space
-    space u = A.setSpace(dbasis, bc); // bc.get("Dirichlet", 0); ??????
+    space u = A.getSpace(dbasis);
     u.setInterfaceCont(0);
+    u.addBc( bc.get("Dirichlet") );
     
     // Set the source term
     variable ff = A.setCoeff(f, G);
@@ -99,7 +100,7 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> ms;
     fd.getId(3, ms); // id=3: reference solution
     //gsInfo<<"Exact solution: "<< ms << "\n";
-    variable u_ex = ev.setVariable(ms, G);
+    variable u_ex = ev.getVariable(ms, G);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;

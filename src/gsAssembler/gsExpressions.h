@@ -561,18 +561,20 @@ class gsFeSpace :public gsFeVariable<T>
 {
 protected:
     friend gsFeSolution<T>;
-    
+
     typedef gsFeVariable<T> Base;
 
-    const gsBoundaryConditions<T> * m_bc;
     index_t             m_id;
 
     // C^r coupling
-    mutable index_t m_r;
+    mutable index_t m_r; // iFace::handling
+
+    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
+    mutable bcRefList m_bcs;
     
     gsDofMapper m_mapper;
     gsMatrix<T> m_fixedDofs;
-    
+
 public:
     typedef T Scalar;
 
@@ -582,9 +584,10 @@ public:
     inline const gsMatrix<T> & fixedPart() const {return m_fixedDofs;}
     gsMatrix<T> & fixedPart() {return m_fixedDofs;}
 
-    bool hasBc() const { return NULL!=m_bc;}
-    const gsBoundaryConditions<T> & bc()      const {return *m_bc;}
-    void setBc(const gsBoundaryConditions<T> & _bc) { m_bc = &_bc;}
+    const bcRefList & bc() const { return m_bcs; }
+    void addBc(bcRefList bc) const { m_bcs = bc; }
+    void clearBc() const { m_bcs.clear(); }
+    std::size_t bcSize() const { return m_bcs.size(); }
 
     index_t   id() const {return m_id;}
     index_t & setId(const index_t _id) {return m_id = _id;}
@@ -630,10 +633,59 @@ public:
             }
         }
     }
-        
+
+    // space restrictTo(boundaries);
+    // space restrictTo(bcRefList domain);
+
+    void reset()
+    {
+        if (const gsMultiBasis<T> * mb =
+            dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
+        {
+            m_mapper = gsDofMapper(*mb);
+            //m_mapper.init(*mb); //bug
+            if ( 0==this->interfaceCont() ) // Conforming boundaries ?
+            {
+                for ( gsBoxTopology::const_iiterator it = mb->topology().iBegin();
+                      it != mb->topology().iEnd(); ++it )
+                {
+                    mb->matchInterface(*it, m_mapper);
+                }
+            }
+
+            gsMatrix<unsigned> bnd;
+            for (typename bcRefList::const_iterator
+                     it = this->bc().begin() ; it != this->bc().end(); ++it )
+            {
+                GISMO_ASSERT( it->get().ps.patch < static_cast<index_t>(this->mapper().numPatches()),
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = mb->basis(it->get().ps.patch).boundary( it->get().ps.side() );
+                m_mapper.markBoundary(it->get().ps.patch, bnd);
+            }
+        }
+/*
+        else if (const gsBasis<T> * b =
+                 dynamic_cast<const gsBasis<T>*>(&u.source()) )
+        {
+            gsMultiBasis<T> mbb(*b);
+            mbb.getMapper(
+                dirichlet::elimination,
+                0==u.interfaceCont() ? iFace::conforming : iFace::none,
+                ubc, u.mapper(), u.id(), true);
+        }
+        else
+        {
+            gsWarn<<"Problem initializing.\n";
+        }
+*/
+        this->mapper().finalize();
+        //this->mapper().print();
+    }
+
 protected:
     friend class gismo::gsExprHelper<T>;    
-    explicit gsFeSpace(index_t _d = 1) : Base(_d), m_bc(NULL), m_id(-1), m_r(-1)
+    explicit gsFeSpace(index_t _d = 1) : Base(_d), m_id(-1), m_r(-1)
     { }
 };
 

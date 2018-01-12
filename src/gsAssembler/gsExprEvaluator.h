@@ -79,17 +79,17 @@ public:
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setMultiBasis(mesh); }
 
-    geometryMap setMap(const gsMultiPatch<T> & mp) //conv->tmp->error
+    geometryMap getMap(const gsMultiPatch<T> & mp) //conv->tmp->error
     { return m_exprdata->setMap(mp); }
 
-    geometryMap setMap(const gsGeometry<T> & mp)
+    geometryMap getMap(const gsGeometry<T> & mp)
     { return m_exprdata->setMap(mp); }
 
-    variable setVariable(const gsFunctionSet<T> & func, index_t dim = 1)
+    variable getVariable(const gsFunctionSet<T> & func, index_t dim = 1)
     { return m_exprdata->setVar(func, dim); }
 
-    variable setVariable(const gsFunctionSet<T> & func, geometryMap G)
-    { return m_exprdata->setVar(func, G); }
+    variable getVariable(const gsFunctionSet<T> & func, geometryMap G)
+    { return m_exprdata->getVar(func, G); }
 
     element getElement() const { return m_element; }
 

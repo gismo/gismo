@@ -99,14 +99,14 @@ public:
     }
 
     
-    geometryMap setMap(const gsFunction<T> & mp)
+    geometryMap getMap(const gsFunction<T> & mp)
     {
         //mapData.clear();
         mapVar.registerData(mp, mapData);
         return mapVar;
     }
 
-    geometryMap setMap(const gsMultiPatch<T> & mp)
+    geometryMap getMap(const gsMultiPatch<T> & mp)
     {
         //mapData.clear();
         mapVar.registerData(mp, mapData);
@@ -121,9 +121,8 @@ public:
     }
     //*/
     
-    nonConstVariable setVar(const gsFunctionSet<T> & mp, index_t dim = 1)
+    nonConstVariable getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
-
         vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsFeVariable<T> & var = vlist.back();
         gsFuncData<T> & fd = v_map[&mp];
@@ -132,25 +131,25 @@ public:
         return var;
     }
 
-    nonConstSpace setSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
+    nonConstVariable getVar(const gsFunctionSet<T> & mp, geometryMap G)
+    {
+        GISMO_ASSERT(&G==&mapVar, "geometry map not known");
+        vlist.push_back( expr::gsFeVariable<T>() ); 
+        expr::gsFeVariable<T> & var = vlist.back();
+        mapData.flags |= NEED_VALUE;
+        gsFuncData<T> & fd = v_map[&mp];//
+        fd.dim = mp.dimensions();
+        var.registerData(mp, fd, 1);
+        return var;
+    }
+
+    nonConstSpace getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
         slist.push_back( expr::gsFeSpace<T>() );
         expr::gsFeSpace<T> & var = slist.back();
         gsFuncData<T> & fd = s_map[&mp];
         fd.dim = mp.dimensions();
         var.registerData(mp, fd, dim);
-        return var;
-    }
-
-    nonConstVariable setVar(const gsFunctionSet<T> & mp, geometryMap G)
-    {
-        GISMO_ASSERT(&G==&mapVar, "geometry map not known");
-        vlist.push_back( expr::gsFeVariable<T>() ); 
-        expr::gsFeVariable<T> & var = vlist.back();
-        mapData.flags |= NEED_VALUE;
-        gsFuncData<T> & fd = v_map[&mp];
-        fd.dim = mp.dimensions();
-        var.registerData(mp, fd, 1);
         return var;
     }
 
