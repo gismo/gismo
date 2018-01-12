@@ -181,6 +181,7 @@ public:
     template<class E>
     void interpolate(const expr::_expr<E> & expr)
     {
+        GISMO_NO_IMPLEMENTATION
         // for all patches
         //   get anchors of patch
         //   evaluate expr

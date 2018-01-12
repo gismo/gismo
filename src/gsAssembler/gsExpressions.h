@@ -25,7 +25,7 @@ template<class T> class gsExprHelper;
 template<typename T>
 void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
                      const index_t dim,
-                     Eigen::Matrix<T,-1,-1> & hessian)
+                     Eigen::Matrix<T,Dynamic,Dynamic> & hessian)
 {
     const index_t sz = dim*(dim+1)/2;
     const gsAsConstMatrix<T> ders(secDers.data(), sz, secDers.size() / sz );
@@ -34,7 +34,7 @@ void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
     switch ( dim )
     {
     case 1:
-        hessian = secDers;
+        hessian = secDers; // ders
         break;
     case 2:
         hessian.row(0)=ders.row(0);//0,0
@@ -1419,7 +1419,7 @@ nabla_expr<T> nabla(const gsFeVariable<T> & u)
 { return nabla_expr<T>(u); }
 
 /**
-   Expression for the nabla^2 (or Del^2) of a finite element variable,
+   Expression for the nabla2 (or Del2) of a finite element variable,
    see also https://en.wikipedia.org/wiki/Del
 
    Transposed pure second derivatives are returned as a matrix
