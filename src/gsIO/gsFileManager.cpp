@@ -73,6 +73,9 @@ bool gsFileManager::fileExistsInDataDir(const std::string& name)
 
 bool gsFileManager::fileNotPathExists(const std::string& fn)
 {
+   // Note:
+   //   std::ifstream s(fn.c_str()); return s.good() && ! s.eof();
+   // is also possible; however that treats empty files as non-existing.
 #if defined _WIN32
     DWORD dwAttrib = GetFileAttributes( fn.c_str() );
     return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
