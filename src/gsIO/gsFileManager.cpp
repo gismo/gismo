@@ -66,6 +66,11 @@ bool gsFileManager::fileExists(const std::string& name)
     return !find(name).empty();
 }
 
+bool gsFileManager::fileExistsInDataDir(const std::string& name)
+{
+    return !findInDataDir(name).empty();
+}
+
 bool gsFileManager::fileNotPathExists(const std::string& fn)
 {
 #if defined _WIN32
@@ -75,11 +80,6 @@ bool gsFileManager::fileNotPathExists(const std::string& fn)
     struct stat buf;
     return ( (0==stat(fn.c_str(), &buf)) && (0!=S_ISREG(buf.st_mode)) );
 #endif
-}
-
-bool gsFileManager::fileExistsInDataDir(const std::string& name)
-{
-    return !findInDataDir(name).empty();
 }
 
 char gsFileManager::getNativePathSeparator()
@@ -218,11 +218,6 @@ std::string gsFileManager::findInDataDir(std::string fn)
     if ( fileNotPathExists(fn_out) ) return fn_out;
 
     return std::string();
-}
-
-bool gsFileManager::fileExistsInDataDir(const std::string& name)
-{
-    return !findInDataDir(name).empty();
 }
 
 bool gsFileManager::mkdir( std::string fn )
