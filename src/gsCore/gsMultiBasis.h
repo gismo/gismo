@@ -56,8 +56,16 @@ public:
     /// Default empty constructor
     gsMultiBasis() { }
 
-    /// Create a multi-basis instance from a gsMultiPatch
-    explicit gsMultiBasis( const gsMultiPatch<T> & mpatch, bool NoRational = true);
+    /// \brief Create a multi-basis instance from a gsMultiPatch
+    ///
+    /// \param numeratorOnly If true, and the bases are derived from
+    /// gsRationalBasis, then only the source bases (numerators) are
+    /// returned
+    ///
+    /// \note In the case of NURBS, the numerator possess the same
+    /// approximation power, while the evaluation of values and
+    /// partial derivatives are much less expensive
+    explicit gsMultiBasis( const gsMultiPatch<T> & mpatch, bool numeratorOnly = true);
 
     /// Create from a vector of bases and topology
     gsMultiBasis(BasisContainer& bases, const gsBoxTopology & topology)

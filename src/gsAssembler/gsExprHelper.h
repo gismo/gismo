@@ -42,13 +42,13 @@ private:
     FunctionTable v_map;
     FunctionTable s_map;
     //FunctionTable i_map;
-    
+
     // geometry map
     expr::gsGeometryMap<T> mapVar;
 public:
     gsMapData<T> mapData;
 private:
-    
+
     // mutable pair of variable and data,
     // ie. not uniquely assigned to a gsFunctionSet
     expr::gsFeVariable<T> mutVar ;
@@ -73,11 +73,11 @@ public:
 
     typedef memory::shared_ptr<gsExprHelper> Ptr;
 public:
-        
+
     gsMatrix<T> & points() { return mapData.points; }
 
     static Ptr New() { return Ptr(new gsExprHelper()); }
-    
+
     void reset()
     {
         s_map.clear();
@@ -91,14 +91,14 @@ public:
     void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
 
     bool multiBasisSet() { return NULL!=mesh_ptr;}
-    
+
     const gsMultiBasis<T> & multiBasis()
     {
         GISMO_ASSERT(multiBasisSet(), "Integration elements not set.");
         return *mesh_ptr;
     }
 
-    
+
     geometryMap getMap(const gsFunction<T> & mp)
     {
         //mapData.clear();
@@ -120,7 +120,7 @@ public:
         return mapVar;
     }
     //*/
-    
+
     nonConstVariable getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
         vlist.push_back( expr::gsFeVariable<T>() );
@@ -134,7 +134,7 @@ public:
     nonConstVariable getVar(const gsFunctionSet<T> & mp, geometryMap G)
     {
         GISMO_ASSERT(&G==&mapVar, "geometry map not known");
-        vlist.push_back( expr::gsFeVariable<T>() ); 
+        vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsFeVariable<T> & var = vlist.back();
         mapData.flags |= NEED_VALUE;
         gsFuncData<T> & fd = v_map[&mp];//
@@ -154,7 +154,7 @@ public:
     }
 
     //void rmVar(
-        
+
     bool exists(variable a)
     {
         typedef typename std::deque<expr::gsFeSpace<T> >::const_iterator siter;
@@ -167,15 +167,15 @@ public:
 
         return false;
     }
-        
+
     variable getMutVar() const { return mutVar; }
-    
+
     void setMutSource(const gsFunction<T> & func, bool param)
     {
         mutVar.setSource(func);
         mutParametric = param;
     }
-        
+
     template<class E>
     void check(const expr::_expr<E> & testExpr) const
     {
@@ -215,7 +215,7 @@ public:
     }
 
     //void precompute(const gsMatrix<T> & points, const index_t patchIndex = 0)
-    
+
     void precompute(const index_t patchIndex = 0)
     {
         GISMO_ASSERT(0!=points().size(), "No points");
@@ -230,13 +230,13 @@ public:
             //mutVar.source().piece(patchIndex).compute(mapData.points, mutData);
             mutVar.source().piece(patchIndex)
                 .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
-        
+
         for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
         {
             it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
             it->second.patchId = patchIndex;
         }
-        
+
         for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
         {
             it->first->piece(patchIndex).compute(mapData.values[0], it->second);
@@ -266,7 +266,7 @@ public:
             //mutVar.source().piece(patchIndex).compute(mapData.points, mutData);
             mutVar.source().piece(patchIndex)
                 .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
-        
+
         for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
             it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
 

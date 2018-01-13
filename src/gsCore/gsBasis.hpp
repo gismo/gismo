@@ -500,21 +500,12 @@ void gsBasis<T>::setDegree(int const& i)
         }
         else if  ( i < p )
         {
-            //this->degreeReduce(p-i, k); // todo
+            // If the degree is not the same in all directions, then
+            //this does not what is specified
             this->degreeReduce(p-i);
+            //this->degreeReduce(p-i, k); // todo
         }
     }
-    /*
-    const int p = maxDegree();
-    if ( i > p )
-    {
-        degreeElevate(i-p); 
-    }
-    else if  ( i < p )
-    {
-        degreeReduce(p-i); 
-    }
-    */
 }
 
 template<class T>

@@ -184,9 +184,10 @@ public:
 
     /// \brief Makes a deep copy of all bases and puts them in a vector
     ///
-    /// \param NoRational If true, only the numarators of the
-    /// (rational) bases is returned
-    std::vector<gsBasis<T> *> basesCopy(bool NoRational = true) const;
+    /// \param numeratorOnly If true, and the bases are derived from
+    /// gsRationalBasis, then only the source bases (numerators) are
+    /// returned
+    std::vector<gsBasis<T> *> basesCopy(bool numeratorOnly = false) const;
 
     /// Return the \a i-th patch.
     gsGeometry<T>& patch( std::size_t i ) const
