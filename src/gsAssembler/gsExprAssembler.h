@@ -337,7 +337,7 @@ public:
     void setOptions(gsOptionList opt) { m_options = opt; } // gsOptionList opt
     // .swap(opt) todo
 
-#   if(__cplusplus >= 201103L || __DOXYGEN__)
+#   if(__cplusplus >= 201103L || defined(__DOXYGEN__))
     /// Adds the expressions \a args to the system matrix/rhs
     ///
     /// The arguments are considered as integrals over the whole domain
@@ -928,14 +928,10 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u
     const gsMultiBasis<T> & mbasis =
         *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
 
-    //const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
-
-    // Iterate over all patch-sides with Dirichlet-boundary conditions
+    // Iterate over all patch-sides with Boundary conditions
     typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
     for ( typename bcRefList::const_iterator iit =  u.bc().begin();
           iit != u.bc().end()  ; ++iit )
-    // for ( typename gsBoundaryConditions<T>::const_iterator
-    //       it = bbc.dirichletBegin(); it != bbc.dirichletEnd(); ++it )
     {
         const boundary_condition<T> * it = &iit->get();
 
@@ -1036,12 +1032,14 @@ void gsExprAssembler<T>::computeDirichletDofsIntpl3(const expr::gsFeSpace<T> & u
     const gsMultiBasis<T> & mbasis =
         *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
 
-    const gsBoundaryConditions<> & bbc = u.hasBc() ? u.bc() : gsBoundaryConditions<>();
-
+    // Iterate over all patch-sides with Boundary conditions
     // Iterate over all patch-sides with Dirichlet-boundary conditions
-    for ( typename gsBoundaryConditions<T>::const_iterator
-          it = bbc.dirichletBegin(); it != bbc.dirichletEnd(); ++it )
+    typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
+    for ( typename bcRefList::const_iterator iit =  u.bc().begin();
+          iit != u.bc().end()  ; ++iit )
     {
+        const boundary_condition<T> * it = &iit->get();
+        
         GISMO_ASSERT(it->function()->targetDim() == u.dim(),
                      "Given Dirichlet boundary function does not match problem dimension."
                      <<it->function()->targetDim()<<" != "<<u.dim()<<"\n");

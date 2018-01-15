@@ -82,7 +82,16 @@ namespace numeric
 {
 namespace details
 {
-struct ad_type_tag {};
+struct ad_type_tag
+{
+#ifdef __clang__
+//N3797,8.5/7:
+//If a program calls for the default initialization of an object
+//of a const-qualified type T, T shall be a class type with a
+//user-provided default constructor.
+ad_type_tag(){}
+#endif    
+};
 
 template<> struct number_type<DScalar> { typedef ad_type_tag type; };
 
