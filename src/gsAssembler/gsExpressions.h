@@ -269,14 +269,21 @@ std::ostream &operator<<(std::ostream &os, const _expr<E> & b)
    Null expression is a compatibility expression invalid at runtime
 */
 template<class T>
-class gsNullExpr : public gsFeVariable<T> //public _expr<gsNullExpr<T> >
+class gsNullExpr : public _expr<gsNullExpr<T> >
 {
 public:
+
+    operator const gsFeVariable<T> & () const
+    {
+        static gsFeVariable<T> vv;
+        return vv;
+    }
+    
     typedef T Scalar;
     gsMatrix<T> eval(const index_t k) const { GISMO_ERROR("gsNullExpr"); }
     inline index_t rows() const { GISMO_ERROR("gsNullExpr"); }
     inline index_t cols() const { GISMO_ERROR("gsNullExpr"); }
-    inline void setFlag() const { }
+    inline void setFlag() const {/* gsInfo<<"gsNullExpr emtpy flag\n"; */ }
     void parse(gsSortedVector<const gsFunctionSet<T>*> & evList) const { GISMO_UNUSED(evList); }
 
     const gsFeVariable<T> & rowVar() const { GISMO_ERROR("gsNullExpr"); }
@@ -503,6 +510,8 @@ struct expr_traits<gsFeVariable<T> >
 template<class T>
 class gsFeVariable  : public _expr<gsFeVariable<T> >
 {
+    friend class gsNullExpr<T>;
+
 protected:
     const gsFunctionSet<T> * m_fs; ///< Evaluation source for this FE variable
     const gsFuncData<T>    * m_fd; ///< Temporary variable storing flags and evaluation data

@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
     
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
+
     //gsInfo<<"Active options:\n"<< A.options() <<"\n";
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -124,8 +125,7 @@ int main(int argc, char *argv[])
         gsInfo<< A.numDofs() <<std::flush;
 
         // Compute the system matrix and right-hand side
-        A.assembleLhsRhs( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
-        //A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
+        A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
 
         // Enforce Neumann conditions to right-hand side
         variable g_N = A.getBdrFunction();

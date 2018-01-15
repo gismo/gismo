@@ -68,6 +68,7 @@ public:
     typedef const expr::gsFeSpace<T>     & space;
     typedef const expr::gsNullExpr<T>      nullExpr;
 
+    
     typedef expr::gsFeVariable<T>  & nonConstVariable;
     typedef expr::gsFeSpace<T>     & nonConstSpace;
 

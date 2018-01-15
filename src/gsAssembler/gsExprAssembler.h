@@ -114,7 +114,7 @@ private:
     typename gsExprHelper<T>::Ptr m_exprdata;
 
     gsOptionList m_options;
-
+    
     expr::gsFeElement<T> m_element;
 
     gsSparseMatrix<T> m_matrix;
@@ -154,6 +154,9 @@ public:
       m_vrow(_rBlocks,NULL), m_vcol(_cBlocks,NULL)
     { }
 
+    // The copy constructor replicates the same environemnt but does
+    // not copy any matrix data
+        
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
 
@@ -233,10 +236,9 @@ public:
     space getTestSpace(variable u, const gsFunctionSet<T> & mp)
     {
         //GISMO_ASSERT(0!=u.mapper(), "Not a space"); // done on initSystem
-        expr::gsFeSpace<T> & s = m_exprdata->setSpace(mp,u.dim());
+        expr::gsFeSpace<T> & s = m_exprdata->getSpace(mp,u.dim());
         space uu = static_cast<space>(u);
         s.setId(uu.id());
-        s.setBc(uu.bc());
         m_vrow[s.id()] = &s;
         return s;
     }
@@ -335,43 +337,36 @@ public:
     void setOptions(gsOptionList opt) { m_options = opt; } // gsOptionList opt
     // .swap(opt) todo
 
-#   if(__cplusplus >= 201103L) // c++11
-    template<class... expr> void assemble(expr... args);        
+#   if(__cplusplus >= 201103L || __DOXYGEN__)
+    /// Adds the expressions \a args to the system matrix/rhs
+    ///
+    /// The arguments are considered as integrals over the whole domain
+    /// \sa gsExprAssembler::setIntegrationElements
+    template<class... expr> void assemble(expr... args);
+
+    /*
+      template<class... expr> void assemble(const bcContainer & BCs, expr... args);
+      template<class... expr> void assemble(const ppContainer & iFaces, expr... args);
+    */
+#else
+    template<class E1> void assemble(const expr::_expr<E1> & a1)
+    {assemble(a1,nullExpr(),nullExpr(),nullExpr(),nullExpr());}
+    template <class E1, class E2>
+    void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2)
+    {assemble(a1,a2,nullExpr::get(),nullExpr::get(),nullExpr::get());}
+    template <class E1, class E2, class E3>
+    void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
+                  const expr::_expr<E3> & a3)
+    {assemble(a1,a2,a3,nullExpr(),nullExpr());}
+    template <class E1, class E2, class E3, class E4, class E5>
+    void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
+                  const expr::_expr<E3> & a3, const expr::_expr<E4> & a4)
+    {assemble(a1,a2,a3,a4,nullExpr());}
+    template <class E1, class E2, class E3, class E4, class E5>
+    void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
+                  const expr::_expr<E3> & a3, const expr::_expr<E4> & a4,
+                  const expr::_expr<E5> & a5 );
 #   endif
-
-    /// Adds the expression \a E1 to the sparse system matrix
-    /// (left-hand side) and \a E2 to the right-hand side vector
-    template<class E1, class E2>
-    void assembleLhsRhs(const expr::_expr<E1> & exprLhs, const expr::_expr<E2> & exprRhs)
-    {
-        //GISMO_ASSERT(dynamic_cast<space>(exprLhs.colVar()), "Cannot deduce columns");
-
-        space rvar = static_cast<space>(exprLhs.rowVar());
-        GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
-        space cvar = static_cast<space>(exprLhs.colVar());
-        GISMO_ASSERT(m_exprdata->exists(cvar), "Error - inexistent variable.");
-        GISMO_ASSERT(&rvar==&exprRhs.rowVar(), "Inconsistent left and right hand side");
-        assembleLhsRhs_impl<true,true>(exprLhs, exprRhs, rvar, cvar);
-    }
-
-    /// Adds the expression \a E1 to the sparse system matrix (left-hand side)
-    template<class E1>
-    void assembleLhs(const expr::_expr<E1> & exprLhs)
-    {
-        space rvar = static_cast<space>(exprLhs.rowVar());
-        GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
-        space cvar = static_cast<space>(exprLhs.colVar());
-        GISMO_ASSERT(m_exprdata->exists(cvar), "Error - inexistent variable.");
-        assembleLhsRhs_impl<true,false>(exprLhs, nullExpr(), rvar, cvar);
-    }
-
-    /// Adds the expression \a E2 to the right-hand side vector
-    template<class E2>
-    void assembleRhs(const expr::_expr<E2> & exprRhs)
-    {
-        space rvar = static_cast<space>(exprRhs.rowVar());
-        assembleLhsRhs_impl<false,true>(nullExpr(), exprRhs, rvar, rvar);
-    }
 
     template<class E1, class E2>
     void assembleLhsRhsBc(const expr::_expr<E1> & exprLhs,
@@ -416,10 +411,10 @@ private:
     /// Called internally by the init* functions
     void resetDimensions();
 
-    template<bool left, bool right, class E1, class E2>
-    void assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
-                             const expr::_expr<E2> & exprRhs,
-                             space rvar, space cvar);
+    // template<bool left, bool right, class E1, class E2>
+    // void assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
+    //                          const expr::_expr<E2> & exprRhs,
+    //                          space rvar, space cvar);
 
     template<bool left, bool right, class E1, class E2>
     void assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
@@ -446,28 +441,17 @@ private:
                 const expr::_expr<E3> & a3, const expr::_expr<E4> & a4,
                 const expr::_expr<E5> & a5)
     { _op(a1);_op(a2);_op(a3);_op(a4);_op(a5); }
-    template <class op, class E1, class E2, class E3, class E4>
-    void _apply(op _op, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
-                const expr::_expr<E3> & a3, const expr::_expr<E4> & a4)
-    { _op(a1);_op(a2);_op(a3);_op(a4); }
-    template <class op, class E1, class E2, class E3>
-    void _apply(op _op, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
-                const expr::_expr<E3> & a3)
-    { _op(a1);_op(a2);_op(a3); }
-    template <class op, class E1, class E2>
-    void _apply(op _op, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2)
-    { _op(a1);_op(a2); }
-    template <class op, class E1> void _apply(op _op, const expr::_expr<E1> & a1)
-    { _op(a1); }
 #endif
 
     static const struct __setFlag
     {
         template <typename E> void operator() (const gismo::expr::_expr<E> & v)
         {
-            //v.print(gsInfo);
             v.setFlag();
         }
+
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > & ne)
+        { /*GISMO_UNUSED(ne);*/}
     } _setFlag;
 
     struct _eval
@@ -486,7 +470,7 @@ private:
         { }
         
         void setPatch(const index_t p) { m_patchInd=p; }
-        
+
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
             // ------- Compute  ------- 
@@ -497,14 +481,13 @@ private:
 
             //  ------- Accumulate  -------
             if (E::isMatrix())
-            {
                 push<true>(ee.rowVar(), ee.colVar(), m_patchInd);
-            }
             else
-            {
                 push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
-            }
         }// operator()
+
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > & ne)
+        {/*GISMO_UNUSED(ne);*/}
 
         template<bool isMatrix> void push(const expr::gsFeVariable<T> & v,
                                           const expr::gsFeVariable<T> & u,
@@ -577,7 +560,7 @@ private:
                     }
                 }
             }
-        }// 
+        }//push 
 
     };
 //*/
@@ -738,89 +721,32 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
                                          m_vrow[i-1]->dim()*m_vrow[i-1]->mapper().freeSize() );
     }
 }
-
+    
 template<class T>
-template<bool left, bool right, class E1, class E2>
-void gsExprAssembler<T>::assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
-                                             const expr::_expr<E2> & exprRhs,
-                                             space rvar, space cvar)
-{
-    //GISMO_ASSERT( exprLhs.isMatrix(), "Expecting matrix expression"); // or null
-    //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
-
-    /*
-    exprLhs.print(gsInfo);
-    if (right) exprRhs.print(gsInfo);
-    */
-
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
-
-    // initialize flags
-    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    if (left ) exprLhs.setFlag();
-    if (right) exprRhs.setFlag();
-
-    gsMatrix<T> localMat, localRhs; // Local matrix and local rhs
-    gsQuadRule<T> QuRule;  // Quadrature rule
-    gsVector<T> quWeights; // quadrature weights
-
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) //**1
-    {
-        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patchInd), m_options);
-
-        // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
-            m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-        m_element.set(*domIt);
-
-        // Start iteration over elements of patchInd
-        for (; domIt->good(); domIt->next() )
-        {
-            // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
-
-            // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patchInd);
-            //m_exprdata->precompute(QuRule, *domIt); // todo
-
-            // Assemble on element
-            if (left ) localMat = quWeights[0] * exprLhs.eval(0);
-            if (right) localRhs = quWeights[0] * exprRhs.eval(0);
-            for (index_t k = 1; k != quWeights.rows(); ++k)
-            {
-                if (left ) localMat += quWeights[k] * exprLhs.eval(k);
-                if (right) localRhs += quWeights[k] * exprRhs.eval(k);
-            }
-
-            // gsDebugVar(localMat.dim());
-            //gsDebugVar(localRhs.transpose() );
-
-            // Add contributions to the system matrix and right-hand side
-            gsAccumulateLocalToGlobal<T,left,right>(m_matrix, m_rhs,
-                                  localMat, localRhs, rvar, cvar, patchInd);
-        }
-    }
-
-    m_matrix.makeCompressed();
-}
-
 #if(__cplusplus >= 201103L) // c++11
-template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assemble(expr... args)
+#else
+    template <class E1, class E2, class E3, class E4, class E5>
+    void gsExprAssembler<T>::assemble( const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
+    const expr::_expr<E3> & a3, const expr::_expr<E4> & a4, const expr::_expr<E5> & a5)
+#endif
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
     // initialize flags
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
+#   if(__cplusplus >= 201103L)
     _apply(_setFlag, args...);
+#   else
+    _apply(_setFlag, a1,a2,a3,a4,a5);
+#   endif
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
     _eval ee(m_matrix, m_rhs, quWeights);
     
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) //**1
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         ee.setPatch(patchInd);
         QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patchInd), m_options);
@@ -842,13 +768,16 @@ void gsExprAssembler<T>::assemble(expr... args)
             //m_exprdata->precompute(QuRule, *domIt); // todo
 
             // Assemble contributions of the element
+#           if(__cplusplus >= 201103L)
             _apply(ee, args...);
+#           else
+            _apply(ee, a1,a2,a3,a4,a5);
+#           endif
         }
     }
 
     m_matrix.makeCompressed();
 }
-#endif
 
 
 template<class T>

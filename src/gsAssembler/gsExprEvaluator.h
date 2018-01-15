@@ -86,15 +86,15 @@ public:
 
     /// Registers \a mp as an isogeometric geometry map and return a handle to it
     geometryMap getMap(const gsMultiPatch<T> & mp) //conv->tmp->error
-    { return m_exprdata->setMap(mp); }
+    { return m_exprdata->getMap(mp); }
 
     /// Registers \a g as an isogeometric geometry map and return a handle to it
     geometryMap getMap(const gsFunction<T> & gm)
-    { return m_exprdata->setMap(gm); }
+    { return m_exprdata->getMap(gm); }
 
     /// Registers \a func as a variable and returns a handle to it
     variable getVariable(const gsFunctionSet<T> & func, index_t dim = 1)
-    { return m_exprdata->setVar(func, dim); }
+    { return m_exprdata->getVar(func, dim); }
 
     /// Registers \a func as a variable defined on \a G and returns a handle to it
     variable getVariable(const gsFunctionSet<T> & func, geometryMap G)
