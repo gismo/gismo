@@ -142,9 +142,10 @@ gsFileData<T>::saveCompressed(std::string const & fname)  const
 }
     
 template<class T> void
-gsFileData<T>::ioError(int lineNumber,const std::string& str)
+gsFileData<T>::ioError(int lineNumber, const std::string& str)
 {
-    std::cerr<<"### gsFileData: IO error near line "<<lineNumber<<std::endl;
+    gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+          <<": IO error near line "<<lineNumber<<std::endl;
     throw std::runtime_error(str + " failed"); 
 }
 
@@ -155,7 +156,7 @@ bool gsFileData<T>::read(String const & fn)
     m_lastPath = gsFileManager::find(fn);
     if ( m_lastPath.empty() )
     {
-        gsWarn << "gsFileData: Input file problem: "<<fn<<" not found\n";
+        gsWarn<<"gsFileData: Problem with file "<<fn<<": File not found.\n";
         return false;
     }
 
@@ -198,7 +199,7 @@ bool gsFileData<T>::read(String const & fn)
         return readX3dFile(m_lastPath);
     else
     {
-        gsWarn<< "gsFileData: Unknown extension \"."<<ext<<"\"\n";
+        gsWarn<<"gsFileData: Problem with file "<<fn<<": Unknown extension \"."<<ext<<"\".\n";
         return false;
     }
 }
@@ -213,7 +214,7 @@ bool gsFileData<T>::readXmlFile( String const & fn )
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
     if ( file.fail() )
-    {gsWarn<<"gsFileData: Input file problem: cannot open "<<fn<<"\n"; return false; } 
+    {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
     
     return readGismoXmlStream(file);
 }
@@ -224,7 +225,7 @@ bool gsFileData<T>::readXmlGzFile( String const & fn )
     // Open file
     igzstream file(fn.c_str(), std::ios::in);
     if ( file.fail() )
-    {gsWarn<<"gsFileData: Input file problem: cannot open "<<fn<<"\n"; return false; } 
+    {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     return readGismoXmlStream(file);
 }
@@ -258,7 +259,7 @@ bool gsFileData<T>::readAxelFile( String const & fn )
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
     if ( file.fail() )
-    {gsWarn<<"gsFileData: Input file problem: cannot open "<<fn<<"\n"; return false; } 
+    {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     std::vector<char> buffer(
         std::istreambuf_iterator<char>(file.rdbuf() ), 
@@ -388,7 +389,8 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
 {    
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
-    if ( !file.good() ) {std::cout<<"Input file Problem!\n";return false;} 
+    if ( !file.good() )
+    {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws); 
@@ -439,162 +441,202 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
             parDim = 3;
             break;
         case 210:  // Class_BoundedSurface
-            gsWarn<<"Reading GoTools trimmed surface (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools trimmed surface (ClassType="<<ncp<<") not implemented.\n";
 
         case 110:  // Class_CurveOnSurface
-            gsWarn<<"Reading GoTools CurveOnSurface (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools CurveOnSurface (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 120:  // Class_Line
-            gsWarn<<"Reading GoTools Line (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Line (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 130:  // Class_Circle
-            gsWarn<<"Reading GoTools Circle (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Circle (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 140:  // Class_Ellipse
-            gsWarn<<"Reading GoTools Ellipse (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Ellipse (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 150:  // Class_BoundedCurve
-            gsWarn<<"Reading GoTools BoundedCurve (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools BoundedCurve (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 160:  // Class_Hyperbola
-            gsWarn<<"Reading GoTools Hyperbola (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Hyperbola (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 170:  // Class_Parabola
-            gsWarn<<"Reading GoTools Parabola (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Parabola (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 211:  // Class_SurfaceOnVolume
-            gsWarn<<"Reading GoTools SurfaceOnVolume (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools SurfaceOnVolume (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 220:  // Class_GoBaryPolSurface
-            gsWarn<<"Reading GoTools GoBaryPolSurface (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools GoBaryPolSurface (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 230:  // Class_GoHBSplineParamSurface
-            gsWarn<<"Reading GoTools GoHBSplineParamSurface (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools GoHBSplineParamSurface (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 240:  // Class_CompositeSurface
-            gsWarn<<"Reading GoTools CompositeSurface (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools CompositeSurface (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 250:  // Class_Plane
-            gsWarn<<"Reading GoTools Plane (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Plane (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 260:  // Class_Cylinder
-            gsWarn<<"Reading GoTools Cylinder (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Cylinder (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 270:  // Class_Sphere
-            gsWarn<<"Reading GoTools Sphere (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Sphere (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 280:  // Class_Sphere
-            gsWarn<<"Reading GoTools Sphere (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Sphere (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 290:  // Class_Torus
-            gsWarn<<"Reading GoTools Torus (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Torus (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 291:  // Class_SurfaceOfRevolution
-            gsWarn<<"Reading GoTools SurfaceOfRevolution (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools SurfaceOfRevolution (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 292:  // Class_Disc
-            gsWarn<<"Reading GoTools Disc (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Disc (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 293:  // Class_LRSplineSurface
-            gsWarn<<"Reading GoTools LRSplineSurface (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools LRSplineSurface (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 294:  // Class_TSplineSurface
-            gsWarn<<"Reading GoTools TSplineSurface (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools TSplineSurface (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 300:  // Class_Go3dsObject
-            gsWarn<<"Reading GoTools Go3dsObject (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Go3dsObject (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 310:  // Class_GoHeTriang
-            gsWarn<<"Reading GoTools GoHeTriang (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools GoHeTriang (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 320:  // Class_GoSdTriang
-            gsWarn<<"Reading GoTools GoSdTriang (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools GoSdTriang (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 330:  // Class_GoQuadMesh
-            gsWarn<<"Reading GoTools GoQuadMesh (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools GoQuadMesh (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 340:  // Class_GoHybridMesh
-            gsWarn<<"Reading GoTools GoHybridMesh (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools GoHybridMesh (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 350:  // Class_ParamTriang
-            gsWarn<<"Reading GoTools GoHybridMesh (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools GoHybridMesh (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 360:  // Class_GoVrmlGeometry
-            gsWarn<<"Reading GoTools GoVrmlGeometry (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools GoVrmlGeometry (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 400:  // Class_PointCloud
-            gsWarn<<"Reading GoTools PointCloud (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools PointCloud (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 410:  // Class_LineCloud
-            gsWarn<<"Reading GoTools LineCloud (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools LineCloud (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 500:  // Class_GoTriangleSets
-            gsWarn<<"Reading GoTools GoTriangleSets (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools GoTriangleSets (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 510:  // Class_RectGrid
-            gsWarn<<"Reading GoTools RectGrid (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools RectGrid (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 710:  // Class_BoundedVolume
-            gsWarn<<"Reading GoTools BoundedVolume (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools BoundedVolume (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 720:  // Class_Parallelepiped
-            gsWarn<<"Reading GoTools Parallelepiped (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools Parallelepiped (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 721:  // Class_SphereVolume
-            gsWarn<<"Reading GoTools SphereVolume (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools SphereVolume (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 722:  // Class_CylinderVolume
-            gsWarn<<"Reading GoTools CylinderVolume (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools CylinderVolume (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 723:  // Class_ConeVolume
-            gsWarn<<"Reading GoTools ConeVolume (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools ConeVolume (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 724:  // Class_TorusVolume
-            gsWarn<<"Reading GoTools TorusVolume (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools TorusVolume (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         case 793:  // Class_LRSplineVolume
-            gsWarn<<"Reading GoTools LRSplineVolume (ClassType="<<ncp<<") not implemented.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Reading GoTools LRSplineVolume (ClassType="<<ncp<<") not implemented.\n";
             continue;
             break;
         default:
-            gsWarn<<"Unknown GoTools entity (ClassType="<<ncp<<").\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Unknown GoTools entity (ClassType="<<ncp<<").\n";
             continue;
             break;
         }
@@ -626,7 +668,8 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
 
         if ( rational )
         {
-            gsWarn<< "RATIONAL GoTools input is not supported/tested/working.\n";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": RATIONAL GoTools input is not supported/tested/working.\n";
             // Rational tensor basis
             gsXmlNode* rtb = internal::makeNode("Basis", *data);
             rtb->append_attribute( internal::makeAttribute("type", 
@@ -689,7 +732,8 @@ bool gsFileData<T>::readGoToolsFile( String const & fn )
             }
             else
             {
-                gsWarn<<"Failed to read coefficients.\n";
+                gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                <<": Failed to read coefficients.\n";
                 return false;
             }
         }
@@ -719,7 +763,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
 {    
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
-    if ( !file.good() ) {std::cout<<"Input file Problem!\n";return false;} 
+    {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws); 
@@ -740,7 +784,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
 
     if (file.eof())
     {
-        std::cout<<"Input file Problem!\n";
+        gsWarn<<"gsFileData: Problem with file "<<fn<<": Reached end of file.\n";
         return false;
     }
 
@@ -759,7 +803,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
     
     gsXmlNode* g;    
 
-    //std::cout<<"Reading N="<<N<<" and Np="<< Np  <<"\n";
+    //gsDebug<<"Reading N="<<N<<" and Np="<< Np  <<"\n";
     gsVector<int> p(N);
     gsVector<int> ncp(N);    
     bool patch(true);
@@ -776,7 +820,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
         // 	lnstream >> token; 
 
         std::transform(line.begin(),line.end(),line.begin(),::tolower);
-        //std::cout<< "token=\""<<token<<"\"\n";
+        //gsDebug<< "token=\""<<token<<"\"\n";
       
         if ( line == "" )// avoid empty lines
         {
@@ -831,7 +875,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             lnstream.str(line) ;
             for (int i=0;i<N;++i)
                 lnstream >> std::ws >> p[i] ;
-            //std::cout<<"Reading degrees OK "<< p.transpose() <<"\n";
+            //gsDebug<<"Reading degrees OK "<< p.transpose() <<"\n";
         
             // ncp(i): the number of control points in each direction (N integers)
             while (!file.eof() && getline(file, line))
@@ -841,7 +885,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             for (int i=0;i<N;++i)
                 lnstream >> std::ws >> ncp[i] ; 
             unsigned sz= ncp.prod() ;
-            //std::cout<<"Reading ncps OK "<< ncp.transpose() <<"\n";
+            //gsDebug<<"Reading ncps OK "<< ncp.transpose() <<"\n";
         
             g = internal::makeNode("Geometry", *data);
             g->append_attribute( internal::makeAttribute("type", "TensorNurbs"+internal::to_string(N), *data) );
@@ -865,7 +909,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
                 lnstream.str(line);
                 gsXmlNode* k = internal::makeNode("KnotVector", lnstream.str(), *data);
                 k->append_attribute( internal::makeAttribute("degree", p[0], *data ) ) ;
-                src->append_node(k);	    
+                src->append_node(k);
             }
             else // N>1
             {
@@ -904,7 +948,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
                     coefs(k,i) = tmp ;
                 }
             }
-            //std::cout<<"Reading coefs OK\n"<< *coefs <<"\n";
+            //gsDebug<<"Reading coefs OK\n"<< *coefs <<"\n";
         
             // weights: weight associated to each basis function (or control point)
             //          (prod(ncp ) float values)
@@ -919,10 +963,10 @@ bool gsFileData<T>::readGeompFile( String const & fn )
                 weights(k,0) = tmp ;
                 coefs.row(k) /= tmp; //Divide weighted coeffient by the weight
             }
-            //std::cout<<"Reading weights OK\n"<< *weights <<"\n";
+            //gsDebug<<"Reading weights OK\n"<< *weights <<"\n";
 
             // if ( weights == gsMatrix<T>::Ones(sz,1) )
-            //      std::cout<<"gsFileData: In fact weights are all equal to 1.\n";
+            //      gsDebug<<"gsFileData: In fact weights are all equal to 1.\n";
         
             gsXmlNode* c = internal::makeNode("weights", weights, *data);
             rtb->append_node(c);
@@ -965,7 +1009,8 @@ bool gsFileData<T>::readBezierView( String const & fn )
 {   
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
-    if ( !file.good() ) {std::cout<<"Input file Problem!\n";return false;} 
+    if ( !file.good() )
+    {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws); 
@@ -1048,7 +1093,7 @@ bool gsFileData<T>::readBezierView( String const & fn )
             {
                 gsMatrix<T>  weights =  coefs.row(3);
                 coefs.resize(Eigen::NoChange,3);
-                gsWarn<<"weights: "<< weights.transpose() <<"\n";
+                gsDebug<<"weights: "<< weights.transpose() <<"\n";
             }
 
             g = internal::makeNode("Geometry", *data);
@@ -1098,8 +1143,9 @@ bool gsFileData<T>::readOffFile( String const & fn )
 {    
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
-    if ( !file.good() ) {std::cout<<"Input file Problem!\n";return false;} 
-
+    if ( !file.good() )
+    { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
+    
     gsXmlNode* g = internal::makeNode("Mesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
     data->appendToRoot(g);
@@ -1152,7 +1198,8 @@ bool gsFileData<T>::readStlFile( String const & fn )
     bool solid(false),facet(false),loop(false);
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
-    if ( !file.good() ) {std::cout<<"Input file Problem!\n";return false;} 
+    if ( !file.good() )
+    { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     gsXmlNode* g = internal::makeNode("Mesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
@@ -1231,17 +1278,14 @@ bool gsFileData<T>::readStlFile( String const & fn )
 template<class T>
 bool gsFileData<T>::readObjFile( String const & fn )
 {    
-    //std::cout<<"Assuming Linux file, please convert dos2unix first.\n";
+    //gsWarn<<"Assuming Linux file, please convert dos2unix first.\n";
 
 #if FALSE
 
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
     if ( !file.good() ) 
-    {
-        std::cout<<"Input file Problem!\n";
-        return false; 
-    }
+    { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
   
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws); 
@@ -1291,19 +1335,19 @@ bool gsFileData<T>::readObjFile( String const & fn )
                 {
                     lnstream >> std::ws >> t >> std::ws ;
                     cstype+= "_"+ t;
-                    //std::cout<<"File has a "<<cstype<<std::endl;
+                    //gsDebug<<"File has a "<<cstype<<std::endl;
                 }
             }
             else if (token == "deg")
             {
                 lnstream >> std::ws >> du >> std::ws >> dv>> std::ws;
-                std::cout<<"du, dv: "<<du<<", "<<dv <<std::endl;
+                gsDebug<<"du, dv: "<<du<<", "<<dv <<std::endl;
             }
             else if (token == "curv")
             {
                 type="";
                 cstype="";
-                std::cout<<"Ignoring curv." <<std::endl;
+                gsWarn<<"gsFileData: Problem with file "<<fn<<": Ignore curv.\n";
 
                 continue;
             }
@@ -1317,7 +1361,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
                 while (lnstream && !lnstream.eof())
                 {
                     lnstream >> std::ws >> cp ;
-                    //std::cout<<"control point2d_"<< cp<< " is "<< (points2d[cp-1])[0]  <<std::endl;
+                    //gsDebug<<"control point2d_"<< cp<< " is "<< (points2d[cp-1])[0]  <<std::endl;
                     c2->control_points.push_back(cp-1);
                 }
                 //cstype="";
@@ -1334,7 +1378,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
                 while (lnstream && !lnstream.eof())
                 {
                     lnstream >> std::ws >> cp ;
-                    //std::cout<<"control point_"<< cp<< " is "<< (points[cp-1])[0]  <<std::endl;
+                    //gsDebug<<"control point_"<< cp<< " is "<< (points[cp-1])[0]  <<std::endl;
                     control_points.push_back(cp-1);
                 }
             }
@@ -1347,7 +1391,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
                 while (lnstream && !lnstream.eof())
                 {
                     lnstream >> std::ws >> val >> std::ws;
-                    //std::cout<<"knot_"<<c<<": "<<val  <<std::endl;
+                    //gsDebug<<"knot_"<<c<<": "<<val  <<std::endl;
                     if (type == "curv2")
                         c2->knots.push_back(val);
                     else
@@ -1367,11 +1411,11 @@ bool gsFileData<T>::readObjFile( String const & fn )
                     t.push_back(cv);
                 }
 
-                std::cout<<"Ignore trim loop" <<std::endl;
+                gsWarn<<"gsFileData: Problem with file "<<fn<<": Ignore trim loop.\n";
             }
             else if (token == "end")//always in the end
             {
-                std::cout<<"End reading "<< cstype <<" "<<type<<std::endl;
+                gsDebug<<"End reading "<< cstype <<" "<<type<<std::endl;
 
                 if (cstype=="bspline" && type=="surf")
                 {
@@ -1406,7 +1450,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
                     }
                     axl<<"</points>\n";
                     axl<< "</surface>\n";
-                    std::cout<<"Got "<< cstype <<" "<<type<<" "<<surf_count<<std::endl;
+                    gsDebug<<"Got "<< cstype <<" "<<type<<" "<<surf_count<<std::endl;
                 }
                 else if (cstype=="rat_bspline" && type=="surf")
                 {
@@ -1428,7 +1472,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
                         // RATIONAL ?
                         for (int j=0; j<points[control_points[i]].size()-1; j++ )
                         {
-                            //std::cout<<"ok "<< j <<std::endl;
+                            //gsWarn<<"ok "<< j <<std::endl;
                             axl<< points[control_points[i]][j] << " ";
                         }
                         //if (j==4) axl<<1;
@@ -1451,7 +1495,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
 //
                     axl<< "</surface>\n";
 
-                    std::cout<<"Got "<< cstype <<" "<<type<<" "<<surf_count<<std::endl;
+                    gsDebug<<"Got "<< cstype <<" "<<type<<" "<<surf_count<<std::endl;
                 }
                 else if (cstype=="bspline" && type=="curv2")
                 {
@@ -1459,7 +1503,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
                 }
                 else if (cstype!="")
                 {
-                    std::cout<<"Ignoring "<< cstype<<" "<<type <<std::endl;          
+                    gsWarn<<"gsFileData: Problem with file "<<fn<<": Ignoring "<< cstype<<" "<<type <<std::endl;          
                 }
                 //if (surf_count==5) break;
                 //delete knots, degrees, control points
@@ -1489,7 +1533,8 @@ bool gsFileData<T>::readIgesFile( String const & fn )
 {    
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
-    if ( !file.good() ) {std::cout<<"Input file Problem!\n";return false;} 
+    if ( !file.good() )
+    { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n";return false; } 
 
     std::istringstream str;
     str.unsetf(std::ios_base::skipws); 
@@ -1538,7 +1583,8 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
         else
         {
             // make 0..1 knots by default
-            gsWarn<< "Setting knots to [0..1] by default not implemented";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                  <<": Setting knots to [0..1] by default not implemented";
         }
         gsXmlNode * kv_node = internal::makeNode("KnotVector", String(ch), *data);
         kv_node->append_attribute( internal::makeAttribute("degree", p, *data) );
@@ -1555,7 +1601,8 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
         else
         {
             // make 0..1 knots by default
-            gsWarn<< "Setting knots to [0..1] by default not implemented";
+            gsWarn<<"gsFileData: Problem with file "<<m_lastPath
+                  <<": Setting knots to [0..1] by default not implemented";
         }
         kv_node = internal::makeNode("KnotVector", String(ch), *data);
         kv_node->append_attribute( internal::makeAttribute("degree", p, *data) );
@@ -1607,17 +1654,17 @@ void gsFileData<T>::addX3dTransform(gsXmlNode * trans)
 
     gsXmlAttribute * attr = trans->first_attribute("translation");
     if ( attr )
-        gsWarn<<"Translate "<< attr->value() <<"\n";// (x,y,z)
+        gsDebug<<"Translate "<< attr->value() <<"\n";// (x,y,z)
 
 
     attr = trans->first_attribute("rotation");
     if ( attr )
-        gsWarn<<"Rotate "<< attr->value() <<"\n";// (x,y,z,angle)
+        gsDebug<<"Rotate "<< attr->value() <<"\n";// (x,y,z,angle)
 
 
     attr = trans->first_attribute("scale");
     if ( attr )
-        gsWarn<<"Scale "<< attr->value() <<"\n";// (x,y,z)
+        gsDebug<<"Scale "<< attr->value() <<"\n";// (x,y,z)
 
 //<transform dim="3">
 // all children optional
@@ -1636,7 +1683,8 @@ bool gsFileData<T>::readX3dFile( String const & fn )
     // http://www.web3d.org/x3d/content/examples/NURBS/
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
-    if ( file.fail() ) {std::cout<<"gsFileData: Input file Problem!\n"; return false;} 
+    if ( file.fail() )
+    {gsWarn<<"gsFileData: Problem with file "<<fn<<": cannot open file stream.\n"; return false;} 
 
     std::vector<char> buffer(
         std::istreambuf_iterator<char>(file.rdbuf() ), 
@@ -1768,7 +1816,8 @@ gsFileData<T>::getFirstNode(const std::string & name, const std::string & type) 
     gsXmlNode * root = data->first_node("xml");
     if ( ! root )
     {
-        gsWarn<< "gsFileData: Invalid XML file, no root tag <xml> found.\n";
+        gsWarn<< "gsFileData: Problem with file "<<m_lastPath
+              <<": Invalid XML file, no root tag <xml> found.\n";
         assert( root ) ;
     }
 
