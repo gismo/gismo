@@ -180,6 +180,15 @@ public:
     }
 #endif
 
+    /// Swaps contents
+    void swap(gsOptionList& other)
+    {
+        m_strings .swap(other.m_strings );
+        m_ints    .swap(other.m_ints    );
+        m_reals   .swap(other.m_reals   );
+        m_switches.swap(other.m_switches);
+    }
+
 private:
 
     /// \brief Gives information regarding the option named \a label
