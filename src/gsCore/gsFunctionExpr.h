@@ -166,7 +166,10 @@ public:
     
     // see gsFunction for documentation  
     std::ostream &print(std::ostream &os) const;
-  
+
+    void swap(gsFunctionExpr& other)
+    { std::swap(this->my, other.my); }
+            
 // Data members
 private:
     class gsFunctionExprPrivate;

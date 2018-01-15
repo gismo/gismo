@@ -161,13 +161,26 @@ gsMultiPatch<T>::basis( std::size_t i ) const
 }
 
 template<class T>
-std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy() const
+std::vector<gsBasis<T> *> gsMultiPatch<T>::basesCopy(bool NoRational) const
 {
     std::vector<gsBasis<T> *> bb;
-    for ( const_iterator it = m_patches.begin();
-          it != m_patches.end(); ++it ) 
+    bb.reserve(m_patches.size());
+
+    if (NoRational)
     {
-        bb.push_back( (*it)->basis().clone().release() );
+        for ( const_iterator it = m_patches.begin();
+              it != m_patches.end(); ++it ) 
+        {
+            bb.push_back( (*it)->basis().source().clone().release() );
+        }
+    }
+    else
+    {
+        for ( const_iterator it = m_patches.begin();
+              it != m_patches.end(); ++it ) 
+        {
+            bb.push_back( (*it)->basis().clone().release() );
+        }
     }
     return bb ;
 }

@@ -42,6 +42,7 @@ using std::conditional;
 using std::enable_if;
 using std::is_same;
 using std::is_base_of;
+using std::reference_wrapper;
 
 #else
 
@@ -67,6 +68,26 @@ struct is_base_of
     static no check(B*, int);
     static const bool value = sizeof(check(Host<B,D>(), int())) == sizeof(yes);
 };
+
+template <class T>
+class reference_wrapper
+{
+public:
+    typedef T type;
+    
+    reference_wrapper(const T& ref) : _ptr(&const_cast<T&>(ref)) { }
+    reference_wrapper(const reference_wrapper&o) : _ptr(o._ptr)  { }
+    
+    reference_wrapper& operator=(const reference_wrapper& o)
+    { _ptr = o._ptr; return *this; }
+    
+    operator T& () const { return *_ptr; }
+    T& get() const { return *_ptr; }
+
+private:
+    T* _ptr;
+};
+
 #endif
 
 /// \brief Remove pointer from type

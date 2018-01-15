@@ -183,7 +183,11 @@ public:
     const gsGeometry<T> & operator []( size_t i ) const { return *m_patches[i]; }
 
     /// \brief Makes a deep copy of all bases and puts them in a vector
-    std::vector<gsBasis<T> *> basesCopy() const;
+    ///
+    /// \param numeratorOnly If true, and the bases are derived from
+    /// gsRationalBasis, then only the source bases (numerators) are
+    /// returned
+    std::vector<gsBasis<T> *> basesCopy(bool numeratorOnly = false) const;
 
     /// Return the \a i-th patch.
     gsGeometry<T>& patch( std::size_t i ) const

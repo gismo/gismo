@@ -88,7 +88,7 @@ struct transform
 };
 
 // for mixed formulations
-struct space
+struct discreteSpace
 {	
     enum type
     {
@@ -248,7 +248,7 @@ public:
           dirStrategy  (dirichlet::elimination  ),
           intStrategy  (iFace    ::conforming   ),
           transformType(transform::Hgrad        ),
-          spaceType    (space    ::taylorHood   ),
+          spaceType    (discreteSpace::taylorHood   ),
 
           bdA(2.0),
           bdB(1  ),
@@ -267,7 +267,7 @@ public:
     iFace::strategy      intStrategy;
 
     transform::type      transformType;
-    space::type          spaceType;
+    discreteSpace::type   spaceType;
 
     // If set to a value different than zero, it controls the
     // allocation of the sparse matrix, ie. the maximum number of

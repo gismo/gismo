@@ -163,7 +163,7 @@ struct boundary_condition
 
     // TO DO : robin coefficients?
 
-    condition_type::type m_type; ///< Type of the boundary condition
+    condition_type::type m_type;// todo: remove
 
     std::string m_label;         ///< Description of type of the boundary condition
 
@@ -203,15 +203,15 @@ class GISMO_EXPORT gsBoundaryConditions
     
 public:
 
-    typedef typename std::vector<boundary_condition<T> > bcContainer;
+    typedef typename std::deque<boundary_condition<T> > bcContainer;
     typedef typename bcContainer::iterator iterator;
     typedef typename bcContainer::const_iterator const_iterator;
 
-    typedef typename std::vector<corner_value<T> >       cornerContainer;
+    typedef typename std::deque<corner_value<T> >       cornerContainer;
     typedef typename cornerContainer::iterator citerator;
     typedef typename cornerContainer::const_iterator const_citerator;
 
-    typedef typename std::vector<boundaryInterface> ppContainer;
+    typedef typename std::deque<boundaryInterface> ppContainer;
     typedef typename ppContainer::iterator ppiterator;
     typedef typename ppContainer::const_iterator const_ppiterator;
 
@@ -225,6 +225,7 @@ public:
 
     typedef typename boundary_condition<T>::function_ptr function_ptr;
 
+    typedef std::list<util::reference_wrapper<const boundary_condition<T> > > bcRefList;
 public:
 
     /*
@@ -266,6 +267,19 @@ public:
     /// Return a reference to boundary conditions of certain type
     const bcContainer & container(const std::string & label) const {return m_bc[label]; }
 
+    /// Return a reference to boundary conditions of certain type for
+    /// unknown \a unk
+    bcRefList get(const std::string & label, const index_t unk = 0) const
+    {
+        bcRefList result;
+        const const_bciterator it = m_bc.find(label);
+        if ( it != m_bc.end() )
+            for (const_iterator c = it->second.begin(); c!= it->second.end(); ++c)
+                if ( c->m_unknown == unk )
+                    result.push_back(*c);
+        return result;
+    }
+
     /// Return a reference to the Dirichlet sides
     const bcContainer & dirichletSides() const {return m_bc["Dirichlet"]; }
 
@@ -281,7 +295,7 @@ public:
     bcContainer reducedContainer(const bcContainer & container, index_t unknown) const
     {
         bcContainer red;
-        red.reserve(container.size());
+        //red.reserve(container.size());
         for(typename bcContainer::const_iterator iter=container.begin(); iter!=container.end();++iter)
         {
             if(iter->unknown()==unknown)
@@ -293,7 +307,7 @@ public:
     bcContainer allConditions() const
     {
         bcContainer all;
-        all.reserve( size() - corner_values.size() );
+        //all.reserve( size() - corner_values.size() );
         for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end(); ++it)
             all.insert( all.end(), it->second.begin(), it->second.end() );
         return all;
@@ -505,10 +519,13 @@ public:
     /// Prints the object as a string.
     std::ostream & print(std::ostream &os) const
     {
-        os << "gsBoundaryConditions :\n";
+        //os << "gsBoundaryConditions :\n";
         for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end(); ++it)
             os << "* "<<std::setw(13)<<std::left<<it->first<<" : "<< it->second.size() <<"\n";
-        os << "* Corner values : "<< corner_values.size() <<"\n";
+
+        if (!corner_values.empty())
+            os << "* Corner values : "<< corner_values.size() <<"\n";
+
         return os;
     }
 
@@ -528,7 +545,7 @@ public:
      */
     const boundary_condition<T>* getConditionFromSide (patchSide ps) const
     {
-        typename std::vector<boundary_condition<T> >::const_iterator beg, end, cur;
+        const_iterator beg, end, cur;
         patchSideComparison psRef(ps);
         beg = dirichletBegin();
         end = dirichletEnd();
@@ -588,8 +605,8 @@ public:
     void getConditionsForPatch(const int np, gsBoundaryConditions& result) const
     {
         result.clear();
-        std::vector<boundary_condition<T> > bc_all = allConditions(); //inefficient, but fewer code
-        for(typename std::vector<boundary_condition<T> >::const_iterator it = bc_all.begin(); it!= bc_all.end();it++)
+        bcContainer bc_all = allConditions(); //inefficient, but fewer code
+        for(const_iterator it = bc_all.begin(); it!= bc_all.end();it++)
         {
             if((*it).patch()==np)
             {
@@ -676,7 +693,7 @@ private:
 
     mutable bcData m_bc;  ///< Containers for BCs of various types
 
-    std::vector<boundaryInterface> m_periodicPairs; // TODO: add read from xml
+    ppContainer m_periodicPairs; // TODO: add read from xml
     gsMatrix<T> m_trMatrix;
       
     // Pointer to associated multipatch domain
