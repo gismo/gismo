@@ -47,14 +47,14 @@ public:
 
     /// dimension of the domain
     virtual int dim() const
-    { std::cout << "gsDomain: dimension() not defined at "<< *this << std::endl; return 0; }
+    { gsWarn << "gsDomain: dimension() not defined at "<< *this << "\n"; return 0; }
 
     /// Returns a bounding box for the domain
     /// eg. This coincides to the domain in case of tensor-product domains
     virtual gsMatrix<T> boundingBox()
     {
         GISMO_NO_IMPLEMENTATION
-            }
+    }
 
     /// Returns a list of elements
     virtual gsMatrix<T> elements()
@@ -82,10 +82,10 @@ public:
     */
 
     virtual std::vector<T> unique() const 
-    { std::cout<<"gsDomain: unique() was not defined at"<< *this <<std::endl; return std::vector<T>() ;} ;
+    { gsWarn<<"gsDomain: unique() was not defined at"<< *this <<"\n"; return std::vector<T>() ;}
 
     void merge(gsDomain<T> * other ) 
-    { std::cout<<"gsDomain: merge(..) was not defined in "<< *this <<std::endl; return;} ; 
+    { gsWarn<<"gsDomain: merge(..) was not defined in "<< *this <<"\n"; return;}
 
 }; // class gsDomain
 
@@ -96,7 +96,7 @@ public:
 /// Print (as string) operator to be used by all derived classes
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsDomain<T>& b)
-{return b.print(os); }
+{ return b.print(os); }
 
 
 } // namespace gismo
