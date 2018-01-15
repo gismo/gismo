@@ -149,52 +149,58 @@ gsFileData<T>::ioError(int lineNumber,const std::string& str)
 }
 
 template<class T>
-void gsFileData<T>::read(String const & fn)  
+bool gsFileData<T>::read(String const & fn)
 {
 
     m_lastPath = gsFileManager::find(fn);
-    GISMO_ENSURE( !m_lastPath.empty(),
-                  "gsFileData: Input file problem: "<<fn<<" not found\n");
+    if ( m_lastPath.empty() )
+    {
+        gsWarn << "gsFileData: Input file problem: "<<fn<<" not found\n";
+        return false;
+    }
 
     // Identify filetype by extension
     String ext = gsFileManager::getExtension(fn);
 
     if (ext== "xml") 
-        readXmlFile(m_lastPath);
+        return readXmlFile(m_lastPath);
     else if (ext== "gz" && util::ends_with(m_lastPath, ".xml.gz") )
-        readXmlGzFile(m_lastPath);
+        return readXmlGzFile(m_lastPath);
     else if (ext== "txt") 
-        readGeompFile(m_lastPath);
+        return readGeompFile(m_lastPath);
     else if (ext== "g2") 
-        readGoToolsFile(m_lastPath);
+        return readGoToolsFile(m_lastPath);
     else if (ext== "axl") 
-        readAxelFile(m_lastPath);
+        return readAxelFile(m_lastPath);
     else if (ext== "off") 
-        readOffFile(m_lastPath);
+        return readOffFile(m_lastPath);
 #ifdef GISMO_WITH_ONURBS
     else if (ext== "3dm") 
-        read3dmFile(m_lastPath);
+        return read3dmFile(m_lastPath);
 #endif
 #ifdef GISMO_WITH_PSOLID
     else if (ext== "xmt_txt")
-        readParasolidFile(m_lastPath);
+        return readParasolidFile(m_lastPath);
     else if (ext== "x_t")
-        readParasolidFile(m_lastPath);
+        return readParasolidFile(m_lastPath);
     else if (ext== "xmt_bin")
-        readParasolidFile(m_lastPath);
+        return readParasolidFile(m_lastPath);
 #endif
     else if (ext== "obj") 
-        readObjFile(m_lastPath);
+        return readObjFile(m_lastPath);
     else if (ext== "stl") 
-        readStlFile(m_lastPath);
+        return readStlFile(m_lastPath);
     else if (ext=="igs" || ext== "iges") 
-        readIgesFile(m_lastPath);
+        return readIgesFile(m_lastPath);
 //    else if (ext=="bv") 
-//        readBezierView(m_lastPath);
+//        return readBezierView(m_lastPath);
     else if (ext=="x3d") 
-        readX3dFile(m_lastPath);
+        return readX3dFile(m_lastPath);
     else
+    {
         gsWarn<< "gsFileData: Unknown extension \"."<<ext<<"\"\n";
+        return false;
+    }
 }
 
 ///////////////////////////////////////////////    
@@ -206,8 +212,8 @@ bool gsFileData<T>::readXmlFile( String const & fn )
 {
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
-    if ( file.fail() ) 
-    {gsWarn<<"gsFileData: Input file Problem: "<<fn<<"\n"; return false; } 
+    if ( file.fail() )
+    {gsWarn<<"gsFileData: Input file problem: cannot open "<<fn<<"\n"; return false; } 
     
     return readGismoXmlStream(file);
 }
@@ -217,8 +223,8 @@ bool gsFileData<T>::readXmlGzFile( String const & fn )
 {
     // Open file
     igzstream file(fn.c_str(), std::ios::in);
-    if ( file.fail() ) 
-    {gsWarn<<"gsFileData: Input file Problem: "<<fn<<"\n"; return false; } 
+    if ( file.fail() )
+    {gsWarn<<"gsFileData: Input file problem: cannot open "<<fn<<"\n"; return false; } 
 
     return readGismoXmlStream(file);
 }
@@ -251,7 +257,8 @@ bool gsFileData<T>::readAxelFile( String const & fn )
 {    
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
-    if ( file.fail() ) {std::cout<<"gsFileData: Input file Problem!\n"; return false;} 
+    if ( file.fail() )
+    {gsWarn<<"gsFileData: Input file problem: cannot open "<<fn<<"\n"; return false; } 
 
     std::vector<char> buffer(
         std::istreambuf_iterator<char>(file.rdbuf() ), 
