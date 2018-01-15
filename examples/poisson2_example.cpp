@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     u.addBc( bc.get("Dirichlet") );
     
     // Set the source term
-    variable ff = A.setCoeff(f, G);
+    variable ff = A.getCoeff(f, G);
     
     // Recover manufactured solution
     gsFunctionExpr<> ms;
