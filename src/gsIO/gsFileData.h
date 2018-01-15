@@ -44,17 +44,19 @@ public:
     
     /** 
      * Initializes a a gsFileData object with the containts of a file
-     * 
+     *
      * @param fn filename string
      */
     explicit gsFileData(String const & fn);
     
     /** 
      * Loads the contents of a file into a gsFileData object
-     * 
+     *
      * @param fn filename string
+     *
+     * Returns true on success, false on failure.
      */
-    void read(String const & fn) ;
+    bool read(String const & fn) ;
     
     ~gsFileData();
     
@@ -75,6 +77,10 @@ public:
     
     void addComment(String const & message);
 
+    // Returns the path of the last file where data was read from
+    //
+    // If the corresponding file did not exist, the return value is an
+    // empty string.
     String lastPath() const { return m_lastPath; }
 private:
     /// File data as an xml tree
@@ -252,16 +258,16 @@ public:
         gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(), 
                                        internal::gsXml<Object>::type() );
         if ( !node )
-	    {
+        {
             gsWarn<<"gsFileData: false!\n";
             return false;
-	    }
+        }
         else
-	    {
+        {
             obj = internal::gsXml<Object>::get(node);
             this->deleteXmlSubtree( node );
             return true;
-	    }
+        }
     }
 */
   
