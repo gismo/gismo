@@ -13,16 +13,16 @@
 
 #pragma once
 
-#include<gsAssembler/gsExprHelper.h>
-#include<gsAssembler/gsExprAssembler.h>
-
 #include<gsIO/gsParaviewCollection.h>
 
 namespace gismo
 {
 
 /**
-   Generic evaluator of (scalar) element-wise isogeometric expressions
+   \brief Generic evaluator of isogeometric expressions
+
+   The expressions may be scalar ot vector-valued. Computed quatities
+   can be global or element.wise.
 */
 template<class T>
 class gsExprEvaluator
@@ -69,30 +69,41 @@ public:
 
 public:
 
+    /// Returns the last computed value
     T value() const { return m_value; }
 
+    /// Returns a vector containing the last computed values per element.
     gsAsConstVector<T> allValues() const { return gsAsConstVector<T>(m_elWise); }
 
+    /// Returns the last computed values per element, resized as a matrix
     gsAsConstMatrix<T> allValues(index_t nR, index_t nC) const
     { return gsAsConstMatrix<T>(m_elWise, nR, nC); }
 
+    /// \brief Sets the domain of integration.
+    /// \warning Must be called before any computation is requested
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setMultiBasis(mesh); }
 
+    /// Registers \a mp as an isogeometric geometry map and return a handle to it
     geometryMap getMap(const gsMultiPatch<T> & mp) //conv->tmp->error
     { return m_exprdata->setMap(mp); }
 
-    geometryMap getMap(const gsGeometry<T> & mp)
-    { return m_exprdata->setMap(mp); }
+    /// Registers \a g as an isogeometric geometry map and return a handle to it
+    geometryMap getMap(const gsFunction<T> & gm)
+    { return m_exprdata->setMap(gm); }
 
+    /// Registers \a func as a variable and returns a handle to it
     variable getVariable(const gsFunctionSet<T> & func, index_t dim = 1)
     { return m_exprdata->setVar(func, dim); }
 
+    /// Registers \a func as a variable defined on \a g and returns a handle to it
     variable getVariable(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func, G); }
 
+    /// Returns a handle to an isogeometric element
     element getElement() const { return m_element; }
 
+    /// Calculates the square root of the lastly computed quantities (eg. integrals)
     void calcSqrt()
     {
         gsAsVector<T> en(m_elWise);
@@ -100,6 +111,7 @@ public:
         m_value = math::sqrt(m_value);
     }
 
+    /// Calculates the \a p-th root of the lastly computed quantities (eg. integrals)
     void calcRoot(const index_t p)
     {
         gsAsVector<T> en(m_elWise);
@@ -109,47 +121,70 @@ public:
 
 public:
 
+    /// Calculates the integral of the expression \a expr on the whole integratoon domain
     template<class E>
     T integral(const expr::_expr<E> & expr)
     { return compute_impl<E,false,plus_op>(expr); }
 
-    // specialize (overload) for scalar
-    T integral(const T & val) { return integral<T>(val); }
-
+    /// Calculates the integral of the expression \a expr on each element
     template<class E>
     T integralElWise(const expr::_expr<E> & expr)
     { return compute_impl<E,true,plus_op>(expr); }
 
+    // overloads for scalars
+    T integral(const T & val) { return integral<T>(val); }
+    T integralElWise(const T & val) { return integralElWise<T>(val); }
+
+    /// Calculates the integral of the expression \a expr on the
+    /// boundary of the integratoon domain
     template<class E> // note: integralBdrElWise not offered
     T integralBdr(const expr::_expr<E> & expr)
     { return computeBdr_impl<E,plus_op>(expr); }
 
+    /// Calculates the integral of the expression \a expr on the
+    /// interfaces of the (multi-basis) integration domain
     template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr)
     { return computeInterface_impl<E,plus_op>(expr, m_exprdata.multiBasis().topology().interfaces()); }
 
+    /// Calculates the integral of the expression \a expr on the
+    /// interfaces \a iFaces of the integration domain
     template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr, const intContainer & iFaces)
     { return computeInterface_impl<E,plus_op>(expr, iFaces); }
 
+    /// Calculates the maximum value of the expression \a expr by
+    /// sampling over a finite number of points
     template<class E>
     T max(const expr::_expr<E> & expr)
     { return compute_impl<E,false,max_op>(expr); }
 
+    /// Calculates the maximum value of the expression \a expr by
+    /// on each element by sampling over a finite number of points
     template<class E>
     T maxElWise(const expr::_expr<E> & expr)
     { return compute_impl<E,true,max_op>(expr); }
-
+    
+    /// Calculates the minimum value of the expression \a expr by
+    /// sampling over a finite number of points
     template<class E>
     T min(const expr::_expr<E> & expr)
     { return compute_impl<E,false,min_op>(expr); }
 
+    /// Calculates the minimum value of the expression \a expr
+    /// on each element by sampling over a finite number of points
     template<class E>
     T minElWise(const expr::_expr<E> & expr)
     { return compute_impl<E,true,min_op>(expr); }
-
+    
+    /// Computes values of the expression \a expr
+    /// at the grid points \a git of patch \a patchId
+#ifdef __DOXYGEN__
+    template<class E> void
+#else
     template<class E, int mode, int d>
     typename util::enable_if<E::ScalarValued,void>::type
+#endif
     eval(const expr::_expr<E> & expr,
          gsGridIterator<T,mode,d> & git,
          const index_t patchInd = 0);
@@ -160,8 +195,14 @@ public:
               gsGridIterator<T,mode,d> & git,
               const index_t patchInd = 0);
 
+    /// Computes value of the expression \a testExpr
+    /// at the point \a pt of patch \a patchId
     template<class E>
+#ifdef __DOXYGEN__
+    gsAsConstMatrix<T>
+#else
     typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+#endif
     eval(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
          const index_t patchInd = 0);
 
@@ -170,14 +211,17 @@ public:
     eval(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
          const index_t patchInd = 0);
 
+    /// Computes value of the expression \a expr at the point \a pt of
+    /// patch \a patchId, and displays the result
     template<class E> void
     testEval(const expr::_expr<E> & expr,
              const gsVector<T> & pt, const index_t patchInd = 0)
     {
-//        expr.printDetail(gsInfo);
+        // expr.printDetail(gsInfo);
         gsInfo << "Result:\n"<< eval(expr,pt,patchInd) <<"\n";
     }
 
+    // Interpolates the expression \a expr over the isogeometric domain \a G
     template<class E> void interpolate(const expr::_expr<E> & expr)
     {
         GISMO_NO_IMPLEMENTATION
@@ -189,6 +233,10 @@ public:
         // return multipatch
     }
 
+    ///\brief Creates a paraview file named \a fn containing valies of the
+    //( expression \a expr over the isogeometric domain \a G.
+    ///
+    /// Plotting properties are controlled by entires in the options
     template<class E>
     void writeParaview(const expr::_expr<E> & expr,
                        geometryMap G,
@@ -295,7 +343,8 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     T elVal;
     m_value = _op::init();
     m_elWise.clear();
-
+    if ( storeElWise )
+        m_elWise.reserve(m_exprdata->multiBasis().totalElements());
     for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         // Quadrature rule

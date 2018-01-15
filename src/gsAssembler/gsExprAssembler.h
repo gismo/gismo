@@ -13,99 +13,14 @@
 
 #pragma once
 
-#include<gsAssembler/gsExprHelper.h>
 #include <gsUtils/gsPointGrid.h>
-
-
-//#include<tr1/tuple>
-
-/*
-namespace
-{
-
-template<class T>
-struct __eval
-{
-    std::vector<gismo::gsMatrix<T> > & m;
-    const gismo::gsVector<T> & w;
-    index_t i;
-
-    __eval(std::vector<gismo::gsMatrix<T> > & _m,
-           const gismo::gsVector<T> & _w) : m(_m), w(_w), i(0) { }
-
-    template<typename E>
-    void operator () (const gismo::expr::_expr<E> & t)
-    {
-        gismo::gsMatrix<T> & mat = m[i++];
-        mat = w[0] * t.eval(0);
-        for (index_t k = 1; k != w.rows(); ++k)
-            mat += w[k] * t.eval(k);
-    }
-};
-
-struct __setFlag
-{
-    template<typename E> //static
-    void operator () (const gismo::expr::_expr<E> & t) { t.setFlag(); }
-};
-
-template<class T>
-struct __local2global
-{
-    std::vector<gismo::gsMatrix<T> > & m;
-    gismo::gsSparseSystem<T> & sys;
-    const index_t patchInd;
-    index_t i;
-
-    __local2global(std::vector<gismo::gsMatrix<T> > & _m,
-                   gismo::gsSparseSystem<T> & _sys,
-                   const index_t _patchInd)
-    : sys(_sys), m(_m), patchInd(_patchInd), i(0) { }
-
-    template<typename E> // bool Col = E::col
-    void operator () (const gismo::expr::_expr<E> & t)
-    {
-
-        gismo::gsMatrix<T> & mat = m[i++];
-        const gismo::expr::gsFeSpace<T> & v = t.rowVar();
-        //const gismo::expr::gsFeSpace<T> & u = t.colVar();
-
-        //gismo::gsSpAcc<Col>(sys.matrix(), sys.rhs(), mat, patchInd)
-    }
-};
-
-struct __print
-{
-    template<typename E> //static
-    void operator () (const gismo::expr::_expr<E> & t) { t.print(gsInfo); }
-};
-
-template<std::size_t I, typename Tuple, typename Func> inline
-typename gismo::internal::enable_if< I != std::tr1::tuple_size<Tuple>::value,void>::type
-__for_each(const Tuple& tuple, Func func)
-{
-    func(std::tr1::get<I>(tuple));
-    __for_each<I + 1, Tuple,Func>(tuple, func);
-}
-
-template<std::size_t I, typename Tuple, typename Func> inline
-typename gismo::internal::enable_if< I == std::tr1::tuple_size<Tuple>::value,void>::type
-__for_each(const Tuple& tuple, Func func) { }
-
-template<typename Tuple, typename Func> inline void
-for_each_expr(const Tuple& tuple, Func func) { __for_each<0, Tuple,Func>(tuple, func); }
-
-}
-*/
 
 namespace gismo
 {
 
-
 /*
-  Internal function which accumulates the local element matrices to global
-
-  sparse matrix and right-hand side
+  Internal function which accumulates the local element matrices to
+  the global sparse matrix and right-hand side
  */
 template<class T, bool left, bool right>
 void gsAccumulateLocalToGlobal(
@@ -168,15 +83,15 @@ void gsAccumulateLocalToGlobal(
 
                             if ( colMap.is_free_index(colInd.at(j)) )
                             {
-                                // If matrix is symmetric, we store only lower
-                                // triangular part
+                                // If matrix is symmetric, we could
+                                // store only lower triangular part
                                 //if ( (!symm) || jj <= ii )
                                 m_matrix.coeffRef(ii, jj) +=
                                     localMat(rls+i,cls+j);
                             }
                             else // colMap.is_boundary_index(jj) )
                             {
-                                // Symmetric treatment of Dirichlet BC
+                                // Symmetric treatment of eliminated BCs
                                 // GISMO_ASSERT(1==m_rhs.cols(), "-");
                                 m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                     fixedDofs(colMap.global_to_bindex(colInd.at(j)), c);
@@ -189,8 +104,21 @@ void gsAccumulateLocalToGlobal(
 }
 
 
+template<class T>
+void gsAccumulateDyadic(
+    gsSparseMatrix<T> & m_matrix,
+    gsMatrix<T> & m_rhs,
+    const gsMatrix<T> & localMat,
+    const expr::gsFeSpace<T> & v,
+    const expr::gsFeSpace<T> & u,
+    const index_t patchInd)
+{
+}
+
+
 /**
-   Generic assembler of (matrix or vector) isogeometric expressions
+   Assembler class for generating matrices and right-hand sides based
+   on isogeometric expressions
 */
 template<class T>
 class gsExprAssembler
@@ -233,6 +161,7 @@ public:
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
 
+    /// Returns the number of degrees of freedom (after initialization)
     index_t numDofs()
     {
         GISMO_ASSERT( m_vcol.back()->mapper().isFinalized(),
@@ -241,6 +170,7 @@ public:
             m_vcol.back()->dim() * m_vcol.back()->mapper().freeSize();
     }
 
+    /// Returns the number of test functions (after initialization)
     index_t numTestDofs()
     {
         GISMO_ASSERT( m_vrow.back()->mapper().isFinalized(),
@@ -249,6 +179,8 @@ public:
             m_vrow.back()->dim() * m_vrow.back()->mapper().freeSize();
     }
 
+    /// Returns the number of blocks in the matrix, corresponding to
+    /// variables/components
     index_t numBlocks() const
     {
         index_t nb = 0;
@@ -257,6 +189,7 @@ public:
         return nb;
     }
 
+    /// Returns a reference to the options structure
     gsOptionList & options() {return m_options;}
 
     /// @brief Returns the left-hand global matrix
@@ -265,20 +198,26 @@ public:
     /// @brief Returns the right-hand side vector(s)
     const gsMatrix<T> & rhs() const { return m_rhs; }
 
+    /// \brief Sets the domain of integration.
+    /// \warning Must be called before any computation is requested
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setMultiBasis(mesh); }
 
+    /// \brief Returns the domain of integration
     const gsMultiBasis<T> & integrationElements() const
     { return m_exprdata->multiBasis(); }
 
     const typename gsExprHelper<T>::Ptr exprData() const { return m_exprdata; }
 
+    /// Registers \a mp as an isogeometric geometry map and return a handle to it
     geometryMap getMap(const gsMultiPatch<T> & mp) //conv->tmp->error
     { return m_exprdata->getMap(mp); }
 
-    geometryMap getMap(const gsGeometry<T> & mp)
-    { return m_exprdata->getMap(mp); }
+    /// Registers \a g as an isogeometric geometry map and return a handle to it
+    geometryMap getMap(const gsFunction<T> & g)
+    { return m_exprdata->getMap(g); }
 
+    /// Registers \a mp as an isogeometric space and return a handle to it
     space getSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
     {
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
@@ -290,14 +229,12 @@ public:
         return u;
     }
 
-    void computeDirichletDofs2(int unk);
-    void computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u);
-    void computeDirichletDofsL2Proj(const expr::gsFeSpace<T> & u);
-    void setFixedDofVector(gsMatrix<T> & dof, int unk = 0);
-    void setFixedDofs(const gsMatrix<T> & coefMatrix, int unk = 0, int patch = 0);
-
-    // for Petrov-Galerkin
-    space setTestSpace(variable u, const gsFunctionSet<T> & mp)
+    /// \brief Registers \a mp as an isogeometric test space and return a handle to it
+    ///
+    /// By default the test space is the same as the solution space
+    /// (registered by getSpace). Call this function when a different
+    /// test space is requred (eg. Petrov-Galerkin methods).
+    space getTestSpace(variable u, const gsFunctionSet<T> & mp)
     {
         //GISMO_ASSERT(0!=u.mapper(), "Not a space"); // done on initSystem
         expr::gsFeSpace<T> & s = m_exprdata->setSpace(mp,u.dim());
@@ -308,24 +245,38 @@ public:
         return s;
     }
 
-    variable setCoeff(const gsFunctionSet<T> & func)
+    /// Registers \a func as a variable and returns a handle to it
+    variable getCoeff(const gsFunctionSet<T> & func)
     { return m_exprdata->getVar(func, 1); }
 
-    variable setCoeff(const gsFunctionSet<T> & func, geometryMap G)
+    /// Registers \a func as a variable defined on \a g and returns a handle to it
+    variable getCoeff(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func,G); }
 
-    solution getSolution(variable u, gsMatrix<T> & cf) const
+    /// \brief Registers a representation of a solution variable from
+    /// space \a s, based on the vector \a cf.
+    ///
+    /// The vector \a cf should have the structure of the columns of
+    /// the system matrix this->matrix(). The returned handle
+    /// corresponds to a function in the space \a s
+    solution getSolution(space s, gsMatrix<T> & cf) const
     {
         // todo: if (m_exprdata->isSpace(u));
-        space s = static_cast<space>(u);
+        //space s = static_cast<space>(u);
         return solution(s, cf);
-        //GISMO_ERROR("Need a space variable");
     }
 
     variable getBdrFunction() const { return m_exprdata->getMutVar(); }
 
     element getElement() const { return m_element; }
 
+    void computeDirichletDofs2(int unk);
+    void computeDirichletDofsIntpl2(const expr::gsFeSpace<T> & u);
+    void computeDirichletDofsL2Proj(const expr::gsFeSpace<T> & u);
+    void setFixedDofVector(gsMatrix<T> & dof, int unk = 0);
+    void setFixedDofs(const gsMatrix<T> & coefMatrix, int unk = 0, int patch = 0);
+
+    /// \brief Initializes the sparse system (sparse matrix and rhs)
     void initSystem()
     {
         // Check spaces.nPatches==mesh.patches
@@ -336,6 +287,7 @@ public:
             computeDirichletDofs2(i);
     }
 
+    /// \brief Initializes the sparse matrix only
     void initMatrix()
     {
         resetDimensions();
@@ -358,36 +310,15 @@ public:
         }
     }
 
+    /// \brief Initializes the right-hand side vector only
     void initVector(const index_t numRhs = 1)
     {
         resetDimensions();
         m_rhs.setZero(numDofs(), numRhs);
     }
 
-    void resetDimensions()
-    {
-        for (std::size_t i = 0; i!=m_vcol.size(); ++i)
-        {
-            GISMO_ASSERT(NULL!=m_vcol[i], "Not set.");
-            m_vcol[i]->reset();
-
-            if ( m_vcol[i] != m_vrow[i] )
-            {
-                GISMO_ASSERT(NULL!=m_vrow[i], "Not set.");
-                m_vrow[i]->reset();
-            }
-        }
-        for (size_t i = 1; i!=m_vcol.size(); ++i)
-        {
-            m_vcol[i]->mapper().setShift(m_vcol[i-1]->mapper().firstIndex() +
-                                         m_vcol[i-1]->dim()*m_vcol[i-1]->mapper().freeSize() );
-
-            if ( m_vcol[i] != m_vrow[i] )
-                m_vrow[i]->mapper().setShift(m_vrow[i-1]->mapper().firstIndex() +
-                                             m_vrow[i-1]->dim()*m_vrow[i-1]->mapper().freeSize() );
-        }
-    }
-
+    /// Returns a block view of the system matrix, each block
+    /// corresponding to a different space
     matBlockView matrixBlockView()
     {
         GISMO_ASSERT( m_vcol.back()->mapper().isFinalized(),
@@ -404,45 +335,21 @@ public:
         return m_matrix.blockView(rowSizes,colSizes);
     }
 
-    /*
-    template<class Tpl>
-    void assemble_tuple(const Tpl & a)
-    {
-        // util::tuple
-        // util::tie
-        gsDebugVar("-------------");
-        gsDebugVar( std::tr1::tuple_size<Tpl>::value );
-        for_each_expr(a, __print() );
-        // ex.setflag();
-        // lmat[i] = qu * ex.eval(0);
-        gsDebugVar("-------------");
-        // ex.rowVar();
-        // ex.colVar();
-    }
-
-    template<class E1, class E2>
-    void assemble1(const expr::_expr<E1> & t1, const expr::_expr<E2> & t2)
-    {
-        assemble_tuple( std::tr1::tie(t1,t2) );
-    }
-
-    template<class E1, class E2, class E3>
-    void assemble1(const expr::_expr<E1> & t1,
-                   const expr::_expr<E2> & t2, const expr::_expr<E3> & t3)
-    {
-        assemble_tuple( std::tr1::tie(t1,t2,t3) );
-    }
-    */
-
+    /// Set the assembler options
     void setOptions(gsOptionList opt) { m_options = opt; } // gsOptionList opt
     // .swap(opt) todo
 
-    //void refresh() { }
-
-    // assembleMixed(..) 2x2, diag blocks
-
-    //template<class ... Types> void assemble(Types ... args);
-
+    /*
+    template<class... expr> void assemble(expr... args)
+    {
+        // _setFlag
+        // loop
+        //_eval
+    }
+    */
+    
+    /// Adds the expression \a E1 to the sparse system matrix
+    /// (left-hand side) and \a E2 to the right-hand side vector
     template<class E1, class E2>
     void assembleLhsRhs(const expr::_expr<E1> & exprLhs, const expr::_expr<E2> & exprRhs)
     {
@@ -455,6 +362,7 @@ public:
         assembleLhsRhs_impl<true,true>(exprLhs, exprRhs, rvar, cvar);
     }
 
+    /// Adds the expression \a E1 to the sparse system matrix (left-hand side)
     template<class E1>
     void assembleLhs(const expr::_expr<E1> & exprLhs)
     {
@@ -465,6 +373,7 @@ public:
         assembleLhsRhs_impl<true,false>(exprLhs, nullExpr(), rvar, cvar);
     }
 
+    /// Adds the expression \a E2 to the right-hand side vector
     template<class E2>
     void assembleRhs(const expr::_expr<E2> & exprRhs)
     {
@@ -511,6 +420,10 @@ public:
 
 private:
 
+    /// \brief Reset the dimensions of all involved spaces.
+    /// Called internally by the init* functions
+    void resetDimensions();
+
     template<bool left, bool right, class E1, class E2>
     void assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
                              const expr::_expr<E2> & exprRhs,
@@ -527,6 +440,134 @@ private:
                                 const expr::_expr<E2> & exprRhs,
                                 space rvar, space cvar,
                                 const intContainer & iFaces);
+
+// /*
+#if(__cplusplus >= 201103L) // c++11
+    template <class op, class E1>
+    void _apply(op _op, const expr::_expr<E1> & firstArg) {_op(firstArg);}
+    template <class op, class E1, class... Rest>
+    void _apply(op _op, const expr::_expr<E1> & firstArg, Rest... restArgs)
+    { _op(firstArg); _apply<op>(_op, restArgs...); }
+#else
+    template <class op, class E1, class E2, class E3, class E4, class E5>
+    void _apply(op _op, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
+                const expr::_expr<E3> & a3, const expr::_expr<E4> & a4,
+                const expr::_expr<E5> & a5)
+    { _op(a1);_op(a2);_op(a3);_op(a4);_op(a5); }
+    template <class op, class E1, class E2, class E3, class E4>
+    void _apply(op _op, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
+                const expr::_expr<E3> & a3, const expr::_expr<E4> & a4)
+    { _op(a1);_op(a2);_op(a3);_op(a4); }
+    template <class op, class E1, class E2, class E3>
+    void _apply(op _op, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
+                const expr::_expr<E3> & a3)
+    { _op(a1);_op(a2);_op(a3); }
+    template <class op, class E1, class E2>
+    void _apply(op _op, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2)
+    { _op(a1);_op(a2); }
+    template <class op, class E1> void _apply(op _op, const expr::_expr<E1> & a1)
+    { _op(a1); }
+#endif
+
+    static const struct __setFlag
+    {
+        template <typename E> void operator() (const gismo::expr::_expr<E> & v)
+        {
+            //v.print(gsInfo);
+            v.setFlag();
+        }
+    } _setFlag;
+
+    struct _eval
+    {
+        gsSparseMatrix<T> & m_matrix;
+        gsMatrix<T>       & m_rhs;
+        const gsVector<T> & m_quWeights;
+        const index_t       m_patchInd;        
+        gsMatrix<T>         localMat;
+        
+        _eval(gsSparseMatrix<T> & _matrix,
+              gsMatrix<T>       & _rhs,
+              const gsVector<>  & _quWeights)
+        : m_matrix(_matrix), m_rhs(_rhs), 
+          m_quWeights(_quWeights), m_patchInd(0)
+        { }
+        
+        void setPatch(const index_t p) { m_patchInd=p; }
+        
+        template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
+        {
+            // ------- Compute  ------- 
+            const T * w = m_quWeights.data();
+            localMat = (*w) * ee.eval(0);
+            for (index_t k = 1; k != m_quWeights.rows(); ++k)
+                localMat += (*(++w)) * ee.eval(k);
+
+            //  ------- Accumulate  ------- 
+            variable v = ee.rowVar();
+            variable u = ee.colVar();
+            const index_t cd            = u.dim();
+            const index_t rd            = v.dim();
+            const gsDofMapper  & colMap = u.mapper();
+            const gsDofMapper  & rowMap = v.mapper();
+            gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
+            gsMatrix<unsigned> & rowInd0 = const_cast<gsMatrix<unsigned>&>(v.data().actives);
+            const gsMatrix<T>  & fixedDofs = u.fixedPart();
+            
+            gsMatrix<unsigned> rowInd, colInd;
+            colMap.localToGlobal(colInd0, m_patchInd, colInd);
+            //if (cvar && (&rowInd0!=&colInd0) )
+            rowMap.localToGlobal(rowInd0, m_patchInd, rowInd);
+            
+            GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
+                          "Invalid values for fixed part");
+            
+            for (index_t r = 0; r != rd; ++r)
+            {
+                const index_t rls = r * rowInd.rows();     //local stride
+                const index_t rgs = r * rowMap.freeSize(); //global stride
+                
+                for (index_t i = 0; i != rowInd.rows(); ++i)
+                {
+                    const index_t ii = rgs + rowInd.at(i); // N_i
+                    
+                    if ( rowMap.is_free_index(rowInd.at(i)) )
+                    {
+                        for (index_t c = 0; c != cd; ++c)
+                        {
+                            const index_t cls = c * colInd.rows();     //local stride
+                            const index_t cgs = c * colMap.freeSize(); //global stride
+                            
+                            for (index_t j = 0; j != colInd.rows(); ++j)
+                            {
+                                if ( 0 == localMat(rls+i,cls+j) ) continue;
+                                
+                                const index_t jj = cgs + colInd.at(j); // N_j
+                                
+                                if ( colMap.is_free_index(colInd.at(j)) )
+                                {
+                                    // If matrix is symmetric, we could
+                                    // store only lower triangular part
+                                    //if ( (!symm) || jj <= ii )
+                                    m_matrix.coeffRef(ii, jj) +=
+                                        localMat(rls+i,cls+j);
+                                }
+                                else // colMap.is_boundary_index(jj) )
+                                {
+                                    // Symmetric treatment of eliminated BCs
+                                    // GISMO_ASSERT(1==m_rhs.cols(), "-");
+                                    m_rhs.at(ii) -= localMat(rls+i,cls+j) *
+                                        fixedDofs(colMap.global_to_bindex(colInd.at(j)), c);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }// operator()
+        
+    };
+//*/
 
 }; // gsExprAssembler
 
@@ -660,6 +701,30 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, int unk, i
         }
     }
 } // setFixedDofs
+
+template<class T> void gsExprAssembler<T>::resetDimensions()
+{
+    for (std::size_t i = 0; i!=m_vcol.size(); ++i)
+    {
+        GISMO_ASSERT(NULL!=m_vcol[i], "Not set.");
+        m_vcol[i]->reset();
+
+        if ( m_vcol[i] != m_vrow[i] )
+        {
+            GISMO_ASSERT(NULL!=m_vrow[i], "Not set.");
+            m_vrow[i]->reset();
+        }
+    }
+    for (size_t i = 1; i!=m_vcol.size(); ++i)
+    {
+        m_vcol[i]->mapper().setShift(m_vcol[i-1]->mapper().firstIndex() +
+                                     m_vcol[i-1]->dim()*m_vcol[i-1]->mapper().freeSize() );
+
+        if ( m_vcol[i] != m_vrow[i] )
+            m_vrow[i]->mapper().setShift(m_vrow[i-1]->mapper().firstIndex() +
+                                         m_vrow[i-1]->dim()*m_vrow[i-1]->mapper().freeSize() );
+    }
+}
 
 template<class T>
 template<bool left, bool right, class E1, class E2>
