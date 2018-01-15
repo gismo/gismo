@@ -219,16 +219,14 @@ public:
     bool isScalar() const { return rows()*cols()<=1; } //!rowSpan() && !colSpan()
 
     ///\brief Returns true iff the expression is vector-valued.
-    bool isVector() const { return rowSpan() && (!colSpan()); }
+    static bool isVector() { return rowSpan() && (!colSpan()); }
 
     ///\brief Returns true iff the expression is matrix-valued.
-    bool isMatrix() const { return rowSpan() && colSpan(); }
+    static bool isMatrix() { return rowSpan() && colSpan(); }
 
-    bool rowSpan() const // remove
-    { return static_cast<E const&>(*this).rowSpan(); }
+    static bool rowSpan() { return E::rowSpan(); }
 
-    bool colSpan() const // remove
-    { return static_cast<E const&>(*this).colSpan(); }
+    static bool colSpan() { return E::colSpan(); }
 
     ///\brief Sets the required evaluation flags
     void setFlag() const { static_cast<E const&>(*this).setFlag(); }
@@ -271,7 +269,7 @@ std::ostream &operator<<(std::ostream &os, const _expr<E> & b)
    Null expression is a compatibility expression invalid at runtime
 */
 template<class T>
-class gsNullExpr : public _expr<gsNullExpr<T> >
+class gsNullExpr : public gsFeVariable<T> //public _expr<gsNullExpr<T> >
 {
 public:
     typedef T Scalar;
@@ -283,10 +281,18 @@ public:
 
     const gsFeVariable<T> & rowVar() const { GISMO_ERROR("gsNullExpr"); }
     const gsFeVariable<T> & colVar() const { GISMO_ERROR("gsNullExpr"); }
-    bool rowSpan() const {return false; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "NullExpr"; }
+
+    static const gsNullExpr & get()
+    {
+        static gsNullExpr o;
+        return o;
+    }
+//private:
+    gsNullExpr() {}
 };
 
 /*
@@ -312,10 +318,10 @@ public:
     index_t cols() const { return 0; }
     void setFlag() const { }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { GISMO_UNUSED(evList); }
-    bool rowSpan() const {return false;}
-    bool colSpan() const {return false;}
-    const gsFeVariable<T> & rowVar() const { GISMO_ERROR("scalar: rowVar"); }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("scalar: colVar"); }
+    static bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
+    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
 
     void print(std::ostream &os) const { os<<_c; }
 };
@@ -370,11 +376,11 @@ protected:
     index_t rows() const { return m_fd->dim.second; }
     index_t cols() const { return 1; }
 
-    bool rowSpan() const {return false;}
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
 
-    const gsFeVariable<T> & rowVar() const { GISMO_ERROR("GeometryMap: rowVar"); }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("GeometryMap: colVar"); }
+    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
 
     void parse(gsSortedVector<const gsFunctionExpr<T>*> & evList) const
     {
@@ -443,10 +449,10 @@ public:
     inline void setFlag() const { }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { GISMO_UNUSED(evList); }
 
-    const gsFeVariable<T> & rowVar() const { GISMO_ERROR("diam problem rowVar"); }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("diam problem colVar"); }
-    bool rowSpan() const {return false; }
-    bool colSpan() const {return false;}
+    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
+    static bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
 
     void print(std::ostream &os) const
     { os << "diam(e)"; }
@@ -471,10 +477,10 @@ public:
     inline index_t cols() const { return 0; }
     inline void setFlag() const { }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { GISMO_UNUSED(evList); }
-    const gsFeVariable<T> & rowVar() const { GISMO_ERROR("diam problem rowVar"); }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("diam problem colVar"); }
-    bool rowSpan() const {return false; }
-    bool colSpan() const {return false;}
+    const gsFeVariable<T> & rowVar() const { gsNullExpr<T>(); }
+    const gsFeVariable<T> & colVar() const { gsNullExpr<T>(); }
+    static bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
 
     void print(std::ostream &os) const
     { os << "diam(e)"; }
@@ -501,6 +507,8 @@ protected:
     const gsFunctionSet<T> * m_fs; ///< Evaluation source for this FE variable
     const gsFuncData<T>    * m_fd; ///< Temporary variable storing flags and evaluation data
     index_t m_d;                   ///< Dimension of this (scalar or vector) variable
+//    gsGeometryMap<T>  *  m_Gmap; ///<If set, the variable is a composition with Gmap
+// comp(u,G)
 
 public:
     typedef T Scalar;
@@ -547,14 +555,10 @@ public:
     //{ return m_fd->values[0].block(0,k,rows(),1); }
 
     const gsFeVariable<T> & rowVar() const {return *this;}
-    const gsFeVariable<T> & colVar() const
-    {
-        //sa
-        GISMO_ERROR("Invalid call to gsFeVariable::colVar()");
-    }
+    const gsFeVariable<T> & colVar() const {return gsNullExpr<T>::get();}
 
-    bool rowSpan() const {return true; } // note: gsFunction coeff ??
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return true; } // note: gsFunction coeff ??
+    static bool colSpan() {return false;}
 
     index_t rows() const
     {
@@ -758,7 +762,7 @@ protected:
    coefficients in a gsFeSpace.
 
    Typically it used for accessing the solution of a boundary-value
-   problem.  space
+   problem.
 */
 template<class T>
 class gsFeSolution :public _expr<gsFeSolution<T> >
@@ -804,8 +808,8 @@ public:
         return res;
     }
 
-    bool rowSpan() const {return false; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
 
     index_t rows() const {return _u.dim(); }
     index_t cols() const {return 1; }
@@ -952,8 +956,8 @@ public:
         return res;
     }
 
-    bool rowSpan() const {return false;}
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
 
     index_t rows() const {return _u.dim();}
 
@@ -1032,8 +1036,8 @@ public:
     const gsFeVariable<Scalar> & rowVar() const { return _u.colVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _u.rowVar(); }
 
-    bool rowSpan() const {return _u.colSpan();}
-    bool colSpan() const {return _u.rowSpan();}
+    static bool rowSpan() {return E::colSpan();}
+    static bool colSpan() {return E::rowSpan();}
 
     void print(std::ostream &os) const { os<<"("; _u.print(os); os <<")'"; }
 };
@@ -1084,8 +1088,8 @@ public:
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
 
-    bool rowSpan() const {return _u.rowSpan();}
-    bool colSpan() const {return _u.colSpan();}
+    static bool rowSpan() {return E::rowSpan();}
+    static bool colSpan() {return E::colSpan();}
 
     void print(std::ostream &os) const { _u.print(os); }
 };
@@ -1134,8 +1138,8 @@ public:
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
 
-    bool rowSpan() const {return _u.rowSpan();}
-    bool colSpan() const {return _u.colSpan();}
+    static bool rowSpan() {return E::rowSpan();}
+    static bool colSpan() {return E::colSpan();}
 
     void print(std::ostream &os) const { os << "trace("; _u.print(os); os<<")"; }
 };
@@ -1184,8 +1188,8 @@ public:
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
 
-    bool rowSpan() const {return _u.rowSpan();}
-    bool colSpan() const {return _u.colSpan();}
+    static bool rowSpan() {return _u.rowSpan();}
+    static bool colSpan() {return _u.colSpan();}
 
     void print(std::ostream &os) const { os << "trace("; _u.print(os); os<<")"; }
 };
@@ -1203,12 +1207,12 @@ public:                                                                 \
     index_t cols() const { return isSv ? 0 : _u.cols(); }               \
     void setFlag() const { _u.setFlag(); }                              \
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { _u.parse(evList); } \
-    const gsFeVariable<Scalar> & rowVar() const {GISMO_ERROR("Invalid call to rowVar()");} \
-    const gsFeVariable<Scalar> & colVar() const {GISMO_ERROR("Invalid call to colVar()");} \
+    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();} \
+    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();} \
     void print(std::ostream &os) const                                  \
     { os << #name <<"("; _u.print(os); os <<")"; }                      \
-    bool rowSpan() const {return _u.rowSpan();}                         \
-    bool colSpan() const {return _u.colSpan();} };
+    static bool rowSpan() {return E::rowSpan();}                         \
+    static bool colSpan() {return E::colSpan();} };
     // const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     // const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
 
@@ -1258,8 +1262,8 @@ public:
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
 
-    bool rowSpan() const {return _u.rowSpan();}
-    bool colSpan() const {return _u.colSpan();}
+    static bool rowSpan() {return E::rowSpan();}
+    static bool colSpan() {return E::colSpan();}
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.rows() * _u.cols(); }
@@ -1295,13 +1299,11 @@ public:
     void setFlag() const { }
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const {  }
 
-    bool rowSpan() const {return false;}
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
 
-    const gsFeVariable<Scalar> & rowVar() const
-    {GISMO_ERROR("Invalid call to value::rowVar()");}
-    const gsFeVariable<Scalar> & colVar() const
-    {GISMO_ERROR("Invalid call to value::colVar()");}
+    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { os << "id("<<_dim <<")";}
 };
@@ -1338,13 +1340,11 @@ public:
 
     static bool isScalar() { return true; }
 
-    bool rowSpan() const {return false;}
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
 
-    const gsFeVariable<Scalar> & rowVar() const
-    {GISMO_ERROR("Invalid call to value::rowVar()");}
-    const gsFeVariable<Scalar> & colVar() const
-    {GISMO_ERROR("Invalid call to value::colVar()");}
+    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { _u.print(os); }
 
@@ -1399,10 +1399,10 @@ public:
 
     const gsFeVariable<T> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<T> & colVar() const
-    {GISMO_ERROR("Invalid call to gsFeVariable::colVar()");}
+    {return gsNullExpr<T>::get();}
 
-    bool rowSpan() const {return true; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
 };
@@ -1457,10 +1457,10 @@ public:
 
     const gsFeVariable<T> & rowVar() const { return u.rowVar(); }
     const gsFeVariable<T> & colVar() const
-    {GISMO_ERROR("Invalid call to nabla::colVar()");}
+    {return gsNullExpr<T>();}
 
-    bool rowSpan() const {return true; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "nabla("; u.print(os); os <<")"; }
 };
@@ -1509,10 +1509,10 @@ public:
 
     const gsFeVariable<T> & rowVar() const { return u.rowVar(); }
     const gsFeVariable<T> & colVar() const
-    {GISMO_ERROR("Invalid call to nabla2::colVar()");}
+    {return gsNullExpr<T>();}
 
-    bool rowSpan() const {return true; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
 };
 
 /// The nabla2 (nabla^2) of a finite element variable
@@ -1543,8 +1543,8 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
 
-    bool rowSpan() const {GISMO_ERROR("onormal");}
-    bool colSpan() const {GISMO_ERROR("onormal");}
+    static bool rowSpan() {GISMO_ERROR("onormal");}
+    static bool colSpan() {GISMO_ERROR("onormal");}
 
     void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
 
@@ -1589,8 +1589,8 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
 
-    bool rowSpan() const {GISMO_ERROR("tangent");}
-    bool colSpan() const {GISMO_ERROR("tangent");}
+    static bool rowSpan() {GISMO_ERROR("tangent");}
+    static bool colSpan() {GISMO_ERROR("tangent");}
 
     void setFlag() const { _G.data().flags |= NEED_OUTER_NORMAL; }
 
@@ -1634,8 +1634,8 @@ public:
     index_t rows() const { return _u.data().values[0].rows(); }
     index_t cols() const { return 1; }
 
-    bool rowSpan() const {return true; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
 
     void setFlag() const { _u.data().flags |= NEED_LAPLACIAN; }
 
@@ -1668,8 +1668,8 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return _G.data().dim.first ; }
 
-    bool rowSpan() const {return false; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
 
     void setFlag() const { _G.data().flags |= NEED_GRAD_TRANSFORM; }
 
@@ -1680,8 +1680,8 @@ public:
         _G.data().flags |= NEED_GRAD_TRANSFORM;
     }
 
-    const gsFeVariable<Scalar> & rowVar() const {GISMO_ERROR("Invalid call to rowVar()");}
-    const gsFeVariable<Scalar> & colVar() const {GISMO_ERROR("Invalid call to colVar()");}
+    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<T>();}
+    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<T>();}
 
     void print(std::ostream &os) const { os << "fform("; _G.print(os); os <<")"; }
 };
@@ -1708,8 +1708,8 @@ public:
     index_t rows() const { return _G.data().dim.first;  }
     index_t cols() const { return _G.data().dim.second; }
 
-    bool rowSpan() const {return false; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
 
     void setFlag() const { _G.data().flags |= NEED_GRAD_TRANSFORM; }
 
@@ -1720,8 +1720,8 @@ public:
         _G.data().flags |= NEED_GRAD_TRANSFORM;
     }
 
-    const gsFeVariable<Scalar> & rowVar() const {GISMO_ERROR("Invalid call to rowVar()");}
-    const gsFeVariable<Scalar> & colVar() const {GISMO_ERROR("Invalid call to colVar()");}
+    const gsFeVariable<Scalar> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeVariable<Scalar> & colVar() const {return gsNullExpr<T>::get();}
 
     // todo mat_expr ?
     // tr() const --> _G.data().fundForm(k)
@@ -1754,8 +1754,8 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return _G.data().dim.first; }
 
-    bool rowSpan() const {return false; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
 
     void setFlag() const { _G.data().flags |= NEED_DERIV; }
 
@@ -1807,7 +1807,7 @@ public:
     }
 
     const gsFeVariable<T> & rowVar() const { return m_fev; }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("jac is a row expression?"); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
 
     index_t rows() const { return m_fev.dim(); }
     index_t cols() const
@@ -1815,8 +1815,8 @@ public:
         return m_fev.dim() * m_fev.data().actives.rows() * m_fev.data().dim.first;
     }
 
-    bool rowSpan() const {return true; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
 
     void setFlag() const
     {
@@ -1857,13 +1857,13 @@ public:
     }
 
     const gsFeVariable<T> & rowVar() const { return m_fev; }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("jac is a row expression?"); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
 
     index_t rows() const { return m_fev.data().dim.first; }
     index_t cols() const {return m_fev.data().dim.second; }
 
-    bool rowSpan() const {return true; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
 
     void setFlag() const
     {
@@ -1922,11 +1922,11 @@ public:
         GISMO_ERROR("error 1712");
     }
 
-    bool rowSpan() const {return true; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
 
-    const gsFeVariable<T> & rowVar() const { GISMO_ERROR("hess problem rowVar"); }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("hess problem colVar"); }
+    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>(); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>(); }
 
     void print(std::ostream &os) const
     //    { os << "hess("; _u.print(os);os <<")"; }
@@ -1969,8 +1969,8 @@ public:
         _G.data().flags |= NEED_2ND_DER;
     }
 
-    bool rowSpan() const {return false;}
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false;}
+    static bool colSpan() {return false;}
 };
 
 
@@ -2001,11 +2001,11 @@ public:
         _G.data().flags |= NEED_MEASURE;
     }
 
-    const gsFeVariable<T> & rowVar() const { GISMO_ERROR("meas problem rowVar"); }
-    const gsFeVariable<T> & colVar() const { GISMO_ERROR("meas problem colVar"); }
+    const gsFeVariable<T> & rowVar() const { return gsNullExpr<T>::get(); }
+    const gsFeVariable<T> & colVar() const { return gsNullExpr<T>::get(); }
 
-    bool rowSpan() const {return false; }
-    bool colSpan() const {return false;}
+    static bool rowSpan() {return false; }
+    static bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
 };
@@ -2055,8 +2055,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    bool rowSpan() const { return E1::ScalarValued ? _v.rowSpan() : _u.rowSpan(); }
-    bool colSpan() const { return E2::ScalarValued ? _u.colSpan() : _v.colSpan(); }
+    static bool rowSpan() { return E1::ScalarValued ? E2::rowSpan() : E1::rowSpan(); }
+    static bool colSpan() { return E2::ScalarValued ? E1::colSpan() : E2::colSpan(); }
 
     const gsFeVariable<Scalar> & rowVar() const
     { return E1::ScalarValued ? _v.rowVar() : _u.rowVar(); }
@@ -2134,8 +2134,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    bool rowSpan() const { return _u.rowSpan(); }
-    bool colSpan() const { return false; }
+    static bool rowSpan() { return E1::rowSpan(); }
+    static bool colSpan() { return false; }
 
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const
@@ -2186,8 +2186,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _v.parse(evList); }
 
-    bool rowSpan() const { return _v.rowSpan(); }
-    bool colSpan() const { return _v.colSpan(); }
+    static bool rowSpan() { return E2::rowSpan(); }
+    static bool colSpan() { return E2::colSpan(); }
 
     const gsFeVariable<Scalar> & rowVar() const { return _v.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
@@ -2247,8 +2247,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    bool rowSpan() const { return _u.rowSpan(); }
-    bool colSpan() const { return _v.rowSpan(); }
+    static bool rowSpan() { return E1::rowSpan(); }
+    static bool colSpan() { return E2::rowSpan(); }
 
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _v.rowVar(); }
@@ -2309,8 +2309,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    bool rowSpan() const { return _u.rowSpan(); }
-    bool colSpan() const { return _v.rowSpan(); }
+    static bool rowSpan() { return E1::rowSpan(); }
+    static bool colSpan() { return E2::rowSpan(); }
 
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _v.rowVar(); }
@@ -2349,8 +2349,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    bool rowSpan() const { return _u.rowSpan(); }
-    bool colSpan() const { return _u.colSpan(); }
+    static bool rowSpan() { return E1::rowSpan(); }
+    static bool colSpan() { return E1::colSpan(); }
 
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _u.colVar(); }
@@ -2388,8 +2388,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    bool rowSpan() const { return _u.rowSpan(); }
-    bool colSpan() const { return _u.colSpan(); }
+    static bool rowSpan() { return E1::rowSpan(); }
+    static bool colSpan() { return E1::colSpan(); }
 
     void print(std::ostream &os) const
     { os << "("; _u.print(os);os <<"/"<< _c << ")"; }
@@ -2425,8 +2425,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    bool rowSpan() const { return false; }
-    bool colSpan() const { return false; }
+    static bool rowSpan() { return false; }
+    static bool colSpan() { return false; }
 
     void print(std::ostream &os) const
     { os << "("<< _c <<"/";_u.print(os);os << ")";}
@@ -2474,8 +2474,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    bool rowSpan() const { return _u.rowSpan(); }
-    bool colSpan() const { return _u.colSpan(); }
+    static bool rowSpan() { return E1::rowSpan(); }
+    static bool colSpan() { return E1::colSpan(); }
 
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
@@ -2537,11 +2537,11 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _M.parse(evList); }
 
-    bool rowSpan() const { return _u.rowSpan(); }
-    bool colSpan() const { return false; }
+    static bool rowSpan() { return E1::rowSpan(); }
+    static bool colSpan() { return false; }
 
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeVariable<Scalar> & colVar() const { GISMO_ERROR("summ::colVar()"); }
+    const gsFeVariable<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     void print(std::ostream &os) const
     { os << "sum("; _M.print(os); os<<","; _u.print(os); os<<")"; }
@@ -2596,8 +2596,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); _v.parse(evList); }
 
-    bool rowSpan() const { return _u.rowSpan(); }
-    bool colSpan() const { return _v.colSpan(); }
+    static bool rowSpan() { return E1::rowSpan(); }
+    static bool colSpan() { return E2::colSpan(); }
 
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _v.colVar(); }
@@ -2639,8 +2639,8 @@ public:
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     { _u.parse(evList); }
 
-    bool rowSpan() const { return _u.rowSpan(); }
-    bool colSpan() const { return _u.rowSpan(); }
+    static bool rowSpan() { return E::rowSpan(); }
+    static bool colSpan() { return E::rowSpan(); }
 
     const gsFeVariable<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeVariable<Scalar> & colVar() const { return _u.rowVar(); }
@@ -2835,6 +2835,9 @@ GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized() )
 template<class T> EIGEN_STRONG_INLINE mult_expr<grad_expr<T>,jacGinv_expr<T>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
 
+    template<class T> EIGEN_STRONG_INLINE grad_expr<T> // u is presumed to be defined over G
+GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
+    
 template<class T> EIGEN_STRONG_INLINE mult_expr<jac_expr<T>,jacGinv_expr<T>, 1>
 GISMO_SHORTCUT_PHY_EXPRESSION(ijac, jac(u) * jac(G).ginv() )
 
@@ -2856,3 +2859,4 @@ GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 } // namespace expr
 
 } //namespace gismo
+

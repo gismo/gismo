@@ -24,8 +24,8 @@ namespace gismo
  */
 template<class T, bool left, bool right>
 void gsAccumulateLocalToGlobal(
-    gsSparseMatrix<T> & m_matrix,
-    gsMatrix<T> & m_rhs,
+    gsSparseMatrix<T> & matrix_out,
+    gsMatrix<T> & rhs_out,
     const gsMatrix<T> & localMat,
     const gsMatrix<T> & localRhs,
     const expr::gsFeSpace<T> & v, //rowvar
@@ -42,7 +42,8 @@ void gsAccumulateLocalToGlobal(
 
     gsMatrix<unsigned> rowInd, colInd;
     //if (&colMap==&rowMap) && (&rowInd==&colInd)
-    colMap.localToGlobal(colInd0, patchInd, colInd);
+    if (left)
+        colMap.localToGlobal(colInd0, patchInd, colInd);
     rowMap.localToGlobal(rowInd0, patchInd, rowInd);
 
     //gsDebugVar( localMat.dim() );
@@ -66,7 +67,7 @@ void gsAccumulateLocalToGlobal(
             {
                 if (right)
                 {
-                    m_rhs.row(ii) += localRhs.row(rls+i);
+                    rhs_out.row(ii) += localRhs.row(rls+i);
                 }
 
                 if (left)
@@ -86,14 +87,13 @@ void gsAccumulateLocalToGlobal(
                                 // If matrix is symmetric, we could
                                 // store only lower triangular part
                                 //if ( (!symm) || jj <= ii )
-                                m_matrix.coeffRef(ii, jj) +=
-                                    localMat(rls+i,cls+j);
+                                matrix_out.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                             }
                             else // colMap.is_boundary_index(jj) )
                             {
                                 // Symmetric treatment of eliminated BCs
-                                // GISMO_ASSERT(1==m_rhs.cols(), "-");
-                                m_rhs.at(ii) -= localMat(rls+i,cls+j) *
+                                // GISMO_ASSERT(1==rhs_out.cols(), "-");
+                                rhs_out.at(ii) -= localMat(rls+i,cls+j) *
                                     fixedDofs(colMap.global_to_bindex(colInd.at(j)), c);
                             }
                         }
@@ -102,19 +102,6 @@ void gsAccumulateLocalToGlobal(
         }
     }
 }
-
-
-template<class T>
-void gsAccumulateDyadic(
-    gsSparseMatrix<T> & m_matrix,
-    gsMatrix<T> & m_rhs,
-    const gsMatrix<T> & localMat,
-    const expr::gsFeSpace<T> & v,
-    const expr::gsFeSpace<T> & u,
-    const index_t patchInd)
-{
-}
-
 
 /**
    Assembler class for generating matrices and right-hand sides based
@@ -136,25 +123,34 @@ private:
     std::vector<expr::gsFeSpace<T>*> m_vrow;
     std::vector<expr::gsFeSpace<T>*> m_vcol;
 
+    typedef typename gsExprHelper<T>::nullExpr    nullExpr;
+    
 public:
 
     typedef typename gsSparseMatrix<T>::BlockView matBlockView;
 
     typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
+    typedef typename gsBoundaryConditions<T>::ppContainer ppContainer;
 
-    typedef std::vector< boundaryInterface > intContainer;
+    typedef typename gsExprHelper<T>::element     element;     ///< Current element
+    typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
 
-    typedef typename gsExprHelper<T>::element     element;
-    typedef typename gsExprHelper<T>::geometryMap geometryMap;
-    typedef typename gsExprHelper<T>::variable    variable;
-    typedef typename gsExprHelper<T>::space       space;
-    typedef typename expr::gsFeSolution<T>        solution;
-    typedef typename gsExprHelper<T>::nullExpr    nullExpr;
+    typedef typename gsExprHelper<T>::variable    variable;    ///< Variable type
+    typedef typename gsExprHelper<T>::space       space;       ///< Space type
+    typedef typename expr::gsFeSolution<T>        solution;    ///< Solution type
 
+    /*
+    typedef typename gsExprHelper<T>::function    function;    ///< Variable type
+    typedef typename gsExprHelper<T>::variable    variable;    ///< Space type
+    typedef typename expr::gsFeSolution<T>        solution;    ///< Solution type
+    */
 public:
 
+    /// Constructor
+    /// \param _rBlocks Number of spaces for test functions
+    /// \param _cBlocks Number of spaces for solution variables
     gsExprAssembler(int _rBlocks = 1, int _cBlocks = 1)
-    : m_exprdata(gsExprHelper<T>::New()), m_options(defaultOptions()),
+    : m_exprdata(gsExprHelper<T>::make()), m_options(defaultOptions()),
       m_vrow(_rBlocks,NULL), m_vcol(_cBlocks,NULL)
     { }
 
@@ -249,7 +245,7 @@ public:
     variable getCoeff(const gsFunctionSet<T> & func)
     { return m_exprdata->getVar(func, 1); }
 
-    /// Registers \a func as a variable defined on \a g and returns a handle to it
+    /// Registers \a func as a variable defined on \a G and returns a handle to it
     variable getCoeff(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func,G); }
 
@@ -339,21 +335,17 @@ public:
     void setOptions(gsOptionList opt) { m_options = opt; } // gsOptionList opt
     // .swap(opt) todo
 
-    /*
-    template<class... expr> void assemble(expr... args)
-    {
-        // _setFlag
-        // loop
-        //_eval
-    }
-    */
-    
+#   if(__cplusplus >= 201103L) // c++11
+    template<class... expr> void assemble(expr... args);        
+#   endif
+
     /// Adds the expression \a E1 to the sparse system matrix
     /// (left-hand side) and \a E2 to the right-hand side vector
     template<class E1, class E2>
     void assembleLhsRhs(const expr::_expr<E1> & exprLhs, const expr::_expr<E2> & exprRhs)
     {
         //GISMO_ASSERT(dynamic_cast<space>(exprLhs.colVar()), "Cannot deduce columns");
+
         space rvar = static_cast<space>(exprLhs.rowVar());
         GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
         space cvar = static_cast<space>(exprLhs.colVar());
@@ -411,7 +403,7 @@ public:
     }
 
     template<class E1>
-    void assembleRhsInterface(const expr::_expr<E1> & exprInt, const intContainer & iFaces)
+    void assembleRhsInterface(const expr::_expr<E1> & exprInt, const ppContainer & iFaces)
     {
         space rvar = static_cast<space>(exprInt.rowVar());
         GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
@@ -439,7 +431,7 @@ private:
     void assembleInterface_impl(const expr::_expr<E1> & exprLhs,
                                 const expr::_expr<E2> & exprRhs,
                                 space rvar, space cvar,
-                                const intContainer & iFaces);
+                                const ppContainer & iFaces);
 
 // /*
 #if(__cplusplus >= 201103L) // c++11
@@ -483,9 +475,9 @@ private:
         gsSparseMatrix<T> & m_matrix;
         gsMatrix<T>       & m_rhs;
         const gsVector<T> & m_quWeights;
-        const index_t       m_patchInd;        
+        index_t       m_patchInd;        
         gsMatrix<T>         localMat;
-        
+
         _eval(gsSparseMatrix<T> & _matrix,
               gsMatrix<T>       & _rhs,
               const gsVector<>  & _quWeights)
@@ -503,25 +495,42 @@ private:
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
                 localMat += (*(++w)) * ee.eval(k);
 
-            //  ------- Accumulate  ------- 
-            variable v = ee.rowVar();
-            variable u = ee.colVar();
+            //  ------- Accumulate  -------
+            if (E::isMatrix())
+            {
+                push<true>(ee.rowVar(), ee.colVar(), m_patchInd);
+            }
+            else
+            {
+                push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
+            }
+        }// operator()
+
+        template<bool isMatrix> void push(const expr::gsFeVariable<T> & v,
+                                          const expr::gsFeVariable<T> & u,
+                                          //const expr::gsFeSpace<T> & v,
+                                          //const expr::gsFeSpace<T> & u,
+                                          const index_t patchInd)
+        {
             const index_t cd            = u.dim();
             const index_t rd            = v.dim();
-            const gsDofMapper  & colMap = u.mapper();
-            const gsDofMapper  & rowMap = v.mapper();
+            const gsDofMapper  & colMap = static_cast<const expr::gsFeSpace<T>&>(u).mapper();
+            const gsDofMapper  & rowMap = static_cast<const expr::gsFeSpace<T>&>(v).mapper();
             gsMatrix<unsigned> & colInd0 = const_cast<gsMatrix<unsigned>&>(u.data().actives);
             gsMatrix<unsigned> & rowInd0 = const_cast<gsMatrix<unsigned>&>(v.data().actives);
-            const gsMatrix<T>  & fixedDofs = u.fixedPart();
+            const gsMatrix<T>  & fixedDofs = static_cast<const expr::gsFeSpace<T>&>(u).fixedPart();
             
             gsMatrix<unsigned> rowInd, colInd;
-            colMap.localToGlobal(colInd0, m_patchInd, colInd);
-            //if (cvar && (&rowInd0!=&colInd0) )
-            rowMap.localToGlobal(rowInd0, m_patchInd, rowInd);
-            
+            rowMap.localToGlobal(rowInd0, patchInd, rowInd);
+            if (isMatrix)
+            {
+                //if (&rowInd0!=&colInd0)
+                colMap.localToGlobal(colInd0, patchInd, colInd);
+            }
+
             GISMO_ASSERT( colMap.boundarySize()==fixedDofs.rows(),
                           "Invalid values for fixed part");
-            
+
             for (index_t r = 0; r != rd; ++r)
             {
                 const index_t rls = r * rowInd.rows();     //local stride
@@ -535,37 +544,41 @@ private:
                     {
                         for (index_t c = 0; c != cd; ++c)
                         {
-                            const index_t cls = c * colInd.rows();     //local stride
-                            const index_t cgs = c * colMap.freeSize(); //global stride
-                            
-                            for (index_t j = 0; j != colInd.rows(); ++j)
+                            if (isMatrix)
                             {
-                                if ( 0 == localMat(rls+i,cls+j) ) continue;
+                                const index_t cls = c * colInd.rows();     //local stride
+                                const index_t cgs = c * colMap.freeSize(); //global stride
                                 
-                                const index_t jj = cgs + colInd.at(j); // N_j
-                                
-                                if ( colMap.is_free_index(colInd.at(j)) )
+                                for (index_t j = 0; j != colInd.rows(); ++j)
                                 {
-                                    // If matrix is symmetric, we could
-                                    // store only lower triangular part
-                                    //if ( (!symm) || jj <= ii )
-                                    m_matrix.coeffRef(ii, jj) +=
-                                        localMat(rls+i,cls+j);
-                                }
-                                else // colMap.is_boundary_index(jj) )
-                                {
-                                    // Symmetric treatment of eliminated BCs
-                                    // GISMO_ASSERT(1==m_rhs.cols(), "-");
-                                    m_rhs.at(ii) -= localMat(rls+i,cls+j) *
-                                        fixedDofs(colMap.global_to_bindex(colInd.at(j)), c);
+                                    if ( 0 == localMat(rls+i,cls+j) ) continue;
+                                    
+                                    const index_t jj = cgs + colInd.at(j); // N_j
+                                    
+                                    if ( colMap.is_free_index(colInd.at(j)) )
+                                    {
+                                        // If matrix is symmetric, we could
+                                        // store only lower triangular part
+                                        //if ( (!symm) || jj <= ii )
+                                        m_matrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
+                                    }
+                                    else // colMap.is_boundary_index(jj) )
+                                    {
+                                        // Symmetric treatment of eliminated BCs
+                                        // GISMO_ASSERT(1==m_rhs.cols(), "-");
+                                        m_rhs.at(ii) -= localMat(rls+i,cls+j) *
+                                            fixedDofs(colMap.global_to_bindex(colInd.at(j)), c);
+                                    }
                                 }
                             }
+                            else
+                                m_rhs.row(ii) += localMat.row(rls+i);
                         }
                     }
                 }
             }
-        }// operator()
-        
+        }// 
+
     };
 //*/
 
@@ -792,6 +805,52 @@ void gsExprAssembler<T>::assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
     m_matrix.makeCompressed();
 }
 
+#if(__cplusplus >= 201103L) // c++11
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::assemble(expr... args)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+
+    // initialize flags
+    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
+    _apply(_setFlag, args...);
+    gsQuadRule<T> QuRule;  // Quadrature rule
+    gsVector<T> quWeights; // quadrature weights
+
+    _eval ee(m_matrix, m_rhs, quWeights);
+    
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) //**1
+    {
+        ee.setPatch(patchInd);
+        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patchInd), m_options);
+
+        // Initialize domain element iterator for current patch
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+        m_element.set(*domIt);
+
+        // Start iteration over elements of patchInd
+        for (; domIt->good(); domIt->next() )
+        {
+            // Map the Quadrature rule to the element
+            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                          m_exprdata->points(), quWeights);
+
+            // Perform required pre-computations on the quadrature nodes
+            m_exprdata->precompute(patchInd);
+            //m_exprdata->precompute(QuRule, *domIt); // todo
+
+            // Assemble contributions of the element
+            _apply(ee, args...);
+        }
+    }
+
+    m_matrix.makeCompressed();
+}
+#endif
+
+
 template<class T>
 template<bool left, bool right, class E1, class E2>
 void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
@@ -861,11 +920,12 @@ template<bool left, bool right, class E1, class E2>
 void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
                                                 const expr::_expr<E2> & exprRhs,
                                                 space rvar, space cvar,
-                                                const intContainer & iFaces)
+                                                const ppContainer & iFaces)
 {
     //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
 
     // initialize flags
+
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
     m_exprdata->parse(exprLhs,exprRhs);
 

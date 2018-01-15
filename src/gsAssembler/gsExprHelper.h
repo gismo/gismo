@@ -71,12 +71,13 @@ public:
     typedef expr::gsFeVariable<T>  & nonConstVariable;
     typedef expr::gsFeSpace<T>     & nonConstSpace;
 
-    typedef memory::shared_ptr<gsExprHelper> Ptr;
+    typedef memory::unique_ptr<gsExprHelper> uPtr;
+    typedef memory::shared_ptr<gsExprHelper>  Ptr;
 public:
 
     gsMatrix<T> & points() { return mapData.points; }
 
-    static Ptr New() { return Ptr(new gsExprHelper()); }
+    static uPtr make() { return uPtr(new gsExprHelper()); }
 
     void reset()
     {

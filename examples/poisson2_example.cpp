@@ -92,16 +92,16 @@ int main(int argc, char *argv[])
     space u = A.getSpace(dbasis);
     u.setInterfaceCont(0);
     u.addBc( bc.get("Dirichlet") );
-    
+
     // Set the source term
     variable ff = A.getCoeff(f, G);
-    
+
     // Recover manufactured solution
     gsFunctionExpr<> ms;
     fd.getId(3, ms); // id=3: reference solution
     //gsInfo<<"Exact solution: "<< ms << "\n";
     variable u_ex = ev.getVariable(ms, G);
-    
+
     // Solution vector and solution variable
     gsMatrix<> solVector;
     solution u_sol = A.getSolution(u, solVector);
@@ -125,6 +125,7 @@ int main(int argc, char *argv[])
 
         // Compute the system matrix and right-hand side
         A.assembleLhsRhs( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
+        //A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
 
         // Enforce Neumann conditions to right-hand side
         variable g_N = A.getBdrFunction();
@@ -141,8 +142,8 @@ int main(int argc, char *argv[])
 
         l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
         h1err[r]= l2err[r] +
-        math::sqrt(ev.integral( ( grad(u_ex) - grad(u_sol)*jac(G).inv() ).sqNorm() * meas(G) ));
-        
+        math::sqrt(ev.integral( ( igrad(u_ex) - grad(u_sol)*jac(G).inv() ).sqNorm() * meas(G) ));
+
         gsInfo<< ". " <<std::flush; // Error computations done
 
     } //for loop

@@ -47,7 +47,7 @@ public:
 
 public:
 
-    gsExprEvaluator() : m_exprdata(gsExprHelper<T>::New()),
+    gsExprEvaluator() : m_exprdata(gsExprHelper<T>::make()),
     m_options(defaultOptions()) { }
 
     gsExprEvaluator(const gsExprAssembler<T> & o)
@@ -96,7 +96,7 @@ public:
     variable getVariable(const gsFunctionSet<T> & func, index_t dim = 1)
     { return m_exprdata->setVar(func, dim); }
 
-    /// Registers \a func as a variable defined on \a g and returns a handle to it
+    /// Registers \a func as a variable defined on \a G and returns a handle to it
     variable getVariable(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func, G); }
 
