@@ -132,7 +132,7 @@ public:
     typedef typename gsBoundaryConditions<T>::bcRefList   bcRefList;
     typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
     //typedef typename gsBoundaryConditions<T>::ppContainer ppContainer;
-    typedef typename gsBoxTopology<T>::ifContainer ppContainer;
+    typedef gsBoxTopology::ifContainer ppContainer;
 
     typedef typename gsExprHelper<T>::element     element;     ///< Current element
     typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
