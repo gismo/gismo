@@ -35,12 +35,12 @@ private:
     typedef typename FunctionTable::const_iterator const_ftIterator;
 
     // variable/space list
-    std::deque<expr::gsFeVariable<T> > vlist;
-    std::deque<expr::gsFeSpace<T> >    slist;
+    std::deque<expr::gsFeVariable<T> > m_vlist;
+    std::deque<expr::gsFeSpace<T> >    m_slist;
 
     // background functions
-    FunctionTable v_map;
-    FunctionTable s_map;
+    FunctionTable m_itable;
+    FunctionTable m_ptable;
     //FunctionTable i_map;
 
     // geometry map
@@ -56,8 +56,6 @@ private:
     bool mutParametric;
 
     gsSortedVector<const gsFunctionSet<T>*> evList;
-
-    //expr::gsFeVariable<T> * mutVar; (either on s_map or s_map)
 
     const gsMultiBasis<T> * mesh_ptr;
 
@@ -82,11 +80,11 @@ public:
 
     void reset()
     {
-        s_map.clear();
-        v_map.clear();
+        m_ptable.clear();
+        m_itable.clear();
         points().clear();
-        vlist .clear();
-        slist .clear();
+        m_vlist .clear();
+        m_slist .clear();
         //mapVar.reset();
     }
 
@@ -94,9 +92,9 @@ public:
     {
         mapData.clear();
         mutData.clear();
-        for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
+        for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
             it->second.clear();
-        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
+        for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
             it->second.clear();
     }
 
@@ -135,9 +133,9 @@ public:
 
     nonConstVariable getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
-        vlist.push_back( expr::gsFeVariable<T>() );
-        expr::gsFeVariable<T> & var = vlist.back();
-        gsFuncData<T> & fd = v_map[&mp];
+        m_vlist.push_back( expr::gsFeVariable<T>() );
+        expr::gsFeVariable<T> & var = m_vlist.back();
+        gsFuncData<T> & fd = m_ptable[&mp];
         fd.dim = mp.dimensions();
         var.registerData(mp, fd, dim);
         return var;
@@ -146,9 +144,9 @@ public:
     nonConstVariable getVar(const gsFunctionSet<T> & mp, geometryMap G)
     {
         GISMO_ASSERT(&G==&mapVar, "geometry map not known");
-        vlist.push_back( expr::gsFeVariable<T>() );
-        expr::gsFeVariable<T> & var = vlist.back();
-        gsFuncData<T> & fd = v_map[&mp];
+        m_vlist.push_back( expr::gsFeVariable<T>() );
+        expr::gsFeVariable<T> & var = m_vlist.back();
+        gsFuncData<T> & fd = m_itable[&mp];
         fd.dim = mp.dimensions();
         var.registerData(mp, fd, 1, mapData);
         return var;
@@ -156,9 +154,9 @@ public:
 
     nonConstSpace getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
-        slist.push_back( expr::gsFeSpace<T>() );
-        expr::gsFeSpace<T> & var = slist.back();
-        gsFuncData<T> & fd = s_map[&mp];
+        m_slist.push_back( expr::gsFeSpace<T>() );
+        expr::gsFeSpace<T> & var = m_slist.back();
+        gsFuncData<T> & fd = m_ptable[&mp];
         fd.dim = mp.dimensions();
         var.registerData(mp, fd, dim);
         return var;
@@ -169,11 +167,11 @@ public:
     bool exists(variable a)
     {
         typedef typename std::deque<expr::gsFeSpace<T> >::const_iterator siter;
-        for (siter it = slist.begin(); it!=slist.end(); ++it)
+        for (siter it = m_slist.begin(); it!=m_slist.end(); ++it)
             if ( &a == &(*it) ) return true;
 
         typedef typename std::deque<expr::gsFeVariable<T> >::const_iterator viter;
-        for (viter it = vlist.begin(); it!=vlist.end(); ++it)
+        for (viter it = m_vlist.begin(); it!=m_vlist.end(); ++it)
             if ( &a == &(*it) ) return true;
 
         return false;
@@ -191,9 +189,9 @@ public:
     void check(const expr::_expr<E> & testExpr) const
     {
         if ( testExpr.isVector() )
-            GISMO_ENSURE(s_map.find(&testExpr.rowVar().source())!=s_map.end(), "Check failed");
+            GISMO_ENSURE(m_ptable.find(&testExpr.rowVar().source())!=m_ptable.end(), "Check failed");
         if ( testExpr.isMatrix() )
-            GISMO_ENSURE(s_map.find(&testExpr.colVar().source())!=s_map.end(), "Check failed");
+            GISMO_ENSURE(m_ptable.find(&testExpr.colVar().source())!=m_ptable.end(), "Check failed");
 
         // todo: varlist ?
     }
@@ -203,9 +201,9 @@ public:
     {
         mapData.flags = mflag;
         mutData.flags = fflag;
-        for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
+        for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
             it->second.flags = fflag;
-        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
+        for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
             it->second.flags = fflag;
     }
 
@@ -215,7 +213,7 @@ public:
                   const unsigned mflag = 0)
     {
         // todo:
-        //testExpr.variables_into(s_map);
+        //testExpr.variables_into(m_ptable);
         // plus auto-registration
 
         initFlags(fflag, mflag);
@@ -231,21 +229,28 @@ public:
         //mapData.side
         if ( mapVar.isValid() ) // list ?
         {
+            //mapData.flags |= NEED_VALUE;
             mapVar.source().function(patchIndex).computeMap(mapData);
             mapData.patchId = patchIndex;
         }
+        
         if ( mutVar.isValid() )
+        {
+            GISMO_ASSERT( mutParametric || 0!=mapData.values.size(), "Map values not computed");
             //mutVar.source().piece(patchIndex).compute(mapData.points, mutData);
             mutVar.source().piece(patchIndex)
                 .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
+        }
 
-        for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
+        for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
         {
             it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
             it->second.patchId = patchIndex;
         }
 
-        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
+        GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
+
+        for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
         {
             it->first->piece(patchIndex).compute(mapData.values[0], it->second);
             it->second.patchId = patchIndex;
@@ -255,7 +260,7 @@ public:
     template<class E1, class E2>
     void parse(const expr::_expr<E1> & expr1, const expr::_expr<E2> & expr2)
     {
-        //evList.reserve(s_map.size()+v_map.size());
+        //evList.reserve(m_ptable.size()+m_itable.size());
         evList.clear();
         expr1.parse(evList);
         expr2.parse(evList);
@@ -275,10 +280,10 @@ public:
             mutVar.source().piece(patchIndex)
                 .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
 
-        for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
+        for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
             it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
 
-        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
+        for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
             it->first->piece(patchIndex).compute(mapData.values[0], it->second);
     }
 //*/
