@@ -129,6 +129,7 @@ public:
 
     typedef typename gsSparseMatrix<T>::BlockView matBlockView;
 
+    typedef typename gsBoundaryConditions<T>::bcRefList   bcRefList;
     typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
     typedef typename gsBoundaryConditions<T>::ppContainer ppContainer;
 
@@ -344,8 +345,9 @@ public:
     /// \sa gsExprAssembler::setIntegrationElements
     template<class... expr> void assemble(expr... args);
 
+    template<class... expr> void assemble(const bcRefList & BCs, expr... args);
+
     /*
-      template<class... expr> void assemble(const bcContainer & BCs, expr... args);
       template<class... expr> void assemble(const ppContainer & iFaces, expr... args);
     */
 #else
@@ -443,7 +445,7 @@ private:
     { _op(a1);_op(a2);_op(a3);_op(a4);_op(a5); }
 #endif
 
-    static const struct __setFlag
+    struct __setFlag
     {
         template <typename E> void operator() (const gismo::expr::_expr<E> & v)
         {
@@ -777,6 +779,70 @@ void gsExprAssembler<T>::assemble(expr... args)
     }
 
     m_matrix.makeCompressed();
+}
+
+template<class T>
+#if(__cplusplus >= 201103L) // c++11
+template<class... expr>
+void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr... args)
+#else
+template <class E1, class E2, class E3, class E4, class E5>
+void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2, const expr::_expr<E3> & a3, const expr::_expr<E4> & a4, const expr::_expr<E5> & a5)
+#endif
+{
+    // initialize flags
+    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
+#   if(__cplusplus >= 201103L)
+    _apply(_setFlag, args...);
+#   else
+    _apply(_setFlag, a1,a2,a3,a4,a5);
+#   endif
+
+    gsVector<T> quWeights;// quadrature weights
+    gsQuadRule<T>  QuRule;
+
+    _eval ee(m_matrix, m_rhs, quWeights);
+
+    for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
+    {
+        const boundary_condition<T> * it = &iit->get();
+
+        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(it->patch()), m_options,
+                                it->side().direction());
+
+        m_exprdata->mapData.side = it->side();
+
+        // Update boundary function source
+        m_exprdata->setMutSource(*it->function(), it->parametric());
+        //mutVar.registerVariable(func, mutData);
+
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
+        m_element.set(*domIt);
+
+        // Start iteration over elements
+        for (; domIt->good(); domIt->next() )
+        {
+            // Map the Quadrature rule to the element
+            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                          m_exprdata->points(), quWeights);
+
+            // Perform required pre-computations on the quadrature nodes
+            m_exprdata->precompute(it->patch());
+
+            // Assemble contributions of the element
+#           if(__cplusplus >= 201103L)
+            _apply(ee, args...);
+#           else
+            _apply(ee, a1,a2,a3,a4,a5);
+#           endif
+        }
+    }
+
+    //this->finalize();
+    m_matrix.makeCompressed();
+    //g_bd.clear();
+    //mutVar.clear();
 }
 
 

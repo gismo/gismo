@@ -90,6 +90,16 @@ public:
         //mapVar.reset();
     }
 
+    void cleanUp()
+    {
+        mapData.clear();
+        mutData.clear();
+        for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
+            it->second.clear();
+        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
+            it->second.clear();
+    }
+
     void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
 
     bool multiBasisSet() { return NULL!=mesh_ptr;}
@@ -138,10 +148,9 @@ public:
         GISMO_ASSERT(&G==&mapVar, "geometry map not known");
         vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsFeVariable<T> & var = vlist.back();
-        mapData.flags |= NEED_VALUE;
-        gsFuncData<T> & fd = v_map[&mp];//
+        gsFuncData<T> & fd = v_map[&mp];
         fd.dim = mp.dimensions();
-        var.registerData(mp, fd, 1);
+        var.registerData(mp, fd, 1, mapData);
         return var;
     }
 
@@ -194,13 +203,10 @@ public:
     {
         mapData.flags = mflag;
         mutData.flags = fflag;
-        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
-            it->second.flags = fflag;
         for (ftIterator it = s_map.begin(); it != s_map.end(); ++it)
             it->second.flags = fflag;
-
-        if ( !s_map.empty() ) // check appearances ?
-            mapData.flags |= NEED_VALUE;
+        for (ftIterator it = v_map.begin(); it != v_map.end(); ++it)
+            it->second.flags = fflag;
     }
 
     template<class Expr> // to remove

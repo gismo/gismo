@@ -516,8 +516,8 @@ protected:
     const gsFunctionSet<T> * m_fs; ///< Evaluation source for this FE variable
     const gsFuncData<T>    * m_fd; ///< Temporary variable storing flags and evaluation data
     index_t m_d;                   ///< Dimension of this (scalar or vector) variable
-//    gsGeometryMap<T>  *  m_Gmap; ///<If set, the variable is a composition with Gmap
-// comp(u,G)
+    const gsMapData<T>     * m_md; ///< If set, the variable is composed with a geometry map
+    // comp(u,G)
 
 public:
     typedef T Scalar;
@@ -528,13 +528,20 @@ public:
     /// Returns the function data
     const gsFuncData<T> & data() const {return *m_fd;}
 
+    /// Returns the mapping data (precondition: composed()==true)
+    const gsMapData<T> & mapData() const {return *m_md;}
+
+    /// Returns true if the variable is a composition
+    bool composed() const {return NULL!=m_md;}
+
 private:
     friend class gismo::gsExprHelper<T>;
 
     void setSource(const gsFunctionSet<T> & fs) { m_fs = &fs;}
     void setData(const gsFuncData<T> & val) { m_fd = &val;}
     void clear() { m_fs = NULL; }
-    gsFuncData<T> & data() {return *m_fd;}
+    // gsFuncData<T> & data() {return *m_fd;}
+    // gsMapData<T> & mapData() {return *m_md;}
 
 protected:
 
@@ -546,6 +553,14 @@ protected:
         m_fs = &fs ;
         m_fd = &val;
         m_d  = d;
+        m_md = NULL;
+    }
+
+    void registerData(const gsFunctionSet<T> & fs, const gsFuncData<T> & val, index_t d,
+                      const gsMapData<T> & md)
+    {
+        registerData(fs,val,d);
+        m_md  = &md;
     }
 
     bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }
@@ -598,6 +613,7 @@ public:
     {
         GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         m_fd->flags |= NEED_VALUE;
+        if (NULL!=m_md) m_md->flags |= NEED_VALUE;
     }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
@@ -605,6 +621,7 @@ public:
         GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.push_sorted_unique(m_fs);
         m_fd->flags |= NEED_VALUE;
+        if (NULL!=m_md) m_md->flags |= NEED_VALUE;
     }
 
     void print(std::ostream &os) const { os << "u"; }
@@ -974,15 +991,14 @@ public:
 
     void setFlag() const
     {
-        _u.data().flags |= NEED_ACTIVE;
-        _u.data().flags |= NEED_GRAD | NEED_VALUE;
+        _u.data().flags |= NEED_GRAD|NEED_ACTIVE;
     }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD;
+        _u.data().flags |= NEED_GRAD|NEED_ACTIVE;
     }
 
     void print(std::ostream &os) const { os << "grad(s)"; }
@@ -1397,13 +1413,20 @@ public:
     //index_t rows() const { return _u.data().dim.second; }
 
     index_t cols() const { return _u.data().dim.first; }
-    void setFlag() const { _u.data().flags |= NEED_GRAD|NEED_ACTIVE; }
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_GRAD;
+        if (_u.composed() )
+            _u.mapData().flags |= NEED_VALUE;
+    }
 
     void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
     {
         //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
         evList.push_sorted_unique(&_u.source());
-        _u.data().flags |= NEED_GRAD|NEED_ACTIVE;
+        _u.data().flags |= NEED_GRAD;
+        if (_u.composed() )
+            _u.mapData().flags |= NEED_VALUE;
     }
 
     const gsFeVariable<T> & rowVar() const { return _u.rowVar(); }

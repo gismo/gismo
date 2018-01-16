@@ -72,6 +72,9 @@ public:
     /// Returns the last computed value
     T value() const { return m_value; }
 
+    /// The number of lastly computed values
+    size_t nValues() const { return m_elWise.size(); }
+
     /// Returns a vector containing the last computed values per element.
     gsAsConstVector<T> allValues() const { return gsAsConstVector<T>(m_elWise); }
 
@@ -236,54 +239,27 @@ public:
     ///\brief Creates a paraview file named \a fn containing valies of the
     //( expression \a expr over the isogeometric domain \a G.
     ///
+    /// Plotting properties are controlled by entries in the options
+    template<class E>
+    void writeParaview(const expr::_expr<E> & expr,
+                       geometryMap G, std::string const & fn)
+    { writeParaview_impl<E,true>(expr,G,fn); }
+
+    ///\brief Creates a paraview file named \a fn containing valies of the
+    //( expression \a expr over the parametric domain.
+    ///
     /// Plotting properties are controlled by entires in the options
     template<class E>
     void writeParaview(const expr::_expr<E> & expr,
-                       geometryMap G,
                        std::string const & fn)
-    {
-        //embed topology
-        const index_t n = m_exprdata->multiBasis().nBases();
-        gsParaviewCollection collection(fn);
-        std::string fileName;
-
-        gsMatrix<T> pts, vals, ab;
-
-        const bool mesh = m_options.askSwitch("plot.elements");
-
-        for ( index_t i=0; i != n; ++i )
-        {
-            fileName = fn + util::to_string(i);
-            unsigned nPts = m_options.askInt("plot.npts", 3000);
-            ab = m_exprdata->multiBasis().piece(i).support();
-            gsGridIterator<T,CUBE> pt(ab, nPts);
-            eval(expr, pt, i);
-            nPts = pt.numPoints();
-            vals = allValues(m_elWise.size()/nPts, nPts);
-
-            // Forward the points
-            eval(G, pt, i);
-            pts = allValues(m_elWise.size()/nPts, nPts); // give ?
-
-            gsWriteParaviewTPgrid(pts, //pt.toMatrix(), // parameters
-                                  vals,
-                                  pt.numPointsCwise(), fileName );
-            collection.addPart(fileName, ".vts");
-
-            if ( mesh )
-            {
-                fileName+= "_mesh";
-                gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
-                static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
-                gsWriteParaview(msh, fileName, false);
-                collection.addPart(fileName, ".vtp");
-            }
-        }
-        collection.save();
-    }
+    { writeParaview_impl<E,false>(expr,m_exprdata->getMap(),fn); }
 
 
 private:
+
+    template<class E, bool gmap>
+    void writeParaview_impl(const expr::_expr<E> & expr,
+                            geometryMap G, std::string const & fn);
 
     template<class E, bool storeElWise, class _op>
     T compute_impl(const expr::_expr<E> & expr);
@@ -508,7 +484,8 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
     // bug: fails due to gsFeVariable::rows() before evaluation
     // GISMO_ASSERT( expr.isScalar(), "Expecting scalar");
 
-    m_exprdata->setFlags(expr);
+    m_exprdata->initFlags();
+    expr.setFlag();
     m_elWise.clear();
     m_elWise.reserve(git.numPoints());
 
@@ -591,5 +568,57 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     gsAsMatrix<T>(m_elWise, r, c) = tmp; //expr.eval(0);
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
+
+    ///\brief Creates a paraview file named \a fn containing valies of the
+    //( expression \a expr over the isogeometric domain \a G.
+    ///
+    /// Plotting properties are controlled by entires in the options
+template<class T>
+template<class E, bool gmap>
+void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
+                                            geometryMap G,
+                                            std::string const & fn)
+    {
+        //embed topology
+        const index_t n = m_exprdata->multiBasis().nBases();
+        gsParaviewCollection collection(fn);
+        std::string fileName;
+
+        gsMatrix<T> pts, vals, ab;
+
+        const bool mesh = m_options.askSwitch("plot.elements");
+
+        for ( index_t i=0; i != n; ++i )
+        {
+            fileName = fn + util::to_string(i);
+            unsigned nPts = m_options.askInt("plot.npts", 3000);
+            ab = m_exprdata->multiBasis().piece(i).support();
+            gsGridIterator<T,CUBE> pt(ab, nPts);
+            eval(expr, pt, i);
+            nPts = pt.numPoints();
+            vals = allValues(m_elWise.size()/nPts, nPts);
+
+            if (gmap) // Forward the points ?
+            {
+                eval(G, pt, i);
+                pts = allValues(m_elWise.size()/nPts, nPts);
+            }
+
+            gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
+                                  vals,
+                                  pt.numPointsCwise(), fileName );
+            collection.addPart(fileName, ".vts");
+
+            if ( mesh )
+            {
+                fileName+= "_mesh";
+                gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
+                static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
+                gsWriteParaview(msh, fileName, false);
+                collection.addPart(fileName, ".vtp");
+            }
+        }
+        collection.save();
+    }
 
 } //namespace gismo
