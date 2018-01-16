@@ -355,7 +355,7 @@ public:
     {assemble(a1,nullExpr(),nullExpr(),nullExpr(),nullExpr());}
     template <class E1, class E2>
     void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2)
-    {assemble(a1,a2,nullExpr::get(),nullExpr::get(),nullExpr::get());}
+    {assemble(a1,a2,nullExpr(),nullExpr(),nullExpr());}
     template <class E1, class E2, class E3>
     void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
                   const expr::_expr<E3> & a3)
@@ -368,6 +368,8 @@ public:
     void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
                   const expr::_expr<E3> & a3, const expr::_expr<E4> & a4,
                   const expr::_expr<E5> & a5 );
+
+    template<class E1> void assemble(const bcRefList & BCs, const expr::_expr<E1> & a1);
 #   endif
 
     template<class E1, class E2>
@@ -786,8 +788,8 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr... args)
 #else
-template <class E1, class E2, class E3, class E4, class E5>
-void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2, const expr::_expr<E3> & a3, const expr::_expr<E4> & a4, const expr::_expr<E5> & a5)
+template <class E1>
+void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> & a1)
 #endif
 {
     // initialize flags
@@ -795,7 +797,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 #   if(__cplusplus >= 201103L)
     _apply(_setFlag, args...);
 #   else
-    _apply(_setFlag, a1,a2,a3,a4,a5);
+    _setFlag(a1);
 #   endif
 
     gsVector<T> quWeights;// quadrature weights
@@ -834,7 +836,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 #           if(__cplusplus >= 201103L)
             _apply(ee, args...);
 #           else
-            _apply(ee, a1,a2,a3,a4,a5);
+            ee(a1);
 #           endif
         }
     }
