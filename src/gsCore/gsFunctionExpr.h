@@ -93,9 +93,17 @@ public:
 
     gsFunctionExpr(const gsFunctionExpr& other);
 
-    ~gsFunctionExpr();
+#if EIGEN_HAS_RVALUE_REFERENCES
+    gsFunctionExpr(gsFunctionExpr&& other);
   
+    gsFunctionExpr& operator=(const gsFunctionExpr& other);
+
+    gsFunctionExpr& operator=(gsFunctionExpr&& other);
+#else
     gsFunctionExpr& operator=(gsFunctionExpr other);
+#endif
+
+    ~gsFunctionExpr();
 
     GISMO_CLONE_FUNCTION(gsFunctionExpr)
     
