@@ -545,7 +545,7 @@ private:
 
 protected:
 
-    explicit gsFeVariable(index_t _d = 1) : m_fs(NULL), m_fd(NULL), m_d(_d) { }
+    explicit gsFeVariable(index_t _d = 1) : m_fs(NULL), m_fd(NULL), m_d(_d), m_md(NULL) { }
 
     void registerData(const gsFunctionSet<T> & fs, const gsFuncData<T> & val, index_t d)
     {
