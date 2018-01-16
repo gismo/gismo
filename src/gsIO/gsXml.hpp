@@ -111,7 +111,8 @@ void getSparseEntriesFromXml ( gsXmlNode * node,
     index_t r,c;
     T val;
 
-    while( (str >> r) && (str >> c) && (str >> val) ) 
+    //while( (str >> r) && (str >> c) && (str >> val) )
+    while( (str >> r) && (str >> c) && ( gsGetValue(str,val)) )
         result.add(r,c,val);
 }
 
