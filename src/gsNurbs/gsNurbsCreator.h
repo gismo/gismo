@@ -92,8 +92,8 @@ public:
 /// \param r with length of the side of the squares.
 /// \param lx x-coordinate for lower left corner of the rectangle.
 /// \param ly y-coordinate for lower left corner of the rectangle.
-    static gsMultiPatch<T> * BSplineSquareGrid(int n, int m, T const & r = 1,
-                                               T const & lx = 0, T const & ly = 0);
+    static gsMultiPatch<T> BSplineSquareGrid(int n, int m, T const & r = 1,
+                                             T const & lx = 0, T const & ly = 0);
 
     static TensorBSpline2Ptr BSplineSquare( gsMatrix<T> const & Box);
 
@@ -110,8 +110,8 @@ public:
     /// The unit cube represented as a tensor B-spline of degree \a deg
     static TensorBSpline3Ptr BSplineCube(int deg);
 
-    static gsMultiPatch<T> * BSplineCubeGrid(int n, int m,int p, T const & r = 1,
-                                               T const & lx = 0, T const & ly = 0, T const & lz = 0);
+    static gsMultiPatch<T> BSplineCubeGrid(int n, int m,int p, T const & r = 1,
+                                           T const & lx = 0, T const & ly = 0, T const & lz = 0);
 
     static TensorBSpline3Ptr BSplineHalfCube( T const & r = 1, T const & x = 0,
                                                    T const & y = 0, T const & z = 0  );
@@ -167,7 +167,7 @@ public:
 
     /// L-Shaped domain represented as a multipatch (3 patches) tensor B-spline of degree 2
     /// 1. Patch is the middel part, 2. Patch is the upper part, 3 Patch is the right part.
-    static gsMultiPatch<T> * BSplineLShapeMultiPatch_p2();
+    static gsMultiPatch<T> BSplineLShapeMultiPatch_p2();
 
     static BSplinePtr BSplineAmoeba(T const & r=1, T const & x=0, T const & y = 0);
 
