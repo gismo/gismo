@@ -129,8 +129,10 @@ public:
 
     typedef typename gsSparseMatrix<T>::BlockView matBlockView;
 
+    typedef typename gsBoundaryConditions<T>::bcRefList   bcRefList;
     typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
-    typedef typename gsBoundaryConditions<T>::ppContainer ppContainer;
+    //typedef typename gsBoundaryConditions<T>::ppContainer ifContainer;
+    typedef gsBoxTopology::ifContainer ifContainer;
 
     typedef typename gsExprHelper<T>::element     element;     ///< Current element
     typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
@@ -344,16 +346,17 @@ public:
     /// \sa gsExprAssembler::setIntegrationElements
     template<class... expr> void assemble(expr... args);
 
+    template<class... expr> void assemble(const bcRefList & BCs, expr... args);
+
     /*
-      template<class... expr> void assemble(const bcContainer & BCs, expr... args);
-      template<class... expr> void assemble(const ppContainer & iFaces, expr... args);
+      template<class... expr> void assemble(const ifContainer & iFaces, expr... args);
     */
 #else
     template<class E1> void assemble(const expr::_expr<E1> & a1)
     {assemble(a1,nullExpr(),nullExpr(),nullExpr(),nullExpr());}
     template <class E1, class E2>
     void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2)
-    {assemble(a1,a2,nullExpr::get(),nullExpr::get(),nullExpr::get());}
+    {assemble(a1,a2,nullExpr(),nullExpr(),nullExpr());}
     template <class E1, class E2, class E3>
     void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
                   const expr::_expr<E3> & a3)
@@ -366,6 +369,8 @@ public:
     void assemble(const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
                   const expr::_expr<E3> & a3, const expr::_expr<E4> & a4,
                   const expr::_expr<E5> & a5 );
+
+    template<class E1> void assemble(const bcRefList & BCs, const expr::_expr<E1> & a1);
 #   endif
 
     template<class E1, class E2>
@@ -398,7 +403,7 @@ public:
     }
 
     template<class E1>
-    void assembleRhsInterface(const expr::_expr<E1> & exprInt, const ppContainer & iFaces)
+    void assembleRhsInterface(const expr::_expr<E1> & exprInt, const ifContainer & iFaces)
     {
         space rvar = static_cast<space>(exprInt.rowVar());
         GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
@@ -426,7 +431,7 @@ private:
     void assembleInterface_impl(const expr::_expr<E1> & exprLhs,
                                 const expr::_expr<E2> & exprRhs,
                                 space rvar, space cvar,
-                                const ppContainer & iFaces);
+                                const ifContainer & iFaces);
 
 // /*
 #if(__cplusplus >= 201103L) // c++11
@@ -435,24 +440,23 @@ private:
     template <class op, class E1, class... Rest>
     void _apply(op _op, const expr::_expr<E1> & firstArg, Rest... restArgs)
     { _op(firstArg); _apply<op>(_op, restArgs...); }
-#else
-    template <class op, class E1, class E2, class E3, class E4, class E5>
-    void _apply(op _op, const expr::_expr<E1> & a1, const expr::_expr<E2> & a2,
-                const expr::_expr<E3> & a3, const expr::_expr<E4> & a4,
-                const expr::_expr<E5> & a5)
-    { _op(a1);_op(a2);_op(a3);_op(a4);_op(a5); }
 #endif
 
-    static const struct __setFlag
+    struct __setFlag
     {
         template <typename E> void operator() (const gismo::expr::_expr<E> & v)
-        {
-            v.setFlag();
-        }
+        { v.setFlag(); }
 
-        void operator() (const expr::_expr<expr::gsNullExpr<T> > & ne)
-        { /*GISMO_UNUSED(ne);*/}
-    } _setFlag;
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > & ne) {}
+    };
+    static __setFlag _setFlag;
+
+    struct __printExpr
+    {
+        template <typename E> void operator() (const gismo::expr::_expr<E> & v)
+        { v.print(gsInfo);gsInfo<<"\n"; }
+    };
+    static __printExpr _printExpr;
 
     struct _eval
     {
@@ -738,8 +742,9 @@ void gsExprAssembler<T>::assemble(expr... args)
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
 #   if(__cplusplus >= 201103L)
     _apply(_setFlag, args...);
+    _apply(_printExpr, args...);
 #   else
-    _apply(_setFlag, a1,a2,a3,a4,a5);
+    _setFlag(a1);_setFlag(a1);_setFlag(a2);_setFlag(a4);_setFlag(a5);
 #   endif
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
@@ -771,12 +776,76 @@ void gsExprAssembler<T>::assemble(expr... args)
 #           if(__cplusplus >= 201103L)
             _apply(ee, args...);
 #           else
-            _apply(ee, a1,a2,a3,a4,a5);
+            ee(a1);ee(a2);ee(a3);ee(a4);ee(a5);
 #           endif
         }
     }
 
     m_matrix.makeCompressed();
+}
+
+template<class T>
+#if(__cplusplus >= 201103L) // c++11
+template<class... expr>
+void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr... args)
+#else
+template <class E1>
+void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> & a1)
+#endif
+{
+    // initialize flags
+    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
+#   if(__cplusplus >= 201103L)
+    _apply(_setFlag, args...);
+#   else
+    _setFlag(a1);
+#   endif
+
+    gsVector<T> quWeights;// quadrature weights
+    gsQuadRule<T>  QuRule;
+
+    _eval ee(m_matrix, m_rhs, quWeights);
+
+    for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
+    {
+        const boundary_condition<T> * it = &iit->get();
+
+        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(it->patch()), m_options,
+                                it->side().direction());
+
+        m_exprdata->mapData.side = it->side();
+
+        // Update boundary function source
+        m_exprdata->setMutSource(*it->function(), it->parametric());
+        //mutVar.registerVariable(func, mutData);
+
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
+        m_element.set(*domIt);
+
+        // Start iteration over elements
+        for (; domIt->good(); domIt->next() )
+        {
+            // Map the Quadrature rule to the element
+            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                          m_exprdata->points(), quWeights);
+
+            // Perform required pre-computations on the quadrature nodes
+            m_exprdata->precompute(it->patch());
+
+            // Assemble contributions of the element
+#           if(__cplusplus >= 201103L)
+            _apply(ee, args...);
+#           else
+            ee(a1);
+#           endif
+        }
+    }
+
+    //this->finalize();
+    m_matrix.makeCompressed();
+    //g_bd.clear();
+    //mutVar.clear();
 }
 
 
@@ -849,7 +918,7 @@ template<bool left, bool right, class E1, class E2>
 void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
                                                 const expr::_expr<E2> & exprRhs,
                                                 space rvar, space cvar,
-                                                const ppContainer & iFaces)
+                                                const ifContainer & iFaces)
 {
     //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
 
