@@ -218,7 +218,8 @@ public:
     geometryMap getMap(const gsFunction<T> & g)
     { return m_exprdata->getMap(g); }
 
-    /// Registers \a mp as an isogeometric space and return a handle to it
+    /// Registers \a mp as an isogeometric (both trial and test) space
+    /// and return a handle to it
     space getSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
     {
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
@@ -230,11 +231,15 @@ public:
         return u;
     }
 
-    /// \brief Registers \a mp as an isogeometric test space and return a handle to it
+    /// \brief Registers \a mp as an isogeometric test space
+    /// corresponding to trial space \a u and return a handle to it
     ///
-    /// By default the test space is the same as the solution space
-    /// (registered by getSpace). Call this function when a different
-    /// test space is requred (eg. Petrov-Galerkin methods).
+    /// \note Both test and trial spaces are registered at once by
+    /// gsExprAssembler::getSpace.
+    ///
+    ///Use this function after calling gsExprAssembler::getSpace when
+    /// a distinct test space is requred (eg. Petrov-Galerkin
+    /// methods).
     space getTestSpace(variable u, const gsFunctionSet<T> & mp)
     {
         //GISMO_ASSERT(0!=u.mapper(), "Not a space"); // done on initSystem
@@ -244,6 +249,26 @@ public:
         m_vrow[s.id()] = &s;
         return s;
     }
+
+    /// Return the variable (previously created by getSpace) with the given \a id
+    space trialSpace(index_t id) const
+    {
+        GISMO_ASSERT(NULL!=m_vcol[id], "Not set.");
+        return *m_vcol[id];
+    }
+
+    /// Return the trial space of a pre-existing test space \a v
+    space trialSpace(variable v) const { return trialSpace(v.id()); }
+    
+    /// Return the variable (previously created by getTrialSpace) with the given \a id
+    space testSpace(index_t id)
+    {
+        GISMO_ASSERT(NULL!=m_vrow[id], "Not set.");
+        return *m_vrow[id];
+    }
+
+    /// Return the test space of a pre-existing trial space \a u
+    space testSpace(variable u) const { return testSpace(u.id()); }
 
     /// Registers \a func as a variable and returns a handle to it
     variable getCoeff(const gsFunctionSet<T> & func)
@@ -346,10 +371,14 @@ public:
     /// \sa gsExprAssembler::setIntegrationElements
     template<class... expr> void assemble(expr... args);
 
+    /// Adds the expressions \a args to the system matrix/rhs
+    ///
+    /// The arguments are considered as integrals over the boundary parts in \a BCs
     template<class... expr> void assemble(const bcRefList & BCs, expr... args);
 
     /*
       template<class... expr> void assemble(const ifContainer & iFaces, expr... args);
+      template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
 #else
     template<class E1> void assemble(const expr::_expr<E1> & a1)
@@ -448,15 +477,13 @@ private:
         { v.setFlag(); }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > & ne) {}
-    };
-    static __setFlag _setFlag;
+    } _setFlag;
 
     struct __printExpr
     {
         template <typename E> void operator() (const gismo::expr::_expr<E> & v)
         { v.print(gsInfo);gsInfo<<"\n"; }
-    };
-    static __printExpr _printExpr;
+    } _printExpr;
 
     struct _eval
     {
@@ -742,7 +769,7 @@ void gsExprAssembler<T>::assemble(expr... args)
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
 #   if(__cplusplus >= 201103L)
     _apply(_setFlag, args...);
-    _apply(_printExpr, args...);
+    //_apply(_printExpr, args...);
 #   else
     _setFlag(a1);_setFlag(a1);_setFlag(a2);_setFlag(a4);_setFlag(a5);
 #   endif

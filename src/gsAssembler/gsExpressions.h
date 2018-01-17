@@ -116,10 +116,10 @@ class _expr {using E::GISMO_ERROR_expr;};
 template <typename E>
 class _expr<E, false>
 {
-private:
+protected://private:
      _expr(){}
      _expr(const _expr&) { }
-    friend E;
+    //friend E;//
 public:
 
     enum {ScalarValued = 0, ColBlocks = 0};
@@ -654,7 +654,7 @@ template<class T>
 class gsFeSpace :public gsFeVariable<T>
 {
 protected:
-    friend gsFeSolution<T>;
+    friend class gsFeSolution<T>;
 
     typedef gsFeVariable<T> Base;
 
@@ -889,7 +889,7 @@ public:
         result.clear();
 
         const gsMultiBasis<T>* basis = dynamic_cast<const gsMultiBasis<T>* >(&_u.source());
-        for (size_t i = 0; i < basis->nBases(); i++)
+        for (size_t i = 0; i != basis->nBases(); ++i)
         {
             memory::unique_ptr<gsGeometry<T> > p(this->extractPiece(i));
             result.addPatch(*p);
@@ -1315,7 +1315,7 @@ public:
 
 public:
 
-    MatExprType eval(const index_t k) const
+    gsMatrix<Scalar>::IdentityReturnType eval(const index_t k) const
     {
         return gsMatrix<Scalar>::Identity(_dim,_dim);
     }
