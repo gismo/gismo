@@ -234,7 +234,7 @@ public:
             mapData.patchId = patchIndex;
         }
         
-        if ( mutVar.isValid() )
+        if ( mutVar.isValid() && 0!=mutData.flags)
         {
             GISMO_ASSERT( mutParametric || 0!=mapData.values.size(), "Map values not computed");
             //mutVar.source().piece(patchIndex).compute(mapData.points, mutData);
@@ -248,7 +248,7 @@ public:
             it->second.patchId = patchIndex;
         }
 
-        GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
+        // GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
 
         for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
         {
@@ -257,34 +257,24 @@ public:
         }
     }
 
-    template<class E1, class E2>
-    void parse(const expr::_expr<E1> & expr1, const expr::_expr<E2> & expr2)
+    template<class E>
+    void parse(const expr::_expr<E> & expr)
     {
         //evList.reserve(m_ptable.size()+m_itable.size());
         evList.clear();
-        expr1.parse(evList);
-        expr2.parse(evList);
+        expr.parse(evList);
     };
 
 /*
-    void precompute(const index_t patch1, const index_t patch2)
+    void precompute(const index_t patch1, const index_t patch2);
+
+    void precompute(const index_t patch)
     {
-        GISMO_ASSERT(0!=points().size(), "No points");
-
-        //mapData.side
-        if ( mapVar.isValid() ) // list ?
-            mapVar.source().function(patchIndex).computeMap(mapData);
-
-        if ( mutVar.isValid() )
-            //mutVar.source().piece(patchIndex).compute(mapData.points, mutData);
-            mutVar.source().piece(patchIndex)
-                .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
-
-        for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
-            it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
-
-        for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
-            it->first->piece(patchIndex).compute(mapData.values[0], it->second);
+        for (ftIterator it = evList.begin(); it != evList.end(); ++it)
+        {
+            (*it)->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
+            it->second.patchId = patchIndex;
+        }
     }
 //*/
 

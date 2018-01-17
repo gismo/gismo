@@ -569,17 +569,15 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
 
-    ///\brief Creates a paraview file named \a fn containing valies of the
-    //( expression \a expr over the isogeometric domain \a G.
-    ///
-    /// Plotting properties are controlled by entires in the options
 template<class T>
 template<class E, bool gmap>
 void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                             geometryMap G,
                                             std::string const & fn)
     {
-        //embed topology
+        m_exprdata->setFlags(expr);
+        
+        //if false, embed topology ?
         const index_t n = m_exprdata->multiBasis().nBases();
         gsParaviewCollection collection(fn);
         std::string fileName;

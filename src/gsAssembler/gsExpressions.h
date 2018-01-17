@@ -133,7 +133,7 @@ public:
     /// Prints the expression as a string to \a os
     void print(std::ostream &os) const
     {
-        static_cast<E const&>(*this).print(os); os<<"\n";
+        static_cast<E const&>(*this).print(os);
     /*
         std::string tmp(__PRETTY_FUNCTION__);
         tmp.erase(0,74);
@@ -513,6 +513,7 @@ class gsFeVariable  : public _expr<gsFeVariable<T> >
     friend class gsNullExpr<T>;
 
 protected:
+    //const gsFuncData<T>    * m_fd2; // more data when needed
     const gsFunctionSet<T> * m_fs; ///< Evaluation source for this FE variable
     const gsFuncData<T>    * m_fd; ///< Temporary variable storing flags and evaluation data
     index_t m_d;                   ///< Dimension of this (scalar or vector) variable
