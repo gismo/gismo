@@ -409,7 +409,7 @@ inline void copy(T begin, T end, U* result)
 
 } // namespace gismo
 
-#if __cplusplus < 201103 || (defined(_MSC_VER) && _MSC_VER < 1600)
+#if (__cplusplus < 201103) && (!defined(_MSC_VER) || _MSC_VER < 1600)
 // Define nullptr for compatibility with newer C++
 static const gismo::memory::nullptr_t nullptr ={};
 #endif
