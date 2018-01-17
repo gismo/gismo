@@ -71,6 +71,7 @@ memory::unique_ptr<int> B;
 */
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1600)
 using std::unique_ptr;
+using std::nullptr_t;
 #else
 
 template <typename T>
@@ -150,6 +151,24 @@ template<class T>
 bool  operator>=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
 { return p1.get()>=p2.get(); }
 
+const class nullptr_t
+{
+public:
+    /* Return 0 for any class pointer */
+    template<typename T>
+    operator T*() const {return 0;}
+
+    /* Return 0 for any member pointer */
+    template<typename T, typename U>
+    operator T U::*() const {return 0;}
+
+    /* Safe boolean conversion */
+    operator void*() const  {return 0;}
+
+private:
+    /* Not allowed to get the address */
+    void operator&() const;
+} nullptr = {};
 #endif
 
 /// \brief Deleter function that does not delete an object pointer
