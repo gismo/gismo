@@ -131,8 +131,8 @@ public:
 
     typedef typename gsBoundaryConditions<T>::bcRefList   bcRefList;
     typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
-    //typedef typename gsBoundaryConditions<T>::ppContainer ppContainer;
-    typedef gsBoxTopology::ifContainer ppContainer;
+    //typedef typename gsBoundaryConditions<T>::ppContainer ifContainer;
+    typedef gsBoxTopology::ifContainer ifContainer;
 
     typedef typename gsExprHelper<T>::element     element;     ///< Current element
     typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
@@ -349,7 +349,7 @@ public:
     template<class... expr> void assemble(const bcRefList & BCs, expr... args);
 
     /*
-      template<class... expr> void assemble(const ppContainer & iFaces, expr... args);
+      template<class... expr> void assemble(const ifContainer & iFaces, expr... args);
     */
 #else
     template<class E1> void assemble(const expr::_expr<E1> & a1)
@@ -403,7 +403,7 @@ public:
     }
 
     template<class E1>
-    void assembleRhsInterface(const expr::_expr<E1> & exprInt, const ppContainer & iFaces)
+    void assembleRhsInterface(const expr::_expr<E1> & exprInt, const ifContainer & iFaces)
     {
         space rvar = static_cast<space>(exprInt.rowVar());
         GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
@@ -431,7 +431,7 @@ private:
     void assembleInterface_impl(const expr::_expr<E1> & exprLhs,
                                 const expr::_expr<E2> & exprRhs,
                                 space rvar, space cvar,
-                                const ppContainer & iFaces);
+                                const ifContainer & iFaces);
 
 // /*
 #if(__cplusplus >= 201103L) // c++11
@@ -445,13 +445,18 @@ private:
     struct __setFlag
     {
         template <typename E> void operator() (const gismo::expr::_expr<E> & v)
-        {
-            v.setFlag();
-        }
+        { v.setFlag(); }
 
-        void operator() (const expr::_expr<expr::gsNullExpr<T> > & ne)
-        { /*GISMO_UNUSED(ne);*/}
-    } _setFlag;
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > & ne) {}
+    };
+    static __setFlag _setFlag;
+
+    struct __printExpr
+    {
+        template <typename E> void operator() (const gismo::expr::_expr<E> & v)
+        { v.print(gsInfo);gsInfo<<"\n"; }
+    };
+    static __printExpr _printExpr;
 
     struct _eval
     {
@@ -737,6 +742,7 @@ void gsExprAssembler<T>::assemble(expr... args)
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
 #   if(__cplusplus >= 201103L)
     _apply(_setFlag, args...);
+    _apply(_printExpr, args...);
 #   else
     _setFlag(a1);_setFlag(a1);_setFlag(a2);_setFlag(a4);_setFlag(a5);
 #   endif
@@ -912,7 +918,7 @@ template<bool left, bool right, class E1, class E2>
 void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
                                                 const expr::_expr<E2> & exprRhs,
                                                 space rvar, space cvar,
-                                                const ppContainer & iFaces)
+                                                const ifContainer & iFaces)
 {
     //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
 
