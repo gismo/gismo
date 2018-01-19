@@ -248,7 +248,7 @@ class SparseMatrix
       * 
       * \sa resize(Index,Index), data()
       */
-    EIGEN_DEPRECATED inline void setZero() // G+Smo
+    inline void setZero() // G+Smo
     {
       m_data.clear();
       memset(m_outerIndex, 0, (m_outerSize+1)*sizeof(StorageIndex));
