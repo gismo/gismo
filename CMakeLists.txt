@@ -155,6 +155,15 @@ if(GISMO_WITH_ONURBS)
   add_subdirectory(extensions/gsOpennurbs)
 endif(GISMO_WITH_ONURBS)
 
+if(GISMO_WITH_CFX5)
+  find_package(CFX5 REQUIRED)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CFX5_INCLUDES}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${CFX5_LIBRARIES}
+    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${CFX5_INCLUDES})
+endif(GISMO_WITH_CFX5)
+
 if(GISMO_WITH_FDBB)
   add_subdirectory(extensions/gsFdbb)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${FDBB_INCLUDE_DIR}
@@ -189,7 +198,7 @@ if(GISMO_WITH_TAUCS)
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   set(gismo_LINKER ${gismo_LINKER} ${TAUCS_LIBRARIES}
     CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-  include_directories(SYSTEM ${SUPERLU_INCLUDES})
+  include_directories(SYSTEM ${TAUCS_INCLUDES})
 endif(GISMO_WITH_TAUCS)
 
 if(GISMO_WITH_UMFPACK)
