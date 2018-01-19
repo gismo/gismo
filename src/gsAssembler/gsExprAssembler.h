@@ -153,7 +153,7 @@ public:
     /// \param _cBlocks Number of spaces for solution variables
     gsExprAssembler(int _rBlocks = 1, int _cBlocks = 1)
     : m_exprdata(gsExprHelper<T>::make()), m_options(defaultOptions()),
-      m_vrow(_rBlocks,NULL), m_vcol(_cBlocks,NULL)
+      m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr)
     { }
 
     // The copy constructor replicates the same environemnt but does
@@ -251,7 +251,7 @@ public:
     }
 
     /// Return the variable (previously created by getSpace) with the given \a id
-    space trialSpace(index_t id) const
+    space trialSpace(const index_t id) const
     {
         GISMO_ASSERT(NULL!=m_vcol[id], "Not set.");
         return *m_vcol[id];
@@ -261,7 +261,7 @@ public:
     space trialSpace(variable v) const { return trialSpace(v.id()); }
     
     /// Return the variable (previously created by getTrialSpace) with the given \a id
-    space testSpace(index_t id)
+    space testSpace(const index_t id)
     {
         GISMO_ASSERT(NULL!=m_vrow[id], "Not set.");
         return *m_vrow[id];
