@@ -693,7 +693,7 @@ public:
 
     /// Clone the source of this basis in case of rational basis, same
     /// as clone() otherwise
-    virtual gsBasis<T> * makeNonRational() const { return clone().release(); }
+    virtual memory::unique_ptr<gsBasis<T> > makeNonRational() const { return clone(); }
 
     /// @brief Create a domain iterator for the computational mesh of
     /// this basis, that points to the first element of the domain
