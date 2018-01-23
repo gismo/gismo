@@ -121,8 +121,8 @@ public:
             ); 
     }
     
-    gsBasis<T> * makeNonRational() const
-    { return m_src->clone().release(); }
+    memory::unique_ptr<gsBasis<T> > makeNonRational() const
+    { return m_src->clone(); }
     
 public:
     
