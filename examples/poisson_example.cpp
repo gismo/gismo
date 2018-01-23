@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 
     //! [Geometry data]
     // Define Geometry, must be a gsMultiPatch object
-    gsMultiPatch<> ::uPtr patches;
+    gsMultiPatch<> patches;
     // Create 4 (2 x 2) patches of squares:
     //
     // Square/patch 0 is in lower left  corner
@@ -56,8 +56,8 @@ int main(int argc, char *argv[])
     //
     // The last argument scale the squares such that we
     // get the unit square as domain.
-    patches = safe ( gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5) );
-    gsInfo << "The domain is a "<< *patches <<"\n";
+    patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
+    gsInfo << "The domain is a "<< patches <<"\n";
     //! [Geometry data]
 
     // For single patch unit square of quadratic elements use (Note:
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 
     //! [Refinement]
     // Copy basis from the geometry
-    gsMultiBasis<> refine_bases( *patches );
+    gsMultiBasis<> refine_bases( patches );
 
     // Number for h-refinement of the computational (trial/test) basis.
     int numRefine  = 2;
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
     // * dg: Use discontinuous Galerkin-like coupling between adjacent patches.
     //       (This option might not be available yet)
     //! [Assemble]
-    gsPoissonAssembler<real_t> PoissonAssembler(*patches,refine_bases,bcInfo,f,
+    gsPoissonAssembler<real_t> PoissonAssembler(patches,refine_bases,bcInfo,f,
                                                 //dirichlet::elimination, iFace::glue);
                                                   dirichlet::nitsche    , iFace::glue);
 
