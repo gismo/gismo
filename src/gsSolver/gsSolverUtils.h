@@ -103,7 +103,7 @@ public:
             if(tmp < 1e-13 && removeSingularity)
             {
                 removeSingularity = false;
-                gsInfo << "Removed the eigen value: " << tmp << "\n";
+                gsDebug << "Removed the eigen value: " << tmp << "\n";
                 //In case the first eigenvalue has value zero, we use the second eigenvalue.
                 if (k == 0)
                 {
@@ -117,7 +117,7 @@ public:
             if( tmp < eigen_low ) {eigen_low  = tmp;}
             if( tmp > eigen_high) {eigen_high = tmp;}
         }
-        //gsInfo << "Highest eigen value: " << eigen_high << " Lowest eigen value: " << eigen_low<< "\n";
+        //gsDebug << "Highest eigen value: " << eigen_high << " Lowest eigen value: " << eigen_low<< "\n";
         //Return condition number
         return eigen_high/eigen_low;
     }
