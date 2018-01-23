@@ -109,7 +109,7 @@ public:
 
     virtual T getCoeffForIETI(unsigned np) const {
         if(np==0)
-            gsInfo<<"Assume homogeneous coefficient alpha==1\n";
+            gsWarn<<"gsPoissonPde::getCoeffForIETI: Assume homogeneous coefficient alpha==1\n";
         return 1;
     }
 protected:
