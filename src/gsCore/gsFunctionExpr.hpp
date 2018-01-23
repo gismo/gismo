@@ -380,13 +380,42 @@ gsFunctionExpr<T>::gsFunctionExpr(const gsFunctionExpr & other)
 {
     my = new PrivateData_t(*other.my);
 }
+#if EIGEN_HAS_RVALUE_REFERENCES
 
+template<typename T>
+gsFunctionExpr<T>::gsFunctionExpr(gsFunctionExpr && other)
+{
+    my = other.my; other.my = NULL;
+}
+
+template<typename T>
+gsFunctionExpr<T> & gsFunctionExpr<T>::operator=(const gsFunctionExpr& other)
+{
+    if (this != &other)
+    {
+        my = new PrivateData_t(*other.my);
+    }
+    return *this;
+}
+
+template<typename T>
+gsFunctionExpr<T> & gsFunctionExpr<T>::operator=(gsFunctionExpr&& other)
+{
+    if (this != &other)
+    {
+        my = other.my; other.my = NULL;
+    }
+    return *this;
+}
+
+#else
 template<typename T>
 gsFunctionExpr<T> & gsFunctionExpr<T>::operator=(gsFunctionExpr other)
 {
     std::swap(my,other.my);
     return *this;
 }
+#endif
 
 template<typename T>
 gsFunctionExpr<T>::~gsFunctionExpr()

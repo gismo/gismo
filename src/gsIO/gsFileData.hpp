@@ -763,7 +763,8 @@ bool gsFileData<T>::readGeompFile( String const & fn )
 {    
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
-    {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
+    if ( file.fail() )
+    { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws); 

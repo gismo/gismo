@@ -56,8 +56,16 @@ public:
     /// Default empty constructor
     gsMultiBasis() { }
 
-    /// Create a multi-basis instance from a gsMultiPatch
-    explicit gsMultiBasis( const gsMultiPatch<T> & mpatch );
+    /// \brief Create a multi-basis instance from a gsMultiPatch
+    ///
+    /// \param numeratorOnly If true, and the bases are derived from
+    /// gsRationalBasis, then only the source bases (numerators) are
+    /// returned
+    ///
+    /// \note In the case of NURBS, the numerator possess the same
+    /// approximation power, while the evaluation of values and
+    /// partial derivatives are much less expensive
+    explicit gsMultiBasis( const gsMultiPatch<T> & mpatch, bool numeratorOnly = true);
 
     /// Create from a vector of bases and topology
     gsMultiBasis(BasisContainer& bases, const gsBoxTopology & topology)
@@ -275,7 +283,7 @@ public:
     /// @brief Add a basis (ownership of the pointer is also acquired)
     void addBasis( gsBasis<T> * g );
 
-    /// @brief Add a basis (ownership of the pointer is also acquired)
+    /// @brief Add a basis
     void addBasis(typename gsBasis<T>::uPtr g);
 
     /// @brief Search for the given basis and return its index.
@@ -478,22 +486,30 @@ public:
                                       std::vector<unsigned> & refEltsSecond );
 
     /// @brief Elevate the degree of every basis by the given amount. (keeping the smoothness)
-    void degreeElevate(int const& i = 1, int const dir = -1)
+    void degreeElevate(int const i = 1, int const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeElevate(i,dir);
     }
 
-    /// @brief Increase the degree of every basis by the given amount. (keeping the multiplicity)
-    void degreeIncrease(int const& i = 1, int const dir = -1)
+    /// @brief Increase the degree of every basis by the given
+    /// amount. (keeping the multiplicity)
+    void degreeIncrease(int const i = 1, int const dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeIncrease(i,dir);
     }
 
+    /// @brief Increase the degree of every basis by the given
+    /// amount. (keeping the multiplicity)
+    void degreeDecrease(int const i = 1, int const dir = -1)
+    {
+        for (size_t k = 0; k < m_bases.size(); ++k)
+            m_bases[k]->degreeDecrease(i,dir);
+    }
 
     /// Reduce the degree of the basis by the given amount.
-    void degreeReduce(int const& i = 1)
+    void degreeReduce(int const i = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->degreeReduce(i);
@@ -507,7 +523,7 @@ public:
     }
 
     /// Reduce the continuity by i
-    void reduceContinuity(int const i)
+    void reduceContinuity(int const i = 1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
             m_bases[k]->reduceContinuity(i);

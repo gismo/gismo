@@ -147,6 +147,10 @@ namespace internal
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 
+#include<gsAssembler/gsExprHelper.h>
+#include <gsAssembler/gsExprAssembler.h>
+#include <gsAssembler/gsExprEvaluator.h>
+
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMinimalResidual.h>

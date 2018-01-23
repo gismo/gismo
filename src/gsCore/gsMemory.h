@@ -71,6 +71,7 @@ memory::unique_ptr<int> B;
 */
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1600)
 using std::unique_ptr;
+using std::nullptr_t;
 #else
 
 template <typename T>
@@ -150,11 +151,23 @@ template<class T>
 bool  operator>=(const unique_ptr<T> & p1, const unique_ptr<T> & p2)
 { return p1.get()>=p2.get(); }
 
+class nullptr_t
+{
+public:
+    /* Return 0 for any class pointer */
+    template<typename T> operator T*() const {return 0;}
+    /* Return 0 for any member pointer */
+    template<typename T, typename U> operator T U::*() const {return 0;}
+    /* Safe boolean conversion */
+    operator void*() const  {return 0;}
+private:
+    /* Not allowed to get the address */
+    void operator&() const;
+};
 #endif
 
 /// \brief Deleter function that does not delete an object pointer
-template <typename T>
-void null_deleter(T *) {}
+template <typename T> void null_deleter(T *) {}
 
 
 /// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
@@ -163,8 +176,7 @@ void null_deleter(T *) {}
 /// This has a move semantics: the shared_ptr object takes
 /// the ownership.
 template <typename T>
-inline shared_ptr<T> make_shared(T *x)
-{ return shared_ptr<T>(x); }
+inline shared_ptr<T> make_shared(T *x) { return shared_ptr<T>(x); }
 
 /// \brief Creates a shared pointer which does not eventually delete
 /// the underlying raw pointer. Usefull to refer to objects which
@@ -173,9 +185,7 @@ inline shared_ptr<T> make_shared(T *x)
 /// The caller keeps the ownership.
 template <typename T>
 inline shared_ptr<T> make_shared_not_owned(const T *x)
-{
-    return shared_ptr<T>(const_cast<T*>(x), null_deleter<T>);
-}
+{ return shared_ptr<T>(const_cast<T*>(x), null_deleter<T>); }
 
 /// Takes a T* and wraps it in an unique_ptr. Useful for one-off
 /// function return values to avoid memory leaks.
@@ -183,8 +193,7 @@ inline shared_ptr<T> make_shared_not_owned(const T *x)
 /// This has a move semantics: the unique_ptr object takes
 /// the ownership.
 template <typename T>
-inline unique_ptr<T> make_unique(T * x)
-{ return unique_ptr<T>(x); }
+inline unique_ptr<T> make_unique(T * x) { return unique_ptr<T>(x); }
 
 /// \brief Converts a uPtr \a p to an uPtr
 /// of class \a C and gives it back as return value.
@@ -399,3 +408,8 @@ inline void copy(T begin, T end, U* result)
 }
 
 } // namespace gismo
+
+#if (__cplusplus < 201103) && (!defined(_MSC_VER) || _MSC_VER < 1600)
+// Define nullptr for compatibility with newer C++
+static const gismo::memory::nullptr_t nullptr ={};
+#endif

@@ -222,7 +222,7 @@ void gsDofMapper::finalize()
 
     GISMO_ASSERT(curCplDof == m_numFreeDofs,
                  "gsDofMapper::finalize() - computed number of coupling" 
-                 "dofs does not match allocated number");
+                 "dofs does not match allocated number, "<<curCplDof<<"!="<<m_numFreeDofs);
     GISMO_ASSERT(curFreeDof + m_numCpldDofs == m_numFreeDofs,
                  "gsDofMapper::finalize() - computed number of free dofs" 
                  "does not match allocated number");

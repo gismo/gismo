@@ -42,11 +42,13 @@ public:
     typedef memory::shared_ptr< gsBoxTopology > Ptr;
     typedef memory::unique_ptr< gsBoxTopology > uPtr;
 
-    typedef std::vector< patchSide >::iterator biterator;
-    typedef std::vector< patchSide >::const_iterator const_biterator;
+    typedef std::vector< patchSide > bContainer;
+    typedef bContainer::iterator biterator;
+    typedef bContainer::const_iterator const_biterator;
 
-    typedef std::vector< gismo::boundaryInterface >::iterator iiterator;
-    typedef std::vector< gismo::boundaryInterface >::const_iterator const_iiterator;
+    typedef std::vector<boundaryInterface> ifContainer;
+    typedef ifContainer::iterator iiterator;
+    typedef ifContainer::const_iterator const_iiterator;
 
     typedef const boundaryInterface * InterfacePtr;
 public:
@@ -55,8 +57,8 @@ public:
     gsBoxTopology(int d = -1, int n = 0) : m_dim(d), nboxes(n) { }
 
     gsBoxTopology( int d, unsigned boxes,
-            const std::vector< patchSide > & boundary,
-            const std::vector< boundaryInterface > & interfaces )
+            const bContainer & boundary,
+            const ifContainer & interfaces )
         : m_dim(d), nboxes(boxes), m_boundary(boundary), m_interfaces(interfaces) { }
 
     // Default copy constructor does the same as the following:
@@ -218,12 +220,12 @@ public:
     bool isInterface(const patchSide& ps) const;
 
     /// Return the vector of boundaries.
-    const std::vector<patchSide> & boundaries() const { return m_boundary;}
-    std::vector<patchSide> & boundaries() { return m_boundary;}
+    const bContainer & boundaries() const { return m_boundary;}
+    bContainer & boundaries() { return m_boundary;}
 
     /// Return the vector of interfaces.
-    const std::vector<boundaryInterface> & interfaces() const { return m_interfaces; }
-    std::vector<boundaryInterface> & interfaces() { return m_interfaces; }
+    const ifContainer & interfaces() const { return m_interfaces; }
+    ifContainer & interfaces() { return m_interfaces; }
 
     /// Check that boundaries and interfaces are consistent.
     void checkConsistency() const;
@@ -265,7 +267,7 @@ public:
 
     /// takes a patchCorner \a start and gives back all other patchCorners,
     /// that represent the same point in the vector \a cornerList
-    bool getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const;
+    bool getCornerList(const patchCorner& start, std::vector<patchCorner> & cornerList) const;
 
     /// returns the maximal valence of a vertex of this topology.
     int getMaxValence() const;
@@ -294,10 +296,10 @@ protected:
     int nboxes;
 
     /// List of boundaries of the boxes
-    std::vector< patchSide > m_boundary;
+    bContainer m_boundary;
 
     /// List of intefaces between boxes
-    std::vector< boundaryInterface > m_interfaces ;
+    ifContainer m_interfaces ;
 
 }; // class gsBoxTopology
 
