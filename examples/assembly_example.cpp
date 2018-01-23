@@ -33,8 +33,8 @@ int main(int argc, char *argv[])
 
 
     // Grab a pre-defined grid of patches
-    gsMultiPatch<> ::uPtr patches = safe ( gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5) );
-    gsInfo << "The domain is: "<< *patches <<"\n";
+    gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
+    gsInfo << "The domain is: "<< patches <<"\n";
 
     //! [Boundary conditions]
     gsFunctionExpr<> g("sin(pi*x*1)*sin(pi*y*2)+pi/10",
@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     gsBoundaryConditions<> bcInfo;
 
     for (gsMultiPatch<>::const_biterator
-             bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
+             bit = patches.bBegin(); bit != patches.bEnd(); ++bit)
     {
         bcInfo.addCondition( *bit, condition_type::dirichlet, &g );
     }
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 
     //! [Refinement]
     // Copy basis from the multi-patch ( one per patch)
-    gsMultiBasis<> splinebasis( *patches );
+    gsMultiBasis<> splinebasis( patches );
 
     // Number for h-refinement of the computational (trial/test) basis.
     int numRefine  = 2;
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
                        //"((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)",
                        2);
 
-    gsPoissonPde<> ppde(*patches, bcInfo, f);
+    gsPoissonPde<> ppde(patches, bcInfo, f);
     //! [Poisson Pde]
 
 
