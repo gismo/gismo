@@ -220,7 +220,7 @@ public:
     bool isFinalized() { return m_curElimId==0; }
 
     /// \brief Print summary to cout
-    void print() const;
+    std::ostream& print( std::ostream& os = gsInfo ) const;
 
     ///\brief Set this mapping to beh the identity
     void setIdentity(index_t nPatches, size_t nDofs);
@@ -429,6 +429,13 @@ private:
     index_t m_curElimId;
 
 }; // class gsDofMapper
+
+/// Print (as string) a dofmapper structure
+inline std::ostream& operator<<( std::ostream& os, const gsDofMapper& b )
+{
+    return b.print( os );
+}
+
 
 } // namespace gismo
 

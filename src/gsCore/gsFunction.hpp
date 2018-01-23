@@ -45,7 +45,7 @@ void gsFunction<T>::div_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 
     // Compute component gradients as columns of result
     deriv_into(u, result);
-    //gsInfo << "deriv_into result:\n"   << result << "\n";
+    //gsDebug << "deriv_into result:\n"   << result << "\n";
 
 
     const index_t numPts = u.cols();    // number of points to compute at
@@ -63,7 +63,7 @@ void gsFunction<T>::div_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     result.resize(1, numPts);
     result = tmp_div.transpose();
 
-    //gsInfo << "div_into:\n"   << result << "\n";
+    //gsDebug << "div_into:\n"   << result << "\n";
 
 }
 

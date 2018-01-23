@@ -233,12 +233,13 @@ void gsDofMapper::finalize()
     m_curElimId = 0;// Only equal to zero after finalize is called.
 }
 
-void gsDofMapper::print() const
+std::ostream& gsDofMapper::print( std::ostream& os ) const
 {
-    gsInfo<<" Dofs: "<< this->size() <<"\n";
-    gsInfo<<" free: "<< this->freeSize() <<"\n";
-    gsInfo<<" coupled: "<< this->coupledSize() <<"\n";
-    gsInfo<<" elim: "<< this->boundarySize() <<"\n";
+    os<<" Dofs: "<< this->size() <<"\n";
+    os<<" free: "<< this->freeSize() <<"\n";
+    os<<" coupled: "<< this->coupledSize() <<"\n";
+    os<<" elim: "<< this->boundarySize() <<"\n";
+    return os;
 }
 
 void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs)
