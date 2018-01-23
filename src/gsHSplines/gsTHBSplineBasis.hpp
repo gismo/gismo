@@ -1374,7 +1374,7 @@ index_t gsTHBSplineBasis<d, T>::identifyCycle(const std::vector< std::vector< re
         }
         else
         {
-            GISMO_ENSURE(2 > it->second, "Internal error. Check the polylines from the domainBaoundariesParam" );
+            GISMO_ENSURE(2 > it->second, "Internal error. Check the polylines from the domainBoundariesParam." );
         }
     }
     return -1;
