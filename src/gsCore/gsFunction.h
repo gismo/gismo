@@ -20,7 +20,7 @@ namespace gismo
 
 /** \brief A function \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$
  * from a <em>n</em>-dimensional domain to an
-    <em>d</em>-dimensional image.
+    <em>m</em>-dimensional image.
 
     Implementations of gsFunction must at the very least implement the evaluation
     function gsFunction::eval_into(). It is also recommended to specify the
