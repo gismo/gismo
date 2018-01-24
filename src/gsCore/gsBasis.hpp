@@ -228,9 +228,9 @@ memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> cons
     // Solves for many right hand side  columns
     x =  solver.solve( vals.transpose() );
   
-    // gsInfo <<"gs Interpolate error : " << solver.error() << std::"\n";
-    // gsInfo <<"gs Interpolate iters : " << solver.iterations() << std::"\n";
-    // gsInfo <<"intpl sol : " << x.transpose() << std::"\n";
+    // gsDebug <<"gs Interpolate error : " << solver.error() << std::"\n";
+    // gsDebug <<"gs Interpolate iters : " << solver.iterations() << std::"\n";
+    // gsDebug <<"intpl sol : " << x.transpose() << std::"\n";
   
     return makeGeometry( give(x) );
 }

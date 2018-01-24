@@ -267,7 +267,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
 /* For debugging
     for (unsigned k = 0; k!=d; ++k)
     {
-        gsInfo<<"*** Boundaries "<<k<<":\n";
+        gsDebug<<"*** Boundaries "<<k<<":\n";
         gsDebugVar( input[2*k  ]->basis() );
         gsDebugVar( input[2*k+1]->basis() );
     }
@@ -276,7 +276,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
     // Create the final tensor basis
     resultBasis = gsTensorBSplineBasis<d,T>(cBases); //Note: constructor consumes pointers
 
-    //gsInfo<<"*** Choice "<<resultBasis<<"\n";
+    //gsDebug<<"*** Choice "<<resultBasis<<"\n";
 
     //-------- 4. Fill in the boundary of the patch
 

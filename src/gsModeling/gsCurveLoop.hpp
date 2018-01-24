@@ -56,7 +56,7 @@ bool gsCurveLoop<T>::parameterOf(gsMatrix<T> const &u, int i, T & result, T tol)
     
         for(index_t r=0; r!=e.cols(); r++)
         {     
-            //gsInfo<<"matrix e (1,r): "<< e(1,r) <<"\n";
+            //gsDebug<<"matrix e (1,r): "<< e(1,r) <<"\n";
             if( math::abs(e( 1, r )-u(1,0))< tol )
             {
                 result = roots[r];
@@ -636,7 +636,7 @@ gsMatrix<T> gsCurveLoop<T>::splitCurve(std::size_t curveId, T lengthRatio)
     int deg = curve(curveId).basis().degree(0);
     //GISMO_ASSERT(deg==1,"Pls extend to code to curves of degree more than 1");
     if (deg!=1)
-        std::cout<<"\n WARNINGS: Pls extend to code to curves of degree more than 1, degree 1 is temporarily used \n";
+        gsWarn<<"Pls extend to code to curves of degree more than 1, degree 1 is temporarily used.\n";
     a = cp.row(0);
     b = cp.row(cp.rows() - 1);
     //n = (1-lengthRatio)*a + lengthRatio*b; // new vertex

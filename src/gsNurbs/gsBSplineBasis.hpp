@@ -786,10 +786,10 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(unsigned i,
       }
       // Changes from the book: notation change, stack arrays instead of normal C arrays, changed all 0.0s and 1.0s into 0 and 1. No return in the first check
       // Warning: Segmentation fault if n > m_p.
-      std::cout << "After:" << std::endl;
+      gsDebug << "After:" << std::endl;
       for( int j = 0; j < m_knots.size(); j++ )
       {
-      std::cout << "m_knots[" << j << "] =" << m_knots[j] << std::endl;
+      gsDebug << "m_knots[" << j << "] =" << m_knots[j] << std::endl;
       }*/
 }
 
@@ -850,7 +850,7 @@ gsTensorBSplineBasis<1,T>::tensorize(const gsBasis<T> & other) const
         return typename gsBasis<T>::uPtr(new gsTensorBSplineBasis<2,T>( ptr1.release(), this->clone().release() ));
     else
     {
-        gsInfo<<"Invalid basis "<< other <<"\n";
+        gsWarn<<"gsTensorBSplineBasis::tensorize: Invalid basis "<< other <<"\n";
         return typename gsBasis<T>::uPtr();
     }
 }

@@ -177,7 +177,7 @@ public:
         // maybee delete
         std::vector<T> errors;
         fitting.get_Error(errors, 1);
-        std::cout << "Maximum error is: " << *std::max_element(errors.begin(),
+        gsDebug << "Maximum error is: " << *std::max_element(errors.begin(),
                                                                errors.end())
                   << std::endl;
 
@@ -360,7 +360,7 @@ public:
                 second = t;
             }
 
-//            std::cout << "side: " << side << "\n"
+//            gsDebug << "side: " << side << "\n"
 //                      << "directions side: " << fixed << "\n"
 //                      << "parameter: " << fixedConstant << "\n"
 //                      << "first: " << first << "\n"
@@ -433,7 +433,7 @@ public:
                     column++;
 
 
-//                    std::cout << "side: " << side << "  curveID: " << curveId
+//                    gsDebug << "side: " << side << "  curveID: " << curveId
 //                              << "  turnCurve: " << turnCurve
 //                              << "  turnAround: " << turnAround << "\n"
 //                              << "params: " << params3D.col(column - 1).transpose()
@@ -498,7 +498,7 @@ private:
 
 //    static void printTuple(std::pair<std::pair<T, T>, T> tuple)
 //    {
-//        std::cout << tuple.first.first << " " << tuple.first.second << " "
+//        gsDebug << tuple.first.first << " " << tuple.first.second << " "
 //                  << tuple.second;
 //    }
 
@@ -579,7 +579,7 @@ private:
 
                 cpPoints.col(column) += vec;
 
-//                std::cout << "u: " << u << "    v: " << v << "\n"
+//                gsDebug << "u: " << u << "    v: " << v << "\n"
 //                          << "indu: " << indu << "    indv: " << indv << "\n"
 //                          << "change1and2: " << switch1and3 << "\n";
 
@@ -589,31 +589,31 @@ private:
 //                gsMatrix<T> res;
 //                edge->face->surf->evalSurface_into(mat, res);
 
-//                std::cout << "coons patch: " << res.transpose() << std::endl;
+//                gsDebug << "coons patch: " << res.transpose() << std::endl;
 
 //                mat(0, 0) = values[0](0, indu);
 //                mat(1, 0) = values[0](1, indu);
 //                edge->face->surf->evalSurface_into(mat, res);
 
-//                std::cout << "curve0(indu): " << res.transpose() << std::endl;
+//                gsDebug << "curve0(indu): " << res.transpose() << std::endl;
 
 //                mat(0, 0) = values[2](0, indu);
 //                mat(1, 0) = values[2](1, indu);
 //                edge->face->surf->evalSurface_into(mat, res);
 
-//                std::cout << "curve2(indu): " << res.transpose() << std::endl;
+//                gsDebug << "curve2(indu): " << res.transpose() << std::endl;
 
 //                mat(0, 0) = values[1](0, indv);
 //                mat(1, 0) = values[1](1, indv);
 //                edge->face->surf->evalSurface_into(mat, res);
 
-//                std::cout << "curve1(indv): " << res.transpose() << std::endl;
+//                gsDebug << "curve1(indv): " << res.transpose() << std::endl;
 
 //                mat(0, 0) = values[3](0, indv);
 //                mat(1, 0) = values[3](1, indv);
 //                edge->face->surf->evalSurface_into(mat, res);
 
-//                std::cout << "curve3(indv): " << res.transpose() << std::endl;
+//                gsDebug << "curve3(indv): " << res.transpose() << std::endl;
 
                 column++;
             }

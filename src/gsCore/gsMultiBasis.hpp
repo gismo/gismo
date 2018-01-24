@@ -66,8 +66,7 @@ gsMultiBasis<T>::~gsMultiBasis()
 template<class T>
 std::ostream& gsMultiBasis<T>::print( std::ostream& os ) const
 {
-    gsInfo<<"Topology: "<< m_topology <<"\n";
-    
+    os<<"Topology: "<< m_topology <<"\n";
     return os;
 }
 
