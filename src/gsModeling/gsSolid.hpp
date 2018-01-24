@@ -81,7 +81,7 @@ void gsSolid<T>::addHeVertex(scalar_t const& x, scalar_t const& y, scalar_t cons
 template <class T>
 typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace(std::vector<gsSolidHeVertexHandle> V)
 {
-    if (V.size() != 4) //{ std::cout<<"\n The following initialization of trimmed surf does not work for less or more than 4 corners yet\n";};
+    if (V.size() != 4) //{ gsDebug<<"\n The following initialization of trimmed surf does not work for less or more than 4 corners yet\n";};
     {
         return addFace_PlanarPolygon(V);
     }
@@ -193,7 +193,7 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace_PlanarPolygon(std
     if(V[i]->coords(0) < V[minVert]->coords(0) ||
       (V[i]->coords(0) <= V[minVert]->coords(0) && V[i]->coords(1) < V[minVert]->coords(1)))
       {
-        //std::cout << "\n" << V[i]->coords(0) << "," << V[i]->coords(1) << "," << V[i]->coords(2);
+        //gsDebug << "\n" << V[i]->coords(0) << "," << V[i]->coords(1) << "," << V[i]->coords(2);
         minVert = i;
       }
   }
@@ -213,7 +213,7 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace_PlanarPolygon(std
     assert((V[i]->coords - V[0]->coords).dot(normal) == 0);
   }
   T normalCoord = normal.dot(V[0]->coords);
-  //std::cout << "\nNormal coefs: " << normal << std::endl << normalCoord;
+  //gsDebug << "\nNormal coefs: " << normal << std::endl << normalCoord;
   
   // compute a good transformation that we can use to generate
   // corners in the 2D domain. We make an
@@ -237,7 +237,7 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace_PlanarPolygon(std
   b1.normalize();
   b2 = normal.cross(b1);
   
-  //std::cout << "\nbasis for plane. b1=" << b1 << ", b2="<< b2;
+  //gsDebug << "\nbasis for plane. b1=" << b1 << ", b2="<< b2;
   
   // make a matrix containing a list of (transposed) corners in the domain.
   // compute a good rectangle for the domain of the base surface. do this by
@@ -251,7 +251,7 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace_PlanarPolygon(std
     // compute x and y coords and insert them into the matrix DomCor
     x = b1.dot(V[i]->coords);
     y = b2.dot(V[i]->coords);
-    //std::cout << "\nvertex " << i << " coords in domain: " << x << "," << y;
+    //gsDebug << "\nvertex " << i << " coords in domain: " << x << "," << y;
     DomCor(i, 0) = x;
     DomCor(i, 1) = y;
   }
@@ -274,7 +274,7 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace_PlanarPolygon(std
   // resize and shift to be inside [0,1]x[0,1]
   gsCurveLoop<T>::adjustPolygonToUnitSquare(DomCor, margin);
   
-  //std::cout << "\nDomain rectangular bounds: [" << minx << "," << maxx << "] x [" << miny << "," << maxy << "]";
+  //gsDebug << "\nDomain rectangular bounds: [" << minx << "," << maxx << "] x [" << miny << "," << maxy << "]";
   
   // create a trimming loop and construct a planar domain from it.
   gsCurveLoop<T> * tloop = new gsCurveLoop<T>();
@@ -306,8 +306,8 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace_PlanarPolygon(std
     pcp(2, xi) = normal[xi] * normalCoord + (midx - halfMaxRange) * b1[xi] + (midy + halfMaxRange) * b2[xi];
     pcp(3, xi) = normal[xi] * normalCoord + (midx + halfMaxRange) * b1[xi] + (midy + halfMaxRange) * b2[xi];
   }
-  //std::cout << "\nControl point matrix: " << pcp << "\n";
-  //std::cout << "\nPolygon points: " << DomCor << "\n";
+  //gsDebug << "\nControl point matrix: " << pcp << "\n";
+  //gsDebug << "\nPolygon points: " << DomCor << "\n";
   typename gsTensorBSpline<2,T>::Ptr tp1(new gsTensorBSpline<2,T>(KV1, KV2, give(pcp)));
   
   // instantiate and add the half-face object.
@@ -344,7 +344,7 @@ void gsSolid<T>::setHeMate()
   // check if the number of mates is the same as the number of assignments
   if (2*noMate!=edge.size())
   {
-//      std::cout <<"\n"<<"The number of assignments of HE mates (="<< noMate <<") is NOT equal to number of edges (not halfedges) (="<< edge.size()/2 <<"), this is most likely because of the wrong order of the vertices of a face "<<"\n";
+//      gsDebug <<"\n"<<"The number of assignments of HE mates (="<< noMate <<") is NOT equal to number of edges (not halfedges) (="<< edge.size()/2 <<"), this is most likely because of the wrong order of the vertices of a face "<<"\n";
 
       gsWarn << "The number of assignments of HE mates (="<< noMate <<") is NOT equal to number of edges (not halfedges) (="<< edge.size()/2 <<"), this is most likely because of the wrong order of the vertices of a face, or the model is not a manifold\n";
   }
@@ -962,7 +962,7 @@ void gsSolid<T>::insertNewVertex(gsSolidHalfEdgeHandle he, int const & option)
     this->numHalfEdges = this->nHalfEdges();
     this->numHalfFaces = this->nHalfFaces();
     this->numVolumes = this->nVolumes();
-    std::cout<<"\nNOTE: A new vertex is added to the halfedge with source: "<<*he->source<<
+    gsDebug<<"A new vertex is added to the halfedge with source: "<<*he->source<<
                " and target: "<<*he->target()<<std::endl;
     delete he;
     delete hem;

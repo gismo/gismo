@@ -72,7 +72,7 @@ template <class T>
 void gsTriMeshToSolid<T>::getFeatures(T angleGrad,bool& bWarnNonManifold,bool& bWarnBorders)
 {
 
-    gsInfo<<"Getting the features..."<<"\n";
+    gsDebug<<"Getting the features..."<<"\n";
     bWarnNonManifold=false;
     bWarnBorders=false;
     //create 3 edges for each face
@@ -214,7 +214,7 @@ void gsTriMeshToSolid<T>::setSharpEdges(std::vector< gsEdge<T> > & featEdges, in
         if(iter->sharp==1)
             i1++;
     }
-    gsInfo<<"Feature lines: "<<i1<<"\n";
+    gsDebug<<"Feature lines: "<<i1<<"\n";
 }
 
 
@@ -250,7 +250,7 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
     T totalArea=0;
     for(size_t i=0;i<areas.size();i++)
     {
-        //gsInfo<<"area of ith patch: "<<areas[i]<<"\n";
+        //gsDebug<<"area of ith patch: "<<areas[i]<<"\n";
         totalArea+=areas[i];
     }
     T averageArea=totalArea/areas.size();
@@ -286,7 +286,7 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
         if(iter->sharp==1)
             i2++;
     }
-    gsInfo<<"Feature lines after dividing patches: "<<i2<<"\n";
+    gsDebug<<"Feature lines after dividing patches: "<<i2<<"\n";
     if(mergeSmallPatches!=0)
     {
         for(size_t j=0;j<edge.size();j++)
@@ -304,7 +304,7 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
         if(iter->sharp==1)
             i3++;
     }
-    gsInfo<<"Feature lines after merging patches: "<<i3<<"\n";    
+    gsDebug<<"Feature lines after merging patches: "<<i3<<"\n";    
 }
 
 template <class T>
@@ -312,7 +312,7 @@ void gsTriMeshToSolid<T>::getFaces(std::vector<std::vector<VertexHandle> > & iPo
               std::vector< std::vector<std::vector<VertexHandle> > > & innerBdrys, std::vector< std::vector<Vertex>  > & innerBdrysMassP,
               std::vector<std::vector<bool> > & oPointsConvexFlag)
 {
-    gsInfo<<"Getting the faces..."<<"\n";
+    gsDebug<<"Getting the faces..."<<"\n";
     this->calcPatchNumbers();
 
     //eliminate sharp edges in the interior of big faces
@@ -362,7 +362,7 @@ void gsTriMeshToSolid<T>::getFaces(std::vector<std::vector<VertexHandle> > & iPo
         }
     }
 
-    gsInfo<<"Getting interior points..."<<"\n";
+    gsDebug<<"Getting interior points..."<<"\n";
     //calculating interior points of each big face
     std::vector< std::set< VertexHandle> > iPointsSet;
     std::set< VertexHandle > vertexSet;
@@ -400,7 +400,7 @@ void gsTriMeshToSolid<T>::getFaces(std::vector<std::vector<VertexHandle> > & iPo
     }
 
 
-    gsInfo<<"Getting boundary points..."<<"\n";
+    gsDebug<<"Getting boundary points..."<<"\n";
 
     int sourcePos=0;
     int targetPos=0;
@@ -583,7 +583,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                   (static_cast<int>(oPointsConvexFlag.size() ) == numBigFaces),
                   "expecting the same number of big faces everywhere");
 
-    gsInfo<<"mapping to plane..."<<"\n";
+    gsDebug<<"mapping to plane..."<<"\n";
     std::vector<std::vector<Vertex> > iPoints2D;
     std::vector<std::vector<Vertex> > oPoints2D;
     std::vector< std::vector<std::vector<Vertex> > > innerBdrys2D;
@@ -631,7 +631,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         //calculate the inner 2D Points
         oPoints2D.push_back(vector2D);
     }
-    gsInfo<<"generated loops"<<'\n';
+    gsDebug<<"generated loops"<<'\n';
     // calculate areas of the Patches - in case we need to add extra points
     std::vector<T > areas;
     for (int i=0;i<numBigFaces;i++)
@@ -735,7 +735,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
     // for each patch, and we go on to obtain a parameterization
     // of the inner points as well
     
-    gsInfo<<"allocating surfaces"<<'\n';
+    gsDebug<<"allocating surfaces"<<'\n';
 
     //allocating the trimmed surfaces
     std::vector<gsTrimSurface<T> *> tSurfVec;
@@ -947,7 +947,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         }
         //build A from the entries
         A.setFromTriplets(coefficients.begin(), coefficients.end());
-        //gsInfo<<A<<'\n';
+        //gsDebug<<A<<'\n';
 
         if(A.rows()!=0) // If there are interior points
         {
