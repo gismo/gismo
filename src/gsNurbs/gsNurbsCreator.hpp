@@ -625,10 +625,10 @@ gsNurbsCreator<T>::NurbsCurve1 (T const & r, T const & x, T const & y)
         0.853553, 1, 0.853553, 0.853553, 1;
 
     gsNurbs<T> * nn = new gsNurbs<T>(KV2, give(C), give(ww));
-    // std::cout<<" nurbs:\n " <<* nn << std::endl;
+    // gsDebug<<" nurbs:\n " <<* nn << std::endl;
     // nn->uniformRefine();
-    // std::cout<<" coefs:\n " <<* nn->coefs() << std::endl;
-    // std::cout<<" weights:\n " <<* nn->weights() << std::endl;
+    // gsDebug<<" coefs:\n " <<* nn->coefs() << std::endl;
+    // gsDebug<<" weights:\n " <<* nn->weights() << std::endl;
 
 
     return NurbsPtr(nn);

@@ -450,8 +450,8 @@ public:
         gsMatrix<T> result = originalCoefs;
         for( std::size_t i = 0; i < sourceSliceIndices.size(); i++ )
         {
-            //std::cout << "source: " << sourceSliceIndices[i]  << "\n";
-            //std::cout << "target: " << targetSliceIndices[i]  << "\n";
+            //gsDebug << "source: " << sourceSliceIndices[i]  << "\n";
+            //gsDebug << "target: " << targetSliceIndices[i]  << "\n";
             result.row( targetSliceIndices[ i ] ) = originalCoefs.row( sourceSliceIndices[ i ] );
         }
 

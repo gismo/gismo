@@ -73,7 +73,7 @@ public:
     Base( gsBSplineBasis<T>(u0,01,interior,degree,mult_interior) )
     { 
         // if( ! check()  )
-        //   std::cout << "Warning: Inconsistent "<< *this<< "\n";
+        //   gsWarn << "Warning: Inconsistent "<< *this<< "\n";
     }
 
     /// Default empty constructor
