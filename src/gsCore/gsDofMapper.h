@@ -219,7 +219,7 @@ public:
     /// \brief Checks whether finalize() has been called.
     bool isFinalized() { return m_curElimId==0; }
 
-    /// \brief Print summary to cout
+    /// \brief Print summary
     std::ostream& print( std::ostream& os = gsInfo ) const;
 
     ///\brief Set this mapping to beh the identity
