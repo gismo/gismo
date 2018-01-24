@@ -192,7 +192,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariation(const T omega1, const T omega
         // the objective function for the current coefficients for the next iteration step and for the output of the error
         compute_ObjectiveFunction(basis,&current_coefs,omega1,omega2,m_value0);
 
-        gsInfo << "Step: " << i+1 << " lamda: " << m_lamda  <<" objective value: " <<m_value0 << "\n";
+        gsDebug << "Step: " << i+1 << " lamda: " << m_lamda  <<" objective value: " <<m_value0 << "\n";
     }
     // construct the new smoother B-spline curve
     delete basis;
@@ -299,7 +299,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, co
         // the objective function for the current coefficients for the next iteration step and for the output of the error
         compute_ObjectiveFunction(basis,&current_coefs,omega1,omega2,m_value0);
 
-        gsInfo << "Step: " << i+1 << " lamda: " << m_lamda  <<" objective value: " <<m_value0 << "\n";
+        gsDebug << "Step: " << i+1 << " lamda: " << m_lamda  <<" objective value: " <<m_value0 << "\n";
 
     }
     delete basis;
@@ -375,7 +375,7 @@ void gsCurvatureSmoothing<T>::smoothTotalVariationSelectLamda(const T omega1, co
         // the objective function for the current coefficients for the next iteration step and for the output of the error
         compute_ObjectiveFunction(basis,&current_coefs,omega1,omega2,m_value0);
 
-        gsInfo << "Step: " << i+1 << " lamda: " << lamda  <<" objective value: " <<m_value0 << "\n";
+        gsDebug << "Step: " << i+1 << " lamda: " << lamda  <<" objective value: " <<m_value0 << "\n";
     }
     delete basis;
 

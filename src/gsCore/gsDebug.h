@@ -34,18 +34,24 @@
 //#endif
 
 /** Logging messages:
- *  gsInfo is ment to display information log messages, 
+ *  gsInfo is ment to be the standard output stream, like for the output of the
+ *  executables. In general, the library should not write to gsInfo.
  */
-#define gsInfo std::cout  //<< "Info: "
+#define gsInfo std::cout
 
 /** Logging messages:
-    gsWarn is for warnings, eg, for missing functionality or problem in the input
+ *  gsWarn is for warnings, eg, for missing functionality or problem in the input.
+ *
+ *  Note that gsWarn cannot be given as a parameter to another function.
  */
 #define gsWarn std::cout<<"Warning: "
 //#define gsWarn if (0) std::cerr
 
 /** Logging messages:
- *  gsDebug and gsDebugVar(.) are for debugging messages and are enabled in debug mode only
+ *  gsDebug and gsDebugVar(.) are for debugging messages and are enabled in debug
+ *  mode only.
+ *
+ *  Note that gsWarn cannot be given as a parameter to another function.
  */
 #ifndef  NDEBUG 
 //#ifdef GISMO_LOGGING_DEBUG

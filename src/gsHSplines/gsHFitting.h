@@ -194,19 +194,19 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
         {
             // if err_treshold is -1 we refine the m_ref percent of the whole domain
             T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
-	    
+
             std::vector<unsigned> boxes = getBoxes(m_pointErrors, threshold);
             if(boxes.size()==0)
                 return false;
-	    
+
             gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
             basis->refineElements(boxes);
-	    
-            gsInfo << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
+
+            gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
         }
         else
         {
-            gsInfo << "Tolerance reached.\n";
+            gsDebug << "Tolerance reached.\n";
             return false;
         }
     }
@@ -237,12 +237,12 @@ void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_thr
         newIteration = nextIteration( tolerance, err_threshold );
         if( m_max_error <= tolerance )
         {
-            gsInfo << "Tolerance reached at iteration: " << i << "\n";
+            gsDebug << "Tolerance reached at iteration: " << i << "\n";
             break;
         }
         if( !newIteration )
         {
-            gsInfo << "No more Boxes to insert at iteration: " << i << "\n";
+            gsDebug << "No more Boxes to insert at iteration: " << i << "\n";
             break;
         }
     }

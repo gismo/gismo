@@ -697,15 +697,15 @@ public:
             systemcall << "\"\"" << config.getCmd() << "\" "
                        << config.getFlags() << " \""
                        << srcName.str()     << "\" "
-             << config.getOut() << "\"" << libName.str() << "\"\"";
+                       << config.getOut() << "\"" << libName.str() << "\"\"";
 #           else
-      systemcall << "\"" << config.getCmd() << "\" "
+            systemcall << "\"" << config.getCmd() << "\" "
                        << config.getFlags() << " \""
                        << srcName.str()     << "\" "
-             << config.getOut() << "\"" << libName.str() << "\"";
+                       << config.getOut() << "\"" << libName.str() << "\"";
 #           endif
             
-            gsInfo << "Compiling dynamic library: " << systemcall.str() << "\n";
+            gsDebug << "Compiling dynamic library: " << systemcall.str() << "\n";
             if(std::system(systemcall.str().c_str()) != 0)
                 throw std::runtime_error("An error occured while compiling the kernel source code");
         }

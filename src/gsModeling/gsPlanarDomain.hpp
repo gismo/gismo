@@ -83,8 +83,8 @@ bool gsPlanarDomain<T>::inDomain( gsMatrix<T> const & u, int direction)
 
     //   gsDebug<< "intersections:\n";
     //   for( std::size_t i = 0; i!=tmp.size(); ++i)
-    //     gsInfo<< " "<< tmp[i];
-    //   gsInfo<<"\n";
+    //     gsDebug<< " "<< tmp[i];
+    //   gsDebug<<"\n";
 
     if ( tmp.empty() ) // point outside the outer loop
         return false;
@@ -117,7 +117,7 @@ bool gsPlanarDomain<T>::inDomain( gsMatrix<T> const & u, int direction)
 
             for(index_t i=0; i!=e.cols(); i++)
             {
-                // gsInfo<<"e(1,i) "<< e(1,i)<<"\n";
+                // gsDebug<<"e(1,i) "<< e(1,i)<<"\n";
                 if( e(!direction,i) > u(!direction,0) )
                     count++;
 
@@ -265,7 +265,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
 
     T xi = m_bbox(0,1);
     std::vector<T> tmp = m_loops[0]->lineIntersections(0, xi );// segments
-    std::cout<<"----- INTs:  "<<tmp.size()<<"( "<<xi<<") \n";
+    gsDebug<<"----- INTs:  "<<tmp.size()<<"( "<<xi<<") \n";
     gsAsMatrix<T> xxi(tmp);
     gsMatrix<T> xev;
     m_loops[0]->curve(0).eval_into(xxi, xev );// Push forward onto the curve: xev.row(1)==xi
@@ -293,8 +293,8 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     for ( int i = 0; i!= npoints-1; ++i )
     {
         tmp = m_loops[0]->lineIntersections(0, xi );
-        std::cout<<"----- INTs:  "<<tmp.size()<<"( "<<xi<<") \n";
-        //std::cout<<"----- INTs x:  "<<tmp.size()<<", i="<<i<<"\n";
+        gsDebug<<"----- INTs:  "<<tmp.size()<<"( "<<xi<<") \n";
+        //gsDebug<<"----- INTs x:  "<<tmp.size()<<", i="<<i<<"\n";
         gsAsMatrix<T> xxi(tmp);
         m_loops[0]->curve(0).eval_into(xxi, xev );
         x_seg = xev.row(1) ;// xev.row(0)==xi
@@ -323,7 +323,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     std::sort( x_seg_begin.begin(), x_seg_begin.end(), Yless<T> );
     std::sort( x_seg_end.begin()  , x_seg_end.end()  , Yless<T> );
 
-    std::cout<<"x-segments: "<<x_seg_begin.size()<<", "<<x_seg_end.size()<<"\n";
+    gsDebug<<"x-segments: "<<x_seg_begin.size()<<", "<<x_seg_end.size()<<"\n";
 
     //========== 3. March on x-parallel segments
     bool SegStart(false), SegEnd(false);
@@ -337,11 +337,11 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     for ( int i = 0; i!= npoints; ++i )
     {
         tmp = m_loops[0]->lineIntersections(1, yi );
-        //std::cout<<"----- INTs y: "<<tmp.size()<<"\n";
+        //gsDebug<<"----- INTs y: "<<tmp.size()<<"\n";
 
         if ( ! tmp.empty() ) // Intersection event
         {
-            std::cout<<"---  Intersection event "<<i<<"( "<<yi<<" )\n";
+            gsDebug<<"---  Intersection event "<<i<<"( "<<yi<<" )\n";
 
             // Compute intersections with y=yi
             gsAsMatrix<T> yyi(tmp);
@@ -355,13 +355,13 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
             // Look for SegEnd events
             while( es != x_seg_end.end() &&  (*es)->y() < yi )
             {// Property: every line has unique points wrt x-coord
-                std::cout<<"SegEnd: "<< **es ;
+                gsDebug<<"SegEnd: "<< **es ;
                 SegEnd=true;
 
                 for ( VertexListIter it= line0.begin(); it!= line0.end(); ++it )
                     if (  (*it)->x() == (*es)->x() )
                     {
-                        std::cout<<"SegEnd: removed "<< **it ;
+                        gsDebug<<"SegEnd: removed "<< **it ;
                         line0.erase( it );
                         break;
                     }
@@ -379,7 +379,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
             while( ss != x_seg_begin.end() &&  (*ss)->y() < yi )
             {
                 SegStart=true;
-                std::cout<<"SegStart: added "<< (*ss)->x() <<".\n";
+                gsDebug<<"SegStart: added "<< (*ss)->x() <<".\n";
                 line0.push_back(*(ss) );
                 v = m->addVertex( (*ss)->x(),  yi );
                 line1.push_back(v);
@@ -389,29 +389,29 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
             std::sort( line0.begin(), line0.end(), Xless<T> );
             std::sort( line1.begin(), line1.end(), Xless<T> );
 
-            std::cout<<"line0  has "<< line0.size()  <<" points\n";
-            std::cout<<"line1  has "<< line1.size()  <<" points\n";
+            gsDebug<<"line0  has "<< line0.size()  <<" points\n";
+            gsDebug<<"line1  has "<< line1.size()  <<" points\n";
 
             // add faces
             if ( ! line1.empty() && line1.size() == line0.size() )
             {
-                std::cout<<"Tiling row "<<i<<".\n";
+                gsDebug<<"Tiling row "<<i<<".\n";
                 VertexListIter it0=line0.begin();
                 for ( VertexListIter it1= line1.begin(); it1!= line1.end()-1; ++it1, ++it0 )
                     m->addFace( *it0, *it1,  *(it1+1), *(it0+1) );
             }
             else
             {
-                std::cout<<"Trouble..\n";
+                gsDebug<<"Trouble..\n";
                 VertexListIter it0=line0.begin();
                 for ( VertexListIter it1= line1.begin(); it1!= line1.end(); ++it1, ++it0 )
-                    std::cout<< (*it0)->x() <<" - "<< (*it1)->x()  <<" \n";
+                    gsDebug<< (*it0)->x() <<" - "<< (*it1)->x()  <<" \n";
                 while ( it0 != line0.end() )
-                    std::cout<< (*it0++)->x() <<" -     * " <<" \n";
+                    gsDebug<< (*it0++)->x() <<" -     * " <<" \n";
 
             }
 
-            std::cout<<"Connecting endpoints.\n";
+            gsDebug<<"Connecting endpoints.\n";
 
             VertexList Yseg;
             // Make boundary vertices on y=yi
@@ -490,7 +490,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     for ( int i = 0; i!= yPoints; ++i )
     {
         std::vector<T> x_all;
-        //std::cout<<" --- before intersections  " << i <<", y="<< y_samples(0,i)  <<"\n";
+        //gsDebug<<" --- before intersections  " << i <<", y="<< y_samples(0,i)  <<"\n";
         for (size_t j=0;j<m_loops.size();j++)
         {
             std::vector<T> x = m_loops[j]->lineIntersections(1, y_samples(0,i) );
@@ -617,17 +617,17 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
 
     //                x_line.push_back( m->addVertex(x[v+1], y_samples(0,i) ) );
     //            }
-    //            //std::cout<<"i: "<< i<< ", sz="<< x_line.size() <<", ints="<< x.size() <<"\n";
-    //            //std::cout<<"x= "<< x[0] <<", "<< x[1] <<"(y="<< y_samples(0,i) <<"\n";
+    //            //gsDebug<<"i: "<< i<< ", sz="<< x_line.size() <<", ints="<< x.size() <<"\n";
+    //            //gsDebug<<"x= "<< x[0] <<", "<< x[1] <<"(y="<< y_samples(0,i) <<"\n";
 
     //            x_samples.insert( make_pair(i,make_pair( x_line, x ) ) ); // i-th sample line
 
 
     //    }
 
-    //std::cout<<" --- mesh DONE  "<< *m  <<"\n";
+    //gsDebug<<" --- mesh DONE  "<< *m  <<"\n";
     // for ( int i = 0; i!= 25; ++i )
-    // 	std::cout<<"--"<<* m->vertex[i] ;
+    //gsDebug<<"--"<<* m->vertex[i] ;
 
     // Zig-zag connection
     //    for ( int i = 0; i!= npoints-1; ++i )
@@ -658,7 +658,7 @@ gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE
     //            }
     //        }
     //    }
-    //gsInfo<<*m;
+    //gsDebug<<*m;
     return m;
 
 }

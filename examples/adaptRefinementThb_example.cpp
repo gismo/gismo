@@ -16,7 +16,6 @@
 # include <gismo.h>
 # include <gsAssembler/gsAdaptiveRefUtils.h>
 
-using namespace std;
 using namespace gismo;
 //! [Include namespace]
 
@@ -48,7 +47,7 @@ int main(int argc, char *argv[])
 
     //! [GetGeometryData]
     // Read xml and create gsMultiPatch
-    string fileSrc( "planar/lshape2d_3patches_thb.xml" );
+    std::string fileSrc( "planar/lshape2d_3patches_thb.xml" );
     gsMultiPatch<real_t> patches;
     gsReadFile<real_t>( fileSrc, patches);
     //! [GetGeometryData]
@@ -61,7 +60,7 @@ int main(int argc, char *argv[])
 
 
     //! [GetGeometryDataTens]
-    string fileSrcTens( "planar/lshape2d_3patches_tens.xml" );
+    std::string fileSrcTens( "planar/lshape2d_3patches_tens.xml" );
     gsMultiPatch<real_t> patchesTens;
     gsReadFile<real_t>( fileSrcTens, patchesTens);
     patchesTens.computeTopology();
@@ -215,7 +214,7 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
                 "file containing Plotting image data.\n";
-        return 0;
+        return EXIT_SUCCESS;
     }
 
 

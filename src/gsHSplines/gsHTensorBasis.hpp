@@ -192,7 +192,7 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
     refine(boxes);
     gsSparseMatrix<> transf;
     this->transfer(OX, transf);
-    std::cout<<"tranf orig:\n"<<transf<<std::endl;
+    gsDebug<<"tranf orig:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
 
@@ -203,7 +203,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vect
     refineElements(boxes);
     gsSparseMatrix<> transf;
     this->transfer(OX, transf);
-    //std::cout<<"tranf orig:\n"<<transf<<std::endl;
+    //gsDebug<<"tranf orig:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
 
@@ -223,7 +223,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vec
     refineElements(boxes);
     gsSparseMatrix<> transf;
     this->transfer2(OX, transf);
-    //std::cout<<"tranf 2:\n"<<transf<<std::endl;
+    //gsDebug<<"tranf 2:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
 
@@ -243,9 +243,9 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
     
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); it.good(); it.next() )
     {
-        //        gsInfo <<" level : "<< it.level() <<"\n";
-        //        gsInfo <<" lower : "<< it.lowerCorner() <<"\n";
-        //        gsInfo <<" upper : "<< it.upperCorner() <<"\n";
+        //        gsDebug <<" level : "<< it.level() <<"\n";
+        //        gsDebug <<" lower : "<< it.lowerCorner() <<"\n";
+        //        gsDebug <<" upper : "<< it.upperCorner() <<"\n";
 
         lvl = it.level() + 1;
         const point & l = it.lowerCorner();

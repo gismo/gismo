@@ -48,7 +48,7 @@ std::vector<unsigned int> random_refinement(int lvl, int max_nb,
     gsVector<unsigned int, 2> i1;
     gsVector<unsigned int, 2> i2;
     span_size = 1 << lvl;
-    //std::cout<<"Spansize is :"<< span_size<<"\n";
+    //gsDebug<<"Spansize is :"<< span_size<<"\n";
 
     // left bottom corner box
     i1.setZero();
@@ -64,7 +64,7 @@ std::vector<unsigned int> random_refinement(int lvl, int max_nb,
     boxes.push_back(i2);
     srand((unsigned)time(NULL));//seed the random alg.
     for(int i = 0; i < lvl; i++){//insert lvl levels
-        //std::cout<<"level: "<<i+1<< "\n";
+        //gsDebug<<"level: "<<i+1<< "\n";
         boxes_in_lvl = (rand()%max_nb);
         if(boxes_in_lvl == 0){
             boxes_in_lvl++;
@@ -82,7 +82,7 @@ std::vector<unsigned int> random_refinement(int lvl, int max_nb,
                 i2[1] = math::max( i2[1], i1[1] + (bas->degree(1)+2)*(1 << lvl) );
 
 
-                //std::cout<<"\naligned box inserted ["<< i1[0]<<" , "<< i1[1]<<"] ["<< i2[0]<<" , "<< i2[1]<<"]"<< " to level "<<i+1 <<"\n";
+                //gsDebug<<"\naligned box inserted ["<< i1[0]<<" , "<< i1[1]<<"] ["<< i2[0]<<" , "<< i2[1]<<"]"<< " to level "<<i+1 <<"\n";
                 boxes_new.push_back(i1);
                 boxes_new.push_back(i2);
                 q.push_back(i+1);
@@ -104,7 +104,7 @@ std::vector<unsigned int> random_refinement(int lvl, int max_nb,
                     i2[0] += span_size;
                     i2[1] += span_size;
                 }
-                //std::cout<<"\nbox inserted ["<< i1[0]<<" , "<< i1[1]<<"] ["<< i2[0]<<" , "<< i2[1]<<"]"<< " to level "<<i+1 <<"\n";
+                //gsDebug<<"\nbox inserted ["<< i1[0]<<" , "<< i1[1]<<"] ["<< i2[0]<<" , "<< i2[1]<<"]"<< " to level "<<i+1 <<"\n";
                 boxes_new.push_back(i1);
                 boxes_new.push_back(i2);
                 q.push_back(i+1);
@@ -120,7 +120,7 @@ std::vector<unsigned int> random_refinement(int lvl, int max_nb,
             }
         }
         span_size = span_size/2;
-        //cout<<"Spansize is :"<< span_size<<endl;
+        //gsDebug<<"Spansize is :"<< span_size<<endl;
         boxes.clear();
         for(unsigned int k = 0; k < boxes_new.size();k++){
             boxes.push_back(boxes_new[k]);

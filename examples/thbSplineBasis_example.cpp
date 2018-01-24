@@ -19,7 +19,6 @@
 //! [Include namespace]
 
 using namespace gismo;
-using namespace std;
 
 int main(int argc, char *argv[])
 {
@@ -50,7 +49,7 @@ int main(int argc, char *argv[])
     //! [constBasis]
 
 
-    cout << "basis before refinement:\n" << thb << endl;
+    gsInfo << "basis before refinement:\n" << thb << std::endl;
 
     // Export the initial basis to paraview files
     gsWriteParaview(thb, "thb0_init" );
@@ -68,10 +67,10 @@ int main(int argc, char *argv[])
 
     // Export the refined basis to paraview files
     gsWriteParaview(thb, "thb1_refined" );
-    cout << "after refinement," << endl;
+    gsInfo << "after refinement," << std::endl;
 
     //! [stdOpsCout]
-    std::cout << "this basis is:\n" << thb << std::endl;
+    gsInfo << "this basis is:\n" << thb << std::endl;
     //! [stdOpsCout]
 
     // --------------- "standard" evaluations ---------------
@@ -92,11 +91,11 @@ int main(int argc, char *argv[])
     thb.active_into( u, resActives);
     thb.eval_into(   u, resEvals);
 
-    std::cout << "active functions: \n" << resActives << std::endl;
-    std::cout << "their values:     \n" << resEvals   << std::endl;
+    gsInfo << "active functions: \n" << resActives << std::endl;
+    gsInfo << "their values:     \n" << resEvals   << std::endl;
     //! [stdOpsStd]
 
-    std::cout << std::endl;
+    gsInfo << std::endl;
 
     // --------------- index-computations ---------------
 
@@ -104,15 +103,15 @@ int main(int argc, char *argv[])
     std::vector<unsigned> tmpFlatIndices;
     std::vector<int>      tmpLevels;
 
-    std::cout << "transform indices\n";
-    std::cout << "global/hier.index  ->  flat tensor index (on level)" << std::endl;
+    gsInfo << "transform indices\n";
+    gsInfo << "global/hier.index  ->  flat tensor index (on level)" << std::endl;
     for( unsigned i = 27; i <= 35; i++)
     {
         // print computed indices/levels
-        std::cout << i;
-        std::cout << "  ->  ";
-        std::cout << thb.flatTensorIndexOf(i);
-        std::cout << "  ( " << thb.levelOf(i) << " )" << std::endl;
+        gsInfo << i;
+        gsInfo << "  ->  ";
+        gsInfo << thb.flatTensorIndexOf(i);
+        gsInfo << "  ( " << thb.levelOf(i) << " )" << std::endl;
 
         // store indices/levels for reverse transformation later
         tmpFlatIndices.push_back( thb.flatTensorIndexOf(i) );
@@ -122,19 +121,19 @@ int main(int argc, char *argv[])
 
 
     //! [indexTransfBack]
-    std::cout << std::endl;
-    std::cout << "reverse index transformation\n";
-    std::cout << "flat tensor index (on level)  ->  global/hier.index" << std::endl;
+    gsInfo << std::endl;
+    gsInfo << "reverse index transformation\n";
+    gsInfo << "flat tensor index (on level)  ->  global/hier.index" << std::endl;
     for( unsigned i = 0; i < tmpLevels.size(); i++ )
     {
         // print global/hierarchical indices
-        std::cout << tmpFlatIndices[i] << "  ( " << tmpLevels[i] << " )";
-        std::cout << "  ->  ";
-        std::cout << thb.flatTensorIndexToHierachicalIndex( tmpFlatIndices[i], tmpLevels[i] ) << std::endl;
+        gsInfo << tmpFlatIndices[i] << "  ( " << tmpLevels[i] << " )";
+        gsInfo << "  ->  ";
+        gsInfo << thb.flatTensorIndexToHierachicalIndex( tmpFlatIndices[i], tmpLevels[i] ) << std::endl;
     }
     //! [indexTransfBack]
 
-    std::cout << std::endl;
+    gsInfo << std::endl;
 
     // --------------- some gsHTensorBasis-specific functions ---------------
     //! [stdOpsHTens]
@@ -143,11 +142,11 @@ int main(int argc, char *argv[])
 
     thb.getLevelUniqueSpanAtPoints(u, resLevels, resLowerCorner);
 
-    std::cout << "levels:        " << std::endl << resLevels.transpose() << std::endl;
-    std::cout << "lower corners: " << std::endl << resLowerCorner        << std::endl;
+    gsInfo << "levels:        " << std::endl << resLevels.transpose() << std::endl;
+    gsInfo << "lower corners: " << std::endl << resLowerCorner        << std::endl;
     //! [stdOpsHTens]
 
-    std::cout << std::endl;
+    gsInfo << std::endl;
 
     // print the underlying tree
     //! [stdOpsHTensTree]
@@ -155,16 +154,16 @@ int main(int argc, char *argv[])
 
     thb.tree().getBoxes( resLowerCorner, resUpperCorner, resLevels);
 
-    std::cout << "levels:        " << std::endl << resLevels      << std::endl;
-    std::cout << "lower corners: " << std::endl << resLowerCorner << std::endl;
-    std::cout << "upper corners: " << std::endl << resUpperCorner << std::endl;
+    gsInfo << "levels:        " << std::endl << resLevels      << std::endl;
+    gsInfo << "lower corners: " << std::endl << resLowerCorner << std::endl;
+    gsInfo << "upper corners: " << std::endl << resUpperCorner << std::endl;
     //! [stdOpsHTensTree]
 
 
 
 
     // --------------- 2nd local refinement ---------------
-    std::cout << std::endl << std::endl;
+    gsInfo << std::endl << std::endl;
 
     //! [refViaStdVec2]
     box.clear();
@@ -176,7 +175,7 @@ int main(int argc, char *argv[])
 
     thb.refineElements(box);
 
-    std::cout << "after 2nd refinement, this basis is:\n" << thb << std::endl;
+    gsInfo << "after 2nd refinement, this basis is:\n" << thb << std::endl;
     //! [refViaStdVec2]
 
     gsWriteParaview(thb, "thb2_refined" );
@@ -193,6 +192,6 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
                 "file containing Plotting image data.\n";
-        return 0;
+        return EXIT_SUCCESS;
     }
 }

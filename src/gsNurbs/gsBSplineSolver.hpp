@@ -75,7 +75,7 @@ bool gsBSplineSolver<T>::nextRoot()
         if (diff<eps)
         {
             x = m_t[m_k];// root found
-            //gsInfo <<"diff converged: Root found at "<< m_k<<", val="<< x <<"m_n="<<m_n <<"\n";
+            //gsDebug <<"diff converged: Root found at "<< m_k<<", val="<< x <<"m_n="<<m_n <<"\n";
             break;
         }
 
@@ -99,7 +99,7 @@ bool gsBSplineSolver<T>::nextRoot()
         const T e = math::max(x, m_t[m_k+m_d-1]) - math::min(x, m_t[m_k+1] );
         if (e < eps)
         {
-            //gsInfo <<"eps: Root found after knot "<< m_k <<" is "<<m_t[m_k]<<", val="<< x <<"\n";
+            //gsDebug <<"eps: Root found after knot "<< m_k <<" is "<<m_t[m_k]<<", val="<< x <<"\n";
             break;
         }
 
@@ -114,8 +114,8 @@ bool gsBSplineSolver<T>::nextRoot()
     if ( m_n>=maxn )
     {
         gsWarn<<"gsBSplineRoot: Maximum number of knots reached: "<< m_n << "\n";
-        //gsInfo<< "m_c:\n"<< m_c.transpose()<<"\n";
-        //gsInfo<< "m_t:\n"<< m_t.transpose()<<"\n";
+        //gsDebug<< "m_c:\n"<< m_c.transpose()<<"\n";
+        //gsDebug<< "m_t:\n"<< m_t.transpose()<<"\n";
         return false;
     }
 
@@ -123,7 +123,7 @@ bool gsBSplineSolver<T>::nextRoot()
 
     // buggy:   while ( m_k<m_n && math::fabs( m_t[m_k]-x)<eps ) m_k++;
 
-    //gsInfo<<"next m_k="<< m_k <<" is "<< m_t[m_k]<<"\n";
+    //gsDebug<<"next m_k="<< m_k <<" is "<< m_t[m_k]<<"\n";
     return true;
 }
 

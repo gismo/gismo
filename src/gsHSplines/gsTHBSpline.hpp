@@ -56,18 +56,18 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 template<unsigned d, class T>
 void gsTHBSpline<d, T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult)
 {
-    std::cout<<"WARNING - this code is not working properly"<<std::endl;
+    gsWarn<<"gsTHBSpline<d, T>::increaseMultiplicity: This code is not working properly!"<<std::endl;
     // Copy the current characteristic matrices
-    std::cout<<"in geo"<<std::endl;
+    gsDebug<<"in geo"<<std::endl;
     std::vector<gsSortedVector<unsigned> > OX = this->basis().getXmatrix();
 
     // Insert the knot in the basis
     this->basis().increaseMultiplicity(lvl,dir,knotValue,mult);
-    std::cout<<"increased"<<std::endl;
+    gsDebug<<"increased"<<std::endl;
     // Compute the transfer matrix
     gsSparseMatrix<T> trMatrix;
     this->basis().transfer(OX, trMatrix);
-    std::cout<<"transfer"<<std::endl;
+    gsDebug<<"transfer"<<std::endl;
     // Multiply the coeffs by the transfer matrix
     this->m_coefs = trMatrix * this->m_coefs;
 }
@@ -147,7 +147,7 @@ void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsig
         p1(0) = b1(i,0); p1(1) = b1(i,1); p2(0) = b2(i,0); p2(1) = b2(i,1);
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);
 
-        std::cout<<"cku: "<<cku<<std::endl<<"ckv: "<<ckv<<std::endl;
+        gsDebug<<"cku: "<<cku<<std::endl<<"ckv: "<<ckv<<std::endl;
 
         if (i == 0){
             cp = temp1;
@@ -163,7 +163,7 @@ void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsig
 
             for (int j = 0; j < temp1.rows(); j++){
                 for (int k = 0; k < temp1.cols(); k++){
-                    //cout<<cprows+j<<endl;
+                    //gsDebug<<cprows+j<<endl;
                     temp2(cprows+j,k) = temp1(j,k);
                 }
             }
@@ -174,12 +174,12 @@ void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsig
         nvertices(i,1) = ckv.size()-ckv.degree()-1;
 
    }*/
-    //cout<<cp<<endl<<endl;
-    //cout<<cp.rows()<<endl;//ok
-    //cout<<"b1 "<<b1.rows()<<endl;
-    //cout<<"b2 "<<b2.rows()<<endl;
-    //cout<<"level "<<level.rows()<<endl;
-    //cout<<"nv "<<nvertices.rows()<<endl;//ko
+    //gsDebug<<cp<<endl<<endl;
+    //gsDebug<<cp.rows()<<endl;//ok
+    //gsDebug<<"b1 "<<b1.rows()<<endl;
+    //gsDebug<<"b2 "<<b2.rows()<<endl;
+    //gsDebug<<"level "<<level.rows()<<endl;
+    //gsDebug<<"nv "<<nvertices.rows()<<endl;//ko
 }
 // ************************************************
 // Private member functions
