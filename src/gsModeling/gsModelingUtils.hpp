@@ -520,9 +520,9 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
 ////   gsDebug<<" tcp: \n"<< tcp<<"\n";
 ////   gsDebug<<" preimageApp: \n"<< preImageApp<<"\n";
 ////   gsDebug<<" imageApp: \n"<< imageApp<<"\n";
-    gsDebug<<" residual of app x constraints: \n"<< *NuApp*tcp.col(0)-imageApp.row(0).transpose()<<std::endl;
-    gsDebug<<" residual of app y constraints: \n"<< *NuApp*tcp.col(1)-imageApp.row(1).transpose()<<std::endl;
-    gsDebug<<" residual of normal constraints: \n"<< AdN*tcp.col(0)+BdN*tcp.col(1)<<std::endl;
+//    gsDebug<<" residual of app x constraints: \n"<< *NuApp*tcp.col(0)-imageApp.row(0).transpose()<<std::endl;
+//    gsDebug<<" residual of app y constraints: \n"<< *NuApp*tcp.col(1)-imageApp.row(1).transpose()<<std::endl;
+//    gsDebug<<" residual of normal constraints: \n"<< AdN*tcp.col(0)+BdN*tcp.col(1)<<std::endl;
 
     outPointResiduals = (NuApp * tcp).transpose() - imageApp;
     outNormalResiduals = AdN * tcp.col(0) + BdN * tcp.col(1);
