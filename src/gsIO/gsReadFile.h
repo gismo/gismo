@@ -44,8 +44,12 @@ class gsReadFile
 public:
 
     /** 
-        \brief Opens a file and reads an object into a pointer. This is
-        used in conjuction with a cast operator to a pointer type
+        \brief Opens a file and reads an object into a smartpointer
+        (uPtr) or an object itself. This is used in conjuction with
+        cast operators and depends on the type of object. Most types
+        are casted to uPtr. gsMultiPatch will be a gsMultiPatch object.
+        For gsBasis there exists a cast opterator to
+        std::vector<gsBasis<T>::uPtr>.
         
         @param fn filename string
     */
