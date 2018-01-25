@@ -44,7 +44,7 @@ void writeSingleBasisMesh3D(const gsMesh<T> & sl,
     mfn.append(".vtu");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        std::cout<<"Problem opening "<<fn<<std::endl;
+        gsWarn<<"writeSingleBasisMesh3D: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     
@@ -129,7 +129,7 @@ void writeSingleBasisMesh2D(const gsMesh<T> & sl,
     mfn.append(".vtu");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        std::cout<<"Problem opening "<<fn<<std::endl;
+        gsWarn<<"writeSingleBasisMesh2D: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     
@@ -258,7 +258,7 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
     }
     else if (n>3)
     {
-        gsInfo<<"Writing 4th coordinate\n";
+        gsDebug<<"Writing 4th coordinate\n";
         const gsMatrix<T> & cp = Geo.coefs();
         gsWriteParaviewPoints<T>(cp.transpose(), fn );
         return;
@@ -494,7 +494,7 @@ void writeSingleGeometry(gsFunction<T> const& func,
     mfn.append(".vts");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        std::cout<<"Problem opening "<<fn<<std::endl;
+        gsWarn<<"writeSingleGeometry: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     file <<"<?xml version=\"1.0\"?>\n";
@@ -573,7 +573,7 @@ void writeSingleCurve(gsFunction<T> const& func,
     mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        gsInfo<<"Problem opening "<<fn<<"\n";
+        gsWarn<<"writeSingleCurve: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     file <<"<?xml version=\"1.0\"?>\n";
@@ -842,7 +842,7 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
     mfn.append(".vts");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        std::cout<<"Problem opening "<<fn<<std::endl;
+        gsWarn<<"gsWriteParaview_basisFnct: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     file <<"<?xml version=\"1.0\"?>\n";
@@ -901,7 +901,7 @@ void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::st
     mfn.append(".vts");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        std::cout<<"Problem opening "<<fn<<std::endl;
+        gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     file <<"<?xml version=\"1.0\"?>\n";
@@ -974,7 +974,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::stri
     mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        std::cout<<"Problem opening "<<fn<<std::endl;
+        gsWarn<<"gsWriteParaviewPoints: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     file <<"<?xml version=\"1.0\"?>\n";
@@ -1241,7 +1241,7 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
     mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        std::cout<<"Problem opening "<<fn<<std::endl;
+        gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     file <<"<?xml version=\"1.0\"?>\n";
@@ -1265,16 +1265,16 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
     }}
 
 
-    //std::cout<<"\n ------------------------------------- number of hafl faces: "<< sl.nHalfFaces();
+    //gsDebug<<"\n ------------------------------------- number of hafl faces: "<< sl.nHalfFaces();
     for (int iface=0;iface!= sl.nHalfFaces();iface++)
     {
         face = sl.getHalfFaceFromID(iface);
-        //std::cout<<"\n ------------------------------------- vol of face:"<< face->vol->getId()<< " :for face: "<< iface <<"\n";
-        //std::cout << std::flush;
+        //gsDebug<<"\n ------------------------------------- vol of face:"<< face->vol->getId()<< " :for face: "<< iface <<"\n";
+        //gsDebug << std::flush;
         if (face->vol->getId()==vol_Num)
         {
             numOfCurves=face->nCurvesOfOneLoop(0);
-            //std::cout<<"\n -----------INSIDE-------------------- vol of face:"<< face->vol->getId()<< " :for face: "<< iface <<"\n";
+            //gsDebug<<"\n -----------INSIDE-------------------- vol of face:"<< face->vol->getId()<< " :for face: "<< iface <<"\n";
 
             for (int iedge=0; iedge!= numOfCurves; iedge++)
             {
@@ -1393,7 +1393,7 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
     mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
-        std::cout<<"Problem opening "<<fn<<std::endl;
+        gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
     

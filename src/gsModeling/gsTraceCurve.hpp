@@ -79,14 +79,14 @@ void gsTraceLine( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
   do
   {
       count++;
-      //std::cout<< "Point "<<count <<"= "<< current.transpose() <<"\n";
+      //gsDebug<< "Point "<<count <<"= "<< current.transpose() <<"\n";
       
       Jmap.row(0) =  map.first->jacobian(current );
       Jmap.row(1) =  map.second->jacobian(current);
       
       if ( math::abs( Jmap.determinant() ) < 0.0001) //0.025 amoeba_hole,austria_hole
             {
-               gsInfo<< "\n trace line: \n Jacobian vanished at : " << current.transpose() <<"\n"
+               gsDebug<< "\n trace line: \n Jacobian vanished at : " << current.transpose() <<"\n"
                    "with Jacobian = "<< math::abs( Jmap.determinant() )<<"\n \n";
 
                loops =-1 ;
@@ -102,7 +102,7 @@ void gsTraceLine( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
       line.row(0)=px;
       line.row(1)=py;
       
-      // std::cout<<"loops="<<loops<<"\n";
+      // gsDebug<<"loops="<<loops<<"\n";
       
   }
   while((--loops > 0) && ( (line-next).norm() > tolerance  ) );
@@ -110,7 +110,7 @@ void gsTraceLine( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
   
   result = current;
   
-  // std::cout<<"points traced : "<< result<< "\n";
+  // gsDebug<<"points traced : "<< result<< "\n";
   
 
 
@@ -205,7 +205,7 @@ void gsTraceCurve( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
    line.row(0)=px;
    line.row(1)=py;
    
-   //std::cout<<"\n loops = "<<loops<<"\n";
+   //gsDebug<<"\n loops = "<<loops<<"\n";
    
   
   }
@@ -213,7 +213,7 @@ void gsTraceCurve( std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
   
 
   result.col(n_points-i-1) = current;
-// gsInfo<<"\n result.col("<<i<<") : \n" << result.col(i)<<"\n";
+// gsDebug<<"\n result.col("<<i<<") : \n" << result.col(i)<<"\n";
   
 
 
@@ -280,10 +280,10 @@ void gsTraceCurvePart(std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
             Jmap.row(0) =  map.first->jacobian(current);
             Jmap.row(1) =  map.second->jacobian(current);
             
-            //std::cout<<"jacobian matrix is \n"<< Jmap<<"\n";
+            //gsDebug<<"jacobian matrix is \n"<< Jmap<<"\n";
             if ( math::abs( Jmap.determinant() ) < 0.01) //0.025 amoeba_hole,austria_hole
             {
-                gsInfo<< "Jacobian vanished at : " << current.transpose() <<"\n"
+                gsDebug<< "Jacobian vanished at : " << current.transpose() <<"\n"
                 "with Jacobian = "<< math::abs( Jmap.determinant() )<<"\n \n";
 
                 cont = false;
@@ -308,9 +308,9 @@ void gsTraceCurvePart(std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
         result.col(i) = current;
     }
    
-  // gsInfo<< "Size expected:"<< result.cols() <<"\n";
+  // gsDebug<< "Size expected:"<< result.cols() <<"\n";
     result.conservativeResize( Eigen::NoChange, i);
-    //gsInfo<< "Size finally :"<< result.cols()  <<"\n";
+    //gsDebug<< "Size finally :"<< result.cols()  <<"\n";
     
     
    

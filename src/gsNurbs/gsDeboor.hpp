@@ -144,12 +144,9 @@ void gsTensorDeboor( //LC
     base.eval_into(u, B);   // col j = nonzero basis functions at column point u(..,j)
     base.active_into(u, ind);// col j = indices of active functions at column point u(..,j)
 
-
-//    std::cout << " B: " << B << std::endl;
-
-//    std::cout << "u: \n" << u << std::endl;
-//    std::cout << "B: \n" << B << std::endl;
-//    std::cout << "ind: \n" << ind << std::endl;
+//    gsDebug << "u: \n" << u << std::endl;
+//    gsDebug << "B: \n" << B << std::endl;
+//    gsDebug << "ind: \n" << ind << std::endl;
 
     for ( index_t j=0; j< u.cols() ; j++ ) // for all points (columns of u)
     {
@@ -181,9 +178,9 @@ void gsTensorDeriv_into(const gsMatrix<T>& u,
     base.deriv_into(u, deriv);   // col j = nonzero basis functions at column point u(..,j)
     base.active_into(u, ind);// col j = indices of active functions at column point u(..,j)
 
-//    std::cout << "jaka n = d: " << d << std::endl;
-//    std::cout << "ind: " << ind.rows() << " x " << ind.cols() << std::endl;
-//    std::cout << "B: " << B.rows() << " x " << B.cols() << std::endl;
+//    gsDebug << "jaka n = d: " << d << std::endl;
+//    gsDebug << "ind: " << ind.rows() << " x " << ind.cols() << std::endl;
+//    gsDebug << "B: " << B.rows() << " x " << B.cols() << std::endl;
 
 
     for (unsigned j = 0; j < nPts; ++j)
@@ -239,7 +236,7 @@ void gsTensorDeboor_v2(
 
 //    if (0 < log)
 //    {
-//        std::cout << "coefs: " << coefs.rows() << " x " << coefs.cols()
+//        gsDebug << "coefs: " << coefs.rows() << " x " << coefs.cols()
 //                  << std::endl;
 //    }
 
@@ -265,13 +262,13 @@ void gsTensorDeboor_v2(
     {
 //        if (0 < log)
 //        {
-//            std::cout << "\n---------------------------------------------"
+//            gsDebug << "\n---------------------------------------------"
 //                      << std::endl;
 
-//            std::cout << "u( " << i << " ): ";
+//            gsDebug << "u( " << i << " ): ";
 //            for (unsigned dim = 0; dim < d; dim++)
-//                std::cout << u(dim, i) << " ";
-//            std::cout << std::endl;
+//                gsDebug << u(dim, i) << " ";
+//            gsDebug << std::endl;
 //        }
 
         std::vector<bool> is_last(d, false);
@@ -293,12 +290,12 @@ void gsTensorDeboor_v2(
 
 //        if (1 < log)
 //        {
-//            std::cout << "low: " << low.transpose() << "\nupp: "
+//            gsDebug << "low: " << low.transpose() << "\nupp: "
 //                      << upp.transpose() << std::endl;
 //        }
 //        if (0 < log)
 //        {
-//            std::cout << "size_of_coefs: " << size_of_coefs.transpose() << "\n"
+//            gsDebug << "size_of_coefs: " << size_of_coefs.transpose() << "\n"
 //                      << "number_of_coefs: " << nmb_of_coefs
 //                      << std::endl;
 //        }
@@ -327,7 +324,7 @@ void gsTensorDeboor_v2(
         {
 //            if (10 < log)
 //            {
-//                std::cout << "coefs_position: "
+//                gsDebug << "coefs_position: "
 //                          << coefs_position.transpose() << "\n"
 //                          << "tmp_coefs_position: "
 //                          << tmp_coefs_position.transpose() << "\n"
@@ -348,7 +345,7 @@ void gsTensorDeboor_v2(
 
 //        if (1 < log)
 //        {
-//            std::cout << "tmp_coefs: \n" << tmp_coefs << std::endl;
+//            gsDebug << "tmp_coefs: \n" << tmp_coefs << std::endl;
 //        }
 
 
@@ -387,7 +384,7 @@ void gsTensorDeboor_v2(
 
 //        if (0 < log)
 //        {
-//            std::cout << "Point is: \n"
+//            gsDebug << "Point is: \n"
 //                      << tmp_coefs.row(flat_index)
 //                      << std::endl;
 //        }

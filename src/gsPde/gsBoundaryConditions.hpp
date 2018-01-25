@@ -182,15 +182,15 @@ public:
         for (bctype_map_it it = fi.begin(); it != fi.end(); ++it)
         {
             std::string label = it->first;
-            //std::cout << "Label='" << label << "'\n";
+            //gsDebug << "Label='" << label << "'\n";
             bctype_map map = it->second;
 
             for (bctype_iv_it bcV = map.begin(); bcV != map.end(); ++bcV)
             {
                 int index = bcV->first;
                 bctype_vec vec = bcV->second;
-                //std::cout << "index='" << index << "'\n";
-                //std::cout << "vec='" << vec.size() << "'\n";
+                //gsDebug << "index='" << index << "'\n";
+                //gsDebug << "vec='" << vec.size() << "'\n";
                 gsXmlNode * bcNode = internal::makeNode("bc", data);
                 gsXmlAttribute * typeNode = internal::makeAttribute("type",
                         label, data);
@@ -203,7 +203,7 @@ public:
                 for (bctype_vec_it bc = vec.begin(); bc != vec.end(); ++bc)
                 {
                     const boundary_condition<T> b = (**bc);
-                    //std::cout << "iterate over boundary condition with '"
+                    //gsDebug << "iterate over boundary condition with '"
                     //        << b.m_label << "'\n";
                     if (first)
                     {
@@ -243,7 +243,7 @@ public:
             oss << c.value;
             char * value = data.allocate_string(oss.str().c_str());
             cvNode->value(value);
-            /// std::cout << "Corner value='" << c.value << ", " << c.patch << ", " << c.unknown << "'\n";
+            /// gsDebug << "Corner value='" << c.value << ", " << c.patch << ", " << c.unknown << "'\n";
             BCs->append_node(cvNode);
         }
         return BCs;

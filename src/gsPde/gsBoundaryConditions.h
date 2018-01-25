@@ -59,7 +59,7 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
         break;
     }
     default:
-        gsInfo<< "condition type not known.\n";
+        os<< "condition type not known.\n";
     };
     return os;
 }

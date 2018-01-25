@@ -23,10 +23,10 @@ inline unsigned translateIndex( unsigned const & i,
         return i << (lvl2-lvl1);
     else // lvl1 >= lvl2
       {
-	if ( lvl1< lvl2 )
-	  return i >> (lvl1-lvl2);
-	else
-	  return i;
+    if ( lvl1< lvl2 )
+        return i >> (lvl1-lvl2);
+    else
+        return i;
       }
 }
 */
@@ -1074,7 +1074,7 @@ gsHDomain<d,T>::connect_Boxes2d(std::vector<std::vector<unsigned int> > &boxes) 
             }
         }
     }
-    //std::cout<<"in the connecting fucntion"<<boxes.size()<<std::endl;
+    //gsDebug<<"in the connecting fucntion"<<boxes.size()<<std::endl;
 }
 
 template<unsigned d, class T> void
@@ -1222,7 +1222,7 @@ void gsHDomain<d,T>::connect_Boxes_2(std::vector<std::vector<unsigned int> > &bo
 
 
 
-    //std::cout<<"in the connecting fucntion"<<boxes.size()<<std::endl;
+    //gsDebug<<"in the connecting fucntion"<<boxes.size()<<std::endl;
 }
 
 
@@ -1243,16 +1243,16 @@ gsHDomain<d,T>::getBoxes_vec(std::vector<std::vector<unsigned int> >& boxes) con
         
         if ( curNode->isLeaf() )
         {
-	  // We need to convert the indices to those of m_maxInsLevel
-	  // to be able to reconstruct the earlier results.
+            // We need to convert the indices to those of m_maxInsLevel
+            // to be able to reconstruct the earlier results.
             const point & lowerGlob = curNode->lowCorner();
             const point & upperGlob = curNode->uppCorner();
-	    unsigned int level = this->m_maxInsLevel;
-	    point lower;
-	    point upper;
-	    
-	    global2localIndex(lowerGlob,level,lower);
-	    global2localIndex(upperGlob,level,upper);
+            unsigned int level = this->m_maxInsLevel;
+            point lower;
+            point upper;
+
+            global2localIndex(lowerGlob,level,lower);
+            global2localIndex(upperGlob,level,upper);
 
             boxes.push_back(std::vector<unsigned int>());
             for(unsigned i = 0; i < d; i++)
