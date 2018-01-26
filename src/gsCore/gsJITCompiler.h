@@ -224,7 +224,7 @@ struct gsJITCompilerConfig
                                        "-o ");
             break;
         case (gsJITLang::Fortran) :
-            GISMO_ERROR("Error : Clang does not provide any Fortran compiler.")
+            GISMO_ERROR("Error : Clang does not provide any Fortran compiler.");
             break;
         default :
             GISMO_ERROR("Error : Invalid compiler language.");
