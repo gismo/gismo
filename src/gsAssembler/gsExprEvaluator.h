@@ -50,8 +50,14 @@ public:
     gsExprEvaluator() : m_exprdata(gsExprHelper<T>::make()),
     m_options(defaultOptions()) { }
 
+    gsExprEvaluator(typename gsExprHelper<T>::Ptr env)
+    : m_exprdata(env), m_value(-1), m_options(defaultOptions())
+    { }
+
+    //gsExprEvaluator(typename gsExprHelper<T> env)
+
     gsExprEvaluator(const gsExprAssembler<T> & o)
-    : m_exprdata(o.exprData()), m_options(defaultOptions()) //++
+    : m_exprdata(o.exprData()), m_options(defaultOptions())
     { }
 
     gsOptionList defaultOptions()

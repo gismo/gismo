@@ -136,7 +136,7 @@ public:
         m_vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsFeVariable<T> & var = m_vlist.back();
         gsFuncData<T> & fd = m_ptable[&mp];
-        fd.dim = mp.dimensions();
+        //fd.dim = mp.dimensions();
         var.registerData(mp, fd, dim);
         return var;
     }

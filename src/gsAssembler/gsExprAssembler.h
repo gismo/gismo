@@ -166,7 +166,7 @@ public:
     index_t numDofs()
     {
         GISMO_ASSERT( m_vcol.back()->mapper().isFinalized(),
-                      "initSystem() has not been called.");
+                      "gsExprAssembler::numDofs() says: initSystem() has not been called.");
         return m_vcol.back()->mapper().firstIndex() +
             m_vcol.back()->dim() * m_vcol.back()->mapper().freeSize();
     }
@@ -222,6 +222,7 @@ public:
     /// and return a handle to it
     space getSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
     {
+        //if multiBasisSet() then check domainDom
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
         GISMO_ASSERT(static_cast<size_t>(id)<m_vrow.size(),
                      "Given ID "<<id<<" exceeds "<<m_vrow.size()-1 );
@@ -506,9 +507,9 @@ private:
         {
             // ------- Compute  ------- 
             const T * w = m_quWeights.data();
-            localMat = (*w) * ee.eval(0);
+            localMat.noalias() = (*w) * ee.eval(0);
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
-                localMat += (*(++w)) * ee.eval(k);
+                localMat.noalias() += (*(++w)) * ee.eval(k);
 
             //  ------- Accumulate  -------
             if (E::isMatrix())
