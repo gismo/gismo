@@ -733,6 +733,8 @@ public:
 
     void reset()
     {
+        m_mapper = gsDofMapper(); //reset ?
+
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
         {
@@ -758,22 +760,28 @@ public:
                 m_mapper.markBoundary(it->get().ps.patch, bnd);
             }
         }
- /*
         else if (const gsBasis<T> * b =
-                 dynamic_cast<const gsBasis<T>*>(&u.source()) )
+                 dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
-            gsMultiBasis<T> mbb(*b);
-            mbb.getMapper(
-                dirichlet::elimination,
-                0==u.interfaceCont() ? iFace::conforming : iFace::none,
-                ubc, u.mapper(), u.id(), true);
+            m_mapper = gsDofMapper(*b);
+            gsMatrix<unsigned> bnd;
+            for (typename bcRefList::const_iterator
+                     it = this->bc().begin() ; it != this->bc().end(); ++it )
+            {
+                GISMO_ASSERT( it->get().ps.patch == 0,
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = b->boundary( it->get().ps.side() );
+                m_mapper.markBoundary(0, bnd);
+            }
         }
         else
         {
-            gsWarn<<"Problem initializing.\n";
+            GISMO_ASSERT( 0 == this->bc().size(), "Problem: BCs are ignored.");
+            m_mapper.setIdentity(this->source().nPieces(), this->source().size());
         }
-*/
-        this->mapper().finalize();
+
+        m_mapper.finalize();
         //this->mapper().print();
     }
 
@@ -829,8 +837,10 @@ public:
                 }
             }
             else
+            {
                 res.noalias() += _u.data().values[0](i,k) *
                     _u.fixedPart().row( map.global_to_bindex(ii) ).transpose();//head(_u.dim());
+            }
         }
         return res;
     }
