@@ -33,6 +33,8 @@
 //  #include <misc/gsStackWalker.h>
 //#endif
 
+namespace gismo {
+
 /** Logging messages:
  *  gsInfo is ment to be the standard output stream, like for the output of the
  *  executables. In general, the library should not write to gsInfo.
