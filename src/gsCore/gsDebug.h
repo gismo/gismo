@@ -45,24 +45,24 @@
  *  Note that gsWarn cannot be given as a parameter to another function.
  */
 #define gsWarn std::cout<<"Warning: "
-//#define gsWarn if (0) std::cerr
+//#define gsWarn std::cerr
 
 /** Logging messages:
  *  gsDebug and gsDebugVar(.) are for debugging messages and are enabled in debug
  *  mode only.
  *
- *  Note that gsWarn cannot be given as a parameter to another function.
+ *  Note that gsDebug cannot be given as a parameter to another function.
  */
 #ifndef  NDEBUG 
-//#ifdef GISMO_LOGGING_DEBUG
-  #define gsDebug std::cout<<"GISMO_DEBUG: "
 
-#define gsDebugVar(variable) gsDebug << (strrchr(__FILE__, '/') ? \
+    #define gsDebug std::cout<<"GISMO_DEBUG: "
+
+    #define gsDebugVar(variable) gsDebug << (strrchr(__FILE__, '/') ?          \
                              strrchr(__FILE__, '/') + 1 : __FILE__) <<":"<<    \
                               __LINE__<< ", "#variable": \n"<<(variable)<<"\n"
 #else
-  #define gsDebug if (0) std::cerr
-  #define gsDebugVar(variable)
+    #define gsDebug if (0) std::cout
+    #define gsDebugVar(variable)
 #endif
 
 /** 
@@ -79,12 +79,12 @@
  *
  */
 #ifndef NDEBUG
-
-#   define GISMO_ASSERT(condition, message) \
-    do {                                                                \
-        if (! (condition) ) {                                           \
-            gsDebug << "Assertion `" #condition "` failed in " << __FILE__ \
-                    << " line " << __LINE__ <<" ("<<__FUNCTION__<< ").\nMESSAGE: " << message << "\n"; abort(); } \
+#   define GISMO_ASSERT(condition, message)                                  \
+    do {                                                                     \
+        if (! (condition) ) {                                                \
+            gsWarn  << "Assertion `" #condition "` failed in " << __FILE__   \
+                    << " line " << __LINE__ <<" ("<<__FUNCTION__<< ").\n"    \
+                    << "MESSAGE: " << message << "\n"; abort(); }            \
     } while (false)
 #else
 #   define GISMO_ASSERT(condition, message)
@@ -95,30 +95,33 @@
  *  GISMO_ASSERT but it is executed in release builds as well.
  *
  */
-#   define GISMO_ENSURE(condition, message) \
-        if (! (condition) ) {                                           \
-            gsWarn  << "Condition `" #condition "` failed in " << __FILE__ \
-                    << " line " << __LINE__ << ".\nMESSAGE: " << message << "\n"; \
-            throw std::runtime_error("GISMO_ENSURE failure"); \
-        }
+#define GISMO_ENSURE(condition, message)                                     \
+      do {                                                                   \
+          if (! (condition) ) {                                              \
+              gsWarn  << "Condition `" #condition "` failed in " << __FILE__ \
+                      << " line " << __LINE__ << " ("<<__FUNCTION__<< ").\n" \
+                      << "MESSAGE: " << message << "\n";                     \
+              throw std::runtime_error("GISMO_ENSURE failure"); }            \
+      } while (false)
 
 /**  
  *  Denote a variable as unused, used to silence warnings in release
  *  mode builds.
  *
  */
-#   define GISMO_UNUSED(x)  static_cast<void>(x)
+#define GISMO_UNUSED(x)  static_cast<void>(x)
 
-/**  
+/**
  *  Runtime error message
  *
  */
-#   define GISMO_ERROR(message)                 \
-    {                                                                \
-        gsInfo  << "Error in " << __FILE__                      \
-                << " line " << __LINE__ << ".\nMESSAGE: " << message << "\n"; \
-        throw std::runtime_error("GISMO_ERROR");	\
-    }
+#define GISMO_ERROR(message)                                                 \
+    do {                                                                     \
+        gsWarn  << "Error in " << __FILE__                                   \
+                << " line " << __LINE__ << " ("<<__FUNCTION__<< ").\n"       \
+                << ".\nMESSAGE: " << message << "\n";                        \
+        throw std::runtime_error("GISMO_ERROR");                             \
+    } while (false)
 
 /**  
  *  Runtime "no implementation" error happens when the user calls a
@@ -126,12 +129,11 @@
  */
  
 // TO DO: for GCC __PRETTY_FUNC__ is better
-# define GISMO_NO_IMPLEMENTATION \
-  gsInfo<<"Virtual member function \""<< __FUNCTION__ << "(..)\" declared in " \
-  << __FILE__ <<" has not been implemented ("<<typeid(*this).name()<<").\n"; \
+#define GISMO_NO_IMPLEMENTATION                                                      \
+  gsWarn  <<"Virtual member function \""<< __FUNCTION__ << "(..)\" declared in "     \
+          << __FILE__ <<" has not been implemented ("<<typeid(*this).name()<<").\n"; \
   throw std::runtime_error("GISMO_NO_IMPLEMENTATION");
 
-namespace gismo {
 /*
 #ifdef _MSC_VER
 #include <float.h>
