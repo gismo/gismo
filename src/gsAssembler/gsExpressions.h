@@ -576,7 +576,7 @@ public:
     // The evaluation return rows for (basis) functions and columns
     // for (coordinate) components
     MatExprType eval(const index_t k) const
-    //{ return m_fd->values[0].col(k).blockDiag(m_d); }
+    // { return m_fd->values[0].col(k).blockDiag(m_d); } //!!
     { return m_fd->values[0].col(k); }
 
     const gsFeVariable<T> & rowVar() const {return *this;}
@@ -2092,8 +2092,8 @@ public:
               _expr<E2> const& v)
     : _u(u), _v(v) { }
 
-    //const Temporary_t &
-    EIGEN_STRONG_INLINE MatExprType
+    //EIGEN_STRONG_INLINE MatExprType
+    const Temporary_t &
     eval(const index_t k) const
     {
         // _u.printDetail(gsInfo);
@@ -2102,8 +2102,8 @@ public:
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
         // Note: a * b * c --> (a*b).eval()*c
-        //tmp = _u.eval(k) * _v.eval(k); return tmp; // assume result not scalarvalued
-        return ( _u.eval(k) * _v.eval(k) );
+        tmp = _u.eval(k) * _v.eval(k); return tmp; // assume result not scalarvalued
+        //return ( _u.eval(k) * _v.eval(k) );
     }
 
     index_t rows() const { return E1::ScalarValued ? _v.rows()  : _u.rows(); }
