@@ -2868,6 +2868,7 @@ GISMO_SHORTCUT_VAR_EXPRESSION(  div, jac(u).trace() )
 GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized()   ) //(!) bug + mem. leak
 
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv() ) // transpose() problem ??
+GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u) ) // u is presumed to be defined over G
 GISMO_SHORTCUT_PHY_EXPRESSION( ijac, jac(u) * jac(G).ginv())
 GISMO_SHORTCUT_PHY_EXPRESSION( idiv, ijac(u,G).trace()    )
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess,
@@ -2892,7 +2893,7 @@ GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized() )
 template<class T> EIGEN_STRONG_INLINE mult_expr<grad_expr<T>,jacGinv_expr<T>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
 
-    template<class T> EIGEN_STRONG_INLINE grad_expr<T> // u is presumed to be defined over G
+template<class T> EIGEN_STRONG_INLINE grad_expr<T> // u is presumed to be defined over G
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
     
 template<class T> EIGEN_STRONG_INLINE mult_expr<jac_expr<T>,jacGinv_expr<T>, 1>
