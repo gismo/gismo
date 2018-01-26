@@ -20,9 +20,9 @@ namespace gismo
 
 std::ostream & gsBoxTopology::print(std::ostream &os) const
 {
-    if ( this->size() > 0 )
+    if ( nboxes > 0 )
     {
-        os << "gsBoxTopology (" << this->size() << ").\n";
+        os << "gsBoxTopology (" << nboxes << ").\n";
     }
     else
         os << "gsBoxTopology ( empty! ).\n";
@@ -85,7 +85,7 @@ void gsBoxTopology::checkConsistency() const
     if ( numSides != 2 * nInterfaces() + nBoundary() ) {
         std::cerr << "*** WARNING *** gsBoxTopology has inconsistent interfaces or boundaries!" <<
                      std::endl;
-        std::cerr << "                " << size() << " patches with " << numSides << " sides" << std::endl;
+        std::cerr << "                " << nboxes << " patches with " << numSides << " sides" << std::endl;
         std::cerr << "                " << nInterfaces() << " declared interfaces" << std::endl;
         std::cerr << "                " << nBoundary() << " declared boundaries" << std::endl;
         std::cerr << "                this leaves " << numSides - 2 * nInterfaces() - nBoundary() <<

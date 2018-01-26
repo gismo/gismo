@@ -541,11 +541,16 @@ public:
       not be confused with the size eg. of gsGeometry::basis(), which
       is the number of basis functions in the basis
      
-      @return the size of the function set: the number of functions
+      @return the size of the function set: the total number of functions
      
      */
     virtual index_t size() const //= 0;
     {GISMO_NO_IMPLEMENTATION}
+
+    /**
+       @brief Number of pieces in the domain of definition
+     */
+    virtual index_t nPieces() const {return 1;}
 
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const// = 0;

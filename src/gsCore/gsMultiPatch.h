@@ -117,11 +117,12 @@ public:
 
 public:
     
-    const gsGeometry<T> & piece(const index_t i) const
-    { return *m_patches[i]; }
+    const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
 
-    virtual index_t size() const
-    { return m_patches.size(); }
+    /// @brief Number of patches
+    index_t nPieces() const { return static_cast<index_t>(m_patches.size()); }
+
+    //virtual index_t size() const { return 1; }
 
 public:
     /**

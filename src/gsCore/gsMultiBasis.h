@@ -102,6 +102,7 @@ public:
     /// Move assignment operator
     gsMultiBasis& operator= ( gsMultiBasis&& other )
     {
+        freeAll(m_bases);
         m_bases = give(other.m_bases);
         m_topology = give(other.m_topology);
         return *this;
@@ -271,6 +272,9 @@ public:
                       "Invalid patch index"<<i<<" requested from gsMultiBasis" );
         return *m_bases[i]; 
     }
+
+    /// @brief Number of patch-wise bases
+    index_t nPieces() const { return static_cast<index_t>(m_bases.size()); }
 
     /// Return the \a i-th basis block.
     gsBasis<T> & basis(const std::size_t i )
@@ -625,25 +629,10 @@ public:
     void matchInterface(const boundaryInterface & bi,
                         gsDofMapper & mapper) const;
 
-//    // OUTDATED since implementation of matchWith
-//    /**
-//     * @brief Matches the degrees of freedom along an interface.
-//     *
-//     * Same as matchInterface(), but for bases of
-//     * class gsHTensorBasis or derived classes.
-//     *
-//     * \remarks Assumes that the meshes on all levels of
-//     * the gsHTensorBasis are fully matching at the interface.
-//     *
-//     * @param bi specifies the interface to be matched
-//     * @param mapper the gsDofMapper which should know that
-//     * these interface-DOFs are matched.
-//     */
-//    template<unsigned d>
-//    void matchInterfaceHTensor(const boundaryInterface & bi,
-//                               gsDofMapper & mapper) const;
-
-    // Data members
+    /// Tile the parameter domains of the pieces according to the
+    /// topology
+    void tileParameters();
+    
 private:
 
     BasisContainer m_bases;
