@@ -1220,7 +1220,7 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
     gsMatrix<unsigned> globIdxAct;
     gsMatrix<T> basisVals;
 
-    const gsMultiPatch<T> * mp = (const gsMultiPatch<T>*)(& m_exprdata->getMap().source());
+    const gsMultiPatch<T> mp = *(const gsMultiPatch<T> *)(& m_exprdata->getMap().source());
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
@@ -1235,7 +1235,7 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = mbasis[patchIdx];
 
-        typename gsGeometry<T>::Evaluator geoEval( mp->patches()[patchIdx]->evaluator(NEED_MEASURE));
+        typename gsGeometry<T>::Evaluator geoEval( mp.patches()[patchIdx]->evaluator(NEED_MEASURE));
 
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
