@@ -272,7 +272,7 @@ public:
     /// Attempts to return an Isogeometric function for patch i
     const gsGeometry<T> & igaFunction(int i=0) const
     {
-        GISMO_ASSERT(i<m_fields->size(),
+        GISMO_ASSERT(i<m_fields->nPieces(),
                      "gsField: Invalid patch index.");
         GISMO_ASSERT(m_parametric,
                      "Cannot get an IGA function from non-parametric field.");
