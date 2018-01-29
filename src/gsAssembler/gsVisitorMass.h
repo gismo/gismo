@@ -76,21 +76,11 @@ public:
                          gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
-        // /* // standard version
-        for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-        {
-            const T weight = quWeights[k] * geoEval.measure(k);
-            localMat.noalias() += weight * basisData.col(k) * basisData.col(k).transpose();
-        }
-        //*/
-
-        /*
         localMat.noalias() = 
             basisData * quWeights.asDiagonal() * 
             geoEval.measures().asDiagonal() * basisData.transpose();
-        //*/
     }
-    
+
     inline void localToGlobal(const int patchIndex,
                               const std::vector<gsMatrix<T> >    & eliminatedDofs,
                               gsSparseSystem<T>     & system)
