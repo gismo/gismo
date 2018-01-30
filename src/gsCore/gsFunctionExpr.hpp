@@ -296,7 +296,7 @@ return true;
 //*/
 
 template<typename T>
-gsFunctionExpr<T>::gsFunctionExpr() : my(new PrivateData_t(0)) 
+gsFunctionExpr<T>::gsFunctionExpr()// : my(new PrivateData_t(0)) 
 { }
 
 template<typename T>
