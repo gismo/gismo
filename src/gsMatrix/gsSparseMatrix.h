@@ -319,6 +319,102 @@ public:
 
     void rrefInPlace();
 
+    /// Returns a set of (inner) indices, which consists of all
+    /// rows/columns of the matrix with non-zero coefficients at
+    /// columns/rows \a outer
+    template<class container>
+    container innerOf(const container & outer) const
+    {
+        // assume compressed
+        const index_t numSource = outer.size();
+        std::vector<const index_t*>   nzIndices(numSource), end(numSource);
+        std::vector<const index_t**>  nzMin;
+        nzMin.reserve(numSource);
+        container inner;
+        inner.reserve(5*numSource);
+
+        typedef std::vector<const index_t *>::iterator indIter;
+        typedef std::vector<const index_t**>::iterator nzMinIter;
+
+        indIter i = nzIndices.begin();
+        indIter j = end      .begin();
+        for (typename container::const_iterator k =
+                 outer.begin(); k!=outer.end();++i,++j,++k)
+        {
+            *i = this->innerIndexPtr() + this->outerIndexPtr()[*k  ];
+            *j = this->innerIndexPtr() + this->outerIndexPtr()[*k+1];
+        }
+
+        const index_t idMax = this->cols();
+        index_t curMin;
+
+        while (true)
+        {
+            curMin=idMax;
+            nzMin.clear();
+            i = nzIndices.begin();
+            j = end      .begin();
+            for (; i!=nzIndices.end();++i,++j)
+            {
+                if(*i<*j)
+                {
+                    if (**i<curMin)
+                    {
+                        curMin=**i;
+                        nzMin.clear();
+                        nzMin.push_back(&(*i));
+                    }
+                    else if (**i==curMin)
+                    {
+                        nzMin.push_back(&(*i));
+                    }
+                }
+            }
+            if (curMin>=idMax) return inner;
+            inner.push_back(curMin);
+            for(nzMinIter it = nzMin.begin(); it!=nzMin.end(); ++it) ++(**it);
+        }
+    }
+
+    /// Returns the result of multiplication of \a this and \a other,
+    /// where other has rows/columns indexed by \a inner and \a outer
+    template<class container>
+    gsMatrix<T> multiplyBy(const container & inner,
+                           const container & outer,
+                           const gsMatrix<T> & other)
+    {
+        // todo: better implementation
+        return submatrix(inner,outer) * other;
+    }
+
+    /// Returns the submatrix consisting of the rows and columns
+    /// indexed by the vector containers \a inner and \a outer
+    template<class container>
+    gsMatrix<T> submatrix(const container & inner,
+                          const container & outer) const
+    {
+        const index_t nr = inner.size();
+        const index_t nc = outer.size();
+        gsMatrix<T> result(nr, nc);
+        result.setZero();
+        for (index_t c=0; c!=nc; ++c)
+        {
+            iterator it = begin(outer[c]); //sorted iteration
+            for (index_t r=0; r!=nr && it;)
+            {
+
+                while(it && inner[r] > it.index()) ++it;
+                if (it) while(r!=nr && inner[r] < it.index()) ++r;
+                if (r!=nr)
+                {
+                    result(r,c) = it.value();
+                    ++r; ++it;
+                }
+            }
+        }
+        return result;
+    }
+
 private:
     
     /*
@@ -337,9 +433,6 @@ private:
 //inline void gsSparseEntries<T>::add( int const& i, int const& j, const T & value)
 //        { this->push_back( Triplet(i,j,value) ); }
 
-//
-// gsSparseMatrix //////////////////////////////////////////////////////////////
-//
  
 template<typename T, int _Options, typename _Index> inline
 gsSparseMatrix<T, _Options, _Index>::gsSparseMatrix() : Base() { }

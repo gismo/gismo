@@ -576,8 +576,8 @@ public:
     // The evaluation return rows for (basis) functions and columns
     // for (coordinate) components
     MatExprType eval(const index_t k) const
-    { return m_fd->values[0].col(k).blockDiag(m_d); }
-    //{ return m_fd->values[0].block(0,k,rows(),1); }
+    // { return m_fd->values[0].col(k).blockDiag(m_d); } //!!
+    { return m_fd->values[0].col(k); }
 
     const gsFeVariable<T> & rowVar() const {return *this;}
     const gsFeVariable<T> & colVar() const {return gsNullExpr<T>::get();}
@@ -733,6 +733,8 @@ public:
 
     void reset()
     {
+        m_mapper = gsDofMapper(); //reset ?
+
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
         {
@@ -758,22 +760,28 @@ public:
                 m_mapper.markBoundary(it->get().ps.patch, bnd);
             }
         }
- /*
         else if (const gsBasis<T> * b =
-                 dynamic_cast<const gsBasis<T>*>(&u.source()) )
+                 dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
-            gsMultiBasis<T> mbb(*b);
-            mbb.getMapper(
-                dirichlet::elimination,
-                0==u.interfaceCont() ? iFace::conforming : iFace::none,
-                ubc, u.mapper(), u.id(), true);
+            m_mapper = gsDofMapper(*b);
+            gsMatrix<unsigned> bnd;
+            for (typename bcRefList::const_iterator
+                     it = this->bc().begin() ; it != this->bc().end(); ++it )
+            {
+                GISMO_ASSERT( it->get().ps.patch == 0,
+                              "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                bnd = b->boundary( it->get().ps.side() );
+                m_mapper.markBoundary(0, bnd);
+            }
         }
         else
         {
-            gsWarn<<"Problem initializing.\n";
+            GISMO_ASSERT( 0 == this->bc().size(), "Problem: BCs are ignored.");
+            m_mapper.setIdentity(this->source().nPieces(), this->source().size());
         }
-*/
-        this->mapper().finalize();
+
+        m_mapper.finalize();
         //this->mapper().print();
     }
 
@@ -829,8 +837,10 @@ public:
                 }
             }
             else
+            {
                 res.noalias() += _u.data().values[0](i,k) *
                     _u.fixedPart().row( map.global_to_bindex(ii) ).transpose();//head(_u.dim());
+            }
         }
         return res;
     }
@@ -874,8 +884,10 @@ public:
     void setSolutionVector(const gsMatrix<T>& solVector)
     { _Sv = & solVector; }
 
-    const gsMatrix<T> & solutionVector() const { return *_Sv; }
+    const gsMatrix<T> & coefs() const { return *_Sv; }
 
+    gsMatrix<T> & coefs() { return *_Sv; }
+    
     /// Extract the coefficients of piece piece \a p
     void extract(gsMatrix<T> & result, const index_t p = 0) const
     {
@@ -888,12 +900,12 @@ public:
     {
         result.clear();
 
-        const gsMultiBasis<T>* basis = dynamic_cast<const gsMultiBasis<T>* >(&_u.source());
-        for (size_t i = 0; i != basis->nBases(); ++i)
-        {
-            memory::unique_ptr<gsGeometry<T> > p(this->extractPiece(i));
-            result.addPatch(*p);
-        }
+        if( const gsMultiBasis<T>* basis = dynamic_cast<const gsMultiBasis<T>* >(&_u.source()) )
+            for (size_t i = 0; i != basis->nBases(); ++i)
+            {
+                memory::unique_ptr<gsGeometry<T> > p(this->extractPiece(i));
+                result.addPatch(*p);
+            }
     }
 
     /// Extract the piece \a p as a gsGeometry pointer
@@ -966,7 +978,7 @@ public:
                 for (index_t r = 0; r != res.rows(); ++r)
                 {
                     const index_t cgs = r * map.freeSize();
-                    res.row(r) += _u.solutionVector().at(cgs+ii) *
+                    res.row(r) += _u.coefs().at(cgs+ii) *
                         _u.data().values[1]
                         //.block(i*_u.parDim(),k,_u.parDim(),1).transpose();
                         .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
@@ -1028,15 +1040,16 @@ public:
 public:
     enum {ColBlocks = E::ColBlocks};
 
-    // template<bool S  = ColBlocks>
-    // typename util::enable_if<S,MatExprType>::type
     MatExprType eval(const index_t k) const
     {
+        //return eval_impl(k);
+        // /*
         if (E::ColBlocks)
             return _u.eval(k).blockTranspose(_u.cols()/_u.rows());
         else
             //return _u.eval(k).transpose(); // auto
             return _u.eval(k).blockTranspose(1);
+        //*/
     }
 
     index_t rows() const
@@ -1066,6 +1079,16 @@ public:
     static bool colSpan() {return E::rowSpan();}
 
     void print(std::ostream &os) const { os<<"("; _u.print(os); os <<")'"; }
+private:
+/*
+    template<class U> EIGEN_STRONG_INLINE MatExprType
+    eval_impl(const U k, typename util::enable_if<1==ColBlocks,U>::type* = nullptr)
+    { return _u.eval(k).blockTranspose(_u.cols()/_u.rows()); }
+
+    template<class U> EIGEN_STRONG_INLINE MatExprType
+    eval_impl(const U k, typename util::enable_if<0==ColBlocks,U>::type* = nullptr)
+    { return _u.eval(k).transpose(); }
+*/
 };
 
 
@@ -2069,7 +2092,8 @@ public:
               _expr<E2> const& v)
     : _u(u), _v(v) { }
 
-    const Temporary_t & //MatExprType
+    //EIGEN_STRONG_INLINE MatExprType
+    const Temporary_t &
     eval(const index_t k) const
     {
         // _u.printDetail(gsInfo);
@@ -2208,7 +2232,7 @@ public:
     mult_expr(Scalar const & c, _expr<E2> const& v)
     : _c(c), _v(v) { }
 
-    AutoReturn_t eval(const index_t k) const
+    EIGEN_STRONG_INLINE AutoReturn_t eval(const index_t k) const
     {
         return ( _c * _v.eval(k) );
     }
@@ -2844,6 +2868,7 @@ GISMO_SHORTCUT_VAR_EXPRESSION(  div, jac(u).trace() )
 GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized()   ) //(!) bug + mem. leak
 
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv() ) // transpose() problem ??
+GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u) ) // u is presumed to be defined over G
 GISMO_SHORTCUT_PHY_EXPRESSION( ijac, jac(u) * jac(G).ginv())
 GISMO_SHORTCUT_PHY_EXPRESSION( idiv, ijac(u,G).trace()    )
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess,
@@ -2868,7 +2893,7 @@ GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized() )
 template<class T> EIGEN_STRONG_INLINE mult_expr<grad_expr<T>,jacGinv_expr<T>, 0>
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
 
-    template<class T> EIGEN_STRONG_INLINE grad_expr<T> // u is presumed to be defined over G
+template<class T> EIGEN_STRONG_INLINE grad_expr<T> // u is presumed to be defined over G
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
     
 template<class T> EIGEN_STRONG_INLINE mult_expr<jac_expr<T>,jacGinv_expr<T>, 1>

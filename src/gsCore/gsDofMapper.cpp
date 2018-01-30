@@ -245,21 +245,24 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs)
 {
     m_curElimId   = -1;
-    m_numCpldDofs =  1;
     m_numFreeDofs = nDofs;
+    m_numElimDofs = 0;
+    m_numCpldDofs =  1;
+
+    m_shift = m_bshift = 0;
 
     // Initialize all offsets to zero
     m_offset.resize(nPatches, 0);
 
     m_dofs.resize( m_numFreeDofs, 0);
-
-    finalize();
 }
 
 void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes)
 {
     m_curElimId   = -1;
+    m_numElimDofs = 0;
     m_numCpldDofs =  1;
+    m_shift = m_bshift = 0;
 
     const size_t nPatches = patchDofSizes.size();
 

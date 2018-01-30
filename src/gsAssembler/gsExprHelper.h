@@ -136,7 +136,7 @@ public:
         m_vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsFeVariable<T> & var = m_vlist.back();
         gsFuncData<T> & fd = m_ptable[&mp];
-        fd.dim = mp.dimensions();
+        //fd.dim = mp.dimensions();
         var.registerData(mp, fd, dim);
         return var;
     }
@@ -147,7 +147,7 @@ public:
         m_vlist.push_back( expr::gsFeVariable<T>() );
         expr::gsFeVariable<T> & var = m_vlist.back();
         gsFuncData<T> & fd = m_itable[&mp];
-        fd.dim = mp.dimensions();
+        //fd.dim = mp.dimensions();
         var.registerData(mp, fd, 1, mapData);
         return var;
     }
@@ -157,7 +157,7 @@ public:
         m_slist.push_back( expr::gsFeSpace<T>() );
         expr::gsFeSpace<T> & var = m_slist.back();
         gsFuncData<T> & fd = m_ptable[&mp];
-        fd.dim = mp.dimensions();
+        //fd.dim = mp.dimensions();
         var.registerData(mp, fd, dim);
         return var;
     }
