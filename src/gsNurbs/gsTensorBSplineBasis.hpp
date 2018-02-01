@@ -147,6 +147,8 @@ template<unsigned d, class T>
 void gsTensorBSplineBasis<d,T>::
 active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
 {
+    GISMO_ASSERT( u.rows() == static_cast<index_t>(d), "Invalid point dimension: "<<u.rows()<<", expected "<< d);
+
     unsigned firstAct[d];
     gsVector<unsigned, d> v, size;
 

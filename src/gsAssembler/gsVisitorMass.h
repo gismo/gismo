@@ -80,7 +80,7 @@ public:
             basisData * quWeights.asDiagonal() * 
             geoEval.measures().asDiagonal() * basisData.transpose();
     }
-    
+
     inline void localToGlobal(const int patchIndex,
                               const std::vector<gsMatrix<T> >    & eliminatedDofs,
                               gsSparseSystem<T>     & system)

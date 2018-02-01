@@ -22,6 +22,10 @@
 #include <gsPde/gsLaplacePde.h>
 
 
+#include <gsAssembler/gsExpressions.h>
+#include <gsAssembler/gsExprHelper.h>
+#include <gsAssembler/gsExprAssembler.h>
+
 namespace gismo
 {
 
@@ -87,6 +91,26 @@ public:
     /// Mass assembly routine
     const gsSparseMatrix<T> & assembleMass()
     {
+        /*
+        typedef gsExprAssembler<>::geometryMap geometryMap;
+        typedef gsExprAssembler<>::variable    variable;
+        typedef gsExprAssembler<>::space       space;
+        typedef gsExprAssembler<>::solution    solution;
+        
+        // Elements used for numerical integration
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(m_bases.front());
+        geometryMap G = A.getMap(m_pde_ptr->patches());
+        space u = A.getSpace(m_bases.front());
+
+        A.initSystem();
+        //m_system.matrix() = A.assemble( u * u.tr() * meas(G) );
+        A.assemble( u * u.tr() * meas(G) );
+        m_system.matrix() = A.matrix();
+        
+        return m_system.matrix();
+        */
+
         // Clean the sparse system
         gsGenericAssembler::refresh();
         const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
@@ -102,8 +126,30 @@ public:
         return m_system.matrix();
     }
 
-    /// Mass assembly routine
+        /// Mass assembly routine
     const gsSparseMatrix<T> & assembleMass2()
+    {
+        typedef gsExprAssembler<>::geometryMap geometryMap;
+        typedef gsExprAssembler<>::variable    variable;
+        typedef gsExprAssembler<>::space       space;
+        typedef gsExprAssembler<>::solution    solution;
+        
+        // Elements used for numerical integration
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(m_bases.front());
+        geometryMap G = A.getMap(m_pde_ptr->patches());
+        space u = A.getSpace(m_bases.front());
+
+        A.initSystem();
+        //m_system.matrix() = A.assemble( u * u.tr() * meas(G) );
+        A.assemble( u * u.tr() * meas(G) );
+        m_system.matrix() = A.matrix();
+        
+        return m_system.matrix();
+    }
+
+    /*// Mass assembly routine
+    const gsSparseMatrix<T> & assembleMass3()
     {
         // Clean the sparse system
         gsGenericAssembler::refresh();
@@ -112,6 +158,7 @@ public:
         this->finalize();
         return m_system.matrix();
     }
+    */
 
     /// Stiffness assembly routine
     const gsSparseMatrix<T> & assembleStiffness()

@@ -22,14 +22,13 @@ template<class T> class gsBasis;
 
 /** 
     @brief Represents an individual function in a function set, or a
-           certain component of a vecto-valued function
+           certain component of a vector-valued function
 
     It is constructed using a function set and the index of a single
     function in that basis.  Note that it does not own the underlying
-    function set (eg. basis): if you delete the parent object is not
-    deleted. The lifetime of the parent object should be at least the
-    lifetime of gsBasisFun.
-    
+    function set (eg. basis). The lifetime of the parent object should
+    be at least the lifetime of gsBasisFun.
+
     \ingroup function
     \ingroup Core
 */  
@@ -77,6 +76,17 @@ public:
     /// or return false if this is the last basis function
     bool next();
 
+    /// Return false if the the function iteration is invalidated
+    bool valid();
+
+    unsigned index() const { return m_index; }
+    
+    // temporary hack
+    virtual const gsBasisFun & piece(const index_t k) const
+    {
+        return *this; 
+    }
+
 
 // Data members
 private:
@@ -85,9 +95,6 @@ private:
 
 }; // class gsBasisFun
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 template<class T>
 gsBasisFun<T>::gsBasisFun(const gsBasis<T> & basis, const unsigned i )
@@ -112,7 +119,13 @@ gsBasisFun<T>::first()
 template<class T> bool
 gsBasisFun<T>::next()
 {
-    return ( ++m_index < m_basis.size() );
+    return ( ++m_index  < static_cast<unsigned>(m_basis.size()) );
+}
+
+template<class T> bool
+gsBasisFun<T>::valid()
+{
+    return ( m_index  < static_cast<unsigned>(m_basis.size()) );
 }
 
 template<class T> gsMatrix<T>

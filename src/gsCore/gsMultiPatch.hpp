@@ -109,8 +109,8 @@ void gsMultiPatch<T>::setIds()
 template<class T>
 std::ostream& gsMultiPatch<T>::print(std::ostream& os) const 
 {
-    if ( this->size() > 0 ) {
-        os << "gsMultiPatch (" << this->size() << "): ";
+    if ( this->nPatches() > 0 ) {
+        os << "gsMultiPatch (" << this->nPatches() << "): ";
         os << "#Boundaries= " << nBoundary() << ", ";
         os << "#Interfaces= " << nInterfaces() << ".\n";
     } else {
@@ -124,7 +124,7 @@ std::string gsMultiPatch<T>::detail() const
 {
     std::ostringstream os;
     print(os);
-    if ( size() > 0 ) 
+    if ( nPatches() > 0 ) 
     {
         gsBoxTopology::print( os );
     }

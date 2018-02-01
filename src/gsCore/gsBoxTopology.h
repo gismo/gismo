@@ -84,7 +84,7 @@ public:
     }
     
     /// Number of boxes
-    int size () const       { return nboxes; }
+    int nBoxes() const       { return nboxes; }
 
     /// Dimension of the boxes
     int dim  () const       { return m_dim; }
