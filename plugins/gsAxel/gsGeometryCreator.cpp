@@ -216,8 +216,8 @@ void gsGeometryCreator::loadMultiPatch(void)
 
     if ( fileName.size() )
     {
-        gismo::gsMultiPatch<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
-        if ( myGismoData)
+        gismo::gsMultiPatch<double> myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
+        if (!myGismoData.isEmpty())
 	    {
             /* // SmoothPatches
 
@@ -238,10 +238,10 @@ void gsGeometryCreator::loadMultiPatch(void)
             else
             //*/
             {
-                std::cout << "Loading a "<< * myGismoData <<"\n";
+                std::cout << "Loading a "<< myGismoData <<"\n";
 
                 // Create Axel multipatch object
-                gsMultiPatchData * myData = new gsMultiPatchData(myGismoData.release());
+                gsMultiPatchData * myData = new gsMultiPatchData(new gismo::gsMultiPatch<double>(myGismoData));
 
                 myData->setColor(QColor("#0080ff"));
                 double opacity = 1.0 - 0.01 * d->sliderOpacity->value();
