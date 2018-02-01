@@ -168,6 +168,9 @@ public:
     /// manifold (ie. it has no boundaries)
     bool isClosed() { return this->nBoundary() == 0; }
 
+    /// \brief Returns true if gsMultiPatch is empty.
+    const bool isEmpty() const { return this->nPatches() <= 0; }
+
     /// \brief Returns the range of parameter
     gsMatrix<T> parameterRange(int i = 0) const;
 
