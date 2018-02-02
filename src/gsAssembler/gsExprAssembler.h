@@ -1221,7 +1221,7 @@ void gsExprAssembler<T>::computeDirichletDofsL2Proj(const expr::gsFeSpace<T>& u)
     gsMatrix<unsigned> globIdxAct;
     gsMatrix<T> basisVals;
 
-    const gsMultiPatch<T> mp = *(const gsMultiPatch<T> *)(& m_exprdata->getMap().source());
+    const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T> &>(m_exprdata->getMap().source());
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     typedef typename gsBoundaryConditions<T>::bcRefList bcRefList;
