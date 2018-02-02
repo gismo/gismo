@@ -296,7 +296,7 @@ return true;
 //*/
 
 template<typename T>
-gsFunctionExpr<T>::gsFunctionExpr() : my(new PrivateData_t(0)) 
+gsFunctionExpr<T>::gsFunctionExpr() : my(new PrivateData_t(0))
 { }
 
 template<typename T>
@@ -393,6 +393,7 @@ gsFunctionExpr<T> & gsFunctionExpr<T>::operator=(const gsFunctionExpr& other)
 {
     if (this != &other)
     {
+        delete my;
         my = new PrivateData_t(*other.my);
     }
     return *this;
@@ -403,6 +404,7 @@ gsFunctionExpr<T> & gsFunctionExpr<T>::operator=(gsFunctionExpr&& other)
 {
     if (this != &other)
     {
+        delete my;
         my = other.my; other.my = NULL;
     }
     return *this;
