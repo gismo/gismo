@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     
     // Read in a surface
     cout << "Read in "<< gsFileManager::getFilename(fn) <<"\n";
-    memory::unique_ptr< gsMultiPatch<> > mp = gsReadFile<>(fn);
-    cout << *mp <<"\n";
+    gsMultiPatch<> mp = gsReadFile<>(fn);
+    cout << mp <<"\n";
     
     // Get filename and extension
     std::string name = gsFileManager::getBasename (fn);
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     {
         // Write out in parasolid format
 
-        gsWriteParasolid(*mp, name);        
+        gsWriteParasolid(mp, name);
         name += ".xmt_txt";
         cout << "Write out "<< name <<"\n";
     }
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
         // Write out in G+SMO format
         gsFileData<> fd;
         cout << "Write out "<< name <<".xml \n";
-        fd<< *mp;
+        fd<< mp;
         fd.dump(name);
     }
     
