@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
     // Load XML file
     gsMultiPatch<> boundary;
     gsReadFile<>(fn, boundary);
-    GISMO_ENSURE(!boundary.isEmpty(), "The gsMultiPatch is empty - maybe file is missing or corrupt.");
+    GISMO_ENSURE(!boundary.empty(), "The gsMultiPatch is empty - maybe file is missing or corrupt.");
     gsInfo<<"Got "<< boundary <<"\n";
     boundary.computeTopology(tol);
     GISMO_ENSURE( boundary.isClosed(), "The boundary is not closed, adjust tolerance.");

@@ -109,7 +109,7 @@ void gsMultiPatch<T>::setIds()
 template<class T>
 std::ostream& gsMultiPatch<T>::print(std::ostream& os) const 
 {
-    if ( !this->isEmpty() ) {
+    if ( !this->empty() ) {
         os << "gsMultiPatch (" << this->nPatches() << "): ";
         os << "#Boundaries= " << nBoundary() << ", ";
         os << "#Interfaces= " << nInterfaces() << ".\n";
