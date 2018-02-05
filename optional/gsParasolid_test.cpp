@@ -35,7 +35,8 @@ int main(int argc, char *argv[])
     
     // Read in a surface
     cout << "Read in "<< gsFileManager::getFilename(fn) <<"\n";
-    gsMultiPatch<> mp = gsReadFile<>(fn);
+    gsMultiPatch<> mp;
+    gsReadFile<>(fn, mp);
     cout << mp <<"\n";
     
     // Get filename and extension
