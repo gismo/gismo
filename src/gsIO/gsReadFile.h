@@ -45,9 +45,11 @@ public:
 
     /** 
         \brief Opens a file and reads an object into a smartpointer
-        (uPtr) or an object itself. This is used in conjuction with
-        cast operators and depends on the type of object. Most types
-        are casted to uPtr. gsMultiPatch will be a gsMultiPatch object.
+        (uPtr).
+
+        This is used in conjuction with cast operators and depends on
+        the type of object.
+        
         For gsBasis there exists a cast opterator to
         std::vector<gsBasis<T>::uPtr>.
         
@@ -86,11 +88,15 @@ public:
         m_data.getAnyFirst(result);
     }
 
+
     gsReadFile(std::string const & fn, gsMultiPatch<T> & result)
     : m_id(-1)
     { 
         m_data.read(fn);
-        result = this->operator gsMultiPatch<T>();
+        result.clear();
+        memory::unique_ptr< gsMultiPatch<T> > mp = 
+            this->operator memory::unique_ptr< gsMultiPatch<T> >();
+            result = give(*mp);
     }
 
     ~gsReadFile() { m_data.clear(); }
@@ -195,16 +201,7 @@ public:
         gsWarn<< "Failed to read gsMultiPatch from file (not found).\n";
         return memory::unique_ptr< gsMultiPatch<T> >();
     }
-    
-    /// Allows to convert a gsReadFile to a gsMultipatch
-    operator gsMultiPatch<T> ()
-    {
-        memory::unique_ptr< gsMultiPatch<T> > mp = 
-            this->operator memory::unique_ptr< gsMultiPatch<T> >();
-        if (!mp) return gsMultiPatch<T>();
-        return give(*mp);
-    }
-    
+
     /// Allows to read a gsMesh
     operator memory::unique_ptr< gsMesh<T> > () 
     {

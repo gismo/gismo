@@ -33,7 +33,8 @@ int main(int argc, char* argv[])
     cmd.getValues(argc,argv);
 
     // Load XML file
-    gsMultiPatch<> boundary = gsReadFile<>(fn);
+    gsMultiPatch<> boundary;
+    gsReadFile<>(fn, boundary);
     GISMO_ENSURE(!boundary.isEmpty(), "The gsMultiPatch is empty - maybe file is missing or corrupt.");
     gsInfo<<"Got "<< boundary <<"\n";
     boundary.computeTopology(tol);
