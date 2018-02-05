@@ -96,6 +96,7 @@ public:
         result.clear();
         memory::unique_ptr< gsMultiPatch<T> > mp = 
             this->operator memory::unique_ptr< gsMultiPatch<T> >();
+        if(mp)
             result = give(*mp);
     }
 
