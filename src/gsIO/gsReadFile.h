@@ -52,7 +52,14 @@ public:
         
         For gsBasis there exists a cast opterator to
         std::vector<gsBasis<T>::uPtr>.
-        
+
+        If read fails, value inside smartpointer is null.
+        Example of usage:
+        \code{.cpp}
+        gsFunctionExpr<>::uPtr expr;
+        if(expr = gsReadFile<real_t>("/path/to/file.xml"))
+            gsInfo << *expr;
+        \endcode
         @param fn filename string
     */
     gsReadFile(std::string const & fn)
@@ -61,6 +68,10 @@ public:
         m_data.read(fn);
     }
 
+    /*! @copydoc gsReadFile::gsReadFile(std::string const &)
+     *
+     * @param id
+     */
     gsReadFile(std::string const & fn, index_t id)
     : m_id(id)
     { 
@@ -76,23 +87,35 @@ public:
         gsMultiPatch<> MP;
         gsReadFile<>(filenane, MP);
         \endcode
-
+        \exception std::runtime_error Error reading file.
        \param[in] fn filename string
        \param[out] result object to read in
     */
     template<class Obj>
     gsReadFile(std::string const & fn, Obj & result)
     : m_id(-1)
-    { 
-        m_data.read(fn);
+    {
+        GISMO_ENSURE(m_data.read(fn), "Error reading file.");
         m_data.getAnyFirst(result);
     }
 
+    /**
+        \brief Opens a file and reads a gsMultiPatch object into \a result.
 
+        Example of usage:
+        \code{.cpp}
+        std::string filename = "/path/to/file.xml";
+        gsMultiPatch<> MP;
+        gsReadFile<>(filenane, MP);
+        \endcode
+        \exception std::runtime_error Error reading file.
+       \param[in] fn filename string
+       \param[out] result gsMultiPatch object to read in
+    */
     gsReadFile(std::string const & fn, gsMultiPatch<T> & result)
     : m_id(-1)
-    { 
-        m_data.read(fn);
+    {
+        GISMO_ENSURE(m_data.read(fn), "Error reading file.");
         result.clear();
         memory::unique_ptr< gsMultiPatch<T> > mp = 
             this->operator memory::unique_ptr< gsMultiPatch<T> >();

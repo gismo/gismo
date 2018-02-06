@@ -344,8 +344,11 @@ public:
             gsWarn <<"gsFileData: getAnyFirst: Didn't find any "<<
                 internal::gsXml<Object>::type()<<" "<< 
                 internal::gsXml<Object>::tag() <<". Error.\n";
-      }
-        internal::gsXml<Object>::get_into(node, result);// Using gsXmlUtils
+        }
+        else
+        {
+            internal::gsXml<Object>::get_into(node, result);// Using gsXmlUtils
+        }
     }
 
     /// Lists the contents of the filedata

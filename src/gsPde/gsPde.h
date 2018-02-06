@@ -48,6 +48,7 @@ protected:
     }
 public:
     typedef memory::shared_ptr<gsPde> Ptr;
+    typedef memory::unique_ptr<gsPde> uPtr;
     
     /// @brief Constructor without given exact solution.
     gsPde(const gsMultiPatch<T> &domain, const gsBoundaryConditions<T> &bc)
