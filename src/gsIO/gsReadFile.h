@@ -89,7 +89,7 @@ public:
         \endcode
         \exception std::runtime_error Error reading file.
        \param[in] fn filename string
-       \param[out] result object to read in
+       \param[out] result object to read into
     */
     template<class Obj>
     gsReadFile(std::string const & fn, Obj & result)
@@ -110,7 +110,7 @@ public:
         \endcode
         \exception std::runtime_error Error reading file.
        \param[in] fn filename string
-       \param[out] result gsMultiPatch object to read in
+       \param[out] result gsMultiPatch object to read into
     */
     gsReadFile(std::string const & fn, gsMultiPatch<T> & result)
     : m_id(-1)
