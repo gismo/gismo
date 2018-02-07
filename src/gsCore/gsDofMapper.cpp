@@ -143,6 +143,11 @@ void gsDofMapper::matchDofs(index_t u, const gsMatrix<unsigned> & b1,
         this->matchDof( u, b1(k,0), v, b2(k,0) );
 }
 
+void gsDofMapper::markCoupled( index_t i, index_t k )
+{
+    matchDof(k,i,k,i);
+}
+
 void gsDofMapper::markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs )
 {
     for (index_t i = 0; i < boundaryDofs.rows(); ++i)
