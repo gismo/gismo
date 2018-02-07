@@ -236,9 +236,14 @@ public:
     /// Returns the number of patches.
     int nPatches()  const {
         const gsMultiPatch<T>* mp = dynamic_cast<const gsMultiPatch<T>*>(m_patches);
-        GISMO_ASSERT(mp, "gsField::nPatches requires the object to be based on gsMultiPatch.");
-        return mp->nPatches();
+        if (mp)
+            return mp->nPatches();
+        else
+            return 1;
     }
+
+    /// Returns the number of pieces.
+    int nPieces()  const { return m_patches->nPieces(); }
 
     const gsGeometry<T> & geometry() const 
     {
