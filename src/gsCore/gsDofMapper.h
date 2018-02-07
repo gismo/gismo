@@ -205,6 +205,9 @@ public:
     void matchDofs(index_t u, const gsMatrix<unsigned> & b1,
                    index_t v, const gsMatrix<unsigned> & b2);
 
+    /// Mark the local dof \a i of patch \a k as coupled.
+    void markCoupled( index_t i, index_t k );
+
     /// Mark the local dofs \a boundaryDofs of patch \a k as eliminated.
     // to do: put k at the end
     void markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs );
