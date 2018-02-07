@@ -233,8 +233,11 @@ public:
     /// (e.g., if the domain is a surface in three-dimensional space, it returns 3).
     int dim() const { return m_fields->targetDim(); }
 
-    /// Returns the number of patches.
-    int nPatches()  const { return m_patches->size(); }
+    /// Returns something, but not the number of patches.
+    GISMO_DEPRECATED int nPatches()  const { return m_patches->sizes(); }
+
+    /// Returns the number of pieces.
+    int nPieces()  const { return m_patches->nPieces(); }
 
     const gsGeometry<T> & geometry() const 
     {
