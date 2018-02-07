@@ -234,7 +234,11 @@ public:
     int dim() const { return m_fields->targetDim(); }
 
     /// Returns the number of patches.
-    int nPatches()  const { return dynamic_cast<const gsMultiPatch<T>*>(m_patches)->nPatches(); }
+    int nPatches()  const {
+        const gsMultiPatch<T>* mp = dynamic_cast<const gsMultiPatch<T>*>(m_patches);
+        GISMO_ASSERT(mp, "gsField::nPatches requires the object to be based on gsMultiPatch.");
+        return mp->nPatches();
+    }
 
     const gsGeometry<T> & geometry() const 
     {
