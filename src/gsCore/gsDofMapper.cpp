@@ -114,7 +114,10 @@ void gsDofMapper::matchDof( index_t u, index_t i, index_t v, index_t j )
     else if (d1 == 0)   // first dof is a free dof
     {
         if (d2 == 0)
+        {
             MAPPER_PATCH_DOF(i,u) = MAPPER_PATCH_DOF(j,v) = m_numCpldDofs++;  // both are free, assign them a new coupling id
+            if (u==v && i==j) return;
+        }
         else if (d2 > 0)
             MAPPER_PATCH_DOF(i,u) = d2;   // second is coupling, add first to the same coupling group
         else
@@ -221,10 +224,10 @@ void gsDofMapper::finalize()
     }
 
     GISMO_ASSERT(curCplDof == m_numFreeDofs,
-                 "gsDofMapper::finalize() - computed number of coupling" 
+                 "gsDofMapper::finalize() - computed number of coupling "
                  "dofs does not match allocated number, "<<curCplDof<<"!="<<m_numFreeDofs);
     GISMO_ASSERT(curFreeDof + m_numCpldDofs == m_numFreeDofs,
-                 "gsDofMapper::finalize() - computed number of free dofs" 
+                 "gsDofMapper::finalize() - computed number of free dofs " 
                  "does not match allocated number");
 
     // Devise number of eliminated dofs

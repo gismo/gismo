@@ -262,7 +262,7 @@ AmesosSolver::AmesosSolver(const SparseMatrix & A, const int solver)
 
     // Check availability of solver
     GISMO_ENSURE(Factory.Query(SolverType.c_str()),
-                "Error: Amesos solver " + SolverType + " is not available")
+                 "Error: Amesos solver " + SolverType + " is not available");
 
     // Create solver
     myAmesos->Solver = Factory.Create(SolverType.c_str(), my->Problem);
