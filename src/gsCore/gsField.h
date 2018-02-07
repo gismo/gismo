@@ -234,7 +234,11 @@ public:
     int dim() const { return m_fields->targetDim(); }
 
     /// Returns the number of patches.
-    int nPatches()  const { return m_patches->size(); }
+    int nPatches()  const {
+        const gsMultiPatch<T>* mp = dynamic_cast<const gsMultiPatch<T>*>(m_patches);
+        GISMO_ASSERT(mp, "gsField::nPatches requires the object to be based on gsMultiPatch.");
+        return mp->nPatches();
+    }
 
     const gsGeometry<T> & geometry() const 
     {
@@ -254,7 +258,7 @@ public:
     /// Returns the gsGeometry of patch \a i.
     const gsGeometry<T> & patch(int i=0) const 
     {
-        GISMO_ASSERT( i<m_patches->size(),
+        GISMO_ASSERT( i<nPatches(),
                       "gsField: Invalid patch index.");
         GISMO_ASSERT(dynamic_cast<const gsGeometry<T>*>(&m_patches->piece(i)),
                      "No geometry in field. The domain is"<< m_patches->piece(i));
