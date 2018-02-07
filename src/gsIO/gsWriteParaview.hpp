@@ -659,7 +659,7 @@ void gsWriteParaview(const gsField<T> & field,
     }
     */
     
-    const unsigned n = field.nPatches();
+    const unsigned n = field.nPieces();
     gsParaviewCollection collection(fn);
     std::string fileName;
 
