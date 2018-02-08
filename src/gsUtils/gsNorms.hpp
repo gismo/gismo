@@ -94,7 +94,7 @@ T computeL2Distance(const gsField<T>& u, const gsFunction<T>& v, bool isParametr
 {
     T dist = T();
 
-    for (int i = 0; i < u.nPatches(); ++i)
+    for (int i = 0; i < u.nPieces(); ++i)
     {
         T curDist = computeL2Distance( u.patch(i), u.function(i), u.isParametrized(), v, isParametrized_v, numEvals);
         dist += curDist * curDist;
@@ -108,9 +108,9 @@ template <typename T>
 T computeL2Distance(const gsField<T>& u, const gsField<T>& v, int numEvals)
 {
     T dist = T();
-    GISMO_ASSERT( u.nPatches() == v.nPatches(), "Fields not matching: "<<u.nPatches()<<" != "<<v.nPatches() );
+    GISMO_ASSERT( u.nPieces() == v.nPieces(), "Fields not matching: "<<u.nPieces()<<" != "<<v.nPieces() );
 
-    for (int i = 0; i < u.nPatches(); ++i)
+    for (int i = 0; i < u.nPieces(); ++i)
     {
         T curDist = computeL2Distance( u.patch(i), u.function(i), u.isParametrized(), v.function(i), v.isParametrized(), numEvals);
         dist += curDist * curDist;
@@ -294,7 +294,7 @@ T igaFieldL2Distance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
 {
     T dist(0);
 
-    for (int i = 0; i < u.nPatches(); ++i)
+    for (int i = 0; i < u.nPieces(); ++i)
     {
         // extract the "function"-part of the gsField
         const gsGeometry<T> & func  = static_cast<const gsGeometry<T> &>( u.function(i) );
@@ -311,7 +311,7 @@ T igaFieldL2Distance(const gsField<T>& u, const gsFunction<T>& v, const gsMultiB
 {
     T dist(0);
 
-    for (int i = 0; i < u.nPatches(); ++i)
+    for (int i = 0; i < u.nPieces(); ++i)
     {
         // extract the "function"-part of the gsField
         const gsFunction<T> & func  = u.function(i);
@@ -326,9 +326,9 @@ T igaFieldL2Distance(const gsField<T>& u, const gsFunction<T>& v, const gsMultiB
 template <typename T>
 gsVector< gsMatrix<T> > igaFieldL2DistanceEltWiseSq(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam)
 {
-    gsVector< gsMatrix<T> > Errs( u.nPatches() );
+    gsVector< gsMatrix<T> > Errs( u.nPieces() );
 
-    for (int i = 0; i < u.nPatches(); ++i)
+    for (int i = 0; i < u.nPieces(); ++i)
     {
         // extract the "function"-part of the gsField
         const gsGeometry<T> & func  = static_cast<const gsGeometry<T> &>( u.function(i) );
@@ -450,7 +450,7 @@ T igaFieldH1Distance(const gsField<T>& u, const gsFunction<T>& v, const gsMultiB
     T dist(0);
 
 
-    for (int i = 0; i < u.nPatches(); ++i)
+    for (int i = 0; i < u.nPieces(); ++i)
     {
         // extract the "function"-part of the gsField
         const gsFunction<T> & func  = u.function(i);
@@ -560,7 +560,7 @@ T igaFieldH1Distance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
 {
     T dist(0);
 
-    for (int i = 0; i < u.nPatches(); ++i)
+    for (int i = 0; i < u.nPieces(); ++i)
     {
         const gsGeometry<T> & func  = static_cast<const gsGeometry<T> &>( u.function(i) );
         const T curDist = igaH1Distance( u.patch(i), func, v, v_isParam);
@@ -573,10 +573,10 @@ T igaFieldH1Distance(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam
 template <typename T>
 gsVector< gsMatrix<T> > igaFieldH1DistanceEltWiseSq(const gsField<T>& u, const gsFunction<T>& v, bool v_isParam)
 {
-    index_t N = u.nPatches();
+    index_t N = u.nPieces();
     gsVector< gsMatrix<T> > Errs(N);
 
-    for (int i = 0; i < u.nPatches(); ++i)
+    for (int i = 0; i < u.nPieces(); ++i)
     {
         // extract the "function"-part of the gsField
         const gsGeometry<T> & func  = static_cast<const gsGeometry<T> &>( u.function(i) );
@@ -822,7 +822,7 @@ T computeMaximumDistance(const gsField<T>& u, const gsFunction<T>& v, bool isPar
 {
     T dist = T();
 
-    for (int i = 0; i < u.nPatches(); ++i)
+    for (int i = 0; i < u.nPieces(); ++i)
     {
         T curDist = computeMaximumDistance( u.patch(i), u.function(i), u.isParametrized(), v, isParametrized_v, numSamples );
         dist = std::max(dist, curDist);

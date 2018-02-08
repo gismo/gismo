@@ -101,7 +101,7 @@ public:
      * @returns uPtr The <em>j</em>-th column of \a uPtr corresponds
      * to the image of the point \a u_j (which is defined by the \a j-th column of the input parameter \a u).
      */
-     gsMatrix<T> point(const gsMatrix<T>& u, int i = 0) const
+    gsMatrix<T> point(const gsMatrix<T>& u, int i = 0) const
     {
         return m_patches->piece(i).eval(u);
     }
@@ -234,11 +234,10 @@ public:
     int dim() const { return m_fields->targetDim(); }
 
     /// Returns the number of patches.
-    int nPatches()  const {
-        const gsMultiPatch<T>* mp = dynamic_cast<const gsMultiPatch<T>*>(m_patches);
-        GISMO_ASSERT(mp, "gsField::nPatches requires the object to be based on gsMultiPatch.");
-        return mp->nPatches();
-    }
+    GISMO_DEPRECATED int nPatches()  const { return m_patches->nPieces(); }
+
+    /// Returns the number of pieces.
+    int nPieces()  const { return m_patches->nPieces(); }
 
     const gsGeometry<T> & geometry() const 
     {
@@ -258,7 +257,7 @@ public:
     /// Returns the gsGeometry of patch \a i.
     const gsGeometry<T> & patch(int i=0) const 
     {
-        GISMO_ASSERT( i<nPatches(),
+        GISMO_ASSERT( i<nPieces(),
                       "gsField: Invalid patch index.");
         GISMO_ASSERT(dynamic_cast<const gsGeometry<T>*>(&m_patches->piece(i)),
                      "No geometry in field. The domain is"<< m_patches->piece(i));
