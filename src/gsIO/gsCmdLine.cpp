@@ -61,9 +61,14 @@ public:
         freeAll( multiStringVals);
         freeAll( switchVals     );
         delete plainStringVal;
-        GISMO_ASSERT(didParseCmdLine, 
-                     "gsCmdLine::getValues was never called. "
-                     "Arguments were not parsed from command line.");
+#ifndef NDEBUG
+        if (!didParseCmdLine)
+        {
+            gsWarn<< "gsCmdLine::getValues was never called. "
+                "Arguments were not parsed from command line.";
+            abort();
+        }
+#endif
     }
 
 public:

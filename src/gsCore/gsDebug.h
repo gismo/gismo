@@ -86,8 +86,9 @@ namespace gismo {
         if (! (condition) ) {                                                \
             gsWarn  << "Assertion `" #condition "` failed in " << __FILE__   \
                     << " line " << __LINE__ <<" ("<<__FUNCTION__<< ").\n"    \
-                    << "MESSAGE: " << message << "\n"; abort(); }            \
-    } while (false)
+                    << "MESSAGE: " << message << "\n";                       \
+              throw std::runtime_error("GISMO_ENSURE failure"); }            \
+} while (false)
 #else
 #   define GISMO_ASSERT(condition, message)
 #endif
