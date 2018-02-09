@@ -576,8 +576,8 @@ public:
     // The evaluation return rows for (basis) functions and columns
     // for (coordinate) components
     MatExprType eval(const index_t k) const
-    // { return m_fd->values[0].col(k).blockDiag(m_d); } //!!
-    { return m_fd->values[0].col(k); }
+    { return m_fd->values[0].col(k).blockDiag(m_d); } //!!
+    //{ return m_fd->values[0].col(k); }
 
     const gsFeVariable<T> & rowVar() const {return *this;}
     const gsFeVariable<T> & colVar() const {return gsNullExpr<T>::get();}

@@ -953,8 +953,11 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
     // initialize flags
 
     m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    m_exprdata->parse(exprLhs,exprRhs);
-
+    if (left ) exprLhs.setFlag();
+    if (right) exprRhs.setFlag();
+    //m_exprdata->parse(exprLhs,exprRhs);
+    //m_exprdata->parse(exprRhs);
+    
     // Local matrix
     gsMatrix<T> localMat, localRhs;
     gsVector<T> quWeights;// quadrature weights
