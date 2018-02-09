@@ -178,8 +178,8 @@ struct unary_evaluator<BlockDiag<ArgType, NumBlocks> >
   EIGEN_STRONG_INLINE
   PacketType packet(Index rowId, Index colId) const
   {
-      if ( rowId / m_rows.value() !=  colId / m_cols.value() )
-          GISMO_ERROR("not implemented");
+      assert( rowId / m_rows.value() !=  colId / m_cols.value() &&
+              "Not implemented");
           
       const Index actual_row  = internal::traits<XprType>::RowsAtCompileTime==1 ? 0
                             : NumBlocks==1 ? rowId

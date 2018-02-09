@@ -18,6 +18,7 @@
 #pragma once
 
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <stdexcept>
 #include <typeinfo>
@@ -81,14 +82,10 @@ namespace gismo {
  *
  */
 #ifndef NDEBUG
-#   define GISMO_ASSERT(condition, message)                                  \
-    do {                                                                     \
-        if (! (condition) ) {                                                \
-            gsWarn  << "Assertion `" #condition "` failed in " << __FILE__   \
-                    << " line " << __LINE__ <<" ("<<__FUNCTION__<< ").\n"    \
-                    << "MESSAGE: " << message << "\n";                       \
-              throw std::runtime_error("GISMO_ASSERT failure"); }            \
-} while (false)
+#   define GISMO_ASSERT(cond, message) do if(!(cond)) {std::stringstream _m_;\
+       _m_<<"GISMO_ASSERT `"<<#cond<<"` "<<message<<"\n"<<__FILE__<<", line "\
+        <<__LINE__<<" ("<<__FUNCTION__<<")";                                 \
+       throw std::logic_error(_m_.str()); } while(false)
 #else
 #   define GISMO_ASSERT(condition, message)
 #endif
@@ -98,14 +95,10 @@ namespace gismo {
  *  GISMO_ASSERT but it is executed in release builds as well.
  *
  */
-#define GISMO_ENSURE(condition, message)                                     \
-      do {                                                                   \
-          if (! (condition) ) {                                              \
-              gsWarn  << "Condition `" #condition "` failed in " << __FILE__ \
-                      << " line " << __LINE__ << " ("<<__FUNCTION__<< ").\n" \
-                      << "MESSAGE: " << message << "\n";                     \
-              throw std::runtime_error("GISMO_ENSURE failure"); }            \
-      } while (false)
+#define GISMO_ENSURE(cond, message) do if(!(cond)) {std::stringstream _m_;   \
+    _m_<<"GISMO_ENSURE `"<<#cond<<"` "<<message<<"\n"<<__FILE__<<", line "   \
+     <<__LINE__<<" ("<< __FUNCTION__<< ")";                                  \
+    throw std::runtime_error(_m_.str());} while(false)
 
 /**  
  *  Denote a variable as unused, used to silence warnings in release
@@ -118,24 +111,21 @@ namespace gismo {
  *  Runtime error message
  *
  */
-#define GISMO_ERROR(message)                                                 \
-    do {                                                                     \
-        gsWarn  << "Error in " << __FILE__                                   \
-                << " line " << __LINE__ << " ("<<__FUNCTION__<< ").\n"       \
-                << ".\nMESSAGE: " << message << "\n";                        \
-        throw std::runtime_error("GISMO_ERROR");                             \
-    } while (false)
+#define GISMO_ERROR(message) do {std::stringstream _m_; _m_<<"GISMO_ERROR "  \
+    <<message<<"\n"<<__FILE__<<", line " <<__LINE__<<" ("<<__FUNCTION__<<")";\
+    throw std::runtime_error(_m_.str());} while(false)
 
 /**  
  *  Runtime "no implementation" error happens when the user calls a
+
  *  virtual member function without a default implementation.
  */
  
 // TO DO: for GCC __PRETTY_FUNC__ is better
-#define GISMO_NO_IMPLEMENTATION                                                      \
-  gsWarn  <<"Virtual member function \""<< __FUNCTION__ << "(..)\" declared in "     \
-          << __FILE__ <<" has not been implemented ("<<typeid(*this).name()<<").\n"; \
-  throw std::runtime_error("GISMO_NO_IMPLEMENTATION");
+#define GISMO_NO_IMPLEMENTATION {std::stringstream _m_;                            \
+    _m_<<"Virtual member function `"<<__FUNCTION__<<"` has not been implemented\n" \
+     <<__FILE__<<", line "<<__LINE__<<"\n"<<typeid(*this).name();                  \
+    throw std::runtime_error(_m_.str());}
 
 /*
 #ifdef _MSC_VER
