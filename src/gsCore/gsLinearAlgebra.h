@@ -135,14 +135,12 @@ public:
     // preserve symmetry.
 
     /// Congugate gradient without preconditioner (identity as preconditioner) 
-    /// The matrix is assumed symmetric and only the lower trinagular part is used
     typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>,
-            Eigen::Lower, Eigen::IdentityPreconditioner> CGIdentity;
+            Eigen::Lower|Eigen::Upper, Eigen::IdentityPreconditioner> CGIdentity;
 
     /// Congugate gradient with diagonal (Jacobi) preconditioner
-    /// The matrix is assumed symmetric and only the lower trinagular part is used
     typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>, 
-            Eigen::Lower, Eigen::DiagonalPreconditioner<T> > CGDiagonal;
+            Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<T> > CGDiagonal;
 
     /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
     typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,

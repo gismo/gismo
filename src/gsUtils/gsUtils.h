@@ -24,7 +24,7 @@
 #include <cstdlib>
 #endif
 
-#define STRINGIGY(x) #x
+#define STRINGIFY(x) #x
 
 namespace gismo
 {

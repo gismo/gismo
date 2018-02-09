@@ -154,7 +154,7 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
         index_t cols() const {return m_cols;}                           \
         std::ostream &print(std::ostream &os) const                     \
         {                                                               \
-            os <<STRINGIGY(gsname)<<"\n";                               \
+            os <<STRINGIFY(gsname)<<"\n";                               \
             return os;                                                  \
         }                                                               \
     };
