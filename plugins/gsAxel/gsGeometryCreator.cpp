@@ -217,7 +217,7 @@ void gsGeometryCreator::loadMultiPatch(void)
     if ( fileName.size() )
     {
         gismo::gsMultiPatch<double>::uPtr myGismoData = gismo::gsReadFile<double>(fileName.toUtf8().constData() ) ;
-        if ( myGismoData)
+        if (myGismoData)
 	    {
             /* // SmoothPatches
 
@@ -238,7 +238,7 @@ void gsGeometryCreator::loadMultiPatch(void)
             else
             //*/
             {
-                std::cout << "Loading a "<< * myGismoData <<"\n";
+                std::cout << "Loading a "<< *myGismoData <<"\n";
 
                 // Create Axel multipatch object
                 gsMultiPatchData * myData = new gsMultiPatchData(myGismoData.release());

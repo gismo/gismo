@@ -33,18 +33,20 @@ int main(int argc, char* argv[])
     cmd.getValues(argc,argv);
 
     // Load XML file
-    gsMultiPatch<>::uPtr boundary = gsReadFile<>(fn);
-    gsInfo<<"Got "<< *boundary <<"\n";
-    boundary->computeTopology(tol);
-    GISMO_ENSURE( boundary->isClosed(), "The boundary is not closed, adjust tolerance.");
-    boundary->closeGaps(tol);
+    gsMultiPatch<> boundary;
+    gsReadFile<>(fn, boundary);
+    GISMO_ENSURE(!boundary.empty(), "The gsMultiPatch is empty - maybe file is missing or corrupt.");
+    gsInfo<<"Got "<< boundary <<"\n";
+    boundary.computeTopology(tol);
+    GISMO_ENSURE( boundary.isClosed(), "The boundary is not closed, adjust tolerance.");
+    boundary.closeGaps(tol);
     
     switch (method)
     {
     case 1:
     {
         gsInfo<<"Using spring patch construction.\n";
-        gsSpringPatch<real_t> spring(*boundary);
+        gsSpringPatch<real_t> spring(boundary);
         gsInfo<<"Created a " << spring.compute() <<"\n";
         if (save) gsWrite(spring.result(), "result_patch");
         break;
@@ -52,7 +54,7 @@ int main(int argc, char* argv[])
     case 2:
     {
         gsInfo<<"Using cross approximation construction.\n";
-        gsCrossApPatch<real_t> cross(*boundary);
+        gsCrossApPatch<real_t> cross(boundary);
         gsInfo<<"Created a " << cross.compute() <<"\n";
         if (save) gsWrite(cross.result(), "result_patch");
         break;
@@ -60,7 +62,7 @@ int main(int argc, char* argv[])
     case 0:
     default:
         gsInfo<<"Using Coons' patch construction.\n";
-        gsCoonsPatch<real_t> coons(*boundary);
+        gsCoonsPatch<real_t> coons(boundary);
         gsInfo<<"Created a " << coons.compute() <<"\n";
         if (save) gsWrite(coons.result(), "result_patch");
         break;

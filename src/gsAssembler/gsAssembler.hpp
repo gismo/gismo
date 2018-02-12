@@ -623,9 +623,9 @@ template<class T>
 gsField<T> gsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
                                                 int unk) const
 {
-    gsMultiPatch<T> * result = new gsMultiPatch<T>;
+    typename gsMultiPatch<T>::Ptr result(new gsMultiPatch<T>);
     constructSolution(solVector,*result, unk);
-    return gsField<T>(m_pde_ptr->domain(), typename gsFunctionSet<T>::Ptr(result), true);
+    return gsField<T>(m_pde_ptr->domain(), result, true);
 }
 
 

@@ -248,20 +248,20 @@ gsNurbsCreator<T>::BSplineSquare( T const & r,
 /// \param r with length of the side of the squares.
 /// \param lx x-coordinate for lower left corner of the rectangle.
 /// \param ly y-coordinate for lower left corner of the rectangle.
-template<class T> gsMultiPatch<T> * 
+template<class T> gsMultiPatch<T>
 gsNurbsCreator<T>::BSplineSquareGrid(int n, int m, 
                                      T const & r,
                                      T const & lx, 
                                      T const & ly)
 {
-    gsMultiPatch<T> * mp = new gsMultiPatch<T>;
+    gsMultiPatch<T> mp;
 
     for(int i = 0; i < n; i++)
         for(int j = 0; j < m; j++)
         {
-            mp->addPatch(BSplineSquare(r,lx + r*i ,ly + r*j).release()) ;
+            mp.addPatch(BSplineSquare(r,lx + r*i ,ly + r*j).release()) ;
         }
-    mp->computeTopology();
+    mp.computeTopology();
     return mp;
 }
 
@@ -333,22 +333,22 @@ gsNurbsCreator<T>::BSplineCube(int deg)
     return TensorBSpline3Ptr(new gsTensorBSpline<3,T>(KV,KV,KV, give(C)));
 }
 
-template<class T> gsMultiPatch<T> *
+template<class T> gsMultiPatch<T>
 gsNurbsCreator<T>::BSplineCubeGrid(int n, int m,int p,
                                      T const & r,
                                      T const & lx,
                                      T const & ly,
                                      T const & lz)
 {
-    gsMultiPatch<T> * mp = new gsMultiPatch<T>;
+    gsMultiPatch<T> mp;
 
     for(int i = 0; i < n; i++)
         for(int j = 0; j < m; j++)
             for(int k = 0; k < p; k++)
         {
-            mp->addPatch(BSplineCube(r,lx + r*i ,ly + r*j,lz+r*k).release()) ;
+            mp.addPatch(BSplineCube(r,lx + r*i ,ly + r*j,lz+r*k).release()) ;
         }
-    mp->computeTopology();
+    mp.computeTopology();
     return mp;
 }
 
@@ -882,24 +882,24 @@ gsNurbsCreator<T>::BSplineLShape_p2C1()
     return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(tK1,tK2, give(C)));
 }
 
-template<class T> gsMultiPatch<T> *
+template<class T> gsMultiPatch<T>
 gsNurbsCreator<T>::BSplineLShapeMultiPatch_p2()
 {
-    gsMultiPatch<T> * mp = new gsMultiPatch<T>;
+    gsMultiPatch<T> mp;
 
     TensorBSpline2Ptr patch1 = BSplineSquare(0.5, 0.0, 0.0);
     patch1->degreeElevate();
-    mp->addPatch(patch1.release()) ;
+    mp.addPatch( give(patch1) ) ;
 
     TensorBSpline2Ptr patch2 = BSplineSquare(0.5, 0, 0.5);
     patch2->degreeElevate();
-    mp->addPatch(patch2.release()) ;
+    mp.addPatch( give(patch2) ) ;
 
     TensorBSpline2Ptr patch3 = BSplineSquare(0.5, 0.5, 0);
     patch3->degreeElevate();
-    mp->addPatch(patch3.release()) ;
+    mp.addPatch( give(patch3) ) ;
 
-    mp->computeTopology();
+    mp.computeTopology();
     return mp;
 }
 

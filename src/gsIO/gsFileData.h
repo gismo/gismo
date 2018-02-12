@@ -270,8 +270,19 @@ public:
         }
     }
 */
-  
-    /// Returns the first Object found in the XML data
+
+    /**
+     * Returns the first Object found in the XML data as uPtr.
+     * Doesn't look for nested objects.
+     * Value of uPtr is null if nothing was found.
+     * \code{.cpp}
+     * gsFunctionExpr<>::uPtr expr;
+     * if (expr = getFirst< gsFunctionExpr<> >())
+     *     gsInfo << expr;
+     * \endcode
+     * @tparam Object Type of object.
+     * @return An uPtr with the object inside, or null inside if no object was found.
+     */
     template<class Object> 
     inline memory::unique_ptr<Object> getFirst() const
     {
@@ -287,8 +298,21 @@ public:
         return memory::make_unique( internal::gsXml<Object>::get(node) );// Using gsXmlUtils
     }
 
+    /**
+     * Returns the first object of this type found in the XML data.
+     * Doesn't look for nested objects.
+     * Writes it into the parameter.
+     * \code{.cpp}
+     * gsMultiPatch<> mp;
+     * if(getFirst(mp))
+     *     gsInfo << mp;
+     * \endcode
+     * @tparam Object Type of object.
+     * @param result Object read into.
+     * @return True if result has been found, false if result was not found.
+     */
     template<class Object> 
-    void getFirst(Object & result) const
+    bool getFirst(Object & result) const
     {
         gsXmlNode* node = getFirstNode(internal::gsXml<Object>::tag(), 
                                        internal::gsXml<Object>::type() );
@@ -297,8 +321,10 @@ public:
             gsWarn<<"gsFileData: getFirst: Didn't find any "<<
                 internal::gsXml<Object>::type()<<" "<< 
                 internal::gsXml<Object>::tag() <<". Error.\n";
+            return false;
         }           
         internal::gsXml<Object>::get_into(node, result);// Using gsXmlUtils
+        return true;
     }
     
     /// Returns a vector with all Objects found in the XML data
@@ -316,8 +342,19 @@ public:
         }
         return result;
     }
-    
-    /// Returns the first Object found in the XML data
+
+    /**
+     * Returns the first Object found in the XML data as uPtr.
+     * Look also for nested objects.
+     * Value of uPtr is null if nothing was found.
+     * \code{.cpp}
+     * gsFunctionExpr<>::uPtr expr;
+     * if (expr = getFirst< gsFunctionExpr<> >())
+     *     gsInfo << expr;
+     * \endcode
+     * @tparam Object Type of object.
+     * @return An uPtr with the object inside, or null inside if no object was found.
+     */
     template<class Object> 
     inline memory::unique_ptr<Object> getAnyFirst() const
     {
@@ -333,9 +370,21 @@ public:
         return memory::make_unique( internal::gsXml<Object>::get(node) );// Using gsXmlUtils
     }
 
-    /// Returns the first Object found in the XML data
+    /**
+     * Returns the first object of this type found in the XML data.
+     * Look also for nested objects.
+     * Writes it into the parameter.
+     * \code{.cpp}
+     * gsMultiPatch<> mp;
+     * if(getFirst(mp))
+     *     gsInfo << mp;
+     * \endcode
+     * @tparam Object Type of object.
+     * @param result Object read into.
+     * @return True if result has been found, false if result was not found.
+     */
     template<class Object>
-    void getAnyFirst(Object & result) const
+    bool getAnyFirst(Object & result) const
     {
         gsXmlNode* node = getAnyFirstNode(internal::gsXml<Object>::tag(), 
                                           internal::gsXml<Object>::type() );
@@ -344,8 +393,10 @@ public:
             gsWarn <<"gsFileData: getAnyFirst: Didn't find any "<<
                 internal::gsXml<Object>::type()<<" "<< 
                 internal::gsXml<Object>::tag() <<". Error.\n";
-      }
+            return false;
+        }
         internal::gsXml<Object>::get_into(node, result);// Using gsXmlUtils
+        return true;
     }
 
     /// Lists the contents of the filedata

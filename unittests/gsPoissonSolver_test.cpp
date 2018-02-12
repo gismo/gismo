@@ -62,7 +62,7 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
                               "sin(pi*x*3)*sin(pi*y*4)-pi/10",2);
 
     // Define Geometry (Unit square with 4 patches)
-    gsMultiPatch<>::uPtr patches = safe( gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5) );
+    gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
 
     // Define Boundary conditions
     gsBoundaryConditions<> bcInfo;
@@ -83,7 +83,7 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
     bcInfo.addCondition(2, boundary::south, condition_type::neumann, &gSouth);
 
     // Copy bases for refinement
-    gsMultiBasis<> refine_bases( *patches );
+    gsMultiBasis<> refine_bases( patches );
 
     // Define discretization space by initial refining the basis of the geometry
     for (int i = 0; i < numRefine; ++i)
@@ -102,7 +102,7 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
         refine_bases.uniformRefine();
 
         // Initilize Assembler
-        gsPoissonAssembler<real_t> poisson(*patches,refine_bases,bcInfo,f,Dstrategy,Istrategy);
+        gsPoissonAssembler<real_t> poisson(patches,refine_bases,bcInfo,f,Dstrategy,Istrategy);
         //gsPoissonAssembler<> poisson(*patches, bcInfo, refine_bases, f);
         
         // Assemble and solve
