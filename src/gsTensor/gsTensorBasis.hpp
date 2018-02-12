@@ -313,9 +313,9 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
        {
        bdofs= dofs / size(k);
        r-=  bdofs;
-       res->block(r,0, bdofs, 1) = *safe( this->slice(i, size(k) - 1) );
+       res->block(r,0, bdofs, 1) = ( this->slice(i, size(k) - 1) );
        r-= bdofs ;
-       res->block(r,0, bdofs, 1) = *safe( this->slice(i,0) );
+       res->block(r,0, bdofs, 1) = ( this->slice(i,0) );
        i++;
        }
 

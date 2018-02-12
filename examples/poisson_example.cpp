@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     // For single patch unit square of quadratic elements use (Note:
     //you need to update the bounadry conditions section for this to
     //work properly!) :
-    //patches = safe( new gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare(2)));
+    //patches = new gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare(2));
 
     // Geometry can also be read from file :
     //patches = gsReadFile<>("planar/lshape_p2.xml");

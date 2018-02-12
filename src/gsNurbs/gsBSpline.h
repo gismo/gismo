@@ -403,7 +403,7 @@ gsBSpline<T> operator*(const gsBSpline<T> & lhs, const gsBSpline<T> & rhs)
     const gsMatrix<T> ev = (lhs.eval(pts)).array() * (rhs.eval(pts)).array();
     
     // fixme: avoid temporaries here
-    return *safe(static_cast<gsBSpline<T>*>(gsBSplineBasis<T>(kv).interpolateData(ev,pts)));
+    return (static_cast<gsBSpline<T>*>(gsBSplineBasis<T>(kv).interpolateData(ev,pts)));
 }
 */
 
