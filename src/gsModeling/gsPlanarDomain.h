@@ -203,20 +203,20 @@ public:
     /// linearly discriti
     void sampleLoop_into( int loopID, int npoints, int numEndPoints, gsMatrix<T> & u );
 
-    typename gsMatrix<T>::uPtr sampleLoop( int loopID, int npoints=50, int numEndPoints=2)
+    gsMatrix<T> sampleLoop( int loopID, int npoints=50, int numEndPoints=2)
     {
-        gsMatrix<T> * u = new gsMatrix<T>;
-        sampleLoop_into( loopID, npoints, numEndPoints, *u );
-        return typename gsMatrix<T>::uPtr(u);
+        gsMatrix<T> u;
+        sampleLoop_into( loopID, npoints, numEndPoints, u );
+        return u;
     }
 
     void sampleCurve_into( int loopID, int curveID, int npoints, gsMatrix<T> & u );
 
-    typename gsMatrix<T>::uPtr sampleCurve(int loopID, int curveID, int npoints = 50)
+    gsMatrix<T> sampleCurve(int loopID, int curveID, int npoints = 50)
     {
-        gsMatrix<T> * u = new gsMatrix<T>;
-        sampleCurve_into( loopID, curveID, npoints, *u );
-        return typename gsMatrix<T>::uPtr(u);
+        gsMatrix<T> u;
+        sampleCurve_into( loopID, curveID, npoints, u );
+        return u;
     }
 
     /// Return a triangulation of the planar domain

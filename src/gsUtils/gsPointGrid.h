@@ -45,13 +45,13 @@ void uniformIntervals(const gsVector<T>& lower, const gsVector<T>& upper,
  * \param b gsVector of length \em d, upper corner of the hypercube: \f$b = (b_1,\ldots,b_d)\f$
  * \param np gsVector of length \em d, indicating number of grid points in each coordinate direction
  *
- * \returns gsMatrix::uPtr with size \f$ d \times \prod_{i=1}^d np[i]\f$.
+ * \returns gsMatrix with size \f$ d \times \prod_{i=1}^d np[i]\f$.
  *
  * \ingroup Utils
  */
 template<class T>  // gsMatrix<T> ab
-typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, gsVector<T> const & b, 
-                                        gsVector<unsigned> const & np );
+gsMatrix<T> gsPointGrid( gsVector<T> const & a, gsVector<T> const & b, 
+                         gsVector<unsigned> const & np );
 
 // Specialization of the arguments for the 1D case
 template<class T> inline
@@ -66,9 +66,9 @@ gsMatrix<T> gsPointGrid( T const & t1, T const & t2, unsigned const & n = 100)
    approximately numPoints total points
 */
 template<typename T>  // todo: remove, replace by next one
-typename gsMatrix<T>::uPtr uniformPointGrid(const gsVector<T>& lower, // note: structure lost
-                                            const gsVector<T>& upper,
-                                            int numPoints = 1000);
+gsMatrix<T>uniformPointGrid(const gsVector<T>& lower, // note: structure lost
+                            const gsVector<T>& upper,
+                            int numPoints = 1000);
 
 /**
    Returns an approximately uniformly spaced grid in every direction,

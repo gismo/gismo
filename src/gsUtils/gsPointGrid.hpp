@@ -79,21 +79,21 @@ void uniformIntervals(const gsVector<T>& lower,
 
 
 template<class T>
-typename gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, 
-                                        gsVector<T> const & b, 
-                                        gsVector<unsigned> const & np )
+gsMatrix<T> gsPointGrid( gsVector<T> const & a, 
+                         gsVector<T> const & b, 
+                         gsVector<unsigned> const & np )
 {
-    gsMatrix<T> * res = new gsMatrix<T>(a.size(), np.prod() );
+    gsMatrix<T> res(a.size(), np.prod() );
     gsGridIterator<T,CUBE> pt(a, b, np.cast<index_t>());
     for(index_t c = 0; pt; ++pt, ++c)
-        res->col(c) = *pt;
-    return typename gsMatrix<T>::uPtr(res);
+        res.col(c) = *pt;
+    return res;
 }
 
 template<typename T>
-typename gsMatrix<T>::uPtr uniformPointGrid(const gsVector<T>& lower, 
-                                            const gsVector<T>& upper, 
-                                            int numPoints)
+gsMatrix<T> uniformPointGrid(const gsVector<T>& lower, 
+                             const gsVector<T>& upper, 
+                             int numPoints)
 {
     const gsVector<unsigned> cwisePoints = uniformSampleCount(lower, upper, numPoints);
     return gsPointGrid(lower, upper, cwisePoints); // note: structure lost

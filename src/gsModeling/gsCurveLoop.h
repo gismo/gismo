@@ -172,7 +172,7 @@ public:
     int numCurves() const     { return m_curves.size(); }
 
     /// Sample \a npoints uniformly distributed (in parameter domain) points on the loop
-    typename gsMatrix<T>::uPtr sample(int npoints = 50, int numEndPoints=2) const;
+    gsMatrix<T> sample(int npoints = 50, int numEndPoints=2) const;
 
       gsMatrix<T> getBoundingBox();
 

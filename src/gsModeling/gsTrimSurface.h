@@ -107,23 +107,23 @@ public:
 
     void sampleLoop_into(int loopNumber, int npoints, gsMatrix<T> & u) const;
 
-    typename gsMatrix<T>::uPtr sampleLoop(int loopNumber, int npoints = 100) const
+    gsMatrix<T> sampleLoop(int loopNumber, int npoints = 100) const
     {
-        gsMatrix<T> * u = new gsMatrix<T>;
-        sampleLoop_into(loopNumber, npoints, *u);
-        return typename gsMatrix<T>::uPtr(u);
+        gsMatrix<T> u;
+        sampleLoop_into(loopNumber, npoints, u);
+        return u;
     }
     
-    typename gsMatrix<T>::uPtr sampleBoundary( int npoints = 100) const
+    gsMatrix<T> sampleBoundary( int npoints = 100) const
     { return sampleLoop(0, npoints); }
 
     void sampleCurve_into( int loopNumber, int curveNumber, int npoints, gsMatrix<T> & u) const;
 
-    typename gsMatrix<T>::uPtr sampleCurve( int loopNumber, int curveNumber, int npoints = 100) const
+    gsMatrix<T> sampleCurve( int loopNumber, int curveNumber, int npoints = 100) const
     {
-        gsMatrix<T> * u = new gsMatrix<T>();
-        sampleCurve_into(loopNumber, curveNumber, npoints, *u);
-        return typename gsMatrix<T>::uPtr(u);
+        gsMatrix<T> u;
+        sampleCurve_into(loopNumber, curveNumber, npoints, u);
+        return u;
     }
 
     /// Evaluates curveNumber-th curve from loopNumber-th loop.
@@ -141,22 +141,21 @@ public:
                      curveNumber < m_domain->loop(loopNumber).size(),
                      "Curve number is out of range!");
 
-        const gsCurve<T>& curve = getCurve(loopNumber, curveNumber);
+        const gsCurve<T> & curve = getCurve(loopNumber, curveNumber);
         evalCurve_into(curve, u, result);
     }
 
     /// Look at evalCurve_into
-    typename gsMatrix<T>::uPtr evalCurve(int loopNumber,
-                                         int curveNumber,
-                                         const gsMatrix<T>& u) const
+    gsMatrix<T> evalCurve(int loopNumber,
+                          int curveNumber,
+                          const gsMatrix<T>& u) const
     {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        evalCurve_into(loopNumber, curveNumber, u, *result);
-        return typename gsMatrix<T>::uPtr(result);
+        gsMatrix<T> result;
+        evalCurve_into(loopNumber, curveNumber, u, result);
+        return result;
     }
 
-
-    typename gsMatrix<T>::uPtr sampleBoundaryCurve( unsigned curveNumber, int npoints = 100) const
+    gsMatrix<T> sampleBoundaryCurve( unsigned curveNumber, int npoints = 100) const
     { return sampleCurve(0, curveNumber, npoints); }
 
     /// Evaluates surface.
