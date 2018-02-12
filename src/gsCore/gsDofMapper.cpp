@@ -75,6 +75,23 @@ void gsDofMapper::localToGlobal(const gsMatrix<unsigned>& locals,
     //GISMO_ASSERT(numFree == bot, "Something went wrong in localToGlobal");
 }
 
+gsVector<index_t> gsDofMapper::asVector() const
+{
+    gsVector<index_t> v(m_dofs.size());
+    for(index_t i = 0; i!= v.size(); ++i)
+        v[i] = m_dofs[i]+m_shift;
+    return v;
+}
+
+gsVector<index_t> gsDofMapper::inverseAsVector() const
+{
+    GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
+    gsVector<index_t> v(size());
+    for(index_t i = 0; i!= v.size(); ++i)
+        v[m_dofs[i]] = i;
+    return v;
+}
+
 void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b )
 {
     const index_t last = b.size()-1;

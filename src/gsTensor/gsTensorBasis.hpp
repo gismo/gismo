@@ -247,7 +247,7 @@ bool gsTensorBasis<d,T>::isActive(const unsigned i, const gsVector<T>& u) const
 }
 
 template<unsigned d, class T>
-typename gsMatrix<unsigned>::uPtr gsTensorBasis<d,T>::coefSlice(int dir, int k) const
+gsMatrix<unsigned> gsTensorBasis<d,T>::coefSlice(int dir, int k) const
 {
     GISMO_ASSERT( dir>=0 &&  dir < this->dim(), "Invalid slice direction requested" );
     GISMO_ASSERT( k >=0 &&  k < this->size(dir), "Invalid slice position requested" );
@@ -266,16 +266,16 @@ typename gsMatrix<unsigned>::uPtr gsTensorBasis<d,T>::coefSlice(int dir, int k) 
     upp(dir) = k + 1;
     low(dir) = k;
 
-    gsMatrix<unsigned> * res = new gsMatrix<unsigned>(sliceSize,1);
+    gsMatrix<unsigned> res(sliceSize,1);
 
     // iterate over all tensor product basis indices
     gsVector<unsigned,d> v = low;
     r = 0;
     do {
-        (*res)(r++,0) = this->index(v);
+        res(r++,0) = this->index(v);
     } while ( nextLexicographic(v, low, upp) );
 
-    return gsMatrix<unsigned>::uPtr(res);
+    return res;
 }
 
 
@@ -331,7 +331,7 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::boundaryOffset(boxSide const& s,unsigned 
     int k = s.direction();
     int r = s.parameter();
     GISMO_ASSERT(static_cast<int>(offset) < size(k),"Offset cannot be bigger than the amount of basis functions orthogonal to Boxside s!");
-    return (*(this->coefSlice(k, (r ? size(k) - 1 -offset : offset) )));
+    return (this->coefSlice(k, (r ? size(k) - 1 -offset : offset) ));
 }
 
 template<unsigned d, class T>

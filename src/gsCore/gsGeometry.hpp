@@ -85,7 +85,7 @@ gsGeometry<T>::coefAtCorner(boxCorner const & c) const
 template<class T>
 void gsGeometry<T>::invertPoints(const gsMatrix<T> & points, 
                                  gsMatrix<T> & result, 
-                                 const T accuracy)
+                                 const T accuracy) const
 {
     result.resize(parDim(), points.cols() );
     gsVector<T> arg;

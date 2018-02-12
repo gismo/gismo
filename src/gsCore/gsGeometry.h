@@ -578,7 +578,7 @@ public:
     /// parameter values.  If the point cannot be inverted (eg. is not
     /// part of the geometry) the corresponding parameter values will be undefined
     virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
-                              const T accuracy = 1e-6);
+                              const T accuracy = 1e-6) const;
 
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }

@@ -14,13 +14,13 @@ gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower,
                                        int numPoints);
 
 TEMPLATE_INST
-gsMatrix<T>::uPtr uniformPointGrid(const gsVector<T>& lower, 
-                                            const gsVector<T>& upper, 
-                                            int numPoints);
+gsMatrix<T> uniformPointGrid(const gsVector<T>& lower, 
+                             const gsVector<T>& upper, 
+                             int numPoints);
 
 TEMPLATE_INST
-gsMatrix<T>::uPtr gsPointGrid( gsVector<T> const & a, gsVector<T> const & b, 
-                                        gsVector<unsigned> const & np );
+gsMatrix<T> gsPointGrid( gsVector<T> const & a, gsVector<T> const & b, 
+                         gsVector<unsigned> const & np );
 
 TEMPLATE_INST
 void uniformIntervals(const gsVector<T>& lower, 

@@ -211,10 +211,10 @@ std::vector<T> gsCurveLoop<T>::lineIntersections(int const & direction , T const
 }
 
 template <class T>
-typename gsMatrix<T>::uPtr gsCurveLoop<T>::sample(int npoints, int numEndPoints) const
+gsMatrix<T> gsCurveLoop<T>::sample(int npoints, int numEndPoints) const
 {
-    assert(npoints>=2);
-    assert(numEndPoints>=0 && numEndPoints<=2);
+    GISMO_ASSERT(npoints>=2, "");
+    GISMO_ASSERT(numEndPoints>=0 && numEndPoints<=2, "");
     int np; // new number of points
     switch (numEndPoints)
     {
@@ -232,7 +232,7 @@ typename gsMatrix<T>::uPtr gsCurveLoop<T>::sample(int npoints, int numEndPoints)
         break;
     }   
     
-    gsMatrix<T> * u = new gsMatrix<T>(2, m_curves.size() * np);
+    gsMatrix<T> u(2, m_curves.size() * np);
     int i=0;
     gsMatrix<T> interval;
     gsMatrix<T> pts(1,np);
@@ -249,10 +249,10 @@ typename gsMatrix<T>::uPtr gsCurveLoop<T>::sample(int npoints, int numEndPoints)
         b = interval(0,1);
         for (int ii=firstInd;ii<=secondInd;ii++) pts(0,ii-firstInd)= a + T(ii)*(b-a)/(npoints-1);
         (*it)->eval_into( pts, uCols );
-        u->middleCols( i * np,np ) = uCols;
+        u.middleCols( i * np,np ) = uCols;
         i++ ;
     };
-    return typename gsMatrix<T>::uPtr(u);
+    return u;
 }
   
 template <class T>

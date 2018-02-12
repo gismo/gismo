@@ -436,10 +436,10 @@ public:
         const int sz = this->size(dir) - numPeriodic;
         for( int i = 0; i < numPeriodic; i++ )
         {
-            gsMatrix<unsigned> currentSourceSlice = *(this->coefSlice(dir,i));
-            gsMatrix<unsigned> currentTargetSlice = *(this->coefSlice(dir, sz  + i ));
+            gsMatrix<unsigned> currentSourceSlice = this->coefSlice(dir,i);
+            gsMatrix<unsigned> currentTargetSlice = this->coefSlice(dir, sz  + i );
 
-            for( index_t j = 0; j < currentSourceSlice.size(); j++ )
+            for( index_t j = 0; j != currentSourceSlice.size(); j++ )
             {
                 sourceSliceIndices.push_back( static_cast<index_t>( currentSourceSlice(j) ) );
                 targetSliceIndices.push_back( static_cast<index_t>( currentTargetSlice(j) ) );
@@ -448,7 +448,7 @@ public:
 
         // Copy the chosen coefficients.
         gsMatrix<T> result = originalCoefs;
-        for( std::size_t i = 0; i < sourceSliceIndices.size(); i++ )
+        for( std::size_t i = 0; i != sourceSliceIndices.size(); i++ )
         {
             //gsDebug << "source: " << sourceSliceIndices[i]  << "\n";
             //gsDebug << "target: " << targetSliceIndices[i]  << "\n";

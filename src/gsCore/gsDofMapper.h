@@ -186,6 +186,15 @@ private:
 
 public:
 
+    /// Returns a vector taking flat local indices to global
+    gsVector<index_t> asVector() const;
+
+    /** \brief Returns a vector taking global indices to flat local
+        
+        Assumes that the mapper is a permutation
+    */
+    gsVector<index_t> inverseAsVector() const;
+
     /// Called to initialize the gsDofMapper with matching interfaces
     /// after m_bases have already been set
     void setMatchingInterfaces(const gsBoxTopology & mp);
@@ -221,6 +230,9 @@ public:
 
     /// \brief Checks whether finalize() has been called.
     bool isFinalized() { return m_curElimId==0; }
+
+    /// \brief Returns true iff the mapper is a permuatation
+    bool isPermutation() const { return static_cast<std::size_t>(size())==mapSize(); }
 
     /// \brief Print summary
     std::ostream& print( std::ostream& os = gsInfo ) const;

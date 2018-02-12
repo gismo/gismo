@@ -104,10 +104,6 @@ public:
     /// Unique pointer for gsMatrix
     typedef memory::unique_ptr<gsMatrix> uPtr;
     
-    /// Matrix return type, to be used as return type for function
-    /// returning matrix objects
-    typedef uPtr Return;
-    
     // type of first minor matrix: rows and cols reduced by one
     typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, ChangeDim<_Cols, -1>::D>
         FirstMinorMatrixType;
@@ -158,17 +154,6 @@ public:
     template<typename OtherDerived>
     gsMatrix(const Eigen::ReturnByValue<OtherDerived>& other) : Base(other) { }
 
-    /// constructor by swapping a unique pointer
-    gsMatrix(uPtr const & other)
-    {
-        // NOTE: due to a language edge case, we can not pass the uPtr by value
-        // into this constructor as we should. Assuming that uPtr is an auto pointer,
-        // this fails at least on gcc due to implicit conversion rules (no
-        // two user-defined conversions in an initialization).
-        this->swap( *other );
-    }
-
-
     inline operator Ref () { return Ref(*this); }
 
     inline operator const constRef () { return constRef(*this); }
@@ -214,13 +199,6 @@ public:
         return *this;
     }
 #endif
-    
-    gsMatrix& operator= (uPtr other)
-    {
-        this->resize(0,0);
-        this->swap( *other );
-        return *this;
-    }
 
     std::pair<index_t,index_t> dim() const 
     { return std::make_pair(this->rows(), this->cols() ); }
