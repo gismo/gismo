@@ -233,9 +233,9 @@ gsBSpline<T> gsTrimSurface<T>::cuttingCurve(int const & sourceID,int const & tar
 
 
 template <class T>
-gsMesh<T> * gsTrimSurface<T>::toMesh(int npoints) const
+typename gsMesh<T>::uPtr gsTrimSurface<T>::toMesh(int npoints) const
 {      
-    gsMesh<T> * msh = m_domain->toMesh(npoints);
+    typename gsMesh<T>::uPtr msh = m_domain->toMesh(npoints);
     gsMatrix<T> tmp;
 
     // For all vertices of the msh, push forward the value by m_surface      

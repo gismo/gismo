@@ -245,9 +245,9 @@ void gsPlanarDomain<T>::sampleCurve_into( int loopID, int curveID, int npoints, 
 
 /// Return a triangulation of the planar domain
 template <class T>
-gsMesh<T> * gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE LOOP
+typename gsMesh<T>::uPtr gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE LOOP
 {
-    gsMesh<T> * m = new gsMesh<T>();
+    typename gsMesh<T>::uPtr m(new gsMesh<T>());
     // Typedefs
     typedef typename gsVertex<T>::gsVertexHandle VertexHandle;
     //typedef std::deque<VertexHandle>            VertexList;

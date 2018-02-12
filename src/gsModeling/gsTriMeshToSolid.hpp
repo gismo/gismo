@@ -1250,13 +1250,13 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
 
         if(plot) // for debugging ( plot trimmed surfaces
         {
-            gsMesh<T> * m;
+            typename gsMesh<T>::uPtr m;
             int nPoints=cast<T,int>(
                 meshPoints*math::sqrt(math::sqrt(areas[i]/maxArea)));
             if (nPoints<10)
                 nPoints=10;
             m = cface->toMesh(nPoints);
-            fitMeshes.push_back(m);
+            fitMeshes.push_back(m.release());
         }
 
         // ----------- end Calculate trimmed surfaces
