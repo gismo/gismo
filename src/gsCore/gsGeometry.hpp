@@ -164,13 +164,12 @@ void gsGeometry<T>::degreeReduce(int const i, int const dir)
 }
 
 template<class T>
-typename gsMatrix<T>::uPtr
+gsMatrix<T>
 gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
 {  
     static const unsigned d = this->m_basis->dim();
 
-    gsMatrix<T> B, *DD = new gsMatrix<T>(d,d);
-    gsMatrix<T> tmp(d,d);
+    gsMatrix<T> B, DD(d,d), tmp(d,d);
     gsMatrix<unsigned> ind;
 
     // coefficient matrix row k = coef. of basis function k
@@ -180,7 +179,7 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
     // col j = indices of active functions at column point u(..,j)
     m_basis->active_into(u, ind);  
   
-    DD->setZero();
+    DD.setZero();
     unsigned j=0;// just one column
     //for ( unsigned j=0; j< u.cols(); j++ ) // for all points (columns of u)
     for ( index_t i=0; i< ind.rows() ; i++ ) // for all non-zero basis functions)
@@ -194,10 +193,10 @@ gsGeometry<T>::hessian(const gsMatrix<T>& u, unsigned coord) const
             for (unsigned l=k+1; l<d; ++l ) // for all cols
                 tmp(k,l) = tmp(l,k) = B(r++,0);
         }
-        *DD += C(ind(i,j), coord) * tmp;
+        DD += C(ind(i,j), coord) * tmp;
     }
   
-    return typename gsMatrix<T>::uPtr(DD); 
+    return DD;
 }
 
 

@@ -176,11 +176,11 @@ public:
     /// \param u parameters
     ///
     /// \return points on surface at parameter u
-    typename gsMatrix<T>::uPtr evalSurface(const gsMatrix<T>& u) const
+    gsMatrix<T> evalSurface(const gsMatrix<T>& u) const
     {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        evalSurface_into(u, *result);
-        return typename gsMatrix<T>::uPtr(result);
+        gsMatrix<T> result;
+        evalSurface_into(u, result);
+        return result;
     }
 
 

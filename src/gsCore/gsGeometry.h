@@ -516,7 +516,7 @@ public:
     
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
-    virtual typename gsMatrix<T>::uPtr hessian(const gsMatrix<T>& u, unsigned coord) const;
+    virtual gsMatrix<T> hessian(const gsMatrix<T>& u, unsigned coord) const;
     
     /// Return the control net of the geometry
     void controlNet( gsMesh<T> & mesh) const
