@@ -113,10 +113,10 @@ int main(int argc, char* argv[])
         tBasis = gsBSplineBasis<>::make(KV);
         break;
     case 2:
-        tBasis = memory::unique_ptr<gsTensorBSplineBasis<2> >(new gsTensorBSplineBasis<2>(KV,KV));
+        tBasis = memory::make_unique(new gsTensorBSplineBasis<2>(KV,KV));
         break;
     case 3:
-        tBasis = memory::unique_ptr<gsTensorBSplineBasis<3> >(new gsTensorBSplineBasis<3>(KV,KV,KV));
+        tBasis = memory::make_unique(new gsTensorBSplineBasis<3>(KV,KV,KV));
         break;
     default:
     {

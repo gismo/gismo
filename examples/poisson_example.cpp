@@ -61,12 +61,12 @@ int main(int argc, char *argv[])
     //! [Geometry data]
 
     // For single patch unit square of quadratic elements use (Note:
-    //you need to update the bounadry conditions section for this to
-    //work properly!) :
-    //patches = new gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare(2));
+    // you need to update the bounadry conditions section for this to
+    // work properly!) :
+    // patches = gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare(2));
 
-    // Geometry can also be read from file :
-    //patches = gsReadFile<>("planar/lshape_p2.xml");
+    // Geometry can also be read from file (if gsMultiPatch):
+    // gsReadFile<>("planar/lshape_p2.xml", patches);
 
     // Define Boundary conditions. Note that if one boundary is
     // "free", eg. if no condition is defined, then it is a natural
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
       //boundaries like this:
 
     for (gsMultiPatch<>::const_biterator
-             bit = patches->bBegin(); bit != patches->bEnd(); ++bit)
+             bit = patches.bBegin(); bit != patches.bEnd(); ++bit)
     {
         bcInfo.addCondition( *bit, condition_type::dirichlet, &g );
     }
