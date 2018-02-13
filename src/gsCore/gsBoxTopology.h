@@ -230,13 +230,6 @@ public:
     /// Check that boundaries and interfaces are consistent.
     void checkConsistency() const;
 
-    /// Iteration: set \a result to the first patch side of the first box.
-    void firstPatchSide(patchSide& result);
-
-    /// Iteration: increment \a result to the next patch side,
-    /// iterating over all sides of all boxes.
-    bool nextPatchSide(patchSide& result);
-
     /// Access i-th boundary interface
     const boundaryInterface & bInterface(int i) const {return m_interfaces[i];}
 

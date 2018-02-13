@@ -130,7 +130,7 @@ public:
 
 public:
 
-    /// Calculates the integral of the expression \a expr on the whole integratoon domain
+    /// Calculates the integral of the expression \a expr on the whole integration domain
     template<class E>
     T integral(const expr::_expr<E> & expr)
     { return compute_impl<E,false,plus_op>(expr); }
@@ -145,7 +145,7 @@ public:
     T integralElWise(const T & val) { return integralElWise<T>(val); }
 
     /// Calculates the integral of the expression \a expr on the
-    /// boundary of the integratoon domain
+    /// boundary of the integration domain
     template<class E> // note: integralBdrElWise not offered
     T integralBdr(const expr::_expr<E> & expr)
     { return computeBdr_impl<E,plus_op>(expr); }
@@ -154,7 +154,7 @@ public:
     /// interfaces of the (multi-basis) integration domain
     template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr)
-    { return computeInterface_impl<E,plus_op>(expr, m_exprdata.multiBasis().topology().interfaces()); }
+    { return computeInterface_impl<E,plus_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
 
     /// Calculates the integral of the expression \a expr on the
     /// interfaces \a iFaces of the integration domain
@@ -173,7 +173,13 @@ public:
     template<class E>
     T maxElWise(const expr::_expr<E> & expr)
     { return compute_impl<E,true,max_op>(expr); }
-    
+
+    /// Calculates the maximum of the expression \a expr on the
+    /// interfaces of the (multi-basis) integration domain
+    template<class E> // note: elementwise integral not offered
+    T maxInterface(const expr::_expr<E> & expr)
+    { return computeInterface_impl<E,max_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
+
     /// Calculates the minimum value of the expression \a expr by
     /// sampling over a finite number of points
     template<class E>
@@ -444,7 +450,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     {
         const boundaryInterface & iFace = *iit;
         const int patch1 = iFace.first().patch;
-        const int patch2 = iFace.second().patch;
+        // const int patch2 = iFace.second().patch; //!
         // Quadrature rule
         QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patch1), m_options,
                                 iFace.first().side().direction());
