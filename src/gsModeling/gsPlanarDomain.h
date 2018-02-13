@@ -21,7 +21,6 @@
 
 #include <gsModeling/gsCurveLoop.h> 
 #include <gsModeling/gsTemplate.h>
-#include <gsUtils/gsMesh/gsMesh.h>
 
 // #include <gsUtils/gsSortedVector.h>
 
@@ -221,7 +220,7 @@ public:
     }
 
     /// Return a triangulation of the planar domain
-    typename gsMesh<T>::uPtr toMesh(int npoints = 50) const;     // FOR NOW ONLY ONE LOOP
+    typename memory::unique_ptr<gsMesh<T> > toMesh(int npoints = 50) const;     // FOR NOW ONLY ONE LOOP
 
     /// split this planar domain in two, returning the new planar domain created
     /// as a result.
