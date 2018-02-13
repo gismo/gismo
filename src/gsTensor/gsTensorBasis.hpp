@@ -305,7 +305,7 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
        //compute size of boundary (with repetitions at the corners)
        for (unsigned k = 0; k < d; ++k)
        sz += 2 * dofs / size(k);
-       gsMatrix<unsigned> * res = new gsMatrix<unsigned>(sz,1);
+       gsMatrix<unsigned> res;
 
        // Fill boundary DoFs by taking slices
        r= sz ;
@@ -313,9 +313,9 @@ gsMatrix<unsigned> gsTensorBasis<d,T>::allBoundary() const
        {
        bdofs= dofs / size(k);
        r-=  bdofs;
-       res->block(r,0, bdofs, 1) = ( this->slice(i, size(k) - 1) );
+       res.block(r,0, bdofs, 1) = this->slice(i, size(k) - 1);
        r-= bdofs ;
-       res->block(r,0, bdofs, 1) = ( this->slice(i,0) );
+       res.block(r,0, bdofs, 1) = this->slice(i,0);
        i++;
        }
 
