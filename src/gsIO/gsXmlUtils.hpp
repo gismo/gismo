@@ -408,16 +408,6 @@ public:
     static gsNurbsBasis<T> * get (gsXmlNode * node)
     {
         return getRationalBasisFromXml<gsNurbsBasis<T> >(node);
-
-        // (!) Deprecated 
-/*      assert( ( !strcmp( node->name(),"Basis") )
-        &&  ( !strcmp(node->first_attribute("type")->value(),"NurbsBasis") ) );
-        
-        gsXmlNode * tmp = node->first_node("KnotVector");
-        // if type: == Plain, == Compact .. 
-        gsKnotVector<T> kv = * safe( gsXml<gsKnotVector<T> >::get (tmp) );
-
-        return new gsNurbsBasis<T>( kv, kv.degree() ); */
     }
 
     static gsXmlNode * put (const gsNurbsBasis<T> & obj,

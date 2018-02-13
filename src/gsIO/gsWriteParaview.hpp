@@ -640,9 +640,8 @@ void writeSingleTrimSurface(const gsTrimSurface<T> & surf,
                             std::string const & fn, 
                             unsigned npts)
 {
-    gsMesh<T> * msh = surf.toMesh(npts);
+    typename gsMesh<T>::uPtr msh = surf.toMesh(npts);
     gsWriteParaview( *msh, fn);
-    delete msh;
 }
 
 /// Write a file containing a solution field over a geometry

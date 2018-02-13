@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsMesh<>::uPtr msh = safe(bb->toMesh(numSamples));
+            gsMesh<>::uPtr msh = bb->toMesh(numSamples);
 
             gsWriteParaview( *msh , "gsview");
 

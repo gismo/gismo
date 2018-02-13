@@ -176,11 +176,11 @@ public:
     /// \param u parameters
     ///
     /// \return points on surface at parameter u
-    typename gsMatrix<T>::uPtr evalSurface(const gsMatrix<T>& u) const
+    gsMatrix<T> evalSurface(const gsMatrix<T>& u) const
     {
-        gsMatrix<T> * result = new gsMatrix<T>;
-        evalSurface_into(u, *result);
-        return typename gsMatrix<T>::uPtr(result);
+        gsMatrix<T> result;
+        evalSurface_into(u, result);
+        return result;
     }
 
 
@@ -215,7 +215,7 @@ public:
     gsBSpline<T> cuttingCurve(int const & sourceID,int const & targetID) const;          
 
     /// Return a triangulation of the trimmed surface
-    gsMesh<T> * toMesh(int npoints = 50) const;
+    typename memory::unique_ptr<gsMesh<T> > toMesh(int npoints = 50) const;
 
     /// Return the coefficients of the representation of the unit tangent of the edge ENAMATING from vertex *sourceID* in terms of the standard basis of the tangent space
     gsMatrix<T> UnitTangentCoefs_next(int const & sourceID,gsMatrix<T> const & corJacobian) const; 

@@ -219,7 +219,7 @@ public:
       for ( index_t i=0; i<ind.size(); ++i)
       ww(i,0) = m_weights( (*ind)(i,0), 0);
         
-      return new BoundaryBasisType(*safe(bb), give(ww));
+      return new BoundaryBasisType(bb, give(ww));
       return 0;
       }
     */

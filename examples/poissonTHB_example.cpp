@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
   //gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-1.6)^2 < 0.2^2, 1, 0 )",2);
   gsFunctionExpr<>  g("0",2);
   gsMultiPatch<> patches( *gsNurbsCreator<>::BSplineRectangle(0.0,0.0,2.0,1.0) );
-  //gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0)) );
+  //gsMultiPatch<> patches( *gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0) );
 
   //RefineLoopMax = 6;
   //refParameter = 0.6;
@@ -103,8 +103,8 @@ int main(int argc, char *argv[])
   gsFunctionExpr<>  f("0",2);
   gsFunctionExpr<>  g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) +3*pi)/3.0 ) )",2);
 
-  //gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p2C0()) );
-  gsMultiPatch<> patches( *safe(gsNurbsCreator<>::BSplineLShape_p1()) );
+  //gsMultiPatch<> patches (*gsNurbsCreator<>::BSplineLShape_p2C0());
+  gsMultiPatch<> patches (*gsNurbsCreator<>::BSplineLShape_p1());
 
   //RefineLoopMax = 8;
   //refParameter = 0.85;
