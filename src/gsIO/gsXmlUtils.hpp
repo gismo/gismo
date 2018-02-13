@@ -415,7 +415,7 @@ public:
         
         gsXmlNode * tmp = node->first_node("KnotVector");
         // if type: == Plain, == Compact .. 
-        gsKnotVector<T> kv = ( gsXml<gsKnotVector<T> >::get (tmp) );
+        gsKnotVector<T> kv = *gsXml<gsKnotVector<T> >::get(tmp);
 
         return new gsNurbsBasis<T>( kv, kv.degree() ); */
     }
