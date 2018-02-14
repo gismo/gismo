@@ -117,7 +117,8 @@ public:
         geoEval.transformLaplaceHgrad(k, basisGrads, basis2ndDerivs, physBasisLaplace);
         
         // Get penalty parameter
-        const T mu = penalty / element.getCellSize();
+        const T h = element.getCellSize();
+        const T mu = penalty / (0!=h?h:2);
 
         // Sum up quadrature point evaluations
         localRhs.noalias() += weight * (( physBasisLaplace.transpose() + mu * physBasisGrads.transpose() * unormal )
