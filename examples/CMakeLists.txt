@@ -25,7 +25,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER
 #include( ${GISMO_USE_FILE})
 
 # Collect source file names
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
+aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 #message("found files: ${FILES}")
 
 foreach(file ${FILES})
