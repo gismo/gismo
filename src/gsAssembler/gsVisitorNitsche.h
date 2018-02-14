@@ -135,7 +135,7 @@ public:
         
         // Get penalty parameter
         const T h = element.getCellSize();
-        const T mu = penalty / (0!=h?h:2);
+        const T mu = penalty / (0!=h?h:1);
 
         // Sum up quadrature point evaluations
         localRhs.noalias() -= weight * (( pGrads.transpose() * unormal - mu * bVals )
