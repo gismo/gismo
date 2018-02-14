@@ -27,28 +27,34 @@ ExternalProject_Add(Spectra
 #endif(NOT SPECTRA_FOUND)
 
 set(SPECTRA_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Spectra CACHE INTERNAL "")
-include_directories(${SPECTRA_INCLUDE_DIR})
+#include_directories(${SPECTRA_INCLUDE_DIR})
 
-add_library(${PROJECT_NAME} OBJECT
-    ${${PROJECT_NAME}_HEADERS}
-    ${${PROJECT_NAME}_SOURCES} #need source to enforce dependancy
-#    ${${PROJECT_NAME}_HPPFILES}
+add_library(${PROJECT_NAME} INTERFACE)
+target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
+
+target_include_directories(${PROJECT_NAME} INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Spectra
+  #$<INSTALL_INTERFACE:gismo/gsSpectra>
 )
 
 add_dependencies(${PROJECT_NAME} Spectra)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    COMPILE_DEFINITIONS gismo_EXPORTS 
-    POSITION_INDEPENDENT_CODE ON
-    LINKER_LANGUAGE CXX
-    CXX_VISIBILITY_PRESET hidden
-    VISIBILITY_INLINES_HIDDEN ON
-    FOLDER "G+Smo extensions"
-    )
+#set_target_properties(${PROJECT_NAME} PROPERTIES
+#    COMPILE_DEFINITIONS gismo_EXPORTS 
+#    POSITION_INDEPENDENT_CODE ON
+#    LINKER_LANGUAGE CXX
+#    CXX_VISIBILITY_PRESET hidden
+#    VISIBILITY_INLINES_HIDDEN ON
+#    FOLDER "G+Smo extensions"
+#    )
 
-set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-    CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
+#set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
+#    CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
+
+set(gismo_LINKER ${gismo_LINKER} ${PROJECT_NAME}
+    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
-        DESTINATION include/gismo/gsSpectra/
+        DESTINATION include/gismo/gsSpectra
         FILES_MATCHING PATTERN "*.h")
+	
