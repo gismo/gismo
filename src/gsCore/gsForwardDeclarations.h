@@ -265,6 +265,8 @@ template <class T=real_t>                class gsCompositionOfPreconditionersOp;
 template <class T=real_t>                class gsKroneckerOp;
 template <class T=real_t>                class gsBlockOp;
 
+template <class T=real_t>                class gsParameterDomainPreconditioners;
+
 // gsMultiGrid
 
 template <class T=real_t>                class gsMultiGridOp;
