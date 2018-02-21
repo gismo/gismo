@@ -125,6 +125,9 @@ namespace internal
 #include <gsPde/gsStokesPde.h>
 //#include <gsPde/gsNewtonIterator.h>
 
+/* ----------- Matrix ----------- */
+#include <gsMatrix/gsKronecker.h>
+
 /* ----------- MultiGrid ----------- */
 #include <gsMultiGrid/gsMultiGrid.h>
 #include <gsMultiGrid/gsGridHierarchy.h>
@@ -147,7 +150,7 @@ namespace internal
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 
-#include<gsAssembler/gsExprHelper.h>
+#include <gsAssembler/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
 
