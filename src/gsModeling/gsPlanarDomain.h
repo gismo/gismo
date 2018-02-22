@@ -168,12 +168,11 @@ public:
         return true;
     };
 
-    /// \todo return non-pointer instead
-    gsMatrix<T> * boundingBox() const
+    gsMatrix<T> boundingBox() const
     {
-        gsMatrix<T> * res = new gsMatrix<T>(2,2);
+        gsMatrix<T> res(2,2);
 
-        *res = m_loops[0]->getBoundingBox();
+        res = m_loops[0]->getBoundingBox();
         return res;
     }
 

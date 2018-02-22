@@ -195,6 +195,10 @@ inline shared_ptr<T> make_shared_not_owned(const T *x)
 template <typename T>
 inline unique_ptr<T> make_unique(T * x) { return unique_ptr<T>(x); }
 
+/// Takes a T*, cast it to C* and wraps it in an unique_ptr.
+template <class C, typename T>
+inline unique_ptr<C> make_unique(T * x) { return unique_ptr<C>(dynamic_cast<C*>(x)); }
+
 /// \brief Converts a uPtr \a p to an uPtr
 /// of class \a C and gives it back as return value.
 template<class C, typename from>
