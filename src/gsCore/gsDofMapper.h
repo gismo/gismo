@@ -243,6 +243,15 @@ public:
     ///\brief Set the shift amount for the global numbering
     void setShift(index_t shift);
 
+    /// \brief Permutes the mapped free indices according to permutation, i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]
+    /// Permutation can be performed only once.
+    void permuteFree(const gsVector<index_t>& permutation);
+
+    /// \brief Permutes all the mapped indices according to permutation (including the eliminated ones),
+    /// i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]. Permutation can be performed only once.
+    /// The eliminated indices must be still at the end. 
+    void permute(const gsVector<index_t>& permutation);
+
     ///\brief Returns the smallest value of the indices
     index_t firstIndex() const { return m_shift; }
 
@@ -311,7 +320,10 @@ public:
     inline index_t cindex( index_t i, index_t k = 0 ) const
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k) + m_numCpldDofs - m_numFreeDofs;
+        if(m_isPermuted) 
+            return m_coupledIdxCount.find(MAPPER_PATCH_DOF(i,k))->second;
+        else
+            return MAPPER_PATCH_DOF(i,k) + m_numCpldDofs - m_numFreeDofs;
     }
 
     /// @brief Returns the boundary index of global dof \a gl.
@@ -346,9 +358,13 @@ public:
 
     /// Returns true if \a gl is a coupled dof.
     inline bool is_coupled_index( index_t gl) const 
-    {           
-        return  (gl < m_numFreeDofs + m_shift                    ) && // is a free dof and
-                (gl + m_numCpldDofs + 1 > m_numFreeDofs + m_shift);   // is not standard dof
+    {
+        if(m_isPermuted)
+            return  (gl < m_numFreeDofs + m_shift                    ) && // is a free dof and
+                     m_isCoupledIdx[gl];                                  // is coupled dof
+        else
+            return  (gl < m_numFreeDofs + m_shift                    ) && // is a free dof and
+                    (gl + m_numCpldDofs + 1 > m_numFreeDofs + m_shift);   // is not standard dof
     }
 
     /// Returns the total number of dofs (free and eliminated).
@@ -442,6 +458,13 @@ private:
     // used during setup: running id for current eliminated dof
     // After finalize() is called m_curElimId takes the value zero.
     index_t m_curElimId;
+
+    //stores if the dofmapper got reordered
+    bool m_isPermuted;
+    //vector of length m_numFreeDofs, which stores if a dof is also coupled. (only used after permutation)
+    std::vector<bool> m_isCoupledIdx;
+    //maps a coupled index to its corresponding number, i.e. 22 -> 2, the free dof 22 is the third coupled index (only used after permutation)
+    std::map<index_t,index_t> m_coupledIdxCount;
 
 }; // class gsDofMapper
 
