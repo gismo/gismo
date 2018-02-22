@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
     gsInfo << "Solving...\n";
     gsLinearOperator<>::Ptr preconditioner;
 
-    if (refine_bases.nPatches > 1 && ( preconder=="fd" || preconder=="hyb" ) )
+    if (refine_bases.nBases() > 1 && ( preconder=="fd" || preconder=="hyb" ) )
     {
         gsInfo << "The chosen preconditioner only works for single-patch geometries.\n";
         return EXIT_FAILURE;
