@@ -14,6 +14,7 @@
 
 #include <gsSolver/gsParameterDomainPreconditioners.h>
 #include <gsSolver/gsSumOfOperatorsOp.h>
+#include <gsSolver/gsProductOfOperatorsOp.h>
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
 #include <gsMatrix/gsKronecker.h>
@@ -344,7 +345,83 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 template<typename T>
 typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditioners<T>::getFastDiagonalizationOp(T a) const
 {
-    GISMO_ENSURE(0,"Not yet implemented.");// TODO
+
+    const index_t d = m_basis.dim();
+
+    // Assemble univariate
+    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis);
+    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis);
+    if (m_dirichlet == dirichlet::elimination)
+    {
+        for (index_t i=0; i<d; ++i)
+        {
+            handleDirichletConditions(local_stiff[i],m_bc,1+2*i,2+2*i);
+            handleDirichletConditions(local_mass [i],m_bc,1+2*i,2+2*i);
+        }
+    }
+
+    // Determine overall size
+    index_t sz = 1;
+    for ( index_t i=0; i<d; ++i )
+        sz *= local_stiff[i].rows();
+
+    // Initialize the diagonal with 1
+    gsMatrix<T> diag;
+    diag.setConstant(sz,1,a); // This is the pure-mass part!
+
+    index_t glob = 1; // Indexing value for setting up the Kronecker product
+
+    typedef typename gsMatrix<T>::GenSelfAdjEigenSolver EVSolver;
+    typedef typename EVSolver::EigenvectorsType evMatrix;
+    typedef typename EVSolver::RealVectorType evVector;
+    EVSolver ges;
+
+    std::vector<OpPtr> Qop(d);
+    std::vector<OpPtr> QTop(d);
+
+    // Now, setup the Q's and update the D's
+    for ( index_t i=0; i<d; ++i )
+    {
+        // Solve generalized eigenvalue problem
+        ges.compute(local_stiff[i], local_mass [i], Eigen::ComputeEigenvectors);
+        // Q^T M Q = I, or M = Q^{-T} Q^{-1}
+        // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
+
+        // From the eigenvalues, we setup the matrix D already in an Kroneckerized way.
+        const evVector & D = ges.eigenvalues();
+
+        const index_t loc = D.rows();
+        const index_t glob2 = sz / loc / glob;
+
+        for ( index_t l=0; l<loc; ++l )
+            for ( index_t m=0; m<glob; ++m )
+                for ( index_t n=0; n<glob2; ++n )
+                    diag( m + l*glob + n*loc*glob, 0 ) += D(l,0);
+
+        glob *= loc;
+
+        // Finally, we store the eigenvectors
+        gsMatrix<T> ev;
+        ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
+
+        // These are the operators representing the eigenvectors
+        Qop [i] = makeMatrixOp( ev.moveToPtr() );
+        // Here, we are safe as long as we do not want to apply QTop after Qop has been destroyed
+        QTop[i] = makeMatrixOp(
+            static_cast<gsMatrixOp< gsSparseMatrix<T> >*>(Qop[i].get())->matrix().transpose()
+        ); //TODO: check that this does not make a copy.
+    }
+
+    GISMO_ASSERT( glob == sz, "Internal error." );
+
+    for ( index_t l=0; l<sz; ++l )
+        diag( l, 0 ) = 1/diag( l, 0 );
+
+    return gsProductOfOperatorsOp<T>::make(
+        gsKroneckerOp<T>::make(QTop),
+        gsDiagonalMatrixOp<T>::make(diag.moveToPtr()),
+        gsKroneckerOp<T>::make(Qop)
+    );
 }
 
 template<typename T>
