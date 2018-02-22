@@ -285,7 +285,7 @@ void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs)
     m_dofs.resize( m_numFreeDofs, 0);
 }
 
-void gsDofMapper::permuteFree(const gsVector<index_t>& permutation)
+void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
 {
     GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(m_numFreeDofs == permutation.size(), "permutation size does not match number of free dofs");

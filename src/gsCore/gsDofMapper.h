@@ -245,7 +245,7 @@ public:
 
     /// \brief Permutes the mapped free indices according to permutation, i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]
     /// Permutation can be performed only once.
-    void permuteFree(const gsVector<index_t>& permutation);
+    void permuteFreeDofs(const gsVector<index_t>& permutation);
 
     /// \brief Permutes all the mapped indices according to permutation (including the eliminated ones),
     /// i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]. Permutation can be performed only once.
