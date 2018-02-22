@@ -18,11 +18,9 @@ namespace gismo
 {
 
 gsDofMapper::gsDofMapper() : 
-m_shift(0), m_numFreeDofs(0), m_numCpldDofs(1), m_curElimId(-1)
+m_shift(0), m_numFreeDofs(0), m_numCpldDofs(1), m_curElimId(-1),m_isPermuted(false)
 { 
     m_offset.resize(1,0);
-
-    m_isPermuted = false;
 }
 
 
@@ -296,7 +294,7 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
     std::vector<index_t> dofs = m_dofs;
     m_isCoupledIdx.clear();
     m_isCoupledIdx.resize(m_numFreeDofs,false);
-    m_coupledIdxCount.clear();
+    m_coupledIndexNumber.clear();
 
     index_t cIdx = 0;
     for(index_t i=0; i<(index_t)dofs.size();++i)
@@ -309,7 +307,7 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
             if(is_coupled_index(idx) && m_isCoupledIdx[permutation[idx]] == false)
             {
                 m_isCoupledIdx[permutation[idx]]=true;
-                m_coupledIdxCount.insert(std::make_pair(permutation[idx],cIdx));
+                m_coupledIndexNumber.insert(std::make_pair(permutation[idx],cIdx));
                 cIdx++;
             }
         }
@@ -328,7 +326,7 @@ void gsDofMapper::permute(const gsVector<index_t>& permutation)
     std::vector<index_t> dofs = m_dofs;
     m_isCoupledIdx.clear();
     m_isCoupledIdx.resize(m_numFreeDofs,false);
-    m_coupledIdxCount.clear();
+    m_coupledIndexNumber.clear();
 
     index_t cIdx = 0;
     for(index_t i=0; i<(index_t)m_dofs.size();++i)
@@ -339,7 +337,7 @@ void gsDofMapper::permute(const gsVector<index_t>& permutation)
         if(is_coupled_index(idx)  && m_isCoupledIdx[permutation[idx]] == false )
         {
             m_isCoupledIdx[permutation[idx]]=true;
-            m_coupledIdxCount.insert(std::make_pair(permutation[idx],cIdx));
+            m_coupledIndexNumber.insert(std::make_pair(permutation[idx],cIdx));
             cIdx++;
         }
     }

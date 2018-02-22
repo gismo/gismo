@@ -321,7 +321,7 @@ public:
     {
         GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
         if(m_isPermuted) 
-            return m_coupledIdxCount.find(MAPPER_PATCH_DOF(i,k))->second;
+            return m_coupledIndexNumber.find(MAPPER_PATCH_DOF(i,k))->second;
         else
             return MAPPER_PATCH_DOF(i,k) + m_numCpldDofs - m_numFreeDofs;
     }
@@ -464,7 +464,7 @@ private:
     //vector of length m_numFreeDofs, which stores if a dof is also coupled. (only used after permutation)
     std::vector<bool> m_isCoupledIdx;
     //maps a coupled index to its corresponding number, i.e. 22 -> 2, the free dof 22 is the third coupled index (only used after permutation)
-    std::map<index_t,index_t> m_coupledIdxCount;
+    std::map<index_t,index_t> m_coupledIndexNumber;
 
 }; // class gsDofMapper
 
