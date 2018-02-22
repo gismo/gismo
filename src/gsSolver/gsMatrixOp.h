@@ -216,8 +216,7 @@ public:
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
-        x = input;
-        x.array() /= m_expr.replicate(1,input.cols()).array();
+        x.array() = input.array() * m_expr.replicate(1,input.cols()).array();
     }
 
     index_t rows() const { return m_expr.rows(); }

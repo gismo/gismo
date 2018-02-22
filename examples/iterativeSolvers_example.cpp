@@ -20,26 +20,41 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
+    // TODO: choose geometry
     index_t numRefine  = 2;
     // TODO: choose degree
     // TODO: choose smoothness
     bool useNitsche = false;
-    // TODO: choose preconditioner
+    std::string preconder("hyb");
     real_t tol = 1.e-8;
     index_t maxIter = 200;
     bool plot = false;
     // TODO: update docs
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem with iterative solvers and preconditioners." );
+    // TODO: choose geometry
     cmd.addInt   ("r", "refine",  "Number of refinement levels",                            numRefine );
     // TODO: choose degree
     // TODO: choose smoothness
     cmd.addSwitch(     "nitsche", "Use Nitsche approach to realize boundary conditions",    useNitsche);
     cmd.addReal  ("t", "tol",     "Tolerance for iterative solver",                         tol       );
-    // TODO: choose preconditioner
+    cmd.addString("",  "prec",    "Preconditioner to be used",                              preconder );
     cmd.addInt   ("",  "maxIter", "Maximum number of iterations",                           maxIter   );
     cmd.addSwitch(     "plot",    "Create a ParaView visualization file with the solution", plot      );
     cmd.getValues(argc,argv);
+
+    if ( preconder != "none" && preconder != "j" && preconder != "gs" && preconder != "fd" && preconder != "hyb" )
+    {
+        gsInfo << "Unknwon preconditioner chosen. Known are only:\n"
+                    "  \"none\" ... No preconditioner, i.e., identity matrix.\n"
+                    "  \"j\"    ... Jacobi preconditioner.\n"
+                    "  \"gs\"   ... Symmetric Gauss Seidel preconditioner.\n"
+                    "  \"fd\"   ... Fast diagonalization method.\n"
+                    "  \"hyb\"  ... Hybric preconditioner: GS, Fast diagonalization, reverse GS.\n"
+                    "\n";
+        return EXIT_FAILURE;
+    }
+
     //! [Parse command line]
 
     //! [Function data]
@@ -62,7 +77,7 @@ int main(int argc, char *argv[])
     gsMultiPatch<> patches;
 
     // For single patch unit square of quadratic elements, use:
-    if (false) patches = gsMultiPatch<>(*gsNurbsCreator<>::BSplineQuarterAnnulus(2));
+    if (true ) patches = gsMultiPatch<>(*gsNurbsCreator<>::BSplineQuarterAnnulus(2));
 
     // Geometry can also be read from file (if gsMultiPatch):
     if (false) gsReadFile<>("planar/lshape_p2.xml", patches);
@@ -76,7 +91,7 @@ int main(int argc, char *argv[])
     //
     // The last argument scale the squares such that we
     // get the unit square as domain.
-    if (true ) patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
+    if (false) patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
 
     gsInfo << "The domain is a "<< patches <<"\n";
     //! [Geometry data]
@@ -112,7 +127,7 @@ int main(int argc, char *argv[])
     // bcInfo.addCondition(1, boundary::north, condition_type::dirichlet, &g);
     // bcInfo.addCondition(3, boundary::north, condition_type::dirichlet, &g);
     //
-    //  gsFunctionExpr<> hEast ("1*pi*cos(pi*1)*sin(pi*2*y)",2);
+    // gsFunctionExpr<> hEast ("1*pi*cos(pi*1)*sin(pi*2*y)",2);
     // gsFunctionExpr<> hSouth("-pi*2*sin(pi*x*1)",2);
     //
     // bcInfo.addCondition(3, boundary::east,  condition_type::neumann, &hEast);
@@ -126,19 +141,19 @@ int main(int argc, char *argv[])
     // Copy basis from the geometry
     gsMultiBasis<> refine_bases( patches );
 
-    // Number for p-refinement of the computational (trial/test) basis.
-    int numElevate = 2; //TODO
-
     // h-refine each basis
-    for (int i = 0; i < numRefine; ++i)
+    for (index_t i = 0; i < numRefine; ++i)
       refine_bases.uniformRefine();
+
+    // Number for p-refinement of the computational (trial/test) basis.
+    index_t numElevate = 2; //TODO
 
     // Elevate and p-refine the basis to order k + numElevate
     // where k is the highest degree in the bases
     if ( numElevate > -1 )
     {
         // Find maximum degree with respect to all the variables
-        int max_tmp = refine_bases.minCwiseDegree();
+        index_t max_tmp = refine_bases.minCwiseDegree();
 
         // Elevate all degrees uniformly
         max_tmp += numElevate;
@@ -164,12 +179,14 @@ int main(int argc, char *argv[])
     //       (This option might not be available yet)
 
     //! [Assemble]
+    const dirichlet::strategy dir = useNitsche ? dirichlet::nitsche : dirichlet::elimination;
+
     gsPoissonAssembler<real_t> assembler(
         patches,
         refine_bases,
         bcInfo,
         f,
-        useNitsche ? dirichlet::nitsche : dirichlet::elimination,
+        dir,
         iFace::glue
     );
 
@@ -183,7 +200,31 @@ int main(int argc, char *argv[])
     //! [Solve]
     // Initialize the conjugate gradient solver
     gsInfo << "Solving...\n";
-    gsConjugateGradient<> solver( assembler.matrix() );
+    gsLinearOperator<>::Ptr preconditioner;
+
+    if (refine_bases.nPatches > 1 && ( preconder=="fd" || preconder=="hyb" ) )
+    {
+        gsInfo << "The chosen preconditioner only works for single-patch geometries.\n";
+        return EXIT_FAILURE;
+    }
+
+    if (preconder=="j")
+        preconditioner = makeJacobiOp( assembler.matrix() );
+    else if (preconder=="gs")
+        preconditioner = makeSymmetricGaussSeidelOp( assembler.matrix() );
+    else if (preconder=="fd")
+        preconditioner = gsParameterDomainPreconditioners<>(refine_bases[0],bcInfo,dir).getFastDiagonalizationOp();
+    else if (preconder=="hyb")
+        preconditioner = gsCompositionOfPreconditionersOp<>::make(
+            makeGaussSeidelOp( assembler.matrix() ),
+            gsPreconditionerFromOp<>::make(
+                makeMatrixOp( assembler.matrix() ),
+                gsParameterDomainPreconditioners<>(refine_bases[0],bcInfo,dir).getFastDiagonalizationOp()
+            ),
+            makeReverseGaussSeidelOp( assembler.matrix() )
+        );
+
+    gsConjugateGradient<> solver( assembler.matrix(), preconditioner );
     solver.setTolerance(tol);
     solver.setMaxIterations(maxIter);
     gsMatrix<> solVector, errorHistory;
@@ -196,7 +237,7 @@ int main(int argc, char *argv[])
     else
         gsInfo << "CG did not reach the desired error goal after ";
 
-    gsInfo << errorHistory.rows() << " iterations:\n";
+    gsInfo << ( errorHistory.rows() - 1 ) << " iterations:\n";
     if (errorHistory.rows() < 20)
         gsInfo << errorHistory.transpose() << "\n\n";
     else
@@ -219,8 +260,8 @@ int main(int argc, char *argv[])
         const gsField<> exact( assembler.patches(), g, false );
         gsWriteParaview<>( exact, "poisson2d_exact", 1000);
 
-        success &= !system("paraview poisson2d.pvd &");
-        success &= !system("paraview poisson2d_exact.pvd &");
+        system("paraview poisson2d.pvd &");
+        system("paraview poisson2d_exact.pvd &");
         //! [Plot in Paraview]
     }
     else

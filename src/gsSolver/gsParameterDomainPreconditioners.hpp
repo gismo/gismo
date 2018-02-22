@@ -160,6 +160,7 @@ std::vector< gsSparseMatrix<T> > _assembleTensorMass(const gsTensorBasis<d,T>& b
 {
     std::vector< gsSparseMatrix<T> > result;
     result.reserve(d);
+    //for ( index_t i=0; i<d; ++i )
     for ( index_t i=d-1; i!=-1; --i )
         result.push_back( gsParameterDomainPreconditioners<T>::assembleMass( basis.component(i) ) );
     return result;
@@ -170,6 +171,7 @@ std::vector< gsSparseMatrix<T> > _assembleTensorStiffness(const gsTensorBasis<d,
 {
     std::vector< gsSparseMatrix<T> > result;
     result.reserve(d);
+    //for ( index_t i=0; i<d; ++i )
     for ( index_t i=d-1; i!=-1; --i )
         result.push_back( gsParameterDomainPreconditioners<T>::assembleStiffness( basis.component(i) ) );
     return result;
@@ -369,7 +371,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
     gsMatrix<T> diag;
     diag.setConstant(sz,1,a); // This is the pure-mass part!
 
-    index_t glob = 1; // Indexing value for setting up the Kronecker product
+    index_t glob = sz; // Indexing value for setting up the Kronecker product
 
     typedef typename gsMatrix<T>::GenSelfAdjEigenSolver EVSolver;
     typedef typename EVSolver::EigenvectorsType evMatrix;
@@ -391,6 +393,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
         const evVector & D = ges.eigenvalues();
 
         const index_t loc = D.rows();
+        glob /= loc;
         const index_t glob2 = sz / loc / glob;
 
         for ( index_t l=0; l<loc; ++l )
@@ -398,21 +401,18 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
                 for ( index_t n=0; n<glob2; ++n )
                     diag( m + l*glob + n*loc*glob, 0 ) += D(l,0);
 
-        glob *= loc;
-
         // Finally, we store the eigenvectors
         gsMatrix<T> ev;
         ev.swap(const_cast<evMatrix&>(ges.eigenvectors()));
 
         // These are the operators representing the eigenvectors
-        Qop [i] = makeMatrixOp( ev.moveToPtr() );
-        // Here, we are safe as long as we do not want to apply QTop after Qop has been destroyed
-        QTop[i] = makeMatrixOp(
-            static_cast<gsMatrixOp< gsSparseMatrix<T> >*>(Qop[i].get())->matrix().transpose()
-        ); //TODO: check that this does not make a copy.
+        typename gsMatrixOp<  gsMatrix<T> >::Ptr matrOp = makeMatrixOp( ev.moveToPtr() );
+        Qop [i] = matrOp;
+        // Here we are safe as long as we do not want to apply QTop after Qop got destroyed.
+        QTop[i] = makeMatrixOp( matrOp->matrix().transpose() );
     }
 
-    GISMO_ASSERT( glob == sz, "Internal error." );
+    GISMO_ASSERT( glob == 1, "Internal error." );
 
     for ( index_t l=0; l<sz; ++l )
         diag( l, 0 ) = 1/diag( l, 0 );

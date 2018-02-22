@@ -56,22 +56,35 @@ public:
         m_ops[0] = op0; m_ops[1] = op1;
     }
 
+    /// Convenience constructor taking three preconditioners
+    gsCompositionOfPreconditionersOp(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2)
+        : m_sz(3), m_ops(3)
+    {
+        m_ops[0] = op0; m_ops[1] = op1; m_ops[2] = op2;
+    }
+
     virtual ~gsCompositionOfPreconditionersOp() { }
 
     /// Make command returning a smart pointer
     static uPtr make(const std::vector< BasePtr >& ops)
     {
-        return uPtr( new gsCompositionOfPreconditionersOp( ops ) );
+        return uPtr( new gsCompositionOfPreconditionersOp(ops) );
     }
 
     /// Make command returning a smart pointer
-    static uPtr make(const BasePtr & op0, const BasePtr & op1 )
+    static uPtr make(const BasePtr & op0, const BasePtr & op1)
     {
-        return uPtr( new gsCompositionOfPreconditionersOp( op0, op1 ) );
+        return uPtr( new gsCompositionOfPreconditionersOp(op0, op1) );
+    }
+
+    /// Make command returning a smart pointer
+    static uPtr make(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2)
+    {
+        return uPtr( new gsCompositionOfPreconditionersOp(op0, op1, op2) );
     }
 
     /// Add another operator at the end
-    void addOperator( const BasePtr& op )
+    void addOperator(const BasePtr& op)
     {
         m_sz++;
         m_ops.push_back( op );
