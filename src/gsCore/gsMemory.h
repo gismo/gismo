@@ -187,6 +187,12 @@ template <typename T>
 inline shared_ptr<T> make_shared_not_owned(const T *x)
 { return shared_ptr<T>(const_cast<T*>(x), null_deleter<T>); }
 
+
+#if __cplusplus >= 201402
+using std::make_unique;
+template <typename T>
+inline unique_ptr<T> make_unique(T * x) { return make_unique<T>(dynamic_cast<T*>(x)); }
+#else
 /// Takes a T* and wraps it in an unique_ptr. Useful for one-off
 /// function return values to avoid memory leaks.
 ///
@@ -198,6 +204,7 @@ inline unique_ptr<T> make_unique(T * x) { return unique_ptr<T>(x); }
 /// Takes a T*, cast it to C* and wraps it in an unique_ptr.
 template <class C, typename T>
 inline unique_ptr<C> make_unique(T * x) { return unique_ptr<C>(dynamic_cast<C*>(x)); }
+#endif
 
 /// \brief Converts a uPtr \a p to an uPtr
 /// of class \a C and gives it back as return value.
