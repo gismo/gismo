@@ -165,6 +165,78 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat,
     return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release()), sym));
 }
 
+/**
+  * @brief This linear operator represents the multiplication with a diagonal matrix
+  * whose coefficients are given as a vector (\a gsMatrix with 1 column)
+  *
+  * \ingroup Solver
+  */
+template <class T>
+class gsDiagonalMatrixOp : public gsLinearOperator<T>
+{
+    typedef gsMatrix<T> MatrixType;
+    typedef memory::shared_ptr<MatrixType> MatrixPtr;
+    typedef typename MatrixType::Nested NestedMatrix;
+
+public:
+    /// Shared pointer for gsDiagonalMatrixOp
+    typedef memory::shared_ptr<gsDiagonalMatrixOp> Ptr;
+
+    /// Unique pointer for gsDiagonalMatrixOp
+    typedef memory::unique_ptr<gsDiagonalMatrixOp> uPtr;
+
+    /// @brief Constructor taking a reference
+    ///
+    /// @note This does not copy the matrix. Make sure that the matrix
+    /// is not deleted too early (alternatively use constructor by
+    /// shared pointer)
+    gsDiagonalMatrixOp(const MatrixType& mat)
+    : m_mat(), m_expr(mat.derived())
+    {
+        GISMO_ASSERT( m_expr.cols() == 1, "gsDiagonalMatrixOp expects a vector to be provided." );
+    }
+
+    /// @brief Constructor taking a shared pointer
+    gsDiagonalMatrixOp(const MatrixPtr& mat)
+    : m_mat(mat), m_expr(m_mat->derived())
+    {
+        GISMO_ASSERT( m_expr.cols() == 1, "gsDiagonalMatrixOp expects a vector to be provided." );
+    }
+
+    /// @brief Make function returning a smart pointer
+    ///
+    /// @note This does not copy the matrix. Make sure that the matrix
+    /// is not deleted too early or provide a shared pointer.
+    static uPtr make(const MatrixType& mat)
+    { return memory::make_unique( new gsDiagonalMatrixOp(mat) ); }
+
+    /// Make function returning a smart pointer
+    static uPtr make(const MatrixPtr& mat)
+    { return memory::make_unique( new gsDiagonalMatrixOp(mat) ); }
+
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+    {
+        x = input;
+        x.array() /= m_expr.replicate(1,input.cols()).array();
+    }
+
+    index_t rows() const { return m_expr.rows(); }
+    index_t cols() const { return m_expr.rows(); } // a diagonal matrix is always symmetric.
+
+    ///Returns the matrix
+    NestedMatrix matrix() const    { return m_expr; }
+
+    ///Returns a shared pinter to the matrix
+    MatrixPtr    matrixPtr() const {
+        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsDiagonalMatrixOp." );
+        return m_mat;
+    }
+
+private:
+    const MatrixPtr m_mat; ///< Shared pointer to matrix (if needed)
+    NestedMatrix   m_expr; ///< Nested Eigen expression
+};
+
 /** @brief Simple adapter class to use an Eigen solver (having a
  * compute() and a solve() method) as a linear operator.
  *
