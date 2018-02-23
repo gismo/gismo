@@ -431,7 +431,8 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::splitFace(
   gsBSpline<T> * reverseSpline = new gsBSpline<T>(mateKV, give(mateCoefs));
   
   // split the domain for the new face off from the old one
-  gsPlanarDomain<T> * newDomain = f->surf->domain().split((prevEdgeIdx + 1) % numEdges, nextEdgeIdx, domainSpline, reverseSpline);
+  typename gsPlanarDomain<T>::uPtr newDomain =
+      f->surf->domain().split((prevEdgeIdx + 1) % numEdges, nextEdgeIdx, domainSpline, reverseSpline);
   if(prevEdgeIdx > nextEdgeIdx)
   {
     // if startVertex is the source of the first edge, or is later in the cycle than endVertex,
@@ -442,7 +443,7 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::splitFace(
   typename gsSurface<T>::Ptr newBaseSurface = f->surf->getTP();
   
   // create the new face
-  gsTrimSurface<T> * newTS = new gsTrimSurface<T>(newBaseSurface , newDomain);
+  gsTrimSurface<T> * newTS = new gsTrimSurface<T>(newBaseSurface , newDomain.release());
   
   // add the new face using existing half-edges. (calling addFace would re-add the edges)
   // gsSolidHalfFace<T> * newFace = addFace(newFaceBoundary, newTS);
