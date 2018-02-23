@@ -103,9 +103,10 @@ public:
     }
 
     /// Clone function. Used to make a copy of the (derived) geometry
-    gsPlanarDomain * clone() const
+    //GISMO_CLONE_FUNCTION(gsPlanarDomain)
+    uPtr clone() const
     {
-        return new gsPlanarDomain(*this);
+        return uPtr(new gsPlanarDomain(*this));
     }
 
 public:

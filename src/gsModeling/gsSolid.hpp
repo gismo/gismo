@@ -627,7 +627,7 @@ gsSolidHalfFace<T> *gsSolid<T>::addFaceWithMate(const std::vector<gsSolidHeVerte
 
   typedef typename gsTensorBSplineBasis<2,T>::GeometryType MasterSurface;
   // Create a new master surface by taking this surface's one and flipping one coordinate.
-  gsTrimSurface<T> *surfReverse = new gsTrimSurface<T>(surf->getTP()->clone().release(), surf->domain().clone());
+  gsTrimSurface<T> *surfReverse = new gsTrimSurface<T>(surf->getTP()->clone().release(), surf->domain().clone().release());
   gsMatrix<T> &surfRevCoefs = surfReverse->getTP()->coefs();
   MasterSurface *genGeom = dynamic_cast<MasterSurface *>(surfReverse->getTP().get());
   GISMO_ASSERT(genGeom != NULL, "This procedure requires a gsGenericGeometry");
