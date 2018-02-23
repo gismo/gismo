@@ -120,7 +120,7 @@ public:
     }
       
     /// Return the curve-loop as a single new B-Spline curve
-    gsCurve<T> * singleCurve() const;
+    typename gsCurve<T>::uPtr singleCurve() const;
       
     int size() const { return m_curves.size(); }
     

@@ -124,20 +124,20 @@ void gsCurveLoop<T>::translate(gsVector<T> const & v)
 }
 
 template<class T>
-gsCurve<T> * gsCurveLoop<T>::singleCurve() const
+typename gsCurve<T>::uPtr gsCurveLoop<T>::singleCurve() const
 {
     typename std::vector< gsCurve<T> *>::const_iterator it;
     
     GISMO_ASSERT( m_curves.size(), "CurveLoop is empty.\n");
     GISMO_ASSERT( m_curves.front(), "Something went wrong. Invalid pointer in gsCurveLoop member.\n");
     
-    gsCurve<T> * loop = m_curves.front()->clone().release() ;   // TODO: return uPtr
-    
+    typename gsCurve<T>::uPtr loop = m_curves.front()->clone();
+
     for ( it= m_curves.begin()+1; it!= m_curves.end() ; it++ )
     {
         loop->merge( *it ) ;
     }
-    return loop ;
+    return loop;
 }
 
 template<class T>
@@ -193,19 +193,16 @@ std::vector<T> gsCurveLoop<T>::lineIntersections(int const & direction , T const
 {
     // For now only Curve loops with ONE curve are supported
     gsBSplineSolver<T> slv;
-    gsCurve<T> * s = singleCurve();
-    gsBSpline<T> * c = dynamic_cast<gsBSpline<T> *>( s );
+    typename gsBSpline<T>::uPtr c = memory::convert_ptr<gsBSpline<T> >(singleCurve());
     // = dynamic_cast<gsBSpline<T> *>(m_curves[0])) 
     
-    if ( c != 0 )
+    if ( c )
     {
         std::vector<T> result;
         slv.allRoots(*c, result, direction, abscissa) ;
         /*slv.allRoots(*c, result, direction, abscissa,1e-7,1000) ;*/
-        delete s;
         return result;
     }
-    delete s;
     gsWarn<<"Could not get intersection for this type of curve!\n";
     return std::vector<T>();
 }
