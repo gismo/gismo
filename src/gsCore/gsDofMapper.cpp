@@ -165,6 +165,11 @@ void gsDofMapper::markCoupled( index_t i, index_t k )
     matchDof(k,i,k,i);
 }
 
+void gsDofMapper::markTagged( index_t i, index_t k )
+{
+    m_tagged.push_back(index(i,k));
+}
+
 void gsDofMapper::markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs )
 {
     for (index_t i = 0; i < boundaryDofs.rows(); ++i)
@@ -173,6 +178,13 @@ void gsDofMapper::markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDo
     }
 
     // TO DO: save inverse, eg boundaryDofs(i,0)
+}
+
+void gsDofMapper::markCoupledAsTagged()
+{
+    m_tagged.reserve(m_tagged.size()+m_numCpldDofs);
+    for(int i=0; i< m_numCpldDofs;++i)
+        m_tagged.push_back(m_numFreeDofs-m_numCpldDofs+i);
 }
 
 void gsDofMapper::eliminateDof( index_t i, index_t k )
@@ -263,6 +275,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     os<<" Dofs: "<< this->size() <<"\n";
     os<<" free: "<< this->freeSize() <<"\n";
     os<<" coupled: "<< this->coupledSize() <<"\n";
+    os<<" tagged: "<< this->taggedSize() <<"\n";
     os<<" elim: "<< this->boundarySize() <<"\n";
     return os;
 }
@@ -286,12 +299,14 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
 {
     GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(m_numFreeDofs == permutation.size(), "permutation size does not match number of free dofs");
-    GISMO_ASSERT(m_coupled.isEmpty(), "you cannot permute the dofVector twice, combine the permutation");
-    GISMO_ASSERT(std::is_permutation(permutation.begin(), permutation.end()), "input vector is not a permutation");
+    //GISMO_ASSERT(m_tagged.empty(), "you cannot permute the dofVector twice, combine the permutation");
+    //We could check here, that permutation is indeed a permutation
 
     //make a copy of the old ordering, easiest way to implement the permutation. Inplace reordering is quite hard.
     std::vector<index_t> dofs = m_dofs;
-    m_coupled.reserve(2*coupledSize()); //reserve enough memory
+    //first use a tempory coupled vector, other wise is_coupled_index() would not work correctly
+    std::vector<index_t> tagged;
+    tagged.reserve(taggedSize()); //reserve enough memory
     
     for(index_t i=0; i<(index_t)dofs.size();++i)
     {
@@ -299,15 +314,20 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
         if(is_free_index(idx))
         {
             m_dofs[i] = permutation[idx];
-            //fill  bookkeeping for coupled dofs
-            if(is_coupled_index(idx))
-		m_coupled.push_back(m_dofs[i]);
+            //fill  bookkeeping for tagged dofs
+            if(is_tagged_index(idx))
+                tagged.push_back(m_dofs[i]);
         }
     }
-    
-    std::sort(m_coupled.begin(),m_coupled.end());
-    std::vector<index_t>::iterator it = std::unique (m_coupled.begin(),m_coupled.end());
-    m_coupled.resize( std::distance(m_coupled.begin(),it) );
+    m_tagged.swap(tagged);
+
+    //sort and delete the duplicated ones
+    std::sort(m_tagged.begin(),m_tagged.end());
+    std::vector<index_t>::iterator it = std::unique (m_tagged.begin(),m_tagged.end());
+    m_tagged.resize( std::distance(m_tagged.begin(),it) );
+
+    //coupled dofs cannot be tracked anymore
+    m_numCpldDofs = 0;
 }
 
 
@@ -402,6 +422,11 @@ index_t gsDofMapper::coupledSize() const
     return std::count_if( CountMap.begin(), CountMap.end(),
                           std::bind2nd(std::greater<index_t>(), 1) );
 */
+}
+
+index_t gsDofMapper::taggedSize() const
+{
+    return m_tagged.size();
 }
 
 
