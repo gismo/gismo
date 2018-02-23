@@ -65,7 +65,7 @@ public:
         if (!didParseCmdLine)
         {
             gsWarn<< "gsCmdLine::getValues was never called. "
-                "Arguments were not parsed from command line.";
+                "Arguments were not parsed from command line.\n"<<std::flush;
             abort();
         }
 #endif
