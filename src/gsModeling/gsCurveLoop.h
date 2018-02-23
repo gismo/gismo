@@ -137,7 +137,7 @@ public:
 
     /// Computes the normal vector of curve i at parameter u (is
     /// outer in case of CCW orientation)
-    gsMatrix<T> * normal( int const & c, gsMatrix<T> const & u );
+    gsMatrix<T> normal( int const & c, gsMatrix<T> const & u );
 
     /// Split a second curve loop off from this one by inserting two new
     /// curves. Curve \a startIndex will be included in the new loop, while

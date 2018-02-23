@@ -141,17 +141,17 @@ typename gsCurve<T>::uPtr gsCurveLoop<T>::singleCurve() const
 }
 
 template<class T>
-gsMatrix<T> * gsCurveLoop<T>::normal( int const & c, gsMatrix<T> const & u )
+gsMatrix<T> gsCurveLoop<T>::normal( int const & c, gsMatrix<T> const & u )
 {
     int n = u.cols();
-    gsMatrix<T> * result= new gsMatrix<T>(2,n);
+    gsMatrix<T> result(2,n);
     
     for ( int i=0; i<n; ++i )
     {
         gsMatrix<T> b = m_curves[c]->deriv( u.col(i) ) ;
         b.normalize(); // unit tangent vector
-        (*result)(0,i) = b(1);
-        (*result)(1,i) = -b(0);
+        result(0,i) = b(1);
+        result(1,i) = -b(0);
     }
     return result;
 }
