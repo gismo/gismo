@@ -32,7 +32,7 @@ class gsParameterDomainPreconditioners
     typedef typename gsLinearOperator<T>::Ptr  OpPtr;
 public:
 
-    /// Constructor taking \a gsBasis, \a gsBoundaryConditons and the
+    /// Constructor taking \a gsBasis, \a gsBoundaryConditions and the
     /// \a dirichtet::strategy
     gsParameterDomainPreconditioners(
         const gsBasis<T>& _basis,
@@ -41,7 +41,7 @@ public:
     )
     : m_basis(_basis), m_bc(_bc), m_dirichlet(_dirichlet) { init(); }
 
-    /// Constructor taking \a gsBasis, \a gsBoundaryConditons and
+    /// Constructor taking \a gsBasis, \a gsBoundaryConditions and
     /// \a gsOptionList object providing the Dirichlet strategy.
     gsParameterDomainPreconditioners(
         const gsBasis<T>& _basis,
@@ -64,26 +64,26 @@ public:
 
     /// Assembles stiffness matrix on the parameter domain
     ///
-    /// The stiffness matrix represents \$f -\Delta u + a u \$f
+    /// The stiffness matrix represents \f$ -\Delta u + a u \f$
     gsSparseMatrix<T> getStiffnessMatrix(T a=0)            const;
 
     /// Provides \a gsLinearOperator representing the stiffness matrix (in a matrix-free way)
     ///
-    /// The stiffness matrix represents \$f -\Delta u + a u \$f
+    /// The stiffness matrix represents \f$ -\Delta u + a u \f$
     OpUPtr            getStiffnessMatrixOp(T a=0)          const;
 
     /// Provides \a gsLinearOperator representing the inverse stiffness matrix
     /// based on the fast diagonalization approach
     /// (SIAM J. Sci. Comput., 38 (6), p. A3644 - A3671, 2016)
     ///
-    /// The stiffness matrix represents \$f -\Delta u + a u \$f
+    /// The stiffness matrix represents \f$ -\Delta u + a u \f$
     OpUPtr            getFastDiagonalizationOp(T a=0)      const;
 
     /// Provides \a gsLinearOperator representing the subspace corrected mass smoother
     /// (SIAM J. on Numerical Analysis. 55 (4). p. 2004 - 2024, 2017)
     ///
     /// This operator is spectrally equivalent to the inverse of
-    /// \$f - Delta u + h^{-2} u \$f
+    /// \f$ - \Delta u + h^{-2} u \f$
     OpUPtr            getSubspaceCorrectedMassSmootherOp() const;
 
     // Helper functions for implementation, which might be of interest also for use in

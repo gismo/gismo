@@ -21,8 +21,8 @@ namespace gismo {
 
 /// @brief Class for representing the product of objects of type \a gsLinearOperator as \a gsLinearOperator
 ///
-/// Note, for given operators \$f A_1, A_2, ..., A_N\$f, it implements
-/// \$f A_N \cdots A_1$, so \$ A_1 \$f is applied first, and \$ A_N \$f applied last.
+/// Note, for given operators \f$ A_1, A_2, ..., A_N\f$, it implements
+/// \f$ A_N, ..., A_1\f$, so \f$ A_1 \f$ is applied first, and \f$ A_N \f$ applied last.
 ///
 /// For composition of preconditioners, cf. also \a gsCompositionOfPreconditionersOp
 ///

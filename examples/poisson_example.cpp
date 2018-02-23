@@ -20,7 +20,7 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    // TODO: choose geometry
+    std::string geometry("BSplineQuarterAnnulus");
     index_t numRefine  = 2;
     index_t degree  = 2;
     bool useNitsche = false;
@@ -28,10 +28,9 @@ int main(int argc, char *argv[])
     real_t tol = 1.e-8;
     index_t maxIter = 200;
     bool plot = false;
-    // TODO: update docs
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem with iterative solvers and preconditioners." );
-    // TODO: choose geometry
+    cmd.addString("g", "geo",     "Chosen geometry",                                        geometry  );
     cmd.addInt   ("r", "refine",  "Number of refinement levels",                            numRefine );
     cmd.addInt   ("p", "degree",  "Spline degree for discretization",                       degree    );
     cmd.addSwitch(     "nitsche", "Use Nitsche approach to realize boundary conditions",    useNitsche);
@@ -40,6 +39,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "maxIter", "Maximum number of iterations",                           maxIter   );
     cmd.addSwitch(     "plot",    "Create a ParaView visualization file with the solution", plot      );
     cmd.getValues(argc,argv);
+    //! [Parse command line]
 
     if ( preconder != "none" && preconder != "j" && preconder != "gs" && preconder != "fd" && preconder != "hyb" )
     {
@@ -53,8 +53,6 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    //! [Parse command line]
-
     //! [Function data]
     // Define source function
     gsFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",2);
@@ -64,21 +62,19 @@ int main(int argc, char *argv[])
     // We also define exact solution and use it for the Dirichlet
     // boundary conditions
     gsFunctionExpr<> g("sin(pi*x*1)*sin(pi*y*2)+pi/10",2);
+    //! [Function data]
 
     // Print out source function and solution
     gsInfo << "Source function :" << f << "\n";
     gsInfo << "Exact solution  :" << g << "\n\n";
-    //! [Function data]
 
     //! [Geometry data]
     // Define Geometry, must be a gsMultiPatch object
     gsMultiPatch<> patches;
 
     // For single patch unit square of quadratic elements, use:
-    if (true ) patches = gsMultiPatch<>(*gsNurbsCreator<>::BSplineQuarterAnnulus(2));
-
-    // Geometry can also be read from file (if gsMultiPatch):
-    if (false) gsReadFile<>("planar/lshape_p2.xml", patches);
+    if (geo=="BSplineQuarterAnnulus")
+        patches = gsMultiPatch<>(*gsNurbsCreator<>::BSplineQuarterAnnulus(2));
 
     // Create 4 (2 x 2) patches of squares:
     //
@@ -89,9 +85,22 @@ int main(int argc, char *argv[])
     //
     // The last argument scale the squares such that we
     // get the unit square as domain.
-    if (false) patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
+    else if (geo=="BSplineSquareGrid")
+        patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
 
-    gsInfo << "The domain is a "<< patches <<"\n";
+    // Geometry can also be read from file (if gsMultiPatch):
+    else
+    {
+        if (! gsFileManager::fileExists(geo))
+        {
+            gsInfo << "The geometry \"" << geo << "\" is unknown.\nAllowed are only "
+                "\"BSplineQuarterAnnulus\", \"BSplineSquareGrid\" and filenames of "
+                "xml-files containing a gsMultiPatch geometry.\n";
+            return EXIT_FAILURE;
+        }
+        gsReadFile<>(geo, patches);
+    }
+    gsInfo << "Geometry: "<< patches <<"\n";
     //! [Geometry data]
 
 
@@ -181,20 +190,22 @@ int main(int argc, char *argv[])
     // Generate system matrix and load vector
     gsInfo<< "Assembling...\n";
     assembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with "
-           << assembler.numDofs() << " dofs.\n";
     //! [Assemble]
 
-    //! [Solve]
-    // Initialize the conjugate gradient solver
-    gsInfo << "Solving...\n";
-    gsLinearOperator<>::Ptr preconditioner;
+    gsInfo << "Have assembled a system (matrix and load vector) with "
+           << assembler.numDofs() << " dofs.\n";
 
+    // Checking that the preconditioner is compaible with the basis
     if (refine_bases.nBases() > 1 && ( preconder=="fd" || preconder=="hyb" ) )
     {
         gsInfo << "The chosen preconditioner only works for single-patch geometries.\n";
         return EXIT_FAILURE;
     }
+
+    //! [Solve]
+    // Initialize the conjugate gradient solver
+    gsInfo << "Solving...\n";
+    gsLinearOperator<>::Ptr preconditioner;
 
     if (preconder=="j")
         preconditioner = makeJacobiOp( assembler.matrix() );
@@ -217,6 +228,7 @@ int main(int argc, char *argv[])
     solver.setMaxIterations(maxIter);
     gsMatrix<> solVector, errorHistory;
     solver.solveDetailed( assembler.rhs(), solVector, errorHistory );
+    //! [Solve]
 
     // Checking for success and printing corresponding messages:
     bool success = solver.error() <= solver.tolerance();
@@ -230,7 +242,6 @@ int main(int argc, char *argv[])
         gsInfo << errorHistory.transpose() << "\n\n";
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
-    //! [Solve]
 
     //! [Construct solution]
     // Construct the solution as a scalar field

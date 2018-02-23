@@ -26,9 +26,9 @@ namespace gismo
 ///
 /// This should not be confused with \a gsProductOfOperatorsOp, which would yield
 ///
-/// \f$ I - P_n \cdots P_1 A \$f.
+/// \f$ I - P_n \cdots P_1 A \f$.
 ///
-/// @ingroup Solvers
+/// @ingroup Solver
 template <class T>
 class GISMO_EXPORT gsCompositionOfPreconditionersOp : public gsPreconditionerOp<T>
 {
