@@ -1,4 +1,4 @@
-/** @file iterativeSolvers_example.cpp
+/** @file poisson_example.cpp
 
     @brief Tutorial on solving a Poisson problem with iterative solvers and preconditioners.
 
@@ -22,10 +22,9 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     // TODO: choose geometry
     index_t numRefine  = 2;
-    // TODO: choose degree
-    // TODO: choose smoothness
+    index_t degree  = 2;
     bool useNitsche = false;
-    std::string preconder("hyb");
+    std::string preconder("none");
     real_t tol = 1.e-8;
     index_t maxIter = 200;
     bool plot = false;
@@ -34,8 +33,7 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Tutorial on solving a Poisson problem with iterative solvers and preconditioners." );
     // TODO: choose geometry
     cmd.addInt   ("r", "refine",  "Number of refinement levels",                            numRefine );
-    // TODO: choose degree
-    // TODO: choose smoothness
+    cmd.addInt   ("p", "degree",  "Spline degree for discretization",                       degree    );
     cmd.addSwitch(     "nitsche", "Use Nitsche approach to realize boundary conditions",    useNitsche);
     cmd.addReal  ("t", "tol",     "Tolerance for iterative solver",                         tol       );
     cmd.addString("",  "prec",    "Preconditioner to be used",                              preconder );
@@ -141,24 +139,14 @@ int main(int argc, char *argv[])
     // Copy basis from the geometry
     gsMultiBasis<> refine_bases( patches );
 
-    // h-refine each basis
+    // h-refinement
     for (index_t i = 0; i < numRefine; ++i)
       refine_bases.uniformRefine();
 
-    // Number for p-refinement of the computational (trial/test) basis.
-    index_t numElevate = 2; //TODO
+    // k-refinement (set degree)
+    for ( size_t i = 0; i < refine_bases.nBases(); ++ i )
+        refine_bases[i].setDegreePreservingMultiplicity(degree);
 
-    // Elevate and p-refine the basis to order k + numElevate
-    // where k is the highest degree in the bases
-    if ( numElevate > -1 )
-    {
-        // Find maximum degree with respect to all the variables
-        index_t max_tmp = refine_bases.minCwiseDegree();
-
-        // Elevate all degrees uniformly
-        max_tmp += numElevate;
-        refine_bases.setDegree(max_tmp);
-    }
     //! [Refinement]
 
     ////////////// Setup solver and solve //////////////

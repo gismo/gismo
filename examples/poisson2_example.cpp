@@ -1,4 +1,4 @@
-/** @file poisson_example.cpp
+/** @file poisson2_example.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 
