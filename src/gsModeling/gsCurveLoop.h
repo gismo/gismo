@@ -142,7 +142,7 @@ public:
     /// Split a second curve loop off from this one by inserting two new
     /// curves. Curve \a startIndex will be included in the new loop, while
     /// curve \a endIndex will be kept in the original loop.
-    gsCurveLoop<T> * split(int startIndex, int endIndex,
+    typename gsCurveLoop<T>::uPtr split(int startIndex, int endIndex,
                            gsCurve<T> * newCurveThisFace, gsCurve<T> * newCurveNewFace);
 
 

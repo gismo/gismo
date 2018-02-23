@@ -157,12 +157,12 @@ gsMatrix<T> gsCurveLoop<T>::normal( int const & c, gsMatrix<T> const & u )
 }
 
 template<class T>
-gsCurveLoop<T> * gsCurveLoop<T>::split(int startIndex, int endIndex,
+typename gsCurveLoop<T>::uPtr gsCurveLoop<T>::split(int startIndex, int endIndex,
                                        gsCurve<T> * newCurveThisFace, 
                                        gsCurve<T> * newCurveNewFace)
 {
     int n = m_curves.size();
-    gsCurveLoop * result = new gsCurveLoop<T>(newCurveNewFace);
+    typename gsCurveLoop<T>::uPtr result(new gsCurveLoop<T>(newCurveNewFace));
     for(int i = startIndex; i != endIndex; i = (i + 1) % n)
     {
         result->insertCurve(m_curves[i]);

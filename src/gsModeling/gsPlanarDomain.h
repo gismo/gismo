@@ -227,10 +227,10 @@ public:
     gsPlanarDomain *split(int startIndex, int endIndex,
                           gsCurve<T> * newCurveThisFace, gsCurve<T> * newCurveNewFace)
     {
-        gsCurveLoop<T>* newCurveLoop = this->m_loops[0]->split(startIndex, endIndex, newCurveThisFace, newCurveNewFace);
+        typename gsCurveLoop<T>::uPtr newCurveLoop = this->m_loops[0]->split(startIndex, endIndex, newCurveThisFace, newCurveNewFace);
         updateBoundingBox();
 
-        return new gsPlanarDomain<T>(newCurveLoop);
+        return new gsPlanarDomain<T>(newCurveLoop.release());
     }
 
     /// Update the bounding box. Needs to be called after any operation that
