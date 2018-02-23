@@ -18,7 +18,7 @@ namespace gismo
 {
 
 gsDofMapper::gsDofMapper() : 
-m_shift(0), m_numFreeDofs(0), m_numCpldDofs(1), m_curElimId(-1),m_isPermuted(false)
+m_shift(0), m_numFreeDofs(0), m_numCpldDofs(1), m_curElimId(-1)
 { 
     m_offset.resize(1,0);
 }
@@ -256,7 +256,6 @@ void gsDofMapper::finalize()
     m_numElimDofs = curElimDof - m_numFreeDofs;
 
     m_curElimId = 0;// Only equal to zero after finalize is called.
-    m_isPermuted = false;
 }
 
 std::ostream& gsDofMapper::print( std::ostream& os ) const
@@ -287,16 +286,13 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
 {
     GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(m_numFreeDofs == permutation.size(), "permutation size does not match number of free dofs");
-    GISMO_ASSERT(m_isPermuted==false, "you cannot permute the dofVector twice, combine the permutation");
-
+    GISMO_ASSERT(m_coupled.isEmpty(), "you cannot permute the dofVector twice, combine the permutation");
+    GISMO_ASSERT(std::is_permutation(permutation.begin(), permutation.end()), "input vector is not a permutation");
 
     //make a copy of the old ordering, easiest way to implement the permutation. Inplace reordering is quite hard.
     std::vector<index_t> dofs = m_dofs;
-    m_isCoupledIdx.clear();
-    m_isCoupledIdx.resize(m_numFreeDofs,false);
-    m_coupledIndexNumber.clear();
-
-    index_t cIdx = 0;
+    m_coupled.reserve(2*coupledSize()); //reserve enough memory
+    
     for(index_t i=0; i<(index_t)dofs.size();++i)
     {
         index_t idx = dofs[i];
@@ -304,45 +300,14 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
         {
             m_dofs[i] = permutation[idx];
             //fill  bookkeeping for coupled dofs
-            if(is_coupled_index(idx) && m_isCoupledIdx[permutation[idx]] == false)
-            {
-                m_isCoupledIdx[permutation[idx]]=true;
-                m_coupledIndexNumber.insert(std::make_pair(permutation[idx],cIdx));
-                cIdx++;
-            }
+            if(is_coupled_index(idx))
+		m_coupled.push_back(m_dofs[i]);
         }
     }
-    m_isPermuted = true;
-}
-
-
-void gsDofMapper::permute(const gsVector<index_t>& permutation)
-{
-    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
-    GISMO_ASSERT((index_t)m_dofs.size() == permutation.size(), "permutation size does not match number of dofs");
-    GISMO_ASSERT(m_isPermuted==false, "you cannot permute the dofVector twice, combine the permutation");
-
-    //make a copy of the old ordering, easiest way to implement the permutation. Inplace reordering is quite hard.
-    std::vector<index_t> dofs = m_dofs;
-    m_isCoupledIdx.clear();
-    m_isCoupledIdx.resize(m_numFreeDofs,false);
-    m_coupledIndexNumber.clear();
-
-    index_t cIdx = 0;
-    for(index_t i=0; i<(index_t)m_dofs.size();++i)
-    {
-        index_t idx = dofs[i];
-        m_dofs[i] = permutation[idx];
-        //fill  bookkeeping for coupled dofs
-        if(is_coupled_index(idx)  && m_isCoupledIdx[permutation[idx]] == false )
-        {
-            m_isCoupledIdx[permutation[idx]]=true;
-            m_coupledIndexNumber.insert(std::make_pair(permutation[idx],cIdx));
-            cIdx++;
-        }
-    }
-
-    m_isPermuted =true;
+    
+    std::sort(m_coupled.begin(),m_coupled.end());
+    std::vector<index_t>::iterator it = std::unique (m_coupled.begin(),m_coupled.end());
+    m_coupled.resize( std::distance(m_coupled.begin(),it) );
 }
 
 
