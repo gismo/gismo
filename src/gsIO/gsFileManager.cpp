@@ -333,7 +333,7 @@ gsFileManager::open(const std::string & fn)
 #elif defined(_WIN32)
     HINSTANCE hi = ShellExecute(GetDesktopWindow(), "open", fn.c_str(),
                                 NULL, NULL, SW_SHOWNORMAL);
-    const bool ret = !(hi>32);
+    const bool ret = !( (INT_PTR)hi>32);
 #else
     GISMO_STATIC_ASSERT(0,"Platform not identified");
 #endif
