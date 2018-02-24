@@ -11,11 +11,6 @@
     Author(s): G. Kiss, A. Mantzaflaris
 */
 
-
-#include <iostream>
-#include <algorithm>
-#include <time.h>
-
 #include <gismo.h>
 
 using namespace gismo;
@@ -140,8 +135,8 @@ int main(int argc, char *argv[])
 
         time.restart();
         ref.nextIteration(tolerance, threshold);
-        const double clock = time.stop();
-        gsInfo<<"Fitting time: "<< clock <<"\n";
+        time.stop();
+        gsInfo<<"Fitting time: "<< time <<"\n";
 
         gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
         gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
