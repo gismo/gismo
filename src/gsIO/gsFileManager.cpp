@@ -325,15 +325,15 @@ std::string gsFileManager::getFilename(std::string const & fn)
 void
 gsFileManager::open(const std::string & fn)
 {
-    int ret =
+
 #if defined(__APPLE__)
-        std::system( ("open " + fn + " &").c_str() );
+    const int ret = std::system( ("open " + fn + " &").c_str() );
 #elif defined(__linux__)
-        std::system( ("xdg-open " + fn + " &").c_str() );
+    const int ret = std::system( ("xdg-open " + fn + " &").c_str() );
 #elif defined(_WIN32)
-        ShellExecute(GetDesktopWindow(), "open", fn.c_str(),
-                     NULL, NULL, SW_SHOWNORMAL);
-    ret = !ret;
+    HINSTANCE hi = ShellExecute(GetDesktopWindow(), "open", fn.c_str(),
+                                NULL, NULL, SW_SHOWNORMAL);
+    const bool ret = !(hi>32);
 #else
     GISMO_STATIC_ASSERT(0,"Platform not identified");
 #endif
