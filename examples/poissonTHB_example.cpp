@@ -219,5 +219,5 @@ int main(int argc, char *argv[])
 
   gsInfo << "\nFinal basis: " << bases[0] << "\n";
 
-  return result;
+  return EXIT_SUCCESS;
 }
