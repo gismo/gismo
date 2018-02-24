@@ -27,8 +27,6 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-  int result = 0;
-
   // Number of initial uniform mesh refinements
   int initUnifRef;
   // Number of adaptive refinement loops
@@ -214,7 +212,7 @@ int main(int argc, char *argv[])
           gsInfo<<"Plotting in Paraview...\n";
           gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
           // Run paraview and plot the last mesh
-          result = system("paraview p2d_adaRef_sol.pvd &");
+          gsFileManager::open("p2d_adaRef_sol.pvd");
       }
 
   }

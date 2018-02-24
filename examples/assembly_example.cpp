@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
         gsWriteParaview<>( exact, "poisson2d_exact", 1000);
 
         // Run paraview
-        return system("paraview poisson2d.pvd &");
+        gsFileManager::open("poisson2d.pvd");
         //! [Plot in Paraview]
     }
 
