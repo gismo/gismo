@@ -56,14 +56,14 @@ public:
     gsTrimSurface(const gsTrimSurface& other)
     {
         m_surface = other.m_surface;
-        m_domain = other.m_domain->clone();
+        m_domain = other.m_domain->clone().release();
     }
 
     gsTrimSurface& operator=(const gsTrimSurface& other)
     {
         m_surface = other.m_surface;
         delete m_domain;
-        m_domain = other.m_domain->clone();
+        m_domain = other.m_domain->clone().release();
         return *this;
     }
 

@@ -103,9 +103,10 @@ public:
     }
 
     /// Clone function. Used to make a copy of the (derived) geometry
-    gsPlanarDomain * clone() const
+    //GISMO_CLONE_FUNCTION(gsPlanarDomain)
+    uPtr clone() const
     {
-        return new gsPlanarDomain(*this);
+        return uPtr(new gsPlanarDomain(*this));
     }
 
 public:
@@ -168,12 +169,11 @@ public:
         return true;
     };
 
-    /// \todo return non-pointer instead
-    gsMatrix<T> * boundingBox() const
+    gsMatrix<T> boundingBox() const
     {
-        gsMatrix<T> * res = new gsMatrix<T>(2,2);
+        gsMatrix<T> res(2,2);
 
-        *res = m_loops[0]->getBoundingBox();
+        res = m_loops[0]->getBoundingBox();
         return res;
     }
 
@@ -224,13 +224,13 @@ public:
 
     /// split this planar domain in two, returning the new planar domain created
     /// as a result.
-    gsPlanarDomain *split(int startIndex, int endIndex,
+    uPtr split(int startIndex, int endIndex,
                           gsCurve<T> * newCurveThisFace, gsCurve<T> * newCurveNewFace)
     {
-        gsCurveLoop<T>* newCurveLoop = this->m_loops[0]->split(startIndex, endIndex, newCurveThisFace, newCurveNewFace);
+        typename gsCurveLoop<T>::uPtr newCurveLoop = this->m_loops[0]->split(startIndex, endIndex, newCurveThisFace, newCurveNewFace);
         updateBoundingBox();
 
-        return new gsPlanarDomain<T>(newCurveLoop);
+        return uPtr(new gsPlanarDomain<T>(newCurveLoop.release()));
     }
 
     /// Update the bounding box. Needs to be called after any operation that

@@ -496,7 +496,7 @@ typename memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) c
             std::vector<T> x = m_loops[j]->lineIntersections(1, y_samples(0,i) );
             if ( ! x.empty() )
             {
-                gsCurve<T> * curve = m_loops[j]->singleCurve() ; // TO BE REMOVED later
+                typename gsCurve<T>::uPtr curve = m_loops[j]->singleCurve() ; // TO BE REMOVED later
 
                 if ( x.size() == 1 )
                 {
@@ -515,9 +515,6 @@ typename memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) c
                 {
                     x_all.push_back(e(0,k));
                 }
-
-                delete curve;
-
             }
         }
         std::sort(x_all.begin(), x_all.end() );
