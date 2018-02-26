@@ -224,13 +224,13 @@ public:
 
     /// split this planar domain in two, returning the new planar domain created
     /// as a result.
-    gsPlanarDomain::uPtr split(int startIndex, int endIndex,
+    uPtr split(int startIndex, int endIndex,
                           gsCurve<T> * newCurveThisFace, gsCurve<T> * newCurveNewFace)
     {
         typename gsCurveLoop<T>::uPtr newCurveLoop = this->m_loops[0]->split(startIndex, endIndex, newCurveThisFace, newCurveNewFace);
         updateBoundingBox();
 
-        return gsPlanarDomain::uPtr(new gsPlanarDomain<T>(newCurveLoop.release()));
+        return uPtr(new gsPlanarDomain<T>(newCurveLoop.release()));
     }
 
     /// Update the bounding box. Needs to be called after any operation that

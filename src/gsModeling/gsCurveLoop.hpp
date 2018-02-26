@@ -162,7 +162,7 @@ typename gsCurveLoop<T>::uPtr gsCurveLoop<T>::split(int startIndex, int endIndex
                                        gsCurve<T> * newCurveNewFace)
 {
     int n = m_curves.size();
-    typename gsCurveLoop<T>::uPtr result(new gsCurveLoop<T>(newCurveNewFace));
+    uPtr result(new gsCurveLoop<T>(newCurveNewFace));
     for(int i = startIndex; i != endIndex; i = (i + 1) % n)
     {
         result->insertCurve(m_curves[i]);
