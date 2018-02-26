@@ -319,8 +319,8 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
             if(is_tagged_index(idx))
                 tagged_permuted.push_back(m_dofs[i]);
         }
-        else if(is_tag_index(idx)) //Take care about eliminated tagged dofs
-	    tagged.push_back(idx);
+        else if(is_tagged_index(idx)) //Take care about eliminated tagged dofs
+            tagged_permuted.push_back(idx);
     }
     m_tagged.swap(tagged_permuted);
 
