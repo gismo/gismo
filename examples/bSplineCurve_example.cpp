@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     {
         // Output a paraview file
         gsWriteParaview( curve, "bsplinecurve", 100);
-        return system("paraview bsplinecurve.pvd");
+        gsFileManager::open("bsplinecurve.pvd");
     }
 
     return 0;

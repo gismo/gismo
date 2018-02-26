@@ -185,13 +185,13 @@ int main(int argc, char *argv[])
     if( plot )
     {
         // Run paraview
-        return system("paraview thb1_refined.pvd &");
+        gsFileManager::open("thb1_refined.pvd");
     }
     //! [Plot in Paraview]
     else
     {
         gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
                 "file containing Plotting image data.\n";
-        return EXIT_SUCCESS;
     }
+    return EXIT_SUCCESS;
 }

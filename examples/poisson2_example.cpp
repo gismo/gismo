@@ -174,10 +174,10 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         ev.options().setSwitch("plot.elements", true);
         ev.writeParaview( u_sol   , G, "solution");
-        //ev.writeParaview( u_ex    , G, "solution_ex");
-        
+        //ev.writeParaview( u_ex    , G, "solution_ex");        
         //ev.writeParaview( u, G, "aa");
-        return system("paraview solution.pvd &");
+
+        gsFileManager::open("solution.pvd");
     }
     //! [Export visualization in ParaView]
     

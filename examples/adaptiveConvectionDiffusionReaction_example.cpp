@@ -207,14 +207,14 @@ int main(int argc, char *argv[])
     if( plot )
     {
         // Run paraview
-        return system("paraview adaptRef.pvd &");
+        gsFileManager::open("adaptRef.pvd");
     }
     //! [Plot in Paraview]
     else
     {
         gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
                 "file containing Plotting image data.\n";
-        return 0;
     }
+    return EXIT_SUCCESS;
 
 }// end main

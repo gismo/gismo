@@ -135,8 +135,8 @@ int main(int argc, char *argv[])
     if ( plot)
     {
         collection.save();
-        return system("paraview heat_eq_solution.pvd &");
+        gsFileManager::open("heat_eq_solution.pvd");
     }
 
-    return  0;
+    return  EXIT_SUCCESS;
 }
