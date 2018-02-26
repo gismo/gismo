@@ -186,6 +186,11 @@ void gsDofMapper::markCoupledAsTagged()
     m_tagged.reserve(m_tagged.size()+m_numCpldDofs);
     for(int i=0; i< m_numCpldDofs;++i)
         m_tagged.push_back(m_numFreeDofs-m_numCpldDofs+i);
+    
+    //sort and delete the duplicated ones
+    std::sort(m_tagged.begin(),m_tagged.end());
+    std::vector<index_t>::iterator it = std::unique(m_tagged.begin(),m_tagged.end());
+    m_tagged.resize( std::distance(m_tagged.begin(),it) );
 }
 
 void gsDofMapper::eliminateDof( index_t i, index_t k )
