@@ -141,6 +141,36 @@ public:
         return 0;
     }
 
+    /** @brief Sends data to a destination process with a defined tag (blocking)
+     *
+     * One process sends data of length len to the destination process dest. The argument tag specifies the message ID.
+     *
+     * @param[in] in The send buffer with the data to send
+     * @param[in] len The number of elements which will be sent
+     * @param[in] dest The rank of the process which should receive the message
+     * @param[in] tag Specifies the message ID
+     */
+    template<typename T>
+    static int send (T* in, int len, int dest, int tag = 0)
+    {
+        return 0;
+    }
+
+    /** @brief Receives data from a source process with a defined tag (blocking)
+     *
+     * One process receives data of length len from the source process source. The argument tag specifies the message ID.
+     *
+     * @param[out] out The buffer to store the received data in
+     * @param[in] len The number of elements which will be received
+     * @param[in] source The rank of the process which sended the message
+     * @param[in] tag Specifies the message ID
+     */
+    template<typename T>
+    static int recv (T* out, int len, int source, int tag = 0)
+    {
+        return 0;
+    }
+
     /** @brief Distribute an array from the process with rank root to
      * all other processes
      */
@@ -173,8 +203,8 @@ public:
     /** @brief  Gather arrays of variable size on root task.
      *
      * Each process sends its in array of length sendlen to the root process
-     * (including the root itself). In the root process these arrays are stored in rank
-     * order in the out array.
+     * (in
+     * rder in the out array.
      *
      * @param[in] in The send buffer with the data to be sent
      * @param[in] sendlen The number of elements to send on each task
@@ -528,6 +558,38 @@ public:
     int barrier () const
     {
         return MPI_Barrier(m_comm);
+    }
+
+    /// @copydoc gsSerialComm::send()
+    template<typename T>
+    int send (T* in, int len, int dest, int tag = 0) const
+    {
+        return MPI_Send(in,len,MPITraits<T>::getType(),
+                          dest,tag,m_comm);
+    }
+
+    /// @copydoc gsSerialComm::Isend()
+    template<typename T>
+    int Isend (T* in, int len, int dest, MPI_Request request, int tag = 0) const
+    {
+        return MPI_Isend(in,len,MPITraits<T>::getType(),
+                          dest,tag,m_comm,request);
+    }
+
+    /// @copydoc gsSerialComm::recv()
+    template<typename T>
+    int recv (T* out, int len, int source, int tag = 0) const
+    {
+        return MPI_Recv(out,len,MPITraits<T>::getType(),
+                          source,tag,m_comm,MPI_STATUS_IGNORE);
+    }
+
+    /// @copydoc gsSerialComm::Irecv()
+    template<typename T>
+    int Irecv (T* out, int len, int source, MPI_Request request, int tag = 0) const
+    {
+        return MPI_Irecv(out,len,MPITraits<T>::getType(),
+                          source,tag,m_comm,request);
     }
 
     /// @copydoc gsSerialComm::broadcast
