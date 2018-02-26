@@ -185,7 +185,7 @@ public:
      * @param[in] tag Specifies the message ID
      */
     template<typename T>
-    static int recv (T* out, int len, int source, MPI_Status status, int tag = 0)
+    static int recv (T* out, int len, int source, int tag = 0)
     {
         return 0;
     }
