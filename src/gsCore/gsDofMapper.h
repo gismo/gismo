@@ -217,6 +217,12 @@ public:
     /// Mark the local dof \a i of patch \a k as coupled.
     void markCoupled( index_t i, index_t k );
 
+    /// Mark a local dof \a i of patch \a k as tagged
+    void markTagged( index_t i, index_t k );
+
+    /// Mark all coupled dofs as tagged
+    void markCoupledAsTagged();
+
     /// Mark the local dofs \a boundaryDofs of patch \a k as eliminated.
     // to do: put k at the end
     void markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDofs );
@@ -242,6 +248,13 @@ public:
 
     ///\brief Set the shift amount for the global numbering
     void setShift(index_t shift);
+
+    /// \brief Permutes the mapped free indices according to permutation, i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]
+    ///
+    /// \Warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
+    /// The dofs are still coupled, but you have no way of extracting them. If you need this functions, first call
+    /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
+    void permuteFreeDofs(const gsVector<index_t>& permutation);
 
     ///\brief Returns the smallest value of the indices
     index_t firstIndex() const { return m_shift; }
@@ -314,6 +327,13 @@ public:
         return MAPPER_PATCH_DOF(i,k) + m_numCpldDofs - m_numFreeDofs;
     }
 
+    /// @brief Returns the tagged dof index
+    inline index_t tindex( index_t i, index_t k = 0 ) const
+    {
+        GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+        return std::distance(m_tagged.begin(),std::lower_bound(m_tagged.begin(),m_tagged.end(),MAPPER_PATCH_DOF(i,k)));
+    }
+
     /// @brief Returns the boundary index of global dof \a gl.
     ///
     /// Produces undefined results if dof \a gl does not lie on the boundary.
@@ -340,15 +360,25 @@ public:
     inline bool is_boundary( index_t i, index_t k = 0 ) const 
     {return is_boundary_index( index(i, k) );}
 
-    /// Returns true if \a gl is a coupled dof.
+    /// Returns true if local dof \a i of patch \a k is coupled.
     inline bool is_coupled( index_t i, index_t k = 0 ) const 
     { return  is_coupled_index( index(i, k) ); }
 
     /// Returns true if \a gl is a coupled dof.
     inline bool is_coupled_index( index_t gl) const 
-    {           
-        return  (gl < m_numFreeDofs + m_shift                    ) && // is a free dof and
-                (gl + m_numCpldDofs + 1 > m_numFreeDofs + m_shift);   // is not standard dof
+    {
+	   return  (gl < m_numFreeDofs + m_shift                    ) && // is a free dof and
+                    (gl + m_numCpldDofs + 1 > m_numFreeDofs + m_shift);   // is not standard dof
+    }
+
+    /// Returns true if local dof \a i of patch \a k is tagged.
+    inline bool is_tagged( index_t i, index_t k = 0 ) const
+    { return  is_tagged_index( index(i, k) ); }
+
+    /// Returns true if \a gl is a tagged dof.
+    inline bool is_tagged_index( index_t gl) const
+    {
+          return std::binary_search(m_tagged.begin(),m_tagged.end(),gl);
     }
 
     /// Returns the total number of dofs (free and eliminated).
@@ -367,6 +397,9 @@ public:
 
     /// Returns the number of coupled (not eliminated) dofs.
     index_t coupledSize() const;
+
+    /// Returns the number of tagged (not eliminated) dofs.
+    index_t taggedSize() const;
 
     /// Returns the number of eliminated dofs.
     inline index_t boundarySize() const 
@@ -442,6 +475,9 @@ private:
     // used during setup: running id for current eliminated dof
     // After finalize() is called m_curElimId takes the value zero.
     index_t m_curElimId;
+
+    //stores the tagged indices
+    std::vector<index_t> m_tagged;
 
 }; // class gsDofMapper
 
