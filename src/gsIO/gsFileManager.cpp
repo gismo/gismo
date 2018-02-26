@@ -322,8 +322,8 @@ std::string gsFileManager::getFilename(std::string const & fn)
     return fn;
 }
 
-void
-gsFileManager::open(const std::string & fn)
+// todo: return bool for success/failure
+void gsFileManager::open(const std::string & fn)
 {
 
 #if defined(__APPLE__)
@@ -337,6 +337,7 @@ gsFileManager::open(const std::string & fn)
 #else
     GISMO_STATIC_ASSERT(0,"Platform not identified");
 #endif
+    //return ret;
     if (0!=ret)
         gsWarn<<"\nFailed to open file "<<fn<<
             " using OS preferred application.\n\n";
