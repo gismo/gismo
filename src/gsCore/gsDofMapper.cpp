@@ -182,6 +182,7 @@ void gsDofMapper::markBoundary( index_t k, const gsMatrix<unsigned> & boundaryDo
 
 void gsDofMapper::markCoupledAsTagged()
 {
+    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
     m_tagged.reserve(m_tagged.size()+m_numCpldDofs);
     for(int i=0; i< m_numCpldDofs;++i)
         m_tagged.push_back(m_numFreeDofs-m_numCpldDofs+i);
@@ -305,8 +306,8 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
     //make a copy of the old ordering, easiest way to implement the permutation. Inplace reordering is quite hard.
     std::vector<index_t> dofs = m_dofs;
     //first use a tempory coupled vector, other wise is_coupled_index() would not work correctly
-    std::vector<index_t> tagged;
-    tagged.reserve(taggedSize()); //reserve enough memory
+    std::vector<index_t> tagged_permuted;
+    tagged_permuted.reserve(taggedSize()); //reserve enough memory
     
     for(index_t i=0; i<(index_t)dofs.size();++i)
     {
@@ -316,10 +317,12 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation)
             m_dofs[i] = permutation[idx];
             //fill  bookkeeping for tagged dofs
             if(is_tagged_index(idx))
-                tagged.push_back(m_dofs[i]);
+                tagged_permuted.push_back(m_dofs[i]);
         }
+        else if(is_tag_index(idx)) //Take care about eliminated tagged dofs
+	    tagged.push_back(idx);
     }
-    m_tagged.swap(tagged);
+    m_tagged.swap(tagged_permuted);
 
     //sort and delete the duplicated ones
     std::sort(m_tagged.begin(),m_tagged.end());
