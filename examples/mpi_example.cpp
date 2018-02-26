@@ -1,4 +1,4 @@
-/** @file gsMpiTest.cpp
+/** @file mpi_example.cpp
 
     @brief Testing MPI with G+Smo
 
@@ -17,17 +17,23 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris, C. Hofer
+    Author(s): A. Mantzaflaris, C. Hofer, R. Schneckenleitner
 */
 
 #include <gismo.h>
 
 using namespace gismo;
 
-void approximatePI(const gsMpi & mpi, const gsMpiComm & comm);
-void computeDotProduct(const gsMpi & mpi, const gsMpiComm & comm);
-void locateDot(const gsMatrix<> & loc, real_t & count);
 
+// Parallel computation of an approximation of Pi
+void approximatePI(const gsMpi & mpi, const gsMpiComm & comm);
+
+// Parallel computation of a dot product
+void computeDotProduct(const gsMpi & mpi, const gsMpiComm & comm);
+
+// Subroutine to check whether the sampled position is valid, i.e., if
+// the coordinate belongs to the quadrant then count is increased by 1.
+void locateDot(const gsMatrix<> & loc, real_t & count);
 
 int main(int argc, char **argv)
 {
@@ -231,15 +237,13 @@ void computeDotProduct(const gsMpi & mpi, const gsMpiComm & comm)
 
 }
 
-// Subroutine to check whether the sampled position is valid, i.e., if the coordinate belongs to the quadrant then
-// count is increased by 1.
 void locateDot(const gsMatrix<> & loc, real_t & count)
 {
     count = 0;
 
     for(index_t row = 0; row < loc.rows(); row++)
     {
-        real_t pos = loc.row(row).squaredNorm();
+        const real_t pos = loc.row(row).squaredNorm();
 
         if(pos <= 1.)
             count += 1;

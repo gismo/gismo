@@ -202,9 +202,9 @@ public:
 
     /** @brief  Gather arrays of variable size on root task.
      *
-     * Each process sends its in array of length sendlen to the root process
-     * (in
-     * rder in the out array.
+     * Each process sends its in array of length sendlen to the root
+     * process (including the root itself). In the root process these
+     * arrays are stored in rank order in the out array.
      *
      * @param[in] in The send buffer with the data to be sent
      * @param[in] sendlen The number of elements to send on each task
