@@ -72,22 +72,28 @@ template <typename Clock>
 class gsGenericStopwatch
 {
 public:
-    gsGenericStopwatch() { restart(); }
+
+    /// Declares a stop-watch
+    gsGenericStopwatch() : m_value(0) { restart(); }
 
     /// Start taking the time
     void restart() { m_start = Clock::getTime(); }
 
     /// Return elapsed time in seconds.
-    double stop() const { return Clock::getTime() - m_start; }
+    double stop() { return m_value = Clock::getTime() - m_start; }
+
+    /// Returns the last recorded elapsed time
+    double elapsed() const { return m_value; };
 
     friend std::ostream& operator<< (std::ostream& os, const gsGenericStopwatch& sw)
-    { return formatTime(os, sw.stop()); }
+    { return formatTime(os, sw.m_value); }
 
 private:
     gsGenericStopwatch (const gsGenericStopwatch&);
     gsGenericStopwatch& operator=(const gsGenericStopwatch&);
 
     double m_start;
+    double m_value;
 }; // class gsGenericStopwatch
 
 

@@ -244,5 +244,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-        return system("paraview gsview.pvd &");
+    gsFileManager::open("gsview.pvd");
+
+    return EXIT_SUCCESS;
 }

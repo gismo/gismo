@@ -92,6 +92,9 @@ public:
     /// Returns the filename without the path of \a fn
     static std::string getFilename(std::string const & fn);
 
+    /// Opens the file \a fn using the preferred application of the OS
+    static void open(const std::string & fn);
+
 private:
 
     // Return true iff file \a fn exists on the hard disk

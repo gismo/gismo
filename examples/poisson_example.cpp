@@ -259,8 +259,9 @@ int main(int argc, char *argv[])
         const gsField<> exact( assembler.patches(), g, false );
         gsWriteParaview<>( exact, "poisson2d_exact", 1000);
 
-        system("paraview poisson2d.pvd &");
-        system("paraview poisson2d_exact.pvd &");
+        // Run paraview
+        gsFileManager::open("poisson2d.pvd");
+        gsFileManager::open("poisson2d_exact.pvd");
         //! [Plot in Paraview]
     }
     else

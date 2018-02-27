@@ -322,5 +322,25 @@ std::string gsFileManager::getFilename(std::string const & fn)
     return fn;
 }
 
+// todo: return bool for success/failure
+void gsFileManager::open(const std::string & fn)
+{
+
+#if defined(__APPLE__)
+    const int ret = std::system( ("open " + fn + " &").c_str() );
+#elif defined(__linux__)
+    const int ret = std::system( ("xdg-open " + fn + " &").c_str() );
+#elif defined(_WIN32)
+    HINSTANCE hi = ShellExecute(GetDesktopWindow(), "open", fn.c_str(),
+                                NULL, NULL, SW_SHOWNORMAL);
+    const bool ret = !( (INT_PTR)hi>32);
+#else
+    GISMO_STATIC_ASSERT(0,"Platform not identified");
+#endif
+    //return ret;
+    if (0!=ret)
+        gsWarn<<"\nFailed to open file "<<fn<<
+            " using OS preferred application.\n\n";
+}
 
 } //namespace gismo
