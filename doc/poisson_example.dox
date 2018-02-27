@@ -15,7 +15,7 @@ where \f$\mathbf{n}\f$ is the outward pointing unit normal vector,
 and Neumann (natural) boundary conditions are prescribed, respectively.
 
 \note
-For a simple solving of the  Poisson equation with Dirichlet boundary condition and known solution,
+For a simple solving of the Poisson equation with Dirichlet boundary condition and known solution,
 we can use the poissonVector.cpp file. Execute the file as:
 > ./poissonVector -\-help
 to get up a list of solver options. To specify the source term and analytic solution, we have to
