@@ -21,17 +21,21 @@ namespace gismo
 ///
 /// \ingroup Solver
 template<class T = real_t>
-class GISMO_EXPORT gsGMRes: public gsIterativeSolver<T>
+class gsGMRes: public gsIterativeSolver<T>
 {
+    typedef typename Base::LinOpPtr LinOpPtr;
 public:
+    /// Base clasee
     typedef gsIterativeSolver<T> Base;
 
-    typedef gsMatrix<T>  VectorType;
-
-    typedef typename Base::LinOpPtr LinOpPtr;
-
+    /// Shared pointer
     typedef memory::shared_ptr<gsGMRes> Ptr;
+
+    /// Unique pointer
     typedef memory::unique_ptr<gsGMRes> uPtr;
+
+    /// Vector type
+    typedef gsMatrix<T> VectorType;
 
     /// @brief Constructor using a matrix (operator) and optionally a preconditionner
     ///
