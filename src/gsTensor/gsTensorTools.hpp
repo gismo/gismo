@@ -1,16 +1,30 @@
-/** @file gsKronecker.hpp
+/** @file gsTensorTools.hpp
 
     @brief Provides functions for working with Kronecker products of matrices.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): C. Hofreither, S. Takacs
+
+    This file is based on unsupported parts of Eigen:
+
+        // This file is part of Eigen, a lightweight C++ template library
+        // for linear algebra.
+        //
+        // Copyright (C) 2011 Kolja Brix <brix@igpm.rwth-aachen.de>
+        // Copyright (C) 2011 Andreas Platen <andiplaten@gmx.de>
+        // Copyright (C) 2012 Chen-Pang He <jdh8@ms63.hinet.net>
+        //
+        // This Source Code Form is subject to the terms of the Mozilla
+        // Public License v. 2.0. If a copy of the MPL was not distributed
+        // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 */
-#include <gsMatrix/gsKronecker.h>
+#include <gsTensor/gsTensorTools.h>
 
 namespace gismo
 {
@@ -26,7 +40,7 @@ gsSparseMatrix<T,_Options> getKroneckerProduct(const gsSparseMatrix<T,_Options>&
 
     MatrixType result(Ar*Br, Ac*Bc);
     result.resizeNonZeros(0);
-    
+
     if( Ar*Br == 0 || Ac*Bc == 0 )
         return result;
 
@@ -62,7 +76,7 @@ gsSparseMatrix<T,_Options> getKroneckerProduct(const gsSparseMatrix<T,_Options>&
             }
         }
     }
-    
+
     return result;
 }
 

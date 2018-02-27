@@ -17,7 +17,7 @@
 #include <gsSolver/gsProductOfOperatorsOp.h>
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
-#include <gsMatrix/gsKronecker.h>
+#include <gsTensor/gsTensorTools.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
 #include <gsTensor/gsTensorBasis.h>

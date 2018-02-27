@@ -2,13 +2,14 @@
 
     @brief Utility functions related to tensor-structured objects
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
-    Author(s): C. Hofreither, A. Mantzaflaris
+
+    Author(s): C. Hofreither, A. Mantzaflaris, S. Takacs
+
 */
 
 #pragma once
@@ -43,7 +44,7 @@ int fromTensorIndex(const gsVector<unsigned, d>& idx, const gsVector<unsigned, d
     transfer on the whole tensor product basis.
 
     The component transformations are allowed to change the size of the basis.
-    
+
     \ingroup Tensor
  */
 template <unsigned d, typename T>
@@ -112,7 +113,7 @@ void tensorCombineTransferMatrices(
 
 /// \brief Helper to compute the strides of a d-tensor
 template<typename VectIn, typename VectOut> inline
-void tensorStrides(const VectIn & sz, VectOut & strides) 
+void tensorStrides(const VectIn & sz, VectOut & strides)
 {
     strides.derived().resize(sz.size());
     strides[0] = 1;
@@ -127,17 +128,17 @@ void tensorStrides(const VectIn & sz, VectOut & strides)
 /// \ingroup Tensor
 template <typename T, int d>
 void swapTensorDirection( int k1, int k2,
-                          gsVector<index_t,d> & sz, 
+                          gsVector<index_t,d> & sz,
                           gsMatrix<T> & coefs)
 {
-    GISMO_ASSERT( sz.prod()  == coefs.rows(), 
+    GISMO_ASSERT( sz.prod()  == coefs.rows(),
                   "Input error, sizes do not match: "<<sz.prod()<<"!="<< coefs.rows() );
     GISMO_ASSERT( k1<d && k2 < d && k1>=0 && k2>=0,
                   "Invalid directions: "<< k1 <<", "<< k2 );
-    
+
     if ( k1 == k2 )
         return; //Nothing to do
-    
+
     /*
     gsVector<int,d> perm = gsVector<int,d>::LinSpaced(d,0,d-1);
     std::swap(perm[k1],perm[k2] );
@@ -146,12 +147,12 @@ void swapTensorDirection( int k1, int k2,
     */
 
     gsGridIterator<index_t,CUBE,d> it(sz);
-    
+
     std::swap( sz[k1], sz[k2] );
     gsVector<index_t,d> perstr;
     tensorStrides(sz, perstr);
     std::swap(perstr[k1], perstr[k2] );
-    
+
     gsMatrix<T> tmp(coefs.rows(), coefs.cols() );
 
     for(index_t r=0; it; ++it, ++r)
@@ -166,18 +167,18 @@ void swapTensorDirection( int k1, int k2,
 /// permutation \a perm. The \a sz is updated to the new ordering.
 /// \ingroup Tensor
 template <typename T, int d>
-void permuteTensorVector( const gsVector<index_t,d> & perm, 
-                          gsVector<index_t,d> & sz, 
+void permuteTensorVector( const gsVector<index_t,d> & perm,
+                          gsVector<index_t,d> & sz,
                           gsMatrix<T> & coefs)
 {
-    GISMO_ASSERT( sz.prod()  == coefs.rows(), 
+    GISMO_ASSERT( sz.prod()  == coefs.rows(),
                   "Input error, sizes do not match: "<<sz.prod()<<"!="<< coefs.rows() );
     GISMO_ASSERT( perm.sum() == sz.size()*(sz.size()-1)/2,
                   "Error in the permutation: "<< perm.transpose());
 
     if ( perm == gsVector<index_t>::LinSpaced(sz.size(),0,sz.size()-1) )
         return; //Nothing to do
-        
+
     typename gsVector<index_t>::PermutationWrap P(perm);
     gsGridIterator<index_t,CUBE,d> it(sz);
 
@@ -185,13 +186,13 @@ void permuteTensorVector( const gsVector<index_t,d> & perm,
     gsVector<index_t,d> perstr;
     tensorStrides(sz, perstr);
     perstr = P * perstr;
-    
+
     // check: is it better to create a big permutation to apply to coefs ?
     gsMatrix<T> tmp(coefs.rows(), coefs.cols() );
 
     for(index_t r=0; it; ++it, ++r)
         tmp.row(perstr.dot(*it)) = coefs.row(r);
-    
+
     coefs.swap(tmp);
 }
 
@@ -199,105 +200,75 @@ void permuteTensorVector( const gsVector<index_t,d> & perm,
 /// \ingroup Tensor
 template <typename T, int d>
 void flipTensorVector(const int dir,
-                      const gsVector<index_t,d> & sz, 
+                      const gsVector<index_t,d> & sz,
                       gsMatrix<T> & coefs)
 {
-    GISMO_ASSERT( sz.prod()  == coefs.rows(), 
+    GISMO_ASSERT( sz.prod()  == coefs.rows(),
                   "Input error, sizes do not match: "<<sz.prod()<<"!="<< coefs.rows() );
 
     gsVector<index_t,d> perstr = sz;
     perstr[dir] /= 2;
     gsGridIterator<index_t,CUBE,d> it(perstr);
     tensorStrides(sz, perstr);//reuse
-    const index_t cc = sz[dir] - 1; 
+    const index_t cc = sz[dir] - 1;
 
     for(; it; ++it)
     {
         const index_t i1 = perstr.dot(*it);
         const index_t i2 = i1 + (cc - 2 * it->at(dir)) * perstr[dir];
         coefs.row( i1 ).swap( coefs.row( i2 ) );
-    } 
+    }
 }
+
+/// \brief Compute the Kronecker product of two sparse matrices as a sparse matrix
+///
+/// \ingroup Tensor
+template <typename T, int _Options>
+gsSparseMatrix<T,_Options> getKroneckerProduct(const gsSparseMatrix<T,_Options>& A, const gsSparseMatrix<T,_Options>& B);
 
 /** \brief Computes the sparse Kronecker product of sparse matrix blocks.
 
-    The sparse matrices \a m1 and \a m2 must have sizers n1 x k*n1 and
-    n2 x k*n2 respectively.
-    
-    Let \f$ c_{1,k},\, c_{2,k}\f$ be the two blocks of m1 and m2, the result is 
-
-    \f$ \sum_k c_{1,k} \prod c_{2,k} \f$
-
-    \param[in]  m1     
+    \param[in]  m1
     \param[in]  m2
     \param[out] result
-    \param[in] nzPerCol
 
     \ingroup Tensor
 */
 template<class T>
-void gsSparseKroneckerProduct(const gsSparseMatrix<T> & m1, const gsSparseMatrix<T> & m2,
-                              gsSparseMatrix<T> & result, index_t nzPerCol = 10)
+GISMO_DEPRECATED void gsSparseKroneckerProduct(const gsSparseMatrix<T> & m1, const gsSparseMatrix<T> & m2,
+                              gsSparseMatrix<T> & result, index_t unused = 10)
 {
-    typedef typename gsSparseMatrix<T>::iterator  cIter;
-    typedef typename std::vector<cIter>::iterator vIter;
+    result = getKroneckerProduct( m1, m2 );
+}
 
-    // Assumes square coordinate matrices
-    const index_t s2 = m2.rows(),
-                  s1 = m1.rows();
-    const index_t rk = m1.cols() / s1;
 
-    result.resize (s1*s2, s1*s2);
-    result.reserve(gsVector<index_t>::Constant(result.cols(), (nzPerCol+1)/2) );
+/// \brief Compute the Kronecker product of two dense matrices as a dense matrix
+///
+/// \ingroup Tensor
+template <typename T>
+gsMatrix<T> getKroneckerProduct(const gsMatrix<T>& A, const gsMatrix<T>& B);
 
-    std::vector<cIter> it1(rk), it2(rk);
-
-    for (index_t k1=0; k1 != s1; ++k1) // for all cols of m1
-        for (index_t k2=0; k2 != s2; ++k2) // for all cols of m2
+/// \brief Compute the Kronecker product of a vector of matrices
+///
+/// \ingroup Tensor
+template <typename MatrixType>
+MatrixType getKroneckerProduct(const std::vector< MatrixType >& matrices)
+{
+    if ( matrices.size() == 0 )
+        return MatrixType();
+    else if ( matrices.size() == 1 )
+        return matrices[0];
+    else
+    {
+        MatrixType result = getKroneckerProduct(matrices[0], matrices[1]);
+        MatrixType tmp;
+        for ( unsigned i = 2; i<matrices.size(); ++ i )
         {
-            for (index_t i=0; i != rk; ++i)
-                it1[i] = m1.begin(i*s1 + k1);
-            
-            for (; it1[0];) // for all rows of m1
-            {
-                for (index_t i=0; i != rk; ++i)
-                    it2[i] = m2.begin(i*s2 + k2);
-
-                for (; it2[0];) // for all rows of m2
-                {
-                    const index_t i = it2[0].index() * s1 + it1[0].index(),
-                                  j = k2             * s1 + k1   ;
-
-                    // Lower triangular part only ?
-                    //if ( j <= i )
-                    {
-                        T tmp = it1[0].value() * it2[0].value();
-                        for (index_t r=1; r < rk; ++r)
-                            tmp += it1[r].value() * it2[r].value();
-                        result.insert(i,j) = tmp;
-                    }
-
-                    for (vIter i=it2.begin(); i != it2.end(); ++i) ++(*i);
-                }
-
-                for (vIter i=it1.begin(); i != it1.end(); ++i) ++(*i);
-            }
+            tmp.swap(result);
+            result = getKroneckerProduct(tmp, matrices[i]);
         }
-
-/*  // Equivalent Dense matrix version:
-    T tmp;
-    for (index_t c = 0; c != s1; c++) // for all cols of m1
-        for (index_t j = 0; j != s2; j++) // for all cols of m2
-            for (index_t r = 0; r != s1; r++)  // for all rows of m1
-                for (index_t i = 0; i != s2; i++) // for all rows of m2
-                {
-                    tmp = m1(r,c)*m2(i,j);
-                    for (index_t t = 1; t != rk; ++t)
-                        tmp +=  m1(r,t*s1 + c)*m2(i,t*s2+j);
-                    result(i*s1+r, j*s1+c) = tmp;
-                }
-// */
-    //result.makeCompressed();
+        return result;
+    }
 }
 
 

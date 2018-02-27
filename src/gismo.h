@@ -126,7 +126,6 @@ namespace internal
 //#include <gsPde/gsNewtonIterator.h>
 
 /* ----------- Matrix ----------- */
-#include <gsMatrix/gsKronecker.h>
 
 /* ----------- MultiGrid ----------- */
 #include <gsMultiGrid/gsMultiGrid.h>
