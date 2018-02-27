@@ -23,6 +23,8 @@ SUITE(gsMatrixOp_test)
         
         gsLinearOperator<>::Ptr Aop = makeMatrixOp(A);
 
+        A(0,0) = 1; // check that gsMatrixOp holds no copy
+
         gsMatrix<> C;
         Aop->toMatrix(C);
 
@@ -36,6 +38,8 @@ SUITE(gsMatrixOp_test)
         
         gsLinearOperator<>::Ptr Aop = makeMatrixOp(A.transpose());
 
+        A(0,0) = 1; // check that gsMatrixOp holds no copy
+
         gsMatrix<> C;
         Aop->toMatrix(C);
         
@@ -47,9 +51,11 @@ SUITE(gsMatrixOp_test)
         gsMatrix<> A (3,3);
         A << 2,2,3,  4,5,6,  7,8,10;
         gsMatrix<> B (3,3);
-        B << 2,4,7,  4,5,8,  7,8,10;
+        B << 1,4,7,  4,5,8,  7,8,10;
         
         gsLinearOperator<>::Ptr Aop = makeMatrixOp(A.selfadjointView<Lower>());
+
+        A(0,0) = 1; // check that gsMatrixOp holds no copy
 
         gsMatrix<> C;
         Aop->toMatrix(C);
@@ -67,10 +73,11 @@ SUITE(gsMatrixOp_test)
             
             memory::shared_ptr< gsMatrix<> > Aptr = A.moveToPtr();
             Aop = gsMatrixOp< gsMatrix<> >::make( Aptr, Aptr->transpose() );
+            (*Aptr)(0,0) = 1; // check that gsMatrixOp holds no copy
         }
         
         gsMatrix<> B (3,3);
-        B << 2,4,7,  4,5,8,  3,6,10;
+        B << 1,4,7,  4,5,8,  3,6,10;
 
         gsMatrix<> C;
         Aop->toMatrix(C);
