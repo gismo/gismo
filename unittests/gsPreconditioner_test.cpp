@@ -22,7 +22,7 @@ void runPreconditionerTest( index_t testcase )
     gsMultiPatch<> patches( *gsNurbsCreator<>::NurbsQuarterAnnulus() );
 
     gsConstantFunction<> f(1,2);
-    
+
     // Define Boundary conditions
     gsBoundaryConditions<> bcInfo;
     bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &f);
@@ -39,13 +39,13 @@ void runPreconditionerTest( index_t testcase )
 
     // Initilize Assembler and assemble
     gsPoissonAssembler<> assembler(patches,bases,bcInfo,f,dirichlet::elimination,iFace::glue);
-    
+
     assembler.assemble();
     const gsSparseMatrix<>& mat = assembler.matrix();
     const gsMatrix<>& rhs = assembler.rhs();
     gsMatrix<> sol;
     sol.setRandom(rhs.rows(), rhs.cols());
-    
+
     if (testcase==0)
     {
         gsConjugateGradient<> solver(mat, makeJacobiOp(mat));
@@ -70,7 +70,7 @@ void runPreconditionerTest( index_t testcase )
         solver.solve(rhs,sol);
         CHECK ( solver.error() <= solver.tolerance() );
     }
-    
+
 }
 
 
@@ -93,4 +93,3 @@ SUITE(gsPreconditioner_test)
 
 
 }
-

@@ -2,12 +2,12 @@
 
     @brief Tests the Kronecker operators and the Kronecker products
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): C. Hofreither, A. Manzaflaris, S. Takacs
 */
 
@@ -51,7 +51,7 @@ SUITE(gsKronecker_test)
         y2 = C * x;
 
         const real_t err = (y-y2).norm();
-        
+
         CHECK (err <=  pow(10.0, - REAL_DIG ) );
     }
 
@@ -64,11 +64,11 @@ SUITE(gsKronecker_test)
         C.setRandom();
 
         gsKroneckerOp<> kron( makeMatrixOp(A), makeMatrixOp(B), makeMatrixOp(C) );
-            
+
         gsMatrix<> x(4*3*9,3), y;
         x.setRandom();
-        
-        kron.apply(x, y);   
+
+        kron.apply(x, y);
 
         // compute Kronecker product directly and compare (ColMajor)
         {
@@ -81,7 +81,7 @@ SUITE(gsKronecker_test)
             CHECK (err <=  pow(10.0, - REAL_DIG+2 ) );
         }
 
-        // compute Kronecker product directly and compare (RowMajor)   
+        // compute Kronecker product directly and compare (RowMajor)
         {
             gsSparseMatrix<real_t, RowMajor> Asp = A.sparseView(), Bsp = B.sparseView(), Csp = C.sparseView();
             gsSparseMatrix<real_t, RowMajor> K = getKroneckerProduct( getKroneckerProduct( Asp, Bsp ), Csp );
@@ -90,7 +90,7 @@ SUITE(gsKronecker_test)
             const real_t err = (y-y2).norm();
             CHECK (err <=  pow(10.0, - REAL_DIG+2 ) );
         }
-      
+
         // compute Kronecker for directly and compare (dense)
         {
             gsMatrix<> K = getKroneckerProduct( getKroneckerProduct( A, B ), C );
@@ -103,5 +103,3 @@ SUITE(gsKronecker_test)
     }
 
 }
-
-

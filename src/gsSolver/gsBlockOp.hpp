@@ -38,7 +38,7 @@ void gsBlockOp<T>::addOperator(index_t row, index_t col, const BasePtr& op)
                   "The size of the given preconditioner does not fit to the other preconditioners in the same row." );
     GISMO_ASSERT( op->cols() == blockInputPositions[col] || blockInputPositions[col] == 0,
                   "The size of the given preconditioner does not fit to the other preconditioners in the same column." );
-    
+
     blockPrec(row, col) = op;
     blockTargetPositions[row] = op->rows();
     blockInputPositions[col] = op->cols();
@@ -80,4 +80,3 @@ const typename gsBlockOp<T>::BasePtr & gsBlockOp<T>::getOperator(index_t row, in
 }
 
 }
-

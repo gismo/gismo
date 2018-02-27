@@ -17,7 +17,7 @@
 
 namespace gismo
 {
-  
+
 // left here for debugging purposes
 // template<typename T> struct is_ref { static const bool value = false; };
 // template<typename T> struct is_ref<T&> { static const bool value = true; };
@@ -59,14 +59,14 @@ public:
     gsMatrixOp(const MatrixPtr& mat)
     : m_mat(mat), m_expr(m_mat->derived())
     { }
-    
+
     /// @brief Constructor taking a shared pointer and a derived expression
     ///
     /// This constructor can be used if the object should hold a shared pointer
     /// to the partiuclar matrix, but apply some derived expression, like
     ///
     /// memory::shared_ptr< gsMatrix<> > mat_ptr = ...
-    /// gsMatrixOp op( mat_ptr, mat_ptr->transpose() ); 
+    /// gsMatrixOp op( mat_ptr, mat_ptr->transpose() );
     gsMatrixOp(const MatrixPtr& mat, const MatrixType& expr)
     : m_mat(mat), m_expr(expr.derived())
     { }
@@ -82,14 +82,14 @@ public:
     /// @brief Make function returning a smart pointer
     static uPtr make(const MatrixPtr& mat)
     { return memory::make_unique( new gsMatrixOp(mat) ); }
-    
+
     /// @brief Make function returning a smart pointer and a derived expression
     ///
     /// This constructor can be used if the object should hold a shared pointer
     /// to the partiuclar matrix, but apply some derived expression, like
     ///
     /// memory::shared_ptr< gsMatrix<> > mat_ptr = ...
-    /// gsMatrixOp::uPtr op = gsMatrixOp::make( mat_ptr, mat_ptr->transpose() ); 
+    /// gsMatrixOp::uPtr op = gsMatrixOp::make( mat_ptr, mat_ptr->transpose() );
     static uPtr make(const MatrixPtr& mat, const MatrixType& expr)
     { return memory::make_unique( new gsMatrixOp(mat, expr) ); }
 
