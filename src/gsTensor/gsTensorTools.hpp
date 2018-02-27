@@ -10,19 +10,6 @@
 
     Author(s): C. Hofreither, S. Takacs
 
-    This file is based on unsupported parts of Eigen:
-
-        // This file is part of Eigen, a lightweight C++ template library
-        // for linear algebra.
-        //
-        // Copyright (C) 2011 Kolja Brix <brix@igpm.rwth-aachen.de>
-        // Copyright (C) 2011 Andreas Platen <andiplaten@gmx.de>
-        // Copyright (C) 2012 Chen-Pang He <jdh8@ms63.hinet.net>
-        //
-        // This Source Code Form is subject to the terms of the Mozilla
-        // Public License v. 2.0. If a copy of the MPL was not distributed
-        // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 */
 #include <gsTensor/gsTensorTools.h>
 
@@ -39,44 +26,37 @@ gsSparseMatrix<T,_Options> getKroneckerProduct(const gsSparseMatrix<T,_Options>&
     const index_t Br = B.rows(), Bc = B.cols();
 
     MatrixType result(Ar*Br, Ac*Bc);
-    result.resizeNonZeros(0);
 
     if( Ar*Br == 0 || Ac*Bc == 0 )
         return result;
 
-    // compute number of non-zeros per innervectors of result
+    index_t nz = A.nonZeros() * B.nonZeros();
+
+    gsSparseEntries<T> se;
+    se.reserve(nz);
+
+    for (index_t i=0; i < A.outerSize(); ++i)
     {
-        // VectorXi is not necessarily big enough.
-        Eigen::VectorXi nnzA = Eigen::VectorXi::Zero(MatrixType::IsRowMajor ? A.rows() : A.cols());
-        for (index_t kA=0; kA < A.outerSize(); ++kA)
-            for (InnerIterator itA(A,kA); itA; ++itA)
-                nnzA(MatrixType::IsRowMajor ? itA.row() : itA.col())++;
-
-        Eigen::VectorXi nnzB = Eigen::VectorXi::Zero(MatrixType::IsRowMajor ? B.rows() : B.cols());
-        for (index_t kB=0; kB < B.outerSize(); ++kB)
-            for (InnerIterator itB(B,kB); itB; ++itB)
-                nnzB(MatrixType::IsRowMajor ? itB.row() : itB.col())++;
-
-        Eigen::Matrix<int,Dynamic,Dynamic,ColMajor> nnzAB = nnzB * nnzA.transpose();
-        result.reserve(Eigen::VectorXi::Map(nnzAB.data(), nnzAB.size()));
-    }
-
-    for (index_t kA=0; kA < A.outerSize(); ++kA)
-    {
-        for (index_t kB=0; kB < B.outerSize(); ++kB)
+        for (index_t j=0; j < B.outerSize(); ++j)
         {
-            for (InnerIterator itA(A,kA); itA; ++itA)
+            for (InnerIterator ii(A,i); ii; ++ii)
             {
-                for (InnerIterator itB(B,kB); itB; ++itB)
+                for (InnerIterator jj(B,j); jj; ++jj)
                 {
-                    const index_t i = itA.row() * Br + itB.row(),
-                                  j = itA.col() * Bc + itB.col();
-                    result.insert(i,j) = itA.value() * itB.value();
+                    const T val = ii.value() * jj.value();
+                    if (val!=(T)0)
+                        se.add(
+                            ii.row() * Br + jj.row(),
+                            ii.col() * Bc + jj.col(),
+                            val
+                        );
                 }
             }
         }
     }
 
+    result.setFrom(se);
+    result.makeCompressed();
     return result;
 }
 
