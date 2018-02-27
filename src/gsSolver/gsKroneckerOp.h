@@ -22,7 +22,7 @@ namespace gismo
 ///
 /// \ingroup Solver
 template <class T>
-class GISMO_EXPORT gsKroneckerOp : public gsLinearOperator<T>
+class gsKroneckerOp : public gsLinearOperator<T>
 {
     typedef typename gsLinearOperator<T>::Ptr BasePtr;
 public:
