@@ -17,29 +17,7 @@
 
 namespace gismo
 {
-
-namespace internal
-{
-template <class MatrixType, bool symm=false>
-class gsMatrixMultiplier {
-    typedef typename MatrixType::Nested NestedMatrix;
-    typedef typename MatrixType::Scalar T;
-public:
-    EIGEN_STRONG_INLINE static void apply(const NestedMatrix & expr, const gsMatrix<T> & input, gsMatrix<T> & x)
-    {x.noalias() = expr * input;}
-};
-template <class MatrixType>
-class gsMatrixMultiplier<MatrixType, true> {
-    typedef typename MatrixType::Nested NestedMatrix;
-    typedef typename MatrixType::Scalar T;
-public:
-    EIGEN_STRONG_INLINE static void apply(const NestedMatrix & expr, const gsMatrix<T> & input, gsMatrix<T> & x)
-    {x.noalias() = expr.template selfadjointView<Lower>() * input;}
-};
-
-    
-} // namespace internal
-    
+  
 // left here for debugging purposes
 // template<typename T> struct is_ref { static const bool value = false; };
 // template<typename T> struct is_ref<T&> { static const bool value = true; };
@@ -48,14 +26,10 @@ public:
   * @brief Simple adapter class to use a matrix (or matrix-like
   * object) as a linear operator. Needed for the iterative method
   * classes.
-  * 
-  * If the template parameter symm is set to true, the matrix will get
-  * symmetrized by using only the lower triangular part, like with
-  * expr.selfadjointView<Lower>() * vector.
   *
   * \ingroup Solver
   */
-template <class MatrixType, bool symm=false>
+template <class MatrixType>
 class gsMatrixOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
     typedef memory::shared_ptr<MatrixType> MatrixPtr;
@@ -73,8 +47,8 @@ public:
     /// @brief Constructor taking a reference
     ///
     /// @note This does not copy the matrix. Make sure that the matrix
-    /// is not deleted too early (alternatively use constructor by
-    /// shared pointer)
+    /// is not deleted too early (alternatively use one of the constructors
+    /// taking a shared pointer).
     gsMatrixOp(const MatrixType& mat)
     : m_mat(), m_expr(mat.derived())
     {
@@ -85,20 +59,42 @@ public:
     gsMatrixOp(const MatrixPtr& mat)
     : m_mat(mat), m_expr(m_mat->derived())
     { }
+    
+    /// @brief Constructor taking a shared pointer and a derived expression
+    ///
+    /// This constructor can be used if the object should hold a shared pointer
+    /// to the partiuclar matrix, but apply some derived expression, like
+    ///
+    /// memory::shared_ptr< gsMatrix<> > mat_ptr = ...
+    /// gsMatrixOp op( mat_ptr, mat_ptr->transpose() ); 
+    gsMatrixOp(const MatrixPtr& mat, const MatrixType& expr)
+    : m_mat(mat), m_expr(expr.derived())
+    { }
 
     /// @brief Make function returning a smart pointer
     ///
     /// @note This does not copy the matrix. Make sure that the matrix
-    /// is not deleted too early or provide a shared pointer.
+    /// is not deleted too early (alternatively use one of the make functions
+    /// taking a shared pointer).
     static uPtr make(const MatrixType& mat)
     { return memory::make_unique( new gsMatrixOp(mat) ); }
 
-    /// Make function returning a smart pointer
+    /// @brief Make function returning a smart pointer
     static uPtr make(const MatrixPtr& mat)
     { return memory::make_unique( new gsMatrixOp(mat) ); }
+    
+    /// @brief Make function returning a smart pointer and a derived expression
+    ///
+    /// This constructor can be used if the object should hold a shared pointer
+    /// to the partiuclar matrix, but apply some derived expression, like
+    ///
+    /// memory::shared_ptr< gsMatrix<> > mat_ptr = ...
+    /// gsMatrixOp::uPtr op = gsMatrixOp::make( mat_ptr, mat_ptr->transpose() ); 
+    static uPtr make(const MatrixPtr& mat, const MatrixType& expr)
+    { return memory::make_unique( new gsMatrixOp(mat, expr) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
-    { internal::gsMatrixMultiplier<MatrixType,symm>::apply(m_expr,input,x); }
+    { x.noalias() = m_expr * input; }
 
     index_t rows() const { return m_expr.rows(); }
 
@@ -130,6 +126,7 @@ private:
   * gsLinearOperator<>::Ptr op  = makeMatrixOp(M);
   * gsLinearOperator<>::Ptr opT = makeMatrixOp(M.transpose());
   * gsLinearOperator<>::Ptr opB = makeMatrixOp(M.block(0,0,5,5) );
+  * gsLinearOperator<>::Ptr opS = makeMatrixOp(M.selfadjointView<Lower>() );
   * \endcode
   *
   * Note that
