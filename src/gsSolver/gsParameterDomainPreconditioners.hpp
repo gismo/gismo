@@ -18,6 +18,8 @@
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
 #include <gsMatrix/gsKronecker.h>
+#include <gsTensor/gsTensorDomainIterator.h>
+#include <gsTensor/gsTensorDomainBoundaryIterator.h>
 #include <gsTensor/gsTensorBasis.h>
 
 namespace gismo
@@ -186,7 +188,7 @@ std::vector< gsSparseMatrix<T> > gsParameterDomainPreconditioners<T>::assembleTe
         case 1: return _assembleTensorMass<1,T>(dynamic_cast< const gsTensorBasis<1,T>& >(basis));
         case 2: return _assembleTensorMass<2,T>(dynamic_cast< const gsTensorBasis<2,T>& >(basis));
         case 3: return _assembleTensorMass<3,T>(dynamic_cast< const gsTensorBasis<3,T>& >(basis));
-        //case 4: return _assembleTensorMass<4,T>(dynamic_cast< const gsTensorBasis<4,T>& >(basis));
+        case 4: return _assembleTensorMass<4,T>(dynamic_cast< const gsTensorBasis<4,T>& >(basis));
         default: GISMO_ENSURE( basis.dim() <= 4, "gsParameterDomainPreconditioners is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
@@ -199,7 +201,7 @@ std::vector< gsSparseMatrix<T> > gsParameterDomainPreconditioners<T>::assembleTe
         case 1: return _assembleTensorStiffness<1,T>(dynamic_cast< const gsTensorBasis<1,T>& >(basis));
         case 2: return _assembleTensorStiffness<2,T>(dynamic_cast< const gsTensorBasis<2,T>& >(basis));
         case 3: return _assembleTensorStiffness<3,T>(dynamic_cast< const gsTensorBasis<3,T>& >(basis));
-        //case 4: return _assembleTensorStiffness<4,T>(dynamic_cast< const gsTensorBasis<4,T>& >(basis));
+        case 4: return _assembleTensorStiffness<4,T>(dynamic_cast< const gsTensorBasis<4,T>& >(basis));
         default: GISMO_ENSURE( basis.dim() <= 4, "gsParameterDomainPreconditioners is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
