@@ -18,6 +18,28 @@
 namespace gismo
 {
 
+namespace internal
+{
+template <class MatrixType, bool symm=false>
+class gsMatrixMultiplier {
+    typedef typename MatrixType::Nested NestedMatrix;
+    typedef typename MatrixType::Scalar T;
+public:
+    EIGEN_STRONG_INLINE static void apply(const NestedMatrix & expr, const gsMatrix<T> & input, gsMatrix<T> & x)
+    {x.noalias() = expr * input;}
+};
+template <class MatrixType>
+class gsMatrixMultiplier<MatrixType, true> {
+    typedef typename MatrixType::Nested NestedMatrix;
+    typedef typename MatrixType::Scalar T;
+public:
+    EIGEN_STRONG_INLINE static void apply(const NestedMatrix & expr, const gsMatrix<T> & input, gsMatrix<T> & x)
+    {x.noalias() = expr.template selfadjointView<Lower>() * input;}
+};
+
+    
+} // namespace internal
+    
 // left here for debugging purposes
 // template<typename T> struct is_ref { static const bool value = false; };
 // template<typename T> struct is_ref<T&> { static const bool value = true; };
@@ -26,10 +48,14 @@ namespace gismo
   * @brief Simple adapter class to use a matrix (or matrix-like
   * object) as a linear operator. Needed for the iterative method
   * classes.
+  * 
+  * If the template parameter symm is set to true, the matrix will get
+  * symmetrized by using only the lower triangular part, like with
+  * expr.selfadjointView<Lower>() * vector.
   *
   * \ingroup Solver
   */
-template <class MatrixType>
+template <class MatrixType, bool symm=false>
 class gsMatrixOp : public gsLinearOperator<typename MatrixType::Scalar>
 {
     typedef memory::shared_ptr<MatrixType> MatrixPtr;
@@ -49,35 +75,30 @@ public:
     /// @note This does not copy the matrix. Make sure that the matrix
     /// is not deleted too early (alternatively use constructor by
     /// shared pointer)
-    gsMatrixOp(const MatrixType& mat, bool sym=false)
-    : m_mat(), m_expr(mat.derived()), m_symmetric(sym)
+    gsMatrixOp(const MatrixType& mat)
+    : m_mat(), m_expr(mat.derived())
     {
         //gsDebug<<typeid(m_expr).name()<<" Ref: "<<is_ref<NestedMatrix>::value<<"\n";
     }
 
     /// @brief Constructor taking a shared pointer
-    gsMatrixOp(const MatrixPtr& mat, bool sym=false)
-    : m_mat(mat), m_expr(m_mat->derived()), m_symmetric(sym)
+    gsMatrixOp(const MatrixPtr& mat)
+    : m_mat(mat), m_expr(m_mat->derived())
     { }
 
     /// @brief Make function returning a smart pointer
     ///
     /// @note This does not copy the matrix. Make sure that the matrix
     /// is not deleted too early or provide a shared pointer.
-    static uPtr make(const MatrixType& mat, bool sym=false)
-    { return memory::make_unique( new gsMatrixOp(mat,sym) ); }
+    static uPtr make(const MatrixType& mat)
+    { return memory::make_unique( new gsMatrixOp(mat) ); }
 
     /// Make function returning a smart pointer
-    static uPtr make(const MatrixPtr& mat, bool sym=false)
-    { return memory::make_unique( new gsMatrixOp(mat,sym) ); }
+    static uPtr make(const MatrixPtr& mat)
+    { return memory::make_unique( new gsMatrixOp(mat) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
-    {
-        if (m_symmetric)
-            x.noalias() = m_expr.template selfadjointView<Lower>() * input;
-        else
-            x.noalias() = m_expr * input;
-    }
+    { internal::gsMatrixMultiplier<MatrixType,symm>::apply(m_expr,input,x); }
 
     index_t rows() const { return m_expr.rows(); }
 
@@ -95,7 +116,6 @@ public:
 private:
     const MatrixPtr m_mat; ///< Shared pointer to matrix (if needed)
     NestedMatrix   m_expr; ///< Nested Eigen expression
-    bool      m_symmetric;
 };
 
 /** @brief This essentially just calls the gsMatrixOp constructor, but
@@ -126,9 +146,9 @@ private:
   * \ingroup Solver
   */
 template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>& mat, bool sym=false)
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>& mat)
 {
-    return gsMatrixOp<Derived>::make(mat.derived(), sym);
+    return gsMatrixOp<Derived>::make(mat.derived());
 }
 
 /** @brief This essentially just calls the gsMatrixOp constructor, but
@@ -153,88 +173,17 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>&
   * \ingroup Solver
   */
 template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const memory::shared_ptr<Derived> & mat, bool sym=false)
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const memory::shared_ptr<Derived> & mat)
 {
-    return memory::make_unique(new gsMatrixOp<Derived>(mat, sym));
+    return memory::make_unique(new gsMatrixOp<Derived>(mat));
 }
 
 // We need an additional guide for the compiler to be able to work well with unique ptrs
 template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat, bool sym=false)
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat)
 {
-    return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release()), sym));
+    return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release())));
 }
-
-/**
-  * @brief This linear operator represents the multiplication with a diagonal matrix
-  * whose coefficients are given as a vector (\a gsMatrix with 1 column)
-  *
-  * \ingroup Solver
-  */
-template <class T>
-class gsDiagonalMatrixOp : public gsLinearOperator<T>
-{
-    typedef gsMatrix<T> MatrixType;
-    typedef memory::shared_ptr<MatrixType> MatrixPtr;
-    typedef typename MatrixType::Nested NestedMatrix;
-
-public:
-    /// Shared pointer for gsDiagonalMatrixOp
-    typedef memory::shared_ptr<gsDiagonalMatrixOp> Ptr;
-
-    /// Unique pointer for gsDiagonalMatrixOp
-    typedef memory::unique_ptr<gsDiagonalMatrixOp> uPtr;
-
-    /// @brief Constructor taking a reference
-    ///
-    /// @note This does not copy the matrix. Make sure that the matrix
-    /// is not deleted too early (alternatively use constructor by
-    /// shared pointer)
-    gsDiagonalMatrixOp(const MatrixType& mat)
-    : m_mat(), m_expr(mat.derived())
-    {
-        GISMO_ASSERT( m_expr.cols() == 1, "gsDiagonalMatrixOp expects a vector to be provided." );
-    }
-
-    /// @brief Constructor taking a shared pointer
-    gsDiagonalMatrixOp(const MatrixPtr& mat)
-    : m_mat(mat), m_expr(m_mat->derived())
-    {
-        GISMO_ASSERT( m_expr.cols() == 1, "gsDiagonalMatrixOp expects a vector to be provided." );
-    }
-
-    /// @brief Make function returning a smart pointer
-    ///
-    /// @note This does not copy the matrix. Make sure that the matrix
-    /// is not deleted too early or provide a shared pointer.
-    static uPtr make(const MatrixType& mat)
-    { return memory::make_unique( new gsDiagonalMatrixOp(mat) ); }
-
-    /// Make function returning a smart pointer
-    static uPtr make(const MatrixPtr& mat)
-    { return memory::make_unique( new gsDiagonalMatrixOp(mat) ); }
-
-    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
-    {
-        x.array() = input.array() * m_expr.replicate(1,input.cols()).array();
-    }
-
-    index_t rows() const { return m_expr.rows(); }
-    index_t cols() const { return m_expr.rows(); } // a diagonal matrix is always symmetric.
-
-    ///Returns the matrix
-    NestedMatrix matrix() const    { return m_expr; }
-
-    ///Returns a shared pinter to the matrix
-    MatrixPtr    matrixPtr() const {
-        GISMO_ENSURE( m_mat, "A shared pointer is only available if it was provided to gsDiagonalMatrixOp." );
-        return m_mat;
-    }
-
-private:
-    const MatrixPtr m_mat; ///< Shared pointer to matrix (if needed)
-    NestedMatrix   m_expr; ///< Nested Eigen expression
-};
 
 /** @brief Simple adapter class to use an Eigen solver (having a
  * compute() and a solve() method) as a linear operator.

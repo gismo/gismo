@@ -417,9 +417,11 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
     for ( index_t l=0; l<sz; ++l )
         diag( l, 0 ) = 1/diag( l, 0 );
 
+    memory::unique_ptr< Eigen::DiagonalMatrix<real_t,Dynamic> > diag_mat( new Eigen::DiagonalMatrix<real_t,Dynamic>( give(diag) ) );
+
     return gsProductOfOperatorsOp<T>::make(
         gsKroneckerOp<T>::make(QTop),
-        gsDiagonalMatrixOp<T>::make(diag.moveToPtr()),
+        makeMatrixOp(give(diag_mat)),
         gsKroneckerOp<T>::make(Qop)
     );
 }
