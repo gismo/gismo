@@ -25,13 +25,16 @@ namespace gismo
 template<class T=real_t>
 class gsIterativeSolver
 {
+    typedef typename gsLinearOperator<T>::Ptr LinOpPtr;
 public:
+    /// Shared pointer
     typedef memory::shared_ptr<gsIterativeSolver> Ptr;
+
+    /// Unique pointer
     typedef memory::unique_ptr<gsIterativeSolver> uPtr;
 
-    typedef gsMatrix<T>    VectorType;
-
-    typedef typename gsLinearOperator<T>::Ptr LinOpPtr;
+    /// Vector type
+    typedef gsMatrix<T> VectorType;
 
     /// @brief Contructor using a linear operator to be solved for and
     ///  a preconditioner
