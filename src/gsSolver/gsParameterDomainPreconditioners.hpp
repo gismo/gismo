@@ -21,220 +21,135 @@
 #include <gsTensor/gsTensorDomainIterator.h>
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
 #include <gsTensor/gsTensorBasis.h>
+#include <gsAssembler/gsGenericAssembler.h>
 
 namespace gismo
 {
 
-template<typename T>
-void gsParameterDomainPreconditioners<T>::init()
-{
-
-    GISMO_ASSERT( m_dirichlet == dirichlet::elimination || m_dirichlet == dirichlet::none,
-                  "Only the dirichlet strategies dirichlet::elimination and dirichlet::none are currently implemented." );
-    // We do not provide:
-    //   dirichlet::penalize
-    //   dirichlet::nitsche
-    //   dirichlet::eliminatNormal
-
-}
-
 namespace {
 
-template <typename T>
-int estimateNonzerosPerRow(const gsBasis<T>& basis)
-{
-    int nnz = 1;
-    for (int i = 0; i < basis.dim(); ++i)
-        nnz *= 2 * basis.degree(i) + 1;
-    return nnz;
-}
-
-template <typename T>
-void localToGlobal(const gsMatrix<T>& localMat, const gsMatrix<unsigned>& localDofs, gsSparseMatrix<T>& globalMat)
-{
-    const int numActive = localDofs.rows();
-
-    for (index_t i = 0; i < numActive; ++i)
-    {
-        const int ii = localDofs(i,0);
-        for (index_t j = 0; j < numActive; ++j)
-        {
-            const int jj = localDofs(j,0);
-            globalMat.coeffRef(ii, jj) += localMat(i, j);
-        }
-    }
-}
-
-} // anonymous namespace
-
 template<typename T>
-gsSparseMatrix<T> gsParameterDomainPreconditioners<T>::assembleMass(const gsBasis<T>& basis)
+gsBoundaryConditions<T> getBoundaryConditionsForDirection( const gsBoundaryConditions<T>& bc, index_t direction )
 {
-    const int n = basis.size();
+    gsBoundaryConditions<T> result;
 
-    gsSparseMatrix<T> M(n, n);
-    M.reserve( gsVector<int>::Constant(n, estimateNonzerosPerRow(basis)) );
-
-    gsMatrix<T> localMass;
-
-    // Make domain element iterator
-    typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
-
-    // Set the number of integration points for each element
-    gsVector<index_t> numQuadNodes( basis.dim() );
-    for (int i = 0; i < basis.dim(); ++i)
-        numQuadNodes[i] = basis.degree(i) + 1;
-    domIt->computeQuadratureRule( numQuadNodes );
-
-    // Start iteration over elements
-    for (; domIt->good(); domIt->next())
+    for ( index_t i = 1; i <= 2; ++i)
     {
-        const index_t numActive = domIt->computeActiveFunctions().rows();
-        domIt->evaluateBasis( 0 );
-
-        localMass.setZero(numActive, numActive);
-
-        for (index_t k = 0; k < domIt->numQuNodes(); ++k)      // loop over quadrature nodes
-        {
-            const T weight = domIt->quWeights[k];
-            localMass.noalias() += weight * (domIt->basisValues().col(k) * domIt->basisValues().col(k).transpose());
-        }
-
-        localToGlobal(localMass, domIt->activeFuncs, M);
+        patchSide global(0,i+2*direction), local(0,i);
+        const boundary_condition<T>* cond = bc.getConditionFromSide(global);
+        if (cond!=NULL)
+            result.addCondition(local,cond->type(),cond->function());
     }
-
-    M.makeCompressed();
-
-    return M;
-}
-
-template<typename T>
-gsSparseMatrix<T> gsParameterDomainPreconditioners<T>::assembleStiffness(const gsBasis<T>& basis)
-{
-    const int n = basis.size();
-    const int dim = basis.dim();
-
-    gsSparseMatrix<T> K(n, n);
-    K.reserve( gsVector<int>::Constant(n, estimateNonzerosPerRow(basis)) );
-
-    gsMatrix<T> localStiffness; // (dense) stiffness matrix within one grid cell
-
-    // Make domain element iterator
-    typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
-
-    // Set the number of integration points for each element
-    gsVector<index_t> numQuadNodes( dim );
-    for (int i = 0; i < basis.dim(); ++i)
-        numQuadNodes[i] = basis.degree(i) + 1;
-    domIt->computeQuadratureRule( numQuadNodes );
-
-    // Start iteration over elements
-    for (; domIt->good(); domIt->next())
-    {
-        const index_t numActive = domIt->computeActiveFunctions().rows();
-        domIt->evaluateBasis( 1 );
-
-        // initialize local linear system to 0
-        localStiffness.setZero(numActive, numActive);
-
-        for (index_t k = 0; k < domIt->numQuNodes(); ++k)      // loop over quadrature nodes
-        {
-            const T weight = domIt->quWeights[k];
-
-            const index_t numGrads = domIt->basisDerivs(1).rows() / dim;
-            const gsAsConstMatrix<T> grads_k(domIt->basisDerivs(1).col(k).data(), dim, numGrads);
-
-            localStiffness.noalias() += weight * (grads_k.transpose() * grads_k);
-        }  // end loop Gauss nodes
-
-        localToGlobal(localStiffness, domIt->activeFuncs, K);
-
-    } //end loop over all domain elements
-
-    K.makeCompressed();
-    return K;
-}
-
-namespace {
-
-template<index_t d, typename T>
-std::vector< gsSparseMatrix<T> > _assembleTensorMass(const gsTensorBasis<d,T>& basis)
-{
-    std::vector< gsSparseMatrix<T> > result;
-    result.reserve(d);
-    //for ( index_t i=0; i<d; ++i )
-    for ( index_t i=d-1; i!=-1; --i )
-        result.push_back( gsParameterDomainPreconditioners<T>::assembleMass( basis.component(i) ) );
     return result;
 }
 
 template<index_t d, typename T>
-std::vector< gsSparseMatrix<T> > _assembleTensorStiffness(const gsTensorBasis<d,T>& basis)
+std::vector< gsSparseMatrix<T> > _assembleTensorMass(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& options
+)
 {
     std::vector< gsSparseMatrix<T> > result;
-    result.reserve(d);
-    //for ( index_t i=0; i<d; ++i )
-    for ( index_t i=d-1; i!=-1; --i )
-        result.push_back( gsParameterDomainPreconditioners<T>::assembleStiffness( basis.component(i) ) );
-    return result;
+    const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
+
+    if (tb==nullptr)
+    {
+        gsWarn << "gsParameterDomainPreconditioners: Found a discretization which does not have "
+            "tensor-product structure. Therefore, the preconditioner might not be efficient." << std::endl;
+        gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(basis),options,&bc);
+        result.push_back( assembler.assembleMass() );
+        return result;
+    }
+    else
+    {
+        result.reserve(d);
+        for ( index_t i=d-1; i!=-1; --i )
+        {
+            gsBoundaryConditions<T> local_bc = getBoundaryConditionsForDirection(bc,i);
+            gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(tb->component(i)),options,&local_bc);
+            result.push_back( assembler.assembleMass() );
+        }
+        return result;
+    }
 }
 
-} // anonymous namespace
+template<index_t d, typename T>
+std::vector< gsSparseMatrix<T> > _assembleTensorStiffness(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& options
+)
+{
+    std::vector< gsSparseMatrix<T> > result;
+    const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
+
+    if (tb==nullptr)
+    {
+        gsWarn << "gsParameterDomainPreconditioners: Found a discretization which does not have "
+            "tensor-product structure. Therefore, the preconditioner might not be efficient." << std::endl;
+        gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(basis),options,&bc);
+        result.push_back( assembler.assembleStiffness() );
+        return result;
+    }
+    else
+    {
+        result.reserve(d);
+        for ( index_t i=d-1; i!=-1; --i )
+        {
+            gsBoundaryConditions<T> local_bc = getBoundaryConditionsForDirection(bc,i);
+            gsGenericAssembler<T> assembler(
+                gsMultiPatch<T>(),
+                gsMultiBasis<T>(tb->component(i)),
+                options,
+                &local_bc
+            );
+            result.push_back( assembler.assembleStiffness() );
+        }
+        return result;
+    }
+}
 
 template<typename T>
-std::vector< gsSparseMatrix<T> > gsParameterDomainPreconditioners<T>::assembleTensorMass(const gsBasis<T>& basis)
+std::vector< gsSparseMatrix<T> > assembleTensorMass(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& options
+)
 {
     switch (basis.dim()) {
-        case 1: return _assembleTensorMass<1,T>(dynamic_cast< const gsTensorBasis<1,T>& >(basis));
-        case 2: return _assembleTensorMass<2,T>(dynamic_cast< const gsTensorBasis<2,T>& >(basis));
-        case 3: return _assembleTensorMass<3,T>(dynamic_cast< const gsTensorBasis<3,T>& >(basis));
-        case 4: return _assembleTensorMass<4,T>(dynamic_cast< const gsTensorBasis<4,T>& >(basis));
+        case 1: return _assembleTensorMass<1,T>(basis, bc, options);
+        case 2: return _assembleTensorMass<2,T>(basis, bc, options);
+        case 3: return _assembleTensorMass<3,T>(basis, bc, options);
+        case 4: return _assembleTensorMass<4,T>(basis, bc, options);
         default: GISMO_ENSURE( basis.dim() <= 4, "gsParameterDomainPreconditioners is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
 }
 
 template<typename T>
-std::vector< gsSparseMatrix<T> > gsParameterDomainPreconditioners<T>::assembleTensorStiffness(const gsBasis<T>& basis)
+std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& options
+)
 {
     switch (basis.dim()) {
-        case 1: return _assembleTensorStiffness<1,T>(dynamic_cast< const gsTensorBasis<1,T>& >(basis));
-        case 2: return _assembleTensorStiffness<2,T>(dynamic_cast< const gsTensorBasis<2,T>& >(basis));
-        case 3: return _assembleTensorStiffness<3,T>(dynamic_cast< const gsTensorBasis<3,T>& >(basis));
-        case 4: return _assembleTensorStiffness<4,T>(dynamic_cast< const gsTensorBasis<4,T>& >(basis));
+        case 1: return _assembleTensorStiffness<1,T>(basis, bc, options);
+        case 2: return _assembleTensorStiffness<2,T>(basis, bc, options);
+        case 3: return _assembleTensorStiffness<3,T>(basis, bc, options);
+        case 4: return _assembleTensorStiffness<4,T>(basis, bc, options);
         default: GISMO_ENSURE( basis.dim() <= 4, "gsParameterDomainPreconditioners is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
 }
 
-template<typename T>
-void gsParameterDomainPreconditioners<T>::handleDirichletConditions(gsSparseMatrix<T>& matrix, const gsBoundaryConditions<T>& bc, const boxSide& west, const boxSide& east)
-{
-    patchSide mywest(0,west), myeast(0,east);
-
-    int i = 0;
-
-    if (bc.getConditionFromSide( mywest )!=NULL && bc.getConditionFromSide( mywest )->type() == condition_type::dirichlet ) i += 1;
-    if (bc.getConditionFromSide( myeast )!=NULL && bc.getConditionFromSide( myeast )->type() == condition_type::dirichlet ) i += 2;
-
-    switch ( i )
-    {
-        case 0: return;
-        case 1: matrix = matrix.block( 1, 1, matrix.rows()-1, matrix.cols()-1 ); return;
-        case 2: matrix = matrix.block( 0, 0, matrix.rows()-1, matrix.cols()-1 ); return;
-        case 3: matrix = matrix.block( 1, 1, matrix.rows()-2, matrix.cols()-2 ); return;
-    }
-}
+} // anonymous namespace
 
 template<typename T>
 gsSparseMatrix<T> gsParameterDomainPreconditioners<T>::getMassMatrix() const
 {
-    const index_t d = m_basis.dim();
-
-    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis);
-    if (m_dirichlet == dirichlet::elimination)
-        for (index_t i=0; i<d; ++i)
-            handleDirichletConditions(local_mass[i],m_bc,1+2*i,2+2*i);
+    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis, m_bc, m_options);
     return getKroneckerProduct(local_mass);
 }
 
@@ -243,10 +158,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 {
     const index_t d = m_basis.dim();
 
-    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis);
-    if (m_dirichlet == dirichlet::elimination)
-        for (index_t i=0; i<d; ++i)
-            handleDirichletConditions(local_mass[i],m_bc,1+2*i,2+2*i);
+    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis, m_bc, m_options);
 
     std::vector<OpPtr> local_mass_op(d);
     for (index_t i=0; i<d; ++i)
@@ -260,10 +172,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 {
     const index_t d = m_basis.dim();
 
-    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis);
-    if (m_dirichlet == dirichlet::elimination)
-        for (index_t i=0; i<d; ++i)
-            handleDirichletConditions(local_mass[i],m_bc,1+2*i,2+2*i);
+    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis, m_bc, m_options);
 
     std::vector<OpPtr> local_mass_op(d);
     for (index_t i=0; i<d; ++i)
@@ -277,16 +186,9 @@ gsSparseMatrix<T> gsParameterDomainPreconditioners<T>::getStiffnessMatrix(T a) c
 {
     const index_t d = m_basis.dim();
 
-    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis);
-    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis);
-    if (m_dirichlet == dirichlet::elimination)
-    {
-        for (index_t i=0; i<d; ++i)
-        {
-            handleDirichletConditions(local_stiff[i],m_bc,1+2*i,2+2*i);
-            handleDirichletConditions(local_mass [i],m_bc,1+2*i,2+2*i);
-        }
-    }
+    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis, m_bc, m_options);
+    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis, m_bc, m_options);
+
     gsSparseMatrix<T> K = give(local_stiff[0]);
     gsSparseMatrix<T> M = give(local_mass [0]);
 
@@ -309,16 +211,9 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 {
     const index_t d = m_basis.dim();
 
-    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis);
-    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis);
-    if (m_dirichlet == dirichlet::elimination)
-    {
-        for (index_t i=0; i<d; ++i)
-        {
-            handleDirichletConditions(local_stiff[i],m_bc,1+2*i,2+2*i);
-            handleDirichletConditions(local_mass [i],m_bc,1+2*i,2+2*i);
-        }
-    }
+    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis, m_bc, m_options);
+    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis, m_bc, m_options);
+
     std::vector<OpUPtr> local_stiff_op(d);
     std::vector<OpPtr > local_mass_op (d);
     for (index_t i=0; i<d; ++i)
@@ -353,16 +248,8 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
     const index_t d = m_basis.dim();
 
     // Assemble univariate
-    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis);
-    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis);
-    if (m_dirichlet == dirichlet::elimination)
-    {
-        for (index_t i=0; i<d; ++i)
-        {
-            handleDirichletConditions(local_stiff[i],m_bc,1+2*i,2+2*i);
-            handleDirichletConditions(local_mass [i],m_bc,1+2*i,2+2*i);
-        }
-    }
+    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis, m_bc, m_options);
+    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis, m_bc, m_options);
 
     // Determine overall size
     index_t sz = 1;

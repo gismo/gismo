@@ -22,7 +22,7 @@ namespace gismo
   * \ingroup Solver
   */
 template<class T=real_t>
-class GISMO_EXPORT gsMinimalResidual : public gsIterativeSolver<T>
+class gsMinimalResidual : public gsIterativeSolver<T>
 {
 
 public:

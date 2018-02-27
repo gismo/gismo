@@ -39,7 +39,8 @@ public:
         const gsBoundaryConditions<T>& _bc,
         dirichlet::strategy _dirichlet = dirichlet::elimination
     )
-    : m_basis(_basis), m_bc(_bc), m_dirichlet(_dirichlet) { init(); }
+    : m_basis(_basis), m_bc(_bc), m_options(gsGenericAssembler<T>::defaultOptions())
+    { m_options.setInt("DirichletStrategy", (index_t) _dirichlet ); }
 
     /// Constructor taking \a gsBasis, \a gsBoundaryConditions and
     /// \a gsOptionList object providing the Dirichlet strategy.
@@ -48,10 +49,8 @@ public:
         const gsBoundaryConditions<T>& _bc,
         const gsOptionList& _opt
     )
-    : m_basis(_basis),
-      m_bc(_bc),
-      m_dirichlet( (dirichlet::strategy)_opt.askInt("DirichletStrategy", dirichlet::elimination) )
-    { init(); }
+    : m_basis(_basis), m_bc(_bc), m_options(_opt)
+    { }
 
     /// Assembles mass matrix on the parameter domain
     gsSparseMatrix<T> getMassMatrix()                      const;
@@ -87,22 +86,11 @@ public:
     // \f$ - \Delta u + h^{-2} u \f$
     //OpUPtr            getSubspaceCorrectedMassSmootherOp() const;
 
-    // Helper functions for implementation, which might be of interest also for use in
-    // other functions
-    static gsSparseMatrix<T>                assembleMass            (const gsBasis<T>& basis);
-    static gsSparseMatrix<T>                assembleStiffness       (const gsBasis<T>& basis);
-    static std::vector< gsSparseMatrix<T> > assembleTensorMass      (const gsBasis<T>& basis);
-    static std::vector< gsSparseMatrix<T> > assembleTensorStiffness (const gsBasis<T>& basis);
-    static void handleDirichletConditions(gsSparseMatrix<T>& matrix, const gsBoundaryConditions<T>& bc,
-                                          const boxSide& west, const boxSide& east);
-
 private:
-
-    void init();
 
     const gsBasis<T> &      m_basis;
     gsBoundaryConditions<T> m_bc;
-    dirichlet::strategy     m_dirichlet;
+    gsOptionList            m_options;
 };
 
 } // namespace gismo
