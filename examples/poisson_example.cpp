@@ -20,7 +20,7 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    std::string geometry("BSplineQuarterAnnulus");
+    std::string geo("BSplineQuarterAnnulus");
     index_t numRefine  = 2;
     index_t degree  = 2;
     bool useNitsche = false;
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     bool plot = false;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem with iterative solvers and preconditioners." );
-    cmd.addString("g", "geo",     "Chosen geometry",                                        geometry  );
+    cmd.addString("g", "geo",     "Chosen geometry",                                        geo       );
     cmd.addInt   ("r", "refine",  "Number of refinement levels",                            numRefine );
     cmd.addInt   ("p", "degree",  "Spline degree for discretization",                       degree    );
     cmd.addSwitch(     "nitsche", "Use Nitsche approach to realize boundary conditions",    useNitsche);
