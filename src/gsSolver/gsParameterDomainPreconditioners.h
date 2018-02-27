@@ -79,12 +79,13 @@ public:
     /// The stiffness matrix represents \f$ -\Delta u + a u \f$
     OpUPtr            getFastDiagonalizationOp(T a=0)      const;
 
-    /// Provides \a gsLinearOperator representing the subspace corrected mass smoother
-    /// (SIAM J. on Numerical Analysis. 55 (4). p. 2004 - 2024, 2017)
-    ///
-    /// This operator is spectrally equivalent to the inverse of
-    /// \f$ - \Delta u + h^{-2} u \f$
-    OpUPtr            getSubspaceCorrectedMassSmootherOp() const;
+    // Will be provided in a followup pull request:
+    // Provides \a gsLinearOperator representing the subspace corrected mass smoother
+    // (SIAM J. on Numerical Analysis. 55 (4). p. 2004 - 2024, 2017)
+    //
+    // This operator is spectrally equivalent to the inverse of
+    // \f$ - \Delta u + h^{-2} u \f$
+    //OpUPtr            getSubspaceCorrectedMassSmootherOp() const;
 
     // Helper functions for implementation, which might be of interest also for use in
     // other functions

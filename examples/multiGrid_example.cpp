@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
         // Write approximate and exact solution to paraview files
         gsInfo << "Plotting in Paraview.\n";
         gsWriteParaview<>(sol, "multiGrid_result", 1000);
-        system("paraview multiGrid_result.pvd &");
+        gsFileManager::open("multiGrid_result.pvd");
     }
     else
     {

@@ -426,10 +426,11 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
     );
 }
 
-template<typename T>
-typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditioners<T>::getSubspaceCorrectedMassSmootherOp() const
-{
-    GISMO_ENSURE(0,"Not yet implemented.");// TODO
-}
+//Will be provided in a followup pull request
+//template<typename T>
+//typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditioners<T>::getSubspaceCorrectedMassSmootherOp() const
+//{
+//
+//}
 
 } // namespace gismo
