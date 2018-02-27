@@ -71,8 +71,8 @@ SUITE(gsMatrixOp_test)
             gsMatrix<> A (3,3);
             A << 2,2,3,  4,5,6,  7,8,10;
             
-            memory::shared_ptr< gsMatrix<> > Aptr = A.moveToPtr();
-            Aop = gsMatrixOp< gsMatrix<> >::make( Aptr, Aptr->transpose() );
+            gsMatrix<>::Ptr Aptr = A.moveToPtr();
+            Aop = makeMatrixOp( Aptr, Aptr->transpose() );
             (*Aptr)(0,0) = 1; // check that gsMatrixOp holds no copy
         }
         

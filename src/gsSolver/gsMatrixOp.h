@@ -157,7 +157,7 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>&
   * \code
   * gsMatrix<>::Ptr M(new gsMatrix<>);
   * M->setRandom(10,10);
-  * gsLinearOperator<>::Ptr op  = makeMatrixOp(M);
+  * gsLinearOperator<>::Ptr op = makeMatrixOp(M);
   * \endcode
   *
   * Alternatively:
@@ -169,17 +169,38 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>&
   *
   * \ingroup Solver
   */
-template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const memory::shared_ptr<Derived> & mat)
+template <class MatrixType>
+typename gsMatrixOp<MatrixType>::uPtr makeMatrixOp(const memory::shared_ptr<MatrixType> & mat)
 {
-    return memory::make_unique(new gsMatrixOp<Derived>(mat));
+    return memory::make_unique(new gsMatrixOp<MatrixType>(mat));
 }
 
 // We need an additional guide for the compiler to be able to work well with unique ptrs
-template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat)
+template <class MatrixType>
+typename gsMatrixOp<MatrixType>::uPtr makeMatrixOp(memory::unique_ptr<MatrixType> mat)
 {
-    return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release())));
+    return memory::make_unique(new gsMatrixOp<MatrixType>(memory::shared_ptr<MatrixType>(mat.release())));
+}
+
+/** @brief This essentially just calls the gsMatrixOp constructor, but
+  * the use of a template functions allows us to let the compiler do
+  * type inference, so we don't need to type out the matrix type
+  * explicitly.
+  *
+  * Example:
+  * \code
+  * gsMatrix<>::Ptr M(new gsMatrix<>);
+  * M->setRandom(10,10);
+  * gsLinearOperator<>::Ptr op = makeMatrixOp(M, M->transpose());
+  * \endcode
+  *
+  * \ingroup Solver
+  */
+template <class MatrixType>
+typename gsMatrixOp<MatrixType>::uPtr makeMatrixOp(const memory::shared_ptr<MatrixType> & mat,
+                                                   const typename util::identity<MatrixType>::type & expr)
+{
+    return memory::make_unique(new gsMatrixOp<MatrixType>(mat, expr));
 }
 
 /** @brief Simple adapter class to use an Eigen solver (having a
