@@ -30,7 +30,7 @@ namespace gismo
 ///
 /// @ingroup Solver
 template <class T>
-class GISMO_EXPORT gsCompositionOfPreconditionersOp : public gsPreconditionerOp<T>
+class gsCompositionOfPreconditionersOp GISMO_FINAL : public gsPreconditionerOp<T>
 {
     typedef typename gsPreconditionerOp<T>::Ptr BasePtr;
 public:
@@ -62,8 +62,6 @@ public:
     {
         m_ops[0] = op0; m_ops[1] = op1; m_ops[2] = op2;
     }
-
-    virtual ~gsCompositionOfPreconditionersOp() { }
 
     /// Make command returning a smart pointer
     static uPtr make(const std::vector< BasePtr >& ops)
