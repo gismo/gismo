@@ -1,4 +1,4 @@
-/** @file gsProductOfOperatorsOp.h
+/** @file gsProductOp.h
 
     @brief A class representing the product of \a gsLinearOperator s.
 
@@ -24,26 +24,26 @@ namespace gismo {
 /// Note, for given operators \f$ A_1, A_2, ..., A_N\f$, it implements
 /// \f$ A_N, ..., A_1\f$, so \f$ A_1 \f$ is applied first, and \f$ A_N \f$ applied last.
 ///
-/// For composition of preconditioners, cf. also \a gsCompositionOfPreconditionersOp
+/// For composition of preconditioners, cf. also \a gsCompositePrecOp
 ///
 /// @ingroup Solver
 template<typename T>
-class gsProductOfOperatorsOp GISMO_FINAL : public gsLinearOperator<T>
+class gsProductOp GISMO_FINAL : public gsLinearOperator<T>
 {
     typedef typename gsLinearOperator<T>::Ptr BasePtr;
 public:
 
-    /// Shared pointer for gsProductOfOperatorsOp
-    typedef memory::shared_ptr<gsProductOfOperatorsOp> Ptr;
+    /// Shared pointer for gsProductOp
+    typedef memory::shared_ptr<gsProductOp> Ptr;
 
-    /// Unique pointer for gsProductOfOperatorsOp
-    typedef memory::unique_ptr<gsProductOfOperatorsOp> uPtr;
+    /// Unique pointer for gsProductOp
+    typedef memory::unique_ptr<gsProductOp> uPtr;
 
     /// Empty constructor. To be filled with addOperator()
-    gsProductOfOperatorsOp() : m_ops() {}
+    gsProductOp() : m_ops() {}
 
     /// Constructor taking a vector of Linear Operators
-    gsProductOfOperatorsOp(const std::vector<BasePtr>& ops) : m_ops(ops)
+    gsProductOp(const std::vector<BasePtr>& ops) : m_ops(ops)
     {
 #ifndef NDEBUG
         for (size_t i=0; i<m_ops.size()-1; ++i)
@@ -55,7 +55,7 @@ public:
     }
 
     /// Constructor taking two Linear Operators
-    gsProductOfOperatorsOp(const BasePtr & op0, const BasePtr & op1 ) : m_ops(2)
+    gsProductOp(const BasePtr & op0, const BasePtr & op1 ) : m_ops(2)
     {
         GISMO_ASSERT ( op0->rows() == op1->cols(),
                        "Dimensions of the operators do not fit." );
@@ -63,7 +63,7 @@ public:
     }
 
     /// Constructor taking three Linear Operators
-    gsProductOfOperatorsOp(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2) : m_ops(3)
+    gsProductOp(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2) : m_ops(3)
     {
         GISMO_ASSERT ( op0->rows() == op1->cols() && op1->rows() == op2->cols(),
                        "Dimensions of the operators do not fit." );
@@ -72,24 +72,24 @@ public:
 
     /// Make command returning a smart pointer
     static uPtr make()
-    { return memory::make_unique( new gsProductOfOperatorsOp() ); }
+    { return memory::make_unique( new gsProductOp() ); }
 
     /// Make command returning a smart pointer
     static uPtr make(const std::vector<BasePtr>& ops)
-    { return memory::make_unique( new gsProductOfOperatorsOp(ops) ); }
+    { return memory::make_unique( new gsProductOp(ops) ); }
 
     /// Make command returning a smart pointer
     static uPtr make(const BasePtr & op0, const BasePtr & op1)
-    { return memory::make_unique( new gsProductOfOperatorsOp(op0,op1) ); }
+    { return memory::make_unique( new gsProductOp(op0,op1) ); }
 
     /// Make command returning a smart pointer
     static uPtr make(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2)
-    { return memory::make_unique( new gsProductOfOperatorsOp(op0,op1,op2) ); }
+    { return memory::make_unique( new gsProductOp(op0,op1,op2) ); }
 
     /// Add another operator at the end
     void addOperator( const BasePtr& op )
     {
-        GISMO_ASSERT ( m_ops.size() == 0 || m_ops.back()->cols() == op->rows(),
+        GISMO_ASSERT ( m_ops.empty() || m_ops.back()->cols() == op->rows(),
                        "Dimensions of the operators do not fit." );
         m_ops.push_back( op );
     }
@@ -97,7 +97,7 @@ public:
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         // The product of 0 operators is the identity
-        if ( m_ops.size() == 0 ) { x = input; return; }
+        if ( m_ops.empty() ) { x = input; return; }
 
         // Here, we could make a permanently allocated vector
         gsMatrix<T> temp;
@@ -111,13 +111,13 @@ public:
     }
 
     index_t rows() const {
-        GISMO_ASSERT( m_ops.size()>0, "gsProductOfOperatorsOp::rows does not work for 0 operators.");
+        GISMO_ASSERT( !m_ops.empty(), "gsProductOp::rows does not work for 0 operators.");
         return m_ops.back()->rows();
 
     }
 
     index_t cols() const {
-        GISMO_ASSERT( m_ops.size()>0, "gsProductOfOperatorsOp::cols does not work for 0 operators.");
+        GISMO_ASSERT( !m_ops.empty(), "gsProductOp::cols does not work for 0 operators.");
         return m_ops.front()->cols();
     }
 
