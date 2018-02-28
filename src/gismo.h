@@ -147,7 +147,7 @@ namespace internal
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 
-#include<gsAssembler/gsExprHelper.h>
+#include <gsAssembler/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
 
@@ -158,6 +158,7 @@ namespace internal
 #include <gsSolver/gsGradientMethod.h>
 #include <gsSolver/gsConjugateGradient.h>
 #include <gsSolver/gsPreconditioner.h>
+#include <gsSolver/gsBlockOp.h>
 #include <gsSolver/gsSimplePreconditioners.h>
 
 /* ----------- IO ----------- */

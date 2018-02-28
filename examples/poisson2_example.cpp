@@ -17,7 +17,7 @@
 using namespace gismo;
 //! [Include namespace]
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     int numElevate = 0;
     bool last = false;
     std::string fn("pde/poisson2d_bvp.xml");
-    
+
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
@@ -41,10 +41,10 @@ int main(int argc, char *argv[])
 
     gsFileData<> fd(fn);
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
-    
+
     gsMultiPatch<> mp;
     fd.getId(0, mp); // id=0: Multipatch domain
-     
+
     gsFunctionExpr<> f;
     fd.getId(1, f); // id=1: source function
     gsInfo<<"Source function "<< f << "\n";
@@ -69,10 +69,10 @@ int main(int argc, char *argv[])
             dbasis.uniformRefine();
         numRefine = 0;
     }
-    
+
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
     //! [Refinement]
-    
+
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
 
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
-    
+
     // Set the geometry map
     geometryMap G = A.getMap(mp);
 
@@ -159,29 +159,28 @@ int main(int argc, char *argv[])
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
               << ( l2err.head(numRefine).array() /
                    l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
-        
+
         gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
               <<( h1err.head(numRefine).array() /
                   h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
     //! [Error and convergence rates]
-    
+
     // if (save)
-    
+
     //! [Export visualization in ParaView]
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
         ev.options().setSwitch("plot.elements", true);
         ev.writeParaview( u_sol   , G, "solution");
-        //ev.writeParaview( u_ex    , G, "solution_ex");        
+        //ev.writeParaview( u_ex    , G, "solution_ex");
         //ev.writeParaview( u, G, "aa");
 
         gsFileManager::open("solution.pvd");
     }
     //! [Export visualization in ParaView]
-    
+
     return EXIT_SUCCESS;
 
 }// end main
-

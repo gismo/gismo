@@ -39,8 +39,8 @@ namespace gismo
  *
  * \ingroup Solver
  */
-template<typename T = real_t>
-class GISMO_EXPORT gsBlockOp : public gsLinearOperator<T>
+template<class T>
+class gsBlockOp : public gsLinearOperator<T>
 {
 public:
 
@@ -49,15 +49,15 @@ public:
 
     /// Unique pointer for gsBlockOp
     typedef memory::unique_ptr< gsBlockOp<T> > uPtr;
-    
+
     /// Base class
     typedef memory::shared_ptr< gsLinearOperator<T> > BasePtr;
-    
+
     /// Constructor. Takes the number of blocks (nRows, nCols). Provide the contents of the blocks with addOperator
     gsBlockOp(index_t nRows, index_t nCols);
-    
+
     /// Make function returning a smart pointer
-    static uPtr make(index_t nRows, index_t nCols) 
+    static uPtr make(index_t nRows, index_t nCols)
     { return memory::make_unique( new gsBlockOp(nRows,nCols) ); }
 
     /**
@@ -106,4 +106,3 @@ private:
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsBlockOp.hpp)
 #endif
-

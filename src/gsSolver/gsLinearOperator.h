@@ -32,12 +32,12 @@ public:
     /// Shared pointer for gsLinearOperator
     typedef memory::shared_ptr<gsLinearOperator> Ptr;
 
-    /// Unique pointer for gsLinearOperator   
+    /// Unique pointer for gsLinearOperator
     typedef memory::unique_ptr<gsLinearOperator> uPtr;
 
     /// Identity operator
     static gsIdentityOp<T> Identity(const index_t dim) {return gsIdentityOp<T>(dim); }
-    
+
     virtual ~gsLinearOperator() {}
 
     /**
@@ -56,13 +56,10 @@ public:
     // NOTE: this is rather inefficient and is only provided for debugging and testing purposes
     void toMatrix(gsMatrix<T>& result)
     {
-        GISMO_ASSERT(rows() == cols(),
-                     "gsLinearOperator::toMatrix is only implemented for square operators");
-
         gsMatrix<T> eye = gsMatrix<T>::Identity(cols(), cols());
         this->apply(eye, result);
     }
-    
+
     /// Get the default options as gsOptionList object
     // This implementation provides an empty object
     static gsOptionList defaultOptions()               { return gsOptionList(); }
@@ -70,7 +67,7 @@ public:
     /// Set options based on a gsOptionList object
     // This implementation does not read any input
     virtual void setOptions(const gsOptionList & opt)  {}
-    
+
 }; // gsLinearOperator
 
 /// @brief Allows an operator to be multiplied with a scalar
@@ -93,7 +90,7 @@ public:
     gsScaledOp(const BasePtr & linOp, T scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
 
     /// Make function returning a smart pointer
-    static uPtr make(const BasePtr & linOp, T scalar = 1) 
+    static uPtr make(const BasePtr & linOp, T scalar = 1)
     { return memory::make_unique( new gsScaledOp(linOp, scalar) ); }
 
     virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
@@ -125,9 +122,9 @@ public:
     /// Shared pointer for gsIdentityOp
     typedef memory::shared_ptr<gsIdentityOp> Ptr;
 
-    /// Unique pointer for gsIdentityOp   
+    /// Unique pointer for gsIdentityOp
     typedef memory::unique_ptr<gsIdentityOp> uPtr;
-    
+
     /// Constructor taking the dimension of the identity operator
     gsIdentityOp(index_t dim) : m_dim(dim) {}
 

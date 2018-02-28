@@ -10,8 +10,6 @@
 
     Author(s): C. Hofreither
 */
-#include <gsSolver/gsSimplePreconditioners.h>
-#include <gsCore/gsLinearAlgebra.h>
 
 namespace gismo
 {
