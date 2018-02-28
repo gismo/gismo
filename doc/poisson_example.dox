@@ -26,13 +26,14 @@ write it in an \c .xml file. See examples in the \c filedata/pde directory.
 We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial, we
 explain how to do this. As an example we will use the \c poisson_example.cpp file in the
 example folder. We will go through essentials of the code in details (For more detail of the solver
-see the documentation for \ref gsPoissonAssembler, \ref gsAssemblerBase, and \ref gsVisitorPoisson.) 
+see the documentation for \ref gsPoissonAssembler, \ref gsAssemblerBase, and \ref gsVisitorPoisson.)
 
 First we include the library and use the gismo namespace.
 
 \snippet poisson_example.cpp Include namespace
 
-We add a bunch of command-line arguments.
+We add a command-line argument which allows the user to create a
+Paraview visualization file.
 
 \snippet poisson_example.cpp Parse command line
 
@@ -48,28 +49,25 @@ gsNurbsCreator class creates several simple geometries:
 
 \snippet poisson_example.cpp Geometry data
 
-\section BCs Boundary Conditions
+The chosen geometry represents the unit square consisting of 2 x 2
+squares, which all have side-length 0.5, i.e., the computational
+domain is the unit square \f$\Omega = (0,1)^2\f$ .
 
-The boundary conditions are stored in an object of type \ref gsBoundaryConditions :
-
-For the chosen geometry, we use a boundary iterator which allows to
-specify Dirichlet boundary conditions everywhere.
-
-In the commented out code, we consider the domain provided by "BSplineQuarterAnnulus",
-adomain representing the unit square consisting of 2 x 2 square patches, which all
-have side-length 0.5.
-
-In that example, the four patches are numbered as follows:
+In this example, the four patches are numbered as follows:
 
 <table border>
 <tr><td>1</td><td>3</td></tr>
 <tr><td>0</td><td>2</td></tr>
 </table>
 
+\section BCs Boundary Conditions
+
+The boundary conditions are stored in an object of type \ref gsBoundaryConditions :
+
 In the 2D case, each patch has 4 boundary sides: \a west, \a east, \a
 south and \a north (in addition there is \a front and \a back for 3D
 geometries). The boundary conditions must be specified for each
-patch. 
+patch.
 
 In this example we have 4 patches forming a unit square, hence
 we need to specify 8 boundary conditions:
@@ -85,7 +83,7 @@ We can h or/and p refine this basis (in any order).
 
 \snippet poisson_example.cpp Refinement
 
-Here, we provide h- and k-refinement as requested on the command line.
+Here, we perform h- and k-refinement.
 
 \section solver Setting up and using the Assembler
 
@@ -121,13 +119,8 @@ right-hand-side as \ref gsMatrix.
 
 Solving the linear system of equations is done in the main file. In
 this example of the Poisson problem, where we have a symmetric and
-positive definite system matrix, we can use the CG-solver, which can
-be combined with a bunch of preconditioners.
-
-As preconditioners, we provide simple preconditioners, like
-no preconditioner (= identity matrix), Jacobi and Gauss-Seidel.
-
-All approaches can be chosen at the command line.
+positive definite system matrix, we can, for example, use the
+CG-solver of the Eigen library, with a diagonal preconditioner.
 
 \snippet poisson_example.cpp Solve
 

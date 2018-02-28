@@ -155,24 +155,24 @@ int main(int argc, char *argv[])
 
     // Generate system matrix and load vector
     gsInfo<< "Assembling...\n";
-    PoissonAssembler.assemble();
+    assembler.assemble();
     gsInfo << "Have assembled a system (matrix and load vector) with "
-           << PoissonAssembler.numDofs() << " dofs.\n";
+           << assembler.numDofs() << " dofs.\n";
     //! [Assemble]
 
     //! [Solve]
     // Initialize the conjugate gradient solver
     gsInfo << "Solving...\n";
-    gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
-    gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
+    gsSparseSolver<>::CGDiagonal solver( assembler.matrix() );
+    gsMatrix<> solVector = solver.solve( assembler.rhs() );
     gsInfo << "Solved the system with CG solver.\n";
     //! [Solve]
 
     //! [Construct solution]
     // Construct the solution as a scalar field
     gsMultiPatch<> mpsol;
-    PoissonAssembler.constructSolution(solVector, mpsol);
-    gsField<> sol( PoissonAssembler.patches(), mpsol);
+    assembler.constructSolution(solVector, mpsol);
+    gsField<> sol( assembler.patches(), mpsol);
     //! [Construct solution]
 
     if (plot)
@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>(sol, "poisson2d", 1000);
-        const gsField<> exact( PoissonAssembler.patches(), g, false );
+        const gsField<> exact( assembler.patches(), g, false );
         gsWriteParaview<>( exact, "poisson2d_exact", 1000);
 
         // Run paraview
