@@ -156,11 +156,11 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::shared_ptr<Derived> mat)
 }
 
 // We need an additional guide for the compiler to be able to work well with unique ptrs
-//template <class Derived>
-//typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat)
-//{
-//    return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release())));
-//}
+template <class Derived>
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat)
+{
+    return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release())));
+}
 
 /** @brief Simple adapter class to use an Eigen solver (having a
  * compute() and a solve() method) as a linear operator.
