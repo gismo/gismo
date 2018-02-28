@@ -47,37 +47,54 @@ public:
     /// @brief Constructor taking a reference
     ///
     /// @note This does not copy the matrix. Make sure that the matrix
-    /// is not deleted too early (alternatively use constructor by
-    /// shared pointer)
-    gsMatrixOp(const MatrixType& mat, bool sym=false)
-    : m_mat(), m_expr(mat.derived()), m_symmetric(sym)
+    /// is not deleted too early (alternatively use one of the constructors
+    /// taking a shared pointer).
+    gsMatrixOp(const MatrixType& mat)
+    : m_mat(), m_expr(mat.derived())
     {
         //gsDebug<<typeid(m_expr).name()<<" Ref: "<<is_ref<NestedMatrix>::value<<"\n";
     }
 
     /// @brief Constructor taking a shared pointer
-    gsMatrixOp(const MatrixPtr& mat, bool sym=false)
-    : m_mat(mat), m_expr(m_mat->derived()), m_symmetric(sym)
+    gsMatrixOp(const MatrixPtr& mat)
+    : m_mat(mat), m_expr(m_mat->derived())
+    { }
+
+    /// @brief Constructor taking a shared pointer and a derived expression
+    ///
+    /// This constructor can be used if the object should hold a shared pointer
+    /// to the partiuclar matrix, but apply some derived expression, like
+    ///
+    /// memory::shared_ptr< gsMatrix<> > mat_ptr = ...
+    /// gsMatrixOp op( mat_ptr, mat_ptr->transpose() );
+    gsMatrixOp(const MatrixPtr& mat, const MatrixType& expr)
+    : m_mat(mat), m_expr(expr.derived())
     { }
 
     /// @brief Make function returning a smart pointer
     ///
     /// @note This does not copy the matrix. Make sure that the matrix
-    /// is not deleted too early or provide a shared pointer.
-    static uPtr make(const MatrixType& mat, bool sym=false)
-    { return memory::make_unique( new gsMatrixOp(mat,sym) ); }
+    /// is not deleted too early (alternatively use one of the make functions
+    /// taking a shared pointer).
+    static uPtr make(const MatrixType& mat)
+    { return memory::make_unique( new gsMatrixOp(mat) ); }
 
-    /// Make function returning a smart pointer
-    static uPtr make(const MatrixPtr& mat, bool sym=false)
-    { return memory::make_unique( new gsMatrixOp(mat,sym) ); }
+    /// @brief Make function returning a smart pointer
+    static uPtr make(const MatrixPtr& mat)
+    { return memory::make_unique( new gsMatrixOp(mat) ); }
+
+    /// @brief Make function returning a smart pointer and a derived expression
+    ///
+    /// This constructor can be used if the object should hold a shared pointer
+    /// to the partiuclar matrix, but apply some derived expression, like
+    ///
+    /// memory::shared_ptr< gsMatrix<> > mat_ptr = ...
+    /// gsMatrixOp::uPtr op = gsMatrixOp::make( mat_ptr, mat_ptr->transpose() );
+    static uPtr make(const MatrixPtr& mat, const MatrixType& expr)
+    { return memory::make_unique( new gsMatrixOp(mat, expr) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
-    {
-        if (m_symmetric)
-            x.noalias() = m_expr.template selfadjointView<Lower>() * input;
-        else
-            x.noalias() = m_expr * input;
-    }
+    { x.noalias() = m_expr * input; }
 
     index_t rows() const { return m_expr.rows(); }
 
@@ -95,7 +112,6 @@ public:
 private:
     const MatrixPtr m_mat; ///< Shared pointer to matrix (if needed)
     NestedMatrix   m_expr; ///< Nested Eigen expression
-    bool      m_symmetric;
 };
 
 /** @brief This essentially just calls the gsMatrixOp constructor, but
@@ -110,6 +126,7 @@ private:
   * gsLinearOperator<>::Ptr op  = makeMatrixOp(M);
   * gsLinearOperator<>::Ptr opT = makeMatrixOp(M.transpose());
   * gsLinearOperator<>::Ptr opB = makeMatrixOp(M.block(0,0,5,5) );
+  * gsLinearOperator<>::Ptr opS = makeMatrixOp(M.selfadjointView<Lower>() );
   * \endcode
   *
   * Note that
@@ -126,9 +143,9 @@ private:
   * \ingroup Solver
   */
 template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>& mat, bool sym=false)
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>& mat)
 {
-    return gsMatrixOp<Derived>::make(mat.derived(), sym);
+    return gsMatrixOp<Derived>::make(mat.derived());
 }
 
 /** @brief This essentially just calls the gsMatrixOp constructor, but
@@ -140,7 +157,7 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>&
   * \code
   * gsMatrix<>::Ptr M(new gsMatrix<>);
   * M->setRandom(10,10);
-  * gsLinearOperator<>::Ptr op  = makeMatrixOp(M);
+  * gsLinearOperator<>::Ptr op = makeMatrixOp(M);
   * \endcode
   *
   * Alternatively:
@@ -152,17 +169,38 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>&
   *
   * \ingroup Solver
   */
-template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const memory::shared_ptr<Derived> & mat, bool sym=false)
+template <class MatrixType>
+typename gsMatrixOp<MatrixType>::uPtr makeMatrixOp(const memory::shared_ptr<MatrixType> & mat)
 {
-    return memory::make_unique(new gsMatrixOp<Derived>(mat, sym));
+    return memory::make_unique(new gsMatrixOp<MatrixType>(mat));
 }
 
 // We need an additional guide for the compiler to be able to work well with unique ptrs
-template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat, bool sym=false)
+template <class MatrixType>
+typename gsMatrixOp<MatrixType>::uPtr makeMatrixOp(memory::unique_ptr<MatrixType> mat)
 {
-    return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release()), sym));
+    return memory::make_unique(new gsMatrixOp<MatrixType>(memory::shared_ptr<MatrixType>(mat.release())));
+}
+
+/** @brief This essentially just calls the gsMatrixOp constructor, but
+  * the use of a template functions allows us to let the compiler do
+  * type inference, so we don't need to type out the matrix type
+  * explicitly.
+  *
+  * Example:
+  * \code
+  * gsMatrix<>::Ptr M(new gsMatrix<>);
+  * M->setRandom(10,10);
+  * gsLinearOperator<>::Ptr op = makeMatrixOp(M, M->transpose());
+  * \endcode
+  *
+  * \ingroup Solver
+  */
+template <class MatrixType>
+typename gsMatrixOp<MatrixType>::uPtr makeMatrixOp(const memory::shared_ptr<MatrixType> & mat,
+                                                   const typename util::identity<MatrixType>::type & expr)
+{
+    return memory::make_unique(new gsMatrixOp<MatrixType>(mat, expr));
 }
 
 /** @brief Simple adapter class to use an Eigen solver (having a
