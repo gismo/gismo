@@ -21,7 +21,7 @@ namespace gismo
 ///
 /// \ingroup Solver
 template<class T = real_t>
-class GISMO_EXPORT gsGMRes: public gsIterativeSolver<T>
+class gsGMRes : public gsIterativeSolver<T>
 {
 public:
     typedef gsIterativeSolver<T> Base;

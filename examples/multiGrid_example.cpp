@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
     real_t damping = -1;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
+    bool plot = false;
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a multigrid solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
@@ -45,6 +46,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother (handed over to smoother)", damping);
     cmd.addReal  ("t", "CG.Tolerance",          "Stopping criterion for cg", tolerance);
     cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
+    cmd.addSwitch("",  "plot",                  "Plot the result with Paraview", plot);
 
     cmd.getValues(argc,argv);
 
@@ -125,7 +127,7 @@ int main(int argc, char *argv[])
         mp,
         mb,
         bc,
-        gsConstantFunction<>(0,mp.geoDim()),
+        gsConstantFunction<>(1,mp.geoDim()),
         (dirichlet::strategy) opt.askInt("MG.DirichletStrategy",dirichlet::elimination),
         (iFace::strategy) opt.askInt("MG.InterfaceStrategy",iFace::conforming)
     );
@@ -164,24 +166,45 @@ int main(int argc, char *argv[])
         mg->setSmoother(i, smootherOp);
     }
 
-    gsMatrix<> x, history;
+    gsMatrix<> x, errorHistory;
     x.setRandom( assembler.matrix().rows(), 1 );
 
     gsConjugateGradient<>( assembler.matrix(), mg )
         .setOptions( opt.getGroup("CG") )
-        .solveDetailed( assembler.rhs(), x, history );
+        .solveDetailed( assembler.rhs(), x, errorHistory );
 
-    gsInfo << "done.\n";
+    gsInfo << "done.\n\n";
 
     /******************** Print end Exit ********************/
 
-    gsInfo << "\n\nResidual:\n" << history << "\n\n";
-
-    if (history(history.rows()-1,0) < tolerance)
-        gsInfo << "Reached desired tolerance after " << history.rows()-1 << " iterates.\n";
+    const index_t iter = errorHistory.rows()-1;
+    const bool success = errorHistory(iter,0) < tolerance;
+    if (success)
+        gsInfo << "Reached desired tolerance after " << iter << " iterates:\n";
     else
-        gsInfo << "Did not reach desired tolerance after " << history.rows()-1 << " iterates.\n";
+        gsInfo << "Did not reach desired tolerance after " << iter << " iterates:\n";
 
+    if (errorHistory.rows() < 20)
+        gsInfo << errorHistory.transpose() << "\n\n";
+    else
+        gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
-    return EXIT_SUCCESS;
+    if (plot)
+    {
+        // Construct the solution as a scalar field
+        gsMultiPatch<> mpsol;
+        assembler.constructSolution(x, mpsol);
+        gsField<> sol( assembler.patches(), mpsol );
+
+        // Write approximate and exact solution to paraview files
+        gsInfo << "Plotting in Paraview.\n";
+        gsWriteParaview<>(sol, "multiGrid_result", 1000);
+        gsFileManager::open("multiGrid_result.pvd");
+    }
+    else
+    {
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
+    }
+    return success ? EXIT_SUCCESS : EXIT_FAILURE;
 };
