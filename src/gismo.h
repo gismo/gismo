@@ -163,6 +163,7 @@ namespace internal
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsSimplePreconditioners.h>
 #include <gsSolver/gsSumOp.h>
+#include <gsSolver/gsKroneckerOp.h>
 
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
