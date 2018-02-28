@@ -255,16 +255,13 @@ template <class T=real_t>                class gsSparseEntries;
 template <class T=real_t>                class gsLinearOperator;
 template <class T=real_t>                class gsScaledOp;
 template <class T=real_t>                class gsIdentityOp;
-
 template <class T=real_t>                class gsPreconditionerOp;
 template <class T=real_t>                class gsPreconditionerFromOp;
-
 template <class T=real_t>                class gsSumOfOperatorsOp;
 template <class T=real_t>                class gsProductOfOperatorsOp;
 template <class T=real_t>                class gsCompositionOfPreconditionersOp;
 template <class T=real_t>                class gsKroneckerOp;
 template <class T=real_t>                class gsBlockOp;
-
 template <class T=real_t>                class gsParameterDomainPreconditioners;
 
 // gsMultiGrid
