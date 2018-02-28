@@ -13,8 +13,8 @@
 #pragma once
 
 #include <gsSolver/gsParameterDomainPreconditioners.h>
-#include <gsSolver/gsSumOfOperatorsOp.h>
-#include <gsSolver/gsProductOfOperatorsOp.h>
+#include <gsSolver/gsSumOp.h>
+#include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
 #include <gsTensor/gsTensorTools.h>
@@ -226,7 +226,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 
     for (index_t i=1; i<d; ++i)
     {
-        K = gsSumOfOperatorsOp<T>::make(
+        K = gsSumOp<T>::make(
             gsKroneckerOp<T>::make( give(K),      local_mass_op [i]  ),
             gsKroneckerOp<T>::make( M,       give(local_stiff_op[i]) )
         );
@@ -234,9 +234,9 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
             M = gsKroneckerOp<T>::make(M, local_mass_op[i]);
     }
     if (a==1)
-        K = gsSumOfOperatorsOp<T>::make( give(K), M );
+        K = gsSumOp<T>::make( give(K), M );
     else if (a!=0)
-        K = gsSumOfOperatorsOp<T>::make( give(K), gsScaledOp<T>::make( M, a ) );
+        K = gsSumOp<T>::make( give(K), gsScaledOp<T>::make( M, a ) );
 
     return K;
 }
@@ -308,7 +308,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 
     memory::unique_ptr< Eigen::DiagonalMatrix<real_t,Dynamic> > diag_mat( new Eigen::DiagonalMatrix<real_t,Dynamic>( give(diag) ) );
 
-    return gsProductOfOperatorsOp<T>::make(
+    return gsProductOp<T>::make(
         gsKroneckerOp<T>::make(QTop),
         makeMatrixOp(give(diag_mat)),
         gsKroneckerOp<T>::make(Qop)

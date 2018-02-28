@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
     else if (preconder=="fd")
         preconditioner = gsParameterDomainPreconditioners<>(refine_bases[0],bcInfo,dir).getFastDiagonalizationOp();
     else if (preconder=="hyb")
-        preconditioner = gsCompositionOfPreconditionersOp<>::make(
+        preconditioner = gsCompositePrecOp<>::make(
             makeGaussSeidelOp( assembler.matrix() ),
             gsPreconditionerFromOp<>::make(
                 makeMatrixOp( assembler.matrix() ),

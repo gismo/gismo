@@ -1,4 +1,4 @@
-/** @file gsSumOfOperatorsOp.h
+/** @file gsSumOp.h
 
     @brief Provides the sum of \a gsLinearOperator s as a \a gsLinearOperator.
 
@@ -21,22 +21,22 @@ namespace gismo
 ///
 /// @ingroup Solver
 template<typename T>
-class gsSumOfOperatorsOp GISMO_FINAL : public gsLinearOperator<T>
+class gsSumOp GISMO_FINAL : public gsLinearOperator<T>
 {
     typedef typename gsLinearOperator<T>::Ptr BasePtr;
 public:
 
-    /// Shared pointer for gsSumOfOperatorsOp
-    typedef memory::shared_ptr<gsSumOfOperatorsOp> Ptr;
+    /// Shared pointer for gsSumOp
+    typedef memory::shared_ptr<gsSumOp> Ptr;
 
-    /// Unique pointer for gsSumOfOperatorsOp
-    typedef memory::unique_ptr<gsSumOfOperatorsOp> uPtr;
+    /// Unique pointer for gsSumOp
+    typedef memory::unique_ptr<gsSumOp> uPtr;
 
     /// Empty constructor. To be filled with addOperator()
-    gsSumOfOperatorsOp() : m_sz(0), m_ops(0) {}
+    gsSumOp() : m_sz(0), m_ops(0) {}
 
     /// Constructor taking a vector of Linear Operators
-    gsSumOfOperatorsOp(const std::vector<BasePtr>& ops)
+    gsSumOp(const std::vector<BasePtr>& ops)
         : m_sz(ops.size()), m_ops(ops)
     {
 #ifndef NDEBUG
@@ -49,7 +49,7 @@ public:
     }
 
     /// Constructor taking two Linear Operators
-    gsSumOfOperatorsOp(const BasePtr& op0, const BasePtr& op1)
+    gsSumOp(const BasePtr& op0, const BasePtr& op1)
         : m_sz(2), m_ops(2)
     {
         GISMO_ASSERT ( op0->rows() == op1->rows() && op0->cols() == op1->cols(), "Dimensions of the operators do not fit." );
@@ -57,7 +57,7 @@ public:
     }
 
     /// Constructor taking three Linear Operators
-    gsSumOfOperatorsOp(const BasePtr& op0, const BasePtr& op1, const BasePtr& op2 )
+    gsSumOp(const BasePtr& op0, const BasePtr& op1, const BasePtr& op2 )
         : m_sz(3), m_ops(3)
     {
         GISMO_ASSERT ( op0->rows() == op1->rows() && op0->cols() == op1->cols()
@@ -67,19 +67,19 @@ public:
 
     /// Make command returning a smart pointer
     static uPtr make()
-    { return memory::make_unique( new gsSumOfOperatorsOp() ); }
+    { return memory::make_unique( new gsSumOp() ); }
 
     /// Make command returning a smart pointer
     static uPtr make( const std::vector<BasePtr>& ops )
-    { return memory::make_unique( new gsSumOfOperatorsOp( ops ) ); }
+    { return memory::make_unique( new gsSumOp( ops ) ); }
 
     /// Make command returning a smart pointer
     static uPtr make( const BasePtr& op0, const BasePtr& op1 )
-    { return memory::make_unique( new gsSumOfOperatorsOp( op0, op1 ) ); }
+    { return memory::make_unique( new gsSumOp( op0, op1 ) ); }
 
     /// Make command returning a smart pointer
     static uPtr make( const BasePtr& op0, const BasePtr& op1, const BasePtr& op2 )
-    { return memory::make_unique( new gsSumOfOperatorsOp( op0, op1, op2 ) ); }
+    { return memory::make_unique( new gsSumOp( op0, op1, op2 ) ); }
 
     /// Add another operator
     void addOperator( const BasePtr& op )
@@ -92,7 +92,7 @@ public:
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & result) const
     {
-        GISMO_ASSERT ( m_sz>0, "gsSumOfOperatorsOp::apply does not work for 0 operators." );
+        GISMO_ASSERT ( m_sz>0, "gsSumOp::apply does not work for 0 operators." );
 
         // Here, we could make a permanently allocated vector
         gsMatrix<T> tmp;
@@ -107,13 +107,13 @@ public:
 
     index_t rows() const
     {
-        GISMO_ASSERT( m_sz>0, "gsSumOfOperatorsOp::rows does not work for 0 operators." );
+        GISMO_ASSERT( m_sz>0, "gsSumOp::rows does not work for 0 operators." );
         return m_ops[0]->rows();
     }
 
     index_t cols() const
     {
-        GISMO_ASSERT( m_sz>0, "gsSumOfOperatorsOp::cols does not work for 0 operators." );
+        GISMO_ASSERT( m_sz>0, "gsSumOp::cols does not work for 0 operators." );
         return m_ops[0]->cols();
     }
 
