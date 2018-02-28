@@ -33,14 +33,15 @@ public:
     typedef memory::unique_ptr<gsSumOp> uPtr;
 
     /// Empty constructor. To be filled with addOperator()
-    gsSumOp() : m_sz(0), m_ops(0) {}
+    gsSumOp() : m_ops(0) {}
 
     /// Constructor taking a vector of Linear Operators
     gsSumOp(const std::vector<BasePtr>& ops)
-        : m_sz(ops.size()), m_ops(ops)
+        : m_ops(ops)
     {
 #ifndef NDEBUG
-        for (index_t i=0; i<m_sz; ++i)
+        const index_t sz = m_ops.size();
+        for (index_t i=0; i<sz; ++i)
         {
             GISMO_ASSERT ( m_ops[0]->rows() == m_ops[i]->rows() && m_ops[0]->cols() == m_ops[i]->cols(),
                            "Dimensions of the operators do not fit." );
@@ -50,7 +51,7 @@ public:
 
     /// Constructor taking two Linear Operators
     gsSumOp(const BasePtr& op0, const BasePtr& op1)
-        : m_sz(2), m_ops(2)
+        : m_ops(2)
     {
         GISMO_ASSERT ( op0->rows() == op1->rows() && op0->cols() == op1->cols(), "Dimensions of the operators do not fit." );
         m_ops[0] = op0; m_ops[1] = op1;
@@ -58,7 +59,7 @@ public:
 
     /// Constructor taking three Linear Operators
     gsSumOp(const BasePtr& op0, const BasePtr& op1, const BasePtr& op2 )
-        : m_sz(3), m_ops(3)
+        : m_ops(3)
     {
         GISMO_ASSERT ( op0->rows() == op1->rows() && op0->cols() == op1->cols()
                         && op0->rows() == op2->rows() && op0->cols() == op2->cols(), "Dimensions of the operators do not fit." );
@@ -84,21 +85,20 @@ public:
     /// Add another operator
     void addOperator( const BasePtr& op )
     {
-        GISMO_ASSERT ( m_sz == 0 || ( op->rows() == m_ops[0]->rows() && op->cols() == m_ops[0]->cols() ),
+        GISMO_ASSERT ( m_ops.empty() || ( op->rows() == m_ops[0]->rows() && op->cols() == m_ops[0]->cols() ),
                        "Dimensions of the operators do not fit." );
-        ++m_sz;
         m_ops.push_back( op );
     }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & result) const
     {
-        GISMO_ASSERT ( m_sz>0, "gsSumOp::apply does not work for 0 operators." );
+        GISMO_ASSERT ( !m_ops.empty(), "gsSumOp::apply does not work for 0 operators." );
 
         // Here, we could make a permanently allocated vector
         gsMatrix<T> tmp;
 
         m_ops[0]->apply(input,result);
-        for (index_t i=1; i<m_sz; ++i)
+        for (index_t i=1; i<m_ops.size(); ++i)
         {
             m_ops[i]->apply(input,tmp);
             result += tmp;
@@ -107,13 +107,13 @@ public:
 
     index_t rows() const
     {
-        GISMO_ASSERT( m_sz>0, "gsSumOp::rows does not work for 0 operators." );
+        GISMO_ASSERT( !m_ops.empty(), "gsSumOp::rows does not work for 0 operators." );
         return m_ops[0]->rows();
     }
 
     index_t cols() const
     {
-        GISMO_ASSERT( m_sz>0, "gsSumOp::cols does not work for 0 operators." );
+        GISMO_ASSERT( !m_ops.empty(), "gsSumOp::cols does not work for 0 operators." );
         return m_ops[0]->cols();
     }
 
@@ -121,7 +121,6 @@ public:
     const std::vector<BasePtr>& getOps() const { return m_ops; }
 
 private:
-    index_t m_sz;
     std::vector<BasePtr> m_ops;
 
 };
