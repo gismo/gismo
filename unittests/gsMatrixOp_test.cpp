@@ -46,5 +46,4 @@ SUITE(gsMatrixOp_test)
         CHECK( ( A.transpose() - C ).norm() <= 1.e-10 );
     }
 
-
 }

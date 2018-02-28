@@ -107,7 +107,6 @@ private:
   * gsLinearOperator<>::Ptr op  = makeMatrixOp(M);
   * gsLinearOperator<>::Ptr opT = makeMatrixOp(M.transpose());
   * gsLinearOperator<>::Ptr opB = makeMatrixOp(M.block(0,0,5,5) );
-  * gsLinearOperator<>::Ptr opS = makeMatrixOp(M.selfadjointView<Lower>() );
   * \endcode
   *
   * Note that
@@ -138,7 +137,7 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>&
   * \code
   * gsMatrix<>::Ptr M(new gsMatrix<>);
   * M->setRandom(10,10);
-  * gsLinearOperator<>::Ptr op = makeMatrixOp(M);
+  * gsLinearOperator<>::Ptr op  = makeMatrixOp(M);
   * \endcode
   *
   * Alternatively:
@@ -150,7 +149,6 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>&
   *
   * \ingroup Solver
   */
-
 template <class Derived>
 typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::shared_ptr<Derived> mat)
 {
