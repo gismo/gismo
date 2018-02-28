@@ -87,7 +87,7 @@ void gsKroneckerOp<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & result) co
 }
 
 template <typename T>
-index_t gsKroneckerOp<T>::rows()
+index_t gsKroneckerOp<T>::rows() const
 {
     index_t rows = 1;
     for (unsigned i = 0; i < m_ops.size(); ++i)
@@ -96,7 +96,7 @@ index_t gsKroneckerOp<T>::rows()
 }
 
 template <typename T>
-index_t gsKroneckerOp<T>::cols()
+index_t gsKroneckerOp<T>::cols() const
 {
     index_t cols = 1;
     for (unsigned i = 0; i < m_ops.size(); ++i)
