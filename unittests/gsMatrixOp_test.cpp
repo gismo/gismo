@@ -46,6 +46,20 @@ SUITE(gsMatrixOp_test)
         CHECK( ( A.transpose() - C ).norm() <= 1.e-10 );
     }
 
+    TEST(DenseMatrixSymm2)
+    {
+        gsMatrix<> A (3,3);
+        A << 2,2,3,  4,5,6,  7,8,10;
+        gsMatrix<> B (3,3);
+        B << 1,4,7,  4,5,8,  7,8,10;
+
+        gsMatrix<>::Nested C = A.selfadjointView<Lower>().derived()
+        
+        A(0,0) = 1; // check that C holds no copy
+
+        CHECK( ( B - C ).norm() <= 1.e-10 );
+    }
+
     TEST(DenseMatrixSymm)
     {
         gsMatrix<> A (3,3);
