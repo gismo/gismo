@@ -255,6 +255,9 @@ template <class T=real_t>                class gsIdentityOp;
 template <class T=real_t>                class gsPreconditionerOp;
 template <class T=real_t>                class gsPreconditionerFromOp;
 
+template <class T=real_t>                class gsSumOfOperatorsOp;
+template <class T=real_t>                class gsProductOfOperatorsOp;
+template <class T=real_t>                class gsCompositionOfPreconditionersOp;
 template <class T=real_t>                class gsBlockOp;
 
 // gsMultiGrid
