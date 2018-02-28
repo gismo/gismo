@@ -1,7 +1,3 @@
-
-#include <gsCore/gsTemplateTools.h>
-
-#include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsAssembler.hpp>
 
 namespace gismo
