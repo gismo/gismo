@@ -4,29 +4,35 @@ namespace gismo {
 
 \page poisson_example poisson_example.cpp
 
-The Poisson equation: \f{eqnarray*}{
-              	      -\Delta\mathbf{u} &=&\mathbf{f} \quad \text{in} \quad \Omega,\\
-               	      \mathbf{u} &=& \mathbf{g} \quad \text{on} \quad \Gamma_D,\\
-	       	      \mathbf{n} \cdot \nabla \mathbf{u} &=& \mathbf{h} \quad \text{on} \quad \Gamma_N,
-               	      \f}
+The Poisson equation:
+\f{eqnarray*}{
+                    -\Delta\mathbf{u} &=&\mathbf{f} \quad \text{in} \quad \Omega,          \\
+                           \mathbf{u} &=& \mathbf{g} \quad \text{on} \quad \Gamma_D,       \\
+   \mathbf{n} \cdot \nabla \mathbf{u} &=& \mathbf{h} \quad \text{on} \quad \Gamma_N,
+\f}
 where \f$\mathbf{n}\f$ is the outward pointing unit normal vector, 
-\f$\Gamma_D\f$ and \f$\Gamma_N\f$ are the parts of the boundary where Dirichlet (essential) and Neumann (natural) boundary conditions are prescribed, respectively.
+\f$\Gamma_D\f$ and \f$\Gamma_N\f$ are the parts of the boundary where Dirichlet (essential)
+and Neumann (natural) boundary conditions are prescribed, respectively.
 
 \note
-For a simple solving of the  Poisson equation with Dirichlet boundary condition and known solution we can use the poissonVector.cpp file. Execute the file as:
+For a simple solving of the Poisson equation with Dirichlet boundary condition and known solution,
+we can use the poissonVector.cpp file. Execute the file as:
 > ./poissonVector -\-help
-to get up a list of solver options. To specify the source term and analytic solution, we have to write it in an \c .xml file. See examples in the \c filedata/pde directory.
+to get up a list of solver options. To specify the source term and analytic solution, we have to
+write it in an \c .xml file. See examples in the \c filedata/pde directory.
 
 \n
 
-We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial we explain how to do this. As an example we will use the \c poisson_example.cpp file in the example folder. We will go through essentials of the code in details (For more detail of the solver see the documentation for \ref gsPoissonAssembler, \ref gsAssemblerBase, and \ref gsVisitorPoisson.) 
+We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial, we
+explain how to do this. As an example we will use the \c poisson_example.cpp file in the
+example folder. We will go through essentials of the code in details (For more detail of the solver
+see the documentation for \ref gsPoissonAssembler, \ref gsAssemblerBase, and \ref gsVisitorPoisson.) 
 
 First we include the library and use the gismo namespace.
 
 \snippet poisson_example.cpp Include namespace
 
-We add a command-line argument which allows the user to create a
-Paraview visualization file.
+We add a bunch of command-line arguments.
 
 \snippet poisson_example.cpp Parse command line
 
@@ -37,30 +43,35 @@ Our Poisson problem is defined by source (right-hand side) function and Dirichle
 \section TPGeometry Geometry
 
 Inside the main function we declare the geometry. Note that we use
-this even if we only have a single patch geometry. The \ref
+the \ref gsMultiPatch class even if we only have a single patch geometry. The \ref
 gsNurbsCreator class creates several simple geometries:
 
 \snippet poisson_example.cpp Geometry data
 
-The chosen geometry represents the unit square consisting of 2 x 2
-squares, which all have side-length 0.5, i.e., the computational
-domain is the unit square \f$\Omega = (0,1)^2\f$ .
+\section BCs Boundary Conditions
 
-In this example, the four patches are numbered as follows:
+The boundary conditions are stored in an object of type \ref gsBoundaryConditions :
+
+For the chosen geometry, we use a boundary iterator which allows to
+specify Dirichlet boundary conditions everywhere.
+
+In the commented out code, we consider the domain provided by "BSplineQuarterAnnulus",
+adomain representing the unit square consisting of 2 x 2 square patches, which all
+have side-length 0.5.
+
+In that example, the four patches are numbered as follows:
 
 <table border>
 <tr><td>1</td><td>3</td></tr>
 <tr><td>0</td><td>2</td></tr>
 </table>
 
-\section BCs Boundary Conditions
-
-The boundary conditions are stored in an object of type \ref gsBoundaryConditions :
-
 In the 2D case, each patch has 4 boundary sides: \a west, \a east, \a
 south and \a north (in addition there is \a front and \a back for 3D
 geometries). The boundary conditions must be specified for each
-patch. In this example we have 4 patches forming a unit square, hence
+patch. 
+
+In this example we have 4 patches forming a unit square, hence
 we need to specify 8 boundary conditions:
 
 \snippet poisson_example.cpp Boundary conditions
@@ -74,26 +85,34 @@ We can h or/and p refine this basis (in any order).
 
 \snippet poisson_example.cpp Refinement
 
+Here, we provide h- and k-refinement as requested on the command line.
+
 \section solver Setting up and using the Assembler
 
-* Note the lower triangular representation!!
-
-We use \ref gsPoissonAssembler class to assemble and the Poisson equation. First we initialize the class object by giving the geometry (patches), discretization basis, boundary condition, source function, and the strategies for treating Dirichlet boundary conditions and patch interfaces:
+We use \ref gsPoissonAssembler class to assemble and the Poisson equation.
+First we initialize the class object by giving the geometry (patches),
+discretization basis, boundary condition, source function, and the strategies
+for treating Dirichlet boundary conditions and patch interfaces:
 
 \snippet poisson_example.cpp Assemble
 
-With \c dirichlet::elimination, we specify that the degrees of freedom (DOF) on the Dirichlet bondary should be eliminated already during the assembling process.
+With \c dirichlet::elimination, we specify that the degrees of freedom (DOF)
+on the Dirichlet bondary should be eliminated already during the assembling
+process.
 
-By \c iFace::glue, we specify that the DOFs at interfaces should be "glued" together in the sense that corresponding DOFs will be identified with each other and treated as one global DOF (which results in \f$C^0\f$-continuity at the interfaces).
+By \c iFace::glue, we specify that the DOFs at interfaces should be "glued"
+together in the sense that corresponding DOFs will be identified with each
+other and treated as one global DOF (which results in \f$C^0\f$-continuity
+at the interfaces).
 
 Executing the assembling process is then done by calling
 ~~~~~
-PoissonAssembler.assemble();
+assembler.assemble();
 ~~~~~
 The assembled system matrix and the right-hand-side can be accessed via
 ~~~~~
-PoissonAssembler.matrix();
-PoissonAssembler.rhs();
+assembler.matrix();
+assembler.rhs();
 ~~~~~
 where the system matrix is stored as a \ref gsSparseMatrix and the
 right-hand-side as \ref gsMatrix.
@@ -102,8 +121,13 @@ right-hand-side as \ref gsMatrix.
 
 Solving the linear system of equations is done in the main file. In
 this example of the Poisson problem, where we have a symmetric and
-positive definite system matrix, we can, for example, use the
-CG-solver of the Eigen library, with a diagonal preconditioner.
+positive definite system matrix, we can use the CG-solver, which can
+be combined with a bunch of preconditioners.
+
+As preconditioners, we provide simple preconditioners, like
+no preconditioner (= identity matrix), Jacobi and Gauss-Seidel.
+
+All approaches can be chosen at the command line.
 
 \snippet poisson_example.cpp Solve
 
