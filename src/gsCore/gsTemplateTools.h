@@ -95,16 +95,6 @@ private:
 template<typename T> struct remove_pointer {typedef T type;};
 template<typename T> struct remove_pointer<T*> {typedef typename remove_pointer<T>::type type;};
 
-/// \brief Provides a typedef with the given type
-///
-/// template<typename T>
-/// void foo( const T& in, typename util::identity<T>::type & out )
-///
-/// only uses type of in for template type deduction.
-///
-/// \ingroup Utils
-template<typename T> struct identity {typedef T type;};
-
 } // end namespace util
 
 } // end namespace gismo
