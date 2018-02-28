@@ -53,7 +53,7 @@ SUITE(gsMatrixOp_test)
         gsMatrix<> B (3,3);
         B << 1,4,7,  4,5,8,  7,8,10;
 
-        gsMatrix<>::Nested C = A.selfadjointView<Lower>().derived()
+        gsMatrix<>::Nested C = A.selfadjointView<Lower>().derived();
         
         A(0,0) = 1; // check that C holds no copy
 
