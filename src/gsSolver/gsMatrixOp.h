@@ -56,8 +56,8 @@ public:
     }
 
     /// @brief Constructor taking a shared pointer
-    gsMatrixOp(const MatrixPtr& mat)
-    : m_mat(mat), m_expr(m_mat->derived())
+    gsMatrixOp(MatrixPtr mat)
+    : m_mat(give(mat)), m_expr(m_mat->derived())
     { }
 
     /// @brief Make function returning a smart pointer
@@ -65,11 +65,11 @@ public:
     /// @note This does not copy the matrix. Make sure that the matrix
     /// is not deleted too early or provide a shared pointer.
     static uPtr make(const MatrixType& mat)
-    { return memory::make_unique( new gsMatrixOp(mat) ); }
+    { return uPtr( new gsMatrixOp(mat) ); }
 
     /// Make function returning a smart pointer
-    static uPtr make(const MatrixPtr& mat)
-    { return memory::make_unique( new gsMatrixOp(mat) ); }
+    static uPtr make(MatrixPtr mat)
+    { return uPtr( new gsMatrixOp(give(mat)) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     { x.noalias() = m_expr * input; }
@@ -150,17 +150,17 @@ typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>&
   * \ingroup Solver
   */
 template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const memory::shared_ptr<Derived> & mat)
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::shared_ptr<Derived> mat)
 {
-    return memory::make_unique(new gsMatrixOp<Derived>(mat));
+    return memory::make_unique(new gsMatrixOp<Derived>(give(mat)));
 }
 
 // We need an additional guide for the compiler to be able to work well with unique ptrs
-template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat)
-{
-    return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release())));
-}
+//template <class Derived>
+//typename gsMatrixOp<Derived>::uPtr makeMatrixOp(memory::unique_ptr<Derived> mat)
+//{
+//    return memory::make_unique(new gsMatrixOp<Derived>(memory::shared_ptr<Derived>(mat.release())));
+//}
 
 /** @brief Simple adapter class to use an Eigen solver (having a
  * compute() and a solve() method) as a linear operator.
