@@ -63,27 +63,4 @@ SUITE(gsMatrixOp_test)
         CHECK( ( B - C ).norm() <= 1.e-10 );
     }
 
-    TEST(DenseMatrixOwnership)
-    {
-        gsLinearOperator<>::Ptr Aop;
-
-        {
-            gsMatrix<> A (3,3);
-            A << 2,2,3,  4,5,6,  7,8,10;
-
-            gsMatrix<>::Ptr Aptr = A.moveToPtr();
-            Aop = makeMatrixOp( Aptr, Aptr->transpose() );
-            (*Aptr)(0,0) = 1; // check that gsMatrixOp holds no copy
-        }
-
-        gsMatrix<> B (3,3);
-        B << 1,4,7,  4,5,8,  3,6,10;
-
-        gsMatrix<> C;
-        Aop->toMatrix(C);
-
-        CHECK( ( B - C ).norm() <= 1.e-10 );
-    }
-
-
 }
