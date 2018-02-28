@@ -149,9 +149,9 @@ int main(int argc, char *argv[])
     // * dg: Use discontinuous Galerkin-like coupling between adjacent patches.
     //       (This option might not be available yet)
     //! [Assemble]
-    gsPoissonAssembler<real_t> PoissonAssembler(patches,refine_bases,bcInfo,f,
-                                                //dirichlet::elimination, iFace::glue);
-                                                  dirichlet::nitsche    , iFace::glue);
+    gsPoissonAssembler<real_t> assembler(patches,refine_bases,bcInfo,f,
+                                       //dirichlet::elimination, iFace::glue);
+                                         dirichlet::nitsche    , iFace::glue);
 
     // Generate system matrix and load vector
     gsInfo<< "Assembling...\n";

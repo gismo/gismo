@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
         solver.setTolerance(tol);
         solver.setMaxIterations(maxIter);
         gsMatrix<> errorHistory;
-        solver.solveDetailed( assembler.rhs(), solVector, errorHistory );
+        solver.solveDetailed( A.rhs(), solVector, errorHistory );
 
         const bool success = solver.error() <= solver.tolerance();
 
