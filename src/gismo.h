@@ -159,7 +159,10 @@ namespace internal
 #include <gsSolver/gsConjugateGradient.h>
 #include <gsSolver/gsPreconditioner.h>
 #include <gsSolver/gsBlockOp.h>
+#include <gsSolver/gsCompositePrecOp.h>
+#include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsSimplePreconditioners.h>
+#include <gsSolver/gsSumOp.h>
 
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
