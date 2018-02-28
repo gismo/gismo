@@ -39,7 +39,7 @@ namespace gismo
  *
  * \ingroup Solver
  */
-template<typename T = real_t>
+template<typename T>
 class GISMO_EXPORT gsBlockOp : public gsLinearOperator<T>
 {
 public:
