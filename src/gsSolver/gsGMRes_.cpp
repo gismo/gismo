@@ -1,3 +1,4 @@
+#include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsGMRes.hpp>
 
 namespace gismo

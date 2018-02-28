@@ -1,3 +1,4 @@
+#include <gsSolver/gsBlockOp.h>
 #include <gsSolver/gsBlockOp.hpp>
 
 namespace gismo

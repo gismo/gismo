@@ -10,7 +10,6 @@
 
     Author(s): J. Sogn
 */
-#include <gsSolver/gsGMRes.h>
 
 // TODO: Fix matrices sizes such that we don't resize on every iteration! (default can be 100 + 100 +...)
 

@@ -1,3 +1,4 @@
+#include <gsSolver/gsMinimalResidual.h>
 #include <gsSolver/gsMinimalResidual.hpp>
 
 namespace gismo

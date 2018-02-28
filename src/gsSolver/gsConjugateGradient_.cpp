@@ -1,3 +1,4 @@
+#include <gsSolver/gsConjugateGradient.h>
 #include <gsSolver/gsConjugateGradient.hpp>
 
 namespace gismo

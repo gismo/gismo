@@ -1,3 +1,4 @@
+#include <gsSolver/gsSimplePreconditioners.h>
 #include <gsSolver/gsSimplePreconditioners.hpp>
 
 namespace gismo

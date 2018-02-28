@@ -11,8 +11,6 @@
     Author(s): J. Sogn
 */
 
-#include <gsSolver/gsBlockOp.h>
-
 namespace gismo
 {
 

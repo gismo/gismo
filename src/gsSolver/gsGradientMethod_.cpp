@@ -1,3 +1,4 @@
+#include <gsSolver/gsGradientMethod.h>
 #include <gsSolver/gsGradientMethod.hpp>
 
 namespace gismo
