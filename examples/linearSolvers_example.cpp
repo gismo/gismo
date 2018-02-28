@@ -1,6 +1,8 @@
 /** @file linearSolvers_example.cpp
 
-    @brief Example on how the solve a system of linear equation with the MINRES, GMRes and CG method.
+    @brief Example on how the solve a system of linear equations with
+    Gismo's own iterative solvers and Eigen's direct and iterative
+    solvers.
 
     This file is part of the G+Smo library.
 
@@ -78,9 +80,9 @@ int main(int argc, char *argv[])
     //Tolerance
     real_t tol = std::pow(10.0, - REAL_DIG * 0.75);
 
-    gsCmdLine cmd("Solves a 1D PDE with a Courant discretization with several solvers solver.");
-    cmd.addInt("n", "number", "Number of unknowns", N);
-    cmd.addReal("", "tol", "Tolerance for the solvers", tol);
+    gsCmdLine cmd("Solves a 1D PDE with a Courant discretization with several solvers.");
+    cmd.addInt ("n", "number", "Number of unknowns",                  N  );
+    cmd.addReal("",  "tol",    "Tolerance for the iterative solvers", tol);
 
     cmd.getValues(argc,argv);
 
