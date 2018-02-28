@@ -10,7 +10,6 @@
 
     Author(s): C. Hofreither, S. Takacs
 */
-#include <gsSolver/gsKroneckerOp.h>
 
 namespace gismo
 {
@@ -18,6 +17,7 @@ namespace gismo
 template <typename T>
 void gsKroneckerOp<T>::applyKronecker(const std::vector<typename gsLinearOperator<T>::Ptr> & ops, const gsMatrix<T>& x, gsMatrix<T>& result)
 {
+    GISMO_ASSERT( !ops.empty(), "Zero-term Kronecker product" );
     const index_t nrOps = ops.size();
 
     if (nrOps == 1)        // deal with single-operator case efficiently
@@ -87,16 +87,22 @@ void gsKroneckerOp<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & result) co
 }
 
 template <typename T>
-void gsKroneckerOp<T>::calcSize()
+index_t gsKroneckerOp<T>::rows()
 {
-    m_rows = 1;
-    m_cols = 1;
-
+    index_t rows = 1;
     for (unsigned i = 0; i < m_ops.size(); ++i)
-    {
-        m_rows *= m_ops[i]->rows();
-        m_cols *= m_ops[i]->cols();
-    }
+        rows *= m_ops[i]->rows();
+    return rows;
 }
+
+template <typename T>
+index_t gsKroneckerOp<T>::cols()
+{
+    index_t cols = 1;
+    for (unsigned i = 0; i < m_ops.size(); ++i)
+        cols *= m_ops[i]->cols();
+    return cols;
+}
+
 
 }
