@@ -10,7 +10,6 @@
 
     Author(s): J. Sogn, S. Takacs
 */
-#include <gsSolver/gsMinimalResidual.h>
 
 namespace gismo
 {

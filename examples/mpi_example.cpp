@@ -115,7 +115,7 @@ void approximatePI(const gsMpi & mpi, const gsMpiComm & comm)
     if(_rank == 0)
     {
         // initialize the random number generator
-        srand(wtime);
+        std::srand((unsigned)wtime);
 
         gsInfo<<"I am the master process of "<<_size<<" processes.\n";
         gsInfo << "I will finally compute an approximation of PI! " << "\n";
@@ -165,7 +165,7 @@ void approximatePI(const gsMpi & mpi, const gsMpiComm & comm)
 
 void computeDotProduct(const gsMpi & mpi, const gsMpiComm & comm)
 {
-    const int N = 10e6;
+    const int N = 1000000;
     real_t res = 0;
 
     //Get size and rank of the processor
