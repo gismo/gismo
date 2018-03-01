@@ -47,7 +47,7 @@ before_build:
   - if [%BUILD%]==[mingw] rename "C:\Program Files\Git\usr\bin\sh.exe" "sh2.exe"
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
   - set PATH=%envpath%;%PATH%
-  - cmd: cmake -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%|%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo
+  - cmd: cmake -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo
 
 # for MSYS
 #  - cmd: C:\MinGW\msys\1.0\bin\sh --login -c "
