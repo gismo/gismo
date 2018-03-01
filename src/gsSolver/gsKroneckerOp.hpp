@@ -15,14 +15,14 @@ namespace gismo
 {
 
 template <typename T>
-void gsKroneckerOp<T>::applyKronecker(const std::vector<typename gsLinearOperator<T>::Ptr> & ops, const gsMatrix<T>& x, gsMatrix<T>& result)
+void gsKroneckerOp<T>::apply(const std::vector<typename gsLinearOperator<T>::Ptr> & ops, const gsMatrix<T> & input, gsMatrix<T> & x)
 {
     GISMO_ASSERT( !ops.empty(), "Zero-term Kronecker product" );
     const index_t nrOps = ops.size();
 
     if (nrOps == 1)        // deal with single-operator case efficiently
     {
-        ops[0]->apply(x, result);
+        ops[0]->apply(input, x);
         return;
     }
 
@@ -35,15 +35,15 @@ void gsKroneckerOp<T>::applyKronecker(const std::vector<typename gsLinearOperato
         sz *= ops[i]->cols();
     }
 
-    GISMO_ASSERT (sz == x.rows(), "The input matrix has wrong size.");
-    const index_t n = x.cols();
+    GISMO_ASSERT (sz == input.rows(), "The input matrix has wrong size.");
+    const index_t n = input.cols();
 
     // Note: algorithm relies on col-major matrices
     gsMatrix<T, Dynamic, Dynamic, ColMajor> q0, q1;
     gsMatrix<T> temp;
 
     // size: sz x n
-    q0 = x;
+    q0 = input;
 
     for (index_t i = nrOps - 1; i >= 0; --i)
     {
@@ -77,13 +77,13 @@ void gsKroneckerOp<T>::applyKronecker(const std::vector<typename gsLinearOperato
     //GISMO_ASSERT (sz == rows, "Internal error."); // see one above
 
     q0.resize(sz, n);
-    result.swap( q0 );
+    x.swap( q0 );
 }
 
 template <typename T>
-void gsKroneckerOp<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & result) const
+void gsKroneckerOp<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
-    applyKronecker(m_ops, input, result);
+    apply(m_ops, input, x);
 }
 
 template <typename T>

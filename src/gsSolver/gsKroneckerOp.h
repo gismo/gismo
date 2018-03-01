@@ -12,7 +12,6 @@
 */
 #pragma once
 
-#include <gsCore/gsExport.h>
 #include <gsSolver/gsLinearOperator.h>
 
 namespace gismo
@@ -20,9 +19,11 @@ namespace gismo
 
 /// @brief Class for representing a Kronecker product of operators of type \a gsLinearOperator
 ///
+/// \f$ op = op_0 \otimes op_1 \otimes \cdots \otimes op_{n-1} \f$
+///
 /// \ingroup Solver
 template <class T>
-class gsKroneckerOp : public gsLinearOperator<T>
+class gsKroneckerOp GISMO_FINAL : public gsLinearOperator<T>
 {
     typedef typename gsLinearOperator<T>::Ptr BasePtr;
 public:
@@ -34,39 +35,41 @@ public:
     typedef memory::unique_ptr<gsKroneckerOp> uPtr;
 
     /// Kronecker product of a given list of operators
-    gsKroneckerOp(const std::vector< BasePtr >& ops)
-        : m_ops(ops)
+    gsKroneckerOp(std::vector< BasePtr > ops)
+        : m_ops(give(ops))
     { }
 
     /// Convenience constructor for Kronecker product of two linear operators
-    gsKroneckerOp(const BasePtr & op0, const BasePtr & op1)
+    gsKroneckerOp(BasePtr op0, BasePtr op1)
         : m_ops(2)
-    { m_ops[0] = op0; m_ops[1] = op1; }
+    { m_ops[0] = give(op0); m_ops[1] = give(op1); }
 
     /// Convenience constructor for Kronecker product of three linear operators
-    gsKroneckerOp(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2)
+    gsKroneckerOp(BasePtr op0, BasePtr op1, BasePtr op2)
         : m_ops(3)
-    { m_ops[0] = op0; m_ops[1] = op1; m_ops[2] = op2; }
+    { m_ops[0] = give(op0); m_ops[1] = give(op1); m_ops[2] = give(op2); }
 
     /// Make command returning a smart pointer
-    static uPtr make(const std::vector< BasePtr >& ops)
-    { return uPtr( new gsKroneckerOp(ops) ); }
+    static uPtr make(std::vector< BasePtr > ops)
+    { return uPtr( new gsKroneckerOp(give(ops)) ); }
 
     /// Make command returning a smart pointer
     /// Convenience function for Kronecker product of two linear operators
-    static uPtr make(const BasePtr & op0, const BasePtr & op1)
-    { return uPtr( new gsKroneckerOp(op0,op1) ); }
+    static uPtr make(BasePtr op0, BasePtr op1)
+    { return uPtr( new gsKroneckerOp(give(op0),give(op1)) ); }
 
     /// Make command returning a smart pointer
     /// Convenience function for Kronecker product of three linear operators
-    static uPtr make(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2)
-    { return uPtr( new gsKroneckerOp(op0,op1,op2) ); }
+    static uPtr make(BasePtr op0, BasePtr op1, BasePtr op2)
+    { return uPtr( new gsKroneckerOp(give(op0),give(op1),give(op2)) ); }
 
     /// Add another operator at the end
-    void addOperator( const BasePtr& op )
-    { m_ops.push_back( op ); }
+    ///
+    /// \f$ op_{new} = op_{old} \otimes op \f$
+    void addOperator( BasePtr op )
+    { m_ops.push_back(give(op)); }
 
-    virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & result) const;
+    virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const;
     virtual index_t rows() const;
     virtual index_t cols() const;
 
@@ -74,7 +77,7 @@ public:
     const std::vector<BasePtr>& getOps() const { return m_ops; }
 
     /// Apply provided linear operators without the need of creating an object
-    static void applyKronecker(const std::vector<BasePtr> &, const gsMatrix<T> & input, gsMatrix<T> & result);
+    static void apply(const std::vector<BasePtr> & ops, const gsMatrix<T> & input, gsMatrix<T> & x);
 
 private:
     std::vector<BasePtr> m_ops;
