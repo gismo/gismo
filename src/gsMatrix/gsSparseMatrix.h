@@ -325,7 +325,24 @@ public:
     template<class container>
     container innerOf(const container & outer) const
     {
-        // assume compressed
+        std::vector<bool> v(this->innerSize(), false);
+        gsSparseMatrix<>::iterator mIt;
+        for (typename container::const_iterator k =
+                 outer.begin(); k!=outer.end(); ++k )
+            for( mIt = this->begin(*k); mIt; ++mIt)
+                v[mIt.index()] = (0!=mIt.value());
+
+        container inner;
+        inner.reserve( std::count(v.begin(), v.end(), true) );
+        std::vector<bool>::iterator it = std::find(v.begin(),v.end(), true);
+        while (v.end() != it)
+        {
+            inner.push_back(std::distance(v.begin(),it));
+            it = std::find(++it,v.end(), true);
+        }
+        return inner;
+
+        /* // Alternative implementation based on priority queue
         const index_t numSource = outer.size();
         std::vector<const index_t*>   nzIndices(numSource), end(numSource);
         std::vector<const index_t**>  nzMin;
@@ -345,7 +362,7 @@ public:
             *j = this->innerIndexPtr() + this->outerIndexPtr()[*k+1];
         }
 
-        const index_t idMax = this->cols();
+        const index_t idMax = this->innerSize();
         index_t curMin;
 
         while (true)
@@ -374,6 +391,7 @@ public:
             inner.push_back(curMin);
             for(nzMinIter it = nzMin.begin(); it!=nzMin.end(); ++it) ++(**it);
         }
+        */
     }
 
     /// Returns the result of multiplication of \a this and \a other,
