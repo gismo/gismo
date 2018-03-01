@@ -153,8 +153,8 @@ public:
      * @param preconditioner  The operator \f$ P \f$ to be used as preconditioner.
      * @param tau             A damping parameter, defaulted to 1.
      */
-    gsPreconditionerFromOp( const BasePtr& underlying, const BasePtr& preconditioner, T tau = (T)1)
-        : m_underlying(underlying), m_preconditioner(preconditioner), m_tau(tau)
+    gsPreconditionerFromOp( BasePtr underlying, BasePtr preconditioner, T tau = (T)1)
+        : m_underlying(give(underlying)), m_preconditioner(give(preconditioner)), m_tau(tau)
     {
         GISMO_ASSERT( m_underlying->rows() == m_underlying->cols()
             && m_preconditioner->rows() == m_preconditioner->cols()
@@ -168,8 +168,8 @@ public:
      * @param preconditioner  The underlying preconditioner \f$ P \f$.
      * @param tau             A damping parameter, defaulted to 1.
      */
-    static uPtr make( const BasePtr& underlying, const BasePtr& preconditioner, T tau = (T)1)
-    { return uPtr( new gsPreconditionerFromOp(underlying, preconditioner, tau) ); }
+    static uPtr make( BasePtr underlying, BasePtr preconditioner, T tau = (T)1)
+    { return uPtr( new gsPreconditionerFromOp(give(underlying), give(preconditioner), tau) ); }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {

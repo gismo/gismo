@@ -87,26 +87,26 @@ public:
     typedef typename gsLinearOperator<T>::Ptr BasePtr;
 
     /// Constructor taking a shared pointer to a linear operator and a scalar
-    gsScaledOp(const BasePtr & linOp, T scalar = 1) : m_linOp(linOp), m_scalar(scalar)    {}
+    gsScaledOp(BasePtr op, T scalar = 1) : m_op(give(op)), m_scalar(scalar)    {}
 
     /// Make function returning a smart pointer
-    static uPtr make(const BasePtr & linOp, T scalar = 1)
-    { return memory::make_unique( new gsScaledOp(linOp, scalar) ); }
+    static uPtr make(BasePtr op, T scalar = 1)
+    { return uPtr( new gsScaledOp(give(op), scalar) ); }
 
     virtual void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
-        m_linOp->apply(input, x);
+        m_op->apply(input, x);
         x *= m_scalar;
     }
 
     ///Returns the number of rows in the preconditioner
-    index_t rows() const {return m_linOp->rows();}
+    index_t rows() const {return m_op->rows();}
 
     ///Returns the number of columns in the preconditioner
-    index_t cols() const {return m_linOp->cols();}
+    index_t cols() const {return m_op->cols();}
 
 private:
-    const BasePtr m_linOp;
+    const BasePtr m_op;
     const T m_scalar;
 }; // gsScaladOp
 
@@ -129,7 +129,7 @@ public:
     gsIdentityOp(index_t dim) : m_dim(dim) {}
 
     /// Make function returning a smart pointer
-    static uPtr make(index_t dim) { return memory::make_unique( new gsIdentityOp(dim) ); }
+    static uPtr make(index_t dim) { return uPtr( new gsIdentityOp(dim) ); }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {

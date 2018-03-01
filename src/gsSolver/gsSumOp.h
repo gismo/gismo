@@ -36,8 +36,8 @@ public:
     gsSumOp() : m_ops(0) {}
 
     /// Constructor taking a vector of Linear Operators
-    gsSumOp(const std::vector<BasePtr>& ops)
-        : m_ops(ops)
+    gsSumOp(std::vector<BasePtr> ops)
+        : m_ops(give(ops))
     {
 #ifndef NDEBUG
         const index_t sz = m_ops.size();
@@ -50,58 +50,58 @@ public:
     }
 
     /// Constructor taking two Linear Operators
-    gsSumOp(const BasePtr& op0, const BasePtr& op1)
+    gsSumOp(BasePtr op0, BasePtr op1)
         : m_ops(2)
     {
         GISMO_ASSERT ( op0->rows() == op1->rows() && op0->cols() == op1->cols(), "Dimensions of the operators do not fit." );
-        m_ops[0] = op0; m_ops[1] = op1;
+        m_ops[0] = give(op0); m_ops[1] = give(op1);
     }
 
     /// Constructor taking three Linear Operators
-    gsSumOp(const BasePtr& op0, const BasePtr& op1, const BasePtr& op2 )
+    gsSumOp(BasePtr op0, BasePtr op1, BasePtr op2 )
         : m_ops(3)
     {
         GISMO_ASSERT ( op0->rows() == op1->rows() && op0->cols() == op1->cols()
                         && op0->rows() == op2->rows() && op0->cols() == op2->cols(), "Dimensions of the operators do not fit." );
-        m_ops[0] = op0; m_ops[1] = op1; m_ops[2] = op2;
+        m_ops[0] = give(op0); m_ops[1] = give(op1); m_ops[2] = give(op2);
     }
 
     /// Make command returning a smart pointer
     static uPtr make()
-    { return memory::make_unique( new gsSumOp() ); }
+    { return uPtr( new gsSumOp() ); }
 
     /// Make command returning a smart pointer
-    static uPtr make( const std::vector<BasePtr>& ops )
-    { return memory::make_unique( new gsSumOp( ops ) ); }
+    static uPtr make(std::vector<BasePtr> ops)
+    { return uPtr( new gsSumOp(give(ops)) ); }
 
     /// Make command returning a smart pointer
-    static uPtr make( const BasePtr& op0, const BasePtr& op1 )
-    { return memory::make_unique( new gsSumOp( op0, op1 ) ); }
+    static uPtr make(BasePtr op0, BasePtr op1)
+    { return uPtr( new gsSumOp(give(op0),give(op1)) ); }
 
     /// Make command returning a smart pointer
-    static uPtr make( const BasePtr& op0, const BasePtr& op1, const BasePtr& op2 )
-    { return memory::make_unique( new gsSumOp( op0, op1, op2 ) ); }
+    static uPtr make(BasePtr op0, BasePtr op1, BasePtr op2)
+    { return uPtr( new gsSumOp(give(op0),give(op1),give(op2)) ); }
 
     /// Add another operator
-    void addOperator( const BasePtr& op )
+    void addOperator(BasePtr op)
     {
         GISMO_ASSERT ( m_ops.empty() || ( op->rows() == m_ops[0]->rows() && op->cols() == m_ops[0]->cols() ),
                        "Dimensions of the operators do not fit." );
-        m_ops.push_back( op );
+        m_ops.push_back(give(op));
     }
 
-    void apply(const gsMatrix<T> & input, gsMatrix<T> & result) const
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         GISMO_ASSERT ( !m_ops.empty(), "gsSumOp::apply does not work for 0 operators." );
 
         // Here, we could make a permanently allocated vector
         gsMatrix<T> tmp;
 
-        m_ops[0]->apply(input,result);
+        m_ops[0]->apply(input,x);
         for (index_t i=1; i<m_ops.size(); ++i)
         {
             m_ops[i]->apply(input,tmp);
-            result += tmp;
+            x += tmp;
         }
     }
 
