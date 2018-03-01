@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     cmd.getValues(argc,argv);
     //! [Parse command line]
 
-    if ( preconder != "none" && preconder != "j" && preconder != "gs" && preconder != "fd" && preconder != "hyb" )
+    if ( preconder != "none" && preconder != "j" && preconder != "gs" )
     {
         gsInfo << "Unknwon preconditioner chosen. Known are only:\n"
                     "  \"none\" ... No preconditioner, i.e., identity matrix.\n"
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     // h-refine each basis
     if (!rates)
     {
-        for (index_t r =0; r < numRefine-1; ++r)
+        for (index_t r = 0; r < numRefine; ++r)
             dbasis.uniformRefine();
         numRefine = 0;
     }
@@ -132,7 +132,8 @@ int main(int argc, char *argv[])
 
     for (index_t r=0; r<=numRefine; ++r)
     {
-        dbasis.uniformRefine();
+        if (r!=0)
+            dbasis.uniformRefine();
 
         // Initialize the system
         A.initSystem();
@@ -161,6 +162,7 @@ int main(int argc, char *argv[])
         solver.setTolerance(tol);
         solver.setMaxIterations(maxIter);
         gsMatrix<> errorHistory;
+        solVector.clear();
         solver.solveDetailed( A.rhs(), solVector, errorHistory );
 
         const bool success = solver.error() <= solver.tolerance();
@@ -179,9 +181,9 @@ int main(int argc, char *argv[])
         if (!rates)
         {
             if (success)
-                gsInfo << "\n\nSolved the system with CG using ";
+                gsInfo << "\n\nCG solved the problem with ";
             else
-                gsInfo << "\n\nCG did not reach the desired error goal after ";
+                gsInfo << "\n\nCG did not reach the desired error goal within ";
 
             gsInfo << ( errorHistory.rows() - 1 ) << " iterations:\n";
             if (errorHistory.rows() < 20)
@@ -196,21 +198,18 @@ int main(int argc, char *argv[])
     //! [Solver loop]
 
     //! [Error and convergence rates]
-    if (rates)
+    gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
+
+    if (numRefine > 0)
     {
-        gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-        gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
+        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
+            << ( l2err.head(numRefine).array() /
+                l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
 
-        if (numRefine > 0)
-        {
-            gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
-                << ( l2err.head(numRefine).array() /
-                    l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
-
-            gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
-                <<( h1err.head(numRefine).array() /
-                    h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
-        }
+        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
+            <<( h1err.head(numRefine).array() /
+                h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
     //! [Error and convergence rates]
 
