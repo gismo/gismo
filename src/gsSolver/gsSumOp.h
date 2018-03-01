@@ -40,8 +40,8 @@ public:
         : m_ops(give(ops))
     {
 #ifndef NDEBUG
-        const index_t sz = m_ops.size();
-        for (index_t i=0; i<sz; ++i)
+        const size_t sz = m_ops.size();
+        for (size_t i=0; i<sz; ++i)
         {
             GISMO_ASSERT ( m_ops[0]->rows() == m_ops[i]->rows() && m_ops[0]->cols() == m_ops[i]->cols(),
                            "Dimensions of the operators do not fit." );
@@ -96,9 +96,10 @@ public:
 
         // Here, we could make a permanently allocated vector
         gsMatrix<T> tmp;
+        const size_t sz = m_ops.size();
 
         m_ops[0]->apply(input,x);
-        for (index_t i=1; i<m_ops.size(); ++i)
+        for (size_t i=1; i<sz; ++i)
         {
             m_ops[i]->apply(input,tmp);
             x += tmp;

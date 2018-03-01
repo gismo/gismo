@@ -46,7 +46,8 @@ public:
     gsProductOp(std::vector<BasePtr> ops) : m_ops(give(ops))
     {
 #ifndef NDEBUG
-        for (size_t i=0; i<m_ops.size()-1; ++i)
+        const index_t sz = m_ops.size();
+        for (index_t i=0; i<sz-1; ++i)
         {
             GISMO_ASSERT ( m_ops[i]->rows() == m_ops[i+1]->cols(),
                            "Dimensions of the operators do not fit." );
@@ -101,9 +102,10 @@ public:
 
         // Here, we could make a permanently allocated vector
         gsMatrix<T> temp;
+        const size_t sz = m_ops.size();
 
         m_ops[0]->apply(input,x);
-        for(size_t i=1; i<m_ops.size();++i)
+        for(size_t i=1; i<sz;++i)
         {
             temp.swap(x);
             m_ops[i]->apply(temp,x);
