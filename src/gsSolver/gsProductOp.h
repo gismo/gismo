@@ -43,7 +43,7 @@ public:
     gsProductOp() : m_ops() {}
 
     /// Constructor taking a vector of Linear Operators
-    gsProductOp(const std::vector<BasePtr>& ops) : m_ops(ops)
+    gsProductOp(std::vector<BasePtr> ops) : m_ops(give(ops))
     {
 #ifndef NDEBUG
         for (size_t i=0; i<m_ops.size()-1; ++i)
@@ -55,43 +55,43 @@ public:
     }
 
     /// Constructor taking two Linear Operators
-    gsProductOp(const BasePtr & op0, const BasePtr & op1 ) : m_ops(2)
+    gsProductOp(BasePtr op0, BasePtr op1) : m_ops(2)
     {
         GISMO_ASSERT ( op0->rows() == op1->cols(),
                        "Dimensions of the operators do not fit." );
-        m_ops[0]=op0; m_ops[1]=op1;
+        m_ops[0]=give(op0); m_ops[1]=give(op1);
     }
 
     /// Constructor taking three Linear Operators
-    gsProductOp(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2) : m_ops(3)
+    gsProductOp(BasePtr op0, BasePtr op1, BasePtr op2) : m_ops(3)
     {
         GISMO_ASSERT ( op0->rows() == op1->cols() && op1->rows() == op2->cols(),
                        "Dimensions of the operators do not fit." );
-        m_ops[0]=op0; m_ops[1]=op1; m_ops[2]=op2;
+        m_ops[0]=give(op0); m_ops[1]=give(op1); m_ops[2]=give(op2);
     }
 
     /// Make command returning a smart pointer
     static uPtr make()
-    { return memory::make_unique( new gsProductOp() ); }
+    { return uPtr( new gsProductOp() ); }
 
     /// Make command returning a smart pointer
-    static uPtr make(const std::vector<BasePtr>& ops)
-    { return memory::make_unique( new gsProductOp(ops) ); }
+    static uPtr make(std::vector<BasePtr> ops)
+    { return uPtr( new gsProductOp(give(ops)) ); }
 
     /// Make command returning a smart pointer
-    static uPtr make(const BasePtr & op0, const BasePtr & op1)
-    { return memory::make_unique( new gsProductOp(op0,op1) ); }
+    static uPtr make(BasePtr op0, BasePtr op1)
+    { return uPtr( new gsProductOp(give(op0),give(op1)) ); }
 
     /// Make command returning a smart pointer
-    static uPtr make(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2)
-    { return memory::make_unique( new gsProductOp(op0,op1,op2) ); }
+    static uPtr make(BasePtr op0, BasePtr op1, BasePtr op2)
+    { return uPtr( new gsProductOp(give(op0),give(op1),give(op2)) ); }
 
     /// Add another operator at the end
-    void addOperator( const BasePtr& op )
+    void addOperator( BasePtr op )
     {
         GISMO_ASSERT ( m_ops.empty() || m_ops.back()->cols() == op->rows(),
                        "Dimensions of the operators do not fit." );
-        m_ops.push_back( op );
+        m_ops.push_back(give(op));
     }
 
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
