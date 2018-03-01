@@ -14,15 +14,6 @@ where \f$\mathbf{n}\f$ is the outward pointing unit normal vector,
 \f$\Gamma_D\f$ and \f$\Gamma_N\f$ are the parts of the boundary where Dirichlet (essential)
 and Neumann (natural) boundary conditions are prescribed, respectively.
 
-\note
-For a simple solving of the Poisson equation with Dirichlet boundary condition and known solution,
-we can use the poissonVector.cpp file. Execute the file as:
-> ./poissonVector -\-help
-to get up a list of solver options. To specify the source term and analytic solution, we have to
-write it in an \c .xml file. See examples in the \c filedata/pde directory.
-
-\n
-
 We can also create a own \c .cpp and solve more complicated Poisson problems. In this tutorial, we
 explain how to do this. As an example we will use the \c poisson_example.cpp file in the
 example folder. We will go through essentials of the code in details (For more detail of the solver

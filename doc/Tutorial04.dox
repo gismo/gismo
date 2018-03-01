@@ -133,7 +133,7 @@ Experimental.
 
 \section cxx Gismo and Cxx Standards
 
-Gismo should be able to compile with C++98 (C99) and on different machines
+Gismo should be able to compile with C++98 and on different machines
 with different datatypes and maybe architectures.
 To ensure this, and still be able to use some of the benefits of newer
 compilers like C++11, there are some helping functions inside gsUtils and
