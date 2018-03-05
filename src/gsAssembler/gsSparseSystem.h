@@ -148,9 +148,9 @@ public:
         m_mappers.swap(mappers);
 
         //Calculate the map for blocks to mappers
-        int k=0;
-        for(int i=0;i<d;++i)
-            for(int j=0; j<dims[i];++j)
+        index_t k=0;
+        for(index_t i=0;i<d;++i)
+            for(unsigned j=0; j<dims[i];++j)
             {
                 m_row[k]=i;
                 ++k;

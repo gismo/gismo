@@ -178,7 +178,10 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
         evalAllDers_into(in, md, out.values);
 
     if (flags & NEED_ACTIVE && flags & SAME_ELEMENT)
+    {
+        GISMO_ASSERT(0!=in.cols(), "The points are empty.");
         active_into(in.col(0), out.actives);
+    }
     else if (flags & NEED_ACTIVE)
         active_into(in, out.actives);
 
