@@ -921,12 +921,12 @@ public:
 
     const gsMatrix<T> & coefs() const { return *_Sv; }
 
-    gsMatrix<T> & coefs() { return *_Sv; }
+    //gsMatrix<T> & coefs() { return *_Sv; } // wd4702 ?
     
     /// Extract the coefficients of piece piece \a p
     void extract(gsMatrix<T> & result, const index_t p = 0) const
     {
-        GISMO_ASSERT(NULL!=_Sv, "Solution vector not set, call setSolutionVector");
+        // GISMO_ASSERT(NULL!=_Sv, "Solution vector not set, call setSolutionVector"); // wd4702 ?
         _u.getCoeffs(*_Sv, result, p);
     }
 
