@@ -87,6 +87,7 @@ template<class E> class norm_expr;
 template<class E> class sqNorm_expr;
 template<class E> class value_expr;
 template<class E> class asdiag_expr;
+template<class E> class col_expr;
 template<class T> class meas_expr;
 template<class E> class inv_expr;
 template<class E> class tr_expr;
@@ -206,6 +207,9 @@ public:
     asdiag_expr<E> asDiag() const
     { return asdiag_expr<E>(static_cast<E const&>(*this)); }
 
+    col_expr<E> operator[](const index_t i) const
+    { return col_expr<E>(static_cast<E const&>(*this),i); }
+    
     /// Returns the row-size of the expression
     index_t rows() const
     { return static_cast<E const&>(*this).rows(); }
@@ -300,6 +304,37 @@ public:
     }
 //private:
     gsNullExpr() {}
+};
+
+/*
+    Column expression
+*/
+template<class E>
+class col_expr : public _expr<col_expr<E> >
+{
+    typename E::Nested_t _c;
+    const index_t _i;
+public:
+    typedef typename E::Scalar Scalar;
+    typedef const col_expr<E> Nested_t;
+    
+    col_expr(const E & c, const index_t i) : _c(c), _i(i) { }
+
+public:
+
+    //ConstColXpr
+    inline MatExprType eval(const index_t k) const { return _c.eval(k).col(_i); }
+
+    index_t rows() const { return _c.rows(); }
+    index_t cols() const { return 1; }
+    void setFlag() const { _c.setFlag();}
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { _c.parse(evList); }
+    static bool rowSpan() {return E::rowSpan();}
+    static bool colSpan() {return false;}
+    const gsFeVariable<Scalar> & rowVar() const { return _c.rowVar(); }
+    const gsFeVariable<Scalar> & colVar() const { return _c.colVar(); }
+
+    void print(std::ostream &os) const { os<<_c<<"["<<_i<<"]"; }
 };
 
 /*
@@ -1858,7 +1893,7 @@ public:
 
     MatExprType eval(const index_t k) const
     {
-        // (Dim x ParDim) * (Dim*numActive)
+        // Dim x (numActive*Dim)
         return m_fev.data().values[1].col(k).transpose().blockDiag(m_fev.dim());
     }
 
@@ -2064,6 +2099,64 @@ public:
     static bool colSpan() {return false;}
 
     void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
+};
+
+/*
+   Expression for the curl
+*/
+template<class T>
+class curl_expr : public _expr<curl_expr<T> >
+{
+public:
+    typedef T Scalar;
+private:
+    typename gsFeVariable<T>::Nested_t _u;
+    mutable gsMatrix<Scalar> res;
+public:
+    curl_expr(const gsFeVariable<T> & u) : _u(u)
+    { GISMO_ASSERT(3==u.dim(),"curl(.) requires 3D variable."); }
+
+    MatExprType eval(const index_t k) const
+    {
+        res.setZero( rows(), _u.dim());
+        const index_t na = _u.data().values[0].rows();
+        gsAsConstMatrix<T, Dynamic, Dynamic> pd =
+            _u.data().values[1].reshapeCol(k, cols(), na);
+
+        res.col(0).segment(na  ,na) = -pd.row(2);
+        res.col(0).segment(2*na,na) =  pd.row(1);
+        res.col(1).segment(0   ,na) =  pd.row(2);
+        res.col(1).segment(2*na,na) = -pd.row(0);
+        res.col(2).segment(0   ,na) = -pd.row(1);
+        res.col(2).segment(na  ,na) =  pd.row(0);
+        return res;
+    }
+
+    index_t rows() const { return _u.dim() * _u.data().values[0].rows(); }
+    index_t cols() const { return _u.data().dim.first; }
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_GRAD;
+        if (_u.composed() )
+            _u.mapData().flags |= NEED_VALUE;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_GRAD;
+        if (_u.composed() )
+            _u.mapData().flags |= NEED_VALUE;
+    }
+
+    const gsFeVariable<T> & rowVar() const { return _u.rowVar(); }
+    const gsFeVariable<T> & colVar() const {return gsNullExpr<T>::get();}
+
+    static bool rowSpan() {return true; }
+    static bool colSpan() {return false;}
+
+    void print(std::ostream &os) const { os << "curl("; _u.print(os); os <<")"; }
 };
 
 /*
@@ -2727,6 +2820,10 @@ solGrad_expr<T> grad(const gsFeSolution<T> & u) { return solGrad_expr<T>(u); }
 /// The gradient of a finite element variable
 template<class T> EIGEN_STRONG_INLINE
 grad_expr<T> grad(const gsFeVariable<T> & u) { return grad_expr<T>(u); }
+
+/// The curl of a finite element variable
+template<class T> EIGEN_STRONG_INLINE
+curl_expr<T> curl(const gsFeVariable<T> & u) { return curl_expr<T>(u); }
 
 /// The nabla (\$\nabla\$) of a finite element variable
 template<class T> EIGEN_STRONG_INLINE
