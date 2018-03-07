@@ -99,9 +99,24 @@ void gsMultiGridOp<T>::initCoarseSolver()
 {
     if (n_levels > 1)
     {
-        gsMatrix<T> coarse_dense;
-        m_ops[0]->toMatrix( coarse_dense );
-        m_coarseSolver = makePartialPivLUSolver( coarse_dense );
+        const gsMatrixOp<SpMatrix>* matrOp = dynamic_cast< const gsMatrixOp<SpMatrix>* >( m_ops[0].get() );
+        if (matrOp)
+        {
+            const SpMatrix & matr = matrOp->matrix();
+            m_coarseSolver = makeSparseLUSolver(matr);
+        }
+        else
+        {
+            // Fallback for other types of operators (matrix free implementations, etc.)
+            // Warn if we do this for big matrices...
+            if (m_ops[0]->rows() > 50)
+                gsWarn << "gsMultiGridOp::initCoarseSolver() The coarse grid solver is constructed based on "
+                    "gsLinearOperator::toMatrix. This might be inefficient. Consider providing matrices of type "
+                    "gsSparseMatrix<T> or an exact solver for the coarset grid level to gsMultiGridOp constructor.\n";
+            gsMatrix<T> coarse_dense;
+            m_ops[0]->toMatrix( coarse_dense );
+            m_coarseSolver = makePartialPivLUSolver( coarse_dense );
+        }
     }
 }
 
