@@ -17,6 +17,11 @@
 #include <gsCore/gsMath.h>
 
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
+
+// Make Eigen use GISMO_ASSERT which throws exceptions
+//
+// Must be defined before including Eigen headers
+// https://eigen.tuxfamily.org/dox/classEigen_1_1SelfAdjointView.html
 #define eigen_assert( cond ) GISMO_ASSERT( cond, "" )
 
 // Plugin provides extra members
