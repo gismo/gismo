@@ -45,60 +45,61 @@ public:
     gsCompositePrecOp() : m_ops() {}
 
     /// Constructor taking a vector of preconditioners
-    gsCompositePrecOp(const std::vector< BasePtr >& ops)
-        : m_ops(ops) {}
+    gsCompositePrecOp(std::vector< BasePtr > ops)
+        : m_ops(give(ops)) {}
 
     /// Convenience constructor taking two preconditioners
-    gsCompositePrecOp(const BasePtr & op0, const BasePtr & op1)
+    gsCompositePrecOp(BasePtr op0, BasePtr op1)
         : m_ops(2)
     {
-        m_ops[0] = op0; m_ops[1] = op1;
+        m_ops[0] = give(op0); m_ops[1] = give(op1);
     }
 
     /// Convenience constructor taking three preconditioners
-    gsCompositePrecOp(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2)
+    gsCompositePrecOp(BasePtr op0, BasePtr op1, BasePtr op2)
         : m_ops(3)
     {
-        m_ops[0] = op0; m_ops[1] = op1; m_ops[2] = op2;
+        m_ops[0] = give(op0); m_ops[1] = give(op1); m_ops[2] = give(op2);
     }
 
     /// Make command returning a smart pointer
-    static uPtr make(const std::vector< BasePtr >& ops)
+    static uPtr make(std::vector< BasePtr > ops)
     {
-        return uPtr( new gsCompositePrecOp(ops) );
+        return uPtr( new gsCompositePrecOp(give(ops)) );
     }
 
     /// Make command returning a smart pointer
-    static uPtr make(const BasePtr & op0, const BasePtr & op1)
+    static uPtr make(BasePtr op0, BasePtr op1)
     {
-        return uPtr( new gsCompositePrecOp(op0, op1) );
+        return uPtr( new gsCompositePrecOp(give(op0),give(op1)) );
     }
 
     /// Make command returning a smart pointer
-    static uPtr make(const BasePtr & op0, const BasePtr & op1, const BasePtr & op2)
+    static uPtr make(BasePtr op0, BasePtr op1, BasePtr op2)
     {
-        return uPtr( new gsCompositePrecOp(op0, op1, op2) );
+        return uPtr( new gsCompositePrecOp(give(op0),give(op1),give(op2)) );
     }
 
     /// Add another operator at the end
-    void addOperator(const BasePtr& op)
+    void addOperator(BasePtr op)
     {
-        m_ops.push_back( op );
+        m_ops.push_back(give(op));
     }
 
-    /// Apply the smoother for the equation Ax=f and update the current iterate x.
-    virtual void step(const gsMatrix<T>& f, gsMatrix<T>& x) const
+    /// Apply the smoother for the equation Ax=rhs and update the current iterate x.
+    virtual void step(const gsMatrix<T>& rhs, gsMatrix<T>& x) const
+    {
+        const size_t sz = m_ops.size();
+        for ( size_t i=0; i<sz; ++i )
+            m_ops[i]->step(rhs,x);
+    }
+
+    /// Apply the transposed smoother for the equation Ax=rhs and update the current iterate x.
+    virtual void stepT(const gsMatrix<T>& rhs, gsMatrix<T>& x) const
     {
         const index_t sz = m_ops.size();
-        for ( index_t i=0; i<sz; ++i )
-            m_ops[i]->step(f,x);
-    }
-
-    /// Apply the transposed smoother for the equation Ax=f and update the current iterate x.
-    virtual void stepT(const gsMatrix<T>& f, gsMatrix<T>& x) const
-    {
-        for ( index_t i=m_ops.size()-1; i>=0; --i )
-            m_ops[i]->stepT(f,x);
+        for ( index_t i=sz-1; i>=0; --i )
+            m_ops[i]->stepT(rhs,x);
     }
 
     typename gsLinearOperator<T>::Ptr underlyingOp() const

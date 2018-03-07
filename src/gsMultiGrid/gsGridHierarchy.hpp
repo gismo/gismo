@@ -72,7 +72,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
 
     index_t lastSize = result.m_mBases[0].totalSize();
 
-    for (int i = 0; i < levels && lastSize > degreesOfFreedom; ++i)
+    for (index_t i = 0; i < levels-1 && lastSize > degreesOfFreedom; ++i)
     {
         gsSparseMatrix<T, RowMajor> transferMatrix;
         gsMultiBasis<T> coarseMBasis = result.m_mBases[i];
