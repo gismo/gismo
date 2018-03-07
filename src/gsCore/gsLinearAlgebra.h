@@ -17,6 +17,7 @@
 #include <gsCore/gsMath.h>
 
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
+#define eigen_assert( cond ) GISMO_ASSERT( cond, "" )
 
 // Plugin provides extra members
 #define EIGEN_MATRIXBASE_PLUGIN <gsMatrix/gsMatrixAddons.h>
