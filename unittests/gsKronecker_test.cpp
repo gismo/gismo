@@ -50,9 +50,7 @@ SUITE(gsKronecker_test)
         // compute Kronecker product directly and compare
         y2 = C * x;
 
-        const real_t err = (y-y2).norm();
-
-        CHECK (err <=  pow(10.0, - REAL_DIG ) );
+        CHECK_EQUAL ( y,  y2 );
     }
 
 }
