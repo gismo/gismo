@@ -226,27 +226,23 @@ template <class T=real_t>               struct gsFieldCreator;
 
 class gsOptionList;
 
-template <class T=real_t, int _Rows=-1, int _Cols=-1,
-         int _Options  = 0|((_Rows==1 && _Cols!=1)?0x1:0)>
-                                         class gsMatrix;
-template <class T=real_t, int _Rows=-1, int _Options = 0>
-                                         class gsVector;
+template<class T = real_t, int _Rows=-1, int _Cols=-1, 
+         int _Options  = 0|((_Rows==1 && _Cols!=1)?0x1:0)> class gsMatrix;
+template<class T = real_t, int _Rows=-1, int _Options = 0> class gsVector;
 
-template <class T=real_t, int _Rows=-1, int _Cols=-1>
-                                         class gsAsConstMatrix;
-template <class T=real_t, int _Rows=-1, int _Cols=-1>
-                                         class gsAsMatrix;
+template<class T= real_t, int _Rows=-1, int _Cols=-1> class gsAsConstMatrix;
+template<class T= real_t, int _Rows=-1, int _Cols=-1> class gsAsMatrix;
 
-template <class T=real_t, int _Rows=-1>  class gsAsVector;
-template <class T=real_t, int _Rows=-1>  class gsAsConstVector;
+template<class T= real_t, int _Rows=-1> class gsAsVector;
+template<class T= real_t, int _Rows=-1> class gsAsConstVector;
 
-template <class T=real_t>                class gsVector3d;
+template<class T = real_t> class gsVector3d;
 
-template <class T=real_t, int _Options=0, class _Index = index_t>
-                                         class gsSparseMatrix;
+template<typename T=real_t, int _Options=0, typename _Index = index_t>
+class gsSparseMatrix;
 
-template <class T=real_t, int _Options=0, class _Index = index_t>
-                                         class gsSparseVector;
+template<typename T=real_t, int _Options=0, typename _Index = index_t>
+class gsSparseVector;
 
 template <class T=real_t>                class gsSparseEntries;
 
@@ -255,8 +251,10 @@ template <class T=real_t>                class gsSparseEntries;
 template <class T=real_t>                class gsLinearOperator;
 template <class T=real_t>                class gsScaledOp;
 template <class T=real_t>                class gsIdentityOp;
+
 template <class T=real_t>                class gsPreconditionerOp;
 template <class T=real_t>                class gsPreconditionerFromOp;
+
 template <class T=real_t>                class gsSumOp;
 template <class T=real_t>                class gsProductOp;
 template <class T=real_t>                class gsCompositePrecOp;
