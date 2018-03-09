@@ -103,8 +103,8 @@ bool gsGMRes<T>::step( typename gsGMRes<T>::VectorType& x )
     }
     h_tmp(k+1,0) = w.norm();
 
-    if (math::abs(h_tmp(k+1,0)) < 1e-16) //If exact solution
-        return true;
+  //  if (math::abs(h_tmp(k+1,0)) < 1e-16) //If exact solution
+  //      return true;
 
     v.push_back(w/h_tmp(k+1,0));
 
