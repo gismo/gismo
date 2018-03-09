@@ -50,7 +50,7 @@ SUITE(gsKronecker_test)
         // compute Kronecker product directly and compare
         y2 = C * x;
 
-        CHECK_EQUAL ( y,  y2 );
+        CHECK_EQUAL ( y2,  y );
     }
 
 }
