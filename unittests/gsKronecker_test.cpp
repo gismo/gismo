@@ -44,7 +44,7 @@ SUITE(gsKronecker_test)
         gsMatrix<index_t> x(9,1), y, y2;
         x << 1,2,3,4,5,6,7,8,9;
 
-        gsKroneckerOp<> kron( makeMatrixOp(A), makeMatrixOp(B) );
+        gsKroneckerOp<index_t> kron( makeMatrixOp(A), makeMatrixOp(B) );
         kron.apply(x, y);
 
         // compute Kronecker product directly and compare
