@@ -44,12 +44,13 @@ gsBoundaryConditions<T> getBoundaryConditionsForDirection( const gsBoundaryCondi
 }
 
 template<index_t d, typename T>
-std::vector< gsSparseMatrix<T> > _assembleTensorMass(
+std::vector< gsSparseMatrix<T> > assembleTensorMass_impl(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& options
 )
 {
+    // TODO: replace this with something that works:
     std::vector< gsSparseMatrix<T> > result;
     const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
 
@@ -66,7 +67,7 @@ std::vector< gsSparseMatrix<T> > _assembleTensorMass(
         result.reserve(d);
         for ( index_t i=d-1; i!=-1; --i )
         {
-            gsBoundaryConditions<T> local_bc = getBoundaryConditionsForDirection(bc,i);
+            gsBoundaryConditions<T> local_bc = getBoundaryConditionsForDirection(bc,i); //TODO: check ordering
             gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(tb->component(i)),options,&local_bc);
             result.push_back( assembler.assembleMass() );
         }
@@ -75,12 +76,15 @@ std::vector< gsSparseMatrix<T> > _assembleTensorMass(
 }
 
 template<index_t d, typename T>
-std::vector< gsSparseMatrix<T> > _assembleTensorStiffness(
+std::vector< gsSparseMatrix<T> > assembleTensorStiffness_impl(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& options
 )
 {
+
+    // TODO: replace this with something that works:
+
     std::vector< gsSparseMatrix<T> > result;
     const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
 
@@ -97,13 +101,8 @@ std::vector< gsSparseMatrix<T> > _assembleTensorStiffness(
         result.reserve(d);
         for ( index_t i=d-1; i!=-1; --i )
         {
-            gsBoundaryConditions<T> local_bc = getBoundaryConditionsForDirection(bc,i);
-            gsGenericAssembler<T> assembler(
-                gsMultiPatch<T>(),
-                gsMultiBasis<T>(tb->component(i)),
-                options,
-                &local_bc
-            );
+            gsBoundaryConditions<T> local_bc = getBoundaryConditionsForDirection(bc,i); //TODO: check ordering
+            gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(tb->component(i)),options,&local_bc);
             result.push_back( assembler.assembleStiffness() );
         }
         return result;
@@ -118,10 +117,10 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass(
 )
 {
     switch (basis.dim()) {
-        case 1: return _assembleTensorMass<1,T>(basis, bc, options);
-        case 2: return _assembleTensorMass<2,T>(basis, bc, options);
-        case 3: return _assembleTensorMass<3,T>(basis, bc, options);
-        case 4: return _assembleTensorMass<4,T>(basis, bc, options);
+        case 1: return assembleTensorMass_impl<1,T>(basis, bc, options);
+        case 2: return assembleTensorMass_impl<2,T>(basis, bc, options);
+        case 3: return assembleTensorMass_impl<3,T>(basis, bc, options);
+        case 4: return assembleTensorMass_impl<4,T>(basis, bc, options);
         default: GISMO_ENSURE( basis.dim() <= 4, "gsSinglePatchPreconditioners is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
@@ -135,10 +134,10 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
 )
 {
     switch (basis.dim()) {
-        case 1: return _assembleTensorStiffness<1,T>(basis, bc, options);
-        case 2: return _assembleTensorStiffness<2,T>(basis, bc, options);
-        case 3: return _assembleTensorStiffness<3,T>(basis, bc, options);
-        case 4: return _assembleTensorStiffness<4,T>(basis, bc, options);
+        case 1: return assembleTensorStiffness_impl<1,T>(basis, bc, options);
+        case 2: return assembleTensorStiffness_impl<2,T>(basis, bc, options);
+        case 3: return assembleTensorStiffness_impl<3,T>(basis, bc, options);
+        case 4: return assembleTensorStiffness_impl<4,T>(basis, bc, options);
         default: GISMO_ENSURE( basis.dim() <= 4, "gsSinglePatchPreconditioners is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
