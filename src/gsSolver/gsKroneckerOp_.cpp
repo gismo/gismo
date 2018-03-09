@@ -5,5 +5,6 @@ namespace gismo
 {
 
 CLASS_TEMPLATE_INST gsKroneckerOp<real_t>;
+CLASS_TEMPLATE_INST gsKroneckerOp<index_t>;
 
 }
