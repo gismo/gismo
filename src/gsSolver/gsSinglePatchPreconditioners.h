@@ -1,6 +1,6 @@
 /** @file gsSinglePatchPreconditioners.h
 
-    @brief Provides preconditioners that live on the parameter domain.
+    @brief Provides robust preconditioners for single patch geometries.
 
     This file is part of the G+Smo library.
 
@@ -19,9 +19,9 @@
 namespace gismo
 {
 
-/// @brief Provides preconditioners that live on the parameter domain.
+/// @brief Provides robust preconditioners for single patch geometries.
 ///
-/// This class provides efficient preconditioners based on the parameter domain,
+/// This class provides efficient preconditioners for single patch geometries,
 /// assuming to have \a gsTensorBasis.
 ///
 /// @ingroup Solver
@@ -34,6 +34,9 @@ public:
 
     /// Constructor taking \a gsBasis, \a gsBoundaryConditions and the
     /// \a dirichtet::strategy
+    ///
+    /// By setting up \a gsSinglePatchPreconditioners using this constructor,
+    /// the geometry transformation is approximated by the identity mapping.
     gsSinglePatchPreconditioners(
         const gsBasis<T>& _basis,
         const gsBoundaryConditions<T>& _bc,
@@ -44,6 +47,9 @@ public:
 
     /// Constructor taking \a gsBasis, \a gsBoundaryConditions and
     /// \a gsOptionList object providing the Dirichlet strategy.
+    ///
+    /// By setting up \a gsSinglePatchPreconditioners using this constructor,
+    /// the geometry transformation is approximated by the identity mapping.
     gsSinglePatchPreconditioners(
         const gsBasis<T>& _basis,
         const gsBoundaryConditions<T>& _bc,
@@ -52,7 +58,10 @@ public:
     : m_basis(_basis), m_bc(_bc), m_options(_opt)
     { }
 
-    /// Assembles mass matrix on the parameter domain
+    // TODO: In followup pull requests, also some rank-1 geometry approximation
+    // will be provided
+
+    /// Provieds the mass matrix
     gsSparseMatrix<T> getMassMatrix()                      const;
 
     /// Provides \a gsLinearOperator representing the mass matrix (in a matrix-free way)
@@ -61,7 +70,7 @@ public:
     /// Provides \a gsLinearOperator representing the inverse of the mass matrix (in a matrix-free way)
     OpUPtr            getMassMatrixInvOp()                 const;
 
-    /// Assembles stiffness matrix on the parameter domain
+    /// Provieds stiffness matrix
     ///
     /// The stiffness matrix represents \f$ -\Delta u + a u \f$
     gsSparseMatrix<T> getStiffnessMatrix(T a=0)            const;
@@ -78,7 +87,7 @@ public:
     /// The stiffness matrix represents \f$ -\Delta u + a u \f$
     OpUPtr            getFastDiagonalizationOp(T a=0)      const;
 
-    // Will be provided in a followup pull request:
+    // TODO: Will be provided in a followup pull request:
     // Provides \a gsLinearOperator representing the subspace corrected mass smoother
     // (SIAM J. on Numerical Analysis. 55 (4). p. 2004 - 2024, 2017)
     //
