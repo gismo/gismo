@@ -1,4 +1,4 @@
-/** @file gsParameterDomainPreconditioners_.cpp
+/** @file gsSinglePatchPreconditioners_.cpp
 
     @brief Provides preconditioners that live on the parameter domain.
 
@@ -11,11 +11,11 @@
     Author(s): S. Takacs, C. Hofreither
 */
 
-#include <gsSolver/gsParameterDomainPreconditioners.hpp>
+#include <gsSolver/gsSinglePatchPreconditioners.hpp>
 
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsParameterDomainPreconditioners<real_t>;
+CLASS_TEMPLATE_INST gsSinglePatchPreconditioners<real_t>;
 
 } // namespace gismo

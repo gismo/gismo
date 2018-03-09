@@ -1,4 +1,4 @@
-/** @file gsParameterDomainPreconditioners.hpp
+/** @file gsSinglePatchPreconditioners.hpp
 
     @brief Provides preconditioners that live on the parameter domain.
 
@@ -12,7 +12,7 @@
 */
 #pragma once
 
-#include <gsSolver/gsParameterDomainPreconditioners.h>
+#include <gsSolver/gsSinglePatchPreconditioners.h>
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
@@ -55,7 +55,7 @@ std::vector< gsSparseMatrix<T> > _assembleTensorMass(
 
     if (tb==nullptr)
     {
-        gsWarn << "gsParameterDomainPreconditioners: Found a discretization which does not have "
+        gsWarn << "gsSinglePatchPreconditioners: Found a discretization which does not have "
             "tensor-product structure. Therefore, the preconditioner might not be efficient." << std::endl;
         gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(basis),options,&bc);
         result.push_back( assembler.assembleMass() );
@@ -86,7 +86,7 @@ std::vector< gsSparseMatrix<T> > _assembleTensorStiffness(
 
     if (tb==nullptr)
     {
-        gsWarn << "gsParameterDomainPreconditioners: Found a discretization which does not have "
+        gsWarn << "gsSinglePatchPreconditioners: Found a discretization which does not have "
             "tensor-product structure. Therefore, the preconditioner might not be efficient." << std::endl;
         gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(basis),options,&bc);
         result.push_back( assembler.assembleStiffness() );
@@ -122,7 +122,7 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass(
         case 2: return _assembleTensorMass<2,T>(basis, bc, options);
         case 3: return _assembleTensorMass<3,T>(basis, bc, options);
         case 4: return _assembleTensorMass<4,T>(basis, bc, options);
-        default: GISMO_ENSURE( basis.dim() <= 4, "gsParameterDomainPreconditioners is only instanciated for up to 4 dimensions." );
+        default: GISMO_ENSURE( basis.dim() <= 4, "gsSinglePatchPreconditioners is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
 }
@@ -139,7 +139,7 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
         case 2: return _assembleTensorStiffness<2,T>(basis, bc, options);
         case 3: return _assembleTensorStiffness<3,T>(basis, bc, options);
         case 4: return _assembleTensorStiffness<4,T>(basis, bc, options);
-        default: GISMO_ENSURE( basis.dim() <= 4, "gsParameterDomainPreconditioners is only instanciated for up to 4 dimensions." );
+        default: GISMO_ENSURE( basis.dim() <= 4, "gsSinglePatchPreconditioners is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
 }
@@ -147,14 +147,14 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
 } // anonymous namespace
 
 template<typename T>
-gsSparseMatrix<T> gsParameterDomainPreconditioners<T>::getMassMatrix() const
+gsSparseMatrix<T> gsSinglePatchPreconditioners<T>::getMassMatrix() const
 {
     std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis, m_bc, m_options);
     return getKroneckerProduct(local_mass);
 }
 
 template<typename T>
-typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditioners<T>::getMassMatrixOp() const
+typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getMassMatrixOp() const
 {
     const index_t d = m_basis.dim();
 
@@ -168,7 +168,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 }
 
 template<typename T>
-typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditioners<T>::getMassMatrixInvOp() const
+typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getMassMatrixInvOp() const
 {
     const index_t d = m_basis.dim();
 
@@ -182,7 +182,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 }
 
 template<typename T>
-gsSparseMatrix<T> gsParameterDomainPreconditioners<T>::getStiffnessMatrix(T a) const
+gsSparseMatrix<T> gsSinglePatchPreconditioners<T>::getStiffnessMatrix(T a) const
 {
     const index_t d = m_basis.dim();
 
@@ -207,7 +207,7 @@ gsSparseMatrix<T> gsParameterDomainPreconditioners<T>::getStiffnessMatrix(T a) c
 }
 
 template<typename T>
-typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditioners<T>::getStiffnessMatrixOp(T a) const
+typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getStiffnessMatrixOp(T a) const
 {
     const index_t d = m_basis.dim();
 
@@ -242,7 +242,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 }
 
 template<typename T>
-typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditioners<T>::getFastDiagonalizationOp(T a) const
+typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getFastDiagonalizationOp(T a) const
 {
 
     const index_t d = m_basis.dim();
@@ -317,7 +317,7 @@ typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditi
 
 //Will be provided in a followup pull request
 //template<typename T>
-//typename gsParameterDomainPreconditioners<T>::OpUPtr gsParameterDomainPreconditioners<T>::getSubspaceCorrectedMassSmootherOp() const
+//typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getSubspaceCorrectedMassSmootherOp() const
 //{
 //
 //}

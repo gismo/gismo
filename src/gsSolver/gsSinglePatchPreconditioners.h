@@ -1,4 +1,4 @@
-/** @file gsParameterDomainPreconditioners.h
+/** @file gsSinglePatchPreconditioners.h
 
     @brief Provides preconditioners that live on the parameter domain.
 
@@ -26,7 +26,7 @@ namespace gismo
 ///
 /// @ingroup Solver
 template<typename T>
-class gsParameterDomainPreconditioners
+class gsSinglePatchPreconditioners
 {
     typedef typename gsLinearOperator<T>::uPtr OpUPtr;
     typedef typename gsLinearOperator<T>::Ptr  OpPtr;
@@ -34,7 +34,7 @@ public:
 
     /// Constructor taking \a gsBasis, \a gsBoundaryConditions and the
     /// \a dirichtet::strategy
-    gsParameterDomainPreconditioners(
+    gsSinglePatchPreconditioners(
         const gsBasis<T>& _basis,
         const gsBoundaryConditions<T>& _bc,
         dirichlet::strategy _dirichlet = dirichlet::elimination
@@ -44,7 +44,7 @@ public:
 
     /// Constructor taking \a gsBasis, \a gsBoundaryConditions and
     /// \a gsOptionList object providing the Dirichlet strategy.
-    gsParameterDomainPreconditioners(
+    gsSinglePatchPreconditioners(
         const gsBasis<T>& _basis,
         const gsBoundaryConditions<T>& _bc,
         const gsOptionList& _opt
