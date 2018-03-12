@@ -77,7 +77,6 @@ public:
                     gsStdVectorRef<gsMultiBasis<T> > const & bases,
                     gsBoundaryConditions<T> const          & bconditions)
     {
-
         m_patches = give(patches);
         m_bases.clear();
         m_bases = bases;
