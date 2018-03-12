@@ -95,7 +95,7 @@ public:
                     gsMultiBasis<T> const         & basis,
                     gsBoundaryConditions<T> const & bconditions)
     {
-        m_patches = patches;
+        m_patches = give(patches);
         m_bases.clear();
         m_bases.push_back(basis);
         m_bConditions = bconditions;
