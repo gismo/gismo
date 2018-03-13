@@ -21,6 +21,8 @@ namespace gismo
 ///
 /// \f$ op = op_0 \otimes op_1 \otimes \cdots \otimes op_{n-1} \f$
 ///
+/// where \f$ A \otimes B = ( a_{11} B \  a_{12} B \ ... ;  a_{21} B \  a_{22} B \ ... ; ... ) \f$.
+///
 /// \ingroup Solver
 template <class T>
 class gsKroneckerOp GISMO_FINAL : public gsLinearOperator<T>
