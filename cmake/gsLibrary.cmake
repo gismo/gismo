@@ -155,14 +155,21 @@ set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header fi
 
 
 if(GISMO_BUILD_LIB)
-
+  
   install(TARGETS ${PROJECT_NAME}
-  # IMPORTANT: Add the ${PROJECT_NAME} library to the "export-set"
-  EXPORT gismoTargets
-  RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT bin
-  LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shlib
-  PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}"
-  ARCHIVE DESTINATION lib
-  )
+          # IMPORTANT: Add the ${PROJECT_NAME} library to the "export-set"
+          EXPORT gismoTargets
+          RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT bin_${PROJECT_NAME}
+          LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shlib_${PROJECT_NAME}
+          PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}"
+          ARCHIVE DESTINATION lib
+          )
+        
+  add_custom_target(install.${PROJECT_NAME}
+                    DEPENDS ${PROJECT_NAME}
+                    COMMAND
+                    "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=shlib_${PROJECT_NAME}
+                    -P "${CMAKE_BINARY_DIR}/cmake_install.cmake"
+                    )
 
 endif(GISMO_BUILD_LIB)

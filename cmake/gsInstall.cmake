@@ -26,7 +26,7 @@ else()
    set(DEF_INSTALL_CMAKE_DIR ${LIB_INSTALL_DIR})
 endif()
 set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
-  "Installation directory for CMake files")
+    "Installation directory for CMake files")
 
 # Make relative paths absolute (needed later on)
 foreach(p LIB BIN INCLUDE CMAKE)
@@ -67,11 +67,11 @@ set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_
 set(CONF_LIB_DIRS     "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 set(CONF_USE_FILE     "${INSTALL_CMAKE_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
-              "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake" @ONLY)
+               "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake" @ONLY)
 
 # ... for both
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfigVersion.cmake.in
-  "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake" @ONLY)
+               "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake" @ONLY)
 
 if(GISMO_BUILD_LIB)
 
@@ -80,14 +80,13 @@ set_target_properties(gismo PROPERTIES
 
 # For gsExport.h
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
-        DESTINATION include/${PROJECT_NAME}/gsCore)
+        DESTINATION include/${PROJECT_NAME}/gsCore COMPONENT gismo)
 
 # For gsLinearAlgebra.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen
         DESTINATION include/${PROJECT_NAME}
         PATTERN "*.txt" EXCLUDE
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-        )
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # For gsCmdLine.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
@@ -98,12 +97,14 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
 
 # For eiquadprog.hpp
 install(FILES ${PROJECT_SOURCE_DIR}/external/eiquadprog.hpp
-        DESTINATION include/${PROJECT_NAME} )
+        DESTINATION include/${PROJECT_NAME}
+        COMPONENT gismo)
 
 # For gsXmlUtils.h
 install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
-              ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp	
-        DESTINATION include/${PROJECT_NAME}/rapidxml/)
+              ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp  
+        DESTINATION include/${PROJECT_NAME}/rapidxml/
+        COMPONENT gismo)
 
 
 # For pure install
@@ -112,7 +113,8 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
 #        FILES_MATCHING
 #        PATTERN "*.hpp"
 #        PATTERN ".svn" EXCLUDE
-#        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+#        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+#        COMPONENT gismo)
 
 # For gsConfig.h
 install(DIRECTORY ${GISMO_DATA_DIR} DESTINATION share/gismodata)
@@ -121,14 +123,15 @@ set(GISMO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/share/gismodata/)
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h" )
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
-        DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h)
+        DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h
+        COMPONENT gismo)
 
 # Install cmake files
 install(FILES
-  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
-  "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
-  DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+        "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
+        "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
+        "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
+        DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
  
 # Install the export set for use with the install-tree
 #install(EXPORT gismoTargets DESTINATION
@@ -146,17 +149,16 @@ set(TMP_VERSION "${gismo_VERSION}")
 string(REGEX REPLACE "[a-zA-Z]+" "" TMP_VERSION ${TMP_VERSION})
 #message("TMP_VERSION='${TMP_VERSION}'")
 set(DOC_INSTALL_DIR share/doc/gismo-${TMP_VERSION} CACHE PATH 
-			"Installation directory for documentation")
+    "Installation directory for documentation")
 #message("DOC_INSTALL_DIR='${DOC_INSTALL_DIR}'")
 
 install(DIRECTORY "${DOC_SRC_DIR}"
-		DESTINATION "${DOC_INSTALL_DIR}/"
-		USE_SOURCE_PERMISSIONS
-		OPTIONAL 
-		FILES_MATCHING
-			PATTERN "*.css"
-			PATTERN "*.html"
-			PATTERN "*.js"
-			PATTERN "*.jpg"
-			PATTERN "*.png"
-)
+        DESTINATION "${DOC_INSTALL_DIR}/"
+        USE_SOURCE_PERMISSIONS
+        OPTIONAL 
+        FILES_MATCHING
+        PATTERN "*.css"
+        PATTERN "*.html"
+        PATTERN "*.js"
+        PATTERN "*.jpg"
+        PATTERN "*.png")

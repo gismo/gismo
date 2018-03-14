@@ -33,12 +33,19 @@ foreach(file ${FILES})
     add_gismo_executable(${file})
     get_filename_component(tarname ${file} NAME_WE) # name without extension
     set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
-	set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
+    set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
     add_dependencies(${PROJECT_NAME} ${tarname})
-
+    
     # install the example executables
-    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}/")
+    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}/" COMPONENT ${tarname})
 
+    add_custom_target(install.${tarname}
+      DEPENDS ${tarname} install.gismo
+      COMMAND
+      "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=${tarname}
+      -P "${CMAKE_BINARY_DIR}/cmake_install.cmake"
+      )
+    
 endforeach(file ${FILES})
 
 list(LENGTH FILES len)
