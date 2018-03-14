@@ -73,11 +73,11 @@ public:
     /// using a multi-patch, a vector of multi-basis and boundary conditions.
     /// \note Rest of the data fields should be initialized in the
     /// derived function initializePdeSpecific() .
-    void initialize(const gsMultiPatch<T>                   & patches,
-                    gsStdVectorRef<gsMultiBasis<T> > const   & bases,
-                    gsBoundaryConditions<T> const           & bconditions)
+    void initialize(gsMultiPatch<T>                          patches,
+                    gsStdVectorRef<gsMultiBasis<T> > const & bases,
+                    gsBoundaryConditions<T> const          & bconditions)
     {
-        m_patches = patches;
+        m_patches = give(patches);
         m_bases.clear();
         m_bases = bases;
         m_bConditions = bconditions;
@@ -90,11 +90,11 @@ public:
     /// using a multi-patch, a multi-basis and boundary conditions.
     /// \note Rest of the data fields should be initialized in the
     /// derived function initializePdeSpecific() .
-    void initialize(const gsMultiPatch<T>         & patches,
+    void initialize(gsMultiPatch<T>                 patches,
                     gsMultiBasis<T> const         & basis,
                     gsBoundaryConditions<T> const & bconditions)
     {
-        m_patches = patches;
+        m_patches = give(patches);
         m_bases.clear();
         m_bases.push_back(basis);
         m_bConditions = bconditions;
@@ -104,13 +104,13 @@ public:
     }
 
     // Same as initialize with options
-    void initialize(const gsMultiPatch<T>         & patches,
+    void initialize(gsMultiPatch<T>                 patches,
                     gsMultiBasis<T> const         & basis,
                     gsBoundaryConditions<T> const & bconditions,
                     gsAssemblerOptions      const & options )
     {
         m_options = options;
-        initialize(patches, basis, bconditions);
+        initialize(give(patches), basis, bconditions);
     }
 
     /// @brief Intitialize function for single patch assembling, sets data fields
