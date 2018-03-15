@@ -918,6 +918,7 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 template<unsigned d, class T>
 void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
 {
+    gsMatrix<T> currPoint;
     point low, upp, cur;
     const int maxLevel = m_tree.getMaxInsLevel();
 
@@ -929,10 +930,11 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<unsigned>&
 
     for(index_t p = 0; p < u.cols(); p++) //for all input points
     {
-        const gsMatrix<T> & currPoint = u.col(p);
+        currPoint = u.col(p);
+        
         for(unsigned i = 0; i != d; ++i)
             low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
-
+        
         // Identify the level of the point
         const int lvl = m_tree.levelOf(low, maxLevel);
 

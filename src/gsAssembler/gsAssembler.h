@@ -442,14 +442,25 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
     //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
     
     const gsBasisRefs<T> bases(m_bases, patchIndex);
-    
+
+#pragma omp parallel
+{
     gsQuadRule<T> QuRule ; // Quadrature rule
     gsMatrix<T> quNodes  ; // Temp variable for mapped nodes
     gsVector<T> quWeights; // Temp variable for mapped weights
     unsigned evFlags(0);
 
+#ifdef _OPENMP
+    // Create thread-private visitor
+    ElementVisitor visitor_(visitor);
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#else
+    ElementVisitor &visitor_ = visitor;
+#endif
+    
     // Initialize reference quadrature rule and visitor data
-    visitor.initialize(bases, patchIndex, m_options, QuRule, evFlags);
+    visitor_.initialize(bases, patchIndex, m_options, QuRule, evFlags);
     
     //fixme: gsMapData<T> mapData;
     // Initialize geometry evaluator
@@ -458,22 +469,29 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
     
     // Initialize domain element iterator -- using unknown 0
     typename gsBasis<T>::domainIter domIt = bases[0].makeDomainIterator(side);
-    
+
     // Start iteration over elements
+#ifdef _OPENMP
+    for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
     for (; domIt->good(); domIt->next() )
+#endif
     {
         // Map the Quadrature rule to the element
         QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
-        
+
         // Perform required evaluations on the quadrature nodes
-        visitor.evaluate(bases, /* *domIt,*/ *geoEval, quNodes);
+        visitor_.evaluate(bases, /* *domIt,*/ *geoEval, quNodes);
         
         // Assemble on element
-        visitor.assemble(*domIt, *geoEval, quWeights);
+        visitor_.assemble(*domIt, *geoEval, quWeights);
         
         // Push to global matrix and right-hand side vector
-        visitor.localToGlobal(patchIndex, m_ddof, m_system);
+#pragma omp critical(visitor_localToGlobal)
+        visitor_.localToGlobal(patchIndex, m_ddof, m_system);
     }
+}//omp parallel
+
 }
 
 
