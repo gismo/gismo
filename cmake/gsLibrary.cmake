@@ -164,7 +164,11 @@ if(GISMO_BUILD_LIB)
           PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}"
           ARCHIVE DESTINATION lib
           )
-        
+
+  add_custom_installer(${PROJECT_NAME})
+  add_dependencies(install.${PROJECT_NAME} ${PROJECT_NAME})
+  add_dependencies(install.${PROJECT_NAME} ${PROJECT_NAME}_static)
+
   add_custom_target(install.${PROJECT_NAME}
                     DEPENDS ${PROJECT_NAME}
                     COMMAND

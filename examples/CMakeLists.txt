@@ -18,6 +18,8 @@ project(examples)
 # running "make" inside the tests build folder
 add_custom_target(${PROJECT_NAME})
 set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
+add_custom_installer(${PROJECT_NAME})
+#add_dependencies(install.${PROJECT_NAME} install.gismo)
 
 #find_package(gismo REQUIRED)
 #include_directories( ${GISMO_INCLUDE_DIRS})
@@ -35,17 +37,13 @@ foreach(file ${FILES})
     set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
     set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
     add_dependencies(${PROJECT_NAME} ${tarname})
-    
-    # install the example executables
-    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}/" COMPONENT ${tarname})
 
-    add_custom_target(install.${tarname}
-      DEPENDS ${tarname} install.gismo
-      COMMAND
-      "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=${tarname}
-      -P "${CMAKE_BINARY_DIR}/cmake_install.cmake"
-      )
+    # install the example executables
+    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT ${PROJECT_NAME})
+    add_dependencies(install.${PROJECT_NAME} ${tarname})
     
+#    install_target(${tarname} ${BIN_INSTALL_DIR} ${PROJECT_NAME})
+
 endforeach(file ${FILES})
 
 list(LENGTH FILES len)

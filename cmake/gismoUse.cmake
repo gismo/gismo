@@ -87,6 +87,21 @@ MACRO(SUBDIRLIST result curdir)
   SET(${result} ${dirlist})
 ENDMACRO(SUBDIRLIST)
 
+# add a custom installer
+macro(add_custom_installer COMP)
+  if(NOT TARGET target-name)
+    add_custom_target(install.${COMP}
+      COMMAND
+      "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=${COMP}
+      -P "${CMAKE_BINARY_DIR}/cmake_install.cmake")
+  endif()
+endmacro(add_custom_installer)
+
+macro(install_target TAR DEST COMP)
+    install(TARGETS ${TAR} DESTINATION "${BIN_INSTALL_DIR}/" COMPONENT ${COMP} ${ARGN})
+    add_dependencies(install.${COMP} ${TAR})
+endmacro(install_target)
+
 # collect .cpp files
 macro(aux_cpp_directory DIR VAR)
 	FILE(GLOB ${ARGV1} ${DIR}/[^.]*.cpp)
