@@ -195,11 +195,11 @@ inline shared_ptr<T> make_shared_not_owned(const T *x)
 template <typename T>
 inline unique_ptr<T> make_unique(T * x) { return unique_ptr<T>(x); }
 
-/// \brief Converts a uPtr \a p to an uPtr
-/// of class \a C and gives it back as return value.
-template<class C, typename from>
-inline unique_ptr<C> convert_ptr(from p)
-{ return unique_ptr<C>( dynamic_cast<C*>(p.release()) ); }
+/// \brief Converts an uPtr \a p to an uPtr
+/// of class \a toC and gives it back as return value.
+template<class toC, typename from>
+inline unique_ptr<toC> convert_ptr(from p)
+{ return unique_ptr<toC>( dynamic_cast<toC*>(p.release()) ); }
 
 /// Takes a vector of smart pointers and returns the corresponding raw pointers.
 template <typename T>
@@ -269,17 +269,6 @@ memory::shared_ptr<T> give(memory::shared_ptr<T> & x)
 { memory::shared_ptr<T> result = x; x.reset(); return result; }
 
 #endif
-
-/// Takes a T* and wraps it in an unique_ptr. Useful for one-off
-/// function return values to avoid memory leaks.
-///
-/// This has a move semantics: the unique_ptr object take
-/// the ownership.
-///
-/// Does the same as memory::make_unique.
-template <typename T>
-inline memory::unique_ptr<T> safe(T *x)
-{ return memory::unique_ptr<T>(x); }
 
 // Small, dynamically sized arrays on the stack, for POD types.
 // Only use this if the size is guaranteed not to be more than a few
