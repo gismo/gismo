@@ -450,13 +450,14 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
     gsVector<T> quWeights; // Temp variable for mapped weights
     unsigned evFlags(0);
 
+    ElementVisitor
 #ifdef _OPENMP
     // Create thread-private visitor
-    ElementVisitor visitor_(visitor);
+    visitor_(visitor);
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
 #else
-    ElementVisitor &visitor_ = visitor;
+    &visitor_ = visitor;
 #endif
     
     // Initialize reference quadrature rule and visitor data
@@ -487,8 +488,8 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
         visitor_.assemble(*domIt, *geoEval, quWeights);
         
         // Push to global matrix and right-hand side vector
-#pragma omp critical(visitor_localToGlobal)
-        visitor_.localToGlobal(patchIndex, m_ddof, m_system);
+//#pragma omp critical(localToGlobal)
+        visitor_.localToGlobal(patchIndex, m_ddof, m_system); // omp_locks inside
     }
 }//omp parallel
 
