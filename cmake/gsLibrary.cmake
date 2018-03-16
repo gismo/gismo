@@ -116,11 +116,6 @@ endif(GISMO_BUILD_LIB)
   ${${PROJECT_NAME}_EXTENSIONS}
   )
 
-  install(TARGETS ${PROJECT_NAME}_static
-          DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
-	  EXPORT gismoTargets
-          PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}" )
-
   #generate_export_header(${PROJECT_NAME}_static)
 
   set_target_properties(${PROJECT_NAME}_static PROPERTIES 
@@ -157,6 +152,12 @@ set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries
 set(BIN_INSTALL_DIR     bin     CACHE PATH "Installation directory for executables")
 set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header files")
 
+  install(TARGETS ${PROJECT_NAME}_static
+          EXPORT gismoTargets
+          LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shared
+          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
+          RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe
+          PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 
 if(GISMO_BUILD_LIB)
   
