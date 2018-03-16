@@ -70,7 +70,7 @@
    #match-leak-kinds: reachable
    ...
    fun:_dlerror_run
-   fun:dlopen
+   fun:dlopen*
    ...
 }
 
@@ -84,4 +84,82 @@
    ...
    fun:_dl_init
    obj:/lib64/ld-?.??.so
+}
+
+#########################################
+#                 OPENMP                #
+#########################################
+
+{
+   <orte>
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:orte_oob_base_set_addr
+   ...
+   fun:start_thread
+   fun:clone
+}
+
+{
+   <cond_ompi_init>
+   Memcheck:Cond
+   ...
+   fun:ompi_mpi_init
+   fun:PMPI_Init
+}
+
+{
+   <leak_ompi_init_orte>
+   Memcheck:Leak
+   ...
+   fun:orte_init
+   fun:ompi_mpi_init
+}
+
+{
+   <leak_ompi_init_PMPI>
+   Memcheck:Leak
+   ...
+   fun:ompi_mpi_init
+   fun:PMPI_Init
+}
+
+{
+   <event_process_active_single_queue>
+   Memcheck:Leak
+   match-leak-kinds: all
+   fun:malloc
+   ...
+   fun:event_process_active_single_queue
+   fun:event_base_loop
+}
+
+{
+   <opal1>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:opal_free_list_grow_st
+   fun:opal_rb_tree_init
+}
+
+{
+   <opal2>
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:opal_*
+   ...
+   fun:opal_init*
+   ...
+}
+
+{
+   <hwloc>
+   Memcheck:Leak
+   ...
+   fun:hwloc_xml_component_instantiate
+   fun:hwloc_disc_component_force_enable
+   fun:hwloc_topology_set_xmlbuffer
 }
