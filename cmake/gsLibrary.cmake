@@ -117,8 +117,8 @@ endif(GISMO_BUILD_LIB)
   )
 
   install(TARGETS ${PROJECT_NAME}_static
-          EXPORT gismoTargets
-          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
+          DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
+	  EXPORT gismoTargets
           PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}" )
 
   #generate_export_header(${PROJECT_NAME}_static)
