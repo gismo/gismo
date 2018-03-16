@@ -14,7 +14,7 @@ message ("  CMAKE_INSTALL_PREFIX    ${CMAKE_INSTALL_PREFIX}")
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 #note: make list_install_components
-set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME gismo)
+#set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME gismo)
 
 # Offer the user the choice of overriding the installation directories
 set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries")

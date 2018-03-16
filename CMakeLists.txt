@@ -52,6 +52,8 @@ endif()
 ## Cmake Inclusions and configuration options
 ## #################################################################
 
+set(CMAKE_INSTALL_MESSAGE NEVER)
+
 include(CTest)
 enable_testing()
 
@@ -277,7 +279,7 @@ endif(GISMO_BUILD_MEX)
 ## Install
 ## #################################################################
 
-include( gsInstall )
+include(gsInstall)
 
 ## #################################################################
 ## Executables
