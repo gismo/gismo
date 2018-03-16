@@ -152,7 +152,7 @@ set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries
 set(BIN_INSTALL_DIR     bin     CACHE PATH "Installation directory for executables")
 set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header files")
 
-  install(TARGETS ${PROJECT_NAME}_static
+  install(TARGETS ${PROJECT_NAME}_static OPTIONAL
           EXPORT gismoTargets
           LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shared
           ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
