@@ -488,7 +488,7 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
         visitor_.assemble(*domIt, *geoEval, quWeights);
         
         // Push to global matrix and right-hand side vector
-//#pragma omp critical(localToGlobal)
+#pragma omp critical(localToGlobal)
         visitor_.localToGlobal(patchIndex, m_ddof, m_system); // omp_locks inside
     }
 }//omp parallel
