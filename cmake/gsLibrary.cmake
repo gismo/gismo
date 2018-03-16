@@ -116,11 +116,17 @@ endif(GISMO_BUILD_LIB)
   ${${PROJECT_NAME}_EXTENSIONS}
   )
 
+  install(TARGETS ${PROJECT_NAME}_static
+          EXPORT gismoTargets
+          RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe
+          LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shared
+          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
+          PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}" )
+
   #generate_export_header(${PROJECT_NAME}_static)
 
   set_target_properties(${PROJECT_NAME}_static PROPERTIES 
   POSITION_INDEPENDENT_CODE ON
-  EXCLUDE_FROM_ALL 1
   EXCLUDE_FROM_DEFAULT_BUILD 1
   COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
   FOLDER "G+Smo libraries"
@@ -159,21 +165,9 @@ if(GISMO_BUILD_LIB)
   install(TARGETS ${PROJECT_NAME}
           # IMPORTANT: Add the ${PROJECT_NAME} library to the "export-set"
           EXPORT gismoTargets
-          RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT bin_${PROJECT_NAME}
-          LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shlib_${PROJECT_NAME}
-          PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}"
-          ARCHIVE DESTINATION lib
-          )
-
-  add_custom_installer(${PROJECT_NAME})
-  add_dependencies(install.${PROJECT_NAME} ${PROJECT_NAME})
-  add_dependencies(install.${PROJECT_NAME} ${PROJECT_NAME}_static)
-
-  add_custom_target(install.${PROJECT_NAME}
-                    DEPENDS ${PROJECT_NAME}
-                    COMMAND
-                    "${CMAKE_COMMAND}" -DCMAKE_INSTALL_COMPONENT=shlib_${PROJECT_NAME}
-                    -P "${CMAKE_BINARY_DIR}/cmake_install.cmake"
-                    )
+          RUNTIME DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe
+          LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shared
+          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static
+          PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 
 endif(GISMO_BUILD_LIB)

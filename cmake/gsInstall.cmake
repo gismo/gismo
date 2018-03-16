@@ -80,7 +80,7 @@ set_target_properties(gismo PROPERTIES
 
 # For gsExport.h
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
-        DESTINATION include/${PROJECT_NAME}/gsCore COMPONENT gismo)
+        DESTINATION include/${PROJECT_NAME}/gsCore )
 
 # For gsLinearAlgebra.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen
@@ -97,14 +97,12 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
 
 # For eiquadprog.hpp
 install(FILES ${PROJECT_SOURCE_DIR}/external/eiquadprog.hpp
-        DESTINATION include/${PROJECT_NAME}
-        COMPONENT gismo)
+        DESTINATION include/${PROJECT_NAME})
 
 # For gsXmlUtils.h
 install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
               ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp  
-        DESTINATION include/${PROJECT_NAME}/rapidxml/
-        COMPONENT gismo)
+        DESTINATION include/${PROJECT_NAME}/rapidxml/ )
 
 
 # For pure install
@@ -113,8 +111,7 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
 #        FILES_MATCHING
 #        PATTERN "*.hpp"
 #        PATTERN ".svn" EXCLUDE
-#        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-#        COMPONENT gismo)
+#        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 # For gsConfig.h
 install(DIRECTORY ${GISMO_DATA_DIR} DESTINATION share/gismodata)
@@ -123,19 +120,18 @@ set(GISMO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/share/gismodata/)
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h" )
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
-        DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h
-        COMPONENT gismo)
+        DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h)
 
 # Install cmake files
 install(FILES
         "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
         "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
         "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
-        DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+        DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT devel)
  
 # Install the export set for use with the install-tree
 #install(EXPORT gismoTargets DESTINATION
-#  "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+#  "${INSTALL_CMAKE_DIR}" COMPONENT devel)
 
 else(GISMO_BUILD_LIB)
    message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
@@ -153,6 +149,7 @@ set(DOC_INSTALL_DIR share/doc/gismo-${TMP_VERSION} CACHE PATH
 #message("DOC_INSTALL_DIR='${DOC_INSTALL_DIR}'")
 
 install(DIRECTORY "${DOC_SRC_DIR}"
+        COMPONENT doc
         DESTINATION "${DOC_INSTALL_DIR}/"
         USE_SOURCE_PERMISSIONS
         OPTIONAL 
