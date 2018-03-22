@@ -23,7 +23,7 @@ namespace gismo
 */ 
  
 template<class T>
-class gsLobattoRule : public gsQuadRule<T>
+class gsLobattoRule GISMO_FINAL : public gsQuadRule<T>
 {
 public:
 
