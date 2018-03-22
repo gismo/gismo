@@ -51,15 +51,8 @@ public:
     {
         side1 = bi.first().side();
 
-        const index_t d = basis1.dim();
-        const index_t dir = side1.direction();
-        gsVector<int> numQuadNodes ( d );
-        for (int i = 0; i < basis1.dim(); ++i)
-            numQuadNodes[i] = basis1.degree(i) + 1;
-        numQuadNodes[dir] = 1;
-
         // Setup Quadrature
-        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
+        rule = gsQuadrature::get(basis1, options, side1.direction());
 
         // Compute penalty parameter
         const int deg = basis1.maxDegree();

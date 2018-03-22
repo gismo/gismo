@@ -25,7 +25,7 @@ namespace gismo
 */ 
  
 template<class T>
-class gsGaussRule : public gsQuadRule<T>
+class gsGaussRule GISMO_FINAL : public gsQuadRule<T>
 {
 public:
 
@@ -36,13 +36,13 @@ public:
     gsGaussRule(gsVector<index_t> const & numNodes, 
                 const unsigned digits = REAL_DIG )
     { 
-        setNodes(numNodes, digits);
+        gsGaussRule::setNodes(numNodes, digits);
     }
 
     /// Initialize a 1D Gauss quadrature rule with \a numNodes
     gsGaussRule(index_t numNodes, const unsigned digits = REAL_DIG )
     { 
-        setNodes(numNodes, digits);
+        this->setNodes(numNodes, digits);
     }
 
     /// Initialize a tensor-product Gauss quadrature rule for \a basis
@@ -63,14 +63,8 @@ public:
     void setNodes( gsVector<index_t> const & numNodes, 
                    unsigned digits = REAL_DIG );
 
-    void setNodes( index_t numNodes, 
-                   unsigned digits = REAL_DIG )
-    {
-        gsVector<index_t> nn(1);
-        nn[0] = numNodes;
-        setNodes(nn, digits);
-    }
-    
+    using gsQuadRule<T>::setNodes; // unhide base
+
 private:
 
     void init(const gsBasis<T> & basis, const T quA, const int quB, int fixDir);

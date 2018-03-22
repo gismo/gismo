@@ -138,7 +138,7 @@ namespace internal
 
 /* ----------- Quadrature ----------- */
 #include <gsAssembler/gsQuadRule.h>
-#include <gsAssembler/gsGaussRule.h>
+#include <gsAssembler/gsQuadrature.h>
 
 /* ----------- Assembler ----------- */
 #include <gsAssembler/gsAssembler.h>
