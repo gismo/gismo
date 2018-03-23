@@ -509,7 +509,9 @@ public:
         if (a<0) //substracting ?
         {
             end = m_uit.m_mlt + m_uit.m_upos;
-            beg = std::max(m_uit.m_mlt, end + a);
+
+            beg = end + a; //beg = std::max(m_uit.m_mlt, end + a);
+            if (beg < m_uit.m_mlt) beg = m_uit.m_mlt;
             //note: [beg, end) is a valid sorted range, complexity:  O(log a)
             m_uit.m_upos = std::upper_bound(beg, end, m_pos) - m_uit.m_mlt;
         }
