@@ -15,7 +15,7 @@ dependencies:
     - sudo apt-get update; sudo apt-get install valgrind clang-3.5
     - sudo ln -fs /usr/lib/libcurl.so.4 /usr/local/lib/
   override:
-    - mkdir build_clang; cd build_clang; CC=/usr/bin/clang-3.5 CXX=/usr/bin/clang++-3.5 cmake .. -DSITE="$CI_PULL_REQUESTS-$CI_BRANCH [circleci11]" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11
+    - mkdir build_clang; cd build_clang; CC=/usr/bin/clang-3.5 CXX=/usr/bin/clang++-3.5 cmake .. -DSITE="$CI_PULL_REQUESTS-$CI_BRANCH [circleci11]" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DCMAKE_BUILD_TYPE=RelWithDebInfo
     - mkdir build; cd build; CC=/usr/bin/cc CXX=/usr/bin/g++ cmake .. -DSITE="$CI_PULL_REQUESTS-$CI_BRANCH [circleci98]" -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98
 test:
   override:
