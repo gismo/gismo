@@ -32,6 +32,16 @@ void boxSide::getContainedCorners (int dim, std::vector<boxCorner> &corners) con
     }
 }
 
+void patchSide::getContainedCorners (int dim, std::vector<patchCorner> &corners) const
+{
+    std::vector<boxCorner> tmp;
+    boxSide::getContainedCorners(dim, tmp);
+    corners.resize(0);
+    corners.reserve(tmp.size());
+    for (std::vector<boxCorner>::iterator it=tmp.begin(); it<tmp.end(); ++it)
+        corners.push_back( patchCorner(patch, *it) );
+}
+
 void boundaryInterface::faceData(gsVector<bool> & flip, gsVector<index_t> & perm) const
 { 
     const index_t d = directionMap.size();

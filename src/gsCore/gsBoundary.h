@@ -240,6 +240,13 @@ public:
     boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
 
+    /**
+     * @brief returns the vector of the corners contained in the side
+     * @param dim is the ambient dimension
+     * @param corners
+     */
+    void getContainedCorners (int dim, std::vector<patchCorner> &corners) const;
+
     bool operator== (const patchSide & other) const
     {
         return patch==other.patch && m_index==other.m_index;
