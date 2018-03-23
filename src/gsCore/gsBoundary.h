@@ -247,6 +247,8 @@ public:
      */
     void getContainedCorners (int dim, std::vector<patchCorner> &corners) const;
 
+    using boxSide::getContainedCorners; // unhiding
+
     bool operator== (const patchSide & other) const
     {
         return patch==other.patch && m_index==other.m_index;
