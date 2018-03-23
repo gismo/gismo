@@ -68,7 +68,9 @@ struct boundary
     };
 };
 
-struct boxCorner;// defined later
+// forward declarations; defined later
+struct boxCorner;
+struct patchCorner;
 
 /**
    @brief Struct which represents a certain side of a box.
