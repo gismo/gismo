@@ -47,9 +47,9 @@ private:
     pointer    m_raw ; ///< pointer to the beginning of the m_repKnots sequence
     mult_t     m_upos; ///< unique index (without repetitions) of current knot
 
-#if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
+//#if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
     mult_t m_dbg;// iteration limit: extra member for iterator debugging mode
-#endif
+//#endif
 
 protected:
 
@@ -68,7 +68,7 @@ public:
        NULL)
      */ 
     gsUKnotIterator()
-    : m_mlt(NULL), m_raw(NULL), m_upos(0)
+    : m_mlt(NULL), m_raw(NULL), m_upos(0), m_dbg(0)
     { }
 
     /**
@@ -81,9 +81,10 @@ public:
     : m_mlt ( KV.multSumData() ),
       m_raw ( KV.data()        ),
       m_upos( upos             )
-    { 
-#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
+    {
         m_dbg = KV.uSize()+1;
+#       if defined(_GLIBCXX_DEBUG) || _SECURE_SCL != 0
+        //m_dbg = KV.uSize()+1;
         GISMO_ENSURE(upos < m_dbg, "Invalid iterator position "<< upos 
                      <<" for knot vector with "<<KV.uSize()<<" unique knots");
 #       endif
@@ -504,32 +505,25 @@ public:
                      "Iterator jumped to invalid knot position.");
 #       endif 
 
-        // update unique position
-        mltpointer beg, end;
         if (a<0) //substracting ?
         {
-            end = m_uit.m_mlt + m_uit.m_upos;
-
-            beg = end + a; //beg = std::max(m_uit.m_mlt, end + a);
+            mltpointer end = m_uit.m_mlt + m_uit.m_upos;
+            mltpointer beg = end + a;
             if (beg < m_uit.m_mlt) beg = m_uit.m_mlt;
             //note: [beg, end) is a valid sorted range, complexity:  O(log a)
             m_uit.m_upos = std::upper_bound(beg, end, m_pos) - m_uit.m_mlt;
         }
         else    //incrementing
         {
-            beg = m_uit.m_mlt + m_uit.m_upos;
-            end = beg + a; //note: "end" can potentially be over the end of m_mlt
+            mltpointer beg = m_uit.m_mlt + m_uit.m_upos;
+            // O(log a) efficient version
+            mltpointer end = std::min(m_uit.m_mlt + m_uit.m_dbg-1, beg + a);
+            m_uit.m_upos = std::upper_bound(beg, end, m_pos) - m_uit.m_mlt;
 
-            while (beg!=end && (*beg)<=m_pos) { ++beg; }
-            m_uit.m_upos = beg - m_uit.m_mlt;
-
-            // STL version -- can produce jump based on uninitialised value
-            // m_uit.m_upos = std::find_if(beg, end, // complexity:  O(a)
-            // std::bind2nd(std::greater<mult_t>(), m_pos)) - m_uit.m_mlt;
-
-            // The O(log a) efficient version would be:
-            // end = std::min(m_uit.m_mlt + uit.m_dbg-1, beg + a);
-            // m_uit.m_upos = std::upper_bound(beg, end, m_pos) - m_uit.m_mlt;
+            // unsafe version withoud m_dbg
+            //mltpointer end = beg + a; // note: could be over the end of m_mlt
+            // while (beg!=end && (*beg)<=m_pos) { ++beg; }
+            // m_uit.m_upos = beg - m_uit.m_mlt;
         }
 
         return *this;
