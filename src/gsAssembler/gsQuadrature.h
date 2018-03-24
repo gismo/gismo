@@ -34,7 +34,7 @@ struct gsQuadrature
     static gsQuadRule<T> get(const gsBasis<T> & basis,
                              const gsOptionList & options, int fixDir = -1)
     {
-        const int qu = options.askInt("quRule", GaussLegendre);
+        const int     qu  = options.askInt("quRule", GaussLegendre);
         const T       quA = options.getReal("quA");
         const index_t quB = options.getInt ("quB");
         const gsVector<index_t> nnodes = numNodes(basis,quA,quB,fixDir);
@@ -49,8 +49,10 @@ struct gsQuadrature
         {
         case GaussLobatto :
             return gsLobattoRule<T>(numNodes);
-        default://GaussLegendre
+        case GaussLegendre :
             return gsGaussRule<T>(numNodes);
+        default:
+            GISMO_ERROR("Invalid Quadrature rule request ("<<qu<<")");
         };
     }
 
