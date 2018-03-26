@@ -100,7 +100,7 @@ if(NOT CTEST_BUILD_NAME)
 find_program(UNAME NAMES uname)
 exec_program("${UNAME}" ARGS "-s" OUTPUT_VARIABLE osname)
 exec_program("${UNAME}" ARGS "-m" OUTPUT_VARIABLE "cpu")
-set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}/${CTEST_BUILD_CONFIGURATION} $ENV{CXX}")
+set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}/${CTEST_CONFIGURATION_TYPE} $ENV{CXX}")
 endif(NOT CTEST_BUILD_NAME)
   
 # Source folder (defaults inside the script directory)
