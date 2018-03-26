@@ -1,13 +1,14 @@
 ######################################################################
 ## ctest_script.cmake
+## https://raw.githubusercontent.com/gismo/gismo/stable/cmake/ctest_script.cmake
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Angelos Mantzaflaris 
 ## Copyright (C) 2012 - 2018 RICAM-Linz.
 ##
-## To execute:
+## To execute (on linux):
 ##
-##   ctest -j jobs -S /path/to/ctest_script.cmake
+##   ctest -j jobs -S ctest_script.cmake
 ##
 ## It is recommended to make a copy of the file (especially using git).
 ## The script creates sources and build folders in the same directory
