@@ -224,7 +224,7 @@ inline std::ostream &operator<<(std::ostream &os, const boxSide& o)
 
     Basically a boxSide with an additional index for the patch.
 */  
-struct patchSide: public boxSide
+struct GISMO_EXPORT patchSide : public boxSide
 {
 public:
     index_t patch;              ///< The index of the patch.
