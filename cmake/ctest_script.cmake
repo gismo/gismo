@@ -3,13 +3,15 @@
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2016 RICAM-Linz.
+## Copyright (C) 2012 - 2018 RICAM-Linz.
 ##
 ## To execute:
 ##
 ##   ctest -S /path/to/ctest_script.cmake
 ##
 ## It is recommended to make a copy of the file (especially using git).
+## The script creates sources and build folders in the same directory
+##
 ## For more verbosity add the flag
 ##
 ##   ctest -S /path/to/ctest_script.cmake -V
@@ -26,10 +28,11 @@
 ## Configuration
 ## #################################################################
 
-# ID for this computer that shows up on the dashboard.
-find_program(HOSTNAME_CMD NAMES hostname)
-exec_program(${HOSTNAME_CMD} ARGS OUTPUT_VARIABLE HOSTNAME)
-set(CTEST_SITE "${HOSTNAME}")
+# Test type (Nightly, Continuous, Experimental)
+set(test_model "Experimental")
+
+# Build type
+set(CTEST_CONFIGURATION_TYPE RelWithDebInfo)
 
 # The Generator for CMake.
 set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
@@ -46,6 +49,7 @@ set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 #set(CTEST_CMAKE_GENERATOR "Eclipse CDT4")
 
 # Set environment/compiler
+#set(ENV{MAKEFLAGS=} "-j2")
 #set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
 #set(ENV{CC}  "gcc")
 #set(ENV{CXX} "g++")
@@ -54,40 +58,6 @@ set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 #set(ENV{CXX} "icpc")
 #set(ENV{CC}  "clang")
 #set(ENV{CXX} "clang++")
-
-# Build type
-set(CTEST_BUILD_CONFIGURATION RelWithDebInfo)
-
-# Name of this build
-find_program(UNAME NAMES uname)
-exec_program("${UNAME}" ARGS "-s" OUTPUT_VARIABLE osname)
-exec_program("${UNAME}" ARGS "-m" OUTPUT_VARIABLE "cpu")
-set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}/${CTEST_BUILD_CONFIGURATION} $ENV{CXX}")
-
-# Test type (Nightly, Continuous, Experimental)
-set(test_model "Experimental")
-
-# For continuous builds, number of seconds to stay alive
-set(test_runtime 40000)
-
-# Build flags
-set(CTEST_BUILD_FLAGS "-j2")
-
-# Source folder
-set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/..)
-
-#Build folder
-set(CTEST_BINARY_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/build_ctest)
-
-# Update type (eg. svn or git)
-set(UPDATE_TYPE git)
-set(CTEST_UPDATE_COMMAND "git")
-
-# Timeouts
-set(CTEST_TEST_TIMEOUT 200 CACHE STRING 
-    "Maximum time allowed before CTest will kill the test.") 
-set(DART_TESTING_TIMEOUT 200 CACHE STRING 
-    "Maximum time allowed before CTest will kill the test." FORCE)
 
 # Build options
 set(gismo_build_options 
@@ -102,6 +72,41 @@ set(gismo_build_options
     #-DGISMO_BUILD_COVERAGE=ON
 )
 
+# For continuous builds, number of seconds to stay alive
+set(test_runtime 40000)
+
+# ID for this computer that shows up on the dashboard.
+if(NOT HOSTNAME)
+find_program(HOSTNAME_CMD NAMES hostname)
+exec_program(${HOSTNAME_CMD} ARGS OUTPUT_VARIABLE HOSTNAME)
+set(CTEST_SITE "${HOSTNAME}")
+endif(NOT HOSTNAME)
+
+# Name of this build
+if(NOT CTEST_BUILD_NAME)
+find_program(UNAME NAMES uname)
+exec_program("${UNAME}" ARGS "-s" OUTPUT_VARIABLE osname)
+exec_program("${UNAME}" ARGS "-m" OUTPUT_VARIABLE "cpu")
+set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}/${CTEST_BUILD_CONFIGURATION} $ENV{CXX}")
+endif(NOT CTEST_BUILD_NAME)
+  
+# Source folder (defaults inside the script directory)
+set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
+
+#Build folder (defaults inside the script directory)
+set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_ctest)
+
+# Update type (eg. svn or git)
+set(UPDATE_TYPE git)
+set(CTEST_UPDATE_COMMAND "git")
+set(CTEST_GIT_COMMAND "git")
+
+# Timeouts
+set(CTEST_TEST_TIMEOUT 800 CACHE STRING 
+    "Maximum time allowed before CTest will kill the test.") 
+set(DART_TESTING_TIMEOUT 800 CACHE STRING 
+    "Maximum time allowed before CTest will kill the test." FORCE)
+
 # Coverage analysis
 #set(test_coverage TRUE)
 #set(CTEST_COVERAGE_COMMAND "/usr/bin/gcov")
@@ -113,6 +118,12 @@ set(gismo_build_options
 #set(CTEST_MEMORYCHECK_SUPPRESSIONS_FILE "/path_to/suppression_file.supp")
 #set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full --show-reachable=yes --track-origins=yes")
 
+# Initial checkout
+set(GISMO_REPOSITORY https://github.com/gismo/gismo.git)
+if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
+  message("Initial checkout...")
+  set(CTEST_CHECKOUT_COMMAND "git clone --depth 1 --branch stable ${GISMO_REPOSITORY} gismo_src")
+endif()
 
 ## #################################################################
 ## Test routines
@@ -121,6 +132,7 @@ set(gismo_build_options
 macro(run_ctests)
   ctest_configure(OPTIONS "${gismo_build_options}")
   ctest_submit(PARTS Update Notes Configure)
+  ctest_build()
   ctest_build(TARGET unittests APPEND)
   ctest_submit(PARTS Build)
   ctest_test()
@@ -140,6 +152,8 @@ macro(run_ctests)
 endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
+
+# Empty existing directory before building
 #ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
 
 ctest_start(${test_model})
