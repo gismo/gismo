@@ -33,7 +33,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, int f
     else
     {
         nodes  [fixDir].setZero(1); // numNodes == 1
-        weights[fixDir].setConstant(1, 2.000000000000000000000000000000);
+        weights[fixDir].setConstant(1, 2.0);
     }
 
     // Note: skipping accuracy and lookup tests here (commented)
@@ -53,7 +53,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const int quB, int f
     ++i;// skip fixed direction
     for(; i<d; ++i )
     {
-        const index_t numNodes = cast<T,index_t>(quA * basis.degree(i) + quB);
+        const index_t numNodes = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);
         lookupReference(numNodes, nodes[i], weights[i]);
     }
 

@@ -92,7 +92,7 @@ public:
                     unsigned         & evFlags )
     {
         // Setup Quadrature
-        rule = gsGaussRule<T>(basis, options);// harmless slicing occurs here
+        rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         //flagStabType = static_cast<unsigned>(options.askSwitch("SUPG", false));
         flagStabType = static_cast<unsigned>(options.askInt("Stabilization", 0));
