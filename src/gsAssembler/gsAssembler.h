@@ -26,6 +26,7 @@
 #include <gsPde/gsPde.h>
 #include <gsPde/gsBoundaryConditions.h>
 
+#include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsSparseSystem.h>
 
