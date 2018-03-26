@@ -226,11 +226,23 @@ public:
 
     using Base::addInterface; // unhide base function
     
-    /// Add side s of patch g to the outer boundary of the domain
+    /// Add side \a s of patch \a g to the outer boundary of the domain
     void addPatchBoundary( gsGeometry<T>* g, boxSide s ) {
         int p = findPatchIndex( g );
         gsBoxTopology::addBoundary( patchSide( p, s ) );
     }
+
+    /// Get coordinates of the patchCorner \a pc in the parameter domain
+    void coordinates( const patchCorner& pc, gsMatrix<T>& coordinates );
+
+    /// Get coordinates of the patchCorner \a pc in the physical domain
+    void physicalCoordinates( const patchCorner& pc, gsMatrix<T>& coordinates );
+
+    /// Get coordinates of the midpoint of the patchSide \a ps in the parameter domain
+    void coordinates( const patchSide& ps, gsMatrix<T>& coordinates );
+
+    /// Get coordinates of the midpoint of the the patchSide \a ps in the physical domain
+    void physicalCoordinates( const patchSide& ps, gsMatrix<T>& coordinates );
 
     /// \brief Refine uniformly all patches by inserting \a numKnots
     /// in each knot-span with multipliplicity \a mul
