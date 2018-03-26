@@ -22,6 +22,17 @@
 ## For multiple tests (eg. different compilers) make multiple copies
 ## of this file and adjust options.
 ##
+## On linux this script can be invoked in a cronjob. e.g.:
+##    $ >crontab -e
+## Add the line:
+##    0 3 * * * /path/to/script/nightly_cron.sh &>/dev/null
+## save and exit. Now with
+##    $ crontab -l
+## you can see the scheduled task.
+##
+## "0 3 * * * " means that the script will be executed
+## every night at 03:00am.
+##
 ######################################################################
 
 ## #################################################################
