@@ -145,6 +145,8 @@ endif()
 macro(run_ctests)
   ctest_configure(OPTIONS "${gismo_build_options}")
   ctest_submit(PARTS Update Notes Configure)
+  ctest_build(TARGET gsUnitTest) # for older versions of ninja
+  ctest_submit(PARTS Build)
   ctest_build()
   ctest_build(TARGET unittests APPEND)
   ctest_submit(PARTS Build)

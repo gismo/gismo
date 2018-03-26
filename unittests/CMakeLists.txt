@@ -23,7 +23,6 @@ ExternalProject_Add(gsUnitTest
 ExternalProject_Get_Property(gsUnitTest INSTALL_DIR)
 add_library(gsUnitTest_lib STATIC IMPORTED GLOBAL)
 set_property(TARGET gsUnitTest_lib PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}UnitTestPP${CMAKE_STATIC_LIBRARY_SUFFIX})
-#add_dependencies(gsUnitTest_lib gsUnitTest)
 set(GSUNITTEST_INCLUDE_DIR ${INSTALL_DIR}/include/UnitTest++ CACHE INTERNAL "")
 include_directories(${GSUNITTEST_INCLUDE_DIR})
 
