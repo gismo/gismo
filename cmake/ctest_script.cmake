@@ -47,9 +47,10 @@ set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 #set(CTEST_CMAKE_GENERATOR "CodeBlocks")
 #set(CTEST_CMAKE_GENERATOR "Sublime Text 2")
 #set(CTEST_CMAKE_GENERATOR "Eclipse CDT4")
+#set(CTEST_BUILD_FLAGS "-j12")
 
 # Set environment/compiler
-#set(ENV{MAKEFLAGS} "-j2")
+#set(ENV{MAKEFLAGS} "-j12")
 #set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
 #set(ENV{CC}  "gcc")
 #set(ENV{CXX} "g++")
