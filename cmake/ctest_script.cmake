@@ -7,7 +7,7 @@
 ##
 ## To execute:
 ##
-##   ctest -S /path/to/ctest_script.cmake
+##   ctest -j jobs -S /path/to/ctest_script.cmake
 ##
 ## It is recommended to make a copy of the file (especially using git).
 ## The script creates sources and build folders in the same directory
@@ -49,7 +49,7 @@ set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 #set(CTEST_CMAKE_GENERATOR "Eclipse CDT4")
 
 # Set environment/compiler
-#set(ENV{MAKEFLAGS=} "-j2")
+#set(ENV{MAKEFLAGS} "-j2")
 #set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
 #set(ENV{CC}  "gcc")
 #set(ENV{CXX} "g++")
@@ -70,6 +70,7 @@ set(gismo_build_options
     #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/path/to/axel
     #-DGISMO_PLAINDOX=ON
     #-DGISMO_BUILD_COVERAGE=ON
+    -DGISMO_BUILD_UNITTESTS=ON
 )
 
 # For continuous builds, number of seconds to stay alive
