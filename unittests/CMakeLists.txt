@@ -36,8 +36,8 @@ get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} PATH)
 
 
 add_executable(${PROJECT_NAME} gismo_unittest.h ${unittests_SRCS} main.cpp)
-#target_link_libraries(${PROJECT_NAME} ${GSUNITTEST_LIBRARY} gismo)
-target_link_libraries(${PROJECT_NAME} gsUnitTest_lib gismo)
+set_property(TARGET ${PROJECT_NAME} PROPERTY IMPORTED_LINK_INTERFACE_LIBRARIES gsUnitTest_lib)
+target_link_libraries(${PROJECT_NAME} gismo)
 set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 
 #CTEST_BUILD_TARGET=ALL
