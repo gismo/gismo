@@ -59,11 +59,11 @@ set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 #set(CTEST_CMAKE_GENERATOR "CodeBlocks")
 #set(CTEST_CMAKE_GENERATOR "Sublime Text 2")
 #set(CTEST_CMAKE_GENERATOR "Eclipse CDT4")
-#set(CTEST_BUILD_FLAGS "-j12")
+#set(CTEST_BUILD_JOBS "8")
+#set(CTEST_TEST_JOBS  "10")
 
 # Set environment/compiler
 #set(ENV{MAKEFLAGS} "-j12")
-#set(ENV{CTEST_PARALLEL_LEVEL} 12) # for testing phase
 #set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
 #set(ENV{CC}  "gcc")
 #set(ENV{CXX} "g++")
@@ -93,16 +93,16 @@ set(test_runtime 40000)
 # ID for this computer that shows up on the dashboard.
 if(NOT HOSTNAME)
 find_program(HOSTNAME_CMD NAMES hostname)
-execute_process(COMMAND ${HOSTNAME_CMD} OUTPUT_VARIABLE HOSTNAME)
+execute_process(COMMAND ${HOSTNAME_CMD} OUTPUT_VARIABLE HOSTNAME OUTPUT_STRIP_TRAILING_WHITESPACE)
 set(CTEST_SITE "${HOSTNAME}")
 endif(NOT HOSTNAME)
 
 # Name of this build
 if(NOT CTEST_BUILD_NAME)
 find_program(UNAME NAMES uname)
-execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname)
-execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu")
-set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}/${CTEST_CONFIGURATION_TYPE} $ENV{CXX}")
+execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
+set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE} $ENV{CXX}")
 endif(NOT CTEST_BUILD_NAME)
   
 # Source folder (defaults inside the script directory)
@@ -121,6 +121,9 @@ set(CTEST_TEST_TIMEOUT 800 CACHE STRING
     "Maximum time allowed before CTest will kill the test.") 
 set(DART_TESTING_TIMEOUT 800 CACHE STRING 
     "Maximum time allowed before CTest will kill the test." FORCE)
+
+# Empty existing directory before building
+#ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
 
 # Coverage analysis
 #set(test_coverage TRUE)
@@ -144,6 +147,31 @@ endif()
 ## Test routines
 ## #################################################################
 
+include(ProcessorCount)
+ProcessorCount(NPROC)
+message("Number of processors: ${NPROC}")
+if(${NPROC} EQUAL 0)
+  set(NPROC 1)
+endif()
+
+if(NOT CTEST_BUILD_JOBS)
+include(ProcessorCount)
+if(${NPROC} GREATER 20)
+  set(CTEST_BUILD_JOBS 20)
+else()
+  set(CTEST_BUILD_JOBS ${NPROC})
+endif()
+endif(NOT CTEST_BUILD_JOBS)
+if(NOT CTEST_TEST_JOBS)
+set(CTEST_TEST_JOBS ${NPROC})
+endif(NOT CTEST_TEST_JOBS)
+
+if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
+  OR ${CTEST_CMAKE_GENERATOR} MATCHES "Ninja")
+  set(CTEST_BUILD_FLAGS "-j ${CTEST_BUILD_JOBS}")
+#message("Build flags: ${CTEST_BUILD_FLAGS}")
+endif()
+
 macro(run_ctests)
   ctest_configure(OPTIONS "${gismo_build_options}")
   ctest_submit(PARTS Update Notes Configure)
@@ -152,7 +180,7 @@ macro(run_ctests)
   ctest_build()
   ctest_build(TARGET unittests APPEND)
   ctest_submit(PARTS Build)
-  ctest_test()
+  ctest_test(PARALLEL LEVEL ${CTEST_TEST_JOBS})
   ctest_submit(PARTS Test)
 
   if(test_coverage)
@@ -169,9 +197,6 @@ macro(run_ctests)
 endmacro(run_ctests)
 
 file(MAKE_DIRECTORY "${CTEST_BINARY_DIRECTORY}")
-
-# Empty existing directory before building
-#ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
 
 ctest_start(${test_model})
 
