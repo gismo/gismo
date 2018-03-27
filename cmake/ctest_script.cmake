@@ -40,6 +40,8 @@
 ## Configuration
 ## #################################################################
 
+set(CTEST_USE_LAUNCHERS 1)
+
 # Test type (Nightly, Continuous, Experimental)
 set(test_model "Experimental")
 
@@ -59,8 +61,8 @@ set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 #set(CTEST_CMAKE_GENERATOR "CodeBlocks")
 #set(CTEST_CMAKE_GENERATOR "Sublime Text 2")
 #set(CTEST_CMAKE_GENERATOR "Eclipse CDT4")
-#set(CTEST_BUILD_JOBS "8")
-#set(CTEST_TEST_JOBS  "10")
+#set(CTEST_BUILD_JOBS 8)
+#set(CTEST_TEST_JOBS 10)
 
 # Set environment/compiler
 #set(ENV{MAKEFLAGS} "-j12")
@@ -173,14 +175,15 @@ if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
 endif()
 
 macro(run_ctests)
+  ctest_submit(PARTS Update)
   ctest_configure(OPTIONS "${gismo_build_options}")
-  ctest_submit(PARTS Update Notes Configure)
+  ctest_submit(PARTS Configure)
   ctest_build(TARGET gsUnitTest) # for older versions of ninja
   ctest_submit(PARTS Build)
   ctest_build()
   ctest_build(TARGET unittests APPEND)
   ctest_submit(PARTS Build)
-  ctest_test(PARALLEL LEVEL ${CTEST_TEST_JOBS})
+  ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})
   ctest_submit(PARTS Test)
 
   if(test_coverage)
