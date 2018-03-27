@@ -239,35 +239,22 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
     gsBoxTopology::addInterface( p1, s1, p2, s2 );
 }
 
-
 template<class T>
-void gsMultiPatch<T>::coordinates( const patchCorner& pc, gsMatrix<T>& coordinates )
+gsMatrix<T> gsMultiPatch<T>::pointOn( const patchCorner& pc )
 {
-    coordinates.resize(m_dim,1);
-    gsMatrix<T> supp = m_patches[pc.patch]->parameterRange();
-    gsVector<bool> boxPar = pc.parameters(m_dim);
-    for (index_t d=0; d<m_dim;++d)
-        coordinates(d,0) = boxPar(d) ? supp(d,1) : supp(d,0);
+    gsMatrix<T> coordinates;
+    m_patches[pc.patch]->eval_into(m_patches[pc.patch]->parameterCenter(pc),coordinates);
+    return coordinates;
 }
 
-template<class T>
-void gsMultiPatch<T>::physicalCoordinates( const patchCorner& pc, gsMatrix<T>& coordinates )
-{ gsMatrix<T> tmp; gsMultiPatch<T>::coordinates(pc,tmp); m_patches[pc.patch]->eval_into(tmp,coordinates); }
 
 template<class T>
-void gsMultiPatch<T>::coordinates( const patchSide& ps, gsMatrix<T>& coordinates )
+gsMatrix<T> gsMultiPatch<T>::pointOn( const patchSide& ps )
 {
-    coordinates.resize(m_dim,1);
-    gsMatrix<T> supp = m_patches[ps.patch]->parameterRange();
-    const index_t dir = ps.direction();
-    for (index_t d=0; d<m_dim;++d)
-        coordinates(d,0) = d == dir ? ( ps.parameter() ? supp(d,1) : supp(d,0) )
-                                    : ( ( supp(d,1) + supp(d,0) ) / 2 );
+    gsMatrix<T> coordinates;
+    m_patches[ps.patch]->eval_into(m_patches[ps.patch]->parameterCenter(ps),coordinates);
+    return coordinates;
 }
-
-template<class T>
-void gsMultiPatch<T>::physicalCoordinates( const patchSide& ps, gsMatrix<T>& coordinates )
-{ gsMatrix<T> tmp; gsMultiPatch<T>::coordinates(ps,tmp); m_patches[ps.patch]->eval_into(tmp,coordinates); }
 
 template<class T>
 void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)

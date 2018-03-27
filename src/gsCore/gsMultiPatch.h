@@ -232,17 +232,11 @@ public:
         gsBoxTopology::addBoundary( patchSide( p, s ) );
     }
 
-    /// Get coordinates of the patchCorner \a pc in the parameter domain
-    void coordinates( const patchCorner& pc, gsMatrix<T>& coordinates );
-
     /// Get coordinates of the patchCorner \a pc in the physical domain
-    void physicalCoordinates( const patchCorner& pc, gsMatrix<T>& coordinates );
-
-    /// Get coordinates of the midpoint of the patchSide \a ps in the parameter domain
-    void coordinates( const patchSide& ps, gsMatrix<T>& coordinates );
+    gsMatrix<T> pointOn( const patchCorner& pc );
 
     /// Get coordinates of the midpoint of the the patchSide \a ps in the physical domain
-    void physicalCoordinates( const patchSide& ps, gsMatrix<T>& coordinates );
+    gsMatrix<T> pointOn( const patchSide& ps );
 
     /// \brief Refine uniformly all patches by inserting \a numKnots
     /// in each knot-span with multipliplicity \a mul
