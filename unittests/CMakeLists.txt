@@ -18,7 +18,7 @@ ExternalProject_Add(gsUnitTest
           #DOWNLOAD_NO_PROGRESS 0
           CMAKE_ARGS   -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-          #BUILD_BYPRODUCTS <INSTALL_DIR>/lib/${CMAKE_STATIC_LIBRARY_PREFIX}UnitTestPP${CMAKE_STATIC_LIBRARY_SUFFIX}
+          BUILD_BYPRODUCTS <INSTALL_DIR>/lib/${CMAKE_STATIC_LIBRARY_PREFIX}UnitTestPP${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
 ExternalProject_Get_Property(gsUnitTest INSTALL_DIR)
 add_library(gsUnitTest_lib STATIC IMPORTED GLOBAL)
@@ -36,8 +36,8 @@ get_filename_component(PARENT_DIR ${PROJECT_SOURCE_DIR} PATH)
 
 
 add_executable(${PROJECT_NAME} gismo_unittest.h ${unittests_SRCS} main.cpp)
-#target_link_libraries(${PROJECT_NAME} ${GSUNITTEST_LIBRARY} gismo)
-target_link_libraries(${PROJECT_NAME} gsUnitTest_lib gismo)
+set_property(TARGET ${PROJECT_NAME} PROPERTY IMPORTED_LINK_INTERFACE_LIBRARIES gsUnitTest_lib)
+target_link_libraries(${PROJECT_NAME} gismo gsUnitTest_lib)
 set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 
 #CTEST_BUILD_TARGET=ALL
