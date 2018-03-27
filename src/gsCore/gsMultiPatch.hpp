@@ -239,6 +239,22 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
     gsBoxTopology::addInterface( p1, s1, p2, s2 );
 }
 
+template<class T>
+gsMatrix<T> gsMultiPatch<T>::pointOn( const patchCorner& pc )
+{
+    gsMatrix<T> coordinates;
+    m_patches[pc.patch]->eval_into(m_patches[pc.patch]->parameterCenter(pc),coordinates);
+    return coordinates;
+}
+
+
+template<class T>
+gsMatrix<T> gsMultiPatch<T>::pointOn( const patchSide& ps )
+{
+    gsMatrix<T> coordinates;
+    m_patches[ps.patch]->eval_into(m_patches[ps.patch]->parameterCenter(ps),coordinates);
+    return coordinates;
+}
 
 template<class T>
 void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
