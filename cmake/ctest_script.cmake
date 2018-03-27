@@ -62,10 +62,11 @@ set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 
 # Set environment/compiler
 #set(ENV{MAKEFLAGS} "-j12")
+#set(ENV{CTEST_PARALLEL_LEVEL} 12) # for testing phase
 #set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
 #set(ENV{CC}  "gcc")
 #set(ENV{CXX} "g++")
-#exec_program(source ARGS "/path/to/iccvars.sh intel64")
+#execute_process(COMMAND source "/path/to/iccvars.sh intel64")
 #set(ENV{CC}  "icc")
 #set(ENV{CXX} "icpc")
 #set(ENV{CC}  "clang")
@@ -91,16 +92,16 @@ set(test_runtime 40000)
 # ID for this computer that shows up on the dashboard.
 if(NOT HOSTNAME)
 find_program(HOSTNAME_CMD NAMES hostname)
-exec_program(${HOSTNAME_CMD} ARGS OUTPUT_VARIABLE HOSTNAME)
+execute_process(COMMAND ${HOSTNAME_CMD} OUTPUT_VARIABLE HOSTNAME)
 set(CTEST_SITE "${HOSTNAME}")
 endif(NOT HOSTNAME)
 
 # Name of this build
 if(NOT CTEST_BUILD_NAME)
 find_program(UNAME NAMES uname)
-exec_program("${UNAME}" ARGS "-s" OUTPUT_VARIABLE osname)
-exec_program("${UNAME}" ARGS "-m" OUTPUT_VARIABLE "cpu")
-set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}/${CTEST_BUILD_CONFIGURATION} $ENV{CXX}")
+execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname)
+execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu")
+set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}/${CTEST_CONFIGURATION_TYPE} $ENV{CXX}")
 endif(NOT CTEST_BUILD_NAME)
   
 # Source folder (defaults inside the script directory)
