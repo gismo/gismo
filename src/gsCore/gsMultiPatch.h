@@ -235,7 +235,10 @@ public:
     /// Get coordinates of the patchCorner \a pc in the physical domain
     gsMatrix<T> pointOn( const patchCorner& pc );
 
-    /// Get coordinates of the midpoint of the the patchSide \a ps in the physical domain
+    /// @brief Get coordinates of a central point of the the patchSide \a ps in the physical domain
+    ///
+    /// The central point in the physical domain is the the midpoint on the parameter domain,
+    /// mapped to the physical domain
     gsMatrix<T> pointOn( const patchSide& ps );
 
     /// \brief Refine uniformly all patches by inserting \a numKnots
