@@ -56,7 +56,7 @@ set(CTEST_CONFIGURATION_TYPE Release)
 # ("Unix Makefiles", "Ninja", "Xcode", "NMake Makefiles", "NMake Makefiles JOM",
 #  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
 #  "Visual Studio 14 2015 Win64", and so on)
-#set(CTEST_CMAKE_GENERATOR "Ninja")
+set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 
 # The above parameters can be reset by passing upto 4 arguments
 # e.g. as: ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja"
@@ -141,7 +141,7 @@ set(CTEST_GIT_COMMAND "/usr/bin/git")
 
 # Initial checkout
 if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
-  message("Initial checkout...")
+  #message("Initial checkout...")
   set(GISMO_REPOSITORY https://github.com/gismo/gismo.git)
   set(CTEST_CHECKOUT_COMMAND "${CTEST_GIT_COMMAND} clone --depth 1 --branch stable ${GISMO_REPOSITORY} gismo_src")
 endif()
@@ -203,7 +203,7 @@ set(CTEST_TEST_JOBS ${CTEST_BUILD_JOBS})
 endif()
 
 if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
-  OR ${CTEST_CMAKE_GENERATOR} MATCHES "Ninja")
+  OR "${CTEST_CMAKE_GENERATOR}" MATCHES "Ninja")
   set(CTEST_BUILD_FLAGS "-j ${CTEST_BUILD_JOBS}")
 #message("Build flags: ${CTEST_BUILD_FLAGS}")
 endif()
@@ -220,13 +220,13 @@ macro(run_ctests)
   ctest_submit(PARTS Test)
 
   if(test_coverage)
-     message("Running coverage..")
+     #message("Running coverage..")
      ctest_coverage(BUILD "${CTEST_BINARY_DIRECTORY}" APPEND)
      ctest_submit(PARTS Coverage)
   endif()
 
   if(test_memcheck)
-    message("Running memcheck..")
+    #message("Running memcheck..")
     ctest_memcheck()
     ctest_submit(PARTS MemCheck)
   endif()

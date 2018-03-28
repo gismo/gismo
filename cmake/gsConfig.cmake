@@ -95,8 +95,9 @@ if(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
   # see http://www.cmake.org/Wiki/CTest:Coverage
   # and http://cmake.3232098.n2.nabble.com/Running-coverage-analysis-td7145452.html
   include(CodeCoverage)
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ftest-coverage -fprofile-arcs")
-  set(CMAKE_EXE_LINKER_FLAGS "-fprofile-arcs -ftest-coverage")
+  APPEND_COVERAGE_COMPILER_FLAGS()
+  #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ftest-coverage -fprofile-arcs")
+  #set(CMAKE_EXE_LINKER_FLAGS "-fprofile-arcs -ftest-coverage")
 endif(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
