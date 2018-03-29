@@ -14,8 +14,7 @@
 
 #pragma once
 
-#include <vector>
-#include <iostream>
+#include <gsCore/gsExport.h>
 
 namespace gismo {
 
@@ -25,7 +24,7 @@ template <class T > class gsSolidHalfFace;
 template <class T > class gsVolumeBlock;
 
 template <class T >
-class gsSolidElement
+class GISMO_DEFAULT_VIS gsSolidElement
 {
 public:
     typedef T scalar_t;
@@ -40,6 +39,8 @@ private:
 public:
     explicit gsSolidElement(int i = 0) : id(i)
     { }
+
+    virtual ~gsSolidElement() { }
 
     int getId() const   { return id; }
     void setId(int i)   { id=i; }

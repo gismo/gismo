@@ -72,7 +72,7 @@ struct lvl_coef
  */
 
 template<unsigned d, class T>
-class gsHTensorBasis: public gsBasis<T>
+class GISMO_DEFAULT_VIS gsHTensorBasis: public gsBasis<T>
 {
 public:
     /// Shared pointer for gsHTensorBasis

@@ -333,7 +333,7 @@ void gsFileManager::open(const std::string & fn)
 
 #if defined(__APPLE__)
     const int ret = std::system( ("open " + fn + " &").c_str() );
-#elif defined(__linux__)
+#elif defined(__unix__) //__linux__
     const int ret = std::system( ("xdg-open " + fn + " &").c_str() );
 #elif defined(_WIN32)
     HINSTANCE hi = ShellExecute(GetDesktopWindow(), "open", fn.c_str(),

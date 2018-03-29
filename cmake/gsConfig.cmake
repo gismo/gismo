@@ -148,13 +148,15 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
   endif()
 
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-  # Update if necessary
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wattributes") # -Wno-ignored-attributes
+  # Note: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431
+  # affects -Wno-ignored-attributes in Eigen
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wno-ignored-attributes -Wattributes")
   # -Woverloaded-virtual -Wconversion -Wextra -pedantic
   if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftrack-macro-expansion=0")
   endif()
-  if ("x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
+  if ("x${CMAKE_CXX_STANDARD}" STREQUAL "x98"
+      AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.2)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-compat")
   endif()
 endif()

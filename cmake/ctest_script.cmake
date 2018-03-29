@@ -84,12 +84,14 @@ read_args(${CTEST_SCRIPT_ARG})
 #set(ENV{CXX} "/usr/bin/g++")
 
 # Other Environment variables and scripts
+#set(ENV{CXXFLAGS} "-Ofast")
 #execute_process(COMMAND source "/path/to/iccvars.sh intel64")
 #set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
 #set(ENV{MAKEFLAGS} "-j12")
 
 # Build options
 set(gismo_build_options
+    -DGISMO_WARNINGS=OFF
     -DGISMO_COEFF_TYPE=double
     -DGISMO_BUILD_LIB=ON
     #-DCMAKE_CXX_STANDARD=11
@@ -102,9 +104,12 @@ set(gismo_build_options
     #-DGISMO_WITH_PSOLID=ON -DParasolid_DIR=/path/to/parasolid
     #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/path/to/axel
     -DGISMO_WITH_ONURBS=ON
-    -DGISMO_BUILD_COVERAGE=OFF
+    -DGISMO_WITH_TRILINOS=OFF
+    -DGISMO_WITH_SPECTRA=OFF
     -DGISMO_EXTRA_DEBUG=OFF
+    -DGISMO_BUILD_PCH=OFF
     #-DGISMO_PLAINDOX=ON
+    -DGISMO_BUILD_COVERAGE=OFF
 )
 
 # Computer ID shown on the dashboard (will be set automatically)
@@ -148,6 +153,10 @@ endif()
 
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
+
+# Ignore certain tests during test or memcheck
+#set(CTEST_CUSTOM_TESTS_IGNORE "")
+#set(CTEST_CUSTOM_MEMCHECK_IGNORE "")
 
 ## #################################################################
 ## Test routines

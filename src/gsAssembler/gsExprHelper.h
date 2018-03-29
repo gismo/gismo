@@ -123,13 +123,11 @@ public:
         return mapVar;
     }
 
-    // /*
     geometryMap getMap() const
     {
-        //assert initialized
+        GISMO_ASSERT(mapVar.isValid(), "The Geometry map is not initialized)");
         return mapVar;
     }
-    //*/
 
     nonConstVariable getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
