@@ -204,7 +204,7 @@ if(${NPROC} GREATER 20)
   set(CTEST_BUILD_JOBS 20)
 else()
   math(EXPR CTEST_BUILD_JOBS "(1+${NPROC})>>1")
-  message("CTEST_BUILD_JOBS ${CTEST_BUILD_JOBS}")
+  #message("CTEST_BUILD_JOBS ${CTEST_BUILD_JOBS}")
 endif()
 endif()
 
