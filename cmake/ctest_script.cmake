@@ -122,7 +122,7 @@ set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
 set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_build)
 
 # Empty existing directory before building (otherwise builds are incremental)
-ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+#ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
 
 # Test timeout in seconds
 set(CTEST_TEST_TIMEOUT 800)
@@ -203,7 +203,8 @@ endif()
 if(${NPROC} GREATER 20)
   set(CTEST_BUILD_JOBS 20)
 else()
-  set(CTEST_BUILD_JOBS ${NPROC})
+  math(EXPR CTEST_BUILD_JOBS "(1+${NPROC})>>1")
+  message("CTEST_BUILD_JOBS ${CTEST_BUILD_JOBS}")
 endif()
 endif()
 
