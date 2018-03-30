@@ -3,7 +3,7 @@
 ## This file is part of the G+Smo library.
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012-2015 - RICAM-Linz.
+## Copyright (C) 2012-2018 - RICAM-Linz.
 ######################################################################
 
 cmake_minimum_required(VERSION 2.8.8)
@@ -104,8 +104,6 @@ configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
-file(COPY "${PROJECT_SOURCE_DIR}/CTestConfig.cmake"
-    DESTINATION "${PROJECT_BINARY_DIR}")
 
 include_directories(${PROJECT_BINARY_DIR})
 
@@ -303,7 +301,6 @@ if(GISMO_BUILD_UNITTESTS)
 else()
   add_subdirectory(unittests EXCLUDE_FROM_ALL)
 endif(GISMO_BUILD_UNITTESTS)
-
 
 add_subdirectory(optional)
 

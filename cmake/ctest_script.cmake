@@ -77,11 +77,11 @@ macro(read_args)
 endmacro(read_args)
 read_args(${CTEST_SCRIPT_ARG})
 
-# C compiler,  e.g. "/usr/bin/gcc", "/usr/bin/icc", "/usr/bin/clang"
-#set(ENV{CC}  "/usr/bin/gcc")
-
-# C++ compiler,  e.g. "/usr/bin/g++", "/usr/bin/icpc", "/usr/bin/clang++"
-#set(ENV{CXX} "/usr/bin/g++")
+# C/C++ compilers,  e.g. "cc/g++", "icc/icpc", "clang/clang++"
+find_program (CC NAMES cc)
+set(ENV{CC}  ${CC})
+find_program (CXX NAMES g++)
+set(ENV{CXX}  ${CXX})
 
 # Other Environment variables and scripts
 #set(ENV{CXXFLAGS} "-Ofast")
@@ -122,7 +122,7 @@ set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
 set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_build)
 
 # Empty existing directory before building (otherwise builds are incremental)
-#ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
 
 # Test timeout in seconds
 set(CTEST_TEST_TIMEOUT 800)
@@ -141,8 +141,8 @@ set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --leak-check=yes -q")
 
 # Update type (eg. svn or git)
 set(UPDATE_TYPE git)
-set(CTEST_UPDATE_COMMAND "/usr/bin/git")
-set(CTEST_GIT_COMMAND "/usr/bin/git")
+find_program (CTEST_GIT_COMMAND NAMES ${UPDATE_TYPE})
+set (CTEST_UPDATE_COMMAND "${CTEST_GIT_COMMAND}")
 
 # Initial checkout
 if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
@@ -170,7 +170,7 @@ else()
 endif()
 
 set(ENV{CTEST_OUTPUT_ON_FAILURE} 1)
-set(DART_TESTING_TIMEOUT ${CTEST_TEST_TIMEOUT})
+set( $ENV{LC_MESSAGES}      "en_EN" )
 
 if(NOT DEFINED CTEST_TEST_MODEL AND DEFINED ENV{CTEST_TEST_MODEL})
   set(CTEST_TEST_MODEL $ENV{CTEST_TEST_MODEL})
@@ -190,7 +190,7 @@ if(NOT DEFINED CTEST_BUILD_NAME)
 find_program(UNAME NAMES uname)
 execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE} $ENV{CXX}")
+set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-$ENV{CXX}")
 endif()
 
 if(NOT CTEST_BUILD_JOBS)
@@ -218,7 +218,7 @@ if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
 endif()
 
 macro(run_ctests)
-  ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS}")
+  ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
   ctest_submit(PARTS Configure Update)
   ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
   ctest_submit(PARTS Build)
