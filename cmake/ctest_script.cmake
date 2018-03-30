@@ -96,7 +96,7 @@ set(gismo_build_options
     -DGISMO_BUILD_LIB=ON
     #-DCMAKE_CXX_STANDARD=11
     -DGISMO_BUILD_EXAMPLES=ON
-    -DGISMO_BUILD_UNITTESTS=ON
+    -DGISMO_BUILD_UNITTESTS=OFF
     #-DGISMO_WITH_OPENMP=ON
     #-DGISMO_WITH_MPI=ON
     #-DGISMO_WITH_SPECTRA=ON
@@ -218,11 +218,12 @@ if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
 endif()
 
 macro(run_ctests)
-  ctest_submit(PARTS Update)
   ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS}")
-  ctest_submit(PARTS Configure)
-  ctest_build(TARGET gsUnitTest) # for older versions of ninja
+  ctest_submit(PARTS Configure Update)
+  ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
+  ctest_submit(PARTS Build)
   ctest_build(APPEND)
+  ctest_submit(PARTS Build)
   ctest_build(TARGET unittests APPEND)
   ctest_submit(PARTS Build)
   ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})

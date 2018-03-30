@@ -765,7 +765,8 @@ public:
 
         return numEl;
     }
-
+    using gsBasis<T>::numElements; //unhide
+        
     /// @brief transformes a sortedVector \a indexes of flat tensor index
     /// of the bspline basis of \a level to hierachical indexes in place. If a flat
     /// tensor index is not found, it will transform to -1.

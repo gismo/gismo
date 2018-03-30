@@ -99,10 +99,6 @@ public:
     
 public:
 
-// ////////////////////////////////////////////////
-// Virtual member functions required by the base class
-// ////////////////////////////////////////////////
-
     // Returns the dimension of the basis
     int domainDim() const { return Dim; }
 
@@ -404,15 +400,13 @@ public:
     }
 
     // Look at gsBasis class for documentation 
-    virtual void degreeReduce(int const & i = 1)
-    { 
+    virtual void degreeReduce(int const & i = 1, int const dir = -1)
+    {
+        GISMO_ASSERT( static_cast<int>(dir) < this->dim(),
+                      "Invalid basis component requested" );
         for (unsigned j = 0; j < d; ++j)
             m_bases[j]->degreeReduce(i);
     }
-
-// ////////////////////////////////////////////////
-// Additional members for Tensor Basis
-// ////////////////////////////////////////////////
 
     /// Get a const-iterator to the beginning of the bases vector
     /// \return an iterator to the beginning of the bases vector
