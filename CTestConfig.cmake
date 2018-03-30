@@ -1,23 +1,15 @@
-## This file should be placed in the root directory of your project.
-## Then modify the CMakeLists.txt file in the root directory of your
-## project to incorporate the testing dashboard.
+######################################################################
+## CTestConfig.txt
+## This file is part of the G+Smo library.
 ##
-## # The following are required to submit to the CDash dashboard:
-##   ENABLE_TESTING()
-##   INCLUDE(CTest)
+## Set test timeout (secs) by -DDART_TESTING_TIMEOUT=.. in cmake args
+######################################################################
 
 set(CTEST_PROJECT_NAME "Gismo-stable")
 set(CTEST_NIGHTLY_START_TIME "00:00:01 UTC")
-
-#set(CTEST_BUILD_FLAGS "-j2" CACHE INTERNAL "")
-#set(CTEST_TEST_TIMEOUT 200  CACHE INTERNAL "")
-#set(DART_TESTING_TIMEOUT ${CTEST_TEST_TIMEOUT} CACHE INTERNAL "")
-
 set(CTEST_DROP_METHOD "https")
 set (# disable certificate (self-signed)
-CTEST_CURL_OPTIONS
-"CURLOPT_SSL_VERIFYPEER_OFF"
-"CURLOPT_SSL_VERIFYHOST_OFF" )
+CTEST_CURL_OPTIONS "CURLOPT_SSL_VERIFYPEER_OFF" "CURLOPT_SSL_VERIFYHOST_OFF")
 set(CTEST_DROP_SITE "cdash.ricam.oeaw.ac.at")
 set(CTEST_DROP_LOCATION "/submit.php?project=Gismo-stable")
 set(CTEST_DROP_SITE_CDASH TRUE)

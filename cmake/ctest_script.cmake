@@ -77,24 +77,26 @@ macro(read_args)
 endmacro(read_args)
 read_args(${CTEST_SCRIPT_ARG})
 
-# C compiler,  e.g. "/usr/bin/gcc", "/usr/bin/icc", "/usr/bin/clang"
-#set(ENV{CC}  "/usr/bin/gcc")
-
-# C++ compiler,  e.g. "/usr/bin/g++", "/usr/bin/icpc", "/usr/bin/clang++"
-#set(ENV{CXX} "/usr/bin/g++")
+# C/C++ compilers,  e.g. "cc/g++", "icc/icpc", "clang/clang++"
+find_program (CC NAMES cc)
+set(ENV{CC}  ${CC})
+find_program (CXX NAMES g++)
+set(ENV{CXX}  ${CXX})
 
 # Other Environment variables and scripts
+#set(ENV{CXXFLAGS} "-Ofast")
 #execute_process(COMMAND source "/path/to/iccvars.sh intel64")
 #set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
 #set(ENV{MAKEFLAGS} "-j12")
 
 # Build options
 set(gismo_build_options
+    -DGISMO_WARNINGS=OFF
     -DGISMO_COEFF_TYPE=double
     -DGISMO_BUILD_LIB=ON
     #-DCMAKE_CXX_STANDARD=11
     -DGISMO_BUILD_EXAMPLES=ON
-    -DGISMO_BUILD_UNITTESTS=ON
+    -DGISMO_BUILD_UNITTESTS=OFF
     #-DGISMO_WITH_OPENMP=ON
     #-DGISMO_WITH_MPI=ON
     #-DGISMO_WITH_SPECTRA=ON
@@ -102,9 +104,12 @@ set(gismo_build_options
     #-DGISMO_WITH_PSOLID=ON -DParasolid_DIR=/path/to/parasolid
     #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/path/to/axel
     -DGISMO_WITH_ONURBS=ON
-    -DGISMO_BUILD_COVERAGE=OFF
+    -DGISMO_WITH_TRILINOS=OFF
+    -DGISMO_WITH_SPECTRA=OFF
     -DGISMO_EXTRA_DEBUG=OFF
+    -DGISMO_BUILD_PCH=OFF
     #-DGISMO_PLAINDOX=ON
+    -DGISMO_BUILD_COVERAGE=OFF
 )
 
 # Computer ID shown on the dashboard (will be set automatically)
@@ -136,8 +141,8 @@ set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --leak-check=yes -q")
 
 # Update type (eg. svn or git)
 set(UPDATE_TYPE git)
-set(CTEST_UPDATE_COMMAND "/usr/bin/git")
-set(CTEST_GIT_COMMAND "/usr/bin/git")
+find_program (CTEST_GIT_COMMAND NAMES ${UPDATE_TYPE})
+set (CTEST_UPDATE_COMMAND "${CTEST_GIT_COMMAND}")
 
 # Initial checkout
 if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
@@ -148,6 +153,10 @@ endif()
 
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
+
+# Ignore certain tests during test or memcheck
+#set(CTEST_CUSTOM_TESTS_IGNORE "")
+#set(CTEST_CUSTOM_MEMCHECK_IGNORE "")
 
 ## #################################################################
 ## Test routines
@@ -161,7 +170,7 @@ else()
 endif()
 
 set(ENV{CTEST_OUTPUT_ON_FAILURE} 1)
-set(DART_TESTING_TIMEOUT ${CTEST_TEST_TIMEOUT})
+set( $ENV{LC_MESSAGES}      "en_EN" )
 
 if(NOT DEFINED CTEST_TEST_MODEL AND DEFINED ENV{CTEST_TEST_MODEL})
   set(CTEST_TEST_MODEL $ENV{CTEST_TEST_MODEL})
@@ -181,7 +190,7 @@ if(NOT DEFINED CTEST_BUILD_NAME)
 find_program(UNAME NAMES uname)
 execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE} $ENV{CXX}")
+set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-$ENV{CXX}")
 endif()
 
 if(NOT CTEST_BUILD_JOBS)
@@ -194,7 +203,8 @@ endif()
 if(${NPROC} GREATER 20)
   set(CTEST_BUILD_JOBS 20)
 else()
-  set(CTEST_BUILD_JOBS ${NPROC})
+  math(EXPR CTEST_BUILD_JOBS "(1+${NPROC})>>1")
+  #message("CTEST_BUILD_JOBS ${CTEST_BUILD_JOBS}")
 endif()
 endif()
 
@@ -209,11 +219,12 @@ if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
 endif()
 
 macro(run_ctests)
-  ctest_submit(PARTS Update)
-  ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS}")
-  ctest_submit(PARTS Configure)
-  ctest_build(TARGET gsUnitTest) # for older versions of ninja
+  ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
+  ctest_submit(PARTS Configure Update)
+  ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
+  ctest_submit(PARTS Build)
   ctest_build(APPEND)
+  ctest_submit(PARTS Build)
   ctest_build(TARGET unittests APPEND)
   ctest_submit(PARTS Build)
   ctest_test(PARALLEL_LEVEL ${CTEST_TEST_JOBS})

@@ -840,7 +840,7 @@ public:
     virtual void degreeElevate(int const & i = 1, int const dir = -1);
 
     /// @brief Reduce the degree of the basis by the given amount, preserve smoothness.
-    virtual void degreeReduce(int const & i = 1);
+    virtual void degreeReduce(int const & i = 1, int const dir = -1);
 
     /// @brief Elevate the degree of the basis by the given amount, preserve knots multiplicity.
     virtual void degreeIncrease(int const & i = 1, int const dir = -1);

@@ -42,15 +42,18 @@
 #  define GISMO_EXPORT
 #  define GISMO_IMPORT
 //#  define GISMO_LOCAL
+#  define GISMO_DEFAULT_VIS //GCC warns when base/derived class differ in visibility, this macro allows to add attribute to the templated base
 
 #elif defined(@PROJECT_NAME@_EXPORTS) // building shared library: export, don't import
 
 #  if defined(_WIN32) || defined(__CYGWIN__)
 #    define GISMO_EXPORT __declspec(dllexport) //equiv. __attribute__ ((dllexport))
 //#    define GISMO_LOCAL
+#    define GISMO_DEFAULT_VIS
 #  else						                
 #    define GISMO_EXPORT __attribute__((visibility("default")))
 //#    define GISMO_LOCAL  __attribute__((visibility("hidden" )))
+#    define GISMO_DEFAULT_VIS __attribute__((visibility("default")))
 #  endif
 #  define GISMO_IMPORT
 
@@ -66,7 +69,7 @@
 #    define GISMO_IMPORT //__attribute__ ((dllimport))
 #  endif
 //#  define GISMO_LOCAL
-
+#  define GISMO_DEFAULT_VIS
 #endif
 
 

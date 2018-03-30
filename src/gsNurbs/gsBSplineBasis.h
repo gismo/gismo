@@ -166,6 +166,7 @@ public:
 
     // Look at gsBasis class for a description
     int numElements() const { return m_knots.numElements(); }
+    using Base::numElements; //unhide
 
     // Look at gsBasis class for a description
     int elementIndex(const gsVector<T> & u ) const;
@@ -464,8 +465,9 @@ public:
     }
 
     // Look at gsBasis for documentation
-    void degreeReduce (int const & i = 1) 
-    { 
+    void degreeReduce (int const & i = 1, int const dir = -1) 
+    {
+        GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         GISMO_ASSERT( i<=m_p, "Cannot reduce degree to negative");
         m_p-=i; m_knots.degreeReduce(i);
         //m_periodic =

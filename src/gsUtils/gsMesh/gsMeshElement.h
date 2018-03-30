@@ -37,6 +37,8 @@ public:
     explicit gsMeshElement(int i = 0) : id(i)
     { }
 
+    virtual ~gsMeshElement() { }
+    
     int getId() const   { return id; }
     void setId(int i)   { id=i; }
  
