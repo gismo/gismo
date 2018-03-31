@@ -58,7 +58,10 @@ set(CTEST_CONFIGURATION_TYPE Release)
 #  "Visual Studio 14 2015 Win64", and so on)
 set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 
-# The above parameters can be reset by passing upto 4 arguments
+set(CNAME cc)
+set(CXXNAME g++)
+
+# The above parameters can be reset by passing upto 6 arguments
 # e.g. as: ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja"
 macro(read_args)
   set(narg ${ARGC})
@@ -74,13 +77,17 @@ macro(read_args)
   if (narg GREATER 3)
     set(CTEST_CMAKE_GENERATOR "${ARGV3}")
   endif()
+  if (narg GREATER 5)
+    set(CNAME "${ARGV4}")
+    set(CXXNAME "${ARGV5}")
+  endif()
 endmacro(read_args)
 read_args(${CTEST_SCRIPT_ARG})
 
 # C/C++ compilers,  e.g. "cc/g++", "icc/icpc", "clang/clang++"
-find_program (CC NAMES cc)
+find_program (CC NAMES ${CNAME})
 set(ENV{CC}  ${CC})
-find_program (CXX NAMES g++)
+find_program (CXX NAMES ${CXXNAME})
 set(ENV{CXX}  ${CXX})
 
 # Other Environment variables and scripts
@@ -109,50 +116,55 @@ set(gismo_build_options
     -DGISMO_EXTRA_DEBUG=OFF
     -DGISMO_BUILD_PCH=OFF
     #-DGISMO_PLAINDOX=ON
-    -DGISMO_BUILD_COVERAGE=OFF
 )
-
-# Computer ID shown on the dashboard (will be set automatically)
-# set(CTEST_SITE "Server0407")
   
 # Source folder (defaults inside the script directory)
 set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
 
 # Build folder (defaults inside the script directory)
-set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_build)
+set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}_${CTEST_CONFIGURATION_TYPE}_${CXXNAME})
 
-# Empty existing directory before building (otherwise builds are incremental)
+# Empty previous directory before building (otherwise builds are incremental)
 #ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/bin)
 
 # Test timeout in seconds
-set(CTEST_TEST_TIMEOUT 800)
+set(CTEST_TEST_TIMEOUT 200)
 
 # Coverage analysis
 set(test_coverage FALSE)
-set(CTEST_COVERAGE_COMMAND "/usr/bin/gcov")
-set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
+if (test_coverage)
+  find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
+  set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
+  set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} "-g -O0 --coverage -fprofile-arcs -ftest-coverage")
+  set(ENV{CFLAGS} "$ENV{CFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
+endif()
 
-# Memory check with valgrind
-set(test_memcheck FALSE)
-set(CTEST_MEMORYCHECK_COMMAND "/usr/bin/valgrind")
-set(MEMORYCHECK_SUPPRESSIONS_FILE "${CTEST_SOURCE_DIRECTORY}/cmake/valgrind_supp.txt")
-set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --leak-check=yes -q")
-#--tool=memcheck --show-reachable=yes --num-callers=50 --track-origins=yes --trace-children=yes 
+# Dynamic analysis
+#Valgrind, Purify, BoundsChecker. ThreadSanitizer, AddressSanitizer,
+#LeakSanitizer, MemorySanitizer, and UndefinedBehaviorSanitizer.
+set(CTEST_MEMORYCHECK_TYPE "")
+
+if ("${CTEST_MEMORYCHECK_TYPE}" STREQUAL "Valgrind")
+  find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
+  set(MEMORYCHECK_SUPPRESSIONS_FILE "${CTEST_SOURCE_DIRECTORY}/cmake/valgrind_supp.txt")
+  set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --leak-check=yes -q")
+  #--tool=memcheck --show-reachable=yes --num-callers=50 --track-origins=yes --trace-children=yes
+elif(CTEST_MEMORYCHECK_TYPE STREQUAL "AddressSanitizer")
+  set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=address -fno-omit-frame-pointer")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=address")
+endif()
 
 # Update type (eg. svn or git)
 set(UPDATE_TYPE git)
-find_program (CTEST_GIT_COMMAND NAMES ${UPDATE_TYPE})
-set (CTEST_UPDATE_COMMAND "${CTEST_GIT_COMMAND}")
-
-# Initial checkout
-if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
-  #message("Initial checkout...")
-  set(GISMO_REPOSITORY https://github.com/gismo/gismo.git)
-  set(CTEST_CHECKOUT_COMMAND "${CTEST_GIT_COMMAND} clone --depth 1 --branch stable ${GISMO_REPOSITORY} gismo_src")
-endif()
+find_program(CTEST_GIT_COMMAND NAMES ${UPDATE_TYPE})
+set(CTEST_UPDATE_COMMAND "${CTEST_GIT_COMMAND}")
 
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
+
+# Computer ID shown on the dashboard (will be set automatically)
+# set(CTEST_SITE "Server0407")
 
 # Ignore certain tests during test or memcheck
 #set(CTEST_CUSTOM_TESTS_IGNORE "")
@@ -163,6 +175,14 @@ set(test_runtime 43200) #12h by default
 ## #################################################################
 
 #message(STATUS "Preserve full output (CTEST_FULL_OUTPUT)")
+
+# Initial checkout
+if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
+  #message("Initial checkout...")
+  set(GISMO_REPOSITORY https://github.com/gismo/gismo.git)
+  set(CTEST_CHECKOUT_COMMAND "${CTEST_GIT_COMMAND} clone --depth 1 --branch stable ${GISMO_REPOSITORY} gismo_src")
+endif()
+
 if("${CTEST_CMAKE_GENERATOR}" MATCHES "Make" OR "${CTEST_CMAKE_GENERATOR}" MATCHES "Ninja")
  set(CTEST_USE_LAUNCHERS 1)
 else()
@@ -190,7 +210,7 @@ if(NOT DEFINED CTEST_BUILD_NAME)
 find_program(UNAME NAMES uname)
 execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-$ENV{CXX}")
+set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CXXNAME}")
 endif()
 
 if(NOT CTEST_BUILD_JOBS)
@@ -236,7 +256,7 @@ macro(run_ctests)
      ctest_submit(PARTS Coverage)
   endif()
 
-  if(test_memcheck)
+  if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "x")
     #message("Running memcheck..")
     ctest_memcheck()
     ctest_submit(PARTS MemCheck)
