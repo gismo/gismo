@@ -25,7 +25,11 @@
 ## For multiple tests (eg. different compilers) make multiple copies
 ## of this file and adjust options. Few options can be passed by arguments:
 ##
-## ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja"
+## ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja;cc;g++;180;Valgrind"
+##
+## ctest -S ctest_script.cmake,"Nightly;Debug;8;Ninja;cc;g++;180;"";1"
+##
+## ctest -S ctest_script.cmake,"Nightly;RelWithDebInfo;8;Ninja;clang;clang++;180;"AddressSanitizer";0"
 ##
 ## On linux this script can be invoked in a cronjob. e.g.:
 ##    $ crontab -e
@@ -61,7 +65,18 @@ set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 set(CNAME cc)
 set(CXXNAME g++)
 
-# The above parameters can be reset by passing upto 6 arguments
+# Test timeout in seconds
+set(CTEST_TEST_TIMEOUT 200)
+
+# Dynamic analysis
+#Valgrind, Purify, BoundsChecker. ThreadSanitizer, AddressSanitizer,
+#LeakSanitizer, MemorySanitizer, and UndefinedBehaviorSanitizer.
+set(CTEST_MEMORYCHECK_TYPE "")
+
+# Coverage analysis
+set(test_coverage FALSE)
+
+# The above parameters can be reset by passing upto 9 arguments
 # e.g. as: ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja"
 macro(read_args)
   set(narg ${ARGC})
@@ -77,9 +92,20 @@ macro(read_args)
   if (narg GREATER 3)
     set(CTEST_CMAKE_GENERATOR "${ARGV3}")
   endif()
-  if (narg GREATER 5)
+  if (narg GREATER 4)
     set(CNAME "${ARGV4}")
+  endif()
+  if (narg GREATER 5)
     set(CXXNAME "${ARGV5}")
+  endif()
+  if (narg GREATER 6)
+    set(CTEST_TEST_TIMEOUT "${ARGV6}")
+  endif()
+  if (narg GREATER 7)
+    set(CTEST_MEMORYCHECK_TYPE "${ARGV7}")
+  endif()
+  if (narg GREATER 8)
+    set(test_coverage "${ARGV8}")
   endif()
 endmacro(read_args)
 read_args(${CTEST_SCRIPT_ARG})
@@ -128,22 +154,12 @@ set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}_$
 #ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
 file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/bin)
 
-# Test timeout in seconds
-set(CTEST_TEST_TIMEOUT 200)
-
-# Coverage analysis
-set(test_coverage FALSE)
 if (test_coverage)
   find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
   set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
   set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
   set(ENV{CFLAGS} "$ENV{CFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
 endif()
-
-# Dynamic analysis
-#Valgrind, Purify, BoundsChecker. ThreadSanitizer, AddressSanitizer,
-#LeakSanitizer, MemorySanitizer, and UndefinedBehaviorSanitizer.
-set(CTEST_MEMORYCHECK_TYPE "")
 
 if ("${CTEST_MEMORYCHECK_TYPE}" STREQUAL "Valgrind")
   find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
