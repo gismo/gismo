@@ -34,7 +34,7 @@
 ## On linux this script can be invoked in a cronjob. e.g.:
 ##    $ crontab -e
 ## Add the line:
-##    0 3 * * * ctest -S /path/toctest_script.cmake,"Nightly" &>/dev/null
+##    0 3 * * * ctest -S /path/toctest_script.cmake,"Nightly" -Q
 ## save and exit. Now with
 ##    $ crontab -l
 ## you can see the scheduled task. The script will
