@@ -136,7 +136,7 @@ set(test_coverage FALSE)
 if (test_coverage)
   find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
   set(CTEST_CUSTOM_COVERAGE_EXCLUDE "${CTEST_SOURCE_DIRECTORY}/external/")
-  set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} "-g -O0 --coverage -fprofile-arcs -ftest-coverage")
+  set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
   set(ENV{CFLAGS} "$ENV{CFLAGS} -g -O0 --coverage -fprofile-arcs -ftest-coverage")
 endif()
 

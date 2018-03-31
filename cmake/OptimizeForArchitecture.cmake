@@ -572,10 +572,7 @@ macro(OptimizeForArchitecture)
       #G+Smo
       set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \"AMD 14h\", \"AMD 16h\", \"zen\"." )
    elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(arm|aarch32|aarch64)")
-      set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
-Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
-Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
-Other supported values are: \"none\", \"generic\", TODO...")
+      set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. Other supported values are: \"none\", \"generic\", TODO...")
    else()
       message(WARNING "The CMAKE_SYSTEM_PROCESSOR '${CMAKE_SYSTEM_PROCESSOR}' is not supported by OptimizeForArchitecture.cmake")
    endif()
