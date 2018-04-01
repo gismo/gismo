@@ -71,7 +71,7 @@ set(CTEST_TEST_TIMEOUT 200)
 # Dynamic analysis
 #Valgrind, Purify, BoundsChecker. ThreadSanitizer, AddressSanitizer,
 #LeakSanitizer, MemorySanitizer, and UndefinedBehaviorSanitizer.
-set(CTEST_MEMORYCHECK_TYPE "")
+set(CTEST_MEMORYCHECK_TYPE "None")
 
 # Coverage analysis
 set(test_coverage FALSE)
@@ -148,12 +148,15 @@ set(gismo_build_options
 set(CTEST_SOURCE_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/gismo_src)
 
 # Build folder (defaults inside the script directory)
-set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}_${CTEST_CONFIGURATION_TYPE}_${CXXNAME})
+set(CTEST_BINARY_DIRECTORY ${CTEST_SCRIPT_DIRECTORY}/build_${CTEST_TEST_MODEL}${CTEST_CONFIGURATION_TYPE}_${CXXNAME})
 
 # Empty previous directory before building (otherwise builds are incremental)
 #ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
+
+# Cleanup previous tests, settings and test data
 file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/bin)
 file(REMOVE ${CTEST_BINARY_DIRECTORY}/CMakeCache.txt)
+file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/Testing)
 
 if (test_coverage)
   find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
@@ -168,25 +171,37 @@ if ("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xValgrind")
   set(MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --leak-check=yes -q")
   #--tool=memcheck --show-reachable=yes --num-callers=50 --track-origins=yes --trace-children=yes
 endif()
+
 if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xAddressSanitizer")
-  set(CXXFLAGS "$ENV{CXXFLAGS} -fsanitize=address -fno-omit-frame-pointer")
-  set(LDFLAGS  "$ENV{LDFLAGS} -fsanitize=address")
+  #See https://github.com/google/sanitizers
+  set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=address -fno-omit-frame-pointer")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=address")
+  set(ENV{ASAN_OPTIONS}  "symbolize=1:detect_leaks=1")
+  #find_program(LLVMSYM NAMES llvm-symbolizer) #needed in path
+  #set(ENV{ASAN_SYMBOLIZER_PATH}  "${LLVMSYM}")
 endif()
 if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xLeakSanitizer")#part of AddressSanitizer
-  set(CXXFLAGS "$ENV{CXXFLAGS} -fsanitize=leak -fno-omit-frame-pointer")
-  set(LDFLAGS  "$ENV{LDFLAGS} -fsanitize=leak")
+  set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=leak -fno-omit-frame-pointer")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=leak")
+  #set(ENV{LSAN_OPTIONS} "suppressions="${CTEST_SOURCE_DIRECTORY}/cmake/asan_supp.txt")
 endif()
 if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xMemorySanitizer")
-  set(CXXFLAGS "$ENV{CXXFLAGS} -fsanitize=memory -fno-omit-frame-pointer")
-  set(LDFLAGS  "$ENV{LDFLAGS} -fsanitize=memory")
+  # Note: requires full code (including libc++) compiled with -fsanitize=memory
+  set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=memory -fno-omit-frame-pointer -fsanitize-memory-track-origins")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=memory -fsanitize-memory-track-origins")
+  set(ENV{MSAN_OPTIONS}  "symbolize=1")
+  #find_program(LLVMSYM NAMES llvm-symbolizer) #needed in path
+  #set(ENV{MSAN_SYMBOLIZER_PATH}  "${LLVMSYM}")
 endif()
 if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xThreadSanitizer")
-  set(CXXFLAGS "$ENV{CXXFLAGS} -fsanitize=thread")
-  set(LDFLAGS  "$ENV{LDFLAGS} -fsanitize=thread")
+  set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=thread")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=thread")
+  #set(ENV{TSAN_OPTIONS} "report_bugs=1")
 endif()
 if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
-  set(CXXFLAGS "$ENV{CXXFLAGS} -fsanitize=undefined")
-  set(LDFLAGS  "$ENV{LDFLAGS} -fsanitize=undefined")
+  set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} -fsanitize=undefined -fno-omit-frame-pointer")
+  set(ENV{LDFLAGS}  "$ENV{LDFLAGS} -fsanitize=undefined")
+  set(ENV{UBSAN_OPTIONS} "print_stacktrace=1")
 endif()
 
 # Update type (eg. svn or git)
@@ -224,7 +239,7 @@ else()
 endif()
 
 set(ENV{CTEST_OUTPUT_ON_FAILURE} 1)
-set( $ENV{LC_MESSAGES}      "en_EN" )
+set( $ENV{LC_MESSAGES} "en_EN")
 
 if(NOT DEFINED CTEST_TEST_MODEL AND DEFINED ENV{CTEST_TEST_MODEL})
   set(CTEST_TEST_MODEL $ENV{CTEST_TEST_MODEL})
@@ -254,7 +269,7 @@ ProcessorCount(NPROC)
 if(${NPROC} EQUAL 0)
   set(NPROC 1)
 endif()
-if(${NPROC} GREATER 20)
+if(${NPROC} GREATER 40)
   set(CTEST_BUILD_JOBS 20)
 else()
   math(EXPR CTEST_BUILD_JOBS "(1+${NPROC})>>1")
@@ -290,7 +305,7 @@ macro(run_ctests)
      ctest_submit(PARTS Coverage)
   endif()
 
-  if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "x")
+  if(NOT "x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xNone")
     #message("Running memcheck..")
     ctest_memcheck()
     ctest_submit(PARTS MemCheck)
@@ -318,6 +333,3 @@ while(${CTEST_ELAPSED_TIME} LESS ${test_runtime})
 endwhile()
 
 endif(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
-
-# Cleanup xml files after upload
-file(REMOVE_RECURSE ${CTEST_BINARY_DIRECTORY}/Testing)
