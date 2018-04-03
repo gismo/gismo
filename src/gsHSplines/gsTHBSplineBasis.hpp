@@ -528,8 +528,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
         p2 = b2.row(i).transpose();
 
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);
-        typename gsTensorBSpline<2, T>::uPtr tbspline(new gsTensorBSpline<2, T>(cku, ckv, give(temp1)));
-        result.addPatch(tbspline);
+        result.addPatch(typename gsTensorBSpline<2, T>::uPtr(new gsTensorBSpline<2, T>(cku, ckv, give(temp1))));
     }
 
     return result;
@@ -905,8 +904,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
 
         this->getBsplinePatchGlobal(p1, p2, level[i], geom_coef, temp1, cku, ckv);
         gsTensorBSplineBasis<2, T> tbasis(cku, ckv);
-        typename gsTensorBSpline<2, T>::uPtr tbspline(new gsTensorBSpline<2, T>(tbasis, give(temp1)));
-        result.addPatch(tbspline);
+        result.addPatch(typename gsTensorBSpline<2, T>::uPtr(new gsTensorBSpline<2, T>(tbasis, give(temp1))));
 
     }
     // identify holes
