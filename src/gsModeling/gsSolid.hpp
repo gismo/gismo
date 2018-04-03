@@ -482,7 +482,7 @@ gsMultiPatch<T> gsSolid<T>::plotEdgeGraph()
         loopv = face[i]->surf->domain().outer().curves();
         for (unsigned j=0;j!=loopv.size();j++)
         {
-            mp.addPatch(loopv[j]);
+            mp.addPatch(*loopv[j]);
         }
     }
     return mp;
