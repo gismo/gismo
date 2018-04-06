@@ -205,9 +205,6 @@ public:
     ///\brief Return the basis of the \a i-th patch.
     gsBasis<T> & basis( std::size_t i ) const;
 
-    ///\brief Add a patch (pointer is consumed)
-    void addPatch( gsGeometry<T> * g );
-
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     void addPatch(typename gsGeometry<T>::uPtr g);
 

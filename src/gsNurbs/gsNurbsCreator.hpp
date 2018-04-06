@@ -259,7 +259,7 @@ gsNurbsCreator<T>::BSplineSquareGrid(int n, int m,
     for(int i = 0; i < n; i++)
         for(int j = 0; j < m; j++)
         {
-            mp.addPatch(BSplineSquare(r,lx + r*i ,ly + r*j).release()) ;
+            mp.addPatch(BSplineSquare(r,lx + r*i ,ly + r*j)) ;
         }
     mp.computeTopology();
     return mp;
@@ -346,7 +346,7 @@ gsNurbsCreator<T>::BSplineCubeGrid(int n, int m,int p,
         for(int j = 0; j < m; j++)
             for(int k = 0; k < p; k++)
         {
-            mp.addPatch(BSplineCube(r,lx + r*i ,ly + r*j,lz+r*k).release()) ;
+            mp.addPatch(BSplineCube(r,lx + r*i ,ly + r*j,lz+r*k)) ;
         }
     mp.computeTopology();
     return mp;
