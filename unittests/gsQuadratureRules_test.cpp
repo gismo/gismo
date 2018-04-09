@@ -116,7 +116,7 @@ void testWork(const int dim, const int nodes[])
     gsGaussRule<real_t> legendreRule = gsGaussRule<real_t>(numNodes);
     gsGaussRule<real_t> legendreRuleComp = gsGaussRule<real_t>(numNodes, REAL_DIG);
 
-    gsQuadRule<real_t> quadLeg_lookup  = gsQuadrature::get<real_t>(gsQuadrature::GaussLegendre, numNodes, 0);
+    gsQuadRule<real_t> quadLeg_lookup = gsQuadrature::get<real_t>(gsQuadrature::GaussLegendre, numNodes, 0);
     gsQuadRule<real_t> quadLeg_compute = gsQuadrature::get<real_t>(gsQuadrature::GaussLegendre, numNodes, REAL_DIG);
 
     CHECK(legendreRule.referenceNodes() == quadLeg_lookup.referenceNodes());
@@ -125,7 +125,7 @@ void testWork(const int dim, const int nodes[])
     gsLobattoRule<real_t> lobattoRule = gsLobattoRule<real_t>(numNodes);
     gsLobattoRule<real_t> lobattoRuleComp = gsLobattoRule<real_t>(numNodes, REAL_DIG);
 
-    gsQuadRule<real_t> quadLob_lookup  = gsQuadrature::get<real_t>(gsQuadrature::GaussLobatto, numNodes, 0);
+    gsQuadRule<real_t> quadLob_lookup = gsQuadrature::get<real_t>(gsQuadrature::GaussLobatto, numNodes, 0);
     gsQuadRule<real_t> quadLob_compute = gsQuadrature::get<real_t>(gsQuadrature::GaussLobatto, numNodes, REAL_DIG);
 
     CHECK(lobattoRule.referenceNodes() == quadLob_lookup.referenceNodes());
@@ -135,25 +135,24 @@ void testWork(const int dim, const int nodes[])
     gsVector<index_t> lobVec = noneMinus(2 * numNodes - 3 * gsVector<index_t>::Ones(d));
 
     real_t expectedLeg = calcAntiDerivative(legVec, dim);
-    real_t lookupLeg   = calcPoly(legVec, quadLeg_lookup, dim);
-    real_t computeLeg  = calcPoly(legVec, quadLeg_compute, dim);
+    real_t lookupLeg = calcPoly(legVec, quadLeg_lookup, dim);
+    real_t computeLeg = calcPoly(legVec, quadLeg_compute, dim);
 
     real_t expectedLob = calcAntiDerivative(lobVec, dim);
-    real_t lookupLob   = calcPoly(lobVec, quadLob_lookup, dim);
-    real_t computeLob  = calcPoly(lobVec, quadLob_compute, dim);
+    real_t lookupLob = calcPoly(lobVec, quadLob_lookup, dim);
+    real_t computeLob = calcPoly(lobVec, quadLob_compute, dim);
 
-    CHECK_CLOSE(expectedLeg, lookupLeg,  EPSILON);
+    CHECK_CLOSE(expectedLeg, lookupLeg, EPSILON);
     CHECK_CLOSE(expectedLeg, computeLeg, EPSILON);
     //CHECK_CLOSE(computeLeg,  lookupLeg,  EPSILON);
 
-    CHECK_CLOSE(expectedLob, lookupLob,  EPSILON);
+    CHECK_CLOSE(expectedLob, lookupLob, EPSILON);
     CHECK_CLOSE(expectedLob, computeLob, EPSILON);
     //CHECK_CLOSE(computeLob,  lookupLob, EPSILON);
 }
 
 real_t calcAntiDerivative(gsVector<index_t> const &deg, const int dim)
 {
-
     // Test integration
     gsVector<real_t> u;
     u.setConstant(dim, 1.0123);
@@ -178,7 +177,7 @@ real_t calcPoly(gsVector<index_t> const &deg,
                 gsQuadRule<real_t> const &gr,
                 const int dim)
 {
-// Test integration
+    // Test integration
     gsVector<real_t> u;
     u.setConstant(dim, 1.0123);
 
@@ -213,7 +212,7 @@ gsVector<index_t> noneMinus(gsVector<index_t> inVec)
     const int size = inVec.size();
     for (int i = 0; i < size; ++i)
     {
-        if(inVec[i] < 0)
+        if (inVec[i] < 0)
             inVec[i] = 0;
     }
     return inVec;
