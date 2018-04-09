@@ -53,19 +53,24 @@ public:
      * @param numNodes vector of length \a d containing numbers of
      * nodes to be used (per integration variable).
      *
-     * @param digits accuracy of nodes and weights.
-     *
+     * @param digits accuracy of nodes and weights. If 0, the quadrature
+     * rule will use precomputed tables if possible. If greater then 0,
+     * it will force to compute it everytime.
      */
     virtual void setNodes( gsVector<index_t> const & numNodes,
-                           unsigned digits = REAL_DIG )
+                           unsigned digits = 0)
     { GISMO_NO_IMPLEMENTATION }
 
     /**
      * @brief Initialize a univariate quadrature rule with \a numNodes
      * quadrature points
+     *
+     * @param digits accuracy of nodes and weights. If 0, the quadrature
+     * rule will use precomputed tables if possible. If greater then 0,
+     * it will force to compute it everytime.
      */
     void setNodes( index_t numNodes,
-                   unsigned digits = REAL_DIG )
+                   unsigned digits = 0 )
     {
         gsVector<index_t> nn(1);
         nn[0] = numNodes;

@@ -23,31 +23,30 @@ template<class T> void
 gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes, 
                             unsigned digits)
 {
-    const int d  = numNodes.rows();
-    
+    const int d = numNodes.rows();
+    const T epsilon = std::pow(10.0, -REAL_DIG * 0.85);
     // Get base rule nodes and weights
     std::vector<gsVector<T> > nodes(d);
     std::vector<gsVector<T> > weights(d);
-    
-    if (digits <= 30 )
+
+    if (digits == 0)
     {
-        for( int i=0; i<d; ++i )
+        for (int i = 0; i < d; ++i)
         {
-            const bool found = lookupReference(numNodes[i], nodes[i], weights[i]);
-            if (!found)
+            if (!lookupReference(numNodes[i], nodes[i], weights[i]))
                 computeReference(numNodes[i], nodes[i], weights[i], digits);
-            nodes[i].last() -= 1e-10; //interval may be half-open 
+            nodes[i].last() -= epsilon; //interval may be half-open
         }
     }
     else
     {
-        for( int i=0; i<d; ++i )
+        for (int i = 0; i < d; ++i)
         {
             computeReference(numNodes[i], nodes[i], weights[i], digits);
-            nodes[i].last() -= 1e-10; //interval may be half-open 
+            nodes[i].last() -= epsilon; //interval may be half-open
         }
     }
-    
+
     this->computeTensorProductRule(nodes, weights);
 }
 
@@ -57,6 +56,7 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
                                    gsVector<T> & w, // Quadrature weights
                                    unsigned digits) // Number of exact decimal digits
 {
+    // TODO: this algorithm isn't accurate
     // Allocate space for points and weights.
     x.resize(n);
     w.resize(n);

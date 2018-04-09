@@ -43,14 +43,14 @@ struct gsQuadrature
 
     /// Constructs a quadrature rule based on input \a options
     template<class T>
-    static inline gsQuadRule<T> get(int qu, gsVector<index_t> const & numNodes)
+    static inline gsQuadRule<T> get(int qu, gsVector<index_t> const & numNodes, unsigned digits = 0)
     {
         switch (qu)
         {
-        case GaussLobatto :
-            return gsLobattoRule<T>(numNodes);
         case GaussLegendre :
-            return gsGaussRule<T>(numNodes);
+            return gsGaussRule<T>(numNodes, digits);
+        case GaussLobatto :
+            return gsLobattoRule<T>(numNodes, digits);
         default:
             GISMO_ERROR("Invalid Quadrature rule request ("<<qu<<")");
         };

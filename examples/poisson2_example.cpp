@@ -53,6 +53,9 @@ int main(int argc, char *argv[])
     fd.getId(2, bc); // id=2: boundary conditions
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
+    gsOptionList Aopt;
+    fd.getId(4, Aopt); // id=2: boundary conditions
+
     //! [Read input file]
 
     //! [Refinement]
@@ -75,6 +78,7 @@ int main(int argc, char *argv[])
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
+    A.setOptions(Aopt);
 
     //gsInfo<<"Active options:\n"<< A.options() <<"\n";
     typedef gsExprAssembler<>::geometryMap geometryMap;

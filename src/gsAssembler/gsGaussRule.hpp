@@ -95,27 +95,26 @@ template<class T> void
 gsGaussRule<T>::setNodes( gsVector<index_t> const & numNodes, 
                           unsigned digits)
 {
-    const int d  = numNodes.rows();
-    
+    const int d = numNodes.rows();
+
     // Get base rule nodes and weights
     std::vector<gsVector<T> > nodes(d);
     std::vector<gsVector<T> > weights(d);
-    
-    if (digits <= 30 )
+
+    if (digits == 0)
     {
-        for( int i=0; i<d; ++i )
+        for (int i = 0; i < d; ++i)
         {
-            const bool found = lookupReference(numNodes[i], nodes[i], weights[i]);
-            if (!found)
-                computeReference(numNodes[i], nodes[i], weights[i], digits);
+            if (!lookupReference(numNodes[i], nodes[i], weights[i]))
+                computeReference(numNodes[i], nodes[i], weights[i], REAL_DIG);
         }
     }
     else
     {
-        for( int i=0; i<d; ++i )
+        for (int i = 0; i < d; ++i)
             computeReference(numNodes[i], nodes[i], weights[i], digits);
     }
-    
+
     this->computeTensorProductRule(nodes, weights);
 }
 
