@@ -24,7 +24,7 @@ real_t calcPoly(gsVector<index_t> const &deg,
                 gsQuadRule<real_t> const &gr,
                 const int dim);
 
-gsVector<real_t> noneMinus(gsVector<real_t> inVec);
+gsVector<index_t> noneMinus(gsVector<index_t> inVec);
 
 const char *addPlus(const int d, int i);
 
@@ -131,7 +131,7 @@ void testWork(const int dim, const int nodes[])
     CHECK(lobattoRule.referenceNodes() == quadLob_lookup.referenceNodes());
     CHECK(lobattoRuleComp.referenceNodes() == quadLob_compute.referenceNodes());
 
-    gsVector<index_t> legVec = noneMinus(2 * numNodes - gsVector<index_t>::Ones(d));
+    gsVector<index_t> legVec = noneMinus(2 * numNodes - 1 * gsVector<index_t>::Ones(d));
     gsVector<index_t> lobVec = noneMinus(2 * numNodes - 3 * gsVector<index_t>::Ones(d));
 
     real_t expectedLeg = calcAntiDerivative(legVec, dim);
@@ -208,7 +208,7 @@ real_t calcPoly(gsVector<index_t> const &deg,
     return wgrid.dot(ngrid.row(0));
 }
 
-gsVector<real_t> noneMinus(gsVector<real_t> inVec)
+gsVector<index_t> noneMinus(gsVector<index_t> inVec)
 {
     const int size = inVec.size();
     for (int i = 0; i < size; ++i)
