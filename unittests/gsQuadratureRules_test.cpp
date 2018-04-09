@@ -94,6 +94,12 @@ TEST(R1_4)
     testWork(1, array);
 }
 
+TEST(R1_5)
+{
+    int array[] = {22};
+    testWork(1, array);
+}
+
 void testWork(const int dim, const int nodes[])
 {
     std::vector<index_t> qNodes;    // row vector
@@ -157,12 +163,12 @@ real_t calcAntiDerivative(gsVector<index_t> const &deg, const int dim)
     gsVector<real_t> u;
     u.setConstant(dim, 1.0123);
 
-    // Construct both polynoms (integrand and anti-derivative)
+    // Construct polynomial
     std::string var = std::string("xyzwuv").substr(0, dim);    // defining variable names
     std::stringstream poly;
     for (int i = 0; i < dim; ++i)
     {
-        // Compute the anti-derivative
+        // Construct the anti-derivative
         std::string tmp(var);
         tmp.erase(i, 1); // cut out current variable, that will be to the power of deg[i]
         for (int j = dim - 1; j; --j) tmp.insert(j, "*");   // add * between variables
