@@ -124,8 +124,7 @@ void testWork(const index_t nodes[], const size_t dim)
     CHECK_MATRIX_CLOSE(quadLeg_compute.referenceNodes(), quadLeg_lookup.referenceNodes(), EPSILON);
     //CHECK_MATRIX_CLOSE(quadLeg_compute.referenceWeights(), quadLeg_lookup.referenceWeights(), EPSILON);
 
-    gsVector<index_t> legVec = (2 * numNodes - 1 * gsVector<index_t>::Ones(dim)).
-        ax(gsVector<index_t>::Zero(dim));
+    gsVector<index_t> legVec = (2 * numNodes - 1 * gsVector<index_t>::Ones(dim)).cwiseMax(gsVector<index_t>::Zero(dim));
     real_t expectedLeg = calcAntiDerivative(legVec, dim);
     real_t lookupLeg = calcPoly(legVec, quadLeg_lookup, dim);
     real_t computeLeg = calcPoly(legVec, quadLeg_compute, dim);
