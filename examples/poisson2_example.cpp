@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     gsOptionList Aopt;
-    fd.getId(4, Aopt); // id=2: boundary conditions
+    fd.getId(4, Aopt); // id=4: assembler options
 
     //! [Read input file]
 
