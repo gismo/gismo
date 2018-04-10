@@ -41,7 +41,7 @@ endif()
 if(POLICY CMP0048)# CMake 3.0
   project(gismo LANGUAGES C CXX  VERSION 0.8.3)
 else()
-  project(gismo LANGUAGES C CXX)
+  project(gismo C CXX)
   set(${PROJECT_NAME}_VERSION_MAJOR "0")
   set(${PROJECT_NAME}_VERSION_MINOR "8")
   set(${PROJECT_NAME}_VERSION_PATCH "3")
