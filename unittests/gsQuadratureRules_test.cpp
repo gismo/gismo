@@ -24,8 +24,6 @@ real_t calcPoly(gsVector<index_t> const &deg,
                 gsQuadRule<real_t> const &gr,
                 const index_t dim);
 
-gsVector<index_t> noneMinus(gsVector<index_t> inVec);
-
 const char *addPlus(const index_t d, index_t i);
 
 TEST(tensor_quad_3)
@@ -126,7 +124,7 @@ void testWork(const index_t nodes[], const size_t dim)
     CHECK_MATRIX_CLOSE(quadLeg_compute.referenceNodes(), quadLeg_lookup.referenceNodes(), EPSILON);
     //CHECK_MATRIX_CLOSE(quadLeg_compute.referenceWeights(), quadLeg_lookup.referenceWeights(), EPSILON);
 
-    gsVector<index_t> legVec = noneMinus(2 * numNodes - 1 * gsVector<index_t>::Ones(dim));
+    gsVector<index_t> legVec = (2 * numNodes - 1 * gsVector<index_t>::Ones(dim)).cwiseMax(gsVector<index_t>::Zeros(dim));
     real_t expectedLeg = calcAntiDerivative(legVec, dim);
     real_t lookupLeg = calcPoly(legVec, quadLeg_lookup, dim);
     real_t computeLeg = calcPoly(legVec, quadLeg_compute, dim);
@@ -143,7 +141,7 @@ void testWork(const index_t nodes[], const size_t dim)
     CHECK_MATRIX_CLOSE(quadLob_lookup.referenceNodes(), quadLob_compute.referenceNodes(), EPSILON);
     //CHECK_MATRIX_CLOSE(quadLob_compute.referenceWeights(), quadLob_lookup.referenceWeights(), EPSILON);
 
-    gsVector<index_t> lobVec = noneMinus(2 * numNodes - 3 * gsVector<index_t>::Ones(dim));
+    gsVector<index_t> lobVec = (2 * numNodes - 3 * gsVector<index_t>::Ones(dim)).cwiseMax(gsVector<index_t>::Zeros(dim));
     real_t expectedLob = calcAntiDerivative(lobVec, dim);
     real_t lookupLob = calcPoly(lobVec, quadLob_lookup, dim);
     real_t computeLob = calcPoly(lobVec, quadLob_compute, dim);
@@ -205,17 +203,6 @@ real_t calcPoly(gsVector<index_t> const &deg,
 
     ngrid = index_tegrand.eval(ngrid);
     return wgrid.dot(ngrid.row(0));
-}
-
-gsVector<index_t> noneMinus(gsVector<index_t> inVec)
-{
-    const index_t size = inVec.size();
-    for (index_t i = 0; i < size; ++i)
-    {
-        if (inVec[i] < 0)
-            inVec[i] = 0;
-    }
-    return inVec;
 }
 
 const char *addPlus(const index_t d, index_t i)
