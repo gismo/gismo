@@ -22,8 +22,7 @@ namespace gismo
     \brief Class that represents the (tensor) Gauss-Legendre quadrature rule
     
     \ingroup Assembler
-*/ 
- 
+*/  
 template<class T>
 class gsGaussRule GISMO_FINAL : public gsQuadRule<T>
 {
@@ -33,7 +32,6 @@ public:
     gsGaussRule() { }
 
     /// Initialize a tensor-product Gauss quadrature rule with \a numNodes (direction-wise)
-
     gsGaussRule(gsVector<index_t> const & numNodes, 
                 const unsigned digits = 0 )
     { 
