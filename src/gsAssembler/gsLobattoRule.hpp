@@ -34,7 +34,7 @@ gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes,
         for (int i = 0; i < d; ++i)
         {
             if (!lookupReference(numNodes[i], nodes[i], weights[i]))
-                computeReference(numNodes[i], nodes[i], weights[i], digits);
+                computeReference(numNodes[i], nodes[i], weights[i], REAL_DIG);
             nodes[i].last() -= epsilon; //interval may be half-open
         }
     }
@@ -56,13 +56,14 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
                                    gsVector<T> & w, // Quadrature weights
                                    unsigned digits) // Number of exact decimal digits
 {
-    // TODO: this algorithm isn't accurate
+    GISMO_ASSERT(digits!=0, "Digits cannot be 0");
     // Allocate space for points and weights.
     x.resize(n);
     w.resize(n);
 
     int i, j;
-    T test, tolerance = 1.0 / digits;
+    T test;
+    const T tolerance = math::pow(T(0.1), static_cast<int>(digits));
     
     if ( n == 1 )
     {
@@ -104,7 +105,7 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
         for ( i = 0; i < n; i++ )
             test = math::max( test, math::abs ( x[i] - xold[i] ) );
 
-    } while ( tolerance < test );
+    } while ( tolerance <= test );
 
     x.reverseInPlace();
 

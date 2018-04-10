@@ -28,6 +28,18 @@ gsVector<index_t> noneMinus(gsVector<index_t> inVec);
 
 const char *addPlus(const index_t d, index_t i);
 
+TEST(tensor_quad_3)
+{
+    index_t array[] = {3};
+    testWork(array, 1);
+}
+
+TEST(tensor_quad_5)
+{
+    index_t array[] = {5};
+    testWork(array, 1);
+}
+
 TEST(tensor_quad_1_5_9)
 {
     index_t array[] = {1, 5, 9};
@@ -104,45 +116,39 @@ void testWork(const index_t nodes[], const size_t dim)
 {
     gsVector<index_t> numNodes = gsAsConstVector<index_t>(nodes, dim);
 
-    CHECK_EQUAL(dim, (size_t)numNodes.size());
+    // ---------------- Lobatto
 
-    // Setup the reference rule
-    gsGaussRule<real_t> legendreRule = gsGaussRule<real_t>(numNodes);
-    gsGaussRule<real_t> legendreRuleComp = gsGaussRule<real_t>(numNodes, REAL_DIG);
-
+    gsGaussRule<real_t> legendreRule(numNodes);
+    gsGaussRule<real_t> legendreRuleComp(numNodes, REAL_DIG);
     gsQuadRule<real_t> quadLeg_lookup = gsQuadrature::get<real_t>(gsQuadrature::GaussLegendre, numNodes, 0);
     gsQuadRule<real_t> quadLeg_compute = gsQuadrature::get<real_t>(gsQuadrature::GaussLegendre, numNodes, REAL_DIG);
-
     CHECK(legendreRule.referenceNodes() == quadLeg_lookup.referenceNodes());
-    CHECK(legendreRuleComp.referenceNodes() == quadLeg_compute.referenceNodes());
-
-    gsLobattoRule<real_t> lobattoRule = gsLobattoRule<real_t>(numNodes);
-    gsLobattoRule<real_t> lobattoRuleComp = gsLobattoRule<real_t>(numNodes, REAL_DIG);
-
-    gsQuadRule<real_t> quadLob_lookup = gsQuadrature::get<real_t>(gsQuadrature::GaussLobatto, numNodes, 0);
-    gsQuadRule<real_t> quadLob_compute = gsQuadrature::get<real_t>(gsQuadrature::GaussLobatto, numNodes, REAL_DIG);
-
-    CHECK(lobattoRule.referenceNodes() == quadLob_lookup.referenceNodes());
-    CHECK(lobattoRuleComp.referenceNodes() == quadLob_compute.referenceNodes());
+    CHECK_MATRIX_CLOSE(quadLeg_compute.referenceNodes(), quadLeg_lookup.referenceNodes(), EPSILON);
+    //CHECK_MATRIX_CLOSE(quadLeg_compute.referenceWeights(), quadLeg_lookup.referenceWeights(), EPSILON);
 
     gsVector<index_t> legVec = noneMinus(2 * numNodes - 1 * gsVector<index_t>::Ones(dim));
-    gsVector<index_t> lobVec = noneMinus(2 * numNodes - 3 * gsVector<index_t>::Ones(dim));
-
     real_t expectedLeg = calcAntiDerivative(legVec, dim);
     real_t lookupLeg = calcPoly(legVec, quadLeg_lookup, dim);
     real_t computeLeg = calcPoly(legVec, quadLeg_compute, dim);
+    CHECK_CLOSE(expectedLeg, lookupLeg, EPSILON);
+    CHECK_CLOSE(expectedLeg, computeLeg, EPSILON);
 
+    // ---------------- Lobatto
+
+    gsLobattoRule<real_t> lobattoRule(numNodes);
+    gsLobattoRule<real_t> lobattoRuleComp(numNodes, REAL_DIG);
+    gsQuadRule<real_t> quadLob_lookup = gsQuadrature::get<real_t>(gsQuadrature::GaussLobatto, numNodes, 0);
+    gsQuadRule<real_t> quadLob_compute = gsQuadrature::get<real_t>(gsQuadrature::GaussLobatto, numNodes, REAL_DIG);
+    CHECK(lobattoRule.referenceNodes() == quadLob_lookup.referenceNodes());
+    CHECK_MATRIX_CLOSE(quadLob_lookup.referenceNodes(), quadLob_compute.referenceNodes(), EPSILON);
+    //CHECK_MATRIX_CLOSE(quadLob_compute.referenceWeights(), quadLob_lookup.referenceWeights(), EPSILON);
+
+    gsVector<index_t> lobVec = noneMinus(2 * numNodes - 3 * gsVector<index_t>::Ones(dim));
     real_t expectedLob = calcAntiDerivative(lobVec, dim);
     real_t lookupLob = calcPoly(lobVec, quadLob_lookup, dim);
     real_t computeLob = calcPoly(lobVec, quadLob_compute, dim);
-
-    CHECK_CLOSE(expectedLeg, lookupLeg, EPSILON);
-    CHECK_CLOSE(expectedLeg, computeLeg, EPSILON);
-    //CHECK_CLOSE(computeLeg,  lookupLeg,  EPSILON);
-
     CHECK_CLOSE(expectedLob, lookupLob, EPSILON);
     CHECK_CLOSE(expectedLob, computeLob, EPSILON);
-    //CHECK_CLOSE(computeLob,  lookupLob, EPSILON);
 }
 
 real_t calcAntiDerivative(gsVector<index_t> const &deg, const index_t dim)
