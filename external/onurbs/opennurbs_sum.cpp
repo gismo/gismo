@@ -58,14 +58,14 @@ double ON_Sum::SortAndSum( int count, double* a )
   double s = 0.0;
   if ( count > 0 )
   {
-    if ( count >= 2 )
+    if ( count > 1 )
     {
       ON_SortDoubleArray( ON::quick_sort, a, count );
       //double a0 = fabs(a[0]);
       //double a1 = fabs(a[count-1]);
       m_sum_err += ON_EPSILON*( fabs(a[count-1]) + count*fabs(a[0]) );
     }
-    if ( a[count] < 0.0 )
+    if ( a[count-1] < 0.0 )
     {
       a += count-1;
       while (count--)
