@@ -10,16 +10,16 @@ cmake_minimum_required(VERSION 2.8.8)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
-cmake_policy(SET CMP0042 OLD)
-cmake_policy(SET CMP0048 OLD)
+cmake_policy(SET CMP0042 NEW)
+cmake_policy(SET CMP0048 NEW)
 endif()
 
 if(POLICY CMP0054)# CMake 3.1
-cmake_policy(SET CMP0054 OLD)
+cmake_policy(SET CMP0054 NEW)
 endif()
 
 if(POLICY CMP0053)# CMake 3.1.3
-cmake_policy(SET CMP0053 OLD)
+cmake_policy(SET CMP0053 NEW)
 endif()
 
 if(POLICY CMP0063)# CMake 3.3
@@ -38,10 +38,19 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
-if (GISMO_BUILD_PCH)
-project(gismo C CXX CXXPCH)
+if(POLICY CMP0048)# CMake 3.0
+  project(gismo LANGUAGES C CXX  VERSION 0.8.3)
 else()
-project(gismo C CXX)
+  project(gismo C CXX)
+  set(${PROJECT_NAME}_VERSION_MAJOR "0")
+  set(${PROJECT_NAME}_VERSION_MINOR "8")
+  set(${PROJECT_NAME}_VERSION_PATCH "3")
+  set(${PROJECT_NAME}_VERSION
+  "${${PROJECT_NAME}_VERSION_MAJOR}.${${PROJECT_NAME}_VERSION_MINOR}.${${PROJECT_NAME}_VERSION_PATCH}" CACHE INTERNAL "${PROJECT_NAME} version number")
+endif()
+
+if (GISMO_BUILD_PCH)
+  enable_language(CXXPCH)
 endif()
 
 if(NOT GISMO_INSOURCE_BUILD AND "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
@@ -65,8 +74,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 endif()
 
-include( gsVersion )
-include( gismoUse  )
+include( gismoUse )
 include( gsConfig )
 
 message( "   GGGGGGGGG      GGGG      GGGGGGGGG  GGGGGG   GGGGGG  GGGGGGGGGG" )
