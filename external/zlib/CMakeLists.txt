@@ -22,7 +22,6 @@ ${gismo_externals}/zlib/deflate.c
 ${gismo_externals}/zlib/gzclose.c
 ${gismo_externals}/zlib/gzlib.c
 ${gismo_externals}/zlib/gzread.c
-${gismo_externals}/zlib/gzstream.cpp
 ${gismo_externals}/zlib/gzwrite.c
 ${gismo_externals}/zlib/infback.c
 ${gismo_externals}/zlib/inffast.c
@@ -37,7 +36,6 @@ set(ZLIB_HEADERS
 ${gismo_externals}/zlib/crc32.h
 ${gismo_externals}/zlib/deflate.h
 ${gismo_externals}/zlib/gzguts.h
-${gismo_externals}/zlib/gzstream.h
 ${gismo_externals}/zlib/inffast.h
 ${gismo_externals}/zlib/inffixed.h
 ${gismo_externals}/zlib/inflate.h
