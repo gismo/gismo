@@ -25,10 +25,6 @@ project(doc-snippets)
 
 include(gsConfig)
 
-include(CTest)
-enable_testing()
-
-
 # Collect source file names
 file(GLOB snippets_SRCS "*.cpp")
 

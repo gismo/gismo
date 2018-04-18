@@ -38,15 +38,16 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
+set(gismo_VERSION_MAJOR "0")
+set(gismo_VERSION_MINOR "8")
+set(gismo_VERSION_PATCH "3")
+set(gismo_VERSION
+  "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
+  
 if(POLICY CMP0048)# CMake 3.0
-  project(gismo LANGUAGES C CXX  VERSION 0.8.3)
+  project(gismo LANGUAGES C CXX  VERSION ${gismo_VERSION})
 else()
   project(gismo C CXX)
-  set(${PROJECT_NAME}_VERSION_MAJOR "0")
-  set(${PROJECT_NAME}_VERSION_MINOR "8")
-  set(${PROJECT_NAME}_VERSION_PATCH "3")
-  set(${PROJECT_NAME}_VERSION
-  "${${PROJECT_NAME}_VERSION_MAJOR}.${${PROJECT_NAME}_VERSION_MINOR}.${${PROJECT_NAME}_VERSION_PATCH}" CACHE INTERNAL "${PROJECT_NAME} version number")
 endif()
 
 if (GISMO_BUILD_PCH)
@@ -62,9 +63,6 @@ endif()
 ## #################################################################
 
 set(CMAKE_INSTALL_MESSAGE NEVER)
-
-include(CTest)
-enable_testing()
 
 #Use solution folders for Visual Studio
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -91,6 +89,9 @@ message( "                          version ${${PROJECT_NAME}_VERSION}" )
 ## #################################################################
 
 include( gsOptions )
+# Note: clean cache to reset to OFF
+set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
+include(CTest)
 
 ## #################################################################
 ## Preprocessor definitions

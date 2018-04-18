@@ -129,7 +129,7 @@ set(gismo_build_options
     -DGISMO_BUILD_LIB=ON
     #-DCMAKE_CXX_STANDARD=11
     -DGISMO_BUILD_EXAMPLES=ON
-    -DGISMO_BUILD_UNITTESTS=OFF
+    -DGISMO_BUILD_UNITTESTS=ON
     #-DGISMO_WITH_OPENMP=ON
     #-DGISMO_WITH_MPI=ON
     #-DGISMO_WITH_SPECTRA=ON
@@ -288,7 +288,7 @@ if(${CTEST_CMAKE_GENERATOR} MATCHES "Unix Makefiles"
 endif()
 
 macro(run_ctests)
-  ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
+  ctest_configure(OPTIONS "${gismo_build_options};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT})")
   ctest_submit(PARTS Configure Update)
   ctest_build(TARGET gsUnitTest APPEND) # for older versions of ninja
   ctest_submit(PARTS Build)

@@ -26,9 +26,6 @@ set_property(TARGET gsUnitTest_lib PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib
 set(GSUNITTEST_INCLUDE_DIR ${INSTALL_DIR}/include/UnitTest++ CACHE INTERNAL "")
 include_directories(${GSUNITTEST_INCLUDE_DIR})
 
-include(CTest)
-enable_testing()
-
 # Collect source file names
 aux_gs_cpp_directory(${PROJECT_SOURCE_DIR} unittests_SRCS)
 
