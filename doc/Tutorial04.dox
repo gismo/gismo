@@ -176,7 +176,7 @@ And please don't use auto and the fancy new foreach loop.
   the .h file.
 
 - While coding, do frequent updates to your svn/git copy. This will
-  keep your local copy upto date with the repository.
+  keep your local copy up to date with the repository.
 
 - Avoid letting your program produce paraview files by default. Use a
   --plot switch to trigger output.

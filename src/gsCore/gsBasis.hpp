@@ -381,7 +381,7 @@ void gsBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         deriv2_into(u, result[2]);
         break;
     default:
-        GISMO_ERROR("evalAllDers implemented for order upto 2<"<<n<< " for "<<*this);
+        GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n<< " for "<<*this);
         break;
     }
 }

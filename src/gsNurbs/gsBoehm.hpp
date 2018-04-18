@@ -305,7 +305,7 @@ void gsTensorBoehm(
     do
     {
         if (!flag)
-            GISMO_ERROR("This should not happend!"
+            GISMO_ERROR("This should not happened!"
                         "We do not have an index for the new matrix.");
 
         ind = getIndex(str, position);
@@ -437,7 +437,7 @@ void gsTensorBoehmRefine(
         ValIt valEndCopy = valEnd;
 
         if (!flag)
-            GISMO_ERROR("This should not happend! "
+            GISMO_ERROR("This should not happened! "
                         "We do not have an index for the new matrix.");
 
         ind = getIndex(str, position);

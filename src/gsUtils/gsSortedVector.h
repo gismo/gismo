@@ -157,7 +157,7 @@ public:
     {
       if ( !m_bSorted )
           gsWarn<<"gsSortedVector is not sorted, bContains("<<t<<")"
-                << "is not guarranteed to be correct.\n";
+                << "is not guaranteed to be correct.\n";
 
         return std::binary_search( inherited::begin(), inherited::end(), t );
     }
@@ -309,7 +309,7 @@ public:
 
         if ( !m_bSorted )
             gsWarn<<"gsSortedVector is not sorted, uniqueSize()"
-                  << "is not guarranteed to be correct.\n";
+                  << "is not guaranteed to be correct.\n";
 
         std::size_t cnt = 1;
         for (const_iterator it = inherited::begin()+1; it != inherited::end(); ++it)

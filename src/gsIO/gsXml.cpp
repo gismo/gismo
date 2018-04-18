@@ -160,7 +160,7 @@ gsXmlNode *  anyByTag(const std::string & tag,
         gsWarn<< "Invalid root node.\n";
         return NULL;
     }
-    // Searching upto third level of the XML tree
+    // Searching up to third level of the XML tree
     for (gsXmlNode * child = root->first_node() ; 
          child; child = child->next_sibling() )
     {
