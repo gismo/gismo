@@ -206,13 +206,13 @@ namespace bspline
     { }
 
     /// Input: a sequence of 2*p+1 knots, evaluation point, output
-    /// the value of all derivatives upto order k supported on those knots
+    /// the value of all derivatives up to order k supported on those knots
     template <class T, typename KnotIterator, typename MatrixType>
     void allDersBasis( ) 
     { }
 
     /// Input: a sequence of p+2 knots, evaluation point, output
-    /// the value of all derivatives upto order k supported on those knots
+    /// the value of all derivatives up to order k supported on those knots
     template <class T, typename KnotIterator, typename MatrixType>
     void allDersSingle( ) 
     { }

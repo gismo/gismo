@@ -76,7 +76,7 @@ set(CTEST_MEMORYCHECK_TYPE "None")
 # Coverage analysis
 set(test_coverage FALSE)
 
-# The above parameters can be reset by passing upto 9 arguments
+# The above parameters can be reset by passing up to 9 arguments
 # e.g. as: ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja"
 macro(read_args)
   set(narg ${ARGC})

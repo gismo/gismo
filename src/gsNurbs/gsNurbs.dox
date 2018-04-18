@@ -22,8 +22,8 @@ Name of procedure        | Which basis function | Evaluate what
 \c derivSingle(i, u)       | basis function i	    | first derivative(s)
 \c deriv2(u)		       | all active at u	    | second derivative(s)
 \c deriv2Single(i, u)	   | basis function i	    | second derivative(s)
-\c evalAllDers(u, k)       | all active at u        | value and all derivatives upto order k
-\c evalAllDersSingle(i,u,k)| basis function i       | value and all derivatives upto order k
+\c evalAllDers(u, k)       | all active at u        | value and all derivatives up to order k
+\c evalAllDersSingle(i,u,k)| basis function i       | value and all derivatives up to order k
 \c evalDerSingle(i, u, k)  | basis function i 	    | k-th derivative (k=0, ... , p-1)
 
 <!--\c evalDer(i,u, k)         | all active at u 	    | k-th derivative (k=0, ... , p-1)-->
