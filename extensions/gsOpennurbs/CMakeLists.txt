@@ -318,6 +318,12 @@ else()
   add_definitions(-DON_NO_WINDOWS) #for Mingw
 endif()
 
+if (GISMO_ZLIB_STATIC)
+  #message("Using prefixed Zlib")
+  add_definitions(-DZ_PREFIX)   # use prefixed zlib
+  add_definitions(-DMY_ZCALLOC) # zlib uses use oncalloc() and onfree()
+endif()
+
 add_library(gsOpennurbs OBJECT ${OPENNURBS_SOURCES}) #STATIC
 #target_link_libraries(gsOpennurbs Rpcrt4) # Note: linked with gismolib instead
 

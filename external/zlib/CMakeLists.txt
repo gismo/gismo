@@ -3,7 +3,7 @@
 ## This file is part of the G+Smo library. 
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2015 RICAM-Linz.
+## Copyright (C) 2012 - 2018 RICAM-Linz.
 ######################################################################
 
 project(zlib)
@@ -60,11 +60,9 @@ endif()
 
 add_library(${PROJECT_NAME} OBJECT ${ZLIB_SOURCES} ${ZLIB_HEADERS})
 
-# Note: Z_PREFIX hardcoded in zlib headers
-#set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "Z_PREFIX")
-
-set_target_properties(${PROJECT_NAME} 
-PROPERTIES POSITION_INDEPENDENT_CODE ON
+set_target_properties(${PROJECT_NAME} PROPERTIES
+COMPILE_DEFINITIONS "Z_PREFIX"
+POSITION_INDEPENDENT_CODE ON
 FOLDER "G+Smo extensions")
 
 if(GISMO_WITH_ONURBS)

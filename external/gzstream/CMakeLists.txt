@@ -3,13 +3,12 @@
 ## This file is part of the G+Smo library. 
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2015 RICAM-Linz.
+## Copyright (C) 2012 - 2018 RICAM-Linz.
 ######################################################################
 
 project(gzstream)
 
 set(GZSTREAM_SOURCES ${gismo_externals}/gzstream/gzstream.cpp)
-
 set(GZSTREAM_HEADERS${gismo_externals}/gzstream/gzstream.h)
 
 # Apply same configuration as G+Smo
