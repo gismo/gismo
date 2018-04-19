@@ -79,6 +79,7 @@ public:
         m_funcs.resize(other.m_funcs.size() );
         cloneAll( other.m_funcs.begin(), other.m_funcs.end(),
                   m_funcs.begin() );
+        return *this;
     }
 
     /// Move assignment operator
