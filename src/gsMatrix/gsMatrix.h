@@ -487,15 +487,15 @@ public:
 
     /// Returns the Khatri-Rao product of \a this with \a other
     template<typename OtherDerived>
-    gsMatrix khatriRao(const Eigen::EigenBase<OtherDerived>& other) const
+    gsMatrix khatriRao(const Eigen::MatrixBase<OtherDerived>& other) const
     {
         const index_t r  = this->rows(), c = this->cols();
         const index_t ro = other.rows();
-        GISMO_ASSERT(c==m2.cols(), "Column sizes do not match");
+        GISMO_ASSERT(c==other.cols(), "Column sizes do not match.");
         gsMatrix result(r*ro, c);
         for (index_t j = 0; j != c; ++j) // for all cols
             for (index_t i = 0; i != ro; ++i) // for all rows
-                result.block(i*r, j, r, 1) = other.coeff(i,j) * this->col(j);
+                result.block(i*r, j, r, 1) = this->coeff(i,j) * other.col(j);
         return result;
     }
 
