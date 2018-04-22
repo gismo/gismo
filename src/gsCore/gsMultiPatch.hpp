@@ -650,8 +650,8 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
                                    gsMatrix<T> & preim) const
 {
     pids.resize(points.cols());
-    pids.setConstant(-1);
-    preim.setZero(parDim(), points.cols());
+    pids.setConstant(-1); // -1 implies not in the domain
+    preim.resize(parDim(), points.cols());//uninitialized by default
     gsMatrix<T> pt, pr, tmp;
 
     for (index_t i = 0; i!=pids.size(); ++i)
