@@ -472,6 +472,33 @@ public:
         return os.str();
     }
 
+    /// Returns the Kronecker product of \a this with \a other
+    template<typename OtherDerived>
+    gsMatrix kron(const Eigen::MatrixBase<OtherDerived>& other) const
+    {
+        const index_t r  = this->rows(), c = this->cols();
+        const index_t ro = other.rows(), co = other.cols();
+        gsMatrix result(r*ro, c*co);
+        for (index_t i = 0; i != r; ++i) // for all rows
+            for (index_t j = 0; j != c; ++j) // for all cols
+                result.block(i*ro, j*ro, ro, co) = this->coeff(i,j) * other;
+        return result;
+    }
+
+    /// Returns the Khatri-Rao product of \a this with \a other
+    template<typename OtherDerived>
+    gsMatrix khatriRao(const Eigen::EigenBase<OtherDerived>& other) const
+    {
+        const index_t r  = this->rows(), c = this->cols();
+        const index_t ro = other.rows();
+        GISMO_ASSERT(c==m2.cols(), "Column sizes do not match");
+        gsMatrix result(r*ro, c);
+        for (index_t j = 0; j != c; ++j) // for all cols
+            for (index_t i = 0; i != ro; ++i) // for all rows
+                result.block(i*r, j, r, 1) = other.coeff(i,j) * this->col(j);
+        return result;
+    }
+
 private:
 
     // Implementation of (inplace) Reduced Row Echelon Form computation
@@ -566,7 +593,7 @@ private:
 
         const T & m_tol;
     };
-
+    
 }; // class gsMatrix
 
 

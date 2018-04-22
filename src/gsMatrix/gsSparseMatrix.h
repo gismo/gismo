@@ -433,6 +433,45 @@ public:
         return result;
     }
 
+    index_t bandWidth(index_t upto)  const
+    {
+        upto = math::min(upto, this->cols());
+        index_t nz = 0;
+        for (index_t i = 0; i != upto; ++i)
+        {
+            const index_t ni = this->col(i).nonZeros();
+            if (ni>nz) nz = ni; 
+        }                
+        return nz;
+    }
+
+    index_t bandWidth() const
+    {
+        return bandWidth(this->outerSize());
+    }
+
+    /// Returns the Kronecker product of \a this with \a other
+    gsSparseMatrix kron(const gsSparseMatrix& other)  const
+    {
+        const index_t r  = this->rows(), c = this->cols();
+        const index_t ro = other.rows(), co = other.cols();
+        gsSparseMatrix result(r*ro, c*co);
+        result.reservePerColumn(this->bandWidth()*other.bandWidth());
+
+        iterator it1, it2;
+        for (index_t k1=0; k1 != (gsSparseMatrix::IsRowMajor?r:c); ++k1)
+            for (index_t k2=0; k2 != (gsSparseMatrix::IsRowMajor?ro:co); ++k2)
+                for (it1 = this->begin(k1); it1; ++it1)
+                    for (it2 = other.begin(k2); it2; ++it2)
+                    {
+                        const index_t i = it1.row() * ro + it2.row();
+                        const index_t j = it1.col() * co + it2.col();
+                        result.insert(i,j) = it1.value() * it2.value();
+                    }
+        result.makeCompressed();
+        return result;
+    }
+    
 private:
     
     /*
