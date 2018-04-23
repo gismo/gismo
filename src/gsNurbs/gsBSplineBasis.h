@@ -166,6 +166,7 @@ public:
 
     // Look at gsBasis class for a description
     int numElements() const { return m_knots.numElements(); }
+    using Base::numElements; //unhide
 
     // Look at gsBasis class for a description
     int elementIndex(const gsVector<T> & u ) const;
@@ -346,16 +347,6 @@ public:
     // Number of active functions at any point of the domain
     inline unsigned numActive() const { return m_p + 1; }
 
-    /// Returns the index of the first active (ie. non-zero) basis
-    /// function at all columns (points) of u
-    inline gsMatrix<unsigned,1> * firstActive(const gsMatrix<T,1> & u) const 
-    { 
-        gsMatrix<unsigned,1> * fa = new gsMatrix<unsigned,1>(1, u.cols() );
-        for ( index_t i = 0; i < u.cols(); i++ )
-            fa->at(i) = ( inDomain(u(0,i)) ? (m_knots.iFind(u.at(i))-m_knots.begin()) -m_p : 0 );
-        return fa;
-    }
-
     // Look at gsBasis class for a description
     gsDomain<T> * domain() const { return const_cast<KnotVectorType *>(&m_knots); }
 
@@ -474,8 +465,9 @@ public:
     }
 
     // Look at gsBasis for documentation
-    void degreeReduce (int const & i = 1) 
-    { 
+    void degreeReduce (int const & i = 1, int const dir = -1) 
+    {
+        GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         GISMO_ASSERT( i<=m_p, "Cannot reduce degree to negative");
         m_p-=i; m_knots.degreeReduce(i);
         //m_periodic =

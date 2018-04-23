@@ -1,3 +1,4 @@
+
 /** @file gsBSplineSolver.h
 
     @brief Provides classes and functions to solve equations involving B-splines.
@@ -46,13 +47,13 @@ struct Root
     gsVector<T> endPoint;
 
     Root(bool is_odd, T par, const gsVector<T> &mpoint)
-        : type(is_odd?odd:even)
+    : type(is_odd?odd:even), begParameter(0), endParameter(0)
         {
             parameter=par;
             point=mpoint;
         }
     Root(bool is_odd, T parB, T parE, const gsVector<T> &pointB, const gsVector<T> &pointE)
-        : type(is_odd?odd_interval:even_interval)
+    : type(is_odd?odd_interval:even_interval), parameter(0)
         {
             begParameter=parB;
             endParameter=parE;

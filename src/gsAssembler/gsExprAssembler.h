@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsUtils/gsPointGrid.h>
+#include <gsAssembler/gsQuadrature.h>
 
 namespace gismo
 {
@@ -782,7 +783,7 @@ void gsExprAssembler<T>::assemble(expr... args)
     for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         ee.setPatch(patchInd);
-        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patchInd), m_options);
+        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
@@ -838,8 +839,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
     {
         const boundary_condition<T> * it = &iit->get();
 
-        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(it->patch()), m_options,
-                                it->side().direction());
+        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
 
         m_exprdata->mapData.side = it->side();
 
@@ -898,8 +898,7 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
 
     for (typename bcContainer::const_iterator it = BCs.begin(); it!= BCs.end(); ++it)
     {
-        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(it->patch()), m_options,
-                                it->side().direction());
+        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
 
         m_exprdata->mapData.side = it->side();
 
@@ -970,11 +969,11 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
     {
         const boundaryInterface & iFace = *it;
         const int patch1 = iFace.first() .patch;
-        const int patch2 = iFace.second().patch;
+        //const int patch2 = iFace.second().patch;
         //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
 
-        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patch1), m_options,
-                                iFace.first().side().direction());
+        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
+                                   m_options, iFace.first().side().direction());
 
         m_exprdata->mapData.side = iFace.first().side(); // (!)
 

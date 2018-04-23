@@ -235,7 +235,11 @@ public:
         return m_bases[i]->size();
     }
 
-    index_t size() const { GISMO_ERROR("call gsMultiBasis::nBases() instead.");}
+    index_t size() const
+    {
+        //GISMO_ERROR("call gsMultiBasis::nBases() instead.");
+        return totalSize();
+    }
 
     /// @brief The total number of basis functions in all bases
     size_t totalSize() const

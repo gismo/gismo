@@ -68,7 +68,9 @@ struct boundary
     };
 };
 
-struct boxCorner;// defined later
+// forward declarations; defined later
+struct boxCorner;
+struct patchCorner;
 
 /**
    @brief Struct which represents a certain side of a box.
@@ -222,7 +224,7 @@ inline std::ostream &operator<<(std::ostream &os, const boxSide& o)
 
     Basically a boxSide with an additional index for the patch.
 */  
-struct patchSide: public boxSide
+struct GISMO_EXPORT patchSide : public boxSide
 {
 public:
     index_t patch;              ///< The index of the patch.
@@ -239,6 +241,15 @@ public:
     // Accessors
     boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
+
+    /**
+     * @brief returns the vector of the corners contained in the side
+     * @param dim is the ambient dimension
+     * @param corners
+     */
+    void getContainedCorners (int dim, std::vector<patchCorner> &corners) const;
+
+    using boxSide::getContainedCorners; // unhiding
 
     bool operator== (const patchSide & other) const
     {

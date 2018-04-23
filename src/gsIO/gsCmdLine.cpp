@@ -422,7 +422,7 @@ void gsCmdLine::printVersion()
 #if defined(_MSC_VER)
     gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<__cplusplus <<", ";
 #elif defined(__clang__ )
-    gsInfo << "Clang "<<"XX" <<" ("<<__cplusplus <<", ";
+    gsInfo << "Clang "<<__clang_version__<<" ("<<__cplusplus <<", ";
 #elif defined(_INTEL_COMPILER)
     gsInfo << "Intel C++ "<<__INTEL_COMPILER<<" ("<<__cplusplus <<", ";
 #elif defined(__MINGW64__)

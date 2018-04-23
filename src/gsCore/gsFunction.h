@@ -88,7 +88,7 @@ public:
         @name Evaluation functions
         @anchor Evaluation_functions
 
-        These functions allow to evaluate the function as well as its derivatives
+        These functions allow one to evaluate the function as well as its derivatives
         at one or more points in the parameter space. See also \ref func_eval_members.
 
         @{

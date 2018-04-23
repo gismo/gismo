@@ -71,7 +71,7 @@ public:
   /// gives back the computed B-spline curve
   const gsBSpline<T>& curve() const { return m_curve; }
 
-  /// returns the knot vectot
+  /// returns the knot vector
   gsKnotVector<T> returnKnotVector() const {return m_knots;}
 
   /// returns the parameter values

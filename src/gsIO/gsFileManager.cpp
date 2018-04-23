@@ -40,13 +40,14 @@ public:
     friend gsFileManagerData& gsFileManagerDataSingleton();
     friend class gsFileManager;
 
-    void setSearchPaths(const std::string& paths);
+    void addSearchPaths(const std::string& paths);
 
+    void clear() { m_paths.clear();}
 private:
     gsFileManagerData()
     {
 #ifdef GISMO_SEARCH_PATHS
-        setSearchPaths("" GISMO_SEARCH_PATHS);
+        addSearchPaths("" GISMO_SEARCH_PATHS);
 #endif
     }
 
@@ -124,15 +125,19 @@ void _replace_slash_by_basckslash(std::string& str)
         if ( *it=='/' ) *it = '\\';
 }
 
-void gsFileManager::setSearchPaths(const std::string& paths)
+void gsFileManager::addSearchPaths(const std::string& paths)
 {
-    gsFileManagerDataSingleton().setSearchPaths(paths);
+    gsFileManagerDataSingleton().addSearchPaths(paths);
 }
 
-void gsFileManagerData::setSearchPaths(const std::string& paths)
+void gsFileManager::setSearchPaths(const std::string& paths)
 {
-    m_paths.clear();
+    gsFileManagerDataSingleton().clear();
+    gsFileManagerDataSingleton().addSearchPaths(paths);
+}
 
+void gsFileManagerData::addSearchPaths(const std::string& paths)
+{
     std::string::const_iterator a;
     std::string::const_iterator b = paths.begin();
     while (true)
@@ -328,7 +333,7 @@ void gsFileManager::open(const std::string & fn)
 
 #if defined(__APPLE__)
     const int ret = std::system( ("open " + fn + " &").c_str() );
-#elif defined(__linux__)
+#elif defined(__unix__) //__linux__
     const int ret = std::system( ("xdg-open " + fn + " &").c_str() );
 #elif defined(_WIN32)
     HINSTANCE hi = ShellExecute(GetDesktopWindow(), "open", fn.c_str(),

@@ -123,13 +123,11 @@ public:
         return mapVar;
     }
 
-    // /*
     geometryMap getMap() const
     {
-        //assert initialized
+        GISMO_ASSERT(mapVar.isValid(), "The Geometry map is not initialized)");
         return mapVar;
     }
-    //*/
 
     nonConstVariable getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
@@ -248,8 +246,8 @@ public:
             it->second.patchId = patchIndex;
         }
 
-        // GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
-
+        //GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
+        if ( 0!=mapData.values.size() && 0!= mapData.values[0].rows() ) // avoid left-over from previous expr.
         for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
         {
             it->first->piece(patchIndex).compute(mapData.values[0], it->second);

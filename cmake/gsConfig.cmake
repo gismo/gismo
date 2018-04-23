@@ -1,3 +1,4 @@
+
 ######################################################################
 ## CMakeLists.txt ---
 ## This file is part of the G+Smo library. 
@@ -45,7 +46,7 @@ if(NOT GISMO_INDEX_TYPE)
    set (GISMO_INDEX_TYPE "int" CACHE STRING
    #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
    #set (GISMO_INDEX_TYPE "int${BITSZ_VOID_P}_t" CACHE STRING
-   "Index type(int, unsigned, size_t)" FORCE)
+   "Index type(int, int32_t, int64_t, unsigned, size_t)" FORCE)
    set_property(CACHE GISMO_INDEX_TYPE PROPERTY STRINGS
    "int" "int32_t" "int64_t" "unsigned" "size_t" )
 endif()
@@ -95,8 +96,9 @@ if(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
   # see http://www.cmake.org/Wiki/CTest:Coverage
   # and http://cmake.3232098.n2.nabble.com/Running-coverage-analysis-td7145452.html
   include(CodeCoverage)
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ftest-coverage -fprofile-arcs")
-  set(CMAKE_EXE_LINKER_FLAGS "-fprofile-arcs -ftest-coverage")
+  APPEND_COVERAGE_COMPILER_FLAGS()
+  #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ftest-coverage -fprofile-arcs")
+  #set(CMAKE_EXE_LINKER_FLAGS "-fprofile-arcs -ftest-coverage")
 endif(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
@@ -147,15 +149,22 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
   endif()
 
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-  # Update if necessary
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wattributes") # -Wno-ignored-attributes
-  # -Woverloaded-virtual -Wconversion -Wextra -pedantic
+  # Note: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431
+  # affects -Wno-ignored-attributes in Eigen
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wunused-variable -Wno-ignored-attributes")
   if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftrack-macro-expansion=0")
   endif()
-  if ("x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
+  if ("x${CMAKE_CXX_STANDARD}" STREQUAL "x98"
+      AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.2)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-compat")
   endif()
+  
+  if(GISMO_WARNINGS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Woverloaded-virtual -Wextra")
+    #-Wshadow -Wconversion -pedantic -Wunused -Wattributes
+  endif()
+
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" )

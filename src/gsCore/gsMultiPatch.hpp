@@ -193,25 +193,19 @@ void gsMultiPatch<T>::permute(const std::vector<int> & perm)
 }
 
 template<class T>
-void gsMultiPatch<T>::addPatch( gsGeometry<T>* g ) 
+void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
 {
-    if ( m_dim == -1 ) 
+    if ( m_dim == -1 )
     {
         m_dim = g->parDim();
-    } else 
+    } else
     {
-        GISMO_ASSERT( m_dim == g->parDim(), 
+        GISMO_ASSERT( m_dim == g->parDim(),
                       "Tried to add a patch of different dimension in a multipatch." );
     }
     g->setId( m_patches.size() );
-    m_patches.push_back( g ) ;
+    m_patches.push_back( g.release() ) ;
     addBox();
-}
-
-template<class T>
-void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
-{
-    addPatch(g.release());
 }
 
 template<class T>
@@ -239,6 +233,22 @@ void gsMultiPatch<T>::addInterface( gsGeometry<T>* g1, boxSide s1,
     gsBoxTopology::addInterface( p1, s1, p2, s2 );
 }
 
+template<class T>
+gsMatrix<T> gsMultiPatch<T>::pointOn( const patchCorner& pc )
+{
+    gsMatrix<T> coordinates;
+    m_patches[pc.patch]->eval_into(m_patches[pc.patch]->parameterCenter(pc),coordinates);
+    return coordinates;
+}
+
+
+template<class T>
+gsMatrix<T> gsMultiPatch<T>::pointOn( const patchSide& ps )
+{
+    gsMatrix<T> coordinates;
+    m_patches[ps.patch]->eval_into(m_patches[ps.patch]->parameterCenter(ps),coordinates);
+    return coordinates;
+}
 
 template<class T>
 void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
@@ -629,6 +639,38 @@ void gsMultiPatch<T>::repairInterfaces()
         k++; // just to be sure this loop cannot go on infinitely
     }
     while( sthChanged && k <= kmax );
+}
+
+
+
+
+template<class T>
+void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
+                                   gsVector<index_t> & pids,
+                                   gsMatrix<T> & preim) const
+{
+    pids.resize(points.cols());
+    pids.setConstant(-1); // -1 implies not in the domain
+    preim.resize(parDim(), points.cols());//uninitialized by default
+    gsMatrix<T> pt, pr, tmp;
+
+    for (index_t i = 0; i!=pids.size(); ++i)
+    {
+        pt = points.col(i);
+        
+        for (std::size_t k = 0; k!= m_patches.size(); ++k)
+        {
+            pr = m_patches[k]->parameterRange();
+            m_patches[k]->invertPoints(pt, tmp);
+            if ( (tmp.array() >= pr.col(0).array()).all()
+                 && (tmp.array() <= pr.col(1).array()).all() )
+            {
+                pids[i] = k;
+                preim.col(i) = tmp;
+                break;
+            }
+        }
+    }
 }
 
 

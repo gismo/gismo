@@ -89,15 +89,16 @@ public:
     /// Apply the smoother for the equation Ax=rhs and update the current iterate x.
     virtual void step(const gsMatrix<T>& rhs, gsMatrix<T>& x) const
     {
-        const index_t sz = m_ops.size();
-        for ( index_t i=0; i<sz; ++i )
+        const size_t sz = m_ops.size();
+        for ( size_t i=0; i<sz; ++i )
             m_ops[i]->step(rhs,x);
     }
 
     /// Apply the transposed smoother for the equation Ax=rhs and update the current iterate x.
     virtual void stepT(const gsMatrix<T>& rhs, gsMatrix<T>& x) const
     {
-        for ( index_t i=m_ops.size()-1; i>=0; --i )
+        const index_t sz = m_ops.size();
+        for ( index_t i=sz-1; i>=0; --i )
             m_ops[i]->stepT(rhs,x);
     }
 

@@ -3,23 +3,23 @@
 ## This file is part of the G+Smo library.
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012-2015 - RICAM-Linz.
+## Copyright (C) 2012-2018 - RICAM-Linz.
 ######################################################################
 
 cmake_minimum_required(VERSION 2.8.8)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
-cmake_policy(SET CMP0042 OLD)
-cmake_policy(SET CMP0048 OLD)
+cmake_policy(SET CMP0042 NEW)
+cmake_policy(SET CMP0048 NEW)
 endif()
 
 if(POLICY CMP0054)# CMake 3.1
-cmake_policy(SET CMP0054 OLD)
+cmake_policy(SET CMP0054 NEW)
 endif()
 
 if(POLICY CMP0053)# CMake 3.1.3
-cmake_policy(SET CMP0053 OLD)
+cmake_policy(SET CMP0053 NEW)
 endif()
 
 if(POLICY CMP0063)# CMake 3.3
@@ -38,10 +38,20 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
-if (GISMO_BUILD_PCH)
-project(gismo C CXX CXXPCH)
+set(gismo_VERSION_MAJOR "0")
+set(gismo_VERSION_MINOR "8")
+set(gismo_VERSION_PATCH "3")
+set(gismo_VERSION
+  "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
+  
+if(POLICY CMP0048)# CMake 3.0
+  project(gismo LANGUAGES C CXX  VERSION ${gismo_VERSION})
 else()
-project(gismo C CXX)
+  project(gismo C CXX)
+endif()
+
+if (GISMO_BUILD_PCH)
+  enable_language(CXXPCH)
 endif()
 
 if(NOT GISMO_INSOURCE_BUILD AND "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
@@ -52,8 +62,7 @@ endif()
 ## Cmake Inclusions and configuration options
 ## #################################################################
 
-include(CTest)
-enable_testing()
+set(CMAKE_INSTALL_MESSAGE NEVER)
 
 #Use solution folders for Visual Studio
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -63,8 +72,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   string(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 endif()
 
-include( gsVersion )
-include( gismoUse  )
+include( gismoUse )
 include( gsConfig )
 
 message( "   GGGGGGGGG      GGGG      GGGGGGGGG  GGGGGG   GGGGGG  GGGGGGGGGG" )
@@ -81,6 +89,9 @@ message( "                          version ${${PROJECT_NAME}_VERSION}" )
 ## #################################################################
 
 include( gsOptions )
+# Note: clean cache to reset to OFF
+set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
+include(CTest)
 
 ## #################################################################
 ## Preprocessor definitions
@@ -102,8 +113,6 @@ configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
-file(COPY "${PROJECT_SOURCE_DIR}/CTestConfig.cmake"
-    DESTINATION "${PROJECT_BINARY_DIR}")
 
 include_directories(${PROJECT_BINARY_DIR})
 
@@ -277,7 +286,7 @@ endif(GISMO_BUILD_MEX)
 ## Install
 ## #################################################################
 
-include( gsInstall )
+include(gsInstall)
 
 ## #################################################################
 ## Executables
@@ -301,7 +310,6 @@ if(GISMO_BUILD_UNITTESTS)
 else()
   add_subdirectory(unittests EXCLUDE_FROM_ALL)
 endif(GISMO_BUILD_UNITTESTS)
-
 
 add_subdirectory(optional)
 

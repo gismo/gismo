@@ -27,25 +27,13 @@ namespace gismo
 template<class T>
 class gsQuadRule
 {
-
 public:
 
     /// Default empty constructor
     gsQuadRule() 
     { }
-
-    // Construct a quadrature rule with \a numNodes number of
-    // quadrature points per integration variable
-    // gsQuadRule(gsVector<index_t> const & numNodes, 
-    //            unsigned digits = std::numeric_limits<T>::digits10 )
-    // { 
-    //     setNodes(numNodes, digits);
-    // }
     
     virtual ~gsQuadRule() { }
-
-    // /// Setup a quadrature rule with \a numNodes number of quadrature
-    // /// points per integration variable
 
     /**
      * @brief Initialize quadrature rule with \a numNodes number of
@@ -65,12 +53,29 @@ public:
      * @param numNodes vector of length \a d containing numbers of
      * nodes to be used (per integration variable).
      *
-     * @param digits accuracy of nodes and weights.
-     *
+     * @param digits accuracy of nodes and weights. If 0, the quadrature
+     * rule will use precomputed tables if possible. If greater then 0,
+     * it will force to compute it everytime.
      */
     virtual void setNodes( gsVector<index_t> const & numNodes,
-                           unsigned digits = std::numeric_limits<T>::digits10 )
+                           unsigned digits = 0)
     { GISMO_NO_IMPLEMENTATION }
+
+    /**
+     * @brief Initialize a univariate quadrature rule with \a numNodes
+     * quadrature points
+     *
+     * @param digits accuracy of nodes and weights. If 0, the quadrature
+     * rule will use precomputed tables if possible. If greater then 0,
+     * it will force to compute it everytime.
+     */
+    void setNodes( index_t numNodes,
+                   unsigned digits = 0 )
+    {
+        gsVector<index_t> nn(1);
+        nn[0] = numNodes;
+        this->setNodes(nn, digits);
+    }
 
     /**
      * @brief Returns reference nodes for the currently kept rule.
@@ -157,10 +162,6 @@ protected:
 }; // class gsQuadRule
 
 
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
-
-
 // Note: left here for inlining
 template<class T> void
 gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
@@ -177,9 +178,10 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
     gsVector<T> h(d);
     T hprod(1.0); // for the computation of the size of the cube.
 
-    for ( index_t i = 0; i<d; ++i)
+    for ( index_t i = 0; i!=d; ++i)
     {
-        // the factor 0.5 is due to the fact that the one-dimensional reference interval is [-1,1].
+        // the factor 0.5 is due to the fact that the one-dimensional
+        // reference interval is [-1,1].
         h[i] = ( lower[i] != upper[i] ? 0.5 * (upper[i]-lower[i]) : T(0.5) );
         hprod *= h[i];
     }
@@ -192,9 +194,6 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
 }
 
 } // namespace gismo
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsQuadRule.hpp)

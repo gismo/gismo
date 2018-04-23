@@ -332,6 +332,12 @@ public:
         return ( S.col(0) + S.col(1) ) * T(0.5);
     }
 
+    /// Get coordinates of the boxCorner \a bc in the parameter domain
+    gsMatrix<T> parameterCenter( const boxCorner& bc );
+
+    /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
+    gsMatrix<T> parameterCenter( const boxSide& bs );
+
     // Whether the coefficients of this geometry are stored in projective or affine form
     //virtual bool isProjective() const = 0;
 

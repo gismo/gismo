@@ -71,6 +71,7 @@ public:
 
         m_leaf = hbs.tree().beginLeafIterator();
         updateLeaf();
+        updateElement();
     }
 
     // ---> Documentation in gsDomainIterator.h
@@ -81,21 +82,27 @@ public:
         if (this->m_isGood) // new element in m_leaf
             updateElement();
         else // went through all elements in m_leaf
+        {
             this->m_isGood = nextLeaf();
-
+            if (this->m_isGood)
+                updateElement();
+        }
+        
         return this->m_isGood;
     }
 
     // ---> Documentation in gsDomainIterator.h
     bool next(index_t increment)
     {
-      for (index_t i = 0; i < increment; i++)
+        for (index_t i = 0; i != increment && this->m_isGood; ++i)
+        {
             this->m_isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
+            if (!this->m_isGood)
+                this->m_isGood = nextLeaf();
+        }
 
-        if (this->m_isGood) // new element in m_leaf
+        if (this->m_isGood)
             updateElement();
-        else // went through all elements in m_leaf
-            this->m_isGood = nextLeaf();
 
         return this->m_isGood;
     }
@@ -107,17 +114,18 @@ public:
         const gsHTensorBasis<d, T>* hbs =  dynamic_cast<const gsHTensorBasis<d, T> *>(m_basis);
         m_leaf = hbs->tree().beginLeafIterator();
         updateLeaf();
+        updateElement();
     }
     
     // ---> Documentation in gsDomainIterator.h Compute a suitable
     // quadrature rule of the given order for the current element
-    void computeQuadratureRule(const gsVector<int>& numIntNodes)
+    GISMO_DEPRECATED void computeQuadratureRule(const gsVector<int>& numIntNodes)
     {
         m_quadrature.setNodes(numIntNodes);
         m_quadrature.mapTo(m_lower, m_upper, this->quNodes, this->quWeights);
     }
 
-    void computeQuadratureRuleDefault()
+    GISMO_DEPRECATED void computeQuadratureRuleDefault()
     {
         // uses same formula as gsGaussAssembler::getNumIntNodesFor( gsBasis )
         gsVector<int> numIntNodes( m_basis->dim() );
@@ -198,9 +206,6 @@ private:
             // for n breaks, we have n - 1 elements (spans)
             m_meshEnd(dim) =  m_breaks[dim].end() - 1;
         }
-
-        // We are at a new element, so update cell data
-        updateElement();
     }
 
     /// Computes lower, upper and center point of the current element, maps the reference

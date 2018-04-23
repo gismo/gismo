@@ -72,7 +72,7 @@ struct lvl_coef
  */
 
 template<unsigned d, class T>
-class gsHTensorBasis: public gsBasis<T>
+class GISMO_DEFAULT_VIS gsHTensorBasis: public gsBasis<T>
 {
 public:
     /// Shared pointer for gsHTensorBasis
@@ -676,7 +676,7 @@ public:
      */
     virtual void refineElements(std::vector<unsigned> const & boxes);
 
-    /// Refines all the cells on the side \a side upto level \a lvl
+    /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
         
     // Look at gsBasis.h for the documentation of this function
@@ -765,7 +765,8 @@ public:
 
         return numEl;
     }
-
+    using gsBasis<T>::numElements; //unhide
+        
     /// @brief transformes a sortedVector \a indexes of flat tensor index
     /// of the bspline basis of \a level to hierachical indexes in place. If a flat
     /// tensor index is not found, it will transform to -1.

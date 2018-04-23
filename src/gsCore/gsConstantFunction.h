@@ -113,7 +113,7 @@ public:
     // Documentation in gsFunction class
     virtual int targetDim() const   { return m_coefs.cols(); }
 
-    const gsVector<T> & value() const { return m_coefs.transpose();}
+    const gsVector<T> value() const { return m_coefs.transpose();}
 
     T value(size_t i) const { return m_coefs.at(i);}
 

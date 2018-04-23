@@ -41,6 +41,9 @@ public:
     /// Set the search paths
     static void setSearchPaths(const std::string& paths);
 
+    /// Add more search paths
+    static void addSearchPaths(const std::string& paths);
+
     /// Get the defined search path
     static std::string getSearchPaths();
 

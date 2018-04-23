@@ -18,9 +18,9 @@
 
 /** Define the G+Smo version number. */
 #define GISMO_VERSION    "@gismo_VERSION@"
-#define GISMO_MAJOR      @gismo_MAJOR_VERSION@
-#define GISMO_MINOR      @gismo_MINOR_VERSION@
-#define GISMO_PATCH      @gismo_PATCH_VERSION@
+#define GISMO_MAJOR      @gismo_VERSION_MAJOR@
+#define GISMO_MINOR      @gismo_VERSION_MINOR@
+#define GISMO_PATCH      @gismo_VERSION_PATCH@
 
 /** Define default coefficient type. */
 #define real_t           @GISMO_COEFF_TYPE@

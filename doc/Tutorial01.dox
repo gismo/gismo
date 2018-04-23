@@ -66,11 +66,11 @@ There source folder contains the following sub-folders:
 
    - \ref Assembler "gsAssembler"
 
-     Contains classes which allow to generate (assemble) the matrices
+     Contains classes which allow us to generate (assemble) the matrices
      and right-hand side(s) of a boundary value problem by means of
-     (Gauss) quadrature. Also, classes which allow to compute the
-     norms or semi-norms of the difference of two functions, error
-     estimators and related utilities.
+     (Gauss) quadrature. Also, it contains classes which allow us to
+     compute the norms or semi-norms of the difference of two functions,
+     error estimators and related utilities.
 
    - \ref Solver "gsSolver"
 
@@ -204,9 +204,9 @@ The build folder has the following subfolders and files:
 - \b src, \b examples, \b external, \b optional
 
   These folders are named as the corresponding folders in the source
-  folder, and contain the compiled object files. All the files in
-  these folders are temporary, and their goal is to allow to
-  re-compile fast the library when there are a few changes in the
+  folder, and contain the compiled object files. All files in these
+  folders are temporary, and their goal is to allow one to
+  re-compile the library fast when there are only a few changes in the
   source files (while all the other object files are unchanged).  Most
   of the time we do not need to care about or work in these folders.
 

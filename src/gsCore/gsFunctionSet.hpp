@@ -104,7 +104,7 @@ void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
         deriv2_into(u, result[2]);
         break;
     default:
-        GISMO_ERROR("evalAllDers implemented for order upto 2<"<<n ); //<< " for "<<*this);
+        GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n ); //<< " for "<<*this);
         break;
     }
 }
@@ -178,7 +178,10 @@ void gsFunctionSet<T>::compute(const gsMatrix<T> & in,
         evalAllDers_into(in, md, out.values);
 
     if (flags & NEED_ACTIVE && flags & SAME_ELEMENT)
+    {
+        GISMO_ASSERT(0!=in.cols(), "The points are empty.");
         active_into(in.col(0), out.actives);
+    }
     else if (flags & NEED_ACTIVE)
         active_into(in, out.actives);
 

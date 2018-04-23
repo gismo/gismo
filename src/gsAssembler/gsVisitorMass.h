@@ -45,7 +45,7 @@ public:
                     unsigned         & evFlags )
     {
         // Setup Quadrature (harmless slicing occurs)
-        rule = gsGaussRule<T>(basis, options);
+        rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         // Set Geometry evaluation flags
         evFlags = NEED_MEASURE;

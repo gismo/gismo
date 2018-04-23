@@ -205,9 +205,6 @@ public:
     ///\brief Return the basis of the \a i-th patch.
     gsBasis<T> & basis( std::size_t i ) const;
 
-    ///\brief Add a patch (pointer is consumed)
-    void addPatch( gsGeometry<T> * g );
-
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     void addPatch(typename gsGeometry<T>::uPtr g);
 
@@ -226,11 +223,20 @@ public:
 
     using Base::addInterface; // unhide base function
     
-    /// Add side s of patch g to the outer boundary of the domain
+    /// Add side \a s of patch \a g to the outer boundary of the domain
     void addPatchBoundary( gsGeometry<T>* g, boxSide s ) {
         int p = findPatchIndex( g );
         gsBoxTopology::addBoundary( patchSide( p, s ) );
     }
+
+    /// Get coordinates of the patchCorner \a pc in the physical domain
+    gsMatrix<T> pointOn( const patchCorner& pc );
+
+    /// @brief Get coordinates of a central point of the the patchSide \a ps in the physical domain
+    ///
+    /// The central point in the physical domain is the the midpoint on the parameter domain,
+    /// mapped to the physical domain
+    gsMatrix<T> pointOn( const patchSide& ps );
 
     /// \brief Refine uniformly all patches by inserting \a numKnots
     /// in each knot-span with multipliplicity \a mul
@@ -288,6 +294,12 @@ public:
     */
     void repairInterfaces();
 
+    /// @brief For each point in \a points, locates the parametric coordinates of the point
+    ///
+    /// \param pids vector containing for each point the patch id where it belongs (or -1 if not found)
+    /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
+    void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim) const;
+    
 protected:
 
     void setIds();

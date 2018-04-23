@@ -677,7 +677,7 @@ public:
     template<typename T>
     int alltoall (T* send, T* recv, int sendcount, int recvcount) const
     {
-        return MPI_Scatter(send,sendcount,MPITraits<T>::getType(),
+        return MPI_Alltoall(send,sendcount,MPITraits<T>::getType(),
                            recv,recvcount,MPITraits<T>::getType(),
                            m_comm);
     }

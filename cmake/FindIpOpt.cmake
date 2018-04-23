@@ -1,3 +1,14 @@
+######################################################################
+## FindIpOpt.cmake
+## This file is part of the G+Smo library. 
+##
+## Author: Angelos Mantzaflaris 
+## Copyright (C) 2016 RICAM-Linz.
+##
+######################################################################
+
+unset(IPOPT_LIBRARY     CACHE)
+unset(IPOPT_INCLUDE_DIR CACHE)
 
 find_path(IPOPT_INCLUDE_DIR NAMES IpTNLP.hpp HINTS /usr/include/coin ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin ${IpOpt_DIR}/include/coin)
 

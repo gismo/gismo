@@ -82,9 +82,9 @@ int main(int argc, char* argv[])
     std::string value = "default_plain_value";
     cmd.addPlainString("plain", "Description of the plain command line argument.", plainString);
 
-    // Each flag can only called once. The commands
+    // Each flag can be only called once. The commands
     // cmd.addMultiString, cmd.addMultiInt and cmd.addMultiReal
-    // allow to register flags that can be used several times.
+    // allow one to register flags that can be used several times.
     // They store the data in a vector.
 
     // -----------------------------------------------------------------

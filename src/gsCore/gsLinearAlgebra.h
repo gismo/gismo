@@ -18,6 +18,12 @@
 
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
 
+// Make Eigen use GISMO_ASSERT which throws exceptions
+//
+// Must be defined before including Eigen headers
+// http://eigen.tuxfamily.org/dox-3.2/TopicPreprocessorDirectives.html
+#define eigen_assert( cond ) GISMO_ASSERT( cond, "" )
+
 // Plugin provides extra members
 #define EIGEN_MATRIXBASE_PLUGIN <gsMatrix/gsMatrixAddons.h>
 #include <gsMatrix/gsEigenDeclarations.h>

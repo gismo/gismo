@@ -612,8 +612,8 @@ gsHDomain<d,T>::pointSearch(const point & p, int level, node  *_node ) const
     point pp;
     local2globalIndex(p, static_cast<unsigned>(level), pp);
 
-    if( ( pp.array() > m_upperIndex.array() ).any() )
-        GISMO_ERROR("pointSearch: Wrong input: "<< pp.transpose()<<".\n" );
+    GISMO_ASSERT( ( pp.array() <= m_upperIndex.array() ).all(),
+        "pointSearch: Wrong input: "<< p.transpose()<<", level "<<level<<".\n" );
 
     std::vector<node*> stack;
     stack.reserve( 2 * m_maxPath );
@@ -638,7 +638,7 @@ gsHDomain<d,T>::pointSearch(const point & p, int level, node  *_node ) const
                 stack.push_back(curNode->right); //push(curNode->right);
         }
     }
-    return NULL;
+    GISMO_ERROR("pointSearch: Error ("<< p.transpose()<<").\n" );
 }
 
 

@@ -226,7 +226,7 @@ void gsDofMapper::finalize()
     // Eliminated dofs start after free dofs    
     index_t curElimDof = m_numFreeDofs;     
     // Devise number of coupled dofs (m_numCpldDofs was used as
-    // coupling id upto here)
+    // coupling id up to here)
     m_numCpldDofs = m_numFreeDofs - curCplDof;
 
     /*// For debugging: counting the number of coupled and boundary dofs

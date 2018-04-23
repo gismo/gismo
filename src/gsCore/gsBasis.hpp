@@ -381,7 +381,7 @@ void gsBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         deriv2_into(u, result[2]);
         break;
     default:
-        GISMO_ERROR("evalAllDers implemented for order upto 2<"<<n<< " for "<<*this);
+        GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n<< " for "<<*this);
         break;
     }
 }
@@ -472,19 +472,19 @@ void gsBasis<T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transf
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeElevate(int const & i, int dir)
+void gsBasis<T>::degreeElevate(int const & i, int const dir)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeReduce(int const & i)
+void gsBasis<T>::degreeReduce(int const & i, int const dir)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeIncrease(int const & i, int dir)
+void gsBasis<T>::degreeIncrease(int const & i, int const dir)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::degreeDecrease(int const & i, int dir)
+void gsBasis<T>::degreeDecrease(int const & i, int const dir)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

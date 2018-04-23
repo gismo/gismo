@@ -22,10 +22,9 @@ namespace gismo
     \brief Class that represents the (tensor) Gauss-Legendre quadrature rule
     
     \ingroup Assembler
-*/ 
- 
+*/  
 template<class T>
-class gsGaussRule : public gsQuadRule<T>
+class gsGaussRule GISMO_FINAL : public gsQuadRule<T>
 {
 public:
 
@@ -34,15 +33,15 @@ public:
 
     /// Initialize a tensor-product Gauss quadrature rule with \a numNodes (direction-wise)
     gsGaussRule(gsVector<index_t> const & numNodes, 
-                const unsigned digits = REAL_DIG )
+                const unsigned digits = 0 )
     { 
-        setNodes(numNodes, digits);
+        gsGaussRule::setNodes(numNodes, digits);
     }
 
     /// Initialize a 1D Gauss quadrature rule with \a numNodes
-    gsGaussRule(index_t numNodes, const unsigned digits = REAL_DIG )
+    gsGaussRule(index_t numNodes, const unsigned digits = 0 )
     { 
-        setNodes(numNodes, digits);
+        this->setNodes(numNodes, digits);
     }
 
     /// Initialize a tensor-product Gauss quadrature rule for \a basis
@@ -61,16 +60,10 @@ public:
 public:
     // see gsQuadRule.h for documentation
     void setNodes( gsVector<index_t> const & numNodes, 
-                   unsigned digits = REAL_DIG );
+                   unsigned digits = 0 );
 
-    void setNodes( index_t numNodes, 
-                   unsigned digits = REAL_DIG )
-    {
-        gsVector<index_t> nn(1);
-        nn[0] = numNodes;
-        setNodes(nn, digits);
-    }
-    
+    using gsQuadRule<T>::setNodes; // unhide base
+
 private:
 
     void init(const gsBasis<T> & basis, const T quA, const int quB, int fixDir);
@@ -81,7 +74,7 @@ private:
      * This function is called by setNodes(), if lookupReference() (which is called first) returned \a false.
      */
     static void computeReference(index_t n, gsVector<T> & x, gsVector<T> & w, 
-                                 unsigned digits =  REAL_DIG);
+                                 unsigned digits =  0 );
 
     /** 
      *@brief  Look up function for the Gauss quadrature rule in the interval [-1,1].

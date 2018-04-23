@@ -336,7 +336,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         // Quadrature rule
-        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patchInd), m_options);
+        QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
@@ -391,9 +391,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
              m_exprdata->multiBasis().topology().bBegin(); bit != m_exprdata->multiBasis().topology().bEnd(); ++bit)
     {
         // Quadrature rule
-        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(bit->patch), m_options,
-                                bit->direction());
-
+        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(bit->patch), m_options,bit->direction());
         m_exprdata->mapData.side = bit->side();
 
         // Initialize domain element iterator
@@ -452,8 +450,8 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         const int patch1 = iFace.first().patch;
         // const int patch2 = iFace.second().patch; //!
         // Quadrature rule
-        QuRule = gsGaussRule<T>(m_exprdata->multiBasis().basis(patch1), m_options,
-                                iFace.first().side().direction());
+        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
+                                   m_options, iFace.first().side().direction());
 
         m_exprdata->mapData.side = iFace.first().side();
 

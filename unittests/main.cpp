@@ -13,6 +13,16 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+    To run with gdb:
+    gdb --args ./unittests -R [testname]
+
+    (gdb) catch throw
+    (gdb) run
+    ...
+    (gdb) bt
+    ...     see backtrack to find error
+    (gdb) quit
+
     Author(s): A. Mantzaflaris,  H. Weiner, J. Vogl
  **/
 
