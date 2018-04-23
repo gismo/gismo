@@ -15,19 +15,19 @@
 
 SUITE(gsKronecker_test)
 {
-    
+
     gsMatrix<> A = (gsMatrix<>(3,3) <<
                     3, 7, 3,
                     2, -2, 1,
                     9, 5, 2
         ).finished();
-    
+
     gsMatrix<> B = (gsMatrix<>(3,3) <<
                     6, 1, 4,
                     -3, 4, 2,
                     1, 2, 5
         ).finished();
-    
+
     gsMatrix<> KP = (gsMatrix<>(9,9) << // kron(A,B) computed in Matlab
                      18,    3,   12,   42,    7,   28,   18,    3,   12,
                      -9,    12,   6,  -21,   28,   14,   -9,   12,    6,
@@ -39,7 +39,7 @@ SUITE(gsKronecker_test)
                      -27,   36,  18,  -15,   20,   10,   -6,    8,    4,
                      9,     18,  45,    5,   10,   25,    2,    4,   10
         ).finished();
-    
+
     gsMatrix<> KRP = (gsMatrix<>(9,3) <<
                       18,   7,  12,
                       -9,  28,   6,
@@ -51,7 +51,7 @@ SUITE(gsKronecker_test)
                       -27, 20,   4,
                       9 ,  10,  10
         ).finished();
-    
+
     TEST(gsKroneckerOp)
     {
         gsKroneckerOp<> kron( makeMatrixOp(A), makeMatrixOp(B) );
