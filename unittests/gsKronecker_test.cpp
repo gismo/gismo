@@ -80,4 +80,12 @@ SUITE(gsKronecker_test)
         gsSparseMatrix<> sC = sA.kron(sB);
         CHECK_EQUAL ( KP, sC.toDense() );
     }
+
+    TEST(SparseKroneckerRowMajor)
+    {
+        gsSparseMatrix<real_t,RowMajor> sA = A.sparseView();
+        gsSparseMatrix<real_t,RowMajor> sB = B.sparseView();
+        gsSparseMatrix<real_t,RowMajor> sC = sA.kron(sB);
+        CHECK_EQUAL ( KP, sC.toDense() );
+    }
 }
