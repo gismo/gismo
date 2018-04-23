@@ -18,8 +18,6 @@
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
 #include <gsTensor/gsTensorTools.h>
-#include <gsTensor/gsTensorDomainIterator.h>
-#include <gsTensor/gsTensorDomainBoundaryIterator.h>
 #include <gsTensor/gsTensorBasis.h>
 #include <gsAssembler/gsGenericAssembler.h>
 
@@ -149,7 +147,10 @@ template<typename T>
 gsSparseMatrix<T> gsSinglePatchPreconditioners<T>::getMassMatrix() const
 {
     std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis, m_bc, m_options);
-    return getKroneckerProduct(local_mass);
+    gsSparseMatrix<T> result = local_mass[0];
+    for (size_t i=1; i<local_mass.size(); ++i)
+        result = result.kron(local_mass[i]);
+    return result;
 }
 
 template<typename T>
@@ -193,10 +194,10 @@ gsSparseMatrix<T> gsSinglePatchPreconditioners<T>::getStiffnessMatrix(T a) const
 
     for (index_t i=1; i<d; ++i)
     {
-        K  = getKroneckerProduct(K, local_mass[i]);
-        K += getKroneckerProduct(M, local_stiff[i]);
+        K  = K.kron(local_mass[i]);
+        K += M.kron(local_stiff[i]);
         if ( i < d-1 || a != 0 )
-            M = getKroneckerProduct(M, local_mass[i]);
+            M = M.kron(local_mass[i]);
     }
     if (a==1)
         K += M;

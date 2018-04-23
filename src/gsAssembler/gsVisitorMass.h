@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsAssembler/gsQuadrature.h>
+
 namespace gismo
 {
 /** 
