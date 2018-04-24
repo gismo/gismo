@@ -341,57 +341,6 @@ public:
             it = std::find(++it,v.end(), true);
         }
         return inner;
-
-        /* // Alternative implementation based on priority queue
-        const index_t numSource = outer.size();
-        std::vector<const index_t*>   nzIndices(numSource), end(numSource);
-        std::vector<const index_t**>  nzMin;
-        nzMin.reserve(numSource);
-        container inner;
-        inner.reserve(5*numSource);
-
-        typedef std::vector<const index_t *>::iterator indIter;
-        typedef std::vector<const index_t**>::iterator nzMinIter;
-
-        indIter i = nzIndices.begin();
-        indIter j = end      .begin();
-        for (typename container::const_iterator k =
-                 outer.begin(); k!=outer.end();++i,++j,++k)
-        {
-            *i = this->innerIndexPtr() + this->outerIndexPtr()[*k  ];
-            *j = this->innerIndexPtr() + this->outerIndexPtr()[*k+1];
-        }
-
-        const index_t idMax = this->innerSize();
-        index_t curMin;
-
-        while (true)
-        {
-            curMin=idMax;
-            nzMin.clear();
-            i = nzIndices.begin();
-            j = end      .begin();
-            for (; i!=nzIndices.end();++i,++j)
-            {
-                if(*i<*j)
-                {
-                    if (**i<curMin)
-                    {
-                        curMin=**i;
-                        nzMin.clear();
-                        nzMin.push_back(&(*i));
-                    }
-                    else if (**i==curMin)
-                    {
-                        nzMin.push_back(&(*i));
-                    }
-                }
-            }
-            if (curMin>=idMax) return inner;
-            inner.push_back(curMin);
-            for(nzMinIter it = nzMin.begin(); it!=nzMin.end(); ++it) ++(**it);
-        }
-        */
     }
 
     /// Returns the result of multiplication of \a this and \a other,
@@ -433,6 +382,40 @@ public:
         return result;
     }
 
+    gsVector<index_t> nonZerosPerInner(index_t upto = std::numeric_limits<index_t>::max())  const
+    {
+        upto = math::min(upto, this->cols());
+        gsVector<index_t> nz(upto);
+        index_t * v = nz.data();
+        for (index_t i = 0; i != upto; ++i, ++v)
+            *v = this->innerVector(i).nonZeros();
+        return nz;
+    }
+
+    /// Returns the Kronecker product of \a this with \a other
+    gsSparseMatrix kron(const gsSparseMatrix& other)  const
+    {
+        const index_t r  = this->rows(), c = this->cols();
+        const index_t ro = other.rows(), co = other.cols();
+        gsSparseMatrix result(r*ro, c*co);
+        if (0 == result.size()) return result;
+        result.reserve(this->nonZerosPerInner()
+                       .kron(other.nonZerosPerInner()));
+
+        iterator it1, it2;
+        for (index_t k1=0; k1 != (gsSparseMatrix::IsRowMajor?r:c); ++k1)
+            for (it1 = this->begin(k1); it1; ++it1)
+                for (index_t k2=0; k2 != (gsSparseMatrix::IsRowMajor?ro:co); ++k2)
+                    for (it2 = other.begin(k2); it2; ++it2)
+                    {
+                        const index_t i = it1.row() * ro + it2.row();
+                        const index_t j = it1.col() * co + it2.col();
+                        result.insert(i,j) = it1.value() * it2.value();
+                    }
+        result.makeCompressed();
+        return result;
+    }
+    
 private:
     
     /*

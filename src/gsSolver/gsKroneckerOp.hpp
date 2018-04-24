@@ -90,7 +90,7 @@ template <typename T>
 index_t gsKroneckerOp<T>::rows() const
 {
     index_t rows = 1;
-    for (unsigned i = 0; i < m_ops.size(); ++i)
+    for (std::size_t i = 0; i < m_ops.size(); ++i)
         rows *= m_ops[i]->rows();
     return rows;
 }
@@ -99,7 +99,7 @@ template <typename T>
 index_t gsKroneckerOp<T>::cols() const
 {
     index_t cols = 1;
-    for (unsigned i = 0; i < m_ops.size(); ++i)
+    for (std::size_t i = 0; i < m_ops.size(); ++i)
         cols *= m_ops[i]->cols();
     return cols;
 }
