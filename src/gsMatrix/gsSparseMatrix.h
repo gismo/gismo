@@ -398,6 +398,7 @@ public:
         const index_t r  = this->rows(), c = this->cols();
         const index_t ro = other.rows(), co = other.cols();
         gsSparseMatrix result(r*ro, c*co);
+        if (r*ro==0 || c*co==0) return result;
         result.reserve(this->nonZeroPerInner()
                        .kron(other.nonZeroPerInner()));
 
