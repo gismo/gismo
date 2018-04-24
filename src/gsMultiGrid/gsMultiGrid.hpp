@@ -159,7 +159,7 @@ template<class T>
 void gsMultiGridOp<T>::multiGridStep(index_t level, const gsMatrix<T>& rhs, gsMatrix<T>& x) const
 {
     GISMO_ASSERT ( 0 <= level && level < n_levels, "The given level is not feasible." );
-    GISMO_ASSERT ( n_levels > 1, "Multigrid is only avaliable if at least two grids are present. Use smoothingStep for running the smoother only." );
+    GISMO_ASSERT ( n_levels > 1, "Multigrid is only available if at least two grids are present. Use smoothingStep for running the smoother only." );
 
     if (level == 0)
     {

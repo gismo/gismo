@@ -42,7 +42,7 @@ public:
 public:
 
     gsPiecewiseFunction(index_t npieces = 0)
-    { m_funcs.reserve(npieces); }
+    { m_funcs.reserve(2+npieces); }
 
     gsPiecewiseFunction(const gsFunction<T> & func)
     {
@@ -67,12 +67,36 @@ public:
         freeAll(m_funcs);
     }
 
+    #if EIGEN_HAS_RVALUE_REFERENCES
+    /// Move constructor
+    gsPiecewiseFunction(gsPiecewiseFunction&& other)
+    : m_funcs(give(other.m_funcs)) {}
+
+    /// Assignment operator
+    gsPiecewiseFunction& operator= ( const gsPiecewiseFunction& other )
+    {
+        freeAll(m_funcs);
+        m_funcs.resize(other.m_funcs.size() );
+        cloneAll( other.m_funcs.begin(), other.m_funcs.end(),
+                  m_funcs.begin() );
+        return *this;
+    }
+
+    /// Move assignment operator
+    gsPiecewiseFunction& operator= ( gsPiecewiseFunction&& other )
+    {
+        freeAll(m_funcs);
+        m_funcs = give(other.m_funcs);
+        return *this;
+    }
+#else
     /// Assignment operator (uses copy-and-swap idiom)
     gsPiecewiseFunction & operator= ( gsPiecewiseFunction other )
     {
         this->swap( other );
         return *this;
     }
+#endif
 
     /// \brief Swap with another gsPiecewiseFunction
     void swap(gsPiecewiseFunction & other)

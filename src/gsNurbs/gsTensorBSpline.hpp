@@ -128,7 +128,7 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
         }
         else
         {
-            // clone the basis and inserting upto degree knots at par
+            // clone the basis and inserting up to degree knots at par
             gsTensorBSpline<d,T>* clone = this->clone().release();
 
             gsVector<index_t,d> intStrides;

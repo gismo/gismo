@@ -1841,7 +1841,7 @@ gsFileData<T>::getAnyFirstNode(const std::string & name, const std::string & typ
     gsXmlNode * root = data->first_node("xml");
     assert( root ) ;
     if ( type == "" )
-        // Searching upto third level of the XML tree
+        // Searching up to third level of the XML tree
         for (gsXmlNode * child = root->first_node() ; 
              child; child = child->next_sibling() )
         {
@@ -1861,7 +1861,7 @@ gsFileData<T>::getAnyFirstNode(const std::string & name, const std::string & typ
             }
         }
     else
-        // Searching upto third level of the XML tree
+        // Searching up to third level of the XML tree
         for (gsXmlNode * child = root->first_node() ; 
              child; child = child->next_sibling() )
         {

@@ -676,7 +676,7 @@ public:
      */
     virtual void refineElements(std::vector<unsigned> const & boxes);
 
-    /// Refines all the cells on the side \a side upto level \a lvl
+    /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
         
     // Look at gsBasis.h for the documentation of this function
