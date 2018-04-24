@@ -382,52 +382,6 @@ void removeCol(gsMatrix<T> & mat, int const & removeEnds, int const & nPoints)
     };     
 }
 
-
-/// Kronecker product
-template <class T>
-gsMatrix<T> kroneckerProduct(gsMatrix<T> const & m1, gsMatrix<T> const & m2)
-{
-    const index_t m1r (m1.rows()), m1c (m1.cols()), m2r (m2.rows()), m2c (m2.cols());
-    gsMatrix<T> result(m1r*m2r, m1c*m2c );
-    
-    for (index_t i=0;i<m1r;i++)
-    {
-        for (index_t j=0;j<m1c;j++)
-        {
-            result.block(i*m2r,j*m2c,m2r,m2c).noalias() = m1(i,j) * m2;
-        }
-    }
-    return result;
-}
-
-/// Kronecker product of each row of \a m1 with one row of \a m2
-template <class T>
-gsMatrix<T> rowKroneckerProduct(gsMatrix<T> const & m1, gsMatrix<T> const & m2)
-{
-    const index_t m1r (m1.rows()), m1c (m1.cols()), m2c (m2.cols());
-    GISMO_ASSERT(m1r==m2.rows()," Wrong dimensions ");
-
-    gsMatrix<T> result(m1r, m1c*m2c);
-
-    for (index_t i=0;i<m1r;i++)
-    {
-        for (index_t j=0;j<m1c;j++)
-        {
-            result.block(i, j*m2c, 1, m2c).noalias() = m1(i,j) * m2.row(i);
-        }
-    }
-    return result;
-}
-
-/// Multiply each element of a colume to each row of a matrix
-template <class T>
-gsMatrix<T> rowProduct(gsMatrix<T> const & col, gsMatrix<T> const & mat)
-{
-    GISMO_ASSERT( col.cols()==1 && col.rows()== mat.rows(), "Bad dimensions" );
-
-    return col.asDiagonal() *  mat ;
-}
-
 /**
    Interpolation with standard smoothing.
    TODO1: make the output as gsGeometry, gsBSpline for now; also use gsBasis as input
@@ -465,8 +419,8 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
     dNu.transposeInPlace();
     dNu_nm  = bs.deriv(preNormal.row(0)); // u-BSplines for normals
     dNu_nm.transposeInPlace();
-    gsMatrix<T> AdN = rowProduct<T>((normal.row(0)).transpose(), dNu_nm);
-    gsMatrix<T> BdN = rowProduct<T>((normal.row(1)).transpose(), dNu_nm);
+    gsMatrix<T> AdN = normal.row(0).asDiagonal() * dNu_nm;
+    gsMatrix<T> BdN = normal.row(1).asDiagonal() * dNu_nm;
 
     // Approximate constraints
     NuApp = bs.eval(preImageApp.row(0));
@@ -586,58 +540,44 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     ident2.setIdentity();
     Nu  = bs1.evalFunc(exactPoints.row(0), ident1); // u-BSplines
     Nv  = bs2.evalFunc(exactPoints.row(1), ident2); // v-BSplines
-    Nu.transposeInPlace();
-    Nv.transposeInPlace();
     npts = exactPoints.cols();
     gsMatrix<T> Ecor(3*npts,3*n1*n2);
     gsMatrix<T> ecor(3*npts,1);
     Ecor.setZero();ecor.setZero();
-    R = rowKroneckerProduct<T>(Nv, Nu); // R = M tensors N
-    Ecor.block(0,0,npts,n1*n2) = R;
-    Ecor.block(npts,n1*n2,npts,n1*n2) = R;
-    Ecor.block(2*npts,2*n1*n2,npts,n1*n2) = R;
+    R = Nv.khatriRao(Nu); // R = M tensors N
+    Ecor.block(0,0,npts,n1*n2) = R.transpose();
+    Ecor.block(npts,n1*n2,npts,n1*n2) = R.transpose();
+    Ecor.block(2*npts,2*n1*n2,npts,n1*n2) = R.transpose();
     ecor.block(0,0,npts,1) = (exactValues.row(0)).transpose();
     ecor.block(npts,0,npts,1) = (exactValues.row(1)).transpose();
     ecor.block(2*npts,0,npts,1) = (exactValues.row(2)).transpose();
 
     //Assemble Approximative constraints for inner points on edges
     Nu  = bs1.evalFunc(appxPointsEdges.row(0), ident1); // u-BSplines
-    dNu = bs1.derivFunc(appxPointsEdges.row(0), ident1);
     Nv  = bs2.evalFunc(appxPointsEdges.row(1), ident2); // v-BSplines
-    dNv = bs2.derivFunc(appxPointsEdges.row(1), ident2);
-    Nu.transposeInPlace();
-    Nv.transposeInPlace();
-    dNu.transposeInPlace();
-    dNv.transposeInPlace();
     npts = appxPointsEdges.cols();
     gsMatrix<T> AappEdge(3*npts,3*n1*n2);
     gsMatrix<T> bappEdge(3*npts,1);
     AappEdge.setZero();bappEdge.setZero();
-    R = rowKroneckerProduct<T>(Nv, Nu); // R = M tensors N
-    AappEdge.block(0,0,npts,n1*n2) = R;
-    AappEdge.block(npts,n1*n2,npts,n1*n2) = R;
-    AappEdge.block(2*npts,2*n1*n2,npts,n1*n2) = R;
+    R = Nv.khatriRao(Nu); // R = M tensors N
+    AappEdge.block(0,0,npts,n1*n2) = R.transpose();
+    AappEdge.block(npts,n1*n2,npts,n1*n2) = R.transpose();
+    AappEdge.block(2*npts,2*n1*n2,npts,n1*n2) = R.transpose();
     bappEdge.block(0,0,npts,1) = (appxValuesEdges.row(0)).transpose();
     bappEdge.block(npts,0,npts,1) = (appxValuesEdges.row(1)).transpose();
     bappEdge.block(2*npts,0,npts,1) = (appxValuesEdges.row(2)).transpose();
 
     //Assemble Approximate constraints for interior
     Nu  = bs1.evalFunc(appxPointsInt.row(0), ident1); // u-BSplines
-    dNu = bs1.derivFunc(appxPointsInt.row(0), ident1);
     Nv  = bs2.evalFunc(appxPointsInt.row(1), ident2); // v-BSplines
-    dNv = bs2.derivFunc(appxPointsInt.row(1), ident2);
-    Nu.transposeInPlace();
-    Nv.transposeInPlace();
-    dNu.transposeInPlace();
-    dNv.transposeInPlace();
     npts = appxPointsInt.cols();
     gsMatrix<T> AappInt(3*npts,3*n1*n2);
     gsMatrix<T> bappInt(3*npts,1);
     AappInt.setZero();bappInt.setZero();
-    R = rowKroneckerProduct<T>(Nv, Nu); // R = M tensors N
-    AappInt.block(0,0,npts,n1*n2) = R;
-    AappInt.block(npts,n1*n2,npts,n1*n2) = R;
-    AappInt.block(2*npts,2*n1*n2,npts,n1*n2) = R;
+    R = Nv.khatriRao(Nu); // R = M tensors N
+    AappInt.block(0,0,npts,n1*n2) = R.transpose();
+    AappInt.block(npts,n1*n2,npts,n1*n2) = R.transpose();
+    AappInt.block(2*npts,2*n1*n2,npts,n1*n2) = R.transpose();
     bappInt.block(0,0,npts,1) = (appxValuesInt.row(0)).transpose();
     bappInt.block(npts,0,npts,1) = (appxValuesInt.row(1)).transpose();
     bappInt.block(2*npts,0,npts,1) = (appxValuesInt.row(2)).transpose();
@@ -647,10 +587,6 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     dNu = bs1.derivFunc(appxNormalPoints.row(0), ident1);
     Nv  = bs2.evalFunc(appxNormalPoints.row(1), ident2); // v-BSplines
     dNv = bs2.derivFunc(appxNormalPoints.row(1), ident2);
-    Nu.transposeInPlace();
-    Nv.transposeInPlace();
-    dNu.transposeInPlace();
-    dNv.transposeInPlace();
     gsMatrix<T> Nx,Ny,Nz; // x, y, z components of normals
     gsMatrix<T> trNormals = appxNormals.transpose();
     Nx = trNormals.col(0);
@@ -658,18 +594,20 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
     Nz = trNormals.col(2);
     if (force_normal==true) { Nx.setZero(); Ny.setZero();Nz.setOnes();} //TODO: do this automatically
 
-    gsMatrix<T> dRdu = rowKroneckerProduct<T>(Nv, dNu); // R = M tensors N
-    gsMatrix<T> dRdv = rowKroneckerProduct<T>(dNv, Nu); // R = M tensors N
+    gsMatrix<T> dRdu = Nv.khatriRao(dNu); // R = M tensors N
+    gsMatrix<T> dRdv = dNv.khatriRao(Nu); // R = M tensors N
+    dRdu.transposeInPlace();
+    dRdv.transposeInPlace();
     int nnor = Nx.rows(); // number of normals
     gsMatrix<T> Anor(2*nnor,3*n1*n2),bnor(2*nnor,1);
     Anor.setZero();
     bnor.setZero();
-    Anor.block(0,0,nnor,n1*n2) = rowProduct<T>(Nx,dRdu);  // sigma_u . normal=0, x part
-    Anor.block(0,n1*n2,nnor,n1*n2) = rowProduct<T>(Ny,dRdu);  // sigma_u . normal=0, y part
-    Anor.block(0,2*n1*n2,nnor,n1*n2) = rowProduct<T>(Nz,dRdu);  // sigma_u . normal=0, z part
-    Anor.block(nnor,0,nnor,n1*n2) = rowProduct<T>(Nx,dRdv);  // sigma_v . normal=0, x part
-    Anor.block(nnor,n1*n2,nnor,n1*n2) = rowProduct<T>(Ny,dRdv);  // sigma_v . normal=0, y part
-    Anor.block(nnor,2*n1*n2,nnor,n1*n2) = rowProduct<T>(Nz,dRdv);  // sigma_v . normal=0, z part
+    Anor.block(0,0,nnor,n1*n2) = Nx.asDiagonal()*dRdu;  // sigma_u . normal=0, x part
+    Anor.block(0,n1*n2,nnor,n1*n2) = Ny.asDiagonal()*dRdu;  // sigma_u . normal=0, y part
+    Anor.block(0,2*n1*n2,nnor,n1*n2) = Nz.asDiagonal()*dRdu;  // sigma_u . normal=0, z part
+    Anor.block(nnor,0,nnor,n1*n2) = Nx.asDiagonal()*dRdv;  // sigma_v . normal=0, x part
+    Anor.block(nnor,n1*n2,nnor,n1*n2) = Ny.asDiagonal()*dRdv;  // sigma_v . normal=0, y part
+    Anor.block(nnor,2*n1*n2,nnor,n1*n2) = Nz.asDiagonal()*dRdv;  // sigma_v . normal=0, z part
 
     // Quadratic forms which constitute the plate bending energy
     gsMatrix<T> * M = innerProduct(bs1, bs1);
@@ -682,7 +620,7 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
         N1 = innerProduct1(bs2, bs2);
         N2 = innerProduct2(bs2, bs2);
     };
-    gsMatrix<T> Q1D = kroneckerProduct<T>(*N,*M2) + 2*kroneckerProduct<T>(*N1,*M1)+kroneckerProduct<T>(*N2,*M);
+    gsMatrix<T> Q1D = N->kron(*M2) + 2*N1->kron(*M1)+N2->kron(*M);
     gsMatrix<T> Q(3*n1*n2,3*n1*n2);
     Q.setZero();
     Q.block(0,0,n1*n2,n1*n2) = Q1D;
