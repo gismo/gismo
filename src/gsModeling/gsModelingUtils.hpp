@@ -382,24 +382,6 @@ void removeCol(gsMatrix<T> & mat, int const & removeEnds, int const & nPoints)
     };     
 }
 
-
-/// Kronecker product
-template <class T>
-gsMatrix<T> kroneckerProduct(gsMatrix<T> const & m1, gsMatrix<T> const & m2)
-{
-    const index_t m1r (m1.rows()), m1c (m1.cols()), m2r (m2.rows()), m2c (m2.cols());
-    gsMatrix<T> result(m1r*m2r, m1c*m2c );
-    
-    for (index_t i=0;i<m1r;i++)
-    {
-        for (index_t j=0;j<m1c;j++)
-        {
-            result.block(i*m2r,j*m2c,m2r,m2c).noalias() = m1(i,j) * m2;
-        }
-    }
-    return result;
-}
-
 /// Kronecker product of each row of \a m1 with one row of \a m2
 template <class T>
 gsMatrix<T> rowKroneckerProduct(gsMatrix<T> const & m1, gsMatrix<T> const & m2)
@@ -682,7 +664,7 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
         N1 = innerProduct1(bs2, bs2);
         N2 = innerProduct2(bs2, bs2);
     };
-    gsMatrix<T> Q1D = kroneckerProduct<T>(*N,*M2) + 2*kroneckerProduct<T>(*N1,*M1)+kroneckerProduct<T>(*N2,*M);
+    gsMatrix<T> Q1D = N->kron(*M2) + 2*N1->kron(*M1)+N2->kron(*M);
     gsMatrix<T> Q(3*n1*n2,3*n1*n2);
     Q.setZero();
     Q.block(0,0,n1*n2,n1*n2) = Q1D;
