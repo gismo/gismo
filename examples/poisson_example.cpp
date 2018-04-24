@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     bool plot = false;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("plot", "Create a ParaView visualization of the solution", plot);
     cmd.getValues(argc,argv);
     //! [Parse command line]
 
@@ -117,26 +117,19 @@ int main(int argc, char *argv[])
     gsMultiBasis<> refine_bases( patches );
 
     // Number for h-refinement of the computational (trial/test) basis.
-    int numRefine  = 2;
+    const index_t numRefine  = 2;
 
     // Number for p-refinement of the computational (trial/test) basis.
-    int numElevate = 2;
+    const index_t degree     = 2;
 
     // h-refine each basis (4, one for each patch)
-    for (int i = 0; i < numRefine; ++i)
+    for ( index_t i = 0; i < numRefine; ++i)
       refine_bases.uniformRefine();
 
-    // Elevate and p-refine the basis to order k + numElevate
-    // where k is the highest degree in the bases
-    if ( numElevate > -1 )
-    {
-        // Find maximum degree with respect to all the variables
-        int max_tmp = refine_bases.minCwiseDegree();
+    // k-refinement (set degree)
+    for ( size_t i = 0; i < refine_bases.nBases(); ++ i )
+        refine_bases[i].setDegreePreservingMultiplicity(degree);
 
-        // Elevate all degrees uniformly
-        max_tmp += numElevate;
-        refine_bases.setDegree(max_tmp);
-    }
     //! [Refinement]
 
     ////////////// Setup solver and solve //////////////
@@ -156,30 +149,30 @@ int main(int argc, char *argv[])
     // * dg: Use discontinuous Galerkin-like coupling between adjacent patches.
     //       (This option might not be available yet)
     //! [Assemble]
-    gsPoissonAssembler<real_t> PoissonAssembler(patches,refine_bases,bcInfo,f,
-                                                //dirichlet::elimination, iFace::glue);
-                                                  dirichlet::nitsche    , iFace::glue);
+    gsPoissonAssembler<real_t> assembler(patches,refine_bases,bcInfo,f,
+                                       //dirichlet::elimination, iFace::glue);
+                                         dirichlet::nitsche    , iFace::glue);
 
     // Generate system matrix and load vector
     gsInfo<< "Assembling...\n";
-    PoissonAssembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with "
-           << PoissonAssembler.numDofs() << " dofs.\n";
+    assembler.assemble();
+    gsInfo << "Have assembled a system (matrix and load vector) with "
+           << assembler.numDofs() << " dofs.\n";
     //! [Assemble]
 
     //! [Solve]
     // Initialize the conjugate gradient solver
     gsInfo << "Solving...\n";
-    gsSparseSolver<>::CGDiagonal solver( PoissonAssembler.matrix() );
-    gsMatrix<> solVector = solver.solve( PoissonAssembler.rhs() );
+    gsSparseSolver<>::CGDiagonal solver( assembler.matrix() );
+    gsMatrix<> solVector = solver.solve( assembler.rhs() );
     gsInfo << "Solved the system with CG solver.\n";
     //! [Solve]
 
     //! [Construct solution]
     // Construct the solution as a scalar field
     gsMultiPatch<> mpsol;
-    PoissonAssembler.constructSolution(solVector, mpsol);
-    gsField<> sol( PoissonAssembler.patches(), mpsol);
+    assembler.constructSolution(solVector, mpsol);
+    gsField<> sol( assembler.patches(), mpsol);
     //! [Construct solution]
 
     if (plot)
@@ -188,18 +181,19 @@ int main(int argc, char *argv[])
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>(sol, "poisson2d", 1000);
-        const gsField<> exact( PoissonAssembler.patches(), g, false );
+        const gsField<> exact( assembler.patches(), g, false );
         gsWriteParaview<>( exact, "poisson2d_exact", 1000);
 
         // Run paraview
         gsFileManager::open("poisson2d.pvd");
+        gsFileManager::open("poisson2d_exact.pvd");
         //! [Plot in Paraview]
     }
     else
     {
-        gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
-                "file containing Plotting image data.\n";
-        return EXIT_SUCCESS;
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
     }
+    return EXIT_SUCCESS;
 
 }// end main
