@@ -382,7 +382,7 @@ public:
         return result;
     }
 
-    gsVector<index_t> nonZeroPerInner(index_t upto = std::numeric_limits<index_t>::max())  const
+    gsVector<index_t> nonZerosPerInner(index_t upto = std::numeric_limits<index_t>::max())  const
     {
         upto = math::min(upto, this->cols());
         gsVector<index_t> nz(upto);
@@ -398,9 +398,9 @@ public:
         const index_t r  = this->rows(), c = this->cols();
         const index_t ro = other.rows(), co = other.cols();
         gsSparseMatrix result(r*ro, c*co);
-        if (r*ro==0 || c*co==0) return result;
-        result.reserve(this->nonZeroPerInner()
-                       .kron(other.nonZeroPerInner()));
+        if (0 == result.size()) return result;
+        result.reserve(this->nonZerosPerInner()
+                       .kron(other.nonZerosPerInner()));
 
         iterator it1, it2;
         for (index_t k1=0; k1 != (gsSparseMatrix::IsRowMajor?r:c); ++k1)
