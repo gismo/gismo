@@ -64,7 +64,7 @@ void runPreconditionerTest( index_t testcase )
     }
     else if (testcase==2)
     {
-        gsConjugateGradient<> solver(mat, gsSinglePatchPreconditioners<>(bases[0],bcInfo).getFastDiagonalizationOp());
+        gsConjugateGradient<> solver(mat, gsPatchPreconditionersCreator<>::fastDiagonalizationOp(bases[0],bcInfo));
         solver.setTolerance( 1.e-8 );
         solver.setMaxIterations( 26 );
         solver.solve(rhs,sol);

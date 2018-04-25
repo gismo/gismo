@@ -260,7 +260,7 @@ template <class T=real_t>                class gsProductOp;
 template <class T=real_t>                class gsCompositePrecOp;
 template <class T=real_t>                class gsKroneckerOp;
 template <class T=real_t>                class gsBlockOp;
-template <class T=real_t>                class gsSinglePatchPreconditioners;
+template <class T=real_t>                class gsPatchPreconditionersCreator;
 
 // gsMultiGrid
 

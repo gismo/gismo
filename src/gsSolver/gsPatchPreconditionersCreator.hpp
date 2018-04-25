@@ -1,4 +1,4 @@
-/** @file gsSinglePatchPreconditioners.hpp
+/** @file gsPatchPreconditionersCreator.hpp
 
     @brief Provides preconditioners that live on the parameter domain.
 
@@ -12,7 +12,6 @@
 */
 #pragma once
 
-#include <gsSolver/gsSinglePatchPreconditioners.h>
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
@@ -27,7 +26,7 @@ namespace gismo
 namespace {
 
 template<typename T>
-gsBoundaryConditions<T> getBoundaryConditionsForDirection( const gsBoundaryConditions<T>& bc, index_t direction )
+gsBoundaryConditions<T> boundaryConditionsForDirection( const gsBoundaryConditions<T>& bc, index_t direction )
 {
     gsBoundaryConditions<T> result;
 
@@ -45,81 +44,59 @@ template<index_t d, typename T>
 std::vector< gsSparseMatrix<T> > assembleTensorMass_impl(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
-    const gsOptionList& options
+    const gsOptionList& opt
 )
 {
-    // TODO: replace this with something that works:
-    std::vector< gsSparseMatrix<T> > result;
     const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
+    GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
 
-    if (tb==nullptr)
+    std::vector< gsSparseMatrix<T> > result;
+    result.reserve(d);
+    for ( index_t i=d-1; i!=-1; --i )
     {
-        gsWarn << "gsSinglePatchPreconditioners: Found a discretization which does not have "
-            "tensor-product structure. Therefore, the preconditioner might not be efficient." << std::endl;
-        gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(basis),options,&bc);
+        gsBoundaryConditions<T> local_bc = boundaryConditionsForDirection(bc,i); //TODO: check ordering
+        // TODO: replace this with something that works:
+        gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(tb->component(i)),opt,&local_bc);
         result.push_back( assembler.assembleMass() );
-        return result;
     }
-    else
-    {
-        result.reserve(d);
-        for ( index_t i=d-1; i!=-1; --i )
-        {
-            gsBoundaryConditions<T> local_bc = getBoundaryConditionsForDirection(bc,i); //TODO: check ordering
-            gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(tb->component(i)),options,&local_bc);
-            result.push_back( assembler.assembleMass() );
-        }
-        return result;
-    }
+    return result;
 }
 
 template<index_t d, typename T>
 std::vector< gsSparseMatrix<T> > assembleTensorStiffness_impl(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
-    const gsOptionList& options
+    const gsOptionList& opt
 )
 {
-
-    // TODO: replace this with something that works:
+    const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
+    GISMO_ENSURE (tb, "gsPatchPreconditionersCreator requires a tensor basis.");
 
     std::vector< gsSparseMatrix<T> > result;
-    const gsTensorBasis<d,T> * tb = dynamic_cast< const gsTensorBasis<d,T>* >( &basis );
-
-    if (tb==nullptr)
+    result.reserve(d);
+    for ( index_t i=d-1; i!=-1; --i )
     {
-        gsWarn << "gsSinglePatchPreconditioners: Found a discretization which does not have "
-            "tensor-product structure. Therefore, the preconditioner might not be efficient." << std::endl;
-        gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(basis),options,&bc);
+        gsBoundaryConditions<T> local_bc = boundaryConditionsForDirection(bc,i); //TODO: check ordering
+        // TODO: replace this with something that works:
+        gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(tb->component(i)),opt,&local_bc);
         result.push_back( assembler.assembleStiffness() );
-        return result;
     }
-    else
-    {
-        result.reserve(d);
-        for ( index_t i=d-1; i!=-1; --i )
-        {
-            gsBoundaryConditions<T> local_bc = getBoundaryConditionsForDirection(bc,i); //TODO: check ordering
-            gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(tb->component(i)),options,&local_bc);
-            result.push_back( assembler.assembleStiffness() );
-        }
-        return result;
-    }
+    return result;
 }
 
 template<typename T>
 std::vector< gsSparseMatrix<T> > assembleTensorMass(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
-    const gsOptionList& options
+    const gsOptionList& opt
 )
 {
     switch (basis.dim()) {
-        case 1: return assembleTensorMass_impl<1,T>(basis, bc, options);
-        case 2: return assembleTensorMass_impl<2,T>(basis, bc, options);
-        case 3: return assembleTensorMass_impl<3,T>(basis, bc, options);
-        case 4: return assembleTensorMass_impl<4,T>(basis, bc, options);
-        default: GISMO_ENSURE( basis.dim() <= 4, "gsSinglePatchPreconditioners is only instanciated for up to 4 dimensions." );
+        case 1: return assembleTensorMass_impl<1,T>(basis, bc, opt);
+        case 2: return assembleTensorMass_impl<2,T>(basis, bc, opt);
+        case 3: return assembleTensorMass_impl<3,T>(basis, bc, opt);
+        case 4: return assembleTensorMass_impl<4,T>(basis, bc, opt);
+        default: GISMO_ENSURE( basis.dim() <= 4, "gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
 }
@@ -128,15 +105,15 @@ template<typename T>
 std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
-    const gsOptionList& options
+    const gsOptionList& opt
 )
 {
     switch (basis.dim()) {
-        case 1: return assembleTensorStiffness_impl<1,T>(basis, bc, options);
-        case 2: return assembleTensorStiffness_impl<2,T>(basis, bc, options);
-        case 3: return assembleTensorStiffness_impl<3,T>(basis, bc, options);
-        case 4: return assembleTensorStiffness_impl<4,T>(basis, bc, options);
-        default: GISMO_ENSURE( basis.dim() <= 4, "gsSinglePatchPreconditioners is only instanciated for up to 4 dimensions." );
+        case 1: return assembleTensorStiffness_impl<1,T>(basis, bc, opt);
+        case 2: return assembleTensorStiffness_impl<2,T>(basis, bc, opt);
+        case 3: return assembleTensorStiffness_impl<3,T>(basis, bc, opt);
+        case 4: return assembleTensorStiffness_impl<4,T>(basis, bc, opt);
+        default: GISMO_ENSURE( basis.dim() <= 4, "gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions." );
     }
     return std::vector< gsSparseMatrix<T> >(); // to eliminate warning
 }
@@ -144,9 +121,13 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
 } // anonymous namespace
 
 template<typename T>
-gsSparseMatrix<T> gsSinglePatchPreconditioners<T>::getMassMatrix() const
+gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::massMatrix(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt
+)
 {
-    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis, m_bc, m_options);
+    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(basis, bc, opt);
     gsSparseMatrix<T> result = local_mass[0];
     for (size_t i=1; i<local_mass.size(); ++i)
         result = result.kron(local_mass[i]);
@@ -154,11 +135,15 @@ gsSparseMatrix<T> gsSinglePatchPreconditioners<T>::getMassMatrix() const
 }
 
 template<typename T>
-typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getMassMatrixOp() const
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::massMatrixOp(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt
+)
 {
-    const index_t d = m_basis.dim();
+    const index_t d = basis.dim();
 
-    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis, m_bc, m_options);
+    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(basis, bc, opt);
 
     std::vector<OpPtr> local_mass_op(d);
     for (index_t i=0; i<d; ++i)
@@ -168,11 +153,15 @@ typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>
 }
 
 template<typename T>
-typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getMassMatrixInvOp() const
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::massMatrixInvOp(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt
+)
 {
-    const index_t d = m_basis.dim();
+    const index_t d = basis.dim();
 
-    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(m_basis, m_bc, m_options);
+    std::vector< gsSparseMatrix<T> > local_mass = assembleTensorMass(basis, bc, opt);
 
     std::vector<OpPtr> local_mass_op(d);
     for (index_t i=0; i<d; ++i)
@@ -182,12 +171,17 @@ typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>
 }
 
 template<typename T>
-gsSparseMatrix<T> gsSinglePatchPreconditioners<T>::getStiffnessMatrix(T a) const
+gsSparseMatrix<T> gsPatchPreconditionersCreator<T>::stiffnessMatrix(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt,
+    T a
+)
 {
-    const index_t d = m_basis.dim();
+    const index_t d = basis.dim();
 
-    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis, m_bc, m_options);
-    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis, m_bc, m_options);
+    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
+    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
 
     gsSparseMatrix<T> K = give(local_stiff[0]);
     gsSparseMatrix<T> M = give(local_mass [0]);
@@ -207,12 +201,17 @@ gsSparseMatrix<T> gsSinglePatchPreconditioners<T>::getStiffnessMatrix(T a) const
 }
 
 template<typename T>
-typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getStiffnessMatrixOp(T a) const
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::stiffnessMatrixOp(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt,
+    T a
+)
 {
-    const index_t d = m_basis.dim();
+    const index_t d = basis.dim();
 
-    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis, m_bc, m_options);
-    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis, m_bc, m_options);
+    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
+    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
 
     std::vector<OpUPtr> local_stiff_op(d);
     std::vector<OpPtr > local_mass_op (d);
@@ -242,14 +241,19 @@ typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>
 }
 
 template<typename T>
-typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getFastDiagonalizationOp(T a) const
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::fastDiagonalizationOp(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt,
+    T a
+)
 {
 
-    const index_t d = m_basis.dim();
+    const index_t d = basis.dim();
 
     // Assemble univariate
-    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(m_basis, m_bc, m_options);
-    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(m_basis, m_bc, m_options);
+    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
+    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
 
     // Determine overall size
     index_t sz = 1;
@@ -314,12 +318,5 @@ typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>
         gsKroneckerOp<T>::make(Qop)
     );
 }
-
-//Will be provided in a followup pull request
-//template<typename T>
-//typename gsSinglePatchPreconditioners<T>::OpUPtr gsSinglePatchPreconditioners<T>::getSubspaceCorrectedMassSmootherOp() const
-//{
-//
-//}
 
 } // namespace gismo
