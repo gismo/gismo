@@ -88,5 +88,5 @@ private:
 }
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsKronecker.hpp)
+#include GISMO_HPP_HEADER(gsKroneckerOp.hpp)
 #endif
