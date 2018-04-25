@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
     index_t postsmooth = 1;
     std::string smoother("GaussSeidel");
     real_t damping = -1;
+    real_t scaling = 0.12;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
     bool plot = false;
@@ -43,10 +44,11 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "MG.Presmooth",          "Number of pre-smoothing steps", presmooth);
     cmd.addInt   ("",  "MG.Postsmooth",         "Number of post-smoothing steps", postsmooth);
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
-    cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother (handed over to smoother)", damping);
+    cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
+    cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
     cmd.addReal  ("t", "CG.Tolerance",          "Stopping criterion for cg", tolerance);
     cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
-    cmd.addSwitch("",  "plot",                  "Plot the result with Paraview", plot);
+    cmd.addSwitch("",  "Plot",                  "Plot the result with Paraview", plot);
 
     cmd.getValues(argc,argv);
 
@@ -169,7 +171,7 @@ int main(int argc, char *argv[])
             }
             smootherOp = gsPreconditionerFromOp<>::make(
                 mg->underlyingOp(i),
-                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass")),
+                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling),
                 damping<0 ? 1 : damping
             ); //TODO make scaling configurable
         }
@@ -220,7 +222,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+        gsInfo << "Done. No output created, re-run with --Plot to get a ParaView "
                   "file containing the solution.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -54,12 +54,13 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass_impl(
     std::vector< gsSparseMatrix<T> > result;
     result.reserve(d);
     for ( index_t i=d-1; i!=-1; --i )
-    {
-        gsBoundaryConditions<T> local_bc = boundaryConditionsForDirection(bc,i); //TODO: check ordering
-        // TODO: replace this with something that works:
-        gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(tb->component(i)),opt,&local_bc);
-        result.push_back( assembler.assembleMass() );
-    }
+        result.push_back(
+            gsGenericAssembler<T>::assembleMass(
+                tb->component(i),
+                boundaryConditionsForDirection(bc,i), //TODO: check i
+                opt
+            )
+        );
     return result;
 }
 
@@ -76,12 +77,13 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness_impl(
     std::vector< gsSparseMatrix<T> > result;
     result.reserve(d);
     for ( index_t i=d-1; i!=-1; --i )
-    {
-        gsBoundaryConditions<T> local_bc = boundaryConditionsForDirection(bc,i); //TODO: check ordering
-        // TODO: replace this with something that works:
-        gsGenericAssembler<T> assembler(gsMultiPatch<T>(),gsMultiBasis<T>(tb->component(i)),opt,&local_bc);
-        result.push_back( assembler.assembleStiffness() );
-    }
+        result.push_back(
+            gsGenericAssembler<T>::assembleStiffness(
+                tb->component(i),
+                boundaryConditionsForDirection(bc,i), //TODO: check i
+                opt
+            )
+        );
     return result;
 }
 
@@ -712,9 +714,9 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         // the correction is the Kronecker-product of the operators in the vector correction
         result->addOperator(
             gsProductOp<T>::make(
-                transOp,
+                makeMatrixOp( transOp->matrix().transpose() ),
                 gsKroneckerOp<T>::make( correction ),
-                makeMatrixOp( transOp->matrix().transpose() )
+                transOp
             )
         );
     }
