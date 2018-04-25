@@ -293,7 +293,7 @@ size_t ON_BinaryArchive::WriteDeflate( // returns number of bytes written
       // no uncompressed input is left - switch to finish mode
       flush = Z_FINISH;
     }
-    zrc = z_deflate( &m_zlib.strm, flush ); 
+    zrc = deflate( &m_zlib.strm, flush ); // z_deflate
     if ( zrc < 0 ) 
     {
       // Something went haywire - bail out.
@@ -491,7 +491,7 @@ bool ON_BinaryArchive::ReadInflate(
       // no compressed input is left - switch to finish mode
       flush = Z_FINISH;
     }
-    zrc = z_inflate( &m_zlib.strm, flush );
+    zrc = inflate( &m_zlib.strm, flush ); //z_inflate
     if ( zrc < 0 ) 
     {
       // Something went haywire - bail out.
@@ -1151,7 +1151,8 @@ size_t ON_CompressedBuffer::DeflateHelper( // returns number of bytes written
       // no uncompressed input is left - switch to finish mode
       flush = Z_FINISH;
     }
-    zrc = z_deflate( &m_zlib.strm, flush ); 
+    //zrc = z_deflate( &m_zlib.strm, flush ); G+Smo
+    zrc = deflate( &m_zlib.strm, flush ); 
     if ( zrc < 0 ) 
     {
       // Something went haywire - bail out.
@@ -1284,7 +1285,7 @@ bool ON_CompressedBuffer::InflateHelper(
       // no compressed input is left - switch to finish mode
       flush = Z_FINISH;
     }
-    zrc = z_inflate( &m_zlib.strm, flush );
+    zrc = inflate( &m_zlib.strm, flush ); //z_inflate
     if ( zrc < 0 ) 
     {
       // Something went haywire - bail out.
