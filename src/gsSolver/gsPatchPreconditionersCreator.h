@@ -40,7 +40,7 @@ public:
     static gsSparseMatrix<T> massMatrix(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
-        const gsOptionList& opt = gsOptionList()
+        const gsOptionList& opt = gsAssembler<T>::defaultOptions()
     );
 
     /// Provides \a gsLinearOperator representing the mass matrix (in a matrix-free way)
@@ -52,7 +52,7 @@ public:
     static OpUPtr            massMatrixOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
-        const gsOptionList& opt = gsOptionList()
+        const gsOptionList& opt = gsAssembler<T>::defaultOptions()
     );
 
     /// Provides \a gsLinearOperator representing the inverse of the mass matrix (in a matrix-free way)
@@ -64,7 +64,7 @@ public:
     static OpUPtr            massMatrixInvOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
-        const gsOptionList& opt = gsOptionList()
+        const gsOptionList& opt = gsAssembler<T>::defaultOptions()
     );
 
     /// Provieds stiffness matrix on the parameter domain
@@ -74,12 +74,12 @@ public:
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
     /// \param opt    Assembler options
-    /// \param alpha  Model parameter (see above)
+    /// \param alpha  Scaling parameter (see above)
     static gsSparseMatrix<T> stiffnessMatrix(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
-        const gsOptionList& opt = gsOptionList(),
-        T a=0
+        const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
+        T alpha = 0
     );
 
     /// Provides \a gsLinearOperator representing the stiffness matrix (in a matrix-free way)
@@ -90,12 +90,12 @@ public:
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
     /// \param opt    Assembler options
-    /// \param alpha  Model parameter (see above)
+    /// \param alpha  Scaling parameter (see above)
     static OpUPtr            stiffnessMatrixOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
-        const gsOptionList& opt = gsOptionList(),
-        T a=0
+        const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
+        T alpha = 0
     );
 
     /// Provides \a gsLinearOperator representing the inverse stiffness matrix
@@ -107,31 +107,30 @@ public:
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
     /// \param opt    Assembler options
-    /// \param alpha  Model parameter (see above)
+    /// \param alpha  Scaling parameter (see above)
     static OpUPtr            fastDiagonalizationOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
-        const gsOptionList& opt = gsOptionList(),
-        T alpha=0
+        const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
+        T alpha = 0
     );
 
-    // TODO: Will be provided in a followup pull request:
-    // Provides \a gsLinearOperator representing the subspace corrected mass smoother
-    // on the parameter domain (SIAM J. on Numerical Analysis. 55 (4). p. 2004 - 2024, 2017)
-    //
-    // This operator is spectrally equivalent to the inverse of
-    // \f$ - \Delta u + \alpha h^{-2} u \f$
-    //
-    // \param basis  A tensor basis
-    // \param bc     Boundary conditions
-    // \param opt    Assembler options
-    // \param alpha  Model parameter (see above)
-    // static            subspaceCorrectedMassSmootherOp(
-    //    const gsBasis<T>& basis,
-    //    const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
-    //    const gsOptionList& opt = gsOptionList(),
-    //    T alpha=0
-    //);
+    /// Provides \a gsLinearOperator representing the subspace corrected mass smoother
+    /// on the parameter domain (SIAM J. on Numerical Analysis. 55 (4). p. 2004 - 2024, 2017)
+    ///
+    /// This operator is spectrally equivalent to the inverse of
+    /// \f$ - \Delta u + \sigma h^{-2} u \f$
+    ///
+    /// \param basis  A tensor basis
+    /// \param bc     Boundary conditions
+    /// \param opt    Assembler options
+    /// \param sigma  Scaling parameter (see above)
+    static OpUPtr            subspaceCorrectedMassSmootherOp(
+        const gsBasis<T>& basis,
+        const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
+        const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
+        T sigma = 12
+    );
 
 };
 

@@ -55,8 +55,10 @@ int main(int argc, char *argv[])
     // Handle some non-trivial standards
     if (levels <0)  { levels = refinements; opt.setInt( "MG.Levels", refinements );                             }
     if (damping<0)  { opt.remove( "MG.Damping" );                                                               }
-    if (dg)         { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::dg         ); opt.remove( "DG" ); }
-    else            { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::conforming ); opt.remove( "DG" ); }
+    if (dg)         { opt.addInt( "Ass.InterfaceStrategy", "", (index_t)iFace::dg         ); opt.remove( "DG" ); }
+    else            { opt.addInt( "Ass.InterfaceStrategy", "", (index_t)iFace::conforming ); opt.remove( "DG" ); }
+
+    opt.addInt( "Ass.DirichletStrategy", "", (index_t)dirichlet::elimination );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -71,15 +73,14 @@ int main(int argc, char *argv[])
 
     gsInfo << "Define geometry... " << std::flush;
 
-    gsMultiPatch<> mp;
-
-    gsFileData<> fileData(geometry);
-    if (!fileData.has< gsMultiPatch<> >())
+    gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
+    if (!mpPtr)
     {
         gsInfo << "No multipatch object found in file " << geometry << ".\n";
         return EXIT_FAILURE;
     }
-    fileData.getFirst< gsMultiPatch<> >(mp);
+    gsMultiPatch<>& mp = *mpPtr;
+
 
     gsInfo << "done.\n";
 
@@ -128,8 +129,8 @@ int main(int argc, char *argv[])
         mb,
         bc,
         gsConstantFunction<>(1,mp.geoDim()),
-        (dirichlet::strategy) opt.askInt("MG.DirichletStrategy",dirichlet::elimination),
-        (iFace::strategy) opt.askInt("MG.InterfaceStrategy",iFace::conforming)
+        (dirichlet::strategy) opt.askInt("Ass.DirichletStrategy",dirichlet::elimination),
+        (iFace::strategy) opt.askInt("Ass.InterfaceStrategy",iFace::conforming)
     );
     assembler.assemble();
 
@@ -140,8 +141,10 @@ int main(int argc, char *argv[])
     gsInfo << "Setup solver and solve... " << std::flush;
 
     std::vector< gsSparseMatrix<real_t,RowMajor> > transferMatrices;
+    std::vector< gsMultiBasis<real_t> > multiBases; // only needed for subspace corrected mass smoother
 
     gsGridHierarchy<>::buildByCoarsening(give(mb), bc, opt.getGroup("MG"))
+        .moveMultiBasesTo(multiBases)
         .moveTransferMatricesTo(transferMatrices)
         .clear();
 
@@ -152,14 +155,28 @@ int main(int argc, char *argv[])
     {
         gsPreconditionerOp<>::Ptr smootherOp;
         if ( opt.getString("MG.Smoother") == "Richardson" )
-            smootherOp = makeRichardsonOp(mg->matrix(i),(real_t)1/2);
+            smootherOp = makeRichardsonOp(mg->matrix(i), damping<0 ? (real_t)1/2 : damping );
         else if ( opt.getString("MG.Smoother") == "Jacobi" )
-            smootherOp = makeJacobiOp(mg->matrix(i),(real_t)1/2);
+            smootherOp = makeJacobiOp(mg->matrix(i), damping<0 ? (real_t)1/2 : damping );
         else if ( opt.getString("MG.Smoother") == "GaussSeidel" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
+        else if ( opt.getString("MG.Smoother") == "SubspaceCorrectedMassSmoother" )
+        {
+            if (multiBases[i].nBases() != 1)
+            {
+                gsInfo << "The chosen smoother only works for single-patch geometries.\n\n";
+                return EXIT_FAILURE;
+            }
+            smootherOp = gsPreconditionerFromOp<>::make(
+                mg->underlyingOp(i),
+                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass")),
+                damping<0 ? 1 : damping
+            ); //TODO make scaling configurable
+        }
         else
         {
-            gsInfo << "The chosen smoother is unknown.\n\n";
+            gsInfo << "The chosen smoother is unknown.\n\nKnown are:\n  Richardson\n  Jacobi\n  GaussSeidel"
+                      "\n  SubspaceCorrectedMassSmoother\n\n";
             return EXIT_FAILURE;
         }
         smootherOp->setOptions( opt.getGroup("MG") );

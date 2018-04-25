@@ -19,6 +19,7 @@
 #include <gsTensor/gsTensorTools.h>
 #include <gsTensor/gsTensorBasis.h>
 #include <gsAssembler/gsGenericAssembler.h>
+#include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo
 {
@@ -310,13 +311,416 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     for ( index_t l=0; l<sz; ++l )
         diag( l, 0 ) = 1/diag( l, 0 );
 
-    memory::unique_ptr< Eigen::DiagonalMatrix<real_t,Dynamic> > diag_mat( new Eigen::DiagonalMatrix<real_t,Dynamic>( give(diag) ) );
+    memory::unique_ptr< Eigen::DiagonalMatrix<T,Dynamic> > diag_mat( new Eigen::DiagonalMatrix<T,Dynamic>( give(diag) ) );
 
     return gsProductOp<T>::make(
         gsKroneckerOp<T>::make(QTop),
         makeMatrixOp(give(diag_mat)),
         gsKroneckerOp<T>::make(Qop)
     );
+}
+
+namespace {
+
+// Get the tilde basis
+template<typename T>
+void tildeSpaceBasis_oneside(const gsTensorBSplineBasis<1,T>& basis, bool isLeftHandSide, gsMatrix<T>& tildeBasis, gsMatrix<T>& complBasis, index_t b = 0, const bool odd = true)
+{
+    // b == 0: Neumann (or any other not-eliminating bc), b == 1: Dirichlet
+
+    GISMO_ASSERT ( b == 0 || b == 1, "Not a feasible boundary condition specified." );
+
+    const int p = basis.degree();
+    const T h = basis.knots().maxIntervalLength();
+
+    if (p-b<=0)
+    {
+        tildeBasis.resize(0,0); complBasis.resize(0,0);
+        return;
+    }
+
+    const T u = (isLeftHandSide ? basis.knots().first() : basis.knots().last());
+    gsMatrix<T> U(1,1);
+    U(0,0) = u;
+
+    std::vector< gsMatrix<T> > allDerivs;
+    basis.evalAllDers_into(U, p-1, allDerivs);
+
+    // collect all derivatives in matrix (rows: derivatives, columns: basis functions)
+    // normalize with h^(deriv)
+    // use only odd derivatives if odd = true and only even derivatives if odd = false
+    // skip last (on left) or first (on right) basis function since it's always in S-tilde
+    Eigen::Matrix<T, Dynamic, Dynamic> derivs;
+    // If we have Dirichlet bc, we reduce the number of rows and columns by 1. We basically
+    // eliminate the first row and the first column (first basis function, 0th derivative)
+    // for the right-side, we have to remove the last basis function.
+    derivs.setZero(p-b, p-b);
+
+    const int offset = (isLeftHandSide ? b : 1);
+
+    int i_start;
+    if (odd) i_start = 1;
+    else i_start = 2*b;
+
+    for (int i = i_start; i < p; i += 2)
+        for (int j = 0; j < p-b; ++j)
+            derivs(i-b, j) = math::pow(h, i) * allDerivs[i](j+offset);
+
+    Eigen::JacobiSVD< Eigen::Matrix<T, Dynamic, Dynamic> > svd = derivs.jacobiSvd(Eigen::ComputeFullV);
+
+    int n_tilde;
+    if (odd) n_tilde = (p + 1) / 2 - b;
+    else n_tilde = p / 2 - b;
+
+    tildeBasis = svd.matrixV().rightCols(n_tilde);
+    complBasis = svd.matrixV().leftCols(p - b - n_tilde);
+}
+
+// Compute a basis for S-tilde and one for its orthogonal complement
+template<typename T>
+void tildeSpaceBasis(const gsTensorBSplineBasis<1,T>& basis, gsSparseMatrix<T>& B_tilde, gsSparseMatrix<T>& B_compl, index_t b, const bool odd = true)
+{
+    // Boundary conditions left-hand side b%2, right-hand side b/2:
+    // 0: Neumann (or any other not-eliminating bc), 1: Dirichlet
+
+    GISMO_ASSERT ( b >= 0 && b < 4, "tildeSpaceBasis: Not a feasible boundary condition specified." );
+
+    gsMatrix<T> b_L, b_compl_L;
+    gsMatrix<T> b_R, b_compl_R;
+
+    //Contruct space with vanishing odd derivatives
+    tildeSpaceBasis_oneside(basis, true,  b_L, b_compl_L, b%2, odd);
+    tildeSpaceBasis_oneside(basis, false, b_R, b_compl_R, b/2, odd);
+
+    const int n = basis.size() - b%2 - b/2;
+    const int n_L = b_L.cols();
+    const int m_L = b_L.rows();
+    const int n_R = b_R.cols();
+    const int m_R = b_R.rows();
+    const int n_c_L = b_compl_L.cols();
+    const int m_c_L = b_compl_L.rows();
+    const int n_c_R = b_compl_R.cols();
+    const int m_c_R = b_compl_R.rows();
+    const int n_I = n - n_L - n_R - n_c_L - n_c_R;
+
+    //GISMO_ENSURE ( n_I >= 0, "tildeSpaceBasis: Too few knots for that spline degree." );
+    if ( n_I <= 0 )
+    {
+        static bool warned = false;
+        if (!warned)
+        {
+            gsWarn << "tildeSpaceBasis was called with too few knots for that spline degree.\n"
+                << "So, we assume that S_tilde is empty.\n";
+            warned = true;
+        }
+
+        B_tilde.resize(n,0);
+
+        gsSparseEntries<T> E_compl;
+        E_compl.reserve(n);
+        for (int i = 0; i < n; ++i)
+            E_compl.add(i,i,1.0);
+        B_compl.resize(n,n);
+        B_compl.setFrom(E_compl);
+        return;
+    }
+
+    gsSparseEntries<T> E_tilde, E_compl;
+
+    // put b_L into upper left block of S-tilde basis
+    for (int j = 0; j < n_L; ++j)
+    {
+        for (int i = 0; i < m_L; ++i)
+            E_tilde.add(i, j, b_L(i, j));
+    }
+    // fill identity matrix into interior part of S-tilde basis
+    for (int j = 0; j < n_I; ++j)
+    {
+        E_tilde.add(m_L + j, n_L + j, 1.0);
+    }
+    // put b_R into lower right block of S-tilde basis
+    for (int j = 0; j < n_R; ++j)
+    {
+        for (int i = 0; i < m_R; ++i)
+            E_tilde.add(m_L + n_I + i, n_L + n_I + j, b_R(i, j));
+    }
+    B_tilde.resize(n, n_L + n_I + n_R);
+    B_tilde.setFrom(E_tilde);
+
+    // put b_compl_L into upper left block of complement basis
+    for (int j = 0; j < n_c_L; ++j)
+    {
+        for (int i = 0; i < m_c_L; ++i)
+            E_compl.add(i, j, b_compl_L(i, j));
+    }
+    // put b_compl_R into lower right block of complement basis
+    for (int j = 0; j < n_c_R; ++j)
+    {
+        for (int i = 0; i < m_c_R; ++i)
+            E_compl.add(m_c_L + n_I + i, n_c_L + j, b_compl_R(i, j));
+    }
+    B_compl.resize(n, n_c_L + n_c_R);
+    B_compl.setFrom(E_compl);
+
+}
+
+template<index_t d, typename T>
+void constructTildeSpaceBasisTensor(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc, //TODO: assembler options
+    std::vector< gsSparseMatrix<T> >& B_tilde,
+    std::vector< gsSparseMatrix<T> >& B_l2compl,
+    const bool odd = true
+)
+{
+
+    const gsTensorBSplineBasis<d,T> * tb = dynamic_cast<const gsTensorBSplineBasis<d,T>*>(&basis);
+    if( !tb )
+        GISMO_ERROR ("This method only works for gsTensorBSplineBasis.");
+
+    B_tilde.resize(d);
+    B_l2compl.resize(d);
+    for ( index_t i=0; i<d; ++i )
+    {
+        index_t b = 0;
+        // boundary::west = 1, east = 2, south = 3, north = 4, front = 5, back = 6, stime = 7, etime = 8 (cf. gsCore/gsBoundary.h)
+        patchSide mywest(0,1+2*i);
+        patchSide myeast(0,2+2*i);
+        if ( bc.getConditionFromSide( mywest )!=NULL && bc.getConditionFromSide( mywest )->type() == condition_type::dirichlet ) b += 1;
+        if ( bc.getConditionFromSide( myeast )!=NULL && bc.getConditionFromSide( myeast )->type() == condition_type::dirichlet ) b += 2;
+
+        tildeSpaceBasis(tb->component(i), B_tilde[i], B_l2compl[i], b, odd);
+    }
+
+}
+
+template<typename T>
+void constructTildeSpaceBasis(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc, //TODO: assembler options
+    std::vector< gsSparseMatrix<T> >& B_tilde,
+    std::vector< gsSparseMatrix<T> >& B_l2compl,
+    const bool odd = true
+)
+{
+    switch (basis.dim())
+    {
+        case 1: constructTildeSpaceBasisTensor<1>( basis, bc, B_tilde, B_l2compl, odd ); return;
+        case 2: constructTildeSpaceBasisTensor<2>( basis, bc, B_tilde, B_l2compl, odd ); return;
+        case 3: constructTildeSpaceBasisTensor<3>( basis, bc, B_tilde, B_l2compl, odd ); return;
+        case 4: constructTildeSpaceBasisTensor<4>( basis, bc, B_tilde, B_l2compl, odd ); return;
+        default: GISMO_ERROR ("gsPatchPreconditionersCreator is only instanciated for up to 4 dimensions.");
+    }
+
+}
+
+// Constructs a matrix for swapping a tensor product
+// from A (x) B (x) C (x) D (x) E  to   A (x) D (x) C (x) B (x) E,
+// where only the dimensions of those matrices have to be given.
+// Note that also those A, B, etc. could be tensor products (here as dimension just provide the products)
+// Note that also those A, B, etc. could vanish. Then just provide a 1 as dimension, i.e., a scalar.
+// So, literally every thinkable swap is possible.
+template<typename T>
+gsSparseMatrix<T> kroneckerSwap( index_t e, index_t d, index_t c, index_t b, index_t a )
+{
+    const index_t sz = a*b*c*d*e;
+    gsSparseMatrix<T> result(sz,sz);
+    gsSparseEntries<T> entries;
+    entries.reserve(sz);
+    for ( index_t i=0; i<a; ++i )
+        for ( index_t j=0; j<b; ++j )
+            for ( index_t k=0; k<c; ++k )
+               for ( index_t l=0; l<d; ++l )
+                   for ( index_t m=0; m<e; ++m )
+                       entries.add( i+a*(j+b*(k+c*(l+d*m))), i+a*(l+d*(k+c*(j+b*m))), 1. );
+
+    result.setFrom(entries);
+    result.makeCompressed();
+
+    return result;
+}
+
+} // anonymous namespace
+
+template<typename T>
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::subspaceCorrectedMassSmootherOp(
+        const gsBasis<T>& basis,
+        const gsBoundaryConditions<T>& bc,
+        const gsOptionList& opt,
+        T sigma
+    )
+{
+
+    // TODO: is not configurable for now:
+    const T alpha = 0;
+
+    // Get some properties
+    const index_t d = basis.dim();
+    const T  h = basis.getMinCellLength();
+
+    // Assemble univariate
+    std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
+    std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
+
+    // setup the basis
+    std::vector< gsSparseMatrix<T> > B_tilde(d), B_l2compl(d), B_compl(d);
+    constructTildeSpaceBasis(basis, bc, B_tilde, B_l2compl);
+
+    std::vector< gsSparseMatrix<T> > M_compl(d), K_compl(d);
+    std::vector< typename gsLinearOperator<T>::Ptr > M_tilde_inv(d);
+    for ( index_t i=0; i<d; ++i )
+    {
+        // Transform the complement
+        typename gsLinearOperator<T>::Ptr M_inv = makeSparseCholeskySolver(local_mass[i]);
+        gsMatrix<T> B_compl_dense;
+        M_inv->apply( B_l2compl[i], B_compl_dense );
+        B_compl[i] = B_compl_dense.sparseView();
+
+        // Setup the matrices and corresponding solvers
+        gsSparseMatrix<T> M_tilde = B_tilde[i].transpose() * local_mass[i] * B_tilde[i];
+        M_tilde_inv[i] = makeSparseCholeskySolver( M_tilde );
+        M_compl[i] = B_compl[i].transpose() * local_mass[i] * B_compl[i];
+        K_compl[i] = B_compl[i].transpose() * local_stiff[i] * B_compl[i];
+    }
+
+    // Setup the final operator
+    typename gsSumOp<T>::uPtr result = gsSumOp<T>::make();
+
+    for ( index_t type = 0; type < (1<<d); ++ type )
+    {
+        std::vector< typename gsLinearOperator<T>::Ptr > correction(0);
+        gsSparseMatrix<T> transfer;
+
+        std::vector< gsSparseMatrix<T>* > transfers(d);
+
+        index_t numberInteriors = 0; //type = alpha (0,1)
+
+        // setup the transfer
+        for ( index_t j = 0; j<d; ++ j )
+        {
+            if ( type & ( 1 << j ) )
+                transfers[j] = &(B_compl[j]);
+            else
+            {
+                transfers[j] = &(B_tilde[j]);
+                ++numberInteriors;
+            }
+
+            if ( j == 0 )
+                transfer = *(transfers[j]);
+            else
+                transfer = transfers[j]->kron(transfer);
+
+        }
+
+        // If the subspace is not present, ignore it.
+        if ( transfer.cols() == 0 )
+            continue;
+
+        // Setup the swap, where the boundary part is shifted to the begin
+
+        index_t left = 1, current = transfers[d-1]->cols(), right = 1;
+        for ( index_t j = 0; j < d-1; ++j )
+            left *= transfers[j]->cols();
+
+        for ( index_t j = d-1; j >= 0; --j )
+        {
+            if ( type & ( 1 << j ) )
+            {
+                transfer = transfer * kroneckerSwap<T>( right, current, left, 1, 1 );
+                if ( j > 0 )
+                {
+                    left *= current;
+                    current = transfers[j-1]->cols();
+                    left /= current;
+                }
+            }
+            else
+            {
+                if ( j > 0 )
+                {
+                    right *= current;
+                    current = transfers[j-1]->cols();
+                    left /= current;
+                }
+            }
+
+        }
+
+        // Setup the interior correction
+        for ( index_t j = d-1; j>=0; --j )
+        {
+            if ( ! ( type & ( 1 << j ) ) )
+                correction.push_back( M_tilde_inv[j] );
+        }
+
+        // If we are in the interior, we have to do the scaling here as there is no boundary correction
+        if ( numberInteriors == d )
+            correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + numberInteriors/(sigma*h*h) ) );
+
+        // Setup the bondary correction, like  K(x)M(x)M+M(x)K(x)M+M(x)M(x)K+(alpha + (d-3)/(sigma*h*h)) M(x)M(x)M
+        // \sigma from the paper equals 1/(sigma*h*h) here.
+        if ( numberInteriors < d )
+        {
+            gsSparseMatrix<T> bc_matrix;
+
+            {
+                gsSparseMatrix<T> s(0,0);
+                for ( index_t k = d-1; k>=0; --k )
+                {
+                    if ( type & ( 1 << k ) )
+                    {
+                        if ( s.rows() == 0 )
+                            s = M_compl[k];
+                        else
+                            s = M_compl[k].kron(s);
+                    }
+                }
+                bc_matrix = ( alpha + numberInteriors/(sigma*h*h) ) * s;
+            }
+
+            for ( index_t j = d-1; j>=0; --j )
+            {
+                if ( type & ( 1 << j ) )
+                {
+                    gsSparseMatrix<T> s(0,0);
+                    for ( index_t k = d-1; k>=0; --k )
+                    {
+                        if ( type & ( 1 << k ) )
+                        {
+                            gsSparseMatrix<T>* chosenMatrix;
+                            if ( j == k )
+                                chosenMatrix = &(K_compl[k]);
+                            else
+                                chosenMatrix = &(M_compl[k]);
+
+                            if ( s.rows() == 0 )
+                                s = *chosenMatrix;
+                            else
+                                s = s.kron(*chosenMatrix);
+                        }
+                    }
+                    bc_matrix += s;
+                }
+            }
+
+            correction.push_back(makeSparseCholeskySolver(bc_matrix));
+        }
+
+        typename gsMatrixOp< gsSparseMatrix<T> >::Ptr transOp = makeMatrixOp(transfer.moveToPtr());
+        // setup the whole operator
+        // the correction is the Kronecker-product of the operators in the vector correction
+        result->addOperator(
+            gsProductOp<T>::make(
+                transOp,
+                gsKroneckerOp<T>::make( correction ),
+                makeMatrixOp( transOp->matrix().transpose() )
+            )
+        );
+    }
+
+    return give(result); //TODO
+
 }
 
 } // namespace gismo
