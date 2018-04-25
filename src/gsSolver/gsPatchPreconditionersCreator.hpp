@@ -16,8 +16,8 @@
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
-#include <gsTensor/gsTensorTools.h>
 #include <gsTensor/gsTensorBasis.h>
+#include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
@@ -57,7 +57,7 @@ std::vector< gsSparseMatrix<T> > assembleTensorMass_impl(
         result.push_back(
             gsGenericAssembler<T>::assembleMass(
                 tb->component(i),
-                boundaryConditionsForDirection(bc,i), //TODO: check i
+                boundaryConditionsForDirection(bc,i),
                 opt
             )
         );
@@ -80,7 +80,7 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness_impl(
         result.push_back(
             gsGenericAssembler<T>::assembleStiffness(
                 tb->component(i),
-                boundaryConditionsForDirection(bc,i), //TODO: check i
+                boundaryConditionsForDirection(bc,i),
                 opt
             )
         );

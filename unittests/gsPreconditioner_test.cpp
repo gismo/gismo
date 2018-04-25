@@ -90,6 +90,39 @@ SUITE(gsPreconditioner_test)
         runPreconditionerTest(2);
     }
 
+    TEST(gsPatchPreconditioner_stiff_test)
+    {
+        gsGeometry<>::uPtr geo = gsNurbsCreator<>::BSplineSquare();
+        gsMultiPatch<> mp(*geo);
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+        mb[0].setDegreePreservingMultiplicity(3);
+
+        gsBoundaryConditions<> bc;
+        gsConstantFunction<> one(1,mp.geoDim());
+        bc.addCondition( boundary::west,  condition_type::neumann,   &one );
+        bc.addCondition( boundary::east,  condition_type::neumann,   &one );
+        bc.addCondition( boundary::south, condition_type::neumann,   &one );
+        bc.addCondition( boundary::north, condition_type::dirichlet, &one );
+
+        gsOptionList opt = gsAssembler<>::defaultOptions();
+
+        gsSparseMatrix<> stiff1 = gsPatchPreconditionersCreator<>::stiffnessMatrix(mb[0],bc,opt);
+        gsSparseMatrix<> stiff2;
+        {
+            gsPoissonAssembler<> assembler(
+                mp,
+                mb,
+                bc,
+                one,
+                (dirichlet::strategy) opt.getInt("DirichletStrategy"),
+                (iFace::strategy) opt.getInt("InterfaceStrategy")
+            );
+            assembler.assemble();
+            stiff2 = give(assembler.matrix());
+        }
+        CHECK ( (stiff1-stiff2).norm() < 1/real_t(10000) );
+    }
 
 
 }
