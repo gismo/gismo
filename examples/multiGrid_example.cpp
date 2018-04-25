@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
                 mg->underlyingOp(i),
                 gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling),
                 damping<0 ? 1 : damping
-            ); //TODO make scaling configurable
+            );
         }
         else
         {
