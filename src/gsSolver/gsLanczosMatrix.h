@@ -32,13 +32,13 @@ public:
      * @brief Constructor for the Lanczos matrix
      * The Lanczos matrix is a symmetric tridiagonal matrix with diagonal delta and offdiagonal gamma.
      * 
-     * @param _gamma  the diagonal
-     * @param _delta the offdiagonal
-     * @param _maxIter the number of maximal iterations of the Newton algorithm
-     * @param _tol tolerace for the newton algorithm
+     * @param gamma    The diagonal (the object stores a reference to this vector)
+     * @param delta    The off diagonal (the object stores a reference to this vector)
+     * @param maxIter  The number of maximal iterations of the Newton algorithm
+     * @param tol      Tolerace for the Newton algorithm
      */
-    gsLanczosMatrix(const std::vector<T> & _gamma, const std::vector<T> & _delta, int _maxIter =20, T _tol = 1.e-6)
-     : m_gamma(_gamma) , m_delta(_delta), m_maxIter(_maxIter), m_tol(_tol), m_n(m_delta.size()) {}
+    gsLanczosMatrix(const std::vector<T> & gamma, const std::vector<T> & delta, index_t maxIter = 20, T tol = 1.e-6)
+     : m_gamma(gamma), m_delta(delta), m_maxIter(maxIter), m_tol(tol), m_n(m_delta.size()) {}
 
     /**
      * @brief Calculates the largest eigenvalue
@@ -47,18 +47,18 @@ public:
     T maxEigenvalue()
     {
          //This function might be very slow, use instead the matrix form
-        if(m_n==1)
+        if (m_n==1)
             return m_delta[0];
 
         // x0 is rowsumNorm
-        T x0 =math::abs(m_delta[0])+math::abs(m_gamma[0]);
+        T x0 = math::abs(m_delta[0])+math::abs(m_gamma[0]);
 
 
-        for(unsigned i=1;i<m_n-2;i++)
-            if(math::abs(m_delta[i])+math::abs(m_gamma[i])+ math::abs(m_gamma[i-1])>x0)
+        for (size_t i=1;i<m_n-2;i++)
+            if (math::abs(m_delta[i])+math::abs(m_gamma[i])+ math::abs(m_gamma[i-1])>x0)
                 x0 = math::abs(m_delta[i])+math::abs(m_gamma[i])+ math::abs(m_gamma[i-1]);
 
-        if(math::abs(m_delta[m_n-1])+math::abs(m_gamma[m_n-2])>x0)
+        if (math::abs(m_delta[m_n-1])+math::abs(m_gamma[m_n-2])>x0)
             x0 = math::abs(m_delta[m_n-1])+math::abs(m_gamma[m_n-2]);
 
         return newtonIteration(x0);
@@ -70,8 +70,8 @@ public:
      */
     T minEigenvalue()
     {
-        //This function might be very slow, use instead the matrix form
-        if(m_n==1)
+        // This function might be very slow, use instead the matrix form
+        if (m_n==1)
             return m_delta[0];
         T x0 = 0;
         return newtonIteration(x0);
@@ -79,24 +79,22 @@ public:
 
     /**
      * @brief This function returns the Lanczos matrix as a gsSparseMatrix
-     * 
-     * @param[out] L the location the matrix is to be written to
      */
-    void matrixForm(gsSparseMatrix<T> & L)
+    gsSparseMatrix<T> matrix()
     {
-        L.resize(m_n,m_n);
-        std::vector<Eigen::Triplet<T> > list;
+        gsSparseMatrix<T> L(m_n,m_n);
+        gsSparseEntries<T> list;
         list.reserve(3*m_n);
 
-        list.push_back(Eigen::Triplet<T>(0,0,m_delta[0]));
-        for(unsigned i = 1; i<m_n;i++)
+        list.add(0,0,m_delta[0]);
+        for (size_t i = 1; i<m_n;i++)
         {
-            list.push_back(Eigen::Triplet<T>(i,i-1,m_gamma[i-1]));
-            list.push_back(Eigen::Triplet<T>(i-1,i,m_gamma[i-1]));
-            list.push_back(Eigen::Triplet<T>(i,i,m_delta[i]));
+            list.add(i,i-1,m_gamma[i-1]);
+            list.add(i-1,i,m_gamma[i-1]);
+            list.add(i,i,m_delta[i]);
         }
-        L.setFromTriplets(list.begin(),list.end());
-
+        L.setFrom(list);
+        return L;
     }
 
 private:
@@ -108,11 +106,11 @@ private:
      * @param k order of the polynomial (use n to start the recursion)
      * @return the derivative at position lambda
      */
-    T deriv(T lambda , unsigned k)
+    T deriv(T lambda, size_t k)
     {
-        if(k==0)
+        if (k==0)
             return T(0);
-        else if(k==1)
+        else if (k==1)
             return T(-1);
         else
         {
@@ -127,11 +125,11 @@ private:
      * @param k order of the polynomial (use n to start the recursion)
      * @return the value at position lambda
      */
-    T value(T lambda, unsigned k)
+    T value(T lambda, size_t k)
     {
-        if(k==0)
+        if (k==0)
             return T(1);
-        else if(k==1)
+        else if (k==1)
             return m_delta[0]-lambda;
         else
         {
@@ -147,11 +145,11 @@ private:
      */
     T newtonIteration(T x0)
     {
-        int iter =0;
-        T res =1;
+        index_t iter = 0;
+        T res = 1;
         T x_old = x0;
         T x_new = x0;
-        while(iter<m_maxIter && res > m_tol)
+        while (iter < m_maxIter && res > m_tol)
         {
             x_new = x_old - value(x_old,m_n)/deriv(x_old,m_n);
             res = math::abs(x_old - x_new);
@@ -165,7 +163,7 @@ private:
 private:
     const std::vector<T>& m_gamma;
     const std::vector<T>& m_delta;
-    int m_maxIter;
+    index_t m_maxIter;
     T m_tol;
     size_t m_n;
 };
