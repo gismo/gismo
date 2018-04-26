@@ -11,7 +11,7 @@
     Author(s): C. Hofreither
 */
 
-#include <gsSolver/gsSolverUtils.h>
+#include <gsSolver/gsLanczosMatrix.h>
 
 namespace gismo
 {
