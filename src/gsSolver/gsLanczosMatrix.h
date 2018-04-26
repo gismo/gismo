@@ -114,8 +114,8 @@ private:
         deriv[1] = T(-1);
         for (size_t k=2; k<m_n; ++k)
         {
-            deriv[k] = (m_delta[k-1]-lambda)*deriv[k-1] - value[k-1] - m_gamma[k-2]*m_gamma[k-2]*deriv[k-2];
-            value[k] = (m_delta[k-1]-lambda)*value[k-1] - m_gamma[k-2]*m_gamma[k-2]*value[k-2];
+            value[k] = (m_delta[k-1]-lambda) * value[k-1] - m_gamma[k-2]*m_gamma[k-2]*value[k-2];
+            deriv[k] = (m_delta[k-1]-lambda) * deriv[k-1] - value[k-1] - m_gamma[k-2]*m_gamma[k-2]*deriv[k-2];
         }
         return std::pair<T,T>(value[m_n-1],deriv[m_n-1]);
     }
