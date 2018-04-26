@@ -165,6 +165,7 @@ namespace internal
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsPatchPreconditionersCreator.h>
+#include <gsSolver/gsLanczosMatrix.h>
 
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
