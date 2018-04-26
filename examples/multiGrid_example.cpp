@@ -54,13 +54,14 @@ int main(int argc, char *argv[])
 
     gsOptionList opt = cmd.getOptionList();
 
-    // Handle some non-trivial standards
-    if (levels <0)  { levels = refinements; opt.setInt( "MG.Levels", refinements );                             }
-    if (damping<0)  { opt.remove( "MG.Damping" );                                                               }
-    if (dg)         { opt.addInt( "Ass.InterfaceStrategy", "", (index_t)iFace::dg         ); opt.remove( "DG" ); }
-    else            { opt.addInt( "Ass.InterfaceStrategy", "", (index_t)iFace::conforming ); opt.remove( "DG" ); }
-
-    opt.addInt( "Ass.DirichletStrategy", "", (index_t)dirichlet::elimination );
+    // Default case is levels:=refinements, so replace invalid default accordingly
+    if (levels<0) { levels = refinements; opt.setInt( "MG.Levels", refinements ); }
+    // The smoothers know their defaults, so remove the invalid default
+    if (damping<0) { opt.remove( "MG.Damping" ); }
+    // Define assembler options
+    opt.remove( "DG" );
+    opt.addInt( "Ass.InterfaceStrategy", "", (index_t)( dg ? iFace::dg : iFace::conforming )  );
+    opt.addInt( "Ass.DirichletStrategy", "", (index_t) dirichlet::elimination                 );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -78,11 +79,10 @@ int main(int argc, char *argv[])
     gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
     if (!mpPtr)
     {
-        gsInfo << "No multipatch object found in file " << geometry << ".\n";
+        gsInfo << "No geometry found in file " << geometry << ".\n";
         return EXIT_FAILURE;
     }
     gsMultiPatch<>& mp = *mpPtr;
-
 
     gsInfo << "done.\n";
 
@@ -93,18 +93,8 @@ int main(int argc, char *argv[])
     gsConstantFunction<> one(1.0, mp.geoDim());
 
     gsBoundaryConditions<> bc;
-    bc.addCondition( boundary::west,  condition_type::dirichlet, &one );
-    bc.addCondition( boundary::east,  condition_type::dirichlet, &one );
-    if (mp.geoDim() >= 2)
-    {
-        bc.addCondition( boundary::south, condition_type::dirichlet, &one );
-        bc.addCondition( boundary::north, condition_type::dirichlet, &one );
-    }
-    if (mp.geoDim() >= 3)
-    {
-        bc.addCondition( boundary::front, condition_type::dirichlet, &one );
-        bc.addCondition( boundary::back,  condition_type::dirichlet, &one );
-    }
+    for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it < mp.bEnd(); ++it)
+         bc.addCondition( *it, condition_type::dirichlet, &one );
 
     gsInfo << "done.\n";
 
@@ -131,8 +121,8 @@ int main(int argc, char *argv[])
         mb,
         bc,
         gsConstantFunction<>(1,mp.geoDim()),
-        (dirichlet::strategy) opt.askInt("Ass.DirichletStrategy",dirichlet::elimination),
-        (iFace::strategy) opt.askInt("Ass.InterfaceStrategy",iFace::conforming)
+        (dirichlet::strategy) opt.getInt("Ass.DirichletStrategy"),
+        (iFace::strategy)     opt.getInt("Ass.InterfaceStrategy")
     );
     assembler.assemble();
 
@@ -157,9 +147,9 @@ int main(int argc, char *argv[])
     {
         gsPreconditionerOp<>::Ptr smootherOp;
         if ( opt.getString("MG.Smoother") == "Richardson" )
-            smootherOp = makeRichardsonOp(mg->matrix(i), damping<0 ? (real_t)1/2 : damping );
+            smootherOp = makeRichardsonOp(mg->matrix(i));
         else if ( opt.getString("MG.Smoother") == "Jacobi" )
-            smootherOp = makeJacobiOp(mg->matrix(i), damping<0 ? (real_t)1/2 : damping );
+            smootherOp = makeJacobiOp(mg->matrix(i));
         else if ( opt.getString("MG.Smoother") == "GaussSeidel" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
         else if ( opt.getString("MG.Smoother") == "SubspaceCorrectedMassSmoother" )
@@ -171,8 +161,7 @@ int main(int argc, char *argv[])
             }
             smootherOp = gsPreconditionerFromOp<>::make(
                 mg->underlyingOp(i),
-                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling),
-                damping<0 ? 1 : damping
+                gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(multiBases[i][0],bc,opt.getGroup("Ass"),scaling)
             );
         }
         else
