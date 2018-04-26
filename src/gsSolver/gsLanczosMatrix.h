@@ -16,11 +16,11 @@
 namespace gismo
 {
 
-/** 
+/**
  * @brief Class for representing a Lanczos matrix and calculating its eigenvalues
- * 
+ *
  * The Lanczos matrix is a symmetric tridiagonal matrix with diagonal delta and offdiagonal gamma.
- * 
+ *
  * @ingroup Solver
  */
 template<class T>
@@ -31,7 +31,7 @@ public:
     /**
      * @brief Constructor for the Lanczos matrix
      * The Lanczos matrix is a symmetric tridiagonal matrix with diagonal delta and offdiagonal gamma.
-     * 
+     *
      * @param gamma    The diagonal (the object stores a reference to this vector)
      * @param delta    The off diagonal (the object stores a reference to this vector)
      * @param maxIter  The number of maximal iterations of the Newton algorithm
@@ -46,20 +46,18 @@ public:
      */
     T maxEigenvalue()
     {
-         //This function might be very slow, use instead the matrix form
         if (m_n==1)
             return m_delta[0];
 
-        // x0 is rowsumNorm
-        T x0 = math::abs(m_delta[0])+math::abs(m_gamma[0]);
-
-
-        for (size_t i=1;i<m_n-2;i++)
-            if (math::abs(m_delta[i])+math::abs(m_gamma[i])+ math::abs(m_gamma[i-1])>x0)
-                x0 = math::abs(m_delta[i])+math::abs(m_gamma[i])+ math::abs(m_gamma[i-1]);
-
-        if (math::abs(m_delta[m_n-1])+math::abs(m_gamma[m_n-2])>x0)
-            x0 = math::abs(m_delta[m_n-1])+math::abs(m_gamma[m_n-2]);
+        // Use Gerschgorin theorem to compute upper bound for eigenvalues
+        T x0 = 0;
+        for (size_t i=0;i<m_n;++i)
+        {
+            const T tmp = math::abs(m_delta[i])
+                        + ( i<m_n-1 ? math::abs(m_gamma[i])   : 0 )
+                        + ( i>0     ? math::abs(m_gamma[i-1]) : 0 );
+            if (tmp>x0) x0 = tmp;
+        }
 
         return newtonIteration(x0);
     }
@@ -70,9 +68,9 @@ public:
      */
     T minEigenvalue()
     {
-        // This function might be very slow, use instead the matrix form
         if (m_n==1)
             return m_delta[0];
+
         T x0 = 0;
         return newtonIteration(x0);
     }
@@ -100,46 +98,31 @@ public:
 private:
 
     /**
-     * @brief Derivative of characteristic polynomial
-     * 
+     * @brief Evalutate characteristic polynomial
+     *
      * @param lambda evaluation point
-     * @param k order of the polynomial (use n to start the recursion)
-     * @return the derivative at position lambda
+     * @return the value and the derivative at position lambda
      */
-    T deriv(T lambda, size_t k)
+    std::pair<T,T> eval( T lambda )
     {
-        if (k==0)
-            return T(0);
-        else if (k==1)
-            return T(-1);
-        else
-        {
-           return (m_delta[k-1]-lambda)*deriv(lambda,k-1) - value(lambda,k-1)-m_gamma[k-2]*m_gamma[k-2]*deriv(lambda,k-2);
-        }
-    }
+        std::vector<T> value(m_n);
+        std::vector<T> deriv(m_n);
 
-    /**
-     * @brief Value of characteristic polynomial
-     * 
-     * @param lambda evaluation point
-     * @param k order of the polynomial (use n to start the recursion)
-     * @return the value at position lambda
-     */
-    T value(T lambda, size_t k)
-    {
-        if (k==0)
-            return T(1);
-        else if (k==1)
-            return m_delta[0]-lambda;
-        else
+        value[0] = T(1);
+        value[1] = m_delta[0]-lambda;
+        deriv[0] = T(0);
+        deriv[1] = T(-1);
+        for (size_t k=2; k<m_n; ++k)
         {
-           return (m_delta[k-1]-lambda)*value(lambda,k-1) - m_gamma[k-2]*m_gamma[k-2]*value(lambda,k-2);
+            deriv[k] = (m_delta[k-1]-lambda)*deriv[k-1] - value[k-1] - m_gamma[k-2]*m_gamma[k-2]*deriv[k-2];
+            value[k] = (m_delta[k-1]-lambda)*value[k-1] - m_gamma[k-2]*m_gamma[k-2]*value[k-2];
         }
+        return std::pair<T,T>(value[m_n-1],deriv[m_n-1]);
     }
 
     /**
      * @brief Newton iteration for searching the zeros of the characteristic polynomial
-     * 
+     *
      * @param x0 the initial value
      * @return the zero point (= Eigenvalue of the matrix)
      */
@@ -151,7 +134,11 @@ private:
         T x_new = x0;
         while (iter < m_maxIter && res > m_tol)
         {
-            x_new = x_old - value(x_old,m_n)/deriv(x_old,m_n);
+            const std::pair<T,T> ev = eval(x_old);
+            const T& value = ev.first;
+            const T& deriv = ev.second;
+
+            x_new = x_old - value/deriv;
             res = math::abs(x_old - x_new);
 
             x_old = x_new;
