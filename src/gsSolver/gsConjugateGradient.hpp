@@ -11,7 +11,7 @@
     Author(s): C. Hofreither
 */
 
-#include <gsSolver/gsSolverUtils.h>
+#include <gsSolver/gsLanczosMatrix.h>
 
 namespace gismo
 {
@@ -109,8 +109,7 @@ void gsConjugateGradient<T>::getEigenvalues( typename gsConjugateGradient<T>::Ve
     }
 
     gsLanczosMatrix<T> LM(m_gamma,m_delta);
-    gsSparseMatrix<T> L;
-    LM.matrixForm(L);
+    gsSparseMatrix<T> L = LM.matrix();
     // there is probably a better option...
     typename gsMatrix<T>::SelfAdjEigenSolver eigensolver(L);
     eigs = eigensolver.eigenvalues();
