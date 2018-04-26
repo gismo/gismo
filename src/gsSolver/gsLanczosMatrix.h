@@ -153,11 +153,7 @@ private:
         T x_new = x0;
         while(iter<m_maxIter && res > m_tol)
         {
-<<<<<<< HEAD
             x_new = x_old - value(x_old,m_n)/deriv(x_old,m_n);
-=======
-            x_new = x_old - value(x_old,n)/deriv(x_old,n);
->>>>>>> 1ad3ced38b3ecaa1d4f74f7184cd7a1173888bb7
             res = math::abs(x_old - x_new);
 
             x_old = x_new;
