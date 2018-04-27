@@ -321,7 +321,7 @@ endif()
 if (GISMO_ZLIB_STATIC)
   #message("Using prefixed Zlib")
   add_definitions(-DZ_PREFIX)   # use prefixed zlib
-  add_definitions(-DMY_ZCALLOC) # zlib uses use oncalloc() and onfree()
+  add_definitions(-DMY_ZCALLOC) # zlib uses oncalloc() and onfree()
 endif()
 
 add_library(gsOpennurbs OBJECT ${OPENNURBS_SOURCES}) #STATIC

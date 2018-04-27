@@ -58,16 +58,19 @@ endif()
 #    STRING(REPLACE "-Wimplicit-function-declaration" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 #endif()
 
+add_definitions(-DZ_PREFIX)   # use prefixed symbols
+#if(GISMO_WITH_ONURBS)
+add_definitions(-DMY_ZCALLOC) # use oncalloc() and onfree()
+#endif()
+
+
+
 add_library(${PROJECT_NAME} OBJECT ${ZLIB_SOURCES} ${ZLIB_HEADERS})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
 COMPILE_DEFINITIONS "Z_PREFIX"
 POSITION_INDEPENDENT_CODE ON
 FOLDER "G+Smo extensions")
-
-if(GISMO_WITH_ONURBS)
-  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "MY_ZCALLOC")
-endif()
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:zlib>
     CACHE INTERNAL "Gismo extensions to be included")

@@ -129,9 +129,7 @@ endif(GISMO_BUILD_LIB)
 
   # Avoid naming conflic on MSVC
   if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
-    set(static_lib_name ${PROJECT_NAME}_static)
-  else()
-      set(static_lib_name ${PROJECT_NAME})
+    set(gs_static_lib_suffix _static)
   endif()
 
   set_target_properties(${PROJECT_NAME}_static PROPERTIES
@@ -139,7 +137,7 @@ endif(GISMO_BUILD_LIB)
   POSITION_INDEPENDENT_CODE ON
   LINKER_LANGUAGE CXX
   FOLDER "G+Smo libraries"
-  OUTPUT_NAME ${static_lib_name} )
+  OUTPUT_NAME ${PROJECT_NAME}${static_lib_name} )
 
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib/)
 
