@@ -67,7 +67,7 @@ folder (in-source builds are disabled).
   sources.
 
 * On MS Windows: Run cmake-gui tool (from an environment that is
-  configured with your compiler) o generate makefiles (or Visual
+  configured with your compiler) to generate makefiles (or Visual
   Studio project). Then execute the make tool to launch
   compilation. Alternatively, use the QtCreator GUI and open the
   CMakeLists.txt file on the root folder to create a QtCreator
@@ -133,8 +133,7 @@ If enabled the plugin for Axel modeler is compiled (requires Axel).
 * GISMO_WITH_PSOLID       *OFF*
 
   If enabled the extensions using functionalities of Parasolid geometric
-
-kernel are compiled.(requires Parasolid).
+kernel are compiled (requires Parasolid).
 
 * GISMO_WITH_ONURBS       *OFF*
 
@@ -174,6 +173,7 @@ eleven modules are present as sub-folders:
   Examples of usage, small programs and tutorials.
 
 * **unittests**
+
   Unittests for some parts of the codebase.
 
 * **filedata**
@@ -220,6 +220,6 @@ See full list in [our wiki pages](http://gs.jku.at/trac/gismo/wiki/public/About#
 # Acknowledgement and os-license
 
 G+Smo library for isogeometric analysis is supported by the Research
-Network ``Geometry + Simulation'' (NFN S117), funded by the Austrian
+Network ''Geometry + Simulation'' (NFN S117), funded by the Austrian
 Science Fund, www.gs.jku.at.  It is distributed under the Mozilla
-Public License v2.0.  (see LICENSE.txt).
+Public License v2.0.  (see [LICENSE.txt](https://github.com/gismo/gismo/blob/stable/LICENSE.txt)).
