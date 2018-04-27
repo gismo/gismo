@@ -146,9 +146,9 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib/)
 ## #################################################################
 
 # Offer the user the choice of overriding the installation directories
-set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries")
-set(BIN_INSTALL_DIR     bin     CACHE PATH "Installation directory for executables")
-set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header files")
+set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
+set(BIN_INSTALL_DIR     bin     CACHE STRING "Installation directory for executables")
+set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header files")
 
   install(TARGETS ${PROJECT_NAME}_static OPTIONAL
           EXPORT gismoTargets

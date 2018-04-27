@@ -17,9 +17,9 @@ set(CMAKE_INSTALL_MESSAGE NEVER)
 #set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME gismo)
 
 # Offer the user the choice of overriding the installation directories
-set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries")
-set(BIN_INSTALL_DIR     bin     CACHE PATH "Installation directory for executables")
-set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header files")
+#set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
+#set(BIN_INSTALL_DIR     bin     CACHE STRING "Installation directory for executables")
+#set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header files")
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 
 # Set CMake installation directory
