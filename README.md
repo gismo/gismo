@@ -128,7 +128,7 @@ executable is created in build-folder/bin.
 
 * GISMO_BUILD_AXL         *OFF*
 
-If enabled the plugin for Axel modeler is compiled (requires Axel).
+  If enabled the plugin for Axel modeler is compiled (requires Axel).
 
 * GISMO_WITH_PSOLID       *OFF*
 
@@ -185,6 +185,11 @@ eleven modules are present as sub-folders:
   Optional additional features that can be compiled along G+Smo.
 
 * **plugins**
+
+   The plugins for:
+   
+   - Axel modeler
+   - Rhinoceros' 3DM
 
 * **cmake**
 
