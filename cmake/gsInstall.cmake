@@ -28,14 +28,14 @@ if(WIN32 AND NOT CYGWIN)
 else()
    set(DEF_INSTALL_CMAKE_DIR ${LIB_INSTALL_DIR})
 endif()
-set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
+set(CMAKE_INSTALL_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE STRING
     "Installation directory for CMake files")
 
 # Make relative paths absolute (needed later on)
 foreach(p LIB BIN INCLUDE CMAKE)
   set(var INSTALL_${p}_DIR)
-  if(NOT IS_ABSOLUTE "${${var}}")
-    set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
+  if(NOT IS_ABSOLUTE "${${p}_INSTALL_DIR}")
+    set(${var} "${CMAKE_INSTALL_PREFIX}/${${p}_INSTALL_DIR}")
   endif()
 endforeach()
 
