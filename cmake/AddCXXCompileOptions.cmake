@@ -125,7 +125,6 @@ elseif ( "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
       set(_ext gnu++)
     endif()
 
-        message("exttttt        ${_ext}")
     if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.1)
       set(CMAKE_CXX98_STANDARD_COMPILE_OPTION "${_std}=c++98")
       set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "${_std}=${_ext}98")
