@@ -114,7 +114,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       set(CMAKE_CXX_STANDARD_DEFAULT 14)
     endif()
    
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+elseif ( "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
 
     # Intel compiler 
     if("x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC")

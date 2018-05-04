@@ -194,7 +194,12 @@ class PardisoImpl : public SparseSolverBase<Derived>
       m_type = type;
       bool symmetric = std::abs(m_type) < 10;
       m_iparm[0] = 1;   // No solver default
-      m_iparm[1] = 2;   // use Metis for the ordering
+      m_iparm[1] =    // 2: use Metis for the ordering, 3: OpenMP enabled
+#ifdef GISMO_WITH_OPENMP
+        3;
+#else
+        2;
+#endif
       m_iparm[2] = 0;   // Reserved. Set to zero. (??Numbers of processors, value of OMP_NUM_THREADS??)
       m_iparm[3] = 0;   // No iterative-direct algorithm
       m_iparm[4] = 0;   // No user fill-in reducing permutation

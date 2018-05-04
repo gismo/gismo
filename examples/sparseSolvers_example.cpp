@@ -42,25 +42,15 @@ int main(int argc, char** argv)
 
     gsSparseMatrix<>  Q(mat_size,mat_size);
     gsVector<>        b(mat_size), x(mat_size), x0(mat_size);
+    x0.setOnes();
 
     bool succeeded = true;
 
     Q.reserve( gsVector<int>::Constant(mat_size,1) ); // Reserve memory for 1 non-zero entry per column
-    Q(0,0) = 1;
-    Q(1,1) = 2;
-    Q(2,2) = 3;
-    Q(3,3) = 4;
-    Q(4,4) = 5;
-    Q(5,5) = 6;
-    Q(6,6) = 7;
-    Q(7,7) = 8;
-    Q(8,8) = 9;
-    Q(9,9) = 10;
-    Q.makeCompressed(); // always call makeCompressed after sparse matrix has been filled
+    for (index_t i = 0; i!=mat_size; ++i)
+        Q(i,i) = b[i] = i+1;
 
-    // fill-in right-hand side
-    b << 1, 2, 3, 4, 5, 6, 7, 8, 9, 10;
-    x0 << 1, 1, 1, 1, 1, 1, 1, 1, 1, 1;
+    Q.makeCompressed(); // always call makeCompressed after sparse matrix has been filled
 
     gsSparseSolver<>::CGIdentity solverCGI;
     solverCGI.compute(Q);
@@ -114,18 +104,21 @@ int main(int argc, char** argv)
     gsSparseSolver<>::PardisoLDLT solverLDLT;
     solverLDLT.compute(Q);
     x = solverLDLT.solve(b);
+    gsInfo << "Error code of pardiso "<< solverLDLT.info() <<"\n";
     gsInfo << "Solve Ax = b with PardisoLDLT.\n";
     report( x, x0, succeeded );
 
     gsSparseSolver<>::PardisoLLT solverLLT;
     solverLLT.compute(Q);
     x = solverLLT.solve(b);
+    gsInfo << "Error code of pardiso "<< solverLLT.info() <<"\n";
     gsInfo << "Solve Ax = b with PardisoLLT.\n";
     report( x, x0, succeeded );
 
     gsSparseSolver<>::PardisoLU solverpLU;
     solverpLU.compute(Q);
     x = solverpLU.solve(b);
+    gsInfo << "Error code of pardiso "<< solverLU.info() <<"\n";
     gsInfo << "Solve Ax = b with PardisoLU.\n";
     report( x, x0, succeeded );
 
