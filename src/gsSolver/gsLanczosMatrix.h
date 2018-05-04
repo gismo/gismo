@@ -54,8 +54,8 @@ public:
         for (size_t i=0;i<m_n;++i)
         {
             const T tmp = math::abs(m_delta[i])
-                        + ( i<m_n-1 ? math::abs(m_gamma[i])   : 0 )
-                        + ( i>0     ? math::abs(m_gamma[i-1]) : 0 );
+                        + ( i<m_n-1 ? math::abs(m_gamma[i])   : T(0) )
+                        + ( i>0     ? math::abs(m_gamma[i-1]) : T(0) );
             if (tmp>x0) x0 = tmp;
         }
 
