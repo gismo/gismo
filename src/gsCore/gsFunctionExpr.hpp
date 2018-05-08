@@ -156,7 +156,7 @@ public:
     gsFunctionExprPrivate(const int _dim)
     : dim(_dim)
     { 
-        GISMO_ENSURE( dim < 7, "The number of variables can be at most 6 (x,y,z,u,v,w)." );
+        GISMO_ENSURE( dim < 7, "The number of variables can be at most 6 (x,y,z,w,u,v)." );
         init();
     }
 
