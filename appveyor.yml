@@ -110,15 +110,15 @@ for:
     matrix:
     - BUILD: msvc2017
       configuration: Release
-      generator: "Visual Studio 2017"
+      generator: "Visual Studio 15 2017"
 
     - BUILD: msvc2017
       configuration: Release
-      generator: "Visual Studio 2017 Win64"
+      generator: "Visual Studio 15 2017 Win64"
 
     - BUILD: msvc2017
       configuration: Debug
-      generator: "Visual Studio 2017 Win64"
+      generator: "Visual Studio 15 2017 Win64"
 
     - BUILD: mingw
       envpath: C:\mingw64\bin
