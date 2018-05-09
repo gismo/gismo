@@ -94,7 +94,7 @@ for:
     matrix:
     - BUILD: msvc2017
       configuration: Release
-      generator: "Visual Studio 2017"
+      generator: "Visual Studio 15 2017"
 
 ####################
 -
