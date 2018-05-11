@@ -137,7 +137,7 @@ endif(GISMO_BUILD_LIB)
   POSITION_INDEPENDENT_CODE ON
   LINKER_LANGUAGE CXX
   FOLDER "G+Smo libraries"
-  OUTPUT_NAME ${PROJECT_NAME}${static_lib_name} )
+  OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
 
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib/)
 
