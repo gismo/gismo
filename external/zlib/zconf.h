@@ -14,7 +14,7 @@
  * Even better than compiling with -DZ_PREFIX would be to use configure to set
  * this permanently in zconf.h using "./configure --zprefix".
  */
-#if 1 //#ifdef Z_PREFIX     /* may be set to #if 1 by ./configure */
+#ifdef Z_PREFIX
 #  define Z_PREFIX_SET
 
 /* all linked symbols */

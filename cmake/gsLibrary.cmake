@@ -42,6 +42,7 @@ endif()
   SOVERSION ${${PROJECT_NAME}_VERSION_MAJOR}
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h" 
   POSITION_INDEPENDENT_CODE ON
+  LINKER_LANGUAGE CXX
   #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
   FOLDER "G+Smo libraries"
   )
@@ -86,8 +87,6 @@ if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND)
   target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY}) 	
 endif() 
 
-set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
-
 if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
     if(CMAKE_CONFIGURATION_TYPES)
       add_custom_command(
@@ -118,13 +117,6 @@ endif(GISMO_BUILD_LIB)
 
   #generate_export_header(${PROJECT_NAME}_static)
 
-  set_target_properties(${PROJECT_NAME}_static PROPERTIES 
-  POSITION_INDEPENDENT_CODE ON
-  EXCLUDE_FROM_DEFAULT_BUILD 1
-  COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
-  FOLDER "G+Smo libraries"
-  )
-
   if (EIGEN_USE_MKL_ALL)
     # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
     find_package(MKL REQUIRED)
@@ -135,22 +127,28 @@ endif(GISMO_BUILD_LIB)
      target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY}) 	
   ENDIF() 
 
-  set_target_properties(${PROJECT_NAME}_static 
-  PROPERTIES LINKER_LANGUAGE CXX
-  OUTPUT_NAME ${PROJECT_NAME}_static )
+  # Avoid naming conflic on MSVC
+  if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
+    set(gs_static_lib_suffix _static)
+  endif()
 
+  set_target_properties(${PROJECT_NAME}_static PROPERTIES
+  COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
+  POSITION_INDEPENDENT_CODE ON
+  LINKER_LANGUAGE CXX
+  FOLDER "G+Smo libraries"
+  OUTPUT_NAME ${PROJECT_NAME}${static_lib_name} )
 
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib/)
-
 
 ## #################################################################
 ## Installation
 ## #################################################################
 
 # Offer the user the choice of overriding the installation directories
-set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries")
-set(BIN_INSTALL_DIR     bin     CACHE PATH "Installation directory for executables")
-set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header files")
+set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
+set(BIN_INSTALL_DIR     bin     CACHE STRING "Installation directory for executables")
+set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header files")
 
   install(TARGETS ${PROJECT_NAME}_static OPTIONAL
           EXPORT gismoTargets

@@ -13,7 +13,8 @@ os:
 #  - SharePoint 2013
 #  - MinGW
 #  - Visual Studio 2014 CTP4
-  - Visual Studio 2015
+#  - Visual Studio 2015
+   - Visual Studio 2017
 
 #clone_depth: 5 # clone entire repository history if not defined
 shallow_clone: true
@@ -46,13 +47,13 @@ install:
 
 # scripts to run before build
 before_build:
-  - if [%BUILD%]==[msvc2015] set envpath=C:\Program Files (x86)\MSBuild\14.0\Bin
+  - if [%BUILD%]==[msvc2017] set envpath=C:\Program Files (x86)\MSBuild\15.0\Bin
   #- if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
   #- if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
   - if [%BUILD%]==[mingw] rename "C:\Program Files\Git\usr\bin\sh.exe" "sh2.exe"
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
   - set PATH=%envpath%;%PATH%
-  - cmd: cmake -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo
+  - cmd: cmake -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=OFF -DGISMO_BUILD_UNITTESTS=ON ../gismo
 
 # for MSYS
 #  - cmd: C:\MinGW\msys\1.0\bin\sh --login -c "
@@ -91,9 +92,9 @@ for:
   environment:
     CTEST_OUTPUT_ON_FAILURE: 1
     matrix:
-    - BUILD: msvc2015
+    - BUILD: msvc2017
       configuration: Release
-      generator: "Visual Studio 14 2015"
+      generator: "Visual Studio 15 2017"
 
 ####################
 -
@@ -107,17 +108,17 @@ for:
     #BOOST_ROOT: c:\Libraries\boost
     #BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
     matrix:
-    - BUILD: msvc2015
+    - BUILD: msvc2017
       configuration: Release
-      generator: "Visual Studio 14 2015"
+      generator: "Visual Studio 15 2017"
 
-    - BUILD: msvc2015
+    - BUILD: msvc2017
       configuration: Release
-      generator: "Visual Studio 14 2015 Win64"
+      generator: "Visual Studio 15 2017 Win64"
 
-    - BUILD: msvc2015
+    - BUILD: msvc2017
       configuration: Debug
-      generator: "Visual Studio 14 2015 Win64"
+      generator: "Visual Studio 15 2017 Win64"
 
     - BUILD: mingw
       envpath: C:\mingw64\bin

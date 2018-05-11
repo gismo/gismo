@@ -17,9 +17,9 @@ set(CMAKE_INSTALL_MESSAGE NEVER)
 #set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME gismo)
 
 # Offer the user the choice of overriding the installation directories
-set(LIB_INSTALL_DIR     lib     CACHE PATH "Installation directory for libraries")
-set(BIN_INSTALL_DIR     bin     CACHE PATH "Installation directory for executables")
-set(INCLUDE_INSTALL_DIR include CACHE PATH "Installation directory for header files")
+#set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
+#set(BIN_INSTALL_DIR     bin     CACHE STRING "Installation directory for executables")
+#set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header files")
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 
 # Set CMake installation directory
@@ -28,14 +28,14 @@ if(WIN32 AND NOT CYGWIN)
 else()
    set(DEF_INSTALL_CMAKE_DIR ${LIB_INSTALL_DIR})
 endif()
-set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
+set(CMAKE_INSTALL_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE STRING
     "Installation directory for CMake files")
 
 # Make relative paths absolute (needed later on)
 foreach(p LIB BIN INCLUDE CMAKE)
   set(var INSTALL_${p}_DIR)
-  if(NOT IS_ABSOLUTE "${${var}}")
-    set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
+  if(NOT IS_ABSOLUTE "${${p}_INSTALL_DIR}")
+    set(${var} "${CMAKE_INSTALL_PREFIX}/${${p}_INSTALL_DIR}")
   endif()
 endforeach()
 

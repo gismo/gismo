@@ -33,7 +33,7 @@
 #endif
 
 
-#include <zlib/gzstream.h>
+#include <gzstream/gzstream.h>
 #include <gsIO/gsFileManager.h>
 
 namespace gismo {

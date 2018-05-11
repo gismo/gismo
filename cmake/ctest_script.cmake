@@ -136,7 +136,7 @@ set(gismo_build_options
     #-DGISMO_WITH_IPOPT=ON -DIpOpt_DIR=/path/to/ipopt
     #-DGISMO_WITH_PSOLID=ON -DParasolid_DIR=/path/to/parasolid
     #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/path/to/axel
-    -DGISMO_WITH_ONURBS=ON
+    -DGISMO_WITH_ONURBS=OFF
     -DGISMO_WITH_TRILINOS=OFF
     -DGISMO_WITH_SPECTRA=OFF
     -DGISMO_EXTRA_DEBUG=OFF

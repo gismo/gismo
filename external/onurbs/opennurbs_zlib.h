@@ -28,16 +28,18 @@
 // and statically link with the zlib library. All the necessary
 // header files are included by opennurbs.h.
 
-
+/*
+// G+Smo handles prefix
 #if !defined(Z_PREFIX)
-/* decorates zlib functions with a "z_" prefix to prevent symbol collision. */
+// decorates zlib functions with a "z_" prefix to prevent symbol collision.
 #define Z_PREFIX
 #endif
 
 #if !defined(MY_ZCALLOC)
-/* have zlib use oncalloc() and onfree() for memory managment*/
+// have zlib use oncalloc() and onfree() for memory managment
 #define MY_ZCALLOC
 #endif
+*/
 
 #include "./zlib/zlib.h"
 
