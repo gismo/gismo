@@ -13,7 +13,7 @@ set(${PROJECT_NAME}_externals "${CMAKE_CURRENT_SOURCE_DIR}"
 
 find_package(ZLIB QUIET)
 if (NOT ZLIB_FOUND OR GISMO_ZLIB_STATIC)
-  set(GISMO_ZLIB_STATIC true)
+  set(GISMO_ZLIB_STATIC TRUE CACHE INTERNAL "Use static zlib.")
   add_definitions(-DZ_PREFIX) #use prefixed zlib for gzstream
   add_subdirectory(zlib)
 else()
