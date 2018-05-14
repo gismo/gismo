@@ -38,7 +38,8 @@ public:
      * @param tol      Tolerace for the Newton algorithm
      */
     gsLanczosMatrix(const std::vector<T> & gamma, const std::vector<T> & delta, index_t maxIter = 20, T tol = 1.e-6)
-     : m_gamma(gamma), m_delta(delta), m_maxIter(maxIter), m_tol(tol), m_n(m_delta.size()) {}
+     : m_gamma(gamma), m_delta(delta), m_maxIter(maxIter), m_tol(tol), m_n(m_gamma.size())
+    { GISMO_ASSERT( m_delta.size() + 1 == m_gamma.size() && m_n>0, "Size missmatch." ); }
 
     /**
      * @brief Calculates the largest eigenvalue
@@ -105,19 +106,19 @@ private:
      */
     std::pair<T,T> eval( T lambda )
     {
-        std::vector<T> value(m_n);
-        std::vector<T> deriv(m_n);
+        std::vector<T> value(m_n+1);
+        std::vector<T> deriv(m_n+1);
 
         value[0] = T(1);
         value[1] = m_delta[0]-lambda;
         deriv[0] = T(0);
         deriv[1] = T(-1);
-        for (size_t k=2; k<m_n; ++k)
+        for (size_t k=2; k<m_n+1; ++k)
         {
             value[k] = (m_delta[k-1]-lambda) * value[k-1] - m_gamma[k-2]*m_gamma[k-2]*value[k-2];
             deriv[k] = (m_delta[k-1]-lambda) * deriv[k-1] - value[k-1] - m_gamma[k-2]*m_gamma[k-2]*deriv[k-2];
         }
-        return std::pair<T,T>(value[m_n-1],deriv[m_n-1]);
+        return std::pair<T,T>(value[m_n],deriv[m_n]);
     }
 
     /**
