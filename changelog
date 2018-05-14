@@ -1,0 +1,20 @@
+G+smo changelog
+===============
+
+v0.8.0
+------
+  This is the first Alpha release of G+Smo. It includes the modules
+  for NURBS, Hierarchical splines, and isogeometric analysis elliptic
+  PDE problems.
+
+v0.8.1
+------
+* IMPROVED
+  - Some restructuring of the class hierarchy
+* FIXED
+  - Several fixes and performance updates
+
+v0.8.2
+------
+* IMPROVED
+  - Many improvements and performance updates, as well as some restructuring
