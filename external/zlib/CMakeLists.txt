@@ -59,11 +59,9 @@ endif()
 #endif()
 
 add_definitions(-DZ_PREFIX)   # use prefixed symbols
-#if(GISMO_WITH_ONURBS)
-add_definitions(-DMY_ZCALLOC) # use oncalloc() and onfree()
-#endif()
-
-
+if(GISMO_WITH_ONURBS)
+  add_definitions(-DMY_ZCALLOC) # use oncalloc() and onfree()
+endif()
 
 add_library(${PROJECT_NAME} OBJECT ${ZLIB_SOURCES} ${ZLIB_HEADERS})
 
