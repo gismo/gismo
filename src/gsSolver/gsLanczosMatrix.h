@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Sogn
+    Author(s): C. Hofer, S. Takacs
 */
 
 #pragma once
@@ -32,19 +32,22 @@ public:
      * @brief Constructor for the Lanczos matrix
      * The Lanczos matrix is a symmetric tridiagonal matrix with diagonal delta and offdiagonal gamma.
      *
-     * @param gamma    The diagonal (the object stores a reference to this vector)
-     * @param delta    The off diagonal (the object stores a reference to this vector)
-     * @param maxIter  The number of maximal iterations of the Newton algorithm
-     * @param tol      Tolerace for the Newton algorithm
+     * @param gamma    The off diagonal (the object stores a reference to this vector)
+     * @param delta    The diagonal (the object stores a reference to this vector)
      */
-    gsLanczosMatrix(const std::vector<T> & gamma, const std::vector<T> & delta, index_t maxIter = 20, T tol = 1.e-6)
-     : m_gamma(gamma), m_delta(delta), m_maxIter(maxIter), m_tol(tol), m_n(m_delta.size()) {}
+    gsLanczosMatrix(const std::vector<T> & gamma, const std::vector<T> & delta)
+     : m_gamma(gamma), m_delta(delta), m_n(m_delta.size())
+    { GISMO_ASSERT( m_delta.size() == m_gamma.size() + 1, "Size missmatch." ); }
 
     /**
      * @brief Calculates the largest eigenvalue
-     * @return the largest eigenvalue
+     *
+     * @param maxIter  The number of maximal iterations of the Newton algorithm
+     * @param tol      Tolerace for the Newton algorithm
+     *
+     * @return The largest eigenvalue
      */
-    T maxEigenvalue()
+    T maxEigenvalue(index_t maxIter = 20, T tol = 1.e-6)
     {
         if (m_n==1)
             return m_delta[0];
@@ -59,24 +62,28 @@ public:
             if (tmp>x0) x0 = tmp;
         }
 
-        return newtonIteration(x0);
+        return newtonIteration(x0, maxIter, tol);
     }
 
     /**
      * @brief Calculates the smallest eigenvalue
-     * @return the smallest eigenvalue
+     *
+     * @param maxIter  The number of maximal iterations of the Newton algorithm
+     * @param tol      Tolerace for the Newton algorithm
+     *
+     * @return The smallest eigenvalue
      */
-    T minEigenvalue()
+    T minEigenvalue(index_t maxIter = 20, T tol = 1.e-6)
     {
         if (m_n==1)
             return m_delta[0];
 
         T x0 = 0;
-        return newtonIteration(x0);
+        return newtonIteration(x0, maxIter, tol);
     }
 
     /**
-     * @brief This function returns the Lanczos matrix as a gsSparseMatrix
+     * @brief This function returns the Lanczos matrix as \a gsSparseMatrix
      */
     gsSparseMatrix<T> matrix()
     {
@@ -98,41 +105,44 @@ public:
 private:
 
     /**
-     * @brief Evalutate characteristic polynomial
+     * @brief Evalutates characteristic polynomial
      *
      * @param lambda evaluation point
      * @return the value and the derivative at position lambda
      */
     std::pair<T,T> eval( T lambda )
     {
-        std::vector<T> value(m_n);
-        std::vector<T> deriv(m_n);
+        std::vector<T> value(m_n+1);
+        std::vector<T> deriv(m_n+1);
 
         value[0] = T(1);
         value[1] = m_delta[0]-lambda;
         deriv[0] = T(0);
         deriv[1] = T(-1);
-        for (size_t k=2; k<m_n; ++k)
+        for (size_t k=2; k<m_n+1; ++k)
         {
             value[k] = (m_delta[k-1]-lambda) * value[k-1] - m_gamma[k-2]*m_gamma[k-2]*value[k-2];
             deriv[k] = (m_delta[k-1]-lambda) * deriv[k-1] - value[k-1] - m_gamma[k-2]*m_gamma[k-2]*deriv[k-2];
         }
-        return std::pair<T,T>(value[m_n-1],deriv[m_n-1]);
+        return std::pair<T,T>(value[m_n],deriv[m_n]);
     }
 
     /**
      * @brief Newton iteration for searching the zeros of the characteristic polynomial
      *
      * @param x0 the initial value
-     * @return the zero point (= Eigenvalue of the matrix)
+     * @param maxIter  The number of maximal iterations of the Newton algorithm
+     * @param tol      Tolerace for the Newton algorithm
+     *
+     * @return the root (= eigenvalue of the matrix)
      */
-    T newtonIteration(T x0)
+    T newtonIteration(T x0, index_t maxIter, T tol)
     {
         index_t iter = 0;
         T res = 1;
         T x_old = x0;
         T x_new = x0;
-        while (iter < m_maxIter && res > m_tol)
+        while (iter < maxIter && res > tol)
         {
             const std::pair<T,T> ev = eval(x_old);
             const T& value = ev.first;
@@ -150,8 +160,6 @@ private:
 private:
     const std::vector<T>& m_gamma;
     const std::vector<T>& m_delta;
-    index_t m_maxIter;
-    T m_tol;
     size_t m_n;
 };
 
