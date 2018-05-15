@@ -32,14 +32,14 @@ public:
      * @brief Constructor for the Lanczos matrix
      * The Lanczos matrix is a symmetric tridiagonal matrix with diagonal delta and offdiagonal gamma.
      *
-     * @param gamma    The diagonal (the object stores a reference to this vector)
-     * @param delta    The off diagonal (the object stores a reference to this vector)
+     * @param gamma    The off diagonal (the object stores a reference to this vector)
+     * @param delta    The diagonal (the object stores a reference to this vector)
      * @param maxIter  The number of maximal iterations of the Newton algorithm
      * @param tol      Tolerace for the Newton algorithm
      */
     gsLanczosMatrix(const std::vector<T> & gamma, const std::vector<T> & delta, index_t maxIter = 20, T tol = 1.e-6)
-     : m_gamma(gamma), m_delta(delta), m_maxIter(maxIter), m_tol(tol), m_n(m_gamma.size())
-    { GISMO_ASSERT( m_delta.size() + 1 == m_gamma.size() && m_n>0, "Size missmatch." ); }
+     : m_gamma(gamma), m_delta(delta), m_maxIter(maxIter), m_tol(tol), m_n(m_delta.size())
+    { GISMO_ASSERT( m_delta.size() == m_gamma.size() + 1 && m_n>0, "Size missmatch." ); }
 
     /**
      * @brief Calculates the largest eigenvalue
