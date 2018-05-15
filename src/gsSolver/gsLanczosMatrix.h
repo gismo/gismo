@@ -34,18 +34,20 @@ public:
      *
      * @param gamma    The off diagonal (the object stores a reference to this vector)
      * @param delta    The diagonal (the object stores a reference to this vector)
-     * @param maxIter  The number of maximal iterations of the Newton algorithm
-     * @param tol      Tolerace for the Newton algorithm
      */
-    gsLanczosMatrix(const std::vector<T> & gamma, const std::vector<T> & delta, index_t maxIter = 20, T tol = 1.e-6)
-     : m_gamma(gamma), m_delta(delta), m_maxIter(maxIter), m_tol(tol), m_n(m_delta.size())
-    { GISMO_ASSERT( m_delta.size() == m_gamma.size() + 1 && m_n>0, "Size missmatch." ); }
+    gsLanczosMatrix(const std::vector<T> & gamma, const std::vector<T> & delta)
+     : m_gamma(gamma), m_delta(delta), m_n(m_delta.size())
+    { GISMO_ASSERT( m_delta.size() == m_gamma.size() + 1, "Size missmatch." ); }
 
     /**
      * @brief Calculates the largest eigenvalue
-     * @return the largest eigenvalue
+     *
+     * @param maxIter  The number of maximal iterations of the Newton algorithm
+     * @param tol      Tolerace for the Newton algorithm
+     *
+     * @return The largest eigenvalue
      */
-    T maxEigenvalue()
+    T maxEigenvalue(index_t maxIter = 20, T tol = 1.e-6)
     {
         if (m_n==1)
             return m_delta[0];
@@ -60,24 +62,28 @@ public:
             if (tmp>x0) x0 = tmp;
         }
 
-        return newtonIteration(x0);
+        return newtonIteration(x0, maxIter, tol);
     }
 
     /**
      * @brief Calculates the smallest eigenvalue
-     * @return the smallest eigenvalue
+     *
+     * @param maxIter  The number of maximal iterations of the Newton algorithm
+     * @param tol      Tolerace for the Newton algorithm
+     *
+     * @return The smallest eigenvalue
      */
-    T minEigenvalue()
+    T minEigenvalue(index_t maxIter = 20, T tol = 1.e-6)
     {
         if (m_n==1)
             return m_delta[0];
 
         T x0 = 0;
-        return newtonIteration(x0);
+        return newtonIteration(x0, maxIter, tol);
     }
 
     /**
-     * @brief This function returns the Lanczos matrix as a gsSparseMatrix
+     * @brief This function returns the Lanczos matrix as \a gsSparseMatrix
      */
     gsSparseMatrix<T> matrix()
     {
@@ -99,7 +105,7 @@ public:
 private:
 
     /**
-     * @brief Evalutate characteristic polynomial
+     * @brief Evalutates characteristic polynomial
      *
      * @param lambda evaluation point
      * @return the value and the derivative at position lambda
@@ -125,15 +131,18 @@ private:
      * @brief Newton iteration for searching the zeros of the characteristic polynomial
      *
      * @param x0 the initial value
-     * @return the zero point (= Eigenvalue of the matrix)
+     * @param maxIter  The number of maximal iterations of the Newton algorithm
+     * @param tol      Tolerace for the Newton algorithm
+     *
+     * @return the root (= eigenvalue of the matrix)
      */
-    T newtonIteration(T x0)
+    T newtonIteration(T x0, index_t maxIter, T tol)
     {
         index_t iter = 0;
         T res = 1;
         T x_old = x0;
         T x_new = x0;
-        while (iter < m_maxIter && res > m_tol)
+        while (iter < maxIter && res > tol)
         {
             const std::pair<T,T> ev = eval(x_old);
             const T& value = ev.first;
@@ -151,8 +160,6 @@ private:
 private:
     const std::vector<T>& m_gamma;
     const std::vector<T>& m_delta;
-    index_t m_maxIter;
-    T m_tol;
     size_t m_n;
 };
 
