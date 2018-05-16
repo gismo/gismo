@@ -24,7 +24,7 @@ shallow_clone: true
 
 # scripts that are called at very beginning, before repo cloning
 #init:
-#  - cmd: cmake --version
+#  - cmake --version
 #  - cmd: echo Platform is %platform%
 #  - cmd: set
 #  - cmd: msbuild /version
@@ -43,47 +43,28 @@ skip_tags: true
 # scripts that run after cloning repository
 install:
   # install mingw
-  #- if [%BUILD%]==[mingw] appveyor DownloadFile "https://bintray.com/artifact/download/drewwells/generic/x86_64-4.9.2-release-win32-seh-rt_v4-rev3.7z" -FileName mw64.7z
-  - if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-win32/seh/x86_64-5.1.0-release-win32-seh-rt_v4-rev0.7z" -FileName mw64.7z
-  #- if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-posix/seh/x86_64-5.1.0-release-posix-seh-rt_v4-rev0.7z" -FileName mw64.7z
-  - if [%BUILD%]==[mingw] 7z x -oC:\ mw64.7z > NUL
+  - cmd: if [%BUILD%]==[mingw] appveyor DownloadFile "http://netcologne.dl.sourceforge.net/project/mingw-w64/Toolchains targetting Win64/Personal Builds/mingw-builds/5.1.0/threads-win32/seh/x86_64-5.1.0-release-win32-seh-rt_v4-rev0.7z" -FileName mw64.7z
+  - cmd: if [%BUILD%]==[mingw] 7z x -oC:\ mw64.7z > NUL
 
 # scripts to run before build
 before_build:
-  - if [%BUILD%]==[msvc2015] set envpath=C:\Program Files (x86)\MSBuild\14.0\Bin
+  - cmd: if [%BUILD%]==[msvc2015] set envpath=C:\Program Files (x86)\MSBuild\14.0\Bin
   #- if [%BUILD%]==[mingw] set PATH=C:\mingw64\bin;%PATH%
-  #- if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
-  - if [%BUILD%]==[mingw] rename "C:\Program Files\Git\usr\bin\sh.exe" "sh2.exe"
+  - cmd: if [%BUILD%]==[mingw] rename "C:\Program Files\Git\usr\bin\sh.exe" "sh2.exe"
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
   - cmd: set PATH=%envpath%;%PATH%
   - sh: mkdir build-gismo && cd build-gismo
   - cmd: cmake -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo
   - sh: cmake -DSITE="$APPVEYOR_PULL_REQUEST_NUMBER-$APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH [appVeyor]" -DBUILDNAME="makefiles $configuration" -DCMAKE_BUILD_TYPE=$configuration -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo
 
-# for MSYS
-#  - cmd: C:\MinGW\msys\1.0\bin\sh --login -c "
-#    echo 'C:\MinGW\ /MinGW' > /etc/fstab;
-#    cd /c/projects/build-gismo;
-#    cmake -G'MSYS Makefiles'  ../gismo;
-#    make -j2 Experimental
-#    "
-
 build_script:
-  #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
   - cmd: ctest --output-on-failure -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-V
   - sh: ctest --output-on-failure -j5 -C $configuration -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
 
-#build:
-#  project: C:\projects\build-gismo\gismo.sln
-#  parallel: true # enable MSBuild parallel builds
-#  verbosity: minimal # MSBuild verbosity level (quiet|minimal|normal|detailed)
 # NuGet
 #publish_nuget: true
 #publish_nuget_symbols: true
 #include_nuget_references: true
-#test_script:
-#- cmd: ctest -j2 -D ExperimentalMemCheck
-
 
 ##############################################################
 for:
