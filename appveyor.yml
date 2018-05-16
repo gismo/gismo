@@ -30,8 +30,8 @@ shallow_clone: true
 #  - cmd: msbuild /version
 #  - cmd: wmic os get osarchitecture
 
-# clone directory
-clone_folder: C:\projects\gismo
+# clone directory (default)
+#clone_folder: C:\projects\gismo
 
 build:
   verbosity: minimal
