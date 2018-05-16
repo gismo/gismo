@@ -7,13 +7,17 @@ branches:
 version: "G+Smo-stable.{build}"
 
 # Operating system (build VM template)
-os: 
+#os: 
 #  - Windows Server 2012 R2
 #  - Default Azure
 #  - SharePoint 2013
 #  - MinGW
 #  - Visual Studio 2014 CTP4
-  - Visual Studio 2015
+#  - Visual Studio 2015
+
+image:
+- Visual Studio 2015
+- Ubuntu
 
 #clone_depth: 5 # clone entire repository history if not defined
 shallow_clone: true
@@ -51,8 +55,10 @@ before_build:
   #- if [%BUILD%]==[mingw] rename "C:\Program Files (x86)\Git\bin\sh.exe" "sh2.exe"
   - if [%BUILD%]==[mingw] rename "C:\Program Files\Git\usr\bin\sh.exe" "sh2.exe"
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
-  - set PATH=%envpath%;%PATH%
+  - cmd: set PATH=%envpath%;%PATH%
+  - sh: mkdir build-gismo && cd build-gismo
   - cmd: cmake -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo
+  - sh: cmake -DSITE="$APPVEYOR_PULL_REQUEST_NUMBER-$APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH [appVeyor]" -DBUILDNAME="makefiles $configuration" -DCMAKE_BUILD_TYPE=$configuration -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo
 
 # for MSYS
 #  - cmd: C:\MinGW\msys\1.0\bin\sh --login -c "
@@ -65,6 +71,7 @@ before_build:
 build_script:
   #- cmd: if (%BUILD%=="mingw") (mingw32-make -j4) else (msbuild /m:4 /p:Configuration=%configuration% /verbosity:minimal C:\projects\build-gismo\gismo.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll")
   - cmd: ctest --output-on-failure -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-V
+  - sh: ctest --output-on-failure -j5 -C $configuration -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
 
 #build:
 #  project: C:\projects\build-gismo\gismo.sln
