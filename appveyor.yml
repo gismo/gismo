@@ -83,7 +83,7 @@ for:
     - BUILD: msvc2015
       configuration: Release
       generator: "Visual Studio 14 2015"
-      MAKEFLAGS=-j$(nproc)
+      MAKEFLAGS: -j$(nproc)
 
 ####################
 -
