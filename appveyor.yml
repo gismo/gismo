@@ -23,13 +23,14 @@ image:
 shallow_clone: true
 
 # scripts that are called at very beginning, before repo cloning
-#init:
+init:
+  - sh: nproc
 #  - cmake --version
 #  - cmd: echo Platform is %platform%
 #  - cmd: set
 #  - cmd: msbuild /version
 #  - cmd: wmic os get osarchitecture
-
+  
 # clone directory (default)
 #clone_folder: C:\projects\gismo
 
@@ -53,9 +54,9 @@ before_build:
   - cmd: if [%BUILD%]==[mingw] rename "C:\Program Files\Git\usr\bin\sh.exe" "sh2.exe"
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
   - cmd: set PATH=%envpath%;%PATH%
-  - sh: mkdir build-gismo && cd build-gismo
+  - sh: cd ~/projects && mkdir build-gismo && cd build-gismo
   - cmd: cmake -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator% %configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ../gismo
-  - sh: cmake -DSITE="$APPVEYOR_PULL_REQUEST_NUMBER-$APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH [appVeyor]" -DBUILDNAME="makefiles $configuration" -DCMAKE_BUILD_TYPE=$configuration -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON ..
+  - sh: cmake -DSITE="$APPVEYOR_PULL_REQUEST_NUMBER-$APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH [appVeyor]" -DBUILDNAME="makefiles $configuration" -DCMAKE_BUILD_TYPE=$configuration -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DGISMO_BUILD_STATIC_LIB=1 ../gismo
 
 build_script:
   - cmd: ctest --output-on-failure -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-V
@@ -82,6 +83,7 @@ for:
     - BUILD: msvc2015
       configuration: Release
       generator: "Visual Studio 14 2015"
+      MAKEFLAGS='-j$(nproc)'
 
 ####################
 -
