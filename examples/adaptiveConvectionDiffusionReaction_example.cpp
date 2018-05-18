@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Example for solving a convection-diffusion problem.");
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch(...) { return EXIT_FAILURE; }
     //! [Parse command line]
 
     // --------------- specify exact solution and right-hand-side ---------------
