@@ -41,7 +41,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch("boundary"  , "Plot the boundaries and interfaces of patches with colors", plot_boundary);
     cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
 
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); }
+    catch(...) { return EXIT_FAILURE; }
     //! [Parse Command line]
 
     if ( fn.empty() )
