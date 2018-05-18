@@ -323,7 +323,7 @@ public:
      */
     void parameters_into (int dim, gsVector<bool> &param) const
     {
-        param.resize(dim);
+        param.resize(static_cast<size_t>(dim));
         for (int i=0; i<dim; ++i)
             param(i)=((m_index-1)>>i)&1;
     }

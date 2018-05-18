@@ -66,7 +66,7 @@ matrix:
         - BUILD_TYPE=RelWithDebInfo
 
     - env: COMPILER=g++-6 BUILD_TYPE=Release
-      if: branch = ci_test OR branch = cooverity_scan
+      if: branch = ci_test OR branch = coverity_scan
       addons: &gcc6
         apt:
           packages: g++-6
@@ -75,7 +75,7 @@ matrix:
       before_install:
         - pip install --user cpp-coveralls
       before_script:
-        - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_BRANCH/travis-cov" #-DGISMO_WITH_IPOPT=ON
+        - mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DGISMO_WITH_ONURBS=ON -DGISMO_BUILD_UNITTESTS=ON -DSITE="$TRAVIS_BRANCH/travis-cov" #-DGISMO_WITH_IPOPT=ON -DGISMO_BUILD_COVERAGE=ON
       after_success:
         - coveralls --exclude lib --exclude tests --gcov-options '\-lp'
 
