@@ -271,13 +271,13 @@ private:
 
 
 /// This class is thrown by gsCmdLine if there was a parse error or if
-/// the options --help or --version have been executed.
+/// one of the options --help or --version has been used.
 class gsExitException {
     int exit_code;
 public:
     gsExitException(int _exit_code) : exit_code(_exit_code) {}
     operator int ()    { return exit_code;         }
     const char* what() { return "gsExitException"; }
-};
+}; // class gsExitException
 
 }; // namespace gismo
