@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     cmd.addString("i", "input", "Input file", input);
     cmd.addString("o", "output", "Output file", output);
 
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
 
     std::cout << " \n\nInput arguments: \n\n"
 	      << "input: " << input << "\n\n"
