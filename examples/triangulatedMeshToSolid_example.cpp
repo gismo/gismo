@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
                 innerAngle);
     cmd.addReal("c", "cutoff","Cutoff angle (degrees).", cutoffAngle);
 
-    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
+    try { cmd.getValues(argc,argv); } catch (gsExitException& e) { return e; }
 
     filename = gsFileManager::find(filename);
     if ( filename.empty() )

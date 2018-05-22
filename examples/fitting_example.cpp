@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("d", "data", "Input sample data", fn);
 
-    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
+    try { cmd.getValues(argc,argv); } catch (gsExitException& e) { return e; }
 
     if (deg_x < 1)
     { gsInfo << "Degree x must be positive.\n";  return 0;}

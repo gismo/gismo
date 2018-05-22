@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
     cmd.addSwitch("",  "plot",                  "Plot the result with Paraview", plot);
 
-    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
+    try { cmd.getValues(argc,argv); } catch (gsExitException& e) { return e; }
 
     gsOptionList opt = cmd.getOptionList();
 

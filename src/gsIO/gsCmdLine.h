@@ -272,7 +272,7 @@ private:
 
 /// This class is thrown by gsCmdLine if there was a parse error or if
 /// one of the options --help or --version has been used.
-class gsExitException {
+class gsExitException : public std::exception {
     int exit_code;
 public:
     gsExitException(int _exit_code) : exit_code(_exit_code) {}
