@@ -32,14 +32,14 @@ mxArray* createPointerFromMatrix( const gsMatrix<C> mat )
                  numCols = mat.cols();
     mxArray *pnt = mxCreateDoubleMatrix(numRows,numCols,mxREAL);
     real_t *out = mxGetPr(pnt);
+
+    //gsAsMatrix<C>(out,numRows,numCols) = mat;
+    
     for (size_t j=0; j<numCols; ++j) 
-    {
         for (size_t i=0; i<numRows; ++i) 
-        {
             *out++ = mat(i,j);
-        }
-    }
-  return pnt;
+
+    return pnt;
 }
 
 

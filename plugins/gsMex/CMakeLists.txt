@@ -1,25 +1,19 @@
 
-CMAKE_MINIMUM_REQUIRED( VERSION 2.8 )
+project( gsMex )
 
-PROJECT( gsMex )
+#find_package(Matlab)
 
-##############################################################################
-# FIXME: THESE SHOULD BE SET AUTOMATICALLY
-##############################################################################
 # Specify MEX file generator/program, extension of MEX files, and
 # installation directory for MATLAB files.
-SET( MEX_GENERATOR /opt/Matlab/bin/mex)
+SET( MEX_GENERATOR /opt/Matlab/bin/mex CACHE INTERNAL "path to Mex generator")
 SET( MEX_EXTENSION .mexglx )
-SET( MAT_INSTALL_DIR $ENV{HOME}/Matlab )
+SET( MAT_INSTALL_DIR $ENV{HOME}/Matlab CACHE INTERNAL "Matlab installation directory")
 
 # Ensure existence of MEX generator.
 FIND_PROGRAM( MEX_EXECUTABLE ${MEX_GENERATOR} )
 IF( NOT MEX_EXECUTABLE )
   MESSAGE( SEND_ERROR "Failed to find MEX generator: ${MEX_GENERATOR}." )
 ENDIF( NOT MEX_EXECUTABLE )
-
-# Find the G+Smo library.
-find_package(gismo REQUIRED)
 
 ##############################################################################
 # FIXME: we should actually include all Gismo include directories
@@ -33,7 +27,7 @@ set( GISMO_LIBRARY_DIR L${gismo_BINARY_DIR}/lib )
 
 # Fetch all .cpp files to be mex'ed, and loop over these to set up
 # mex-targets.
-FILE( GLOB CXX_SRCS src/*.cpp )
+FILE( GLOB CXX_SRCS src/*.cpp)
 SET(MEX_SRCS)
 SET(MEX_OUTS)
 SET(MEX_TGTS)
@@ -63,12 +57,19 @@ ENDFOREACH()
 
 ADD_CUSTOM_TARGET(gsMex ALL DEPENDS ${MEX_SRCS})
 
+# File copy all m files creates duplicates..
+#file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/m/" DESTINATION ${CMAKE_CURRENT_BINARY_DIR} FILES_MATCHING PATTERN "*.m")
+
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/set_path.m.in" "${CMAKE_CURRENT_BINARY_DIR}/set_path.m")
+
 # Set up installation process.
 IF( NOT MAT_INSTALL_DIR )
   MESSAGE( FATAL_ERROR "MATLAB install directory NOT found." )
 ENDIF( NOT MAT_INSTALL_DIR )
+
 INSTALL ( FILES ${MEX_OUTS} # MEX files
           DESTINATION "${MAT_INSTALL_DIR}" )
+
 INSTALL ( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/m/ # M files
           DESTINATION "${MAT_INSTALL_DIR}" 
           FILES_MATCHING PATTERN "*.m"
