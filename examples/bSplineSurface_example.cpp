@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
     cmd.addInt   ("m", "m", "Number of basis function in other direction", m);
     cmd.addInt   ("d", "degree", "Degree of a surface", degree);
     cmd.addString("o", "output", "Name of the output file.", output);
-    try { cmd.getValues(argc,argv); } catch(...) { return EXIT_FAILURE; }
+    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
 
     // Adjust values to the minimum required
     degree = math::max(0, degree    );

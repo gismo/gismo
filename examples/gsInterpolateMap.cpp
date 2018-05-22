@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
     cmd.addString("Y", "f2", "The Y-coordinate of the function", func_name_y);
     cmd.addString("Z", "f3", "The Z-coordinate of the function", func_name_z);
 
-    cmd.getValues(argc, argv);
+    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
 
     // Define a function R^d --> R^2
     gsFunctionExpr<> func(func_name_x, func_name_y, func_name_z, d);

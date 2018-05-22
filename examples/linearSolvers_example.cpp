@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
     cmd.addInt ("n", "number", "Number of unknowns",                  N  );
     cmd.addReal("",  "tol",    "Tolerance for the iterative solvers", tol);
 
-    try { cmd.getValues(argc,argv); } catch(...) { return EXIT_FAILURE; }
+    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
 
     gsSparseMatrix<> mat;
     gsMatrix<>       rhs;

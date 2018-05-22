@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
   cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files",
                 dump);
 
-  try { cmd.getValues(argc,argv); } catch(...) { return EXIT_FAILURE; }
+    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
 
   // ****** Prepared test examples ******
   //

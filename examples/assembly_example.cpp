@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Tutorial on assemblying a Poisson problem.");
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    try { cmd.getValues(argc,argv); } catch(...) { return EXIT_FAILURE; }
+    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
     //! [Parse command line]
 
 

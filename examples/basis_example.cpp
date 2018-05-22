@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
     cmd.addPlainString("input", "G+Smo input basis file.", input);
     cmd.addString("o", "output", "Name of the output file.", output);
 
-    try { cmd.getValues(argc,argv); } catch(...) { return EXIT_FAILURE; }
+    try { cmd.getValues(argc,argv); } catch(gsExitException e) { return e; }
 
     // ======================================================================
     // reading the basis

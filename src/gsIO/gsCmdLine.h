@@ -40,7 +40,7 @@ class gsCmdLinePrivate;
  *      // we parse the command line. If the return value is false, we exit.
  *      // At this point, the variable "name" is updated to the value given
  *      // by the user.
- *      cmd.getValues(argc, argv);
+ *      try { cmd.getValues(argc, argv); } catch(gsExitException e) { return e; }
  *
  *      // Here, no more of the addXxxx function are allowed to follow.
  *
@@ -269,5 +269,15 @@ private:
 
 }; // class gsCmdLine
 
+
+/// This class is thrown by gsCmdLine if there was a parse error or if
+/// the options --help or --version have been executed.
+class gsExitException {
+    int exit_code;
+public:
+    gsExitException(int _exit_code) : exit_code(_exit_code) {}
+    operator int ()    { return exit_code;         }
+    const char* what() { return "gsExitException"; }
+};
 
 }; // namespace gismo
