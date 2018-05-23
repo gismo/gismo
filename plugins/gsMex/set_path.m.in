@@ -3,9 +3,14 @@ clear all classes
 close all
 
 % Update path
-addpath('@CMAKE_CURRENT_SOURCE_DIR@/');
+addpath('@CMAKE_CURRENT_SOURCE_DIR@/m');
+addpath('@CMAKE_CURRENT_SOURCE_DIR@/test');
+
+%
+filedata='@CMAKE_SOURCE_DIR@/filedata/';
 
 % update linker path
 setenv('LD_LIBRARY_PATH', [getenv('LD_LIBRARY_PATH') ':@CMAKE_BINARY_DIR@/lib'])
-%setenv('PATH', [getenv('PATH') ';D:\mypath']);
 
+setenv('DYLD_LIBRARY_PATH', [getenv('DYLD_LIBRARY_PATH') ':@CMAKE_BINARY_DIR@/lib'])
+%setenv('PATH', [getenv('PATH') ';D:\mypath']);

@@ -1,12 +1,49 @@
-#ifndef __CLASS_HANDLE_HPP__
-#define __CLASS_HANDLE_HPP__
+/** @file mex_common.h
+
+    @brief Mex common utility functions
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris, P. Noertoft
+*/
+
+#pragma once
+
 #include "mex.h"
-#include <stdint.h>
-#include <string>
-#include <cstring>
-#include <typeinfo>
 
 #define CLASS_HANDLE_SIGNATURE 0xFF00F0A5
+
+// This macro denotes the maximal length of strings passed to this mexFunction.
+#define __MAXSTRLEN__ 128
+
+// This macro denotes the parametric dimension
+#define __DIM__ 2
+
+
+// Copies the array pointed to by the input pointer and returns it
+// as a gsMatrix.
+template<class T>
+gismo::gsAsConstMatrix<T> extractMatrixFromPointer(const mxArray *pnt) 
+{
+    return gismo::gsAsConstMatrix<real_t>(mxGetPr(pnt), mxGetM(pnt), mxGetN(pnt) );
+}
+
+// Copies the content of the input gsMatrix into a MATLAB real
+// double matrix and returns a pointer to it. Note: memory is
+// allocated (intended for output so it is not freed).
+template<class T>
+mxArray* createPointerFromMatrix(const gismo::gsMatrix<T> & mat) 
+{
+    const mwSize numRows = mat.rows(), numCols = mat.cols();
+    mxArray *pnt = mxCreateDoubleMatrix(numRows,numCols,mxREAL);
+    gismo::gsAsMatrix<real_t>(mxGetPr(pnt),numRows,numCols) =
+        mat.template cast<real_t>();
+    return pnt;
+}
 
 template<class base> class class_handle
 {
@@ -50,5 +87,3 @@ template<class base> inline void destroyObject(const mxArray *in)
     delete convertMat2HandlePtr<base>(in);
     mexUnlock();
 }
-
-#endif // __CLASS_HANDLE_HPP__

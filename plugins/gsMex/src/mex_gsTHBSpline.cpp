@@ -1,6 +1,6 @@
-/** @file mex_gsTHBSplineBasis.cpp
+/** @file mex_gsTHBSpline.cpp
 
-    @brief Mex adaptor for gsTHBSplineBasis class
+    @brief Mex adaptor for gsTHBSpline class
 
     This file is part of the G+Smo library.
 
@@ -8,11 +8,12 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): P. Noertoft
+    Author(s): A. Mantzaflaris
 */
 
 #include <gismo.h>
 #include "mex_common.h"
+#include <cstring>
 
 using namespace gismo;
 
@@ -52,8 +53,8 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                     // Read the THB-spline basis from the specified file
                     std::string filename(input_buf); // Reading requires a std::string
                     gsFileData<real_t>  data( filename );
-                    gsTHBSplineBasis<2> * hbs = NULL;
-                    hbs = data.getFirst< gsTHBSplineBasis<2> >().release();
+                    gsTHBSplineBasis<__DIM__> * hbs = NULL;
+                    hbs = data.getFirst< gsTHBSplineBasis<__DIM__> >().release();
                     gsTHBSplineBasis<__DIM__> * tmp = new gsTHBSplineBasis<__DIM__>(*hbs);
                     plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(tmp);
                     // Free the memory allocated by mxArrayToString
@@ -182,13 +183,16 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         // Catch (command failed).
 
     } catch (std::exception& e) { // Caught from library.
-        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std::string("\n  The following exception/error ocurred: ") + e.what();
+        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + 
+            std::string("\n  The following exception/error ocurred: ") + e.what();
         mexErrMsgTxt(errMsg.c_str());
     } catch (const char* str) { // Caught from within this mexFunction.
-        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std::string("\n  The following exception/error ocurred: ") + std::string(str);
+        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + 
+            std::string("\n  The following exception/error ocurred: ") + std::string(str);
         mexErrMsgTxt(errMsg.c_str());
     } catch (...) { // Something else went wrong
-        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + std:: string("\n  An error ocurred.");
+        std::string errMsg = std::string("\n  While executing the following command: ") + cmd + 
+            std::string("\n  An error ocurred.");
         mexErrMsgTxt(errMsg.c_str());
     } // end try-catch
 

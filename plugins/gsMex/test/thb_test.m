@@ -1,16 +1,8 @@
 % This MATLAB script tests the MEX interface of the gsTHBSplineBasis class.
-
 % Author: Peter Noertoft
 
-% Initiliazations
-clear all classes
-close all
-
-% Update path
-addpath('stable/plugins/gsMex/');
-
 % Construct a truncated hierarchical basis by reading the specified file
-filename = '../stable/filedata/basis_thbs.xml';
+filename = join(filedata,'thbbasis/simple.xml');
 fprintf('Reading THB spline basis from file: %s.\n',filename)
 hbs = gsTHBSplineBasis(filename);
 
