@@ -52,6 +52,54 @@ bool gsOptionList::getSwitch(const std::string & label) const
     return it->second.first;
 }
 
+std::vector<std::string> gsOptionList::getMultiString(const std::string & gn) const
+{
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getGroup): The group " + gn + " does not exist.");
+
+    std::vector<std::string> result;
+
+    const std::string search = gn + ".";
+
+    // add strings to vector
+    for (StringTable::const_iterator it = m_strings.begin(); it != m_strings.end(); it++)
+        if (util::starts_with(it->first, search) && !util::ends_with(it->first, "Size"))
+            result.push_back(it->second.first);
+
+    return result;
+}
+
+std::vector<int> gsOptionList::getMultiInt(const std::string & gn) const
+{
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getGroup): The group " + gn + " does not exist.");
+
+    std::vector<int> result;
+
+    const std::string search = gn + ".";
+
+    // add integers to vector
+    for (IntTable::const_iterator it = m_ints.begin(); it != m_ints.end(); it++)
+        if (util::starts_with(it->first, search) && !util::ends_with(it->first, "Size"))
+            result.push_back(it->second.first);
+
+    return result;
+}
+
+std::vector<real_t> gsOptionList::getMultiReal(const std::string & gn) const
+{
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getGroup): The group " + gn + " does not exist.");
+
+    std::vector<real_t> result;
+
+    const std::string search = gn + ".";
+
+    // add reals to vector
+    for (RealTable::const_iterator it = m_reals.begin(); it != m_reals.end(); it++)
+        if (util::starts_with(it->first, search) && !util::ends_with(it->first, "Size"))
+            result.push_back(it->second.first);
+
+    return result;
+}
+
 std::string gsOptionList::askString(const std::string & label,
                                     const std::string & value) const
 {

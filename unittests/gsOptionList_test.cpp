@@ -306,6 +306,48 @@ SUITE(gsOptionList_test)
     }
 
     /***
+     * Test getMultiInt
+     */
+    TEST(getMultiInt)
+    {
+        gsOptionList myList;
+        int data[] = {5, 7, 4};
+        myList.addInt("0", "", 5);
+        myList.addInt("1", "", 7);
+        myList.addInt("2", "", 4);
+        myList.addInt("Size", "", 3);
+        myList = myList.wrapIntoGroup("VEC");
+
+        std::vector<int> vec = myList.getMultiInt("VEC");
+
+        CHECK_EQUAL((size_t)3, vec.size());
+        for (size_t i = 0; i < vec.size(); ++i) {
+            CHECK_EQUAL(data[i], vec[i]);
+        }
+    }
+
+    /***
+     * Test getMultiReal
+     */
+    TEST(getMultiReal)
+    {
+        gsOptionList myList;
+        real_t data[] = {5.4, 7.3, 4.2};
+        myList.addReal("0", "", 5.4);
+        myList.addReal("1", "", 7.3);
+        myList.addReal("2", "", 4.2);
+        myList.addInt("Size", "", 3);
+        myList = myList.wrapIntoGroup("VEC");
+
+        std::vector<real_t> vec = myList.getMultiReal("VEC");
+
+        CHECK_EQUAL((size_t)3, vec.size());
+        for (size_t i = 0; i < vec.size(); ++i) {
+            CHECK_EQUAL(data[i], vec[i]);
+        }
+    }
+
+    /***
      * test default options
      */
     TEST(test_default_options)

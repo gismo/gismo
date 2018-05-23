@@ -11,7 +11,6 @@
     Author(s): J. Speh
 */
 
-#include <iostream>
 #include <string>
 #include <gismo.h>
 
@@ -25,6 +24,8 @@ int main(int argc, char* argv[])
     int number = 1;              // number variable default value
     bool boolean = false;        // boolean variable default value
     std::string plainString;     // argument of reading plain string
+
+    std::vector<int> intvec;
 
     // -----------------------------------------------------------------
     // First we Initialize the object that sets up and parses command line arguments
@@ -86,6 +87,7 @@ int main(int argc, char* argv[])
     // cmd.addMultiString, cmd.addMultiInt and cmd.addMultiReal
     // allow one to register flags that can be used several times.
     // They store the data in a vector.
+    cmd.addMultiInt("m", "multiint", "Description of multiint command line argument.", intvec);
 
     // -----------------------------------------------------------------
     // Read the arguments and update with the inputs, if given.
@@ -98,7 +100,16 @@ int main(int argc, char* argv[])
            << "String:       " << string << "\n\n"
            << "Float:        " << flNumber << "\n\n"
            << "Integer:      " << number << "\n\n"
-           << "Switch:       " << boolean << "\n\n";
+           << "Switch:       " << boolean << "\n\n"
+           << "MultiInt      {";
+
+    for (std::vector<int>::iterator it = intvec.begin(); it != intvec.end(); ++it)
+    {
+        if(it != intvec.begin())
+            gsInfo << ", ";
+        gsInfo << *it;
+    }
+    gsInfo << "}\n\n";
 
     return 0;
 }

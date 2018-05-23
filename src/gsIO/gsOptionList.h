@@ -43,6 +43,15 @@ public:
     real_t      getReal  (const std::string & label) const;
     /// @copydoc gsOptionList::getString
     bool        getSwitch(const std::string & label) const;
+    /// \brief Reads sub-values of option-group \a gn from options
+    /// into a std::vector.
+    ///
+    /// If \a gn is not found, the function throws.
+    std::vector<std::string> getMultiString(const std::string & gn) const;
+    /// @copydoc gsOptionList::getMultiString
+    std::vector<int>         getMultiInt   (const std::string & gn) const;
+    /// @copydoc gsOptionList::getMultiString
+    std::vector<real_t>      getMultiReal  (const std::string & gn) const;
 
     /// \brief Reads value for option \a label from options.
     ///
@@ -103,7 +112,7 @@ public:
     /// "Tolerance" wrapped into the group "IterativeSolver" is "InterativeSolver.Tolerance"
     gsOptionList wrapIntoGroup(const std::string & gn) const;
 
-    /// \brief Creates a new gsOptionList, whre only the options from the group \a gn are taken.
+    /// \brief Creates a new gsOptionList, where only the options from the group \a gn are taken.
     /// In the result, the groupname and the corresponding dot are removed.
     ///
     /// If the groupname is "IterativeSolver", then a label "InterativeSolver.Tolerance" becomes
