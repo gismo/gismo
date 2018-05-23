@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     gsOptionList opt = cmd.getOptionList();
 
     // Handle some non-trivial standards
-    if (levels <0)  { levels = refinements; opt.setInt( "MG.Levels", refinements );                             }
+    if (levels <0)  { levels = refinements; opt.setInt( "MG.Levels", levels );                                  }
     if (damping<0)  { opt.remove( "MG.Damping" );                                                               }
     if (dg)         { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::dg         ); opt.remove( "DG" ); }
     else            { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::conforming ); opt.remove( "DG" ); }
