@@ -2,7 +2,7 @@
 % Author: Peter Noertoft
 
 % Construct a truncated hierarchical basis by reading the specified file
-filename = join(filedata,'thbbasis/simple.xml');
+filename = join([filedata,'thbbasis/simple.xml']);
 fprintf('Reading THB spline basis from file: %s.\n',filename)
 hbs = gsTHBSplineBasis(filename);
 
@@ -19,7 +19,7 @@ fprintf('Num. of leaves: %d.\n',hbs.treeLeafSize());
 hbs.treePrintLeaves();
 
 % Print points
-pts = gsUniformPointGrid(para(1:2),para(3:4),11);
+pts = uniformPointGrid(para(1:2),para(3:4),11);
 fprintf('pts\n')
 disp(pts)
 

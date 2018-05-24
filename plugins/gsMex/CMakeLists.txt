@@ -6,7 +6,7 @@ project( gsMex )
 # Specify MEX file generator/program, extension of MEX files, and
 # installation directory for MATLAB files.
 SET( MEX_GENERATOR /opt/Matlab/bin/mex CACHE INTERNAL "path to Mex generator")
-SET( MEX_EXTENSION .mexglx )
+SET( MEX_EXTENSION .mexglx) #.mexmaci64
 SET( MAT_INSTALL_DIR $ENV{HOME}/Matlab CACHE INTERNAL "Matlab installation directory")
 
 # Ensure existence of MEX generator.
@@ -45,7 +45,7 @@ FOREACH(f ${CXX_SRCS})
       -I${gsMex_SOURCE_DIR}/include
       -L${CMAKE_BINARY_DIR}/lib -lgismo
       -output ${fout}
-      ${f}
+      ${f} # && install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
     DEPENDS ${f} gismo
     COMMENT "Generating ${fmex}"
   )
@@ -53,6 +53,10 @@ FOREACH(f ${CXX_SRCS})
   LIST(APPEND MEX_OUTS ${fmex})
   LIST(APPEND MEX_TGTS ${fnam})
   ADD_CUSTOM_TARGET(${fnam} DEPENDS ${fout})
+
+ # ADD_CUSTOM_COMMAND(TARGET ${fnam} POST_BUILD
+ #         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+ #         COMMAND install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex})
 ENDFOREACH()
 
 ADD_CUSTOM_TARGET(gsMex ALL DEPENDS ${MEX_SRCS})

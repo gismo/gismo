@@ -13,6 +13,6 @@ function [pts] = uniformPointGrid(lower,upper,numPts)
       ~isa(numPts,'numeric') || numel(numPts)~=1   )
     error('Invalid input.')
   end
-  pts = mex_gsUniformPointGrid(lower,upper,numPts);
+  pts = mex_uniformPointGrid(lower,upper,numPts);
 
 end

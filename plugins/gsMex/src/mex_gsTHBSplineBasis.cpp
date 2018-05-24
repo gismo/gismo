@@ -109,10 +109,10 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 mxArray *out = mxCreateDoubleScalar((double)val);
                 plhs[0]      = out;
             } else if (!strcmp(prop,"support")) {
-                gsVector<real_t> supp = instance->support();
-                plhs[0] = mxCreateDoubleMatrix(1, supp.size(), mxREAL);
-                double *out = mxGetPr(plhs[0]);
-                std::copy(supp.begin(), supp.end(), &out[0]);
+                gsMatrix<real_t> supp = instance->support();
+                gsDebugVar(supp);
+                std::cout << " HELLO " << supp << std::endl;
+                plhs[0] = createPointerFromMatrix(supp);
             } else {
                 // Unknown property
                 throw("Third input argument contains an unknown property string.");
