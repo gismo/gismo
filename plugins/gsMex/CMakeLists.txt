@@ -1,6 +1,10 @@
 
 project( gsMex )
 
+add_custom_target(${PROJECT_NAME} ALL)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
+
 #find_package(Matlab)
 
 # Specify MEX file generator/program, extension of MEX files, and
@@ -30,7 +34,7 @@ set( GISMO_LIBRARY_DIR L${gismo_BINARY_DIR}/lib )
 FILE( GLOB CXX_SRCS src/*.cpp)
 SET(MEX_SRCS)
 SET(MEX_OUTS)
-SET(MEX_TGTS)
+#SET(MEX_TGTS)
 FOREACH(f ${CXX_SRCS})
   GET_FILENAME_COMPONENT(fnam ${f} NAME_WE)
   SET(fout ${CMAKE_CURRENT_BINARY_DIR}/${fnam})
@@ -45,21 +49,19 @@ FOREACH(f ${CXX_SRCS})
       -I${gsMex_SOURCE_DIR}/include
       -L${CMAKE_BINARY_DIR}/lib -lgismo
       -output ${fout}
-      ${f} && install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
+      ${f}
     DEPENDS ${f} gismo
     COMMENT "Generating ${fmex}"
   )
   LIST(APPEND MEX_SRCS ${fout})
   LIST(APPEND MEX_OUTS ${fmex})
-  LIST(APPEND MEX_TGTS ${fnam})
+  #LIST(APPEND MEX_TGTS ${fnam})
   ADD_CUSTOM_TARGET(${fnam} DEPENDS ${fout})
+  add_dependencies(${PROJECT_NAME} ${fnam})
 
- # ADD_CUSTOM_COMMAND(TARGET ${fnam} POST_BUILD
- #         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
- #         COMMAND install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex})
+#  ADD_CUSTOM_COMMAND(TARGET ${fnam} POST_BUILD COMMAND install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex})
+
 ENDFOREACH()
-
-ADD_CUSTOM_TARGET(gsMex ALL DEPENDS ${MEX_SRCS})
 
 # File copy all m files creates duplicates..
 #file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/m/" DESTINATION ${CMAKE_CURRENT_BINARY_DIR} FILES_MATCHING PATTERN "*.m")
