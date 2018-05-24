@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): O. Chanon, A. Mantzaflaris
 */
 
 #include <gismo.h>
@@ -53,16 +53,14 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                     // Read the THB-spline basis from the specified file
                     std::string filename(input_buf); // Reading requires a std::string
                     gsFileData<real_t>  data( filename );
-                    gsTHBSplineBasis<__DIM__> * hbs = NULL;
-                    hbs = data.getFirst< gsTHBSplineBasis<__DIM__> >().release();
-                    gsTHBSplineBasis<__DIM__> * tmp = new gsTHBSplineBasis<__DIM__>(*hbs);
-                    plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(tmp);
+                    gsTHBSpline<__DIM__> * hbs = data.getFirst< gsTHBSpline<__DIM__> >().release();
+                    plhs[0] = convertPtr2Mat<gsTHBSpline<__DIM__> >(hbs);
                     // Free the memory allocated by mxArrayToString
                     mxFree(input_buf);
-                } else if (!strcmp(constructSwitch,"gsTensorBSplineBasis")) {
+                } else if (!strcmp(constructSwitch,"gsTensorBSpline")) {
                     // constructor ( gsTensorBSplineBasis )
-                    gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[2]);
-                    plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(new gsTHBSplineBasis<__DIM__>(*instance));
+                    gsTensorBSpline<__DIM__> *instance = convertMat2Ptr<gsTensorBSpline<__DIM__> >(prhs[2]);
+                    plhs[0] = convertPtr2Mat<gsTHBSpline<__DIM__> >(new gsTHBSpline<__DIM__>(*instance));
                 } else {
                     throw ("Invalid construction.");
                 }
@@ -75,7 +73,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
             // ----------------------------------------------------------------------
             // Destructor
-            destroyObject<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            destroyObject<gsTHBSpline<__DIM__> >(prhs[1]);
 
         } else if (!strcmp(cmd,"accessor")) {
 
@@ -83,74 +81,38 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // Accessor
 
             // Fetch instance and property to be accessed
-            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            gsTHBSpline<__DIM__> *instance = convertMat2Ptr<gsTHBSpline<__DIM__> >(prhs[1]);
             char prop[__MAXSTRLEN__];
             if (mxGetString(prhs[2], prop, sizeof(prop)))
                 throw("Third input argument should be a property string less than MAXSTRLEN characters long.");
 
             // Call method as specified by the input string
             if (!strcmp(prop,"dim")) {
-                int val      = instance->dim();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"numElements")) {
-                int val      = instance->numElements();
+                int val      = instance->parDim();
                 mxArray *out = mxCreateDoubleScalar((double)val);
                 plhs[0]      = out;
             } else if (!strcmp(prop,"size")) {
                 int val      = instance->size();
                 mxArray *out = mxCreateDoubleScalar((double)val);
                 plhs[0]      = out;
-            } else if (!strcmp(prop,"treeSize")) {
-                int val      = instance->treeSize();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"treeLeafSize")) {
-                int val      = instance->tree().leafSize();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
             } else if (!strcmp(prop,"support")) {
-                gsVector<real_t> supp = instance->support();
-                plhs[0] = mxCreateDoubleMatrix(1, supp.size(), mxREAL);
-                double *out = mxGetPr(plhs[0]);
-                std::copy(supp.begin(), supp.end(), &out[0]);
+                gsMatrix<real_t> supp = instance->support();
+                plhs[0] = createPointerFromMatrix(supp);
             } else {
                 // Unknown property
                 throw("Third input argument contains an unknown property string.");
             }
-
-        } else if (!strcmp(cmd,"treePrintLeaves")) {
-
-            // ----------------------------------------------------------------------
-            // tree().printLeaves()
-
-            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
-            instance->tree().printLeaves();
 
         } else if (!strcmp(cmd,"eval")) {
 
             // ----------------------------------------------------------------------
             // eval(pts)
 
-            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            gsTHBSpline<__DIM__> *instance = convertMat2Ptr<gsTHBSpline<__DIM__> >(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
             // Call the method
             gsMatrix<real_t> vals = instance->eval(pts);
-            // Copy result to output (FIXME: this should be avoided)
-            plhs[0] = createPointerFromMatrix<real_t>(vals);
-
-        } else if (!strcmp(cmd,"evalSingle")) {
-
-            // ----------------------------------------------------------------------
-            // evalSingle(ind,pts)
-
-            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
-            // Copy the input (FIXME: this should be avoided)
-            const mwIndex     ind = (mwIndex) *mxGetPr(prhs[2]);
-            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[3]);
-            // Call the method
-            gsMatrix<real_t> vals = instance->evalSingle(ind,pts);
             // Copy result to output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<real_t>(vals);
 
@@ -159,7 +121,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // active(pts)
 
-            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            gsTHBSpline<__DIM__> *instance = convertMat2Ptr<gsTHBSpline<__DIM__> >(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
             // Call method

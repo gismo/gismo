@@ -52,10 +52,8 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                     // Read the THB-spline basis from the specified file
                     std::string filename(input_buf); // Reading requires a std::string
                     gsFileData<real_t>  data( filename );
-                    gsTHBSplineBasis<2> * hbs = NULL;
-                    hbs = data.getFirst< gsTHBSplineBasis<2> >().release();
-                    gsTHBSplineBasis<__DIM__> * tmp = new gsTHBSplineBasis<__DIM__>(*hbs);
-                    plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(tmp);
+                    gsTHBSplineBasis<2> * hbs = data.getFirst< gsTHBSplineBasis<2> >().release();
+                    plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
                     // Free the memory allocated by mxArrayToString
                     mxFree(input_buf);
                 } else if (!strcmp(constructSwitch,"gsTensorBSplineBasis")) {

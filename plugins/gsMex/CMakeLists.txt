@@ -6,7 +6,7 @@ project( gsMex )
 # Specify MEX file generator/program, extension of MEX files, and
 # installation directory for MATLAB files.
 SET( MEX_GENERATOR /opt/Matlab/bin/mex CACHE INTERNAL "path to Mex generator")
-SET( MEX_EXTENSION .mexglx) #.mexmaci64
+SET( MEX_EXTENSION .mexglx CACHE INTERNAL "Mex extention") #.mexmaci64
 SET( MAT_INSTALL_DIR $ENV{HOME}/Matlab CACHE INTERNAL "Matlab installation directory")
 
 # Ensure existence of MEX generator.
@@ -45,7 +45,7 @@ FOREACH(f ${CXX_SRCS})
       -I${gsMex_SOURCE_DIR}/include
       -L${CMAKE_BINARY_DIR}/lib -lgismo
       -output ${fout}
-      ${f} # && install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
+      ${f} && install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
     DEPENDS ${f} gismo
     COMMENT "Generating ${fmex}"
   )
