@@ -1,17 +1,25 @@
 
 project( gsMex )
 
-add_custom_target(${PROJECT_NAME} ALL)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
-
 #find_package(Matlab)
 
 # Specify MEX file generator/program, extension of MEX files, and
 # installation directory for MATLAB files.
-SET( MEX_GENERATOR /opt/Matlab/bin/mex CACHE INTERNAL "path to Mex generator")
-SET( MEX_EXTENSION .mexglx CACHE INTERNAL "Mex extention") #.mexmaci64
-SET( MAT_INSTALL_DIR $ENV{HOME}/Matlab CACHE INTERNAL "Matlab installation directory")
+SET( MEX_GENERATOR mex CACHE STRING "path to Mex generator")
+
+if ( CMAKE_SYSTEM_NAME MATCHES "Linux" )
+  if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    SET( MEX_EXTENSION mexa64 CACHE STRING "Mex extension")
+  else()
+    SET( MEX_EXTENSION mexa64 CACHE STRING "Mex extension")
+  endif()
+elseif ( CMAKE_SYSTEM_NAME MATCHES "Windows" )
+  SET( MEX_EXTENSION mex264 CACHE STRING "Mex extension")
+elseif ( CMAKE_SYSTEM_NAME MATCHES "Darwin" )
+  SET( MEX_EXTENSION mexmaci64 CACHE STRING "Mex extension")
+else ()
+  SET( MEX_EXTENSION mex-UNKNOWN CACHE STRING "Mex extension")
+endif()
 
 # Ensure existence of MEX generator.
 FIND_PROGRAM( MEX_EXECUTABLE ${MEX_GENERATOR} )
@@ -22,53 +30,45 @@ ENDIF( NOT MEX_EXECUTABLE )
 ##############################################################################
 # FIXME: we should actually include all Gismo include directories
 # instead of only the first (element 0 of GISMO_INCLUDE_DIR)
+# foreach(...)
 ##############################################################################
-# Set each directory to be included
 list( GET GISMO_INCLUDE_DIRS 0 GISMO_INCLUDE_DIR )
 set( GISMO_INCLUDE_EXTERNAL ${gismo_SOURCE_DIR}/external)
 set( GISMO_INCLUDE_BINARY ${gismo_BINARY_DIR})
-set( GISMO_LIBRARY_DIR L${gismo_BINARY_DIR}/lib )
 
 # Fetch all .cpp files to be mex'ed, and loop over these to set up
 # mex-targets.
-FILE( GLOB CXX_SRCS src/*.cpp)
-SET(MEX_SRCS)
-SET(MEX_OUTS)
-#SET(MEX_TGTS)
-FOREACH(f ${CXX_SRCS})
+file( GLOB CXX_SRCS src/*.cpp)
+set(MEX_OUTS)
+foreach(f ${CXX_SRCS})
   GET_FILENAME_COMPONENT(fnam ${f} NAME_WE)
-  SET(fout ${CMAKE_CURRENT_BINARY_DIR}/${fnam})
-  SET(fmex ${CMAKE_CURRENT_BINARY_DIR}/${fnam}${MEX_EXTENSION})
-  ADD_CUSTOM_COMMAND(
-    OUTPUT  "${fout}"
-    COMMAND ${MEX_EXECUTABLE} 
+  set(fout ${CMAKE_CURRENT_BINARY_DIR}/${fnam})
+  set(fmex ${CMAKE_CURRENT_BINARY_DIR}/${fnam}.${MEX_EXTENSION})
+
+  add_custom_command(OUTPUT "${fmex}"
+      COMMAND ${MEX_EXECUTABLE} 
       -cxx
       -I${GISMO_INCLUDE_DIR}
       -I${GISMO_INCLUDE_EXTERNAL}
       -I${GISMO_INCLUDE_BINARY}
       -I${gsMex_SOURCE_DIR}/include
       -L${CMAKE_BINARY_DIR}/lib -lgismo
-      -output ${fout}
-      ${f}
-    DEPENDS ${f} gismo
-    COMMENT "Generating ${fmex}"
-  )
-  LIST(APPEND MEX_SRCS ${fout})
-  LIST(APPEND MEX_OUTS ${fmex})
-  #LIST(APPEND MEX_TGTS ${fnam})
-  ADD_CUSTOM_TARGET(${fnam} DEPENDS ${fout})
-  add_dependencies(${PROJECT_NAME} ${fnam})
+      -output ${fout} ${f}
+      && install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
+      DEPENDS ${f} include/mex_common.h
+      COMMENT "Building MEX object ${fmex}" )
 
-#  ADD_CUSTOM_COMMAND(TARGET ${fnam} POST_BUILD COMMAND install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex})
+  list(APPEND MEX_OUTS ${fmex})
 
-ENDFOREACH()
+endforeach()
 
-# File copy all m files creates duplicates..
-#file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/m/" DESTINATION ${CMAKE_CURRENT_BINARY_DIR} FILES_MATCHING PATTERN "*.m")
+add_custom_target(${PROJECT_NAME} ALL DEPENDS gismo ${MEX_OUTS})
+set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/set_path.m.in" "${CMAKE_CURRENT_BINARY_DIR}/set_path.m")
 
 # Set up installation process.
+get_filename_component(MAT_INSTALL_DIR ${MEX_GENERATOR} DIRECTORY)
 IF( NOT MAT_INSTALL_DIR )
   MESSAGE( FATAL_ERROR "MATLAB install directory NOT found." )
 ENDIF( NOT MAT_INSTALL_DIR )
@@ -78,5 +78,4 @@ INSTALL ( FILES ${MEX_OUTS} # MEX files
 
 INSTALL ( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/m/ # M files
           DESTINATION "${MAT_INSTALL_DIR}" 
-          FILES_MATCHING PATTERN "*.m"
-          PATTERN ".svn" EXCLUDE )
+          FILES_MATCHING PATTERN "*.m")
