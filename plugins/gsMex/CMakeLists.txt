@@ -54,7 +54,7 @@ foreach(f ${CXX_SRCS})
       -I${gsMex_SOURCE_DIR}/include
       -L${CMAKE_BINARY_DIR}/lib -lgismo
       -output ${fout} ${f}
-      && install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
+      #&& install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
       DEPENDS ${f} include/mex_common.h
       COMMENT "Building MEX object ${fmex}" )
 
