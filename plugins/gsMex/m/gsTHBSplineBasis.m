@@ -8,7 +8,7 @@
 %    License, v. 2.0. If a copy of the MPL was not distributed with this
 %    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 %
-%    Author(s): P. Noertoft
+%    Author(s): O. Chanon, P. Noertoft
 
 classdef gsTHBSplineBasis < handle
 
@@ -76,7 +76,10 @@ classdef gsTHBSplineBasis < handle
             %Output:
             %  val: double, [1 x 1].
             %    Dimension of the parameter space of the gsTHBSplineBasis.
-        
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'dim',  varargin{:});
         end
         
@@ -94,7 +97,10 @@ classdef gsTHBSplineBasis < handle
             %Output:
             %  num: double, [1 x 1].
             %    Number of elements of the gsTHBSplineBasis.
-        
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'numElements',  varargin{:});
         end
         
@@ -115,7 +121,10 @@ classdef gsTHBSplineBasis < handle
             %      [u1_min, ..., ud_min, u1_max, ..., ud_max]
             %    where d is the parametric dimennsion of the 
             %    gsTHBSplineBasis.
-
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'support',  varargin{:});
         end
 
@@ -133,7 +142,10 @@ classdef gsTHBSplineBasis < handle
             %Output:
             %  num: double, [1 x 1].
             %    Size of the gsTHBSplineBasis.
-        
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'size',  varargin{:});
         end
 
@@ -151,7 +163,10 @@ classdef gsTHBSplineBasis < handle
             %Output:
             %  num: double, [1 x 1].
             %    Size of the tree of the gsTHBSplineBasis.
-        
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeSize',  varargin{:});
         end
         
@@ -169,7 +184,10 @@ classdef gsTHBSplineBasis < handle
             %Output:
             %  num: double, [1 x 1].
             %    Size of the leaf in the tree of the gsTHBSplineBasis.
-        
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeLeafSize',  varargin{:});
         end
 
@@ -186,7 +204,10 @@ classdef gsTHBSplineBasis < handle
             %
             %Output:
             %  (none - outputs to the screen).
-        
+            
+            if (nargin~=1 || nargout>0)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('treePrintLeaves', this.objectHandle, varargin{:});
         end
 
@@ -247,7 +268,62 @@ classdef gsTHBSplineBasis < handle
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('evalSingle', this.objectHandle, varargin{:});
         end
-
+        
+        % save - call class method
+        function [varargout] = save(this, varargin)
+            %save - save a gsTHBSplineBasis object as xml object
+            %
+            %Usage:
+            %  thb.save();
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %
+            %Output:
+            %   (none)
+            
+            if (nargin~=2)
+                error('Invalid number of input arguments.')
+            end
+            if (~(isa(varargin{1},'char')))
+                error('Input argument no. 1 should be of type ''char''.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('save', this.objectHandle, varargin{:});
+        end
+        
+        % knots - call class method
+        function [varargout] = knots(this, varargin)
+            %knots - returns the knot vector of a gsTHBSplineBasis object
+            %   of the specified level on the specified direction
+            %
+            %Usage:
+            %  valSingle = thb.evalSingle( fun, pts )
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %  fun: double, [1 x 1].
+            %    Index of function to evaluate.
+            %  pts: double, [d x numPts].
+            %    Points in which to evaluate the function.
+            %
+            %Output:
+            %  val: double, [1 x numPts].
+            %    Value of the specified function in each of the specified
+            %    points.
+            
+            if (nargin~=3 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ~(mod(varargin{1},1)==0) || varargin{1}<1)
+                error('Input argument no. 1 must be a strictly positive integer.')
+            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ~(mod(varargin{2},1)==0) || varargin{2}<1)
+                error('Input argument no. 2 must be a strictly positive integer.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('knots', this.objectHandle, varargin{:});
+        end
+        
         % active - call class method
         function [varargout] = active(this, varargin)
             %active - active functions of a gsTHBSplineBasis object

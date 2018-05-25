@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): P. Noertoft
+    Author(s): O. Chanon, A. Mantzaflaris, P. Noertoft
 */
 
 #include <gismo.h>
@@ -142,14 +142,36 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // evalSingle(ind,pts)
 
-            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            gsTHBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTHBSplineBasis < __DIM__ > > (prhs[1]);
             // Copy the input (FIXME: this should be avoided)
-            const mwIndex     ind = (mwIndex) *mxGetPr(prhs[2]);
-            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[3]);
+            const mwIndex ind = (mwIndex) * mxGetPr(prhs[2]);
+            const gsMatrix <real_t> pts = extractMatrixFromPointer<real_t>(prhs[3]);
             // Call the method
-            gsMatrix<real_t> vals = instance->evalSingle(ind,pts);
+            gsMatrix <real_t> vals = instance->evalSingle(ind, pts);
             // Copy result to output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<real_t>(vals);
+
+        } else if (!strcmp(cmd,"save")) {
+
+            // ----------------------------------------------------------------------
+            // save(file)
+
+            gsTHBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTHBSplineBasis < __DIM__ > > (prhs[1]);
+            char* input_buf = mxArrayToString(prhs[2]);
+            // Save the THB-spline basis in the specified file
+            std::string filename(input_buf); // Reading requires a std::string
+            gsWrite(*instance, filename);
+
+        } else if (!strcmp(cmd,"knots")) {
+
+            // ----------------------------------------------------------------------
+            // knots(level, direction)
+
+            gsTHBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTHBSplineBasis < __DIM__ > > (prhs[1]);
+            mwIndex level = (mwIndex) mxGetScalar(prhs[2]);
+            mwIndex direction = (mwIndex) mxGetScalar(prhs[3]);
+            const gsKnotVector<>& kv = instance->tensorLevel(level-1).knots(direction-1);
+            plhs[0] = createPointerFromStdVector(kv);
 
         } else if (!strcmp(cmd,"active")) {
 

@@ -1,9 +1,7 @@
-% This MATLAB script tests the MEX interface of the gsTHBSplineBasis class.
-% Author: Peter Noertoft
+% This MATLAB script tests the MEX interface of the gsTHBSpline class.
+% Author: O. Chanon
 
-close all
-clc
-
+% One should add the geopdes library to the path TODO
 addpath( genpath('/Users/ondine/Documents/MATLAB/GeoPDEs-full/geopdes/') )
 
 % Construct a truncated hierarchical basis by reading the specified file
@@ -42,5 +40,4 @@ pts = [X;Y];
 
 ev2 = geometry.map(pts);
 scatter3(ev2(1,:),ev2(2,:),ev2(3,:))
-
 
