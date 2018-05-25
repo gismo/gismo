@@ -8,7 +8,7 @@
 %    License, v. 2.0. If a copy of the MPL was not distributed with this
 %    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 %
-%    Author(s): A. Mantzaflaris
+%    Author(s): O. Chanon, A. Mantzaflaris
 
 classdef gsTHBSpline < handle
 
@@ -80,24 +80,6 @@ classdef gsTHBSpline < handle
             [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'dim',  varargin{:});
         end
         
-        % numElements - call class method
-        function varargout = numElements(this, varargin)
-            %numElements - number of elements of a gsTHBSpline object
-            %
-            %Usage:
-            %  num = thb.numElements()
-            %
-            %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
-            %
-            %Output:
-            %  num: double, [1 x 1].
-            %    Number of elements of the gsTHBSpline.
-        
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'numElements',  varargin{:});
-        end
-        
         % support - call class method
         function varargout = support(this, varargin)
             %support - support of a gsTHBSpline object
@@ -137,59 +119,6 @@ classdef gsTHBSpline < handle
             [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'size',  varargin{:});
         end
 
-        % treeSize - call class method
-        function varargout = treeSize(this, varargin)
-            %treeSize - size of the tree of a gsTHBSpline object
-            %
-            %Usage:
-            %  num = thb.treeSize()
-            %
-            %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
-            %
-            %Output:
-            %  num: double, [1 x 1].
-            %    Size of the tree of the gsTHBSpline.
-        
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'treeSize',  varargin{:});
-        end
-        
-        % treeLeafSize - call class method
-        function varargout = treeLeafSize(this, varargin)
-            %treeLeafSize - size of the leaf in the tree of a gsTHBSpline object
-            %
-            %Usage:
-            %  num = thb.treeLeafSize()
-            %
-            %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
-            %
-            %Output:
-            %  num: double, [1 x 1].
-            %    Size of the leaf in the tree of the gsTHBSpline.
-        
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'treeLeafSize',  varargin{:});
-        end
-
-        % treePrintLeaves - call class method
-        function varargout = treePrintLeaves(this, varargin)
-            %treePrintLeaves - print the leaves in the tree of a gsTHBSpline object
-            %
-            %Usage:
-            %  thb.treePrintLeaves()
-            %
-            %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
-            %
-            %Output:
-            %  (none - outputs to the screen).
-        
-            [varargout{1:nargout}] = mex_gsTHBSpline('treePrintLeaves', this.objectHandle, varargin{:});
-        end
-
         % eval - call class method
         function [varargout] = eval(this, varargin)
             %eval - evaluate a gsTHBSpline object
@@ -216,36 +145,32 @@ classdef gsTHBSpline < handle
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('eval', this.objectHandle, varargin{:});
         end
-
-        % evalSingle - call class method
-        function [varargout] = evalSingle(this, varargin)
-            %evalSingle - evaluate a single function in a gsTHBSpline object
+        
+         % deriv - call class method
+        function [varargout] = deriv(this, varargin)
+            %deriv - evaluate the jacobian of a gsTHBSpline object
             %
             %Usage:
-            %  valSingle = thb.evalSingle( fun, pts )
+            %  val = thb.deriv( pts )
             %
             %Input:
             %  thb: gsTHBSpline, [1 x 1].
             %    The gsTHBSpline object.
-            %  fun: double, [1 x 1].
-            %    Index of function to evaluate.
             %  pts: double, [d x numPts].
-            %    Points in which to evaluate the function.
+            %    Points in which to evaluate the gsTHBSpline.
             %
             %Output:
-            %  val: double, [1 x numPts].
-            %    Value of the specified function in each of the specified
-            %    points.
+            %  val: double, [numFun x numPts].
+            %    Value of the jacobian of all active functions in each of
+            %    the specified points.
             
-            if (nargin~=3 || nargout>1)
+            if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}))
-                error('Input argument no. 1 must be a numeric scalar.')
-            elseif (~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) || ~isequal(size(varargin{2},1),this.dim()))
-                error('Input argument no. 2 must be numeric, 2-dimensional, and with d rows.')
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
+                error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('evalSingle', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('deriv', this.objectHandle, varargin{:});
         end
 
         % active - call class method
