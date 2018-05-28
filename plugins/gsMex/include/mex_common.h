@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris, P. Noertoft
+    Author(s): O. Chanon, A. Mantzaflaris, P. Noertoft
 */
 
 #pragma once
@@ -43,6 +43,13 @@ mxArray* createPointerFromMatrix(const gismo::gsMatrix<T> & mat)
     gismo::gsAsMatrix<real_t>(mxGetPr(pnt),numRows,numCols) =
         mat.template cast<real_t>();
     return pnt;
+}
+
+mxArray * createPointerFromStdVector(const std::vector<double>& v)
+{
+    mxArray * mx = mxCreateDoubleMatrix(1,v.size(), mxREAL);
+    std::copy(v.begin(), v.end(), mxGetPr(mx));
+    return mx;
 }
 
 template<class base> class class_handle

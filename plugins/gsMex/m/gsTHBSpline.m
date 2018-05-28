@@ -76,7 +76,10 @@ classdef gsTHBSpline < handle
             %Output:
             %  val: double, [1 x 1].
             %    Dimension of the parameter space of the gsTHBSpline.
-        
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'dim',  varargin{:});
         end
         
@@ -97,7 +100,10 @@ classdef gsTHBSpline < handle
             %      [u1_min, ..., ud_min, u1_max, ..., ud_max]
             %    where d is the parametric dimennsion of the 
             %    gsTHBSpline.
-
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'support',  varargin{:});
         end
 
@@ -115,7 +121,10 @@ classdef gsTHBSpline < handle
             %Output:
             %  num: double, [1 x 1].
             %    Size of the gsTHBSpline.
-        
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
             [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'size',  varargin{:});
         end
 
