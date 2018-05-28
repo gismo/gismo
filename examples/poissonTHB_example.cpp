@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
   cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files",
                 dump);
 
-  cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
   // ****** Prepared test examples ******
   //

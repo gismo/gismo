@@ -40,7 +40,7 @@ class gsCmdLinePrivate;
  *      // we parse the command line. If the return value is false, we exit.
  *      // At this point, the variable "name" is updated to the value given
  *      // by the user.
- *      cmd.getValues(argc, argv);
+ *      try { cmd.getValues(argc, argv); } catch(int rv) { return rv; }
  *
  *      // Here, no more of the addXxxx function are allowed to follow.
  *
@@ -268,6 +268,5 @@ private:
     gsCmdLinePrivate * my;
 
 }; // class gsCmdLine
-
 
 }; // namespace gismo

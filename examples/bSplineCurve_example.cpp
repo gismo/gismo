@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Tutorial 01 shows the use of BSpline curves.");
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
 
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
 
     // Make a BSpline curve

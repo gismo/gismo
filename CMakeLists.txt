@@ -178,11 +178,6 @@ if(GISMO_WITH_SPECTRA)
   include_directories(${SPECTRA_INCLUDE_DIR})
 endif(GISMO_WITH_SPECTRA)
 
-#if (GISMO_WITH_VTK)
-#  add_subdirectory(extensions/gsVtk)
-#  add_definitions(-DGISMO_WITH_VTK="${GISMO_WITH_VTK}")
-#endif(GISMO_WITH_VTK)
-
 if(GISMO_WITH_IPOPT)
   add_subdirectory(extensions/gsIpopt)
   #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
