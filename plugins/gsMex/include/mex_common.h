@@ -52,18 +52,28 @@ mxArray * createPointerFromStdVector(const std::vector<double>& v)
     return mx;
 }
 
-template<class base> class class_handle
+/// Wraps C++ class pointer (pointer is not deleted)
+template<class base> class class_wrapper
 {
 public:
-    class_handle(base *ptr) : ptr_m(ptr), name_m(typeid(base).name()) { signature_m = CLASS_HANDLE_SIGNATURE; }
-    ~class_handle() { signature_m = 0; delete ptr_m; }
+    explicit class_wrapper(base *ptr) : ptr_m(ptr), name_m(typeid(base).name()) { signature_m = CLASS_HANDLE_SIGNATURE; }
+    virtual ~class_wrapper() { signature_m = 0; ptr_m = NULL; }
     bool isValid() { return ((signature_m == CLASS_HANDLE_SIGNATURE) && !strcmp(name_m.c_str(), typeid(base).name())); }
     base *ptr() { return ptr_m; }
 
-private:
+protected:
     uint32_t signature_m;
     std::string name_m;
     base *ptr_m;
+};
+
+/// Handles C++ class pointer (memory is deleted)
+template<class base> class class_handle : public class_wrapper<base>
+{
+    typedef class_wrapper<base> wClass;
+public:
+    explicit class_handle(base *ptr) : wClass(ptr) { }
+    virtual ~class_handle() { delete this->ptr_m; }
 };
 
 template<class base> inline mxArray *convertPtr2Mat(base *ptr)
@@ -79,6 +89,16 @@ template<class base> inline class_handle<base> *convertMat2HandlePtr(const mxArr
     if (mxGetNumberOfElements(in) != 1 || mxGetClassID(in) != mxUINT64_CLASS || mxIsComplex(in))
         mexErrMsgTxt("Input must be a real uint64 scalar.");
     class_handle<base> *ptr = reinterpret_cast<class_handle<base> *>(*((uint64_t *)mxGetData(in)));
+    if (!ptr->isValid())
+        mexErrMsgTxt("Handle not valid.");
+    return ptr;
+}
+
+template<class base> inline class_wrapper<base> *convertMat2WrapperPtr(const mxArray *in)
+{
+    if (mxGetNumberOfElements(in) != 1 || mxGetClassID(in) != mxUINT64_CLASS || mxIsComplex(in))
+        mexErrMsgTxt("Input must be a real uint64 scalar.");
+    class_wrapper<base> *ptr = reinterpret_cast<class_wrapper<base> *>(*((uint64_t *)mxGetData(in)));
     if (!ptr->isValid())
         mexErrMsgTxt("Handle not valid.");
     return ptr;
