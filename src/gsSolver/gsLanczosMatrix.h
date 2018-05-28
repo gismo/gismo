@@ -37,7 +37,7 @@ public:
      */
     gsLanczosMatrix(const std::vector<T> & gamma, const std::vector<T> & delta)
      : m_gamma(gamma), m_delta(delta), m_n(m_delta.size())
-    { GISMO_ASSERT( m_delta.size() == m_gamma.size() + 1, "Size missmatch." ); }
+    { GISMO_ASSERT( m_delta.size() == m_gamma.size() + 1, "Size mismatch." ); }
 
     /**
      * @brief Calculates the largest eigenvalue

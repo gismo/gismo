@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
     cmd.addInt("m","method" ,"Method: 0 Coons' patch (default), 1 Spring patch, 2: Cross-Ap. patch", method);
     cmd.addReal  ("t","tolerance","Tolerance for identifing patch interfaces", tol);
     cmd.addSwitch("save", "Save result in XML format", save);
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Load XML file
     gsMultiPatch<> boundary;

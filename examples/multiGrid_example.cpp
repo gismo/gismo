@@ -48,12 +48,12 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
     cmd.addSwitch("",  "plot",                  "Plot the result with Paraview", plot);
 
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsOptionList opt = cmd.getOptionList();
 
     // Handle some non-trivial standards
-    if (levels <0)  { levels = refinements; opt.setInt( "MG.Levels", refinements );                             }
+    if (levels <0)  { levels = refinements; opt.setInt( "MG.Levels", levels );                                  }
     if (damping<0)  { opt.remove( "MG.Damping" );                                                               }
     if (dg)         { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::dg         ); opt.remove( "DG" ); }
     else            { opt.addInt( "MG.InterfaceStrategy", "", (index_t)iFace::conforming ); opt.remove( "DG" ); }

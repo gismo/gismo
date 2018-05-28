@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
                 innerAngle);
     cmd.addReal("c", "cutoff","Cutoff angle (degrees).", cutoffAngle);
 
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     filename = gsFileManager::find(filename);
     if ( filename.empty() )
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
 
     gsSolid<> sl;
     //if you need a higher number of interior points when fitting the surface increase the 8th input variable(now 5)
-    tmts.toSolid(sl,iPoints,oPoints,innerBdrys,innerBdrysMassP,oPointsConvexFlag,paraMeshes,fitMeshes,patchMeshes,degree,interiorPts,1,300,1,wEdge,wInterior,1, noSmooth);
+    tmts.toSolid(sl,iPoints,oPoints,innerBdrys,innerBdrysMassP,oPointsConvexFlag,paraMeshes,fitMeshes,patchMeshes,degree,interiorPts,true,300,true,wEdge,wInterior,1,noSmooth);
     gsInfo<<sl<<'\n';
 
     if (toxml)

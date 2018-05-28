@@ -58,7 +58,7 @@ public:
         : m_domainDim(domainDim)
     {
         m_coefs.resize(1,1);
-        m_coefs.at(0) = x;
+        m_coefs(0,0) = x;
     }
 
     /// Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^2 \f$
@@ -66,8 +66,8 @@ public:
         : m_domainDim(domainDim)
     {
         m_coefs.resize(1,2);
-        m_coefs.at(0) = x;
-        m_coefs.at(1) = y;
+        m_coefs(0,0) = x;
+        m_coefs(0,1) = y;
     }
 
     /// Constructs a constant Function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^3 \f$
@@ -75,9 +75,9 @@ public:
         : m_domainDim(domainDim)
     {
         m_coefs.resize(1,3);
-        m_coefs.at(0) = x;
-        m_coefs.at(1) = y;
-        m_coefs.at(2) = z;
+        m_coefs(0,0) = x;
+        m_coefs(0,1) = y;
+        m_coefs(0,2) = z;
     }
 
     /// Constructs a constant Function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^4 \f$
@@ -85,10 +85,10 @@ public:
         : m_domainDim(domainDim)
     {
         m_coefs.resize(1,4);
-        m_coefs.at(0) = x;
-        m_coefs.at(1) = y;
-        m_coefs.at(2) = z;
-        m_coefs.at(2) = w;
+        m_coefs(0,0) = x;
+        m_coefs(0,1) = y;
+        m_coefs(0,2) = z;
+        m_coefs(0,3) = w;
     }
 
     /// Compatibility constructor
