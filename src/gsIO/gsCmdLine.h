@@ -40,7 +40,7 @@ class gsCmdLinePrivate;
  *      // we parse the command line. If the return value is false, we exit.
  *      // At this point, the variable "name" is updated to the value given
  *      // by the user.
- *      try { cmd.getValues(argc, argv); } catch(gsExitException e) { return e; }
+ *      try { cmd.getValues(argc, argv); } catch(int rv) { return rv; }
  *
  *      // Here, no more of the addXxxx function are allowed to follow.
  *
@@ -268,16 +268,5 @@ private:
     gsCmdLinePrivate * my;
 
 }; // class gsCmdLine
-
-
-/// This class is thrown by gsCmdLine if there was a parse error or if
-/// one of the options --help or --version has been used.
-class gsExitException : public std::exception {
-    int exit_code;
-public:
-    gsExitException(int _exit_code) : exit_code(_exit_code) {}
-    operator int ()    { return exit_code;         }
-    const char* what() { return "gsExitException"; }
-}; // class gsExitException
 
 }; // namespace gismo

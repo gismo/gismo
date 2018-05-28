@@ -96,7 +96,7 @@ int main(int argc, char**argv)
     cmd.addString("Z", "aztec",  "Additional options for Aztec solver", aztec_options);
 
     // Read parameters from command line
-    try { cmd.getValues(argc,argv); } catch (gsExitException& e) { return e; }
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Initialize the MPI environment and obtain the world communicator
     gsMpiComm comm = gsMpi::init(argc,argv).worldComm();

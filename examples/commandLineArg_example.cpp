@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
     // Read the arguments and update with the inputs, if given.
     // The program stopps here if there was an error in the command line
     // or the user invoked "--help" or "--version"
-    try { cmd.getValues(argc,argv); } catch (gsExitException& e) { return e; }
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsInfo << "Printing command line arguments:\n\n\n"
            << "Plain string: " << plainString << "\n\n"

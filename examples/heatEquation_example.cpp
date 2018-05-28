@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     gsCmdLine cmd("Testing the heat equation.");
     cmd.addSwitch("plot", "Plot the result in ParaView.", plot);
-    try { cmd.getValues(argc,argv); } catch (gsExitException& e) { return e; }
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Source function
     gsConstantFunction<> f(0,2);

@@ -20,7 +20,7 @@ using namespace gismo;
 int main(int argc, char**argv)
 {
     gsCmdLine cmd("Tutorial on matrix operations and linear algebra.");
-    try { cmd.getValues(argc,argv); } catch (gsExitException& e) { return e; }
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
 #ifdef EIGEN_VECTORIZE
     gsDebug << "Vectorization is enabled in Eigen.\n";

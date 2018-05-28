@@ -28,7 +28,7 @@ void print(const real_t& el);
 int main(int argc, char* argv[])
 {
     gsCmdLine cmd("Tutorial on gsKnotVector class.");
-    try { cmd.getValues(argc,argv); } catch (gsExitException& e) { return e; }
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
 
     // ======================================================================

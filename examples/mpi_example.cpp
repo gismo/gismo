@@ -45,7 +45,7 @@ int main(int argc, char **argv)
         "If your cluster is using srun:                                        "
         "  *  srun -N 10 ./bin/mpi_example"
     );
-    try { cmd.getValues(argc,argv); } catch (gsExitException& e) { return e; }
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Conditional compilation
 #ifdef GISMO_WITH_MPI

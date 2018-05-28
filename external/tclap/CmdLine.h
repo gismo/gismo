@@ -504,7 +504,7 @@ inline void CmdLine::parse(std::vector<std::string>& args)
 	}
 
 	if (shouldExit)
-        throw(::gismo::gsExitException(estat)); // G+Smo
+        throw(estat); // G+Smo
 		//exit(estat);
 // [  314s] libgismo0.i586: W: shared-lib-calls-exit /usr/lib/libgismo.so.0.8.1 exit@GLIBC_2.0
 // [  314s] This library package calls exit() or _exit(), probably in a non-fork()
