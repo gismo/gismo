@@ -33,7 +33,7 @@
 #endif
 
 
-#include <zlib/gzstream.h>
+#include <gzstream/gzstream.h>
 #include <gsIO/gsFileManager.h>
 
 namespace gismo {
@@ -64,7 +64,8 @@ gsFileData<T>::~gsFileData()
 template<class T> void
 gsFileData<T>::clear() 
 {
-    data->clear(); 
+    data->clear();
+    data->makeRoot(); // ready to re-use
 }
 
 

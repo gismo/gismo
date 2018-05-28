@@ -47,7 +47,7 @@ option(GISMO_WITH_SPECTRA        "With Spectra"              false  )
 #Extra options
 option(GISMO_BUILD_QT_APP        "Build Qt application"          false  )
 option(GISMO_WARNINGS            "Enable G+Smo related warnings" false)
-option(GISMO_WITH_VTK            "With VTK"                      false  )
+#option(GISMO_WITH_VTK            "With VTK"                      false  )
 option(GISMO_BUILD_CPPLOT        "Build cpplot"                  false  )
 option(EIGEN_USE_MKL_ALL         "Eigen use MKL"                 false  )
 if(CMAKE_COMPILER_IS_GNUCXX)

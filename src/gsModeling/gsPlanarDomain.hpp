@@ -245,7 +245,7 @@ void gsPlanarDomain<T>::sampleCurve_into( int loopID, int curveID, int npoints, 
 
 /// Return a triangulation of the planar domain
 template <class T>
-typename memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE LOOP
+memory::unique_ptr<gsMesh<T> > gsPlanarDomain<T>::toMesh(int npoints) const     // FOR NOW ONLY ONE LOOP
 {
     typename gsMesh<T>::uPtr m(new gsMesh<T>());
     // Typedefs

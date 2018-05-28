@@ -3,7 +3,7 @@
 ## This file is part of the G+Smo library. 
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2015 RICAM-Linz.
+## Copyright (C) 2012 - 2018 RICAM-Linz.
 ######################################################################
 
 project(zlib)
@@ -22,7 +22,6 @@ ${gismo_externals}/zlib/deflate.c
 ${gismo_externals}/zlib/gzclose.c
 ${gismo_externals}/zlib/gzlib.c
 ${gismo_externals}/zlib/gzread.c
-${gismo_externals}/zlib/gzstream.cpp
 ${gismo_externals}/zlib/gzwrite.c
 ${gismo_externals}/zlib/infback.c
 ${gismo_externals}/zlib/inffast.c
@@ -37,7 +36,6 @@ set(ZLIB_HEADERS
 ${gismo_externals}/zlib/crc32.h
 ${gismo_externals}/zlib/deflate.h
 ${gismo_externals}/zlib/gzguts.h
-${gismo_externals}/zlib/gzstream.h
 ${gismo_externals}/zlib/inffast.h
 ${gismo_externals}/zlib/inffixed.h
 ${gismo_externals}/zlib/inflate.h
@@ -60,18 +58,18 @@ endif()
 #    STRING(REPLACE "-Wimplicit-function-declaration" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 #endif()
 
+add_definitions(-DZ_PREFIX)   # use prefixed symbols
+if(GISMO_WITH_ONURBS)
+  add_definitions(-DMY_ZCALLOC) # use oncalloc() and onfree()
+endif()
+
 add_library(${PROJECT_NAME} OBJECT ${ZLIB_SOURCES} ${ZLIB_HEADERS})
 
-# Note: Z_PREFIX hardcoded in zlib headers
-#set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "Z_PREFIX")
-
-set_target_properties(${PROJECT_NAME} 
-PROPERTIES POSITION_INDEPENDENT_CODE ON
+set_target_properties(${PROJECT_NAME} PROPERTIES
+COMPILE_DEFINITIONS "Z_PREFIX"
+POSITION_INDEPENDENT_CODE ON
+LINKER_LANGUAGE CXX
 FOLDER "G+Smo extensions")
-
-if(GISMO_WITH_ONURBS)
-  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "MY_ZCALLOC")
-endif()
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:zlib>
     CACHE INTERNAL "Gismo extensions to be included")

@@ -50,14 +50,15 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "CG.MaxIterations",      "Stopping criterion for cg", maxIterations);
     cmd.addSwitch("",  "Plot",                  "Plot the result with Paraview", plot);
 
-    cmd.getValues(argc,argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsOptionList opt = cmd.getOptionList();
 
     // Default case is levels:=refinements, so replace invalid default accordingly
-    if (levels<0) { levels = refinements; opt.setInt( "MG.Levels", refinements ); }
+    if (levels <0) { levels = refinements; opt.setInt( "MG.Levels", levels ); }
     // The smoothers know their defaults, so remove the invalid default
     if (damping<0) { opt.remove( "MG.Damping" ); }
+
     // Define assembler options
     opt.remove( "DG" );
     opt.addInt( "Ass.InterfaceStrategy", "", (index_t)( dg ? iFace::dg : iFace::conforming )  );

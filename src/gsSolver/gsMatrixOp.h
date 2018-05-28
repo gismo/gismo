@@ -192,7 +192,7 @@ public:
     }
 
     /// Constructor taking a shared pointer
-    gsSolverOp(const typename memory::shared_ptr<MatrixType>& mat)
+    gsSolverOp(const memory::shared_ptr<MatrixType>& mat)
     {
         GISMO_ASSERT(mat->rows() == mat->cols(), "Need square matrix");
         m_size = mat->rows();

@@ -1,0 +1,40 @@
+G+smo 0.8 Alpha
+===============
+
+v0.8.0
+------
+This is the first Alpha release of G+Smo. It includes the modules for
+NURBS, Hierarchical splines, and isogeometric analysis of elliptic PDE
+problems.
+
+v0.8.1 (https://github.com/gismo/gismo/releases/tag/v0.8.1)
+------
+* IMPROVED
+  - Some restructuring of the class hierarchy
+* FIXED
+  - Several fixes and performance updates
+
+v0.8.2 (https://github.com/gismo/gismo/releases/tag/v.0.8.2)
+------
+* IMPROVED
+  - Many improvements and performance updates, as well as some restructuring
+
+v0.8.3 (https://github.com/gismo/gismo/releases/tag/v0.8.3)
+------
+* NEW
+  - Changelog file
+  - Kronecker product of matrices
+  - Gauss-Lobatto rules
+  - Expression assembler
+  - Multigrid with standard smoothers
+  - Spectra plugin for sparse eigenvalue problems
+* IMPROVED
+  - Ctest and cmake scripts
+  - Unittest framework, made unittest++ external package
+  - Templatized iterative solvers
+  - File handling using gsFileManager
+  - Zlib external handling (option to use system installed dynamic library)
+* FIXED
+  - OpenMP features (Pardiso options, use in assemblers)
+  - Memory and pointer handling
+  - Performance bug in gsFitting

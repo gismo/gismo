@@ -40,7 +40,7 @@ endif()
 
 set(gismo_VERSION_MAJOR "0")
 set(gismo_VERSION_MINOR "8")
-set(gismo_VERSION_PATCH "3")
+set(gismo_VERSION_PATCH "4")
 set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
   
@@ -177,11 +177,6 @@ if(GISMO_WITH_SPECTRA)
   CACHE INTERNAL "${PROJECT_NAME} include directories")
   include_directories(${SPECTRA_INCLUDE_DIR})
 endif(GISMO_WITH_SPECTRA)
-
-#if (GISMO_WITH_VTK)
-#  add_subdirectory(extensions/gsVtk)
-#  add_definitions(-DGISMO_WITH_VTK="${GISMO_WITH_VTK}")
-#endif(GISMO_WITH_VTK)
 
 if(GISMO_WITH_IPOPT)
   add_subdirectory(extensions/gsIpopt)

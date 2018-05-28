@@ -220,7 +220,7 @@ public:
     }
 
     /// Return a triangulation of the planar domain
-    typename memory::unique_ptr<gsMesh<T> > toMesh(int npoints = 50) const;     // FOR NOW ONLY ONE LOOP
+    memory::unique_ptr<gsMesh<T> > toMesh(int npoints = 50) const;     // FOR NOW ONLY ONE LOOP
 
     /// split this planar domain in two, returning the new planar domain created
     /// as a result.

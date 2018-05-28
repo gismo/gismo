@@ -1,15 +1,8 @@
-### CMakeLists.txt ---
+## CMakeLists.txt ---
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2015 RICAM-Linz.
+## Copyright (C) 2012 - 2018 RICAM-Linz.
 ######################################################################
-
-cmake_minimum_required(VERSION 2.8.8)
-
-if(POLICY CMP0048)# CMake 3.0
-cmake_policy(SET CMP0011 NEW)
-cmake_policy(SET CMP0048 OLD)
-endif()
 
 project(optional)
 #add_custom_target(${PROJECT_NAME})

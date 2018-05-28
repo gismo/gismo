@@ -62,6 +62,8 @@ set(CTEST_CONFIGURATION_TYPE Release)
 #  "Visual Studio 14 2015 Win64", and so on)
 set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 
+# Tip fot C/C++ compilers
+# e.g. "cc/g++", "icc/icpc", "clang/clang++", "mpicc/mpic++"
 set(CNAME cc)
 set(CXXNAME g++)
 
@@ -76,7 +78,7 @@ set(CTEST_MEMORYCHECK_TYPE "None")
 # Coverage analysis
 set(test_coverage FALSE)
 
-# The above parameters can be reset by passing up to 9 arguments
+# The above parameters can be reset by passing upto 9 arguments
 # e.g. as: ctest -S ctest_script.cmake,"Experimental;Release;8;Ninja"
 macro(read_args)
   set(narg ${ARGC})
@@ -110,13 +112,13 @@ macro(read_args)
 endmacro(read_args)
 read_args(${CTEST_SCRIPT_ARG})
 
-# C/C++ compilers,  e.g. "cc/g++", "icc/icpc", "clang/clang++"
 find_program (CC NAMES ${CNAME})
 set(ENV{CC}  ${CC})
 find_program (CXX NAMES ${CXXNAME})
 set(ENV{CXX}  ${CXX})
 
 # Other Environment variables and scripts
+#set(ENV{OMP_NUM_THREADS} 3)
 #set(ENV{CXXFLAGS} "-Ofast")
 #execute_process(COMMAND source "/path/to/iccvars.sh intel64")
 #set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
@@ -204,10 +206,9 @@ if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
   set(ENV{UBSAN_OPTIONS} "print_stacktrace=1")
 endif()
 
-# Update type (eg. svn or git)
-set(UPDATE_TYPE git)
-find_program(CTEST_GIT_COMMAND NAMES ${UPDATE_TYPE})
-set(CTEST_UPDATE_COMMAND "${CTEST_GIT_COMMAND}")
+# Update type (svn or git or "")
+#set(UPDATE_TYPE svn)
+set(UPDATE_TYPE "")
 
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
@@ -225,11 +226,19 @@ set(test_runtime 43200) #12h by default
 
 #message(STATUS "Preserve full output (CTEST_FULL_OUTPUT)")
 
+find_program(CTEST_UPDATE_COMMAND NAMES ${UPDATE_TYPE} ${UPDATE_TYPE}.exe)
+
 # Initial checkout
 if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
-  #message("Initial checkout...")
-  set(GISMO_REPOSITORY https://github.com/gismo/gismo.git)
-  set(CTEST_CHECKOUT_COMMAND "${CTEST_GIT_COMMAND} clone --depth 1 --branch stable ${GISMO_REPOSITORY} gismo_src")
+  if("x${UPDATE_TYPE}" STREQUAL "xgit")
+    set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch stable https://github.com/gismo/gismo.git gismo_src")
+  elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
+    set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk gismo_src")
+  elseif("x${UPDATE_TYPE}" STREQUAL "x")
+    execute_process(COMMAND /bin/bash "-c" "wget --no-check-certificate -qO - https://github.com/gismo/gismo/archive/stable.tar.gz | tar -zxf -")
+        execute_process(COMMAND mv gismo-stable gismo_src)
+    set(CTEST_CHECKOUT_COMMAND "")
+  endif()
 endif()
 
 if("${CTEST_CMAKE_GENERATOR}" MATCHES "Make" OR "${CTEST_CMAKE_GENERATOR}" MATCHES "Ninja")
@@ -240,6 +249,7 @@ endif()
 
 set(ENV{CTEST_OUTPUT_ON_FAILURE} 1)
 set( $ENV{LC_MESSAGES} "en_EN")
+set(ENV{LC_ALL} C)# avoid non-ascii characters
 
 if(NOT DEFINED CTEST_TEST_MODEL AND DEFINED ENV{CTEST_TEST_MODEL})
   set(CTEST_TEST_MODEL $ENV{CTEST_TEST_MODEL})
