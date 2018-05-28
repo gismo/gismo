@@ -10,6 +10,7 @@ hbs = gsTHBSplineBasis(filename);
 fprintf('Size of the basis %d\n',hbs.size());
 fprintf('The tree has %d nodes.\n',hbs.treeSize());
 fprintf('Dimension of the parameter space: %d\n',hbs.dim());
+fprintf('Number of levels: %d\n',hbs.maxLevel());
 
 % Print support
 para = hbs.support();
@@ -20,7 +21,7 @@ fprintf('Num. of leaves: %d.\n',hbs.treeLeafSize());
 hbs.treePrintLeaves();
 
 % Print points
-pts = uniformPointGrid(para(1:2),para(3:4),11);
+pts = uniformPointGrid(para(1:2),para(3:4),5);
 fprintf('pts\n')
 disp(pts)
 

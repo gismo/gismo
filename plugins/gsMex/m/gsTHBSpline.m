@@ -207,6 +207,28 @@ classdef gsTHBSpline < handle
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('active', this.objectHandle, varargin{:});
         end
+        
+        % basis - call class method
+        function [varargout] = basis(this, varargin)
+            %basis - returns the gsTHBSplineBasis object linked to a 
+            % gsTHBSpline object
+            %
+            %Usage:
+            %  act = thb.basis()
+            %
+            %Input:
+            %  thb: gsTHBSpline, [1 x 1].
+            %    The gsTHBSpline object.
+            %
+            %Output:
+            %  basis: gsTHBSplineBasis.
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            basis_ptr = mex_gsTHBSpline('basis', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr);
+        end
 
     end
 end

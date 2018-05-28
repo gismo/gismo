@@ -1,5 +1,6 @@
 % This MATLAB script tests the MEX interface of the gsTHBSpline class.
 % Author: O. Chanon
+close all
 
 % One should add the geopdes library to the path TODO
 addpath( genpath('/Users/ondine/Documents/MATLAB/GeoPDEs-full/geopdes/') )
@@ -31,6 +32,11 @@ disp(size(jac))
 % Build GeoPDEs geometry structure
 geometry = geo_load(hbs);
 
+% Get the knot vector corresponding to the first level, 2nd direction
+kts12 = geometry.knots{1}{2};
+fprintf('Knots level 1, direction 2\n')
+disp(kts12);
+
 % Plot GeoPDEs geometry coming from G+smo
 [X,Y] = ndgrid(0:0.01:1, 0:0.01:1);
 reshape(X,1,[]);
@@ -40,4 +46,10 @@ pts = [X;Y];
 
 ev2 = geometry.map(pts);
 scatter3(ev2(1,:),ev2(2,:),ev2(3,:))
+
+% Get the gsTHBSplineBasis from which hbs is built
+basis = hbs.basis();
+% Get the degree of the underlying B-splines in the first direction
+deg1 = basis.degree(1);
+fprintf('Degree in the first direction: %d\n', deg1);
 

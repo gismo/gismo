@@ -37,12 +37,17 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~(isa(varargin{1},'char')))
-                error('Input argument no. 1 should be of type ''char''.')
-            elseif (~exist(varargin{1},'file'))
-                error('File does not exist: %s.',varargin{1})
+            
+            if (isa(varargin{1},'uint64'))
+                this.objectHandle = varargin{1};
+            else
+                if (~(isa(varargin{1},'char')))
+                    error('Input argument no. 1 should be of type ''char''.')
+                elseif (~exist(varargin{1},'file'))
+                    error('File does not exist: %s.',varargin{1})
+                end
+                this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{:});
             end
-            this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{:});
         end
         
         % Destructor - Destroy the C++ class instance
@@ -191,6 +196,30 @@ classdef gsTHBSplineBasis < handle
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeLeafSize',  varargin{:});
         end
 
+        % maxLevel - call class method
+        function varargout = maxLevel(this, varargin)
+            %support - support of a gsTHBSplineBasis object
+            %
+            %Usage:
+            %  supp = thb.support()
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %
+            %Output:
+            %  supp: double, [1 x 2*d].
+            %    Support of the gsTHBSplineBasis, ordered like 
+            %      [u1_min, ..., ud_min, u1_max, ..., ud_max]
+            %    where d is the parametric dimennsion of the 
+            %    gsTHBSplineBasis.
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'maxLevel',  varargin{:});
+        end
+        
         % treePrintLeaves - call class method
         function varargout = treePrintLeaves(this, varargin)
             %treePrintLeaves - print the leaves in the tree of a gsTHBSplineBasis object
@@ -211,6 +240,35 @@ classdef gsTHBSplineBasis < handle
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('treePrintLeaves', this.objectHandle, varargin{:});
         end
 
+        % degree - call class method
+        function [varargout] = degree(this, varargin)
+            %degree - the degree for each direction of a gsTHBSplineBasis object
+            %
+            %Usage:
+            %  val = thb.eval( dir )
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %  dir: int.
+            %    Direction of space for which we want to know the degree of 
+            %    the gsTHBSplineBasis.
+            %
+            %Output:
+            %  val: double, [numFun x numPts].
+            %    Value of all active functions in each of the specified
+            %    points.
+            
+            if (nargin~=2 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
+                    ~(mod(varargin{1},1)==0) || varargin{1}>this.dim())
+                error('Input argument must be an integer less than %d.', this.dim())
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('degree', this.objectHandle, varargin{:});
+        end
+        
         % eval - call class method
         function [varargout] = eval(this, varargin)
             %eval - evaluate a gsTHBSplineBasis object
@@ -318,8 +376,9 @@ classdef gsTHBSplineBasis < handle
             end
             if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ~(mod(varargin{1},1)==0) || varargin{1}<1)
                 error('Input argument no. 1 must be a strictly positive integer.')
-            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ~(mod(varargin{2},1)==0) || varargin{2}<1)
-                error('Input argument no. 2 must be a strictly positive integer.')
+            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ...
+                    ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.dim())
+                error('Input argument no. 2 must be a strictly positive integer smaller than %d.', this.dim())
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('knots', this.objectHandle, varargin{:});
         end

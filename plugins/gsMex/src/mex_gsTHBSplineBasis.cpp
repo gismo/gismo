@@ -52,7 +52,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                     // Read the THB-spline basis from the specified file
                     std::string filename(input_buf); // Reading requires a std::string
                     gsFileData<real_t>  data( filename );
-                    gsTHBSplineBasis<2> * hbs = data.getFirst< gsTHBSplineBasis<2> >().release();
+                    gsTHBSplineBasis<__DIM__> * hbs = data.getFirst< gsTHBSplineBasis<2> >().release();
                     plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
                     // Free the memory allocated by mxArrayToString
                     mxFree(input_buf);
@@ -108,12 +108,11 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 plhs[0]      = out;
             } else if (!strcmp(prop,"support")) {
                 gsMatrix<real_t> supp = instance->support();
-                gsDebugVar(supp);
-                std::cout << " HELLO " << supp << std::endl;
                 plhs[0] = createPointerFromMatrix(supp);
-            } else {
-                // Unknown property
-                throw("Third input argument contains an unknown property string.");
+            } else if (!strcmp(prop,"maxLevel")) {
+                int val      = instance->maxLevel();
+                mxArray *out = mxCreateDoubleScalar((double)val);
+                plhs[0]      = out;
             }
 
         } else if (!strcmp(cmd,"treePrintLeaves")) {
@@ -121,8 +120,15 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // tree().printLeaves()
 
-            gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[1]);
+            gsTHBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTHBSplineBasis < __DIM__ > > (prhs[1]);
             instance->tree().printLeaves();
+
+        } else if (!strcmp(cmd,"degree")) {
+
+            gsTHBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTHBSplineBasis < __DIM__ > > (prhs[1]);
+            mwIndex deg = (mwIndex) mxGetScalar(prhs[2]);
+            mxArray *out = mxCreateDoubleScalar((double)instance->degree(deg));
+            plhs[0] = out;
 
         } else if (!strcmp(cmd,"eval")) {
 

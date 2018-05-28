@@ -142,6 +142,16 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // Copy the result for output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<unsigned>(vals);
 
+        } else if (!strcmp(cmd,"basis")) {
+
+            // ----------------------------------------------------------------------
+            // basis()
+
+            gsTHBSpline<__DIM__> *instance = convertMat2Ptr<gsTHBSpline<__DIM__> >(prhs[1]);
+            // Copy the result for output (FIXME: this should be avoided)
+            gsTHBSplineBasis<__DIM__> * hbs = new gsTHBSplineBasis<__DIM__>(instance->basis());
+            plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
+
         } else {
 
             // ----------------------------------------------------------------------
