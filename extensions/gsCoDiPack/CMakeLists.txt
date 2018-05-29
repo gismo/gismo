@@ -15,12 +15,6 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 # Apply same configuration as G+Smo
 include(gsConfig)
 
-# Look for CoDiPack library
-#find_package(CODIPACK QUIET)
-#find_package(LAPACK REQUIRED)
-
-#if (NOT CODIPACK_FOUND)
-
 message("STATUS CMake Will attempt to download CoDiPack sources.")
 include(ExternalProject)
 ExternalProject_Add(CoDiPack
@@ -31,7 +25,6 @@ ExternalProject_Add(CoDiPack
           UPDATE_COMMAND ""
           INSTALL_COMMAND ""
 )
-#endif(NOT CODIPACK_FOUND)
 
 set(CODIPACK_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CoDiPack/include CACHE INTERNAL "")
 include_directories(${CODIPACK_INCLUDE_DIR})

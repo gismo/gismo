@@ -52,22 +52,30 @@
 #define exprtk_disable_rtl_io_file
 #define exprtk_disable_rtl_vecops
 
-#ifdef GISMO_WITH_ADIFF
+#if defined(GISMO_WITH_ADIFF)
   /* Optional automatic differentiation */
   #define DScalar gismo::ad::DScalar2<real_t,-1>
-  #include <exprtk_ad_adaptor.hpp>   // external file
-#elif defined(GISMO_WITH_MPFR)
-  #include <exprtk_mpfr_adaptor.hpp> // external file
-#elif defined(GISMO_WITH_MPQ)
-  #include <exprtk_gmp_adaptor.hpp>  // external file
-#else
-  #ifdef GISMO_WITH_CODIPACK
-    //#include <gsCoDiPack/exprtk_codi_rf_adaptor.hpp>
-    #include <gsCoDiPack/exprtk_codi_rr_adaptor.hpp>
-  #else
-    #include <exprtk.hpp>              // external file
-  #endif
+#include <exprtk_ad_adaptor.hpp>   // external file
 #endif
+
+#if defined(GISMO_WITH_MPFR)
+#include <exprtk_mpfr_adaptor.hpp> // external file
+#endif
+
+#if defined(GISMO_WITH_MPQ)
+#include <exprtk_gmp_adaptor.hpp>  // external file
+#endif
+
+#if defined(GISMO_WITH_CODIPACK)
+#include <gsCoDiPack/exprtk_codi_rf_adaptor.hpp>
+#include <gsCoDiPack/exprtk_codi_rr_adaptor.hpp>
+#endif
+
+#if defined(GISMO_WITH_UNUM)
+#include <gsUnum/exprtk_unum_posit_adaptor.hpp>
+#endif
+
+#include <exprtk.hpp>              // external file
 
 #include <gsIO/gsXml.h>
 
