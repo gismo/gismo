@@ -43,6 +43,7 @@
 #cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_ADIFF
 #cmakedefine GISMO_WITH_CODIPACK
+#cmakedefine GISMO_WITH_UNUM
 
 #cmakedefine GISMO_WITH_SUPERLU
 #cmakedefine GISMO_WITH_PARDISO

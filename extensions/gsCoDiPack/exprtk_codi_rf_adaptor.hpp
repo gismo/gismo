@@ -50,7 +50,7 @@ namespace exprtk
 namespace details
 {
 
-namespace constant
+namespace constant_codi_rf
 {
 static const double e       =  2.71828182845904523536028747135266249775724709369996;
 static const double pi      =  3.14159265358979323846264338327950288419716939937510;
@@ -125,8 +125,8 @@ template <typename T> inline T  tanh_impl(const T& v, codi_rf_type_tag) { return
 template <typename T> inline T   cot_impl(const T& v, codi_rf_type_tag) { return cot  (v); }
 template <typename T> inline T   sec_impl(const T& v, codi_rf_type_tag) { return sec  (v); }
 template <typename T> inline T   csc_impl(const T& v, codi_rf_type_tag) { return csc  (v); }
-template <typename T> inline T   r2d_impl(const T& v, codi_rf_type_tag) { return (v  * exprtk::details::constant::_180_pi); }
-template <typename T> inline T   d2r_impl(const T& v, codi_rf_type_tag) { return (v  * exprtk::details::constant::pi_180 ); }
+template <typename T> inline T   r2d_impl(const T& v, codi_rf_type_tag) { return (v  * exprtk::details::constant_codi_rf::_180_pi); }
+template <typename T> inline T   d2r_impl(const T& v, codi_rf_type_tag) { return (v  * exprtk::details::constant_codi_rf::pi_180 ); }
 template <typename T> inline T   d2g_impl(const T& v, codi_rf_type_tag) { return (v  * codi::RealForward(20.0/9.0)); }
 template <typename T> inline T   g2d_impl(const T& v, codi_rf_type_tag) { return (v  * codi::RealForward(9.0/20.0)); }
 template <typename T> inline T  notl_impl(const T& v, codi_rf_type_tag) { return (v != codi::RealForward(0) ? codi::RealForward(0) : codi::RealForward(1)); }
@@ -184,27 +184,25 @@ inline T log1p_impl(const T& v, codi_rf_type_tag)
 {
     return log1p(v);
 }
-///*
+
 template <typename T>
 inline T erf_impl(const T& v, codi_rf_type_tag)
 {
-    //return erf(v);
-    return v;
+    return erf(v);
 }
 
 template <typename T>
 inline T erfc_impl(const T& v, codi_rf_type_tag)
 {
-    //return erfc(v);
-    return v;
+    return erfc(v);
 }
-//*/
+
 template <typename T>
 inline T ncdf_impl(const T& v, codi_rf_type_tag)
 {
     T cnd = T(0.5) * (T(1) + erf_impl(
                           abs(v) /
-                          T(exprtk::details::constant::sqrt2), codi_rf_type_tag()));
+                          T(exprtk::details::constant_codi_rf::sqrt2), codi_rf_type_tag()));
     return  (v < T(0)) ? (T(1) - cnd) : cnd;
 }
 

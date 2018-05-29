@@ -64,7 +64,7 @@ namespace exprtk
 namespace details
 {
 
-namespace constant
+namespace constant_ad
 {
 static const real_t e       =  2.718281828459045235360;
 static const real_t pi      =  3.141592653589793238462;
@@ -76,7 +76,7 @@ static const real_t _2_pi   =  0.636619772367581343076;
 static const real_t _180_pi = 57.295779513082320876798;
 static const real_t log2    =  0.693147180559945309417;
 static const real_t sqrt2   =  std::sqrt(2.0);
-} // namespace constant
+} // namespace constant_ad
 
 namespace numeric
 {
@@ -148,16 +148,16 @@ template <typename T> inline T  tanh_impl(const T& v, ad_type_tag) { return tanh
 template <typename T> inline T   cot_impl(const T& v, ad_type_tag) { return cot  (v); }
 template <typename T> inline T   sec_impl(const T& v, ad_type_tag) { return sec  (v); }
 template <typename T> inline T   csc_impl(const T& v, ad_type_tag) { return csc  (v); }
-template <typename T> inline T   r2d_impl(const T& v, ad_type_tag) { return (v  * exprtk::details::constant::_180_pi); }
-template <typename T> inline T   d2r_impl(const T& v, ad_type_tag) { return (v  * exprtk::details::constant::pi_180 ); }
+template <typename T> inline T   r2d_impl(const T& v, ad_type_tag) { return (v  * exprtk::details::constant_ad::_180_pi); }
+template <typename T> inline T   d2r_impl(const T& v, ad_type_tag) { return (v  * exprtk::details::constant_ad::pi_180 ); }
 template <typename T> inline T   d2g_impl(const T& v, ad_type_tag) { return (v  * DScalar(20.0/9.0)); }
 template <typename T> inline T   g2d_impl(const T& v, ad_type_tag) { return (v  * DScalar(9.0/20.0)); }
 template <typename T> inline T  notl_impl(const T& v, ad_type_tag) { return (v != DScalar(0) ? DScalar(0) : DScalar(1)); }
 template <typename T> inline T  frac_impl(const T& v, ad_type_tag) { return frac (v); }
 template <typename T> inline T trunc_impl(const T& v, ad_type_tag) { return trunc(v); }
 
-template <typename T> inline T const_pi_impl(ad_type_tag) { return DScalar(exprtk::details::constant::pi); }
-template <typename T> inline T const_e_impl (ad_type_tag) { return DScalar(exprtk::details::constant::e ); }
+template <typename T> inline T const_pi_impl(ad_type_tag) { return DScalar(exprtk::details::constant_ad::pi); }
+template <typename T> inline T const_e_impl (ad_type_tag) { return DScalar(exprtk::details::constant_ad::e ); }
 
 inline bool is_true_impl (const DScalar& v)
 {
@@ -228,7 +228,7 @@ inline T ncdf_impl(const T& v, ad_type_tag)
 {
     T cnd = T(0.5) * (T(1) + erf_impl(
                           abs(v) /
-                          T(exprtk::details::constant::sqrt2),ad_type_tag()));
+                          T(exprtk::details::constant_ad::sqrt2),ad_type_tag()));
     return  (v < T(0)) ? (T(1) - cnd) : cnd;
 }
 
