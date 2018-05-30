@@ -198,3 +198,5 @@ public:
 #include <gsMatrix/gsSparseMatrix.h>
 #include <gsMatrix/gsSparseVector.h>
 #include <gsMatrix/gsSparseSolver.h>
+#include <gsMatrix/gsPoint.h>
+#include <gsMatrix/gsLine.h>

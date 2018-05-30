@@ -117,6 +117,8 @@ namespace internal
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsModeling/gsCrossApPatch.h>
 
+//#include <gsModeling/gsParametrization.h>
+
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsPde/gsConvDiffRePde.h>
