@@ -215,7 +215,7 @@ template <typename T>
 inline T modulus_impl(const T& v0, const T& v1, unum_posit_type_tag)
 {
     std::cerr<<"modulus is not derivated\n";
-    return T(std::fmod(v0,v1));
+    return T(sw::unum::fmod(v0,v1));
     //return T(std::fmod(v0.getValue(),v1.getValue()));
 }
 
@@ -285,7 +285,7 @@ inline T roundn_impl(const T& v0, const T& v1, unum_posit_type_tag)
 template <typename T>
 inline bool is_integer_impl(const T& v, unum_posit_type_tag)
 {
-    return std::ceil(v) == v;
+    return sw::unum::ceil(v) == v;
     //return std::ceil(v.getValue()) == v.getValue();
 }
 
