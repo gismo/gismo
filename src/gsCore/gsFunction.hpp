@@ -237,11 +237,45 @@ void gsFunction<T>::eval_component_into(const gsMatrix<T>& u,
                                         gsMatrix<T>& result) const
 { GISMO_NO_IMPLEMENTATION }
 
-template <class T>
-gsMatrix<T>
+template <class T> gsMatrix<T>
 gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const    
-{ GISMO_NO_IMPLEMENTATION }
+{
+    gsMatrix<T> hessian, secDers;
+    this->deriv2_into(u, secDers);
 
+    const index_t dim = this->domainDim();
+    const index_t sz  = dim*(dim+1)/2;
+    typename gsMatrix<T>::Rows ders = secDers.middleRows(coord*sz, sz);
+    //const gsAsConstMatrix<T> ders(secDers.data(), sz, secDers.size() / sz );
+    hessian.resize(dim*dim, ders.cols() );
+
+    switch ( dim )
+    {
+    case 1:
+        hessian = secDers; // ders
+        break;
+    case 2:
+        hessian.row(0)=ders.row(0);//0,0
+        hessian.row(1)=//1,0
+        hessian.row(2)=ders.row(2);//0,1
+        hessian.row(3)=ders.row(1);//1,1
+        break;
+    case 3:
+        hessian.row(0)=ders.row(0);//0,0
+        hessian.row(3)=//0,1
+        hessian.row(1)=ders.row(3);//1,0
+        hessian.row(6)=//0,2
+        hessian.row(2)=ders.row(4);//2,0
+        hessian.row(4)=ders.row(1);//1,1
+        hessian.row(7)=//1,2
+        hessian.row(5)=ders.row(5);//2,1
+        hessian.row(8)=ders.row(2);//2,2
+        break;
+    default:
+        break;
+    }
+    return hessian;
+}
 
 template <typename T, int domDim, int tarDim>
 inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
