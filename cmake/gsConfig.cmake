@@ -38,9 +38,11 @@ elseif(${GISMO_COEFF_TYPE} STREQUAL "mpfr::mpreal")
 elseif(${GISMO_COEFF_TYPE} STREQUAL "mpq_class")
   set(GISMO_WITH_MPQ ON CACHE INTERNAL "Use GMP/mpq_class")
   set(GISMO_WITH_MPFR OFF CACHE INTERNAL "Use MPFR")
+elseif(${GISMO_COEFF_TYPE} STREQUAL "posit_32_2")
+  set(GISMO_WITH_UNUM ON CACHE INTERNAL "Use UNUM")
 endif()
 set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
-"float" "double" "long double" "mpfr::mpreal" "mpq_class")
+"float" "double" "long double" "mpfr::mpreal" "mpq_class" "posit_32_2")
 
 if(NOT GISMO_INDEX_TYPE)
    set (GISMO_INDEX_TYPE "int" CACHE STRING

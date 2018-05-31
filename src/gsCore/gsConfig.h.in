@@ -43,7 +43,11 @@
 #cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_ADIFF
 #cmakedefine GISMO_WITH_CODIPACK
+
 #cmakedefine GISMO_WITH_UNUM
+#ifdef GISMO_WITH_UNUM
+#include <gsUnum/gsUnum.h>
+#endif
 
 #cmakedefine GISMO_WITH_SUPERLU
 #cmakedefine GISMO_WITH_PARDISO
@@ -57,7 +61,6 @@
 #endif
 
 #cmakedefine GISMO_WITH_MPQ
-
 #ifdef GISMO_WITH_MPQ
 #include <gmpxx.h>
 #include <unsupported/Eigen/MPQClassExtra>
