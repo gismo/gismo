@@ -98,7 +98,7 @@ classdef gsTHBSpline < handle
             %  supp: double, [1 x 2*d].
             %    Support of the gsTHBSpline, ordered like 
             %      [u1_min, ..., ud_min, u1_max, ..., ud_max]
-            %    where d is the parametric dimennsion of the 
+            %    where d is the parametric dimension of the 
             %    gsTHBSpline.
             
             if (nargin~=1 || nargout>1)
@@ -155,7 +155,7 @@ classdef gsTHBSpline < handle
             [varargout{1:nargout}] = mex_gsTHBSpline('eval', this.objectHandle, varargin{:});
         end
         
-         % deriv - call class method
+        % deriv - call class method
         function [varargout] = deriv(this, varargin)
             %deriv - evaluate the jacobian of a gsTHBSpline object
             %
@@ -182,6 +182,39 @@ classdef gsTHBSpline < handle
             [varargout{1:nargout}] = mex_gsTHBSpline('deriv', this.objectHandle, varargin{:});
         end
 
+        % hess - call class method
+        function [varargout] = hess(this, varargin)
+            %deriv - evaluate the hessian of a gsTHBSpline object in one
+            %direction
+            %
+            %Usage:
+            %  val = thb.hess( pts, dir )
+            %
+            %Input:
+            %  thb: gsTHBSpline, [1 x 1].
+            %    The gsTHBSpline object.
+            %  pts: double, [d x numPts].
+            %    Points in which to evaluate the gsTHBSpline.
+            %  dir: int
+            %    Direction of space on which to compute the hessian.
+            %
+            %Output:
+            %  val: double, [numFun x numPts].
+            %    Value of the hessian matrix in direction dir of all active 
+            %    functions in each of the specified points.
+            
+            if (nargin~=3 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
+                error('Input argument no. 1 must be numeric, 2-dimensional, and with %d rows.', this.dim())
+            end
+            if (~isa(varargin{2},'numeric') || ~(mod(varargin{2},1)==0) || varargin{2}>this.dim())
+                error('Input argument no. 2 must be an integer smaller than %d.', this.dim())
+            end
+            [varargout{1:nargout}] = mex_gsTHBSpline('hess', this.objectHandle, varargin{:});
+        end
+        
         % active - call class method
         function [varargout] = active(this, varargin)
             %active - active functions of a gsTHBSpline object

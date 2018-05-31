@@ -198,21 +198,19 @@ classdef gsTHBSplineBasis < handle
 
         % maxLevel - call class method
         function varargout = maxLevel(this, varargin)
-            %support - support of a gsTHBSplineBasis object
+            %maxLevel - maximum level of a gsTHBSplineBasis object
             %
             %Usage:
-            %  supp = thb.support()
+            %  lev = thb.maxLevel()
             %
             %Input:
             %  thb: gsTHBSplineBasis, [1 x 1].
             %    The gsTHBSplineBasis object.
             %
             %Output:
-            %  supp: double, [1 x 2*d].
-            %    Support of the gsTHBSplineBasis, ordered like 
-            %      [u1_min, ..., ud_min, u1_max, ..., ud_max]
-            %    where d is the parametric dimennsion of the 
-            %    gsTHBSplineBasis.
+            %  lev: double, [1 x 1].
+            %    Maximum level present in the hierarchy of the
+            %    gsTHBSplineBasis object. 
             
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
@@ -242,22 +240,22 @@ classdef gsTHBSplineBasis < handle
 
         % degree - call class method
         function [varargout] = degree(this, varargin)
-            %degree - the degree for each direction of a gsTHBSplineBasis object
+            %degree - the degree for a specified direction of a 
+            %   gsTHBSplineBasis object
             %
             %Usage:
-            %  val = thb.eval( dir )
+            %  deg = thb.degree( dir )
             %
             %Input:
             %  thb: gsTHBSplineBasis, [1 x 1].
             %    The gsTHBSplineBasis object.
-            %  dir: int.
+            %  dir: int, [1 x 1].
             %    Direction of space for which we want to know the degree of 
             %    the gsTHBSplineBasis.
             %
             %Output:
-            %  val: double, [numFun x numPts].
-            %    Value of all active functions in each of the specified
-            %    points.
+            %  deg: double, [1 x 1].
+            %    Degree of the gsTHBSplineBasis object in direction dir. 
             
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
@@ -319,8 +317,9 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=3 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}))
-                error('Input argument no. 1 must be a numeric scalar.')
+            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
+                    ~(mod(varargin{1},1)==0) || varargin{1}<1)
+                error('Input argument no. 1 must be an strictly positive integer.')
             elseif (~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) || ~isequal(size(varargin{2},1),this.dim()))
                 error('Input argument no. 2 must be numeric, 2-dimensional, and with d rows.')
             end
@@ -339,7 +338,7 @@ classdef gsTHBSplineBasis < handle
             %    The gsTHBSplineBasis object.
             %
             %Output:
-            %   (none)
+            %   (none - saved into an xml file)
             
             if (nargin~=2)
                 error('Invalid number of input arguments.')
@@ -356,20 +355,20 @@ classdef gsTHBSplineBasis < handle
             %   of the specified level on the specified direction
             %
             %Usage:
-            %  valSingle = thb.evalSingle( fun, pts )
+            %  knt = thb.knots( lev, dir )
             %
             %Input:
             %  thb: gsTHBSplineBasis, [1 x 1].
             %    The gsTHBSplineBasis object.
-            %  fun: double, [1 x 1].
-            %    Index of function to evaluate.
-            %  pts: double, [d x numPts].
-            %    Points in which to evaluate the function.
+            %  lev: int, [1 x 1].
+            %    Index of the level of the hierarchy to consider.
+            %  dir: int, [1 x 1].
+            %    index of the direction of space to consider. 
             %
             %Output:
-            %  val: double, [1 x numPts].
-            %    Value of the specified function in each of the specified
-            %    points.
+            %  knt: double, [1 x numKnots].
+            %    Knot vector corresponding to level lev in the direction
+            %    dir. 
             
             if (nargin~=3 || nargout>1)
                 error('Invalid number of input and/or output arguments.')

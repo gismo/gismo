@@ -110,7 +110,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 gsMatrix<real_t> supp = instance->support();
                 plhs[0] = createPointerFromMatrix(supp);
             } else if (!strcmp(prop,"maxLevel")) {
-                int val      = instance->maxLevel();
+                int val      = instance->maxLevel()+1;
                 mxArray *out = mxCreateDoubleScalar((double)val);
                 plhs[0]      = out;
             }
@@ -153,7 +153,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             const mwIndex ind = (mwIndex) * mxGetPr(prhs[2]);
             const gsMatrix <real_t> pts = extractMatrixFromPointer<real_t>(prhs[3]);
             // Call the method
-            gsMatrix <real_t> vals = instance->evalSingle(ind, pts);
+            gsMatrix <real_t> vals = instance->evalSingle(ind-1, pts);
             // Copy result to output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<real_t>(vals);
 
