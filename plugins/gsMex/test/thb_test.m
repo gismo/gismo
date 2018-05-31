@@ -40,7 +40,7 @@ fprintf('act\n')
 disp(act)
 
 % Print single evaluation
-evs = hbs.evalSingle(0,pts);
+evs = hbs.evalSingle(1,pts);
 fprintf('evs\n')
 disp(evs)
 

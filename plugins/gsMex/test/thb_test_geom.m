@@ -6,7 +6,7 @@ close all
 addpath( genpath('/Users/ondine/Documents/MATLAB/GeoPDEs-full/geopdes/') )
 
 % Construct a truncated hierarchical basis by reading the specified file
-filename = join([filedata,'surfaces/thbs_face_3levels.xml']);
+filename = join([filedata, 'surfaces/thbs_face_3levels.xml']); % 'domain2d/squareTHB.xml']);
 fprintf('Reading THB spline from file: %s.\n',filename)
 hbs = gsTHBSpline(filename);
 
@@ -23,11 +23,17 @@ fprintf('ev\n')
 disp(size(ev))
 figure;
 scatter3(ev(1,:), ev(2,:), ev(3,:), '+')
+%plot(ev(1,:),ev(2,:),'+')
 
 % Print jacobian
 jac = hbs.deriv(pts);
 fprintf('jac')
 disp(size(jac))
+
+% Print hessian on direction 1 % TODO once it's implemented in G+smo
+% hess = hbs.hess(pts,1);
+% fprintf('hess')
+% disp(size(hess))
 
 % Build GeoPDEs geometry structure
 geometry = geo_load(hbs);

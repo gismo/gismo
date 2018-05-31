@@ -119,13 +119,27 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         } else if (!strcmp(cmd,"deriv")) {
 
             // ----------------------------------------------------------------------
-            // eval(pts)
+            // deriv(pts)
 
             gsTHBSpline<__DIM__> *instance = convertMat2Ptr<gsTHBSpline<__DIM__> >(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
             // Call the method
             gsMatrix<real_t> vals = instance->jacobian(pts);
+            // Copy result to output (FIXME: this should be avoided)
+            plhs[0] = createPointerFromMatrix<real_t>(vals);
+
+        } else if (!strcmp(cmd,"hess")) {
+
+            // ----------------------------------------------------------------------
+            // hess(pts, dir)
+
+            gsTHBSpline<__DIM__> *instance = convertMat2Ptr<gsTHBSpline<__DIM__> >(prhs[1]);
+            // Copy the input (FIXME: this should be avoided)
+            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
+            mwIndex dir = (mwIndex) mxGetScalar(prhs[3]);
+            // Call the method
+            gsMatrix<real_t> vals = instance->hess(pts, dir-1);
             // Copy result to output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<real_t>(vals);
 
