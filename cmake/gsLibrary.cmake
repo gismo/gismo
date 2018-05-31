@@ -121,6 +121,10 @@ endif(GISMO_BUILD_LIB)
 
   #generate_export_header(${PROJECT_NAME}_static)
 
+  if(${PROJECT_NAME}_LINKER)
+    target_link_libraries(${PROJECT_NAME}_static "${${PROJECT_NAME}_LINKER}")
+  endif()
+
   if (EIGEN_USE_MKL_ALL)
     # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
     find_package(MKL REQUIRED)
