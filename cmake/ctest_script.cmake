@@ -206,9 +206,8 @@ if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
   set(ENV{UBSAN_OPTIONS} "print_stacktrace=1")
 endif()
 
-# Update type (svn or git or "")
-#set(UPDATE_TYPE svn)
-set(UPDATE_TYPE "")
+# Update type (git, svn, wget or url)
+set(UPDATE_TYPE wget)
 
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
@@ -234,10 +233,17 @@ if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
     set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --depth 1 --branch stable https://github.com/gismo/gismo.git gismo_src")
   elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
     set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk gismo_src")
-  elseif("x${UPDATE_TYPE}" STREQUAL "x")
+  elseif("x${UPDATE_TYPE}" STREQUAL "xwget")
     execute_process(COMMAND /bin/bash "-c" "wget --no-check-certificate -qO - https://github.com/gismo/gismo/archive/stable.tar.gz | tar -zxf -")
-        execute_process(COMMAND mv gismo-stable gismo_src)
-    set(CTEST_CHECKOUT_COMMAND "")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-stable gismo_src)
+    set(CTEST_CHECKOUT_COMMAND "${CMAKE_COMMAND} --version")
+  elseif("x${UPDATE_TYPE}" STREQUAL "xurl")
+    file(DOWNLOAD https://github.com/gismo/gismo/archive/stable.tar.gz ${CTEST_SCRIPT_DIRECTORY}/stable.tar.gz)
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E tar xzf stable.tar.gz
+      COMMAND ${CMAKE_COMMAND} -E create_symlink gismo-stable gismo_src
+      WORKING_DIRECTORY ${CTEST_SCRIPT_DIRECTORY} )
+    set(CTEST_CHECKOUT_COMMAND "${CMAKE_COMMAND} --version")
   endif()
 endif()
 
@@ -328,7 +334,10 @@ ctest_start(${CTEST_TEST_MODEL})
 
 if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
 
-ctest_update()
+if(NOT "${CTEST_UPDATE_COMMAND}" STREQUAL "CTEST_UPDATE_COMMAND-NOTFOUND")
+  ctest_update()
+endif()
+
 run_ctests()
 
 else() #continuous model
