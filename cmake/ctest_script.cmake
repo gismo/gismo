@@ -207,7 +207,7 @@ if("x${CTEST_MEMORYCHECK_TYPE}" STREQUAL "xUndefinedBehaviorSanitizer")
 endif()
 
 # Update type (git, svn, wget or url)
-set(UPDATE_TYPE wget)
+set(UPDATE_TYPE git)
 
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
