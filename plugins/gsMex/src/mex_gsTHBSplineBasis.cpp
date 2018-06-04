@@ -188,7 +188,8 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // Copy the input (FIXME: this should be avoided)
             gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
             // Call method
-            const gsMatrix<unsigned> vals = instance->active(pts);
+            gsMatrix<unsigned> vals = instance->active(pts);
+            vals = vals + gsMatrix<unsigned>::Ones(vals.rows(),vals.cols());
             // Copy the result for output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<unsigned>(vals);
 
