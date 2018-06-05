@@ -24,13 +24,13 @@ class gsLineSegment
 public:
     gsLineSegment() {}
     gsLineSegment(const gsPoint<dim, T>& point1, const gsPoint<dim, T>& point2) : m_point(point1),
-        m_direction((point2 - point1).normalized()) { }
+        m_direction((point2 - point1)) { }
 
     /**
      * @brief Tells wheter line intersects segment
      *
      * This function returns if a line between origin and end will be intersected by the line where this function
-     * is called.
+     * is called. Or with other words, if origin and end are on different sides of line.
      * @param[in] origin
      * @param[in] end
      *
@@ -41,16 +41,16 @@ public:
         gsLineSegment<2, real_t> segmentLine(origin, end);
 
         gsMatrix<T, 2, 2> matrix;
-        matrix.col(0) = segmentLine.m_direction;
-        matrix.col(1) = m_direction;
+        matrix.col(0) = m_direction;
+        matrix.col(1) = segmentLine.m_direction;
         if (math::abs(matrix.determinant()) <= 1e-8) {
             gsWarn << "Lines are parallel or ident.\n";
             return false;
         }
         gsVector<T, 2> parameters = matrix.partialPivLu().solve(m_point - segmentLine.m_point);
-        double iparam = -parameters(1);
-
-        return (0 <= iparam && iparam <= m_direction.norm() );
+        double iparam = parameters(1);
+        gsInfo << iparam << "\n";
+        return (0 <= iparam && iparam <= 1 );
     }
 
     const gsVector<T, dim> & direction() const { return m_direction; }
