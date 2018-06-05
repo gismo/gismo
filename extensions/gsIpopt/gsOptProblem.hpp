@@ -290,6 +290,7 @@ void gsOptProblem<T>::solve()
 #ifdef GISMO_WITH_IPOPT 
     
     Ipopt::SmartPtr<Ipopt::IpoptApplication> app = IpoptApplicationFactory();
+    app->RethrowNonIpoptException(true);
     
     Ipopt::ApplicationReturnStatus status;
     std::string path = gsFileManager::findInDataDir( "options/ipopt.opt" );
@@ -303,15 +304,15 @@ void gsOptProblem<T>::solve()
     
     status = app->OptimizeTNLP(m_data->tnlp);
     
-    if (status == Ipopt::Solve_Succeeded) 
-    {
         // Retrieve some statistics about the solve
         numIterations  = app->Statistics()->IterationCount();
         finalObjective = app->Statistics()->FinalObjective();
         //gsInfo << "\n*** The problem solved in " << numIterations << " iterations!\n";
         //gsInfo << "*** The final value of the objective function is " << finalObjective <<".\n";
-    }
-    
+
+        if (status != Ipopt::Solve_Succeeded)
+           gsInfo << "Optimization did not succeed.\n";
+
 #else
     
     GISMO_NO_IMPLEMENTATION
