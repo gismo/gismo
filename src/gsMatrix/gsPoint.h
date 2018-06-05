@@ -35,6 +35,8 @@ public:
     gsPoint(T x, T y, size_t index) : gsVector<T, dim>(), m_vertexIndex(index) { *this << x, y; }
     gsPoint(T x, T y, T z, size_t index) : gsVector<T, dim>(), m_vertexIndex(index) { *this << x, y, z; }
 
+    inline int getVertexIndex() const { return m_vertexIndex; }
+
     void moveToPosition(const T x, const T y) {
         *this << x, y;
     }

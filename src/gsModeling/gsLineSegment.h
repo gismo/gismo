@@ -49,8 +49,7 @@ public:
         }
         gsVector<T, 2> parameters = matrix.partialPivLu().solve(m_point - segmentLine.m_point);
         double iparam = parameters(1);
-        gsInfo << iparam << "\n";
-        return (0 <= iparam && iparam <= 1 );
+        return ( -1e-8 <= iparam && iparam <= 1 + 1e-8 );
     }
 
     const gsVector<T, dim> & direction() const { return m_direction; }
