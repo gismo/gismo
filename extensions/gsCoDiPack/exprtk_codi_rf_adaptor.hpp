@@ -1,4 +1,4 @@
-/** @file exprtk_codi_rf_adaptop.hpp
+/** @file exprtk_codi_rf_adaptor.hpp
 
     @brief Provides an exprtk adaptor for the CoDiPack
     RealForward arithmetic types of autodiff
@@ -17,32 +17,7 @@
 #include <string>
 #include <gsCoDiPack/gsCoDiPack.h>
 
-namespace exprtk
-{
-
-namespace details
-{
-namespace numeric { namespace details { struct codi_rf_type_tag; } }
-
-inline bool is_true (const codi::RealForward& v);
-inline bool is_false(const codi::RealForward& v);
-
-template <typename Iterator>
-inline bool string_to_real(Iterator& itr_external, const Iterator end, codi::RealForward& t, numeric::details::codi_rf_type_tag);
-
-}
-
-namespace helper
-{
-namespace details
-{
-inline void print_type(const std::string&, const codi::RealForward& v, exprtk::details::numeric::details::codi_rf_type_tag);
-}
-}
-
-using details::is_true;
-}
-
+#include "exprtk_codi_rf_forward.hpp"
 #include "exprtk.hpp"
 
 namespace exprtk

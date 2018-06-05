@@ -52,18 +52,49 @@
 #define exprtk_disable_rtl_io_file
 #define exprtk_disable_rtl_vecops
 
+// The order in which header files are included is essential.
+//
+// It is important that all forward declaration file
+// "exprtk_X_forward.hpp"" are included BEFORE the header file
+// "exprtk.hpp" so that specializations for is_true(), is_false(),
+// etcetera are not known for ALL types that should be supported. All
+// adaptor files "exprtk_X_adaptor.hpp" have to be included AFTER the
+// file "exprtk.hpp".
+
 #if defined(GISMO_WITH_ADIFF)
-  /* Optional automatic differentiation */
-  #define DScalar gismo::ad::DScalar2<real_t,-1>
-#include <exprtk_ad_adaptor.hpp>   // external file
+#define DScalar gismo::ad:OB:DScalar2<real_t,-1>
+#include <exprtk_ad_forward.hpp>
 #endif
 
 #if defined(GISMO_WITH_MPFR)
-#include <exprtk_mpfr_adaptor.hpp> // external file
+#include <exprtk_mpfr_forward.hpp>
 #endif
 
 #if defined(GISMO_WITH_MPQ)
-#include <exprtk_gmp_adaptor.hpp>  // external file
+#include <exprtk_gmp_forward.hpp>
+#endif
+
+#if defined(GISMO_WITH_CODIPACK)
+#include <gsCoDiPack/exprtk_codi_rf_forward.hpp>
+#include <gsCoDiPack/exprtk_codi_rr_forward.hpp>
+#endif
+
+#if defined(GISMO_WITH_UNUM)
+#include <gsUnum/exprtk_unum_posit_forward.hpp>
+#endif
+
+#include <exprtk.hpp>
+
+#if defined(GISMO_WITH_ADIFF)
+#include <exprtk_ad_adaptor.hpp>
+#endif
+
+#if defined(GISMO_WITH_MPFR)
+#include <exprtk_mpfr_adaptor.hpp>
+#endif
+
+#if defined(GISMO_WITH_MPQ)
+#include <exprtk_gmp_adaptor.hpp>
 #endif
 
 #if defined(GISMO_WITH_CODIPACK)
@@ -75,7 +106,6 @@
 #include <gsUnum/exprtk_unum_posit_adaptor.hpp>
 #endif
 
-#include <exprtk.hpp>              // external file
 
 #include <gsIO/gsXml.h>
 
