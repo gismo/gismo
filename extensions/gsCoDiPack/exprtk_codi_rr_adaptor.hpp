@@ -1,4 +1,4 @@
-/** @file exprtk_codi_rf_adaptor.hpp
+/** @file exprtk_codi_rr_adaptor.hpp
 
     @brief Provides an exprtk adaptor for the CoDiPack
     RealReverse arithmetic types of autodiff
