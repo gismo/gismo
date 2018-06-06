@@ -37,7 +37,7 @@ static const double _2_pi   =  0.63661977236758134307553505349005744813783858296
 static const double _180_pi = 57.29577951308232087679815481410517033240547246656443;
 static const double log2    =  0.69314718055994530941723212145817656807550013436026;
 static const double sqrt2   =  1.41421356237309504880168872420969807856967187537695;
-}
+} // namespace constant_unum_posit
 
 namespace numeric
 {
@@ -110,6 +110,9 @@ template <typename T> inline T  notl_impl(const T& v, unum_posit_type_tag) { ret
 template <typename T> inline T  frac_impl(const T& v, unum_posit_type_tag) { return sw::unum::frac (v); }
 template <typename T> inline T trunc_impl(const T& v, unum_posit_type_tag) { return sw::unum::trunc(v); }
 
+template <typename T> inline T const_pi_impl(unum_posit_type_tag) { return posit_32_2(exprtk::details::constant_unum_posit::pi); }
+template <typename T> inline T const_e_impl (unum_posit_type_tag) { return posit_32_2(exprtk::details::constant_unum_posit::e ); }
+
 inline bool is_true_impl (const posit_32_2& v)
 {
     return true;//0.0 != v;
@@ -130,14 +133,12 @@ inline T expm1_impl(const T& v, unum_posit_type_tag)
 template <typename T>
 inline T min_impl(const T& v0, const T& v1, unum_posit_type_tag)
 {
-    //using std::min;
     return sw::unum::min(v0,v1);
 }
 
 template <typename T>
 inline T max_impl(const T& v0, const T& v1, unum_posit_type_tag)
 {
-    //using std::max;
     return sw::unum::max(v0,v1);
 }
 
