@@ -65,6 +65,10 @@ FOREACH(subdir ${SUBDIRS})
     add_dependencies(${GM_NAME} gsUnumExtension)
   endif()
 
+  if(GISMO_BUILD_MULTIPRECISION)
+    add_dependencies(${GM_NAME} gsMultiPrecisionExtension)
+  endif()
+
   if (GISMO_BUILD_PCH)
     target_precompiled_header(${GM_NAME} gsPrecompiledHeader)
   endif()
