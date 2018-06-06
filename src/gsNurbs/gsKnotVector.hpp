@@ -933,46 +933,7 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
             if ( result(0,i) == result(0,i-1) )
             {
                 // perturbe point to remain inside the needed support
-                //#               ifdef GISMO_WITH_MPQ
-                //                result(0,i-1) -= mpq_class(1,10000000000);
-                //#               else
-                result(0,i-1) -= 1e-10;
-                //to try: result(0,i-1) = math::nextafter(result(0,i-1), *result.data() );
-                //#               endif
-            }
-        }
-
-        itr = end()-1;
-        i -= 1;
-        if ( result(0,i) > *(itr) )// Ensure that the point is in range
-            result(0,i) = *(itr);
-    }
-    else
-        copy_n(m_repKnots.data(), result.size(), result.data() );
-}
-
-#ifdef GISMO_WITH_MPQ
-template<>
-void gsKnotVector<mpq_class>::greville_into(gsMatrix<mpq_class> & result) const
-{
-    iterator itr = begin() + 1;
-    result.resize(1, size()-m_deg-1 ) ;
-    unsigned i = 1;
-
-    if ( m_deg!=0)
-    {
-        result(0,0) = std::accumulate( itr, itr+m_deg, mpq_class(0.0) ) / m_deg ;
-
-        if ( result(0,0) < *(itr-1) )// Ensure that the point is in range
-            result(0,0) = *(itr-1);
-
-        for (++itr; itr != end()-m_deg; ++itr, ++i )
-        {
-            result(0,i) = std::accumulate( itr, itr+m_deg, mpq_class(0.0) ) / m_deg ;
-            if ( result(0,i) == result(0,i-1) )
-            {
-                // perturbe point to remain inside the needed support
-                result(0,i-1) -= mpq_class(1,10000000000);
+                result(0,i-1) -= 1/T(10000000000); // =mpq_class(1,10000000000);
                 //to try: result(0,i-1) = math::nextafter(result(0,i-1), *result.data() );
             }
         }
@@ -985,7 +946,6 @@ void gsKnotVector<mpq_class>::greville_into(gsMatrix<mpq_class> & result) const
     else
         copy_n(m_repKnots.data(), result.size(), result.data() );
 }
-#endif
 
 template<typename T>
 void gsKnotVector<T>::centers_into(gsMatrix<T> & result) const
