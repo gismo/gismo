@@ -429,6 +429,13 @@ public:
         return result;
     }
 
+    gsMatrix<T> anchor(unsigned i) const
+    {
+        gsMatrix<T> result;
+        this->anchor_into(i, result);
+        return result;
+    }
+
     /**
      * @brief
      * Returns the anchor points that represent the members of the basis in \a result.
