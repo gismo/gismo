@@ -125,28 +125,87 @@ T round(T a) { return math::floor(a+0.5); }
 
 /// For numeric types, this function returns the next representable
 /// value after \a x in the direction of \a y
-inline real_t nextafter(real_t x, real_t y)
+
+template < typename T>
+inline T nextafter(T x, T y)
 {
-#   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_MPQ)
-    return x + ( y < x ? -1e-16 : 1e-16 );
-#   elif defined(GISMO_WITH_UNUM)
-    return sw::unum::nextafter(x,y);
-#   elif defined(_MSC_VER) && _MSC_VER < 1800
+#   if defined(_MSC_VER) && _MSC_VER < 1800
     return _nextafter(x,y);
 #   else
     return ::nextafter(x,y);
 #   endif
 }
 
+#ifdef GISMO_WITH_MPFR
+template<>
+inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
+{
+    return x + ( y < x ? -1e-16 : 1e-16 );
+}
+#endif
+
+#ifdef GISMO_WITH_MPQ
+template<>
+inline mpq_class nextafter(mpq_class x, mpq_class y)
+{
+    return x + ( y < x ? -1e-16 : 1e-16 );
+}
+#endif
+
+#ifdef GISMO_WITH_UNUM
+template<size_t nbits, size_t es>
+inline sw::unum::posit<nbits,es> nextafter(sw::unum::posit<nbits, es> x,
+                                           sw::unum::posit<nbits,es>  y)
+{
+    return sw::unum::nextafter(x,y);
+}
+#endif
+
+// inline real_t nextafter(real_t x, real_t y)
+// {
+// #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_MPQ)
+//     return x + ( y < x ? -1e-16 : 1e-16 );
+// #   elif defined(GISMO_WITH_UNUM)
+//     return sw::unum::nextafter(x,y);
+// #   elif defined(_MSC_VER) && _MSC_VER < 1800
+//     return _nextafter(x,y);
+// #   else
+//     return ::nextafter(x,y);
+// #   endif
+// }
+
 
 /** Numeric precision (number of exact decimal digits expected) for
     real_t
 */
+template <typename T>
+struct numeric_limits
+{
+    inline static int digits()
+    { return std::numeric_limits<T>::digits; }
+
+    inline static int digits10()
+    { return std::numeric_limits<T>::digits10; }
+};
+
 #ifdef GISMO_WITH_MPFR
-#  define REAL_DIG std::numeric_limits<real_t>::digits10()
-#else
-#  define REAL_DIG std::numeric_limits<real_t>::digits10
+template <>
+struct numeric_limits<mpfr::mpreal>
+{
+    inline static int digits()
+    { return std::numeric_limits<mpfr::mpreal>::digits(); }
+
+    inline static int digits10()
+    { return std::numeric_limits<mpfr::mpreal>::digits10(); }
+};
 #endif
+
+//#ifdef GISMO_WITH_MPFR
+//#  define REAL_DIG std::numeric_limits<real_t>::digits10()
+//#else
+//#  define REAL_DIG std::numeric_limits<real_t>::digits10
+//#endif
+#define REAL_DIG math::numeric_limits<real_t>::digits10()
 
 // functions to check for floating point errors
 // Get isnan/isinf working on different compilers
@@ -199,8 +258,8 @@ using mpfr::tan;
 using mpfr::tanh;
 
 //dummies
-inline real_t frexp(const real_t & a, int* b) {return  a;}
-inline real_t ldexp(const real_t & a, int b ) {return  a;}
+inline mpfr::mpreal frexp(const mpfr::mpreal & a, int* b) {return  a;}
+inline mpfr::mpreal ldexp(const mpfr::mpreal & a, int b ) {return  a;}
 
 using mpfr::isfinite;
 using mpfr::isinf;
