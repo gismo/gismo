@@ -49,7 +49,8 @@ unset(MKL_BLACS_LIBRARY CACHE)
 if(DEFINED INTEL_ROOT AND NOT EXISTS "${INTEL_ROOT}")
     message(WARNING "The path INTEL_ROOT: ${INTEL_ROOT} does not exist")
   else()
-    file(GLOB irootL "/opt/intel/compilers_and_*")
+    file(GLOB irootL "/*/intel/compilers_and_*")
+    #file(GLOB irootC "/*/intel/parallel*/compilers_and_*")
     file(GLOB irootW "C:/Program Files (x86)/IntelSWTools/compilers_and_*")
     find_path(INTEL_ROOT "mkl" PATHS /opt/intel "${irootL}" "${irootL}/linux" "${irootW}" "${irootL}/windows")
     message(STATUS "Intel root: ${INTEL_ROOT}")
@@ -104,6 +105,7 @@ else() # MKL is composed by four layers: Interface, Threading, Computational and
 
     ####################### Computational layer #####################
     find_library(MKL_CORE_LIBRARY mkl_core PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
+    find_package (Threads) # mkl_core links to pthreads
 
     ######################### Interface layer #######################
     find_library(MKL_INTERFACE_LIBRARY mkl_intel${ARCH_PREFIX} mkl_intel_c PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
@@ -112,7 +114,6 @@ else() # MKL is composed by four layers: Interface, Threading, Computational and
       ######################## Threading layer ########################
       message(STATUS "MKL multi-threading enabled.")
       find_library(MKL_THREADING_LIBRARY mkl_intel_thread PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
-      #find_package (Threads)
       #find_library(MKL_THREADING_LIBRARY mkl_pgi_thread
       #find_library(MKL_THREADING_LIBRARY mkl_gnu_thread
       #find_library(MKL_THREADING_LIBRARY mkl_tbb_thread
@@ -126,9 +127,8 @@ else() # MKL is composed by four layers: Interface, Threading, Computational and
     endif(GISMO_WITH_OPENMP)
       
     ####################### Cluster libraries #####################
-    find_library(MKL_FFT_LIBRARY mkl_cdft_core PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
-    
     if(GISMO_WITH_MPI)
+    find_library(MKL_FFT_LIBRARY mkl_cdft_core PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
     find_library(MKL_SCALAPACK_LIBRARY mkl_scalapack${ARCH_PREFIX} PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
     if("x${MKL_BLACS_MPI}" STREQUAL "xINTELMPI")
       find_library(MKL_BLACS_LIBRARY NAMES mkl_blacs_intelmpi${ARCH_PREFIX} PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
@@ -137,7 +137,8 @@ else() # MKL is composed by four layers: Interface, Threading, Computational and
     #elseif("x${MKL_BLACS_MPI}" STREQUAL "xMSMPI")
     #elseif("x${MKL_BLACS_MPI}" STREQUAL "xMPICH2")
     else()
-      find_library(MKL_BLACS_LIBRARY NAMES mkl_blacs_openmpi${ARCH_PREFIX}  PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
+      #Note: libmkl_blacs${ARCH_PREFIX} is deprecated!
+      find_library(MKL_BLACS_LIBRARY NAMES mkl_blacs_openmpi${ARCH_PREFIX} mkl_blacs_intelmpi${ARCH_PREFIX} PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
     endif()
     else(GISMO_WITH_MPI)
       message(STATUS "MKL Cluster parallelization with MPI is DISABLED (use GISMO_WITH_MPI=ON to enable it)")
@@ -148,7 +149,7 @@ else() # MKL is composed by four layers: Interface, Threading, Computational and
     #find_library(MPI_LIBRARY mpi_mt PATHS /opt/intel/composer_xe_2013.0.079/mpirt/lib/${MPL_ARCH})
 
 set(MKL_LIBRARY ${MKL_CORE_LIBRARY} ${MKL_INTERFACE_LIBRARY} ${MKL_THREADING_LIBRARY} ${MKL_RTL_LIBRARY}
-  ${MKL_FFT_LIBRARY} ${MKL_SCALAPACK_LIBRARY} ${MKL_BLACS_LIBRARY} ${MPI_LIBRARY}
+  ${MKL_FFT_LIBRARY} ${MKL_SCALAPACK_LIBRARY} ${MKL_BLACS_LIBRARY}
   )
 endif()
 
@@ -165,6 +166,10 @@ find_package_handle_standard_args(MKL "The MKL libraries were not found. Set INT
 
 if(MKL_FOUND)
     message(STATUS "Found Intel MKL libraries")
-    set(MKL_LIBRARIES ${MKL_LIBRARY})
+    if(Threads_FOUND)
+      set(MKL_LIBRARIES ${MKL_LIBRARY} Threads::Threads)
+    else()
+      set(MKL_LIBRARIES ${MKL_LIBRARY})
+    endif()
     mark_as_advanced (MKL_LIBRARY) 
 endif()
