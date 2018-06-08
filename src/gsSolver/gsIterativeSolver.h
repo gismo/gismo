@@ -49,10 +49,10 @@ public:
       m_rhs_norm(-1),
       m_error(-1)
     {
-        GISMO_ASSERT(m_mat->rows()     == m_mat->cols(),     "The Matrix is not square."                     );
+        GISMO_ASSERT(m_mat->rows()     == m_mat->cols(),     "The matrix is not square."                     );
 
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
-        GISMO_ASSERT(m_precond->rows() == m_precond->cols(), "The Preconditioner is not square."             );
+        GISMO_ASSERT(m_precond->rows() == m_precond->cols(), "The preconditioner is not square."             );
         GISMO_ASSERT(m_precond->rows() == m_mat->rows(),     "The preconditioner does not match the matrix: "
                                                              <<m_precond->rows()<<"!="<<m_mat->rows()        );
     }
@@ -79,10 +79,10 @@ public:
       m_rhs_norm(-1),
       m_error(-1)
     {
-        GISMO_ASSERT(m_mat->rows()     == m_mat->cols(),     "The Matrix is not square."                     );
+        GISMO_ASSERT(m_mat->rows()     == m_mat->cols(),     "The matrix is not square."                     );
 
         if (!m_precond) m_precond = gsIdentityOp<T>::make(m_mat->rows());
-        GISMO_ASSERT(m_precond->rows() == m_precond->cols(), "The Preconditioner is not square."             );
+        GISMO_ASSERT(m_precond->rows() == m_precond->cols(), "The preconditioner is not square."             );
         GISMO_ASSERT(m_precond->rows() == m_mat->rows(),     "The preconditioner does not match the matrix: "
                                                              <<m_precond->rows()<<"!="<<m_mat->rows()        );
     }
