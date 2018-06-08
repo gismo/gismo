@@ -24,7 +24,13 @@ namespace exprtk
 
 namespace details
 {
-namespace numeric { namespace details { struct unum_posit_type_tag; } }
+namespace numeric { namespace details {
+
+struct unum_posit_type_tag;
+
+template <typename T> inline T const_pi_impl(unum_posit_type_tag);
+template <typename T> inline T const_e_impl (unum_posit_type_tag);
+} } // namespace details // namespace numeric
 
 inline bool is_true (const posit_32_2& v);
 inline bool is_false(const posit_32_2& v);
@@ -32,15 +38,11 @@ inline bool is_false(const posit_32_2& v);
 template <typename Iterator>
 inline bool string_to_real(Iterator& itr_external, const Iterator end, posit_32_2& t, numeric::details::unum_posit_type_tag);
 
-}
+} // namespace details
 
-namespace helper
-{
-namespace details
-{
+namespace rtl { namespace io { namespace details {
 inline void print_type(const std::string&, const posit_32_2& v, exprtk::details::numeric::details::unum_posit_type_tag);
-}
-}
+} } } // namespace details // namespace io // namespace rtl
 
 using details::is_true;
 }
