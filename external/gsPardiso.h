@@ -31,10 +31,10 @@ void pardiso( void *, int *, int *, int *, int *, int * , void *, int *,
               int * , int *, int *, int *, int *, void *, void *, int *);
  
 // Declaration of pardiso_64
-void pardiso_64( void          *, long long int *, long long int *, long long int *,
-                 long long int *, long long int *,          void *, long long int *,
-                 long long int *, long long int *, long long int *, long long int *,
-                 long long int *,          void *,          void *, long long int *);
+void pardiso_64( void          *, _INTEGER_t *, _INTEGER_t *, _INTEGER_t *,
+                 _INTEGER_t *, _INTEGER_t *,          void *, _INTEGER_t *,
+                 _INTEGER_t *, _INTEGER_t *, _INTEGER_t *, _INTEGER_t *,
+                 _INTEGER_t *,          void *,          void *, _INTEGER_t *);
 
 //void pardisoinit(void* , int*, int*, int*, void*, int* );
 

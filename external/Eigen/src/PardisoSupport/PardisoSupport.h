@@ -54,7 +54,7 @@ namespace internal
   template<>
   struct pardiso_run_selector<long long int>
   {
-    typedef long long int IndexType;
+    typedef _INTEGER_t IndexType;
     static IndexType run( _MKL_DSS_HANDLE_t pt, IndexType maxfct, IndexType mnum, IndexType type, IndexType phase, IndexType n, void *a,
                       IndexType *ia, IndexType *ja, IndexType *perm, IndexType nrhs, IndexType *iparm, IndexType msglvl, void *b, void *x)
     {

@@ -56,6 +56,8 @@
 #cmakedefine GISMO_WITH_UMFPACK
 #cmakedefine GISMO_WITH_UNUM
 
+#cmakedefine MKL_ILP64
+
 #ifdef GISMO_WITH_MPFR
 #include <mpreal.h>
 #endif
