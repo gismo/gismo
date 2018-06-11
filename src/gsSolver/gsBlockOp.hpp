@@ -17,26 +17,26 @@ namespace gismo
 template<typename T>
 gsBlockOp<T>::gsBlockOp(index_t nRows, index_t nCols)
 {
-    blockPrec.resize(nRows, nCols);
+    m_blockPrec.resize(nRows, nCols);
     blockTargetPositions.setZero(nRows);
     blockInputPositions.setZero(nCols);
     // Fill up all block entries with null pointers.
     for (index_t i = 0; i < nRows; ++i)
         for (index_t j = 0; j < nCols; ++j)
-            blockPrec(i,j).reset();
+            m_blockPrec(i,j).reset();
 }
 
 template<typename T>
 void gsBlockOp<T>::addOperator(index_t row, index_t col, const BasePtr& op)
 {
-    GISMO_ASSERT( row >= 0 && row < blockPrec.rows(), "The given row is not feasible." );
-    GISMO_ASSERT( col >= 0 && col < blockPrec.cols(), "The given column is not feasible." );
+    GISMO_ASSERT( row >= 0 && row < m_blockPrec.rows(), "The given row is not feasible." );
+    GISMO_ASSERT( col >= 0 && col < m_blockPrec.cols(), "The given column is not feasible." );
     GISMO_ASSERT( op->rows() == blockTargetPositions[row] || blockTargetPositions[row] == 0,
                   "The size of the given preconditioner does not fit to the other preconditioners in the same row." );
     GISMO_ASSERT( op->cols() == blockInputPositions[col] || blockInputPositions[col] == 0,
                   "The size of the given preconditioner does not fit to the other preconditioners in the same column." );
 
-    blockPrec(row, col) = op;
+    m_blockPrec(row, col) = op;
     blockTargetPositions[row] = op->rows();
     blockInputPositions[col] = op->cols();
 }
@@ -50,30 +50,23 @@ void gsBlockOp<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & result) const
     singleCol <<  input.cols();
     typename gsMatrix<T>::BlockView resultBlocks = result.blockView(blockTargetPositions, singleCol);
 
-    for (index_t i = 0; i < blockPrec.rows() ; ++i)
+    for (index_t i = 0; i < m_blockPrec.rows() ; ++i)
     {
         index_t inputIndex = 0;
-        for (index_t j = 0; j < blockPrec.cols(); ++j)
+        for (index_t j = 0; j < m_blockPrec.cols(); ++j)
         {
-            if (!blockPrec(i,j))// if the block is a null pointer
+            if (!m_blockPrec(i,j))// if the block is a null pointer
             {
                 inputIndex += blockInputPositions(j);
                 continue;
             }
 
             gsMatrix<T> tmp_result;
-            blockPrec(i,j)->apply(input.block(inputIndex,0,blockInputPositions(j),input.cols()),tmp_result);
+            m_blockPrec(i,j)->apply(input.block(inputIndex,0,blockInputPositions(j),input.cols()),tmp_result);
             resultBlocks(i) += tmp_result;
             inputIndex += blockInputPositions(j);
         }
     }
-}
-
-template<typename T>
-const typename gsBlockOp<T>::BasePtr & gsBlockOp<T>::getOperator(index_t row, index_t col) const
-{
-    GISMO_ASSERT((bool)blockPrec(row, col)!=0, "No linear operator exists in this block");
-    return blockPrec(row,col);
 }
 
 }

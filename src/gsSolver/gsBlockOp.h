@@ -72,8 +72,12 @@ public:
     * @brief Returns the pointer to a linear operator of a specific block (if existent)
     * @param row row position in the block operator
     * @param col column position in the block operator
+    *
+    * @note  The result can be a null-pointer
     */
-    const BasePtr & getOperator(index_t row, index_t col) const;
+    const BasePtr & getOperator(index_t row, index_t col) const {
+        return m_blockPrec(row,col);
+    }
 
     /**
      * @brief Apply the correct segment of the input vector on the preconditioners in the block structure and store the result.
@@ -83,16 +87,16 @@ public:
     void apply(const gsMatrix<T> & input, gsMatrix<T> & result) const;
 
     /// Number of row blocks
-    index_t rowBlocks() const {return blockPrec.rows();}
+    index_t rowBlocks() const {return m_blockPrec.rows();}
     /// Number of col blocks
-    index_t colBlocks() const {return blockPrec.cols();}
+    index_t colBlocks() const {return m_blockPrec.cols();}
 
     index_t rows() const {return blockTargetPositions.sum();}
     index_t cols() const {return blockInputPositions.sum() ;}
 
 private:
 
-    Eigen::Array<BasePtr, Dynamic, Dynamic> blockPrec;
+    Eigen::Array<BasePtr, Dynamic, Dynamic> m_blockPrec;
 
     //Contains the size of the target vector for each block
     gsVector<index_t> blockTargetPositions;
