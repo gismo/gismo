@@ -45,10 +45,10 @@ void gsBlockOp<T>::addOperator(index_t row, index_t col, const BasePtr& op)
 template<typename T>
 void gsBlockOp<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & result) const
 {
-    result.setZero(blockTargetPositions.sum(), input.cols());
+    result.setZero(m_blockTargetPositions.sum(), input.cols());
     gsVector<index_t> singleCol(1);
     singleCol <<  input.cols();
-    typename gsMatrix<T>::BlockView resultBlocks = result.blockView(blockTargetPositions, singleCol);
+    typename gsMatrix<T>::BlockView resultBlocks = result.blockView(m_blockTargetPositions, singleCol);
 
     for (index_t i = 0; i < m_blockPrec.rows() ; ++i)
     {
