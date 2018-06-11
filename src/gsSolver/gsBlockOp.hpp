@@ -18,8 +18,8 @@ template<typename T>
 gsBlockOp<T>::gsBlockOp(index_t nRows, index_t nCols)
 {
     m_blockPrec.resize(nRows, nCols);
-    blockTargetPositions.setZero(nRows);
-    blockInputPositions.setZero(nCols);
+    m_blockTargetPositions.setZero(nRows);
+    m_blockInputPositions.setZero(nCols);
     // Fill up all block entries with null pointers.
     for (index_t i = 0; i < nRows; ++i)
         for (index_t j = 0; j < nCols; ++j)
@@ -31,14 +31,14 @@ void gsBlockOp<T>::addOperator(index_t row, index_t col, const BasePtr& op)
 {
     GISMO_ASSERT( row >= 0 && row < m_blockPrec.rows(), "The given row is not feasible." );
     GISMO_ASSERT( col >= 0 && col < m_blockPrec.cols(), "The given column is not feasible." );
-    GISMO_ASSERT( op->rows() == blockTargetPositions[row] || blockTargetPositions[row] == 0,
+    GISMO_ASSERT( op->rows() == m_blockTargetPositions[row] || m_blockTargetPositions[row] == 0,
                   "The size of the given preconditioner does not fit to the other preconditioners in the same row." );
-    GISMO_ASSERT( op->cols() == blockInputPositions[col] || blockInputPositions[col] == 0,
+    GISMO_ASSERT( op->cols() == m_blockInputPositions[col] || m_blockInputPositions[col] == 0,
                   "The size of the given preconditioner does not fit to the other preconditioners in the same column." );
 
     m_blockPrec(row, col) = op;
-    blockTargetPositions[row] = op->rows();
-    blockInputPositions[col] = op->cols();
+    m_blockTargetPositions[row] = op->rows();
+    m_blockInputPositions[col] = op->cols();
 }
 
 
@@ -57,14 +57,14 @@ void gsBlockOp<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & result) const
         {
             if (!m_blockPrec(i,j))// if the block is a null pointer
             {
-                inputIndex += blockInputPositions(j);
+                inputIndex += m_blockInputPositions(j);
                 continue;
             }
 
             gsMatrix<T> tmp_result;
-            m_blockPrec(i,j)->apply(input.block(inputIndex,0,blockInputPositions(j),input.cols()),tmp_result);
+            m_blockPrec(i,j)->apply(input.block(inputIndex,0,m_blockInputPositions(j),input.cols()),tmp_result);
             resultBlocks(i) += tmp_result;
-            inputIndex += blockInputPositions(j);
+            inputIndex += m_blockInputPositions(j);
         }
     }
 }

@@ -91,17 +91,17 @@ public:
     /// Number of col blocks
     index_t colBlocks() const {return m_blockPrec.cols();}
 
-    index_t rows() const {return blockTargetPositions.sum();}
-    index_t cols() const {return blockInputPositions.sum() ;}
+    index_t rows() const {return m_blockTargetPositions.sum();}
+    index_t cols() const {return m_blockInputPositions.sum() ;}
 
 private:
 
     Eigen::Array<BasePtr, Dynamic, Dynamic> m_blockPrec;
 
     //Contains the size of the target vector for each block
-    gsVector<index_t> blockTargetPositions;
+    gsVector<index_t> m_blockTargetPositions;
     //Contains the size of the input vector for each block
-    gsVector<index_t> blockInputPositions;
+    gsVector<index_t> m_blockInputPositions;
 
 };
 
