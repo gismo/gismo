@@ -28,6 +28,10 @@
 #include <gsOpennurbs/gsReadOpenNurbs.h>
 #endif
 
+#ifdef GISMO_WITH_OCC                  // Extension files
+#include <gsOpenCascade/gsReadBrep.h>
+#endif
+
 #ifdef GISMO_WITH_PSOLID               // Extension files
 #include <gsParasolid/gsReadParasolid.h>
 #endif
@@ -179,6 +183,14 @@ bool gsFileData<T>::read(String const & fn)
 #ifdef GISMO_WITH_ONURBS
     else if (ext== "3dm") 
         return read3dmFile(m_lastPath);
+#endif
+#ifdef GISMO_WITH_OCC
+    else if (ext== "brep") 
+        return readBrepFile(m_lastPath);
+    //else if (ext== "iges") 
+    //    return readIgesFile(m_lastPath);
+    //else if (ext== "step") 
+    //    return readStepFile(m_lastPath);    
 #endif
 #ifdef GISMO_WITH_PSOLID
     else if (ext== "xmt_txt")
@@ -1530,6 +1542,19 @@ bool gsFileData<T>::readObjFile( String const & fn )
     return true;
 }
 
+
+template<class T>
+bool gsFileData<T>::readBrepFile( String const & fn )
+{
+    #ifdef GISMO_WITH_OCC
+    return extensions::gsReadBrep( fn.c_str(), *data);
+#else
+    GISMO_UNUSED(fn);
+    return false;
+#endif
+}
+
+
 template<class T>
 bool gsFileData<T>::readIgesFile( String const & fn )
 {    
@@ -1547,8 +1572,6 @@ bool gsFileData<T>::readIgesFile( String const & fn )
     // not implemented:
     return false;
 }
-
-
 
 template<class T>
 void gsFileData<T>::addX3dShape(gsXmlNode * shape)
@@ -1746,25 +1769,32 @@ bool gsFileData<T>::readX3dFile( String const & fn )
     return true;
 }
 
-#ifdef GISMO_WITH_ONURBS
 template<class T>
 bool gsFileData<T>::read3dmFile( String const & fn )
 {
+#ifdef GISMO_WITH_ONURBS
     return extensions::gsReadOpenNurbs( fn.c_str(), *data);
-}
+    #else
+    GISMO_UNUSED(fn);
+    return false;
 #endif
+}
 
-#ifdef GISMO_WITH_PSOLID
+
 template<class T>
 bool gsFileData<T>::readParasolidFile( String const & fn )
 {
     // Remove extension and pass to parasolid
     //int lastindex = fn.find_last_of(".");
     //return extensions::gsReadParasolid( fn.substr(0, lastindex).c_str(), *data);
-
+#ifdef GISMO_WITH_PSOLID
     return extensions::gsReadParasolid( fn.c_str(), *data);
-}
+    #else
+    GISMO_UNUSED(fn);
+    return false;
 #endif
+}
+
 
 template<class T> 
 std::string 

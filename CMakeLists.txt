@@ -243,6 +243,13 @@ if(GISMO_WITH_TRILINOS)
   include_directories(${TRILINOS_INCLUDE_DIR})
 endif(GISMO_WITH_TRILINOS)
 
+if(GISMO_WITH_OCC)
+  add_subdirectory(extensions/gsOpenCascade)
+  set (GISMO_INCLUDE_DIRS ${OCC_INCLUDE_DIRS} ${OCC_INCLUDE_DIR} 
+  CACHE INTERNAL "${PROJECT_NAME} include directories") 
+  include_directories(${OCC_INCLUDE_DIR})
+endif(GISMO_WITH_OCC)
+
 ## #################################################################
 ## Build G+Smo library instantized for GISMO_COEFF_TYPE number type
 ## #################################################################

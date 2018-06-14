@@ -104,6 +104,11 @@ if  (${GISMO_WITH_MPQ})
 message ("  GISMO_WITH_MPQ          ${GISMO_WITH_MPQ}")
 endif()
 
+option(GISMO_WITH_OCC            "With OpenCascade"          false  )
+if  (${GISMO_WITH_OCC})
+message ("  GISMO_WITH_OCC          ${GISMO_WITH_OCC}")
+endif()
+
 option(GISMO_WITH_ONURBS         "With OpenNurbs"            false  )
 if  (${GISMO_WITH_ONURBS})
 message ("  GISMO_WITH_ONURBS       ${GISMO_WITH_ONURBS}")
