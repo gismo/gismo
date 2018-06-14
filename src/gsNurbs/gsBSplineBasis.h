@@ -487,6 +487,14 @@ public:
         m_p-=i; m_knots.degreeDecrease(i);
     }
 
+    /// Elevate spline continuity at interior knots by \a i
+    void elevateContinuity(int const & i = 1) 
+    { 
+        GISMO_ASSERT( i>=0 && ( m_knots.size()>static_cast<size_t>(2*(m_p+1)) || i<=m_p ), 
+                      "Cannot achieve continuity less than C^{-1} at interior knots.");
+        m_knots.reduceMultiplicity(i);
+    }
+
     /// Reduces spline continuity at interior knots by \a i
     void reduceContinuity(int const & i = 1) 
     { 

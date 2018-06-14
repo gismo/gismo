@@ -520,6 +520,9 @@ void gsBasis<T>::setDegreePreservingMultiplicity(int const& i)
     }
 }
 
+template<class T>
+void gsBasis<T>::elevateContinuity(int const & i)
+{ GISMO_NO_IMPLEMENTATION }
 
 template<class T>
 void gsBasis<T>::reduceContinuity(int const & i)

@@ -862,6 +862,9 @@ public:
     /// @brief Set the degree of the basis (either increase or
     /// decrecee) in order to have degree equal to \a i
     void setDegreePreservingMultiplicity(int const& i);
+    
+    /// @brief Elevates the continuity of the basis along element boundaries
+    virtual void elevateContinuity(int const & i = 1);
 
     /// @brief Reduces the continuity of the basis along element boundaries
     virtual void reduceContinuity(int const & i = 1);

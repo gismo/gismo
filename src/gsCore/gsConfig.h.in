@@ -56,12 +56,6 @@
 #cmakedefine GISMO_WITH_UMFPACK
 #cmakedefine GISMO_WITH_UNUM
 
-#cmakedefine GISMO_BUILD_MULTIPRECISION
-
-#ifdef GISMO_BUILD_MULTIPRECISION
-#include <gsMultiPrecision/gsMultiPrecision.h>
-#endif
-
 #ifdef GISMO_WITH_MPFR
 #include <mpreal.h>
 #endif
