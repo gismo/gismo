@@ -14,31 +14,33 @@
 #include <gsOpenCascade/gsReadBrep.h>
 
 
+#include <TopoDS.hxx>
+#include <TopoDS_Shape.hxx>
+#include <TopoDS_Face.hxx>
+#include <TopoDS_Edge.hxx>
+#include <TopExp_Explorer.hxx>
+
 #include <TopExp.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
-#include <BRepBuilderAPI_MakeFace.hxx>
 #include <AIS_TexturedShape.hxx>
 #include <BRepTools.hxx>
 #include <Graphic3d_Texture2D.hxx>
 #include <BRep_Tool.hxx>
-#include <TopoDS.hxx>
-#include <BRepBuilderAPI_Transform.hxx>
+
 #include <BRep_Builder.hxx>
 #include <BRepTools.hxx>
 #include <Geom_Surface.hxx>
 #include <TopoDS_Face.hxx>
 #include <V3d_DirectionalLight.hxx>
 
-
-#include "BRepTools.hxx"
-#include "BRep_Tool.hxx"
-#include "BRep_Builder.hxx"
-#include "BRepLib.hxx"
-#include "BRepGProp.hxx"
-#include "GProp_GProps.hxx"
-
-#include "ShapeBuild_ReShape.hxx"
-#include "BRepCheck_Analyzer.hxx"
+#include <BRepTools.hxx>
+#include <BRep_Tool.hxx>
+#include <BRep_Builder.hxx>
+#include <BRepLib.hxx>
+#include <BRepGProp.hxx>
+#include <GProp_GProps.hxx>
+#include <ShapeBuild_ReShape.hxx>
+#include <BRepCheck_Analyzer.hxx>
 
 #include "ShapeFix_Shape.hxx"
 #include "ShapeFix_Wireframe.hxx"
@@ -46,12 +48,29 @@
 #include "ShapeFix_FixSmallFace.hxx"
 #include "ShapeFix_Wireframe.hxx"
 
-#include <TopoDS.hxx>
-#include <TopoDS_Shape.hxx>
-#include <TopoDS_Face.hxx>
-#include <TopoDS_Edge.hxx>
-#include <TopExp_Explorer.hxx>
+#include <BRepTools.hxx>
+#include <BRep_Tool.hxx>
+#include <BRepMesh.hxx>
+#include <BRepMesh_IncrementalMesh.hxx>
 
+#include <BRepBuilderAPI_Transform.hxx>
+#include <BRepBuilderAPI_NurbsConvert.hxx>
+#include "BRepBuilderAPI_MakeVertex.hxx"
+#include "BRepBuilderAPI_MakeShell.hxx"
+#include "BRepBuilderAPI_MakeSolid.hxx"
+#include <BRepBuilderAPI_MakeFace.hxx>
+
+#include "BRepOffsetAPI_Sewing.hxx"
+
+#include <GeomAdaptor_Curve.hxx>
+#include <Geom_Line.hxx>
+#include <Geom_BSplineSurface.hxx>
+#include <GeomConvert.hxx>
+
+#include <Geom2dAdaptor_Curve.hxx>
+#include <Geom2dConvert.hxx>
+#include <Geom2d_TrimmedCurve.hxx>
+#include <Geom2d_Line.hxx>
 
 #include <IGESControl_Controller.hxx>
 #include <IGESControl_Reader.hxx>
@@ -61,43 +80,8 @@
 #include <STEPControl_Reader.hxx>
 #include <STEPControl_Writer.hxx>
 
-#include <BRepTools.hxx>
-#include <BRep_Tool.hxx>
-#include <BRepMesh.hxx>
-#include <BRepMesh_IncrementalMesh.hxx>
-
-
 #include <StlAPI_Writer.hxx>
 #include <VrmlAPI_Writer.hxx>
-
-
-#include "BRepBuilderAPI_MakeVertex.hxx"
-#include "BRepBuilderAPI_MakeShell.hxx"
-#include "BRepBuilderAPI_MakeSolid.hxx"
-#include "BRepOffsetAPI_Sewing.hxx"
-
-
-
-#include <Geom_BSplineSurface.hxx>
-
-
-
-#include <GeomAdaptor_Curve.hxx>
-#include <Geom2dAdaptor_Curve.hxx>
-
-#include <Geom_Line.hxx>
-
-
-#include <GeomConvert.hxx>
-#include <Geom2dConvert.hxx>
-
-#include <Geom2d_TrimmedCurve.hxx>
-
-#include <Geom2d_Line.hxx>
-
-
-#include <BRepBuilderAPI_NurbsConvert.hxx>
-
 
 namespace gismo {
 
@@ -122,7 +106,6 @@ bool readTopoDS_Shape( const TopoDS_Shape & inputShape, internal::gsXmlTree & da
     const TopoDS_Shape & shape = conv.Shape();
     //healGeometry(1e-6,true,true,true,false,false);
     BRepTools::Clean(shape);
-
 
     //-------------- Phase I -- make map
 
@@ -310,10 +293,10 @@ bool readTopoDS_Shape( const TopoDS_Shape & inputShape, internal::gsXmlTree & da
     {
         TopoDS_Vertex v = TopoDS::Vertex(vertices_map(i));
         gp_Pnt pt = BRep_Tool::Pnt(v);
-        std::cout<<"Vertex "<<i <<": ("<< pt.X() <<", "<< pt.Y() <<", "<< pt.Z() <<" )\n";
+        gsInfo<<"Vertex "<<i <<": ("<< pt.X() <<", "<< pt.Y() <<", "<< pt.Z() <<" )\n";
     }
-    std::cout << nvertices << " Vertices imported" << std::endl;
-    std::cout << "----------------------------" << std::endl;
+    gsInfo << nvertices << " Vertices imported" << gsEndl;
+    gsInfo << "----------------------------" << gsEndl;
   
     int nedges = edges_map.Extent();
 
@@ -324,29 +307,12 @@ bool readTopoDS_Shape( const TopoDS_Shape & inputShape, internal::gsXmlTree & da
         int to = vertices_map.FindIndex(TopExp::LastVertex(edgo));
         Standard_Real aFirst, aLast;
         Handle(Geom_Curve) aCurve3d = BRep_Tool::Curve(edgo, aFirst, aLast);
-        //std::cout << fromcovn << " " << i << " " << from << " " << aFirst << std::endl;
-//    ICoVertexN fromcov(*this,fromcovn,from,i,aFirst);
-//    iterator_covertices fromcov_ptr= AddCoVertex(fromcov).first;
-//    std::cout << fromcov_ptr->num << " " << fromcov_ptr->GetEdge()->num << " " << fromcov_ptr->GetVertex()->num << " " << fromcov_ptr->U() << std::endl;
-//        int tocovn=numcov++;
-        //std::cout << tocovn << " " << i << " " << to << " " << aLast << std::endl;
-//    ICoVertexN tocov(*this,tocovn,to,i,aLast);
-//    iterator_covertices tocov_ptr=AddCoVertex(tocov).first;
-//    std::cout << tocov_ptr->num << " " << tocov_ptr->GetEdge()->num << " " << tocov_ptr->GetVertex()->num << " " << tocov_ptr->U() << std::endl;
-        bool dege=BRep_Tool::Degenerated(edgo);
-//    iterator_curves crv=end_curves();
-//    if (!dege)
-//      crv=AddCurve(ICurveOCC(ncrv,aCurve3d,BRep_Tool::Degenerated(edgo))).first;
-//    IPoint pst,pend;
-        std::cout << "* edge " << i << " fromv=" << from<<  " tov=" << to << " [start,end]= [" << aFirst << "," << aLast<<"]"<<std::endl;
-//    edg->SetFromCoVertex(fromcov_ptr);
-//    edg->SetToCoVertex(tocov_ptr);
-//    if (!dege) edg->SetSupport(crv);
-//    IEdge *edg=AddEdge(iedgo).first;
-//    std::cout << "edge " << iedgo.num << " " << edg->num << std::endl;
+        bool dege = BRep_Tool::Degenerated(edgo);
+        gsInfo << "* edge " << i << " fromv=" << from<<  " tov=" << to << " [start,end]= ["
+               << aFirst << "," << aLast<<"]" << (dege ? " !" : "")<<gsEndl;
     }
-    std::cout << nedges << " Edges imported" << std::endl;
-    std::cout << "----------------------------" << std::endl;
+    gsInfo << nedges << " Edges imported" << gsEndl;
+    gsInfo << "----------------------------" << gsEndl;
   
     int nfaces = faces_map.Extent();
     int nwires=0;
@@ -354,41 +320,12 @@ bool readTopoDS_Shape( const TopoDS_Shape & inputShape, internal::gsXmlTree & da
 
     for (int i = 1; i <= nfaces; i++)
     {
-        std::cout << "** Face " << i <<"\n";
+        gsInfo << "** Face " << i <<"\n";
       
         TopoDS_Face faceo=TopoDS::Face(faces_map(i));
         Handle(Geom_Surface) aSurface = BRep_Tool::Surface(faceo);
-
-        Handle(Geom_BSplineSurface) bspSurface = Handle(Geom_BSplineSurface)::DownCast(aSurface);
-        assert( !bspSurface.IsNull() );
-        std::cout <<"degree1="<< bspSurface->UDegree() <<", degree2="<< bspSurface->VDegree() <<"\n";
-        std::cout <<"periodic1="<< bspSurface->IsUPeriodic() <<", periodic2="<< bspSurface->IsVPeriodic() <<"\n";
-    
-        const TColStd_Array1OfReal & k1 = bspSurface->UKnots();
-        const TColStd_Array1OfReal & k2 = bspSurface->VKnots();
-        const TColStd_Array1OfInteger & mult1 = bspSurface->UMultiplicities();
-        const TColStd_Array1OfInteger & mult2 = bspSurface->VMultiplicities();    
-        std::cout <<"knots1="<< k1.Size() <<" knots2="<< k2.Size() <<"\n";
-        std::copy(k1.begin(), k1.end(), std::ostream_iterator<double>(std::cout, " ") );std::cout<<std::endl;
-        std::copy(mult1.begin(), mult1.end(), std::ostream_iterator<double>(std::cout, " ") );std::cout<<std::endl;
-        std::copy(k2.begin(), k2.end(), std::ostream_iterator<double>(std::cout, " ") );std::cout<<std::endl;
-        std::copy(mult2.begin(), mult2.end(), std::ostream_iterator<double>(std::cout, " ") );std::cout<<std::endl;
-    
-        const TColStd_Array2OfReal & w = *bspSurface->Weights();
-        const TColgp_Array2OfPnt   & cf = bspSurface->Poles();
-        std::cout <<"coefs1="<< bspSurface->NbUPoles() <<" coefs2="<< bspSurface->NbVPoles()<<" (i.e. "<<cf.Size() <<" ceofs.)\n";
-
-        // loop over coefficients
-        /* 
-           int aa = 0;
-           for (int r = cf.LowerRow(); r <= cf.UpperRow(); r++)
-           for(int c = cf.LowerCol(); c <= cf.UpperCol(); c++)
-           {
-           ++aa;
-           const gp_Pnt & q = cf(r,c);
-           }
-        */
-        std::cout<<std::endl;
+        
+        readGeom_Surface(aSurface, data);
 
         nsurfaces++;
         TopExp_Explorer exp_wires,exp_edges;
@@ -396,134 +333,165 @@ bool readTopoDS_Shape( const TopoDS_Shape & inputShape, internal::gsXmlTree & da
         {
             TopoDS_Wire wire = TopoDS::Wire(exp_wires.Current().Composed(faceo.Orientation()));
             nwires++;
-            std::cout <<"loop\n";
+            gsInfo <<"loop\n";
             for (exp_edges.Init(wire, TopAbs_EDGE); exp_edges.More(); exp_edges.Next())
             {
                 Standard_Real aFirst, aLast;
                 TopoDS_Edge edgeo = TopoDS::Edge(exp_edges.Current().Composed(wire.Orientation()));
                 Handle(Geom2d_Curve) aCurve2d = BRep_Tool::CurveOnSurface(edgeo,faceo, aFirst, aLast);
                 assert( !aCurve2d.IsNull() );
-/*          
-//https://www.opencascade.com/doc/occt-6.9.1/refman/html/_geom_abs___curve_type_8hxx.html#af25c179d5cabd33fddebe5a0dc96971c
-Geom2dAdaptor_Curve ad (aCurve2d);
-GeomAbs_CurveType adtype = ad.GetType();
-std::cout <<" "<< adtype<<"\n";
-// 0: GeomAbs_Line
-// 6: GeomAbs_BSplineCurve
-if ( 0 == adtype )
-{
-Handle(Geom2d_Line) l2d = Handle(Geom2d_Line)::DownCast(aCurve2d);
-assert( !l2d.IsNull() );
-}
-*/
-    int numedg=edges_map.FindIndex(edgeo);
+                /*
+                //https://www.opencascade.com/doc/occt-6.9.1/refman/html/_geom_abs___curve_type_8hxx.html#af25c179d5cabd33fddebe5a0dc96971c
+                Geom2dAdaptor_Curve ad (aCurve2d);
+                GeomAbs_CurveType adtype = ad.GetType();
+                gsInfo <<" "<< adtype<<"\n";
+                // 0: GeomAbs_Line
+                // 6: GeomAbs_BSplineCurve
+                if ( 0 == adtype )
+                {
+                Handle(Geom2d_Line) l2d = Handle(Geom2d_Line)::DownCast(aCurve2d);
+                assert( !l2d.IsNull() );
+                }
+                */
+                int numedg=edges_map.FindIndex(edgeo);
 
-/*
-  if (BRep_Tool::Degenerated(edgeo))
-  {
-  iterator_edges ptredg=GetEdge(numedg);
-  IBrep::iterator_covertices from=ptredg->GetFromCoVertex();
-  IBrep::iterator_covertices to=ptredg->GetToCoVertex();
-  from->U() =aFirst;
-  to->U() =aLast;
-  }
-*/
-//        ICurveOCC coo(numcrv,aCurve2d,BRep_Tool::Degenerated(edgeo));
-//        AddCurve(coo);
-//        IPoint pst,pend;
-//        coo.P(aFirst,pst);
-//        coo.P(aLast,pend);
-    std::cout << "   edge " << numedg << ", orif=" << faceo.Orientation() << ", oriw=" << wire.Orientation() << ", orie= " << edgeo.Orientation() <<  ", param=[" << aFirst
-        //<< " " << pst[0] << " " << pst[1] << " " << pst[2] << " "
-              << ", " <<  aLast <<"] "
-        //<< " " << pend[0] << " " << pend[1] << " " << pend[2]
-              <<std::endl;
-//        coo.SetEdge();
-//        ICoEdgeN coe(*this,ncoedges,numedg, (1-edgeo.Orientation() *2),i);
-//        ptredg->AddCoEdge(ncoedges);
-//        coe.SetSupport(numcrv);
-//        IBrep::iterator_coedges coep= AddCoEdge(coe).first;
-//        loop.push_back(coep);        
+                gsInfo << "   edge " << numedg << ", orif=" << faceo.Orientation() << ", oriw=" << wire.Orientation() << ", orie= " << edgeo.Orientation() <<  ", param=[" << aFirst
+                    //<< " " << pst[0] << " " << pst[1] << " " << pst[2] << " "
+                       << ", " <<  aLast <<"] "
+                    //<< " " << pend[0] << " " << pend[1] << " " << pend[2]
+                       <<gsEndl;
 
-    // get the bspline trimming curve
-    Handle(Geom2d_BSplineCurve) bsp2d =  Handle(Geom2d_BSplineCurve)::DownCast(aCurve2d);
-    assert( !bsp2d.IsNull() );
-    std::cout <<"degree="<< bsp2d->Degree() <<", periodic="<<bsp2d->IsPeriodic()<<", rational="<<bsp2d->IsRational()<<", numCoefs="<<bsp2d->NbPoles()<<", knots:\n";
-
-    const TColStd_Array1OfReal & rKnots = bsp2d->KnotSequence();
-    //const TColStd_Array1OfReal & uKnots = bsp2d->Knots();
-    //const TColStd_Array1OfInteger & Kmult = bsp2d->Multiplicities();
-    std::copy(rKnots.begin(), rKnots.end(), std::ostream_iterator<double>(std::cout, " ") );std::cout<<std::endl;
-
-    const TColgp_Array1OfPnt2d & ccfs = bsp2d->Poles();
-    const TColStd_Array1OfReal & cwgts = *bsp2d->Weights();
-
-    for(int c = ccfs.Lower(); c <= ccfs.Upper(); c++)
-    {
-        const gp_Pnt2d & q = ccfs(c);
-        std::cout<<" ["<<q.X() <<", "<< q.Y()<< "]";
-    }
-    std::cout<<std::endl;
-                
-
+                // get the bspline trimming curve
+                readGeom2d_Curve(aCurve2d, data);
             }
-//      ifaceo.AddLoop(loop);
+
+            //###addloop
         }
-//    AddFace(ifaceo).first;
+        
+        //###addface
+        
     }
-    std::cout << nfaces << " Faces imported" << std::endl;
-    std::cout << nsurfaces << " Surfaces imported" << std::endl;
-    std::cout << nwires << " Loops imported" << std::endl;
-    std::cout << "----------------------------" << std::endl;
+    gsInfo << nfaces << " Faces imported" << gsEndl;
+    gsInfo << nsurfaces << " Surfaces imported" << gsEndl;
+    gsInfo << nwires << " Loops imported" << gsEndl;
+    gsInfo << "----------------------------" << gsEndl;
 
     int nvolumes = solids_map.Extent();
     int nshells=0;
-    int ncofaces=0;
+    //int ncofaces=0;
 
     for(int i = 1; i <= nvolumes; i++)
     {
 
-        std::cout << "*** Volume " << i <<"\n";
+        gsInfo << "*** Volume " << i <<"\n";
             
         TopoDS_Solid solido=TopoDS::Solid(solids_map(i));
-//    IVolumeOCC ivol(i,solido);
         TopExp_Explorer exp_shells,exp_faces;
-//    iterator_volumes vol=AddVolume(ivol).first;
         for (exp_shells.Init(solido, TopAbs_SHELL); exp_shells.More(); exp_shells.Next())
         {
             TopoDS_Shell shell = TopoDS::Shell(exp_shells.Current().Composed(solido.Orientation()));
             nshells++;
-//      IShellPtr ishell;
             for (exp_faces.Init(shell, TopAbs_FACE); exp_faces.More(); exp_faces.Next())
             {
                 TopoDS_Face faceo = TopoDS::Face(exp_faces.Current().Composed(shell.Orientation()));
-
                 int numface=faces_map.FindIndex(faceo);
                 gsInfo<<" "<<numface;
-//        iterator_faces ptrface=GetFace(numface);
-//        ICoFaceN cof(*this,ncofaces,numface, (1-solido.Orientation() *2),i);
-//        iterator_cofaces pcof=AddCoFace(cof).first;
-//        ishell.push_back(pcof);
-//        ptrface->AddCoFace(pcof);
-                ncofaces++;
+                //ncofaces++;
             }
-//      vol->AddShell(ishell);
+            //###addshell
         }
-        std::cout << std::endl;
+        gsInfo << gsEndl;
     }
-    std::cout << nvolumes << " Volumes imported" << std::endl;
-    std::cout << nshells << " Shells imported" << std::endl;
-    std::cout << ncofaces << " Cofaces imported" << std::endl;
-    std::cout << "----------------------------" << std::endl;
-//  UpdateAll();
+    gsInfo << nvolumes << " Volumes imported" << gsEndl;
+    gsInfo << nshells  << " Shells imported" << gsEndl;
+    //gsInfo << ncofaces << " Cofaces imported" << gsEndl;
+    gsInfo << "----------------------------" << gsEndl;
 
     return true;
 }
 
 
+bool readGeom_Surface(const Handle(Geom_Surface)& S, internal::gsXmlTree & data  )
+{
+    Handle(Geom_BSplineSurface) ds = Handle(Geom_BSplineSurface)::DownCast(S);
+    if ( !ds.IsNull() ) return readGeom_BSplineSurface(ds, data);
+    return false;
+}
 
 
+bool readGeom_BSplineSurface( const opencascade::handle<Geom_BSplineSurface> & S, internal::gsXmlTree & data  )
+{
+    gsInfo <<"degree1="<< S->UDegree() <<", degree2="<< S->VDegree() <<"\n";
+    gsInfo <<"periodic1="<< S->IsUPeriodic() <<", periodic2="<< S->IsVPeriodic() <<"\n";
+    
+    const TColStd_Array1OfReal & k1 = S->UKnots();
+    const TColStd_Array1OfReal & k2 = S->VKnots();
+    const TColStd_Array1OfInteger & mult1 = S->UMultiplicities();
+    const TColStd_Array1OfInteger & mult2 = S->VMultiplicities();    
+    gsInfo <<"knots1="<< k1.Size() <<" knots2="<< k2.Size() <<"\n";
+    std::copy(k1.begin(), k1.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
+    std::copy(mult1.begin(), mult1.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
+    std::copy(k2.begin(), k2.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
+    std::copy(mult2.begin(), mult2.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
 
+    const TColStd_Array1OfReal & knotSeq1 = S->UKnotSequence(); // with multiplicities
+    const TColStd_Array1OfReal & knotSeq2 = S->VKnotSequence();
+
+    if(S->IsURational() || S->IsVRational() )
+    {
+        const TColStd_Array2OfReal & w = *S->Weights();
+    }
+
+    const TColgp_Array2OfPnt   & cf = S->Poles(); // control points
+    gsInfo <<"coefs1="<< S->NbUPoles() <<" coefs2="<< S->NbVPoles()<<" (i.e. "<<cf.Size() <<" ceofs.)\n";
+    
+    // loop over coefficients
+    /* 
+       int aa = 0;
+       for (int r = cf.LowerRow(); r <= cf.UpperRow(); r++)
+       for(int c = cf.LowerCol(); c <= cf.UpperCol(); c++)
+       {
+       ++aa;
+       const gp_Pnt & q = cf(r,c);
+       gsInfo<<" ["<<q.X() <<", "<< q.Y()<< ", "<< q.Z() << "]";
+       }
+    */
+    gsInfo<<gsEndl;
+    return true;
+}
+
+bool readGeom2d_Curve( const opencascade::handle<Geom2d_Curve> & C, internal::gsXmlTree & data  )
+{
+    Handle(Geom2d_BSplineCurve) ds = Handle(Geom2d_BSplineCurve)::DownCast(C);
+    if ( !ds.IsNull() ) return readGeom2d_BSplineCurve(ds, data);
+    return false;
+}
+
+bool readGeom2d_BSplineCurve( const opencascade::handle<Geom2d_BSplineCurve> & bsp2d, internal::gsXmlTree & data  )
+{
+    gsInfo <<"degree="<< bsp2d->Degree() <<", periodic="<<bsp2d->IsPeriodic()<<", rational="<<bsp2d->IsRational()<<", numCoefs="<<bsp2d->NbPoles()<<", knots:\n";
+
+    const TColStd_Array1OfReal & rKnots = bsp2d->KnotSequence();
+    //const TColStd_Array1OfReal & uKnots = bsp2d->Knots();
+    //const TColStd_Array1OfInteger & Kmult = bsp2d->Multiplicities();
+    std::copy(rKnots.begin(), rKnots.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
+
+    const TColgp_Array1OfPnt2d & ccfs = bsp2d->Poles();
+
+    if (bsp2d->IsRational())
+    {
+        const TColStd_Array1OfReal & cwgts = *bsp2d->Weights();
+    }
+
+    for(int c = ccfs.Lower(); c <= ccfs.Upper(); c++)
+    {
+        const gp_Pnt2d & q = ccfs(c);
+        gsInfo<<" ["<<q.X() <<", "<< q.Y()<< "]";
+    }
+    gsInfo <<gsEndl;
+
+    return true;
+}
 
 }// namespace extensions
 

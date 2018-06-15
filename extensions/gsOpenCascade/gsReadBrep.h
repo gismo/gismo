@@ -17,7 +17,9 @@
 
 #include <gsIO/gsXml.h>
 
-template<class O> class Handle;
+#define gsEndl std::endl
+
+namespace opencascade { template<class O> class handle; }
 class TopoDS_Shape;
 class Geom_Surface;
 class Geom_BSplineSurface;
@@ -36,16 +38,16 @@ bool gsReadBrep(const char * filename, internal::gsXmlTree & data);
 bool readTopoDS_Shape( const TopoDS_Shape & shape, internal::gsXmlTree & data  );
 
 /// Extracts a surface
-bool readGeom_Surface( const Handle<Geom_Surface> & S, internal::gsXmlTree & data  );
+bool readGeom_Surface( const opencascade::handle<Geom_Surface> & S, internal::gsXmlTree & data  );
 
 /// Extracts a B-spline surface
-bool readGeom_BSplineSurface( const Handle<Geom_BSplineSurface> & S, internal::gsXmlTree & data  );
+bool readGeom_BSplineSurface( const opencascade::handle<Geom_BSplineSurface> & S, internal::gsXmlTree & data  );
 
 /// Extracts a 2d curve
-bool readGeom2d_Curve( const Handle<Geom2d_Curve> & C, internal::gsXmlTree & data  );
+bool readGeom2d_Curve( const opencascade::handle<Geom2d_Curve> & C, internal::gsXmlTree & data  );
 
 /// Extracts a 2d B-spline curve
-bool readGeom2d_BSplineCurve( const Handle<Geom2d_BSplineCurve> & S, internal::gsXmlTree & data  );
+bool readGeom2d_BSplineCurve( const opencascade::handle<Geom2d_BSplineCurve> & bsp2d, internal::gsXmlTree & data  );
 
 }
 
