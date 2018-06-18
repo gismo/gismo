@@ -181,6 +181,27 @@ if(GISMO_WITH_MPI)
   include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 endif(GISMO_WITH_MPI)
 
+if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
+  find_package(GMP QUIET)
+  find_package(MPFR QUIET)
+
+  if (NOT GMP_FOUND OR NOT MPFR_FOUND)
+    add_subdirectory(extensions/gsMultiPrecision)
+  endif()
+
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${GMP_INCLUDE_DIR})
+
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPFR_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY}
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  include_directories(SYSTEM ${MPFR_INCLUDE_DIR})
+endif()
+
 if(GISMO_WITH_ONURBS)
   add_subdirectory(extensions/gsOpennurbs)
 endif(GISMO_WITH_ONURBS)
