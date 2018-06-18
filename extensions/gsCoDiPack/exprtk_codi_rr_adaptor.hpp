@@ -17,7 +17,7 @@
 #include <string>
 #include <gsCoDiPack/gsCoDiPack.h>
 
-#include "exprtk_code_rr_forward.hpp"
+#include "exprtk_codi_rr_forward.hpp"
 #include "exprtk.hpp"
 
 namespace exprtk
