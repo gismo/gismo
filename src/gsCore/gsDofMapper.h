@@ -173,7 +173,7 @@ public:
         std::swap(m_numElimDofs, other.m_numElimDofs);
         std::swap(m_numCpldDofs, other.m_numCpldDofs);
         std::swap(m_curElimId  , other.m_curElimId);
-	std::swap(m_tagged     , other.m_tagged);
+        std::swap(m_tagged     , other.m_tagged);
     }
 
 private:
