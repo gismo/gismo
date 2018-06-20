@@ -421,21 +421,126 @@ bool readGeom_Surface(const Handle(Geom_Surface)& S, internal::gsXmlTree & data 
 
 bool readGeom_BSplineSurface( const opencascade::handle<Geom_BSplineSurface> & S, internal::gsXmlTree & data  )
 {
+    internal::gsXmlNode* parent = data.first_node("xml") ;
+
+    internal::gsXmlNode* g = internal::makeNode("Geometry", data);
+    parent->append_node(g);
+    internal::gsXmlNode* basis = internal::makeNode("Basis", data);
+    internal::gsXmlNode* basis_rat = 0;
+
+    if ( S->IsURational() || S->IsVRational() )
+      {
+        g->append_attribute( internal::makeAttribute("type", "TensorNurbs2", data) );
+        basis_rat = internal::makeNode("Basis", data);
+        basis_rat->append_attribute( internal::makeAttribute("type", "TensorNurbsBasis2", data) );
+        basis = internal::makeNode("Basis", data);
+        basis->append_attribute( internal::makeAttribute("type", "TensorBSplineBasis2", data) );
+        basis_rat->append_node(basis);
+        g->append_node(basis_rat);
+      }
+    else
+      {
+        g->append_attribute( internal::makeAttribute("type", "TensorBSpline2", data) );
+        basis->append_attribute( internal::makeAttribute("type", "TensorBSplineBasis2", data) );
+        g->append_node(basis);
+      }
+
+    if(S->IsUPeriodic())
+        S->SetUNotPeriodic();
+    if(S->IsVPeriodic())
+        S->SetVNotPeriodic();
+
+    int deg1 = S->UDegree();
+    int deg2 = S->VDegree();
+    const TColStd_Array1OfReal & knotSeq1 = S->UKnotSequence();
+    const TColStd_Array1OfReal & knotSeq2 = S->VKnotSequence();
+    int knot_count1 = knotSeq1.Length();
+    int knot_count2 = knotSeq2.Length();
+
+    for (int dir = 0; dir < 2; dir++ )
+    {
+        std::ostringstream tmp;
+        tmp << std::setprecision(16);
+        internal::gsXmlNode* b = internal::makeNode("Basis", data);
+        b->append_attribute( internal::makeAttribute("type", "BSplineBasis", data) );
+        b->append_attribute( internal::makeAttribute("index", dir, data) );
+        basis->append_node(b);
+        int deg;
+
+        if(dir == 0)
+        {
+            deg = deg1;
+            for(int k=1; k<=knot_count1; k++)
+                tmp <<" "<< knotSeq1(k);
+
+        }
+        else
+        {
+            deg = deg2;
+            for(int k=1; k<=knot_count2; k++)
+                tmp <<" "<< knotSeq2(k);
+        }
+        internal::gsXmlNode* kn = internal::makeNode("KnotVector", tmp.str(), data);
+        kn->append_attribute( internal::makeAttribute("degree", deg, data ) ) ;
+        b->append_node(kn);
+    }
+
+
+    std::ostringstream tmp;
+    tmp << std::setprecision(16);
+    const int pole_countU = S->NbUPoles();
+    const int pole_countV = S->NbVPoles();
+    if ( pole_countU*pole_countV == 0 )
+    {
+        gsWarn<<"gsReadBrep: NULL Poles (control points) array\n";
+    }
+    else // read control points (reversed lex order wrt Gismo!)
+    {
+        tmp<<"\n";
+        for(int i=1; i<=pole_countV; i++)
+        {
+            for(int j=1; j<=pole_countU; j++)
+            {
+                gp_Pnt p = S->Pole(j,i);
+                tmp <<p.X()<<" "<<p.Y()<<" "<<p.Z()<<"\n";
+            }
+        }
+    }
+
+    internal::gsXmlNode* c = internal::makeNode("coefs", tmp.str(), data);
+    c->append_attribute( internal::makeAttribute("geoDim", 3, data ) );
+    g->append_node(c);
+
+    if ( S->IsURational() || S->IsVRational() )
+      {
+        std::ostringstream weight;
+        weight << std::setprecision(16);
+        weight <<"\n";
+        for(int i=1; i<=pole_countV; i++)
+        {
+            for(int j=1; j<=pole_countU; j++)
+            {
+                double w = S->Weight(j,i);
+                weight <<w<<"\n";
+            }
+        }
+        c = internal::makeNode("weights", weight.str(), data);
+        basis_rat->append_node(c);
+      }
+
     gsInfo <<"degree1="<< S->UDegree() <<", degree2="<< S->VDegree() <<"\n";
     gsInfo <<"periodic1="<< S->IsUPeriodic() <<", periodic2="<< S->IsVPeriodic() <<"\n";
     
     const TColStd_Array1OfReal & k1 = S->UKnots();
     const TColStd_Array1OfReal & k2 = S->VKnots();
     const TColStd_Array1OfInteger & mult1 = S->UMultiplicities();
-    const TColStd_Array1OfInteger & mult2 = S->VMultiplicities();    
+    const TColStd_Array1OfInteger & mult2 = S->VMultiplicities();
     gsInfo <<"knots1="<< k1.Size() <<" knots2="<< k2.Size() <<"\n";
     std::copy(k1.begin(), k1.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
     std::copy(mult1.begin(), mult1.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
     std::copy(k2.begin(), k2.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
     std::copy(mult2.begin(), mult2.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
 
-    const TColStd_Array1OfReal & knotSeq1 = S->UKnotSequence(); // with multiplicities
-    const TColStd_Array1OfReal & knotSeq2 = S->VKnotSequence();
 
     if(S->IsURational() || S->IsVRational() )
     {
@@ -446,7 +551,7 @@ bool readGeom_BSplineSurface( const opencascade::handle<Geom_BSplineSurface> & S
     gsInfo <<"coefs1="<< S->NbUPoles() <<" coefs2="<< S->NbVPoles()<<" (i.e. "<<cf.Size() <<" ceofs.)\n";
     
     // loop over coefficients
-    /* 
+
        int aa = 0;
        for (int r = cf.LowerRow(); r <= cf.UpperRow(); r++)
        for(int c = cf.LowerCol(); c <= cf.UpperCol(); c++)
@@ -455,7 +560,7 @@ bool readGeom_BSplineSurface( const opencascade::handle<Geom_BSplineSurface> & S
        const gp_Pnt & q = cf(r,c);
        gsInfo<<" ["<<q.X() <<", "<< q.Y()<< ", "<< q.Z() << "]";
        }
-    */
+
     gsInfo<<gsEndl;
     return true;
 }
@@ -469,26 +574,97 @@ bool readGeom2d_Curve( const opencascade::handle<Geom2d_Curve> & C, internal::gs
 
 bool readGeom2d_BSplineCurve( const opencascade::handle<Geom2d_BSplineCurve> & bsp2d, internal::gsXmlTree & data  )
 {
-    gsInfo <<"degree="<< bsp2d->Degree() <<", periodic="<<bsp2d->IsPeriodic()<<", rational="<<bsp2d->IsRational()<<", numCoefs="<<bsp2d->NbPoles()<<", knots:\n";
+/*
 
-    const TColStd_Array1OfReal & rKnots = bsp2d->KnotSequence();
-    //const TColStd_Array1OfReal & uKnots = bsp2d->Knots();
-    //const TColStd_Array1OfInteger & Kmult = bsp2d->Multiplicities();
-    std::copy(rKnots.begin(), rKnots.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
+    internal::gsXmlNode* parent = data.first_node("xml") ;
+    internal::gsXmlNode* g = internal::makeNode("Geometry", data);
+    parent->append_node(g);
+    internal::gsXmlNode* basis = internal::makeNode("Basis", data);
+    internal::gsXmlNode* basis_rat = 0;
 
-    const TColgp_Array1OfPnt2d & ccfs = bsp2d->Poles();
+    if ( bsp2d->IsRational() )
+      {
+        g->append_attribute( internal::makeAttribute("type", "Nurbs", data) );
+        basis_rat = internal::makeNode("Basis", data);
+        basis_rat->append_attribute( internal::makeAttribute("type", "NurbsBasis", data) );
+        basis = internal::makeNode("Basis", data);
+        basis->append_attribute( internal::makeAttribute("type", "BSplineBasis", data) );
+        basis_rat->append_node(basis);
+        g->append_node(basis_rat);
+      }
+    else
+      {
+        g->append_attribute( internal::makeAttribute("type", "BSpline", data) );
+        basis->append_attribute( internal::makeAttribute("type", "BSplineBasis", data) );
+        g->append_node(basis);
+      }
 
-    if (bsp2d->IsRational())
+    std::ostringstream tmp;
+    tmp << std::setprecision(16);
+    int knot_count = bsp2d->KnotSequence().Length();
+    const TColStd_Array1OfReal & knots = bsp2d->KnotSequence();
+    for(int k=1; k<=knot_count; k++)
+        tmp <<" "<< knots(k);
+
+    internal::gsXmlNode* kn = internal::makeNode("KnotVector", tmp.str(), data);
+    kn->append_attribute( internal::makeAttribute("degree", bsp2d->Degree(), data ) ) ;
+    basis->append_node(kn);
+
+
+    tmp.clear();
+    tmp.str("");
+    int pole_count = bsp2d->NbPoles();
+    if ( pole_count == 0 )
     {
-        const TColStd_Array1OfReal & cwgts = *bsp2d->Weights();
+        gsWarn<<"gsReadBrep: NULL Poles (control points) array\n";
+    }
+    else
+    {
+        const TColgp_Array1OfPnt2d P = bsp2d->Poles();
+        tmp <<"\n";
+        for(int k=1; k<=pole_count; k++)
+            tmp << P(k).X()<<" "<< P(k).Y()<<" \n";
     }
 
-    for(int c = ccfs.Lower(); c <= ccfs.Upper(); c++)
-    {
-        const gp_Pnt2d & q = ccfs(c);
-        gsInfo<<" ["<<q.X() <<", "<< q.Y()<< "]";
-    }
-    gsInfo <<gsEndl;
+    internal::gsXmlNode* c = internal::makeNode("coefs", tmp.str(), data);
+    c->append_attribute( internal::makeAttribute("geoDim", 2, data ) );
+    g->append_node(c);
+
+
+    if ( bsp2d->IsRational() )
+      {
+        std::ostringstream weight;
+        weight << std::setprecision(16);
+        int pole_count = bsp2d->NbPoles();
+        weight <<"\n";
+        for(int k=1; k<=pole_count; k++)
+            weight << bsp2d->Weight(k)<<" ";
+        c = internal::makeNode("weights", weight.str(), data);
+        basis_rat->append_node(c);
+      }
+
+*/
+
+//    gsInfo <<"degree="<< bsp2d->Degree() <<", periodic="<<bsp2d->IsPeriodic()<<", rational="<<bsp2d->IsRational()<<", numCoefs="<<bsp2d->NbPoles()<<", knots:\n";
+
+//    const TColStd_Array1OfReal & rKnots = bsp2d->KnotSequence();
+//    //const TColStd_Array1OfReal & uKnots = bsp2d->Knots();
+//    //const TColStd_Array1OfInteger & Kmult = bsp2d->Multiplicities();
+//    std::copy(rKnots.begin(), rKnots.end(), std::ostream_iterator<double>(gsInfo, " ") );gsInfo<<gsEndl;
+
+//    const TColgp_Array1OfPnt2d & ccfs = bsp2d->Poles();
+
+//    if (bsp2d->IsRational())
+//    {
+//        const TColStd_Array1OfReal & cwgts = *bsp2d->Weights();
+//    }
+
+//    for(int c = ccfs.Lower(); c <= ccfs.Upper(); c++)
+//    {
+//        const gp_Pnt2d & q = ccfs(c);
+//        gsInfo<<" ["<<q.X() <<", "<< q.Y()<< "]";
+//    }
+//    gsInfo <<gsEndl;
 
     return true;
 }
