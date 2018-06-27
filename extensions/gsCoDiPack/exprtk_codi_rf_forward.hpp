@@ -22,7 +22,13 @@ namespace exprtk
 
 namespace details
 {
-namespace numeric { namespace details { struct codi_rf_type_tag; } }
+namespace numeric { namespace details {
+
+struct codi_rf_type_tag;
+
+template <typename T> inline T const_pi_impl(codi_rf_type_tag);
+template <typename T> inline T const_e_impl (codi_rf_type_tag);
+} } // namespace details // namespace numeric
 
 inline bool is_true (const codi::RealForward& v);
 inline bool is_false(const codi::RealForward& v);
@@ -30,15 +36,14 @@ inline bool is_false(const codi::RealForward& v);
 template <typename Iterator>
 inline bool string_to_real(Iterator& itr_external, const Iterator end, codi::RealForward& t, numeric::details::codi_rf_type_tag);
 
-}
+} // namespace details
 
 namespace helper
 {
 namespace details
 {
 inline void print_type(const std::string&, const codi::RealForward& v, exprtk::details::numeric::details::codi_rf_type_tag);
-}
-}
+} } // namespace details // namespace helper
 
 using details::is_true;
 }

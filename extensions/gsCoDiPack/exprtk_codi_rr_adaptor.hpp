@@ -108,6 +108,9 @@ template <typename T> inline T  notl_impl(const T& v, codi_rr_type_tag) { return
 template <typename T> inline T  frac_impl(const T& v, codi_rr_type_tag) { return frac (v); }
 template <typename T> inline T trunc_impl(const T& v, codi_rr_type_tag) { return trunc(v); }
 
+template <typename T> inline T const_pi_impl(codi_rr_type_tag) { return exprtk::details::constant_codi_rr::pi; }
+template <typename T> inline T const_e_impl (codi_rr_type_tag) { return exprtk::details::constant_codi_rr::e; }
+
 inline bool is_true_impl (const codi::RealReverse& v)
 {
     return 0.0 != v.getValue();
@@ -175,9 +178,9 @@ inline T erfc_impl(const T& v, codi_rr_type_tag)
 template <typename T>
 inline T ncdf_impl(const T& v, codi_rr_type_tag)
 {
-    T cnd = T(0.5) * (T(1) + erf_impl(
+    T cnd = T(0.5) * (T(1) + codi::erf(
                           abs(v) /
-                          T(exprtk::details::constant_codi_rr::sqrt2), codi_rr_type_tag()));
+                          T(exprtk::details::constant_codi_rr::sqrt2)));
     return  (v < T(0)) ? (T(1) - cnd) : cnd;
 }
 

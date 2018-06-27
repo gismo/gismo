@@ -22,7 +22,13 @@ namespace exprtk
 
 namespace details
 {
-namespace numeric { namespace details { struct codi_rr_type_tag; } }
+namespace numeric { namespace details {
+
+struct codi_rr_type_tag;
+
+template <typename T> inline T const_pi_impl(codi_rr_type_tag);
+template <typename T> inline T const_e_impl (codi_rr_type_tag);
+} } // namespace details // namespace numeric
 
 inline bool is_true (const codi::RealReverse& v);
 inline bool is_false(const codi::RealReverse& v);
@@ -37,8 +43,7 @@ namespace helper
 namespace details
 {
 inline void print_type(const std::string&, const codi::RealReverse& v, exprtk::details::numeric::details::codi_rr_type_tag);
-}
-}
+} } // namespace details // namespace helper
 
 using details::is_true;
 }
