@@ -190,6 +190,7 @@ public:
         other_.update();
     }
 
+    //void setBreaks(const gsMatrix<T> & newBreaks);
 
 private:
 
