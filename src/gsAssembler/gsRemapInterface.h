@@ -1,6 +1,6 @@
 /** @file gsRemapInterface.h
 
-    @brief
+    @brief Provides a mapping from one interface to the other one
 
     This file is part of the G+Smo library.
 
@@ -36,14 +36,84 @@ public:
     /// Unique pointer for gsAffineFunction
     typedef memory::unique_ptr< gsRemapInterface > uPtr;
 
-
+    // Default constructor
     gsRemapInterface() {};
-    gsRemapInterface(const gsMultiPatch<T> & mp): m_domain(mp)
+
+    // Constructor which takes a multipatch and a boundary interface, useful if the interface is fully matching
+    gsRemapInterface(const gsMultiPatch<T> & mp, const boundaryInterface & bi)
     {
-        GISMO_ASSERT(m_domain.nPatches() == 2, "Domain must consist of two patches!");
-        m_interface = m_domain.interfaces()[0]; // Assume that the 2 patches match
+        m_domain.addPatch(mp[bi.first().patch]); m_domain.addPatch(mp[bi.second().patch]);
+        m_interfacePatch1 = bi.first().index();
+        m_interfacePatch2 = bi.second().index();
+
+        std::vector<boxCorner> corners;
+        gsMatrix<T> inversCorners;
+
+        m_parameterbounds.first.resize(m_domain.geoDim(), 2);
+        m_parameterbounds.second.resize(m_domain.geoDim(), 2);
+
+
+        switch (m_interfacePatch1) {
+            case 1:
+                m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
+                m_parameterbounds.first(0, 0) = mp[bi.first().patch].parameterRange()(0, 0);
+                m_parameterbounds.first(0, 1) = mp[bi.first().patch].parameterRange()(0, 0);
+                break;
+            case 2:
+                m_parameterbounds.first.row(1) = mp[bi.first().patch].parameterRange().row(1);
+                m_parameterbounds.first(0, 0) = mp[bi.first().patch].parameterRange()(0, 1);
+                m_parameterbounds.first(0, 1) = mp[bi.first().patch].parameterRange()(0, 1);
+            case 3:
+                m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
+                m_parameterbounds.first(1, 0) = mp[bi.first().patch].parameterRange()(1, 0);
+                m_parameterbounds.first(1, 1) = mp[bi.first().patch].parameterRange()(1, 0);
+            case 4:
+                m_parameterbounds.first.row(0) = mp[bi.first().patch].parameterRange().row(0);
+                m_parameterbounds.first(1, 0) = mp[bi.first().patch].parameterRange()(1, 1);
+                m_parameterbounds.first(1, 1) = mp[bi.first().patch].parameterRange()(1, 1);
+        }
+
+        switch (m_interfacePatch2) {
+            case 1:
+                m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
+                m_parameterbounds.second(0, 0) = mp[bi.second().patch].parameterRange()(0, 0);
+                m_parameterbounds.second(0, 1) = mp[bi.second().patch].parameterRange()(0, 0);
+                break;
+            case 2:
+                m_parameterbounds.second.row(1) = mp[bi.second().patch].parameterRange().row(1);
+                m_parameterbounds.second(0, 0) = mp[bi.second().patch].parameterRange()(0, 1);
+                m_parameterbounds.second(0, 1) = mp[bi.second().patch].parameterRange()(0, 1);
+            case 3:
+                m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
+                m_parameterbounds.second(1, 0) = mp[bi.second().patch].parameterRange()(1, 0);
+                m_parameterbounds.second(1, 1) = mp[bi.second().patch].parameterRange()(1, 0);
+            case 4:
+                m_parameterbounds.second.row(0) = mp[bi.second().patch].parameterRange().row(0);
+                m_parameterbounds.second(1, 0) = mp[bi.second().patch].parameterRange()(1, 1);
+                m_parameterbounds.second(1, 1) = mp[bi.second().patch].parameterRange()(1, 1);
+        }
+
     }
 
+    // Constructor for the class which takes two geometries
+    gsRemapInterface(const gsGeometry<T> & g1, const gsGeometry<T> & g2)
+    {
+        m_domain.addPatch(g1); m_domain.addPatch(g2);
+        GISMO_ASSERT(m_domain.nPatches() == 2, "Domain must consist of two patches!");
+
+        m_interfacePatch1 = 0;
+        m_interfacePatch2 = 0;
+
+        findInterface();
+
+        GISMO_ASSERT(m_interfacePatch1 != 0 && m_interfacePatch2 != 0, "The two given geometries do not match!");
+
+        // if the two patches match, maybe for testing purposes
+        //m_domain.computeTopology();
+        //gsInfo << "detail: " << m_domain.detail() << "\n";
+    }
+
+    // Destructor for the class
     ~gsRemapInterface() {};
 
     // Member for constructing the reparametrization
@@ -54,159 +124,255 @@ public:
     // Fills in m_breakpoints
     void constructBreaks();
 
-    // Memeber function for evaluating the reparameterization at the quadrature nodes
-    void mapQuadNodes(); // eval_into() ???
-
     void breakpoint_iterator();
 
     // Helper to compute the closest point to lti on the other patch via Newton's method
     gsMatrix<T> closestPoint(const gsMatrix<T> b_null, const gsGeometry<T> & R, const gsMatrix<T> & lti);
 
     gsMatrix<T> giveBreakpoints() { return m_breakpoints; }
-    gsBSpline<T> giveInterfaceMap() { return m_reparamInterfaceMap; }
+    gsBSpline<T> giveInterfaceMap() { return m_fittedCurve; }
 
+    // Member to compute parametric values on the boundary from patch1 to the corresponding boundary values on patch2
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+
+    // Overloaded member to get the parameter dimension of the domain
     virtual int domainDim() const { return m_domain.geoDim(); }
 
 private:
     gsMultiPatch<T> m_domain;
     gsMatrix<T> m_breakpoints;
-    gsBSpline<T> m_reparamInterfaceMap;
+    gsBSpline<T> m_fittedCurve;
     //gsAffineFunction<T> m_affineTrans;
-    boundaryInterface m_interface;
+    //boundaryInterface m_interface; // maybe not used anymore
 
-    gsMatrix<T> m_quadNodes1, m_quadNodes2;
+    // Member to store which boundary is the interface for patch 1 and patch 2, respectively
+    index_t m_interfacePatch1;
+    index_t m_interfacePatch2;
+
+    // Member to store the parameter bounds for both patches
+    // A single matrix has the structure [lower, upper]^T
+    std::pair<gsMatrix<T>, gsMatrix<T> > m_parameterbounds;
+
+    // Member to store the indices of the basis functions for each patch which lie on the overlapping part of the interface
+    gsMatrix<unsigned > m_interfaceIndicesPatch1, m_interfaceIndicesPatch2; // gsMatrix<T> or gsSortedVector?
 
     // Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
-    void enrichToVector(const int boundarySide, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
+    void enrichToVector(const int boundarySide, const int patch, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
+
+    // Member to find the interface between the two incoming patches
+    void findInterface();
 
 }; // End gsRemapInterface
-
-
-
 
 
 
 template<class T>
 void gsRemapInterface<T>::constructBreaks() {
     // computes break points per element
-    const gsAffineFunction <T> interfaceMap(m_domain.getMapForInterface(m_interface));
 
-    const int patch1 = m_interface.first().patch; // Numeration correct when using a domain with more than two patches?
-    const int patch2 = m_interface.second().patch;
-    const gsBasis <T> &B1 = m_domain.basis(patch1);// (!) unknown 0
+    const int patch1 = 0; // Numeration correct when using a domain with more than two patches?
+    const int patch2 = 1;
+    const gsBasis <T> &B1 = m_domain.basis(patch1);
     const gsBasis <T> &B2 = m_domain.basis(patch2);
 
-/*
-    const int bSize1 = B1.numElements(m_interface.first().side()); // for hierarchical splines
-    const int bSize2 = B2.numElements(m_interface.second().side());
-    const int ratio = bSize1 / bSize2;
-    GISMO_ASSERT(bSize1 >= bSize2 && bSize1 % bSize2 == 0,
-                 "DG assumes nested interfaces. Got bSize1=" <<
-                                                             bSize1 << ", bSize2=" << bSize2 << ".");
-*/
+    // Get the interface of the patches
+    // TODO: can be moved to the constructor?!
+    gsMultiPatch<T> firstPatch(m_domain[patch1]);
+    gsMultiPatch<T> secondPatch(m_domain[patch2]);
+    firstPatch.computeTopology(); secondPatch.computeTopology();
+    std::vector<patchSide > boundariesPatch1 = firstPatch.boundaries();
+    std::vector<patchSide > boundariesPatch2 = secondPatch.boundaries();
+    patchSide patchSide1, patchSide2;
 
-    // Initialize geometry evaluators
-    //typename gsGeometry<T>::Evaluator geoEval1(m_domain[patch1].evaluator(evFlags));
-    //typename gsGeometry<T>::Evaluator geoEval2(m_domain[patch2].evaluator(evFlags));
+    typename gsBasis<T>::domainIter domIt1, domIt2;
+    gsMatrix<T> startPatch1, startPatch2;
 
-    // Initialize domain element iterators
-    // iterates along knot spans in parametric domain
-    // this alone is not sufficient to find shifted knot spans
-    typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( m_interface.first() .side() );
-    typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( m_interface.second().side() );
+    // Check which sides contain a part of the common interface
+    for(size_t i = 0; i < boundariesPatch1.size(); i++)
+        if(boundariesPatch1[i].index() == m_interfacePatch1)
+        {
+            domIt1 = B1.makeDomainIterator( boundariesPatch1[i] );
+            patchSide1 = boundariesPatch1[i];
+            startPatch1 = m_parameterbounds.first.col(0);
+        }
+
+    for(size_t i = 0; i < boundariesPatch2.size(); i++)
+        if(boundariesPatch2[i].index() == m_interfacePatch2)
+        {
+            domIt2 = B2.makeDomainIterator(boundariesPatch2[i]);
+            patchSide2 = boundariesPatch2[i];
+            startPatch2 = m_parameterbounds.second.col(0);
+        }
 
 
-
-    // Compute knots in physical domain by evaluating left and right geometry maps at the knot values --------------------------------------
+    // Compute interface knots in physical domain by evaluating left and right geometry maps at the knot values --------------------------------------
     int numelP1 = domIt1->numElements();
     int numelP2 = domIt2->numElements();
     gsMatrix <T> physicalKnotsP1(m_domain.geoDim(), numelP1 + 1), physicalKnotsP2(m_domain.geoDim(), numelP2 + 1), dummy;
 
     domIt1->reset();
     domIt2->reset();
+    int numBreaksPatch1 = 1, numBreaksPatch2 = 1; // vars to count the entries in the physical breakpoints
 
-    for (int i = 0; i <= numelP1; i++)
+    // evaluate the first point of the interface
+    m_domain.patch(patch1).eval_into(startPatch1, dummy);
+    physicalKnotsP1.col(0) = dummy;
+
+    // loop over all elements of the boundary with interface part, but evaluate only element corners on the real interface
+    for (; domIt1->good(); domIt1->next())
     {
-        m_domain.patch(patch1).eval_into(domIt1->lowerCorner().row(1), dummy);
-        physicalKnotsP1.col(i) = dummy;
-        domIt1->next();
-    }
-
-    for (int i = 0; i <= numelP2; i++)
-    {
-        m_domain.patch(patch2).eval_into(domIt2->lowerCorner().row(1), dummy);
-        physicalKnotsP2.col(i) = dummy;
-        domIt2->next();
-    }
-
-    m_domain.patch(patch1).eval_into(domIt1->upperCorner().row(1), dummy);
-    physicalKnotsP1.block(0, numelP1, 2, 1) = dummy;
-
-    m_domain.patch(patch2).eval_into(domIt2->upperCorner().row(1), dummy);
-    physicalKnotsP2.block(0, numelP2, 2, 1) = dummy;
-
-    gsMatrix<T> physicalBreaks(m_domain.geoDim(), numelP1+numelP2+2);
-
-    physicalBreaks << physicalKnotsP1, physicalKnotsP2;
-
-
-
-    //  merge the two physical knot matrices
-    gsSortedVector<T> parameterBreaks; //TODO: provide sorting
-
-    domIt1->reset();
-    //for (; domIt1->good(); domIt1->next()) {
-    //    count++;
-
-        // Determine "corners", i.e. boundaries for intergration for the current element -----
-        // this merges knot span boundaries in the physical domain,
-        // boundaries in the parametric domain are computed later
-
-        //std::cout << "Element Nummer: " << currentElement << std::endl;
-    //    std::vector<gsMatrix<T> > corners;
-    //    corners.push_back(Rvalues(1, currentElement - 1));
-
-        // Sorting in physical space probably not needed
-        /*for (int i = 0; i < numelP2; i++) {
-            if (Lvalues(1, i) > Rvalues(1, currentElement - 1) && Lvalues(1, i) < Rvalues(1, currentElement))
-                corners.push_back(Lvalues(1, i));
+        if(m_interfacePatch1 == 3 || m_interfacePatch1 == 4)
+        {
+            if(domIt1->lowerCorner()(0,0) > startPatch1(0,0) && domIt1->lowerCorner()(0,0) < m_parameterbounds.first(0,1))
+            {
+                m_domain.patch(patch1).eval_into(domIt1->lowerCorner(), dummy);
+                physicalKnotsP1.col(numBreaksPatch1) = dummy;
+                numBreaksPatch1++;
+            }
         }
-        */
+        else
+        {
+            if(domIt1->lowerCorner()(1,0) > startPatch1(1,0) && domIt1->lowerCorner()(1,0) < m_parameterbounds.first(1,1))
+            {
+                m_domain.patch(patch1).eval_into(domIt1->lowerCorner(), dummy);
+                physicalKnotsP1.col(numBreaksPatch1) = dummy;
+                numBreaksPatch1++;
+            }
+        }
+        //domIt1->next();
+    }
 
+    // evaluate the last point of the interface
+    m_domain.patch(patch1).eval_into(domIt1->upperCorner(), dummy);
+    physicalKnotsP1.col(numBreaksPatch1) = dummy;
+    numBreaksPatch1++;
+    gsInfo << "physical knots 1: \n" << physicalKnotsP1 << "\n";
 
-    //}
+    // do the same for patch 2 as above
+    m_domain.patch(patch2).eval_into(startPatch2, dummy);
+    physicalKnotsP2.col(0) = dummy;
 
-    //Determine fixed coordinate of patch1
+    for (; domIt2->good(); domIt2->next()) // for (int i = 0; i < numelP2; i++)
+    {
+        if(m_interfacePatch2 == 3 || m_interfacePatch2 == 4)
+        {
+            if (domIt2->lowerCorner()(0,0) > startPatch2(0,0) && domIt2->lowerCorner()(0,0) < m_parameterbounds.second(0,1))
+            {
+                m_domain.patch(patch2).eval_into(domIt2->lowerCorner(), dummy);
+                physicalKnotsP2.col(numBreaksPatch2) = dummy;
+                numBreaksPatch2++;
+            }
+        }
+        else
+        {
+            if (domIt2->lowerCorner()(1,0) > startPatch2(1,0) && domIt2->lowerCorner()(1,0) < m_parameterbounds.second(1,1))
+            {
+                m_domain.patch(patch2).eval_into(domIt2->lowerCorner(), dummy);
+                physicalKnotsP2.col(numBreaksPatch2) = dummy;
+                numBreaksPatch2++;
+            }
+        }
+        //domIt2->next();
+    }
+
+    m_domain.patch(patch2).eval_into(domIt2->upperCorner(), dummy);
+    physicalKnotsP2.col(numBreaksPatch2) = dummy;
+    numBreaksPatch2++; // to get the number of entries
+    gsInfo << "physical knots 2: \n" << physicalKnotsP2 << "\n";
+
+    // store all the physical points in one vector
+    gsMatrix<T> physicalBreaks(m_domain.geoDim(), numBreaksPatch1+numBreaksPatch2);
+
+    for(int c = 0; c < numBreaksPatch1; c++)
+        physicalBreaks.col(c) = physicalKnotsP1.col(c);
+
+    for(int c = 0; c < numBreaksPatch2; c++)
+        physicalBreaks.col(numBreaksPatch1+c) = physicalKnotsP2.col(c);
+
+    // compute the corresponding parameter values in one patch, here of patch2
+    gsSortedVector<T> parameterBreaks;
+
+    // Determine fixed coordinate of patch2 -> Use here patch2 because we compute the Interfacemap of patch1!!!
     // fixedDir ==  0 corresponds to fixed u and 1 corresponds to a fixed v
-    index_t fixedDir = m_interface.first().side().direction();
+    index_t fixedDir = patchSide1.direction();
 
-    m_breakpoints = gsMatrix<T> (m_domain.geoDim(), physicalBreaks.cols() - 2 );
     gsMatrix<T> G2_parametric_LC;
-
-    for (int i = 0;  i < physicalBreaks.cols() - 2; i++)
+    for (int i = 0;  i < physicalBreaks.cols(); i++)
     {
         // computes knot span boundaries in the parametric domain, i.e. the preimages of
         // the boundaries in the physical domain
-        m_domain[patch1].invertPoints(physicalBreaks.col(i),G2_parametric_LC);
+        m_domain[patch1].invertPoints(physicalBreaks.col(i),G2_parametric_LC); // not exact, we have rounding errors
+        // taking care of the rounding errors by iterating over the vector and checking the absolute value between the current
+        // preimage and the already available ones
         if(fixedDir)
-            parameterBreaks.push_sorted_unique(G2_parametric_LC(0,0)); // sort w.r.t. u direction
+        {
+            if(parameterBreaks.size() == 0)
+                parameterBreaks.push_sorted_unique(G2_parametric_LC(0,0)); // sort w.r.t. u direction
+            else
+            {
+                int j = 0;
+                gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
+
+                for(typename gsSortedVector<T>::iterator it = parameterBreaks.begin(); it != parameterBreaks.end(); it++)
+                {
+
+                    if (math::abs(G2_parametric_LC(0, 0) - *it) > 1.e-4) {
+                        roundingError(j) = false;
+                    }
+                    j++;
+                }
+                if((roundingError.array() == false).all())
+                    parameterBreaks.push_sorted_unique(G2_parametric_LC(0, 0)); // sort w.r.t. u direction
+
+
+            }
+        }
         else
-            parameterBreaks.push_sorted_unique(G2_parametric_LC(0,1)); // sort w.r.t. v direction
+        {
+            if(parameterBreaks.size() == 0)
+                parameterBreaks.push_sorted_unique(G2_parametric_LC(1,0)); // sort w.r.t. v direction
+            else
+            {
+                int j = 0;
+                gsVector<bool> roundingError = gsVector<bool>::Constant(parameterBreaks.size(), true);
+
+                for (typename gsSortedVector<T>::iterator it = parameterBreaks.begin();
+                     it != parameterBreaks.end(); it++)
+                {
+                    if (math::abs(G2_parametric_LC(1, 0) - *it) > 1.e-4)
+                        roundingError(j) = false;
+
+                    j++;
+                }
+                if((roundingError.array() == false).all())
+                    parameterBreaks.push_sorted_unique(G2_parametric_LC(1, 0)); // sort w.r.t. v direction
+            }
+        }
+
     }
 
+    m_breakpoints = gsMatrix<T> (m_domain.geoDim(), parameterBreaks.size() );
     for (int i = 0;  i < parameterBreaks.size(); i++)
     {
         if(fixedDir)
-            m_breakpoints.col(i) << parameterBreaks[i], G2_parametric_LC(0,1);
+            m_breakpoints.col(i) << parameterBreaks[i], G2_parametric_LC(1,0);
         else
             m_breakpoints.col(i) << G2_parametric_LC(0,0), parameterBreaks[i];
     }
 
+    // only for tests
+    gsMatrix<T> result;
+    if(fixedDir)
+        m_fittedCurve.invertPoints((m_breakpoints), result);
+    else
+        m_fittedCurve.invertPoints((m_breakpoints), result);
+
+    gsInfo << "Mapped: \n" << result << "\n";
+
 }
 
 
-
+/*
 template<class T>
 void gsRemapInterface<T>::breakpoint_iterator()
 {
@@ -247,60 +413,73 @@ void gsRemapInterface<T>::breakpoint_iterator()
 
 
         // Perform required evaluations on the quadrature nodes
-        /*
-        if ( count % ratio == 0 ) // next master element ?, for hierarchical splines
-            domIt2->next();
-         */
+
+        //if ( count % ratio == 0 ) // next master element ?, for hierarchical splines
+        //    domIt2->next();
+
 
     }
 
     //++currentElement;
 }
+*/
 
 template<class T>
 void gsRemapInterface<T>::constructReparam()
 {
-    const int patch1 = m_interface.first().patch; // Numeration correct when using a domain with more than two patches?
-    const int patch2 = m_interface.second().patch;
-    const patchSide side = m_interface.first();
     const int numIntervals = 11;
-    //const gsAffineFunction<T> affineTans(m_domain.getMapForInterface(m_interface));
 
-    index_t fixedDir = m_interface.first().side().direction();
-
-    gsGeometry<> & GEO_L_ref =  m_domain.patch(m_interface.first().patch);
-    gsGeometry<> & GEO_R_ref =  m_domain.patch(m_interface.second().patch);
-    gsGeometry<>::uPtr GEO_L_ptr = GEO_L_ref.boundary(m_interface.first());
-    gsGeometry<>::uPtr GEO_R_ptr = GEO_R_ref.boundary(m_interface.second());
-
-    // compute interface values
-    gsMultiBasis<T> mb(m_domain);
-
-    std::vector<boxCorner> corners;
+    gsGeometry<T> & g1 =  m_domain.patch(0);
+    gsGeometry<T> & g2 =  m_domain.patch(1);
 
     // Assume tensor structure
-    gsTensorBSplineBasis<2, T>* tb = dynamic_cast<gsTensorBSplineBasis<2, T>* >(&mb.basis(patch1));
+    // now create samples for both patches
+    // the knot intervals can be different, e.g.,
+    //----------------------------
+    //-                          -
+    //----------------------------
+    //    --------
+    //    -      -
+    //    --------
+    gsMatrix<T> t_vals = gsMatrix<T>::Zero(m_domain.nPatches(), numIntervals);
 
-
-    T firstKnot, lastKnot;
-    if(fixedDir) // v is fixed
+    for(index_t np = 0; np < m_domain.nPatches(); np++)
     {
-        firstKnot = tb->knots(0).first();
-        lastKnot = tb->knots(0).last();
-    }
-    else // u is fixed
-    {
-        //gsInfo << "I am here\n";
-        firstKnot = tb->knots(1).first();
-        lastKnot = tb->knots(1).last();
-    }
+        T firstKnot, lastKnot;
 
-    gsVector<T> upper(1);
-    upper << firstKnot;
-    gsVector<T> lower(1);
-    lower << lastKnot;
+        if(np == 0)
+        {
+            if (m_interfacePatch1 == 3 || m_interfacePatch1 == 4) // v is fixed
+            {
+                firstKnot = m_parameterbounds.first(0,0);
+                lastKnot = m_parameterbounds.first(0,1);
+            } else // u is fixed
+            {
+                firstKnot = m_parameterbounds.first(1,0);
+                lastKnot = m_parameterbounds.first(1,1);
+            }
+        }
+        else
+        {
+            if (m_interfacePatch2 == 3 || m_interfacePatch2 == 4) // v is fixed
+            {
+                firstKnot = m_parameterbounds.second(0,0);
+                lastKnot = m_parameterbounds.second(0,1);
+            } else // u is fixed
+            {
+                firstKnot = m_parameterbounds.second(1,0);
+                lastKnot = m_parameterbounds.second(1,1);
+            }
+        }
 
-    gsMatrix<T> t_vals = uniformPointGrid(lower, upper, numIntervals); // uniformly distributed samples between first and last knot on the parameter domain
+        gsVector<T> upper(1);
+        upper << lastKnot;
+        gsVector<T> lower(1);
+        lower << firstKnot;
+
+        t_vals.row(np) = uniformPointGrid(lower, upper, numIntervals); // uniformly distributed samples between the overlapping part of the interface
+
+    }
 
     gsMatrix<T> samples_left, samples_right;
     gsMatrix<T> find_start_value;
@@ -310,23 +489,22 @@ void gsRemapInterface<T>::constructReparam()
     //Edge 2, {(u,v) : u = 1}
     //Edge 3, {(u,v) : v = 0}
     //Edge 4, {(u,v) : v = 1}
-    int firstParameterEdge = m_interface.first().index(); // = 1
-    int secondParameterEdge = m_interface.second().index(); // = 2
 
-    gsInfo << "left boundary: " << m_interface.first().index() << "\n";
-    gsInfo << "right boundary: " << m_interface.second().index() << "\n";
+    //gsInfo << "left boundary: " << m_interfacePatch1 << "\n";
+    //gsInfo << "right boundary: " << m_interfacePatch2 << "\n";
 
     //gsMatrix<T> vals2dPatch1(t_vals.rows()+1, t_vals.cols()), vals2dPatch2(t_vals.rows()+1, t_vals.cols());
+    // TODO: use already available information
     gsMatrix<T> vals2dPatch1, vals2dPatch2;
-    enrichToVector(firstParameterEdge, t_vals, vals2dPatch1);
-    enrichToVector(secondParameterEdge, t_vals, vals2dPatch2);
+    enrichToVector(m_interfacePatch1, 0, t_vals.row(0), vals2dPatch1);
+    enrichToVector(m_interfacePatch2, 1, t_vals.row(1), vals2dPatch2);
 
+    g1.eval_into(vals2dPatch1,samples_left);
+    g2.eval_into(vals2dPatch2,samples_right);
 
-    GEO_L_ref.eval_into(vals2dPatch1,samples_left);
-    GEO_R_ref.eval_into(vals2dPatch2,samples_right);
-
+    //gsInfo << "vals2dPatch1:\n" << GEO_L_ref.coefs() << "\n vals2dPatch2:\n" << GEO_R_ref.coefs() << std::endl;
     //gsInfo << "vals2dPatch1:\n" << vals2dPatch1 << "\n vals2dPatch2:\n" << vals2dPatch2 << std::endl;
-    //std::cout << "samples left:\n" << samples_left << "\n samples right:\n" << samples_right << std::endl;
+    std::cout << "samples left:\n" << samples_left << "\n samples right:\n" << samples_right << std::endl;
 
     gsMatrix<> B(numIntervals, m_domain.geoDim());
 
@@ -334,78 +512,87 @@ void gsRemapInterface<T>::constructReparam()
     {
         // find a suitable start value for the Newton iteration
         find_start_value = (samples_right.colwise()) - samples_left.col(i);
-        //find_start_value.noalias() = find_start_value.cwiseAbs();
 
-        size_t row;
-        size_t col;
+        size_t row, col;
 
-        size_t *row_ptr = &row;
-        size_t *col_ptr = &col;
+        find_start_value.colwise().squaredNorm().minCoeff(&row, &col);
 
-        //gsMatrix<T> smallest = find_start_value.colwise().sum();
-        //smallest.minCoeff(row_ptr,col_ptr);
-        find_start_value.colwise().squaredNorm().minCoeff(row_ptr,col_ptr);
+        gsVector<T> b_null = samples_right.col(col);
 
-        //gsMatrix<T> b_null = t_vals(*row_ptr, *col_ptr);
-        gsMatrix<T> b_null = samples_right.col(*col_ptr);
-        // pass on L if mapping b of "L(b)" is to be found
-        // pass on R, if mapping a of "R(a)" is to be found
-        gsMatrix<T> b = closestPoint(b_null, GEO_R_ref, samples_left.col(i));
-        B.row(i) = b.transpose();
+        // Pass on g2 if one wants to find a mapping from interface1 to interface2
+        //gsMatrix<T> b = closestPoint(b_null, g2, samples_left.col(i));
 
+        // this gives the same result as above
+        g2.newtonRaphson(samples_left.col(i), b_null, true, 10e-6, 100);
+        //gsInfo << "newton: " << b_null << "\n";
+
+
+        B.row(t_vals.cols() - i - 1) = b_null.transpose(); // to be in the correct order
 
     }
 
     // the coefficients to fit
     std::cout << "B:\n" << B << std::endl;
 
-    // if one wants to find the coefficients to represent the identity
     // check the error
-    // assume that the left map is the identity
-    // make sure that "/zuAgnes5Matching.xml" is loaded for checking the error!!
+    // assume that the right map is the identity
     gsMatrix<T> eval_orig, eval_fit, B2, id;
-    //gsFunctionExpr<> p("x", "y", 2);
 
-    gsKnotVector<> KV(0,1,0,4);
-    gsCurveFitting<> fit(t_vals.transpose(),B,KV);
+    gsKnotVector<> KV(t_vals(0,0),t_vals(0, numIntervals-1),0,4);
+
+    gsCurveFitting<> fit(t_vals.row(0).transpose(),B,KV);
 
     fit.compute();
-    const gsBSpline<> & fitted_curve = fit.curve();
-    std::cout << "Hi, I'm the resulting curve: \n" << fitted_curve << std::endl;
+    m_fittedCurve = fit.curve();
+    std::cout << "Hi, I'm the resulting curve: \n" << m_fittedCurve << std::endl;
 
-    gsMatrix<> eval_points = uniformPointGrid(lower, upper, 1000); // to check the error
+    int errorInterval = 1000;
+    gsMatrix<T> eval_points = gsMatrix<T>::Zero(m_domain.nPatches(), errorInterval);
 
-    //p.eval_into(eval_points, eval_orig);
-    fitted_curve.eval_into(eval_points, eval_fit);
+    for(index_t np = 0; np < m_domain.nPatches(); np++)
+    {
+        gsVector<T> lower(1), upper(1);
+        lower << t_vals(np, 0);
+        upper << t_vals(np, numIntervals-1);
+        eval_points.row(np) = uniformPointGrid(lower, upper, errorInterval); // to check the error
+    }
 
-    enrichToVector(firstParameterEdge, eval_points, id);
+    m_fittedCurve.eval_into(eval_points.row(0), eval_fit);
+    //eval_fit(0,0) -= 0.0001; // do a nasty slight correction since the first entry is out of the domain of definition due to rounding errors
 
-    GEO_L_ref.eval_into(id,B2);
+    // TODO: also here use already available information
+    enrichToVector(m_interfacePatch2, 1, eval_points.row(1), id);
+
+    g1.eval_into(eval_fit, eval_orig);
+    g2.eval_into(id,B2);
+    //gsInfo << "b2: \n" << id.transpose() << " and eval_orig: \n" << eval_fit.transpose() << "\n";
 
     double error = 0;
 
     for (int i = 0; i < eval_points.cols(); i++)
-        error += (B2.col(i) - eval_fit.col(i)).squaredNorm();
+        error += (id.col(i) - eval_fit.col(i)).squaredNorm();
 
     error = std::sqrt(error);
 
     std::cout << "Error: " << error << std::endl;
 
+
 }
+
 
 template<class T>
 gsMatrix<T> gsRemapInterface<T>::closestPoint(const gsMatrix<T> b_null, const gsGeometry<T> & intMap, const gsMatrix<T> & lti)
 {
     double stopping_criterion = std::numeric_limits<T>::max();
-    double eps = 0.001;
-    gsMatrix<> b_neu = b_null;
+    double eps = 0.0001;
+    gsMatrix<T> b_neu = b_null;
 
-    gsMatrix<> evalGeomap, diffPatch1Patch2, jacPatch2, deriv2Geomap;
+    gsMatrix<T> evalGeomap, diffPatch1Patch2, jacPatch2, deriv2Geomap, b_alt;
 
     // iterate until stopping criterion is satisfied
     while (stopping_criterion > eps)
     {
-        gsMatrix<> b_alt = b_neu;
+        b_alt = b_neu;
 
         // compute value of function to minimize
         intMap.eval_into(b_alt,evalGeomap);
@@ -431,16 +618,18 @@ gsMatrix<T> gsRemapInterface<T>::closestPoint(const gsMatrix<T> b_null, const gs
         g_deriv(1,1) = deriv2Geomap(1,0) * diffPatch1Patch2(0,0) - jacPatch2(0,1) * jacPatch2(0,1) + deriv2Geomap(4,0) * diffPatch1Patch2(1,0) - jacPatch2(1,1)*jacPatch2(1,1);
 
         // compute the next Newton step
-        b_neu = b_alt + g_deriv.fullPivHouseholderQr().solve(g);
+        b_neu = b_alt + g_deriv.fullPivHouseholderQr().solve(-g);
 
         stopping_criterion = (b_alt - b_neu).squaredNorm();
     }
 
-    return b_neu;
+    gsMatrix<T> par_b_neu;
+    intMap.invertPoints(b_neu, par_b_neu); // invert the obtained point to get the best fitting point in the parameter domain, we are looking for the argument -> see Paper
+    return par_b_neu; //b_neu
 
 }
 
-
+/*
     template<class T>
 void gsRemapInterface<T>::mapQuadNodes()
 {
@@ -451,22 +640,12 @@ void gsRemapInterface<T>::mapQuadNodes()
     unsigned evFlags(0);
 
 }
+ */
 
 template <typename T>
 void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    const int patch1 = m_interface.first().patch; // Numeration correct when using a domain with more than two patches?
-    const int patch2 = m_interface.second().patch;
-    const gsBasis <T> &B1 = m_domain.basis(patch1);
-    const gsBasis <T> &B2 = m_domain.basis(patch2);
-
-    // TODO: Maybe we can do better using the reparametrization, inversion is very expensive in general
-    gsMatrix<T> physNodes1;
-    // Get the nodes on the physical patch 1
-    B1.evalFunc_into(u, m_domain[patch1].coefs(), physNodes1);
-
-    // Invert the nodes on the physical domain for patch 2
-    m_domain[patch2].invertPoints(physNodes1, result);
+    m_fittedCurve.eval_into(u, result);
 }
 
 // Function to enhance a sequence of 1D points in an interval to 2D points in the parameter domain
@@ -477,34 +656,239 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
 // only works for 2d at the moment!!
 // TODO: Generalize for arbitrary dimensions
 template<class T>
-void gsRemapInterface<T>::enrichToVector(const int boundarySide, const gsMatrix<T> & intervals, gsMatrix <T> &pts)
+void gsRemapInterface<T>::enrichToVector(const int boundarySide, const int patch, const gsMatrix<T> & intervals, gsMatrix <T> &pts)
 {
     pts.resize(m_domain.geoDim(), intervals.cols());
+
+    gsTensorBSplineBasis<2, T> *tb = dynamic_cast<gsTensorBSplineBasis<2, T> * >(&m_domain.basis(patch));
 
     switch (boundarySide)
     {
         case 1 :
-            // u = 0
-            pts.row(0) = gsMatrix<T>::Zero(1, intervals.cols());
+            // u = value of the first knot in u direction
+            pts.row(0) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(0).first());
             pts.row(1) = intervals;
-
             break;
         case 2 :
-            //u = 1;
-            pts.row(0) = gsMatrix<T>::Ones(1, intervals.cols());
+            //u = value of the last knot in u direction
+            pts.row(0) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(0).last());
             pts.row(1) = intervals;
             break;
         case 3 :
-            //v = 0;
+            //v = value of the first knot in v direction;
             pts.row(0) = intervals;
-            pts.row(1) = gsMatrix<T>::Zero(1, intervals.cols());
+            pts.row(1) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(1).first());
             break;
         case 4 :
-            //v = 1;
+            //v = value of the last knot in v direction
             pts.row(0) = intervals;
-            pts.row(1) = gsMatrix<T>::Ones(1, intervals.cols());
+            pts.row(1) = gsMatrix<T>::Constant(1, intervals.cols(), tb->knots(1).last());
             break;
     }
+}
+
+// Member to find the interface of the 2 input geometries
+template<class T>
+void gsRemapInterface<T>::findInterface()
+{
+    const gsGeometry<T> & patch1 = m_domain.patch(0);
+    const gsGeometry<T> & patch2 = m_domain.patch(1);
+
+    // vectors to store the rows indices of the coefficient matrices
+    gsVector<index_t > boundaryPatch1, boundaryPatch2;
+
+    // first find the sides of the patches which belong to the interface
+    const int nCorners = 1<<m_domain.geoDim();
+    gsMatrix<T> inversMaps(m_domain.geoDim(), 2); // matrix to store the preimages of the corresponding verices on the interface
+    gsVector<T> corners(2); // vector to store the index of the corner which lies on the other patch, 0-th entry is the index of the corner for the first patch and vice versa
+    corners.setZero();
+
+    bool completeOnPatch2 = false, completeOnPatch1 = false; // check if one side of the patches is completely contained in the other side
+
+    // two columns for the lower and the upper bound
+    m_parameterbounds.first.resize(m_domain.geoDim(), 2);
+    m_parameterbounds.second.resize(m_domain.geoDim(), 2);
+
+    // matrix to store the coefficients of the corner values
+    gsMatrix<T> c = gsMatrix<T>::Zero(1, m_domain.geoDim());
+    gsMatrix<T> preIm;
+
+    // find the side for the second patch, and the corner(s) of the first patch which lies on the interface
+    gsTensorBSplineBasis<2, T> *tb = dynamic_cast<gsTensorBSplineBasis<2, T> * >(&m_domain.basis(1));
+    for(int i = 1; i <= nCorners; i++)
+    {
+        c = patch1.coefAtCorner(i);
+
+        m_domain.locatePoints(c.transpose(), 0, boundaryPatch1, preIm);
+
+        if(boundaryPatch1[0] == 1)
+        {
+            inversMaps.col(1) = preIm;
+
+            if(!corners(0))
+                corners(0) = i;
+            else
+                completeOnPatch2 = true; // side of patch1 is completely contained in the corresponding side of patch2 or the patches are fully matching
+
+            if ((math::abs(preIm(0,0) - tb->knots(0).first()) < 1.e-6)) // lower boundary in u fixed
+                m_interfacePatch2 = 1;
+
+            if ((math::abs(preIm(0,0) - tb->knots(0).last()) < 1.e-6)) // upper boundary in u fixed
+                m_interfacePatch2 = 2;
+
+            if ((math::abs(preIm(1,0) - tb->knots(1).first()) < 1.e-6)) // lower boundary in v fixed
+                m_interfacePatch2 = 3;
+
+            if ((math::abs(preIm(1,0) - tb->knots(1).last()) < 1.e-6)) // upper boundary in v fixed
+                m_interfacePatch2 = 4;
+        }
+
+    }
+
+    // do the same for the first patch, i.e., finding the side for patch1 and the corner(s) for patch2
+    tb = dynamic_cast<gsTensorBSplineBasis<2, T> * >(&m_domain.basis(0));
+    for(int i = 1; i <= nCorners; i++)
+    {
+        c = patch2.coefAtCorner(i);
+
+        m_domain.locatePoints(c.transpose(), 1, boundaryPatch2, preIm);
+        //gsInfo << " preImage: \n" << preIm << "\n";
+
+        if(boundaryPatch2[0] == 0)
+        {
+            inversMaps.col(0) = preIm;
+
+            if(!corners(1))
+                corners(1) = i;
+            else
+                completeOnPatch1 = true;
+
+            if ((math::abs(preIm(0,0) - tb->knots(0).first()) < 1.e-6)) // lower boundary in u fixed
+                m_interfacePatch1 = 1;
+
+            if ((math::abs(preIm(0,0) - tb->knots(0).last()) < 1.e-6))
+                m_interfacePatch1 = 2;
+
+            if ((math::abs(preIm(1,0) - tb->knots(1).first()) < 1.e-6)) // lower boundary in v fixed
+                m_interfacePatch1 = 3;
+
+            if ((math::abs(preIm(1,0) - tb->knots(1).last()) < 1.e-6)) // upper boundary in v fixed
+                m_interfacePatch1 = 4;
+        }
+
+    }
+
+    // store the parametric bounds of the overlap for each patch, order the points w.r.t. the non fixed boundary side
+    // so far the code is not very nice -> room for improvement!!!
+    // Maybe considering the exact values instead of approximations would be better
+    gsMatrix<T> parIm;
+    if(completeOnPatch2 == false && corners(0) != 0) // if the interface does not overlap entirely or if the side of patch2 is not a proper subset of the corresponding side of patch1
+    {
+        patch1.invertPoints(patch1.coefAtCorner(corners(0)).transpose(), parIm);
+        if(m_interfacePatch1 == 3 || m_interfacePatch1 == 4) //sort w.r.t u
+        {
+            if(parIm(0,0) < inversMaps.col(0)(0,0))
+            {
+                m_parameterbounds.first.col(0) = parIm;
+                m_parameterbounds.first.col(1) = inversMaps.col(0);
+            }
+            else
+            {
+                m_parameterbounds.first.col(1) = parIm;
+                m_parameterbounds.first.col(0) = inversMaps.col(0);
+            }
+        }
+        else
+        {
+            if(m_interfacePatch1 == 1 || m_interfacePatch1 == 2) // sort w.r.t v
+            {
+                if(parIm(1,0) < inversMaps.col(0)(1,0))
+                {
+                    m_parameterbounds.first.col(0) = parIm;
+                    m_parameterbounds.first.col(1) = inversMaps.col(0);
+                }
+                else
+                {
+                    m_parameterbounds.first.col(1) = parIm;
+                    m_parameterbounds.first.col(0) = inversMaps.col(0);
+                }
+            }
+        }
+    }
+    else // one side of patch1 is completely contained in patch2
+    {
+
+        if(m_interfacePatch1 == 3 || m_interfacePatch1 == 4) //sort w.r.t u
+        {
+            m_parameterbounds.first.row(0) = m_domain[0].parameterRange().row(0);
+            m_parameterbounds.first(1, 0) = inversMaps.col(0)(1);
+            m_parameterbounds.first(1, 1) = inversMaps.col(0)(1);
+        }
+        else
+        {
+            if(m_interfacePatch1 == 1 || m_interfacePatch1 == 2) // sort w.r.t v
+            {
+                m_parameterbounds.first(0,0) = inversMaps.col(0)(0);
+                m_parameterbounds.first(0,1) = inversMaps.col(0)(0);
+                m_parameterbounds.first.row(1) = m_domain[0].parameterRange().row(1);
+            }
+        }
+    }
+
+    // do the same for patch2 as before for patch1
+    if(completeOnPatch1 == false && corners(1) != 0)
+    {
+        patch2.invertPoints(patch2.coefAtCorner(corners(1)).transpose(), parIm);
+        if(m_interfacePatch2 == 3 || m_interfacePatch2 == 4) //sort w.r.t u
+        {
+            if(parIm(0,0) < inversMaps.col(1)(0,0))
+            {
+                m_parameterbounds.second.col(0) = parIm;
+                m_parameterbounds.second.col(1) = inversMaps.col(1);
+            }
+            else
+            {
+                m_parameterbounds.second.col(1) = parIm;
+                m_parameterbounds.second.col(0) = inversMaps.col(1);
+            }
+        }
+        else
+        {
+            if(m_interfacePatch1 == 1 || m_interfacePatch1 == 2) // sort w.r.t v
+            {
+                if(parIm(1,0) < inversMaps.col(1)(1,0))
+                {
+                    m_parameterbounds.second.col(0) = parIm;
+                    m_parameterbounds.second.col(1) = inversMaps.col(1);
+                }
+                else
+                {
+                    m_parameterbounds.second.col(1) = parIm;
+                    m_parameterbounds.second.col(0) = inversMaps.col(1);
+                }
+            }
+        }
+    }
+    else
+    {
+        if(m_interfacePatch2 == 3 || m_interfacePatch2 == 4) //sort w.r.t u
+        {
+            m_parameterbounds.second.row(0) = m_domain[1].parameterRange().row(0);
+            m_parameterbounds.second(1, 0) = inversMaps.col(1)(1);
+            m_parameterbounds.second(1, 1) = inversMaps.col(1)(1);
+        }
+        else
+        {
+            if(m_interfacePatch2 == 1 || m_interfacePatch2 == 2) // sort w.r.t v
+            {
+                m_parameterbounds.second(0,0) = inversMaps.col(1)(0);
+                m_parameterbounds.second(0,1) = inversMaps.col(1)(0);
+                m_parameterbounds.second.row(1) = m_domain[1].parameterRange().row(1);
+            }
+        }
+    }
+
+    //gsInfo << "Init parameterbounds: \n" << m_parameterbounds.first << " \n and \n " << m_parameterbounds.second << "\n";
 }
 
 } // End namespace::gismo

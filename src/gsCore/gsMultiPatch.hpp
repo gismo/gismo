@@ -673,5 +673,36 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
     }
 }
 
+template<class T>
+void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points, index_t pid1,
+                                   gsVector<index_t> & pid2, gsMatrix<T> & preim) const
+{
+    // Assumes points are found on pid1 and possibly on one more patch
+    pid2.resize(points.cols());
+    pid2.setConstant(-1); // -1 implies not in the domain
+    preim.resize(parDim(), points.cols());//uninitialized by default
+    gsMatrix<T> pt, pr, tmp;
+
+    for (index_t i = 0; i!=pid2.size(); ++i)
+    {
+        pt = points.col(i);
+
+        for (std::size_t k = 0; k!= m_patches.size(); ++k)
+        {
+            if (pid1==k) continue; // skip pid1
+
+            pr = m_patches[k]->parameterRange();
+            m_patches[k]->invertPoints(pt, tmp);
+            if ( (tmp.array() >= pr.col(0).array()).all()
+                 && (tmp.array() <= pr.col(1).array()).all() )
+            {
+                pid2[i] = k;
+                preim.col(i) = tmp;
+                break;
+            }
+        }
+    }
+}
+
 
 } // namespace gismo
