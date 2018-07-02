@@ -190,13 +190,7 @@ public:
         other_.update();
     }
 
-    void setBreaks(std::vector<T> newBreaks, index_t i) // i: direction
-    {
-        breaks[i].swap(newBreaks);
-        meshEnd[i]   = breaks[i].end() - 1;
-        meshBegin[i] = curElement[i] = breaks[i].begin();
-        reset();
-    }
+    //void setBreaks(const gsMatrix<T> & newBreaks);
 
 private:
 
