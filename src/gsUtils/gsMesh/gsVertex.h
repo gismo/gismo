@@ -23,6 +23,12 @@ template <class T>
 class gsVertex  : public gsMeshElement<T> 
 {
 public:
+    /// Shared pointer for gsVertex
+    typedef memory::shared_ptr< gsVertex > Ptr;
+
+    /// Unique pointer for gsVertex
+    typedef memory::unique_ptr< gsVertex > uPtr;
+
     typedef typename gsVector3d<T>::Scalar       scalar_t;
     typedef gsMeshElement<T>                     MeshElement;
     typedef typename MeshElement::gsFaceHandle   gsFaceHandle;
@@ -54,6 +60,10 @@ public:
     }
 
     virtual ~gsVertex() { };
+
+    // clone function
+    //GISMO_CLONE_FUNCTION(gsVertex)
+    uPtr clone() const { return uPtr(new gsVertex(*this)); }
 
     void move(scalar_t dx, scalar_t dy, scalar_t dz) 
     {
@@ -200,5 +210,4 @@ bool operator != (gsVertex<T> const & lhs, gsVertex<T> const & rhs)
     ;}
 
 } // namespace gismo
-
 

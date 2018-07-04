@@ -47,6 +47,25 @@ public:
     gsMesh() : MeshElement(), numVertices(0), numEdges(0), numFaces(0) 
     { }
 
+    gsMesh(const gsMesh<T> & mesh) : MeshElement(), numVertices(mesh.numVertices), numEdges(mesh.numEdges), numFaces(mesh.numFaces)
+    {
+        cloneAll(mesh.vertex, vertex);
+        cloneAll(mesh.face, face);
+        edge = mesh.edge;
+    }
+
+    gsMesh& operator=(const gsMesh& other)
+    {
+        numVertices = other.numVertices;
+        numEdges = other.numEdges;
+        numFaces = other.numFaces;
+        cloneAll(other.vertex, vertex);
+        cloneAll(other.face, face);
+        edge = other.edge;
+
+        return *this;
+    }
+
     gsMesh(const gsBasis<T> & basis, int n = 0);
 
     virtual ~gsMesh();

@@ -38,7 +38,7 @@ public:
      */
     bool intersectSegment(const gsPoint<dim, T>& origin, const gsPoint<dim, T>& end)
     {
-        gsLineSegment<2, real_t> segmentLine(origin, end);
+        /*gsLineSegment<2, real_t> segmentLine(origin, end);
 
         gsMatrix<T, 2, 2> matrix;
         matrix.col(0) = m_direction;
@@ -49,12 +49,30 @@ public:
         }
         gsVector<T, 2> parameters = matrix.partialPivLu().solve(m_point - segmentLine.m_point);
         double iparam = parameters(1);
-        return ( -1e-8 <= iparam && iparam <= 1 + 1e-8 );
-        /*gsVector<T, 2> p = origin - m_point;
-        bool p1 = m_direction[0] * p[1] - m_direction[1] * p[0] >= 0;
+        return ( -1e-8 <= iparam && iparam <= 1 + 1e-8 );*/
+
+        /*
+         * p1: -1 0 1
+         * p2: -1 0 1
+         *
+         * -1 -1 => false
+         * -1  0 => true
+         * -1  1 => true
+         *  0 -1 => true
+         *  0  0 => false
+         *  0  1 => true
+         *  1 -1 => true
+         *  1  0 => true
+         *  1  1 => false
+         */
+
+        gsVector<T, 2> p = origin - m_point;
+        double d1 = m_direction[0] * p[1] - m_direction[1] * p[0];
         p = (end - m_point);
-        bool p2 = m_direction[0] * p[1] - m_direction[1] * p[0] >= 0;
-        return  p1 ^ p2;*/
+        double d2 = m_direction[0] * p[1] - m_direction[1] * p[0];
+        int i1 = d1 > 0 ? 2 : d1 < 0 ? 1 : 0;
+        int i2 = d2 > 0 ? 2 : d2 < 0 ? 1 : 0;
+        return  i1 ^ i2;
     }
 
     const gsVector<T, dim> & direction() const { return m_direction; }

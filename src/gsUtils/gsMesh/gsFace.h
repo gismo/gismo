@@ -24,6 +24,12 @@ template <class T>
 class gsFace  : public gsMeshElement<T>
 {
 public:
+    /// Shared pointer for gsFace
+    typedef memory::shared_ptr< gsFace > Ptr;
+
+    /// Unique pointer for gsFace
+    typedef memory::unique_ptr< gsFace > uPtr;
+
     typedef gsMeshElement<T> MeshElement;
     typedef typename MeshElement::scalar_t scalar_t;
     typedef typename MeshElement::gsVertexHandle gsVertexHandle;
@@ -66,6 +72,11 @@ public:
             v2->addFace(this);
             v3->addFace(this);
         };
+
+    // clone function
+    //GISMO_CLONE_FUNCTION(gsFace)
+    uPtr clone() const { return uPtr(new gsFace(*this)); }
+
     bool operator< (gsFace const & rhs) const
     {
         return ( Xless<T>(this->vertices[0],rhs.vertices[0])||
