@@ -20,6 +20,7 @@
 #include <gsCore/gsMultiBasis.h>
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsAffineFunction.h>
+#include <gsAssembler/gsRemapInterface.h>
 
 #include <gsIO/gsOptionList.h>
 
@@ -503,7 +504,10 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
 {
     //gsDebug<<"Apply DG on "<< bi <<".\n";
 
-    const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
+    //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
+    gsRemapInterface<T> interfaceMap(m_pde_ptr->patches(), m_bases[0], bi);
+    interfaceMap.constructReparam();
+    interfaceMap.constructBreaks(); // should already maybe done internally
 
     const int patch1      = bi.first().patch;
     const int patch2      = bi.second().patch;
@@ -518,7 +522,7 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
 
     const int bSize1      = B1.numElements( bi.first() .side() );
     const int bSize2      = B2.numElements( bi.second().side() );
-    const int ratio = bSize1 / bSize2;
+    //const int ratio = bSize1 / bSize2;
     GISMO_ASSERT(bSize1 >= bSize2 && bSize1%bSize2==0,
                  "DG assumes nested interfaces. Got bSize1="<<
                  bSize1<<", bSize2="<<bSize2<<"." );
@@ -536,10 +540,35 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     typename gsBasis<T>::domainIter domIt1 = B1.makeDomainIterator( bi.first() .side() );
     typename gsBasis<T>::domainIter domIt2 = B2.makeDomainIterator( bi.second().side() );
 
-    //typename gsBasis<T>::domainIter domIt = B2.makeDomainIterator(B2, bi);
+    typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
 
     int count = 0;
     // iterate over all boundary grid cells on the "left"
+    for (; domIt->good(); domIt->next() )
+    {
+        count++;
+        // Get the element of the other side in domIter2
+        //domIter1->adjacent( bi.orient, *domIter2 );
+
+        // Compute the quadrature rule on both sides
+        gsInfo << "lower: " << domIt->lowerCorner() << "\n";
+        gsInfo << "upper: " << domIt->upperCorner() << "\n";
+        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
+        interfaceMap.eval_into(quNodes1,quNodes2);
+        gsInfo << "qunodes 1: " << quNodes1 << "\n";
+        gsInfo << "qunodes 2: " << quNodes2 << "\n";
+
+        // Perform required evaluations on the quadrature nodes
+        visitor.evaluate(B1, *geoEval1, B2, *geoEval2, quNodes1, quNodes2);
+
+        // Assemble on element
+        visitor.assemble(*domIt,*domIt, *geoEval1, *geoEval2, quWeights);
+
+        // Push to global patch matrix (m_rhs is filled in place)
+        visitor.localToGlobal(patch1, patch2, m_ddof, m_system);
+    }
+
+    /*
     for (; domIt1->good(); domIt1->next() )
     {
         count++;
@@ -558,13 +587,8 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
 
         // Push to global patch matrix (m_rhs is filled in place)
         visitor.localToGlobal(patch1, patch2, m_ddof, m_system);
-
-        if ( count % ratio == 0 ) // next master element ?
-        {
-            domIt2->next();
-        }
-
     }
+     */
 }
 
 
