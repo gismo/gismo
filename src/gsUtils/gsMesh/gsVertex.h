@@ -20,7 +20,7 @@ namespace gismo
 {
 
 template <class T> 
-class gsVertex  : public gsMeshElement<T> 
+class gsVertex  : public gsMeshElement<T>, public gsVector3d<T>
 {
 public:
     /// Shared pointer for gsVertex
@@ -36,27 +36,22 @@ public:
 
 public:
     gsVertex(scalar_t x, scalar_t y, scalar_t z = 0) : 
-        MeshElement(), coords(x,y,z),sharp(0) 
+        MeshElement(), gsVector3d<T>(x,y,z),sharp(0)
     { }
 
     gsVertex( gsVector3d<T> const & u) : 
-        MeshElement(),sharp(0) 
+        MeshElement(), gsVector3d<T>(u),sharp(0)
     { }
 
     gsVertex( gsVector<T> const & u) : 
-        MeshElement(),sharp(0) 
+        MeshElement(), gsVector3d<T>(u),sharp(0)
     { 
         const index_t r = u.rows();
 
-        if ( r == 3 )
-            coords = u;
-        else if ( r < 3 )
+        if ( r < 3 )
         {
-            coords.topRows(r) = u;
-            coords.bottomRows(3-r).setZero();
+            this->bottomRows(3-r).setZero();
         }
-        else
-            coords = u.topRows(3);
     }
 
     virtual ~gsVertex() { };
@@ -67,32 +62,32 @@ public:
 
     void move(scalar_t dx, scalar_t dy, scalar_t dz) 
     {
-        coords.x() += dx;
-        coords.y() += dy;
-        coords.z() += dz;
+        this->x() += dx;
+        this->y() += dy;
+        this->z() += dz;
     }
     
     inline void addFace(gsFaceHandle const& f)
     { faces.push_back( f ); }
 
 
-    inline T   x () const { return coords(0); }
-    inline T   y () const { return coords(1); }
-    inline T   z () const { return coords(2); }
-    inline T & x () { return coords(0); }
-    inline T & y () { return coords(1); }
-    inline T & z () { return coords(2); }
+    inline T   x () const { return this->operator()(0); }
+    inline T   y () const { return this->operator()(1); }
+    inline T   z () const { return this->operator()(2); }
+    inline T & x () { return this->operator()(0); }
+    inline T & y () { return this->operator()(1); }
+    inline T & z () { return this->operator()(2); }
 
     std::ostream &print(std::ostream &os) const
     {
-        os<<"Vertex( "<<coords.x()<<" "<<coords.y()<<" "<<coords.z()<<" )\n";
+        os << "Vertex( " << this->x() << " " << this->y() << " " << this->z() << " )\n";
         return os;
     }
 
 public:
 
     std::vector<gsVertexHandle> nVertices;
-    gsVector3d<T> coords;
+    //gsVector3d<T> coords;
     bool sharp;
     
     //List of faces adjacent to this vertex

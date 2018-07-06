@@ -325,9 +325,9 @@ void gsMesh<T>::addLine(gsMatrix<T> const & points)
 template <class T>
 void gsMesh<T>::addLine(VertexHandle v0, VertexHandle v1, int n)
 {
-    const gsVector3d<T> & start = v0->coords;
-    const T h = (v1->coords - start).norm() / (n+1);
-    const gsVector3d<T> step = (v1->coords - start).normalized();
+    const gsVector3d<T> & start = *dynamic_cast<gsVector3d<T>* >(v0);
+    const T h = (*v1 - start).norm() / (n+1);
+    const gsVector3d<T> step = (*v1 - start).normalized();
     
     VertexHandle last = v0;
     VertexHandle next;
