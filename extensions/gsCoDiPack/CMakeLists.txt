@@ -19,7 +19,7 @@ message("STATUS CMake Will attempt to download CoDiPack sources.")
 include(ExternalProject)
 ExternalProject_Add(CoDiPack
           SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CoDiPack
-          URL https://github.com/SciCompKL/CoDiPack/archive/numericExtension.zip
+          URL https://github.com/SciCompKL/CoDiPack/archive/numericExtensionDevelop.zip
           CONFIGURE_COMMAND ""
           BUILD_COMMAND ""
           UPDATE_COMMAND ""
