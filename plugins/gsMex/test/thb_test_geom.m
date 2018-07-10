@@ -2,8 +2,7 @@
 % Author: O. Chanon
 close all
 
-% One should add the geopdes library to the path TODO
-addpath( genpath('/Users/ondine/Documents/MATLAB/GeoPDEs-full/geopdes/') )
+% One should add the geopdes library to the path
 
 % Construct a truncated hierarchical basis by reading the specified file
 filename = join([filedata, 'surfaces/thbs_face_3levels.xml']); % 'domain2d/squareTHB.xml']);
@@ -30,10 +29,10 @@ jac = hbs.deriv(pts);
 fprintf('jac')
 disp(size(jac))
 
-% Print hessian on direction 1 % TODO once it's implemented in G+smo
-% hess = hbs.hess(pts,1);
-% fprintf('hess')
-% disp(size(hess))
+% Print hessian on direction 1 
+hess = hbs.hess(pts,1);
+fprintf('hess')
+disp(size(hess))
 
 % Build GeoPDEs geometry structure
 geometry = geo_load(hbs);

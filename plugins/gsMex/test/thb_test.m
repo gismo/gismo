@@ -34,18 +34,24 @@ disp(ev)
 fprintf('sum(ev)\n')
 disp(sum(ev,1))
 
+% Print evaluations at point 
+pt = [0.7; 0.7];
+evpt  = hbs.eval(pt);
+fprintf('ev at u=[0.7;0.7]\n')
+disp(evpt)
+
 % Print active functions
-act = hbs.active(pts);
+act = hbs.active(pt);
 fprintf('act\n')
 disp(act)
 
 % Print single evaluation
-evs = hbs.evalSingle(1,pts);
+evs = hbs.evalSingle(16,pt);
 fprintf('evs\n')
 disp(evs)
 
 % Save to output file
-hbs.save('output');
+hbs.save('output_simple');
 
 % Print knot vector of level 1, direction 1
 knots = hbs.knots(1,1);
