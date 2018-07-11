@@ -28,13 +28,13 @@ int main(int argc, char *argv[])
     //restrict: choose first boundary corner as the one with the smallest inner angle, then restrict an environment of this point (range) and search for the second smallest boundary corner point in all the others except the restricted ones, etc., input range e.g. r=0.1 for 1/10 of whole boundary length is restricted around the already chosen corner point
     // opposite: choose the boundary corner points such that they are nearly opposite of each other, input range e.g. r=0.1 for 1/10 of whole boundary length around exact opposite point on boundary is possible
     // distributed: choose the smallest inner angle corners (number for how much to choose) and choose four corners s.t. they are as evenly distributed as possible, input number n=6 for choosing 6 boundary vertices with smallest inner angles and then find 4 of them s.t. evenly distributed
-    std::string filenameIn("/home/adamanta/vogl/SVN/gismoParam/examples/R60_01_Segel_sheet_closed.stl");
+    std::string filenameIn("examples/R60_01_Segel_sheet_closed.stl");
     std::string filenameOut("flatMesh");
     real_t range = 0.1; // in case of restrict or opposite
     int number = 4; // number of corners, in case of distributed
     std::vector<int> corners; // in case of corners
 
-    gsCmdLine cmd("gismo Command line");
+    gsCmdLine cmd("parametrization_example Command line");
     cmd.addString("m", "parametrizationMethod", "parametrization methods: {shape, uniform, distance}\n"
                                                 "shape: best method, shape of the mesh is preserved, smooth surface fitting\n"
                                                 "uniform: the lambdas according to floater's algorithm are set to 1/d, where d is the number of neighbours\n"
