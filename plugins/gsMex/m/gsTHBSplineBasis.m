@@ -41,9 +41,9 @@ classdef gsTHBSplineBasis < handle
             if (isa(varargin{1},'uint64'))
                 this.objectHandle = varargin{1};
             else
-                if (~(isa(varargin{1},'char')))
-                    error('Input argument no. 1 should be of type ''char''.')
-                elseif (~exist(varargin{1},'file'))
+                if (~( isa(varargin{1},'char') || isa(varargin{1},'cell') ))
+                    error('Input argument no. 1 should be of type ''char'' or be a cell of knot vectors.')
+                elseif (isa(varargin{1},'char') && (~exist(varargin{1},'file')))
                     error('File does not exist: %s.',varargin{1})
                 end
                 this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{:});

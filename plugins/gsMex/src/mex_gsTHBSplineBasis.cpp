@@ -56,10 +56,37 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                     plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
                     // Free the memory allocated by mxArrayToString
                     mxFree(input_buf);
-                } else if (!strcmp(constructSwitch,"gsTensorBSplineBasis")) {
+                }
+                else if (!strcmp(constructSwitch,"gsTensorBSplineBasis")) {
                     // constructor ( gsTensorBSplineBasis )
                     gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[2]);
                     plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(new gsTHBSplineBasis<__DIM__>(*instance));
+                }
+                else if (!strcmp(constructSwitch,"cell")) {
+                    mwSize dim(mxGetNumberOfElements(prhs[2]));
+
+                    // Set up and construct the knot vectors...
+                    std::vector<gsKnotVector<real_t>> kts(dim);
+                    for (mwIndex index=0; index<dim; index++) {
+                        const mxArray *cell_element_ptr(mxGetCell(prhs[2], index));
+                        if (cell_element_ptr == NULL)
+                            throw ("Invalid construction: void cell element.");
+                        else {
+                            mwSize total_num_of_knots(mxGetNumberOfElements(cell_element_ptr));
+                            double *pr(mxGetPr(cell_element_ptr));
+                            std::vector<real_t> knots_dim(total_num_of_knots);
+                            for (mwIndex index2=0; index2 < total_num_of_knots; index2++) {
+                                knots_dim[index2] = *pr++;
+                            }
+                            kts[index] = gsKnotVector<>(knots_dim);
+                        }
+                    }
+                    // ...a 2D-tensor-B-spline basis with this knot vector...
+                    gsTensorBSplineBasis<__DIM__> tens(kts);
+
+                    // ...and a 2D-THB-spline basis out of the tensor-B-spline basis.
+                    gsTHBSplineBasis<__DIM__> thb( tens );
+                    plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(new gsTHBSplineBasis<__DIM__>(thb));
                 } else {
                     throw ("Invalid construction.");
                 }
