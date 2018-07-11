@@ -34,7 +34,7 @@ enum triangleVertexIndex
  * The vertices of the triangle mesh get ordered, s. t. the first n vertex indices have correspondent inner vertices and the last N-n vertex indices correspond to the boundary vertices ordered counter-clockwise.
  * */
 template <class T>
-class GISMO_EXPORT gsHalfEdgeMesh : public gsMesh<>
+class GISMO_EXPORT gsHalfEdgeMesh : public gsMesh<T>
 {
 public:
     /**
@@ -620,25 +620,17 @@ public:
         /**
          * @brief Default constructor
          **/
-        Boundary()
-        {}
+        Boundary() {}
 
         /**
          * @brief Copy constructor
          **/
-        Boundary(const Boundary &boundary)
-        {
-            m_boundary = boundary.m_boundary;
-        }
+        Boundary(const Boundary &boundary);
 
         /**
          * @brief Assignment operator
          **/
-        Boundary &operator=(const Boundary &rhs)
-        {
-            m_boundary = rhs.m_boundary;
-            return *this;
-        }
+        Boundary &operator=(const Boundary &rhs);
 
         /**
          * @brief Constructor
@@ -653,46 +645,7 @@ public:
          *
          * @param[in] halfedges vector of halfedges of the triangle mesh
          **/
-        Boundary(const std::vector<typename Chain::Halfedge> &halfedges)
-        {
-            std::list<typename Chain::Halfedge> unsortedNonTwinHalfedges = findNonTwinHalfedges(halfedges);
-            m_boundary.appendNextHalfedge(unsortedNonTwinHalfedges.front());
-            unsortedNonTwinHalfedges.pop_front();
-            std::queue<typename Chain::Halfedge> nonFittingHalfedges;
-            while (!unsortedNonTwinHalfedges.empty())
-            {
-                if (m_boundary.isAppendableAsNext(unsortedNonTwinHalfedges.front()))
-                {
-                    m_boundary.appendNextHalfedge(unsortedNonTwinHalfedges.front());
-                    unsortedNonTwinHalfedges.pop_front();
-                    while (!nonFittingHalfedges.empty())
-                    {
-                        unsortedNonTwinHalfedges.push_back(nonFittingHalfedges.front());
-                        nonFittingHalfedges.pop();
-                    }
-                }
-                else if (m_boundary.isAppendableAsPrev(unsortedNonTwinHalfedges.front()))
-                {
-                    m_boundary.appendPrevHalfedge(unsortedNonTwinHalfedges.front());
-                    unsortedNonTwinHalfedges.pop_front();
-                    while (!nonFittingHalfedges.empty())
-                    {
-                        unsortedNonTwinHalfedges.push_back(nonFittingHalfedges.front());
-                        nonFittingHalfedges.pop();
-                    }
-                }
-                else
-                {
-                    nonFittingHalfedges.push(unsortedNonTwinHalfedges.front());
-                    unsortedNonTwinHalfedges.pop_front();
-                }
-            }
-            if (!m_boundary.isClosed())
-                std::cout << "Warning: [" << __PRETTY_FUNCTION__
-                          << "] Boundary is not closed although it should be. End points are: " << std::endl
-                          << m_boundary.getFirstHalfedge().getOrigin() << std::endl << " and "
-                          << m_boundary.getLastHalfedge().getEnd() << std::endl;
-        }
+        Boundary(const std::vector<typename Chain::Halfedge> &halfedges);
 
         /**
          * @brief Get number of vertices
@@ -701,10 +654,7 @@ public:
          *
          * @return number of vertices
          */
-        std::size_t getNumberOfVertices() const
-        {
-            return m_boundary.getNumberOfVertices();
-        }
+        std::size_t getNumberOfVertices() const;
 
         /**
          * @brief Get length
@@ -713,10 +663,7 @@ public:
          *
          * @return length
          */
-        double getLength() const
-        {
-            return m_boundary.getLength();
-        }
+        real_t getLength() const;
 
         /**
          * @brief Get halfedge lengths
@@ -725,10 +672,7 @@ public:
          *
          * @return vector of halfedges
          */
-        const std::vector<double> getHalfedgeLengths() const
-        {
-            return m_boundary.getHalfedgeLengths();
-        }
+        const std::vector<real_t> getHalfedgeLengths() const;
 
         /**
          * @brief Get list of vertex indices in the chain.

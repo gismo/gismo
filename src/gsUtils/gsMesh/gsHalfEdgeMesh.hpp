@@ -13,11 +13,11 @@
 
 #pragma once
 
-//#include <gsUtils/gsMesh/gsMesh.h>
-//#include "gsHalfEdgeMesh.h"
-
 namespace gismo
 {
+//**********************************************
+//************ class gsHalfEdgeMesh ************
+//**********************************************
 struct less_than_ptr
 {
     bool operator()(gsMesh<>::gsVertexHandle lhs, gsMesh<>::gsVertexHandle rhs)
@@ -354,4 +354,84 @@ void gsHalfEdgeMesh<T>::sortVertices()
         boundaryVertices.pop_front();
     }
 }
+
+//***********************************************
+//************ nested class Boundary ************
+//***********************************************
+
+template<class T>
+gsHalfEdgeMesh<T>::Boundary::Boundary(const gismo::gsHalfEdgeMesh<T>::Boundary &boundary)
+{
+    m_boundary = boundary.m_boundary;
+}
+
+template<class T>
+typename gsHalfEdgeMesh<T>::Boundary& gsHalfEdgeMesh<T>::Boundary::operator=(const gismo::gsHalfEdgeMesh<T>::Boundary &rhs)
+{
+    m_boundary = rhs.m_boundary;
+    return *this;
+}
+
+template<class T>
+gsHalfEdgeMesh<T>::Boundary::Boundary(const std::vector<typename gismo::gsHalfEdgeMesh<T>::Boundary::Chain::Halfedge> &halfedges)
+{
+    std::list<typename Chain::Halfedge> unsortedNonTwinHalfedges = findNonTwinHalfedges(halfedges);
+    m_boundary.appendNextHalfedge(unsortedNonTwinHalfedges.front());
+    unsortedNonTwinHalfedges.pop_front();
+    std::queue<typename Chain::Halfedge> nonFittingHalfedges;
+    while (!unsortedNonTwinHalfedges.empty())
+    {
+        if (m_boundary.isAppendableAsNext(unsortedNonTwinHalfedges.front()))
+        {
+            m_boundary.appendNextHalfedge(unsortedNonTwinHalfedges.front());
+            unsortedNonTwinHalfedges.pop_front();
+            while (!nonFittingHalfedges.empty())
+            {
+                unsortedNonTwinHalfedges.push_back(nonFittingHalfedges.front());
+                nonFittingHalfedges.pop();
+            }
+        }
+        else if (m_boundary.isAppendableAsPrev(unsortedNonTwinHalfedges.front()))
+        {
+            m_boundary.appendPrevHalfedge(unsortedNonTwinHalfedges.front());
+            unsortedNonTwinHalfedges.pop_front();
+            while (!nonFittingHalfedges.empty())
+            {
+                unsortedNonTwinHalfedges.push_back(nonFittingHalfedges.front());
+                nonFittingHalfedges.pop();
+            }
+        }
+        else
+        {
+            nonFittingHalfedges.push(unsortedNonTwinHalfedges.front());
+            unsortedNonTwinHalfedges.pop_front();
+        }
+    }
+    if (!m_boundary.isClosed())
+        std::cout << "Warning: [" << __PRETTY_FUNCTION__
+                  << "] Boundary is not closed although it should be. End points are: " << std::endl
+                  << m_boundary.getFirstHalfedge().getOrigin() << std::endl << " and "
+                  << m_boundary.getLastHalfedge().getEnd() << std::endl;
+}
+
+template<class T>
+std::size_t gsHalfEdgeMesh<T>::Boundary::getNumberOfVertices() const
+{
+    return m_boundary.getNumberOfVertices();
+}
+
+template<class T>
+real_t gsHalfEdgeMesh<T>::Boundary::getLength() const
+{
+    return m_boundary.getLength();
+}
+
+template<class T>
+const std::vector<real_t> gsHalfEdgeMesh<T>::Boundary::getHalfedgeLengths() const
+{
+    return m_boundary.getHalfedgeLengths();
+}
+
+// TODO: refactor rest of inner classes
+
 } // namespace gismo

@@ -119,7 +119,7 @@ namespace internal
 #include <gsModeling/gsCrossApPatch.h>
 
 #include <gsModeling/gsLineSegment.h>
-//#include <gsModeling/gsParametrization.h>
+#include <gsModeling/gsParametrization.h>
 
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
