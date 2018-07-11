@@ -118,9 +118,9 @@ public:
          * This method returns a list of the angles between the vector from the vertex to a neighbour and the vector from the vertex to the next neighbour.
          * The angles are stored in m_angles and were calculated when constructing the object.
          *
-         * @return angles stored in a list of double values
+         * @return angles stored in a list of real_t values
          */
-        const std::list<double> &getAngles() const;
+        const std::list<real_t> &getAngles() const;
 
         /**
          * @brief Get inner angle
@@ -130,22 +130,22 @@ public:
          *
          * @return inner angle, which is the sum of all angles
          */
-        double getInnerAngle() const;
+        real_t getInnerAngle() const;
 
         /**
          * @brief Get neighbour distances
          *
-         * This method returns a list of double values representing the lengths of the halfedges connecting the vertex with its neighbours stored in m_neighbourDistances.
+         * This method returns a list of real_t values representing the lengths of the halfedges connecting the vertex with its neighbours stored in m_neighbourDistances.
          *
          * @return list of neighbour distances
          */
-        std::list<double> getNeighbourDistances() const;
+        std::list<real_t> getNeighbourDistances() const;
 
     private:
         std::size_t m_vertexIndex; ///< vertex index
         typename gsHalfEdgeMesh<T>::Boundary::Chain m_neighbours; ///< chain of neighbours
-        std::list<double> m_angles; ///< list of angles between neighbours
-        std::list<double> m_neighbourDistances; ///< list of distances to neighbours
+        std::list<real_t> m_angles; ///< list of angles between neighbours
+        std::list<real_t> m_neighbourDistances; ///< list of distances to neighbours
     };
 
     /**
@@ -253,7 +253,7 @@ public:
          *
          * @return boundary length
          */
-        double getBoundaryLength() const;
+        real_t getBoundaryLength() const;
 
         /**
          * @brief Get number of boundary halfedges
@@ -281,20 +281,20 @@ public:
          * @return vector of boundary corners
          */
         const std::vector<int>
-        getBoundaryCorners(const std::string method, const double range = 0.1, const std::size_t number = 4) const;
+        getBoundaryCorners(const std::string method, const real_t range = 0.1, const std::size_t number = 4) const;
 
         /**
          * @brief
          */
-        static const gsPoint2D findPointOnBoundary(double w, std::size_t index);
+        static const gsPoint2D findPointOnBoundary(real_t w, std::size_t index);
 
     private:
-        std::vector<double> midpoints(const std::size_t numberOfCorners, const double length) const;
-        void searchAreas(const double range,
-                         std::vector<std::pair<double_t, size_t> > &sortedAngles,
+        std::vector<real_t> midpoints(const std::size_t numberOfCorners, const real_t length) const;
+        void searchAreas(const real_t range,
+                         std::vector<std::pair<real_t, size_t> > &sortedAngles,
                          std::vector<int> &corners) const;
         void takeCornersWithSmallestAngles(std::size_t number,
-                                           std::vector<std::pair<double_t, size_t> > &sortedAngles,
+                                           std::vector<std::pair<real_t, size_t> > &sortedAngles,
                                            std::vector<int> &corners) const;
 
         gsHalfEdgeMesh<T> m_basicInfos;
@@ -321,7 +321,7 @@ public:
                       const std::string &boundaryMethod = "chords",
                       const std::string &parametrizationMethod = "uniform",
                       const std::vector<int> &corners = std::vector<int>(),
-                      const double range = 0.1,
+                      const real_t range = 0.1,
                       const std::size_t number = 4);
 
     /**
@@ -372,7 +372,7 @@ private:
     void calculate(const std::string &boundaryMethod,
                    const std::string &paraMethod,
                    const std::vector<int> &cornersInput,
-                   const double rangeInput,
+                   const real_t rangeInput,
                    const size_t numberInput);
 
     gsHalfEdgeMesh<T> m_mesh; ///< mesh information
