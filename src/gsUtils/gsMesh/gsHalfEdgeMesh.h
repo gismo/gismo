@@ -34,7 +34,7 @@ enum triangleVertexIndex
  * The vertices of the triangle mesh get ordered, s. t. the first n vertex indices have correspondent inner vertices and the last N-n vertex indices correspond to the boundary vertices ordered counter-clockwise.
  * */
 template <class T>
-class gsHalfEdgeMesh : public gsMesh<>
+class GISMO_EXPORT gsHalfEdgeMesh : public gsMesh<>
 {
 public:
     /**

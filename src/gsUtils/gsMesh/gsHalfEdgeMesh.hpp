@@ -36,7 +36,8 @@ struct equal_ptr
 
 //********************************************************************************
 
-gsHalfEdgeMesh::gsHalfEdgeMesh(const gsMesh<> &mesh)
+template<class T>
+gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<> &mesh)
     : gsMesh<>(mesh)
 {
     std::sort(this->vertex.begin(), this->vertex.end(), less_than_ptr());
@@ -54,27 +55,32 @@ gsHalfEdgeMesh::gsHalfEdgeMesh(const gsMesh<> &mesh)
     sortVertices();
 }
 
-std::size_t gsHalfEdgeMesh::getNumberOfVertices() const
+template<class T>
+std::size_t gsHalfEdgeMesh<T>::getNumberOfVertices() const
 {
     return this->vertex.size();
 }
 
-std::size_t gsHalfEdgeMesh::getNumberOfTriangles() const
+template<class T>
+std::size_t gsHalfEdgeMesh<T>::getNumberOfTriangles() const
 {
     return this->face.size();
 }
 
-std::size_t gsHalfEdgeMesh::getNumberOfInnerVertices() const
+template<class T>
+std::size_t gsHalfEdgeMesh<T>::getNumberOfInnerVertices() const
 {
     return m_n;
 }
 
-std::size_t gsHalfEdgeMesh::getNumberOfBoundaryVertices() const
+template<class T>
+std::size_t gsHalfEdgeMesh<T>::getNumberOfBoundaryVertices() const
 {
     return m_boundary.getNumberOfVertices();
 }
 
-const gsMesh<>::gsVertexHandle &gsHalfEdgeMesh::getVertex(const std::size_t vertexIndex) const
+template<class T>
+const gsMesh<>::gsVertexHandle &gsHalfEdgeMesh<T>::getVertex(const std::size_t vertexIndex) const
 {
     if (vertexIndex > this->vertex.size())
     {
@@ -84,12 +90,14 @@ const gsMesh<>::gsVertexHandle &gsHalfEdgeMesh::getVertex(const std::size_t vert
     return ((this->vertex[m_sorting[vertexIndex - 1]]));
 }
 
-std::size_t gsHalfEdgeMesh::getVertexIndex(const gsMesh<>::gsVertexHandle &vertex) const
+template<class T>
+std::size_t gsHalfEdgeMesh<T>::getVertexIndex(const gsMesh<>::gsVertexHandle &vertex) const
 {
     return m_inverseSorting[getInternVertexIndex(vertex)];
 }
 
-std::size_t gsHalfEdgeMesh::getGlobalVertexIndex(std::size_t localVertexIndex, std::size_t triangleIndex) const
+template<class T>
+std::size_t gsHalfEdgeMesh<T>::getGlobalVertexIndex(std::size_t localVertexIndex, std::size_t triangleIndex) const
 {
     if ((localVertexIndex != 1 && localVertexIndex != 2 && localVertexIndex != 3)
         || triangleIndex > getNumberOfTriangles() - 1)
@@ -103,11 +111,13 @@ std::size_t gsHalfEdgeMesh::getGlobalVertexIndex(std::size_t localVertexIndex, s
     return getVertexIndex((this->face[triangleIndex]->vertices[2]));
 }
 
-double gsHalfEdgeMesh::getBoundaryLength() const
+template<class T>
+double gsHalfEdgeMesh<T>::getBoundaryLength() const
 {
     return m_boundary.getLength();
 }
 
+template<class T>
 bool rangeCheck(const std::vector<int> &corners, const std::size_t minimum, const std::size_t maximum)
 {
     for (std::vector<int>::const_iterator it = corners.begin(); it != corners.end(); it++)
@@ -118,10 +128,11 @@ bool rangeCheck(const std::vector<int> &corners, const std::size_t minimum, cons
     return true;
 }
 
-std::vector<double> gsHalfEdgeMesh::getCornerLengths(std::vector<int> &corners) const
+template<class T>
+std::vector<double> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<int> &corners) const
 {
     std::size_t B = getNumberOfBoundaryVertices();
-    if (!rangeCheck(corners, 1, B))
+    if (!rangeCheck<T>(corners, 1, B))
     {
         std::cerr << "Error: [" << __PRETTY_FUNCTION__ << "] The corners must be <= number of boundary vertices."
                   << std::endl;
@@ -141,17 +152,20 @@ std::vector<double> gsHalfEdgeMesh::getCornerLengths(std::vector<int> &corners) 
     return lengths;
 }
 
-double gsHalfEdgeMesh::getShortestBoundaryDistanceBetween(std::size_t i, std::size_t j) const
+template<class T>
+double gsHalfEdgeMesh<T>::getShortestBoundaryDistanceBetween(std::size_t i, std::size_t j) const
 {
     return m_boundary.getShortestDistanceBetween(i, j);
 }
 
-const std::vector<double> gsHalfEdgeMesh::getBoundaryChordLengths() const
+template<class T>
+const std::vector<double> gsHalfEdgeMesh<T>::getBoundaryChordLengths() const
 {
     return m_boundary.getHalfedgeLengths();
 }
 
-double gsHalfEdgeMesh::getHalfedgeLength(std::size_t originVertexIndex, std::size_t endVertexIndex) const
+template<class T>
+double gsHalfEdgeMesh<T>::getHalfedgeLength(std::size_t originVertexIndex, std::size_t endVertexIndex) const
 {
     if (originVertexIndex > this->vertex.size() || endVertexIndex > this->vertex.size())
     {
@@ -164,7 +178,8 @@ double gsHalfEdgeMesh::getHalfedgeLength(std::size_t originVertexIndex, std::siz
                                      getVertex(originVertexIndex)->z() - getVertex(endVertexIndex)->z()).norm();
 }
 
-triangleVertexIndex gsHalfEdgeMesh::isTriangleVertex(std::size_t vertexIndex, std::size_t triangleIndex) const
+template<class T>
+triangleVertexIndex gsHalfEdgeMesh<T>::isTriangleVertex(std::size_t vertexIndex, std::size_t triangleIndex) const
 {
     if (vertexIndex > this->vertex.size())
     {
@@ -188,10 +203,11 @@ triangleVertexIndex gsHalfEdgeMesh::isTriangleVertex(std::size_t vertexIndex, st
     return error;
 }
 
-const std::queue<gsHalfEdgeMesh::Boundary::Chain::Halfedge>
-gsHalfEdgeMesh::getOppositeHalfedges(const std::size_t vertexIndex, const bool innerVertex) const
+template<class T>
+const std::queue<typename gsHalfEdgeMesh<T>::Boundary::Chain::Halfedge>
+gsHalfEdgeMesh<T>::getOppositeHalfedges(const std::size_t vertexIndex, const bool innerVertex) const
 {
-    std::queue<Boundary::Chain::Halfedge> oppositeHalfedges;
+    std::queue<typename Boundary::Chain::Halfedge> oppositeHalfedges;
     if (vertexIndex > this->vertex.size())
     {
         std::cerr << "Error: [" << __PRETTY_FUNCTION__ << "] The vertex with index " << vertexIndex
@@ -209,19 +225,19 @@ gsHalfEdgeMesh::getOppositeHalfedges(const std::size_t vertexIndex, const bool i
         switch (isTriangleVertex(vertexIndex, i))
         {
             case first:
-                oppositeHalfedges.push(Boundary::Chain::Halfedge(getGlobalVertexIndex(3, i),
+                oppositeHalfedges.push(typename Boundary::Chain::Halfedge(getGlobalVertexIndex(3, i),
                                                                  getGlobalVertexIndex(2, i),
                                                                  getHalfedgeLength(getGlobalVertexIndex(3, i),
                                                                                    getGlobalVertexIndex(2, i))));
                 break;
             case second:
-                oppositeHalfedges.push(Boundary::Chain::Halfedge(getGlobalVertexIndex(1, i),
+                oppositeHalfedges.push(typename Boundary::Chain::Halfedge(getGlobalVertexIndex(1, i),
                                                                  getGlobalVertexIndex(3, i),
                                                                  getHalfedgeLength(getGlobalVertexIndex(1, i),
                                                                                    getGlobalVertexIndex(3, i))));
                 break;
             case third:
-                oppositeHalfedges.push(Boundary::Chain::Halfedge(getGlobalVertexIndex(2, i),
+                oppositeHalfedges.push(typename Boundary::Chain::Halfedge(getGlobalVertexIndex(2, i),
                                                                  getGlobalVertexIndex(1, i),
                                                                  getHalfedgeLength(getGlobalVertexIndex(2, i),
                                                                                    getGlobalVertexIndex(1, i))));
@@ -239,8 +255,8 @@ gsHalfEdgeMesh::getOppositeHalfedges(const std::size_t vertexIndex, const bool i
 //*******************THE******INTERN******FUNCTIONS******ARE******NOW******FOLLOWING*******************
 //*****************************************************************************************************
 //*****************************************************************************************************
-
-bool gsHalfEdgeMesh::isBoundaryVertex(const std::size_t internVertexIndex) const
+template<class T>
+bool gsHalfEdgeMesh<T>::isBoundaryVertex(const std::size_t internVertexIndex) const
 {
     if (internVertexIndex > this->vertex.size() - 1)
     {
@@ -252,7 +268,8 @@ bool gsHalfEdgeMesh::isBoundaryVertex(const std::size_t internVertexIndex) const
         return m_boundary.isVertexContained(internVertexIndex);
 }
 
-std::size_t gsHalfEdgeMesh::getInternVertexIndex(const gsMesh<real_t>::gsVertexHandle &vertex) const
+template<class T>
+std::size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<real_t>::gsVertexHandle &vertex) const
 {
     std::size_t internVertexIndex = 0;
     for (std::size_t i = 0; i < this->vertex.size(); i++)
@@ -271,8 +288,9 @@ std::size_t gsHalfEdgeMesh::getInternVertexIndex(const gsMesh<real_t>::gsVertexH
     return 0;
 }
 
-const gsHalfEdgeMesh::Boundary::Chain::Halfedge
-gsHalfEdgeMesh::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangle, std::size_t numberOfHalfedge) const
+template<class T>
+const typename gsHalfEdgeMesh<T>::Boundary::Chain::Halfedge
+gsHalfEdgeMesh<T>::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangle, std::size_t numberOfHalfedge) const
 {
     std::size_t index1 = getInternVertexIndex((triangle->vertices[0]));
     std::size_t index2 = getInternVertexIndex((triangle->vertices[1]));
@@ -286,7 +304,7 @@ gsHalfEdgeMesh::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangle, 
     }
     if (numberOfHalfedge == 1)
     {
-        return Boundary::Chain::Halfedge(index2, index1,
+        return typename Boundary::Chain::Halfedge(index2, index1,
                                          gsVector3d<real_t>(
                                              triangle->vertices[1]->x() - triangle->vertices[0]->x(),
                                              triangle->vertices[1]->y() - triangle->vertices[0]->y(),
@@ -294,7 +312,7 @@ gsHalfEdgeMesh::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangle, 
     }
     if (numberOfHalfedge == 2)
     {
-        return Boundary::Chain::Halfedge(index3, index2,
+        return typename Boundary::Chain::Halfedge(index3, index2,
                                          gsVector3d<real_t>(
                                              triangle->vertices[2]->x() - triangle->vertices[1]->x(),
                                              triangle->vertices[2]->y() - triangle->vertices[1]->y(),
@@ -302,16 +320,17 @@ gsHalfEdgeMesh::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangle, 
     }
     if (numberOfHalfedge == 3)
     {
-        return Boundary::Chain::Halfedge(index1, index3,
+        return typename Boundary::Chain::Halfedge(index1, index3,
                                          gsVector3d<real_t>(
                                              triangle->vertices[0]->x() - triangle->vertices[2]->x(),
                                              triangle->vertices[0]->y() - triangle->vertices[2]->y(),
                                              triangle->vertices[0]->z() - triangle->vertices[2]->z()).norm());
     }
-    return Boundary::Chain::Halfedge();
+    return typename Boundary::Chain::Halfedge();
 }
 
-void gsHalfEdgeMesh::sortVertices()
+template<class T>
+void gsHalfEdgeMesh<T>::sortVertices()
 {
     std::size_t numberOfInnerVerticesFound = 0;
     std::vector<std::size_t> sorting(this->vertex.size(), 0);
