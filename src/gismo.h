@@ -108,6 +108,7 @@ namespace internal
 #include <gsModeling/gsPlanarDomain.h>
 #include <gsModeling/gsSolid.h> 
 #include <gsUtils/gsMesh/gsMesh.h>
+#include <gsUtils/gsMesh/gsHalfEdgeMesh.h>
 #include <gsModeling/gsTriMeshToSolid.h>
 //#include <gsSegment/gsVolumeSegment.h> 
 #include <gsModeling/gsFitting.h>
