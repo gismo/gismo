@@ -24,25 +24,40 @@ classdef gsTHBSpline < handle
             %
             %Usage:
             %  thb = gsTHBSpline( file )
+            %  OR
+            %  thb = gsTHBSpline( thbbasis, coefs )
             %
             %Input:
             %  file: char, [1 x numChar].
             %    Name of input file from which to read/construct the
             %    gsTHBSpline.
+            %  OR
+            %  thbbasis: gsTHBSplineBasis
+            %    THB spline basis from which the geometry is built
+            %  coefs: array 
             %
             %Output:
             %  thb: gsTHBSpline, [1 x 1].
             %    The gsTHBSpline object.
 
-            if (nargin~=1 || nargout>1)
+            if (nargin>2 || nargin<1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
+            elseif (nargin==1)
+                if (~(isa(varargin{1},'char')))
+                    error('Input arguments should be of type ''char'' or a gsTHBSplineBasis and array of double.')
+                elseif (~exist(varargin{1},'file'))
+                    error('File does not exist: %s.',varargin{1})
+                else    
+                    this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), varargin{:});
+                end
+            elseif (nargin==2)
+                if (~(isa(varargin{1},'gsTHBSplineBasis') && isa(varargin{2},'double')))
+                    error('Input arguments should be of type ''char'' or a gsTHBSplineBasis and array of double.')
+                else
+                    var1 = struct(varargin{1}).objectHandle;
+                    this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, varargin{2});
+                end
             end
-            if (~(isa(varargin{1},'char')))
-                error('Input argument no. 1 should be of type ''char''.')
-            elseif (~exist(varargin{1},'file'))
-                error('File does not exist: %s.',varargin{1})
-            end
-            this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), varargin{:});
         end
         
         % Destructor - Destroy the C++ class instance

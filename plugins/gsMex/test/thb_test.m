@@ -1,8 +1,21 @@
 % This MATLAB script tests the MEX interface of the gsTHBSplineBasis class.
 % Author: O. Chanon, P. Noertoft
 
-knots = {[0,0,0,1,2,2,2],[4,5,6]};
-hbs2 = gsTHBSplineBasis(knots);
+% Construct a truncated hierarchical basis from its knot vectors, where
+% only the level 0 is built, in a cartesian product manner. 
+knots_2build = {[0,0,0,1,2,2,2],[4,4,5,6,6]};
+hbs2 = gsTHBSplineBasis(knots_2build);
+
+% Print sizes
+fprintf('Size of the basis %d\n',hbs2.size());
+fprintf('The tree has %d nodes.\n',hbs2.treeSize());
+fprintf('Dimension of the parameter space: %d\n',hbs2.dim());
+fprintf('Number of levels: %d\n',hbs2.maxLevel());
+
+% Print knot vector of level 1, direction 1
+knots = hbs2.knots(1,1);
+fprintf('knots level 1, direction 1\n')
+disp(knots)
 
 % Construct a truncated hierarchical basis by reading the specified file
 filename = join([filedata,'thbbasis/simple.xml']);

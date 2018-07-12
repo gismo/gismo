@@ -24,11 +24,17 @@ classdef gsTHBSplineBasis < handle
             %
             %Usage:
             %  thb = gsTHBSplineBasis( file )
+            %  OR
+            %  thb = gsTHBSplineBasis( knots )
             %
             %Input:
             %  file: char, [1 x numChar].
             %    Name of input file from which to read/construct the
             %    gsTHBSplineBasis.
+            %  OR
+            %  knots: cell
+            %    The cell element i contains the knot vector in the
+            %    direction i.
             %
             %Output:
             %  thb: gsTHBSplineBasis, [1 x 1].

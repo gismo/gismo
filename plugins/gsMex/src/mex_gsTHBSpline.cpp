@@ -36,7 +36,6 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                   "less than MAXSTRLEN characters long.");
 
         if (!strcmp(cmd,"constructor")) {
-
             // ----------------------------------------------------------------------
             // Constructors
 
@@ -58,9 +57,28 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                     // Free the memory allocated by mxArrayToString
                     mxFree(input_buf);
                 } else if (!strcmp(constructSwitch,"gsTensorBSpline")) {
-                    // constructor ( gsTensorBSplineBasis )
+                    // constructor ( gsTensorBSpline )
                     gsTensorBSpline<__DIM__> *instance = convertMat2Ptr<gsTensorBSpline<__DIM__> >(prhs[2]);
                     plhs[0] = convertPtr2Mat<gsTHBSpline<__DIM__> >(new gsTHBSpline<__DIM__>(*instance));
+                } else {
+                    throw ("Invalid construction.");
+                }
+            } else if (nrhs==5) {
+                // constructor from 2 argument (+ 2 type switch)
+                char constructSwitch1[__MAXSTRLEN__]; char constructSwitch2[__MAXSTRLEN__];
+                if (mxGetString(prhs[1], constructSwitch1, sizeof(constructSwitch1))) {
+                    throw ("Second input argument should be a string"
+                           "less than MAXSTRLEN characters long.");
+                }
+                if (mxGetString(prhs[2], constructSwitch2, sizeof(constructSwitch2))) {
+                    throw("Third input argument should be a string"
+                          "less than MAXSTRLEN characters long.");
+                }
+                if ( !(strcmp(constructSwitch1,"gsTHBSplineBasis") || strcmp(constructSwitch2,"double")) ) {
+                    // constructor ( gsTHBSplineBasis, controlPts )
+                    const gsMatrix<real_t> coefs = extractMatrixFromPointer<real_t>(prhs[4]);
+                    gsTHBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTHBSplineBasis<__DIM__> >(prhs[3]);
+                    plhs[0] = convertPtr2Mat<gsTHBSpline<__DIM__> >(new gsTHBSpline<__DIM__>(*instance, coefs));
                 } else {
                     throw ("Invalid construction.");
                 }
@@ -107,7 +125,6 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
             // ----------------------------------------------------------------------
             // eval(pts)
-
             gsTHBSpline<__DIM__> *instance = convertMat2Ptr<gsTHBSpline<__DIM__> >(prhs[1]);
             // Copy the input (FIXME: this should be avoided)
             const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
