@@ -55,6 +55,7 @@ classdef gsTHBSpline < handle
                     error('Input arguments should be of type ''char'' or a gsTHBSplineBasis and array of double.')
                 else
                     var1 = struct(varargin{1}).objectHandle;
+                    %var2 = reshape(varargin{2},
                     this.objectHandle = mex_gsTHBSpline('constructor', class(varargin{1}), class(varargin{2}), var1, varargin{2});
                 end
             end
@@ -77,12 +78,12 @@ classdef gsTHBSpline < handle
             mex_gsTHBSpline('destructor', this.objectHandle);
         end
 
-        % dim - call class method
-        function varargout = dim(this, varargin)
-            %dim - dimension of the parameter space of a gsTHBSpline object
+        % parDim - call class method
+        function varargout = parDim(this, varargin)
+            %parDim - dimension of the parameter space of a gsTHBSpline object
             %
             %Usage:
-            %  val = thb.dim()
+            %  val = thb.parDim()
             %
             %Input:
             %  thb: gsTHBSpline, [1 x 1].
@@ -95,7 +96,49 @@ classdef gsTHBSpline < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'dim',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'parDim',  varargin{:});
+        end
+        
+        % geoDim - call class method
+        function varargout = geoDim(this, varargin)
+            %geoDim - dimension of the physical space of a gsTHBSpline object
+            %
+            %Usage:
+            %  val = thb.geoDim()
+            %
+            %Input:
+            %  thb: gsTHBSpline, [1 x 1].
+            %    The gsTHBSpline object.
+            %
+            %Output:
+            %  val: double, [1 x 1].
+            %    Dimension of the physical space of the gsTHBSpline.
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'geoDim',  varargin{:});
+        end
+
+        % size - call class method
+        function varargout = size(this, varargin)
+            %size - size of a gsTHBSpline object
+            %
+            %Usage:
+            %  num = thb.size()
+            %
+            %Input:
+            %  thb: gsTHBSpline, [1 x 1].
+            %    The gsTHBSpline object.
+            %
+            %Output:
+            %  num: double, [1 x 1].
+            %    Size of the gsTHBSpline.
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'size',  varargin{:});
         end
         
         % support - call class method
@@ -121,26 +164,51 @@ classdef gsTHBSpline < handle
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'support',  varargin{:});
         end
-
-        % size - call class method
-        function varargout = size(this, varargin)
-            %size - size of a gsTHBSpline object
+        
+        % basis - call class method
+        function [varargout] = basis(this, varargin)
+            %basis - returns the gsTHBSplineBasis object linked to a 
+            % gsTHBSpline object
             %
             %Usage:
-            %  num = thb.size()
+            %  act = thb.basis()
             %
             %Input:
             %  thb: gsTHBSpline, [1 x 1].
             %    The gsTHBSpline object.
             %
             %Output:
-            %  num: double, [1 x 1].
-            %    Size of the gsTHBSpline.
+            %  basis: gsTHBSplineBasis.
             
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'size',  varargin{:});
+            basis_ptr = mex_gsTHBSpline('accessor', this.objectHandle, 'basis',  varargin{:});
+            [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr);
+        end
+        
+        % coefs - call class method
+        function varargout = coefs(this, varargin)
+            %coefs - coefficients/control points of a gsTHBSpline object
+            %
+            %Usage:
+            %  supp = thb.coefs()
+            %
+            %Input:
+            %  thb: gsTHBSpline, [1 x 1].
+            %    The gsTHBSpline object.
+            %
+            %Output:
+            %  cc: double, [geoDim x n1 x ... x nd].
+            %    Control points of the gsTHBSpline, where geoDim is the
+            %    dimension of the physical space, d is the dimension of the
+            %    parametric space, and ni is the number of control points
+            %    in the parametric direction i. 
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSpline('accessor', this.objectHandle, 'coefs',  varargin{:});
         end
 
         % eval - call class method
@@ -164,7 +232,7 @@ classdef gsTHBSpline < handle
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('eval', this.objectHandle, varargin{:});
@@ -191,7 +259,7 @@ classdef gsTHBSpline < handle
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('deriv', this.objectHandle, varargin{:});
@@ -221,11 +289,11 @@ classdef gsTHBSpline < handle
             if (nargin~=3 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
-                error('Input argument no. 1 must be numeric, 2-dimensional, and with %d rows.', this.dim())
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
+                error('Input argument no. 1 must be numeric, 2-dimensional, and with %d rows.', this.parDim())
             end
-            if (~isa(varargin{2},'numeric') || ~(mod(varargin{2},1)==0) || varargin{2}>this.dim())
-                error('Input argument no. 2 must be an integer smaller than %d.', this.dim())
+            if (~isa(varargin{2},'numeric') || ~(mod(varargin{2},1)==0) || varargin{2}>this.parDim())
+                error('Input argument no. 2 must be an integer smaller than %d.', this.parDim())
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('hess', this.objectHandle, varargin{:});
         end
@@ -250,32 +318,10 @@ classdef gsTHBSpline < handle
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
             [varargout{1:nargout}] = mex_gsTHBSpline('active', this.objectHandle, varargin{:});
-        end
-        
-        % basis - call class method
-        function [varargout] = basis(this, varargin)
-            %basis - returns the gsTHBSplineBasis object linked to a 
-            % gsTHBSpline object
-            %
-            %Usage:
-            %  act = thb.basis()
-            %
-            %Input:
-            %  thb: gsTHBSpline, [1 x 1].
-            %    The gsTHBSpline object.
-            %
-            %Output:
-            %  basis: gsTHBSplineBasis.
-            
-            if (nargin~=1 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            basis_ptr = mex_gsTHBSpline('basis', this.objectHandle, varargin{:});
-            [varargout{1:nargout}] = gsTHBSplineBasis(basis_ptr);
         end
 
     end

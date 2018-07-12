@@ -115,33 +115,10 @@ classdef gsTHBSplineBasis < handle
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'numElements',  varargin{:});
         end
         
-        % support - call class method
-        function varargout = support(this, varargin)
-            %support - support of a gsTHBSplineBasis object
-            %
-            %Usage:
-            %  supp = thb.support()
-            %
-            %Input:
-            %  thb: gsTHBSplineBasis, [1 x 1].
-            %    The gsTHBSplineBasis object.
-            %
-            %Output:
-            %  supp: double, [1 x 2*d].
-            %    Support of the gsTHBSplineBasis, ordered like 
-            %      [u1_min, ..., ud_min, u1_max, ..., ud_max]
-            %    where d is the parametric dimennsion of the 
-            %    gsTHBSplineBasis.
-            
-            if (nargin~=1 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'support',  varargin{:});
-        end
-
         % size - call class method
         function varargout = size(this, varargin)
-            %size - size of a gsTHBSplineBasis object
+            %size - size/number of degrees of freedom of a gsTHBSplineBasis 
+            %   object
             %
             %Usage:
             %  num = thb.size()
@@ -201,10 +178,34 @@ classdef gsTHBSplineBasis < handle
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeLeafSize',  varargin{:});
         end
+        
+        % support - call class method
+        function varargout = support(this, varargin)
+            %support - support of a gsTHBSplineBasis object
+            %
+            %Usage:
+            %  supp = thb.support()
+            %
+            %Input:
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
+            %
+            %Output:
+            %  supp: double, [1 x 2*d].
+            %    Support of the gsTHBSplineBasis, ordered like 
+            %      [u1_min, ..., ud_min, u1_max, ..., ud_max]
+            %    where d is the parametric dimennsion of the 
+            %    gsTHBSplineBasis.
+            
+            if (nargin~=1 || nargout>1)
+                error('Invalid number of input and/or output arguments.')
+            end
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'support',  varargin{:});
+        end
 
         % maxLevel - call class method
         function varargout = maxLevel(this, varargin)
-            %maxLevel - maximum level of a gsTHBSplineBasis object
+            %maxLevel - number of levels of a gsTHBSplineBasis object
             %
             %Usage:
             %  lev = thb.maxLevel()
@@ -215,7 +216,7 @@ classdef gsTHBSplineBasis < handle
             %
             %Output:
             %  lev: double, [1 x 1].
-            %    Maximum level present in the hierarchy of the
+            %    Number of levels present in the hierarchy of the
             %    gsTHBSplineBasis object. 
             
             if (nargin~=1 || nargout>1)
@@ -283,7 +284,7 @@ classdef gsTHBSplineBasis < handle
             %Input:
             %  thb: gsTHBSplineBasis, [1 x 1].
             %    The gsTHBSplineBasis object.
-            %  pts: double, [d x numPts].
+            %  pts: double, [d x numPts] or [numPts x d].
             %    Points in which to evaluate the gsTHBSplineBasis.
             %
             %Output:
@@ -294,8 +295,12 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
-                error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
+            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}))
+                error('Input argument no. 1 must be numeric, 2-dimensional.')
+            elseif (~isequal(size(varargin{1},2),this.dim()) && ~isequal(size(varargin{1},1),this.dim()))
+                error('Input argument no. 1 must be numeric, 2-dimensional with one dimension equal to parametric dim.')
+            elseif (isequal(size(varargin{1},2),this.dim()))
+                varargin{1} = varargin{1}.';
             end
             [varargout{1:nargout}] = mex_gsTHBSplineBasis('eval', this.objectHandle, varargin{:});
         end

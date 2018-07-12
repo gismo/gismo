@@ -154,7 +154,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
             gsTHBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTHBSplineBasis < __DIM__ > > (prhs[1]);
             mwIndex deg = (mwIndex) mxGetScalar(prhs[2]);
-            mxArray *out = mxCreateDoubleScalar((double)instance->degree(deg));
+            mxArray *out = mxCreateDoubleScalar((double)instance->degree(deg-1));
             plhs[0] = out;
 
         } else if (!strcmp(cmd,"eval")) {

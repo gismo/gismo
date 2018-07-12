@@ -105,8 +105,12 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 throw("Third input argument should be a property string less than MAXSTRLEN characters long.");
 
             // Call method as specified by the input string
-            if (!strcmp(prop,"dim")) {
+            if (!strcmp(prop,"parDim")) {
                 int val      = instance->parDim();
+                mxArray *out = mxCreateDoubleScalar((double)val);
+                plhs[0]      = out;
+            } else if (!strcmp(prop,"geoDim")) {
+                int val      = instance->geoDim();
                 mxArray *out = mxCreateDoubleScalar((double)val);
                 plhs[0]      = out;
             } else if (!strcmp(prop,"size")) {
@@ -116,6 +120,14 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             } else if (!strcmp(prop,"support")) {
                 gsMatrix<real_t> supp = instance->support();
                 plhs[0] = createPointerFromMatrix(supp);
+            } else if (!strcmp(prop,"basis")) {
+                // Copy the result for output (FIXME: this should be avoided)
+                gsTHBSplineBasis<__DIM__> * hbs = new gsTHBSplineBasis<__DIM__>(instance->basis());
+                plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
+            } else if (!strcmp(prop,"coefs")) {
+                gsTHBSpline <__DIM__> *instance = convertMat2Ptr < gsTHBSpline < __DIM__ > > (prhs[1]);
+                const gsMatrix<>& cc = instance->coefs();
+                plhs[0] = createPointerFromMatrix(cc);
             } else {
                 // Unknown property
                 throw("Third input argument contains an unknown property string.");
@@ -173,16 +185,6 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             vals = vals + gsMatrix<unsigned>::Ones(vals.rows(),vals.cols());
             // Copy the result for output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<unsigned>(vals);
-
-        } else if (!strcmp(cmd,"basis")) {
-
-            // ----------------------------------------------------------------------
-            // basis()
-
-            gsTHBSpline<__DIM__> *instance = convertMat2Ptr<gsTHBSpline<__DIM__> >(prhs[1]);
-            // Copy the result for output (FIXME: this should be avoided)
-            gsTHBSplineBasis<__DIM__> * hbs = new gsTHBSplineBasis<__DIM__>(instance->basis());
-            plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
 
         } else {
 
