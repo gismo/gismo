@@ -204,10 +204,10 @@ triangleVertexIndex gsHalfEdgeMesh<T>::isTriangleVertex(std::size_t vertexIndex,
 }
 
 template<class T>
-const std::queue<typename gsHalfEdgeMesh<T>::Boundary::Chain::Halfedge>
+const std::queue<typename gsHalfEdgeMesh<T>::Halfedge>
 gsHalfEdgeMesh<T>::getOppositeHalfedges(const std::size_t vertexIndex, const bool innerVertex) const
 {
-    std::queue<typename Boundary::Chain::Halfedge> oppositeHalfedges;
+    std::queue<Halfedge> oppositeHalfedges;
     if (vertexIndex > this->vertex.size())
     {
         std::cerr << "Error: [" << __PRETTY_FUNCTION__ << "] The vertex with index " << vertexIndex
@@ -225,19 +225,19 @@ gsHalfEdgeMesh<T>::getOppositeHalfedges(const std::size_t vertexIndex, const boo
         switch (isTriangleVertex(vertexIndex, i))
         {
             case first:
-                oppositeHalfedges.push(typename Boundary::Chain::Halfedge(getGlobalVertexIndex(3, i),
+                oppositeHalfedges.push(Halfedge(getGlobalVertexIndex(3, i),
                                                                  getGlobalVertexIndex(2, i),
                                                                  getHalfedgeLength(getGlobalVertexIndex(3, i),
                                                                                    getGlobalVertexIndex(2, i))));
                 break;
             case second:
-                oppositeHalfedges.push(typename Boundary::Chain::Halfedge(getGlobalVertexIndex(1, i),
+                oppositeHalfedges.push(Halfedge(getGlobalVertexIndex(1, i),
                                                                  getGlobalVertexIndex(3, i),
                                                                  getHalfedgeLength(getGlobalVertexIndex(1, i),
                                                                                    getGlobalVertexIndex(3, i))));
                 break;
             case third:
-                oppositeHalfedges.push(typename Boundary::Chain::Halfedge(getGlobalVertexIndex(2, i),
+                oppositeHalfedges.push(Halfedge(getGlobalVertexIndex(2, i),
                                                                  getGlobalVertexIndex(1, i),
                                                                  getHalfedgeLength(getGlobalVertexIndex(2, i),
                                                                                    getGlobalVertexIndex(1, i))));
@@ -289,7 +289,7 @@ std::size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<real_t>::gsVert
 }
 
 template<class T>
-const typename gsHalfEdgeMesh<T>::Boundary::Chain::Halfedge
+const typename gsHalfEdgeMesh<T>::Halfedge
 gsHalfEdgeMesh<T>::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangle, std::size_t numberOfHalfedge) const
 {
     std::size_t index1 = getInternVertexIndex((triangle->vertices[0]));
@@ -304,7 +304,7 @@ gsHalfEdgeMesh<T>::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangl
     }
     if (numberOfHalfedge == 1)
     {
-        return typename Boundary::Chain::Halfedge(index2, index1,
+        return Halfedge(index2, index1,
                                          gsVector3d<real_t>(
                                              triangle->vertices[1]->x() - triangle->vertices[0]->x(),
                                              triangle->vertices[1]->y() - triangle->vertices[0]->y(),
@@ -312,7 +312,7 @@ gsHalfEdgeMesh<T>::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangl
     }
     if (numberOfHalfedge == 2)
     {
-        return typename Boundary::Chain::Halfedge(index3, index2,
+        return Halfedge(index3, index2,
                                          gsVector3d<real_t>(
                                              triangle->vertices[2]->x() - triangle->vertices[1]->x(),
                                              triangle->vertices[2]->y() - triangle->vertices[1]->y(),
@@ -320,13 +320,13 @@ gsHalfEdgeMesh<T>::getInternHalfedge(const gsMesh<real_t>::gsFaceHandle &triangl
     }
     if (numberOfHalfedge == 3)
     {
-        return typename Boundary::Chain::Halfedge(index1, index3,
+        return Halfedge(index1, index3,
                                          gsVector3d<real_t>(
                                              triangle->vertices[0]->x() - triangle->vertices[2]->x(),
                                              triangle->vertices[0]->y() - triangle->vertices[2]->y(),
                                              triangle->vertices[0]->z() - triangle->vertices[2]->z()).norm());
     }
-    return typename Boundary::Chain::Halfedge();
+    return Halfedge();
 }
 
 template<class T>
@@ -360,25 +360,12 @@ void gsHalfEdgeMesh<T>::sortVertices()
 //***********************************************
 
 template<class T>
-gsHalfEdgeMesh<T>::Boundary::Boundary(const gismo::gsHalfEdgeMesh<T>::Boundary &boundary)
+gsHalfEdgeMesh<T>::Boundary::Boundary(const std::vector<typename gsHalfEdgeMesh<T>::Halfedge> &halfedges)
 {
-    m_boundary = boundary.m_boundary;
-}
-
-template<class T>
-typename gsHalfEdgeMesh<T>::Boundary& gsHalfEdgeMesh<T>::Boundary::operator=(const gismo::gsHalfEdgeMesh<T>::Boundary &rhs)
-{
-    m_boundary = rhs.m_boundary;
-    return *this;
-}
-
-template<class T>
-gsHalfEdgeMesh<T>::Boundary::Boundary(const std::vector<typename gismo::gsHalfEdgeMesh<T>::Boundary::Chain::Halfedge> &halfedges)
-{
-    std::list<typename Chain::Halfedge> unsortedNonTwinHalfedges = findNonTwinHalfedges(halfedges);
+    std::list<Halfedge> unsortedNonTwinHalfedges = findNonTwinHalfedges(halfedges);
     m_boundary.appendNextHalfedge(unsortedNonTwinHalfedges.front());
     unsortedNonTwinHalfedges.pop_front();
-    std::queue<typename Chain::Halfedge> nonFittingHalfedges;
+    std::queue<Halfedge> nonFittingHalfedges;
     while (!unsortedNonTwinHalfedges.empty())
     {
         if (m_boundary.isAppendableAsNext(unsortedNonTwinHalfedges.front()))
@@ -414,22 +401,306 @@ gsHalfEdgeMesh<T>::Boundary::Boundary(const std::vector<typename gismo::gsHalfEd
                   << m_boundary.getLastHalfedge().getEnd() << std::endl;
 }
 
+//********* private ***********
+
 template<class T>
-std::size_t gsHalfEdgeMesh<T>::Boundary::getNumberOfVertices() const
+const std::list<typename gsHalfEdgeMesh<T>::Halfedge> gsHalfEdgeMesh<T>::Boundary::findNonTwinHalfedges(const std::vector<typename gsHalfEdgeMesh<T>::Halfedge> &allHalfedges)
 {
-    return m_boundary.getNumberOfVertices();
+    std::queue<Halfedge> queue0;
+    std::queue<Halfedge> queue1;
+    bool actualQueue = 0;
+    std::list<Halfedge> nonTwinHalfedges;
+    for (std::size_t i = 0; i < allHalfedges.size(); ++i)
+    {
+        queue0.push(allHalfedges[i]);
+    }
+    while (!(queue0.empty() && queue1.empty()))
+    {
+        if (actualQueue == 0)
+        {
+            nonTwinHalfedges.push_back(queue0.front());
+            queue0.pop();
+            while (!queue0.empty())
+            {
+                if (nonTwinHalfedges.back().isTwin(queue0.front()))
+                {
+                    queue0.pop();
+                    nonTwinHalfedges.pop_back();
+                    while (!queue0.empty())
+                    {
+                        queue1.push(queue0.front());
+                        queue0.pop();
+                    }
+                }
+                else
+                {
+                    queue1.push(queue0.front());
+                    queue0.pop();
+                }
+            }
+            actualQueue = 1;
+        }
+        else if (actualQueue == 1)
+        {
+            nonTwinHalfedges.push_back(queue1.front());
+            queue1.pop();
+            while (!queue1.empty())
+            {
+                if (nonTwinHalfedges.back().isTwin(queue1.front()))
+                {
+                    queue1.pop();
+                    nonTwinHalfedges.pop_back();
+                    while (!queue1.empty())
+                    {
+                        queue0.push(queue1.front());
+                        queue1.pop();
+                    }
+                }
+                else
+                {
+                    queue0.push(queue1.front());
+                    queue1.pop();
+                }
+            }
+            actualQueue = 0;
+        }
+    }
+    return nonTwinHalfedges;
+}
+
+//***********************************************
+//************ nested class Chain ************
+//***********************************************
+
+template<class T>
+bool gsHalfEdgeMesh<T>::Chain::isClosed() const
+{
+    if (m_chainedHalfedges.empty())
+    {
+        std::cerr << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
+                  << std::endl;
+        return true;
+    }
+    return (m_chainedHalfedges.front().getOrigin() == m_chainedHalfedges.back().getEnd());
 }
 
 template<class T>
-real_t gsHalfEdgeMesh<T>::Boundary::getLength() const
+std::size_t gsHalfEdgeMesh<T>::Chain::getNumberOfVertices() const
 {
-    return m_boundary.getLength();
+    if (this->isClosed())
+        return m_chainedHalfedges.size();
+    else
+        return m_chainedHalfedges.size() + 1;
 }
 
 template<class T>
-const std::vector<real_t> gsHalfEdgeMesh<T>::Boundary::getHalfedgeLengths() const
+double gsHalfEdgeMesh<T>::Chain::getLength() const
 {
-    return m_boundary.getHalfedgeLengths();
+    double length = 0;
+    for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
+         it != m_chainedHalfedges.end(); ++it)
+    {
+        length += it->getLength();
+    }
+    return length;
+}
+
+template<class T>
+const std::vector<double> gsHalfEdgeMesh<T>::Chain::getHalfedgeLengths() const
+{
+    if (this->isEmpty())
+    {
+        std::cerr << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
+                  << std::endl;
+    }
+    std::vector<double> lengths;
+    for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
+         it != m_chainedHalfedges.end(); ++it)
+    {
+        lengths.push_back(it->getLength());
+    }
+    return lengths;
+}
+
+template<class T>
+const typename gsHalfEdgeMesh<T>::Halfedge& gsHalfEdgeMesh<T>::Chain::getFirstHalfedge() const
+{
+    if (this->isEmpty())
+    {
+        std::cerr << "Error: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
+                  << std::endl;
+    }
+    return m_chainedHalfedges.front();
+}
+
+template<class T>
+const typename gsHalfEdgeMesh<T>::Halfedge& gsHalfEdgeMesh<T>::Chain::getLastHalfedge() const
+{
+    if (this->isEmpty())
+    {
+        std::cerr << "Error: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
+                  << std::endl;
+    }
+    return m_chainedHalfedges.back();
+}
+
+template<class T>
+const std::list<std::size_t> gsHalfEdgeMesh<T>::Chain::getVertexIndices() const
+{
+    if (this->isEmpty())
+    {
+        std::cerr << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
+                  << std::endl;
+    }
+    std::list<std::size_t> vertexIndices;
+    for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
+         it != m_chainedHalfedges.end(); ++it)
+    {
+        vertexIndices.push_back(it->getOrigin());
+    }
+    if (m_chainedHalfedges.size() == 1 || !(this->isClosed()))
+    {
+        vertexIndices.push_back(m_chainedHalfedges.back().getEnd());
+    }
+    return vertexIndices;
+}
+
+template<class T>
+double gsHalfEdgeMesh<T>::Chain::getShortestDistanceBetween(std::size_t i, std::size_t j) const
+{
+    if (this->isEmpty())
+    {
+        std::cout << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
+                  << std::endl;
+        return 0;
+    }
+    if (i > this->getNumberOfVertices() || j > this->getNumberOfVertices() || i < 1 || j < 1)
+    {
+        std::cout << "Error: [" << __PRETTY_FUNCTION__ << "] FirstIndex: " << i << " and second index: "
+                  << j
+                  << " must be positiv integers smaller than the number of points of the chain, which is "
+                  << this->getNumberOfVertices() << "." << std::endl;
+        return 0;
+    }
+    if (i > j)
+        std::swap(i, j);//myFunctions::orderIntegers(i, j);
+    double distance = 0;
+    std::vector<double> l = this->getHalfedgeLengths();
+    for (std::size_t z = i - 1; z < j - 1; z++)
+    {
+        distance += l[z];
+    }
+    if (this->isClosed() && (this->getLength() - distance < distance - 1e-8))
+    {
+        distance = this->getLength() - distance;
+    }
+    return distance;
+}
+
+template<class T>
+double gsHalfEdgeMesh<T>::Chain::getDistanceBetween(std::size_t i, std::size_t j) const
+{
+    if (this->isEmpty())
+    {
+        std::cout << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
+                  << std::endl;
+        return 0;
+    }
+    if (i > this->getNumberOfVertices() || j > this->getNumberOfVertices() || i < 1 || j < 1)
+    {
+        std::cout << "Error: [" << __PRETTY_FUNCTION__ << "] FirstIndex: " << i << " and second index: "
+                  << j
+                  << " must be positiv integers smaller than the number of points of the chain, which is "
+                  << this->getNumberOfVertices() << "." << std::endl;
+        return 0;
+    }
+    bool ordered = (i < j);
+    if (!ordered)
+        std::swap(i, j);//myFunctions::orderIntegers(i, j);
+    double distance = 0;
+    std::vector<double> l = this->getHalfedgeLengths();
+    for (std::size_t z = i - 1; z < j - 1; z++)
+    {
+        distance += l[z];
+    }
+    if (this->isClosed() && !ordered)
+    {
+        distance = this->getLength() - distance;
+    }
+    else if (!ordered)
+        std::cout << "Warning: [" << __PRETTY_FUNCTION__
+                  << "] The chain is supposed to be closed in case the input is not ordered." << std::endl;
+    return distance;
+}
+
+template<class T>
+bool gsHalfEdgeMesh<T>::Chain::isVertexContained(const std::size_t &vertexIndex) const
+{
+    if (this->isEmpty())
+    {
+        std::cerr << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
+                  << std::endl;
+        return false;
+    }
+    for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
+         it != m_chainedHalfedges.end(); ++it)
+    {
+        if (it->getOrigin() == vertexIndex)
+            return true;
+    }
+    if (!(this->isClosed()) && this->getLastHalfedge().getEnd() == vertexIndex) //here ! was added
+        return true;
+    return false;
+}
+
+template<class T>
+bool gsHalfEdgeMesh<T>::Chain::isAppendableAsPrev(const typename gsHalfEdgeMesh<T>::Halfedge &previousHalfedge) const
+{
+    if (m_chainedHalfedges.empty())
+        return true;
+    else
+        return m_chainedHalfedges.front().isNext(previousHalfedge);
+}
+
+template<class T>
+bool gsHalfEdgeMesh<T>::Chain::isAppendableAsNext(const typename gsHalfEdgeMesh<T>::Halfedge &nextHalfedge) const
+{
+    if (m_chainedHalfedges.empty())
+        return true;
+    else
+        return m_chainedHalfedges.back().isPrev(nextHalfedge);
+}
+
+template<class T>
+void gsHalfEdgeMesh<T>::Chain::appendPrevHalfedge(const typename gsHalfEdgeMesh<T>::Halfedge &prevHalfedge)
+{
+    if (!this->isAppendableAsPrev(prevHalfedge))
+    {
+        std::cout << "Warning: [" << __PRETTY_FUNCTION__
+                  << "] This halfedge is not appendable at the beginning." << std::endl;
+        std::cout << "The first halfedge of the chain has origin " << this->getFirstHalfedge().getOrigin()
+                  << " and prevHalfedge has the end " << prevHalfedge.getEnd() << "." << std::endl;
+    }
+    else
+    {
+        m_chainedHalfedges.push_front(prevHalfedge);
+    }
+}
+
+template<class T>
+void gsHalfEdgeMesh<T>::Chain::appendNextHalfedge(const typename gsHalfEdgeMesh<T>::Halfedge &nextHalfedge)
+{
+    if (!isAppendableAsNext(nextHalfedge))
+    {
+        std::cout << "Warning: [" << __PRETTY_FUNCTION__ << "] This halfedge is not appendable at the end."
+                  << std::endl;
+        std::cout << "The last halfedge of the chain has end " << this->getLastHalfedge().getEnd()
+                  << " and nextHalfedge has the origin " << nextHalfedge.getOrigin() << "." << std::endl;
+    }
+    else
+    {
+        m_chainedHalfedges.push_back(nextHalfedge);
+    }
 }
 
 // TODO: refactor rest of inner classes

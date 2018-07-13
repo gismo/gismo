@@ -36,7 +36,350 @@ enum triangleVertexIndex
 template <class T>
 class GISMO_EXPORT gsHalfEdgeMesh : public gsMesh<T>
 {
+    //* Inner classes. Needs to be defined in sequence Halfedge, Chain, Boundary
 public:
+    /**
+         * @brief Class that maintains directed halfedges in any dimension.
+         *
+         * The class Halfedge represents a halfedge in any dimension given by its origin and end point indices and its length.
+         * A halfedge can be constructed with desired origin and end point and length.
+         * Two halfedges can be compared by == and !=.
+         * There are getter function for origin, end and length.
+         * There are functions to test wheter a halfedge can be appended to another one before or afterwards and wheter a halfedge is a twin of another.
+         *
+         * Halfedges can be outputted like (origin--end: length).
+         * */
+    class Halfedge
+    {
+
+    public:
+        /**
+         * @brief Default constructor
+         * The default constructor sets indices (m_origin, m_end) and length (m_length) to 0.
+         * */
+        Halfedge() : m_origin(0), m_end(0), m_length(0) {}
+
+        /**
+         * @brief Copy constructor
+         * */
+        Halfedge(const Halfedge &halfedge)
+        {
+            m_origin = halfedge.m_origin;
+            m_end = halfedge.m_end;
+            m_length = halfedge.m_length;
+        }
+
+        /**
+         * @brief Assignment operator
+         * */
+        Halfedge &operator=(const Halfedge &rhs)
+        {
+            m_origin = rhs.m_origin;
+            m_end = rhs.m_end;
+            m_length = rhs.m_length;
+            return *this;
+        }
+
+        /**
+         * @brief Constructor
+         * This constructor sets the origin- and end-point indices as well as length to preferred values.
+
+         * @param[in] origin #index of origin vertex
+         * @param[in] end #index of end vertex
+         * @param[in] length #length of the halfedge
+         * */
+        Halfedge(const std::size_t origin, const std::size_t end, const double length)
+        {
+            if (length < -1e-8)
+                std::cerr << "Warning: [" << __PRETTY_FUNCTION__
+                          << "] Origin and end must be indices > 0 and length should be positiv or 0. One of the values is not correct:"
+                          << std::endl << "origin: " << origin << std::endl << "end: " << end << std::endl
+                          << "length: "
+                          << length;
+            m_origin = origin;
+            m_end = end;
+            m_length = length;
+        }
+
+        /**
+       * @brief Comparison equal operator
+       * The comarison operator equals
+       *  TRUE if origin and end point indices equal and the length difference of the two halfedges is < 1e-8
+       *  FALSE otherwise
+       * */
+        bool operator==(const Halfedge &rhs) const { return (m_origin == rhs.m_origin && m_end == rhs.m_end && (m_length - rhs.m_length) < 1e-8); }
+
+        /**
+         * @brief Comparison not equal operator
+         * */
+        bool operator!=(const Halfedge &rhs) const { return !((*this) == rhs); }
+
+        /**
+         * @brief Get origin vertex index
+         * @return index of origin vertex
+         * */
+        std::size_t getOrigin() const { return m_origin; }
+
+        /**
+         * @brief Get end vertex index
+         * @return index of end vertex
+         * */
+        std::size_t getEnd() const { return m_end; }
+
+        /**
+         * @brief Get length of halfedge
+         * @return length of halfedge
+         * */
+        double getLength() const { return m_length; }
+
+        /**
+         * @brief Tells if halfedge can be added at end.
+         * @param[in] nextHalfedge #halfedge which we want to know about if can be added at end
+         * @return TRUE if halfedge can be added at end and FALSE otherwise.
+         * */
+        bool isPrev(const Halfedge &nextHalfedge) const { return (m_end == nextHalfedge.m_origin); }
+
+        /**
+         * @brief Tells if halfedge can be added at beginning.
+         * @param[in] previousHalfedge #halfedge which we want to know about if can be added at beginning
+         * @return TRUE if halfedge can be added at beginning and FALSE otherwise.
+         * */
+        bool isNext(const Halfedge &previousHalfedge) const { return (m_origin == previousHalfedge.m_end); }
+
+        /**
+         * @brief Tells if halfedge is twin.
+         * @param[in] halfedge #halfedge which we want to know about if it is a twin
+         * @return TRUE if halfedge is a twin and FALSE otherwise.
+         * */
+        bool isTwin(const Halfedge &halfedge) const { return (m_origin == halfedge.m_end && m_end == halfedge.m_origin && (m_length - halfedge.m_length) < 1e-8); }
+
+    private:
+        std::size_t m_origin; ///< index of origin vertex
+        std::size_t m_end; ///< index of end vertex
+        double m_length; ///< length of halfedge
+    };
+
+    /**
+     * @brief Class that maintains chain of halfedges.
+     *
+     * The halfedges of the chain are stored in a list, in order to easily insert new halfedges at the beginning and at the end of the list.
+     *
+     * There are functions for testing whether the chain is empty or closed.
+     * Using getter functions the number of halfedges or vertices, as well as the length and the lengths of all halfedges can be returned.
+     * Furthermore the vertex indices ordered like they appear in the chain and the first and last halfedge can be returned.
+     * The distance between two vertices can be calculated.
+     * It can be questioned wheter a vertex is contained in the chain and wheter another halfedge can be appended at the beginning or end.
+     *
+     * A chain can be printed by printing its halfedges.
+     *
+     * */
+    class Chain
+    {
+    public:
+
+
+        /**
+         * @brief Default constructor
+         * */
+        Chain() {}
+
+        /**
+         * @brief Copy constructor
+         * */
+        Chain(const Chain &chain) { m_chainedHalfedges = chain.m_chainedHalfedges; }
+
+        /**
+         * @brief Assignment operator
+         * */
+        Chain &operator=(const Chain &rhs) { m_chainedHalfedges = rhs.m_chainedHalfedges; return *this; }
+
+        /**
+         * @brief Tells whether chain is empty or not
+         *
+         * The chain is empty if there are no halfedges stored in the list m_chainedHalfedges yet. This is tested with size() operator of lists.
+         * It is returned
+         *  TRUE if chain is empty.
+         *  FALSE otherwise.
+         *
+         * @return bool value
+         * */
+        bool isEmpty() const { return m_chainedHalfedges.empty(); }
+
+        /**
+         * @brief Tells whether chain is closed or not
+         *
+         * The chain is closed if the origin point of the first halfedge and the end point of the last halfedge equal each other.
+         * It is returned
+         *  TRUE if the chain is closed or empty.
+         *  FALSE otherwise.
+         * In case the chain is empty, e. g. there are no halfedges stored yet, a warning is printed.
+         *
+         * @return bool value
+         * */
+        bool isClosed() const;
+
+        /**
+         * @brief Get number of vertices
+         *
+         * The number of vertices equals the number of halfedges if the chain is closed.
+         * Otherwise the number of halfedges has to be increased by 1 to obtain the number of vertices.
+         *
+         * @return number of vertices
+         * */
+        std::size_t getNumberOfVertices() const;
+
+        /**
+         * @brief Get length of the chain.
+         *
+         * The length of the chain is obtained by adding the lengths of all halfedges.
+         *
+         * @return length
+         * */
+        double getLength() const;
+
+        /**
+         * @brief Get vector of halfedge lengths
+         *
+         * The list of halfedges is traversed and all halfedge lengths are stored in a vector, s. t. the order is maintained.
+         * E. g. returnVector[i] stores the length of the (i+1)-th halfedge of the chain.
+         *
+         * @return vector of halfedge lengths
+         * */
+        const std::vector<double> getHalfedgeLengths() const;
+
+
+        /**
+         * @brief Get first halfedge
+         *
+         * The first halfedge stored in the list m_chainedHalfedges is returned.
+         * If the chain is empty an error message is printed.
+         *
+         * @return first halfedge
+         * */
+        const Halfedge &getFirstHalfedge() const;
+
+        /**
+         * @brief Get last halfedge
+         *
+         * The last halfedge stored in the list m_chainedHalfedges is returned.
+         * If the chain is empty an error message is printed.
+         *
+         * @return last halfedge
+         * */
+        const Halfedge &getLastHalfedge() const;
+
+        /**
+         * @brief Get list of vertex indices
+         *
+         * The list m_chainedHalfedges is traversed and every vertex is stored in a list once.
+         * This is done maintaining the order of the vertices.
+         * Firstly every origin vertex index is stored and in case the list is not closed, the end vertex index of the last halfedge is stored, too.
+         *
+         * If the list m_chainedHalfedges is still empty, an empty list is returned and a warning is printed.
+         *
+         * @return list of vertex indices
+         * */
+        const std::list<std::size_t> getVertexIndices() const;
+
+        /**
+         * @brief Get shortest distance between vertices
+         *
+         * The shortest distance between two vertices i and j on a closed chain is calculated and returned.
+         *
+         * Just in case the chain is closed, it is checked wheter the distance between the two given vertices in a clockwise or counterclockwise direction is shorter.
+         * Otherwise the distance from smaller to greater number of vertex is returned automatically.
+         *
+         * If the chain is empty a warning is printed and 0 is returned.
+         * If either of the vertex indices is > number of vertices in the chain or < 1 an error message is printed and 0 is returned, too.
+         *
+         * @param[in] i #number of the first vertex in the chain
+         * @param[in] j #number of the second vertex in the chain
+         * @return (shortest) distance between vertices
+         * */
+        double getShortestDistanceBetween(std::size_t i, std::size_t j) const;
+
+        /**
+         * @brief Get distance between vertices
+         *
+         * The distance between two vertices i and j in a particular direction is calculated.
+         * If the chain is empty a warning is printed and 0 is returned.
+         * If either of the vertices is > number of vertices in the chain or < 1 an error message is printed and 0 is returned, too.
+         *
+         * If i < j the chain simply is traversed from i-th to j-th vertex and halfedge lengths are summed up.
+         * Otherwise the remaining length of the chain is returned, provided that the chain is closed.
+         * If i > j and chain is not closed, the distance from i to j is returned and a warning is printed.
+         *
+         * @param[in] i #number of the vertex in the chain, where the length should start, e. g. i=1 for first vertex
+         * @param[in] j #number of the vertex in the chain, where the length should end, e. g. j=4 for fourth vertex
+         *
+         * @return distance between vertices, e.g. between first and fourth chain vertex
+         **/
+        double getDistanceBetween(std::size_t i, std::size_t j) const;
+
+        /**
+         * @brief Tells if vertex is contained in chain
+         *
+         * If the chain is empty, a warning is printed and FALSE is returned.
+         *
+         * The list m_chainedHalfedges is traversed and every origin vertex index of the halfedges is checked for equality with index.
+         * If the input vertex index is found TRUE is returned, FALSE otherwise.
+         * For not closed chains, the end vertex index for the last halfedge is checked, too.
+         *
+         * @param[in] vertexIndex vertex index of the searched point
+         * @return bool value
+         **/
+        bool isVertexContained(const std::size_t &vertexIndex) const;
+
+        /**
+         * @brief Tells if halfedge is appendable at beginning
+         *
+         * For empty chains TRUE is returned.
+         * Otherwise the first halfedge in the list m_chainedHalfedges is tested with isNext(previousHalfedge) and obtained bool value is returned.
+         *
+         * @param[in] previousHalfedge halfedge which is tested to append at beginning
+         * @return bool value
+         * */
+        bool isAppendableAsPrev(const Halfedge &previousHalfedge) const;
+
+        /**
+         * @brief Tells if halfedge is appendable at end
+         *
+         * For empty chains TRUE is returned.
+         * Otherwise the last halfedge in the list m_chainedHalfedges is tested with isPrev(nextHalfedge) and obtained bool value is returned.
+         *
+         * @param[in] nextHalfedge halfedge which is tested to append at end
+         * @return bool value
+         * */
+        bool isAppendableAsNext(const Halfedge &nextHalfedge) const;
+
+        /**
+         * @brief Appends halfedge at beginning of chain if possible
+         *
+         * The method tests whether halfedge is appendable at the beginning using isAppendableAsPrev(prevHalfedge) and appends the halfedge if possible.
+         * Otherwise a warning is printed.
+         *
+         * @param[in] prevHalfedge halfedge that should be appended at beginning
+         * @param[out] m_chainedHalfedges chain with appended prevHalfedge
+         * */
+        void appendPrevHalfedge(const Halfedge &prevHalfedge);
+
+        /**
+         * @brief Appends halfedge at end of chain if possible
+         *
+         * The method tests whether halfedge is appendable at the end using isAppendableAsNext(nextHalfedge) and appends the halfedge if possible.
+         * Otherwise a warning is printed.
+         *
+         * @param[in] nextHalfedge halfedge that should be appended at end
+         * @param[out] m_chainedHalfedges chain with appended nextHalfedge
+         * */
+        void appendNextHalfedge(const Halfedge &nextHalfedge);
+
+    private:
+        std::list<Halfedge> m_chainedHalfedges; ///< list of halfedges, structure like maps<int,maps<int,double>>
+
+    };
+
+private:
     /**
  * @brief Class that maintains boundary of triangle mesh.
  *
@@ -52,570 +395,7 @@ public:
     class Boundary
     {
     public:
-        /**
-     * @brief Class that maintains chain of halfedges.
-     *
-     * The halfedges of the chain are stored in a list, in order to easily insert new halfedges at the beginning and at the end of the list.
-     *
-     * There are functions for testing whether the chain is empty or closed.
-     * Using getter functions the number of halfedges or vertices, as well as the length and the lengths of all halfedges can be returned.
-     * Furthermore the vertex indices ordered like they appear in the chain and the first and last halfedge can be returned.
-     * The distance between two vertices can be calculated.
-     * It can be questioned wheter a vertex is contained in the chain and wheter another halfedge can be appended at the beginning or end.
-     *
-     * A chain can be printed by printing its halfedges.
-     *
-     * */
-        class Chain
-        {
-        public:
-            /**
-             * @brief Class that maintains directed halfedges in any dimension.
-             *
-             * The class Halfedge represents a halfedge in any dimension given by its origin and end point indices and its length.
-             * A halfedge can be constructed with desired origin and end point and length.
-             * Two halfedges can be compared by == and !=.
-             * There are getter function for origin, end and length.
-             * There are functions to test wheter a halfedge can be appended to another one before or afterwards and wheter a halfedge is a twin of another.
-             *
-             * Halfedges can be outputted like (origin--end: length).
-             * */
-            class Halfedge
-            {
 
-            public:
-                /**
-                 * @brief Default constructor
-                 * The default constructor sets indices (m_origin, m_end) and length (m_length) to 0.
-                 * */
-                Halfedge()
-                    : m_origin(0), m_end(0), m_length(0)
-                {}
-
-                /**
-                 * @brief Copy constructor
-                 * */
-                Halfedge(const Halfedge &halfedge)
-                {
-                    m_origin = halfedge.m_origin;
-                    m_end = halfedge.m_end;
-                    m_length = halfedge.m_length;
-                }
-
-                /**
-                 * @brief Assignment operator
-                 * */
-                Halfedge &operator=(const Halfedge &rhs)
-                {
-                    m_origin = rhs.m_origin;
-                    m_end = rhs.m_end;
-                    m_length = rhs.m_length;
-                    return *this;
-                }
-
-                /**
-                 * @brief Constructor
-                 * This constructor sets the origin- and end-point indices as well as length to preferred values.
-
-                 * @param[in] origin #index of origin vertex
-                 * @param[in] end #index of end vertex
-                 * @param[in] length #length of the halfedge
-                 * */
-                Halfedge(const std::size_t origin, const std::size_t end, const double length)
-                {
-                    if (length < -1e-8)
-                        std::cerr << "Warning: [" << __PRETTY_FUNCTION__
-                                  << "] Origin and end must be indices > 0 and length should be positiv or 0. One of the values is not correct:"
-                                  << std::endl << "origin: " << origin << std::endl << "end: " << end << std::endl
-                                  << "length: "
-                                  << length;
-                    m_origin = origin;
-                    m_end = end;
-                    m_length = length;
-                }
-
-                /**
-               * @brief Comparison equal operator
-               * The comarison operator equals
-               *  TRUE if origin and end point indices equal and the length difference of the two halfedges is < 1e-8
-               *  FALSE otherwise
-               * */
-                bool operator==(const Halfedge &rhs) const
-                {
-                    return (m_origin == rhs.m_origin && m_end == rhs.m_end && (m_length - rhs.m_length) < 1e-8);
-                }
-
-                /**
-                 * @brief Comparison not equal operator
-                 * */
-                bool operator!=(const Halfedge &rhs) const
-                {
-                    return !((*this) == rhs);
-                }
-
-                /**
-                 * @brief Get origin vertex index
-                 * @return index of origin vertex
-                 * */
-                std::size_t getOrigin() const
-                {
-                    return m_origin;
-                }
-
-                /**
-                 * @brief Get end vertex index
-                 * @return index of end vertex
-                 * */
-                std::size_t getEnd() const
-                {
-                    return m_end;
-                }
-
-                /**
-                 * @brief Get length of halfedge
-                 * @return length of halfedge
-                 * */
-                double getLength() const
-                {
-                    return m_length;
-                }
-
-                /**
-                 * @brief Tells if halfedge can be added at end.
-                 * @param[in] nextHalfedge #halfedge which we want to know about if can be added at end
-                 * @return TRUE if halfedge can be added at end and FALSE otherwise.
-                 * */
-                bool isPrev(const Halfedge &nextHalfedge) const
-                {
-                    return (m_end == nextHalfedge.m_origin);
-                }
-
-                /**
-                 * @brief Tells if halfedge can be added at beginning.
-                 * @param[in] previousHalfedge #halfedge which we want to know about if can be added at beginning
-                 * @return TRUE if halfedge can be added at beginning and FALSE otherwise.
-                 * */
-                bool isNext(const Halfedge &previousHalfedge) const
-                {
-                    return (m_origin == previousHalfedge.m_end);
-                }
-
-                /**
-                 * @brief Tells if halfedge is twin.
-                 * @param[in] halfedge #halfedge which we want to know about if it is a twin
-                 * @return TRUE if halfedge is a twin and FALSE otherwise.
-                 * */
-                bool isTwin(const Halfedge &halfedge) const
-                {
-                    return (m_origin == halfedge.m_end && m_end == halfedge.m_origin
-                        && (m_length - halfedge.m_length) < 1e-8);
-                }
-
-            private:
-                std::size_t m_origin; ///< index of origin vertex
-                std::size_t m_end; ///< index of end vertex
-                double m_length; ///< length of halfedge
-            };
-
-            /**
-             * @brief Default constructor
-             * */
-            Chain()
-            {}
-
-            /**
-             * @brief Copy constructor
-             * */
-            Chain(const Chain &chain)
-            {
-                m_chainedHalfedges = chain.m_chainedHalfedges;
-            }
-
-            /**
-             * @brief Assignment operator
-             * */
-            Chain &operator=(const Chain &rhs)
-            {
-                m_chainedHalfedges = rhs.m_chainedHalfedges;
-                return *this;
-            }
-
-            /**
-             * @brief Tells whether chain is empty or not
-             *
-             * The chain is empty if there are no halfedges stored in the list m_chainedHalfedges yet. This is tested with size() operator of lists.
-             * It is returned
-             *  TRUE if chain is empty.
-             *  FALSE otherwise.
-             *
-             * @return bool value
-             * */
-            bool isEmpty() const
-            {
-                return m_chainedHalfedges.empty();
-            }
-
-            /**
-             * @brief Tells whether chain is closed or not
-             *
-             * The chain is closed if the origin point of the first halfedge and the end point of the last halfedge equal each other.
-             * It is returned
-             *  TRUE if the chain is closed or empty.
-             *  FALSE otherwise.
-             * In case the chain is empty, e. g. there are no halfedges stored yet, a warning is printed.
-             *
-             * @return bool value
-             * */
-            bool isClosed() const
-            {
-                if (m_chainedHalfedges.empty())
-                {
-                    std::cerr << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
-                              << std::endl;
-                    return true;
-                }
-                return (m_chainedHalfedges.front().getOrigin() == m_chainedHalfedges.back().getEnd());
-            }
-
-            /**
-             * @brief Get number of vertices
-             *
-             * The number of vertices equals the number of halfedges if the chain is closed.
-             * Otherwise the number of halfedges has to be increased by 1 to obtain the number of vertices.
-             *
-             * @return number of vertices
-             * */
-            std::size_t getNumberOfVertices() const
-            {
-                if (this->isClosed())
-                    return m_chainedHalfedges.size();
-                else
-                    return m_chainedHalfedges.size() + 1;
-            }
-
-            /**
-             * @brief Get length of the chain.
-             *
-             * The length of the chain is obtained by adding the lengths of all halfedges.
-             *
-             * @return length
-             * */
-            double getLength() const
-            {
-                double length = 0;
-                for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
-                     it != m_chainedHalfedges.end(); ++it)
-                {
-                    length += it->getLength();
-                }
-                return length;
-            }
-
-            /**
-             * @brief Get vector of halfedge lengths
-             *
-             * The list of halfedges is traversed and all halfedge lengths are stored in a vector, s. t. the order is maintained.
-             * E. g. returnVector[i] stores the length of the (i+1)-th halfedge of the chain.
-             *
-             * @return vector of halfedge lengths
-             * */
-            const std::vector<double> getHalfedgeLengths() const
-            {
-                if (this->isEmpty())
-                {
-                    std::cerr << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
-                              << std::endl;
-                }
-                std::vector<double> lengths;
-                for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
-                     it != m_chainedHalfedges.end(); ++it)
-                {
-                    lengths.push_back(it->getLength());
-                }
-                return lengths;
-            }
-
-            /**
-             * @brief Get first halfedge
-             *
-             * The first halfedge stored in the list m_chainedHalfedges is returned.
-             * If the chain is empty an error message is printed.
-             *
-             * @return first halfedge
-             * */
-            const Halfedge &getFirstHalfedge() const
-            {
-                if (this->isEmpty())
-                {
-                    std::cerr << "Error: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
-                              << std::endl;
-                }
-                return m_chainedHalfedges.front();
-            }
-
-            /**
-             * @brief Get last halfedge
-             *
-             * The last halfedge stored in the list m_chainedHalfedges is returned.
-             * If the chain is empty an error message is printed.
-             *
-             * @return last halfedge
-             * */
-            const Halfedge &getLastHalfedge() const
-            {
-                if (this->isEmpty())
-                {
-                    std::cerr << "Error: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
-                              << std::endl;
-                }
-                return m_chainedHalfedges.back();
-            }
-
-            /**
-             * @brief Get list of vertex indices
-             *
-             * The list m_chainedHalfedges is traversed and every vertex is stored in a list once.
-             * This is done maintaining the order of the vertices.
-             * Firstly every origin vertex index is stored and in case the list is not closed, the end vertex index of the last halfedge is stored, too.
-             *
-             * If the list m_chainedHalfedges is still empty, an empty list is returned and a warning is printed.
-             *
-             * @return list of vertex indices
-             * */
-            const std::list<std::size_t> getVertexIndices() const
-            {
-                if (this->isEmpty())
-                {
-                    std::cerr << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
-                              << std::endl;
-                }
-                std::list<std::size_t> vertexIndices;
-                for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
-                     it != m_chainedHalfedges.end(); ++it)
-                {
-                    vertexIndices.push_back(it->getOrigin());
-                }
-                if (m_chainedHalfedges.size() == 1 || !(this->isClosed()))
-                {
-                    vertexIndices.push_back(m_chainedHalfedges.back().getEnd());
-                }
-                return vertexIndices;
-            }
-
-            /**
-             * @brief Get shortest distance between vertices
-             *
-             * The shortest distance between two vertices i and j on a closed chain is calculated and returned.
-             *
-             * Just in case the chain is closed, it is checked wheter the distance between the two given vertices in a clockwise or counterclockwise direction is shorter.
-             * Otherwise the distance from smaller to greater number of vertex is returned automatically.
-             *
-             * If the chain is empty a warning is printed and 0 is returned.
-             * If either of the vertex indices is > number of vertices in the chain or < 1 an error message is printed and 0 is returned, too.
-             *
-             * @param[in] i #number of the first vertex in the chain
-             * @param[in] j #number of the second vertex in the chain
-             * @return (shortest) distance between vertices
-             * */
-            double getShortestDistanceBetween(std::size_t i, std::size_t j) const
-            {
-                if (this->isEmpty())
-                {
-                    std::cout << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
-                              << std::endl;
-                    return 0;
-                }
-                if (i > this->getNumberOfVertices() || j > this->getNumberOfVertices() || i < 1 || j < 1)
-                {
-                    std::cout << "Error: [" << __PRETTY_FUNCTION__ << "] FirstIndex: " << i << " and second index: "
-                              << j
-                              << " must be positiv integers smaller than the number of points of the chain, which is "
-                              << this->getNumberOfVertices() << "." << std::endl;
-                    return 0;
-                }
-                if (i > j)
-                    std::swap(i, j);//myFunctions::orderIntegers(i, j);
-                double distance = 0;
-                std::vector<double> l = this->getHalfedgeLengths();
-                for (std::size_t z = i - 1; z < j - 1; z++)
-                {
-                    distance += l[z];
-                }
-                if (this->isClosed() && (this->getLength() - distance < distance - 1e-8))
-                {
-                    distance = this->getLength() - distance;
-                }
-                return distance;
-            }
-
-            /**
-             * @brief Get distance between vertices
-             *
-             * The distance between two vertices i and j in a particular direction is calculated.
-             * If the chain is empty a warning is printed and 0 is returned.
-             * If either of the vertices is > number of vertices in the chain or < 1 an error message is printed and 0 is returned, too.
-             *
-             * If i < j the chain simply is traversed from i-th to j-th vertex and halfedge lengths are summed up.
-             * Otherwise the remaining length of the chain is returned, provided that the chain is closed.
-             * If i > j and chain is not closed, the distance from i to j is returned and a warning is printed.
-             *
-             * @param[in] i #number of the vertex in the chain, where the length should start, e. g. i=1 for first vertex
-             * @param[in] j #number of the vertex in the chain, where the length should end, e. g. j=4 for fourth vertex
-             *
-             * @return distance between vertices, e.g. between first and fourth chain vertex
-             **/
-            double getDistanceBetween(std::size_t i, std::size_t j) const
-            {
-                if (this->isEmpty())
-                {
-                    std::cout << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
-                              << std::endl;
-                    return 0;
-                }
-                if (i > this->getNumberOfVertices() || j > this->getNumberOfVertices() || i < 1 || j < 1)
-                {
-                    std::cout << "Error: [" << __PRETTY_FUNCTION__ << "] FirstIndex: " << i << " and second index: "
-                              << j
-                              << " must be positiv integers smaller than the number of points of the chain, which is "
-                              << this->getNumberOfVertices() << "." << std::endl;
-                    return 0;
-                }
-                bool ordered = (i < j);
-                if (!ordered)
-                    std::swap(i, j);//myFunctions::orderIntegers(i, j);
-                double distance = 0;
-                std::vector<double> l = this->getHalfedgeLengths();
-                for (std::size_t z = i - 1; z < j - 1; z++)
-                {
-                    distance += l[z];
-                }
-                if (this->isClosed() && !ordered)
-                {
-                    distance = this->getLength() - distance;
-                }
-                else if (!ordered)
-                    std::cout << "Warning: [" << __PRETTY_FUNCTION__
-                              << "] The chain is supposed to be closed in case the input is not ordered." << std::endl;
-                return distance;
-            }
-
-            /**
-             * @brief Tells if vertex is contained in chain
-             *
-             * If the chain is empty, a warning is printed and FALSE is returned.
-             *
-             * The list m_chainedHalfedges is traversed and every origin vertex index of the halfedges is checked for equality with index.
-             * If the input vertex index is found TRUE is returned, FALSE otherwise.
-             * For not closed chains, the end vertex index for the last halfedge is checked, too.
-             *
-             * @param[in] vertexIndex vertex index of the searched point
-             * @return bool value
-             **/
-            bool isVertexContained(const std::size_t &vertexIndex) const
-            {
-                if (this->isEmpty())
-                {
-                    std::cerr << "Warning: [" << __PRETTY_FUNCTION__ << "] The chain does not store any halfedges yet."
-                              << std::endl;
-                    return false;
-                }
-                for (typename std::list<Halfedge>::const_iterator it = m_chainedHalfedges.begin();
-                     it != m_chainedHalfedges.end(); ++it)
-                {
-                    if (it->getOrigin() == vertexIndex)
-                        return true;
-                }
-                if (!(this->isClosed()) && this->getLastHalfedge().getEnd() == vertexIndex) //here ! was added
-                    return true;
-                return false;
-            }
-
-            /**
-             * @brief Tells if halfedge is appendable at beginning
-             *
-             * For empty chains TRUE is returned.
-             * Otherwise the first halfedge in the list m_chainedHalfedges is tested with isNext(previousHalfedge) and obtained bool value is returned.
-             *
-             * @param[in] previousHalfedge halfedge which is tested to append at beginning
-             * @return bool value
-             * */
-            bool isAppendableAsPrev(const Halfedge &previousHalfedge) const
-            {
-                if (m_chainedHalfedges.empty())
-                    return true;
-                else
-                    return m_chainedHalfedges.front().isNext(previousHalfedge);
-            }
-
-            /**
-             * @brief Tells if halfedge is appendable at end
-             *
-             * For empty chains TRUE is returned.
-             * Otherwise the last halfedge in the list m_chainedHalfedges is tested with isPrev(nextHalfedge) and obtained bool value is returned.
-             *
-             * @param[in] nextHalfedge halfedge which is tested to append at end
-             * @return bool value
-             * */
-            bool isAppendableAsNext(const Halfedge &nextHalfedge) const
-            {
-                if (m_chainedHalfedges.empty())
-                    return true;
-                else
-                    return m_chainedHalfedges.back().isPrev(nextHalfedge);
-            }
-
-            /**
-             * @brief Appends halfedge at beginning of chain if possible
-             *
-             * The method tests whether halfedge is appendable at the beginning using isAppendableAsPrev(prevHalfedge) and appends the halfedge if possible.
-             * Otherwise a warning is printed.
-             *
-             * @param[in] prevHalfedge halfedge that should be appended at beginning
-             * @param[out] m_chainedHalfedges chain with appended prevHalfedge
-             * */
-            void appendPrevHalfedge(const Halfedge &prevHalfedge)
-            {
-                if (!this->isAppendableAsPrev(prevHalfedge))
-                {
-                    std::cout << "Warning: [" << __PRETTY_FUNCTION__
-                              << "] This halfedge is not appendable at the beginning." << std::endl;
-                    std::cout << "The first halfedge of the chain has origin " << this->getFirstHalfedge().getOrigin()
-                              << " and prevHalfedge has the end " << prevHalfedge.getEnd() << "." << std::endl;
-                }
-                else
-                {
-                    m_chainedHalfedges.push_front(prevHalfedge);
-                }
-            }
-
-            /**
-             * @brief Appends halfedge at end of chain if possible
-             *
-             * The method tests whether halfedge is appendable at the end using isAppendableAsNext(nextHalfedge) and appends the halfedge if possible.
-             * Otherwise a warning is printed.
-             *
-             * @param[in] nextHalfedge halfedge that should be appended at end
-             * @param[out] m_chainedHalfedges chain with appended nextHalfedge
-             * */
-            void appendNextHalfedge(const Halfedge &nextHalfedge)
-            {
-                if (!isAppendableAsNext(nextHalfedge))
-                {
-                    std::cout << "Warning: [" << __PRETTY_FUNCTION__ << "] This halfedge is not appendable at the end."
-                              << std::endl;
-                    std::cout << "The last halfedge of the chain has end " << this->getLastHalfedge().getEnd()
-                              << " and nextHalfedge has the origin " << nextHalfedge.getOrigin() << "." << std::endl;
-                }
-                else
-                {
-                    m_chainedHalfedges.push_back(nextHalfedge);
-                }
-            }
-
-        private:
-            std::list<Halfedge> m_chainedHalfedges; ///< list of halfedges - todo? maps<int,maps<int,double>>
-
-        };
 
         /**
          * @brief Default constructor
@@ -625,12 +405,16 @@ public:
         /**
          * @brief Copy constructor
          **/
-        Boundary(const Boundary &boundary);
+        Boundary(const Boundary &boundary) { m_boundary = boundary.m_boundary; }
 
         /**
          * @brief Assignment operator
          **/
-        Boundary &operator=(const Boundary &rhs);
+        Boundary &operator=(const Boundary &rhs)
+        {
+            m_boundary = rhs.m_boundary;
+            return *this;
+        }
 
         /**
          * @brief Constructor
@@ -645,7 +429,7 @@ public:
          *
          * @param[in] halfedges vector of halfedges of the triangle mesh
          **/
-        Boundary(const std::vector<typename Chain::Halfedge> &halfedges);
+        Boundary(const std::vector<Halfedge> &halfedges);
 
         /**
          * @brief Get number of vertices
@@ -654,7 +438,7 @@ public:
          *
          * @return number of vertices
          */
-        std::size_t getNumberOfVertices() const;
+        std::size_t getNumberOfVertices() const { return m_boundary.getNumberOfVertices(); }
 
         /**
          * @brief Get length
@@ -663,7 +447,7 @@ public:
          *
          * @return length
          */
-        real_t getLength() const;
+        real_t getLength() const { return m_boundary.getLength(); }
 
         /**
          * @brief Get halfedge lengths
@@ -672,7 +456,7 @@ public:
          *
          * @return vector of halfedges
          */
-        const std::vector<real_t> getHalfedgeLengths() const;
+        const std::vector<real_t> getHalfedgeLengths() const { return m_boundary.getHalfedgeLengths(); }
 
         /**
          * @brief Get list of vertex indices in the chain.
@@ -681,10 +465,7 @@ public:
          *
          * @return list of vertex indices
          * */
-        const std::list<std::size_t> getVertexIndices() const
-        {
-            return m_boundary.getVertexIndices();
-        }
+        const std::list<std::size_t> getVertexIndices() const { return m_boundary.getVertexIndices(); }
 
         /**
          * @brief Get distance between vertices
@@ -697,10 +478,7 @@ public:
          *
          * @return (shortest) distance between vertices
          * */
-        double getShortestDistanceBetween(const std::size_t &i, const std::size_t &j) const
-        {
-            return m_boundary.getShortestDistanceBetween(i, j);
-        }
+        double getShortestDistanceBetween(const std::size_t &i, const std::size_t &j) const { return m_boundary.getShortestDistanceBetween(i, j); }
 
         /**
          * @brief Get distance between vertices
@@ -714,10 +492,7 @@ public:
          *
          * @return (shortest) distance between i-th and j-th vertex
          * */
-        double getDistanceBetween(const std::size_t &i, const std::size_t &j) const
-        {
-            return m_boundary.getDistanceBetween(i, j);
-        }
+        double getDistanceBetween(const std::size_t &i, const std::size_t &j) const { return m_boundary.getDistanceBetween(i, j); }
 
         /**
          * @brief Tells if vertex is contained in boundary chain.
@@ -726,10 +501,7 @@ public:
          *
          * @return TRUE if it is contained and FALSE otherwise
          * */
-        bool isVertexContained(const std::size_t &internVertexIndex) const
-        {
-            return m_boundary.isVertexContained(internVertexIndex);
-        }
+        bool isVertexContained(const std::size_t &internVertexIndex) const { return m_boundary.isVertexContained(internVertexIndex); }
 
     private:
         /**
@@ -741,73 +513,12 @@ public:
          *
          * @return list of non-twin halfedges (boundary halfedges)
          */
-        const std::list<typename Chain::Halfedge> findNonTwinHalfedges(const std::vector<typename Chain::Halfedge> &allHalfedges)
-        {
-            std::queue<typename Chain::Halfedge> queue0;
-            std::queue<typename Chain::Halfedge> queue1;
-            bool actualQueue = 0;
-            std::list<typename Chain::Halfedge> nonTwinHalfedges;
-            for (std::size_t i = 0; i < allHalfedges.size(); ++i)
-            {
-                queue0.push(allHalfedges[i]);
-            }
-            while (!(queue0.empty() && queue1.empty()))
-            {
-                if (actualQueue == 0)
-                {
-                    nonTwinHalfedges.push_back(queue0.front());
-                    queue0.pop();
-                    while (!queue0.empty())
-                    {
-                        if (nonTwinHalfedges.back().isTwin(queue0.front()))
-                        {
-                            queue0.pop();
-                            nonTwinHalfedges.pop_back();
-                            while (!queue0.empty())
-                            {
-                                queue1.push(queue0.front());
-                                queue0.pop();
-                            }
-                        }
-                        else
-                        {
-                            queue1.push(queue0.front());
-                            queue0.pop();
-                        }
-                    }
-                    actualQueue = 1;
-                }
-                else if (actualQueue == 1)
-                {
-                    nonTwinHalfedges.push_back(queue1.front());
-                    queue1.pop();
-                    while (!queue1.empty())
-                    {
-                        if (nonTwinHalfedges.back().isTwin(queue1.front()))
-                        {
-                            queue1.pop();
-                            nonTwinHalfedges.pop_back();
-                            while (!queue1.empty())
-                            {
-                                queue0.push(queue1.front());
-                                queue1.pop();
-                            }
-                        }
-                        else
-                        {
-                            queue0.push(queue1.front());
-                            queue1.pop();
-                        }
-                    }
-                    actualQueue = 0;
-                }
-            }
-            return nonTwinHalfedges;
-        }
+        const std::list<Halfedge> findNonTwinHalfedges(const std::vector<Halfedge> &allHalfedges);
 
         Chain m_boundary; ///< boundary chain
     };
 
+public:
     /**
      * @brief Default constructor
      * The default constructor sets the number of inner vertices to 0.
@@ -945,7 +656,7 @@ public:
      * @param[in] innerVertex bool - optional bool value, should be set to 0 if vertex is boundary vertex
      * @return queue of opposite halfedges
      */
-    const std::queue<typename Boundary::Chain::Halfedge>
+    const std::queue<Halfedge>
     getOppositeHalfedges(const std::size_t vertexIndex, const bool innerVertex = 1) const;
 
     /**
@@ -999,7 +710,7 @@ private:
      * @param[in] numberOfHalfedge int - number of the desired halfedge
      * @return numberofHalfedge-th halfedge of triangle
      */
-    const typename Boundary::Chain::Halfedge
+    const Halfedge
     getInternHalfedge(const gsMesh<>::gsFaceHandle &triangle, std::size_t numberOfHalfedge) const;
 
     /**
@@ -1017,7 +728,7 @@ private:
      */
     void sortVertices();
 
-    std::vector<typename Boundary::Chain::Halfedge> m_halfedges; ///< vector of halfedges
+    std::vector<Halfedge> m_halfedges; ///< vector of halfedges
     Boundary m_boundary; ///< boundary of the mesh
     std::size_t m_n; ///< number of inner vertices in the mesh
     std::vector<std::size_t>

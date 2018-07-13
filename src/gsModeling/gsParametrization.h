@@ -143,7 +143,7 @@ public:
 
     private:
         std::size_t m_vertexIndex; ///< vertex index
-        typename gsHalfEdgeMesh<T>::Boundary::Chain m_neighbours; ///< chain of neighbours
+        typename gsHalfEdgeMesh<T>::Chain m_neighbours; ///< chain of neighbours
         std::list<real_t> m_angles; ///< list of angles between neighbours
         std::list<real_t> m_neighbourDistances; ///< list of distances to neighbours
     };

@@ -684,8 +684,8 @@ gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMes
     else
     {
         m_vertexIndex = vertexIndex;
-        std::queue<typename gsHalfEdgeMesh<T>::Boundary::Chain::Halfedge> allHalfedges = meshInfo.getOppositeHalfedges(m_vertexIndex, innerVertex);
-        std::queue<typename gsHalfEdgeMesh<T>::Boundary::Chain::Halfedge> nonFittingHalfedges;
+        std::queue<typename gsHalfEdgeMesh<T>::Halfedge> allHalfedges = meshInfo.getOppositeHalfedges(m_vertexIndex, innerVertex);
+        std::queue<typename gsHalfEdgeMesh<T>::Halfedge> nonFittingHalfedges;
         m_neighbours.appendNextHalfedge(allHalfedges.front());
         m_angles.push_back((*meshInfo.getVertex(allHalfedges.front().getOrigin()) - *meshInfo.getVertex(m_vertexIndex)).angle((*meshInfo.getVertex(allHalfedges.front().getEnd()) - *meshInfo.getVertex(vertexIndex))));
         m_neighbourDistances.push_back(allHalfedges.front().getLength());
