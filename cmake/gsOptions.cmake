@@ -64,6 +64,11 @@ if  (${GISMO_EXTRA_DEBUG})
 message ("  GISMO_EXTRA_DEBUG       ${GISMO_EXTRA_DEBUG}")
 endif()
 
+option(GISMO_WITH_ADDSL          "With AdDSL"                false  )
+if  (${GISMO_WITH_ADDSL})
+message ("  GISMO_WITH_ADDSL        ${GISMO_WITH_ADDSL}")
+endif()
+
 option(GISMO_WITH_ADIFF          "With auto-diff"            false  )
 if  (${GISMO_WITH_ADIFF})
 message ("  GISMO_WITH_ADIFF        ${GISMO_WITH_ADIFF}")

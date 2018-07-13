@@ -12,6 +12,10 @@ if(GISMO_WITH_CODIPACK)
 include_directories(${CODIPACK_INCLUDE_DIR})
 endif()
 
+if(GISMO_WITH_ADDSL)
+include_directories(${ADDSL_INCLUDE_DIR})
+endif()
+
 if(GISMO_WITH_UNUM)
 include_directories(${UNUM_INCLUDE_DIR})
 endif()
@@ -59,6 +63,10 @@ FOREACH(subdir ${SUBDIRS})
 
   if(GISMO_WITH_CODIPACK)
     add_dependencies(${GM_NAME} gsCoDiPackExtension)
+  endif()
+
+  if(GISMO_WITH_ADDSL)
+    add_dependencies(${GM_NAME} gsAdDSLExtension)
   endif()
 
   if(GISMO_WITH_UNUM)
