@@ -37,9 +37,9 @@ public:
     typedef typename MeshElement::gsFaceHandle gsFaceHandle;
 
 public:
-    gsFace() : MeshElement() { };
+    gsFace() : MeshElement() { }
 
-    virtual ~gsFace() { };
+    virtual ~gsFace() { }
 
     gsFace(std::vector<gsVertexHandle> const & vert ) : MeshElement() 
         { 
@@ -47,9 +47,9 @@ public:
             for ( typename std::vector<gsVertexHandle>::iterator 
                   it = vertices.begin(); it!= vertices.end(); ++it)
 	      (*it)->addFace(this);
-        };
+        }
 
-    gsFaceHandle handle() { return static_cast<gsFaceHandle>(this); };
+    gsFaceHandle handle() { return static_cast<gsFaceHandle>(this); }
 
     gsFace(gsVertexHandle const & v0, gsVertexHandle const & v1, gsVertexHandle const & v2) : MeshElement() 
         { 
@@ -59,7 +59,7 @@ public:
             v0->addFace(this);
             v1->addFace(this);
             v2->addFace(this);
-        };
+        }
 
     gsFace(gsVertexHandle const & v0, gsVertexHandle const & v1, gsVertexHandle const & v2, gsVertexHandle const & v3) : MeshElement() 
         { 
@@ -71,7 +71,7 @@ public:
             v1->addFace(this);
             v2->addFace(this);
             v3->addFace(this);
-        };
+        }
 
     // clone function
     //GISMO_CLONE_FUNCTION(gsFace)
@@ -114,13 +114,13 @@ public:
             vertices.push_back( v );
             v->addFace(this);
             return v;
-        };
+        }
 
     void move(scalar_t const&  dx, scalar_t const&  dy, scalar_t const&  dz) 
         {
             //for ( typename 
             //it->move(dx,dy,dz)
-        };
+        }
 
     std::ostream &print(std::ostream &os) const
         {
@@ -130,7 +130,7 @@ public:
                 os<< (*it)->getId()<<" ";
             os<<"\n";
             return os;
-        };
+        }
     
 
      gsVector3d<T> orthogonalVector()

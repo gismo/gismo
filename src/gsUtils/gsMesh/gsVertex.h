@@ -35,6 +35,8 @@ public:
     typedef typename MeshElement::gsVertexHandle gsVertexHandle;
 
 public:
+    gsVertex() : MeshElement(), gsVector3d<T>() { }
+
     gsVertex(scalar_t x, scalar_t y, scalar_t z = 0) : 
         MeshElement(), gsVector3d<T>(x,y,z),sharp(0)
     { }

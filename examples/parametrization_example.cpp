@@ -63,8 +63,14 @@ int main(int argc, char *argv[])
     gsParametrization<real_t> pm(*mm, ol);
 
     gsMesh<> mesh = pm.createFlatMesh();
-    gsWriteParaview(mesh, ol.getString("filenameOut"));
+    gsMatrix<> uv = pm.createUVmatrix();
+    gsMatrix<> xyz = pm.createXYZmatrix();
 
+    gsInfo << mesh << "\n";
+    gsInfo << uv << "\n";
+    gsInfo << xyz << "\n";
+
+    gsWriteParaview(mesh, ol.getString("filenameOut"));
     gsFileManager::open(ol.getString("filenameOut") + ".pvd");
 
     return 0;

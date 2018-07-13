@@ -49,7 +49,7 @@ public:
     /// If \a gn is not found, the function throws.
     std::vector<std::string> getMultiString(const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString
-    std::vector<int>         getMultiInt   (const std::string & gn) const;
+    std::vector<size_t>         getMultiInt   (const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString
     std::vector<real_t>      getMultiReal  (const std::string & gn) const;
 

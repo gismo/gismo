@@ -25,7 +25,7 @@ namespace gismo
 * The parameter points are stored in a vector, where the i-th vector element is the parameter point for the vertex with index i.
 * This means that the first n elements in the vector are the inner parameter points, the rest of them are the boundary parameter points.
 *
-* The parametrization gets constructed with the name of the STL-file containing the mesh, the boundary method and the parametrization method.
+* The parametrization gets constructed from a gsHalfEdgeMesh object, the boundary method and the parametrization method.
 * For boundary methods one can choose between
 *  chords
 *  corners
@@ -84,7 +84,7 @@ public:
          * @param[in] innerVertex const bool - optional bool value that indicates if vertex is inner vertex or not
          */
         LocalNeighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
-                           const std::size_t vertexIndex,
+                           const size_t vertexIndex,
                            const bool innerVertex = 1);
 
         /**
@@ -92,7 +92,7 @@ public:
          *
          * @return vertex index
          */
-        std::size_t getVertexIndex() const;
+        size_t getVertexIndex() const;
 
         /**
          * @brief Get number of neighbours
@@ -101,7 +101,7 @@ public:
          *
          * @return number of neighbours
          */
-        std::size_t getNumberOfNeighbours() const;
+        size_t getNumberOfNeighbours() const;
 
         /**
          * @brief Get vertex indices of neighbours
@@ -110,7 +110,7 @@ public:
          *
          * @return list of integer values where each integer is a neighbour's vertex index
          */
-        const std::list<std::size_t> getVertexIndicesOfNeighbours() const;
+        const std::list<size_t> getVertexIndicesOfNeighbours() const;
 
         /**
          * @brief Get angles
@@ -142,7 +142,7 @@ public:
         std::list<real_t> getNeighbourDistances() const;
 
     private:
-        std::size_t m_vertexIndex; ///< vertex index
+        size_t m_vertexIndex; ///< vertex index
         typename gsHalfEdgeMesh<T>::Chain m_neighbours; ///< chain of neighbours
         std::list<real_t> m_angles; ///< list of angles between neighbours
         std::list<real_t> m_neighbourDistances; ///< list of distances to neighbours
@@ -165,7 +165,7 @@ public:
          * @brief Constructor
          * Using this constructor one needs to input mesh information, a local neighbourhood and a parametrization method.
          *
-         * @param[in] meshInfo #information from STL-file
+         * @param[in] meshInfo gsHalfEdgeMesh object
          * @param[in] localNeighbourhood #local neighbourhood stores the needed information about the neighbours
          * @param[in] parametrizationMethod #method used for parametrization, one can choose between uniform, shape, distance
          * */
@@ -189,9 +189,9 @@ public:
          * @param[in] N const int - number of vertices of triangle mesh
          * @param[in] points std::vector<Point2D>& - two-dimensional points that have same angles ratio as mesh neighbours
          */
-        void calculateLambdas(const std::size_t N, std::vector<gsPoint2D> &points);
+        void calculateLambdas(const size_t N, std::vector<gsPoint2D> &points);
 
-        std::size_t m_vertexIndex; ///< vertex index
+        size_t m_vertexIndex; ///< vertex index
         std::vector<real_t> m_lambdas; ///< lambdas
 
     };
@@ -210,7 +210,7 @@ public:
      * the right-hand sides are given by the sum of all lambda(i,j)*u(j) or lambda(i,j)*v(j) for all boundary points, which are calculated beforehand.
      * The boudary points can be calculated in different ways like choosing some particular boundary corner points and distribute the rest of the points evenly or according to their distance.
      *
-     * An object is constructed with the name of the STL file and the desired parametrization method, that can be chosen from 'uniform', 'shape' and 'distance'.
+     * An object is constructed from a gsHalfEdgeMesh object and the desired parametrization method, that can be chosen from 'uniform', 'shape' and 'distance'.
      * Basically the construction is just about constructing the MeshInfo object, the vector of localParametrization objects and the vector of LocalNeighbourhood objects.
      *
      * There are getter functions for all information that is needed to formulate the equation system. E. g. one can get the number of vertices, number of inner vertices, boundary length, number of boundary halfedges, halfedge lengths and lambdas.
@@ -233,7 +233,7 @@ public:
          * This constructor takes as an input the filename and a parametrization method.
          * The LocalParametrization object then is constructed according to this method.
          *
-         * @param[in] filename const std::string& - name of the STL file
+         * @param[in] filename const gsHalfEdgeMesh<T> object
          * @param[in] parametrizationMethod const std::string - name of parametrization method
          */
         Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
@@ -244,7 +244,7 @@ public:
          *
          * @return number of inner vertices
          */
-        std::size_t getNumberOfInnerVertices() const;
+        size_t getNumberOfInnerVertices() const;
 
         /**
          * @brief Get boundary length
@@ -262,7 +262,7 @@ public:
          *
          * @return number of boundary halfedges
          */
-        std::size_t getNumberOfBoundaryHalfedges() const;
+        size_t getNumberOfBoundaryHalfedges() const;
 
         /**
          * @brief Get vector of lambdas
@@ -271,7 +271,7 @@ public:
          *
          * @return vector of lambdas
          */
-        const std::vector<real_t> &getLambdas(const std::size_t i) const;
+        const std::vector<real_t> &getLambdas(const size_t i) const;
 
         /**
          * @brief Get boundary corners depending on the method
@@ -280,22 +280,22 @@ public:
          * ...........................................................................................................
          * @return vector of boundary corners
          */
-        const std::vector<int>
-        getBoundaryCorners(const std::string method, const real_t range = 0.1, const std::size_t number = 4) const;
+        const std::vector<size_t>
+        getBoundaryCorners(const std::string method, const real_t range = 0.1, const size_t number = 4) const;
 
         /**
          * @brief
          */
-        static const gsPoint2D findPointOnBoundary(real_t w, std::size_t index);
+        static const gsPoint2D findPointOnBoundary(real_t w, size_t index);
 
     private:
-        std::vector<real_t> midpoints(const std::size_t numberOfCorners, const real_t length) const;
+        std::vector<real_t> midpoints(const size_t numberOfCorners, const real_t length) const;
         void searchAreas(const real_t range,
                          std::vector<std::pair<real_t, size_t> > &sortedAngles,
-                         std::vector<int> &corners) const;
-        void takeCornersWithSmallestAngles(std::size_t number,
+                         std::vector<size_t> &corners) const;
+        void takeCornersWithSmallestAngles(size_t number,
                                            std::vector<std::pair<real_t, size_t> > &sortedAngles,
-                                           std::vector<int> &corners) const;
+                                           std::vector<size_t> &corners) const;
 
         gsHalfEdgeMesh<T> m_basicInfos;
         std::vector<LocalParametrization> m_localParametrizations;
@@ -320,9 +320,9 @@ public:
     gsParametrization(gsMesh<T> &mesh,
                       const std::string &boundaryMethod = "chords",
                       const std::string &parametrizationMethod = "uniform",
-                      const std::vector<int> &corners = std::vector<int>(),
+                      const std::vector<size_t> &corners = std::vector<size_t>(),
                       const real_t range = 0.1,
-                      const std::size_t number = 4);
+                      const size_t number = 4);
 
     /**
     * @brief Get parameter point
@@ -331,7 +331,7 @@ public:
     * @param[in] vertexIndex int - vertex index
     * @return two-dimensional parameter point
     */
-    const gsPoint2D &getParameterPoint(std::size_t vertexIndex) const;
+    const gsPoint2D &getParameterPoint(size_t vertexIndex) const;
 
     /**
      * Parametric Coordinates u,v from 0..1
@@ -367,11 +367,11 @@ private:
     *
     * @param[out] m_parameterPoints solution of the system is stored in vector of parameter points
     */
-    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood, const std::size_t n, const std::size_t N);
+    void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood, const size_t n, const size_t N);
 
     void calculate(const std::string &boundaryMethod,
                    const std::string &paraMethod,
-                   const std::vector<int> &cornersInput,
+                   const std::vector<size_t> &cornersInput,
                    const real_t rangeInput,
                    const size_t numberInput);
 

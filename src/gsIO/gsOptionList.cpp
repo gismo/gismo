@@ -68,11 +68,11 @@ std::vector<std::string> gsOptionList::getMultiString(const std::string & gn) co
     return result;
 }
 
-std::vector<int> gsOptionList::getMultiInt(const std::string & gn) const
+std::vector<size_t> gsOptionList::getMultiInt(const std::string & gn) const
 {
     GISMO_ASSERT(hasGroup(gn), "Invalid request (getGroup): The group " + gn + " does not exist.");
 
-    std::vector<int> result;
+    std::vector<size_t> result;
 
     const std::string search = gn + ".";
 

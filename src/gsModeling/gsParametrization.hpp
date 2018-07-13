@@ -18,9 +18,9 @@
 namespace gismo
 {
 
-bool rangeCheck(const std::vector<int> &corners, const std::size_t minimum, const std::size_t maximum)
+bool rangeCheck(const std::vector<size_t> &corners, const size_t minimum, const size_t maximum)
 {
-    for (std::vector<int>::const_iterator it = corners.begin(); it != corners.end(); it++)
+    for (std::vector<size_t>::const_iterator it = corners.begin(); it != corners.end(); it++)
     {
         if (*it < minimum || *it > maximum)
         { return false; }
@@ -28,24 +28,23 @@ bool rangeCheck(const std::vector<int> &corners, const std::size_t minimum, cons
     return true;
 }
 
-real_t findLengthOfPositionPart(const std::size_t position,
-                                const std::size_t numberOfPositions,
-                                const std::vector<int> &bounds,
+real_t findLengthOfPositionPart(const size_t position,
+                                const size_t numberOfPositions,
+                                const std::vector<size_t> &bounds,
                                 const std::vector<real_t> &lengths)
 {
     if (position < 1 || position > numberOfPositions)
-        std::cout << "Error: [" << __PRETTY_FUNCTION__ << "] The position " << position
-                  << " is not a valid input. There are only " << numberOfPositions << " possible positions."
-                  << std::endl;
+        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] The position " << position
+                  << " is not a valid input. There are only " << numberOfPositions << " possible positions.\n";
     if (!rangeCheck(bounds, 1, numberOfPositions))
-        std::cout << "Error: [" << __PRETTY_FUNCTION__
+        gsInfo << "Error: [" << __PRETTY_FUNCTION__
                   << "] The bounds are not a valid input. They have to be out of the possible positions, which only are "
-                  << numberOfPositions << ". " << std::endl;
-    std::size_t numberOfBounds = bounds.size();
-    std::size_t s = lengths.size();
+                  << numberOfPositions << ".\n";
+    size_t numberOfBounds = bounds.size();
+    size_t s = lengths.size();
     if (position > bounds[numberOfBounds - 1] || position <= bounds[0])
         return lengths[s - 1];
-    for (std::size_t i = 0; i < numberOfBounds; i++)
+    for (size_t i = 0; i < numberOfBounds; i++)
     {
         if (position - bounds[0] + 1 > bounds[i] - bounds[0] + 1
             && position - bounds[0] + 1 <= bounds[(i + 1) % numberOfBounds] - bounds[0] + 1)
@@ -68,9 +67,9 @@ template<class T>
 gsParametrization<T>::gsParametrization(gsMesh<T> &mesh,
                                      const std::string &boundaryMethod,
                                      const std::string &paraMethod,
-                                     const std::vector<int> &cornersInput,
+                                     const std::vector<size_t> &cornersInput,
                                      const real_t rangeInput,
-                                     const std::size_t numberInput)
+                                     const size_t numberInput)
     : m_mesh(gsHalfEdgeMesh<T>(mesh))
 {
     calculate(boundaryMethod, paraMethod, cornersInput, rangeInput, numberInput);
@@ -79,29 +78,27 @@ gsParametrization<T>::gsParametrization(gsMesh<T> &mesh,
 template<class T>
 void gsParametrization<T>::calculate(const std::string &boundaryMethod,
                                   const std::string &paraMethod,
-                                  const std::vector<int> &cornersInput,
+                                  const std::vector<size_t> &cornersInput,
                                   const real_t rangeInput,
                                   const size_t numberInput)
 {
     if (boundaryMethod != "chords" && boundaryMethod != "corners" && boundaryMethod != "smallest"
         && boundaryMethod != "opposite" && boundaryMethod != "restrict" && boundaryMethod != "distributed")
     {
-        std::cout << "Error: [" << __PRETTY_FUNCTION__ << "] The boundary method " << boundaryMethod << " is not valid."
-                  << std::endl;
-        std::cout << "Boundary method can be chosen out of 'chords', 'corners', 'smallest', 'opposite' and 'restrict'."
-                  << std::endl;
+        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] The boundary method " << boundaryMethod << " is not valid.\n";
+        gsInfo << "Boundary method can be chosen out of 'chords', 'corners', 'smallest', 'opposite' and 'restrict'.\n";
     }
     if (paraMethod != "uniform" && paraMethod != "shape" && paraMethod != "distance")
     {
-        std::cout << "Error: [" << __PRETTY_FUNCTION__ << "] The parametrization method " << paraMethod
-                  << " is not valid." << std::endl;
-        std::cout << "gsParametrization method can be chosen out of 'uniform', 'shape' and 'distance'." << std::endl;
+        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] The parametrization method " << paraMethod
+                  << " is not valid.\n";
+        gsInfo << "gsParametrization method can be chosen out of 'uniform', 'shape' and 'distance'.\n";
     }
-    std::size_t n = m_mesh.getNumberOfInnerVertices();
-    std::size_t N = m_mesh.getNumberOfVertices();
-    std::size_t B = m_mesh.getNumberOfBoundaryVertices();
+    size_t n = m_mesh.getNumberOfInnerVertices();
+    size_t N = m_mesh.getNumberOfVertices();
+    size_t B = m_mesh.getNumberOfBoundaryVertices();
     Neighbourhood neighbourhood(m_mesh, paraMethod);
-    for (std::size_t i = 1; i <= n; i++)
+    for (size_t i = 1; i <= n; i++)
     {
         m_parameterPoints.push_back(gsPoint2D(0, 0, i));
     }
@@ -113,7 +110,7 @@ void gsParametrization<T>::calculate(const std::string &boundaryMethod,
         real_t w = 0;
         m_parameterPoints.push_back(gsPoint2D(0, 0, n + 1));
         std::vector<real_t> halfedgeLengths = m_mesh.getBoundaryChordLengths();
-        for (std::size_t i = 0; i < neighbourhood.getNumberOfBoundaryHalfedges() - 1; i++)
+        for (size_t i = 0; i < neighbourhood.getNumberOfBoundaryHalfedges() - 1; i++)
         {
             w += halfedgeLengths[i] * lInv * 4;
             m_parameterPoints.push_back(Neighbourhood::findPointOnBoundary(w, n + i + 2));
@@ -122,13 +119,13 @@ void gsParametrization<T>::calculate(const std::string &boundaryMethod,
     else if (boundaryMethod == "corners" || boundaryMethod == "smallest" || boundaryMethod == "opposite"
         || boundaryMethod == "restrict" || boundaryMethod == "distributed")
     {
-        for (std::size_t i = n + 1; i <= N; i++)
+        for (size_t i = n + 1; i <= N; i++)
         {
             m_parameterPoints.push_back(gsPoint2D(0, 0, i));
         }
         std::vector<real_t> halfedgeLengths = m_mesh.getBoundaryChordLengths();
 
-        std::vector<int> corners;
+        std::vector<size_t> corners;
         if (boundaryMethod == "corners")
             corners = cornersInput;
         else if (boundaryMethod == "smallest" || boundaryMethod == "opposite" || boundaryMethod == "restrict"
@@ -138,7 +135,7 @@ void gsParametrization<T>::calculate(const std::string &boundaryMethod,
         real_t w = 0;
         m_parameterPoints[n + corners[0] - 1] = gsPoint2D(0, 0, n + corners[0]);
 
-        for (std::size_t i = corners[0] + 1; i < corners[0] + B; i++)
+        for (size_t i = corners[0] + 1; i < corners[0] + B; i++)
         {
             w += halfedgeLengths[(i - 2) % B]
                 / findLengthOfPositionPart(i > B ? i - B : i, B, corners, lengths);
@@ -151,8 +148,8 @@ void gsParametrization<T>::calculate(const std::string &boundaryMethod,
 
 template<class T>
 void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
-                                                        const std::size_t n,
-                                                        const std::size_t N)
+                                                        const size_t n,
+                                                        const size_t N)
 {
     Eigen::MatrixXd A;
     A.resize(n, n);
@@ -161,15 +158,15 @@ void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &
     b1.resize(n);
     Eigen::VectorXd b2;
     b2.resize(n);
-    for (std::size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
     {
         b1(i) = 0;
         b2(i) = 0;
     }
-    for (std::size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
     {
         lambdas = neighbourhood.getLambdas(i);
-        for (std::size_t j = 0; j < n; j++)
+        for (size_t j = 0; j < n; j++)
         {
             if (i == j)
                 A(i, j) = 1;
@@ -179,10 +176,10 @@ void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &
             }
         }
     }
-    for (std::size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
     {
         lambdas = neighbourhood.getLambdas(i);
-        for (std::size_t j = n; j < N; j++)
+        for (size_t j = n; j < N; j++)
         {
             b1(i) += (lambdas[j]) * (m_parameterPoints[j][0]);
             b2(i) += (lambdas[j]) * (m_parameterPoints[j][1]);
@@ -198,14 +195,14 @@ void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &
 
     u = A.lu().solve(b1);
     v = A.lu().solve(b2);
-    for (std::size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
     {
         m_parameterPoints[i].moveToPosition(u(i), v(i));
     }
 }
 
 template<class T>
-const gsPoint2D &gsParametrization<T>::getParameterPoint(std::size_t vertexIndex) const
+const gsPoint2D &gsParametrization<T>::getParameterPoint(size_t vertexIndex) const
 {
     return m_parameterPoints[vertexIndex - 1];
 }
@@ -220,7 +217,7 @@ gsMatrix<> gsParametrization<T>::createUVmatrix()
 {
     gsMatrix<> m;
     m.resize(2, m_mesh.getNumberOfVertices());
-    for (std::size_t i = 1; i <= m_mesh.getNumberOfVertices(); i++)
+    for (size_t i = 1; i <= m_mesh.getNumberOfVertices(); i++)
     {
         m.col(i - 1) << this->getParameterPoint(i)[0], this->getParameterPoint(i)[1];
     }
@@ -232,7 +229,7 @@ gsMatrix<> gsParametrization<T>::createXYZmatrix()
 {
     gsMatrix<> m;
     m.resize(3, m_mesh.getNumberOfVertices());
-    for (std::size_t i = 1; i <= m_mesh.getNumberOfVertices(); i++)
+    for (size_t i = 1; i <= m_mesh.getNumberOfVertices(); i++)
     {
         m.col(i - 1) << m_mesh.getVertex(i)->x(), m_mesh.getVertex(i)->y(), m_mesh.getVertex(i)->z();
     }
@@ -243,7 +240,7 @@ template<class T>
 gsMesh<> gsParametrization<T>::createFlatMesh()
 {
     gsMesh<> mesh;
-    for (std::size_t i = 0; i < m_mesh.getNumberOfTriangles(); i++)
+    for (size_t i = 0; i < m_mesh.getNumberOfTriangles(); i++)
     {
         for (int j = 1; j <= 3; ++j)
         {
@@ -262,12 +259,12 @@ template<class T>
 gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T>& meshInfo, const std::string parametrizationMethod) : m_basicInfos(meshInfo)
 {
     //hier geht die ganz zeit verloren
-    for(std::size_t i=1; i <= m_basicInfos.getNumberOfInnerVertices(); i++)
+    for(size_t i=1; i <= m_basicInfos.getNumberOfInnerVertices(); i++)
     {
         m_localParametrizations.push_back(LocalParametrization(m_basicInfos, LocalNeighbourhood(m_basicInfos, i), parametrizationMethod));
     }
     //ab hier geht etwas zeit verloren, aber nur ein bruchteil
-    for(std::size_t i=m_basicInfos.getNumberOfInnerVertices()+1; i<= m_basicInfos.getNumberOfVertices(); i++)
+    for(size_t i=m_basicInfos.getNumberOfInnerVertices()+1; i<= m_basicInfos.getNumberOfVertices(); i++)
     {
         m_localBoundaryNeighbourhoods.push_back(LocalNeighbourhood(m_basicInfos, i,0));
     }
@@ -280,28 +277,28 @@ real_t gsParametrization<T>::Neighbourhood::getBoundaryLength() const
 }
 
 template<class T>
-std::size_t gsParametrization<T>::Neighbourhood::getNumberOfBoundaryHalfedges() const
+size_t gsParametrization<T>::Neighbourhood::getNumberOfBoundaryHalfedges() const
 {
     return m_basicInfos.getNumberOfBoundaryVertices();
 }
 
 template<class T>
-std::size_t gsParametrization<T>::Neighbourhood::getNumberOfInnerVertices() const
+size_t gsParametrization<T>::Neighbourhood::getNumberOfInnerVertices() const
 {
     return m_basicInfos.getNumberOfInnerVertices();
 }
 
 template<class T>
-const std::vector<real_t>& gsParametrization<T>::Neighbourhood::getLambdas(const std::size_t i) const
+const std::vector<real_t>& gsParametrization<T>::Neighbourhood::getLambdas(const size_t i) const
 {
     return m_localParametrizations[i].getLambdas();
 }
 
 template<class T>
-const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(const std::string method, const real_t range, const std::size_t number) const
+const std::vector<size_t> gsParametrization<T>::Neighbourhood::getBoundaryCorners(const std::string method, const real_t range, const size_t number) const
 {
     std::vector<std::pair<real_t , size_t> > angles;
-    std::vector<int> corners;
+    std::vector<size_t> corners;
     for(typename std::vector<LocalNeighbourhood>::const_iterator it=m_localBoundaryNeighbourhoods.begin(); it!=m_localBoundaryNeighbourhoods.end(); it++)
     {
         angles.push_back(std::pair<real_t , size_t>(it->getInnerAngle(), it->getVertexIndex() - this->getNumberOfInnerVertices()));
@@ -311,19 +308,19 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
     {
         this->takeCornersWithSmallestAngles(4, angles, corners);
         std::sort(corners.begin(), corners.end());
-        std::cout << "According to the method 'smallest inner angles' the following corners were chosen: " << std::endl;
-        for(std::vector<int>::iterator it=corners.begin(); it!=corners.end(); it++)
+        gsDebug << "According to the method 'smallest inner angles' the following corners were chosen:\n";
+        for(std::vector<size_t>::iterator it=corners.begin(); it!=corners.end(); it++)
         {
-            std::cout << (*it) << std::endl;
+            gsDebug << (*it) << "\n";
         }
     }
     else if(method == "opposite")
     {
         searchAreas(range, angles, corners);
-        std::cout << "According to the method 'nearly opposite corners' the following corners were chosen: " << std::endl;
-        for(std::size_t i=0; i<corners.size(); i++)
+        gsDebug << "According to the method 'nearly opposite corners' the following corners were chosen:\n";
+        for(size_t i=0; i<corners.size(); i++)
         {
-            std::cout << corners[i] << std::endl;
+            gsDebug << corners[i] << "\n";
         }
     }
     else if(method == "restrict")
@@ -334,7 +331,7 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
         while(corners.size() < 4)
         {
             flag = true;
-            for(std::vector<int>::iterator it=corners.begin(); it!=corners.end(); it++)
+            for(std::vector<size_t>::iterator it=corners.begin(); it!=corners.end(); it++)
             {
                 if(m_basicInfos.getShortestBoundaryDistanceBetween(angles.front().second, *it) < range*getBoundaryLength())
                     flag = false;
@@ -344,30 +341,30 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
             angles.erase(angles.begin());
         }
         std::sort(corners.begin(), corners.end());
-        for(std::size_t i=0; i<corners.size(); i++)
+        for(size_t i=0; i<corners.size(); i++)
         {
-            std::cout << corners[i] << std::endl;
+            gsDebug << corners[i] << "\n";
         }
     }
     else if(method == "distributed")
     {
         real_t oldDifference = 0;
         real_t newDifference = 0;
-        std::vector<int> newCorners;
+        std::vector<size_t> newCorners;
         std::vector<real_t> lengths;
         angles.erase(angles.begin()+number, angles.end());
-        std::cout << "Angles: " << std::endl;
-        for(std::size_t i=0; i<angles.size(); i++)
+        gsDebug << "Angles:\n";
+        for(size_t i=0; i<angles.size(); i++)
         {
-            std::cout << angles[i].first << ", " << angles[i].second << std::endl;
+            gsDebug << angles[i].first << ", " << angles[i].second << "\n";
         }
-        for(std::size_t i=0; i<angles.size(); i++)
+        for(size_t i=0; i<angles.size(); i++)
         {
-            for(std::size_t j=i+1; j<angles.size(); j++)
+            for(size_t j=i+1; j<angles.size(); j++)
             {
-                for(std::size_t k=j+1; k<angles.size(); k++)
+                for(size_t k=j+1; k<angles.size(); k++)
                 {
-                    for(std::size_t l=k+1; l<angles.size(); l++)
+                    for(size_t l=k+1; l<angles.size(); l++)
                     {
                         newCorners.push_back(angles[i].second);
                         newCorners.push_back(angles[j].second);
@@ -392,20 +389,20 @@ const std::vector<int> gsParametrization<T>::Neighbourhood::getBoundaryCorners(c
                 }
             }
         }
-        std::cout << "According to the method 'evenly distributed corners' the following corners were chosen: " << std::endl;
-        for(std::size_t i=0; i<corners.size(); i++)
+        gsDebug << "According to the method 'evenly distributed corners' the following corners were chosen:\n";
+        for(size_t i=0; i<corners.size(); i++)
         {
-            std::cout << corners[i] << std::endl;
+            gsDebug << corners[i] << "\n";
         }
     }
     return corners;
 }
 
 template<class T>
-const gsPoint2D gsParametrization<T>::Neighbourhood::findPointOnBoundary(const real_t w, std::size_t vertexIndex)
+const gsPoint2D gsParametrization<T>::Neighbourhood::findPointOnBoundary(const real_t w, size_t vertexIndex)
 {
     if(w < 0 || w > 4)
-        std::cout << "Error: [" << __PRETTY_FUNCTION__ << "] wrong value for w" << std::endl;
+        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] wrong value for w\n";
     else if(0 <= w && w <=1)
         return gsPoint2D(w,0, vertexIndex);
     else if(1<w && w<=2)
@@ -424,7 +421,7 @@ const gsPoint2D gsParametrization<T>::Neighbourhood::findPointOnBoundary(const r
 //*****************************************************************************************************
 
 template<class T>
-void gsParametrization<T>::Neighbourhood::takeCornersWithSmallestAngles(std::size_t number, std::vector<std::pair<real_t , size_t> >& sortedAngles, std::vector<int>& corners) const
+void gsParametrization<T>::Neighbourhood::takeCornersWithSmallestAngles(size_t number, std::vector<std::pair<real_t , size_t> >& sortedAngles, std::vector<size_t>& corners) const
 {
     sortedAngles.erase(sortedAngles.begin()+number, sortedAngles.end());
     for(std::vector<std::pair<real_t , size_t> >::iterator it=sortedAngles.begin(); it!=sortedAngles.end(); it++)
@@ -434,11 +431,11 @@ void gsParametrization<T>::Neighbourhood::takeCornersWithSmallestAngles(std::siz
 }
 
 template<class T>
-std::vector<real_t> gsParametrization<T>::Neighbourhood::midpoints(const std::size_t numberOfCorners, const real_t length) const
+std::vector<real_t> gsParametrization<T>::Neighbourhood::midpoints(const size_t numberOfCorners, const real_t length) const
 {
     std::vector<real_t> midpoints;
     real_t n = 1./numberOfCorners;
-    for(std::size_t i=1; i<numberOfCorners; i++)
+    for(size_t i=1; i<numberOfCorners; i++)
     {
         midpoints.push_back(i*length*n);
     }
@@ -446,20 +443,20 @@ std::vector<real_t> gsParametrization<T>::Neighbourhood::midpoints(const std::si
 }
 
 template<class T>
-void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::vector<std::pair<real_t , size_t> >& sortedAngles, std::vector<int>& corners) const
+void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::vector<std::pair<real_t , size_t> >& sortedAngles, std::vector<size_t>& corners) const
 {
     real_t l = m_basicInfos.getBoundaryLength();
     std::vector<real_t> h = m_basicInfos.getBoundaryChordLengths();
     this->takeCornersWithSmallestAngles(1,sortedAngles, corners);
     std::vector<std::vector<std::pair<real_t , size_t> > > areas;
-    for(std::size_t i=0; i<3; i++)
+    for(size_t i=0; i<3; i++)
     {
         areas.push_back(std::vector<std::pair<real_t , size_t> >());
     }
-    std::vector<double> midpoints = this->midpoints(4, l);
+    std::vector<real_t> midpoints = this->midpoints(4, l);
 
-    double walkAlong = 0;
-    for(std::size_t i=0; i<h.size(); i++)
+    real_t walkAlong = 0;
+    for(size_t i=0; i<h.size(); i++)
     {
         walkAlong += h[(corners[0]+i-1)%h.size()];
         for(int j = 2; j>=0; j--)
@@ -475,7 +472,7 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::v
     std::sort(areas[1].begin(), areas[1].end());
     std::sort(areas[2].begin(), areas[2].end());
     bool smaller = false;
-    for(std::size_t i=0; i<areas[0].size(); i++)
+    for(size_t i=0; i<areas[0].size(); i++)
     {
         if(areas[0][i].second > corners[0] || areas[0][i].second < corners[0])
         {
@@ -487,7 +484,7 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::v
             break;
         }
     }
-    for(std::size_t i=0; i<areas[1].size(); i++)
+    for(size_t i=0; i<areas[1].size(); i++)
     {
         if(smaller)
         {
@@ -507,7 +504,7 @@ void gsParametrization<T>::Neighbourhood::searchAreas(const real_t range, std::v
             break;
         }
     }
-    for(std::size_t i=0; i<areas[2].size(); i++)
+    for(size_t i=0; i<areas[2].size(); i++)
     {
         if(smaller)
         {
@@ -533,11 +530,11 @@ template<class T>
 gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdgeMesh<T>& meshInfo, const LocalNeighbourhood& localNeighbourhood, const std::string parametrizationMethod)
 {
     m_vertexIndex = localNeighbourhood.getVertexIndex();
-    std::list<std::size_t> indices = localNeighbourhood.getVertexIndicesOfNeighbours();
-    std::size_t d = localNeighbourhood.getNumberOfNeighbours();
+    std::list<size_t> indices = localNeighbourhood.getVertexIndicesOfNeighbours();
+    size_t d = localNeighbourhood.getNumberOfNeighbours();
     if(parametrizationMethod == "uniform")
     {
-        for(std::size_t j=1; j <= meshInfo.getNumberOfVertices(); j++)
+        for(size_t j=1; j <= meshInfo.getNumberOfVertices(); j++)
         {
             m_lambdas.push_back(0); // Lambda(m_vertexIndex, j, 0)
         }
@@ -587,7 +584,7 @@ gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdg
             sumOfDistances += *it;
         }
         real_t sumOfDistancesInv = 1./sumOfDistances;
-        for(std::size_t j=1; j <= meshInfo.getNumberOfVertices(); j++)
+        for(size_t j=1; j <= meshInfo.getNumberOfVertices(); j++)
         {
             m_lambdas.push_back(0); //Lambda(m_vertexIndex, j, 0)
         }
@@ -612,23 +609,23 @@ const std::vector<real_t>& gsParametrization<T>::LocalParametrization::getLambda
 //*****************************************************************************************************
 
 template<class T>
-void gsParametrization<T>::LocalParametrization::calculateLambdas(const std::size_t N, std::vector<gsPoint2D>& points)
+void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N, std::vector<gsPoint2D>& points)
 {
-    for(std::size_t j=1; j <= N; j++)
+    for(size_t j=1; j <= N; j++)
     {
         m_lambdas.push_back(0); //Lambda(m_vertexIndex, j, 0)
     }
     gsPoint2D p(0, 0, 0);
-    std::size_t d = points.size();
+    size_t d = points.size();
     std::vector<real_t> my(d, 0);
     gsLineSegment2D actualLine;
-    std::size_t l=1;
-    std::size_t steps = 0;
-    //std::size_t checkOption = 0;
+    size_t l=1;
+    size_t steps = 0;
+    //size_t checkOption = 0;
     for(std::vector<gsPoint2D>::const_iterator it=points.begin(); it != points.end(); it++)
     {
         actualLine = gsLineSegment2D(p, *it);
-        for(std::size_t i=1; i < d-1; i++)
+        for(size_t i=1; i < d-1; i++)
         {
             if(l+i == d)
                 steps = d - 1;
@@ -654,7 +651,7 @@ void gsParametrization<T>::LocalParametrization::calculateLambdas(const std::siz
                 break;
             }
         }
-        for(std::size_t k = 1; k <= d; k++)
+        for(size_t k = 1; k <= d; k++)
         {
             m_lambdas[points[k-1].getVertexIndex()-1] += (my[k-1]);
         }
@@ -668,7 +665,7 @@ void gsParametrization<T>::LocalParametrization::calculateLambdas(const std::siz
     for(std::vector<real_t>::iterator it=m_lambdas.begin(); it != m_lambdas.end(); it++)
     {
         if(*it < 0)
-            std::cout << *it << std::endl;
+            gsInfo << *it << "\n";
     }
 }
 
@@ -677,10 +674,10 @@ void gsParametrization<T>::LocalParametrization::calculateLambdas(const std::siz
 //*******************************************************************************************
 
 template<class T>
-gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMesh<T>& meshInfo, const std::size_t vertexIndex, const bool innerVertex)
+gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMesh<T>& meshInfo, const size_t vertexIndex, const bool innerVertex)
 {
     if((innerVertex && vertexIndex > meshInfo.getNumberOfInnerVertices()) || vertexIndex < 1)
-        std::cout << "Error: [" << __PRETTY_FUNCTION__ << "] Vertex with index " << vertexIndex << " does either not exist (< 1) or is not an inner vertex (> " << meshInfo.getNumberOfInnerVertices() << ")." << std::endl;
+        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] Vertex with index " << vertexIndex << " does either not exist (< 1) or is not an inner vertex (> " << meshInfo.getNumberOfInnerVertices() << ").\n";
     else
     {
         m_vertexIndex = vertexIndex;
@@ -726,19 +723,19 @@ gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMes
 }
 
 template<class T>
-std::size_t gsParametrization<T>::LocalNeighbourhood::getVertexIndex() const
+size_t gsParametrization<T>::LocalNeighbourhood::getVertexIndex() const
 {
     return m_vertexIndex;
 }
 
 template<class T>
-std::size_t gsParametrization<T>::LocalNeighbourhood::getNumberOfNeighbours() const
+size_t gsParametrization<T>::LocalNeighbourhood::getNumberOfNeighbours() const
 {
     return m_neighbours.getNumberOfVertices();
 }
 
 template<class T>
-const std::list<std::size_t> gsParametrization<T>::LocalNeighbourhood::getVertexIndicesOfNeighbours() const
+const std::list<size_t> gsParametrization<T>::LocalNeighbourhood::getVertexIndicesOfNeighbours() const
 {
     return m_neighbours.getVertexIndices();
 }
