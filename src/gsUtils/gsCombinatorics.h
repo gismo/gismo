@@ -595,6 +595,18 @@ void cubeIsometry( const gsVector<bool,d>    & flip,
     while (i!=dd);
 }
 
+template <int d>
+void cubeIsometryMatrix ( const gsVector<bool,d>    & flip,
+                          const gsVector<index_t,d> & perm,
+                          gsMatrix<int,d,d> & result)
+{
+    result.setZero();
+    for(int i = 0; i < d; ++i)
+    {
+        result(perm(i),i) = (flip(perm(i)) ? 1 : -1);
+    }
+}
+
 /// \brief Construct first composition of \a sum into \a dim integers
 /// \ingroup combinatorics
 template<class Vec>
