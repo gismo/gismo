@@ -29,20 +29,20 @@ void secDerToHessian(typename gsMatrix<T,ParDim*(ParDim+1)/2,1>::constRef & secD
         break;
     case 2:
         hessian(0,0)=secDers(0,0);
-        hessian(0,1)=secDers(2,0);
-        hessian(1,0)=secDers(2,0);
         hessian(1,1)=secDers(1,0);
+        hessian(0,1)=
+        hessian(1,0)=secDers(2,0);
         break;
     case 3:
         hessian(0,0)=secDers(0,0);
-        hessian(0,1)=secDers(3,0);
-        hessian(0,2)=secDers(4,0);
-        hessian(1,0)=secDers(3,0);
         hessian(1,1)=secDers(1,0);
-        hessian(1,2)=secDers(5,0);
-        hessian(2,0)=secDers(4,0);
-        hessian(2,1)=secDers(5,0);
         hessian(2,2)=secDers(2,0);
+        hessian(0,1)=
+        hessian(1,0)=secDers(3,0);
+        hessian(0,2)=
+        hessian(2,0)=secDers(4,0);
+        hessian(1,2)=
+        hessian(2,1)=secDers(5,0);
         break;
     default:
         break;
