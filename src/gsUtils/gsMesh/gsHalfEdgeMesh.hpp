@@ -694,6 +694,4 @@ void gsHalfEdgeMesh<T>::Chain::appendNextHalfedge(const typename gsHalfEdgeMesh<
     }
 }
 
-// TODO: refactor rest of inner classes
-
 } // namespace gismo

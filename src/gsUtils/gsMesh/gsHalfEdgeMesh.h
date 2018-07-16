@@ -472,7 +472,7 @@ private:
          *
          * @return (shortest) distance between vertices
          * */
-        real_t getShortestDistanceBetween(const size_t &i, const size_t &j, real_t m_precision) const { return m_boundary.getShortestDistanceBetween(i, j, m_precision); }
+        real_t getShortestDistanceBetween(const size_t &i, const size_t &j, real_t precision) const { return m_boundary.getShortestDistanceBetween(i, j, precision); }
 
         /**
          * @brief Get distance between vertices
