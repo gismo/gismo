@@ -31,6 +31,9 @@ public:
 
 public:
   gsEdge() { }; // gsmesheölem...
+
+    // maybe a copy constructor will fix memory leak.
+    //gsEdge(gsEdge const & other) { // todo copy source, target into new vertex *}
   
   gsEdge(gsVertexHandle const & v0, gsVertexHandle const & v1 ): 
     source(v0), target(v1)

@@ -51,7 +51,9 @@ public:
     {
         cloneAll(mesh.vertex, vertex);
         cloneAll(mesh.face, face);
+        // iterate over all edges and make them new
         edge = mesh.edge;
+        //addEdge()
     }
 
     gsMesh& operator=(const gsMesh& other)

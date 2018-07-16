@@ -54,6 +54,20 @@ real_t findLengthOfPositionPart(const size_t position,
 }
 
 template<class T>
+gsOptionList gsParametrization<T>::defaultOptions()
+{
+    gsOptionList opt;
+    opt.addInt("boundaryMethod", "boundary methodes: {1:chords, 2:corners, 3:smallest, 4:restrict, 5:opposite, 6:distributed}", 4);
+    opt.addInt("parametrizationMethod", "parametrization methods: {1:shape, 2:uniform, 3:distance}", 1);
+    std::vector<size_t> corners;
+    opt.addMultiInt("corners", "vector for corners", corners);
+    opt.addReal("range", "in case of restrict or opposite", 0.1);
+    opt.addInt("number", "number of corners, in case of corners", 4);
+    opt.addReal("precision", "precision to calculate", 1E-8);
+    return opt;
+}
+
+template<class T>
 gsParametrization<T>::gsParametrization(gsMesh<T> &mesh, gsOptionList list) : m_mesh(gsHalfEdgeMesh<T>(mesh))
 {
     calculate(list.getString("boundaryMethod"),

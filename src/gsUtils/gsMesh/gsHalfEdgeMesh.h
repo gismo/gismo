@@ -89,7 +89,7 @@ public:
          * */
         Halfedge(const size_t origin, const size_t end, const real_t length)
         {
-            if (length < -1e-8)
+            if (length < 0)
                 gsWarn << "[" << __PRETTY_FUNCTION__
                           << "] Origin and end must be indices > 0 and length should be positiv or 0. One of the values is not correct:"
                           << std::endl << "origin: " << origin << std::endl << "end: " << end << std::endl
@@ -106,7 +106,7 @@ public:
        *  TRUE if origin and end point indices equal and the length difference of the two halfedges is < 1e-8
        *  FALSE otherwise
        * */
-        bool operator==(const Halfedge &rhs) const { return (m_origin == rhs.m_origin && m_end == rhs.m_end && (m_length - rhs.m_length) < 1e-8); }
+        bool operator==(const Halfedge &rhs) const { return (m_origin == rhs.m_origin && m_end == rhs.m_end); }
 
         /**
          * @brief Comparison not equal operator
@@ -150,7 +150,7 @@ public:
          * @param[in] halfedge #halfedge which we want to know about if it is a twin
          * @return TRUE if halfedge is a twin and FALSE otherwise.
          * */
-        bool isTwin(const Halfedge &halfedge) const { return (m_origin == halfedge.m_end && m_end == halfedge.m_origin && (m_length - halfedge.m_length) < 1e-8); }
+        bool isTwin(const Halfedge &halfedge) const { return (m_origin == halfedge.m_end && m_end == halfedge.m_origin); }
 
     private:
         size_t m_origin; ///< index of origin vertex
@@ -244,7 +244,6 @@ public:
          * */
         const std::vector<real_t> getHalfedgeLengths() const;
 
-
         /**
          * @brief Get first halfedge
          *
@@ -293,7 +292,7 @@ public:
          * @param[in] j #number of the second vertex in the chain
          * @return (shortest) distance between vertices
          * */
-        real_t getShortestDistanceBetween(size_t i, size_t j) const;
+        real_t getShortestDistanceBetween(size_t i, size_t j, real_t precision) const;
 
         /**
          * @brief Get distance between vertices
@@ -473,7 +472,7 @@ private:
          *
          * @return (shortest) distance between vertices
          * */
-        real_t getShortestDistanceBetween(const size_t &i, const size_t &j) const { return m_boundary.getShortestDistanceBetween(i, j); }
+        real_t getShortestDistanceBetween(const size_t &i, const size_t &j, real_t m_precision) const { return m_boundary.getShortestDistanceBetween(i, j, m_precision); }
 
         /**
          * @brief Get distance between vertices
@@ -526,7 +525,9 @@ public:
      *
      * @param[in] mesh gsMesh object.
      * */
-    gsHalfEdgeMesh(const gsMesh<> &mesh);
+    gsHalfEdgeMesh(const gsMesh<> &mesh, real_t precision = 1e-8);
+
+    virtual ~gsHalfEdgeMesh() {}
 
     /**
      * @brief Get number of vertices
@@ -726,10 +727,10 @@ private:
     std::vector<Halfedge> m_halfedges; ///< vector of halfedges
     Boundary m_boundary; ///< boundary of the mesh
     size_t m_n; ///< number of inner vertices in the mesh
-    std::vector<std::size_t >
-        m_inverseSorting; ///< vector of indices s. t. m_inverseSorting[internVertexIndex] = vertexIndex
-    std::vector<std::size_t >
-        m_sorting; ///< vector that stores the internVertexIndices s. t. m_sorting[vertexIndex-1] = internVertexIndex
+    std::vector<std::size_t > m_inverseSorting; ///< vector of indices s. t. m_inverseSorting[internVertexIndex] = vertexIndex
+    std::vector<std::size_t > m_sorting; ///< vector that stores the internVertexIndices s. t. m_sorting[vertexIndex-1] = internVertexIndex
+    real_t m_precision;
+
 
 };//class gsHalfEdgeMesh
 

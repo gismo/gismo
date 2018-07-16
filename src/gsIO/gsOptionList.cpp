@@ -207,6 +207,20 @@ void gsOptionList::addReal(const std::string & label,
     m_reals[label] = std::make_pair(value,desc);
 }
 
+void gsOptionList::addMultiInt(const std::string & label,
+                               const std::string & desc,
+                               const std::vector<size_t> & values)
+{
+    GISMO_ENSURE( !( isString(label) || isReal(label) || isSwitch(label) ),
+                  "Invalid request (addInt): Option "<<label<<" already exists, but not as an multiint; it is "<<getInfo(label)<<"." );
+
+    for (size_t i = 0; i < values.size(); ++i)
+    {
+        addInt(label + "." + util::to_string(i), desc, values[i]);
+    }
+    addInt(label + ".Size", desc, values.size());
+}
+
 void gsOptionList::addSwitch(const std::string & label,
                              const std::string & desc,
                              const bool & value)

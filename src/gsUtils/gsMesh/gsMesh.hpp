@@ -23,21 +23,9 @@ namespace gismo
 template<class T>
 gsMesh<T>::~gsMesh()
 {
-    // Delete vertices
-    typename std::vector<VertexHandle>::iterator vIter;
-    for(vIter = vertex.begin(); vIter != vertex.end(); vIter++)
-    {
-        delete *vIter;
-    }
-    vertex.clear();
-
-    // Delete Faces
-    typename std::vector<FaceHandle>::iterator fIter;
-    for(fIter = face.begin(); fIter != face.end(); fIter++)
-    {
-        delete *fIter;
-    }
-    face.clear();
+    //gsInfo << "delete gsMesh\n";
+    freeAll(vertex);
+    freeAll(face);
 }
 
 template<class T>

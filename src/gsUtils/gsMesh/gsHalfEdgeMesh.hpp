@@ -37,19 +37,24 @@ struct equal_ptr
 //********************************************************************************
 
 template<class T>
-gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<> &mesh)
-    : gsMesh<>(mesh)
+gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<> &mesh, real_t precision)
+    : gsMesh<>(mesh), m_precision(precision)
 {
     std::sort(this->vertex.begin(), this->vertex.end(), less_than_ptr());
     typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
     last = std::unique(this->vertex.begin(), this->vertex.end(), equal_ptr());
-    this->vertex.erase(last, this->vertex.end());
+gsDebugVar(this->vertex.size());
     for (size_t i = 0; i < this->face.size(); i++)
     {
         m_halfedges.push_back(getInternHalfedge(this->face[i], 1));
         m_halfedges.push_back(getInternHalfedge(this->face[i], 2));
         m_halfedges.push_back(getInternHalfedge(this->face[i], 3));
     }
+
+    //freeAll(last,this->vertex.end()); // afterwards it fails with invalid read
+    this->vertex.erase(last, this->vertex.end());
+    gsDebugVar(this->vertex.size());
+    this->numVertices = this->vertex.size();
     m_boundary = Boundary(m_halfedges);
     m_n = this->vertex.size() - m_boundary.getNumberOfVertices();
     sortVertices();
@@ -153,7 +158,7 @@ std::vector<real_t> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<size_t> &cor
 template<class T>
 real_t gsHalfEdgeMesh<T>::getShortestBoundaryDistanceBetween(size_t i, size_t j) const
 {
-    return m_boundary.getShortestDistanceBetween(i, j);
+    return m_boundary.getShortestDistanceBetween(i, j, m_precision);
 }
 
 template<class T>
@@ -556,7 +561,7 @@ const std::list<size_t> gsHalfEdgeMesh<T>::Chain::getVertexIndices() const
 }
 
 template<class T>
-real_t gsHalfEdgeMesh<T>::Chain::getShortestDistanceBetween(size_t i, size_t j) const
+real_t gsHalfEdgeMesh<T>::Chain::getShortestDistanceBetween(size_t i, size_t j, real_t precision) const
 {
     if (this->isEmpty())
     {
@@ -579,7 +584,7 @@ real_t gsHalfEdgeMesh<T>::Chain::getShortestDistanceBetween(size_t i, size_t j) 
     {
         distance += l[z];
     }
-    if (this->isClosed() && (this->getLength() - distance < distance - 1e-8))
+    if (this->isClosed() && (this->getLength() - distance < distance - precision))
     {
         distance = this->getLength() - distance;
     }

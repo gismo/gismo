@@ -302,6 +302,9 @@ public:
         std::vector<LocalNeighbourhood> m_localBoundaryNeighbourhoods;
     };
 
+    /// @brief Returns the list of default options for gsParametrization
+    static gsOptionList defaultOptions();
+
     /**
     * @brief Default constructor
     */
@@ -333,11 +336,14 @@ public:
     */
     const gsPoint2D &getParameterPoint(size_t vertexIndex) const;
 
+    void compute() const;
+
     /**
      * Parametric Coordinates u,v from 0..1
      * @return
      */
     gsMatrix<> createUVmatrix();
+
     /**
      * Corresponding mapped values in R³ to parametric coordinates.
      * @return
@@ -377,6 +383,7 @@ private:
 
     gsHalfEdgeMesh<T> m_mesh; ///< mesh information
     std::vector<gsPoint2D> m_parameterPoints; ///< parameter points
+    gsOptionList m_options;
 }; // class gsParametrization
 
 } // namespace gismo
