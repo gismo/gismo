@@ -171,7 +171,7 @@ public:
          * */
         LocalParametrization(const gsHalfEdgeMesh<T> &meshInfo,
                              const LocalNeighbourhood &localNeighbourhood,
-                             const std::string parametrizationMethod = "uniform");
+                             const size_t parametrizationMethod = "uniform");
 
         /**
          * @brief Get lambdas
@@ -234,10 +234,10 @@ public:
          * The LocalParametrization object then is constructed according to this method.
          *
          * @param[in] filename const gsHalfEdgeMesh<T> object
-         * @param[in] parametrizationMethod const std::string - name of parametrization method
+         * @param[in] parametrizationMethod const size_t - {1:shape, 2:uniform, 3:distance}
          */
         Neighbourhood(const gsHalfEdgeMesh<T> &meshInfo,
-                      const std::string parametrizationMethod = "uniform");
+                      const size_t parametrizationMethod = 2);
 
         /**
          * @brief Get number of inner vertices
@@ -281,7 +281,7 @@ public:
          * @return vector of boundary corners
          */
         const std::vector<size_t>
-        getBoundaryCorners(const std::string method, const real_t range = 0.1, const size_t number = 4) const;
+        getBoundaryCorners(const size_t method, const real_t range = 0.1, const size_t number = 4) const;
 
         /**
          * @brief
@@ -310,33 +310,9 @@ public:
     */
     //gsParametrization() { }
 
-    gsParametrization(gsMesh<T> &mesh, gsOptionList list);
+    gsParametrization(gsMesh<T> &mesh, gsOptionList list = defaultOptions());
 
-    /**
-    * @brief Constructor
-    * This constructor takes as input a gsMesh, the boundary method and the parametrization method. For these properties it calculates the parameter points concerning to Floater's algorithm.
-    *
-    * @param[in] mesh gsMesh that should be computed
-    * @param[in] boundaryMethod const std::string& - name of the boundary calculating method
-    * @param[in] parametrizationMethod const std::string& - name of the parametrization calculating method
-    */
-    gsParametrization(gsMesh<T> &mesh,
-                      const std::string &boundaryMethod = "chords",
-                      const std::string &parametrizationMethod = "uniform",
-                      const std::vector<size_t> &corners = std::vector<size_t>(),
-                      const real_t range = 0.1,
-                      const size_t number = 4);
-
-    /**
-    * @brief Get parameter point
-    * Returns the parameter point with given vertex index.
-    *
-    * @param[in] vertexIndex int - vertex index
-    * @return two-dimensional parameter point
-    */
-    const gsPoint2D &getParameterPoint(size_t vertexIndex) const;
-
-    void compute() const;
+    gsParametrization<T>& compute();
 
     /**
      * Parametric Coordinates u,v from 0..1
@@ -356,7 +332,20 @@ public:
      */
     gsMesh<> createFlatMesh();
 
+    gsOptionList& options() { return m_options; }
+
+    gsParametrization<T>& setOptions(const gsOptionList& list);
+
 private:
+    /**
+    * @brief Get parameter point
+    * Returns the parameter point with given vertex index.
+    *
+    * @param[in] vertexIndex int - vertex index
+    * @return two-dimensional parameter point
+    */
+    const gsPoint2D &getParameterPoint(size_t vertexIndex) const;
+
     /**
     * @brief Constructs linear equation system and solves it
     *
@@ -375,8 +364,8 @@ private:
     */
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood, const size_t n, const size_t N);
 
-    void calculate(const std::string &boundaryMethod,
-                   const std::string &paraMethod,
+    void calculate(const size_t boundaryMethod,
+                   const size_t paraMethod,
                    const std::vector<size_t> &cornersInput,
                    const real_t rangeInput,
                    const size_t numberInput);
