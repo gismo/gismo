@@ -12,7 +12,7 @@ function varargout = gismo_map(pts, in, der)
     varargout{1} = F;
   end
   if (der == 1 || nargout > 2)
-    jac = reshape(in.deriv(pts),[],ndim,npts); % dimension rdim x ndim x npts
+    jac = reshape(in.jacobian(pts),[],ndim,npts); % dimension rdim x ndim x npts
     if nargout == 1
         varargout{1} = jac;
     else % nargout == 2 or 3
@@ -22,7 +22,7 @@ function varargout = gismo_map(pts, in, der)
   if (der == 2)
       rdim = length(in.eval(zeros(ndim,1)));
       hess = zeros(rdim,ndim,ndim,npts); % dimension rdim x ndim x ndim x npts
-%       for dir = 1:rdim
+%       for dir = 1:rdim %% TODO uncomment!!!
 %         hess(dir,:,:,:) = reshape(in.hess(pts,dir),ndim,ndim,npts);
 %       end
     if nargout == 1

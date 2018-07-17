@@ -125,7 +125,6 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 gsTHBSplineBasis<__DIM__> * hbs = new gsTHBSplineBasis<__DIM__>(instance->basis());
                 plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
             } else if (!strcmp(prop,"coefs")) {
-                gsTHBSpline <__DIM__> *instance = convertMat2Ptr < gsTHBSpline < __DIM__ > > (prhs[1]);
                 const gsMatrix<>& cc = instance->coefs();
                 plhs[0] = createPointerFromMatrix(cc);
             } else {
@@ -145,7 +144,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // Copy result to output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<real_t>(vals);
 
-        } else if (!strcmp(cmd,"deriv")) {
+        } else if (!strcmp(cmd,"jacobian")) {
 
             // ----------------------------------------------------------------------
             // deriv(pts)
@@ -182,7 +181,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
             // Call method
             gsMatrix<unsigned> vals = instance->active(pts);
-            vals = vals + gsMatrix<unsigned>::Ones(vals.rows(),vals.cols());
+	    vals = vals + gsMatrix<unsigned>::Ones(vals.rows(),vals.cols());
             // Copy the result for output (FIXME: this should be avoided)
             plhs[0] = createPointerFromMatrix<unsigned>(vals);
 

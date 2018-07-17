@@ -78,11 +78,11 @@ fprintf('Knots 2 level max, direction max\n')
 disp(knots)
 
 % Print active functions
-act = hbs.active(pt);
+act = hbs.active([pt,pt]);
 fprintf('Active functions 1 at point:\n')
 disp(act)
 
-act2 = hbs2.active(pt2);
+act2 = hbs2.active([pt2,pt2]);
 fprintf('Active functions 2 at point:\n')
 disp(act2)
 

@@ -238,12 +238,12 @@ classdef gsTHBSpline < handle
             [varargout{1:nargout}] = mex_gsTHBSpline('eval', this.objectHandle, varargin{:});
         end
         
-        % deriv - call class method
-        function [varargout] = deriv(this, varargin)
-            %deriv - evaluate the jacobian of a gsTHBSpline object
+        % jacobian - call class method
+        function [varargout] = jacobian(this, varargin)
+            %jacobian - evaluate the jacobian of a gsTHBSpline object
             %
             %Usage:
-            %  val = thb.deriv( pts )
+            %  val = thb.jacobian( pts )
             %
             %Input:
             %  thb: gsTHBSpline, [1 x 1].
@@ -262,7 +262,7 @@ classdef gsTHBSpline < handle
             if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.parDim()))
                 error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSpline('deriv', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSpline('jacobian', this.objectHandle, varargin{:});
         end
 
         % hess - call class method
