@@ -268,8 +268,6 @@ void gsOptionList::update(const gsOptionList & other, gsOptionList::updateType t
         if (exists(it4->first))         setSwitch(it4->first,it4->second.first);
         else if(type == addIfUnknown)   addSwitch(it4->first,it4->second.second,it4->second.first);
     }
-
-    // TODO: add Multi
 }
 
 gsOptionList gsOptionList::wrapIntoGroup(const std::string & gn) const
