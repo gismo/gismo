@@ -17,6 +17,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
+    bool paraview = false;
     int parametrizationMethod(1); // 1:shape, 2:uniform, 3:distance
     // shape: best method, shape of the mesh is preserved, smooth surface fitting
     // uniform: the lambdas according to floater's algorithm are set to 1/d, where d is the number of neighbours
@@ -53,6 +54,7 @@ int main(int argc, char *argv[])
     cmd.addReal("r", "range", "in case of restrict or opposite", range);
     cmd.addInt("n", "number", "number of corners, in case of corners", number);
     cmd.addMultiInt("c", "corners", "vector for corners, call it every time for an entry (-c 3 -c 1 -c 2 => {3,1,2})", corners);
+    cmd.addSwitch("","plot","Plot with paraview",paraview);
     cmd.getValues(argc, argv);
 
     gsOptionList ol = cmd.getOptionList();
@@ -71,8 +73,11 @@ int main(int argc, char *argv[])
     gsInfo << uv << "\n";
     gsInfo << xyz << "\n";
 
-    gsWriteParaview(mesh, ol.getString("filenameOut"));
-    gsFileManager::open(ol.getString("filenameOut") + ".pvd");
+    if(paraview)
+    {
+        gsWriteParaview(mesh, ol.getString("filenameOut"));
+        gsFileManager::open(ol.getString("filenameOut") + ".pvd");
+    }
 
     return 0;
 }
