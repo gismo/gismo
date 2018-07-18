@@ -576,7 +576,7 @@ public:
      *
      * @param[in] vertex const ESS_IO::IO_Vertex& - three-dimensional vertex from the triangle mesh
      */
-    size_t getVertexIndex(const gsMesh<>::gsVertexHandle &vertex) const;
+    //size_t getVertexIndex(const gsMesh<>::gsVertexHandle &vertex) const;
 
     /**
      * @brief Get vertex index for firts, second or third vertex of triangle
@@ -606,7 +606,7 @@ public:
      * @param[in] corners std::vector<size_t >& - vector of boundary point numbers for corners, [1,2,3,4] stands for 1., 2., 3., 4. boundary vertex serve as corners
      * @return vector with part lengths of the boundary
      */
-    std::vector<real_t> getCornerLengths(/*const*/ std::vector<size_t > &corners) const;
+    std::vector<real_t> getCornerLengths(/*const*/ std::vector<int> &corners) const;
     //std::vector<real_t> getBoundaryPartLengths(const std::vector<size_t >& corners) const;
 
     /**
@@ -727,8 +727,8 @@ private:
     std::vector<Halfedge> m_halfedges; ///< vector of halfedges
     Boundary m_boundary; ///< boundary of the mesh
     size_t m_n; ///< number of inner vertices in the mesh
-    std::vector<std::size_t > m_inverseSorting; ///< vector of indices s. t. m_inverseSorting[internVertexIndex] = vertexIndex
-    std::vector<std::size_t > m_sorting; ///< vector that stores the internVertexIndices s. t. m_sorting[vertexIndex-1] = internVertexIndex
+    std::vector<int> m_inverseSorting; ///< vector of indices s. t. m_inverseSorting[internVertexIndex] = vertexIndex
+    std::vector<int> m_sorting; ///< vector that stores the internVertexIndices s. t. m_sorting[vertexIndex-1] = internVertexIndex
     real_t m_precision;
 
 

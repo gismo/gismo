@@ -127,23 +127,24 @@ struct lexCompareVHandle
 template<class T>
 T length(gsVertex<T> const & vert)
 {
-    return (sqrt(vert.x()*vert.x()+vert.y()*vert.y()+vert.z()*vert.z()));
+    //return (sqrt(vert.x()*vert.x()+vert.y()*vert.y()+vert.z()*vert.z()));
+    return vert.norm();
 }
 
 template<class T>
 bool operator < (typename gsVertex<T>::gsVertexHandle const & lhs,
 		typename gsVertex<T>::gsVertexHandle const & rhs)
 {
-  return !(lhs->x()< rhs->x() || ( lhs->x()==rhs->x() && lhs->y()<rhs->y() )
-	   || ( lhs->x()==rhs->x() && lhs->y()==rhs->y() && lhs->z()<rhs->z()) 
-    );}
+    return !(lhs->x() < rhs->x() || (lhs->x() == rhs->x() && lhs->y() < rhs->y())
+        || (lhs->x() == rhs->x() && lhs->y() == rhs->y() && lhs->z() < rhs->z()));
+}
 template<class T>
 bool operator > (typename gsVertex<T>::gsVertexHandle const & lhs,
         typename gsVertex<T>::gsVertexHandle const & rhs)
 {
-  return !(lhs->x()> rhs->x() || ( lhs->x()==rhs->x() && lhs->y()>rhs->y() )
-       || ( lhs->x()==rhs->x() && lhs->y()==rhs->y() && lhs->z()>rhs->z())
-    );}
+    return !(lhs->x() > rhs->x() || (lhs->x() == rhs->x() && lhs->y() > rhs->y())
+        || (lhs->x() == rhs->x() && lhs->y() == rhs->y() && lhs->z() > rhs->z()));
+}
 //template<class T>
 //bool operator == (typename gsVertex<T> const & lhs,
 //        typename gsVertex<T> const & rhs)
@@ -153,9 +154,10 @@ bool operator > (typename gsVertex<T>::gsVertexHandle const & lhs,
 template<class T>
 bool operator == (gsVertex<T> const & lhs,gsVertex<T> const & rhs)
 {
-    return (((lhs.x())==rhs.x())&&
-            ((lhs.y())==rhs.y())&&
-            ((lhs.z())==rhs.z()));
+    return (lhs.x()==rhs.x())&&
+           (lhs.y()==rhs.y())&&
+           (lhs.z()==rhs.z());
+//    return lhs.Eigen::Matrix<T,3,1>::operator==(rhs); /slower
 }
 //void operator = (gsVertex<T> & lhs,gsVertex<T> const & rhs)
 //{
@@ -171,40 +173,44 @@ template<class T>
 bool operator < (gsVertex<T> const & lhs,gsVertex<T> const & rhs)
 {
     return (lhs.x()> rhs.x() || ( lhs.x()==rhs.x() && lhs.y()>rhs.y() )
-            || ( lhs.x()==rhs.x() && lhs.y()==rhs.y() && lhs.z()>rhs.z()))
-         ;
+            || ( lhs.x()==rhs.x() && lhs.y()==rhs.y() && lhs.z()>rhs.z()));
 }
 template<class T>
 bool operator > (gsVertex<T> const & lhs,gsVertex<T> const & rhs)
 {
     return (lhs.x()< rhs.x() || ( lhs.x()==rhs.x() && lhs.y()<rhs.y() )
-            || ( lhs.x()==rhs.x() && lhs.y()==rhs.y() && lhs.z()<rhs.z()))
-         ;
+            || ( lhs.x()==rhs.x() && lhs.y()==rhs.y() && lhs.z()<rhs.z()));
 }
 
 template<class T>
 T operator *(gsVertex<T> const & lhs,gsVertex<T> const & rhs)
 {
-    return (lhs.x()*rhs.x()+
-            lhs.y()*rhs.y()+
-            lhs.z()*rhs.z());
+//    return (lhs.x()*rhs.x()+
+//            lhs.y()*rhs.y()+
+//            lhs.z()*rhs.z());
+    return lhs.Eigen::Matrix<T,3,1>::operator*(rhs);
 }
 
 template<class T>
 gsVertex<T> operator -(gsVertex<T> const & lhs,gsVertex<T> const & rhs)
 {
-    return gsVertex<T>(lhs.x()-rhs.x(),lhs.y()-rhs.y(),lhs.z()-rhs.z());
+    //return gsVertex<T>(lhs.x()-rhs.x(),lhs.y()-rhs.y(),lhs.z()-rhs.z());
+    return (gsVector3d<T>)lhs.Eigen::Matrix<T,3,1>::operator-(rhs);
 }
+
 template<class T>
 gsVertex<T> operator +(gsVertex<T> const & lhs,gsVertex<T> const & rhs)
 {
-    return gsVertex<T>(lhs.x()+rhs.x(),lhs.y()+rhs.y(),lhs.z()+rhs.z());
+    //return gsVertex<T>(lhs.x()+rhs.x(),lhs.y()+rhs.y(),lhs.z()+rhs.z());
+        return (gsVector3d<T>)lhs.Eigen::Matrix<T,3,1>::operator+(rhs);
 }
+
 template<class T>
 bool operator != (gsVertex<T> const & lhs, gsVertex<T> const & rhs)
 {
-  return !(lhs.x()== rhs.x()&& lhs.y()==rhs.y()&& lhs.z()==rhs.z())
-    ;}
+    //return lhs.Eigen::Matrix<T,3,1>::operator!=(rhs);
+    return !(lhs.x()== rhs.x()&& lhs.y()==rhs.y()&& lhs.z()==rhs.z());
+}
 
 } // namespace gismo
 

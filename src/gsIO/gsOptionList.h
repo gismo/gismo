@@ -49,7 +49,7 @@ public:
     /// If \a gn is not found, the function throws.
     std::vector<std::string> getMultiString(const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString
-    std::vector<size_t>         getMultiInt   (const std::string & gn) const;
+    std::vector<int>         getMultiInt   (const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString
     std::vector<real_t>      getMultiReal  (const std::string & gn) const;
 
@@ -67,11 +67,11 @@ public:
     /// into a std::vector.
     ///
     /// If \a gn is not found, the function throws.
-    //std::vector<std::string> askMultiString(const std::string & gn) const;
+    //std::vector<std::string> askMultiString(const std::string & gn, const std::vector<std::string> & values = std::vector<std::string>()) const;
     /// @copydoc gsOptionList::askMultiString
-    //std::vector<size_t>      askMultiInt   (const std::string & gn) const;
+    //std::vector<int>         askMultiInt   (const std::string & gn, const std::vector<int> & values = std::vector<int>()) const;
     /// @copydoc gsOptionList::askMultiString
-    //std::vector<real_t>      askMultiReal  (const std::string & gn) const;
+    //std::vector<real_t>      askMultiReal  (const std::string & gn, const std::vector<real_t> & values = std::vector<real_t>()) const;
 
     /// \brief Sets an existing option \a label to be equal to \a value.
     ///
@@ -87,11 +87,11 @@ public:
     /// into a std::vector.
     ///
     /// If \a gn is not found, the function throws.
-    //std::vector<std::string> setMultiString(const std::string & gn) const;
+    //std::vector<std::string> setMultiString(const std::string & gn, const std::vector<std::string> & values) const;
     /// @copydoc gsOptionList::setMultiString
-    //std::vector<size_t>      setMultiInt   (const std::string & gn) const;
+    //std::vector<int>      setMultiInt   (const std::string & gn, const std::vector<int> & values) const;
     /// @copydoc gsOptionList::setMultiString
-    //std::vector<real_t>      setMultiReal  (const std::string & gn) const;
+    //std::vector<real_t>      setMultiReal  (const std::string & gn, const std::vector<real_t> & values) const;
 
     /// \brief Adds a option named \a label, with description \a desc
     /// and value \a value.
@@ -110,11 +110,11 @@ public:
     /// into a std::vector.
     ///
     /// If \a gn is not found, the function throws.
-    //std::vector<std::string> addMultiString(const std::string & gn);
+    //std::vector<std::string> addMultiString(const std::string & label, const std::string & desc, const std::vector<std::string> & values);
     /// @copydoc gsOptionList::addMultiString
-    void addMultiInt   (const std::string & label, const std::string & desc, const std::vector<size_t> & values);
+    void addMultiInt   (const std::string & label, const std::string & desc, const std::vector<int> & values);
     /// @copydoc gsOptionList::addMultiString
-    //std::vector<real_t>      addMultiReal  (const std::string & gn);
+    //std::vector<real_t>      addMultiReal  (const std::string & label, const std::string & desc, const std::vector<real_t> & values);
 
     /// \brief Removes the option named \a label (if it exists).
     void remove(const std::string& label);

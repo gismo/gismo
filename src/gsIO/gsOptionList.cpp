@@ -54,25 +54,24 @@ bool gsOptionList::getSwitch(const std::string & label) const
 
 std::vector<std::string> gsOptionList::getMultiString(const std::string & gn) const
 {
-    GISMO_ASSERT(hasGroup(gn), "Invalid request (getGroup): The group " + gn + " does not exist.");
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiString): The group " + gn + " does not exist.");
 
     std::vector<std::string> result;
-
     const std::string search = gn + ".";
-
+    int sz = getInt(search + "Size");
+    result.reserve(sz);
     // add strings to vector
-    for (StringTable::const_iterator it = m_strings.begin(); it != m_strings.end(); it++)
-        if (util::starts_with(it->first, search) && !util::ends_with(it->first, "Size"))
-            result.push_back(it->second.first);
+    for (int i = 0; i < sz; ++i)
+        result.push_back(getString(search + util::to_string(i)));
 
     return result;
 }
 
-std::vector<size_t> gsOptionList::getMultiInt(const std::string & gn) const
+std::vector<int> gsOptionList::getMultiInt(const std::string & gn) const
 {
-    GISMO_ASSERT(hasGroup(gn), "Invalid request (getGroup): The group " + gn + " does not exist.");
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiInt): The group " + gn + " does not exist.");
 
-    std::vector<size_t> result;
+    std::vector<int> result;
 
     const std::string search = gn + ".";
 
@@ -86,7 +85,7 @@ std::vector<size_t> gsOptionList::getMultiInt(const std::string & gn) const
 
 std::vector<real_t> gsOptionList::getMultiReal(const std::string & gn) const
 {
-    GISMO_ASSERT(hasGroup(gn), "Invalid request (getGroup): The group " + gn + " does not exist.");
+    GISMO_ASSERT(hasGroup(gn), "Invalid request (getMultiReal): The group " + gn + " does not exist.");
 
     std::vector<real_t> result;
 
@@ -209,10 +208,10 @@ void gsOptionList::addReal(const std::string & label,
 
 void gsOptionList::addMultiInt(const std::string & label,
                                const std::string & desc,
-                               const std::vector<size_t> & values)
+                               const std::vector<int> & values)
 {
     GISMO_ENSURE( !( isString(label) || isReal(label) || isSwitch(label) ),
-                  "Invalid request (addInt): Option "<<label<<" already exists, but not as an multiint; it is "<<getInfo(label)<<"." );
+                  "Invalid request (addMultiInt): Option "<<label<<" already exists, but not as an multiint; it is "<<getInfo(label)<<"." );
 
     for (size_t i = 0; i < values.size(); ++i)
     {

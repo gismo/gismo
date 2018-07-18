@@ -280,7 +280,7 @@ public:
          * ...........................................................................................................
          * @return vector of boundary corners
          */
-        const std::vector<size_t>
+        const std::vector<int>
         getBoundaryCorners(const size_t method, const real_t range = 0.1, const size_t number = 4) const;
 
         /**
@@ -292,10 +292,10 @@ public:
         std::vector<real_t> midpoints(const size_t numberOfCorners, const real_t length) const;
         void searchAreas(const real_t range,
                          std::vector<std::pair<real_t, size_t> > &sortedAngles,
-                         std::vector<size_t> &corners) const;
+                         std::vector<int> &corners) const;
         void takeCornersWithSmallestAngles(size_t number,
                                            std::vector<std::pair<real_t, size_t> > &sortedAngles,
-                                           std::vector<size_t> &corners) const;
+                                           std::vector<int> &corners) const;
 
         gsHalfEdgeMesh<T> m_basicInfos;
         std::vector<LocalParametrization> m_localParametrizations;
@@ -366,7 +366,7 @@ private:
 
     void calculate(const size_t boundaryMethod,
                    const size_t paraMethod,
-                   const std::vector<size_t> &cornersInput,
+                   const std::vector<int> &cornersInput,
                    const real_t rangeInput,
                    const size_t numberInput);
 

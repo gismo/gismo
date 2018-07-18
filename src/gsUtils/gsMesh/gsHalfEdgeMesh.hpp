@@ -95,24 +95,25 @@ const gsMesh<>::gsVertexHandle &gsHalfEdgeMesh<T>::getVertex(const size_t vertex
     return ((this->vertex[m_sorting[vertexIndex - 1]]));
 }
 
-template<class T>
+/*template<class T>
 size_t gsHalfEdgeMesh<T>::getVertexIndex(const gsMesh<>::gsVertexHandle &vertex) const
 {
     return m_inverseSorting[getInternVertexIndex(vertex)];
-}
+}*/
 
 template<class T>
 size_t gsHalfEdgeMesh<T>::getGlobalVertexIndex(size_t localVertexIndex, size_t triangleIndex) const
 {
-    if ((localVertexIndex != 1 && localVertexIndex != 2 && localVertexIndex != 3)
-        || triangleIndex > getNumberOfTriangles() - 1)
-        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] The 'localVertexIndex'=" << localVertexIndex
-                  << " should be 1,2 or 3 and the triangle with 'triangleIndex'=" << triangleIndex << " does not exist\n";
-    if (localVertexIndex == 1)
-        return getVertexIndex((this->face[triangleIndex]->vertices[0]));
-    if (localVertexIndex == 2)
-        return getVertexIndex((this->face[triangleIndex]->vertices[1]));
-    return getVertexIndex((this->face[triangleIndex]->vertices[2]));
+    return m_inverseSorting[getInternVertexIndex(this->face[triangleIndex]->vertices[localVertexIndex-1])];
+//    if ((localVertexIndex != 1 && localVertexIndex != 2 && localVertexIndex != 3)
+//        || triangleIndex > getNumberOfTriangles() - 1)
+//        gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] The 'localVertexIndex'=" << localVertexIndex
+//                  << " should be 1,2 or 3 and the triangle with 'triangleIndex'=" << triangleIndex << " does not exist\n";
+//    if (localVertexIndex == 1)
+//        return getVertexIndex((this->face[triangleIndex]->vertices[0]));
+//    if (localVertexIndex == 2)
+//        return getVertexIndex((this->face[triangleIndex]->vertices[1]));
+//    return getVertexIndex((this->face[triangleIndex]->vertices[2]));
 }
 
 template<class T>
@@ -122,9 +123,9 @@ real_t gsHalfEdgeMesh<T>::getBoundaryLength() const
 }
 
 template<class T>
-bool rangeCheck(const std::vector<size_t> &corners, const size_t minimum, const size_t maximum)
+bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum)
 {
-    for (std::vector<size_t>::const_iterator it = corners.begin(); it != corners.end(); it++)
+    for (std::vector<int>::const_iterator it = corners.begin(); it != corners.end(); it++)
     {
         if (*it < minimum || *it > maximum)
         { return false; }
@@ -133,14 +134,14 @@ bool rangeCheck(const std::vector<size_t> &corners, const size_t minimum, const 
 }
 
 template<class T>
-std::vector<real_t> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<size_t> &corners) const
+std::vector<real_t> gsHalfEdgeMesh<T>::getCornerLengths(std::vector<int> &corners) const
 {
     size_t B = getNumberOfBoundaryVertices();
     if (!rangeCheck<T>(corners, 1, B))
     {
         gsInfo << "Error: [" << __PRETTY_FUNCTION__ << "] The corners must be <= number of boundary vertices.\n";
         gsInfo << "One of these is >= " << getNumberOfBoundaryVertices() << "\n";
-        for (std::vector<size_t>::const_iterator it = corners.begin(); it != corners.end(); it++)
+        for (std::vector<int>::const_iterator it = corners.begin(); it != corners.end(); it++)
         {
             gsDebug << "Corner at: " << *it << "\n";
         }
@@ -224,25 +225,25 @@ gsHalfEdgeMesh<T>::getOppositeHalfedges(const size_t vertexIndex, const bool inn
 
     for (size_t i = 0; i < getNumberOfTriangles(); i++)
     {
+        size_t v1;
+        size_t v2;
+        size_t v3;
         switch (isTriangleVertex(vertexIndex, i))
         {
             case first:
-                oppositeHalfedges.push(Halfedge(getGlobalVertexIndex(3, i),
-                                                                 getGlobalVertexIndex(2, i),
-                                                                 getHalfedgeLength(getGlobalVertexIndex(3, i),
-                                                                                   getGlobalVertexIndex(2, i))));
+                v3 = getGlobalVertexIndex(3, i);
+                v2 = getGlobalVertexIndex(2, i);
+                oppositeHalfedges.push(Halfedge(v3, v2, getHalfedgeLength(v3, v2)));
                 break;
             case second:
-                oppositeHalfedges.push(Halfedge(getGlobalVertexIndex(1, i),
-                                                                 getGlobalVertexIndex(3, i),
-                                                                 getHalfedgeLength(getGlobalVertexIndex(1, i),
-                                                                                   getGlobalVertexIndex(3, i))));
+                v1 = getGlobalVertexIndex(1, i);
+                v3 = getGlobalVertexIndex(3, i);
+                oppositeHalfedges.push(Halfedge(v1, v3, getHalfedgeLength(v1, v3)));
                 break;
             case third:
-                oppositeHalfedges.push(Halfedge(getGlobalVertexIndex(2, i),
-                                                                 getGlobalVertexIndex(1, i),
-                                                                 getHalfedgeLength(getGlobalVertexIndex(2, i),
-                                                                                   getGlobalVertexIndex(1, i))));
+                v2 = getGlobalVertexIndex(2, i);
+                v1 = getGlobalVertexIndex(1, i);
+                oppositeHalfedges.push(Halfedge(v2, v1, getHalfedgeLength(v2, v1)));
                 break;
             default:
                 //not supposed to show up
@@ -273,19 +274,19 @@ bool gsHalfEdgeMesh<T>::isBoundaryVertex(const size_t internVertexIndex) const
 template<class T>
 size_t gsHalfEdgeMesh<T>::getInternVertexIndex(const gsMesh<real_t>::gsVertexHandle &vertex) const
 {
-    size_t internVertexIndex = 0;
+    //size_t internVertexIndex = 0;
     for (size_t i = 0; i < this->vertex.size(); i++)
     {
-        if ((*(this->vertex[i])) == *vertex)
-            return internVertexIndex;
-        internVertexIndex++;
+        if (*(this->vertex[i]) == *vertex)
+            return i;//internVertexIndex;
+        //internVertexIndex++;
     }
-    if (internVertexIndex > this->vertex.size() - 1)
+    /*if (internVertexIndex > this->vertex.size() - 1)
     {
         gsWarn << "[" << __PRETTY_FUNCTION__ << "] The ESS_IO::IO_Vertex 'vertex' = (" << vertex->x()
                   << ", " << vertex->y() << ", " << vertex->z() << ") is not contained in gsHalfEdgeMesh vertices.\n";
         return 0;
-    }
+    }*/
     return 0;
 }
 
@@ -333,9 +334,9 @@ template<class T>
 void gsHalfEdgeMesh<T>::sortVertices()
 {
     size_t numberOfInnerVerticesFound = 0;
-    std::vector<size_t> sorting(this->vertex.size(), 0);
+    std::vector<int> sorting(this->vertex.size(), 0);
     m_sorting = sorting;
-    std::vector<size_t> inverseSorting(this->vertex.size(), 0);
+    std::vector<int> inverseSorting(this->vertex.size(), 0);
     m_inverseSorting = inverseSorting;
     std::list<size_t> boundaryVertices = m_boundary.getVertexIndices();
     for (size_t i = 0; i < this->vertex.size(); i++)
